@@ -9,7 +9,7 @@
 
 set -euo pipefail
 
-BATCH_SIZE=20
+BATCH_SIZE=5
 IMAGES_DIR="FamousGame/FamousPerson/images"
 HTML_PATH="FamousGame/FamousPerson/TheGame.html"
 MAP_PATH="FamousGame/FamousPerson/image-map.json"
@@ -17,6 +17,9 @@ BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
 echo "Branch: $BRANCH"
 echo ""
+
+# Increase HTTP buffer to handle large binary files
+git config http.postBuffer 524288000
 
 # ── Step 1: Update TheGame.html with local image paths ──────────────────────
 echo "Running update-image-paths.js..."
