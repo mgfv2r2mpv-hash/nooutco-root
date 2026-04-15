@@ -430,7 +430,32 @@ body {
 
 /* ── Responsive ────────────────────────────────────────────────────── */
 @media (max-width: 680px) {
-  #game-area { flex-direction: column; align-items: center; }
-  .tile { width: 108px; height: 108px; }
-  #sample-card { width: 160px; height: 160px; }
+  /* Header */
+  #app-header { padding: 8px 12px; gap: 8px; }
+  #app-header h1 { font-size: 1.05rem; }
+  #timer-display { font-size: 1.25rem; min-width: 62px; padding: 2px 8px; }
+  .btn-timer { padding: 4px 9px; font-size: 0.76rem; }
+
+  /* Settings bar */
+  #settings-bar { padding: 6px 12px; gap: 8px; }
+  .setting-group > label:first-child,
+  .checkbox-label { font-size: 0.78rem; }
+  .setting-group select,
+  .setting-group input[type="number"] { font-size: 0.82rem; padding: 4px 6px; }
+
+  /* Game area — column, anchored to top (justify-content:center was centering vertically) */
+  #game-area {
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 16px;
+    padding: 16px 12px;
+  }
+
+  /* Tiles and sample card */
+  .tile { width: 96px; height: 96px; }
+  #sample-card { width: 150px; height: 150px; }
+
+  /* Comp grid: allow tiles to wrap on very small screens */
+  #comp-grid { gap: 8px; }
 }
