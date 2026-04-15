@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <rect width="200" height="200" rx="20" fill="#fff9e6"/>
+  <text x="100" y="130" text-anchor="middle" font-size="95" font-family="Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji,sans-serif">🐱</text>
+  <text x="100" y="178" text-anchor="middle" font-size="20" font-weight="bold" font-family="Arial,Helvetica,sans-serif" fill="#2d3748">Cat</text>
+</svg>
