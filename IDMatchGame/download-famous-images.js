@@ -85,7 +85,9 @@ function download(imgUrl, dest) {
           path: parsed.pathname + parsed.search,
           headers: {
             'User-Agent':
-              'games-nooutco-me-downloader/1.0 (https://github.com/mgfv2r2mpv-hash/games-nooutco-me)',
+              'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
           },
         },
         res => {
@@ -138,6 +140,8 @@ async function main() {
       await download(imgUrl, dest);
       process.stdout.write('ok\n');
       map.push({ name, oldUrl: imgUrl, newPath });
+      // Brief pause to be polite to Wikimedia's servers
+      await new Promise(r => setTimeout(r, 150));
     } catch (err) {
       // Clean up partial file
       try { fs.unlinkSync(dest); } catch {}
