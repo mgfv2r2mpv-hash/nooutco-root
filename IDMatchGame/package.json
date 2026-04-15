@@ -1,0 +1,11 @@
+{
+  "name": "nooutco-games",
+  "version": "1.0.0",
+  "description": "Static games hosted on games.nooutco.me",
+  "scripts": {
+    "build:IDMatchGame": "node build.js IDMatchGame"
+  },
+  "engines": {
+    "node": ">=14"
+  }
+}
