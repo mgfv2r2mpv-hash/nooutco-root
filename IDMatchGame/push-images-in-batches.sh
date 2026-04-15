@@ -39,7 +39,8 @@ else
 fi
 
 # ── Step 2: Collect all untracked/modified images ────────────────────────────
-mapfile -t ALL_IMAGES < <(git ls-files --others --modified --exclude-standard "$IMAGES_DIR" | sort)
+ALL_IMAGES=()
+while IFS= read -r f; do ALL_IMAGES+=("$f"); done < <(git ls-files --others --modified --exclude-standard "$IMAGES_DIR" | sort)
 
 TOTAL=${#ALL_IMAGES[@]}
 echo "Found $TOTAL image file(s) to push."
