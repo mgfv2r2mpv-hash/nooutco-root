@@ -2708,6 +2708,7 @@ function renderPerson(person) {
 
   const img = $('person-img');
   img.style.display = '';
+  img.onerror = function() { handleImgError(this); };
   $('photo-fallback').classList.add('hidden');
   hidePhotoSearch();
   img.alt = person.name;
