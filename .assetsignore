@@ -1,6 +1,11 @@
-node_modules/
 .git/
+.gitignore
+.gitattributes
+.assetsignore
+.wrangler/
 .DS_Store
+node_modules/
+**/node_modules/
 **/src/
 **/package.json
 **/package-lock.json
@@ -9,3 +14,4 @@ node_modules/
 **/vite.config.ts
 **/wrangler.jsonc
 **/README.md
+CPRAnalyzer/index.html
