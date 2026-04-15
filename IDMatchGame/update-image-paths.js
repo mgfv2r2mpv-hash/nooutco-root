@@ -29,12 +29,18 @@ if (!fs.existsSync(IMAGES_DIR)) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function makeSlug(name) {
-  return name
+// Normalize a name or filename stem to a comparable key:
+// - decompose accented chars (é → e), strip diacritics
+// - lowercase, collapse any run of non-alphanumeric chars to a single hyphen
+// - trim leading/trailing hyphens
+function normalize(str) {
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')   // strip combining diacritics (accents)
     .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, '')
-    .replace(/\s+/g, '-')
-    .slice(0, 40);
+    .replace(/[^a-z0-9]+/g, '-')       // any non-alphanumeric run → single hyphen
+    .replace(/^-+|-+$/g, '')           // trim
+    .slice(0, 60);
 }
 
 // ── Parse names + img URLs from TheGame.html ─────────────────────────────────
@@ -47,7 +53,9 @@ const peopleEnd = html.indexOf('\n];', peopleStart);
 if (peopleEnd === -1) throw new Error('Could not find end of PEOPLE array');
 const peopleText = html.slice(peopleStart, peopleEnd + 3);
 
-const names = [...peopleText.matchAll(/^\s+name:\s*['"]([^'"]+)['"]/gm)].map(m => m[1]);
+// Match both 'name with \'escaped\' quotes' and "name with 'apostrophes'"
+const names = [...peopleText.matchAll(/^\s+name:\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")/gm)]
+  .map(m => (m[1] !== undefined ? m[1] : m[2]).replace(/\\'/g, "'").replace(/\\"/g, '"'));
 const imgs  = [...peopleText.matchAll(/^\s+img:\s*['"]([^'"]+)['"]/gm)].map(m => m[1]);
 
 if (names.length !== imgs.length) {
@@ -60,11 +68,11 @@ const imageFiles = fs.readdirSync(IMAGES_DIR).filter(f =>
   /\.(jpe?g|png|gif|webp|svg)$/i.test(f)
 );
 
-// Map slug → filename (first match wins)
+// Map normalized stem → filename (first match wins)
 const slugToFile = {};
 for (const f of imageFiles) {
-  const slug = path.basename(f, path.extname(f));
-  slugToFile[slug] = f;
+  const key = normalize(path.basename(f, path.extname(f)));
+  if (!slugToFile[key]) slugToFile[key] = f;
 }
 
 // ── Match and rewrite ─────────────────────────────────────────────────────────
@@ -76,7 +84,7 @@ let notFound = 0;
 for (let i = 0; i < names.length; i++) {
   const name    = names[i];
   const oldPath = imgs[i];
-  const slug    = makeSlug(name);
+  const slug    = normalize(name);
   const file    = slugToFile[slug];
 
   if (!file) {
