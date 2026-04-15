@@ -28,6 +28,22 @@ body {
   letter-spacing: 0.02em;
 }
 
+#btn-back {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 13px;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 7px;
+  color: #fff;
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+#btn-back:hover { background: rgba(255,255,255,0.28); }
+
 /* Timer */
 #timer-section {
   display: flex;

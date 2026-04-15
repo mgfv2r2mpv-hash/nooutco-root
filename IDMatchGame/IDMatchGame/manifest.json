@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-15T14:31:53.214Z",
+  "generated": "2026-04-15T18:31:46.553Z",
   "folders": [
     "T_animals",
     "T_buildings",
@@ -12,7 +12,18 @@
     "T_toys"
   ],
   "images": {
-    "T_animals": [],
+    "T_animals": [
+      "T_animals/bear.svg",
+      "T_animals/bird.svg",
+      "T_animals/butterfly.svg",
+      "T_animals/cat.svg",
+      "T_animals/dog.svg",
+      "T_animals/elephant.svg",
+      "T_animals/fish.svg",
+      "T_animals/frog.svg",
+      "T_animals/lion.svg",
+      "T_animals/rabbit.svg"
+    ],
     "T_buildings": [],
     "T_colors": [],
     "T_community_helpers": [],
