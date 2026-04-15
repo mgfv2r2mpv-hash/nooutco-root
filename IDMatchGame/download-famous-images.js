@@ -19,10 +19,9 @@
 
 'use strict';
 
-const fs   = require('fs');
-const path = require('path');
-const https = require('https');
-const http  = require('http');
+const fs             = require('fs');
+const path           = require('path');
+const { execFile }   = require('child_process');
 
 const ROOT      = path.resolve(__dirname, '..');
 const HTML_PATH = path.join(ROOT, 'FamousGame', 'FamousPerson', 'TheGame.html');
@@ -71,46 +70,32 @@ function inferExt(imgUrl) {
   return '.' + m[1].toLowerCase().replace('jpeg', 'jpg');
 }
 
-/** Download a URL to dest, following up to 5 redirects. */
+/**
+ * Download imgUrl to dest using curl (bypasses Node.js TLS fingerprint detection).
+ * -s  silent, -L  follow redirects, -f  fail on 4xx/5xx (non-zero exit)
+ */
 function download(imgUrl, dest) {
   return new Promise((resolve, reject) => {
-    const attempt = (u, hops) => {
-      if (hops > 5) return reject(new Error('Too many redirects'));
-      let parsed;
-      try { parsed = new URL(u); } catch (e) { return reject(e); }
-      const lib = parsed.protocol === 'https:' ? https : http;
-      const req = lib.get(
-        {
-          hostname: parsed.hostname,
-          path: parsed.pathname + parsed.search,
-          headers: {
-            'User-Agent':
-              'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
-          },
-        },
-        res => {
-          if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-            res.resume();
-            const next = res.headers.location.startsWith('http')
-              ? res.headers.location
-              : new URL(res.headers.location, u).href;
-            return attempt(next, hops + 1);
-          }
-          if (res.statusCode !== 200) {
-            res.resume();
-            return reject(new Error(`HTTP ${res.statusCode}`));
-          }
-          const out = fs.createWriteStream(dest);
-          res.pipe(out);
-          out.on('finish', resolve);
-          out.on('error', reject);
+    execFile(
+      'curl',
+      [
+        '-s', '-L', '-f',
+        '-o', dest,
+        '-A', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        '--retry', '2',
+        '--retry-delay', '3',
+        imgUrl,
+      ],
+      { timeout: 60000 },
+      (err) => {
+        if (err) {
+          try { fs.unlinkSync(dest); } catch {}
+          reject(new Error(err.message.trim().split('\n')[0]));
+        } else {
+          resolve();
         }
-      );
-      req.on('error', reject);
-    };
-    attempt(imgUrl, 0);
+      }
+    );
   });
 }
 
