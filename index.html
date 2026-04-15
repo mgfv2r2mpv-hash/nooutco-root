@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>nooutco.me</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      padding: 48px 24px;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      color: #1a1a2e;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+    .subtitle {
+      font-size: 14px;
+      color: #999;
+      margin-bottom: 40px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 20px;
+      max-width: 900px;
+    }
+
+    .tile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 32px 20px;
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .tile:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.13);
+    }
+    .tile:active { transform: translateY(0); }
+    .tile-emoji { font-size: 48px; line-height: 1; }
+    .tile-name { font-size: 15px; font-weight: 700; color: #1a1a2e; text-align: center; }
+    .tile-desc { font-size: 12px; color: #888; text-align: center; line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <h1>nooutco.me</h1>
+  <p class="subtitle">Pick a section</p>
+
+  <div class="grid">
+    <a class="tile" href="https://games.nooutco.me">
+      <div class="tile-emoji">🎮</div>
+      <div class="tile-name">Games</div>
+      <div class="tile-desc">Clinical games and activities</div>
+    </a>
+    <a class="tile" href="https://tools.nooutco.me">
+      <div class="tile-emoji">🛠️</div>
+      <div class="tile-name">Tools</div>
+      <div class="tile-desc">Clinical tools and resources</div>
+    </a>
+  </div>
+</body>
+</html>
