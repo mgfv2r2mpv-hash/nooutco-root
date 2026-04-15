@@ -2,21 +2,15 @@
 /**
  * update-image-paths.js
  *
- * Reads image-map.json (written by download-famous-images.js) and rewrites
- * every img: URL in TheGame.html to the corresponding local relative path.
+ * Scans FamousGame/FamousPerson/images/ and rewrites every matching img: URL
+ * in TheGame.html to the corresponding local relative path.
  *
- * Run after download-famous-images.js has completed with no failures:
+ * Does NOT require image-map.json — matches files to people by name slug.
+ * Name slug: lowercase, non-alphanumeric stripped, spaces → hyphens, max 40 chars.
+ * e.g. "J.K. Rowling" → "jk-rowling", "Tupac Shakur" → "tupac-shakur"
+ *
+ * Run from anywhere:
  *   node IDMatchGame/update-image-paths.js
- *
- * All 201 Wikimedia URLs are unique strings, so simple string replacement
- * has zero risk of false positives.
- *
- * After running:
- *   1. Open the game in a browser and spot-check 10–15 people.
- *   2. Delete FamousGame/FamousPerson/image-map.json (it's a build artifact).
- *   3. git add FamousGame/FamousPerson/images/ FamousGame/FamousPerson/TheGame.html
- *   4. git commit -m "feat: self-host all Famous Person images"
- *   5. git push
  */
 
 'use strict';
@@ -24,44 +18,94 @@
 const fs   = require('fs');
 const path = require('path');
 
-const ROOT      = path.resolve(__dirname, '..');
-const HTML_PATH = path.join(ROOT, 'FamousGame', 'FamousPerson', 'TheGame.html');
-const MAP_PATH  = path.join(ROOT, 'FamousGame', 'FamousPerson', 'image-map.json');
+const ROOT       = path.resolve(__dirname, '..');
+const HTML_PATH  = path.join(ROOT, 'FamousGame', 'FamousPerson', 'TheGame.html');
+const IMAGES_DIR = path.join(ROOT, 'FamousGame', 'FamousPerson', 'images');
 
-if (!fs.existsSync(MAP_PATH)) {
-  console.error('image-map.json not found. Run download-famous-images.js first.');
+if (!fs.existsSync(IMAGES_DIR)) {
+  console.error('images/ directory not found at', IMAGES_DIR);
   process.exit(1);
 }
 
-const map  = JSON.parse(fs.readFileSync(MAP_PATH, 'utf8'));
-let   html = fs.readFileSync(HTML_PATH, 'utf8');
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-let changed = 0;
-let skipped = 0;
+function makeSlug(name) {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, '-')
+    .slice(0, 40);
+}
 
-for (const { name, oldUrl, newPath } of map) {
-  if (!oldUrl.startsWith('http')) {
-    // Already a local path — skip
+// ── Parse names + img URLs from TheGame.html ─────────────────────────────────
+
+let html = fs.readFileSync(HTML_PATH, 'utf8');
+
+const peopleStart = html.indexOf('const PEOPLE = [');
+if (peopleStart === -1) throw new Error('Could not find "const PEOPLE = [" in TheGame.html');
+const peopleEnd = html.indexOf('\n];', peopleStart);
+if (peopleEnd === -1) throw new Error('Could not find end of PEOPLE array');
+const peopleText = html.slice(peopleStart, peopleEnd + 3);
+
+const names = [...peopleText.matchAll(/^\s+name:\s*['"]([^'"]+)['"]/gm)].map(m => m[1]);
+const imgs  = [...peopleText.matchAll(/^\s+img:\s*['"]([^'"]+)['"]/gm)].map(m => m[1]);
+
+if (names.length !== imgs.length) {
+  throw new Error(`Mismatch: ${names.length} names vs ${imgs.length} img entries`);
+}
+
+// ── Build slug → filename map from images/ directory ─────────────────────────
+
+const imageFiles = fs.readdirSync(IMAGES_DIR).filter(f =>
+  /\.(jpe?g|png|gif|webp|svg)$/i.test(f)
+);
+
+// Map slug → filename (first match wins)
+const slugToFile = {};
+for (const f of imageFiles) {
+  const slug = path.basename(f, path.extname(f));
+  slugToFile[slug] = f;
+}
+
+// ── Match and rewrite ─────────────────────────────────────────────────────────
+
+let updated  = 0;
+let skipped  = 0;
+let notFound = 0;
+
+for (let i = 0; i < names.length; i++) {
+  const name    = names[i];
+  const oldPath = imgs[i];
+  const slug    = makeSlug(name);
+  const file    = slugToFile[slug];
+
+  if (!file) {
+    console.log(`  [no image] ${name}  (slug: ${slug})`);
+    notFound++;
+    continue;
+  }
+
+  const newPath = 'images/' + file;
+
+  if (oldPath === newPath) {
     skipped++;
     continue;
   }
-  const before = html;
-  html = html.replaceAll(oldUrl, newPath);
+
+  // Escape for use in regex (handles special chars in Wikimedia URLs)
+  const escaped = oldPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const before  = html;
+  html = html.replace(new RegExp(escaped), newPath);
   if (html !== before) {
-    changed++;
+    updated++;
   } else {
-    console.warn(`  WARNING: URL not found in TheGame.html for ${name}`);
-    console.warn(`    ${oldUrl}`);
+    console.warn(`  WARNING: could not replace img for ${name}`);
+    console.warn(`    looked for: ${oldPath}`);
   }
 }
 
 fs.writeFileSync(HTML_PATH, html, 'utf8');
 
-console.log(`Updated ${changed} URL(s) → local paths`);
-if (skipped > 0) console.log(`Skipped ${skipped} (already local)`);
-console.log('\nNext steps:');
-console.log('  1. Open the game in a browser, spot-check 10–15 people');
-console.log('  2. Delete FamousGame/FamousPerson/image-map.json');
-console.log('  3. git add FamousGame/FamousPerson/images/ FamousGame/FamousPerson/TheGame.html');
-console.log('  4. git commit -m "feat: self-host all Famous Person images; remove Wikimedia dependency"');
-console.log('  5. git push');
+console.log(`\nUpdated ${updated} URL(s) → local paths`);
+if (skipped  > 0) console.log(`Skipped  ${skipped}  (already local)`);
+if (notFound > 0) console.log(`No image ${notFound} (no matching file in images/)`);
