@@ -714,9 +714,7 @@ body {
             id="person-img"
             class="card-photo"
             referrerpolicy="no-referrer"
-            src=""
             alt=""
-            onerror="handleImgError(this)"
           >
           <!-- CSS fallback shown when image fails (avoids data URI CSP issues) -->
           <div id="photo-fallback" class="photo-fallback hidden">
@@ -2708,6 +2706,7 @@ function renderPerson(person) {
 
   const img = $('person-img');
   img.style.display = '';
+  img.onerror = function() { handleImgError(this); };
   $('photo-fallback').classList.add('hidden');
   hidePhotoSearch();
   img.alt = person.name;
