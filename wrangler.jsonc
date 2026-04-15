@@ -2,19 +2,6 @@
   "name": "tools-nooutco-me",
   "compatibility_date": "2026-04-15",
   "assets": {
-    "directory": ".",
-    "exclude": [
-      "**/node_modules/**",
-      "**/.git/**",
-      "**/.DS_Store",
-      "**/src/**",
-      "**/package.json",
-      "**/package-lock.json",
-      "**/tsconfig*.json",
-      "**/eslint.config.js",
-      "**/vite.config.ts",
-      "**/wrangler.jsonc",
-      "**/README.md"
-    ]
+    "directory": "."
   }
 }
