@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Behavior Analyst Tools</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Inter, sans-serif;
+      background: #f0f4ec;
+      min-height: 100vh;
+      padding: 32px 20px;
+      color: #2d3a1f;
+    }
+    a { text-decoration: none; color: inherit; }
+    .nav-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 9px 18px;
+      border: 1.5px solid #b8cfa0;
+      border-radius: 10px;
+      background: transparent;
+      color: #374528;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      transition: background 0.15s;
+    }
+    .nav-back:hover { background: #eaf0e4; }
+    .card {
+      background: white;
+      border: 1px solid #c0d4a8;
+      border-radius: 12px;
+      padding: 24px;
+      cursor: pointer;
+      transition: box-shadow 0.15s, border-color 0.15s;
+    }
+    .card:hover {
+      border-color: #374528;
+      box-shadow: 0 4px 16px rgba(55,69,40,0.10);
+    }
+  </style>
+</head>
+<body>
+  <a class="nav-back" href="https://nooutco.me">← Home</a>
+  <div style="max-width:820px;margin:0 auto">
+
+    <div style="margin-bottom:36px">
+      <h1 style="font-size:26px;font-weight:700;color:#2d3a1f;margin-bottom:4px">Behavior Analyst Tools</h1>
+      <p style="font-size:14px;color:#5a6b4a">Select a tool to get started.</p>
+      <p style="font-size:14px;color:#5a6b4a">Please note that some tools may need an API key to function.</p>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px">
+
+      <a href="/SupNotes/" class="card">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#7a9460;margin-bottom:6px">Supervision</p>
+        <h2 style="font-size:18px;font-weight:700;color:#2d3a1f;margin-bottom:6px">Supervision Session Note Tool</h2>
+        <p style="font-size:14px;color:#5a6b4a;line-height:1.5">Enter brief notes (bullet points are fine) — receive polished clinical documentation across supervision session note sections.</p>
+      </a>
+
+      <a href="/PTNotes/" class="card">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#7a9460;margin-bottom:6px">Parent Training</p>
+        <h2 style="font-size:18px;font-weight:700;color:#2d3a1f;margin-bottom:6px">Parent Session Note Tool</h2>
+        <p style="font-size:14px;color:#5a6b4a;line-height:1.5">Select session activities and caregiver progress — receive polished clinical documentation for parent / coordination of care sessions.</p>
+      </a>
+
+      <a href="/AssessNotes/" class="card">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#7a9460;margin-bottom:6px">Assessment</p>
+        <h2 style="font-size:18px;font-weight:700;color:#2d3a1f;margin-bottom:6px">Assessment / Case Planning Note Tool</h2>
+        <p style="font-size:14px;color:#5a6b4a;line-height:1.5">Select assessment items and enter bulletpoint details — receive polished clinical documentation documenting assessment and case planning activities.</p>
+      </a>
+
+      <a href="/CPRAnalyzer/" class="card">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#7a9460;margin-bottom:6px">Assessment</p>
+        <h2 style="font-size:18px;font-weight:700;color:#2d3a1f;margin-bottom:6px">Conditional Probability Record &amp; Analysis Tool</h2>
+        <p style="font-size:14px;color:#5a6b4a;line-height:1.5">Use structured descriptive assessment data to generate conditional probability graphs, tables, CV/ACV scores, and file exports for functional assessment interpretation.</p>
+      </a>
+
+    </div>
+  </div>
+</body>
+</html>

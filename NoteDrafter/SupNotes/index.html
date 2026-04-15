@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Supervision Note Tool</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Inter, sans-serif;
+      background: #f0f4ec;
+      min-height: 100vh;
+      padding: 32px 20px;
+      color: #2d3a1f;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const SECTIONS = [
+      { id: "progress",    label: "1. Client Narrative Progress",       desc: "Skills / behavior goals" },
+      { id: "programming", label: "2. Programming & BIP Changes",        desc: "Made or needed modifications" },
+      { id: "feedback",    label: "3. Staff Feedback / Behavior Analyst Modeling",   desc: "Direct service staff or Behavior Analyst-only activities" },
+      { id: "followup",    label: "4. Follow-Up Items",                  desc: "Before or for next session" },
+    ];
+
+    const PROVIDERS = {
+      gemini:    { label: "Gemini",  placeholder: "AIza...",    keyLabel: "Google AI Studio Key",   hint: "Get key at aistudio.google.com" },
+      openai:    { label: "OpenAI",         placeholder: "sk-...",      keyLabel: "OpenAI API Key",       hint: "Get key at platform.openai.com" },
+      anthropic: { label: "Anthropic",      placeholder: "sk-ant-...", keyLabel: "Anthropic API Key",    hint: "Get key at console.anthropic.com" },
+    };
+
+    async function callProvider(provider, apiKey, systemPrompt, userPrompt) {
+      let url, headers = { "Content-Type": "application/json" }, body;
+
+      if (provider === "anthropic") {
+        url = "https://api.anthropic.com/v1/messages";
+        headers["x-api-key"] = apiKey;
+        headers["anthropic-version"] = "2023-06-01";
+        headers["anthropic-dangerous-direct-browser-access"] = "true";
+        body = { model: "claude-sonnet-4-20250514", max_tokens: 1000, system: systemPrompt, messages: [{ role: "user", content: userPrompt }] };
+
+      } else if (provider === "openai") {
+        url = "https://api.openai.com/v1/chat/completions";
+        headers["Authorization"] = `Bearer ${apiKey}`;
+        body = { model: "gpt-4o-mini", max_tokens: 1000, messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }] };
+
+      } else { // gemini
+        url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+        body = {
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+          generationConfig: { maxOutputTokens: 2048 },
+        };
+      }
+
+      const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const msg = err?.error?.message || err?.error?.status || res.statusText;
+        throw new Error(`API error ${res.status}: ${msg}`);
+      }
+
+      const data = await res.json();
+      let raw;
+      if (provider === "anthropic") raw = data.content.map(b => b.text || "").join("");
+      else if (provider === "openai") raw = data.choices[0].message.content;
+      else raw = data.candidates[0].content.parts[0].text;
+
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error("No JSON found in response. Try again.");
+      return JSON.parse(match[0]);
+    }
+
+    function App() {
+      const [provider,   setProvider]   = React.useState(() => localStorage.getItem("bcba_provider") || "gemini");
+      const [apiKey,     setApiKey]     = React.useState(() => localStorage.getItem(`bcba_key_${localStorage.getItem("bcba_provider") || "gemini"}`) || "");
+      const [notes,      setNotes]      = React.useState("");
+      const [btPresent,  setBtPresent]  = React.useState(null);
+      const [output,     setOutput]     = React.useState(null);
+      const [loading,    setLoading]    = React.useState(false);
+      const [error,      setError]      = React.useState("");
+      const [copied,     setCopied]     = React.useState(null);
+      const [showKey,    setShowKey]    = React.useState(false);
+      const [copiedPrompt, setCopiedPrompt] = React.useState(false);
+
+      const [pfCheck,       setPfCheck]       = React.useState(false);
+      const [pfResult,      setPfResult]      = React.useState("");
+      const [ioaCheck,      setIoaCheck]      = React.useState(false);
+      const [ioaResult,     setIoaResult]     = React.useState("");
+      const [notesReviewed, setNotesReviewed] = React.useState(false);
+      const [notesResult,   setNotesResult]   = React.useState("");
+      const [followUpCheck, setFollowUpCheck] = React.useState(false);
+      const [followUpList,  setFollowUpList]  = React.useState("");
+
+      const switchProvider = (p) => {
+        setProvider(p);
+        localStorage.setItem("bcba_provider", p);
+        setApiKey(localStorage.getItem(`bcba_key_${p}`) || "");
+        setError("");
+      };
+
+      const saveApiKey = (val) => {
+        setApiKey(val);
+        if (val) localStorage.setItem(`bcba_key_${provider}`, val);
+        else     localStorage.removeItem(`bcba_key_${provider}`);
+      };
+
+      const handleGenerate = async () => {
+        if (!apiKey.trim())       { setError("Please enter your API key."); return; }
+        if (!notes.trim())        { setError("Please enter session notes."); return; }
+        if (btPresent === null)   { setError("Please indicate whether a BT/RBT was present."); return; }
+        setError("");
+        setLoading(true);
+        setOutput(null);
+
+        const systemPrompt = `You are an expert Behavior Analyst documentation specialist. Convert raw session bullet notes into polished, professional supervision note content for a Behavior Analyst's clinical record. Write in third-person clinical prose. Never leave a section empty — if information is sparse, write a reasonable brief professional placeholder. Return ONLY a JSON object with exactly these four keys: "progress", "programming", "feedback", "followup". Each value is a string of 1–4 clean clinical sentences. No markdown, no extra keys, no preamble.`;
+
+        const checks = [
+          pfCheck       && `- Performance Feedback (PF) conducted. Result: ${pfResult.trim() || "not specified"}`,
+          ioaCheck      && `- IOA check conducted. Result: ${ioaResult.trim() || "not specified"}`,
+          notesReviewed && `- Last week's notes reviewed. Result: ${notesResult.trim() || "not specified"}`,
+          followUpCheck && `- Follow-up items: ${followUpList.trim() || "not specified"}`,
+        ].filter(Boolean).join("\n");
+
+        const userPrompt = `BT/RBT present during session: ${btPresent ? "Yes" : "No"}
+
+Raw session notes:
+${notes}${checks ? `\n\nSession checks:\n${checks}` : ""}
+
+Generate the four supervision note sections:
+
+1. "progress": Client narrative progress on skills and behavior goals observed this session.
+2. "programming": Summary of programming, prompting, or BIP changes made or needed (including probe/baseline/generalization/maintenance findings if applicable).
+3. "feedback": ${btPresent
+          ? "Feedback provided to direct service staff (BT/RBT) regarding implementation, skill acquisition targets, or behavior intervention."
+          : "Description of Behavior Analyst-only activities: what was run, evaluated, modeled, or explained. If no technician was present, begin with: 'No technician was present; Behavior Analyst performed…'"}
+4. "followup": Specific follow-up items to complete before or address at next session.`;
+
+        try {
+          const parsed = await callProvider(provider, apiKey, systemPrompt, userPrompt);
+          setOutput(parsed);
+        } catch (e) {
+          setError(e.message || "Something went wrong. Check your API key and try again.");
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const handleCopy = (id, text) => {
+        navigator.clipboard.writeText(text);
+        setCopied(id);
+        setTimeout(() => setCopied(null), 1800);
+      };
+
+      const handleCopyPrompt = () => {
+        if (!notes.trim())      { setError("Please enter session notes first."); return; }
+        if (btPresent === null) { setError("Please indicate whether a BT/RBT was present."); return; }
+        setError("");
+        const sys = `You are an expert Behavior Analyst documentation specialist. Convert raw session bullet notes into polished, professional supervision note content. Write in third-person clinical prose. Never leave a section empty — if information is sparse, write a brief professional placeholder. Return exactly four labeled sections using this format (label on its own line, then the content, then a blank line before the next label):\n\nCLIENT NARRATIVE PROGRESS\n[1–4 clinical sentences]\n\nPROGRAMMING & BIP CHANGES\n[1–4 clinical sentences]\n\nSTAFF FEEDBACK / BEHAVIOR ANALYST MODELING\n[1–4 clinical sentences]\n\nFOLLOW-UP ITEMS\n[1–4 clinical sentences]\n\nNo JSON, no extra commentary, no preamble.`;
+        const checks = [
+          pfCheck       && `- Performance Feedback (PF) conducted. Result: ${pfResult.trim() || "not specified"}`,
+          ioaCheck      && `- IOA check conducted. Result: ${ioaResult.trim() || "not specified"}`,
+          notesReviewed && `- Last week's notes reviewed. Result: ${notesResult.trim() || "not specified"}`,
+          followUpCheck && `- Follow-up items: ${followUpList.trim() || "not specified"}`,
+        ].filter(Boolean).join("\n");
+        const usr = `BT/RBT present during session: ${btPresent ? "Yes" : "No"}\n\nRaw session notes:\n${notes}${checks ? `\n\nSession checks:\n${checks}` : ""}\n\nGenerate the four supervision note sections:\n\n1. "progress": Client narrative progress on skills and behavior goals observed this session.\n2. "programming": Summary of programming, prompting, or BIP changes made or needed.\n3. "feedback": ${btPresent ? "Feedback provided to direct service staff (BT/RBT) regarding implementation, skill acquisition targets, or behavior intervention." : "Description of Behavior Analyst-only activities performed this session."}\n4. "followup": Specific follow-up items to complete before or address at next session.`;
+        navigator.clipboard.writeText(`${sys}\n\n---\n\n${usr}`);
+        setCopiedPrompt(true);
+        setTimeout(() => setCopiedPrompt(false), 1800);
+      };
+
+      const handleCopyAll = () => {
+        if (!output) return;
+        const full = SECTIONS.map(s => `${s.label}\n${output[s.id]}`).join("\n\n");
+        navigator.clipboard.writeText(full);
+        setCopied("all");
+        setTimeout(() => setCopied(null), 1800);
+      };
+
+      const card     = { background: "white", borderRadius: 12, border: "1px solid #c0d4a8", padding: 24, marginBottom: 20 };
+      const lbl      = { fontSize: 13, fontWeight: 600, color: "#374528", textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 8 };
+      const inputBase = { width: "100%", padding: "10px 14px", borderRadius: 8, border: "1.5px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", background: "#fafcf8" };
+      const prov     = PROVIDERS[provider];
+
+      return (
+        <div style={{ maxWidth: 820, margin: "0 auto" }}>
+
+          {/* Header */}
+          <div style={{ marginBottom: 28, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <h1 style={{ fontSize: 26, fontWeight: 700, color: "#2d3a1f", marginBottom: 4 }}>Supervision Note Tool</h1>
+              <p style={{ fontSize: 14, color: "#5a6b4a" }}>Paste raw session bullets — receive polished clinical documentation.</p>
+            </div>
+            <a href="/" style={{ padding: "7px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", marginLeft: 16 }}>← Back</a>
+          </div>
+
+          {/* Settings card */}
+          <div style={card}>
+
+            {/* Provider toggle */}
+            <div style={{ marginBottom: 20 }}>
+              <p style={lbl}>AI Provider</p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {Object.entries(PROVIDERS).map(([id, p]) => (
+                  <button
+                    key={id}
+                    onClick={() => switchProvider(id)}
+                    style={{
+                      padding: "8px 18px", borderRadius: 8,
+                      border: provider === id ? "2px solid #374528" : "1.5px solid #c0d4a8",
+                      background: provider === id ? "#374528" : "white",
+                      color: provider === id ? "white" : "#374528",
+                      fontWeight: 600, fontSize: 14, cursor: "pointer",
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* API Key */}
+            <div>
+              <label style={lbl}>{prov.keyLabel}</label>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input
+                  type={showKey ? "text" : "password"}
+                  value={apiKey}
+                  onChange={e => saveApiKey(e.target.value)}
+                  placeholder={prov.placeholder}
+                  style={{ ...inputBase, flex: 1 }}
+                />
+                <button
+                  onClick={() => setShowKey(v => !v)}
+                  style={{ padding: "9px 14px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#374528", fontSize: 13, cursor: "pointer" }}
+                >
+                  {showKey ? "Hide" : "Show"}
+                </button>
+              </div>
+              <p style={{ fontSize: 12, color: "#7a9460", marginTop: 7 }}>{prov.hint} — saved in this browser only.</p>
+            </div>
+          </div>
+
+          {/* Input card */}
+          <div style={card}>
+
+            {/* BT toggle */}
+            <div style={{ marginBottom: 20 }}>
+              <p style={lbl}>BT / RBT Present?</p>
+              <div style={{ display: "flex", gap: 10 }}>
+                {[true, false].map(val => (
+                  <button
+                    key={String(val)}
+                    onClick={() => setBtPresent(val)}
+                    style={{
+                      padding: "8px 22px", borderRadius: 8,
+                      border: btPresent === val ? "2px solid #374528" : "1.5px solid #c0d4a8",
+                      background: btPresent === val ? "#374528" : "white",
+                      color: btPresent === val ? "white" : "#374528",
+                      fontWeight: 600, fontSize: 14, cursor: "pointer",
+                    }}
+                  >
+                    {val ? "Yes" : "No — Behavior Analyst only"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Notes textarea */}
+            <div style={{ marginBottom: 18 }}>
+              <label style={lbl}>Raw Session Notes</label>
+              <textarea
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder={`Paste brief bullet notes here, e.g.:\n- Worked tacts with DTT, 80% accuracy\n- Reduced prompt level on manding from FP to PP\n- Elopement x2, blocked, no escalation\n- Reminded BT to use ECO on trials`}
+                style={{ ...inputBase, height: 180, resize: "vertical", lineHeight: 1.6 }}
+              />
+            </div>
+
+            {/* Session Checks */}
+            <div style={{ marginBottom: 20 }}>
+              <p style={lbl}>Session Checks</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {[
+                  { checked: pfCheck,       setChecked: setPfCheck,       result: pfResult,      setResult: setPfResult,      label: "PF Check?",                    fieldLabel: "Result",  placeholder: "High / Moderate / Low; Needs retraining, etc." },
+                  { checked: ioaCheck,      setChecked: setIoaCheck,      result: ioaResult,     setResult: setIoaResult,     label: "IOA Check?",                   fieldLabel: "Result",  placeholder: "High / Moderate / Low; Needs retraining, etc." },
+                  { checked: notesReviewed, setChecked: setNotesReviewed, result: notesResult,   setResult: setNotesResult,   label: "Reviewed Last Week's Notes?",  fieldLabel: "Result",  placeholder: "Changes noted / needed" },
+                  { checked: followUpCheck, setChecked: setFollowUpCheck, result: followUpList,  setResult: setFollowUpList,  label: "Follow Up Items?",             fieldLabel: "List",    placeholder: "Materials / program changes / parent follow up / schedule or availability changes, etc." },
+                ].map(item => (
+                  <div key={item.label}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={item.checked}
+                        onChange={() => item.setChecked(v => !v)}
+                        style={{ accentColor: "#374528", width: 16, height: 16, flexShrink: 0 }}
+                      />
+                      <span style={{ fontSize: 14, fontWeight: 600, color: "#2d3a1f" }}>{item.label}</span>
+                    </label>
+                    {item.checked && (
+                      <div style={{ marginTop: 8, marginLeft: 26 }}>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: "#374528", textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 5 }}>{item.fieldLabel}</label>
+                        <input
+                          type="text"
+                          value={item.result}
+                          onChange={e => item.setResult(e.target.value)}
+                          placeholder={item.placeholder}
+                          style={{ ...inputBase, width: "100%" }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {error && <p style={{ color: "#c0392b", fontSize: 13, marginBottom: 12 }}>{error}</p>}
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button
+                onClick={handleGenerate}
+                disabled={loading}
+                style={{
+                  padding: "11px 28px", borderRadius: 8, border: "none",
+                  background: loading ? "#a0b890" : "#374528",
+                  color: "white", fontSize: 15, fontWeight: 600,
+                  cursor: loading ? "not-allowed" : "pointer",
+                }}
+              >
+                {loading ? "Generating…" : "Generate Note"}
+              </button>
+              <button
+                onClick={handleCopyPrompt}
+                style={{
+                  padding: "11px 18px", borderRadius: 8,
+                  border: "1.5px solid #374528", background: "white",
+                  color: "#374528", fontSize: 14, fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                {copiedPrompt ? "Copied!" : "Copy Prompt"}
+              </button>
+            </div>
+          </div>
+
+          {/* Output */}
+          {output && (
+            <div style={{ ...card, marginBottom: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>Generated Note Sections</h2>
+                <button
+                  onClick={handleCopyAll}
+                  style={{ padding: "7px 16px", borderRadius: 7, border: "1.5px solid #374528", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                >
+                  {copied === "all" ? "Copied!" : "Copy All"}
+                </button>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {SECTIONS.map(s => (
+                  <div key={s.id} style={{ borderRadius: 9, border: "1px solid #ddecd0", background: "#f7fbf3", padding: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                      <div>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "#374528" }}>{s.label}</span>
+                        <span style={{ fontSize: 12, color: "#7a9460", marginLeft: 8 }}>{s.desc}</span>
+                      </div>
+                      <button
+                        onClick={() => handleCopy(s.id, output[s.id])}
+                        style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #c0d4a8", background: "white", color: "#374528", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", marginLeft: 12 }}
+                      >
+                        {copied === s.id ? "Copied!" : "Copy"}
+                      </button>
+                    </div>
+                    <textarea
+                      value={output[s.id]}
+                      onChange={e => setOutput(prev => ({ ...prev, [s.id]: e.target.value }))}
+                      style={{ width: "100%", minHeight: 80, padding: 10, borderRadius: 7, border: "1px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", lineHeight: 1.65, resize: "vertical", background: "white" }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Parent Note Tool</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Inter, sans-serif;
+      background: #f0f4ec;
+      min-height: 100vh;
+      padding: 32px 20px;
+      color: #2d3a1f;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const PROVIDERS = {
+      gemini:    { label: "Gemini",  placeholder: "AIza...",    keyLabel: "Google AI Studio Key",   hint: "Get key at aistudio.google.com" },
+      openai:    { label: "OpenAI",         placeholder: "sk-...",      keyLabel: "OpenAI API Key",       hint: "Get key at platform.openai.com" },
+      anthropic: { label: "Anthropic",      placeholder: "sk-ant-...", keyLabel: "Anthropic API Key",    hint: "Get key at console.anthropic.com" },
+    };
+
+    const INDIVIDUALS = [
+      { id: "caregiver",  label: "Parent/Caregiver", placeholder: "Jane Doe (Mother)" },
+      { id: "client",     label: "Client",           placeholder: "First Last" },
+      { id: "technician", label: "Technician",       placeholder: "Jane Doe (RBT)" },
+      { id: "teacher",    label: "Teacher",          placeholder: "Jane Doe (3rd Grade Teacher)" },
+      { id: "specialist", label: "Specialist/s",     placeholder: "Jane Doe (Speech Therapist)" },
+      { id: "sibling",    label: "Sibling/s",        placeholder: "First Last (Brother)" },
+    ];
+
+    const SUPPORT_ACTIVITIES = [
+      { id: "data",      label: "Collected data on current goals" },
+      { id: "modeled",   label: "Modeled strategies/interventions" },
+      { id: "problem",   label: "Problem-solved concerns" },
+      { id: "discussed", label: "Discussed programs/progress/data collection" },
+      { id: "feedback",  label: "Feedback provided" },
+    ];
+
+    const CAREGIVER_RESPONSES = [
+      { id: "r1", label: "Parent/Family is not responding to training due to large barriers and/or resistance." },
+      { id: "r2", label: "Parent/Family is trying to learn new strategies, but there are some small barriers to generalization." },
+      { id: "r3", label: "Parent/Family is responding to training and generalization of skills is occurring. There are no barriers with their training." },
+    ];
+
+    const PROGRESS_OPTIONS = [
+      { id: "p1", label: "Minimal progress towards goals" },
+      { id: "p2", label: "Moderate progress towards goals" },
+      { id: "p3", label: "Substantial progress towards goals" },
+    ];
+
+    const OUTPUT_SECTIONS = [
+      { id: "summary",  label: "Summary of Goal Progress & Modifications", desc: "Made or needed" },
+      { id: "followup", label: "Behavior Analyst Follow Up",                desc: "Items to complete" },
+    ];
+
+    async function callProvider(provider, apiKey, systemPrompt, userPrompt) {
+      let url, headers = { "Content-Type": "application/json" }, body;
+
+      if (provider === "anthropic") {
+        url = "https://api.anthropic.com/v1/messages";
+        headers["x-api-key"] = apiKey;
+        headers["anthropic-version"] = "2023-06-01";
+        headers["anthropic-dangerous-direct-browser-access"] = "true";
+        body = { model: "claude-sonnet-4-20250514", max_tokens: 1024, system: systemPrompt, messages: [{ role: "user", content: userPrompt }] };
+
+      } else if (provider === "openai") {
+        url = "https://api.openai.com/v1/chat/completions";
+        headers["Authorization"] = `Bearer ${apiKey}`;
+        body = { model: "gpt-4o-mini", max_tokens: 1024, messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }] };
+
+      } else {
+        url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+        body = {
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+          generationConfig: { maxOutputTokens: 2048 },
+        };
+      }
+
+      const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(`API error ${res.status}: ${err?.error?.message || err?.error?.status || res.statusText}`);
+      }
+
+      const data = await res.json();
+      let raw;
+      if (provider === "anthropic") raw = data.content.map(b => b.text || "").join("");
+      else if (provider === "openai") raw = data.choices[0].message.content;
+      else raw = data.candidates[0].content.parts[0].text;
+
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error("No JSON found in response. Try again.");
+      return JSON.parse(match[0]);
+    }
+
+    function App() {
+      const [provider,          setProvider]          = React.useState(() => localStorage.getItem("pt_provider") || "gemini");
+      const [apiKey,            setApiKey]            = React.useState(() => localStorage.getItem(`pt_key_${localStorage.getItem("pt_provider") || "gemini"}`) || "");
+      const [showKey,           setShowKey]           = React.useState(false);
+      const [presentChecked,    setPresentChecked]    = React.useState(new Set());
+      const [presentNames,      setPresentNames]      = React.useState({});
+      const [caregiverSupport,  setCaregiverSupport]  = React.useState(new Set());
+      const [caregiverResponse, setCaregiverResponse] = React.useState(null);
+      const [progressStatus,    setProgressStatus]    = React.useState(null);
+      const [additionalNotes,   setAdditionalNotes]   = React.useState("");
+      const [output,            setOutput]            = React.useState(null);
+      const [loading,           setLoading]           = React.useState(false);
+      const [error,             setError]             = React.useState("");
+      const [copied,            setCopied]            = React.useState(null);
+      const [copiedPrompt,      setCopiedPrompt]      = React.useState(false);
+
+      const switchProvider = (p) => {
+        setProvider(p);
+        localStorage.setItem("pt_provider", p);
+        setApiKey(localStorage.getItem(`pt_key_${p}`) || "");
+        setError("");
+      };
+
+      const saveApiKey = (val) => {
+        setApiKey(val);
+        if (val) localStorage.setItem(`pt_key_${provider}`, val);
+        else     localStorage.removeItem(`pt_key_${provider}`);
+      };
+
+      const toggleSupport = (id) => {
+        setCaregiverSupport(prev => {
+          const next = new Set(prev);
+          next.has(id) ? next.delete(id) : next.add(id);
+          return next;
+        });
+      };
+
+      const togglePresent = (id) => {
+        setPresentChecked(prev => {
+          const next = new Set(prev);
+          next.has(id) ? next.delete(id) : next.add(id);
+          return next;
+        });
+      };
+
+      const setPersonName = (id, val) => {
+        setPresentNames(prev => ({ ...prev, [id]: val }));
+      };
+
+      // Live-computed attendees list — NOT fed to AI
+      const attendeesList = INDIVIDUALS
+        .filter(p => presentChecked.has(p.id) && presentNames[p.id]?.trim())
+        .map(p => presentNames[p.id].trim())
+        .join(", ");
+
+      const handleGenerate = async () => {
+        if (!apiKey.trim())           { setError("Please enter your API key."); return; }
+        if (caregiverSupport.size === 0) { setError("Please select at least one support activity."); return; }
+        if (!caregiverResponse)       { setError("Please select the caregiver response to training."); return; }
+        if (!progressStatus)          { setError("Please select a progress status."); return; }
+        if (!additionalNotes.trim())  { setError("Please enter session notes."); return; }
+        setError("");
+        setLoading(true);
+        setOutput(null);
+
+        const systemPrompt = `You are an expert Behavior Analyst documentation specialist. Generate polished clinical content for a parent/family session note. Write in third-person clinical prose. Return ONLY a JSON object with exactly these two keys: "summary" and "followup". "summary" is 3–5 clinical sentences covering goal progress and any program modifications made or needed. "followup" is a list of follow-up items for the Behavior Analyst to complete — each item on its own line, separated by \\n, no bullet points or numbers, no commas between items. No markdown, no extra keys, no preamble.`;
+
+        const supportList = SUPPORT_ACTIVITIES
+          .filter(a => caregiverSupport.has(a.id))
+          .map(a => `- ${a.label}`)
+          .join("\n");
+
+        const userPrompt = [
+          `Caregiver support activities provided:\n${supportList}`,
+          `Caregiver response to training:\n${caregiverResponse}`,
+          `Progress status:\n${progressStatus}`,
+          `Session notes (use as primary source for both output fields):\n${additionalNotes.trim()}`,
+          `Generate the two note fields: "summary" (goal progress and modifications) and "followup" (Behavior Analyst follow-up items).`,
+        ].join("\n\n");
+
+        try {
+          const parsed = await callProvider(provider, apiKey, systemPrompt, userPrompt);
+          setOutput(parsed);
+        } catch (e) {
+          setError(e.message || "Something went wrong. Check your API key and try again.");
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const handleCopyPrompt = () => {
+        if (caregiverSupport.size === 0) { setError("Please select at least one support activity first."); return; }
+        if (!caregiverResponse)          { setError("Please select the caregiver response to training."); return; }
+        if (!progressStatus)             { setError("Please select a progress status."); return; }
+        if (!additionalNotes.trim())     { setError("Please enter session notes first."); return; }
+        setError("");
+        const sys = `You are an expert Behavior Analyst documentation specialist. Generate polished clinical content for a parent/family session note. Write in third-person clinical prose. Return exactly two labeled sections using this format (label on its own line, then the content, then a blank line before the next label):\n\nSUMMARY OF GOAL PROGRESS & MODIFICATIONS\n[3–5 clinical sentences covering goal progress and any program modifications made or needed]\n\nBEHAVIOR ANALYST FOLLOW UP\n[one follow-up item per line, no bullets, no numbers, no commas between items]\n\nNo JSON, no extra commentary, no preamble.`;
+        const supportList = SUPPORT_ACTIVITIES.filter(a => caregiverSupport.has(a.id)).map(a => `- ${a.label}`).join("\n");
+        const usr = [
+          `Caregiver support activities provided:\n${supportList}`,
+          `Caregiver response to training:\n${caregiverResponse}`,
+          `Progress status:\n${progressStatus}`,
+          `Session notes (use as primary source for both output fields):\n${additionalNotes.trim()}`,
+          `Generate the two note fields: "summary" (goal progress and modifications) and "followup" (Behavior Analyst follow-up items).`,
+        ].join("\n\n");
+        navigator.clipboard.writeText(`${sys}\n\n---\n\n${usr}`);
+        setCopiedPrompt(true);
+        setTimeout(() => setCopiedPrompt(false), 1800);
+      };
+
+      const handleCopy = (id, text) => {
+        navigator.clipboard.writeText(text);
+        setCopied(id);
+        setTimeout(() => setCopied(null), 1800);
+      };
+
+      const handleCopyAll = () => {
+        if (!output) return;
+        const full = OUTPUT_SECTIONS.map(s => `${s.label}\n${output[s.id]}`).join("\n\n");
+        navigator.clipboard.writeText(full);
+        setCopied("all");
+        setTimeout(() => setCopied(null), 1800);
+      };
+
+      const card      = { background: "white", borderRadius: 12, border: "1px solid #c0d4a8", padding: 24, marginBottom: 20 };
+      const lbl       = { fontSize: 13, fontWeight: 600, color: "#374528", textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 8 };
+      const subLbl    = { fontSize: 14, fontWeight: 600, color: "#374528", display: "block", marginBottom: 10 };
+      const inputBase = { width: "100%", padding: "10px 14px", borderRadius: 8, border: "1.5px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", background: "#fafcf8" };
+      const prov      = PROVIDERS[provider];
+
+      return (
+        <div style={{ maxWidth: 820, margin: "0 auto" }}>
+
+          {/* Header */}
+          <div style={{ marginBottom: 28, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <h1 style={{ fontSize: 26, fontWeight: 700, color: "#2d3a1f", marginBottom: 4 }}>Parent Note Tool</h1>
+              <p style={{ fontSize: 14, color: "#5a6b4a" }}>Select session details and enter notes — receive polished clinical documentation.</p>
+            </div>
+            <a href="/" style={{ padding: "7px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", marginLeft: 16 }}>← Back</a>
+          </div>
+
+          {/* Settings card */}
+          <div style={card}>
+            <div style={{ marginBottom: 20 }}>
+              <p style={lbl}>AI Provider</p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {Object.entries(PROVIDERS).map(([id, p]) => (
+                  <button key={id} onClick={() => switchProvider(id)} style={{
+                    padding: "8px 18px", borderRadius: 8,
+                    border: provider === id ? "2px solid #374528" : "1.5px solid #c0d4a8",
+                    background: provider === id ? "#374528" : "white",
+                    color: provider === id ? "white" : "#374528",
+                    fontWeight: 600, fontSize: 14, cursor: "pointer",
+                  }}>{p.label}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label style={lbl}>{prov.keyLabel}</label>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input
+                  type={showKey ? "text" : "password"}
+                  value={apiKey}
+                  onChange={e => saveApiKey(e.target.value)}
+                  placeholder={prov.placeholder}
+                  style={{ ...inputBase, flex: 1 }}
+                />
+                <button onClick={() => setShowKey(v => !v)} style={{ padding: "9px 14px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#374528", fontSize: 13, cursor: "pointer" }}>
+                  {showKey ? "Hide" : "Show"}
+                </button>
+              </div>
+              <p style={{ fontSize: 12, color: "#7a9460", marginTop: 7 }}>{prov.hint} — saved in this browser only.</p>
+            </div>
+          </div>
+
+          {/* Inputs card */}
+          <div style={card}>
+
+            {/* Individuals Present */}
+            <div style={{ marginBottom: 24 }}>
+              <span style={subLbl}>Individuals Present</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {INDIVIDUALS.map(person => (
+                  <div key={person.id}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={presentChecked.has(person.id)}
+                        onChange={() => togglePresent(person.id)}
+                        style={{ accentColor: "#374528", width: 16, height: 16, flexShrink: 0 }}
+                      />
+                      <span style={{ fontSize: 14, color: "#2d3a1f" }}>{person.label}</span>
+                    </label>
+                    {presentChecked.has(person.id) && (
+                      <div style={{ marginTop: 6, marginLeft: 26 }}>
+                        <input
+                          type="text"
+                          value={presentNames[person.id] || ""}
+                          onChange={e => setPersonName(person.id, e.target.value)}
+                          placeholder={person.placeholder}
+                          style={{ ...inputBase, width: "100%" }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Live attendees preview */}
+              {attendeesList && (
+                <div style={{ marginTop: 14, padding: "10px 14px", borderRadius: 8, border: "1px solid #ddecd0", background: "#f7fbf3", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                  <span style={{ fontSize: 13, color: "#2d3a1f", lineHeight: 1.5, flex: 1 }}>{attendeesList}</span>
+                  <button
+                    onClick={() => handleCopy("attendees", attendeesList)}
+                    style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #c0d4a8", background: "white", color: "#374528", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
+                  >
+                    {copied === "attendees" ? "Copied!" : "Copy"}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Caregiver Support */}
+            <div style={{ marginBottom: 24 }}>
+              <span style={subLbl}>Caregiver Received the Following Support</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {SUPPORT_ACTIVITIES.map(item => (
+                  <label key={item.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={caregiverSupport.has(item.id)}
+                      onChange={() => toggleSupport(item.id)}
+                      style={{ marginTop: 3, accentColor: "#374528", width: 16, height: 16, flexShrink: 0 }}
+                    />
+                    <span style={{ fontSize: 14, color: "#2d3a1f", lineHeight: 1.5 }}>{item.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Caregiver Response */}
+            <div style={{ marginBottom: 24 }}>
+              <span style={subLbl}>Caregiver Response to Training</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {CAREGIVER_RESPONSES.map(opt => (
+                  <label key={opt.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
+                    <input
+                      type="radio"
+                      name="caregiverResponse"
+                      checked={caregiverResponse === opt.label}
+                      onChange={() => setCaregiverResponse(opt.label)}
+                      style={{ marginTop: 3, accentColor: "#374528", width: 16, height: 16, flexShrink: 0 }}
+                    />
+                    <span style={{ fontSize: 14, color: "#2d3a1f", lineHeight: 1.5 }}>{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Progress Status */}
+            <div style={{ marginBottom: 24 }}>
+              <span style={subLbl}>Progress Status</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {PROGRESS_OPTIONS.map(opt => (
+                  <label key={opt.id} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                    <input
+                      type="radio"
+                      name="progressStatus"
+                      checked={progressStatus === opt.label}
+                      onChange={() => setProgressStatus(opt.label)}
+                      style={{ accentColor: "#374528", width: 16, height: 16, flexShrink: 0 }}
+                    />
+                    <span style={{ fontSize: 14, color: "#2d3a1f" }}>{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Session Notes */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={subLbl}>Session Notes</label>
+              <textarea
+                value={additionalNotes}
+                onChange={e => setAdditionalNotes(e.target.value)}
+                placeholder={`Bullet points are fine, e.g.:\n- Worked on manding with parent, 70% independent\n- Reviewed token board setup, parent unsure of steps\n- Phase change needed on DTT targets\n- Parent to practice prompting hierarchy at home`}
+                style={{ ...inputBase, height: 180, resize: "vertical", lineHeight: 1.6 }}
+              />
+            </div>
+
+            {error && <p style={{ color: "#c0392b", fontSize: 13, marginBottom: 12 }}>{error}</p>}
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button
+                onClick={handleGenerate}
+                disabled={loading}
+                style={{
+                  padding: "11px 28px", borderRadius: 8, border: "none",
+                  background: loading ? "#a0b890" : "#374528",
+                  color: "white", fontSize: 15, fontWeight: 600,
+                  cursor: loading ? "not-allowed" : "pointer",
+                }}
+              >
+                {loading ? "Generating…" : "Generate Note"}
+              </button>
+              <button
+                onClick={handleCopyPrompt}
+                style={{
+                  padding: "11px 18px", borderRadius: 8,
+                  border: "1.5px solid #374528", background: "white",
+                  color: "#374528", fontSize: 14, fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                {copiedPrompt ? "Copied!" : "Copy Prompt"}
+              </button>
+            </div>
+          </div>
+
+          {/* Output */}
+          {output && (
+            <div style={{ ...card, marginBottom: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>Generated Note Sections</h2>
+                <button
+                  onClick={handleCopyAll}
+                  style={{ padding: "7px 16px", borderRadius: 7, border: "1.5px solid #374528", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                >
+                  {copied === "all" ? "Copied!" : "Copy All"}
+                </button>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {OUTPUT_SECTIONS.map(s => (
+                  <div key={s.id} style={{ borderRadius: 9, border: "1px solid #ddecd0", background: "#f7fbf3", padding: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                      <div>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "#374528" }}>{s.label}</span>
+                        <span style={{ fontSize: 12, color: "#7a9460", marginLeft: 8 }}>{s.desc}</span>
+                      </div>
+                      <button
+                        onClick={() => handleCopy(s.id, output[s.id])}
+                        style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #c0d4a8", background: "white", color: "#374528", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", marginLeft: 12 }}
+                      >
+                        {copied === s.id ? "Copied!" : "Copy"}
+                      </button>
+                    </div>
+                    <textarea
+                      value={output[s.id]}
+                      onChange={e => setOutput(prev => ({ ...prev, [s.id]: e.target.value }))}
+                      style={{ width: "100%", minHeight: 80, padding: 10, borderRadius: 7, border: "1px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", lineHeight: 1.65, resize: "vertical", background: "white" }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
