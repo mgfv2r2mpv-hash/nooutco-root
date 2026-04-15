@@ -127,6 +127,11 @@ export default function App() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
       {/* ── Nav bar ── */}
       <header className="no-print bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center gap-2 text-sm">
+        <a href="https://tools.nooutco.me"
+          className="text-xs px-3 py-1.5 rounded-md border border-gray-300 dark:border-gray-600
+            text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 shrink-0">
+          ← Back
+        </a>
         <button onClick={goHome}
           className="font-bold text-indigo-600 dark:text-indigo-400 shrink-0">
           Conditional Probability Record &amp; Analysis Tool
