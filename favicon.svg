@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Light blue circle with dark border -->
+  <circle cx="50" cy="47" r="43" fill="#8fbdd3" stroke="#2a2a2a" stroke-width="6"/>
+  <!-- Gray N/mountain shape -->
+  <polyline
+    points="18,78 18,40 50,65 82,38 82,72"
+    fill="none"
+    stroke="#6b7280"
+    stroke-width="10"
+    stroke-linejoin="miter"
+    stroke-linecap="butt"
+  />
+</svg>
