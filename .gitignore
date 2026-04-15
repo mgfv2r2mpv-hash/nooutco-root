@@ -2,3 +2,4 @@ node_modules/
 dist/
 !CPRAnalyzer/dist/
 .DS_Store
+.wrangler/
