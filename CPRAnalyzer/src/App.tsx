@@ -126,32 +126,52 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
       {/* ── Nav bar ── */}
-      <header className="no-print bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center gap-2 text-sm">
-        <a href="https://tools.nooutco.me"
-          className="text-xs px-3 py-1.5 rounded-md border border-gray-300 dark:border-gray-600
-            text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 shrink-0">
-          ← Back
-        </a>
-        <button onClick={goHome}
-          className="font-bold text-indigo-600 dark:text-indigo-400 shrink-0">
-          Conditional Probability Record &amp; Analysis Tool
-        </button>
-        {/* Help button — right next to the title */}
-        <button
-          onClick={() => setHelpOpen(true)}
-          className="w-5 h-5 rounded-full border-2 border-indigo-400 text-indigo-500 dark:border-indigo-500 dark:text-indigo-400
-            text-[11px] font-bold flex items-center justify-center hover:bg-indigo-50 dark:hover:bg-indigo-950/30 shrink-0"
-          title="Help & Tutorial"
-          aria-label="Open help and tutorial"
-        >?</button>
-
-        {getPageTitle() && (
-          <>
-            <span className="text-gray-300 dark:text-gray-600">/</span>
-            <span className="text-gray-600 dark:text-gray-300 truncate">{getPageTitle()}</span>
-          </>
-        )}
-        <div className="ml-auto flex items-center gap-2">
+      <header className="no-print bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 text-sm">
+        {/* Row 1: back / title / help / breadcrumb / desktop actions */}
+        <div className="flex items-center gap-2">
+          <a href="https://tools.nooutco.me"
+            className="text-xs px-3 py-1.5 rounded-md border border-gray-300 dark:border-gray-600
+              text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 shrink-0">
+            ← Back
+          </a>
+          <button onClick={goHome}
+            className="font-bold text-indigo-600 dark:text-indigo-400 min-w-0 truncate">
+            Conditional Probability Record &amp; Analysis Tool
+          </button>
+          <button
+            onClick={() => setHelpOpen(true)}
+            className="w-5 h-5 rounded-full border-2 border-indigo-400 text-indigo-500 dark:border-indigo-500 dark:text-indigo-400
+              text-[11px] font-bold flex items-center justify-center hover:bg-indigo-50 dark:hover:bg-indigo-950/30 shrink-0"
+            title="Help & Tutorial"
+            aria-label="Open help and tutorial"
+          >?</button>
+          {getPageTitle() && (
+            <>
+              <span className="text-gray-300 dark:text-gray-600 hidden sm:block">/</span>
+              <span className="text-gray-600 dark:text-gray-300 truncate hidden sm:block">{getPageTitle()}</span>
+            </>
+          )}
+          <div className="ml-auto hidden sm:flex items-center gap-2 shrink-0">
+            <button onClick={promptLoadExcel}
+              className="text-xs px-3 py-1.5 rounded-md border border-gray-300 dark:border-gray-600
+                text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">
+              Load Excel
+            </button>
+            <button
+              onClick={() => {
+                if (confirm('Clear all saved assessments and start fresh? This cannot be undone.')) {
+                  LocalStorageAssessmentService.clearAll();
+                  window.location.reload();
+                }
+              }}
+              className="text-xs px-3 py-1.5 rounded-md border border-red-200 dark:border-red-800
+                text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30">
+              Clear Assessment
+            </button>
+          </div>
+        </div>
+        {/* Row 2 (mobile only): action buttons */}
+        <div className="flex sm:hidden items-center gap-2 mt-2">
           <button onClick={promptLoadExcel}
             className="text-xs px-3 py-1.5 rounded-md border border-gray-300 dark:border-gray-600
               text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">
@@ -168,8 +188,8 @@ export default function App() {
               text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30">
             Clear Assessment
           </button>
-          <input ref={loadFileRef} type="file" accept=".xlsx" className="hidden" onChange={handleLoadExcel} />
         </div>
+        <input ref={loadFileRef} type="file" accept=".xlsx" className="hidden" onChange={handleLoadExcel} />
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6">
