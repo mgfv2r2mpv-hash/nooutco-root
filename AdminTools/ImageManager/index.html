@@ -272,6 +272,7 @@ const GAMES = [
   { id: 'IDMatchGame',      label: 'Matching Game',     type: 'manifest' },
   { id: 'NameIDGame',       label: 'Name Game',         type: 'manifest' },
   { id: 'FamousPersonGame', label: 'Famous Person Game', type: 'fpg'     },
+  { id: 'FFCGame',          label: 'FFC Game',          type: 'ffc'      },
 ];
 
 let token = sessionStorage.getItem('adminToken') || '';
@@ -351,6 +352,10 @@ async function loadGameData(game) {
     const m = await res.json();
     if (!m.archived) m.archived = [];
     gameData[game.id] = { manifest: m };
+  } else if (game.type === 'ffc') {
+    const res = await fetch('../../FFCGame/FFCGame/items.json');
+    const data = await res.json();
+    gameData[game.id] = { ffcData: data };
   } else {
     const res = await fetch('../../FamousPersonGame/index.html');
     const html = await res.text();
@@ -402,12 +407,13 @@ function getFolders() {
   const d = gameData[activeGame.id];
   if (!d) return [];
   if (activeGame.type === 'fpg') return ['images'];
+  if (activeGame.type === 'ffc') return ['__all__', ...(d.ffcData.vocab.groups || [])];
   return d.manifest.folders || [];
 }
 
 function getArchivedFolders() {
   const d = gameData[activeGame.id];
-  if (!d || activeGame.type === 'fpg') return [];
+  if (!d || activeGame.type === 'fpg' || activeGame.type === 'ffc') return [];
   return d.manifest.archived || [];
 }
 
@@ -428,7 +434,11 @@ function renderFolderBar() {
   folders.forEach(f => {
     const btn = document.createElement('button');
     btn.className = 'folder-tab' + (activeFolder === f ? ' active' : '');
-    btn.textContent = f.replace(/^T_/, '').replace(/_/g, ' ');
+    if (f === '__all__') {
+      btn.textContent = 'All Items';
+    } else {
+      btn.textContent = f.replace(/^T_/, '').replace(/_/g, ' ');
+    }
     btn.dataset.folder = f;
     btn.addEventListener('click', () => { activeFolder = f; renderFolderBar(); renderContent(); });
     barWrap.appendChild(btn);
@@ -497,6 +507,24 @@ function renderContent() {
 
     const addForm = buildAddForm('fpg');
     content.appendChild(addForm);
+  } else if (activeGame.type === 'ffc') {
+    const bar = document.createElement('div');
+    bar.className = 'folder-action-bar';
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn-add-image';
+    addBtn.textContent = '+ Add Item';
+    addBtn.addEventListener('click', () => toggleAddForm(addForm, addBtn));
+    bar.appendChild(addBtn);
+    const managerLink = document.createElement('a');
+    managerLink.href = '../FFCGManager/';
+    managerLink.target = '_blank';
+    managerLink.style.cssText = 'font-size:.78rem;color:#93c5fd;text-decoration:none;margin-left:.5rem;';
+    managerLink.textContent = '🏷️ Edit tags in FFC Manager ↗';
+    bar.appendChild(managerLink);
+    content.appendChild(bar);
+
+    const addForm = buildAddForm('ffc');
+    content.appendChild(addForm);
   }
 
   const grid = document.createElement('div');
@@ -512,6 +540,14 @@ function renderContent() {
 function getImagesForFolder(folder) {
   const d = gameData[activeGame.id];
   if (!d) return [];
+
+  if (activeGame.type === 'ffc') {
+    const items = d.ffcData.items || [];
+    const filtered = folder === '__all__'
+      ? items
+      : items.filter(it => (it.groups || []).includes(folder));
+    return filtered.map(it => ({ type: 'ffc', item: it }));
+  }
 
   if (activeGame.type === 'fpg') {
     return d.fpgPeople.map(p => ({ type: 'fpg', person: p }));
@@ -529,7 +565,13 @@ function buildCard(item) {
   const label = document.createElement('div');
   label.className = 'label';
 
-  if (item.type === 'fpg') {
+  if (item.type === 'ffc') {
+    const it = item.item;
+    img.src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + it.img;
+    img.alt = it.label;
+    label.textContent = it.label;
+    card.addEventListener('click', () => openDetail({ type: 'ffc', item: it }));
+  } else if (item.type === 'fpg') {
     const p = item.person;
     const isCDN = p.img && p.img.startsWith('https://');
     img.src = isCDN ? p.img : '../../FamousPersonGame/' + p.img;
@@ -656,6 +698,73 @@ function buildAddForm(formType) {
     wikiQueryInput.addEventListener('keydown', e => { if (e.key === 'Enter') form.querySelector('.form-wiki-btn').click(); });
     form.querySelector('.form-google-btn').addEventListener('click', () =>
       window.open('https://www.google.com/search?q=' + encodeURIComponent(wikiQueryInput.value.trim()) + '&tbm=isch', '_blank'));
+  } else if (formType === 'ffc') {
+    form.innerHTML = `
+      <h3>Add FFC Item</h3>
+      <label>ID (slug, e.g. pencil)</label>
+      <input type="text" name="item-id" placeholder="pencil">
+      <label>Label</label>
+      <input type="text" name="label" placeholder="Pencil">
+      <label>Image filename (e.g. pencil.svg)</label>
+      <input type="text" name="filename" placeholder="pencil.svg">
+      <label>Image URL</label>
+      <input type="url" name="url" placeholder="https://…">
+      <label>Search Wikimedia</label>
+      <div class="detail-row">
+        <input type="text" name="wiki-query" placeholder="Search query…">
+        <button class="btn-sm btn-gray form-wiki-btn">Search</button>
+        <button class="btn-sm btn-amber form-google-btn">Google ↗</button>
+      </div>
+      <div class="wiki-results form-wiki-results"></div>
+      <div class="form-row">
+        <button class="btn-submit">Add Item</button>
+        <button class="btn-cancel-form">Cancel</button>
+      </div>
+      <div class="status-msg" id="add-form-status"></div>
+    `;
+    form.querySelector('.btn-submit').addEventListener('click', async () => {
+      const itemId   = nameToSlug(form.querySelector('[name=item-id]').value.trim());
+      const label    = form.querySelector('[name=label]').value.trim();
+      const filename = form.querySelector('[name=filename]').value.trim();
+      const url      = form.querySelector('[name=url]').value.trim();
+      const status   = form.querySelector('#add-form-status');
+      if (!itemId || !label || !filename || !url) { setStatus(status, 'err', 'Fill in all fields.'); return; }
+      const d = gameData['FFCGame'].ffcData;
+      if (d.items.find(i => i.id === itemId)) { setStatus(status, 'err', 'Item id already exists.'); return; }
+      setStatus(status, '', 'Saving image…');
+      try {
+        const imgRes = await adminPost('ffc-save-image', { id: itemId, filename, imageUrl: url });
+        if (!imgRes) { setStatus(status, '', ''); return; }
+        if (!imgRes.ok) {
+          const j = await imgRes.json().catch(() => ({}));
+          setStatus(status, 'err', j.error || 'Image error ' + imgRes.status);
+          return;
+        }
+        setStatus(status, '', 'Saving item record…');
+        const newItem = { id: itemId, img: filename, label, groups: [], features: [], functions: [], classes: [] };
+        d.items.push(newItem);
+        const itemsRes = await adminPost('ffc-save-items', { items: d });
+        if (!itemsRes) { setStatus(status, '', ''); return; }
+        if (itemsRes.ok) {
+          setStatus(status, 'ok', 'Saved! Use FFC Manager to add tags.');
+          const grid = document.getElementById('image-grid');
+          if (grid) grid.appendChild(buildCard({ type: 'ffc', item: newItem }));
+        } else {
+          const j = await itemsRes.json().catch(() => ({}));
+          setStatus(status, 'err', j.error || 'Error ' + itemsRes.status);
+        }
+      } catch (err) {
+        setStatus(status, 'err', err.message || 'Network error');
+      }
+    });
+    const urlInput = form.querySelector('[name=url]');
+    const wikiQueryInput = form.querySelector('[name=wiki-query]');
+    const wikiResults = form.querySelector('.form-wiki-results');
+    form.querySelector('.form-wiki-btn').addEventListener('click', () =>
+      runWikiSearch(wikiQueryInput.value.trim(), urlInput, wikiResults));
+    wikiQueryInput.addEventListener('keydown', e => { if (e.key === 'Enter') form.querySelector('.form-wiki-btn').click(); });
+    form.querySelector('.form-google-btn').addEventListener('click', () =>
+      window.open('https://www.google.com/search?q=' + encodeURIComponent(wikiQueryInput.value.trim()) + '&tbm=isch', '_blank'));
   } else {
     form.innerHTML = `
       <h3>Add Famous Person</h3>
@@ -736,7 +845,7 @@ function buildAddForm(formType) {
 
 function toggleAddForm(form, btn) {
   const isOpen = form.classList.toggle('open');
-  btn.textContent = isOpen ? '✕ Cancel' : (activeGame.type === 'fpg' ? '+ Add Person' : '+ Add Image');
+  btn.textContent = isOpen ? '✕ Cancel' : (activeGame.type === 'fpg' ? '+ Add Person' : activeGame.type === 'ffc' ? '+ Add Item' : '+ Add Image');
   if (isOpen) {
     const wq = form.querySelector('[name=wiki-query]');
     if (wq && !wq.value) {
@@ -894,7 +1003,13 @@ function openDetail(ctx) {
   setStatus(dpSaveStatus, '', '');
   setStatus(dpRemoveStatus, '', '');
 
-  if (ctx.type === 'fpg') {
+  if (ctx.type === 'ffc') {
+    const it = ctx.item;
+    dpThumb.src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + it.img;
+    dpFilename.textContent = it.label;
+    dpSub.textContent = 'id: ' + it.id + '  |  groups: ' + (it.groups || []).join(', ');
+    dpWikiInput.value = it.label;
+  } else if (ctx.type === 'fpg') {
     const p = ctx.person;
     const isCDN = p.img && p.img.startsWith('https://');
     dpThumb.src = isCDN ? p.img : '../../FamousPersonGame/' + p.img;
@@ -926,7 +1041,11 @@ dpSaveBtn.addEventListener('click', async () => {
   setStatus(dpSaveStatus, '', 'Saving…');
 
   let body;
-  if (ctx.type === 'fpg') {
+  let endpoint = 'save-image';
+  if (ctx.type === 'ffc') {
+    body = { id: ctx.item.id, filename: ctx.item.img, imageUrl: url };
+    endpoint = 'ffc-save-image';
+  } else if (ctx.type === 'fpg') {
     const p = ctx.person;
     body = { game: 'FamousPersonGame', folder: 'images', filename: p.img.split('/').pop(), imageUrl: url, personName: p.name };
   } else {
@@ -935,14 +1054,16 @@ dpSaveBtn.addEventListener('click', async () => {
   }
 
   try {
-    const res = await adminPost('save-image', body);
+    const res = await adminPost(endpoint, body);
     if (detailContext !== ctx) return;
     if (!res) { setStatus(dpSaveStatus, '', ''); return; }
     if (res.ok) {
       const j = await res.json().catch(() => ({}));
       setStatus(dpSaveStatus, 'ok', 'Saved!');
       dpThumb.src = url;
-      if (ctx.type === 'fpg' && j.localPath) {
+      if (ctx.type === 'ffc' && j.localPath) {
+        ctx.item.img = j.localPath.split('/').pop();
+      } else if (ctx.type === 'fpg' && j.localPath) {
         ctx.person.img = j.localPath;
       }
     } else {
@@ -1004,6 +1125,36 @@ dpGoogleBtn.addEventListener('click', () => {
 dpRemoveBtn.addEventListener('click', async () => {
   if (!detailContext) return;
   if (!confirm('Remove this image? This cannot be undone.')) return;
+
+  if (detailContext.type === 'ffc') {
+    const it = detailContext.item;
+    const d  = gameData['FFCGame'].ffcData;
+    setStatus(dpRemoveStatus, '', 'Removing…');
+    try {
+      // Remove image file
+      const imgRes = await adminPost('ffc-remove-image', { localPath: '_Resources/_imgSource/items/' + it.img });
+      // Remove item record regardless of image result
+      d.items = d.items.filter(i => i.id !== it.id);
+      const itemsRes = await adminPost('ffc-save-items', { items: d });
+      if (!itemsRes) { setStatus(dpRemoveStatus, '', ''); return; }
+      if (itemsRes.ok) {
+        setStatus(dpRemoveStatus, 'ok', 'Removed.');
+        const grid = document.getElementById('image-grid');
+        if (grid) {
+          grid.querySelectorAll('.img-card').forEach(card => {
+            if (card.querySelector('img')?.alt === it.label) card.remove();
+          });
+        }
+        setTimeout(closeDetail, 800);
+      } else {
+        const j = await itemsRes.json().catch(() => ({}));
+        setStatus(dpRemoveStatus, 'err', j.error || 'Error ' + itemsRes.status);
+      }
+    } catch (err) {
+      setStatus(dpRemoveStatus, 'err', err.message || 'Network error');
+    }
+    return;
+  }
 
   let body;
   if (detailContext.type === 'fpg') {

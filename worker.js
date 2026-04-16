@@ -19,6 +19,15 @@
  * POST /api/admin/purge-topic     (admin — permanent hide: _a_T_ → _x_T_)
  *   Body: { game, folder }
  *
+ * POST /api/admin/ffc-save-items  (admin — write the whole FFCGame/FFCGame/items.json)
+ *   Body: { items: <full items.json object> }
+ *
+ * POST /api/admin/ffc-save-image  (admin — download + store a single FFC item image)
+ *   Body: { id, filename, imageUrl }
+ *
+ * POST /api/admin/ffc-remove-image (admin — delete a single FFC item image file)
+ *   Body: { localPath }
+ *
  * Required Worker Secrets (set in Cloudflare dashboard):
  *   GITHUB_TOKEN  — fine-grained PAT, Contents: Read & Write on the repo
  *   GITHUB_OWNER  — GitHub username or org
@@ -56,6 +65,15 @@ export default {
     }
     if (request.method === 'POST' && pathname === '/api/admin/purge-topic') {
       return handleAdminPurgeTopic(request, env);
+    }
+    if (request.method === 'POST' && pathname === '/api/admin/ffc-save-items') {
+      return handleFFCSaveItems(request, env);
+    }
+    if (request.method === 'POST' && pathname === '/api/admin/ffc-save-image') {
+      return handleFFCSaveImage(request, env);
+    }
+    if (request.method === 'POST' && pathname === '/api/admin/ffc-remove-image') {
+      return handleFFCRemoveImage(request, env);
     }
 
     return new Response('Not found', { status: 404 });
@@ -559,6 +577,186 @@ async function atomicTopicRenameCommit(env, game, fromFolder, toFolder, action) 
   const newTree   = await gh(env, 'POST', 'git/trees', { base_tree: treeSha, tree: treeEntries });
   const newCommit = await gh(env, 'POST', 'git/commits', {
     message: `Admin: ${action} topic ${fromFolder} → ${toFolder}`,
+    tree:    newTree.sha,
+    parents: [headSha],
+  });
+
+  const refRes = await ghRaw(env, 'PATCH', 'git/refs/heads/main', { sha: newCommit.sha, force: false });
+  if (refRes.status === 422) throw new Error('CONFLICT');
+  if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
+}
+
+// ─── FFC: save items.json ─────────────────────────────────────────────────────
+
+async function handleFFCSaveItems(request, env) {
+  const authErr = requireAdmin(request, env);
+  if (authErr) return authErr;
+
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonError('Invalid JSON body', 400); }
+
+  const { items: itemsObj } = body;
+  if (!itemsObj || typeof itemsObj !== 'object') {
+    return jsonError('items object is required', 400);
+  }
+
+  itemsObj.generated = new Date().toISOString();
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await atomicFFCSaveCommit(env, itemsObj);
+      break;
+    } catch (err) {
+      if (err.message === 'CONFLICT' && attempt < 2) continue;
+      return jsonError('GitHub commit failed: ' + err.message, 502);
+    }
+  }
+
+  return json({ ok: true, generated: itemsObj.generated });
+}
+
+// ─── FFC: save image ──────────────────────────────────────────────────────────
+
+async function handleFFCSaveImage(request, env) {
+  const authErr = requireAdmin(request, env);
+  if (authErr) return authErr;
+
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonError('Invalid JSON body', 400); }
+
+  const { id, filename, imageUrl } = body;
+  if (!id || !filename || !imageUrl) {
+    return jsonError('id, filename, and imageUrl are required', 400);
+  }
+
+  let imgBytes, ext;
+  try {
+    ({ bytes: imgBytes, ext } = await downloadImage(imageUrl));
+  } catch (err) {
+    return jsonError('Failed to download image: ' + err.message, 502);
+  }
+
+  const base         = filename.replace(/\.[^.]+$/, '');
+  const saveFilename = `${base}.${ext}`;
+  const repoPath     = `_Resources/_imgSource/items/${saveFilename}`;
+  const localPath    = repoPath;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await atomicFFCImageCommit(env, repoPath, imgBytes, saveFilename);
+      break;
+    } catch (err) {
+      if (err.message === 'CONFLICT' && attempt < 2) continue;
+      return jsonError('GitHub commit failed: ' + err.message, 502);
+    }
+  }
+
+  return json({ ok: true, localPath });
+}
+
+// ─── FFC: remove image ────────────────────────────────────────────────────────
+
+async function handleFFCRemoveImage(request, env) {
+  const authErr = requireAdmin(request, env);
+  if (authErr) return authErr;
+
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonError('Invalid JSON body', 400); }
+
+  const { localPath } = body;
+  if (!localPath) return jsonError('localPath is required', 400);
+
+  const repoPath = localPath.startsWith('_Resources/')
+    ? localPath
+    : `_Resources/_imgSource/items/${localPath.split('/').pop()}`;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await atomicFFCImageRemoveCommit(env, repoPath);
+      break;
+    } catch (err) {
+      if (err.message === 'CONFLICT' && attempt < 2) continue;
+      return jsonError('GitHub commit failed: ' + err.message, 502);
+    }
+  }
+
+  return json({ ok: true });
+}
+
+// ─── Atomic commit: FFCGame items.json save ───────────────────────────────────
+
+async function atomicFFCSaveCommit(env, itemsObj) {
+  const refData    = await gh(env, 'GET', 'git/ref/heads/main');
+  const headSha    = refData.object.sha;
+  const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
+  const treeSha    = commitData.tree.sha;
+
+  const itemsRepoPath = 'FFCGame/FFCGame/items.json';
+  const itemsBlob = await gh(env, 'POST', 'git/blobs', {
+    content:  utf8ToBase64(JSON.stringify(itemsObj, null, 2) + '\n'),
+    encoding: 'base64',
+  });
+
+  const newTree   = await gh(env, 'POST', 'git/trees', {
+    base_tree: treeSha,
+    tree: [{ path: itemsRepoPath, mode: '100644', type: 'blob', sha: itemsBlob.sha }],
+  });
+  const newCommit = await gh(env, 'POST', 'git/commits', {
+    message: 'Admin: update FFC items.json',
+    tree:    newTree.sha,
+    parents: [headSha],
+  });
+
+  const refRes = await ghRaw(env, 'PATCH', 'git/refs/heads/main', { sha: newCommit.sha, force: false });
+  if (refRes.status === 422) throw new Error('CONFLICT');
+  if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
+}
+
+// ─── Atomic commit: FFCGame image save ────────────────────────────────────────
+
+async function atomicFFCImageCommit(env, repoPath, imgBytes, filename) {
+  const refData    = await gh(env, 'GET', 'git/ref/heads/main');
+  const headSha    = refData.object.sha;
+  const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
+  const treeSha    = commitData.tree.sha;
+
+  const imgBlob = await gh(env, 'POST', 'git/blobs', {
+    content:  arrayBufferToBase64(imgBytes),
+    encoding: 'base64',
+  });
+
+  const newTree   = await gh(env, 'POST', 'git/trees', {
+    base_tree: treeSha,
+    tree: [{ path: repoPath, mode: '100644', type: 'blob', sha: imgBlob.sha }],
+  });
+  const newCommit = await gh(env, 'POST', 'git/commits', {
+    message: `Admin: save FFC image ${filename}`,
+    tree:    newTree.sha,
+    parents: [headSha],
+  });
+
+  const refRes = await ghRaw(env, 'PATCH', 'git/refs/heads/main', { sha: newCommit.sha, force: false });
+  if (refRes.status === 422) throw new Error('CONFLICT');
+  if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
+}
+
+// ─── Atomic commit: FFCGame image remove ─────────────────────────────────────
+
+async function atomicFFCImageRemoveCommit(env, repoPath) {
+  const refData    = await gh(env, 'GET', 'git/ref/heads/main');
+  const headSha    = refData.object.sha;
+  const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
+  const treeSha    = commitData.tree.sha;
+
+  const newTree   = await gh(env, 'POST', 'git/trees', {
+    base_tree: treeSha,
+    tree: [{ path: repoPath, mode: '100644', type: 'blob', sha: null }],
+  });
+  const newCommit = await gh(env, 'POST', 'git/commits', {
+    message: `Admin: remove FFC image ${repoPath}`,
     tree:    newTree.sha,
     parents: [headSha],
   });
