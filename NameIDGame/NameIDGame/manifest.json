@@ -1,6 +1,7 @@
 {
-  "generated": "2026-04-16T01:32:56.128Z",
+  "generated": "2026-04-16T02:08:34.736Z",
   "folders": [
+    "T_actions",
     "T_animals",
     "T_buildings",
     "T_colors",
@@ -11,6 +12,15 @@
     "T_toys"
   ],
   "images": {
+    "T_actions": [
+      "T_actions/drinking.png",
+      "T_actions/eating.png",
+      "T_actions/hugging.png",
+      "T_actions/reading.png",
+      "T_actions/sleeping.png",
+      "T_actions/swimming.png",
+      "T_actions/walking.png"
+    ],
     "T_animals": [
       "T_animals/bear.svg",
       "T_animals/bird.svg",
