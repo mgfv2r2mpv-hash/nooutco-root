@@ -248,8 +248,8 @@ body {
   transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
 }
 .tile-front img {
-  max-width: 91%;
-  max-height: 91%;
+  max-width: 95%;
+  max-height: 95%;
   object-fit: contain;
   pointer-events: none;
   display: block;
