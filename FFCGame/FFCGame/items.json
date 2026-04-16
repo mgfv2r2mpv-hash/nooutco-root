@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-16T00:00:00.000Z",
+  "generated": "2026-04-16T23:01:03.075Z",
   "vocab": {
     "groups": [
       "school_supplies",
@@ -54,203 +54,367 @@
   },
   "prompts": {
     "feature": {
-      "yellow":  "Which one is yellow?",
-      "red":     "Which one is red?",
-      "blue":    "Which one is blue?",
-      "green":   "Which one is green?",
-      "round":   "Which one is round?",
-      "long":    "Which one is long?",
-      "wooden":  "Which one is made of wood?",
-      "soft":    "Which one is soft?",
-      "hard":    "Which one is hard?",
-      "small":   "Which one is small?",
-      "large":   "Which one is large?",
-      "sharp":   "Which one is sharp?",
-      "flat":    "Which one is flat?"
+      "yellow": "Which one is yellow?",
+      "red": "Which one is red?",
+      "blue": "Which one is blue?",
+      "green": "Which one is green?",
+      "round": "Which one is round?",
+      "long": "Which one is long?",
+      "wooden": "Which one is made of wood?",
+      "soft": "Which one is soft?",
+      "hard": "Which one is hard?",
+      "small": "Which one is small?",
+      "large": "Which one is large?",
+      "sharp": "Which one is sharp?",
+      "flat": "Which one is flat?"
     },
     "function": {
-      "write_with":    "Which do you write with?",
-      "draw_with":     "Which do you draw with?",
-      "erase_with":    "Which do you erase with?",
-      "write_on":      "Which do you write on?",
-      "cut_with":      "Which do you cut with?",
-      "carry_things":  "Which do you use to carry things?",
-      "sit_on":        "Which do you sit on?",
-      "drink_from":    "Which do you drink from?",
-      "eat_with":      "Which do you eat with?",
-      "wear":          "Which do you wear?",
-      "ride":          "Which do you ride?",
-      "keep_warm":     "Which keeps you warm?"
+      "write_with": "Which do you write with?",
+      "draw_with": "Which do you draw with?",
+      "erase_with": "Which do you erase with?",
+      "write_on": "Which do you write on?",
+      "cut_with": "Which do you cut with?",
+      "carry_things": "Which do you use to carry things?",
+      "sit_on": "Which do you sit on?",
+      "drink_from": "Which do you drink from?",
+      "eat_with": "Which do you eat with?",
+      "wear": "Which do you wear?",
+      "ride": "Which do you ride?",
+      "keep_warm": "Which keeps you warm?"
     },
     "classWithinGroup": {
       "writing_implement": "Which one is a writing implement?",
-      "stationery":        "Which one is stationery?",
-      "school_supply":     "Which one is a school supply?",
-      "vehicle":           "Which one is a vehicle?",
-      "clothing":          "Which one is clothing?",
-      "animal":            "Which one is an animal?",
-      "food":              "Which one is a food?",
-      "tool":              "Which one is a tool?",
-      "furniture":         "Which one is furniture?",
-      "container":         "Which one is a container?"
+      "stationery": "Which one is stationery?",
+      "school_supply": "Which one is a school supply?",
+      "vehicle": "Which one is a vehicle?",
+      "clothing": "Which one is clothing?",
+      "animal": "Which one is an animal?",
+      "food": "Which one is a food?",
+      "tool": "Which one is a tool?",
+      "furniture": "Which one is furniture?",
+      "container": "Which one is a container?"
     },
     "classCrossCategory": {
       "writing_implement": "Which one is a writing implement?",
-      "stationery":        "Which one is stationery?",
-      "school_supply":     "Which one is a school supply?",
-      "vehicle":           "Which one is a vehicle?",
-      "clothing":          "Which one is clothing?",
-      "animal":            "Which one is an animal?",
-      "food":              "Which one is a food?",
-      "tool":              "Which one is a tool?",
-      "furniture":         "Which one is furniture?",
-      "container":         "Which one is a container?"
+      "stationery": "Which one is stationery?",
+      "school_supply": "Which one is a school supply?",
+      "vehicle": "Which one is a vehicle?",
+      "clothing": "Which one is clothing?",
+      "animal": "Which one is an animal?",
+      "food": "Which one is a food?",
+      "tool": "Which one is a tool?",
+      "furniture": "Which one is furniture?",
+      "container": "Which one is a container?"
     }
   },
   "items": [
     {
-      "id":        "pencil",
-      "img":       "pencil.svg",
-      "label":     "Pencil",
-      "groups":    ["school_supplies", "writing_supplies"],
-      "features":  ["yellow", "long", "wooden", "sharp"],
-      "functions": ["write_with", "draw_with"],
-      "classes":   ["writing_implement", "stationery", "school_supply", "tool"]
+      "id": "pencil",
+      "img": "pencil.svg",
+      "label": "Pencil",
+      "groups": [
+        "school_supplies",
+        "writing_supplies",
+        "household_items"
+      ],
+      "features": [
+        "yellow",
+        "long",
+        "wooden",
+        "sharp"
+      ],
+      "functions": [
+        "write_with",
+        "draw_with",
+        "erase_with"
+      ],
+      "classes": [
+        "writing_implement",
+        "stationery",
+        "school_supply",
+        "tool"
+      ]
     },
     {
-      "id":        "eraser",
-      "img":       "eraser.svg",
-      "label":     "Eraser",
-      "groups":    ["school_supplies", "writing_supplies"],
-      "features":  ["pink", "small", "soft", "flat"],
-      "functions": ["erase_with"],
-      "classes":   ["stationery", "school_supply", "tool"]
+      "id": "eraser",
+      "img": "eraser.svg",
+      "label": "Eraser",
+      "groups": [
+        "school_supplies",
+        "writing_supplies"
+      ],
+      "features": [
+        "pink",
+        "small",
+        "soft",
+        "flat"
+      ],
+      "functions": [
+        "erase_with"
+      ],
+      "classes": [
+        "stationery",
+        "school_supply",
+        "tool"
+      ]
     },
     {
-      "id":        "notebook",
-      "img":       "notebook.svg",
-      "label":     "Notebook",
-      "groups":    ["school_supplies", "writing_supplies"],
-      "features":  ["flat", "small"],
-      "functions": ["write_on"],
-      "classes":   ["stationery", "school_supply"]
+      "id": "notebook",
+      "img": "notebook.svg",
+      "label": "Notebook",
+      "groups": [
+        "school_supplies",
+        "writing_supplies"
+      ],
+      "features": [
+        "flat",
+        "small"
+      ],
+      "functions": [
+        "write_on"
+      ],
+      "classes": [
+        "stationery",
+        "school_supply"
+      ]
     },
     {
-      "id":        "ruler",
-      "img":       "ruler.svg",
-      "label":     "Ruler",
-      "groups":    ["school_supplies", "writing_supplies"],
-      "features":  ["long", "flat", "wooden"],
+      "id": "ruler",
+      "img": "ruler.svg",
+      "label": "Ruler",
+      "groups": [
+        "school_supplies",
+        "writing_supplies"
+      ],
+      "features": [
+        "long",
+        "flat",
+        "wooden"
+      ],
       "functions": [],
-      "classes":   ["stationery", "school_supply", "tool"]
+      "classes": [
+        "stationery",
+        "school_supply",
+        "tool"
+      ]
     },
     {
-      "id":        "scissors",
-      "img":       "scissors.svg",
-      "label":     "Scissors",
-      "groups":    ["school_supplies"],
-      "features":  ["sharp", "hard"],
-      "functions": ["cut_with"],
-      "classes":   ["school_supply", "tool"]
+      "id": "scissors",
+      "img": "scissors.svg",
+      "label": "Scissors",
+      "groups": [
+        "school_supplies"
+      ],
+      "features": [
+        "sharp",
+        "hard"
+      ],
+      "functions": [
+        "cut_with"
+      ],
+      "classes": [
+        "school_supply",
+        "tool"
+      ]
     },
     {
-      "id":        "backpack",
-      "img":       "backpack.svg",
-      "label":     "Backpack",
-      "groups":    ["school_supplies"],
-      "features":  ["large", "soft"],
-      "functions": ["carry_things"],
-      "classes":   ["school_supply", "container"]
+      "id": "backpack",
+      "img": "backpack.svg",
+      "label": "Backpack",
+      "groups": [
+        "school_supplies"
+      ],
+      "features": [
+        "large",
+        "soft"
+      ],
+      "functions": [
+        "carry_things"
+      ],
+      "classes": [
+        "school_supply",
+        "container"
+      ]
     },
     {
-      "id":        "car",
-      "img":       "car.svg",
-      "label":     "Car",
-      "groups":    ["vehicles"],
-      "features":  ["red", "hard", "large"],
-      "functions": ["ride"],
-      "classes":   ["vehicle"]
+      "id": "car",
+      "img": "car.svg",
+      "label": "Car",
+      "groups": [
+        "vehicles"
+      ],
+      "features": [
+        "red",
+        "hard",
+        "large"
+      ],
+      "functions": [
+        "ride"
+      ],
+      "classes": [
+        "vehicle"
+      ]
     },
     {
-      "id":        "bus",
-      "img":       "bus.svg",
-      "label":     "Bus",
-      "groups":    ["vehicles"],
-      "features":  ["yellow", "large", "hard"],
-      "functions": ["ride"],
-      "classes":   ["vehicle"]
+      "id": "bus",
+      "img": "bus.svg",
+      "label": "Bus",
+      "groups": [
+        "vehicles"
+      ],
+      "features": [
+        "yellow",
+        "large",
+        "hard"
+      ],
+      "functions": [
+        "ride"
+      ],
+      "classes": [
+        "vehicle"
+      ]
     },
     {
-      "id":        "bicycle",
-      "img":       "bicycle.svg",
-      "label":     "Bicycle",
-      "groups":    ["vehicles"],
-      "features":  ["hard"],
-      "functions": ["ride"],
-      "classes":   ["vehicle"]
+      "id": "bicycle",
+      "img": "bicycle.svg",
+      "label": "Bicycle",
+      "groups": [
+        "vehicles"
+      ],
+      "features": [
+        "hard"
+      ],
+      "functions": [
+        "ride"
+      ],
+      "classes": [
+        "vehicle"
+      ]
     },
     {
-      "id":        "chair",
-      "img":       "chair.svg",
-      "label":     "Chair",
-      "groups":    ["household_items"],
-      "features":  ["hard", "wooden"],
-      "functions": ["sit_on"],
-      "classes":   ["furniture"]
+      "id": "chair",
+      "img": "chair.svg",
+      "label": "Chair",
+      "groups": [
+        "household_items"
+      ],
+      "features": [
+        "hard",
+        "wooden"
+      ],
+      "functions": [
+        "sit_on"
+      ],
+      "classes": [
+        "furniture"
+      ]
     },
     {
-      "id":        "sofa",
-      "img":       "sofa.svg",
-      "label":     "Sofa",
-      "groups":    ["household_items"],
-      "features":  ["soft", "large"],
-      "functions": ["sit_on"],
-      "classes":   ["furniture"]
+      "id": "sofa",
+      "img": "sofa.svg",
+      "label": "Sofa",
+      "groups": [
+        "household_items"
+      ],
+      "features": [
+        "soft",
+        "large"
+      ],
+      "functions": [
+        "sit_on"
+      ],
+      "classes": [
+        "furniture"
+      ]
     },
     {
-      "id":        "mug",
-      "img":       "mug.svg",
-      "label":     "Mug",
-      "groups":    ["household_items"],
-      "features":  ["round", "hard", "small"],
-      "functions": ["drink_from"],
-      "classes":   ["container"]
+      "id": "mug",
+      "img": "mug.svg",
+      "label": "Mug",
+      "groups": [
+        "household_items"
+      ],
+      "features": [
+        "round",
+        "hard",
+        "small"
+      ],
+      "functions": [
+        "drink_from"
+      ],
+      "classes": [
+        "container"
+      ]
     },
     {
-      "id":        "shirt",
-      "img":       "shirt.svg",
-      "label":     "Shirt",
-      "groups":    ["clothes"],
-      "features":  ["soft", "flat"],
-      "functions": ["wear"],
-      "classes":   ["clothing"]
+      "id": "shirt",
+      "img": "shirt.svg",
+      "label": "Shirt",
+      "groups": [
+        "clothes"
+      ],
+      "features": [
+        "soft",
+        "flat"
+      ],
+      "functions": [
+        "wear"
+      ],
+      "classes": [
+        "clothing"
+      ]
     },
     {
-      "id":        "coat",
-      "img":       "coat.svg",
-      "label":     "Coat",
-      "groups":    ["clothes"],
-      "features":  ["soft", "large"],
-      "functions": ["wear", "keep_warm"],
-      "classes":   ["clothing"]
+      "id": "coat",
+      "img": "coat.svg",
+      "label": "Coat",
+      "groups": [
+        "clothes"
+      ],
+      "features": [
+        "soft",
+        "large"
+      ],
+      "functions": [
+        "wear",
+        "keep_warm"
+      ],
+      "classes": [
+        "clothing"
+      ]
     },
     {
-      "id":        "apple",
-      "img":       "apple.svg",
-      "label":     "Apple",
-      "groups":    ["foods"],
-      "features":  ["red", "round", "small"],
+      "id": "apple",
+      "img": "apple.svg",
+      "label": "Apple",
+      "groups": [
+        "foods"
+      ],
+      "features": [
+        "red",
+        "round",
+        "small"
+      ],
       "functions": [],
-      "classes":   ["food"]
+      "classes": [
+        "food"
+      ]
     },
     {
-      "id":        "banana",
-      "img":       "banana.svg",
-      "label":     "Banana",
-      "groups":    ["foods"],
-      "features":  ["yellow", "long"],
+      "id": "banana",
+      "img": "banana.svg",
+      "label": "Banana",
+      "groups": [
+        "foods"
+      ],
+      "features": [
+        "yellow",
+        "long"
+      ],
       "functions": [],
-      "classes":   ["food"]
+      "classes": [
+        "food"
+      ]
     }
   ]
 }
