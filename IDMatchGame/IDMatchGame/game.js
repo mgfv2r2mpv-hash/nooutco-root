@@ -334,6 +334,7 @@ function toggleTimer() { state.timerRunning ? pauseTimer() : startTimer(); }
 function resetTimer() {
   pauseTimer();
   state.timerSecs = 0;
+  state.trialStart = Date.now();
   renderTimer();
 }
 
