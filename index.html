@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Behavior Analyst Tools</title>
+  <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -96,6 +97,99 @@
       color: #5a6a48;
       line-height: 1.6;
     }
+
+    .support {
+      max-width: 680px;
+      margin-top: 36px;
+      padding-top: 20px;
+      border-top: 1px solid #dde0d8;
+    }
+    .support details > summary {
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .support details > summary::-webkit-details-marker { display: none; }
+    .support details > summary::after {
+      content: '▾';
+      font-size: 10px;
+      opacity: 0.5;
+      margin-left: 2px;
+    }
+    .support details[open] > summary::after { content: '▴'; }
+    .support-heading {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: #888;
+    }
+    .support-text {
+      font-size: 13px;
+      color: #555;
+      line-height: 1.55;
+      margin-top: 12px;
+      margin-bottom: 14px;
+    }
+    .support-links {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+    .support-links a.bmc-btn,
+    .support-links a[class*="bmc-button"] {
+      height: 40px !important;
+      padding: 0 14px !important;
+      min-width: 0 !important;
+      border-radius: 8px !important;
+      background-color: #9c6dd1 !important;
+      border-color: #9c6dd1 !important;
+      color: #fff !important;
+    }
+    .support-links a.bmc-btn img,
+    .support-links a[class*="bmc-button"] img {
+      height: 20px !important;
+      width: auto !important;
+      margin-right: 8px !important;
+    }
+    .support-links a.bmc-btn span,
+    .support-links a[class*="bmc-button"] span {
+      font-size: 14px !important;
+      color: #fff !important;
+    }
+    .support-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 16px;
+      height: 40px;
+      background: #5ba8e0;
+      border: 1px solid #5ba8e0;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      text-decoration: none;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .support-link:hover {
+      background: #4a97cf;
+      border-color: #4a97cf;
+      color: #fff;
+    }
+    .meta {
+      max-width: 680px;
+      margin-top: 20px;
+      font-size: 12px;
+      color: #888;
+      line-height: 1.55;
+    }
+    .meta a { color: #7d9068; text-decoration: none; }
+    .meta a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -135,6 +229,30 @@
       </a>
 
     </div>
+
+    <section class="support">
+      <details>
+        <summary class="support-heading">Support This Project 💖</summary>
+        <p class="support-text">
+          No Outcome is a passion project bridging ABA and technology - built so
+          clinicians, supervisors, and clients get tools that fit the science
+          without eating anyone's evenings. If it has helped you or the people
+          you serve, you can chip in toward the time it takes to keep building.
+        </p>
+        <div class="support-links">
+          <script type='text/javascript'>kofiwidget2.init('Support me on Ko-fi', '#9c6dd1', 'N4N11XY53E');kofiwidget2.draw();</script>
+          <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="no.outcome.aba" data-color="#9c6dd1" data-emoji="☕" data-font="Lato" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#FFFFFF" data-coffee-color="#FFDD00"></script>
+          <a class="support-link" href="https://paypal.me/kablubfowles" rel="noopener">🙏 PayPal</a>
+        </div>
+      </details>
+    </section>
+
+    <p class="meta">
+      Source-available under a non-commercial license with express exemptions
+      for clinicians, educators, researchers, and non-profits. See the
+      <a href="https://github.com/mgfv2r2mpv-hash/tools-nooutco-me/blob/main/LICENSE">LICENSE</a>
+      and <a href="https://github.com/mgfv2r2mpv-hash/tools-nooutco-me">mission</a> on GitHub.
+    </p>
   </div>
 </body>
 </html>

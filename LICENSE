@@ -1,0 +1,162 @@
+NoOutcomes ABA Non-Commercial Source License, Version 1.0
+Copyright (c) 2026 NoOutcomes ABA. All rights reserved.
+This software, and any accompanying files, documentation, assets, and
+derivative works (together, the "Software"), is source-available but
+proprietary. It is NOT open source. All rights not expressly granted below
+are reserved by NoOutcomes ABA (the "Licensor").
+Read the short version first. The full terms follow.
+----------------------------------------------------------------------
+The short version (not a substitute for the terms below)
+----------------------------------------------------------------------
+If you are a clinician, supervisor, educator, researcher, student,
+learner, parent, caregiver, self-advocate, school, clinic, or non-profit
+using this Software to make people's lives better - go ahead. Use it.
+Fork it. Improve it. Share your improvements. That is exactly why it
+exists.
+If you are trying to turn this code into a paid product, a paid service,
+or any other offering whose primary value proposition to a customer is
+this Software or its output - stop. You do not have permission. Contact
+the Licensor for a commercial license.
+Being paid for your own clinical, educational, or supervisory work while
+using this Software with the people you serve is fine. Selling the
+Software itself, or access to it, or a product built on it, is not.
+----------------------------------------------------------------------
+1. Definitions
+----------------------------------------------------------------------
+1.1 "You" means the individual or legal entity exercising rights under
+    this License.
+1.2 "Permitted User" means any of the following, acting in good faith:
+    (a) an individual clinician, supervisor, behavior analyst,
+        paraprofessional, educator, researcher, student, learner,
+        parent, caregiver, or self-advocate;
+    (b) a school, clinic, agency, university, research group, or
+        healthcare provider, whether for-profit or non-profit, using
+        the Software internally to deliver services to the people they
+        serve;
+    (c) a 501(c)(3) or equivalent non-profit organization, or a
+        government or public-sector body, using the Software to advance
+        its mission.
+1.3 "Permitted Purpose" means using, running, studying, modifying,
+    and distributing the Software for any of the following:
+    (a) direct delivery of clinical, educational, therapeutic,
+        supervisory, assessment, or research services to identified
+        learners, clients, students, or research participants;
+    (b) personal learning, academic study, or non-commercial research;
+    (c) internal tooling that supports the activities above, including
+        training staff and collaborating with other Permitted Users;
+    (d) publishing academic or clinical work that references or
+        demonstrates the Software, with attribution.
+    Being compensated for your own professional services that happen to
+    make use of the Software is Permitted Purpose. Receiving grant
+    funding for non-commercial research or public-benefit work is
+    Permitted Purpose.
+1.4 "Commercial Use" means any use that is NOT Permitted Purpose,
+    including but not limited to:
+    (a) selling, sublicensing, renting, or leasing the Software or any
+        derivative work;
+    (b) offering the Software or any derivative work as a hosted,
+        managed, or software-as-a-service product to third parties for
+        a fee, subscription, or other consideration;
+    (c) incorporating the Software or any derivative work into a
+        product, service, platform, or bundle that is itself sold,
+        licensed, or monetized (including by advertising, data resale,
+        or paywall);
+    (d) using the Software to train, fine-tune, or evaluate a machine
+        learning model that is itself commercially distributed or
+        offered as a paid service;
+    (e) any use whose primary purpose is to generate revenue from the
+        Software itself or access to it, rather than from the services
+        delivered by a Permitted User to the people they serve.
+----------------------------------------------------------------------
+2. Grant of Rights (Non-Commercial)
+----------------------------------------------------------------------
+Subject to the terms below, the Licensor grants You a worldwide,
+royalty-free, non-exclusive, non-transferable license to use, reproduce,
+modify, publicly display, and distribute the Software and derivative
+works, solely when You are a Permitted User acting for a Permitted
+Purpose.
+You may share modifications and derivative works with other Permitted
+Users for Permitted Purposes, provided that:
+    (a) this LICENSE file is included unchanged;
+    (b) the copyright notice is preserved;
+    (c) modified files carry a prominent notice stating they were
+        changed and by whom; and
+    (d) you do not charge any fee for the Software itself or access to
+        it (reasonable distribution or hosting cost pass-through is
+        allowed; profit is not).
+----------------------------------------------------------------------
+3. Prohibited Use
+----------------------------------------------------------------------
+You may not engage in Commercial Use of the Software or any derivative
+work without a separate, written commercial license from the Licensor.
+Commercial Use without a commercial license is a material breach of
+this License and automatically terminates all rights granted herein.
+Indirect Commercial Use is also prohibited, including but not limited
+to: repackaging under another name; laundering the Software through a
+wrapper, API, or minor modifications; or distributing it via a third
+party who will Commercially Use it.
+----------------------------------------------------------------------
+4. Attribution
+----------------------------------------------------------------------
+In any distribution, user-facing "About" or credits screen, or
+publication that substantially relies on the Software, include a
+visible attribution substantially as follows:
+    "Built on NoOutcomes ABA - https://nooutco.me"
+----------------------------------------------------------------------
+5. Contributions
+----------------------------------------------------------------------
+If you submit a contribution (pull request, patch, issue-attached code,
+or similar) to the Licensor, you license that contribution to the
+Licensor under the same terms as this License, and you additionally
+grant the Licensor a perpetual, irrevocable, worldwide, royalty-free
+right to relicense the contribution (including under a commercial
+license) so that the Licensor can continue to fund and maintain the
+project. You represent that you have the right to make the
+contribution.
+----------------------------------------------------------------------
+6. Trademarks
+----------------------------------------------------------------------
+This License does not grant any right to use the names, logos, or
+trademarks of the Licensor, including "NoOutcomes ABA" and
+"No Outcome", except for factual attribution under Section 4. Do not
+imply endorsement by the Licensor without written permission.
+----------------------------------------------------------------------
+7. Commercial License
+----------------------------------------------------------------------
+If You want to do anything this License does not permit - including
+building a paid product on top of the Software - contact the Licensor
+to discuss a commercial license. The Licensor is reachable through
+https://nooutco.me.
+----------------------------------------------------------------------
+8. Termination
+----------------------------------------------------------------------
+Any breach of this License automatically and immediately terminates all
+rights granted to You. On termination, You must stop all use,
+distribution, and public display of the Software and destroy all copies
+under Your control, except archival copies retained solely to comply
+with law. Sections 4, 6, 9, 10, and 11 survive termination.
+----------------------------------------------------------------------
+9. No Warranty
+----------------------------------------------------------------------
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT, OR ACCURACY. THE
+SOFTWARE IS NOT A MEDICAL DEVICE AND IS NOT INTENDED TO DIAGNOSE,
+TREAT, CURE, OR PREVENT ANY CONDITION. CLINICAL JUDGMENT REMAINS WITH
+THE LICENSED PROFESSIONAL.
+----------------------------------------------------------------------
+10. Limitation of Liability
+----------------------------------------------------------------------
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT SHALL THE LICENSOR
+BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN
+CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+----------------------------------------------------------------------
+11. Miscellaneous
+----------------------------------------------------------------------
+If any provision of this License is held unenforceable, the remaining
+provisions remain in effect. This License is the entire agreement
+between You and the Licensor with respect to the Software. The
+Licensor may release future versions of this License under a new
+version number; each version applies only to copies of the Software
+distributed under it.
