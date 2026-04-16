@@ -181,21 +181,15 @@ body {
 }
 
 #sample-word {
-  font-size: 2.4rem;
   font-weight: 800;
   color: #ffffff;
   text-align: center;
   line-height: 1.15;
   letter-spacing: -0.01em;
-  word-break: break-word;
-  hyphens: auto;
-  /* Scale down automatically for longer words */
-  overflow-wrap: break-word;
+  /* JS sets font-size dynamically; only break at spaces, never mid-word */
+  overflow-wrap: normal;
+  word-break: normal;
 }
-
-/* Shrink font for words longer than ~8 chars */
-#sample-word.word-long   { font-size: 1.9rem; }
-#sample-word.word-xlong  { font-size: 1.5rem; }
 
 /* Comparison grid */
 #comp-section { display: flex; flex-direction: column; align-items: center; }
@@ -475,9 +469,6 @@ body {
 
   .tile { width: 96px; height: 96px; }
   #sample-card { width: 150px; height: 150px; }
-  #sample-word { font-size: 1.9rem; }
-  #sample-word.word-long  { font-size: 1.5rem; }
-  #sample-word.word-xlong { font-size: 1.25rem; }
 
   #comp-grid { gap: 8px; }
 }

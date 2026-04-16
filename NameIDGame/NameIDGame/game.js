@@ -460,12 +460,24 @@ function buildTrial(keepSample) {
   }
 }
 
+/** Shrink font-size until the word fits inside #sample-card without breaking mid-word. */
+function fitSampleWord() {
+  const card = document.getElementById('sample-card');
+  const word = el.sampleWord;
+  const maxW = card.clientWidth  - 32;
+  const maxH = card.clientHeight - 32;
+  let px = 52;
+  word.style.fontSize = px + 'px';
+  while (px > 12 && (word.scrollWidth > maxW || word.scrollHeight > maxH)) {
+    px -= 2;
+    word.style.fontSize = px + 'px';
+  }
+}
+
 function renderTrial() {
   // Show the target word in the sample card
   el.sampleWord.textContent = state.sampleLabel;
-  el.sampleWord.classList.remove('word-long', 'word-xlong');
-  if (state.sampleLabel.length > 12) el.sampleWord.classList.add('word-xlong');
-  else if (state.sampleLabel.length > 8) el.sampleWord.classList.add('word-long');
+  requestAnimationFrame(fitSampleWord);
 
   const cols = gridCols(state.arraySize);
   el.compGrid.style.gridTemplateColumns = `repeat(${cols}, 128px)`;
