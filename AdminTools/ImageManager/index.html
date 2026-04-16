@@ -304,11 +304,21 @@ function handle401() {
 // ─── Fetch helpers ────────────────────────────────────────────────────────────
 
 async function adminPost(endpoint, body) {
-  const res = await fetch('../../api/admin/' + endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-    body: JSON.stringify(body),
-  });
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 35000);
+  let res;
+  try {
+    res = await fetch('../../api/admin/' + endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    throw new Error(err.name === 'AbortError' ? 'Request timed out (35s)' : err.message);
+  }
+  clearTimeout(timer);
   if (res.status === 401) { handle401(); return null; }
   return res;
 }
@@ -593,21 +603,25 @@ function buildAddForm(formType) {
       const status = form.querySelector('#add-form-status');
       if (!filename || !url) { setStatus(status, 'err', 'Fill in all fields.'); return; }
       setStatus(status, '', 'Saving…');
-      const res = await adminPost('save-image', {
-        game: activeGame.id, folder: activeFolder, filename, imageUrl: url,
-      });
-      if (!res) return;
-      if (res.ok) {
-        setStatus(status, 'ok', 'Saved!');
-        const d = gameData[activeGame.id];
-        const path = `_Resources/_imgSource/${activeFolder}/${filename}`;
-        if (!d.manifest.images[activeFolder]) d.manifest.images[activeFolder] = [];
-        d.manifest.images[activeFolder].push(path);
-        const grid = document.getElementById('image-grid');
-        if (grid) grid.appendChild(buildCard({ type: 'manifest', path, folder: activeFolder }));
-      } else {
-        const j = await res.json().catch(() => ({}));
-        setStatus(status, 'err', j.error || 'Error ' + res.status);
+      try {
+        const res = await adminPost('save-image', {
+          game: activeGame.id, folder: activeFolder, filename, imageUrl: url,
+        });
+        if (!res) return;
+        if (res.ok) {
+          setStatus(status, 'ok', 'Saved!');
+          const d = gameData[activeGame.id];
+          const path = `_Resources/_imgSource/${activeFolder}/${filename}`;
+          if (!d.manifest.images[activeFolder]) d.manifest.images[activeFolder] = [];
+          d.manifest.images[activeFolder].push(path);
+          const grid = document.getElementById('image-grid');
+          if (grid) grid.appendChild(buildCard({ type: 'manifest', path, folder: activeFolder }));
+        } else {
+          const j = await res.json().catch(() => ({}));
+          setStatus(status, 'err', j.error || 'Error ' + res.status);
+        }
+      } catch (err) {
+        setStatus(status, 'err', err.message || 'Network error');
       }
     });
   } else {
@@ -642,22 +656,26 @@ function buildAddForm(formType) {
       if (!name || !url) { setStatus(status, 'err', 'Name and URL are required.'); return; }
       const facts = factsRaw ? factsRaw.split('\n').map(s => s.trim()).filter(Boolean) : [];
       setStatus(status, '', 'Saving…');
-      const res = await adminPost('save-image', {
-        game: 'FamousPersonGame', folder: 'images', filename: nameToSlug(name) + '.jpg',
-        imageUrl: url,
-        personMeta: { name, years, emoji, tag, facts },
-      });
-      if (!res) return;
-      if (res.ok) {
-        const j = await res.json().catch(() => ({}));
-        setStatus(status, 'ok', 'Saved!');
-        const newPerson = { name, years, emoji, tag, img: j.localPath || url, facts };
-        gameData['FamousPersonGame'].fpgPeople.push(newPerson);
-        const grid = document.getElementById('image-grid');
-        if (grid) grid.appendChild(buildCard({ type: 'fpg', person: newPerson }));
-      } else {
-        const j = await res.json().catch(() => ({}));
-        setStatus(status, 'err', j.error || 'Error ' + res.status);
+      try {
+        const res = await adminPost('save-image', {
+          game: 'FamousPersonGame', folder: 'images', filename: nameToSlug(name) + '.jpg',
+          imageUrl: url,
+          personMeta: { name, years, emoji, tag, facts },
+        });
+        if (!res) return;
+        if (res.ok) {
+          const j = await res.json().catch(() => ({}));
+          setStatus(status, 'ok', 'Saved!');
+          const newPerson = { name, years, emoji, tag, img: j.localPath || url, facts };
+          gameData['FamousPersonGame'].fpgPeople.push(newPerson);
+          const grid = document.getElementById('image-grid');
+          if (grid) grid.appendChild(buildCard({ type: 'fpg', person: newPerson }));
+        } else {
+          const j = await res.json().catch(() => ({}));
+          setStatus(status, 'err', j.error || 'Error ' + res.status);
+        }
+      } catch (err) {
+        setStatus(status, 'err', err.message || 'Network error');
       }
     });
   }
@@ -853,18 +871,22 @@ dpSaveBtn.addEventListener('click', async () => {
     body = { game: detailContext.gameId, folder: detailContext.folder, filename, imageUrl: url };
   }
 
-  const res = await adminPost('save-image', body);
-  if (!res) return;
-  if (res.ok) {
-    const j = await res.json().catch(() => ({}));
-    setStatus(dpSaveStatus, 'ok', 'Saved!');
-    dpThumb.src = url;
-    if (detailContext.type === 'fpg' && j.localPath) {
-      detailContext.person.img = j.localPath;
+  try {
+    const res = await adminPost('save-image', body);
+    if (!res) return;
+    if (res.ok) {
+      const j = await res.json().catch(() => ({}));
+      setStatus(dpSaveStatus, 'ok', 'Saved!');
+      dpThumb.src = url;
+      if (detailContext.type === 'fpg' && j.localPath) {
+        detailContext.person.img = j.localPath;
+      }
+    } else {
+      const j = await res.json().catch(() => ({}));
+      setStatus(dpSaveStatus, 'err', j.error || 'Error ' + res.status);
     }
-  } else {
-    const j = await res.json().catch(() => ({}));
-    setStatus(dpSaveStatus, 'err', j.error || 'Error ' + res.status);
+  } catch (err) {
+    setStatus(dpSaveStatus, 'err', err.message || 'Network error');
   }
 });
 
@@ -937,25 +959,28 @@ dpRemoveBtn.addEventListener('click', async () => {
     body = { game: detailContext.gameId, folder: detailContext.folder, filename: detailContext.path.split('/').pop() };
   }
 
-  const res = await adminPost('remove-image', body);
-  if (!res) return;
-  if (res.ok) {
-    setStatus(dpRemoveStatus, 'ok', 'Removed.');
-    // Remove card from grid
-    const grid = document.getElementById('image-grid');
-    if (grid) {
-      const cards = grid.querySelectorAll('.img-card');
-      cards.forEach(card => {
-        const img = card.querySelector('img');
-        if (img && (img.src === dpThumb.src || img.alt === dpFilename.textContent)) {
-          card.remove();
-        }
-      });
+  try {
+    const res = await adminPost('remove-image', body);
+    if (!res) return;
+    if (res.ok) {
+      setStatus(dpRemoveStatus, 'ok', 'Removed.');
+      const grid = document.getElementById('image-grid');
+      if (grid) {
+        const cards = grid.querySelectorAll('.img-card');
+        cards.forEach(card => {
+          const img = card.querySelector('img');
+          if (img && (img.src === dpThumb.src || img.alt === dpFilename.textContent)) {
+            card.remove();
+          }
+        });
+      }
+      setTimeout(closeDetail, 800);
+    } else {
+      const j = await res.json().catch(() => ({}));
+      setStatus(dpRemoveStatus, 'err', j.error || 'Error ' + res.status);
     }
-    setTimeout(closeDetail, 800);
-  } else {
-    const j = await res.json().catch(() => ({}));
-    setStatus(dpRemoveStatus, 'err', j.error || 'Error ' + res.status);
+  } catch (err) {
+    setStatus(dpRemoveStatus, 'err', err.message || 'Network error');
   }
 });
 
