@@ -1173,7 +1173,7 @@ const PEOPLE = [
   },
   {
     name: 'Bruce Lee', years: '1940–1973', emoji: '🥋', tag: 'Athlete',
-    img: 'images/bruce-lee.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Bruce_Lee_as_Chen_Zhen_%284x5_cropped%29.jpg/600px-Bruce_Lee_as_Chen_Zhen_%284x5_cropped%29.jpg',
     facts: [
       'Pioneered mixed martial arts and broke cultural barriers for Asian actors in Hollywood.',
       'His philosophy and films turned kung fu into a global phenomenon.',
@@ -2698,30 +2698,42 @@ async function handlePhotoSearch(e) {
         img.style.display = '';
         $('photo-fallback').classList.add('hidden');
         img.src = photoUrl;
-        // Cache so this device remembers the photo on next load
+        // Cache locally so this device remembers on next load
         if (state.currentPerson) {
           localStorage.setItem('wikiPhoto:' + state.currentPerson.name, photoUrl);
         }
-        // Persist to repo for all devices via Cloudflare Worker → GitHub API
+        // Show confirm button — let staff verify the photo is correct before
+        // committing it permanently to the repo for all devices
+        status.innerHTML = '';
         if (state.currentPerson) {
-          status.textContent = 'Saving for everyone…';
-          fetch('/api/save-photo', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ personName: state.currentPerson.name, imageUrl: photoUrl }),
-          }).then(async r => {
-            if (r.ok) {
-              const data = await r.json();
-              state.currentPerson.img = data.localPath;
-              status.textContent = 'Saved for everyone!';
-            } else {
-              status.textContent = 'Found!';
-            }
-          }).catch(() => { status.textContent = 'Found!'; });
-        } else {
-          status.textContent = 'Found!';
+          const saveBtn = document.createElement('button');
+          saveBtn.textContent = 'Save for everyone ✓';
+          saveBtn.style.cssText = 'margin-top:6px;padding:5px 14px;background:#38a169;color:#fff;border:none;border-radius:7px;font-size:0.85rem;font-weight:700;cursor:pointer;';
+          saveBtn.onclick = () => {
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving…';
+            fetch('/api/save-photo', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ personName: state.currentPerson.name, imageUrl: photoUrl }),
+            }).then(async r => {
+              if (r.ok) {
+                const data = await r.json();
+                state.currentPerson.img = data.localPath;
+                status.textContent = 'Saved for everyone!';
+              } else {
+                status.textContent = 'Save failed — try again.';
+              }
+              setTimeout(hidePhotoSearch, 1500);
+            }).catch(() => {
+              status.textContent = 'Save failed — check connection.';
+              setTimeout(hidePhotoSearch, 1500);
+            });
+          };
+          status.appendChild(saveBtn);
         }
-        setTimeout(hidePhotoSearch, 2000);
+        btn.disabled    = false;
+        btn.textContent = 'Search';
       };
       testImg.onerror = () => {
         status.textContent = 'Image didn\'t load — try a different search.';
