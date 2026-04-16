@@ -34,8 +34,19 @@ body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-he
 /* ── App Shell ── */
 #app { padding: 1rem 1.5rem 2rem; }
 
+/* ── App Header ── */
+.app-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.btn-back {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 0.4rem 0.9rem; border-radius: 8px; border: 1px solid #444;
+  background: #1e1e1e; color: #aaa; text-decoration: none; font-size: 0.9rem;
+  white-space: nowrap; transition: background 0.15s;
+}
+.btn-back:hover { background: #2a2a2a; color: #fff; }
+.header-divider { width: 1px; height: 28px; background: #333; flex-shrink: 0; }
+
 /* ── Game Tabs ── */
-.game-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.game-tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .game-tab {
   padding: 0.45rem 1rem; border-radius: 8px; border: 1px solid #444;
   background: #1e1e1e; color: #aaa; cursor: pointer; font-size: 0.9rem;
@@ -208,7 +219,11 @@ body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-he
 
 <!-- App -->
 <div id="app">
-  <div class="game-tabs" id="game-tabs"></div>
+  <div class="app-header">
+    <a class="btn-back" href="../../">← Back</a>
+    <div class="header-divider"></div>
+    <div class="game-tabs" id="game-tabs"></div>
+  </div>
   <div id="main-content"><p class="loading">Loading…</p></div>
 </div>
 
@@ -591,6 +606,13 @@ function buildAddForm(formType) {
       <input type="text" name="filename" placeholder="bear.svg">
       <label>Image URL</label>
       <input type="url" name="url" placeholder="https://…">
+      <label>Search Wikimedia</label>
+      <div class="detail-row">
+        <input type="text" name="wiki-query" placeholder="Search query…">
+        <button class="btn-sm btn-gray form-wiki-btn">Search</button>
+        <button class="btn-sm btn-amber form-google-btn">Google ↗</button>
+      </div>
+      <div class="wiki-results form-wiki-results"></div>
       <div class="form-row">
         <button class="btn-submit">Add Image</button>
         <button class="btn-cancel-form">Cancel</button>
@@ -624,6 +646,14 @@ function buildAddForm(formType) {
         setStatus(status, 'err', err.message || 'Network error');
       }
     });
+    const urlInput = form.querySelector('[name=url]');
+    const wikiQueryInput = form.querySelector('[name=wiki-query]');
+    const wikiResults = form.querySelector('.form-wiki-results');
+    form.querySelector('.form-wiki-btn').addEventListener('click', () =>
+      runWikiSearch(wikiQueryInput.value.trim(), urlInput, wikiResults));
+    wikiQueryInput.addEventListener('keydown', e => { if (e.key === 'Enter') form.querySelector('.form-wiki-btn').click(); });
+    form.querySelector('.form-google-btn').addEventListener('click', () =>
+      window.open('https://www.google.com/search?q=' + encodeURIComponent(wikiQueryInput.value.trim()) + '&tbm=isch', '_blank'));
   } else {
     form.innerHTML = `
       <h3>Add Famous Person</h3>
@@ -639,6 +669,13 @@ function buildAddForm(formType) {
       <textarea name="facts" placeholder="Fact 1&#10;Fact 2"></textarea>
       <label>Image URL</label>
       <input type="url" name="url" placeholder="https://…">
+      <label>Search Wikimedia</label>
+      <div class="detail-row">
+        <input type="text" name="wiki-query" placeholder="Search query…">
+        <button class="btn-sm btn-gray form-wiki-btn">Search</button>
+        <button class="btn-sm btn-amber form-google-btn">Google ↗</button>
+      </div>
+      <div class="wiki-results form-wiki-results"></div>
       <div class="form-row">
         <button class="btn-submit">Add Person</button>
         <button class="btn-cancel-form">Cancel</button>
@@ -678,6 +715,14 @@ function buildAddForm(formType) {
         setStatus(status, 'err', err.message || 'Network error');
       }
     });
+    const urlInput = form.querySelector('[name=url]');
+    const wikiQueryInput = form.querySelector('[name=wiki-query]');
+    const wikiResults = form.querySelector('.form-wiki-results');
+    form.querySelector('.form-wiki-btn').addEventListener('click', () =>
+      runWikiSearch(wikiQueryInput.value.trim(), urlInput, wikiResults));
+    wikiQueryInput.addEventListener('keydown', e => { if (e.key === 'Enter') form.querySelector('.form-wiki-btn').click(); });
+    form.querySelector('.form-google-btn').addEventListener('click', () =>
+      window.open('https://www.google.com/search?q=' + encodeURIComponent(wikiQueryInput.value.trim()) + '&tbm=isch', '_blank'));
   }
 
   form.querySelector('.btn-cancel-form').addEventListener('click', () => {
@@ -690,6 +735,14 @@ function buildAddForm(formType) {
 function toggleAddForm(form, btn) {
   const isOpen = form.classList.toggle('open');
   btn.textContent = isOpen ? '✕ Cancel' : (activeGame.type === 'fpg' ? '+ Add Person' : '+ Add Image');
+  if (isOpen) {
+    const wq = form.querySelector('[name=wiki-query]');
+    if (wq && !wq.value) {
+      wq.value = activeGame.type === 'manifest'
+        ? activeFolder.replace(/^T_/, '').replace(/_/g, ' ')
+        : '';
+    }
+  }
 }
 
 // ─── Topic Actions ────────────────────────────────────────────────────────────
@@ -896,27 +949,19 @@ dpSaveBtn.addEventListener('click', async () => {
   }
 });
 
-// Wikimedia search
-dpWikiBtn.addEventListener('click', async () => {
-  const q = dpWikiInput.value.trim();
-  if (!q) return;
-  dpWikiResults.innerHTML = '<span style="font-size:.8rem;color:#64748b">Searching…</span>';
+// ─── Shared Wikimedia search ──────────────────────────────────────────────────
 
+async function runWikiSearch(query, urlInput, resultsEl, onSelect) {
+  if (!query) return;
+  resultsEl.innerHTML = '<span style="font-size:.8rem;color:#64748b">Searching…</span>';
   try {
-    const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&srnamespace=6&srlimit=6&format=json&origin=*`;
-    const searchRes = await fetch(searchUrl);
-    const searchData = await searchRes.json();
-    const hits = (searchData.query && searchData.query.search) || [];
-
-    if (!hits.length) { dpWikiResults.innerHTML = '<span style="font-size:.8rem;color:#64748b">No results.</span>'; return; }
-
+    const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srnamespace=6&srlimit=6&format=json&origin=*`;
+    const hits = ((await (await fetch(searchUrl)).json()).query || {}).search || [];
+    if (!hits.length) { resultsEl.innerHTML = '<span style="font-size:.8rem;color:#64748b">No results.</span>'; return; }
     const titles = hits.slice(0, 6).map(h => h.title).join('|');
     const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(titles)}&prop=imageinfo&iiprop=url&iiurlwidth=400&format=json&origin=*`;
-    const infoRes = await fetch(infoUrl);
-    const infoData = await infoRes.json();
-    const pages = Object.values((infoData.query && infoData.query.pages) || {});
-
-    dpWikiResults.innerHTML = '';
+    const pages = Object.values(((await (await fetch(infoUrl)).json()).query || {}).pages || {});
+    resultsEl.innerHTML = '';
     let count = 0;
     pages.forEach(page => {
       if (count >= 3) return;
@@ -932,19 +977,17 @@ dpWikiBtn.addEventListener('click', async () => {
       lbl.textContent = page.title.replace('File:', '');
       card.appendChild(img);
       card.appendChild(lbl);
-      const fullUrl = ii.url;
-      card.addEventListener('click', () => {
-        dpUrlInput.value = fullUrl;
-        dpSaveBtn.click();
-      });
-      dpWikiResults.appendChild(card);
+      card.addEventListener('click', () => { urlInput.value = ii.url; if (onSelect) onSelect(); });
+      resultsEl.appendChild(card);
     });
-
-    if (!count) dpWikiResults.innerHTML = '<span style="font-size:.8rem;color:#64748b">No images found.</span>';
+    if (!count) resultsEl.innerHTML = '<span style="font-size:.8rem;color:#64748b">No images found.</span>';
   } catch (e) {
-    dpWikiResults.innerHTML = '<span style="font-size:.8rem;color:#f87171">Search failed.</span>';
+    resultsEl.innerHTML = '<span style="font-size:.8rem;color:#f87171">Search failed.</span>';
   }
-});
+}
+
+dpWikiBtn.addEventListener('click', () =>
+  runWikiSearch(dpWikiInput.value.trim(), dpUrlInput, dpWikiResults, () => dpSaveBtn.click()));
 
 // Google image search
 dpGoogleBtn.addEventListener('click', () => {
