@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-15T23:57:28.549Z",
+  "generated": "2026-04-16T01:02:41.034Z",
   "folders": [
     "T_animals",
     "T_buildings",
@@ -84,7 +84,22 @@
       "T_household_items/shower.svg",
       "T_household_items/sofa.svg"
     ],
-    "T_pbs_characters": [],
+    "T_pbs_characters": [
+      "T_pbs_characters/pbs1.png",
+      "T_pbs_characters/pbs10.png",
+      "T_pbs_characters/pbs11.png",
+      "T_pbs_characters/pbs12.png",
+      "T_pbs_characters/pbs13.png",
+      "T_pbs_characters/pbs14.png",
+      "T_pbs_characters/pbs2.png",
+      "T_pbs_characters/pbs3.png",
+      "T_pbs_characters/pbs4.png",
+      "T_pbs_characters/pbs5.png",
+      "T_pbs_characters/pbs6.png",
+      "T_pbs_characters/pbs7.png",
+      "T_pbs_characters/pbs8.png",
+      "T_pbs_characters/pbs9.png"
+    ],
     "T_shapes": [
       "T_shapes/circle.svg",
       "T_shapes/diamond.svg",
