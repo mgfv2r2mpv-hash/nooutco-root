@@ -706,7 +706,8 @@ function printData() {
 
     const tr = document.createElement('tr');
     const prev = state.sessionData[i - 1];
-    if (prev && d.settingsKey !== prev.settingsKey) tr.classList.add('settings-changed');
+    const settingsChanged = prev && d.settingsKey !== prev.settingsKey;
+    if (settingsChanged) tr.classList.add('settings-changed');
     tr.innerHTML =
       `<td>${d.trial}</td>` +
       `<td>${d.topic}</td>` +
@@ -717,6 +718,9 @@ function printData() {
       `<td>${d.promptDelaySecs != null ? d.promptDelaySecs : '-'}</td>` +
       `<td>${d.time}</td>` +
       `<td class="${outcomeCls}">${d.outcome}</td>`;
+    if (settingsChanged) {
+      for (const td of tr.querySelectorAll('td')) td.style.background = '#e8e8e8';
+    }
     el.resultsBody.appendChild(tr);
   });
 
