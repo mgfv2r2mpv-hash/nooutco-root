@@ -11,9 +11,9 @@ body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-he
 /* ── Password Gate ── */
 #gate {
   position: fixed; inset: 0; z-index: 1000;
-  background: #111; display: flex; align-items: center; justify-content: center;
+  background: #111; display: none; align-items: center; justify-content: center;
 }
-#gate.hidden { display: none; }
+#gate.visible { display: flex; }
 .gate-box {
   background: #1e1e1e; border: 1px solid #333; border-radius: 12px;
   padding: 2rem; width: 320px; text-align: center;
@@ -273,15 +273,15 @@ const gateBtn = document.getElementById('gate-btn');
 const gateError = document.getElementById('gate-error');
 
 function showGate(msg) {
-  gate.classList.remove('hidden');
+  gate.classList.add('visible');
   gateError.textContent = msg || '';
   gateInput.value = '';
   setTimeout(() => gateInput.focus(), 50);
 }
 
-function hideGate() { gate.classList.add('hidden'); }
+function hideGate() { gate.classList.remove('visible'); }
 
-if (token) hideGate(); else showGate();
+if (token) initApp(); else showGate();
 
 gateInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
 gateBtn.addEventListener('click', tryUnlock);
@@ -607,7 +607,7 @@ function buildAddForm(formType) {
         const res = await adminPost('save-image', {
           game: activeGame.id, folder: activeFolder, filename, imageUrl: url,
         });
-        if (!res) return;
+        if (!res) { setStatus(status, '', ''); return; }
         if (res.ok) {
           setStatus(status, 'ok', 'Saved!');
           const d = gameData[activeGame.id];
@@ -662,7 +662,7 @@ function buildAddForm(formType) {
           imageUrl: url,
           personMeta: { name, years, emoji, tag, facts },
         });
-        if (!res) return;
+        if (!res) { setStatus(status, '', ''); return; }
         if (res.ok) {
           const j = await res.json().catch(() => ({}));
           setStatus(status, 'ok', 'Saved!');
@@ -784,24 +784,28 @@ function showNewTopicModal() {
     if (!name || !filename || !url) { setStatus(status, 'err', 'All fields required.'); return; }
     const folder = 'T_' + name;
     setStatus(status, '', 'Creating…');
-    const res = await adminPost('save-image', {
-      game: activeGame.id, folder, filename, imageUrl: url,
-    });
-    if (!res) return;
-    if (res.ok) {
-      const m = gameData[activeGame.id].manifest;
-      if (!m.folders.includes(folder)) m.folders.push(folder);
-      if (!m.images) m.images = {};
-      if (!m.images[folder]) m.images[folder] = [];
-      const path = `_Resources/_imgSource/${folder}/${filename}`;
-      m.images[folder].push(path);
-      activeFolder = folder;
-      overlay.remove();
-      renderFolderBar();
-      renderContent();
-    } else {
-      const j = await res.json().catch(() => ({}));
-      setStatus(status, 'err', j.error || 'Error ' + res.status);
+    try {
+      const res = await adminPost('save-image', {
+        game: activeGame.id, folder, filename, imageUrl: url,
+      });
+      if (!res) { setStatus(status, '', ''); return; }
+      if (res.ok) {
+        const m = gameData[activeGame.id].manifest;
+        if (!m.folders.includes(folder)) m.folders.push(folder);
+        if (!m.images) m.images = {};
+        if (!m.images[folder]) m.images[folder] = [];
+        const path = `_Resources/_imgSource/${folder}/${filename}`;
+        m.images[folder].push(path);
+        activeFolder = folder;
+        overlay.remove();
+        renderFolderBar();
+        renderContent();
+      } else {
+        const j = await res.json().catch(() => ({}));
+        setStatus(status, 'err', j.error || 'Error ' + res.status);
+      }
+    } catch (err) {
+      setStatus(status, 'err', err.message || 'Network error');
     }
   });
 }
@@ -873,7 +877,7 @@ dpSaveBtn.addEventListener('click', async () => {
 
   try {
     const res = await adminPost('save-image', body);
-    if (!res) return;
+    if (!res) { setStatus(dpSaveStatus, '', ''); return; }
     if (res.ok) {
       const j = await res.json().catch(() => ({}));
       setStatus(dpSaveStatus, 'ok', 'Saved!');
@@ -961,7 +965,7 @@ dpRemoveBtn.addEventListener('click', async () => {
 
   try {
     const res = await adminPost('remove-image', body);
-    if (!res) return;
+    if (!res) { setStatus(dpRemoveStatus, '', ''); return; }
     if (res.ok) {
       setStatus(dpRemoveStatus, 'ok', 'Removed.');
       const grid = document.getElementById('image-grid');
@@ -996,8 +1000,6 @@ function nameToSlug(name) {
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
-
-if (token) initApp();
 </script>
 </body>
 </html>
