@@ -120,11 +120,6 @@ body {
   padding-top: 40px;
 }
 
-.start-emoji {
-  font-size: 80px;
-  line-height: 1;
-}
-
 .start-content h1 {
   font-size: 38px;
   font-weight: 900;
@@ -133,10 +128,18 @@ body {
   line-height: 1.1;
 }
 
-.start-content p {
-  font-size: 20px;
-  color: #666;
-  line-height: 1.4;
+.start-instructions {
+  text-align: left;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.start-instructions li {
+  font-size: 16px;
+  color: #444;
+  line-height: 1.45;
 }
 
 /* ─── Session Screen ───────────────────────────────────────── */
@@ -691,9 +694,14 @@ body {
 
   <div id="screen-start" class="screen active">
     <div class="start-content">
-      <div class="start-emoji">🎭</div>
       <h1>Famous Person Game</h1>
-      <p>Let's have a conversation!</p>
+      <ol class="start-instructions">
+        <li>Press <strong>Let's Play</strong> to load a famous person.</li>
+        <li>Show the client the photo and read the name and facts aloud.</li>
+        <li>Ask the client to tell you something about this person.</li>
+        <li>Use the grid to mark each comment and volley, then record your prompt level.</li>
+        <li>Press <strong>New Person</strong> to move to the next card.</li>
+      </ol>
       <button id="btn-start" class="btn-primary btn-large">Let's Play</button>
     </div>
   </div>
@@ -2015,7 +2023,7 @@ const PEOPLE = [
   },
   {
     name: 'Georgia O\'Keeffe', years: '1887–1986', emoji: '🌸', tag: 'Artist',
-    img: 'images/georgia-o'keeffe.jpg',
+    img: 'images/georgia-okeeffe.jpg',
     facts: [
       'Known as the "Mother of American Modernism," she painted giant close-ups of flowers that made viewers see them in a completely new way.',
       'She moved to the New Mexico desert at age 62 and painted there until she was 98, inspired by the vast landscape.',
@@ -2367,7 +2375,7 @@ const PEOPLE = [
   },
   {
     name: 'Lupita Nyong\'o', years: '1983–', emoji: '🎬', tag: 'Actor',
-    img: 'images/lupita-nyong'o.jpg',
+    img: 'images/lupita-nyongo.jpg',
     facts: [
       'She won the Oscar for Best Supporting Actress for "12 Years a Slave" in her feature film debut.',
       'Born in Mexico to Kenyan parents and raised in Kenya, she studied at Yale School of Drama before making her mark in Hollywood.',
