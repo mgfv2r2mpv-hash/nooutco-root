@@ -72,30 +72,57 @@ function inferExt(imgUrl) {
 
 /**
  * Download imgUrl to dest using curl (bypasses Node.js TLS fingerprint detection).
- * -s  silent, -L  follow redirects, -f  fail on 4xx/5xx (non-zero exit)
+ * -s  silent, -L  follow redirects
+ * -w  write HTTP status code on its own line at end of stdout
+ * Sec-Fetch-* headers make the request look like a real browser image load.
  */
 function download(imgUrl, dest) {
   return new Promise((resolve, reject) => {
-    execFile(
-      'curl',
-      [
-        '-s', '-L', '-f',
-        '-o', dest,
-        '-A', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        '--retry', '2',
-        '--retry-delay', '3',
-        imgUrl,
-      ],
-      { timeout: 60000 },
-      (err) => {
-        if (err) {
-          try { fs.unlinkSync(dest); } catch {}
-          reject(new Error(err.message.trim().split('\n')[0]));
-        } else {
-          resolve();
-        }
+    let stdout = '';
+    const args = [
+      '-s', '-L',
+      '-o', dest,
+      '-w', '\n%{http_code}',
+      '-A', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      '-H', 'Accept: image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+      '-H', 'Accept-Language: en-US,en;q=0.9',
+      '-H', 'Accept-Encoding: gzip, deflate, br',
+      '-H', 'Referer: https://en.wikipedia.org/',
+      '-H', 'Sec-Fetch-Dest: image',
+      '-H', 'Sec-Fetch-Mode: no-cors',
+      '-H', 'Sec-Fetch-Site: cross-site',
+      '--retry', '2',
+      '--retry-delay', '5',
+      '--max-time', '30',
+      imgUrl,
+    ];
+
+    const proc = execFile('curl', args, { timeout: 60000, encoding: 'buffer' }, (err, stdoutBuf) => {
+      stdout = stdoutBuf ? stdoutBuf.toString('utf8') : '';
+      const lines = stdout.trimEnd().split('\n');
+      const httpCode = lines[lines.length - 1].trim();
+
+      if (httpCode !== '200') {
+        try { fs.unlinkSync(dest); } catch {}
+        reject(new Error(`HTTP ${httpCode || (err && err.code) || 'unknown'}`));
+        return;
       }
-    );
+
+      // Verify file was actually written
+      try {
+        const stat = fs.statSync(dest);
+        if (stat.size === 0) {
+          fs.unlinkSync(dest);
+          reject(new Error('Empty file'));
+          return;
+        }
+      } catch {
+        reject(new Error('File not written'));
+        return;
+      }
+
+      resolve();
+    });
   });
 }
 
@@ -125,8 +152,8 @@ async function main() {
       await download(imgUrl, dest);
       process.stdout.write('ok\n');
       map.push({ name, oldUrl: imgUrl, newPath });
-      // Brief pause to be polite to Wikimedia's servers
-      await new Promise(r => setTimeout(r, 150));
+      // Polite delay — Wikimedia rate-limits aggressive scrapers
+      await new Promise(r => setTimeout(r, 2000));
     } catch (err) {
       // Clean up partial file
       try { fs.unlinkSync(dest); } catch {}

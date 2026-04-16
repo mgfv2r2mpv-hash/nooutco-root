@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-15T18:31:46.553Z",
+  "generated": "2026-04-16T01:02:41.034Z",
   "folders": [
     "T_animals",
     "T_buildings",
@@ -24,13 +24,105 @@
       "T_animals/lion.svg",
       "T_animals/rabbit.svg"
     ],
-    "T_buildings": [],
-    "T_colors": [],
-    "T_community_helpers": [],
-    "T_foods": [],
-    "T_household_items": [],
-    "T_pbs_characters": [],
-    "T_shapes": [],
-    "T_toys": []
+    "T_buildings": [
+      "T_buildings/apartment.svg",
+      "T_buildings/bank.svg",
+      "T_buildings/castle.svg",
+      "T_buildings/church.svg",
+      "T_buildings/factory.svg",
+      "T_buildings/hospital.svg",
+      "T_buildings/house.svg",
+      "T_buildings/library.svg",
+      "T_buildings/school.svg",
+      "T_buildings/store.svg"
+    ],
+    "T_colors": [
+      "T_colors/black.svg",
+      "T_colors/blue.svg",
+      "T_colors/brown.svg",
+      "T_colors/green.svg",
+      "T_colors/orange.svg",
+      "T_colors/pink.svg",
+      "T_colors/purple.svg",
+      "T_colors/red.svg",
+      "T_colors/white.svg",
+      "T_colors/yellow.svg"
+    ],
+    "T_community_helpers": [
+      "T_community_helpers/chef.svg",
+      "T_community_helpers/construction.svg",
+      "T_community_helpers/doctor.svg",
+      "T_community_helpers/farmer.svg",
+      "T_community_helpers/firefighter.svg",
+      "T_community_helpers/mail-carrier.svg",
+      "T_community_helpers/nurse.svg",
+      "T_community_helpers/police.svg",
+      "T_community_helpers/scientist.svg",
+      "T_community_helpers/teacher.svg"
+    ],
+    "T_foods": [
+      "T_foods/apple.svg",
+      "T_foods/banana.svg",
+      "T_foods/broccoli.svg",
+      "T_foods/burger.svg",
+      "T_foods/corn.svg",
+      "T_foods/donut.svg",
+      "T_foods/egg.svg",
+      "T_foods/orange.svg",
+      "T_foods/pizza.svg",
+      "T_foods/strawberry.svg"
+    ],
+    "T_household_items": [
+      "T_household_items/bed.svg",
+      "T_household_items/books.svg",
+      "T_household_items/broom.svg",
+      "T_household_items/chair.svg",
+      "T_household_items/clock.svg",
+      "T_household_items/lamp.svg",
+      "T_household_items/mirror.svg",
+      "T_household_items/mug.svg",
+      "T_household_items/shower.svg",
+      "T_household_items/sofa.svg"
+    ],
+    "T_pbs_characters": [
+      "T_pbs_characters/pbs1.png",
+      "T_pbs_characters/pbs10.png",
+      "T_pbs_characters/pbs11.png",
+      "T_pbs_characters/pbs12.png",
+      "T_pbs_characters/pbs13.png",
+      "T_pbs_characters/pbs14.png",
+      "T_pbs_characters/pbs2.png",
+      "T_pbs_characters/pbs3.png",
+      "T_pbs_characters/pbs4.png",
+      "T_pbs_characters/pbs5.png",
+      "T_pbs_characters/pbs6.png",
+      "T_pbs_characters/pbs7.png",
+      "T_pbs_characters/pbs8.png",
+      "T_pbs_characters/pbs9.png"
+    ],
+    "T_shapes": [
+      "T_shapes/circle.svg",
+      "T_shapes/diamond.svg",
+      "T_shapes/heart.svg",
+      "T_shapes/hexagon.svg",
+      "T_shapes/oval.svg",
+      "T_shapes/pentagon.svg",
+      "T_shapes/rectangle.svg",
+      "T_shapes/square.svg",
+      "T_shapes/star.svg",
+      "T_shapes/triangle.svg"
+    ],
+    "T_toys": [
+      "T_toys/balloon.svg",
+      "T_toys/blocks.svg",
+      "T_toys/kite.svg",
+      "T_toys/puzzle.svg",
+      "T_toys/robot.svg",
+      "T_toys/soccer-ball.svg",
+      "T_toys/teddy-bear.svg",
+      "T_toys/toy-car.svg",
+      "T_toys/train.svg",
+      "T_toys/yoyo.svg"
+    ]
   }
 }
