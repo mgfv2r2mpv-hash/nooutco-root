@@ -687,7 +687,11 @@ function printData() {
       `<td>${d.time}</td>` +
       `<td class="${outcomeCls}">${d.outcome}</td>`;
     if (settingsChanged) {
-      for (const td of tr.querySelectorAll('td')) td.style.background = '#e8e8e8';
+      for (const td of tr.querySelectorAll('td')) {
+        td.style.background = '#d9d9d9';
+        td.style.webkitPrintColorAdjust = 'exact';
+        td.style.printColorAdjust = 'exact';
+      }
     }
     el.resultsBody.appendChild(tr);
   });
