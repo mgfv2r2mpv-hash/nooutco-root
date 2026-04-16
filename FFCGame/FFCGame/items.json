@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-16T23:01:06.216Z",
+  "generated": "2026-04-16T23:01:41.480Z",
   "vocab": {
     "groups": [
       "school_supplies",
@@ -141,7 +141,8 @@
       "label": "Eraser",
       "groups": [
         "school_supplies",
-        "writing_supplies"
+        "writing_supplies",
+        "household_items"
       ],
       "features": [
         "pink",
@@ -155,7 +156,8 @@
       "classes": [
         "stationery",
         "school_supply",
-        "tool"
+        "tool",
+        "writing_implement"
       ]
     },
     {
