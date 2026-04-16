@@ -2612,6 +2612,17 @@ function showScreen(name) {
 // Called from img onerror attribute in HTML
 function handleImgError(img) {
   img.onerror = null;
+
+  // If we had a cached URL and it just failed, evict it then retry the built-in URL
+  if (state.currentPerson) {
+    const key = 'wikiPhoto:' + state.currentPerson.name;
+    if (img.src !== state.currentPerson.img && localStorage.getItem(key)) {
+      localStorage.removeItem(key);
+      img.src = state.currentPerson.img;
+      return; // wait for the retry; if that also fails we'll be called again
+    }
+  }
+
   img.style.display = 'none';
 
   const fallback = $('photo-fallback');
@@ -2689,6 +2700,10 @@ async function handlePhotoSearch(e) {
         img.src = photoUrl;
         status.textContent = 'Found!';
         setTimeout(hidePhotoSearch, 800);
+        // Cache so this device remembers the photo on next load
+        if (state.currentPerson) {
+          localStorage.setItem('wikiPhoto:' + state.currentPerson.name, photoUrl);
+        }
       };
       testImg.onerror = () => {
         status.textContent = 'Image didn\'t load — try a different search.';
@@ -2729,7 +2744,9 @@ function renderPerson(person) {
   $('photo-fallback').classList.add('hidden');
   hidePhotoSearch();
   img.alt = person.name;
-  img.src = person.img;
+  // Use a previously-found Wikipedia photo if we have one cached
+  const cachedPhoto = localStorage.getItem('wikiPhoto:' + person.name);
+  img.src = cachedPhoto || person.img;
 
   // MtL: auto-show prescribed prompt for first context cell
   if (state.promptMethod === 'mtl') autoShowForContext();
