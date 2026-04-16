@@ -110,7 +110,7 @@
   "items": [
     {
       "id": "pencil",
-      "img": "pencil.svg",
+      "img": "pencil.jpg",
       "label": "Pencil",
       "groups": [
         "school_supplies",
@@ -137,7 +137,7 @@
     },
     {
       "id": "eraser",
-      "img": "eraser.svg",
+      "img": "eraser.jpg",
       "label": "Eraser",
       "groups": [
         "school_supplies",
@@ -162,7 +162,7 @@
     },
     {
       "id": "notebook",
-      "img": "notebook.svg",
+      "img": "notebook.jpg",
       "label": "Notebook",
       "groups": [
         "school_supplies",
@@ -182,7 +182,7 @@
     },
     {
       "id": "ruler",
-      "img": "ruler.svg",
+      "img": "ruler.jpg",
       "label": "Ruler",
       "groups": [
         "school_supplies",
@@ -202,7 +202,7 @@
     },
     {
       "id": "scissors",
-      "img": "scissors.svg",
+      "img": "scissors.jpg",
       "label": "Scissors",
       "groups": [
         "school_supplies"
@@ -221,7 +221,7 @@
     },
     {
       "id": "backpack",
-      "img": "backpack.svg",
+      "img": "backpack.jpg",
       "label": "Backpack",
       "groups": [
         "school_supplies"
@@ -240,7 +240,7 @@
     },
     {
       "id": "car",
-      "img": "car.svg",
+      "img": "car.jpg",
       "label": "Car",
       "groups": [
         "vehicles"
@@ -259,7 +259,7 @@
     },
     {
       "id": "bus",
-      "img": "bus.svg",
+      "img": "bus.jpg",
       "label": "Bus",
       "groups": [
         "vehicles"
@@ -278,7 +278,7 @@
     },
     {
       "id": "bicycle",
-      "img": "bicycle.svg",
+      "img": "bicycle.jpg",
       "label": "Bicycle",
       "groups": [
         "vehicles"
@@ -295,7 +295,7 @@
     },
     {
       "id": "chair",
-      "img": "chair.svg",
+      "img": "chair.jpg",
       "label": "Chair",
       "groups": [
         "household_items"

@@ -504,7 +504,7 @@ function renderTrial() {
     const front = document.createElement('div');
     front.className = 'tile-face tile-front';
     const img = document.createElement('img');
-    img.src = `_Resources/_imgSource/items/${item.img}`;
+    img.src = `../../_Resources/_imgSource/items/${item.img}`;
     img.alt = item.label;
     front.appendChild(img);
 

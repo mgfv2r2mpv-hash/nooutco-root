@@ -403,7 +403,7 @@ function renderGrid() {
     card.className = 'img-card';
 
     const img = document.createElement('img');
-    img.src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + item.img;
+    img.src = '../../_Resources/_imgSource/items/' + item.img;
     img.alt = item.label;
     img.onerror = () => { img.style.opacity = '.3'; };
 
@@ -426,7 +426,7 @@ function openDetail(item) {
   detailItem = item;
   document.getElementById('dp-title').textContent = item.label;
   document.getElementById('dp-sub').textContent   = 'id: ' + item.id;
-  document.getElementById('dp-thumb').src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + item.img;
+  document.getElementById('dp-thumb').src = '../../_Resources/_imgSource/items/' + item.img;
   document.getElementById('dp-label-input').value = item.label;
   document.getElementById('dp-url-input').value   = '';
   document.getElementById('dp-wiki-input').value  = item.label;
@@ -569,10 +569,15 @@ function bindEvents() {
       const res = await adminPost('ffc-save-image', { id: detailItem.id, filename: detailItem.img, imageUrl: url });
       if (!res) { setStatus(status, '', ''); return; }
       if (res.ok) {
+        const j = await res.json().catch(() => ({}));
+        if (j.localPath) detailItem.img = j.localPath.split('/').pop();
+        const saveRes = await adminPost('ffc-save-items', { items: ffcData });
+        if (!saveRes || !saveRes.ok) { setStatus(status, 'err', 'Image saved but record update failed'); return; }
         setStatus(status, 'ok', 'Saved!');
-        document.getElementById('dp-thumb').src = url;
+        const localSrc = '../../_Resources/_imgSource/items/' + detailItem.img;
+        document.getElementById('dp-thumb').src = localSrc;
         const gridImg = document.querySelector(`#image-grid .img-card img[alt="${detailItem.label}"]`);
-        if (gridImg) gridImg.src = url;
+        if (gridImg) gridImg.src = localSrc;
       } else {
         const j = await res.json().catch(() => ({}));
         setStatus(status, 'err', j.error || 'Error ' + res.status);
@@ -729,8 +734,10 @@ function bindEvents() {
         setStatus(status, 'err', j.error || 'Image error');
         return;
       }
+      const imgJ = await imgRes.json().catch(() => ({}));
+      const actualFilename = imgJ.localPath ? imgJ.localPath.split('/').pop() : filename;
       setStatus(status, '', 'Saving record…');
-      const newItem = { id: itemId, img: filename, label, groups: [], features: [], functions: [], classes: [] };
+      const newItem = { id: itemId, img: actualFilename, label, groups: [], features: [], functions: [], classes: [] };
       ffcData.items.push(newItem);
       const res = await adminPost('ffc-save-items', { items: ffcData });
       if (!res) { setStatus(status, '', ''); return; }
