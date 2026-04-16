@@ -481,7 +481,8 @@ function renderTrial() {
   requestAnimationFrame(fitSampleWord);
 
   const cols = gridCols(state.arraySize);
-  el.compGrid.style.setProperty('--grid-cols', cols);
+  const tileSz = getComputedStyle(document.documentElement).getPropertyValue('--tile-sz').trim() || '160px';
+  el.compGrid.style.gridTemplateColumns = `repeat(${cols}, ${tileSz})`;
   el.compGrid.innerHTML = '';
 
   state.tileImages.forEach((src, idx) => {
