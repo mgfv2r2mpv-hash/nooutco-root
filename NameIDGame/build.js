@@ -38,20 +38,37 @@ if (!fs.existsSync(GAME_PATH) || !fs.statSync(GAME_PATH).isDirectory()) {
   process.exit(1);
 }
 
-// ── Find all T_* directories inside the game folder ──────────────────────────
+// ── Find all T_* directories inside _Resources/_imgSource ────────────────────
 
-const folders = fs.readdirSync(GAME_PATH)
+const IMG_SOURCE = path.join(GAME_PATH, '_Resources', '_imgSource');
+
+const folders = fs.readdirSync(IMG_SOURCE)
   .filter(name => /^T_[^.]+$/.test(name))
-  .filter(name => fs.statSync(path.join(GAME_PATH, name)).isDirectory())
+  .filter(name => fs.statSync(path.join(IMG_SOURCE, name)).isDirectory())
+  .sort();
+
+// ── Collect archived (_a_*) folders ──────────────────────────────────────────
+
+const archivedFolders = fs.readdirSync(IMG_SOURCE)
+  .filter(name => /^_a_T_[^.]+$/.test(name))
+  .filter(name => fs.statSync(path.join(IMG_SOURCE, name)).isDirectory())
   .sort();
 
 // ── Collect image files per folder ───────────────────────────────────────────
 
 const images = {};
 for (const folder of folders) {
-  images[folder] = fs.readdirSync(path.join(GAME_PATH, folder))
+  images[folder] = fs.readdirSync(path.join(IMG_SOURCE, folder))
     .filter(f => IMAGE_EXT.test(f) && !f.startsWith('.'))
-    .map(f => `${folder}/${f}`)
+    .map(f => `_Resources/_imgSource/${folder}/${f}`)
+    .sort();
+}
+
+const archived = {};
+for (const folder of archivedFolders) {
+  archived[folder] = fs.readdirSync(path.join(IMG_SOURCE, folder))
+    .filter(f => IMAGE_EXT.test(f) && !f.startsWith('.'))
+    .map(f => `_Resources/_imgSource/${folder}/${f}`)
     .sort();
 }
 
@@ -61,6 +78,7 @@ const manifest = {
   generated: new Date().toISOString(),
   folders,
   images,
+  archived,
 };
 
 const outPath = path.join(GAME_PATH, 'manifest.json');
@@ -74,3 +92,9 @@ console.log(`  ${folders.length} topic folder(s), ${totalImages} total image(s)\
 folders.forEach(f =>
   console.log(`  ${f.padEnd(28)} ${images[f].length} image(s)`)
 );
+if (archivedFolders.length) {
+  console.log(`\n  ${archivedFolders.length} archived folder(s)`);
+  archivedFolders.forEach(f =>
+    console.log(`  ${f.padEnd(28)} ${archived[f].length} image(s)`)
+  );
+}
