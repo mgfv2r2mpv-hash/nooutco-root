@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Famous Person Game</title>
+  <meta name="version" content="1.0">
+  <title>Famous Person Game v1.0</title>
   <style>
 /* ─── Reset & Base ─────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -2556,6 +2557,8 @@ const PARTIAL_CLOSING_PROMPTS = [
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
+let _hideSearchTimer = null;
+
 const state = {
   screen: 'start',
   currentPerson: null,
@@ -2724,10 +2727,10 @@ async function handlePhotoSearch(e) {
               } else {
                 status.textContent = 'Save failed — try again.';
               }
-              setTimeout(hidePhotoSearch, 1500);
+              _hideSearchTimer = setTimeout(hidePhotoSearch, 1500);
             }).catch(() => {
               status.textContent = 'Save failed — check connection.';
-              setTimeout(hidePhotoSearch, 1500);
+              _hideSearchTimer = setTimeout(hidePhotoSearch, 1500);
             });
           };
           status.appendChild(saveBtn);
@@ -2772,6 +2775,8 @@ function renderPerson(person) {
   img.style.display = '';
   img.onerror = function() { handleImgError(this); };
   $('photo-fallback').classList.add('hidden');
+  clearTimeout(_hideSearchTimer);
+  _hideSearchTimer = null;
   hidePhotoSearch();
   img.alt = person.name;
   // Use a previously-found Wikipedia photo if we have one cached
