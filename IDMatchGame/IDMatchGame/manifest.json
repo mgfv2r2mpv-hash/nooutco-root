@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-16T01:02:41.034Z",
+  "generated": "2026-04-16T03:11:19.151Z",
   "folders": [
     "T_animals",
     "T_buildings",
@@ -7,9 +7,12 @@
     "T_community_helpers",
     "T_foods",
     "T_household_items",
+    "T_lowercase",
+    "T_numbers",
     "T_pbs_characters",
     "T_shapes",
-    "T_toys"
+    "T_toys",
+    "T_uppercase"
   ],
   "images": {
     "T_animals": [
@@ -84,6 +87,56 @@
       "T_household_items/shower.svg",
       "T_household_items/sofa.svg"
     ],
+    "T_lowercase": [
+      "T_lowercase/a.svg",
+      "T_lowercase/b.svg",
+      "T_lowercase/c.svg",
+      "T_lowercase/d.svg",
+      "T_lowercase/e.svg",
+      "T_lowercase/f.svg",
+      "T_lowercase/g.svg",
+      "T_lowercase/h.svg",
+      "T_lowercase/i.svg",
+      "T_lowercase/j.svg",
+      "T_lowercase/k.svg",
+      "T_lowercase/l.svg",
+      "T_lowercase/m.svg",
+      "T_lowercase/n.svg",
+      "T_lowercase/o.svg",
+      "T_lowercase/p.svg",
+      "T_lowercase/q.svg",
+      "T_lowercase/r.svg",
+      "T_lowercase/s.svg",
+      "T_lowercase/t.svg",
+      "T_lowercase/u.svg",
+      "T_lowercase/v.svg",
+      "T_lowercase/w.svg",
+      "T_lowercase/x.svg",
+      "T_lowercase/y.svg",
+      "T_lowercase/z.svg"
+    ],
+    "T_numbers": [
+      "T_numbers/1.svg",
+      "T_numbers/10.svg",
+      "T_numbers/11.svg",
+      "T_numbers/12.svg",
+      "T_numbers/13.svg",
+      "T_numbers/14.svg",
+      "T_numbers/15.svg",
+      "T_numbers/16.svg",
+      "T_numbers/17.svg",
+      "T_numbers/18.svg",
+      "T_numbers/19.svg",
+      "T_numbers/2.svg",
+      "T_numbers/20.svg",
+      "T_numbers/3.svg",
+      "T_numbers/4.svg",
+      "T_numbers/5.svg",
+      "T_numbers/6.svg",
+      "T_numbers/7.svg",
+      "T_numbers/8.svg",
+      "T_numbers/9.svg"
+    ],
     "T_pbs_characters": [
       "T_pbs_characters/pbs1.png",
       "T_pbs_characters/pbs10.png",
@@ -123,6 +176,34 @@
       "T_toys/toy-car.svg",
       "T_toys/train.svg",
       "T_toys/yoyo.svg"
+    ],
+    "T_uppercase": [
+      "T_uppercase/A.svg",
+      "T_uppercase/B.svg",
+      "T_uppercase/C.svg",
+      "T_uppercase/D.svg",
+      "T_uppercase/E.svg",
+      "T_uppercase/F.svg",
+      "T_uppercase/G.svg",
+      "T_uppercase/H.svg",
+      "T_uppercase/I.svg",
+      "T_uppercase/J.svg",
+      "T_uppercase/K.svg",
+      "T_uppercase/L.svg",
+      "T_uppercase/M.svg",
+      "T_uppercase/N.svg",
+      "T_uppercase/O.svg",
+      "T_uppercase/P.svg",
+      "T_uppercase/Q.svg",
+      "T_uppercase/R.svg",
+      "T_uppercase/S.svg",
+      "T_uppercase/T.svg",
+      "T_uppercase/U.svg",
+      "T_uppercase/V.svg",
+      "T_uppercase/W.svg",
+      "T_uppercase/X.svg",
+      "T_uppercase/Y.svg",
+      "T_uppercase/Z.svg"
     ]
   }
 }
