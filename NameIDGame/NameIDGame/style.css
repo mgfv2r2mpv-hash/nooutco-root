@@ -441,6 +441,7 @@ body {
   }
 
   #results-table tr:nth-child(even) td { background: #f7f7f7; }
+  #results-table tr.settings-changed td { background: #e8e8e8 !important; }
 
   #results-table td.outcome-error      { color: #c0392b; }
   #results-table td.outcome-prompted   { color: #b7791f; }

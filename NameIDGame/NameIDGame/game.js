@@ -570,6 +570,14 @@ function onCorrectClick(wrapper, tile) {
       ? state.promptDelaySecs : null,
     time:      elapsed,
     outcome,
+    // Snapshot of changeable settings — used to highlight rows where conditions shifted
+    settingsKey: [
+      state.topic, state.arraySize,
+      state.autoPromptEnabled ? 1 : 0,
+      state.promptPersists    ? 1 : 0,
+      state.promptStyle,
+      state.promptDelay ? state.promptDelaySecs : 0,
+    ].join('|'),
   });
 
   const backFace = tile.querySelector('.tile-back');
@@ -689,7 +697,7 @@ function printData() {
     `Array size: ${state.arraySize}`;
 
   el.resultsBody.innerHTML = '';
-  state.sessionData.forEach(d => {
+  state.sessionData.forEach((d, i) => {
     const outcomeCls =
       (d.outcome === 'Error' || d.outcome === 'Repeat Error') ? 'outcome-error'
       : d.outcome === 'Prompted'   ? 'outcome-prompted'
@@ -697,6 +705,8 @@ function printData() {
       : 'outcome-ok';
 
     const tr = document.createElement('tr');
+    const prev = state.sessionData[i - 1];
+    if (prev && d.settingsKey !== prev.settingsKey) tr.classList.add('settings-changed');
     tr.innerHTML =
       `<td>${d.trial}</td>` +
       `<td>${d.topic}</td>` +
