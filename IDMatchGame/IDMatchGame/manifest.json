@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-16T20:05:15.926Z",
+  "generated": "2026-04-16T20:05:21.662Z",
   "folders": [
     "T_animals",
     "T_buildings",
@@ -18,7 +18,7 @@
     "T_animals": [
       "_Resources/_imgSource/T_animals/bear.jpg",
       "_Resources/_imgSource/T_animals/bird.jpg",
-      "_Resources/_imgSource/T_animals/butterfly.svg",
+      "_Resources/_imgSource/T_animals/butterfly.jpg",
       "_Resources/_imgSource/T_animals/cat.svg",
       "_Resources/_imgSource/T_animals/dog.svg",
       "_Resources/_imgSource/T_animals/elephant.svg",
