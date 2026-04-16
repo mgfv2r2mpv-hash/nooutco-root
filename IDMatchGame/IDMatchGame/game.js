@@ -199,6 +199,11 @@ async function discoverTopics() {
   }
 }
 
+// Display name overrides for folder names that contain abbreviations or proper nouns
+const TOPIC_DISPLAY_NAMES = {
+  'T_pbs_characters': 'PBS Characters',
+};
+
 function buildTopicDropdown(dirs) {
   el.selTopic.innerHTML = '';
   if (!dirs.length) {
@@ -208,7 +213,8 @@ function buildTopicDropdown(dirs) {
   dirs.forEach(d => {
     const o = document.createElement('option');
     o.value = d;
-    o.textContent = d.slice(2).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    o.textContent = TOPIC_DISPLAY_NAMES[d] ||
+      d.slice(2).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     el.selTopic.appendChild(o);
   });
 }
