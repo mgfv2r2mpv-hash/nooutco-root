@@ -708,19 +708,17 @@ function printData() {
     const prev = state.sessionData[i - 1];
     const settingsChanged = prev && d.settingsKey !== prev.settingsKey;
     if (settingsChanged) tr.classList.add('settings-changed');
+    const b = settingsChanged ? ' style="font-weight:bold"' : '';
     tr.innerHTML =
-      `<td>${d.trial}</td>` +
-      `<td>${d.topic}</td>` +
-      `<td>${d.sample}</td>` +
-      `<td>${d.arraySize}</td>` +
-      `<td>${d.errors}</td>` +
-      `<td>${d.prompted ? 'Yes' : 'No'}</td>` +
-      `<td>${d.promptDelaySecs != null ? d.promptDelaySecs : '-'}</td>` +
-      `<td>${d.time}</td>` +
-      `<td class="${outcomeCls}">${d.outcome}</td>`;
-    if (settingsChanged) {
-      for (const td of tr.querySelectorAll('td')) td.style.fontWeight = 'bold';
-    }
+      `<td${b}>${d.trial}</td>` +
+      `<td${b}>${d.topic}</td>` +
+      `<td${b}>${d.sample}</td>` +
+      `<td${b}>${d.arraySize}</td>` +
+      `<td${b}>${d.errors}</td>` +
+      `<td${b}>${d.prompted ? 'Yes' : 'No'}</td>` +
+      `<td${b}>${d.promptDelaySecs != null ? d.promptDelaySecs : '-'}</td>` +
+      `<td${b}>${d.time}</td>` +
+      `<td${b} class="${outcomeCls}">${d.outcome}</td>`;
     el.resultsBody.appendChild(tr);
   });
 
