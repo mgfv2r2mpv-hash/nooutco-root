@@ -2644,13 +2644,24 @@ function hidePhotoSearch() {
 }
 
 async function fetchWikiPhoto(query) {
-  const slug = query.trim().replace(/\s+/g, '_');
-  const url  = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(slug)}`;
+  const url = 'https://en.wikipedia.org/w/api.php?' + new URLSearchParams({
+    action:      'query',
+    generator:   'search',
+    gsrsearch:   query.trim(),
+    gsrlimit:    '1',
+    prop:        'pageimages',
+    pithumbsize: '800',
+    format:      'json',
+    origin:      '*',
+  });
   const res  = await fetch(url);
   if (!res.ok) return null;
   const data = await res.json();
-  if (data.thumbnail && data.thumbnail.source) {
-    return data.thumbnail.source.replace(/\/\d+px-([^/]+)$/, '/600px-$1');
+  const pages = data.query && data.query.pages;
+  if (!pages) return null;
+  const page = Object.values(pages)[0];
+  if (page && page.thumbnail && page.thumbnail.source) {
+    return page.thumbnail.source;
   }
   return null;
 }
