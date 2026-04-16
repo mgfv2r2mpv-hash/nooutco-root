@@ -2698,12 +2698,30 @@ async function handlePhotoSearch(e) {
         img.style.display = '';
         $('photo-fallback').classList.add('hidden');
         img.src = photoUrl;
-        status.textContent = 'Found!';
-        setTimeout(hidePhotoSearch, 800);
         // Cache so this device remembers the photo on next load
         if (state.currentPerson) {
           localStorage.setItem('wikiPhoto:' + state.currentPerson.name, photoUrl);
         }
+        // Persist to repo for all devices via Cloudflare Worker → GitHub API
+        if (state.currentPerson) {
+          status.textContent = 'Saving for everyone…';
+          fetch('/api/save-photo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ personName: state.currentPerson.name, imageUrl: photoUrl }),
+          }).then(async r => {
+            if (r.ok) {
+              const data = await r.json();
+              state.currentPerson.img = data.localPath;
+              status.textContent = 'Saved for everyone!';
+            } else {
+              status.textContent = 'Found!';
+            }
+          }).catch(() => { status.textContent = 'Found!'; });
+        } else {
+          status.textContent = 'Found!';
+        }
+        setTimeout(hidePhotoSearch, 2000);
       };
       testImg.onerror = () => {
         status.textContent = 'Image didn\'t load — try a different search.';
