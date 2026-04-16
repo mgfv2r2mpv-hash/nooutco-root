@@ -464,8 +464,9 @@ function buildTrial(keepSample) {
 function fitSampleWord() {
   const card = document.getElementById('sample-card');
   const word = el.sampleWord;
-  const maxW = card.clientWidth  - 32;
-  const maxH = card.clientHeight - 32;
+  const cs = getComputedStyle(card);
+  const maxW = card.clientWidth  - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const maxH = card.clientHeight - parseFloat(cs.paddingTop)  - parseFloat(cs.paddingBottom);
   let px = 52;
   word.style.fontSize = px + 'px';
   while (px > 12 && (word.scrollWidth > maxW || word.scrollHeight > maxH)) {
@@ -480,7 +481,7 @@ function renderTrial() {
   requestAnimationFrame(fitSampleWord);
 
   const cols = gridCols(state.arraySize);
-  el.compGrid.style.gridTemplateColumns = `repeat(${cols}, 128px)`;
+  el.compGrid.style.setProperty('--grid-cols', cols);
   el.compGrid.innerHTML = '';
 
   state.tileImages.forEach((src, idx) => {
