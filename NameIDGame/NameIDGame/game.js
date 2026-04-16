@@ -67,6 +67,9 @@ const state = {
   // Shuffled position deck
   posDeck: [],
 
+  // Shuffled sample deck — ensures all items shown before any repeats
+  sampleDeck: [],
+
   // Timer
   timerSecs:    0,
   timerRunning: false,
@@ -228,7 +231,7 @@ function buildTopicDropdown(dirs) {
 }
 
 async function refreshImages() {
-  if (!state.topic) { state.topicImages = []; state.otherImages = []; return; }
+  if (!state.topic) { state.topicImages = []; state.otherImages = []; state.sampleDeck = []; return; }
 
   if (state.manifest) {
     state.topicImages = state.manifest.images[state.topic] || [];
@@ -237,6 +240,7 @@ async function refreshImages() {
           .filter(f => f !== state.topic)
           .flatMap(f => state.manifest.images[f] || [])
       : [];
+    state.sampleDeck = [];
     return;
   }
 
@@ -247,6 +251,7 @@ async function refreshImages() {
   } else {
     state.otherImages = [];
   }
+  state.sampleDeck = [];
 }
 
 // ── Event bindings ─────────────────────────────────────────────────
@@ -359,6 +364,15 @@ function nextPosition() {
   return state.posDeck.pop();
 }
 
+// ── Sample deck — no repeats until all items shown ─────────────────
+
+function nextSample() {
+  if (!state.sampleDeck.length) {
+    state.sampleDeck = shuffle([...state.topicImages]);
+  }
+  return state.sampleDeck.pop();
+}
+
 // ── Game flow ──────────────────────────────────────────────────────
 
 function startGame() {
@@ -371,8 +385,9 @@ function startGame() {
     return;
   }
 
-  state.active  = true;
-  state.posDeck = [];
+  state.active      = true;
+  state.posDeck     = [];
+  state.sampleDeck  = [];
 
   el.gameArea.removeAttribute('hidden');
   el.btnPrompt.removeAttribute('hidden');
@@ -423,7 +438,7 @@ function buildTrial(keepSample) {
   const n = state.arraySize;
 
   if (!keepSample) {
-    state.sampleSrc   = pickRandom(state.topicImages);
+    state.sampleSrc   = nextSample();
     state.sampleLabel = labelFromSrc(state.sampleSrc);
   }
 
