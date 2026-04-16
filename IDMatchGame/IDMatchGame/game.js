@@ -2,17 +2,10 @@
 
 /* ══════════════════════════════════════════════════════════════════
    IDENTICAL MATCHING GAME
-
-   Two image-discovery modes (tried in order):
-   1. manifest.json  – pre-built file list; works on Cloudflare Pages
-      and any static host. Generate it with: node build.js
-   2. Directory listing – parsed from the HTTP server's HTML index;
-      works locally with: python3 -m http.server 8000
    ══════════════════════════════════════════════════════════════════ */
 
 // ── Utilities ──────────────────────────────────────────────────────
 
-/** Fisher-Yates shuffle (mutates and returns the array). */
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -21,7 +14,6 @@ function shuffle(arr) {
   return arr;
 }
 
-/** Pick a random element from an array. */
 function pickRandom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
@@ -30,36 +22,37 @@ function pickRandom(arr) {
 
 const state = {
   // Persisted settings
-  topic:          '',
-  arraySize:      4,
-  crossCategory:  false,
-  promptPersists: false,
-  promptStyle:    'sparkle',   // 'sparkle' | 'outline'
+  topic:             '',
+  arraySize:         4,
+  crossCategory:     false,
+  promptPersists:    false,
+  promptStyle:       'sparkle',
+  autoPromptEnabled: false,
+  promptDelay:       false,
+  promptDelaySecs:   3,
 
   // Discovered folders & images
-  manifest:     null, // parsed manifest.json, or null when using dir-listing
-  topicFolders: [],   // all T_* folder names
-  topicImages:  [],   // images in the selected topic folder
-  otherImages:  [],   // images in all other folders (cross-category mode)
+  manifest:     null,
+  topicFolders: [],
+  topicImages:  [],
+  otherImages:  [],
 
-  // Session
+  // Session — persists across topic changes; cleared by Clear Data
   active:      false,
-  sessionData: [],    // array of completed trial records
+  sessionData: [],
   trialNum:    0,
 
   // Current trial
-  sampleSrc:   '',    // src of the sample stimulus
-  tileImages:  [],    // src[0..N-1] for comparison tiles
-  correctIdx:  0,     // which tile index is the correct answer
-  trialErrors: 0,     // wrong clicks this trial
-  trialStart:  0,     // Date.now() at trial start
-  prompted:    false, // user clicked Prompt button this trial
-  autoPrompted:false, // prompt shown automatically (error or repeat)
+  sampleSrc:    '',
+  tileImages:   [],
+  correctIdx:   0,
+  trialErrors:  0,
+  trialStart:   0,
+  prompted:     false,
+  autoPrompted: false,
+  isRepeatTrial: false,
 
-  // Controls repeat-trial behaviour
-  keepSample:  false, // next beginTrial() keeps same sampleSrc + auto-prompts
-
-  // Shuffled position deck (ensures equal distribution)
+  // Shuffled position deck
   posDeck: [],
 
   // Timer
@@ -67,8 +60,9 @@ const state = {
   timerRunning: false,
   timerHandle:  null,
 
-  // Prompt fade timeout
-  promptHandle: null,
+  // Prompt timeouts
+  promptHandle:     null,
+  autoPromptHandle: null,
 };
 
 // ── DOM references ─────────────────────────────────────────────────
@@ -84,6 +78,9 @@ const el = {
   chkCross:       $('chk-cross'),
   chkPersists:    $('chk-persists'),
   selPromptStyle: $('sel-prompt-style'),
+  chkAutoPrompt:  $('chk-auto-prompt'),
+  chkPromptDelay: $('chk-prompt-delay'),
+  selPromptDelay: $('sel-prompt-delay'),
   btnStart:       $('btn-start'),
   gameArea:       $('game-area'),
   sampleImg:      $('sample-img'),
@@ -91,6 +88,7 @@ const el = {
   compSection:    $('comp-section'),
   btnPrompt:      $('btn-prompt'),
   btnPrint:       $('btn-print'),
+  btnClearData:   $('btn-clear-data'),
   resultsBody:    $('results-body'),
   printMeta:      $('print-meta'),
   printSummary:   $('print-summary'),
@@ -108,25 +106,38 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 function loadSettings() {
   const s = JSON.parse(localStorage.getItem('mgSettings') || '{}');
-  state.topic          = s.topic          ?? '';
-  state.arraySize      = s.arraySize      ?? 4;
-  state.crossCategory  = s.crossCategory  ?? false;
-  state.promptPersists = s.promptPersists ?? false;
-  state.promptStyle    = s.promptStyle    ?? 'sparkle';
+  state.topic             = s.topic             ?? '';
+  state.arraySize         = s.arraySize         ?? 4;
+  state.crossCategory     = s.crossCategory     ?? false;
+  state.promptPersists    = s.promptPersists    ?? false;
+  state.promptStyle       = s.promptStyle       ?? 'sparkle';
+  state.autoPromptEnabled = s.autoPromptEnabled ?? false;
+  state.promptDelay       = s.promptDelay       ?? false;
+  state.promptDelaySecs   = s.promptDelaySecs   ?? 3;
 
-  el.inpSize.value         = state.arraySize;
-  el.chkCross.checked      = state.crossCategory;
-  el.chkPersists.checked   = state.promptPersists;
-  el.selPromptStyle.value  = state.promptStyle;
+  el.inpSize.value          = state.arraySize;
+  el.chkCross.checked       = state.crossCategory;
+  el.chkPersists.checked    = state.promptPersists;
+  el.selPromptStyle.value   = state.promptStyle;
+  el.chkAutoPrompt.checked  = state.autoPromptEnabled;
+  el.chkPromptDelay.checked = state.promptDelay;
+  el.selPromptDelay.value   = state.promptDelaySecs;
+
+  // Sync enabled state of delay controls
+  el.chkPromptDelay.disabled = !state.autoPromptEnabled;
+  el.selPromptDelay.disabled = !state.autoPromptEnabled || !state.promptDelay;
 }
 
 function saveSettings() {
   localStorage.setItem('mgSettings', JSON.stringify({
-    topic:          state.topic,
-    arraySize:      state.arraySize,
-    crossCategory:  state.crossCategory,
-    promptPersists: state.promptPersists,
-    promptStyle:    state.promptStyle,
+    topic:             state.topic,
+    arraySize:         state.arraySize,
+    crossCategory:     state.crossCategory,
+    promptPersists:    state.promptPersists,
+    promptStyle:       state.promptStyle,
+    autoPromptEnabled: state.autoPromptEnabled,
+    promptDelay:       state.promptDelay,
+    promptDelaySecs:   state.promptDelaySecs,
   }));
 }
 
@@ -134,7 +145,6 @@ function saveSettings() {
 
 const IMAGE_EXT = /\.(jpe?g|png|gif|webp|avif|svg|bmp)$/i;
 
-/** Fetch a directory listing and return image paths inside it. */
 async function fetchDirImages(folder) {
   try {
     const r = await fetch(`./${folder}/`);
@@ -142,7 +152,6 @@ async function fetchDirImages(folder) {
     const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
     return [...doc.querySelectorAll('a[href]')]
       .map(a => a.getAttribute('href'))
-      // Reject paths with slashes (sub-dirs) and non-image hrefs
       .filter(h => IMAGE_EXT.test(h) && !h.includes('/'))
       .map(h => `${folder}/${h}`);
   } catch {
@@ -150,14 +159,9 @@ async function fetchDirImages(folder) {
   }
 }
 
-/**
- * Discover topic folders, trying manifest.json first (Cloudflare Pages /
- * any static host), then falling back to HTTP directory listing (local dev).
- */
 async function discoverTopics() {
   let dirs = [];
 
-  // ── 1. Try manifest.json ──
   try {
     const r = await fetch('./manifest.json');
     if (r.ok) {
@@ -168,9 +172,8 @@ async function discoverTopics() {
         console.info(`manifest.json loaded (generated ${data.generated})`);
       }
     }
-  } catch { /* not present – fall through */ }
+  } catch { /* fall through */ }
 
-  // ── 2. Fall back to HTTP directory listing ──
   if (!dirs.length) {
     try {
       const r = await fetch('./');
@@ -181,11 +184,7 @@ async function discoverTopics() {
         .filter(h => /^T_[^/]+\/?$/.test(h))
         .map(h => h.replace(/\/$/, ''));
     } catch {
-      console.warn(
-        'Could not discover topic folders. ' +
-        'Either run "node build.js" to generate manifest.json, ' +
-        'or serve locally with "python3 -m http.server 8000".'
-      );
+      console.warn('Could not discover topic folders.');
     }
   }
 
@@ -200,7 +199,6 @@ async function discoverTopics() {
   }
 }
 
-/** Populate the topic <select> from discovered folders. */
 function buildTopicDropdown(dirs) {
   el.selTopic.innerHTML = '';
   if (!dirs.length) {
@@ -210,23 +208,15 @@ function buildTopicDropdown(dirs) {
   dirs.forEach(d => {
     const o = document.createElement('option');
     o.value = d;
-    // T_community_helpers → "Community Helpers"
-    o.textContent = d.slice(2).replace(/_/g, ' ')
-                     .replace(/\b\w/g, c => c.toUpperCase());
+    o.textContent = d.slice(2).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     el.selTopic.appendChild(o);
   });
 }
 
-/**
- * (Re)load images for the current topic (and all others if cross-category).
- * Uses manifest.json when available; otherwise fetches directory listings.
- * Called on: initial load, topic change, array-size change, cross-category toggle.
- */
 async function refreshImages() {
   if (!state.topic) { state.topicImages = []; state.otherImages = []; return; }
 
   if (state.manifest) {
-    // Fast path: data is already in memory
     state.topicImages = state.manifest.images[state.topic] || [];
     state.otherImages = (state.crossCategory && state.topicFolders.length > 1)
       ? state.topicFolders
@@ -236,9 +226,7 @@ async function refreshImages() {
     return;
   }
 
-  // Slow path: fetch directory listings
   state.topicImages = await fetchDirImages(state.topic);
-
   if (state.crossCategory && state.topicFolders.length > 1) {
     const others = state.topicFolders.filter(f => f !== state.topic);
     state.otherImages = (await Promise.all(others.map(fetchDirImages))).flat();
@@ -263,7 +251,7 @@ function bindEvents() {
     const v = Math.min(10, Math.max(1, parseInt(el.inpSize.value) || 4));
     state.arraySize = v;
     el.inpSize.value = v;
-    state.posDeck = [];        // reset position deck for new size
+    state.posDeck = [];
     saveSettings();
     await refreshImages();
   });
@@ -284,9 +272,38 @@ function bindEvents() {
     saveSettings();
   });
 
+  el.chkAutoPrompt.addEventListener('change', () => {
+    state.autoPromptEnabled = el.chkAutoPrompt.checked;
+    el.chkPromptDelay.disabled = !state.autoPromptEnabled;
+    el.selPromptDelay.disabled = !state.autoPromptEnabled || !state.promptDelay;
+    saveSettings();
+  });
+
+  el.chkPromptDelay.addEventListener('change', () => {
+    state.promptDelay = el.chkPromptDelay.checked;
+    el.selPromptDelay.disabled = !state.promptDelay;
+    saveSettings();
+  });
+
+  el.selPromptDelay.addEventListener('change', () => {
+    state.promptDelaySecs = parseInt(el.selPromptDelay.value);
+    saveSettings();
+  });
+
   el.btnStart.addEventListener('click',  startGame);
   el.btnPrompt.addEventListener('click', onPromptButton);
   el.btnPrint.addEventListener('click',  printData);
+
+  el.btnClearData.addEventListener('click', () => {
+    if (!state.sessionData.length) {
+      alert('No data to clear.');
+      return;
+    }
+    if (!confirm('Clear all trial data? This cannot be undone.')) return;
+    state.sessionData = [];
+    state.trialNum    = 0;
+    el.resultsBody.innerHTML = '';
+  });
 }
 
 // ── Timer ──────────────────────────────────────────────────────────
@@ -320,11 +337,7 @@ function renderTimer() {
 }
 
 // ── Position deck ──────────────────────────────────────────────────
-/**
- * Returns the next correct-tile position, drawn from a shuffled deck.
- * The deck is refilled each time it empties, guaranteeing that over
- * every N trials each position is used exactly once.
- */
+
 function nextPosition() {
   if (!state.posDeck.length) {
     state.posDeck = shuffle([...Array(state.arraySize).keys()]);
@@ -340,21 +353,14 @@ function startGame() {
     return;
   }
   if (!state.topicImages.length) {
-    alert(
-      `No images found in ${state.topic}/.\n` +
-      'Add image files to that folder and reload the page.'
-    );
+    alert(`No images found in ${state.topic}/.\nAdd image files to that folder and reload the page.`);
     return;
   }
 
-  // Reset session state
-  state.active      = true;
-  state.sessionData = [];
-  state.trialNum    = 0;
-  state.posDeck     = [];
-  state.keepSample  = false;
+  // sessionData and trialNum persist; only reset active-play state
+  state.active     = true;
+  state.posDeck    = [];
 
-  el.resultsBody.innerHTML = '';
   el.gameArea.removeAttribute('hidden');
   el.btnPrompt.removeAttribute('hidden');
   removeNextBtn();
@@ -366,54 +372,60 @@ function startGame() {
 
 /**
  * Begin a new trial.
- * @param {boolean} keepSample - If true, reuse state.sampleSrc and show
- *   an immediate auto-prompt (repeat trial after an error).
+ * keepSample=true → repeat trial (same sample, tiles reshuffled, auto-prompted).
  */
 function beginTrial(keepSample = false) {
   state.trialNum++;
-  state.trialErrors  = 0;
-  state.prompted     = false;
-  state.autoPrompted = keepSample; // repeat trials are inherently auto-prompted
-  state.trialStart   = Date.now();
+  state.trialErrors   = 0;
+  state.prompted      = false;
+  state.autoPrompted  = false;
+  state.isRepeatTrial = keepSample;
+  state.trialStart    = Date.now();
+
+  // Cancel any pending delayed auto-prompt from the previous trial
+  clearTimeout(state.autoPromptHandle);
+  state.autoPromptHandle = null;
 
   clearPrompt();
   buildTrial(keepSample);
   renderTrial();
 
   if (keepSample) {
-    // Auto-prompt the correct tile immediately (slight delay for DOM paint)
+    // Repeat trial: always auto-prompt immediately
+    state.autoPrompted = true;
     setTimeout(applyPrompt, 80);
+  } else if (state.autoPromptEnabled) {
+    if (state.promptDelay) {
+      state.autoPromptHandle = setTimeout(() => {
+        state.autoPrompted = true;
+        state.autoPromptHandle = null;
+        applyPrompt();
+      }, state.promptDelaySecs * 1000);
+    } else {
+      state.autoPrompted = true;
+      setTimeout(applyPrompt, 80);
+    }
   }
 }
 
-/**
- * Build the tile array for the current trial.
- * @param {boolean} keepSample - If true, keep state.sampleSrc unchanged.
- */
 function buildTrial(keepSample) {
   const n = state.arraySize;
 
-  // ── Sample image ──
   if (!keepSample) {
     state.sampleSrc = pickRandom(state.topicImages);
   }
 
-  // ── Distractor pool ──
   const basePool = state.crossCategory
     ? [...state.topicImages, ...state.otherImages]
     : [...state.topicImages];
 
-  // Remove the sample from the distractor pool to avoid duplication
   const distractorPool = shuffle(basePool.filter(src => src !== state.sampleSrc));
-
-  // If the pool is exhausted, allow repeats (modular index)
-  const getDistractor = i =>
+  const getDistractor  = i =>
     distractorPool.length ? distractorPool[i % distractorPool.length] : state.sampleSrc;
 
-  // ── Assign positions ──
-  const correctPos     = nextPosition();
-  state.correctIdx     = correctPos;
-  state.tileImages     = new Array(n);
+  const correctPos = nextPosition();
+  state.correctIdx = correctPos;
+  state.tileImages = new Array(n);
   let di = 0;
 
   for (let i = 0; i < n; i++) {
@@ -421,29 +433,23 @@ function buildTrial(keepSample) {
   }
 }
 
-/** Render sample image and comparison grid from current state. */
 function renderTrial() {
-  // Sample
   el.sampleImg.src = state.sampleSrc;
   el.sampleImg.alt = 'Sample stimulus';
 
-  // Grid column count
   const cols = gridCols(state.arraySize);
   el.compGrid.style.gridTemplateColumns = `repeat(${cols}, 128px)`;
   el.compGrid.innerHTML = '';
 
   state.tileImages.forEach((src, idx) => {
-    // Wrapper (expand + jiggle animations)
     const wrapper = document.createElement('div');
     wrapper.className = 'tile-wrapper';
     wrapper.dataset.index = idx;
 
-    // Tile (flip animation)
     const tile = document.createElement('div');
     tile.className = 'tile';
     tile.dataset.index = idx;
 
-    // Front face
     const front = document.createElement('div');
     front.className = 'tile-face tile-front';
     const img = document.createElement('img');
@@ -451,12 +457,12 @@ function renderTrial() {
     img.alt = `Choice ${idx + 1}`;
     front.appendChild(img);
 
-    // Back face (content set at correct-click time when outcome is known)
+    // Back face — content (text + colour class) set at correct-click time
     const back = document.createElement('div');
     back.className = 'tile-face tile-back';
-    const okText = document.createElement('span');
-    okText.className = 'ok-text';
-    back.appendChild(okText);
+    const okSpan = document.createElement('span');
+    okSpan.className = 'ok-text';
+    back.appendChild(okSpan);
 
     tile.appendChild(front);
     tile.appendChild(back);
@@ -467,7 +473,6 @@ function renderTrial() {
   });
 }
 
-/** Return number of grid columns for a given tile count. */
 function gridCols(n) {
   const map = { 1:1, 2:2, 3:3, 4:4, 5:3, 6:3, 7:4, 8:4, 9:3, 10:5 };
   return map[n] ?? 4;
@@ -484,7 +489,7 @@ function onTileClick(idx) {
   if (idx === state.correctIdx) {
     onCorrectClick(wrapper, tile);
   } else {
-    onWrongClick(wrapper, idx);
+    onWrongClick(wrapper);
   }
 }
 
@@ -492,16 +497,24 @@ function onCorrectClick(wrapper, tile) {
   disableAllTiles();
   clearPrompt();
 
-  // Record trial
+  // Cancel delayed auto-prompt if it hadn't fired yet
+  clearTimeout(state.autoPromptHandle);
+  state.autoPromptHandle = null;
+
   const elapsed = ((Date.now() - state.trialStart) / 1000).toFixed(1);
+
+  // Determine outcome (5 possibilities)
   let outcome;
-  if (state.trialErrors > 0) {
+  if (state.isRepeatTrial) {
+    outcome = state.trialErrors > 0 ? 'Repeat Error' : 'Correction';
+  } else if (state.trialErrors > 0) {
     outcome = 'Error';
   } else if (state.prompted || state.autoPrompted) {
     outcome = 'Prompted';
   } else {
     outcome = 'Correct';
   }
+
   state.sessionData.push({
     trial:     state.trialNum,
     topic:     state.topic.slice(2).replace(/_/g, ' '),
@@ -513,19 +526,18 @@ function onCorrectClick(wrapper, tile) {
     outcome,
   });
 
-  // Update back face to reflect outcome before flip
+  // Style back face before flip
   const backFace = tile.querySelector('.tile-back');
   const okSpan   = backFace.querySelector('.ok-text');
   if (outcome === 'Correct') {
     backFace.classList.add('back-correct');
     okSpan.textContent = '✓';
-  } else if (outcome === 'Prompted') {
-    okSpan.textContent = '✓';
+  } else if (outcome === 'Prompted' || outcome === 'Correction') {
+    okSpan.textContent = '✓';   // neutral grey + checkmark
   } else {
-    okSpan.textContent = 'OK';
+    okSpan.textContent = 'OK';  // Error or Repeat Error
   }
 
-  // Animate: wrapper expands, then tile flips, then Next button appears
   wrapper.classList.add('expanding');
   setTimeout(() => {
     wrapper.classList.remove('expanding');
@@ -534,28 +546,25 @@ function onCorrectClick(wrapper, tile) {
   }, 280);
 }
 
-function onWrongClick(wrapper, idx) {
+function onWrongClick(wrapper) {
   state.trialErrors++;
 
-  // Jiggle + red flash on the clicked wrapper
+  // Cancel any pending auto-prompt delay; wrong click triggers immediate prompt
+  clearTimeout(state.autoPromptHandle);
+  state.autoPromptHandle = null;
+
   wrapper.classList.add('jiggle', 'flash-red');
   const cleanup = () => wrapper.classList.remove('jiggle', 'flash-red');
   wrapper.addEventListener('animationend', cleanup, { once: true });
-  // Fallback in case animationend doesn't fire
   setTimeout(() => wrapper.classList.remove('jiggle', 'flash-red'), 600);
 
-  // Auto-prompt the correct tile
   state.autoPrompted = true;
   applyPrompt();
 }
 
 function disableAllTiles() {
-  el.compGrid.querySelectorAll('.tile').forEach(t => {
-    t.classList.add('tile-disabled');
-  });
-  el.compGrid.querySelectorAll('.tile-wrapper').forEach(w => {
-    w.style.pointerEvents = 'none';
-  });
+  el.compGrid.querySelectorAll('.tile').forEach(t => t.classList.add('tile-disabled'));
+  el.compGrid.querySelectorAll('.tile-wrapper').forEach(w => { w.style.pointerEvents = 'none'; });
 }
 
 function getWrapper(idx) {
@@ -568,10 +577,8 @@ function getTile(idx) {
 
 // ── Prompt logic ───────────────────────────────────────────────────
 
-/** Apply the chosen prompt effect to the correct tile. */
 function applyPrompt() {
-  clearPrompt(); // clear any existing prompt/timeout first
-
+  clearPrompt();
   const tile = getTile(state.correctIdx);
   if (!tile) return;
 
@@ -579,7 +586,6 @@ function applyPrompt() {
   tile.classList.add(cls);
 
   if (!state.promptPersists) {
-    // Remove after 3 s (no fade needed; the animation just stops)
     state.promptHandle = setTimeout(() => {
       tile.classList.remove(cls);
       state.promptHandle = null;
@@ -587,7 +593,6 @@ function applyPrompt() {
   }
 }
 
-/** Clear any active prompt effect from all tiles. */
 function clearPrompt() {
   clearTimeout(state.promptHandle);
   state.promptHandle = null;
@@ -595,7 +600,6 @@ function clearPrompt() {
     .forEach(t => t.classList.remove('prompt-sparkle', 'prompt-outline'));
 }
 
-/** Handler for the manual Prompt button. */
 function onPromptButton() {
   state.prompted = true;
   applyPrompt();
@@ -619,10 +623,10 @@ function removeNextBtn() {
 
 function onNextClick() {
   removeNextBtn();
-  // If the completed trial had errors → repeat same sample with auto-prompt
   const last = state.sessionData[state.sessionData.length - 1];
-  const hadErrors = last && last.errors > 0;
-  beginTrial(hadErrors);
+  // Repeat if the last outcome was an error of any kind
+  const needsRepeat = last && (last.outcome === 'Error' || last.outcome === 'Repeat Error');
+  beginTrial(needsRepeat);
 }
 
 // ── Print data ─────────────────────────────────────────────────────
@@ -633,46 +637,40 @@ function printData() {
     return;
   }
 
-  // Build metadata line
   const now = new Date();
-  const dateStr = now.toLocaleDateString(undefined, {
-    year: 'numeric', month: 'long', day: 'numeric',
-  });
-  const timeStr = now.toLocaleTimeString(undefined, {
-    hour: '2-digit', minute: '2-digit',
-  });
   el.printMeta.textContent =
-    `Printed: ${dateStr} at ${timeStr}  |  ` +
-    `Topic: ${state.topic.slice(2).replace(/_/g, ' ')}  |  ` +
+    `Printed: ${now.toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' })} ` +
+    `at ${now.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' })}  |  ` +
     `Array size: ${state.arraySize}`;
 
-  // Populate table rows
   el.resultsBody.innerHTML = '';
   state.sessionData.forEach(d => {
-    const tr = document.createElement('tr');
-    const outcomeCls = d.outcome === 'Error'    ? 'outcome-error'
-                     : d.outcome === 'Prompted' ? 'outcome-prompted'
-                     : 'outcome-ok';
+    const outcomeCls =
+      (d.outcome === 'Error' || d.outcome === 'Repeat Error') ? 'outcome-error'
+      : d.outcome === 'Prompted'   ? 'outcome-prompted'
+      : d.outcome === 'Correction' ? 'outcome-correction'
+      : 'outcome-ok';
 
-    tr.innerHTML = `
-      <td>${d.trial}</td>
-      <td>${d.topic}</td>
-      <td>${d.sample}</td>
-      <td>${d.arraySize}</td>
-      <td>${d.errors}</td>
-      <td>${d.prompted ? 'Yes' : 'No'}</td>
-      <td>${d.time}</td>
-      <td class="${outcomeCls}">${d.outcome}</td>
-    `;
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      `<td>${d.trial}</td>` +
+      `<td>${d.topic}</td>` +
+      `<td>${d.sample}</td>` +
+      `<td>${d.arraySize}</td>` +
+      `<td>${d.errors}</td>` +
+      `<td>${d.prompted ? 'Yes' : 'No'}</td>` +
+      `<td>${d.time}</td>` +
+      `<td class="${outcomeCls}">${d.outcome}</td>`;
     el.resultsBody.appendChild(tr);
   });
 
-  // Summary stats
-  const total    = state.sessionData.length;
-  const correct  = state.sessionData.filter(d => d.outcome === 'Correct').length;
-  const prompted = state.sessionData.filter(d => d.outcome === 'Prompted').length;
-  const errors   = state.sessionData.filter(d => d.outcome === 'Error').length;
-  const avgTime  = (
+  const total      = state.sessionData.length;
+  const correct    = state.sessionData.filter(d => d.outcome === 'Correct').length;
+  const prompted   = state.sessionData.filter(d => d.outcome === 'Prompted').length;
+  const errors     = state.sessionData.filter(d => d.outcome === 'Error').length;
+  const correction = state.sessionData.filter(d => d.outcome === 'Correction').length;
+  const repErrors  = state.sessionData.filter(d => d.outcome === 'Repeat Error').length;
+  const avgTime    = (
     state.sessionData.reduce((s, d) => s + parseFloat(d.time), 0) / total
   ).toFixed(1);
 
@@ -681,6 +679,8 @@ function printData() {
     `<span>Correct: <strong>${correct}</strong></span>` +
     `<span>Prompted: <strong>${prompted}</strong></span>` +
     `<span>Error: <strong>${errors}</strong></span>` +
+    `<span>Correction: <strong>${correction}</strong></span>` +
+    `<span>Repeat Error: <strong>${repErrors}</strong></span>` +
     `<span>Avg response time: <strong>${avgTime} s</strong></span>`;
 
   window.print();
