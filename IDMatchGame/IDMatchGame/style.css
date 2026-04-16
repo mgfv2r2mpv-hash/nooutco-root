@@ -247,13 +247,16 @@ body {
 }
 .tile.tile-disabled { cursor: default; }
 
-/* Back face */
+/* Back face — neutral default; green only when outcome is Correct */
 .tile-back {
   transform: rotateY(180deg);
-  background: linear-gradient(135deg, #276749, #38a169);
+  background: linear-gradient(135deg, #4a5568, #718096);
   display: flex;
   align-items: center;
   justify-content: center;
+}
+.tile-back.back-correct {
+  background: linear-gradient(135deg, #276749, #38a169);
 }
 .ok-text {
   font-size: 2.6rem;
@@ -416,8 +419,9 @@ body {
 
   #results-table tr:nth-child(even) td { background: #f7f7f7; }
 
-  #results-table td.outcome-error { color: #c0392b; }
-  #results-table td.outcome-ok    { color: #27ae60; }
+  #results-table td.outcome-error    { color: #c0392b; }
+  #results-table td.outcome-prompted { color: #b7791f; }
+  #results-table td.outcome-ok       { color: #27ae60; }
 
   #print-summary {
     font-size: 9.5pt;

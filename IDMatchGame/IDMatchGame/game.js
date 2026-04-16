@@ -451,12 +451,11 @@ function renderTrial() {
     img.alt = `Choice ${idx + 1}`;
     front.appendChild(img);
 
-    // Back face
+    // Back face (content set at correct-click time when outcome is known)
     const back = document.createElement('div');
     back.className = 'tile-face tile-back';
     const okText = document.createElement('span');
     okText.className = 'ok-text';
-    okText.textContent = 'OK';
     back.appendChild(okText);
 
     tile.appendChild(front);
@@ -495,7 +494,14 @@ function onCorrectClick(wrapper, tile) {
 
   // Record trial
   const elapsed = ((Date.now() - state.trialStart) / 1000).toFixed(1);
-  const outcome = state.trialErrors > 0 ? 'Prompted correction' : 'Correct';
+  let outcome;
+  if (state.trialErrors > 0) {
+    outcome = 'Error';
+  } else if (state.prompted || state.autoPrompted) {
+    outcome = 'Prompted';
+  } else {
+    outcome = 'Correct';
+  }
   state.sessionData.push({
     trial:     state.trialNum,
     topic:     state.topic.slice(2).replace(/_/g, ' '),
@@ -506,6 +512,18 @@ function onCorrectClick(wrapper, tile) {
     time:      elapsed,
     outcome,
   });
+
+  // Update back face to reflect outcome before flip
+  const backFace = tile.querySelector('.tile-back');
+  const okSpan   = backFace.querySelector('.ok-text');
+  if (outcome === 'Correct') {
+    backFace.classList.add('back-correct');
+    okSpan.textContent = '✓';
+  } else if (outcome === 'Prompted') {
+    okSpan.textContent = '✓';
+  } else {
+    okSpan.textContent = 'OK';
+  }
 
   // Animate: wrapper expands, then tile flips, then Next button appears
   wrapper.classList.add('expanding');
@@ -632,7 +650,9 @@ function printData() {
   el.resultsBody.innerHTML = '';
   state.sessionData.forEach(d => {
     const tr = document.createElement('tr');
-    const isError = d.outcome !== 'Correct';
+    const outcomeCls = d.outcome === 'Error'    ? 'outcome-error'
+                     : d.outcome === 'Prompted' ? 'outcome-prompted'
+                     : 'outcome-ok';
 
     tr.innerHTML = `
       <td>${d.trial}</td>
@@ -642,7 +662,7 @@ function printData() {
       <td>${d.errors}</td>
       <td>${d.prompted ? 'Yes' : 'No'}</td>
       <td>${d.time}</td>
-      <td class="${isError ? 'outcome-error' : 'outcome-ok'}">${d.outcome}</td>
+      <td class="${outcomeCls}">${d.outcome}</td>
     `;
     el.resultsBody.appendChild(tr);
   });
@@ -650,16 +670,17 @@ function printData() {
   // Summary stats
   const total    = state.sessionData.length;
   const correct  = state.sessionData.filter(d => d.outcome === 'Correct').length;
+  const prompted = state.sessionData.filter(d => d.outcome === 'Prompted').length;
+  const errors   = state.sessionData.filter(d => d.outcome === 'Error').length;
   const avgTime  = (
     state.sessionData.reduce((s, d) => s + parseFloat(d.time), 0) / total
   ).toFixed(1);
-  const prompted = state.sessionData.filter(d => d.prompted).length;
 
   el.printSummary.innerHTML =
     `<span>Total trials: <strong>${total}</strong></span>` +
-    `<span>Correct (no errors): <strong>${correct}</strong></span>` +
-    `<span>Prompted corrections: <strong>${total - correct}</strong></span>` +
-    `<span>Trials with prompt: <strong>${prompted}</strong></span>` +
+    `<span>Correct: <strong>${correct}</strong></span>` +
+    `<span>Prompted: <strong>${prompted}</strong></span>` +
+    `<span>Error: <strong>${errors}</strong></span>` +
     `<span>Avg response time: <strong>${avgTime} s</strong></span>`;
 
   window.print();
