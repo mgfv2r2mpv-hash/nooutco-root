@@ -522,6 +522,8 @@ function onCorrectClick(wrapper, tile) {
     arraySize: state.arraySize,
     errors:    state.trialErrors,
     prompted:  state.prompted || state.autoPrompted,
+    promptDelaySecs: (!state.isRepeatTrial && state.autoPromptEnabled && state.promptDelay)
+      ? state.promptDelaySecs : null,
     time:      elapsed,
     outcome,
   });
@@ -659,6 +661,7 @@ function printData() {
       `<td>${d.arraySize}</td>` +
       `<td>${d.errors}</td>` +
       `<td>${d.prompted ? 'Yes' : 'No'}</td>` +
+      `<td>${d.promptDelaySecs != null ? d.promptDelaySecs : '-'}</td>` +
       `<td>${d.time}</td>` +
       `<td class="${outcomeCls}">${d.outcome}</td>`;
     el.resultsBody.appendChild(tr);
