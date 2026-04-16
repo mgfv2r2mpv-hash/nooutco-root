@@ -360,7 +360,12 @@ async function loadGameData(game) {
       : `../../NameIDGame/NameIDGame/manifest.json`;
     const res = await fetch(path);
     const m = await res.json();
-    if (!m.archived) m.archived = [];
+    // archived is stored as object by worker; normalize to array of names for UI
+    if (m.archived && !Array.isArray(m.archived)) {
+      m.archived = Object.keys(m.archived);
+    } else if (!m.archived) {
+      m.archived = [];
+    }
     gameData[game.id] = { manifest: m };
   } else if (game.type === 'ffc') {
     const res = await fetch('../../FFCGame/FFCGame/items.json');
@@ -424,7 +429,9 @@ function getFolders() {
 function getArchivedFolders() {
   const d = gameData[activeGame.id];
   if (!d || activeGame.type === 'fpg' || activeGame.type === 'ffc') return [];
-  return d.manifest.archived || [];
+  const a = d.manifest.archived;
+  if (!a) return [];
+  return Array.isArray(a) ? a : Object.keys(a);
 }
 
 function renderFolderBar() {
@@ -1199,6 +1206,8 @@ async function runWikiSearch(query, urlInput, resultsEl, onSelect) {
 
 dpWikiBtn.addEventListener('click', () =>
   runWikiSearch(dpWikiInput.value.trim(), dpUrlInput, dpWikiResults, () => dpSaveBtn.click()));
+
+dpWikiInput.addEventListener('keydown', e => { if (e.key === 'Enter') dpWikiBtn.click(); });
 
 // Google image search
 dpGoogleBtn.addEventListener('click', () => {
