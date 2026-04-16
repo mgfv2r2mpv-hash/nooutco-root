@@ -862,28 +862,30 @@ function closeDetail() {
 // Save
 dpSaveBtn.addEventListener('click', async () => {
   if (!detailContext) return;
+  const ctx = detailContext;
   const url = dpUrlInput.value.trim();
   if (!url) { setStatus(dpSaveStatus, 'err', 'Enter a URL.'); return; }
   setStatus(dpSaveStatus, '', 'Saving…');
 
   let body;
-  if (detailContext.type === 'fpg') {
-    const p = detailContext.person;
+  if (ctx.type === 'fpg') {
+    const p = ctx.person;
     body = { game: 'FamousPersonGame', folder: 'images', filename: p.img.split('/').pop(), imageUrl: url, personName: p.name };
   } else {
-    const filename = detailContext.path.split('/').pop();
-    body = { game: detailContext.gameId, folder: detailContext.folder, filename, imageUrl: url };
+    const filename = ctx.path.split('/').pop();
+    body = { game: ctx.gameId, folder: ctx.folder, filename, imageUrl: url };
   }
 
   try {
     const res = await adminPost('save-image', body);
+    if (detailContext !== ctx) return;
     if (!res) { setStatus(dpSaveStatus, '', ''); return; }
     if (res.ok) {
       const j = await res.json().catch(() => ({}));
       setStatus(dpSaveStatus, 'ok', 'Saved!');
       dpThumb.src = url;
-      if (detailContext.type === 'fpg' && j.localPath) {
-        detailContext.person.img = j.localPath;
+      if (ctx.type === 'fpg' && j.localPath) {
+        ctx.person.img = j.localPath;
       }
     } else {
       const j = await res.json().catch(() => ({}));
