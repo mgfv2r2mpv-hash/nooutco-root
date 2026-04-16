@@ -602,8 +602,9 @@ function buildAddForm(formType) {
   if (formType === 'manifest') {
     form.innerHTML = `
       <h3>Add Image to ${activeFolder}</h3>
-      <label>Filename (e.g. bear.svg)</label>
-      <input type="text" name="filename" placeholder="bear.svg">
+      <label>Filename</label>
+      <input type="text" name="filename" placeholder="gas-station.jpg">
+      <small style="color:#64748b;font-size:.72rem;display:block;margin-top:2px;margin-bottom:.25rem;">kebab-case, lowercase, hyphens for spaces — extension must match image type (.jpg .png .svg …)</small>
       <label>Image URL</label>
       <input type="url" name="url" placeholder="https://…">
       <label>Search Wikimedia</label>
@@ -813,7 +814,8 @@ function showNewTopicModal() {
     <label style="font-size:.78rem;color:#94a3b8;display:block;margin-bottom:.25rem;">Folder name (will be prefixed T_)</label>
     <input type="text" id="nt-name" placeholder="animals" style="width:100%;padding:.4rem .6rem;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:.85rem;margin-bottom:.75rem;">
     <label style="font-size:.78rem;color:#94a3b8;display:block;margin-bottom:.25rem;">First image filename</label>
-    <input type="text" id="nt-filename" placeholder="bear.svg" style="width:100%;padding:.4rem .6rem;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:.85rem;margin-bottom:.75rem;">
+    <input type="text" id="nt-filename" placeholder="gas-station.jpg" style="width:100%;padding:.4rem .6rem;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:.85rem;margin-bottom:.1rem;">
+    <small style="color:#64748b;font-size:.72rem;display:block;margin-bottom:.6rem;">kebab-case, hyphens for spaces — extension must match image type</small>
     <label style="font-size:.78rem;color:#94a3b8;display:block;margin-bottom:.25rem;">First image URL</label>
     <input type="url" id="nt-url" placeholder="https://…" style="width:100%;padding:.4rem .6rem;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:.85rem;margin-bottom:.75rem;">
     <div style="display:flex;gap:.5rem;margin-top:.25rem;">
