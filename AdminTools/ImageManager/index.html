@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Manager — Admin</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-height: 100vh; }
+
+/* ── Password Gate ── */
+#gate {
+  position: fixed; inset: 0; z-index: 1000;
+  background: #111; display: flex; align-items: center; justify-content: center;
+}
+#gate.hidden { display: none; }
+.gate-box {
+  background: #1e1e1e; border: 1px solid #333; border-radius: 12px;
+  padding: 2rem; width: 320px; text-align: center;
+}
+.gate-box h1 { font-size: 1.3rem; margin-bottom: 1.25rem; color: #fff; }
+.gate-box input {
+  width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px;
+  border: 1px solid #444; background: #2a2a2a; color: #eee;
+  font-size: 1rem; margin-bottom: 0.75rem;
+}
+.gate-box button {
+  width: 100%; padding: 0.6rem; border-radius: 8px;
+  background: #3b82f6; color: #fff; border: none; cursor: pointer; font-size: 1rem;
+}
+.gate-box button:hover { background: #2563eb; }
+#gate-error { color: #f87171; font-size: 0.85rem; margin-top: 0.5rem; min-height: 1.2em; }
+
+/* ── App Shell ── */
+#app { padding: 1rem 1.5rem 2rem; }
+
+/* ── Game Tabs ── */
+.game-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.game-tab {
+  padding: 0.45rem 1rem; border-radius: 8px; border: 1px solid #444;
+  background: #1e1e1e; color: #aaa; cursor: pointer; font-size: 0.9rem;
+}
+.game-tab.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+
+/* ── Folder Tab Bar ── */
+.folder-bar-wrap {
+  display: flex; align-items: center; gap: 0.5rem;
+  margin-bottom: 1rem; flex-wrap: wrap;
+}
+.folder-tab {
+  padding: 0.35rem 0.9rem; border-radius: 6px; border: 1px solid #333;
+  background: #1e1e1e; color: #aaa; cursor: pointer; font-size: 0.82rem;
+}
+.folder-tab.active { background: #334155; color: #fff; border-color: #475569; }
+.folder-tab.archived-tab { border-color: #78350f; color: #fbbf24; }
+.folder-tab.archived-tab.active { background: #451a03; }
+.btn-new-topic {
+  margin-left: auto; padding: 0.35rem 0.9rem; border-radius: 6px;
+  border: 1px dashed #475569; background: transparent; color: #7dd3fc;
+  cursor: pointer; font-size: 0.82rem;
+}
+.btn-new-topic:hover { background: #1e3a5f; }
+
+/* ── Archive folder button ── */
+.folder-action-bar {
+  display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;
+}
+.btn-archive {
+  padding: 0.3rem 0.75rem; border-radius: 6px; font-size: 0.8rem;
+  background: #451a03; color: #fbbf24; border: 1px solid #78350f; cursor: pointer;
+}
+.btn-archive:hover { background: #7c2d12; }
+.btn-restore {
+  padding: 0.3rem 0.75rem; border-radius: 6px; font-size: 0.8rem;
+  background: #14532d; color: #86efac; border: 1px solid #166534; cursor: pointer;
+}
+.btn-restore:hover { background: #15803d; }
+.btn-purge {
+  padding: 0.3rem 0.75rem; border-radius: 6px; font-size: 0.8rem;
+  background: #4c0519; color: #fca5a5; border: 1px solid #7f1d1d; cursor: pointer;
+}
+.btn-purge:hover { background: #7f1d1d; }
+
+/* ── Add Image ── */
+.btn-add-image {
+  padding: 0.3rem 0.75rem; border-radius: 6px; font-size: 0.8rem;
+  background: #1e3a5f; color: #7dd3fc; border: 1px solid #1e40af; cursor: pointer;
+}
+.btn-add-image:hover { background: #1e40af; }
+.add-form {
+  background: #1a2433; border: 1px solid #334155; border-radius: 10px;
+  padding: 1rem; margin-bottom: 1rem; display: none;
+}
+.add-form.open { display: block; }
+.add-form h3 { font-size: 0.9rem; margin-bottom: 0.75rem; color: #93c5fd; }
+.add-form label { display: block; font-size: 0.78rem; color: #94a3b8; margin-bottom: 0.25rem; margin-top: 0.5rem; }
+.add-form input, .add-form textarea {
+  width: 100%; padding: 0.4rem 0.6rem; border-radius: 6px;
+  border: 1px solid #334155; background: #0f172a; color: #e2e8f0;
+  font-size: 0.85rem;
+}
+.add-form textarea { resize: vertical; min-height: 70px; }
+.add-form .form-row { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+.add-form .form-row button {
+  padding: 0.4rem 1rem; border-radius: 6px; font-size: 0.85rem;
+  cursor: pointer; border: none;
+}
+.btn-submit { background: #3b82f6; color: #fff; }
+.btn-submit:hover { background: #2563eb; }
+.btn-cancel-form { background: #374151; color: #d1d5db; }
+.btn-cancel-form:hover { background: #4b5563; }
+
+/* ── Image Grid ── */
+.image-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+.img-card {
+  background: #1e1e1e; border: 1px solid #2e2e2e; border-radius: 8px;
+  overflow: hidden; cursor: pointer; transition: border-color 0.15s;
+  position: relative;
+}
+.img-card:hover { border-color: #3b82f6; }
+.img-card img {
+  width: 100%; aspect-ratio: 1; object-fit: contain;
+  background: #2a2a2a; display: block; padding: 6px;
+}
+.img-card .label {
+  font-size: 0.68rem; color: #94a3b8; padding: 0.35rem 0.4rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;
+}
+.cdn-badge {
+  position: absolute; top: 4px; right: 4px;
+  background: #d97706; color: #fff; font-size: 0.6rem;
+  padding: 1px 4px; border-radius: 3px; font-weight: 700;
+}
+
+/* ── Detail Panel ── */
+#detail-panel {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: #1a1a2e; border-top: 2px solid #334155;
+  padding: 1.25rem 1.5rem 1.5rem; z-index: 500;
+  transform: translateY(100%); transition: transform 0.25s ease;
+  max-height: 85vh; overflow-y: auto;
+}
+#detail-panel.open { transform: translateY(0); }
+.detail-header { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
+.detail-thumb {
+  width: 140px; height: 140px; object-fit: contain;
+  background: #2a2a2a; border-radius: 8px; flex-shrink: 0;
+}
+.detail-meta { flex: 1; min-width: 0; }
+.detail-meta h2 { font-size: 1rem; margin-bottom: 0.25rem; }
+.detail-meta .detail-sub { font-size: 0.78rem; color: #94a3b8; }
+.detail-close {
+  background: none; border: none; color: #94a3b8; font-size: 1.4rem;
+  cursor: pointer; line-height: 1; padding: 0 0.25rem;
+}
+.detail-close:hover { color: #fff; }
+
+.detail-section { margin-bottom: 1rem; }
+.detail-section label { display: block; font-size: 0.78rem; color: #94a3b8; margin-bottom: 0.3rem; }
+.detail-row { display: flex; gap: 0.5rem; }
+.detail-row input {
+  flex: 1; padding: 0.4rem 0.6rem; border-radius: 6px;
+  border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: 0.85rem;
+}
+.btn-sm {
+  padding: 0.4rem 0.85rem; border-radius: 6px; font-size: 0.82rem;
+  cursor: pointer; border: none; white-space: nowrap;
+}
+.btn-blue { background: #3b82f6; color: #fff; }
+.btn-blue:hover { background: #2563eb; }
+.btn-gray { background: #374151; color: #d1d5db; }
+.btn-gray:hover { background: #4b5563; }
+.btn-red { background: #7f1d1d; color: #fca5a5; }
+.btn-red:hover { background: #991b1b; }
+.btn-amber { background: #78350f; color: #fde68a; }
+.btn-amber:hover { background: #92400e; }
+
+.wiki-results { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.wiki-result {
+  width: 90px; background: #1e1e1e; border: 1px solid #334155;
+  border-radius: 6px; overflow: hidden; cursor: pointer;
+}
+.wiki-result:hover { border-color: #3b82f6; }
+.wiki-result img { width: 100%; aspect-ratio: 1; object-fit: contain; background: #2a2a2a; display: block; }
+.wiki-result span { display: block; font-size: 0.62rem; color: #94a3b8; padding: 2px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.status-msg { font-size: 0.8rem; min-height: 1.2em; margin-top: 0.3rem; }
+.status-msg.ok { color: #86efac; }
+.status-msg.err { color: #f87171; }
+
+.loading { color: #64748b; font-size: 0.9rem; padding: 1.5rem 0; }
+</style>
+</head>
+<body>
+
+<!-- Password Gate -->
+<div id="gate">
+  <div class="gate-box">
+    <h1>🔐 Image Manager</h1>
+    <input type="password" id="gate-input" placeholder="Admin password" autocomplete="current-password">
+    <button id="gate-btn">Unlock</button>
+    <div id="gate-error"></div>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app">
+  <div class="game-tabs" id="game-tabs"></div>
+  <div id="main-content"><p class="loading">Loading…</p></div>
+</div>
+
+<!-- Detail Panel -->
+<div id="detail-panel">
+  <div class="detail-header">
+    <img class="detail-thumb" id="dp-thumb" src="" alt="">
+    <div class="detail-meta">
+      <h2 id="dp-filename"></h2>
+      <div class="detail-sub" id="dp-sub"></div>
+    </div>
+    <button class="detail-close" id="dp-close">✕</button>
+  </div>
+
+  <div class="detail-section">
+    <label>Replace from URL</label>
+    <div class="detail-row">
+      <input type="url" id="dp-url-input" placeholder="https://…">
+      <button class="btn-sm btn-blue" id="dp-save-btn">Save</button>
+    </div>
+    <div class="status-msg" id="dp-save-status"></div>
+  </div>
+
+  <div class="detail-section">
+    <label>Search Wikimedia Commons</label>
+    <div class="detail-row">
+      <input type="text" id="dp-wiki-input" placeholder="Search query…">
+      <button class="btn-sm btn-gray" id="dp-wiki-btn">Search</button>
+      <button class="btn-sm btn-amber" id="dp-google-btn">Google ↗</button>
+    </div>
+    <div class="wiki-results" id="dp-wiki-results"></div>
+  </div>
+
+  <div class="detail-section">
+    <button class="btn-sm btn-red" id="dp-remove-btn">Remove image</button>
+    <span class="status-msg" id="dp-remove-status"></span>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ─── State ────────────────────────────────────────────────────────────────────
+
+const GAMES = [
+  { id: 'IDMatchGame',      label: 'Matching Game',     type: 'manifest' },
+  { id: 'NameIDGame',       label: 'Name Game',         type: 'manifest' },
+  { id: 'FamousPersonGame', label: 'Famous Person Game', type: 'fpg'     },
+];
+
+let token = sessionStorage.getItem('adminToken') || '';
+let activeGame = GAMES[0];
+let gameData = {}; // { [gameId]: { manifest | fpgPeople } }
+let activeFolder = null;
+let detailContext = null; // { gameId, folder, filename, person? }
+
+// ─── Auth / Gate ──────────────────────────────────────────────────────────────
+
+const gate = document.getElementById('gate');
+const gateInput = document.getElementById('gate-input');
+const gateBtn = document.getElementById('gate-btn');
+const gateError = document.getElementById('gate-error');
+
+function showGate(msg) {
+  gate.classList.remove('hidden');
+  gateError.textContent = msg || '';
+  gateInput.value = '';
+  setTimeout(() => gateInput.focus(), 50);
+}
+
+function hideGate() { gate.classList.add('hidden'); }
+
+if (token) hideGate(); else showGate();
+
+gateInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
+gateBtn.addEventListener('click', tryUnlock);
+
+function tryUnlock() {
+  const pw = gateInput.value.trim();
+  if (!pw) { gateError.textContent = 'Enter your password.'; return; }
+  token = pw;
+  sessionStorage.setItem('adminToken', pw);
+  hideGate();
+  initApp();
+}
+
+function handle401() {
+  token = '';
+  sessionStorage.removeItem('adminToken');
+  showGate('Session expired — re-enter password.');
+}
+
+// ─── Fetch helpers ────────────────────────────────────────────────────────────
+
+async function adminPost(endpoint, body) {
+  const res = await fetch('../../api/admin/' + endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify(body),
+  });
+  if (res.status === 401) { handle401(); return null; }
+  return res;
+}
+
+// ─── Data Loading ─────────────────────────────────────────────────────────────
+
+async function loadGameData(game) {
+  if (gameData[game.id]) return gameData[game.id];
+
+  if (game.type === 'manifest') {
+    const path = game.id === 'IDMatchGame'
+      ? `../../IDMatchGame/IDMatchGame/manifest.json`
+      : `../../NameIDGame/NameIDGame/manifest.json`;
+    const res = await fetch(path);
+    const m = await res.json();
+    if (!m.archived) m.archived = [];
+    gameData[game.id] = { manifest: m };
+  } else {
+    const res = await fetch('../../FamousPersonGame/index.html');
+    const html = await res.text();
+    const match = html.match(/const PEOPLE\s*=\s*(\[[\s\S]*?\n\];)/);
+    let people = [];
+    if (match) {
+      try { people = Function('"use strict"; return ' + match[1])(); } catch(e) { console.error(e); }
+    }
+    gameData[game.id] = { fpgPeople: people };
+  }
+  return gameData[game.id];
+}
+
+// ─── App Init ─────────────────────────────────────────────────────────────────
+
+function initApp() {
+  renderGameTabs();
+  switchGame(GAMES[0]);
+}
+
+function renderGameTabs() {
+  const wrap = document.getElementById('game-tabs');
+  wrap.innerHTML = '';
+  GAMES.forEach(g => {
+    const btn = document.createElement('button');
+    btn.className = 'game-tab' + (g === activeGame ? ' active' : '');
+    btn.textContent = g.label;
+    btn.addEventListener('click', () => switchGame(g));
+    wrap.appendChild(btn);
+  });
+}
+
+async function switchGame(game) {
+  activeGame = game;
+  activeFolder = null;
+  document.querySelectorAll('.game-tab').forEach((b, i) => {
+    b.classList.toggle('active', GAMES[i] === game);
+  });
+  const content = document.getElementById('main-content');
+  content.innerHTML = '<p class="loading">Loading…</p>';
+  await loadGameData(game);
+  renderFolderBar();
+  renderContent();
+}
+
+// ─── Folder Bar ───────────────────────────────────────────────────────────────
+
+function getFolders() {
+  const d = gameData[activeGame.id];
+  if (!d) return [];
+  if (activeGame.type === 'fpg') return ['images'];
+  return d.manifest.folders || [];
+}
+
+function getArchivedFolders() {
+  const d = gameData[activeGame.id];
+  if (!d || activeGame.type === 'fpg') return [];
+  return d.manifest.archived || [];
+}
+
+function renderFolderBar() {
+  const content = document.getElementById('main-content');
+
+  const barWrap = document.createElement('div');
+  barWrap.className = 'folder-bar-wrap';
+  barWrap.id = 'folder-bar';
+
+  const folders = getFolders();
+  const archived = getArchivedFolders();
+
+  if (!activeFolder || (!folders.includes(activeFolder) && activeFolder !== '__archived__')) {
+    activeFolder = folders[0] || (archived.length ? '__archived__' : null);
+  }
+
+  folders.forEach(f => {
+    const btn = document.createElement('button');
+    btn.className = 'folder-tab' + (activeFolder === f ? ' active' : '');
+    btn.textContent = f.replace(/^T_/, '').replace(/_/g, ' ');
+    btn.dataset.folder = f;
+    btn.addEventListener('click', () => { activeFolder = f; renderFolderBar(); renderContent(); });
+    barWrap.appendChild(btn);
+  });
+
+  if (archived.length) {
+    const btn = document.createElement('button');
+    btn.className = 'folder-tab archived-tab' + (activeFolder === '__archived__' ? ' active' : '');
+    btn.textContent = '📦 Archived (' + archived.length + ')';
+    btn.addEventListener('click', () => { activeFolder = '__archived__'; renderFolderBar(); renderContent(); });
+    barWrap.appendChild(btn);
+  }
+
+  if (activeGame.type === 'manifest') {
+    const newBtn = document.createElement('button');
+    newBtn.className = 'btn-new-topic';
+    newBtn.textContent = '+ New Topic';
+    newBtn.addEventListener('click', showNewTopicModal);
+    barWrap.appendChild(newBtn);
+  }
+
+  content.innerHTML = '';
+  content.appendChild(barWrap);
+}
+
+// ─── Content Area ─────────────────────────────────────────────────────────────
+
+function renderContent() {
+  const content = document.getElementById('main-content');
+  // Remove everything after folder bar
+  while (content.children.length > 1) content.removeChild(content.lastChild);
+
+  if (activeFolder === '__archived__') {
+    renderArchivedView(content);
+    return;
+  }
+
+  // Folder action bar
+  if (activeGame.type === 'manifest' && activeFolder) {
+    const bar = document.createElement('div');
+    bar.className = 'folder-action-bar';
+    const archBtn = document.createElement('button');
+    archBtn.className = 'btn-archive';
+    archBtn.textContent = 'Archive Folder';
+    archBtn.addEventListener('click', () => doArchiveTopic(activeFolder));
+    bar.appendChild(archBtn);
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn-add-image';
+    addBtn.textContent = '+ Add Image';
+    addBtn.addEventListener('click', () => toggleAddForm(addForm, addBtn));
+    bar.appendChild(addBtn);
+    content.appendChild(bar);
+
+    const addForm = buildAddForm('manifest');
+    content.appendChild(addForm);
+  } else if (activeGame.type === 'fpg') {
+    const bar = document.createElement('div');
+    bar.className = 'folder-action-bar';
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn-add-image';
+    addBtn.textContent = '+ Add Person';
+    addBtn.addEventListener('click', () => toggleAddForm(addForm, addBtn));
+    bar.appendChild(addBtn);
+    content.appendChild(bar);
+
+    const addForm = buildAddForm('fpg');
+    content.appendChild(addForm);
+  }
+
+  const grid = document.createElement('div');
+  grid.className = 'image-grid';
+  grid.id = 'image-grid';
+
+  const images = getImagesForFolder(activeFolder);
+  images.forEach(item => grid.appendChild(buildCard(item)));
+
+  content.appendChild(grid);
+}
+
+function getImagesForFolder(folder) {
+  const d = gameData[activeGame.id];
+  if (!d) return [];
+
+  if (activeGame.type === 'fpg') {
+    return d.fpgPeople.map(p => ({ type: 'fpg', person: p }));
+  }
+
+  const paths = (d.manifest.images && d.manifest.images[folder]) || [];
+  return paths.map(p => ({ type: 'manifest', path: p, folder }));
+}
+
+function buildCard(item) {
+  const card = document.createElement('div');
+  card.className = 'img-card';
+
+  const img = document.createElement('img');
+  const label = document.createElement('div');
+  label.className = 'label';
+
+  if (item.type === 'fpg') {
+    const p = item.person;
+    const isCDN = p.img && p.img.startsWith('https://');
+    img.src = isCDN ? p.img : '../../FamousPersonGame/' + p.img;
+    img.alt = p.name;
+    label.textContent = p.name;
+    if (isCDN) {
+      const badge = document.createElement('span');
+      badge.className = 'cdn-badge';
+      badge.textContent = 'CDN';
+      card.appendChild(badge);
+    }
+    card.addEventListener('click', () => openDetail({ type: 'fpg', person: p }));
+  } else {
+    img.src = '../../' + activeGame.id + '/' + activeGame.id + '/' + item.path;
+    img.alt = item.path;
+    const filename = item.path.split('/').pop();
+    label.textContent = filename;
+    card.addEventListener('click', () => openDetail({ type: 'manifest', path: item.path, folder: item.folder, gameId: activeGame.id }));
+  }
+
+  img.onerror = () => { img.style.opacity = '0.3'; };
+  card.appendChild(img);
+  card.appendChild(label);
+  return card;
+}
+
+// ─── Archived View ────────────────────────────────────────────────────────────
+
+function renderArchivedView(content) {
+  const archived = getArchivedFolders();
+  if (!archived.length) {
+    const p = document.createElement('p');
+    p.className = 'loading';
+    p.textContent = 'No archived folders.';
+    content.appendChild(p);
+    return;
+  }
+
+  archived.forEach(folder => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;padding:.6rem 1rem;background:#1e1e1e;border-radius:8px;border:1px solid #334155;';
+
+    const name = document.createElement('span');
+    name.textContent = folder;
+    name.style.cssText = 'flex:1;font-size:.85rem;color:#fbbf24;';
+    row.appendChild(name);
+
+    const restoreBtn = document.createElement('button');
+    restoreBtn.className = 'btn-restore';
+    restoreBtn.textContent = 'Restore';
+    restoreBtn.addEventListener('click', () => doRestoreTopic(folder));
+    row.appendChild(restoreBtn);
+
+    const purgeBtn = document.createElement('button');
+    purgeBtn.className = 'btn-purge';
+    purgeBtn.textContent = 'Delete';
+    purgeBtn.addEventListener('click', () => doPurgeTopic(folder));
+    row.appendChild(purgeBtn);
+
+    content.appendChild(row);
+  });
+}
+
+// ─── Add Form ─────────────────────────────────────────────────────────────────
+
+function buildAddForm(formType) {
+  const form = document.createElement('div');
+  form.className = 'add-form';
+
+  if (formType === 'manifest') {
+    form.innerHTML = `
+      <h3>Add Image to ${activeFolder}</h3>
+      <label>Filename (e.g. bear.svg)</label>
+      <input type="text" name="filename" placeholder="bear.svg">
+      <label>Image URL</label>
+      <input type="url" name="url" placeholder="https://…">
+      <div class="form-row">
+        <button class="btn-submit">Add Image</button>
+        <button class="btn-cancel-form">Cancel</button>
+      </div>
+      <div class="status-msg" id="add-form-status"></div>
+    `;
+    form.querySelector('.btn-submit').addEventListener('click', async () => {
+      const filename = form.querySelector('[name=filename]').value.trim();
+      const url = form.querySelector('[name=url]').value.trim();
+      const status = form.querySelector('#add-form-status');
+      if (!filename || !url) { setStatus(status, 'err', 'Fill in all fields.'); return; }
+      setStatus(status, '', 'Saving…');
+      const res = await adminPost('save-image', {
+        game: activeGame.id, folder: activeFolder, filename, imageUrl: url,
+      });
+      if (!res) return;
+      if (res.ok) {
+        setStatus(status, 'ok', 'Saved!');
+        const d = gameData[activeGame.id];
+        const path = `_Resources/_imgSource/${activeFolder}/${filename}`;
+        if (!d.manifest.images[activeFolder]) d.manifest.images[activeFolder] = [];
+        d.manifest.images[activeFolder].push(path);
+        const grid = document.getElementById('image-grid');
+        if (grid) grid.appendChild(buildCard({ type: 'manifest', path, folder: activeFolder }));
+      } else {
+        const j = await res.json().catch(() => ({}));
+        setStatus(status, 'err', j.error || 'Error ' + res.status);
+      }
+    });
+  } else {
+    form.innerHTML = `
+      <h3>Add Famous Person</h3>
+      <label>Name</label>
+      <input type="text" name="name" placeholder="Albert Einstein">
+      <label>Years</label>
+      <input type="text" name="years" placeholder="1879–1955">
+      <label>Emoji</label>
+      <input type="text" name="emoji" placeholder="🧠">
+      <label>Tag</label>
+      <input type="text" name="tag" placeholder="Scientist">
+      <label>Facts (one per line)</label>
+      <textarea name="facts" placeholder="Fact 1&#10;Fact 2"></textarea>
+      <label>Image URL</label>
+      <input type="url" name="url" placeholder="https://…">
+      <div class="form-row">
+        <button class="btn-submit">Add Person</button>
+        <button class="btn-cancel-form">Cancel</button>
+      </div>
+      <div class="status-msg" id="add-form-status"></div>
+    `;
+    form.querySelector('.btn-submit').addEventListener('click', async () => {
+      const name = form.querySelector('[name=name]').value.trim();
+      const years = form.querySelector('[name=years]').value.trim();
+      const emoji = form.querySelector('[name=emoji]').value.trim();
+      const tag = form.querySelector('[name=tag]').value.trim();
+      const factsRaw = form.querySelector('[name=facts]').value.trim();
+      const url = form.querySelector('[name=url]').value.trim();
+      const status = form.querySelector('#add-form-status');
+      if (!name || !url) { setStatus(status, 'err', 'Name and URL are required.'); return; }
+      const facts = factsRaw ? factsRaw.split('\n').map(s => s.trim()).filter(Boolean) : [];
+      setStatus(status, '', 'Saving…');
+      const res = await adminPost('save-image', {
+        game: 'FamousPersonGame', folder: 'images', filename: nameToSlug(name) + '.jpg',
+        imageUrl: url,
+        personMeta: { name, years, emoji, tag, facts },
+      });
+      if (!res) return;
+      if (res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setStatus(status, 'ok', 'Saved!');
+        const newPerson = { name, years, emoji, tag, img: j.localPath || url, facts };
+        gameData['FamousPersonGame'].fpgPeople.push(newPerson);
+        const grid = document.getElementById('image-grid');
+        if (grid) grid.appendChild(buildCard({ type: 'fpg', person: newPerson }));
+      } else {
+        const j = await res.json().catch(() => ({}));
+        setStatus(status, 'err', j.error || 'Error ' + res.status);
+      }
+    });
+  }
+
+  form.querySelector('.btn-cancel-form').addEventListener('click', () => {
+    form.classList.remove('open');
+  });
+
+  return form;
+}
+
+function toggleAddForm(form, btn) {
+  const isOpen = form.classList.toggle('open');
+  btn.textContent = isOpen ? '✕ Cancel' : (activeGame.type === 'fpg' ? '+ Add Person' : '+ Add Image');
+}
+
+// ─── Topic Actions ────────────────────────────────────────────────────────────
+
+async function doArchiveTopic(folder) {
+  if (!confirm(`Archive folder "${folder}"? It will be moved to the Archived tab.`)) return;
+  const res = await adminPost('archive-topic', { game: activeGame.id, folder });
+  if (!res) return;
+  if (res.ok) {
+    const m = gameData[activeGame.id].manifest;
+    m.folders = m.folders.filter(f => f !== folder);
+    const archName = folder.replace(/^T_/, '_a_T_');
+    if (!m.archived) m.archived = [];
+    m.archived.push(archName);
+    activeFolder = m.folders[0] || (m.archived.length ? '__archived__' : null);
+    renderFolderBar();
+    renderContent();
+  } else {
+    const j = await res.json().catch(() => ({}));
+    alert('Error: ' + (j.error || res.status));
+  }
+}
+
+async function doRestoreTopic(archFolder) {
+  if (!confirm(`Restore "${archFolder}"?`)) return;
+  const res = await adminPost('restore-topic', { game: activeGame.id, folder: archFolder });
+  if (!res) return;
+  if (res.ok) {
+    const m = gameData[activeGame.id].manifest;
+    m.archived = m.archived.filter(f => f !== archFolder);
+    const restored = archFolder.replace(/^_a_T_/, 'T_');
+    m.folders.push(restored);
+    activeFolder = restored;
+    renderFolderBar();
+    renderContent();
+  } else {
+    const j = await res.json().catch(() => ({}));
+    alert('Error: ' + (j.error || res.status));
+  }
+}
+
+async function doPurgeTopic(archFolder) {
+  if (!confirm(`Permanently delete "${archFolder}"? This cannot be undone.`)) return;
+  const res = await adminPost('purge-topic', { game: activeGame.id, folder: archFolder });
+  if (!res) return;
+  if (res.ok) {
+    const m = gameData[activeGame.id].manifest;
+    m.archived = m.archived.filter(f => f !== archFolder);
+    activeFolder = m.folders[0] || (m.archived.length ? '__archived__' : null);
+    renderFolderBar();
+    renderContent();
+  } else {
+    const j = await res.json().catch(() => ({}));
+    alert('Error: ' + (j.error || res.status));
+  }
+}
+
+// ─── New Topic Modal ──────────────────────────────────────────────────────────
+
+function showNewTopicModal() {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:800;display:flex;align-items:center;justify-content:center;';
+
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#1e1e2e;border:1px solid #334155;border-radius:12px;padding:1.5rem;width:360px;';
+  box.innerHTML = `
+    <h2 style="font-size:1rem;margin-bottom:1rem;color:#93c5fd;">New Topic Folder</h2>
+    <label style="font-size:.78rem;color:#94a3b8;display:block;margin-bottom:.25rem;">Folder name (will be prefixed T_)</label>
+    <input type="text" id="nt-name" placeholder="animals" style="width:100%;padding:.4rem .6rem;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:.85rem;margin-bottom:.75rem;">
+    <label style="font-size:.78rem;color:#94a3b8;display:block;margin-bottom:.25rem;">First image filename</label>
+    <input type="text" id="nt-filename" placeholder="bear.svg" style="width:100%;padding:.4rem .6rem;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:.85rem;margin-bottom:.75rem;">
+    <label style="font-size:.78rem;color:#94a3b8;display:block;margin-bottom:.25rem;">First image URL</label>
+    <input type="url" id="nt-url" placeholder="https://…" style="width:100%;padding:.4rem .6rem;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:.85rem;margin-bottom:.75rem;">
+    <div style="display:flex;gap:.5rem;margin-top:.25rem;">
+      <button id="nt-submit" style="flex:1;padding:.4rem;border-radius:6px;background:#3b82f6;color:#fff;border:none;cursor:pointer;">Create</button>
+      <button id="nt-cancel" style="flex:1;padding:.4rem;border-radius:6px;background:#374151;color:#d1d5db;border:none;cursor:pointer;">Cancel</button>
+    </div>
+    <div id="nt-status" style="font-size:.78rem;min-height:1.2em;margin-top:.4rem;"></div>
+  `;
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  box.querySelector('#nt-cancel').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+
+  box.querySelector('#nt-submit').addEventListener('click', async () => {
+    const name = box.querySelector('#nt-name').value.trim().replace(/^T_/, '');
+    const filename = box.querySelector('#nt-filename').value.trim();
+    const url = box.querySelector('#nt-url').value.trim();
+    const status = box.querySelector('#nt-status');
+    if (!name || !filename || !url) { setStatus(status, 'err', 'All fields required.'); return; }
+    const folder = 'T_' + name;
+    setStatus(status, '', 'Creating…');
+    const res = await adminPost('save-image', {
+      game: activeGame.id, folder, filename, imageUrl: url,
+    });
+    if (!res) return;
+    if (res.ok) {
+      const m = gameData[activeGame.id].manifest;
+      if (!m.folders.includes(folder)) m.folders.push(folder);
+      if (!m.images) m.images = {};
+      if (!m.images[folder]) m.images[folder] = [];
+      const path = `_Resources/_imgSource/${folder}/${filename}`;
+      m.images[folder].push(path);
+      activeFolder = folder;
+      overlay.remove();
+      renderFolderBar();
+      renderContent();
+    } else {
+      const j = await res.json().catch(() => ({}));
+      setStatus(status, 'err', j.error || 'Error ' + res.status);
+    }
+  });
+}
+
+// ─── Detail Panel ─────────────────────────────────────────────────────────────
+
+const detailPanel = document.getElementById('detail-panel');
+const dpThumb = document.getElementById('dp-thumb');
+const dpFilename = document.getElementById('dp-filename');
+const dpSub = document.getElementById('dp-sub');
+const dpUrlInput = document.getElementById('dp-url-input');
+const dpSaveBtn = document.getElementById('dp-save-btn');
+const dpSaveStatus = document.getElementById('dp-save-status');
+const dpWikiInput = document.getElementById('dp-wiki-input');
+const dpWikiBtn = document.getElementById('dp-wiki-btn');
+const dpGoogleBtn = document.getElementById('dp-google-btn');
+const dpWikiResults = document.getElementById('dp-wiki-results');
+const dpRemoveBtn = document.getElementById('dp-remove-btn');
+const dpRemoveStatus = document.getElementById('dp-remove-status');
+
+document.getElementById('dp-close').addEventListener('click', closeDetail);
+
+function openDetail(ctx) {
+  detailContext = ctx;
+  dpUrlInput.value = '';
+  dpWikiInput.value = '';
+  dpWikiResults.innerHTML = '';
+  setStatus(dpSaveStatus, '', '');
+  setStatus(dpRemoveStatus, '', '');
+
+  if (ctx.type === 'fpg') {
+    const p = ctx.person;
+    const isCDN = p.img && p.img.startsWith('https://');
+    dpThumb.src = isCDN ? p.img : '../../FamousPersonGame/' + p.img;
+    dpFilename.textContent = p.name;
+    dpSub.textContent = [p.years, p.emoji, p.tag].filter(Boolean).join(' · ');
+    dpWikiInput.value = p.name;
+  } else {
+    dpThumb.src = '../../' + ctx.gameId + '/' + ctx.gameId + '/' + ctx.path;
+    const filename = ctx.path.split('/').pop();
+    dpFilename.textContent = filename;
+    dpSub.textContent = ctx.path;
+    dpWikiInput.value = filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+  }
+
+  detailPanel.classList.add('open');
+}
+
+function closeDetail() {
+  detailPanel.classList.remove('open');
+  detailContext = null;
+}
+
+// Save
+dpSaveBtn.addEventListener('click', async () => {
+  if (!detailContext) return;
+  const url = dpUrlInput.value.trim();
+  if (!url) { setStatus(dpSaveStatus, 'err', 'Enter a URL.'); return; }
+  setStatus(dpSaveStatus, '', 'Saving…');
+
+  let body;
+  if (detailContext.type === 'fpg') {
+    const p = detailContext.person;
+    body = { game: 'FamousPersonGame', folder: 'images', filename: p.img.split('/').pop(), imageUrl: url, personName: p.name };
+  } else {
+    const filename = detailContext.path.split('/').pop();
+    body = { game: detailContext.gameId, folder: detailContext.folder, filename, imageUrl: url };
+  }
+
+  const res = await adminPost('save-image', body);
+  if (!res) return;
+  if (res.ok) {
+    const j = await res.json().catch(() => ({}));
+    setStatus(dpSaveStatus, 'ok', 'Saved!');
+    dpThumb.src = url;
+    if (detailContext.type === 'fpg' && j.localPath) {
+      detailContext.person.img = j.localPath;
+    }
+  } else {
+    const j = await res.json().catch(() => ({}));
+    setStatus(dpSaveStatus, 'err', j.error || 'Error ' + res.status);
+  }
+});
+
+// Wikimedia search
+dpWikiBtn.addEventListener('click', async () => {
+  const q = dpWikiInput.value.trim();
+  if (!q) return;
+  dpWikiResults.innerHTML = '<span style="font-size:.8rem;color:#64748b">Searching…</span>';
+
+  try {
+    const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&srnamespace=6&srlimit=6&format=json&origin=*`;
+    const searchRes = await fetch(searchUrl);
+    const searchData = await searchRes.json();
+    const hits = (searchData.query && searchData.query.search) || [];
+
+    if (!hits.length) { dpWikiResults.innerHTML = '<span style="font-size:.8rem;color:#64748b">No results.</span>'; return; }
+
+    const titles = hits.slice(0, 6).map(h => h.title).join('|');
+    const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(titles)}&prop=imageinfo&iiprop=url&iiurlwidth=400&format=json&origin=*`;
+    const infoRes = await fetch(infoUrl);
+    const infoData = await infoRes.json();
+    const pages = Object.values((infoData.query && infoData.query.pages) || {});
+
+    dpWikiResults.innerHTML = '';
+    let count = 0;
+    pages.forEach(page => {
+      if (count >= 3) return;
+      const ii = page.imageinfo && page.imageinfo[0];
+      if (!ii) return;
+      count++;
+      const card = document.createElement('div');
+      card.className = 'wiki-result';
+      const img = document.createElement('img');
+      img.src = ii.thumburl || ii.url;
+      img.alt = page.title;
+      const lbl = document.createElement('span');
+      lbl.textContent = page.title.replace('File:', '');
+      card.appendChild(img);
+      card.appendChild(lbl);
+      const fullUrl = ii.url;
+      card.addEventListener('click', () => {
+        dpUrlInput.value = fullUrl;
+        dpSaveBtn.click();
+      });
+      dpWikiResults.appendChild(card);
+    });
+
+    if (!count) dpWikiResults.innerHTML = '<span style="font-size:.8rem;color:#64748b">No images found.</span>';
+  } catch (e) {
+    dpWikiResults.innerHTML = '<span style="font-size:.8rem;color:#f87171">Search failed.</span>';
+  }
+});
+
+// Google image search
+dpGoogleBtn.addEventListener('click', () => {
+  const q = dpWikiInput.value.trim() || dpFilename.textContent;
+  window.open('https://www.google.com/search?q=' + encodeURIComponent(q) + '&tbm=isch', '_blank');
+});
+
+// Remove
+dpRemoveBtn.addEventListener('click', async () => {
+  if (!detailContext) return;
+  if (!confirm('Remove this image? This cannot be undone.')) return;
+
+  let body;
+  if (detailContext.type === 'fpg') {
+    const p = detailContext.person;
+    body = { game: 'FamousPersonGame', folder: 'images', filename: p.img.split('/').pop(), personName: p.name };
+  } else {
+    body = { game: detailContext.gameId, folder: detailContext.folder, filename: detailContext.path.split('/').pop() };
+  }
+
+  const res = await adminPost('remove-image', body);
+  if (!res) return;
+  if (res.ok) {
+    setStatus(dpRemoveStatus, 'ok', 'Removed.');
+    // Remove card from grid
+    const grid = document.getElementById('image-grid');
+    if (grid) {
+      const cards = grid.querySelectorAll('.img-card');
+      cards.forEach(card => {
+        const img = card.querySelector('img');
+        if (img && (img.src === dpThumb.src || img.alt === dpFilename.textContent)) {
+          card.remove();
+        }
+      });
+    }
+    setTimeout(closeDetail, 800);
+  } else {
+    const j = await res.json().catch(() => ({}));
+    setStatus(dpRemoveStatus, 'err', j.error || 'Error ' + res.status);
+  }
+});
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
+
+function setStatus(el, type, msg) {
+  el.className = 'status-msg' + (type ? ' ' + type : '');
+  el.textContent = msg;
+}
+
+function nameToSlug(name) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+
+if (token) initApp();
+</script>
+</body>
+</html>
