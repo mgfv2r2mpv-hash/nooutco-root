@@ -56,9 +56,10 @@ const state = {
   posDeck: [],
 
   // Timer
-  timerSecs:    0,
-  timerRunning: false,
-  timerHandle:  null,
+  timerSecs:       0,
+  timerRunning:    false,
+  timerHandle:     null,
+  timerAutoPaused: false,  // true when paused automatically on correct tap
 
   // Prompt timeouts
   promptHandle:     null,
@@ -502,6 +503,8 @@ function onTileClick(idx) {
 function onCorrectClick(wrapper, tile) {
   disableAllTiles();
   clearPrompt();
+  // Pause timer while the learner waits for Next — only if it was running
+  if (state.timerRunning) { pauseTimer(); state.timerAutoPaused = true; }
 
   // Cancel delayed auto-prompt if it hadn't fired yet
   clearTimeout(state.autoPromptHandle);
@@ -631,6 +634,8 @@ function removeNextBtn() {
 
 function onNextClick() {
   removeNextBtn();
+  // Resume timer only if we auto-paused it (not if staff had paused manually)
+  if (state.timerAutoPaused) { state.timerAutoPaused = false; startTimer(); }
   const last = state.sessionData[state.sessionData.length - 1];
   // Repeat if the last outcome was an error of any kind
   const needsRepeat = last && (last.outcome === 'Error' || last.outcome === 'Repeat Error');
