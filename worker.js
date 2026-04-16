@@ -143,13 +143,20 @@ async function handleAdminSaveImage(request, env) {
     return jsonError('Failed to download image: ' + err.message, 502);
   }
 
-  let repoPath, localPath;
+  // Use detected extension so the saved file always matches its content-type.
+  const base = filename.replace(/\.[^.]+$/, '');
+  const saveFilename = `${base}.${ext}`;
+  const oldFilename  = filename !== saveFilename ? filename : null;
+
+  let repoPath, localPath, oldLocalPath;
   if (game === 'FamousPersonGame') {
-    repoPath  = `FamousPersonGame/_Resources/_imgSource/images/${filename}`;
-    localPath = `_Resources/_imgSource/images/${filename}`;
+    repoPath     = `FamousPersonGame/_Resources/_imgSource/images/${saveFilename}`;
+    localPath    = `_Resources/_imgSource/images/${saveFilename}`;
+    oldLocalPath = null;
   } else {
-    repoPath  = `${game}/${game}/_Resources/_imgSource/${folder}/${filename}`;
-    localPath = `_Resources/_imgSource/${folder}/${filename}`;
+    repoPath     = `${game}/${game}/_Resources/_imgSource/${folder}/${saveFilename}`;
+    localPath    = `_Resources/_imgSource/${folder}/${saveFilename}`;
+    oldLocalPath = oldFilename ? `_Resources/_imgSource/${folder}/${oldFilename}` : null;
   }
 
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -157,7 +164,7 @@ async function handleAdminSaveImage(request, env) {
       if (game === 'FamousPersonGame') {
         await atomicFPGCommit(env, personName, repoPath, imgBytes, localPath, personMeta);
       } else {
-        await atomicManifestSaveCommit(env, game, folder, filename, repoPath, imgBytes, localPath);
+        await atomicManifestSaveCommit(env, game, folder, saveFilename, repoPath, imgBytes, localPath, oldLocalPath);
       }
       break;
     } catch (err) {
@@ -166,7 +173,7 @@ async function handleAdminSaveImage(request, env) {
     }
   }
 
-  return json({ ok: true, path: localPath });
+  return json({ ok: true, path: localPath, filename: saveFilename });
 }
 
 // ─── Admin: remove-image ──────────────────────────────────────────────────────
@@ -396,7 +403,7 @@ async function atomicFPGRemoveCommit(env, personName, repoPath) {
 
 // ─── Atomic commit: IDMatchGame/NameIDGame image save ────────────────────────
 
-async function atomicManifestSaveCommit(env, game, folder, filename, repoPath, imgBytes, localPath) {
+async function atomicManifestSaveCommit(env, game, folder, filename, repoPath, imgBytes, localPath, oldLocalPath) {
   const refData    = await gh(env, 'GET', 'git/ref/heads/main');
   const headSha    = refData.object.sha;
   const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
@@ -411,7 +418,11 @@ async function atomicManifestSaveCommit(env, game, folder, filename, repoPath, i
     manifest.folders = [...manifest.folders, folder].sort();
     manifest.images[folder] = [];
   }
-  // Add image path if not already present
+  // Remove old entry when extension changed (e.g. bear.svg → bear.jpg)
+  if (oldLocalPath && manifest.images[folder]) {
+    manifest.images[folder] = manifest.images[folder].filter(p => p !== oldLocalPath);
+  }
+  // Add new image path if not already present
   if (!manifest.images[folder].includes(localPath)) {
     manifest.images[folder] = [...manifest.images[folder], localPath].sort();
   }
