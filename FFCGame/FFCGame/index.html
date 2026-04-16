@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feature · Function · Class Game</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ── Header ──────────────────────────────────────────────────── -->
+  <header id="app-header">
+    <a href="../../index.html" id="btn-back" title="Back to Games">← Back</a>
+    <h1>Feature · Function · Class</h1>
+    <div id="timer-section">
+      <span id="timer-display">00:00</span>
+      <button id="btn-timer-toggle" class="btn-timer" title="Pause / Resume">Pause</button>
+      <button id="btn-timer-reset"  class="btn-timer" title="Reset timer">Reset</button>
+    </div>
+  </header>
+
+  <!-- ── Settings bar ─────────────────────────────────────────────── -->
+  <div id="settings-bar">
+
+    <div class="setting-group">
+      <label for="sel-mode">Mode</label>
+      <select id="sel-mode">
+        <option value="feature">Feature</option>
+        <option value="function">Function</option>
+        <option value="classWithinGroup">Class (within group)</option>
+        <option value="classCrossCategory">Class (cross-category)</option>
+      </select>
+    </div>
+
+    <div class="setting-group">
+      <label for="sel-tag">Tag</label>
+      <select id="sel-tag">
+        <option value="__auto__">Auto-cycle</option>
+      </select>
+    </div>
+
+    <div class="setting-group">
+      <label for="inp-size">Array Size</label>
+      <input type="number" id="inp-size" min="2" max="10" value="4">
+    </div>
+
+    <div class="setting-group">
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-persists">
+        Prompt persists
+      </label>
+    </div>
+
+    <div class="setting-group">
+      <label for="sel-prompt-style">Prompt style</label>
+      <select id="sel-prompt-style">
+        <option value="sparkle">Sparkle</option>
+        <option value="outline">Outline</option>
+      </select>
+      <button id="btn-prompt" class="btn-prompt" hidden>Prompt</button>
+    </div>
+
+    <div class="setting-group">
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-auto-prompt">
+        Auto-Prompt
+      </label>
+    </div>
+
+    <div class="setting-group">
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-prompt-delay" disabled>
+        Prompt Delay
+      </label>
+      <select id="sel-prompt-delay" disabled>
+        <option value="1">1s</option>
+        <option value="2">2s</option>
+        <option value="3" selected>3s</option>
+        <option value="4">4s</option>
+        <option value="5">5s</option>
+        <option value="10">10s</option>
+      </select>
+    </div>
+
+    <button id="btn-start" class="btn-primary">Start</button>
+  </div>
+
+  <!-- ── Game area (hidden until Start) ───────────────────────────── -->
+  <main id="game-area" hidden>
+
+    <section id="sample-section">
+      <div class="area-label">Find</div>
+      <div id="sample-card">
+        <div id="sample-word"></div>
+      </div>
+    </section>
+
+    <section id="comp-section">
+      <div class="area-label">Choose the picture</div>
+      <div id="comp-grid"></div>
+    </section>
+
+  </main>
+
+  <!-- ── Bottom controls ──────────────────────────────────────────── -->
+  <div id="bottom-bar">
+    <button id="btn-print"      class="btn-print">Print Data</button>
+    <button id="btn-clear-data" class="btn-clear-data">Clear Data</button>
+  </div>
+
+  <!-- ── Print-only section ───────────────────────────────────────── -->
+  <div id="print-section">
+    <div id="print-header">
+      <h2>Feature · Function · Class — Session Results</h2>
+      <div id="print-meta"></div>
+    </div>
+    <table id="results-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Mode</th>
+          <th>Tag</th>
+          <th>Target</th>
+          <th>Array Size</th>
+          <th>Errors</th>
+          <th>Prompted</th>
+          <th>Delay (s)</th>
+          <th>Time (s)</th>
+          <th>Outcome</th>
+        </tr>
+      </thead>
+      <tbody id="results-body"></tbody>
+    </table>
+    <div id="print-summary"></div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
