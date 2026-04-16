@@ -76,6 +76,16 @@ body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-he
 .folder-action-bar {
   display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;
 }
+.btn-rename {
+  padding: 0.3rem 0.75rem; border-radius: 6px; font-size: 0.8rem;
+  background: #1e293b; color: #93c5fd; border: 1px solid #334155; cursor: pointer;
+}
+.btn-rename:hover { background: #1e3a5f; }
+.rename-inline { display: flex; align-items: center; gap: 0.4rem; }
+.rename-inline input {
+  padding: 0.25rem 0.5rem; border-radius: 6px; border: 1px solid #3b82f6;
+  background: #0f172a; color: #e2e8f0; font-size: 0.82rem; width: 160px;
+}
 .btn-archive {
   padding: 0.3rem 0.75rem; border-radius: 6px; font-size: 0.8rem;
   background: #451a03; color: #fbbf24; border: 1px solid #78350f; cursor: pointer;
@@ -480,6 +490,12 @@ function renderContent() {
   if (activeGame.type === 'manifest' && activeFolder) {
     const bar = document.createElement('div');
     bar.className = 'folder-action-bar';
+    const renameBtn = document.createElement('button');
+    renameBtn.className = 'btn-rename';
+    renameBtn.textContent = '✏ Rename';
+    renameBtn.addEventListener('click', () => showRenameInline(bar, renameBtn, activeFolder));
+    bar.appendChild(renameBtn);
+
     const archBtn = document.createElement('button');
     archBtn.className = 'btn-archive';
     archBtn.textContent = 'Archive Folder';
@@ -909,6 +925,75 @@ async function doPurgeTopic(archFolder) {
     const j = await res.json().catch(() => ({}));
     alert('Error: ' + (j.error || res.status));
   }
+}
+
+// ─── Rename Topic ─────────────────────────────────────────────────────────────
+
+function showRenameInline(bar, renameBtn, folder) {
+  if (bar.querySelector('.rename-inline')) return;
+  renameBtn.style.display = 'none';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'rename-inline';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = folder.replace(/^T_/, '');
+  attachSanitize(input, sanitizeSlug);
+
+  const okBtn = document.createElement('button');
+  okBtn.className = 'btn-sm btn-blue';
+  okBtn.textContent = 'OK';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn-sm btn-gray';
+  cancelBtn.textContent = 'Cancel';
+
+  const status = document.createElement('span');
+  status.style.cssText = 'font-size:.78rem;';
+
+  wrap.appendChild(input);
+  wrap.appendChild(okBtn);
+  wrap.appendChild(cancelBtn);
+  wrap.appendChild(status);
+  bar.insertBefore(wrap, renameBtn.nextSibling);
+  input.focus();
+  input.select();
+
+  function close() { wrap.remove(); renameBtn.style.display = ''; }
+  cancelBtn.addEventListener('click', close);
+  input.addEventListener('keydown', e => { if (e.key === 'Escape') close(); if (e.key === 'Enter') okBtn.click(); });
+
+  okBtn.addEventListener('click', async () => {
+    const newName = input.value.trim();
+    if (!newName || newName === folder.replace(/^T_/, '')) { close(); return; }
+    const newFolder = 'T_' + newName;
+    okBtn.disabled = cancelBtn.disabled = true;
+    status.textContent = 'Renaming…';
+    status.style.color = '#94a3b8';
+    try {
+      const res = await adminPost('rename-topic', { game: activeGame.id, folder, newFolder });
+      if (!res) { close(); return; }
+      if (res.ok) {
+        const m = gameData[activeGame.id].manifest;
+        m.folders = [...m.folders.filter(f => f !== folder), newFolder].sort();
+        m.images[newFolder] = (m.images[folder] || []).map(p => p.replace(`/${folder}/`, `/${newFolder}/`));
+        delete m.images[folder];
+        activeFolder = newFolder;
+        renderFolderBar();
+        renderContent();
+      } else {
+        const j = await res.json().catch(() => ({}));
+        status.textContent = j.error || 'Error ' + res.status;
+        status.style.color = '#f87171';
+        okBtn.disabled = cancelBtn.disabled = false;
+      }
+    } catch (err) {
+      status.textContent = err.message || 'Network error';
+      status.style.color = '#f87171';
+      okBtn.disabled = cancelBtn.disabled = false;
+    }
+  });
 }
 
 // ─── New Topic Modal ──────────────────────────────────────────────────────────
