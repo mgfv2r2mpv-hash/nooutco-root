@@ -6,8 +6,10 @@ on:
   push:
     branches: [main]
     paths:
-      - 'IDMatchGame/IDMatchGame/T_**'
-      - 'NameIDGame/NameIDGame/T_**'
+      - 'IDMatchGame/IDMatchGame/_Resources/_imgSource/T_**'
+      - 'IDMatchGame/IDMatchGame/_Resources/_imgSource/_a_T_**'
+      - 'NameIDGame/NameIDGame/_Resources/_imgSource/T_**'
+      - 'NameIDGame/NameIDGame/_Resources/_imgSource/_a_T_**'
 
 jobs:
   rebuild:
