@@ -64,18 +64,34 @@
       padding-top: 20px;
       border-top: 1px solid #dde0d8;
     }
+    .support details > summary {
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .support details > summary::-webkit-details-marker { display: none; }
+    .support details > summary::after {
+      content: '▾';
+      font-size: 10px;
+      opacity: 0.5;
+      margin-left: 2px;
+    }
+    .support details[open] > summary::after { content: '▴'; }
     .support-heading {
       font-size: 11px;
       font-weight: 600;
       letter-spacing: 0.07em;
       text-transform: uppercase;
       color: #888;
-      margin-bottom: 10px;
     }
     .support-text {
       font-size: 13px;
       color: #555;
       line-height: 1.55;
+      margin-top: 12px;
       margin-bottom: 14px;
     }
     .support-links {
@@ -144,29 +160,31 @@
     </a>
   </div>
 
-  <section class="support" aria-labelledby="support-heading">
-    <div class="support-heading" id="support-heading">Support this project</div>
-    <p class="support-text">
-      No Outcome is a passion project bridging ABA and technology - built so
-      clinicians, supervisors, and clients get tools that fit the science
-      without eating anyone's evenings. If it has helped you or the people
-      you serve, you can chip in toward the time it takes to keep building.
-    </p>
-    <div class="support-links">
-      <a class="support-link primary" href="https://ko-fi.com/nooutcomeaba" rel="noopener">
-        ❤️ Donate on Ko-fi
-      </a>
-      <a class="support-link" href="https://buymeacoffee.com/no.outcome.aba" rel="noopener">
-        ☕ Buy Me a Coffee
-      </a>
-      <a class="support-link" href="https://paypal.me/kablubfowles" rel="noopener">
-        PayPal
-      </a>
-    </div>
+  <section class="support">
+    <details>
+      <summary class="support-heading">Support This Project 💖</summary>
+      <p class="support-text">
+        No Outcome is a passion project bridging ABA and technology - built so
+        clinicians, supervisors, and clients get tools that fit the science
+        without eating anyone's evenings. If it has helped you or the people
+        you serve, you can chip in toward the time it takes to keep building.
+      </p>
+      <div class="support-links">
+        <a class="support-link primary" href="https://ko-fi.com/nooutcomeaba" rel="noopener">
+          ❤️ Donate on Ko-fi
+        </a>
+        <a class="support-link" href="https://buymeacoffee.com/no.outcome.aba" rel="noopener">
+          ☕ Buy Me a Coffee
+        </a>
+        <a class="support-link" href="https://paypal.me/kablubfowles" rel="noopener">
+          PayPal
+        </a>
+      </div>
+    </details>
   </section>
 
   <p class="meta">
-    Source-available under a non-commercial license with a standing exemption
+    Source-available under a non-commercial license with express exemptions
     for clinicians, educators, researchers, and non-profits. See the
     <a href="https://github.com/mgfv2r2mpv-hash/nooutco-root/blob/main/LICENSE">LICENSE</a>
     and <a href="https://github.com/mgfv2r2mpv-hash/nooutco-root#readme">mission</a> on GitHub.
