@@ -647,6 +647,7 @@ function buildAddForm(formType) {
         setStatus(status, 'err', err.message || 'Network error');
       }
     });
+    attachSanitize(form.querySelector('[name=filename]'), sanitizeFilename);
     const urlInput = form.querySelector('[name=url]');
     const wikiQueryInput = form.querySelector('[name=wiki-query]');
     const wikiResults = form.querySelector('.form-wiki-results');
@@ -830,6 +831,8 @@ function showNewTopicModal() {
 
   box.querySelector('#nt-cancel').addEventListener('click', () => overlay.remove());
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  attachSanitize(box.querySelector('#nt-name'), sanitizeSlug);
+  attachSanitize(box.querySelector('#nt-filename'), sanitizeFilename);
 
   box.querySelector('#nt-submit').addEventListener('click', async () => {
     const name = box.querySelector('#nt-name').value.trim().replace(/^T_/, '');
@@ -1044,6 +1047,22 @@ function setStatus(el, type, msg) {
 
 function nameToSlug(name) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function sanitizeFilename(val) {
+  return val.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9.\-]/g, '').replace(/-{2,}/g, '-');
+}
+
+function sanitizeSlug(val) {
+  return val.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '').replace(/-{2,}/g, '-');
+}
+
+function attachSanitize(input, fn) {
+  input.addEventListener('input', () => {
+    const pos = input.selectionStart;
+    const clean = fn(input.value);
+    if (clean !== input.value) { input.value = clean; input.setSelectionRange(pos, pos); }
+  });
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
