@@ -444,7 +444,7 @@ function renderTrial() {
   el.sampleImg.alt = 'Sample stimulus';
 
   const cols = gridCols(state.arraySize);
-  el.compGrid.style.gridTemplateColumns = `repeat(${cols}, 128px)`;
+  el.compGrid.style.setProperty('--grid-cols', cols);
   el.compGrid.innerHTML = '';
 
   state.tileImages.forEach((src, idx) => {

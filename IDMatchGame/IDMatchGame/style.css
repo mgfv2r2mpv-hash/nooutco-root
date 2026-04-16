@@ -1,3 +1,9 @@
+/* ── CSS custom properties ─────────────────────────────────────────── */
+:root {
+  --tile-sz:  128px;
+  --tile-gap: 12px;
+}
+
 /* ── Reset & base ──────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 [hidden] { display: none !important; }
@@ -191,7 +197,9 @@ body {
 
 #comp-grid {
   display: grid;
-  gap: 12px;
+  gap: var(--tile-gap);
+  grid-template-columns: repeat(var(--grid-cols, 4), var(--tile-sz));
+  justify-content: center;
 }
 
 /* ── Tile ──────────────────────────────────────────────────────────── */
@@ -204,8 +212,8 @@ body {
 }
 
 .tile {
-  width: 128px;
-  height: 128px;
+  width: var(--tile-sz);
+  height: var(--tile-sz);
   position: relative;
   transform-style: preserve-3d;
   transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
@@ -449,6 +457,8 @@ body {
 
 /* ── Responsive ────────────────────────────────────────────────────── */
 @media (max-width: 680px) {
+  :root { --tile-sz: 96px; --tile-gap: 8px; }
+
   /* Header */
   #app-header { padding: 8px 12px; gap: 8px; }
   #app-header h1 { font-size: 1.05rem; }
@@ -462,7 +472,7 @@ body {
   .setting-group select,
   .setting-group input[type="number"] { font-size: 0.82rem; padding: 4px 6px; }
 
-  /* Game area — column, anchored to top (justify-content:center was centering vertically) */
+  /* Game area — column, anchored to top */
   #game-area {
     flex-direction: column;
     align-items: center;
@@ -471,10 +481,12 @@ body {
     padding: 16px 12px;
   }
 
-  /* Tiles and sample card */
-  .tile { width: 96px; height: 96px; }
+  /* Sample card */
   #sample-card { width: 150px; height: 150px; }
+}
 
-  /* Comp grid: allow tiles to wrap on very small screens */
-  #comp-grid { gap: 8px; }
+/* Narrow phones: shrink tiles further so 4-column grids still fit */
+@media (max-width: 480px) {
+  :root { --tile-sz: 72px; --tile-gap: 6px; }
+  .ok-text { font-size: 2rem; }
 }
