@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-16T20:15:10.933Z",
+  "generated": "2026-04-16T20:15:25.654Z",
   "folders": [
     "T_animals",
     "T_buildings",
@@ -36,8 +36,7 @@
       "_Resources/_imgSource/T_buildings/hospital.jpg",
       "_Resources/_imgSource/T_buildings/house.jpg",
       "_Resources/_imgSource/T_buildings/library.jpg",
-      "_Resources/_imgSource/T_buildings/school.jpg",
-      "_Resources/_imgSource/T_buildings/store.svg"
+      "_Resources/_imgSource/T_buildings/school.jpg"
     ],
     "T_colors": [
       "_Resources/_imgSource/T_colors/black.svg",
