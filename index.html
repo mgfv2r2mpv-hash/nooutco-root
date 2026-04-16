@@ -57,6 +57,26 @@
     .tile-category { font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: #7d9068; }
     .tile-name { font-size: 17px; font-weight: 700; color: #1a1a1a; }
     .tile-desc { font-size: 13px; color: #666; line-height: 1.4; }
+
+    .support {
+      max-width: 680px;
+      margin-top: 32px;
+      padding-top: 20px;
+      border-top: 1px solid #dde0d8;
+    }
+    .support-text { font-size: 13px; color: #888; margin-bottom: 10px; }
+    .support-links { display: flex; flex-wrap: wrap; gap: 14px; }
+    .support-link {
+      font-size: 13px;
+      color: #5a7048;
+      text-decoration: none;
+      padding: 6px 12px;
+      border: 1px solid #dde0d8;
+      border-radius: 6px;
+      background: #fff;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .support-link:hover { border-color: #7d9068; color: #3d4e31; }
   </style>
 </head>
 <body>
@@ -81,5 +101,14 @@
       </div>
     </a>
   </div>
+
+  <footer class="support">
+    <p class="support-text">Find these tools useful? Tips keep them free and growing.</p>
+    <div class="support-links">
+      <a class="support-link" href="https://ko-fi.com/nooutcomeaba" target="_blank" rel="noopener">Ko-fi</a>
+      <a class="support-link" href="https://buymeacoffee.com/no.outcome.aba" target="_blank" rel="noopener">Buy Me a Tea</a>
+      <a class="support-link" href="https://venmo.com/u/kablubfowles" target="_blank" rel="noopener">Venmo</a>
+    </div>
+  </footer>
 </body>
 </html>
