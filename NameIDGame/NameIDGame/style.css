@@ -173,8 +173,8 @@ body {
 #sample-section { display: flex; flex-direction: column; align-items: center; }
 
 #sample-card {
-  width: 260px;
-  height: 82px;
+  width: 210px;
+  height: 64px;
   background: linear-gradient(145deg, #2d4a2d, #3d6b3d);
   border-radius: 14px;
   box-shadow: 0 4px 18px rgba(45,74,45,0.30);
@@ -183,7 +183,7 @@ body {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  padding: 12px 20px;
+  padding: 8px 16px;
 }
 
 #sample-word {
@@ -475,12 +475,34 @@ body {
 
   #game-area { gap: 14px; padding: 14px 12px; }
 
-  #sample-card { width: 220px; height: 70px; padding: 10px 16px; }
+  #sample-card { width: 180px; height: 56px; padding: 6px 14px; }
 }
 
 /* Narrow phones */
 @media (max-width: 480px) {
   :root { --tile-sz: 76px; --tile-gap: 6px; }
   .ok-text { font-size: 2rem; }
-  #sample-card { width: 180px; height: 62px; padding: 8px 14px; }
+  #sample-card { width: 160px; height: 50px; padding: 6px 12px; }
+}
+
+/* ── Landscape phones: row layout so tiles fill horizontal space ────── */
+@media (orientation: landscape) and (max-height: 500px) {
+  :root { --tile-sz: 110px; --tile-gap: 8px; }
+
+  #game-area {
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+    padding: 8px 14px;
+  }
+
+  #sample-section { flex-shrink: 0; }
+
+  #sample-card {
+    width: 120px;
+    height: 90px;
+    padding: 6px 10px;
+  }
+
+  #comp-section { flex: 1; min-width: 0; }
 }
