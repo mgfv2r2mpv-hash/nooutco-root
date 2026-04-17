@@ -1,5 +1,10 @@
 {
   "generated": "2026-04-17T01:27:51.138Z",
+  "promptDefaults": {
+    "features":  "Which one is {tag}?",
+    "functions": "Which do you use to {tag}?",
+    "classes":   "Which is a {tag}?"
+  },
   "vocab": {
     "groups": [
       "school_supplies",
@@ -140,19 +145,7 @@
       "ride": "Which do you ride?",
       "keep_warm": "Which keeps you warm?"
     },
-    "classWithinGroup": {
-      "writing_implement": "Which one is a writing implement?",
-      "stationery": "Which one is stationery?",
-      "school_supply": "Which one is a school supply?",
-      "vehicle": "Which one is a vehicle?",
-      "clothing": "Which one is clothing?",
-      "animal": "Which one is an animal?",
-      "food": "Which one is a food?",
-      "tool": "Which one is a tool?",
-      "furniture": "Which one is furniture?",
-      "container": "Which one is a container?"
-    },
-    "classCrossCategory": {
+    "class": {
       "writing_implement": "Which one is a writing implement?",
       "stationery": "Which one is stationery?",
       "school_supply": "Which one is a school supply?",
