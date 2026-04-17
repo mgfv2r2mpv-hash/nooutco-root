@@ -150,6 +150,163 @@ body {
 .btn-primary:hover  { background: #2b6cb0; }
 .btn-primary:active { transform: scale(0.97); }
 
+/* ── Target picker ─────────────────────────────────────────────────── */
+.btn-targets {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #2d3748;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-targets:hover       { background: #edf2f7; }
+.btn-targets.is-open     { background: #e6f0fb; border-color: #4299e1; }
+.btn-targets.is-filtered { border-color: #3182ce; color: #2b6cb0; }
+.btn-targets .targets-count {
+  font-weight: 500;
+  color: #4a5568;
+  background: #edf2f7;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+}
+.btn-targets.is-filtered .targets-count {
+  background: #bee3f8;
+  color: #2b6cb0;
+}
+
+#target-panel {
+  background: #fafbfd;
+  border-bottom: 2px solid #dde3ed;
+  padding: 10px 20px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+.target-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.target-panel-title {
+  font-weight: 700;
+  color: #2d3748;
+  font-size: 0.9rem;
+  text-transform: capitalize;
+}
+.target-panel-actions {
+  display: flex;
+  gap: 6px;
+}
+.target-panel-actions button {
+  padding: 4px 10px;
+  border: 1px solid #cbd5e0;
+  background: #fff;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #2d3748;
+  cursor: pointer;
+}
+.target-panel-actions button:hover { background: #edf2f7; }
+.btn-targets-close {
+  border: none !important;
+  background: transparent !important;
+  font-size: 1.2rem !important;
+  line-height: 1;
+  padding: 2px 8px !important;
+}
+.target-panel-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+.target-panel-empty {
+  padding: 12px;
+  color: #718096;
+  font-style: italic;
+}
+
+.target-group {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.target-group-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  border-bottom: 1px dashed #e2e8f0;
+  padding-bottom: 4px;
+}
+.target-group-title {
+  flex: 1 1 auto;
+  font-weight: 700;
+  color: #2d3748;
+  font-size: 0.85rem;
+}
+.target-group-head button {
+  padding: 2px 6px;
+  border: 1px solid #cbd5e0;
+  background: #f7fafc;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #4a5568;
+  cursor: pointer;
+}
+.target-group-head button:hover { background: #edf2f7; }
+.target-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.target-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 2px;
+  font-size: 0.82rem;
+  color: #2d3748;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.target-row:hover { background: #edf2f7; }
+.target-row input[type="checkbox"] { cursor: pointer; accent-color: #3182ce; }
+.target-thumb {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.target-thumb-label {
+  display: none;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 28px;
+  color: #718096;
+  background: #f7fafc;
+  border: 1px dashed #cbd5e0;
+  border-radius: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.target-thumb-label-visible { display: inline-block; }
+.target-row-label { flex: 1 1 auto; }
+
 /* ── Game area ─────────────────────────────────────────────────────── */
 #game-area {
   flex: 1;
@@ -258,6 +415,20 @@ body {
   pointer-events: none;
   display: block;
 }
+.tile-front .tile-label {
+  display: none;
+  width: 90%;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #2d3748;
+  word-break: break-word;
+  padding: 8px;
+  border: 2px dashed #cbd5e0;
+  border-radius: 8px;
+  background: #f7fafc;
+}
+.tile-front .tile-label-visible { display: block; }
 .tile:not(.tile-disabled):hover .tile-front {
   border-color: #4299e1;
   box-shadow: 0 4px 12px rgba(66,153,225,0.28);
