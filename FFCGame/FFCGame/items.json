@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-17T00:42:55.280Z",
+  "generated": "2026-04-17T00:44:11.304Z",
   "vocab": {
     "groups": [
       "school_supplies",
@@ -331,7 +331,7 @@
     },
     {
       "id": "mug",
-      "img": "mug.svg",
+      "img": "mug.jpg",
       "label": "Mug",
       "groups": [
         "household_items"
