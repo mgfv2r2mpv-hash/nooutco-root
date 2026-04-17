@@ -9,9 +9,16 @@ export default {
     }
 
     return new HTMLRewriter()
+      // Remove any existing favicon links so subdomain icons can't override
+      .on('link[rel*="icon"]', {
+        element(el) {
+          el.remove();
+        },
+      })
+      // Inject our favicon at the top of <head> so it loads first
       .on('head', {
         element(head) {
-          head.append(
+          head.prepend(
             '<link rel="icon" type="image/png" href="https://nooutco.me/N-O.png">',
             { html: true }
           );
