@@ -190,10 +190,124 @@
     }
     .meta a { color: #7d9068; text-decoration: none; }
     .meta a:hover { text-decoration: underline; }
+
+    .admin-gear {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      width: 40px;
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1.5px solid #c4cab8;
+      border-radius: 999px;
+      background: #fafaf8;
+      color: #3a4a28;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.25s;
+      z-index: 40;
+    }
+    .admin-gear:hover { background: #f0f2eb; transform: rotate(25deg); }
+    .admin-gear.is-admin { border-color: #7a8c5e; background: #e8efda; }
+
+    .admin-modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(30, 40, 20, 0.35);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 50;
+    }
+    .admin-modal {
+      background: #fafaf8;
+      border: 1.5px solid #c4cab8;
+      border-radius: 14px;
+      padding: 24px;
+      width: min(400px, 92vw);
+      box-shadow: 0 10px 30px rgba(40, 55, 25, 0.18);
+    }
+    .admin-modal h2 {
+      font-size: 17px;
+      font-weight: 700;
+      color: #2d3a1e;
+      margin-bottom: 10px;
+    }
+    .admin-modal p {
+      font-size: 13px;
+      color: #5a6a48;
+      line-height: 1.55;
+      margin-bottom: 14px;
+    }
+    .admin-modal input[type="password"] {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1.5px solid #c0d4a8;
+      font-size: 14px;
+      color: #2d3a1f;
+      background: white;
+      margin-bottom: 12px;
+    }
+    .admin-modal input[type="password"]:focus {
+      outline: none;
+      border-color: #7a8c5e;
+    }
+    .admin-modal .error {
+      color: #c0392b;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+    .admin-modal .actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    .admin-modal button {
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .admin-modal .btn-primary {
+      border: none;
+      background: #374528;
+      color: white;
+    }
+    .admin-modal .btn-primary:hover { background: #2d3a1f; }
+    .admin-modal .btn-secondary {
+      border: 1.5px solid #c0d4a8;
+      background: white;
+      color: #374528;
+    }
+    .admin-modal .btn-secondary:hover { background: #f0f2eb; }
+    .admin-modal .status {
+      font-size: 13px;
+      color: #374528;
+      background: #e8efda;
+      border: 1px solid #c4cab8;
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+    }
   </style>
 </head>
 <body>
   <a class="home-btn" href="https://nooutco.me">&#8592; Home</a>
+
+  <!-- Admin gear -->
+  <button
+    id="adminGear"
+    class="admin-gear"
+    type="button"
+    aria-label="Admin settings"
+    title="Admin settings"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20" aria-hidden="true">
+      <path fill-rule="evenodd" d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 4.889c-.02.12-.115.26-.297.348a7.493 7.493 0 0 0-.986.57c-.166.115-.334.126-.45.083L6.3 5.508a1.875 1.875 0 0 0-2.282.819l-.922 1.597a1.875 1.875 0 0 0 .432 2.385l.84.692c.095.078.17.229.154.43a7.598 7.598 0 0 0 0 1.139c.015.2-.059.352-.153.43l-.841.692a1.875 1.875 0 0 0-.432 2.385l.922 1.597a1.875 1.875 0 0 0 2.282.818l1.019-.382c.115-.043.283-.031.45.082.312.214.641.405.985.57.182.088.277.228.297.35l.178 1.071c.151.904.933 1.567 1.85 1.567h1.844c.916 0 1.699-.663 1.85-1.567l.178-1.072c.02-.12.114-.26.297-.349.344-.165.673-.356.985-.57.167-.114.335-.125.45-.082l1.02.382a1.875 1.875 0 0 0 2.28-.819l.923-1.597a1.875 1.875 0 0 0-.432-2.385l-.84-.692c-.095-.078-.17-.229-.154-.43a7.614 7.614 0 0 0 0-1.139c-.016-.2.059-.352.153-.43l.84-.692c.708-.582.891-1.59.433-2.385l-.922-1.597a1.875 1.875 0 0 0-2.282-.818l-1.02.382c-.114.043-.282.031-.449-.083a7.49 7.49 0 0 0-.985-.57c-.183-.087-.277-.227-.297-.348l-.179-1.072a1.875 1.875 0 0 0-1.85-1.567h-1.843ZM12 15.75a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z" clip-rule="evenodd" />
+    </svg>
+  </button>
+
+  <div id="adminModalRoot"></div>
 
   <div class="content">
     <h1>Behavior Analyst Tools</h1>
@@ -254,5 +368,96 @@
       and <a href="https://github.com/mgfv2r2mpv-hash/tools-nooutco-me">mission</a> on GitHub.
     </p>
   </div>
+
+  <script>
+    // ─── Admin Auth ───────────────────────────────────────────
+    // To change the admin password, replace ADMIN_SECRET_HASH below with the
+    // SHA-256 hex digest of your new password. Default password: "admin".
+    const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
+
+    async function sha256Hex(str) {
+      const buf = new TextEncoder().encode(str);
+      const digest = await crypto.subtle.digest("SHA-256", buf);
+      return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    const hasAdminToken = () => localStorage.getItem("admin_token") === ADMIN_SECRET_HASH;
+
+    const gearBtn = document.getElementById("adminGear");
+    const modalRoot = document.getElementById("adminModalRoot");
+
+    function updateGearState() {
+      if (hasAdminToken()) gearBtn.classList.add("is-admin");
+      else gearBtn.classList.remove("is-admin");
+    }
+    updateGearState();
+
+    function closeModal() {
+      modalRoot.innerHTML = "";
+    }
+
+    function renderModal() {
+      const admin = hasAdminToken();
+      modalRoot.innerHTML = `
+        <div class="admin-modal-backdrop" id="adminBackdrop">
+          <div class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="adminModalTitle">
+            <h2 id="adminModalTitle">${admin ? "Admin Access" : "Admin Sign-In"}</h2>
+            ${admin
+              ? `<div class="status">You are signed in as admin.</div>
+                 <p>Sign out to return the tools to public (Generate Prompt only) mode.</p>
+                 <div class="actions">
+                   <button type="button" class="btn-secondary" id="adminCancel">Close</button>
+                   <button type="button" class="btn-primary" id="adminSignOut">Sign out</button>
+                 </div>`
+              : `<p>Enter the admin password to enable the API-driven tools on this browser.</p>
+                 <form id="adminForm">
+                   <input type="password" id="adminPw" placeholder="Admin password" autocomplete="current-password" autofocus />
+                   <div class="error" id="adminError" style="display:none"></div>
+                   <div class="actions">
+                     <button type="button" class="btn-secondary" id="adminCancel">Cancel</button>
+                     <button type="submit" class="btn-primary">Unlock</button>
+                   </div>
+                 </form>`
+            }
+          </div>
+        </div>
+      `;
+
+      document.getElementById("adminBackdrop").addEventListener("click", (e) => {
+        if (e.target.id === "adminBackdrop") closeModal();
+      });
+      document.getElementById("adminCancel").addEventListener("click", closeModal);
+
+      if (admin) {
+        document.getElementById("adminSignOut").addEventListener("click", () => {
+          localStorage.removeItem("admin_token");
+          updateGearState();
+          closeModal();
+        });
+      } else {
+        const form = document.getElementById("adminForm");
+        const errorEl = document.getElementById("adminError");
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const pw = document.getElementById("adminPw").value;
+          const hash = await sha256Hex(pw);
+          if (hash === ADMIN_SECRET_HASH) {
+            localStorage.setItem("admin_token", hash);
+            updateGearState();
+            closeModal();
+          } else {
+            errorEl.textContent = "Incorrect password.";
+            errorEl.style.display = "block";
+          }
+        });
+      }
+    }
+
+    gearBtn.addEventListener("click", renderModal);
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeModal();
+    });
+  </script>
 </body>
 </html>

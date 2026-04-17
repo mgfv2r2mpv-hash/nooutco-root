@@ -22,6 +22,17 @@
   <div id="root"></div>
 
   <script type="text/babel">
+    // ─── Admin Auth ───────────────────────────────────────────
+    // To change the admin password, replace ADMIN_SECRET_HASH below with the
+    // SHA-256 hex digest of your new password. Default password: "admin".
+    const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
+    async function sha256Hex(str) {
+      const buf = new TextEncoder().encode(str);
+      const digest = await crypto.subtle.digest("SHA-256", buf);
+      return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+    const hasAdminToken = () => localStorage.getItem("admin_token") === ADMIN_SECRET_HASH;
+
     const SECTIONS = [
       { id: "progress",    label: "1. Client Narrative Progress",       desc: "Skills / behavior goals" },
       { id: "programming", label: "2. Programming & BIP Changes",        desc: "Made or needed modifications" },
@@ -88,6 +99,14 @@
       const [copied,     setCopied]     = React.useState(null);
       const [showKey,    setShowKey]    = React.useState(false);
       const [copiedPrompt, setCopiedPrompt] = React.useState(false);
+      const [isAdmin,    setIsAdmin]    = React.useState(() => hasAdminToken());
+      const [promptText, setPromptText] = React.useState("");
+
+      React.useEffect(() => {
+        const onStorage = () => setIsAdmin(hasAdminToken());
+        window.addEventListener("storage", onStorage);
+        return () => window.removeEventListener("storage", onStorage);
+      }, []);
 
       const [pfCheck,       setPfCheck]       = React.useState(false);
       const [pfResult,      setPfResult]      = React.useState("");
@@ -158,7 +177,7 @@ Generate the four supervision note sections:
         setTimeout(() => setCopied(null), 1800);
       };
 
-      const handleCopyPrompt = () => {
+      const handleGeneratePrompt = () => {
         if (!notes.trim())      { setError("Please enter session notes first."); return; }
         if (btPresent === null) { setError("Please indicate whether a BT/RBT was present."); return; }
         setError("");
@@ -170,7 +189,13 @@ Generate the four supervision note sections:
           followUpCheck && `- Follow-up items: ${followUpList.trim() || "not specified"}`,
         ].filter(Boolean).join("\n");
         const usr = `BT/RBT present during session: ${btPresent ? "Yes" : "No"}\n\nRaw session notes:\n${notes}${checks ? `\n\nSession checks:\n${checks}` : ""}\n\nGenerate the four supervision note sections:\n\n1. "progress": Client narrative progress on skills and behavior goals observed this session.\n2. "programming": Summary of programming, prompting, or BIP changes made or needed.\n3. "feedback": ${btPresent ? "Feedback provided to direct service staff (BT/RBT) regarding implementation, skill acquisition targets, or behavior intervention." : "Description of Behavior Analyst-only activities performed this session."}\n4. "followup": Specific follow-up items to complete before or address at next session.`;
-        navigator.clipboard.writeText(`${sys}\n\n---\n\n${usr}`);
+        setPromptText(`${sys}\n\n---\n\n${usr}`);
+        setCopiedPrompt(false);
+      };
+
+      const handleCopyPromptText = () => {
+        if (!promptText) return;
+        navigator.clipboard.writeText(promptText);
         setCopiedPrompt(true);
         setTimeout(() => setCopiedPrompt(false), 1800);
       };
@@ -200,7 +225,8 @@ Generate the four supervision note sections:
             <a href="/" style={{ padding: "7px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", marginLeft: 16 }}>← Back</a>
           </div>
 
-          {/* Settings card */}
+          {/* Settings card — admin only */}
+          {isAdmin && (
           <div style={card}>
 
             {/* Provider toggle */}
@@ -246,6 +272,7 @@ Generate the four supervision note sections:
               <p style={{ fontSize: 12, color: "#7a9460", marginTop: 7 }}>{prov.hint} — saved in this browser only.</p>
             </div>
           </div>
+          )}
 
           {/* Input card */}
           <div style={card}>
@@ -323,30 +350,54 @@ Generate the four supervision note sections:
             {error && <p style={{ color: "#c0392b", fontSize: 13, marginBottom: 12 }}>{error}</p>}
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {isAdmin && (
+                <button
+                  onClick={handleGenerate}
+                  disabled={loading}
+                  style={{
+                    padding: "11px 28px", borderRadius: 8, border: "none",
+                    background: loading ? "#a0b890" : "#374528",
+                    color: "white", fontSize: 15, fontWeight: 600,
+                    cursor: loading ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {loading ? "Generating…" : "Generate Note"}
+                </button>
+              )}
               <button
-                onClick={handleGenerate}
-                disabled={loading}
-                style={{
-                  padding: "11px 28px", borderRadius: 8, border: "none",
-                  background: loading ? "#a0b890" : "#374528",
-                  color: "white", fontSize: 15, fontWeight: 600,
-                  cursor: loading ? "not-allowed" : "pointer",
-                }}
-              >
-                {loading ? "Generating…" : "Generate Note"}
-              </button>
-              <button
-                onClick={handleCopyPrompt}
+                onClick={handleGeneratePrompt}
                 style={{
                   padding: "11px 18px", borderRadius: 8,
-                  border: "1.5px solid #374528", background: "white",
-                  color: "#374528", fontSize: 14, fontWeight: 600, cursor: "pointer",
+                  border: "1.5px solid #374528",
+                  background: isAdmin ? "white" : "#374528",
+                  color: isAdmin ? "#374528" : "white",
+                  fontSize: 14, fontWeight: 600, cursor: "pointer",
                 }}
               >
-                {copiedPrompt ? "Copied!" : "Copy Prompt"}
+                Generate Prompt
               </button>
             </div>
           </div>
+
+          {/* Generated Prompt output */}
+          {promptText && (
+            <div style={{ ...card }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>Generated Prompt</h2>
+                <button
+                  onClick={handleCopyPromptText}
+                  style={{ padding: "7px 16px", borderRadius: 7, border: "1.5px solid #374528", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                >
+                  {copiedPrompt ? "Copied!" : "Copy"}
+                </button>
+              </div>
+              <textarea
+                readOnly
+                value={promptText}
+                style={{ width: "100%", minHeight: 220, padding: 12, borderRadius: 8, border: "1px solid #c0d4a8", fontSize: 13, color: "#2d3a1f", lineHeight: 1.6, resize: "vertical", background: "#f7fbf3", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+              />
+            </div>
+          )}
 
           {/* Output */}
           {output && (
