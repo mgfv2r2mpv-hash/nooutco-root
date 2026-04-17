@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-17T00:48:33.637Z",
+  "generated": "2026-04-17T00:48:47.084Z",
   "vocab": {
     "groups": [
       "school_supplies",
@@ -404,7 +404,7 @@
     },
     {
       "id": "banana",
-      "img": "banana.svg",
+      "img": "banana.jpg",
       "label": "Banana",
       "groups": [
         "foods"
