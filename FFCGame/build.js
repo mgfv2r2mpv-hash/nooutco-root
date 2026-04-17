@@ -20,7 +20,7 @@ const fs   = require('fs');
 const path = require('path');
 
 const ITEMS_JSON = path.join(__dirname, 'FFCGame', 'items.json');
-const IMG_DIR    = path.join(__dirname, '..', '_Resources', '_imgSource', 'items');
+const IMG_DIR    = path.join(__dirname, 'FFCGame', '_Resources', '_imgSource', 'items');
 
 let errors   = 0;
 let warnings = 0;

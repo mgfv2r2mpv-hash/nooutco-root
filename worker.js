@@ -680,7 +680,7 @@ async function handleFFCSaveImage(request, env) {
 
   const base         = filename.replace(/\.[^.]+$/, '');
   const saveFilename = `${base}.${ext}`;
-  const repoPath     = `_Resources/_imgSource/items/${saveFilename}`;
+  const repoPath     = `FFCGame/FFCGame/_Resources/_imgSource/items/${saveFilename}`;
   const localPath    = repoPath;
 
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -709,9 +709,9 @@ async function handleFFCRemoveImage(request, env) {
   const { localPath } = body;
   if (!localPath) return jsonError('localPath is required', 400);
 
-  const repoPath = localPath.startsWith('_Resources/')
+  const repoPath = localPath.startsWith('FFCGame/FFCGame/_Resources/')
     ? localPath
-    : `_Resources/_imgSource/items/${localPath.split('/').pop()}`;
+    : `FFCGame/FFCGame/_Resources/_imgSource/items/${localPath.split('/').pop()}`;
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
