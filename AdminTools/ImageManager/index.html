@@ -590,7 +590,7 @@ function buildCard(item) {
 
   if (item.type === 'ffc') {
     const it = item.item;
-    img.src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + it.img;
+    img.src = '../../_Resources/_imgSource/items/' + it.img;
     img.alt = it.label;
     label.textContent = it.label;
     card.addEventListener('click', () => openDetail({ type: 'ffc', item: it }));
@@ -1097,7 +1097,7 @@ function openDetail(ctx) {
 
   if (ctx.type === 'ffc') {
     const it = ctx.item;
-    dpThumb.src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + it.img;
+    dpThumb.src = '../../_Resources/_imgSource/items/' + it.img;
     dpFilename.textContent = it.label;
     dpSub.textContent = 'id: ' + it.id + '  |  groups: ' + (it.groups || []).join(', ');
     dpWikiInput.value = it.label;
@@ -1151,12 +1151,17 @@ dpSaveBtn.addEventListener('click', async () => {
     if (!res) { setStatus(dpSaveStatus, '', ''); return; }
     if (res.ok) {
       const j = await res.json().catch(() => ({}));
-      setStatus(dpSaveStatus, 'ok', 'Saved!');
-      dpThumb.src = url;
       if (ctx.type === 'ffc' && j.localPath) {
         ctx.item.img = j.localPath.split('/').pop();
-      } else if (ctx.type === 'fpg' && j.localPath) {
-        ctx.person.img = j.localPath;
+        dpThumb.src = '../../_Resources/_imgSource/items/' + ctx.item.img;
+        const d = gameData['FFCGame'].ffcData;
+        const saveRes = await adminPost('ffc-save-items', { items: d });
+        setStatus(dpSaveStatus, saveRes && saveRes.ok ? 'ok' : 'err',
+          saveRes && saveRes.ok ? 'Saved!' : 'Image saved but record update failed');
+      } else {
+        dpThumb.src = url;
+        if (ctx.type === 'fpg' && j.localPath) ctx.person.img = j.localPath;
+        setStatus(dpSaveStatus, 'ok', 'Saved!');
       }
     } else {
       const j = await res.json().catch(() => ({}));
