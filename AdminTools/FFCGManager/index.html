@@ -403,7 +403,7 @@ function renderGrid() {
     card.className = 'img-card';
 
     const img = document.createElement('img');
-    img.src = '../../_Resources/_imgSource/items/' + item.img;
+    img.src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + item.img;
     img.alt = item.label;
     img.onerror = () => { img.style.opacity = '.3'; };
 
@@ -426,7 +426,7 @@ function openDetail(item) {
   detailItem = item;
   document.getElementById('dp-title').textContent = item.label;
   document.getElementById('dp-sub').textContent   = 'id: ' + item.id;
-  document.getElementById('dp-thumb').src = '../../_Resources/_imgSource/items/' + item.img;
+  document.getElementById('dp-thumb').src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + item.img;
   document.getElementById('dp-label-input').value = item.label;
   document.getElementById('dp-url-input').value   = '';
   document.getElementById('dp-wiki-input').value  = item.label;
@@ -574,7 +574,7 @@ function bindEvents() {
         const saveRes = await adminPost('ffc-save-items', { items: ffcData });
         if (!saveRes || !saveRes.ok) { setStatus(status, 'err', 'Image saved but record update failed'); return; }
         setStatus(status, 'ok', 'Saved!');
-        const localSrc = '../../_Resources/_imgSource/items/' + detailItem.img;
+        const localSrc = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + detailItem.img;
         document.getElementById('dp-thumb').src = localSrc;
         const gridImg = document.querySelector(`#image-grid .img-card img[alt="${detailItem.label}"]`);
         if (gridImg) gridImg.src = localSrc;
@@ -622,7 +622,7 @@ function bindEvents() {
     const status = document.getElementById('dp-save-status');
     setStatus(status, '', 'Deleting…');
     try {
-      await adminPost('ffc-remove-image', { localPath: '_Resources/_imgSource/items/' + detailItem.img });
+      await adminPost('ffc-remove-image', { localPath: 'FFCGame/FFCGame/_Resources/_imgSource/items/' + detailItem.img });
       ffcData.items = ffcData.items.filter(i => i.id !== detailItem.id);
       const res = await adminPost('ffc-save-items', { items: ffcData });
       if (!res) { setStatus(status, '', ''); return; }
