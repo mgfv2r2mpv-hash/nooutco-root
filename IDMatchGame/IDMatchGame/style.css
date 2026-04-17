@@ -395,6 +395,16 @@ body {
 }
 .btn-clear-data:hover { background: #9b2c2c; }
 
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 34px;
+  padding: 0;
+}
+.btn-icon svg { width: 20px; height: 20px; fill: currentColor; }
+
 /* ── Print section (screen: hidden; print: visible) ─────────────────── */
 #print-section { display: none; }
 
