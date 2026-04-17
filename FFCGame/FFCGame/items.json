@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-17T00:48:47.084Z",
+  "generated": "2026-04-17T01:27:51.138Z",
   "vocab": {
     "groups": [
       "school_supplies",
@@ -350,7 +350,7 @@
     },
     {
       "id": "shirt",
-      "img": "shirt.png",
+      "img": "shirt.jpg",
       "label": "Shirt",
       "groups": [
         "clothes"
