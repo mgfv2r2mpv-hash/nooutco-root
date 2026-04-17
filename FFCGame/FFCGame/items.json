@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-17T00:48:21.073Z",
+  "generated": "2026-04-17T00:48:33.637Z",
   "vocab": {
     "groups": [
       "school_supplies",
@@ -387,7 +387,7 @@
     },
     {
       "id": "apple",
-      "img": "apple.svg",
+      "img": "apple.jpg",
       "label": "Apple",
       "groups": [
         "foods"
