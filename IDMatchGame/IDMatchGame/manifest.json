@@ -1,8 +1,7 @@
 {
-  "generated": "2026-04-17T14:18:32.738Z",
+  "generated": "2026-04-17T14:18:50.140Z",
   "folders": [
     "T_abc-lowercase",
-    "T_abc-uppercase",
     "T_animals",
     "T_buildings",
     "T_colors",
@@ -12,7 +11,8 @@
     "T_numbers",
     "T_pbs_characters",
     "T_shapes",
-    "T_toys"
+    "T_toys",
+    "T_uppercase"
   ],
   "images": {
     "T_animals": [
@@ -176,33 +176,33 @@
       "_Resources/_imgSource/T_abc-lowercase/y.svg",
       "_Resources/_imgSource/T_abc-lowercase/z.svg"
     ],
-    "T_abc-uppercase": [
-      "_Resources/_imgSource/T_abc-uppercase/A.svg",
-      "_Resources/_imgSource/T_abc-uppercase/B.svg",
-      "_Resources/_imgSource/T_abc-uppercase/C.svg",
-      "_Resources/_imgSource/T_abc-uppercase/D.svg",
-      "_Resources/_imgSource/T_abc-uppercase/E.svg",
-      "_Resources/_imgSource/T_abc-uppercase/F.svg",
-      "_Resources/_imgSource/T_abc-uppercase/G.svg",
-      "_Resources/_imgSource/T_abc-uppercase/H.svg",
-      "_Resources/_imgSource/T_abc-uppercase/I.svg",
-      "_Resources/_imgSource/T_abc-uppercase/J.svg",
-      "_Resources/_imgSource/T_abc-uppercase/K.svg",
-      "_Resources/_imgSource/T_abc-uppercase/L.svg",
-      "_Resources/_imgSource/T_abc-uppercase/M.svg",
-      "_Resources/_imgSource/T_abc-uppercase/N.svg",
-      "_Resources/_imgSource/T_abc-uppercase/O.svg",
-      "_Resources/_imgSource/T_abc-uppercase/P.svg",
-      "_Resources/_imgSource/T_abc-uppercase/Q.svg",
-      "_Resources/_imgSource/T_abc-uppercase/R.svg",
-      "_Resources/_imgSource/T_abc-uppercase/S.svg",
-      "_Resources/_imgSource/T_abc-uppercase/T.svg",
-      "_Resources/_imgSource/T_abc-uppercase/U.svg",
-      "_Resources/_imgSource/T_abc-uppercase/V.svg",
-      "_Resources/_imgSource/T_abc-uppercase/W.svg",
-      "_Resources/_imgSource/T_abc-uppercase/X.svg",
-      "_Resources/_imgSource/T_abc-uppercase/Y.svg",
-      "_Resources/_imgSource/T_abc-uppercase/Z.svg"
+    "T_uppercase": [
+      "_Resources/_imgSource/T_uppercase/A.svg",
+      "_Resources/_imgSource/T_uppercase/B.svg",
+      "_Resources/_imgSource/T_uppercase/C.svg",
+      "_Resources/_imgSource/T_uppercase/D.svg",
+      "_Resources/_imgSource/T_uppercase/E.svg",
+      "_Resources/_imgSource/T_uppercase/F.svg",
+      "_Resources/_imgSource/T_uppercase/G.svg",
+      "_Resources/_imgSource/T_uppercase/H.svg",
+      "_Resources/_imgSource/T_uppercase/I.svg",
+      "_Resources/_imgSource/T_uppercase/J.svg",
+      "_Resources/_imgSource/T_uppercase/K.svg",
+      "_Resources/_imgSource/T_uppercase/L.svg",
+      "_Resources/_imgSource/T_uppercase/M.svg",
+      "_Resources/_imgSource/T_uppercase/N.svg",
+      "_Resources/_imgSource/T_uppercase/O.svg",
+      "_Resources/_imgSource/T_uppercase/P.svg",
+      "_Resources/_imgSource/T_uppercase/Q.svg",
+      "_Resources/_imgSource/T_uppercase/R.svg",
+      "_Resources/_imgSource/T_uppercase/S.svg",
+      "_Resources/_imgSource/T_uppercase/T.svg",
+      "_Resources/_imgSource/T_uppercase/U.svg",
+      "_Resources/_imgSource/T_uppercase/V.svg",
+      "_Resources/_imgSource/T_uppercase/W.svg",
+      "_Resources/_imgSource/T_uppercase/X.svg",
+      "_Resources/_imgSource/T_uppercase/Y.svg",
+      "_Resources/_imgSource/T_uppercase/Z.svg"
     ]
   },
   "archived": {}
