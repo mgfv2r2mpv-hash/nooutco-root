@@ -34,9 +34,13 @@
 
     <div class="setting-group">
       <label for="sel-tag">Tag</label>
-      <select id="sel-tag">
-        <option value="__auto__">Auto-cycle</option>
-      </select>
+      <select id="sel-tag"></select>
+    </div>
+
+    <div class="setting-group setting-targets">
+      <button type="button" id="btn-targets-toggle" class="btn-targets" aria-expanded="false">
+        Targets <span id="targets-count" class="targets-count">0 of 0</span>
+      </button>
     </div>
 
     <div class="setting-group">
@@ -84,6 +88,19 @@
 
     <button id="btn-start" class="btn-primary">Start</button>
   </div>
+
+  <!-- ── Target picker panel (hidden until toggled) ───────────────── -->
+  <section id="target-panel" hidden>
+    <div class="target-panel-header">
+      <span class="target-panel-title">Targets for <span id="target-panel-mode-label"></span></span>
+      <div class="target-panel-actions">
+        <button type="button" id="btn-targets-all">Select all</button>
+        <button type="button" id="btn-targets-none">Deselect all</button>
+        <button type="button" id="btn-targets-close" title="Close" class="btn-targets-close">×</button>
+      </div>
+    </div>
+    <div id="target-panel-body" class="target-panel-body"></div>
+  </section>
 
   <!-- ── Game area (hidden until Start) ───────────────────────────── -->
   <main id="game-area" hidden>

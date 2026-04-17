@@ -44,13 +44,21 @@ const MODE_CONFIG = {
 const state = {
   // Settings
   mode:              'feature',
-  tag:               '__auto__',
+  tag:               '',
   arraySize:         4,
   promptPersists:    false,
   promptStyle:       'sparkle',
   autoPromptEnabled: false,
   promptDelay:       false,
   promptDelaySecs:   3,
+
+  // Per-mode target filters (arrays of item ids; empty = no filter)
+  targetFilters: {
+    feature:            [],
+    function:           [],
+    classWithinGroup:   [],
+    classCrossCategory: [],
+  },
 
   // Data
   items:          [],
@@ -76,8 +84,11 @@ const state = {
   isRepeatTrial: false,
 
   // Decks
-  posDeck:    [],
-  tagDeck:    [],
+  posDeck:     [],
+  targetDecks: {},  // keyed by `${mode}|${tag}`
+
+  // Target panel UI state
+  targetPanelOpen: false,
 
   // Timer
   timerSecs:       0,
@@ -95,28 +106,36 @@ const state = {
 const $ = id => document.getElementById(id);
 
 const el = {
-  timerDisplay:   $('timer-display'),
-  btnTimerToggle: $('btn-timer-toggle'),
-  btnTimerReset:  $('btn-timer-reset'),
-  selMode:        $('sel-mode'),
-  selTag:         $('sel-tag'),
-  inpSize:        $('inp-size'),
-  chkPersists:    $('chk-persists'),
-  selPromptStyle: $('sel-prompt-style'),
-  chkAutoPrompt:  $('chk-auto-prompt'),
-  chkPromptDelay: $('chk-prompt-delay'),
-  selPromptDelay: $('sel-prompt-delay'),
-  btnStart:       $('btn-start'),
-  gameArea:       $('game-area'),
-  sampleWord:     $('sample-word'),
-  compGrid:       $('comp-grid'),
-  compSection:    $('comp-section'),
-  btnPrompt:      $('btn-prompt'),
-  btnPrint:       $('btn-print'),
-  btnClearData:   $('btn-clear-data'),
-  resultsBody:    $('results-body'),
-  printMeta:      $('print-meta'),
-  printSummary:   $('print-summary'),
+  timerDisplay:        $('timer-display'),
+  btnTimerToggle:      $('btn-timer-toggle'),
+  btnTimerReset:       $('btn-timer-reset'),
+  selMode:             $('sel-mode'),
+  selTag:              $('sel-tag'),
+  inpSize:             $('inp-size'),
+  chkPersists:         $('chk-persists'),
+  selPromptStyle:      $('sel-prompt-style'),
+  chkAutoPrompt:       $('chk-auto-prompt'),
+  chkPromptDelay:      $('chk-prompt-delay'),
+  selPromptDelay:      $('sel-prompt-delay'),
+  btnStart:            $('btn-start'),
+  gameArea:            $('game-area'),
+  sampleWord:          $('sample-word'),
+  compGrid:            $('comp-grid'),
+  compSection:         $('comp-section'),
+  btnPrompt:           $('btn-prompt'),
+  btnPrint:            $('btn-print'),
+  btnClearData:        $('btn-clear-data'),
+  resultsBody:         $('results-body'),
+  printMeta:           $('print-meta'),
+  printSummary:        $('print-summary'),
+  btnTargetsToggle:    $('btn-targets-toggle'),
+  targetsCount:        $('targets-count'),
+  targetPanel:         $('target-panel'),
+  targetPanelBody:     $('target-panel-body'),
+  targetPanelModeLbl:  $('target-panel-mode-label'),
+  btnTargetsAll:       $('btn-targets-all'),
+  btnTargetsNone:      $('btn-targets-none'),
+  btnTargetsClose:     $('btn-targets-close'),
 };
 
 // ── Boot ───────────────────────────────────────────────────────────
@@ -131,14 +150,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 function loadSettings() {
   const s = JSON.parse(localStorage.getItem('ffcgSettings') || '{}');
+  // Migrate legacy tag value.
+  const legacyTag = s.tag === '__auto__' ? '' : s.tag;
   state.mode              = s.mode              ?? 'feature';
-  state.tag               = s.tag               ?? '__auto__';
+  state.tag               = legacyTag          ?? '';
   state.arraySize         = s.arraySize         ?? 4;
   state.promptPersists    = s.promptPersists    ?? false;
   state.promptStyle       = s.promptStyle       ?? 'sparkle';
   state.autoPromptEnabled = s.autoPromptEnabled ?? false;
   state.promptDelay       = s.promptDelay       ?? false;
   state.promptDelaySecs   = s.promptDelaySecs   ?? 3;
+  state.targetFilters     = Object.assign(
+    { feature:[], function:[], classWithinGroup:[], classCrossCategory:[] },
+    s.targetFilters || {}
+  );
 
   el.selMode.value          = state.mode;
   el.inpSize.value          = state.arraySize;
@@ -162,6 +187,7 @@ function saveSettings() {
     autoPromptEnabled: state.autoPromptEnabled,
     promptDelay:       state.promptDelay,
     promptDelaySecs:   state.promptDelaySecs,
+    targetFilters:     state.targetFilters,
   }));
 }
 
@@ -180,26 +206,78 @@ async function loadItems() {
     console.error('Could not load items.json:', e);
     state.items = [];
   }
+  pruneStaleTargetFilters();
   populateTagDropdown();
+  updateTargetsCount();
+}
+
+/**
+ * Remove ids from saved filters that no longer exist in items.json.
+ * Prevents a stale filter from silently hiding tags forever.
+ */
+function pruneStaleTargetFilters() {
+  const known = new Set(state.items.map(it => it.id));
+  for (const mode of Object.keys(state.targetFilters)) {
+    const before = state.targetFilters[mode] || [];
+    state.targetFilters[mode] = before.filter(id => known.has(id));
+  }
 }
 
 // ── Tag dropdown ───────────────────────────────────────────────────
 
+/**
+ * Items eligible as targets under the current mode's target filter.
+ * An empty filter array means "no filter — use the whole pool".
+ */
+function eligibleTargetItems(mode = state.mode) {
+  const filter = state.targetFilters[mode] || [];
+  if (!filter.length) return state.items;
+  const set = new Set(filter);
+  return state.items.filter(it => set.has(it.id));
+}
+
+/**
+ * Count items in the active target pool that carry the given tag.
+ */
+function tagTargetCount(tag, mode = state.mode) {
+  const bucket = MODE_CONFIG[mode].bucket;
+  return eligibleTargetItems(mode).filter(it =>
+    Array.isArray(it[bucket]) && it[bucket].includes(tag)
+  ).length;
+}
+
 function populateTagDropdown() {
-  const tags = state.vocab[MODE_CONFIG[state.mode].bucket] || [];
-  el.selTag.innerHTML = '<option value="__auto__">Auto-cycle</option>';
+  const bucket = MODE_CONFIG[state.mode].bucket;
+  const allTags = [...(state.vocab[bucket] || [])]
+    .sort((a, b) => tagLabel(a).localeCompare(tagLabel(b)));
+
+  // Only offer tags with enough eligible targets to fill an array.
+  const minTargets = 1; // need at least one target; distractors may be relaxed.
+  const tags = allTags.filter(t => tagTargetCount(t) >= minTargets);
+
+  el.selTag.innerHTML = '';
+  if (!tags.length) {
+    const o = document.createElement('option');
+    o.value = '';
+    o.textContent = '(no tags available)';
+    el.selTag.appendChild(o);
+    el.selTag.value = '';
+    state.tag = '';
+    return;
+  }
+
   tags.forEach(t => {
     const o = document.createElement('option');
     o.value = t;
     o.textContent = tagLabel(t);
     el.selTag.appendChild(o);
   });
-  // Restore saved tag if still valid
-  if (state.tag && (state.tag === '__auto__' || tags.includes(state.tag))) {
+
+  if (state.tag && tags.includes(state.tag)) {
     el.selTag.value = state.tag;
   } else {
-    el.selTag.value = '__auto__';
-    state.tag = '__auto__';
+    state.tag = tags[0];
+    el.selTag.value = state.tag;
   }
 }
 
@@ -219,15 +297,19 @@ function bindEvents() {
 
   el.selMode.addEventListener('change', () => {
     state.mode = el.selMode.value;
-    state.tag  = '__auto__';
-    state.tagDeck = [];
+    // Restore that mode's saved tag (if any) on switch; populateTagDropdown
+    // picks the first available tag if the saved tag is no longer offered.
+    state.tag  = '';
+    state.targetDecks = {};
     saveSettings();
     populateTagDropdown();
+    renderTargetPanel();
+    updateTargetsCount();
   });
 
   el.selTag.addEventListener('change', () => {
     state.tag = el.selTag.value;
-    state.tagDeck = [];
+    state.targetDecks = {};
     saveSettings();
   });
 
@@ -237,7 +319,14 @@ function bindEvents() {
     el.inpSize.value = v;
     state.posDeck = [];
     saveSettings();
+    populateTagDropdown();
   });
+
+  // Target panel
+  el.btnTargetsToggle.addEventListener('click', toggleTargetPanel);
+  el.btnTargetsClose .addEventListener('click', () => setTargetPanelOpen(false));
+  el.btnTargetsAll   .addEventListener('click', () => setAllTargets(true));
+  el.btnTargetsNone  .addEventListener('click', () => setAllTargets(false));
 
   el.chkPersists.addEventListener('change', () => {
     state.promptPersists = el.chkPersists.checked;
@@ -320,16 +409,21 @@ function nextPosition() {
   return state.posDeck.pop();
 }
 
-// ── Tag deck — cycle through tags without repeats ──────────────────
+// ── Target deck — cycle through target items without repeats ──────
 
-function nextTag() {
-  if (state.tag !== '__auto__') return state.tag;
-  const tags = state.vocab[MODE_CONFIG[state.mode].bucket] || [];
-  if (!tags.length) return null;
-  if (!state.tagDeck.length) {
-    state.tagDeck = shuffle([...tags]);
+function targetDeckKey(mode, tag) {
+  return `${mode}|${tag}`;
+}
+
+function nextTarget(mode, tag, pool) {
+  if (!pool.length) return null;
+  const key = targetDeckKey(mode, tag);
+  let deck = state.targetDecks[key];
+  if (!deck || !deck.length) {
+    deck = shuffle([...pool]);
+    state.targetDecks[key] = deck;
   }
-  return state.tagDeck.pop();
+  return deck.pop();
 }
 
 // ── Trial builder ──────────────────────────────────────────────────
@@ -344,9 +438,16 @@ function buildTrialData(mode, tag, n) {
   const { bucket, distractors: distStyle } = MODE_CONFIG[mode];
   const promptSentence = resolvePrompt(mode, tag);
 
-  const targetPool = items.filter(it => it[bucket] && it[bucket].includes(tag));
+  // Apply the mode's target filter to the candidate target pool.
+  const filter = state.targetFilters[mode] || [];
+  const filterSet = filter.length ? new Set(filter) : null;
+
+  const targetPool = items.filter(it =>
+    it[bucket] && it[bucket].includes(tag) &&
+    (!filterSet || filterSet.has(it.id))
+  );
   if (!targetPool.length) return null;
-  const target = pickRandom(targetPool);
+  const target = nextTarget(mode, tag, targetPool);
 
   let distractorPool;
 
@@ -411,9 +512,9 @@ function startGame() {
     return;
   }
 
-  state.active     = true;
-  state.posDeck    = [];
-  state.tagDeck    = [];
+  state.active      = true;
+  state.posDeck     = [];
+  state.targetDecks = {};
 
   el.gameArea.removeAttribute('hidden');
   el.btnPrompt.removeAttribute('hidden');
@@ -438,11 +539,11 @@ function beginTrial(keepTarget = false) {
   clearPrompt();
 
   if (!keepTarget) {
-    const tag = nextTag();
-    if (!tag) { alert('No tags available for this mode.'); return; }
+    const tag = state.tag;
+    if (!tag) { alert('No tag selected. Pick a tag or adjust your target filter.'); return; }
     const trial = buildTrialData(state.mode, tag, state.arraySize);
     if (!trial) {
-      alert(`Not enough items to build a trial for tag "${tagLabel(tag)}". Add more items in the FFC Manager.`);
+      alert(`Not enough items to build a trial for tag "${tagLabel(tag)}". Add more items or widen the target filter.`);
       return;
     }
     state.targetItem     = trial.targetItem;
@@ -501,7 +602,15 @@ function renderTrial() {
     const img = document.createElement('img');
     img.src = `_Resources/_imgSource/items/${item.img}`;
     img.alt = item.label;
+    const labelSpan = document.createElement('span');
+    labelSpan.className = 'tile-label';
+    labelSpan.textContent = item.label;
+    img.addEventListener('error', () => {
+      img.remove();
+      labelSpan.classList.add('tile-label-visible');
+    });
     front.appendChild(img);
+    front.appendChild(labelSpan);
 
     const back = document.createElement('div');
     back.className = 'tile-face tile-back';
@@ -756,4 +865,168 @@ function printData() {
     `<span>Avg response time: <strong>${avgTime} s</strong></span>`;
 
   window.print();
+}
+
+// ── Target picker panel ───────────────────────────────────────────
+
+function toggleTargetPanel() {
+  setTargetPanelOpen(!state.targetPanelOpen);
+}
+
+function setTargetPanelOpen(open) {
+  state.targetPanelOpen = open;
+  el.btnTargetsToggle.setAttribute('aria-expanded', String(open));
+  el.btnTargetsToggle.classList.toggle('is-open', open);
+  if (open) {
+    el.targetPanel.removeAttribute('hidden');
+    renderTargetPanel();
+  } else {
+    el.targetPanel.setAttribute('hidden', '');
+  }
+}
+
+/**
+ * Items that carry any tag in the current mode's bucket.
+ * Every item listed in the target panel comes from this pool.
+ */
+function itemsForMode(mode = state.mode) {
+  const bucket = MODE_CONFIG[mode].bucket;
+  return state.items.filter(it =>
+    Array.isArray(it[bucket]) && it[bucket].length
+  );
+}
+
+function renderTargetPanel() {
+  el.targetPanelModeLbl.textContent = modeLabel(state.mode);
+  const body = el.targetPanelBody;
+  body.innerHTML = '';
+
+  const bucket = MODE_CONFIG[state.mode].bucket;
+  const relevant = itemsForMode();
+  const tags = [...(state.vocab[bucket] || [])]
+    .sort((a, b) => tagLabel(a).localeCompare(tagLabel(b)))
+    .filter(tag => relevant.some(it => it[bucket].includes(tag)));
+
+  if (!tags.length) {
+    body.innerHTML = '<p class="target-panel-empty">No items yet for this mode.</p>';
+    return;
+  }
+
+  const filter = new Set(state.targetFilters[state.mode] || []);
+
+  tags.forEach(tag => {
+    const group = document.createElement('div');
+    group.className = 'target-group';
+
+    const head = document.createElement('div');
+    head.className = 'target-group-head';
+    const title = document.createElement('span');
+    title.className = 'target-group-title';
+    title.textContent = tagLabel(tag);
+    const grpAll  = document.createElement('button');
+    grpAll.type  = 'button';
+    grpAll.textContent = 'all';
+    const grpNone = document.createElement('button');
+    grpNone.type = 'button';
+    grpNone.textContent = 'none';
+
+    const tagItems = relevant.filter(it => it[bucket].includes(tag));
+
+    grpAll.addEventListener('click',  () => setGroupTargets(tagItems, true));
+    grpNone.addEventListener('click', () => setGroupTargets(tagItems, false));
+    head.appendChild(title);
+    head.appendChild(grpAll);
+    head.appendChild(grpNone);
+    group.appendChild(head);
+
+    const list = document.createElement('div');
+    list.className = 'target-group-list';
+    tagItems.forEach(it => {
+      const row = document.createElement('label');
+      row.className = 'target-row';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.dataset.itemId = it.id;
+      // Empty filter = every item considered enabled (whole pool). When the
+      // user ticks anything, the filter becomes explicit.
+      cb.checked = !filter.size || filter.has(it.id);
+      cb.addEventListener('change', () => onTargetCheckboxChange());
+
+      const thumb = document.createElement('img');
+      thumb.className = 'target-thumb';
+      thumb.src = `_Resources/_imgSource/items/${it.img}`;
+      thumb.alt = '';
+      const thumbLbl = document.createElement('span');
+      thumbLbl.className = 'target-thumb-label';
+      thumbLbl.textContent = it.label;
+      thumb.addEventListener('error', () => {
+        thumb.remove();
+        thumbLbl.classList.add('target-thumb-label-visible');
+      });
+
+      const label = document.createElement('span');
+      label.className = 'target-row-label';
+      label.textContent = it.label;
+
+      row.appendChild(cb);
+      row.appendChild(thumb);
+      row.appendChild(thumbLbl);
+      row.appendChild(label);
+      list.appendChild(row);
+    });
+    group.appendChild(list);
+    body.appendChild(group);
+  });
+}
+
+function targetCheckboxes() {
+  return el.targetPanelBody.querySelectorAll('input[type="checkbox"][data-item-id]');
+}
+
+function onTargetCheckboxChange() {
+  // Collect the union of currently-checked item ids across the panel.
+  const relevant = itemsForMode();
+  const relevantIds = new Set(relevant.map(it => it.id));
+  const checkedIds = new Set();
+  targetCheckboxes().forEach(cb => {
+    if (cb.checked) checkedIds.add(cb.dataset.itemId);
+  });
+
+  // If every relevant item is checked, treat as "no filter" (empty array).
+  const allChecked = relevant.every(it => checkedIds.has(it.id));
+  state.targetFilters[state.mode] = allChecked ? [] : [...checkedIds];
+
+  state.targetDecks = {};
+  saveSettings();
+  updateTargetsCount();
+  populateTagDropdown();
+  // Mirror selection across duplicate rows (same item under multiple tags).
+  syncDuplicateCheckboxes(checkedIds, relevantIds);
+}
+
+function syncDuplicateCheckboxes(checkedIds) {
+  targetCheckboxes().forEach(cb => {
+    cb.checked = checkedIds.has(cb.dataset.itemId);
+  });
+}
+
+function setGroupTargets(items, checked) {
+  const ids = new Set(items.map(it => it.id));
+  targetCheckboxes().forEach(cb => {
+    if (ids.has(cb.dataset.itemId)) cb.checked = checked;
+  });
+  onTargetCheckboxChange();
+}
+
+function setAllTargets(checked) {
+  targetCheckboxes().forEach(cb => { cb.checked = checked; });
+  onTargetCheckboxChange();
+}
+
+function updateTargetsCount() {
+  const relevant = itemsForMode();
+  const filter = state.targetFilters[state.mode] || [];
+  const selected = filter.length ? filter.length : relevant.length;
+  el.targetsCount.textContent = `${selected} of ${relevant.length}`;
+  el.btnTargetsToggle.classList.toggle('is-filtered', filter.length > 0);
 }

@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-17T01:27:51.138Z",
+  "generated": "2026-04-17T12:00:00.000Z",
   "promptDefaults": {
     "features":  "Which one is {tag}?",
     "functions": "Which do you use to {tag}?",
@@ -13,21 +13,23 @@
       "vehicles",
       "clothes",
       "people",
+      "community_helpers",
       "wild_animals",
       "farm_animals",
       "pets",
       "birds",
       "fish",
+      "insects",
       "foods",
       "drinks",
-      "toys"
+      "toys",
+      "buildings"
     ],
     "features": [
       "red",
       "orange",
       "yellow",
       "green",
-      "pink",
       "blue",
       "purple",
       "pink",
@@ -83,7 +85,7 @@
       "eat_with",
       "wear",
       "ride",
-      "keep_you__warm",
+      "keep_warm",
       "ride_on",
       "eat",
       "drink",
@@ -96,10 +98,10 @@
       "travel_in_water",
       "travel_on_land",
       "travel_in_the_air"
-      
     ],
     "classes": [
       "writing_implement",
+      "stationery",
       "school_supply",
       "vehicle",
       "clothing",
@@ -120,16 +122,28 @@
       "red": "Which one is red?",
       "blue": "Which one is blue?",
       "green": "Which one is green?",
+      "orange": "Which one is orange?",
       "pink": "Which one is pink?",
+      "purple": "Which one is purple?",
+      "brown": "Which one is brown?",
+      "black": "Which one is black?",
+      "white": "Which one is white?",
+      "gray": "Which one is gray?",
+      "colorful": "Which one is colorful?",
       "round": "Which one is round?",
       "long": "Which one is long?",
+      "flat": "Which one is flat?",
       "wooden": "Which one is made of wood?",
       "soft": "Which one is soft?",
       "hard": "Which one is hard?",
       "small": "Which one is small?",
       "large": "Which one is large?",
       "sharp": "Which one is sharp?",
-      "flat": "Which one is flat?"
+      "alive": "Which one is alive?",
+      "fun": "Which one is fun to play with?",
+      "has_doors": "Which one has doors?",
+      "has_walls": "Which one has walls?",
+      "has_wheels": "Which one has wheels?"
     },
     "function": {
       "write_with": "Which do you write with?",
@@ -139,11 +153,20 @@
       "cut_with": "Which do you cut with?",
       "carry_things": "Which do you use to carry things?",
       "sit_on": "Which do you sit on?",
+      "sleep_on": "Which do you sleep on?",
       "drink_from": "Which do you drink from?",
       "eat_with": "Which do you eat with?",
       "wear": "Which do you wear?",
       "ride": "Which do you ride?",
-      "keep_warm": "Which keeps you warm?"
+      "keep_warm": "Which keeps you warm?",
+      "eat": "Which do you eat?",
+      "drink": "Which do you drink?",
+      "play_with": "Which do you play with?",
+      "clean_up": "Which do you clean up with?",
+      "pet": "Which do you pet?",
+      "travel_in_water": "Which travels in water?",
+      "travel_on_land": "Which travels on land?",
+      "travel_in_the_air": "Which travels in the air?"
     },
     "class": {
       "writing_implement": "Which one is a writing implement?",
@@ -153,6 +176,10 @@
       "clothing": "Which one is clothing?",
       "animal": "Which one is an animal?",
       "food": "Which one is a food?",
+      "drink": "Which one is a drink?",
+      "toy": "Which one is a toy?",
+      "place": "Which one is a place?",
+      "community_helper": "Which one is a community helper?",
       "tool": "Which one is a tool?",
       "furniture": "Which one is furniture?",
       "container": "Which one is a container?"
@@ -163,311 +190,640 @@
       "id": "pencil",
       "img": "pencil.jpg",
       "label": "Pencil",
-      "groups": [
-        "school_supplies",
-        "writing_supplies",
-        "household_items"
-      ],
-      "features": [
-        "yellow",
-        "long",
-        "wooden",
-        "sharp"
-      ],
-      "functions": [
-        "write_with",
-        "draw_with",
-        "erase_with"
-      ],
-      "classes": [
-        "writing_implement",
-        "stationery",
-        "school_supply",
-        "tool"
-      ]
+      "groups": ["school_supplies", "writing_supplies", "household_items"],
+      "features": ["yellow", "long", "wooden", "sharp", "hard"],
+      "functions": ["write_with", "draw_with", "erase_with"],
+      "classes": ["writing_implement", "stationery", "school_supply", "tool"]
     },
     {
       "id": "eraser",
       "img": "eraser.jpg",
       "label": "Eraser",
-      "groups": [
-        "school_supplies",
-        "writing_supplies",
-        "household_items"
-      ],
-      "features": [
-        "pink",
-        "small",
-        "soft",
-        "flat"
-      ],
-      "functions": [
-        "erase_with"
-      ],
-      "classes": [
-        "stationery",
-        "school_supply",
-        "tool",
-        "writing_implement"
-      ]
+      "groups": ["school_supplies", "writing_supplies", "household_items"],
+      "features": ["pink", "small", "soft", "flat"],
+      "functions": ["erase_with"],
+      "classes": ["stationery", "school_supply", "tool", "writing_implement"]
     },
     {
       "id": "notebook",
       "img": "notebook.jpg",
       "label": "Notebook",
-      "groups": [
-        "school_supplies",
-        "writing_supplies"
-      ],
-      "features": [
-        "flat",
-        "small"
-      ],
-      "functions": [
-        "write_on"
-      ],
-      "classes": [
-        "stationery",
-        "school_supply"
-      ]
+      "groups": ["school_supplies", "writing_supplies"],
+      "features": ["flat", "small", "hard"],
+      "functions": ["write_on"],
+      "classes": ["stationery", "school_supply"]
     },
     {
       "id": "ruler",
       "img": "ruler.jpg",
       "label": "Ruler",
-      "groups": [
-        "school_supplies",
-        "writing_supplies"
-      ],
-      "features": [
-        "long",
-        "flat",
-        "wooden"
-      ],
+      "groups": ["school_supplies", "writing_supplies"],
+      "features": ["long", "flat", "wooden", "hard"],
       "functions": [],
-      "classes": [
-        "stationery",
-        "school_supply",
-        "tool"
-      ]
+      "classes": ["stationery", "school_supply", "tool"]
     },
     {
       "id": "scissors",
       "img": "scissors.jpg",
       "label": "Scissors",
-      "groups": [
-        "school_supplies"
-      ],
-      "features": [
-        "sharp",
-        "hard"
-      ],
-      "functions": [
-        "cut_with"
-      ],
-      "classes": [
-        "school_supply",
-        "tool"
-      ]
+      "groups": ["school_supplies"],
+      "features": ["sharp", "hard", "metallic", "shiny"],
+      "functions": ["cut_with"],
+      "classes": ["school_supply", "tool"]
     },
     {
       "id": "backpack",
       "img": "backpack.jpg",
       "label": "Backpack",
-      "groups": [
-        "school_supplies"
-      ],
-      "features": [
-        "large",
-        "soft"
-      ],
-      "functions": [
-        "carry_things"
-      ],
-      "classes": [
-        "school_supply",
-        "container"
-      ]
+      "groups": ["school_supplies", "clothes"],
+      "features": ["large", "soft", "fabric"],
+      "functions": ["carry_things", "wear"],
+      "classes": ["school_supply", "container", "clothing"]
+    },
+    {
+      "id": "books",
+      "img": "books.svg",
+      "label": "Books",
+      "groups": ["school_supplies", "household_items"],
+      "features": ["flat", "colorful"],
+      "functions": [],
+      "classes": ["school_supply", "stationery"]
     },
     {
       "id": "car",
       "img": "car.jpg",
       "label": "Car",
-      "groups": [
-        "vehicles"
-      ],
-      "features": [
-        "red",
-        "hard",
-        "large"
-      ],
-      "functions": [
-        "ride"
-      ],
-      "classes": [
-        "vehicle"
-      ]
+      "groups": ["vehicles"],
+      "features": ["red", "hard", "large", "shiny", "has_doors", "has_wheels"],
+      "functions": ["ride", "travel_on_land"],
+      "classes": ["vehicle"]
     },
     {
       "id": "bus",
       "img": "bus.jpg",
       "label": "Bus",
-      "groups": [
-        "vehicles"
-      ],
-      "features": [
-        "yellow",
-        "large",
-        "hard"
-      ],
-      "functions": [
-        "ride"
-      ],
-      "classes": [
-        "vehicle"
-      ]
+      "groups": ["vehicles"],
+      "features": ["yellow", "large", "hard", "long", "has_doors", "has_wheels"],
+      "functions": ["ride", "travel_on_land"],
+      "classes": ["vehicle"]
     },
     {
       "id": "bicycle",
       "img": "bicycle.jpg",
       "label": "Bicycle",
-      "groups": [
-        "vehicles"
-      ],
-      "features": [
-        "hard"
-      ],
-      "functions": [
-        "ride"
-      ],
-      "classes": [
-        "vehicle"
-      ]
+      "groups": ["vehicles"],
+      "features": ["hard", "metallic", "has_wheels"],
+      "functions": ["ride", "travel_on_land"],
+      "classes": ["vehicle"]
+    },
+    {
+      "id": "train",
+      "img": "train.svg",
+      "label": "Train",
+      "groups": ["vehicles", "toys"],
+      "features": ["large", "long", "hard", "colorful", "has_doors", "has_wheels"],
+      "functions": ["ride", "travel_on_land", "play_with"],
+      "classes": ["vehicle", "toy"]
+    },
+    {
+      "id": "toy_car",
+      "img": "toy-car.svg",
+      "label": "Toy Car",
+      "groups": ["toys", "vehicles"],
+      "features": ["small", "hard", "colorful", "has_wheels", "fun"],
+      "functions": ["play_with"],
+      "classes": ["toy", "vehicle"]
     },
     {
       "id": "chair",
       "img": "chair.jpg",
       "label": "Chair",
-      "groups": [
-        "household_items"
-      ],
-      "features": [
-        "hard",
-        "wooden"
-      ],
-      "functions": [
-        "sit_on"
-      ],
-      "classes": [
-        "furniture"
-      ]
+      "groups": ["household_items"],
+      "features": ["hard", "wooden", "brown"],
+      "functions": ["sit_on"],
+      "classes": ["furniture"]
     },
     {
       "id": "sofa",
       "img": "sofa.jpg",
       "label": "Sofa",
-      "groups": [
-        "household_items"
-      ],
-      "features": [
-        "soft",
-        "large"
-      ],
-      "functions": [
-        "sit_on"
-      ],
-      "classes": [
-        "furniture"
-      ]
+      "groups": ["household_items"],
+      "features": ["soft", "large", "comfortable", "fabric"],
+      "functions": ["sit_on", "sleep_on"],
+      "classes": ["furniture"]
+    },
+    {
+      "id": "bed",
+      "img": "bed.svg",
+      "label": "Bed",
+      "groups": ["household_items"],
+      "features": ["soft", "large", "comfortable", "flat"],
+      "functions": ["sleep_on", "sit_on"],
+      "classes": ["furniture"]
+    },
+    {
+      "id": "lamp",
+      "img": "lamp.svg",
+      "label": "Lamp",
+      "groups": ["household_items"],
+      "features": ["hard", "shiny"],
+      "functions": [],
+      "classes": ["furniture"]
+    },
+    {
+      "id": "mirror",
+      "img": "mirror.svg",
+      "label": "Mirror",
+      "groups": ["household_items"],
+      "features": ["flat", "hard", "shiny", "smooth"],
+      "functions": [],
+      "classes": ["furniture"]
+    },
+    {
+      "id": "clock",
+      "img": "clock.svg",
+      "label": "Clock",
+      "groups": ["household_items"],
+      "features": ["round", "hard", "flat"],
+      "functions": [],
+      "classes": []
+    },
+    {
+      "id": "broom",
+      "img": "broom.svg",
+      "label": "Broom",
+      "groups": ["household_items"],
+      "features": ["long", "hard"],
+      "functions": ["clean_up"],
+      "classes": ["tool"]
+    },
+    {
+      "id": "shower",
+      "img": "shower.svg",
+      "label": "Shower",
+      "groups": ["household_items"],
+      "features": ["wet", "metallic", "shiny"],
+      "functions": ["wash"],
+      "classes": []
     },
     {
       "id": "mug",
       "img": "mug.jpg",
       "label": "Mug",
-      "groups": [
-        "household_items"
-      ],
-      "features": [
-        "round",
-        "hard",
-        "small"
-      ],
-      "functions": [
-        "drink_from"
-      ],
-      "classes": [
-        "container"
-      ]
+      "groups": ["household_items", "drinks"],
+      "features": ["round", "hard", "small"],
+      "functions": ["drink_from"],
+      "classes": ["container"]
     },
     {
       "id": "shirt",
       "img": "shirt.jpg",
       "label": "Shirt",
-      "groups": [
-        "clothes"
-      ],
-      "features": [
-        "soft",
-        "flat"
-      ],
-      "functions": [
-        "wear"
-      ],
-      "classes": [
-        "clothing"
-      ]
+      "groups": ["clothes"],
+      "features": ["soft", "flat", "fabric", "colorful"],
+      "functions": ["wear"],
+      "classes": ["clothing"]
     },
     {
       "id": "coat",
       "img": "coat.jpg",
       "label": "Coat",
-      "groups": [
-        "clothes"
-      ],
-      "features": [
-        "soft",
-        "large"
-      ],
-      "functions": [
-        "wear",
-        "keep_warm"
-      ],
-      "classes": [
-        "clothing"
-      ]
+      "groups": ["clothes"],
+      "features": ["soft", "large", "comfortable", "fabric"],
+      "functions": ["wear", "keep_warm"],
+      "classes": ["clothing"]
     },
     {
       "id": "apple",
       "img": "apple.jpg",
       "label": "Apple",
-      "groups": [
-        "foods"
-      ],
-      "features": [
-        "red",
-        "round",
-        "small"
-      ],
-      "functions": [],
-      "classes": [
-        "food"
-      ]
+      "groups": ["foods"],
+      "features": ["red", "round", "small", "shiny"],
+      "functions": ["eat"],
+      "classes": ["food"]
     },
     {
       "id": "banana",
       "img": "banana.jpg",
       "label": "Banana",
-      "groups": [
-        "foods"
-      ],
-      "features": [
-        "yellow",
-        "long"
-      ],
+      "groups": ["foods"],
+      "features": ["yellow", "long", "soft"],
+      "functions": ["eat"],
+      "classes": ["food"]
+    },
+    {
+      "id": "orange",
+      "img": "orange.svg",
+      "label": "Orange",
+      "groups": ["foods"],
+      "features": ["orange", "round", "small"],
+      "functions": ["eat"],
+      "classes": ["food"]
+    },
+    {
+      "id": "strawberry",
+      "img": "strawberry.svg",
+      "label": "Strawberry",
+      "groups": ["foods"],
+      "features": ["red", "small", "soft"],
+      "functions": ["eat"],
+      "classes": ["food"]
+    },
+    {
+      "id": "broccoli",
+      "img": "broccoli.svg",
+      "label": "Broccoli",
+      "groups": ["foods"],
+      "features": ["green", "small"],
+      "functions": ["eat"],
+      "classes": ["food"]
+    },
+    {
+      "id": "corn",
+      "img": "corn.svg",
+      "label": "Corn",
+      "groups": ["foods"],
+      "features": ["yellow", "long"],
+      "functions": ["eat"],
+      "classes": ["food"]
+    },
+    {
+      "id": "burger",
+      "img": "burger.svg",
+      "label": "Burger",
+      "groups": ["foods"],
+      "features": ["round", "brown", "soft"],
+      "functions": ["eat"],
+      "classes": ["food"]
+    },
+    {
+      "id": "pizza",
+      "img": "pizza.svg",
+      "label": "Pizza",
+      "groups": ["foods"],
+      "features": ["round", "flat", "red", "soft"],
+      "functions": ["eat"],
+      "classes": ["food"]
+    },
+    {
+      "id": "donut",
+      "img": "donut.svg",
+      "label": "Donut",
+      "groups": ["foods"],
+      "features": ["round", "pink", "soft"],
+      "functions": ["eat"],
+      "classes": ["food"]
+    },
+    {
+      "id": "egg",
+      "img": "egg.svg",
+      "label": "Egg",
+      "groups": ["foods"],
+      "features": ["white", "small", "smooth", "round"],
+      "functions": ["eat"],
+      "classes": ["food"]
+    },
+    {
+      "id": "bear",
+      "img": "bear.svg",
+      "label": "Bear",
+      "groups": ["wild_animals"],
+      "features": ["brown", "large", "soft", "alive", "strong"],
+      "functions": ["travel_on_land"],
+      "classes": ["animal"]
+    },
+    {
+      "id": "bird",
+      "img": "bird.svg",
+      "label": "Bird",
+      "groups": ["birds", "pets"],
+      "features": ["small", "colorful", "alive"],
+      "functions": ["travel_in_the_air"],
+      "classes": ["animal"]
+    },
+    {
+      "id": "butterfly",
+      "img": "butterfly.svg",
+      "label": "Butterfly",
+      "groups": ["insects"],
+      "features": ["small", "colorful", "alive"],
+      "functions": ["travel_in_the_air"],
+      "classes": ["animal"]
+    },
+    {
+      "id": "cat",
+      "img": "cat.svg",
+      "label": "Cat",
+      "groups": ["pets"],
+      "features": ["small", "soft", "alive"],
+      "functions": ["pet", "travel_on_land"],
+      "classes": ["animal"]
+    },
+    {
+      "id": "dog",
+      "img": "dog.svg",
+      "label": "Dog",
+      "groups": ["pets"],
+      "features": ["soft", "alive", "brown"],
+      "functions": ["pet", "travel_on_land"],
+      "classes": ["animal"]
+    },
+    {
+      "id": "elephant",
+      "img": "elephant.svg",
+      "label": "Elephant",
+      "groups": ["wild_animals"],
+      "features": ["large", "gray", "alive", "strong"],
+      "functions": ["travel_on_land"],
+      "classes": ["animal"]
+    },
+    {
+      "id": "fish",
+      "img": "fish.svg",
+      "label": "Fish",
+      "groups": ["fish", "pets"],
+      "features": ["small", "alive", "shiny", "wet"],
+      "functions": ["travel_in_water"],
+      "classes": ["animal"]
+    },
+    {
+      "id": "frog",
+      "img": "frog.svg",
+      "label": "Frog",
+      "groups": ["wild_animals"],
+      "features": ["small", "green", "alive", "wet"],
+      "functions": ["travel_on_land", "travel_in_water"],
+      "classes": ["animal"]
+    },
+    {
+      "id": "lion",
+      "img": "lion.svg",
+      "label": "Lion",
+      "groups": ["wild_animals"],
+      "features": ["large", "alive", "strong"],
+      "functions": ["travel_on_land"],
+      "classes": ["animal"]
+    },
+    {
+      "id": "rabbit",
+      "img": "rabbit.svg",
+      "label": "Rabbit",
+      "groups": ["pets", "farm_animals"],
+      "features": ["small", "soft", "alive", "white"],
+      "functions": ["pet", "travel_on_land"],
+      "classes": ["animal"]
+    },
+    {
+      "id": "balloon",
+      "img": "balloon.svg",
+      "label": "Balloon",
+      "groups": ["toys"],
+      "features": ["round", "colorful", "soft", "fun"],
+      "functions": ["play_with", "travel_in_the_air"],
+      "classes": ["toy"]
+    },
+    {
+      "id": "blocks",
+      "img": "blocks.svg",
+      "label": "Blocks",
+      "groups": ["toys"],
+      "features": ["hard", "colorful", "square", "wooden", "fun"],
+      "functions": ["play_with"],
+      "classes": ["toy"]
+    },
+    {
+      "id": "kite",
+      "img": "kite.svg",
+      "label": "Kite",
+      "groups": ["toys"],
+      "features": ["colorful", "flat", "fun"],
+      "functions": ["play_with", "travel_in_the_air"],
+      "classes": ["toy"]
+    },
+    {
+      "id": "puzzle",
+      "img": "puzzle.svg",
+      "label": "Puzzle",
+      "groups": ["toys"],
+      "features": ["flat", "colorful", "hard", "fun"],
+      "functions": ["play_with"],
+      "classes": ["toy"]
+    },
+    {
+      "id": "robot",
+      "img": "robot.svg",
+      "label": "Robot",
+      "groups": ["toys"],
+      "features": ["hard", "metallic", "colorful", "fun"],
+      "functions": ["play_with"],
+      "classes": ["toy"]
+    },
+    {
+      "id": "soccer_ball",
+      "img": "soccer-ball.svg",
+      "label": "Soccer Ball",
+      "groups": ["toys"],
+      "features": ["round", "black", "white", "fun"],
+      "functions": ["play_with"],
+      "classes": ["toy"]
+    },
+    {
+      "id": "teddy_bear",
+      "img": "teddy-bear.svg",
+      "label": "Teddy Bear",
+      "groups": ["toys"],
+      "features": ["soft", "brown", "comfortable", "fun"],
+      "functions": ["play_with"],
+      "classes": ["toy"]
+    },
+    {
+      "id": "yoyo",
+      "img": "yoyo.svg",
+      "label": "Yoyo",
+      "groups": ["toys"],
+      "features": ["round", "small", "colorful", "fun"],
+      "functions": ["play_with"],
+      "classes": ["toy"]
+    },
+    {
+      "id": "house",
+      "img": "house.svg",
+      "label": "House",
+      "groups": ["buildings"],
+      "features": ["large", "has_doors", "has_walls"],
       "functions": [],
-      "classes": [
-        "food"
-      ]
+      "classes": ["place"]
+    },
+    {
+      "id": "apartment",
+      "img": "apartment.svg",
+      "label": "Apartment",
+      "groups": ["buildings"],
+      "features": ["large", "has_doors", "has_walls"],
+      "functions": [],
+      "classes": ["place"]
+    },
+    {
+      "id": "bank",
+      "img": "bank.svg",
+      "label": "Bank",
+      "groups": ["buildings"],
+      "features": ["large", "has_doors", "has_walls"],
+      "functions": [],
+      "classes": ["place"]
+    },
+    {
+      "id": "castle",
+      "img": "castle.svg",
+      "label": "Castle",
+      "groups": ["buildings"],
+      "features": ["large", "gray", "old", "has_doors", "has_walls"],
+      "functions": [],
+      "classes": ["place"]
+    },
+    {
+      "id": "church",
+      "img": "church.svg",
+      "label": "Church",
+      "groups": ["buildings"],
+      "features": ["large", "has_doors", "has_walls"],
+      "functions": [],
+      "classes": ["place"]
+    },
+    {
+      "id": "factory",
+      "img": "factory.svg",
+      "label": "Factory",
+      "groups": ["buildings"],
+      "features": ["large", "has_doors", "has_walls"],
+      "functions": [],
+      "classes": ["place"]
+    },
+    {
+      "id": "hospital",
+      "img": "hospital.svg",
+      "label": "Hospital",
+      "groups": ["buildings"],
+      "features": ["large", "white", "has_doors", "has_walls"],
+      "functions": [],
+      "classes": ["place"]
+    },
+    {
+      "id": "library",
+      "img": "library.svg",
+      "label": "Library",
+      "groups": ["buildings"],
+      "features": ["large", "has_doors", "has_walls"],
+      "functions": [],
+      "classes": ["place"]
+    },
+    {
+      "id": "school",
+      "img": "school.svg",
+      "label": "School",
+      "groups": ["buildings"],
+      "features": ["large", "has_doors", "has_walls"],
+      "functions": [],
+      "classes": ["place"]
+    },
+    {
+      "id": "store",
+      "img": "store.svg",
+      "label": "Store",
+      "groups": ["buildings"],
+      "features": ["large", "has_doors", "has_walls"],
+      "functions": [],
+      "classes": ["place"]
+    },
+    {
+      "id": "chef",
+      "img": "chef.svg",
+      "label": "Chef",
+      "groups": ["people", "community_helpers"],
+      "features": ["alive", "white"],
+      "functions": [],
+      "classes": ["community_helper"]
+    },
+    {
+      "id": "construction_worker",
+      "img": "construction.svg",
+      "label": "Construction Worker",
+      "groups": ["people", "community_helpers"],
+      "features": ["alive", "strong"],
+      "functions": [],
+      "classes": ["community_helper"]
+    },
+    {
+      "id": "doctor",
+      "img": "doctor.svg",
+      "label": "Doctor",
+      "groups": ["people", "community_helpers"],
+      "features": ["alive", "white"],
+      "functions": [],
+      "classes": ["community_helper"]
+    },
+    {
+      "id": "farmer",
+      "img": "farmer.svg",
+      "label": "Farmer",
+      "groups": ["people", "community_helpers"],
+      "features": ["alive"],
+      "functions": [],
+      "classes": ["community_helper"]
+    },
+    {
+      "id": "firefighter",
+      "img": "firefighter.svg",
+      "label": "Firefighter",
+      "groups": ["people", "community_helpers"],
+      "features": ["alive", "red", "strong"],
+      "functions": [],
+      "classes": ["community_helper"]
+    },
+    {
+      "id": "mail_carrier",
+      "img": "mail-carrier.svg",
+      "label": "Mail Carrier",
+      "groups": ["people", "community_helpers"],
+      "features": ["alive"],
+      "functions": [],
+      "classes": ["community_helper"]
+    },
+    {
+      "id": "nurse",
+      "img": "nurse.svg",
+      "label": "Nurse",
+      "groups": ["people", "community_helpers"],
+      "features": ["alive", "white"],
+      "functions": [],
+      "classes": ["community_helper"]
+    },
+    {
+      "id": "police_officer",
+      "img": "police.svg",
+      "label": "Police Officer",
+      "groups": ["people", "community_helpers"],
+      "features": ["alive", "blue"],
+      "functions": [],
+      "classes": ["community_helper"]
+    },
+    {
+      "id": "scientist",
+      "img": "scientist.svg",
+      "label": "Scientist",
+      "groups": ["people", "community_helpers"],
+      "features": ["alive", "white"],
+      "functions": [],
+      "classes": ["community_helper"]
+    },
+    {
+      "id": "teacher",
+      "img": "teacher.svg",
+      "label": "Teacher",
+      "groups": ["people", "community_helpers"],
+      "features": ["alive"],
+      "functions": [],
+      "classes": ["community_helper"]
     }
   ]
 }
