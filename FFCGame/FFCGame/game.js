@@ -26,6 +26,19 @@ function sample(arr, n) {
   return shuffle([...arr]).slice(0, n);
 }
 
+// ── Mode configuration ─────────────────────────────────────────────
+//
+// Single source of truth for each mode's vocab bucket, shared prompt
+// key, and distractor-selection strategy. Both class modes map to the
+// same promptKey so their prompts are authored once in items.json.
+
+const MODE_CONFIG = {
+  feature:            { bucket: 'features',  promptKey: 'feature',  distractors: 'withinGroup'   },
+  function:           { bucket: 'functions', promptKey: 'function', distractors: 'withinGroup'   },
+  classWithinGroup:   { bucket: 'classes',   promptKey: 'class',    distractors: 'withinGroup'   },
+  classCrossCategory: { bucket: 'classes',   promptKey: 'class',    distractors: 'crossCategory' },
+};
+
 // ── State ──────────────────────────────────────────────────────────
 
 const state = {
@@ -40,9 +53,10 @@ const state = {
   promptDelaySecs:   3,
 
   // Data
-  items:       [],
-  vocab:       { groups:[], features:[], functions:[], classes:[] },
-  prompts:     {},
+  items:          [],
+  vocab:          { groups:[], features:[], functions:[], classes:[] },
+  prompts:        {},
+  promptDefaults: {},
 
   // Session
   active:      false,
@@ -158,9 +172,10 @@ async function loadItems() {
     const r = await fetch('./items.json');
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const data = await r.json();
-    state.items   = data.items   || [];
-    state.vocab   = data.vocab   || { groups:[], features:[], functions:[], classes:[] };
-    state.prompts = data.prompts || {};
+    state.items          = data.items          || [];
+    state.vocab          = data.vocab          || { groups:[], features:[], functions:[], classes:[] };
+    state.prompts        = data.prompts        || {};
+    state.promptDefaults = data.promptDefaults || {};
   } catch (e) {
     console.error('Could not load items.json:', e);
     state.items = [];
@@ -170,16 +185,8 @@ async function loadItems() {
 
 // ── Tag dropdown ───────────────────────────────────────────────────
 
-function vocabForMode(mode) {
-  if (mode === 'feature')            return state.vocab.features  || [];
-  if (mode === 'function')           return state.vocab.functions || [];
-  if (mode === 'classWithinGroup')   return state.vocab.classes   || [];
-  if (mode === 'classCrossCategory') return state.vocab.classes   || [];
-  return [];
-}
-
 function populateTagDropdown() {
-  const tags = vocabForMode(state.mode);
+  const tags = state.vocab[MODE_CONFIG[state.mode].bucket] || [];
   el.selTag.innerHTML = '<option value="__auto__">Auto-cycle</option>';
   tags.forEach(t => {
     const o = document.createElement('option');
@@ -198,6 +205,10 @@ function populateTagDropdown() {
 
 function tagLabel(tag) {
   return tag.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function modeLabel(mode) {
+  return mode.replace(/([A-Z])/g, ' $1').trim();
 }
 
 // ── Event bindings ─────────────────────────────────────────────────
@@ -313,7 +324,7 @@ function nextPosition() {
 
 function nextTag() {
   if (state.tag !== '__auto__') return state.tag;
-  const tags = vocabForMode(state.mode);
+  const tags = state.vocab[MODE_CONFIG[state.mode].bucket] || [];
   if (!tags.length) return null;
   if (!state.tagDeck.length) {
     state.tagDeck = shuffle([...tags]);
@@ -330,18 +341,16 @@ function nextTag() {
  */
 function buildTrialData(mode, tag, n) {
   const items = state.items;
-  const bucket = modeBucket(mode);
+  const { bucket, distractors: distStyle } = MODE_CONFIG[mode];
   const promptSentence = resolvePrompt(mode, tag);
 
-  // Pool of items that ARE the target (have the tag)
   const targetPool = items.filter(it => it[bucket] && it[bucket].includes(tag));
   if (!targetPool.length) return null;
   const target = pickRandom(targetPool);
 
   let distractorPool;
 
-  if (mode === 'classCrossCategory') {
-    // Distractors share NO group with the target and don't carry the class tag
+  if (distStyle === 'crossCategory') {
     const targetGroups = new Set(target.groups || []);
     distractorPool = items.filter(it =>
       it.id !== target.id &&
@@ -349,14 +358,10 @@ function buildTrialData(mode, tag, n) {
       !(it.groups || []).some(g => targetGroups.has(g))
     );
     if (distractorPool.length < n - 1) {
-      // Relax: allow items from any group, just not same class tag
       console.warn(`[FFC] cross-category pool too small for tag="${tag}"; relaxing group constraint`);
-      distractorPool = items.filter(it =>
-        it.id !== target.id && !(it[bucket] && it[bucket].includes(tag))
-      );
+      distractorPool = taglessPool(items, target, bucket, tag);
     }
   } else {
-    // Within-group: distractors share a group with target but lack the tag
     const sharedGroup = pickRandom(target.groups && target.groups.length ? target.groups : ['']);
     distractorPool = items.filter(it =>
       it.id !== target.id &&
@@ -364,18 +369,14 @@ function buildTrialData(mode, tag, n) {
       (it.groups || []).includes(sharedGroup)
     );
     if (distractorPool.length < n - 1) {
-      // Relax: any item without the tag
       console.warn(`[FFC] within-group pool too small for tag="${tag}", group="${sharedGroup}"; relaxing`);
-      distractorPool = items.filter(it =>
-        it.id !== target.id && !(it[bucket] && it[bucket].includes(tag))
-      );
+      distractorPool = taglessPool(items, target, bucket, tag);
     }
   }
 
   if (!distractorPool.length) return null;
 
   const distractors = sample(distractorPool, n - 1);
-  // Pad with duplicates if still short (shouldn't happen in a healthy item set)
   while (distractors.length < n - 1) {
     distractors.push(pickRandom(distractorPool));
   }
@@ -390,22 +391,16 @@ function buildTrialData(mode, tag, n) {
   return { targetItem: target, promptSentence, tileItems, correctIdx: correctPos };
 }
 
-function modeBucket(mode) {
-  if (mode === 'feature')            return 'features';
-  if (mode === 'function')           return 'functions';
-  if (mode === 'classWithinGroup')   return 'classes';
-  if (mode === 'classCrossCategory') return 'classes';
-  return 'features';
+function taglessPool(items, target, bucket, tag) {
+  return items.filter(it => it.id !== target.id && !(it[bucket] && it[bucket].includes(tag)));
 }
 
 function resolvePrompt(mode, tag) {
-  const modePrompts = state.prompts[mode] || {};
+  const { promptKey, bucket } = MODE_CONFIG[mode];
+  const modePrompts = state.prompts[promptKey] || {};
   if (modePrompts[tag]) return modePrompts[tag];
-  const bucket = modeBucket(mode);
-  const readable = tag.replace(/_/g, ' ');
-  if (bucket === 'features')  return `Which one is ${readable}?`;
-  if (bucket === 'functions') return `Which do you use to ${readable}?`;
-  return `Which is a ${readable}?`;
+  const template = state.promptDefaults[bucket] || `Which is ${tag.replace(/_/g, ' ')}?`;
+  return template.replace('{tag}', tag.replace(/_/g, ' '));
 }
 
 // ── Game flow ──────────────────────────────────────────────────────
@@ -727,10 +722,9 @@ function printData() {
     const settingsChanged = prev && d.settingsKey !== prev.settingsKey;
     if (settingsChanged) tr.classList.add('settings-changed');
     const b = settingsChanged ? ' style="font-weight:bold"' : '';
-    const modeLabel = d.mode.replace(/([A-Z])/g, ' $1').trim();
     tr.innerHTML =
       `<td${b}>${d.trial}</td>` +
-      `<td${b}>${modeLabel}</td>` +
+      `<td${b}>${modeLabel(d.mode)}</td>` +
       `<td${b}>${tagLabel(d.tag)}</td>` +
       `<td${b}>${d.target}</td>` +
       `<td${b}>${d.arraySize}</td>` +
