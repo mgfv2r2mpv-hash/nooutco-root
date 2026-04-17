@@ -264,7 +264,7 @@ async function handleAdminArchiveTopic(request, env) {
       await atomicTopicRenameCommit(env, game, folder, archivedFolder, 'archive');
       break;
     } catch (err) {
-      if (err.message === 'CONFLICT' && attempt < 2) continue;
+      if (attempt < 2 && (err.message === 'CONFLICT' || err.message.startsWith('No files found'))) continue;
       return jsonError('GitHub commit failed: ' + err.message, 502);
     }
   }
@@ -294,7 +294,7 @@ async function handleAdminRestoreTopic(request, env) {
       await atomicTopicRenameCommit(env, game, folder, restoredFolder, 'restore');
       break;
     } catch (err) {
-      if (err.message === 'CONFLICT' && attempt < 2) continue;
+      if (attempt < 2 && (err.message === 'CONFLICT' || err.message.startsWith('No files found'))) continue;
       return jsonError('GitHub commit failed: ' + err.message, 502);
     }
   }
@@ -324,7 +324,7 @@ async function handleAdminPurgeTopic(request, env) {
       await atomicTopicRenameCommit(env, game, folder, purgedFolder, 'purge');
       break;
     } catch (err) {
-      if (err.message === 'CONFLICT' && attempt < 2) continue;
+      if (attempt < 2 && (err.message === 'CONFLICT' || err.message.startsWith('No files found'))) continue;
       return jsonError('GitHub commit failed: ' + err.message, 502);
     }
   }
@@ -354,7 +354,7 @@ async function handleAdminRenameTopic(request, env) {
       await atomicTopicRenameCommit(env, game, folder, newFolder, 'rename');
       break;
     } catch (err) {
-      if (err.message === 'CONFLICT' && attempt < 2) continue;
+      if (attempt < 2 && (err.message === 'CONFLICT' || err.message.startsWith('No files found'))) continue;
       return jsonError('GitHub commit failed: ' + err.message, 502);
     }
   }
@@ -565,6 +565,9 @@ async function atomicTopicRenameCommit(env, game, fromFolder, toFolder, action) 
 
   // 2. Get full recursive tree to find all files in the source folder
   const fullTree = await gh(env, 'GET', `git/trees/${treeSha}?recursive=1`);
+  if (fullTree.truncated) {
+    throw new Error(`Tree too large to list; cannot rename ${fromFolder}`);
+  }
   const prefix   = `${imgSourcePrefix}/${fromFolder}/`;
   const toMove   = fullTree.tree.filter(entry => entry.path.startsWith(prefix) && entry.type === 'blob');
 
