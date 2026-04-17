@@ -1,8 +1,8 @@
-# Funding sources for NoOutcomes ABA.
-# See: https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+# Support No Outcome
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
 
 ko_fi: nooutcomeaba
 buy_me_a_coffee: no.outcome.aba
-# github: # GitHub Sponsors: pending - add username once enabled
-custom:
-  - https://paypal.me/kablubfowles
+custom: ['https://venmo.com/u/kablubfowles']
+
+# github: [your-username]   # uncomment once GitHub Sponsors approval is granted
