@@ -22,6 +22,17 @@
   <div id="root"></div>
 
   <script type="text/babel">
+    // ─── Admin Auth ───────────────────────────────────────────
+    // To change the admin password, replace ADMIN_SECRET_HASH below with the
+    // SHA-256 hex digest of your new password. Default password: "admin".
+    const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
+    async function sha256Hex(str) {
+      const buf = new TextEncoder().encode(str);
+      const digest = await crypto.subtle.digest("SHA-256", buf);
+      return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+    const hasAdminToken = () => localStorage.getItem("admin_token") === ADMIN_SECRET_HASH;
+
     const PROVIDERS = {
       gemini:    { label: "Gemini",  placeholder: "AIza...",    keyLabel: "Google AI Studio Key",   hint: "Get key at aistudio.google.com" },
       openai:    { label: "OpenAI",         placeholder: "sk-...",      keyLabel: "OpenAI API Key",       hint: "Get key at platform.openai.com" },
@@ -118,6 +129,14 @@
       const [error,             setError]             = React.useState("");
       const [copied,            setCopied]            = React.useState(null);
       const [copiedPrompt,      setCopiedPrompt]      = React.useState(false);
+      const [isAdmin,           setIsAdmin]           = React.useState(() => hasAdminToken());
+      const [promptText,        setPromptText]        = React.useState("");
+
+      React.useEffect(() => {
+        const onStorage = () => setIsAdmin(hasAdminToken());
+        window.addEventListener("storage", onStorage);
+        return () => window.removeEventListener("storage", onStorage);
+      }, []);
 
       const switchProvider = (p) => {
         setProvider(p);
@@ -193,7 +212,7 @@
         }
       };
 
-      const handleCopyPrompt = () => {
+      const handleGeneratePrompt = () => {
         if (caregiverSupport.size === 0) { setError("Please select at least one support activity first."); return; }
         if (!caregiverResponse)          { setError("Please select the caregiver response to training."); return; }
         if (!progressStatus)             { setError("Please select a progress status."); return; }
@@ -208,7 +227,13 @@
           `Session notes (use as primary source for both output fields):\n${additionalNotes.trim()}`,
           `Generate the two note fields: "summary" (goal progress and modifications) and "followup" (Behavior Analyst follow-up items).`,
         ].join("\n\n");
-        navigator.clipboard.writeText(`${sys}\n\n---\n\n${usr}`);
+        setPromptText(`${sys}\n\n---\n\n${usr}`);
+        setCopiedPrompt(false);
+      };
+
+      const handleCopyPromptText = () => {
+        if (!promptText) return;
+        navigator.clipboard.writeText(promptText);
         setCopiedPrompt(true);
         setTimeout(() => setCopiedPrompt(false), 1800);
       };
@@ -245,7 +270,8 @@
             <a href="/" style={{ padding: "7px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", marginLeft: 16 }}>← Back</a>
           </div>
 
-          {/* Settings card */}
+          {/* Settings card — admin only */}
+          {isAdmin && (
           <div style={card}>
             <div style={{ marginBottom: 20 }}>
               <p style={lbl}>AI Provider</p>
@@ -278,6 +304,7 @@
               <p style={{ fontSize: 12, color: "#7a9460", marginTop: 7 }}>{prov.hint} — saved in this browser only.</p>
             </div>
           </div>
+          )}
 
           {/* Inputs card */}
           <div style={card}>
@@ -396,30 +423,54 @@
             {error && <p style={{ color: "#c0392b", fontSize: 13, marginBottom: 12 }}>{error}</p>}
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {isAdmin && (
+                <button
+                  onClick={handleGenerate}
+                  disabled={loading}
+                  style={{
+                    padding: "11px 28px", borderRadius: 8, border: "none",
+                    background: loading ? "#a0b890" : "#374528",
+                    color: "white", fontSize: 15, fontWeight: 600,
+                    cursor: loading ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {loading ? "Generating…" : "Generate Note"}
+                </button>
+              )}
               <button
-                onClick={handleGenerate}
-                disabled={loading}
-                style={{
-                  padding: "11px 28px", borderRadius: 8, border: "none",
-                  background: loading ? "#a0b890" : "#374528",
-                  color: "white", fontSize: 15, fontWeight: 600,
-                  cursor: loading ? "not-allowed" : "pointer",
-                }}
-              >
-                {loading ? "Generating…" : "Generate Note"}
-              </button>
-              <button
-                onClick={handleCopyPrompt}
+                onClick={handleGeneratePrompt}
                 style={{
                   padding: "11px 18px", borderRadius: 8,
-                  border: "1.5px solid #374528", background: "white",
-                  color: "#374528", fontSize: 14, fontWeight: 600, cursor: "pointer",
+                  border: "1.5px solid #374528",
+                  background: isAdmin ? "white" : "#374528",
+                  color: isAdmin ? "#374528" : "white",
+                  fontSize: 14, fontWeight: 600, cursor: "pointer",
                 }}
               >
-                {copiedPrompt ? "Copied!" : "Copy Prompt"}
+                Generate Prompt
               </button>
             </div>
           </div>
+
+          {/* Generated Prompt output */}
+          {promptText && (
+            <div style={{ ...card }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>Generated Prompt</h2>
+                <button
+                  onClick={handleCopyPromptText}
+                  style={{ padding: "7px 16px", borderRadius: 7, border: "1.5px solid #374528", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                >
+                  {copiedPrompt ? "Copied!" : "Copy"}
+                </button>
+              </div>
+              <textarea
+                readOnly
+                value={promptText}
+                style={{ width: "100%", minHeight: 220, padding: 12, borderRadius: 8, border: "1px solid #c0d4a8", fontSize: 13, color: "#2d3a1f", lineHeight: 1.6, resize: "vertical", background: "#f7fbf3", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+              />
+            </div>
+          )}
 
           {/* Output */}
           {output && (
