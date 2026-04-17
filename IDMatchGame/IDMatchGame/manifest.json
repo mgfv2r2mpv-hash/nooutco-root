@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-17T00:07:17.655Z",
+  "generated": "2026-04-17T00:09:59.592Z",
   "folders": [
     "T_animals",
     "T_buildings",
@@ -53,7 +53,7 @@
     "T_community_helpers": [
       "_Resources/_imgSource/T_community_helpers/chef.jpg",
       "_Resources/_imgSource/T_community_helpers/construction.jpg",
-      "_Resources/_imgSource/T_community_helpers/doctor.svg",
+      "_Resources/_imgSource/T_community_helpers/doctor.jpg",
       "_Resources/_imgSource/T_community_helpers/farmer.svg",
       "_Resources/_imgSource/T_community_helpers/firefighter.svg",
       "_Resources/_imgSource/T_community_helpers/mail-carrier.svg",
