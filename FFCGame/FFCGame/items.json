@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-16T23:01:41.480Z",
+  "generated": "2026-04-17T00:42:55.280Z",
   "vocab": {
     "groups": [
       "school_supplies",
@@ -313,7 +313,7 @@
     },
     {
       "id": "sofa",
-      "img": "sofa.svg",
+      "img": "sofa.jpg",
       "label": "Sofa",
       "groups": [
         "household_items"
