@@ -7,7 +7,7 @@ export default {
       return response;
     }
 
-    const secret = env.ADMIN_SECRET ?? "";
+    const secret = (env.ADMIN_SECRET ?? "").trim();
     const hash = await sha256Hex(secret);
     let html = await response.text();
     html = html.replace(
