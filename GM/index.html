@@ -152,7 +152,7 @@
   </div>
 
   <!-- Main content (hidden until authed) -->
-  <div id="main" hidden>
+  <div id="main" style="display:none">
     <h1>Game Master</h1>
     <p class="subtitle">Manage game content and settings:</p>
 
@@ -198,9 +198,17 @@
 
     function setGearAuthed(authed) { adminGear.classList.toggle('authed', authed); }
 
-    function revealApp() { document.getElementById('main').removeAttribute('hidden'); }
+    function revealApp() { document.getElementById('main').style.display = 'block'; }
 
-    if (token) { setGearAuthed(true); revealApp(); }
+    if (token === ADMIN_SECRET_HASH) {
+      setGearAuthed(true);
+      revealApp();
+    } else {
+      if (token) localStorage.removeItem('admin_token');
+      token = '';
+      adminModal.classList.add('open');
+      setTimeout(() => adminPwInput.focus(), 50);
+    }
 
     adminGear.addEventListener('click', () => {
       adminModal.classList.toggle('open');
