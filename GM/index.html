@@ -209,13 +209,31 @@
       gate.setAttribute('hidden', '');
     }
 
-    if (sessionStorage.getItem(TOKEN_KEY)) {
-      unlock();
+    const storedToken = sessionStorage.getItem(TOKEN_KEY);
+    if (storedToken) {
+      (async () => {
+        try {
+          const res = await fetch('../api/admin/ping', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${storedToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+          });
+          if (res.ok) {
+            unlock();
+          } else if (res.status === 401) {
+            sessionStorage.removeItem(TOKEN_KEY);
+            document.getElementById('gate-error').textContent = 'Session expired — re-enter password.';
+          }
+        } catch {
+          document.getElementById('gate-error').textContent = 'Could not reach server.';
+        }
+      })();
     }
 
     document.getElementById('gate-btn').addEventListener('click', async () => {
-      const pw   = document.getElementById('gate-pw').value.trim();
-      const errEl = document.getElementById('gate-error');
+      const pwInput = document.getElementById('gate-pw');
+      const pw      = pwInput.value.trim();
+      const errEl   = document.getElementById('gate-error');
       errEl.textContent = '';
       if (!pw) { errEl.textContent = 'Enter a password.'; return; }
 
@@ -225,14 +243,20 @@
           headers: { Authorization: `Bearer ${pw}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({}),
         });
-        if (res.ok || res.status === 404) {
+        if (res.ok) {
           sessionStorage.setItem(TOKEN_KEY, pw);
           unlock();
-        } else {
+        } else if (res.status === 401) {
           errEl.textContent = 'Incorrect password.';
+          pwInput.value = '';
+          pwInput.focus();
+        } else {
+          errEl.textContent = 'Could not reach server.';
+          pwInput.value = '';
         }
       } catch {
         errEl.textContent = 'Could not reach server.';
+        pwInput.value = '';
       }
     });
 
