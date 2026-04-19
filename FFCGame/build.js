@@ -42,10 +42,9 @@ try {
 const { vocab = {}, prompts = {}, items = [] } = data;
 const BUCKETS = { groups: 'groups', features: 'features', functions: 'functions', classes: 'classes' };
 const MODE_TO_BUCKET = {
-  feature:            'features',
-  function:           'functions',
-  classWithinGroup:   'classes',
-  classCrossCategory: 'classes',
+  feature:  'features',
+  function: 'functions',
+  class:    'classes',
 };
 
 // ── Check vocab structure ──────────────────────────────────────────

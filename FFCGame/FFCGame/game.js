@@ -399,13 +399,17 @@ function modeBucket(mode) {
 }
 
 function resolvePrompt(mode, tag) {
-  const modePrompts = state.prompts[mode] || {};
-  if (modePrompts[tag]) return modePrompts[tag];
+  const overrides = state.prompts[mode] || {};
+  if (overrides[tag]) return overrides[tag];
+  if (mode === 'classWithinGroup' || mode === 'classCrossCategory') {
+    const shared = state.prompts.class || {};
+    if (shared[tag]) return shared[tag];
+  }
   const bucket = modeBucket(mode);
   const readable = tag.replace(/_/g, ' ');
   if (bucket === 'features')  return `Which one is ${readable}?`;
-  if (bucket === 'functions') return `Which do you use to ${readable}?`;
-  return `Which is a ${readable}?`;
+  if (bucket === 'functions') return `Which do you ${readable}?`;
+  return `Which one is a ${readable}?`;
 }
 
 // ── Game flow ──────────────────────────────────────────────────────

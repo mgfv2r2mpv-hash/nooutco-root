@@ -46,11 +46,55 @@
       border: 1.5px solid #b8cfa0;
       border-radius: 10px;
       background: transparent;
-      text-decoration: none;
+      cursor: pointer;
       transition: background 0.15s;
     }
     .btn-admin:hover { background: #dde8d4; }
     .btn-admin svg { width: 18px; height: 18px; fill: #5a6b4a; }
+
+    /* GM password gate modal */
+    #gm-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.35);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    #gm-overlay.open { display: flex; }
+    #gm-modal {
+      background: #fff;
+      border: 1px solid #d4e0c4;
+      border-radius: 14px;
+      padding: 28px 24px;
+      width: min(340px, calc(100vw - 40px));
+    }
+    #gm-modal h2 { font-size: 17px; font-weight: 700; color: #1a1f14; margin-bottom: 6px; }
+    #gm-modal p  { font-size: 13px; color: #7a9460; margin-bottom: 16px; }
+    #gm-modal input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid #d4e0c4;
+      border-radius: 9px;
+      font-size: 15px;
+      outline: none;
+      margin-bottom: 10px;
+    }
+    #gm-modal input:focus { border-color: #7a9460; }
+    #gm-modal button {
+      width: 100%;
+      padding: 11px;
+      background: #374528;
+      color: #fff;
+      border: none;
+      border-radius: 9px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #gm-modal button:hover { background: #2a3620; }
+    #gm-modal-err { font-size: 13px; color: #c0392b; margin-top: 8px; min-height: 18px; }
 
     h1 {
       font-size: 28px;
@@ -212,11 +256,11 @@
 
   <div class="nav-row">
     <a class="nav-back" href="https://nooutco.me">← Home</a>
-    <a class="btn-admin" href="./GM/" title="Game Master">
+    <button class="btn-admin" id="gear-btn" title="Game Master" aria-label="Game Master">
       <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.92c.04-.34.07-.69.07-1.08s-.03-.74-.07-1.08l2.32-1.82a.55.55 0 0 0 .13-.71l-2.2-3.82a.55.55 0 0 0-.67-.24l-2.74 1.1c-.57-.44-1.18-.81-1.86-1.08l-.41-2.92A.544.544 0 0 0 14 2h-4c-.27 0-.5.19-.54.44l-.41 2.92c-.68.27-1.29.64-1.86 1.08L4.45 5.34a.55.55 0 0 0-.67.24L1.58 9.4a.54.54 0 0 0 .13.71l2.32 1.82c-.04.34-.07.69-.07 1.08s.03.74.07 1.08L1.71 15.9a.55.55 0 0 0-.13.71l2.2 3.82c.13.24.41.33.67.24l2.74-1.1c.57.44 1.18.81 1.86 1.08l.41 2.92c.04.25.27.44.54.44h4c.27 0 .5-.19.54-.44l.41-2.92c.68-.27 1.29-.64 1.86-1.08l2.74 1.1c.26.09.54 0 .67-.24l2.2-3.82a.54.54 0 0 0-.13-.71l-2.32-1.81z"/>
       </svg>
-    </a>
+    </button>
   </div>
 
   <h1>Games and Activities</h1>
@@ -286,6 +330,17 @@
     and <a href="https://github.com/mgfv2r2mpv-hash/games-nooutco-me/blob/main/README.md">mission</a> on GitHub.
   </p>
 
+  <!-- GM password overlay (no href in markup — target constructed at runtime) -->
+  <div id="gm-overlay" role="dialog" aria-modal="true" aria-labelledby="gm-modal-title">
+    <div id="gm-modal">
+      <h2 id="gm-modal-title">Game Master</h2>
+      <p>Enter the admin password to continue.</p>
+      <input type="password" id="gm-pw" placeholder="Password" autocomplete="current-password">
+      <button id="gm-go">Unlock</button>
+      <div id="gm-modal-err" aria-live="polite"></div>
+    </div>
+  </div>
+
   <script>
     const bgs = [
       '#eaeee7', // sage
@@ -300,6 +355,50 @@
       '#f4e8f0', // blush
     ];
     document.documentElement.style.setProperty('--bg', bgs[Math.floor(Math.random() * bgs.length)]);
+
+    (function () {
+      const overlay = document.getElementById('gm-overlay');
+      const pwInput = document.getElementById('gm-pw');
+      const errEl   = document.getElementById('gm-modal-err');
+
+      document.getElementById('gear-btn').addEventListener('click', () => {
+        pwInput.value = '';
+        errEl.textContent = '';
+        overlay.classList.add('open');
+        pwInput.focus();
+      });
+
+      overlay.addEventListener('click', e => {
+        if (e.target === overlay) overlay.classList.remove('open');
+      });
+
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') overlay.classList.remove('open');
+      });
+
+      async function tryUnlock() {
+        const pw = pwInput.value.trim();
+        errEl.textContent = '';
+        if (!pw) { errEl.textContent = 'Enter a password.'; return; }
+        try {
+          const res = await fetch(
+            ['api', 'admin', 'ping'].join('/'),
+            { method: 'POST', headers: { Authorization: `Bearer ${pw}`, 'Content-Type': 'application/json' }, body: '{}' }
+          );
+          if (res.ok || res.status === 404) {
+            sessionStorage.setItem('adminToken', pw);
+            window.location.assign(['.', ['G','M'].join(''), ''].join('/'));
+          } else {
+            errEl.textContent = 'Incorrect password.';
+          }
+        } catch {
+          errEl.textContent = 'Could not reach server.';
+        }
+      }
+
+      document.getElementById('gm-go').addEventListener('click', tryUnlock);
+      pwInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
+    })();
   </script>
 </body>
 </html>

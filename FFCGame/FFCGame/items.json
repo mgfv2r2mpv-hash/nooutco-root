@@ -55,48 +55,13 @@
   },
   "prompts": {
     "feature": {
-      "yellow": "Which one is yellow?",
-      "red": "Which one is red?",
-      "blue": "Which one is blue?",
-      "green": "Which one is green?",
-      "pink": "Which one is pink?",
-      "round": "Which one is round?",
-      "long": "Which one is long?",
-      "wooden": "Which one is made of wood?",
-      "soft": "Which one is soft?",
-      "hard": "Which one is hard?",
-      "small": "Which one is small?",
-      "large": "Which one is large?",
-      "sharp": "Which one is sharp?",
-      "flat": "Which one is flat?"
+      "wooden": "Which one is made of wood?"
     },
     "function": {
-      "write_with": "Which do you write with?",
-      "draw_with": "Which do you draw with?",
-      "erase_with": "Which do you erase with?",
-      "write_on": "Which do you write on?",
-      "cut_with": "Which do you cut with?",
       "carry_things": "Which do you use to carry things?",
-      "sit_on": "Which do you sit on?",
-      "drink_from": "Which do you drink from?",
-      "eat_with": "Which do you eat with?",
-      "wear": "Which do you wear?",
-      "ride": "Which do you ride?",
       "keep_warm": "Which keeps you warm?"
     },
-    "classWithinGroup": {
-      "writing_implement": "Which one is a writing implement?",
-      "stationery": "Which one is stationery?",
-      "school_supply": "Which one is a school supply?",
-      "vehicle": "Which one is a vehicle?",
-      "clothing": "Which one is clothing?",
-      "animal": "Which one is an animal?",
-      "food": "Which one is a food?",
-      "tool": "Which one is a tool?",
-      "furniture": "Which one is furniture?",
-      "container": "Which one is a container?"
-    },
-    "classCrossCategory": {
+    "class": {
       "writing_implement": "Which one is a writing implement?",
       "stationery": "Which one is stationery?",
       "school_supply": "Which one is a school supply?",
