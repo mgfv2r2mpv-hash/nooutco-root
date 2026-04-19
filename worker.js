@@ -81,10 +81,21 @@ export default {
     if (request.method === 'POST' && pathname === '/api/admin/ffc-remove-image') {
       return handleFFCRemoveImage(request, env);
     }
+    if (request.method === 'POST' && pathname === '/api/admin/auth') {
+      return handleAdminAuth(request, env);
+    }
 
     return new Response('Not found', { status: 404 });
   },
 };
+
+// ─── Admin auth endpoint ───────────────────────────────────────────────────────
+
+function handleAdminAuth(request, env) {
+  const authErr = requireAdmin(request, env);
+  if (authErr) return authErr;
+  return json({ ok: true, redirect: '/GM/' });
+}
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 

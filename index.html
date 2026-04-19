@@ -381,13 +381,15 @@
         errEl.textContent = '';
         if (!pw) { errEl.textContent = 'Enter a password.'; return; }
         try {
-          const res = await fetch(
-            ['api', 'admin', 'ping'].join('/'),
-            { method: 'POST', headers: { Authorization: `Bearer ${pw}`, 'Content-Type': 'application/json' }, body: '{}' }
-          );
-          if (res.ok || res.status === 404) {
+          const res = await fetch('./api/admin/auth', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${pw}`, 'Content-Type': 'application/json' },
+            body: '{}',
+          });
+          if (res.ok) {
+            const { redirect } = await res.json();
             sessionStorage.setItem('adminToken', pw);
-            window.location.assign(['.', ['G','M'].join(''), ''].join('/'));
+            window.location.assign(redirect);
           } else {
             errEl.textContent = 'Incorrect password.';
           }

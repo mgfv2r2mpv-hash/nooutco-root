@@ -238,12 +238,12 @@
       if (!pw) { errEl.textContent = 'Enter a password.'; return; }
 
       try {
-        const res = await fetch('../api/admin/ping', {
+        const res = await fetch('../api/admin/auth', {
           method: 'POST',
           headers: { Authorization: `Bearer ${pw}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
+          body: '{}',
         });
-        if (res.ok || res.status === 404) {
+        if (res.ok) {
           sessionStorage.setItem(TOKEN_KEY, pw);
           unlock();
         } else {
