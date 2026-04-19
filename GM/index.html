@@ -200,7 +200,13 @@
 
     function revealApp() { document.getElementById('main').removeAttribute('hidden'); }
 
-    if (token) { setGearAuthed(true); revealApp(); }
+    if (token) {
+      setGearAuthed(true);
+      revealApp();
+    } else {
+      adminModal.classList.add('open');
+      setTimeout(() => adminPwInput.focus(), 50);
+    }
 
     adminGear.addEventListener('click', () => {
       adminModal.classList.toggle('open');
