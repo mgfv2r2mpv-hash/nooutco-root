@@ -42,11 +42,17 @@ const state = {
   promptDelay:       false,
   promptDelaySecs:   3,
 
+  // Per-topic target filters: { topic: [srcPaths] } — empty array = no filter
+  targetFilters: {},
+
   // Discovered folders & images
   manifest:     null,
   topicFolders: [],
   topicImages:  [],
   otherImages:  [],
+
+  // Target panel UI state
+  targetPanelOpen: false,
 
   // Session — persists across topic changes; cleared by Clear Data
   active:      false,
@@ -86,28 +92,36 @@ const state = {
 const $ = id => document.getElementById(id);
 
 const el = {
-  timerDisplay:   $('timer-display'),
-  btnTimerToggle: $('btn-timer-toggle'),
-  btnTimerReset:  $('btn-timer-reset'),
-  selTopic:       $('sel-topic'),
-  inpSize:        $('inp-size'),
-  chkCross:       $('chk-cross'),
-  chkPersists:    $('chk-persists'),
-  selPromptStyle: $('sel-prompt-style'),
-  chkAutoPrompt:  $('chk-auto-prompt'),
-  chkPromptDelay: $('chk-prompt-delay'),
-  selPromptDelay: $('sel-prompt-delay'),
-  btnStart:       $('btn-start'),
-  gameArea:       $('game-area'),
-  sampleWord:     $('sample-word'),
-  compGrid:       $('comp-grid'),
-  compSection:    $('comp-section'),
-  btnPrompt:      $('btn-prompt'),
-  btnPrint:       $('btn-print'),
-  btnClearData:   $('btn-clear-data'),
-  resultsBody:    $('results-body'),
-  printMeta:      $('print-meta'),
-  printSummary:   $('print-summary'),
+  timerDisplay:        $('timer-display'),
+  btnTimerToggle:      $('btn-timer-toggle'),
+  btnTimerReset:       $('btn-timer-reset'),
+  selTopic:            $('sel-topic'),
+  inpSize:             $('inp-size'),
+  chkCross:            $('chk-cross'),
+  chkPersists:         $('chk-persists'),
+  selPromptStyle:      $('sel-prompt-style'),
+  chkAutoPrompt:       $('chk-auto-prompt'),
+  chkPromptDelay:      $('chk-prompt-delay'),
+  selPromptDelay:      $('sel-prompt-delay'),
+  btnStart:            $('btn-start'),
+  gameArea:            $('game-area'),
+  sampleWord:          $('sample-word'),
+  compGrid:            $('comp-grid'),
+  compSection:         $('comp-section'),
+  btnPrompt:           $('btn-prompt'),
+  btnPrint:            $('btn-print'),
+  btnClearData:        $('btn-clear-data'),
+  resultsBody:         $('results-body'),
+  printMeta:           $('print-meta'),
+  printSummary:        $('print-summary'),
+  btnTargetsToggle:    $('btn-targets-toggle'),
+  targetsCount:        $('targets-count'),
+  targetPanel:         $('target-panel'),
+  targetPanelBody:     $('target-panel-body'),
+  targetPanelTopicLbl: $('target-panel-topic-label'),
+  btnTargetsAll:       $('btn-targets-all'),
+  btnTargetsNone:      $('btn-targets-none'),
+  btnTargetsClose:     $('btn-targets-close'),
 };
 
 // ── Boot ───────────────────────────────────────────────────────────
@@ -130,6 +144,7 @@ function loadSettings() {
   state.autoPromptEnabled = s.autoPromptEnabled ?? false;
   state.promptDelay       = s.promptDelay       ?? false;
   state.promptDelaySecs   = s.promptDelaySecs   ?? 3;
+  state.targetFilters     = (s.targetFilters && typeof s.targetFilters === 'object') ? s.targetFilters : {};
 
   el.inpSize.value          = state.arraySize;
   el.chkCross.checked       = state.crossCategory;
@@ -153,6 +168,7 @@ function saveSettings() {
     autoPromptEnabled: state.autoPromptEnabled,
     promptDelay:       state.promptDelay,
     promptDelaySecs:   state.promptDelaySecs,
+    targetFilters:     state.targetFilters,
   }));
 }
 
@@ -212,6 +228,7 @@ async function discoverTopics() {
     el.selTopic.value = saved;
     await refreshImages();
   }
+  updateTargetsCount();
 }
 
 const TOPIC_DISPLAY_NAMES = {};
@@ -253,6 +270,22 @@ async function refreshImages() {
     state.otherImages = [];
   }
   state.sampleDeck = [];
+  pruneStaleTargetFilter(state.topic);
+}
+
+/**
+ * Drop any filter entries for the given topic that no longer point at
+ * existing images (e.g. files deleted, folder renamed).
+ */
+function pruneStaleTargetFilter(topic) {
+  if (!topic || !state.targetFilters[topic]) return;
+  const known = new Set(state.topicImages);
+  const before = state.targetFilters[topic];
+  const kept = before.filter(src => known.has(src));
+  if (kept.length !== before.length) {
+    state.targetFilters[topic] = kept;
+    saveSettings();
+  }
 }
 
 // ── Event bindings ─────────────────────────────────────────────────
@@ -265,7 +298,15 @@ function bindEvents() {
     state.topic = el.selTopic.value;
     saveSettings();
     await refreshImages();
+    renderTargetPanel();
+    updateTargetsCount();
   });
+
+  // Target panel
+  el.btnTargetsToggle.addEventListener('click', toggleTargetPanel);
+  el.btnTargetsClose .addEventListener('click', () => setTargetPanelOpen(false));
+  el.btnTargetsAll   .addEventListener('click', () => setAllTargets(true));
+  el.btnTargetsNone  .addEventListener('click', () => setAllTargets(false));
 
   el.inpSize.addEventListener('change', async () => {
     const v = Math.min(10, Math.max(1, parseInt(el.inpSize.value) || 4));
@@ -368,9 +409,22 @@ function nextPosition() {
 
 // ── Sample deck — no repeats until all items shown ─────────────────
 
+/**
+ * Images eligible as samples (targets) for the current topic, after the
+ * per-topic target filter is applied. Empty filter = whole topic.
+ */
+function eligibleSamples() {
+  const filter = state.targetFilters[state.topic] || [];
+  if (!filter.length) return state.topicImages;
+  const set = new Set(filter);
+  return state.topicImages.filter(src => set.has(src));
+}
+
 function nextSample() {
   if (!state.sampleDeck.length) {
-    state.sampleDeck = shuffle([...state.topicImages]);
+    const pool = eligibleSamples();
+    if (!pool.length) return null;
+    state.sampleDeck = shuffle([...pool]);
   }
   return state.sampleDeck.pop();
 }
@@ -384,6 +438,10 @@ function startGame() {
   }
   if (!state.topicImages.length) {
     alert(`No images found in ${state.topic}/.\nAdd image files to that folder and reload the page.`);
+    return;
+  }
+  if (!eligibleSamples().length) {
+    alert('Your target filter has no items selected. Open the Targets panel and pick at least one item.');
     return;
   }
 
@@ -416,7 +474,7 @@ function beginTrial(keepSample = false) {
   state.autoPromptHandle = null;
 
   clearPrompt();
-  buildTrial(keepSample);
+  if (buildTrial(keepSample) === false) return;
   renderTrial();
 
   if (keepSample) {
@@ -440,7 +498,12 @@ function buildTrial(keepSample) {
   const n = state.arraySize;
 
   if (!keepSample) {
-    state.sampleSrc   = nextSample();
+    const nxt = nextSample();
+    if (!nxt) {
+      alert('No targets selected. Open the Targets panel and pick at least one item.');
+      return false;
+    }
+    state.sampleSrc   = nxt;
     state.sampleLabel = labelFromSrc(state.sampleSrc);
   }
 
@@ -501,7 +564,15 @@ function renderTrial() {
     const img = document.createElement('img');
     img.src = src;
     img.alt = `Choice ${idx + 1}`;
+    const labelSpan = document.createElement('span');
+    labelSpan.className = 'tile-label';
+    labelSpan.textContent = labelFromSrc(src);
+    img.addEventListener('error', () => {
+      img.remove();
+      labelSpan.classList.add('tile-label-visible');
+    });
     front.appendChild(img);
+    front.appendChild(labelSpan);
 
     const back = document.createElement('div');
     back.className = 'tile-face tile-back';
@@ -743,4 +814,101 @@ function printData() {
     `<span>Avg response time: <strong>${avgTime} s</strong></span>`;
 
   window.print();
+}
+
+// ── Target picker panel ───────────────────────────────────────────
+
+function toggleTargetPanel() {
+  setTargetPanelOpen(!state.targetPanelOpen);
+}
+
+function setTargetPanelOpen(open) {
+  state.targetPanelOpen = open;
+  el.btnTargetsToggle.setAttribute('aria-expanded', String(open));
+  el.btnTargetsToggle.classList.toggle('is-open', open);
+  if (open) {
+    el.targetPanel.removeAttribute('hidden');
+    renderTargetPanel();
+  } else {
+    el.targetPanel.setAttribute('hidden', '');
+  }
+}
+
+function topicDisplayLabel(topic) {
+  if (!topic) return '';
+  return topic.replace(/^T_/, '').replace(/_/g, ' ')
+              .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function renderTargetPanel() {
+  if (el.targetPanelTopicLbl) {
+    el.targetPanelTopicLbl.textContent = topicDisplayLabel(state.topic);
+  }
+  const body = el.targetPanelBody;
+  body.innerHTML = '';
+
+  if (!state.topic || !state.topicImages.length) {
+    body.innerHTML = '<p class="target-panel-empty">No images for this topic.</p>';
+    return;
+  }
+
+  const filter = new Set(state.targetFilters[state.topic] || []);
+  state.topicImages.forEach(src => {
+    const row = document.createElement('label');
+    row.className = 'target-row';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.dataset.src = src;
+    cb.checked = !filter.size || filter.has(src);
+    cb.addEventListener('change', onTargetCheckboxChange);
+
+    const thumb = document.createElement('img');
+    thumb.className = 'target-thumb';
+    thumb.src = src;
+    thumb.alt = '';
+    const thumbLbl = document.createElement('span');
+    thumbLbl.className = 'target-thumb-label';
+    thumbLbl.textContent = labelFromSrc(src);
+    thumb.addEventListener('error', () => {
+      thumb.remove();
+      thumbLbl.classList.add('target-thumb-label-visible');
+    });
+
+    const label = document.createElement('span');
+    label.className = 'target-row-label';
+    label.textContent = labelFromSrc(src);
+
+    row.appendChild(cb);
+    row.appendChild(thumb);
+    row.appendChild(thumbLbl);
+    row.appendChild(label);
+    body.appendChild(row);
+  });
+}
+
+function targetCheckboxes() {
+  return el.targetPanelBody.querySelectorAll('input[type="checkbox"][data-src]');
+}
+
+function onTargetCheckboxChange() {
+  const checked = [];
+  targetCheckboxes().forEach(cb => { if (cb.checked) checked.push(cb.dataset.src); });
+  const allChecked = checked.length === state.topicImages.length;
+  state.targetFilters[state.topic] = allChecked ? [] : checked;
+  state.sampleDeck = [];
+  saveSettings();
+  updateTargetsCount();
+}
+
+function setAllTargets(checked) {
+  targetCheckboxes().forEach(cb => { cb.checked = checked; });
+  onTargetCheckboxChange();
+}
+
+function updateTargetsCount() {
+  const total = state.topicImages.length;
+  const filter = state.targetFilters[state.topic] || [];
+  const selected = filter.length ? filter.length : total;
+  el.targetsCount.textContent = `${selected} of ${total}`;
+  el.btnTargetsToggle.classList.toggle('is-filtered', filter.length > 0);
 }

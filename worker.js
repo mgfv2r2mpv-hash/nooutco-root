@@ -81,6 +81,9 @@ export default {
     if (request.method === 'POST' && pathname === '/api/admin/ffc-remove-image') {
       return handleFFCRemoveImage(request, env);
     }
+    if (request.method === 'POST' && pathname === '/api/admin/ping') {
+      return handleAdminPing(request, env);
+    }
     if (request.method === 'POST' && pathname === '/api/admin/auth') {
       return handleAdminAuth(request, env);
     }
@@ -89,22 +92,35 @@ export default {
   },
 };
 
+// ─── Admin: ping ─────────────────────────────────────────────────────────────
+
+async function handleAdminPing(request, env) {
+  const authErr = await requireAdmin(request, env);
+  if (authErr) return authErr;
+  return json({ ok: true });
+}
+
 // ─── Admin auth endpoint ───────────────────────────────────────────────────────
 
-function handleAdminAuth(request, env) {
-  const authErr = requireAdmin(request, env);
+async function handleAdminAuth(request, env) {
+  const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
   return json({ ok: true, redirect: '/GM/' });
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
-function requireAdmin(request, env) {
+async function requireAdmin(request, env) {
   const authHeader = request.headers.get('Authorization') || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-  if (!token || token !== env.ADMIN_SECRET) {
-    return jsonError('Unauthorized', 401);
-  }
+  if (!token) return jsonError('Unauthorized', 401);
+  const secret = (env.ADMIN_SECRET ?? '').trim();
+  const buf = new TextEncoder().encode(secret);
+  const digest = await crypto.subtle.digest('SHA-256', buf);
+  const hash = Array.from(new Uint8Array(digest))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  if (token !== hash) return jsonError('Unauthorized', 401);
   return null;
 }
 
@@ -156,7 +172,7 @@ async function handleSavePhoto(request, env) {
 // ─── Admin: save-image ────────────────────────────────────────────────────────
 
 async function handleAdminSaveImage(request, env) {
-  const authErr = requireAdmin(request, env);
+  const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
 
   let body;
@@ -214,7 +230,7 @@ async function handleAdminSaveImage(request, env) {
 // ─── Admin: remove-image ──────────────────────────────────────────────────────
 
 async function handleAdminRemoveImage(request, env) {
-  const authErr = requireAdmin(request, env);
+  const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
 
   let body;
@@ -256,7 +272,7 @@ async function handleAdminRemoveImage(request, env) {
 // ─── Admin: archive-topic ─────────────────────────────────────────────────────
 
 async function handleAdminArchiveTopic(request, env) {
-  const authErr = requireAdmin(request, env);
+  const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
 
   let body;
@@ -275,7 +291,7 @@ async function handleAdminArchiveTopic(request, env) {
       await atomicTopicRenameCommit(env, game, folder, archivedFolder, 'archive');
       break;
     } catch (err) {
-      if (err.message === 'CONFLICT' && attempt < 2) continue;
+      if (attempt < 2 && (err.message === 'CONFLICT' || err.message.startsWith('No files found'))) continue;
       return jsonError('GitHub commit failed: ' + err.message, 502);
     }
   }
@@ -286,7 +302,7 @@ async function handleAdminArchiveTopic(request, env) {
 // ─── Admin: restore-topic ─────────────────────────────────────────────────────
 
 async function handleAdminRestoreTopic(request, env) {
-  const authErr = requireAdmin(request, env);
+  const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
 
   let body;
@@ -305,7 +321,7 @@ async function handleAdminRestoreTopic(request, env) {
       await atomicTopicRenameCommit(env, game, folder, restoredFolder, 'restore');
       break;
     } catch (err) {
-      if (err.message === 'CONFLICT' && attempt < 2) continue;
+      if (attempt < 2 && (err.message === 'CONFLICT' || err.message.startsWith('No files found'))) continue;
       return jsonError('GitHub commit failed: ' + err.message, 502);
     }
   }
@@ -316,7 +332,7 @@ async function handleAdminRestoreTopic(request, env) {
 // ─── Admin: purge-topic ───────────────────────────────────────────────────────
 
 async function handleAdminPurgeTopic(request, env) {
-  const authErr = requireAdmin(request, env);
+  const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
 
   let body;
@@ -335,7 +351,7 @@ async function handleAdminPurgeTopic(request, env) {
       await atomicTopicRenameCommit(env, game, folder, purgedFolder, 'purge');
       break;
     } catch (err) {
-      if (err.message === 'CONFLICT' && attempt < 2) continue;
+      if (attempt < 2 && (err.message === 'CONFLICT' || err.message.startsWith('No files found'))) continue;
       return jsonError('GitHub commit failed: ' + err.message, 502);
     }
   }
@@ -346,7 +362,7 @@ async function handleAdminPurgeTopic(request, env) {
 // ─── Admin: rename-topic ──────────────────────────────────────────────────────
 
 async function handleAdminRenameTopic(request, env) {
-  const authErr = requireAdmin(request, env);
+  const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
 
   let body;
@@ -365,7 +381,7 @@ async function handleAdminRenameTopic(request, env) {
       await atomicTopicRenameCommit(env, game, folder, newFolder, 'rename');
       break;
     } catch (err) {
-      if (err.message === 'CONFLICT' && attempt < 2) continue;
+      if (attempt < 2 && (err.message === 'CONFLICT' || err.message.startsWith('No files found'))) continue;
       return jsonError('GitHub commit failed: ' + err.message, 502);
     }
   }
@@ -576,6 +592,9 @@ async function atomicTopicRenameCommit(env, game, fromFolder, toFolder, action) 
 
   // 2. Get full recursive tree to find all files in the source folder
   const fullTree = await gh(env, 'GET', `git/trees/${treeSha}?recursive=1`);
+  if (fullTree.truncated) {
+    throw new Error(`Tree too large to list; cannot rename ${fromFolder}`);
+  }
   const prefix   = `${imgSourcePrefix}/${fromFolder}/`;
   const toMove   = fullTree.tree.filter(entry => entry.path.startsWith(prefix) && entry.type === 'blob');
 
@@ -640,7 +659,7 @@ async function atomicTopicRenameCommit(env, game, fromFolder, toFolder, action) 
 // ─── FFC: save items.json ─────────────────────────────────────────────────────
 
 async function handleFFCSaveItems(request, env) {
-  const authErr = requireAdmin(request, env);
+  const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
 
   let body;
@@ -670,7 +689,7 @@ async function handleFFCSaveItems(request, env) {
 // ─── FFC: save image ──────────────────────────────────────────────────────────
 
 async function handleFFCSaveImage(request, env) {
-  const authErr = requireAdmin(request, env);
+  const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
 
   let body;
@@ -710,7 +729,7 @@ async function handleFFCSaveImage(request, env) {
 // ─── FFC: remove image ────────────────────────────────────────────────────────
 
 async function handleFFCRemoveImage(request, env) {
-  const authErr = requireAdmin(request, env);
+  const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
 
   let body;

@@ -39,9 +39,11 @@ try {
   process.exit(1);
 }
 
-const { vocab = {}, prompts = {}, items = [] } = data;
+const { vocab = {}, prompts = {}, promptDefaults = {}, items = [] } = data;
 const BUCKETS = { groups: 'groups', features: 'features', functions: 'functions', classes: 'classes' };
-const MODE_TO_BUCKET = {
+
+// Both class modes share the same "class" prompt key in items.json.
+const PROMPT_KEY_TO_BUCKET = {
   feature:  'features',
   function: 'functions',
   class:    'classes',
@@ -114,12 +116,25 @@ for (const [bucket, usage] of Object.entries(tagUsage)) {
 
 // ── Check prompt keys exist in vocab ──────────────────────────────
 
-for (const [mode, bucket] of Object.entries(MODE_TO_BUCKET)) {
-  const modePrompts = prompts[mode] || {};
+for (const [promptKey, bucket] of Object.entries(PROMPT_KEY_TO_BUCKET)) {
+  const modePrompts = prompts[promptKey] || {};
   for (const tag of Object.keys(modePrompts)) {
     if (!vocabSets[bucket].has(tag)) {
-      err(`prompts.${mode} references tag "${tag}" which is not in vocab.${bucket}`);
+      err(`prompts.${promptKey} references tag "${tag}" which is not in vocab.${bucket}`);
     }
+  }
+}
+
+// ── Check promptDefaults ───────────────────────────────────────────
+
+const VALID_DEFAULT_BUCKETS = new Set(['features', 'functions', 'classes']);
+for (const bucket of Object.keys(promptDefaults)) {
+  if (!VALID_DEFAULT_BUCKETS.has(bucket)) {
+    warn(`promptDefaults has unexpected key "${bucket}"`);
+  } else if (typeof promptDefaults[bucket] !== 'string') {
+    err(`promptDefaults.${bucket} must be a string template`);
+  } else if (!promptDefaults[bucket].includes('{tag}')) {
+    warn(`promptDefaults.${bucket} template is missing the "{tag}" placeholder`);
   }
 }
 
