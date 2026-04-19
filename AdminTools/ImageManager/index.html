@@ -8,28 +8,36 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-height: 100vh; }
 
-/* ── Password Gate ── */
-#gate {
-  position: fixed; inset: 0; z-index: 1000;
-  background: #111; display: none; align-items: center; justify-content: center;
+/* ── Gear button + admin modal ── */
+.admin-gear {
+  position: fixed; bottom: 1rem; right: 1rem; z-index: 9999;
+  font-size: 1.3rem; background: none; border: none; cursor: pointer;
+  opacity: 0.35; transition: opacity 0.15s; padding: 0; line-height: 1;
 }
-#gate.visible { display: flex; }
-.gate-box {
+.admin-gear:hover { opacity: 0.8; }
+.admin-gear.authed { opacity: 1; filter: sepia(1) saturate(3) hue-rotate(80deg); }
+#admin-modal {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7); z-index: 10000;
+  align-items: center; justify-content: center;
+}
+#admin-modal.open { display: flex; }
+.admin-modal-box {
   background: #1e1e1e; border: 1px solid #333; border-radius: 12px;
   padding: 2rem; width: 320px; text-align: center;
 }
-.gate-box h1 { font-size: 1.3rem; margin-bottom: 1.25rem; color: #fff; }
-.gate-box input {
+.admin-modal-box h1 { font-size: 1.3rem; margin-bottom: 1.25rem; color: #fff; }
+.admin-modal-box input {
   width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px;
   border: 1px solid #444; background: #2a2a2a; color: #eee;
-  font-size: 1rem; margin-bottom: 0.75rem;
+  font-size: 1rem; margin-bottom: 0.75rem; font-family: inherit;
 }
-.gate-box button {
+.admin-modal-box .unlock-btn {
   width: 100%; padding: 0.6rem; border-radius: 8px;
   background: #3b82f6; color: #fff; border: none; cursor: pointer; font-size: 1rem;
 }
-.gate-box button:hover { background: #2563eb; }
-#gate-error { color: #f87171; font-size: 0.85rem; margin-top: 0.5rem; min-height: 1.2em; }
+.admin-modal-box .unlock-btn:hover { background: #2563eb; }
+#admin-pw-error { color: #f87171; font-size: 0.85rem; margin-top: 0.5rem; min-height: 1.2em; }
 
 /* ── App Shell ── */
 #app { padding: 1rem 1.5rem 2rem; }
@@ -217,13 +225,13 @@ body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-he
 </head>
 <body>
 
-<!-- Password Gate -->
-<div id="gate">
-  <div class="gate-box">
+<button class="admin-gear" id="admin-gear" title="Admin">⚙️</button>
+<div id="admin-modal">
+  <div class="admin-modal-box">
     <h1>🔐 Image Manager</h1>
-    <input type="password" id="gate-input" placeholder="Admin password" autocomplete="current-password">
-    <button id="gate-btn">Unlock</button>
-    <div id="gate-error"></div>
+    <input type="password" id="admin-pw-input" placeholder="Admin password" autocomplete="current-password">
+    <button class="unlock-btn" id="admin-unlock-btn">Unlock</button>
+    <div id="admin-pw-error"></div>
   </div>
 </div>
 
@@ -285,89 +293,74 @@ const GAMES = [
   { id: 'FFCGame',          label: 'FFC Game',          type: 'ffc'      },
 ];
 
-let token = sessionStorage.getItem('adminToken') || '';
+const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
+
+let token = localStorage.getItem('admin_token') || '';
 let activeGame = GAMES[0];
 let gameData = {}; // { [gameId]: { manifest | fpgPeople } }
 let activeFolder = null;
 let detailContext = null; // { gameId, folder, filename, person? }
 
-// ─── Auth / Gate ──────────────────────────────────────────────────────────────
+// ─── Auth / Gear ──────────────────────────────────────────────────────────────
 
-const gate = document.getElementById('gate');
-const gateInput = document.getElementById('gate-input');
-const gateBtn = document.getElementById('gate-btn');
-const gateError = document.getElementById('gate-error');
+const adminGear    = document.getElementById('admin-gear');
+const adminModal   = document.getElementById('admin-modal');
+const adminPwInput = document.getElementById('admin-pw-input');
+const adminPwError = document.getElementById('admin-pw-error');
 
-function showGate(msg) {
-  gate.classList.add('visible');
-  gateError.textContent = msg || '';
-  gateInput.value = '';
-  setTimeout(() => gateInput.focus(), 50);
+function setGearAuthed(authed) { adminGear.classList.toggle('authed', authed); }
+
+function showAdminModal(msg) {
+  adminPwInput.value = '';
+  adminPwError.textContent = msg || '';
+  adminModal.classList.add('open');
+  setTimeout(() => adminPwInput.focus(), 50);
 }
 
-function hideGate() { gate.classList.remove('visible'); }
+if (token) { setGearAuthed(true); initApp(); }
+else { showAdminModal(); }
 
-if (token) {
-  (async () => {
-    try {
-      const res = await fetch('../../api/admin/ping', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify({}),
-      });
-      if (res.ok) {
-        initApp();
-      } else {
-        token = '';
-        sessionStorage.removeItem('adminToken');
-        showGate('Session expired — re-enter password.');
-      }
-    } catch {
-      showGate('Could not reach server.');
-    }
-  })();
-} else {
-  showGate();
-}
-
-gateInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
-gateBtn.addEventListener('click', tryUnlock);
-
-async function tryUnlock() {
-  const pw = gateInput.value.trim();
-  if (!pw) { gateError.textContent = 'Enter your password.'; return; }
-  gateBtn.disabled = true;
-  gateError.textContent = '';
-  try {
-    const res = await fetch('../../api/admin/ping', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pw },
-      body: JSON.stringify({}),
-    });
-    if (res.ok) {
-      token = pw;
-      sessionStorage.setItem('adminToken', pw);
-      hideGate();
-      initApp();
-    } else if (res.status === 401) {
-      gateError.textContent = 'Incorrect password.';
-      gateInput.value = '';
-      gateInput.focus();
-    } else {
-      gateError.textContent = 'Could not reach server.';
-      gateInput.value = '';
-    }
-  } catch {
-    gateError.textContent = 'Could not reach server.';
-    gateInput.value = '';
+adminGear.addEventListener('click', () => {
+  adminModal.classList.toggle('open');
+  if (adminModal.classList.contains('open')) {
+    adminPwInput.value = '';
+    adminPwError.textContent = '';
+    setTimeout(() => adminPwInput.focus(), 50);
   }
-  gateBtn.disabled = false;
+});
+adminModal.addEventListener('click', e => { if (e.target === adminModal) adminModal.classList.remove('open'); });
+
+async function sha256Hex(str) {
+  const buf    = new TextEncoder().encode(str);
+  const digest = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
+
+async function adminUnlock() {
+  const pw = adminPwInput.value;
+  if (!pw) { adminPwError.textContent = 'Enter your password.'; return; }
+  const hash = await sha256Hex(pw);
+  if (hash === ADMIN_SECRET_HASH) {
+    token = hash;
+    localStorage.setItem('admin_token', hash);
+    setGearAuthed(true);
+    adminModal.classList.remove('open');
+    initApp();
+  } else {
+    adminPwError.textContent = 'Incorrect password.';
+    adminPwInput.value = '';
+    adminPwInput.focus();
+  }
+}
+
+document.getElementById('admin-unlock-btn').addEventListener('click', adminUnlock);
+adminPwInput.addEventListener('keydown', e => { if (e.key === 'Enter') adminUnlock(); });
 
 function handle401() {
   token = '';
-  sessionStorage.removeItem('adminToken');
-  showGate('Session expired — re-enter password.');
+  localStorage.removeItem('admin_token');
+  setGearAuthed(false);
+  showAdminModal('Session expired — re-enter password.');
 }
 
 // ─── Fetch helpers ────────────────────────────────────────────────────────────

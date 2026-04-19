@@ -92,19 +92,24 @@ export default {
 // ─── Admin: ping ─────────────────────────────────────────────────────────────
 
 async function handleAdminPing(request, env) {
-  const authErr = requireAdmin(request, env);
+  const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
   return json({ ok: true });
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
-function requireAdmin(request, env) {
+async function requireAdmin(request, env) {
   const authHeader = request.headers.get('Authorization') || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-  if (!token || token !== env.ADMIN_SECRET) {
-    return jsonError('Unauthorized', 401);
-  }
+  if (!token) return jsonError('Unauthorized', 401);
+  const secret = (env.ADMIN_SECRET ?? '').trim();
+  const buf = new TextEncoder().encode(secret);
+  const digest = await crypto.subtle.digest('SHA-256', buf);
+  const hash = Array.from(new Uint8Array(digest))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  if (token !== hash) return jsonError('Unauthorized', 401);
   return null;
 }
 
@@ -156,7 +161,7 @@ async function handleSavePhoto(request, env) {
 // ─── Admin: save-image ────────────────────────────────────────────────────────
 
 async function handleAdminSaveImage(request, env) {
-  const authErr = requireAdmin(request, env);
+  const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
 
   let body;
@@ -214,7 +219,7 @@ async function handleAdminSaveImage(request, env) {
 // ─── Admin: remove-image ──────────────────────────────────────────────────────
 
 async function handleAdminRemoveImage(request, env) {
-  const authErr = requireAdmin(request, env);
+  const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
 
   let body;
@@ -256,7 +261,7 @@ async function handleAdminRemoveImage(request, env) {
 // ─── Admin: archive-topic ─────────────────────────────────────────────────────
 
 async function handleAdminArchiveTopic(request, env) {
-  const authErr = requireAdmin(request, env);
+  const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
 
   let body;
@@ -286,7 +291,7 @@ async function handleAdminArchiveTopic(request, env) {
 // ─── Admin: restore-topic ─────────────────────────────────────────────────────
 
 async function handleAdminRestoreTopic(request, env) {
-  const authErr = requireAdmin(request, env);
+  const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
 
   let body;
@@ -316,7 +321,7 @@ async function handleAdminRestoreTopic(request, env) {
 // ─── Admin: purge-topic ───────────────────────────────────────────────────────
 
 async function handleAdminPurgeTopic(request, env) {
-  const authErr = requireAdmin(request, env);
+  const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
 
   let body;
@@ -346,7 +351,7 @@ async function handleAdminPurgeTopic(request, env) {
 // ─── Admin: rename-topic ──────────────────────────────────────────────────────
 
 async function handleAdminRenameTopic(request, env) {
-  const authErr = requireAdmin(request, env);
+  const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
 
   let body;
@@ -643,7 +648,7 @@ async function atomicTopicRenameCommit(env, game, fromFolder, toFolder, action) 
 // ─── FFC: save items.json ─────────────────────────────────────────────────────
 
 async function handleFFCSaveItems(request, env) {
-  const authErr = requireAdmin(request, env);
+  const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
 
   let body;
@@ -673,7 +678,7 @@ async function handleFFCSaveItems(request, env) {
 // ─── FFC: save image ──────────────────────────────────────────────────────────
 
 async function handleFFCSaveImage(request, env) {
-  const authErr = requireAdmin(request, env);
+  const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
 
   let body;
@@ -713,7 +718,7 @@ async function handleFFCSaveImage(request, env) {
 // ─── FFC: remove image ────────────────────────────────────────────────────────
 
 async function handleFFCRemoveImage(request, env) {
-  const authErr = requireAdmin(request, env);
+  const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
 
   let body;
