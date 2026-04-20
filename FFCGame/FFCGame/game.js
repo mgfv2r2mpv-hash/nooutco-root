@@ -432,22 +432,31 @@ function nextTarget(mode, tag, pool) {
  * Builds a trial for a given mode and tag.
  * Returns { targetItem, promptSentence, tileItems, correctIdx } or null if
  * the item pool is too small to build a valid trial.
+ *
+ * If forcedTarget is provided, that item is used as the target instead of
+ * drawing a new one from the target deck (used for error-correction trials
+ * so the learner sees the same item they just missed).
  */
-function buildTrialData(mode, tag, n) {
+function buildTrialData(mode, tag, n, forcedTarget = null) {
   const items = state.items;
   const { bucket, distractors: distStyle } = MODE_CONFIG[mode];
   const promptSentence = resolvePrompt(mode, tag);
 
-  // Apply the mode's target filter to the candidate target pool.
-  const filter = state.targetFilters[mode] || [];
-  const filterSet = filter.length ? new Set(filter) : null;
+  let target;
+  if (forcedTarget) {
+    target = forcedTarget;
+  } else {
+    // Apply the mode's target filter to the candidate target pool.
+    const filter = state.targetFilters[mode] || [];
+    const filterSet = filter.length ? new Set(filter) : null;
 
-  const targetPool = items.filter(it =>
-    it[bucket] && it[bucket].includes(tag) &&
-    (!filterSet || filterSet.has(it.id))
-  );
-  if (!targetPool.length) return null;
-  const target = nextTarget(mode, tag, targetPool);
+    const targetPool = items.filter(it =>
+      it[bucket] && it[bucket].includes(tag) &&
+      (!filterSet || filterSet.has(it.id))
+    );
+    if (!targetPool.length) return null;
+    target = nextTarget(mode, tag, targetPool);
+  }
 
   let distractorPool;
 
@@ -552,8 +561,9 @@ function beginTrial(keepTarget = false) {
     state.tileItems      = trial.tileItems;
     state.correctIdx     = trial.correctIdx;
   } else {
-    // Reshuffle positions only, keep same target and tag
-    const trial = buildTrialData(state.mode, state.targetTag, state.arraySize);
+    // Error correction: keep the same target item the learner just missed,
+    // only rebuild distractors and positions around it.
+    const trial = buildTrialData(state.mode, state.targetTag, state.arraySize, state.targetItem);
     if (trial) {
       state.tileItems  = trial.tileItems;
       state.correctIdx = trial.correctIdx;
