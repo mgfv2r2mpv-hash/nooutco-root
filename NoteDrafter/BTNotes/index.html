@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BT Direct Service Note Tool</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Inter, sans-serif;
+      background: #f0f4ec;
+      min-height: 100vh;
+      padding: 32px 20px;
+      color: #2d3a1f;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
+    async function sha256Hex(str) {
+      const buf = new TextEncoder().encode(str);
+      const digest = await crypto.subtle.digest("SHA-256", buf);
+      return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+    const hasAdminToken = () => localStorage.getItem("admin_token") === ADMIN_SECRET_HASH;
+
+    const PROVIDERS = {
+      gemini:    { label: "Gemini",    placeholder: "AIza...",     keyLabel: "Google AI Studio Key",  hint: "Get key at aistudio.google.com" },
+      openai:    { label: "OpenAI",    placeholder: "sk-...",      keyLabel: "OpenAI API Key",        hint: "Get key at platform.openai.com" },
+      anthropic: { label: "Anthropic", placeholder: "sk-ant-...", keyLabel: "Anthropic API Key",     hint: "Get key at console.anthropic.com" },
+    };
+
+    const INDIVIDUALS_PRESENT = [
+      {
+        id: "parents",
+        label: "Parent/s",
+        examples: "e.g. Mother, Father, Step-parent, Foster parent",
+      },
+      {
+        id: "client",
+        label: "Client",
+        examples: "",
+      },
+      {
+        id: "siblings",
+        label: "Sibling/s",
+        examples: "e.g. Brother, Sister",
+      },
+      {
+        id: "family",
+        label: "Other family members / friends",
+        examples: "e.g. Grandparent, Aunt/Uncle, Family friend",
+      },
+      {
+        id: "specialists",
+        label: "Specialists",
+        examples: "e.g. EI Coordinator, Speech Language Pathologist (SLP), Occupational Therapist (OT), Physical Therapist (PT)",
+      },
+      {
+        id: "teacher",
+        label: "Teacher",
+        examples: "e.g. Classroom teacher, Special education teacher, Paraprofessional",
+      },
+      {
+        id: "supervisor",
+        label: "Supervisor (BCBA)",
+        examples: "",
+      },
+    ];
+
+    const CLINICAL_STATUS = [
+      { id: "cs_ready",      label: "Ready to Start Learning" },
+      { id: "cs_tired",      label: "Presented Tired" },
+      { id: "cs_hungry",     label: "Presented Hungry/Thirsty" },
+      { id: "cs_distracted", label: "Presented Distracted" },
+      { id: "cs_sick",       label: "Presented Sick" },
+      { id: "cs_challenging",label: "Engaging in Challenging Behavior" },
+      { id: "cs_medication", label: "Reported Medication Change" },
+    ];
+
+    const PURPOSE_OF_SESSION = [
+      {
+        id: "pos_goals",
+        label: "Worked on goals as stated in the treatment plan",
+        tip: "Skill acquisition and/or behavior reduction goals from the current treatment plan.",
+      },
+      {
+        id: "pos_pairing",
+        label: "Paired staff with reinforcement",
+        tip: "Pairing activities this session may include: proximity, praise, action imitation, affect/mood reflection, vocal/play expansion, initiation by offering preferred items.",
+      },
+      {
+        id: "pos_bip",
+        label: "Implemented Behavior Plans",
+        tip: "Antecedent modifications, consequence strategies, and other practices listed in the behavior intervention plan to support engagement and reduce challenging behavior.",
+      },
+    ];
+
+    const ABA_TECHNIQUES = [
+      {
+        id: "aba_dtt",
+        label: "Discrete Trial Training (DTT)",
+        tip: "Structured, repeated trials with clear antecedent–behavior–consequence format to teach discrete skills.",
+      },
+      {
+        id: "aba_net",
+        label: "Natural Environment Training (NET)",
+        tip: "Teaching skills within the natural setting using the learner's interests and naturally occurring opportunities.",
+      },
+      {
+        id: "aba_ta",
+        label: "Task Analysis",
+        tip: "Breaking a multi-step skill into component steps and teaching each step in sequence.",
+      },
+      {
+        id: "aba_fct",
+        label: "Functional Communication Training (FCT)",
+        tip: "Teaching a functionally equivalent communicative response to replace challenging behavior.",
+      },
+      {
+        id: "aba_el",
+        label: "Errorless Learning",
+        tip: "Prompting strategies designed to prevent errors and promote correct responding from the start.",
+      },
+      {
+        id: "aba_mlp",
+        label: "Most to Least Prompting",
+        tip: "Starting with the most intrusive prompt and systematically fading toward independence.",
+      },
+      {
+        id: "aba_lmp",
+        label: "Least to Most Prompting",
+        tip: "Starting with the least intrusive prompt and increasing support only as needed.",
+      },
+      {
+        id: "aba_dr",
+        label: "Differential Reinforcement",
+        tip: "Reinforcing target behaviors (or absence of problem behaviors) while withholding reinforcement for other responses (e.g., DRI, DRO, DRA, DRL).",
+      },
+    ];
+
+    const BCBA_ACTION_ITEMS = [
+      { id: "act_sched",    label: "Contact family – scheduling / staffing" },
+      { id: "act_behavior", label: "Contact family – new behavior" },
+      { id: "act_billing",  label: "Contact family – billing questions" },
+      { id: "act_staff",    label: "Contact staff" },
+      { id: "act_materials",label: "Materials needed for programming" },
+      { id: "act_none",     label: "None" },
+    ];
+
+    const OUTPUT_SECTIONS = [
+      { id: "clinicalStatus",   label: "Further Detail On Clinical Status" },
+      { id: "lessonProgress",   label: "Narrative of Lesson Progress" },
+      { id: "antecedent",       label: "List Of Successful Antecedent Modifications" },
+      { id: "behaviorPlan",     label: "Narrative of Behavior Support Plan Goals Progress" },
+      { id: "followUp",         label: "Summary of Concerns/Questions/Involvement" },
+    ];
+
+    async function callProvider(provider, apiKey, systemPrompt, userPrompt) {
+      let url, headers = { "Content-Type": "application/json" }, body;
+
+      if (provider === "anthropic") {
+        url = "https://api.anthropic.com/v1/messages";
+        headers["x-api-key"] = apiKey;
+        headers["anthropic-version"] = "2023-06-01";
+        headers["anthropic-dangerous-direct-browser-access"] = "true";
+        body = { model: "claude-sonnet-4-20250514", max_tokens: 1800, system: systemPrompt, messages: [{ role: "user", content: userPrompt }] };
+      } else if (provider === "openai") {
+        url = "https://api.openai.com/v1/chat/completions";
+        headers["Authorization"] = `Bearer ${apiKey}`;
+        body = { model: "gpt-4o-mini", max_tokens: 1800, messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }] };
+      } else {
+        url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+        body = {
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+          generationConfig: { maxOutputTokens: 2048 },
+        };
+      }
+
+      const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(`API error ${res.status}: ${err?.error?.message || err?.error?.status || res.statusText}`);
+      }
+
+      const data = await res.json();
+      let raw;
+      if (provider === "anthropic") raw = data.content.map(b => b.text || "").join("");
+      else if (provider === "openai") raw = data.choices[0].message.content;
+      else raw = data.candidates[0].content.parts[0].text;
+
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error("No JSON found in response. Try again.");
+      return JSON.parse(match[0]);
+    }
+
+    function Tip({ text }) {
+      const style = {
+        fontSize: 12,
+        color: "#5a7040",
+        background: "#eef4e6",
+        border: "1px solid #c8dba8",
+        borderRadius: 7,
+        padding: "7px 11px",
+        marginTop: 7,
+        lineHeight: 1.55,
+      };
+      return <div style={style}>{text}</div>;
+    }
+
+    function CheckGroup({ items, checked, onToggle, showTips }) {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {items.map(item => (
+            <div key={item.id}>
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={checked.has(item.id)}
+                  onChange={() => onToggle(item.id)}
+                  style={{ marginTop: 2, accentColor: "#374528", width: 16, height: 16, flexShrink: 0 }}
+                />
+                <span style={{ fontSize: 14, color: "#2d3a1f", lineHeight: 1.5 }}>{item.label}</span>
+              </label>
+              {showTips && checked.has(item.id) && item.tip && (
+                <div style={{ marginLeft: 26 }}>
+                  <Tip text={item.tip} />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    function App() {
+      const [provider,          setProvider]         = React.useState(() => localStorage.getItem("bt_provider") || "gemini");
+      const [apiKey,            setApiKey]           = React.useState(() => localStorage.getItem(`bt_key_${localStorage.getItem("bt_provider") || "gemini"}`) || "");
+      const [showKey,           setShowKey]          = React.useState(false);
+      const [isAdmin,           setIsAdmin]          = React.useState(() => hasAdminToken());
+
+      const [individualsChecked, setIndividualsChecked] = React.useState(new Set());
+      const [clinicalChecked,    setClinicalChecked]    = React.useState(new Set());
+      const [purposeChecked,     setPurposeChecked]     = React.useState(new Set());
+      const [placeOfService,     setPlaceOfService]     = React.useState("");
+      const [abaChecked,         setAbaChecked]         = React.useState(new Set());
+      const [actionChecked,      setActionChecked]      = React.useState(new Set());
+
+      const [bulletClinical,  setBulletClinical]  = React.useState("");
+      const [bulletLesson,    setBulletLesson]    = React.useState("");
+      const [bulletAntecedent,setBulletAntecedent]= React.useState("");
+      const [bulletBehavior,  setBulletBehavior]  = React.useState("");
+      const [bulletFollowUp,  setBulletFollowUp]  = React.useState("");
+
+      const [output,       setOutput]      = React.useState(null);
+      const [loading,      setLoading]     = React.useState(false);
+      const [error,        setError]       = React.useState("");
+      const [copied,       setCopied]      = React.useState(null);
+      const [promptText,   setPromptText]  = React.useState("");
+      const [copiedPrompt, setCopiedPrompt]= React.useState(false);
+
+      React.useEffect(() => {
+        const onStorage = () => setIsAdmin(hasAdminToken());
+        window.addEventListener("storage", onStorage);
+        return () => window.removeEventListener("storage", onStorage);
+      }, []);
+
+      const switchProvider = (p) => {
+        setProvider(p);
+        localStorage.setItem("bt_provider", p);
+        setApiKey(localStorage.getItem(`bt_key_${p}`) || "");
+        setError("");
+      };
+
+      const saveApiKey = (val) => {
+        setApiKey(val);
+        if (val) localStorage.setItem(`bt_key_${provider}`, val);
+        else     localStorage.removeItem(`bt_key_${provider}`);
+      };
+
+      const toggle = (setter) => (id) => setter(prev => {
+        const next = new Set(prev);
+        next.has(id) ? next.delete(id) : next.add(id);
+        return next;
+      });
+
+      const buildSystemPrompt = () =>
+        `You are an expert Behavior Technician (BT/RBT) documentation specialist. Your job is to expand brief bullet points into polished, professional clinical note text written from the perspective of an expert behavior technician. You must not invent details that were not provided. You may expand and polish fragments into complete clinical sentences. Write in first-person or third-person clinical prose as appropriate to a direct service session note. Do not include any preamble, explanation, or follow-up commentary. Return ONLY a JSON object with exactly these five keys: "clinicalStatus", "lessonProgress", "antecedent", "behaviorPlan", "followUp". No markdown, no extra keys.`;
+
+      const buildUserPrompt = () => {
+        const indList = INDIVIDUALS_PRESENT.filter(i => individualsChecked.has(i.id)).map(i => i.label).join(", ") || "Not specified";
+        const csList  = CLINICAL_STATUS.filter(c => clinicalChecked.has(c.id)).map(c => c.label).join(", ") || "Not specified";
+        const posList = PURPOSE_OF_SESSION.filter(p => purposeChecked.has(p.id)).map(p => p.label).join(", ") || "Not specified";
+        const abaList = ABA_TECHNIQUES.filter(a => abaChecked.has(a.id)).map(a => a.label).join(", ") || "Not specified";
+        const actList = BCBA_ACTION_ITEMS.filter(a => actionChecked.has(a.id)).map(a => a.label).join(", ") || "Not specified";
+
+        return [
+          `Individuals present: ${indList}`,
+          `Place of service: ${placeOfService.trim() || "Not specified"}`,
+          `Clinical status of client upon arrival (checkboxes): ${csList}`,
+          `Purpose of session: ${posList}`,
+          `ABA teaching techniques used: ${abaList}`,
+          `Action items for BCBA: ${actList}`,
+          ``,
+          `Raw notes for "Further Detail On Clinical Status":`,
+          `(Write 1–2 sentences describing the client's mood, behavior, or activities at the START of the session only — not across the session.)`,
+          bulletClinical.trim() || "(none provided — write a brief placeholder based on arrival checkboxes)",
+          ``,
+          `Raw notes for "Narrative of Lesson Progress":`,
+          `(Write 4–7 total sentences covering 2 programs: one addressing social/communication goals and one addressing adaptive behaviors or repetitive behavior reduction. Include activities, prompting, work achieved, progress toward goals, or significant barriers. QUALITATIVE description only.)`,
+          bulletLesson.trim() || "(none provided)",
+          ``,
+          `Raw notes for "List Of Successful Antecedent Modifications Implemented in Session":`,
+          `(List the antecedent strategies used to prevent or reduce problem behavior. Common examples: first/then language, visual schedule, non-contingent reinforcement (NCR), providing choices, behavior momentum, reducing distractions, having supplies ready, adjusting lighting/noise, simplified language, modeling, countdown warnings, reminders of rules, prompting functional communication, scheduled breaks, pre-session pairing, behavior contract. Write in 1–2 sentences using format: "The following antecedent strategies were utilized to avoid problem behavior from occurring today: [list].")`,
+          bulletAntecedent.trim() || "(none provided)",
+          ``,
+          `Raw notes for "Narrative of Behavior Support Plan Goals Progress":`,
+          `(Write 2–4 sentences with QUANTITATIVE description of the client's response to behavior plan implementation this session. Include frequency, rate, duration, or percentage data on target behaviors where available. Describe whether behavior increased, decreased, or held steady relative to goals.)`,
+          bulletBehavior.trim() || "(none provided)",
+          ``,
+          `Raw notes for "Summary of Concerns/Questions/Involvement":`,
+          `(Write 1–3 sentences covering follow-up questions or concerns for the BCBA, materials requested, or a summary of BCBA involvement if this was a supervision session.)`,
+          bulletFollowUp.trim() || "(none provided)",
+        ].join("\n");
+      };
+
+      const validate = () => {
+        if (purposeChecked.size === 0) return "Please select at least one Purpose of Session.";
+        if (!bulletLesson.trim())      return "Please enter notes for Narrative of Lesson Progress.";
+        return null;
+      };
+
+      const handleGenerate = async () => {
+        const err = validate();
+        if (err) { setError(err); return; }
+        if (!apiKey.trim()) { setError("Please enter your API key."); return; }
+        setError(""); setLoading(true); setOutput(null);
+        try {
+          const parsed = await callProvider(provider, apiKey, buildSystemPrompt(), buildUserPrompt());
+          setOutput(parsed);
+        } catch (e) {
+          setError(e.message || "Something went wrong. Check your API key and try again.");
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const handleGeneratePrompt = () => {
+        const err = validate();
+        if (err) { setError(err); return; }
+        setError("");
+        const sys = buildSystemPrompt().replace(/Return ONLY a JSON.*$/, `Return exactly five labeled sections using this format (label on its own line, content below, blank line before next label):
+
+FURTHER DETAIL ON CLINICAL STATUS
+[1–2 sentences about mood/behavior/activities at session start]
+
+NARRATIVE OF LESSON PROGRESS
+[4–7 sentences, two programs: social/communication and adaptive/repetitive, qualitative]
+
+LIST OF SUCCESSFUL ANTECEDENT MODIFICATIONS
+[1–2 sentences listing strategies used]
+
+NARRATIVE OF BEHAVIOR SUPPORT PLAN GOALS PROGRESS
+[2–4 sentences, quantitative data on target behaviors]
+
+SUMMARY OF CONCERNS/QUESTIONS/INVOLVEMENT
+[1–3 sentences for BCBA follow up]
+
+No JSON. No preamble. No commentary after the last section.`);
+        setPromptText(`${sys}\n\n---\n\n${buildUserPrompt()}`);
+        setCopiedPrompt(false);
+      };
+
+      const handleCopy = (id, text) => {
+        navigator.clipboard.writeText(text);
+        setCopied(id);
+        setTimeout(() => setCopied(null), 1800);
+      };
+
+      const handleCopyAll = () => {
+        if (!output) return;
+        const full = OUTPUT_SECTIONS.map(s => `${s.label}\n${output[s.id]}`).join("\n\n");
+        navigator.clipboard.writeText(full);
+        setCopied("all");
+        setTimeout(() => setCopied(null), 1800);
+      };
+
+      const card     = { background: "white", borderRadius: 12, border: "1px solid #c0d4a8", padding: 24, marginBottom: 20 };
+      const lbl      = { fontSize: 13, fontWeight: 600, color: "#374528", textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 8 };
+      const subLbl   = { fontSize: 15, fontWeight: 700, color: "#2d3a1f", display: "block", marginBottom: 6 };
+      const hint     = { fontSize: 12, color: "#7a9460", marginBottom: 10, lineHeight: 1.55 };
+      const inputBase = { width: "100%", padding: "10px 14px", borderRadius: 8, border: "1.5px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", background: "#fafcf8" };
+      const prov = PROVIDERS[provider];
+
+      return (
+        <div style={{ maxWidth: 820, margin: "0 auto" }}>
+
+          {/* Header */}
+          <div style={{ marginBottom: 28, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <h1 style={{ fontSize: 26, fontWeight: 700, color: "#2d3a1f", marginBottom: 4 }}>BT Direct Service Note Tool</h1>
+              <p style={{ fontSize: 14, color: "#5a6b4a" }}>Fill in session details and rough notes — generate a polished prompt to feed into any AI to produce your clinical documentation.</p>
+            </div>
+            <a href="/" style={{ padding: "7px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", marginLeft: 16 }}>← Back</a>
+          </div>
+
+          {/* Admin API Settings */}
+          {isAdmin && (
+            <div style={card}>
+              <div style={{ marginBottom: 20 }}>
+                <p style={lbl}>AI Provider</p>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {Object.entries(PROVIDERS).map(([id, p]) => (
+                    <button key={id} onClick={() => switchProvider(id)} style={{
+                      padding: "8px 18px", borderRadius: 8,
+                      border: provider === id ? "2px solid #374528" : "1.5px solid #c0d4a8",
+                      background: provider === id ? "#374528" : "white",
+                      color: provider === id ? "white" : "#374528",
+                      fontWeight: 600, fontSize: 14, cursor: "pointer",
+                    }}>{p.label}</button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label style={lbl}>{prov.keyLabel}</label>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input type={showKey ? "text" : "password"} value={apiKey} onChange={e => saveApiKey(e.target.value)} placeholder={prov.placeholder} style={{ ...inputBase, flex: 1 }} />
+                  <button onClick={() => setShowKey(v => !v)} style={{ padding: "9px 14px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#374528", fontSize: 13, cursor: "pointer" }}>{showKey ? "Hide" : "Show"}</button>
+                </div>
+                <p style={{ fontSize: 12, color: "#7a9460", marginTop: 7 }}>{prov.hint} — saved in this browser only.</p>
+              </div>
+            </div>
+          )}
+
+          {/* ── Section 1: Individuals Present ── */}
+          <div style={card}>
+            <span style={subLbl}>Individuals Present <span style={{ color: "#c0392b" }}>*</span></span>
+            <p style={hint}>Select all individuals who were present during this session. Select all that apply.</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {INDIVIDUALS_PRESENT.map(person => (
+                <div key={person.id}>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
+                    <input type="checkbox" checked={individualsChecked.has(person.id)} onChange={() => toggle(setIndividualsChecked)(person.id)}
+                      style={{ marginTop: 2, accentColor: "#374528", width: 16, height: 16, flexShrink: 0 }} />
+                    <span style={{ fontSize: 14, color: "#2d3a1f", lineHeight: 1.5 }}>{person.label}</span>
+                  </label>
+                  {person.examples && individualsChecked.has(person.id) && (
+                    <div style={{ marginLeft: 26 }}>
+                      <Tip text={person.examples} />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Section 2: Clinical Status ── */}
+          <div style={card}>
+            <span style={subLbl}>Clinical Status Of Client Upon Arrival <span style={{ color: "#c0392b" }}>*</span></span>
+            <p style={hint}>Select all that apply. Select all that apply.</p>
+            <CheckGroup items={CLINICAL_STATUS} checked={clinicalChecked} onToggle={toggle(setClinicalChecked)} showTips={false} />
+
+            <div style={{ marginTop: 20 }}>
+              <label style={subLbl}>Further Detail On Clinical Status <span style={{ color: "#c0392b" }}>*</span></label>
+              <p style={hint}>Brief note about client's mood, behavior, or activities at the <strong>time of session start</strong> — not across the session.</p>
+              <textarea
+                value={bulletClinical}
+                onChange={e => setBulletClinical(e.target.value)}
+                placeholder={"Bullet points or fragments are fine, e.g.:\n- Arrived calm, greeted tech\n- Asked for preferred tablet immediately\n- Appeared well-rested"}
+                style={{ ...inputBase, height: 110, resize: "vertical", lineHeight: 1.6 }}
+              />
+            </div>
+          </div>
+
+          {/* ── Section 3: Purpose of Session ── */}
+          <div style={card}>
+            <span style={subLbl}>Purpose of Session <span style={{ color: "#c0392b" }}>*</span></span>
+            <p style={hint}>Select all that apply. Tips appear for each selected item.</p>
+            <CheckGroup items={PURPOSE_OF_SESSION} checked={purposeChecked} onToggle={toggle(setPurposeChecked)} showTips={true} />
+          </div>
+
+          {/* ── Section 4: Place of Service ── */}
+          <div style={card}>
+            <label style={subLbl}>Place of Service</label>
+            <input
+              type="text"
+              value={placeOfService}
+              onChange={e => setPlaceOfService(e.target.value)}
+              placeholder="e.g. Client's Home, School, Clinic, Community"
+              style={inputBase}
+            />
+          </div>
+
+          {/* ── Section 5: ABA Techniques ── */}
+          <div style={card}>
+            <span style={subLbl}>ABA Teaching Techniques Used <span style={{ color: "#c0392b" }}>*</span></span>
+            <p style={hint}>Select all techniques used this session. Tips appear when checked.</p>
+            <CheckGroup items={ABA_TECHNIQUES} checked={abaChecked} onToggle={toggle(setAbaChecked)} showTips={true} />
+          </div>
+
+          {/* ── Section 6: Narrative of Lesson Progress ── */}
+          <div style={card}>
+            <label style={subLbl}>Narrative of Lesson Progress <span style={{ color: "#c0392b" }}>*</span></label>
+            <Tip text="Describe activities from 2 programs: one for social/communication goals and one for adaptive behaviors or repetitive behavior reduction. Include work achieved, prompting used, progress toward goals, or significant barriers. Aim for 4–7 sentences total. Qualitative description — specifics are more useful than generalities." />
+            <textarea
+              value={bulletLesson}
+              onChange={e => setBulletLesson(e.target.value)}
+              placeholder={"Bullet points or fragments are fine, e.g.:\n- DTT receptive ID, worked on 3-item array, prompts needed at start, 2 independent at end\n- Tact training in NET during play, 70% accuracy\n- Reduction target: elopement x2, redirected both times, no escalation\n- Used choice board between activities, helped transitions"}
+              style={{ ...inputBase, height: 160, resize: "vertical", lineHeight: 1.6, marginTop: 10 }}
+            />
+          </div>
+
+          {/* ── Section 7: Antecedent Modifications ── */}
+          <div style={card}>
+            <label style={subLbl}>Successful Antecedent Modifications Implemented <span style={{ color: "#c0392b" }}>*</span></label>
+            <Tip text={`List the strategies you used proactively to prevent or reduce problem behavior. Common examples: first/then language, visual schedule, non-contingent reinforcement (NCR), providing choices, behavior momentum, pre-session pairing, reducing distractions, having supplies ready, adjusting lighting or noise, simplified language, modeling, countdown/1-minute warnings, reminders of rules, prompting functional communication, scheduled breaks, behavior contract.\n\nExample output: "The following antecedent strategies were utilized to avoid problem behavior from occurring today: modeling, 1-minute warnings, visual schedule, prompting functional communication."`} />
+            <textarea
+              value={bulletAntecedent}
+              onChange={e => setBulletAntecedent(e.target.value)}
+              placeholder={"e.g.:\n- first/then board\n- 1-min warnings before transitions\n- NCR with preferred item every 5 min\n- simplified instructions"}
+              style={{ ...inputBase, height: 120, resize: "vertical", lineHeight: 1.6, marginTop: 10 }}
+            />
+          </div>
+
+          {/* ── Section 8: Behavior Support Plan Goals Progress ── */}
+          <div style={card}>
+            <label style={subLbl}>Narrative of Behavior Support Plan Goals Progress <span style={{ color: "#c0392b" }}>*</span></label>
+            <Tip text="Quantitative description of how target behaviors responded to the behavior plan this session. Include frequency, rate, duration, or percentage data. Note whether behavior increased, decreased, or held steady compared to goal or baseline." />
+            <textarea
+              value={bulletBehavior}
+              onChange={e => setBulletBehavior(e.target.value)}
+              placeholder={"e.g.:\n- Elopement: 2 instances (down from 5 last week)\n- Self-injury: 0 instances\n- Compliance with demands: ~80%, goal is 85%\n- Replacement behavior (asking for a break) used 3x unprompted"}
+              style={{ ...inputBase, height: 130, resize: "vertical", lineHeight: 1.6, marginTop: 10 }}
+            />
+          </div>
+
+          {/* ── Section 9: Action Items for BCBA ── */}
+          <div style={card}>
+            <span style={subLbl}>Action Items for BCBA <span style={{ color: "#c0392b" }}>*</span></span>
+            <p style={hint}>Select all that apply.</p>
+            <CheckGroup items={BCBA_ACTION_ITEMS} checked={actionChecked} onToggle={toggle(setActionChecked)} showTips={false} />
+
+            <div style={{ marginTop: 20 }}>
+              <label style={subLbl}>Summary of Concerns/Questions/Involvement <span style={{ color: "#c0392b" }}>*</span></label>
+              <Tip text="Note follow-up questions or concerns for the BCBA, materials needed, or a summary of BCBA involvement if this was a supervision session." />
+              <textarea
+                value={bulletFollowUp}
+                onChange={e => setBulletFollowUp(e.target.value)}
+                placeholder={"e.g.:\n- Ask BCBA about updating elopement protocol\n- Need new visual schedule printed\n- BCBA observed 20 min, feedback on prompting\n- No concerns this session"}
+                style={{ ...inputBase, height: 110, resize: "vertical", lineHeight: 1.6, marginTop: 10 }}
+              />
+            </div>
+          </div>
+
+          {/* Error + Buttons */}
+          <div style={{ marginBottom: 20 }}>
+            {error && <p style={{ color: "#c0392b", fontSize: 13, marginBottom: 12 }}>{error}</p>}
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {isAdmin && (
+                <button onClick={handleGenerate} disabled={loading} style={{
+                  padding: "11px 28px", borderRadius: 8, border: "none",
+                  background: loading ? "#a0b890" : "#374528",
+                  color: "white", fontSize: 15, fontWeight: 600,
+                  cursor: loading ? "not-allowed" : "pointer",
+                }}>
+                  {loading ? "Generating…" : "Generate Note"}
+                </button>
+              )}
+              <button onClick={handleGeneratePrompt} style={{
+                padding: "11px 18px", borderRadius: 8,
+                border: "1.5px solid #374528",
+                background: isAdmin ? "white" : "#374528",
+                color: isAdmin ? "#374528" : "white",
+                fontSize: 14, fontWeight: 600, cursor: "pointer",
+              }}>
+                Generate Prompt
+              </button>
+            </div>
+          </div>
+
+          {/* Generated Prompt */}
+          {promptText && (
+            <div style={card}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <div>
+                  <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>Generated Prompt</h2>
+                  <p style={{ fontSize: 13, color: "#5a6b4a", marginTop: 3 }}>Copy and paste into your AI of choice. It will return only the five note sections — no preamble, no editorializing.</p>
+                </div>
+                <button onClick={() => { navigator.clipboard.writeText(promptText); setCopiedPrompt(true); setTimeout(() => setCopiedPrompt(false), 1800); }}
+                  style={{ padding: "7px 16px", borderRadius: 7, border: "1.5px solid #374528", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", marginLeft: 16 }}>
+                  {copiedPrompt ? "Copied!" : "Copy"}
+                </button>
+              </div>
+              <textarea readOnly value={promptText}
+                style={{ width: "100%", minHeight: 240, padding: 12, borderRadius: 8, border: "1px solid #c0d4a8", fontSize: 13, color: "#2d3a1f", lineHeight: 1.6, resize: "vertical", background: "#f7fbf3", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+              />
+            </div>
+          )}
+
+          {/* Direct-generate output (admin) */}
+          {output && (
+            <div style={{ ...card, marginBottom: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>Generated Note Sections</h2>
+                <button onClick={handleCopyAll}
+                  style={{ padding: "7px 16px", borderRadius: 7, border: "1.5px solid #374528", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                  {copied === "all" ? "Copied!" : "Copy All"}
+                </button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {OUTPUT_SECTIONS.map(s => (
+                  <div key={s.id} style={{ borderRadius: 9, border: "1px solid #ddecd0", background: "#f7fbf3", padding: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#374528" }}>{s.label}</span>
+                      <button onClick={() => handleCopy(s.id, output[s.id])}
+                        style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #c0d4a8", background: "white", color: "#374528", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", marginLeft: 12 }}>
+                        {copied === s.id ? "Copied!" : "Copy"}
+                      </button>
+                    </div>
+                    <textarea value={output[s.id]} onChange={e => setOutput(prev => ({ ...prev, [s.id]: e.target.value }))}
+                      style={{ width: "100%", minHeight: 80, padding: 10, borderRadius: 7, border: "1px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", lineHeight: 1.65, resize: "vertical", background: "white" }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
