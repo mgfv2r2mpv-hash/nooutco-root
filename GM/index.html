@@ -205,6 +205,8 @@
     ];
     document.documentElement.style.setProperty('--bg', bgs[Math.floor(Math.random() * bgs.length)]);
 
+    const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
+
     const adminGear    = document.getElementById('admin-gear');
     const adminModal   = document.getElementById('admin-modal');
     const adminPwInput = document.getElementById('admin-pw-input');
@@ -236,28 +238,26 @@
     });
     adminModal.addEventListener('click', e => { if (e.target === adminModal) adminModal.classList.remove('open'); });
 
+    async function sha256Hex(str) {
+      const buf    = new TextEncoder().encode(str);
+      const digest = await crypto.subtle.digest('SHA-256', buf);
+      return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
     async function adminUnlock() {
       const pw = adminPwInput.value;
       if (!pw) { adminPwError.textContent = 'Enter a password.'; return; }
-      try {
-        const res = await fetch('../api/admin/auth', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${pw}`, 'Content-Type': 'application/json' },
-          body: '{}',
-        });
-        if (res.ok) {
-          token = pw;
-          localStorage.setItem('admin_token', pw);
-          setGearAuthed(true);
-          adminModal.classList.remove('open');
-          revealApp();
-        } else {
-          adminPwError.textContent = 'Incorrect password.';
-          adminPwInput.value = '';
-          adminPwInput.focus();
-        }
-      } catch {
-        adminPwError.textContent = 'Could not reach server.';
+      const hash = await sha256Hex(pw);
+      if (hash === ADMIN_SECRET_HASH) {
+        token = hash;
+        localStorage.setItem('admin_token', hash);
+        setGearAuthed(true);
+        adminModal.classList.remove('open');
+        revealApp();
+      } else {
+        adminPwError.textContent = 'Incorrect password.';
+        adminPwInput.value = '';
+        adminPwInput.focus();
       }
     }
 

@@ -84,9 +84,6 @@ export default {
     if (request.method === 'POST' && pathname === '/api/admin/ping') {
       return handleAdminPing(request, env);
     }
-    if (request.method === 'POST' && pathname === '/api/admin/auth') {
-      return handleAdminAuth(request, env);
-    }
 
     return new Response('Not found', { status: 404 });
   },
@@ -98,14 +95,6 @@ async function handleAdminPing(request, env) {
   const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
   return json({ ok: true });
-}
-
-// ─── Admin auth endpoint ───────────────────────────────────────────────────────
-
-async function handleAdminAuth(request, env) {
-  const authErr = await requireAdmin(request, env);
-  if (authErr) return authErr;
-  return json({ ok: true, redirect: '/GM/' });
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
