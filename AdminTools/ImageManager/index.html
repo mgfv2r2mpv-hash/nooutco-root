@@ -256,10 +256,10 @@ body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-he
     <button class="detail-close" id="dp-close">✕</button>
   </div>
 
-  <div class="detail-section" id="dp-displayname-section">
-    <label>Display name <span style="color:#64748b;font-weight:400;">(optional — what learners see; leave blank to use the filename)</span></label>
+  <div class="detail-section" id="dp-displayname-section" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:.75rem 1rem;">
+    <label style="color:#7dd3fc;font-weight:600;">Display name <span style="color:#64748b;font-weight:400;">(optional — shown to learners; leave blank to use the filename)</span></label>
     <div class="detail-row">
-      <input type="text" id="dp-displayname-input" placeholder="e.g. On">
+      <input type="text" id="dp-displayname-input" placeholder="e.g. On  (multiple files like on-squirrel.svg, on-book.svg can share this label)">
       <button class="btn-sm btn-blue" id="dp-displayname-save-btn">Save</button>
     </div>
     <div class="status-msg" id="dp-displayname-status"></div>
@@ -656,9 +656,7 @@ function buildCard(item) {
     img.src = '../../' + activeGame.id + '/' + activeGame.id + '/' + item.path;
     img.alt = item.path;
     const filename = item.path.split('/').pop();
-    const displayName = activeGame.id === 'NameIDGame'
-      ? gameData[activeGame.id]?.manifest?.displayNames?.[item.path]
-      : null;
+    const displayName = gameData[activeGame.id]?.manifest?.displayNames?.[item.path];
     if (displayName) {
       label.innerHTML = `<span style="color:#7dd3fc;">"${escapeHtml(displayName)}"</span> · ${escapeHtml(filename)}`;
       label.title = `Display name: "${displayName}"\nFilename: ${filename}`;
@@ -1154,9 +1152,11 @@ function openDetail(ctx) {
   setStatus(dpDisplayNameStatus, '', '');
   dpDisplayNameInput.value = '';
 
-  // Display-name override currently only affects NameIDGame (shown to learners as
-  // the sample word). IDMatchGame never displays labels.
-  if (ctx.type === 'manifest' && ctx.gameId === 'NameIDGame') {
+  // Display-name override is stored on every manifest-backed image
+  // (both IDMatchGame and NameIDGame). NameIDGame shows it to learners
+  // as the sample word; IDMatchGame currently ignores it but the data
+  // travels with the image so renaming/archiving still works.
+  if (ctx.type === 'manifest') {
     dpDisplayNameSection.style.display = '';
     const manifest = gameData[ctx.gameId]?.manifest;
     const existing = manifest?.displayNames?.[ctx.path] || '';
