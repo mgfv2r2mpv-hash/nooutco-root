@@ -919,6 +919,7 @@ function buildAddForm(formType) {
       const status = form.querySelector('#add-form-status');
       if (!name || !url) { setStatus(status, 'err', 'Name and URL are required.'); return; }
 
+      let isOverwrite = false;
       const existingNames = getFPGNames();
       if (existingNames.includes(name)) {
         const choice = await showDuplicateModal(name, existingNames, true);
@@ -926,8 +927,9 @@ function buildAddForm(formType) {
         if (choice.action === 'rename' || choice.action === 'keep-both') {
           name = choice.newName;
           form.querySelector('[name=name]').value = name;
+        } else if (choice.action === 'overwrite') {
+          isOverwrite = true;
         }
-        // 'overwrite' keeps the same name (updates existing person's image)
       }
 
       const facts = factsRaw ? factsRaw.split('\n').map(s => s.trim()).filter(Boolean) : [];
@@ -936,7 +938,7 @@ function buildAddForm(formType) {
         const res = await adminPost('save-image', {
           game: 'FamousPersonGame', folder: 'images', filename: nameToSlug(name) + '.jpg',
           imageUrl: url,
-          personMeta: { name, years, emoji, tag, facts },
+          ...(isOverwrite ? { personName: name } : { personMeta: { name, years, emoji, tag, facts } }),
         });
         if (!res) { setStatus(status, '', ''); return; }
         if (res.ok) {
