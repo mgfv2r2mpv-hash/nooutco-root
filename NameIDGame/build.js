@@ -72,16 +72,41 @@ for (const folder of archivedFolders) {
     .sort();
 }
 
+// ── Preserve existing displayNames for paths that still exist ────────────────
+
+const outPath = path.join(GAME_PATH, 'manifest.json');
+
+let existingDisplayNames = {};
+if (fs.existsSync(outPath)) {
+  try {
+    const prev = JSON.parse(fs.readFileSync(outPath, 'utf8'));
+    if (prev.displayNames && typeof prev.displayNames === 'object') {
+      existingDisplayNames = prev.displayNames;
+    }
+  } catch { /* ignore malformed manifest */ }
+}
+
+const knownPaths = new Set([
+  ...Object.values(images).flat(),
+  ...Object.values(archived).flat(),
+]);
+const displayNames = {};
+for (const [p, name] of Object.entries(existingDisplayNames)) {
+  if (knownPaths.has(p) && typeof name === 'string' && name.trim()) {
+    displayNames[p] = name;
+  }
+}
+
 // ── Write manifest.json ───────────────────────────────────────────────────────
 
 const manifest = {
   generated: new Date().toISOString(),
   folders,
   images,
+  displayNames,
   archived,
 };
 
-const outPath = path.join(GAME_PATH, 'manifest.json');
 fs.writeFileSync(outPath, JSON.stringify(manifest, null, 2) + '\n');
 
 // ── Print summary ─────────────────────────────────────────────────────────────
