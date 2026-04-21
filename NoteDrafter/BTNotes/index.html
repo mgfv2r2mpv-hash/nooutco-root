@@ -520,11 +520,11 @@ No JSON. No preamble. No commentary after the last section.`);
           {/* ── Section 8: Behavior Support Plan Goals Progress ── */}
           <div style={card}>
             <label style={subLbl}>Narrative of Behavior Support Plan Goals Progress <span style={{ color: "#c0392b" }}>*</span></label>
-            <Tip text="Quantitative description of how target behaviors responded to the behavior plan this session. Include frequency, rate, duration, or percentage data. Note whether behavior increased, decreased, or held steady compared to goal or baseline." />
+            <Tip text="Quantitative description of how target behaviors responded to the behavior plan this session. Note whether behavior increased, decreased, or held steady compared to recent sessions, and some proactive or consequence strategies were used in session." />
             <textarea
               value={bulletBehavior}
               onChange={e => setBulletBehavior(e.target.value)}
-              placeholder={"e.g.:\n- Elopement: 2 instances (down from 5 last week)\n- Self-injury: 0 instances\n- Compliance with demands: ~80%, goal is 85%\n- Replacement behavior (asking for a break) used 3x unprompted"}
+              placeholder={"e.g.:\n- Elopement occurred at low rates in session, compared to the previous session last week. Staff used FCT throughout session.)\n- Self-injury did not occur during session, abbreviated work blocks were used.\n- Incompatible responding occurred during many trials. Staff paused ongoing activities after 2 occurrences and rates then decreaed.\n- Replacement behavior (asking for a break) was used unprompted in session for the first time."}
               style={{ ...inputBase, height: 130, resize: "vertical", lineHeight: 1.6, marginTop: 10 }}
             />
           </div>
