@@ -21,10 +21,14 @@ function pickRandom(arr) {
 }
 
 /** Derive a display label from an image path.
+ *  Uses manifest.displayNames[src] when set (so "on-squirrel.svg" can
+ *  show as "On"); otherwise falls back to the filename.
  *  e.g. "T_animals/bear.svg" → "Bear"
  *       "T_community_helpers/mail-carrier.svg" → "Mail Carrier"
  */
 function labelFromSrc(src) {
+  const override = state.manifest?.displayNames?.[src];
+  if (typeof override === 'string' && override.trim()) return override;
   const name = src.split('/').pop().replace(/\.[^.]+$/, '');
   return name.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }

@@ -256,6 +256,15 @@ body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-he
     <button class="detail-close" id="dp-close">✕</button>
   </div>
 
+  <div class="detail-section" id="dp-displayname-section" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:.75rem 1rem;">
+    <label style="color:#7dd3fc;font-weight:600;">Display name <span style="color:#64748b;font-weight:400;">(optional — shown to learners; leave blank to use the filename)</span></label>
+    <div class="detail-row">
+      <input type="text" id="dp-displayname-input" placeholder="e.g. On  (multiple files like on-squirrel.svg, on-book.svg can share this label)">
+      <button class="btn-sm btn-blue" id="dp-displayname-save-btn">Save</button>
+    </div>
+    <div class="status-msg" id="dp-displayname-status"></div>
+  </div>
+
   <div class="detail-section">
     <label>Replace from URL</label>
     <div class="detail-row">
@@ -647,7 +656,13 @@ function buildCard(item) {
     img.src = '../../' + activeGame.id + '/' + activeGame.id + '/' + item.path;
     img.alt = item.path;
     const filename = item.path.split('/').pop();
-    label.textContent = filename;
+    const displayName = gameData[activeGame.id]?.manifest?.displayNames?.[item.path];
+    if (displayName) {
+      label.innerHTML = `<span style="color:#7dd3fc;">"${escapeHtml(displayName)}"</span> · ${escapeHtml(filename)}`;
+      label.title = `Display name: "${displayName}"\nFilename: ${filename}`;
+    } else {
+      label.textContent = filename;
+    }
     card.addEventListener('click', () => openDetail({ type: 'manifest', path: item.path, folder: item.folder, gameId: activeGame.id }));
   }
 
@@ -1120,6 +1135,10 @@ const dpGoogleBtn = document.getElementById('dp-google-btn');
 const dpWikiResults = document.getElementById('dp-wiki-results');
 const dpRemoveBtn = document.getElementById('dp-remove-btn');
 const dpRemoveStatus = document.getElementById('dp-remove-status');
+const dpDisplayNameSection = document.getElementById('dp-displayname-section');
+const dpDisplayNameInput   = document.getElementById('dp-displayname-input');
+const dpDisplayNameSaveBtn = document.getElementById('dp-displayname-save-btn');
+const dpDisplayNameStatus  = document.getElementById('dp-displayname-status');
 
 document.getElementById('dp-close').addEventListener('click', closeDetail);
 
@@ -1130,6 +1149,21 @@ function openDetail(ctx) {
   dpWikiResults.innerHTML = '';
   setStatus(dpSaveStatus, '', '');
   setStatus(dpRemoveStatus, '', '');
+  setStatus(dpDisplayNameStatus, '', '');
+  dpDisplayNameInput.value = '';
+
+  // Display-name override is stored on every manifest-backed image
+  // (both IDMatchGame and NameIDGame). NameIDGame shows it to learners
+  // as the sample word; IDMatchGame currently ignores it but the data
+  // travels with the image so renaming/archiving still works.
+  if (ctx.type === 'manifest') {
+    dpDisplayNameSection.style.display = '';
+    const manifest = gameData[ctx.gameId]?.manifest;
+    const existing = manifest?.displayNames?.[ctx.path] || '';
+    dpDisplayNameInput.value = existing;
+  } else {
+    dpDisplayNameSection.style.display = 'none';
+  }
 
   if (ctx.type === 'ffc') {
     const it = ctx.item;
@@ -1245,6 +1279,38 @@ async function runWikiSearch(query, urlInput, resultsEl, onSelect) {
   }
 }
 
+dpDisplayNameSaveBtn.addEventListener('click', async () => {
+  if (!detailContext || detailContext.type !== 'manifest') return;
+  const ctx = detailContext;
+  const displayName = dpDisplayNameInput.value.trim();
+  setStatus(dpDisplayNameStatus, '', 'Saving…');
+  try {
+    const res = await adminPost('save-display-name', {
+      game: ctx.gameId, localPath: ctx.path, displayName,
+    });
+    if (detailContext !== ctx) return;
+    if (!res) { setStatus(dpDisplayNameStatus, '', ''); return; }
+    if (res.ok) {
+      const manifest = gameData[ctx.gameId]?.manifest;
+      if (manifest) {
+        if (!manifest.displayNames) manifest.displayNames = {};
+        if (displayName) manifest.displayNames[ctx.path] = displayName;
+        else delete manifest.displayNames[ctx.path];
+      }
+      setStatus(dpDisplayNameStatus, 'ok', displayName ? 'Saved.' : 'Cleared.');
+    } else {
+      const j = await res.json().catch(() => ({}));
+      setStatus(dpDisplayNameStatus, 'err', j.error || 'Error ' + res.status);
+    }
+  } catch (err) {
+    setStatus(dpDisplayNameStatus, 'err', err.message || 'Network error');
+  }
+});
+
+dpDisplayNameInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') dpDisplayNameSaveBtn.click();
+});
+
 dpWikiBtn.addEventListener('click', () =>
   runWikiSearch(dpWikiInput.value.trim(), dpUrlInput, dpWikiResults, () => dpSaveBtn.click()));
 
@@ -1333,6 +1399,12 @@ function setStatus(el, type, msg) {
 
 function nameToSlug(name) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
 }
 
 function sanitizeFilename(val) {
