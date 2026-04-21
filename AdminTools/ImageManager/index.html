@@ -737,9 +737,9 @@ function buildAddForm(formType) {
   if (formType === 'manifest') {
     form.innerHTML = `
       <h3>Add Image to ${activeFolder}</h3>
-      <label>Filename</label>
-      <input type="text" name="filename" placeholder="gas-station.jpg">
-      <small style="color:#64748b;font-size:.72rem;display:block;margin-top:2px;margin-bottom:.25rem;">kebab-case, lowercase, hyphens for spaces — extension must match image type (.jpg .png .svg …)</small>
+      <label>Display name</label>
+      <input type="text" name="display-name" placeholder="Gas Station">
+      <small class="filename-preview" style="color:#64748b;font-size:.72rem;display:block;margin-top:2px;margin-bottom:.25rem;">Filename will be generated from the display name and image URL.</small>
       <label>Image URL</label>
       <input type="url" name="url" placeholder="https://…">
       <label>Search Wikimedia</label>
@@ -755,11 +755,25 @@ function buildAddForm(formType) {
       </div>
       <div class="status-msg" id="add-form-status"></div>
     `;
+    const updateFilenamePreview = () => {
+      const dn = form.querySelector('[name=display-name]').value.trim();
+      const u  = form.querySelector('[name=url]').value.trim();
+      const preview = form.querySelector('.filename-preview');
+      if (dn) {
+        preview.textContent = 'Filename: ' + nameToSlug(dn) + extFromUrl(u);
+      } else {
+        preview.textContent = 'Filename will be generated from the display name and image URL.';
+      }
+    };
+    form.querySelector('[name=display-name]').addEventListener('input', updateFilenamePreview);
+    form.querySelector('[name=url]').addEventListener('input', updateFilenamePreview);
     form.querySelector('.btn-submit').addEventListener('click', async () => {
-      let filename = form.querySelector('[name=filename]').value.trim();
+      const displayName = form.querySelector('[name=display-name]').value.trim();
       const url = form.querySelector('[name=url]').value.trim();
       const status = form.querySelector('#add-form-status');
-      if (!filename || !url) { setStatus(status, 'err', 'Fill in all fields.'); return; }
+      if (!displayName || !url) { setStatus(status, 'err', 'Fill in all fields.'); return; }
+
+      let filename = nameToSlug(displayName) + extFromUrl(url);
 
       const existingFilenames = getManifestFilenames(activeFolder);
       if (existingFilenames.includes(filename)) {
@@ -793,7 +807,6 @@ function buildAddForm(formType) {
         setStatus(status, 'err', err.message || 'Network error');
       }
     });
-    attachSanitize(form.querySelector('[name=filename]'), sanitizeFilename);
     const urlInput = form.querySelector('[name=url]');
     const wikiQueryInput = form.querySelector('[name=wiki-query]');
     const wikiResults = form.querySelector('.form-wiki-results');
@@ -805,12 +818,11 @@ function buildAddForm(formType) {
   } else if (formType === 'ffc') {
     form.innerHTML = `
       <h3>Add FFC Item</h3>
-      <label>ID (slug, e.g. pencil)</label>
-      <input type="text" name="item-id" placeholder="pencil">
-      <label>Label</label>
+      <label>Label (display name)</label>
       <input type="text" name="label" placeholder="Pencil">
-      <label>Image filename (e.g. pencil.svg)</label>
-      <input type="text" name="filename" placeholder="pencil.svg">
+      <label>ID (slug)</label>
+      <input type="text" name="item-id" placeholder="pencil">
+      <small class="filename-preview" style="color:#64748b;font-size:.72rem;display:block;margin-top:2px;margin-bottom:.25rem;">Filename will be generated from the ID and image URL.</small>
       <label>Image URL</label>
       <input type="url" name="url" placeholder="https://…">
       <label>Search Wikimedia</label>
@@ -826,15 +838,38 @@ function buildAddForm(formType) {
       </div>
       <div class="status-msg" id="add-form-status"></div>
     `;
+    const labelInput  = form.querySelector('[name=label]');
+    const itemIdInput = form.querySelector('[name=item-id]');
+    labelInput.addEventListener('input', () => {
+      if (!itemIdInput._edited) itemIdInput.value = nameToSlug(labelInput.value.trim());
+      updateFFCFilenamePreview();
+    });
+    itemIdInput.addEventListener('input', () => {
+      itemIdInput._edited = true;
+      itemIdInput.value = nameToSlug(itemIdInput.value);
+      updateFFCFilenamePreview();
+    });
+    const updateFFCFilenamePreview = () => {
+      const id = nameToSlug(itemIdInput.value.trim());
+      const u  = form.querySelector('[name=url]').value.trim();
+      const preview = form.querySelector('.filename-preview');
+      if (id) {
+        preview.textContent = 'Filename: ' + id + extFromUrl(u);
+      } else {
+        preview.textContent = 'Filename will be generated from the ID and image URL.';
+      }
+    };
+    form.querySelector('[name=url]').addEventListener('input', updateFFCFilenamePreview);
     form.querySelector('.btn-submit').addEventListener('click', async () => {
-      const itemId = nameToSlug(form.querySelector('[name=item-id]').value.trim());
-      const label  = form.querySelector('[name=label]').value.trim();
-      let   filename = form.querySelector('[name=filename]').value.trim();
+      const itemId = nameToSlug(itemIdInput.value.trim());
+      const label  = labelInput.value.trim();
       const url    = form.querySelector('[name=url]').value.trim();
       const status = form.querySelector('#add-form-status');
-      if (!itemId || !label || !filename || !url) { setStatus(status, 'err', 'Fill in all fields.'); return; }
+      if (!itemId || !label || !url) { setStatus(status, 'err', 'Fill in all fields.'); return; }
       const d = gameData['FFCGame'].ffcData;
       if (d.items.find(i => i.id === itemId)) { setStatus(status, 'err', 'Item id already exists.'); return; }
+
+      let filename = itemId + extFromUrl(url);
 
       const existingFilenames = getFFCFilenames();
       if (existingFilenames.includes(filename)) {
@@ -842,7 +877,6 @@ function buildAddForm(formType) {
         if (choice.action === 'cancel') return;
         if (choice.action === 'rename' || choice.action === 'keep-both') {
           filename = choice.newName;
-          form.querySelector('[name=filename]').value = filename;
         }
         // 'overwrite' keeps the same filename
       }
@@ -1487,6 +1521,14 @@ function setStatus(el, type, msg) {
 
 function nameToSlug(name) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function extFromUrl(url) {
+  try {
+    const p = new URL(url).pathname;
+    const m = p.match(/\.([a-zA-Z0-9]+)$/);
+    return m ? '.' + m[1].toLowerCase() : '.jpg';
+  } catch { return '.jpg'; }
 }
 
 function escapeHtml(str) {
