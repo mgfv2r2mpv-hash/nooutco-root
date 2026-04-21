@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-16T16:52:31.194Z",
+  "generated": "2026-04-21T12:50:10.881Z",
   "folders": [
     "T_actions",
     "T_animals",
@@ -8,6 +8,7 @@
     "T_community_helpers",
     "T_foods",
     "T_household_items",
+    "T_prepositions",
     "T_shapes",
     "T_toys"
   ],
@@ -92,6 +93,20 @@
       "_Resources/_imgSource/T_household_items/mug.svg",
       "_Resources/_imgSource/T_household_items/shower.svg",
       "_Resources/_imgSource/T_household_items/sofa.svg"
+    ],
+    "T_prepositions": [
+      "_Resources/_imgSource/T_prepositions/above.svg",
+      "_Resources/_imgSource/T_prepositions/behind.svg",
+      "_Resources/_imgSource/T_prepositions/below.svg",
+      "_Resources/_imgSource/T_prepositions/far.svg",
+      "_Resources/_imgSource/T_prepositions/in-front-of.svg",
+      "_Resources/_imgSource/T_prepositions/in.svg",
+      "_Resources/_imgSource/T_prepositions/left-of.svg",
+      "_Resources/_imgSource/T_prepositions/near.svg",
+      "_Resources/_imgSource/T_prepositions/next-to.svg",
+      "_Resources/_imgSource/T_prepositions/on.svg",
+      "_Resources/_imgSource/T_prepositions/right-of.svg",
+      "_Resources/_imgSource/T_prepositions/under.svg"
     ],
     "T_shapes": [
       "_Resources/_imgSource/T_shapes/circle.svg",
