@@ -249,7 +249,6 @@
       const [individualsChecked, setIndividualsChecked] = React.useState(new Set());
       const [clinicalChecked,    setClinicalChecked]    = React.useState(new Set());
       const [purposeChecked,     setPurposeChecked]     = React.useState(new Set());
-      const [placeOfService,     setPlaceOfService]     = React.useState("");
       const [abaChecked,         setAbaChecked]         = React.useState(new Set());
       const [actionChecked,      setActionChecked]      = React.useState(new Set());
 
@@ -292,7 +291,7 @@
       });
 
       const buildSystemPrompt = () =>
-        `You are an expert Behavior Technician (BT/RBT) documentation specialist. Your job is to expand brief bullet points into polished, professional clinical note text written from the perspective of an expert behavior technician. You must not invent details that were not provided. You may expand and polish fragments into complete clinical sentences. Write in first-person or third-person clinical prose as appropriate to a direct service session note. Do not include any preamble, explanation, or follow-up commentary. Return ONLY a JSON object with exactly these five keys: "clinicalStatus", "lessonProgress", "antecedent", "behaviorPlan", "followUp". No markdown, no extra keys.`;
+        `You are an expert Behavior Technician (BT/RBT) documentation specialist. Your job is to expand brief bullet points into polished, professional clinical note text written from the perspective of an expert behavior technician. You must not invent details that were not provided by the technician — you may only expand, polish, and rephrase fragments into complete clinical sentences. If the technician provided only scant input for a section, produce a shorter note that still meets the minimum requirements described for that section; do not fabricate data, programs, percentages, or behaviors that were not mentioned. Write in first-person or third-person clinical prose as appropriate to a direct service session note. Do not include any preamble, explanation, or follow-up commentary (no "here is your note," no "let me know if…"). Return ONLY a JSON object with exactly these five keys: "clinicalStatus", "lessonProgress", "antecedent", "behaviorPlan", "followUp". No markdown, no extra keys.`;
 
       const buildUserPrompt = () => {
         const indList = INDIVIDUALS_PRESENT.filter(i => individualsChecked.has(i.id)).map(i => i.label).join(", ") || "Not specified";
@@ -303,7 +302,6 @@
 
         return [
           `Individuals present: ${indList}`,
-          `Place of service: ${placeOfService.trim() || "Not specified"}`,
           `Clinical status of client upon arrival (checkboxes): ${csList}`,
           `Purpose of session: ${posList}`,
           `ABA teaching techniques used: ${abaList}`,
@@ -332,8 +330,10 @@
       };
 
       const validate = () => {
-        if (purposeChecked.size === 0) return "Please select at least one Purpose of Session.";
-        if (!bulletLesson.trim())      return "Please enter notes for Narrative of Lesson Progress.";
+        if (!bulletLesson.trim())     return "Please enter notes for Narrative of Lesson Progress.";
+        if (!bulletAntecedent.trim()) return "Please enter notes for Successful Antecedent Modifications.";
+        if (!bulletBehavior.trim())   return "Please enter notes for Narrative of Behavior Support Plan Goals Progress.";
+        if (!bulletFollowUp.trim())   return "Please enter notes for Summary of Concerns/Questions/Involvement.";
         return null;
       };
 
@@ -441,7 +441,7 @@ No JSON. No preamble. No commentary after the last section.`);
 
           {/* ── Section 1: Individuals Present ── */}
           <div style={card}>
-            <span style={subLbl}>Individuals Present <span style={{ color: "#c0392b" }}>*</span></span>
+            <span style={subLbl}>Individuals Present</span>
             <p style={hint}>Select all individuals who were present during this session. Select all that apply.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {INDIVIDUALS_PRESENT.map(person => (
@@ -463,12 +463,12 @@ No JSON. No preamble. No commentary after the last section.`);
 
           {/* ── Section 2: Clinical Status ── */}
           <div style={card}>
-            <span style={subLbl}>Clinical Status Of Client Upon Arrival <span style={{ color: "#c0392b" }}>*</span></span>
+            <span style={subLbl}>Clinical Status Of Client Upon Arrival</span>
             <p style={hint}>Select all that apply. Select all that apply.</p>
             <CheckGroup items={CLINICAL_STATUS} checked={clinicalChecked} onToggle={toggle(setClinicalChecked)} showTips={false} />
 
             <div style={{ marginTop: 20 }}>
-              <label style={subLbl}>Further Detail On Clinical Status <span style={{ color: "#c0392b" }}>*</span></label>
+              <label style={subLbl}>Further Detail On Clinical Status</label>
               <p style={hint}>Brief note about client's mood, behavior, or activities at the <strong>time of session start</strong> — not across the session.</p>
               <textarea
                 value={bulletClinical}
@@ -481,26 +481,14 @@ No JSON. No preamble. No commentary after the last section.`);
 
           {/* ── Section 3: Purpose of Session ── */}
           <div style={card}>
-            <span style={subLbl}>Purpose of Session <span style={{ color: "#c0392b" }}>*</span></span>
+            <span style={subLbl}>Purpose of Session</span>
             <p style={hint}>Select all that apply. Tips appear for each selected item.</p>
             <CheckGroup items={PURPOSE_OF_SESSION} checked={purposeChecked} onToggle={toggle(setPurposeChecked)} showTips={true} />
           </div>
 
-          {/* ── Section 4: Place of Service ── */}
+          {/* ── Section 4: ABA Techniques ── */}
           <div style={card}>
-            <label style={subLbl}>Place of Service</label>
-            <input
-              type="text"
-              value={placeOfService}
-              onChange={e => setPlaceOfService(e.target.value)}
-              placeholder="e.g. Client's Home, School, Clinic, Community"
-              style={inputBase}
-            />
-          </div>
-
-          {/* ── Section 5: ABA Techniques ── */}
-          <div style={card}>
-            <span style={subLbl}>ABA Teaching Techniques Used <span style={{ color: "#c0392b" }}>*</span></span>
+            <span style={subLbl}>ABA Teaching Techniques Used</span>
             <p style={hint}>Select all techniques used this session. Tips appear when checked.</p>
             <CheckGroup items={ABA_TECHNIQUES} checked={abaChecked} onToggle={toggle(setAbaChecked)} showTips={true} />
           </div>
@@ -532,18 +520,18 @@ No JSON. No preamble. No commentary after the last section.`);
           {/* ── Section 8: Behavior Support Plan Goals Progress ── */}
           <div style={card}>
             <label style={subLbl}>Narrative of Behavior Support Plan Goals Progress <span style={{ color: "#c0392b" }}>*</span></label>
-            <Tip text="Quantitative description of how target behaviors responded to the behavior plan this session. Include frequency, rate, duration, or percentage data. Note whether behavior increased, decreased, or held steady compared to goal or baseline." />
+            <Tip text="Quantitative description of how target behaviors responded to the behavior plan this session. Note whether behavior increased, decreased, or held steady compared to recent sessions, and some proactive or consequence strategies were used in session." />
             <textarea
               value={bulletBehavior}
               onChange={e => setBulletBehavior(e.target.value)}
-              placeholder={"e.g.:\n- Elopement: 2 instances (down from 5 last week)\n- Self-injury: 0 instances\n- Compliance with demands: ~80%, goal is 85%\n- Replacement behavior (asking for a break) used 3x unprompted"}
+              placeholder={"e.g.:\n- Elopement occurred at low rates in session, compared to the previous session last week. Staff used FCT throughout session.)\n- Self-injury did not occur during session, abbreviated work blocks were used.\n- Incompatible responding occurred during many trials. Staff paused ongoing activities after 2 occurrences and rates then decreaed.\n- Replacement behavior (asking for a break) was used unprompted in session for the first time."}
               style={{ ...inputBase, height: 130, resize: "vertical", lineHeight: 1.6, marginTop: 10 }}
             />
           </div>
 
           {/* ── Section 9: Action Items for BCBA ── */}
           <div style={card}>
-            <span style={subLbl}>Action Items for BCBA <span style={{ color: "#c0392b" }}>*</span></span>
+            <span style={subLbl}>Action Items for BCBA</span>
             <p style={hint}>Select all that apply.</p>
             <CheckGroup items={BCBA_ACTION_ITEMS} checked={actionChecked} onToggle={toggle(setActionChecked)} showTips={false} />
 
