@@ -394,13 +394,45 @@ async function handleAdminSaveDisplayName(request, env) {
   try { body = await request.json(); }
   catch { return jsonError('Invalid JSON body', 400); }
 
-  const { game, localPath, displayName } = body;
-  if (!game || !localPath) {
-    return jsonError('game and localPath are required', 400);
+  const { game, localPath, displayName, itemId, personName } = body;
+  if (!game) return jsonError('game is required', 400);
+
+  if (game === 'FFCGame') {
+    if (!itemId) return jsonError('itemId is required for FFCGame', 400);
+    const trimmed = typeof displayName === 'string' ? displayName.trim() : '';
+    if (!trimmed) return jsonError('displayName cannot be empty for FFCGame', 400);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await atomicFFCLabelCommit(env, itemId, trimmed);
+        break;
+      } catch (err) {
+        if (err.message === 'CONFLICT' && attempt < 2) continue;
+        return jsonError('GitHub commit failed: ' + err.message, 502);
+      }
+    }
+    return json({ ok: true });
   }
+
+  if (game === 'FamousPersonGame') {
+    if (!personName) return jsonError('personName is required for FamousPersonGame', 400);
+    const trimmed = typeof displayName === 'string' ? displayName.trim() : '';
+    if (!trimmed) return jsonError('displayName cannot be empty for FamousPersonGame', 400);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await atomicFPGRenamePersonCommit(env, personName, trimmed);
+        break;
+      } catch (err) {
+        if (err.message === 'CONFLICT' && attempt < 2) continue;
+        return jsonError('GitHub commit failed: ' + err.message, 502);
+      }
+    }
+    return json({ ok: true });
+  }
+
   if (!['IDMatchGame', 'NameIDGame'].includes(game)) {
-    return jsonError('Display names are only supported for manifest-based games', 400);
+    return jsonError('Unknown game: ' + game, 400);
   }
+  if (!localPath) return jsonError('localPath is required', 400);
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
@@ -454,6 +486,76 @@ async function atomicManifestDisplayNameCommit(env, game, localPath, displayName
     parents: [headSha],
   });
 
+  const refRes = await ghRaw(env, 'PATCH', 'git/refs/heads/main', { sha: newCommit.sha, force: false });
+  if (refRes.status === 422) throw new Error('CONFLICT');
+  if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
+}
+
+// ─── Atomic commit: FFCGame item label update ────────────────────────────────
+
+async function atomicFFCLabelCommit(env, itemId, newLabel) {
+  const refData    = await gh(env, 'GET', 'git/ref/heads/main');
+  const headSha    = refData.object.sha;
+  const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
+  const treeSha    = commitData.tree.sha;
+
+  const itemsRepoPath = 'FFCGame/FFCGame/items.json';
+  const itemsFile     = await gh(env, 'GET', `contents/${itemsRepoPath}`);
+  const items         = JSON.parse(base64ToUtf8(itemsFile.content.replace(/\s/g, '')));
+
+  const item = (items.items || []).find(i => i.id === itemId);
+  if (!item) throw new Error(`Item not found: ${itemId}`);
+  item.label = newLabel;
+  items.generated = new Date().toISOString();
+
+  const itemsBlob = await gh(env, 'POST', 'git/blobs', {
+    content:  utf8ToBase64(JSON.stringify(items, null, 2) + '\n'),
+    encoding: 'base64',
+  });
+  const newTree   = await gh(env, 'POST', 'git/trees', {
+    base_tree: treeSha,
+    tree: [{ path: itemsRepoPath, mode: '100644', type: 'blob', sha: itemsBlob.sha }],
+  });
+  const newCommit = await gh(env, 'POST', 'git/commits', {
+    message: `Admin: set label "${newLabel}" for FFC item ${itemId}`,
+    tree:    newTree.sha,
+    parents: [headSha],
+  });
+  const refRes = await ghRaw(env, 'PATCH', 'git/refs/heads/main', { sha: newCommit.sha, force: false });
+  if (refRes.status === 422) throw new Error('CONFLICT');
+  if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
+}
+
+// ─── Atomic commit: FamousPersonGame person rename ───────────────────────────
+
+async function atomicFPGRenamePersonCommit(env, currentName, newName) {
+  const refData    = await gh(env, 'GET', 'git/ref/heads/main');
+  const headSha    = refData.object.sha;
+  const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
+  const treeSha    = commitData.tree.sha;
+
+  const htmlFile   = await gh(env, 'GET', 'contents/FamousPersonGame/index.html');
+  const htmlNow    = base64ToUtf8(htmlFile.content.replace(/\s/g, ''));
+
+  const safe = currentName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re   = new RegExp(`(name:\\s*['"])${safe}(['"])`);
+  if (!re.test(htmlNow)) throw new Error(`Person not found: ${currentName}`);
+  const escaped = newName.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const htmlPatched = htmlNow.replace(re, `$1${escaped}$2`);
+
+  const htmlBlob = await gh(env, 'POST', 'git/blobs', {
+    content:  utf8ToBase64(htmlPatched),
+    encoding: 'base64',
+  });
+  const newTree   = await gh(env, 'POST', 'git/trees', {
+    base_tree: treeSha,
+    tree: [{ path: 'FamousPersonGame/index.html', mode: '100644', type: 'blob', sha: htmlBlob.sha }],
+  });
+  const newCommit = await gh(env, 'POST', 'git/commits', {
+    message: `Admin: rename person "${currentName}" → "${newName}"`,
+    tree:    newTree.sha,
+    parents: [headSha],
+  });
   const refRes = await ghRaw(env, 'PATCH', 'git/refs/heads/main', { sha: newCommit.sha, force: false });
   if (refRes.status === 422) throw new Error('CONFLICT');
   if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
