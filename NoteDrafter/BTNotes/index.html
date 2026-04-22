@@ -16,6 +16,66 @@
       padding: 32px 20px;
       color: #2d3a1f;
     }
+    .info-tip {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .info-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 1px solid #c0d4a8;
+      background: #eef4e6;
+      color: #5a7040;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: help;
+      line-height: 1;
+      user-select: none;
+    }
+    .info-icon:focus { outline: 2px solid #5a7040; outline-offset: 1px; }
+    .info-bubble {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      visibility: hidden;
+      opacity: 0;
+      background: #2d3a1f;
+      color: white;
+      padding: 9px 12px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 1.55;
+      width: 260px;
+      text-align: left;
+      z-index: 100;
+      pointer-events: none;
+      transition: opacity 0.12s ease;
+      white-space: normal;
+      box-shadow: 0 4px 14px rgba(45, 58, 31, 0.18);
+    }
+    .info-bubble::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: #2d3a1f;
+    }
+    .info-tip:hover .info-bubble,
+    .info-tip:focus-within .info-bubble {
+      visibility: visible;
+      opacity: 1;
+    }
   </style>
 </head>
 <body>
@@ -37,41 +97,13 @@
     };
 
     const INDIVIDUALS_PRESENT = [
-      {
-        id: "parents",
-        label: "Parent/s",
-        examples: "e.g. Mother, Father, Step-parent, Foster parent",
-      },
-      {
-        id: "client",
-        label: "Client",
-        examples: "",
-      },
-      {
-        id: "siblings",
-        label: "Sibling/s",
-        examples: "e.g. Brother, Sister",
-      },
-      {
-        id: "family",
-        label: "Other family members / friends",
-        examples: "e.g. Grandparent, Aunt/Uncle, Family friend",
-      },
-      {
-        id: "specialists",
-        label: "Specialists",
-        examples: "e.g. EI Coordinator, Speech Language Pathologist (SLP), Occupational Therapist (OT), Physical Therapist (PT)",
-      },
-      {
-        id: "teacher",
-        label: "Teacher",
-        examples: "e.g. Classroom teacher, Special education teacher, Paraprofessional",
-      },
-      {
-        id: "supervisor",
-        label: "Supervisor (BCBA)",
-        examples: "",
-      },
+      { id: "parents",     label: "Parent/s",                         tip: "e.g. Mother, Father, Step-parent, Foster parent" },
+      { id: "client",      label: "Client" },
+      { id: "siblings",    label: "Sibling/s",                        tip: "e.g. Brother, Sister" },
+      { id: "family",      label: "Other family members / friends",   tip: "e.g. Grandparent, Aunt/Uncle, Family friend" },
+      { id: "specialists", label: "Specialists",                      tip: "e.g. EI Coordinator, Speech Language Pathologist (SLP), Occupational Therapist (OT), Physical Therapist (PT)" },
+      { id: "teacher",     label: "Teacher",                          tip: "e.g. Classroom teacher, Special education teacher, Paraprofessional" },
+      { id: "supervisor",  label: "Supervisor (BCBA)" },
     ];
 
     const CLINICAL_STATUS = [
@@ -215,9 +247,22 @@
       return <div style={style}>{text}</div>;
     }
 
-    function CheckGroup({ items, checked, onToggle, showTips }) {
+    function InfoTooltip({ text }) {
       return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <span className="info-tip">
+          <span className="info-icon" tabIndex="0" role="button" aria-label="More information">i</span>
+          <span className="info-bubble" role="tooltip">{text}</span>
+        </span>
+      );
+    }
+
+    function CheckGroup({ items, checked, onToggle, tipMode = "none", compact = false }) {
+      const containerStyle = compact
+        ? { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", columnGap: 20, rowGap: 8 }
+        : { display: "flex", flexDirection: "column", gap: 8 };
+
+      return (
+        <div style={containerStyle}>
           {items.map(item => (
             <div key={item.id}>
               <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
@@ -227,11 +272,14 @@
                   onChange={() => onToggle(item.id)}
                   style={{ marginTop: 2, accentColor: "#374528", width: 16, height: 16, flexShrink: 0 }}
                 />
-                <span style={{ fontSize: 14, color: "#2d3a1f", lineHeight: 1.5 }}>{item.label}</span>
+                <span style={{ fontSize: 14, color: "#2d3a1f", lineHeight: 1.5 }}>
+                  {item.label}
+                  {tipMode === "tooltip" && item.tip && <InfoTooltip text={item.tip} />}
+                </span>
               </label>
-              {showTips && checked.has(item.id) && item.tip && (
-                <div style={{ marginLeft: 26 }}>
-                  <Tip text={item.tip} />
+              {tipMode === "inline" && item.tip && (
+                <div style={{ marginLeft: 26, marginTop: 2, fontSize: 12, color: "#7a9460", lineHeight: 1.5 }}>
+                  {item.tip}
                 </div>
               )}
             </div>
@@ -403,12 +451,17 @@ No JSON. No preamble. No commentary after the last section.`);
         <div style={{ maxWidth: 820, margin: "0 auto" }}>
 
           {/* Header */}
-          <div style={{ marginBottom: 28, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
               <h1 style={{ fontSize: 26, fontWeight: 700, color: "#2d3a1f", marginBottom: 4 }}>BT Direct Service Note Tool</h1>
               <p style={{ fontSize: 14, color: "#5a6b4a" }}>Fill in session details and rough notes — generate a polished prompt to feed into any AI to produce your clinical documentation.</p>
             </div>
             <a href="/" style={{ padding: "7px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", marginLeft: 16 }}>← Back</a>
+          </div>
+
+          {/* Disclaimer */}
+          <div style={{ marginBottom: 24, padding: "14px 18px", borderRadius: 10, border: "1.5px solid #d4b483", background: "#fdf6e8", color: "#5a4420", fontSize: 13, lineHeight: 1.55 }}>
+            <strong style={{ color: "#7a5a1a" }}>Disclaimer:</strong> Use of these AI-assisted queries is subject to the legal and regulatory constraints of the user's jurisdiction. These tools do not remove the user's responsibility to review all output for accuracy and to maintain compliance with the ethical standards of their credentialing board for professional behavior analysis work.
           </div>
 
           {/* Admin API Settings */}
@@ -442,30 +495,15 @@ No JSON. No preamble. No commentary after the last section.`);
           {/* ── Section 1: Individuals Present ── */}
           <div style={card}>
             <span style={subLbl}>Individuals Present</span>
-            <p style={hint}>Select all individuals who were present during this session. Select all that apply.</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {INDIVIDUALS_PRESENT.map(person => (
-                <div key={person.id}>
-                  <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
-                    <input type="checkbox" checked={individualsChecked.has(person.id)} onChange={() => toggle(setIndividualsChecked)(person.id)}
-                      style={{ marginTop: 2, accentColor: "#374528", width: 16, height: 16, flexShrink: 0 }} />
-                    <span style={{ fontSize: 14, color: "#2d3a1f", lineHeight: 1.5 }}>{person.label}</span>
-                  </label>
-                  {person.examples && individualsChecked.has(person.id) && (
-                    <div style={{ marginLeft: 26 }}>
-                      <Tip text={person.examples} />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+            <p style={hint}>Select everyone who was present during this session.</p>
+            <CheckGroup items={INDIVIDUALS_PRESENT} checked={individualsChecked} onToggle={toggle(setIndividualsChecked)} tipMode="inline" />
           </div>
 
           {/* ── Section 2: Clinical Status ── */}
           <div style={card}>
             <span style={subLbl}>Clinical Status Of Client Upon Arrival</span>
-            <p style={hint}>Select all that apply. Select all that apply.</p>
-            <CheckGroup items={CLINICAL_STATUS} checked={clinicalChecked} onToggle={toggle(setClinicalChecked)} showTips={false} />
+            <p style={hint}>Select all that apply.</p>
+            <CheckGroup items={CLINICAL_STATUS} checked={clinicalChecked} onToggle={toggle(setClinicalChecked)} compact={true} />
 
             <div style={{ marginTop: 20 }}>
               <label style={subLbl}>Further Detail On Clinical Status</label>
@@ -482,15 +520,15 @@ No JSON. No preamble. No commentary after the last section.`);
           {/* ── Section 3: Purpose of Session ── */}
           <div style={card}>
             <span style={subLbl}>Purpose of Session</span>
-            <p style={hint}>Select all that apply. Tips appear for each selected item.</p>
-            <CheckGroup items={PURPOSE_OF_SESSION} checked={purposeChecked} onToggle={toggle(setPurposeChecked)} showTips={true} />
+            <p style={hint}>Select all that apply.</p>
+            <CheckGroup items={PURPOSE_OF_SESSION} checked={purposeChecked} onToggle={toggle(setPurposeChecked)} tipMode="inline" />
           </div>
 
           {/* ── Section 4: ABA Techniques ── */}
           <div style={card}>
             <span style={subLbl}>ABA Teaching Techniques Used</span>
-            <p style={hint}>Select all techniques used this session. Tips appear when checked.</p>
-            <CheckGroup items={ABA_TECHNIQUES} checked={abaChecked} onToggle={toggle(setAbaChecked)} showTips={true} />
+            <p style={hint}>Select all techniques used this session. Hover the <span style={{ display: "inline-flex", width: 15, height: 15, borderRadius: "50%", border: "1px solid #c0d4a8", background: "#eef4e6", color: "#5a7040", fontSize: 10, fontWeight: 700, alignItems: "center", justifyContent: "center", verticalAlign: "middle" }}>i</span> icon for details.</p>
+            <CheckGroup items={ABA_TECHNIQUES} checked={abaChecked} onToggle={toggle(setAbaChecked)} tipMode="tooltip" compact={true} />
           </div>
 
           {/* ── Section 6: Narrative of Lesson Progress ── */}
@@ -533,7 +571,7 @@ No JSON. No preamble. No commentary after the last section.`);
           <div style={card}>
             <span style={subLbl}>Action Items for BCBA</span>
             <p style={hint}>Select all that apply.</p>
-            <CheckGroup items={BCBA_ACTION_ITEMS} checked={actionChecked} onToggle={toggle(setActionChecked)} showTips={false} />
+            <CheckGroup items={BCBA_ACTION_ITEMS} checked={actionChecked} onToggle={toggle(setActionChecked)} compact={true} />
 
             <div style={{ marginTop: 20 }}>
               <label style={subLbl}>Summary of Concerns/Questions/Involvement <span style={{ color: "#c0392b" }}>*</span></label>
