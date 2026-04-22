@@ -1,10 +1,5 @@
 export default {
   async fetch(request, env) {
-    const url = new URL(request.url);
-    if (url.pathname.startsWith('/api/')) {
-      return env.API_WORKER.fetch(request);
-    }
-
     const response = await env.ASSETS.fetch(request);
 
     const contentType = response.headers.get("content-type") || "";
