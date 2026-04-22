@@ -9,6 +9,7 @@
     "T_emotions",
     "T_foods",
     "T_household_items",
+    "T_prepositions",
     "T_shapes",
     "T_toys"
   ],
@@ -111,6 +112,20 @@
       "_Resources/_imgSource/T_household_items/shower.svg",
       "_Resources/_imgSource/T_household_items/sofa.svg"
     ],
+    "T_prepositions": [
+      "_Resources/_imgSource/T_prepositions/above.svg",
+      "_Resources/_imgSource/T_prepositions/behind.svg",
+      "_Resources/_imgSource/T_prepositions/below.svg",
+      "_Resources/_imgSource/T_prepositions/far.svg",
+      "_Resources/_imgSource/T_prepositions/in-front-of.svg",
+      "_Resources/_imgSource/T_prepositions/in.svg",
+      "_Resources/_imgSource/T_prepositions/left-of.svg",
+      "_Resources/_imgSource/T_prepositions/near.svg",
+      "_Resources/_imgSource/T_prepositions/next-to.svg",
+      "_Resources/_imgSource/T_prepositions/on.svg",
+      "_Resources/_imgSource/T_prepositions/right-of.svg",
+      "_Resources/_imgSource/T_prepositions/under.svg"
+    ],
     "T_shapes": [
       "_Resources/_imgSource/T_shapes/circle.svg",
       "_Resources/_imgSource/T_shapes/diamond.svg",
@@ -136,5 +151,6 @@
       "_Resources/_imgSource/T_toys/yoyo.svg"
     ]
   },
+  "displayNames": {},
   "archived": {}
 }
