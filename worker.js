@@ -448,7 +448,7 @@ async function handleAdminSaveDisplayName(request, env) {
 }
 
 async function atomicManifestDisplayNameCommit(env, game, localPath, displayName) {
-  const refData    = await gh(env, 'GET', 'git/ref/heads/main');
+  const refData    = await gh(env, 'GET', `git/ref/heads/${env.GITHUB_BRANCH || 'main'}`);
   const headSha    = refData.object.sha;
   const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
   const treeSha    = commitData.tree.sha;
@@ -486,7 +486,7 @@ async function atomicManifestDisplayNameCommit(env, game, localPath, displayName
     parents: [headSha],
   });
 
-  const refRes = await ghRaw(env, 'PATCH', 'git/refs/heads/main', { sha: newCommit.sha, force: false });
+  const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${env.GITHUB_BRANCH || 'main'}`, { sha: newCommit.sha, force: false });
   if (refRes.status === 422) throw new Error('CONFLICT');
   if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
 }
@@ -494,7 +494,7 @@ async function atomicManifestDisplayNameCommit(env, game, localPath, displayName
 // ─── Atomic commit: FFCGame item label update ────────────────────────────────
 
 async function atomicFFCLabelCommit(env, itemId, newLabel) {
-  const refData    = await gh(env, 'GET', 'git/ref/heads/main');
+  const refData    = await gh(env, 'GET', `git/ref/heads/${env.GITHUB_BRANCH || 'main'}`);
   const headSha    = refData.object.sha;
   const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
   const treeSha    = commitData.tree.sha;
@@ -521,7 +521,7 @@ async function atomicFFCLabelCommit(env, itemId, newLabel) {
     tree:    newTree.sha,
     parents: [headSha],
   });
-  const refRes = await ghRaw(env, 'PATCH', 'git/refs/heads/main', { sha: newCommit.sha, force: false });
+  const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${env.GITHUB_BRANCH || 'main'}`, { sha: newCommit.sha, force: false });
   if (refRes.status === 422) throw new Error('CONFLICT');
   if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
 }
@@ -529,7 +529,7 @@ async function atomicFFCLabelCommit(env, itemId, newLabel) {
 // ─── Atomic commit: FamousPersonGame person rename ───────────────────────────
 
 async function atomicFPGRenamePersonCommit(env, currentName, newName) {
-  const refData    = await gh(env, 'GET', 'git/ref/heads/main');
+  const refData    = await gh(env, 'GET', `git/ref/heads/${env.GITHUB_BRANCH || 'main'}`);
   const headSha    = refData.object.sha;
   const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
   const treeSha    = commitData.tree.sha;
@@ -556,7 +556,7 @@ async function atomicFPGRenamePersonCommit(env, currentName, newName) {
     tree:    newTree.sha,
     parents: [headSha],
   });
-  const refRes = await ghRaw(env, 'PATCH', 'git/refs/heads/main', { sha: newCommit.sha, force: false });
+  const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${env.GITHUB_BRANCH || 'main'}`, { sha: newCommit.sha, force: false });
   if (refRes.status === 422) throw new Error('CONFLICT');
   if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
 }
@@ -564,7 +564,7 @@ async function atomicFPGRenamePersonCommit(env, currentName, newName) {
 // ─── Atomic commit: FamousPersonGame image save/add ──────────────────────────
 
 async function atomicFPGCommit(env, personName, imgPath, imgBytes, localPath, personMeta) {
-  const refData    = await gh(env, 'GET', 'git/ref/heads/main');
+  const refData    = await gh(env, 'GET', `git/ref/heads/${env.GITHUB_BRANCH || 'main'}`);
   const headSha    = refData.object.sha;
   const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
   const treeSha    = commitData.tree.sha;
@@ -612,7 +612,7 @@ async function atomicFPGCommit(env, personName, imgPath, imgBytes, localPath, pe
     parents: [headSha],
   });
 
-  const refRes = await ghRaw(env, 'PATCH', 'git/refs/heads/main', { sha: newCommit.sha, force: false });
+  const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${env.GITHUB_BRANCH || 'main'}`, { sha: newCommit.sha, force: false });
   if (refRes.status === 422) throw new Error('CONFLICT');
   if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
 }
@@ -620,7 +620,7 @@ async function atomicFPGCommit(env, personName, imgPath, imgBytes, localPath, pe
 // ─── Atomic commit: FamousPersonGame image remove ────────────────────────────
 
 async function atomicFPGRemoveCommit(env, personName, repoPath) {
-  const refData    = await gh(env, 'GET', 'git/ref/heads/main');
+  const refData    = await gh(env, 'GET', `git/ref/heads/${env.GITHUB_BRANCH || 'main'}`);
   const headSha    = refData.object.sha;
   const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
   const treeSha    = commitData.tree.sha;
@@ -649,7 +649,7 @@ async function atomicFPGRemoveCommit(env, personName, repoPath) {
     parents: [headSha],
   });
 
-  const refRes = await ghRaw(env, 'PATCH', 'git/refs/heads/main', { sha: newCommit.sha, force: false });
+  const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${env.GITHUB_BRANCH || 'main'}`, { sha: newCommit.sha, force: false });
   if (refRes.status === 422) throw new Error('CONFLICT');
   if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
 }
@@ -657,7 +657,7 @@ async function atomicFPGRemoveCommit(env, personName, repoPath) {
 // ─── Atomic commit: IDMatchGame/NameIDGame image save ────────────────────────
 
 async function atomicManifestSaveCommit(env, game, folder, filename, repoPath, imgBytes, localPath, oldLocalPath) {
-  const refData    = await gh(env, 'GET', 'git/ref/heads/main');
+  const refData    = await gh(env, 'GET', `git/ref/heads/${env.GITHUB_BRANCH || 'main'}`);
   const headSha    = refData.object.sha;
   const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
   const treeSha    = commitData.tree.sha;
@@ -702,7 +702,7 @@ async function atomicManifestSaveCommit(env, game, folder, filename, repoPath, i
     parents: [headSha],
   });
 
-  const refRes = await ghRaw(env, 'PATCH', 'git/refs/heads/main', { sha: newCommit.sha, force: false });
+  const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${env.GITHUB_BRANCH || 'main'}`, { sha: newCommit.sha, force: false });
   if (refRes.status === 422) throw new Error('CONFLICT');
   if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
 }
@@ -710,7 +710,7 @@ async function atomicManifestSaveCommit(env, game, folder, filename, repoPath, i
 // ─── Atomic commit: IDMatchGame/NameIDGame image remove ──────────────────────
 
 async function atomicManifestRemoveCommit(env, game, folder, filename, repoPath) {
-  const refData    = await gh(env, 'GET', 'git/ref/heads/main');
+  const refData    = await gh(env, 'GET', `git/ref/heads/${env.GITHUB_BRANCH || 'main'}`);
   const headSha    = refData.object.sha;
   const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
   const treeSha    = commitData.tree.sha;
@@ -750,7 +750,7 @@ async function atomicManifestRemoveCommit(env, game, folder, filename, repoPath)
     parents: [headSha],
   });
 
-  const refRes = await ghRaw(env, 'PATCH', 'git/refs/heads/main', { sha: newCommit.sha, force: false });
+  const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${env.GITHUB_BRANCH || 'main'}`, { sha: newCommit.sha, force: false });
   if (refRes.status === 422) throw new Error('CONFLICT');
   if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
 }
@@ -762,7 +762,7 @@ async function atomicTopicRenameCommit(env, game, fromFolder, toFolder, action) 
   const manifestRepoPath = `${game}/${game}/manifest.json`;
 
   // 1. Get HEAD
-  const refData    = await gh(env, 'GET', 'git/ref/heads/main');
+  const refData    = await gh(env, 'GET', `git/ref/heads/${env.GITHUB_BRANCH || 'main'}`);
   const headSha    = refData.object.sha;
   const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
   const treeSha    = commitData.tree.sha;
@@ -847,7 +847,7 @@ async function atomicTopicRenameCommit(env, game, fromFolder, toFolder, action) 
     parents: [headSha],
   });
 
-  const refRes = await ghRaw(env, 'PATCH', 'git/refs/heads/main', { sha: newCommit.sha, force: false });
+  const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${env.GITHUB_BRANCH || 'main'}`, { sha: newCommit.sha, force: false });
   if (refRes.status === 422) throw new Error('CONFLICT');
   if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
 }
@@ -955,7 +955,7 @@ async function handleFFCRemoveImage(request, env) {
 // ─── Atomic commit: FFCGame items.json save ───────────────────────────────────
 
 async function atomicFFCSaveCommit(env, itemsObj) {
-  const refData    = await gh(env, 'GET', 'git/ref/heads/main');
+  const refData    = await gh(env, 'GET', `git/ref/heads/${env.GITHUB_BRANCH || 'main'}`);
   const headSha    = refData.object.sha;
   const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
   const treeSha    = commitData.tree.sha;
@@ -976,7 +976,7 @@ async function atomicFFCSaveCommit(env, itemsObj) {
     parents: [headSha],
   });
 
-  const refRes = await ghRaw(env, 'PATCH', 'git/refs/heads/main', { sha: newCommit.sha, force: false });
+  const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${env.GITHUB_BRANCH || 'main'}`, { sha: newCommit.sha, force: false });
   if (refRes.status === 422) throw new Error('CONFLICT');
   if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
 }
@@ -984,7 +984,7 @@ async function atomicFFCSaveCommit(env, itemsObj) {
 // ─── Atomic commit: FFCGame image save ────────────────────────────────────────
 
 async function atomicFFCImageCommit(env, repoPath, imgBytes, filename) {
-  const refData    = await gh(env, 'GET', 'git/ref/heads/main');
+  const refData    = await gh(env, 'GET', `git/ref/heads/${env.GITHUB_BRANCH || 'main'}`);
   const headSha    = refData.object.sha;
   const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
   const treeSha    = commitData.tree.sha;
@@ -1004,7 +1004,7 @@ async function atomicFFCImageCommit(env, repoPath, imgBytes, filename) {
     parents: [headSha],
   });
 
-  const refRes = await ghRaw(env, 'PATCH', 'git/refs/heads/main', { sha: newCommit.sha, force: false });
+  const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${env.GITHUB_BRANCH || 'main'}`, { sha: newCommit.sha, force: false });
   if (refRes.status === 422) throw new Error('CONFLICT');
   if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
 }
@@ -1012,7 +1012,7 @@ async function atomicFFCImageCommit(env, repoPath, imgBytes, filename) {
 // ─── Atomic commit: FFCGame image remove ─────────────────────────────────────
 
 async function atomicFFCImageRemoveCommit(env, repoPath) {
-  const refData    = await gh(env, 'GET', 'git/ref/heads/main');
+  const refData    = await gh(env, 'GET', `git/ref/heads/${env.GITHUB_BRANCH || 'main'}`);
   const headSha    = refData.object.sha;
   const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
   const treeSha    = commitData.tree.sha;
@@ -1027,7 +1027,7 @@ async function atomicFFCImageRemoveCommit(env, repoPath) {
     parents: [headSha],
   });
 
-  const refRes = await ghRaw(env, 'PATCH', 'git/refs/heads/main', { sha: newCommit.sha, force: false });
+  const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${env.GITHUB_BRANCH || 'main'}`, { sha: newCommit.sha, force: false });
   if (refRes.status === 422) throw new Error('CONFLICT');
   if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
 }

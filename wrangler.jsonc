@@ -1,8 +1,5 @@
 {
   "name": "games-nooutco-me",
   "compatibility_date": "2026-04-15",
-  "pages_build_output_dir": ".",
-  "services": [
-    { "binding": "API_WORKER", "service": "games-save-photo" }
-  ]
+  "pages_build_output_dir": "."
 }
