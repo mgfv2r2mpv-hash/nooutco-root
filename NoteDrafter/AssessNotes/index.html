@@ -103,7 +103,7 @@
       const [activities,       setActivities]       = React.useState(new Set());
       const [toolsUsed,        setToolsUsed]        = React.useState("");
       const [reporting,        setReporting]        = React.useState(new Set());
-      const [additionalNotes,  setAdditionalNotes]  = React.useState("");
+      const [summaryNotes,     setSummaryNotes]     = React.useState("");
       const [output,           setOutput]           = React.useState(null);
       const [loading,          setLoading]          = React.useState(false);
       const [error,            setError]            = React.useState("");
@@ -142,6 +142,7 @@
       const handleGenerate = async () => {
         if (!apiKey.trim())                              { setError("Please enter your API key."); return; }
         if (activities.size === 0 && reporting.size === 0) { setError("Please select at least one activity."); return; }
+        if (!summaryNotes.trim())                        { setError("Please enter Summary Notes of Activities."); return; }
         setError("");
         setLoading(true);
         setOutput(null);
@@ -157,7 +158,7 @@
         const userPrompt = [
           actList    ? `Assessment activities performed:\n${actList}`    : "",
           reportList ? `Assessment reporting tasks completed:\n${reportList}` : "",
-          additionalNotes.trim() ? `Additional context:\n${additionalNotes.trim()}` : "",
+          `Summary notes of activities (primary source — use as the basis of the narrative):\n${summaryNotes.trim()}`,
           "Write a 5–8 sentence clinical narrative for the \"Brief Summary of activities completed\" field.",
         ].filter(Boolean).join("\n\n");
 
@@ -173,6 +174,7 @@
 
       const handleGeneratePrompt = () => {
         if (activities.size === 0 && reporting.size === 0) { setError("Please select at least one activity first."); return; }
+        if (!summaryNotes.trim()) { setError("Please enter Summary Notes of Activities."); return; }
         setError("");
         const sys = `You are an expert Behavior Analyst documentation specialist. Write a polished clinical narrative for the "Brief Summary of activities completed" field in an EHR session note. Write in third-person clinical prose. Return ONLY the narrative text — no JSON, no markdown, no labels, no preamble. The narrative must be 5–8 sentences. Stick to what is reported — do not embellish sparse notes or invent activities not indicated. Frame all content for medical necessity. Scope to assessment activities, ongoing protocol revision, and follow-up items only.`;
         const actList    = ACTIVITIES.filter(a => activities.has(a.id)).map(a => {
@@ -183,7 +185,7 @@
         const usr = [
           actList    ? `Assessment activities performed:\n${actList}`         : "",
           reportList ? `Assessment reporting tasks completed:\n${reportList}` : "",
-          additionalNotes.trim() ? `Additional context:\n${additionalNotes.trim()}` : "",
+          `Summary notes of activities (primary source — use as the basis of the narrative):\n${summaryNotes.trim()}`,
           `Write a 5–8 sentence clinical narrative for the "Brief Summary of activities completed" field.`,
         ].filter(Boolean).join("\n\n");
         setPromptText(`${sys}\n\n---\n\n${usr}`);
@@ -229,12 +231,17 @@
         <div style={{ maxWidth: 820, margin: "0 auto" }}>
 
           {/* Header */}
-          <div style={{ marginBottom: 28, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
               <h1 style={{ fontSize: 26, fontWeight: 700, color: "#2d3a1f", marginBottom: 4 }}>Assessment Note Tool</h1>
               <p style={{ fontSize: 14, color: "#5a6b4a" }}>Select what was done — receive a polished clinical summary.</p>
             </div>
             <a href="/" style={{ padding: "7px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", marginLeft: 16 }}>← Back</a>
+          </div>
+
+          {/* Disclaimer */}
+          <div style={{ marginBottom: 24, padding: "14px 18px", borderRadius: 10, border: "1.5px solid #d4b483", background: "#fdf6e8", color: "#5a4420", fontSize: 13, lineHeight: 1.55 }}>
+            <strong style={{ color: "#7a5a1a" }}>Disclaimer:</strong> Use of these AI-assisted queries is subject to the legal and regulatory constraints of the user's jurisdiction. These tools do not remove the user's responsibility to review all output for accuracy and to maintain compliance with the ethical standards of their credentialing board for professional behavior analysis work.
           </div>
 
           {/* Settings card — admin only */}
@@ -324,14 +331,17 @@
               <CheckGroup items={REPORTING} checked={reporting} onToggle={id => toggleCheckbox(setReporting, id)} />
             </div>
 
-            {/* Additional notes */}
+            {/* Summary notes of activities */}
             <div style={{ marginBottom: 20 }}>
-              <label style={subLbl}>Additional Notes <span style={{ fontWeight: 400, color: "#7a9460", textTransform: "none", letterSpacing: 0 }}>(optional)</span></label>
+              <label style={subLbl}>Summary Notes of Activities <span style={{ color: "#c0392b" }}>*</span></label>
+              <p style={{ fontSize: 12, color: "#7a9460", marginBottom: 8, lineHeight: 1.55 }}>
+                Bullet points or fragments describing what was done this session — findings, observations, scoring results, follow-up items. This is the primary source for the generated narrative.
+              </p>
               <textarea
-                value={additionalNotes}
-                onChange={e => setAdditionalNotes(e.target.value)}
-                placeholder="Any extra context, specific findings, or follow-up items…"
-                style={{ ...inputBase, height: 120, resize: "vertical", lineHeight: 1.6 }}
+                value={summaryNotes}
+                onChange={e => setSummaryNotes(e.target.value)}
+                placeholder={"e.g.:\n- VB-MAPP milestones administered, levels 1–2 complete\n- Parent reported increase in tantrums over past 2 weeks\n- Observed 4 instances of elopement during 30-min play\n- Need to schedule follow-up for preference assessment"}
+                style={{ ...inputBase, height: 140, resize: "vertical", lineHeight: 1.6 }}
               />
             </div>
 
