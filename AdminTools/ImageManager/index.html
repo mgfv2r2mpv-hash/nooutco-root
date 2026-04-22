@@ -221,6 +221,25 @@ body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-he
 .status-msg.err { color: #f87171; }
 
 .loading { color: #64748b; font-size: 0.9rem; padding: 1.5rem 0; }
+
+/* ── Duplicate resolution modal ── */
+.dup-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+}
+.dup-box {
+  background: #1e1e2e; border: 1px solid #475569; border-radius: 12px;
+  padding: 1.5rem; width: 400px; max-width: calc(100vw - 2rem);
+}
+.dup-box h3 { font-size: .95rem; color: #f87171; margin-bottom: .4rem; }
+.dup-box p  { font-size: .82rem; color: #94a3b8; margin-bottom: .9rem; }
+.dup-rename-row { display: flex; gap: .4rem; margin-bottom: 1rem; align-items: center; }
+.dup-rename-row label { font-size: .78rem; color: #94a3b8; white-space: nowrap; }
+.dup-rename-row input {
+  flex: 1; padding: .4rem .6rem; border-radius: 6px;
+  border: 1px solid #3b82f6; background: #0f172a; color: #e2e8f0; font-size: .85rem;
+}
+.dup-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 </style>
 </head>
 <body>
@@ -254,6 +273,15 @@ body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-he
       <div class="detail-sub" id="dp-sub"></div>
     </div>
     <button class="detail-close" id="dp-close">✕</button>
+  </div>
+
+  <div class="detail-section" id="dp-displayname-section" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:.75rem 1rem;">
+    <label style="color:#7dd3fc;font-weight:600;">Display name <span id="dp-displayname-hint" style="color:#64748b;font-weight:400;">(optional — shown to learners; leave blank to use the filename)</span></label>
+    <div class="detail-row">
+      <input type="text" id="dp-displayname-input" placeholder="e.g. On  (multiple files like on-squirrel.svg, on-book.svg can share this label)">
+      <button class="btn-sm btn-blue" id="dp-displayname-save-btn">Save</button>
+    </div>
+    <div class="status-msg" id="dp-displayname-status"></div>
   </div>
 
   <div class="detail-section">
@@ -647,7 +675,13 @@ function buildCard(item) {
     img.src = '../../' + activeGame.id + '/' + activeGame.id + '/' + item.path;
     img.alt = item.path;
     const filename = item.path.split('/').pop();
-    label.textContent = filename;
+    const displayName = gameData[activeGame.id]?.manifest?.displayNames?.[item.path];
+    if (displayName) {
+      label.innerHTML = `<span style="color:#7dd3fc;">"${escapeHtml(displayName)}"</span> · ${escapeHtml(filename)}`;
+      label.title = `Display name: "${displayName}"\nFilename: ${filename}`;
+    } else {
+      label.textContent = filename;
+    }
     card.addEventListener('click', () => openDetail({ type: 'manifest', path: item.path, folder: item.folder, gameId: activeGame.id }));
   }
 
@@ -722,10 +756,19 @@ function buildAddForm(formType) {
       <div class="status-msg" id="add-form-status"></div>
     `;
     form.querySelector('.btn-submit').addEventListener('click', async () => {
-      const filename = form.querySelector('[name=filename]').value.trim();
+      let filename = form.querySelector('[name=filename]').value.trim();
       const url = form.querySelector('[name=url]').value.trim();
       const status = form.querySelector('#add-form-status');
       if (!filename || !url) { setStatus(status, 'err', 'Fill in all fields.'); return; }
+
+      const existingFilenames = getManifestFilenames(activeFolder);
+      if (existingFilenames.includes(filename)) {
+        const choice = await showDuplicateModal(filename, existingFilenames);
+        if (choice.action === 'cancel') return;
+        if (choice.action === 'rename' || choice.action === 'keep-both') filename = choice.newName;
+        // 'overwrite' keeps the same filename
+      }
+
       setStatus(status, '', 'Saving…');
       try {
         const res = await adminPost('save-image', {
@@ -733,13 +776,15 @@ function buildAddForm(formType) {
         });
         if (!res) { setStatus(status, '', ''); return; }
         if (res.ok) {
-          setStatus(status, 'ok', 'Saved!');
+          const j = await res.json().catch(() => ({}));
+          const savedFilename = j.filename || filename;
+          const path = `_Resources/_imgSource/${activeFolder}/${savedFilename}`;
           const d = gameData[activeGame.id];
-          const path = `_Resources/_imgSource/${activeFolder}/${filename}`;
           if (!d.manifest.images[activeFolder]) d.manifest.images[activeFolder] = [];
-          d.manifest.images[activeFolder].push(path);
+          if (!d.manifest.images[activeFolder].includes(path)) d.manifest.images[activeFolder].push(path);
           const grid = document.getElementById('image-grid');
           if (grid) grid.appendChild(buildCard({ type: 'manifest', path, folder: activeFolder }));
+          setStatus(status, 'ok', 'Saved!');
         } else {
           const j = await res.json().catch(() => ({}));
           setStatus(status, 'err', j.error || 'Error ' + res.status);
@@ -782,14 +827,26 @@ function buildAddForm(formType) {
       <div class="status-msg" id="add-form-status"></div>
     `;
     form.querySelector('.btn-submit').addEventListener('click', async () => {
-      const itemId   = nameToSlug(form.querySelector('[name=item-id]').value.trim());
-      const label    = form.querySelector('[name=label]').value.trim();
-      const filename = form.querySelector('[name=filename]').value.trim();
-      const url      = form.querySelector('[name=url]').value.trim();
-      const status   = form.querySelector('#add-form-status');
+      const itemId = nameToSlug(form.querySelector('[name=item-id]').value.trim());
+      const label  = form.querySelector('[name=label]').value.trim();
+      let   filename = form.querySelector('[name=filename]').value.trim();
+      const url    = form.querySelector('[name=url]').value.trim();
+      const status = form.querySelector('#add-form-status');
       if (!itemId || !label || !filename || !url) { setStatus(status, 'err', 'Fill in all fields.'); return; }
       const d = gameData['FFCGame'].ffcData;
       if (d.items.find(i => i.id === itemId)) { setStatus(status, 'err', 'Item id already exists.'); return; }
+
+      const existingFilenames = getFFCFilenames();
+      if (existingFilenames.includes(filename)) {
+        const choice = await showDuplicateModal(filename, existingFilenames);
+        if (choice.action === 'cancel') return;
+        if (choice.action === 'rename' || choice.action === 'keep-both') {
+          filename = choice.newName;
+          form.querySelector('[name=filename]').value = filename;
+        }
+        // 'overwrite' keeps the same filename
+      }
+
       setStatus(status, '', 'Saving image…');
       try {
         const imgRes = await adminPost('ffc-save-image', { id: itemId, filename, imageUrl: url });
@@ -853,7 +910,7 @@ function buildAddForm(formType) {
       <div class="status-msg" id="add-form-status"></div>
     `;
     form.querySelector('.btn-submit').addEventListener('click', async () => {
-      const name = form.querySelector('[name=name]').value.trim();
+      let name = form.querySelector('[name=name]').value.trim();
       const years = form.querySelector('[name=years]').value.trim();
       const emoji = form.querySelector('[name=emoji]').value.trim();
       const tag = form.querySelector('[name=tag]').value.trim();
@@ -861,6 +918,18 @@ function buildAddForm(formType) {
       const url = form.querySelector('[name=url]').value.trim();
       const status = form.querySelector('#add-form-status');
       if (!name || !url) { setStatus(status, 'err', 'Name and URL are required.'); return; }
+
+      const existingNames = getFPGNames();
+      if (existingNames.includes(name)) {
+        const choice = await showDuplicateModal(name, existingNames, true);
+        if (choice.action === 'cancel') return;
+        if (choice.action === 'rename' || choice.action === 'keep-both') {
+          name = choice.newName;
+          form.querySelector('[name=name]').value = name;
+        }
+        // 'overwrite' keeps the same name (updates existing person's image)
+      }
+
       const facts = factsRaw ? factsRaw.split('\n').map(s => s.trim()).filter(Boolean) : [];
       setStatus(status, '', 'Saving…');
       try {
@@ -1120,6 +1189,10 @@ const dpGoogleBtn = document.getElementById('dp-google-btn');
 const dpWikiResults = document.getElementById('dp-wiki-results');
 const dpRemoveBtn = document.getElementById('dp-remove-btn');
 const dpRemoveStatus = document.getElementById('dp-remove-status');
+const dpDisplayNameSection = document.getElementById('dp-displayname-section');
+const dpDisplayNameInput   = document.getElementById('dp-displayname-input');
+const dpDisplayNameSaveBtn = document.getElementById('dp-displayname-save-btn');
+const dpDisplayNameStatus  = document.getElementById('dp-displayname-status');
 
 document.getElementById('dp-close').addEventListener('click', closeDetail);
 
@@ -1130,6 +1203,25 @@ function openDetail(ctx) {
   dpWikiResults.innerHTML = '';
   setStatus(dpSaveStatus, '', '');
   setStatus(dpRemoveStatus, '', '');
+  setStatus(dpDisplayNameStatus, '', '');
+  dpDisplayNameInput.value = '';
+
+  const hint = document.getElementById('dp-displayname-hint');
+  dpDisplayNameSection.style.display = '';
+  if (ctx.type === 'manifest') {
+    hint.textContent = '(optional — shown to learners; leave blank to use the filename)';
+    dpDisplayNameInput.placeholder = 'e.g. On  (multiple files like on-squirrel.svg, on-book.svg can share this label)';
+    const manifest = gameData[ctx.gameId]?.manifest;
+    dpDisplayNameInput.value = manifest?.displayNames?.[ctx.path] || '';
+  } else if (ctx.type === 'ffc') {
+    hint.textContent = '(item label shown to learners)';
+    dpDisplayNameInput.placeholder = 'e.g. Pencil';
+    dpDisplayNameInput.value = ctx.item.label;
+  } else if (ctx.type === 'fpg') {
+    hint.textContent = '(person\'s name shown to learners)';
+    dpDisplayNameInput.placeholder = 'e.g. Albert Einstein';
+    dpDisplayNameInput.value = ctx.person.name;
+  }
 
   if (ctx.type === 'ffc') {
     const it = ctx.item;
@@ -1245,6 +1337,66 @@ async function runWikiSearch(query, urlInput, resultsEl, onSelect) {
   }
 }
 
+dpDisplayNameSaveBtn.addEventListener('click', async () => {
+  if (!detailContext) return;
+  const ctx = detailContext;
+  const displayName = dpDisplayNameInput.value.trim();
+  setStatus(dpDisplayNameStatus, '', 'Saving…');
+  try {
+    let res;
+    if (ctx.type === 'manifest') {
+      res = await adminPost('save-display-name', { game: ctx.gameId, localPath: ctx.path, displayName });
+      if (detailContext !== ctx) return;
+      if (!res) { setStatus(dpDisplayNameStatus, '', ''); return; }
+      if (res.ok) {
+        const manifest = gameData[ctx.gameId]?.manifest;
+        if (manifest) {
+          if (!manifest.displayNames) manifest.displayNames = {};
+          if (displayName) manifest.displayNames[ctx.path] = displayName;
+          else delete manifest.displayNames[ctx.path];
+        }
+        setStatus(dpDisplayNameStatus, 'ok', displayName ? 'Saved.' : 'Cleared.');
+      } else {
+        const j = await res.json().catch(() => ({}));
+        setStatus(dpDisplayNameStatus, 'err', j.error || 'Error ' + res.status);
+      }
+    } else if (ctx.type === 'ffc') {
+      if (!displayName) { setStatus(dpDisplayNameStatus, 'err', 'Label cannot be empty.'); return; }
+      res = await adminPost('save-display-name', { game: 'FFCGame', itemId: ctx.item.id, displayName });
+      if (detailContext !== ctx) return;
+      if (!res) { setStatus(dpDisplayNameStatus, '', ''); return; }
+      if (res.ok) {
+        ctx.item.label = displayName;
+        dpFilename.textContent = displayName;
+        setStatus(dpDisplayNameStatus, 'ok', 'Saved.');
+      } else {
+        const j = await res.json().catch(() => ({}));
+        setStatus(dpDisplayNameStatus, 'err', j.error || 'Error ' + res.status);
+      }
+    } else if (ctx.type === 'fpg') {
+      if (!displayName) { setStatus(dpDisplayNameStatus, 'err', 'Name cannot be empty.'); return; }
+      const oldName = ctx.person.name;
+      res = await adminPost('save-display-name', { game: 'FamousPersonGame', personName: oldName, displayName });
+      if (detailContext !== ctx) return;
+      if (!res) { setStatus(dpDisplayNameStatus, '', ''); return; }
+      if (res.ok) {
+        ctx.person.name = displayName;
+        dpFilename.textContent = displayName;
+        setStatus(dpDisplayNameStatus, 'ok', 'Saved.');
+      } else {
+        const j = await res.json().catch(() => ({}));
+        setStatus(dpDisplayNameStatus, 'err', j.error || 'Error ' + res.status);
+      }
+    }
+  } catch (err) {
+    setStatus(dpDisplayNameStatus, 'err', err.message || 'Network error');
+  }
+});
+
+dpDisplayNameInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') dpDisplayNameSaveBtn.click();
+});
+
 dpWikiBtn.addEventListener('click', () =>
   runWikiSearch(dpWikiInput.value.trim(), dpUrlInput, dpWikiResults, () => dpSaveBtn.click()));
 
@@ -1335,6 +1487,12 @@ function nameToSlug(name) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
+
 function sanitizeFilename(val) {
   return val.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9.\-]/g, '').replace(/-{2,}/g, '-');
 }
@@ -1348,6 +1506,87 @@ function attachSanitize(input, fn) {
     const pos = input.selectionStart;
     const clean = fn(input.value);
     if (clean !== input.value) { input.value = clean; input.setSelectionRange(pos, pos); }
+  });
+}
+
+// ─── Duplicate detection ─────────────────────────────────────────────────────
+
+function getManifestFilenames(folder) {
+  const paths = gameData[activeGame.id]?.manifest?.images?.[folder] || [];
+  return paths.map(p => p.split('/').pop());
+}
+
+function getFFCFilenames() {
+  return (gameData['FFCGame']?.ffcData?.items || []).map(i => i.img);
+}
+
+function getFPGNames() {
+  return (gameData['FamousPersonGame']?.fpgPeople || []).map(p => p.name);
+}
+
+function incrementName(name, existing) {
+  const dot  = name.lastIndexOf('.');
+  const base = dot >= 0 ? name.slice(0, dot) : name;
+  const ext  = dot >= 0 ? name.slice(dot) : '';
+  const clean = base.replace(/-(\d+)$/, '');
+  let n = 2;
+  while (existing.includes(`${clean}-${n}${ext}`)) n++;
+  return `${clean}-${n}${ext}`;
+}
+
+// Returns a Promise that resolves to:
+//   { action: 'rename', newName: string }
+//   { action: 'overwrite' }
+//   { action: 'keep-both', newName: string }
+//   { action: 'cancel' }
+function showDuplicateModal(name, existingNames, isPersonName = false) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'dup-overlay';
+
+    const autoName = incrementName(name, existingNames);
+    const itemWord = isPersonName ? 'name' : 'filename';
+
+    const box = document.createElement('div');
+    box.className = 'dup-box';
+    box.innerHTML = `
+      <h3>Duplicate ${itemWord}</h3>
+      <p><strong style="color:#fde68a;">${escapeHtml(name)}</strong> already exists${isPersonName ? '' : ' in this folder'}. Choose how to proceed:</p>
+      <div class="dup-rename-row">
+        <label>Rename to:</label>
+        <input type="text" id="dup-rename-input" value="${escapeHtml(name)}">
+      </div>
+      <div class="dup-actions">
+        <button class="btn-sm btn-blue" id="dup-rename-btn">Rename</button>
+        <button class="btn-sm btn-gray" id="dup-overwrite-btn">Overwrite</button>
+        <button class="btn-sm btn-amber" id="dup-keepboth-btn">Keep Both <span style="color:#94a3b8;font-size:.75em;">(→ ${escapeHtml(autoName)})</span></button>
+        <button class="btn-sm btn-gray" id="dup-cancel-btn">Cancel</button>
+      </div>
+    `;
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    const input = box.querySelector('#dup-rename-input');
+    if (!isPersonName) attachSanitize(input, sanitizeFilename);
+    input.focus();
+    input.select();
+
+    function close(result) { overlay.remove(); resolve(result); }
+
+    box.querySelector('#dup-rename-btn').addEventListener('click', () => {
+      const v = input.value.trim();
+      if (!v || v === name) return;
+      close({ action: 'rename', newName: v });
+    });
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') box.querySelector('#dup-rename-btn').click();
+      if (e.key === 'Escape') close({ action: 'cancel' });
+    });
+    box.querySelector('#dup-overwrite-btn').addEventListener('click', () => close({ action: 'overwrite' }));
+    box.querySelector('#dup-keepboth-btn').addEventListener('click', () => close({ action: 'keep-both', newName: autoName }));
+    box.querySelector('#dup-cancel-btn').addEventListener('click', () => close({ action: 'cancel' }));
+    overlay.addEventListener('click', e => { if (e.target === overlay) close({ action: 'cancel' }); });
   });
 }
 
