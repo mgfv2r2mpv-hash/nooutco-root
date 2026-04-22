@@ -1075,7 +1075,11 @@ function ghUrl(env, path) {
 }
 
 async function gh(env, method, path, body) {
-  const res = await fetch(ghUrl(env, path), {
+  let url = ghUrl(env, path);
+  if (method === 'GET' && path.startsWith('contents/')) {
+    url += `?ref=${encodeURIComponent(env.GITHUB_BRANCH || 'main')}`;
+  }
+  const res = await fetch(url, {
     method,
     headers: ghHeaders(env),
     body:    body ? JSON.stringify(body) : undefined,
