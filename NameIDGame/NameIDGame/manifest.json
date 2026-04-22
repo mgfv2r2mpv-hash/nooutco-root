@@ -6,6 +6,7 @@
     "T_buildings",
     "T_colors",
     "T_community_helpers",
+    "T_emotions",
     "T_foods",
     "T_household_items",
     "T_prepositions",
@@ -69,6 +70,23 @@
       "_Resources/_imgSource/T_community_helpers/police.svg",
       "_Resources/_imgSource/T_community_helpers/scientist.svg",
       "_Resources/_imgSource/T_community_helpers/teacher.svg"
+    ],
+    "T_emotions": [
+      "_Resources/_imgSource/T_emotions/angry.svg",
+      "_Resources/_imgSource/T_emotions/bored.svg",
+      "_Resources/_imgSource/T_emotions/calm.svg",
+      "_Resources/_imgSource/T_emotions/confused.svg",
+      "_Resources/_imgSource/T_emotions/embarrassed.svg",
+      "_Resources/_imgSource/T_emotions/excited.svg",
+      "_Resources/_imgSource/T_emotions/happy.svg",
+      "_Resources/_imgSource/T_emotions/love.svg",
+      "_Resources/_imgSource/T_emotions/proud.svg",
+      "_Resources/_imgSource/T_emotions/sad.svg",
+      "_Resources/_imgSource/T_emotions/scared.svg",
+      "_Resources/_imgSource/T_emotions/sick.svg",
+      "_Resources/_imgSource/T_emotions/silly.svg",
+      "_Resources/_imgSource/T_emotions/surprised.svg",
+      "_Resources/_imgSource/T_emotions/tired.svg"
     ],
     "T_foods": [
       "_Resources/_imgSource/T_foods/apple.svg",
