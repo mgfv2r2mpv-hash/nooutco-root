@@ -700,6 +700,71 @@ body {
   line-height: 1;
 }
 .btn-reset-trial:hover { opacity: 1; }
+
+/* ─── Options Row ──────────────────────────────────────────── */
+.options-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ─── Error Buttons ────────────────────────────────────────── */
+.error-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 58px;
+  height: 30px;
+  margin: 0 auto;
+  border-radius: 8px;
+  border: 2px solid #e5e5e5;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ccc;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s, transform .1s;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.error-btn.errored {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+.error-btn:active { transform: scale(.9); }
+
+.grid-row-error {
+  margin-top: 4px !important;
+}
+
+.grid-label-error {
+  font-size: 11px;
+  font-weight: 600;
+  color: #bbb;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+/* ─── Delay seconds input ──────────────────────────────────── */
+.delay-secs-input {
+  width: 44px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  border: 1.5px solid #ccc;
+  border-radius: 6px;
+  padding: 3px 4px;
+  color: #555;
+}
+.delay-unit {
+  font-size: 12px;
+  color: #888;
+  font-weight: 700;
+}
   </style>
 </head>
 <body>
@@ -809,9 +874,23 @@ body {
             <button class="level-seg-btn" data-level="1">Min</button>
             <button class="level-seg-btn" data-level="0">Indep</button>
           </div>
-          <label id="mtl-delay-label" class="delay-checkbox-label hidden">
-            <input type="checkbox" id="mtl-delay-checkbox">
-            <span>3s delay</span>
+        </div>
+
+        <!-- Options row (below method selector) -->
+        <div class="options-row" id="options-row">
+          <label id="auto-prompt-label" class="delay-checkbox-label hidden">
+            <input type="checkbox" id="auto-prompt-checkbox" checked>
+            <span>Auto-prompt</span>
+          </label>
+          <label id="prompt-delay-label" class="delay-checkbox-label hidden">
+            <input type="checkbox" id="prompt-delay-checkbox">
+            <span>Delay</span>
+          </label>
+          <input id="prompt-delay-secs" type="number" class="delay-secs-input hidden" min="1" max="60" value="3">
+          <span id="prompt-delay-unit" class="delay-unit hidden">s</span>
+          <label class="delay-checkbox-label">
+            <input type="checkbox" id="persist-prompts-checkbox">
+            <span>Persist Prompts</span>
           </label>
         </div>
 
@@ -830,12 +909,26 @@ body {
             <button class="toggle-btn" data-turn="2" data-type="comment">—</button>
             <button class="toggle-btn" data-turn="3" data-type="comment">—</button>
           </div>
+          <div class="grid-row grid-row-error">
+            <div class="grid-label grid-label-error">Error</div>
+            <button class="error-btn" data-turn="0" data-type="comment">—</button>
+            <button class="error-btn" data-turn="1" data-type="comment">—</button>
+            <button class="error-btn" data-turn="2" data-type="comment">—</button>
+            <button class="error-btn" data-turn="3" data-type="comment">—</button>
+          </div>
           <div class="grid-row">
             <div class="grid-label">Volley</div>
             <button class="toggle-btn" data-turn="0" data-type="volley">—</button>
             <button class="toggle-btn" data-turn="1" data-type="volley">—</button>
             <button class="toggle-btn" data-turn="2" data-type="volley">—</button>
             <button class="toggle-btn" data-turn="3" data-type="volley">—</button>
+          </div>
+          <div class="grid-row grid-row-error">
+            <div class="grid-label grid-label-error">Error</div>
+            <button class="error-btn" data-turn="0" data-type="volley">—</button>
+            <button class="error-btn" data-turn="1" data-type="volley">—</button>
+            <button class="error-btn" data-turn="2" data-type="volley">—</button>
+            <button class="error-btn" data-turn="3" data-type="volley">—</button>
           </div>
         </div>
       </div>
@@ -2525,26 +2618,6 @@ const LEVEL_LABELS = ['Indep', 'Min', 'Partial', 'Full'];
 
 // ─── Prompts ──────────────────────────────────────────────────────────────────
 
-const COMMENT_PROMPTS = [
-  'Have you ever heard of [name]?',
-  'What stands out to you about [name]?',
-  'Tell me one thing you know about [name].',
-  'What\'s your first reaction to [name]?',
-  'What do you think made [name] famous?',
-  'If you could meet [name], what would you say?',
-  'Does [name] remind you of anyone you know?',
-];
-
-const VOLLEY_PROMPTS = [
-  'Your turn — ask me something.',
-  'Ask away.',
-  'What would you want to know?',
-  'Got a question for me?',
-  'Flip it back — what do you want to ask?',
-  'Now you go.',
-  'What\'s your question?',
-];
-
 const CLOSING_PROMPTS = [
   'Ask me one final question about [name].',
   'Last question — what do you want to know about [name]?',
@@ -2552,29 +2625,11 @@ const CLOSING_PROMPTS = [
   'One last question for me about [name]?',
 ];
 
-// Partial prompts — vaguer cues, non-repeating
-const PARTIAL_COMMENT_PROMPTS = [
-  'Comment: . . . about them',
-  'Comment: . . . about what they did',
-  'Comment: . . . about when or where they lived',
-  'Comment: . . . about something you noticed',
-  'Comment: . . . about what made them famous',
-  'Comment: . . . about how that makes you feel',
-];
-
-const PARTIAL_VOLLEY_PROMPTS = [
-  'Ask: . . . their opinion about [name]',
-  'Ask: . . . a question about the time or place [name] lived',
-  'Ask: . . . something about [name]\'s life',
-  'Ask: . . . what [name] is known for',
-  'Ask: . . . something that surprised you about [name]',
-];
-
-const PARTIAL_CLOSING_PROMPTS = [
-  'Ask: . . . one final question about [name]',
-  'Ask: . . . something you\'re still wondering about [name]',
-  'Ask: . . . your last question',
-  'Ask: . . . anything else about [name]',
+const VOLLEY_FOLLOWUPS = [
+  'What do you wonder about [firstName] after hearing that?',
+  'What question would you ask [firstName] about that?',
+  'How do you think [firstName] felt about that?',
+  'What would you want to know more about [firstName]?',
 ];
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -2585,22 +2640,26 @@ const state = {
   screen: 'start',
   currentPerson: null,
   palette: null,
-  // turns: null=unmarked, 'check'=✓ (independent/within-ceiling), 'ok'=OK (prompted/exceeded)
+  // turns: null=unmarked, 'check'=✓ (independent/within-ceiling), 'ok'=OK (prompted/exceeded), 'error'=✗
   turns: [[null, null], [null, null], [null, null], [null, null]],
-  usedCommentPrompts: [],
-  usedVolleyPrompts: [],
-  usedPartialCommentPrompts: [],
-  usedPartialVolleyPrompts: [],
-  usedPartialClosingPrompts: [],
   usedPeople: new Set(),
   // Prompt method
   promptMethod: 'ltm',    // 'ltm' | 'mtl'
   mtlLevel: 3,            // shared level selector: MtL=prescribed level, LtM=ceiling
-  mtlDelay: false,        // MtL only: 3-second delay before auto-display
+  // Prompt options
+  persistPrompts:         false,
+  autoPromptEnabled:      true,
+  promptDelayEnabled:     false,
+  promptDelaySecs:        3,
+  promptShowing:          false,
   // LtM per-cell escalation levels (0=indep,1=min,2=partial,3=full)
   ltmCellLevels: [[0, 0], [0, 0], [0, 0], [0, 0]],
   // MtL per-cell flag: was Prompt clicked (Full override) for this cell?
   promptClickedForCell: [[false, false], [false, false], [false, false], [false, false]],
+  // Per-cell tracking for context recording
+  autoPromptShownForCell: [[false, false], [false, false], [false, false], [false, false]],
+  cellContexts:           [[null, null], [null, null], [null, null], [null, null]],
+  turnFacts:              [null, null, null, null],
   // Session history — snapshots of completed trials for printing
   sessionHistory: [],
   trialSnapshotSaved: false,  // prevents double-saving when returning from SR
@@ -2815,11 +2874,66 @@ function updateToggles() {
   document.querySelectorAll('.toggle-btn').forEach(btn => {
     const turn = parseInt(btn.dataset.turn);
     const idx  = btn.dataset.type === 'comment' ? 0 : 1;
-    const v    = state.turns[turn][idx]; // null | 'check' | 'ok'
+    const v    = state.turns[turn][idx];
     btn.textContent = v === 'check' ? '✓' : v === 'ok' ? 'OK' : '—';
     btn.classList.toggle('checked', v === 'check');
     btn.classList.toggle('ok',      v === 'ok');
   });
+  document.querySelectorAll('.error-btn').forEach(btn => {
+    const turn = parseInt(btn.dataset.turn);
+    const idx  = btn.dataset.type === 'comment' ? 0 : 1;
+    const v    = state.turns[turn][idx];
+    btn.textContent = v === 'error' ? '✗' : '—';
+    btn.classList.toggle('errored', v === 'error');
+  });
+}
+
+function getPromptContext(turn, idx) {
+  const autoShown   = state.autoPromptShownForCell[turn][idx];
+  const btnClicked  = state.promptClickedForCell[turn][idx];
+  const ltmPrompted = state.promptMethod === 'ltm' && state.ltmCellLevels[turn][idx] > 0;
+  const timerPending = state.promptMethod === 'mtl'
+                    && state.autoPromptEnabled
+                    && state.promptDelayEnabled
+                    && autoShowTimeout !== null
+                    && !autoShown;
+  if (autoShown || btnClicked || ltmPrompted) return 'prompted';
+  if (timerPending) return 'before';
+  return 'none';
+}
+
+function markCell(turn, idx, outcome) {
+  if (outcome === null) {
+    state.turns[turn][idx]               = null;
+    state.cellContexts[turn][idx]        = null;
+    state.ltmCellLevels[turn][idx]       = 0;
+    state.promptClickedForCell[turn][idx]   = false;
+    state.autoPromptShownForCell[turn][idx] = false;
+    clearTimeout(autoShowTimeout);
+    autoShowTimeout = null;
+    updateToggles();
+    displayPrompt('');
+    return;
+  }
+  const context = getPromptContext(turn, idx);
+  if (outcome === 'correct') {
+    let result;
+    if (state.promptMethod === 'mtl') {
+      clearTimeout(autoShowTimeout);
+      autoShowTimeout = null;
+      result = state.promptClickedForCell[turn][idx] ? 'ok' : 'check';
+    } else {
+      result = state.ltmCellLevels[turn][idx] > state.mtlLevel ? 'ok' : 'check';
+    }
+    state.turns[turn][idx] = result;
+  } else {
+    state.turns[turn][idx] = 'error';
+  }
+  state.cellContexts[turn][idx] = context;
+  updateToggles();
+  updateLtmIndicator();
+  displayPrompt('');
+  if (state.promptMethod === 'mtl') autoShowForContext();
 }
 
 function handleToggleClick(e) {
@@ -2827,41 +2941,16 @@ function handleToggleClick(e) {
   if (!btn) return;
   const turn = parseInt(btn.dataset.turn);
   const idx  = btn.dataset.type === 'comment' ? 0 : 1;
+  const cur  = state.turns[turn][idx];
+  markCell(turn, idx, (cur === 'check' || cur === 'ok') ? null : 'correct');
+}
 
-  if (state.turns[turn][idx] !== null) {
-    // Un-mark: reset cell tracking and clear
-    state.turns[turn][idx] = null;
-    state.ltmCellLevels[turn][idx]      = 0;
-    state.promptClickedForCell[turn][idx] = false;
-    clearTimeout(autoShowTimeout);
-    updateToggles();
-    displayPrompt('');
-    return;
-  }
-
-  // Determine ✓ or OK
-  let result;
-  if (state.promptMethod === 'mtl') {
-    // Clear any pending delay timeout — client responded on their own
-    clearTimeout(autoShowTimeout);
-    // OK only if Prompt was clicked AND prescribed level < Full (3), meaning
-    // the shown Full prompt exceeded the prescribed level.
-    // If prescribed IS Full, showing Full = prescribed → ✓
-    result = (state.promptClickedForCell[turn][idx] && state.mtlLevel < 3) ? 'ok' : 'check';
-  } else {
-    // LtM: compare cell's reached level to prescribed ceiling
-    result = state.ltmCellLevels[turn][idx] > state.mtlLevel ? 'ok' : 'check';
-  }
-
-  state.turns[turn][idx] = result;
-  updateToggles();
-  updateLtmIndicator();
-
-  // Always clear prompt after marking; MtL then auto-shows next
-  displayPrompt('');
-  if (state.promptMethod === 'mtl') {
-    autoShowForContext();
-  }
+function handleErrorClick(e) {
+  const btn = e.target.closest('.error-btn');
+  if (!btn) return;
+  const turn = parseInt(btn.dataset.turn);
+  const idx  = btn.dataset.type === 'comment' ? 0 : 1;
+  markCell(turn, idx, state.turns[turn][idx] === 'error' ? null : 'error');
 }
 
 // ─── Prompt Logic ─────────────────────────────────────────────────────────────
@@ -2874,6 +2963,16 @@ function pickNonRepeating(list, used) {
   return list[pick];
 }
 
+function assignTurnFacts(person) {
+  const f = person.facts;
+  state.turnFacts = [
+    f[0] ?? '',
+    f[1] ?? f[0] ?? '',
+    f[2] ?? f[0] ?? '',
+    f[3] ?? f[1] ?? '',
+  ];
+}
+
 // Returns the contextual next {turn, typeIdx} following natural turn order:
 // Comment 1 → Volley 1 → Comment 2 → Volley 2 → ... → Comment 4 → Volley 4
 function getContextCell() {
@@ -2884,42 +2983,48 @@ function getContextCell() {
   return null;
 }
 
-// Returns prompt text for a specific cell at a given level
+// Returns prompt text for a specific cell at a given level — coherent, fact-based
 function getPromptForCell(turn, typeIdx, level) {
-  const name       = state.currentPerson.name;
-  const isComment  = typeIdx === 0;
-  const isClosing  = !isComment && turn === 3;
+  if (level === 0) return null;
 
-  if (level === 0) return null; // independence — no prompt
+  const firstName = state.currentPerson.name.split(' ')[0];
+  const fact      = state.turnFacts[turn] || '';
+  const isComment = typeIdx === 0;
+  const isClosing = !isComment && turn === 3;
 
-  if (level === 1) {
-    return isComment ? 'Make a comment ' : 'Ask a question ';
-  }
-
-  if (level === 2) {
-    if (isClosing) {
-      return pickNonRepeating(PARTIAL_CLOSING_PROMPTS, state.usedPartialClosingPrompts).replace('[name]', name);
-    }
-    if (isComment) {
-      return pickNonRepeating(PARTIAL_COMMENT_PROMPTS, state.usedPartialCommentPrompts).replace('[name]', name);
-    }
-    return pickNonRepeating(PARTIAL_VOLLEY_PROMPTS, state.usedPartialVolleyPrompts).replace('[name]', name);
-  }
-
-  // level === 3 (full)
   if (isClosing) {
-    return 'Ask: ' + CLOSING_PROMPTS[Math.floor(Math.random() * CLOSING_PROMPTS.length)].replace('[name]', name);
+    if (level === 1) return 'Ask one final question.';
+    if (level === 2) return 'Ask something you still wonder about ' + firstName + '.';
+    return 'Ask: ' + pickNonRepeating(CLOSING_PROMPTS, state.usedClosingPrompts).replace('[name]', firstName);
   }
+
   if (isComment) {
-    return 'Answer: ' + pickNonRepeating(COMMENT_PROMPTS, state.usedCommentPrompts).replace('[name]', name);
+    if (level === 1) return 'Say something about ' + firstName + '.';
+    if (level === 2) return 'Something I notice about ' + firstName + ' is…';
+    const fl = fact.charAt(0).toLowerCase() + fact.slice(1).replace(/\.$/, '');
+    return 'Something I notice about ' + firstName + ' is — ' + fl + '.';
   }
-  return 'Ask: ' + pickNonRepeating(VOLLEY_PROMPTS, state.usedVolleyPrompts);
+
+  // Volley
+  if (level === 1) return 'Ask a question.';
+  if (level === 2) return 'Ask something about ' + firstName + ' or what I just shared.';
+  return 'Ask: ' + pickNonRepeating(VOLLEY_FOLLOWUPS, state.usedVolleyFollowups).replace('[firstName]', firstName);
 }
 
+let promptFadeTimeout = null;
+
 function displayPrompt(text) {
+  clearTimeout(promptFadeTimeout);
   const el = $('prompt-display');
+  state.promptShowing = !!text;
   if (!text) { el.textContent = ''; return; }
   el.textContent = text.startsWith('🎉') ? text : '\u201C' + text + '\u201D';
+  if (!state.persistPrompts) {
+    promptFadeTimeout = setTimeout(() => {
+      el.textContent = '';
+      state.promptShowing = false;
+    }, 3000);
+  }
 }
 
 // Update LtM step indicator to reflect the current context cell's level
@@ -2931,16 +3036,24 @@ function updateLtmIndicator() {
   });
 }
 
-// MtL: auto-show prescribed prompt for next context cell (with optional 3s delay)
+// MtL: auto-show prescribed prompt for next context cell
 let autoShowTimeout = null;
 
 function autoShowForContext() {
   clearTimeout(autoShowTimeout);
+  autoShowTimeout = null;
+  if (!state.autoPromptEnabled) return;
+
   const cell = getContextCell();
   if (!cell) { displayPrompt('🎉 All turns complete!'); return; }
-  const show = () => displayPrompt(getPromptForCell(cell.turn, cell.typeIdx, state.mtlLevel));
-  if (state.mtlDelay) {
-    autoShowTimeout = setTimeout(show, 3000);
+
+  const show = () => {
+    state.autoPromptShownForCell[cell.turn][cell.typeIdx] = true;
+    displayPrompt(getPromptForCell(cell.turn, cell.typeIdx, state.mtlLevel));
+  };
+
+  if (state.promptDelayEnabled && state.promptDelaySecs > 0) {
+    autoShowTimeout = setTimeout(show, state.promptDelaySecs * 1000);
   } else {
     show();
   }
@@ -2952,12 +3065,16 @@ function showPrompt() {
   if (!cell) { displayPrompt('🎉 All turns complete!'); return; }
 
   if (state.promptMethod === 'mtl') {
-    // Override to Full for this cell
-    state.promptClickedForCell[cell.turn][cell.typeIdx] = true;
-    clearTimeout(autoShowTimeout);
-    displayPrompt(getPromptForCell(cell.turn, cell.typeIdx, 3));
+    if (state.promptShowing) {
+      displayPrompt('');
+    } else {
+      state.promptClickedForCell[cell.turn][cell.typeIdx] = true;
+      clearTimeout(autoShowTimeout);
+      autoShowTimeout = null;
+      displayPrompt(getPromptForCell(cell.turn, cell.typeIdx, 3));
+    }
   } else {
-    // LtM: advance this cell's level (stay at 3 but re-generate if already full)
+    // LtM: advance this cell's level
     const cur   = state.ltmCellLevels[cell.turn][cell.typeIdx];
     const level = cur < 3 ? cur + 1 : 3;
     state.ltmCellLevels[cell.turn][cell.typeIdx] = level;
@@ -2982,22 +3099,24 @@ function setMtlLevel(level) {
   if (state.promptMethod === 'mtl') autoShowForContext();
 }
 
-
-
 // Method radio switch
 function setPromptMethod(method) {
   state.promptMethod = method;
   const isLtm = method === 'ltm';
   $('ltm-level-indicator').classList.toggle('hidden', !isLtm);
-  $('mtl-level-selector').classList.remove('hidden'); // visible in both modes
-  $('mtl-delay-label').classList.toggle('hidden', isLtm);
+  $('mtl-level-selector').classList.remove('hidden');
+  $('auto-prompt-label').classList.toggle('hidden', isLtm);
+  $('prompt-delay-label').classList.toggle('hidden', isLtm || !state.autoPromptEnabled);
+  $('prompt-delay-secs').classList.toggle('hidden', isLtm || !state.autoPromptEnabled || !state.promptDelayEnabled);
+  $('prompt-delay-unit').classList.toggle('hidden', isLtm || !state.autoPromptEnabled || !state.promptDelayEnabled);
   updateLevelSelector();
-  if (!isLtm) {
+  if (!isLtm && state.autoPromptEnabled) {
     autoShowForContext();
   } else {
     clearTimeout(autoShowTimeout);
+    autoShowTimeout = null;
     displayPrompt('');
-    updateLtmIndicator();
+    if (isLtm) updateLtmIndicator();
   }
 }
 
@@ -3012,16 +3131,19 @@ function pickPerson() {
 }
 
 function resetSession() {
-  state.turns                = [[null, null], [null, null], [null, null], [null, null]];
-  state.usedCommentPrompts        = [];
-  state.usedVolleyPrompts         = [];
-  state.usedPartialCommentPrompts = [];
-  state.usedPartialVolleyPrompts  = [];
-  state.usedPartialClosingPrompts = [];
-  state.ltmCellLevels          = [[0, 0], [0, 0], [0, 0], [0, 0]];
-  state.promptClickedForCell   = [[false, false], [false, false], [false, false], [false, false]];
-  state.trialSnapshotSaved     = false;
+  state.turns                    = [[null, null], [null, null], [null, null], [null, null]];
+  state.ltmCellLevels            = [[0, 0], [0, 0], [0, 0], [0, 0]];
+  state.promptClickedForCell     = [[false, false], [false, false], [false, false], [false, false]];
+  state.autoPromptShownForCell   = [[false, false], [false, false], [false, false], [false, false]];
+  state.cellContexts             = [[null, null], [null, null], [null, null], [null, null]];
+  state.usedClosingPrompts       = [];
+  state.usedVolleyFollowups      = [];
+  state.trialSnapshotSaved       = false;
   clearTimeout(autoShowTimeout);
+  autoShowTimeout = null;
+  clearTimeout(promptFadeTimeout);
+  promptFadeTimeout = null;
+  state.promptShowing = false;
   displayPrompt('');
   updateToggles();
   updateLtmIndicator();
@@ -3034,6 +3156,7 @@ function startSession() {
   state.palette       = PALETTES[Math.floor(Math.random() * PALETTES.length)];
   applyPalette(state.palette);
   resetSession();
+  assignTurnFacts(state.currentPerson);
   renderPerson(state.currentPerson);
   showScreen('session');
 }
@@ -3044,6 +3167,7 @@ function newPerson() {
   state.palette       = PALETTES[Math.floor(Math.random() * PALETTES.length)];
   applyPalette(state.palette);
   resetSession();
+  assignTurnFacts(state.currentPerson);
   renderPerson(state.currentPerson);
 }
 
@@ -3179,8 +3303,11 @@ function saveTrialSnapshot() {
     person:               { name: state.currentPerson.name, tag: state.currentPerson.tag, years: state.currentPerson.years },
     promptMethod:         state.promptMethod,
     mtlLevel:             state.mtlLevel,
-    mtlDelay:             state.mtlDelay,
+    autoPromptEnabled:    state.autoPromptEnabled,
+    promptDelayEnabled:   state.promptDelayEnabled,
+    promptDelaySecs:      state.promptDelaySecs,
     turns:                state.turns.map(t => [...t]),
+    cellContexts:         state.cellContexts.map(r => [...r]),
     ltmCellLevels:        state.ltmCellLevels.map(r => [...r]),
     promptClickedForCell: state.promptClickedForCell.map(r => [...r]),
   });
@@ -3192,22 +3319,29 @@ function printData() {
     return;
   }
 
-  const cellStr = v => v === 'check' ? '✓' : v === 'ok' ? 'OK' : '—';
+  function cellLabel(v, ctx) {
+    if (!v) return '—';
+    const outcome = (v === 'check' || v === 'ok') ? 'Correct' : 'Error';
+    let ctxLabel;
+    if (v === 'ok' || ctx === 'prompted') ctxLabel = 'Prompted';
+    else if (ctx === 'before') ctxLabel = 'Before Prompt';
+    else ctxLabel = outcome === 'Correct' ? 'Independent' : 'No Prompt';
+    return outcome + ' (' + ctxLabel + ')';
+  }
+
   const dateStr = new Date().toLocaleString();
 
   const rows = state.sessionHistory.map((trial, i) => {
     const cells = [0, 1, 2, 3].flatMap(t => [
-      `<td>${cellStr(trial.turns[t][0])}</td>`,
-      `<td>${cellStr(trial.turns[t][1])}</td>`,
+      `<td>${cellLabel(trial.turns[t][0], trial.cellContexts[t][0])}</td>`,
+      `<td>${cellLabel(trial.turns[t][1], trial.cellContexts[t][1])}</td>`,
     ]).join('');
-    const delay = trial.promptMethod === 'mtl' && trial.mtlDelay ? '✓' : '—';
     return `<tr>
       <td>${i + 1}</td>
       <td><strong>${trial.person.name}</strong><br>
           <small>${trial.person.tag} · ${trial.person.years}</small></td>
       <td>${trial.promptMethod === 'mtl' ? 'MtL' : 'LtM'}</td>
       <td>${LEVEL_LABELS[trial.mtlLevel]}</td>
-      <td>${delay}</td>
       ${cells}
     </tr>`;
   }).join('');
@@ -3216,11 +3350,11 @@ function printData() {
 <html><head><meta charset="utf-8">
 <title>Session Record</title>
 <style>
-  body { font-family: Arial, sans-serif; font-size: 12px; margin: 24px; color: #111; }
+  body { font-family: Arial, sans-serif; font-size: 11px; margin: 24px; color: #111; }
   h1 { font-size: 18px; margin: 0 0 4px; }
   .subtitle { color: #555; font-size: 11px; margin-bottom: 20px; }
   table { border-collapse: collapse; width: 100%; }
-  th, td { border: 1px solid #ccc; padding: 5px 8px; text-align: center; white-space: nowrap; }
+  th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: center; white-space: nowrap; }
   td:nth-child(2) { text-align: left; white-space: normal; }
   th { background: #f0f0f0; font-weight: 600; }
   tr:nth-child(even) { background: #fafafa; }
@@ -3232,7 +3366,7 @@ function printData() {
 <table>
   <thead>
     <tr>
-      <th>#</th><th>Person</th><th>Method</th><th>Level</th><th>Delay</th>
+      <th>#</th><th>Person</th><th>Method</th><th>Level</th>
       <th>C1</th><th>V1</th><th>C2</th><th>V2</th>
       <th>C3</th><th>V3</th><th>C4</th><th>V4</th>
     </tr>
@@ -3268,13 +3402,14 @@ document.addEventListener('DOMContentLoaded', () => {
   $('btn-start').addEventListener('click', startSession);
 
   $('data-grid').addEventListener('click', handleToggleClick);
+  $('data-grid').addEventListener('click', handleErrorClick);
   $('btn-prompt').addEventListener('click', showPrompt);
   $('btn-finish').addEventListener('click', goToSR);
   $('btn-new-person').addEventListener('click', newPerson);
   $('btn-print').addEventListener('click', printData);
   $('btn-reset-trial').addEventListener('click', () => {
     resetSession();
-    if (state.promptMethod === 'mtl') autoShowForContext();
+    if (state.promptMethod === 'mtl' && state.autoPromptEnabled) autoShowForContext();
   });
 
   $('photo-search-form').addEventListener('submit', handlePhotoSearch);
@@ -3302,9 +3437,33 @@ document.addEventListener('DOMContentLoaded', () => {
     showScreen('start');
   });
 
-  // Delay checkbox (MtL only)
-  $('mtl-delay-checkbox').addEventListener('change', e => {
-    state.mtlDelay = e.target.checked;
+  // Auto-prompt checkbox (MtL only)
+  $('auto-prompt-checkbox').addEventListener('change', e => {
+    state.autoPromptEnabled = e.target.checked;
+    const hide = !state.autoPromptEnabled;
+    $('prompt-delay-label').classList.toggle('hidden', hide);
+    $('prompt-delay-secs').classList.toggle('hidden', hide || !state.promptDelayEnabled);
+    $('prompt-delay-unit').classList.toggle('hidden', hide || !state.promptDelayEnabled);
+    if (!hide) autoShowForContext();
+    else { clearTimeout(autoShowTimeout); autoShowTimeout = null; displayPrompt(''); }
+  });
+
+  // Prompt delay checkbox (MtL + auto-prompt)
+  $('prompt-delay-checkbox').addEventListener('change', e => {
+    state.promptDelayEnabled = e.target.checked;
+    $('prompt-delay-secs').classList.toggle('hidden', !state.promptDelayEnabled);
+    $('prompt-delay-unit').classList.toggle('hidden', !state.promptDelayEnabled);
+  });
+
+  // Delay seconds input
+  $('prompt-delay-secs').addEventListener('change', e => {
+    const v = parseInt(e.target.value);
+    if (v >= 1 && v <= 60) state.promptDelaySecs = v;
+  });
+
+  // Persist prompts checkbox
+  $('persist-prompts-checkbox').addEventListener('change', e => {
+    state.persistPrompts = e.target.checked;
   });
 
   // Init level selector display (LtM is default so active-ltm class needed)

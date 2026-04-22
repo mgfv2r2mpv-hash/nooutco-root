@@ -34,11 +34,17 @@
  * POST /api/admin/ffc-remove-image (admin — delete a single FFC item image file)
  *   Body: { localPath }
  *
+ * POST /api/admin/update-facts    (admin — AI-expand FamousPersonGame people to 4 facts)
+ *   Body: {}
+ *   Reads FamousPersonGame/index.html from GitHub, calls Anthropic API for any person
+ *   with fewer than 4 facts, then commits the updated file back to main.
+ *
  * Required Worker Secrets (set in Cloudflare dashboard):
  *   GITHUB_TOKEN  — fine-grained PAT, Contents: Read & Write on the repo
  *   GITHUB_OWNER  — GitHub username or org
  *   GITHUB_REPO   — repository name
  *   ADMIN_SECRET  — password used by AdminTools/ImageManager
+ *   ANTHRO_KEY    — Anthropic API key (used by /api/admin/update-facts)
  *
  * Route (Cloudflare dashboard → Websites → games.nooutco.me → Worker Routes):
  *   games.nooutco.me/api/*  →  this Worker
@@ -89,6 +95,9 @@ export default {
     }
     if (request.method === 'POST' && pathname === '/api/admin/ping') {
       return handleAdminPing(request, env);
+    }
+    if (request.method === 'POST' && pathname === '/api/admin/update-facts') {
+      return handleAdminUpdateFacts(request, env);
     }
 
     return new Response('Not found', { status: 404 });
@@ -1023,6 +1032,224 @@ async function atomicFFCImageRemoveCommit(env, repoPath) {
   });
   const newCommit = await gh(env, 'POST', 'git/commits', {
     message: `Admin: remove FFC image ${repoPath}`,
+    tree:    newTree.sha,
+    parents: [headSha],
+  });
+
+  const refRes = await ghRaw(env, 'PATCH', 'git/refs/heads/main', { sha: newCommit.sha, force: false });
+  if (refRes.status === 422) throw new Error('CONFLICT');
+  if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
+}
+
+// ─── Admin: update-facts ─────────────────────────────────────────────────────
+
+const FPG_HTML_PATH  = 'FamousPersonGame/index.html';
+const FPG_TARGET     = 4;
+const FPG_BATCH_SIZE = 40;
+
+async function handleAdminUpdateFacts(request, env) {
+  const authErr = await requireAdmin(request, env);
+  if (authErr) return authErr;
+
+  if (!env.ANTHRO_KEY) {
+    return jsonError('ANTHRO_KEY environment variable not set on this Worker', 500);
+  }
+
+  // 1. Fetch current HTML from GitHub
+  let htmlContent;
+  try {
+    const fileData = await gh(env, 'GET', `contents/${FPG_HTML_PATH}`);
+    htmlContent = base64ToUtf8(fileData.content.replace(/\s/g, ''));
+  } catch (err) {
+    return jsonError(`Failed to fetch HTML from GitHub: ${err.message}`, 502);
+  }
+
+  // 2. Parse people; find who needs more facts
+  const people = fpgParsePeople(htmlContent);
+  const todo   = people.filter(p => p.facts.length < FPG_TARGET);
+
+  if (todo.length === 0) {
+    return json({ ok: true, message: 'All people already have 4 facts — nothing to do.', updated: 0 });
+  }
+
+  // 3. Generate facts in batches (Haiku has 8K output limit, 40 per batch is safe)
+  const newFactsMap = {}; // name → full [4] fact array
+  for (let i = 0; i < todo.length; i += FPG_BATCH_SIZE) {
+    const batch = todo.slice(i, i + FPG_BATCH_SIZE);
+    let batchResult;
+    try {
+      batchResult = await fpgGenerateFacts(env, batch);
+    } catch (err) {
+      return jsonError(`Anthropic API error (batch ${Math.floor(i / FPG_BATCH_SIZE) + 1}): ${err.message}`, 502);
+    }
+    for (const p of batch) {
+      const generated = batchResult[p.name];
+      if (Array.isArray(generated) && generated.length > 0) {
+        const need = FPG_TARGET - p.facts.length;
+        newFactsMap[p.name] = [...p.facts, ...generated.slice(0, need)];
+      }
+    }
+  }
+
+  // 4. Apply replacements in reverse offset order
+  const updates = people
+    .filter(p => newFactsMap[p.name])
+    .sort((a, b) => b.blockStart - a.blockStart);
+
+  let updated = htmlContent;
+  for (const p of updates) {
+    updated = updated.slice(0, p.blockStart) +
+              fpgBuildFactsBlock(newFactsMap[p.name]) +
+              updated.slice(p.blockEnd);
+  }
+
+  // 5. Commit back to GitHub
+  try {
+    await atomicFpgFactsCommit(env, updated, updates.length);
+  } catch (err) {
+    return jsonError(`GitHub commit failed: ${err.message}`, 502);
+  }
+
+  return json({ ok: true, message: `Updated ${updates.length} people. Deployment will follow shortly.`, updated: updates.length });
+}
+
+// ─── FPG parse / build helpers ────────────────────────────────────────────────
+
+function fpgLastMatch(reSource, str) {
+  const re = new RegExp(reSource, 'g');
+  let m, last = null;
+  while ((m = re.exec(str)) !== null) last = m[1];
+  return last;
+}
+
+function fpgExtractFacts(block) {
+  const m = block.match(/facts:\s*\[([\s\S]*?)\]/);
+  if (!m) return [];
+  const facts = [];
+  for (const line of m[1].split('\n')) {
+    const t = line.trim();
+    if (t.startsWith("'")) {
+      const content = t.endsWith("',") ? t.slice(1, -2) : t.slice(1, -1);
+      if (content) facts.push(content.replace(/\\'/g, "'"));
+    }
+  }
+  return facts;
+}
+
+function fpgEscapeJs(s) {
+  return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function fpgBuildFactsBlock(facts) {
+  const lines = ['    facts: ['];
+  for (const f of facts) lines.push(`      '${fpgEscapeJs(f)}',`);
+  lines.push('    ],');
+  return lines.join('\n');
+}
+
+function fpgParsePeople(html) {
+  const marker       = 'const PEOPLE = [\n';
+  const sectionStart = html.indexOf(marker) + marker.length;
+  const sectionEnd   = html.indexOf('\n];', sectionStart);
+  const section      = html.slice(sectionStart, sectionEnd);
+
+  const people   = [];
+  const factsRe  = /    facts: \[/g;
+  let fm;
+  while ((fm = factsRe.exec(section)) !== null) {
+    const factsOpen  = fm.index;
+    const closeMatch = /    \],/.exec(section.slice(factsOpen));
+    if (!closeMatch) continue;
+    const blockEndRel = factsOpen + closeMatch.index + closeMatch[0].length;
+
+    const preceding = section.slice(0, factsOpen);
+    const name  = fpgLastMatch("name:\\s*'([^']+)'",  preceding);
+    const years = fpgLastMatch("years:\\s*'([^']+)'", preceding);
+    const tag   = fpgLastMatch("tag:\\s*'([^']+)'",   preceding);
+    if (!name) continue;
+
+    people.push({
+      name,
+      years: years || '',
+      tag:   tag   || '',
+      facts: fpgExtractFacts(section.slice(factsOpen, blockEndRel)),
+      blockStart: sectionStart + factsOpen,
+      blockEnd:   sectionStart + blockEndRel,
+    });
+  }
+  return people;
+}
+
+async function fpgGenerateFacts(env, batch) {
+  const peopleList = batch.map(p => ({
+    name:             p.name,
+    ...(p.years && { years: p.years }),
+    ...(p.tag   && { tag:   p.tag   }),
+    existing_facts:   p.facts,
+    new_facts_needed: FPG_TARGET - p.facts.length,
+  }));
+
+  const systemPrompt =
+    'You write short biographical facts for a memory-support conversation game ' +
+    'used in speech therapy with older adults.\n' +
+    'Rules:\n' +
+    '• 1–2 sentences, about 15–25 words per fact\n' +
+    '• Simple, clear language (suitable for adults with mild cognitive impairment)\n' +
+    '• Factually accurate\n' +
+    '• Distinct from any existing facts listed — do not repeat them\n' +
+    '• Positive tone — nothing disturbing, violent, or overly sad\n' +
+    '• Cover variety: personal background, personality, lesser-known achievement, or cultural legacy\n\n' +
+    'Return ONLY a valid JSON object. Keys are the person names exactly as given. ' +
+    'Values are arrays of exactly new_facts_needed new fact strings.\n' +
+    'No markdown. No preamble.\n' +
+    'Example: {"Marie Curie": ["She was born in Warsaw, Poland in 1867.", "She loved long walks in nature."]}';
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type':      'application/json',
+      'x-api-key':         env.ANTHRO_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model:      'claude-haiku-4-5',
+      max_tokens: 8000,
+      system:     systemPrompt,
+      messages:   [{ role: 'user', content: JSON.stringify(peopleList, null, 2) }],
+    }),
+  });
+
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`${res.status}: ${txt.slice(0, 300)}`);
+  }
+
+  const data = await res.json();
+  let raw = data.content[0].text.trim();
+  raw = raw.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
+  return JSON.parse(raw);
+}
+
+// ─── Atomic commit: FPG HTML update ──────────────────────────────────────────
+
+async function atomicFpgFactsCommit(env, htmlContent, count) {
+  const refData    = await gh(env, 'GET', 'git/ref/heads/main');
+  const headSha    = refData.object.sha;
+  const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
+  const treeSha    = commitData.tree.sha;
+
+  const htmlBlob = await gh(env, 'POST', 'git/blobs', {
+    content:  utf8ToBase64(htmlContent),
+    encoding: 'base64',
+  });
+
+  const newTree = await gh(env, 'POST', 'git/trees', {
+    base_tree: treeSha,
+    tree: [{ path: FPG_HTML_PATH, mode: '100644', type: 'blob', sha: htmlBlob.sha }],
+  });
+
+  const newCommit = await gh(env, 'POST', 'git/commits', {
+    message: `Admin: expand Famous Person facts to 4 per person (${count} updated)`,
     tree:    newTree.sha,
     parents: [headSha],
   });
