@@ -1,0 +1,105 @@
+{
+  "generated": "2026-04-23T00:00:00.000Z",
+  "categories": [
+    "animal_sounds",
+    "children_songs",
+    "common_phrases"
+  ],
+  "categoryItems": {
+    "animal_sounds": ["dog", "cat", "cow", "duck"],
+    "children_songs": ["twinkle_star", "itsy_bitsy", "row_boat"],
+    "common_phrases": ["peanut_butter_and", "ready_set", "red_light_green"]
+  },
+  "items": [
+    {
+      "id": "dog",
+      "label": "woof",
+      "carriers": [
+        "A dog says...",
+        "What does a dog say?"
+      ],
+      "images": []
+    },
+    {
+      "id": "cat",
+      "label": "meow",
+      "carriers": [
+        "A cat says...",
+        "What does a cat say?"
+      ],
+      "images": []
+    },
+    {
+      "id": "cow",
+      "label": "moo",
+      "carriers": [
+        "A cow says...",
+        "What does a cow say?"
+      ],
+      "images": []
+    },
+    {
+      "id": "duck",
+      "label": "quack",
+      "carriers": [
+        "A duck says...",
+        "What does a duck say?"
+      ],
+      "images": []
+    },
+    {
+      "id": "twinkle_star",
+      "label": "little star",
+      "carriers": [
+        "Twinkle, twinkle...",
+        "Twinkle, twinkle, ..."
+      ],
+      "images": []
+    },
+    {
+      "id": "itsy_bitsy",
+      "label": "spider",
+      "carriers": [
+        "The itsy bitsy...",
+        "Itsy bitsy ..."
+      ],
+      "images": []
+    },
+    {
+      "id": "row_boat",
+      "label": "your boat",
+      "carriers": [
+        "Row, row, row...",
+        "Row, row, row ..."
+      ],
+      "images": []
+    },
+    {
+      "id": "peanut_butter_and",
+      "label": "jelly",
+      "carriers": [
+        "Peanut butter and...",
+        "Peanut butter and ..."
+      ],
+      "images": []
+    },
+    {
+      "id": "ready_set",
+      "label": "go",
+      "carriers": [
+        "Ready, set...",
+        "On your mark, get set, ..."
+      ],
+      "images": []
+    },
+    {
+      "id": "red_light_green",
+      "label": "light",
+      "carriers": [
+        "Red light, green...",
+        "Red light, green ..."
+      ],
+      "images": []
+    }
+  ]
+}
