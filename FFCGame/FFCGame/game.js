@@ -46,6 +46,10 @@ const state = {
   mode:              'feature',
   tag:               '',
   arraySize:         4,
+  representErrors:   true,
+  errorless:         false,
+  noErrorAnim:       false,
+  extraPanelOpen:    false,
   promptPersists:    false,
   promptStyle:       'sparkle',
   autoPromptEnabled: false,
@@ -136,6 +140,12 @@ const el = {
   btnTargetsAll:       $('btn-targets-all'),
   btnTargetsNone:      $('btn-targets-none'),
   btnTargetsClose:     $('btn-targets-close'),
+  chkRepresentErrors:  $('chk-represent-errors'),
+  chkErrorless:        $('chk-errorless'),
+  chkNoErrorAnim:      $('chk-no-error-anim'),
+  btnExtraToggle:      $('btn-extra-toggle'),
+  extraPanel:          $('extra-panel'),
+  btnExtraClose:       $('btn-extra-close'),
 };
 
 // ── Boot ───────────────────────────────────────────────────────────
@@ -155,6 +165,9 @@ function loadSettings() {
   state.mode              = s.mode              ?? 'feature';
   state.tag               = legacyTag          ?? '';
   state.arraySize         = s.arraySize         ?? 4;
+  state.representErrors   = s.representErrors   ?? true;
+  state.errorless         = s.errorless         ?? false;
+  state.noErrorAnim       = s.noErrorAnim       ?? false;
   state.promptPersists    = s.promptPersists    ?? false;
   state.promptStyle       = s.promptStyle       ?? 'sparkle';
   state.autoPromptEnabled = s.autoPromptEnabled ?? false;
@@ -165,9 +178,12 @@ function loadSettings() {
     s.targetFilters || {}
   );
 
-  el.selMode.value          = state.mode;
-  el.inpSize.value          = state.arraySize;
-  el.chkPersists.checked    = state.promptPersists;
+  el.selMode.value              = state.mode;
+  el.inpSize.value              = state.arraySize;
+  el.chkRepresentErrors.checked = state.representErrors;
+  el.chkErrorless.checked       = state.errorless;
+  el.chkNoErrorAnim.checked     = state.noErrorAnim;
+  el.chkPersists.checked        = state.promptPersists;
   el.selPromptStyle.value   = state.promptStyle;
   el.chkAutoPrompt.checked  = state.autoPromptEnabled;
   el.chkPromptDelay.checked = state.promptDelay;
@@ -182,6 +198,9 @@ function saveSettings() {
     mode:              state.mode,
     tag:               state.tag,
     arraySize:         state.arraySize,
+    representErrors:   state.representErrors,
+    errorless:         state.errorless,
+    noErrorAnim:       state.noErrorAnim,
     promptPersists:    state.promptPersists,
     promptStyle:       state.promptStyle,
     autoPromptEnabled: state.autoPromptEnabled,
@@ -355,6 +374,12 @@ function bindEvents() {
     state.promptDelaySecs = parseInt(el.selPromptDelay.value);
     saveSettings();
   });
+
+  el.btnExtraToggle.addEventListener('click', toggleExtraPanel);
+  el.btnExtraClose .addEventListener('click', () => setExtraPanelOpen(false));
+  el.chkRepresentErrors.addEventListener('change', () => { state.representErrors = el.chkRepresentErrors.checked; saveSettings(); });
+  el.chkErrorless.addEventListener('change',       () => { state.errorless       = el.chkErrorless.checked;       saveSettings(); });
+  el.chkNoErrorAnim.addEventListener('change',     () => { state.noErrorAnim     = el.chkNoErrorAnim.checked;     saveSettings(); });
 
   el.btnStart.addEventListener('click',  startGame);
   el.btnPrompt.addEventListener('click', onPromptButton);
@@ -667,6 +692,7 @@ function onTileClick(idx) {
   if (idx === state.correctIdx) {
     onCorrectClick(wrapper, tile);
   } else {
+    if (state.errorless) return;
     onWrongClick(wrapper);
   }
 }
@@ -706,6 +732,9 @@ function onCorrectClick(wrapper, tile) {
     outcome,
     settingsKey: [
       state.mode, state.targetTag, state.arraySize,
+      state.representErrors   ? 1 : 0,
+      state.errorless         ? 1 : 0,
+      state.noErrorAnim       ? 1 : 0,
       state.autoPromptEnabled ? 1 : 0,
       state.promptPersists    ? 1 : 0,
       state.promptStyle,
@@ -738,10 +767,12 @@ function onWrongClick(wrapper) {
   clearTimeout(state.autoPromptHandle);
   state.autoPromptHandle = null;
 
-  wrapper.classList.add('jiggle', 'flash-red');
-  const cleanup = () => wrapper.classList.remove('jiggle', 'flash-red');
-  wrapper.addEventListener('animationend', cleanup, { once: true });
-  setTimeout(() => wrapper.classList.remove('jiggle', 'flash-red'), 600);
+  if (!state.noErrorAnim) {
+    wrapper.classList.add('jiggle', 'flash-red');
+    const cleanup = () => wrapper.classList.remove('jiggle', 'flash-red');
+    wrapper.addEventListener('animationend', cleanup, { once: true });
+    setTimeout(() => wrapper.classList.remove('jiggle', 'flash-red'), 600);
+  }
 
   state.autoPrompted = true;
   applyPrompt();
@@ -810,7 +841,7 @@ function onNextClick() {
   removeNextBtn();
   if (state.timerAutoPaused) { state.timerAutoPaused = false; startTimer(); }
   const last = state.sessionData[state.sessionData.length - 1];
-  const needsRepeat = last && (last.outcome === 'Error' || last.outcome === 'Repeat Error');
+  const needsRepeat = state.representErrors && last && (last.outcome === 'Error' || last.outcome === 'Repeat Error');
   beginTrial(needsRepeat);
 }
 
@@ -1039,4 +1070,16 @@ function updateTargetsCount() {
   const selected = filter.length ? filter.length : relevant.length;
   el.targetsCount.textContent = `${selected} of ${relevant.length}`;
   el.btnTargetsToggle.classList.toggle('is-filtered', filter.length > 0);
+}
+
+// ── Extra settings panel ───────────────────────────────────────────
+
+function toggleExtraPanel() { setExtraPanelOpen(!state.extraPanelOpen); }
+
+function setExtraPanelOpen(open) {
+  state.extraPanelOpen = open;
+  el.btnExtraToggle.setAttribute('aria-expanded', String(open));
+  el.btnExtraToggle.classList.toggle('is-open', open);
+  if (open) { el.extraPanel.removeAttribute('hidden'); }
+  else       { el.extraPanel.setAttribute('hidden', ''); }
 }

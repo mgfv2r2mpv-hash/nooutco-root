@@ -93,6 +93,15 @@ export default {
     if (request.method === 'POST' && pathname === '/api/admin/ffc-remove-image') {
       return handleFFCRemoveImage(request, env);
     }
+    if (request.method === 'POST' && pathname === '/api/admin/intraverbal-save-items') {
+      return handleIVSaveItems(request, env);
+    }
+    if (request.method === 'POST' && pathname === '/api/admin/intraverbal-save-image') {
+      return handleIVSaveImage(request, env);
+    }
+    if (request.method === 'POST' && pathname === '/api/admin/intraverbal-remove-image') {
+      return handleIVRemoveImage(request, env);
+    }
     if (request.method === 'POST' && pathname === '/api/admin/ping') {
       return handleAdminPing(request, env);
     }
@@ -1032,6 +1041,186 @@ async function atomicFFCImageRemoveCommit(env, repoPath) {
   });
   const newCommit = await gh(env, 'POST', 'git/commits', {
     message: `Admin: remove FFC image ${repoPath}`,
+    tree:    newTree.sha,
+    parents: [headSha],
+  });
+
+  const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${env.GITHUB_BRANCH || 'main'}`, { sha: newCommit.sha, force: false });
+  if (refRes.status === 422) throw new Error('CONFLICT');
+  if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
+}
+
+// ─── Intraverbal: save items.json ────────────────────────────────────────────
+
+async function handleIVSaveItems(request, env) {
+  const authErr = await requireAdmin(request, env);
+  if (authErr) return authErr;
+
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonError('Invalid JSON body', 400); }
+
+  const { items: itemsObj } = body;
+  if (!itemsObj || typeof itemsObj !== 'object') {
+    return jsonError('items object is required', 400);
+  }
+
+  itemsObj.generated = new Date().toISOString();
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await atomicIVSaveCommit(env, itemsObj);
+      break;
+    } catch (err) {
+      if (err.message === 'CONFLICT' && attempt < 2) continue;
+      return jsonError('GitHub commit failed: ' + err.message, 502);
+    }
+  }
+
+  return json({ ok: true, generated: itemsObj.generated });
+}
+
+// ─── Intraverbal: save image ──────────────────────────────────────────────────
+
+async function handleIVSaveImage(request, env) {
+  const authErr = await requireAdmin(request, env);
+  if (authErr) return authErr;
+
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonError('Invalid JSON body', 400); }
+
+  const { id, filename, imageUrl } = body;
+  if (!id || !filename || !imageUrl) {
+    return jsonError('id, filename, and imageUrl are required', 400);
+  }
+
+  let imgBytes, ext;
+  try {
+    ({ bytes: imgBytes, ext } = await downloadImage(imageUrl));
+  } catch (err) {
+    return jsonError('Failed to download image: ' + err.message, 502);
+  }
+
+  const base         = filename.replace(/\.[^.]+$/, '');
+  const saveFilename = `${base}.${ext}`;
+  const repoPath     = `IntraverbalGame/IntraverbalGame/_Resources/_imgSource/items/${saveFilename}`;
+  const localPath    = repoPath;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await atomicIVImageCommit(env, repoPath, imgBytes, saveFilename);
+      break;
+    } catch (err) {
+      if (err.message === 'CONFLICT' && attempt < 2) continue;
+      return jsonError('GitHub commit failed: ' + err.message, 502);
+    }
+  }
+
+  return json({ ok: true, localPath });
+}
+
+// ─── Intraverbal: remove image ────────────────────────────────────────────────
+
+async function handleIVRemoveImage(request, env) {
+  const authErr = await requireAdmin(request, env);
+  if (authErr) return authErr;
+
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonError('Invalid JSON body', 400); }
+
+  const { localPath } = body;
+  if (!localPath) return jsonError('localPath is required', 400);
+
+  const repoPath = localPath.startsWith('IntraverbalGame/IntraverbalGame/_Resources/')
+    ? localPath
+    : `IntraverbalGame/IntraverbalGame/_Resources/_imgSource/items/${localPath.split('/').pop()}`;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await atomicIVImageRemoveCommit(env, repoPath);
+      break;
+    } catch (err) {
+      if (err.message === 'CONFLICT' && attempt < 2) continue;
+      return jsonError('GitHub commit failed: ' + err.message, 502);
+    }
+  }
+
+  return json({ ok: true });
+}
+
+// ─── Atomic commit: Intraverbal items.json save ───────────────────────────────
+
+async function atomicIVSaveCommit(env, itemsObj) {
+  const refData    = await gh(env, 'GET', `git/ref/heads/${env.GITHUB_BRANCH || 'main'}`);
+  const headSha    = refData.object.sha;
+  const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
+  const treeSha    = commitData.tree.sha;
+
+  const itemsRepoPath = 'IntraverbalGame/IntraverbalGame/items.json';
+  const itemsBlob = await gh(env, 'POST', 'git/blobs', {
+    content:  utf8ToBase64(JSON.stringify(itemsObj, null, 2) + '\n'),
+    encoding: 'base64',
+  });
+
+  const newTree   = await gh(env, 'POST', 'git/trees', {
+    base_tree: treeSha,
+    tree: [{ path: itemsRepoPath, mode: '100644', type: 'blob', sha: itemsBlob.sha }],
+  });
+  const newCommit = await gh(env, 'POST', 'git/commits', {
+    message: 'Admin: update Intraverbal items.json',
+    tree:    newTree.sha,
+    parents: [headSha],
+  });
+
+  const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${env.GITHUB_BRANCH || 'main'}`, { sha: newCommit.sha, force: false });
+  if (refRes.status === 422) throw new Error('CONFLICT');
+  if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
+}
+
+// ─── Atomic commit: Intraverbal image save ────────────────────────────────────
+
+async function atomicIVImageCommit(env, repoPath, imgBytes, filename) {
+  const refData    = await gh(env, 'GET', `git/ref/heads/${env.GITHUB_BRANCH || 'main'}`);
+  const headSha    = refData.object.sha;
+  const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
+  const treeSha    = commitData.tree.sha;
+
+  const imgBlob = await gh(env, 'POST', 'git/blobs', {
+    content:  arrayBufferToBase64(imgBytes),
+    encoding: 'base64',
+  });
+
+  const newTree   = await gh(env, 'POST', 'git/trees', {
+    base_tree: treeSha,
+    tree: [{ path: repoPath, mode: '100644', type: 'blob', sha: imgBlob.sha }],
+  });
+  const newCommit = await gh(env, 'POST', 'git/commits', {
+    message: `Admin: save Intraverbal image ${filename}`,
+    tree:    newTree.sha,
+    parents: [headSha],
+  });
+
+  const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${env.GITHUB_BRANCH || 'main'}`, { sha: newCommit.sha, force: false });
+  if (refRes.status === 422) throw new Error('CONFLICT');
+  if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
+}
+
+// ─── Atomic commit: Intraverbal image remove ──────────────────────────────────
+
+async function atomicIVImageRemoveCommit(env, repoPath) {
+  const refData    = await gh(env, 'GET', `git/ref/heads/${env.GITHUB_BRANCH || 'main'}`);
+  const headSha    = refData.object.sha;
+  const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
+  const treeSha    = commitData.tree.sha;
+
+  const newTree   = await gh(env, 'POST', 'git/trees', {
+    base_tree: treeSha,
+    tree: [{ path: repoPath, mode: '100644', type: 'blob', sha: null }],
+  });
+  const newCommit = await gh(env, 'POST', 'git/commits', {
+    message: `Admin: remove Intraverbal image ${repoPath}`,
     tree:    newTree.sha,
     parents: [headSha],
   });

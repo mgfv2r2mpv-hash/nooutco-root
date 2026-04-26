@@ -1,7 +1,9 @@
 'use strict';
 
 /* ══════════════════════════════════════════════════════════════════
-   IDENTICAL MATCHING GAME
+   INTRAVERBAL GAME
+   Category-based fill-in-the-blank / carrier phrase game.
+   items.json schema: categories[], categoryItems{}, items[{id,label,carriers[],images[]}]
    ══════════════════════════════════════════════════════════════════ */
 
 // ── Utilities ──────────────────────────────────────────────────────
@@ -18,16 +20,19 @@ function pickRandom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+function sample(arr, n) {
+  return shuffle([...arr]).slice(0, n);
+}
+
 // ── State ──────────────────────────────────────────────────────────
 
 const state = {
-  // Persisted settings
-  topic:             '',
+  // Settings
+  category:          '',
   arraySize:         4,
   representErrors:   true,
   errorless:         false,
   noErrorAnim:       false,
-  extraPanelOpen:    false,
   crossCategory:     false,
   promptPersists:    false,
   promptStyle:       'sparkle',
@@ -35,35 +40,44 @@ const state = {
   promptDelay:       false,
   promptDelaySecs:   3,
 
-  // Discovered folders & images
-  manifest:     null,
-  topicFolders: [],
-  topicImages:  [],
-  otherImages:  [],
+  // Per-category target filters: { [cat]: itemId[] } — empty = no filter
+  targetFilters: {},
 
-  // Session — persists across topic changes; cleared by Clear Data
+  // Data
+  categories:    [],
+  categoryItems: {},
+  items:         [],
+  itemById:      {},
+
+  // Session
   active:      false,
   sessionData: [],
   trialNum:    0,
 
   // Current trial
-  sampleSrc:    '',
-  tileImages:   [],
-  correctIdx:   0,
-  trialErrors:  0,
-  trialStart:   0,
-  prompted:     false,
-  autoPrompted: false,
+  targetItem:    null,
+  carrierText:   '',
+  tileItems:     [],
+  correctIdx:    0,
+  trialErrors:   0,
+  trialStart:    0,
+  prompted:      false,
+  autoPrompted:  false,
   isRepeatTrial: false,
 
-  // Shuffled position deck
-  posDeck: [],
+  // Decks
+  posDeck:     [],
+  targetDecks: {},  // keyed by category
+
+  // Panel state
+  targetPanelOpen: false,
+  extraPanelOpen:  false,
 
   // Timer
   timerSecs:       0,
   timerRunning:    false,
   timerHandle:     null,
-  timerAutoPaused: false,  // true when paused automatically on correct tap
+  timerAutoPaused: false,
 
   // Prompt timeouts
   promptHandle:     null,
@@ -75,34 +89,44 @@ const state = {
 const $ = id => document.getElementById(id);
 
 const el = {
-  timerDisplay:   $('timer-display'),
-  btnTimerToggle: $('btn-timer-toggle'),
-  btnTimerReset:  $('btn-timer-reset'),
-  selTopic:       $('sel-topic'),
-  inpSize:        $('inp-size'),
-  chkCross:       $('chk-cross'),
-  chkPersists:    $('chk-persists'),
-  selPromptStyle: $('sel-prompt-style'),
-  chkAutoPrompt:  $('chk-auto-prompt'),
-  chkPromptDelay: $('chk-prompt-delay'),
-  selPromptDelay: $('sel-prompt-delay'),
-  btnStart:       $('btn-start'),
-  gameArea:       $('game-area'),
-  sampleImg:      $('sample-img'),
-  compGrid:       $('comp-grid'),
-  compSection:    $('comp-section'),
-  btnPrompt:      $('btn-prompt'),
-  btnPrint:       $('btn-print'),
-  btnClearData:   $('btn-clear-data'),
+  timerDisplay:       $('timer-display'),
+  btnTimerToggle:     $('btn-timer-toggle'),
+  btnTimerReset:      $('btn-timer-reset'),
+  selCategory:        $('sel-category'),
+  inpSize:            $('inp-size'),
+  btnStart:           $('btn-start'),
+  gameArea:           $('game-area'),
+  sampleWord:         $('sample-word'),
+  compGrid:           $('comp-grid'),
+  compSection:        $('comp-section'),
+  btnPrompt:          $('btn-prompt'),
+  btnPrint:           $('btn-print'),
+  btnClearData:       $('btn-clear-data'),
   resultsBody:        $('results-body'),
   printMeta:          $('print-meta'),
   printSummary:       $('print-summary'),
-  chkRepresentErrors: $('chk-represent-errors'),
-  chkErrorless:       $('chk-errorless'),
-  chkNoErrorAnim:     $('chk-no-error-anim'),
+  // Target panel
+  btnTargetsToggle:   $('btn-targets-toggle'),
+  targetsCount:       $('targets-count'),
+  targetPanel:        $('target-panel'),
+  targetPanelBody:    $('target-panel-body'),
+  targetPanelCatLbl:  $('target-panel-category-label'),
+  btnTargetsAll:      $('btn-targets-all'),
+  btnTargetsNone:     $('btn-targets-none'),
+  btnTargetsClose:    $('btn-targets-close'),
+  // Extra panel
   btnExtraToggle:     $('btn-extra-toggle'),
   extraPanel:         $('extra-panel'),
   btnExtraClose:      $('btn-extra-close'),
+  chkRepresentErrors: $('chk-represent-errors'),
+  chkErrorless:       $('chk-errorless'),
+  chkNoErrorAnim:     $('chk-no-error-anim'),
+  chkCross:           $('chk-cross'),
+  chkPersists:        $('chk-persists'),
+  chkAutoPrompt:      $('chk-auto-prompt'),
+  chkPromptDelay:     $('chk-prompt-delay'),
+  selPromptDelay:     $('sel-prompt-delay'),
+  selPromptStyle:     $('sel-prompt-style'),
 };
 
 // ── Boot ───────────────────────────────────────────────────────────
@@ -110,14 +134,14 @@ const el = {
 document.addEventListener('DOMContentLoaded', async () => {
   loadSettings();
   bindEvents();
-  await discoverTopics();
+  await loadItems();
 });
 
 // ── Settings (localStorage) ────────────────────────────────────────
 
 function loadSettings() {
-  const s = JSON.parse(localStorage.getItem('mgSettings') || '{}');
-  state.topic             = s.topic             ?? '';
+  const s = JSON.parse(localStorage.getItem('ivgSettings') || '{}');
+  state.category          = s.category          ?? '';
   state.arraySize         = s.arraySize         ?? 4;
   state.representErrors   = s.representErrors   ?? true;
   state.errorless         = s.errorless         ?? false;
@@ -128,26 +152,27 @@ function loadSettings() {
   state.autoPromptEnabled = s.autoPromptEnabled ?? false;
   state.promptDelay       = s.promptDelay       ?? false;
   state.promptDelaySecs   = s.promptDelaySecs   ?? 3;
+  state.targetFilters     = (s.targetFilters && typeof s.targetFilters === 'object')
+    ? s.targetFilters : {};
 
-  el.inpSize.value              = state.arraySize;
-  el.chkRepresentErrors.checked = state.representErrors;
-  el.chkErrorless.checked       = state.errorless;
-  el.chkNoErrorAnim.checked     = state.noErrorAnim;
-  el.chkCross.checked           = state.crossCategory;
-  el.chkPersists.checked    = state.promptPersists;
-  el.selPromptStyle.value   = state.promptStyle;
-  el.chkAutoPrompt.checked  = state.autoPromptEnabled;
-  el.chkPromptDelay.checked = state.promptDelay;
-  el.selPromptDelay.value   = state.promptDelaySecs;
+  el.inpSize.value                = state.arraySize;
+  el.chkRepresentErrors.checked   = state.representErrors;
+  el.chkErrorless.checked         = state.errorless;
+  el.chkNoErrorAnim.checked       = state.noErrorAnim;
+  el.chkCross.checked             = state.crossCategory;
+  el.chkPersists.checked          = state.promptPersists;
+  el.selPromptStyle.value         = state.promptStyle;
+  el.chkAutoPrompt.checked        = state.autoPromptEnabled;
+  el.chkPromptDelay.checked       = state.promptDelay;
+  el.selPromptDelay.value         = state.promptDelaySecs;
 
-  // Sync enabled state of delay controls
   el.chkPromptDelay.disabled = !state.autoPromptEnabled;
   el.selPromptDelay.disabled = !state.autoPromptEnabled || !state.promptDelay;
 }
 
 function saveSettings() {
-  localStorage.setItem('mgSettings', JSON.stringify({
-    topic:             state.topic,
+  localStorage.setItem('ivgSettings', JSON.stringify({
+    category:          state.category,
     arraySize:         state.arraySize,
     representErrors:   state.representErrors,
     errorless:         state.errorless,
@@ -158,179 +183,149 @@ function saveSettings() {
     autoPromptEnabled: state.autoPromptEnabled,
     promptDelay:       state.promptDelay,
     promptDelaySecs:   state.promptDelaySecs,
+    targetFilters:     state.targetFilters,
   }));
 }
 
-// ── Image discovery ────────────────────────────────────────────────
+// ── Data loading ───────────────────────────────────────────────────
 
-const IMAGE_EXT = /\.(jpe?g|png|gif|webp|avif|svg|bmp)$/i;
-
-async function fetchDirImages(folder) {
+async function loadItems() {
   try {
-    const r = await fetch(`./${folder}/`);
-    if (!r.ok) return [];
-    const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
-    return [...doc.querySelectorAll('a[href]')]
-      .map(a => a.getAttribute('href'))
-      .filter(h => IMAGE_EXT.test(h) && !h.includes('/'))
-      .map(h => `${folder}/${h}`);
-  } catch {
-    return [];
+    const r = await fetch('./items.json');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    state.categories    = data.categories    || [];
+    state.categoryItems = data.categoryItems || {};
+    state.items         = data.items         || [];
+    state.itemById      = {};
+    state.items.forEach(it => { state.itemById[it.id] = it; });
+  } catch (e) {
+    console.error('Could not load items.json:', e);
+    state.categories    = [];
+    state.categoryItems = {};
+    state.items         = [];
+    state.itemById      = {};
+  }
+  pruneStaleTargetFilters();
+  populateCategoryDropdown();
+  updateTargetsCount();
+}
+
+function pruneStaleTargetFilters() {
+  const known = new Set(state.items.map(it => it.id));
+  for (const cat of Object.keys(state.targetFilters)) {
+    state.targetFilters[cat] = (state.targetFilters[cat] || []).filter(id => known.has(id));
   }
 }
 
-async function discoverTopics() {
-  let dirs = [];
+// ── Category dropdown ──────────────────────────────────────────────
 
-  try {
-    const r = await fetch('./manifest.json');
-    if (r.ok) {
-      const data = await r.json();
-      if (Array.isArray(data.folders) && data.folders.length) {
-        state.manifest = data;
-        dirs = data.folders;
-        console.info(`manifest.json loaded (generated ${data.generated})`);
-      }
-    }
-  } catch { /* fall through */ }
-
-  if (!dirs.length) {
-    try {
-      const r = await fetch('./');
-      if (!r.ok) throw new Error();
-      const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
-      dirs = [...doc.querySelectorAll('a[href]')]
-        .map(a => a.getAttribute('href'))
-        .filter(h => /^T_[^/]+\/?$/.test(h))
-        .map(h => h.replace(/\/$/, ''));
-    } catch {
-      console.warn('Could not discover topic folders.');
-    }
-  }
-
-  state.topicFolders = dirs;
-  buildTopicDropdown(dirs);
-
-  if (dirs.length) {
-    const saved = dirs.includes(state.topic) ? state.topic : dirs[0];
-    state.topic = saved;
-    el.selTopic.value = saved;
-    await refreshImages();
-  }
-}
-
-// Display name overrides for folder names that contain abbreviations or proper nouns
-const TOPIC_DISPLAY_NAMES = {
-  'T_pbs_characters': 'PBS Characters',
-};
-
-function buildTopicDropdown(dirs) {
-  el.selTopic.innerHTML = '';
-  if (!dirs.length) {
-    el.selTopic.innerHTML = '<option value="">-- No T_* folders found --</option>';
-    return;
-  }
-  dirs.forEach(d => {
+function populateCategoryDropdown() {
+  el.selCategory.innerHTML = '';
+  if (!state.categories.length) {
     const o = document.createElement('option');
-    o.value = d;
-    o.textContent = TOPIC_DISPLAY_NAMES[d] ||
-      d.slice(2).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    el.selTopic.appendChild(o);
-  });
-}
-
-async function refreshImages() {
-  if (!state.topic) { state.topicImages = []; state.otherImages = []; return; }
-
-  if (state.manifest) {
-    state.topicImages = state.manifest.images[state.topic] || [];
-    state.otherImages = (state.crossCategory && state.topicFolders.length > 1)
-      ? state.topicFolders
-          .filter(f => f !== state.topic)
-          .flatMap(f => state.manifest.images[f] || [])
-      : [];
+    o.value = '';
+    o.textContent = '(no categories)';
+    el.selCategory.appendChild(o);
+    state.category = '';
     return;
   }
-
-  state.topicImages = await fetchDirImages(state.topic);
-  if (state.crossCategory && state.topicFolders.length > 1) {
-    const others = state.topicFolders.filter(f => f !== state.topic);
-    state.otherImages = (await Promise.all(others.map(fetchDirImages))).flat();
+  state.categories.forEach(cat => {
+    const o = document.createElement('option');
+    o.value = cat;
+    o.textContent = catLabel(cat);
+    el.selCategory.appendChild(o);
+  });
+  if (state.category && state.categories.includes(state.category)) {
+    el.selCategory.value = state.category;
   } else {
-    state.otherImages = [];
+    state.category = state.categories[0];
+    el.selCategory.value = state.category;
   }
+}
+
+function catLabel(cat) {
+  return cat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
 // ── Event bindings ─────────────────────────────────────────────────
 
 function bindEvents() {
   el.btnTimerToggle.addEventListener('click', toggleTimer);
-  el.btnTimerReset.addEventListener('click',  resetTimer);
+  el.btnTimerReset .addEventListener('click', resetTimer);
 
-  el.selTopic.addEventListener('change', async () => {
-    state.topic = el.selTopic.value;
+  el.selCategory.addEventListener('change', () => {
+    state.category    = el.selCategory.value;
+    state.targetDecks = {};
     saveSettings();
-    await refreshImages();
+    renderTargetPanel();
+    updateTargetsCount();
   });
 
-  el.inpSize.addEventListener('change', async () => {
-    const v = Math.min(10, Math.max(1, parseInt(el.inpSize.value) || 4));
-    state.arraySize = v;
+  el.inpSize.addEventListener('change', () => {
+    const v = Math.min(10, Math.max(2, parseInt(el.inpSize.value) || 4));
+    state.arraySize  = v;
     el.inpSize.value = v;
-    state.posDeck = [];
+    state.posDeck    = [];
     saveSettings();
-    await refreshImages();
   });
 
-  el.chkCross.addEventListener('change', async () => {
+  // Target panel
+  el.btnTargetsToggle.addEventListener('click', toggleTargetPanel);
+  el.btnTargetsClose .addEventListener('click', () => setTargetPanelOpen(false));
+  el.btnTargetsAll   .addEventListener('click', () => setAllTargets(true));
+  el.btnTargetsNone  .addEventListener('click', () => setAllTargets(false));
+
+  // Extra panel
+  el.btnExtraToggle.addEventListener('click', toggleExtraPanel);
+  el.btnExtraClose .addEventListener('click', () => setExtraPanelOpen(false));
+
+  el.chkRepresentErrors.addEventListener('change', () => {
+    state.representErrors = el.chkRepresentErrors.checked;
+    saveSettings();
+  });
+  el.chkErrorless.addEventListener('change', () => {
+    state.errorless = el.chkErrorless.checked;
+    saveSettings();
+  });
+  el.chkNoErrorAnim.addEventListener('change', () => {
+    state.noErrorAnim = el.chkNoErrorAnim.checked;
+    saveSettings();
+  });
+  el.chkCross.addEventListener('change', () => {
     state.crossCategory = el.chkCross.checked;
     saveSettings();
-    await refreshImages();
   });
-
   el.chkPersists.addEventListener('change', () => {
     state.promptPersists = el.chkPersists.checked;
     saveSettings();
   });
-
   el.selPromptStyle.addEventListener('change', () => {
     state.promptStyle = el.selPromptStyle.value;
     saveSettings();
   });
-
   el.chkAutoPrompt.addEventListener('change', () => {
     state.autoPromptEnabled = el.chkAutoPrompt.checked;
     el.chkPromptDelay.disabled = !state.autoPromptEnabled;
     el.selPromptDelay.disabled = !state.autoPromptEnabled || !state.promptDelay;
     saveSettings();
   });
-
   el.chkPromptDelay.addEventListener('change', () => {
     state.promptDelay = el.chkPromptDelay.checked;
     el.selPromptDelay.disabled = !state.promptDelay;
     saveSettings();
   });
-
   el.selPromptDelay.addEventListener('change', () => {
     state.promptDelaySecs = parseInt(el.selPromptDelay.value);
     saveSettings();
   });
 
-  el.btnExtraToggle.addEventListener('click', toggleExtraPanel);
-  el.btnExtraClose .addEventListener('click', () => setExtraPanelOpen(false));
-  el.chkRepresentErrors.addEventListener('change', () => { state.representErrors = el.chkRepresentErrors.checked; saveSettings(); });
-  el.chkErrorless.addEventListener('change',       () => { state.errorless       = el.chkErrorless.checked;       saveSettings(); });
-  el.chkNoErrorAnim.addEventListener('change',     () => { state.noErrorAnim     = el.chkNoErrorAnim.checked;     saveSettings(); });
-
-  el.btnStart.addEventListener('click',  startGame);
-  el.btnPrompt.addEventListener('click', onPromptButton);
-  el.btnPrint.addEventListener('click',  printData);
+  el.btnStart    .addEventListener('click', startGame);
+  el.btnPrompt   .addEventListener('click', onPromptButton);
+  el.btnPrint    .addEventListener('click', printData);
 
   el.btnClearData.addEventListener('click', () => {
-    if (!state.sessionData.length) {
-      alert('No data to clear.');
-      return;
-    }
+    if (!state.sessionData.length) { alert('No data to clear.'); return; }
     if (!confirm('Clear all trial data? This cannot be undone.')) return;
     state.sessionData = [];
     state.trialNum    = 0;
@@ -358,7 +353,7 @@ function toggleTimer() { state.timerRunning ? pauseTimer() : startTimer(); }
 
 function resetTimer() {
   pauseTimer();
-  state.timerSecs = 0;
+  state.timerSecs  = 0;
   state.trialStart = Date.now();
   renderTimer();
 }
@@ -378,21 +373,94 @@ function nextPosition() {
   return state.posDeck.pop();
 }
 
+// ── Target deck — cycle without repeats ───────────────────────────
+
+function nextTarget(cat, pool) {
+  if (!pool.length) return null;
+  let deck = state.targetDecks[cat];
+  if (!deck || !deck.length) {
+    deck = shuffle([...pool]);
+    state.targetDecks[cat] = deck;
+  }
+  return deck.pop();
+}
+
+// ── Items helpers ──────────────────────────────────────────────────
+
+function eligibleTargetItems(cat = state.category) {
+  const catItemIds = state.categoryItems[cat] || [];
+  const filter     = state.targetFilters[cat] || [];
+  const filterSet  = filter.length ? new Set(filter) : null;
+  return catItemIds
+    .map(id => state.itemById[id])
+    .filter(it => it && (!filterSet || filterSet.has(it.id)));
+}
+
+function itemsForCategory(cat = state.category) {
+  return (state.categoryItems[cat] || [])
+    .map(id => state.itemById[id])
+    .filter(Boolean);
+}
+
+// ── Trial builder ──────────────────────────────────────────────────
+
+function buildTrialData(cat, n, forcedTarget = null, forcedCarrier = null) {
+  const eligible = eligibleTargetItems(cat);
+  if (!eligible.length) return null;
+
+  const target = forcedTarget ?? nextTarget(cat, eligible);
+  if (!target) return null;
+
+  const carrier = forcedCarrier
+    ?? ((target.carriers && target.carriers.length)
+        ? pickRandom(target.carriers)
+        : target.label);
+
+  // Within-category distractors first; fall back to all items when pool is
+  // too small OR crossCategory is enabled.
+  const sameCatItems = (state.categoryItems[cat] || [])
+    .map(id => state.itemById[id])
+    .filter(it => it && it.id !== target.id);
+
+  const distractorPool =
+    (!state.crossCategory && sameCatItems.length >= n - 1)
+      ? sameCatItems
+      : state.items.filter(it => it.id !== target.id);
+
+  if (!distractorPool.length) return null;
+
+  const distractors = sample(distractorPool, n - 1);
+  while (distractors.length < n - 1) distractors.push(pickRandom(distractorPool));
+
+  const correctPos = nextPosition();
+  const tileItems  = new Array(n);
+  let di = 0;
+  for (let i = 0; i < n; i++) {
+    tileItems[i] = (i === correctPos) ? target : distractors[di++];
+  }
+
+  return { targetItem: target, carrierText: carrier, tileItems, correctIdx: correctPos };
+}
+
 // ── Game flow ──────────────────────────────────────────────────────
 
 function startGame() {
-  if (!state.topic) {
-    alert('Please select a topic from the dropdown first.');
+  if (!state.items.length) {
+    alert('No items loaded. Check that items.json is present and reload.');
     return;
   }
-  if (!state.topicImages.length) {
-    alert(`No images found in ${state.topic}/.\nAdd image files to that folder and reload the page.`);
+  if (!state.category) {
+    alert('No category selected.');
+    return;
+  }
+  if (!eligibleTargetItems().length) {
+    alert('No eligible targets for this category. Check your target filter.');
     return;
   }
 
-  // sessionData and trialNum persist; only reset active-play state
-  state.active     = true;
-  state.posDeck    = [];
+  state.active      = true;
+  state.posDeck     = [];
+  state.targetDecks = {};
 
   el.gameArea.removeAttribute('hidden');
   el.btnPrompt.removeAttribute('hidden');
@@ -403,34 +471,51 @@ function startGame() {
   beginTrial();
 }
 
-/**
- * Begin a new trial.
- * keepSample=true → repeat trial (same sample, tiles reshuffled, auto-prompted).
- */
-function beginTrial(keepSample = false) {
+function beginTrial(keepTarget = false) {
   state.trialNum++;
   state.trialErrors   = 0;
   state.prompted      = false;
   state.autoPrompted  = false;
-  state.isRepeatTrial = keepSample;
+  state.isRepeatTrial = keepTarget;
   state.trialStart    = Date.now();
 
-  // Cancel any pending delayed auto-prompt from the previous trial
   clearTimeout(state.autoPromptHandle);
   state.autoPromptHandle = null;
-
   clearPrompt();
-  buildTrial(keepSample);
+
+  if (!keepTarget) {
+    const cat = state.category;
+    if (!cat) { alert('No category selected.'); return; }
+    const trial = buildTrialData(cat, state.arraySize);
+    if (!trial) {
+      alert(`Not enough items to build a trial for "${catLabel(cat)}".`);
+      return;
+    }
+    state.targetItem  = trial.targetItem;
+    state.carrierText = trial.carrierText;
+    state.tileItems   = trial.tileItems;
+    state.correctIdx  = trial.correctIdx;
+  } else {
+    // Error correction: same target + same carrier; rebuild positions/distractors.
+    const trial = buildTrialData(
+      state.category, state.arraySize,
+      state.targetItem, state.carrierText
+    );
+    if (trial) {
+      state.tileItems  = trial.tileItems;
+      state.correctIdx = trial.correctIdx;
+    }
+  }
+
   renderTrial();
 
-  if (keepSample) {
-    // Repeat trial: always auto-prompt immediately
+  if (keepTarget) {
     state.autoPrompted = true;
     setTimeout(applyPrompt, 80);
   } else if (state.autoPromptEnabled) {
     if (state.promptDelay) {
       state.autoPromptHandle = setTimeout(() => {
-        state.autoPrompted = true;
+        state.autoPrompted     = true;
         state.autoPromptHandle = null;
         applyPrompt();
       }, state.promptDelaySecs * 1000);
@@ -441,59 +526,52 @@ function beginTrial(keepSample = false) {
   }
 }
 
-function buildTrial(keepSample) {
-  const n = state.arraySize;
-
-  if (!keepSample) {
-    state.sampleSrc = pickRandom(state.topicImages);
-  }
-
-  const basePool = state.crossCategory
-    ? [...state.topicImages, ...state.otherImages]
-    : [...state.topicImages];
-
-  const distractorPool = shuffle(basePool.filter(src => src !== state.sampleSrc));
-  const getDistractor  = i =>
-    distractorPool.length ? distractorPool[i % distractorPool.length] : state.sampleSrc;
-
-  const correctPos = nextPosition();
-  state.correctIdx = correctPos;
-  state.tileImages = new Array(n);
-  let di = 0;
-
-  for (let i = 0; i < n; i++) {
-    state.tileImages[i] = (i === correctPos) ? state.sampleSrc : getDistractor(di++);
-  }
-}
-
 function renderTrial() {
-  el.sampleImg.src = state.sampleSrc;
-  el.sampleImg.alt = 'Sample stimulus';
+  el.sampleWord.textContent = state.carrierText;
+  fitSampleWord();
 
-  const cols = gridCols(state.arraySize);
-  el.compGrid.style.setProperty('--grid-cols', cols);
+  const cols   = gridCols(state.arraySize);
+  const tileSz = getComputedStyle(document.documentElement)
+    .getPropertyValue('--tile-sz').trim() || '160px';
+  el.compGrid.style.gridTemplateColumns = `repeat(${cols}, ${tileSz})`;
   el.compGrid.innerHTML = '';
 
-  state.tileImages.forEach((src, idx) => {
+  state.tileItems.forEach((item, idx) => {
     const wrapper = document.createElement('div');
-    wrapper.className = 'tile-wrapper';
+    wrapper.className   = 'tile-wrapper';
     wrapper.dataset.index = idx;
 
     const tile = document.createElement('div');
-    tile.className = 'tile';
+    tile.className    = 'tile';
     tile.dataset.index = idx;
 
     const front = document.createElement('div');
     front.className = 'tile-face tile-front';
-    const img = document.createElement('img');
-    img.src = src;
-    img.alt = `Choice ${idx + 1}`;
-    front.appendChild(img);
 
-    // Back face — content (text + colour class) set at correct-click time
-    const back = document.createElement('div');
+    if (item.images && item.images.length) {
+      const imgSrc = pickRandom(item.images);
+      const img    = document.createElement('img');
+      img.src = `_Resources/_imgSource/items/${imgSrc}`;
+      img.alt = item.label;
+      const text = document.createElement('span');
+      text.className = 'tile-text';
+      img.addEventListener('error', () => {
+        img.remove();
+        text.classList.add('tile-text-visible');
+        text.textContent = item.label;
+      });
+      front.appendChild(img);
+      front.appendChild(text);
+    } else {
+      const text = document.createElement('span');
+      text.className   = 'tile-text tile-text-visible';
+      text.textContent = item.label;
+      front.appendChild(text);
+    }
+
+    const back   = document.createElement('div');
     back.className = 'tile-face tile-back';
-    const okSpan = document.createElement('span');
+    const okSpan   = document.createElement('span');
     okSpan.className = 'ok-text';
     back.appendChild(okSpan);
 
@@ -504,6 +582,20 @@ function renderTrial() {
     wrapper.addEventListener('click', () => onTileClick(idx));
     el.compGrid.appendChild(wrapper);
   });
+}
+
+function fitSampleWord() {
+  const card = document.getElementById('sample-card');
+  const word = el.sampleWord;
+  const cs   = getComputedStyle(card);
+  const maxW = card.clientWidth  - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const maxH = card.clientHeight - parseFloat(cs.paddingTop)  - parseFloat(cs.paddingBottom);
+  let px = 36;
+  word.style.fontSize = px + 'px';
+  while (px > 10 && (word.scrollWidth > maxW || word.scrollHeight > maxH)) {
+    px -= 1;
+    word.style.fontSize = px + 'px';
+  }
 }
 
 function gridCols(n) {
@@ -522,7 +614,7 @@ function onTileClick(idx) {
   if (idx === state.correctIdx) {
     onCorrectClick(wrapper, tile);
   } else {
-    if (state.errorless) return;
+    if (state.errorless) return;  // silently ignore wrong taps
     onWrongClick(wrapper);
   }
 }
@@ -530,16 +622,13 @@ function onTileClick(idx) {
 function onCorrectClick(wrapper, tile) {
   disableAllTiles();
   clearPrompt();
-  // Pause timer while the learner waits for Next — only if it was running
   if (state.timerRunning) { pauseTimer(); state.timerAutoPaused = true; }
 
-  // Cancel delayed auto-prompt if it hadn't fired yet
   clearTimeout(state.autoPromptHandle);
   state.autoPromptHandle = null;
 
   const elapsed = ((Date.now() - state.trialStart) / 1000).toFixed(1);
 
-  // Determine outcome (5 possibilities)
   let outcome;
   if (state.isRepeatTrial) {
     outcome = state.trialErrors > 0 ? 'Repeat Error' : 'Correction';
@@ -553,17 +642,18 @@ function onCorrectClick(wrapper, tile) {
 
   state.sessionData.push({
     trial:     state.trialNum,
-    topic:     state.topic.slice(2).replace(/_/g, ' '),
-    sample:    state.sampleSrc.split('/').pop(),
+    category:  state.category,
+    carrier:   state.carrierText,
+    target:    state.targetItem.label,
     arraySize: state.arraySize,
     errors:    state.trialErrors,
     prompted:  state.prompted || state.autoPrompted,
     promptDelaySecs: (!state.isRepeatTrial && state.autoPromptEnabled && state.promptDelay)
       ? state.promptDelaySecs : null,
-    time:      elapsed,
+    time: elapsed,
     outcome,
     settingsKey: [
-      state.topic, state.arraySize,
+      state.category, state.arraySize,
       state.representErrors   ? 1 : 0,
       state.errorless         ? 1 : 0,
       state.noErrorAnim       ? 1 : 0,
@@ -574,16 +664,15 @@ function onCorrectClick(wrapper, tile) {
     ].join('|'),
   });
 
-  // Style back face before flip
   const backFace = tile.querySelector('.tile-back');
   const okSpan   = backFace.querySelector('.ok-text');
   if (outcome === 'Correct') {
     backFace.classList.add('back-correct');
     okSpan.textContent = '✓';
   } else if (outcome === 'Prompted' || outcome === 'Correction') {
-    okSpan.textContent = '✓';   // neutral grey + checkmark
+    okSpan.textContent = '✓';
   } else {
-    okSpan.textContent = 'OK';  // Error or Repeat Error
+    okSpan.textContent = 'OK';
   }
 
   wrapper.classList.add('expanding');
@@ -597,7 +686,6 @@ function onCorrectClick(wrapper, tile) {
 function onWrongClick(wrapper) {
   state.trialErrors++;
 
-  // Cancel any pending auto-prompt delay; wrong click triggers immediate prompt
   clearTimeout(state.autoPromptHandle);
   state.autoPromptHandle = null;
 
@@ -613,8 +701,10 @@ function onWrongClick(wrapper) {
 }
 
 function disableAllTiles() {
-  el.compGrid.querySelectorAll('.tile').forEach(t => t.classList.add('tile-disabled'));
-  el.compGrid.querySelectorAll('.tile-wrapper').forEach(w => { w.style.pointerEvents = 'none'; });
+  el.compGrid.querySelectorAll('.tile')
+    .forEach(t => t.classList.add('tile-disabled'));
+  el.compGrid.querySelectorAll('.tile-wrapper')
+    .forEach(w => { w.style.pointerEvents = 'none'; });
 }
 
 function getWrapper(idx) {
@@ -673,10 +763,10 @@ function removeNextBtn() {
 
 function onNextClick() {
   removeNextBtn();
-  // Resume timer only if we auto-paused it (not if staff had paused manually)
   if (state.timerAutoPaused) { state.timerAutoPaused = false; startTimer(); }
   const last = state.sessionData[state.sessionData.length - 1];
-  const needsRepeat = state.representErrors && last && (last.outcome === 'Error' || last.outcome === 'Repeat Error');
+  const needsRepeat = state.representErrors
+    && last && (last.outcome === 'Error' || last.outcome === 'Repeat Error');
   beginTrial(needsRepeat);
 }
 
@@ -702,15 +792,16 @@ function printData() {
       : d.outcome === 'Correction' ? 'outcome-correction'
       : 'outcome-ok';
 
-    const tr = document.createElement('tr');
+    const tr   = document.createElement('tr');
     const prev = state.sessionData[i - 1];
     const settingsChanged = prev && d.settingsKey !== prev.settingsKey;
     if (settingsChanged) tr.classList.add('settings-changed');
     const b = settingsChanged ? ' style="font-weight:bold"' : '';
     tr.innerHTML =
       `<td${b}>${d.trial}</td>` +
-      `<td${b}>${d.topic}</td>` +
-      `<td${b}>${d.sample}</td>` +
+      `<td${b}>${catLabel(d.category)}</td>` +
+      `<td${b}>${d.carrier}</td>` +
+      `<td${b}>${d.target}</td>` +
       `<td${b}>${d.arraySize}</td>` +
       `<td${b}>${d.errors}</td>` +
       `<td${b}>${d.prompted ? 'Yes' : 'No'}</td>` +
@@ -750,6 +841,93 @@ function setExtraPanelOpen(open) {
   state.extraPanelOpen = open;
   el.btnExtraToggle.setAttribute('aria-expanded', String(open));
   el.btnExtraToggle.classList.toggle('is-open', open);
-  if (open) { el.extraPanel.removeAttribute('hidden'); }
-  else       { el.extraPanel.setAttribute('hidden', ''); }
+  if (open) {
+    el.extraPanel.removeAttribute('hidden');
+  } else {
+    el.extraPanel.setAttribute('hidden', '');
+  }
+}
+
+// ── Target picker panel ────────────────────────────────────────────
+
+function toggleTargetPanel() { setTargetPanelOpen(!state.targetPanelOpen); }
+
+function setTargetPanelOpen(open) {
+  state.targetPanelOpen = open;
+  el.btnTargetsToggle.setAttribute('aria-expanded', String(open));
+  el.btnTargetsToggle.classList.toggle('is-open', open);
+  if (open) {
+    el.targetPanel.removeAttribute('hidden');
+    renderTargetPanel();
+  } else {
+    el.targetPanel.setAttribute('hidden', '');
+  }
+}
+
+function renderTargetPanel() {
+  el.targetPanelCatLbl.textContent = catLabel(state.category);
+  const body = el.targetPanelBody;
+  body.innerHTML = '';
+
+  const catItems = itemsForCategory();
+  if (!catItems.length) {
+    body.innerHTML = '<p class="target-panel-empty">No items in this category.</p>';
+    return;
+  }
+
+  const filter = new Set(state.targetFilters[state.category] || []);
+
+  catItems.forEach(it => {
+    const row = document.createElement('label');
+    row.className = 'target-row';
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.dataset.itemId = it.id;
+    cb.checked = !filter.size || filter.has(it.id);
+    cb.addEventListener('change', onTargetCheckboxChange);
+
+    const label = document.createElement('span');
+    label.className  = 'target-row-label';
+    label.textContent = it.label;
+
+    const sub = document.createElement('span');
+    sub.className   = 'target-row-sub';
+    sub.textContent = it.carriers && it.carriers.length ? it.carriers[0] : '';
+
+    row.appendChild(cb);
+    row.appendChild(label);
+    row.appendChild(sub);
+    body.appendChild(row);
+  });
+}
+
+function targetCheckboxes() {
+  return el.targetPanelBody.querySelectorAll('input[type="checkbox"][data-item-id]');
+}
+
+function onTargetCheckboxChange() {
+  const catItems  = itemsForCategory();
+  const checkedIds = new Set();
+  targetCheckboxes().forEach(cb => {
+    if (cb.checked) checkedIds.add(cb.dataset.itemId);
+  });
+  const allChecked = catItems.every(it => checkedIds.has(it.id));
+  state.targetFilters[state.category] = allChecked ? [] : [...checkedIds];
+  state.targetDecks = {};
+  saveSettings();
+  updateTargetsCount();
+}
+
+function setAllTargets(checked) {
+  targetCheckboxes().forEach(cb => { cb.checked = checked; });
+  onTargetCheckboxChange();
+}
+
+function updateTargetsCount() {
+  const catItems = itemsForCategory();
+  const filter   = state.targetFilters[state.category] || [];
+  const selected = filter.length ? filter.length : catItems.length;
+  el.targetsCount.textContent = `${selected} of ${catItems.length}`;
+  el.btnTargetsToggle.classList.toggle('is-filtered', filter.length > 0);
 }

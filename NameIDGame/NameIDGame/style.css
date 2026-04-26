@@ -272,6 +272,64 @@ body {
 .target-thumb-label-visible { display: inline-block; }
 .target-row-label { flex: 1 1 auto; }
 
+/* ── Extra settings panel ──────────────────────────────────────────── */
+.btn-extra {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #2d3748;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-extra:hover   { background: #edf2f7; }
+.btn-extra.is-open { background: #e6f0fb; border-color: #4299e1; }
+
+#extra-panel {
+  background: #fafbfd;
+  border-bottom: 2px solid #dde3ed;
+  padding: 10px 20px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+.extra-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.extra-panel-title {
+  font-weight: 700;
+  color: #2d3748;
+  font-size: 0.9rem;
+}
+.btn-extra-close {
+  border: none !important;
+  background: transparent !important;
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+.extra-panel-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px 20px;
+  align-items: center;
+}
+.extra-panel-body .checkbox-label { padding: 4px 0; }
+.extra-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 /* ── Game area ─────────────────────────────────────────────────────── */
 #game-area {
   flex: 1;
