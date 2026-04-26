@@ -319,6 +319,7 @@ const GAMES = [
   { id: 'NameIDGame',       label: 'Receptive Words Game', type: 'manifest' },
   { id: 'FamousPersonGame', label: 'Famous Person Game', type: 'fpg'     },
   { id: 'FFCGame',          label: 'FFC Game',          type: 'ffc'      },
+  { id: 'IntraverbalGame',  label: 'Intraverbal Game',  type: 'intraverbal' },
 ];
 
 const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
@@ -435,6 +436,10 @@ async function loadGameData(game) {
     const res = await fetch('../../FFCGame/FFCGame/items.json');
     const data = await res.json();
     gameData[game.id] = { ffcData: data };
+  } else if (game.type === 'intraverbal') {
+    const res = await fetch('../../IntraverbalGame/IntraverbalGame/items.json');
+    const data = await res.json();
+    gameData[game.id] = { ivData: data };
   } else {
     const res = await fetch('../../FamousPersonGame/index.html');
     const html = await res.text();
@@ -487,12 +492,13 @@ function getFolders() {
   if (!d) return [];
   if (activeGame.type === 'fpg') return ['images'];
   if (activeGame.type === 'ffc') return ['__all__', ...(d.ffcData.vocab.groups || [])];
+  if (activeGame.type === 'intraverbal') return ['__all__', ...(d.ivData.categories || [])];
   return d.manifest.folders || [];
 }
 
 function getArchivedFolders() {
   const d = gameData[activeGame.id];
-  if (!d || activeGame.type === 'fpg' || activeGame.type === 'ffc') return [];
+  if (!d || activeGame.type === 'fpg' || activeGame.type === 'ffc' || activeGame.type === 'intraverbal') return [];
   const a = d.manifest.archived;
   if (!a) return [];
   return Array.isArray(a) ? a : Object.keys(a);
@@ -517,6 +523,8 @@ function renderFolderBar() {
     btn.className = 'folder-tab' + (activeFolder === f ? ' active' : '');
     if (f === '__all__') {
       btn.textContent = 'All Items';
+    } else if (activeGame.type === 'intraverbal') {
+      btn.textContent = f.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     } else {
       btn.textContent = f.replace(/^T_/, '').replace(/_/g, ' ');
     }
@@ -612,6 +620,24 @@ function renderContent() {
 
     const addForm = buildAddForm('ffc');
     content.appendChild(addForm);
+  } else if (activeGame.type === 'intraverbal') {
+    const bar = document.createElement('div');
+    bar.className = 'folder-action-bar';
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn-add-image';
+    addBtn.textContent = '+ Add Image';
+    addBtn.addEventListener('click', () => toggleAddForm(addForm, addBtn));
+    bar.appendChild(addBtn);
+    const managerLink = document.createElement('a');
+    managerLink.href = '../IntraverbalManager/';
+    managerLink.target = '_blank';
+    managerLink.style.cssText = 'font-size:.78rem;color:#93c5fd;text-decoration:none;margin-left:.5rem;';
+    managerLink.textContent = '🏷️ Edit in Intraverbal Manager ↗';
+    bar.appendChild(managerLink);
+    content.appendChild(bar);
+
+    const addForm = buildAddForm('intraverbal');
+    content.appendChild(addForm);
   }
 
   const grid = document.createElement('div');
@@ -636,6 +662,22 @@ function getImagesForFolder(folder) {
     return filtered.map(it => ({ type: 'ffc', item: it }));
   }
 
+  if (activeGame.type === 'intraverbal') {
+    const items = d.ivData.items || [];
+    let filtered = items;
+    if (folder !== '__all__') {
+      const itemIds = d.ivData.categoryItems[folder] || [];
+      filtered = items.filter(it => itemIds.includes(it.id));
+    }
+    const images = [];
+    filtered.forEach(item => {
+      (item.images || []).forEach((img, idx) => {
+        images.push({ type: 'intraverbal', item, imagePath: img, imageIdx: idx });
+      });
+    });
+    return images;
+  }
+
   if (activeGame.type === 'fpg') {
     return d.fpgPeople.map(p => ({ type: 'fpg', person: p }));
   }
@@ -658,6 +700,12 @@ function buildCard(item) {
     img.alt = it.label;
     label.textContent = it.label;
     card.addEventListener('click', () => openDetail({ type: 'ffc', item: it }));
+  } else if (item.type === 'intraverbal') {
+    const it = item.item;
+    img.src = '../../IntraverbalGame/IntraverbalGame/_Resources/_imgSource/items/' + item.imagePath;
+    img.alt = it.label;
+    label.textContent = it.label;
+    card.addEventListener('click', () => openDetail({ type: 'intraverbal', item: it, imageIdx: item.imageIdx }));
   } else if (item.type === 'fpg') {
     const p = item.person;
     const isCDN = p.img && p.img.startsWith('https://');
@@ -899,6 +947,93 @@ function buildAddForm(formType) {
           setStatus(status, 'ok', 'Saved! Use FFC Manager to add tags.');
           const grid = document.getElementById('image-grid');
           if (grid) grid.appendChild(buildCard({ type: 'ffc', item: newItem }));
+        } else {
+          const j = await itemsRes.json().catch(() => ({}));
+          setStatus(status, 'err', j.error || 'Error ' + itemsRes.status);
+        }
+      } catch (err) {
+        setStatus(status, 'err', err.message || 'Network error');
+      }
+    });
+    const urlInput = form.querySelector('[name=url]');
+    const wikiQueryInput = form.querySelector('[name=wiki-query]');
+    const wikiResults = form.querySelector('.form-wiki-results');
+    form.querySelector('.form-wiki-btn').addEventListener('click', () =>
+      runWikiSearch(wikiQueryInput.value.trim(), urlInput, wikiResults));
+    wikiQueryInput.addEventListener('keydown', e => { if (e.key === 'Enter') form.querySelector('.form-wiki-btn').click(); });
+    form.querySelector('.form-google-btn').addEventListener('click', () =>
+      window.open('https://www.google.com/search?q=' + encodeURIComponent(wikiQueryInput.value.trim()) + '&tbm=isch', '_blank'));
+  } else if (formType === 'intraverbal') {
+    form.innerHTML = `
+      <h3>Add Image to Intraverbal Item</h3>
+      <label>Item ID</label>
+      <input type="text" list="iv-item-list" name="item-id" placeholder="dog, cat, etc.">
+      <datalist id="iv-item-list"></datalist>
+      <label>Image URL</label>
+      <input type="url" name="url" placeholder="https://…">
+      <label>Search Wikimedia</label>
+      <div class="detail-row">
+        <input type="text" name="wiki-query" placeholder="Search query…">
+        <button class="btn-sm btn-gray form-wiki-btn">Search</button>
+        <button class="btn-sm btn-amber form-google-btn">Google ↗</button>
+      </div>
+      <div class="wiki-results form-wiki-results"></div>
+      <div class="form-row">
+        <button class="btn-submit">Add Image</button>
+        <button class="btn-cancel-form">Cancel</button>
+      </div>
+      <div class="status-msg" id="add-form-status"></div>
+    `;
+    const updateItemList = () => {
+      const datalist = form.querySelector('#iv-item-list');
+      datalist.innerHTML = '';
+      const d = gameData['IntraverbalGame']?.ivData;
+      if (d && d.items) {
+        d.items.forEach(item => {
+          const opt = document.createElement('option');
+          opt.value = item.id;
+          opt.textContent = item.label;
+          datalist.appendChild(opt);
+        });
+      }
+    };
+    updateItemList();
+    form.querySelector('.btn-submit').addEventListener('click', async () => {
+      const itemId = form.querySelector('[name=item-id]').value.trim();
+      const url = form.querySelector('[name=url]').value.trim();
+      const status = form.querySelector('#add-form-status');
+      if (!itemId || !url) { setStatus(status, 'err', 'Fill in all fields.'); return; }
+      const d = gameData['IntraverbalGame']?.ivData;
+      const item = (d?.items || []).find(i => i.id === itemId);
+      if (!item) { setStatus(status, 'err', 'Item not found.'); return; }
+
+      setStatus(status, '', 'Saving image…');
+      try {
+        const imgRes = await adminPost('intraverbal-save-image', { id: itemId, imageUrl: url });
+        if (!imgRes) { setStatus(status, '', ''); return; }
+        if (!imgRes.ok) {
+          const j = await imgRes.json().catch(() => ({}));
+          setStatus(status, 'err', j.error || 'Image error ' + imgRes.status);
+          return;
+        }
+        setStatus(status, '', 'Saving item record…');
+        const j = await imgRes.json().catch(() => ({}));
+        if (j.filename) {
+          if (!item.images) item.images = [];
+          item.images.push(j.filename);
+        }
+        const itemsRes = await adminPost('intraverbal-save-items', { items: d });
+        if (!itemsRes) { setStatus(status, '', ''); return; }
+        if (itemsRes.ok) {
+          setStatus(status, 'ok', 'Saved!');
+          form.querySelector('[name=item-id]').value = '';
+          form.querySelector('[name=url]').value = '';
+          const grid = document.getElementById('image-grid');
+          if (grid) {
+            (item.images || []).forEach((img, idx) => {
+              grid.appendChild(buildCard({ type: 'intraverbal', item, imagePath: img, imageIdx: idx }));
+            });
+          }
         } else {
           const j = await itemsRes.json().catch(() => ({}));
           setStatus(status, 'err', j.error || 'Error ' + itemsRes.status);
@@ -1253,6 +1388,10 @@ function openDetail(ctx) {
     hint.textContent = '(item label shown to learners)';
     dpDisplayNameInput.placeholder = 'e.g. Pencil';
     dpDisplayNameInput.value = ctx.item.label;
+  } else if (ctx.type === 'intraverbal') {
+    hint.textContent = '(item label shown to learners)';
+    dpDisplayNameInput.placeholder = 'e.g. woof';
+    dpDisplayNameInput.value = ctx.item.label;
   } else if (ctx.type === 'fpg') {
     hint.textContent = '(person\'s name shown to learners)';
     dpDisplayNameInput.placeholder = 'e.g. Albert Einstein';
@@ -1264,6 +1403,17 @@ function openDetail(ctx) {
     dpThumb.src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + it.img;
     dpFilename.textContent = it.label;
     dpSub.textContent = 'id: ' + it.id + '  |  groups: ' + (it.groups || []).join(', ');
+    dpWikiInput.value = it.label;
+  } else if (ctx.type === 'intraverbal') {
+    const it = ctx.item;
+    const img = it.images && it.images[ctx.imageIdx];
+    if (img) {
+      dpThumb.src = '../../IntraverbalGame/IntraverbalGame/_Resources/_imgSource/items/' + img;
+    } else {
+      dpThumb.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect fill="%23333" width="100" height="100"/%3E%3C/svg%3E';
+    }
+    dpFilename.textContent = img || 'Image ' + (ctx.imageIdx + 1);
+    dpSub.textContent = 'id: ' + it.id + '  |  item: ' + it.label;
     dpWikiInput.value = it.label;
   } else if (ctx.type === 'fpg') {
     const p = ctx.person;
@@ -1301,6 +1451,9 @@ dpSaveBtn.addEventListener('click', async () => {
   if (ctx.type === 'ffc') {
     body = { id: ctx.item.id, filename: ctx.item.img, imageUrl: url };
     endpoint = 'ffc-save-image';
+  } else if (ctx.type === 'intraverbal') {
+    body = { id: ctx.item.id, imageUrl: url };
+    endpoint = 'intraverbal-save-image';
   } else if (ctx.type === 'fpg') {
     const p = ctx.person;
     body = { game: 'FamousPersonGame', folder: 'images', filename: p.img.split('/').pop(), imageUrl: url, personName: p.name };
@@ -1320,6 +1473,13 @@ dpSaveBtn.addEventListener('click', async () => {
         dpThumb.src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + ctx.item.img;
         const d = gameData['FFCGame'].ffcData;
         const saveRes = await adminPost('ffc-save-items', { items: d });
+        setStatus(dpSaveStatus, saveRes && saveRes.ok ? 'ok' : 'err',
+          saveRes && saveRes.ok ? 'Saved!' : 'Image saved but record update failed');
+      } else if (ctx.type === 'intraverbal' && j.filename) {
+        ctx.item.images[ctx.imageIdx] = j.filename;
+        dpThumb.src = '../../IntraverbalGame/IntraverbalGame/_Resources/_imgSource/items/' + j.filename;
+        const d = gameData['IntraverbalGame'].ivData;
+        const saveRes = await adminPost('intraverbal-save-items', { items: d });
         setStatus(dpSaveStatus, saveRes && saveRes.ok ? 'ok' : 'err',
           saveRes && saveRes.ok ? 'Saved!' : 'Image saved but record update failed');
       } else {
@@ -1409,6 +1569,19 @@ dpDisplayNameSaveBtn.addEventListener('click', async () => {
         const j = await res.json().catch(() => ({}));
         setStatus(dpDisplayNameStatus, 'err', j.error || 'Error ' + res.status);
       }
+    } else if (ctx.type === 'intraverbal') {
+      if (!displayName) { setStatus(dpDisplayNameStatus, 'err', 'Label cannot be empty.'); return; }
+      res = await adminPost('save-display-name', { game: 'IntraverbalGame', itemId: ctx.item.id, displayName });
+      if (detailContext !== ctx) return;
+      if (!res) { setStatus(dpDisplayNameStatus, '', ''); return; }
+      if (res.ok) {
+        ctx.item.label = displayName;
+        dpFilename.textContent = displayName;
+        setStatus(dpDisplayNameStatus, 'ok', 'Saved.');
+      } else {
+        const j = await res.json().catch(() => ({}));
+        setStatus(dpDisplayNameStatus, 'err', j.error || 'Error ' + res.status);
+      }
     } else if (ctx.type === 'fpg') {
       if (!displayName) { setStatus(dpDisplayNameStatus, 'err', 'Name cannot be empty.'); return; }
       const oldName = ctx.person.name;
@@ -1459,6 +1632,37 @@ dpRemoveBtn.addEventListener('click', async () => {
       // Remove item record regardless of image result
       d.items = d.items.filter(i => i.id !== it.id);
       const itemsRes = await adminPost('ffc-save-items', { items: d });
+      if (!itemsRes) { setStatus(dpRemoveStatus, '', ''); return; }
+      if (itemsRes.ok) {
+        setStatus(dpRemoveStatus, 'ok', 'Removed.');
+        const grid = document.getElementById('image-grid');
+        if (grid) {
+          grid.querySelectorAll('.img-card').forEach(card => {
+            if (card.querySelector('img')?.alt === it.label) card.remove();
+          });
+        }
+        setTimeout(closeDetail, 800);
+      } else {
+        const j = await itemsRes.json().catch(() => ({}));
+        setStatus(dpRemoveStatus, 'err', j.error || 'Error ' + itemsRes.status);
+      }
+    } catch (err) {
+      setStatus(dpRemoveStatus, 'err', err.message || 'Network error');
+    }
+    return;
+  }
+
+  if (detailContext.type === 'intraverbal') {
+    const it = detailContext.item;
+    const d  = gameData['IntraverbalGame'].ivData;
+    setStatus(dpRemoveStatus, '', 'Removing…');
+    try {
+      const img = it.images[detailContext.imageIdx];
+      if (img) {
+        await adminPost('intraverbal-remove-image', { filename: img });
+      }
+      it.images.splice(detailContext.imageIdx, 1);
+      const itemsRes = await adminPost('intraverbal-save-items', { items: d });
       if (!itemsRes) { setStatus(dpRemoveStatus, '', ''); return; }
       if (itemsRes.ok) {
         setStatus(dpRemoveStatus, 'ok', 'Removed.');
