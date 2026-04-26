@@ -49,8 +49,46 @@
       <button id="btn-prompt" class="btn-prompt" hidden>Prompt</button>
     </div>
 
+    <div class="setting-group setting-record">
+      <button type="button" id="btn-record-toggle" class="btn-record" hidden title="Record audio">
+        🎙️ Record
+      </button>
+    </div>
+
     <button id="btn-start" class="btn-primary">Start</button>
   </div>
+
+  <!-- ── Recording modal (hidden until toggled) ───────────────────── -->
+  <section id="record-modal" hidden>
+    <div class="record-modal-content">
+      <div class="record-header">
+        <span class="record-title">Record Audio</span>
+        <button type="button" id="btn-record-close" class="btn-record-close" title="Close">×</button>
+      </div>
+      <div class="record-body">
+        <div class="record-item">
+          <div class="record-label">Carrier Phrase</div>
+          <div class="record-text" id="record-carrier-text"></div>
+          <div class="record-controls">
+            <button id="btn-record-carrier" class="btn-record-action">Record</button>
+            <button id="btn-play-carrier" class="btn-record-action" disabled>Play</button>
+            <button id="btn-clear-carrier" class="btn-record-action" disabled>Clear</button>
+          </div>
+        </div>
+        <div class="record-item">
+          <div class="record-label">Target Answer</div>
+          <div class="record-text" id="record-target-text"></div>
+          <div class="record-controls">
+            <button id="btn-record-target" class="btn-record-action">Record</button>
+            <button id="btn-play-target" class="btn-record-action" disabled>Play</button>
+            <button id="btn-clear-target" class="btn-record-action" disabled>Clear</button>
+          </div>
+        </div>
+        <div class="record-status" id="record-status"></div>
+        <button id="btn-save-recordings" class="btn-record-save">Save Recordings</button>
+      </div>
+    </div>
+  </section>
 
   <!-- ── Target picker panel (hidden until toggled) ───────────────── -->
   <section id="target-panel" hidden>

@@ -631,3 +631,195 @@ body {
   :root { --tile-sz: 90px; --tile-gap: 6px; }
   .ok-text { font-size: 2rem; }
 }
+
+/* ── Recording modal ───────────────────────────────────────────────── */
+#record-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+#record-modal:not([hidden]) {
+  display: flex;
+}
+
+.record-modal-content {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  width: 90%;
+  max-width: 480px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.record-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e7dfee;
+  padding: 16px 20px;
+  flex-shrink: 0;
+}
+
+.record-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.btn-record-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #999;
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-record-close:hover {
+  color: #2d3748;
+}
+
+.record-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.record-item {
+  border: 1px solid #e7dfee;
+  border-radius: 8px;
+  padding: 14px;
+  background: #f9f8f7;
+}
+
+.record-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #5e3a8c;
+  margin-bottom: 6px;
+}
+
+.record-text {
+  font-size: 0.95rem;
+  color: #2d3748;
+  margin-bottom: 10px;
+  padding: 8px;
+  background: #fff;
+  border-radius: 4px;
+  min-height: 32px;
+  word-wrap: break-word;
+}
+
+.record-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-record-action {
+  flex: 1;
+  min-width: 80px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  background: #fff;
+  color: #2d3748;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-record-action:hover:not(:disabled) {
+  border-color: #5e3a8c;
+  background: #f5f0ec;
+}
+
+.btn-record-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-record-action.recording {
+  background: #ff6b6b;
+  color: #fff;
+  border-color: #ff6b6b;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.record-status {
+  min-height: 20px;
+  font-size: 0.85rem;
+  color: #666;
+  text-align: center;
+}
+
+.record-status.success {
+  color: #22863a;
+  font-weight: 500;
+}
+
+.record-status.error {
+  color: #cb2431;
+  font-weight: 500;
+}
+
+.btn-record-save {
+  padding: 10px 16px;
+  border-radius: 6px;
+  background: #5e3a8c;
+  color: #fff;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-top: 12px;
+}
+
+.btn-record-save:hover {
+  background: #4a2a6a;
+}
+
+.btn-record {
+  background: rgba(94, 58, 140, 0.1);
+  border: 1px solid #5e3a8c;
+  color: #5e3a8c;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-record:hover {
+  background: rgba(94, 58, 140, 0.2);
+}
+
+.btn-record.recording {
+  background: #ff6b6b;
+  border-color: #ff6b6b;
+  color: #fff;
+  animation: pulse 1s infinite;
+}

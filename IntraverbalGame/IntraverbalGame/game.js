@@ -86,6 +86,14 @@ const state = {
   // Vocal settings
   vocalPromptsEnabled:  false,
   vocalResponsesEnabled: false,
+
+  // Recording
+  recordingModalOpen: false,
+  mediaRecorder: null,
+  recordingCarrier: null,
+  recordingTarget: null,
+  isRecording: false,
+  recordingType: null,
 };
 
 // ── DOM references ─────────────────────────────────────────────────
@@ -133,6 +141,20 @@ const el = {
   selPromptStyle:     $('sel-prompt-style'),
   chkVocalPrompts:    $('chk-vocal-prompts'),
   chkVocalResponses:  $('chk-vocal-responses'),
+  // Recording modal
+  btnRecordToggle:    $('btn-record-toggle'),
+  recordModal:        $('record-modal'),
+  btnRecordClose:     $('btn-record-close'),
+  recordCarrierText:  $('record-carrier-text'),
+  recordTargetText:   $('record-target-text'),
+  btnRecordCarrier:   $('btn-record-carrier'),
+  btnPlayCarrier:     $('btn-play-carrier'),
+  btnClearCarrier:    $('btn-clear-carrier'),
+  btnRecordTarget:    $('btn-record-target'),
+  btnPlayTarget:      $('btn-play-target'),
+  btnClearTarget:     $('btn-clear-target'),
+  recordStatus:       $('record-status'),
+  btnSaveRecordings:  $('btn-save-recordings'),
 };
 
 // ── Boot ───────────────────────────────────────────────────────────
@@ -342,6 +364,16 @@ function bindEvents() {
     saveSettings();
   });
 
+  el.btnRecordToggle.addEventListener('click', toggleRecordingModal);
+  el.btnRecordClose.addEventListener('click', closeRecordingModal);
+  el.btnRecordCarrier.addEventListener('click', () => startRecording('carrier'));
+  el.btnPlayCarrier.addEventListener('click', () => playRecording('carrier'));
+  el.btnClearCarrier.addEventListener('click', () => clearRecording('carrier'));
+  el.btnRecordTarget.addEventListener('click', () => startRecording('target'));
+  el.btnPlayTarget.addEventListener('click', () => playRecording('target'));
+  el.btnClearTarget.addEventListener('click', () => clearRecording('target'));
+  el.btnSaveRecordings.addEventListener('click', saveRecordingsToItems);
+
   el.btnStart    .addEventListener('click', startGame);
   el.btnPrompt   .addEventListener('click', onPromptButton);
   el.btnPrint    .addEventListener('click', printData);
@@ -486,6 +518,7 @@ function startGame() {
 
   el.gameArea.removeAttribute('hidden');
   el.btnPrompt.removeAttribute('hidden');
+  el.btnRecordToggle.removeAttribute('hidden');
   removeNextBtn();
 
   resetTimer();
@@ -527,6 +560,13 @@ function beginTrial(keepTarget = false) {
       state.tileItems  = trial.tileItems;
       state.correctIdx = trial.correctIdx;
     }
+  }
+
+  // Load recorded audio from storage if available
+  const storedAudio = loadAudioFromStorage(state.targetItem.id);
+  if (storedAudio) {
+    if (storedAudio.carrierAudio) state.targetItem.carrierAudio = storedAudio.carrierAudio;
+    if (storedAudio.labelAudio) state.targetItem.labelAudio = storedAudio.labelAudio;
   }
 
   renderTrial();
@@ -797,12 +837,163 @@ function speakText(text) {
 
 function speakCarrier() {
   if (!state.carrierText) return;
+  if (state.targetItem?.carrierAudio) {
+    const carrierIndex = state.targetItem.carriers?.indexOf(state.carrierText) ?? 0;
+    const audio = state.targetItem.carrierAudio[carrierIndex];
+    if (audio) {
+      playAudioData(audio);
+      return;
+    }
+  }
   speakText(state.carrierText);
 }
 
 function speakTarget() {
   if (!state.targetItem || !state.targetItem.label) return;
+  if (state.targetItem?.labelAudio) {
+    playAudioData(state.targetItem.labelAudio);
+    return;
+  }
   speakText(state.targetItem.label);
+}
+
+function playAudioData(audioData) {
+  const audio = new Audio(audioData);
+  audio.play().catch(() => console.error('Could not play audio'));
+}
+
+// ── Recording modal ────────────────────────────────────────────────
+
+function toggleRecordingModal() {
+  state.recordingModalOpen ? closeRecordingModal() : openRecordingModal();
+}
+
+function openRecordingModal() {
+  if (!state.active) return;
+  state.recordingModalOpen = true;
+  el.recordModal.removeAttribute('hidden');
+  el.recordCarrierText.textContent = state.carrierText;
+  el.recordTargetText.textContent = state.targetItem?.label || '';
+  updateRecordingButtonStates();
+}
+
+function closeRecordingModal() {
+  if (state.isRecording) stopRecording();
+  state.recordingModalOpen = false;
+  el.recordModal.setAttribute('hidden', '');
+}
+
+function updateRecordingButtonStates() {
+  el.btnPlayCarrier.disabled = !state.recordingCarrier;
+  el.btnClearCarrier.disabled = !state.recordingCarrier;
+  el.btnPlayTarget.disabled = !state.recordingTarget;
+  el.btnClearTarget.disabled = !state.recordingTarget;
+}
+
+async function startRecording(type) {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    state.mediaRecorder = new MediaRecorder(stream);
+    const chunks = [];
+    state.mediaRecorder.ondataavailable = e => chunks.push(e.data);
+    state.mediaRecorder.onstop = () => {
+      const blob = new Blob(chunks, { type: 'audio/webm' });
+      blobToBase64(blob, base64 => {
+        if (type === 'carrier') {
+          state.recordingCarrier = base64;
+        } else {
+          state.recordingTarget = base64;
+        }
+        updateRecordingButtonStates();
+        setRecordingStatus(`${type === 'carrier' ? 'Carrier' : 'Target'} recorded`, 'success');
+      });
+      stream.getTracks().forEach(t => t.stop());
+    };
+    state.isRecording = true;
+    state.recordingType = type;
+    state.mediaRecorder.start();
+    const btn = type === 'carrier' ? el.btnRecordCarrier : el.btnRecordTarget;
+    btn.textContent = 'Stop';
+    btn.classList.add('recording');
+  } catch (e) {
+    setRecordingStatus('Microphone access denied', 'error');
+  }
+}
+
+function stopRecording() {
+  if (!state.mediaRecorder || !state.isRecording) return;
+  state.mediaRecorder.stop();
+  state.isRecording = false;
+  const btn = state.recordingType === 'carrier' ? el.btnRecordCarrier : el.btnRecordTarget;
+  btn.textContent = 'Record';
+  btn.classList.remove('recording');
+}
+
+function playRecording(type) {
+  const base64 = type === 'carrier' ? state.recordingCarrier : state.recordingTarget;
+  if (!base64) return;
+  const audio = new Audio(base64);
+  audio.play().catch(() => setRecordingStatus('Could not play recording', 'error'));
+}
+
+function clearRecording(type) {
+  if (type === 'carrier') {
+    state.recordingCarrier = null;
+  } else {
+    state.recordingTarget = null;
+  }
+  updateRecordingButtonStates();
+  setRecordingStatus(`${type === 'carrier' ? 'Carrier' : 'Target'} cleared`, 'success');
+}
+
+function setRecordingStatus(msg, type) {
+  el.recordStatus.textContent = msg;
+  el.recordStatus.className = 'record-status ' + (type || '');
+  setTimeout(() => {
+    el.recordStatus.textContent = '';
+    el.recordStatus.className = 'record-status';
+  }, 2500);
+}
+
+function blobToBase64(blob, callback) {
+  const reader = new FileReader();
+  reader.onloadend = () => callback(reader.result);
+  reader.readAsDataURL(blob);
+}
+
+function saveRecordingsToItems() {
+  if (!state.targetItem) return;
+  const item = state.itemById[state.targetItem.id];
+  if (!item) {
+    setRecordingStatus('Item not found', 'error');
+    return;
+  }
+  if (state.recordingCarrier) {
+    if (!item.carrierAudio) item.carrierAudio = {};
+    const carrierIndex = state.targetItem.carriers?.indexOf(state.carrierText) ?? 0;
+    item.carrierAudio[carrierIndex] = state.recordingCarrier;
+  }
+  if (state.recordingTarget) {
+    item.labelAudio = state.recordingTarget;
+  }
+  saveAudioToStorage(item.id, item);
+  console.log('Recordings saved to item:', item);
+  setRecordingStatus('Recordings saved!', 'success');
+  state.recordingCarrier = null;
+  state.recordingTarget = null;
+  updateRecordingButtonStates();
+  setTimeout(closeRecordingModal, 1500);
+}
+
+function saveAudioToStorage(itemId, itemData) {
+  let recordings = JSON.parse(sessionStorage.getItem('ivgRecordings') || '{}');
+  recordings[itemId] = itemData;
+  sessionStorage.setItem('ivgRecordings', JSON.stringify(recordings));
+}
+
+function loadAudioFromStorage(itemId) {
+  const recordings = JSON.parse(sessionStorage.getItem('ivgRecordings') || '{}');
+  return recordings[itemId];
 }
 
 // ── Next button ────────────────────────────────────────────────────
