@@ -82,6 +82,10 @@ const state = {
   // Prompt timeouts
   promptHandle:     null,
   autoPromptHandle: null,
+
+  // Vocal settings
+  vocalPromptsEnabled:  false,
+  vocalResponsesEnabled: false,
 };
 
 // ── DOM references ─────────────────────────────────────────────────
@@ -127,6 +131,8 @@ const el = {
   chkPromptDelay:     $('chk-prompt-delay'),
   selPromptDelay:     $('sel-prompt-delay'),
   selPromptStyle:     $('sel-prompt-style'),
+  chkVocalPrompts:    $('chk-vocal-prompts'),
+  chkVocalResponses:  $('chk-vocal-responses'),
 };
 
 // ── Boot ───────────────────────────────────────────────────────────
@@ -152,6 +158,8 @@ function loadSettings() {
   state.autoPromptEnabled = s.autoPromptEnabled ?? false;
   state.promptDelay       = s.promptDelay       ?? false;
   state.promptDelaySecs   = s.promptDelaySecs   ?? 3;
+  state.vocalPromptsEnabled  = s.vocalPromptsEnabled  ?? false;
+  state.vocalResponsesEnabled = s.vocalResponsesEnabled ?? false;
   state.targetFilters     = (s.targetFilters && typeof s.targetFilters === 'object')
     ? s.targetFilters : {};
 
@@ -165,6 +173,8 @@ function loadSettings() {
   el.chkAutoPrompt.checked        = state.autoPromptEnabled;
   el.chkPromptDelay.checked       = state.promptDelay;
   el.selPromptDelay.value         = state.promptDelaySecs;
+  el.chkVocalPrompts.checked      = state.vocalPromptsEnabled;
+  el.chkVocalResponses.checked    = state.vocalResponsesEnabled;
 
   el.chkPromptDelay.disabled = !state.autoPromptEnabled;
   el.selPromptDelay.disabled = !state.autoPromptEnabled || !state.promptDelay;
@@ -183,6 +193,8 @@ function saveSettings() {
     autoPromptEnabled: state.autoPromptEnabled,
     promptDelay:       state.promptDelay,
     promptDelaySecs:   state.promptDelaySecs,
+    vocalPromptsEnabled:  state.vocalPromptsEnabled,
+    vocalResponsesEnabled: state.vocalResponsesEnabled,
     targetFilters:     state.targetFilters,
   }));
 }
@@ -317,6 +329,16 @@ function bindEvents() {
   });
   el.selPromptDelay.addEventListener('change', () => {
     state.promptDelaySecs = parseInt(el.selPromptDelay.value);
+    saveSettings();
+  });
+
+  el.chkVocalPrompts.addEventListener('change', () => {
+    state.vocalPromptsEnabled = el.chkVocalPrompts.checked;
+    saveSettings();
+  });
+
+  el.chkVocalResponses.addEventListener('change', () => {
+    state.vocalResponsesEnabled = el.chkVocalResponses.checked;
     saveSettings();
   });
 
@@ -512,16 +534,25 @@ function beginTrial(keepTarget = false) {
   if (keepTarget) {
     state.autoPrompted = true;
     setTimeout(applyPrompt, 80);
+    if (state.vocalPromptsEnabled) {
+      setTimeout(speakCarrier, 100);
+    }
   } else if (state.autoPromptEnabled) {
     if (state.promptDelay) {
       state.autoPromptHandle = setTimeout(() => {
         state.autoPrompted     = true;
         state.autoPromptHandle = null;
         applyPrompt();
+        if (state.vocalPromptsEnabled) {
+          setTimeout(speakCarrier, 80);
+        }
       }, state.promptDelaySecs * 1000);
     } else {
       state.autoPrompted = true;
       setTimeout(applyPrompt, 80);
+      if (state.vocalPromptsEnabled) {
+        setTimeout(speakCarrier, 100);
+      }
     }
   }
 }
@@ -626,6 +657,10 @@ function onCorrectClick(wrapper, tile) {
 
   clearTimeout(state.autoPromptHandle);
   state.autoPromptHandle = null;
+
+  if (state.vocalResponsesEnabled) {
+    speakTarget();
+  }
 
   const elapsed = ((Date.now() - state.trialStart) / 1000).toFixed(1);
 
@@ -743,6 +778,31 @@ function clearPrompt() {
 function onPromptButton() {
   state.prompted = true;
   applyPrompt();
+  if (state.vocalPromptsEnabled) {
+    speakCarrier();
+  }
+}
+
+// ── Vocal synthesis ────────────────────────────────────────────────
+
+function speakText(text) {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 1;
+  utterance.pitch = 1;
+  utterance.volume = 1;
+  window.speechSynthesis.speak(utterance);
+}
+
+function speakCarrier() {
+  if (!state.carrierText) return;
+  speakText(state.carrierText);
+}
+
+function speakTarget() {
+  if (!state.targetItem || !state.targetItem.label) return;
+  speakText(state.targetItem.label);
 }
 
 // ── Next button ────────────────────────────────────────────────────
