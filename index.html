@@ -55,9 +55,27 @@
 
     .tools-list {
       margin-top: 36px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .tools-left {
       display: flex;
       flex-direction: column;
       gap: 20px;
+    }
+
+    .divider {
+      height: 1px;
+      background: #d0d5c6;
+      margin: 8px 0;
+    }
+
+    .tools-right {
+      display: flex;
+      flex-direction: column;
     }
 
     .tool-card {
@@ -316,37 +334,41 @@
     </p>
 
     <div class="tools-list">
+      <div class="tools-left">
+        <a class="tool-card" href="/NoteDrafter/BTNotes/">
+          <div class="tool-category">Direct Service</div>
+          <div class="tool-title">BT Direct Service Session Note Tool</div>
+          <p class="tool-desc">Select session details and enter rough notes (bullet points are fine) — generate a prompt to produce polished clinical documentation for all free-text fields of your direct service session note.</p>
+        </a>
 
-      <a class="tool-card" href="/NoteDrafter/BTNotes/">
-        <div class="tool-category">Direct Service</div>
-        <div class="tool-title">BT Direct Service Session Note Tool</div>
-        <p class="tool-desc">Select session details and enter rough notes (bullet points are fine) — generate a prompt to produce polished clinical documentation for all free-text fields of your direct service session note.</p>
-      </a>
+        <div class="divider"></div>
 
-      <a class="tool-card" href="/NoteDrafter/SupNotes/">
-        <div class="tool-category">Supervision</div>
-        <div class="tool-title">Supervision Session Note Tool</div>
-        <p class="tool-desc">Enter brief notes (bullet points are fine) — receive polished clinical documentation across supervision session note sections.</p>
-      </a>
+        <a class="tool-card" href="/NoteDrafter/SupNotes/">
+          <div class="tool-category">Supervision</div>
+          <div class="tool-title">Supervision Session Note Tool</div>
+          <p class="tool-desc">Enter brief notes (bullet points are fine) — receive polished clinical documentation across supervision session note sections.</p>
+        </a>
 
-      <a class="tool-card" href="/NoteDrafter/PTNotes/">
-        <div class="tool-category">Parent Training</div>
-        <div class="tool-title">Parent Session Note Tool</div>
-        <p class="tool-desc">Select session activities and caregiver progress — receive polished clinical documentation for parent / coordination of care sessions.</p>
-      </a>
+        <a class="tool-card" href="/NoteDrafter/PTNotes/">
+          <div class="tool-category">Parent Training</div>
+          <div class="tool-title">Parent Session Note Tool</div>
+          <p class="tool-desc">Select session activities and caregiver progress — receive polished clinical documentation for parent / coordination of care sessions.</p>
+        </a>
 
-      <a class="tool-card" href="/NoteDrafter/AssessNotes/">
-        <div class="tool-category">Assessment</div>
-        <div class="tool-title">Assessment / Case Planning Note Tool</div>
-        <p class="tool-desc">Select assessment items and enter bulletpoint details — receive polished clinical documentation documenting assessment and case planning activities.</p>
-      </a>
+        <a class="tool-card" href="/NoteDrafter/AssessNotes/">
+          <div class="tool-category">Assessment</div>
+          <div class="tool-title">Assessment / Case Planning Note Tool</div>
+          <p class="tool-desc">Select assessment items and enter bulletpoint details — receive polished clinical documentation documenting assessment and case planning activities.</p>
+        </a>
+      </div>
 
-      <a class="tool-card" href="/CPRAnalyzer/dist/">
-        <div class="tool-category">Assessment</div>
-        <div class="tool-title">Conditional Probability Record &amp; Analysis Tool</div>
-        <p class="tool-desc">Use structured descriptive assessment data to generate conditional probability graphs, tables, CV/ACV scores, and file exports for functional assessment interpretation.</p>
-      </a>
-
+      <div class="tools-right">
+        <a class="tool-card" href="/CPRAnalyzer/dist/">
+          <div class="tool-category">Assessment</div>
+          <div class="tool-title">Conditional Probability Record &amp; Analysis Tool</div>
+          <p class="tool-desc">Use structured descriptive assessment data to generate conditional probability graphs, tables, CV/ACV scores, and file exports for functional assessment interpretation.</p>
+        </a>
+      </div>
     </div>
 
     <section class="support">
