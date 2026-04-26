@@ -24,6 +24,10 @@ const state = {
   // Persisted settings
   topic:             '',
   arraySize:         4,
+  representErrors:   true,
+  errorless:         false,
+  noErrorAnim:       false,
+  extraPanelOpen:    false,
   crossCategory:     false,
   promptPersists:    false,
   promptStyle:       'sparkle',
@@ -90,9 +94,15 @@ const el = {
   btnPrompt:      $('btn-prompt'),
   btnPrint:       $('btn-print'),
   btnClearData:   $('btn-clear-data'),
-  resultsBody:    $('results-body'),
-  printMeta:      $('print-meta'),
-  printSummary:   $('print-summary'),
+  resultsBody:        $('results-body'),
+  printMeta:          $('print-meta'),
+  printSummary:       $('print-summary'),
+  chkRepresentErrors: $('chk-represent-errors'),
+  chkErrorless:       $('chk-errorless'),
+  chkNoErrorAnim:     $('chk-no-error-anim'),
+  btnExtraToggle:     $('btn-extra-toggle'),
+  extraPanel:         $('extra-panel'),
+  btnExtraClose:      $('btn-extra-close'),
 };
 
 // ── Boot ───────────────────────────────────────────────────────────
@@ -109,6 +119,9 @@ function loadSettings() {
   const s = JSON.parse(localStorage.getItem('mgSettings') || '{}');
   state.topic             = s.topic             ?? '';
   state.arraySize         = s.arraySize         ?? 4;
+  state.representErrors   = s.representErrors   ?? true;
+  state.errorless         = s.errorless         ?? false;
+  state.noErrorAnim       = s.noErrorAnim       ?? false;
   state.crossCategory     = s.crossCategory     ?? false;
   state.promptPersists    = s.promptPersists    ?? false;
   state.promptStyle       = s.promptStyle       ?? 'sparkle';
@@ -116,8 +129,11 @@ function loadSettings() {
   state.promptDelay       = s.promptDelay       ?? false;
   state.promptDelaySecs   = s.promptDelaySecs   ?? 3;
 
-  el.inpSize.value          = state.arraySize;
-  el.chkCross.checked       = state.crossCategory;
+  el.inpSize.value              = state.arraySize;
+  el.chkRepresentErrors.checked = state.representErrors;
+  el.chkErrorless.checked       = state.errorless;
+  el.chkNoErrorAnim.checked     = state.noErrorAnim;
+  el.chkCross.checked           = state.crossCategory;
   el.chkPersists.checked    = state.promptPersists;
   el.selPromptStyle.value   = state.promptStyle;
   el.chkAutoPrompt.checked  = state.autoPromptEnabled;
@@ -133,6 +149,9 @@ function saveSettings() {
   localStorage.setItem('mgSettings', JSON.stringify({
     topic:             state.topic,
     arraySize:         state.arraySize,
+    representErrors:   state.representErrors,
+    errorless:         state.errorless,
+    noErrorAnim:       state.noErrorAnim,
     crossCategory:     state.crossCategory,
     promptPersists:    state.promptPersists,
     promptStyle:       state.promptStyle,
@@ -296,6 +315,12 @@ function bindEvents() {
     state.promptDelaySecs = parseInt(el.selPromptDelay.value);
     saveSettings();
   });
+
+  el.btnExtraToggle.addEventListener('click', toggleExtraPanel);
+  el.btnExtraClose .addEventListener('click', () => setExtraPanelOpen(false));
+  el.chkRepresentErrors.addEventListener('change', () => { state.representErrors = el.chkRepresentErrors.checked; saveSettings(); });
+  el.chkErrorless.addEventListener('change',       () => { state.errorless       = el.chkErrorless.checked;       saveSettings(); });
+  el.chkNoErrorAnim.addEventListener('change',     () => { state.noErrorAnim     = el.chkNoErrorAnim.checked;     saveSettings(); });
 
   el.btnStart.addEventListener('click',  startGame);
   el.btnPrompt.addEventListener('click', onPromptButton);
@@ -497,6 +522,7 @@ function onTileClick(idx) {
   if (idx === state.correctIdx) {
     onCorrectClick(wrapper, tile);
   } else {
+    if (state.errorless) return;
     onWrongClick(wrapper);
   }
 }
@@ -536,9 +562,11 @@ function onCorrectClick(wrapper, tile) {
       ? state.promptDelaySecs : null,
     time:      elapsed,
     outcome,
-    // Snapshot of changeable settings — used to highlight rows where conditions shifted
     settingsKey: [
       state.topic, state.arraySize,
+      state.representErrors   ? 1 : 0,
+      state.errorless         ? 1 : 0,
+      state.noErrorAnim       ? 1 : 0,
       state.autoPromptEnabled ? 1 : 0,
       state.promptPersists    ? 1 : 0,
       state.promptStyle,
@@ -573,10 +601,12 @@ function onWrongClick(wrapper) {
   clearTimeout(state.autoPromptHandle);
   state.autoPromptHandle = null;
 
-  wrapper.classList.add('jiggle', 'flash-red');
-  const cleanup = () => wrapper.classList.remove('jiggle', 'flash-red');
-  wrapper.addEventListener('animationend', cleanup, { once: true });
-  setTimeout(() => wrapper.classList.remove('jiggle', 'flash-red'), 600);
+  if (!state.noErrorAnim) {
+    wrapper.classList.add('jiggle', 'flash-red');
+    const cleanup = () => wrapper.classList.remove('jiggle', 'flash-red');
+    wrapper.addEventListener('animationend', cleanup, { once: true });
+    setTimeout(() => wrapper.classList.remove('jiggle', 'flash-red'), 600);
+  }
 
   state.autoPrompted = true;
   applyPrompt();
@@ -646,8 +676,7 @@ function onNextClick() {
   // Resume timer only if we auto-paused it (not if staff had paused manually)
   if (state.timerAutoPaused) { state.timerAutoPaused = false; startTimer(); }
   const last = state.sessionData[state.sessionData.length - 1];
-  // Repeat if the last outcome was an error of any kind
-  const needsRepeat = last && (last.outcome === 'Error' || last.outcome === 'Repeat Error');
+  const needsRepeat = state.representErrors && last && (last.outcome === 'Error' || last.outcome === 'Repeat Error');
   beginTrial(needsRepeat);
 }
 
@@ -711,4 +740,16 @@ function printData() {
     `<span>Avg response time: <strong>${avgTime} s</strong></span>`;
 
   window.print();
+}
+
+// ── Extra settings panel ───────────────────────────────────────────
+
+function toggleExtraPanel() { setExtraPanelOpen(!state.extraPanelOpen); }
+
+function setExtraPanelOpen(open) {
+  state.extraPanelOpen = open;
+  el.btnExtraToggle.setAttribute('aria-expanded', String(open));
+  el.btnExtraToggle.classList.toggle('is-open', open);
+  if (open) { el.extraPanel.removeAttribute('hidden'); }
+  else       { el.extraPanel.setAttribute('hidden', ''); }
 }
