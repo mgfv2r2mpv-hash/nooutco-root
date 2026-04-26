@@ -43,7 +43,7 @@ async function handleLlmCall(request, env) {
 
     let llmResponse;
     if (provider === "anthropic") {
-      llmResponse = await callAnthropicApi(apiKey, systemPrompt, userPrompt, model || "claude-sonnet-4-6", maxTokens || 2048);
+      llmResponse = await callAnthropicApi(apiKey, systemPrompt, userPrompt, model || "claude-haiku-4-5-20251001", maxTokens || 2048);
     } else if (provider === "openai") {
       llmResponse = await callOpenAiApi(apiKey, systemPrompt, userPrompt, model || "gpt-4o-mini", maxTokens || 2048);
     } else if (provider === "gemini") {
