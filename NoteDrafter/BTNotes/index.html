@@ -195,31 +195,22 @@
     ];
 
     async function callProvider(provider, apiKey, systemPrompt, userPrompt) {
-      let url, headers = { "Content-Type": "application/json" }, body;
+      const res = await fetch("/api/llm-call", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider,
+          apiKey,
+          systemPrompt,
+          userPrompt,
+          model: provider === "anthropic" ? "claude-haiku-4-5-20251001" : provider === "openai" ? "gpt-4o-mini" : "gemini-2.5-flash",
+          maxTokens: 1800,
+        }),
+      });
 
-      if (provider === "anthropic") {
-        url = "https://api.anthropic.com/v1/messages";
-        headers["x-api-key"] = apiKey;
-        headers["anthropic-version"] = "2023-06-01";
-        headers["anthropic-dangerous-direct-browser-access"] = "true";
-        body = { model: "claude-sonnet-4-20250514", max_tokens: 1800, system: systemPrompt, messages: [{ role: "user", content: userPrompt }] };
-      } else if (provider === "openai") {
-        url = "https://api.openai.com/v1/chat/completions";
-        headers["Authorization"] = `Bearer ${apiKey}`;
-        body = { model: "gpt-4o-mini", max_tokens: 1800, messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }] };
-      } else {
-        url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-        body = {
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-          generationConfig: { maxOutputTokens: 2048 },
-        };
-      }
-
-      const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(`API error ${res.status}: ${err?.error?.message || err?.error?.status || res.statusText}`);
+        throw new Error(`API error ${res.status}: ${err?.error || res.statusText}`);
       }
 
       const data = await res.json();
@@ -339,7 +330,7 @@
       });
 
       const buildSystemPrompt = () =>
-        `You are an expert Behavior Technician (BT/RBT) documentation specialist. Your job is to expand brief bullet points into polished, professional clinical note text written from the perspective of an expert behavior technician. You must not invent details that were not provided by the technician — you may only expand, polish, and rephrase fragments into complete clinical sentences. If the technician provided only scant input for a section, produce a shorter note that still meets the minimum requirements described for that section; do not fabricate data, programs, percentages, or behaviors that were not mentioned. Write in first-person or third-person clinical prose as appropriate to a direct service session note. Do not include any preamble, explanation, or follow-up commentary (no "here is your note," no "let me know if…"). Return ONLY a JSON object with exactly these five keys: "clinicalStatus", "lessonProgress", "antecedent", "behaviorPlan", "followUp". No markdown, no extra keys.`;
+        `You are an expert behavior technician (BT) documentation specialist. Your job is to expand brief bullet points into polished, professional clinical note text written from the perspective of an expert behavior technician. You must not invent details that were not provided by the technician — you may only expand, polish, and rephrase fragments into complete clinical sentences. Write in third-person clinical prose as appropriate to a direct service session note. Do not include any preamble, explanation, or follow-up commentary (no "here is your note," no "let me know if…"). Return ONLY a JSON object with exactly these five keys: "clinicalStatus", "lessonProgress", "antecedent", "behaviorPlan", "followUp". No markdown, no extra keys.`;
 
       const buildUserPrompt = () => {
         const indList = INDIVIDUALS_PRESENT.filter(i => individualsChecked.has(i.id)).map(i => i.label).join(", ") || "Not specified";
@@ -355,24 +346,24 @@
           `ABA teaching techniques used: ${abaList}`,
           `Action items for BCBA: ${actList}`,
           ``,
-          `Raw notes for "Further Detail On Clinical Status":`,
-          `(Write 1–2 sentences describing the client's mood, behavior, or activities at the START of the session only — not across the session.)`,
-          bulletClinical.trim() || "(none provided — write a brief placeholder based on arrival checkboxes)",
+          `Raw notes "Further Detail On Clinical Status":`,
+          `(Proofread the statement describing the client's mood, behavior, or activities at the start of the session.)`,
+          bulletClinical.trim() || "(N/A - no additional detail.)",
           ``,
           `Raw notes for "Narrative of Lesson Progress":`,
-          `(Write 4–7 total sentences covering 2 programs: one addressing social/communication goals and one addressing adaptive behaviors or repetitive behavior reduction. Include activities, prompting, work achieved, progress toward goals, or significant barriers. QUALITATIVE description only.)`,
+          `(Write 2-4 sentences for each of 2 programs (4-8 total): one goal addressing social/communication domain goals and one addressing adaptive daily living sklls or repetitive behavior replacement. Include activities, prompting, work achieved / progress toward goals, or significant barriers. QUALITATIVE descriptions. )`,
           bulletLesson.trim() || "(none provided)",
           ``,
           `Raw notes for "List Of Successful Antecedent Modifications Implemented in Session":`,
-          `(List the antecedent strategies used to prevent or reduce problem behavior. Common examples: first/then language, visual schedule, non-contingent reinforcement (NCR), providing choices, behavior momentum, reducing distractions, having supplies ready, adjusting lighting/noise, simplified language, modeling, countdown warnings, reminders of rules, prompting functional communication, scheduled breaks, pre-session pairing, behavior contract. Write in 1–2 sentences using format: "The following antecedent strategies were utilized to avoid problem behavior from occurring today: [list].")`,
+          `(Write a list of the provided antecedent strategies used to prevent / reduce / replace maladaptive behavior.)`,
           bulletAntecedent.trim() || "(none provided)",
           ``,
           `Raw notes for "Narrative of Behavior Support Plan Goals Progress":`,
-          `(Write 2–4 sentences with QUANTITATIVE description of the client's response to behavior plan implementation this session. Include frequency, rate, duration, or percentage data on target behaviors where available. Describe whether behavior increased, decreased, or held steady relative to goals.)`,
+          `(Write 2–4 sentences with QUANTITATIVE description of the client's response to behavior plan implementation this session. Include proofread descriptions of treatment effect on maladaptive behaviors where available. Describe whether behavior increased, decreased, or held steady relative to goals.)`,
           bulletBehavior.trim() || "(none provided)",
           ``,
           `Raw notes for "Summary of Concerns/Questions/Involvement":`,
-          `(Write 1–3 sentences covering follow-up questions or concerns for the BCBA, materials requested, or a summary of BCBA involvement if this was a supervision session.)`,
+          `(Write bulletpoints with follow-up questions / concerns for the BCBA, materials needed, or a summary of BCBA involvement for a supervision session. - default is "Direct Staff do not report new questions or concerns for the BCBA.")`,
           bulletFollowUp.trim() || "(none provided)",
         ].join("\n");
       };
@@ -381,7 +372,6 @@
         if (!bulletLesson.trim())     return "Please enter notes for Narrative of Lesson Progress.";
         if (!bulletAntecedent.trim()) return "Please enter notes for Successful Antecedent Modifications.";
         if (!bulletBehavior.trim())   return "Please enter notes for Narrative of Behavior Support Plan Goals Progress.";
-        if (!bulletFollowUp.trim())   return "Please enter notes for Summary of Concerns/Questions/Involvement.";
         return null;
       };
 
@@ -410,18 +400,18 @@ FURTHER DETAIL ON CLINICAL STATUS
 [1–2 sentences about mood/behavior/activities at session start]
 
 NARRATIVE OF LESSON PROGRESS
-[4–7 sentences, two programs: social/communication and adaptive/repetitive, qualitative]
+[4–8 sentences, ideally split across two programs: social/communication and adaptive/repetitive. qualitative descriptions]
 
 LIST OF SUCCESSFUL ANTECEDENT MODIFICATIONS
-[1–2 sentences listing strategies used]
+[Comma or semicolon separated list of strategies used; edit for correctess and preference researched, established antecedent modifications]
 
 NARRATIVE OF BEHAVIOR SUPPORT PLAN GOALS PROGRESS
-[2–4 sentences, quantitative data on target behaviors]
+[2–4 sentences, qualitative description of treatment and effects on target maladaptive behaviors]
 
 SUMMARY OF CONCERNS/QUESTIONS/INVOLVEMENT
-[1–3 sentences for BCBA follow up]
+[Brief sentences for BCBA follow up, default similar to "There were no new questions or concerns during session."]
 
-No JSON. No preamble. No commentary after the last section.`);
+No code. No preamble. No commentary after the last section. Do not fabricate: If no/nonsense string for Raw notes from user, return a distinct statement reminding BT to input, suggestions about what to consider.`);
         setPromptText(`${sys}\n\n---\n\n${buildUserPrompt()}`);
         setCopiedPrompt(false);
       };
