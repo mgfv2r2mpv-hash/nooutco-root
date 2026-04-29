@@ -113,14 +113,6 @@
       line-height: 1.4;
     }
 
-    /* Gear button + admin modal */
-    .admin-gear {
-      position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999;
-      font-size: 1.5rem; background: none; border: none; cursor: pointer;
-      opacity: 0.35; transition: opacity 0.15s; padding: 0; line-height: 1;
-    }
-    .admin-gear:hover { opacity: 0.75; }
-    .admin-gear.authed { opacity: 1; filter: sepia(1) saturate(3) hue-rotate(80deg); }
     #admin-modal {
       display: none; position: fixed; inset: 0;
       background: rgba(0,0,0,0.45); z-index: 10000;
@@ -188,7 +180,6 @@
     </span>
   </div>
 
-  <button class="admin-gear" id="admin-gear" title="Admin">⚙️</button>
   <div id="admin-modal">
     <div class="admin-modal-box">
       <h2>Game Master</h2>
@@ -263,19 +254,15 @@
 
     const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
 
-    const adminGear    = document.getElementById('admin-gear');
     const adminModal   = document.getElementById('admin-modal');
     const adminPwInput = document.getElementById('admin-pw-input');
     const adminPwError = document.getElementById('admin-pw-error');
 
     let token = localStorage.getItem('admin_token') || '';
 
-    function setGearAuthed(authed) { adminGear.classList.toggle('authed', authed); }
-
     function revealApp() { document.getElementById('main').style.display = 'block'; }
 
     if (token === ADMIN_SECRET_HASH) {
-      setGearAuthed(true);
       revealApp();
     } else {
       if (token) localStorage.removeItem('admin_token');
@@ -284,14 +271,6 @@
       setTimeout(() => adminPwInput.focus(), 50);
     }
 
-    adminGear.addEventListener('click', () => {
-      adminModal.classList.toggle('open');
-      if (adminModal.classList.contains('open')) {
-        adminPwInput.value = '';
-        adminPwError.textContent = '';
-        setTimeout(() => adminPwInput.focus(), 50);
-      }
-    });
     adminModal.addEventListener('click', e => { if (e.target === adminModal) adminModal.classList.remove('open'); });
 
     async function sha256Hex(str) {
@@ -307,7 +286,6 @@
       if (hash === ADMIN_SECRET_HASH) {
         token = hash;
         localStorage.setItem('admin_token', hash);
-        setGearAuthed(true);
         adminModal.classList.remove('open');
         revealApp();
       } else {
