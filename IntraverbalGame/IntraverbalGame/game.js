@@ -366,6 +366,9 @@ function bindEvents() {
 
   el.btnRecordToggle.addEventListener('click', toggleRecordingModal);
   el.btnRecordClose.addEventListener('click', closeRecordingModal);
+
+  // Record button is admin-only; show/hide as admin state changes
+  document.addEventListener('admin-state-change', syncRecordButton);
   el.btnRecordCarrier.addEventListener('click', () => startRecording('carrier'));
   el.btnPlayCarrier.addEventListener('click', () => playRecording('carrier'));
   el.btnClearCarrier.addEventListener('click', () => clearRecording('carrier'));
@@ -518,7 +521,7 @@ function startGame() {
 
   el.gameArea.removeAttribute('hidden');
   el.btnPrompt.removeAttribute('hidden');
-  el.btnRecordToggle.removeAttribute('hidden');
+  syncRecordButton();
   removeNextBtn();
 
   resetTimer();
@@ -931,6 +934,16 @@ function playAudioData(audioData) {
 }
 
 // ── Recording modal ────────────────────────────────────────────────
+
+// The Record button is admin-only and only meaningful while a session
+// is active. Hide it whenever either condition isn't met.
+function syncRecordButton() {
+  const isAdmin = window.NoocAdmin && window.NoocAdmin.isAdmin();
+  const show = state.active && isAdmin;
+  if (show) el.btnRecordToggle.removeAttribute('hidden');
+  else      el.btnRecordToggle.setAttribute('hidden', '');
+  if (!isAdmin && state.recordingModalOpen) closeRecordingModal();
+}
 
 function toggleRecordingModal() {
   state.recordingModalOpen ? closeRecordingModal() : openRecordingModal();

@@ -33,6 +33,11 @@
     </div>
 
     <div class="setting-group">
+      <label for="inp-size">Array Size</label>
+      <input type="number" id="inp-size" min="2" max="10" value="4">
+    </div>
+
+    <div class="setting-group">
       <label for="sel-tag">Tag</label>
       <select id="sel-tag"></select>
     </div>
@@ -41,11 +46,6 @@
       <button type="button" id="btn-targets-toggle" class="btn-targets" aria-expanded="false">
         Targets <span id="targets-count" class="targets-count">0 of 0</span>
       </button>
-    </div>
-
-    <div class="setting-group">
-      <label for="inp-size">Array Size</label>
-      <input type="number" id="inp-size" min="2" max="10" value="4">
     </div>
 
     <div class="setting-group setting-extra">
@@ -183,5 +183,10 @@
   </div>
 
   <script src="game.js"></script>
+  <script>
+    const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
+    window.ADMIN_SECRET_HASH = ADMIN_SECRET_HASH;
+  </script>
+  <script src="../../admin-gear.js"></script>
 </body>
 </html>
