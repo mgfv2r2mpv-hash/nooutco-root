@@ -165,6 +165,14 @@
     <input type="text" id="af-id" placeholder="dog_sound">
     <label>Label</label>
     <input type="text" id="af-label" placeholder="woof">
+    <label>Carrier phrases (one per line)</label>
+    <textarea id="af-carriers" rows="2" placeholder="e.g. I hear a ___&#10;The sound of a ___"></textarea>
+    <label>Categories</label>
+    <div class="dp-row" id="af-chips-categories"></div>
+    <div class="wiki-row" style="margin-top:.3rem;">
+      <input type="text" id="af-new-cat" placeholder="New category…">
+      <button class="btn-sm" id="af-new-cat-btn">+ Add Category</button>
+    </div>
     <div class="form-row">
       <button class="btn-save" id="af-submit">Add Item</button>
       <button class="btn-cancel-form" id="af-cancel">Cancel</button>
@@ -506,6 +514,20 @@ function renderDetailChips() {
   });
 }
 
+function renderAddFormChips() {
+  const container = document.getElementById('af-chips-categories');
+  container.innerHTML = '';
+  (ivData.categories || []).forEach(cat => {
+    const chip = document.createElement('span');
+    const preselect = activeFilter.bucket === 'categories' && activeFilter.tag === cat;
+    chip.className = 'chip' + (preselect ? ' active' : '');
+    chip.textContent = tagLabel(cat);
+    chip.dataset.category = cat;
+    chip.addEventListener('click', () => chip.classList.toggle('active'));
+    container.appendChild(chip);
+  });
+}
+
 // ── Vocab modal ───────────────────────────────────────────────────
 
 const vocabModal = document.getElementById('vocab-modal');
@@ -736,42 +758,87 @@ function bindEvents() {
     }
   });
 
-  // Add item form
-  document.getElementById('btn-add-item').addEventListener('click', () => {
-    const form = document.getElementById('add-item-form');
-    const open = form.classList.toggle('open');
-    document.getElementById('btn-add-item').textContent = open ? '✕ Cancel' : '+ Add Item';
-  });
-  document.getElementById('af-cancel').addEventListener('click', () => {
+  // Add item form — open/close helpers
+  function openAddForm() {
+    document.getElementById('add-item-form').classList.add('open');
+    document.getElementById('btn-add-item').textContent = '✕ Cancel';
+    document.getElementById('af-id').value = '';
+    document.getElementById('af-label').value = '';
+    document.getElementById('af-carriers').value = '';
+    document.getElementById('af-new-cat').value = '';
+    setStatus(document.getElementById('af-status'), '', '');
+    renderAddFormChips();
+  }
+
+  function closeAddForm() {
     document.getElementById('add-item-form').classList.remove('open');
     document.getElementById('btn-add-item').textContent = '+ Add Item';
+    setStatus(document.getElementById('af-status'), '', '');
+  }
+
+  document.getElementById('btn-add-item').addEventListener('click', () => {
+    const open = document.getElementById('add-item-form').classList.contains('open');
+    open ? closeAddForm() : openAddForm();
+  });
+  document.getElementById('af-cancel').addEventListener('click', closeAddForm);
+
+  document.getElementById('af-new-cat-btn').addEventListener('click', () => {
+    const inp = document.getElementById('af-new-cat');
+    const tag = inp.value.trim().replace(/\s+/g, '_').toLowerCase();
+    if (!tag) return;
+    if (!(ivData.categories || []).includes(tag)) {
+      if (!ivData.categories) ivData.categories = [];
+      if (!ivData.categoryItems) ivData.categoryItems = {};
+      ivData.categories.push(tag);
+      ivData.categoryItems[tag] = [];
+    }
+    inp.value = '';
+    renderAddFormChips();
+    // auto-select the newly added chip
+    const chips = document.querySelectorAll('#af-chips-categories .chip');
+    chips.forEach(c => { if (c.dataset.category === tag) c.classList.add('active'); });
+  });
+  document.getElementById('af-new-cat').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('af-new-cat-btn').click();
   });
 
   document.getElementById('af-submit').addEventListener('click', async () => {
-    const itemId   = nameToSlug(document.getElementById('af-id').value.trim());
-    const label    = document.getElementById('af-label').value.trim();
-    const status   = document.getElementById('af-status');
-    if (!itemId || !label) { setStatus(status, 'err', 'Fill in all fields.'); return; }
+    const itemId = nameToSlug(document.getElementById('af-id').value.trim());
+    const label  = document.getElementById('af-label').value.trim();
+    const carriersText = document.getElementById('af-carriers').value.trim();
+    const carriers = carriersText ? carriersText.split('\n').map(s => s.trim()).filter(Boolean) : [];
+    const selectedCats = [...document.querySelectorAll('#af-chips-categories .chip.active')]
+      .map(c => c.dataset.category);
+    const status = document.getElementById('af-status');
+    if (!itemId || !label) { setStatus(status, 'err', 'Fill in ID and label.'); return; }
     if ((ivData.items || []).find(i => i.id === itemId)) { setStatus(status, 'err', 'ID already exists.'); return; }
+
+    const newItem = { id: itemId, label, carriers, images: [] };
+    ivData.items.push(newItem);
+    selectedCats.forEach(cat => {
+      if (!ivData.categoryItems[cat]) ivData.categoryItems[cat] = [];
+      if (!ivData.categoryItems[cat].includes(itemId)) ivData.categoryItems[cat].push(itemId);
+    });
 
     setStatus(status, '', 'Creating item…');
     try {
-      const newItem = { id: itemId, label, carriers: [], images: [] };
-      ivData.items.push(newItem);
       const res = await adminPost('intraverbal-save-items', { items: ivData });
       if (!res) { setStatus(status, '', ''); return; }
       if (res.ok) {
-        setStatus(status, 'ok', 'Added! Click to edit.');
-        document.getElementById('add-item-form').classList.remove('open');
-        document.getElementById('btn-add-item').textContent = '+ Add Item';
-        ['af-id','af-label'].forEach(id => { document.getElementById(id).value = ''; });
+        closeAddForm();
         renderGrid();
         renderFilterBar();
       } else {
+        // rollback
+        ivData.items = ivData.items.filter(i => i.id !== itemId);
+        selectedCats.forEach(cat => {
+          ivData.categoryItems[cat] = (ivData.categoryItems[cat] || []).filter(id => id !== itemId);
+        });
         const j = await res.json().catch(() => ({}));
         setStatus(status, 'err', j.error || 'Error ' + res.status);
       }
     } catch (e) {
+      ivData.items = ivData.items.filter(i => i.id !== itemId);
       setStatus(status, 'err', e.message || 'Network error');
     }
   });
