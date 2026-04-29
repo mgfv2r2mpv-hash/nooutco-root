@@ -766,14 +766,28 @@ body {
   font-weight: 700;
 }
 
-/* ─── Mobile fullscreen: fill viewport, reduce whitespace ────────── */
+/* ─── Mobile: lock viewport, scroll inside the active screen ─────── */
 @media (max-width: 680px) {
   html, body {
     height: 100vh;
     height: 100dvh;
+    overflow: hidden;
     overscroll-behavior: contain;
   }
   body { min-height: 0; }
+
+  /* Each screen owns the scroll surface so the back-home button stays
+     pinned and the content scrolls smoothly underneath. */
+  .screen {
+    min-height: 0;
+    height: 100dvh;
+    padding: 56px 12px 16px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  .screen.active { display: flex; }
 
   .back-home {
     top: 8px;
@@ -782,18 +796,15 @@ body {
     font-size: 11px;
   }
 
-  /* Center start screen content */
-  .screen { padding: 12px 12px 16px; min-height: 100dvh; }
-
   /* Start screen */
-  .start-content { padding-top: 56px; gap: 14px; max-width: 100%; }
+  #screen-start { justify-content: center; }
+  .start-content { padding-top: 0; gap: 14px; max-width: 100%; }
   .start-content h1 { font-size: 30px; }
   .start-instructions li { font-size: 14px; line-height: 1.35; }
   .btn-large { padding: 14px 32px; font-size: 18px; }
 
   /* Session screen — compact card */
-  #screen-session { padding: 44px 10px 12px; }
-  .session-wrapper { gap: 10px; max-width: 100%; }
+  .session-wrapper { gap: 10px; max-width: 100%; width: 100%; margin: 0 auto; }
 
   .card { border-radius: 12px; box-shadow: 0 2px 16px rgba(0,0,0,.12); }
   .card-stripe { height: 5px; }
@@ -843,7 +854,7 @@ body {
   .btn-muted-icon svg { width: 18px; height: 18px; }
 
   /* SR timer screen */
-  #screen-sr { padding: 56px 12px 16px; }
+  #screen-sr { justify-content: center; }
   .sr-wrapper { gap: 18px; max-width: 100%; padding-top: 0; }
   .sr-title { font-size: 22px; }
   .timer-container { width: 200px; height: 200px; }
@@ -863,11 +874,26 @@ body {
 
 /* Landscape phones */
 @media (orientation: landscape) and (max-height: 500px) {
+  html, body {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: contain;
+  }
+  body { min-height: 0; }
+
+  .screen {
+    min-height: 0;
+    height: 100dvh;
+    padding: 48px 12px 14px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
   .card-photo, .photo-fallback { height: 60vh; max-height: 240px; min-height: 140px; }
-  #screen-session { padding: 14px 12px; }
   .session-wrapper { gap: 8px; }
-  .start-content { padding-top: 14px; }
-  #screen-sr { padding: 14px 12px; }
   .timer-container { width: 160px; height: 160px; }
   .timer-display { font-size: 38px; }
 }

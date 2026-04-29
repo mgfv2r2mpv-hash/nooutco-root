@@ -575,8 +575,8 @@ function renderTrial() {
   requestAnimationFrame(fitSampleWord);
 
   const cols = gridCols(state.arraySize);
-  const tileSz = getComputedStyle(document.documentElement).getPropertyValue('--tile-sz').trim() || '160px';
-  el.compGrid.style.gridTemplateColumns = `repeat(${cols}, ${tileSz})`;
+  el.compGrid.style.setProperty('--grid-cols', cols);
+  el.compGrid.style.gridTemplateColumns = '';
   el.compGrid.innerHTML = '';
 
   state.tileImages.forEach((src, idx) => {
@@ -616,11 +616,79 @@ function renderTrial() {
     wrapper.addEventListener('click', () => onTileClick(idx));
     el.compGrid.appendChild(wrapper);
   });
+
+  fitGrid();
 }
 
 function gridCols(n) {
   const map = { 1:1, 2:2, 3:3, 4:4, 5:3, 6:3, 7:4, 8:4, 9:3, 10:5 };
   return map[n] ?? 4;
+}
+
+// Fit tiles to fill the available game-area in both dimensions while
+// staying square. On mobile, picks the (cols, rows) layout that
+// produces the largest tile so a 4-tile array becomes 2x2 instead of
+// a thin 4x1 strip.
+const _fitMobileMQ = window.matchMedia('(max-width: 680px)');
+function fitGrid() {
+  if (!el.gameArea || el.gameArea.hasAttribute('hidden')) return;
+  const n = state.arraySize;
+  if (!n) return;
+
+  const gaStyle = getComputedStyle(el.gameArea);
+  const isRow = gaStyle.flexDirection.startsWith('row');
+  const padX = parseFloat(gaStyle.paddingLeft) + parseFloat(gaStyle.paddingRight);
+  const padY = parseFloat(gaStyle.paddingTop) + parseFloat(gaStyle.paddingBottom);
+  const flexGap = parseFloat(gaStyle.rowGap) || parseFloat(gaStyle.gap) || 0;
+
+  let availW = el.gameArea.clientWidth - padX;
+  let availH = el.gameArea.clientHeight - padY;
+
+  const sampleSection = document.getElementById('sample-section');
+  if (sampleSection && !sampleSection.hidden) {
+    const r = sampleSection.getBoundingClientRect();
+    if (isRow) availW -= r.width + flexGap;
+    else        availH -= r.height + flexGap;
+  }
+
+  const areaLabel = el.compSection && el.compSection.querySelector('.area-label');
+  if (areaLabel) {
+    const lbl = getComputedStyle(areaLabel);
+    availH -= areaLabel.getBoundingClientRect().height + parseFloat(lbl.marginBottom);
+  }
+
+  const cgStyle = getComputedStyle(el.compGrid);
+  const tileGap = parseFloat(cgStyle.rowGap) || parseFloat(cgStyle.gap) || 8;
+
+  let cols, rows;
+  if (_fitMobileMQ.matches) {
+    let best = { cols: gridCols(n), rows: Math.ceil(n / gridCols(n)), tile: 0 };
+    for (let c = 1; c <= n; c++) {
+      const r = Math.ceil(n / c);
+      const tw = (availW - (c - 1) * tileGap) / c;
+      const th = (availH - (r - 1) * tileGap) / r;
+      const t = Math.min(tw, th);
+      if (t > best.tile) best = { cols: c, rows: r, tile: t };
+    }
+    cols = best.cols;
+    rows = best.rows;
+  } else {
+    cols = gridCols(n);
+    rows = Math.ceil(n / cols);
+  }
+
+  const tileW = (availW - (cols - 1) * tileGap) / cols;
+  const tileH = (availH - (rows - 1) * tileGap) / rows;
+  const tile = Math.max(56, Math.min(tileW, tileH, 320));
+
+  el.compGrid.style.setProperty('--grid-cols', cols);
+  el.compGrid.style.setProperty('--tile-sz', `${Math.floor(tile)}px`);
+}
+
+window.addEventListener('resize', () => fitGrid());
+window.addEventListener('orientationchange', () => fitGrid());
+if (window.ResizeObserver && el.gameArea) {
+  new ResizeObserver(() => fitGrid()).observe(el.gameArea);
 }
 
 // ── Tile interaction ───────────────────────────────────────────────
