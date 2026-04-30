@@ -417,7 +417,7 @@ body {
 }
 
 /* Comparison grid */
-#comp-section { display: flex; flex-direction: column; align-items: center; }
+#comp-section { display: flex; flex-direction: column; align-items: center; position: relative; }
 
 #comp-grid {
   display: grid;
@@ -558,23 +558,41 @@ body {
   background: rgba(56,161,105,0.05);
 }
 
-/* ── Next button (injected by JS) ──────────────────────────────────── */
-#btn-next {
-  display: block;
-  margin: 14px auto 0;
-  background: #38a169;
-  color: #fff;
-  border: none;
-  padding: 10px 32px;
-  border-radius: 10px;
-  font-size: 1.05rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
-  box-shadow: 0 3px 8px rgba(56,161,105,0.35);
+/* ── Trial overlay: Next + Retry watermark buttons ─────────────────── */
+#trial-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  pointer-events: none;
+  z-index: 20;
 }
-#btn-next:hover  { background: #2f855a; }
-#btn-next:active { transform: scale(0.97); }
+
+.btn-watermark {
+  pointer-events: all;
+  padding: 11px 30px;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.28);
+  transition: opacity 0.15s, transform 0.1s;
+  letter-spacing: 0.02em;
+}
+.btn-watermark:hover  { opacity: 0.93; transform: scale(1.04); }
+.btn-watermark:active { transform: scale(0.97); }
+
+.btn-watermark-next {
+  background: rgba(47, 133, 90, 0.92);
+  color: #fff;
+}
+.btn-watermark-retry {
+  background: rgba(192, 86, 33, 0.88);
+  color: #fff;
+}
 
 /* ── Bottom bar ────────────────────────────────────────────────────── */
 #bottom-bar {

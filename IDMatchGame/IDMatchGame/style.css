@@ -150,6 +150,110 @@ body {
 .btn-primary:hover  { background: #2b6cb0; }
 .btn-primary:active { transform: scale(0.97); }
 
+/* ── Target picker ─────────────────────────────────────────────────── */
+.btn-targets {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #2d3748;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-targets:hover       { background: #edf2f7; }
+.btn-targets.is-open     { background: #e6f0fb; border-color: #4299e1; }
+.btn-targets.is-filtered { border-color: #3182ce; color: #2b6cb0; }
+.btn-targets .targets-count {
+  font-weight: 500;
+  color: #4a5568;
+  background: #edf2f7;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+}
+.btn-targets.is-filtered .targets-count {
+  background: #bee3f8;
+  color: #2b6cb0;
+}
+
+#target-panel {
+  background: #fafbfd;
+  border-bottom: 2px solid #dde3ed;
+  padding: 10px 20px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+.target-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.target-panel-title {
+  font-weight: 700;
+  color: #2d3748;
+  font-size: 0.9rem;
+}
+.target-panel-actions {
+  display: flex;
+  gap: 6px;
+}
+.target-panel-actions button {
+  padding: 4px 10px;
+  border: 1px solid #cbd5e0;
+  background: #fff;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #2d3748;
+  cursor: pointer;
+}
+.target-panel-actions button:hover { background: #edf2f7; }
+.btn-targets-close {
+  border: none !important;
+  background: transparent !important;
+  font-size: 1.2rem !important;
+  line-height: 1;
+  padding: 2px 8px !important;
+}
+.target-panel-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 4px 12px;
+}
+.target-panel-empty {
+  padding: 12px;
+  color: #718096;
+  font-style: italic;
+}
+.target-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 4px;
+  font-size: 0.82rem;
+  color: #2d3748;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.target-row:hover { background: #edf2f7; }
+.target-row input[type="checkbox"] { cursor: pointer; accent-color: #3182ce; }
+.target-thumb {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  background: #f7fafc;
+}
+.target-row-label { flex: 1 1 auto; }
+
 /* ── Extra settings panel ──────────────────────────────────────────── */
 .btn-extra {
   display: inline-flex;
@@ -253,7 +357,7 @@ body {
 }
 
 /* Comparison grid */
-#comp-section { display: flex; flex-direction: column; align-items: center; }
+#comp-section { display: flex; flex-direction: column; align-items: center; position: relative; }
 
 #comp-grid {
   display: grid;
@@ -385,23 +489,41 @@ body {
   background: rgba(56,161,105,0.05);
 }
 
-/* ── Next button (injected by JS) ──────────────────────────────────── */
-#btn-next {
-  display: block;
-  margin: 14px auto 0;
-  background: #38a169;
-  color: #fff;
-  border: none;
-  padding: 10px 32px;
-  border-radius: 10px;
-  font-size: 1.05rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
-  box-shadow: 0 3px 8px rgba(56,161,105,0.35);
+/* ── Trial overlay: Next + Retry watermark buttons ─────────────────── */
+#trial-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  pointer-events: none;
+  z-index: 20;
 }
-#btn-next:hover  { background: #2f855a; }
-#btn-next:active { transform: scale(0.97); }
+
+.btn-watermark {
+  pointer-events: all;
+  padding: 11px 30px;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.28);
+  transition: opacity 0.15s, transform 0.1s;
+  letter-spacing: 0.02em;
+}
+.btn-watermark:hover  { opacity: 0.93; transform: scale(1.04); }
+.btn-watermark:active { transform: scale(0.97); }
+
+.btn-watermark-next {
+  background: rgba(47, 133, 90, 0.92);
+  color: #fff;
+}
+.btn-watermark-retry {
+  background: rgba(192, 86, 33, 0.88);
+  color: #fff;
+}
 
 /* ── Bottom bar ────────────────────────────────────────────────────── */
 #bottom-bar {
@@ -602,7 +724,7 @@ body {
   #btn-back { padding: 4px 9px; font-size: 0.76rem; }
 
   #settings-bar { padding: 6px 10px; gap: 6px 8px; flex-shrink: 0; }
-  #extra-panel { flex-shrink: 0; }
+  #extra-panel, #target-panel { flex-shrink: 0; }
 
   #game-area {
     flex: 1 1 auto;
@@ -622,7 +744,7 @@ body {
   #sample-section { flex: 0 0 auto; }
   #sample-card { width: 96px; height: 96px; }
 
-  #comp-section { flex: 0 0 auto; width: 100%; align-items: center; }
+  #comp-section { flex: 0 0 auto; width: 100%; align-items: center; position: relative; }
 
   #comp-grid {
     width: auto;

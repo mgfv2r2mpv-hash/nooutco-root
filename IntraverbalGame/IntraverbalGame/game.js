@@ -574,28 +574,23 @@ function beginTrial(keepTarget = false) {
 
   renderTrial();
 
+  if (state.vocalPromptsEnabled) {
+    speakCarrier();
+  }
+
   if (keepTarget) {
     state.autoPrompted = true;
     setTimeout(applyPrompt, 80);
-    if (state.vocalPromptsEnabled) {
-      setTimeout(speakCarrier, 100);
-    }
   } else if (state.autoPromptEnabled) {
     if (state.promptDelay) {
       state.autoPromptHandle = setTimeout(() => {
         state.autoPrompted     = true;
         state.autoPromptHandle = null;
         applyPrompt();
-        if (state.vocalPromptsEnabled) {
-          setTimeout(speakCarrier, 80);
-        }
       }, state.promptDelaySecs * 1000);
     } else {
       state.autoPrompted = true;
       setTimeout(applyPrompt, 80);
-      if (state.vocalPromptsEnabled) {
-        setTimeout(speakCarrier, 100);
-      }
     }
   }
 }

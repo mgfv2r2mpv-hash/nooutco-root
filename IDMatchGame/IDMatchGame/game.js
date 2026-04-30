@@ -35,6 +35,12 @@ const state = {
   promptDelay:       false,
   promptDelaySecs:   3,
 
+  // Per-topic target filters (arrays of src paths; empty = no filter)
+  targetFilters: {},
+
+  // Target panel UI state
+  targetPanelOpen: false,
+
   // Discovered folders & images
   manifest:     null,
   topicFolders: [],
@@ -103,6 +109,13 @@ const el = {
   btnExtraToggle:     $('btn-extra-toggle'),
   extraPanel:         $('extra-panel'),
   btnExtraClose:      $('btn-extra-close'),
+  btnTargetsToggle:   $('btn-targets-toggle'),
+  targetsCount:       $('targets-count'),
+  targetPanel:        $('target-panel'),
+  targetPanelBody:    $('target-panel-body'),
+  btnTargetsAll:      $('btn-targets-all'),
+  btnTargetsNone:     $('btn-targets-none'),
+  btnTargetsClose:    $('btn-targets-close'),
 };
 
 // ── Boot ───────────────────────────────────────────────────────────
@@ -128,6 +141,7 @@ function loadSettings() {
   state.autoPromptEnabled = s.autoPromptEnabled ?? false;
   state.promptDelay       = s.promptDelay       ?? false;
   state.promptDelaySecs   = s.promptDelaySecs   ?? 3;
+  state.targetFilters     = s.targetFilters     ?? {};
 
   el.inpSize.value              = state.arraySize;
   el.chkRepresentErrors.checked = state.representErrors;
@@ -158,6 +172,7 @@ function saveSettings() {
     autoPromptEnabled: state.autoPromptEnabled,
     promptDelay:       state.promptDelay,
     promptDelaySecs:   state.promptDelaySecs,
+    targetFilters:     state.targetFilters,
   }));
 }
 
@@ -240,7 +255,7 @@ function buildTopicDropdown(dirs) {
 }
 
 async function refreshImages() {
-  if (!state.topic) { state.topicImages = []; state.otherImages = []; return; }
+  if (!state.topic) { state.topicImages = []; state.otherImages = []; updateTargetsCount(); return; }
 
   if (state.manifest) {
     state.topicImages = state.manifest.images[state.topic] || [];
@@ -249,15 +264,29 @@ async function refreshImages() {
           .filter(f => f !== state.topic)
           .flatMap(f => state.manifest.images[f] || [])
       : [];
-    return;
+  } else {
+    state.topicImages = await fetchDirImages(state.topic);
+    if (state.crossCategory && state.topicFolders.length > 1) {
+      const others = state.topicFolders.filter(f => f !== state.topic);
+      state.otherImages = (await Promise.all(others.map(fetchDirImages))).flat();
+    } else {
+      state.otherImages = [];
+    }
   }
 
-  state.topicImages = await fetchDirImages(state.topic);
-  if (state.crossCategory && state.topicFolders.length > 1) {
-    const others = state.topicFolders.filter(f => f !== state.topic);
-    state.otherImages = (await Promise.all(others.map(fetchDirImages))).flat();
-  } else {
-    state.otherImages = [];
+  pruneStaleTargetFilter();
+  updateTargetsCount();
+  if (state.targetPanelOpen) renderTargetPanel();
+}
+
+function pruneStaleTargetFilter() {
+  const filter = state.targetFilters[state.topic];
+  if (!filter || !filter.length) return;
+  const known = new Set(state.topicImages);
+  const pruned = filter.filter(src => known.has(src));
+  if (pruned.length !== filter.length) {
+    state.targetFilters[state.topic] = pruned;
+    saveSettings();
   }
 }
 
@@ -287,6 +316,12 @@ function bindEvents() {
     saveSettings();
     await refreshImages();
   });
+
+  // Target panel
+  el.btnTargetsToggle.addEventListener('click', toggleTargetPanel);
+  el.btnTargetsClose .addEventListener('click', () => setTargetPanelOpen(false));
+  el.btnTargetsAll   .addEventListener('click', () => setAllTargets(true));
+  el.btnTargetsNone  .addEventListener('click', () => setAllTargets(false));
 
   el.chkPersists.addEventListener('change', () => {
     state.promptPersists = el.chkPersists.checked;
@@ -396,7 +431,7 @@ function startGame() {
 
   el.gameArea.removeAttribute('hidden');
   el.btnPrompt.removeAttribute('hidden');
-  removeNextBtn();
+  removeTrialButtons();
 
   resetTimer();
   startTimer();
@@ -405,29 +440,29 @@ function startGame() {
 
 /**
  * Begin a new trial.
- * keepSample=true → repeat trial (same sample, tiles reshuffled, auto-prompted).
+ * keepSample=true → error-correction repeat (same sample, reshuffled, auto-prompted).
+ * isRetry=true    → procedural-error retry (same sample, reshuffled, no prompt).
  */
-function beginTrial(keepSample = false) {
+function beginTrial(keepSample = false, isRetry = false) {
   state.trialNum++;
   state.trialErrors   = 0;
   state.prompted      = false;
   state.autoPrompted  = false;
-  state.isRepeatTrial = keepSample;
+  state.isRepeatTrial = keepSample && !isRetry;
   state.trialStart    = Date.now();
 
-  // Cancel any pending delayed auto-prompt from the previous trial
   clearTimeout(state.autoPromptHandle);
   state.autoPromptHandle = null;
 
   clearPrompt();
-  buildTrial(keepSample);
+  buildTrial(keepSample || isRetry);
   renderTrial();
 
-  if (keepSample) {
-    // Repeat trial: always auto-prompt immediately
+  if (keepSample && !isRetry) {
+    // Error correction: always auto-prompt immediately.
     state.autoPrompted = true;
     setTimeout(applyPrompt, 80);
-  } else if (state.autoPromptEnabled) {
+  } else if (!keepSample && !isRetry && state.autoPromptEnabled) {
     if (state.promptDelay) {
       state.autoPromptHandle = setTimeout(() => {
         state.autoPrompted = true;
@@ -439,13 +474,18 @@ function beginTrial(keepSample = false) {
       setTimeout(applyPrompt, 80);
     }
   }
+  // isRetry: no auto-prompt — clean fresh presentation.
 }
 
 function buildTrial(keepSample) {
   const n = state.arraySize;
 
   if (!keepSample) {
-    state.sampleSrc = pickRandom(state.topicImages);
+    const filter = state.targetFilters[state.topic] || [];
+    const candidatePool = filter.length
+      ? state.topicImages.filter(src => filter.includes(src))
+      : state.topicImages;
+    state.sampleSrc = pickRandom(candidatePool.length ? candidatePool : state.topicImages);
   }
 
   const basePool = state.crossCategory
@@ -660,7 +700,7 @@ function onCorrectClick(wrapper, tile) {
   setTimeout(() => {
     wrapper.classList.remove('expanding');
     tile.classList.add('flipped');
-    setTimeout(showNextBtn, 580);
+    setTimeout(showTrialButtons, 580);
   }, 280);
 }
 
@@ -725,29 +765,52 @@ function onPromptButton() {
   applyPrompt();
 }
 
-// ── Next button ────────────────────────────────────────────────────
+// ── Trial overlay (Next + Retry watermark buttons) ─────────────────
 
-function showNextBtn() {
-  removeNextBtn();
-  const btn = document.createElement('button');
-  btn.id = 'btn-next';
-  btn.textContent = 'Next';
-  btn.addEventListener('click', onNextClick);
-  el.compSection.appendChild(btn);
+function showTrialButtons() {
+  removeTrialButtons();
+  const overlay = document.createElement('div');
+  overlay.id = 'trial-overlay';
+
+  const btnNext = document.createElement('button');
+  btnNext.id = 'btn-next';
+  btnNext.className = 'btn-watermark btn-watermark-next';
+  btnNext.textContent = 'Next';
+  btnNext.addEventListener('click', onNextClick);
+
+  const btnRetry = document.createElement('button');
+  btnRetry.id = 'btn-retry';
+  btnRetry.className = 'btn-watermark btn-watermark-retry';
+  btnRetry.textContent = 'Retry';
+  btnRetry.addEventListener('click', onRetryClick);
+
+  overlay.appendChild(btnNext);
+  overlay.appendChild(btnRetry);
+  el.compSection.appendChild(overlay);
 }
 
-function removeNextBtn() {
-  const btn = $('btn-next');
-  if (btn) btn.remove();
+function removeTrialButtons() {
+  const overlay = $('trial-overlay');
+  if (overlay) overlay.remove();
 }
 
 function onNextClick() {
-  removeNextBtn();
-  // Resume timer only if we auto-paused it (not if staff had paused manually)
+  removeTrialButtons();
   if (state.timerAutoPaused) { state.timerAutoPaused = false; startTimer(); }
   const last = state.sessionData[state.sessionData.length - 1];
   const needsRepeat = state.representErrors && last && (last.outcome === 'Error' || last.outcome === 'Repeat Error');
   beginTrial(needsRepeat);
+}
+
+function onRetryClick() {
+  // Void the completed trial — procedural error, don't count it.
+  if (state.sessionData.length) {
+    state.sessionData.pop();
+    state.trialNum--;
+  }
+  removeTrialButtons();
+  if (state.timerAutoPaused) { state.timerAutoPaused = false; startTimer(); }
+  beginTrial(false, true);
 }
 
 // ── Print data ─────────────────────────────────────────────────────
@@ -810,6 +873,101 @@ function printData() {
     `<span>Avg response time: <strong>${avgTime} s</strong></span>`;
 
   window.print();
+}
+
+// ── Target picker panel ────────────────────────────────────────────
+
+function toggleTargetPanel() {
+  setTargetPanelOpen(!state.targetPanelOpen);
+}
+
+function setTargetPanelOpen(open) {
+  state.targetPanelOpen = open;
+  el.btnTargetsToggle.setAttribute('aria-expanded', String(open));
+  el.btnTargetsToggle.classList.toggle('is-open', open);
+  if (open) {
+    el.targetPanel.removeAttribute('hidden');
+    renderTargetPanel();
+  } else {
+    el.targetPanel.setAttribute('hidden', '');
+  }
+}
+
+function srcLabel(src) {
+  return src.split('/').pop()
+    .replace(/\.[^.]+$/, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function renderTargetPanel() {
+  const body = el.targetPanelBody;
+  body.innerHTML = '';
+
+  const images = state.topicImages;
+  if (!images.length) {
+    body.innerHTML = '<p class="target-panel-empty">No images in this topic.</p>';
+    return;
+  }
+
+  const filter = new Set(state.targetFilters[state.topic] || []);
+
+  images.forEach(src => {
+    const row = document.createElement('label');
+    row.className = 'target-row';
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.dataset.src = src;
+    cb.checked = !filter.size || filter.has(src);
+    cb.addEventListener('change', () => onTargetCheckboxChange(cb));
+
+    const thumb = document.createElement('img');
+    thumb.className = 'target-thumb';
+    thumb.src = src;
+    thumb.alt = '';
+    thumb.addEventListener('error', () => thumb.remove());
+
+    const lbl = document.createElement('span');
+    lbl.className = 'target-row-label';
+    lbl.textContent = srcLabel(src);
+
+    row.appendChild(cb);
+    row.appendChild(thumb);
+    row.appendChild(lbl);
+    body.appendChild(row);
+  });
+}
+
+function targetCheckboxes() {
+  return el.targetPanelBody.querySelectorAll('input[type="checkbox"][data-src]');
+}
+
+function onTargetCheckboxChange(changedCb) {
+  const checkedSrcs = new Set();
+  targetCheckboxes().forEach(cb => {
+    if (cb.checked) checkedSrcs.add(cb.dataset.src);
+  });
+
+  const allChecked = state.topicImages.every(src => checkedSrcs.has(src));
+  state.targetFilters[state.topic] = allChecked ? [] : [...checkedSrcs];
+
+  saveSettings();
+  updateTargetsCount();
+}
+
+function setAllTargets(checked) {
+  targetCheckboxes().forEach(cb => { cb.checked = checked; });
+  onTargetCheckboxChange();
+}
+
+function updateTargetsCount() {
+  if (!el.targetsCount) return;
+  const filter = state.targetFilters[state.topic] || [];
+  const total    = state.topicImages.length;
+  const selected = filter.length ? filter.length : total;
+  el.targetsCount.textContent = `${selected} of ${total}`;
+  el.btnTargetsToggle.classList.toggle('is-filtered', filter.length > 0);
 }
 
 // ── Extra settings panel ───────────────────────────────────────────
