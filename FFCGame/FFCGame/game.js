@@ -552,19 +552,19 @@ function startGame() {
 
   el.gameArea.removeAttribute('hidden');
   el.btnPrompt.removeAttribute('hidden');
-  removeNextBtn();
+  removeTrialButtons();
 
   resetTimer();
   startTimer();
   beginTrial();
 }
 
-function beginTrial(keepTarget = false) {
+function beginTrial(keepTarget = false, isRetry = false) {
   state.trialNum++;
   state.trialErrors   = 0;
   state.prompted      = false;
   state.autoPrompted  = false;
-  state.isRepeatTrial = keepTarget;
+  state.isRepeatTrial = keepTarget && !isRetry;
   state.trialStart    = Date.now();
 
   clearTimeout(state.autoPromptHandle);
@@ -572,7 +572,7 @@ function beginTrial(keepTarget = false) {
 
   clearPrompt();
 
-  if (!keepTarget) {
+  if (!keepTarget && !isRetry) {
     const tag = state.tag;
     if (!tag) { alert('No tag selected. Pick a tag or adjust your target filter.'); return; }
     const trial = buildTrialData(state.mode, tag, state.arraySize);
@@ -586,8 +586,7 @@ function beginTrial(keepTarget = false) {
     state.tileItems      = trial.tileItems;
     state.correctIdx     = trial.correctIdx;
   } else {
-    // Error correction: keep the same target item the learner just missed,
-    // only rebuild distractors and positions around it.
+    // Error correction or retry: keep the same target item, rebuild distractors/positions.
     const trial = buildTrialData(state.mode, state.targetTag, state.arraySize, state.targetItem);
     if (trial) {
       state.tileItems  = trial.tileItems;
@@ -597,10 +596,11 @@ function beginTrial(keepTarget = false) {
 
   renderTrial();
 
-  if (keepTarget) {
+  if (keepTarget && !isRetry) {
+    // Error correction: always auto-prompt immediately.
     state.autoPrompted = true;
     setTimeout(applyPrompt, 80);
-  } else if (state.autoPromptEnabled) {
+  } else if (!keepTarget && !isRetry && state.autoPromptEnabled) {
     if (state.promptDelay) {
       state.autoPromptHandle = setTimeout(() => {
         state.autoPrompted = true;
@@ -612,6 +612,7 @@ function beginTrial(keepTarget = false) {
       setTimeout(applyPrompt, 80);
     }
   }
+  // isRetry: no auto-prompt — clean fresh presentation.
 }
 
 function renderTrial() {
@@ -826,7 +827,7 @@ function onCorrectClick(wrapper, tile) {
   setTimeout(() => {
     wrapper.classList.remove('expanding');
     tile.classList.add('flipped');
-    setTimeout(showNextBtn, 580);
+    setTimeout(showTrialButtons, 580);
   }, 280);
 }
 
@@ -890,28 +891,52 @@ function onPromptButton() {
   applyPrompt();
 }
 
-// ── Next button ────────────────────────────────────────────────────
+// ── Trial overlay (Next + Retry watermark buttons) ─────────────────
 
-function showNextBtn() {
-  removeNextBtn();
-  const btn = document.createElement('button');
-  btn.id = 'btn-next';
-  btn.textContent = 'Next';
-  btn.addEventListener('click', onNextClick);
-  el.compSection.appendChild(btn);
+function showTrialButtons() {
+  removeTrialButtons();
+  const overlay = document.createElement('div');
+  overlay.id = 'trial-overlay';
+
+  const btnNext = document.createElement('button');
+  btnNext.id = 'btn-next';
+  btnNext.className = 'btn-watermark btn-watermark-next';
+  btnNext.textContent = 'Next';
+  btnNext.addEventListener('click', onNextClick);
+
+  const btnRetry = document.createElement('button');
+  btnRetry.id = 'btn-retry';
+  btnRetry.className = 'btn-watermark btn-watermark-retry';
+  btnRetry.textContent = 'Retry';
+  btnRetry.addEventListener('click', onRetryClick);
+
+  overlay.appendChild(btnNext);
+  overlay.appendChild(btnRetry);
+  el.compSection.appendChild(overlay);
 }
 
-function removeNextBtn() {
-  const btn = $('btn-next');
-  if (btn) btn.remove();
+function removeTrialButtons() {
+  const overlay = $('trial-overlay');
+  if (overlay) overlay.remove();
 }
 
 function onNextClick() {
-  removeNextBtn();
+  removeTrialButtons();
   if (state.timerAutoPaused) { state.timerAutoPaused = false; startTimer(); }
   const last = state.sessionData[state.sessionData.length - 1];
   const needsRepeat = state.representErrors && last && (last.outcome === 'Error' || last.outcome === 'Repeat Error');
   beginTrial(needsRepeat);
+}
+
+function onRetryClick() {
+  // Void the completed trial — procedural error, don't count it.
+  if (state.sessionData.length) {
+    state.sessionData.pop();
+    state.trialNum--;
+  }
+  removeTrialButtons();
+  if (state.timerAutoPaused) { state.timerAutoPaused = false; startTimer(); }
+  beginTrial(false, true);
 }
 
 // ── Print data ─────────────────────────────────────────────────────
@@ -1060,7 +1085,7 @@ function renderTargetPanel() {
       // Empty filter = every item considered enabled (whole pool). When the
       // user ticks anything, the filter becomes explicit.
       cb.checked = !filter.size || filter.has(it.id);
-      cb.addEventListener('change', () => onTargetCheckboxChange());
+      cb.addEventListener('change', () => onTargetCheckboxChange(cb));
 
       const thumb = document.createElement('img');
       thumb.className = 'target-thumb';
@@ -1093,10 +1118,19 @@ function targetCheckboxes() {
   return el.targetPanelBody.querySelectorAll('input[type="checkbox"][data-item-id]');
 }
 
-function onTargetCheckboxChange() {
-  // Collect the union of currently-checked item ids across the panel.
+function onTargetCheckboxChange(changedCb) {
+  // An item may appear in multiple tag-groups, creating duplicate checkboxes.
+  // Sync all duplicates for the changed item BEFORE reading the overall state,
+  // otherwise an unchecked duplicate in another group keeps the item selected.
+  if (changedCb) {
+    const id    = changedCb.dataset.itemId;
+    const state_ = changedCb.checked;
+    targetCheckboxes().forEach(cb => {
+      if (cb.dataset.itemId === id) cb.checked = state_;
+    });
+  }
+
   const relevant = itemsForMode();
-  const relevantIds = new Set(relevant.map(it => it.id));
   const checkedIds = new Set();
   targetCheckboxes().forEach(cb => {
     if (cb.checked) checkedIds.add(cb.dataset.itemId);
@@ -1110,8 +1144,7 @@ function onTargetCheckboxChange() {
   saveSettings();
   updateTargetsCount();
   populateTagDropdown();
-  // Mirror selection across duplicate rows (same item under multiple tags).
-  syncDuplicateCheckboxes(checkedIds, relevantIds);
+  syncDuplicateCheckboxes(checkedIds);
 }
 
 function syncDuplicateCheckboxes(checkedIds) {
