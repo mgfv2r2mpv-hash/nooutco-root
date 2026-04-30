@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Intraverbal Manager — Behavior Analysis Tools</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #eef0e9;
+      min-height: 100vh;
+      color: #2d3a1e;
+    }
+
+    /* ── Layout ── */
+    .app { display: flex; flex-direction: column; min-height: 100vh; }
+
+    .app-header {
+      background: #fafaf8;
+      border-bottom: 1.5px solid #d0d5c6;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .header-text h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #2d3a1e;
+      line-height: 1.2;
+    }
+
+    .header-text p {
+      font-size: 13px;
+      color: #5a6a48;
+      margin-top: 2px;
+    }
+
+    .home-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border: 1.5px solid #c4cab8;
+      border-radius: 999px;
+      background: #fafaf8;
+      color: #3a4a28;
+      font-size: 13px;
+      font-weight: 500;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+    .home-btn:hover { background: #f0f2eb; }
+
+    .main { flex: 1; max-width: 900px; margin: 0 auto; width: 100%; padding: 24px 20px; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+      white-space: nowrap;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: #374528; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #2d3a1f; }
+    .btn-secondary { background: #fff; color: #374528; border: 1.5px solid #c0d4a8; }
+    .btn-secondary:hover:not(:disabled) { background: #f0f2eb; }
+    .btn-ghost { background: transparent; color: #5a6a48; border: 1.5px solid #c4cab8; }
+    .btn-ghost:hover:not(:disabled) { background: #f0f2eb; }
+    .btn-danger-ghost { background: transparent; color: #c0392b; border: 1.5px solid #e8b4b0; }
+    .btn-danger-ghost:hover:not(:disabled) { background: #fdf0ef; }
+    .btn-danger { background: #c0392b; color: #fff; }
+    .btn-danger:hover:not(:disabled) { background: #a93226; }
+    .btn-sm { padding: 5px 10px; font-size: 13px; }
+
+    /* ── Category bar ── */
+    .category-bar {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .category-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .cat-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1.5px solid #c4cab8;
+      background: #fafaf8;
+      color: #4a5a38;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .cat-tab:hover { background: #f0f2eb; border-color: #a8b494; }
+    .cat-tab.active { background: #374528; color: #fff; border-color: #374528; }
+    .cat-tab.active .cat-count { background: rgba(255,255,255,0.25); color: #fff; }
+
+    .cat-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      background: #e0e5d6;
+      color: #4a5a38;
+    }
+
+    /* ── Notification ── */
+    .notification {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 16px;
+      border: 1.5px solid;
+    }
+    .notification.success {
+      background: #edf5e0;
+      border-color: #b8d498;
+      color: #2d5016;
+    }
+    .notification.error {
+      background: #fdf0ef;
+      border-color: #e8b4b0;
+      color: #922b21;
+    }
+    .notif-msg { flex: 1; }
+    .notif-link {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      color: #374528;
+      text-decoration: underline;
+      padding: 0;
+    }
+    .notif-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      color: inherit;
+      opacity: 0.5;
+      padding: 0 2px;
+      line-height: 1;
+    }
+    .notif-close:hover { opacity: 1; }
+
+    /* ── Items section ── */
+    .items-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #2d3a1e;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .item-count {
+      font-size: 13px;
+      font-weight: 600;
+      color: #7a8c5e;
+      background: #e0e5d6;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 20px;
+      color: #7a8c5e;
+      font-size: 15px;
+      border: 1.5px dashed #c4cab8;
+      border-radius: 12px;
+      background: #fafaf8;
+    }
+    .empty-state p { margin-bottom: 16px; }
+
+    .items-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px;
+    }
+
+    .item-card {
+      background: #fafaf8;
+      border: 1.5px solid #d0d5c6;
+      border-radius: 12px;
+      padding: 16px 18px;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .item-card:hover {
+      border-color: #a8b494;
+      box-shadow: 0 2px 8px rgba(60,75,40,0.08);
+    }
+
+    .item-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: #2d3a1e;
+      margin-bottom: 8px;
+    }
+
+    .item-phrases {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+
+    .phrase-chip {
+      font-size: 12px;
+      color: #5a6a48;
+      font-style: italic;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .item-cats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 6px;
+    }
+
+    .cat-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      background: #e0e5d6;
+      color: #4a5a38;
+    }
+
+    /* ── Modal ── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(30,40,20,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+
+    .modal {
+      background: #fafaf8;
+      border: 1.5px solid #c4cab8;
+      border-radius: 14px;
+      width: min(540px, 100%);
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 12px 40px rgba(30,40,20,0.2);
+    }
+
+    .modal-sm { width: min(360px, 100%); }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 24px 0;
+      flex-shrink: 0;
+    }
+
+    .modal-header h2 {
+      font-size: 17px;
+      font-weight: 700;
+      color: #2d3a1e;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 22px;
+      cursor: pointer;
+      color: #7a8c5e;
+      line-height: 1;
+      padding: 0 2px;
+      border-radius: 4px;
+    }
+    .modal-close:hover { color: #2d3a1e; background: #f0f2eb; }
+
+    .modal-body {
+      padding: 20px 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 16px;
+      border-top: 1px solid #e0e5d6;
+      margin-top: 8px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .confirm-delete {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #922b21;
+      flex-wrap: wrap;
+    }
+
+    /* ── Form fields ── */
+    .field { margin-bottom: 18px; }
+    .field:last-child { margin-bottom: 0; }
+
+    .field-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #4a5a38;
+      margin-bottom: 6px;
+    }
+
+    .field-input {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid #c0d4a8;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #2d3a1f;
+      background: #fff;
+      font-family: inherit;
+      transition: border-color 0.15s;
+    }
+    .field-input:focus {
+      outline: none;
+      border-color: #7a8c5e;
+    }
+    .field-input::placeholder { color: #9aaa88; }
+
+    .form-error {
+      color: #922b21;
+      font-size: 13px;
+      margin-top: 6px;
+      padding: 8px 12px;
+      background: #fdf0ef;
+      border: 1px solid #e8b4b0;
+      border-radius: 6px;
+    }
+
+    /* ── Carrier phrases ── */
+    .phrase-list { display: flex; flex-direction: column; gap: 6px; }
+
+    .phrase-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .phrase-row .field-input { flex: 1; }
+
+    .remove-phrase-btn {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: none;
+      color: #9aaa88;
+      font-size: 18px;
+      cursor: pointer;
+      border-radius: 4px;
+      line-height: 1;
+    }
+    .remove-phrase-btn:hover { color: #c0392b; background: #fdf0ef; }
+
+    .add-phrase-btn {
+      align-self: flex-start;
+      margin-top: 2px;
+      font-size: 13px;
+      padding: 5px 10px;
+    }
+
+    /* ── Category checklist in form ── */
+    .cat-checklist {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 180px;
+      overflow-y: auto;
+      padding: 2px 0;
+    }
+
+    .cat-check-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: #2d3a1e;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 6px;
+      transition: background 0.1s;
+    }
+    .cat-check-row:hover { background: #f0f2eb; }
+    .cat-check-row input[type="checkbox"] { width: 15px; height: 15px; accent-color: #374528; cursor: pointer; }
+
+    .new-cat-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .new-cat-input { flex: 1; min-width: 120px; }
+
+    .add-cat-inline-btn {
+      font-size: 13px;
+      padding: 5px 10px;
+      align-self: flex-start;
+    }
+
+    /* ── Category management in cat bar ── */
+    .cat-tab-wrapper {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .cat-delete-btn {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #c0392b;
+      color: #fff;
+      font-size: 11px;
+      line-height: 1;
+      border: none;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+    }
+    .cat-tab-wrapper:hover .cat-delete-btn { display: inline-flex; }
+
+    @media (max-width: 600px) {
+      .app-header { flex-wrap: wrap; padding: 12px 16px; }
+      .main { padding: 16px; }
+      .items-grid { grid-template-columns: 1fr; }
+      .modal-body { padding: 16px; }
+      .modal-header { padding: 14px 16px 0; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    const SK = { categories: 'iv_categories', items: 'iv_items' };
+
+    function load(key, fallback) {
+      try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+      catch { return fallback; }
+    }
+
+    function uid() {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    }
+
+    // ─── App ───────────────────────────────────────────────────────────────────
+    function App() {
+      const [categories, setCategories] = useState(() => load(SK.categories, []));
+      const [items, setItems]           = useState(() => load(SK.items, []));
+      const [activeCategory, setActiveCategory] = useState(null); // null = All
+      const [modal, setModal]           = useState(null);
+      const [notification, setNotification] = useState(null);
+
+      useEffect(() => { localStorage.setItem(SK.categories, JSON.stringify(categories)); }, [categories]);
+      useEffect(() => { localStorage.setItem(SK.items, JSON.stringify(items)); }, [items]);
+
+      function clearNotification() { setNotification(null); }
+
+      function openCreateItem() {
+        clearNotification();
+        setModal({ type: 'createItem', preselectedCategoryId: activeCategory });
+      }
+
+      function openEditItem(item) {
+        clearNotification();
+        setModal({ type: 'editItem', item });
+      }
+
+      function closeModal() {
+        setModal(null);
+        clearNotification();
+      }
+
+      // Adds a category (or returns existing match). Returns the category object.
+      function addCategory(name) {
+        const trimmed = name.trim();
+        if (!trimmed) return null;
+        const existing = categories.find(c => c.name.toLowerCase() === trimmed.toLowerCase());
+        if (existing) return existing;
+        const cat = { id: uid(), name: trimmed, createdAt: Date.now() };
+        setCategories(prev => [...prev, cat].sort((a, b) => a.name.localeCompare(b.name)));
+        return cat;
+      }
+
+      function deleteCategory(catId) {
+        setCategories(prev => prev.filter(c => c.id !== catId));
+        setItems(prev => prev.map(item => ({
+          ...item,
+          categoryIds: item.categoryIds.filter(id => id !== catId),
+        })));
+        if (activeCategory === catId) setActiveCategory(null);
+      }
+
+      function handleSaveItem(data) {
+        if (modal.type === 'createItem') {
+          const newItem = { id: uid(), createdAt: Date.now(), ...data };
+          setItems(prev => [...prev, newItem]);
+          setModal(null);
+          setNotification({ type: 'success', message: 'Added!', itemId: newItem.id });
+        } else {
+          const updated = { ...modal.item, ...data };
+          setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
+          setModal(null);
+          setNotification({ type: 'success', message: 'Saved.', itemId: null });
+        }
+      }
+
+      function handleDeleteItem(itemId) {
+        setItems(prev => prev.filter(i => i.id !== itemId));
+        setModal(null);
+        clearNotification();
+      }
+
+      const visibleItems = activeCategory
+        ? items.filter(item => item.categoryIds.includes(activeCategory))
+        : items;
+
+      const activeCategoryName = activeCategory
+        ? (categories.find(c => c.id === activeCategory)?.name ?? '')
+        : null;
+
+      return (
+        <div className="app">
+          <header className="app-header">
+            <a href="/" className="home-btn">&#8592; Home</a>
+            <div className="header-text">
+              <h1>Intraverbal Manager</h1>
+              <p>Organize intraverbal targets by category with carrier phrases.</p>
+            </div>
+          </header>
+
+          <main className="main">
+            {/* Category bar */}
+            <div className="category-bar">
+              <div className="category-tabs">
+                <button
+                  className={`cat-tab${!activeCategory ? ' active' : ''}`}
+                  onClick={() => setActiveCategory(null)}
+                >
+                  All
+                  <span className="cat-count">{items.length}</span>
+                </button>
+
+                {categories.map(cat => (
+                  <div key={cat.id} className="cat-tab-wrapper">
+                    <button
+                      className={`cat-tab${activeCategory === cat.id ? ' active' : ''}`}
+                      onClick={() => setActiveCategory(cat.id)}
+                    >
+                      {cat.name}
+                      <span className="cat-count">
+                        {items.filter(i => i.categoryIds.includes(cat.id)).length}
+                      </span>
+                    </button>
+                    <button
+                      className="cat-delete-btn"
+                      title={`Delete category "${cat.name}"`}
+                      onClick={e => { e.stopPropagation(); deleteCategory(cat.id); }}
+                      aria-label={`Delete category ${cat.name}`}
+                    >×</button>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                className="btn btn-ghost"
+                style={{ fontSize: '13px', padding: '6px 12px' }}
+                onClick={() => { clearNotification(); setModal({ type: 'createCategory' }); }}
+              >
+                + Category
+              </button>
+            </div>
+
+            {/* Notification */}
+            {notification && (
+              <div className={`notification ${notification.type}`} role="status">
+                <span className="notif-msg">
+                  {notification.message}
+                  {notification.type === 'success' && notification.itemId && (
+                    <>
+                      {' '}
+                      <button
+                        className="notif-link"
+                        onClick={() => {
+                          const item = items.find(i => i.id === notification.itemId);
+                          if (item) openEditItem(item);
+                        }}
+                      >
+                        Click to edit.
+                      </button>
+                    </>
+                  )}
+                </span>
+                <button className="notif-close" onClick={clearNotification} aria-label="Dismiss">×</button>
+              </div>
+            )}
+
+            {/* Items list */}
+            <div>
+              <div className="items-header">
+                <h2 className="section-title">
+                  {activeCategoryName ?? 'All Items'}
+                  {visibleItems.length > 0 && (
+                    <span className="item-count">{visibleItems.length}</span>
+                  )}
+                </h2>
+                <button className="btn btn-primary" onClick={openCreateItem}>
+                  + Add Item
+                </button>
+              </div>
+
+              {visibleItems.length === 0 ? (
+                <div className="empty-state">
+                  <p>
+                    {activeCategory
+                      ? `No items in "${activeCategoryName}" yet.`
+                      : 'No intraverbal targets yet.'}
+                  </p>
+                  <button className="btn btn-primary" onClick={openCreateItem}>
+                    + Add Item
+                  </button>
+                </div>
+              ) : (
+                <div className="items-grid">
+                  {visibleItems.map(item => (
+                    <ItemCard
+                      key={item.id}
+                      item={item}
+                      categories={categories}
+                      onEdit={() => openEditItem(item)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </main>
+
+          {/* Modals */}
+          {modal?.type === 'createItem' && (
+            <ItemFormModal
+              categories={categories}
+              preselectedCategoryId={modal.preselectedCategoryId}
+              onSave={handleSaveItem}
+              onClose={closeModal}
+              onAddCategory={addCategory}
+            />
+          )}
+          {modal?.type === 'editItem' && (
+            <ItemFormModal
+              categories={categories}
+              item={modal.item}
+              onSave={handleSaveItem}
+              onDelete={handleDeleteItem}
+              onClose={closeModal}
+              onAddCategory={addCategory}
+            />
+          )}
+          {modal?.type === 'createCategory' && (
+            <CategoryFormModal
+              onSave={name => { addCategory(name); closeModal(); }}
+              onClose={closeModal}
+            />
+          )}
+        </div>
+      );
+    }
+
+    // ─── ItemCard ──────────────────────────────────────────────────────────────
+    function ItemCard({ item, categories, onEdit }) {
+      const itemCats = categories.filter(c => item.categoryIds?.includes(c.id));
+      const visiblePhrases = (item.carrierPhrases ?? []).filter(p => p.trim());
+
+      return (
+        <div className="item-card" onClick={onEdit} role="button" tabIndex={0}
+          onKeyDown={e => e.key === 'Enter' && onEdit()}>
+          <div className="item-name">{item.name}</div>
+          {visiblePhrases.length > 0 && (
+            <div className="item-phrases">
+              {visiblePhrases.slice(0, 3).map((phrase, i) => (
+                <div key={i} className="phrase-chip">"{phrase}"</div>
+              ))}
+              {visiblePhrases.length > 3 && (
+                <div className="phrase-chip" style={{ color: '#9aaa88', fontStyle: 'normal' }}>
+                  +{visiblePhrases.length - 3} more…
+                </div>
+              )}
+            </div>
+          )}
+          {itemCats.length > 0 && (
+            <div className="item-cats">
+              {itemCats.map(cat => (
+                <span key={cat.id} className="cat-badge">{cat.name}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ─── ItemFormModal ─────────────────────────────────────────────────────────
+    function ItemFormModal({ categories, item, preselectedCategoryId, onSave, onDelete, onClose, onAddCategory }) {
+      const isEdit = !!item;
+
+      const [name, setName]             = useState(item?.name ?? '');
+      const [carrierPhrases, setCarrierPhrases] = useState(
+        item?.carrierPhrases?.length > 0 ? item.carrierPhrases : ['']
+      );
+      const [selectedCatIds, setSelectedCatIds] = useState(
+        item?.categoryIds ?? (preselectedCategoryId ? [preselectedCategoryId] : [])
+      );
+      const [newCatName, setNewCatName] = useState('');
+      const [showNewCat, setShowNewCat] = useState(false);
+      const [error, setError]           = useState('');
+      const [confirmDelete, setConfirmDelete] = useState(false);
+      // Track categories locally so inline-added ones appear immediately
+      const [localCats, setLocalCats]   = useState(categories);
+
+      // Sync if parent categories change (e.g. a new one was added via onAddCategory)
+      // We keep localCats in sync by merging — categories prop is source of truth
+      useEffect(() => { setLocalCats(categories); }, [categories]);
+
+      const nameRef = useRef(null);
+      useEffect(() => { nameRef.current?.focus(); }, []);
+
+      function handleSubmit(e) {
+        e.preventDefault();
+        if (!name.trim()) { setError('Item name is required.'); return; }
+        onSave({
+          name: name.trim(),
+          carrierPhrases: carrierPhrases.filter(p => p.trim()),
+          categoryIds: selectedCatIds,
+        });
+      }
+
+      function toggleCat(catId) {
+        setSelectedCatIds(prev =>
+          prev.includes(catId) ? prev.filter(id => id !== catId) : [...prev, catId]
+        );
+      }
+
+      function handleAddNewCat() {
+        if (!newCatName.trim()) return;
+        const cat = onAddCategory(newCatName.trim());
+        if (cat) {
+          // Immediately reflect new category in local list
+          setLocalCats(prev =>
+            prev.find(c => c.id === cat.id) ? prev : [...prev, cat].sort((a, b) => a.name.localeCompare(b.name))
+          );
+          setSelectedCatIds(prev => prev.includes(cat.id) ? prev : [...prev, cat.id]);
+        }
+        setNewCatName('');
+        setShowNewCat(false);
+      }
+
+      function updatePhrase(i, value) {
+        setCarrierPhrases(prev => prev.map((p, idx) => idx === i ? value : p));
+      }
+
+      function addPhrase() { setCarrierPhrases(prev => [...prev, '']); }
+
+      function removePhrase(i) {
+        setCarrierPhrases(prev => prev.filter((_, idx) => idx !== i));
+      }
+
+      return (
+        <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="item-modal-title">
+            <div className="modal-header">
+              <h2 id="item-modal-title">{isEdit ? 'Edit Item' : 'Add Item'}</h2>
+              <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="modal-body">
+              {/* Name */}
+              <div className="field">
+                <label className="field-label" htmlFor="item-name">Target Name *</label>
+                <input
+                  ref={nameRef}
+                  id="item-name"
+                  type="text"
+                  className="field-input"
+                  value={name}
+                  onChange={e => { setName(e.target.value); setError(''); }}
+                  placeholder="e.g. moo (cow sound)"
+                  autoComplete="off"
+                />
+              </div>
+
+              {/* Carrier phrases */}
+              <div className="field">
+                <label className="field-label">Carrier Phrases</label>
+                <div className="phrase-list">
+                  {carrierPhrases.map((phrase, i) => (
+                    <div key={i} className="phrase-row">
+                      <input
+                        type="text"
+                        className="field-input"
+                        value={phrase}
+                        onChange={e => updatePhrase(i, e.target.value)}
+                        placeholder={i === 0 ? 'e.g. "What does a cow say?"' : 'Another phrase…'}
+                        autoComplete="off"
+                      />
+                      {carrierPhrases.length > 1 && (
+                        <button
+                          type="button"
+                          className="remove-phrase-btn"
+                          onClick={() => removePhrase(i)}
+                          aria-label="Remove phrase"
+                        >×</button>
+                      )}
+                    </div>
+                  ))}
+                  <button type="button" className="btn btn-ghost add-phrase-btn" onClick={addPhrase}>
+                    + Add phrase
+                  </button>
+                </div>
+              </div>
+
+              {/* Categories */}
+              <div className="field">
+                <label className="field-label">Categories</label>
+                <div className="cat-checklist">
+                  {localCats.length === 0 && !showNewCat && (
+                    <p style={{ fontSize: '13px', color: '#9aaa88', padding: '4px 6px' }}>
+                      No categories yet — create one below.
+                    </p>
+                  )}
+                  {localCats.map(cat => (
+                    <label key={cat.id} className="cat-check-row">
+                      <input
+                        type="checkbox"
+                        checked={selectedCatIds.includes(cat.id)}
+                        onChange={() => toggleCat(cat.id)}
+                      />
+                      <span>{cat.name}</span>
+                    </label>
+                  ))}
+
+                  {showNewCat ? (
+                    <div className="new-cat-row">
+                      <input
+                        type="text"
+                        className="field-input new-cat-input"
+                        value={newCatName}
+                        onChange={e => setNewCatName(e.target.value)}
+                        placeholder="Category name"
+                        autoFocus
+                        autoComplete="off"
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') { e.preventDefault(); handleAddNewCat(); }
+                          if (e.key === 'Escape') { setShowNewCat(false); setNewCatName(''); }
+                        }}
+                      />
+                      <button type="button" className="btn btn-sm btn-primary" onClick={handleAddNewCat}>
+                        Add
+                      </button>
+                      <button type="button" className="btn btn-sm btn-ghost"
+                        onClick={() => { setShowNewCat(false); setNewCatName(''); }}>
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button type="button" className="btn btn-ghost add-cat-inline-btn"
+                      onClick={() => setShowNewCat(true)}>
+                      + New category
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {error && <p className="form-error" role="alert">{error}</p>}
+
+              <div className="modal-footer">
+                {/* Delete controls (edit only) */}
+                {isEdit && (
+                  confirmDelete ? (
+                    <div className="confirm-delete">
+                      <span>Delete this item?</span>
+                      <button type="button" className="btn btn-sm btn-danger" onClick={() => onDelete(item.id)}>
+                        Yes, delete
+                      </button>
+                      <button type="button" className="btn btn-sm btn-ghost" onClick={() => setConfirmDelete(false)}>
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button type="button" className="btn btn-danger-ghost" onClick={() => setConfirmDelete(true)}>
+                      Delete
+                    </button>
+                  )
+                )}
+
+                <div className="modal-actions">
+                  <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+                  <button type="submit" className="btn btn-primary">
+                    {isEdit ? 'Save Changes' : 'Add Item'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    // ─── CategoryFormModal ─────────────────────────────────────────────────────
+    function CategoryFormModal({ onSave, onClose }) {
+      const [name, setName] = useState('');
+      const [error, setError] = useState('');
+      const inputRef = useRef(null);
+
+      useEffect(() => { inputRef.current?.focus(); }, []);
+
+      function handleSubmit(e) {
+        e.preventDefault();
+        if (!name.trim()) { setError('Category name is required.'); return; }
+        onSave(name.trim());
+      }
+
+      return (
+        <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+          <div className="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="cat-modal-title">
+            <div className="modal-header">
+              <h2 id="cat-modal-title">Add Category</h2>
+              <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
+            </div>
+            <form onSubmit={handleSubmit} className="modal-body">
+              <div className="field">
+                <label className="field-label" htmlFor="cat-name">Category Name *</label>
+                <input
+                  ref={inputRef}
+                  id="cat-name"
+                  type="text"
+                  className="field-input"
+                  value={name}
+                  onChange={e => { setName(e.target.value); setError(''); }}
+                  placeholder="e.g. Animal Sounds"
+                  autoComplete="off"
+                />
+              </div>
+              {error && <p className="form-error" role="alert">{error}</p>}
+              <div className="modal-footer">
+                <div className="modal-actions">
+                  <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+                  <button type="submit" className="btn btn-primary">Add Category</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

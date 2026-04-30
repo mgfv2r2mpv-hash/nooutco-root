@@ -451,7 +451,8 @@ No code. No preamble. No commentary after the last section. Do not fabricate: If
 
           {/* Disclaimer */}
           <div style={{ marginBottom: 24, padding: "14px 18px", borderRadius: 10, border: "1.5px solid #d4b483", background: "#fdf6e8", color: "#5a4420", fontSize: 13, lineHeight: 1.55 }}>
-            <strong style={{ color: "#7a5a1a" }}>Disclaimer:</strong> Use of these AI-assisted queries is subject to the legal and regulatory constraints of the user's jurisdiction. These tools do not remove the user's responsibility to review all output for accuracy and to maintain compliance with the ethical standards of their credentialing board for professional behavior analysis work.
+            <strong style={{ color: "#7a5a1a" }}>Disclaimer:</strong> Use of these AI-assisted queries is subject to the legal and regulatory constraints of the user's jurisdiction. These tools do not remove the user's responsibility to review all output for accuracy and to maintain compliance with the ethical standards of their credentialing board for professional behavior analysis work.{" "}
+            <strong style={{ color: "#7a5a1a" }}>Do not enter any PHI (Protected Health Information) into this tool.</strong> PHI is any detail that could identify a specific client — including names, dates of birth, addresses, phone numbers, ID or insurance numbers, or any other personal identifiers.
           </div>
 
           {/* Admin API Settings */}
@@ -501,7 +502,7 @@ No code. No preamble. No commentary after the last section. Do not fabricate: If
               <textarea
                 value={bulletClinical}
                 onChange={e => setBulletClinical(e.target.value)}
-                placeholder={"Bullet points or fragments are fine, e.g.:\n- Arrived calm, greeted tech\n- Asked for preferred tablet immediately\n- Appeared well-rested"}
+                placeholder={"No names or other PHI (Protected Health Information — anything that could identify a specific person).\nBullet points or fragments are fine, e.g.:\n- Arrived calm, greeted tech\n- Asked for preferred tablet immediately\n- Appeared well-rested"}
                 style={{ ...inputBase, height: 110, resize: "vertical", lineHeight: 1.6 }}
               />
             </div>
@@ -528,7 +529,7 @@ No code. No preamble. No commentary after the last section. Do not fabricate: If
             <textarea
               value={bulletLesson}
               onChange={e => setBulletLesson(e.target.value)}
-              placeholder={"Bullet points or fragments are fine, e.g.:\n- DTT receptive ID, worked on 3-item array, prompts needed at start, 2 independent at end\n- Tact training in NET during play, 70% accuracy\n- Reduction target: elopement x2, redirected both times, no escalation\n- Used choice board between activities, helped transitions"}
+              placeholder={"No names or other PHI (Protected Health Information — anything that could identify a specific person).\nBullet points or fragments are fine, e.g.:\n- DTT receptive ID, worked on 3-item array, prompts needed at start, 2 independent at end\n- Tact training in NET during play, 70% accuracy\n- Reduction target: elopement x2, redirected both times, no escalation\n- Used choice board between activities, helped transitions"}
               style={{ ...inputBase, height: 160, resize: "vertical", lineHeight: 1.6, marginTop: 10 }}
             />
           </div>
@@ -540,7 +541,7 @@ No code. No preamble. No commentary after the last section. Do not fabricate: If
             <textarea
               value={bulletAntecedent}
               onChange={e => setBulletAntecedent(e.target.value)}
-              placeholder={"e.g.:\n- first/then board\n- 1-min warnings before transitions\n- NCR with preferred item every 5 min\n- simplified instructions"}
+              placeholder={"No names or other PHI (Protected Health Information — anything that could identify a specific person).\ne.g.:\n- first/then board\n- 1-min warnings before transitions\n- NCR with preferred item every 5 min\n- simplified instructions"}
               style={{ ...inputBase, height: 120, resize: "vertical", lineHeight: 1.6, marginTop: 10 }}
             />
           </div>
@@ -552,7 +553,7 @@ No code. No preamble. No commentary after the last section. Do not fabricate: If
             <textarea
               value={bulletBehavior}
               onChange={e => setBulletBehavior(e.target.value)}
-              placeholder={"e.g.:\n- Elopement occurred at low rates in session, compared to the previous session last week. Staff used FCT throughout session.)\n- Self-injury did not occur during session, abbreviated work blocks were used.\n- Incompatible responding occurred during many trials. Staff paused ongoing activities after 2 occurrences and rates then decreaed.\n- Replacement behavior (asking for a break) was used unprompted in session for the first time."}
+              placeholder={"No names or other PHI (Protected Health Information — anything that could identify a specific person).\ne.g.:\n- Elopement occurred at low rates in session, compared to the previous session last week. Staff used FCT throughout session.\n- Self-injury did not occur during session, abbreviated work blocks were used.\n- Incompatible responding occurred during many trials. Staff paused ongoing activities after 2 occurrences and rates then decreased.\n- Replacement behavior (asking for a break) was used unprompted in session for the first time."}
               style={{ ...inputBase, height: 130, resize: "vertical", lineHeight: 1.6, marginTop: 10 }}
             />
           </div>
@@ -569,7 +570,7 @@ No code. No preamble. No commentary after the last section. Do not fabricate: If
               <textarea
                 value={bulletFollowUp}
                 onChange={e => setBulletFollowUp(e.target.value)}
-                placeholder={"e.g.:\n- Ask BCBA about updating elopement protocol\n- Need new visual schedule printed\n- BCBA observed 20 min, feedback on prompting\n- No concerns this session"}
+                placeholder={"No names or other PHI (Protected Health Information — anything that could identify a specific person).\ne.g.:\n- Ask BCBA about updating elopement protocol\n- Need new visual schedule printed\n- BCBA observed 20 min, feedback on prompting\n- No concerns this session"}
                 style={{ ...inputBase, height: 110, resize: "vertical", lineHeight: 1.6, marginTop: 10 }}
               />
             </div>
