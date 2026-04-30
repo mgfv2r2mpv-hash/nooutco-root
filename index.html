@@ -37,6 +37,106 @@
       transition: background 0.15s;
     }
     .nav-back:hover { background: #dde8d4; }
+
+    /* Gear button — circular */
+    .btn-admin {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 42px;
+      height: 42px;
+      border: 1.5px solid rgba(55,69,40,0.28);
+      border-radius: 50%;
+      background: transparent;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      flex-shrink: 0;
+    }
+    .btn-admin:hover { background: #dde8d4; border-color: rgba(55,69,40,0.5); }
+    .btn-admin svg { width: 20px; height: 20px; fill: #374528; opacity: 0.7; }
+    .btn-admin:hover svg { opacity: 1; }
+
+    /* GM modal (shared by login + admin-access states) */
+    #gm-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.35);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    #gm-overlay.open { display: flex; }
+    #gm-modal {
+      background: #fff;
+      border: 1px solid #d4e0c4;
+      border-radius: 14px;
+      padding: 28px 24px 22px;
+      width: min(340px, 100%);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    }
+    #gm-modal h2 { font-size: 17px; font-weight: 700; color: #1a1f14; margin-bottom: 14px; }
+
+    /* Login state */
+    #gm-login-body input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid #d4e0c4;
+      border-radius: 9px;
+      font-size: 15px;
+      outline: none;
+      margin-bottom: 10px;
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+    #gm-login-body input:focus { border-color: #7a9460; }
+    #gm-login-body .unlock-btn {
+      width: 100%;
+      padding: 11px;
+      background: #374528;
+      color: #fff;
+      border: none;
+      border-radius: 9px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    #gm-login-body .unlock-btn:hover { background: #2a3620; }
+    #gm-modal-err { font-size: 13px; color: #c0392b; margin-top: 8px; min-height: 18px; }
+
+    /* Admin-access state */
+    #gm-admin-body { display: none; }
+    #gm-admin-status {
+      background: #f0f4e8;
+      border: 1px solid #c8dca8;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #374528;
+      margin-bottom: 10px;
+    }
+    #gm-admin-body p { font-size: 13px; color: #7a9460; margin-bottom: 18px; line-height: 1.45; }
+    .gm-btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .gm-btn-row button {
+      flex: 1;
+      padding: 10px 12px;
+      border-radius: 9px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .btn-gm-page { background: #374528; color: #fff; border-color: #374528; }
+    .btn-gm-page:hover { background: #2a3620; }
+    .btn-signout { background: #fff; color: #374528; border-color: #b8cfa0; }
+    .btn-signout:hover { background: #f0f4e8; }
+    .btn-close-modal { background: #fff; color: #555; border-color: #d4d4d4; }
+    .btn-close-modal:hover { background: #f5f5f5; }
+
     h1 {
       font-size: 28px;
       font-weight: 800;
@@ -197,6 +297,36 @@
 
   <div class="nav-row">
     <a class="nav-back" href="https://nooutco.me">← Home</a>
+    <button class="btn-admin" id="gear-btn" title="Game Master" aria-label="Game Master">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.92c.04-.34.07-.69.07-1.08s-.03-.74-.07-1.08l2.32-1.82a.55.55 0 0 0 .13-.71l-2.2-3.82a.55.55 0 0 0-.67-.24l-2.74 1.1c-.57-.44-1.18-.81-1.86-1.08l-.41-2.92A.544.544 0 0 0 14 2h-4c-.27 0-.5.19-.54.44l-.41 2.92c-.68.27-1.29.64-1.86 1.08L4.45 5.34a.55.55 0 0 0-.67.24L1.58 9.4a.54.54 0 0 0 .13.71l2.32 1.82c-.04.34-.07.69-.07 1.08s.03.74.07 1.08L1.71 15.9a.55.55 0 0 0-.13.71l2.2 3.82c.13.24.41.33.67.24l2.74-1.1c.57.44 1.18.81 1.86 1.08l.41 2.92c.04.25.27.44.54.44h4c.27 0 .5-.19.54-.44l.41-2.92c.68-.27 1.29-.64 1.86-1.08l2.74 1.1c.26.09.54 0 .67-.24l2.2-3.82a.54.54 0 0 0-.13-.71l-2.32-1.81z"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- GM modal: shows login prompt or admin-access panel depending on auth state -->
+  <div id="gm-overlay" role="dialog" aria-modal="true" aria-labelledby="gm-modal-title">
+    <div id="gm-modal">
+      <h2 id="gm-modal-title">Game Master</h2>
+
+      <!-- Not logged in: password prompt -->
+      <div id="gm-login-body">
+        <input type="password" id="gm-pw" placeholder="Password" autocomplete="current-password">
+        <button class="unlock-btn" id="gm-go">Unlock</button>
+        <div id="gm-modal-err" aria-live="polite"></div>
+      </div>
+
+      <!-- Logged in: admin access panel -->
+      <div id="gm-admin-body">
+        <div id="gm-admin-status">You are signed in as admin.</div>
+        <p>Sign out to return to public mode.</p>
+        <div class="gm-btn-row">
+          <button class="btn-gm-page" id="gm-page-btn">GM Page</button>
+          <button class="btn-signout" id="gm-signout-btn">Sign out</button>
+          <button class="btn-close-modal" id="gm-close-btn">Close</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <h1>Games and Activities</h1>
@@ -276,6 +406,75 @@
   </p>
 
   <script>
+    const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
+
+    (function () {
+      const overlay    = document.getElementById('gm-overlay');
+      const loginBody  = document.getElementById('gm-login-body');
+      const adminBody  = document.getElementById('gm-admin-body');
+      const pwInput    = document.getElementById('gm-pw');
+      const errEl      = document.getElementById('gm-modal-err');
+
+      function isAdmin() {
+        return localStorage.getItem('admin_token') === ADMIN_SECRET_HASH;
+      }
+
+      function openModal() {
+        if (isAdmin()) {
+          loginBody.style.display = 'none';
+          adminBody.style.display = 'block';
+        } else {
+          loginBody.style.display = '';
+          adminBody.style.display = 'none';
+          pwInput.value = '';
+          errEl.textContent = '';
+          setTimeout(() => pwInput.focus(), 30);
+        }
+        overlay.classList.add('open');
+      }
+
+      function closeModal() { overlay.classList.remove('open'); }
+
+      document.getElementById('gear-btn').addEventListener('click', openModal);
+      document.getElementById('gm-close-btn').addEventListener('click', closeModal);
+      overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+      document.getElementById('gm-page-btn').addEventListener('click', () => {
+        window.location.assign('./GM/');
+      });
+
+      document.getElementById('gm-signout-btn').addEventListener('click', () => {
+        localStorage.removeItem('admin_token');
+        closeModal();
+      });
+
+      async function sha256Hex(str) {
+        const buf    = new TextEncoder().encode(str);
+        const digest = await crypto.subtle.digest('SHA-256', buf);
+        return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+      }
+
+      async function tryUnlock() {
+        const pw = pwInput.value;
+        errEl.textContent = '';
+        if (!pw) { errEl.textContent = 'Enter a password.'; return; }
+        const hash = await sha256Hex(pw);
+        if (hash === ADMIN_SECRET_HASH) {
+          localStorage.setItem('admin_token', hash);
+          closeModal();
+          setTimeout(openModal, 50);
+        } else {
+          errEl.textContent = 'Incorrect password.';
+          pwInput.value = '';
+          pwInput.focus();
+        }
+      }
+
+      document.getElementById('gm-go').addEventListener('click', tryUnlock);
+      pwInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
+    })();
+
     const bgs = [
       '#eaeee7', // sage
       '#e8eef4', // slate blue
