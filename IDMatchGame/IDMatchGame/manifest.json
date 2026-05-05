@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-05T18:21:34.866Z",
+  "generated": "2026-05-05T18:21:56.785Z",
   "folders": [
     "T_animals",
     "T_buildings",
@@ -90,7 +90,7 @@
     "T_kitchen_items": [
       "_Resources/_imgSource/T_kitchen_items/blender.webp",
       "_Resources/_imgSource/T_kitchen_items/bowl.jpg",
-      "_Resources/_imgSource/T_kitchen_items/chopsticks.svg",
+      "_Resources/_imgSource/T_kitchen_items/chopsticks.webp",
       "_Resources/_imgSource/T_kitchen_items/coffee-mug.svg",
       "_Resources/_imgSource/T_kitchen_items/cup.svg",
       "_Resources/_imgSource/T_kitchen_items/fork.svg",
