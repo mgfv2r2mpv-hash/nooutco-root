@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-05T18:26:39.495Z",
+  "generated": "2026-05-05T18:26:48.105Z",
   "folders": [
     "T_animals",
     "T_buildings",
@@ -105,8 +105,7 @@
       "_Resources/_imgSource/T_kitchen_items/salt.jpg",
       "_Resources/_imgSource/T_kitchen_items/spoon.jpg",
       "_Resources/_imgSource/T_kitchen_items/teacup.jpg",
-      "_Resources/_imgSource/T_kitchen_items/toaster.webp",
-      "_Resources/_imgSource/T_kitchen_items/wine-glass.svg"
+      "_Resources/_imgSource/T_kitchen_items/toaster.webp"
     ],
     "T_numbers": [
       "_Resources/_imgSource/T_numbers/1.svg",
