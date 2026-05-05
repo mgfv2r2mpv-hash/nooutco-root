@@ -43,8 +43,9 @@ const state = {
   errorless:         false,
   noErrorAnim:       false,
   extraPanelOpen:    false,
-  crossCategory:     false,
-  promptPersists:    false,
+  crossCategory:          false,
+  nonTargetDistractors:   true,
+  promptPersists:         false,
   promptStyle:       'sparkle',
   autoPromptEnabled: false,
   promptDelay:       false,
@@ -105,8 +106,9 @@ const el = {
   btnTimerReset:       $('btn-timer-reset'),
   selTopic:            $('sel-topic'),
   inpSize:             $('inp-size'),
-  chkCross:            $('chk-cross'),
-  chkPersists:         $('chk-persists'),
+  chkCross:                   $('chk-cross'),
+  chkNonTargetDistractor:     $('chk-non-target-distractor'),
+  chkPersists:                $('chk-persists'),
   selPromptStyle:      $('sel-prompt-style'),
   chkAutoPrompt:       $('chk-auto-prompt'),
   chkPromptDelay:      $('chk-prompt-delay'),
@@ -155,8 +157,9 @@ function loadSettings() {
   state.representErrors   = s.representErrors   ?? true;
   state.errorless         = s.errorless         ?? false;
   state.noErrorAnim       = s.noErrorAnim       ?? false;
-  state.crossCategory     = s.crossCategory     ?? false;
-  state.promptPersists    = s.promptPersists    ?? false;
+  state.crossCategory          = s.crossCategory          ?? false;
+  state.nonTargetDistractors   = s.nonTargetDistractors   ?? true;
+  state.promptPersists         = s.promptPersists         ?? false;
   state.promptStyle       = s.promptStyle       ?? 'sparkle';
   state.autoPromptEnabled = s.autoPromptEnabled ?? false;
   state.promptDelay       = s.promptDelay       ?? false;
@@ -167,8 +170,9 @@ function loadSettings() {
   el.chkRepresentErrors.checked = state.representErrors;
   el.chkErrorless.checked       = state.errorless;
   el.chkNoErrorAnim.checked     = state.noErrorAnim;
-  el.chkCross.checked           = state.crossCategory;
-  el.chkPersists.checked    = state.promptPersists;
+  el.chkCross.checked                   = state.crossCategory;
+  el.chkNonTargetDistractor.checked     = state.nonTargetDistractors;
+  el.chkPersists.checked                = state.promptPersists;
   el.selPromptStyle.value   = state.promptStyle;
   el.chkAutoPrompt.checked  = state.autoPromptEnabled;
   el.chkPromptDelay.checked = state.promptDelay;
@@ -185,8 +189,9 @@ function saveSettings() {
     representErrors:   state.representErrors,
     errorless:         state.errorless,
     noErrorAnim:       state.noErrorAnim,
-    crossCategory:     state.crossCategory,
-    promptPersists:    state.promptPersists,
+    crossCategory:        state.crossCategory,
+    nonTargetDistractors: state.nonTargetDistractors,
+    promptPersists:       state.promptPersists,
     promptStyle:       state.promptStyle,
     autoPromptEnabled: state.autoPromptEnabled,
     promptDelay:       state.promptDelay,
@@ -344,6 +349,11 @@ function bindEvents() {
     state.crossCategory = el.chkCross.checked;
     saveSettings();
     await refreshImages();
+  });
+
+  el.chkNonTargetDistractor.addEventListener('change', () => {
+    state.nonTargetDistractors = el.chkNonTargetDistractor.checked;
+    saveSettings();
   });
 
   el.chkPersists.addEventListener('change', () => {
@@ -536,9 +546,10 @@ function buildTrial(keepSample) {
     state.sampleLabel = labelFromSrc(state.sampleSrc);
   }
 
+  const inCategoryPool = state.nonTargetDistractors ? [...state.topicImages] : eligibleSamples();
   const basePool = state.crossCategory
-    ? [...state.topicImages, ...state.otherImages]
-    : [...state.topicImages];
+    ? [...inCategoryPool, ...state.otherImages]
+    : [...inCategoryPool];
 
   const distractorPool = shuffle(basePool.filter(src => src !== state.sampleSrc));
   const getDistractor  = i =>
