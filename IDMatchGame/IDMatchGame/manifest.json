@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-05T17:32:41.134Z",
+  "generated": "2026-05-05T17:33:02.009Z",
   "folders": [
     "T_animals",
     "T_buildings",
@@ -76,7 +76,7 @@
     ],
     "T_household_items": [
       "_Resources/_imgSource/T_household_items/bed.webp",
-      "_Resources/_imgSource/T_household_items/books.svg",
+      "_Resources/_imgSource/T_household_items/books.jpg",
       "_Resources/_imgSource/T_household_items/broom.svg",
       "_Resources/_imgSource/T_household_items/chair.svg",
       "_Resources/_imgSource/T_household_items/clock.svg",
