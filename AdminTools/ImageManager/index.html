@@ -285,14 +285,16 @@ body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-he
   </div>
 
   <div class="detail-section">
-    <label>Replace image — paste URL</label>
+    <label>Replace image</label>
     <div class="detail-row">
-      <input type="url" id="dp-url-input" placeholder="https://…">
-      <button class="btn-sm btn-blue" id="dp-save-btn">Save URL</button>
+      <input type="url" id="dp-url-input" placeholder="Paste URL…">
     </div>
-    <div style="font-size:.72rem;color:#475569;text-align:center;margin:.35rem 0 .25rem;">— or upload a file —</div>
-    <div style="display:flex;gap:.5rem;align-items:center;">
+    <div style="font-size:.72rem;color:#475569;text-align:center;margin:.35rem 0 .25rem;">— or —</div>
+    <div class="detail-row">
       <input type="file" id="dp-file-input" accept="image/*" style="flex:1;font-size:.78rem;color:#94a3b8;min-width:0;background:#0f172a;border:1px dashed #334155;border-radius:6px;padding:.25rem .4rem;cursor:pointer;">
+    </div>
+    <div style="margin-top:.5rem;">
+      <button class="btn-sm btn-blue" id="dp-save-btn" style="width:100%;">Save</button>
     </div>
     <div class="status-msg" id="dp-save-status"></div>
   </div>
