@@ -192,9 +192,9 @@ async function handleAdminSaveImage(request, env) {
   try { body = await request.json(); }
   catch { return jsonError('Invalid JSON body', 400); }
 
-  const { game, folder, filename, imageUrl, personName, personMeta } = body;
-  if (!game || !folder || !filename || !imageUrl) {
-    return jsonError('game, folder, filename, and imageUrl are required', 400);
+  const { game, folder, filename, imageUrl, imageData, imageMime, personName, personMeta } = body;
+  if (!game || !folder || !filename || (!imageUrl && !imageData)) {
+    return jsonError('game, folder, filename, and either imageUrl or imageData are required', 400);
   }
   if (!KNOWN_GAMES.includes(game)) {
     return jsonError('Unknown game: ' + game, 400);
@@ -202,9 +202,9 @@ async function handleAdminSaveImage(request, env) {
 
   let imgBytes, ext;
   try {
-    ({ bytes: imgBytes, ext } = await downloadImage(imageUrl));
+    ({ bytes: imgBytes, ext } = await resolveImageBytes(body));
   } catch (err) {
-    return jsonError('Failed to download image: ' + err.message, 502);
+    return jsonError('Failed to load image: ' + err.message, 502);
   }
 
   // Use detected extension so the saved file always matches its content-type.
@@ -910,16 +910,16 @@ async function handleFFCSaveImage(request, env) {
   try { body = await request.json(); }
   catch { return jsonError('Invalid JSON body', 400); }
 
-  const { id, filename, imageUrl } = body;
-  if (!id || !filename || !imageUrl) {
-    return jsonError('id, filename, and imageUrl are required', 400);
+  const { id, filename, imageUrl, imageData, imageMime } = body;
+  if (!id || !filename || (!imageUrl && !imageData)) {
+    return jsonError('id, filename, and either imageUrl or imageData are required', 400);
   }
 
   let imgBytes, ext;
   try {
-    ({ bytes: imgBytes, ext } = await downloadImage(imageUrl));
+    ({ bytes: imgBytes, ext } = await resolveImageBytes(body));
   } catch (err) {
-    return jsonError('Failed to download image: ' + err.message, 502);
+    return jsonError('Failed to load image: ' + err.message, 502);
   }
 
   const base         = filename.replace(/\.[^.]+$/, '');
@@ -1090,19 +1090,20 @@ async function handleIVSaveImage(request, env) {
   try { body = await request.json(); }
   catch { return jsonError('Invalid JSON body', 400); }
 
-  const { id, filename, imageUrl } = body;
-  if (!id || !filename || !imageUrl) {
-    return jsonError('id, filename, and imageUrl are required', 400);
+  const { id, filename, imageUrl, imageData, imageMime } = body;
+  const effectiveFilename = filename || id;
+  if (!id || (!imageUrl && !imageData)) {
+    return jsonError('id and either imageUrl or imageData are required', 400);
   }
 
   let imgBytes, ext;
   try {
-    ({ bytes: imgBytes, ext } = await downloadImage(imageUrl));
+    ({ bytes: imgBytes, ext } = await resolveImageBytes(body));
   } catch (err) {
-    return jsonError('Failed to download image: ' + err.message, 502);
+    return jsonError('Failed to load image: ' + err.message, 502);
   }
 
-  const base         = filename.replace(/\.[^.]+$/, '');
+  const base         = effectiveFilename.replace(/\.[^.]+$/, '');
   const saveFilename = `${base}.${ext}`;
   const repoPath     = `IntraverbalGame/IntraverbalGame/_Resources/_imgSource/items/${saveFilename}`;
   const localPath    = repoPath;
@@ -1117,7 +1118,7 @@ async function handleIVSaveImage(request, env) {
     }
   }
 
-  return json({ ok: true, localPath });
+  return json({ ok: true, localPath, filename: saveFilename });
 }
 
 // ─── Intraverbal: remove image ────────────────────────────────────────────────
@@ -1532,6 +1533,24 @@ async function downloadImage(url) {
         : 'jpg');
 
   return { bytes: await res.arrayBuffer(), ext };
+}
+
+// Accepts either { imageUrl } (download) or { imageData, imageMime } (browser upload).
+async function resolveImageBytes(body) {
+  const { imageUrl, imageData, imageMime } = body;
+  if (imageData) {
+    const extMap = {
+      'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png',
+      'image/webp': 'webp', 'image/gif': 'gif', 'image/avif': 'avif',
+      'image/svg+xml': 'svg',
+    };
+    const ext = extMap[imageMime] || 'jpg';
+    const binary = atob(imageData);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return { bytes: bytes.buffer, ext };
+  }
+  return downloadImage(imageUrl);
 }
 
 // ─── Encoding helpers ─────────────────────────────────────────────────────────

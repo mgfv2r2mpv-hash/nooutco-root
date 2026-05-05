@@ -220,6 +220,19 @@ body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-he
 .status-msg.ok { color: #86efac; }
 .status-msg.err { color: #f87171; }
 
+.upload-or { font-size: .72rem; color: #475569; text-align: center; margin: .35rem 0 .25rem; }
+.file-upload-row { display: flex; gap: .5rem; align-items: center; }
+.file-upload-row input[type=file] {
+  flex: 1; font-size: .78rem; color: #94a3b8; min-width: 0;
+  background: #0f172a; border: 1px dashed #334155; border-radius: 6px;
+  padding: .25rem .4rem; cursor: pointer;
+}
+.file-upload-row input[type=file]::file-selector-button {
+  background: #1e293b; color: #7dd3fc; border: 1px solid #334155;
+  border-radius: 4px; padding: .15rem .5rem; cursor: pointer;
+  font-size: .75rem; margin-right: .4rem;
+}
+
 .loading { color: #64748b; font-size: 0.9rem; padding: 1.5rem 0; }
 
 /* ── Duplicate resolution modal ── */
@@ -285,10 +298,15 @@ body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-he
   </div>
 
   <div class="detail-section">
-    <label>Replace from URL</label>
+    <label>Replace image — paste URL</label>
     <div class="detail-row">
       <input type="url" id="dp-url-input" placeholder="https://…">
-      <button class="btn-sm btn-blue" id="dp-save-btn">Save</button>
+      <button class="btn-sm btn-blue" id="dp-save-btn">Save URL</button>
+    </div>
+    <div class="upload-or">— or upload a file —</div>
+    <div class="file-upload-row">
+      <input type="file" id="dp-file-input" accept="image/*">
+      <button class="btn-sm btn-blue" id="dp-upload-btn">Upload</button>
     </div>
     <div class="status-msg" id="dp-save-status"></div>
   </div>
@@ -790,6 +808,10 @@ function buildAddForm(formType) {
       <small class="filename-preview" style="color:#64748b;font-size:.72rem;display:block;margin-top:2px;margin-bottom:.25rem;">Filename will be generated from the display name and image URL.</small>
       <label>Image URL</label>
       <input type="url" name="url" placeholder="https://…">
+      <div class="upload-or">— or upload a file —</div>
+      <div class="file-upload-row">
+        <input type="file" name="file-upload" accept="image/*">
+      </div>
       <label>Search Wikimedia</label>
       <div class="detail-row">
         <input type="text" name="wiki-query" placeholder="Search query…">
@@ -818,10 +840,23 @@ function buildAddForm(formType) {
     form.querySelector('.btn-submit').addEventListener('click', async () => {
       const displayName = form.querySelector('[name=display-name]').value.trim();
       const url = form.querySelector('[name=url]').value.trim();
+      const fileInput = form.querySelector('[name=file-upload]');
+      const file = fileInput?.files?.[0];
       const status = form.querySelector('#add-form-status');
-      if (!displayName || !url) { setStatus(status, 'err', 'Fill in all fields.'); return; }
+      if (!displayName || (!url && !file)) { setStatus(status, 'err', 'Fill in all fields.'); return; }
 
-      let filename = nameToSlug(displayName) + extFromUrl(url);
+      let imagePayload, filename;
+      if (file) {
+        if (file.size > 10 * 1024 * 1024) { setStatus(status, 'err', 'File too large (max 10 MB).'); return; }
+        let imageData, imageMime;
+        try { ({ data: imageData, mime: imageMime } = await fileToBase64(file)); }
+        catch { setStatus(status, 'err', 'Failed to read file.'); return; }
+        filename = nameToSlug(displayName) + mimeToExt(imageMime);
+        imagePayload = { imageData, imageMime };
+      } else {
+        filename = nameToSlug(displayName) + extFromUrl(url);
+        imagePayload = { imageUrl: url };
+      }
 
       const existingFilenames = getManifestFilenames(activeFolder);
       if (existingFilenames.includes(filename)) {
@@ -834,7 +869,7 @@ function buildAddForm(formType) {
       setStatus(status, '', 'Saving…');
       try {
         const res = await adminPost('save-image', {
-          game: activeGame.id, folder: activeFolder, filename, imageUrl: url,
+          game: activeGame.id, folder: activeFolder, filename, ...imagePayload,
         });
         if (!res) { setStatus(status, '', ''); return; }
         if (res.ok) {
@@ -873,6 +908,10 @@ function buildAddForm(formType) {
       <small class="filename-preview" style="color:#64748b;font-size:.72rem;display:block;margin-top:2px;margin-bottom:.25rem;">Filename will be generated from the ID and image URL.</small>
       <label>Image URL</label>
       <input type="url" name="url" placeholder="https://…">
+      <div class="upload-or">— or upload a file —</div>
+      <div class="file-upload-row">
+        <input type="file" name="file-upload" accept="image/*">
+      </div>
       <label>Search Wikimedia</label>
       <div class="detail-row">
         <input type="text" name="wiki-query" placeholder="Search query…">
@@ -912,12 +951,25 @@ function buildAddForm(formType) {
       const itemId = nameToSlug(itemIdInput.value.trim());
       const label  = labelInput.value.trim();
       const url    = form.querySelector('[name=url]').value.trim();
+      const fileInput = form.querySelector('[name=file-upload]');
+      const file = fileInput?.files?.[0];
       const status = form.querySelector('#add-form-status');
-      if (!itemId || !label || !url) { setStatus(status, 'err', 'Fill in all fields.'); return; }
+      if (!itemId || !label || (!url && !file)) { setStatus(status, 'err', 'Fill in all fields.'); return; }
       const d = gameData['FFCGame'].ffcData;
       if (d.items.find(i => i.id === itemId)) { setStatus(status, 'err', 'Item id already exists.'); return; }
 
-      let filename = itemId + extFromUrl(url);
+      let filename, imagePayload;
+      if (file) {
+        if (file.size > 10 * 1024 * 1024) { setStatus(status, 'err', 'File too large (max 10 MB).'); return; }
+        let imageData, imageMime;
+        try { ({ data: imageData, mime: imageMime } = await fileToBase64(file)); }
+        catch { setStatus(status, 'err', 'Failed to read file.'); return; }
+        filename = itemId + mimeToExt(imageMime);
+        imagePayload = { imageData, imageMime };
+      } else {
+        filename = itemId + extFromUrl(url);
+        imagePayload = { imageUrl: url };
+      }
 
       const existingFilenames = getFFCFilenames();
       if (existingFilenames.includes(filename)) {
@@ -931,7 +983,7 @@ function buildAddForm(formType) {
 
       setStatus(status, '', 'Saving image…');
       try {
-        const imgRes = await adminPost('ffc-save-image', { id: itemId, filename, imageUrl: url });
+        const imgRes = await adminPost('ffc-save-image', { id: itemId, filename, ...imagePayload });
         if (!imgRes) { setStatus(status, '', ''); return; }
         if (!imgRes.ok) {
           const j = await imgRes.json().catch(() => ({}));
@@ -971,6 +1023,10 @@ function buildAddForm(formType) {
       <datalist id="iv-item-list"></datalist>
       <label>Image URL</label>
       <input type="url" name="url" placeholder="https://…">
+      <div class="upload-or">— or upload a file —</div>
+      <div class="file-upload-row">
+        <input type="file" name="file-upload" accept="image/*">
+      </div>
       <label>Search Wikimedia</label>
       <div class="detail-row">
         <input type="text" name="wiki-query" placeholder="Search query…">
@@ -1001,15 +1057,28 @@ function buildAddForm(formType) {
     form.querySelector('.btn-submit').addEventListener('click', async () => {
       const itemId = form.querySelector('[name=item-id]').value.trim();
       const url = form.querySelector('[name=url]').value.trim();
+      const fileInput = form.querySelector('[name=file-upload]');
+      const file = fileInput?.files?.[0];
       const status = form.querySelector('#add-form-status');
-      if (!itemId || !url) { setStatus(status, 'err', 'Fill in all fields.'); return; }
+      if (!itemId || (!url && !file)) { setStatus(status, 'err', 'Fill in all fields.'); return; }
       const d = gameData['IntraverbalGame']?.ivData;
       const item = (d?.items || []).find(i => i.id === itemId);
       if (!item) { setStatus(status, 'err', 'Item not found.'); return; }
 
+      let imagePayload;
+      if (file) {
+        if (file.size > 10 * 1024 * 1024) { setStatus(status, 'err', 'File too large (max 10 MB).'); return; }
+        let imageData, imageMime;
+        try { ({ data: imageData, mime: imageMime } = await fileToBase64(file)); }
+        catch { setStatus(status, 'err', 'Failed to read file.'); return; }
+        imagePayload = { imageData, imageMime };
+      } else {
+        imagePayload = { imageUrl: url };
+      }
+
       setStatus(status, '', 'Saving image…');
       try {
-        const imgRes = await adminPost('intraverbal-save-image', { id: itemId, imageUrl: url });
+        const imgRes = await adminPost('intraverbal-save-image', { id: itemId, ...imagePayload });
         if (!imgRes) { setStatus(status, '', ''); return; }
         if (!imgRes.ok) {
           const j = await imgRes.json().catch(() => ({}));
@@ -1065,6 +1134,10 @@ function buildAddForm(formType) {
       <textarea name="facts" placeholder="Fact 1&#10;Fact 2"></textarea>
       <label>Image URL</label>
       <input type="url" name="url" placeholder="https://…">
+      <div class="upload-or">— or upload a file —</div>
+      <div class="file-upload-row">
+        <input type="file" name="file-upload" accept="image/*">
+      </div>
       <label>Search Wikimedia</label>
       <div class="detail-row">
         <input type="text" name="wiki-query" placeholder="Search query…">
@@ -1085,8 +1158,23 @@ function buildAddForm(formType) {
       const tag = form.querySelector('[name=tag]').value.trim();
       const factsRaw = form.querySelector('[name=facts]').value.trim();
       const url = form.querySelector('[name=url]').value.trim();
+      const fileInput = form.querySelector('[name=file-upload]');
+      const file = fileInput?.files?.[0];
       const status = form.querySelector('#add-form-status');
-      if (!name || !url) { setStatus(status, 'err', 'Name and URL are required.'); return; }
+      if (!name || (!url && !file)) { setStatus(status, 'err', 'Name and an image (URL or file) are required.'); return; }
+
+      let imagePayload, imgFilename;
+      if (file) {
+        if (file.size > 10 * 1024 * 1024) { setStatus(status, 'err', 'File too large (max 10 MB).'); return; }
+        let imageData, imageMime;
+        try { ({ data: imageData, mime: imageMime } = await fileToBase64(file)); }
+        catch { setStatus(status, 'err', 'Failed to read file.'); return; }
+        imgFilename = nameToSlug(name) + mimeToExt(imageMime);
+        imagePayload = { imageData, imageMime };
+      } else {
+        imgFilename = nameToSlug(name) + '.jpg';
+        imagePayload = { imageUrl: url };
+      }
 
       let isOverwrite = false;
       const existingNames = getFPGNames();
@@ -1105,8 +1193,8 @@ function buildAddForm(formType) {
       setStatus(status, '', 'Saving…');
       try {
         const res = await adminPost('save-image', {
-          game: 'FamousPersonGame', folder: 'images', filename: nameToSlug(name) + '.jpg',
-          imageUrl: url,
+          game: 'FamousPersonGame', folder: 'images', filename: imgFilename,
+          ...imagePayload,
           ...(isOverwrite ? { personName: name } : { personMeta: { name, years, emoji, tag, facts } }),
         });
         if (!res) { setStatus(status, '', ''); return; }
@@ -1475,9 +1563,10 @@ dpSaveBtn.addEventListener('click', async () => {
         const saveRes = await adminPost('ffc-save-items', { items: d });
         setStatus(dpSaveStatus, saveRes && saveRes.ok ? 'ok' : 'err',
           saveRes && saveRes.ok ? 'Saved!' : 'Image saved but record update failed');
-      } else if (ctx.type === 'intraverbal' && j.filename) {
-        ctx.item.images[ctx.imageIdx] = j.filename;
-        dpThumb.src = '../../IntraverbalGame/IntraverbalGame/_Resources/_imgSource/items/' + j.filename;
+      } else if (ctx.type === 'intraverbal' && (j.filename || j.localPath)) {
+        const fn = j.filename || j.localPath.split('/').pop();
+        ctx.item.images[ctx.imageIdx] = fn;
+        dpThumb.src = '../../IntraverbalGame/IntraverbalGame/_Resources/_imgSource/items/' + fn;
         const d = gameData['IntraverbalGame'].ivData;
         const saveRes = await adminPost('intraverbal-save-items', { items: d });
         setStatus(dpSaveStatus, saveRes && saveRes.ok ? 'ok' : 'err',
@@ -1487,6 +1576,101 @@ dpSaveBtn.addEventListener('click', async () => {
         if (ctx.type === 'fpg' && j.localPath) ctx.person.img = j.localPath;
         setStatus(dpSaveStatus, 'ok', 'Saved!');
       }
+    } else {
+      const j = await res.json().catch(() => ({}));
+      setStatus(dpSaveStatus, 'err', j.error || 'Error ' + res.status);
+    }
+  } catch (err) {
+    setStatus(dpSaveStatus, 'err', err.message || 'Network error');
+  }
+});
+
+// ─── File upload helpers ──────────────────────────────────────────────────────
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve({ data: reader.result.split(',')[1], mime: file.type || 'image/jpeg' });
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function mimeToExt(mime) {
+  const map = { 'image/jpeg': '.jpg', 'image/jpg': '.jpg', 'image/png': '.png',
+                'image/webp': '.webp', 'image/gif': '.gif', 'image/avif': '.avif',
+                'image/svg+xml': '.svg' };
+  return map[mime] || '.jpg';
+}
+
+// ─── Detail panel: upload button ──────────────────────────────────────────────
+
+const dpFileInput = document.getElementById('dp-file-input');
+const dpUploadBtn = document.getElementById('dp-upload-btn');
+
+dpUploadBtn.addEventListener('click', async () => {
+  if (!detailContext) return;
+  const ctx = detailContext;
+  const file = dpFileInput.files[0];
+  if (!file) { setStatus(dpSaveStatus, 'err', 'Select a file first.'); return; }
+  if (file.size > 10 * 1024 * 1024) { setStatus(dpSaveStatus, 'err', 'File too large (max 10 MB).'); return; }
+
+  setStatus(dpSaveStatus, '', 'Reading file…');
+  let imageData, imageMime;
+  try { ({ data: imageData, mime: imageMime } = await fileToBase64(file)); }
+  catch { setStatus(dpSaveStatus, 'err', 'Failed to read file.'); return; }
+
+  setStatus(dpSaveStatus, '', 'Uploading…');
+
+  const ext = mimeToExt(imageMime);
+  let body, endpoint = 'save-image';
+  if (ctx.type === 'ffc') {
+    const base = ctx.item.img.replace(/\.[^.]+$/, '');
+    body = { id: ctx.item.id, filename: base + ext, imageData, imageMime };
+    endpoint = 'ffc-save-image';
+  } else if (ctx.type === 'intraverbal') {
+    body = { id: ctx.item.id, imageData, imageMime };
+    endpoint = 'intraverbal-save-image';
+  } else if (ctx.type === 'fpg') {
+    const p = ctx.person;
+    const base = p.img.split('/').pop().replace(/\.[^.]+$/, '');
+    body = { game: 'FamousPersonGame', folder: 'images', filename: base + ext, imageData, imageMime, personName: p.name };
+  } else {
+    const base = ctx.path.split('/').pop().replace(/\.[^.]+$/, '');
+    body = { game: ctx.gameId, folder: ctx.folder, filename: base + ext, imageData, imageMime };
+  }
+
+  try {
+    const res = await adminPost(endpoint, body);
+    if (detailContext !== ctx) return;
+    if (!res) { setStatus(dpSaveStatus, '', ''); return; }
+    if (res.ok) {
+      const j = await res.json().catch(() => ({}));
+      if (ctx.type === 'ffc' && j.localPath) {
+        ctx.item.img = j.localPath.split('/').pop();
+        dpThumb.src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + ctx.item.img;
+        const d = gameData['FFCGame'].ffcData;
+        const saveRes = await adminPost('ffc-save-items', { items: d });
+        setStatus(dpSaveStatus, saveRes && saveRes.ok ? 'ok' : 'err',
+          saveRes && saveRes.ok ? 'Uploaded!' : 'Image saved but record update failed');
+      } else if (ctx.type === 'intraverbal' && (j.filename || j.localPath)) {
+        const fn = j.filename || j.localPath.split('/').pop();
+        ctx.item.images[ctx.imageIdx] = fn;
+        dpThumb.src = '../../IntraverbalGame/IntraverbalGame/_Resources/_imgSource/items/' + fn;
+        const d = gameData['IntraverbalGame'].ivData;
+        const saveRes = await adminPost('intraverbal-save-items', { items: d });
+        setStatus(dpSaveStatus, saveRes && saveRes.ok ? 'ok' : 'err',
+          saveRes && saveRes.ok ? 'Uploaded!' : 'Image saved but record update failed');
+      } else {
+        if (ctx.type === 'fpg' && j.localPath) {
+          ctx.person.img = j.localPath;
+          dpThumb.src = '../../FamousPersonGame/' + j.localPath;
+        } else {
+          dpThumb.src = URL.createObjectURL(file);
+        }
+        setStatus(dpSaveStatus, 'ok', 'Uploaded!');
+      }
+      dpFileInput.value = '';
     } else {
       const j = await res.json().catch(() => ({}));
       setStatus(dpSaveStatus, 'err', j.error || 'Error ' + res.status);
