@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-05T18:26:48.105Z",
+  "generated": "2026-05-05T18:27:37.449Z",
   "folders": [
     "T_animals",
     "T_buildings",
@@ -98,6 +98,7 @@
       "_Resources/_imgSource/T_kitchen_items/kettle.jpg",
       "_Resources/_imgSource/T_kitchen_items/knife.jpg",
       "_Resources/_imgSource/T_kitchen_items/microwave.jpg",
+      "_Resources/_imgSource/T_kitchen_items/napkin.jpg",
       "_Resources/_imgSource/T_kitchen_items/oven.webp",
       "_Resources/_imgSource/T_kitchen_items/plate.jpg",
       "_Resources/_imgSource/T_kitchen_items/pot.jpg",
