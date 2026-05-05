@@ -1117,7 +1117,7 @@ async function handleIVSaveImage(request, env) {
     }
   }
 
-  return json({ ok: true, localPath });
+  return json({ ok: true, localPath, filename: saveFilename });
 }
 
 // ─── Intraverbal: remove image ────────────────────────────────────────────────
