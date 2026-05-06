@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-06T18:46:45.949Z",
+  "generated": "2026-05-06T18:47:03.404Z",
   "categories": [
     "animal_sounds",
     "children_songs",
@@ -12,7 +12,8 @@
       "cow",
       "duck",
       "horse-sound",
-      "pig-sound"
+      "pig-sound",
+      "lion-sound"
     ],
     "children_songs": [
       "twinkle_star",
@@ -201,6 +202,14 @@
       "label": "oink",
       "carriers": [
         "A pig says..."
+      ],
+      "images": []
+    },
+    {
+      "id": "lion-sound",
+      "label": "roar",
+      "carriers": [
+        "A lion says..."
       ],
       "images": []
     }
