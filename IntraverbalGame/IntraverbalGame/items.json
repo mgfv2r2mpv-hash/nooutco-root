@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-30T21:56:20.163Z",
+  "generated": "2026-05-06T18:43:47.700Z",
   "categories": [
     "animal_sounds",
     "children_songs",
@@ -23,7 +23,8 @@
     "common_phrases": [
       "peanut_butter_and",
       "ready_set",
-      "red_light_green"
+      "red_light_green",
+      "socks-shoes"
     ]
   },
   "items": [
@@ -138,6 +139,14 @@
       "label": "swish",
       "carriers": [
         "The wipers on the bus go…"
+      ],
+      "images": []
+    },
+    {
+      "id": "socks-shoes",
+      "label": "shoes",
+      "carriers": [
+        "Socks and..."
       ],
       "images": []
     }
