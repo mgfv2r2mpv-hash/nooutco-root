@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-06T18:48:07.026Z",
+  "generated": "2026-05-06T18:48:27.488Z",
   "categories": [
     "animal_sounds",
     "children_songs",
@@ -16,7 +16,8 @@
       "lion-sound",
       "chicken-sound",
       "rooster-sound",
-      "bird-sound"
+      "bird-sound",
+      "sheep-sound"
     ],
     "children_songs": [
       "twinkle_star",
@@ -237,6 +238,14 @@
       "label": "tweet",
       "carriers": [
         "A bird says..."
+      ],
+      "images": []
+    },
+    {
+      "id": "sheep-sound",
+      "label": "baa",
+      "carriers": [
+        "A sheep says..."
       ],
       "images": []
     }
