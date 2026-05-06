@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-06T18:50:41.729Z",
+  "generated": "2026-05-06T18:50:59.017Z",
   "categories": [
     "animal_sounds",
     "children_songs",
@@ -21,7 +21,8 @@
       "snake-sound",
       "donkey-sound",
       "mouse-sound",
-      "monkey-sound"
+      "monkey-sound",
+      "elephant-sound"
     ],
     "children_songs": [
       "twinkle_star",
@@ -278,6 +279,14 @@
       "label": "ooh ooh",
       "carriers": [
         "A monkey says..."
+      ],
+      "images": []
+    },
+    {
+      "id": "elephant-sound",
+      "label": "pawoo",
+      "carriers": [
+        "An elephant says..."
       ],
       "images": []
     }
