@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-06T18:48:50.025Z",
+  "generated": "2026-05-06T18:48:59.458Z",
   "categories": [
     "animal_sounds",
     "children_songs",
@@ -44,8 +44,7 @@
       "id": "dog",
       "label": "woof",
       "carriers": [
-        "A dog says...",
-        "What does a dog say?"
+        "A dog says..."
       ],
       "images": []
     },
