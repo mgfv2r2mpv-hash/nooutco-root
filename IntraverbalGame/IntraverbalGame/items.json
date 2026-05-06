@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-06T18:48:59.458Z",
+  "generated": "2026-05-06T18:49:07.209Z",
   "categories": [
     "animal_sounds",
     "children_songs",
@@ -52,8 +52,7 @@
       "id": "cat",
       "label": "meow",
       "carriers": [
-        "A cat says...",
-        "What does a cat say?"
+        "A cat says..."
       ],
       "images": []
     },
