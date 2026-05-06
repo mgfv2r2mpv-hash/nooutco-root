@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-06T18:49:14.962Z",
+  "generated": "2026-05-06T18:49:24.297Z",
   "categories": [
     "animal_sounds",
     "children_songs",
@@ -68,8 +68,7 @@
       "id": "duck",
       "label": "quack",
       "carriers": [
-        "A duck says...",
-        "What does a duck say?"
+        "A duck says..."
       ],
       "images": []
     },
