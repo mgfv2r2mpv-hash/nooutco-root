@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-06T18:49:07.209Z",
+  "generated": "2026-05-06T18:49:14.962Z",
   "categories": [
     "animal_sounds",
     "children_songs",
@@ -60,8 +60,7 @@
       "id": "cow",
       "label": "moo",
       "carriers": [
-        "A cow says...",
-        "What does a cow say?"
+        "A cow says..."
       ],
       "images": []
     },
