@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-06T18:41:57.656Z",
+  "generated": "2026-05-06T18:42:35.095Z",
   "folders": [
     "T_actions",
     "T_animals",
@@ -63,6 +63,7 @@
     "T_community_helpers": [
       "_Resources/_imgSource/T_community_helpers/chef.jpg",
       "_Resources/_imgSource/T_community_helpers/construction.jpg",
+      "_Resources/_imgSource/T_community_helpers/crossing-guard.jpg",
       "_Resources/_imgSource/T_community_helpers/doctor.jpg",
       "_Resources/_imgSource/T_community_helpers/farmer.jpg",
       "_Resources/_imgSource/T_community_helpers/firefighter.jpg",
