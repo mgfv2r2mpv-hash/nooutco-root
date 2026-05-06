@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-06T18:47:51.503Z",
+  "generated": "2026-05-06T18:48:07.026Z",
   "categories": [
     "animal_sounds",
     "children_songs",
@@ -15,7 +15,8 @@
       "pig-sound",
       "lion-sound",
       "chicken-sound",
-      "rooster-sound"
+      "rooster-sound",
+      "bird-sound"
     ],
     "children_songs": [
       "twinkle_star",
@@ -228,6 +229,14 @@
       "label": "cock-a-doodle-doo",
       "carriers": [
         "A rooster says..."
+      ],
+      "images": []
+    },
+    {
+      "id": "bird-sound",
+      "label": "tweet",
+      "carriers": [
+        "A bird says..."
       ],
       "images": []
     }
