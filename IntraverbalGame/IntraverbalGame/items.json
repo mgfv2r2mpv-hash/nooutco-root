@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-06T18:44:04.993Z",
+  "generated": "2026-05-06T18:44:51.775Z",
   "categories": [
     "animal_sounds",
     "children_songs",
@@ -18,7 +18,8 @@
       "row_boat",
       "wheels-bus",
       "humpty-dumpty",
-      "wipers-bus"
+      "wipers-bus",
+      "hickory-dock"
     ],
     "common_phrases": [
       "peanut_butter_and",
@@ -156,6 +157,14 @@
       "label": "down",
       "carriers": [
         "Up and..."
+      ],
+      "images": []
+    },
+    {
+      "id": "hickory-dock",
+      "label": "dock",
+      "carriers": [
+        "Hickory Dickory..."
       ],
       "images": []
     }
