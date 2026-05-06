@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-06T18:47:36.817Z",
+  "generated": "2026-05-06T18:47:51.503Z",
   "categories": [
     "animal_sounds",
     "children_songs",
@@ -14,7 +14,8 @@
       "horse-sound",
       "pig-sound",
       "lion-sound",
-      "chicken-sound"
+      "chicken-sound",
+      "rooster-sound"
     ],
     "children_songs": [
       "twinkle_star",
@@ -219,6 +220,14 @@
       "label": "cluck",
       "carriers": [
         "A chicken says..."
+      ],
+      "images": []
+    },
+    {
+      "id": "rooster-sound",
+      "label": "cock-a-doodle-doo",
+      "carriers": [
+        "A rooster says..."
       ],
       "images": []
     }
