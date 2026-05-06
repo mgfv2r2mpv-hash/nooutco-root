@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-06T18:49:24.297Z",
+  "generated": "2026-05-06T18:50:01.519Z",
   "categories": [
     "animal_sounds",
     "children_songs",
@@ -18,7 +18,8 @@
       "rooster-sound",
       "bird-sound",
       "sheep-sound",
-      "snake-sound"
+      "snake-sound",
+      "donkey-sound"
     ],
     "children_songs": [
       "twinkle_star",
@@ -251,6 +252,14 @@
       "label": "hiss",
       "carriers": [
         "A snake says..."
+      ],
+      "images": []
+    },
+    {
+      "id": "donkey-sound",
+      "label": "hee-haw",
+      "carriers": [
+        "A donkey says..."
       ],
       "images": []
     }
