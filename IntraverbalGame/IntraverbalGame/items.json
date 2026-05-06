@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-06T18:48:27.488Z",
+  "generated": "2026-05-06T18:48:50.025Z",
   "categories": [
     "animal_sounds",
     "children_songs",
@@ -17,7 +17,8 @@
       "chicken-sound",
       "rooster-sound",
       "bird-sound",
-      "sheep-sound"
+      "sheep-sound",
+      "snake-sound"
     ],
     "children_songs": [
       "twinkle_star",
@@ -246,6 +247,14 @@
       "label": "baa",
       "carriers": [
         "A sheep says..."
+      ],
+      "images": []
+    },
+    {
+      "id": "snake-sound",
+      "label": "hiss",
+      "carriers": [
+        "A snake says..."
       ],
       "images": []
     }
