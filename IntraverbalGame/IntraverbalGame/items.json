@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-06T18:43:47.700Z",
+  "generated": "2026-05-06T18:44:04.993Z",
   "categories": [
     "animal_sounds",
     "children_songs",
@@ -24,7 +24,8 @@
       "peanut_butter_and",
       "ready_set",
       "red_light_green",
-      "socks-shoes"
+      "socks-shoes",
+      "up-down"
     ]
   },
   "items": [
@@ -147,6 +148,14 @@
       "label": "shoes",
       "carriers": [
         "Socks and..."
+      ],
+      "images": []
+    },
+    {
+      "id": "up-down",
+      "label": "down",
+      "carriers": [
+        "Up and..."
       ],
       "images": []
     }
