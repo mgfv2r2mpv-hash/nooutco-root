@@ -23,7 +23,7 @@
   <div id="settings-bar">
 
     <div class="setting-group">
-      <label for="sel-mode">Mode</label>
+      <label for="sel-mode">Mode<button type="button" class="help-btn" data-help="Choose the learning mode (Feature, Function, or Class).">?</button></label>
       <select id="sel-mode">
         <option value="feature">Feature</option>
         <option value="function">Function</option>
@@ -33,24 +33,26 @@
     </div>
 
     <div class="setting-group">
-      <label for="inp-size">Array Size</label>
+      <label for="inp-size">Array Size<button type="button" class="help-btn" data-help="How many items appear in the choice array (2–10).">?</button></label>
       <input type="number" id="inp-size" min="2" max="10" value="4">
     </div>
 
     <div class="setting-group">
-      <label for="sel-tag">Tag</label>
+      <label for="sel-tag">Tag<button type="button" class="help-btn" data-help="Select which vocabulary set to use.">?</button></label>
       <select id="sel-tag"></select>
     </div>
 
     <div class="setting-group setting-targets">
       <button type="button" id="btn-targets-toggle" class="btn-targets" aria-expanded="false">
         Targets <span id="targets-count" class="targets-count">0 of 0</span>
+        <button type="button" class="help-btn" data-help="Choose which items can appear as correct answers.">?</button>
       </button>
     </div>
 
     <div class="setting-group setting-extra">
       <button type="button" id="btn-extra-toggle" class="btn-extra" aria-expanded="false">
         ⚙ Settings
+        <button type="button" class="help-btn" data-help="Open additional game options.">?</button>
       </button>
     </div>
 
@@ -182,6 +184,7 @@
     <div id="print-summary"></div>
   </div>
 
+  <script src="../../tooltip-help.js"></script>
   <script src="game.js"></script>
   <script>
     const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";

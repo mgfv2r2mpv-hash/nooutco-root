@@ -842,29 +842,51 @@ function onPromptButton() {
   applyPrompt();
 }
 
-// ── Next button ────────────────────────────────────────────────────
+// ── Trial overlay (Next + Retry watermark buttons) ─────────────────
 
 function showNextBtn() {
   removeNextBtn();
-  const btn = document.createElement('button');
-  btn.id = 'btn-next';
-  btn.textContent = 'Next';
-  btn.addEventListener('click', onNextClick);
-  el.compSection.appendChild(btn);
+  const overlay = document.createElement('div');
+  overlay.id = 'trial-overlay';
+
+  const btnNext = document.createElement('button');
+  btnNext.id = 'btn-next';
+  btnNext.className = 'btn-watermark btn-watermark-next';
+  btnNext.textContent = 'Next';
+  btnNext.addEventListener('click', onNextClick);
+
+  const btnRetry = document.createElement('button');
+  btnRetry.id = 'btn-retry';
+  btnRetry.className = 'btn-watermark btn-watermark-retry';
+  btnRetry.textContent = 'Retry';
+  btnRetry.addEventListener('click', onRetryClick);
+
+  overlay.appendChild(btnNext);
+  overlay.appendChild(btnRetry);
+  el.compSection.appendChild(overlay);
 }
 
 function removeNextBtn() {
-  const btn = $('btn-next');
-  if (btn) btn.remove();
+  const overlay = $('trial-overlay');
+  if (overlay) overlay.remove();
 }
 
 function onNextClick() {
   removeNextBtn();
-  // Resume timer only if we auto-paused it (not if staff had paused manually)
   if (state.timerAutoPaused) { state.timerAutoPaused = false; startTimer(); }
   const last = state.sessionData[state.sessionData.length - 1];
   const needsRepeat = state.representErrors && last && (last.outcome === 'Error' || last.outcome === 'Repeat Error');
   beginTrial(needsRepeat);
+}
+
+function onRetryClick() {
+  if (state.sessionData.length) {
+    state.sessionData.pop();
+    state.trialNum--;
+  }
+  removeNextBtn();
+  if (state.timerAutoPaused) { state.timerAutoPaused = false; startTimer(); }
+  beginTrial(false, true);
 }
 
 // ── Print data ─────────────────────────────────────────────────────

@@ -29,28 +29,28 @@
   <!-- ── Settings bar ─────────────────────────────────────────────── -->
   <div id="settings-bar">
     <div class="setting-group">
-      <label for="sel-topic" title="Choose the image category to use for this session.">Topic</label>
-      <select id="sel-topic" title="Choose the image category to use for this session.">
+      <label for="sel-topic">Topic<button type="button" class="help-btn" data-help="Choose the image category to use for this session.">?</button></label>
+      <select id="sel-topic">
         <option value="">-- scanning --</option>
       </select>
     </div>
 
     <div class="setting-group">
-      <label for="inp-size" title="How many images appear in the choice array (1–10).">Array Size</label>
-      <input type="number" id="inp-size" min="1" max="10" value="4" title="How many images appear in the choice array (1–10).">
+      <label for="inp-size">Array Size<button type="button" class="help-btn" data-help="How many images appear in the choice array (1–10).">?</button></label>
+      <input type="number" id="inp-size" min="1" max="10" value="4">
     </div>
 
     <div class="setting-group setting-targets">
-      <button type="button" id="btn-targets-toggle" class="btn-targets" aria-expanded="false"
-        title="Choose which images from the topic can appear as the target (correct answer).">
+      <button type="button" id="btn-targets-toggle" class="btn-targets" aria-expanded="false">
         Targets <span id="targets-count" class="targets-count">0 of 0</span>
+        <button type="button" class="help-btn" data-help="Choose which images from the topic can appear as the target (correct answer).">?</button>
       </button>
     </div>
 
     <div class="setting-group setting-extra">
-      <button type="button" id="btn-extra-toggle" class="btn-extra" aria-expanded="false"
-        title="Open additional game options.">
+      <button type="button" id="btn-extra-toggle" class="btn-extra" aria-expanded="false">
         ⚙ Settings
+        <button type="button" class="help-btn" data-help="Open additional game options.">?</button>
       </button>
     </div>
 
@@ -81,40 +81,48 @@
       <button type="button" id="btn-extra-close" class="btn-extra-close" title="Close">×</button>
     </div>
     <div class="extra-panel-body">
-      <label class="checkbox-label" title="After an incorrect response, the same target is repeated (with tiles reshuffled and a prompt applied) before moving on.">
+      <label class="checkbox-label">
         <input type="checkbox" id="chk-represent-errors" checked>
         Re-Present Errors
+        <button type="button" class="help-btn" data-help="After an incorrect response, the same target is repeated (with tiles reshuffled and a prompt applied) before moving on.">?</button>
       </label>
-      <label class="checkbox-label" title="The correct answer is highlighted immediately at the start of each trial so the client always responds correctly.">
+      <label class="checkbox-label">
         <input type="checkbox" id="chk-errorless">
         Errorless
+        <button type="button" class="help-btn" data-help="The correct answer is highlighted immediately at the start of each trial so the client always responds correctly.">?</button>
       </label>
-      <label class="checkbox-label" title="Suppresses the shake/red animation when the client taps an incorrect image.">
+      <label class="checkbox-label">
         <input type="checkbox" id="chk-no-error-anim">
         No Incorrect Animation
+        <button type="button" class="help-btn" data-help="Suppresses the shake/red animation when the client taps an incorrect image.">?</button>
       </label>
-      <label class="checkbox-label" title="When on, images in the topic that are NOT selected as targets can still appear as distractors. When off, only selected targets appear in the array.">
+      <label class="checkbox-label">
         <input type="checkbox" id="chk-non-target-distractor" checked>
         Non-Target Category Distractors
+        <button type="button" class="help-btn" data-help="When on, images in the topic that are NOT selected as targets can still appear as distractors. When off, only selected targets appear in the array.">?</button>
       </label>
-      <label class="checkbox-label" title="When on, distractors are drawn from ALL topics, not just the current one.">
+      <label class="checkbox-label">
         <input type="checkbox" id="chk-cross">
         Non-category distractors
+        <button type="button" class="help-btn" data-help="When on, distractors are drawn from ALL topics, not just the current one.">?</button>
       </label>
-      <label class="checkbox-label" title="The prompt highlight stays visible for the whole trial instead of fading after a moment.">
+      <label class="checkbox-label">
         <input type="checkbox" id="chk-persists">
         Prompt persists
+        <button type="button" class="help-btn" data-help="The prompt highlight stays visible for the whole trial instead of fading after a moment.">?</button>
       </label>
-      <label class="checkbox-label" title="Automatically applies a prompt at the start of every trial (or after a delay if Prompt Delay is on).">
+      <label class="checkbox-label">
         <input type="checkbox" id="chk-auto-prompt">
         Auto-Prompt
+        <button type="button" class="help-btn" data-help="Automatically applies a prompt at the start of every trial (or after a delay if Prompt Delay is on).">?</button>
       </label>
       <div class="extra-row">
-        <label class="checkbox-label" title="Wait the selected number of seconds before the auto-prompt appears.">
+        <label class="checkbox-label">
           <input type="checkbox" id="chk-prompt-delay" disabled>
           Prompt Delay
+          <button type="button" class="help-btn" data-help="Wait the selected number of seconds before the auto-prompt appears.">?</button>
         </label>
-        <select id="sel-prompt-delay" disabled title="Number of seconds to wait before auto-prompt appears.">
+        <select id="sel-prompt-delay" disabled>
           <option value="1">1s</option>
           <option value="2">2s</option>
           <option value="3" selected>3s</option>
@@ -124,8 +132,8 @@
         </select>
       </div>
       <div class="extra-row">
-        <label for="sel-prompt-style" title="Visual style used to highlight the correct answer when prompted.">Prompt style</label>
-        <select id="sel-prompt-style" title="Visual style used to highlight the correct answer when prompted.">
+        <label for="sel-prompt-style">Prompt style<button type="button" class="help-btn" data-help="Visual style used to highlight the correct answer when prompted.">?</button></label>
+        <select id="sel-prompt-style">
           <option value="sparkle">Sparkle</option>
           <option value="outline">Outline</option>
         </select>
@@ -189,6 +197,7 @@
     <div id="print-summary"></div>
   </div>
 
+  <script src="../../tooltip-help.js"></script>
   <script src="game.js"></script>
   <script>
     const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
