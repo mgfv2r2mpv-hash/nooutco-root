@@ -1,11 +1,12 @@
 {
-  "generated": "2026-05-05T18:27:37.449Z",
+  "generated": "2026-05-07T16:34:43.495Z",
   "folders": [
     "T_animals",
     "T_buildings",
     "T_colors",
     "T_community_helpers",
     "T_foods",
+    "T_fresh-beats",
     "T_household_items",
     "T_kitchen_items",
     "T_lowercase",
@@ -225,6 +226,9 @@
       "_Resources/_imgSource/T_lowercase/x.svg",
       "_Resources/_imgSource/T_lowercase/y.svg",
       "_Resources/_imgSource/T_lowercase/z.svg"
+    ],
+    "T_fresh-beats": [
+      "_Resources/_imgSource/T_fresh-beats/twist-1.webp"
     ]
   },
   "archived": {}
