@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-07T16:35:24.499Z",
+  "generated": "2026-05-07T16:36:09.406Z",
   "folders": [
     "T_animals",
     "T_buildings",
@@ -229,6 +229,7 @@
     ],
     "T_fresh-beats": [
       "_Resources/_imgSource/T_fresh-beats/group-jumping.jpg",
+      "_Resources/_imgSource/T_fresh-beats/group-photo.jpg",
       "_Resources/_imgSource/T_fresh-beats/twist-1.webp"
     ]
   },
