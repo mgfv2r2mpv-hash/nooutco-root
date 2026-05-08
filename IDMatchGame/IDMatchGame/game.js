@@ -28,6 +28,7 @@ const state = {
   errorless:         false,
   noErrorAnim:       false,
   extraPanelOpen:    false,
+  nonTargetDistractors: true,
   crossCategory:     false,
   promptPersists:    false,
   promptStyle:       'sparkle',
@@ -106,6 +107,7 @@ const el = {
   chkRepresentErrors: $('chk-represent-errors'),
   chkErrorless:       $('chk-errorless'),
   chkNoErrorAnim:     $('chk-no-error-anim'),
+  chkNonTargetDistractor: $('chk-non-target-distractor'),
   btnExtraToggle:     $('btn-extra-toggle'),
   extraPanel:         $('extra-panel'),
   btnExtraClose:      $('btn-extra-close'),
@@ -135,6 +137,7 @@ function loadSettings() {
   state.representErrors   = s.representErrors   ?? true;
   state.errorless         = s.errorless         ?? false;
   state.noErrorAnim       = s.noErrorAnim       ?? false;
+  state.nonTargetDistractors = s.nonTargetDistractors ?? true;
   state.crossCategory     = s.crossCategory     ?? false;
   state.promptPersists    = s.promptPersists    ?? false;
   state.promptStyle       = s.promptStyle       ?? 'sparkle';
@@ -147,6 +150,7 @@ function loadSettings() {
   el.chkRepresentErrors.checked = state.representErrors;
   el.chkErrorless.checked       = state.errorless;
   el.chkNoErrorAnim.checked     = state.noErrorAnim;
+  el.chkNonTargetDistractor.checked = state.nonTargetDistractors;
   el.chkCross.checked           = state.crossCategory;
   el.chkPersists.checked    = state.promptPersists;
   el.selPromptStyle.value   = state.promptStyle;
@@ -166,6 +170,7 @@ function saveSettings() {
     representErrors:   state.representErrors,
     errorless:         state.errorless,
     noErrorAnim:       state.noErrorAnim,
+    nonTargetDistractors: state.nonTargetDistractors,
     crossCategory:     state.crossCategory,
     promptPersists:    state.promptPersists,
     promptStyle:       state.promptStyle,
@@ -309,6 +314,11 @@ function bindEvents() {
     state.posDeck = [];
     saveSettings();
     await refreshImages();
+  });
+
+  el.chkNonTargetDistractor.addEventListener('change', () => {
+    state.nonTargetDistractors = el.chkNonTargetDistractor.checked;
+    saveSettings();
   });
 
   el.chkCross.addEventListener('change', async () => {
@@ -488,9 +498,19 @@ function buildTrial(keepSample) {
     state.sampleSrc = pickRandom(candidatePool.length ? candidatePool : state.topicImages);
   }
 
-  const basePool = state.crossCategory
-    ? [...state.topicImages, ...state.otherImages]
-    : [...state.topicImages];
+  const filter = state.targetFilters[state.topic] || [];
+  const eligibleTargets = filter.length
+    ? state.topicImages.filter(src => filter.includes(src))
+    : state.topicImages;
+
+  let basePool;
+  if (state.crossCategory) {
+    basePool = [...state.topicImages, ...state.otherImages];
+  } else if (state.nonTargetDistractors) {
+    basePool = [...state.topicImages];
+  } else {
+    basePool = [...eligibleTargets];
+  }
 
   const distractorPool = shuffle(basePool.filter(src => src !== state.sampleSrc));
   const getDistractor  = i =>
