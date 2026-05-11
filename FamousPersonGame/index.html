@@ -324,15 +324,51 @@ body {
 
 /* ─── Prompt Display ───────────────────────────────────────── */
 .prompt-display {
-  min-height: 52px;
-  font-size: 20px;
-  font-style: italic;
-  color: #222;
+  display: none;
+  padding: 14px 18px;
+  margin: 4px 0 6px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--light, #DBEAFE) 0%, #fff 100%);
+  border: 2px solid var(--accent, #2563EB);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.10);
+  color: #1a1a2e;
+  font-size: 22px;
+  font-weight: 600;
+  font-style: normal;
+  line-height: 1.35;
   text-align: center;
-  padding: 6px 8px;
-  line-height: 1.45;
+  animation: prompt-pop 0.22s ease-out;
+  transition: opacity 0.4s ease-out;
+}
+.prompt-display.active { display: block; }
+.prompt-display.level-min     { border-color: #94a3b8; background: linear-gradient(135deg, #f1f5f9 0%, #fff 100%); }
+.prompt-display.level-partial { border-color: #f59e0b; background: linear-gradient(135deg, #fef3c7 0%, #fff 100%); }
+.prompt-display.level-full    { border-color: var(--accent, #2563EB); }
+.prompt-display.fading        { opacity: 0; }
+.prompt-text { font-style: normal; }
+.prompt-text .q { color: #64748b; font-weight: 700; font-size: 28px; line-height: 0; vertical-align: -2px; }
+.prompt-choices-label { font-size: 14px; font-weight: 500; color: #475569; margin-bottom: 8px; }
+.prompt-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.prompt-choice {
+  background: #fff;
+  border: 1.5px dashed var(--accent, #2563EB);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 17px;
   font-weight: 500;
-  transition: opacity .2s;
+  font-family: inherit;
+  color: #1a1a2e;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s, border-style 0.15s;
+  text-align: left;
+  line-height: 1.3;
+}
+.prompt-choice:hover     { background: rgba(255,255,255,0.7); }
+.prompt-choice.selected  { border-style: solid; background: var(--light, #DBEAFE); }
+.prompt-choice.dimmed    { opacity: 0.35; }
+@keyframes prompt-pop {
+  from { transform: translateY(-3px) scale(0.98); opacity: 0; }
+  to   { transform: translateY(0)    scale(1);    opacity: 1; }
 }
 
 /* ─── Action Row ───────────────────────────────────────────── */
@@ -824,7 +860,10 @@ body {
   .facts-list li { font-size: 14.5px; line-height: 1.4; padding-left: 18px; }
   .facts-list li::before { font-size: 17px; left: 3px; }
 
-  .prompt-display { font-size: 17px; padding: 4px 6px; min-height: 0; }
+  .prompt-display { font-size: 19px; padding: 12px 14px; margin: 2px 0 4px; }
+  .prompt-text .q { font-size: 24px; }
+  .prompt-choices { grid-template-columns: 1fr; gap: 8px; margin-top: 8px; }
+  .prompt-choice  { font-size: 16px; padding: 8px 10px; }
 
   .data-card { padding: 12px 14px 14px; border-radius: 12px; }
   .grid-header, .grid-row { grid-template-columns: 70px repeat(4, 1fr); gap: 6px; }
@@ -974,7 +1013,10 @@ body {
       </div>
 
        <!-- Prompt display -->
-      <div id="prompt-display" class="prompt-display"></div>
+      <div id="prompt-display" class="prompt-display">
+        <div class="prompt-text"></div>
+        <div class="prompt-choices"></div>
+      </div>
 
       <!-- Data Grid -->
       <div class="data-card">
@@ -1023,6 +1065,10 @@ body {
           <label class="delay-checkbox-label">
             <input type="checkbox" id="persist-prompts-checkbox">
             <span>Persist Prompts</span>
+          </label>
+          <label class="delay-checkbox-label">
+            <input type="checkbox" id="show-choices-checkbox">
+            <span>Show choices on Full</span>
           </label>
         </div>
 
@@ -1127,300 +1173,1500 @@ const PEOPLE = [
     name: 'Albert Einstein', years: '1879–1955', emoji: '🧠', tag: 'Scientist',
     img: '_Resources/_imgSource/images/albert-einstein.jpg',
     facts: [
-      'Developed the theory of relativity, changing our understanding of space, time, and gravity.',
-      'Won the 1921 Nobel Prize in Physics for explaining the photoelectric effect.',
-      'He played the violin since childhood and used music to help him think through complex problems.',
-      'Einstein was deeply curious about nature and spent time sailing on lakes near his homes.',
+      {
+        text: 'Albert came up with new ideas about space, time, and gravity.',
+        topic: 'big science ideas',
+        fragment: 'came up with new ideas about space, time, and gravity',
+        commentMin: 'Albert changed science…',
+        commentPartial: 'I notice that Albert came up with new ideas about…',
+        commentFull: 'Albert came up with new ideas about how space, time, and gravity really work.',
+        volleyMin: 'Ask about his big ideas…',
+        volleyPartial: 'Albert changed how we think about space and time. Have you ever wondered about…',
+        volleyFull: 'Albert changed how we think about space and time. What is something you wonder about a lot?',
+      },
+      {
+        text: 'He won a Nobel Prize in 1921 for showing how light works.',
+        topic: 'Nobel Prize',
+        fragment: 'won a Nobel Prize in 1921 for showing how light works',
+        commentMin: 'He won a Nobel Prize…',
+        commentPartial: 'I notice that Albert won a Nobel Prize for…',
+        commentFull: 'Albert won a Nobel Prize in 1921 for explaining how light works.',
+        volleyMin: 'Ask about his prize…',
+        volleyPartial: 'Albert won a big prize for his work. Have you ever won…',
+        volleyFull: 'Albert won a Nobel Prize for his discoveries. Have you ever won a prize you were proud of?',
+      },
+      {
+        text: 'He played the violin and used music to help him think.',
+        topic: 'playing the violin',
+        fragment: 'played the violin and used music to think',
+        commentMin: 'He played the violin…',
+        commentPartial: 'I notice that Albert used music to help him…',
+        commentFull: 'Albert played the violin, and music helped him think through hard problems.',
+        volleyMin: 'Ask about his music…',
+        volleyPartial: 'Albert used music to help him think. If you could play any instrument…',
+        volleyFull: 'Albert used music to help him think. If you could play any instrument, which one would you pick?',
+      },
+      {
+        text: 'Albert loved nature and spent time sailing on lakes near home.',
+        topic: 'sailing on lakes',
+        fragment: 'loved nature and went sailing on lakes',
+        commentMin: 'He loved sailing…',
+        commentPartial: 'I notice that Albert loved spending time…',
+        commentFull: 'Albert loved nature and liked to sail on lakes near his home.',
+        volleyMin: 'Ask about his sailing…',
+        volleyPartial: 'Albert liked sailing on lakes. Have you ever been on…',
+        volleyFull: 'Albert loved being out on the water. Have you ever been on a boat or in a lake?',
+      },
     ],
   },
   {
     name: 'Marie Curie', years: '1867–1934', emoji: '⚗️', tag: 'Scientist',
     img: '_Resources/_imgSource/images/marie-curie.jpeg',
     facts: [
-      'First person to win Nobel Prizes in two different sciences — Physics and Chemistry.',
-      'Discovered the elements polonium and radium, pioneering research into radioactivity.',
-      'She was born in Warsaw and moved to Paris to study science when universities in her country wouldn\'t admit women.',
-      'Marie worked in a converted shed with minimal equipment while making her groundbreaking discoveries.',
+      {
+        text: 'Marie was the first person to win two Nobel Prizes in different sciences.',
+        topic: 'two Nobel Prizes',
+        fragment: 'was the first person to win two Nobel Prizes',
+        commentMin: 'She won two prizes…',
+        commentPartial: 'I notice that Marie was the first person to…',
+        commentFull: 'Marie was the first person ever to win two Nobel Prizes in different sciences.',
+        volleyMin: 'Ask about her prizes…',
+        volleyPartial: 'Marie was the first to win two big prizes. Have you ever wanted to be first at…',
+        volleyFull: 'Marie was the first to win two Nobel Prizes. What is something you would love to be first at?',
+      },
+      {
+        text: 'She discovered two new materials called polonium and radium.',
+        topic: 'new materials',
+        fragment: 'discovered two new materials, polonium and radium',
+        commentMin: 'She found new materials…',
+        commentPartial: 'I notice that Marie discovered two new…',
+        commentFull: 'Marie discovered two brand-new materials and named one after her home country.',
+        volleyMin: 'Ask about her discoveries…',
+        volleyPartial: 'Marie found new things nobody knew about. Have you ever discovered…',
+        volleyFull: 'Marie found brand-new things nobody had ever seen. Have you ever discovered something new?',
+      },
+      {
+        text: 'She moved from Poland to Paris to study because schools at home would not let women in.',
+        topic: 'moving to Paris',
+        fragment: 'moved to Paris so she could study science',
+        commentMin: 'She moved to Paris…',
+        commentPartial: 'I notice that Marie moved far away to…',
+        commentFull: 'Marie moved far away to Paris because her home schools would not let women study science.',
+        volleyMin: 'Ask about her move…',
+        volleyPartial: 'Marie moved far away to chase her dream. Have you ever wanted to…',
+        volleyFull: 'Marie moved far away to follow her dream. What is something you would travel far to do?',
+      },
+      {
+        text: 'Marie did her famous work in an old shed with hardly any tools.',
+        topic: 'her old shed',
+        fragment: 'did her work in an old shed with few tools',
+        commentMin: 'She used an old shed…',
+        commentPartial: 'I notice that Marie worked in a…',
+        commentFull: 'Marie did her amazing work in a tiny old shed with almost no tools.',
+        volleyMin: 'Ask about her workspace…',
+        volleyPartial: 'Marie worked in a tiny shed. Have you ever made something with…',
+        volleyFull: 'Marie did big things with very little. Have you ever made something cool with just what you had?',
+      },
     ],
   },
   {
     name: 'Martin Luther King Jr.', years: '1929–1968', emoji: '✊', tag: 'Activist',
     img: '_Resources/_imgSource/images/martin-luther-king-jr.jpg',
     facts: [
-      'Led the 1963 March on Washington, delivering the iconic "I Have a Dream" speech to 250,000 people.',
-      'Won the Nobel Peace Prize in 1964 at age 35 — the youngest recipient at the time.',
-      'He was an accomplished organist and loved playing music throughout his life.',
-      'King earned his doctoral degree in theology before becoming a minister and civil rights leader.',
+      {
+        text: 'Martin gave the famous "I Have a Dream" speech to 250,000 people in 1963.',
+        topic: 'I Have a Dream',
+        fragment: 'gave the famous "I Have a Dream" speech',
+        commentMin: 'He gave a famous speech…',
+        commentPartial: 'I notice that Martin spoke to a huge…',
+        commentFull: 'Martin stood in front of 250,000 people and shared his dream of a fair world.',
+        volleyMin: 'Ask about his speech…',
+        volleyPartial: 'Martin spoke to a huge crowd about his dream. What is a dream you have…',
+        volleyFull: 'Martin spoke about his dream for a fair world. What is a big dream you have?',
+      },
+      {
+        text: 'He won the Nobel Peace Prize in 1964 when he was only 35 years old.',
+        topic: 'Nobel Peace Prize',
+        fragment: 'won the Nobel Peace Prize at only 35',
+        commentMin: 'He won a peace prize…',
+        commentPartial: 'I notice that Martin won a big prize when he was…',
+        commentFull: 'Martin won the Nobel Peace Prize at only 35 — the youngest winner at that time.',
+        volleyMin: 'Ask about his prize…',
+        volleyPartial: 'Martin won a big prize when he was young. Have you ever done something…',
+        volleyFull: 'Martin won a big peace prize when he was young. Have you ever done something you were really proud of?',
+      },
+      {
+        text: 'Martin was a great organ player and loved music his whole life.',
+        topic: 'playing the organ',
+        fragment: 'was a great organ player and loved music',
+        commentMin: 'He loved music…',
+        commentPartial: 'I notice that Martin played the organ and…',
+        commentFull: 'Martin played the organ very well and loved music for his whole life.',
+        volleyMin: 'Ask about his music…',
+        volleyPartial: 'Martin loved playing music. Do you have a favorite…',
+        volleyFull: 'Martin loved playing music his whole life. What kind of music do you like best?',
+      },
+      {
+        text: 'He earned a special degree called a doctorate before he became a leader.',
+        topic: 'becoming a doctor',
+        fragment: 'earned a doctorate before he became a leader',
+        commentMin: 'He earned a doctorate…',
+        commentPartial: 'I notice that Martin studied hard to…',
+        commentFull: 'Martin earned a doctor\'s degree by studying really hard before he became a leader.',
+        volleyMin: 'Ask about his studies…',
+        volleyPartial: 'Martin studied hard to reach his goal. What is a goal you…',
+        volleyFull: 'Martin worked hard to reach a big goal. What is something you want to work hard for?',
+      },
     ],
   },
   {
     name: 'Amelia Earhart', years: '1897–1937', emoji: '✈️', tag: 'Pioneer',
     img: '_Resources/_imgSource/images/amelia-earhart.jpg',
     facts: [
-      'First woman to fly solo nonstop across the Atlantic Ocean, in 1932.',
-      'Disappeared in 1937 during an attempt to fly around the globe — her fate remains a mystery.',
-      'She worked many jobs — from truck driver to photographer — to save money for flying lessons.',
-      'Earhart set a women\'s world speed record and wrote books about her aviation adventures.',
+      {
+        text: 'Amelia was the first woman to fly alone all the way across the Atlantic Ocean.',
+        topic: 'Atlantic flight',
+        fragment: 'was the first woman to fly alone across the Atlantic',
+        commentMin: 'She flew across the ocean…',
+        commentPartial: 'I notice that Amelia was the first woman to…',
+        commentFull: 'Amelia was the first woman to fly alone all the way across the Atlantic Ocean.',
+        volleyMin: 'Ask about her big flight…',
+        volleyPartial: 'Amelia flew across the ocean alone. Have you ever wanted to try…',
+        volleyFull: 'Amelia flew across the ocean alone. Have you ever wanted to try something nobody else has done?',
+      },
+      {
+        text: 'She vanished in 1937 while trying to fly all the way around the world.',
+        topic: 'her disappearance',
+        fragment: 'vanished while flying around the world',
+        commentMin: 'She vanished mid-flight…',
+        commentPartial: 'I notice that Amelia disappeared while she was…',
+        commentFull: 'Amelia disappeared in 1937 while trying to fly all the way around the world.',
+        volleyMin: 'Ask about the mystery…',
+        volleyPartial: 'Amelia disappeared and nobody knows what happened. What do you think it would feel like…',
+        volleyFull: 'Amelia\'s plane vanished and nobody knows where. What do you think happened to her?',
+      },
+      {
+        text: 'She worked many jobs — even truck driver — to save money for flying lessons.',
+        topic: 'saving for lessons',
+        fragment: 'worked many jobs to save up for flying lessons',
+        commentMin: 'She saved every penny…',
+        commentPartial: 'I notice that Amelia worked many jobs so she could…',
+        commentFull: 'Amelia worked many jobs, even driving trucks, so she could save up for flying lessons.',
+        volleyMin: 'Ask about her jobs…',
+        volleyPartial: 'Amelia worked hard to reach her dream. Have you ever saved up for…',
+        volleyFull: 'Amelia worked many jobs to save for her dream. Is there something you would save up for?',
+      },
+      {
+        text: 'Amelia set a women\'s world speed record and wrote books about flying.',
+        topic: 'speed record',
+        fragment: 'set a women\'s world speed record and wrote books',
+        commentMin: 'She set a speed record…',
+        commentPartial: 'I notice that Amelia set a world record for…',
+        commentFull: 'Amelia set a women\'s world speed record and even wrote books about her flying adventures.',
+        volleyMin: 'Ask about her record…',
+        volleyPartial: 'Amelia set a world record. Do you think you could break a record…',
+        volleyFull: 'Amelia set a world speed record. Do you think you could win a record someday? What for?',
+      },
     ],
   },
   {
     name: 'Leonardo da Vinci', years: '1452–1519', emoji: '🎨', tag: 'Artist',
     img: '_Resources/_imgSource/images/leonardo-da-vinci.jpeg',
     facts: [
-      'Painted the Mona Lisa and The Last Supper — two of the most famous artworks in history.',
-      'Also designed flying machines and studied anatomy centuries ahead of his time.',
-      'He filled thousands of notebook pages with sketches, observations, and ideas written in mirror script.',
-      'Leonardo was skilled in architecture, engineering, and anatomy in addition to his famous paintings.',
+      {
+        text: 'Leonardo painted the Mona Lisa and The Last Supper, two of the most famous pictures ever.',
+        topic: 'his famous paintings',
+        fragment: 'painted the Mona Lisa and The Last Supper',
+        commentMin: 'He painted the Mona Lisa…',
+        commentPartial: 'I notice that Leonardo painted some of the most famous…',
+        commentFull: 'Leonardo painted the Mona Lisa and The Last Supper, two of the most famous paintings ever made.',
+        volleyMin: 'Ask about his paintings…',
+        volleyPartial: 'Leonardo painted famous pictures. If you could paint anything…',
+        volleyFull: 'Leonardo painted some of the most famous pictures ever. If you could paint anything, what would it be?',
+      },
+      {
+        text: 'He designed flying machines and studied the human body way ahead of his time.',
+        topic: 'flying machines',
+        fragment: 'designed flying machines way ahead of his time',
+        commentMin: 'He drew flying machines…',
+        commentPartial: 'I notice that Leonardo designed amazing things like…',
+        commentFull: 'Leonardo drew flying machines and studied the human body hundreds of years before anyone else.',
+        volleyMin: 'Ask about his inventions…',
+        volleyPartial: 'Leonardo drew flying machines from his head. If you could invent…',
+        volleyFull: 'Leonardo dreamed up flying machines hundreds of years early. If you could invent anything, what would it do?',
+      },
+      {
+        text: 'He filled thousands of notebook pages with sketches and ideas written backwards.',
+        topic: 'his notebooks',
+        fragment: 'filled notebooks with sketches and backwards writing',
+        commentMin: 'He wrote backwards…',
+        commentPartial: 'I notice that Leonardo wrote his notes in…',
+        commentFull: 'Leonardo filled thousands of pages with sketches and even wrote his notes backwards.',
+        volleyMin: 'Ask about his notebooks…',
+        volleyPartial: 'Leonardo wrote in a secret backwards way. Have you ever made up a…',
+        volleyFull: 'Leonardo wrote his notes backwards like a code. Have you ever made up a secret code?',
+      },
+      {
+        text: 'Leonardo was good at painting, building, engineering, and studying the body.',
+        topic: 'so many skills',
+        fragment: 'was good at painting, building, and so many other things',
+        commentMin: 'He could do everything…',
+        commentPartial: 'I notice that Leonardo was great at so many…',
+        commentFull: 'Leonardo was great at painting, building, engineering, and studying the body — all at once.',
+        volleyMin: 'Ask about his skills…',
+        volleyPartial: 'Leonardo was good at so many things. What are some things you are…',
+        volleyFull: 'Leonardo was good at lots of different things. What are two or three things you are good at?',
+      },
     ],
   },
   {
     name: 'Harriet Tubman', years: '1822–1913', emoji: '🗽', tag: 'Activist',
     img: '_Resources/_imgSource/images/harriet-tubman.jpg',
     facts: [
-      'Escaped slavery and made 13 missions to free approximately 70 people via the Underground Railroad.',
-      'Served as a Union Army spy during the Civil War — the first American woman to lead an armed expedition.',
-      'She earned the nickname \'Moses\' for leading enslaved people to freedom like Moses in the Bible.',
-      'After the Civil War, Tubman opened a home for elderly formerly enslaved people in New York.',
+      {
+        text: 'Harriet escaped from slavery and went back 13 times to free about 70 other people.',
+        topic: 'freeing people',
+        fragment: 'escaped from slavery and went back to free other people',
+        commentMin: 'She freed many people…',
+        commentPartial: 'I notice that Harriet went back to help…',
+        commentFull: 'Harriet got herself free, then went back 13 times to help about 70 other people escape too.',
+        volleyMin: 'Ask about her trips…',
+        volleyPartial: 'Harriet kept going back to save people. What do you think it felt like to be…',
+        volleyFull: 'Harriet went back again and again to save others. What is something brave you would do for a friend?',
+      },
+      {
+        text: 'She was a spy for the Union Army and led an armed mission during the Civil War.',
+        topic: 'Civil War spy',
+        fragment: 'was a Union Army spy and led an armed mission',
+        commentMin: 'She was a spy…',
+        commentPartial: 'I notice that Harriet was a spy for…',
+        commentFull: 'Harriet worked as a spy for the Union Army and even led an armed mission in the war.',
+        volleyMin: 'Ask about her spy work…',
+        volleyPartial: 'Harriet was a brave spy in the war. Have you ever had to do something…',
+        volleyFull: 'Harriet was a brave spy during the war. Have you ever had to do something a little bit scary?',
+      },
+      {
+        text: 'People called her "Moses" because she led so many people to freedom.',
+        topic: 'her nickname Moses',
+        fragment: 'was nicknamed "Moses" for leading people to freedom',
+        commentMin: 'They called her Moses…',
+        commentPartial: 'I notice that Harriet had a special nickname because…',
+        commentFull: 'People called Harriet "Moses" because she led so many people to freedom.',
+        volleyMin: 'Ask about her nickname…',
+        volleyPartial: 'Harriet had a famous nickname. If you got a nickname for…',
+        volleyFull: 'People gave Harriet a nickname for what she did. If you got a nickname, what would you want it to be?',
+      },
+      {
+        text: 'After the war, Harriet started a home for older people who had been enslaved.',
+        topic: 'home for elders',
+        fragment: 'started a home for older people who had been enslaved',
+        commentMin: 'She opened a home…',
+        commentPartial: 'I notice that Harriet helped older people by…',
+        commentFull: 'After the war, Harriet opened a home to take care of older people who used to be enslaved.',
+        volleyMin: 'Ask about her home…',
+        volleyPartial: 'Harriet helped older people after the war. Have you ever helped someone…',
+        volleyFull: 'Harriet kept helping people her whole life. Have you ever helped someone who needed it?',
+      },
     ],
   },
   {
     name: 'Nikola Tesla', years: '1856–1943', emoji: '⚡', tag: 'Inventor',
     img: '_Resources/_imgSource/images/nikola-tesla.jpeg',
     facts: [
-      'Invented alternating current (AC) electricity systems that power nearly every home in the world.',
-      'Held over 300 patents and envisioned wireless communication long before it existed.',
-      'He could memorize entire books and perform complex mathematics entirely in his head.',
-      'Tesla was fascinated by pigeons and spent time feeding them, especially in his later years.',
+      {
+        text: 'Nikola invented the kind of electricity that powers homes today.',
+        topic: 'electricity',
+        fragment: 'invented the electricity that powers homes',
+        commentMin: 'He invented power…',
+        commentPartial: 'I notice that Nikola invented the kind of…',
+        commentFull: 'Nikola invented the kind of electricity that powers almost every home in the world.',
+        volleyMin: 'Ask about his invention…',
+        volleyPartial: 'Nikola invented something we still use every day. What is one thing you use…',
+        volleyFull: 'Nikola invented something we use every day. What is one thing in your house you could not live without?',
+      },
+      {
+        text: 'He had over 300 patents and dreamed of sending messages through the air.',
+        topic: 'his inventions',
+        fragment: 'had over 300 patents and dreamed of wireless messages',
+        commentMin: 'He had 300 ideas…',
+        commentPartial: 'I notice that Nikola dreamed of sending…',
+        commentFull: 'Nikola had over 300 inventions and dreamed of sending messages through the air long before anyone could.',
+        volleyMin: 'Ask about his ideas…',
+        volleyPartial: 'Nikola dreamed up wild ideas. If you could invent…',
+        volleyFull: 'Nikola dreamed up wild new ideas. If you could invent anything, what would it do?',
+      },
+      {
+        text: 'He could memorize whole books and do hard math just in his head.',
+        topic: 'amazing memory',
+        fragment: 'could memorize books and do hard math in his head',
+        commentMin: 'He had a big brain…',
+        commentPartial: 'I notice that Nikola could do hard math…',
+        commentFull: 'Nikola could memorize whole books and solve hard math problems just in his head.',
+        volleyMin: 'Ask about his memory…',
+        volleyPartial: 'Nikola memorized whole books. Have you ever memorized…',
+        volleyFull: 'Nikola could remember a whole book. Have you ever memorized something you are proud of?',
+      },
+      {
+        text: 'Nikola loved pigeons and would feed them in the park when he was older.',
+        topic: 'his pigeons',
+        fragment: 'loved pigeons and would feed them in the park',
+        commentMin: 'He loved pigeons…',
+        commentPartial: 'I notice that Nikola loved spending time with…',
+        commentFull: 'Nikola loved pigeons and spent a lot of time feeding them in the park.',
+        volleyMin: 'Ask about his pigeons…',
+        volleyPartial: 'Nikola loved pigeons. Do you have a favorite…',
+        volleyFull: 'Nikola loved feeding pigeons in the park. Do you have a favorite animal? Why?',
+      },
     ],
   },
   {
     name: 'Frida Kahlo', years: '1907–1954', emoji: '🌺', tag: 'Artist',
     img: '_Resources/_imgSource/images/frida-kahlo.jpg',
     facts: [
-      'Created deeply personal self-portraits exploring pain, identity, and Mexican culture.',
-      'Taught herself to paint while recovering from a severe bus accident that left her with lifelong injuries.',
-      'She was a skilled self-taught muralist as well as a painter of intimate personal works.',
-      'Kahlo\'s colorful clothing and distinctive appearance made her an icon of artistic individuality.',
+      {
+        text: 'Frida painted many pictures of herself that showed her feelings and her home country.',
+        topic: 'her self-portraits',
+        fragment: 'painted self-portraits that showed her feelings',
+        commentMin: 'She painted herself…',
+        commentPartial: 'I notice that Frida painted pictures of…',
+        commentFull: 'Frida painted lots of pictures of herself that showed how she felt and what she loved.',
+        volleyMin: 'Ask about her paintings…',
+        volleyPartial: 'Frida painted how she felt. If you painted yourself…',
+        volleyFull: 'Frida painted her feelings into her art. If you painted a picture of yourself, what would it show?',
+      },
+      {
+        text: 'She taught herself to paint while she was healing from a bus crash.',
+        topic: 'learning to paint',
+        fragment: 'taught herself to paint while healing from a bus crash',
+        commentMin: 'She taught herself…',
+        commentPartial: 'I notice that Frida learned to paint while she was…',
+        commentFull: 'Frida taught herself to paint while she was stuck in bed healing from a bus crash.',
+        volleyMin: 'Ask about how she learned…',
+        volleyPartial: 'Frida taught herself a whole new skill. Have you ever taught yourself…',
+        volleyFull: 'Frida taught herself to paint. Have you ever taught yourself something all by yourself?',
+      },
+      {
+        text: 'She also painted big murals on walls, even though no one had shown her how.',
+        topic: 'painting murals',
+        fragment: 'also painted big murals on walls',
+        commentMin: 'She painted murals…',
+        commentPartial: 'I notice that Frida painted big art on…',
+        commentFull: 'Frida painted huge murals on walls, even though nobody had ever shown her how to do it.',
+        volleyMin: 'Ask about her wall art…',
+        volleyPartial: 'Frida painted huge pictures on walls. If you painted a wall…',
+        volleyFull: 'Frida painted huge pictures on big walls. If you could paint a whole wall, what would it look like?',
+      },
+      {
+        text: 'Frida wore colorful clothes and flowers in her hair, and people still copy her style.',
+        topic: 'her style',
+        fragment: 'wore colorful clothes and flowers in her hair',
+        commentMin: 'She had a cool style…',
+        commentPartial: 'I notice that Frida liked to wear…',
+        commentFull: 'Frida always wore colorful clothes and flowers in her hair, and lots of people still copy her style today.',
+        volleyMin: 'Ask about her clothes…',
+        volleyPartial: 'Frida had a one-of-a-kind look. What is something you wear…',
+        volleyFull: 'Frida had a one-of-a-kind look people still copy. What is something you love to wear?',
+      },
     ],
   },
   {
     name: 'Nelson Mandela', years: '1918–2013', emoji: '🕊️', tag: 'Leader',
     img: '_Resources/_imgSource/images/nelson-mandela.jpg',
     facts: [
-      'Served 27 years in prison for anti-apartheid activism, then became South Africa\'s first Black president in 1994.',
-      'Won the Nobel Peace Prize in 1993 for peacefully dismantling apartheid.',
-      'He learned to speak Afrikaans fluently while imprisoned, wanting to understand his jailers.',
-      'Mandela was an accomplished boxer and used sports to stay strong during his decades in prison.',
+      {
+        text: 'Nelson spent 27 years in prison and then became the first Black president of South Africa.',
+        topic: '27 years in prison',
+        fragment: 'spent 27 years in prison then became president',
+        commentMin: 'He spent 27 years…',
+        commentPartial: 'I notice that Nelson spent a long time in…',
+        commentFull: 'Nelson spent 27 years in prison and then became the first Black president of his country.',
+        volleyMin: 'Ask about prison…',
+        volleyPartial: 'Nelson never gave up, even after years in prison. What is something hard you…',
+        volleyFull: 'Nelson never gave up, even after 27 years locked up. What is something hard you would not give up on?',
+      },
+      {
+        text: 'He won the Nobel Peace Prize in 1993 for helping end unfair laws in his country.',
+        topic: 'Nobel Peace Prize',
+        fragment: 'won the Nobel Peace Prize for ending unfair laws',
+        commentMin: 'He won a peace prize…',
+        commentPartial: 'I notice that Nelson won a big prize for…',
+        commentFull: 'Nelson won the Nobel Peace Prize for peacefully helping end unfair laws in his country.',
+        volleyMin: 'Ask about his prize…',
+        volleyPartial: 'Nelson won a prize for being a peacemaker. Have you ever helped solve…',
+        volleyFull: 'Nelson won a peace prize for fixing unfair rules. Have you ever helped fix a problem between people?',
+      },
+      {
+        text: 'While in prison, he learned to speak the language of the guards so he could understand them.',
+        topic: 'learning the language',
+        fragment: 'learned the guards\' language so he could understand them',
+        commentMin: 'He learned their language…',
+        commentPartial: 'I notice that Nelson learned a whole new…',
+        commentFull: 'Nelson learned the guards\' language in prison because he wanted to understand them.',
+        volleyMin: 'Ask about that language…',
+        volleyPartial: 'Nelson learned a new language in prison. If you could learn…',
+        volleyFull: 'Nelson learned a new language to understand people better. If you could learn any language, which one?',
+      },
+      {
+        text: 'Nelson was a good boxer and used sports to stay strong during prison.',
+        topic: 'boxing in prison',
+        fragment: 'was a good boxer and used sports to stay strong',
+        commentMin: 'He was a boxer…',
+        commentPartial: 'I notice that Nelson used sports to…',
+        commentFull: 'Nelson was a strong boxer and used sports to stay fit during his long years in prison.',
+        volleyMin: 'Ask about his boxing…',
+        volleyPartial: 'Nelson used sports to stay strong. What sport keeps you…',
+        volleyFull: 'Nelson used sports to keep his body and mind strong. What sport or game makes you feel strong?',
+      },
     ],
   },
   {
     name: 'Charles Darwin', years: '1809–1882', emoji: '🦎', tag: 'Scientist',
     img: '_Resources/_imgSource/images/charles-darwin.jpg',
     facts: [
-      'Proposed the theory of evolution by natural selection in his 1859 book On the Origin of Species.',
-      'Spent five years sailing the globe on HMS Beagle, observing wildlife that inspired his theory.',
-      'He suffered from mysterious illnesses most of his life but continued his scientific work with determination.',
-      'Darwin was a devoted family man who lived quietly in the English countryside for most of his life.',
+      {
+        text: 'Charles came up with a big idea about how animals and plants change over time.',
+        topic: 'how life changes',
+        fragment: 'came up with the idea of how animals change over time',
+        commentMin: 'He had a big idea…',
+        commentPartial: 'I notice that Charles studied how living things…',
+        commentFull: 'Charles came up with a big idea about how plants and animals change over a very long time.',
+        volleyMin: 'Ask about his idea…',
+        volleyPartial: 'Charles had an idea that changed science. What is something you have…',
+        volleyFull: 'Charles had a big idea that changed science. What is something you have been curious about?',
+      },
+      {
+        text: 'He sailed around the world for five years on a ship called the Beagle.',
+        topic: 'sailing the world',
+        fragment: 'sailed around the world for five years',
+        commentMin: 'He sailed the world…',
+        commentPartial: 'I notice that Charles spent five years on a…',
+        commentFull: 'Charles sailed around the whole world for five years on a ship called the Beagle.',
+        volleyMin: 'Ask about his trip…',
+        volleyPartial: 'Charles spent five years on a ship. Have you ever taken a long…',
+        volleyFull: 'Charles spent five years exploring on a ship. What is the longest trip you have ever taken?',
+      },
+      {
+        text: 'He had a lot of stomach trouble his whole life but never stopped his science work.',
+        topic: 'being sick a lot',
+        fragment: 'was often sick but never stopped his work',
+        commentMin: 'He was often sick…',
+        commentPartial: 'I notice that Charles kept working even when he…',
+        commentFull: 'Charles felt sick a lot of the time but never stopped studying and writing.',
+        volleyMin: 'Ask about his illness…',
+        volleyPartial: 'Charles kept working even when sick. Have you ever kept going…',
+        volleyFull: 'Charles kept working even when he felt bad. Have you ever kept going when something was hard?',
+      },
+      {
+        text: 'Charles loved his family and lived a quiet life in the English countryside.',
+        topic: 'his quiet home',
+        fragment: 'loved his family and lived a quiet country life',
+        commentMin: 'He loved home life…',
+        commentPartial: 'I notice that Charles spent his life in a…',
+        commentFull: 'Charles loved his family and spent most of his life in a quiet country home.',
+        volleyMin: 'Ask about his home…',
+        volleyPartial: 'Charles loved a quiet life at home. Do you like quiet…',
+        volleyFull: 'Charles loved a quiet home with his family. Do you like things quiet or do you like a lot going on?',
+      },
     ],
   },
   {
     name: 'Isaac Newton', years: '1643–1727', emoji: '🍎', tag: 'Scientist',
     img: '_Resources/_imgSource/images/isaac-newton.jpg',
     facts: [
-      'Formulated the three laws of motion and the law of universal gravitation.',
-      'Also invented calculus and proved that white light contains all colors of the spectrum.',
-      'He had an intense personality and was known to work obsessively on problems for extended periods.',
-      'Newton served as Master of the Royal Mint and took his duties seriously, even pursuing counterfeiters.',
+      {
+        text: 'Isaac figured out the three rules of motion and how gravity pulls things down.',
+        topic: 'rules of motion',
+        fragment: 'figured out the rules of motion and gravity',
+        commentMin: 'He found gravity rules…',
+        commentPartial: 'I notice that Isaac figured out how things…',
+        commentFull: 'Isaac figured out the three rules of motion and how gravity pulls things toward the ground.',
+        volleyMin: 'Ask about gravity…',
+        volleyPartial: 'Isaac figured out big rules of nature. Have you ever wondered why…',
+        volleyFull: 'Isaac figured out why things fall down. Have you ever wondered why something works the way it does?',
+      },
+      {
+        text: 'He invented a kind of math called calculus and showed that white light has all the colors.',
+        topic: 'colors in light',
+        fragment: 'invented calculus and found all colors hide in white light',
+        commentMin: 'He invented math…',
+        commentPartial: 'I notice that Isaac showed that white light has…',
+        commentFull: 'Isaac invented new math and proved that white light is really made of every color of the rainbow.',
+        volleyMin: 'Ask about colors…',
+        volleyPartial: 'Isaac proved white light has all the colors. What is your favorite…',
+        volleyFull: 'Isaac proved white light is made of every color. What is your favorite color and why?',
+      },
+      {
+        text: 'He worked very hard and could spend many days on one tough problem.',
+        topic: 'hard work',
+        fragment: 'worked very hard for days on the same problem',
+        commentMin: 'He worked nonstop…',
+        commentPartial: 'I notice that Isaac stuck with hard problems for…',
+        commentFull: 'Isaac would work on the same hard problem for days and days without giving up.',
+        volleyMin: 'Ask about his work…',
+        volleyPartial: 'Isaac stuck with hard problems. Have you ever worked on…',
+        volleyFull: 'Isaac stuck with hard problems for days. Have you ever worked on something really hard until you got it?',
+      },
+      {
+        text: 'Isaac also ran the place that made coins for England and chased people who faked them.',
+        topic: 'making coins',
+        fragment: 'ran the coin makers and chased fakers',
+        commentMin: 'He chased coin fakers…',
+        commentPartial: 'I notice that Isaac also ran the place that…',
+        commentFull: 'Isaac also ran the place that made England\'s coins and chased people who made fake ones.',
+        volleyMin: 'Ask about the coins…',
+        volleyPartial: 'Isaac chased coin fakers. Have you ever tried to solve a…',
+        volleyFull: 'Isaac chased people who made fake coins. Have you ever tried to solve a mystery?',
+      },
     ],
   },
   {
     name: 'Rosa Parks', years: '1913–2005', emoji: '🚌', tag: 'Activist',
     img: '_Resources/_imgSource/images/rosa-parks.jpg',
     facts: [
-      'Refused to give up her bus seat to a white passenger in 1955, sparking the Montgomery Bus Boycott.',
-      'Her act of defiance became a turning point for the Civil Rights Movement across America.',
-      'She was a skilled seamstress and active in her church community for many years before her famous act.',
-      'Parks continued her civil rights work after the boycott, serving as an aide to a U.S. congressman.',
+      {
+        text: 'Rosa would not give up her bus seat to a white man in 1955.',
+        topic: 'the bus seat',
+        fragment: 'would not give up her bus seat',
+        commentMin: 'She kept her seat…',
+        commentPartial: 'I notice that Rosa would not give up her…',
+        commentFull: 'Rosa would not give up her bus seat to a white man, even when she was told to.',
+        volleyMin: 'Ask about the bus…',
+        volleyPartial: 'Rosa stood up for what was right. Have you ever stood up for…',
+        volleyFull: 'Rosa stood up for what was right by staying in her seat. Have you ever stood up for something you believe in?',
+      },
+      {
+        text: 'Her brave choice started a year-long boycott of the buses in her city.',
+        topic: 'the bus boycott',
+        fragment: 'started a year-long bus boycott',
+        commentMin: 'She sparked a boycott…',
+        commentPartial: 'I notice that Rosa\'s choice started a big…',
+        commentFull: 'Rosa\'s brave choice started a yearlong bus boycott that helped change the country.',
+        volleyMin: 'Ask about the boycott…',
+        volleyPartial: 'Rosa\'s one act changed a whole city. Have you ever helped change…',
+        volleyFull: 'Rosa\'s one brave act changed a city. Have you ever helped change something at school or at home?',
+      },
+      {
+        text: 'Before that day, Rosa was a sewer and helped out at her church for many years.',
+        topic: 'her sewing',
+        fragment: 'was a skilled sewer and church helper',
+        commentMin: 'She loved to sew…',
+        commentPartial: 'I notice that Rosa was great at…',
+        commentFull: 'Before she became famous, Rosa was a great sewer and helped out at her church.',
+        volleyMin: 'Ask about her sewing…',
+        volleyPartial: 'Rosa was a great sewer. Have you ever made something…',
+        volleyFull: 'Rosa was great at sewing. Have you ever made something with your hands you were proud of?',
+      },
+      {
+        text: 'After the boycott, Rosa kept helping people and worked for a U.S. lawmaker.',
+        topic: 'helping in office',
+        fragment: 'kept helping people by working for a lawmaker',
+        commentMin: 'She kept helping…',
+        commentPartial: 'I notice that Rosa kept fighting for…',
+        commentFull: 'After the boycott, Rosa kept helping people and worked for a U.S. lawmaker for many years.',
+        volleyMin: 'Ask about her job…',
+        volleyPartial: 'Rosa kept fighting her whole life. What is a cause you…',
+        volleyFull: 'Rosa kept helping people her whole life. What is a cause you would want to help with?',
+      },
     ],
   },
   {
     name: 'Mozart', years: '1756–1791', emoji: '🎹', tag: 'Musician',
     img: '_Resources/_imgSource/images/mozart.jpg',
     facts: [
-      'Composed over 800 works — symphonies, operas, and concertos — starting as a child prodigy who toured Europe.',
-      'Wrote his first symphony at age 8 and performed for European royalty before he was 10.',
-      'He composed his first opera at age 12 and it was successfully performed in Italy.',
-      'Mozart was known for his playful humor and wrote witty letters to friends throughout his life.',
+      {
+        text: 'Mozart wrote over 800 pieces of music — symphonies, operas, and more.',
+        topic: '800 songs',
+        fragment: 'wrote over 800 pieces of music',
+        commentMin: 'He wrote 800 songs…',
+        commentPartial: 'I notice that Mozart wrote so many…',
+        commentFull: 'Mozart wrote more than 800 pieces of music — symphonies, operas, and so much more.',
+        volleyMin: 'Ask about his music…',
+        volleyPartial: 'Mozart wrote lots and lots of songs. If you wrote a song…',
+        volleyFull: 'Mozart wrote hundreds of songs. If you wrote a song, what would it be about?',
+      },
+      {
+        text: 'He wrote his very first symphony when he was only 8 years old.',
+        topic: 'first symphony at 8',
+        fragment: 'wrote his first symphony at age 8',
+        commentMin: 'He was only 8…',
+        commentPartial: 'I notice that Mozart wrote a symphony when he was…',
+        commentFull: 'Mozart wrote his very first symphony when he was only 8 years old.',
+        volleyMin: 'Ask about being young…',
+        volleyPartial: 'Mozart did big things very young. What is something you can do…',
+        volleyFull: 'Mozart did amazing things when he was your age. What is something you are really good at right now?',
+      },
+      {
+        text: 'He wrote his first opera at 12 and people loved it.',
+        topic: 'opera at 12',
+        fragment: 'wrote his first opera at age 12',
+        commentMin: 'He wrote operas young…',
+        commentPartial: 'I notice that Mozart wrote an opera when he was…',
+        commentFull: 'Mozart wrote his first opera at age 12 and grown-ups all over Italy loved it.',
+        volleyMin: 'Ask about the opera…',
+        volleyPartial: 'Mozart impressed grown-ups when he was 12. Have you ever made…',
+        volleyFull: 'Mozart made grown-ups proud at 12. Have you ever made something that impressed somebody?',
+      },
+      {
+        text: 'Mozart was silly and funny and wrote lots of joking letters to his friends.',
+        topic: 'his sense of humor',
+        fragment: 'was silly and wrote funny letters to friends',
+        commentMin: 'He was silly…',
+        commentPartial: 'I notice that Mozart loved to be…',
+        commentFull: 'Mozart was silly and funny, and he sent jokes in letters to his friends all the time.',
+        volleyMin: 'Ask about his jokes…',
+        volleyPartial: 'Mozart was a funny guy. What is your favorite…',
+        volleyFull: 'Mozart loved making people laugh. What is a joke or a silly thing that makes you laugh?',
+      },
     ],
   },
   {
     name: 'Mahatma Gandhi', years: '1869–1948', emoji: '🕊️', tag: 'Leader',
     img: '_Resources/_imgSource/images/mahatma-gandhi.jpg',
     facts: [
-      'Led India\'s nonviolent independence movement against British rule, achieving independence in 1947.',
-      'His philosophy of peaceful civil disobedience inspired civil rights movements around the world.',
-      'He wore clothes he made himself on a simple handloom, rejecting British manufactured goods.',
-      'Gandhi practiced vegetarianism and took vows of celibacy late in his life to focus on his mission.',
+      {
+        text: 'Gandhi led a peaceful fight to free India from another country\'s rule.',
+        topic: 'peaceful fight',
+        fragment: 'led a peaceful fight for India\'s freedom',
+        commentMin: 'He led peacefully…',
+        commentPartial: 'I notice that Gandhi led a fight without…',
+        commentFull: 'Gandhi led a long, peaceful fight to free India from another country\'s control.',
+        volleyMin: 'Ask about the fight…',
+        volleyPartial: 'Gandhi fought for change without fighting. Have you ever solved…',
+        volleyFull: 'Gandhi made change without any fighting. Have you ever solved a problem just by talking?',
+      },
+      {
+        text: 'His peaceful way of standing up gave ideas to leaders all over the world.',
+        topic: 'peaceful protest',
+        fragment: 'inspired peaceful protest all over the world',
+        commentMin: 'He inspired the world…',
+        commentPartial: 'I notice that other leaders learned from…',
+        commentFull: 'Gandhi\'s peaceful way of standing up gave ideas to leaders in many other countries.',
+        volleyMin: 'Ask about his ideas…',
+        volleyPartial: 'Gandhi inspired people far away. Who is someone who…',
+        volleyFull: 'Gandhi inspired leaders far away. Who is someone who inspires you?',
+      },
+      {
+        text: 'He wore simple clothes that he made himself on a small loom.',
+        topic: 'his own clothes',
+        fragment: 'made his own simple clothes',
+        commentMin: 'He made his clothes…',
+        commentPartial: 'I notice that Gandhi made his own…',
+        commentFull: 'Gandhi wore simple clothes that he made himself on a little loom.',
+        volleyMin: 'Ask about his clothes…',
+        volleyPartial: 'Gandhi made his own clothes. Have you ever made…',
+        volleyFull: 'Gandhi made his own clothes by hand. Have you ever made something with your own two hands?',
+      },
+      {
+        text: 'Gandhi did not eat meat and lived in a very simple way.',
+        topic: 'simple living',
+        fragment: 'did not eat meat and lived simply',
+        commentMin: 'He lived simply…',
+        commentPartial: 'I notice that Gandhi chose to live…',
+        commentFull: 'Gandhi chose to eat no meat and to live in a very simple way.',
+        volleyMin: 'Ask about his food…',
+        volleyPartial: 'Gandhi lived very simply. What is one thing you really…',
+        volleyFull: 'Gandhi lived a simple life. What is one thing in your life you think you really need?',
+      },
     ],
   },
   {
     name: 'Neil Armstrong', years: '1930–2012', emoji: '🚀', tag: 'Astronaut',
     img: '_Resources/_imgSource/images/neil-armstrong.jpg',
     facts: [
-      'First human to walk on the Moon, on July 20, 1969, during the Apollo 11 mission.',
-      'Said the famous words: "That\'s one small step for man, one giant leap for mankind."',
-      'He was a test pilot for the X-15 rocket plane before joining the astronaut program.',
-      'Armstrong was a humble man who avoided the spotlight after his historic moon landing.',
+      {
+        text: 'Neil was the first person ever to walk on the Moon, in 1969.',
+        topic: 'walking on the Moon',
+        fragment: 'was the first person to walk on the Moon',
+        commentMin: 'He walked on the Moon…',
+        commentPartial: 'I notice that Neil was the first person to…',
+        commentFull: 'Neil was the first person ever to walk on the Moon, way back in 1969.',
+        volleyMin: 'Ask about the Moon…',
+        volleyPartial: 'Neil was the first one on the Moon. If you could visit…',
+        volleyFull: 'Neil was the first one to walk on the Moon. If you could visit space, where would you go?',
+      },
+      {
+        text: 'He said the famous words: "One small step for man, one giant leap for mankind."',
+        topic: 'his famous words',
+        fragment: 'said "one small step... one giant leap"',
+        commentMin: 'He said famous words…',
+        commentPartial: 'I notice that Neil said something famous about…',
+        commentFull: 'Neil said the famous words "one small step for man, one giant leap for mankind" on the Moon.',
+        volleyMin: 'Ask about his words…',
+        volleyPartial: 'Neil\'s words are still famous. If you said something everyone…',
+        volleyFull: 'Neil\'s words are still famous today. If everyone remembered something you said, what would you want to say?',
+      },
+      {
+        text: 'Before astronauts, Neil flew fast test planes called the X-15.',
+        topic: 'test pilot',
+        fragment: 'flew fast test planes before becoming an astronaut',
+        commentMin: 'He flew fast planes…',
+        commentPartial: 'I notice that Neil flew test planes before he…',
+        commentFull: 'Before he became an astronaut, Neil flew very fast test planes called the X-15.',
+        volleyMin: 'Ask about the planes…',
+        volleyPartial: 'Neil flew super-fast planes. Would you like to…',
+        volleyFull: 'Neil flew super-fast test planes. Would you like to fly fast, or would that scare you?',
+      },
+      {
+        text: 'Neil was quiet and shy and tried to stay out of the spotlight after the Moon.',
+        topic: 'being quiet',
+        fragment: 'was quiet and stayed out of the spotlight',
+        commentMin: 'He stayed quiet…',
+        commentPartial: 'I notice that Neil did not like a lot of…',
+        commentFull: 'Neil was quiet and shy and tried to stay out of the spotlight after coming back from the Moon.',
+        volleyMin: 'Ask about being shy…',
+        volleyPartial: 'Neil liked staying quiet. Are you more quiet…',
+        volleyFull: 'Neil liked staying quiet even after he became famous. Are you more quiet or more loud?',
+      },
     ],
   },
   {
     name: 'Ada Lovelace', years: '1815–1852', emoji: '💻', tag: 'Mathematician',
     img: '_Resources/_imgSource/images/ada-lovelace.jpeg',
     facts: [
-      'Wrote the first algorithm intended to be processed by a computing machine — in the 1840s.',
-      'She envisioned modern computers, recognizing they could go far beyond pure calculation.',
-      'She was raised by her mother to study mathematics and science rather than pursue typical social activities.',
-      'Lovelace called her approach \'poetical science\' — blending imagination with mathematical precision.',
+      {
+        text: 'Ada wrote the first ever computer program, way before computers existed.',
+        topic: 'first computer program',
+        fragment: 'wrote the first computer program ever',
+        commentMin: 'She wrote the first…',
+        commentPartial: 'I notice that Ada wrote the first…',
+        commentFull: 'Ada wrote the very first computer program, long before real computers were built.',
+        volleyMin: 'Ask about her program…',
+        volleyPartial: 'Ada wrote code before computers existed. What would you make…',
+        volleyFull: 'Ada made code before computers were even real. If you could code anything, what would it do?',
+      },
+      {
+        text: 'She worked on a math machine called the Analytical Engine.',
+        topic: 'Analytical Engine',
+        fragment: 'worked on a math machine called the Analytical Engine',
+        commentMin: 'She built a machine…',
+        commentPartial: 'I notice that Ada worked on a special…',
+        commentFull: 'Ada worked on a giant math machine called the Analytical Engine — almost the first computer.',
+        volleyMin: 'Ask about that machine…',
+        volleyPartial: 'Ada helped build a math machine. Would you ever want to…',
+        volleyFull: 'Ada helped build a math machine over 100 years ago. Would you ever want to build a machine?',
+      },
+      {
+        text: 'She loved both math and poetry and called her work "poetical science."',
+        topic: 'math and poetry',
+        fragment: 'mixed math and poetry into "poetical science"',
+        commentMin: 'She loved math and poems…',
+        commentPartial: 'I notice that Ada mixed math with…',
+        commentFull: 'Ada loved both math and poetry and called her work "poetical science."',
+        volleyMin: 'Ask about her words…',
+        volleyPartial: 'Ada mixed math and poems. What two things do you…',
+        volleyFull: 'Ada mixed math and poetry together. What are two things you love that go together?',
+      },
+      {
+        text: 'Ada saw that math machines could one day make music and pictures, not just numbers.',
+        topic: 'big vision',
+        fragment: 'saw that machines could one day make music and art',
+        commentMin: 'She saw the future…',
+        commentPartial: 'I notice that Ada thought machines could…',
+        commentFull: 'Ada saw that math machines could one day make music and pictures, not just answers to sums.',
+        volleyMin: 'Ask about her vision…',
+        volleyPartial: 'Ada saw what computers could do far ahead. If you could see…',
+        volleyFull: 'Ada predicted what computers would do, way ahead. What do you think computers will do next?',
+      },
     ],
   },
   {
     name: 'Winston Churchill', years: '1874–1965', emoji: '🎖️', tag: 'Leader',
     img: '_Resources/_imgSource/images/winston-churchill.jpg',
     facts: [
-      'Led Britain as Prime Minister through World War II, rallying the nation with historic speeches.',
-      'Won the Nobel Prize in Literature in 1953 for his historical writings.',
-      'He was a talented painter who created hundreds of paintings throughout his long life.',
-      'Churchill was born into aristocracy but proved his leadership through courage and wit during wartime.',
+      {
+        text: 'Winston led Britain through World War II as their prime minister.',
+        topic: 'leading Britain',
+        fragment: 'led Britain through World War II',
+        commentMin: 'He led during a war…',
+        commentPartial: 'I notice that Winston led his country during a…',
+        commentFull: 'Winston led Britain through one of the toughest wars the world has ever seen.',
+        volleyMin: 'Ask about the war…',
+        volleyPartial: 'Winston led during scary times. Have you ever stayed brave…',
+        volleyFull: 'Winston led his country through scary times. Have you ever had to stay brave when something was scary?',
+      },
+      {
+        text: 'He gave powerful speeches that gave people hope during the war.',
+        topic: 'famous speeches',
+        fragment: 'gave speeches that gave people hope',
+        commentMin: 'He gave big speeches…',
+        commentPartial: 'I notice that Winston used his words to…',
+        commentFull: 'Winston gave powerful speeches that helped people stay hopeful through the war.',
+        volleyMin: 'Ask about his speeches…',
+        volleyPartial: 'Winston used words to help people. Have you ever cheered up…',
+        volleyFull: 'Winston used words to lift people up. Have you ever said something that cheered up a friend?',
+      },
+      {
+        text: 'Winston also wrote many books and even won a big prize for his writing.',
+        topic: 'his writing',
+        fragment: 'wrote many books and won a writing prize',
+        commentMin: 'He wrote books too…',
+        commentPartial: 'I notice that Winston also wrote a lot of…',
+        commentFull: 'Winston wrote a lot of books and won the Nobel Prize for his writing.',
+        volleyMin: 'Ask about his books…',
+        volleyPartial: 'Winston was a writer too. Have you ever written…',
+        volleyFull: 'Winston wrote many books on the side. Have you ever written a story you were proud of?',
+      },
+      {
+        text: 'He loved to paint pictures of the countryside in his free time.',
+        topic: 'his painting hobby',
+        fragment: 'loved to paint pictures of the countryside',
+        commentMin: 'He painted for fun…',
+        commentPartial: 'I notice that Winston spent his free time…',
+        commentFull: 'Winston liked to relax by painting pictures of the countryside.',
+        volleyMin: 'Ask about his painting…',
+        volleyPartial: 'Winston painted to relax. What do you do to…',
+        volleyFull: 'Winston painted to relax. What is something you do to feel calm?',
+      },
     ],
   },
   {
     name: 'Vincent van Gogh', years: '1853–1890', emoji: '🌻', tag: 'Artist',
     img: '_Resources/_imgSource/images/vincent-van-gogh.jpg',
     facts: [
-      'Painted The Starry Night and over 2,000 works in just a decade of dedicated artistic work.',
-      'Sold only one painting in his lifetime but is now among the most celebrated artists in history.',
-      'He was largely self-taught as an artist and didn\'t begin painting seriously until his late twenties.',
-      'Van Gogh created most of his masterpieces in the final two years of his life in southern France.',
+      {
+        text: 'Vincent painted with bright colors and big swirly brushstrokes.',
+        topic: 'swirly paintings',
+        fragment: 'painted with bright colors and swirly brushstrokes',
+        commentMin: 'He painted swirls…',
+        commentPartial: 'I notice that Vincent\'s paintings have lots of…',
+        commentFull: 'Vincent painted with bright colors and big swirly brushstrokes that looked like nothing before.',
+        volleyMin: 'Ask about his colors…',
+        volleyPartial: 'Vincent painted in a wild new way. If you painted…',
+        volleyFull: 'Vincent painted in a wild new way. If you painted a picture, what colors would you use?',
+      },
+      {
+        text: 'His most famous painting shows a swirly night sky full of stars.',
+        topic: 'Starry Night',
+        fragment: 'painted a famous swirly night sky',
+        commentMin: 'He painted stars…',
+        commentPartial: 'I notice that Vincent painted a famous picture of the…',
+        commentFull: 'Vincent\'s most famous painting shows a swirly night sky full of bright, glowing stars.',
+        volleyMin: 'Ask about the stars…',
+        volleyPartial: 'Vincent loved painting the sky. What is something in nature you…',
+        volleyFull: 'Vincent loved painting the night sky. What is something in nature you would want to paint?',
+      },
+      {
+        text: 'Vincent only sold one painting during his life, but now they sell for millions.',
+        topic: 'only one sold',
+        fragment: 'sold only one painting while he was alive',
+        commentMin: 'He only sold one…',
+        commentPartial: 'I notice that Vincent only sold one painting while…',
+        commentFull: 'Vincent only sold one painting in his whole life, but today they sell for millions of dollars.',
+        volleyMin: 'Ask about selling art…',
+        volleyPartial: 'Vincent\'s art became famous later. Have you ever kept trying…',
+        volleyFull: 'Vincent\'s art became famous after he was gone. Have you ever kept trying even when no one noticed?',
+      },
+      {
+        text: 'He wrote hundreds of letters to his brother Theo about painting and life.',
+        topic: 'letters to his brother',
+        fragment: 'wrote hundreds of letters to his brother',
+        commentMin: 'He wrote his brother…',
+        commentPartial: 'I notice that Vincent wrote a lot of letters to his…',
+        commentFull: 'Vincent wrote hundreds of letters to his brother Theo about painting and his life.',
+        volleyMin: 'Ask about Theo…',
+        volleyPartial: 'Vincent shared everything with his brother. Who is someone you tell…',
+        volleyFull: 'Vincent shared his feelings with his brother in letters. Who is someone you can tell anything to?',
+      },
     ],
   },
   {
     name: 'Abraham Lincoln', years: '1809–1865', emoji: '🎩', tag: 'Leader',
     img: '_Resources/_imgSource/images/abraham-lincoln.jpg',
     facts: [
-      'Led the United States through the Civil War and issued the Emancipation Proclamation in 1863.',
-      'Assassinated in 1865 at Ford\'s Theatre — just days after the Civil War ended.',
-      'He was largely self-educated and worked as a lawyer and surveyor before entering politics.',
-      'Lincoln was known for his humor and often told stories to illustrate his political points.',
+      {
+        text: 'Abraham was the 16th president and led the country through a war between the states.',
+        topic: 'leading the country',
+        fragment: 'led the country through a war between the states',
+        commentMin: 'He led the country…',
+        commentPartial: 'I notice that Abraham led his country through a…',
+        commentFull: 'Abraham led the country through a hard war between the states as the 16th president.',
+        volleyMin: 'Ask about the war…',
+        volleyPartial: 'Abraham led through hard times. Have you ever helped fix…',
+        volleyFull: 'Abraham led his country through hard times. Have you ever helped fix something that felt broken?',
+      },
+      {
+        text: 'He signed a paper that ended slavery in the United States.',
+        topic: 'ending slavery',
+        fragment: 'signed a paper that ended slavery',
+        commentMin: 'He ended slavery…',
+        commentPartial: 'I notice that Abraham signed a paper to…',
+        commentFull: 'Abraham signed a famous paper that ended slavery in the United States.',
+        volleyMin: 'Ask about that paper…',
+        volleyPartial: 'Abraham helped free a lot of people. What is something fair you…',
+        volleyFull: 'Abraham helped end something very unfair. What is a rule you wish you could change to be more fair?',
+      },
+      {
+        text: 'Abraham grew up in a log cabin and taught himself most of what he knew.',
+        topic: 'log cabin life',
+        fragment: 'grew up in a log cabin and taught himself',
+        commentMin: 'He grew up poor…',
+        commentPartial: 'I notice that Abraham taught himself…',
+        commentFull: 'Abraham grew up in a small log cabin and taught himself most of what he learned.',
+        volleyMin: 'Ask about his home…',
+        volleyPartial: 'Abraham learned on his own. Have you ever taught yourself…',
+        volleyFull: 'Abraham taught himself almost everything. Have you ever taught yourself something with no help?',
+      },
+      {
+        text: 'He was very tall and known for telling funny stories and jokes.',
+        topic: 'tall and funny',
+        fragment: 'was very tall and loved telling jokes',
+        commentMin: 'He was tall and funny…',
+        commentPartial: 'I notice that Abraham was famous for telling…',
+        commentFull: 'Abraham was very tall and loved telling funny stories and jokes.',
+        volleyMin: 'Ask about his jokes…',
+        volleyPartial: 'Abraham loved making people laugh. Do you have a…',
+        volleyFull: 'Abraham loved telling jokes and stories. Do you have a favorite joke?',
+      },
     ],
   },
   {
     name: 'Cleopatra', years: '69–30 BC', emoji: '👑', tag: 'Ruler',
     img: '_Resources/_imgSource/images/cleopatra.jpg',
     facts: [
-      'Last active ruler of ancient Egypt — she spoke nine languages and was a brilliant political strategist.',
-      'Her alliances with Julius Caesar and Mark Antony shaped the fate of the Roman Empire.',
-      'She was highly educated, studying mathematics, philosophy, and rhetoric in addition to languages.',
-      'Cleopatra was a skilled diplomat who used intelligence and charm to protect Egypt\'s independence.',
+      {
+        text: 'Cleopatra was the last ruler of ancient Egypt.',
+        topic: 'last queen of Egypt',
+        fragment: 'was the last ruler of ancient Egypt',
+        commentMin: 'She was the last queen…',
+        commentPartial: 'I notice that Cleopatra was the very last…',
+        commentFull: 'Cleopatra was the very last ruler of ancient Egypt before it became part of another empire.',
+        volleyMin: 'Ask about Egypt…',
+        volleyPartial: 'Cleopatra ruled a famous country long ago. If you could visit…',
+        volleyFull: 'Cleopatra ruled an amazing country long ago. If you could visit one ancient place, where would you go?',
+      },
+      {
+        text: 'She could speak many languages and was famous for being super smart.',
+        topic: 'many languages',
+        fragment: 'spoke many languages and was very smart',
+        commentMin: 'She knew many languages…',
+        commentPartial: 'I notice that Cleopatra could speak so many…',
+        commentFull: 'Cleopatra was very smart and could speak many different languages.',
+        volleyMin: 'Ask about languages…',
+        volleyPartial: 'Cleopatra spoke lots of languages. Do you know any…',
+        volleyFull: 'Cleopatra spoke lots of languages. Do you know any words in another language?',
+      },
+      {
+        text: 'Cleopatra loved books and made a big library even bigger.',
+        topic: 'big library',
+        fragment: 'made the big library of Alexandria even bigger',
+        commentMin: 'She loved books…',
+        commentPartial: 'I notice that Cleopatra cared about…',
+        commentFull: 'Cleopatra loved books and made a famous library in Egypt even bigger.',
+        volleyMin: 'Ask about her library…',
+        volleyPartial: 'Cleopatra loved books and learning. What is your favorite…',
+        volleyFull: 'Cleopatra loved books. What is your favorite book or thing to read?',
+      },
+      {
+        text: 'She wore pretty makeup and jewelry that people still copy today.',
+        topic: 'her style',
+        fragment: 'wore makeup and jewelry that people still copy',
+        commentMin: 'She had cool style…',
+        commentPartial: 'I notice that Cleopatra wore makeup and…',
+        commentFull: 'Cleopatra wore pretty makeup and jewelry that people still try to copy today.',
+        volleyMin: 'Ask about her look…',
+        volleyPartial: 'Cleopatra had famous style. What is something you wear…',
+        volleyFull: 'Cleopatra had a famous style. What is something you wear that makes you feel cool?',
+      },
     ],
   },
   {
     name: 'Galileo Galilei', years: '1564–1642', emoji: '🔭', tag: 'Scientist',
     img: '_Resources/_imgSource/images/galileo-galilei.jpg',
     facts: [
-      'First to use a telescope to study the skies systematically, discovering Jupiter\'s four largest moons.',
-      'Proved the Earth orbits the Sun but was placed under house arrest by the Church for it.',
-      'He improved the telescope design and made it powerful enough to observe celestial bodies clearly.',
-      'Galileo was a talented musician and his son was a respected composer in Italy.',
+      {
+        text: 'Galileo looked through one of the first telescopes and saw moons around Jupiter.',
+        topic: 'moons of Jupiter',
+        fragment: 'saw moons going around Jupiter through a telescope',
+        commentMin: 'He saw Jupiter\'s moons…',
+        commentPartial: 'I notice that Galileo looked through a telescope and saw…',
+        commentFull: 'Galileo looked through one of the first telescopes and saw moons going around Jupiter.',
+        volleyMin: 'Ask about space…',
+        volleyPartial: 'Galileo saw moons no one had seen before. If you had a telescope…',
+        volleyFull: 'Galileo saw moons no one had ever seen. If you had a telescope, what would you look at first?',
+      },
+      {
+        text: 'He showed that the Earth goes around the Sun, not the other way.',
+        topic: 'Earth around the Sun',
+        fragment: 'showed that Earth goes around the Sun',
+        commentMin: 'He proved Earth moves…',
+        commentPartial: 'I notice that Galileo proved the Earth goes…',
+        commentFull: 'Galileo proved that the Earth goes around the Sun, not the other way like people thought.',
+        volleyMin: 'Ask about the Sun…',
+        volleyPartial: 'Galileo changed what people thought. Have you ever changed your…',
+        volleyFull: 'Galileo proved people wrong about the sky. Have you ever changed your mind about something?',
+      },
+      {
+        text: 'People did not believe him, and he was put on trial for his ideas.',
+        topic: 'put on trial',
+        fragment: 'was put on trial for his ideas',
+        commentMin: 'He got in trouble…',
+        commentPartial: 'I notice that Galileo got in trouble for his…',
+        commentFull: 'People did not believe Galileo and he was put on trial just for his ideas.',
+        volleyMin: 'Ask about the trial…',
+        volleyPartial: 'Galileo got in trouble for his ideas. Have you ever stuck up for…',
+        volleyFull: 'Galileo got in trouble for telling the truth. Have you ever stuck up for an idea even when others didn\'t agree?',
+      },
+      {
+        text: 'He kept doing science even when he was old and could not see well.',
+        topic: 'kept doing science',
+        fragment: 'kept doing science even when he was old',
+        commentMin: 'He kept going…',
+        commentPartial: 'I notice that Galileo never stopped doing…',
+        commentFull: 'Galileo kept doing his science even when he was old and could barely see.',
+        volleyMin: 'Ask about his old age…',
+        volleyPartial: 'Galileo never gave up. What is something you would never…',
+        volleyFull: 'Galileo never gave up on what he loved. What is something you would never give up doing?',
+      },
     ],
   },
   {
     name: 'Frederick Douglass', years: '1818–1895', emoji: '✍️', tag: 'Activist',
     img: '_Resources/_imgSource/images/frederick-douglass.jpg',
     facts: [
-      'Escaped slavery and became one of the most powerful orators and abolitionists of the 19th century.',
-      'His 1845 autobiography became a landmark antislavery text read across America and Europe.',
-      'He taught himself to read and write in secret while enslaved, despite laws forbidding it.',
-      'Douglass served as U.S. Ambassador to Haiti and held several government positions after the Civil War.',
+      {
+        text: 'Frederick was born into slavery and escaped to freedom when he was young.',
+        topic: 'escaping slavery',
+        fragment: 'was born into slavery and escaped when young',
+        commentMin: 'He escaped to be free…',
+        commentPartial: 'I notice that Frederick escaped from…',
+        commentFull: 'Frederick was born into slavery and bravely escaped to freedom when he was young.',
+        volleyMin: 'Ask about his escape…',
+        volleyPartial: 'Frederick had to be brave to be free. Have you ever been brave…',
+        volleyFull: 'Frederick had to be very brave to get free. Have you ever had to be brave?',
+      },
+      {
+        text: 'He taught himself how to read and write when it was not allowed.',
+        topic: 'learning to read',
+        fragment: 'taught himself to read and write',
+        commentMin: 'He taught himself…',
+        commentPartial: 'I notice that Frederick learned to read even though…',
+        commentFull: 'Frederick taught himself to read and write, even though slaves were not allowed to learn.',
+        volleyMin: 'Ask about reading…',
+        volleyPartial: 'Frederick taught himself to read. Have you ever taught…',
+        volleyFull: 'Frederick learned to read on his own. Have you ever taught yourself something nobody helped you with?',
+      },
+      {
+        text: 'Frederick became a great speaker who told people slavery had to end.',
+        topic: 'great speaker',
+        fragment: 'became a great speaker against slavery',
+        commentMin: 'He spoke out…',
+        commentPartial: 'I notice that Frederick spoke out against…',
+        commentFull: 'Frederick became a great speaker who told everyone that slavery had to end.',
+        volleyMin: 'Ask about his speeches…',
+        volleyPartial: 'Frederick used his voice to make change. What is something you would…',
+        volleyFull: 'Frederick used his voice to make change. What is something you would speak up about?',
+      },
+      {
+        text: 'He wrote books about his life that helped change many minds.',
+        topic: 'his books',
+        fragment: 'wrote books about his life',
+        commentMin: 'He wrote his story…',
+        commentPartial: 'I notice that Frederick wrote books about…',
+        commentFull: 'Frederick wrote books about his life that helped many people see slavery was wrong.',
+        volleyMin: 'Ask about his books…',
+        volleyPartial: 'Frederick told his story in books. If you wrote your story…',
+        volleyFull: 'Frederick shared his story in books. If you wrote your story, what would the first page say?',
+      },
     ],
   },
   {
     name: 'Muhammad Ali', years: '1942–2016', emoji: '🥊', tag: 'Athlete',
     img: '_Resources/_imgSource/images/muhammad-ali.jpg',
     facts: [
-      'Three-time world heavyweight boxing champion, famous for "Float like a butterfly, sting like a bee."',
-      'Refused military induction in 1967 for religious reasons and fought all the way to a Supreme Court victory.',
-      'He was originally named Cassius Clay and changed his name when he joined the Nation of Islam.',
-      'Ali was a gifted poet and entertainer who made memorable speeches beyond the boxing ring.',
+      {
+        text: 'Muhammad was a boxing champion who won the heavyweight title three times.',
+        topic: 'boxing champion',
+        fragment: 'won the boxing heavyweight title three times',
+        commentMin: 'He was a champ…',
+        commentPartial: 'I notice that Muhammad won the boxing title…',
+        commentFull: 'Muhammad won the boxing heavyweight title three different times, more than almost anyone.',
+        volleyMin: 'Ask about boxing…',
+        volleyPartial: 'Muhammad won big fights. What is something you would…',
+        volleyFull: 'Muhammad won three big titles. What is something you would love to win or be best at?',
+      },
+      {
+        text: 'He said he could "float like a butterfly, sting like a bee."',
+        topic: 'float like a butterfly',
+        fragment: 'said he could "float like a butterfly, sting like a bee"',
+        commentMin: 'He had famous words…',
+        commentPartial: 'I notice that Muhammad said something famous about…',
+        commentFull: 'Muhammad famously said he could "float like a butterfly and sting like a bee."',
+        volleyMin: 'Ask about his words…',
+        volleyPartial: 'Muhammad came up with cool sayings. Can you make up…',
+        volleyFull: 'Muhammad came up with cool rhymes about himself. Can you make up a rhyme about what you are good at?',
+      },
+      {
+        text: 'He won an Olympic gold medal in boxing when he was only 18.',
+        topic: 'Olympic gold',
+        fragment: 'won an Olympic gold medal at age 18',
+        commentMin: 'He won Olympic gold…',
+        commentPartial: 'I notice that Muhammad won Olympic gold when he was…',
+        commentFull: 'Muhammad won an Olympic gold medal in boxing when he was only 18 years old.',
+        volleyMin: 'Ask about the Olympics…',
+        volleyPartial: 'Muhammad won Olympic gold young. If you went to the…',
+        volleyFull: 'Muhammad won Olympic gold at 18. If you went to the Olympics, what sport would you do?',
+      },
+      {
+        text: 'Muhammad stood up for what he believed in, even when it cost him his title.',
+        topic: 'standing up',
+        fragment: 'stood up for what he believed in',
+        commentMin: 'He stood up…',
+        commentPartial: 'I notice that Muhammad stood up for his…',
+        commentFull: 'Muhammad stood up for what he believed in, even when it cost him his boxing title.',
+        volleyMin: 'Ask about his beliefs…',
+        volleyPartial: 'Muhammad gave up a lot to stand up. Have you ever…',
+        volleyFull: 'Muhammad lost his title because he stood up for himself. Have you ever stood up for something hard?',
+      },
     ],
   },
   {
     name: 'Malala Yousafzai', years: '1997–', emoji: '📚', tag: 'Activist',
     img: '_Resources/_imgSource/images/malala-yousafzai.jpg',
     facts: [
-      'Survived being shot by the Taliban at age 15 for advocating girls\' education in Pakistan.',
-      'Became the youngest Nobel Peace Prize laureate ever in 2014 at age 17.',
-      'She began blogging anonymously about her life under Taliban rule when she was just eleven years old.',
-      'After her recovery, Malala continued her education and founded the Malala Fund to help girls worldwide.',
+      {
+        text: 'Malala spoke up so girls in her country could go to school.',
+        topic: 'school for girls',
+        fragment: 'spoke up so girls could go to school',
+        commentMin: 'She spoke up for girls…',
+        commentPartial: 'I notice that Malala wanted girls to…',
+        commentFull: 'Malala spoke up so that girls in her country could go to school just like boys.',
+        volleyMin: 'Ask about her wish…',
+        volleyPartial: 'Malala wanted all girls to learn. What is something you wish…',
+        volleyFull: 'Malala fought for every kid to go to school. What is something you wish every kid could have?',
+      },
+      {
+        text: 'She kept speaking up even after she was hurt for what she said.',
+        topic: 'staying brave',
+        fragment: 'kept speaking up even after she was hurt',
+        commentMin: 'She stayed brave…',
+        commentPartial: 'I notice that Malala did not stop speaking even when she was…',
+        commentFull: 'Malala kept speaking up about girls\' schools, even after someone hurt her for it.',
+        volleyMin: 'Ask about her courage…',
+        volleyPartial: 'Malala did not let fear stop her. Have you ever…',
+        volleyFull: 'Malala did not let fear stop her. Have you ever been brave when something was scary?',
+      },
+      {
+        text: 'At 17, Malala became the youngest person ever to win the Nobel Peace Prize.',
+        topic: 'Nobel Peace Prize',
+        fragment: 'won the Nobel Peace Prize at age 17',
+        commentMin: 'She won it at 17…',
+        commentPartial: 'I notice that Malala won a big prize when she was…',
+        commentFull: 'When she was 17, Malala became the youngest person ever to win the Nobel Peace Prize.',
+        volleyMin: 'Ask about her prize…',
+        volleyPartial: 'Malala won a huge prize while still a teen. What do you want…',
+        volleyFull: 'Malala won a huge prize as a teen. What is something you really hope to do while you are young?',
+      },
+      {
+        text: 'Now Malala works to help girls all over the world go to school.',
+        topic: 'helping girls worldwide',
+        fragment: 'helps girls all over the world go to school',
+        commentMin: 'She helps girls learn…',
+        commentPartial: 'I notice that Malala still works to help girls…',
+        commentFull: 'Today, Malala works hard to help girls all over the world go to school.',
+        volleyMin: 'Ask about her work…',
+        volleyPartial: 'Malala helps kids far away. Have you ever helped…',
+        volleyFull: 'Malala helps kids on the other side of the world. Have you ever helped someone you didn\'t even know?',
+      },
     ],
   },
   {
     name: 'Oprah Winfrey', years: '1954–', emoji: '🎙️', tag: 'Media',
     img: '_Resources/_imgSource/images/oprah-winfrey.jpeg',
     facts: [
-      'Built a media empire from a talk show, becoming the first Black female billionaire in North America.',
-      'Her book club endorsements turned dozens of books into instant bestsellers.',
-      'She grew up in poverty and won a scholarship to college based on her public speaking talent.',
-      'Winfrey has donated hundreds of millions of dollars to education and charitable causes globally.',
+      {
+        text: 'Oprah hosted a talk show that millions of people watched for 25 years.',
+        topic: 'her talk show',
+        fragment: 'hosted a talk show for 25 years',
+        commentMin: 'She hosted TV…',
+        commentPartial: 'I notice that Oprah hosted a TV show for so many…',
+        commentFull: 'Oprah hosted a talk show that millions of people watched for 25 whole years.',
+        volleyMin: 'Ask about her show…',
+        volleyPartial: 'Oprah talked to people on TV every day. If you hosted…',
+        volleyFull: 'Oprah talked to all kinds of people on TV. If you hosted a show, who would you want to talk to?',
+      },
+      {
+        text: 'She grew up poor and worked super hard to become one of the most famous people.',
+        topic: 'hard work',
+        fragment: 'grew up poor and worked her way up',
+        commentMin: 'She worked her way up…',
+        commentPartial: 'I notice that Oprah grew up poor and…',
+        commentFull: 'Oprah grew up poor and worked very hard to become one of the most famous people in the world.',
+        volleyMin: 'Ask about her start…',
+        volleyPartial: 'Oprah came from very little. What is a goal you would…',
+        volleyFull: 'Oprah came from very little and made big things happen. What is a big goal you would work super hard for?',
+      },
+      {
+        text: 'Oprah started a book club that helped millions of people fall in love with reading.',
+        topic: 'her book club',
+        fragment: 'started a book club that millions joined',
+        commentMin: 'She started a book club…',
+        commentPartial: 'I notice that Oprah loves books so much that she…',
+        commentFull: 'Oprah started a book club that got millions of people excited about reading.',
+        volleyMin: 'Ask about her books…',
+        volleyPartial: 'Oprah helped people love reading. What is a book you…',
+        volleyFull: 'Oprah helped people love reading. What is a book you would tell a friend to read?',
+      },
+      {
+        text: 'She built a school for girls in South Africa.',
+        topic: 'school in Africa',
+        fragment: 'built a school for girls in South Africa',
+        commentMin: 'She built a school…',
+        commentPartial: 'I notice that Oprah built a school for…',
+        commentFull: 'Oprah used her money to build a school for girls in South Africa.',
+        volleyMin: 'Ask about the school…',
+        volleyPartial: 'Oprah built a whole school. If you could build…',
+        volleyFull: 'Oprah built a school for girls far away. If you could build something to help others, what would it be?',
+      },
     ],
   },
   {
     name: 'Steve Jobs', years: '1955–2011', emoji: '🍎', tag: 'Innovator',
     img: '_Resources/_imgSource/images/steve-jobs.jpg',
     facts: [
-      'Co-founded Apple and led the creation of the iPhone, iPad, and Mac — products that changed everyday life.',
-      'Was fired from Apple in 1985, then returned in 1997 to rescue the company from near-bankruptcy.',
-      'He was adopted and became curious about his birth parents, eventually meeting his biological mother.',
-      'Jobs attended Reed College but dropped out to audit classes that fascinated him, including calligraphy.',
+      {
+        text: 'Steve helped start Apple in his garage and changed how we use computers.',
+        topic: 'starting Apple',
+        fragment: 'helped start Apple in his garage',
+        commentMin: 'He started in a garage…',
+        commentPartial: 'I notice that Steve started a big company in his…',
+        commentFull: 'Steve started Apple in his garage and totally changed how people use computers.',
+        volleyMin: 'Ask about Apple…',
+        volleyPartial: 'Steve started in a garage. If you started a…',
+        volleyFull: 'Steve started a giant company from his garage. If you started a company, what would it make?',
+      },
+      {
+        text: 'He helped make the very first iPhone in 2007.',
+        topic: 'the iPhone',
+        fragment: 'helped make the first iPhone',
+        commentMin: 'He helped make iPhones…',
+        commentPartial: 'I notice that Steve helped invent the…',
+        commentFull: 'Steve helped make the first iPhone in 2007 — the kind of phone almost everyone uses now.',
+        volleyMin: 'Ask about phones…',
+        volleyPartial: 'Steve helped invent the iPhone. What is your favorite…',
+        volleyFull: 'Steve helped invent the iPhone. What is your favorite app or thing to do on a phone?',
+      },
+      {
+        text: 'Steve cared a lot about making things look really nice and easy to use.',
+        topic: 'good design',
+        fragment: 'cared about making things look nice and easy',
+        commentMin: 'He loved good design…',
+        commentPartial: 'I notice that Steve wanted things to be both nice and…',
+        commentFull: 'Steve cared a lot about making everything look really nice and be easy to use.',
+        volleyMin: 'Ask about his design…',
+        volleyPartial: 'Steve cared how things looked. What is something you own…',
+        volleyFull: 'Steve cared a lot about how things look. What is something you own that looks really cool?',
+      },
+      {
+        text: 'He once got fired from his own company and came back to lead it again.',
+        topic: 'getting fired',
+        fragment: 'got fired from his own company and came back',
+        commentMin: 'He got fired and came back…',
+        commentPartial: 'I notice that Steve was fired but…',
+        commentFull: 'Steve was once fired from his own company but came back years later to lead it again.',
+        volleyMin: 'Ask about coming back…',
+        volleyPartial: 'Steve came back after being fired. Have you ever tried…',
+        volleyFull: 'Steve came back after a big setback. Have you ever tried again after something didn\'t work?',
+      },
     ],
   },
   {
     name: 'Barack Obama', years: '1961–', emoji: '🇺🇸', tag: 'Leader',
     img: '_Resources/_imgSource/images/barack-obama.jpg',
     facts: [
-      'Became the 44th President of the United States in 2009 — the first African American to hold the office.',
-      'Won the Nobel Peace Prize in 2009, just months into his first term.',
-      'His father was from Kenya and his mother from Kansas — bringing together two different worlds.',
-      'Obama worked as a community organizer in Chicago before attending law school and entering politics.',
+      {
+        text: 'Barack was the first Black president of the United States.',
+        topic: 'first Black president',
+        fragment: 'was the first Black president of the United States',
+        commentMin: 'He was the first…',
+        commentPartial: 'I notice that Barack was the first Black person to…',
+        commentFull: 'Barack was the very first Black president of the United States.',
+        volleyMin: 'Ask about being first…',
+        volleyPartial: 'Barack was the first to do this. What is something you would…',
+        volleyFull: 'Barack was the first to do this. What is something you would love to be the first to try?',
+      },
+      {
+        text: 'He grew up in Hawaii and lived in different parts of the world as a kid.',
+        topic: 'growing up in Hawaii',
+        fragment: 'grew up in Hawaii and lived in different places',
+        commentMin: 'He grew up in Hawaii…',
+        commentPartial: 'I notice that Barack lived in lots of different…',
+        commentFull: 'Barack grew up in Hawaii and lived in different parts of the world when he was little.',
+        volleyMin: 'Ask about his home…',
+        volleyPartial: 'Barack lived in lots of places. Where would you love…',
+        volleyFull: 'Barack lived in lots of different places. Where would you love to live?',
+      },
+      {
+        text: 'He wrote books about his life and people loved to read them.',
+        topic: 'his books',
+        fragment: 'wrote books about his life',
+        commentMin: 'He wrote books…',
+        commentPartial: 'I notice that Barack also wrote books about…',
+        commentFull: 'Barack wrote books about his life that lots of people loved to read.',
+        volleyMin: 'Ask about his books…',
+        volleyPartial: 'Barack wrote about his life. If you wrote about your…',
+        volleyFull: 'Barack wrote books about his own life. If you wrote a book about your life, what would you call it?',
+      },
+      {
+        text: 'Barack and his family love sports, and he plays basketball when he can.',
+        topic: 'basketball',
+        fragment: 'plays basketball whenever he can',
+        commentMin: 'He plays basketball…',
+        commentPartial: 'I notice that Barack still plays…',
+        commentFull: 'Barack loves sports and still plays basketball whenever he gets the chance.',
+        volleyMin: 'Ask about basketball…',
+        volleyPartial: 'Barack loves basketball. What is your favorite…',
+        volleyFull: 'Barack loves basketball. What is your favorite sport to play or watch?',
+      },
     ],
   },
   {
     name: 'Usain Bolt', years: '1986–', emoji: '⚡', tag: 'Athlete',
     img: '_Resources/_imgSource/images/usain-bolt.jpg',
     facts: [
-      'Eight-time Olympic gold medalist and the fastest human ever recorded.',
-      'Set world records in both the 100m (9.58s) and 200m (19.19s) that still stand today.',
-      'He suffered from scoliosis, a curvature of the spine, but didn\'t let it limit his athletic potential.',
-      'Bolt is known for his confident personality and fun celebrations after winning races.',
+      {
+        text: 'Usain is the fastest runner ever and won 8 Olympic gold medals.',
+        topic: 'fastest runner',
+        fragment: 'is the fastest runner ever with 8 Olympic golds',
+        commentMin: 'He is the fastest…',
+        commentPartial: 'I notice that Usain has won so many…',
+        commentFull: 'Usain is the fastest runner ever and won 8 Olympic gold medals in his races.',
+        volleyMin: 'Ask about racing…',
+        volleyPartial: 'Usain is the fastest. What is something you are…',
+        volleyFull: 'Usain is the fastest runner ever. What is something you are really fast at?',
+      },
+      {
+        text: 'He set world records that nobody has beaten yet.',
+        topic: 'world records',
+        fragment: 'set world records nobody has beaten',
+        commentMin: 'He set world records…',
+        commentPartial: 'I notice that Usain has records that…',
+        commentFull: 'Usain set running world records that nobody has been able to beat yet.',
+        volleyMin: 'Ask about records…',
+        volleyPartial: 'Usain holds records no one has beat. Have you ever set…',
+        volleyFull: 'Usain holds records nobody has broken. Have you ever set your own record at something?',
+      },
+      {
+        text: 'Before his race, Usain often danced and made jokes to stay loose.',
+        topic: 'his dance moves',
+        fragment: 'danced and joked before his races',
+        commentMin: 'He danced before races…',
+        commentPartial: 'I notice that Usain stayed loose by…',
+        commentFull: 'Before a big race, Usain often danced and made jokes to keep loose and happy.',
+        volleyMin: 'Ask about his dance…',
+        volleyPartial: 'Usain danced before races. What do you do to…',
+        volleyFull: 'Usain danced to stay loose before races. What do you do to feel calm before something big?',
+      },
+      {
+        text: 'Usain comes from Jamaica and loves cricket and soccer too.',
+        topic: 'from Jamaica',
+        fragment: 'comes from Jamaica and loves many sports',
+        commentMin: 'He is from Jamaica…',
+        commentPartial: 'I notice that Usain plays other sports besides…',
+        commentFull: 'Usain comes from Jamaica and loves to play cricket and soccer too.',
+        volleyMin: 'Ask about Jamaica…',
+        volleyPartial: 'Usain loves many sports. What is a sport you…',
+        volleyFull: 'Usain loves a few different sports. What is a sport you would love to try one day?',
+      },
     ],
   },
   {
     name: 'Michael Jordan', years: '1963–', emoji: '🏀', tag: 'Athlete',
     img: '_Resources/_imgSource/images/600px-Michael_Jordan_in_2014.jpg',
     facts: [
-      'Won six NBA championships with the Chicago Bulls and is widely regarded as the greatest basketball player ever.',
-      'His Air Jordan sneaker line became one of the most successful brands in sports history.',
-      'He was cut from his high school basketball team, which motivated him to work harder and improve.',
-      'Jordan was also an accomplished minor league baseball player, showing his athletic versatility.',
+      {
+        text: 'Michael won six basketball championships with the Chicago Bulls.',
+        topic: 'six championships',
+        fragment: 'won six basketball championships',
+        commentMin: 'He won six titles…',
+        commentPartial: 'I notice that Michael won six big…',
+        commentFull: 'Michael won six basketball championships playing for the Chicago Bulls.',
+        volleyMin: 'Ask about the titles…',
+        volleyPartial: 'Michael won six championships. What team would you…',
+        volleyFull: 'Michael won six championships. What team would you love to play for someday?',
+      },
+      {
+        text: 'He was cut from his school basketball team and worked super hard to come back.',
+        topic: 'getting cut',
+        fragment: 'was cut from his school team and came back',
+        commentMin: 'He was cut as a kid…',
+        commentPartial: 'I notice that Michael was cut from his team but…',
+        commentFull: 'Michael got cut from his school basketball team but worked super hard to make it back the next year.',
+        volleyMin: 'Ask about being cut…',
+        volleyPartial: 'Michael did not give up. Have you ever kept trying after…',
+        volleyFull: 'Michael got cut and kept trying. Have you ever kept trying after you didn\'t make something the first time?',
+      },
+      {
+        text: 'Michael could jump so high they called him "Air Jordan."',
+        topic: 'Air Jordan',
+        fragment: 'could jump so high they called him "Air Jordan"',
+        commentMin: 'He could jump high…',
+        commentPartial: 'I notice that Michael got the nickname "Air" because he…',
+        commentFull: 'Michael could jump so high that everyone called him "Air Jordan."',
+        volleyMin: 'Ask about his jumps…',
+        volleyPartial: 'Michael got a nickname for jumping. If you got a…',
+        volleyFull: 'Michael got the nickname Air Jordan for jumping. If you got a nickname for something you do, what would it be?',
+      },
+      {
+        text: 'He has his own shoe brand that is famous all over the world.',
+        topic: 'Jordan shoes',
+        fragment: 'has his own shoe brand famous worldwide',
+        commentMin: 'He has his own shoes…',
+        commentPartial: 'I notice that Michael has his own…',
+        commentFull: 'Michael has his own line of shoes that are famous all over the world.',
+        volleyMin: 'Ask about the shoes…',
+        volleyPartial: 'Michael made his own shoe brand. If you had your own…',
+        volleyFull: 'Michael made his own famous shoe brand. If you had your own brand, what would you sell?',
+      },
     ],
   },
   {
     name: 'Freddie Mercury', years: '1946–1991', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/freddie-mercury.jpg',
     facts: [
-      'Lead vocalist of Queen, celebrated for his extraordinary vocal range and stage presence.',
-      'His 1985 Live Aid performance is widely called the greatest live rock concert moment in history.',
-      'He was born Farrokh Bulsara in Zanzibar and adopted the stage name Freddie Mercury.',
-      'Mercury was a talented pianist and wrote most of Queen\'s biggest hits including Bohemian Rhapsody.',
+      {
+        text: 'Freddie was the singer of a rock band called Queen.',
+        topic: 'singer of Queen',
+        fragment: 'was the singer of the rock band Queen',
+        commentMin: 'He led a band…',
+        commentPartial: 'I notice that Freddie sang for a band called…',
+        commentFull: 'Freddie was the lead singer of a famous rock band called Queen.',
+        volleyMin: 'Ask about the band…',
+        volleyPartial: 'Freddie sang in a famous band. What is your favorite…',
+        volleyFull: 'Freddie sang in a famous rock band. What is your favorite kind of music?',
+      },
+      {
+        text: 'He had a huge singing voice and could hit notes most people cannot.',
+        topic: 'amazing voice',
+        fragment: 'had a huge voice and could hit hard notes',
+        commentMin: 'He had a huge voice…',
+        commentPartial: 'I notice that Freddie could sing notes most people…',
+        commentFull: 'Freddie had a huge singing voice and could hit notes most people just can\'t.',
+        volleyMin: 'Ask about his voice…',
+        volleyPartial: 'Freddie sang notes most people can\'t. Can you sing or…',
+        volleyFull: 'Freddie hit notes most people can\'t. Can you sing or play any music?',
+      },
+      {
+        text: 'He wrote one of the most famous songs ever, called "Bohemian Rhapsody."',
+        topic: 'Bohemian Rhapsody',
+        fragment: 'wrote the famous song "Bohemian Rhapsody"',
+        commentMin: 'He wrote that song…',
+        commentPartial: 'I notice that Freddie wrote a really famous…',
+        commentFull: 'Freddie wrote "Bohemian Rhapsody," one of the most famous songs ever.',
+        volleyMin: 'Ask about the song…',
+        volleyPartial: 'Freddie wrote a song everybody knows. What is a song…',
+        volleyFull: 'Freddie wrote a song everyone knows. What is a song you know by heart?',
+      },
+      {
+        text: 'Freddie wore wild clothes on stage and put on huge, exciting shows.',
+        topic: 'wild stage shows',
+        fragment: 'wore wild clothes and put on huge shows',
+        commentMin: 'He put on big shows…',
+        commentPartial: 'I notice that Freddie wore wild clothes on…',
+        commentFull: 'Freddie wore wild clothes on stage and put on big, exciting shows for crowds of people.',
+        volleyMin: 'Ask about his style…',
+        volleyPartial: 'Freddie loved to put on a show. Have you ever performed…',
+        volleyFull: 'Freddie loved putting on a huge show. Have you ever performed in front of people?',
+      },
     ],
   },
   {
@@ -3146,21 +4392,202 @@ const PALETTES = [
 
 const LEVEL_LABELS = ['Indep', 'Min', 'Partial', 'Full'];
 
-// ─── Prompts ──────────────────────────────────────────────────────────────────
+// ─── Prompts: helpers + templates (fact-aware, ABA-aligned) ─────────────────────
+//
+// Facts are objects: { text, topic, fragment, commentMin/Partial/Full, volleyMin/Partial/Full,
+//                      commentChoices?, volleyChoices? }. Authored slots win; templates below
+//                      are a defensive fallback so the game still works even if a fact is bare.
 
-const CLOSING_PROMPTS = [
-  'Ask me one final question about [name].',
-  'Last question — what do you want to know about [name]?',
-  'Any final questions about [name]?',
-  'One last question for me about [name]?',
+function lowerFirst(s) { return s ? s.charAt(0).toLowerCase() + s.slice(1) : s; }
+function stripTrailingPeriod(s) { return s.replace(/[.!?]+\s*$/, ''); }
+function firstWords(s, n) {
+  const parts = stripTrailingPeriod(s).split(/\s+/).slice(0, n);
+  return parts.join(' ');
+}
+
+// Strip the leading subject and prepend a connector so we have a phrase that reads
+// naturally after "[Name]". Detects fact patterns that start with a noun phrase
+// (e.g. "First woman to...") and inserts "was the" so the result is a clause.
+function extractFragment(text, firstName, lastName) {
+  let s = stripTrailingPeriod((text || '').trim());
+  const subjectRe = new RegExp(
+    '^(' + escapeRegex(firstName) + (lastName ? '|' + escapeRegex(lastName) : '') +
+    '|He|She|They|His|Her|Their)\\s+',
+    'i'
+  );
+  const hadSubject = subjectRe.test(s);
+  s = s.replace(subjectRe, '');
+  s = lowerFirst(s);
+  if (!hadSubject) {
+    // If it starts with a verb already (won, discovered, painted, led, founded, made,
+    // wrote, invented, designed, played, etc.) we don't need a connector. Otherwise
+    // it's a noun phrase ("first woman to fly", "the youngest…") and we prepend "was".
+    const VERB_HEAD = /^(won|discovered|painted|led|founded|made|wrote|invented|designed|played|created|earned|served|escaped|developed|set|fought|toured|composed|directed|coached|broke|started|built|signed|sailed|climbed|spoke|grew|lived|received|published|opened|toured|defended|trained)\b/;
+    if (!VERB_HEAD.test(s) && /^(first|the|a|an|one|two|three|four|five|six|seven|eight|nine|ten|youngest|oldest)\b/.test(s)) {
+      s = 'was ' + s;
+    }
+  }
+  return s;
+}
+
+function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+// Pull a 2–3 word topic tag out of a fact.
+function extractTopic(text) {
+  const stripped = stripTrailingPeriod(text);
+  const m1 = stripped.match(/(?:[A-Z][a-zA-Z]+(?:\s+(?:of|the|and)\s+)?){1,3}/g);
+  if (m1) {
+    const cand = m1
+      .map(x => x.trim())
+      .filter(x => x.length > 4 && !/^(He|She|They|First|Won|His|Her|After|Before|During)$/i.test(x))
+      .sort((a, b) => b.length - a.length)[0];
+    if (cand) return cand;
+  }
+  const m2 = stripped.match(/\b(?:to|the)\s+([a-z][a-z\s]{4,30})/i);
+  if (m2) return m2[1].trim().split(/\s+/).slice(0, 3).join(' ');
+  return null;
+}
+
+// Stable index so the same (person, turn, type) always selects the same template.
+function stableIndex(person, turn, typeIdx, mod) {
+  const i = (PEOPLE.indexOf(person) + 1) * 31 + turn * 7 + typeIdx * 13;
+  return Math.abs(i) % mod;
+}
+
+function pronounFor(person) {
+  // Authored override on the person object wins.
+  if (person.pronoun && person.pronoun.subj) return person.pronoun;
+  // Otherwise scan all facts for she/her/he/his evidence.
+  const blob = (person.facts || [])
+    .map(f => (f && typeof f === 'object') ? f.text : (f || ''))
+    .join(' ');
+  const she = (blob.match(/\b(she|her|hers)\b/gi) || []).length;
+  const he  = (blob.match(/\b(he|his|him)\b/gi) || []).length;
+  if (she > he) return { subj: 'she',  obj: 'her',  poss: 'her' };
+  if (he > she) return { subj: 'he',   obj: 'him',  poss: 'his' };
+  return        { subj: 'they', obj: 'them', poss: 'their' };
+}
+
+// Build the shared template context.
+function buildContext(person, fact) {
+  const firstName = person.name.split(' ')[0];
+  const lastName  = person.name.split(' ').slice(-1)[0];
+  const text      = fact.text || '';
+  const fragment  = fact.fragment || extractFragment(text, firstName, lastName);
+  const topic     = fact.topic    || extractTopic(text) || 'this';
+  return { firstName, lastName, text, fragment, topic, pronoun: pronounFor(person) };
+}
+
+// Defensive templates — used only when an authored slot is missing.
+const COMMENT_TEMPLATES = {
+  min: [
+    ctx => firstWords(ctx.text, 3) + '…',
+    ctx => 'Something about the ' + ctx.topic.toLowerCase() + '…',
+  ],
+  partial: [
+    ctx => 'I notice that ' + ctx.firstName + ' ' + firstWords(ctx.fragment, 4) + '…',
+    ctx => 'One thing about ' + ctx.firstName + ' is that ' + ctx.pronoun.subj + ' ' + firstWords(ctx.fragment, 3) + '…',
+  ],
+  full: [
+    ctx => 'I notice that ' + ctx.firstName + ' ' + ctx.fragment + '.',
+    ctx => 'Wow — ' + ctx.firstName + ' ' + ctx.fragment + '.',
+  ],
+};
+
+const VOLLEY_TEMPLATES = {
+  min: [
+    ctx => 'Ask about the ' + ctx.topic.toLowerCase() + '…',
+    ctx => 'Ask ' + ctx.pronoun.obj + ' about that…',
+  ],
+  partial: [
+    ctx => ctx.firstName + ' ' + firstWords(ctx.fragment, 4) + '. Have you ever wanted to…',
+    ctx => ctx.firstName + ' ' + firstWords(ctx.fragment, 4) + '. What do you think it felt like to…',
+  ],
+  full: [
+    ctx => ctx.firstName + ' ' + firstWords(ctx.fragment, 6) + '. Have you ever wanted to try something like that?',
+    ctx => 'Did you know ' + ctx.firstName + ' ' + firstWords(ctx.fragment, 6) + '? What would you ask ' + ctx.pronoun.obj + ' about it?',
+  ],
+};
+
+// One-time normalization: legacy string facts → { text } objects.
+function normalizeFacts() {
+  for (const p of PEOPLE) {
+    if (!Array.isArray(p.facts)) continue;
+    p.facts = p.facts.map(f => (typeof f === 'string' ? { text: f } : (f || { text: '' })));
+  }
+}
+
+// ─── Console authoring helpers (dev-only, no runtime cost when unused) ──────
+//
+// Usage in DevTools:
+//   suggestPrompts('Won the Nobel Prize in 1921.', 'Albert Einstein')
+//   auditPrompts()                  // → walks all 200 people, reports missing slots
+//   dumpSuggestedSchema(0)          // → full suggested schema for PEOPLE[0]
+//
+const REQUIRED_FACT_SLOTS = [
+  'text', 'topic', 'fragment',
+  'commentMin', 'commentPartial', 'commentFull',
+  'volleyMin',  'volleyPartial',  'volleyFull',
 ];
 
-const VOLLEY_FOLLOWUPS = [
-  'What do you wonder about [firstName] after hearing that?',
-  'What question would you ask [firstName] about that?',
-  'How do you think [firstName] felt about that?',
-  'What would you want to know more about [firstName]?',
-];
+function buildSuggestion(factOrText, personName) {
+  const fact   = typeof factOrText === 'string' ? { text: factOrText } : (factOrText || {});
+  const person = personName
+    ? (PEOPLE.find(p => p.name === personName) || { name: personName, facts: [fact] })
+    : { name: 'Someone', facts: [fact] };
+  const ctx    = buildContext(person, fact);
+  const pick   = (arr, salt) => arr[Math.abs(salt) % arr.length](ctx);
+  const salt   = (ctx.text.length || 1) * 7;
+  return {
+    text:           fact.text     || '',
+    topic:          fact.topic    || ctx.topic,
+    fragment:       fact.fragment || ctx.fragment,
+    commentMin:     fact.commentMin     || pick(COMMENT_TEMPLATES.min,     salt),
+    commentPartial: fact.commentPartial || pick(COMMENT_TEMPLATES.partial, salt + 1),
+    commentFull:    fact.commentFull    || pick(COMMENT_TEMPLATES.full,    salt + 2),
+    volleyMin:      fact.volleyMin      || pick(VOLLEY_TEMPLATES.min,      salt + 3),
+    volleyPartial:  fact.volleyPartial  || pick(VOLLEY_TEMPLATES.partial,  salt + 4),
+    volleyFull:     fact.volleyFull     || pick(VOLLEY_TEMPLATES.full,     salt + 5),
+  };
+}
+
+function auditPrompts() {
+  let missing = 0, complete = 0, totalSlots = 0;
+  const report = [];
+  PEOPLE.forEach((p, pi) => {
+    p.facts.forEach((f, fi) => {
+      const miss = REQUIRED_FACT_SLOTS.filter(k => !f[k]);
+      if (miss.length === 0) { complete++; return; }
+      missing++;
+      totalSlots += miss.length;
+      const sug = buildSuggestion(f, p.name);
+      const lines = miss.map(k => '    Suggested ' + k.padEnd(15) + ' → ' + JSON.stringify(sug[k]));
+      report.push('[' + p.name + ' / Turn ' + (fi + 1) + '] Missing: ' + miss.join(', ') + '\n' + lines.join('\n'));
+    });
+  });
+  console.log(report.join('\n\n'));
+  console.log(
+    '\nTotal facts: ' + (PEOPLE.length * 4) +
+    '   Fully authored: ' + complete +
+    '   Facts with missing slots: ' + missing +
+    '   Total missing slot values: ' + totalSlots
+  );
+  return { complete, missing, totalSlots };
+}
+
+function dumpSuggestedSchema(personIndex) {
+  const p = PEOPLE[personIndex];
+  if (!p) { console.warn('No PEOPLE[' + personIndex + ']'); return; }
+  const out = p.facts.map(f => buildSuggestion(f, p.name));
+  console.log('// ' + p.name + '\nfacts: ' + JSON.stringify(out, null, 2) + ',');
+  return out;
+}
+
+if (typeof window !== 'undefined') {
+  window.suggestPrompts      = (text, name) => buildSuggestion(text, name);
+  window.auditPrompts        = auditPrompts;
+  window.dumpSuggestedSchema = dumpSuggestedSchema;
+}
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
@@ -3182,6 +4609,7 @@ const state = {
   promptDelayEnabled:     false,
   promptDelaySecs:        3,
   promptShowing:          false,
+  showChoicesOnFull:      false,  // when true, Full prompts render as 2 tappable choices (if authored)
   // LtM per-cell escalation levels (0=indep,1=min,2=partial,3=full)
   ltmCellLevels: [[0, 0], [0, 0], [0, 0], [0, 0]],
   // MtL per-cell flag: was Prompt clicked (Full override) for this cell?
@@ -3378,7 +4806,7 @@ function renderPerson(person) {
   ul.innerHTML = '';
   person.facts.forEach(f => {
     const li = document.createElement('li');
-    li.textContent = f;
+    li.textContent = (f && typeof f === 'object') ? f.text : f;
     ul.appendChild(li);
   });
 
@@ -3485,21 +4913,15 @@ function handleErrorClick(e) {
 
 // ─── Prompt Logic ─────────────────────────────────────────────────────────────
 
-function pickNonRepeating(list, used) {
-  let avail = list.map((_, i) => i).filter(i => !used.includes(i));
-  if (avail.length === 0) { used.length = 0; avail = list.map((_, i) => i); }
-  const pick = avail[Math.floor(Math.random() * avail.length)];
-  used.push(pick);
-  return list[pick];
-}
-
 function assignTurnFacts(person) {
   const f = person.facts;
+  // Store fact OBJECTS (after normalizeFacts), not strings. Fall back to earlier
+  // turn's fact if one is missing so the prompt engine always has data to work with.
   state.turnFacts = [
-    f[0] ?? '',
-    f[1] ?? f[0] ?? '',
-    f[2] ?? f[0] ?? '',
-    f[3] ?? f[1] ?? '',
+    f[0] ?? { text: '' },
+    f[1] ?? f[0] ?? { text: '' },
+    f[2] ?? f[0] ?? { text: '' },
+    f[3] ?? f[1] ?? { text: '' },
   ];
 }
 
@@ -3513,48 +4935,115 @@ function getContextCell() {
   return null;
 }
 
-// Returns prompt text for a specific cell at a given level — coherent, fact-based
+// Returns a prompt payload for a specific cell at a given level.
+// Payload shape: { text: string, level } OR { choices: [string, string], level }
+// Authored slots on the fact object win; defensive templates fill any gap.
 function getPromptForCell(turn, typeIdx, level) {
   if (level === 0) return null;
 
-  const firstName = state.currentPerson.name.split(' ')[0];
-  const fact      = state.turnFacts[turn] || '';
+  const person = state.currentPerson;
+  const fact   = state.turnFacts[turn];
+  if (!person || !fact) return null;
+
   const isComment = typeIdx === 0;
   const isClosing = !isComment && turn === 3;
+  const slotKey   = isComment
+    ? ['', 'commentMin', 'commentPartial', 'commentFull'][level]
+    : ['', 'volleyMin',  'volleyPartial',  'volleyFull' ][level];
 
-  if (isClosing) {
-    if (level === 1) return 'Ask one final question.';
-    if (level === 2) return 'Ask something you still wonder about ' + firstName + '.';
-    return 'Ask: ' + pickNonRepeating(CLOSING_PROMPTS, state.usedClosingPrompts).replace('[name]', firstName);
+  // 1. Two-choice opt-in at Full only (when authored).
+  if (level === 3 && state.showChoicesOnFull) {
+    const choices = isComment ? fact.commentChoices : fact.volleyChoices;
+    if (Array.isArray(choices) && choices.length === 2) {
+      return { choices: choices.slice(), level };
+    }
   }
 
-  if (isComment) {
-    if (level === 1) return 'Say something about ' + firstName + '.';
-    if (level === 2) return 'Something I notice about ' + firstName + ' is…';
-    const fl = fact.charAt(0).toLowerCase() + fact.slice(1).replace(/\.$/, '');
-    return 'Something I notice about ' + firstName + ' is — ' + fl + '.';
+  // 2. Authored slot.
+  if (fact[slotKey]) {
+    let text = fact[slotKey];
+    if (isClosing && level === 1) text = 'Last question — ' + lowerFirst(text);
+    return { text, level };
   }
 
-  // Volley
-  if (level === 1) return 'Ask a question.';
-  if (level === 2) return 'Ask something about ' + firstName + ' or what I just shared.';
-  return 'Ask: ' + pickNonRepeating(VOLLEY_FOLLOWUPS, state.usedVolleyFollowups).replace('[firstName]', firstName);
+  // 3. Defensive template fallback.
+  const ctx    = buildContext(person, fact);
+  const bucket = ['', 'min', 'partial', 'full'][level];
+  const set    = isComment ? COMMENT_TEMPLATES : VOLLEY_TEMPLATES;
+  const tpl    = set[bucket];
+  let text     = tpl[stableIndex(person, turn, typeIdx, tpl.length)](ctx);
+  if (isClosing && level === 1) text = 'Last question — ' + lowerFirst(text);
+  return { text, level };
 }
 
 let promptFadeTimeout = null;
 
-function displayPrompt(text) {
+// Display a payload. Accepts:
+//   null / '' / undefined     -> clear
+//   string (legacy / emoji)   -> render as plain text, no level styling
+//   { text, level }           -> render quoted, with level border color + tiered fade
+//   { choices: [a,b], level } -> render two tappable chips, no auto-fade
+function displayPrompt(payload) {
   clearTimeout(promptFadeTimeout);
   const el = $('prompt-display');
-  state.promptShowing = !!text;
-  if (!text) { el.textContent = ''; return; }
-  el.textContent = text.startsWith('🎉') ? text : '\u201C' + text + '\u201D';
-  if (!state.persistPrompts) {
-    promptFadeTimeout = setTimeout(() => {
-      el.textContent = '';
-      state.promptShowing = false;
-    }, 3000);
+  if (!el) return;
+  const textEl    = el.querySelector('.prompt-text');
+  const choicesEl = el.querySelector('.prompt-choices');
+
+  if (!payload) {
+    el.classList.remove('active', 'fading', 'level-min', 'level-partial', 'level-full');
+    if (textEl)    textEl.textContent = '';
+    if (choicesEl) choicesEl.innerHTML = '';
+    state.promptShowing = false;
+    return;
   }
+
+  if (typeof payload === 'string') payload = { text: payload };
+
+  state.promptShowing = true;
+  el.classList.add('active');
+  el.classList.remove('fading', 'level-min', 'level-partial', 'level-full');
+  if (payload.level) {
+    el.classList.add('level-' + ['', 'min', 'partial', 'full'][payload.level]);
+  }
+
+  if (payload.choices) {
+    if (textEl)    textEl.innerHTML = '<div class="prompt-choices-label">Choose one:</div>';
+    if (choicesEl) {
+      choicesEl.innerHTML = payload.choices.map((c, i) =>
+        '<button type="button" class="prompt-choice" data-choice="' + i + '">' + escapeHTML(c) + '</button>'
+      ).join('');
+    }
+  } else {
+    const txt = payload.text || '';
+    if (textEl) {
+      if (txt.startsWith('🎉')) {
+        textEl.textContent = txt;
+      } else {
+        textEl.innerHTML = '<span class="q">\u201C</span>' + escapeHTML(txt) + '<span class="q">\u201D</span>';
+      }
+    }
+    if (choicesEl) choicesEl.innerHTML = '';
+  }
+
+  if (!state.persistPrompts && !payload.choices) {
+    const ms = fadeMsFor(state.promptMethod, payload.level || 0);
+    promptFadeTimeout = setTimeout(() => {
+      el.classList.add('fading');
+      setTimeout(() => displayPrompt(null), 400);
+    }, ms);
+  }
+}
+
+function fadeMsFor(method, level) {
+  if (method !== 'mtl') return 3000;
+  return level === 3 ? 8000 : level === 2 ? 5000 : 3000;
+}
+
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
 }
 
 // Update LtM step indicator to reflect the current context cell's level
@@ -3666,8 +5155,6 @@ function resetSession() {
   state.promptClickedForCell     = [[false, false], [false, false], [false, false], [false, false]];
   state.autoPromptShownForCell   = [[false, false], [false, false], [false, false], [false, false]];
   state.cellContexts             = [[null, null], [null, null], [null, null], [null, null]];
-  state.usedClosingPrompts       = [];
-  state.usedVolleyFollowups      = [];
   state.trialSnapshotSaved       = false;
   clearTimeout(autoShowTimeout);
   autoShowTimeout = null;
@@ -3929,6 +5416,9 @@ function personFromHash() {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Upgrade any legacy string facts to { text } objects so the prompt engine has a uniform shape.
+  normalizeFacts();
+
   $('btn-start').addEventListener('click', startSession);
 
   $('data-grid').addEventListener('click', handleToggleClick);
@@ -3994,6 +5484,32 @@ document.addEventListener('DOMContentLoaded', () => {
   // Persist prompts checkbox
   $('persist-prompts-checkbox').addEventListener('change', e => {
     state.persistPrompts = e.target.checked;
+  });
+
+  // Show-choices-on-Full checkbox: re-render if a Full prompt is currently visible.
+  $('show-choices-checkbox').addEventListener('change', e => {
+    state.showChoicesOnFull = e.target.checked;
+    if (state.promptShowing) {
+      const cell = getContextCell();
+      if (cell) {
+        const lvl = state.promptMethod === 'mtl'
+          ? state.mtlLevel
+          : state.ltmCellLevels[cell.turn][cell.typeIdx];
+        if (lvl === 3) displayPrompt(getPromptForCell(cell.turn, cell.typeIdx, 3));
+      }
+    }
+  });
+
+  // Two-choice chip selection — selecting one highlights it and dims the other.
+  // Selecting also stops the auto-fade so the staff can keep using the choice on screen.
+  $('prompt-display').addEventListener('click', e => {
+    const chip = e.target.closest('.prompt-choice');
+    if (!chip) return;
+    document.querySelectorAll('.prompt-choice').forEach(b => {
+      b.classList.remove('selected', 'dimmed');
+      if (b === chip) b.classList.add('selected');
+      else b.classList.add('dimmed');
+    });
   });
 
   // Init level selector display (LtM is default so active-ltm class needed)
