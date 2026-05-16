@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-06T18:42:35.095Z",
+  "generated": "2026-05-16T15:00:03.039Z",
   "folders": [
     "T_actions",
     "T_animals",
@@ -22,7 +22,8 @@
       "_Resources/_imgSource/T_actions/reading.png",
       "_Resources/_imgSource/T_actions/sleeping.png",
       "_Resources/_imgSource/T_actions/swimming.png",
-      "_Resources/_imgSource/T_actions/walking.png"
+      "_Resources/_imgSource/T_actions/walking.png",
+      "_Resources/_imgSource/T_actions/writing.jpg"
     ],
     "T_animals": [
       "_Resources/_imgSource/T_animals/bear.jpg",
