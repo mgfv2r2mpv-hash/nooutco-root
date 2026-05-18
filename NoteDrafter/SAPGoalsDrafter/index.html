@@ -152,123 +152,139 @@
 
     const SMART_TOOLTIP = "SMART goals are: Specific (clearly defines the target behavior and context — what, where, with whom), Measurable (includes quantifiable criteria, e.g. \"4 out of 5 opportunities\" or \"80% accuracy\"), Achievable (realistic within the authorization period given the client's current baseline), Relevant (tied to the client's diagnosis, functional independence, and medical necessity — not academics), and Time-bound (specifies a timeframe, e.g. \"within 1 authorization period\" or \"across 3 consecutive sessions\").";
 
-    const SYSTEM_PROMPT = `You are an expert BCBA (Board Certified Behavior Analyst) specializing in Applied Behavior Analysis skill programming and Service Authorization Plans (SAPs).
+    const SYSTEM_PROMPT = `You are a BCBA writing a Service Authorization Plan (SAP) for behavior technicians to implement. Write concise, operational procedures — no rationale paragraphs, no clinical prose, no padding. Staff are trained; do not explain ABA concepts.
 
-Given a treatment goal and SAP specifications, you will:
-1. Refine the goal to be SMART (Specific, Measurable, Achievable, Relevant, Time-bound) and explicitly tied to medical necessity and functional improvement. Keep the core behavior and intent of the original goal.
-2. Generate a complete SAP draft for the goal using best-practice ABA methodology, incorporating the provided specifications.
+Given a treatment goal and SAP specifications, return ONLY a JSON object (no markdown fences, no preamble) with this exact structure:
 
-Return ONLY a JSON object — no markdown fences, no preamble, no commentary — with this exact structure:
 {
-  "refinedGoal": "the complete refined SMART goal",
+  "refinedGoal": "Complete refined SMART goal. Keep core behavior and intent. Add specificity and timeframe.",
   "exercise": {
-    "purpose": "1-2 bullet points anchored to medical necessity and the functional domain addressed by this goal",
-    "teachingStrategy": "description of the primary teaching method (e.g., DTT, NET, task analysis) and rationale",
-    "lessonSetUp": "specific materials, environment, and setup instructions",
-    "sd": "the exact discriminative stimulus / demand used to prompt the target behavior",
-    "correctResponse": "operationalized definition of what constitutes a correct response",
-    "incorrectResponse": "operationalized definition of what constitutes an incorrect or no response",
-    "masteryCriteria": "specific measurable mastery criteria (e.g., X% accuracy across N consecutive sessions)",
-    "promptHierarchy": "full prompt hierarchy with levels and systematic fading plan"
+    "purpose": "* [one-line functional domain or skill deficit addressed]\n* [one-line functional outcome or independence gain]",
+    "teachingStrategy": "[Method name]. [One sentence on application — no rationale paragraph.]",
+    "lessonSetUp": "* [setup item]\n* [setup item]\n* [setup item if needed]",
+    "sd": "* [What adult says/does — use [CLIENT] for the client]\ne.g., [3 example questions/demands in neutral third-person, not 'you']\n* [Delivery condition, e.g. 'once, at conversational volume, after [CLIENT] is attending']",
+    "correctResponse": "+ [criterion]\n+ [criterion]\n+ [criterion if needed]",
+    "incorrectResponse": "- [criterion]\n- [criterion]\n- [criterion if needed]",
+    "masteryCriteria": "Minimum [N] trials at [X]% accuracy across [N] consecutive sessions.",
+    "promptHierarchy": "Use [Least-to-Most or Most-to-Least] Prompting\n* I — Independent: [brief description]\n* G — Gesture: [brief description]\n* PV — Partial Verbal: [brief description]\n* FV — Full Verbal: [brief description]"
   },
   "generalization": {
-    "criteria": "generalization criteria statement including minimum trials, accuracy threshold, and conditions (stimuli, settings, people)",
-    "maintenance": "maintenance probe criteria including schedule and accuracy threshold"
+    "criteria": "[2–3 sentences: contexts, people, stimuli. No padding.]",
+    "maintenance": "[Schedule, probe structure, accuracy threshold. 2–4 sentences.]"
   },
   "errorCorrection": {
-    "initial": "error correction procedure during acquisition / initial teaching phase",
-    "maintenance": "error correction procedure during maintenance probe phase"
+    "initial": "(1) [step]\n(2) [step]\n(3) [step]\n\n[One additional rule if warranted — omit if not]",
+    "maintenance": "(1) [step]\n(2) [step]\n[One additional rule if warranted — omit if not]"
   }
-}`;
+}
+
+Style rules — follow exactly:
+- Use [CLIENT] everywhere in place of any client name or "the client" in procedures
+- Use * for general bullets, + for correct response items, - for incorrect response items
+- Prompt hierarchy: always I, G, PV, FV notation unless specs specify otherwise
+- masteryCriteria: exactly one line
+- No sentence starting with "It is important to", "Rationale:", "This ensures", "Note that", or similar
+- Lesson Set Up: actual setup steps only — no reminders about data sheets or timers
+- SD examples: neutral third-person phrasing ("What is the bear doing?" not "What are you doing?")
+- Keep every section as short as operationally complete allows`;
 
     function buildUserPrompt(goal, sapSpecs) {
       return `Treatment Goal:\n${goal}\n\nSAP Specifications:\n${sapSpecs.trim() || "(No additional specifications provided — apply standard best-practice defaults.)"}`;
     }
 
     function buildGeneratePrompt(goal, sapSpecs) {
-      const sys = `You are an expert BCBA (Board Certified Behavior Analyst) specializing in ABA skill programming and Service Authorization Plans (SAPs).
+      const sys = `You are a BCBA writing a Service Authorization Plan (SAP) for behavior technicians. Write concise, operational procedures — no rationale, no prose padding. Staff are trained.
 
-Given a treatment goal and SAP specifications, do two things:
-1. Refine the goal to be SMART (Specific, Measurable, Achievable, Relevant, Time-bound) and tied to medical necessity. Keep the core behavior and intent of the original.
-2. Generate a complete SAP draft using best-practice ABA methodology, incorporating the provided specifications.
-
-Return exactly the following labeled sections (label on its own line, content below, blank line before next label). No preamble, no commentary after the last section. If specifications are absent for a given section, apply evidence-based ABA best-practice defaults and note that BCBA review is recommended.
+Given a treatment goal and SAP specifications, return exactly the following labeled sections (label on its own line, content below, blank line before next label). No preamble, no commentary after the last section.
 
 REFINED TREATMENT GOAL
-[the complete refined SMART goal — preserve original behavior, add specificity and timeframe]
+[Complete refined SMART goal — keep core behavior, add specificity and timeframe]
 
-EXERCISE — Purpose
-[1–2 bullet points tied to medical necessity and the functional domain]
+EXERCISE
+Purpose:
+[* two one-line bullet points — functional domain and outcome]
 
-EXERCISE — Teaching Strategy
-[primary teaching method — e.g., DTT, NET, task analysis — and brief rationale]
+Teaching Strategy:
+[Method name. One sentence on application.]
 
-EXERCISE — Lesson Set Up
-[specific materials, environment, and setup instructions]
+Lesson Set Up:
+[* bullet list of actual setup steps — no data sheet reminders]
 
-EXERCISE — SD (Discriminative Stimulus)
-[the exact discriminative stimulus / demand]
+SD (Demand / Discriminative Stimulus):
+[* What adult says/does — use [CLIENT] for client]
+[e.g., 3 example questions/demands in neutral third-person]
+[* Delivery condition]
 
-EXERCISE — Correct Response
-[operationalized definition of correct response]
+Correct Response:
+[+ criterion]
+[+ criterion]
 
-EXERCISE — Incorrect Response
-[operationalized definition of incorrect or no response]
+Incorrect Response:
+[- criterion]
+[- criterion]
 
-EXERCISE — Mastery Criteria
-[specific measurable mastery criteria]
+Mastery Criteria:
+[One line: Minimum N trials at X% accuracy across N consecutive sessions.]
 
-EXERCISE — Prompt Hierarchy
-[full prompt hierarchy with levels and systematic fading plan]
+Prompt Hierarchy:
+Use [Least-to-Most or Most-to-Least] Prompting
+[* I — Independent: brief description]
+[* G — Gesture: brief description]
+[* PV — Partial Verbal: brief description]
+[* FV — Full Verbal: brief description]
 
-GENERALIZATION — Generalization Criteria
-[minimum trials, accuracy threshold, and conditions — stimuli, settings, people]
+GENERALIZATION
+Generalization Criteria:
+[2–3 sentences: conditions, contexts, people, stimuli]
 
-GENERALIZATION — Maintenance Criteria
-[maintenance probe schedule and accuracy threshold]
+Maintenance Criteria:
+[Schedule, probe structure, accuracy threshold. 2–4 sentences.]
 
-ERROR CORRECTION — During Initial Teaching
-[error correction procedure during acquisition phase]
+ERROR CORRECTION
+During Initial Teaching:
+[(1) step]
+[(2) step]
+[(3) step]
+[One additional rule if warranted]
 
-ERROR CORRECTION — During Maintenance
-[error correction procedure during maintenance phase]`;
+During Maintenance:
+[(1) step]
+[(2) step]
+[One additional rule if warranted]
+
+Note: After 2 consecutive maintenance probes below Maintenance Criteria, contact BCBA so a skill can re-enter teaching.`;
 
       const user = `Treatment Goal:\n${goal}\n\nSAP Specifications:\n${sapSpecs.trim() || "(No additional specifications — apply best-practice defaults.)"}`;
       return `${sys}\n\n---\n\n${user}`;
     }
 
-    const SAP_SECTIONS = [
-      {
-        id: "exercise",
-        label: "Exercise",
-        fields: [
-          { id: "purpose",           label: "Purpose" },
-          { id: "teachingStrategy",  label: "Teaching Strategy" },
-          { id: "lessonSetUp",       label: "Lesson Set Up" },
-          { id: "sd",                label: "SD (Demand / Discriminative Stimulus)" },
-          { id: "correctResponse",   label: "Correct Response" },
-          { id: "incorrectResponse", label: "Incorrect Response" },
-          { id: "masteryCriteria",   label: "Mastery Criteria" },
-          { id: "promptHierarchy",   label: "Prompt Hierarchy" },
-        ],
-      },
-      {
-        id: "generalization",
-        label: "Generalization",
-        fields: [
-          { id: "criteria",    label: "Generalization Criteria" },
-          { id: "maintenance", label: "Maintenance Criteria" },
-        ],
-      },
-      {
-        id: "errorCorrection",
-        label: "Error Correction",
-        fields: [
-          { id: "initial",     label: "During Initial Teaching" },
-          { id: "maintenance", label: "During Maintenance" },
-        ],
-      },
-    ];
+    function formatExercise(ex) {
+      return [
+        ex.purpose           && `Purpose:\n${ex.purpose}`,
+        ex.teachingStrategy  && `Teaching Strategy:\n${ex.teachingStrategy}`,
+        ex.lessonSetUp       && `Lesson Set Up:\n${ex.lessonSetUp}`,
+        ex.sd                && `SD (Demand / Discriminative Stimulus):\n${ex.sd}`,
+        ex.correctResponse   && `Correct Response:\n${ex.correctResponse}`,
+        ex.incorrectResponse && `Incorrect Response:\n${ex.incorrectResponse}`,
+        ex.masteryCriteria   && `Mastery Criteria:\n${ex.masteryCriteria}`,
+        ex.promptHierarchy   && `Prompt Hierarchy:\n${ex.promptHierarchy}`,
+      ].filter(Boolean).join("\n\n");
+    }
+
+    function formatGeneralization(gen) {
+      return [
+        gen.criteria    && `Generalization Criteria:\n${gen.criteria}`,
+        gen.maintenance && `Maintenance Criteria:\n${gen.maintenance}`,
+      ].filter(Boolean).join("\n\n");
+    }
+
+    function formatErrorCorrection(ec) {
+      return [
+        ec.initial     && `During Initial Teaching:\n${ec.initial}`,
+        ec.maintenance && `During Maintenance:\n${ec.maintenance}`,
+        "Note: After 2 consecutive maintenance probes below Maintenance Criteria, contact BCBA so a skill can re-enter teaching.",
+      ].filter(Boolean).join("\n\n");
+    }
 
     function App() {
       const [provider, setProvider] = React.useState(() => localStorage.getItem("sap_provider") || "gemini");
@@ -317,7 +333,12 @@ ERROR CORRECTION — During Maintenance
         setError(""); setLoading(true); setOutput(null);
         try {
           const parsed = await callProvider(provider, apiKey, SYSTEM_PROMPT, buildUserPrompt(goal, sapSpecs));
-          setOutput(parsed);
+          setOutput({
+            refinedGoal:    parsed.refinedGoal || "",
+            exercise:       formatExercise(parsed.exercise || {}),
+            generalization: formatGeneralization(parsed.generalization || {}),
+            errorCorrection: formatErrorCorrection(parsed.errorCorrection || {}),
+          });
           setPromptText("");
         } catch (e) {
           setError(e.message || "Something went wrong. Check your API key and try again.");
@@ -334,48 +355,15 @@ ERROR CORRECTION — During Maintenance
         setCopiedPrompt(false);
       };
 
-      const updateOutput = (section, field, value) => {
-        setOutput(prev => ({
-          ...prev,
-          [section]: { ...prev[section], [field]: value },
-        }));
-      };
-
-      const formatSAPText = () => {
-        if (!output) return "";
-        let text = `SAP GOALS & PLANNING TOOL\nGenerated: ${new Date().toLocaleString()}\n\n`;
-        text += `REFINED TREATMENT GOAL\n${output.refinedGoal || ""}\n\n${"=".repeat(60)}\n\n`;
-        text += `EXERCISE\n\n`;
-        if (output.exercise?.purpose)           text += `Purpose:\n${output.exercise.purpose}\n\n`;
-        if (output.exercise?.teachingStrategy)  text += `Teaching Strategy:\n${output.exercise.teachingStrategy}\n\n`;
-        if (output.exercise?.lessonSetUp)       text += `Lesson Set Up:\n${output.exercise.lessonSetUp}\n\n`;
-        if (output.exercise?.sd)                text += `SD (Demand / Discriminative Stimulus):\n${output.exercise.sd}\n\n`;
-        if (output.exercise?.correctResponse)   text += `Correct Response:\n${output.exercise.correctResponse}\n\n`;
-        if (output.exercise?.incorrectResponse) text += `Incorrect Response:\n${output.exercise.incorrectResponse}\n\n`;
-        if (output.exercise?.masteryCriteria)   text += `Mastery Criteria:\n${output.exercise.masteryCriteria}\n\n`;
-        if (output.exercise?.promptHierarchy)   text += `Prompt Hierarchy:\n${output.exercise.promptHierarchy}\n\n`;
-        text += `GENERALIZATION\n\n`;
-        if (output.generalization?.criteria)    text += `Generalization Criteria:\n${output.generalization.criteria}\n\n`;
-        if (output.generalization?.maintenance) text += `Maintenance Criteria:\n${output.generalization.maintenance}\n\n`;
-        text += `ERROR CORRECTION\n\n`;
-        if (output.errorCorrection?.initial)     text += `During Initial Teaching:\n${output.errorCorrection.initial}\n\n`;
-        if (output.errorCorrection?.maintenance) text += `During Maintenance:\n${output.errorCorrection.maintenance}\n\n`;
-        text += `Note: After 2 consecutive maintenance probes below Maintenance Criteria, contact BCBA so a skill can re-enter teaching.\n`;
-        return text;
-      };
-
-      const handleCopySection = (sectionId) => {
-        if (!output) return;
-        const section = SAP_SECTIONS.find(s => s.id === sectionId);
-        if (!section) return;
-        const text = section.fields.map(f => `${f.label}:\n${output[sectionId]?.[f.id] || ""}`).join("\n\n");
-        navigator.clipboard.writeText(text);
-        setCopied(sectionId);
-        setTimeout(() => setCopied(null), 1800);
-      };
-
       const handleCopyAll = () => {
-        navigator.clipboard.writeText(formatSAPText());
+        if (!output) return;
+        const text = [
+          output.refinedGoal    && `Treatment Goal (Refined):\n${output.refinedGoal}`,
+          output.exercise       && `Exercise\n${output.exercise}`,
+          output.generalization && `Generalization\n${output.generalization}`,
+          output.errorCorrection && `Error Correction\n${output.errorCorrection}`,
+        ].filter(Boolean).join("\n\n");
+        navigator.clipboard.writeText(text);
         setCopied("all");
         setTimeout(() => setCopied(null), 1800);
       };
@@ -536,55 +524,29 @@ ERROR CORRECTION — During Maintenance
                 </button>
               </div>
 
-              {/* Refined Goal */}
-              <div style={{ borderRadius: 9, border: "1px solid #ddecd0", background: "#f7fbf3", padding: 16, marginBottom: 16 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#374528" }}>Refined Treatment Goal (SMART)</span>
-                  <button
-                    onClick={() => { navigator.clipboard.writeText(output.refinedGoal || ""); setCopied("goal"); setTimeout(() => setCopied(null), 1800); }}
-                    style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #c0d4a8", background: "white", color: "#374528", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", marginLeft: 12 }}
-                  >
-                    {copied === "goal" ? "Copied!" : "Copy"}
-                  </button>
-                </div>
-                <textarea
-                  value={output.refinedGoal || ""}
-                  onChange={e => setOutput(prev => ({ ...prev, refinedGoal: e.target.value }))}
-                  style={{ width: "100%", minHeight: 80, padding: 10, borderRadius: 7, border: "1px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", lineHeight: 1.65, resize: "vertical", background: "white" }}
-                />
-              </div>
-
               <p style={{ fontSize: 12, color: "#7a9460", marginBottom: 16, fontStyle: "italic" }}>All sections are editable — review and refine before using in an authorization.</p>
 
-              {/* SAP Sections */}
-              {SAP_SECTIONS.map(section => (
-                <div key={section.id} style={{ marginBottom: 20 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <h3 style={{ fontSize: 14, fontWeight: 700, color: "#374528", textTransform: "uppercase", letterSpacing: "0.05em" }}>{section.label}</h3>
+              {[
+                { id: "refinedGoal",    label: "Treatment Goal (Refined)",  height: 100 },
+                { id: "exercise",       label: "Exercise",                  height: 420 },
+                { id: "generalization", label: "Generalization",            height: 180 },
+                { id: "errorCorrection",label: "Error Correction",          height: 220 },
+              ].map(({ id, label, height }) => (
+                <div key={id} style={{ borderRadius: 9, border: "1px solid #ddecd0", background: "#f7fbf3", padding: 16, marginBottom: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374528" }}>{label}</span>
                     <button
-                      onClick={() => handleCopySection(section.id)}
-                      style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #c0d4a8", background: "white", color: "#374528", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                      onClick={() => { navigator.clipboard.writeText(output[id] || ""); setCopied(id); setTimeout(() => setCopied(null), 1800); }}
+                      style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #c0d4a8", background: "white", color: "#374528", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", marginLeft: 12 }}
                     >
-                      {copied === section.id ? "Copied!" : `Copy ${section.label}`}
+                      {copied === id ? "Copied!" : "Copy"}
                     </button>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {section.fields.map(field => (
-                      <div key={field.id} style={{ borderRadius: 9, border: "1px solid #ddecd0", background: "#f7fbf3", padding: 14 }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: "#374528", display: "block", marginBottom: 6 }}>{field.label}</span>
-                        <textarea
-                          value={output[section.id]?.[field.id] || ""}
-                          onChange={e => updateOutput(section.id, field.id, e.target.value)}
-                          style={{ width: "100%", minHeight: 70, padding: 10, borderRadius: 7, border: "1px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", lineHeight: 1.65, resize: "vertical", background: "white" }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  {section.id === "errorCorrection" && (
-                    <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 8, background: "#fdf6e8", border: "1px solid #d4b483", fontSize: 13, color: "#5a4420" }}>
-                      <strong>Note:</strong> After 2 consecutive maintenance probes below Maintenance Criteria, contact BCBA so a skill can re-enter teaching.
-                    </div>
-                  )}
+                  <textarea
+                    value={output[id] || ""}
+                    onChange={e => setOutput(prev => ({ ...prev, [id]: e.target.value }))}
+                    style={{ width: "100%", minHeight: height, padding: 10, borderRadius: 7, border: "1px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", lineHeight: 1.65, resize: "vertical", background: "white", fontFamily: "inherit" }}
+                  />
                 </div>
               ))}
             </div>
