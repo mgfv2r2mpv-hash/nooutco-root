@@ -337,40 +337,16 @@ A good ABA goal:
 
 Help the user refine their goal to ensure it meets these criteria.`;
 
-    const SAPSPECS_PROMPT = `You are an expert ABA specialist. The user has provided specifications for their Service Authorization Plan (SAP). These specifications should be used to generate the structured SAP sections.
+    const SMART_GOAL_PROMPT = `You are an expert BCBA. The user has provided a goal for an ABA skill program. Refine it to ensure it is SMART (Specific, Measurable, Achievable, Relevant, Time-bound) and explicitly tied to medical necessity or functional improvement.
 
-Review the specifications and ensure they include:
-- Clear teaching methodology
-- Specific prompt levels or hierarchies
-- Maintenance/generalization criteria
-- Error correction procedures
-- Any special considerations like stimuli, staff limits, or behavioral reduction targets`;
+Instructions:
+- Keep the core intent and functionality the same
+- Ensure it includes specific percentages, frequencies, or criteria
+- Make sure it's tied to reducing barriers to independence or reducing problem behavior
+- Include timeframe (e.g., "within 1 authorization period", "across 3 consecutive sessions")
+- Make it concise but complete
 
-    const STRUCTURE_PROMPT = `You are an expert BCBA. Generate a structured SAP (Service Authorization Plan) based on the goal and specifications provided.
-
-Create sections in this EXACT order and format:
-
-## EXERCISE
-**Purpose:** [1-2 bullet points anchored to medical necessity or functional domain]
-**Teaching Strategy:** [Brief description]
-**Lesson Set Up:** [Description]
-**SD (Demand / Discriminative Stimulus):** [Description]
-**Correct Response:** [Description]
-**Incorrect Response:** [Description]
-**Mastery Criteria:** [Specific criteria with percentages/trials]
-**Prompt Hierarchy:** [List of prompts from least to most intrusive]
-
-## GENERALIZATION
-**Generalization Criteria:** Minimum X trials at Y% accuracy across [STIMULI], measured across 3 consecutive sessions.
-**Maintenance Criteria:** Minimum X-2 trials at Y% accuracy across [Minimum 5] maintenance probes.
-
-## ERROR CORRECTION
-**During Initial Teaching:** [Description]
-**During Maintenance:** [Description]
-
-[Special note: After 2 consecutive maintenance probes below Maintenance Criteria, contact BCBA so a skill can re-enter teaching]
-
-Ensure all criteria are specific, measurable, and medically necessary. Make recommendations based on best ABA practices.`;
+Return ONLY the refined goal, no other text.`;
 
     function SAPGoalsDrafter() {
       const [goal, setGoal] = useState('');
@@ -378,6 +354,7 @@ Ensure all criteria are specific, measurable, and medically necessary. Make reco
       const [provider, setProvider] = useState('anthropic');
       const [apiKey, setApiKey] = useState('');
       const [loading, setLoading] = useState(false);
+      const [refinedGoal, setRefinedGoal] = useState('');
       const [output, setOutput] = useState(null);
       const [error, setError] = useState('');
       const [success, setSuccess] = useState('');
@@ -403,7 +380,7 @@ Ensure all criteria are specific, measurable, and medically necessary. Make reco
 
       const hasApiKey = (prov) => !!apiKeyRef.current[prov];
 
-      const callGeminiAPI = async (prompt, context) => {
+      const callGeminiAPI = async (prompt) => {
         const key = apiKeyRef.current.gemini;
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
         const response = await fetch(url, {
@@ -411,10 +388,10 @@ Ensure all criteria are specific, measurable, and medically necessary. Make reco
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{
-              parts: [{ text: `${prompt}\n\nContext:\n${context}` }]
+              parts: [{ text: prompt }]
             }],
             generationConfig: {
-              maxOutputTokens: 2000,
+              maxOutputTokens: 500,
               temperature: 0.7,
             }
           })
@@ -424,7 +401,7 @@ Ensure all criteria are specific, measurable, and medically necessary. Make reco
         return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
       };
 
-      const callOpenAIAPI = async (prompt, context) => {
+      const callOpenAIAPI = async (prompt) => {
         const key = apiKeyRef.current.openai;
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
@@ -435,11 +412,11 @@ Ensure all criteria are specific, measurable, and medically necessary. Make reco
           body: JSON.stringify({
             model: 'gpt-4o-mini',
             messages: [
-              { role: 'system', content: STRUCTURE_PROMPT },
-              { role: 'user', content: `${prompt}\n\nContext:\n${context}` }
+              { role: 'system', content: SMART_GOAL_PROMPT },
+              { role: 'user', content: prompt }
             ],
             temperature: 0.7,
-            max_tokens: 2000,
+            max_tokens: 500,
           })
         });
         if (!response.ok) throw new Error(`OpenAI API error: ${response.status}`);
@@ -447,7 +424,7 @@ Ensure all criteria are specific, measurable, and medically necessary. Make reco
         return data.choices?.[0]?.message?.content || '';
       };
 
-      const callAnthropicAPI = async (prompt, context) => {
+      const callAnthropicAPI = async (prompt) => {
         const key = apiKeyRef.current.anthropic;
         const response = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
@@ -458,11 +435,11 @@ Ensure all criteria are specific, measurable, and medically necessary. Make reco
           },
           body: JSON.stringify({
             model: 'claude-3-5-sonnet-20241022',
-            max_tokens: 2000,
-            system: STRUCTURE_PROMPT,
+            max_tokens: 500,
+            system: SMART_GOAL_PROMPT,
             messages: [{
               role: 'user',
-              content: `${prompt}\n\nContext:\n${context}`
+              content: prompt
             }]
           })
         });
@@ -490,19 +467,19 @@ Ensure all criteria are specific, measurable, and medically necessary. Make reco
         setSuccess('');
 
         try {
-          const context = `Goal: ${goal}\n\nSAP Specifications:\n${sapSpecs}`;
-          let result = '';
+          let refined = '';
 
           if (provider === 'gemini') {
-            result = await callGeminiAPI(STRUCTURE_PROMPT, context);
+            refined = await callGeminiAPI(goal);
           } else if (provider === 'openai') {
-            result = await callOpenAIAPI(STRUCTURE_PROMPT, context);
+            refined = await callOpenAIAPI(goal);
           } else if (provider === 'anthropic') {
-            result = await callAnthropicAPI(STRUCTURE_PROMPT, context);
+            refined = await callAnthropicAPI(goal);
           }
 
-          parseSAPOutput(result);
-          setSuccess('SAP generated successfully!');
+          setRefinedGoal(refined);
+          generateSAPTemplate();
+          setSuccess('Goal refined and SAP template created!');
         } catch (err) {
           setError(`Error: ${err.message}`);
         } finally {
@@ -510,54 +487,34 @@ Ensure all criteria are specific, measurable, and medically necessary. Make reco
         }
       };
 
-      const parseSAPOutput = (text) => {
-        const parsed = {
-          exercise: {},
-          generalization: {},
-          errorCorrection: {},
-          raw: text
+      const generateSAPTemplate = () => {
+        const sapLines = sapSpecs.split('\n').filter(line => line.trim());
+
+        const output = {
+          goalOriginal: goal,
+          goalRefined: refinedGoal,
+          sapSpecs: sapLines,
+          exercise: {
+            purpose: '',
+            teachingStrategy: '',
+            lessonSetUp: '',
+            sd: '',
+            correctResponse: '',
+            incorrectResponse: '',
+            masteryCriteria: '',
+            promptHierarchy: ''
+          },
+          generalization: {
+            criteria: '',
+            maintenance: ''
+          },
+          errorCorrection: {
+            initial: '',
+            maintenance: ''
+          }
         };
 
-        // Parse EXERCISE section
-        const exerciseMatch = text.match(/##\s*EXERCISE([\s\S]*?)(?=##\s*GENERALIZATION|$)/i);
-        if (exerciseMatch) {
-          const content = exerciseMatch[1];
-          parsed.exercise.purpose = extractField(content, 'Purpose');
-          parsed.exercise.teachingStrategy = extractField(content, 'Teaching Strategy');
-          parsed.exercise.lessonSetUp = extractField(content, 'Lesson Set Up');
-          parsed.exercise.sd = extractField(content, 'SD|Demand|Discriminative Stimulus');
-          parsed.exercise.correctResponse = extractField(content, 'Correct Response');
-          parsed.exercise.incorrectResponse = extractField(content, 'Incorrect Response');
-          parsed.exercise.masteryCriteria = extractField(content, 'Mastery Criteria');
-          parsed.exercise.promptHierarchy = extractField(content, 'Prompt Hierarchy');
-        }
-
-        // Parse GENERALIZATION section
-        const genMatch = text.match(/##\s*GENERALIZATION([\s\S]*?)(?=##\s*ERROR CORRECTION|$)/i);
-        if (genMatch) {
-          const content = genMatch[1];
-          parsed.generalization.criteria = extractField(content, 'Generalization Criteria');
-          parsed.generalization.maintenance = extractField(content, 'Maintenance Criteria');
-        }
-
-        // Parse ERROR CORRECTION section
-        const errMatch = text.match(/##\s*ERROR CORRECTION([\s\S]*?)$/i);
-        if (errMatch) {
-          const content = errMatch[1];
-          parsed.errorCorrection.initial = extractField(content, 'During Initial Teaching');
-          parsed.errorCorrection.maintenance = extractField(content, 'During Maintenance');
-        }
-
-        setOutput(parsed);
-      };
-
-      const extractField = (content, fieldName) => {
-        const regex = new RegExp(`\\*\\*${fieldName}:\\*\\*\\s*([^\\*]+?)(?=\\*\\*|$)`, 'i');
-        const match = content.match(regex);
-        if (match) {
-          return match[1].trim();
-        }
-        return '';
+        setOutput(output);
       };
 
       const copyToClipboard = (text) => {
@@ -582,24 +539,24 @@ Ensure all criteria are specific, measurable, and medically necessary. Make reco
         if (!output) return '';
         let text = `SAP GOALS & PLANNING TOOL\n`;
         text += `Generated: ${new Date().toLocaleString()}\n\n`;
-        text += `GOAL:\n${goal}\n\n`;
-        text += `SAP SPECIFICATIONS:\n${sapSpecs}\n\n`;
+        text += `GOAL (Original):\n${output.goalOriginal}\n\n`;
+        text += `GOAL (Refined for SMART):\n${output.goalRefined}\n\n`;
+        text += `SAP SPECIFICATIONS:\n${output.sapSpecs.join('\n')}\n\n`;
         text += `${'='.repeat(60)}\n\n`;
-        text += `SECTION 1: EXERCISE\n${'-'.repeat(40)}\n`;
-        if (output.exercise.purpose) text += `Purpose:\n${output.exercise.purpose}\n\n`;
-        if (output.exercise.teachingStrategy) text += `Teaching Strategy:\n${output.exercise.teachingStrategy}\n\n`;
-        if (output.exercise.lessonSetUp) text += `Lesson Set Up:\n${output.exercise.lessonSetUp}\n\n`;
-        if (output.exercise.sd) text += `SD (Demand / Discriminative Stimulus):\n${output.exercise.sd}\n\n`;
-        if (output.exercise.correctResponse) text += `Correct Response:\n${output.exercise.correctResponse}\n\n`;
-        if (output.exercise.incorrectResponse) text += `Incorrect Response:\n${output.exercise.incorrectResponse}\n\n`;
-        if (output.exercise.masteryCriteria) text += `Mastery Criteria:\n${output.exercise.masteryCriteria}\n\n`;
-        if (output.exercise.promptHierarchy) text += `Prompt Hierarchy:\n${output.exercise.promptHierarchy}\n\n`;
-        text += `\nSECTION 2: GENERALIZATION\n${'-'.repeat(40)}\n`;
-        if (output.generalization.criteria) text += `Generalization Criteria:\n${output.generalization.criteria}\n\n`;
-        if (output.generalization.maintenance) text += `Maintenance Criteria:\n${output.generalization.maintenance}\n\n`;
-        text += `\nSECTION 3: ERROR CORRECTION\n${'-'.repeat(40)}\n`;
-        if (output.errorCorrection.initial) text += `During Initial Teaching:\n${output.errorCorrection.initial}\n\n`;
-        if (output.errorCorrection.maintenance) text += `During Maintenance:\n${output.errorCorrection.maintenance}\n\n`;
+        text += `EXERCISE\nPurpose:\n[BCBA to fill in]\n\n`;
+        text += `Teaching Strategy:\n[BCBA to fill in]\n\n`;
+        text += `Lesson Set Up:\n[BCBA to fill in]\n\n`;
+        text += `SD (Demand / Discriminative Stimulus):\n[BCBA to fill in]\n\n`;
+        text += `Correct Response:\n[BCBA to fill in]\n\n`;
+        text += `Incorrect Response:\n[BCBA to fill in]\n\n`;
+        text += `Mastery Criteria:\n[BCBA to fill in]\n\n`;
+        text += `Prompt Hierarchy:\n[BCBA to fill in]\n\n`;
+        text += `\nGENERALIZATION\n`;
+        text += `Generalization Criteria:\nMinimum X trials at Y% accuracy across [STIMULI], measured across 3 consecutive sessions.\n\n`;
+        text += `Maintenance Criteria:\nMinimum X-2 trials at Y% accuracy across [Minimum 5] maintenance probes.\n\n`;
+        text += `\nERROR CORRECTION\n`;
+        text += `During Initial Teaching:\n[BCBA to fill in]\n\n`;
+        text += `During Maintenance:\n[BCBA to fill in]\n\n`;
         text += `Note: After 2 consecutive maintenance probes below Maintenance Criteria, contact BCBA so a skill can re-enter teaching.\n`;
         return text;
       };
@@ -608,7 +565,7 @@ Ensure all criteria are specific, measurable, and medically necessary. Make reco
         <div className="container">
           <div className="header">
             <h1>SAP Goals & Planning Tool</h1>
-            <p>Draft medically-necessary ABA goals and Service Authorization Plans</p>
+            <p>Refine SMART goals and create Service Authorization Plan templates for ABA skill programs</p>
           </div>
 
           <div className="content">
@@ -674,11 +631,11 @@ Ensure all criteria are specific, measurable, and medically necessary. Make reco
               >
                 {loading ? (
                   <>
-                    Generating SAP
+                    Refining Goal & Creating Template
                     <span className="loading"></span>
                   </>
                 ) : (
-                  'Generate SAP with AI'
+                  'Refine Goal & Create SAP Template'
                 )}
               </button>
 
@@ -690,140 +647,152 @@ Ensure all criteria are specific, measurable, and medically necessary. Make reco
             <div>
               {output ? (
                 <div className="output-panel">
-                  <h2 style={{ marginBottom: '16px', color: '#0066cc' }}>Generated SAP</h2>
-
-                  {/* EXERCISE SECTION */}
+                  {/* GOAL COMPARISON */}
                   <div className="output-section">
-                    <div className="section-title">Section 1: Exercise</div>
+                    <div className="section-title">Goal Refinement (SMART)</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                      <div>
+                        <div className="subsection-title" style={{ fontSize: '12px', color: '#666', marginBottom: '6px' }}>Original</div>
+                        <div className="subsection-content" style={{ background: '#f5f5f5', fontSize: '12px' }}>
+                          {output.goalOriginal}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="subsection-title" style={{ fontSize: '12px', color: '#0066cc', marginBottom: '6px' }}>Refined for SMART</div>
+                        <div className="subsection-content" style={{ background: '#eef7ff', fontSize: '12px', borderLeft: '3px solid #0066cc' }}>
+                          {output.goalRefined}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
-                    {output.exercise.purpose && (
+                  {/* SAP SPECS SUMMARY */}
+                  <div className="output-section">
+                    <div className="section-title">Your SAP Specifications</div>
+                    <div className="subsection-content" style={{ fontSize: '12px' }}>
+                      {output.sapSpecs.map((spec, i) => (
+                        <div key={i}>{spec}</div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <hr style={{ margin: '20px 0', border: 'none', borderTop: '2px solid #e0e0e0' }} />
+
+                  {/* SAP TEMPLATE TO FILL IN */}
+                  <div style={{ marginBottom: '24px' }}>
+                    <div style={{ fontSize: '13px', color: '#666', marginBottom: '16px', padding: '12px', background: '#f5f5f5', borderRadius: '4px' }}>
+                      <strong>Template for BCBA to Complete:</strong> Use your specifications above to fill in each section. This is a guide to organize your clinical work.
+                    </div>
+
+                    {/* EXERCISE SECTION */}
+                    <div className="output-section">
+                      <div className="section-title">Exercise</div>
+
                       <div className="subsection">
                         <div className="subsection-title">Purpose</div>
-                        <div className="subsection-content editable-content">
-                          {output.exercise.purpose}
+                        <div className="subsection-content editable-content" style={{ minHeight: '60px' }}>
+                          [BCBA to fill in: 1-2 bullet points anchored to medical necessity or functional domain]
                         </div>
                       </div>
-                    )}
 
-                    {output.exercise.teachingStrategy && (
                       <div className="subsection">
                         <div className="subsection-title">Teaching Strategy</div>
-                        <div className="subsection-content editable-content">
-                          {output.exercise.teachingStrategy}
+                        <div className="subsection-content editable-content" style={{ minHeight: '60px' }}>
+                          [BCBA to fill in]
                         </div>
                       </div>
-                    )}
 
-                    {output.exercise.lessonSetUp && (
                       <div className="subsection">
                         <div className="subsection-title">Lesson Set Up</div>
-                        <div className="subsection-content editable-content">
-                          {output.exercise.lessonSetUp}
+                        <div className="subsection-content editable-content" style={{ minHeight: '60px' }}>
+                          [BCBA to fill in]
                         </div>
                       </div>
-                    )}
 
-                    {output.exercise.sd && (
                       <div className="subsection">
                         <div className="subsection-title">SD (Demand / Discriminative Stimulus)</div>
-                        <div className="subsection-content editable-content">
-                          {output.exercise.sd}
+                        <div className="subsection-content editable-content" style={{ minHeight: '60px' }}>
+                          [BCBA to fill in]
                         </div>
                       </div>
-                    )}
 
-                    {output.exercise.correctResponse && (
                       <div className="subsection">
                         <div className="subsection-title">Correct Response</div>
-                        <div className="subsection-content editable-content">
-                          {output.exercise.correctResponse}
+                        <div className="subsection-content editable-content" style={{ minHeight: '60px' }}>
+                          [BCBA to fill in]
                         </div>
                       </div>
-                    )}
 
-                    {output.exercise.incorrectResponse && (
                       <div className="subsection">
                         <div className="subsection-title">Incorrect Response</div>
-                        <div className="subsection-content editable-content">
-                          {output.exercise.incorrectResponse}
+                        <div className="subsection-content editable-content" style={{ minHeight: '60px' }}>
+                          [BCBA to fill in]
                         </div>
                       </div>
-                    )}
 
-                    {output.exercise.masteryCriteria && (
                       <div className="subsection">
                         <div className="subsection-title">Mastery Criteria</div>
-                        <div className="subsection-content editable-content">
-                          {output.exercise.masteryCriteria}
+                        <div className="subsection-content editable-content" style={{ minHeight: '60px' }}>
+                          [BCBA to fill in: e.g., Minimum X trials at Y% accuracy across Z sessions]
                         </div>
                       </div>
-                    )}
 
-                    {output.exercise.promptHierarchy && (
                       <div className="subsection">
                         <div className="subsection-title">Prompt Hierarchy</div>
-                        <div className="subsection-content editable-content">
-                          {output.exercise.promptHierarchy}
+                        <div className="subsection-content editable-content" style={{ minHeight: '80px' }}>
+                          [BCBA to fill in: e.g., Most-to-Least or Least-to-Most Prompting hierarchy]
                         </div>
                       </div>
-                    )}
-                  </div>
+                    </div>
 
-                  {/* GENERALIZATION SECTION */}
-                  <div className="output-section">
-                    <div className="section-title">Section 2: Generalization</div>
+                    {/* GENERALIZATION SECTION */}
+                    <div className="output-section">
+                      <div className="section-title">Generalization</div>
 
-                    {output.generalization.criteria && (
                       <div className="subsection">
                         <div className="subsection-title">Generalization Criteria</div>
-                        <div className="subsection-content editable-content">
-                          {output.generalization.criteria}
+                        <div className="subsection-content editable-content" style={{ minHeight: '60px' }}>
+                          Minimum X trials at Y% accuracy across [STIMULI], measured across 3 consecutive sessions.
                         </div>
                       </div>
-                    )}
 
-                    {output.generalization.maintenance && (
                       <div className="subsection">
                         <div className="subsection-title">Maintenance Criteria</div>
-                        <div className="subsection-content editable-content">
-                          {output.generalization.maintenance}
+                        <div className="subsection-content editable-content" style={{ minHeight: '60px' }}>
+                          Minimum X-2 trials at Y% accuracy across [Minimum 5] maintenance probes.
                         </div>
                       </div>
-                    )}
-                  </div>
+                    </div>
 
-                  {/* ERROR CORRECTION SECTION */}
-                  <div className="output-section">
-                    <div className="section-title">Section 3: Error Correction</div>
+                    {/* ERROR CORRECTION SECTION */}
+                    <div className="output-section">
+                      <div className="section-title">Error Correction</div>
 
-                    {output.errorCorrection.initial && (
                       <div className="subsection">
                         <div className="subsection-title">During Initial Teaching</div>
-                        <div className="subsection-content editable-content">
-                          {output.errorCorrection.initial}
+                        <div className="subsection-content editable-content" style={{ minHeight: '60px' }}>
+                          [BCBA to fill in]
                         </div>
                       </div>
-                    )}
 
-                    {output.errorCorrection.maintenance && (
                       <div className="subsection">
                         <div className="subsection-title">During Maintenance</div>
-                        <div className="subsection-content editable-content">
-                          {output.errorCorrection.maintenance}
+                        <div className="subsection-content editable-content" style={{ minHeight: '60px' }}>
+                          [BCBA to fill in]
                         </div>
                       </div>
-                    )}
 
-                    <div className="subsection" style={{ marginTop: '16px' }}>
-                      <div className="subsection-content" style={{ background: '#fff9e6', borderLeft: '3px solid #cc9900' }}>
-                        <strong>Important Note:</strong> After 2 consecutive maintenance probes below Maintenance Criteria, contact BCBA so a skill can re-enter teaching.
+                      <div className="subsection" style={{ marginTop: '16px' }}>
+                        <div className="subsection-content" style={{ background: '#fff9e6', borderLeft: '3px solid #cc9900' }}>
+                          <strong>Important Note:</strong> After 2 consecutive maintenance probes below Maintenance Criteria, contact BCBA so a skill can re-enter teaching.
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   <div className="actions">
                     <button className="btn btn-secondary btn-small" onClick={() => copyToClipboard(formatForDownload())}>
-                      Copy All
+                      Copy Template
                     </button>
                     <button className="btn btn-primary btn-small" onClick={downloadAsText}>
                       Download as .txt
@@ -833,7 +802,7 @@ Ensure all criteria are specific, measurable, and medically necessary. Make reco
               ) : (
                 <div className="output-panel">
                   <div className="empty-state">
-                    <p>Enter a goal and SAP specifications, then click "Generate SAP with AI" to create your structured plan.</p>
+                    <p>Enter a goal and SAP specifications, then click "Generate SAP with AI" to refine your goal and create the SAP template.</p>
                   </div>
                 </div>
               )}
