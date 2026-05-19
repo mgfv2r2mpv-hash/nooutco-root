@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-19T23:34:27.850Z",
+  "generated": "2026-05-19T23:35:00.929Z",
   "promptDefaults": {
     "features": "Which one is {tag}?",
     "functions": "Which do you use to {tag}?",
@@ -872,7 +872,7 @@
     },
     {
       "id": "butterfly",
-      "img": "butterfly.svg",
+      "img": "butterfly.jpg",
       "label": "Butterfly",
       "groups": [
         "insects"
