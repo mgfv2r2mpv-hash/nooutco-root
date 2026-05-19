@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-19T23:33:42.491Z",
+  "generated": "2026-05-19T23:34:12.183Z",
   "promptDefaults": {
     "features": "Which one is {tag}?",
     "functions": "Which do you use to {tag}?",
@@ -831,7 +831,7 @@
     },
     {
       "id": "bear",
-      "img": "bear.svg",
+      "img": "bear.jpg",
       "label": "Bear",
       "groups": [
         "wild_animals"
