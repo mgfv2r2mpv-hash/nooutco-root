@@ -83,12 +83,12 @@
     };
 
     const INDIVIDUALS = [
-      { id: "caregiver",  label: "Parent/Caregiver", placeholder: "Jane Doe (Mother)" },
-      { id: "client",     label: "Client",           placeholder: "First Last" },
-      { id: "technician", label: "Technician",       placeholder: "Jane Doe (RBT)" },
-      { id: "teacher",    label: "Teacher",          placeholder: "Jane Doe (3rd Grade Teacher)" },
-      { id: "specialist", label: "Specialist/s",     placeholder: "Jane Doe (Speech Therapist)" },
-      { id: "sibling",    label: "Sibling/s",        placeholder: "First Last (Brother)" },
+      { id: "caregiver",  label: "Parent/Caregiver", placeholder: "e.g. Mother, Foster parent" },
+      { id: "client",     label: "Client" },
+      { id: "technician", label: "Technician",       placeholder: "e.g. RBT, BT" },
+      { id: "teacher",    label: "Teacher",          placeholder: "e.g. Classroom teacher, Para" },
+      { id: "specialist", label: "Specialist/s",     placeholder: "e.g. SLP, OT, PT" },
+      { id: "sibling",    label: "Sibling(s)/Peer(s)", placeholder: "e.g. Brother, Sister, Cousin, Peer" },
     ];
 
     const SUPPORT_ACTIVITIES = [
@@ -280,8 +280,12 @@
 
       // Live-computed attendees list — NOT fed to AI
       const attendeesList = INDIVIDUALS
-        .filter(p => presentChecked.has(p.id) && presentNames[p.id]?.trim())
-        .map(p => presentNames[p.id].trim())
+        .filter(p => presentChecked.has(p.id))
+        .map(p => {
+          if (!p.placeholder) return p.label;
+          const role = presentNames[p.id]?.trim();
+          return role ? `${p.label} (${role})` : p.label;
+        })
         .join(", ");
 
       const handleGenerate = async () => {
@@ -437,7 +441,7 @@
                       />
                       <span style={{ fontSize: 14, color: "#2d3a1f" }}>{person.label}</span>
                     </label>
-                    {presentChecked.has(person.id) && (
+                    {presentChecked.has(person.id) && person.placeholder && (
                       <div style={{ marginTop: 6, marginLeft: 26 }}>
                         <input
                           type="text"
