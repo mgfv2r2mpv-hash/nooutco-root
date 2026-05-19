@@ -424,38 +424,45 @@ body {
   z-index: 1;
 }
 
-/* ── Song-paced rhyme marquee (intro) ──────────────────────────────── */
-.rhyme-marquee {
+/* ── Title card (intro): bubble letters, set down then lift off ────── */
+.rhyme-title {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 16%;
-  height: 1.6em;
-  overflow: hidden;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
   pointer-events: none;
   z-index: 35;
-  transition: transform 0.5s ease-in, opacity 0.5s ease-in;
-}
-.rhyme-marquee.lift {
-  transform: translateY(-180%);
   opacity: 0;
+  font-family: "Baloo 2", "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  font-weight: 900;
+  font-size: clamp(2rem, 7.5vw, 4.6rem);
+  letter-spacing: 0.015em;
+  color: #fff7e8;
+  -webkit-text-stroke: 3px #6b4423;
+  paint-order: stroke fill;
+  text-shadow:
+    0 4px 0 #b5651d,
+    0 6px 2px rgba(107,68,35,0.45),
+    0 10px 18px rgba(0,0,0,0.30);
 }
-.rhyme-text {
-  position: absolute;
-  left: 100%;
-  white-space: nowrap;
-  font-size: clamp(1.1rem, 3.4vw, 2.1rem);
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  color: rgba(107,68,35,0.55);
-  text-shadow: 0 1px 0 rgba(255,255,255,0.4);
+/* Entrance: fade in horizontally + set down with a soft settle */
+.rhyme-title.show {
+  animation: hdd-title-in 0.85s cubic-bezier(.18,.7,.28,1) forwards;
 }
-.rhyme-marquee.run .rhyme-text {
-  animation: hdd-marquee 3s linear forwards;
+@keyframes hdd-title-in {
+  0%   { opacity: 0; transform: translate(-50%, calc(-50% - 46px)) scaleX(0.62) scaleY(0.9); }
+  55%  { opacity: 1; transform: translate(-50%, calc(-50% + 9px))  scaleX(1.05) scaleY(1.03); }
+  76%  {              transform: translate(-50%, calc(-50% - 4px))  scaleX(0.99) scaleY(0.99); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
-@keyframes hdd-marquee {
-  from { transform: translateX(0); }
-  to   { transform: translateX(calc(-100vw - 100%)); }
+/* Exit: fade out + lift up off the page (defined after .show so it wins) */
+.rhyme-title.leave {
+  animation: hdd-title-out 0.6s ease-in forwards;
+}
+@keyframes hdd-title-out {
+  0%   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, calc(-50% - 72px)) scale(1.08); }
 }
 
 /* ── Picture slots (fanned around the clock) ───────────────────────── */
@@ -679,12 +686,15 @@ body {
   transform: translate(-50%, 10px) scale(0.2);
   opacity: 0;
   transition: transform 0.3s cubic-bezier(.34,1.7,.5,1), opacity 0.2s;
-  z-index: 1;
+  z-index: 4;
 }
 .clock-crown.open .cuckoo {
-  transform: translate(-50%, -58%) scale(1);
+  transform: translate(-50%, -62%) scale(1.32);
   opacity: 1;
 }
+/* While the clock strikes, lift it (and the emerging cuckoo) in front
+   of the climbing tile so the bird is in the foreground. */
+.clock.striking { z-index: 45; }
 .cuckoo-bird {
   position: relative;
   width: 26px;
