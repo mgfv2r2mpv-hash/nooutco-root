@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-19T23:30:33.246Z",
+  "generated": "2026-05-19T23:30:57.124Z",
   "promptDefaults": {
     "features": "Which one is {tag}?",
     "functions": "Which do you use to {tag}?",
@@ -495,7 +495,7 @@
     },
     {
       "id": "lamp",
-      "img": "lamp.svg",
+      "img": "lamp.webp",
       "label": "Lamp",
       "groups": [
         "household_items"
