@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-19T23:30:57.124Z",
+  "generated": "2026-05-19T23:31:33.563Z",
   "promptDefaults": {
     "features": "Which one is {tag}?",
     "functions": "Which do you use to {tag}?",
@@ -511,7 +511,7 @@
     },
     {
       "id": "mirror",
-      "img": "mirror.svg",
+      "img": "mirror.jpg",
       "label": "Mirror",
       "groups": [
         "household_items"
