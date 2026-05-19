@@ -680,12 +680,10 @@ function renderTrial() {
   el.clockStage.appendChild(floor);
 
   if (state.animations) {
-    const marquee = document.createElement('div');
-    marquee.className = 'rhyme-marquee';
-    marquee.innerHTML =
-      '<div class="rhyme-text">Hickory&nbsp;Dickory&nbsp;Dock &middot; the mouse ran up the clock &middot; ' +
-      'the clock struck one &middot; the mouse ran down &middot; Hickory&nbsp;Dickory&nbsp;Dock</div>';
-    el.clockStage.appendChild(marquee);
+    const title = document.createElement('div');
+    title.className = 'rhyme-title';
+    title.textContent = 'Hickory Dickory Dock …';
+    el.clockStage.appendChild(title);
     el.sampleSection.classList.add('intro-hide');
   } else {
     el.sampleSection.classList.remove('intro-hide');
@@ -849,10 +847,10 @@ function runIntro(done) {
   state.introPlaying = true;
   disableTiles();
 
-  const slots   = [...el.clockStage.querySelectorAll('.slot')];
-  const marquee = el.clockStage.querySelector('.rhyme-marquee');
+  const slots = [...el.clockStage.querySelectorAll('.slot')];
+  const title = el.clockStage.querySelector('.rhyme-title');
 
-  if (marquee) requestAnimationFrame(() => marquee.classList.add('run'));
+  if (title) requestAnimationFrame(() => title.classList.add('show'));
 
   // Tiles fade in, in place, staggered across the rhyme.
   const n = slots.length || 1;
@@ -863,14 +861,14 @@ function runIntro(done) {
     after(t, () => slot.classList.remove('pre-in'));
   });
 
-  // Marquee lifts off, then the target word drops in.
-  after(2550, () => { if (marquee) marquee.classList.add('lift'); });
+  // Title lifts off the page, then the target word drops in.
+  after(2400, () => { if (title) title.classList.add('leave'); });
   after(2850, () => {
     el.sampleSection.classList.remove('intro-hide');
     requestAnimationFrame(fitSampleWord);
   });
   after(3000, () => {
-    if (marquee) marquee.remove();
+    if (title) title.remove();
     done();
   });
 }
@@ -1052,12 +1050,13 @@ function strikeCuckoo() {
   const clock = el.clockStage.querySelector('.clock');
   const crown = el.clockStage.querySelector('.clock-crown');
   if (clock) {
-    clock.classList.add('chiming');
+    clock.classList.add('chiming', 'striking');
     after(900, () => clock.classList.remove('chiming'));
+    after(560, () => clock.classList.remove('striking'));   // tile leaps in front again
   }
   if (crown) {
     crown.classList.add('open');
-    after(820, () => crown.classList.remove('open'));
+    after(620, () => crown.classList.remove('open'));
   }
 }
 
