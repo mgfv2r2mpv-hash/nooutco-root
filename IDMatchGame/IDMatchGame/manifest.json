@@ -1,11 +1,12 @@
 {
-  "generated": "2026-05-05T17:35:23.509Z",
+  "generated": "2026-05-07T17:41:18.487Z",
   "folders": [
     "T_animals",
     "T_buildings",
     "T_colors",
     "T_community_helpers",
     "T_foods",
+    "T_fresh-beats",
     "T_household_items",
     "T_kitchen_items",
     "T_lowercase",
@@ -88,48 +89,25 @@
       "_Resources/_imgSource/T_household_items/sofa.webp"
     ],
     "T_kitchen_items": [
-      "_Resources/_imgSource/T_kitchen_items/blender.svg",
-      "_Resources/_imgSource/T_kitchen_items/bowl.svg",
-      "_Resources/_imgSource/T_kitchen_items/chopsticks.svg",
-      "_Resources/_imgSource/T_kitchen_items/coffee-mug.svg",
-      "_Resources/_imgSource/T_kitchen_items/cup.svg",
-      "_Resources/_imgSource/T_kitchen_items/fork.svg",
-      "_Resources/_imgSource/T_kitchen_items/frying-pan.svg",
-      "_Resources/_imgSource/T_kitchen_items/kettle.svg",
-      "_Resources/_imgSource/T_kitchen_items/knife.svg",
-      "_Resources/_imgSource/T_kitchen_items/microwave.svg",
-      "_Resources/_imgSource/T_kitchen_items/milk-glass.svg",
-      "_Resources/_imgSource/T_kitchen_items/oven.svg",
-      "_Resources/_imgSource/T_kitchen_items/plate.svg",
-      "_Resources/_imgSource/T_kitchen_items/pot.svg",
-      "_Resources/_imgSource/T_kitchen_items/refrigerator.svg",
-      "_Resources/_imgSource/T_kitchen_items/salt.svg",
-      "_Resources/_imgSource/T_kitchen_items/spoon.svg",
-      "_Resources/_imgSource/T_kitchen_items/teacup.svg",
-      "_Resources/_imgSource/T_kitchen_items/toaster.svg",
-      "_Resources/_imgSource/T_kitchen_items/wine-glass.svg"
-    ],
-    "T_kitchen_items": [
-      "_Resources/_imgSource/T_kitchen_items/blender.svg",
-      "_Resources/_imgSource/T_kitchen_items/bowl.svg",
-      "_Resources/_imgSource/T_kitchen_items/chopsticks.svg",
-      "_Resources/_imgSource/T_kitchen_items/coffee-mug.svg",
-      "_Resources/_imgSource/T_kitchen_items/cup.svg",
-      "_Resources/_imgSource/T_kitchen_items/fork.svg",
-      "_Resources/_imgSource/T_kitchen_items/frying-pan.svg",
-      "_Resources/_imgSource/T_kitchen_items/kettle.svg",
-      "_Resources/_imgSource/T_kitchen_items/knife.svg",
-      "_Resources/_imgSource/T_kitchen_items/microwave.svg",
-      "_Resources/_imgSource/T_kitchen_items/milk-glass.svg",
-      "_Resources/_imgSource/T_kitchen_items/oven.svg",
-      "_Resources/_imgSource/T_kitchen_items/plate.svg",
-      "_Resources/_imgSource/T_kitchen_items/pot.svg",
-      "_Resources/_imgSource/T_kitchen_items/refrigerator.svg",
-      "_Resources/_imgSource/T_kitchen_items/salt.svg",
-      "_Resources/_imgSource/T_kitchen_items/spoon.svg",
-      "_Resources/_imgSource/T_kitchen_items/teacup.svg",
-      "_Resources/_imgSource/T_kitchen_items/toaster.svg",
-      "_Resources/_imgSource/T_kitchen_items/wine-glass.svg"
+      "_Resources/_imgSource/T_kitchen_items/blender.webp",
+      "_Resources/_imgSource/T_kitchen_items/bowl.jpg",
+      "_Resources/_imgSource/T_kitchen_items/chopsticks.webp",
+      "_Resources/_imgSource/T_kitchen_items/coffee-mug.webp",
+      "_Resources/_imgSource/T_kitchen_items/cup.jpg",
+      "_Resources/_imgSource/T_kitchen_items/fork.jpg",
+      "_Resources/_imgSource/T_kitchen_items/frying-pan.jpg",
+      "_Resources/_imgSource/T_kitchen_items/kettle.jpg",
+      "_Resources/_imgSource/T_kitchen_items/knife.jpg",
+      "_Resources/_imgSource/T_kitchen_items/microwave.jpg",
+      "_Resources/_imgSource/T_kitchen_items/napkin.jpg",
+      "_Resources/_imgSource/T_kitchen_items/oven.webp",
+      "_Resources/_imgSource/T_kitchen_items/plate.jpg",
+      "_Resources/_imgSource/T_kitchen_items/pot.jpg",
+      "_Resources/_imgSource/T_kitchen_items/refrigerator.webp",
+      "_Resources/_imgSource/T_kitchen_items/salt.jpg",
+      "_Resources/_imgSource/T_kitchen_items/spoon.jpg",
+      "_Resources/_imgSource/T_kitchen_items/teacup.jpg",
+      "_Resources/_imgSource/T_kitchen_items/toaster.webp"
     ],
     "T_numbers": [
       "_Resources/_imgSource/T_numbers/1.svg",
@@ -248,7 +226,18 @@
       "_Resources/_imgSource/T_lowercase/x.svg",
       "_Resources/_imgSource/T_lowercase/y.svg",
       "_Resources/_imgSource/T_lowercase/z.svg"
+    ],
+    "T_fresh-beats": [
+      "_Resources/_imgSource/T_fresh-beats/chimpanzees-too.jpg",
+      "_Resources/_imgSource/T_fresh-beats/group-jumping.jpg",
+      "_Resources/_imgSource/T_fresh-beats/group-photo.jpg",
+      "_Resources/_imgSource/T_fresh-beats/group-smiling.jpg",
+      "_Resources/_imgSource/T_fresh-beats/marina.jpg",
+      "_Resources/_imgSource/T_fresh-beats/twist-1.webp"
     ]
   },
-  "archived": {}
+  "archived": {},
+  "displayNames": {
+    "_Resources/_imgSource/T_fresh-beats/twist-1": "Group Poster"
+  }
 }

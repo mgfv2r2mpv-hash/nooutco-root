@@ -1511,9 +1511,20 @@ function openDetail(ctx) {
   detailPanel.classList.add('open');
 }
 
+function clearDetailForm() {
+  dpUrlInput.value = '';
+  dpWikiInput.value = '';
+  dpWikiResults.innerHTML = '';
+  document.getElementById('dp-file-input').value = '';
+  setStatus(dpSaveStatus, '', '');
+  setStatus(dpRemoveStatus, '', '');
+  setStatus(dpDisplayNameStatus, '', '');
+}
+
 function closeDetail() {
   detailPanel.classList.remove('open');
   detailContext = null;
+  clearDetailForm();
 }
 
 // Save
@@ -1563,6 +1574,10 @@ dpSaveBtn.addEventListener('click', async () => {
         dpThumb.src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + ctx.item.img;
         const d = gameData['FFCGame'].ffcData;
         const saveRes = await adminPost('ffc-save-items', { items: d });
+        if (saveRes && saveRes.ok) {
+          dpUrlInput.value = '';
+          document.getElementById('dp-file-input').value = '';
+        }
         setStatus(dpSaveStatus, saveRes && saveRes.ok ? 'ok' : 'err',
           saveRes && saveRes.ok ? 'Saved!' : 'Image saved but record update failed');
       } else if (ctx.type === 'intraverbal' && (j.filename || j.localPath)) {
@@ -1571,6 +1586,10 @@ dpSaveBtn.addEventListener('click', async () => {
         dpThumb.src = '../../IntraverbalGame/IntraverbalGame/_Resources/_imgSource/items/' + fn;
         const d = gameData['IntraverbalGame'].ivData;
         const saveRes = await adminPost('intraverbal-save-items', { items: d });
+        if (saveRes && saveRes.ok) {
+          dpUrlInput.value = '';
+          document.getElementById('dp-file-input').value = '';
+        }
         setStatus(dpSaveStatus, saveRes && saveRes.ok ? 'ok' : 'err',
           saveRes && saveRes.ok ? 'Saved!' : 'Image saved but record update failed');
       } else {
@@ -1578,6 +1597,8 @@ dpSaveBtn.addEventListener('click', async () => {
         else if (url) dpThumb.src = url;
         if (ctx.type === 'fpg' && j.localPath) ctx.person.img = j.localPath;
         setStatus(dpSaveStatus, 'ok', 'Saved!');
+        dpUrlInput.value = '';
+        document.getElementById('dp-file-input').value = '';
       }
     } else {
       const j = await res.json().catch(() => ({}));

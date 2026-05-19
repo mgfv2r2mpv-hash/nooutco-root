@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-05T18:08:08.878Z",
+  "generated": "2026-05-16T15:13:25.905Z",
   "folders": [
     "T_actions",
     "T_animals",
@@ -16,25 +16,32 @@
   ],
   "images": {
     "T_actions": [
+      "_Resources/_imgSource/T_actions/clapping.png",
+      "_Resources/_imgSource/T_actions/crying.jpg",
       "_Resources/_imgSource/T_actions/drinking.png",
       "_Resources/_imgSource/T_actions/eating.png",
       "_Resources/_imgSource/T_actions/hugging.png",
+      "_Resources/_imgSource/T_actions/jumping.jpg",
+      "_Resources/_imgSource/T_actions/kicking.jpg",
+      "_Resources/_imgSource/T_actions/laughing.jpg",
       "_Resources/_imgSource/T_actions/reading.png",
       "_Resources/_imgSource/T_actions/sleeping.png",
       "_Resources/_imgSource/T_actions/swimming.png",
-      "_Resources/_imgSource/T_actions/walking.png"
+      "_Resources/_imgSource/T_actions/throwing.jpg",
+      "_Resources/_imgSource/T_actions/walking.png",
+      "_Resources/_imgSource/T_actions/writing.jpg"
     ],
     "T_animals": [
-      "_Resources/_imgSource/T_animals/bear.svg",
-      "_Resources/_imgSource/T_animals/bird.svg",
-      "_Resources/_imgSource/T_animals/butterfly.svg",
-      "_Resources/_imgSource/T_animals/cat.svg",
-      "_Resources/_imgSource/T_animals/dog.svg",
-      "_Resources/_imgSource/T_animals/elephant.svg",
-      "_Resources/_imgSource/T_animals/fish.svg",
-      "_Resources/_imgSource/T_animals/frog.svg",
-      "_Resources/_imgSource/T_animals/lion.svg",
-      "_Resources/_imgSource/T_animals/rabbit.svg"
+      "_Resources/_imgSource/T_animals/bear.jpg",
+      "_Resources/_imgSource/T_animals/bird.jpg",
+      "_Resources/_imgSource/T_animals/butterfly.jpg",
+      "_Resources/_imgSource/T_animals/cat.jpg",
+      "_Resources/_imgSource/T_animals/dog.jpg",
+      "_Resources/_imgSource/T_animals/elephant.jpg",
+      "_Resources/_imgSource/T_animals/fish.jpg",
+      "_Resources/_imgSource/T_animals/frog.jpg",
+      "_Resources/_imgSource/T_animals/lion.jpg",
+      "_Resources/_imgSource/T_animals/rabbit.jpg"
     ],
     "T_buildings": [
       "_Resources/_imgSource/T_buildings/apartment.svg",
@@ -61,16 +68,17 @@
       "_Resources/_imgSource/T_colors/yellow.svg"
     ],
     "T_community_helpers": [
-      "_Resources/_imgSource/T_community_helpers/chef.svg",
-      "_Resources/_imgSource/T_community_helpers/construction.svg",
-      "_Resources/_imgSource/T_community_helpers/doctor.svg",
-      "_Resources/_imgSource/T_community_helpers/farmer.svg",
-      "_Resources/_imgSource/T_community_helpers/firefighter.svg",
-      "_Resources/_imgSource/T_community_helpers/mail-carrier.svg",
-      "_Resources/_imgSource/T_community_helpers/nurse.svg",
-      "_Resources/_imgSource/T_community_helpers/police.svg",
-      "_Resources/_imgSource/T_community_helpers/scientist.svg",
-      "_Resources/_imgSource/T_community_helpers/teacher.svg"
+      "_Resources/_imgSource/T_community_helpers/chef.jpg",
+      "_Resources/_imgSource/T_community_helpers/construction.jpg",
+      "_Resources/_imgSource/T_community_helpers/crossing-guard.jpg",
+      "_Resources/_imgSource/T_community_helpers/doctor.jpg",
+      "_Resources/_imgSource/T_community_helpers/farmer.jpg",
+      "_Resources/_imgSource/T_community_helpers/firefighter.jpg",
+      "_Resources/_imgSource/T_community_helpers/mail-carrier.jpg",
+      "_Resources/_imgSource/T_community_helpers/nurse.jpg",
+      "_Resources/_imgSource/T_community_helpers/police.jpg",
+      "_Resources/_imgSource/T_community_helpers/scientist.jpg",
+      "_Resources/_imgSource/T_community_helpers/teacher.jpg"
     ],
     "T_emotions": [
       "_Resources/_imgSource/T_emotions/angry.svg",
@@ -138,16 +146,13 @@
     "T_prepositions": [
       "_Resources/_imgSource/T_prepositions/above.png",
       "_Resources/_imgSource/T_prepositions/behind.png",
-      "_Resources/_imgSource/T_prepositions/below.svg",
-      "_Resources/_imgSource/T_prepositions/far.svg",
-      "_Resources/_imgSource/T_prepositions/in-front-of.svg",
-      "_Resources/_imgSource/T_prepositions/in.svg",
+      "_Resources/_imgSource/T_prepositions/below.png",
+      "_Resources/_imgSource/T_prepositions/in-front-of.png",
+      "_Resources/_imgSource/T_prepositions/in.png",
       "_Resources/_imgSource/T_prepositions/left-of.svg",
-      "_Resources/_imgSource/T_prepositions/near.svg",
-      "_Resources/_imgSource/T_prepositions/next-to.svg",
-      "_Resources/_imgSource/T_prepositions/on.svg",
-      "_Resources/_imgSource/T_prepositions/right-of.svg",
-      "_Resources/_imgSource/T_prepositions/under.svg"
+      "_Resources/_imgSource/T_prepositions/next-to.png",
+      "_Resources/_imgSource/T_prepositions/on.png",
+      "_Resources/_imgSource/T_prepositions/under.png"
     ],
     "T_shapes": [
       "_Resources/_imgSource/T_shapes/circle.svg",
