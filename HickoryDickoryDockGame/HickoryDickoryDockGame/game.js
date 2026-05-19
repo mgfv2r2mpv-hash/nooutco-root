@@ -2,13 +2,15 @@
 
 /* ══════════════════════════════════════════════════════════════════
    HICKORY DICKORY DOCK  (Receptive ID)
-   Sample = a written word label; the comparison pictures circle a
-   grandfather clock. Tap the picture that matches the name: it floats
-   up to the top of the clock, the cuckoo pops out, the clock strikes
-   the next hour, and the picture tumbles off. "Next" sets the trial.
+   Sample = a written word label; the comparison pictures fan around a
+   large grandfather clock (left side, floor, right side — never above
+   it). Tap the picture that matches the name: it drops to the floor,
+   runs to the clock, climbs it while the minute hand spins, reaches the
+   top exactly as the hand strikes 12, the cuckoo pops, then it leaps
+   down the far side and scampers off. "Next" sets the trial.
 
    Receptive-ID logic (decks, prompts, error handling, data, print) is
-   the same as the Receptive Words game — only the stage is re-skinned.
+   identical to the Receptive Words game — only the stage is re-skinned.
    ══════════════════════════════════════════════════════════════════ */
 
 // ── Utilities ──────────────────────────────────────────────────────
@@ -25,10 +27,7 @@ function pickRandom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-/** Derive a display label from an image path.
- *  Uses manifest.displayNames[src] when set; otherwise the filename.
- *  e.g. "T_animals/bear.svg" → "Bear"
- */
+/** Derive a display label from an image path. */
 function labelFromSrc(src) {
   const override = state.manifest?.displayNames?.[src];
   if (typeof override === 'string' && override.trim()) return override;
@@ -36,12 +35,15 @@ function labelFromSrc(src) {
   return name.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
 // ── State ──────────────────────────────────────────────────────────
 
 const state = {
   // Persisted settings
   topic:             '',
   arraySize:         4,
+  animations:        true,
   representErrors:   true,
   errorless:         false,
   noErrorAnim:       false,
@@ -54,26 +56,21 @@ const state = {
   promptDelay:       false,
   promptDelaySecs:   3,
 
-  // Per-topic target filters: { topic: [srcPaths] } — empty array = no filter
   targetFilters: {},
 
-  // Discovered folders & images
   manifest:     null,
   topicFolders: [],
   topicImages:  [],
   otherImages:  [],
 
-  // Target panel UI state
   targetPanelOpen: false,
 
-  // Session — persists across topic changes; cleared by Clear Data
   active:      false,
   sessionData: [],
   trialNum:    0,
 
-  // Current trial
-  sampleSrc:    '',   // image path for the correct answer (not displayed)
-  sampleLabel:  '',   // word shown in the sample card
+  sampleSrc:    '',
+  sampleLabel:  '',
   tileImages:   [],
   correctIdx:   0,
   trialErrors:  0,
@@ -81,29 +78,27 @@ const state = {
   prompted:     false,
   autoPrompted: false,
   isRepeatTrial: false,
-  resolving:    false,   // true while the clock-strike animation runs
+  resolving:    false,   // true during the climb / resolve sequence
+  introPlaying: false,   // true during the rhyme intro
 
   // Clock — session only. Starts at 12 so the first correct "strikes one".
   clockHour: 12,
 
-  // Layout geometry (recomputed on render + resize)
-  geom: null,
+  geom: null,            // layout geometry (recomputed on render + resize)
 
-  // Shuffled position deck
   posDeck: [],
-
-  // Shuffled sample deck — ensures all items shown before any repeats
   sampleDeck: [],
 
-  // Timer
   timerSecs:       0,
   timerRunning:    false,
   timerHandle:     null,
   timerAutoPaused: false,
 
-  // Prompt timeouts
   promptHandle:     null,
   autoPromptHandle: null,
+
+  // Animation timeout handles (so a new trial can cancel a running one)
+  animTimers: [],
 };
 
 // ── DOM references ─────────────────────────────────────────────────
@@ -116,6 +111,7 @@ const el = {
   btnTimerReset:       $('btn-timer-reset'),
   selTopic:            $('sel-topic'),
   inpSize:             $('inp-size'),
+  chkAnimations:       $('chk-animations'),
   chkCross:                   $('chk-cross'),
   chkNonTargetDistractor:     $('chk-non-target-distractor'),
   chkPersists:                $('chk-persists'),
@@ -125,6 +121,7 @@ const el = {
   selPromptDelay:      $('sel-prompt-delay'),
   btnStart:            $('btn-start'),
   gameArea:            $('game-area'),
+  sampleSection:       $('sample-section'),
   sampleWord:          $('sample-word'),
   clockSection:        $('clock-section'),
   clockStage:          $('clock-stage'),
@@ -164,6 +161,7 @@ function loadSettings() {
   const s = JSON.parse(localStorage.getItem('hddSettings') || '{}');
   state.topic             = s.topic             ?? '';
   state.arraySize         = s.arraySize         ?? 4;
+  state.animations        = s.animations        ?? true;
   state.representErrors   = s.representErrors   ?? true;
   state.errorless         = s.errorless         ?? false;
   state.noErrorAnim       = s.noErrorAnim       ?? false;
@@ -177,6 +175,7 @@ function loadSettings() {
   state.targetFilters     = (s.targetFilters && typeof s.targetFilters === 'object') ? s.targetFilters : {};
 
   el.inpSize.value              = state.arraySize;
+  el.chkAnimations.checked      = state.animations;
   el.chkRepresentErrors.checked = state.representErrors;
   el.chkErrorless.checked       = state.errorless;
   el.chkNoErrorAnim.checked     = state.noErrorAnim;
@@ -196,6 +195,7 @@ function saveSettings() {
   localStorage.setItem('hddSettings', JSON.stringify({
     topic:             state.topic,
     arraySize:         state.arraySize,
+    animations:        state.animations,
     representErrors:   state.representErrors,
     errorless:         state.errorless,
     noErrorAnim:       state.noErrorAnim,
@@ -336,7 +336,6 @@ function bindEvents() {
     updateTargetsCount();
   });
 
-  // Target panel
   el.btnTargetsToggle.addEventListener('click', toggleTargetPanel);
   el.btnTargetsClose .addEventListener('click', () => setTargetPanelOpen(false));
   el.btnTargetsAll   .addEventListener('click', () => setAllTargets(true));
@@ -349,6 +348,11 @@ function bindEvents() {
     state.posDeck = [];
     saveSettings();
     await refreshImages();
+  });
+
+  el.chkAnimations.addEventListener('change', () => {
+    state.animations = el.chkAnimations.checked;
+    saveSettings();
   });
 
   el.chkCross.addEventListener('change', async () => {
@@ -443,7 +447,7 @@ function renderTimer() {
   el.timerDisplay.textContent = `${m}:${s}`;
 }
 
-// ── Position deck ──────────────────────────────────────────────────
+// ── Decks ──────────────────────────────────────────────────────────
 
 function nextPosition() {
   if (!state.posDeck.length) {
@@ -451,8 +455,6 @@ function nextPosition() {
   }
   return state.posDeck.pop();
 }
-
-// ── Sample deck — no repeats until all items shown ─────────────────
 
 function eligibleSamples() {
   const filter = state.targetFilters[state.topic] || [];
@@ -468,6 +470,19 @@ function nextSample() {
     state.sampleDeck = shuffle([...pool]);
   }
   return state.sampleDeck.pop();
+}
+
+// ── Animation timer helpers ────────────────────────────────────────
+
+function after(ms, fn) {
+  const h = setTimeout(fn, ms);
+  state.animTimers.push(h);
+  return h;
+}
+
+function clearAnimTimers() {
+  state.animTimers.forEach(clearTimeout);
+  state.animTimers = [];
 }
 
 // ── Game flow ──────────────────────────────────────────────────────
@@ -505,12 +520,14 @@ function startGame() {
  * keepSample=true → repeat trial (same target word, tiles reshuffled, auto-prompted).
  */
 function beginTrial(keepSample = false) {
+  clearAnimTimers();
   state.trialNum++;
   state.trialErrors   = 0;
   state.prompted      = false;
   state.autoPrompted  = false;
   state.isRepeatTrial = keepSample;
   state.resolving     = false;
+  state.introPlaying  = false;
   state.trialStart    = Date.now();
 
   clearTimeout(state.autoPromptHandle);
@@ -520,9 +537,22 @@ function beginTrial(keepSample = false) {
   if (buildTrial(keepSample) === false) return;
   renderTrial();
 
+  if (state.animations) {
+    runIntro(() => {
+      state.introPlaying = false;
+      enableTiles();
+      state.trialStart = Date.now();   // pace from when the child can respond
+      schedulePrompts(keepSample);
+    });
+  } else {
+    schedulePrompts(keepSample);
+  }
+}
+
+function schedulePrompts(keepSample) {
   if (keepSample) {
     state.autoPrompted = true;
-    setTimeout(applyPrompt, 80);
+    after(80, applyPrompt);
   } else if (state.autoPromptEnabled) {
     if (state.promptDelay) {
       state.autoPromptHandle = setTimeout(() => {
@@ -532,7 +562,7 @@ function beginTrial(keepSample = false) {
       }, state.promptDelaySecs * 1000);
     } else {
       state.autoPrompted = true;
-      setTimeout(applyPrompt, 80);
+      after(80, applyPrompt);
     }
   }
 }
@@ -587,9 +617,10 @@ function fitSampleWord() {
 // ── The grandfather clock ──────────────────────────────────────────
 
 const CLOCK_RATIO = 1.95;   // clock height / clock width
+const MIN_TILE    = 50;
+const GAP         = 14;
 
 function clockMarkup() {
-  // 12 hour ticks around the dial
   let ticks = '';
   for (let h = 1; h <= 12; h++) {
     const a = (h / 12) * Math.PI * 2 - Math.PI / 2;
@@ -630,10 +661,6 @@ function clockMarkup() {
     <div class="clock-body">
       <div class="pendulum-window">
         <div class="pendulum"><span class="pendulum-bob"></span></div>
-        <div class="mouse">
-          <span class="mouse-ear"></span>
-          <span class="mouse-tail"></span>
-        </div>
       </div>
     </div>
 
@@ -645,15 +672,31 @@ function clockMarkup() {
 
 function renderTrial() {
   el.sampleWord.textContent = state.sampleLabel;
-  requestAnimationFrame(fitSampleWord);
 
   el.clockStage.innerHTML = clockMarkup();
-  setHourHand(state.clockHour, false);
+
+  const floor = document.createElement('div');
+  floor.className = 'stage-floor';
+  el.clockStage.appendChild(floor);
+
+  if (state.animations) {
+    const marquee = document.createElement('div');
+    marquee.className = 'rhyme-marquee';
+    marquee.innerHTML =
+      '<div class="rhyme-text">Hickory&nbsp;Dickory&nbsp;Dock &middot; the mouse ran up the clock &middot; ' +
+      'the clock struck one &middot; the mouse ran down &middot; Hickory&nbsp;Dickory&nbsp;Dock</div>';
+    el.clockStage.appendChild(marquee);
+    el.sampleSection.classList.add('intro-hide');
+  } else {
+    el.sampleSection.classList.remove('intro-hide');
+    requestAnimationFrame(fitSampleWord);
+  }
 
   state.tileImages.forEach((src, idx) => {
     const slot = document.createElement('div');
     slot.className = 'slot';
     slot.dataset.index = idx;
+    if (state.animations) slot.classList.add('pre-in');
 
     const wrapper = document.createElement('div');
     wrapper.className = 'tile-wrapper';
@@ -691,10 +734,15 @@ function renderTrial() {
   });
 
   layoutStage();
+  setMinuteHand(0, false);
+  setHourHandToCurrent(false);
 }
 
-// Compute stage geometry: ring radius, tile size, clock size, slot
-// positions, and the landing point at the top of the clock.
+/**
+ * Geometry: a large clock standing on the floor, tiles fanned in a 'U'
+ * up the left side, across the floor, and up the right side — never
+ * above the clock.
+ */
 function layoutStage() {
   if (!el.gameArea || el.gameArea.hasAttribute('hidden')) return;
   const n = state.arraySize;
@@ -702,119 +750,164 @@ function layoutStage() {
 
   const W = el.clockStage.clientWidth;
   const H = el.clockStage.clientHeight;
-  if (W < 40 || H < 40) return;
+  if (W < 60 || H < 60) return;
 
   const cx = W / 2;
-  const cy = H / 2;
-  const PAD = 14;
-  const GAP = 14;
-  const maxOuter = Math.min(W, H) / 2 - PAD;
+  const floorH = clamp(Math.round(H * 0.05), 14, 34);
+  const yFloor = H - floorH;
 
-  let tile = 0, R = 0, clockH = 0;
-  const upper = Math.min(186, Math.max(56, maxOuter * 0.95));
-  for (let t = upper; t >= 46; t -= 2) {
-    const r = maxOuter - t / 2;
-    if (r <= 10) continue;
-    const okSpacing = (n < 2) ? true
-      : (2 * r * Math.sin(Math.PI / n) >= t + GAP);
-    const innerR = r - t * 0.62 - GAP;
-    if (innerR <= 30) continue;
-    // largest clock (ratio = H/W) whose half-diagonal fits innerR
-    const hc = 2 * innerR / Math.sqrt(1 / (CLOCK_RATIO * CLOCK_RATIO) + 1);
-    if (okSpacing && hc >= 150) {
-      tile = t;
-      R = r;
-      clockH = Math.min(hc, H * 0.82, 470);
-      break;
-    }
+  const rightCount = Math.ceil(n / 2);
+  const leftCount  = n - rightCount;
+  const perSide    = Math.max(rightCount, leftCount, 1);
+
+  let chosen = null;
+  const maxClockH = yFloor - 6;
+  for (let ch = maxClockH; ch >= 150; ch -= 6) {
+    const cw     = ch / CLOCK_RATIO;
+    const bandW  = (W - cw) / 2 - 2 * GAP;
+    if (bandW < MIN_TILE) continue;
+    const clockTop = yFloor - ch;
+    const colTop   = clockTop + ch * 0.13;     // start at the clock's shoulder
+    const colSpan  = (yFloor - 4) - colTop;
+    if (colSpan < MIN_TILE) continue;
+    const tileByBand = Math.min(bandW * 0.94, 180);
+    const tileByCol  = (colSpan - (perSide - 1) * GAP) / perSide;
+    const tile = Math.min(tileByBand, tileByCol, 180);
+    if (tile < MIN_TILE) continue;
+    // Leave headroom so the climber perched on the crown isn't clipped.
+    if (clockTop < tile * 0.85 + 6) continue;
+    chosen = { ch, cw, clockTop, tile, bandW, colTop, colSpan };
+    break;
   }
 
-  if (!tile) {
-    // Tight fit fallback: smallest tiles, whatever clock still fits.
-    tile = 46;
-    R = Math.max(30, maxOuter - tile / 2);
-    const innerR = Math.max(20, R - tile * 0.62 - GAP);
-    clockH = Math.max(120, Math.min(
-      2 * innerR / Math.sqrt(1 / (CLOCK_RATIO * CLOCK_RATIO) + 1),
-      H * 0.82, 470));
+  if (!chosen) {
+    const tile = MIN_TILE;
+    const ch   = clamp(yFloor - (tile * 0.85 + 6), 150, maxClockH);
+    const cw   = ch / CLOCK_RATIO;
+    const clockTop = yFloor - ch;
+    const colTop   = clockTop + ch * 0.13;
+    chosen = {
+      ch, cw, clockTop, tile,
+      bandW: Math.max(MIN_TILE, (W - cw) / 2 - 2 * GAP),
+      colTop, colSpan: Math.max(tile, (yFloor - 4) - colTop),
+    };
   }
 
-  const clockW = clockH / CLOCK_RATIO;
-  el.clockStage.style.setProperty('--clock-h', `${Math.round(clockH)}px`);
-  el.clockStage.style.setProperty('--clock-w', `${Math.round(clockW)}px`);
+  const { ch, cw, clockTop, tile, bandW, colTop, colSpan } = chosen;
+
+  el.clockStage.style.setProperty('--clock-h', `${Math.round(ch)}px`);
+  el.clockStage.style.setProperty('--clock-w', `${Math.round(cw)}px`);
   el.clockStage.style.setProperty('--tile-sz', `${Math.round(tile)}px`);
+  el.clockStage.style.setProperty('--floor-h', `${floorH}px`);
 
   const clock = el.clockStage.querySelector('.clock');
   if (clock) {
     clock.style.left = `${cx}px`;
-    clock.style.top  = `${cy}px`;
+    clock.style.top  = `${clockTop}px`;
   }
 
-  // Landing point: just above the clock crown, centred.
-  const landX = cx;
-  const landY = cy - clockH / 2 - tile * 0.16;
+  // Place a vertical fan of tiles on one side.
+  const place = (count, side, startIdx, positions) => {
+    for (let k = 0; k < count; k++) {
+      const frac = count > 1 ? k / (count - 1) : 0;          // 0 = floor, 1 = shoulder
+      const y = (yFloor - tile / 2 - 2) - frac * (colSpan - tile);
+      const edgeX = cx + side * (cw / 2 + GAP + tile / 2);
+      const bow = (bandW - tile) * 0.5 * Math.sin(frac * Math.PI);
+      let x = edgeX + side * bow;
+      x = clamp(x, tile / 2 + 4, W - tile / 2 - 4);
+      positions[startIdx + k] = { x, y, side };
+    }
+  };
 
-  const slots = el.clockStage.querySelectorAll('.slot');
-  const positions = [];
-  slots.forEach((slot, i) => {
-    const theta = -Math.PI / 2 + (i / n) * Math.PI * 2;
-    const sx = cx + R * Math.cos(theta);
-    const sy = cy + R * Math.sin(theta);
+  const positions = new Array(n);
+  place(rightCount, +1, 0, positions);
+  place(leftCount,  -1, rightCount, positions);
+
+  el.clockStage.querySelectorAll('.slot').forEach(slot => {
+    const i = parseInt(slot.dataset.index, 10);
+    const p = positions[i];
     slot.style.width  = `${Math.round(tile)}px`;
     slot.style.height = `${Math.round(tile)}px`;
-    slot.style.left   = `${sx}px`;
-    slot.style.top    = `${sy}px`;
-    positions.push({ x: sx, y: sy });
+    slot.style.left   = `${p.x}px`;
+    slot.style.top    = `${p.y}px`;
   });
 
-  state.geom = { cx, cy, R, tile, clockH, clockW, landX, landY, positions, W, H };
+  state.geom = {
+    cx, cw, ch, clockTop, yFloor, tile, W, H, positions,
+  };
 }
 
-window.addEventListener('resize', () => { if (!state.resolving) layoutStage(); });
-window.addEventListener('orientationchange', () => { if (!state.resolving) layoutStage(); });
+window.addEventListener('resize', () => { if (!state.resolving && !state.introPlaying) layoutStage(); });
+window.addEventListener('orientationchange', () => { if (!state.resolving && !state.introPlaying) layoutStage(); });
 if (window.ResizeObserver && el.clockStage) {
-  new ResizeObserver(() => { if (!state.resolving) layoutStage(); }).observe(el.clockStage);
+  new ResizeObserver(() => { if (!state.resolving && !state.introPlaying) layoutStage(); }).observe(el.clockStage);
 }
 
-// ── Clock hands & cuckoo ───────────────────────────────────────────
+// ── Song-paced intro ───────────────────────────────────────────────
 
-function setHourHand(hour, animate) {
-  const hourHand = el.clockStage.querySelector('.hand-hour');
-  const minHand  = el.clockStage.querySelector('.hand-minute');
-  if (!hourHand) return;
-  hourHand.style.transition = animate
-    ? 'transform 0.9s cubic-bezier(.34,1.3,.5,1)' : 'none';
-  if (minHand) minHand.style.transition = animate
-    ? 'transform 0.9s cubic-bezier(.34,1.3,.5,1)' : 'none';
-  // hour 12 → 360deg (top); each hour = 30deg
-  hourHand.style.transform = `translateX(-50%) rotate(${hour * 30}deg)`;
-  if (minHand) minHand.style.transform = `translateX(-50%) rotate(${hour * 360}deg)`;
+function runIntro(done) {
+  state.introPlaying = true;
+  disableTiles();
+
+  const slots   = [...el.clockStage.querySelectorAll('.slot')];
+  const marquee = el.clockStage.querySelector('.rhyme-marquee');
+
+  if (marquee) requestAnimationFrame(() => marquee.classList.add('run'));
+
+  // Tiles fade in, in place, staggered across the rhyme.
+  const n = slots.length || 1;
+  const firstAt = 350;
+  const lastAt  = 2350;
+  slots.forEach((slot, i) => {
+    const t = firstAt + (n > 1 ? (i / (n - 1)) * (lastAt - firstAt) : 0);
+    after(t, () => slot.classList.remove('pre-in'));
+  });
+
+  // Marquee lifts off, then the target word drops in.
+  after(2550, () => { if (marquee) marquee.classList.add('lift'); });
+  after(2850, () => {
+    el.sampleSection.classList.remove('intro-hide');
+    requestAnimationFrame(fitSampleWord);
+  });
+  after(3000, () => {
+    if (marquee) marquee.remove();
+    done();
+  });
 }
 
-/** The clock strikes: doors open, cuckoo springs out and calls, the
- *  hour hand advances, the mouse scampers, the body gives a chime shake. */
-function strikeClock() {
+function disableTiles() {
+  el.clockStage.querySelectorAll('.slot').forEach(s => { s.style.pointerEvents = 'none'; });
+}
+
+function enableTiles() {
+  el.clockStage.querySelectorAll('.slot').forEach(s => { s.style.pointerEvents = ''; });
+}
+
+// ── Clock hands ────────────────────────────────────────────────────
+
+function setMinuteHand(deg, animate) {
+  const h = el.clockStage.querySelector('.hand-minute');
+  if (!h) return;
+  h.style.transition = animate ? 'transform 1.5s cubic-bezier(.45,.05,.35,1)' : 'none';
+  h.style.transform  = `translateX(-50%) rotate(${deg}deg)`;
+}
+
+function setHourHandToCurrent(animate) {
+  const h = el.clockStage.querySelector('.hand-hour');
+  if (!h) return;
+  h.style.transition = animate ? 'transform 0.45s cubic-bezier(.34,1.3,.5,1)' : 'none';
+  h.style.transform  = `translateX(-50%) rotate(${state.clockHour * 30}deg)`;
+}
+
+function advanceHour(animate) {
   state.clockHour = (state.clockHour % 12) + 1;
-  setHourHand(state.clockHour, true);
-
-  const clock = el.clockStage.querySelector('.clock');
-  if (clock) {
-    clock.classList.add('chiming');
-    setTimeout(() => clock.classList.remove('chiming'), 900);
-  }
-  el.clockStage.querySelector('.clock-crown')?.classList.add('open');
-  el.clockStage.querySelector('.mouse')?.classList.add('run');
-
-  setTimeout(() => {
-    el.clockStage.querySelector('.clock-crown')?.classList.remove('open');
-    el.clockStage.querySelector('.mouse')?.classList.remove('run');
-  }, 1500);
+  setHourHandToCurrent(animate);
 }
 
 // ── Tile interaction ───────────────────────────────────────────────
 
 function onTileClick(idx) {
-  if (!state.active || state.resolving) return;
+  if (!state.active || state.resolving || state.introPlaying) return;
   const slot = getSlot(idx);
   const tile = getTile(idx);
   if (!tile || tile.classList.contains('tile-disabled')) return;
@@ -827,15 +920,7 @@ function onTileClick(idx) {
   }
 }
 
-function onCorrectClick(slot, tile) {
-  state.resolving = true;
-  disableAllTiles();
-  clearPrompt();
-  if (state.timerRunning) { pauseTimer(); state.timerAutoPaused = true; }
-
-  clearTimeout(state.autoPromptHandle);
-  state.autoPromptHandle = null;
-
+function recordOutcome() {
   const elapsed = ((Date.now() - state.trialStart) / 1000).toFixed(1);
 
   let outcome;
@@ -862,6 +947,7 @@ function onCorrectClick(slot, tile) {
     outcome,
     settingsKey: [
       state.topic, state.arraySize,
+      state.animations        ? 1 : 0,
       state.representErrors   ? 1 : 0,
       state.errorless         ? 1 : 0,
       state.noErrorAnim       ? 1 : 0,
@@ -871,49 +957,112 @@ function onCorrectClick(slot, tile) {
       state.promptDelay ? state.promptDelaySecs : 0,
     ].join('|'),
   });
+  return outcome;
+}
 
-  const idx     = parseInt(slot.dataset.index, 10);
+function onCorrectClick(slot, tile) {
+  state.resolving = true;
+  disableAllTiles();
+  clearPrompt();
+  if (state.timerRunning) { pauseTimer(); state.timerAutoPaused = true; }
+  clearTimeout(state.autoPromptHandle);
+  state.autoPromptHandle = null;
+
+  recordOutcome();
+
+  if (!state.animations) {
+    tile.classList.add('chosen');
+    el.clockStage.querySelectorAll('.slot').forEach(s => {
+      if (s !== slot) s.classList.add('vanish');
+    });
+    advanceHour(false);
+    after(520, showNextBtn);
+    return;
+  }
+
+  playClimb(slot, tile);
+}
+
+/* The mouse drops to the floor, runs to the clock, climbs it as the
+   minute hand sweeps to 12, the cuckoo strikes, then it leaps down the
+   far side and scampers off.  ≈ 3.7s total. */
+function playClimb(slot, tile) {
+  const g   = state.geom;
+  const idx = parseInt(slot.dataset.index, 10);
   const wrapper = slot.querySelector('.tile-wrapper');
-  const g       = state.geom;
   if (!g || !wrapper) { showNextBtn(); return; }
 
-  const from = g.positions[idx] || { x: g.cx, y: g.cy };
-  const dx   = g.landX - from.x;
-  const dy   = g.landY - from.y;
-
-  tile.classList.add('chosen');
-
-  // 1) Float up to the top of the clock.
-  wrapper.style.transition = 'transform 0.75s cubic-bezier(.32,.9,.4,1)';
-  requestAnimationFrame(() => {
-    wrapper.style.transform = `translate(${dx}px, ${dy}px) scale(1.06)`;
+  // Everything else clears out of the way.
+  el.clockStage.querySelectorAll('.slot').forEach(s => {
+    if (s !== slot) s.classList.add('vanish');
   });
 
-  // 2) Perch + the clock strikes the next hour.
-  setTimeout(() => {
-    wrapper.classList.add('perched');
-    strikeClock();
-  }, 780);
+  const p0   = g.positions[idx] || { x: g.cx, y: g.yFloor, side: 1 };
+  const s    = p0.side >= 0 ? 1 : -1;          // climb the side it started on
+  const t    = g.tile;
+  const floorY   = g.yFloor - t / 2 - 2;
+  const sideX    = g.cx + s * (g.cw / 2 - t * 0.12);
+  const climbTopY = g.clockTop + t * 0.18;
+  const crownX   = g.cx;
+  const crownTopY = g.clockTop - t * 0.30;
+  const offX     = s > 0 ? -t * 2 : g.W + t * 2;     // run off the far side
 
-  // 3) The picture tumbles off the clock.
-  setTimeout(() => {
-    wrapper.classList.remove('perched');
-    const drop = (g.H - g.landY) + g.tile + 60;
-    const dir  = (dx >= 0 ? 1 : -1);
-    wrapper.style.transition =
-      'transform 0.85s cubic-bezier(.5,0,.9,.45), opacity 0.85s ease-in';
-    wrapper.style.transform =
-      `translate(${dx + dir * g.tile * 0.5}px, ${dy + drop}px) rotate(${dir * 70}deg) scale(0.85)`;
-    wrapper.style.opacity = '0';
-  }, 2400);
+  const move = (toX, toY, ms, easing, extra = '') => {
+    wrapper.style.transition = `transform ${ms}ms ${easing}`;
+    wrapper.style.transform  =
+      `translate(${(toX - p0.x).toFixed(1)}px, ${(toY - p0.y).toFixed(1)}px) ${extra}`;
+  };
 
-  // 4) Offer the next trial.
-  setTimeout(showNextBtn, 3320);
+  slot.style.zIndex = '30';
+  tile.classList.add('climber');
+
+  // A: drop to the floor
+  move(p0.x, floorY, 420, 'cubic-bezier(.5,0,.9,.5)');
+  after(420, () => wrapper.classList.add('squash'));
+  after(560, () => wrapper.classList.remove('squash'));
+
+  // B: scamper across the floor to the base of the clock
+  after(470, () => move(sideX, floorY, 560, 'cubic-bezier(.4,0,.5,1)', 'rotate(0deg)'));
+
+  // C: climb the clock while the minute hand sweeps to 12 (3 turns)
+  after(1060, () => {
+    move(sideX, climbTopY, 1500, 'cubic-bezier(.45,.05,.4,1)');
+    wrapper.classList.add('clinging');
+    setMinuteHand(1080, true);              // lands at 12 in 1.5s
+  });
+  after(2160, () => advanceHour(true));     // hour ticks over, completes ≈ 2560
+
+  // D: reach the very top — the cuckoo strikes (minute hand now on 12)
+  after(2560, () => {
+    wrapper.classList.remove('clinging');
+    move(crownX, crownTopY, 440, 'cubic-bezier(.34,1.4,.5,1)');
+    strikeCuckoo();
+  });
+
+  // E: leap down the far side and scamper off-screen
+  after(3060, () => {
+    move(offX, floorY, 740, 'cubic-bezier(.45,0,.75,.5)', 'rotate(' + (s * 26) + 'deg)');
+  });
+  after(3460, () => { wrapper.style.opacity = '0'; });
+
+  after(3760, showNextBtn);
+}
+
+function strikeCuckoo() {
+  const clock = el.clockStage.querySelector('.clock');
+  const crown = el.clockStage.querySelector('.clock-crown');
+  if (clock) {
+    clock.classList.add('chiming');
+    after(900, () => clock.classList.remove('chiming'));
+  }
+  if (crown) {
+    crown.classList.add('open');
+    after(820, () => crown.classList.remove('open'));
+  }
 }
 
 function onWrongClick(slot) {
   state.trialErrors++;
-
   clearTimeout(state.autoPromptHandle);
   state.autoPromptHandle = null;
 
@@ -970,7 +1119,7 @@ function clearPrompt() {
 }
 
 function onPromptButton() {
-  if (state.resolving) return;
+  if (state.resolving || state.introPlaying) return;
   state.prompted = true;
   applyPrompt();
 }
