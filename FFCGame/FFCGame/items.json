@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-19T23:29:43.412Z",
+  "generated": "2026-05-19T23:30:33.246Z",
   "promptDefaults": {
     "features": "Which one is {tag}?",
     "functions": "Which do you use to {tag}?",
@@ -474,7 +474,7 @@
     },
     {
       "id": "bed",
-      "img": "bed.svg",
+      "img": "bed.jpg",
       "label": "Bed",
       "groups": [
         "household_items"
