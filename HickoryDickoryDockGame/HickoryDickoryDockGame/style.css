@@ -359,6 +359,13 @@ body {
   flex-direction: column;
   align-items: center;
   flex-shrink: 0;
+  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(.34,1.4,.5,1);
+}
+/* Hidden until the rhyme intro hands off to the trial */
+#sample-section.intro-hide {
+  opacity: 0;
+  transform: translateY(-14px) scale(0.92);
+  pointer-events: none;
 }
 
 #sample-card {
@@ -400,9 +407,58 @@ body {
   flex: 1 1 auto;
   width: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 
-/* ── Circular picture slots ────────────────────────────────────────── */
+/* The floor the clock stands on */
+.stage-floor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--floor-h, 24px);
+  background:
+    linear-gradient(180deg, #b98a52 0%, #9c6f3c 38%, #80582d 100%);
+  border-top: 2px solid #6b4423;
+  box-shadow: inset 0 3px 6px rgba(0,0,0,0.18);
+  z-index: 1;
+}
+
+/* ── Song-paced rhyme marquee (intro) ──────────────────────────────── */
+.rhyme-marquee {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 16%;
+  height: 1.6em;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 35;
+  transition: transform 0.5s ease-in, opacity 0.5s ease-in;
+}
+.rhyme-marquee.lift {
+  transform: translateY(-180%);
+  opacity: 0;
+}
+.rhyme-text {
+  position: absolute;
+  left: 100%;
+  white-space: nowrap;
+  font-size: clamp(1.1rem, 3.4vw, 2.1rem);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: rgba(107,68,35,0.55);
+  text-shadow: 0 1px 0 rgba(255,255,255,0.4);
+}
+.rhyme-marquee.run .rhyme-text {
+  animation: hdd-marquee 3s linear forwards;
+}
+@keyframes hdd-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(calc(-100vw - 100%)); }
+}
+
+/* ── Picture slots (fanned around the clock) ───────────────────────── */
 .slot {
   position: absolute;
   width: var(--tile-sz);
@@ -410,8 +466,24 @@ body {
   transform: translate(-50%, -50%);
   cursor: pointer;
   z-index: 5;
+  transition: opacity 0.5s ease, filter 0.5s ease;
 }
 .slot[style*="pointer-events: none"] { cursor: default; }
+
+/* Fades in, in place, during the rhyme intro */
+.slot.pre-in {
+  opacity: 0;
+  filter: blur(3px);
+  pointer-events: none;
+}
+
+/* The other tiles clear away when the right one is tapped */
+.slot.vanish {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.55);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  pointer-events: none;
+}
 
 .tile-wrapper {
   width: 100%;
@@ -493,12 +565,22 @@ body {
 }
 .tile.chosen .tile-badge { opacity: 1; transform: scale(1); }
 
-/* Perched bob + glow while the clock strikes */
-@keyframes hdd-perch {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-7px); }
+/* ── Climber (the chosen tile that runs up the clock) ──────────────── */
+.tile.climber {
+  border-color: #2f855a;
+  box-shadow: 0 0 0 4px rgba(47,133,90,0.30), 0 10px 22px rgba(0,0,0,0.30);
 }
-.tile-wrapper.perched { animation: hdd-perch 0.7s ease-in-out infinite; }
+.tile.climber .tile-badge { opacity: 1; transform: scale(1); }
+
+/* Squash on landing */
+.tile-wrapper.squash .tile { transform: scaleY(0.82) scaleX(1.08); }
+
+/* Little scurrying wobble while climbing the case */
+@keyframes hdd-cling {
+  0%, 100% { rotate: -5deg; }
+  50%      { rotate: 5deg; }
+}
+.tile-wrapper.clinging .tile { animation: hdd-cling 0.34s ease-in-out infinite; }
 
 /* ── Wrong-answer feedback ─────────────────────────────────────────── */
 @keyframes hdd-jiggle {
@@ -548,16 +630,17 @@ body {
   position: absolute;
   width: var(--clock-w);
   height: var(--clock-h);
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
+  transform-origin: bottom center;
   z-index: 2;
-  filter: drop-shadow(0 10px 18px rgba(60,38,18,0.35));
+  filter: drop-shadow(0 12px 20px rgba(60,38,18,0.38));
 }
 .clock.chiming { animation: hdd-chime 0.9s ease; }
 @keyframes hdd-chime {
-  0%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
-  20%      { transform: translate(-50%, -50%) rotate(-1.4deg); }
-  45%      { transform: translate(-50%, -50%) rotate(1.4deg); }
-  70%      { transform: translate(-50%, -50%) rotate(-0.7deg); }
+  0%, 100% { transform: translateX(-50%) rotate(0deg); }
+  20%      { transform: translateX(-50%) rotate(-1.1deg); }
+  45%      { transform: translateX(-50%) rotate(1.1deg); }
+  70%      { transform: translateX(-50%) rotate(-0.55deg); }
 }
 
 /* Crown / pediment with the cuckoo door */
