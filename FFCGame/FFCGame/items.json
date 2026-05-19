@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-19T23:31:33.563Z",
+  "generated": "2026-05-19T23:31:52.308Z",
   "promptDefaults": {
     "features": "Which one is {tag}?",
     "functions": "Which do you use to {tag}?",
@@ -529,7 +529,7 @@
     },
     {
       "id": "clock",
-      "img": "clock.svg",
+      "img": "clock.png",
       "label": "Clock",
       "groups": [
         "household_items"
