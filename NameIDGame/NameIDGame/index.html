@@ -141,6 +141,28 @@
     </div>
   </section>
 
+  <!-- ── Pre-start blurb ──────────────────────────────────────────── -->
+  <style>
+    .game-intro { max-width: 720px; margin: 14px auto 6px; padding: 16px 20px; background: rgba(255,255,255,0.92); border: 1px solid rgba(0,0,0,0.08); border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,0.04); color: #2d3a1f; font-size: 14px; line-height: 1.5; font-family: 'Segoe UI', Inter, -apple-system, sans-serif; }
+    .game-intro h2 { font-size: 15px; font-weight: 700; margin: 0 0 8px; color: #1a1f14; }
+    .game-intro p { margin: 0 0 8px; }
+    .game-intro ul { margin: 6px 0 6px 20px; padding: 0; }
+    .game-intro li { margin-bottom: 3px; }
+    .game-intro .tip { margin-top: 8px; color: #5a6b4a; font-size: 13px; }
+  </style>
+  <section class="game-intro" id="game-intro" aria-label="How this game works">
+    <h2>Receptive Words — find-by-name</h2>
+    <p>The target word is shown (and spoken). The learner picks the matching picture from the array. Builds receptive language and listener responding.</p>
+    <ul>
+      <li><strong>Topic</strong> — pick an image category.</li>
+      <li><strong>Array Size</strong> — number of choices shown (1–10). Start with 2–3 for new learners.</li>
+      <li><strong>Targets</strong> — open the Targets panel to pick which words can be the correct answer.</li>
+      <li><strong>⚙ Settings</strong> — errorless, re-present errors, prompts, distractor sources.</li>
+    </ul>
+    <p class="tip">Set Topic, Array Size, and Targets, then tap <strong>Start</strong>.</p>
+  </section>
+  <script>(function(){var b=document.getElementById('btn-start');if(b)b.addEventListener('click',function(){var i=document.getElementById('game-intro');if(i)i.hidden=true;},{once:true});})();</script>
+
   <!-- ── Game area (hidden until Start) ───────────────────────────── -->
   <main id="game-area" hidden>
 
