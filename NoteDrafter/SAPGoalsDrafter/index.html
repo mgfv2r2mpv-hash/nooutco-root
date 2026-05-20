@@ -186,7 +186,14 @@ Style rules — follow exactly:
 - No sentence starting with "It is important to", "Rationale:", "This ensures", "Note that", or similar
 - Lesson Set Up: actual setup steps only — no reminders about data sheets or timers
 - SD examples: neutral third-person phrasing ("What is the bear doing?" not "What are you doing?")
-- Keep every section as short as operationally complete allows`;
+- Keep every section as short as operationally complete allows
+
+Terminology standards (apply rigorously — these are non-negotiable for BCBA-written procedures):
+- Reinforcement is contingent on behavior, never delivered to people. Never write "[CLIENT] is reinforced" or "reinforce [CLIENT]." Write "deliver reinforcement contingent on [target behavior]," "reinforce [the target response]," or "[behavior] is reinforced on [schedule]."
+- People engage in behaviors; behaviors are what get reinforced, prompted, faded, shaped, or extinguished. Do not conflate the two.
+- Use precise behavior-analytic verbs and procedure names (prompt, fade, model, shape, chain, present the SD, deliver/withhold reinforcement, run a probe, conduct a trial, mass trial, intersperse). Do not substitute loose synonyms ("reward," "encourage," "motivate") and do not write to sound sophisticated.
+- Name procedures specifically (e.g., errorless teaching, DRO, DRA, differential reinforcement, time delay, BST) rather than generic phrases like "support."
+- Plain operational language only. No filler, no value-laden phrasing.
 
     function buildUserPrompt(goal, sapSpecs) {
       return `Treatment Goal:\n${goal}\n\nSAP Specifications:\n${sapSpecs.trim() || "(No additional specifications provided — apply standard best-practice defaults.)"}`;
@@ -194,6 +201,11 @@ Style rules — follow exactly:
 
     function buildGeneratePrompt(goal, sapSpecs) {
       const sys = `You are a BCBA writing a Service Authorization Plan (SAP) for behavior technicians. Write concise, operational procedures — no rationale, no prose padding. Staff are trained.
+
+Terminology standards (apply rigorously):
+- Reinforcement is contingent on behavior, never delivered to people. Never write "[CLIENT] is reinforced." Write "deliver reinforcement contingent on [behavior]," "reinforce [target response]," or "[behavior] is reinforced on [schedule]."
+- People engage in behaviors; behaviors are what get reinforced, prompted, faded, shaped, or extinguished. Do not conflate the two.
+- Use precise behavior-analytic verbs and named procedures (prompt, fade, model, shape, chain, present the SD, errorless teaching, DRO, DRA, time delay, BST). Do not substitute loose synonyms ("reward," "encourage," "motivate"). Do not write to sound sophisticated — plain operational language only.
 
 Given a treatment goal and SAP specifications, return exactly the following labeled sections (label on its own line, content below, blank line before next label). No preamble, no commentary after the last section.
 
