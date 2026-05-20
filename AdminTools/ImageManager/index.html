@@ -240,6 +240,79 @@ body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-he
   border: 1px solid #3b82f6; background: #0f172a; color: #e2e8f0; font-size: .85rem;
 }
 .dup-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+
+/* ── Batch Mode ── */
+.btn-batch-toggle {
+  margin-left: auto; padding: 0.35rem 0.9rem; border-radius: 6px; font-size: 0.82rem;
+  border: 1px solid #334155; background: #1e293b; color: #7dd3fc; cursor: pointer;
+  white-space: nowrap; transition: background 0.15s;
+}
+.btn-batch-toggle:hover { background: #1e3a5f; }
+.btn-batch-toggle.active { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+.btn-batch-toggle.active:hover { background: #6d28d9; }
+
+#batch-panel {
+  position: fixed; right: 0; top: 0; bottom: 0; width: 320px;
+  background: #0f172a; border-left: 2px solid #334155; z-index: 600;
+  display: flex; flex-direction: column; overflow: hidden;
+  transform: translateX(100%); transition: transform 0.25s ease;
+}
+#batch-panel.open { transform: translateX(0); }
+.batch-panel-header {
+  padding: 0.9rem 1rem 0.75rem; border-bottom: 1px solid #1e293b;
+  display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;
+}
+.batch-panel-title { font-size: 0.92rem; font-weight: 600; color: #e2e8f0; flex: 1; }
+.batch-count-badge {
+  background: #7c3aed; color: #fff; font-size: 0.7rem; padding: 1px 7px;
+  border-radius: 10px; font-weight: 700; min-width: 20px; text-align: center;
+}
+.batch-panel-close {
+  background: none; border: none; color: #64748b; font-size: 1.1rem;
+  cursor: pointer; padding: 2px 4px; line-height: 1;
+}
+.batch-panel-close:hover { color: #fff; }
+.batch-item-list {
+  flex: 1; overflow-y: auto; padding: 0.6rem;
+  display: flex; flex-direction: column; gap: 0.4rem;
+}
+.batch-empty { text-align: center; padding: 3rem 1rem; color: #475569; font-size: 0.82rem; line-height: 1.6; }
+.batch-item {
+  background: #1e293b; border: 1px solid #334155; border-radius: 8px;
+  padding: 0.45rem 0.6rem; display: flex; align-items: center; gap: 0.5rem;
+}
+.batch-item.status-running { border-color: #3b82f6; }
+.batch-item.status-done { border-color: #166534; }
+.batch-item.status-error { border-color: #7f1d1d; }
+.batch-item-thumb {
+  width: 38px; height: 38px; object-fit: contain; background: #2a2a2a;
+  border-radius: 4px; flex-shrink: 0;
+}
+.batch-item-info { flex: 1; min-width: 0; }
+.batch-item-label { font-size: 0.78rem; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.batch-item-op { font-size: 0.68rem; color: #64748b; margin-top: 1px; }
+.batch-item-msg { font-size: 0.7rem; margin-top: 2px; }
+.batch-item-msg.ok { color: #86efac; }
+.batch-item-msg.err { color: #f87171; }
+.batch-item-msg.run { color: #93c5fd; }
+.batch-item-remove {
+  background: none; border: none; color: #475569; font-size: 0.85rem;
+  cursor: pointer; padding: 2px; line-height: 1; flex-shrink: 0;
+}
+.batch-item-remove:hover { color: #f87171; }
+.batch-panel-footer { padding: 0.6rem; border-top: 1px solid #1e293b; flex-shrink: 0; }
+.batch-clear-done {
+  display: block; width: 100%; padding: 0.3rem; border-radius: 6px; border: none;
+  background: transparent; color: #475569; font-size: 0.75rem; cursor: pointer;
+  margin-bottom: 0.4rem; text-align: center;
+}
+.batch-clear-done:hover { color: #94a3b8; }
+.btn-batch-submit {
+  display: block; width: 100%; padding: 0.55rem; border-radius: 8px; border: none;
+  background: #7c3aed; color: #fff; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+}
+.btn-batch-submit:hover { background: #6d28d9; }
+.btn-batch-submit:disabled { background: #1e293b; color: #475569; cursor: default; }
 </style>
 </head>
 <body>
@@ -260,6 +333,7 @@ body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-he
     <a class="btn-back" href="../../">← Games</a>
     <div class="header-divider"></div>
     <div class="game-tabs" id="game-tabs"></div>
+    <button class="btn-batch-toggle" id="batch-mode-btn">⚡ Batch</button>
   </div>
   <div id="main-content"><p class="loading">Loading…</p></div>
 </div>
@@ -335,6 +409,9 @@ let activeGame = GAMES[0];
 let gameData = {}; // { [gameId]: { manifest | fpgPeople } }
 let activeFolder = null;
 let detailContext = null; // { gameId, folder, filename, person? }
+let batchMode    = false;
+let batchQueue   = []; // { id, label, opLabel, thumbSrc, op, onSuccess, status, errorMsg }
+let batchRunning = false;
 
 // ─── Auth / Gear ──────────────────────────────────────────────────────────────
 
@@ -842,10 +919,8 @@ function buildAddForm(formType) {
         const choice = await showDuplicateModal(filename, existingFilenames);
         if (choice.action === 'cancel') return;
         if (choice.action === 'rename' || choice.action === 'keep-both') filename = choice.newName;
-        // 'overwrite' keeps the same filename
       }
 
-      setStatus(status, '', 'Saving…');
       let imgPayload;
       if (file) {
         setStatus(status, '', 'Reading file…');
@@ -854,28 +929,41 @@ function buildAddForm(formType) {
       } else {
         imgPayload = { imageUrl: url };
       }
-      try {
-        const res = await adminPost('save-image', {
-          game: activeGame.id, folder: activeFolder, filename, ...imgPayload,
-        });
-        if (!res) { setStatus(status, '', ''); return; }
-        if (res.ok) {
-          const j = await res.json().catch(() => ({}));
-          const savedFilename = j.filename || filename;
-          const path = `_Resources/_imgSource/${activeFolder}/${savedFilename}`;
-          const d = gameData[activeGame.id];
-          if (!d.manifest.images[activeFolder]) d.manifest.images[activeFolder] = [];
-          if (!d.manifest.images[activeFolder].includes(path)) d.manifest.images[activeFolder].push(path);
-          const grid = document.getElementById('image-grid');
-          if (grid) grid.appendChild(buildCard({ type: 'manifest', path, folder: activeFolder }));
-          setStatus(status, 'ok', 'Saved!');
-        } else {
-          const j = await res.json().catch(() => ({}));
-          setStatus(status, 'err', j.error || 'Error ' + res.status);
+
+      const capturedGameId = activeGame.id, capturedFolder = activeFolder, capturedFilename = filename;
+      const op = { type: 'save-image', game: capturedGameId, folder: capturedFolder, filename: capturedFilename, ...imgPayload };
+      const onSuccess = (j) => {
+        const savedFilename = j.filename || capturedFilename;
+        const path = `_Resources/_imgSource/${capturedFolder}/${savedFilename}`;
+        const d = gameData[capturedGameId];
+        if (d?.manifest) {
+          if (!d.manifest.images[capturedFolder]) d.manifest.images[capturedFolder] = [];
+          if (!d.manifest.images[capturedFolder].includes(path)) d.manifest.images[capturedFolder].push(path);
         }
-      } catch (err) {
-        setStatus(status, 'err', err.message || 'Network error');
+        const grid = document.getElementById('image-grid');
+        if (grid && activeGame.id === capturedGameId && activeFolder === capturedFolder) {
+          grid.appendChild(buildCard({ type: 'manifest', path, folder: capturedFolder }));
+        }
+      };
+
+      if (batchMode) {
+        enqueue({ id: crypto.randomUUID(), label: displayName, opLabel: `Add to ${capturedFolder.replace(/^T_/, '').replace(/_/g, ' ')}`, thumbSrc: file ? URL.createObjectURL(file) : url, op, onSuccess });
+        setStatus(status, 'ok', '↑ Queued');
+        form.querySelector('[name=display-name]').value = '';
+        form.querySelector('[name=url]').value = '';
+        form.querySelector('[name=file-upload]').value = '';
+        return;
       }
+
+      setStatus(status, '', 'Saving…');
+      try {
+        const res = await adminPost('batch', { operations: [op] });
+        if (!res) { setStatus(status, '', ''); return; }
+        const data = await res.json().catch(() => ({}));
+        const result = data.results?.[0] || {};
+        if (res.ok && result.ok) { onSuccess(result); setStatus(status, 'ok', 'Saved!'); }
+        else setStatus(status, 'err', result.error || data.error || 'Error ' + res.status);
+      } catch (err) { setStatus(status, 'err', err.message || 'Network error'); }
     });
     const urlInput = form.querySelector('[name=url]');
     const wikiQueryInput = form.querySelector('[name=wiki-query]');
@@ -953,10 +1041,7 @@ function buildAddForm(formType) {
       if (existingFilenames.includes(filename)) {
         const choice = await showDuplicateModal(filename, existingFilenames);
         if (choice.action === 'cancel') return;
-        if (choice.action === 'rename' || choice.action === 'keep-both') {
-          filename = choice.newName;
-        }
-        // 'overwrite' keeps the same filename
+        if (choice.action === 'rename' || choice.action === 'keep-both') filename = choice.newName;
       }
 
       let imgPayload;
@@ -967,31 +1052,33 @@ function buildAddForm(formType) {
       } else {
         imgPayload = { imageUrl: url };
       }
-      setStatus(status, '', 'Saving image…');
-      try {
-        const imgRes = await adminPost('ffc-save-image', { id: itemId, filename, ...imgPayload });
-        if (!imgRes) { setStatus(status, '', ''); return; }
-        if (!imgRes.ok) {
-          const j = await imgRes.json().catch(() => ({}));
-          setStatus(status, 'err', j.error || 'Image error ' + imgRes.status);
-          return;
-        }
-        setStatus(status, '', 'Saving item record…');
-        const newItem = { id: itemId, img: filename, label, groups: [], features: [], functions: [], classes: [] };
-        d.items.push(newItem);
-        const itemsRes = await adminPost('ffc-save-items', { items: d });
-        if (!itemsRes) { setStatus(status, '', ''); return; }
-        if (itemsRes.ok) {
-          setStatus(status, 'ok', 'Saved! Use FFC Manager to add tags.');
-          const grid = document.getElementById('image-grid');
-          if (grid) grid.appendChild(buildCard({ type: 'ffc', item: newItem }));
-        } else {
-          const j = await itemsRes.json().catch(() => ({}));
-          setStatus(status, 'err', j.error || 'Error ' + itemsRes.status);
-        }
-      } catch (err) {
-        setStatus(status, 'err', err.message || 'Network error');
+
+      const newItem = { id: itemId, img: filename, label, groups: [], features: [], functions: [], classes: [] };
+      const op = { type: 'ffc-save', id: itemId, filename, ...imgPayload, newItem };
+      const onSuccess = (j) => {
+        const finalItem = { ...newItem, img: j.filename || filename };
+        d.items.push(finalItem);
+        document.getElementById('image-grid')?.appendChild(buildCard({ type: 'ffc', item: finalItem }));
+      };
+
+      if (batchMode) {
+        enqueue({ id: crypto.randomUUID(), label, opLabel: 'Add FFC item', thumbSrc: file ? URL.createObjectURL(file) : url, op, onSuccess });
+        setStatus(status, 'ok', '↑ Queued');
+        labelInput.value = ''; itemIdInput.value = '';
+        form.querySelector('[name=url]').value = '';
+        form.querySelector('[name=file-upload]').value = '';
+        return;
       }
+
+      setStatus(status, '', 'Saving…');
+      try {
+        const res = await adminPost('batch', { operations: [op] });
+        if (!res) { setStatus(status, '', ''); return; }
+        const data = await res.json().catch(() => ({}));
+        const result = data.results?.[0] || {};
+        if (res.ok && result.ok) { onSuccess(result); setStatus(status, 'ok', 'Saved! Use FFC Manager to add tags.'); }
+        else setStatus(status, 'err', result.error || data.error || 'Error ' + res.status);
+      } catch (err) { setStatus(status, 'err', err.message || 'Network error'); }
     });
     const urlInput = form.querySelector('[name=url]');
     const wikiQueryInput = form.querySelector('[name=wiki-query]');
@@ -1060,40 +1147,45 @@ function buildAddForm(formType) {
       } else {
         imgPayload = { imageUrl: url };
       }
-      setStatus(status, '', 'Saving image…');
-      try {
-        const imgRes = await adminPost('intraverbal-save-image', { id: itemId, filename, ...imgPayload });
-        if (!imgRes) { setStatus(status, '', ''); return; }
-        if (!imgRes.ok) {
-          const j = await imgRes.json().catch(() => ({}));
-          setStatus(status, 'err', j.error || 'Image error ' + imgRes.status);
-          return;
-        }
-        setStatus(status, '', 'Saving item record…');
-        const j = await imgRes.json().catch(() => ({}));
-        if (j.filename) {
+
+      const prevCount = (item.images || []).length;
+      const op = { type: 'iv-save', id: itemId, filename, ...imgPayload };
+      const onSuccess = (j) => {
+        const fn = j.filename;
+        if (fn) {
           if (!item.images) item.images = [];
-          item.images.push(j.filename);
+          item.images.push(fn);
+          const grid = document.getElementById('image-grid');
+          if (grid && activeGame.id === 'IntraverbalGame') {
+            grid.appendChild(buildCard({ type: 'intraverbal', item, imagePath: fn, imageIdx: prevCount }));
+          }
         }
-        const itemsRes = await adminPost('intraverbal-save-items', { items: d });
-        if (!itemsRes) { setStatus(status, '', ''); return; }
-        if (itemsRes.ok) {
+      };
+
+      if (batchMode) {
+        enqueue({ id: crypto.randomUUID(), label: item.label, opLabel: `Add image (${itemId})`, thumbSrc: file ? URL.createObjectURL(file) : url, op, onSuccess });
+        setStatus(status, 'ok', '↑ Queued');
+        form.querySelector('[name=item-id]').value = '';
+        form.querySelector('[name=url]').value = '';
+        form.querySelector('[name=file-upload]').value = '';
+        return;
+      }
+
+      setStatus(status, '', 'Saving…');
+      try {
+        const res = await adminPost('batch', { operations: [op] });
+        if (!res) { setStatus(status, '', ''); return; }
+        const data = await res.json().catch(() => ({}));
+        const result = data.results?.[0] || {};
+        if (res.ok && result.ok) {
+          onSuccess(result);
           setStatus(status, 'ok', 'Saved!');
           form.querySelector('[name=item-id]').value = '';
           form.querySelector('[name=url]').value = '';
-          const grid = document.getElementById('image-grid');
-          if (grid) {
-            (item.images || []).forEach((img, idx) => {
-              grid.appendChild(buildCard({ type: 'intraverbal', item, imagePath: img, imageIdx: idx }));
-            });
-          }
         } else {
-          const j = await itemsRes.json().catch(() => ({}));
-          setStatus(status, 'err', j.error || 'Error ' + itemsRes.status);
+          setStatus(status, 'err', result.error || data.error || 'Error ' + res.status);
         }
-      } catch (err) {
-        setStatus(status, 'err', err.message || 'Network error');
-      }
+      } catch (err) { setStatus(status, 'err', err.message || 'Network error'); }
     });
     const urlInput = form.querySelector('[name=url]');
     const wikiQueryInput = form.querySelector('[name=wiki-query]');
@@ -1151,11 +1243,8 @@ function buildAddForm(formType) {
         const choice = await showDuplicateModal(name, existingNames, true);
         if (choice.action === 'cancel') return;
         if (choice.action === 'rename' || choice.action === 'keep-both') {
-          name = choice.newName;
-          form.querySelector('[name=name]').value = name;
-        } else if (choice.action === 'overwrite') {
-          isOverwrite = true;
-        }
+          name = choice.newName; form.querySelector('[name=name]').value = name;
+        } else if (choice.action === 'overwrite') { isOverwrite = true; }
       }
 
       const facts = factsRaw ? factsRaw.split('\n').map(s => s.trim()).filter(Boolean) : [];
@@ -1168,28 +1257,33 @@ function buildAddForm(formType) {
         imgPayload = { imageUrl: url };
       }
       const ext = file ? extFromMime(file.type) : '.jpg';
+      const capturedName = name, capturedIsOverwrite = isOverwrite;
+      const op = {
+        type: 'save-image', game: 'FamousPersonGame', folder: 'images',
+        filename: nameToSlug(capturedName) + ext, ...imgPayload,
+        ...(capturedIsOverwrite ? { personName: capturedName } : { personMeta: { name: capturedName, years, emoji, tag, facts } }),
+      };
+      const onSuccess = (j) => {
+        const newPerson = { name: capturedName, years, emoji, tag, img: j.localPath || url, facts };
+        gameData['FamousPersonGame'].fpgPeople.push(newPerson);
+        document.getElementById('image-grid')?.appendChild(buildCard({ type: 'fpg', person: newPerson }));
+      };
+
+      if (batchMode) {
+        enqueue({ id: crypto.randomUUID(), label: capturedName, opLabel: capturedIsOverwrite ? 'Update Famous Person' : 'Add Famous Person', thumbSrc: file ? URL.createObjectURL(file) : url, op, onSuccess });
+        setStatus(status, 'ok', '↑ Queued');
+        return;
+      }
+
       setStatus(status, '', 'Saving…');
       try {
-        const res = await adminPost('save-image', {
-          game: 'FamousPersonGame', folder: 'images', filename: nameToSlug(name) + ext,
-          ...imgPayload,
-          ...(isOverwrite ? { personName: name } : { personMeta: { name, years, emoji, tag, facts } }),
-        });
+        const res = await adminPost('batch', { operations: [op] });
         if (!res) { setStatus(status, '', ''); return; }
-        if (res.ok) {
-          const j = await res.json().catch(() => ({}));
-          setStatus(status, 'ok', 'Saved!');
-          const newPerson = { name, years, emoji, tag, img: j.localPath || url, facts };
-          gameData['FamousPersonGame'].fpgPeople.push(newPerson);
-          const grid = document.getElementById('image-grid');
-          if (grid) grid.appendChild(buildCard({ type: 'fpg', person: newPerson }));
-        } else {
-          const j = await res.json().catch(() => ({}));
-          setStatus(status, 'err', j.error || 'Error ' + res.status);
-        }
-      } catch (err) {
-        setStatus(status, 'err', err.message || 'Network error');
-      }
+        const data = await res.json().catch(() => ({}));
+        const result = data.results?.[0] || {};
+        if (res.ok && result.ok) { onSuccess(result); setStatus(status, 'ok', 'Saved!'); }
+        else setStatus(status, 'err', result.error || data.error || 'Error ' + res.status);
+      } catch (err) { setStatus(status, 'err', err.message || 'Network error'); }
     });
     const urlInput = form.querySelector('[name=url]');
     const wikiQueryInput = form.querySelector('[name=wiki-query]');
@@ -1544,65 +1638,64 @@ dpSaveBtn.addEventListener('click', async () => {
   } else {
     imgPayload = { imageUrl: url };
   }
-  setStatus(dpSaveStatus, '', 'Saving…');
 
-  let body;
-  let endpoint = 'save-image';
+  const newThumbSrc = file ? URL.createObjectURL(file) : url;
+  let op, label, onSuccess;
+
   if (ctx.type === 'ffc') {
-    body = { id: ctx.item.id, filename: ctx.item.img, ...imgPayload };
-    endpoint = 'ffc-save-image';
+    op = { type: 'ffc-save', id: ctx.item.id, filename: ctx.item.img, ...imgPayload };
+    label = ctx.item.label;
+    onSuccess = (j) => {
+      if (j.filename) {
+        ctx.item.img = j.filename;
+        dpThumb.src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + j.filename;
+      }
+    };
   } else if (ctx.type === 'intraverbal') {
     const existingFilename = ctx.item.images?.[ctx.imageIdx] || (ctx.item.id + '.jpg');
-    body = { id: ctx.item.id, filename: existingFilename, ...imgPayload };
-    endpoint = 'intraverbal-save-image';
-  } else if (ctx.type === 'fpg') {
-    const p = ctx.person;
-    body = { game: 'FamousPersonGame', folder: 'images', filename: p.img.split('/').pop(), ...imgPayload, personName: p.name };
-  } else {
-    const filename = ctx.path.split('/').pop();
-    body = { game: ctx.gameId, folder: ctx.folder, filename, ...imgPayload };
-  }
-
-  try {
-    const res = await adminPost(endpoint, body);
-    if (detailContext !== ctx) return;
-    if (!res) { setStatus(dpSaveStatus, '', ''); return; }
-    if (res.ok) {
-      const j = await res.json().catch(() => ({}));
-      if (ctx.type === 'ffc' && j.localPath) {
-        ctx.item.img = j.localPath.split('/').pop();
-        dpThumb.src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + ctx.item.img;
-        const d = gameData['FFCGame'].ffcData;
-        const saveRes = await adminPost('ffc-save-items', { items: d });
-        if (saveRes && saveRes.ok) {
-          dpUrlInput.value = '';
-          document.getElementById('dp-file-input').value = '';
-        }
-        setStatus(dpSaveStatus, saveRes && saveRes.ok ? 'ok' : 'err',
-          saveRes && saveRes.ok ? 'Saved!' : 'Image saved but record update failed');
-      } else if (ctx.type === 'intraverbal' && (j.filename || j.localPath)) {
-        const fn = j.filename || j.localPath.split('/').pop();
+    op = { type: 'iv-save', id: ctx.item.id, filename: existingFilename, imageIdx: ctx.imageIdx, ...imgPayload };
+    label = ctx.item.label;
+    onSuccess = (j) => {
+      const fn = j.filename;
+      if (fn) {
         ctx.item.images[ctx.imageIdx] = fn;
         dpThumb.src = '../../IntraverbalGame/IntraverbalGame/_Resources/_imgSource/items/' + fn;
-        const d = gameData['IntraverbalGame'].ivData;
-        const saveRes = await adminPost('intraverbal-save-items', { items: d });
-        if (saveRes && saveRes.ok) {
-          dpUrlInput.value = '';
-          document.getElementById('dp-file-input').value = '';
-        }
-        setStatus(dpSaveStatus, saveRes && saveRes.ok ? 'ok' : 'err',
-          saveRes && saveRes.ok ? 'Saved!' : 'Image saved but record update failed');
-      } else {
-        if (file) dpThumb.src = URL.createObjectURL(file);
-        else if (url) dpThumb.src = url;
-        if (ctx.type === 'fpg' && j.localPath) ctx.person.img = j.localPath;
-        setStatus(dpSaveStatus, 'ok', 'Saved!');
-        dpUrlInput.value = '';
-        document.getElementById('dp-file-input').value = '';
       }
+    };
+  } else if (ctx.type === 'fpg') {
+    const p = ctx.person;
+    op = { type: 'save-image', game: 'FamousPersonGame', folder: 'images', filename: p.img.split('/').pop(), ...imgPayload, personName: p.name };
+    label = p.name;
+    onSuccess = (j) => { if (j.localPath) { ctx.person.img = j.localPath; dpThumb.src = newThumbSrc; } };
+  } else {
+    const filename = ctx.path.split('/').pop();
+    op = { type: 'save-image', game: ctx.gameId, folder: ctx.folder, filename, ...imgPayload };
+    label = filename;
+    onSuccess = () => { dpThumb.src = newThumbSrc; };
+  }
+
+  if (batchMode) {
+    enqueue({ id: crypto.randomUUID(), label, opLabel: 'Replace image', thumbSrc: newThumbSrc, op, onSuccess });
+    setStatus(dpSaveStatus, 'ok', '↑ Queued');
+    dpUrlInput.value = '';
+    dpFileInput.value = '';
+    return;
+  }
+
+  setStatus(dpSaveStatus, '', 'Saving…');
+  try {
+    const res = await adminPost('batch', { operations: [op] });
+    if (detailContext !== ctx) return;
+    if (!res) { setStatus(dpSaveStatus, '', ''); return; }
+    const data = await res.json().catch(() => ({}));
+    const result = data.results?.[0] || {};
+    if (res.ok && result.ok) {
+      onSuccess(result);
+      dpUrlInput.value = '';
+      dpFileInput.value = '';
+      setStatus(dpSaveStatus, 'ok', 'Saved!');
     } else {
-      const j = await res.json().catch(() => ({}));
-      setStatus(dpSaveStatus, 'err', j.error || 'Error ' + res.status);
+      setStatus(dpSaveStatus, 'err', result.error || data.error || 'Error ' + res.status);
     }
   } catch (err) {
     setStatus(dpSaveStatus, 'err', err.message || 'Network error');
@@ -1650,65 +1743,58 @@ dpDisplayNameSaveBtn.addEventListener('click', async () => {
   if (!detailContext) return;
   const ctx = detailContext;
   const displayName = dpDisplayNameInput.value.trim();
+
+  if ((ctx.type === 'ffc' || ctx.type === 'intraverbal') && !displayName) {
+    setStatus(dpDisplayNameStatus, 'err', 'Label cannot be empty.'); return;
+  }
+  if (ctx.type === 'fpg' && !displayName) {
+    setStatus(dpDisplayNameStatus, 'err', 'Name cannot be empty.'); return;
+  }
+
+  let op, label, onSuccess;
+  if (ctx.type === 'manifest') {
+    op = { type: 'save-display-name', game: ctx.gameId, localPath: ctx.path, displayName };
+    label = ctx.path.split('/').pop();
+    onSuccess = () => {
+      const manifest = gameData[ctx.gameId]?.manifest;
+      if (manifest) {
+        if (!manifest.displayNames) manifest.displayNames = {};
+        if (displayName) manifest.displayNames[ctx.path] = displayName;
+        else delete manifest.displayNames[ctx.path];
+      }
+    };
+  } else if (ctx.type === 'ffc') {
+    op = { type: 'save-display-name', game: 'FFCGame', itemId: ctx.item.id, displayName };
+    label = ctx.item.label;
+    onSuccess = () => { ctx.item.label = displayName; dpFilename.textContent = displayName; };
+  } else if (ctx.type === 'intraverbal') {
+    op = { type: 'save-display-name', game: 'IntraverbalGame', itemId: ctx.item.id, displayName };
+    label = ctx.item.label;
+    onSuccess = () => { ctx.item.label = displayName; dpFilename.textContent = displayName; };
+  } else if (ctx.type === 'fpg') {
+    op = { type: 'save-display-name', game: 'FamousPersonGame', personName: ctx.person.name, displayName };
+    label = ctx.person.name;
+    onSuccess = () => { ctx.person.name = displayName; dpFilename.textContent = displayName; };
+  }
+
+  if (batchMode) {
+    enqueue({ id: crypto.randomUUID(), label, opLabel: displayName ? `Label: "${displayName}"` : 'Clear label', thumbSrc: dpThumb.src, op, onSuccess });
+    setStatus(dpDisplayNameStatus, 'ok', '↑ Queued');
+    return;
+  }
+
   setStatus(dpDisplayNameStatus, '', 'Saving…');
   try {
-    let res;
-    if (ctx.type === 'manifest') {
-      res = await adminPost('save-display-name', { game: ctx.gameId, localPath: ctx.path, displayName });
-      if (detailContext !== ctx) return;
-      if (!res) { setStatus(dpDisplayNameStatus, '', ''); return; }
-      if (res.ok) {
-        const manifest = gameData[ctx.gameId]?.manifest;
-        if (manifest) {
-          if (!manifest.displayNames) manifest.displayNames = {};
-          if (displayName) manifest.displayNames[ctx.path] = displayName;
-          else delete manifest.displayNames[ctx.path];
-        }
-        setStatus(dpDisplayNameStatus, 'ok', displayName ? 'Saved.' : 'Cleared.');
-      } else {
-        const j = await res.json().catch(() => ({}));
-        setStatus(dpDisplayNameStatus, 'err', j.error || 'Error ' + res.status);
-      }
-    } else if (ctx.type === 'ffc') {
-      if (!displayName) { setStatus(dpDisplayNameStatus, 'err', 'Label cannot be empty.'); return; }
-      res = await adminPost('save-display-name', { game: 'FFCGame', itemId: ctx.item.id, displayName });
-      if (detailContext !== ctx) return;
-      if (!res) { setStatus(dpDisplayNameStatus, '', ''); return; }
-      if (res.ok) {
-        ctx.item.label = displayName;
-        dpFilename.textContent = displayName;
-        setStatus(dpDisplayNameStatus, 'ok', 'Saved.');
-      } else {
-        const j = await res.json().catch(() => ({}));
-        setStatus(dpDisplayNameStatus, 'err', j.error || 'Error ' + res.status);
-      }
-    } else if (ctx.type === 'intraverbal') {
-      if (!displayName) { setStatus(dpDisplayNameStatus, 'err', 'Label cannot be empty.'); return; }
-      res = await adminPost('save-display-name', { game: 'IntraverbalGame', itemId: ctx.item.id, displayName });
-      if (detailContext !== ctx) return;
-      if (!res) { setStatus(dpDisplayNameStatus, '', ''); return; }
-      if (res.ok) {
-        ctx.item.label = displayName;
-        dpFilename.textContent = displayName;
-        setStatus(dpDisplayNameStatus, 'ok', 'Saved.');
-      } else {
-        const j = await res.json().catch(() => ({}));
-        setStatus(dpDisplayNameStatus, 'err', j.error || 'Error ' + res.status);
-      }
-    } else if (ctx.type === 'fpg') {
-      if (!displayName) { setStatus(dpDisplayNameStatus, 'err', 'Name cannot be empty.'); return; }
-      const oldName = ctx.person.name;
-      res = await adminPost('save-display-name', { game: 'FamousPersonGame', personName: oldName, displayName });
-      if (detailContext !== ctx) return;
-      if (!res) { setStatus(dpDisplayNameStatus, '', ''); return; }
-      if (res.ok) {
-        ctx.person.name = displayName;
-        dpFilename.textContent = displayName;
-        setStatus(dpDisplayNameStatus, 'ok', 'Saved.');
-      } else {
-        const j = await res.json().catch(() => ({}));
-        setStatus(dpDisplayNameStatus, 'err', j.error || 'Error ' + res.status);
-      }
+    const res = await adminPost('batch', { operations: [op] });
+    if (detailContext !== ctx) return;
+    if (!res) { setStatus(dpDisplayNameStatus, '', ''); return; }
+    const data = await res.json().catch(() => ({}));
+    const result = data.results?.[0] || {};
+    if (res.ok && result.ok) {
+      onSuccess(result);
+      setStatus(dpDisplayNameStatus, 'ok', displayName ? 'Saved.' : 'Cleared.');
+    } else {
+      setStatus(dpDisplayNameStatus, 'err', result.error || data.error || 'Error ' + res.status);
     }
   } catch (err) {
     setStatus(dpDisplayNameStatus, 'err', err.message || 'Network error');
@@ -1734,95 +1820,71 @@ dpGoogleBtn.addEventListener('click', () => {
 dpRemoveBtn.addEventListener('click', async () => {
   if (!detailContext) return;
   if (!confirm('Remove this image? This cannot be undone.')) return;
+  const ctx = detailContext;
 
-  if (detailContext.type === 'ffc') {
-    const it = detailContext.item;
-    const d  = gameData['FFCGame'].ffcData;
-    setStatus(dpRemoveStatus, '', 'Removing…');
-    try {
-      // Remove image file
-      const imgRes = await adminPost('ffc-remove-image', { localPath: '_Resources/_imgSource/items/' + it.img });
-      // Remove item record regardless of image result
-      d.items = d.items.filter(i => i.id !== it.id);
-      const itemsRes = await adminPost('ffc-save-items', { items: d });
-      if (!itemsRes) { setStatus(dpRemoveStatus, '', ''); return; }
-      if (itemsRes.ok) {
-        setStatus(dpRemoveStatus, 'ok', 'Removed.');
-        const grid = document.getElementById('image-grid');
-        if (grid) {
-          grid.querySelectorAll('.img-card').forEach(card => {
-            if (card.querySelector('img')?.alt === it.label) card.remove();
-          });
-        }
-        setTimeout(closeDetail, 800);
-      } else {
-        const j = await itemsRes.json().catch(() => ({}));
-        setStatus(dpRemoveStatus, 'err', j.error || 'Error ' + itemsRes.status);
-      }
-    } catch (err) {
-      setStatus(dpRemoveStatus, 'err', err.message || 'Network error');
-    }
-    return;
-  }
-
-  if (detailContext.type === 'intraverbal') {
-    const it = detailContext.item;
-    const d  = gameData['IntraverbalGame'].ivData;
-    setStatus(dpRemoveStatus, '', 'Removing…');
-    try {
-      const img = it.images[detailContext.imageIdx];
-      if (img) {
-        await adminPost('intraverbal-remove-image', { filename: img });
-      }
-      it.images.splice(detailContext.imageIdx, 1);
-      const itemsRes = await adminPost('intraverbal-save-items', { items: d });
-      if (!itemsRes) { setStatus(dpRemoveStatus, '', ''); return; }
-      if (itemsRes.ok) {
-        setStatus(dpRemoveStatus, 'ok', 'Removed.');
-        const grid = document.getElementById('image-grid');
-        if (grid) {
-          grid.querySelectorAll('.img-card').forEach(card => {
-            if (card.querySelector('img')?.alt === it.label) card.remove();
-          });
-        }
-        setTimeout(closeDetail, 800);
-      } else {
-        const j = await itemsRes.json().catch(() => ({}));
-        setStatus(dpRemoveStatus, 'err', j.error || 'Error ' + itemsRes.status);
-      }
-    } catch (err) {
-      setStatus(dpRemoveStatus, 'err', err.message || 'Network error');
-    }
-    return;
-  }
-
-  let body;
-  if (detailContext.type === 'fpg') {
-    const p = detailContext.person;
-    body = { game: 'FamousPersonGame', folder: 'images', filename: p.img.split('/').pop(), personName: p.name };
+  let op, label, onSuccess;
+  if (ctx.type === 'ffc') {
+    const it = ctx.item;
+    op = { type: 'ffc-remove', id: it.id, filename: it.img };
+    label = it.label;
+    onSuccess = () => {
+      gameData['FFCGame'].ffcData.items = gameData['FFCGame'].ffcData.items.filter(i => i.id !== it.id);
+      document.getElementById('image-grid')?.querySelectorAll('.img-card').forEach(card => {
+        if (card.querySelector('img')?.alt === it.label) card.remove();
+      });
+    };
+  } else if (ctx.type === 'intraverbal') {
+    const it = ctx.item;
+    const img = it.images?.[ctx.imageIdx] || '';
+    op = { type: 'iv-remove', id: it.id, filename: img, imageIdx: ctx.imageIdx };
+    label = it.label;
+    onSuccess = () => {
+      it.images.splice(ctx.imageIdx, 1);
+      document.getElementById('image-grid')?.querySelectorAll('.img-card').forEach(card => {
+        if (card.querySelector('img')?.alt === it.label) card.remove();
+      });
+    };
+  } else if (ctx.type === 'fpg') {
+    const p = ctx.person;
+    op = { type: 'remove-image', game: 'FamousPersonGame', folder: 'images', filename: p.img.split('/').pop(), personName: p.name };
+    label = p.name;
+    onSuccess = () => {
+      document.getElementById('image-grid')?.querySelectorAll('.img-card').forEach(card => {
+        const img = card.querySelector('img');
+        if (img && img.alt === dpFilename.textContent) card.remove();
+      });
+    };
   } else {
-    body = { game: detailContext.gameId, folder: detailContext.folder, filename: detailContext.path.split('/').pop() };
+    op = { type: 'remove-image', game: ctx.gameId, folder: ctx.folder, filename: ctx.path.split('/').pop() };
+    label = ctx.path.split('/').pop();
+    onSuccess = () => {
+      document.getElementById('image-grid')?.querySelectorAll('.img-card').forEach(card => {
+        const img = card.querySelector('img');
+        if (img && (img.src === dpThumb.src || img.alt === dpFilename.textContent)) card.remove();
+      });
+    };
   }
 
+  if (batchMode) {
+    enqueue({ id: crypto.randomUUID(), label, opLabel: '🗑 Remove', thumbSrc: dpThumb.src, op, onSuccess });
+    setStatus(dpRemoveStatus, 'ok', '↑ Queued');
+    closeDetail();
+    return;
+  }
+
+  setStatus(dpRemoveStatus, '', 'Removing…');
   try {
-    const res = await adminPost('remove-image', body);
+    const res = await adminPost('batch', { operations: [op] });
+    if (detailContext !== ctx) return;
     if (!res) { setStatus(dpRemoveStatus, '', ''); return; }
-    if (res.ok) {
+    const data = await res.json().catch(() => ({}));
+    const result = data.results?.[0] || {};
+    if (res.ok && result.ok) {
+      onSuccess();
       setStatus(dpRemoveStatus, 'ok', 'Removed.');
-      const grid = document.getElementById('image-grid');
-      if (grid) {
-        const cards = grid.querySelectorAll('.img-card');
-        cards.forEach(card => {
-          const img = card.querySelector('img');
-          if (img && (img.src === dpThumb.src || img.alt === dpFilename.textContent)) {
-            card.remove();
-          }
-        });
-      }
       setTimeout(closeDetail, 800);
     } else {
-      const j = await res.json().catch(() => ({}));
-      setStatus(dpRemoveStatus, 'err', j.error || 'Error ' + res.status);
+      setStatus(dpRemoveStatus, 'err', result.error || data.error || 'Error ' + res.status);
     }
   } catch (err) {
     setStatus(dpRemoveStatus, 'err', err.message || 'Network error');
@@ -1965,7 +2027,130 @@ function showDuplicateModal(name, existingNames, isPersonName = false) {
   });
 }
 
+// ─── Batch Mode ───────────────────────────────────────────────────────────────
+
+function toggleBatchMode() {
+  batchMode = !batchMode;
+  const btn = document.getElementById('batch-mode-btn');
+  if (btn) { btn.classList.toggle('active', batchMode); btn.textContent = batchMode ? '⚡ Batch On' : '⚡ Batch'; }
+  const panel = document.getElementById('batch-panel');
+  if (batchMode || batchQueue.length) panel.classList.add('open');
+  else panel.classList.remove('open');
+  updateBatchPanel();
+}
+
+function enqueue(item) {
+  batchQueue.push({ ...item, status: 'pending', errorMsg: '' });
+  updateBatchPanel();
+  document.getElementById('batch-panel').classList.add('open');
+}
+
+function dequeueItem(id) {
+  batchQueue = batchQueue.filter(i => i.id !== id);
+  updateBatchPanel();
+  if (!batchQueue.length && !batchMode) document.getElementById('batch-panel').classList.remove('open');
+}
+
+function updateBatchPanel() {
+  const list      = document.getElementById('batch-item-list');
+  const countEl   = document.getElementById('batch-count');
+  const submitBtn = document.getElementById('batch-submit-btn');
+  const pending   = batchQueue.filter(i => i.status === 'pending').length;
+
+  if (countEl)   countEl.textContent = batchQueue.length;
+  if (submitBtn) {
+    submitBtn.textContent = pending
+      ? `Submit ${pending} change${pending !== 1 ? 's' : ''} (1 deploy)`
+      : 'Nothing pending';
+    submitBtn.disabled = !pending || batchRunning;
+  }
+
+  if (!list) return;
+  list.innerHTML = '';
+  if (!batchQueue.length) {
+    list.innerHTML = `<div class="batch-empty">No changes queued.${batchMode ? '' : '<br>Enable batch mode to start queueing.'}</div>`;
+    return;
+  }
+  batchQueue.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'batch-item status-' + item.status;
+    const rmBtn  = item.status === 'pending' ? `<button class="batch-item-remove" data-id="${escapeHtml(item.id)}" title="Remove">✕</button>` : '';
+    const msgHtml = item.status === 'running' ? '<div class="batch-item-msg run">Saving…</div>'
+      : item.status === 'done'  ? '<div class="batch-item-msg ok">✓ Done</div>'
+      : item.status === 'error' ? `<div class="batch-item-msg err">✗ ${escapeHtml(item.errorMsg)}</div>`
+      : '';
+    el.innerHTML = `
+      <img class="batch-item-thumb" src="${escapeHtml(item.thumbSrc || '')}" alt="">
+      <div class="batch-item-info">
+        <div class="batch-item-label" title="${escapeHtml(item.label)}">${escapeHtml(item.label)}</div>
+        <div class="batch-item-op">${escapeHtml(item.opLabel || '')}</div>
+        ${msgHtml}
+      </div>${rmBtn}`;
+    el.querySelector('.batch-item-remove')?.addEventListener('click', () => dequeueItem(item.id));
+    list.appendChild(el);
+  });
+}
+
+async function runBatch() {
+  if (batchRunning) return;
+  const pending = batchQueue.filter(i => i.status === 'pending');
+  if (!pending.length) return;
+
+  batchRunning = true;
+  pending.forEach(item => { item.status = 'running'; });
+  updateBatchPanel();
+
+  const operations = pending.map(item => item.op);
+  try {
+    const res = await adminPost('batch', { operations });
+    if (!res) throw new Error('No response');
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Batch failed: ' + res.status);
+    const results = data.results || [];
+    pending.forEach((item, i) => {
+      const result = results[i] || {};
+      if (result.ok) {
+        item.status = 'done';
+        try { item.onSuccess?.(result); } catch (_) {}
+      } else {
+        item.status = 'error';
+        item.errorMsg = result.error || 'Failed';
+      }
+    });
+  } catch (err) {
+    pending.forEach(item => { item.status = 'error'; item.errorMsg = err.message || 'Network error'; });
+  }
+
+  batchRunning = false;
+  updateBatchPanel();
+}
+
 // ─── Boot ─────────────────────────────────────────────────────────────────────
+document.getElementById('batch-mode-btn').addEventListener('click', toggleBatchMode);
+document.getElementById('batch-panel-close').addEventListener('click', () => {
+  document.getElementById('batch-panel').classList.remove('open');
+});
+document.getElementById('batch-submit-btn').addEventListener('click', runBatch);
+document.getElementById('batch-clear-done').addEventListener('click', () => {
+  batchQueue = batchQueue.filter(i => i.status !== 'done');
+  updateBatchPanel();
+  if (!batchQueue.length && !batchMode) document.getElementById('batch-panel').classList.remove('open');
+});
 </script>
+
+<div id="batch-panel">
+  <div class="batch-panel-header">
+    <span class="batch-panel-title">Batch Queue</span>
+    <span class="batch-count-badge" id="batch-count">0</span>
+    <button class="batch-panel-close" id="batch-panel-close" title="Close panel">✕</button>
+  </div>
+  <div class="batch-item-list" id="batch-item-list">
+    <div class="batch-empty">No changes queued.<br>Enable batch mode to start queueing.</div>
+  </div>
+  <div class="batch-panel-footer">
+    <button class="batch-clear-done" id="batch-clear-done">Clear completed</button>
+    <button class="btn-batch-submit" id="batch-submit-btn" disabled>Submit changes</button>
+  </div>
+</div>
 </body>
 </html>

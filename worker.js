@@ -108,6 +108,9 @@ export default {
     if (request.method === 'POST' && pathname === '/api/admin/update-facts') {
       return handleAdminUpdateFacts(request, env);
     }
+    if (request.method === 'POST' && pathname === '/api/admin/batch') {
+      return handleAdminBatch(request, env);
+    }
 
     return new Response('Not found', { status: 404 });
   },
@@ -1228,6 +1231,315 @@ async function atomicIVImageRemoveCommit(env, repoPath) {
   const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${env.GITHUB_BRANCH || 'main'}`, { sha: newCommit.sha, force: false });
   if (refRes.status === 422) throw new Error('CONFLICT');
   if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
+}
+
+// ─── Admin: batch ─────────────────────────────────────────────────────────────
+//
+// POST /api/admin/batch
+//   Body: { operations: BatchOp[] }
+//
+// BatchOp types (same field names as individual endpoints):
+//   { type:'save-image',       game, folder, filename, imageUrl?, imageData?, imageMime?, personName?, personMeta? }
+//   { type:'ffc-save',         id, filename, imageUrl?, imageData?, imageMime?, newItem? }
+//   { type:'iv-save',          id, filename, imageIdx?, imageUrl?, imageData?, imageMime? }
+//   { type:'save-display-name',game, localPath?, itemId?, personName?, displayName }
+//   { type:'remove-image',     game, folder, filename, personName? }
+//   { type:'ffc-remove',       id, filename }
+//   { type:'iv-remove',        id, filename, imageIdx }
+//
+// All operations in one call are processed and committed as a SINGLE Git commit.
+
+async function handleAdminBatch(request, env) {
+  const authErr = await requireAdmin(request, env);
+  if (authErr) return authErr;
+
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonError('Invalid JSON body', 400); }
+
+  const { operations } = body;
+  if (!Array.isArray(operations) || !operations.length) {
+    return jsonError('operations array is required', 400);
+  }
+  if (operations.length > 100) {
+    return jsonError('Batch size limit is 100 operations', 400);
+  }
+
+  try {
+    const results = await executeBatch(env, operations);
+    const anyOk = results.some(r => r && r.ok);
+    return json({ ok: anyOk, results });
+  } catch (err) {
+    return jsonError('Batch commit failed: ' + err.message, 502);
+  }
+}
+
+async function executeBatch(env, operations) {
+  const BRANCH = env.GITHUB_BRANCH || 'main';
+
+  // Phase 1: resolve all images in parallel (download / base64 decode + create git blobs)
+  const resolved = await Promise.all(operations.map(async (op, idx) => {
+    const hasImage = !!(op.imageUrl || op.imageData);
+    if (!hasImage) return { idx, op, blobSha: null, ext: null };
+    try {
+      const { bytes, ext } = await resolveImage(op.imageUrl, op.imageData, op.imageMime);
+      const blob = await gh(env, 'POST', 'git/blobs', {
+        content: arrayBufferToBase64(bytes), encoding: 'base64',
+      });
+      return { idx, op, blobSha: blob.sha, ext };
+    } catch (err) {
+      return { idx, op, blobSha: null, ext: null, error: 'Image failed: ' + err.message };
+    }
+  }));
+
+  // Phase 2: build and push a single commit (retry up to 3x on conflict)
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await doBatchCommit(env, BRANCH, resolved);
+    } catch (err) {
+      if (err.message === 'CONFLICT' && attempt < 2) continue;
+      throw err;
+    }
+  }
+}
+
+async function doBatchCommit(env, branch, resolved) {
+  // Snapshot HEAD
+  const refData    = await gh(env, 'GET', `git/ref/heads/${branch}`);
+  const headSha    = refData.object.sha;
+  const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
+  const treeSha    = commitData.tree.sha;
+
+  // Determine which index files are needed
+  const manifestGames = new Set();
+  let needFPG = false, needFFC = false, needIV = false;
+  for (const { op, error } of resolved) {
+    if (error) continue;
+    const t = op.type;
+    if (t === 'save-image' || t === 'remove-image') {
+      if (['IDMatchGame', 'NameIDGame'].includes(op.game)) manifestGames.add(op.game);
+      if (op.game === 'FamousPersonGame') needFPG = true;
+    }
+    if (t === 'ffc-save' || t === 'ffc-remove') needFFC = true;
+    if (t === 'iv-save'  || t === 'iv-remove')  needIV  = true;
+    if (t === 'save-display-name') {
+      if (['IDMatchGame', 'NameIDGame'].includes(op.game)) manifestGames.add(op.game);
+      if (op.game === 'FamousPersonGame') needFPG = true;
+      if (op.game === 'FFCGame')          needFFC = true;
+      if (op.game === 'IntraverbalGame')  needIV  = true;
+    }
+  }
+
+  // Read needed index files in parallel
+  const fetches = {};
+  for (const game of manifestGames) {
+    fetches[`m_${game}`] = gh(env, 'GET', `contents/${game}/${game}/manifest.json`)
+      .then(f => JSON.parse(base64ToUtf8(f.content.replace(/\s/g, ''))));
+  }
+  if (needFPG) {
+    fetches['fpg'] = gh(env, 'GET', 'contents/FamousPersonGame/index.html')
+      .then(f => base64ToUtf8(f.content.replace(/\s/g, '')));
+  }
+  if (needFFC) {
+    fetches['ffc'] = gh(env, 'GET', 'contents/FFCGame/FFCGame/items.json')
+      .then(f => JSON.parse(base64ToUtf8(f.content.replace(/\s/g, ''))));
+  }
+  if (needIV) {
+    fetches['iv'] = gh(env, 'GET', 'contents/IntraverbalGame/IntraverbalGame/items.json')
+      .then(f => JSON.parse(base64ToUtf8(f.content.replace(/\s/g, ''))));
+  }
+
+  const fetchKeys = Object.keys(fetches);
+  const fetchVals = await Promise.all(fetchKeys.map(k => fetches[k]));
+  const reads     = Object.fromEntries(fetchKeys.map((k, i) => [k, fetchVals[i]]));
+
+  const manifests = {};
+  for (const game of manifestGames) manifests[game] = reads[`m_${game}`];
+  let fpgHtml     = reads['fpg'] || null;
+  const fpgOrig   = fpgHtml;
+  const ffcItems  = reads['ffc'] || null;
+  const ivItems   = reads['iv']  || null;
+
+  const treeEntries = [];
+  const results     = new Array(resolved.length).fill(null);
+  const modifiedManifests = new Set();
+  let   ffcModified = false, ivModified = false;
+
+  for (const { idx, op, blobSha, ext, error } of resolved) {
+    if (error) { results[idx] = { ok: false, error }; continue; }
+
+    const t = op.type;
+
+    if (t === 'save-image') {
+      const { game, folder, filename } = op;
+      if (game === 'FamousPersonGame') {
+        const base         = filename.replace(/\.[^.]+$/, '');
+        const saveFilename = `${base}.${ext}`;
+        const repoPath     = `FamousPersonGame/_Resources/_imgSource/images/${saveFilename}`;
+        const localPath    = `_Resources/_imgSource/images/${saveFilename}`;
+        treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: blobSha });
+        if (op.personName) fpgHtml = patchImg(fpgHtml, op.personName, localPath);
+        else if (op.personMeta) fpgHtml = appendPerson(fpgHtml, localPath, op.personMeta);
+        results[idx] = { ok: true, localPath, filename: saveFilename };
+      } else {
+        const base         = filename.replace(/\.[^.]+$/, '');
+        const saveFilename = `${base}.${ext}`;
+        const oldFilename  = filename !== saveFilename ? filename : null;
+        const repoPath     = `${game}/${game}/_Resources/_imgSource/${folder}/${saveFilename}`;
+        const localPath    = `_Resources/_imgSource/${folder}/${saveFilename}`;
+        const oldLocalPath = oldFilename ? `_Resources/_imgSource/${folder}/${oldFilename}` : null;
+        treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: blobSha });
+        const m = manifests[game];
+        if (!m.folders.includes(folder)) { m.folders = [...m.folders, folder].sort(); m.images[folder] = []; }
+        if (oldLocalPath && m.images[folder]) m.images[folder] = m.images[folder].filter(p => p !== oldLocalPath);
+        if (!m.images[folder].includes(localPath)) m.images[folder] = [...m.images[folder], localPath].sort();
+        modifiedManifests.add(game);
+        results[idx] = { ok: true, localPath, filename: saveFilename };
+      }
+
+    } else if (t === 'ffc-save') {
+      const { id, filename } = op;
+      const base         = filename.replace(/\.[^.]+$/, '');
+      const saveFilename = `${base}.${ext}`;
+      const repoPath     = `FFCGame/FFCGame/_Resources/_imgSource/items/${saveFilename}`;
+      treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: blobSha });
+      if (ffcItems) {
+        const item = (ffcItems.items || []).find(i => i.id === id);
+        if (item) { item.img = saveFilename; }
+        else if (op.newItem) { (ffcItems.items = ffcItems.items || []).push({ ...op.newItem, img: saveFilename }); }
+        ffcModified = true;
+      }
+      results[idx] = { ok: true, filename: saveFilename, localPath: repoPath };
+
+    } else if (t === 'iv-save') {
+      const { id, filename, imageIdx } = op;
+      const base         = filename.replace(/\.[^.]+$/, '');
+      const saveFilename = `${base}.${ext}`;
+      const repoPath     = `IntraverbalGame/IntraverbalGame/_Resources/_imgSource/items/${saveFilename}`;
+      treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: blobSha });
+      if (ivItems) {
+        const item = (ivItems.items || []).find(i => i.id === id);
+        if (item) {
+          if (!item.images) item.images = [];
+          if (imageIdx !== undefined && imageIdx < item.images.length) item.images[imageIdx] = saveFilename;
+          else item.images.push(saveFilename);
+          ivModified = true;
+        }
+      }
+      results[idx] = { ok: true, filename: saveFilename, localPath: repoPath };
+
+    } else if (t === 'save-display-name') {
+      const { game, localPath: imgPath, displayName, itemId, personName } = op;
+      const trimmed = typeof displayName === 'string' ? displayName.trim() : '';
+      if (['IDMatchGame', 'NameIDGame'].includes(game) && manifests[game]) {
+        const m = manifests[game];
+        if (!m.displayNames) m.displayNames = {};
+        if (trimmed) m.displayNames[imgPath] = trimmed; else delete m.displayNames[imgPath];
+        modifiedManifests.add(game);
+      } else if (game === 'FFCGame' && ffcItems) {
+        const item = (ffcItems.items || []).find(i => i.id === itemId);
+        if (item) { item.label = trimmed; ffcModified = true; }
+      } else if (game === 'IntraverbalGame' && ivItems) {
+        const item = (ivItems.items || []).find(i => i.id === itemId);
+        if (item) { item.label = trimmed; ivModified = true; }
+      } else if (game === 'FamousPersonGame' && fpgHtml && personName && trimmed) {
+        const safe = personName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        fpgHtml = fpgHtml.replace(
+          new RegExp(`(name:\\s*['"])${safe}(['"])`),
+          `$1${trimmed.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}$2`,
+        );
+      }
+      results[idx] = { ok: true };
+
+    } else if (t === 'remove-image') {
+      const { game, folder, filename, personName } = op;
+      if (game === 'FamousPersonGame') {
+        const repoPath = `FamousPersonGame/_Resources/_imgSource/images/${filename}`;
+        treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: null });
+        if (personName && fpgHtml) fpgHtml = patchImg(fpgHtml, personName, '');
+      } else if (manifests[game]) {
+        const repoPath = `${game}/${game}/_Resources/_imgSource/${folder}/${filename}`;
+        treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: null });
+        const m = manifests[game];
+        if (m.images[folder]) {
+          m.images[folder] = m.images[folder].filter(p => !p.endsWith(`/${filename}`));
+          if (!m.images[folder].length) { m.folders = m.folders.filter(f => f !== folder); delete m.images[folder]; }
+        }
+        if (m.displayNames) {
+          for (const p of Object.keys(m.displayNames)) {
+            if (p.endsWith(`/${folder}/${filename}`)) delete m.displayNames[p];
+          }
+        }
+        modifiedManifests.add(game);
+      }
+      results[idx] = { ok: true };
+
+    } else if (t === 'ffc-remove') {
+      const { id, filename } = op;
+      const repoPath = `FFCGame/FFCGame/_Resources/_imgSource/items/${filename}`;
+      treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: null });
+      if (ffcItems) { ffcItems.items = (ffcItems.items || []).filter(i => i.id !== id); ffcModified = true; }
+      results[idx] = { ok: true };
+
+    } else if (t === 'iv-remove') {
+      const { id, filename, imageIdx } = op;
+      const repoPath = `IntraverbalGame/IntraverbalGame/_Resources/_imgSource/items/${filename}`;
+      treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: null });
+      if (ivItems) {
+        const item = (ivItems.items || []).find(i => i.id === id);
+        if (item && item.images && imageIdx !== undefined) { item.images.splice(imageIdx, 1); ivModified = true; }
+      }
+      results[idx] = { ok: true };
+
+    } else {
+      results[idx] = { ok: false, error: 'Unknown operation type: ' + t };
+    }
+  }
+
+  // Write back modified index files
+  const ts = new Date().toISOString();
+  for (const game of modifiedManifests) {
+    const m = manifests[game];
+    m.generated = ts;
+    const blob = await gh(env, 'POST', 'git/blobs', {
+      content: utf8ToBase64(JSON.stringify(m, null, 2) + '\n'), encoding: 'base64',
+    });
+    treeEntries.push({ path: `${game}/${game}/manifest.json`, mode: '100644', type: 'blob', sha: blob.sha });
+  }
+  if (fpgHtml && fpgHtml !== fpgOrig) {
+    const blob = await gh(env, 'POST', 'git/blobs', { content: utf8ToBase64(fpgHtml), encoding: 'base64' });
+    treeEntries.push({ path: 'FamousPersonGame/index.html', mode: '100644', type: 'blob', sha: blob.sha });
+  }
+  if (ffcItems && ffcModified) {
+    ffcItems.generated = ts;
+    const blob = await gh(env, 'POST', 'git/blobs', {
+      content: utf8ToBase64(JSON.stringify(ffcItems, null, 2) + '\n'), encoding: 'base64',
+    });
+    treeEntries.push({ path: 'FFCGame/FFCGame/items.json', mode: '100644', type: 'blob', sha: blob.sha });
+  }
+  if (ivItems && ivModified) {
+    ivItems.generated = ts;
+    const blob = await gh(env, 'POST', 'git/blobs', {
+      content: utf8ToBase64(JSON.stringify(ivItems, null, 2) + '\n'), encoding: 'base64',
+    });
+    treeEntries.push({ path: 'IntraverbalGame/IntraverbalGame/items.json', mode: '100644', type: 'blob', sha: blob.sha });
+  }
+
+  if (!treeEntries.length) return results; // display-name-only batch with no actual changes
+
+  const successCount = results.filter(r => r && r.ok).length;
+  const newTree   = await gh(env, 'POST', 'git/trees', { base_tree: treeSha, tree: treeEntries });
+  const newCommit = await gh(env, 'POST', 'git/commits', {
+    message: `Admin: batch update ${successCount} item(s)`,
+    tree:    newTree.sha,
+    parents: [headSha],
+  });
+
+  const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${branch}`, { sha: newCommit.sha, force: false });
+  if (refRes.status === 422) throw new Error('CONFLICT');
+  if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
+
+  return results;
 }
 
 // ─── Admin: update-facts ─────────────────────────────────────────────────────
