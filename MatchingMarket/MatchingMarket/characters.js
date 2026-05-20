@@ -58,10 +58,16 @@ function buildCustomer(seed) {
     return e;
   };
 
+  // Neck — drawn BEFORE the body so the shirt covers the bottom of the
+  // neck rectangle and the head connects cleanly into the shoulders
+  // instead of floating above them.
+  svg.appendChild(NS('rect', { x: 86, y: 156, width: 28, height: 50, fill: skin, stroke: '#1a1a1a', 'stroke-width': '2.5' }));
+
   // Body / shirt — trapezoid
-  // shoulders y=180, waist y=340, neck y=160
+  // shoulders y=190, waist y=340; raised slightly so it tucks under the
+  // chin and the neck stub doesn't gap above it.
   const body = NS('path', {
-    d: 'M 50 340 L 60 200 Q 100 178 140 200 L 150 340 Z',
+    d: 'M 50 340 L 58 190 Q 100 172 142 190 L 150 340 Z',
     fill: shirt,
     stroke: '#1a1a1a',
     'stroke-width': '3',
@@ -94,9 +100,6 @@ function buildCustomer(seed) {
       fill: scarfColor, stroke: '#1a1a1a', 'stroke-width': '2', 'stroke-linejoin': 'round',
     }));
   }
-
-  // Neck
-  svg.appendChild(NS('rect', { x: 88, y: 158, width: 24, height: 28, fill: skin, stroke: '#1a1a1a', 'stroke-width': '2.5' }));
 
   // Head
   svg.appendChild(NS('ellipse', { cx: 100, cy: 110, rx: 50, ry: 56, fill: skin, stroke: '#1a1a1a', 'stroke-width': '3' }));

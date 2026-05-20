@@ -115,6 +115,7 @@ const el = {
   floatingEmojis: $('floating-emojis'),
   compGrid:       $('comp-grid'),
   compSection:    $('comp-section'),
+  shelfPlanks:    $('shelf-planks'),
 
   btnPrompt:      $('btn-prompt'),
   btnPrint:       $('btn-print'),
@@ -521,6 +522,19 @@ function gridCols(n) {
   return map[n] ?? 4;
 }
 
+/* Place a wooden plank under each bucket row so tiles always appear to
+   rest on a shelf regardless of array size. */
+function renderShelfPlanks(rows) {
+  if (!el.shelfPlanks) return;
+  el.shelfPlanks.innerHTML = '';
+  for (let i = 0; i < rows; i++) {
+    const p = document.createElement('div');
+    p.className = 'shelf-plank';
+    p.style.top = `${((i + 1) / rows) * 100}%`;
+    el.shelfPlanks.appendChild(p);
+  }
+}
+
 function renderTrial() {
   // Sample image in speech bubble
   el.sampleImg.src = state.sampleSrc;
@@ -529,6 +543,7 @@ function renderTrial() {
 
   // Comparison grid (buckets)
   const cols = gridCols(state.arraySize);
+  const rows = Math.max(1, Math.ceil(state.arraySize / cols));
   el.compGrid.style.setProperty('--grid-cols', cols);
   el.compGrid.innerHTML = '';
   state.tileImages.forEach((src, idx) => {
@@ -542,6 +557,7 @@ function renderTrial() {
     bucket.addEventListener('click', () => onTileClick(idx));
     el.compGrid.appendChild(bucket);
   });
+  renderShelfPlanks(rows);
 
   // Customer
   renderCustomer();
