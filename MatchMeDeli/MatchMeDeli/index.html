@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="version" content="1.0">
+  <title>Match Me Deli v1.0</title>
+  <!--
+    IMPORTANT: This app discovers images by fetching directory listings.
+    You must serve it via a local HTTP server that returns directory listings, e.g.:
+      python3 -m http.server 8000
+    Opening index.html as a file:// URL will NOT work for image discovery.
+
+    Topic image folders (T_*) are NOT shipped inside this directory; the app
+    discovers them from a manifest at ../../manifest.json (one level up), or
+    falls back to listings from sibling game folders. See game.js.
+  -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header id="app-header">
+    <a href="../../index.html" id="btn-back" title="Back to Games">← Games</a>
+    <h1>Match Me Deli</h1>
+    <div id="timer-section">
+      <span id="timer-display">00:00</span>
+      <button id="btn-timer-toggle" class="btn-timer" title="Pause / Resume">Pause</button>
+      <button id="btn-timer-reset"  class="btn-timer" title="Reset timer">Reset</button>
+    </div>
+  </header>
+
+  <div id="settings-bar">
+    <div class="setting-group">
+      <label for="sel-topic">Topic<button type="button" class="help-btn" data-help="Choose the image category to use for this session.">?</button></label>
+      <select id="sel-topic">
+        <option value="">-- scanning --</option>
+      </select>
+    </div>
+
+    <div class="setting-group">
+      <label for="inp-size">Array Size<button type="button" class="help-btn" data-help="How many ingredient buckets appear in the deli case (1–10).">?</button></label>
+      <input type="number" id="inp-size" min="1" max="10" value="4">
+    </div>
+
+    <div class="setting-group setting-targets">
+      <button type="button" id="btn-targets-toggle" class="btn-targets" aria-expanded="false">
+        Targets <span id="targets-count" class="targets-count">0 of 0</span>
+        <button type="button" class="help-btn" data-help="Choose which images from the topic can appear as the customer's request.">?</button>
+      </button>
+    </div>
+
+    <div class="setting-group setting-extra">
+      <button type="button" id="btn-extra-toggle" class="btn-extra" aria-expanded="false">
+        ⚙ Settings
+        <button type="button" class="help-btn" data-help="Open additional game options.">?</button>
+      </button>
+    </div>
+
+    <div class="setting-group">
+      <button id="btn-prompt" class="btn-prompt" hidden>Prompt</button>
+    </div>
+
+    <button id="btn-start" class="btn-primary">Start</button>
+  </div>
+
+  <section id="target-panel" hidden>
+    <div class="target-panel-header">
+      <span class="target-panel-title">Targets</span>
+      <div class="target-panel-actions">
+        <button type="button" id="btn-targets-all">Select all</button>
+        <button type="button" id="btn-targets-none">Deselect all</button>
+        <button type="button" id="btn-targets-close" title="Close" class="btn-targets-close">×</button>
+      </div>
+    </div>
+    <div id="target-panel-body" class="target-panel-body"></div>
+  </section>
+
+  <section id="extra-panel" hidden>
+    <div class="extra-panel-header">
+      <span class="extra-panel-title">Options</span>
+      <button type="button" id="btn-extra-close" class="btn-extra-close" title="Close">×</button>
+    </div>
+    <div class="extra-panel-body">
+      <div class="extra-row">
+        <label for="sel-anim-tier" style="font-weight:600;font-size:0.82rem;color:#4a5568;">Animation</label>
+        <select id="sel-anim-tier">
+          <option value="full">Full</option>
+          <option value="light">Light</option>
+          <option value="minimal">Minimal</option>
+        </select>
+        <button type="button" class="help-btn" data-help="Full = customer walks in & out per trial. Light = static customer, item flies into bag. Minimal = no character animation.">?</button>
+      </div>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-caption">
+        Show request caption
+        <button type="button" class="help-btn" data-help="Shows the request as text below the speech-bubble image (e.g. 'I'd like an apple.').">?</button>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-same-customer" checked>
+        Same customer on Retry
+        <button type="button" class="help-btn" data-help="When on, the same customer character reappears if the trial is retried.">?</button>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-represent-errors" checked>
+        Re-Present Errors
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-errorless">
+        Errorless
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-no-error-anim">
+        No Incorrect Animation
+        <button type="button" class="help-btn" data-help="Suppresses the shake/red animation when an incorrect bucket is tapped.">?</button>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-non-target-distractor" checked>
+        Non-Target Category Distractors
+        <button type="button" class="help-btn" data-help="When on, images in the topic that are NOT selected as targets can still appear as distractors.">?</button>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-cross">
+        Non-category distractors
+        <button type="button" class="help-btn" data-help="When on, distractors are drawn from ALL topics, not just the current one.">?</button>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-persists">
+        Prompt persists
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-auto-prompt">
+        Auto-Prompt
+      </label>
+      <div class="extra-row">
+        <label class="checkbox-label">
+          <input type="checkbox" id="chk-prompt-delay" disabled>
+          Prompt Delay
+        </label>
+        <select id="sel-prompt-delay" disabled>
+          <option value="1">1s</option>
+          <option value="2">2s</option>
+          <option value="3" selected>3s</option>
+          <option value="4">4s</option>
+          <option value="5">5s</option>
+          <option value="10">10s</option>
+        </select>
+      </div>
+      <div class="extra-row">
+        <label for="sel-prompt-style">Prompt style</label>
+        <select id="sel-prompt-style">
+          <option value="sparkle">Sparkle</option>
+          <option value="outline">Outline</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <main id="game-area" hidden>
+    <div id="deli-stage">
+
+      <!-- Static backdrop SVG: tile wall, chalkboard, counter, doors -->
+      <svg id="deli-backdrop" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <!-- Wall -->
+        <rect x="0" y="0" width="1000" height="420" fill="#f4e6c8"/>
+        <!-- Tile lines on wall -->
+        <g stroke="#e1cc9e" stroke-width="2">
+          <line x1="0"   y1="120" x2="1000" y2="120"/>
+          <line x1="0"   y1="220" x2="1000" y2="220"/>
+          <line x1="0"   y1="320" x2="1000" y2="320"/>
+          <line x1="120" y1="0"   x2="120"  y2="420"/>
+          <line x1="280" y1="0"   x2="280"  y2="420"/>
+          <line x1="440" y1="0"   x2="440"  y2="420"/>
+          <line x1="600" y1="0"   x2="600"  y2="420"/>
+          <line x1="760" y1="0"   x2="760"  y2="420"/>
+          <line x1="920" y1="0"   x2="920"  y2="420"/>
+        </g>
+
+        <!-- Floor -->
+        <rect x="0" y="420" width="1000" height="180" fill="#8a6c44"/>
+        <g stroke="#6e5435" stroke-width="2">
+          <line x1="0"   y1="460" x2="1000" y2="460"/>
+          <line x1="0"   y1="500" x2="1000" y2="500"/>
+          <line x1="0"   y1="540" x2="1000" y2="540"/>
+          <line x1="0"   y1="580" x2="1000" y2="580"/>
+        </g>
+
+        <!-- Chalkboard menu -->
+        <g transform="translate(60,30)">
+          <rect width="280" height="140" rx="10" fill="#2c3a2c" stroke="#5a3a20" stroke-width="6"/>
+          <text x="140" y="40" text-anchor="middle" font-family="Georgia, serif" font-size="22" fill="#f6e7c5" font-weight="700">TODAY'S SPECIALS</text>
+          <text x="20"  y="72"  font-family="Georgia, serif" font-size="14" fill="#cfe1c1">• Fresh sandwiches</text>
+          <text x="20"  y="94"  font-family="Georgia, serif" font-size="14" fill="#cfe1c1">• Daily soup</text>
+          <text x="20"  y="116" font-family="Georgia, serif" font-size="14" fill="#cfe1c1">• Side salads</text>
+        </g>
+
+        <!-- Awning behind counter -->
+        <g>
+          <path d="M 0 200 Q 500 230 1000 200 L 1000 240 Q 500 270 0 240 Z" fill="#c0392b"/>
+          <g stroke="#a02a1f" stroke-width="2" fill="#c0392b">
+            <path d="M 60  220 L 60  250" />
+            <path d="M 160 220 L 160 250" />
+            <path d="M 260 220 L 260 250" />
+            <path d="M 360 220 L 360 250" />
+            <path d="M 460 220 L 460 250" />
+            <path d="M 540 220 L 540 250" />
+            <path d="M 640 220 L 640 250" />
+            <path d="M 740 220 L 740 250" />
+            <path d="M 840 220 L 840 250" />
+            <path d="M 940 220 L 940 250" />
+          </g>
+        </g>
+
+        <!-- "DELI" sign on the awning -->
+        <text x="500" y="232" text-anchor="middle" font-family="Georgia, serif" font-size="28" font-weight="900" fill="#fff" letter-spacing="6">DELI</text>
+
+        <!-- Counter back / glass case frame: this is the visual frame; buckets are HTML on top -->
+        <rect x="40" y="380" width="920" height="200" fill="#a47148" stroke="#6e4a25" stroke-width="4"/>
+        <!-- Counter top surface -->
+        <rect x="30" y="370" width="940" height="22" fill="#d9a564" stroke="#6e4a25" stroke-width="3"/>
+        <!-- Glass front -->
+        <rect x="60" y="400" width="880" height="160" fill="rgba(220,240,250,0.18)" stroke="#7a5630" stroke-width="3" rx="4"/>
+
+        <!-- Door (left) -->
+        <g>
+          <rect x="20" y="160" width="80" height="260" fill="#6e4a25" stroke="#3a2510" stroke-width="3"/>
+          <rect x="30" y="180" width="60" height="80" fill="#bcdcec" stroke="#3a2510" stroke-width="2"/>
+          <circle cx="86" cy="300" r="4" fill="#f1c40f"/>
+        </g>
+        <!-- "OPEN" sign -->
+        <g transform="translate(40,140)">
+          <rect width="40" height="16" fill="#27ae60" rx="2"/>
+          <text x="20" y="12" text-anchor="middle" font-family="Arial,sans-serif" font-size="10" fill="#fff" font-weight="700">OPEN</text>
+        </g>
+      </svg>
+
+      <!-- Customer layer (procedural SVG inserted here) -->
+      <div id="customer-layer"></div>
+
+      <!-- Speech bubble with the sample (request) image -->
+      <div id="speech-bubble" aria-hidden="true">
+        <div id="speech-bubble-inner">
+          <img id="sample-img" src="" alt="Customer request">
+          <div id="speech-caption" hidden></div>
+        </div>
+        <div id="speech-bubble-tail"></div>
+      </div>
+
+      <!-- Paper bag on the counter -->
+      <div id="bag-on-counter">
+        <svg viewBox="0 0 80 96" aria-hidden="true">
+          <path d="M 8 30 L 8 90 Q 8 94 12 94 L 68 94 Q 72 94 72 90 L 72 30 Z" fill="#d4a86a" stroke="#7a5630" stroke-width="3" stroke-linejoin="round"/>
+          <path d="M 8 30 L 20 14 L 60 14 L 72 30 Z" fill="#bf8d4f" stroke="#7a5630" stroke-width="3" stroke-linejoin="round"/>
+          <rect x="28" y="42" width="24" height="32" fill="#fff" stroke="#7a5630" stroke-width="2"/>
+          <text x="40" y="62" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#7a5630" font-weight="700">DELI</text>
+        </svg>
+      </div>
+
+      <!-- Floating emoji reaction layer -->
+      <div id="floating-emojis" aria-hidden="true"></div>
+
+      <!-- Comparison grid (HTML, sits in front of glass-case) -->
+      <div id="comp-grid"></div>
+
+    </div>
+
+    <!-- Trial overlay (Next / Retry) will be appended here at runtime -->
+    <div id="comp-section"></div>
+  </main>
+
+  <div id="bottom-bar">
+    <button id="btn-print"      class="btn-print btn-icon" title="Print data" aria-label="Print data">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M18 8H6c-1.66 0-3 1.34-3 3v6h4v4h10v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H9v-5h6v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/>
+      </svg>
+    </button>
+    <button id="btn-clear-data" class="btn-clear-data btn-icon" title="Clear data" aria-label="Clear data">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+      </svg>
+    </button>
+  </div>
+
+  <div id="print-section">
+    <div id="print-header">
+      <h2>Match Me Deli &mdash; Session Results</h2>
+      <div id="print-meta"></div>
+    </div>
+    <table id="results-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Topic</th>
+          <th>Sample</th>
+          <th>Array Size</th>
+          <th>Errors</th>
+          <th>Prompted</th>
+          <th>Delay (s)</th>
+          <th>Time (s)</th>
+          <th>Outcome</th>
+        </tr>
+      </thead>
+      <tbody id="results-body"></tbody>
+    </table>
+    <div id="print-summary"></div>
+  </div>
+
+  <script src="../../tooltip-help.js"></script>
+  <script src="characters.js"></script>
+  <script src="game.js"></script>
+  <script>
+    const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
+    window.ADMIN_SECRET_HASH = ADMIN_SECRET_HASH;
+  </script>
+  <script src="../../admin-gear.js"></script>
+</body>
+</html>
