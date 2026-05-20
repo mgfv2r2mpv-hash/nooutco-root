@@ -260,15 +260,14 @@ body {
   display: block;
 }
 
-/* Shelf area in backdrop is x=20..760 of 1000 (left 2%..76%),
-   y=220..500 of 600 (37%..83%). Grid sits inside that, with a little
-   inset so the wooden side trim shows. */
+/* Foreground shelf occupies x=20..760 (2..76%) and y=228..510 (38..85%)
+   in the SVG. Grid sits inside the shelf, inset so uprights/header show. */
 #comp-grid {
   position: absolute;
-  left: 4%;
-  right: 26%;
-  top: 39%;
-  bottom: 18%;
+  left: 4.5%;
+  right: 24.5%;
+  top: 40%;
+  bottom: 16%;
   display: grid;
   grid-template-columns: repeat(var(--grid-cols, 4), 1fr);
   grid-auto-rows: 1fr;
@@ -322,14 +321,17 @@ body {
    Counter is x=780..1000.  Customer should stand in front of /
    beside the counter, feet on the floor.  We anchor the layer to the
    bottom-right of the stage so the customer's feet land on the floor. */
+/* Customer stands in front of the foreground shelves, on the floor,
+   to the right of the shelving unit (no counter to obscure them).
+   Enters from off-screen right and exits to the right. */
 #customer-layer {
   position: absolute;
-  right: 1.5%;
-  bottom: 3%;
+  right: 2%;
+  bottom: 2%;
   width: 20%;
   max-width: 220px;
   min-width: 120px;
-  height: 60%;
+  height: 58%;
   z-index: 6;
   pointer-events: none;
   display: flex;
@@ -343,26 +345,27 @@ body {
   transform-origin: bottom center;
 }
 
-/* Animation tiers */
-#customer-layer.tier-full.entering .customer-svg   { animation: customer-walk-in 750ms ease-out both; }
-#customer-layer.tier-full.exiting  .customer-svg   { animation: customer-walk-out 750ms ease-in  both; }
+/* Animation tiers — customer enters from the right facing left,
+   stands facing forward at the shelf, then exits walking right. */
+#customer-layer.tier-full.entering .customer-svg   { animation: customer-walk-in 800ms ease-out both; }
+#customer-layer.tier-full.exiting  .customer-svg   { animation: customer-walk-out 800ms ease-in  both; }
 #customer-layer.tier-light.entering .customer-svg  { animation: customer-fade-in 280ms ease-out both; }
 #customer-layer.tier-light.exiting  .customer-svg  { animation: customer-fade-out 280ms ease-in both; }
 
 @keyframes customer-walk-in {
-  0%   { transform: translateX(-380%) translateY(0)    scale(0.95); }
-  20%  { transform: translateX(-300%) translateY(-3px) scale(0.95); }
-  40%  { transform: translateX(-200%) translateY(0)    scale(0.96); }
-  60%  { transform: translateX(-120%) translateY(-3px) scale(0.97); }
-  80%  { transform: translateX(-40%)  translateY(0)    scale(0.99); }
-  100% { transform: translateX(0)     translateY(0)    scale(1); }
+  0%   { transform: translateX(380%) translateY(0)    scale(0.93) scaleX(-1); }
+  20%  { transform: translateX(300%) translateY(-3px) scale(0.94) scaleX(-1); }
+  40%  { transform: translateX(200%) translateY(0)    scale(0.96) scaleX(-1); }
+  60%  { transform: translateX(120%) translateY(-3px) scale(0.97) scaleX(-1); }
+  80%  { transform: translateX(40%)  translateY(0)    scale(0.99) scaleX(-1); }
+  100% { transform: translateX(0)    translateY(0)    scale(1)    scaleX(1); }
 }
 @keyframes customer-walk-out {
-  0%   { transform: translateX(0)    translateY(0)    scale(1)    scaleX(1); }
-  10%  { transform: translateX(0)    translateY(0)    scale(1)    scaleX(-1); }
-  30%  { transform: translateX(40%)  translateY(-3px) scale(0.99) scaleX(-1); }
-  60%  { transform: translateX(140%) translateY(0)    scale(0.97) scaleX(-1); }
-  100% { transform: translateX(320%) translateY(-3px) scale(0.93) scaleX(-1); }
+  0%   { transform: translateX(0)    translateY(0)    scale(1); }
+  20%  { transform: translateX(40%)  translateY(-3px) scale(0.99); }
+  50%  { transform: translateX(140%) translateY(0)    scale(0.97); }
+  80%  { transform: translateX(260%) translateY(-3px) scale(0.94); }
+  100% { transform: translateX(380%) translateY(0)    scale(0.92); }
 }
 @keyframes customer-fade-in {
   0%   { opacity: 0; transform: translateY(12px) scale(0.96); }
@@ -374,13 +377,15 @@ body {
 }
 
 /* ── Speech bubble ──────────────────────────────────────────────────── */
+/* Speech bubble sits just above and slightly left of the customer's head,
+   tail pointing down-right toward them. */
 #speech-bubble {
   position: absolute;
-  right: 14%;
-  top: 6%;
-  width: 18%;
-  max-width: 220px;
-  min-width: 140px;
+  right: 17%;
+  top: 22%;
+  width: 17%;
+  max-width: 210px;
+  min-width: 130px;
   z-index: 7;
   opacity: 0;
   transform: scale(0.4);
@@ -446,13 +451,13 @@ body {
   border-top: 18px solid #fff;
 }
 
-/* ── Bag on counter ─────────────────────────────────────────────────── */
-/* Counter top sits at y=430 of 600 → 71.7% from top.  Bag sits on top of
-   counter on the right side, near the customer. */
+/* ── Bag (next to customer on the floor) ───────────────────────────── */
+/* Bag sits on the floor right next to the customer so the hand-off looks
+   like they pick it up and walk out with it. */
 #bag-on-counter {
   position: absolute;
-  right: 22%;
-  top: 64%;
+  right: 20%;
+  top: 72%;
   width: 7%;
   min-width: 50px;
   max-width: 90px;
@@ -681,8 +686,8 @@ body {
   body { min-height: 0; }
 
   #game-area    { flex: 1 1 auto; min-height: 0; }
-  #speech-bubble  { min-width: 90px; width: 22%; }
+  #speech-bubble  { min-width: 90px; width: 22%; right: 20%; top: 24%; }
   #customer-layer { width: 22%; min-width: 80px; }
-  #comp-grid      { right: 28%; }
-  #bag-on-counter { width: 9%; min-width: 36px; }
+  #comp-grid      { right: 26%; }
+  #bag-on-counter { width: 9%; min-width: 36px; right: 22%; }
 }
