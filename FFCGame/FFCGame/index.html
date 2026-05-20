@@ -127,6 +127,29 @@
     </div>
   </section>
 
+  <!-- ── Pre-start blurb ──────────────────────────────────────────── -->
+  <style>
+    .game-intro { max-width: 720px; margin: 14px auto 6px; padding: 16px 20px; background: rgba(255,255,255,0.92); border: 1px solid rgba(0,0,0,0.08); border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,0.04); color: #2d3a1f; font-size: 14px; line-height: 1.5; font-family: 'Segoe UI', Inter, -apple-system, sans-serif; }
+    .game-intro h2 { font-size: 15px; font-weight: 700; margin: 0 0 8px; color: #1a1f14; }
+    .game-intro p { margin: 0 0 8px; }
+    .game-intro ul { margin: 6px 0 6px 20px; padding: 0; }
+    .game-intro li { margin-bottom: 3px; }
+    .game-intro .tip { margin-top: 8px; color: #5a6b4a; font-size: 13px; }
+  </style>
+  <section class="game-intro" id="game-intro" aria-label="How this game works">
+    <h2>Feature · Function · Class</h2>
+    <p>The learner hears a feature, function, or category prompt (e.g., <em>"something you eat with"</em>) and picks the matching item from the array.</p>
+    <ul>
+      <li><strong>Mode</strong> — Feature, Function, Class (within group), or Class (cross-category).</li>
+      <li><strong>Array Size</strong> — number of choices shown (2–10).</li>
+      <li><strong>Tag</strong> — vocabulary set to draw items from.</li>
+      <li><strong>Targets</strong> — open the Targets panel to pick which items can be the correct answer.</li>
+      <li><strong>⚙ Settings</strong> — errorless, re-present errors, prompts.</li>
+    </ul>
+    <p class="tip">Set Mode, Array Size, Tag, and Targets, then tap <strong>Start</strong>.</p>
+  </section>
+  <script>(function(){var b=document.getElementById('btn-start');if(b)b.addEventListener('click',function(){var i=document.getElementById('game-intro');if(i)i.hidden=true;},{once:true});})();</script>
+
   <!-- ── Game area (hidden until Start) ───────────────────────────── -->
   <main id="game-area" hidden>
 

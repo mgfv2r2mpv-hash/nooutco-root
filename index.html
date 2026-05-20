@@ -151,10 +151,15 @@
     }
 
     .list {
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 14px;
-      max-width: 540px;
+      max-width: 1100px;
+    }
+    .list .card-wide { grid-column: 1 / -1; max-width: 540px; }
+    @media (max-width: 720px) {
+      .list { grid-template-columns: 1fr; max-width: 540px; }
+      .list .card-wide { grid-column: auto; }
     }
 
     .card {
@@ -333,7 +338,7 @@
   <p class="subtitle">Choose a game:</p>
 
   <div class="list">
-    
+
     <a class="card" href="./IDMatchGame/IDMatchGame/index.html">
       <div class="card-icon">🧩</div>
       <div>
@@ -388,7 +393,7 @@
       </div>
     </a>
 
-    <a class="card" href="./FamousPersonGame/">
+    <a class="card card-wide" href="./FamousPersonGame/">
       <div class="card-icon">🤩</div>
       <div>
         <div class="card-label">Conversation Skills (Advanced)</div>
