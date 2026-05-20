@@ -157,7 +157,7 @@
 Given a treatment goal and SAP specifications, return ONLY a JSON object (no markdown fences, no preamble) with this exact structure:
 
 {
-  "refinedGoal": "Complete refined SMART goal. Keep core behavior and intent. Add specificity and timeframe.",
+  "refinedGoal": "Refined SMART goal that funders will accept. Preserve the clinician's wording wherever possible — if the input already contains all five SMART elements (Specific target + context, Measurable quantitative criterion such as '80% accuracy' or '4 of 5 opportunities', Achievable, Relevant to functional independence / medical necessity, and an explicit Time-bound phrase such as 'within 1 authorization period' or 'by the end of 1 authorization period'), return it essentially as-is with at most minor polish. Only fill in missing SMART elements; do not rewrite a complete goal. If the timeframe is missing, add 'by the end of 1 authorization period' unless the SAP specs give a different timeframe. Equivalent timeframe phrasings already present in the input (e.g. 'within 1 authorization period', 'across 3 consecutive sessions within 1 authorization period') satisfy the time-bound requirement and must not be replaced.",
   "exercise": {
     "purpose": "* [one-line functional domain or skill deficit addressed]\n* [one-line functional outcome or independence gain]",
     "teachingStrategy": "[Method name]. [One sentence on application — no rationale paragraph.]",
@@ -186,7 +186,14 @@ Style rules — follow exactly:
 - No sentence starting with "It is important to", "Rationale:", "This ensures", "Note that", or similar
 - Lesson Set Up: actual setup steps only — no reminders about data sheets or timers
 - SD examples: neutral third-person phrasing ("What is the bear doing?" not "What are you doing?")
-- Keep every section as short as operationally complete allows`;
+- Keep every section as short as operationally complete allows
+
+Terminology standards (apply rigorously — these are non-negotiable for BCBA-written procedures):
+- Reinforcement is contingent on behavior, never delivered to people. Never write "[CLIENT] is reinforced" or "reinforce [CLIENT]." Write "deliver reinforcement contingent on [target behavior]," "reinforce [the target response]," or "[behavior] is reinforced on [schedule]."
+- People engage in behaviors; behaviors are what get reinforced, prompted, faded, shaped, or extinguished. Do not conflate the two.
+- Use precise behavior-analytic verbs and procedure names (prompt, fade, model, shape, chain, present the SD, deliver/withhold reinforcement, run a probe, conduct a trial, mass trial, intersperse). Do not substitute loose synonyms ("reward," "encourage," "motivate") and do not write to sound sophisticated.
+- Name procedures specifically (e.g., errorless teaching, DRO, DRA, differential reinforcement, time delay, BST) rather than generic phrases like "support."
+- Plain operational language only. No filler, no value-laden phrasing.
 
     function buildUserPrompt(goal, sapSpecs) {
       return `Treatment Goal:\n${goal}\n\nSAP Specifications:\n${sapSpecs.trim() || "(No additional specifications provided — apply standard best-practice defaults.)"}`;
@@ -195,10 +202,15 @@ Style rules — follow exactly:
     function buildGeneratePrompt(goal, sapSpecs) {
       const sys = `You are a BCBA writing a Service Authorization Plan (SAP) for behavior technicians. Write concise, operational procedures — no rationale, no prose padding. Staff are trained.
 
+Terminology standards (apply rigorously):
+- Reinforcement is contingent on behavior, never delivered to people. Never write "[CLIENT] is reinforced." Write "deliver reinforcement contingent on [behavior]," "reinforce [target response]," or "[behavior] is reinforced on [schedule]."
+- People engage in behaviors; behaviors are what get reinforced, prompted, faded, shaped, or extinguished. Do not conflate the two.
+- Use precise behavior-analytic verbs and named procedures (prompt, fade, model, shape, chain, present the SD, errorless teaching, DRO, DRA, time delay, BST). Do not substitute loose synonyms ("reward," "encourage," "motivate"). Do not write to sound sophisticated — plain operational language only.
+
 Given a treatment goal and SAP specifications, return exactly the following labeled sections (label on its own line, content below, blank line before next label). No preamble, no commentary after the last section.
 
 REFINED TREATMENT GOAL
-[Complete refined SMART goal — keep core behavior, add specificity and timeframe]
+[Refined SMART goal that funders will accept. Preserve the clinician's wording wherever possible — if the input already contains all five SMART elements (Specific target + context, Measurable quantitative criterion, Achievable, Relevant to functional independence / medical necessity, and an explicit Time-bound phrase such as "within 1 authorization period" or "by the end of 1 authorization period"), return it essentially as-is with at most minor polish. Only fill in missing SMART elements; do not rewrite a complete goal. If the timeframe is missing, add "by the end of 1 authorization period" unless the SAP specs override. Equivalent timeframe phrasings already in the input satisfy the time-bound requirement and must not be replaced.]
 
 EXERCISE
 Purpose:
