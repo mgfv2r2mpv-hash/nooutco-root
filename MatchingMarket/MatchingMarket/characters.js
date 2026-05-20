@@ -203,4 +203,4 @@ function setCustomerGrin(svg, grinning) {
   }
 }
 
-window.MMDCharacters = { buildCustomer, setCustomerGrin };
+window.MMCharacters = { buildCustomer, setCustomerGrin };

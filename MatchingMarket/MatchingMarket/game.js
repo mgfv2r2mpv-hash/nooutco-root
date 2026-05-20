@@ -1,9 +1,9 @@
 'use strict';
 
 /* ══════════════════════════════════════════════════════════════════
-   MATCH ME DELI — matching game with deli-counter theme
+   MATCHING MARKET — matching game with corner-market theme
    Core matching logic ported from IDMatchGame; rendering / payoff
-   sequence is the deli scene.
+   sequence is the market scene.
    ══════════════════════════════════════════════════════════════════ */
 
 // Images live in the IDMatchGame sibling folder; we re-use that manifest.
@@ -106,7 +106,7 @@ const el = {
   btnStart:       $('btn-start'),
 
   gameArea:       $('game-area'),
-  deliStage:      $('deli-stage'),
+  marketStage:    $('market-stage'),
   customerLayer:  $('customer-layer'),
   speechBubble:   $('speech-bubble'),
   speechCaption:  $('speech-caption'),
@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ── Settings ───────────────────────────────────────────────────────
 
 function loadSettings() {
-  const s = JSON.parse(localStorage.getItem('mmdSettings') || '{}');
+  const s = JSON.parse(localStorage.getItem('mmSettings') || '{}');
   state.topic                = s.topic                ?? '';
   state.arraySize            = s.arraySize            ?? 4;
   state.animTier             = s.animTier             ?? 'full';
@@ -194,7 +194,7 @@ function loadSettings() {
 }
 
 function saveSettings() {
-  localStorage.setItem('mmdSettings', JSON.stringify({
+  localStorage.setItem('mmSettings', JSON.stringify({
     topic:                state.topic,
     arraySize:            state.arraySize,
     animTier:             state.animTier,
@@ -514,7 +514,7 @@ function buildTrial(keepSample) {
   }
 }
 
-// ── Render the deli scene ──────────────────────────────────────────
+// ── Render the market scene ────────────────────────────────────────
 
 function gridCols(n) {
   const map = { 1:1, 2:2, 3:3, 4:2, 5:3, 6:3, 7:4, 8:4, 9:3, 10:5 };
@@ -572,7 +572,7 @@ function renderCustomer() {
     return;
   }
 
-  const svg = window.MMDCharacters.buildCustomer(state.customerSeed);
+  const svg = window.MMCharacters.buildCustomer(state.customerSeed);
   el.customerLayer.appendChild(svg);
 
   const tier = state.animTier === 'full' ? 'tier-full' : 'tier-light';
@@ -658,7 +658,7 @@ function onCorrectClick(bucket) {
  */
 function playCorrectSequence(bucket) {
   return new Promise(resolve => {
-    const stageRect  = el.deliStage.getBoundingClientRect();
+    const stageRect  = el.marketStage.getBoundingClientRect();
     const bucketRect = bucket.getBoundingClientRect();
     const bagRect    = el.bag.getBoundingClientRect();
 
@@ -677,7 +677,7 @@ function playCorrectSequence(bucket) {
     const dy = (bagRect.top  + bagRect.height / 2) - (bucketRect.top  + bucketRect.height / 2);
     flying.style.setProperty('--dx', dx + 'px');
     flying.style.setProperty('--dy', dy + 'px');
-    el.deliStage.appendChild(flying);
+    el.marketStage.appendChild(flying);
 
     // Hide the bucket's own image so it doesn't appear duplicated
     if (img) img.style.opacity = '0';
@@ -692,7 +692,7 @@ function playCorrectSequence(bucket) {
 
       // Customer grin
       const svg = el.customerLayer.querySelector('.customer-svg');
-      if (svg && window.MMDCharacters) window.MMDCharacters.setCustomerGrin(svg, true);
+      if (svg && window.MMCharacters) window.MMCharacters.setCustomerGrin(svg, true);
 
       // Floating emojis
       if (state.animTier !== 'minimal') {
@@ -804,7 +804,7 @@ function showTrialButtons() {
 
   overlay.appendChild(btnNext);
   overlay.appendChild(btnRetry);
-  el.deliStage.appendChild(overlay);
+  el.marketStage.appendChild(overlay);
 }
 
 function removeTrialButtons() {

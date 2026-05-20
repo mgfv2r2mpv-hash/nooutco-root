@@ -1,6 +1,5 @@
 /* ── CSS custom properties ─────────────────────────────────────────── */
 :root {
-  --bucket-sz: 110px;
   --bucket-gap: 10px;
 }
 
@@ -19,7 +18,7 @@ body {
 
 /* ── Header ────────────────────────────────────────────────────────── */
 #app-header {
-  background: #6b3a1a;
+  background: #2c6a3f;
   color: #fff;
   padding: 10px 20px;
   display: flex;
@@ -28,11 +27,7 @@ body {
   gap: 12px;
   flex-shrink: 0;
 }
-#app-header h1 {
-  font-size: 1.3rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
+#app-header h1 { font-size: 1.3rem; font-weight: 700; letter-spacing: 0.02em; }
 #btn-back {
   display: inline-flex;
   align-items: center;
@@ -49,7 +44,6 @@ body {
 }
 #btn-back:hover { background: rgba(255,255,255,0.28); }
 
-/* Timer */
 #timer-section { display: flex; align-items: center; gap: 8px; }
 #timer-display {
   font-family: 'Courier New', monospace;
@@ -90,10 +84,7 @@ body {
 }
 .setting-group { display: flex; align-items: center; gap: 6px; }
 .setting-group > label:first-child {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #4a5568;
-  white-space: nowrap;
+  font-size: 0.82rem; font-weight: 600; color: #4a5568; white-space: nowrap;
 }
 .setting-group select,
 .setting-group input[type="number"] {
@@ -103,7 +94,7 @@ body {
   font-size: 0.88rem;
   background: #f8fafc;
   color: #2d3748;
-  outline-color: #4299e1;
+  outline-color: #38a169;
 }
 .setting-group input[type="number"] { width: 58px; }
 
@@ -117,11 +108,11 @@ body {
   cursor: pointer;
   white-space: nowrap;
 }
-.checkbox-label input[type="checkbox"] { cursor: pointer; accent-color: #c05621; }
+.checkbox-label input[type="checkbox"] { cursor: pointer; accent-color: #2c6a3f; }
 
 .btn-primary {
   margin-left: auto;
-  background: #c05621;
+  background: #2c6a3f;
   color: #fff;
   border: none;
   padding: 8px 24px;
@@ -131,7 +122,7 @@ body {
   cursor: pointer;
   transition: background 0.15s, transform 0.1s;
 }
-.btn-primary:hover  { background: #9c4419; }
+.btn-primary:hover  { background: #225131; }
 .btn-primary:active { transform: scale(0.97); }
 
 /* ── Target picker / extra panel ───────────────────────────────────── */
@@ -149,8 +140,8 @@ body {
   cursor: pointer;
 }
 .btn-targets:hover, .btn-extra:hover { background: #edf2f7; }
-.btn-targets.is-open, .btn-extra.is-open { background: #fde6d3; border-color: #c05621; }
-.btn-targets.is-filtered { border-color: #c05621; color: #9c4419; }
+.btn-targets.is-open, .btn-extra.is-open { background: #d4e8d6; border-color: #2c6a3f; }
+.btn-targets.is-filtered { border-color: #2c6a3f; color: #225131; }
 .btn-targets .targets-count {
   font-weight: 500;
   color: #4a5568;
@@ -159,7 +150,7 @@ body {
   border-radius: 10px;
   font-size: 0.75rem;
 }
-.btn-targets.is-filtered .targets-count { background: #fde6d3; color: #9c4419; }
+.btn-targets.is-filtered .targets-count { background: #d4e8d6; color: #225131; }
 
 #target-panel, #extra-panel {
   background: #fafbfd;
@@ -203,11 +194,7 @@ body {
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 4px 12px;
 }
-.target-panel-empty {
-  padding: 12px;
-  color: #718096;
-  font-style: italic;
-}
+.target-panel-empty { padding: 12px; color: #718096; font-style: italic; }
 .target-row {
   display: flex;
   align-items: center;
@@ -219,7 +206,7 @@ body {
   border-radius: 4px;
 }
 .target-row:hover { background: #edf2f7; }
-.target-row input[type="checkbox"] { cursor: pointer; accent-color: #c05621; }
+.target-row input[type="checkbox"] { cursor: pointer; accent-color: #2c6a3f; }
 .target-thumb {
   width: 32px;
   height: 32px;
@@ -255,8 +242,8 @@ body {
   position: relative;
 }
 
-/* ── Deli stage ─────────────────────────────────────────────────────── */
-#deli-stage {
+/* ── Market stage ───────────────────────────────────────────────────── */
+#market-stage {
   position: relative;
   flex: 1 1 auto;
   width: 100%;
@@ -265,7 +252,7 @@ body {
   background: #f4e6c8;
 }
 
-#deli-backdrop {
+#market-backdrop {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -273,67 +260,56 @@ body {
   display: block;
 }
 
-/* Bucket grid sits inside the glass case area of the backdrop.
-   Backdrop viewBox 0..1000, glass case x=60..720 (we narrow the bucket
-   area so the customer/bag/space on the right are visible).
-   Vertical: glass case y=400..560 of 600 → 66.7% .. 93.3% */
+/* Shelf area in backdrop is x=20..760 of 1000 (left 2%..76%),
+   y=220..500 of 600 (37%..83%). Grid sits inside that, with a little
+   inset so the wooden side trim shows. */
 #comp-grid {
   position: absolute;
-  left: 5%;
-  right: 30%;
-  top: 67%;
-  bottom: 4%;
+  left: 4%;
+  right: 26%;
+  top: 39%;
+  bottom: 18%;
   display: grid;
   grid-template-columns: repeat(var(--grid-cols, 4), 1fr);
+  grid-auto-rows: 1fr;
   gap: var(--bucket-gap);
   z-index: 4;
-  pointer-events: auto;
+  padding: 4px;
 }
 
-/* Bucket = a comparison tile, styled as a stainless deli tray */
+/* Shelf item — clean card sitting on a wooden plank edge */
 .bucket {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, #e8eef2 0%, #c8d3da 60%, #8c98a3 100%);
-  border: 2px solid #5a6470;
-  border-radius: 8px 8px 14px 14px;
-  box-shadow: inset 0 -6px 0 rgba(0,0,0,0.18), 0 2px 4px rgba(0,0,0,0.18);
+  background: #fffaf0;
+  border: 2px solid #d6c39a;
+  border-bottom: 6px solid #7a5630;
+  border-radius: 6px 6px 2px 2px;
+  box-shadow: 0 3px 4px rgba(0,0,0,0.25);
   cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
   overflow: hidden;
   min-height: 0;
 }
 .bucket:not(.bucket-disabled):hover {
   transform: translateY(-3px);
-  box-shadow: inset 0 -6px 0 rgba(0,0,0,0.18), 0 5px 14px rgba(192,86,33,0.28);
+  border-color: #2c6a3f;
+  box-shadow: 0 6px 14px rgba(44,106,63,0.32);
 }
 .bucket.bucket-disabled { cursor: default; }
 .bucket img {
-  max-width: 78%;
-  max-height: 78%;
+  max-width: 88%;
+  max-height: 88%;
   object-fit: contain;
   pointer-events: none;
   display: block;
   transition: transform 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.3s;
 }
-/* Price-tag flap at top of bucket */
-.bucket::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 50%;
-  transform: translateX(-50%);
-  width: 40%;
-  height: 8px;
-  background: #fff;
-  border-radius: 0 0 4px 4px;
-  border: 1px solid #5a6470;
-  border-top: none;
-}
 
-/* Bucket flying-item state */
-.bucket .item-flying {
+/* Flying-item clone */
+.item-flying {
   position: absolute;
   z-index: 30;
   pointer-events: none;
@@ -341,14 +317,19 @@ body {
 }
 
 /* ── Customer ───────────────────────────────────────────────────────── */
+/* Customer stands on the floor next to the right-side counter.
+   Floor in the backdrop is y=500..600 (bottom ~17%).
+   Counter is x=780..1000.  Customer should stand in front of /
+   beside the counter, feet on the floor.  We anchor the layer to the
+   bottom-right of the stage so the customer's feet land on the floor. */
 #customer-layer {
   position: absolute;
-  right: 6%;
-  bottom: 4%;
-  width: 18%;
+  right: 1.5%;
+  bottom: 3%;
+  width: 20%;
   max-width: 220px;
-  min-width: 110px;
-  height: 70%;
+  min-width: 120px;
+  height: 60%;
   z-index: 6;
   pointer-events: none;
   display: flex;
@@ -362,7 +343,7 @@ body {
   transform-origin: bottom center;
 }
 
-/* Animation tiers — applied via classes on #customer-layer */
+/* Animation tiers */
 #customer-layer.tier-full.entering .customer-svg   { animation: customer-walk-in 750ms ease-out both; }
 #customer-layer.tier-full.exiting  .customer-svg   { animation: customer-walk-out 750ms ease-in  both; }
 #customer-layer.tier-light.entering .customer-svg  { animation: customer-fade-in 280ms ease-out both; }
@@ -396,7 +377,7 @@ body {
 #speech-bubble {
   position: absolute;
   right: 14%;
-  top: 5%;
+  top: 6%;
   width: 18%;
   max-width: 220px;
   min-width: 140px;
@@ -406,12 +387,8 @@ body {
   transform-origin: bottom right;
   pointer-events: none;
 }
-#speech-bubble.shown {
-  animation: bubble-pop 320ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-#speech-bubble.hiding {
-  animation: bubble-pop-out 220ms ease-in forwards;
-}
+#speech-bubble.shown  { animation: bubble-pop 320ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+#speech-bubble.hiding { animation: bubble-pop-out 220ms ease-in forwards; }
 @keyframes bubble-pop {
   0%   { opacity: 0; transform: scale(0.4); }
   60%  { opacity: 1; transform: scale(1.06); }
@@ -470,10 +447,12 @@ body {
 }
 
 /* ── Bag on counter ─────────────────────────────────────────────────── */
+/* Counter top sits at y=430 of 600 → 71.7% from top.  Bag sits on top of
+   counter on the right side, near the customer. */
 #bag-on-counter {
   position: absolute;
-  right: 26%;
-  top: 55%;
+  right: 22%;
+  top: 64%;
   width: 7%;
   min-width: 50px;
   max-width: 90px;
@@ -491,7 +470,7 @@ body {
 }
 @keyframes bag-handoff {
   0%   { transform: translateX(0)   rotate(0); }
-  100% { transform: translateX(120%) rotate(-12deg); }
+  100% { transform: translateX(110%) rotate(-12deg); }
 }
 
 /* ── Item flying from bucket to bag ─────────────────────────────────── */
@@ -505,7 +484,7 @@ body {
 #floating-emojis {
   position: absolute;
   right: 8%;
-  top: 8%;
+  top: 10%;
   width: 16%;
   height: 30%;
   z-index: 8;
@@ -537,21 +516,21 @@ body {
 }
 .bucket.jiggle { animation: bucket-jiggle 0.5s ease; }
 @keyframes flash-red {
-  0%   { background: linear-gradient(180deg, #e8eef2 0%, #c8d3da 60%, #8c98a3 100%); }
-  40%  { background: linear-gradient(180deg, #ffd1d1 0%, #ff8a8a 60%, #d04040 100%); }
-  100% { background: linear-gradient(180deg, #e8eef2 0%, #c8d3da 60%, #8c98a3 100%); }
+  0%   { background: #fffaf0; }
+  40%  { background: #ffd1d1; }
+  100% { background: #fffaf0; }
 }
 .bucket.flash-red { animation: flash-red 0.5s ease; }
 
 /* ── Prompt effects ────────────────────────────────────────────────── */
 @keyframes sparkle-pulse {
-  0%   { box-shadow: inset 0 -6px 0 rgba(0,0,0,0.18),
+  0%   { box-shadow: 0 3px 4px rgba(0,0,0,0.25),
                      0 0 8px 4px #ffd700,
                      0 0 18px 8px rgba(255,215,0,0.55); }
-  50%  { box-shadow: inset 0 -6px 0 rgba(0,0,0,0.18),
+  50%  { box-shadow: 0 3px 4px rgba(0,0,0,0.25),
                      0 0 14px 7px #ffd700,
                      0 0 30px 14px rgba(255,140,0,0.5); }
-  100% { box-shadow: inset 0 -6px 0 rgba(0,0,0,0.18),
+  100% { box-shadow: 0 3px 4px rgba(0,0,0,0.25),
                      0 0 8px 4px #ffd700,
                      0 0 18px 8px rgba(255,215,0,0.55); }
 }
@@ -561,8 +540,8 @@ body {
 }
 .bucket.prompt-outline {
   border: 3px solid #38a169 !important;
-  box-shadow: inset 0 -6px 0 rgba(0,0,0,0.18),
-              0 0 0 3px rgba(56,161,105,0.45),
+  border-bottom-width: 6px !important;
+  box-shadow: 0 0 0 3px rgba(56,161,105,0.45),
               0 3px 8px rgba(0,0,0,0.1) !important;
 }
 
@@ -591,8 +570,8 @@ body {
 }
 .btn-watermark:hover  { opacity: 0.93; transform: scale(1.04); }
 .btn-watermark:active { transform: scale(0.97); }
-.btn-watermark-next  { background: rgba(47, 133, 90, 0.92); color: #fff; }
-.btn-watermark-retry { background: rgba(192, 86, 33, 0.88); color: #fff; }
+.btn-watermark-next  { background: rgba(44, 106, 63, 0.94); color: #fff; }
+.btn-watermark-retry { background: rgba(192, 86, 33, 0.92); color: #fff; }
 
 /* ── Bottom bar ────────────────────────────────────────────────────── */
 #bottom-bar {
@@ -701,8 +680,7 @@ body {
   }
   body { min-height: 0; }
 
-  #game-area { flex: 1 1 auto; min-height: 0; }
-
+  #game-area    { flex: 1 1 auto; min-height: 0; }
   #speech-bubble  { min-width: 90px; width: 22%; }
   #customer-layer { width: 22%; min-width: 80px; }
   #comp-grid      { right: 28%; }
