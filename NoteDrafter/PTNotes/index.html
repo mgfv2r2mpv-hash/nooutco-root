@@ -16,6 +16,49 @@
       padding: 32px 20px;
       color: #2d3a1f;
     }
+    .info-tip {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .info-bubble {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      visibility: hidden;
+      opacity: 0;
+      background: #2d3a1f;
+      color: white;
+      padding: 9px 12px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 1.55;
+      width: 260px;
+      text-align: left;
+      z-index: 100;
+      pointer-events: none;
+      transition: opacity 0.12s ease;
+      white-space: normal;
+      box-shadow: 0 4px 14px rgba(45, 58, 31, 0.18);
+    }
+    .info-bubble::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: #2d3a1f;
+    }
+    .info-tip:hover .info-bubble,
+    .info-tip:focus-within .info-bubble {
+      visibility: visible;
+      opacity: 1;
+    }
   </style>
 </head>
 <body>
@@ -34,18 +77,18 @@
     const hasAdminToken = () => localStorage.getItem("admin_token") === ADMIN_SECRET_HASH;
 
     const PROVIDERS = {
-      gemini:    { label: "Gemini",  placeholder: "AIza...",    keyLabel: "Google AI Studio Key",   hint: "Get key at aistudio.google.com" },
-      openai:    { label: "OpenAI",         placeholder: "sk-...",      keyLabel: "OpenAI API Key",       hint: "Get key at platform.openai.com" },
-      anthropic: { label: "Anthropic",      placeholder: "sk-ant-...", keyLabel: "Anthropic API Key",    hint: "Get key at console.anthropic.com" },
+      gemini:    { label: "Gemini",    placeholder: "AIza...",    keyLabel: "Google AI Studio Key", hint: "Get key at aistudio.google.com",    keyPageUrl: "https://aistudio.google.com/app/apikey",          howToUrl: "https://aistudio.google.com",                          freeTier: true  },
+      openai:    { label: "OpenAI",    placeholder: "sk-...",     keyLabel: "OpenAI API Key",       hint: "Get key at platform.openai.com",   keyPageUrl: "https://platform.openai.com/api-keys",             howToUrl: "https://platform.openai.com/docs/quickstart",          freeTier: false },
+      anthropic: { label: "Anthropic", placeholder: "sk-ant-...", keyLabel: "Anthropic API Key",    hint: "Get key at console.anthropic.com", keyPageUrl: "https://console.anthropic.com/settings/keys",      howToUrl: "https://docs.anthropic.com/en/api/getting-started",    freeTier: false },
     };
 
     const INDIVIDUALS = [
-      { id: "caregiver",  label: "Parent/Caregiver", placeholder: "Jane Doe (Mother)" },
-      { id: "client",     label: "Client",           placeholder: "First Last" },
-      { id: "technician", label: "Technician",       placeholder: "Jane Doe (RBT)" },
-      { id: "teacher",    label: "Teacher",          placeholder: "Jane Doe (3rd Grade Teacher)" },
-      { id: "specialist", label: "Specialist/s",     placeholder: "Jane Doe (Speech Therapist)" },
-      { id: "sibling",    label: "Sibling/s",        placeholder: "First Last (Brother)" },
+      { id: "caregiver",  label: "Parent/Caregiver", placeholder: "e.g. Mother, Foster parent" },
+      { id: "client",     label: "Client" },
+      { id: "technician", label: "Technician",       placeholder: "e.g. RBT, BT" },
+      { id: "teacher",    label: "Teacher",          placeholder: "e.g. Classroom teacher, Para" },
+      { id: "specialist", label: "Specialist/s",     placeholder: "e.g. SLP, OT, PT" },
+      { id: "sibling",    label: "Sibling(s)/Peer(s)", placeholder: "e.g. Brother, Sister, Cousin, Peer" },
     ];
 
     const SUPPORT_ACTIVITIES = [
@@ -103,6 +146,80 @@
       return JSON.parse(match[0]);
     }
 
+    function ApiKeyHelpBox({ provider }) {
+      const prov = PROVIDERS[provider];
+      return (
+        <div style={{ marginTop: 10, background: "#f7fbf3", border: "1px solid #c0d4a8", borderRadius: 8, padding: "12px 16px", fontSize: 13, color: "#374528", lineHeight: 1.6 }}>
+          <p style={{ fontWeight: 600, marginBottom: 5 }}>What is an API key?</p>
+          <p style={{ marginBottom: 8 }}>An API key is like a personal access code that lets this tool connect directly to an AI service on your behalf — so you don't have to copy and paste. You create one on the AI provider's website; it stays in your browser and is never shared.</p>
+          <p>
+            <a href={prov.howToUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#374528", fontWeight: 600 }}>How to get a {prov.label} API key →</a>
+            {prov.freeTier && <span style={{ marginLeft: 10, background: "#d4edda", color: "#155724", padding: "2px 8px", borderRadius: 12, fontSize: 11, fontWeight: 700 }}>Free tier available</span>}
+          </p>
+        </div>
+      );
+    }
+
+    function ApiErrorMessage({ error, rawError, provider, isAdmin, onGeneratePrompt }) {
+      if (!error) return null;
+      const isApiError = /API error \d{3}/i.test(error) || error === "NO_KEY";
+      if (!isApiError) return <p style={{ color: "#c0392b", fontSize: 13, marginBottom: 12 }}>{error}</p>;
+
+      const prov = PROVIDERS[provider];
+      const statusMatch = error.match(/error (\d{3})/i);
+      const status = statusMatch ? parseInt(statusMatch[1]) : null;
+
+      let heading, body, actions, showOptions = false;
+      if (error === "NO_KEY") {
+        heading = "You'll need an API key to use direct generation.";
+        body = "An API key is a free personal access code from the AI provider. Once you add it above, this tool connects directly and builds your note automatically.";
+        actions = [{ href: prov.keyPageUrl, text: `Get your ${prov.label} API key →` }];
+        if (!prov.freeTier) actions.push({ href: PROVIDERS.gemini.keyPageUrl, text: "Or try Gemini — it has a free tier →" });
+      } else if (status === 401 || status === 403) {
+        heading = "Your API key wasn't accepted.";
+        body = "Double-check that you copied the full key exactly — even one missing character will cause this error. Keys can be regenerated on the provider's website if needed.";
+        actions = [{ href: prov.keyPageUrl, text: `Review your ${prov.label} API keys →` }];
+      } else if (status === 429) {
+        heading = "The AI service is temporarily busy or you've hit a usage limit.";
+        body = "This can happen if the service is under heavy load or you've used your free quota for today. Try again in a few minutes, or use one of the options below.";
+        actions = []; showOptions = true;
+      } else if (status === 402) {
+        heading = "Your API account needs funds to continue.";
+        body = "The AI service rejected the request because your account balance is too low. You can add credits, switch to a service with a free tier, or use Generate Prompt for free.";
+        actions = []; showOptions = true;
+      } else {
+        heading = "Something went wrong generating your note.";
+        body = "Check your API key and try again. If the problem continues, the service may be temporarily unavailable.";
+        actions = [{ href: prov.keyPageUrl, text: `Check your ${prov.label} API keys →` }];
+      }
+
+      return (
+        <div style={{ background: "#fff5f5", border: "1.5px solid #e8b4b4", borderRadius: 9, padding: "14px 18px", marginBottom: 12, fontSize: 13, lineHeight: 1.6 }}>
+          <p style={{ fontWeight: 700, color: "#7a2020", marginBottom: 5 }}>{heading}</p>
+          <p style={{ color: "#5a3030", marginBottom: (showOptions || (actions && actions.length)) ? 10 : 0 }}>{body}</p>
+          {actions && actions.map((a, i) => (
+            <p key={i} style={{ marginBottom: 4 }}><a href={a.href} target="_blank" rel="noopener noreferrer" style={{ color: "#374528", fontWeight: 600 }}>{a.text}</a></p>
+          ))}
+          {showOptions && (
+            <ul style={{ margin: "4px 0 0", paddingLeft: 18, color: "#5a3030", display: "flex", flexDirection: "column", gap: 5 }}>
+              <li><strong>Use Generate Prompt (free, no key needed):</strong>{" "}<a href="#" onClick={e => { e.preventDefault(); onGeneratePrompt(); }} style={{ color: "#374528", fontWeight: 600 }}>Click here to generate a prompt</a>{" "}you can paste into any free AI chat like ChatGPT or Gemini.</li>
+              {provider !== "gemini" && <li><strong>Try Gemini's free tier:</strong>{" "}Switch the provider above to Gemini and{" "}<a href={PROVIDERS.gemini.keyPageUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#374528", fontWeight: 600 }}>get a free API key here</a>.</li>}
+              <li><strong>Add funds to your account:</strong>{" "}<a href={prov.keyPageUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#374528", fontWeight: 600 }}>Visit {prov.label} to manage your account →</a></li>
+            </ul>
+          )}
+          {isAdmin && rawError && (
+            <div style={{ marginTop: 10 }} className="info-tip">
+              <span style={{ fontSize: 12, color: "#7a2020", cursor: "help", borderBottom: "1px dashed #e8b4b4" }}>Technical details ▾</span>
+              <span className="info-bubble" role="tooltip" style={{ width: 360, fontFamily: "monospace", fontSize: 11, whiteSpace: "pre-wrap", wordBreak: "break-all", textAlign: "left" }}>
+                {rawError}
+                <button onClick={() => navigator.clipboard.writeText(rawError)} style={{ display: "block", marginTop: 8, padding: "3px 10px", fontSize: 11, borderRadius: 5, border: "1px solid #c0d4a8", background: "white", cursor: "pointer", color: "#374528" }}>Copy error</button>
+              </span>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     function App() {
       const [provider,          setProvider]          = React.useState(() => localStorage.getItem("pt_provider") || "gemini");
       const [apiKey,            setApiKey]            = React.useState(() => localStorage.getItem(`pt_key_${localStorage.getItem("pt_provider") || "gemini"}`) || "");
@@ -116,6 +233,7 @@
       const [output,            setOutput]            = React.useState(null);
       const [loading,           setLoading]           = React.useState(false);
       const [error,             setError]             = React.useState("");
+      const [rawError,          setRawError]          = React.useState("");
       const [copied,            setCopied]            = React.useState(null);
       const [copiedPrompt,      setCopiedPrompt]      = React.useState(false);
       const [isAdmin,           setIsAdmin]           = React.useState(() => hasAdminToken());
@@ -131,7 +249,7 @@
         setProvider(p);
         localStorage.setItem("pt_provider", p);
         setApiKey(localStorage.getItem(`pt_key_${p}`) || "");
-        setError("");
+        setError(""); setRawError("");
       };
 
       const saveApiKey = (val) => {
@@ -162,21 +280,34 @@
 
       // Live-computed attendees list — NOT fed to AI
       const attendeesList = INDIVIDUALS
-        .filter(p => presentChecked.has(p.id) && presentNames[p.id]?.trim())
-        .map(p => presentNames[p.id].trim())
+        .filter(p => presentChecked.has(p.id))
+        .map(p => {
+          if (!p.placeholder) return p.label;
+          const role = presentNames[p.id]?.trim();
+          return role ? `${p.label} (${role})` : p.label;
+        })
         .join(", ");
 
       const handleGenerate = async () => {
-        if (!apiKey.trim())           { setError("Please enter your API key."); return; }
+        if (!apiKey.trim())           { setError("NO_KEY"); setRawError(""); return; }
         if (caregiverSupport.size === 0) { setError("Please select at least one support activity."); return; }
         if (!caregiverResponse)       { setError("Please select the caregiver response to training."); return; }
         if (!progressStatus)          { setError("Please select a progress status."); return; }
         if (!additionalNotes.trim())  { setError("Please enter session notes."); return; }
-        setError("");
+        setError(""); setRawError("");
         setLoading(true);
         setOutput(null);
 
-        const systemPrompt = `You are an expert Behavior Analyst documentation specialist. Generate polished clinical content for a parent/family session note. Write in third-person clinical prose. Return ONLY a JSON object with exactly these two keys: "summary" and "followup". "summary" is 3–5 clinical sentences covering goal progress and any program modifications made or needed. "followup" is a list of follow-up items for the Behavior Analyst to complete — each item on its own line, separated by \\n, no bullet points or numbers, no commas between items. No markdown, no extra keys, no preamble.`;
+        const systemPrompt = `You are documenting a Behavior Analyst's parent/family (caregiver training) session. Generate polished clinical content for the session note. Write in third-person clinical prose. Do not write to sound sophisticated — plain, precise clinical language is the standard. Never invent caregiver actions, child responses, or program changes not indicated in the bullets; if information is sparse, write a brief restrained sentence rather than generic clinical-sounding filler.
+
+Terminology standards (apply rigorously):
+- Reinforcement is contingent on behavior, not delivered to people. Never write that a person — caregiver, parent, or child — "was reinforced." Write "[behavior] was reinforced," "reinforcement was delivered contingent on [behavior]," or, for caregivers, "the caregiver was praised for [specific implementation behavior]" or "performance feedback was delivered to the caregiver."
+- People engage in behaviors; behaviors are what get reinforced, prompted, faded, shaped, or extinguished. Do not conflate the two.
+- Use precise behavior-analytic verbs (prompted, faded, modeled, shaped, chained, redirected, blocked, generalized, delivered/withheld reinforcement, provided BST, gave performance feedback) and name procedures specifically (e.g., partial verbal prompt, errorless teaching, DRO, BST) rather than generic phrases like "support was provided."
+- Do not substitute loose synonyms ("rewarded," "encouraged," "motivated," "worked on") unless the raw notes use them.
+- Avoid colloquial or value-laden phrasing ("did great," "amazing progress," "had a hard time"). Use objective, observable descriptions and quantitative detail where reported.
+
+Return ONLY a JSON object with exactly these two keys: "summary" and "followup". "summary" is 3–5 clinical sentences covering goal progress and any program modifications made or needed. "followup" is a list of follow-up items for the Behavior Analyst to complete — each item on its own line, separated by \\n, no bullet points or numbers, no commas between items. No markdown, no extra keys, no preamble.`;
 
         const supportList = SUPPORT_ACTIVITIES
           .filter(a => caregiverSupport.has(a.id))
@@ -195,7 +326,8 @@
           const parsed = await callProvider(provider, apiKey, systemPrompt, userPrompt);
           setOutput(parsed);
         } catch (e) {
-          setError(e.message || "Something went wrong. Check your API key and try again.");
+          setRawError(e.message || "");
+          setError(e.message || "API error: generation failed");
         } finally {
           setLoading(false);
         }
@@ -206,8 +338,8 @@
         if (!caregiverResponse)          { setError("Please select the caregiver response to training."); return; }
         if (!progressStatus)             { setError("Please select a progress status."); return; }
         if (!additionalNotes.trim())     { setError("Please enter session notes first."); return; }
-        setError("");
-        const sys = `You are an expert Behavior Analyst documentation specialist. Generate polished clinical content for a parent/family session note. Write in third-person clinical prose. Return exactly two labeled sections using this format (label on its own line, then the content, then a blank line before the next label):\n\nSUMMARY OF GOAL PROGRESS & MODIFICATIONS\n[3–5 clinical sentences covering goal progress and any program modifications made or needed]\n\nBEHAVIOR ANALYST FOLLOW UP\n[one follow-up item per line, no bullets, no numbers, no commas between items]\n\nNo JSON, no extra commentary, no preamble.`;
+        setError(""); setRawError("");
+        const sys = `You are documenting a Behavior Analyst's parent/family (caregiver training) session. Generate polished clinical content for the session note. Write in third-person clinical prose. Do not write to sound sophisticated — plain, precise clinical language is the standard. Never invent caregiver actions, child responses, or program changes not indicated in the bullets; if information is sparse, write a brief restrained sentence rather than generic clinical-sounding filler.\n\nTerminology standards (apply rigorously):\n- Reinforcement is contingent on behavior, not delivered to people. Never write that a person — caregiver, parent, or child — "was reinforced." Write "[behavior] was reinforced," "reinforcement was delivered contingent on [behavior]," or, for caregivers, "the caregiver was praised for [specific implementation behavior]" or "performance feedback was delivered to the caregiver."\n- People engage in behaviors; behaviors are what get reinforced, prompted, faded, shaped, or extinguished. Do not conflate the two.\n- Use precise behavior-analytic verbs (prompted, faded, modeled, shaped, chained, redirected, blocked, generalized, delivered/withheld reinforcement, provided BST, gave performance feedback) and name procedures specifically (e.g., partial verbal prompt, errorless teaching, DRO, BST) rather than generic phrases like "support was provided."\n- Do not substitute loose synonyms ("rewarded," "encouraged," "motivated," "worked on") unless the raw notes use them.\n- Avoid colloquial or value-laden phrasing ("did great," "amazing progress," "had a hard time"). Use objective, observable descriptions and quantitative detail where reported.\n\nReturn exactly two labeled sections using this format (label on its own line, then the content, then a blank line before the next label):\n\nSUMMARY OF GOAL PROGRESS & MODIFICATIONS\n[3–5 clinical sentences covering goal progress and any program modifications made or needed]\n\nBEHAVIOR ANALYST FOLLOW UP\n[one follow-up item per line, no bullets, no numbers, no commas between items]\n\nNo JSON, no extra commentary, no preamble.`;
         const supportList = SUPPORT_ACTIVITIES.filter(a => caregiverSupport.has(a.id)).map(a => `- ${a.label}`).join("\n");
         const usr = [
           `Caregiver support activities provided:\n${supportList}`,
@@ -265,8 +397,7 @@
             <strong style={{ color: "#7a5a1a" }}>Do not enter any PHI (Protected Health Information) into this tool.</strong> PHI is any detail that could identify a specific client — including names, dates of birth, addresses, phone numbers, ID or insurance numbers, or any other personal identifiers.
           </div>
 
-          {/* Settings card — admin only */}
-          {isAdmin && (
+          {/* API Settings */}
           <div style={card}>
             <div style={{ marginBottom: 20 }}>
               <p style={lbl}>AI Provider</p>
@@ -297,9 +428,9 @@
                 </button>
               </div>
               <p style={{ fontSize: 12, color: "#7a9460", marginTop: 7 }}>{prov.hint} — saved in this browser only.</p>
+              <ApiKeyHelpBox provider={provider} />
             </div>
           </div>
-          )}
 
           {/* Inputs card */}
           <div style={card}>
@@ -319,7 +450,7 @@
                       />
                       <span style={{ fontSize: 14, color: "#2d3a1f" }}>{person.label}</span>
                     </label>
-                    {presentChecked.has(person.id) && (
+                    {presentChecked.has(person.id) && person.placeholder && (
                       <div style={{ marginTop: 6, marginLeft: 26 }}>
                         <input
                           type="text"
@@ -415,30 +546,27 @@
               />
             </div>
 
-            {error && <p style={{ color: "#c0392b", fontSize: 13, marginBottom: 12 }}>{error}</p>}
+            <ApiErrorMessage error={error} rawError={rawError} provider={provider} isAdmin={isAdmin} onGeneratePrompt={handleGeneratePrompt} />
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              {isAdmin && (
-                <button
-                  onClick={handleGenerate}
-                  disabled={loading}
-                  style={{
-                    padding: "11px 28px", borderRadius: 8, border: "none",
-                    background: loading ? "#a0b890" : "#374528",
-                    color: "white", fontSize: 15, fontWeight: 600,
-                    cursor: loading ? "not-allowed" : "pointer",
-                  }}
-                >
-                  {loading ? "Generating…" : "Generate Note"}
-                </button>
-              )}
+              <button
+                onClick={handleGenerate}
+                disabled={loading}
+                style={{
+                  padding: "11px 28px", borderRadius: 8, border: "none",
+                  background: loading ? "#a0b890" : "#374528",
+                  color: "white", fontSize: 15, fontWeight: 600,
+                  cursor: loading ? "not-allowed" : "pointer",
+                }}
+              >
+                {loading ? "Generating…" : "Generate Note"}
+              </button>
               <button
                 onClick={handleGeneratePrompt}
                 style={{
                   padding: "11px 18px", borderRadius: 8,
                   border: "1.5px solid #374528",
-                  background: isAdmin ? "white" : "#374528",
-                  color: isAdmin ? "#374528" : "white",
+                  background: "white", color: "#374528",
                   fontSize: 14, fontWeight: 600, cursor: "pointer",
                 }}
               >
