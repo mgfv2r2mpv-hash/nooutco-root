@@ -102,6 +102,9 @@ export default {
     if (request.method === 'POST' && pathname === '/api/admin/intraverbal-remove-image') {
       return handleIVRemoveImage(request, env);
     }
+    if (request.method === 'POST' && pathname === '/api/admin/sequences-save-symbols') {
+      return handleSeqSaveSymbols(request, env);
+    }
     if (request.method === 'POST' && pathname === '/api/admin/ping') {
       return handleAdminPing(request, env);
     }
@@ -1154,6 +1157,61 @@ async function handleIVRemoveImage(request, env) {
 }
 
 // ─── Atomic commit: Intraverbal items.json save ───────────────────────────────
+
+async function handleSeqSaveSymbols(request, env) {
+  const authErr = await requireAdmin(request, env);
+  if (authErr) return authErr;
+
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonError('Invalid JSON body', 400); }
+
+  const { symbols: symObj } = body;
+  if (!symObj || typeof symObj !== 'object' || !symObj.sets || typeof symObj.sets !== 'object') {
+    return jsonError('symbols.sets object is required', 400);
+  }
+
+  symObj.generated = new Date().toISOString();
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await atomicSeqSaveCommit(env, symObj);
+      break;
+    } catch (err) {
+      if (err.message === 'CONFLICT' && attempt < 2) continue;
+      return jsonError('GitHub commit failed: ' + err.message, 502);
+    }
+  }
+
+  return json({ ok: true, generated: symObj.generated });
+}
+
+async function atomicSeqSaveCommit(env, symObj) {
+  const refData    = await gh(env, 'GET', `git/ref/heads/${env.GITHUB_BRANCH || 'main'}`);
+  const headSha    = refData.object.sha;
+  const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
+  const treeSha    = commitData.tree.sha;
+
+  const repoPath = 'SequencesGame/SequencesGame/symbols.json';
+  const blob = await gh(env, 'POST', 'git/blobs', {
+    content:  utf8ToBase64(JSON.stringify(symObj, null, 2) + '\n'),
+    encoding: 'base64',
+  });
+
+  const newTree   = await gh(env, 'POST', 'git/trees', {
+    base_tree: treeSha,
+    tree: [{ path: repoPath, mode: '100644', type: 'blob', sha: blob.sha }],
+  });
+  const newCommit = await gh(env, 'POST', 'git/commits', {
+    message: 'Admin: update Sequences symbols.json',
+    tree:    newTree.sha,
+    parents: [headSha],
+  });
+
+  const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${env.GITHUB_BRANCH || 'main'}`, { sha: newCommit.sha, force: false });
+  if (refRes.status === 422) throw new Error('CONFLICT');
+  if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
+}
 
 async function atomicIVSaveCommit(env, itemsObj) {
   const refData    = await gh(env, 'GET', `git/ref/heads/${env.GITHUB_BRANCH || 'main'}`);

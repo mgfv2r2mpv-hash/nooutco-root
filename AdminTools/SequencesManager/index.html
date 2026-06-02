@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sequences Manager</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; font-size: 14px; }
+
+    /* ── Gear button + admin modal ── */
+    .admin-gear { position: fixed; bottom: 1rem; right: 1rem; z-index: 9999; font-size: 1.3rem; background: none; border: none; cursor: pointer; opacity: .35; transition: opacity .15s; padding: 0; line-height: 1; }
+    .admin-gear:hover { opacity: .8; }
+    .admin-gear.authed { opacity: 1; filter: sepia(1) saturate(3) hue-rotate(80deg); }
+    #admin-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 10000; align-items: center; justify-content: center; }
+    #admin-modal.open { display: flex; }
+    .admin-modal-box { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 2rem; width: 320px; }
+    .admin-modal-box h2 { font-size: 1rem; margin-bottom: .5rem; color: #93c5fd; }
+    .admin-modal-box p  { font-size: .8rem; color: #94a3b8; margin-bottom: 1rem; }
+    #admin-pw-input  { width: 100%; padding: .4rem .6rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: .9rem; margin-bottom: .5rem; font-family: inherit; }
+    .admin-modal-box .unlock-btn { width: 100%; padding: .4rem; border-radius: 6px; background: #3b82f6; color: #fff; border: none; cursor: pointer; font-size: .9rem; }
+    #admin-pw-error  { font-size: .75rem; color: #f87171; margin-top: .3rem; min-height: 1em; }
+
+    /* ── Layout ── */
+    #topbar { background: #1e293b; border-bottom: 1px solid #334155; padding: .6rem 1.2rem; display: flex; align-items: center; gap: 1rem; }
+    #topbar a { color: #93c5fd; text-decoration: none; font-size: .82rem; }
+    #topbar h1 { font-size: .95rem; font-weight: 700; color: #e2e8f0; flex: 1; }
+    #topbar .status-msg { font-size: .78rem; min-width: 160px; text-align: right; }
+    .status-msg.ok  { color: #4ade80; }
+    .status-msg.err { color: #f87171; }
+
+    /* ── Main grid ── */
+    #content { display: grid; grid-template-columns: 240px 1fr; gap: 1.2rem; padding: 1rem 1.2rem; min-height: calc(100vh - 50px); }
+    #sets-pane { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: .75rem; }
+    #sets-pane h2 { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: #64748b; margin-bottom: .5rem; }
+    .set-row { display: flex; align-items: center; padding: .4rem .55rem; border-radius: 6px; cursor: pointer; color: #cbd5e1; font-size: .85rem; margin-bottom: .15rem; border: 1px solid transparent; }
+    .set-row:hover { background: #0f172a; border-color: #334155; }
+    .set-row.active { background: #1d4ed8; color: #fff; border-color: #3b82f6; }
+    .btn-primary { padding: .35rem .9rem; border-radius: 7px; background: #1d4ed8; color: #fff; border: none; cursor: pointer; font-size: .82rem; font-weight: 600; width: 100%; margin-top: .6rem; }
+    .btn-primary:hover { background: #1e40af; }
+
+    #editor-pane { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 1.2rem 1.4rem; }
+    #editor-empty { color: #64748b; font-style: italic; font-size: .85rem; }
+    .editor-section { margin-bottom: 1.2rem; }
+    .editor-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #64748b; margin-bottom: .4rem; }
+    .editor-input { padding: .35rem .6rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: .88rem; }
+
+    .emoji-grid { display: flex; flex-wrap: wrap; gap: .4rem; }
+    .emoji-chip { position: relative; width: 56px; height: 56px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; }
+    .emoji-chip .remove-btn { position: absolute; top: -6px; right: -6px; background: #7f1d1d; color: #fca5a5; border: none; cursor: pointer; font-size: .75rem; width: 18px; height: 18px; border-radius: 50%; padding: 0; line-height: 1; }
+    .emoji-chip .remove-btn:hover { background: #991b1b; }
+
+    .add-row { display: flex; gap: .5rem; margin-top: .6rem; }
+    .add-row input { flex: 1; padding: .35rem .6rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: 1rem; }
+    .btn-sm { padding: .3rem .75rem; border-radius: 6px; border: 1px solid #334155; background: #334155; color: #e2e8f0; font-size: .78rem; cursor: pointer; white-space: nowrap; }
+    .btn-sm:hover { background: #475569; }
+
+    .actions-row { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #334155; }
+    .btn-save { padding: .4rem 1rem; border-radius: 7px; background: #16a34a; color: #fff; border: none; cursor: pointer; font-size: .85rem; font-weight: 600; }
+    .btn-save:hover { background: #15803d; }
+    .btn-red { padding: .4rem .8rem; border-radius: 7px; background: #7f1d1d; color: #fca5a5; border: 1px solid #991b1b; cursor: pointer; font-size: .8rem; }
+    .btn-red:hover { background: #991b1b; }
+  </style>
+</head>
+<body>
+
+<button class="admin-gear" id="admin-gear" title="Admin">⚙️</button>
+<div id="admin-modal">
+  <div class="admin-modal-box">
+    <h2>Sequences Manager</h2>
+    <p>Enter the admin password to continue.</p>
+    <input type="password" id="admin-pw-input" placeholder="Password">
+    <button class="unlock-btn" id="admin-unlock-btn">Unlock</button>
+    <div id="admin-pw-error"></div>
+  </div>
+</div>
+
+<div id="topbar">
+  <a href="../../GM/">← GM</a>
+  <h1>Sequences Manager</h1>
+  <span class="status-msg" id="global-status"></span>
+</div>
+
+<div id="content">
+  <div id="sets-pane">
+    <h2>Symbol Sets</h2>
+    <div id="sets-list"></div>
+    <button class="btn-primary" id="btn-new-set">+ New Set</button>
+  </div>
+
+  <div id="editor-pane">
+    <div id="editor-empty">Select a set on the left, or create a new one.</div>
+    <div id="editor-body" hidden>
+      <div class="editor-section">
+        <div class="editor-label">Set Name</div>
+        <input type="text" class="editor-input" id="ed-name" style="width: 260px;">
+      </div>
+
+      <div class="editor-section">
+        <div class="editor-label">Emojis</div>
+        <div class="emoji-grid" id="ed-emojis"></div>
+        <div class="add-row">
+          <input type="text" id="ed-add-input" placeholder="Paste or type an emoji" maxlength="8">
+          <button class="btn-sm" id="ed-add-btn">+ Add</button>
+        </div>
+      </div>
+
+      <div class="actions-row">
+        <button class="btn-save" id="ed-save">Save All Sets</button>
+        <button class="btn-red" id="ed-delete">Delete This Set</button>
+        <span class="status-msg" id="ed-status"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
+
+let token   = localStorage.getItem('admin_token') || '';
+let symData = null;          // { generated, sets: { name: [emoji, ...] } }
+let activeSet = null;        // currently selected set name (in working draft)
+
+// ── Gear / Auth ────────────────────────────────────────────────────
+const adminGear    = document.getElementById('admin-gear');
+const adminModal   = document.getElementById('admin-modal');
+const adminPwInput = document.getElementById('admin-pw-input');
+const adminPwError = document.getElementById('admin-pw-error');
+
+function setGearAuthed(authed) { adminGear.classList.toggle('authed', authed); }
+
+function showAdminModal(msg) {
+  adminPwInput.value = '';
+  adminPwError.textContent = msg || '';
+  adminModal.classList.add('open');
+  setTimeout(() => adminPwInput.focus(), 50);
+}
+
+if (token) { setGearAuthed(true); initApp(); }
+else { showAdminModal(); }
+
+adminGear.addEventListener('click', () => {
+  adminModal.classList.toggle('open');
+  if (adminModal.classList.contains('open')) {
+    adminPwInput.value = '';
+    adminPwError.textContent = '';
+    setTimeout(() => adminPwInput.focus(), 50);
+  }
+});
+adminModal.addEventListener('click', e => { if (e.target === adminModal) adminModal.classList.remove('open'); });
+
+async function sha256Hex(str) {
+  const buf    = new TextEncoder().encode(str);
+  const digest = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function adminUnlock() {
+  const pw = adminPwInput.value;
+  if (!pw) { adminPwError.textContent = 'Enter password.'; return; }
+  const hash = await sha256Hex(pw);
+  if (hash === ADMIN_SECRET_HASH) {
+    token = hash;
+    localStorage.setItem('admin_token', hash);
+    setGearAuthed(true);
+    adminModal.classList.remove('open');
+    initApp();
+  } else {
+    adminPwError.textContent = 'Incorrect password.';
+    adminPwInput.value = '';
+    adminPwInput.focus();
+  }
+}
+document.getElementById('admin-unlock-btn').addEventListener('click', adminUnlock);
+adminPwInput.addEventListener('keydown', e => { if (e.key === 'Enter') adminUnlock(); });
+
+function handle401() {
+  token = '';
+  localStorage.removeItem('admin_token');
+  setGearAuthed(false);
+  showAdminModal('Session expired — re-enter password.');
+}
+
+// ── Status helper ──────────────────────────────────────────────────
+function setStatus(elem, cls, msg) {
+  elem.className = 'status-msg ' + (cls || '');
+  elem.textContent = msg || '';
+  if (msg && cls === 'ok') setTimeout(() => { if (elem.textContent === msg) elem.textContent = ''; }, 3500);
+}
+
+// ── API ────────────────────────────────────────────────────────────
+async function adminPost(endpoint, body) {
+  const ctrl  = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 35000);
+  let res;
+  try {
+    res = await fetch('../../api/admin/' + endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+  } catch (e) {
+    clearTimeout(timer);
+    throw new Error(e.name === 'AbortError' ? 'Request timed out' : e.message);
+  }
+  clearTimeout(timer);
+  if (res.status === 401) { handle401(); return null; }
+  return res;
+}
+
+// ── Boot ───────────────────────────────────────────────────────────
+async function initApp() {
+  try {
+    const res = await fetch('../../SequencesGame/SequencesGame/symbols.json', { cache: 'no-store' });
+    symData = await res.json();
+    if (!symData.sets || typeof symData.sets !== 'object') symData.sets = {};
+  } catch (e) {
+    setStatus(document.getElementById('global-status'), 'err', 'Could not load symbols.json');
+    symData = { sets: {} };
+  }
+  const names = Object.keys(symData.sets);
+  activeSet = names[0] || null;
+  renderSetsList();
+  renderEditor();
+  bindEvents();
+}
+
+// ── Rendering ──────────────────────────────────────────────────────
+function renderSetsList() {
+  const list = document.getElementById('sets-list');
+  list.innerHTML = '';
+  Object.keys(symData.sets).forEach(name => {
+    const row = document.createElement('div');
+    row.className = 'set-row' + (name === activeSet ? ' active' : '');
+    row.textContent = `${name} (${symData.sets[name].length})`;
+    row.addEventListener('click', () => { activeSet = name; renderSetsList(); renderEditor(); });
+    list.appendChild(row);
+  });
+}
+
+function renderEditor() {
+  const empty = document.getElementById('editor-empty');
+  const body  = document.getElementById('editor-body');
+  if (!activeSet || !(activeSet in symData.sets)) {
+    empty.hidden = false;
+    body.hidden  = true;
+    return;
+  }
+  empty.hidden = true;
+  body.hidden  = false;
+
+  document.getElementById('ed-name').value = activeSet;
+  const grid = document.getElementById('ed-emojis');
+  grid.innerHTML = '';
+  symData.sets[activeSet].forEach((sym, idx) => {
+    const chip = document.createElement('div');
+    chip.className = 'emoji-chip';
+    chip.textContent = sym;
+    const rm = document.createElement('button');
+    rm.className = 'remove-btn';
+    rm.textContent = '×';
+    rm.title = 'Remove';
+    rm.addEventListener('click', () => {
+      symData.sets[activeSet].splice(idx, 1);
+      renderEditor();
+      renderSetsList();
+    });
+    chip.appendChild(rm);
+    grid.appendChild(chip);
+  });
+}
+
+// ── Event wiring ───────────────────────────────────────────────────
+function bindEvents() {
+  document.getElementById('btn-new-set').addEventListener('click', () => {
+    let base = 'New Set';
+    let name = base;
+    let n = 1;
+    while (name in symData.sets) { n++; name = `${base} ${n}`; }
+    symData.sets[name] = [];
+    activeSet = name;
+    renderSetsList();
+    renderEditor();
+  });
+
+  document.getElementById('ed-name').addEventListener('change', e => {
+    const newName = e.target.value.trim();
+    if (!newName || newName === activeSet) { e.target.value = activeSet; return; }
+    if (newName in symData.sets) {
+      alert('A set with that name already exists.');
+      e.target.value = activeSet;
+      return;
+    }
+    // rename: rebuild object to preserve order
+    const rebuilt = {};
+    Object.keys(symData.sets).forEach(k => {
+      rebuilt[k === activeSet ? newName : k] = symData.sets[k];
+    });
+    symData.sets = rebuilt;
+    activeSet = newName;
+    renderSetsList();
+  });
+
+  document.getElementById('ed-add-btn').addEventListener('click', addEmoji);
+  document.getElementById('ed-add-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); addEmoji(); }
+  });
+
+  document.getElementById('ed-delete').addEventListener('click', () => {
+    if (!activeSet) return;
+    if (!confirm(`Delete the "${activeSet}" set? This is not saved until you click Save All Sets.`)) return;
+    delete symData.sets[activeSet];
+    const names = Object.keys(symData.sets);
+    activeSet = names[0] || null;
+    renderSetsList();
+    renderEditor();
+  });
+
+  document.getElementById('ed-save').addEventListener('click', saveAll);
+}
+
+function addEmoji() {
+  const input = document.getElementById('ed-add-input');
+  const val = input.value.trim();
+  if (!val || !activeSet) return;
+  symData.sets[activeSet].push(val);
+  input.value = '';
+  renderEditor();
+  renderSetsList();
+  input.focus();
+}
+
+async function saveAll() {
+  const statusEl = document.getElementById('ed-status');
+  setStatus(statusEl, '', 'Saving…');
+  try {
+    const res = await adminPost('sequences-save-symbols', { symbols: symData });
+    if (!res) return; // 401 handled
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setStatus(statusEl, 'err', data.error || `Save failed (${res.status})`);
+      return;
+    }
+    symData.generated = data.generated || new Date().toISOString();
+    setStatus(statusEl, 'ok', 'Saved.');
+  } catch (e) {
+    setStatus(statusEl, 'err', e.message);
+  }
+}
+</script>
+</body>
+</html>
