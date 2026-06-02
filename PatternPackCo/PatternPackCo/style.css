@@ -176,7 +176,7 @@ body {
   background-size: 36px 100%;
 }
 #belt-treads.running { animation: belt-move 0.5s linear infinite; }
-@keyframes belt-move { from { background-position: 0 0; } to { background-position: 36px 0; } }
+@keyframes belt-move { from { background-position: 0 0; } to { background-position: -36px 0; } }
 
 /* Dark tunnels the box slides into at each end */
 .tunnel { position: absolute; bottom: 6px; width: 66px; height: 130px; z-index: 6; pointer-events: none; }
@@ -194,7 +194,7 @@ body {
     0 12px 22px rgba(0,0,0,0.4),
     inset 0 2px 0 rgba(255,255,255,0.14),
     inset 0 -7px 14px rgba(0,0,0,0.4);
-  transform: translateX(-170%);     /* parked in the left tunnel by default */
+  transform: translateX(170%);      /* parked in the right tunnel by default */
   will-change: transform;
   perspective: 760px;               /* for the bow lid */
   z-index: 4;
