@@ -49,8 +49,76 @@
       <input type="number" id="inp-bank" min="2" max="8" value="4">
     </div>
 
+    <div class="setting-group setting-extra">
+      <button type="button" id="btn-extra-toggle" class="btn-extra" aria-expanded="false">
+        ⚙ Settings
+        <button type="button" class="help-btn" data-help="Open additional game options.">?</button>
+      </button>
+    </div>
+
+    <div class="setting-group">
+      <button id="btn-prompt" class="btn-prompt" hidden>Prompt</button>
+    </div>
+
     <button id="btn-start" class="btn-primary">Start</button>
   </div>
+
+  <!-- ── Extra settings panel (hidden until toggled) ──────────────── -->
+  <section id="extra-panel" hidden>
+    <div class="extra-panel-header">
+      <span class="extra-panel-title">Options</span>
+      <button type="button" id="btn-extra-close" class="btn-extra-close" title="Close">×</button>
+    </div>
+    <div class="extra-panel-body">
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-represent-errors" checked>
+        Re-Present Errors
+        <button type="button" class="help-btn" data-help="After an error trial, immediately re-present the same pattern (auto-prompted) before moving on.">?</button>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-errorless">
+        Errorless
+        <button type="button" class="help-btn" data-help="When on, incorrect bank taps are ignored so the learner can only tap the prompted (correct) item.">?</button>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-no-error-anim">
+        No Incorrect Animation
+        <button type="button" class="help-btn" data-help="Suppresses the shake animation when the learner taps an incorrect item.">?</button>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-persists">
+        Prompt persists
+        <button type="button" class="help-btn" data-help="When on, the prompt highlight stays until the learner responds rather than fading after 3 seconds.">?</button>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-auto-prompt">
+        Auto-Prompt
+        <button type="button" class="help-btn" data-help="Automatically highlight the correct bank item at the start of each trial.">?</button>
+      </label>
+      <div class="extra-row">
+        <label class="checkbox-label">
+          <input type="checkbox" id="chk-prompt-delay" disabled>
+          Prompt Delay
+          <button type="button" class="help-btn" data-help="Wait this many seconds before the auto-prompt appears.">?</button>
+        </label>
+        <select id="sel-prompt-delay" disabled>
+          <option value="1">1s</option>
+          <option value="2">2s</option>
+          <option value="3" selected>3s</option>
+          <option value="4">4s</option>
+          <option value="5">5s</option>
+          <option value="10">10s</option>
+        </select>
+      </div>
+      <div class="extra-row">
+        <label for="sel-prompt-style">Prompt style</label>
+        <select id="sel-prompt-style">
+          <option value="sparkle">Sparkle</option>
+          <option value="outline">Outline</option>
+        </select>
+      </div>
+    </div>
+  </section>
 
   <!-- ── Pre-start blurb ──────────────────────────────────────────── -->
   <style>
@@ -70,6 +138,7 @@
       <li><strong>Shown Reps</strong> — full repeats shown before the blanks.</li>
       <li><strong>Blanks to Fill</strong> — how many items the learner supplies.</li>
       <li><strong>Bank Size</strong> — total choices in the bank.</li>
+      <li><strong>⚙ Settings</strong> — errorless, re-present errors, prompts, and delay options.</li>
     </ul>
     <p class="tip">Set the options, then tap <strong>Start</strong>.</p>
   </section>
@@ -121,6 +190,8 @@
           <th>Blanks</th>
           <th>Bank</th>
           <th>Errors</th>
+          <th>Prompted</th>
+          <th>Delay (s)</th>
           <th>Time (s)</th>
           <th>Outcome</th>
         </tr>

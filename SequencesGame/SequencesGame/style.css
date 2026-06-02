@@ -208,6 +208,125 @@ body {
 }
 .shake { animation: shake 0.45s ease; }
 
+/* ── Extra settings panel ──────────────────────────────────────────── */
+.btn-extra {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #2d3748;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-extra:hover   { background: #edf2f7; }
+.btn-extra.is-open { background: #e6f0fb; border-color: #4299e1; }
+
+#extra-panel {
+  background: #fafbfd;
+  border-bottom: 2px solid #dde3ed;
+  padding: 10px 20px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+.extra-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.extra-panel-title { font-weight: 700; color: #2d3748; font-size: 0.9rem; }
+.btn-extra-close {
+  border: none !important;
+  background: transparent !important;
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+.extra-panel-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px 20px;
+  align-items: center;
+}
+.extra-panel-body .checkbox-label { padding: 4px 0; }
+.extra-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #4a5568;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.checkbox-label input[type="checkbox"] { cursor: pointer; accent-color: #3182ce; }
+
+/* Prompt button in settings bar */
+.btn-prompt {
+  background: #dd6b20;
+  color: #fff;
+  border: none;
+  padding: 5px 14px;
+  border-radius: 7px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-prompt:hover { background: #c05621; }
+
+/* ── Prompt effects on bank tiles ──────────────────────────────────── */
+@keyframes sparkle-pulse {
+  0%   { box-shadow: 0 0 6px 3px #ffd700, 0 0 14px 6px rgba(255,215,0,0.55), 0 0 24px 10px rgba(255,165,0,0.25); }
+  50%  { box-shadow: 0 0 12px 6px #ffd700, 0 0 28px 12px rgba(255,215,0,0.65), 0 0 44px 20px rgba(255,140,0,0.35); }
+  100% { box-shadow: 0 0 6px 3px #ffd700, 0 0 14px 6px rgba(255,215,0,0.55), 0 0 24px 10px rgba(255,165,0,0.25); }
+}
+.bank-tile.prompt-sparkle {
+  animation: sparkle-pulse 1s ease-in-out infinite;
+  border-color: #d69e2e !important;
+}
+.bank-tile.prompt-outline {
+  border: 3px solid #38a169 !important;
+  box-shadow: 0 0 0 3px rgba(56,161,105,0.38), 0 3px 8px rgba(0,0,0,0.1) !important;
+  background: rgba(56,161,105,0.05);
+}
+
+/* ── Next / Retry overlay ──────────────────────────────────────────── */
+#bank-section { position: relative; }
+
+#trial-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  z-index: 20;
+}
+.btn-watermark {
+  padding: 11px 30px;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.28);
+  transition: opacity 0.15s, transform 0.1s;
+  letter-spacing: 0.02em;
+}
+.btn-watermark:hover  { opacity: 0.93; transform: scale(1.04); }
+.btn-watermark:active { transform: scale(0.97); }
+.btn-watermark-next  { background: rgba(47,133,90,0.92);  color: #fff; }
+.btn-watermark-retry { background: rgba(192,86,33,0.88);  color: #fff; }
+
 /* ── Bottom bar ────────────────────────────────────────────────────── */
 #bottom-bar {
   background: #fff;
@@ -252,8 +371,10 @@ body {
   #results-table th { background: #e8e8e8; font-weight: bold; font-size: 9.5pt; }
   #results-table tr:nth-child(even) td { background: #f7f7f7; }
   #results-table tr.settings-changed td { background: #e8e8e8 !important; }
-  #results-table td.outcome-error { color: #c0392b; }
-  #results-table td.outcome-ok    { color: #27ae60; }
+  #results-table td.outcome-error      { color: #c0392b; }
+  #results-table td.outcome-prompted   { color: #b7791f; }
+  #results-table td.outcome-correction { color: #6b46c1; }
+  #results-table td.outcome-ok         { color: #27ae60; }
   #print-summary { font-size: 9.5pt; color: #333; border-top: 1px solid #bbb; padding-top: 8px; }
   #print-summary span { margin-right: 20px; }
 }
