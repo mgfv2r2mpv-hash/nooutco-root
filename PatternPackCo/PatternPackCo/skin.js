@@ -98,7 +98,7 @@
     els.neon.classList.remove('lit');
     setBow(false, 0);              // box open
     setBulkLid(false, 0);         // bulk lid covering the choices
-    tx(els.tray, 'translateX(-170%)', 0);   // park it in the left tunnel
+    tx(els.tray, 'translateX(170%)', 0);    // park it in the right tunnel
     els.belt.classList.add('running');
 
     const inMs = dur(D.rollIn);
@@ -182,7 +182,7 @@
         els.belt.classList.add('running');
         setBulkLid(false, dur(D.lidClose));         // bulk lid closes for next time
         els.neon.classList.add('lit');              // PACKED! thumbs-up glows
-        tx(els.tray, 'translateX(175%)', dur(D.ship)); // ship into the right tunnel
+        tx(els.tray, 'translateX(-175%)', dur(D.ship)); // ship into the left tunnel
 
         setTimeout(() => {
           els.belt.classList.remove('running');
