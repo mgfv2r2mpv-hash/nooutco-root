@@ -8,20 +8,37 @@
 - `dev` periodically absorbs `main` (e.g. `Merge branch 'main' into dev`),
   so its tip moves. Treat `origin/dev` as a moving target.
 
-## Working with branches (avoids phantom merge conflicts)
+## Merge strategy
 
-PRs are **squash-merged**, which creates a brand-new commit on `dev` with a
-different SHA than the branch's commits. Git therefore cannot tell a reused
-or stale-based branch is "already merged," and a huge false diff /
-add-add conflicts appear. To prevent this:
+PRs merge into `dev` with a **merge commit** (this is the repo's default and
+preferred method). The branch's real commits — and their SHAs — become part
+of `dev`'s history, so Git can always tell what is already merged. Follow-up
+branches and re-merges therefore stay clean; the giant false-diff / add-add
+"phantom conflicts" that squash merging used to cause do not happen.
 
-1. **Always branch from a freshly fetched `origin/dev`:**
+- **Do not squash-merge.** Squashing rewrites a branch into one new SHA on
+  `dev` and discards its ancestry — that is exactly what made stale-based or
+  reused branches blow up with add-add conflicts.
+- If you ever want a linear graph, use **rebase** merging instead — it also
+  preserves commit ancestry. Squash is the one to avoid.
+
+Required GitHub settings (Settings → General → Pull Requests, and the
+branch-protection rules):
+
+- **Allow merge commits** — enabled, and set as the **default** merge method.
+- **Require linear history** on `dev` / `main` — **off** (it blocks merge
+  commits). Leave it off, or, if you want it on, switch the default to rebase.
+
+## Working with branches
+
+1. **Branch from a recently fetched `origin/dev`:**
    `git fetch origin && git switch -c <branch> origin/dev`
-2. **One branch = one PR = one merge.** After a PR merges, that branch is
-   done. Do **not** push follow-up commits to it.
-3. **For follow-up work, cut a NEW branch off the updated `origin/dev`.**
-4. If a PR ever shows unrelated files / conflicts, the branch base is stale —
-   rebuild it off the current `origin/dev` rather than resolving by hand.
+2. **Keep the branch fresh before merging.** If `dev` has moved, update the
+   branch (`git merge origin/dev`, or the PR's "Update branch" button) so the
+   merge is small and conflict-free.
+3. **Follow-up work is fine on a new branch** cut off the updated
+   `origin/dev`. Because merges preserve ancestry, this no longer produces
+   phantom conflicts — but a fresh base still keeps diffs minimal.
 
 ## Project layout
 
