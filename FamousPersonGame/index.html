@@ -1062,11 +1062,11 @@ body {
         <!-- Prompt method selector -->
         <div class="method-row">
           <label class="method-radio-label">
-            <input type="radio" name="prompt-method" value="ltm" checked>
+            <input type="radio" name="prompt-method" value="ltm">
             <span class="method-radio-btn">LtM</span>
           </label>
           <label class="method-radio-label">
-            <input type="radio" name="prompt-method" value="mtl">
+            <input type="radio" name="prompt-method" value="mtl" checked>
             <span class="method-radio-btn">MtL</span>
           </label>
           <!-- LtM: global level steps -->
@@ -11487,7 +11487,7 @@ const state = {
   turns: [[null, null], [null, null], [null, null], [null, null]],
   usedPeople: new Set(),
   // Prompt method
-  promptMethod: 'ltm',    // 'ltm' | 'mtl'
+  promptMethod: 'mtl',    // 'ltm' | 'mtl'  (default: Most-to-Least)
   mtlLevel: 3,            // shared level selector: MtL=prescribed level, LtM=ceiling
   // Prompt options
   persistPrompts:         false,
@@ -11519,6 +11519,58 @@ const state = {
 // ─── DOM Helpers ──────────────────────────────────────────────────────────────
 
 const $ = id => document.getElementById(id);
+
+// ─── Settings persistence ──────────────────────────────────────────────────────
+// The prompt-method / level / option toggles are clinician preferences, not trial
+// data, so they should survive a page reload. We persist just those fields to
+// localStorage; session state (turns, history, current person) is never stored.
+
+const PREFS_KEY = 'fpg.prefs.v1';
+
+function savePrefs() {
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({
+      promptMethod:       state.promptMethod,
+      mtlLevel:           state.mtlLevel,
+      autoPromptEnabled:  state.autoPromptEnabled,
+      promptDelayEnabled: state.promptDelayEnabled,
+      promptDelaySecs:    state.promptDelaySecs,
+      persistPrompts:     state.persistPrompts,
+      showChoicesOnFull:  state.showChoicesOnFull,
+      karaokeEnabled:     state.karaokeEnabled,
+    }));
+  } catch (_) { /* storage unavailable (private mode, etc.) — fall back to defaults */ }
+}
+
+function loadPrefs() {
+  let p;
+  try {
+    p = JSON.parse(localStorage.getItem(PREFS_KEY) || 'null');
+  } catch (_) { p = null; }
+  if (!p || typeof p !== 'object') return;
+  if (p.promptMethod === 'ltm' || p.promptMethod === 'mtl') state.promptMethod = p.promptMethod;
+  if ([0, 1, 2, 3].includes(p.mtlLevel))                    state.mtlLevel = p.mtlLevel;
+  if (typeof p.autoPromptEnabled === 'boolean')             state.autoPromptEnabled = p.autoPromptEnabled;
+  if (typeof p.promptDelayEnabled === 'boolean')            state.promptDelayEnabled = p.promptDelayEnabled;
+  if (Number.isInteger(p.promptDelaySecs) && p.promptDelaySecs >= 1 && p.promptDelaySecs <= 60) {
+    state.promptDelaySecs = p.promptDelaySecs;
+  }
+  if (typeof p.persistPrompts === 'boolean')    state.persistPrompts = p.persistPrompts;
+  if (typeof p.showChoicesOnFull === 'boolean') state.showChoicesOnFull = p.showChoicesOnFull;
+  if (typeof p.karaokeEnabled === 'boolean')    state.karaokeEnabled = p.karaokeEnabled;
+}
+
+// Reflect the current preference state onto the DOM controls (after loadPrefs).
+function syncControlsFromState() {
+  const methodRadio = document.querySelector('input[name="prompt-method"][value="' + state.promptMethod + '"]');
+  if (methodRadio) methodRadio.checked = true;
+  $('auto-prompt-checkbox').checked    = state.autoPromptEnabled;
+  $('prompt-delay-checkbox').checked   = state.promptDelayEnabled;
+  $('prompt-delay-secs').value         = state.promptDelaySecs;
+  $('persist-prompts-checkbox').checked = state.persistPrompts;
+  $('show-choices-checkbox').checked   = state.showChoicesOnFull;
+  $('karaoke-checkbox').checked        = state.karaokeEnabled;
+}
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 
@@ -12010,6 +12062,7 @@ function autoShowForContext() {
   clearTimeout(autoShowTimeout);
   autoShowTimeout = null;
   if (!state.autoPromptEnabled) return;
+  if (!state.currentPerson) return;  // nothing to prompt for before a session starts
 
   const cell = getContextCell();
   if (!cell) { displayPrompt('🎉 All turns complete!'); return; }
@@ -12064,6 +12117,7 @@ function updateLevelSelector() {
 
 function setMtlLevel(level) {
   state.mtlLevel = level;
+  savePrefs();
   updateLevelSelector();
   if (state.promptMethod === 'mtl') autoShowForContext();
 }
@@ -12071,6 +12125,7 @@ function setMtlLevel(level) {
 // Method radio switch
 function setPromptMethod(method) {
   state.promptMethod = method;
+  savePrefs();
   const isLtm = method === 'ltm';
   $('ltm-level-indicator').classList.toggle('hidden', !isLtm);
   $('mtl-level-selector').classList.remove('hidden');
@@ -12126,6 +12181,7 @@ function startSession() {
   assignTurnFacts(state.currentPerson);
   renderPerson(state.currentPerson);
   showScreen('session');
+  if (state.promptMethod === 'mtl' && state.autoPromptEnabled) autoShowForContext();
 }
 
 function newPerson() {
@@ -12136,6 +12192,7 @@ function newPerson() {
   resetSession();
   assignTurnFacts(state.currentPerson);
   renderPerson(state.currentPerson);
+  if (state.promptMethod === 'mtl' && state.autoPromptEnabled) autoShowForContext();
 }
 
 // ─── Timer ────────────────────────────────────────────────────────────────────
@@ -12410,6 +12467,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Auto-prompt checkbox (MtL only)
   $('auto-prompt-checkbox').addEventListener('change', e => {
     state.autoPromptEnabled = e.target.checked;
+    savePrefs();
     const hide = !state.autoPromptEnabled;
     $('prompt-delay-label').classList.toggle('hidden', hide);
     $('prompt-delay-secs').classList.toggle('hidden', hide || !state.promptDelayEnabled);
@@ -12421,6 +12479,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Prompt delay checkbox (MtL + auto-prompt)
   $('prompt-delay-checkbox').addEventListener('change', e => {
     state.promptDelayEnabled = e.target.checked;
+    savePrefs();
     $('prompt-delay-secs').classList.toggle('hidden', !state.promptDelayEnabled);
     $('prompt-delay-unit').classList.toggle('hidden', !state.promptDelayEnabled);
   });
@@ -12428,12 +12487,28 @@ document.addEventListener('DOMContentLoaded', () => {
   // Delay seconds input
   $('prompt-delay-secs').addEventListener('change', e => {
     const v = parseInt(e.target.value);
-    if (v >= 1 && v <= 60) state.promptDelaySecs = v;
+    if (v >= 1 && v <= 60) { state.promptDelaySecs = v; savePrefs(); }
   });
 
   // Persist prompts checkbox
   $('persist-prompts-checkbox').addEventListener('change', e => {
     state.persistPrompts = e.target.checked;
+    savePrefs();
+  });
+
+  // Karaoke checkbox: re-render the current prompt so the change takes effect now.
+  $('karaoke-checkbox').addEventListener('change', e => {
+    state.karaokeEnabled = e.target.checked;
+    savePrefs();
+    if (state.promptShowing) {
+      const cell = getContextCell();
+      if (cell) {
+        const lvl = state.promptMethod === 'mtl'
+          ? state.mtlLevel
+          : state.ltmCellLevels[cell.turn][cell.typeIdx];
+        if (lvl > 0) displayPrompt(getPromptForCell(cell.turn, cell.typeIdx, lvl));
+      }
+    }
   });
 
   // Karaoke checkbox: re-render the current prompt so the change takes effect now.
@@ -12453,6 +12528,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Show-choices-on-Full checkbox: re-render if a Full prompt is currently visible.
   $('show-choices-checkbox').addEventListener('change', e => {
     state.showChoicesOnFull = e.target.checked;
+    savePrefs();
     if (state.promptShowing) {
       const cell = getContextCell();
       if (cell) {
@@ -12476,8 +12552,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Init level selector display (LtM is default so active-ltm class needed)
-  updateLevelSelector();
+  // Restore saved clinician preferences, push them onto the controls, then let
+  // setPromptMethod wire up dependent visibility + the level selector display.
+  loadPrefs();
+  syncControlsFromState();
+  setPromptMethod(state.promptMethod);
 
   // Auto-launch if URL hash matches a person
   if (personFromHash()) startSession();
