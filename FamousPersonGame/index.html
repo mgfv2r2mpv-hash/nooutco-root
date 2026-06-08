@@ -344,6 +344,47 @@ body {
 .prompt-display.fading        { opacity: 0; }
 .prompt-text { font-style: normal; }
 .prompt-text .q { color: #64748b; font-weight: 700; font-size: 28px; line-height: 0; vertical-align: -2px; }
+
+/* ── Karaoke: light up the words to be said, one at a time, to pace
+      reading and rhythm. Upcoming words are dimmed; read words turn solid;
+      the current word glows in the accent colour. ── */
+.prompt-text.karaoke .kw {
+  color: #b6bdc9;
+  transition: color .18s ease, text-shadow .18s ease;
+}
+.prompt-text.karaoke .kw.lit { color: #1a1a2e; }
+.prompt-text.karaoke .kw.cur {
+  color: var(--accent, #2563EB);
+  text-shadow: 0 0 .5px var(--accent, #2563EB);
+}
+
+/* ── Cue: an indirect "elicit this" hint for the clinician, NOT a line for
+      the client to read aloud. Styled distinctly from quoted sayable lines so
+      it is never mistaken for a script to be read. ── */
+.prompt-display.cue {
+  background: repeating-linear-gradient(135deg, #fafbfc 0 10px, #f1f3f6 10px 20px);
+  border-style: dashed;
+}
+.prompt-text.cue-text {
+  font-size: 17px;
+  font-weight: 600;
+  color: #475569;
+}
+.prompt-text .cue-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  color: #fff;
+  background: #94a3b8;
+  border-radius: 999px;
+  padding: 3px 9px;
+  margin-right: 8px;
+  vertical-align: 2px;
+}
+.prompt-text .cue-body { font-style: italic; }
+
 .prompt-choices-label { font-size: 14px; font-weight: 500; color: #475569; margin-bottom: 8px; }
 .prompt-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
 .prompt-choice {
@@ -1066,6 +1107,10 @@ body {
           <label class="delay-checkbox-label">
             <input type="checkbox" id="show-choices-checkbox">
             <span>Show choices on Full</span>
+          </label>
+          <label class="delay-checkbox-label">
+            <input type="checkbox" id="karaoke-checkbox" checked>
+            <span>Karaoke</span>
           </label>
         </div>
 
@@ -11452,6 +11497,7 @@ const state = {
   promptShowing:          false,
   promptShowingLevel:     0,  // 0=none, 1=min, 2=partial, 3=full — tracked so MtL Prompt can jump to Full
   showChoicesOnFull:      false,  // when true, Full prompts render as 2 tappable choices (if authored)
+  karaokeEnabled:         true,   // light up sayable prompt words one at a time to pace reading
   // LtM per-cell escalation levels (0=indep,1=min,2=partial,3=full)
   ltmCellLevels: [[0, 0], [0, 0], [0, 0], [0, 0]],
   // MtL per-cell flag: was Prompt clicked (Full override) for this cell?
@@ -11793,6 +11839,11 @@ function getPromptForCell(turn, typeIdx, level) {
     ? ['', 'commentMin', 'commentPartial', 'commentFull'][level]
     : ['', 'volleyMin',  'volleyPartial',  'volleyFull' ][level];
 
+  // A Min-level volley is an indirect "ask about…" cue — a hint for the
+  // clinician to elicit, never a line for the client to read aloud. Everything
+  // else (comments, and Partial/Full volleys) is a sayable script.
+  const cue = !isComment && level === 1;
+
   // 1. Two-choice opt-in at Full only (when authored).
   if (level === 3 && state.showChoicesOnFull) {
     const choices = isComment ? fact.commentChoices : fact.volleyChoices;
@@ -11805,7 +11856,7 @@ function getPromptForCell(turn, typeIdx, level) {
   if (fact[slotKey]) {
     let text = fact[slotKey];
     if (isClosing && level === 1) text = 'Last question — ' + lowerFirst(text);
-    return { text, level };
+    return { text, level, cue };
   }
 
   // 3. Defensive template fallback.
@@ -11815,7 +11866,7 @@ function getPromptForCell(turn, typeIdx, level) {
   const tpl    = set[bucket];
   let text     = tpl[stableIndex(person, turn, typeIdx, tpl.length)](ctx);
   if (isClosing && level === 1) text = 'Last question — ' + lowerFirst(text);
-  return { text, level };
+  return { text, level, cue };
 }
 
 let promptFadeTimeout = null;
@@ -11827,14 +11878,15 @@ let promptFadeTimeout = null;
 //   { choices: [a,b], level } -> render two tappable chips, no auto-fade
 function displayPrompt(payload) {
   clearTimeout(promptFadeTimeout);
+  clearKaraoke();
   const el = $('prompt-display');
   if (!el) return;
   const textEl    = el.querySelector('.prompt-text');
   const choicesEl = el.querySelector('.prompt-choices');
 
   if (!payload) {
-    el.classList.remove('active', 'fading');
-    if (textEl)    textEl.textContent = '';
+    el.classList.remove('active', 'fading', 'cue');
+    if (textEl)  { textEl.textContent = ''; textEl.classList.remove('karaoke', 'cue-text'); }
     if (choicesEl) choicesEl.innerHTML = '';
     state.promptShowing = false;
     state.promptShowingLevel = 0;
@@ -11846,7 +11898,10 @@ function displayPrompt(payload) {
   state.promptShowing = true;
   state.promptShowingLevel = payload.level || 0;
   el.classList.add('active');
-  el.classList.remove('fading');
+  el.classList.remove('fading', 'cue');
+  if (textEl) textEl.classList.remove('karaoke', 'cue-text');
+
+  let karaokeMs = 0;
 
   if (payload.choices) {
     if (textEl)    textEl.innerHTML = '<div class="prompt-choices-label">Choose one:</div>';
@@ -11860,6 +11915,14 @@ function displayPrompt(payload) {
     if (textEl) {
       if (txt.startsWith('🎉')) {
         textEl.textContent = txt;
+      } else if (payload.cue) {
+        // Indirect "elicit this" hint — never a script to read aloud.
+        el.classList.add('cue');
+        textEl.classList.add('cue-text');
+        textEl.innerHTML = '<span class="cue-badge">Cue</span><span class="cue-body">' + escapeHTML(txt) + '</span>';
+      } else if (state.karaokeEnabled) {
+        // Sayable line: light up the words one at a time to pace reading.
+        karaokeMs = renderKaraoke(textEl, txt);
       } else {
         textEl.innerHTML = '<span class="q">\u201C</span>' + escapeHTML(txt) + '<span class="q">\u201D</span>';
       }
@@ -11868,12 +11931,56 @@ function displayPrompt(payload) {
   }
 
   if (!state.persistPrompts && !payload.choices) {
-    const ms = fadeMsFor(state.promptMethod, payload.level || 0);
+    // Hold for the read time *after* the karaoke reveal finishes so a line
+    // never fades out mid-read.
+    const ms = fadeMsFor(state.promptMethod, payload.level || 0) + karaokeMs;
     promptFadeTimeout = setTimeout(() => {
       el.classList.add('fading');
       setTimeout(() => displayPrompt(null), 400);
     }, ms);
   }
+}
+
+// Pace per readable character when lighting up words, in ms.
+const KARAOKE_MS_PER_CHAR = 60;
+let karaokeTimers = [];
+
+function clearKaraoke() {
+  karaokeTimers.forEach(clearTimeout);
+  karaokeTimers = [];
+}
+
+// Render `txt` as a quoted line of word spans and schedule each word to light
+// up in turn, karaoke-style. Returns the total reveal duration in ms.
+function renderKaraoke(textEl, txt) {
+  textEl.classList.add('karaoke');
+  // Split on whitespace but keep the gaps so spacing is preserved.
+  const tokens = txt.split(/(\s+)/);
+  let html = '<span class="q">“</span>';
+  tokens.forEach(tok => {
+    html += /^\s+$/.test(tok)
+      ? tok
+      : '<span class="kw">' + escapeHTML(tok) + '</span>';
+  });
+  html += '<span class="q">”</span>';
+  textEl.innerHTML = html;
+
+  const kws = textEl.querySelectorAll('.kw');
+  let t = 200;  // small lead-in beat after the pop animation
+  kws.forEach((w, i) => {
+    const len = w.textContent.replace(/[.,!?…'"—-]/g, '').length;
+    const dur = Math.min(620, Math.max(150, len * KARAOKE_MS_PER_CHAR + 110));
+    karaokeTimers.push(setTimeout(() => {
+      if (i > 0) kws[i - 1].classList.remove('cur');
+      w.classList.add('lit', 'cur');
+    }, t));
+    t += dur;
+  });
+  // Drop the final glow once the last word has been read.
+  karaokeTimers.push(setTimeout(() => {
+    if (kws.length) kws[kws.length - 1].classList.remove('cur');
+  }, t));
+  return t;
 }
 
 function fadeMsFor(method, level) {
@@ -12327,6 +12434,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // Persist prompts checkbox
   $('persist-prompts-checkbox').addEventListener('change', e => {
     state.persistPrompts = e.target.checked;
+  });
+
+  // Karaoke checkbox: re-render the current prompt so the change takes effect now.
+  $('karaoke-checkbox').addEventListener('change', e => {
+    state.karaokeEnabled = e.target.checked;
+    if (state.promptShowing) {
+      const cell = getContextCell();
+      if (cell) {
+        const lvl = state.promptMethod === 'mtl'
+          ? state.mtlLevel
+          : state.ltmCellLevels[cell.turn][cell.typeIdx];
+        if (lvl > 0) displayPrompt(getPromptForCell(cell.turn, cell.typeIdx, lvl));
+      }
+    }
   });
 
   // Show-choices-on-Full checkbox: re-render if a Full prompt is currently visible.
