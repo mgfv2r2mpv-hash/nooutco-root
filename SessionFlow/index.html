@@ -47,7 +47,7 @@
   }
 
   /* Don't let fixed headers / anchors land flush to the top */
-  .section-head, .refs, #top { scroll-margin-top: 16px; }
+  .section-head, .phase, .refs, #top { scroll-margin-top: 16px; }
 
   .home-btn {
     display: inline-flex; align-items: center; gap: 6px;
@@ -250,11 +250,11 @@
 </head>
 <body>
 <nav class="sidenav" aria-label="Jump to section">
-  <a href="#top">Top</a>
-  <a href="#sec-session">Session</a>
-  <a href="#sec-flow">The flow</a>
-  <a href="#sec-onramps">Where you are</a>
-  <a href="#sec-refs">References</a>
+  <a href="#ph-open">Session open</a>
+  <a href="#ph-pair">Pre-session pairing</a>
+  <a href="#ph-dtt">DTT</a>
+  <a href="#ph-net">Reinforcement &amp; NET</a>
+  <a href="#ph-late">Late session</a>
 </nav>
 
 <div class="wrap" id="top">
@@ -267,10 +267,11 @@
   <!-- Compass framing -->
   <div class="compass">
     <div class="compass-title">A compass, not a checklist</div>
-    This is here to <strong>orient you</strong>, not to grade you. Real sessions don't run on rails — they bend around the
-    learner in front of you. If you're not where the timeline "says" you should be, that isn't a failure; it's information.
-    Read the client, meet them where they are, and use the phases below as a way to find your footing — never as a rule that
-    overrides your clinical judgment or your client's behavior plan. When in doubt, you can always return to pairing.
+    This guide is here to <strong>orient you</strong>, not to grade you. Sessions vary with the learner, so the structure
+    below describes a typical flow rather than a required order. If your session isn't matching the timeline, treat that as
+    information about what the client needs right now. Use the phases to find your footing, and let your clinical judgment
+    and the client's treatment and behavior plans take the lead. When you're unsure how to proceed, returning to pairing is
+    a sound default.
   </div>
 
   <!-- Session length control -->
@@ -284,7 +285,7 @@
     <button class="len-btn active" data-min="120">2 hr</button>
     <button class="len-btn" data-min="180">3 hr</button>
   </div>
-  <p class="len-hint">Pick your length and the windows below re-scale. The minute ranges are rough orientation — elapsed time from session start, not deadlines.</p>
+  <p class="len-hint">Select your session length and the windows below rescale. Minute ranges are approximate — elapsed time from the start of the session, not deadlines.</p>
 
   <!-- Timeline -->
   <div class="timeline" id="timeline">
@@ -303,14 +304,14 @@
     <span style="color:#D85A30" data-seg="4">Repair</span>
     <span style="color:#888780" data-seg="5">Handoff</span>
   </div>
-  <p class="tl-caption">Band width ≈ how much of the session each phase tends to take. The middle work cycle is the bulk; pairing and repair bookend it. These are tendencies, not targets.</p>
+  <p class="tl-caption">Band width reflects roughly how much of a session each phase tends to occupy. The work cycle is the bulk, with pairing and rapport repair at either end. These are general tendencies, not targets.</p>
 
   <!-- ───────── Phases ───────── -->
   <div class="section-head" id="sec-flow">The flow</div>
 
   <!-- Open + Pairing -->
   <div class="row">
-    <div class="phase open" style="flex:.9">
+    <div class="phase open" id="ph-open" style="flex:.9">
       <div class="phase-label">Session open <span class="time-tag" data-seg="0"></span></div>
       <ul>
         <li>Greet the client and family warmly at the door</li>
@@ -320,7 +321,7 @@
         <li>Scan the environment; notice what preferred items are available</li>
       </ul>
     </div>
-    <div class="phase pair" style="flex:1.6">
+    <div class="phase pair" id="ph-pair" style="flex:1.6">
       <div class="phase-label">Pre-session pairing <span class="time-tag" data-seg="1"></span><span class="badge">AO / CMO<span class="cite" tabindex="0">?<span class="cite-pop">Pairing can act as a <em>motivating operation</em> — momentarily lowering the value of attention or escape, so behavior maintained by them is less likely. Michael, J. (1993). Establishing operations. <em>The Behavior Analyst, 16,</em> 191–206; Michael, J. (2007). Motivating operations. In Cooper, Heron, &amp; Heward (Eds.), <em>Applied Behavior Analysis</em> (2nd ed.).</span></span></span></div>
       <ul>
         <li><b>Proximity</b> — move close, no demands</li>
@@ -333,15 +334,15 @@
         <li>Natural-environment opportunity: preference sampling surfaces manding chances — follow the client's lead to functional communication as it arises</li>
       </ul>
       <p class="note">Paired reinforcer delivery establishes the instructor as a conditioned reinforcer<span class="cite" tabindex="0">?<span class="cite-pop">The core rationale for pairing: "The main purpose of this procedure is to establish the instructor as a form of conditioned reinforcement for the child." Sundberg, M. L., &amp; Partington, J. W. (1998). <em>Teaching Language to Children with Autism or Other Developmental Disabilities.</em> Pleasant Hill, CA: Behavior Analysts, Inc.</span></span> and may abolish the value of attention- or escape-maintained behavior.<span class="cite" tabindex="0">?<span class="cite-pop">Pre-session reinforcer delivery can counterbalance the aversiveness of demands and reduce escape-maintained behavior. Lomas, J. E., Fisher, W. W., &amp; Kelley, M. E. (2010). The effects of variable-time delivery of food items and praise on problem behavior reinforced by escape. <em>Journal of Applied Behavior Analysis, 43,</em> 425–435.</span></span> Easing into preferred, high-probability activities also tends to increase later compliance.<span class="cite" tabindex="0">?<span class="cite-pop">High-probability request sequences and pre-session reinforcement raise compliance with later, harder demands. Pitts, L., &amp; Dymond, S. (2012). Increasing compliance of children with autism. <em>Research in Autism Spectrum Disorders, 6,</em> 135–143.</span></span></p>
-      <div class="cue"><b>Move on when</b> the client is genuinely <i>with</i> you — approaching, relaxed, choosing to engage — not when the clock says so. Pairing isn't a warm-up you rush past; it's the foundation everything else rests on, and you can come back to it any time the connection thins.</div>
+      <div class="cue"><b>Move on when</b> the client is engaged with you — approaching, relaxed, choosing to interact — rather than at a set time. Pairing is the foundation the rest of the session rests on, and you can return to it any time engagement drops off.</div>
 
       <div class="callout callout-sr">
         <div class="callout-title">Reinforcer on hand — all session long</div>
-        Teaching runs on reinforcement. Before any demand — planned or incidental — know what you're reinforcing with. Keep at least one active, non-satiated reinforcer identified at all times. When a preferred item loses its pull, find the next one before continuing.
+        Teaching depends on reinforcement. Before any demand — planned or incidental — know what you'll reinforce with. Keep at least one active, non-satiated reinforcer identified at all times. When a preferred item loses its value, identify the next one before continuing.
       </div>
       <div class="callout callout-bx">
         <div class="callout-title">If challenging behavior occurs — follow the BIP</div>
-        Your client's behavior intervention plan comes first, always. In general terms: stay calm, redirect to an appropriate alternative, reinforce that alternative, and if needed use a brief high-probability or maintenance demand to rebuild momentum, then reinforce.<span class="cite" tabindex="0">?<span class="cite-pop">Behavioral momentum: a run of easy, reinforced responses increases persistence and compliance on harder demands that follow. Mace, F. C., et al. (1988). Behavioral momentum in the treatment of noncompliance. <em>Journal of Applied Behavior Analysis, 21,</em> 123–141.</span></span> Guide the learner back in the least coercive, most reinforcing way possible. Document anything notable or outside their typical baseline for the BCBA.
+        The client's behavior intervention plan always comes first. In general terms: stay calm, redirect to an appropriate alternative and reinforce it, and if needed use a brief high-probability or maintenance demand to rebuild momentum, then reinforce.<span class="cite" tabindex="0">?<span class="cite-pop">Behavioral momentum: a run of easy, reinforced responses increases persistence and compliance on harder demands that follow. Mace, F. C., et al. (1988). Behavioral momentum in the treatment of noncompliance. <em>Journal of Applied Behavior Analysis, 21,</em> 123–141.</span></span> Guide the learner back using the least intrusive, most reinforcing approach available. Document anything notable or outside the client's typical baseline for the BCBA.
       </div>
     </div>
   </div>
@@ -351,29 +352,29 @@
 
   <!-- DTT + SR block A -->
   <div class="row">
-    <div class="phase work" style="flex:1.4">
+    <div class="phase work" id="ph-dtt" style="flex:1.4">
       <div class="phase-label">DTT block</div>
       <ul>
-        <li>Reinforcer in hand before you start — no exceptions</li>
-        <li>Pick the moment: preferred item identified, no satiation, client engaged</li>
-        <li>A short run of trials per block; calibrate to the program's effort and the client's engagement</li>
-        <li>Between trials: brief praise + a quick bit of play (high five, silly face) — fast, fun, genuine<span class="cite" tabindex="0">?<span class="cite-pop">A brisk pace of instruction tends to reduce off-task behavior and raise participation. Carnine, D. W. (1976). Effects of two teacher presentation rates on off-task behavior, answering correctly, and participation. <em>Journal of Applied Behavior Analysis, 9,</em> 199–206.</span></span></li>
-        <li>Close the block: genuine praise, client's choice of reinforcer, warm social engagement on their terms</li>
+        <li>Reinforcer identified before you start — no exceptions</li>
+        <li>Begin when conditions are right: reinforcer identified, no satiation, client engaged</li>
+        <li>A short run of trials per block; calibrate to the program's demand and the client's engagement</li>
+        <li>Between trials: brief praise and a quick, genuine bit of social play (a high five, a shared smile)<span class="cite" tabindex="0">?<span class="cite-pop">A brisk pace of instruction tends to reduce off-task behavior and raise participation. Carnine, D. W. (1976). Effects of two teacher presentation rates on off-task behavior, answering correctly, and participation. <em>Journal of Applied Behavior Analysis, 9,</em> 199–206.</span></span></li>
+        <li>Close the block with genuine praise, the client's choice of reinforcer, and warm social engagement on their terms</li>
       </ul>
       <p class="note">Rotate program difficulty to keep correct-response rates high; lean on maintenance targets in lower-engagement moments to hold momentum.<span class="cite" tabindex="0">?<span class="cite-pop">Interspersing easy/mastered tasks among harder ones supports responding and reduces problem behavior during instruction. Neef, N. A., Iwata, B. A., &amp; Page, T. J. (1980). The effects of interspersal training versus high-density reinforcement on spelling acquisition and retention. <em>Journal of Applied Behavior Analysis, 13,</em> 153–158.</span></span></p>
     </div>
-    <div class="phase net" style="flex:1">
+    <div class="phase net" id="ph-net" style="flex:1">
       <div class="phase-label">Reinforcement + NET</div>
       <ul>
-        <li>Full reinforcer access — be present and engaged <i>with</i> the client at the start of every reinforcement interval; keep pairing yourself with good things</li>
+        <li>Full reinforcer access — stay present and engaged with the client at the start of every reinforcement interval, continuing to pair yourself with reinforcement</li>
         <li>Mid-interval (not at the start): add a word or two to the note — activity, target worked, brief behavior note; keep it to seconds</li>
         <li>Identify your next reinforcer before this interval ends</li>
         <li>Embed incidental targets in free play: mands, labels, expansions in context</li>
         <li>Preference assessment never stops — watch what they choose, how long it holds, what they abandon; revise in real time</li>
-        <li>NET surfaces functional-communication moments — a want, a need for help, a wish to escape is a teaching opportunity for a communicative response</li>
+        <li>NET surfaces functional-communication moments — a want, a need for help, or a wish to escape is an opportunity to teach a communicative response</li>
         <li>Fold into the home: target adaptive skills in situ (requesting at snack, labeling during routines)</li>
       </ul>
-      <p class="note">Reinforcement time is not a break from the client. Documentation happens mid-interval, briefly, without pulling away when reinforcement first lands.</p>
+      <p class="note">Reinforcement time isn't a break from the client. Keep documentation brief and mid-interval, rather than pulling away just as reinforcement is delivered.</p>
     </div>
   </div>
 
@@ -394,10 +395,10 @@
       </ul>
     </div>
   </div>
-  <div class="cycle-note">↻ Repeat the DTT / reinforcement-NET cycle. Dashed = later iterations. How many blocks, and how often, is entirely client- and session-dependent.</div>
+  <div class="cycle-note">↻ Repeat the DTT and reinforcement/NET cycle. Dashed cards indicate later iterations. The number and frequency of blocks depend on the client and the session.</div>
 
   <!-- Decel + Repair + Note -->
-  <div class="section-head">Bringing it home</div>
+  <div class="section-head" id="ph-late">Late session</div>
   <div class="row">
     <div class="phase decel">
       <div class="phase-label">Easing off <span class="time-tag" data-seg="3"></span></div>
@@ -416,17 +417,17 @@
         <li>Non-contingent attention and reinforcer delivery</li>
         <li>Re-pair yourself with positive affect and preferred activities</li>
       </ul>
-      <p class="note">A session shouldn't end with a demand as the client's last experience of you. Rapport — the quality of your relationship — is itself a setting event for how the next session goes.<span class="cite" tabindex="0">?<span class="cite-pop">Quality of rapport functions as a setting event for problem behavior; building and repairing it has measurable effects. McLaughlin, D., &amp; Carr, E. G. (2005). Quality of rapport as a setting event for problem behavior. <em>Journal of Positive Behavior Interventions, 7,</em> 68–91.</span></span></p>
+      <p class="note">A session shouldn't end with a demand as the client's last experience. Rapport — the quality of the relationship — is itself a setting event for how the next session goes.<span class="cite" tabindex="0">?<span class="cite-pop">Quality of rapport functions as a setting event for problem behavior; building and repairing it has measurable effects. McLaughlin, D., &amp; Carr, E. G. (2005). Quality of rapport as a setting event for problem behavior. <em>Journal of Positive Behavior Interventions, 7,</em> 68–91.</span></span></p>
     </div>
     <div class="phase docnote" style="flex:1.2">
       <div class="phase-label">Family handoff + note <span class="time-tag" data-seg="5"></span></div>
       <ul>
         <li>Let the family know the session is wrapping up</li>
-        <li>Verbal debrief: name at least one specific win — what the client engaged with most, a moment of strong connection, a new or improved response. Wins can be small and still matter.</li>
-        <li>If something notable or hard happened, name it briefly and say it'll be shared with the BCBA — don't gloss over real needs, don't leave them wondering</li>
-        <li>If a caregiver did something helpful in session, call it out specifically and encourage more of it</li>
+        <li>Verbal debrief: share at least one specific success — what the client engaged with most, a moment of strong connection, or a new or improved response. Small wins still count.</li>
+        <li>If something notable or difficult happened, name it briefly and let the family know it will be shared with the BCBA — don't minimize genuine concerns or leave them wondering</li>
+        <li>If a caregiver did something helpful during the session, point it out specifically and encourage more of it</li>
         <li>Transition the client to the caregiver — don't disengage abruptly</li>
-        <li>Write the note in-home with peripheral awareness of the client; note-writing and active supervision don't mix — the handoff is what makes the note accurate</li>
+        <li>Write the note in-home while keeping peripheral awareness of the client; note-writing and active supervision don't mix, so the handoff is what makes the note accurate</li>
         <li>Obtain caregiver signature; ask if there are any questions or concerns before you go</li>
         <li>Record caregiver-reported information as collateral data; flag questions for the supervising BCBA</li>
       </ul>
@@ -437,20 +438,19 @@
   <!-- ───────── Onramps ───────── -->
   <div class="section-head" id="sec-onramps">Start where the client is</div>
   <p class="onramp-intro">
-    Stuck, or the session isn't going the way the timeline above suggests? That's normal — and it's the moment the guide is
-    most useful. There's no single right place to be. Find what's true <i>right now</i> and let it point you to an onramp.
-    None of these is "behind" or "ahead" — they're just doors back in. Behavioral artistry is reading the client and
-    meeting their energy; the skill grows session by session.
+    If the session isn't following the flow above, that's normal — and it's often when this guide is most useful. There's no
+    single right place to be. Notice what's true <i>right now</i> and let it guide your next step. None of these states is
+    "behind" or "ahead." Reading the client and responding to where they are is a clinical skill, and it grows with experience.
   </p>
   <div class="onramps">
 
     <details class="onramp">
-      <summary><span class="dot d-engaged"></span><span>The client is with you and motivated<span class="when">relaxed, approaching, reaching for things, having fun</span></span></summary>
+      <summary><span class="dot d-engaged"></span><span>The client is with you and motivated<span class="when">relaxed, approaching, engaged in preferred activities</span></span></summary>
       <div class="body">
-        This is your window. Reinforcer already in hand?
+        This is a good window for demands. With a reinforcer already on hand:
         <ul>
-          <li>Open a <b>DTT block</b> or embed a target in the play you're already in</li>
-          <li>Pick the moment — don't wait for it to pass</li>
+          <li>Start a <b>DTT block</b>, or embed a target in the play you're already in</li>
+          <li>Begin while engagement is high</li>
           <li>Keep it short and end on a strong, reinforced response</li>
         </ul>
       </div>
@@ -459,12 +459,12 @@
     <details class="onramp">
       <summary><span class="dot d-stuck"></span><span>You can't get any traction<span class="when">client won't engage with demands, drifting, refusing</span></span></summary>
       <div class="body">
-        Don't push into it — pushing on a closed door tends to make it heavier. Drop back and rebuild the connection.
+        Pushing harder when engagement is low usually backfires. Step back and rebuild the connection.
         <ul>
           <li>Return to <b>pairing</b>: proximity, no demands, follow their lead</li>
-          <li>Run an informal <b>preference assessment</b> — find the one thing pulling them today</li>
-          <li>Match what they're already doing; join their activity before you ask anything</li>
-          <li>You become a reinforcer again first; demands come after</li>
+          <li>Run an informal <b>preference assessment</b> to find what's reinforcing today</li>
+          <li>Join what the client is already doing before placing any demands</li>
+          <li>Re-establish yourself as a reinforcer first; demands come after</li>
         </ul>
       </div>
     </details>
@@ -472,9 +472,9 @@
     <details class="onramp">
       <summary><span class="dot d-bx"></span><span>Behavior is happening<span class="when">aggression, elopement, unsafe play, escalation</span></span></summary>
       <div class="body">
-        <b>Follow the BIP first</b> — it's the authority here, not this guide. In general terms:
+        <b>Follow the behavior plan first</b> — it takes precedence over this guide. In general terms:
         <ul>
-          <li>Stay calm; keep everyone safe</li>
+          <li>Stay calm and keep everyone safe</li>
           <li>Redirect to an appropriate alternative and reinforce it</li>
           <li>A brief high-probability or maintenance demand can rebuild momentum — then reinforce</li>
           <li>Document anything notable or outside baseline for the BCBA</li>
@@ -485,12 +485,12 @@
     <details class="onramp">
       <summary><span class="dot d-fade"></span><span>The client is fading or getting overloaded<span class="when">tired, irritable, demands turning aversive</span></span></summary>
       <div class="body">
-        Ease off before it tips over. The session can soften without "stopping."
+        Ease off before things escalate. Lowering the intensity isn't the same as stopping.
         <ul>
           <li>Maintenance and fluent targets only — nothing new</li>
           <li>Raise the reinforcement-to-demand ratio</li>
-          <li>More pairing, more following their lead</li>
-          <li>Protect the relationship over the data for these minutes</li>
+          <li>More pairing, and follow the client's lead</li>
+          <li>Prioritize the client's regulation and your relationship for these minutes</li>
         </ul>
       </div>
     </details>
@@ -498,24 +498,24 @@
     <details class="onramp">
       <summary><span class="dot d-end"></span><span>You're near the end<span class="when">winding down, time's almost up</span></span></summary>
       <div class="body">
-        Land it gently.
+        Close out with intention.
         <ul>
-          <li><b>Rapport repair</b>: demand-free, child-led play; re-pair yourself with good things</li>
-          <li>Don't let a demand be their last memory of the session</li>
-          <li><b>Handoff + note</b>: one specific win to the family, flag anything for the BCBA, finish the note in-home</li>
+          <li><b>Rapport repair</b>: demand-free, child-led play; re-pair yourself with preferred activities</li>
+          <li>Try not to end on a demand</li>
+          <li><b>Handoff and note</b>: share one specific success with the family, flag anything for the BCBA, and finish the note in-home</li>
         </ul>
       </div>
     </details>
 
     <details class="onramp">
-      <summary><span class="dot d-lost"></span><span>You're not sure where to start<span class="when">walked in, mind blank, lost your footing</span></span></summary>
+      <summary><span class="dot d-lost"></span><span>You're not sure where to start<span class="when">just arrived, feeling unsure how to begin</span></span></summary>
       <div class="body">
-        That's okay — and there's always a safe first move.
+        That's okay — there's always a safe first step.
         <ul>
-          <li>Start with <b>pairing</b>. It's never the wrong choice.</li>
+          <li>Start with <b>pairing</b>; it's never the wrong choice</li>
           <li>Notice what the client gravitates toward — that's your preference assessment</li>
           <li>Get one reinforcer working, then look for a small opening</li>
-          <li>You don't have to find the whole plan at once — just the next good moment</li>
+          <li>You don't need the whole plan at once — just the next good step</li>
         </ul>
       </div>
     </details>
