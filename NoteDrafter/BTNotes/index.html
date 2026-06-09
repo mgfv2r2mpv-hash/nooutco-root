@@ -205,16 +205,60 @@
       { kind: "narrative", heading: "Summary of Concerns/Questions/Involvement",   key: "followUpNarrative" },
     ];
 
-    // ── Recognition-framed tooltip text (help BTs spot what they did) ─────────
-    const TIP_SESSION = "You don't need to label anything — just jot what you saw. How did they arrive: ready and engaged, tired, hungry/thirsty, distracted, seemed unwell, upset or already having behavior, or a recent medication change? What was the focus: building rapport / getting them to work with you (pairing), running their learning programs, or working on a behavior plan? If the session was unexpectedly paused (e.g., a nap), mention it.";
-
-    const TIP_LESSON = "Did any of these happen? Differential reinforcement = you gave more/better reinforcement for the good or replacement behavior than for the behavior you're reducing or off-task behavior. Errorless = you prompted right away so they didn't make mistakes. Most-to-Least = started with strong help and faded it. Least-to-Most = started with little help and added more only if needed. Discrete Trial Training = structured repeated trials. Natural Environment Training = teaching during play/natural routines. Task Analysis = breaking a multi-step skill into steps. Functional Communication Training = teaching them to communicate instead of using behavior. Token Economy = earning tokens toward a reward.";
-
-    const TIP_ANTECEDENT = "Think back — did you do any of these to prevent problems before they started? Set up the space / removed distractions or unsafe items (environmental arrangement). Showed what's coming with a picture schedule (visual schedule). Let them pick between options (offered choices). Said 'first this, then that' (Premack / first-then — most people do this without knowing the name). Gave a heads-up or countdown before a transition or before ending something fun (priming / warning). Adjusted things to meet a need — e.g., a break before a hard task, or held back a preferred item so it stayed motivating (motivation alteration). You can also mention non-contingent reinforcement, easy wins first (behavior momentum), pre-session pairing, or simplified instructions.";
-
-    const TIP_BEHAVIOR = "What behavior(s) of concern happened (even if zero), and how did you respond? Common responses: redirected to an appropriate task (redirection); briefly lowered the demand (lessened response requirement); cued them to ask/communicate (prompted functional communication); gave a break to de-escalate (allowed break); reinforced the replacement behavior and withheld for the target (differential reinforcement). Also say how well it worked (highly / moderately / not effective) and how rates compared to recent sessions.";
-
-    const TIP_FOLLOWUP = "Anything the BCBA should do or know: contact family about scheduling/staffing, a new behavior, or billing; contact staff; materials needed for programming; or nothing new. Overall client progress can be steady, impacted by behavior of concern, or limited. You don't need to repeat things — if you already mentioned a new behavior, a needed material, or a barrier above, we'll surface it here for you.";
+    // ── Recognition-framed help content (rendered as a scannable list) ───────
+    const HELP_SESSION = {
+      intro: "Just jot what you saw — no need to label anything.",
+      items: [
+        { t: "How they arrived", d: "ready & engaged, tired, hungry/thirsty, distracted, seemed unwell, upset or already having behavior, or a recent medication change" },
+        { t: "Focus of session", d: "building rapport / getting them to work with you (pairing), running learning programs, or working on a behavior plan" },
+        { t: "Pauses", d: "mention if the session was unexpectedly paused (e.g., a nap)" },
+      ],
+    };
+    const HELP_LESSON = {
+      intro: "Did any of these happen? Name the ones you used.",
+      items: [
+        { t: "Differential reinforcement", d: "more/better reinforcement for the good or replacement behavior than for the behavior you're reducing or off-task behavior" },
+        { t: "Errorless", d: "prompted right away so they didn't make mistakes" },
+        { t: "Most-to-Least", d: "started with strong help and faded it" },
+        { t: "Least-to-Most", d: "started with little help, added more only if needed" },
+        { t: "Discrete Trial Training", d: "structured repeated trials" },
+        { t: "Natural Environment Training", d: "teaching during play / natural routines" },
+        { t: "Task Analysis", d: "breaking a multi-step skill into steps" },
+        { t: "Functional Communication Training", d: "teaching them to communicate instead of using behavior" },
+        { t: "Token Economy", d: "earning tokens toward a reward" },
+      ],
+    };
+    const HELP_ANTECEDENT = {
+      intro: "Did you do any of these to prevent problems before they started?",
+      items: [
+        { t: "Environmental arrangement", d: "set up the space / removed distractions or unsafe items" },
+        { t: "Visual schedule", d: "showed what's coming with a picture schedule" },
+        { t: "Offered choices", d: "let them pick between options" },
+        { t: "Premack / first-then", d: "said “first this, then that” — most people do this without knowing the name" },
+        { t: "Priming / warning", d: "a heads-up or countdown before a transition or before ending something fun" },
+        { t: "Motivation alteration", d: "adjusted things to meet a need — e.g., a break before a hard task, or held back a preferred item so it stayed motivating" },
+        { t: "Also worth a mention", d: "non-contingent reinforcement, easy wins first (behavior momentum), pre-session pairing, simplified instructions" },
+      ],
+    };
+    const HELP_BEHAVIOR = {
+      intro: "What behavior(s) of concern happened (even if zero), and how did you respond?",
+      items: [
+        { t: "Redirection", d: "redirected to an appropriate task" },
+        { t: "Lessened response requirement", d: "briefly lowered the demand" },
+        { t: "Prompted functional communication", d: "cued them to ask / communicate" },
+        { t: "Allowed break", d: "gave a break to de-escalate" },
+        { t: "Differential reinforcement", d: "reinforced the replacement behavior, withheld for the target" },
+        { t: "Then say", d: "how well it worked (highly / moderately / not effective) and how rates compared to recent sessions" },
+      ],
+    };
+    const HELP_FOLLOWUP = {
+      intro: "Anything the BCBA should do or know.",
+      items: [
+        { t: "Action items", d: "scheduling/staffing, a new behavior, billing, contact staff, materials needed — or nothing new" },
+        { t: "Overall progress", d: "steady, impacted by behavior of concern, or limited" },
+        { t: "No need to repeat", d: "things you mentioned above are surfaced here automatically" },
+      ],
+    };
 
     async function callProvider(provider, apiKey, systemPrompt, userPrompt) {
       const res = await fetch("/api/llm-call", {
@@ -380,6 +424,55 @@
               </div>
             );
           })}
+        </div>
+      );
+    }
+
+    // ── Shared style tokens (module scope so GuidedField can use them too) ────
+    const CARD   = { background: "white", borderRadius: 12, border: "1px solid #c0d4a8", padding: 24, marginBottom: 20 };
+    const LBL    = { fontSize: 13, fontWeight: 600, color: "#374528", textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 8 };
+    const SUBLBL = { fontSize: 15, fontWeight: 700, color: "#2d3a1f", display: "block", marginBottom: 6 };
+    const HINT   = { fontSize: 12.5, color: "#7a9460", marginBottom: 10, lineHeight: 1.55 };
+    const INPUT  = { width: "100%", padding: "10px 14px", borderRadius: 8, border: "1.5px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", background: "#fafcf8" };
+
+    // Scannable, in-flow help panel (replaces hover tooltips): bold term — plain description.
+    function HelpList({ intro, items }) {
+      return (
+        <div style={{ background: "#eef4e6", border: "1px solid #c8dba8", borderRadius: 8, padding: "11px 14px", margin: "2px 0 12px", fontSize: 12.5, color: "#41502c", lineHeight: 1.5 }}>
+          {intro && <p style={{ marginBottom: items && items.length ? 8 : 0 }}>{intro}</p>}
+          {items && items.length > 0 && (
+            <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(330px, 1fr))", columnGap: 18, rowGap: 5 }}>
+              {items.map((it, i) => (
+                <li key={i}><strong style={{ color: "#2d3a1f" }}>{it.t}</strong>{it.d ? ` — ${it.d}` : ""}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      );
+    }
+
+    // A guided free-text field: label, optional click-to-expand help list, hint, textarea.
+    // Module-scope so its open/closed state survives parent re-renders (typing).
+    function GuidedField({ title, required, help, hint, value, onChange, placeholder, height }) {
+      const [open, setOpen] = React.useState(false);
+      return (
+        <div style={CARD}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 6 }}>
+            <span style={{ ...SUBLBL, marginBottom: 0 }}>{title}{required && <span style={{ color: "#c0392b" }}> *</span>}</span>
+            {help && (
+              <button onClick={() => setOpen(o => !o)} style={{
+                flexShrink: 0, padding: "4px 12px", borderRadius: 20, cursor: "pointer",
+                border: open ? "1.5px solid #374528" : "1.5px solid #c0d4a8",
+                background: open ? "#374528" : "white", color: open ? "white" : "#5a7040",
+                fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
+              }}>{open ? "Hide examples ▴" : "What counts? ▾"}</button>
+            )}
+          </div>
+          {open && help && <HelpList intro={help.intro} items={help.items} />}
+          <p style={HINT}>{hint}</p>
+          <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+            style={{ ...INPUT, height, resize: "vertical", lineHeight: 1.6 }}
+          />
         </div>
       );
     }
@@ -589,11 +682,7 @@ BT notes: "BCBA in 20 min. Arrived tired, slow to start. Ran tx-plan goals. Rece
         setTimeout(() => setCopied(null), 1800);
       };
 
-      const card     = { background: "white", borderRadius: 12, border: "1px solid #c0d4a8", padding: 24, marginBottom: 20 };
-      const lbl      = { fontSize: 13, fontWeight: 600, color: "#374528", textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 8 };
-      const subLbl   = { fontSize: 15, fontWeight: 700, color: "#2d3a1f", display: "block", marginBottom: 6 };
-      const hint     = { fontSize: 12, color: "#7a9460", marginBottom: 10, lineHeight: 1.55 };
-      const inputBase = { width: "100%", padding: "10px 14px", borderRadius: 8, border: "1.5px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", background: "#fafcf8" };
+      const card = CARD, lbl = LBL, subLbl = SUBLBL, hint = HINT, inputBase = INPUT;
       const prov = PROVIDERS[provider];
 
       return (
@@ -688,55 +777,40 @@ BT notes: "BCBA in 20 min. Arrived tired, slow to start. Ran tx-plan goals. Rece
             </div>
           </div>
 
-          {/* ── Field 1: Session start & context ── */}
-          <div style={card}>
-            <label style={subLbl}>Session Start &amp; Context <InfoTooltip text={TIP_SESSION} /></label>
-            <p style={hint}>Who was there, how the client seemed when you started, and — in a few words — whether you worked on <strong>building rapport/pairing, skill goals, or reducing a behavior</strong>. We'll suggest the Individuals, Clinical Status, and Purpose checkboxes for you.</p>
-            <textarea value={fSession} onChange={e => setFSession(e.target.value)}
-              placeholder={"No names or other PHI (anything that could identify a specific person).\nFragments are fine, e.g.:\n- BCBA present 20 min; parent home in another room\n- Arrived tired, slow to engage, asked for tablet\n- Ran treatment-plan goals + behavior plan"}
-              style={{ ...inputBase, height: 120, resize: "vertical", lineHeight: 1.6 }}
-            />
-          </div>
+          <GuidedField
+            title="Session Start & Context" help={HELP_SESSION}
+            hint={<>Who was there, how the client seemed when you started, and — in a few words — whether you worked on <strong>building rapport/pairing, skill goals, or reducing a behavior</strong>. We'll suggest the Individuals, Clinical Status, and Purpose checkboxes for you.</>}
+            value={fSession} onChange={setFSession} height={120}
+            placeholder={"No names or other PHI (anything that could identify a specific person).\nFragments are fine, e.g.:\n- BCBA present 20 min; parent home in another room\n- Arrived tired, slow to engage, asked for tablet\n- Ran treatment-plan goals + behavior plan"}
+          />
 
-          {/* ── Field 2: Skill acquisition / lesson ── */}
-          <div style={card}>
-            <label style={subLbl}>Skill Acquisition / Lesson Progress <span style={{ color: "#c0392b" }}>*</span> <InfoTooltip text={TIP_LESSON} /></label>
-            <p style={hint}>What you taught and how it went. Ideally two programs (e.g. one communication/social, one adaptive/daily-living or replacing a repetitive behavior). Include prompting, accuracy/progress, and barriers. If you mention skills worked on, we'll suggest "Worked on goals as stated in the treatment plan" for you.</p>
-            <textarea value={fLesson} onChange={e => setFLesson(e.target.value)}
-              placeholder={"No names or other PHI.\nFragments are fine, e.g.:\n- Receptive ID in DTT, 3-item array; full physical → independent, 2 indep at end\n- Tact training in NET during play, ~70% accuracy\n- Errorless start, faded to gestural prompt"}
-              style={{ ...inputBase, height: 150, resize: "vertical", lineHeight: 1.6 }}
-            />
-          </div>
+          <GuidedField
+            title="Skill Acquisition / Lesson Progress" required help={HELP_LESSON}
+            hint={<>What you taught and how it went. Ideally two programs (e.g. one communication/social, one adaptive/daily-living or replacing a repetitive behavior). Include prompting, accuracy/progress, and barriers. If you mention skills worked on, we'll suggest "Worked on goals as stated in the treatment plan" for you.</>}
+            value={fLesson} onChange={setFLesson} height={150}
+            placeholder={"No names or other PHI.\nFragments are fine, e.g.:\n- Receptive ID in DTT, 3-item array; full physical → independent, 2 indep at end\n- Tact training in NET during play, ~70% accuracy\n- Errorless start, faded to gestural prompt"}
+          />
 
-          {/* ── Field 3: Antecedent strategies ── */}
-          <div style={card}>
-            <label style={subLbl}>Antecedent Strategies <span style={{ color: "#c0392b" }}>*</span> <InfoTooltip text={TIP_ANTECEDENT} /></label>
-            <p style={hint}>What you did <strong>proactively</strong> to prevent or reduce behavior of concern, and whether it helped. (Open the <span style={{ display: "inline-flex", width: 15, height: 15, borderRadius: "50%", border: "1px solid #c0d4a8", background: "#eef4e6", color: "#5a7040", fontSize: 10, fontWeight: 700, alignItems: "center", justifyContent: "center", verticalAlign: "middle" }}>i</span> for a memory-jogger.)</p>
-            <textarea value={fAntecedent} onChange={e => setFAntecedent(e.target.value)}
-              placeholder={"No names or other PHI.\ne.g.:\n- First/then board for transitions\n- 1-min warnings before switching activities\n- Offered choice of work order\n- Reduced noise/distractions; helped engagement"}
-              style={{ ...inputBase, height: 120, resize: "vertical", lineHeight: 1.6 }}
-            />
-          </div>
+          <GuidedField
+            title="Antecedent Strategies" required help={HELP_ANTECEDENT}
+            hint={<>What you did <strong>proactively</strong> to prevent or reduce behavior of concern, and whether it helped. Tap <em>What counts?</em> for a memory-jogger.</>}
+            value={fAntecedent} onChange={setFAntecedent} height={120}
+            placeholder={"No names or other PHI.\ne.g.:\n- First/then board for transitions\n- 1-min warnings before switching activities\n- Offered choice of work order\n- Reduced noise/distractions; helped engagement"}
+          />
 
-          {/* ── Field 4: Behavior & staff response ── */}
-          <div style={card}>
-            <label style={subLbl}>Behavior &amp; Staff Response <span style={{ color: "#c0392b" }}>*</span> <InfoTooltip text={TIP_BEHAVIOR} /></label>
-            <p style={hint}>Behavior(s) of concern this session (rates vs. recent sessions, even if zero), how you responded, whether it worked, and overall progress.</p>
-            <textarea value={fBehavior} onChange={e => setFBehavior(e.target.value)}
-              placeholder={"No names or other PHI.\ne.g.:\n- Elopement x2; blocked + redirected, no escalation\n- Prompted 'break please'; allowed break, behavior dropped\n- Lower rate than last week; responses worked well"}
-              style={{ ...inputBase, height: 130, resize: "vertical", lineHeight: 1.6 }}
-            />
-          </div>
+          <GuidedField
+            title="Behavior & Staff Response" required help={HELP_BEHAVIOR}
+            hint={<>Behavior(s) of concern this session (rates vs. recent sessions, even if zero), how you responded, whether it worked, and overall progress.</>}
+            value={fBehavior} onChange={setFBehavior} height={130}
+            placeholder={"No names or other PHI.\ne.g.:\n- Elopement x2; blocked + redirected, no escalation\n- Prompted 'break please'; allowed break, behavior dropped\n- Lower rate than last week; responses worked well"}
+          />
 
-          {/* ── Field 5: Follow-up & concerns ── */}
-          <div style={card}>
-            <label style={subLbl}>Follow-Up &amp; Concerns <InfoTooltip text={TIP_FOLLOWUP} /></label>
-            <p style={hint}>Anything the BCBA should do or know — scheduling/staffing, a new behavior, billing, materials, involvement. You don't have to repeat yourself: things you mentioned above (a new behavior, a needed material, a barrier) will be surfaced here automatically. It's fine to have nothing new.</p>
-            <textarea value={fFollowUp} onChange={e => setFFollowUp(e.target.value)}
-              placeholder={"No names or other PHI.\ne.g.:\n- Ask BCBA to update elopement protocol\n- Need new visual schedule printed\n- No new concerns this session"}
-              style={{ ...inputBase, height: 110, resize: "vertical", lineHeight: 1.6 }}
-            />
-          </div>
+          <GuidedField
+            title="Follow-Up & Concerns" help={HELP_FOLLOWUP}
+            hint={<>Anything the BCBA should do or know — scheduling/staffing, a new behavior, billing, materials, involvement. You don't have to repeat yourself: things you mentioned above will be surfaced here automatically. It's fine to have nothing new.</>}
+            value={fFollowUp} onChange={setFFollowUp} height={110}
+            placeholder={"No names or other PHI.\ne.g.:\n- Ask BCBA to update elopement protocol\n- Need new visual schedule printed\n- No new concerns this session"}
+          />
 
           {/* Error + Buttons */}
           <div style={{ marginBottom: 20 }}>
