@@ -18,45 +18,30 @@
   }
   .wrap { max-width: 920px; margin: 0 auto; }
 
-  /* Fixed section nav */
-  .sidenav {
-    position: fixed; left: 16px; top: 50%; transform: translateY(-50%);
-    display: flex; flex-direction: column; gap: 5px; z-index: 150;
+  /* Sticky top section nav */
+  .topnav {
+    position: sticky; top: 0; z-index: 150;
+    display: flex; align-items: center; gap: 5px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    padding: 8px 10px; margin: -20px -18px 18px;
+    background: rgba(248,247,242,.96);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    border-bottom: 0.5px solid #e0ded4;
+    scrollbar-width: thin;
   }
-  .sidenav a {
-    font-size: 11px; font-weight: 500; color: #888780; text-decoration: none;
-    padding: 6px 11px; border-radius: 999px; white-space: nowrap;
-    background: rgba(255,255,255,.82); border: 0.5px solid #e0ded4;
-    -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
-    transition: background .12s, color .12s, border-color .12s;
+  .topnav a {
+    flex: none; font-size: 11.5px; font-weight: 500; color: #888780;
+    text-decoration: none; padding: 5px 11px; border-radius: 999px;
+    white-space: nowrap; transition: background .12s, color .12s;
   }
-  .sidenav a:hover { background: #fff; color: #2c2c2a; border-color: #c9c7bd; }
-  .sidenav a.active { background: #378ADD; border-color: #378ADD; color: #fff; }
+  .topnav a:hover { background: #ecebfb; color: #2c2c2a; }
+  .topnav a.active { background: #378ADD; color: #fff; }
+  .topnav .home-link { color: #3a4a28; font-weight: 600; }
+  .topnav .home-link:hover { background: #e8efda; }
+  .topnav .nav-sep { flex: none; width: 1px; height: 16px; background: #d6d4ca; margin: 0 3px; }
 
-  /* Narrow viewports: become a bottom bar */
-  @media (max-width: 1160px) {
-    .sidenav {
-      left: 0; right: 0; bottom: 0; top: auto; transform: none;
-      flex-direction: row; justify-content: flex-start; gap: 6px;
-      padding: 8px 10px; overflow-x: auto;
-      background: rgba(248,247,242,.96); border-top: 0.5px solid #e0ded4;
-      -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
-    }
-    .sidenav a { flex: none; }
-    body { padding-bottom: 60px; }
-  }
-
-  /* Don't let fixed headers / anchors land flush to the top */
-  .section-head, .phase, .refs, #top { scroll-margin-top: 16px; }
-
-  .home-btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 7px 15px; border: 1.5px solid #d3d1c7; border-radius: 999px;
-    background: #fff; color: #3a4a28; font-size: 13px; font-weight: 500;
-    text-decoration: none; cursor: pointer; transition: background .15s;
-    margin-bottom: 18px;
-  }
-  .home-btn:hover { background: #f0f2eb; }
+  /* Don't let the sticky bar cover anchored targets */
+  .section-head, .phase, .refs { scroll-margin-top: 56px; }
 
   h1 { font-size: 19px; font-weight: 700; margin: 0 0 4px; letter-spacing: .01em; }
   .subtitle { font-size: 12px; color: #888780; margin: 0 0 16px; }
@@ -142,6 +127,29 @@
   }
   .dashed { border-style: dashed; opacity: .9; }
   .cycle-note { font-size: 10px; color: #888780; margin: -4px 0 14px 3px; }
+
+  /* Collapsible Session open */
+  details.phase { margin-bottom: 10px; }
+  details.phase > summary { list-style: none; cursor: pointer; display: flex; align-items: center; margin-bottom: 0; }
+  details.phase[open] > summary { margin-bottom: 6px; }
+  details.phase > summary::-webkit-details-marker { display: none; }
+  details.phase > summary::after { content: "▾"; margin-left: auto; font-size: 10px; font-weight: 700; opacity: .55; }
+  details.phase[open] > summary::after { content: "▴"; }
+
+  /* Minimizable pairing band */
+  #ph-pair { margin-bottom: 10px; }
+  .pair-head { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+  .mini-toggle {
+    margin-left: auto; font-family: inherit; cursor: pointer;
+    font-size: 10px; font-weight: 600; letter-spacing: .02em; text-transform: none;
+    color: #3C3489; background: #E1DEFB; border: 0.5px solid #CECBF6;
+    border-radius: 999px; padding: 3px 10px;
+  }
+  .mini-toggle:hover { background: #d4d0f6; }
+  .pair-min { display: none; font-size: 11.5px; line-height: 1.7; font-weight: 400; text-transform: none; letter-spacing: 0; }
+  .pair-min b { font-weight: 700; }
+  .pair.is-min .pair-min { display: block; }
+  .pair.is-min .pair-full { display: none; }
 
   /* Callouts */
   .callout { border-radius: 8px; padding: 9px 12px; margin-top: 9px; font-size: 11.5px; font-weight: 500; line-height: 1.5; }
@@ -237,29 +245,35 @@
   .footer a:hover { text-decoration: underline; }
 
   @media print {
-    .sidenav { display: none; }
+    .topnav { display: none; }
     body { background: #fff; padding: .4rem; font-size: 11px; }
-    .home-btn, .lenrow, .len-hint, .onramp { display: revert; }
+    .lenrow, .len-hint, .onramp { display: revert; }
     .len-btn { display: none; }
     .phase, .onramp { break-inside: avoid; }
     .cite { display: none; }
     .onramp[open] .body, .onramp .body { display: block !important; }
     .refs[open] ol { display: block; }
+    /* Always print full content, regardless of collapse/minimize state */
+    details.phase > *:not(summary) { display: revert !important; }
+    .mini-toggle { display: none; }
+    .pair-full { display: block !important; }
+    .pair-min { display: none !important; }
   }
 </style>
 </head>
 <body>
-<nav class="sidenav" aria-label="Jump to section">
-  <a href="#ph-open">Session open</a>
-  <a href="#ph-pair">Pre-session pairing</a>
-  <a href="#ph-dtt">DTT</a>
-  <a href="#ph-net">Reinforcement &amp; NET</a>
-  <a href="#ph-late">Late session</a>
-</nav>
-
 <div class="wrap" id="top">
 
-  <a class="home-btn" href="/">&#8592; All tools</a>
+  <nav class="topnav" aria-label="Jump to section">
+    <a class="home-link" href="/">&#8592; All tools</a>
+    <span class="nav-sep"></span>
+    <a href="#ph-open">Session open</a>
+    <a href="#ph-pair">Pre-session pairing</a>
+    <a href="#ph-dtt">DTT</a>
+    <a href="#ph-net">Reinforcement &amp; NET</a>
+    <a href="#ph-late">Late session</a>
+    <a href="#sec-hints">Helpful hints</a>
+  </nav>
 
   <h1>In-Home Session Flow</h1>
   <p class="subtitle">A flow guide for RBT / BT implementation · BCBA-supervised · scales to any session length</p>
@@ -309,20 +323,32 @@
   <!-- ───────── Phases ───────── -->
   <div class="section-head" id="sec-flow">The flow</div>
 
-  <!-- Open + Pairing -->
-  <div class="row">
-    <div class="phase open" id="ph-open" style="flex:.9">
-      <div class="phase-label">Session open <span class="time-tag" data-seg="0"></span></div>
-      <ul>
+  <!-- Session open — collapsible; this phase ends and isn't returned to -->
+  <details class="phase open" id="ph-open" open>
+    <summary class="phase-label">Session open <span class="time-tag" data-seg="0"></span></summary>
+    <ul>
         <li>Greet the client and family warmly at the door</li>
         <li>Caregiver check-in: sleep, mood, eating, anything notable since last session, any data to report</li>
         <li>Client check-in: a brief, friendly hello calibrated to their communication level</li>
         <li>Open your session-note app now and leave it ready in the background</li>
         <li>Scan the environment; notice what preferred items are available</li>
       </ul>
+  </details>
+
+  <!-- Pre-session pairing — its own band; minimizable to condensed highlights -->
+  <div class="phase pair" id="ph-pair">
+    <div class="phase-label pair-head">
+      <span>Pre-session pairing</span>
+      <span class="time-tag" data-seg="1"></span>
+      <span class="badge">AO / CMO<span class="cite" tabindex="0">?<span class="cite-pop">Pairing can act as a <em>motivating operation</em> — momentarily lowering the value of attention or escape, so behavior maintained by them is less likely. Michael, J. (1993). Establishing operations. <em>The Behavior Analyst, 16,</em> 191–206; Michael, J. (2007). Motivating operations. In Cooper, Heron, &amp; Heward (Eds.), <em>Applied Behavior Analysis</em> (2nd ed.).</span></span></span>
+      <button class="mini-toggle" type="button" aria-expanded="true">Minimize</button>
     </div>
-    <div class="phase pair" id="ph-pair" style="flex:1.6">
-      <div class="phase-label">Pre-session pairing <span class="time-tag" data-seg="1"></span><span class="badge">AO / CMO<span class="cite" tabindex="0">?<span class="cite-pop">Pairing can act as a <em>motivating operation</em> — momentarily lowering the value of attention or escape, so behavior maintained by them is less likely. Michael, J. (1993). Establishing operations. <em>The Behavior Analyst, 16,</em> 191–206; Michael, J. (2007). Motivating operations. In Cooper, Heron, &amp; Heward (Eds.), <em>Applied Behavior Analysis</em> (2nd ed.).</span></span></span></div>
+
+    <div class="pair-min">
+      <b>Pair before you teach.</b> Get close with no demands · offer preferred items · mirror affect · give non-contingent praise · imitate and expand their play · run an informal preference assessment. <b>Move on when the client is engaged with you</b>, and keep at least one reinforcer identified at all times.
+    </div>
+
+    <div class="pair-full">
       <ul>
         <li><b>Proximity</b> — move close, no demands</li>
         <li><b>Initiation</b> — offer preferred items / activities without requiring responses</li>
@@ -435,8 +461,8 @@
     </div>
   </div>
 
-  <!-- ───────── Onramps ───────── -->
-  <div class="section-head" id="sec-onramps">Start where the client is</div>
+  <!-- ───────── Helpful hints ───────── -->
+  <div class="section-head" id="sec-hints">Helpful hints — start where the client is</div>
   <p class="onramp-intro">
     If the session isn't following the flow above, that's normal — and it's often when this guide is most useful. There's no
     single right place to be. Notice what's true <i>right now</i> and let it guide your next step. None of these states is
@@ -582,11 +608,24 @@
     var initial = document.querySelector('.len-btn.active');
     render(parseInt(initial.getAttribute('data-min'), 10));
 
+    // ── Minimize / expand the pairing band to a condensed view ──
+    Array.prototype.forEach.call(document.querySelectorAll('.mini-toggle'), function (btn) {
+      btn.addEventListener('click', function () {
+        var card = btn.closest('.phase');
+        if (!card) return;
+        var minimized = card.classList.toggle('is-min');
+        btn.textContent = minimized ? 'Expand' : 'Minimize';
+        btn.setAttribute('aria-expanded', String(!minimized));
+      });
+    });
+
     // ── Scroll-spy: highlight the nav link for the section in view ──
-    var navLinks = Array.prototype.slice.call(document.querySelectorAll('.sidenav a'));
+    var navLinks = Array.prototype.slice.call(document.querySelectorAll('.topnav a'));
     var spyTargets = navLinks
       .map(function (a) {
-        var el = document.querySelector(a.getAttribute('href'));
+        var href = a.getAttribute('href');
+        if (!href || href.charAt(0) !== '#') return null; // skip the "All tools" link
+        var el = document.querySelector(href);
         return el ? { link: a, el: el } : null;
       })
       .filter(Boolean);
