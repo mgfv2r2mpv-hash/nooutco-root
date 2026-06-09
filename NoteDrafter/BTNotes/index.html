@@ -386,7 +386,7 @@
           ))}
           {showOptions && (
             <ul style={{ margin: "4px 0 0", paddingLeft: 18, color: "#5a3030", display: "flex", flexDirection: "column", gap: 5 }}>
-              <li><strong>Use Generate Prompt (free, no key needed):</strong>{" "}<a href="#" onClick={e => { e.preventDefault(); onGeneratePrompt(); }} style={{ color: "#374528", fontWeight: 600 }}>Click here to generate a prompt</a>{" "}you can paste into any free AI chat like ChatGPT or Gemini.</li>
+              <li><strong>Use Generate Prompt (no key needed):</strong>{" "}<a href="#" onClick={e => { e.preventDefault(); onGeneratePrompt(); }} style={{ color: "#374528", fontWeight: 600 }}>Click here to generate a prompt</a>{" "}you can paste into an AI chat like ChatGPT or Gemini.</li>
               {provider !== "gemini" && <li><strong>Try Gemini's free tier:</strong>{" "}Switch the provider above to Gemini and{" "}<a href={PROVIDERS.gemini.keyPageUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#374528", fontWeight: 600 }}>get a free API key here</a>.</li>}
               <li><strong>Add funds to your account:</strong>{" "}<a href={prov.keyPageUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#374528", fontWeight: 600 }}>Visit {prov.label} to manage your account →</a></li>
             </ul>
@@ -465,7 +465,7 @@
                 border: open ? "1.5px solid #374528" : "1.5px solid #c0d4a8",
                 background: open ? "#374528" : "white", color: open ? "white" : "#5a7040",
                 fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
-              }}>{open ? "Hide examples ▴" : "What counts? ▾"}</button>
+              }}>{open ? "Hide examples ▴" : "Examples ▾"}</button>
             )}
           </div>
           {open && help && <HelpList intro={help.intro} items={help.items} />}
@@ -493,8 +493,6 @@
       const [fAntecedent, setFAntecedent] = React.useState("");
       const [fBehavior,   setFBehavior]   = React.useState("");
       const [fFollowUp,   setFFollowUp]   = React.useState("");
-
-      const [showAdvanced, setShowAdvanced] = React.useState(false);
 
       const [output,       setOutput]      = React.useState(null);
       const [loading,      setLoading]     = React.useState(false);
@@ -557,7 +555,7 @@ BT notes: "BCBA in 20 min. Arrived tired, slow to start. Ran tx-plan goals. Rece
       const JSON_FORMAT_BLOCK =
         `\n\nOUTPUT FORMAT\nReturn ONLY a single JSON object. No markdown, no preamble, no commentary. Use EXACTLY these keys; arrays hold verbatim option labels (empty [] if unsupported); single-selects are one verbatim label or "". servicePaused is "Yes" or "No" (default "No" unless the notes mention an unexpected pause).\n{\n  "individualsPresent": [],\n  "clinicalStatus": [],\n  "clinicalStatusNarrative": "",\n  "purpose": [],\n  "servicePaused": "No",\n  "abaTechniques": [],\n  "lessonProgressNarrative": "",\n  "antecedentStrategies": [],\n  "antecedentNarrative": "",\n  "consequenceStrategies": [],\n  "consequenceEffectiveness": "",\n  "behaviorPlanNarrative": "",\n  "clientProgress": "",\n  "actionItems": [],\n  "followUpNarrative": ""\n}`;
 
-      // Output-format block for the copy-paste (free chat) path.
+      // Output-format block for the copy-paste path.
       const LABELED_FORMAT_BLOCK =
         `\n\nOUTPUT FORMAT\nReturn labeled sections in the exact order below. For each "[tick]" line, list ONLY the options that apply, comma-separated and verbatim from that section's allowed list; if none apply write "None selected." For "[choose one]" pick exactly one allowed option (or "None"). For "[narrative]" write the prose. No JSON, no preamble, no commentary.\n\nINDIVIDUALS PRESENT [tick]\nCLINICAL STATUS UPON ARRIVAL [tick]\nFURTHER DETAIL ON CLINICAL STATUS [narrative]\nPURPOSE OF SESSION [tick]\nSERVICE PAUSED DURING SESSION [choose one: Yes / No]\nABA TEACHING TECHNIQUES USED [tick]\nNARRATIVE OF LESSON PROGRESS [narrative]\nANTECEDENT STRATEGIES UTILIZED [tick]\nDESCRIBE ANTECEDENT MODIFICATIONS AND IMPACT [narrative]\nCONSEQUENCE STRATEGIES UTILIZED [tick]\nEFFECTIVENESS OF CONSEQUENCE STRATEGIES [choose one]\nNARRATIVE OF BEHAVIOR SUPPORT PLAN GOALS PROGRESS [narrative]\nCLIENT PROGRESS [choose one]\nACTION ITEMS FOR BCBA [tick]\nSUMMARY OF CONCERNS/QUESTIONS/INVOLVEMENT [narrative]\n\nIf the BT notes for a cluster are empty or nonsense, leave its ticks "None selected" and write a brief note prompting the BT to add detail.`;
 
@@ -692,7 +690,7 @@ BT notes: "BCBA in 20 min. Arrived tired, slow to start. Ran tx-plan goals. Rece
           <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
               <h1 style={{ fontSize: 26, fontWeight: 700, color: "#2d3a1f", marginBottom: 4 }}>BT Direct Service Note Tool</h1>
-              <p style={{ fontSize: 14, color: "#5a6b4a" }}>Jot quick notes in five boxes — no checkboxes to click. The AI polishes your narrative <em>and</em> tells you which boxes to tick on your EHR form, so you only enter it once.</p>
+              <p style={{ fontSize: 14, color: "#5a6b4a" }}>Enter your session notes as free text. The tool drafts each clinical narrative and suggests which checkboxes to select on your EHR form.</p>
             </div>
             <a href="/" style={{ padding: "7px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", marginLeft: 16 }}>← Back</a>
           </div>
@@ -703,50 +701,39 @@ BT notes: "BCBA in 20 min. Arrived tired, slow to start. Ran tx-plan goals. Rece
             <strong style={{ color: "#7a5a1a" }}>Do not enter any PHI (Protected Health Information) into this tool.</strong> PHI is any detail that could identify a specific client — including names, dates of birth, addresses, phone numbers, ID or insurance numbers, or any other personal identifiers.
           </div>
 
-          {/* API Settings — collapsed by default; the free Generate Prompt path needs none of this */}
-          <div style={{ ...card, padding: showAdvanced ? 24 : "14px 24px" }}>
-            <button onClick={() => setShowAdvanced(v => !v)} style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%",
-              background: "none", border: "none", padding: 0, cursor: "pointer", color: "#374528",
-              fontSize: 14, fontWeight: 600, textAlign: "left",
-            }}>
-              <span>Advanced: connect your own AI key for one-click notes (optional)</span>
-              <span style={{ marginLeft: 12, fontSize: 12, color: "#7a9460" }}>{showAdvanced ? "Hide ▴" : "Show ▾"}</span>
-            </button>
-            {showAdvanced && (
-              <div style={{ marginTop: 18 }}>
-                <p style={{ fontSize: 13, color: "#5a6b4a", marginBottom: 16, lineHeight: 1.55 }}>Most people skip this and use the free <strong>Generate Prompt</strong> button below. Add a key only if you want the note written for you instantly, here, with one click.</p>
-                <div style={{ marginBottom: 20 }}>
-                  <p style={lbl}>AI Provider</p>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {Object.entries(PROVIDERS).map(([id, p]) => (
-                      <button key={id} onClick={() => switchProvider(id)} style={{
-                        padding: "8px 18px", borderRadius: 8,
-                        border: provider === id ? "2px solid #374528" : "1.5px solid #c0d4a8",
-                        background: provider === id ? "#374528" : "white",
-                        color: provider === id ? "white" : "#374528",
-                        fontWeight: 600, fontSize: 14, cursor: "pointer",
-                      }}>{p.label}</button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label style={lbl}>{prov.keyLabel}</label>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <input type={showKey ? "text" : "password"} value={apiKey} onChange={e => saveApiKey(e.target.value)} placeholder={prov.placeholder} style={{ ...inputBase, flex: 1 }} />
-                    <button onClick={() => setShowKey(v => !v)} style={{ padding: "9px 14px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#374528", fontSize: 13, cursor: "pointer" }}>{showKey ? "Hide" : "Show"}</button>
-                  </div>
-                  <p style={{ fontSize: 12, color: "#7a9460", marginTop: 7 }}>{prov.hint} — saved in this browser only.</p>
-                  <ApiKeyHelpBox provider={provider} />
-                </div>
+          {/* AI Connection */}
+          <div style={card}>
+            <span style={subLbl}>AI Connection</span>
+            <p style={hint}>With an API key, the note is generated and formatted on this page, where you can review, edit, and copy each section into your EHR. Without a key, use Generate Prompt at the bottom to run the same request in a separate AI chat. The key is stored only in this browser.</p>
+            <div style={{ marginBottom: 20 }}>
+              <p style={lbl}>AI Provider</p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {Object.entries(PROVIDERS).map(([id, p]) => (
+                  <button key={id} onClick={() => switchProvider(id)} style={{
+                    padding: "8px 18px", borderRadius: 8,
+                    border: provider === id ? "2px solid #374528" : "1.5px solid #c0d4a8",
+                    background: provider === id ? "#374528" : "white",
+                    color: provider === id ? "white" : "#374528",
+                    fontWeight: 600, fontSize: 14, cursor: "pointer",
+                  }}>{p.label}</button>
+                ))}
               </div>
-            )}
+            </div>
+            <div>
+              <label style={lbl}>{prov.keyLabel}</label>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input type={showKey ? "text" : "password"} value={apiKey} onChange={e => saveApiKey(e.target.value)} placeholder={prov.placeholder} style={{ ...inputBase, flex: 1 }} />
+                <button onClick={() => setShowKey(v => !v)} style={{ padding: "9px 14px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#374528", fontSize: 13, cursor: "pointer" }}>{showKey ? "Hide" : "Show"}</button>
+              </div>
+              <p style={{ fontSize: 12, color: "#7a9460", marginTop: 7 }}>{prov.hint} — saved in this browser only.</p>
+              <ApiKeyHelpBox provider={provider} />
+            </div>
           </div>
 
           {/* ── Quick-picks: facts the AI can't infer (no PHI — category only) ── */}
           <div style={card}>
             <span style={subLbl}>Session Facts</span>
-            <p style={hint}>Two quick taps — the AI infers everything else from your notes below.</p>
+            <p style={hint}>Place of service and telehealth are recorded as selected. The remaining sections are drafted from your notes below.</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 28 }}>
               <div>
                 <label style={lbl}>Place of Service</label>
@@ -793,7 +780,7 @@ BT notes: "BCBA in 20 min. Arrived tired, slow to start. Ran tx-plan goals. Rece
 
           <GuidedField
             title="Antecedent Strategies" required help={HELP_ANTECEDENT}
-            hint={<>What you did <strong>proactively</strong> to prevent or reduce behavior of concern, and whether it helped. Tap <em>What counts?</em> for a memory-jogger.</>}
+            hint={<>What you did <strong>proactively</strong> to prevent or reduce behavior of concern, and whether it helped. See <em>Examples</em> for common strategies.</>}
             value={fAntecedent} onChange={setFAntecedent} height={120}
             placeholder={"No names or other PHI.\ne.g.:\n- First/then board for transitions\n- 1-min warnings before switching activities\n- Offered choice of work order\n- Reduced noise/distractions; helped engagement"}
           />
@@ -807,7 +794,7 @@ BT notes: "BCBA in 20 min. Arrived tired, slow to start. Ran tx-plan goals. Rece
 
           <GuidedField
             title="Follow-Up & Concerns" help={HELP_FOLLOWUP}
-            hint={<>Anything the BCBA should do or know — scheduling/staffing, a new behavior, billing, materials, involvement. You don't have to repeat yourself: things you mentioned above will be surfaced here automatically. It's fine to have nothing new.</>}
+            hint={<>Anything the BCBA should do or know — scheduling/staffing, a new behavior, billing, materials, involvement. Items mentioned in earlier fields are surfaced here automatically; leave blank if there is nothing new.</>}
             value={fFollowUp} onChange={setFFollowUp} height={110}
             placeholder={"No names or other PHI.\ne.g.:\n- Ask BCBA to update elopement protocol\n- Need new visual schedule printed\n- No new concerns this session"}
           />
@@ -816,24 +803,23 @@ BT notes: "BCBA in 20 min. Arrived tired, slow to start. Ran tx-plan goals. Rece
           <div style={{ marginBottom: 20 }}>
             <ApiErrorMessage error={error} rawError={rawError} provider={provider} isAdmin={isAdmin} onGeneratePrompt={handleGeneratePrompt} />
             <p style={{ fontSize: 13, color: "#5a6b4a", marginBottom: 12, lineHeight: 1.55 }}>
-              <strong style={{ color: "#374528" }}>Generate Prompt</strong> (free, no setup): copy it into a free AI chat like ChatGPT, Gemini, or Claude and paste the result back.{" "}
-              <strong style={{ color: "#374528" }}>Generate Note</strong> writes it here instantly, but needs a one-time API key (see Advanced above).
+              <strong style={{ color: "#374528" }}>Generate Note</strong> drafts the note on this page using your API key.{" "}
+              <strong style={{ color: "#374528" }}>Generate Prompt</strong> produces the same request as text to run in a separate AI chat.
             </p>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <button onClick={handleGeneratePrompt} style={{
-                padding: "12px 28px", borderRadius: 8, border: "none",
-                background: "#374528", color: "white", fontSize: 15, fontWeight: 600, cursor: "pointer",
-              }}>
-                Generate Prompt — free, no setup
-              </button>
               <button onClick={handleGenerate} disabled={loading} style={{
-                padding: "11px 18px", borderRadius: 8,
-                border: "1.5px solid #374528",
-                background: loading ? "#eef4e6" : "white",
-                color: "#374528", fontSize: 14, fontWeight: 600,
+                padding: "12px 28px", borderRadius: 8, border: "none",
+                background: loading ? "#a0b890" : "#374528", color: "white", fontSize: 15, fontWeight: 600,
                 cursor: loading ? "not-allowed" : "pointer",
               }}>
-                {loading ? "Generating…" : "Generate Note (needs API key)"}
+                {loading ? "Generating…" : "Generate Note"}
+              </button>
+              <button onClick={handleGeneratePrompt} style={{
+                padding: "11px 18px", borderRadius: 8,
+                border: "1.5px solid #374528",
+                background: "white", color: "#374528", fontSize: 14, fontWeight: 600, cursor: "pointer",
+              }}>
+                Generate Prompt
               </button>
             </div>
           </div>
@@ -843,8 +829,8 @@ BT notes: "BCBA in 20 min. Arrived tired, slow to start. Ran tx-plan goals. Rece
             <div style={card}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <div>
-                  <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>Your Prompt — copy &amp; paste into any free AI chat</h2>
-                  <p style={{ fontSize: 13, color: "#5a6b4a", marginTop: 3 }}>It returns each form section with the narrative <em>and</em> a "Tick:" line telling you which boxes to check on your EHR.</p>
+                  <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>Generated Prompt</h2>
+                  <p style={{ fontSize: 13, color: "#5a6b4a", marginTop: 3 }}>Returns each form section with its narrative and a "Tick:" line indicating which boxes to select on your EHR.</p>
                 </div>
                 <button onClick={() => { navigator.clipboard.writeText(promptText); setCopiedPrompt(true); setTimeout(() => setCopiedPrompt(false), 1800); }}
                   style={{ padding: "7px 16px", borderRadius: 7, border: "1.5px solid #374528", background: copiedPrompt ? "#374528" : "white", color: copiedPrompt ? "white" : "#374528", fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", marginLeft: 16 }}>
@@ -852,11 +838,11 @@ BT notes: "BCBA in 20 min. Arrived tired, slow to start. Ran tx-plan goals. Rece
                 </button>
               </div>
               <div style={{ background: "#f7fbf3", border: "1px solid #c0d4a8", borderRadius: 8, padding: "11px 14px", marginBottom: 12, fontSize: 13, color: "#374528", lineHeight: 1.6 }}>
-                <strong>What now?</strong> Click <em>Copy prompt</em>, open a free chat —{" "}
+                Copy this prompt, paste it into an AI chat —{" "}
                 <a href="https://chatgpt.com" target="_blank" rel="noopener noreferrer" style={{ color: "#374528", fontWeight: 600 }}>ChatGPT</a>,{" "}
                 <a href="https://gemini.google.com" target="_blank" rel="noopener noreferrer" style={{ color: "#374528", fontWeight: 600 }}>Gemini</a>, or{" "}
                 <a href="https://claude.ai" target="_blank" rel="noopener noreferrer" style={{ color: "#374528", fontWeight: 600 }}>Claude</a>{" "}
-                — paste it, then copy the answer back into your EHR form (text into the boxes, and tick the boxes it lists).
+                — then copy the result back into your EHR form.
               </div>
               <textarea readOnly value={promptText}
                 style={{ width: "100%", minHeight: 240, padding: 12, borderRadius: 8, border: "1px solid #c0d4a8", fontSize: 13, color: "#2d3a1f", lineHeight: 1.6, resize: "vertical", background: "#f7fbf3", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
@@ -868,7 +854,7 @@ BT notes: "BCBA in 20 min. Arrived tired, slow to start. Ran tx-plan goals. Rece
           {output && (
             <div style={{ ...card, marginBottom: 0 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>Your Note — copy into the EHR form</h2>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>Generated Note</h2>
                 <button onClick={handleCopyAll}
                   style={{ padding: "7px 16px", borderRadius: 7, border: "1.5px solid #374528", background: copied === "all" ? "#374528" : "white", color: copied === "all" ? "white" : "#374528", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   {copied === "all" ? "Copied!" : "Copy All"}
