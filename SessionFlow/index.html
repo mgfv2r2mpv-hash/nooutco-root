@@ -6,6 +6,7 @@
 <title>In-Home Session Flow Guide</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
   body {
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     background: #f8f7f2;
@@ -16,6 +17,37 @@
     line-height: 1.6;
   }
   .wrap { max-width: 920px; margin: 0 auto; }
+
+  /* Fixed section nav */
+  .sidenav {
+    position: fixed; left: 16px; top: 50%; transform: translateY(-50%);
+    display: flex; flex-direction: column; gap: 5px; z-index: 150;
+  }
+  .sidenav a {
+    font-size: 11px; font-weight: 500; color: #888780; text-decoration: none;
+    padding: 6px 11px; border-radius: 999px; white-space: nowrap;
+    background: rgba(255,255,255,.82); border: 0.5px solid #e0ded4;
+    -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .sidenav a:hover { background: #fff; color: #2c2c2a; border-color: #c9c7bd; }
+  .sidenav a.active { background: #378ADD; border-color: #378ADD; color: #fff; }
+
+  /* Narrow viewports: become a bottom bar */
+  @media (max-width: 1160px) {
+    .sidenav {
+      left: 0; right: 0; bottom: 0; top: auto; transform: none;
+      flex-direction: row; justify-content: flex-start; gap: 6px;
+      padding: 8px 10px; overflow-x: auto;
+      background: rgba(248,247,242,.96); border-top: 0.5px solid #e0ded4;
+      -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    }
+    .sidenav a { flex: none; }
+    body { padding-bottom: 60px; }
+  }
+
+  /* Don't let fixed headers / anchors land flush to the top */
+  .section-head, .refs, #top { scroll-margin-top: 16px; }
 
   .home-btn {
     display: inline-flex; align-items: center; gap: 6px;
@@ -153,7 +185,7 @@
     display: flex; align-items: flex-start; gap: 8px; line-height: 1.4;
   }
   .onramp summary::-webkit-details-marker { display: none; }
-  .onramp .when { font-weight: 400; font-size: 11px; color: #888780; margin-top: 2px; }
+  .onramp .when { display: block; font-weight: 400; font-size: 11px; color: #888780; margin-top: 3px; }
   .onramp .dot { flex: none; width: 11px; height: 11px; border-radius: 50%; margin-top: 3px; }
   .onramp .body { margin-top: 9px; font-size: 11.5px; line-height: 1.55; }
   .onramp .body b { font-weight: 700; }
@@ -205,6 +237,7 @@
   .footer a:hover { text-decoration: underline; }
 
   @media print {
+    .sidenav { display: none; }
     body { background: #fff; padding: .4rem; font-size: 11px; }
     .home-btn, .lenrow, .len-hint, .onramp { display: revert; }
     .len-btn { display: none; }
@@ -216,7 +249,15 @@
 </style>
 </head>
 <body>
-<div class="wrap">
+<nav class="sidenav" aria-label="Jump to section">
+  <a href="#top">Top</a>
+  <a href="#sec-session">Session</a>
+  <a href="#sec-flow">The flow</a>
+  <a href="#sec-onramps">Where you are</a>
+  <a href="#sec-refs">References</a>
+</nav>
+
+<div class="wrap" id="top">
 
   <a class="home-btn" href="/">&#8592; All tools</a>
 
@@ -233,7 +274,7 @@
   </div>
 
   <!-- Session length control -->
-  <div class="section-head">Your session</div>
+  <div class="section-head" id="sec-session">Your session</div>
   <div class="lenrow">
     <span class="lbl">Session length:</span>
     <button class="len-btn" data-min="30">30 min</button>
@@ -265,7 +306,7 @@
   <p class="tl-caption">Band width ≈ how much of the session each phase tends to take. The middle work cycle is the bulk; pairing and repair bookend it. These are tendencies, not targets.</p>
 
   <!-- ───────── Phases ───────── -->
-  <div class="section-head">The flow</div>
+  <div class="section-head" id="sec-flow">The flow</div>
 
   <!-- Open + Pairing -->
   <div class="row">
@@ -394,7 +435,7 @@
   </div>
 
   <!-- ───────── Onramps ───────── -->
-  <div class="section-head">Start where the client is</div>
+  <div class="section-head" id="sec-onramps">Start where the client is</div>
   <p class="onramp-intro">
     Stuck, or the session isn't going the way the timeline above suggests? That's normal — and it's the moment the guide is
     most useful. There's no single right place to be. Find what's true <i>right now</i> and let it point you to an onramp.
@@ -482,7 +523,7 @@
   </div>
 
   <!-- References -->
-  <details class="refs">
+  <details class="refs" id="sec-refs">
     <summary>References &amp; further reading</summary>
     <ol>
       <li>Carnine, D. W. (1976). Effects of two teacher presentation rates on off-task behavior, answering correctly, and participation. <em>Journal of Applied Behavior Analysis, 9,</em> 199–206.</li>
@@ -540,6 +581,27 @@
 
     var initial = document.querySelector('.len-btn.active');
     render(parseInt(initial.getAttribute('data-min'), 10));
+
+    // ── Scroll-spy: highlight the nav link for the section in view ──
+    var navLinks = Array.prototype.slice.call(document.querySelectorAll('.sidenav a'));
+    var spyTargets = navLinks
+      .map(function (a) {
+        var el = document.querySelector(a.getAttribute('href'));
+        return el ? { link: a, el: el } : null;
+      })
+      .filter(Boolean);
+
+    if ('IntersectionObserver' in window && spyTargets.length) {
+      var visible = {};
+      var obs = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) { visible[e.target.id] = e.isIntersecting; });
+        // pick the first target (in document order) currently visible
+        var current = spyTargets.find(function (t) { return visible[t.el.id]; });
+        navLinks.forEach(function (a) { a.classList.remove('active'); });
+        if (current) current.link.classList.add('active');
+      }, { rootMargin: '-20% 0px -70% 0px' });
+      spyTargets.forEach(function (t) { obs.observe(t.el); });
+    }
   })();
 </script>
 </body>
