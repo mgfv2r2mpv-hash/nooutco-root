@@ -82,39 +82,49 @@
       anthropic: { label: "Anthropic", placeholder: "sk-ant-...", keyLabel: "Anthropic API Key",    hint: "Get key at console.anthropic.com", keyPageUrl: "https://console.anthropic.com/settings/keys",      howToUrl: "https://docs.anthropic.com/en/api/getting-started",    freeTier: false },
     };
 
-    const INDIVIDUALS = [
-      { id: "caregiver",  label: "Parent/Caregiver", placeholder: "e.g. Mother, Foster parent" },
-      { id: "client",     label: "Client" },
-      { id: "technician", label: "Technician",       placeholder: "e.g. RBT, BT" },
-      { id: "teacher",    label: "Teacher",          placeholder: "e.g. Classroom teacher, Para" },
-      { id: "specialist", label: "Specialist/s",     placeholder: "e.g. SLP, OT, PT" },
-      { id: "sibling",    label: "Sibling(s)/Peer(s)", placeholder: "e.g. Brother, Sister, Cousin, Peer" },
-    ];
+    // Canonical option lists — these labels are both the menu the AI may choose
+    // from and the strings the output checklist renders. They match the EHR form.
+    const INDIVIDUALS = ["Parent/Caregiver", "Client", "Technician", "Teacher", "Specialist/s", "Sibling(s)/Peer(s)"];
 
     const SUPPORT_ACTIVITIES = [
-      { id: "data",      label: "Collected data on current goals" },
-      { id: "modeled",   label: "Modeled strategies/interventions" },
-      { id: "problem",   label: "Problem-solved concerns" },
-      { id: "discussed", label: "Discussed programs/progress/data collection" },
-      { id: "feedback",  label: "Feedback provided" },
+      "Collected data on current goals",
+      "Modeled strategies/interventions",
+      "Problem-solved concerns",
+      "Discussed programs/progress/data collection",
+      "Feedback provided",
     ];
 
     const CAREGIVER_RESPONSES = [
-      { id: "r1", label: "Parent/Family is not responding to training due to large barriers and/or resistance." },
-      { id: "r2", label: "Parent/Family is trying to learn new strategies, but there are some small barriers to generalization." },
-      { id: "r3", label: "Parent/Family is responding to training and generalization of skills is occurring. There are no barriers with their training." },
+      "Parent/Family is not responding to training due to large barriers and/or resistance.",
+      "Parent/Family is trying to learn new strategies, but there are some small barriers to generalization.",
+      "Parent/Family is responding to training and generalization of skills is occurring. There are no barriers with their training.",
     ];
 
     const PROGRESS_OPTIONS = [
-      { id: "p1", label: "Minimal progress towards goals" },
-      { id: "p2", label: "Moderate progress towards goals" },
-      { id: "p3", label: "Substantial progress towards goals" },
+      "Minimal progress towards goals",
+      "Moderate progress towards goals",
+      "Substantial progress towards goals",
     ];
 
-    const OUTPUT_SECTIONS = [
-      { id: "summary",  label: "Summary of Goal Progress & Modifications", desc: "Made or needed" },
-      { id: "followup", label: "Behavior Analyst Follow Up",                desc: "Items to complete" },
+    // AI output key -> its canonical option list (used by render + value filtering).
+    const GROUP_OPTIONS = {
+      individualsPresent: INDIVIDUALS,
+      supportActivities: SUPPORT_ACTIVITIES,
+      caregiverResponse: CAREGIVER_RESPONSES,
+      progressStatus: PROGRESS_OPTIONS,
+    };
+
+    // Output render config — mirrors the EHR form top-to-bottom.
+    const FORM_SECTIONS = [
+      { kind: "checklist", heading: "Individuals Present",                          group: "individualsPresent" },
+      { kind: "checklist", heading: "Caregiver Received the Following Support",      group: "supportActivities" },
+      { kind: "single",    heading: "Caregiver Response to Training",                group: "caregiverResponse" },
+      { kind: "single",    heading: "Progress Status",                              group: "progressStatus" },
+      { kind: "narrative", heading: "Summary of Goal Progress & Modifications",      key: "summary" },
+      { kind: "narrative", heading: "Behavior Analyst Follow Up",                    key: "followup" },
     ];
+
+    const menu = (arr) => arr.map(x => `"${x}"`).join(" | ");
 
     async function callProvider(provider, apiKey, systemPrompt, userPrompt) {
       const res = await fetch("/api/llm-call", {
@@ -126,7 +136,7 @@
           systemPrompt,
           userPrompt,
           model: provider === "anthropic" ? "claude-haiku-4-5-20251001" : provider === "openai" ? "gpt-4o-mini" : "gemini-2.5-flash",
-          maxTokens: 1024,
+          maxTokens: 1500,
         }),
       });
 
@@ -220,16 +230,35 @@
       );
     }
 
+    // Read-only checklist that mirrors a real-form checkbox group: the whole
+    // option list is shown, with AI-suggested options ticked (and bolded).
+    function Checklist({ options, selected, single = false }) {
+      const sel = single ? (selected ? [selected] : []) : (Array.isArray(selected) ? selected : []);
+      return (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", columnGap: 20, rowGap: 7 }}>
+          {options.map(label => {
+            const on = sel.includes(label);
+            return (
+              <div key={label} style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
+                <span aria-hidden="true" style={{
+                  flexShrink: 0, marginTop: 1, width: 17, height: 17, borderRadius: single ? "50%" : 4,
+                  border: on ? "1.5px solid #374528" : "1.5px solid #c0d4a8",
+                  background: on ? "#374528" : "white", color: "white",
+                  fontSize: 12, fontWeight: 700, lineHeight: "15px", textAlign: "center",
+                }}>{on ? "✓" : ""}</span>
+                <span style={{ fontSize: 13.5, lineHeight: 1.45, color: on ? "#2d3a1f" : "#9aab86", fontWeight: on ? 600 : 400 }}>{label}</span>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
     function App() {
       const [provider,          setProvider]          = React.useState(() => localStorage.getItem("pt_provider") || "gemini");
       const [apiKey,            setApiKey]            = React.useState(() => localStorage.getItem(`pt_key_${localStorage.getItem("pt_provider") || "gemini"}`) || "");
       const [showKey,           setShowKey]           = React.useState(false);
-      const [presentChecked,    setPresentChecked]    = React.useState(new Set());
-      const [presentNames,      setPresentNames]      = React.useState({});
-      const [caregiverSupport,  setCaregiverSupport]  = React.useState(new Set());
-      const [caregiverResponse, setCaregiverResponse] = React.useState(null);
-      const [progressStatus,    setProgressStatus]    = React.useState(null);
-      const [additionalNotes,   setAdditionalNotes]   = React.useState("");
+      const [sessionNotes,      setSessionNotes]      = React.useState("");
       const [output,            setOutput]            = React.useState(null);
       const [loading,           setLoading]           = React.useState(false);
       const [error,             setError]             = React.useState("");
@@ -258,73 +287,58 @@
         else     localStorage.removeItem(`pt_key_${provider}`);
       };
 
-      const toggleSupport = (id) => {
-        setCaregiverSupport(prev => {
-          const next = new Set(prev);
-          next.has(id) ? next.delete(id) : next.add(id);
-          return next;
-        });
-      };
+      // Shared prompt core: clinical role + terminology + conservative checkbox inference.
+      const SYSTEM_CORE = `You are documenting a Behavior Analyst's parent/family (caregiver training) session. From the analyst's brief notes you (a) write polished clinical narrative and (b) conservatively infer which checkboxes apply on the EHR form, for the analyst to review before ticking. Write in third-person clinical prose. Do not write to sound sophisticated — plain, precise clinical language is the standard. Never invent caregiver actions, child responses, or program changes not indicated in the notes; if information is sparse, write a brief restrained sentence rather than generic clinical-sounding filler.
 
-      const togglePresent = (id) => {
-        setPresentChecked(prev => {
-          const next = new Set(prev);
-          next.has(id) ? next.delete(id) : next.add(id);
-          return next;
-        });
-      };
-
-      const setPersonName = (id, val) => {
-        setPresentNames(prev => ({ ...prev, [id]: val }));
-      };
-
-      // Live-computed attendees list — NOT fed to AI
-      const attendeesList = INDIVIDUALS
-        .filter(p => presentChecked.has(p.id))
-        .map(p => {
-          if (!p.placeholder) return p.label;
-          const role = presentNames[p.id]?.trim();
-          return role ? `${p.label} (${role})` : p.label;
-        })
-        .join(", ");
-
-      const handleGenerate = async () => {
-        if (!apiKey.trim())           { setError("NO_KEY"); setRawError(""); return; }
-        if (caregiverSupport.size === 0) { setError("Please select at least one support activity."); return; }
-        if (!caregiverResponse)       { setError("Please select the caregiver response to training."); return; }
-        if (!progressStatus)          { setError("Please select a progress status."); return; }
-        if (!additionalNotes.trim())  { setError("Please enter session notes."); return; }
-        setError(""); setRawError("");
-        setLoading(true);
-        setOutput(null);
-
-        const systemPrompt = `You are documenting a Behavior Analyst's parent/family (caregiver training) session. Generate polished clinical content for the session note. Write in third-person clinical prose. Do not write to sound sophisticated — plain, precise clinical language is the standard. Never invent caregiver actions, child responses, or program changes not indicated in the bullets; if information is sparse, write a brief restrained sentence rather than generic clinical-sounding filler.
+CHECKBOX INFERENCE: For each group you are given the EXACT allowed option labels. Return ONLY values copied verbatim from that group's list. Infer conservatively — only select an option clearly supported by the notes; if unsupported, return an empty array (or "" for a single-select). "individualsPresent" should include "Parent/Caregiver" and "Client" unless the notes indicate otherwise.
 
 Terminology standards (apply rigorously):
 - Reinforcement is contingent on behavior, not delivered to people. Never write that a person — caregiver, parent, or child — "was reinforced." Write "[behavior] was reinforced," "reinforcement was delivered contingent on [behavior]," or, for caregivers, "the caregiver was praised for [specific implementation behavior]" or "performance feedback was delivered to the caregiver."
 - People engage in behaviors; behaviors are what get reinforced, prompted, faded, shaped, or extinguished. Do not conflate the two.
 - Use precise behavior-analytic verbs (prompted, faded, modeled, shaped, chained, redirected, blocked, generalized, delivered/withheld reinforcement, provided BST, gave performance feedback) and name procedures specifically (e.g., partial verbal prompt, errorless teaching, DRO, BST) rather than generic phrases like "support was provided."
 - Do not substitute loose synonyms ("rewarded," "encouraged," "motivated," "worked on") unless the raw notes use them.
-- Avoid colloquial or value-laden phrasing ("did great," "amazing progress," "had a hard time"). Use objective, observable descriptions and quantitative detail where reported.
+- Avoid colloquial or value-laden phrasing ("did great," "amazing progress," "had a hard time"). Use objective, observable descriptions and quantitative detail where reported.`;
 
-Return ONLY a JSON object with exactly these two keys: "summary" and "followup". "summary" is 3–5 clinical sentences covering goal progress and any program modifications made or needed. "followup" is a list of follow-up items for the Behavior Analyst to complete — each item on its own line, separated by \\n, no bullet points or numbers, no commas between items. No markdown, no extra keys, no preamble.`;
+      const JSON_FORMAT_BLOCK = `\n\nOUTPUT FORMAT\nReturn ONLY a single JSON object. No markdown, no preamble. Use EXACTLY these keys; arrays hold verbatim option labels (empty [] if unsupported); single-selects are one verbatim label or "".\n{\n  "individualsPresent": [],\n  "supportActivities": [],\n  "caregiverResponse": "",\n  "progressStatus": "",\n  "summary": "",\n  "followup": ""\n}\nWhere "summary" is 3–5 clinical sentences covering goal progress and any program modifications made or needed, and "followup" is follow-up items for the Behavior Analyst — each item on its own line separated by \\n, no bullets, no numbers, no commas between items.`;
 
-        const supportList = SUPPORT_ACTIVITIES
-          .filter(a => caregiverSupport.has(a.id))
-          .map(a => `- ${a.label}`)
-          .join("\n");
+      const LABELED_FORMAT_BLOCK = `\n\nOUTPUT FORMAT\nReturn labeled sections in the exact order below. For each "[tick]" line, list ONLY the options that apply, comma-separated and verbatim from that section's allowed list; if none apply write "None selected." For "[choose one]" pick exactly one allowed option (or "None"). For "[narrative]" write the prose. No JSON, no preamble, no commentary.\n\nINDIVIDUALS PRESENT [tick]\nCAREGIVER RECEIVED THE FOLLOWING SUPPORT [tick]\nCAREGIVER RESPONSE TO TRAINING [choose one]\nPROGRESS STATUS [choose one]\nSUMMARY OF GOAL PROGRESS & MODIFICATIONS [narrative: 3–5 clinical sentences]\nBEHAVIOR ANALYST FOLLOW UP [narrative: one item per line, no bullets/numbers]`;
 
-        const userPrompt = [
-          `Caregiver support activities provided:\n${supportList}`,
-          `Caregiver response to training:\n${caregiverResponse}`,
-          `Progress status:\n${progressStatus}`,
-          `Session notes (use as primary source for both output fields):\n${additionalNotes.trim()}`,
-          `Generate the two note fields: "summary" (goal progress and modifications) and "followup" (Behavior Analyst follow-up items).`,
-        ].join("\n\n");
+      const buildUserPrompt = () => [
+        `Session notes (primary source — expand faithfully, never fabricate):`,
+        sessionNotes.trim() || "(none provided)",
+        ``,
+        `ALLOWED CHECKBOX OPTIONS (return only verbatim values from these lists):`,
+        `- individualsPresent: ${menu(INDIVIDUALS)}`,
+        `- supportActivities: ${menu(SUPPORT_ACTIVITIES)}`,
+        ``,
+        `ALLOWED SINGLE-SELECT OPTIONS (one verbatim value, or "" if unclear):`,
+        `- caregiverResponse: ${menu(CAREGIVER_RESPONSES)}`,
+        `- progressStatus: ${menu(PROGRESS_OPTIONS)}`,
+      ].join("\n");
 
+      const NARRATIVE_KEYS = ["summary", "followup"];
+      const normalizeOutput = (raw) => {
+        const o = raw && typeof raw === "object" ? raw : {};
+        const out = {};
+        Object.keys(GROUP_OPTIONS).forEach(key => {
+          const opts = GROUP_OPTIONS[key];
+          const isSingle = key === "caregiverResponse" || key === "progressStatus";
+          if (isSingle) out[key] = opts.includes(o[key]) ? o[key] : "";
+          else out[key] = (Array.isArray(o[key]) ? o[key] : []).filter(v => opts.includes(v));
+        });
+        NARRATIVE_KEYS.forEach(key => { out[key] = typeof o[key] === "string" ? o[key] : ""; });
+        return out;
+      };
+
+      const handleGenerate = async () => {
+        if (!sessionNotes.trim())  { setError("Please enter session notes."); return; }
+        if (!apiKey.trim())        { setError("NO_KEY"); setRawError(""); return; }
+        setError(""); setRawError("");
+        setLoading(true);
+        setOutput(null);
         try {
-          const parsed = await callProvider(provider, apiKey, systemPrompt, userPrompt);
-          setOutput(parsed);
+          const parsed = await callProvider(provider, apiKey, SYSTEM_CORE + JSON_FORMAT_BLOCK, buildUserPrompt());
+          setOutput(normalizeOutput(parsed));
         } catch (e) {
           setRawError(e.message || "");
           setError(e.message || "API error: generation failed");
@@ -334,21 +348,9 @@ Return ONLY a JSON object with exactly these two keys: "summary" and "followup".
       };
 
       const handleGeneratePrompt = () => {
-        if (caregiverSupport.size === 0) { setError("Please select at least one support activity first."); return; }
-        if (!caregiverResponse)          { setError("Please select the caregiver response to training."); return; }
-        if (!progressStatus)             { setError("Please select a progress status."); return; }
-        if (!additionalNotes.trim())     { setError("Please enter session notes first."); return; }
+        if (!sessionNotes.trim()) { setError("Please enter session notes first."); return; }
         setError(""); setRawError("");
-        const sys = `You are documenting a Behavior Analyst's parent/family (caregiver training) session. Generate polished clinical content for the session note. Write in third-person clinical prose. Do not write to sound sophisticated — plain, precise clinical language is the standard. Never invent caregiver actions, child responses, or program changes not indicated in the bullets; if information is sparse, write a brief restrained sentence rather than generic clinical-sounding filler.\n\nTerminology standards (apply rigorously):\n- Reinforcement is contingent on behavior, not delivered to people. Never write that a person — caregiver, parent, or child — "was reinforced." Write "[behavior] was reinforced," "reinforcement was delivered contingent on [behavior]," or, for caregivers, "the caregiver was praised for [specific implementation behavior]" or "performance feedback was delivered to the caregiver."\n- People engage in behaviors; behaviors are what get reinforced, prompted, faded, shaped, or extinguished. Do not conflate the two.\n- Use precise behavior-analytic verbs (prompted, faded, modeled, shaped, chained, redirected, blocked, generalized, delivered/withheld reinforcement, provided BST, gave performance feedback) and name procedures specifically (e.g., partial verbal prompt, errorless teaching, DRO, BST) rather than generic phrases like "support was provided."\n- Do not substitute loose synonyms ("rewarded," "encouraged," "motivated," "worked on") unless the raw notes use them.\n- Avoid colloquial or value-laden phrasing ("did great," "amazing progress," "had a hard time"). Use objective, observable descriptions and quantitative detail where reported.\n\nReturn exactly two labeled sections using this format (label on its own line, then the content, then a blank line before the next label):\n\nSUMMARY OF GOAL PROGRESS & MODIFICATIONS\n[3–5 clinical sentences covering goal progress and any program modifications made or needed]\n\nBEHAVIOR ANALYST FOLLOW UP\n[one follow-up item per line, no bullets, no numbers, no commas between items]\n\nNo JSON, no extra commentary, no preamble.`;
-        const supportList = SUPPORT_ACTIVITIES.filter(a => caregiverSupport.has(a.id)).map(a => `- ${a.label}`).join("\n");
-        const usr = [
-          `Caregiver support activities provided:\n${supportList}`,
-          `Caregiver response to training:\n${caregiverResponse}`,
-          `Progress status:\n${progressStatus}`,
-          `Session notes (use as primary source for both output fields):\n${additionalNotes.trim()}`,
-          `Generate the two note fields: "summary" (goal progress and modifications) and "followup" (Behavior Analyst follow-up items).`,
-        ].join("\n\n");
-        setPromptText(`${sys}\n\n---\n\n${usr}`);
+        setPromptText(`${SYSTEM_CORE + LABELED_FORMAT_BLOCK}\n\n---\n\n${buildUserPrompt()}`);
         setCopiedPrompt(false);
       };
 
@@ -365,10 +367,16 @@ Return ONLY a JSON object with exactly these two keys: "summary" and "followup".
         setTimeout(() => setCopied(null), 1800);
       };
 
+      const sectionToText = (s) => {
+        if (s.kind === "narrative") return `${s.heading}\n${output[s.key] || ""}`;
+        if (s.kind === "single") return `${s.heading}\nSuggested: ${output[s.group] || "(none)"}`;
+        const ticks = output[s.group] || [];
+        return `${s.heading}\nTick: ${ticks.length ? ticks.join(", ") : "None selected"}`;
+      };
+
       const handleCopyAll = () => {
         if (!output) return;
-        const full = OUTPUT_SECTIONS.map(s => `${s.label}\n${output[s.id]}`).join("\n\n");
-        navigator.clipboard.writeText(full);
+        navigator.clipboard.writeText(FORM_SECTIONS.map(sectionToText).join("\n\n"));
         setCopied("all");
         setTimeout(() => setCopied(null), 1800);
       };
@@ -386,7 +394,7 @@ Return ONLY a JSON object with exactly these two keys: "summary" and "followup".
           <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
               <h1 style={{ fontSize: 26, fontWeight: 700, color: "#2d3a1f", marginBottom: 4 }}>Parent Note Tool</h1>
-              <p style={{ fontSize: 14, color: "#5a6b4a" }}>Select session details and enter notes — receive polished clinical documentation.</p>
+              <p style={{ fontSize: 14, color: "#5a6b4a" }}>Enter your session notes — the tool drafts the clinical note and suggests which checkboxes to select on your EHR form.</p>
             </div>
             <a href="/" style={{ padding: "7px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", marginLeft: 16 }}>← Back</a>
           </div>
@@ -435,114 +443,15 @@ Return ONLY a JSON object with exactly these two keys: "summary" and "followup".
           {/* Inputs card */}
           <div style={card}>
 
-            {/* Individuals Present */}
-            <div style={{ marginBottom: 24 }}>
-              <span style={subLbl}>Individuals Present</span>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {INDIVIDUALS.map(person => (
-                  <div key={person.id}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={presentChecked.has(person.id)}
-                        onChange={() => togglePresent(person.id)}
-                        style={{ accentColor: "#374528", width: 16, height: 16, flexShrink: 0 }}
-                      />
-                      <span style={{ fontSize: 14, color: "#2d3a1f" }}>{person.label}</span>
-                    </label>
-                    {presentChecked.has(person.id) && person.placeholder && (
-                      <div style={{ marginTop: 6, marginLeft: 26 }}>
-                        <input
-                          type="text"
-                          value={presentNames[person.id] || ""}
-                          onChange={e => setPersonName(person.id, e.target.value)}
-                          placeholder={person.placeholder}
-                          style={{ ...inputBase, width: "100%" }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Live attendees preview */}
-              {attendeesList && (
-                <div style={{ marginTop: 14, padding: "10px 14px", borderRadius: 8, border: "1px solid #ddecd0", background: "#f7fbf3", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-                  <span style={{ fontSize: 13, color: "#2d3a1f", lineHeight: 1.5, flex: 1 }}>{attendeesList}</span>
-                  <button
-                    onClick={() => handleCopy("attendees", attendeesList)}
-                    style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #c0d4a8", background: "white", color: "#374528", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
-                  >
-                    {copied === "attendees" ? "Copied!" : "Copy"}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Caregiver Support */}
-            <div style={{ marginBottom: 24 }}>
-              <span style={subLbl}>Caregiver Received the Following Support</span>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {SUPPORT_ACTIVITIES.map(item => (
-                  <label key={item.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
-                    <input
-                      type="checkbox"
-                      checked={caregiverSupport.has(item.id)}
-                      onChange={() => toggleSupport(item.id)}
-                      style={{ marginTop: 3, accentColor: "#374528", width: 16, height: 16, flexShrink: 0 }}
-                    />
-                    <span style={{ fontSize: 14, color: "#2d3a1f", lineHeight: 1.5 }}>{item.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Caregiver Response */}
-            <div style={{ marginBottom: 24 }}>
-              <span style={subLbl}>Caregiver Response to Training</span>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {CAREGIVER_RESPONSES.map(opt => (
-                  <label key={opt.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
-                    <input
-                      type="radio"
-                      name="caregiverResponse"
-                      checked={caregiverResponse === opt.label}
-                      onChange={() => setCaregiverResponse(opt.label)}
-                      style={{ marginTop: 3, accentColor: "#374528", width: 16, height: 16, flexShrink: 0 }}
-                    />
-                    <span style={{ fontSize: 14, color: "#2d3a1f", lineHeight: 1.5 }}>{opt.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Progress Status */}
-            <div style={{ marginBottom: 24 }}>
-              <span style={subLbl}>Progress Status</span>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {PROGRESS_OPTIONS.map(opt => (
-                  <label key={opt.id} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-                    <input
-                      type="radio"
-                      name="progressStatus"
-                      checked={progressStatus === opt.label}
-                      onChange={() => setProgressStatus(opt.label)}
-                      style={{ accentColor: "#374528", width: 16, height: 16, flexShrink: 0 }}
-                    />
-                    <span style={{ fontSize: 14, color: "#2d3a1f" }}>{opt.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
             {/* Session Notes */}
             <div style={{ marginBottom: 20 }}>
               <label style={subLbl}>Session Notes</label>
+              <p style={{ fontSize: 12.5, color: "#7a9460", marginBottom: 10, lineHeight: 1.55 }}>Describe the session: who was present, the support you provided (data, modeling, problem-solving, discussion, feedback), how the caregiver responded, progress toward goals, and any follow-ups. The tool drafts the note and suggests which checkboxes to select on your EHR form.</p>
               <textarea
-                value={additionalNotes}
-                onChange={e => setAdditionalNotes(e.target.value)}
-                placeholder={`Bullet points are fine, e.g.:\n- Worked on manding with parent, 70% independent\n- Reviewed token board setup, parent unsure of steps\n- Phase change needed on DTT targets\n- Parent to practice prompting hierarchy at home`}
-                style={{ ...inputBase, height: 180, resize: "vertical", lineHeight: 1.6 }}
+                value={sessionNotes}
+                onChange={e => setSessionNotes(e.target.value)}
+                placeholder={`No PHI. Bullet points are fine, e.g.:\n- Parent + client present; modeled manding, parent practiced, 70% independent\n- Reviewed token board setup, parent unsure of steps\n- Phase change needed on DTT targets\n- Parent to practice prompting hierarchy at home`}
+                style={{ ...inputBase, height: 200, resize: "vertical", lineHeight: 1.6 }}
               />
             </div>
 
@@ -595,39 +504,48 @@ Return ONLY a JSON object with exactly these two keys: "summary" and "followup".
             </div>
           )}
 
-          {/* Output */}
+          {/* Output — narratives + suggested checkbox ticks, mirroring the EHR form */}
           {output && (
             <div style={{ ...card, marginBottom: 0 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>Generated Note Sections</h2>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>Generated Note</h2>
                 <button
                   onClick={handleCopyAll}
-                  style={{ padding: "7px 16px", borderRadius: 7, border: "1.5px solid #374528", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                  style={{ padding: "7px 16px", borderRadius: 7, border: "1.5px solid #374528", background: copied === "all" ? "#374528" : "white", color: copied === "all" ? "white" : "#374528", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
                 >
                   {copied === "all" ? "Copied!" : "Copy All"}
                 </button>
               </div>
+              <p style={{ fontSize: 13, color: "#7a9460", marginBottom: 20, lineHeight: 1.55 }}>Checklists are suggestions from your notes — review, then tick the matching boxes on your form. Narratives are editable before you copy them.</p>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                {OUTPUT_SECTIONS.map(s => (
-                  <div key={s.id} style={{ borderRadius: 9, border: "1px solid #ddecd0", background: "#f7fbf3", padding: 16 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                      <div>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: "#374528" }}>{s.label}</span>
-                        <span style={{ fontSize: 12, color: "#7a9460", marginLeft: 8 }}>{s.desc}</span>
-                      </div>
+                {FORM_SECTIONS.map((s, i) => (
+                  <div key={i} style={{ borderRadius: 9, border: "1px solid #ddecd0", background: "#f7fbf3", padding: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, gap: 12 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#374528" }}>{s.heading}</span>
                       <button
-                        onClick={() => handleCopy(s.id, output[s.id])}
-                        style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #c0d4a8", background: "white", color: "#374528", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", marginLeft: 12 }}
+                        onClick={() => handleCopy("sec" + i, sectionToText(s))}
+                        style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #c0d4a8", background: "white", color: "#374528", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
                       >
-                        {copied === s.id ? "Copied!" : "Copy"}
+                        {copied === "sec" + i ? "Copied!" : "Copy"}
                       </button>
                     </div>
-                    <textarea
-                      value={output[s.id]}
-                      onChange={e => setOutput(prev => ({ ...prev, [s.id]: e.target.value }))}
-                      style={{ width: "100%", minHeight: 80, padding: 10, borderRadius: 7, border: "1px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", lineHeight: 1.65, resize: "vertical", background: "white" }}
-                    />
+
+                    {s.kind === "narrative" && (
+                      <textarea
+                        value={output[s.key]}
+                        onChange={e => setOutput(prev => ({ ...prev, [s.key]: e.target.value }))}
+                        style={{ width: "100%", minHeight: 80, padding: 10, borderRadius: 7, border: "1px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", lineHeight: 1.65, resize: "vertical", background: "white" }}
+                      />
+                    )}
+
+                    {(s.kind === "checklist" || s.kind === "single") && (() => {
+                      const sel = output[s.group];
+                      const isEmpty = s.kind === "single" ? !sel : !(sel && sel.length);
+                      return isEmpty
+                        ? <p style={{ fontSize: 13, color: "#9aab86", fontStyle: "italic" }}>No selection suggested — leave blank or review your notes.</p>
+                        : <Checklist options={GROUP_OPTIONS[s.group]} selected={sel} single={s.kind === "single"} />;
+                    })()}
                   </div>
                 ))}
               </div>
