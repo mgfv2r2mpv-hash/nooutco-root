@@ -82,22 +82,35 @@
       anthropic: { label: "Anthropic", placeholder: "sk-ant-...", keyLabel: "Anthropic API Key",    hint: "Get key at console.anthropic.com", keyPageUrl: "https://console.anthropic.com/settings/keys",      howToUrl: "https://docs.anthropic.com/en/api/getting-started",    freeTier: false },
     };
 
+    // Canonical option lists — both the menu the AI may choose from and the
+    // strings the output checklist renders. They match the EHR form.
     const ACTIVITIES = [
-      { id: "admin_tool",          label: "Administration of assessment tool" },
-      { id: "caregiver_interview", label: "Caregiver/Guardian interview" },
-      { id: "fba",                 label: "Functional Behavior Assessment" },
-      { id: "fa",                  label: "Functional Analysis" },
-      { id: "observation",         label: "Client Observation" },
-      { id: "review_results",      label: "Review results with parent" },
+      "Administration of assessment tool",
+      "Caregiver/Guardian interview",
+      "Functional Behavior Assessment",
+      "Functional Analysis",
+      "Client Observation",
+      "Review results with parent",
     ];
 
     const REPORTING = [
-      { id: "record_review", label: "Medical Record Review" },
-      { id: "past_data",     label: "Analysis of past data" },
-      { id: "scoring",       label: "Assessment Scoring / Interpretation of results" },
-      { id: "tx_plan",       label: "Treatment plan / goal development" },
-      { id: "report_edits",  label: "Report Review and Edits" },
+      "Medical Record Review",
+      "Analysis of past data",
+      "Assessment Scoring / Interpretation of results",
+      "Treatment plan / goal development",
+      "Report Review and Edits",
     ];
+
+    const GROUP_OPTIONS = { activities: ACTIVITIES, reporting: REPORTING };
+
+    // Output render config — suggested checkboxes, then the narrative field.
+    const FORM_SECTIONS = [
+      { kind: "checklist", heading: "Activities Performed",                  group: "activities" },
+      { kind: "checklist", heading: "Assessment Reporting Tasks",            group: "reporting" },
+      { kind: "narrative", heading: "Brief Summary of Activities Completed", key: "narrative" },
+    ];
+
+    const menu = (arr) => arr.map(x => `"${x}"`).join(" | ");
 
     async function callProvider(provider, apiKey, systemPrompt, userPrompt) {
       const res = await fetch("/api/llm-call", {
@@ -109,7 +122,7 @@
           systemPrompt,
           userPrompt,
           model: provider === "anthropic" ? "claude-haiku-4-5-20251001" : provider === "openai" ? "gpt-4o-mini" : "gemini-2.5-flash",
-          maxTokens: 1024,
+          maxTokens: 1400,
         }),
       });
 
@@ -124,7 +137,9 @@
       else if (provider === "openai") raw = data.choices[0].message.content;
       else raw = data.candidates[0].content.parts[0].text;
 
-      return raw.trim();
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error("No JSON found in response. Try again.");
+      return JSON.parse(match[0]);
     }
 
     function ApiKeyHelpBox({ provider }) {
@@ -201,19 +216,40 @@
       );
     }
 
+    // Read-only checklist that mirrors a real-form checkbox group: the whole
+    // option list is shown, with AI-suggested options ticked (and bolded).
+    function Checklist({ options, selected }) {
+      const sel = Array.isArray(selected) ? selected : [];
+      return (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", columnGap: 20, rowGap: 7 }}>
+          {options.map(label => {
+            const on = sel.includes(label);
+            return (
+              <div key={label} style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
+                <span aria-hidden="true" style={{
+                  flexShrink: 0, marginTop: 1, width: 17, height: 17, borderRadius: 4,
+                  border: on ? "1.5px solid #374528" : "1.5px solid #c0d4a8",
+                  background: on ? "#374528" : "white", color: "white",
+                  fontSize: 12, fontWeight: 700, lineHeight: "15px", textAlign: "center",
+                }}>{on ? "✓" : ""}</span>
+                <span style={{ fontSize: 13.5, lineHeight: 1.45, color: on ? "#2d3a1f" : "#9aab86", fontWeight: on ? 600 : 400 }}>{label}</span>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
     function App() {
       const [provider,         setProvider]         = React.useState(() => localStorage.getItem("assess_provider") || "gemini");
       const [apiKey,           setApiKey]           = React.useState(() => localStorage.getItem(`assess_key_${localStorage.getItem("assess_provider") || "gemini"}`) || "");
       const [showKey,          setShowKey]          = React.useState(false);
-      const [activities,       setActivities]       = React.useState(new Set());
-      const [toolsUsed,        setToolsUsed]        = React.useState("");
-      const [reporting,        setReporting]        = React.useState(new Set());
       const [summaryNotes,     setSummaryNotes]     = React.useState("");
       const [output,           setOutput]           = React.useState(null);
       const [loading,          setLoading]          = React.useState(false);
       const [error,            setError]            = React.useState("");
       const [rawError,         setRawError]         = React.useState("");
-      const [copied,           setCopied]           = React.useState(false);
+      const [copied,           setCopied]           = React.useState(null);
       const [copiedPrompt,     setCopiedPrompt]     = React.useState(false);
       const [isAdmin,          setIsAdmin]          = React.useState(() => hasAdminToken());
       const [promptText,       setPromptText]       = React.useState("");
@@ -237,48 +273,47 @@
         else     localStorage.removeItem(`assess_key_${provider}`);
       };
 
-      const toggleCheckbox = (setter, id) => {
-        setter(prev => {
-          const next = new Set(prev);
-          next.has(id) ? next.delete(id) : next.add(id);
-          return next;
-        });
-      };
+      const SYSTEM_CORE = `You are documenting a Behavior Analyst's assessment session. From the analyst's summary notes you (a) write a polished clinical narrative for the "Brief Summary of activities completed" field in the EHR session note and (b) conservatively infer which assessment checkboxes apply on the form, for the analyst to review before ticking. Write in third-person clinical prose. Do not write to sound sophisticated — plain, precise clinical language is the standard. The narrative must be 5–8 sentences. Stick strictly to what is reported; do not embellish sparse notes or invent activities, instruments, scores, or outcomes that were not indicated. Frame all content for medical necessity. Scope to assessment activities, ongoing protocol revision, and follow-up items only.
 
-      const handleGenerate = async () => {
-        if (!apiKey.trim())                              { setError("NO_KEY"); setRawError(""); return; }
-        if (activities.size === 0 && reporting.size === 0) { setError("Please select at least one activity."); return; }
-        if (!summaryNotes.trim())                        { setError("Please enter Summary Notes of Activities."); return; }
-        setError(""); setRawError("");
-        setLoading(true);
-        setOutput(null);
-
-        const systemPrompt = `You are documenting a Behavior Analyst's assessment session. Write a polished clinical narrative for the "Brief Summary of activities completed" field in the EHR session note. Write in third-person clinical prose. Do not write to sound sophisticated — plain, precise clinical language is the standard. The narrative must be 5–8 sentences. Stick strictly to what is reported; do not embellish sparse notes or invent activities, instruments, scores, or outcomes that were not indicated. Frame all content for medical necessity. Scope to assessment activities, ongoing protocol revision, and follow-up items only.
+CHECKBOX INFERENCE: For "activities" and "reporting" you are given the EXACT allowed option labels. Return ONLY values copied verbatim from those lists, and only those clearly supported by the notes. If a group is unsupported, return an empty array.
 
 Terminology standards (apply rigorously):
 - Reinforcement is contingent on behavior, not delivered to people. Never write that a person — client, caregiver, or staff — "was reinforced." Write "[behavior] was reinforced" or "reinforcement was delivered contingent on [behavior]." People engage in behaviors; behaviors are what get reinforced, prompted, faded, shaped, or extinguished.
 - Use precise behavior-analytic verbs and procedure names: administered [tool], conducted a preference assessment, conducted a functional assessment / FA / FBA, ran probes, established baseline, observed, interviewed, scored, identified function. Do not substitute loose synonyms ("looked at," "worked on," "explored") unless the raw notes use them.
 - Name assessment instruments and procedures specifically when indicated (e.g., VB-MAPP, AFLS, Vineland-3, MSWO, indirect FA) rather than generic phrases like "assessment was conducted."
-- Avoid colloquial or value-laden phrasing ("did great," "amazing progress," "had a hard time"). Use objective, observable descriptions and quantitative detail where reported.
+- Avoid colloquial or value-laden phrasing ("did great," "amazing progress," "had a hard time"). Use objective, observable descriptions and quantitative detail where reported.`;
 
-Return ONLY the narrative text — no JSON, no markdown, no labels, no preamble.`;
+      const JSON_FORMAT_BLOCK = `\n\nOUTPUT FORMAT\nReturn ONLY a single JSON object. No markdown, no preamble. Use EXACTLY these keys; arrays hold verbatim option labels (empty [] if unsupported); "narrative" is the 5–8 sentence clinical summary.\n{\n  "activities": [],\n  "reporting": [],\n  "narrative": ""\n}`;
 
-        const actList    = ACTIVITIES.filter(a => activities.has(a.id)).map(a => {
-          if (a.id === "admin_tool" && toolsUsed.trim()) return `- ${a.label}: ${toolsUsed.trim()}`;
-          return `- ${a.label}`;
-        }).join("\n");
-        const reportList = REPORTING.filter(r => reporting.has(r.id)).map(r => `- ${r.label}`).join("\n");
+      const LABELED_FORMAT_BLOCK = `\n\nOUTPUT FORMAT\nReturn labeled sections in the exact order below. For each "[tick]" line, list ONLY the options that apply, comma-separated and verbatim from that section's allowed list; if none apply write "None selected." For "[narrative]" write the 5–8 sentence summary. No JSON, no preamble, no commentary.\n\nACTIVITIES PERFORMED [tick]\nASSESSMENT REPORTING TASKS [tick]\nBRIEF SUMMARY OF ACTIVITIES COMPLETED [narrative]`;
 
-        const userPrompt = [
-          actList    ? `Assessment activities performed:\n${actList}`    : "",
-          reportList ? `Assessment reporting tasks completed:\n${reportList}` : "",
-          `Summary notes of activities (primary source — use as the basis of the narrative):\n${summaryNotes.trim()}`,
-          "Write a 5–8 sentence clinical narrative for the \"Brief Summary of activities completed\" field.",
-        ].filter(Boolean).join("\n\n");
+      const buildUserPrompt = () => [
+        `Summary notes of activities (primary source — use as the basis of the narrative and the checkbox inference):`,
+        summaryNotes.trim() || "(none provided)",
+        ``,
+        `ALLOWED CHECKBOX OPTIONS (return only verbatim values from these lists):`,
+        `- activities: ${menu(ACTIVITIES)}`,
+        `- reporting: ${menu(REPORTING)}`,
+      ].join("\n");
 
+      const normalizeOutput = (raw) => {
+        const o = raw && typeof raw === "object" ? raw : {};
+        return {
+          activities: (Array.isArray(o.activities) ? o.activities : []).filter(v => ACTIVITIES.includes(v)),
+          reporting:  (Array.isArray(o.reporting)  ? o.reporting  : []).filter(v => REPORTING.includes(v)),
+          narrative:  typeof o.narrative === "string" ? o.narrative : "",
+        };
+      };
+
+      const handleGenerate = async () => {
+        if (!summaryNotes.trim()) { setError("Please enter Summary Notes of Activities."); return; }
+        if (!apiKey.trim())       { setError("NO_KEY"); setRawError(""); return; }
+        setError(""); setRawError("");
+        setLoading(true);
+        setOutput(null);
         try {
-          const narrative = await callProvider(provider, apiKey, systemPrompt, userPrompt);
-          setOutput(narrative);
+          const parsed = await callProvider(provider, apiKey, SYSTEM_CORE + JSON_FORMAT_BLOCK, buildUserPrompt());
+          setOutput(normalizeOutput(parsed));
         } catch (e) {
           setRawError(e.message || "");
           setError(e.message || "API error: generation failed");
@@ -288,22 +323,9 @@ Return ONLY the narrative text — no JSON, no markdown, no labels, no preamble.
       };
 
       const handleGeneratePrompt = () => {
-        if (activities.size === 0 && reporting.size === 0) { setError("Please select at least one activity first."); return; }
         if (!summaryNotes.trim()) { setError("Please enter Summary Notes of Activities."); return; }
         setError(""); setRawError("");
-        const sys = `You are documenting a Behavior Analyst's assessment session. Write a polished clinical narrative for the "Brief Summary of activities completed" field in the EHR session note. Write in third-person clinical prose. Do not write to sound sophisticated — plain, precise clinical language is the standard. The narrative must be 5–8 sentences. Stick strictly to what is reported; do not embellish sparse notes or invent activities, instruments, scores, or outcomes that were not indicated. Frame all content for medical necessity. Scope to assessment activities, ongoing protocol revision, and follow-up items only.\n\nTerminology standards (apply rigorously):\n- Reinforcement is contingent on behavior, not delivered to people. Never write that a person — client, caregiver, or staff — "was reinforced." Write "[behavior] was reinforced" or "reinforcement was delivered contingent on [behavior]." People engage in behaviors; behaviors are what get reinforced, prompted, faded, shaped, or extinguished.\n- Use precise behavior-analytic verbs and procedure names: administered [tool], conducted a preference assessment, conducted a functional assessment / FA / FBA, ran probes, established baseline, observed, interviewed, scored, identified function. Do not substitute loose synonyms ("looked at," "worked on," "explored") unless the raw notes use them.\n- Name assessment instruments and procedures specifically when indicated (e.g., VB-MAPP, AFLS, Vineland-3, MSWO, indirect FA) rather than generic phrases like "assessment was conducted."\n- Avoid colloquial or value-laden phrasing ("did great," "amazing progress," "had a hard time"). Use objective, observable descriptions and quantitative detail where reported.\n\nReturn ONLY the narrative text — no JSON, no markdown, no labels, no preamble.`;
-        const actList    = ACTIVITIES.filter(a => activities.has(a.id)).map(a => {
-          if (a.id === "admin_tool" && toolsUsed.trim()) return `- ${a.label}: ${toolsUsed.trim()}`;
-          return `- ${a.label}`;
-        }).join("\n");
-        const reportList = REPORTING.filter(r => reporting.has(r.id)).map(r => `- ${r.label}`).join("\n");
-        const usr = [
-          actList    ? `Assessment activities performed:\n${actList}`         : "",
-          reportList ? `Assessment reporting tasks completed:\n${reportList}` : "",
-          `Summary notes of activities (primary source — use as the basis of the narrative):\n${summaryNotes.trim()}`,
-          `Write a 5–8 sentence clinical narrative for the "Brief Summary of activities completed" field.`,
-        ].filter(Boolean).join("\n\n");
-        setPromptText(`${sys}\n\n---\n\n${usr}`);
+        setPromptText(`${SYSTEM_CORE + LABELED_FORMAT_BLOCK}\n\n---\n\n${buildUserPrompt()}`);
         setCopiedPrompt(false);
       };
 
@@ -314,10 +336,23 @@ Return ONLY the narrative text — no JSON, no markdown, no labels, no preamble.
         setTimeout(() => setCopiedPrompt(false), 1800);
       };
 
-      const handleCopy = () => {
-        navigator.clipboard.writeText(output);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1800);
+      const handleCopy = (id, text) => {
+        navigator.clipboard.writeText(text);
+        setCopied(id);
+        setTimeout(() => setCopied(null), 1800);
+      };
+
+      const sectionToText = (s) => {
+        if (s.kind === "narrative") return `${s.heading}\n${output[s.key] || ""}`;
+        const ticks = output[s.group] || [];
+        return `${s.heading}\nTick: ${ticks.length ? ticks.join(", ") : "None selected"}`;
+      };
+
+      const handleCopyAll = () => {
+        if (!output) return;
+        navigator.clipboard.writeText(FORM_SECTIONS.map(sectionToText).join("\n\n"));
+        setCopied("all");
+        setTimeout(() => setCopied(null), 1800);
       };
 
       const card      = { background: "white", borderRadius: 12, border: "1px solid #c0d4a8", padding: 24, marginBottom: 20 };
@@ -326,22 +361,6 @@ Return ONLY the narrative text — no JSON, no markdown, no labels, no preamble.
       const inputBase = { width: "100%", padding: "10px 14px", borderRadius: 8, border: "1.5px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", background: "#fafcf8" };
       const prov      = PROVIDERS[provider];
 
-      const CheckGroup = ({ items, checked, onToggle }) => (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {items.map(item => (
-            <label key={item.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
-              <input
-                type="checkbox"
-                checked={checked.has(item.id)}
-                onChange={() => onToggle(item.id)}
-                style={{ marginTop: 3, accentColor: "#374528", width: 16, height: 16, flexShrink: 0 }}
-              />
-              <span style={{ fontSize: 14, color: "#2d3a1f", lineHeight: 1.5 }}>{item.label}</span>
-            </label>
-          ))}
-        </div>
-      );
-
       return (
         <div style={{ maxWidth: 820, margin: "0 auto" }}>
 
@@ -349,7 +368,7 @@ Return ONLY the narrative text — no JSON, no markdown, no labels, no preamble.
           <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
               <h1 style={{ fontSize: 26, fontWeight: 700, color: "#2d3a1f", marginBottom: 4 }}>Assessment Note Tool</h1>
-              <p style={{ fontSize: 14, color: "#5a6b4a" }}>Select what was done — receive a polished clinical summary.</p>
+              <p style={{ fontSize: 14, color: "#5a6b4a" }}>Describe what was done — the tool drafts the clinical summary and suggests which checkboxes to select on your EHR form.</p>
             </div>
             <a href="/" style={{ padding: "7px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", marginLeft: 16 }}>← Back</a>
           </div>
@@ -408,55 +427,17 @@ Return ONLY the narrative text — no JSON, no markdown, no labels, no preamble.
           {/* Inputs card */}
           <div style={card}>
 
-            {/* Activities */}
-            <div style={{ marginBottom: 24 }}>
-              <span style={subLbl}>Activities Performed</span>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {ACTIVITIES.map(item => (
-                  <div key={item.id}>
-                    <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={activities.has(item.id)}
-                        onChange={() => toggleCheckbox(setActivities, item.id)}
-                        style={{ marginTop: 3, accentColor: "#374528", width: 16, height: 16, flexShrink: 0 }}
-                      />
-                      <span style={{ fontSize: 14, color: "#2d3a1f", lineHeight: 1.5 }}>{item.label}</span>
-                    </label>
-                    {item.id === "admin_tool" && activities.has("admin_tool") && (
-                      <div style={{ marginTop: 8, marginLeft: 26 }}>
-                        <label style={{ fontSize: 12, fontWeight: 600, color: "#374528", textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 5 }}>Tools Used</label>
-                        <input
-                          type="text"
-                          value={toolsUsed}
-                          onChange={e => setToolsUsed(e.target.value)}
-                          placeholder="e.g. VB-MAPP, ABLLS, VABS"
-                          style={{ ...inputBase, width: "100%" }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Reporting */}
-            <div style={{ marginBottom: 24 }}>
-              <span style={subLbl}>Assessment Reporting Tasks</span>
-              <CheckGroup items={REPORTING} checked={reporting} onToggle={id => toggleCheckbox(setReporting, id)} />
-            </div>
-
             {/* Summary notes of activities */}
             <div style={{ marginBottom: 20 }}>
               <label style={subLbl}>Summary Notes of Activities <span style={{ color: "#c0392b" }}>*</span></label>
-              <p style={{ fontSize: 12, color: "#7a9460", marginBottom: 8, lineHeight: 1.55 }}>
-                Bullet points or fragments describing what was done this session — findings, observations, scoring results, follow-up items. This is the primary source for the generated narrative.
+              <p style={{ fontSize: 12.5, color: "#7a9460", marginBottom: 10, lineHeight: 1.55 }}>
+                Describe what was done this session — which assessment tools/interviews/observations/analyses you ran, reporting tasks (record review, scoring, treatment-plan work), findings, scores, and follow-up items. Name instruments (e.g. VB-MAPP, Vineland-3). The tool drafts the narrative and suggests which activity and reporting checkboxes to select on your form.
               </p>
               <textarea
                 value={summaryNotes}
                 onChange={e => setSummaryNotes(e.target.value)}
-                placeholder={"e.g.:\n- VB-MAPP milestones administered, levels 1–2 complete\n- Parent reported increase in tantrums over past 2 weeks\n- Observed 4 instances of elopement during 30-min play\n- Need to schedule follow-up for preference assessment"}
-                style={{ ...inputBase, height: 140, resize: "vertical", lineHeight: 1.6 }}
+                placeholder={"No PHI. Bullets are fine, e.g.:\n- VB-MAPP milestones administered, levels 1–2 complete\n- Caregiver interview re: increase in tantrums over past 2 weeks\n- Observed 4 instances of elopement during 30-min play\n- Scored protocol; began treatment-plan goal development\n- Need to schedule follow-up for preference assessment"}
+                style={{ ...inputBase, height: 200, resize: "vertical", lineHeight: 1.6 }}
               />
             </div>
 
@@ -509,23 +490,49 @@ Return ONLY the narrative text — no JSON, no markdown, no labels, no preamble.
             </div>
           )}
 
-          {/* Output */}
-          {output !== null && (
+          {/* Output — suggested checkbox ticks + narrative, mirroring the EHR form */}
+          {output && (
             <div style={{ ...card, marginBottom: 0 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>Generated Summary</h2>
                 <button
-                  onClick={handleCopy}
-                  style={{ padding: "7px 16px", borderRadius: 7, border: "1.5px solid #374528", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                  onClick={handleCopyAll}
+                  style={{ padding: "7px 16px", borderRadius: 7, border: "1.5px solid #374528", background: copied === "all" ? "#374528" : "white", color: copied === "all" ? "white" : "#374528", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
                 >
-                  {copied ? "Copied!" : "Copy"}
+                  {copied === "all" ? "Copied!" : "Copy All"}
                 </button>
               </div>
-              <textarea
-                value={output}
-                onChange={e => setOutput(e.target.value)}
-                style={{ width: "100%", minHeight: 160, padding: 12, borderRadius: 8, border: "1px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", lineHeight: 1.7, resize: "vertical", background: "#f7fbf3" }}
-              />
+              <p style={{ fontSize: 13, color: "#7a9460", marginBottom: 20, lineHeight: 1.55 }}>Checklists are suggestions from your notes — review, then tick the matching boxes on your form. The narrative is editable before you copy it.</p>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {FORM_SECTIONS.map((s, i) => (
+                  <div key={i} style={{ borderRadius: 9, border: "1px solid #ddecd0", background: "#f7fbf3", padding: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, gap: 12 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#374528" }}>{s.heading}</span>
+                      <button
+                        onClick={() => handleCopy("sec" + i, sectionToText(s))}
+                        style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #c0d4a8", background: "white", color: "#374528", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
+                      >
+                        {copied === "sec" + i ? "Copied!" : "Copy"}
+                      </button>
+                    </div>
+
+                    {s.kind === "narrative" && (
+                      <textarea
+                        value={output[s.key]}
+                        onChange={e => setOutput(prev => ({ ...prev, [s.key]: e.target.value }))}
+                        style={{ width: "100%", minHeight: 140, padding: 12, borderRadius: 8, border: "1px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", lineHeight: 1.7, resize: "vertical", background: "white" }}
+                      />
+                    )}
+
+                    {s.kind === "checklist" && (
+                      (output[s.group] && output[s.group].length)
+                        ? <Checklist options={GROUP_OPTIONS[s.group]} selected={output[s.group]} />
+                        : <p style={{ fontSize: 13, color: "#9aab86", fontStyle: "italic" }}>No selection suggested — leave blank or review your notes.</p>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
