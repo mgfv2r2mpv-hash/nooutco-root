@@ -76,6 +76,10 @@
       visibility: visible;
       opacity: 1;
     }
+    /* Output sections: responsive 2-up grid; any card can expand to a full row */
+    .output-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+    .output-grid .full-row { grid-column: 1 / -1; }
+    @media (max-width: 640px) { .output-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -396,6 +400,12 @@
       const [rawError,     setRawError]     = React.useState("");
       const [copied,       setCopied]       = React.useState(null);
       const [promptText,   setPromptText]   = React.useState("");
+      const [expanded,     setExpanded]     = React.useState(() => new Set());
+      const toggleExpand = (i) => setExpanded(prev => {
+        const next = new Set(prev);
+        next.has(i) ? next.delete(i) : next.add(i);
+        return next;
+      });
       const [copiedPrompt, setCopiedPrompt] = React.useState(false);
 
       React.useEffect(() => {
@@ -623,29 +633,43 @@
 
               <p style={{ fontSize: 12, color: "#7a9460", marginBottom: 16, fontStyle: "italic" }}>All sections are editable &mdash; review and refine before using in an authorization.</p>
 
-              {[
-                { id: "refinedGoal",     label: "Treatment Goal (Refined)", height: 100 },
-                { id: "exercise",        label: "Exercise",                 height: 420 },
-                { id: "generalization",  label: "Generalization",           height: 180 },
-                { id: "errorCorrection", label: "Error Correction",         height: 220 },
-              ].map(({ id, label, height }) => (
-                <div key={id} style={{ borderRadius: 9, border: "1px solid #ddecd0", background: "#f7fbf3", padding: 16, marginBottom: 14 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374528" }}>{label}</span>
-                    <button
-                      onClick={() => { navigator.clipboard.writeText(output[id] || ""); setCopied(id); setTimeout(() => setCopied(null), 1800); }}
-                      style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #c0d4a8", background: "white", color: "#374528", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", marginLeft: 12 }}
-                    >
-                      {copied === id ? "Copied!" : "Copy"}
-                    </button>
+              <div className="output-grid">
+                {[
+                  { id: "refinedGoal",     label: "Treatment Goal (Refined)", height: 100 },
+                  { id: "exercise",        label: "Exercise",                 height: 420 },
+                  { id: "generalization",  label: "Generalization",           height: 180 },
+                  { id: "errorCorrection", label: "Error Correction",         height: 220 },
+                ].map(({ id, label, height }, i) => {
+                  const isOpen = expanded.has(i);
+                  return (
+                  <div key={id} className={isOpen ? "full-row" : undefined} style={{ borderRadius: 9, border: "1px solid #ddecd0", background: "#f7fbf3", padding: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8, gap: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#374528" }}>{label}</span>
+                      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                        <button
+                          onClick={() => toggleExpand(i)}
+                          title={isOpen ? "Collapse to half width" : "Expand to full row"}
+                          style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #c0d4a8", background: "white", color: "#374528", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
+                        >
+                          {isOpen ? "⤡ Collapse" : "⤢ Expand"}
+                        </button>
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(output[id] || ""); setCopied(id); setTimeout(() => setCopied(null), 1800); }}
+                          style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #c0d4a8", background: "white", color: "#374528", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
+                        >
+                          {copied === id ? "Copied!" : "Copy"}
+                        </button>
+                      </div>
+                    </div>
+                    <textarea
+                      value={output[id] || ""}
+                      onChange={e => setOutput(prev => ({ ...prev, [id]: e.target.value }))}
+                      style={{ width: "100%", minHeight: height, padding: 10, borderRadius: 7, border: "1px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", lineHeight: 1.65, resize: "vertical", background: "white", fontFamily: "inherit" }}
+                    />
                   </div>
-                  <textarea
-                    value={output[id] || ""}
-                    onChange={e => setOutput(prev => ({ ...prev, [id]: e.target.value }))}
-                    style={{ width: "100%", minHeight: height, padding: 10, borderRadius: 7, border: "1px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", lineHeight: 1.65, resize: "vertical", background: "white", fontFamily: "inherit" }}
-                  />
-                </div>
-              ))}
+                  );
+                })}
+              </div>
             </div>
           )}
 
