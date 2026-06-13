@@ -119,10 +119,25 @@
   // ── Hook: chosen item slides from the bulk bin into its slot ───────
   function onCorrect(boxEl, sym, btnEl) {
     if (!ready() || !boxEl || !btnEl) return;
+
+    // The slot is hidden (is-landing) only while the item is in flight. This
+    // reveal MUST always run exactly once so a slot can never be left blank —
+    // even if the flight is interrupted, the geometry is unmeasurable, or the
+    // transition event never fires. Everything funnels through revealSlot().
+    let revealed = false;
+    const revealSlot = () => {
+      if (revealed) return;
+      revealed = true;
+      boxEl.classList.remove('is-landing');
+      boxEl.classList.add('slot-pop');
+      setTimeout(() => boxEl.classList.remove('slot-pop'), 240);
+    };
+
     try {
       const from = btnEl.getBoundingClientRect();
       const to   = boxEl.getBoundingClientRect();
-      if (!from.width || !to.width) return;
+      // Can't measure a flight path — just show the symbol that's already set.
+      if (!from.width || !to.width) { revealSlot(); return; }
 
       const clone = document.createElement('div');
       clone.className = 'ppc-fly';
@@ -131,6 +146,7 @@
       clone.style.top    = from.top  + 'px';
       clone.style.width  = from.width  + 'px';
       clone.style.height = from.height + 'px';
+      clone.style.transform = 'translate(0, 0) scale(1)';
       document.body.appendChild(clone);
 
       boxEl.classList.add('is-landing');   // hide the slot glyph until it lands
@@ -140,20 +156,30 @@
       const scale = to.width / from.width;
       const ms    = dur(D.fly);
 
-      requestAnimationFrame(() => {
-        clone.style.transition = `transform ${ms}ms ${EASE}, opacity ${ms}ms ease`;
-        clone.style.transform  = `translate(${dx}px, ${dy}px) scale(${scale})`;
-      });
+      // The clone lands ON TOP of the slot, then we reveal the (identical)
+      // slot glyph and drop the clone in the same frame — a seamless handoff.
+      let landed = false;
+      const land = () => {
+        if (landed) return;
+        landed = true;
+        revealSlot();
+        if (clone.parentNode) clone.remove();
+      };
 
-      setTimeout(() => {
-        clone.remove();
-        boxEl.classList.remove('is-landing');
-        boxEl.classList.add('slot-pop');
-        setTimeout(() => boxEl.classList.remove('slot-pop'), 240);
-      }, ms);
+      // Force a reflow so the start position is committed before the
+      // transition is switched on. Without this the two style writes can be
+      // coalesced into one paint and the clone teleports instead of flying —
+      // the root cause of the inconsistent / "blank then jump" behaviour.
+      void clone.offsetWidth;
+      clone.style.transition = `transform ${ms}ms ${EASE}`;
+      clone.style.transform  = `translate(${dx}px, ${dy}px) scale(${scale})`;
+
+      // Prefer the real end of the flight; fall back on a timer in case the
+      // transitionend event is dropped (background tab, interrupted style).
+      clone.addEventListener('transitionend', land, { once: true });
+      setTimeout(land, ms + 120);
     } catch (e) {
-      // best-effort only; the slot already shows the symbol
-      if (boxEl) boxEl.classList.remove('is-landing');
+      revealSlot();
     }
   }
 

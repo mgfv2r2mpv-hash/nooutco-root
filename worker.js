@@ -1604,7 +1604,18 @@ async function doBatchCommit(env, branch, resolved) {
 
 const FPG_HTML_PATH  = 'FamousPersonGame/index.html';
 const FPG_TARGET     = 4;
-const FPG_BATCH_SIZE = 40;
+// Rich fact objects are ~10x larger than the old plain strings, so batches are
+// smaller and max_tokens larger than the legacy string-generation path.
+const FPG_BATCH_SIZE = 8;
+const FPG_MODEL      = 'claude-opus-4-8';
+const FPG_MAX_TOKENS = 16000;
+// Every authored fact object must carry these slots (mirrors the game's
+// REQUIRED_FACT_SLOTS). The generator is required to return all nine.
+const FPG_FACT_SLOTS = [
+  'text', 'topic', 'fragment',
+  'commentMin', 'commentPartial', 'commentFull',
+  'volleyMin',  'volleyPartial',  'volleyFull',
+];
 
 async function handleAdminUpdateFacts(request, env) {
   const authErr = await requireAdmin(request, env);
@@ -1613,6 +1624,21 @@ async function handleAdminUpdateFacts(request, env) {
   if (!env.ANTHRO_KEY) {
     return jsonError('ANTHRO_KEY environment variable not set on this Worker', 500);
   }
+
+  // Options (JSON body, all optional):
+  //   mode  : 'fill' (default) only touches people with < 4 facts — i.e. the
+  //           freshly-added, not-yet-populated roster entries.
+  //           'regenerate' rewrites EVERY targeted person from scratch, so
+  //           existing facts can be refreshed into the connected style.
+  //   names : optional array of person names to limit the run to (lets you
+  //           populate/regenerate a small, reviewable batch at a time).
+  //   limit : optional cap on how many people to process this run.
+  let opts = {};
+  try { opts = await request.json(); } catch (_) { /* no body — use defaults */ }
+  const mode      = opts.mode === 'regenerate' ? 'regenerate' : 'fill';
+  const nameFilter = Array.isArray(opts.names) && opts.names.length
+    ? new Set(opts.names) : null;
+  const limit = Number.isInteger(opts.limit) && opts.limit > 0 ? opts.limit : null;
 
   // 1. Fetch current HTML from GitHub
   let htmlContent;
@@ -1623,16 +1649,23 @@ async function handleAdminUpdateFacts(request, env) {
     return jsonError(`Failed to fetch HTML from GitHub: ${err.message}`, 502);
   }
 
-  // 2. Parse people; find who needs more facts
+  // 2. Parse people; choose who to (re)generate.
   const people = fpgParsePeople(htmlContent);
-  const todo   = people.filter(p => p.facts.length < FPG_TARGET);
+  let todo = people.filter(p =>
+    mode === 'regenerate' ? true : p.factCount < FPG_TARGET);
+  if (nameFilter) todo = todo.filter(p => nameFilter.has(p.name));
+  if (limit)      todo = todo.slice(0, limit);
 
   if (todo.length === 0) {
-    return json({ ok: true, message: 'All people already have 4 facts — nothing to do.', updated: 0 });
+    const why = mode === 'regenerate'
+      ? 'No matching people to regenerate.'
+      : 'Every person already has 4 facts — nothing to populate.';
+    return json({ ok: true, message: why, updated: 0 });
   }
 
-  // 3. Generate facts in batches (Haiku has 8K output limit, 40 per batch is safe)
-  const newFactsMap = {}; // name → full [4] fact array
+  // 3. Generate a full set of 4 connected facts per person, in batches.
+  const newFactsMap = {}; // name → [4] rich fact objects
+  const skipped = [];
   for (let i = 0; i < todo.length; i += FPG_BATCH_SIZE) {
     const batch = todo.slice(i, i + FPG_BATCH_SIZE);
     let batchResult;
@@ -1642,18 +1675,20 @@ async function handleAdminUpdateFacts(request, env) {
       return jsonError(`Anthropic API error (batch ${Math.floor(i / FPG_BATCH_SIZE) + 1}): ${err.message}`, 502);
     }
     for (const p of batch) {
-      const generated = batchResult[p.name];
-      if (Array.isArray(generated) && generated.length > 0) {
-        const need = FPG_TARGET - p.facts.length;
-        newFactsMap[p.name] = [...p.facts, ...generated.slice(0, need)];
-      }
+      const facts = fpgValidateFacts(batchResult[p.name]);
+      if (facts) newFactsMap[p.name] = facts;
+      else skipped.push(p.name);
     }
   }
 
-  // 4. Apply replacements in reverse offset order
+  // 4. Replace each person's facts block (reverse offset order keeps offsets valid).
   const updates = people
     .filter(p => newFactsMap[p.name])
     .sort((a, b) => b.blockStart - a.blockStart);
+
+  if (updates.length === 0) {
+    return jsonError(`Generation returned no valid facts (skipped: ${skipped.join(', ')})`, 502);
+  }
 
   let updated = htmlContent;
   for (const p of updates) {
@@ -1664,12 +1699,35 @@ async function handleAdminUpdateFacts(request, env) {
 
   // 5. Commit back to GitHub
   try {
-    await atomicFpgFactsCommit(env, updated, updates.length);
+    await atomicFpgFactsCommit(env, updated, updates.length, mode);
   } catch (err) {
     return jsonError(`GitHub commit failed: ${err.message}`, 502);
   }
 
-  return json({ ok: true, message: `Updated ${updates.length} people. Deployment will follow shortly.`, updated: updates.length });
+  return json({
+    ok: true,
+    mode,
+    updated: updates.length,
+    skipped,
+    message: `${mode === 'regenerate' ? 'Regenerated' : 'Populated'} ${updates.length} people`
+      + (skipped.length ? `, skipped ${skipped.length} (malformed output)` : '')
+      + '. Deployment will follow shortly.',
+  });
+}
+
+// Coerce/validate a generated value into a clean [4] array of 9-slot fact
+// objects. Returns null if the shape is unusable so we never write garbage.
+function fpgValidateFacts(generated) {
+  if (!Array.isArray(generated)) return null;
+  const facts = generated.slice(0, FPG_TARGET);
+  if (facts.length < FPG_TARGET) return null;
+  for (const f of facts) {
+    if (!f || typeof f !== 'object') return null;
+    for (const slot of FPG_FACT_SLOTS) {
+      if (typeof f[slot] !== 'string' || !f[slot].trim()) return null;
+    }
+  }
+  return facts;
 }
 
 // ─── FPG parse / build helpers ────────────────────────────────────────────────
@@ -1681,29 +1739,44 @@ function fpgLastMatch(reSource, str) {
   return last;
 }
 
-function fpgExtractFacts(block) {
-  const m = block.match(/facts:\s*\[([\s\S]*?)\]/);
-  if (!m) return [];
-  const facts = [];
-  for (const line of m[1].split('\n')) {
-    const t = line.trim();
-    if (t.startsWith("'")) {
-      const content = t.endsWith("',") ? t.slice(1, -2) : t.slice(1, -1);
-      if (content) facts.push(content.replace(/\\'/g, "'"));
-    }
-  }
-  return facts;
-}
-
 function fpgEscapeJs(s) {
-  return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
+// Build a `    facts: [ … ]` block of rich fact objects matching the authored
+// style in index.html (8-space fields, single-quoted JS strings).
 function fpgBuildFactsBlock(facts) {
   const lines = ['    facts: ['];
-  for (const f of facts) lines.push(`      '${fpgEscapeJs(f)}',`);
+  for (const f of facts) {
+    lines.push('      {');
+    for (const slot of FPG_FACT_SLOTS) {
+      lines.push(`        ${slot}: '${fpgEscapeJs(f[slot])}',`);
+    }
+    lines.push('      },');
+  }
   lines.push('    ],');
   return lines.join('\n');
+}
+
+// Bracket-match from a `[` to its matching `]`, skipping over string literals.
+// Handles both inline empty arrays (`facts: [],`) and multi-line object arrays.
+function fpgMatchBracket(str, openIdx) {
+  let depth = 0, inStr = false, strCh = '';
+  for (let i = openIdx; i < str.length; i++) {
+    const c = str[i];
+    if (inStr) {
+      if (c === '\\') { i++; continue; }
+      if (c === strCh) inStr = false;
+    } else if (c === "'" || c === '"') {
+      inStr = true; strCh = c;
+    } else if (c === '[') {
+      depth++;
+    } else if (c === ']') {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
 }
 
 function fpgParsePeople(html) {
@@ -1712,16 +1785,23 @@ function fpgParsePeople(html) {
   const sectionEnd   = html.indexOf('\n];', sectionStart);
   const section      = html.slice(sectionStart, sectionEnd);
 
-  const people   = [];
-  const factsRe  = /    facts: \[/g;
+  const people  = [];
+  const factsRe = /\n    facts: \[/g;
   let fm;
   while ((fm = factsRe.exec(section)) !== null) {
-    const factsOpen  = fm.index;
-    const closeMatch = /    \],/.exec(section.slice(factsOpen));
-    if (!closeMatch) continue;
-    const blockEndRel = factsOpen + closeMatch.index + closeMatch[0].length;
+    const openIdx = fm.index + fm[0].length - 1;   // the '[' itself
+    const closeIdx = fpgMatchBracket(section, openIdx);
+    if (closeIdx === -1) continue;
 
-    const preceding = section.slice(0, factsOpen);
+    const blockStartRel = fm.index + 1;             // start of '    facts:'
+    let blockEndRel = closeIdx + 1;
+    if (section[blockEndRel] === ',') blockEndRel++; // swallow trailing comma
+
+    // Each fact object carries exactly one `text:` field — count them.
+    const inner     = section.slice(openIdx + 1, closeIdx);
+    const factCount = (inner.match(/\n {8}text:/g) || []).length;
+
+    const preceding = section.slice(0, fm.index);
     const name  = fpgLastMatch("name:\\s*'([^']+)'",  preceding);
     const years = fpgLastMatch("years:\\s*'([^']+)'", preceding);
     const tag   = fpgLastMatch("tag:\\s*'([^']+)'",   preceding);
@@ -1731,37 +1811,54 @@ function fpgParsePeople(html) {
       name,
       years: years || '',
       tag:   tag   || '',
-      facts: fpgExtractFacts(section.slice(factsOpen, blockEndRel)),
-      blockStart: sectionStart + factsOpen,
+      factCount,
+      blockStart: sectionStart + blockStartRel,
       blockEnd:   sectionStart + blockEndRel,
     });
   }
   return people;
 }
 
+const FPG_SYSTEM_PROMPT =
+`You write material for a "Famous Person" conversation game used by speech-language pathologists in one-on-one therapy with older adults and with adults rebuilding conversation skills (aphasia, cognitive-communication, autism, brain injury). The clinician and client take turns talking ABOUT a famous person. The real goal is conversation practice: making comments, asking follow-up questions, and linking one idea to the next and to the client's own life.
+
+For each person you are given, write EXACTLY 4 facts that together form ONE flowing conversation — NOT four disconnected trivia items. Order and word them so each fact leads naturally into the next, like a good chat unfolding:
+  Fact 1 — what the person is best known for (the hook).
+  Fact 2 — a related achievement or turning point that follows from Fact 1.
+  Fact 3 — a human, warm, or surprising personal detail.
+  Fact 4 — their legacy / why they still matter, ending by turning the talk toward the client.
+
+Each fact is a JSON object with these 9 fields. EVERY field is required and must be plain, warm, spoken-style language — short words, one idea at a time, dignified and upbeat, nothing grim or violent. Use the person's FIRST name:
+  text           — the fact, told to the client. ONE simple sentence, about 10–18 words.
+  topic          — a 2–4 word label for the fact (e.g. "the moon landing").
+  fragment       — the heart of the fact as a lowercase fragment with no subject (e.g. "walked on the moon in 1969").
+  commentMin     — a SHORT spoken starter the CLIENT could say to comment on this fact; a few words trailing off with "…" (least help).
+  commentPartial — a fuller spoken comment with a stem for the client to finish, ending with "…".
+  commentFull    — a complete, natural spoken comment the client can copy word-for-word.
+  volleyMin      — an INDIRECT cue telling the CLINICIAN what to elicit; NOT a line to read aloud. Begin with "Ask about" or "Get them to…", trailing off with "…".
+  volleyPartial  — a partial spoken volley: a brief reaction plus a question stem the client finishes (ends with "…"); lean it toward the NEXT fact's topic.
+  volleyFull     — a complete spoken volley the client can copy: react, then ask a question that BRIDGES into the next fact's topic so the chat keeps moving. For Fact 4, instead turn the question to the client's own experience ("What about you…").
+
+Hard rules:
+  • CONNECT the facts: each volleyFull for facts 1–3 must tee up the topic of the very next fact; Fact 4 closes by asking the client about themselves.
+  • commentMin/Partial/Full and volleyPartial/Full are spoken BY the client (everyday first-person voice). volleyMin is an instruction to the clinician and is never read aloud.
+  • Be accurate. Keep it positive — no death details, violence, or anything distressing.
+  • Vary how sentences open; don't start every line the same way.
+
+Return ONLY a JSON object — no markdown fences, no preamble. Keys are the person names EXACTLY as given. Each value is an array of exactly 4 fact objects, each with all 9 fields.
+
+Example showing the connected style (Facts 1→2 of a 4-fact set — note how volleyFull on Fact 1 sets up Fact 2's topic). This is illustration only; do NOT reuse this text:
+{"Example Person":[
+  {"text":"Amelia was the first woman to fly alone across the Atlantic Ocean.","topic":"flying across the ocean","fragment":"flew alone across the Atlantic Ocean","commentMin":"Amelia was brave…","commentPartial":"Amelia flew all the way across the…","commentFull":"Amelia flew all by herself across the whole ocean.","volleyMin":"Ask how she felt up there…","volleyPartial":"Flying alone sounds scary. I wonder what she did before she was…","volleyFull":"All alone over the ocean — so brave! Did you know she set speed records too? Want to hear?"},
+  {"text":"Amelia set many speed records and won a big flying medal.","topic":"speed records","fragment":"set speed records and won a flying medal","commentMin":"She was fast…","commentPartial":"Amelia won a medal for…","commentFull":"Amelia was so fast she won a special flying medal.","volleyMin":"Ask what she did for fun…","volleyPartial":"A medal! I wonder what she liked to do when she was not…","volleyFull":"A medal-winning pilot! I heard she loved writing poems too — can you picture that?"}
+]}`;
+
 async function fpgGenerateFacts(env, batch) {
   const peopleList = batch.map(p => ({
-    name:             p.name,
+    name: p.name,
     ...(p.years && { years: p.years }),
     ...(p.tag   && { tag:   p.tag   }),
-    existing_facts:   p.facts,
-    new_facts_needed: FPG_TARGET - p.facts.length,
   }));
-
-  const systemPrompt =
-    'You write short biographical facts for a memory-support conversation game ' +
-    'used in speech therapy with older adults.\n' +
-    'Rules:\n' +
-    '• 1–2 sentences, about 15–25 words per fact\n' +
-    '• Simple, clear language (suitable for adults with mild cognitive impairment)\n' +
-    '• Factually accurate\n' +
-    '• Distinct from any existing facts listed — do not repeat them\n' +
-    '• Positive tone — nothing disturbing, violent, or overly sad\n' +
-    '• Cover variety: personal background, personality, lesser-known achievement, or cultural legacy\n\n' +
-    'Return ONLY a valid JSON object. Keys are the person names exactly as given. ' +
-    'Values are arrays of exactly new_facts_needed new fact strings.\n' +
-    'No markdown. No preamble.\n' +
-    'Example: {"Marie Curie": ["She was born in Warsaw, Poland in 1867.", "She loved long walks in nature."]}';
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -1771,9 +1868,9 @@ async function fpgGenerateFacts(env, batch) {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model:      'claude-haiku-4-5',
-      max_tokens: 8000,
-      system:     systemPrompt,
+      model:      FPG_MODEL,
+      max_tokens: FPG_MAX_TOKENS,
+      system:     FPG_SYSTEM_PROMPT,
       messages:   [{ role: 'user', content: JSON.stringify(peopleList, null, 2) }],
     }),
   });
@@ -1784,14 +1881,17 @@ async function fpgGenerateFacts(env, batch) {
   }
 
   const data = await res.json();
-  let raw = data.content[0].text.trim();
+  // With JSON-only output and no thinking, the first text block is the payload.
+  const textBlock = (data.content || []).find(b => b.type === 'text');
+  if (!textBlock) throw new Error('no text block in model response');
+  let raw = textBlock.text.trim();
   raw = raw.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
   return JSON.parse(raw);
 }
 
 // ─── Atomic commit: FPG HTML update ──────────────────────────────────────────
 
-async function atomicFpgFactsCommit(env, htmlContent, count) {
+async function atomicFpgFactsCommit(env, htmlContent, count, mode) {
   const refData    = await gh(env, 'GET', 'git/ref/heads/main');
   const headSha    = refData.object.sha;
   const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
@@ -1807,8 +1907,9 @@ async function atomicFpgFactsCommit(env, htmlContent, count) {
     tree: [{ path: FPG_HTML_PATH, mode: '100644', type: 'blob', sha: htmlBlob.sha }],
   });
 
+  const verb = mode === 'regenerate' ? 'regenerate' : 'populate';
   const newCommit = await gh(env, 'POST', 'git/commits', {
-    message: `Admin: expand Famous Person facts to 4 per person (${count} updated)`,
+    message: `Admin: ${verb} Famous Person conversation facts (${count} people)`,
     tree:    newTree.sha,
     parents: [headSha],
   });

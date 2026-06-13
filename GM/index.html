@@ -237,10 +237,10 @@
         <div class="card-icon">🧠</div>
         <div style="flex:1;min-width:0">
           <div class="card-label">Famous Person Game</div>
-          <div class="card-title">Expand Person Facts</div>
-          <div class="card-desc">Use AI to generate 2 additional facts per person so all 4 turns have unique content. Requires <code style="font-size:11px;background:#f0f4e8;padding:1px 4px;border-radius:4px">ANTHRO_KEY</code> set in the Worker.</div>
+          <div class="card-title">Populate Person Facts</div>
+          <div class="card-desc">Use AI to write a connected 4-fact conversation set for people that don't have facts yet — one reviewable batch per click. Re-click to keep working through the unpopulated roster, then review the new cards for quality. Requires <code style="font-size:11px;background:#f0f4e8;padding:1px 4px;border-radius:4px">ANTHRO_KEY</code> set in the Worker.</div>
           <div class="card-action-row">
-            <button class="run-btn" id="update-facts-btn">Run via API</button>
+            <button class="run-btn" id="update-facts-btn">Populate next batch</button>
             <span class="run-status" id="update-facts-status"></span>
           </div>
           <details class="terminal-tip">
@@ -312,13 +312,15 @@
       const status = document.getElementById('update-facts-status');
       btn.disabled    = true;
       btn.textContent = 'Running…';
-      status.textContent = 'Calling Anthropic API — this may take 20–30 s…';
+      status.textContent = 'Writing a batch of conversation sets — this may take ~30–60 s…';
       status.className   = 'run-status';
       try {
+        // Populate a small, reviewable batch per click. Keeps each run well
+        // under the Worker time limit and lets staff review before continuing.
         const res  = await fetch('/api/admin/update-facts', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body:    '{}',
+          body:    JSON.stringify({ mode: 'fill', limit: 8 }),
         });
         const data = await res.json();
         if (data.ok) {

@@ -47,7 +47,10 @@
       <button id="btn-prompt" class="btn-prompt" hidden>Prompt</button>
     </div>
 
-    <button id="btn-start" class="btn-primary">Start</button>
+    <div class="setting-group setting-modes">
+      <button id="btn-learn" class="btn-secondary" type="button">📖 Learn</button>
+      <button id="btn-play" class="btn-primary" type="button">▶ Play</button>
+    </div>
   </div>
 
   <!-- ── Extra settings panel (hidden until toggled) ──────────────── -->
@@ -115,7 +118,31 @@
       <li><strong>⚙ Settings</strong> — errorless, re-present errors, prompts, and whether to reveal the reason.</li>
       <li><strong>Prompt</strong> — highlights the correct bubble for an assisted response.</li>
     </ul>
-    <p class="tip">Yellow = THINK IT &nbsp;•&nbsp; Green = SAY IT. Pick your options, then tap <strong>Start</strong>.</p>
+    <p class="tip">Yellow = THINK IT &nbsp;•&nbsp; Green = SAY IT. Tap <strong>📖 Learn</strong> for a teaching intro, or <strong>▶ Play</strong> to jump straight in.</p>
+  </section>
+
+  <!-- ── Learn screen (hidden until Learn) ────────────────────────── -->
+  <section id="learn-screen" hidden aria-label="How to decide">
+    <div class="learn-inner">
+      <h2 id="learn-title">How do I know — Think it or Say it?</h2>
+
+      <!-- Optional video: a player is injected here when a video URL is set in game.js -->
+      <div id="learn-video" hidden></div>
+
+      <div id="learn-rule">
+        <p class="learn-lead">Some thoughts we keep <strong>inside</strong> our head. Some thoughts are kind or helpful, so we can say them <strong>out loud</strong>.</p>
+        <p class="learn-ask">Before you say a thought, ask yourself:</p>
+        <ul class="learn-list">
+          <li><span class="tag tag-think">THINK IT</span> Could it <strong>hurt someone’s feelings</strong>? Keep it inside.</li>
+          <li><span class="tag tag-think">THINK IT</span> Is it about something <strong>private</strong> or embarrassing? Keep it inside.</li>
+          <li><span class="tag tag-say">SAY IT</span> Is it <strong>kind</strong> or a nice compliment? You can say it!</li>
+          <li><span class="tag tag-say">SAY IT</span> Is it <strong>helpful</strong>, or does it keep someone <strong>safe</strong>? Say it!</li>
+        </ul>
+        <p class="learn-tip">Not sure? It’s okay to keep it inside — or ask a grown-up.</p>
+      </div>
+
+      <button id="btn-learn-start" class="btn-primary" type="button">Start practice ▶</button>
+    </div>
   </section>
 
   <!-- ── Game area (hidden until Start) ───────────────────────────── -->
@@ -132,8 +159,12 @@
     </section>
 
     <section id="choice-section">
-      <div class="area-label">Is this a THINK IT or a SAY IT?</div>
-      <div id="choices">
+      <button id="reveal-panel" type="button">
+        <span class="reveal-icon">▶</span>
+        <span class="reveal-text">Read the card aloud, then tap here to show the choices</span>
+      </button>
+      <div class="area-label" id="choice-label" hidden>Is this a THINK IT or a SAY IT?</div>
+      <div id="choices" hidden>
         <button class="choice choice-think" data-answer="think" type="button">
           <div class="bubble bubble-thought"><span class="face">🧠</span></div>
           <div class="choice-label">THINK IT</div>

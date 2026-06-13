@@ -178,10 +178,41 @@ body {
 #belt-treads.running { animation: belt-move 0.5s linear infinite; }
 @keyframes belt-move { from { background-position: 0 0; } to { background-position: -36px 0; } }
 
-/* Dark tunnels the box slides into at each end */
-.tunnel { position: absolute; bottom: 6px; width: 66px; height: 130px; z-index: 6; pointer-events: none; }
-#tunnel-left  { left: -6px;  background: linear-gradient(90deg, #10141d 38%, rgba(16,20,29,0) 100%); border-radius: 0 60px 0 0; }
-#tunnel-right { right: -6px; background: linear-gradient(270deg, #10141d 38%, rgba(16,20,29,0) 100%); border-radius: 60px 0 0 0; }
+/* Dark tunnels the box slides into at each end. Built from two layers:
+   ::after is the deep, vignetted interior the box disappears into; ::before
+   is the arched portal frame / jamb that gives the mouth a solid lip. */
+.tunnel { position: absolute; bottom: 6px; width: 96px; height: 150px; z-index: 6; pointer-events: none; }
+#tunnel-left  { left: 0; }
+#tunnel-right { right: 0; }
+
+.tunnel::after {
+  content: ''; position: absolute; inset: 0;
+  box-shadow: inset 0 -8px 16px rgba(0,0,0,0.6);
+}
+#tunnel-left::after {
+  background:
+    radial-gradient(150% 120% at 0% 55%, #02040a 0%, #070b14 34%, rgba(8,12,21,0.78) 62%, rgba(8,12,21,0) 100%),
+    linear-gradient(90deg, #04060c 0%, #0a0f1a 40%, rgba(10,15,26,0) 100%);
+  border-radius: 0 78px 10px 0;
+}
+#tunnel-right::after {
+  background:
+    radial-gradient(150% 120% at 100% 55%, #02040a 0%, #070b14 34%, rgba(8,12,21,0.78) 62%, rgba(8,12,21,0) 100%),
+    linear-gradient(270deg, #04060c 0%, #0a0f1a 40%, rgba(10,15,26,0) 100%);
+  border-radius: 78px 0 0 10px;
+}
+
+/* Arched portal frame on the inner edge — a beveled doorway jamb. */
+.tunnel::before {
+  content: ''; position: absolute; top: -8px; bottom: -6px; width: 22px;
+  background: linear-gradient(180deg, #79859e 0%, #4a5468 46%, #2c3346 100%);
+  box-shadow:
+    0 0 0 2px rgba(0,0,0,0.45),
+    inset 0 2px 0 rgba(255,255,255,0.22),
+    0 6px 14px rgba(0,0,0,0.45);
+}
+#tunnel-left::before  { right: -4px; border-radius: 0 16px 16px 0; }
+#tunnel-right::before { left: -4px;  border-radius: 16px 0 0 16px; }
 
 /* ── The gift box (chocolate-box tray) ─────────────────────────────── */
 #tray {

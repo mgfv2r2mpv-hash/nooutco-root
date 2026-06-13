@@ -160,6 +160,11 @@ const SCENARIOS = [
     reason: 'Say it — loudly, and tell a grown-up! When someone might get hurt, it is always right to speak up.' },
 ];
 
+// Optional teaching video for Learn mode. Set to an embeddable URL
+// (e.g. 'https://www.youtube.com/embed/VIDEO_ID') to show a player above the
+// written rule; leave empty to show the rule text only.
+const LEARN_VIDEO_URL = '';
+
 // ── DOM ────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 const el = {
@@ -178,8 +183,12 @@ const el = {
   chkShowReason:   $('chk-show-reason'),
   chkIncludeTricky:$('chk-include-tricky'),
   btnPrompt:       $('btn-prompt'),
-  btnStart:        $('btn-start'),
+  btnLearn:        $('btn-learn'),
+  btnPlay:         $('btn-play'),
   gameIntro:       $('game-intro'),
+  learnScreen:     $('learn-screen'),
+  learnVideo:      $('learn-video'),
+  btnLearnStart:   $('btn-learn-start'),
   gameArea:        $('game-area'),
   progressLabel:   $('progress-label'),
   scenarioSection: $('scenario-section'),
@@ -188,6 +197,8 @@ const el = {
   situation:       $('scenario-situation'),
   thought:         $('scenario-thought'),
   reason:          $('scenario-reason'),
+  revealPanel:     $('reveal-panel'),
+  choiceLabel:     $('choice-label'),
   choices:         $('choices'),
   timerDisplay:    $('timer-display'),
   btnTimerToggle:  $('btn-timer-toggle'),
@@ -206,6 +217,8 @@ const state = {
   pos: 0,
   current: null,
   locked: false,           // a choice has been answered (awaiting Next)
+  choicesRevealed: false,  // staff has tapped to show the choice tiles
+  learnMode: false,
   trialErrors: 0,
   trialPrompted: false,
   represented: new Set(),  // scenario ids already re-presented
@@ -297,7 +310,7 @@ function buildDeck() {
 }
 
 // ── Start ──────────────────────────────────────────────────────────────
-function startGame() {
+function beginSession(mode) {
   saveSettings();
   buildDeck();
   if (!state.deck.length) {
@@ -306,13 +319,39 @@ function startGame() {
   }
   state.results = [];
   saveResults();
+  state.learnMode = (mode === 'learn');
   el.gameIntro.hidden = true;
+  removeDoneCard();
+  if (state.learnMode) {
+    showLearnScreen();
+  } else {
+    enterTrials();
+  }
+}
+
+// Learn mode: teaching screen first, then the practice trials.
+function showLearnScreen() {
+  el.gameArea.hidden = true;
+  el.btnPrompt.hidden = true;
+  if (LEARN_VIDEO_URL) {
+    el.learnVideo.innerHTML =
+      '<iframe src="' + LEARN_VIDEO_URL + '" title="Think it or Say it" ' +
+      'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" ' +
+      'allowfullscreen></iframe>';
+    el.learnVideo.hidden = false;
+  } else {
+    el.learnVideo.innerHTML = '';
+    el.learnVideo.hidden = true;
+  }
+  el.learnScreen.hidden = false;
+}
+
+function enterTrials() {
+  el.learnScreen.hidden = true;
+  el.learnVideo.innerHTML = '';     // stop any playing video
   el.gameArea.hidden = false;
   el.btnPrompt.hidden = false;
-  el.btnStart.textContent = 'Restart';
-  removeDoneCard();
   resetTimer();
-  startTimer();
   renderTrial();
 }
 
@@ -326,9 +365,9 @@ function renderTrial() {
 
   state.current = state.deck[state.pos];
   state.locked = false;
+  state.choicesRevealed = false;
   state.trialErrors = 0;
   state.trialPrompted = false;
-  state.trialStart = Date.now();
 
   const sc = state.current;
   el.progressLabel.textContent = `Card ${state.pos + 1} of ${state.deck.length}`;
@@ -343,6 +382,27 @@ function renderTrial() {
     c.disabled = false;
   });
 
+  // Show the scenario to be read first. The choice tiles and the trial timer
+  // wait until staff taps the reveal panel.
+  el.choices.hidden = true;
+  el.choiceLabel.hidden = true;
+  el.revealPanel.hidden = false;
+  el.btnPrompt.disabled = true;
+  resetTimer();
+}
+
+// Staff taps the reveal panel once the card has been read aloud: the choice
+// tiles appear and the per-trial timer (and any auto-prompt) starts now.
+function revealChoices() {
+  if (state.choicesRevealed || state.locked) return;
+  state.choicesRevealed = true;
+  el.revealPanel.hidden = true;
+  el.choiceLabel.hidden = false;
+  el.choices.hidden = false;
+  el.btnPrompt.disabled = false;
+  state.trialStart = Date.now();
+  resetTimer();
+  startTimer();
   if (el.chkAutoPrompt.checked) scheduleAutoPrompt();
 }
 
@@ -370,6 +430,7 @@ function onChoiceClick(e) {
 
 function answerCorrect(card) {
   state.locked = true;
+  pauseTimer();                 // stop the per-trial timer on the correct response
   clearPromptTimer();
   clearPromptHighlight();
   choiceEls().forEach(c => {
@@ -381,7 +442,7 @@ function answerCorrect(card) {
   card.classList.add('correct');
 
   recordResult();
-  if (el.chkShowReason.checked) showReason();
+  if (el.chkShowReason.checked || state.learnMode) showReason();
   showNextButton();
 }
 
@@ -414,7 +475,7 @@ function showReason() {
 
 // ── Prompt ─────────────────────────────────────────────────────────────
 function doPrompt() {
-  if (state.locked) return;
+  if (state.locked || !state.choicesRevealed) return;
   const style = el.selPromptStyle.value === 'outline' ? 'prompt-outline' : 'prompt-sparkle';
   clearPromptHighlight();
   const target = choiceEls().find(c => c.dataset.answer === state.current.answer);
@@ -496,7 +557,7 @@ function finishSession() {
     `<p>${firstTry} of ${total} correct on the first try.</p>` +
     '<button type="button" id="btn-again">Play again</button>';
   el.gameArea.appendChild(card);
-  $('btn-again').addEventListener('click', startGame);
+  $('btn-again').addEventListener('click', () => beginSession('play'));
 }
 
 function removeDoneCard() {
@@ -605,9 +666,12 @@ function init() {
   loadSettings();
   loadResults();
 
-  el.btnStart.addEventListener('click', startGame);
+  el.btnLearn.addEventListener('click', () => beginSession('learn'));
+  el.btnPlay.addEventListener('click', () => beginSession('play'));
+  el.btnLearnStart.addEventListener('click', enterTrials);
   el.btnPrompt.addEventListener('click', doPrompt);
 
+  el.revealPanel.addEventListener('click', revealChoices);
   choiceEls().forEach(c => c.addEventListener('click', onChoiceClick));
 
   // Extra panel

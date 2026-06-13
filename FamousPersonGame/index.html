@@ -253,6 +253,141 @@ body {
   line-height: 1.3;
 }
 
+/* Conversation mode: the fact being discussed is spotlighted; finished facts
+   recede so the pair always knows where they are in the chat. */
+.facts-list li { transition: opacity .25s, background .25s; border-radius: 8px; }
+.facts-list li.fact-current {
+  background: var(--light, #DBEAFE);
+  padding: 6px 8px 6px 24px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+.facts-list li.fact-current::before { content: '🗣'; font-size: 14px; left: 4px; top: 8px; }
+.facts-list li.fact-done { opacity: 0.38; }
+.facts-list li.fact-done::before { content: '✓'; color: #16a34a; }
+
+/* ─── Conversation Guide ───────────────────────────────────── */
+.convo-panel {
+  background: #fff;
+  border-radius: 14px;
+  padding: 12px 16px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.convo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.convo-turn-label {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: var(--accent, #2563EB);
+}
+.convo-dots { display: flex; gap: 7px; }
+.convo-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  transition: background .2s, transform .2s, opacity .2s;
+}
+.convo-dot.done    { background: var(--accent, #2563EB); opacity: .4; }
+.convo-dot.current { background: var(--accent, #2563EB); transform: scale(1.3); }
+.convo-fact {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: var(--light, #DBEAFE);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.convo-fact-icon { font-size: 22px; line-height: 1.2; }
+.convo-fact-label {
+  font-size: 11.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: #64748b;
+  margin-bottom: 2px;
+}
+.convo-fact-text {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1a1a2e;
+  line-height: 1.35;
+}
+.convo-now {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.convo-now-label {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: #94a3b8;
+}
+.convo-now-move { font-size: 16px; font-weight: 700; color: #1a1a2e; }
+.convo-panel.complete .convo-fact { background: #ecfdf5; }
+
+/* ─── Score Bar ────────────────────────────────────────────── */
+.score-bar {
+  background: #fff;
+  border: 2px solid var(--accent, #2563EB);
+  border-radius: 14px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  animation: score-pulse 1.6s ease-in-out infinite;
+}
+@keyframes score-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50%      { box-shadow: 0 0 0 5px var(--light, #DBEAFE); }
+}
+.score-bar-label {
+  flex: 1;
+  min-width: 130px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #475569;
+}
+.score-bar-label strong { color: #1a1a2e; }
+.score-bar-btns { display: flex; gap: 10px; }
+.score-btn {
+  border: none;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 800;
+  font-family: inherit;
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: transform .1s, filter .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.score-btn:hover  { filter: brightness(1.06); }
+.score-btn:active { transform: scale(.93); }
+.score-correct { background: #16a34a; color: #fff; }
+.score-error   { background: #fee2e2; color: #b91c1c; }
+.score-bar.done {
+  animation: none;
+  border-color: #16a34a;
+}
+.score-bar.done .score-btn { opacity: .35; pointer-events: none; }
+
+/* Active grid cell — mirrors the score bar so the record stays in sync */
+.toggle-btn.active-cell {
+  border-color: var(--accent, #2563EB);
+  box-shadow: 0 0 0 3px var(--light, #DBEAFE);
+}
+
 /* ─── Data Grid ────────────────────────────────────────────── */
 .data-card {
   background: #fff;
@@ -344,6 +479,47 @@ body {
 .prompt-display.fading        { opacity: 0; }
 .prompt-text { font-style: normal; }
 .prompt-text .q { color: #64748b; font-weight: 700; font-size: 28px; line-height: 0; vertical-align: -2px; }
+
+/* ── Karaoke: light up the words to be said, one at a time, to pace
+      reading and rhythm. Upcoming words are dimmed; read words turn solid;
+      the current word glows in the accent colour. ── */
+.prompt-text.karaoke .kw {
+  color: #b6bdc9;
+  transition: color .18s ease, text-shadow .18s ease;
+}
+.prompt-text.karaoke .kw.lit { color: #1a1a2e; }
+.prompt-text.karaoke .kw.cur {
+  color: var(--accent, #2563EB);
+  text-shadow: 0 0 .5px var(--accent, #2563EB);
+}
+
+/* ── Cue: an indirect "elicit this" hint for the clinician, NOT a line for
+      the client to read aloud. Styled distinctly from quoted sayable lines so
+      it is never mistaken for a script to be read. ── */
+.prompt-display.cue {
+  background: repeating-linear-gradient(135deg, #fafbfc 0 10px, #f1f3f6 10px 20px);
+  border-style: dashed;
+}
+.prompt-text.cue-text {
+  font-size: 17px;
+  font-weight: 600;
+  color: #475569;
+}
+.prompt-text .cue-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  color: #fff;
+  background: #94a3b8;
+  border-radius: 999px;
+  padding: 3px 9px;
+  margin-right: 8px;
+  vertical-align: 2px;
+}
+.prompt-text .cue-body { font-style: italic; }
+
 .prompt-choices-label { font-size: 14px; font-weight: 500; color: #475569; margin-bottom: 8px; }
 .prompt-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
 .prompt-choice {
@@ -857,6 +1033,13 @@ body {
   .facts-list li { font-size: 14.5px; line-height: 1.4; padding-left: 18px; }
   .facts-list li::before { font-size: 17px; left: 3px; }
 
+  .convo-panel { padding: 10px 12px; gap: 7px; }
+  .convo-fact-text { font-size: 15px; }
+  .convo-now-move { font-size: 14.5px; }
+  .score-bar { padding: 8px 12px; gap: 8px; }
+  .score-btn { font-size: 16px; padding: 10px 14px; }
+  .score-bar-label { font-size: 13px; }
+
   .prompt-display { font-size: 19px; padding: 12px 14px; margin: 2px 0 4px; }
   .prompt-text .q { font-size: 24px; }
   .prompt-choices { grid-template-columns: 1fr; gap: 8px; margin-top: 8px; }
@@ -947,10 +1130,10 @@ body {
       <h1>Famous Person Game</h1>
       <ol class="start-instructions">
         <li>Press <strong>Let's Play</strong> to load a famous person.</li>
-        <li>Show the client the photo and read the name and facts aloud.</li>
-        <li>Ask the client to tell you something about this person.</li>
-        <li>Select your prompt level, then mark each comment and volley in the grid. Click <strong>Prompt</strong> if needed during the trial.</li>
-        <li>Press <strong>New Person</strong> to move to the next card.</li>
+        <li>Follow the conversation guide — talk through the highlighted fact with the client.</li>
+        <li>The client makes a <strong>comment</strong> about it, then <strong>volleys</strong> it back with a question. Prompts appear automatically to model each move.</li>
+        <li>Score each move with the big <strong>✓ Got it</strong> / <strong>✗ Missed</strong> buttons — the guide steps to the next move on its own.</li>
+        <li>Press <strong>New Person</strong> for the next conversation.</li>
       </ol>
       <button id="btn-start" class="btn-primary btn-large">Let's Play</button>
     </div>
@@ -1009,10 +1192,43 @@ body {
         </div>
       </div>
 
+      <!-- Conversation guide — walks the pair through one fact at a time -->
+      <div id="convo-panel" class="convo-panel">
+        <div class="convo-header">
+          <span id="convo-turn-label" class="convo-turn-label">Turn 1 of 4</span>
+          <div class="convo-dots">
+            <span class="convo-dot" data-turn="0"></span>
+            <span class="convo-dot" data-turn="1"></span>
+            <span class="convo-dot" data-turn="2"></span>
+            <span class="convo-dot" data-turn="3"></span>
+          </div>
+        </div>
+        <div class="convo-fact">
+          <span id="convo-fact-icon" class="convo-fact-icon">🗣</span>
+          <div>
+            <div id="convo-fact-label" class="convo-fact-label">Talk through this fact together</div>
+            <div id="convo-fact-text" class="convo-fact-text"></div>
+          </div>
+        </div>
+        <div id="convo-now" class="convo-now">
+          <span class="convo-now-label">Now</span>
+          <span id="convo-now-move" class="convo-now-move"></span>
+        </div>
+      </div>
+
        <!-- Prompt display -->
       <div id="prompt-display" class="prompt-display">
         <div class="prompt-text"></div>
         <div class="prompt-choices"></div>
+      </div>
+
+      <!-- Score bar — the one obvious place to score the current move -->
+      <div id="score-bar" class="score-bar">
+        <div id="score-bar-label" class="score-bar-label"></div>
+        <div class="score-bar-btns">
+          <button id="btn-score-correct" class="score-btn score-correct">✓ Got it</button>
+          <button id="btn-score-error"   class="score-btn score-error">✗ Missed</button>
+        </div>
       </div>
 
       <!-- Data Grid -->
@@ -1021,11 +1237,11 @@ body {
         <!-- Prompt method selector -->
         <div class="method-row">
           <label class="method-radio-label">
-            <input type="radio" name="prompt-method" value="ltm" checked>
+            <input type="radio" name="prompt-method" value="ltm">
             <span class="method-radio-btn">LtM</span>
           </label>
           <label class="method-radio-label">
-            <input type="radio" name="prompt-method" value="mtl">
+            <input type="radio" name="prompt-method" value="mtl" checked>
             <span class="method-radio-btn">MtL</span>
           </label>
           <!-- LtM: global level steps -->
@@ -1066,6 +1282,10 @@ body {
           <label class="delay-checkbox-label">
             <input type="checkbox" id="show-choices-checkbox">
             <span>Show choices on Full</span>
+          </label>
+          <label class="delay-checkbox-label">
+            <input type="checkbox" id="karaoke-checkbox" checked>
+            <span>Karaoke</span>
           </label>
         </div>
 
@@ -11218,6 +11438,506 @@ const PEOPLE = [
       },
     ],
   },
+  {
+    name: 'Johann Sebastian Bach', years: '1685–1750', emoji: '🎼', tag: 'Musician',
+    img: '_Resources/_imgSource/images/johann-sebastian-bach.jpg',
+    facts: [],
+  },
+  {
+    name: 'Frédéric Chopin', years: '1810–1849', emoji: '🎹', tag: 'Musician',
+    img: '_Resources/_imgSource/images/frederic-chopin.jpg',
+    facts: [],
+  },
+  {
+    name: 'Antonio Vivaldi', years: '1678–1741', emoji: '🎻', tag: 'Musician',
+    img: '_Resources/_imgSource/images/antonio-vivaldi.jpg',
+    facts: [],
+  },
+  {
+    name: 'Aretha Franklin', years: '1942–2018', emoji: '🎤', tag: 'Musician',
+    img: '_Resources/_imgSource/images/aretha-franklin.jpg',
+    facts: [],
+  },
+  {
+    name: 'Ray Charles', years: '1930–2004', emoji: '🎹', tag: 'Musician',
+    img: '_Resources/_imgSource/images/ray-charles.jpg',
+    facts: [],
+  },
+  {
+    name: 'Stevie Wonder', years: '1950–', emoji: '🎤', tag: 'Musician',
+    img: '_Resources/_imgSource/images/stevie-wonder.jpg',
+    facts: [],
+  },
+  {
+    name: 'Ella Fitzgerald', years: '1917–1996', emoji: '🎤', tag: 'Musician',
+    img: '_Resources/_imgSource/images/ella-fitzgerald.jpg',
+    facts: [],
+  },
+  {
+    name: 'Duke Ellington', years: '1899–1974', emoji: '🎹', tag: 'Musician',
+    img: '_Resources/_imgSource/images/duke-ellington.jpg',
+    facts: [],
+  },
+  {
+    name: 'Miles Davis', years: '1926–1991', emoji: '🎺', tag: 'Musician',
+    img: '_Resources/_imgSource/images/miles-davis.jpg',
+    facts: [],
+  },
+  {
+    name: 'Johnny Cash', years: '1932–2003', emoji: '🎸', tag: 'Musician',
+    img: '_Resources/_imgSource/images/johnny-cash.jpg',
+    facts: [],
+  },
+  {
+    name: 'Frank Sinatra', years: '1915–1998', emoji: '🎤', tag: 'Musician',
+    img: '_Resources/_imgSource/images/frank-sinatra.jpg',
+    facts: [],
+  },
+  {
+    name: 'Bob Dylan', years: '1941–', emoji: '🎸', tag: 'Musician',
+    img: '_Resources/_imgSource/images/bob-dylan.jpg',
+    facts: [],
+  },
+  {
+    name: 'Paul McCartney', years: '1942–', emoji: '🎸', tag: 'Musician',
+    img: '_Resources/_imgSource/images/paul-mccartney.jpg',
+    facts: [],
+  },
+  {
+    name: 'John Lennon', years: '1940–1980', emoji: '🎸', tag: 'Musician',
+    img: '_Resources/_imgSource/images/john-lennon.jpg',
+    facts: [],
+  },
+  {
+    name: 'Prince', years: '1958–2016', emoji: '🎸', tag: 'Musician',
+    img: '_Resources/_imgSource/images/prince.jpg',
+    facts: [],
+  },
+  {
+    name: 'Madonna', years: '1958–', emoji: '🎤', tag: 'Musician',
+    img: '_Resources/_imgSource/images/madonna.jpg',
+    facts: [],
+  },
+  {
+    name: 'Lady Gaga', years: '1986–', emoji: '🎤', tag: 'Musician',
+    img: '_Resources/_imgSource/images/lady-gaga.jpg',
+    facts: [],
+  },
+  {
+    name: 'Adele', years: '1988–', emoji: '🎤', tag: 'Musician',
+    img: '_Resources/_imgSource/images/adele.jpg',
+    facts: [],
+  },
+  {
+    name: 'Leo Tolstoy', years: '1828–1910', emoji: '📖', tag: 'Author',
+    img: '_Resources/_imgSource/images/leo-tolstoy.jpg',
+    facts: [],
+  },
+  {
+    name: 'Fyodor Dostoevsky', years: '1821–1881', emoji: '📖', tag: 'Author',
+    img: '_Resources/_imgSource/images/fyodor-dostoevsky.jpg',
+    facts: [],
+  },
+  {
+    name: 'Jane Austen', years: '1775–1817', emoji: '📖', tag: 'Author',
+    img: '_Resources/_imgSource/images/jane-austen.jpg',
+    facts: [],
+  },
+  {
+    name: 'Oscar Wilde', years: '1854–1900', emoji: '🖋️', tag: 'Author',
+    img: '_Resources/_imgSource/images/oscar-wilde.jpg',
+    facts: [],
+  },
+  {
+    name: 'Ernest Hemingway', years: '1899–1961', emoji: '📖', tag: 'Author',
+    img: '_Resources/_imgSource/images/ernest-hemingway.jpg',
+    facts: [],
+  },
+  {
+    name: 'Franz Kafka', years: '1883–1924', emoji: '📖', tag: 'Author',
+    img: '_Resources/_imgSource/images/franz-kafka.jpg',
+    facts: [],
+  },
+  {
+    name: 'Victor Hugo', years: '1802–1885', emoji: '📖', tag: 'Author',
+    img: '_Resources/_imgSource/images/victor-hugo.jpg',
+    facts: [],
+  },
+  {
+    name: 'Dante Alighieri', years: '1265–1321', emoji: '📜', tag: 'Author',
+    img: '_Resources/_imgSource/images/dante-alighieri.jpg',
+    facts: [],
+  },
+  {
+    name: 'Miguel de Cervantes', years: '1547–1616', emoji: '📖', tag: 'Author',
+    img: '_Resources/_imgSource/images/miguel-de-cervantes.jpg',
+    facts: [],
+  },
+  {
+    name: 'J.R.R. Tolkien', years: '1892–1973', emoji: '🧙', tag: 'Author',
+    img: '_Resources/_imgSource/images/j.r.r.-tolkien.jpg',
+    facts: [],
+  },
+  {
+    name: 'Agatha Christie', years: '1890–1976', emoji: '🔎', tag: 'Author',
+    img: '_Resources/_imgSource/images/agatha-christie.jpg',
+    facts: [],
+  },
+  {
+    name: 'Roald Dahl', years: '1916–1990', emoji: '📚', tag: 'Author',
+    img: '_Resources/_imgSource/images/roald-dahl.jpg',
+    facts: [],
+  },
+  {
+    name: 'Dr. Seuss', years: '1904–1991', emoji: '📚', tag: 'Author',
+    img: '_Resources/_imgSource/images/dr.-seuss.jpg',
+    facts: [],
+  },
+  {
+    name: 'Hans Christian Andersen', years: '1805–1875', emoji: '📚', tag: 'Author',
+    img: '_Resources/_imgSource/images/hans-christian-andersen.jpg',
+    facts: [],
+  },
+  {
+    name: 'Walt Whitman', years: '1819–1892', emoji: '🖋️', tag: 'Author',
+    img: '_Resources/_imgSource/images/walt-whitman.jpg',
+    facts: [],
+  },
+  {
+    name: 'Pablo Neruda', years: '1904–1973', emoji: '🖋️', tag: 'Author',
+    img: '_Resources/_imgSource/images/pablo-neruda.jpg',
+    facts: [],
+  },
+  {
+    name: 'Harper Lee', years: '1926–2016', emoji: '📖', tag: 'Author',
+    img: '_Resources/_imgSource/images/harper-lee.jpg',
+    facts: [],
+  },
+  {
+    name: 'James Baldwin', years: '1924–1987', emoji: '🖋️', tag: 'Author',
+    img: '_Resources/_imgSource/images/james-baldwin.jpg',
+    facts: [],
+  },
+  {
+    name: 'Octavia Butler', years: '1947–2006', emoji: '🚀', tag: 'Author',
+    img: '_Resources/_imgSource/images/octavia-butler.jpg',
+    facts: [],
+  },
+  {
+    name: 'Stephen King', years: '1947–', emoji: '📖', tag: 'Author',
+    img: '_Resources/_imgSource/images/stephen-king.jpg',
+    facts: [],
+  },
+  {
+    name: 'Dmitri Mendeleev', years: '1834–1907', emoji: '⚗️', tag: 'Scientist',
+    img: '_Resources/_imgSource/images/dmitri-mendeleev.jpg',
+    facts: [],
+  },
+  {
+    name: 'Gregor Mendel', years: '1822–1884', emoji: '🌱', tag: 'Scientist',
+    img: '_Resources/_imgSource/images/gregor-mendel.jpg',
+    facts: [],
+  },
+  {
+    name: 'Niels Bohr', years: '1885–1962', emoji: '⚛️', tag: 'Scientist',
+    img: '_Resources/_imgSource/images/niels-bohr.jpg',
+    facts: [],
+  },
+  {
+    name: 'Richard Feynman', years: '1918–1988', emoji: '⚛️', tag: 'Scientist',
+    img: '_Resources/_imgSource/images/richard-feynman.jpg',
+    facts: [],
+  },
+  {
+    name: 'Max Planck', years: '1858–1947', emoji: '⚛️', tag: 'Scientist',
+    img: '_Resources/_imgSource/images/max-planck.jpg',
+    facts: [],
+  },
+  {
+    name: 'Enrico Fermi', years: '1901–1954', emoji: '⚛️', tag: 'Scientist',
+    img: '_Resources/_imgSource/images/enrico-fermi.jpg',
+    facts: [],
+  },
+  {
+    name: 'Michael Faraday', years: '1791–1867', emoji: '🧲', tag: 'Scientist',
+    img: '_Resources/_imgSource/images/michael-faraday.jpg',
+    facts: [],
+  },
+  {
+    name: 'Robert Oppenheimer', years: '1904–1967', emoji: '⚛️', tag: 'Scientist',
+    img: '_Resources/_imgSource/images/robert-oppenheimer.jpg',
+    facts: [],
+  },
+  {
+    name: 'Jonas Salk', years: '1914–1995', emoji: '💉', tag: 'Scientist',
+    img: '_Resources/_imgSource/images/jonas-salk.jpg',
+    facts: [],
+  },
+  {
+    name: 'Alexander Fleming', years: '1881–1955', emoji: '🧫', tag: 'Scientist',
+    img: '_Resources/_imgSource/images/alexander-fleming.jpg',
+    facts: [],
+  },
+  {
+    name: 'Tu Youyou', years: '1930–', emoji: '🌿', tag: 'Scientist',
+    img: '_Resources/_imgSource/images/tu-youyou.jpg',
+    facts: [],
+  },
+  {
+    name: 'Barbara McClintock', years: '1902–1992', emoji: '🌽', tag: 'Scientist',
+    img: '_Resources/_imgSource/images/barbara-mcclintock.jpg',
+    facts: [],
+  },
+  {
+    name: 'Lise Meitner', years: '1878–1968', emoji: '⚛️', tag: 'Scientist',
+    img: '_Resources/_imgSource/images/lise-meitner.jpg',
+    facts: [],
+  },
+  {
+    name: 'Emmy Noether', years: '1882–1935', emoji: '➗', tag: 'Mathematician',
+    img: '_Resources/_imgSource/images/emmy-noether.jpg',
+    facts: [],
+  },
+  {
+    name: 'Carl Friedrich Gauss', years: '1777–1855', emoji: '➗', tag: 'Mathematician',
+    img: '_Resources/_imgSource/images/carl-friedrich-gauss.jpg',
+    facts: [],
+  },
+  {
+    name: 'Leonhard Euler', years: '1707–1783', emoji: '➗', tag: 'Mathematician',
+    img: '_Resources/_imgSource/images/leonhard-euler.jpg',
+    facts: [],
+  },
+  {
+    name: 'Euclid', years: '~300 BCE', emoji: '📐', tag: 'Mathematician',
+    img: '_Resources/_imgSource/images/euclid.jpg',
+    facts: [],
+  },
+  {
+    name: 'Johannes Kepler', years: '1571–1630', emoji: '🔭', tag: 'Scientist',
+    img: '_Resources/_imgSource/images/johannes-kepler.jpg',
+    facts: [],
+  },
+  {
+    name: 'Edwin Hubble', years: '1889–1953', emoji: '🔭', tag: 'Scientist',
+    img: '_Resources/_imgSource/images/edwin-hubble.jpg',
+    facts: [],
+  },
+  {
+    name: 'George Washington Carver', years: '1864–1943', emoji: '🥜', tag: 'Inventor',
+    img: '_Resources/_imgSource/images/george-washington-carver.jpg',
+    facts: [],
+  },
+  {
+    name: 'Norman Borlaug', years: '1914–2009', emoji: '🌾', tag: 'Scientist',
+    img: '_Resources/_imgSource/images/norman-borlaug.jpg',
+    facts: [],
+  },
+  {
+    name: 'Claude Monet', years: '1840–1926', emoji: '🎨', tag: 'Artist',
+    img: '_Resources/_imgSource/images/claude-monet.jpg',
+    facts: [],
+  },
+  {
+    name: 'Henri Matisse', years: '1869–1954', emoji: '🎨', tag: 'Artist',
+    img: '_Resources/_imgSource/images/henri-matisse.jpg',
+    facts: [],
+  },
+  {
+    name: 'Andy Warhol', years: '1928–1987', emoji: '🎨', tag: 'Artist',
+    img: '_Resources/_imgSource/images/andy-warhol.jpg',
+    facts: [],
+  },
+  {
+    name: 'Diego Rivera', years: '1886–1957', emoji: '🎨', tag: 'Artist',
+    img: '_Resources/_imgSource/images/diego-rivera.jpg',
+    facts: [],
+  },
+  {
+    name: 'Auguste Rodin', years: '1840–1917', emoji: '🗿', tag: 'Artist',
+    img: '_Resources/_imgSource/images/auguste-rodin.jpg',
+    facts: [],
+  },
+  {
+    name: 'Johannes Vermeer', years: '1632–1675', emoji: '🎨', tag: 'Artist',
+    img: '_Resources/_imgSource/images/johannes-vermeer.jpg',
+    facts: [],
+  },
+  {
+    name: 'Raphael', years: '1483–1520', emoji: '🎨', tag: 'Artist',
+    img: '_Resources/_imgSource/images/raphael.jpg',
+    facts: [],
+  },
+  {
+    name: 'Katsushika Hokusai', years: '1760–1849', emoji: '🌊', tag: 'Artist',
+    img: '_Resources/_imgSource/images/katsushika-hokusai.jpg',
+    facts: [],
+  },
+  {
+    name: 'Queen Elizabeth I', years: '1533–1603', emoji: '👑', tag: 'Ruler',
+    img: '_Resources/_imgSource/images/queen-elizabeth-i.jpg',
+    facts: [],
+  },
+  {
+    name: 'Queen Elizabeth II', years: '1926–2022', emoji: '👑', tag: 'Royal',
+    img: '_Resources/_imgSource/images/queen-elizabeth-ii.jpg',
+    facts: [],
+  },
+  {
+    name: 'Catherine the Great', years: '1729–1796', emoji: '👑', tag: 'Ruler',
+    img: '_Resources/_imgSource/images/catherine-the-great.jpg',
+    facts: [],
+  },
+  {
+    name: 'Charlemagne', years: '748–814', emoji: '👑', tag: 'Ruler',
+    img: '_Resources/_imgSource/images/charlemagne.jpg',
+    facts: [],
+  },
+  {
+    name: 'Tutankhamun', years: '~1341–1323 BCE', emoji: '👑', tag: 'Ruler',
+    img: '_Resources/_imgSource/images/tutankhamun.jpg',
+    facts: [],
+  },
+  {
+    name: 'Nefertiti', years: '~1370–1330 BCE', emoji: '👑', tag: 'Ruler',
+    img: '_Resources/_imgSource/images/nefertiti.jpg',
+    facts: [],
+  },
+  {
+    name: 'Ashoka', years: '~304–232 BCE', emoji: '👑', tag: 'Ruler',
+    img: '_Resources/_imgSource/images/ashoka.jpg',
+    facts: [],
+  },
+  {
+    name: 'Kublai Khan', years: '1215–1294', emoji: '🏹', tag: 'Ruler',
+    img: '_Resources/_imgSource/images/kublai-khan.jpg',
+    facts: [],
+  },
+  {
+    name: 'Simón Bolívar', years: '1783–1830', emoji: '⚔️', tag: 'Leader',
+    img: '_Resources/_imgSource/images/simon-bolivar.jpg',
+    facts: [],
+  },
+  {
+    name: 'Sun Yat-sen', years: '1866–1925', emoji: '🇨🇳', tag: 'Leader',
+    img: '_Resources/_imgSource/images/sun-yat-sen.jpg',
+    facts: [],
+  },
+  {
+    name: 'Mikhail Gorbachev', years: '1931–2022', emoji: '🕊️', tag: 'Leader',
+    img: '_Resources/_imgSource/images/mikhail-gorbachev.jpg',
+    facts: [],
+  },
+  {
+    name: 'Eva Perón', years: '1919–1952', emoji: '🌹', tag: 'Leader',
+    img: '_Resources/_imgSource/images/eva-peron.jpg',
+    facts: [],
+  },
+  {
+    name: 'Indira Gandhi', years: '1917–1984', emoji: '🇮🇳', tag: 'Leader',
+    img: '_Resources/_imgSource/images/indira-gandhi.jpg',
+    facts: [],
+  },
+  {
+    name: 'Aung San Suu Kyi', years: '1945–', emoji: '🕊️', tag: 'Activist',
+    img: '_Resources/_imgSource/images/aung-san-suu-kyi.jpg',
+    facts: [],
+  },
+  {
+    name: 'Kwame Nkrumah', years: '1909–1972', emoji: '🌍', tag: 'Leader',
+    img: '_Resources/_imgSource/images/kwame-nkrumah.jpg',
+    facts: [],
+  },
+  {
+    name: 'Cesar Chavez', years: '1927–1993', emoji: '🍇', tag: 'Activist',
+    img: '_Resources/_imgSource/images/cesar-chavez.jpg',
+    facts: [],
+  },
+  {
+    name: 'Dolores Huerta', years: '1930–', emoji: '✊', tag: 'Activist',
+    img: '_Resources/_imgSource/images/dolores-huerta.jpg',
+    facts: [],
+  },
+  {
+    name: 'John Lewis', years: '1940–2020', emoji: '✊', tag: 'Activist',
+    img: '_Resources/_imgSource/images/john-lewis.jpg',
+    facts: [],
+  },
+  {
+    name: 'W.E.B. Du Bois', years: '1868–1963', emoji: '📚', tag: 'Activist',
+    img: '_Resources/_imgSource/images/w.e.b.-du-bois.jpg',
+    facts: [],
+  },
+  {
+    name: 'Ida B. Wells', years: '1862–1931', emoji: '📰', tag: 'Activist',
+    img: '_Resources/_imgSource/images/ida-b.-wells.jpg',
+    facts: [],
+  },
+  {
+    name: 'Eleanor Roosevelt', years: '1884–1962', emoji: '🕊️', tag: 'Leader',
+    img: '_Resources/_imgSource/images/eleanor-roosevelt.jpg',
+    facts: [],
+  },
+  {
+    name: 'John F. Kennedy', years: '1917–1963', emoji: '🇺🇸', tag: 'Leader',
+    img: '_Resources/_imgSource/images/john-f.-kennedy.jpg',
+    facts: [],
+  },
+  {
+    name: 'Thomas Jefferson', years: '1743–1826', emoji: '📜', tag: 'Leader',
+    img: '_Resources/_imgSource/images/thomas-jefferson.jpg',
+    facts: [],
+  },
+  {
+    name: 'Babe Ruth', years: '1895–1948', emoji: '⚾', tag: 'Athlete',
+    img: '_Resources/_imgSource/images/babe-ruth.jpg',
+    facts: [],
+  },
+  {
+    name: 'Jesse Owens', years: '1913–1980', emoji: '🏃', tag: 'Athlete',
+    img: '_Resources/_imgSource/images/jesse-owens.jpg',
+    facts: [],
+  },
+  {
+    name: 'Jackie Robinson', years: '1919–1972', emoji: '⚾', tag: 'Athlete',
+    img: '_Resources/_imgSource/images/jackie-robinson.jpg',
+    facts: [],
+  },
+  {
+    name: 'Billie Jean King', years: '1943–', emoji: '🎾', tag: 'Athlete',
+    img: '_Resources/_imgSource/images/billie-jean-king.jpg',
+    facts: [],
+  },
+  {
+    name: 'Arthur Ashe', years: '1943–1993', emoji: '🎾', tag: 'Athlete',
+    img: '_Resources/_imgSource/images/arthur-ashe.jpg',
+    facts: [],
+  },
+  {
+    name: 'Wayne Gretzky', years: '1961–', emoji: '🏒', tag: 'Athlete',
+    img: '_Resources/_imgSource/images/wayne-gretzky.jpg',
+    facts: [],
+  },
+  {
+    name: 'Tom Brady', years: '1977–', emoji: '🏈', tag: 'Athlete',
+    img: '_Resources/_imgSource/images/tom-brady.jpg',
+    facts: [],
+  },
+  {
+    name: 'Tiger Woods', years: '1975–', emoji: '⛳', tag: 'Athlete',
+    img: '_Resources/_imgSource/images/tiger-woods.jpg',
+    facts: [],
+  },
+  {
+    name: 'Nadia Comăneci', years: '1961–', emoji: '🤸', tag: 'Athlete',
+    img: '_Resources/_imgSource/images/nadia-comaneci.jpg',
+    facts: [],
+  },
+  {
+    name: 'Magic Johnson', years: '1959–', emoji: '🏀', tag: 'Athlete',
+    img: '_Resources/_imgSource/images/magic-johnson.jpg',
+    facts: [],
+  },
 ];
 
 // ─── Palettes ─────────────────────────────────────────────────────────────────
@@ -11442,7 +12162,7 @@ const state = {
   turns: [[null, null], [null, null], [null, null], [null, null]],
   usedPeople: new Set(),
   // Prompt method
-  promptMethod: 'ltm',    // 'ltm' | 'mtl'
+  promptMethod: 'mtl',    // 'ltm' | 'mtl'  (default: Most-to-Least)
   mtlLevel: 3,            // shared level selector: MtL=prescribed level, LtM=ceiling
   // Prompt options
   persistPrompts:         false,
@@ -11452,6 +12172,7 @@ const state = {
   promptShowing:          false,
   promptShowingLevel:     0,  // 0=none, 1=min, 2=partial, 3=full — tracked so MtL Prompt can jump to Full
   showChoicesOnFull:      false,  // when true, Full prompts render as 2 tappable choices (if authored)
+  karaokeEnabled:         true,   // light up sayable prompt words one at a time to pace reading
   // LtM per-cell escalation levels (0=indep,1=min,2=partial,3=full)
   ltmCellLevels: [[0, 0], [0, 0], [0, 0], [0, 0]],
   // MtL per-cell flag: was Prompt clicked (Full override) for this cell?
@@ -11473,6 +12194,58 @@ const state = {
 // ─── DOM Helpers ──────────────────────────────────────────────────────────────
 
 const $ = id => document.getElementById(id);
+
+// ─── Settings persistence ──────────────────────────────────────────────────────
+// The prompt-method / level / option toggles are clinician preferences, not trial
+// data, so they should survive a page reload. We persist just those fields to
+// localStorage; session state (turns, history, current person) is never stored.
+
+const PREFS_KEY = 'fpg.prefs.v1';
+
+function savePrefs() {
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({
+      promptMethod:       state.promptMethod,
+      mtlLevel:           state.mtlLevel,
+      autoPromptEnabled:  state.autoPromptEnabled,
+      promptDelayEnabled: state.promptDelayEnabled,
+      promptDelaySecs:    state.promptDelaySecs,
+      persistPrompts:     state.persistPrompts,
+      showChoicesOnFull:  state.showChoicesOnFull,
+      karaokeEnabled:     state.karaokeEnabled,
+    }));
+  } catch (_) { /* storage unavailable (private mode, etc.) — fall back to defaults */ }
+}
+
+function loadPrefs() {
+  let p;
+  try {
+    p = JSON.parse(localStorage.getItem(PREFS_KEY) || 'null');
+  } catch (_) { p = null; }
+  if (!p || typeof p !== 'object') return;
+  if (p.promptMethod === 'ltm' || p.promptMethod === 'mtl') state.promptMethod = p.promptMethod;
+  if ([0, 1, 2, 3].includes(p.mtlLevel))                    state.mtlLevel = p.mtlLevel;
+  if (typeof p.autoPromptEnabled === 'boolean')             state.autoPromptEnabled = p.autoPromptEnabled;
+  if (typeof p.promptDelayEnabled === 'boolean')            state.promptDelayEnabled = p.promptDelayEnabled;
+  if (Number.isInteger(p.promptDelaySecs) && p.promptDelaySecs >= 1 && p.promptDelaySecs <= 60) {
+    state.promptDelaySecs = p.promptDelaySecs;
+  }
+  if (typeof p.persistPrompts === 'boolean')    state.persistPrompts = p.persistPrompts;
+  if (typeof p.showChoicesOnFull === 'boolean') state.showChoicesOnFull = p.showChoicesOnFull;
+  if (typeof p.karaokeEnabled === 'boolean')    state.karaokeEnabled = p.karaokeEnabled;
+}
+
+// Reflect the current preference state onto the DOM controls (after loadPrefs).
+function syncControlsFromState() {
+  const methodRadio = document.querySelector('input[name="prompt-method"][value="' + state.promptMethod + '"]');
+  if (methodRadio) methodRadio.checked = true;
+  $('auto-prompt-checkbox').checked    = state.autoPromptEnabled;
+  $('prompt-delay-checkbox').checked   = state.promptDelayEnabled;
+  $('prompt-delay-secs').value         = state.promptDelaySecs;
+  $('persist-prompts-checkbox').checked = state.persistPrompts;
+  $('show-choices-checkbox').checked   = state.showChoicesOnFull;
+  $('karaoke-checkbox').checked        = state.karaokeEnabled;
+}
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 
@@ -11664,6 +12437,8 @@ function renderPerson(person) {
   const cachedPhoto = localStorage.getItem('wikiPhoto:' + person.name);
   img.src = cachedPhoto || person.img;
 
+  renderConversation();
+
   // MtL: auto-show prescribed prompt for first context cell
   if (state.promptMethod === 'mtl') autoShowForContext();
 }
@@ -11686,6 +12461,71 @@ function updateToggles() {
     btn.textContent = v === 'error' ? '✗' : '—';
     btn.classList.toggle('errored', v === 'error');
   });
+}
+
+// ─── Conversation Guide ───────────────────────────────────────────────────────
+// Drives the turn-by-turn flow: spotlight the fact under discussion, announce
+// whose move it is, and point the score bar at exactly the cell being scored.
+
+const CONVO_MOVES = [
+  { icon: '💬', move: 'Client makes a comment',                    factLabel: 'Talk through this fact together' },
+  { icon: '🔁', move: 'Client volleys back — asks you a question', factLabel: 'Keep chatting about this fact'   },
+];
+
+function renderConversation() {
+  const panel = $('convo-panel');
+  if (!panel) return;
+  const cell = getContextCell();
+
+  // Turn progress dots
+  document.querySelectorAll('.convo-dot').forEach(d => {
+    const t = parseInt(d.dataset.turn);
+    const done = !!(state.turns[t][0] && state.turns[t][1]);
+    d.classList.toggle('done',    done);
+    d.classList.toggle('current', !!cell && cell.turn === t);
+  });
+
+  // Spotlight the fact under discussion on the person card
+  document.querySelectorAll('#person-facts li').forEach((li, i) => {
+    const t = state.turns[i];
+    li.classList.toggle('fact-done',    !!(t && t[0] && t[1]));
+    li.classList.toggle('fact-current', !!cell && cell.turn === i);
+  });
+
+  // Mirror the score bar onto the grid record
+  document.querySelectorAll('.toggle-btn').forEach(btn => {
+    const turn = parseInt(btn.dataset.turn);
+    const idx  = btn.dataset.type === 'comment' ? 0 : 1;
+    btn.classList.toggle('active-cell', !!cell && cell.turn === turn && cell.typeIdx === idx);
+  });
+
+  const scoreBar = $('score-bar');
+  if (!cell) {
+    panel.classList.add('complete');
+    $('convo-turn-label').textContent = 'Conversation complete';
+    $('convo-fact-icon').textContent  = '🎉';
+    $('convo-fact-label').textContent = 'Nice chat!';
+    $('convo-fact-text').textContent  = 'All four facts covered — Finish & SR, or grab a new person.';
+    $('convo-now').classList.add('hidden');
+    scoreBar.classList.add('done');
+    $('score-bar-label').innerHTML = 'All moves scored <strong>✓</strong>';
+    return;
+  }
+
+  panel.classList.remove('complete');
+  scoreBar.classList.remove('done');
+  $('convo-now').classList.remove('hidden');
+
+  const fact = state.turnFacts[cell.turn];
+  const mv   = CONVO_MOVES[cell.typeIdx];
+  $('convo-turn-label').textContent = 'Turn ' + (cell.turn + 1) + ' of 4';
+  $('convo-fact-icon').textContent  = '🗣';
+  $('convo-fact-label').textContent = mv.factLabel;
+  $('convo-fact-text').textContent  = fact && fact.text ? fact.text : '';
+  $('convo-now-move').textContent   = mv.icon + ' ' + mv.move;
+
+  $('score-bar-label').innerHTML = 'Score this move → <strong>Turn ' + (cell.turn + 1)
+    + ' · ' + (cell.typeIdx === 0 ? 'Comment' : 'Volley') + '</strong>';
 }
 
 function getPromptContext(turn, idx) {
@@ -11712,6 +12552,7 @@ function markCell(turn, idx, outcome) {
     clearTimeout(autoShowTimeout);
     autoShowTimeout = null;
     updateToggles();
+    renderConversation();
     displayPrompt('');
     return;
   }
@@ -11732,6 +12573,7 @@ function markCell(turn, idx, outcome) {
   state.cellContexts[turn][idx] = context;
   updateToggles();
   updateLtmIndicator();
+  renderConversation();
   displayPrompt('');
   if (state.promptMethod === 'mtl') autoShowForContext();
 }
@@ -11793,6 +12635,11 @@ function getPromptForCell(turn, typeIdx, level) {
     ? ['', 'commentMin', 'commentPartial', 'commentFull'][level]
     : ['', 'volleyMin',  'volleyPartial',  'volleyFull' ][level];
 
+  // A Min-level volley is an indirect "ask about…" cue — a hint for the
+  // clinician to elicit, never a line for the client to read aloud. Everything
+  // else (comments, and Partial/Full volleys) is a sayable script.
+  const cue = !isComment && level === 1;
+
   // 1. Two-choice opt-in at Full only (when authored).
   if (level === 3 && state.showChoicesOnFull) {
     const choices = isComment ? fact.commentChoices : fact.volleyChoices;
@@ -11805,7 +12652,7 @@ function getPromptForCell(turn, typeIdx, level) {
   if (fact[slotKey]) {
     let text = fact[slotKey];
     if (isClosing && level === 1) text = 'Last question — ' + lowerFirst(text);
-    return { text, level };
+    return { text, level, cue };
   }
 
   // 3. Defensive template fallback.
@@ -11815,7 +12662,7 @@ function getPromptForCell(turn, typeIdx, level) {
   const tpl    = set[bucket];
   let text     = tpl[stableIndex(person, turn, typeIdx, tpl.length)](ctx);
   if (isClosing && level === 1) text = 'Last question — ' + lowerFirst(text);
-  return { text, level };
+  return { text, level, cue };
 }
 
 let promptFadeTimeout = null;
@@ -11827,14 +12674,15 @@ let promptFadeTimeout = null;
 //   { choices: [a,b], level } -> render two tappable chips, no auto-fade
 function displayPrompt(payload) {
   clearTimeout(promptFadeTimeout);
+  clearKaraoke();
   const el = $('prompt-display');
   if (!el) return;
   const textEl    = el.querySelector('.prompt-text');
   const choicesEl = el.querySelector('.prompt-choices');
 
   if (!payload) {
-    el.classList.remove('active', 'fading');
-    if (textEl)    textEl.textContent = '';
+    el.classList.remove('active', 'fading', 'cue');
+    if (textEl)  { textEl.textContent = ''; textEl.classList.remove('karaoke', 'cue-text'); }
     if (choicesEl) choicesEl.innerHTML = '';
     state.promptShowing = false;
     state.promptShowingLevel = 0;
@@ -11846,7 +12694,10 @@ function displayPrompt(payload) {
   state.promptShowing = true;
   state.promptShowingLevel = payload.level || 0;
   el.classList.add('active');
-  el.classList.remove('fading');
+  el.classList.remove('fading', 'cue');
+  if (textEl) textEl.classList.remove('karaoke', 'cue-text');
+
+  let karaokeMs = 0;
 
   if (payload.choices) {
     if (textEl)    textEl.innerHTML = '<div class="prompt-choices-label">Choose one:</div>';
@@ -11860,6 +12711,14 @@ function displayPrompt(payload) {
     if (textEl) {
       if (txt.startsWith('🎉')) {
         textEl.textContent = txt;
+      } else if (payload.cue) {
+        // Indirect "elicit this" hint — never a script to read aloud.
+        el.classList.add('cue');
+        textEl.classList.add('cue-text');
+        textEl.innerHTML = '<span class="cue-badge">Cue</span><span class="cue-body">' + escapeHTML(txt) + '</span>';
+      } else if (state.karaokeEnabled) {
+        // Sayable line: light up the words one at a time to pace reading.
+        karaokeMs = renderKaraoke(textEl, txt);
       } else {
         textEl.innerHTML = '<span class="q">\u201C</span>' + escapeHTML(txt) + '<span class="q">\u201D</span>';
       }
@@ -11868,12 +12727,56 @@ function displayPrompt(payload) {
   }
 
   if (!state.persistPrompts && !payload.choices) {
-    const ms = fadeMsFor(state.promptMethod, payload.level || 0);
+    // Hold for the read time *after* the karaoke reveal finishes so a line
+    // never fades out mid-read.
+    const ms = fadeMsFor(state.promptMethod, payload.level || 0) + karaokeMs;
     promptFadeTimeout = setTimeout(() => {
       el.classList.add('fading');
       setTimeout(() => displayPrompt(null), 400);
     }, ms);
   }
+}
+
+// Pace per readable character when lighting up words, in ms.
+const KARAOKE_MS_PER_CHAR = 60;
+let karaokeTimers = [];
+
+function clearKaraoke() {
+  karaokeTimers.forEach(clearTimeout);
+  karaokeTimers = [];
+}
+
+// Render `txt` as a quoted line of word spans and schedule each word to light
+// up in turn, karaoke-style. Returns the total reveal duration in ms.
+function renderKaraoke(textEl, txt) {
+  textEl.classList.add('karaoke');
+  // Split on whitespace but keep the gaps so spacing is preserved.
+  const tokens = txt.split(/(\s+)/);
+  let html = '<span class="q">“</span>';
+  tokens.forEach(tok => {
+    html += /^\s+$/.test(tok)
+      ? tok
+      : '<span class="kw">' + escapeHTML(tok) + '</span>';
+  });
+  html += '<span class="q">”</span>';
+  textEl.innerHTML = html;
+
+  const kws = textEl.querySelectorAll('.kw');
+  let t = 200;  // small lead-in beat after the pop animation
+  kws.forEach((w, i) => {
+    const len = w.textContent.replace(/[.,!?…'"—-]/g, '').length;
+    const dur = Math.min(620, Math.max(150, len * KARAOKE_MS_PER_CHAR + 110));
+    karaokeTimers.push(setTimeout(() => {
+      if (i > 0) kws[i - 1].classList.remove('cur');
+      w.classList.add('lit', 'cur');
+    }, t));
+    t += dur;
+  });
+  // Drop the final glow once the last word has been read.
+  karaokeTimers.push(setTimeout(() => {
+    if (kws.length) kws[kws.length - 1].classList.remove('cur');
+  }, t));
+  return t;
 }
 
 function fadeMsFor(method, level) {
@@ -11903,6 +12806,7 @@ function autoShowForContext() {
   clearTimeout(autoShowTimeout);
   autoShowTimeout = null;
   if (!state.autoPromptEnabled) return;
+  if (!state.currentPerson) return;  // nothing to prompt for before a session starts
 
   const cell = getContextCell();
   if (!cell) { displayPrompt('🎉 All turns complete!'); return; }
@@ -11957,6 +12861,7 @@ function updateLevelSelector() {
 
 function setMtlLevel(level) {
   state.mtlLevel = level;
+  savePrefs();
   updateLevelSelector();
   if (state.promptMethod === 'mtl') autoShowForContext();
 }
@@ -11964,6 +12869,7 @@ function setMtlLevel(level) {
 // Method radio switch
 function setPromptMethod(method) {
   state.promptMethod = method;
+  savePrefs();
   const isLtm = method === 'ltm';
   $('ltm-level-indicator').classList.toggle('hidden', !isLtm);
   $('mtl-level-selector').classList.remove('hidden');
@@ -11984,9 +12890,19 @@ function setPromptMethod(method) {
 
 // ─── Session Flow ─────────────────────────────────────────────────────────────
 
+// A person is playable once they have at least one authored fact. Newly-added
+// people ship with `facts: []` so they can be reviewed/populated later (via the
+// admin AI import) without surfacing half-built cards in normal play.
+function isPlayable(person) {
+  return Array.isArray(person.facts)
+      && person.facts.some(f => f && (typeof f === 'string' ? f.trim() : (f.text || '').trim()));
+}
+
 function pickPerson() {
-  let avail = PEOPLE.map((_, i) => i).filter(i => !state.usedPeople.has(i));
-  if (avail.length === 0) { state.usedPeople.clear(); avail = PEOPLE.map((_, i) => i); }
+  const playable = PEOPLE.map((_, i) => i).filter(i => isPlayable(PEOPLE[i]));
+  const pool     = playable.length ? playable : PEOPLE.map((_, i) => i);
+  let avail = pool.filter(i => !state.usedPeople.has(i));
+  if (avail.length === 0) { state.usedPeople.clear(); avail = pool.slice(); }
   const idx = avail[Math.floor(Math.random() * avail.length)];
   state.usedPeople.add(idx);
   return PEOPLE[idx];
@@ -12007,6 +12923,7 @@ function resetSession() {
   displayPrompt('');
   updateToggles();
   updateLtmIndicator();
+  renderConversation();
 }
 
 function startSession() {
@@ -12268,6 +13185,16 @@ document.addEventListener('DOMContentLoaded', () => {
   $('data-grid').addEventListener('click', handleErrorClick);
   $('btn-prompt').addEventListener('click', showPrompt);
   $('btn-finish').addEventListener('click', goToSR);
+
+  // Score bar — always scores the move the conversation guide is pointing at
+  $('btn-score-correct').addEventListener('click', () => {
+    const cell = getContextCell();
+    if (cell) markCell(cell.turn, cell.typeIdx, 'correct');
+  });
+  $('btn-score-error').addEventListener('click', () => {
+    const cell = getContextCell();
+    if (cell) markCell(cell.turn, cell.typeIdx, 'error');
+  });
   $('btn-new-person').addEventListener('click', newPerson);
   $('btn-print').addEventListener('click', printData);
   $('btn-reset-trial').addEventListener('click', () => {
@@ -12303,6 +13230,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Auto-prompt checkbox (MtL only)
   $('auto-prompt-checkbox').addEventListener('change', e => {
     state.autoPromptEnabled = e.target.checked;
+    savePrefs();
     const hide = !state.autoPromptEnabled;
     $('prompt-delay-label').classList.toggle('hidden', hide);
     $('prompt-delay-secs').classList.toggle('hidden', hide || !state.promptDelayEnabled);
@@ -12314,6 +13242,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Prompt delay checkbox (MtL + auto-prompt)
   $('prompt-delay-checkbox').addEventListener('change', e => {
     state.promptDelayEnabled = e.target.checked;
+    savePrefs();
     $('prompt-delay-secs').classList.toggle('hidden', !state.promptDelayEnabled);
     $('prompt-delay-unit').classList.toggle('hidden', !state.promptDelayEnabled);
   });
@@ -12321,17 +13250,34 @@ document.addEventListener('DOMContentLoaded', () => {
   // Delay seconds input
   $('prompt-delay-secs').addEventListener('change', e => {
     const v = parseInt(e.target.value);
-    if (v >= 1 && v <= 60) state.promptDelaySecs = v;
+    if (v >= 1 && v <= 60) { state.promptDelaySecs = v; savePrefs(); }
   });
 
   // Persist prompts checkbox
   $('persist-prompts-checkbox').addEventListener('change', e => {
     state.persistPrompts = e.target.checked;
+    savePrefs();
+  });
+
+  // Karaoke checkbox: re-render the current prompt so the change takes effect now.
+  $('karaoke-checkbox').addEventListener('change', e => {
+    state.karaokeEnabled = e.target.checked;
+    savePrefs();
+    if (state.promptShowing) {
+      const cell = getContextCell();
+      if (cell) {
+        const lvl = state.promptMethod === 'mtl'
+          ? state.mtlLevel
+          : state.ltmCellLevels[cell.turn][cell.typeIdx];
+        if (lvl > 0) displayPrompt(getPromptForCell(cell.turn, cell.typeIdx, lvl));
+      }
+    }
   });
 
   // Show-choices-on-Full checkbox: re-render if a Full prompt is currently visible.
   $('show-choices-checkbox').addEventListener('change', e => {
     state.showChoicesOnFull = e.target.checked;
+    savePrefs();
     if (state.promptShowing) {
       const cell = getContextCell();
       if (cell) {
@@ -12355,8 +13301,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Init level selector display (LtM is default so active-ltm class needed)
-  updateLevelSelector();
+  // Restore saved clinician preferences, push them onto the controls, then let
+  // setPromptMethod wire up dependent visibility + the level selector display.
+  loadPrefs();
+  syncControlsFromState();
+  setPromptMethod(state.promptMethod);
 
   // Auto-launch if URL hash matches a person
   if (personFromHash()) startSession();
