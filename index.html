@@ -69,6 +69,7 @@
     }
     #gm-overlay.open { display: flex; }
     #gm-modal {
+      position: relative;
       background: #fff;
       border: 1px solid #d4e0c4;
       border-radius: 14px;
@@ -76,7 +77,19 @@
       width: min(340px, 100%);
       box-shadow: 0 8px 32px rgba(0,0,0,0.12);
     }
-    #gm-modal h2 { font-size: 17px; font-weight: 700; color: #1a1f14; margin-bottom: 14px; }
+    #gm-modal-close-x {
+      position: absolute;
+      top: 14px; right: 14px;
+      width: 28px; height: 28px;
+      background: none; border: none;
+      cursor: pointer;
+      font-size: 18px; line-height: 1;
+      color: #999;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%; padding: 0;
+    }
+    #gm-modal-close-x:hover { background: #f0f0f0; color: #555; }
+    #gm-modal h2 { font-size: 17px; font-weight: 700; color: #1a1f14; margin-bottom: 14px; padding-right: 20px; }
 
     /* Login state */
     #gm-login-body input {
@@ -134,8 +147,7 @@
     .btn-gm-page:hover { background: #2a3620; }
     .btn-signout { background: #fff; color: #374528; border-color: #b8cfa0; }
     .btn-signout:hover { background: #f0f4e8; }
-    .btn-close-modal { background: #fff; color: #555; border-color: #d4d4d4; }
-    .btn-close-modal:hover { background: #f5f5f5; }
+    .btn-close-modal { display: none; }
 
     h1 {
       font-size: 28px;
@@ -312,6 +324,7 @@
   <!-- GM modal: shows login prompt or admin-access panel depending on auth state -->
   <div id="gm-overlay" role="dialog" aria-modal="true" aria-labelledby="gm-modal-title">
     <div id="gm-modal">
+      <button type="button" id="gm-modal-close-x" aria-label="Close">×</button>
       <h2 id="gm-modal-title">Game Master</h2>
 
       <!-- Not logged in: password prompt -->
@@ -323,12 +336,10 @@
 
       <!-- Logged in: admin access panel -->
       <div id="gm-admin-body">
-        <div id="gm-admin-status">You are signed in as admin.</div>
-        <p>Sign out to return to public mode.</p>
+        <div id="gm-admin-status">GM mode is on.</div>
         <div class="gm-btn-row">
           <button class="btn-gm-page" id="gm-page-btn">GM Page</button>
-          <button class="btn-signout" id="gm-signout-btn">Sign out</button>
-          <button class="btn-close-modal" id="gm-close-btn">Close</button>
+          <button class="btn-signout" id="gm-signout-btn">Exit GM Mode</button>
         </div>
       </div>
     </div>
@@ -456,23 +467,22 @@
   </p>
 
   <script>
-    const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
-
     (function () {
-      const overlay    = document.getElementById('gm-overlay');
-      const loginBody  = document.getElementById('gm-login-body');
-      const adminBody  = document.getElementById('gm-admin-body');
-      const pwInput    = document.getElementById('gm-pw');
-      const errEl      = document.getElementById('gm-modal-err');
+      const overlay   = document.getElementById('gm-overlay');
+      const loginBody = document.getElementById('gm-login-body');
+      const adminBody = document.getElementById('gm-admin-body');
+      const pwInput   = document.getElementById('gm-pw');
+      const errEl     = document.getElementById('gm-modal-err');
 
       function isAdmin() {
-        return localStorage.getItem('admin_token') === ADMIN_SECRET_HASH;
+        const t = localStorage.getItem('admin_token') || '';
+        return /^[0-9a-f]{64}$/.test(t);
       }
 
       function openModal() {
         if (isAdmin()) {
           loginBody.style.display = 'none';
-          adminBody.style.display = 'block';
+          adminBody.style.display = '';
         } else {
           loginBody.style.display = '';
           adminBody.style.display = 'none';
@@ -486,7 +496,7 @@
       function closeModal() { overlay.classList.remove('open'); }
 
       document.getElementById('gear-btn').addEventListener('click', openModal);
-      document.getElementById('gm-close-btn').addEventListener('click', closeModal);
+      document.getElementById('gm-modal-close-x').addEventListener('click', closeModal);
       overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
       document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
@@ -510,14 +520,22 @@
         errEl.textContent = '';
         if (!pw) { errEl.textContent = 'Enter a password.'; return; }
         const hash = await sha256Hex(pw);
-        if (hash === ADMIN_SECRET_HASH) {
-          localStorage.setItem('admin_token', hash);
-          closeModal();
-          setTimeout(openModal, 50);
-        } else {
-          errEl.textContent = 'Incorrect password.';
-          pwInput.value = '';
-          pwInput.focus();
+        try {
+          const res = await fetch('/api/admin/ping', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + hash }
+          });
+          if (res.ok) {
+            localStorage.setItem('admin_token', hash);
+            closeModal();
+            setTimeout(openModal, 50);
+          } else {
+            errEl.textContent = 'Incorrect password.';
+            pwInput.value = '';
+            pwInput.focus();
+          }
+        } catch {
+          errEl.textContent = 'Network error — please try again.';
         }
       }
 
