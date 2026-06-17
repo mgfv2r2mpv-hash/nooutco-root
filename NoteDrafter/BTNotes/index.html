@@ -484,7 +484,7 @@
       const [isAdmin,           setIsAdmin]          = React.useState(() => hasAdminToken());
 
       // Factual quick-picks (cannot be inferred from clinical narrative).
-      const [placeOfService, setPlaceOfService] = React.useState("");
+      const [placeOfService, setPlaceOfService] = React.useState(() => localStorage.getItem("bt_pos") || "Home");
       const [telehealth,     setTelehealth]     = React.useState("No");
 
       // The five guided free-text fields.
@@ -739,7 +739,7 @@ BT notes: "BCBA in 20 min. Arrived tired, slow to start. Ran tx-plan goals. Rece
                 <label style={lbl}>Place of Service</label>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {PLACE_OF_SERVICE.map(p => (
-                    <button key={p} onClick={() => setPlaceOfService(p)} style={{
+                    <button key={p} onClick={() => { setPlaceOfService(p); localStorage.setItem("bt_pos", p); }} style={{
                       padding: "7px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer",
                       border: placeOfService === p ? "2px solid #374528" : "1.5px solid #c0d4a8",
                       background: placeOfService === p ? "#374528" : "white",
