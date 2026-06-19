@@ -1,0 +1,63 @@
+/* AppShell — the SAssi frame: dark slate header, emoji nav, and the active
+   view. Holds the demo's mutable schedule + selection state. */
+const shell = window.NoOutcomeABADesignSystem_08ed95;
+
+function NavBtn({ active, onClick, children, badge }) {
+  return (
+    <button onClick={onClick} style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      padding: '5px 10px', border: 'none', borderRadius: 5,
+      background: active ? 'var(--sage-500)' : 'rgba(255,255,255,0.10)',
+      color: 'var(--white)', cursor: 'pointer', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap',
+    }}>
+      {children}
+      {badge != null && badge > 0 && (
+        <span style={{ minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9, background: 'var(--red-500)', color: '#fff', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{badge}</span>
+      )}
+    </button>
+  );
+}
+
+function AppShell() {
+  const { IconButton } = shell;
+  const [view, setView] = React.useState('schedule');
+  const [appts, setAppts] = React.useState(window.SAssiData.appts);
+  const [selected, setSelected] = React.useState(null);
+
+  const mutate = (id, patch) => setAppts(prev => prev.map(a => a.id === id ? { ...a, ...patch } : a));
+  const issueCount = 4; // demo: 1 behind client + 1 behind tech + 2 on pace, etc.
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', maxWidth: '100vw', overflow: 'hidden', fontFamily: 'var(--font-sans)', background: 'var(--surface-page)' }}>
+      <header style={{ background: '#333f45', color: 'var(--white)', padding: '10px 14px', boxShadow: 'var(--shadow-sm)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <img src="assets/logo-mark.svg" alt="" style={{ width: 30, height: 30, flexShrink: 0 }} />
+        <div style={{ lineHeight: 1.12 }}>
+          <div style={{ fontSize: 14, fontWeight: 800 }}>SAssi <span style={{ color: '#c2ccb6', fontWeight: 600 }}>· ABA Calendar</span></div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.5)' }}>No Outcome ABA</div>
+        </div>
+        <span title="AI key set" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green-400, #6ee7b7)' }} />
+        <div style={{ flex: 1 }} />
+        <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+          <button onClick={() => setView('add')} aria-label="Add appointment" title="Add appointment" style={{ padding: '6px 11px', background: 'var(--brand-primary)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 16, fontWeight: 700, lineHeight: 1 }}>+</button>
+          <NavBtn active={view === 'schedule'} onClick={() => setView('schedule')}>📅 Cal</NavBtn>
+          <NavBtn active={view === 'compliance'} onClick={() => setView('compliance')} badge={issueCount}>🔧 Comp</NavBtn>
+          <NavBtn active={view === 'wish'} onClick={() => setView('wish')}>✨ Wish</NavBtn>
+        </div>
+      </header>
+
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
+        {view === 'schedule' && <window.CalendarView appts={appts} selected={selected} onSelect={setSelected} onMutate={mutate} />}
+        {view === 'compliance' && <window.ComplianceView appts={appts} />}
+        {view === 'wish' && <window.WishView />}
+        {view === 'add' && (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, color: 'var(--text-muted)' }}>
+            <p style={{ fontSize: 14 }}>New appointment form would open here.</p>
+            <button onClick={() => setView('schedule')} style={{ padding: '8px 14px', background: 'var(--brand-primary)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>Back to calendar</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+window.AppShell = AppShell;

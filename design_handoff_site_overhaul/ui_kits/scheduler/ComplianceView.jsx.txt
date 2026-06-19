@@ -1,0 +1,59 @@
+/* ComplianceView — the traffic-light dashboard. Per-client supervision % and
+   per-tech billable hours, each graded met / on-pace / behind. */
+const cmp = window.NoOutcomeABADesignSystem_08ed95;
+
+function ComplianceView({ appts }) {
+  const { StatusPill, ProgressMeter, Avatar, Card } = cmp;
+  const { clientComp, techComp } = window.SAssiData;
+  const red = clientComp.filter(c => c.status === 'behind').length + techComp.filter(t => t.status === 'behind').length;
+  const yellow = clientComp.filter(c => c.status === 'pace').length + techComp.filter(t => t.status === 'pace').length;
+  const over = clientComp.filter(c => c.status === 'over').length;
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '16px 18px', maxWidth: 880, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: 'var(--text-primary)' }}>Compliance</h2>
+        <StatusPill intent="behind" dot>{red} behind</StatusPill>
+        <StatusPill intent="pace" dot>{yellow} on pace</StatusPill>
+        {over > 0 && <StatusPill intent="over" dot>{over} over</StatusPill>}
+      </div>
+
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '4px 0 10px' }}>Per client — supervision %</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10, marginBottom: 22 }}>
+        {clientComp.map(c => (
+          <Card key={c.name} padding="sm" accent={c.status === 'over' ? 'var(--orange-500)' : c.status === 'met' ? 'var(--green-500)' : c.status === 'pace' ? 'var(--amber-500)' : 'var(--red-500)'}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <Avatar name={c.name} size="sm" />
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', flex: 1 }}>{c.name}</span>
+              <StatusPill intent={c.status}>{c.status}</StatusPill>
+            </div>
+            <ProgressMeter max={40} cap={c.target} height={8}
+              segments={[{ value: c.pct, color: c.status === 'over' ? 'var(--orange-600)' : c.status === 'met' ? 'var(--green-700)' : c.status === 'pace' ? 'var(--amber-500)' : 'var(--red-600)' }]} />
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>{c.pct}% supervised · target {c.target}%{c.status === 'over' ? ' · audit risk' : ''}</div>
+          </Card>
+        ))}
+      </div>
+
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '4px 0 10px' }}>Per technician — billable hours</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
+        {techComp.map(t => (
+          <Card key={t.name} padding="sm" accent={t.status === 'met' ? 'var(--green-500)' : t.status === 'pace' ? 'var(--amber-500)' : 'var(--red-500)'}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <Avatar name={t.name} size="sm" />
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', flex: 1 }}>{t.name}</span>
+              <StatusPill intent={t.status}>{t.status}</StatusPill>
+            </div>
+            <ProgressMeter max={t.target} cap={t.target} height={8}
+              segments={[
+                { value: t.completed, color: 'var(--appt-completed)', label: 'Completed' },
+                { value: t.scheduled, color: 'var(--appt-pending)', label: 'Scheduled' },
+              ]} />
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>{t.completed}h done · {t.scheduled}h booked · target {t.target}h</div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+window.ComplianceView = ComplianceView;

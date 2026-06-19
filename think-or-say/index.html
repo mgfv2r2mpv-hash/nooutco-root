@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="version" content="1.0">
+  <title>Think or Say?</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ── Header ──────────────────────────────────────────────────── -->
+  <header id="app-header">
+    <a href="../" id="btn-back" title="Back to Games">← Games</a>
+    <h1>Think or Say?</h1>
+    <div id="timer-section">
+      <span id="timer-display">00:00</span>
+      <button id="btn-timer-toggle" class="btn-timer" title="Pause / Resume">Pause</button>
+      <button id="btn-timer-reset"  class="btn-timer" title="Reset timer">Reset</button>
+    </div>
+  </header>
+
+  <!-- ── Settings bar ─────────────────────────────────────────────── -->
+  <div id="settings-bar">
+
+    <div class="setting-group">
+      <label for="sel-category">Category<button type="button" class="help-btn" data-help="Limit the cards to one situation category, or use all of them.">?</button></label>
+      <select id="sel-category"></select>
+    </div>
+
+    <div class="setting-group">
+      <label for="sel-order">Order<button type="button" class="help-btn" data-help="Shuffle the cards or present them in a fixed order.">?</button></label>
+      <select id="sel-order">
+        <option value="shuffle">Shuffle</option>
+        <option value="sequential">In order</option>
+      </select>
+    </div>
+
+    <div class="setting-group setting-extra">
+      <button type="button" id="btn-extra-toggle" class="btn-extra" aria-expanded="false">
+        ⚙ Settings
+        <button type="button" class="help-btn" data-help="Open additional game options (errorless, prompts, re-present errors).">?</button>
+      </button>
+    </div>
+
+    <div class="setting-group">
+      <button id="btn-prompt" class="btn-prompt" hidden>Prompt</button>
+    </div>
+
+    <div class="setting-group setting-modes">
+      <button id="btn-learn" class="btn-secondary" type="button">📖 Learn</button>
+      <button id="btn-play" class="btn-primary" type="button">▶ Play</button>
+    </div>
+  </div>
+
+  <!-- ── Extra settings panel (hidden until toggled) ──────────────── -->
+  <section id="extra-panel" hidden>
+    <div class="extra-panel-header">
+      <span class="extra-panel-title">Options</span>
+      <button type="button" id="btn-extra-close" class="btn-extra-close" title="Close">×</button>
+    </div>
+    <div class="extra-panel-body">
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-represent-errors" checked>
+        Re-Present Errors
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-errorless">
+        Errorless
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-no-error-anim">
+        No Incorrect Animation
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-auto-prompt">
+        Auto-Prompt
+      </label>
+      <div class="extra-row">
+        <label class="checkbox-label">
+          <input type="checkbox" id="chk-prompt-delay" disabled>
+          Prompt Delay
+        </label>
+        <select id="sel-prompt-delay" disabled>
+          <option value="1">1s</option>
+          <option value="2">2s</option>
+          <option value="3" selected>3s</option>
+          <option value="4">4s</option>
+          <option value="5">5s</option>
+          <option value="10">10s</option>
+        </select>
+      </div>
+      <div class="extra-row">
+        <label for="sel-prompt-style">Prompt style</label>
+        <select id="sel-prompt-style">
+          <option value="sparkle">Sparkle</option>
+          <option value="outline">Outline</option>
+        </select>
+      </div>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-show-reason" checked>
+        Show Reason After
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-include-tricky">
+        Include Tricky / Reasoning Cards
+      </label>
+    </div>
+  </section>
+
+  <!-- ── Pre-start blurb ──────────────────────────────────────────── -->
+  <section class="game-intro" id="game-intro" aria-label="How this game works">
+    <h2>Think or Say? — a thought into a choice</h2>
+    <p>A scenario appears with a thought the learner is having. The clinician reads it aloud, then the learner decides: should that thought stay inside (<strong>THINK IT</strong>) or is it kind and okay to say out loud (<strong>SAY IT</strong>)?</p>
+    <ul>
+      <li><strong>Category</strong> — focus on one situation type (looks, smells, kind things…) or use all.</li>
+      <li><strong>Order</strong> — shuffle the cards or step through them in order.</li>
+      <li><strong>⚙ Settings</strong> — errorless, re-present errors, prompts, and whether to reveal the reason.</li>
+      <li><strong>Prompt</strong> — highlights the correct bubble for an assisted response.</li>
+    </ul>
+    <p class="tip">Yellow = THINK IT &nbsp;•&nbsp; Green = SAY IT. Tap <strong>📖 Learn</strong> for a teaching intro, or <strong>▶ Play</strong> to jump straight in.</p>
+  </section>
+
+  <!-- ── Learn screen (hidden until Learn) ────────────────────────── -->
+  <section id="learn-screen" hidden aria-label="How to decide">
+    <div class="learn-inner">
+      <h2 id="learn-title">How do I know — Think it or Say it?</h2>
+
+      <!-- Optional video: a player is injected here when a video URL is set in game.js -->
+      <div id="learn-video" hidden></div>
+
+      <div id="learn-rule">
+        <p class="learn-lead">Some thoughts we keep <strong>inside</strong> our head. Some thoughts are kind or helpful, so we can say them <strong>out loud</strong>.</p>
+        <p class="learn-ask">Before you say a thought, ask yourself:</p>
+        <ul class="learn-list">
+          <li><span class="tag tag-think">THINK IT</span> Could it <strong>hurt someone’s feelings</strong>? Keep it inside.</li>
+          <li><span class="tag tag-think">THINK IT</span> Is it about something <strong>private</strong> or embarrassing? Keep it inside.</li>
+          <li><span class="tag tag-say">SAY IT</span> Is it <strong>kind</strong> or a nice compliment? You can say it!</li>
+          <li><span class="tag tag-say">SAY IT</span> Is it <strong>helpful</strong>, or does it keep someone <strong>safe</strong>? Say it!</li>
+        </ul>
+        <p class="learn-tip">Not sure? It’s okay to keep it inside — or ask a grown-up.</p>
+      </div>
+
+      <button id="btn-learn-start" class="btn-primary" type="button">Start practice ▶</button>
+    </div>
+  </section>
+
+  <!-- ── Game area (hidden until Start) ───────────────────────────── -->
+  <main id="game-area" hidden>
+
+    <div id="progress-label" class="area-label"></div>
+
+    <section id="scenario-section">
+      <div id="scenario-card">
+        <div id="scenario-situation"></div>
+        <div id="scenario-thought"></div>
+      </div>
+      <div id="scenario-reason" hidden></div>
+    </section>
+
+    <section id="choice-section">
+      <button id="reveal-panel" type="button">
+        <span class="reveal-icon">▶</span>
+        <span class="reveal-text">Read the card aloud, then tap here to show the choices</span>
+      </button>
+      <div class="area-label" id="choice-label" hidden>Is this a THINK IT or a SAY IT?</div>
+      <div id="choices" hidden>
+        <button class="choice choice-think" data-answer="think" type="button">
+          <div class="bubble bubble-thought"><span class="face">🧠</span></div>
+          <div class="choice-label">THINK IT</div>
+        </button>
+        <button class="choice choice-say" data-answer="say" type="button">
+          <div class="bubble bubble-speech"><span class="face">👄</span></div>
+          <div class="choice-label">SAY IT</div>
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── Bottom controls ──────────────────────────────────────────── -->
+  <div id="bottom-bar">
+    <button id="btn-print" class="btn-print btn-icon" title="Print data" aria-label="Print data">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M18 8H6c-1.66 0-3 1.34-3 3v6h4v4h10v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H9v-5h6v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/>
+      </svg>
+    </button>
+    <button id="btn-clear-data" class="btn-clear-data btn-icon" title="Clear data" aria-label="Clear data">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- ── Print-only section ───────────────────────────────────────── -->
+  <div id="print-section">
+    <div id="print-header">
+      <h2>Think or Say? &mdash; Session Results</h2>
+      <div id="print-meta"></div>
+    </div>
+    <table id="results-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Category</th>
+          <th>Scenario</th>
+          <th>Answer</th>
+          <th>Errors</th>
+          <th>Prompted</th>
+          <th>Time (s)</th>
+          <th>Outcome</th>
+        </tr>
+      </thead>
+      <tbody id="results-body"></tbody>
+    </table>
+    <div id="print-summary"></div>
+  </div>
+
+  <script src="../../tooltip-help.js"></script>
+  <script src="game.js"></script>
+  <script>
+    const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
+    window.ADMIN_SECRET_HASH = ADMIN_SECRET_HASH;
+    window.ADMIN_GEAR_PAGE = '../../AdminTools/ImageManager/';
+  </script>
+  <script src="../../admin-gear.js"></script>
+</body>
+</html>

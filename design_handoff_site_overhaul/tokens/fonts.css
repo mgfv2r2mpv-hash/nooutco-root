@@ -1,0 +1,22 @@
+/* Webfonts — No Outcome ABA.
+
+   Atkinson Hyperlegible is the brand typeface: it was commissioned by the
+   Braille Institute specifically to maximize character distinction for low-
+   vision readers. That mission — legibility as an act of care — is exactly the
+   neurodiversity-affirming, human-first stance of No Outcome ABA, so it is the
+   right face for an accessibility-led clinical product.
+
+   The shipped iOS/web app currently renders in the platform system sans
+   (no font-family is set in the code). This design system ELEVATES that to
+   Atkinson Hyperlegible as the intentional brand choice; the system stack
+   remains the fallback so nothing breaks offline.
+
+   Loaded from Google Fonts so consumers pick up the @font-face automatically.
+   If you need fully offline binaries, download the TTFs and repoint these src
+   URLs at local files. */
+
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+
+/* Atkinson Hyperlegible Mono — used for numeric / code / PIN contexts, mirroring
+   the app's use of monospace for API keys and the lock-screen PIN. */
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;600;700&display=swap');

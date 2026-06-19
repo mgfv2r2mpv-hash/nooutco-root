@@ -25,7 +25,7 @@
  * POST /api/admin/save-display-name (admin — set/clear manifest displayName override)
  *   Body: { game, localPath, displayName }   empty/blank displayName clears it
  *
- * POST /api/admin/ffc-save-items  (admin — write the whole FFCGame/FFCGame/items.json)
+ * POST /api/admin/ffc-save-items  (admin — write the whole ffc/items.json)
  *   Body: { items: <full items.json object> }
  *
  * POST /api/admin/ffc-save-image  (admin — download + store a single FFC item image)
@@ -36,7 +36,7 @@
  *
  * POST /api/admin/update-facts    (admin — AI-expand FamousPersonGame people to 4 facts)
  *   Body: {}
- *   Reads FamousPersonGame/index.html from GitHub, calls Anthropic API for any person
+ *   Reads famous-person/index.html from GitHub, calls Anthropic API for any person
  *   with fewer than 4 facts, then commits the updated file back to main.
  *
  * Required Worker Secrets (set in Cloudflare dashboard):
@@ -51,6 +51,10 @@
  */
 
 const KNOWN_GAMES = ['IDMatchGame', 'NameIDGame', 'FamousPersonGame'];
+
+// Maps game API identifiers to their repo folder names (decoupled after URL shortening)
+const GAME_PATHS = { IDMatchGame: 'matching', NameIDGame: 'receptive' };
+function gameFolder(g) { return GAME_PATHS[g] || g; }
 
 export default {
   async fetch(request, env) {
@@ -172,7 +176,7 @@ async function handleSavePhoto(request, env) {
   }
 
   const slug      = nameToSlug(personName);
-  const imgPath   = `FamousPersonGame/_Resources/_imgSource/images/${slug}.${ext}`;
+  const imgPath   = `famous-person/_Resources/_imgSource/images/${slug}.${ext}`;
   const localPath = `_Resources/_imgSource/images/${slug}.${ext}`;
 
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -220,11 +224,11 @@ async function handleAdminSaveImage(request, env) {
 
   let repoPath, localPath, oldLocalPath;
   if (game === 'FamousPersonGame') {
-    repoPath     = `FamousPersonGame/_Resources/_imgSource/images/${saveFilename}`;
+    repoPath     = `famous-person/_Resources/_imgSource/images/${saveFilename}`;
     localPath    = `_Resources/_imgSource/images/${saveFilename}`;
     oldLocalPath = null;
   } else {
-    repoPath     = `${game}/${game}/_Resources/_imgSource/${folder}/${saveFilename}`;
+    repoPath     = `${gameFolder(game)}/_Resources/_imgSource/${folder}/${saveFilename}`;
     localPath    = `_Resources/_imgSource/${folder}/${saveFilename}`;
     oldLocalPath = oldFilename ? `_Resources/_imgSource/${folder}/${oldFilename}` : null;
   }
@@ -266,9 +270,9 @@ async function handleAdminRemoveImage(request, env) {
 
   let repoPath;
   if (game === 'FamousPersonGame') {
-    repoPath = `FamousPersonGame/_Resources/_imgSource/images/${filename}`;
+    repoPath = `famous-person/_Resources/_imgSource/images/${filename}`;
   } else {
-    repoPath = `${game}/${game}/_Resources/_imgSource/${folder}/${filename}`;
+    repoPath = `${gameFolder(game)}/_Resources/_imgSource/${folder}/${filename}`;
   }
 
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -477,7 +481,7 @@ async function atomicManifestDisplayNameCommit(env, game, localPath, displayName
   const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
   const treeSha    = commitData.tree.sha;
 
-  const manifestRepoPath = `${game}/${game}/manifest.json`;
+  const manifestRepoPath = `${gameFolder(game)}/manifest.json`;
   const manifestFile     = await gh(env, 'GET', `contents/${manifestRepoPath}`);
   const manifest         = JSON.parse(base64ToUtf8(manifestFile.content.replace(/\s/g, '')));
 
@@ -523,7 +527,7 @@ async function atomicFFCLabelCommit(env, itemId, newLabel) {
   const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
   const treeSha    = commitData.tree.sha;
 
-  const itemsRepoPath = 'FFCGame/FFCGame/items.json';
+  const itemsRepoPath = 'ffc/items.json';
   const itemsFile     = await gh(env, 'GET', `contents/${itemsRepoPath}`);
   const items         = JSON.parse(base64ToUtf8(itemsFile.content.replace(/\s/g, '')));
 
@@ -558,7 +562,7 @@ async function atomicFPGRenamePersonCommit(env, currentName, newName) {
   const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
   const treeSha    = commitData.tree.sha;
 
-  const htmlFile   = await gh(env, 'GET', 'contents/FamousPersonGame/index.html');
+  const htmlFile   = await gh(env, 'GET', 'contents/famous-person/index.html');
   const htmlNow    = base64ToUtf8(htmlFile.content.replace(/\s/g, ''));
 
   const safe = currentName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -573,7 +577,7 @@ async function atomicFPGRenamePersonCommit(env, currentName, newName) {
   });
   const newTree   = await gh(env, 'POST', 'git/trees', {
     base_tree: treeSha,
-    tree: [{ path: 'FamousPersonGame/index.html', mode: '100644', type: 'blob', sha: htmlBlob.sha }],
+    tree: [{ path: 'famous-person/index.html', mode: '100644', type: 'blob', sha: htmlBlob.sha }],
   });
   const newCommit = await gh(env, 'POST', 'git/commits', {
     message: `Admin: rename person "${currentName}" → "${newName}"`,
@@ -593,7 +597,7 @@ async function atomicFPGCommit(env, personName, imgPath, imgBytes, localPath, pe
   const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
   const treeSha    = commitData.tree.sha;
 
-  const htmlFile   = await gh(env, 'GET', 'contents/FamousPersonGame/index.html');
+  const htmlFile   = await gh(env, 'GET', 'contents/famous-person/index.html');
   const htmlNow    = base64ToUtf8(htmlFile.content.replace(/\s/g, ''));
   let   htmlPatched;
 
@@ -622,7 +626,7 @@ async function atomicFPGCommit(env, personName, imgPath, imgBytes, localPath, pe
       encoding: 'base64',
     });
     treeEntries.push({
-      path: 'FamousPersonGame/index.html',
+      path: 'famous-person/index.html',
       mode: '100644',
       type: 'blob',
       sha:  htmlBlob.sha,
@@ -654,7 +658,7 @@ async function atomicFPGRemoveCommit(env, personName, repoPath) {
   ];
 
   if (personName) {
-    const htmlFile  = await gh(env, 'GET', 'contents/FamousPersonGame/index.html');
+    const htmlFile  = await gh(env, 'GET', 'contents/famous-person/index.html');
     const htmlNow   = base64ToUtf8(htmlFile.content.replace(/\s/g, ''));
     const htmlPatch = patchImg(htmlNow, personName, '');
     if (htmlPatch !== htmlNow) {
@@ -662,7 +666,7 @@ async function atomicFPGRemoveCommit(env, personName, repoPath) {
         content:  utf8ToBase64(htmlPatch),
         encoding: 'base64',
       });
-      treeEntries.push({ path: 'FamousPersonGame/index.html', mode: '100644', type: 'blob', sha: htmlBlob.sha });
+      treeEntries.push({ path: 'famous-person/index.html', mode: '100644', type: 'blob', sha: htmlBlob.sha });
     }
   }
 
@@ -686,7 +690,7 @@ async function atomicManifestSaveCommit(env, game, folder, filename, repoPath, i
   const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
   const treeSha    = commitData.tree.sha;
 
-  const manifestRepoPath = `${game}/${game}/manifest.json`;
+  const manifestRepoPath = `${gameFolder(game)}/manifest.json`;
   const manifestFile     = await gh(env, 'GET', `contents/${manifestRepoPath}`);
   const manifest         = JSON.parse(base64ToUtf8(manifestFile.content.replace(/\s/g, '')));
 
@@ -739,7 +743,7 @@ async function atomicManifestRemoveCommit(env, game, folder, filename, repoPath)
   const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
   const treeSha    = commitData.tree.sha;
 
-  const manifestRepoPath = `${game}/${game}/manifest.json`;
+  const manifestRepoPath = `${gameFolder(game)}/manifest.json`;
   const manifestFile     = await gh(env, 'GET', `contents/${manifestRepoPath}`);
   const manifest         = JSON.parse(base64ToUtf8(manifestFile.content.replace(/\s/g, '')));
 
@@ -783,7 +787,7 @@ async function atomicManifestRemoveCommit(env, game, folder, filename, repoPath)
 
 async function atomicTopicRenameCommit(env, game, fromFolder, toFolder, action) {
   const imgSourcePrefix = `${game}/${game}/_Resources/_imgSource`;
-  const manifestRepoPath = `${game}/${game}/manifest.json`;
+  const manifestRepoPath = `${gameFolder(game)}/manifest.json`;
 
   // 1. Get HEAD
   const refData    = await gh(env, 'GET', `git/ref/heads/${env.GITHUB_BRANCH || 'main'}`);
@@ -930,7 +934,7 @@ async function handleFFCSaveImage(request, env) {
 
   const base         = filename.replace(/\.[^.]+$/, '');
   const saveFilename = `${base}.${ext}`;
-  const repoPath     = `FFCGame/FFCGame/_Resources/_imgSource/items/${saveFilename}`;
+  const repoPath     = `ffc/_Resources/_imgSource/items/${saveFilename}`;
   const localPath    = repoPath;
 
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -959,9 +963,9 @@ async function handleFFCRemoveImage(request, env) {
   const { localPath } = body;
   if (!localPath) return jsonError('localPath is required', 400);
 
-  const repoPath = localPath.startsWith('FFCGame/FFCGame/_Resources/')
+  const repoPath = localPath.startsWith('ffc/_Resources/')
     ? localPath
-    : `FFCGame/FFCGame/_Resources/_imgSource/items/${localPath.split('/').pop()}`;
+    : `ffc/_Resources/_imgSource/items/${localPath.split('/').pop()}`;
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
@@ -984,7 +988,7 @@ async function atomicFFCSaveCommit(env, itemsObj) {
   const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
   const treeSha    = commitData.tree.sha;
 
-  const itemsRepoPath = 'FFCGame/FFCGame/items.json';
+  const itemsRepoPath = 'ffc/items.json';
   const itemsBlob = await gh(env, 'POST', 'git/blobs', {
     content:  utf8ToBase64(JSON.stringify(itemsObj, null, 2) + '\n'),
     encoding: 'base64',
@@ -1110,7 +1114,7 @@ async function handleIVSaveImage(request, env) {
 
   const base         = filename.replace(/\.[^.]+$/, '');
   const saveFilename = `${base}.${ext}`;
-  const repoPath     = `IntraverbalGame/IntraverbalGame/_Resources/_imgSource/items/${saveFilename}`;
+  const repoPath     = `intraverbal/_Resources/_imgSource/items/${saveFilename}`;
   const localPath    = repoPath;
 
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -1139,9 +1143,9 @@ async function handleIVRemoveImage(request, env) {
   const { localPath } = body;
   if (!localPath) return jsonError('localPath is required', 400);
 
-  const repoPath = localPath.startsWith('IntraverbalGame/IntraverbalGame/_Resources/')
+  const repoPath = localPath.startsWith('intraverbal/_Resources/')
     ? localPath
-    : `IntraverbalGame/IntraverbalGame/_Resources/_imgSource/items/${localPath.split('/').pop()}`;
+    : `intraverbal/_Resources/_imgSource/items/${localPath.split('/').pop()}`;
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
@@ -1192,7 +1196,7 @@ async function atomicSeqSaveCommit(env, symObj) {
   const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
   const treeSha    = commitData.tree.sha;
 
-  const repoPath = 'SequencesGame/SequencesGame/symbols.json';
+  const repoPath = 'sequences/symbols.json';
   const blob = await gh(env, 'POST', 'git/blobs', {
     content:  utf8ToBase64(JSON.stringify(symObj, null, 2) + '\n'),
     encoding: 'base64',
@@ -1219,7 +1223,7 @@ async function atomicIVSaveCommit(env, itemsObj) {
   const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
   const treeSha    = commitData.tree.sha;
 
-  const itemsRepoPath = 'IntraverbalGame/IntraverbalGame/items.json';
+  const itemsRepoPath = 'intraverbal/items.json';
   const itemsBlob = await gh(env, 'POST', 'git/blobs', {
     content:  utf8ToBase64(JSON.stringify(itemsObj, null, 2) + '\n'),
     encoding: 'base64',
@@ -1391,19 +1395,19 @@ async function doBatchCommit(env, branch, resolved) {
   // Read needed index files in parallel
   const fetches = {};
   for (const game of manifestGames) {
-    fetches[`m_${game}`] = gh(env, 'GET', `contents/${game}/${game}/manifest.json`)
+    fetches[`m_${game}`] = gh(env, 'GET', `contents/${gameFolder(game)}/manifest.json`)
       .then(f => JSON.parse(base64ToUtf8(f.content.replace(/\s/g, ''))));
   }
   if (needFPG) {
-    fetches['fpg'] = gh(env, 'GET', 'contents/FamousPersonGame/index.html')
+    fetches['fpg'] = gh(env, 'GET', 'contents/famous-person/index.html')
       .then(f => base64ToUtf8(f.content.replace(/\s/g, '')));
   }
   if (needFFC) {
-    fetches['ffc'] = gh(env, 'GET', 'contents/FFCGame/FFCGame/items.json')
+    fetches['ffc'] = gh(env, 'GET', 'contents/ffc/items.json')
       .then(f => JSON.parse(base64ToUtf8(f.content.replace(/\s/g, ''))));
   }
   if (needIV) {
-    fetches['iv'] = gh(env, 'GET', 'contents/IntraverbalGame/IntraverbalGame/items.json')
+    fetches['iv'] = gh(env, 'GET', 'contents/intraverbal/items.json')
       .then(f => JSON.parse(base64ToUtf8(f.content.replace(/\s/g, ''))));
   }
 
@@ -1433,7 +1437,7 @@ async function doBatchCommit(env, branch, resolved) {
       if (game === 'FamousPersonGame') {
         const base         = filename.replace(/\.[^.]+$/, '');
         const saveFilename = `${base}.${ext}`;
-        const repoPath     = `FamousPersonGame/_Resources/_imgSource/images/${saveFilename}`;
+        const repoPath     = `famous-person/_Resources/_imgSource/images/${saveFilename}`;
         const localPath    = `_Resources/_imgSource/images/${saveFilename}`;
         treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: blobSha });
         if (op.personName) fpgHtml = patchImg(fpgHtml, op.personName, localPath);
@@ -1459,7 +1463,7 @@ async function doBatchCommit(env, branch, resolved) {
       const { id, filename } = op;
       const base         = filename.replace(/\.[^.]+$/, '');
       const saveFilename = `${base}.${ext}`;
-      const repoPath     = `FFCGame/FFCGame/_Resources/_imgSource/items/${saveFilename}`;
+      const repoPath     = `ffc/_Resources/_imgSource/items/${saveFilename}`;
       treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: blobSha });
       if (ffcItems) {
         const item = (ffcItems.items || []).find(i => i.id === id);
@@ -1473,7 +1477,7 @@ async function doBatchCommit(env, branch, resolved) {
       const { id, filename, imageIdx } = op;
       const base         = filename.replace(/\.[^.]+$/, '');
       const saveFilename = `${base}.${ext}`;
-      const repoPath     = `IntraverbalGame/IntraverbalGame/_Resources/_imgSource/items/${saveFilename}`;
+      const repoPath     = `intraverbal/_Resources/_imgSource/items/${saveFilename}`;
       treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: blobSha });
       if (ivItems) {
         const item = (ivItems.items || []).find(i => i.id === id);
@@ -1512,7 +1516,7 @@ async function doBatchCommit(env, branch, resolved) {
     } else if (t === 'remove-image') {
       const { game, folder, filename, personName } = op;
       if (game === 'FamousPersonGame') {
-        const repoPath = `FamousPersonGame/_Resources/_imgSource/images/${filename}`;
+        const repoPath = `famous-person/_Resources/_imgSource/images/${filename}`;
         treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: null });
         if (personName && fpgHtml) fpgHtml = patchImg(fpgHtml, personName, '');
       } else if (manifests[game]) {
@@ -1534,14 +1538,14 @@ async function doBatchCommit(env, branch, resolved) {
 
     } else if (t === 'ffc-remove') {
       const { id, filename } = op;
-      const repoPath = `FFCGame/FFCGame/_Resources/_imgSource/items/${filename}`;
+      const repoPath = `ffc/_Resources/_imgSource/items/${filename}`;
       treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: null });
       if (ffcItems) { ffcItems.items = (ffcItems.items || []).filter(i => i.id !== id); ffcModified = true; }
       results[idx] = { ok: true };
 
     } else if (t === 'iv-remove') {
       const { id, filename, imageIdx } = op;
-      const repoPath = `IntraverbalGame/IntraverbalGame/_Resources/_imgSource/items/${filename}`;
+      const repoPath = `intraverbal/_Resources/_imgSource/items/${filename}`;
       treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: null });
       if (ivItems) {
         const item = (ivItems.items || []).find(i => i.id === id);
@@ -1562,25 +1566,25 @@ async function doBatchCommit(env, branch, resolved) {
     const blob = await gh(env, 'POST', 'git/blobs', {
       content: utf8ToBase64(JSON.stringify(m, null, 2) + '\n'), encoding: 'base64',
     });
-    treeEntries.push({ path: `${game}/${game}/manifest.json`, mode: '100644', type: 'blob', sha: blob.sha });
+    treeEntries.push({ path: `${gameFolder(game)}/manifest.json`, mode: '100644', type: 'blob', sha: blob.sha });
   }
   if (fpgHtml && fpgHtml !== fpgOrig) {
     const blob = await gh(env, 'POST', 'git/blobs', { content: utf8ToBase64(fpgHtml), encoding: 'base64' });
-    treeEntries.push({ path: 'FamousPersonGame/index.html', mode: '100644', type: 'blob', sha: blob.sha });
+    treeEntries.push({ path: 'famous-person/index.html', mode: '100644', type: 'blob', sha: blob.sha });
   }
   if (ffcItems && ffcModified) {
     ffcItems.generated = ts;
     const blob = await gh(env, 'POST', 'git/blobs', {
       content: utf8ToBase64(JSON.stringify(ffcItems, null, 2) + '\n'), encoding: 'base64',
     });
-    treeEntries.push({ path: 'FFCGame/FFCGame/items.json', mode: '100644', type: 'blob', sha: blob.sha });
+    treeEntries.push({ path: 'ffc/items.json', mode: '100644', type: 'blob', sha: blob.sha });
   }
   if (ivItems && ivModified) {
     ivItems.generated = ts;
     const blob = await gh(env, 'POST', 'git/blobs', {
       content: utf8ToBase64(JSON.stringify(ivItems, null, 2) + '\n'), encoding: 'base64',
     });
-    treeEntries.push({ path: 'IntraverbalGame/IntraverbalGame/items.json', mode: '100644', type: 'blob', sha: blob.sha });
+    treeEntries.push({ path: 'intraverbal/items.json', mode: '100644', type: 'blob', sha: blob.sha });
   }
 
   if (!treeEntries.length) return results; // display-name-only batch with no actual changes
@@ -1602,7 +1606,7 @@ async function doBatchCommit(env, branch, resolved) {
 
 // ─── Admin: update-facts ─────────────────────────────────────────────────────
 
-const FPG_HTML_PATH  = 'FamousPersonGame/index.html';
+const FPG_HTML_PATH  = 'famous-person/index.html';
 const FPG_TARGET     = 4;
 // Rich fact objects are ~10x larger than the old plain strings, so batches are
 // smaller and max_tokens larger than the legacy string-generation path.

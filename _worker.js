@@ -1,3 +1,18 @@
+// Old URL → new URL prefix mapping (longest match first within each group)
+const LEGACY_PREFIXES = [
+  ['/IDMatchGame/IDMatchGame',             '/matching/'],
+  ['/MatchingMarket/MatchingMarket',        '/market/'],
+  ['/NameIDGame/NameIDGame',               '/receptive/'],
+  ['/HickoryDickoryDockGame/HickoryDickoryDockGame', '/clock/'],
+  ['/FFCGame/FFCGame',                     '/ffc/'],
+  ['/IntraverbalGame/IntraverbalGame',     '/intraverbal/'],
+  ['/ThinkOrSayGame/ThinkOrSayGame',       '/think-or-say/'],
+  ['/SequencesGame/SequencesGame',         '/sequences/'],
+  ['/PatternPackCo/PatternPackCo',         '/patterns/'],
+  ['/EmotionID',                           '/emotions/'],
+  ['/FamousPersonGame',                    '/famous-person/'],
+];
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -8,6 +23,13 @@ export default {
 
     if (url.pathname.startsWith('/api/')) {
       return env.API_WORKER.fetch(request);
+    }
+
+    for (const [old, next] of LEGACY_PREFIXES) {
+      if (url.pathname === old || url.pathname.startsWith(old + '/')) {
+        const rest = url.pathname.slice(old.length).replace(/^\//, '');
+        return Response.redirect(new URL(next + rest, request.url).href, 301);
+      }
     }
 
     const response = await env.ASSETS.fetch(request);

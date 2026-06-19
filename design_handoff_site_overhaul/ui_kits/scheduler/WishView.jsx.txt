@@ -1,0 +1,57 @@
+/* WishView — the AI "Wish It" composer (violet surface). Goal-driven schedule
+   rework: a structured natural-language request, then proposed solutions. */
+const wsh = window.NoOutcomeABADesignSystem_08ed95;
+
+function WishView() {
+  const { Button, Card, StatusPill } = wsh;
+  const [sent, setSent] = React.useState(false);
+  const [wish, setWish] = React.useState('Give Jordan B. Friday afternoons off and keep everyone compliant.');
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '16px 18px', maxWidth: 720, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+        <span style={{ fontSize: 20 }}>✨</span>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: 'var(--text-primary)' }}>Wish It</h2>
+      </div>
+      <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.5 }}>
+        Describe the outcome you want. The assistant reworks the schedule with conflict-safe moves — you review every change before it lands.
+      </p>
+
+      <div style={{ background: 'var(--violet-50)', border: '1px solid var(--violet-200)', borderRadius: 'var(--radius-md)', padding: 12, margin: '12px 0' }}>
+        <textarea
+          value={wish}
+          onChange={e => setWish(e.target.value)}
+          style={{ width: '100%', boxSizing: 'border-box', minHeight: 64, resize: 'vertical', border: '1px solid var(--violet-200)', borderRadius: 'var(--radius-md)', padding: 10, fontFamily: 'var(--font-sans)', fontSize: 14, color: 'var(--text-primary)' }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+          <Button variant="ai" icon="✨" onClick={() => setSent(true)}>Generate options</Button>
+        </div>
+      </div>
+
+      {sent && (
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '4px 0 10px' }}>Proposed — 2 options</div>
+          {[
+            { id: 's1', title: 'Move 2 sessions to Thursday', detail: 'Jordan B. Friday PM cleared · Mia L. supervision preserved', grade: 'met' },
+            { id: 's2', title: 'Reassign Friday to Priya N.', detail: 'Jordan B. Friday PM cleared · adds 4h to Priya N.', grade: 'pace' },
+          ].map(s => (
+            <Card key={s.id} padding="sm" style={{ marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)', flex: 1 }}>{s.title}</span>
+                <StatusPill intent={s.grade}>{s.grade === 'met' ? 'No conflicts' : 'Trade-off'}</StatusPill>
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 10px' }}>{s.detail}</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <Button size="sm" variant="ai">Accept</Button>
+                <Button size="sm" variant="secondary">Customize</Button>
+                <Button size="sm" variant="ghost">Reject</Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+window.WishView = WishView;

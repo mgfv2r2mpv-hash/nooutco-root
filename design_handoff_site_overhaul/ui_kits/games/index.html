@@ -1,0 +1,220 @@
+<!-- handoff-reference group="Games" viewport="1200x900" name="Games hub — visual upgrade" subtitle="nooutco.me/games recreated in the No Outcome system: Atkinson, ensō, sage, skill-grouped" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Games & Activities — No Outcome ABA</title>
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans);
+    background: #eef1ea;
+    color: var(--slate-900);
+    padding: 28px 22px 56px;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; }
+
+  /* Header */
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 26px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand img { width: 44px; height: 44px; }
+  .brand .name { font-size: 16px; font-weight: 800; color: var(--sage-700); letter-spacing: -0.01em; line-height: 1.1; }
+  .brand .name span { color: var(--sage-500); }
+  .brand .sub { font-size: 11px; font-weight: 600; color: var(--slate-500); }
+  .home { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border: 1.5px solid var(--sage-200); border-radius: var(--radius-md); background: transparent; color: var(--sage-700); font-size: 13px; font-weight: 600; text-decoration: none; transition: background .15s var(--ease-standard); }
+  .home:hover { background: #e2e8da; }
+
+  /* Title block + mode toggle */
+  .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 8px; flex-wrap: wrap; }
+  h1 { font-size: 30px; font-weight: 800; color: var(--slate-900); letter-spacing: -0.4px; }
+  .lede { font-size: 14px; color: var(--slate-600); margin-top: 4px; max-width: 560px; line-height: 1.5; }
+  .toggle { display: inline-flex; gap: 2px; padding: 2px; background: var(--sage-100); border-radius: var(--radius-md); flex-shrink: 0; }
+  .toggle button { border: none; background: transparent; padding: 7px 14px; font-family: var(--font-sans); font-size: 13px; font-weight: 700; color: var(--sage-700); border-radius: var(--radius-sm); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .toggle button.on { background: var(--sage-500); color: #fff; box-shadow: var(--shadow-sm); }
+  .toggle .hint { font-size: 11px; color: var(--slate-500); font-weight: 600; align-self: center; padding: 0 8px 0 2px; }
+
+  /* Domain sections */
+  .domain { margin-top: 30px; }
+  .domain-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .domain-head .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .domain-head .t { font-size: 11px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--slate-600); }
+  .domain-head .rule { flex: 1; height: 1px; background: var(--slate-200); }
+
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+
+  .card { position: relative; display: flex; align-items: center; gap: 16px; padding: 18px 20px 18px 22px; background: var(--surface-card); border: 1px solid var(--sage-200); border-radius: var(--radius-lg); text-decoration: none; color: inherit; overflow: hidden; transition: border-color .15s var(--ease-standard), box-shadow .15s var(--ease-standard), transform .15s var(--ease-standard); }
+  .card .accent { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+  .card:hover { border-color: var(--sage-500); box-shadow: 0 6px 18px rgba(55,69,40,.10); transform: translateY(-1px); }
+  .card .icon { font-size: 38px; line-height: 1; flex-shrink: 0; width: 52px; text-align: center; }
+  .card .label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--slate-500); margin-bottom: 3px; }
+  .card .title { font-size: 17px; font-weight: 800; color: var(--slate-900); margin-bottom: 3px; }
+  .card .desc { font-size: 13px; color: var(--slate-600); line-height: 1.4; }
+  .card .arrow { margin-left: auto; color: var(--sage-500); font-size: 18px; opacity: 0; transition: opacity .15s, transform .15s; }
+  .card:hover .arrow { opacity: 1; transform: translateX(2px); }
+
+  /* Planned section cards */
+  .planned .card { background: #f6f8f3; border-style: dashed; border-color: var(--slate-300); }
+  .planned .card:hover { transform: none; box-shadow: none; border-color: var(--slate-400); }
+  .planned .icon { filter: grayscale(0.2); opacity: 0.92; }
+  .pill-soon { position: absolute; top: 12px; right: 12px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--slate-500); background: var(--slate-100); border-radius: var(--radius-pill); padding: 3px 8px; }
+  .planned-note { font-size: 13px; color: var(--slate-600); line-height: 1.5; margin: 2px 0 14px; max-width: 620px; }
+  .planned-note b { color: var(--sage-700); }
+  .planned .card > div { padding-right: 100px; }
+  .planned .rankctl { position: absolute; top: 14px; right: 14px; display: inline-flex; gap: 4px; z-index: 1; }
+  .planned .rankctl button { width: 27px; height: 27px; border-radius: 8px; border: 1.5px solid var(--sage-200); background: var(--white); font-family: var(--font-sans); font-size: 12px; font-weight: 800; color: var(--slate-400); cursor: pointer; transition: transform .1s, background .15s, border-color .15s, color .15s; }
+  .planned .rankctl button:hover { border-color: var(--sage-500); color: var(--sage-700); }
+  .planned .rankctl button:active { transform: scale(.92); }
+  .planned .rankctl .r1.on { background: #f6c945; border-color: #e0ad1f; color: #5a4500; }
+  .planned .rankctl .r2.on { background: #d3d8dc; border-color: #aeb6bc; color: #333a3f; }
+  .planned .rankctl .r3.on { background: #e7ab78; border-color: #cd8c54; color: #5a3318; }
+  .planned .pts { margin-top: 10px; font-size: 11px; font-weight: 700; color: var(--slate-400); display: flex; align-items: center; gap: 5px; }
+  .planned .pts .n { color: var(--sage-700); }
+  .planned .pts .medal { font-size: 13px; }
+  .planned .lead { display: none; align-items: center; gap: 3px; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--amber-700); background: var(--amber-100); border-radius: var(--radius-pill); padding: 2px 7px; margin-left: 6px; vertical-align: middle; }
+
+  /* Footer */
+  .foot { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--slate-200); font-size: 12px; color: var(--slate-500); line-height: 1.6; max-width: 680px; }
+  .foot a { color: var(--sage-600); text-decoration: none; font-weight: 600; }
+  .badge-mode { display: inline-block; font-size: 11px; font-weight: 700; color: var(--sage-700); background: var(--sage-100); border-radius: var(--radius-pill); padding: 2px 9px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">
+      <img src="assets/logo-mark.svg" alt="No Outcome ABA">
+      <div>
+        <div class="name">No Outcome <span>ABA</span></div>
+        <div class="sub">Games & Activities</div>
+      </div>
+    </div>
+    <a class="home" href="#">← nooutco.me</a>
+  </div>
+
+  <div class="head">
+    <div>
+      <h1>Games & Activities</h1>
+      <p class="lede">Quick, low-prep teaching activities grouped by skill. Every game runs in the browser — nothing to print, cut, or laminate.</p>
+    </div>
+    <div class="toggle" role="group" aria-label="Visual mode">
+      <span class="hint">Display</span>
+      <button class="on" type="button">○ Simple</button>
+      <button type="button">✦ Visual</button>
+    </div>
+  </div>
+
+  <!-- Discrimination -->
+  <section class="domain">
+    <div class="domain-head"><span class="dot" style="background:var(--sage-500)"></span><span class="t">Discrimination Skills</span><span class="rule"></span></div>
+    <div class="grid">
+      <a class="card" href="#"><span class="accent" style="background:var(--sage-500)"></span><span class="icon">🧩</span><div><div class="label">Discrimination</div><div class="title">Matching Game</div><div class="desc">Find the matching image from a set of choices.</div></div><span class="arrow">→</span></a>
+      <a class="card" href="#"><span class="accent" style="background:var(--sage-500)"></span><span class="icon">🛒</span><div><div class="label">Discrimination</div><div class="title">Matching Market</div><div class="desc">Help the customer — match their request from the shelves.</div></div><span class="arrow">→</span></a>
+      <a class="card" href="#"><span class="accent" style="background:var(--sage-500)"></span><span class="icon">🔁</span><div><div class="label">Discrimination</div><div class="title">Sequences & Patterns</div><div class="desc">Continue the pattern — pick the next item(s).</div></div><span class="arrow">→</span></a>
+      <a class="card" href="#"><span class="accent" style="background:var(--sage-500)"></span><span class="icon">🎁</span><div><div class="label">Discrimination</div><div class="title">Pattern Pack Co.</div><div class="desc">Finish packing the box — complete the pattern on the line.</div></div><span class="arrow">→</span></a>
+    </div>
+  </section>
+
+  <!-- Receptive Language -->
+  <section class="domain">
+    <div class="domain-head"><span class="dot" style="background:#6d93a4"></span><span class="t">Receptive Language</span><span class="rule"></span></div>
+    <div class="grid">
+      <a class="card" href="#"><span class="accent" style="background:#6d93a4"></span><span class="icon">🔤</span><div><div class="label">Receptive Language</div><div class="title">Receptive Words</div><div class="desc">Find by name — build receptive identification.</div></div><span class="arrow">→</span></a>
+      <a class="card" href="EmotionID/index.html"><span class="accent" style="background:#6d93a4"></span><span class="icon">🙂</span><div><div class="label">Receptive Language · Tact</div><div class="title">Emotion ID</div><div class="desc">Receptive field + expressive single-stimulus tact — clinician SD configurable & saved.</div></div><span class="arrow">→</span></a>
+      <a class="card" href="#"><span class="accent" style="background:#6d93a4"></span><span class="icon">🕰️</span><div><div class="label">Receptive Language</div><div class="title">Hickory Dickory Dock</div><div class="desc">Pictures circle a cuckoo clock that strikes the hour.</div></div><span class="arrow">→</span></a>
+    </div>
+  </section>
+
+  <!-- Concept / Verbal / Social / Conversation -->
+  <section class="domain">
+    <div class="domain-head"><span class="dot" style="background:var(--violet-600)"></span><span class="t">Concept · Verbal · Social</span><span class="rule"></span></div>
+    <div class="grid">
+      <a class="card" href="#"><span class="accent" style="background:var(--violet-600)"></span><span class="icon">🧠</span><div><div class="label">Concept Skills</div><div class="title">Feature · Function · Class</div><div class="desc">Identify objects by feature, function, or category.</div></div><span class="arrow">→</span></a>
+      <a class="card" href="#"><span class="accent" style="background:var(--amber-500)"></span><span class="icon">💬</span><div><div class="label">Verbal Behavior</div><div class="title">Intraverbal Game</div><div class="desc">Fill-in-the-blank and carrier-phrase practice.</div></div><span class="arrow">→</span></a>
+      <a class="card" href="#"><span class="accent" style="background:var(--sky-500)"></span><span class="icon">💭</span><div><div class="label">Social Skills</div><div class="title">Think or Say?</div><div class="desc">Decide if a thought stays inside or is kind to say.</div></div><span class="arrow">→</span></a>
+      <a class="card" href="#"><span class="accent" style="background:var(--orange-600)"></span><span class="icon">🤩</span><div><div class="label">Conversation · Advanced</div><div class="title">Famous Person</div><div class="desc">Reciprocal conversation practice.</div></div><span class="arrow">→</span></a>
+    </div>
+  </section>
+
+  <!-- Planned — replaces print & laminate -->
+  <section class="domain planned">
+    <div class="domain-head"><span class="dot" style="background:var(--slate-400)"></span><span class="t">Planned — replaces print & laminate</span><span class="rule"></span></div>
+    <p class="planned-note">The staples a busy BCBA still prints, cuts, and laminates — <b>rebuilt as living, reusable activities</b>. Same supports, zero lamination, instantly editable per learner. <b>Rank your top three</b> — tap 1, 2, or 3 on the features you most want built next. Change your picks anytime.</p>
+    <div class="grid" id="plannedGrid">
+      <div class="card" data-id="vs"><div class="rankctl" role="group" aria-label="Rank this feature"><button class="r1" data-r="1" title="Your 1st choice">1</button><button class="r2" data-r="2" title="Your 2nd choice">2</button><button class="r3" data-r="3" title="Your 3rd choice">3</button></div><span class="icon">📅</span><div><div class="label">Schedules <span class="lead">★ Most wanted</span></div><div class="title">Visual Schedule</div><div class="desc">Drag-to-order first/next routines with check-off.</div><div class="pts"><span class="medal"></span><b class="n">0</b> pts</div></div></div>
+      <div class="card" data-id="ft"><div class="rankctl" role="group" aria-label="Rank this feature"><button class="r1" data-r="1" title="Your 1st choice">1</button><button class="r2" data-r="2" title="Your 2nd choice">2</button><button class="r3" data-r="3" title="Your 3rd choice">3</button></div><span class="icon">➡️</span><div><div class="label">Antecedent Support <span class="lead">★ Most wanted</span></div><div class="title">First–Then Board</div><div class="desc">Pair a demand with a chosen reinforcer, visually.</div><div class="pts"><span class="medal"></span><b class="n">0</b> pts</div></div></div>
+      <div class="card" data-id="te"><div class="rankctl" role="group" aria-label="Rank this feature"><button class="r1" data-r="1" title="Your 1st choice">1</button><button class="r2" data-r="2" title="Your 2nd choice">2</button><button class="r3" data-r="3" title="Your 3rd choice">3</button></div><span class="icon">🪙</span><div><div class="label">Reinforcement <span class="lead">★ Most wanted</span></div><div class="title">Token Economy</div><div class="desc">Configurable token boards that travel with the client.</div><div class="pts"><span class="medal"></span><b class="n">0</b> pts</div></div></div>
+      <div class="card" data-id="cb"><div class="rankctl" role="group" aria-label="Rank this feature"><button class="r1" data-r="1" title="Your 1st choice">1</button><button class="r2" data-r="2" title="Your 2nd choice">2</button><button class="r3" data-r="3" title="Your 3rd choice">3</button></div><span class="icon">🗣️</span><div><div class="label">Communication · AAC <span class="lead">★ Most wanted</span></div><div class="title">Communication Board</div><div class="desc">Core-word & requesting visuals — point or tap to communicate; travels with the learner.</div><div class="pts"><span class="medal"></span><b class="n">0</b> pts</div></div></div>
+      <div class="card" data-id="sc"><div class="rankctl" role="group" aria-label="Rank this feature"><button class="r1" data-r="1" title="Your 1st choice">1</button><button class="r2" data-r="2" title="Your 2nd choice">2</button><button class="r3" data-r="3" title="Your 3rd choice">3</button></div><span class="icon">🗂️</span><div><div class="label">Concept Skills <span class="lead">★ Most wanted</span></div><div class="title">Sorting & Categories</div><div class="desc">Drag items into categories — features, function, class.</div><div class="pts"><span class="medal"></span><b class="n">0</b> pts</div></div></div>
+      <div class="card" data-id="fd"><div class="rankctl" role="group" aria-label="Rank this feature"><button class="r1" data-r="1" title="Your 1st choice">1</button><button class="r2" data-r="2" title="Your 2nd choice">2</button><button class="r3" data-r="3" title="Your 3rd choice">3</button></div><span class="icon">✋</span><div><div class="label">Listener Skills <span class="lead">★ Most wanted</span></div><div class="title">Following Directions</div><div class="desc">1–3 step receptive directions with built-in prompts.</div><div class="pts"><span class="medal"></span><b class="n">0</b> pts</div></div></div>
+    </div>
+  </section>
+
+  <p class="foot">
+    Currently showing the <span class="badge-mode">Simple</span> display — calm, low-arousal, distraction-free. <b>Visual</b> mode adds illustration and celebratory feedback for learners who benefit from it; the teaching target never changes between modes.<br>
+    Source-available under a non-commercial license with exemptions for clinicians, educators, researchers, and non-profits. Built so the science fits without eating anyone's evenings.
+  </p>
+
+</div>
+<script>
+(function () {
+  const RANK_KEY = 'noaba.games.ranks.v1';
+  const CLIENT_KEY = 'noaba.clientId';
+  // ── LIVE cross-user tallies: deploy prioritize-worker/ (see its README) and
+  //    set API_BASE to your Worker URL. Empty string = local demo (this browser). ──
+  const API_BASE = '';
+  const WEIGHT = { 1:3, 2:2, 3:1 };
+  const MEDAL = { 1:'\ud83e\udd47', 2:'\ud83e\udd48', 3:'\ud83e\udd49' };
+  const BASE = { cb:142, vs:120, te:98, ft:76, fd:64, sc:41 }; // demo seed only
+
+  let myRanks = {};
+  try { myRanks = JSON.parse(localStorage.getItem(RANK_KEY)) || {}; } catch (e) {}
+  let serverPts = null;
+
+  function saveRanks(){ try { localStorage.setItem(RANK_KEY, JSON.stringify(myRanks)); } catch(e){} }
+  function clientId(){ let id=localStorage.getItem(CLIENT_KEY); if(!id){ id='c'+Math.random().toString(36).slice(2)+Date.now().toString(36); try{ localStorage.setItem(CLIENT_KEY,id); }catch(e){} } return id; }
+
+  const grid = document.getElementById('plannedGrid');
+  if (!grid) return;
+  const cards = Array.prototype.slice.call(grid.querySelectorAll('.card'));
+
+  function cardRank(id){ for (const r of [1,2,3]) if (myRanks[r]===id) return r; return 0; }
+  function points(id){ if (serverPts) return serverPts[id]||0; let p = BASE[id]||0; const r = cardRank(id); if (r) p += WEIGHT[r]; return p; }
+
+  function setRank(id, r){
+    if (myRanks[r] === id) { delete myRanks[r]; }
+    else { for (const k of [1,2,3]) if (myRanks[k]===id) delete myRanks[k]; myRanks[r] = id; }
+    saveRanks(); if (API_BASE) postBallot(); paintAll(); rerank();
+  }
+
+  function paintCard(card){
+    const id = card.dataset.id, mine = cardRank(id);
+    card.querySelectorAll('.rankctl button').forEach(b => b.classList.toggle('on', +b.dataset.r === mine));
+    card.querySelector('.n').textContent = points(id);
+    card.querySelector('.medal').textContent = mine ? MEDAL[mine] : '';
+  }
+  function paintAll(){ cards.forEach(paintCard); }
+
+  function rerank(){
+    const arr = cards.slice().sort((a,b) => points(b.dataset.id) - points(a.dataset.id));
+    arr.forEach((c,i) => { grid.appendChild(c); const l = c.querySelector('.lead'); if (l) l.style.display = i===0 ? 'inline-flex' : 'none'; });
+  }
+
+  async function loadTallies(){ if (!API_BASE) return; try { const res = await fetch(API_BASE + '/api/votes'); const j = await res.json(); serverPts = j.points || null; paintAll(); rerank(); } catch(e){} }
+  async function postBallot(){ if (!API_BASE) return; try { await fetch(API_BASE + '/api/votes', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ clientId: clientId(), ballot: { first: myRanks[1]||null, second: myRanks[2]||null, third: myRanks[3]||null } }) }); await loadTallies(); } catch(e){} }
+
+  cards.forEach(card => {
+    card.querySelectorAll('.rankctl button').forEach(b => {
+      b.addEventListener('click', e => { e.preventDefault(); setRank(card.dataset.id, +b.dataset.r); });
+    });
+  });
+
+  paintAll(); rerank(); loadTallies();
+})();
+</script>
+</body>
+</html>
