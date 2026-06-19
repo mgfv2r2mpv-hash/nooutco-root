@@ -1,5 +1,5 @@
 node_modules/
 dist/
-!CPRAnalyzer/dist/
+!cpr/dist/
 .DS_Store
 .wrangler/

@@ -1,3 +1,15 @@
+// Old URL → new URL prefix mapping (specific paths before their parent prefix)
+const LEGACY_PREFIXES = [
+  ['/NoteDrafter/BTNotes',       '/notes/bt/'],
+  ['/NoteDrafter/SupNotes',      '/notes/sup/'],
+  ['/NoteDrafter/PTNotes',       '/notes/parent/'],
+  ['/NoteDrafter/AssessNotes',   '/notes/assess/'],
+  ['/NoteDrafter/SAPGoalsDrafter', '/notes/sap/'],
+  ['/NoteDrafter',               '/notes/'],
+  ['/SessionFlow',               '/session-flow/'],
+  ['/CPRAnalyzer',               '/cpr/'],
+];
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -9,6 +21,13 @@ export default {
 
     if (url.pathname === "/api/suggest" && request.method === "POST") {
       return handleSuggest(request, env);
+    }
+
+    for (const [old, next] of LEGACY_PREFIXES) {
+      if (url.pathname === old || url.pathname.startsWith(old + '/')) {
+        const rest = url.pathname.slice(old.length).replace(/^\//, '');
+        return Response.redirect(new URL(next + rest, request.url).href, 301);
+      }
     }
 
     const response = await env.ASSETS.fetch(request);

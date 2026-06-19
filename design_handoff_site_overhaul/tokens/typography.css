@@ -1,0 +1,62 @@
+/* ============================================================================
+   TYPOGRAPHY — No Outcome ABA
+   The app is information-dense and mobile/iPad-first, so the working scale runs
+   tight (13px body). Display sizes are provided for marketing, decks, and
+   foundation cards. Atkinson Hyperlegible is the brand face (see fonts.css).
+   ========================================================================== */
+
+:root {
+  /* ---- Families ---------------------------------------------------------- */
+  --font-sans: 'Atkinson Hyperlegible', -apple-system, BlinkMacSystemFont,
+               'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'Atkinson Hyperlegible Mono', ui-monospace, SFMono-Regular,
+               Menlo, Consolas, monospace;
+
+  /* ---- Size scale -------------------------------------------------------- */
+  /* In-app working sizes (kept literal to the shipped UI) */
+  --text-2xs: 10px;  /* eyebrow labels, legend keys, calendar chip meta */
+  --text-xs:  11px;  /* badge text, micro-meta */
+  --text-sm:  12px;  /* secondary labels, helper text */
+  --text-base:13px;  /* DEFAULT body / button label */
+  --text-md:  14px;  /* form inputs, comfortable body */
+  --text-lg:  16px;  /* detail titles, section headings */
+  --text-xl:  18px;  /* view headings */
+
+  /* Display sizes — marketing, decks, hero, specimen cards */
+  --text-2xl: 22px;
+  --text-3xl: 28px;
+  --text-4xl: 36px;
+  --text-5xl: 48px;
+
+  /* ---- Weights ----------------------------------------------------------- */
+  /* NB: Atkinson Hyperlegible ships only 400 + 700. 500/600 fall back to the
+     nearest available weight; treat 700 as the true "bold" of the brand. */
+  --weight-normal:   400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+  --weight-heavy:    800;
+
+  /* ---- Line heights ------------------------------------------------------ */
+  --leading-tight: 1.2;   /* titles, chips */
+  --leading-snug:  1.35;
+  --leading-normal:1.5;   /* running text */
+
+  /* ---- Letter spacing ---------------------------------------------------- */
+  --tracking-tight: -0.01em;
+  --tracking-normal: 0;
+  --tracking-label:  0.06em;  /* UPPERCASE eyebrows / type labels */
+  --tracking-wide:   0.03em;  /* uppercase status pills */
+
+  /* ---- Semantic text roles ---------------------------------------------- */
+  --font-body:    var(--weight-normal) var(--text-base)/var(--leading-normal) var(--font-sans);
+  --font-label:   var(--weight-semibold) var(--text-sm)/var(--leading-tight) var(--font-sans);
+  --font-eyebrow-size: var(--text-2xs);
+}
+
+/* Base element defaults — applied when consumers opt in by using these tokens.
+   Kept minimal so the system never fights a host app's reset. */
+:root {
+  color: var(--text-body);
+  font-family: var(--font-sans);
+}
