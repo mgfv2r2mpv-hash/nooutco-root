@@ -112,6 +112,59 @@
     }
     .meta a { color: #7d9068; text-decoration: none; }
     .meta a:hover { text-decoration: underline; }
+
+    /* ── Voting section ─────────────────────────────────────────────── */
+    .vote-section {
+      max-width: 680px;
+      margin-top: 36px;
+      padding-top: 24px;
+      border-top: 1px solid #dde0d8;
+    }
+    .vote-heading {
+      font-size: 18px; font-weight: 800; color: #1a1a1a;
+      margin-bottom: 4px; letter-spacing: -0.3px;
+    }
+    .vote-subtext { font-size: 13px; color: #666; margin-bottom: 18px; line-height: 1.45; }
+    .vote-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+    }
+    @media (max-width: 560px) { .vote-grid { grid-template-columns: 1fr; } }
+    .vcard {
+      position: relative; padding: 14px 14px 12px 16px;
+      background: #f6f8f3; border: 1px dashed #c8ccc3; border-radius: 10px;
+    }
+    .vcard-icon  { font-size: 26px; line-height: 1; margin-bottom: 5px; }
+    .vcard-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: #888; margin-bottom: 1px;
+    }
+    .vcard-title { font-size: 15px; font-weight: 800; color: #1a1a1a; margin-bottom: 2px; }
+    .vcard-desc  { font-size: 12px; color: #666; line-height: 1.4; }
+    .vcard-footer {
+      display: flex; align-items: center; justify-content: space-between; margin-top: 10px;
+    }
+    .vcard-pts { font-size: 11px; font-weight: 700; color: #888; }
+    .vcard-pts .n { color: #4d6b3a; }
+    .vcard-pts .medal { font-size: 13px; }
+    .rankctl { display: inline-flex; gap: 4px; }
+    .rankctl button {
+      width: 27px; height: 27px; border-radius: 8px;
+      border: 1.5px solid #d0d4cc; background: #fff;
+      font-size: 12px; font-weight: 800; color: #aaa; cursor: pointer;
+      transition: transform 0.1s, background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .rankctl button:hover { border-color: #7d9068; color: #4d6b3a; }
+    .rankctl button:active { transform: scale(0.92); }
+    .rankctl .r1.on { background: #f6c945; border-color: #e0ad1f; color: #5a4500; }
+    .rankctl .r2.on { background: #d3d8dc; border-color: #aeb6bc; color: #333a3f; }
+    .rankctl .r3.on { background: #e7ab78; border-color: #cd8c54; color: #5a3318; }
+    .vote-foot {
+      display: flex; align-items: center; justify-content: space-between; margin-top: 14px;
+    }
+    .vote-note { font-size: 12px; color: #aaa; line-height: 1.5; }
+    .vote-admin-link { font-size: 11px; color: #ccc; text-decoration: none; }
+    .vote-admin-link:hover { color: #888; text-decoration: underline; }
+    .vote-loading { font-size: 13px; color: #aaa; padding: 20px 0; grid-column: 1 / -1; }
   </style>
 </head>
 <body>
@@ -137,6 +190,18 @@
     </a>
   </div>
 
+  <section class="vote-section" aria-labelledby="vote-heading">
+    <h2 class="vote-heading" id="vote-heading">What Gets Built Next</h2>
+    <p class="vote-subtext">Rank your top 3 — 1st gets 3 pts, 2nd gets 2, 3rd gets 1. Tallied community-wide.</p>
+    <div id="voteGrid" class="vote-grid" aria-live="polite">
+      <p class="vote-loading">Loading…</p>
+    </div>
+    <div class="vote-foot">
+      <p class="vote-note">Votes update for everyone who visits.</p>
+      <a class="vote-admin-link" href="/admin/">Admin</a>
+    </div>
+  </section>
+
   <section class="support">
     <p class="support-heading">Support This Project</p>
     <p class="support-text">One BCBA, built on nights and weekends. Free forever, no ads, no paywalls. If it's helped your team, a coffee keeps it going.</p>
@@ -155,5 +220,130 @@
     <a href="https://github.com/mgfv2r2mpv-hash/nooutco-root/blob/main/LICENSE">LICENSE</a>
     and <a href="https://github.com/mgfv2r2mpv-hash/nooutco-root#readme">mission</a> on GitHub.
   </p>
+<script>
+/* ── Voting section ──────────────────────────────────────────────────── */
+(async function () {
+  const RANK_KEY = 'noaba.root.ranks.v1';
+  const MEDAL = { 1: '🥇', 2: '🥈', 3: '🥉' };
+
+  let myRanks = {};
+  try { myRanks = JSON.parse(localStorage.getItem(RANK_KEY)) || {}; } catch (e) {}
+
+  function saveRanks() {
+    try { localStorage.setItem(RANK_KEY, JSON.stringify(myRanks)); } catch (e) {}
+  }
+
+  function cardRank(id) {
+    for (const r of [1, 2, 3]) if (myRanks[r] === id) return r;
+    return 0;
+  }
+
+  let serverCards = [];
+  const grid = document.getElementById('voteGrid');
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function renderCards() {
+    grid.innerHTML = '';
+    const visible = serverCards.filter(c => c.status !== 'archived' && c.status !== 'hidden');
+
+    visible.sort((a, b) => {
+      const myScore = r => myRanks[r] === a.id ? (4 - r) : 0;
+      const sa = a.score + myScore(1) + myScore(2) + myScore(3);
+      const msb = r => myRanks[r] === b.id ? (4 - r) : 0;
+      const sb = b.score + msb(1) + msb(2) + msb(3);
+      return sb - sa;
+    });
+
+    if (!visible.length) {
+      grid.innerHTML = '<p class="vote-loading">No features to vote on yet.</p>';
+      return;
+    }
+
+    for (const card of visible) {
+      const mine = cardRank(card.id);
+      const el = document.createElement('div');
+      el.className = 'vcard';
+      el.dataset.id = card.id;
+      el.innerHTML =
+        '<div class="vcard-icon">' + escHtml(card.icon) + '</div>' +
+        '<div class="vcard-label">' + escHtml(card.label) + '</div>' +
+        '<div class="vcard-title">' + escHtml(card.title) + '</div>' +
+        '<div class="vcard-desc">'  + escHtml(card.desc)  + '</div>' +
+        '<div class="vcard-footer">' +
+          '<div class="vcard-pts">' +
+            '<span class="medal">' + (mine ? MEDAL[mine] : '') + '</span>' +
+            ' <b class="n">' + card.score + '</b> pts' +
+          '</div>' +
+          '<div class="rankctl" role="group" aria-label="Rank this feature">' +
+            '<button class="r1' + (mine === 1 ? ' on' : '') + '" data-r="1" title="My 1st choice">1</button>' +
+            '<button class="r2' + (mine === 2 ? ' on' : '') + '" data-r="2" title="My 2nd choice">2</button>' +
+            '<button class="r3' + (mine === 3 ? ' on' : '') + '" data-r="3" title="My 3rd choice">3</button>' +
+          '</div>' +
+        '</div>';
+
+      el.querySelectorAll('.rankctl button').forEach(function (b) {
+        b.addEventListener('click', function (e) {
+          e.preventDefault();
+          setRank(card.id, +b.dataset.r);
+        });
+      });
+      grid.appendChild(el);
+    }
+  }
+
+  async function setRank(id, r) {
+    const oldRankForId   = cardRank(id);
+    const oldIdForRank   = myRanks[r];
+    const ops = [];
+
+    if (oldRankForId === r) {
+      ops.push({ cardId: id, rank: r, delta: -1 });
+      delete myRanks[r];
+    } else {
+      if (oldRankForId) {
+        ops.push({ cardId: id, rank: oldRankForId, delta: -1 });
+        delete myRanks[oldRankForId];
+      }
+      if (oldIdForRank && oldIdForRank !== id) {
+        ops.push({ cardId: oldIdForRank, rank: r, delta: -1 });
+      }
+      ops.push({ cardId: id, rank: r, delta: 1 });
+      myRanks[r] = id;
+    }
+
+    saveRanks();
+    await Promise.all(ops.map(function (op) { return sendVote(op.cardId, op.rank, op.delta); }));
+    await loadCards();
+  }
+
+  async function sendVote(cardId, rank, delta) {
+    try {
+      await fetch('/api/vote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardId: cardId, rank: rank, delta: delta }),
+      });
+    } catch (e) {}
+  }
+
+  async function loadCards() {
+    try {
+      var res = await fetch('/api/cards');
+      var data = await res.json();
+      serverCards = data.cards || [];
+    } catch (e) {
+      serverCards = [];
+    }
+    renderCards();
+  }
+
+  loadCards();
+})();
+</script>
 </body>
 </html>

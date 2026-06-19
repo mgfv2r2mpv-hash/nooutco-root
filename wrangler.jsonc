@@ -1,0 +1,10 @@
+{
+  "name": "root-nooutco-me",
+  "pages_build_output_dir": ".",
+  "kv_namespaces": [
+    {
+      "binding": "VOTE_DATA",
+      "id": "955ceb7270204f4a86d8229b2c7dc2a7"
+    }
+  ]
+}

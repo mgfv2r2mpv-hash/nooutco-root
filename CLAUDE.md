@@ -2,12 +2,31 @@
 
 ## Project Overview
 
-Root landing page at **nooutco.me**. Simple static HTML page linking out to games.nooutco.me and tools.nooutco.me. No Worker, no build step.
+Root landing page at **nooutco.me**. Links to games and tools. Hosts the community feature-voting board and a password-protected admin area for prompt generation and card management.
 
 ## Tech Stack
 
-- **Frontend:** Single `index.html` — vanilla HTML/CSS, no dependencies beyond Ko-fi widget script
+- **Frontend:** `index.html` + `admin/index.html` — vanilla HTML/CSS/JS
+- **Backend:** Cloudflare Pages Worker (`_worker.js`) — `/api/cards`, `/api/vote`, `/api/admin/*`
+- **Storage:** KV namespace `VOTE_DATA` (id: `955ceb7270204f4a86d8229b2c7dc2a7`) — vote tallies, card status, custom cards
+- **AI:** Anthropic API via `ANTHRO_KEY` — feature starter prompts and new-enhancement analysis
 - **Hosting:** Cloudflare Pages, deploys directly from `main`
+
+## Worker Secrets (set in Cloudflare dashboard for `root-nooutco-me`)
+
+| Secret | Purpose |
+|---|---|
+| `ADMIN_SECRET` | Admin area password |
+| `ANTHRO_KEY` | Anthropic API key for feature-starter and new-enhancement tools |
+
+## KV Namespace
+
+`VOTE_DATA` must be bound to the `root-nooutco-me` Pages project in the Cloudflare dashboard:
+Settings → Functions → KV namespace bindings → Add `VOTE_DATA` → `955ceb7270204f4a86d8229b2c7dc2a7`
+
+## Pages Worker Note
+
+`_worker.js` is the active Pages worker. `favicon-worker.js` is a legacy file (standalone Cloudflare Worker previously deployed separately). If the Cloudflare dashboard has a custom worker file path configured, update it to `_worker.js`.
 
 ## Collaboration Protocol
 
@@ -23,6 +42,7 @@ This repo commits directly to `main` (no separate dev branch).
 
 ## Code Standards
 
-- Keep it minimal — this is a landing page, not an app
-- No secrets, no Worker, no build step
-- Match the visual style of tokens.css used across the other nooutco.me properties (hardcoded equivalents since tokens.css is not shared here)
+- Vanilla HTML/CSS/JS — no framework, no build step
+- No cleartext secrets — Worker secrets via Cloudflare dashboard only
+- No PHI — admin tools generate prompts only; clinician owns final output
+- Match root visual style (hardcoded colors, no tokens.css)
