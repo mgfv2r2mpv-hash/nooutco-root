@@ -42,6 +42,7 @@ This repo commits directly to `main` (no separate dev branch).
 
 ## Code Standards
 
-- Keep it minimal — this is a landing page, not an app
-- No secrets, no Worker, no build step
-- Match the visual style of tokens.css used across the other nooutco.me properties (hardcoded equivalents since tokens.css is not shared here)
+- Vanilla HTML/CSS/JS — no framework, no build step
+- No cleartext secrets — Worker secrets via Cloudflare dashboard only
+- No PHI — admin tools generate prompts only; clinician owns final output
+- Match root visual style (hardcoded colors, no tokens.css)
