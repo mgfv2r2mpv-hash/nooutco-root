@@ -19,7 +19,7 @@ export default {
       .on('head', {
         element(head) {
           head.prepend(
-            '<link rel="icon" type="image/png" href="https://nooutco.me/N-O.png">',
+            '<link rel="icon" type="image/svg+xml" href="https://nooutco.me/favicon.svg"><link rel="icon" type="image/png" href="https://nooutco.me/N-O.png">',
             { html: true }
           );
         },
