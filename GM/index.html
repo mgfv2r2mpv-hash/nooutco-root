@@ -323,6 +323,8 @@
       status.textContent = 'Writing a batch of conversation sets — this may take ~30–60 s…';
       status.className   = 'run-status';
       try {
+        // Populate a small, reviewable batch per click. Keeps each run well
+        // under the Worker time limit and lets staff review before continuing.
         const res  = await fetch('/api/admin/update-facts', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
