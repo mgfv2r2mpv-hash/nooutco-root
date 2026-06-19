@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emotion ID — No Outcome ABA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="../tokens.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-sans);
+      background: #eef1ea;
+      color: var(--slate-900);
+      padding: 22px 18px 44px;
+      min-height: 100vh;
+    }
+    .wrap { max-width: 760px; margin: 0 auto; }
+
+    /* ── Topbar ─────────────────────────────────────────────────────── */
+    .topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .topbar img { width: 38px; height: 38px; }
+    .topbar .name { font-size: 14px; font-weight: 800; color: var(--sage-700); line-height: 1.1; }
+    .topbar .name span { color: var(--sage-500); }
+    .topbar .sub { font-size: 11px; font-weight: 600; color: var(--slate-500); }
+    .topbar .spacer { flex: 1; }
+    .back {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border: 1.5px solid var(--sage-200);
+      border-radius: var(--radius-md); background: transparent;
+      color: var(--sage-700); font-size: 13px; font-weight: 600;
+      text-decoration: none;
+      transition: background var(--duration-fast) var(--ease-standard);
+    }
+    .back:hover { background: #e2e8da; }
+    .iconbtn {
+      width: 36px; height: 36px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 1px solid var(--sage-200); border-radius: var(--radius-md);
+      background: var(--white); cursor: pointer; font-size: 16px; color: var(--sage-700);
+      transition: background var(--duration-fast);
+    }
+    .iconbtn:hover { background: var(--sage-50); }
+    .iconbtn.on { background: var(--sage-500); color: #fff; border-color: var(--sage-500); }
+
+    /* ── Mode + tally row ───────────────────────────────────────────── */
+    .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+    .seg { display: inline-flex; gap: 2px; padding: 2px; background: var(--sage-100); border-radius: var(--radius-md); }
+    .seg button {
+      border: none; background: transparent; padding: 8px 16px;
+      font-family: var(--font-sans); font-size: 13px; font-weight: 700;
+      color: var(--sage-700); border-radius: var(--radius-sm); cursor: pointer;
+    }
+    .seg button.on { background: var(--sage-500); color: #fff; }
+    .tally {
+      margin-left: auto; display: flex; align-items: center; gap: 10px;
+      font-size: 12px; color: var(--slate-600);
+    }
+    .tally b { color: var(--slate-900); font-size: 14px; }
+    .tally .pct { font-weight: 800; color: var(--sage-700); }
+    .linkbtn {
+      background: none; border: none; color: var(--slate-500);
+      font-size: 11px; font-weight: 600; cursor: pointer;
+      text-decoration: underline; font-family: var(--font-sans);
+    }
+    .linkbtn:hover { color: var(--sage-700); }
+
+    /* ── SD banner ──────────────────────────────────────────────────── */
+    .sd {
+      background: var(--white); border: 1px solid var(--sage-200);
+      border-left: 4px solid var(--sage-500); border-radius: var(--radius-lg);
+      padding: 14px 18px; margin-bottom: 16px;
+    }
+    .sd .k {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.07em;
+      text-transform: uppercase; color: var(--slate-500); margin-bottom: 4px;
+    }
+    .sd .txt { font-size: 22px; font-weight: 800; color: var(--slate-900); letter-spacing: -0.2px; }
+    .sd .hint { font-size: 11.5px; color: var(--slate-500); margin-top: 5px; }
+
+    /* ── Stage ──────────────────────────────────────────────────────── */
+    .stage {
+      background: var(--white); border: 1px solid var(--sage-200);
+      border-radius: var(--radius-xl); padding: 22px;
+      box-shadow: 0 2px 10px rgba(55, 69, 40, .06);
+    }
+
+    /* Receptive field */
+    .field { display: grid; gap: 14px; }
+    .face {
+      aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+      font-size: 64px;
+      background: var(--sage-50); border: 2px solid var(--sage-200);
+      border-radius: var(--radius-xl); cursor: pointer; user-select: none;
+      transition: transform .12s var(--ease-standard), border-color .12s, background .12s;
+    }
+    .face:hover { border-color: #9fb18a; }
+    .face.tinted { background: var(--tint-bg); border-color: var(--tint-bd); }
+    .face.correct { border-color: var(--phase-open-500) !important; background: var(--phase-open-bg) !important; }
+    .face.wrong   { border-color: var(--red-500) !important; background: var(--red-50) !important; }
+
+    @keyframes pop { 0%{transform:scale(1)} 45%{transform:scale(1.07)} 100%{transform:scale(1)} }
+    body.visual .face.correct { animation: pop .35s var(--ease-standard); }
+
+    /* Token strip — only shown in Visual mode */
+    .tokens {
+      display: none; align-items: center; gap: 8px; margin-top: 14px;
+      padding: 10px 14px; background: var(--sage-50); border: 1px solid var(--sage-200);
+      border-radius: var(--radius-lg);
+    }
+    body.visual .tokens { display: flex; }
+    .tokens .tok {
+      width: 30px; height: 30px; display: inline-flex; align-items: center;
+      justify-content: center; font-size: 18px; border-radius: 50%;
+      background: var(--white); border: 1.5px dashed var(--sage-200);
+    }
+    .tokens .tok.on { border-style: solid; border-color: var(--amber-300); background: var(--amber-50); animation: pop .35s var(--ease-standard); }
+    .tokens .tok-label { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--sage-700); }
+
+    /* Expressive single */
+    .single { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+    .single .bigface {
+      width: 180px; height: 180px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 120px; background: var(--sage-50); border: 2px solid var(--sage-200);
+      border-radius: var(--radius-2xl);
+    }
+    .score { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .score button {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 11px 18px; font-family: var(--font-sans); font-size: 14px; font-weight: 700;
+      border-radius: var(--radius-md); border: 1px solid transparent; cursor: pointer;
+    }
+    .s-correct { background: var(--phase-open-bg); color: #0f6e56; border-color: #9fe1cb; }
+    .s-correct:hover { background: #d2efe4; }
+    .s-prompt  { background: var(--phase-ease-bg); color: #854f0b; border-color: #fac775; }
+    .s-prompt:hover  { background: #f4e3c4; }
+    .s-wrong   { background: var(--red-50); color: var(--red-700); border-color: var(--red-300); }
+    .s-wrong:hover   { background: #fde0e0; }
+    .reveal { font-size: 12px; color: var(--slate-500); }
+    .reveal b { color: var(--slate-800); }
+
+    /* ── Settings panel ─────────────────────────────────────────────── */
+    .panel {
+      display: none; margin-bottom: 16px;
+      background: var(--white); border: 1px solid var(--sage-200);
+      border-radius: var(--radius-lg); padding: 18px 20px;
+    }
+    .panel.show { display: block; }
+    .panel h3 {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.07em;
+      text-transform: uppercase; color: var(--slate-500); margin-bottom: 10px;
+    }
+    .panel .blk { margin-bottom: 16px; }
+    .panel .blk:last-child { margin-bottom: 0; }
+    .lbl { font-size: 12px; font-weight: 700; color: var(--slate-700); margin-bottom: 7px; display: block; }
+    .chips { display: flex; flex-wrap: wrap; gap: 7px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px;
+      font-size: 13px; font-weight: 600; border: 1.5px solid var(--slate-300);
+      border-radius: var(--radius-pill); background: var(--white); color: var(--slate-600);
+      cursor: pointer; user-select: none;
+    }
+    .chip.on { border-color: var(--sage-500); background: var(--sage-50); color: var(--sage-700); }
+    .chip .em { font-size: 16px; }
+    .sdrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    select, .panel input[type=text] {
+      padding: 8px 10px; font-family: var(--font-sans); font-size: 13px;
+      border: 1px solid var(--slate-300); border-radius: var(--radius-md);
+      background: var(--white); color: var(--slate-900);
+    }
+    .panel input[type=text] { flex: 1; min-width: 200px; }
+    select:focus, .panel input:focus { outline: none; border-color: var(--sage-500); }
+    .sizes { display: inline-flex; gap: 2px; padding: 2px; background: var(--sage-100); border-radius: var(--radius-md); }
+    .sizes button {
+      border: none; background: transparent; width: 34px; padding: 6px 0;
+      font-family: var(--font-sans); font-size: 13px; font-weight: 700;
+      color: var(--sage-700); border-radius: var(--radius-sm); cursor: pointer;
+    }
+    .sizes button.on { background: var(--sage-500); color: #fff; }
+    .saved { font-size: 11px; color: var(--sage-600); font-weight: 600; }
+
+    .foot { margin-top: 16px; font-size: 11px; color: var(--slate-400); line-height: 1.5; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <img src="../logo-mark.svg" alt="No Outcome ABA" width="38" height="38">
+    <div>
+      <div class="name">No Outcome <span>ABA</span></div>
+      <div class="sub">Emotion ID</div>
+    </div>
+    <div class="spacer"></div>
+    <a class="back" href="../">← Games</a>
+    <button class="iconbtn" id="visualBtn" title="Visual mode" aria-label="Toggle Visual mode">✦</button>
+    <button class="iconbtn" id="gearBtn" title="Settings" aria-label="Settings">⚙️</button>
+  </div>
+
+  <!-- Settings panel -->
+  <div class="panel" id="panel">
+    <div class="blk">
+      <h3>Emotions in this set</h3>
+      <div class="chips" id="setChips"></div>
+    </div>
+    <div class="blk">
+      <span class="lbl">Receptive field size</span>
+      <div class="sizes" id="sizes">
+        <button data-n="2">2</button>
+        <button data-n="3">3</button>
+        <button data-n="4">4</button>
+        <button data-n="6">6</button>
+      </div>
+    </div>
+    <div class="blk">
+      <span class="lbl">Receptive SD <span style="font-weight:500;color:var(--slate-400)">— listener · use {emotion}</span></span>
+      <div class="sdrow">
+        <select id="sdRPreset">
+          <option value="Touch {emotion}">Touch {emotion}</option>
+          <option value="Point to {emotion}">Point to {emotion}</option>
+          <option value="Find {emotion}">Find {emotion}</option>
+          <option value="Show me {emotion}">Show me {emotion}</option>
+          <option value="__custom">Custom…</option>
+        </select>
+        <input type="text" id="sdRText" value="Touch {emotion}">
+      </div>
+    </div>
+    <div class="blk">
+      <span class="lbl">Expressive SD <span style="font-weight:500;color:var(--slate-400)">— tact · single stimulus</span></span>
+      <div class="sdrow">
+        <select id="sdEPreset">
+          <option value="How does {pronoun} feel?">How does {pronoun} feel?</option>
+          <option value="How is {pronoun} feeling?">How is {pronoun} feeling?</option>
+          <option value="What feeling?">What feeling?</option>
+          <option value="Tell me the feeling.">Tell me the feeling.</option>
+          <option value="__custom">Custom…</option>
+        </select>
+        <input type="text" id="sdEText" value="How does {pronoun} feel?">
+      </div>
+    </div>
+    <div class="blk">
+      <span class="lbl">Pronoun <span style="font-weight:500;color:var(--slate-400)">— fills {pronoun} in the expressive SD</span></span>
+      <div class="seg" id="pron">
+        <button data-v="he">He</button>
+        <button data-v="she">She</button>
+        <button data-v="they">They</button>
+        <button data-v="rotate">Rotate</button>
+      </div>
+    </div>
+    <div class="saved" id="savedMsg">Settings save automatically.</div>
+  </div>
+
+  <!-- Mode + tally -->
+  <div class="controls">
+    <div class="seg" id="mode">
+      <button class="on" data-v="receptive">Receptive</button>
+      <button data-v="expressive">Expressive</button>
+    </div>
+    <div class="tally">
+      <span><b id="tCorrect">0</b>/<span id="tTotal">0</span></span>
+      <span class="pct" id="tPct">—</span>
+      <button class="linkbtn" id="copyBtn">Copy data</button>
+      <button class="linkbtn" id="resetBtn">Reset</button>
+    </div>
+  </div>
+
+  <!-- SD banner -->
+  <div class="sd">
+    <div class="k" id="sdRole">Deliver this SD</div>
+    <div class="txt" id="sdText">—</div>
+    <div class="hint" id="sdHint"></div>
+  </div>
+
+  <!-- Stage -->
+  <div class="stage" id="stage"></div>
+  <div class="tokens" id="tokens" aria-hidden="true"></div>
+
+  <p class="foot">Faces shown as emoji for demo; swap in your own photo/illustration set per learner. No client data is stored — only trial counts live in this browser session.</p>
+
+</div>
+
+<script>
+(function () {
+  const EMOTIONS = [
+    { key:'happy',     label:'Happy',     face:'😀', color:'#f5b301' },
+    { key:'sad',       label:'Sad',       face:'😢', color:'#4f86c6' },
+    { key:'angry',     label:'Angry',     face:'😠', color:'#e0552f' },
+    { key:'scared',    label:'Scared',    face:'😨', color:'#8b5cf6' },
+    { key:'surprised', label:'Surprised', face:'😮', color:'#ef9f27' },
+    { key:'tired',     label:'Tired',     face:'😴', color:'#6d93a4' },
+    { key:'calm',      label:'Calm',      face:'😌', color:'#1d9e75' },
+    { key:'excited',   label:'Excited',   face:'🤩', color:'#ec4899' },
+    { key:'sick',      label:'Sick',      face:'🤒', color:'#84a98c' },
+    { key:'silly',     label:'Silly',     face:'😜', color:'#f97316' },
+  ];
+  const byKey = k => EMOTIONS.find(e => e.key === k);
+  const KEY = 'noaba.emotionID.v1';
+
+  /* ── Config (persisted) ──────────────────────────────────────────── */
+  const defaults = { set:['happy','sad','angry','scared'], size:4, sdR:'Touch {emotion}', sdE:'How does {pronoun} feel?', pronoun:'rotate', visual:false };
+  let cfg = Object.assign({}, defaults);
+  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s) cfg = Object.assign(cfg, s); } catch(e) {}
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch(e) {} }
+
+  /* ── Session tally (not persisted — counts only, no PHI) ─────────── */
+  const stats = {};
+  let total = 0, correct = 0;
+  function logTrial(key, result) {
+    const s = stats[key] || (stats[key] = { c:0, p:0, w:0, lv:{gestural:0, partial:0, model:0} });
+    total++;
+    if (result === 'correct') { s.c++; correct++; }
+    else if (result === 'wrong') { s.w++; }
+    else { s.p++; if (s.lv[result] != null) s.lv[result]++; }
+    renderTally();
+  }
+  function renderTally() {
+    document.getElementById('tCorrect').textContent = correct;
+    document.getElementById('tTotal').textContent = total;
+    document.getElementById('tPct').textContent = total ? Math.round(correct / total * 100) + '%' : '—';
+  }
+
+  /* ── Elements ────────────────────────────────────────────────────── */
+  const stage   = document.getElementById('stage');
+  const sdText  = document.getElementById('sdText');
+  const sdRole  = document.getElementById('sdRole');
+  const sdHint  = document.getElementById('sdHint');
+
+  let mode = 'receptive';
+  let current = null;
+  let pronounIdx = 0;
+  const PRONOUNS = ['he','she','they'];
+  function applyPronoun(t, p) { return t.replace('{pronoun}', p || 'he'); }
+
+  function activeSet() {
+    const list = EMOTIONS.filter(e => cfg.set.includes(e.key));
+    return list.length ? list : EMOTIONS.slice(0,4);
+  }
+  function sample(arr, n) {
+    const a = arr.slice(); const out = [];
+    while (a.length && out.length < n) out.push(a.splice(Math.floor(Math.random() * a.length), 1)[0]);
+    return out;
+  }
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  function newTrial() {
+    const set = activeSet();
+    const target = pick(set);
+    if (mode === 'receptive') {
+      const n = Math.min(cfg.size, set.length);
+      const distractors = sample(set.filter(e => e.key !== target.key), n - 1);
+      const choices = sample([target, ...distractors], n);
+      current = { target, choices };
+      renderReceptive();
+    } else {
+      current = { target };
+      renderExpressive();
+    }
+  }
+
+  function renderReceptive() {
+    sdRole.textContent = 'Deliver this SD';
+    sdText.textContent = cfg.sdR.replace('{emotion}', current.target.label.toLowerCase());
+    sdHint.textContent = 'Then let the learner select. Tap is auto-scored.';
+    const n = current.choices.length;
+    const cols = n <= 2 ? 2 : n <= 4 ? 2 : 3;
+    stage.innerHTML = '<div class="field" style="grid-template-columns:repeat(' + cols + ',1fr)"></div>';
+    const field = stage.firstChild;
+    let answered = false;
+    current.choices.forEach(e => {
+      const d = document.createElement('div');
+      d.className = 'face' + (cfg.visual ? ' tinted' : '');
+      d.textContent = e.face;
+      d.title = e.label;
+      if (cfg.visual) {
+        d.style.setProperty('--tint-bg', e.color + '22');
+        d.style.setProperty('--tint-bd', e.color + '66');
+      }
+      d.addEventListener('click', () => {
+        if (answered) return;
+        answered = true;
+        const right = e.key === current.target.key;
+        d.classList.add(right ? 'correct' : 'wrong');
+        if (!right) {
+          field.querySelectorAll('.face').forEach((el, i) => {
+            if (current.choices[i].key === current.target.key) el.classList.add('correct');
+          });
+        }
+        logTrial(current.target.key, right ? 'correct' : 'wrong');
+        if (right) reward();
+        setTimeout(newTrial, right ? 650 : 1100);
+      });
+      field.appendChild(d);
+    });
+  }
+
+  function renderExpressive() {
+    current.pronoun = cfg.pronoun === 'rotate' ? PRONOUNS[pronounIdx++ % 3] : cfg.pronoun;
+    sdRole.textContent = 'Ask the learner';
+    sdText.textContent = applyPronoun(cfg.sdE, current.pronoun);
+    sdHint.textContent = 'Single stimulus — score the response and prompt level.';
+    const visualStyle = cfg.visual
+      ? ' style="background:' + current.target.color + '1f;border-color:' + current.target.color + '66;box-shadow:0 0 0 6px ' + current.target.color + '14"'
+      : '';
+    stage.innerHTML =
+      '<div class="single">' +
+        '<div class="bigface"' + visualStyle + '>' + current.target.face + '</div>' +
+        '<div class="reveal">Target: <b>' + current.target.label + '</b></div>' +
+        '<div class="score">' +
+          '<button class="s-correct" data-r="correct">✓ Independent</button>' +
+          '<button class="s-prompt"  data-r="gestural">Gestural</button>' +
+          '<button class="s-prompt"  data-r="partial">Partial</button>' +
+          '<button class="s-prompt"  data-r="model">Model</button>' +
+          '<button class="s-wrong"   data-r="wrong">✗ Incorrect</button>' +
+        '</div>' +
+      '</div>';
+    stage.querySelectorAll('.score button').forEach(b => {
+      b.addEventListener('click', () => {
+        logTrial(current.target.key, b.dataset.r);
+        if (b.dataset.r === 'correct') reward();
+        newTrial();
+      });
+    });
+  }
+
+  /* ── Settings UI ─────────────────────────────────────────────────── */
+  const setChips = document.getElementById('setChips');
+  EMOTIONS.forEach(e => {
+    const c = document.createElement('button');
+    c.className = 'chip' + (cfg.set.includes(e.key) ? ' on' : '');
+    c.innerHTML = '<span class="em">' + e.face + '</span>' + e.label;
+    c.addEventListener('click', () => {
+      const i = cfg.set.indexOf(e.key);
+      if (i >= 0) { if (cfg.set.length <= 2) return; cfg.set.splice(i, 1); c.classList.remove('on'); }
+      else { cfg.set.push(e.key); c.classList.add('on'); }
+      save(); newTrial();
+    });
+    setChips.appendChild(c);
+  });
+
+  const sizes = document.getElementById('sizes');
+  function paintSizes() { sizes.querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.n === cfg.size)); }
+  sizes.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    cfg.size = +b.dataset.n; paintSizes(); save(); if (mode === 'receptive') newTrial();
+  });
+  paintSizes();
+
+  const pron = document.getElementById('pron');
+  function paintPron() { pron.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === cfg.pronoun)); }
+  pron.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    cfg.pronoun = b.dataset.v; paintPron(); save(); if (mode === 'expressive') refreshSD();
+  });
+  paintPron();
+
+  function wireSD(presetId, textId, key) {
+    const preset = document.getElementById(presetId), text = document.getElementById(textId);
+    text.value = cfg[key];
+    const match = [...preset.options].find(o => o.value === cfg[key]);
+    preset.value = match ? cfg[key] : '__custom';
+    preset.addEventListener('change', () => {
+      if (preset.value !== '__custom') { text.value = preset.value; cfg[key] = preset.value; save(); refreshSD(); }
+    });
+    text.addEventListener('input', () => {
+      cfg[key] = text.value;
+      const m = [...preset.options].find(o => o.value === text.value);
+      preset.value = m ? text.value : '__custom';
+      save(); refreshSD();
+    });
+  }
+  wireSD('sdRPreset', 'sdRText', 'sdR');
+  wireSD('sdEPreset', 'sdEText', 'sdE');
+
+  function refreshSD() {
+    if (!current) return;
+    if (mode === 'receptive') sdText.textContent = cfg.sdR.replace('{emotion}', current.target.label.toLowerCase());
+    else sdText.textContent = applyPronoun(cfg.sdE, cfg.pronoun === 'rotate' ? (current.pronoun || 'he') : cfg.pronoun);
+  }
+
+  /* ── Mode + toolbar ──────────────────────────────────────────────── */
+  document.getElementById('mode').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    document.querySelectorAll('#mode button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on'); mode = b.dataset.v; newTrial();
+  });
+
+  document.getElementById('gearBtn').addEventListener('click', function () {
+    document.getElementById('panel').classList.toggle('show');
+    this.classList.toggle('on');
+  });
+
+  const visualBtn = document.getElementById('visualBtn');
+  function paintVisual() {
+    document.body.classList.toggle('visual', cfg.visual);
+    visualBtn.classList.toggle('on', cfg.visual);
+  }
+  visualBtn.addEventListener('click', () => {
+    cfg.visual = !cfg.visual; save(); paintVisual();
+    if (current) { mode === 'receptive' ? renderReceptive() : renderExpressive(); }
+  });
+  paintVisual();
+
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    for (const k in stats) delete stats[k];
+    total = 0; correct = 0; filled = 0;
+    renderTokens(false); renderTally();
+  });
+
+  document.getElementById('copyBtn').addEventListener('click', async () => {
+    const rows = Object.keys(stats).map(k => {
+      const s = stats[k]; const t = s.c + s.p + s.w;
+      let line = byKey(k).label + ': ' + s.c + '/' + t + ' independent';
+      if (s.p) {
+        const lv = Object.keys(s.lv).filter(x => s.lv[x]).map(x => x + ' ' + s.lv[x]).join(', ');
+        line += ' · prompted ' + s.p + (lv ? ' (' + lv + ')' : '');
+      }
+      if (s.w) line += ' · ' + s.w + ' incorrect';
+      return line;
+    });
+    const text = [
+      'Emotion ID — session summary',
+      'Overall: ' + correct + '/' + total + ' (' + (total ? Math.round(correct / total * 100) : 0) + '%)',
+      ...rows
+    ].join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      const b = document.getElementById('copyBtn');
+      b.textContent = 'Copied ✓';
+      setTimeout(() => b.textContent = 'Copy data', 1200);
+    } catch(e) {}
+  });
+
+  /* ── Token reward strip ──────────────────────────────────────────── */
+  const tokensEl = document.getElementById('tokens');
+  let filled = 0;
+  const TOKEN_MAX = 5;
+  function renderTokens(celebrate) {
+    if (!tokensEl) return;
+    let html = '';
+    for (let i = 0; i < TOKEN_MAX; i++) {
+      html += '<span class="tok' + (i < filled ? ' on' : '') + '">' + (i < filled ? '⭐' : '') + '</span>';
+    }
+    html += '<span class="tok-label">' + (celebrate ? '🎉 Great work!' : 'Tokens earned') + '</span>';
+    tokensEl.innerHTML = html;
+  }
+  function reward() {
+    if (!cfg.visual) return;
+    filled++;
+    if (filled >= TOKEN_MAX) { renderTokens(true); filled = 0; setTimeout(() => renderTokens(false), 1400); }
+    else renderTokens(false);
+  }
+  renderTokens(false);
+  renderTally();
+  newTrial();
+})();
+</script>
+</body>
+</html>

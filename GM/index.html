@@ -4,6 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Game Master — nooutco.me</title>
+  <script>
+    (function () {
+      var t = localStorage.getItem('admin_token') || '';
+      if (!/^[0-9a-f]{64}$/.test(t)) {
+        location.replace('https://games.nooutco.me');
+      }
+    })();
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -46,9 +54,60 @@
       border: 1.5px solid #b8cfa0;
       border-radius: 10px;
       background: transparent;
-      opacity: 0.45;
+      cursor: pointer;
+      transition: background 0.15s;
     }
+    .nav-icon:hover { background: #dde8d4; }
     .nav-icon svg { width: 18px; height: 18px; fill: #5a6b4a; }
+
+    #gm-status-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.35);
+      z-index: 1000;
+      align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    #gm-status-overlay.open { display: flex; }
+    #gm-status-modal {
+      position: relative;
+      background: #fff;
+      border: 1px solid #d4e0c4;
+      border-radius: 14px;
+      padding: 28px 24px 22px;
+      width: min(300px, 100%);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+      font-family: 'Segoe UI', Inter, -apple-system, sans-serif;
+    }
+    #gm-status-close-x {
+      position: absolute;
+      top: 14px; right: 14px;
+      width: 28px; height: 28px;
+      background: none; border: none;
+      cursor: pointer; font-size: 18px;
+      color: #999; display: flex;
+      align-items: center; justify-content: center;
+      border-radius: 50%; padding: 0;
+    }
+    #gm-status-close-x:hover { background: #f0f0f0; color: #555; }
+    #gm-status-modal h2 {
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: #7a9460; margin: 0 0 6px; padding-right: 20px;
+    }
+    #gm-status-modal p {
+      font-size: 14px; font-weight: 600; color: #1a1f14;
+      margin: 0 0 18px;
+    }
+    #gm-status-exit-btn {
+      width: 100%; padding: 10px 14px;
+      background: #fff; color: #374528;
+      border: 1.5px solid #b8cfa0;
+      border-radius: 9px;
+      font-size: 14px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+    #gm-status-exit-btn:hover { background: #f0f4e8; }
 
     h1 {
       font-size: 28px;
@@ -113,31 +172,6 @@
       line-height: 1.4;
     }
 
-    #admin-modal {
-      display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,0.45); z-index: 10000;
-      align-items: center; justify-content: center;
-    }
-    #admin-modal.open { display: flex; }
-    .admin-modal-box {
-      background: #fff; border: 1px solid #d4e0c4; border-radius: 14px;
-      padding: 28px; width: 320px;
-    }
-    .admin-modal-box h2 { font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #1a1f14; }
-    .admin-modal-box p  { font-size: 13px; color: #7a9460; margin-bottom: 20px; }
-    .admin-modal-box input {
-      width: 100%; padding: 10px 14px; border: 1.5px solid #d4e0c4;
-      border-radius: 9px; font-size: 15px; outline: none; margin-bottom: 12px;
-      font-family: inherit;
-    }
-    .admin-modal-box input:focus { border-color: #7a9460; }
-    .admin-modal-box .unlock-btn {
-      width: 100%; padding: 11px; background: #374528; color: #fff;
-      border: none; border-radius: 9px; font-size: 15px; font-weight: 600; cursor: pointer;
-    }
-    .admin-modal-box .unlock-btn:hover { background: #2a3620; }
-    #admin-pw-error { font-size: 13px; color: #c0392b; margin-top: 8px; min-height: 18px; }
-
     .card-action { cursor: default; }
     .card-action:hover { border-color: #d4e0c4; box-shadow: none; }
     .card-action-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
@@ -173,25 +207,24 @@
 
   <div class="nav-row">
     <a class="nav-back" href="../">← Games</a>
-    <span class="nav-icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <button class="nav-icon" id="gm-status-btn" title="GM Mode" aria-label="GM Mode options">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.92c.04-.34.07-.69.07-1.08s-.03-.74-.07-1.08l2.32-1.82a.55.55 0 0 0 .13-.71l-2.2-3.82a.55.55 0 0 0-.67-.24l-2.74 1.1c-.57-.44-1.18-.81-1.86-1.08l-.41-2.92A.544.544 0 0 0 14 2h-4c-.27 0-.5.19-.54.44l-.41 2.92c-.68.27-1.29.64-1.86 1.08L4.45 5.34a.55.55 0 0 0-.67.24L1.58 9.4a.54.54 0 0 0 .13.71l2.32 1.82c-.04.34-.07.69-.07 1.08s.03.74.07 1.08L1.71 15.9a.55.55 0 0 0-.13.71l2.2 3.82c.13.24.41.33.67.24l2.74-1.1c.57.44 1.18.81 1.86 1.08l.41 2.92c.04.25.27.44.54.44h4c.27 0 .5-.19.54-.44l.41-2.92c.68-.27 1.29-.64 1.86-1.08l2.74 1.1c.26.09.54 0 .67-.24l2.2-3.82a.54.54 0 0 0-.13-.71l-2.32-1.81z"/>
       </svg>
-    </span>
+    </button>
   </div>
 
-  <div id="admin-modal">
-    <div class="admin-modal-box">
+  <div id="gm-status-overlay" role="dialog" aria-modal="true">
+    <div id="gm-status-modal">
+      <button type="button" id="gm-status-close-x" aria-label="Close">×</button>
       <h2>Game Master</h2>
-      <p>Enter the admin password to continue.</p>
-      <input type="password" id="admin-pw-input" placeholder="Password" autocomplete="current-password">
-      <button class="unlock-btn" id="admin-unlock-btn">Unlock</button>
-      <div id="admin-pw-error"></div>
+      <p>GM mode is on.</p>
+      <button type="button" id="gm-status-exit-btn">Exit GM Mode</button>
     </div>
   </div>
 
-  <!-- Main content (hidden until authed) -->
-  <div id="main" style="display:none">
+  <!-- Main content -->
+  <div id="main">
     <h1>Game Master</h1>
     <p class="subtitle">Manage game content and settings:</p>
 
@@ -261,51 +294,26 @@
     ];
     document.documentElement.style.setProperty('--bg', bgs[Math.floor(Math.random() * bgs.length)]);
 
-    const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
+    const token = localStorage.getItem('admin_token') || '';
 
-    const adminModal   = document.getElementById('admin-modal');
-    const adminPwInput = document.getElementById('admin-pw-input');
-    const adminPwError = document.getElementById('admin-pw-error');
+    (function () {
+      const overlay  = document.getElementById('gm-status-overlay');
+      const closeX   = document.getElementById('gm-status-close-x');
+      const exitBtn  = document.getElementById('gm-status-exit-btn');
 
-    let token = localStorage.getItem('admin_token') || '';
-
-    function revealApp() { document.getElementById('main').style.display = 'block'; }
-
-    if (token === ADMIN_SECRET_HASH) {
-      revealApp();
-    } else {
-      if (token) localStorage.removeItem('admin_token');
-      token = '';
-      adminModal.classList.add('open');
-      setTimeout(() => adminPwInput.focus(), 50);
-    }
-
-    adminModal.addEventListener('click', e => { if (e.target === adminModal) adminModal.classList.remove('open'); });
-
-    async function sha256Hex(str) {
-      const buf    = new TextEncoder().encode(str);
-      const digest = await crypto.subtle.digest('SHA-256', buf);
-      return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-
-    async function adminUnlock() {
-      const pw = adminPwInput.value;
-      if (!pw) { adminPwError.textContent = 'Enter a password.'; return; }
-      const hash = await sha256Hex(pw);
-      if (hash === ADMIN_SECRET_HASH) {
-        token = hash;
-        localStorage.setItem('admin_token', hash);
-        adminModal.classList.remove('open');
-        revealApp();
-      } else {
-        adminPwError.textContent = 'Incorrect password.';
-        adminPwInput.value = '';
-        adminPwInput.focus();
-      }
-    }
-
-    document.getElementById('admin-unlock-btn').addEventListener('click', adminUnlock);
-    adminPwInput.addEventListener('keydown', e => { if (e.key === 'Enter') adminUnlock(); });
+      document.getElementById('gm-status-btn').addEventListener('click', () => {
+        overlay.classList.add('open');
+      });
+      closeX.addEventListener('click', () => overlay.classList.remove('open'));
+      overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && overlay.classList.contains('open')) overlay.classList.remove('open');
+      });
+      exitBtn.addEventListener('click', () => {
+        localStorage.removeItem('admin_token');
+        location.replace('../');
+      });
+    })();
 
     document.getElementById('update-facts-btn').addEventListener('click', async () => {
       const btn    = document.getElementById('update-facts-btn');
@@ -334,7 +342,7 @@
         status.className   = 'run-status error';
       }
       btn.disabled    = false;
-      btn.textContent = 'Run via API';
+      btn.textContent = 'Populate next batch';
     });
   </script>
 </body>

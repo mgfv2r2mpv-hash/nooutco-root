@@ -3,433 +3,577 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Games — nooutco.me</title>
+  <title>Games & Activities — No Outcome ABA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="tokens.css">
   <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Segoe UI', Inter, -apple-system, sans-serif;
-      background: var(--bg, #eaeee7);
+      font-family: var(--font-sans);
+      background: #eef1ea;
+      color: var(--slate-900);
       min-height: 100vh;
-      padding: 32px 20px;
-      color: #2d3a1f;
+      padding: 28px 22px 56px;
     }
+    .wrap { max-width: 1040px; margin: 0 auto; }
 
-    .nav-row {
+    /* ── Topbar ─────────────────────────────────────────────────────── */
+    .topbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 28px;
+      margin-bottom: 26px;
     }
-    .nav-back {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 9px 18px;
-      border: 1.5px solid #b8cfa0;
-      border-radius: 10px;
-      background: transparent;
-      color: #374528;
-      font-size: 13px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: background 0.15s;
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand img { width: 44px; height: 44px; }
+    .brand .name {
+      font-size: 16px; font-weight: 800;
+      color: var(--sage-700); letter-spacing: -0.01em; line-height: 1.1;
     }
-    .nav-back:hover { background: #dde8d4; }
+    .brand .name span { color: var(--sage-500); }
+    .brand .sub { font-size: 11px; font-weight: 600; color: var(--slate-500); }
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+    .home {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 16px;
+      border: 1.5px solid var(--sage-200); border-radius: var(--radius-md);
+      background: transparent; color: var(--sage-700);
+      font-size: 13px; font-weight: 600; text-decoration: none;
+      transition: background var(--duration-fast) var(--ease-standard);
+    }
+    .home:hover { background: #e2e8da; }
 
-    /* Gear button — circular */
+    /* Admin gear */
     .btn-admin {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 42px;
-      height: 42px;
-      border: 1.5px solid rgba(55,69,40,0.28);
-      border-radius: 50%;
-      background: transparent;
-      cursor: pointer;
-      transition: background 0.15s, border-color 0.15s;
-      flex-shrink: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 42px; height: 42px;
+      border: 1.5px solid var(--sage-200); border-radius: 50%;
+      background: transparent; cursor: pointer; flex-shrink: 0;
+      transition: background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast);
     }
-    .btn-admin:hover { background: #dde8d4; border-color: rgba(55,69,40,0.5); }
-    .btn-admin svg { width: 20px; height: 20px; fill: #374528; opacity: 0.7; }
+    .btn-admin:hover { background: #e2e8da; border-color: var(--sage-500); }
+    .btn-admin svg { width: 20px; height: 20px; fill: var(--sage-700); opacity: 0.7; }
     .btn-admin:hover svg { opacity: 1; }
 
-    /* GM modal (shared by login + admin-access states) */
+    /* GM modal */
     #gm-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.35);
-      z-index: 100;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
+      display: none; position: fixed; inset: 0;
+      background: var(--surface-overlay); z-index: 100;
+      align-items: center; justify-content: center; padding: 20px;
     }
     #gm-overlay.open { display: flex; }
     #gm-modal {
-      background: #fff;
-      border: 1px solid #d4e0c4;
-      border-radius: 14px;
-      padding: 28px 24px 22px;
-      width: min(340px, 100%);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+      position: relative; background: var(--white);
+      border: 1px solid var(--sage-200); border-radius: var(--radius-xl);
+      padding: 28px 24px 22px; width: min(340px, 100%);
+      box-shadow: var(--shadow-modal);
     }
-    #gm-modal h2 { font-size: 17px; font-weight: 700; color: #1a1f14; margin-bottom: 14px; }
-
-    /* Login state */
+    #gm-modal-close-x {
+      position: absolute; top: 14px; right: 14px;
+      width: 28px; height: 28px; background: none; border: none;
+      cursor: pointer; font-size: 18px; line-height: 1;
+      color: var(--slate-500);
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%; padding: 0;
+    }
+    #gm-modal-close-x:hover { background: var(--slate-100); color: var(--slate-700); }
+    #gm-modal h2 { font-size: 17px; font-weight: 700; color: var(--slate-900); margin-bottom: 14px; padding-right: 20px; }
     #gm-login-body input {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1.5px solid #d4e0c4;
-      border-radius: 9px;
-      font-size: 15px;
-      outline: none;
-      margin-bottom: 10px;
-      font-family: inherit;
-      box-sizing: border-box;
+      width: 100%; padding: 10px 12px;
+      border: 1.5px solid var(--sage-200); border-radius: var(--radius-md);
+      font-size: 15px; outline: none; margin-bottom: 10px;
+      font-family: var(--font-sans); box-sizing: border-box;
     }
-    #gm-login-body input:focus { border-color: #7a9460; }
+    #gm-login-body input:focus { border-color: var(--sage-500); }
     #gm-login-body .unlock-btn {
-      width: 100%;
-      padding: 11px;
-      background: #374528;
-      color: #fff;
-      border: none;
-      border-radius: 9px;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: inherit;
+      width: 100%; padding: 11px;
+      background: var(--sage-700); color: #fff; border: none;
+      border-radius: var(--radius-md); font-size: 15px; font-weight: 700;
+      cursor: pointer; font-family: var(--font-sans);
     }
-    #gm-login-body .unlock-btn:hover { background: #2a3620; }
-    #gm-modal-err { font-size: 13px; color: #c0392b; margin-top: 8px; min-height: 18px; }
-
-    /* Admin-access state */
+    #gm-login-body .unlock-btn:hover { background: var(--sage-800); }
+    #gm-modal-err { font-size: 13px; color: var(--red-600); margin-top: 8px; min-height: 18px; }
     #gm-admin-body { display: none; }
     #gm-admin-status {
-      background: #f0f4e8;
-      border: 1px solid #c8dca8;
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-size: 13px;
-      color: #374528;
-      margin-bottom: 10px;
+      background: var(--sage-50); border: 1px solid var(--sage-200);
+      border-radius: var(--radius-md); padding: 10px 14px;
+      font-size: 13px; color: var(--sage-700); margin-bottom: 10px;
     }
-    #gm-admin-body p { font-size: 13px; color: #7a9460; margin-bottom: 18px; line-height: 1.45; }
     .gm-btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
     .gm-btn-row button {
-      flex: 1;
-      padding: 10px 12px;
-      border-radius: 9px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      border: 1.5px solid transparent;
-      font-family: inherit;
-      white-space: nowrap;
+      flex: 1; padding: 10px 12px; border-radius: var(--radius-md);
+      font-size: 14px; font-weight: 700; cursor: pointer;
+      border: 1.5px solid transparent; font-family: var(--font-sans); white-space: nowrap;
     }
-    .btn-gm-page { background: #374528; color: #fff; border-color: #374528; }
-    .btn-gm-page:hover { background: #2a3620; }
-    .btn-signout { background: #fff; color: #374528; border-color: #b8cfa0; }
-    .btn-signout:hover { background: #f0f4e8; }
-    .btn-close-modal { background: #fff; color: #555; border-color: #d4d4d4; }
-    .btn-close-modal:hover { background: #f5f5f5; }
+    .btn-gm-page { background: var(--sage-700); color: #fff; border-color: var(--sage-700); }
+    .btn-gm-page:hover { background: var(--sage-800); }
+    .btn-signout { background: #fff; color: var(--sage-700); border-color: var(--sage-200); }
+    .btn-signout:hover { background: var(--sage-50); }
 
-    h1 {
-      font-size: 28px;
-      font-weight: 800;
-      color: #1a1f14;
-      margin-bottom: 6px;
-      letter-spacing: -0.3px;
+    /* ── Title block ────────────────────────────────────────────────── */
+    .head {
+      display: flex; align-items: flex-end; justify-content: space-between;
+      gap: 20px; margin-bottom: 8px; flex-wrap: wrap;
     }
-    .subtitle {
-      font-size: 14px;
-      color: #7a9460;
-      margin-bottom: 28px;
-    }
+    h1 { font-size: 30px; font-weight: 800; color: var(--slate-900); letter-spacing: -0.4px; }
+    .lede { font-size: 14px; color: var(--slate-600); margin-top: 4px; max-width: 560px; line-height: 1.5; }
 
-    .list {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
-      max-width: 1100px;
+    /* Display toggle */
+    .toggle {
+      display: inline-flex; gap: 2px; padding: 2px;
+      background: var(--sage-100); border-radius: var(--radius-md); flex-shrink: 0;
     }
-    .list .card-wide { grid-column: 1 / -1; max-width: 540px; }
-    @media (max-width: 720px) {
-      .list { grid-template-columns: 1fr; max-width: 540px; }
-      .list .card-wide { grid-column: auto; }
+    .toggle button {
+      border: none; background: transparent; padding: 7px 14px;
+      font-family: var(--font-sans); font-size: 13px; font-weight: 700;
+      color: var(--sage-700); border-radius: var(--radius-sm); cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .toggle button.on { background: var(--sage-500); color: #fff; box-shadow: var(--shadow-sm); }
+    .toggle .hint {
+      font-size: 11px; color: var(--slate-500); font-weight: 600;
+      align-self: center; padding: 0 8px 0 2px;
     }
 
+    /* ── Domain sections ────────────────────────────────────────────── */
+    .domain { margin-top: 30px; }
+    .domain-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .domain-head .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .domain-head .t {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.07em;
+      text-transform: uppercase; color: var(--slate-600); white-space: nowrap;
+    }
+    .domain-head .rule { flex: 1; height: 1px; background: var(--slate-200); }
+
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+
+    /* ── Cards ──────────────────────────────────────────────────────── */
     .card {
-      display: flex;
-      align-items: center;
-      gap: 18px;
-      padding: 20px 22px;
-      background: #fff;
-      border-radius: 14px;
-      border: 1px solid #d4e0c4;
-      text-decoration: none;
-      color: inherit;
-      transition: border-color 0.15s, box-shadow 0.15s;
+      position: relative; display: flex; align-items: center; gap: 16px;
+      padding: 18px 20px 18px 22px;
+      background: var(--surface-card); border: 1px solid var(--sage-200);
+      border-radius: var(--radius-lg); text-decoration: none; color: inherit;
+      overflow: hidden;
+      transition:
+        border-color var(--duration-fast) var(--ease-standard),
+        box-shadow var(--duration-fast) var(--ease-standard),
+        transform var(--duration-fast) var(--ease-standard);
     }
+    .card .accent { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
     .card:hover {
-      border-color: #7a9460;
-      box-shadow: 0 4px 16px rgba(55,69,40,0.09);
+      border-color: var(--sage-500);
+      box-shadow: 0 6px 18px rgba(55, 69, 40, .10);
+      transform: translateY(-1px);
+    }
+    .card .icon { font-size: 38px; line-height: 1; flex-shrink: 0; width: 52px; text-align: center; }
+    .card .label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--slate-500); margin-bottom: 3px;
+    }
+    .card .title { font-size: 17px; font-weight: 800; color: var(--slate-900); margin-bottom: 3px; }
+    .card .desc { font-size: 13px; color: var(--slate-600); line-height: 1.4; }
+    .card .arrow {
+      margin-left: auto; color: var(--sage-500); font-size: 18px;
+      opacity: 0; flex-shrink: 0;
+      transition: opacity var(--duration-fast), transform var(--duration-fast);
+    }
+    .card:hover .arrow { opacity: 1; transform: translateX(2px); }
+
+    /* ── Planned section ────────────────────────────────────────────── */
+    .planned .card {
+      background: #f6f8f3; border-style: dashed;
+      border-color: var(--slate-300); cursor: default;
+    }
+    .planned .card:hover { transform: none; box-shadow: none; border-color: var(--slate-400); }
+    .planned .icon { opacity: 0.9; }
+    .planned-note {
+      font-size: 13px; color: var(--slate-600); line-height: 1.5;
+      margin: 2px 0 14px; max-width: 620px;
+    }
+    .planned-note b { color: var(--sage-700); }
+    .planned .card-body { padding-right: 90px; }
+    .planned .rankctl {
+      position: absolute; top: 14px; right: 14px;
+      display: inline-flex; gap: 4px; z-index: 1;
+    }
+    .planned .rankctl button {
+      width: 27px; height: 27px; border-radius: 8px;
+      border: 1.5px solid var(--sage-200); background: var(--white);
+      font-family: var(--font-sans); font-size: 12px; font-weight: 800;
+      color: var(--slate-400); cursor: pointer;
+      transition: transform .1s, background var(--duration-fast), border-color var(--duration-fast), color var(--duration-fast);
+    }
+    .planned .rankctl button:hover { border-color: var(--sage-500); color: var(--sage-700); }
+    .planned .rankctl button:active { transform: scale(.92); }
+    .planned .rankctl .r1.on { background: #f6c945; border-color: #e0ad1f; color: #5a4500; }
+    .planned .rankctl .r2.on { background: #d3d8dc; border-color: #aeb6bc; color: #333a3f; }
+    .planned .rankctl .r3.on { background: #e7ab78; border-color: #cd8c54; color: #5a3318; }
+    .planned .pts {
+      margin-top: 10px; font-size: 11px; font-weight: 700;
+      color: var(--slate-400); display: flex; align-items: center; gap: 5px;
+    }
+    .planned .pts .n { color: var(--sage-700); }
+    .planned .pts .medal { font-size: 13px; }
+    .lead {
+      display: none; align-items: center; gap: 3px;
+      font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+      color: var(--amber-700); background: var(--amber-100);
+      border-radius: var(--radius-pill); padding: 2px 7px; margin-left: 6px;
     }
 
-    .card-icon {
-      font-size: 42px;
-      line-height: 1;
-      flex-shrink: 0;
+    /* ── Footer note ────────────────────────────────────────────────── */
+    .foot {
+      margin-top: 16px; font-size: 12px; color: var(--slate-500);
+      line-height: 1.6; max-width: 680px;
+    }
+    .badge-mode {
+      display: inline-block; font-size: 11px; font-weight: 700;
+      color: var(--sage-700); background: var(--sage-100);
+      border-radius: var(--radius-pill); padding: 2px 9px;
     }
 
-    .card-label {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: #7a9460;
-      margin-bottom: 4px;
-    }
-    .card-title {
-      font-size: 18px;
-      font-weight: 700;
-      color: #1a1f14;
-      margin-bottom: 3px;
-    }
-    .card-desc {
-      font-size: 13px;
-      color: #5a6b4a;
-      line-height: 1.4;
-    }
-    .support {
-      max-width: 680px;
-      margin-top: 36px;
-      padding-top: 20px;
-      border-top: 1px solid #dde0d8;
-    }
+    /* ── Support / meta ─────────────────────────────────────────────── */
+    .support { max-width: 680px; margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--slate-200); }
     .support details > summary {
-      cursor: pointer;
-      list-style: none;
-      user-select: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
+      cursor: pointer; list-style: none; user-select: none;
+      display: inline-flex; align-items: center; gap: 4px;
     }
     .support details > summary::-webkit-details-marker { display: none; }
-    .support details > summary::after {
-      content: '▾';
-      font-size: 10px;
-      opacity: 0.5;
-      margin-left: 2px;
-    }
+    .support details > summary::after { content: '▾'; font-size: 10px; opacity: 0.5; margin-left: 2px; }
     .support details[open] > summary::after { content: '▴'; }
-    .support-heading {
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.07em;
-      text-transform: uppercase;
-      color: #888;
+    .support-heading { font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--slate-500); }
+    .support-text { font-size: 13px; color: var(--slate-600); line-height: 1.55; margin-top: 12px; margin-bottom: 14px; }
+    .support-links { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .support-links a.bmc-btn, .support-links a[class*="bmc-button"] {
+      height: 40px !important; padding: 0 14px !important; min-width: 0 !important;
+      border-radius: 8px !important; background-color: #9c6dd1 !important;
+      border-color: #9c6dd1 !important; color: #fff !important;
     }
-    .support-text {
-      font-size: 13px;
-      color: #555;
-      line-height: 1.55;
-      margin-top: 12px;
-      margin-bottom: 14px;
-    }
-    .support-links {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 10px;
-    }
-    .support-links a.bmc-btn,
-    .support-links a[class*="bmc-button"] {
-      height: 40px !important;
-      padding: 0 14px !important;
-      min-width: 0 !important;
-      border-radius: 8px !important;
-      background-color: #9c6dd1 !important;
-      border-color: #9c6dd1 !important;
-      color: #fff !important;
-    }
-    .support-links a.bmc-btn img,
-    .support-links a[class*="bmc-button"] img {
-      height: 20px !important;
-      width: auto !important;
-      margin-right: 8px !important;
-    }
-    .support-links a.bmc-btn span,
-    .support-links a[class*="bmc-button"] span {
-      font-size: 14px !important;
-      color: #fff !important;
-    }
+    .support-links a.bmc-btn img, .support-links a[class*="bmc-button"] img { height: 20px !important; width: auto !important; margin-right: 8px !important; }
+    .support-links a.bmc-btn span, .support-links a[class*="bmc-button"] span { font-size: 14px !important; color: #fff !important; }
     .support-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 0 16px;
-      height: 40px;
-      background: #5ba8e0;
-      border: 1px solid #5ba8e0;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 700;
-      color: #fff;
-      text-decoration: none;
-      transition: background 0.15s, border-color 0.15s;
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 0 16px; height: 40px;
+      background: #5ba8e0; border: 1px solid #5ba8e0; border-radius: 8px;
+      font-size: 14px; font-weight: 700; color: #fff; text-decoration: none;
+      transition: background var(--duration-fast), border-color var(--duration-fast);
     }
-    .support-link:hover {
-      background: #4a97cf;
-      border-color: #4a97cf;
-      color: #fff;
-    }
-    .meta {
-      max-width: 680px;
-      margin-top: 20px;
-      font-size: 12px;
-      color: #888;
-      line-height: 1.55;
-    }
-    .meta a { color: #7d9068; text-decoration: none; }
+    .support-link:hover { background: #4a97cf; border-color: #4a97cf; color: #fff; }
+    .meta { max-width: 680px; margin-top: 20px; font-size: 12px; color: var(--slate-500); line-height: 1.55; }
+    .meta a { color: var(--sage-600); text-decoration: none; }
     .meta a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
+<div class="wrap">
 
-  <div class="nav-row">
-    <a class="nav-back" href="https://nooutco.me">← Home</a>
-    <button class="btn-admin" id="gear-btn" title="Game Master" aria-label="Game Master">
-      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.92c.04-.34.07-.69.07-1.08s-.03-.74-.07-1.08l2.32-1.82a.55.55 0 0 0 .13-.71l-2.2-3.82a.55.55 0 0 0-.67-.24l-2.74 1.1c-.57-.44-1.18-.81-1.86-1.08l-.41-2.92A.544.544 0 0 0 14 2h-4c-.27 0-.5.19-.54.44l-.41 2.92c-.68.27-1.29.64-1.86 1.08L4.45 5.34a.55.55 0 0 0-.67.24L1.58 9.4a.54.54 0 0 0 .13.71l2.32 1.82c-.04.34-.07.69-.07 1.08s.03.74.07 1.08L1.71 15.9a.55.55 0 0 0-.13.71l2.2 3.82c.13.24.41.33.67.24l2.74-1.1c.57.44 1.18.81 1.86 1.08l.41 2.92c.04.25.27.44.54.44h4c.27 0 .5-.19.54-.44l.41-2.92c.68-.27 1.29-.64 1.86-1.08l2.74 1.1c.26.09.54 0 .67-.24l2.2-3.82a.54.54 0 0 0-.13-.71l-2.32-1.81z"/>
-      </svg>
-    </button>
-  </div>
-
-  <!-- GM modal: shows login prompt or admin-access panel depending on auth state -->
+  <!-- GM modal -->
   <div id="gm-overlay" role="dialog" aria-modal="true" aria-labelledby="gm-modal-title">
     <div id="gm-modal">
+      <button type="button" id="gm-modal-close-x" aria-label="Close">×</button>
       <h2 id="gm-modal-title">Game Master</h2>
-
-      <!-- Not logged in: password prompt -->
       <div id="gm-login-body">
         <input type="password" id="gm-pw" placeholder="Password" autocomplete="current-password">
         <button class="unlock-btn" id="gm-go">Unlock</button>
         <div id="gm-modal-err" aria-live="polite"></div>
       </div>
-
-      <!-- Logged in: admin access panel -->
       <div id="gm-admin-body">
-        <div id="gm-admin-status">You are signed in as admin.</div>
-        <p>Sign out to return to public mode.</p>
+        <div id="gm-admin-status">GM mode is on.</div>
         <div class="gm-btn-row">
           <button class="btn-gm-page" id="gm-page-btn">GM Page</button>
-          <button class="btn-signout" id="gm-signout-btn">Sign out</button>
-          <button class="btn-close-modal" id="gm-close-btn">Close</button>
+          <button class="btn-signout" id="gm-signout-btn">Exit GM Mode</button>
         </div>
       </div>
     </div>
   </div>
 
-  <h1>Games and Activities</h1>
-  <p class="subtitle">Choose a game:</p>
-
-  <div class="list">
-
-    <a class="card" href="./IDMatchGame/IDMatchGame/index.html">
-      <div class="card-icon">🧩</div>
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="brand">
+      <img src="logo-mark.svg" alt="No Outcome ABA" width="44" height="44">
       <div>
-        <div class="card-label">Discrimination Skills</div>
-        <div class="card-title">Matching Game</div>
-        <div class="card-desc">Find the matching image from a set of choices</div>
+        <div class="name">No Outcome <span>ABA</span></div>
+        <div class="sub">Games &amp; Activities</div>
       </div>
-    </a>
-
-    <a class="card" href="./MatchingMarket/MatchingMarket/index.html">
-      <div class="card-icon">🛒</div>
-      <div>
-        <div class="card-label">Discrimination Skills</div>
-        <div class="card-title">Matching Market</div>
-        <div class="card-desc">Help the customer — match their request from the market shelves</div>
-      </div>
-    </a>
-
-    <a class="card" href="./SequencesGame/SequencesGame/index.html">
-      <div class="card-icon">🔁</div>
-      <div>
-        <div class="card-label">Discrimination Skills</div>
-        <div class="card-title">Sequences &amp; Patterns</div>
-        <div class="card-desc">Continue the pattern — pick the next item(s)</div>
-      </div>
-    </a>
-
-    <a class="card" href="./PatternPackCo/PatternPackCo/index.html">
-      <div class="card-icon">🎁</div>
-      <div>
-        <div class="card-label">Discrimination Skills</div>
-        <div class="card-title">Pattern Pack Co.</div>
-        <div class="card-desc">Finish packing the box — complete the pattern on the line</div>
-      </div>
-    </a>
-
-    <a class="card" href="./NameIDGame/NameIDGame/index.html">
-      <div class="card-icon">🔤</div>
-      <div>
-        <div class="card-label">Receptive Language</div>
-        <div class="card-title">Receptive Words Game</div>
-        <div class="card-desc">Find by name, build receptive language skills</div>
-      </div>
-    </a>
-
-    <a class="card" href="./HickoryDickoryDockGame/HickoryDickoryDockGame/index.html">
-      <div class="card-icon">🕰️</div>
-      <div>
-        <div class="card-label">Receptive Language</div>
-        <div class="card-title">Hickory Dickory Dock</div>
-        <div class="card-desc">Find by name — pictures circle a cuckoo clock that strikes the hour</div>
-      </div>
-    </a>
-
-    <a class="card" href="./FFCGame/FFCGame/index.html">
-      <div class="card-icon">🧠</div>
-      <div>
-        <div class="card-label">Concept Skills</div>
-        <div class="card-title">Feature · Function · Class</div>
-        <div class="card-desc">Identify objects by feature, function, or category</div>
-      </div>
-    </a>
-
-    <a class="card" href="./IntraverbalGame/IntraverbalGame/">
-      <div class="card-icon">💬</div>
-      <div>
-        <div class="card-label">Verbal Behavior</div>
-        <div class="card-title">Intraverbal Game</div>
-        <div class="card-desc">Fill-in-the-blank and carrier phrase practice</div>
-      </div>
-    </a>
-
-    <a class="card" href="./ThinkOrSayGame/ThinkOrSayGame/index.html">
-      <div class="card-icon">💭</div>
-      <div>
-        <div class="card-label">Social Skills</div>
-        <div class="card-title">Think or Say?</div>
-        <div class="card-desc">Decide if a thought should stay inside or is kind to say out loud</div>
-      </div>
-    </a>
-
-    <a class="card card-wide" href="./FamousPersonGame/">
-      <div class="card-icon">🤩</div>
-      <div>
-        <div class="card-label">Conversation Skills (Advanced)</div>
-        <div class="card-title">Famous Person Game</div>
-        <div class="card-desc">Reciprocal conversation practice</div>
-      </div>
-    </a>
-
+    </div>
+    <div class="topbar-right">
+      <a class="home" href="https://nooutco.me">← nooutco.me</a>
+      <button class="btn-admin" id="gear-btn" title="Game Master" aria-label="Game Master">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.92c.04-.34.07-.69.07-1.08s-.03-.74-.07-1.08l2.32-1.82a.55.55 0 0 0 .13-.71l-2.2-3.82a.55.55 0 0 0-.67-.24l-2.74 1.1c-.57-.44-1.18-.81-1.86-1.08l-.41-2.92A.544.544 0 0 0 14 2h-4c-.27 0-.5.19-.54.44l-.41 2.92c-.68.27-1.29.64-1.86 1.08L4.45 5.34a.55.55 0 0 0-.67.24L1.58 9.4a.54.54 0 0 0 .13.71l2.32 1.82c-.04.34-.07.69-.07 1.08s.03.74.07 1.08L1.71 15.9a.55.55 0 0 0-.13.71l2.2 3.82c.13.24.41.33.67.24l2.74-1.1c.57.44 1.18.81 1.86 1.08l.41 2.92c.04.25.27.44.54.44h4c.27 0 .5-.19.54-.44l.41-2.92c.68-.27 1.29-.64 1.86-1.08l2.74 1.1c.26.09.54 0 .67-.24l2.2-3.82a.54.54 0 0 0-.13-.71l-2.32-1.81z"/>
+        </svg>
+      </button>
+    </div>
   </div>
+
+  <!-- Title + toggle -->
+  <div class="head">
+    <div>
+      <h1>Games &amp; Activities</h1>
+      <p class="lede">Quick, low-prep teaching activities grouped by skill. Every game runs in the browser — nothing to print, cut, or laminate.</p>
+    </div>
+    <div class="toggle" role="group" aria-label="Display mode">
+      <span class="hint">Display</span>
+      <button id="btn-simple" class="on" type="button">○ Simple</button>
+      <button id="btn-visual" type="button">✦ Visual</button>
+    </div>
+  </div>
+
+  <!-- Discrimination Skills -->
+  <section class="domain">
+    <div class="domain-head">
+      <span class="dot" style="background:var(--sage-500)"></span>
+      <span class="t">Discrimination Skills</span>
+      <span class="rule"></span>
+    </div>
+    <div class="grid">
+      <a class="card" href="./IDMatchGame/IDMatchGame/index.html">
+        <span class="accent" style="background:var(--sage-500)"></span>
+        <span class="icon">🧩</span>
+        <div>
+          <div class="label">Discrimination</div>
+          <div class="title">Matching Game</div>
+          <div class="desc">Find the matching image from a set of choices.</div>
+        </div>
+        <span class="arrow">→</span>
+      </a>
+      <a class="card" href="./MatchingMarket/MatchingMarket/index.html">
+        <span class="accent" style="background:var(--sage-500)"></span>
+        <span class="icon">🛒</span>
+        <div>
+          <div class="label">Discrimination</div>
+          <div class="title">Matching Market</div>
+          <div class="desc">Help the customer — match their request from the market shelves.</div>
+        </div>
+        <span class="arrow">→</span>
+      </a>
+      <a class="card" href="./SequencesGame/SequencesGame/index.html">
+        <span class="accent" style="background:var(--sage-500)"></span>
+        <span class="icon">🔁</span>
+        <div>
+          <div class="label">Discrimination</div>
+          <div class="title">Sequences &amp; Patterns</div>
+          <div class="desc">Continue the pattern — pick the next item(s).</div>
+        </div>
+        <span class="arrow">→</span>
+      </a>
+      <a class="card" href="./PatternPackCo/PatternPackCo/index.html">
+        <span class="accent" style="background:var(--sage-500)"></span>
+        <span class="icon">🎁</span>
+        <div>
+          <div class="label">Discrimination</div>
+          <div class="title">Pattern Pack Co.</div>
+          <div class="desc">Finish packing the box — complete the pattern on the line.</div>
+        </div>
+        <span class="arrow">→</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- Receptive Language -->
+  <section class="domain">
+    <div class="domain-head">
+      <span class="dot" style="background:#6d93a4"></span>
+      <span class="t">Receptive Language</span>
+      <span class="rule"></span>
+    </div>
+    <div class="grid">
+      <a class="card" href="./NameIDGame/NameIDGame/index.html">
+        <span class="accent" style="background:#6d93a4"></span>
+        <span class="icon">🔤</span>
+        <div>
+          <div class="label">Receptive Language</div>
+          <div class="title">Receptive Words Game</div>
+          <div class="desc">Find by name — build receptive identification.</div>
+        </div>
+        <span class="arrow">→</span>
+      </a>
+      <a class="card" href="./EmotionID/">
+        <span class="accent" style="background:#6d93a4"></span>
+        <span class="icon">🙂</span>
+        <div>
+          <div class="label">Receptive Language · Tact</div>
+          <div class="title">Emotion ID</div>
+          <div class="desc">Receptive field + expressive single-stimulus tact — clinician SD configurable &amp; saved.</div>
+        </div>
+        <span class="arrow">→</span>
+      </a>
+      <a class="card" href="./HickoryDickoryDockGame/HickoryDickoryDockGame/index.html">
+        <span class="accent" style="background:#6d93a4"></span>
+        <span class="icon">🕰️</span>
+        <div>
+          <div class="label">Receptive Language</div>
+          <div class="title">Hickory Dickory Dock</div>
+          <div class="desc">Find by name — pictures circle a cuckoo clock that strikes the hour.</div>
+        </div>
+        <span class="arrow">→</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- Concept · Verbal · Social -->
+  <section class="domain">
+    <div class="domain-head">
+      <span class="dot" style="background:var(--violet-600)"></span>
+      <span class="t">Concept · Verbal · Social</span>
+      <span class="rule"></span>
+    </div>
+    <div class="grid">
+      <a class="card" href="./FFCGame/FFCGame/index.html">
+        <span class="accent" style="background:var(--violet-600)"></span>
+        <span class="icon">🧠</span>
+        <div>
+          <div class="label">Concept Skills</div>
+          <div class="title">Feature · Function · Class</div>
+          <div class="desc">Identify objects by feature, function, or category.</div>
+        </div>
+        <span class="arrow">→</span>
+      </a>
+      <a class="card" href="./IntraverbalGame/IntraverbalGame/">
+        <span class="accent" style="background:var(--amber-500)"></span>
+        <span class="icon">💬</span>
+        <div>
+          <div class="label">Verbal Behavior</div>
+          <div class="title">Intraverbal Game</div>
+          <div class="desc">Fill-in-the-blank and carrier phrase practice.</div>
+        </div>
+        <span class="arrow">→</span>
+      </a>
+      <a class="card" href="./ThinkOrSayGame/ThinkOrSayGame/index.html">
+        <span class="accent" style="background:var(--sky-500)"></span>
+        <span class="icon">💭</span>
+        <div>
+          <div class="label">Social Skills</div>
+          <div class="title">Think or Say?</div>
+          <div class="desc">Decide if a thought should stay inside or is kind to say out loud.</div>
+        </div>
+        <span class="arrow">→</span>
+      </a>
+      <a class="card" href="./FamousPersonGame/">
+        <span class="accent" style="background:var(--orange-600)"></span>
+        <span class="icon">🤩</span>
+        <div>
+          <div class="label">Conversation · Advanced</div>
+          <div class="title">Famous Person Game</div>
+          <div class="desc">Reciprocal conversation practice.</div>
+        </div>
+        <span class="arrow">→</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- Planned -->
+  <section class="domain planned">
+    <div class="domain-head">
+      <span class="dot" style="background:var(--slate-400)"></span>
+      <span class="t">Planned — replaces print &amp; laminate</span>
+      <span class="rule"></span>
+    </div>
+    <p class="planned-note">The staples a busy BCBA still prints, cuts, and laminates — <b>rebuilt as living, reusable activities</b>. Same supports, zero lamination, instantly editable per learner. <b>Rank your top three</b> — tap 1, 2, or 3 on the features you most want built next. Change your picks anytime.</p>
+    <div class="grid" id="plannedGrid">
+
+      <div class="card" data-id="vs">
+        <div class="rankctl" role="group" aria-label="Rank this feature">
+          <button class="r1" data-r="1" title="Your 1st choice">1</button>
+          <button class="r2" data-r="2" title="Your 2nd choice">2</button>
+          <button class="r3" data-r="3" title="Your 3rd choice">3</button>
+        </div>
+        <span class="icon">📅</span>
+        <div class="card-body">
+          <div class="label">Schedules <span class="lead">★ Most wanted</span></div>
+          <div class="title">Visual Schedule</div>
+          <div class="desc">Drag-to-order first/next routines with check-off.</div>
+          <div class="pts"><span class="medal"></span><b class="n">0</b> pts</div>
+        </div>
+      </div>
+
+      <div class="card" data-id="ft">
+        <div class="rankctl" role="group" aria-label="Rank this feature">
+          <button class="r1" data-r="1" title="Your 1st choice">1</button>
+          <button class="r2" data-r="2" title="Your 2nd choice">2</button>
+          <button class="r3" data-r="3" title="Your 3rd choice">3</button>
+        </div>
+        <span class="icon">➡️</span>
+        <div class="card-body">
+          <div class="label">Antecedent Support <span class="lead">★ Most wanted</span></div>
+          <div class="title">First–Then Board</div>
+          <div class="desc">Pair a demand with a chosen reinforcer, visually.</div>
+          <div class="pts"><span class="medal"></span><b class="n">0</b> pts</div>
+        </div>
+      </div>
+
+      <div class="card" data-id="te">
+        <div class="rankctl" role="group" aria-label="Rank this feature">
+          <button class="r1" data-r="1" title="Your 1st choice">1</button>
+          <button class="r2" data-r="2" title="Your 2nd choice">2</button>
+          <button class="r3" data-r="3" title="Your 3rd choice">3</button>
+        </div>
+        <span class="icon">🪙</span>
+        <div class="card-body">
+          <div class="label">Reinforcement <span class="lead">★ Most wanted</span></div>
+          <div class="title">Token Economy</div>
+          <div class="desc">Configurable token boards that travel with the client.</div>
+          <div class="pts"><span class="medal"></span><b class="n">0</b> pts</div>
+        </div>
+      </div>
+
+      <div class="card" data-id="cb">
+        <div class="rankctl" role="group" aria-label="Rank this feature">
+          <button class="r1" data-r="1" title="Your 1st choice">1</button>
+          <button class="r2" data-r="2" title="Your 2nd choice">2</button>
+          <button class="r3" data-r="3" title="Your 3rd choice">3</button>
+        </div>
+        <span class="icon">🗣️</span>
+        <div class="card-body">
+          <div class="label">Communication · AAC <span class="lead">★ Most wanted</span></div>
+          <div class="title">Communication Board</div>
+          <div class="desc">Core-word &amp; requesting visuals — point or tap to communicate; travels with the learner.</div>
+          <div class="pts"><span class="medal"></span><b class="n">0</b> pts</div>
+        </div>
+      </div>
+
+      <div class="card" data-id="sc">
+        <div class="rankctl" role="group" aria-label="Rank this feature">
+          <button class="r1" data-r="1" title="Your 1st choice">1</button>
+          <button class="r2" data-r="2" title="Your 2nd choice">2</button>
+          <button class="r3" data-r="3" title="Your 3rd choice">3</button>
+        </div>
+        <span class="icon">🗂️</span>
+        <div class="card-body">
+          <div class="label">Concept Skills <span class="lead">★ Most wanted</span></div>
+          <div class="title">Sorting &amp; Categories</div>
+          <div class="desc">Drag items into categories — features, function, class.</div>
+          <div class="pts"><span class="medal"></span><b class="n">0</b> pts</div>
+        </div>
+      </div>
+
+      <div class="card" data-id="fd">
+        <div class="rankctl" role="group" aria-label="Rank this feature">
+          <button class="r1" data-r="1" title="Your 1st choice">1</button>
+          <button class="r2" data-r="2" title="Your 2nd choice">2</button>
+          <button class="r3" data-r="3" title="Your 3rd choice">3</button>
+        </div>
+        <span class="icon">✋</span>
+        <div class="card-body">
+          <div class="label">Listener Skills <span class="lead">★ Most wanted</span></div>
+          <div class="title">Following Directions</div>
+          <div class="desc">1–3 step receptive directions with built-in prompts.</div>
+          <div class="pts"><span class="medal"></span><b class="n">0</b> pts</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <p class="foot">
+    Currently showing the <span class="badge-mode" id="mode-badge">Simple</span> display — calm, low-arousal, distraction-free.
+    <b>Visual</b> mode adds illustration and celebratory feedback for learners who benefit from it;
+    the teaching target never changes between modes.
+  </p>
 
   <section class="support">
     <details>
@@ -455,89 +599,194 @@
     and <a href="https://github.com/mgfv2r2mpv-hash/games-nooutco-me/blob/main/README.md">mission</a> on GitHub.
   </p>
 
-  <script>
-    const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
+</div>
 
-    (function () {
-      const overlay    = document.getElementById('gm-overlay');
-      const loginBody  = document.getElementById('gm-login-body');
-      const adminBody  = document.getElementById('gm-admin-body');
-      const pwInput    = document.getElementById('gm-pw');
-      const errEl      = document.getElementById('gm-modal-err');
+<script>
+/* ── Admin-gear (original server-ping logic, unchanged) ──────────────── */
+(function () {
+  const overlay   = document.getElementById('gm-overlay');
+  const loginBody = document.getElementById('gm-login-body');
+  const adminBody = document.getElementById('gm-admin-body');
+  const pwInput   = document.getElementById('gm-pw');
+  const errEl     = document.getElementById('gm-modal-err');
 
-      function isAdmin() {
-        return localStorage.getItem('admin_token') === ADMIN_SECRET_HASH;
-      }
+  function isAdmin() {
+    const t = localStorage.getItem('admin_token') || '';
+    return /^[0-9a-f]{64}$/.test(t);
+  }
+  function openModal() {
+    if (isAdmin()) {
+      loginBody.style.display = 'none';
+      adminBody.style.display = '';
+    } else {
+      loginBody.style.display = '';
+      adminBody.style.display = 'none';
+      pwInput.value = '';
+      errEl.textContent = '';
+      setTimeout(() => pwInput.focus(), 30);
+    }
+    overlay.classList.add('open');
+  }
+  function closeModal() { overlay.classList.remove('open'); }
 
-      function openModal() {
-        if (isAdmin()) {
-          loginBody.style.display = 'none';
-          adminBody.style.display = 'block';
-        } else {
-          loginBody.style.display = '';
-          adminBody.style.display = 'none';
-          pwInput.value = '';
-          errEl.textContent = '';
-          setTimeout(() => pwInput.focus(), 30);
-        }
-        overlay.classList.add('open');
-      }
+  document.getElementById('gear-btn').addEventListener('click', openModal);
+  document.getElementById('gm-modal-close-x').addEventListener('click', closeModal);
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+  document.getElementById('gm-page-btn').addEventListener('click', () => { window.location.assign('./GM/'); });
+  document.getElementById('gm-signout-btn').addEventListener('click', () => {
+    localStorage.removeItem('admin_token'); closeModal();
+  });
 
-      function closeModal() { overlay.classList.remove('open'); }
-
-      document.getElementById('gear-btn').addEventListener('click', openModal);
-      document.getElementById('gm-close-btn').addEventListener('click', closeModal);
-      overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
-      document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-
-      document.getElementById('gm-page-btn').addEventListener('click', () => {
-        window.location.assign('./GM/');
+  async function sha256Hex(str) {
+    const buf    = new TextEncoder().encode(str);
+    const digest = await crypto.subtle.digest('SHA-256', buf);
+    return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  async function tryUnlock() {
+    const pw = pwInput.value;
+    errEl.textContent = '';
+    if (!pw) { errEl.textContent = 'Enter a password.'; return; }
+    const hash = await sha256Hex(pw);
+    try {
+      const res = await fetch('/api/admin/ping', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + hash }
       });
-
-      document.getElementById('gm-signout-btn').addEventListener('click', () => {
-        localStorage.removeItem('admin_token');
+      if (res.ok) {
+        localStorage.setItem('admin_token', hash);
         closeModal();
+        setTimeout(openModal, 50);
+      } else {
+        errEl.textContent = 'Incorrect password.';
+        pwInput.value = '';
+        pwInput.focus();
+      }
+    } catch {
+      errEl.textContent = 'Network error — please try again.';
+    }
+  }
+  document.getElementById('gm-go').addEventListener('click', tryUnlock);
+  pwInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
+})();
+
+/* ── Display toggle ───────────────────────────────────────────────────── */
+(function () {
+  const DISP_KEY = 'noaba.display.mode';
+  let mode = localStorage.getItem(DISP_KEY) || 'simple';
+  const badge = document.getElementById('mode-badge');
+
+  function applyMode() {
+    document.body.classList.toggle('visual', mode === 'visual');
+    document.getElementById('btn-simple').classList.toggle('on', mode === 'simple');
+    document.getElementById('btn-visual').classList.toggle('on', mode === 'visual');
+    if (badge) badge.textContent = mode === 'visual' ? 'Visual' : 'Simple';
+  }
+  document.getElementById('btn-simple').addEventListener('click', () => {
+    mode = 'simple';
+    try { localStorage.setItem(DISP_KEY, mode); } catch(e) {}
+    applyMode();
+  });
+  document.getElementById('btn-visual').addEventListener('click', () => {
+    mode = 'visual';
+    try { localStorage.setItem(DISP_KEY, mode); } catch(e) {}
+    applyMode();
+  });
+  applyMode();
+})();
+
+/* ── Prioritize voter ─────────────────────────────────────────────────── */
+(function () {
+  const RANK_KEY   = 'noaba.games.ranks.v1';
+  const CLIENT_KEY = 'noaba.clientId';
+  // Set API_BASE to your deployed prioritize-worker URL for live cross-user tallies.
+  const API_BASE = '';
+  const WEIGHT = { 1:3, 2:2, 3:1 };
+  const MEDAL  = { 1:'🥇', 2:'🥈', 3:'🥉' };
+  const BASE   = { cb:142, vs:120, te:98, ft:76, fd:64, sc:41 };
+
+  let myRanks = {};
+  try { myRanks = JSON.parse(localStorage.getItem(RANK_KEY)) || {}; } catch(e) {}
+  let serverPts = null;
+
+  function saveRanks() { try { localStorage.setItem(RANK_KEY, JSON.stringify(myRanks)); } catch(e) {} }
+  function clientId() {
+    let id = localStorage.getItem(CLIENT_KEY);
+    if (!id) {
+      id = 'c' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      try { localStorage.setItem(CLIENT_KEY, id); } catch(e) {}
+    }
+    return id;
+  }
+
+  const grid = document.getElementById('plannedGrid');
+  if (!grid) return;
+  const cards = Array.prototype.slice.call(grid.querySelectorAll('.card'));
+
+  function cardRank(id) { for (const r of [1,2,3]) if (myRanks[r] === id) return r; return 0; }
+  function points(id) {
+    if (serverPts) return serverPts[id] || 0;
+    let p = BASE[id] || 0;
+    const r = cardRank(id);
+    if (r) p += WEIGHT[r];
+    return p;
+  }
+
+  function setRank(id, r) {
+    if (myRanks[r] === id) { delete myRanks[r]; }
+    else { for (const k of [1,2,3]) if (myRanks[k] === id) delete myRanks[k]; myRanks[r] = id; }
+    saveRanks();
+    if (API_BASE) postBallot();
+    paintAll();
+    rerank();
+  }
+
+  function paintCard(card) {
+    const id = card.dataset.id, mine = cardRank(id);
+    card.querySelectorAll('.rankctl button').forEach(b => b.classList.toggle('on', +b.dataset.r === mine));
+    card.querySelector('.n').textContent = points(id);
+    card.querySelector('.medal').textContent = mine ? MEDAL[mine] : '';
+  }
+  function paintAll() { cards.forEach(paintCard); }
+
+  function rerank() {
+    const arr = cards.slice().sort((a, b) => points(b.dataset.id) - points(a.dataset.id));
+    arr.forEach((c, i) => {
+      grid.appendChild(c);
+      const l = c.querySelector('.lead');
+      if (l) l.style.display = i === 0 ? 'inline-flex' : 'none';
+    });
+  }
+
+  async function loadTallies() {
+    if (!API_BASE) return;
+    try {
+      const res = await fetch(API_BASE + '/api/votes');
+      const j = await res.json();
+      serverPts = j.points || null;
+      paintAll(); rerank();
+    } catch(e) {}
+  }
+  async function postBallot() {
+    if (!API_BASE) return;
+    try {
+      await fetch(API_BASE + '/api/votes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId: clientId(), ballot: { first: myRanks[1] || null, second: myRanks[2] || null, third: myRanks[3] || null } })
       });
+      await loadTallies();
+    } catch(e) {}
+  }
 
-      async function sha256Hex(str) {
-        const buf    = new TextEncoder().encode(str);
-        const digest = await crypto.subtle.digest('SHA-256', buf);
-        return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
-      }
+  cards.forEach(card => {
+    card.querySelectorAll('.rankctl button').forEach(b => {
+      b.addEventListener('click', e => { e.preventDefault(); setRank(card.dataset.id, +b.dataset.r); });
+    });
+  });
 
-      async function tryUnlock() {
-        const pw = pwInput.value;
-        errEl.textContent = '';
-        if (!pw) { errEl.textContent = 'Enter a password.'; return; }
-        const hash = await sha256Hex(pw);
-        if (hash === ADMIN_SECRET_HASH) {
-          localStorage.setItem('admin_token', hash);
-          closeModal();
-          setTimeout(openModal, 50);
-        } else {
-          errEl.textContent = 'Incorrect password.';
-          pwInput.value = '';
-          pwInput.focus();
-        }
-      }
-
-      document.getElementById('gm-go').addEventListener('click', tryUnlock);
-      pwInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
-    })();
-
-    const bgs = [
-      '#eaeee7', // sage
-      '#e8eef4', // slate blue
-      '#f4eae8', // dusty rose
-      '#eee8f4', // soft lavender
-      '#f4f0e8', // warm cream
-      '#e8f4ee', // mint
-      '#f4ece8', // peach
-      '#eaf0f4', // sky
-      '#f0f4e8', // light lime
-      '#f4e8f0', // blush
-    ];
-    document.documentElement.style.setProperty('--bg', bgs[Math.floor(Math.random() * bgs.length)]);
-  </script>
+  paintAll(); rerank(); loadTallies();
+})();
+</script>
 </body>
 </html>
