@@ -162,6 +162,13 @@
     .support-heading { font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--slate-500); margin-bottom: 10px; }
     .support-text { font-size: 13px; color: var(--slate-600); line-height: 1.55; margin-bottom: 14px; }
     .support-links { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .support-links a.bmc-btn, .support-links a[class*="bmc-button"] {
+      height: 40px !important; padding: 0 14px !important; min-width: 0 !important;
+      border-radius: 8px !important; background-color: #9c6dd1 !important;
+      border-color: #9c6dd1 !important; color: #fff !important;
+    }
+    .support-links a.bmc-btn img, .support-links a[class*="bmc-button"] img { height: 20px !important; width: auto !important; margin-right: 8px !important; }
+    .support-links a.bmc-btn span, .support-links a[class*="bmc-button"] span { font-size: 14px !important; color: #fff !important; }
     .support-suggest-btn {
       display: inline-flex; align-items: center; gap: 5px;
       padding: 0 14px; height: 40px;
@@ -325,6 +332,7 @@
     <p class="support-text">One BCBA, built on nights and weekends. Free forever, no ads, no paywalls. If it's helped your team, a coffee keeps it going.</p>
     <div class="support-links">
       <script type='text/javascript'>kofiwidget2.init('Support me on Ko-fi', '#8a9961', 'N4N11XY53E');kofiwidget2.draw();</script>
+      <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="no.outcome.aba" data-color="#9c6dd1" data-emoji="☕" data-font="Lato" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#FFFFFF" data-coffee-color="#FFDD00"></script>
       <a class="support-suggest-btn" href="/SuggestFeature/">💡 Suggest a feature</a>
       <a class="support-paypal" href="https://paypal.me/kablubfowles" target="_blank" rel="noopener noreferrer">PayPal</a>
     </div>
