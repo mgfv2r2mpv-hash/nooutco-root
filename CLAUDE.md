@@ -1,49 +1,72 @@
-# Repository guidance
+# games-nooutco-me — Project Rules
 
-## Branch & deployment model
+## Project Overview
 
-- Flow: feature branch → PR into **`dev`** → `dev` is promoted to **`main`**.
-- Deployments go through **`dev` first**, then `main`. This is intentional —
-  always target `dev` in PRs, never open PRs straight into `main`.
-- `dev` periodically absorbs `main` (e.g. `Merge branch 'main' into dev`),
-  so its tip moves. Treat `origin/dev` as a moving target.
+ABA therapy game platform hosted at **games.nooutco.me**. Static HTML game files served from GitHub via Cloudflare Pages/Worker, with a Cloudflare Worker API for image management and admin tooling.
 
-## Merge strategy
+**Games:** IDMatchGame, NameIDGame, FamousPersonGame, FFCGame, IntraverbalGame, SequencesGame, ThinkOrSayGame, HickoryDickoryDockGame, PatternPackCo, MatchingMarket
 
-PRs merge into `dev` with a **merge commit** (this is the repo's default and
-preferred method). The branch's real commits — and their SHAs — become part
-of `dev`'s history, so Git can always tell what is already merged. Follow-up
-branches and re-merges therefore stay clean; the giant false-diff / add-add
-"phantom conflicts" that squash merging used to cause do not happen.
+## Tech Stack
 
-- **Do not squash-merge.** Squashing rewrites a branch into one new SHA on
-  `dev` and discards its ancestry — that is exactly what made stale-based or
-  reused branches blow up with add-add conflicts.
-- If you ever want a linear graph, use **rebase** merging instead — it also
-  preserves commit ancestry. Squash is the one to avoid.
+- **Frontend:** Vanilla HTML/JS per game (no build step)
+- **Backend:** Cloudflare Worker (`worker.js`) — image management, admin ops, AI fact expansion
+- **Storage:** Cloudflare R2 (images), GitHub repo as source-of-truth for game content files
+- **Admin:** `AdminTools/` — protected by `ADMIN_SECRET`, manages game images and topics
+- **AI:** Anthropic API via `ANTHRO_KEY` — `POST /api/admin/update-facts` expands FamousPersonGame facts
 
-Required GitHub settings (Settings → General → Pull Requests, and the
-branch-protection rules):
+## Worker Secrets (set in Cloudflare dashboard)
 
-- **Allow merge commits** — enabled, and set as the **default** merge method.
-- **Require linear history** on `dev` / `main` — **off** (it blocks merge
-  commits). Leave it off, or, if you want it on, switch the default to rebase.
+| Secret | Purpose |
+|---|---|
+| `GITHUB_TOKEN` | Fine-grained PAT — Contents: Read & Write on repo |
+| `GITHUB_OWNER` | GitHub username/org |
+| `GITHUB_REPO` | Repository name |
+| `ADMIN_SECRET` | AdminTools password |
+| `ANTHRO_KEY` | Anthropic API key |
 
-## Working with branches
+## 1. Verification Protocol
 
-1. **Branch from a recently fetched `origin/dev`:**
-   `git fetch origin && git switch -c <branch> origin/dev`
-2. **Keep the branch fresh before merging.** If `dev` has moved, update the
-   branch (`git merge origin/dev`, or the PR's "Update branch" button) so the
-   merge is small and conflict-free.
-3. **Follow-up work is fine on a new branch** cut off the updated
-   `origin/dev`. Because merges preserve ancestry, this no longer produces
-   phantom conflicts — but a fresh base still keeps diffs minimal.
+### Worker Changes
+1. `npx tsc --noEmit` (if TypeScript is added)
+2. `npx wrangler dev` — simulate locally before deploying
+3. **Audit:** No game content, image URLs, or player-identifiable data in logs or error responses
 
-## Project layout
+### Game HTML Changes
+- Test in browser at `localhost` or via Cloudflare Pages preview
+- Verify game loads without console errors
+- Confirm image paths resolve (R2 or GitHub raw)
 
-- Each game lives in its own top-level `*Game/` directory (e.g.
-  `HickoryDickoryDockGame/HickoryDickoryDockGame/`) with `index.html`,
-  `game.js`, `style.css`, and image topic folders.
-- No build step / framework — static HTML/CSS/JS served directly.
-  Quick check: `node --check game.js` and serve the folder over HTTP.
+## 2. Security & Privacy
+
+- **No PHI in logs:** Game content may reference client-facing stimuli — never log player responses or session data
+- **Admin endpoints gated:** All `/api/admin/*` routes require `ADMIN_SECRET` header check
+- **No cleartext secrets:** Worker secrets via Cloudflare dashboard only — never hardcoded in `worker.js` or committed files
+- **CORS:** Only allow origins that need it; do not use `*` for admin routes
+- **V8 Isolates:** Worker is stateless — do not rely on global variable persistence across invocations
+
+## 3. Code Standards
+
+- **Simplicity first:** Games are vanilla HTML/JS — no framework unless the complexity genuinely demands it
+- **Worker CPU budget:** Stay within 50ms (Bundled) / 10ms (Free) CPU limits
+- **Environment bindings:** Use `wrangler.toml` for R2, KV, and secret bindings — never hardcode
+- **Error handling:** Worker must return structured JSON errors, never raw stack traces
+- **No TODOs:** Either implement or leave a scoped note on what's missing
+
+## Collaboration Protocol
+
+- **After completing any set of changes:** ask "Anything else, or should I open a PR / merge to dev?"
+- **Before implementing a feature:** ask clarifying questions until 95% confident of intent and constraints. Do not write code until that bar is met.
+
+## 4. Git Workflow
+
+1. Develop on `dev` branch
+2. `git push origin dev`
+3. `gh pr create` → `gh pr merge --rebase --delete-branch=false`
+4. `git fetch origin main` locally after merge
+
+## 5. Clinical Boundary
+
+Games display ABA stimulus content (images, labels, sequences). Code must not:
+- Log or transmit which player selected which response
+- Store session outcomes without explicit design for that feature
+- Infer or display clinical conclusions from game performance
