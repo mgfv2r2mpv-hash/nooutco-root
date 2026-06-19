@@ -1,5 +1,13 @@
 {
   "name": "tools-nooutco-me",
   "compatibility_date": "2026-04-15",
-  "pages_build_output_dir": "."
+  "pages_build_output_dir": ".",
+  "kv_namespaces": [
+    {
+      // Replace with real ID from: npx wrangler kv namespace create SUGGEST_DUPES
+      // Also bind in Cloudflare dashboard → Pages → tools-nooutco-me → Settings → Functions → KV namespace bindings
+      "binding": "SUGGEST_DUPES",
+      "id": "YOUR_KV_NAMESPACE_ID"
+    }
+  ]
 }
