@@ -124,8 +124,56 @@
           <option value="outline">Outline</option>
         </select>
       </div>
+
+      <!-- Token Board Settings -->
+      <div class="token-board-settings-divider">
+        <label class="checkbox-label">
+          <input type="checkbox" id="chk-token-board">
+          Token Board
+          <button type="button" class="help-btn" data-help="Track tokens earned using FR (Fixed Ratio) or VR (Variable Ratio) reinforcement schedules.">?</button>
+        </label>
+      </div>
+
+      <div id="token-settings" style="display: none; margin-top: 12px; padding-left: 24px;">
+        <div class="extra-row">
+          <label for="sel-schedule-type">Schedule</label>
+          <select id="sel-schedule-type">
+            <option value="FR">Fixed Ratio (FR)</option>
+            <option value="VR">Variable Ratio (VR)</option>
+          </select>
+          <input type="number" id="inp-schedule-value" min="1" max="100" value="1" style="width: 50px;">
+        </div>
+        <div class="extra-row">
+          <label for="inp-starting-tokens">Starting Tokens</label>
+          <input type="number" id="inp-starting-tokens" min="0" max="1000" value="0">
+        </div>
+        <div class="extra-row">
+          <label for="inp-goal-tokens">Goal Tokens</label>
+          <input type="number" id="inp-goal-tokens" min="1" max="1000" value="10">
+        </div>
+        <div class="extra-row">
+          <label for="sel-token-emoji">Token Emoji</label>
+          <select id="sel-token-emoji">
+            <option value="random">Random (each session)</option>
+            <option value="⭐">⭐ Star</option>
+            <option value="🔷">🔷 Diamond</option>
+            <option value="💎">💎 Gem</option>
+            <option value="✨">✨ Sparkle</option>
+            <option value="🎁">🎁 Gift</option>
+            <option value="🏆">🏆 Trophy</option>
+            <option value="💫">💫 Dizzy</option>
+            <option value="🌟">🌟 Glowing Star</option>
+          </select>
+        </div>
+      </div>
     </div>
   </section>
+
+  <!-- ── Token Board Display (simple horizontal bar) ──────────────────── -->
+  <div id="token-board" hidden class="token-board-simple" aria-label="Token progress tracker">
+    <div id="token-emoji-display" class="token-emoji-simple"></div>
+    <div id="token-progress-text" class="token-progress-simple">0 / 10</div>
+  </div>
 
   <!-- ── Pre-start blurb ──────────────────────────────────────────── -->
   <style>

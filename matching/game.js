@@ -75,6 +75,19 @@ const state = {
   // Prompt timeouts
   promptHandle:     null,
   autoPromptHandle: null,
+
+  // Token Board
+  tokenBoardEnabled: false,
+  scheduleType: 'FR',
+  scheduleValue: 1,
+  startingTokens: 0,
+  goalTokens: 10,
+  tokenEmoji: 'random',
+  chosenEmoji: '⭐',
+  currentTokens: 0,
+  trialsCompleted: 0,
+  vr_schedule: [],
+  vr_scheduleTrial: 0,
 };
 
 // ── DOM references ─────────────────────────────────────────────────
@@ -118,6 +131,18 @@ const el = {
   btnTargetsAll:      $('btn-targets-all'),
   btnTargetsNone:     $('btn-targets-none'),
   btnTargetsClose:    $('btn-targets-close'),
+
+  // Token Board
+  chkTokenBoard:      $('chk-token-board'),
+  tokenSettings:      $('token-settings'),
+  selScheduleType:    $('sel-schedule-type'),
+  inpScheduleValue:   $('inp-schedule-value'),
+  inpStartingTokens:  $('inp-starting-tokens'),
+  inpGoalTokens:      $('inp-goal-tokens'),
+  selTokenEmoji:      $('sel-token-emoji'),
+  tokenBoard:         $('token-board'),
+  tokenEmojiDisplay:  $('token-emoji-display'),
+  tokenProgressText:  $('token-progress-text'),
 };
 
 // ── Boot ───────────────────────────────────────────────────────────
@@ -146,6 +171,15 @@ function loadSettings() {
   state.promptDelaySecs   = s.promptDelaySecs   ?? 3;
   state.targetFilters     = s.targetFilters     ?? {};
 
+  state.tokenBoardEnabled = s.tokenBoardEnabled ?? false;
+  state.scheduleType      = s.scheduleType      ?? 'FR';
+  state.scheduleValue     = s.scheduleValue     ?? 1;
+  state.startingTokens    = s.startingTokens    ?? 0;
+  state.goalTokens        = s.goalTokens        ?? 10;
+  state.tokenEmoji        = s.tokenEmoji        ?? 'random';
+  state.chosenEmoji       = s.chosenEmoji       ?? '⭐';
+  state.currentTokens     = s.currentTokens     ?? state.startingTokens;
+
   el.inpSize.value              = state.arraySize;
   el.chkRepresentErrors.checked = state.representErrors;
   el.chkErrorless.checked       = state.errorless;
@@ -158,9 +192,21 @@ function loadSettings() {
   el.chkPromptDelay.checked = state.promptDelay;
   el.selPromptDelay.value   = state.promptDelaySecs;
 
+  el.chkTokenBoard.checked       = state.tokenBoardEnabled;
+  el.selScheduleType.value       = state.scheduleType;
+  el.inpScheduleValue.value      = state.scheduleValue;
+  el.inpStartingTokens.value     = state.startingTokens;
+  el.inpGoalTokens.value         = state.goalTokens;
+  el.selTokenEmoji.value         = state.tokenEmoji;
+
   // Sync enabled state of delay controls
   el.chkPromptDelay.disabled = !state.autoPromptEnabled;
   el.selPromptDelay.disabled = !state.autoPromptEnabled || !state.promptDelay;
+
+  updateTokenBoardUIVisibility();
+  if (state.tokenBoardEnabled) {
+    initializeTokenBoard();
+  }
 }
 
 function saveSettings() {
@@ -178,6 +224,14 @@ function saveSettings() {
     promptDelay:       state.promptDelay,
     promptDelaySecs:   state.promptDelaySecs,
     targetFilters:     state.targetFilters,
+    tokenBoardEnabled: state.tokenBoardEnabled,
+    scheduleType:      state.scheduleType,
+    scheduleValue:     state.scheduleValue,
+    startingTokens:    state.startingTokens,
+    goalTokens:        state.goalTokens,
+    tokenEmoji:        state.tokenEmoji,
+    chosenEmoji:       state.chosenEmoji,
+    currentTokens:     state.currentTokens,
   }));
 }
 
@@ -381,6 +435,50 @@ function bindEvents() {
     state.trialNum    = 0;
     el.resultsBody.innerHTML = '';
   });
+
+  // Token Board Events
+  el.chkTokenBoard.addEventListener('change', () => {
+    state.tokenBoardEnabled = el.chkTokenBoard.checked;
+    updateTokenBoardUIVisibility();
+    if (state.tokenBoardEnabled) {
+      initializeTokenBoard();
+    } else {
+      el.tokenBoard.hidden = true;
+    }
+    saveSettings();
+  });
+
+  el.selScheduleType.addEventListener('change', () => {
+    state.scheduleType = el.selScheduleType.value;
+    saveSettings();
+  });
+
+  el.inpScheduleValue.addEventListener('change', () => {
+    state.scheduleValue = parseInt(el.inpScheduleValue.value) || 1;
+    el.inpScheduleValue.value = state.scheduleValue;
+    saveSettings();
+  });
+
+  el.inpStartingTokens.addEventListener('change', () => {
+    state.startingTokens = parseInt(el.inpStartingTokens.value) || 0;
+    el.inpStartingTokens.value = state.startingTokens;
+    state.currentTokens = state.startingTokens;
+    renderTokenBoard();
+    saveSettings();
+  });
+
+  el.inpGoalTokens.addEventListener('change', () => {
+    state.goalTokens = parseInt(el.inpGoalTokens.value) || 10;
+    el.inpGoalTokens.value = state.goalTokens;
+    renderTokenBoard();
+    saveSettings();
+  });
+
+  el.selTokenEmoji.addEventListener('change', () => {
+    state.tokenEmoji = el.selTokenEmoji.value;
+    initializeTokenBoard();
+    saveSettings();
+  });
 }
 
 // ── Timer ──────────────────────────────────────────────────────────
@@ -442,6 +540,11 @@ function startGame() {
   el.gameArea.removeAttribute('hidden');
   el.btnPrompt.removeAttribute('hidden');
   removeTrialButtons();
+
+  // Initialize token board if enabled
+  if (state.tokenBoardEnabled) {
+    initializeTokenBoard();
+  }
 
   resetTimer();
   startTimer();
@@ -703,6 +806,11 @@ function onCorrectClick(wrapper, tile) {
       state.promptDelay ? state.promptDelaySecs : 0,
     ].join('|'),
   });
+
+  // Award tokens on correct response
+  if (outcome === 'Correct') {
+    awardTokensForTrial();
+  }
 
   // Style back face before flip
   const backFace = tile.querySelector('.tile-back');
@@ -1000,4 +1108,102 @@ function setExtraPanelOpen(open) {
   el.btnExtraToggle.classList.toggle('is-open', open);
   if (open) { el.extraPanel.removeAttribute('hidden'); }
   else       { el.extraPanel.setAttribute('hidden', ''); }
+}
+
+// ── Token Board ────────────────────────────────────────────────────
+
+const EMOJI_POOL = ['⭐', '🔷', '💎', '✨', '🎁', '🏆', '💫', '🌟'];
+
+function updateTokenBoardUIVisibility() {
+  if (state.tokenBoardEnabled) {
+    el.tokenSettings.style.display = 'block';
+  } else {
+    el.tokenSettings.style.display = 'none';
+  }
+}
+
+function pickRandomEmoji() {
+  return EMOJI_POOL[Math.floor(Math.random() * EMOJI_POOL.length)];
+}
+
+function initializeTokenBoard() {
+  if (!state.tokenBoardEnabled) return;
+
+  if (state.tokenEmoji === 'random') {
+    state.chosenEmoji = pickRandomEmoji();
+  } else {
+    state.chosenEmoji = state.tokenEmoji;
+  }
+
+  state.trialsCompleted = 0;
+  state.vr_scheduleTrial = 0;
+  if (state.scheduleType === 'VR') {
+    state.vr_schedule = generateVRSchedule(1000, state.scheduleValue);
+  }
+
+  state.currentTokens = state.startingTokens;
+
+  el.tokenBoard.hidden = false;
+  renderTokenBoard();
+}
+
+function generateVRSchedule(numTrials, vrValue) {
+  const itemsPerChunk = Math.ceil(vrValue);
+  const reinforcementIndices = [];
+
+  for (let i = 0; i < numTrials; i += itemsPerChunk) {
+    const chunkEnd = Math.min(i + itemsPerChunk, numTrials);
+    const randomPos = Math.floor(Math.random() * (chunkEnd - i)) + i;
+    reinforcementIndices.push(randomPos);
+  }
+
+  return reinforcementIndices.sort((a, b) => a - b);
+}
+
+function shouldAwardTokens() {
+  if (state.scheduleType === 'FR') {
+    return state.trialsCompleted % state.scheduleValue === 0;
+  } else if (state.scheduleType === 'VR') {
+    if (state.vr_scheduleTrial >= state.vr_schedule.length) {
+      const offset = state.trialsCompleted;
+      const newSchedule = generateVRSchedule(1000, state.scheduleValue);
+      state.vr_schedule = newSchedule.map(idx => idx + offset);
+      state.vr_scheduleTrial = 0;
+    }
+    const shouldAward = state.vr_schedule[state.vr_scheduleTrial] === state.trialsCompleted;
+    if (shouldAward) {
+      state.vr_scheduleTrial++;
+    }
+    return shouldAward;
+  }
+  return false;
+}
+
+function awardTokensForTrial() {
+  if (!state.tokenBoardEnabled || !state.active) return;
+
+  state.trialsCompleted++;
+  if (shouldAwardTokens()) {
+    if (state.currentTokens < state.goalTokens) {
+      state.currentTokens++;
+    }
+  }
+
+  renderTokenBoard();
+  saveSettings();
+}
+
+function renderTokenBoard() {
+  if (!state.tokenBoardEnabled) return;
+
+  const emojiDisplay = state.chosenEmoji.repeat(Math.min(state.currentTokens, 20));
+  el.tokenEmojiDisplay.textContent = emojiDisplay;
+
+  el.tokenProgressText.textContent = `${state.currentTokens} / ${state.goalTokens}`;
+
+  if (state.currentTokens >= state.goalTokens) {
+    el.tokenBoard.classList.add('goal-reached');
+  } else {
+    el.tokenBoard.classList.remove('goal-reached');
+  }
 }

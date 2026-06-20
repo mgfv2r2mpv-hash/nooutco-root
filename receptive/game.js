@@ -51,6 +51,19 @@ const state = {
   promptDelay:       false,
   promptDelaySecs:   3,
 
+  // Token board settings
+  tokenBoardEnabled: false,
+  scheduleType:      'FR',
+  scheduleValue:     1,
+  startingTokens:    0,
+  goalTokens:        10,
+  tokenEmoji:        'random',
+  chosenEmoji:       '⭐',
+  currentTokens:     0,
+  trialsCompleted:   0,
+  vr_schedule:       [],
+  vr_scheduleTrial:  0,
+
   // Per-topic target filters: { topic: [srcPaths] } — empty array = no filter
   targetFilters: {},
 
@@ -138,6 +151,16 @@ const el = {
   btnExtraToggle:      $('btn-extra-toggle'),
   extraPanel:          $('extra-panel'),
   btnExtraClose:       $('btn-extra-close'),
+  chkTokenBoard:       $('chk-token-board'),
+  tokenSettings:       $('token-settings'),
+  selScheduleType:     $('sel-schedule-type'),
+  inpScheduleValue:    $('inp-schedule-value'),
+  inpStartingTokens:   $('inp-starting-tokens'),
+  inpGoalTokens:       $('inp-goal-tokens'),
+  selTokenEmoji:       $('sel-token-emoji'),
+  tokenBoard:          $('token-board'),
+  tokenEmojiDisplay:   $('token-emoji-display'),
+  tokenProgressText:   $('token-progress-text'),
 };
 
 // ── Boot ───────────────────────────────────────────────────────────
@@ -166,6 +189,15 @@ function loadSettings() {
   state.promptDelaySecs   = s.promptDelaySecs   ?? 3;
   state.targetFilters     = (s.targetFilters && typeof s.targetFilters === 'object') ? s.targetFilters : {};
 
+  state.tokenBoardEnabled = s.tokenBoardEnabled ?? false;
+  state.scheduleType      = s.scheduleType      ?? 'FR';
+  state.scheduleValue     = s.scheduleValue     ?? 1;
+  state.startingTokens    = s.startingTokens    ?? 0;
+  state.goalTokens        = s.goalTokens        ?? 10;
+  state.tokenEmoji        = s.tokenEmoji        ?? 'random';
+  state.chosenEmoji       = s.chosenEmoji       ?? '⭐';
+  state.currentTokens     = s.currentTokens     ?? 0;
+
   el.inpSize.value              = state.arraySize;
   el.chkRepresentErrors.checked = state.representErrors;
   el.chkErrorless.checked       = state.errorless;
@@ -178,8 +210,17 @@ function loadSettings() {
   el.chkPromptDelay.checked = state.promptDelay;
   el.selPromptDelay.value   = state.promptDelaySecs;
 
+  el.chkTokenBoard.checked   = state.tokenBoardEnabled;
+  el.selScheduleType.value   = state.scheduleType;
+  el.inpScheduleValue.value  = state.scheduleValue;
+  el.inpStartingTokens.value = state.startingTokens;
+  el.inpGoalTokens.value     = state.goalTokens;
+  el.selTokenEmoji.value     = state.tokenEmoji;
+
   el.chkPromptDelay.disabled = !state.autoPromptEnabled;
   el.selPromptDelay.disabled = !state.autoPromptEnabled || !state.promptDelay;
+
+  updateTokenBoardUIVisibility();
 }
 
 function saveSettings() {
@@ -197,6 +238,14 @@ function saveSettings() {
     promptDelay:       state.promptDelay,
     promptDelaySecs:   state.promptDelaySecs,
     targetFilters:     state.targetFilters,
+    tokenBoardEnabled: state.tokenBoardEnabled,
+    scheduleType:      state.scheduleType,
+    scheduleValue:     state.scheduleValue,
+    startingTokens:    state.startingTokens,
+    goalTokens:        state.goalTokens,
+    tokenEmoji:        state.tokenEmoji,
+    chosenEmoji:       state.chosenEmoji,
+    currentTokens:     state.currentTokens,
   }));
 }
 
@@ -390,6 +439,32 @@ function bindEvents() {
   el.chkErrorless.addEventListener('change',       () => { state.errorless       = el.chkErrorless.checked;       saveSettings(); });
   el.chkNoErrorAnim.addEventListener('change',     () => { state.noErrorAnim     = el.chkNoErrorAnim.checked;     saveSettings(); });
 
+  el.chkTokenBoard.addEventListener('change', () => {
+    state.tokenBoardEnabled = el.chkTokenBoard.checked;
+    updateTokenBoardUIVisibility();
+    saveSettings();
+  });
+  el.selScheduleType.addEventListener('change', () => {
+    state.scheduleType = el.selScheduleType.value;
+    saveSettings();
+  });
+  el.inpScheduleValue.addEventListener('change', () => {
+    state.scheduleValue = parseInt(el.inpScheduleValue.value) || 1;
+    saveSettings();
+  });
+  el.inpStartingTokens.addEventListener('change', () => {
+    state.startingTokens = parseInt(el.inpStartingTokens.value) || 0;
+    saveSettings();
+  });
+  el.inpGoalTokens.addEventListener('change', () => {
+    state.goalTokens = parseInt(el.inpGoalTokens.value) || 10;
+    saveSettings();
+  });
+  el.selTokenEmoji.addEventListener('change', () => {
+    state.tokenEmoji = el.selTokenEmoji.value;
+    saveSettings();
+  });
+
   el.btnStart.addEventListener('click',  startGame);
   el.btnPrompt.addEventListener('click', onPromptButton);
   el.btnPrint.addEventListener('click',  printData);
@@ -491,6 +566,9 @@ function startGame() {
   el.gameArea.removeAttribute('hidden');
   el.btnPrompt.removeAttribute('hidden');
   removeNextBtn();
+
+  el.tokenBoard.hidden = state.tokenBoardEnabled ? false : true;
+  initializeTokenBoard();
 
   resetTimer();
   startTimer();
@@ -762,6 +840,10 @@ function onCorrectClick(wrapper, tile) {
       state.promptDelay ? state.promptDelaySecs : 0,
     ].join('|'),
   });
+
+  if (outcome === 'Correct') {
+    awardTokensForTrial();
+  }
 
   const backFace = tile.querySelector('.tile-back');
   const okSpan   = backFace.querySelector('.ok-text');
@@ -1058,4 +1140,94 @@ function setExtraPanelOpen(open) {
   el.btnExtraToggle.classList.toggle('is-open', open);
   if (open) { el.extraPanel.removeAttribute('hidden'); }
   else       { el.extraPanel.setAttribute('hidden', ''); }
+}
+
+// ── Token Board ────────────────────────────────────────────────────
+
+function initializeTokenBoard() {
+  if (!state.tokenBoardEnabled) return;
+  
+  if (state.tokenEmoji === 'random') {
+    state.chosenEmoji = pickRandomEmoji();
+  } else {
+    state.chosenEmoji = state.tokenEmoji;
+  }
+  
+  state.trialsCompleted = 0;
+  state.vr_scheduleTrial = 0;
+  if (state.scheduleType === 'VR') {
+    state.vr_schedule = generateVRSchedule(1000, state.scheduleValue);
+  }
+  
+  state.currentTokens = state.startingTokens;
+  el.tokenBoard.hidden = false;
+  renderTokenBoard();
+}
+
+function generateVRSchedule(numTrials, vrValue) {
+  const itemsPerChunk = Math.ceil(vrValue);
+  const reinforcementIndices = [];
+  
+  for (let i = 0; i < numTrials; i += itemsPerChunk) {
+    const chunkEnd = Math.min(i + itemsPerChunk, numTrials);
+    const randomPos = Math.floor(Math.random() * (chunkEnd - i)) + i;
+    reinforcementIndices.push(randomPos);
+  }
+  
+  return reinforcementIndices.sort((a, b) => a - b);
+}
+
+function shouldAwardTokens() {
+  if (state.scheduleType === 'FR') {
+    return state.trialsCompleted % state.scheduleValue === 0;
+  } else if (state.scheduleType === 'VR') {
+    if (state.vr_scheduleTrial < state.vr_schedule.length) {
+      return state.trialsCompleted === state.vr_schedule[state.vr_scheduleTrial];
+    }
+    return false;
+  }
+  return false;
+}
+
+function awardTokensForTrial() {
+  if (!state.tokenBoardEnabled) return;
+  
+  state.trialsCompleted++;
+  
+  if (shouldAwardTokens()) {
+    if (state.currentTokens < state.goalTokens) {
+      state.currentTokens++;
+      if (state.scheduleType === 'VR') {
+        state.vr_scheduleTrial++;
+      }
+    }
+  }
+  
+  renderTokenBoard();
+  saveSettings();
+}
+
+function renderTokenBoard() {
+  const emojiDisplay = state.chosenEmoji.repeat(Math.min(state.currentTokens, 20));
+  el.tokenEmojiDisplay.textContent = emojiDisplay;
+  el.tokenProgressText.textContent = `${state.currentTokens} / ${state.goalTokens}`;
+  
+  if (state.currentTokens >= state.goalTokens) {
+    el.tokenBoard.classList.add('goal-reached');
+  } else {
+    el.tokenBoard.classList.remove('goal-reached');
+  }
+}
+
+function pickRandomEmoji() {
+  const pool = ['⭐', '🔷', '💎', '✨', '🎁', '🏆', '💫', '🌟'];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function updateTokenBoardUIVisibility() {
+  if (el.chkTokenBoard.checked) {
+    el.tokenSettings.style.display = 'block';
+  } else {
+    el.tokenSettings.style.display = 'none';
+  }
 }

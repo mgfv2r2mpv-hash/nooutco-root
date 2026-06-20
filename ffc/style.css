@@ -853,5 +853,58 @@ body {
 
   #comp-section { flex: 0 0 auto; min-width: 0; align-items: center; }
   #comp-grid { width: auto; max-width: 100%; }
+
+  .token-board-simple { padding: 8px 10px; }
+  .token-emoji-simple { font-size: 1.2rem; }
+  .token-progress-simple { font-size: 0.9rem; }
+}
+
+/* ── Token Board ───────────────────────────────────────────────────── */
+.token-board-simple {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+  border-bottom: 1px solid #bbf7d0;
+  min-height: 44px;
+  padding: 10px 20px;
+  flex-shrink: 0;
+}
+
+.token-board-simple.goal-reached {
+  background: linear-gradient(135deg, #dcfce7 0%, #c6f6d5 100%);
+  border-bottom-color: #86efac;
+}
+
+.token-emoji-simple {
+  font-size: 1.8rem;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  max-width: 150px;
+  line-height: 1;
+}
+
+.token-progress-simple {
+  font-family: 'Courier New', monospace;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2d3748;
+  white-space: nowrap;
+}
+
+#token-settings {
+  background: #f0fdf4;
+  border-left: 3px solid #86efac;
+  padding: 12px;
+  border-radius: 4px;
+}
+
+.token-board-settings-divider {
+  border-top: 1px solid #e2e8f0;
+  margin-top: 12px;
+  padding-top: 12px;
 }
 

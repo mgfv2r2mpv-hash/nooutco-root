@@ -151,6 +151,52 @@
           <option value="outline">Outline</option>
         </select>
       </div>
+
+      <!-- Token Board Settings -->
+      <div class="token-board-settings-divider">
+        <label class="checkbox-label">
+          <input type="checkbox" id="chk-token-board">
+          Token Board (Reinforcement Tracking)
+          <button type="button" class="help-btn" data-help="Enable a token/point tracking board with Fixed Ratio (FR) or Variable Ratio (VR) reinforcement schedules.">?</button>
+        </label>
+      </div>
+
+      <div id="token-settings" style="display: none; margin-top: 12px; padding-left: 24px;">
+        <div class="extra-row">
+          <label for="sel-schedule-type">Schedule</label>
+          <select id="sel-schedule-type">
+            <option value="FR">Fixed Ratio (FR)</option>
+            <option value="VR">Variable Ratio (VR)</option>
+          </select>
+          <input type="number" id="inp-schedule-value" min="1" max="100" value="1" style="width: 50px;">
+          <button type="button" class="help-btn" data-help="FR1 = 1 token per trial. FR3 = 1 token per 3 trials. VR2 = average 1 token per 2 trials (randomized).">?</button>
+        </div>
+
+        <div class="extra-row">
+          <label for="inp-starting-tokens">Starting Tokens</label>
+          <input type="number" id="inp-starting-tokens" min="0" max="1000" value="0">
+        </div>
+
+        <div class="extra-row">
+          <label for="inp-goal-tokens">Goal Tokens</label>
+          <input type="number" id="inp-goal-tokens" min="1" max="1000" value="10">
+        </div>
+
+        <div class="extra-row">
+          <label for="sel-token-emoji">Token Emoji</label>
+          <select id="sel-token-emoji">
+            <option value="random">Random (each session)</option>
+            <option value="⭐">⭐ Star</option>
+            <option value="🔷">🔷 Diamond</option>
+            <option value="💎">💎 Gem</option>
+            <option value="✨">✨ Sparkle</option>
+            <option value="🎁">🎁 Gift</option>
+            <option value="🏆">🏆 Trophy</option>
+            <option value="💫">💫 Dizzy</option>
+            <option value="🌟">🌟 Glowing Star</option>
+          </select>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -163,6 +209,14 @@
     .game-intro li { margin-bottom: 3px; }
     .game-intro .tip { margin-top: 8px; color: #5a6b4a; font-size: 13px; }
   </style>
+  <!-- Token Board Display -->
+  <div id="token-board" hidden aria-label="Token progress tracker">
+    <div class="token-board-content">
+      <div id="token-emoji-display" class="token-display"></div>
+      <div id="token-progress-text" class="token-progress-text">0 / 10</div>
+    </div>
+  </div>
+
   <section class="game-intro" id="game-intro" aria-label="How this game works">
     <h2>Matching Market — themed matching</h2>
     <p>A cartoon customer walks in and asks for an item. The learner finds the matching product on the market shelves.</p>

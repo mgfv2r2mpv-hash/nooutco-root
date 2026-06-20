@@ -84,6 +84,19 @@ const state = {
 
   promptHandle: null,
   autoPromptHandle: null,
+
+  // Token Board
+  tokenBoardEnabled: false,
+  scheduleType: 'FR',
+  scheduleValue: 1,
+  startingTokens: 0,
+  goalTokens: 10,
+  tokenEmoji: 'random',
+  chosenEmoji: '⭐',
+  currentTokens: 0,
+  trialsCompleted: 0,
+  vr_schedule: [],
+  vr_scheduleTrial: 0,
 };
 
 // ── DOM references ─────────────────────────────────────────────────
@@ -144,6 +157,18 @@ const el = {
   btnTargetsAll:      $('btn-targets-all'),
   btnTargetsNone:     $('btn-targets-none'),
   btnTargetsClose:    $('btn-targets-close'),
+
+  // Token Board
+  chkTokenBoard:      $('chk-token-board'),
+  tokenSettings:      $('token-settings'),
+  selScheduleType:    $('sel-schedule-type'),
+  inpScheduleValue:   $('inp-schedule-value'),
+  inpStartingTokens:  $('inp-starting-tokens'),
+  inpGoalTokens:      $('inp-goal-tokens'),
+  selTokenEmoji:      $('sel-token-emoji'),
+  tokenBoard:         $('token-board'),
+  tokenEmojiDisplay:  $('token-emoji-display'),
+  tokenProgressText:  $('token-progress-text'),
 };
 
 // ── Boot ───────────────────────────────────────────────────────────
@@ -175,6 +200,15 @@ function loadSettings() {
   state.promptDelaySecs      = s.promptDelaySecs      ?? 3;
   state.targetFilters        = s.targetFilters        ?? {};
 
+  state.tokenBoardEnabled    = s.tokenBoardEnabled    ?? false;
+  state.scheduleType         = s.scheduleType         ?? 'FR';
+  state.scheduleValue        = s.scheduleValue        ?? 1;
+  state.startingTokens       = s.startingTokens       ?? 0;
+  state.goalTokens           = s.goalTokens           ?? 10;
+  state.tokenEmoji           = s.tokenEmoji           ?? 'random';
+  state.chosenEmoji          = s.chosenEmoji          ?? '⭐';
+  state.currentTokens        = s.currentTokens        ?? state.startingTokens;
+
   el.inpSize.value                   = state.arraySize;
   el.selAnimTier.value               = state.animTier;
   el.chkCaption.checked              = state.showCaption;
@@ -190,8 +224,20 @@ function loadSettings() {
   el.chkPromptDelay.checked          = state.promptDelay;
   el.selPromptDelay.value            = state.promptDelaySecs;
 
+  el.chkTokenBoard.checked           = state.tokenBoardEnabled;
+  el.selScheduleType.value           = state.scheduleType;
+  el.inpScheduleValue.value          = state.scheduleValue;
+  el.inpStartingTokens.value         = state.startingTokens;
+  el.inpGoalTokens.value             = state.goalTokens;
+  el.selTokenEmoji.value             = state.tokenEmoji;
+
   el.chkPromptDelay.disabled = !state.autoPromptEnabled;
   el.selPromptDelay.disabled = !state.autoPromptEnabled || !state.promptDelay;
+
+  updateTokenBoardUIVisibility();
+  if (state.tokenBoardEnabled) {
+    initializeTokenBoard();
+  }
 }
 
 function saveSettings() {
@@ -212,6 +258,14 @@ function saveSettings() {
     promptDelay:          state.promptDelay,
     promptDelaySecs:      state.promptDelaySecs,
     targetFilters:        state.targetFilters,
+    tokenBoardEnabled:    state.tokenBoardEnabled,
+    scheduleType:         state.scheduleType,
+    scheduleValue:        state.scheduleValue,
+    startingTokens:       state.startingTokens,
+    goalTokens:           state.goalTokens,
+    tokenEmoji:           state.tokenEmoji,
+    chosenEmoji:          state.chosenEmoji,
+    currentTokens:        state.currentTokens,
   }));
 }
 
@@ -380,6 +434,50 @@ function bindEvents() {
     state.trialNum = 0;
     el.resultsBody.innerHTML = '';
   });
+
+  // Token Board Events
+  el.chkTokenBoard.addEventListener('change', () => {
+    state.tokenBoardEnabled = el.chkTokenBoard.checked;
+    updateTokenBoardUIVisibility();
+    if (state.tokenBoardEnabled) {
+      initializeTokenBoard();
+    } else {
+      el.tokenBoard.hidden = true;
+    }
+    saveSettings();
+  });
+
+  el.selScheduleType.addEventListener('change', () => {
+    state.scheduleType = el.selScheduleType.value;
+    saveSettings();
+  });
+
+  el.inpScheduleValue.addEventListener('change', () => {
+    state.scheduleValue = parseInt(el.inpScheduleValue.value) || 1;
+    el.inpScheduleValue.value = state.scheduleValue;
+    saveSettings();
+  });
+
+  el.inpStartingTokens.addEventListener('change', () => {
+    state.startingTokens = parseInt(el.inpStartingTokens.value) || 0;
+    el.inpStartingTokens.value = state.startingTokens;
+    state.currentTokens = state.startingTokens;
+    renderTokenBoard();
+    saveSettings();
+  });
+
+  el.inpGoalTokens.addEventListener('change', () => {
+    state.goalTokens = parseInt(el.inpGoalTokens.value) || 10;
+    el.inpGoalTokens.value = state.goalTokens;
+    renderTokenBoard();
+    saveSettings();
+  });
+
+  el.selTokenEmoji.addEventListener('change', () => {
+    state.tokenEmoji = el.selTokenEmoji.value;
+    initializeTokenBoard();
+    saveSettings();
+  });
 }
 
 // ── Timer ──────────────────────────────────────────────────────────
@@ -433,6 +531,11 @@ function startGame() {
   el.gameArea.removeAttribute('hidden');
   el.btnPrompt.removeAttribute('hidden');
   removeTrialButtons();
+
+  // Initialize token board if enabled
+  if (state.tokenBoardEnabled) {
+    initializeTokenBoard();
+  }
 
   resetTimer();
   startTimer();
@@ -663,6 +766,11 @@ function onCorrectClick(bucket) {
       state.animTier,
     ].join('|'),
   });
+
+  // Award tokens on correct response
+  if (outcome === 'Correct') {
+    awardTokensForTrial();
+  }
 
   playCorrectSequence(bucket).then(() => showTrialButtons());
 }
@@ -988,4 +1096,123 @@ function setExtraPanelOpen(open) {
   el.btnExtraToggle.classList.toggle('is-open', open);
   if (open) { el.extraPanel.removeAttribute('hidden'); }
   else       { el.extraPanel.setAttribute('hidden', ''); }
+}
+
+// ── Token Board ────────────────────────────────────────────────────
+
+const EMOJI_POOL = ['⭐', '🔷', '💎', '✨', '🎁', '🏆', '💫', '🌟'];
+
+function updateTokenBoardUIVisibility() {
+  if (state.tokenBoardEnabled) {
+    el.tokenSettings.style.display = 'block';
+  } else {
+    el.tokenSettings.style.display = 'none';
+  }
+}
+
+function pickRandomEmoji() {
+  return EMOJI_POOL[Math.floor(Math.random() * EMOJI_POOL.length)];
+}
+
+function initializeTokenBoard() {
+  if (!state.tokenBoardEnabled) return;
+
+  // Pick emoji if random
+  if (state.tokenEmoji === 'random') {
+    state.chosenEmoji = pickRandomEmoji();
+  } else {
+    state.chosenEmoji = state.tokenEmoji;
+  }
+
+  // Reset trial count and generate VR schedule if needed
+  state.trialsCompleted = 0;
+  state.vr_scheduleTrial = 0;
+  if (state.scheduleType === 'VR') {
+    state.vr_schedule = generateVRSchedule(1000, state.scheduleValue);
+  }
+
+  // Set starting tokens
+  state.currentTokens = state.startingTokens;
+
+  // Show token board
+  el.tokenBoard.hidden = false;
+  renderTokenBoard();
+}
+
+function generateVRSchedule(numTrials, vrValue) {
+  // Generate a VR schedule where reinforcement happens on average every vrValue trials.
+  // Uses chunked randomization to prevent excessive drift.
+  //
+  // Algorithm: Divide the session into chunks of vrValue trials, place one reinforcement
+  // randomly within each chunk. This ensures:
+  // - Exactly numTrials/vrValue reinforcements (or close to it)
+  // - No gap exceeds ~1.5x the target interval
+  // - Fair distribution across the session
+
+  const itemsPerChunk = Math.ceil(vrValue);
+  const reinforcementIndices = [];
+
+  for (let i = 0; i < numTrials; i += itemsPerChunk) {
+    const chunkEnd = Math.min(i + itemsPerChunk, numTrials);
+    const randomPos = Math.floor(Math.random() * (chunkEnd - i)) + i;
+    reinforcementIndices.push(randomPos);
+  }
+
+  return reinforcementIndices.sort((a, b) => a - b);
+}
+
+function shouldAwardTokens() {
+  // Determine if tokens should be awarded for the current trial
+  if (state.scheduleType === 'FR') {
+    // Fixed ratio: award when trialsCompleted is a multiple of scheduleValue
+    return state.trialsCompleted % state.scheduleValue === 0;
+  } else if (state.scheduleType === 'VR') {
+    // Variable ratio: check if current trial is in the pre-generated schedule
+    if (state.vr_scheduleTrial >= state.vr_schedule.length) {
+      // Re-generate if we've exhausted the current schedule
+      // Offset indices by current trialsCompleted to keep schedule continuous
+      const offset = state.trialsCompleted;
+      const newSchedule = generateVRSchedule(1000, state.scheduleValue);
+      state.vr_schedule = newSchedule.map(idx => idx + offset);
+      state.vr_scheduleTrial = 0;
+    }
+    const shouldAward = state.vr_schedule[state.vr_scheduleTrial] === state.trialsCompleted;
+    if (shouldAward) {
+      state.vr_scheduleTrial++;
+    }
+    return shouldAward;
+  }
+  return false;
+}
+
+function awardTokensForTrial() {
+  if (!state.tokenBoardEnabled || !state.active) return;
+
+  state.trialsCompleted++;
+  if (shouldAwardTokens()) {
+    if (state.currentTokens < state.goalTokens) {
+      state.currentTokens++;
+    }
+  }
+
+  renderTokenBoard();
+  saveSettings();
+}
+
+function renderTokenBoard() {
+  if (!state.tokenBoardEnabled) return;
+
+  // Display emoji repeated for current token count
+  const emojiDisplay = state.chosenEmoji.repeat(Math.min(state.currentTokens, 20)); // Cap display at 20
+  el.tokenEmojiDisplay.textContent = emojiDisplay;
+
+  // Update progress text
+  el.tokenProgressText.textContent = `${state.currentTokens} / ${state.goalTokens}`;
+
+  // Check if goal reached
+  if (state.currentTokens >= state.goalTokens) {
+    el.tokenBoard.classList.add('goal-reached');
+  } else {
+    el.tokenBoard.classList.remove('goal-reached');
+  }
 }

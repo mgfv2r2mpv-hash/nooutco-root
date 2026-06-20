@@ -648,6 +648,95 @@ body {
   #print-summary span { margin-right: 20px; }
 }
 
+/* ── Token Board (simple, clean design) ────────────────────────────── */
+.token-board-simple {
+  background: linear-gradient(to right, #f8fafc, #f0f6f3);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-shrink: 0;
+  border-bottom: 1px solid #cbd5e0;
+  min-height: 44px;
+}
+
+.token-board-simple.goal-reached {
+  background: linear-gradient(to right, #e8f5e9, #dff5e0);
+  border-bottom-color: #2c6a3f;
+}
+
+.token-emoji-simple {
+  font-size: 1.8rem;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 60px;
+  flex-wrap: wrap;
+  max-width: 150px;
+  line-height: 1;
+}
+
+.token-progress-simple {
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+  color: #2d3748;
+  white-space: nowrap;
+  letter-spacing: 0.05em;
+}
+
+/* Token settings in extra panel */
+#token-settings {
+  background: #f0f6f3;
+  padding: 12px;
+  border-radius: 8px;
+  border-left: 3px solid #1a2744;
+}
+
+.token-board-settings-divider {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #cbd5e0;
+}
+
+#token-settings .extra-row {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#token-settings .extra-row:last-child {
+  margin-bottom: 0;
+}
+
+#token-settings label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #2d3748;
+  min-width: 110px;
+}
+
+#token-settings select,
+#token-settings input[type="number"] {
+  padding: 6px 8px;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  background: #fff;
+  color: #2d3748;
+}
+
+#inp-schedule-value {
+  width: 60px;
+}
+
+#inp-starting-tokens,
+#inp-goal-tokens {
+  width: 70px;
+}
+
 /* ── Responsive ────────────────────────────────────────────────────── */
 @media (max-width: 680px) {
   :root { --tile-sz: 96px; --tile-gap: 8px; }
@@ -786,5 +875,10 @@ body {
 
   #comp-section { flex: 0 0 auto; min-width: 0; align-items: center; }
   #comp-grid { width: auto; max-width: 100%; }
+
+  /* Token board responsive */
+  .token-board-simple { padding: 8px 10px; }
+  .token-emoji-simple { font-size: 1.2rem; }
+  .token-progress-simple { font-size: 0.9rem; }
 }
 

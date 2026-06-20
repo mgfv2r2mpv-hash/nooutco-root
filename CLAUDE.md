@@ -52,11 +52,6 @@ ABA therapy game platform hosted at **games.nooutco.me**. Static HTML game files
 - **Error handling:** Worker must return structured JSON errors, never raw stack traces
 - **No TODOs:** Either implement or leave a scoped note on what's missing
 
-## Collaboration Protocol
-
-- **After completing any set of changes:** ask "Anything else, or should I open a PR / merge to dev?"
-- **Before implementing a feature:** ask clarifying questions until 95% confident of intent and constraints. Do not write code until that bar is met.
-
 ## 4. Git Workflow
 
 1. Develop on `dev` branch
