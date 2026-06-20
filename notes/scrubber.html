@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Clinical Summary Scrubber</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f8f9fa;
+  --surface: #ffffff;
+  --border: #e0e0e0;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --danger: #dc2626;
+  --text: #1a1a1a;
+  --text-muted: #6b7280;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  color: var(--text);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); min-height: 100vh; display: flex; flex-direction: column; }
+
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 20px;
+  display: flex; align-items: center; gap: 12px;
+}
+.header h1 { font-size: 16px; font-weight: 600; }
+.header .subtitle { color: var(--text-muted); font-size: 12px; }
+.badge { background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+
+.layout { display: grid; grid-template-columns: 270px 1fr; flex: 1; overflow: hidden; min-height: 0; }
+.sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 0; }
+.main { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+
+.sidebar h2 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 10px; }
+.role-group { margin-bottom: 14px; }
+.role-label { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 12px; margin-bottom: 5px; }
+.role-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.role-dot.client     { background: #ec4899; }
+.role-dot.caregiver  { background: #10b981; }
+.role-dot.technician { background: #3b82f6; }
+.role-dot.bcba       { background: #8b5cf6; }
+.role-dot.teacher    { background: #f59e0b; }
+.role-dot.other      { background: #6b7280; }
+.role-token { font-size: 10px; background: var(--bg); padding: 1px 5px; border-radius: 3px; border: 1px solid var(--border); font-family: monospace; color: var(--text-muted); }
+
+.name-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 5px; min-height: 4px; }
+.name-tag { display: flex; align-items: center; gap: 3px; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 2px 6px 2px 8px; font-size: 11px; }
+.name-tag button { background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0 1px; font-size: 13px; line-height: 1; }
+.name-tag button:hover { color: var(--danger); }
+.add-name { display: flex; gap: 4px; }
+.add-name input { flex: 1; border: 1px solid var(--border); border-radius: 5px; padding: 3px 7px; font-size: 12px; min-width: 0; }
+.add-name button { border: none; background: var(--primary); color: white; border-radius: 5px; padding: 3px 9px; cursor: pointer; font-size: 13px; font-weight: 600; }
+.add-name button:hover { background: var(--primary-hover); }
+
+.divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+.flag-row { display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; }
+.flag-row p { font-size: 11px; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
+
+.tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+.tab { padding: 10px 18px; cursor: pointer; font-size: 13px; font-weight: 500; border-bottom: 2px solid transparent; color: var(--text-muted); white-space: nowrap; }
+.tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+.tab:hover:not(.active) { color: var(--text); }
+
+.panel { flex: 1; overflow-y: auto; padding: 16px; display: none; flex-direction: column; gap: 12px; }
+.panel.active { display: flex; }
+
+textarea.raw-input {
+  width: 100%; flex: 1; min-height: 340px; border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px; font-family: inherit; font-size: 13px; resize: vertical; line-height: 1.65;
+}
+
+.btn { border: none; border-radius: 7px; padding: 9px 18px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--bg); }
+.btn-sm { padding: 5px 11px; font-size: 12px; }
+.btn-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+.section-card { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.section-header {
+  display: flex; align-items: center; gap: 8px; padding: 9px 13px;
+  background: var(--bg); cursor: pointer; user-select: none;
+}
+.section-header:hover { background: #f0f0f0; }
+.section-title { font-weight: 600; font-size: 12px; flex: 1; }
+.section-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+.domain-tag { padding: 2px 7px; border-radius: 9px; font-size: 10px; font-weight: 600; }
+.domain-tag.staff      { background: #dbeafe; color: #1e40af; }
+.domain-tag.client     { background: #fce7f3; color: #9d174d; }
+.domain-tag.caregiver  { background: #d1fae5; color: #065f46; }
+.domain-tag.skill      { background: #fef3c7; color: #92400e; }
+.domain-tag.preference { background: #ede9fe; color: #5b21b6; }
+.domain-tag.protocol   { background: #fee2e2; color: #991b1b; }
+.domain-tag.other      { background: #f3f4f6; color: #374151; }
+.section-content { padding: 10px 14px; font-size: 12px; line-height: 1.65; display: none; }
+.section-bullet { padding: 3px 0 3px 12px; border-left: 2px solid var(--border); margin: 3px 0; }
+
+.scrubbed-name { background: #dbeafe; color: #1e40af; border-radius: 3px; padding: 0 3px; font-size: 11px; font-weight: 700; font-family: monospace; }
+
+.phi-warning { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 12px; }
+.phi-warning h3 { font-size: 12px; font-weight: 700; color: #c2410c; margin-bottom: 6px; }
+.phi-warning p { font-size: 11px; color: #7c2d12; margin-bottom: 8px; line-height: 1.4; }
+.phi-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.phi-chip { background: #fef3c7; border: 1px dashed #d97706; color: #92400e; padding: 2px 9px; border-radius: 10px; font-size: 11px; cursor: pointer; }
+.phi-chip:hover { background: #fde68a; }
+.phi-chip.active { background: #fde68a; border-style: solid; }
+.phi-picker { margin-top: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; display: none; }
+.phi-picker .picker-label { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 7px; }
+.phi-picker .role-btns { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+.phi-picker .role-btn { border: 1px solid var(--border); background: var(--bg); border-radius: 5px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+.phi-picker .role-btn:hover { background: #dbeafe; border-color: var(--primary); color: var(--primary); }
+.phi-picker .picker-cancel { font-size: 11px; color: var(--text-muted); cursor: pointer; text-decoration: underline; }
+
+.prompt-output {
+  background: #1e1e2e; color: #cdd6f4; border-radius: 8px; padding: 16px;
+  font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; font-size: 11.5px; line-height: 1.75;
+  white-space: pre-wrap; word-break: break-word; min-height: 300px; flex: 1;
+}
+
+.info-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 7px; padding: 10px 12px; font-size: 12px; color: #1e40af; line-height: 1.5; }
+.label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.field-group { display: flex; flex-direction: column; gap: 4px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div style="flex:1;">
+    <h1>Clinical Summary Scrubber</h1>
+    <div class="subtitle">PHI scrubbing &amp; ABA clinical prompt builder — client-side only, zero network calls</div>
+  </div>
+  <span class="badge">Local · No AI · No Network</span>
+</div>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <h2>Role → Name Mapping</h2>
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Enter real names per role. All occurrences are replaced with tokens before output leaves this tool.</p>
+    <div id="role-groups"></div>
+
+    <hr class="divider">
+    <label class="flag-row">
+      <input type="checkbox" id="flag-unknowns" checked>
+      <span style="font-weight:600;font-size:12px;">Flag unknown identifiers</span>
+    </label>
+    <p>After scrubbing, the tool highlights Title-Case words that may be missed names for review.</p>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="tabs">
+      <div class="tab active" data-tab="input">1 · Paste Input</div>
+      <div class="tab" data-tab="review">2 · Review Sections</div>
+      <div class="tab" data-tab="output">3 · Copy Prompt</div>
+    </div>
+
+    <!-- INPUT PANEL -->
+    <div class="panel active" id="panel-input">
+      <div class="info-box">
+        Paste a session summary below. Names in the sidebar are scrubbed; sections are classified by clinical domain.
+        The output is a structured, anonymized prompt ready for an LLM — no data is sent anywhere from this tool.
+      </div>
+      <div class="field-group">
+        <div class="label">Session Type (optional)</div>
+        <input type="text" id="session-type"
+          placeholder="e.g. In-home skills session, School observation, Parent training..."
+          style="border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:13px;width:100%;">
+      </div>
+      <div class="field-group" style="flex:1;">
+        <div class="label">Raw Session Summary</div>
+        <textarea class="raw-input" id="raw-input" placeholder="Paste session summary here..."></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="processInput()">Scrub &amp; Classify →</button>
+        <button class="btn btn-secondary btn-sm" onclick="loadSample()">Load Sample</button>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('raw-input').value='';document.getElementById('raw-input').focus()">Clear</button>
+      </div>
+    </div>
+
+    <!-- REVIEW PANEL -->
+    <div class="panel" id="panel-review">
+      <div class="btn-row">
+        <span style="font-size:12px;color:var(--text-muted);flex:1;">Check sections to include in the prompt. Click a header to expand.</span>
+        <button class="btn btn-secondary btn-sm" onclick="selectAll(true)">All</button>
+        <button class="btn btn-secondary btn-sm" onclick="selectAll(false)">None</button>
+        <button class="btn btn-secondary btn-sm" onclick="selectClinical()">Clinical Only</button>
+      </div>
+      <div id="phi-warning-box"></div>
+      <div id="sections-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="generateOutput()">Build Prompt →</button>
+        <button class="btn btn-secondary btn-sm" onclick="switchTab('input')">← Back</button>
+      </div>
+    </div>
+
+    <!-- OUTPUT PANEL -->
+    <div class="panel" id="panel-output">
+      <div class="info-box">
+        Anonymized &amp; clinically filtered. Review flagged items in Step 2 before sharing.
+        Copy into any LLM — no PHI should remain if all names are mapped.
+      </div>
+      <div class="btn-row">
+        <span class="label" style="flex:1;">Generated Prompt</span>
+        <button class="btn btn-secondary btn-sm" id="copy-btn" onclick="copyPrompt()">Copy to Clipboard</button>
+        <button class="btn btn-secondary btn-sm" onclick="switchTab('review')">← Back</button>
+      </div>
+      <div class="prompt-output" id="prompt-output">[Prompt will appear here]</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── ROLE DEFINITIONS ────────────────────────────────────────────────────────
+const ROLES = [
+  { key:'client',     label:'Client',       token:'CLIENT',      dot:'client'     },
+  { key:'caregiver',  label:'Caregiver',    token:'CAREGIVER',   dot:'caregiver'  },
+  { key:'technician', label:'Technician',   token:'TECHNICIAN',  dot:'technician' },
+  { key:'bcba',       label:'BCBA',         token:'BCBA',        dot:'bcba'       },
+  { key:'teacher',    label:'Teacher',      token:'TEACHER',     dot:'teacher'    },
+  { key:'other',      label:'Other Staff',  token:'STAFF',       dot:'other'      },
+];
+const roleNames = { client:[], caregiver:[], technician:[], bcba:[], teacher:[], other:[] };
+
+// ─── CLINICAL DOMAINS ────────────────────────────────────────────────────────
+const DOMAINS = {
+  staff: {
+    label: 'Staff Performance',
+    kw: ['facilitator','redirect','prompt','implement','protocol','technique','instruction','model',
+         'rapport','physical guidance','verbal cue','positioning','response','therapist','staff',
+         'delivery','interaction','session','materials','readiness','demonstration','fidelity']
+  },
+  caregiver: {
+    label: 'Caregiver Performance',
+    kw: ['parent','mother','father','caregiver','guardian','family','mom','dad','involvement',
+         'participation','caregiver training','calls mother','cues mother','parent-directed']
+  },
+  client: {
+    label: 'Client Behavioral Response',
+    kw: ['behavioral','escalation','aggression','self-injurious','sib','resistance','compliance',
+         'calm','upset','distress','grabbing','biting','hitting','hair pull','hand bite',
+         'engagement','disruptive','callus','composure','challenging behavior','child','student',
+         'agitation','avoidance','escape','tantrum','meltdown']
+  },
+  skill: {
+    label: 'Skill Acquisition / Outcomes',
+    kw: ['skill','phase','trial','acquisition','communication','request','mand','verbal',
+         'learning','progress','mastered','criterion','generalization','maintenance',
+         'phase one','phase two','phase three','sequencing','recognition','completion','task']
+  },
+  preference: {
+    label: 'Reinforcer / Preference Data',
+    kw: ['reinforcer','preference','prefer','chose','selected','motivation','interest',
+         'reward','enjoyed','wanted','requested','engagement tool','activity','fun',
+         'favorite','sensory','music','game','toy','food','drink','juice']
+  },
+  protocol: {
+    label: 'Clinical Protocol Notes',
+    kw: ['protocol','intervention','assessment','contraindication','recommendation','plan',
+         'change','shift','new protocol','data','tracking','outcome','suitability',
+         'candidacy','in-home','viability','safety','precaution','modification',
+         'functional','communication hierarchy','permission','first 30','universal']
+  },
+};
+
+function classifySection(title, content) {
+  const text = (title + ' ' + content).toLowerCase();
+  const hits = Object.entries(DOMAINS).map(([key, d]) => ({
+    key, n: d.kw.filter(kw => text.includes(kw)).length
+  })).filter(x => x.n > 0).sort((a,b) => b.n - a.n);
+  return hits.length ? hits.slice(0,2).map(x=>x.key) : ['other'];
+}
+
+// ─── PHI DETECTION ──────────────────────────────────────────────────────────
+const EXCLUDED_CAPS = new Set([
+  'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday',
+  'January','February','March','April','May','June','July','August',
+  'September','October','November','December',
+  'AI','ABA','BCBA','RBT','BT','PHI','HIPAA','AAC','FCT','SBT','SIB','LRE',
+  'Phase','Session','Daily','Behavioral','Activity','Protocol','Communication',
+  'Facilitator','Staff','Caregiver','Technician','Client','Teacher','Parent',
+  'Mother','Father','Child','Student','Participant','Break','The','A','An',
+  'In','At','On','By','To','Of','For','With','And','Or','But','From','If',
+  'Meeting','Initial','Casual','Post','Playful','Mini','Skill','Block',
+  'Kindle','Lego','Legos','Blue','Clues','Simon','Peter','Marina',
+  'Mood','Shifts','Work','Leisure','Activity','Shift','Counting','Sequencing',
+  'Icon','Display','Material','Champion','Recognition','Finale','Funding',
+  'Content','Experimentation','Audience','Feedback','Loop','Focused','Practice',
+  'Opening','Song','Selection','Show','Preparation','Session','Completion',
+  'Positive','Closure','Playful','Performance','Game','Based','Learning',
+  'Yellow','Landing',
+  // NOTE: do NOT add person names here — they are exactly what detection is for
+]);
+
+function findUnknownProperNouns(text, knownNames) {
+  const knownLower = new Set(knownNames.map(n => n.toLowerCase()));
+  const cleaned = text.replace(/\b(CLIENT|CAREGIVER|TECHNICIAN|BCBA|TEACHER|STAFF)(_\d+)?\b/g,'');
+  const found = new Set();
+
+  // Walk every Title-Case word and check whether the preceding non-space character
+  // is a sentence boundary (.!?\n or start-of-string). Only exclude those —
+  // everything else is a mid-sentence capitalised word that may be a name.
+  const re = /\b([A-Z][a-z]{1,})\b/g;
+  let m;
+  while ((m = re.exec(cleaned)) !== null) {
+    const word = m[1];
+    let prev = m.index - 1;
+    while (prev >= 0 && cleaned[prev] === ' ') prev--;
+    const precChar = prev >= 0 ? cleaned[prev] : null;
+    const atSentenceStart = precChar === null || /[.!?\n\t]/.test(precChar);
+    if (!atSentenceStart && !EXCLUDED_CAPS.has(word) && !knownLower.has(word.toLowerCase())) {
+      found.add(word);
+    }
+  }
+  return Array.from(found).slice(0, 40);
+}
+
+// ─── SCRUBBING ───────────────────────────────────────────────────────────────
+function buildNameMap() {
+  const entries = [];
+  for (const role of ROLES) {
+    const names = roleNames[role.key] || [];
+    names.forEach((name, i) => {
+      const token = names.length === 1 ? role.token : `${role.token}_${i+1}`;
+      entries.push({ name, token });
+    });
+  }
+  entries.sort((a,b) => b.name.length - a.name.length); // longest first
+  return entries;
+}
+
+function scrubText(text, nameMap) {
+  let result = text;
+  for (const { name, token } of nameMap) {
+    if (!name.trim()) continue;
+    const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    result = result.replace(new RegExp(`\\b${esc}\\b`, 'gi'), `[${token}]`);
+  }
+  return result;
+}
+
+// ─── PARSING ─────────────────────────────────────────────────────────────────
+function parseSections(text) {
+  const lines = text.split('\n');
+  const sections = [];
+  let current = null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const isBullet = /^[-•*]|^\d+\./.test(trimmed);
+    const words = trimmed.split(/\s+/).length;
+    const isHeader = !isBullet && words >= 2 && words <= 14 && /^[A-Z]/.test(trimmed) && !trimmed.endsWith('.');
+
+    if (isHeader) {
+      current = { title: trimmed, content: [] };
+      sections.push(current);
+    } else if (current) {
+      current.content.push(trimmed.replace(/^[-•*]\s*/, ''));
+    } else {
+      current = { title: 'Session Overview', content: [trimmed.replace(/^[-•*]\s*/, '')] };
+      sections.push(current);
+    }
+  }
+  return sections.filter(s => s.content.length > 0);
+}
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let processedSections = [];
+let unknownNouns = [];
+
+// ─── MAIN PROCESS ────────────────────────────────────────────────────────────
+function processInput() {
+  const raw = document.getElementById('raw-input').value.trim();
+  if (!raw) { alert('Paste a session summary first.'); return; }
+
+  const nameMap = buildNameMap();
+  const allKnownNames = nameMap.map(e => e.name);
+  const sections = parseSections(raw);
+
+  processedSections = sections.map(s => {
+    const title = scrubText(s.title, nameMap);
+    const content = s.content.map(b => scrubText(b, nameMap));
+    const domains = classifySection(title, content.join(' '));
+    return { title, content, domains, isClinical: domains.some(d => d !== 'other'), included: domains.some(d => d !== 'other') };
+  });
+
+  const allText = processedSections.map(s => s.title + ' ' + s.content.join(' ')).join('\n');
+  unknownNouns = document.getElementById('flag-unknowns').checked
+    ? findUnknownProperNouns(allText, allKnownNames) : [];
+
+  renderReview();
+  switchTab('review');
+}
+
+// ─── RENDER REVIEW ───────────────────────────────────────────────────────────
+function renderReview() {
+  const warn = document.getElementById('phi-warning-box');
+  warn.innerHTML = unknownNouns.length ? `
+    <div class="phi-warning">
+      <h3>⚠ ${unknownNouns.length} Potential Unrecognized Identifier${unknownNouns.length>1?'s':''}</h3>
+      <p>These Title-Case words were not matched to any role. If they are names, add them to the Role Mapping sidebar and reprocess. Click a chip to quick-add.</p>
+      <div class="phi-chips" id="phi-chips-list">
+        ${unknownNouns.map(n=>`<span class="phi-chip" id="chip-${n}" onclick="quickAdd('${n}',this)">${n}</span>`).join('')}
+      </div>
+      <div class="phi-picker" id="phi-picker">
+        <div class="picker-label" id="picker-label">Assign to role:</div>
+        <div class="role-btns">
+          ${ROLES.map(r=>`<button class="role-btn" onclick="confirmQuickAdd('${r.key}')">${r.label}</button>`).join('')}
+        </div>
+        <span class="picker-cancel" onclick="closeQuickAdd()">Cancel</span>
+      </div>
+    </div>` : '';
+
+  document.getElementById('sections-list').innerHTML = processedSections.map((s,i) => `
+    <div class="section-card">
+      <div class="section-header" onclick="toggleBody(${i})">
+        <input type="checkbox" ${s.included?'checked':''} onclick="event.stopPropagation();toggleInclude(${i},this.checked)">
+        <span class="section-title">${esc(s.title)}</span>
+        <div class="section-tags">
+          ${s.domains.map(d=>`<span class="domain-tag ${d}">${DOMAINS[d]?.label||'Other'}</span>`).join('')}
+        </div>
+      </div>
+      <div class="section-content" id="body-${i}">
+        ${s.content.map(b=>`<div class="section-bullet">${highlight(b)}</div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function toggleBody(i) {
+  const el = document.getElementById(`body-${i}`);
+  el.style.display = el.style.display === 'block' ? 'none' : 'block';
+}
+function toggleInclude(i, v) { processedSections[i].included = v; }
+function selectAll(v) { processedSections.forEach(s=>s.included=v); renderReview(); }
+function selectClinical() { processedSections.forEach(s=>s.included=s.isClinical); renderReview(); }
+function highlight(text) {
+  return esc(text).replace(/\[(CLIENT|CAREGIVER|TECHNICIAN|BCBA|TEACHER|STAFF)(_\d+)?\]/g,
+    '<span class="scrubbed-name">[$1$2]</span>');
+}
+let _pickerName = null;
+let _activeChip = null;
+
+function quickAdd(name, chipEl) {
+  const picker = document.getElementById('phi-picker');
+  // Toggle closed if same chip clicked again
+  if (_pickerName === name && picker.style.display === 'block') {
+    closeQuickAdd(); return;
+  }
+  if (_activeChip) _activeChip.classList.remove('active');
+  _pickerName = name;
+  _activeChip = chipEl;
+  chipEl.classList.add('active');
+  document.getElementById('picker-label').textContent = `Assign "${name}" to role:`;
+  picker.style.display = 'block';
+}
+
+function confirmQuickAdd(roleKey) {
+  if (!_pickerName) return;
+  addName(roleKey, _pickerName);
+  closeQuickAdd();
+  processInput(); // reprocess with updated name map
+}
+
+function closeQuickAdd() {
+  const picker = document.getElementById('phi-picker');
+  if (picker) picker.style.display = 'none';
+  if (_activeChip) _activeChip.classList.remove('active');
+  _pickerName = null;
+  _activeChip = null;
+}
+
+// ─── GENERATE OUTPUT ─────────────────────────────────────────────────────────
+function generateOutput() {
+  const included = processedSections.filter(s => s.included);
+  if (!included.length) { alert('Select at least one section.'); return; }
+
+  const sessionType = document.getElementById('session-type').value.trim();
+  const domainOrder = ['staff','caregiver','client','skill','preference','protocol','other'];
+
+  // Group by primary domain
+  const grouped = {};
+  for (const s of included) {
+    const key = s.domains[0] || 'other';
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(s);
+  }
+
+  let p = '';
+  p += `[ANONYMIZED ABA SESSION OBSERVATION]\n`;
+  if (sessionType) p += `Session Type: ${sessionType}\n`;
+  p += `PHI Status: Scrubbed — role tokens: [CLIENT] [CAREGIVER] [TECHNICIAN] [BCBA] [TEACHER] [STAFF]\n`;
+  p += `\n`;
+
+  for (const key of domainOrder) {
+    const sects = grouped[key];
+    if (!sects?.length) continue;
+    p += `${'═'.repeat(60)}\n`;
+    p += `${(DOMAINS[key]?.label || 'OTHER OBSERVATIONS').toUpperCase()}\n`;
+    p += `${'═'.repeat(60)}\n\n`;
+    for (const s of sects) {
+      p += `[${s.title}]\n`;
+      for (const b of s.content) p += `  • ${b}\n`;
+      p += '\n';
+    }
+  }
+
+  p += `${'─'.repeat(60)}\n`;
+  p += `ANALYSIS REQUEST\n`;
+  p += `${'─'.repeat(60)}\n\n`;
+  p += `Review the anonymized session notes above. Provide a structured, objective analysis addressing each applicable domain below. Report only observable, measurable behaviors and outcomes. Do not diagnose, evaluate mental health, or make pharmacological recommendations. Stay within Applied Behavior Analysis scope of practice.\n\n`;
+  p += `1. STAFF / TECHNICIAN PERFORMANCE\n`;
+  p += `   Implementation fidelity, prompting hierarchy, error correction, reinforcement delivery, antecedent arrangement, session pacing.\n\n`;
+  p += `2. CAREGIVER PERFORMANCE\n`;
+  p += `   Participation level, implementation of caregiver-directed strategies, responsiveness to clinical guidance.\n\n`;
+  p += `3. CLIENT BEHAVIORAL RESPONSE\n`;
+  p += `   Observable behavior patterns, antecedent-behavior-consequence sequences, escalation/de-escalation, function indicators.\n\n`;
+  p += `4. SKILL ACQUISITION / OUTCOMES\n`;
+  p += `   Phase progress, trial accuracy, generalization indicators, mastery data, sequential skill development.\n\n`;
+  p += `5. REINFORCER / PREFERENCE DATA\n`;
+  p += `   Observed reinforcer effectiveness, preference indicators, motivating operations, engagement patterns.\n\n`;
+  p += `6. CLINICAL PROTOCOL NOTES\n`;
+  p += `   Protocol modifications, contraindications, data-supported observations about current approach effectiveness.\n`;
+
+  document.getElementById('prompt-output').textContent = p;
+  switchTab('output');
+}
+
+function copyPrompt() {
+  const text = document.getElementById('prompt-output').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => btn.textContent = 'Copy to Clipboard', 2500);
+  });
+}
+
+// ─── TABS ────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === `panel-${tab}`));
+}
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+
+// ─── SIDEBAR ─────────────────────────────────────────────────────────────────
+function renderSidebar() {
+  document.getElementById('role-groups').innerHTML = ROLES.map(role => `
+    <div class="role-group">
+      <div class="role-label">
+        <span class="role-dot ${role.dot}"></span>
+        ${role.label}
+        <span class="role-token">[${role.token}]</span>
+      </div>
+      <div class="name-tags">
+        ${(roleNames[role.key]||[]).map((n,i)=>`
+          <span class="name-tag">${esc(n)}
+            <button onclick="removeName('${role.key}',${i})" title="Remove">×</button>
+          </span>`).join('')}
+      </div>
+      <div class="add-name">
+        <input type="text" id="inp-${role.key}" placeholder="Add name…"
+          onkeydown="if(event.key==='Enter'){addName('${role.key}');event.preventDefault()}">
+        <button onclick="addName('${role.key}')">+</button>
+      </div>
+    </div>`).join('');
+}
+
+function addName(roleKey, val) {
+  const inp = document.getElementById(`inp-${roleKey}`);
+  const name = (val || inp?.value || '').trim();
+  if (!name) return;
+  if (!roleNames[roleKey].includes(name)) roleNames[roleKey].push(name);
+  if (inp) inp.value = '';
+  renderSidebar();
+}
+
+function removeName(roleKey, idx) {
+  roleNames[roleKey].splice(idx, 1);
+  renderSidebar();
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── SAMPLE ──────────────────────────────────────────────────────────────────
+function loadSample() {
+  // Pre-populate with sample names so the user can see scrubbing in action
+  roleNames.client     = ['Bartholomew'];
+  roleNames.caregiver  = [];
+  roleNames.technician = ['Mark','Tom','Brent','Thomas'];
+  roleNames.bcba       = [];
+  roleNames.teacher    = [];
+  roleNames.other      = ['Rob','Rita'];
+  renderSidebar();
+
+  document.getElementById('raw-input').value = `Session Setup and Initial Observations
+Initiating AI note-taker and beginning a five-minute observational period to assess the current situation and establish baseline conditions.
+- Starting AI note-taker for the session
+- Beginning five-minute observation period to take temperature and assess situation
+
+Behavioral Redirection and Communication Strategy
+Implementing universal protocol to maintain calm communication while redirecting behavior and managing activity transitions.
+- Stick to universal protocol to keep individual communicating while gradually calming down through redirection.
+- Water balloon activity planned as engagement and transition tool.
+- Positive reinforcement used for task completion and behavioral milestones.
+
+Daily Care Routine and Wellness Check
+Reviewed morning wake time, meal intake, and physical well-being status. Child woke at 5:00 AM, consumed a shake, and toileting is progressing well.
+- Child woke at 5:00 AM with generally positive mood observed throughout the day.
+- Nutritional intake limited to shake consumption; no other substantial meals consumed yet.
+- Toileting functioning well with no concerns reported.
+- Behavioral onset occurred 5-10 minutes after arrival, with initial pushiness noted at the house.
+
+Session Implementation and Engagement Strategy
+Facilitator prepared materials and assessed readiness before starting skills-based training, prioritizing active engagement and fun atmosphere to ensure the child remains calm and mentally engaged.
+- Materials prepared and secured before session start to ensure readiness.
+- Child showed no behavioral issues and remained calm at session beginning, signaling readiness to begin activities.
+- Facilitator prioritizes creating a fun, engaged atmosphere before skills-based training blocks rather than relying solely on calm behavior.
+- Physical engagement techniques like shoulder pats and head scratches help gauge the child's responsiveness and readiness before formal instruction.
+- Breaking anticipatory patterns prevents the child from associating the facilitator's arrival with work demands, requiring 50+ minutes of unstructured interaction before trials begin.
+
+Session Viability and In-Home Service Candidacy
+Escalating behavioral issues during sessions indicate potential contraindication for skills-based training format, raising concerns about suitability for home-based service delivery.
+- Severe behavioral escalation within five minutes of session start suggests current protocol may be contraindicated and requires intervention before home services can be safely implemented.
+- Current behavioral manifestations include hand biting, hair pulling, and grabbing that require immediate intervention before home-based skill work can proceed.
+- Staff must avoid requesting work or task completion during the first 30 minutes of sessions to prevent escalation of self-injurious behaviors.
+- Hand calluses present concern due to risk of bleeding if skin breaks, necessitating protective monitoring and activity modifications.
+- Tracking data indicates persistent grabbing and hair-pulling behaviors toward staff have been ongoing since case initiation, recently intensifying.
+
+Protocol Shift and Communication Hierarchy
+Transitioning to new protocol because recent data shows persistent poor outcomes despite week-long intensification.
+- Data spanning over one year confirms ineffectiveness predates recent week-long deterioration, necessitating protocol change.
+- Current approach using multiple taps and icons makes hair pulling and self-biting the easier behavioral path.
+- New protocol must provide equivalent or superior reinforcement compared to grabbing, hair pulling, and biting to redirect behavior.
+- First 30-45 minutes require permission to prioritize engagement and fun connection over demands, setting calm and positive foundation before skill work begins.
+- Child tolerated full hour session very well yesterday, demonstrating successful tolerance of quick-paced skill block when properly engaged and calm beforehand.
+
+In-Session Engagement and Parental Involvement
+Structuring in-session time to balance calm behavior with active engagement, emphasizing the child's need for parental participation and meaningful interaction.
+- In-session structure must prevent child from perceiving activities as work while maintaining calm engagement.
+- Child requires 30-60 minutes of focused time to achieve calm state and active participation beyond just sitting.
+- Child actively cues mother for participation and involvement in activities during sessions.
+
+Phased Communication Training Framework
+Facilitator structures a multi-phase communication progression where the child learns to request items using "Me first" as the initial phrase, with phases building incrementally toward fuller verbal expression.
+- Phase one positions initial request at top with subsequent options arranged below for sequenced progression through skill blocks.
+- Child practices requesting with "Me first" phrase during initial blocks while facilitator confirms understanding of requests before providing items.
+
+Mini Skill Block Planning and Session Adaptation
+Facilitator will conduct a 20-minute demonstration skill block using paper sheets to model techniques and assess phase progression, with duration adjusted based on the child's tolerance.
+- Mini skill block demonstration planned for 20 minutes using paper sheets to model phases and assess progress.
+- Session duration will extend beyond 20 minutes based on child's tolerance, accounting for difficult day.
+
+Playful Interaction and Engagement
+Mark arrived and engaged in lighthearted, silly play with positive energy and shared laughter throughout the interaction.
+- Mark joined with enthusiastic greeting and playful banter, establishing positive rapport.
+- Silly, joyful moments maintained throughout with shared laughter and positive reactions to playful behaviors.
+- Redirect away from music party activity, establishing firm boundary on engagement choice.
+
+Casual Farewell and Session Conclusion
+Session ends with informal goodbye exchanges and brief parental interaction, marking natural closure to the day's activities.
+- Participant exchanges casual greetings with mom at session boundary.
+- Break offered and confirmed as 10-minute interval before next activity segment.
+- Participant praised for maintaining composure and avoiding behavioral escalation during activity.`;
+
+  document.getElementById('session-type').value = 'In-home skills session';
+}
+
+// Init
+renderSidebar();
+</script>
+</body>
+</html>

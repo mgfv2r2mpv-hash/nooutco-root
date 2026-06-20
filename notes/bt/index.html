@@ -484,7 +484,10 @@
       const [isAdmin,           setIsAdmin]          = React.useState(() => hasAdminToken());
 
       // Factual quick-picks (cannot be inferred from clinical narrative).
-      const [placeOfService, setPlaceOfService] = React.useState(() => localStorage.getItem("bt_pos") || "Home");
+      const [placeOfService, setPlaceOfService] = React.useState(() => {
+        const saved = localStorage.getItem("bt_pos");
+        return saved || "Home";
+      });
       const [telehealth,     setTelehealth]     = React.useState("No");
 
       // The five guided free-text fields.
@@ -501,6 +504,7 @@
       const [copied,       setCopied]      = React.useState(null);
       const [promptText,   setPromptText]  = React.useState("");
       const [copiedPrompt, setCopiedPrompt]= React.useState(false);
+      const [showApiSection, setShowApiSection] = React.useState(false);
 
       React.useEffect(() => {
         const onStorage = () => setIsAdmin(hasAdminToken());
@@ -692,7 +696,10 @@ BT notes: "BCBA in 20 min. Arrived tired, slow to start. Ran tx-plan goals. Rece
               <h1 style={{ fontSize: 26, fontWeight: 700, color: "#2d3a1f", marginBottom: 4 }}>BT Direct Service Note Tool</h1>
               <p style={{ fontSize: 14, color: "#5a6b4a" }}>Enter your session notes as free text. The tool drafts each clinical narrative and suggests which checkboxes to select on your EHR form.</p>
             </div>
-            <a href="/" style={{ padding: "7px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", marginLeft: 16 }}>← Back</a>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <a href="../scrubber.html" target="_blank" style={{ padding: "7px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "#f0f4ec", color: "#374528", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>Scrubber →</a>
+              <a href="/" style={{ padding: "7px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>← Back</a>
+            </div>
           </div>
 
           {/* Disclaimer */}
@@ -701,39 +708,49 @@ BT notes: "BCBA in 20 min. Arrived tired, slow to start. Ran tx-plan goals. Rece
             <strong style={{ color: "#7a5a1a" }}>Do not enter any PHI (Protected Health Information) into this tool.</strong> PHI is any detail that could identify a specific client — including names, dates of birth, addresses, phone numbers, ID or insurance numbers, or any other personal identifiers.
           </div>
 
-          {/* AI Connection */}
+          {/* AI Connection (Collapsible) */}
           <div style={card}>
-            <span style={subLbl}>AI Connection</span>
-            <p style={hint}>With an API key, the note is generated and formatted on this page, where you can review, edit, and copy each section into your EHR. Without a key, use Generate Prompt at the bottom to run the same request in a separate AI chat. The key is stored only in this browser.</p>
-            <div style={{ marginBottom: 20 }}>
-              <p style={lbl}>AI Provider</p>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {Object.entries(PROVIDERS).map(([id, p]) => (
-                  <button key={id} onClick={() => switchProvider(id)} style={{
-                    padding: "8px 18px", borderRadius: 8,
-                    border: provider === id ? "2px solid #374528" : "1.5px solid #c0d4a8",
-                    background: provider === id ? "#374528" : "white",
-                    color: provider === id ? "white" : "#374528",
-                    fontWeight: 600, fontSize: 14, cursor: "pointer",
-                  }}>{p.label}</button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label style={lbl}>{prov.keyLabel}</label>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input type={showKey ? "text" : "password"} value={apiKey} onChange={e => saveApiKey(e.target.value)} placeholder={prov.placeholder} style={{ ...inputBase, flex: 1 }} />
-                <button onClick={() => setShowKey(v => !v)} style={{ padding: "9px 14px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#374528", fontSize: 13, cursor: "pointer" }}>{showKey ? "Hide" : "Show"}</button>
-              </div>
-              <p style={{ fontSize: 12, color: "#7a9460", marginTop: 7 }}>{prov.hint} — saved in this browser only.</p>
-              <ApiKeyHelpBox provider={provider} />
-            </div>
+            <button onClick={() => setShowApiSection(v => !v)} style={{
+              width: "100%", textAlign: "left", background: "none", border: "none",
+              padding: 0, cursor: "pointer", display: "flex", alignItems: "center", gap: 10
+            }}>
+              <span style={subLbl}>API Key (Optional)</span>
+              <span style={{ color: "#5a7040", fontSize: 14 }}>{showApiSection ? "▼" : "▶"}</span>
+            </button>
+            <p style={hint}>Use an API key for instant note generation on this page. Without one, use <strong>Generate Prompt</strong> to run the same request in a free AI chat. The key is stored only in this browser.</p>
+            {showApiSection && (
+              <>
+                <div style={{ marginBottom: 20, marginTop: 16 }}>
+                  <p style={lbl}>AI Provider</p>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {Object.entries(PROVIDERS).map(([id, p]) => (
+                      <button key={id} onClick={() => switchProvider(id)} style={{
+                        padding: "8px 18px", borderRadius: 8,
+                        border: provider === id ? "2px solid #374528" : "1.5px solid #c0d4a8",
+                        background: provider === id ? "#374528" : "white",
+                        color: provider === id ? "white" : "#374528",
+                        fontWeight: 600, fontSize: 14, cursor: "pointer",
+                      }}>{p.label}</button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label style={lbl}>{prov.keyLabel}</label>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input type={showKey ? "text" : "password"} value={apiKey} onChange={e => saveApiKey(e.target.value)} placeholder={prov.placeholder} style={{ ...inputBase, flex: 1 }} />
+                    <button onClick={() => setShowKey(v => !v)} style={{ padding: "9px 14px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#374528", fontSize: 13, cursor: "pointer" }}>{showKey ? "Hide" : "Show"}</button>
+                  </div>
+                  <p style={{ fontSize: 12, color: "#7a9460", marginTop: 7 }}>{prov.hint} — saved in this browser only.</p>
+                  <ApiKeyHelpBox provider={provider} />
+                </div>
+              </>
+            )}
           </div>
 
           {/* ── Quick-picks: facts the AI can't infer (no PHI — category only) ── */}
           <div style={card}>
             <span style={subLbl}>Session Facts</span>
-            <p style={hint}>Place of service and telehealth are recorded as selected. The remaining sections are drafted from your notes below.</p>
+            <p style={hint}>Place of service defaults to <strong>Home</strong> — change if needed. Telehealth defaults to <strong>No</strong>.</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 28 }}>
               <div>
                 <label style={lbl}>Place of Service</label>
