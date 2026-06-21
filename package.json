@@ -7,7 +7,10 @@
     "dev": "wrangler pages dev . --port 8788",
     "test": "playwright test",
     "test:ui": "playwright test --ui",
-    "test:debug": "playwright test --debug"
+    "test:debug": "playwright test --debug",
+    "test:coverage": "playwright test",
+    "build:client": "echo 'No build step needed for static site'",
+    "e2e": "playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0"
