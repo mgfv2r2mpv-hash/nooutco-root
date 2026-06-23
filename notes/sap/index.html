@@ -594,10 +594,14 @@
           <div style={{ marginBottom: 20 }}>
             <ApiErrorMessage error={error} rawError={rawError} provider={provider} isAdmin={isAdmin} onGeneratePrompt={handleGeneratePrompt} />
             {scrubNotice && (
-              <div style={{ margin: "0 0 12px", padding: "10px 14px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "#f0f4ec", color: "#3a4a26", fontSize: 13, lineHeight: 1.5 }}>
-                <strong>Removed before this left your device:</strong> {scrubNotice}{" "}
-                <span style={{ color: "#7a9460" }}>— names are replaced with roles; substitute them back in your EHR.</span>
-                <p style={{ margin: "8px 0 0", fontSize: 12, color: "#5a6b4a", lineHeight: 1.5 }}>{NotesScrub.SCRUB_GUIDANCE}</p>
+              <div style={{ margin: "0 0 16px", borderRadius: 10, border: "2px solid #c8962a", overflow: "hidden" }}>
+                <div style={{ padding: "8px 14px", background: "#fdf3dc", color: "#5a3d00", fontSize: 12, lineHeight: 1.5 }}>
+                  <strong>Removed before this left your device:</strong> {scrubNotice}{" "}
+                  <span style={{ color: "#7a6020" }}>— substitute back in your EHR.</span>
+                </div>
+                <div style={{ padding: "10px 14px", background: "#fff8ec", color: "#3d2a00", fontSize: 13.5, fontWeight: 600, lineHeight: 1.55 }}>
+                  ⚠️ {NotesScrub.SCRUB_GUIDANCE}
+                </div>
               </div>
             )}
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
