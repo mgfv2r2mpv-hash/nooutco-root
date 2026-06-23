@@ -29,6 +29,19 @@ export default {
       return handleAdminPasswords(request, env);
     }
 
+    // TEMP diagnostic — binding presence + pw key visibility (no secret values). Remove before prod.
+    if (url.pathname === "/api/_diag") {
+      let pw = null;
+      if (env.API_PASSWORDS) {
+        const l = await env.API_PASSWORDS.list({ prefix: "pw:" });
+        pw = { count: l.keys.length, sample: l.keys.slice(0, 3).map(k => ({ name: k.name, hasMeta: !!k.metadata, hasHash: !!(k.metadata && k.metadata.hash), active: k.metadata && k.metadata.active })) };
+      }
+      return jsonRes(200, {
+        bindings: { API_PASSWORDS: !!env.API_PASSWORDS, SUGGEST_DUPES: !!env.SUGGEST_DUPES, ANTHROPIC_API_KEY: !!env.ANTHROPIC_API_KEY, ADMIN_SECRET: !!env.ADMIN_SECRET },
+        pw,
+      });
+    }
+
     if (url.pathname === "/api/suggest" && request.method === "POST") {
       return handleSuggest(request, env);
     }
