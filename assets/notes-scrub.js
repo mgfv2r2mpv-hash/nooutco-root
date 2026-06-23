@@ -30,6 +30,8 @@
   var ROLES = [
     { key: "client", label: "Client", token: "Client" },
     { key: "caregiver", label: "Caregiver", token: "Caregiver" },
+    { key: "sibling", label: "Sibling", token: "Sibling" },
+    { key: "peer", label: "Peer", token: "Peer" },
     { key: "technician", label: "Technician (BT/RBT)", token: "Technician" },
     { key: "bcba", label: "BCBA", token: "BCBA" },
     { key: "teacher", label: "Teacher", token: "Teacher" },
