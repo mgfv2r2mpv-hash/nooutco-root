@@ -362,13 +362,15 @@
   }
 
   // Detect candidate person names: runs of 1–2 capitalized words not in the
-  // stoplist. A "word" starts with a capital, may carry internal capitals,
-  // apostrophes, or hyphens (McKenzie, O'Brien, DeShawn, Anne-Marie), and ends
-  // lowercase — so ALL-CAPS tokens/acronyms (CLIENT, BCBA, ABA) are never matched,
-  // which keeps our own role tokens from being re-detected. A trailing possessive
-  // ('s) is stripped so "Jacob's" maps to "Jacob" (applyScrub, case-insensitive,
-  // then catches "Jacob" inside "Jacob's"). The review step backstops false
-  // positives, so detection errs toward catching more.
+  // stoplist. ALL-CAPS acronyms (CLIENT, BCBA, ABA) are never matched. A trailing
+  // possessive (‘s) is stripped so "Jacob’s" maps to "Jacob".
+  //
+  // Sentence-position heuristic: words at sentence starts are capitalized by grammar,
+  // not necessarily because they are proper nouns. They are downgraded — skipped
+  // unless they also appear capitalized mid-sentence elsewhere, are in FIRST_NAMES,
+  // or appear in a high-confidence grammatical context (possessive, role label,
+  // preposition). This suppresses false positives from ABA program names like
+  // "Tolerating Delays" or "Requesting Breaks" that open sentences.
   var NAME_WORD = "[A-Z][A-Za-z’’\\-]*[a-z]";
   function detectNames(text) {
     if (!text) return [];
@@ -377,19 +379,65 @@
     var excluded = {};
     loadNonPii().forEach(function (e) { excluded[e.term] = true; });
 
-    var re = new RegExp("\\b(" + NAME_WORD + "(?:\\s+" + NAME_WORD + ")?)\\b", "g");
+    // Build sentence-start and mid-sentence capitalized sets from sentence structure.
+    var sentenceStartWords = {};
+    var midSentenceCapitalized = {};
+    text.split(/[.!?]\s+|\n/).forEach(function (sent) {
+      var tokens = sent.trim().split(/\s+/);
+      tokens.forEach(function (tok, idx) {
+        var clean = tok.replace(/[^A-Za-z’\-]/g, "").replace(/[‘’]s$/i, "");
+        if (clean.length < 2) return;
+        var cl = clean.toLowerCase();
+        if (idx === 0) {
+          sentenceStartWords[cl] = true;
+        } else if (/^[A-Z]/.test(clean)) {
+          midSentenceCapitalized[cl] = true;
+        }
+      });
+    });
+
+    // Context-signal pre-pass: near-certain name positions in ABA clinical notes.
+    // These bypass the sentence-start downgrade even if only at sentence starts.
+    var contextNames = {};
+    var SIMPLE_CAP = "([A-Z][a-z]{1,15}(?:[\\-’][A-Za-z]{1,})?)";
+    [
+      // role label immediately followed by a capitalized word: "client Jacob", "mom Sarah"
+      new RegExp("\\b(?:client|caregiver|mom|dad|mother|father|guardian|bt|rbt|technician|teacher)\\s+" + SIMPLE_CAP + "\\b", "gi"),
+      // possessive form — separate simple pattern avoids NAME_WORD consuming the ‘s
+      new RegExp("\\b" + SIMPLE_CAP + "[‘’]s\\b", "g"),
+      // after common prepositions: "with Jacob", "for Sarah", "beside Mark"
+      new RegExp("\\b(?:with|for|beside)\\s+" + SIMPLE_CAP + "\\b", "gi"),
+    ].forEach(function (cr) {
+      var cm;
+      while ((cm = cr.exec(text)) !== null) {
+        var cname = cm[1];
+        var cl = cname.toLowerCase();
+        if (!excluded[cl] && !STOPWORDS[cl]) contextNames[cl] = cname;
+      }
+    });
+
     var seen = {};
     var out = [];
     function push(name) {
       var key = name.toLowerCase();
       if (!seen[key] && !excluded[key]) { seen[key] = true; out.push(name); }
     }
+
+    // Add context-signal names first (bypass sentence-start filter).
+    Object.keys(contextNames).forEach(function (k) { push(contextNames[k]); });
+
+    var re = new RegExp("\\b(" + NAME_WORD + "(?:\\s+" + NAME_WORD + ")?)\\b", "g");
     var m;
     while ((m = re.exec(text)) !== null) {
       var phrase = m[1].replace(/[‘’]s$/, ""); // drop possessive
       var words = phrase.split(/\s+/);
       var meaningful = words.filter(function (w) {
-        return !STOPWORDS[w.toLowerCase()] && !excluded[w.toLowerCase()];
+        var wl = w.toLowerCase();
+        if (STOPWORDS[wl] || excluded[wl]) return false;
+        // Downgrade: sentence-start word that never appears mid-sentence capitalized,
+        // not in FIRST_NAMES, and not in a high-confidence context → skip.
+        if (sentenceStartWords[wl] && !midSentenceCapitalized[wl] && !FIRST_NAMES[wl] && !contextNames[wl]) return false;
+        return true;
       });
       if (meaningful.length === 0) continue;
       if (meaningful.length === words.length) {
@@ -402,9 +450,9 @@
         meaningful.forEach(push);
       }
     }
+
     // Nickname/prefix pass — flag any 3+ char word (any case) that is a strict
-    // prefix of a detected name (e.g. "barb" matches "barbara"). This catches
-    // abbreviated nicknames that look like common lowercase words at first glance.
+    // prefix of a detected name (e.g. "barb" matches "barbara").
     var lowerDetected = out.map(function (n) { return n.toLowerCase(); });
     var pfxRe = /\b([A-Za-z]{3,})\b/g;
     var pm;
@@ -468,6 +516,17 @@
 
   // On page load, pull server list so detectNames benefits immediately.
   if (isLoggedIn()) syncNonPii();
+
+  // Load AI-learned algorithm overrides (public endpoint, no token needed).
+  // Merges Claude-suggested stopwords/firstNames into the in-memory dictionaries.
+  fetch("/api/scrub-config")
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) {
+      if (!d) return;
+      (d.stopwords || []).forEach(function (w) { STOPWORDS[w.toLowerCase()] = true; });
+      (d.firstNames || []).forEach(function (w) { FIRST_NAMES[w.toLowerCase()] = true; });
+    })
+    .catch(function () {});
 
   window.NotesGate = {
     isLoggedIn: isLoggedIn,

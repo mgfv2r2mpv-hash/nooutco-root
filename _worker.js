@@ -44,6 +44,26 @@ export default {
       return handleSuggest(request, env);
     }
 
+    // Public endpoint — returns learned stopwords/firstNames (generic vocab, not PHI)
+    if (url.pathname === "/api/scrub-config" && request.method === "GET") {
+      return handleScrubConfig(request, env);
+    }
+
+    // Admin-only: manage problem strings queue for next nightly learning run
+    if (url.pathname === "/api/admin/scrub-learn") {
+      return handleScrubLearn(request, env);
+    }
+
+    // Admin-only: view current scrub override state
+    if (url.pathname === "/api/admin/scrub-overrides" && request.method === "GET") {
+      return handleScrubOverrides(request, env);
+    }
+
+    // Admin-only: manually trigger the nightly learning run (for testing)
+    if (url.pathname === "/api/admin/scrub-run" && request.method === "POST") {
+      return handleScrubRun(request, env);
+    }
+
     for (const [old, next] of LEGACY_PREFIXES) {
       if (url.pathname === old || url.pathname.startsWith(old + '/')) {
         const rest = url.pathname.slice(old.length).replace(/^\//, '');
@@ -70,6 +90,10 @@ export default {
     headers.delete("content-length");
 
     return new Response(html, { status: response.status, headers });
+  },
+
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(runScrubLearning(env));
   },
 };
 
@@ -536,6 +560,173 @@ async function callGeminiApi(apiKey, systemPrompt, userPrompt, model, maxTokens)
   }
 
   return await response.json();
+}
+
+// Returns learned stopwords/firstNames — public, no auth, generic vocabulary only.
+async function handleScrubConfig(request, env) {
+  if (!env.API_PASSWORDS) return jsonRes(200, { stopwords: [], firstNames: [] });
+  const raw = await env.API_PASSWORDS.get("scrub-overrides:v1");
+  const data = raw ? JSON.parse(raw) : {};
+  return jsonRes(200, { stopwords: data.stopwords || [], firstNames: data.firstNames || [] });
+}
+
+// Admin-only: manage the problem-strings queue fed to the nightly learning run.
+async function handleScrubLearn(request, env) {
+  const secret = (env.ADMIN_SECRET ?? "").trim();
+  const auth = request.headers.get("Authorization") || "";
+  const token = auth.replace(/^Bearer\s+/i, "");
+  const payload = secret ? await readToken(token, secret) : null;
+  if (!payload || payload.role !== "admin") return jsonRes(401, { error: "Admin access required." });
+  if (!env.API_PASSWORDS) return jsonRes(503, { error: "Storage not configured." });
+  const kv = env.API_PASSWORDS;
+  const KV_KEY = "scrub-learn:v1";
+
+  if (request.method === "GET") {
+    const raw = await kv.get(KV_KEY);
+    return jsonRes(200, { items: raw ? JSON.parse(raw) : [] });
+  }
+  if (request.method === "POST") {
+    let body;
+    try { body = await request.json(); } catch { return jsonRes(400, { error: "Invalid body." }); }
+    const text = (body.text ?? "").trim();
+    if (!text) return jsonRes(400, { error: "text is required." });
+    const raw = await kv.get(KV_KEY);
+    const items = raw ? JSON.parse(raw) : [];
+    items.push({ text, submittedAt: new Date().toISOString() });
+    await kv.put(KV_KEY, JSON.stringify(items));
+    return jsonRes(200, { ok: true, count: items.length });
+  }
+  if (request.method === "DELETE") {
+    await kv.put(KV_KEY, JSON.stringify([]));
+    return jsonRes(200, { ok: true });
+  }
+  return jsonRes(405, { error: "Method not allowed." });
+}
+
+// Admin-only: view current scrub overrides state (last run, digest, word counts).
+async function handleScrubOverrides(request, env) {
+  const secret = (env.ADMIN_SECRET ?? "").trim();
+  const auth = request.headers.get("Authorization") || "";
+  const token = auth.replace(/^Bearer\s+/i, "");
+  const payload = secret ? await readToken(token, secret) : null;
+  if (!payload || payload.role !== "admin") return jsonRes(401, { error: "Admin access required." });
+  if (!env.API_PASSWORDS) return jsonRes(503, { error: "Storage not configured." });
+  const raw = await env.API_PASSWORDS.get("scrub-overrides:v1");
+  const data = raw ? JSON.parse(raw) : { stopwords: [], firstNames: [], lastRun: null, digest: null };
+  return jsonRes(200, data);
+}
+
+// Admin-only: manually trigger the nightly learning run without waiting for cron.
+async function handleScrubRun(request, env) {
+  const secret = (env.ADMIN_SECRET ?? "").trim();
+  const auth = request.headers.get("Authorization") || "";
+  const token = auth.replace(/^Bearer\s+/i, "");
+  const payload = secret ? await readToken(token, secret) : null;
+  if (!payload || payload.role !== "admin") return jsonRes(401, { error: "Admin access required." });
+  await runScrubLearning(env);
+  return jsonRes(200, { ok: true });
+}
+
+// Core learning logic: called by scheduled() and handleScrubRun().
+// Analyzes today's certified non-PII terms + admin problem strings, proposes
+// STOPWORDS/FIRST_NAMES improvements, merges them, and sends a digest email.
+async function runScrubLearning(env) {
+  if (!env.API_PASSWORDS || !env.ANTHROPIC_API_KEY) return;
+  const kv = env.API_PASSWORDS;
+
+  // Today's certified non-PII terms (false positives from the scrub algorithm)
+  const today = new Date();
+  const todayMidnightMs = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  const nonPiiRaw = await kv.get("nonpii:v1");
+  const nonPiiAll = nonPiiRaw ? JSON.parse(nonPiiRaw) : [];
+  const todayTerms = nonPiiAll
+    .filter((e) => e.certifiedAt && new Date(e.certifiedAt).getTime() >= todayMidnightMs)
+    .map((e) => e.term);
+
+  // Admin-submitted problem strings
+  const learnRaw = await kv.get("scrub-learn:v1");
+  const problemStrings = learnRaw ? JSON.parse(learnRaw) : [];
+
+  if (todayTerms.length === 0 && problemStrings.length === 0) return;
+
+  const systemPrompt = [
+    "You are improving a client-side PHI name-detection algorithm used in ABA clinical notes tools.",
+    "The algorithm uses STOPWORDS (common words/ABA terms to always skip) and FIRST_NAMES (known names to always flag).",
+    "Analyze today's data and suggest changes. Be conservative — prefer false negatives over false positives.",
+    "Never add actual person names to addToStopwords.",
+  ].join(" ");
+
+  const userPrompt = [
+    "Certified-not-PHI terms (algorithm flagged these but they are not person names):",
+    todayTerms.length ? todayTerms.map((t) => "  - " + t).join("\n") : "  (none today)",
+    "",
+    "Admin problem strings (examples where detection went wrong):",
+    problemStrings.length ? problemStrings.map((p) => "  - " + p.text).join("\n") : "  (none today)",
+    "",
+    'Return ONLY valid JSON (no markdown): {"addToStopwords":[],"removeFromFirstNames":[],"digest":"1-2 sentence summary","confidence":"high|medium|low"}',
+  ].join("\n");
+
+  let result;
+  try {
+    const apiResp = await callAnthropicApi(env.ANTHROPIC_API_KEY, systemPrompt, userPrompt, "claude-haiku-4-5-20251001", 512);
+    const content = apiResp?.content?.[0]?.text ?? "";
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    result = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+  } catch (e) {
+    if (env.RESEND_API_KEY && env.SUGGEST_TO_EMAIL) {
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + env.RESEND_API_KEY },
+        body: JSON.stringify({
+          from: "tools@nooutco.me", to: env.SUGGEST_TO_EMAIL,
+          subject: "PHI Algorithm Update Failed — " + new Date().toISOString().slice(0, 10),
+          text: "Nightly scrub learning run failed: " + (e.message || String(e)),
+        }),
+      }).catch(() => {});
+    }
+    return;
+  }
+
+  if (!result) return;
+
+  // Merge into scrub-overrides:v1
+  const existingRaw = await kv.get("scrub-overrides:v1");
+  const existing = existingRaw ? JSON.parse(existingRaw) : { stopwords: [], firstNames: [] };
+  const newStopwords = Array.from(new Set([...(existing.stopwords || []), ...(result.addToStopwords || [])]));
+  const newFirstNames = (existing.firstNames || []).filter((n) => !(result.removeFromFirstNames || []).includes(n));
+  const runDate = new Date().toISOString().slice(0, 10);
+  await kv.put("scrub-overrides:v1", JSON.stringify({
+    stopwords: newStopwords, firstNames: newFirstNames,
+    lastRun: new Date().toISOString(), digest: result.digest || "",
+  }));
+
+  // Clear problem strings queue after processing
+  await kv.put("scrub-learn:v1", JSON.stringify([]));
+
+  // Send digest email
+  if (env.RESEND_API_KEY && env.SUGGEST_TO_EMAIL) {
+    const added = (result.addToStopwords || []);
+    const removed = (result.removeFromFirstNames || []);
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + env.RESEND_API_KEY },
+      body: JSON.stringify({
+        from: "tools@nooutco.me", to: env.SUGGEST_TO_EMAIL,
+        subject: "PHI Algorithm Update — " + runDate,
+        text: [
+          "PHI Algorithm Update — " + runDate,
+          "",
+          result.digest || "",
+          "",
+          "Added to STOPWORDS (" + added.length + "): " + (added.length ? added.join(", ") : "none"),
+          "Removed from FIRST_NAMES (" + removed.length + "): " + (removed.length ? removed.join(", ") : "none"),
+          "",
+          "Input: " + todayTerms.length + " certified terms, " + problemStrings.length + " problem strings",
+          "Confidence: " + (result.confidence || "unknown"),
+        ].join("\n"),
+      }),
+    }).catch(() => {});
+  }
 }
 
 async function sha256Hex(str) {

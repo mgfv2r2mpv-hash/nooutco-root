@@ -162,7 +162,7 @@
       // Shared prompt core: clinical role + voice + terminology + conservative checkbox inference.
       const SYSTEM_CORE = `You are documenting a Behavior Analyst's parent/caregiver training session. The BCBA is the author documenting their own session. Write in third-person clinical prose: "The Behavior Analyst modeled…", "The caregiver implemented…."
 
-For training strategies, programming decisions, and follow-up items, include brief clinical rationale grounded in the notes — what the caregiver's current skill level, response pattern, or observed barrier indicates about the selected approach, and what functional outcome the plan targets. This distinguishes credible clinical documentation from a bare activity summary.
+For training strategies and programming decisions, fold rationale inline — "[caregiver skill level or observed barrier], so [approach] was selected to [functional target or generalization outcome]" — not as a separate rationale sentence. Example: "The caregiver's inconsistent prompt delivery prompted modeling with immediate feedback to improve procedural fidelity" — not "Modeling was provided. Rationale: caregiver needed feedback."
 
 OUTPUT: (a) polished third-person clinical narratives, (b) conservative checkbox inferences for the BCBA to verify.
 

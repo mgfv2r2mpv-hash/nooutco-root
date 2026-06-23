@@ -3,8 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>API Passwords Admin · No Outcome ABA</title>
+  <title>Admin · No Outcome ABA</title>
   <link rel="icon" href="/logo-mark.svg" />
+  <!-- notes-gate.js needed for FIRST_NAMES/STOPWORDS in Algorithm Lab -->
+  <script src="/assets/notes-gate.js"></script>
+  <script src="/assets/notes-scrub.js"></script>
   <style>
     :root {
       --sage: #374528; --sage-light: #c0d4a8; --bg: #f4f7ee; --surface: #fff;
@@ -18,8 +21,9 @@
     .sub { color: var(--muted); font-size: 14px; margin: 0; line-height: 1.5; }
     .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; box-shadow: 0 8px 24px rgba(20, 28, 14, .06); margin-bottom: 20px; }
     label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .03em; }
-    input[type=text], input[type=password] { width: 100%; padding: 10px 12px; border: 1.5px solid var(--sage-light); border-radius: 8px; font-size: 14px; font-family: inherit; }
-    input:focus { outline: none; border-color: var(--sage); }
+    input[type=text], input[type=password], textarea { width: 100%; padding: 10px 12px; border: 1.5px solid var(--sage-light); border-radius: 8px; font-size: 14px; font-family: inherit; }
+    input:focus, textarea:focus { outline: none; border-color: var(--sage); }
+    textarea { resize: vertical; min-height: 90px; }
     button { font-family: inherit; cursor: pointer; border: none; border-radius: 8px; font-weight: 600; }
     .btn-primary { background: var(--sage); color: #fff; padding: 11px 18px; font-size: 14px; }
     .btn-primary:hover { background: #2d3a1f; }
@@ -35,25 +39,42 @@
     .pill.on { background: #e3f0d3; color: #3f6121; }
     .pill.off { background: #f0e3e1; color: #9a4034; }
     .err { color: var(--red); font-size: 13px; margin-top: 10px; display: none; }
+    .ok  { color: #3f6121; font-size: 13px; margin-top: 10px; display: none; }
     .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
     .muted { color: var(--muted); font-size: 13px; }
     .hidden { display: none; }
     .add-grid { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
     .add-grid > div { flex: 1; min-width: 150px; }
     h2 { margin: 0 0 14px; font-size: 16px; }
+    h3 { margin: 0 0 10px; font-size: 14px; font-weight: 700; }
     .tool-checks { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 2px; }
     .tool-checks label { display: inline-flex; align-items: center; gap: 6px; margin: 0; text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--text); font-size: 13px; cursor: pointer; }
     .tool-checks input { width: auto; padding: 0; }
     .tool-pills { display: flex; flex-wrap: wrap; gap: 4px; }
     .tool-pill { background: #eaf1de; color: #4a5e2e; border-radius: 6px; padding: 1px 7px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+    /* Tabs */
+    .tab-nav { display: flex; gap: 0; margin-bottom: 22px; border-bottom: 2px solid var(--line); }
+    .tab-btn { background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; padding: 9px 18px; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; border-radius: 0; }
+    .tab-btn.active { color: var(--sage); border-bottom-color: var(--sage); }
+    .tab-btn:hover:not(.active) { color: var(--text); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    /* Algorithm Lab */
+    .badge-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; min-height: 28px; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #fff5c2; color: #6b5000; border: 1px solid #e5cc60; }
+    .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+    .stat-box { background: #f4f7ee; border-radius: 10px; padding: 12px 14px; }
+    .stat-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
+    .stat-val { font-size: 18px; font-weight: 700; color: var(--sage); }
+    .digest-box { margin-top: 12px; padding: 12px 14px; background: #f4f7ee; border-radius: 10px; font-size: 13px; color: var(--muted); line-height: 1.5; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="topbar">
       <div>
-        <h1>🛠️ API Passwords Admin</h1>
-        <p class="sub">Create and manage access passwords that unlock <strong>Generate Note</strong>. Holders get note generation only — not this screen.</p>
+        <h1>Admin · No Outcome ABA</h1>
+        <p class="sub">Manage access passwords, review certified non-PII terms, and tune the PHI detection algorithm.</p>
       </div>
       <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
         <a class="btn-ghost" href="/" style="text-decoration: none;">← Tools</a>
@@ -71,30 +92,91 @@
 
     <!-- Admin UI -->
     <div id="adminUI" class="hidden">
-      <div class="card">
-        <h2>Add an access password</h2>
-        <div class="add-grid">
-          <div>
-            <label for="newLabel">Label (who it's for)</label>
-            <input id="newLabel" type="text" placeholder="e.g. Front desk" />
+      <nav class="tab-nav">
+        <button class="tab-btn active" data-tab="passwords">Passwords</button>
+        <button class="tab-btn" data-tab="nonpii">Non-PII Terms</button>
+        <button class="tab-btn" data-tab="alglab">Algorithm Lab</button>
+      </nav>
+
+      <!-- ── Passwords tab ── -->
+      <div id="tab-passwords" class="tab-panel active">
+        <div class="card">
+          <h2>Add an access password</h2>
+          <div class="add-grid">
+            <div>
+              <label for="newLabel">Label (who it's for)</label>
+              <input id="newLabel" type="text" placeholder="e.g. Front desk" />
+            </div>
+            <div>
+              <label for="newPw">Password</label>
+              <input id="newPw" type="text" placeholder="Access password" />
+            </div>
+            <button id="addBtn" class="btn-primary">Add</button>
           </div>
-          <div>
-            <label for="newPw">Password</label>
-            <input id="newPw" type="text" placeholder="Access password" />
-          </div>
-          <button id="addBtn" class="btn-primary">Add</button>
+          <label style="margin-top: 14px;">Tools this password can use</label>
+          <div id="toolChecks" class="tool-checks"></div>
+          <div id="addErr" class="err"></div>
         </div>
-        <label style="margin-top: 14px;">Tools this password can use</label>
-        <div id="toolChecks" class="tool-checks"></div>
-        <div id="addErr" class="err"></div>
+
+        <div class="card">
+          <table>
+            <thead><tr><th>Label</th><th>Tools</th><th>Status</th><th>Created</th><th></th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+          <p id="empty" class="muted hidden" style="margin: 14px 4px 0;">No access passwords yet — add one above.</p>
+        </div>
       </div>
 
-      <div class="card">
-        <table>
-          <thead><tr><th>Label</th><th>Tools</th><th>Status</th><th>Created</th><th></th></tr></thead>
-          <tbody id="rows"></tbody>
-        </table>
-        <p id="empty" class="muted hidden" style="margin: 14px 4px 0;">No access passwords yet — add one above.</p>
+      <!-- ── Non-PII Terms tab ── -->
+      <div id="tab-nonpii" class="tab-panel">
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <h2 style="margin: 0;">Certified Non-PII Terms</h2>
+            <button id="clearNonPii" class="btn-danger">Clear all</button>
+          </div>
+          <p class="muted" style="margin: 0 0 14px;">Terms clinicians have certified as not being person names. These are permanently excluded from PHI detection.</p>
+          <table id="nonpiiTable">
+            <thead><tr><th>Term</th><th>Certified at</th><th></th></tr></thead>
+            <tbody id="nonpiiRows"></tbody>
+          </table>
+          <p id="nonpiiEmpty" class="muted hidden" style="margin: 14px 4px 0;">No certified non-PII terms yet.</p>
+        </div>
+      </div>
+
+      <!-- ── Algorithm Lab tab ── -->
+      <div id="tab-alglab" class="tab-panel">
+        <div class="card">
+          <h2>Test the Detection Algorithm</h2>
+          <p class="muted" style="margin: 0 0 12px;">Paste a clinical note snippet to see which tokens the current algorithm would flag. Words highlighted yellow in the textarea are detected in real time.</p>
+          <label for="labText">Test string</label>
+          <textarea id="labText" placeholder="e.g. The BT worked with Jacob today. Sarah's program was reviewed."></textarea>
+          <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center;">
+            <button id="labTest" class="btn-primary">Test string</button>
+            <button id="labSubmit" class="btn-ghost">Submit for learning</button>
+            <span id="labOk" class="ok" style="margin: 0;">Submitted — will be reviewed in tonight's run.</span>
+            <span id="labErr" class="err" style="margin: 0;"></span>
+          </div>
+          <div>
+            <p class="muted" style="margin: 12px 0 4px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;">Detected tokens</p>
+            <div id="labBadges" class="badge-list"><span class="muted" style="font-size: 13px;">Run a test to see results.</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Algorithm Status</h2>
+          <p class="muted" style="margin: 0 0 14px;">Nightly run: <strong>2am UTC daily</strong>. Runs only when there are new certified non-PII terms or submitted problem strings. Configure cron in Cloudflare Dashboard → Pages → Functions → Cron Triggers.</p>
+          <div class="status-grid" id="labStats">
+            <div class="stat-box"><div class="stat-label">Learned stopwords</div><div class="stat-val" id="statStopwords">—</div></div>
+            <div class="stat-box"><div class="stat-label">Modified first-names</div><div class="stat-val" id="statFirstNames">—</div></div>
+          </div>
+          <div id="labDigest" class="digest-box" style="display: none;"></div>
+          <p class="muted" style="margin: 12px 0 0; font-size: 12px;" id="lastRunLabel"></p>
+          <div style="margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap;">
+            <button id="labRunNow" class="btn-ghost">Trigger run now</button>
+            <span id="labRunOk" class="ok" style="margin: 0;">Run complete — check your email for the digest.</span>
+            <span id="labRunErr" class="err" style="margin: 0;"></span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -117,6 +199,7 @@
         catch (e) { return null; }
       }
       function isAdmin() { var p = payload(); return !!(p && p.role === "admin" && (!p.exp || p.exp * 1000 > Date.now())); }
+      function authHeader() { return { "Content-Type": "application/json", "Authorization": "Bearer " + token() }; }
 
       var loginCard = document.getElementById("loginCard");
       var adminUI = document.getElementById("adminUI");
@@ -125,7 +208,7 @@
       function show() {
         if (isAdmin()) {
           loginCard.classList.add("hidden"); adminUI.classList.remove("hidden"); logoutBtn.classList.remove("hidden");
-          load();
+          load(); loadNonPii(); loadAlgStatus();
         } else {
           loginCard.classList.remove("hidden"); adminUI.classList.add("hidden"); logoutBtn.classList.add("hidden");
           document.getElementById("pw").focus();
@@ -148,10 +231,21 @@
       document.getElementById("pw").addEventListener("keydown", function (e) { if (e.key === "Enter") doLogin(); });
       logoutBtn.addEventListener("click", function () { localStorage.removeItem(TOKEN_KEY); show(); });
 
+      /* ── Tab switching ── */
+      document.querySelectorAll(".tab-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          document.querySelectorAll(".tab-btn").forEach(function (b) { b.classList.remove("active"); });
+          document.querySelectorAll(".tab-panel").forEach(function (p) { p.classList.remove("active"); });
+          btn.classList.add("active");
+          document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+        });
+      });
+
+      /* ── Passwords tab ── */
       function api(method, body) {
         return fetch("/api/admin/passwords", {
           method: method,
-          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token() },
+          headers: authHeader(),
           body: body ? JSON.stringify(body) : undefined,
         }).then(function (r) {
           if (r.status === 401) { localStorage.removeItem(TOKEN_KEY); show(); throw new Error("Session expired."); }
@@ -160,6 +254,7 @@
       }
 
       function fmt(iso) { if (!iso) return "—"; try { return new Date(iso).toLocaleDateString(); } catch (e) { return "—"; } }
+      function fmtDateTime(iso) { if (!iso) return "never"; try { return new Date(iso).toLocaleString(); } catch (e) { return "—"; } }
       function escapeHtml(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
 
       function renderToolChecks() {
@@ -209,6 +304,92 @@
           document.getElementById("newLabel").value = ""; document.getElementById("newPw").value = "";
           renderToolChecks(); load();
         }).catch(function (ex) { err.textContent = ex.message; err.style.display = "block"; });
+      });
+
+      /* ── Non-PII Terms tab ── */
+      function adminFetch(path, method, body) {
+        return fetch(path, {
+          method: method || "GET",
+          headers: authHeader(),
+          body: body ? JSON.stringify(body) : undefined,
+        }).then(function (r) {
+          if (r.status === 401) { localStorage.removeItem(TOKEN_KEY); show(); throw new Error("Session expired."); }
+          return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ("Error " + r.status)); return d; });
+        });
+      }
+
+      function loadNonPii() {
+        adminFetch("/api/nonpii").then(function (d) {
+          var terms = d.terms || [];
+          var tbody = document.getElementById("nonpiiRows");
+          tbody.innerHTML = "";
+          document.getElementById("nonpiiEmpty").classList.toggle("hidden", terms.length > 0);
+          terms.forEach(function (e) {
+            var tr = document.createElement("tr");
+            tr.innerHTML =
+              "<td><strong>" + escapeHtml(e.term) + "</strong></td>" +
+              '<td class="muted">' + fmtDateTime(e.certifiedAt) + "</td>" +
+              '<td><div class="row-actions"><button class="btn-danger" data-act="del">Delete</button></div></td>';
+            tr.querySelector('[data-act=del]').addEventListener("click", function () {
+              adminFetch("/api/nonpii", "DELETE", { term: e.term }).then(loadNonPii).catch(function () {});
+            });
+            tbody.appendChild(tr);
+          });
+        }).catch(function () {});
+      }
+
+      document.getElementById("clearNonPii").addEventListener("click", function () {
+        if (confirm("Clear all certified non-PII terms? Clinicians will need to re-certify them.")) {
+          adminFetch("/api/nonpii", "DELETE", {}).then(loadNonPii).catch(function () {});
+        }
+      });
+
+      /* ── Algorithm Lab tab ── */
+      document.getElementById("labTest").addEventListener("click", function () {
+        var text = document.getElementById("labText").value;
+        var badges = document.getElementById("labBadges");
+        var detected = (window.NotesScrub && window.NotesScrub._detect) ? window.NotesScrub._detect(text) : [];
+        badges.innerHTML = detected.length
+          ? detected.map(function (n) { return '<span class="badge">' + escapeHtml(n) + "</span>"; }).join("")
+          : '<span class="muted" style="font-size:13px;">No names detected.</span>';
+      });
+
+      document.getElementById("labSubmit").addEventListener("click", function () {
+        var text = document.getElementById("labText").value.trim();
+        var ok = document.getElementById("labOk");
+        var err = document.getElementById("labErr");
+        ok.style.display = "none"; err.style.display = "none";
+        if (!text) { err.textContent = "Enter a test string first."; err.style.display = "inline"; return; }
+        adminFetch("/api/admin/scrub-learn", "POST", { text: text })
+          .then(function () { ok.style.display = "inline"; document.getElementById("labText").value = ""; })
+          .catch(function (ex) { err.textContent = ex.message; err.style.display = "inline"; });
+      });
+
+      function loadAlgStatus() {
+        adminFetch("/api/admin/scrub-overrides").then(function (d) {
+          document.getElementById("statStopwords").textContent = (d.stopwords || []).length;
+          document.getElementById("statFirstNames").textContent = (d.firstNames || []).length;
+          var digest = document.getElementById("labDigest");
+          if (d.digest) { digest.textContent = d.digest; digest.style.display = "block"; }
+          document.getElementById("lastRunLabel").textContent = "Last run: " + fmtDateTime(d.lastRun);
+        }).catch(function () {});
+      }
+
+      document.getElementById("labRunNow").addEventListener("click", function () {
+        var ok = document.getElementById("labRunOk");
+        var err = document.getElementById("labRunErr");
+        ok.style.display = "none"; err.style.display = "none";
+        document.getElementById("labRunNow").textContent = "Running…";
+        adminFetch("/api/admin/scrub-run", "POST")
+          .then(function () {
+            ok.style.display = "inline";
+            document.getElementById("labRunNow").textContent = "Trigger run now";
+            loadAlgStatus();
+          })
+          .catch(function (ex) {
+            err.textContent = ex.message; err.style.display = "inline";
+            document.getElementById("labRunNow").textContent = "Trigger run now";
+          });
       });
 
       renderToolChecks();
