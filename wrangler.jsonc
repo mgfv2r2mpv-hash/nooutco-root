@@ -6,11 +6,17 @@
     "production": {
       "services": [
         { "binding": "API_WORKER", "service": "games-save-photo" }
+      ],
+      "kv_namespaces": [
+        { "binding": "SUGGEST_DUPES", "id": "770ceeccadb94d78b519e628509beed8" }
       ]
     },
     "preview": {
       "services": [
         { "binding": "API_WORKER", "service": "games-save-photo-dev" }
+      ],
+      "kv_namespaces": [
+        { "binding": "SUGGEST_DUPES", "id": "770ceeccadb94d78b519e628509beed8" }
       ]
     }
   }
