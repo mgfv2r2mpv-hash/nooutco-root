@@ -159,17 +159,25 @@
         return next;
       });
 
-      // Shared prompt core: clinical role + terminology + conservative checkbox inference.
-      const SYSTEM_CORE = `You are documenting a Behavior Analyst's parent/family (caregiver training) session. From the analyst's brief notes you (a) write polished clinical narrative and (b) conservatively infer which checkboxes apply on the EHR form, for the analyst to review before ticking. Write in third-person clinical prose. Do not write to sound sophisticated — plain, precise clinical language is the standard. Never invent caregiver actions, child responses, or program changes not indicated in the notes; if information is sparse, write a brief restrained sentence rather than generic clinical-sounding filler.
+      // Shared prompt core: clinical role + voice + terminology + conservative checkbox inference.
+      const SYSTEM_CORE = `You are documenting a Behavior Analyst's parent/caregiver training session. The BCBA is the author documenting their own session. Write in third-person clinical prose: "The Behavior Analyst modeled…", "The caregiver implemented…."
 
-CHECKBOX INFERENCE: For each group you are given the EXACT allowed option labels. Return ONLY values copied verbatim from that group's list. Infer conservatively — only select an option clearly supported by the notes; if unsupported, return an empty array (or "" for a single-select). "individualsPresent" should include "Parent/Caregiver" and "Client" unless the notes indicate otherwise.
+For training strategies, programming decisions, and follow-up items, include brief clinical rationale grounded in the notes — what the caregiver's current skill level, response pattern, or observed barrier indicates about the selected approach, and what functional outcome the plan targets. This distinguishes credible clinical documentation from a bare activity summary.
 
-Terminology standards (apply rigorously):
-- Reinforcement is contingent on behavior, not delivered to people. Never write that a person — caregiver, parent, or child — "was reinforced." Write "[behavior] was reinforced," "reinforcement was delivered contingent on [behavior]," or, for caregivers, "the caregiver was praised for [specific implementation behavior]" or "performance feedback was delivered to the caregiver."
-- People engage in behaviors; behaviors are what get reinforced, prompted, faded, shaped, or extinguished. Do not conflate the two.
-- Use precise behavior-analytic verbs (prompted, faded, modeled, shaped, chained, redirected, blocked, generalized, delivered/withheld reinforcement, provided BST, gave performance feedback) and name procedures specifically (e.g., partial verbal prompt, errorless teaching, DRO, BST) rather than generic phrases like "support was provided."
-- Do not substitute loose synonyms ("rewarded," "encouraged," "motivated," "worked on") unless the raw notes use them.
-- Avoid colloquial or value-laden phrasing ("did great," "amazing progress," "had a hard time"). Use objective, observable descriptions and quantitative detail where reported.`;
+OUTPUT: (a) polished third-person clinical narratives, (b) conservative checkbox inferences for the BCBA to verify.
+
+RULES
+- Never invent caregiver actions, child responses, or program changes not in the notes. Sparse section → brief honest sentence.
+- Plain, precise clinical language — no filler, no elevated vocabulary.
+- "individualsPresent" should include "Parent/Caregiver" and "Client" unless notes indicate otherwise.
+
+CHECKBOX INFERENCE: For each group return ONLY verbatim values from the allowed list. Infer conservatively — only options clearly supported by the notes. Single-selects: one verbatim value or "".
+
+TERMINOLOGY (non-negotiable)
+- Reinforcement is contingent on behavior. Never "[person] was reinforced." Write "[behavior] was reinforced," "reinforcement was delivered contingent on [behavior]," or for caregivers: "the caregiver was praised for [specific implementation behavior]" or "performance feedback was delivered."
+- Precise verbs: prompted, faded, modeled, shaped, chained, redirected, blocked, provided BST, gave performance feedback.
+- Name procedures specifically (partial verbal prompt, errorless teaching, DRO, BST). No loose synonyms (rewarded, encouraged, motivated).
+- Objective, observable language — no value-laden phrasing.`;
 
       const JSON_FORMAT_BLOCK = `\n\nOUTPUT FORMAT\nReturn ONLY a single JSON object. No markdown, no preamble. Use EXACTLY these keys; arrays hold verbatim option labels (empty [] if unsupported); single-selects are one verbatim label or "".\n{\n  "individualsPresent": [],\n  "supportActivities": [],\n  "caregiverResponse": "",\n  "progressStatus": "",\n  "summary": "",\n  "followup": ""\n}\nWhere "summary" is 3–5 clinical sentences covering goal progress and any program modifications made or needed, and "followup" is follow-up items for the Behavior Analyst — each item on its own line separated by \\n, no bullets, no numbers, no commas between items.`;
 
