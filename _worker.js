@@ -32,6 +32,10 @@ export default {
       return handleAdminPasswords(request, env);
     }
 
+    if (url.pathname === "/api/nonpii") {
+      return handleNonPii(request, env);
+    }
+
     if (url.pathname === "/api/suggest" && request.method === "POST") {
       return handleSuggest(request, env);
     }
@@ -301,6 +305,56 @@ async function getPasswordRecord(kv, id) {
   const { metadata } = await kv.getWithMetadata("pw:" + id);
   if (!metadata) return null;
   return { active: !!metadata.active, tools: Array.isArray(metadata.tools) ? metadata.tools : [] };
+}
+
+// Certified-non-PII store — any authenticated user can read/add; admin can delete.
+// Stored as nonpii:v1 in the API_PASSWORDS KV namespace.
+async function handleNonPii(request, env) {
+  const secret = (env.ADMIN_SECRET ?? "").trim();
+  const auth = request.headers.get("Authorization") || "";
+  const token = auth.replace(/^Bearer\s+/i, "");
+  const payload = secret ? await readToken(token, secret) : null;
+  if (!payload) return jsonRes(401, { error: "Login required." });
+  if (!env.API_PASSWORDS) return jsonRes(503, { error: "Storage not configured." });
+  const kv = env.API_PASSWORDS;
+  const KV_KEY = "nonpii:v1";
+
+  if (request.method === "GET") {
+    const raw = await kv.get(KV_KEY);
+    const terms = raw ? JSON.parse(raw) : [];
+    return jsonRes(200, { terms });
+  }
+
+  if (request.method === "POST") {
+    let body;
+    try { body = await request.json(); } catch { return jsonRes(400, { error: "Invalid body." }); }
+    const term = (body.term ?? "").toLowerCase().trim();
+    if (!term) return jsonRes(400, { error: "term is required." });
+    const raw = await kv.get(KV_KEY);
+    const terms = raw ? JSON.parse(raw) : [];
+    if (!terms.some((e) => e.term === term)) {
+      terms.push({ term, certifiedAt: body.certifiedAt || new Date().toISOString() });
+      await kv.put(KV_KEY, JSON.stringify(terms));
+    }
+    return jsonRes(200, { ok: true });
+  }
+
+  if (request.method === "DELETE") {
+    if (payload.role !== "admin") return jsonRes(403, { error: "Admin only." });
+    let body;
+    try { body = await request.json(); } catch { body = {}; }
+    const raw = await kv.get(KV_KEY);
+    const terms = raw ? JSON.parse(raw) : [];
+    if (body.term) {
+      const lc = body.term.toLowerCase().trim();
+      await kv.put(KV_KEY, JSON.stringify(terms.filter((e) => e.term !== lc)));
+    } else {
+      await kv.put(KV_KEY, JSON.stringify([]));
+    }
+    return jsonRes(200, { ok: true });
+  }
+
+  return jsonRes(405, { error: "Method not allowed." });
 }
 
 // Admin-only management of the managed access passwords.

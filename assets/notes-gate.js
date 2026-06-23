@@ -95,6 +95,7 @@
           throw new Error(data && data.error ? data.error : "Login failed.");
         }
         setToken(data.token);
+        syncNonPii();
         return data;
       });
     });
@@ -234,22 +235,66 @@
 
   /* ─────────────── Certified-non-PII store ─────────────── */
 
-  // Persists terms the clinician has certified as non-PII across sessions.
+  // Certified-non-PII store. localStorage is the fast cache; /api/nonpii is the
+  // source of truth, synced on every authenticated page load and on every save.
   // Each entry: { term: string (lowercase), certifiedAt: ISO string }.
   var NONPII_KEY = "noaba.nonpii.v1";
 
   function loadNonPii() {
     try { return JSON.parse(localStorage.getItem(NONPII_KEY)) || []; } catch (e) { return []; }
   }
+
+  function _writeLocal(list) {
+    try { localStorage.setItem(NONPII_KEY, JSON.stringify(list)); } catch (e) {}
+  }
+
+  // Pull from server and merge into localStorage (union by term).
+  function syncNonPii() {
+    var tok = getToken();
+    if (!tok) return;
+    fetch("/api/nonpii", { headers: { "Authorization": "Bearer " + tok } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !Array.isArray(d.terms)) return;
+        var local = loadNonPii();
+        var seen = {};
+        local.forEach(function (e) { seen[e.term] = true; });
+        var merged = local.slice();
+        d.terms.forEach(function (e) { if (!seen[e.term]) { merged.push(e); seen[e.term] = true; } });
+        _writeLocal(merged);
+      })
+      .catch(function () {});
+  }
+
   function saveNonPiiTerm(term) {
     var lc = (term || "").toLowerCase().trim();
     if (!lc) return;
     var list = loadNonPii();
     if (list.some(function (e) { return e.term === lc; })) return;
-    list.push({ term: lc, certifiedAt: new Date().toISOString() });
-    try { localStorage.setItem(NONPII_KEY, JSON.stringify(list)); } catch (e) {}
+    var entry = { term: lc, certifiedAt: new Date().toISOString() };
+    _writeLocal(list.concat([entry]));
+    // Fire-and-forget to server; localStorage already updated so detection is instant.
+    var tok = getToken();
+    if (tok) {
+      fetch("/api/nonpii", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + tok },
+        body: JSON.stringify(entry),
+      }).catch(function () {});
+    }
   }
-  function clearNonPii() { try { localStorage.removeItem(NONPII_KEY); } catch (e) {} }
+
+  function clearNonPii() {
+    try { localStorage.removeItem(NONPII_KEY); } catch (e) {}
+    var tok = getToken();
+    if (tok) {
+      fetch("/api/nonpii", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + tok },
+        body: JSON.stringify({}),
+      }).catch(function () {});
+    }
+  }
 
   // Detect candidate person names: runs of 1–2 capitalized words not in the
   // stoplist. A "word" starts with a capital, may carry internal capitals,
@@ -292,6 +337,21 @@
         meaningful.forEach(push);
       }
     }
+    // Nickname/prefix pass — flag any 3+ char word (any case) that is a strict
+    // prefix of a detected name (e.g. "barb" matches "barbara"). This catches
+    // abbreviated nicknames that look like common lowercase words at first glance.
+    var lowerDetected = out.map(function (n) { return n.toLowerCase(); });
+    var pfxRe = /\b([A-Za-z]{3,})\b/g;
+    var pm;
+    while ((pm = pfxRe.exec(text)) !== null) {
+      var w = pm[1];
+      var wl = w.toLowerCase();
+      if (seen[wl] || excluded[wl] || STOPWORDS[wl]) continue;
+      if (lowerDetected.some(function (n) { return n !== wl && n.startsWith(wl); })) {
+        push(w);
+      }
+    }
+
     // Longest first so "Barbara Jean" is replaced before "Barbara".
     out.sort(function (a, b) { return b.length - a.length; });
     return out;
@@ -329,6 +389,9 @@
     return value;
   }
 
+  // On page load, pull server list so detectNames benefits immediately.
+  if (isLoggedIn()) syncNonPii();
+
   window.NotesGate = {
     isLoggedIn: isLoggedIn,
     canUseTool: canUseTool,
@@ -338,8 +401,8 @@
     logout: logout,
     token: getToken,
     generateNote: generateNote,
-    // Certified-non-PII store — persists across sessions in localStorage.
-    nonPii: { load: loadNonPii, saveTerm: saveNonPiiTerm, clear: clearNonPii },
+    // Certified-non-PII store — localStorage cache + KV server backing.
+    nonPii: { load: loadNonPii, saveTerm: saveNonPiiTerm, clear: clearNonPii, sync: syncNonPii },
     // exposed for testing / advanced use
     _scrub: { detectNames: detectNames, buildNameMap: buildNameMap, applyScrub: applyScrub, restoreDeep: restoreDeep },
   };

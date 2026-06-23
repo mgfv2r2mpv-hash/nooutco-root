@@ -373,6 +373,121 @@
     });
   }
 
+  /* ─────────────────── Live PHI highlighting ─────────────────── */
+  // Overlay a transparent highlight layer behind each textarea so detected
+  // name candidates glow yellow as the clinician types. Triggers after every
+  // space, line break, or punctuation keystroke to encourage in-place editing
+  // before the review dialog opens.
+  //
+  // Architecture: a position:relative wrapper div contains (a) an absolutely-
+  // positioned highlight div with pointer-events:none at z-index 0, and (b) the
+  // original textarea at z-index 1 with a transparent background. Font/padding
+  // are cloned from the textarea's computed style so text positions align exactly.
+  // Scroll sync keeps the two in lockstep.
+
+  var HIGHLIGHT_TRIGGER_RE = /[\s.,!?;:()\[\]{}\-'"]/;
+
+  function _syncHighlight(ta, hl) {
+    var text = ta.value;
+    var names = (window.NotesGate && window.NotesGate._scrub)
+      ? window.NotesGate._scrub.detectNames(text)
+      : [];
+
+    if (!names.length) { hl.innerHTML = "​"; return; } // zero-width space keeps height
+
+    // Escape HTML then wrap each detected name in a <mark>.
+    var esc = text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    // Sort longest-first so "Barbara Jean" is highlighted as a unit before "Barbara".
+    var sorted = names.slice().sort(function (a, b) { return b.length - a.length; });
+    sorted.forEach(function (name) {
+      var re = new RegExp("\\b" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "gi");
+      esc = esc.replace(re, "<mark>$&</mark>");
+    });
+
+    hl.innerHTML = esc;
+    hl.scrollTop = ta.scrollTop;
+  }
+
+  function _applyComputedStyle(src, dst) {
+    var cs = window.getComputedStyle(src);
+    [
+      "font", "fontSize", "fontFamily", "fontWeight", "lineHeight",
+      "letterSpacing", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+      "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth",
+      "boxSizing", "wordWrap", "overflowWrap", "tabSize",
+    ].forEach(function (p) { try { dst.style[p] = cs[p]; } catch (e) {} });
+  }
+
+  // Attaches a highlight overlay to one textarea. Idempotent via data attribute.
+  function _attachHighlight(ta) {
+    if (ta.dataset.phiHl) return;
+    ta.dataset.phiHl = "1";
+
+    var parent = ta.parentNode;
+    var wrapper = document.createElement("div");
+    wrapper.style.cssText = "position:relative;display:block;width:100%;";
+
+    var hl = document.createElement("div");
+    hl.setAttribute("aria-hidden", "true");
+    hl.style.cssText = [
+      "position:absolute", "inset:0",
+      "pointer-events:none",
+      "overflow:hidden",
+      "white-space:pre-wrap", "word-wrap:break-word",
+      "color:transparent",
+      "z-index:0",
+    ].join(";");
+
+    // Mark style: yellow bg, transparent text (real text in the textarea shows through).
+    var markCSS = document.createElement("style");
+    if (!document.getElementById("phi-highlight-style")) {
+      markCSS.id = "phi-highlight-style";
+      markCSS.textContent = "[data-phi-hl] { background:transparent!important; position:relative; z-index:1; } " +
+        ".phi-hl-layer mark { background:#fffb80; color:transparent; border-radius:2px; }";
+      document.head.appendChild(markCSS);
+    }
+    hl.className = "phi-hl-layer";
+
+    parent.insertBefore(wrapper, ta);
+    wrapper.appendChild(hl);
+    wrapper.appendChild(ta);
+
+    // Clone computed style AFTER inserting so getComputedStyle is accurate.
+    _applyComputedStyle(ta, hl);
+
+    function update() { _syncHighlight(ta, hl); }
+
+    ta.addEventListener("input", function () {
+      var v = ta.value;
+      if (!v.length || HIGHLIGHT_TRIGGER_RE.test(v[v.length - 1])) update();
+    });
+    ta.addEventListener("scroll", function () { hl.scrollTop = ta.scrollTop; });
+    ta.addEventListener("blur", update);
+    // Sync once on attach in case the field already has content.
+    update();
+  }
+
+  // Finds all unprocessed textareas in the document and attaches highlighting.
+  function installPHIHighlight() {
+    document.querySelectorAll("textarea:not([data-phi-hl])").forEach(_attachHighlight);
+  }
+
+  // Auto-install: run after DOMContentLoaded and re-scan when auth state changes
+  // (textareas may only appear after login unlocks the form).
+  function _scheduleInstall() {
+    setTimeout(installPHIHighlight, 200);
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", _scheduleInstall);
+  } else {
+    _scheduleInstall();
+  }
+  window.addEventListener("notes-auth-change", function () { setTimeout(installPHIHighlight, 300); });
+
   window.NotesScrub = {
     ROLES: ROLES,
     PII_HELP: PII_HELP,
@@ -382,6 +497,7 @@
     applyMap: applyMap,
     noticeText: noticeText,
     persistMap: persistMap,
+    installPHIHighlight: installPHIHighlight,
     // exposed for testing / the stress-test page
     _detect: detect,
     _buildMap: buildMap,
