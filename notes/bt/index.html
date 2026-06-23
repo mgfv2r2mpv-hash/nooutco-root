@@ -8,6 +8,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
   <script src="/assets/notes-gate.js"></script>
+  <script src="/assets/notes-scrub.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -508,6 +509,7 @@
       const [copied,       setCopied]      = React.useState(null);
       const [promptText,   setPromptText]  = React.useState("");
       const [copiedPrompt, setCopiedPrompt]= React.useState(false);
+      const [scrubNotice,  setScrubNotice] = React.useState("");
       const [showApiSection, setShowApiSection] = React.useState(() => !(window.NotesGate && NotesGate.isLoggedIn()));
 
       React.useEffect(() => {
@@ -640,13 +642,20 @@ BT notes: "BCBA in 20 min. Arrived tired, slow to start. Ran tx-plan goals. Rece
         return out;
       };
 
+      const collectFreeText = () => [fSession, fLesson, fAntecedent, fBehavior, fFollowUp].join("\n");
+
       const handleGenerate = async () => {
         const err = validate();
         if (err) { setError(err); return; }
         if (!NotesGate.isLoggedIn()) { NotesGate.openLogin(); return; }
-        setError(""); setRawError(""); setLoading(true); setOutput(null);
+        setError(""); setRawError("");
+        if (!(await NotesScrub.acknowledge())) return;
+        const review = await NotesScrub.review({ freeText: collectFreeText() });
+        if (review.cancelled) return;
+        setScrubNotice(NotesScrub.noticeText(review.map));
+        setLoading(true); setOutput(null);
         try {
-          const parsed = await NotesGate.generateNote({ systemPrompt: SYSTEM_CORE + JSON_FORMAT_BLOCK, userPrompt: buildUserPrompt(), tool: TOOL_ID });
+          const parsed = await NotesGate.generateNote({ systemPrompt: SYSTEM_CORE + JSON_FORMAT_BLOCK, userPrompt: NotesScrub.applyMap(buildUserPrompt(), review.map), tool: TOOL_ID });
           setOutput(normalizeOutput(parsed));
         } catch (e) {
           setRawError(e.message || "");
@@ -656,11 +665,15 @@ BT notes: "BCBA in 20 min. Arrived tired, slow to start. Ran tx-plan goals. Rece
         }
       };
 
-      const handleGeneratePrompt = () => {
+      const handleGeneratePrompt = async () => {
         const err = validate();
         if (err) { setError(err); return; }
         setError(""); setRawError("");
-        setPromptText(`${SYSTEM_CORE + LABELED_FORMAT_BLOCK}\n\n---\n\n${buildUserPrompt()}`);
+        if (!(await NotesScrub.acknowledge())) return;
+        const review = await NotesScrub.review({ freeText: collectFreeText() });
+        if (review.cancelled) return;
+        setScrubNotice(NotesScrub.noticeText(review.map));
+        setPromptText(NotesScrub.applyMap(`${SYSTEM_CORE + LABELED_FORMAT_BLOCK}\n\n---\n\n${buildUserPrompt()}`, review.map));
         setCopiedPrompt(false);
       };
 
@@ -825,6 +838,13 @@ BT notes: "BCBA in 20 min. Arrived tired, slow to start. Ran tx-plan goals. Rece
           {/* Error + Buttons */}
           <div style={{ marginBottom: 20 }}>
             <ApiErrorMessage error={error} rawError={rawError} provider={provider} isAdmin={isAdmin} onGeneratePrompt={handleGeneratePrompt} />
+            {scrubNotice && (
+              <div style={{ margin: "0 0 12px", padding: "10px 14px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "#f0f4ec", color: "#3a4a26", fontSize: 13, lineHeight: 1.5 }}>
+                <strong>Removed before this left your device:</strong> {scrubNotice}{" "}
+                <span style={{ color: "#7a9460" }}>— names are replaced with roles; substitute them back in your EHR.</span>
+                <p style={{ margin: "8px 0 0", fontSize: 12, color: "#5a6b4a", lineHeight: 1.5 }}>{NotesScrub.SCRUB_GUIDANCE}</p>
+              </div>
+            )}
             <p style={{ fontSize: 13, color: "#5a6b4a", marginBottom: 12, lineHeight: 1.55 }}>
               <strong style={{ color: "#374528" }}>Generate Note</strong> drafts the note on this page using your API key.{" "}
               <strong style={{ color: "#374528" }}>Generate Prompt</strong> produces the same request as text to run in a separate AI chat.

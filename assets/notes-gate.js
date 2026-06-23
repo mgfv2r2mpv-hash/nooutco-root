@@ -157,13 +157,13 @@
   /* ─────────────── Authenticated note generation ─────────────── */
 
   // Calls the server with the session token; the server uses its own API key.
-  // No provider/API key leaves the browser. Returns the parsed JSON object the
-  // notes tools expect (first {...} block in the model's text), with names restored.
+  // No provider/API key leaves the browser. The caller is responsible for
+  // scrubbing names out of `userPrompt` first (see notes-scrub.js / NotesScrub):
+  // the de-identified role tokens (CLIENT, CAREGIVER, …) are intentionally kept
+  // in the returned draft so it stays retrievable, so we do NOT restore names.
   function generateNote(opts) {
     var systemPrompt = opts.systemPrompt;
     var userPrompt = opts.userPrompt;
-    var map = buildNameMap(userPrompt);
-    var scrubbedUser = applyScrub(userPrompt, map);
 
     return fetch("/api/llm-call", {
       method: "POST",
@@ -173,7 +173,7 @@
       },
       body: JSON.stringify({
         systemPrompt: systemPrompt,
-        userPrompt: scrubbedUser,
+        userPrompt: userPrompt,
         model: opts.model || "claude-haiku-4-5-20251001",
         maxTokens: opts.maxTokens || 3000,
         tool: opts.tool,
@@ -190,8 +190,7 @@
         var raw = (data.content || []).map(function (b) { return b.text || ""; }).join("");
         var match = raw.match(/\{[\s\S]*\}/);
         if (!match) throw new Error("No JSON found in response. Try again.");
-        var parsed = JSON.parse(match[0]);
-        return restoreDeep(parsed, map); // put the real names back into the draft
+        return JSON.parse(match[0]);
       });
     });
   }
@@ -206,29 +205,52 @@
   ("Monday Tuesday Wednesday Thursday Friday Saturday Sunday " +
    "January February March April May June July August September October November December " +
    "Home School Clinic Community Telehealth Center Office Daycare " +
-   "BCBA BCaBA RBT BT ABA EHR PHI AI Client Caregiver Parent Technician Teacher Staff Mom Dad Mother Father " +
+   "BCBA BCaBA RBT BT ABA EHR PHI AI Client Caregiver Parent Technician Teacher Staff Specialist Mom Dad Mother Father " +
    "He She They The This That These Those There Their When While After Before During With Without And But For " +
    "No Yes None Note Session Today Tomorrow Yesterday Goal Target Program Behavior Antecedent Response " +
    "I We You It If As At In On Of To Per " +
-   "January Mr Mrs Ms Dr")
+   "Mr Mrs Ms Dr " +
+   // Common capitalized sentence-initial words & high-frequency clinical verbs that
+   // are NOT names. Filtering these keeps a leading word from riding along with a
+   // real name ("Then Jacob" -> "Jacob", "Saw MacArthur" -> "MacArthur").
+   "Then Also Additionally However Therefore Overall Throughout Initially Later Afterward Subsequently " +
+   "Once Upon Each Both Either Neither Some Most Many Several Few Another Other Next First Second Third Final " +
+   "Met Saw Worked Used Ran Reviewed Completed Started Continued Did Was Were Been Had Has Have Got Went Came " +
+   "Took Gave Said Asked Began Run Tried Made Put Kept Held Played Ate Drank Slept Arrived Left Returned Spoke " +
+   "Talked Walked Sat Stood Helped Modeled Practiced Provided Observed Noted Demonstrated Engaged Discussed " +
+   "Reported Initiated Prompted Redirected Reinforced Transitioned Followed Implemented Conducted Administered " +
+   "Will Would Could Should May Might Must Can Do Does Done Get Go Come Make Take See")
     .split(/\s+/).forEach(function (w) { if (w) STOPWORDS[w.toLowerCase()] = true; });
 
-  // Detect candidate person names: runs of 1–2 Title-Case words not in the stoplist.
+  // Detect candidate person names: runs of 1–2 capitalized words not in the
+  // stoplist. A "word" starts with a capital, may carry internal capitals,
+  // apostrophes, or hyphens (McKenzie, O'Brien, DeShawn, Anne-Marie), and ends
+  // lowercase — so ALL-CAPS tokens/acronyms (CLIENT, BCBA, ABA) are never matched,
+  // which keeps our own role tokens from being re-detected. A trailing possessive
+  // ('s) is stripped so "Jacob's" maps to "Jacob" (applyScrub, case-insensitive,
+  // then catches "Jacob" inside "Jacob's"). The review step backstops false
+  // positives, so detection errs toward catching more.
+  var NAME_WORD = "[A-Z][A-Za-z’'\\-]*[a-z]";
   function detectNames(text) {
     if (!text) return [];
-    var re = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/g;
+    var re = new RegExp("\\b(" + NAME_WORD + "(?:\\s+" + NAME_WORD + ")?)\\b", "g");
     var seen = {};
     var out = [];
+    function push(name) {
+      var key = name.toLowerCase();
+      if (!seen[key]) { seen[key] = true; out.push(name); }
+    }
     var m;
     while ((m = re.exec(text)) !== null) {
-      var phrase = m[1];
-      // A multi-word phrase counts if ANY word is a plausible name; a single word
-      // must not be a stopword.
+      var phrase = m[1].replace(/[’']s$/, ""); // drop possessive
       var words = phrase.split(/\s+/);
       var meaningful = words.filter(function (w) { return !STOPWORDS[w.toLowerCase()]; });
       if (meaningful.length === 0) continue;
-      var key = phrase.toLowerCase();
-      if (!seen[key]) { seen[key] = true; out.push(phrase); }
+      // Keep a multi-word phrase as one unit only when every word is a name
+      // ("John Smith"); if a stopword rode along ("Then Jacob"), keep just the
+      // name parts so the token replaces the name, not the leading word.
+      if (meaningful.length === words.length) push(phrase);
+      else meaningful.forEach(push);
     }
     // Longest first so "John Smith" is tokenized before "John".
     out.sort(function (a, b) { return b.length - a.length; });

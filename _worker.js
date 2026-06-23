@@ -210,7 +210,10 @@ async function handleLlmCall(request, env) {
     );
     return jsonRes(200, llmResponse);
   } catch (error) {
-    console.error("LLM call error:", error);
+    // PRIVACY: never log the request body, systemPrompt, or userPrompt. The client
+    // de-identifies (scrubs names to role tokens) before sending, and we keep it that
+    // way — log only the error message, never prompt content.
+    console.error("LLM call error:", error && error.message ? error.message : "unknown");
     return jsonRes(500, { error: error.message || "Internal server error" });
   }
 }

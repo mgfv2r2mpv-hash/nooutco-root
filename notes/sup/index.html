@@ -8,6 +8,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
   <script src="/assets/notes-gate.js"></script>
+  <script src="/assets/notes-scrub.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -266,6 +267,7 @@
       const canUse  = loggedIn && !!(window.NotesGate && NotesGate.canUseTool(TOOL_ID));
       React.useEffect(() => (window.NotesGate ? NotesGate.subscribe(setLoggedIn) : undefined), []);
       const [promptText, setPromptText] = React.useState("");
+      const [scrubNotice, setScrubNotice] = React.useState("");
       const [expanded,   setExpanded]   = React.useState(() => new Set());
       const toggleExpand = (i) => setExpanded(prev => {
         const next = new Set(prev);
@@ -332,15 +334,21 @@ Terminology standards (apply rigorously):
         return out;
       };
 
+      const collectFreeText = () => notes;
+
       const handleGenerate = async () => {
         if (!notes.trim())      { setError("Please enter session notes."); return; }
         if (btPresent === null) { setError("Please indicate whether a BT/RBT was present."); return; }
         if (!NotesGate.isLoggedIn()) { NotesGate.openLogin(); return; }
         setError(""); setRawError("");
+        if (!(await NotesScrub.acknowledge())) return;
+        const review = await NotesScrub.review({ freeText: collectFreeText() });
+        if (review.cancelled) return;
+        setScrubNotice(NotesScrub.noticeText(review.map));
         setLoading(true);
         setOutput(null);
         try {
-          const parsed = await NotesGate.generateNote({ systemPrompt: SYSTEM_CORE + JSON_FORMAT_BLOCK, userPrompt: buildUserPrompt(), tool: TOOL_ID });
+          const parsed = await NotesGate.generateNote({ systemPrompt: SYSTEM_CORE + JSON_FORMAT_BLOCK, userPrompt: NotesScrub.applyMap(buildUserPrompt(), review.map), tool: TOOL_ID });
           setOutput(normalizeOutput(parsed));
         } catch (e) {
           setRawError(e.message || "");
@@ -356,11 +364,15 @@ Terminology standards (apply rigorously):
         setTimeout(() => setCopied(null), 1800);
       };
 
-      const handleGeneratePrompt = () => {
+      const handleGeneratePrompt = async () => {
         if (!notes.trim())      { setError("Please enter session notes first."); return; }
         if (btPresent === null) { setError("Please indicate whether a BT/RBT was present."); return; }
         setError(""); setRawError("");
-        setPromptText(`${SYSTEM_CORE + LABELED_FORMAT_BLOCK}\n\n---\n\n${buildUserPrompt()}`);
+        if (!(await NotesScrub.acknowledge())) return;
+        const review = await NotesScrub.review({ freeText: collectFreeText() });
+        if (review.cancelled) return;
+        setScrubNotice(NotesScrub.noticeText(review.map));
+        setPromptText(NotesScrub.applyMap(`${SYSTEM_CORE + LABELED_FORMAT_BLOCK}\n\n---\n\n${buildUserPrompt()}`, review.map));
         setCopiedPrompt(false);
       };
 
@@ -496,6 +508,13 @@ Terminology standards (apply rigorously):
             </div>
 
             <ApiErrorMessage error={error} rawError={rawError} provider={provider} isAdmin={isAdmin} onGeneratePrompt={handleGeneratePrompt} />
+            {scrubNotice && (
+              <div style={{ margin: "0 0 12px", padding: "10px 14px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "#f0f4ec", color: "#3a4a26", fontSize: 13, lineHeight: 1.5 }}>
+                <strong>Removed before this left your device:</strong> {scrubNotice}{" "}
+                <span style={{ color: "#7a9460" }}>— names are replaced with roles; substitute them back in your EHR.</span>
+                <p style={{ margin: "8px 0 0", fontSize: 12, color: "#5a6b4a", lineHeight: 1.5 }}>{NotesScrub.SCRUB_GUIDANCE}</p>
+              </div>
+            )}
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button
