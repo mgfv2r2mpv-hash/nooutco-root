@@ -272,6 +272,17 @@ async function verifyToken(token, secret) {
 
 async function findPassword(kv, password) {
   const h = await sha256Hex(password);
+  // Point lookup via the hash→id index: a get() reflects a just-written key in
+  // its origin colo immediately, unlike list() which lags ~60s. This is what
+  // lets a freshly-created password log in right away.
+  const indexedId = await kv.get("h:" + h);
+  if (indexedId) {
+    const { metadata } = await kv.getWithMetadata("pw:" + indexedId);
+    if (metadata && metadata.hash === h) {
+      return { id: indexedId, label: metadata.label || "", active: !!metadata.active, tools: Array.isArray(metadata.tools) ? metadata.tools : [], createdAt: metadata.createdAt || null };
+    }
+  }
+  // Fallback for legacy records created before the index existed.
   const list = await kv.list({ prefix: "pw:" });
   for (const k of list.keys) {
     const md = k.metadata || {};
@@ -328,6 +339,7 @@ async function handleAdminPasswords(request, env) {
     const id = crypto.randomUUID();
     const metadata = { label, hash: await sha256Hex(password), active: true, tools, createdAt: new Date().toISOString() };
     await kv.put("pw:" + id, "1", { metadata });
+    await kv.put("h:" + metadata.hash, id); // hash→id index for instant login
     return jsonRes(200, { id, label, active: true, tools, createdAt: metadata.createdAt });
   }
 
@@ -348,7 +360,9 @@ async function handleAdminPasswords(request, env) {
 
   if (request.method === "DELETE") {
     const id = (body.id ?? "").trim();
+    const { metadata } = await kv.getWithMetadata("pw:" + id);
     await kv.delete("pw:" + id);
+    if (metadata && metadata.hash) await kv.delete("h:" + metadata.hash); // drop the index too
     return jsonRes(200, { ok: true });
   }
 
