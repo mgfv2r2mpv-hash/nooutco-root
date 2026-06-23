@@ -24,6 +24,7 @@ const state = {
   // Persisted settings
   topic:             '',
   arraySize:         4,
+  displayMode:       'simple',   // 'simple' | 'visual' (extra animation)
   representErrors:   true,
   errorless:         false,
   noErrorAnim:       false,
@@ -148,10 +149,47 @@ const el = {
 // ── Boot ───────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', async () => {
+  if (window.NooutcoConfig) NooutcoConfig.migrate();
   loadSettings();
+  restoreResults();
   bindEvents();
   await discoverTopics();
 });
+
+// ── Durable results persistence (device-local; never transmitted) ──────
+
+const RESULTS_KEY = 'mgResults';
+
+function persistResults() {
+  if (window.NooutcoResults) NooutcoResults.save(RESULTS_KEY, state.sessionData);
+}
+
+function restoreResults() {
+  if (!window.NooutcoResults) return;
+  const saved = NooutcoResults.load(RESULTS_KEY);
+  if (Array.isArray(saved) && saved.length) {
+    state.sessionData = saved;
+    state.trialNum = saved.reduce((max, d) => Math.max(max, d.trial || 0), 0);
+  }
+}
+
+// ── Display mode (Simple / Visual) ─────────────────────────────────────
+
+// Bridge for the toolbar toggle — persists the tech's choice.
+window.__setGameDisplayMode = function (mode) {
+  state.displayMode = (mode === 'visual') ? 'visual' : 'simple';
+  saveSettings();
+};
+
+// Pinwheel an element off-screen in a random direction (Visual mode reward).
+function pinwheelOff(node) {
+  if (!node) return;
+  const angle = Math.random() * Math.PI * 2;
+  node.style.setProperty('--fly-x', `${Math.cos(angle) * 1400}px`);
+  node.style.setProperty('--fly-y', `${Math.sin(angle) * 1000}px`);
+  node.style.setProperty('--spin', `${(Math.random() < 0.5 ? -1 : 1) * (540 + Math.random() * 360)}deg`);
+  node.classList.add('pinwheel-off');
+}
 
 // ── Settings (localStorage) ────────────────────────────────────────
 
@@ -159,6 +197,7 @@ function loadSettings() {
   const s = JSON.parse(localStorage.getItem('mgSettings') || '{}');
   state.topic             = s.topic             ?? '';
   state.arraySize         = s.arraySize         ?? 4;
+  state.displayMode       = s.displayMode       ?? 'simple';
   state.representErrors   = s.representErrors   ?? true;
   state.errorless         = s.errorless         ?? false;
   state.noErrorAnim       = s.noErrorAnim       ?? false;
@@ -207,12 +246,15 @@ function loadSettings() {
   if (state.tokenBoardEnabled) {
     initializeTokenBoard();
   }
+  // Reflect saved display mode in the toolbar toggle (no announcement).
+  if (window.__syncDisplayToggle) window.__syncDisplayToggle(state.displayMode);
 }
 
 function saveSettings() {
   localStorage.setItem('mgSettings', JSON.stringify({
     topic:             state.topic,
     arraySize:         state.arraySize,
+    displayMode:       state.displayMode,
     representErrors:   state.representErrors,
     errorless:         state.errorless,
     noErrorAnim:       state.noErrorAnim,
@@ -434,6 +476,7 @@ function bindEvents() {
     state.sessionData = [];
     state.trialNum    = 0;
     el.resultsBody.innerHTML = '';
+    if (window.NooutcoResults) NooutcoResults.clear(RESULTS_KEY);
   });
 
   // Token Board Events
@@ -633,6 +676,15 @@ function renderTrial() {
   el.sampleImg.src = state.sampleSrc;
   el.sampleImg.alt = 'Sample stimulus';
 
+  // Clear any pinwheel-off state left on the reused sample card.
+  const sampleCard = document.getElementById('sample-card');
+  if (sampleCard) {
+    sampleCard.classList.remove('pinwheel-off');
+    sampleCard.style.removeProperty('--fly-x');
+    sampleCard.style.removeProperty('--fly-y');
+    sampleCard.style.removeProperty('--spin');
+  }
+
   const cols = gridCols(state.arraySize);
   el.compGrid.style.setProperty('--grid-cols', cols);
   el.compGrid.innerHTML = '';
@@ -806,6 +858,7 @@ function onCorrectClick(wrapper, tile) {
       state.promptDelay ? state.promptDelaySecs : 0,
     ].join('|'),
   });
+  persistResults();
 
   // Award tokens on correct response
   if (outcome === 'Correct') {
@@ -824,12 +877,19 @@ function onCorrectClick(wrapper, tile) {
     okSpan.textContent = 'OK';  // Error or Repeat Error
   }
 
-  wrapper.classList.add('expanding');
-  setTimeout(() => {
-    wrapper.classList.remove('expanding');
-    tile.classList.add('flipped');
-    setTimeout(showTrialButtons, 580);
-  }, 280);
+  if (state.displayMode === 'visual') {
+    // Visual mode: the sample and the matched tile pinwheel off-screen.
+    pinwheelOff(wrapper);
+    pinwheelOff(document.getElementById('sample-card'));
+    setTimeout(showTrialButtons, 720);
+  } else {
+    wrapper.classList.add('expanding');
+    setTimeout(() => {
+      wrapper.classList.remove('expanding');
+      tile.classList.add('flipped');
+      setTimeout(showTrialButtons, 580);
+    }, 280);
+  }
 }
 
 function onWrongClick(wrapper) {
@@ -935,6 +995,7 @@ function onRetryClick() {
   if (state.sessionData.length) {
     state.sessionData.pop();
     state.trialNum--;
+    persistResults();
   }
   removeTrialButtons();
   if (state.timerAutoPaused) { state.timerAutoPaused = false; startTimer(); }
@@ -943,12 +1004,64 @@ function onRetryClick() {
 
 // ── Print data ─────────────────────────────────────────────────────
 
+const OUTCOME_CLASS = d =>
+  (d.outcome === 'Error' || d.outcome === 'Repeat Error') ? 'outcome-error'
+  : d.outcome === 'Prompted'   ? 'outcome-prompted'
+  : d.outcome === 'Correction' ? 'outcome-correction'
+  : 'outcome-ok';
+
 function printData() {
   if (!state.sessionData.length) {
     alert('No trial data to print yet. Complete at least one trial first.');
     return;
   }
 
+  // Preferred path: durable, branded report in a new tab (raw data only).
+  if (window.NooutcoResults) {
+    const now = new Date();
+    const total      = state.sessionData.length;
+    const meta =
+      `Printed: ${now.toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' })} ` +
+      `at ${now.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' })}  |  ` +
+      `Array size: ${state.arraySize}`;
+
+    const count = o => state.sessionData.filter(d => d.outcome === o).length;
+    const avgTime = (state.sessionData.reduce((s, d) => s + parseFloat(d.time), 0) / total).toFixed(1);
+
+    NooutcoResults.open({
+      title: 'Matching Game — Session Results',
+      meta,
+      columns: [
+        { label: '#',          key: 'trial' },
+        { label: 'Topic',      key: 'topic' },
+        { label: 'Sample',     key: 'sample' },
+        { label: 'Array Size', key: 'arraySize' },
+        { label: 'Errors',     key: 'errors' },
+        { label: 'Prompted',   key: 'promptedLabel' },
+        { label: 'Delay (s)',  key: 'delayLabel' },
+        { label: 'Time (s)',   key: 'time' },
+        { label: 'Outcome',    key: 'outcome', cls: OUTCOME_CLASS },
+      ],
+      rows: state.sessionData.map(d => ({
+        trial: d.trial, topic: d.topic, sample: d.sample, arraySize: d.arraySize,
+        errors: d.errors, time: d.time, outcome: d.outcome,
+        promptedLabel: d.prompted ? 'Yes' : 'No',
+        delayLabel: d.promptDelaySecs != null ? d.promptDelaySecs : '-',
+      })),
+      summary: [
+        { label: 'Total trials',      value: total },
+        { label: 'Correct',           value: count('Correct') },
+        { label: 'Prompted',          value: count('Prompted') },
+        { label: 'Error',             value: count('Error') },
+        { label: 'Correction',        value: count('Correction') },
+        { label: 'Repeat Error',      value: count('Repeat Error') },
+        { label: 'Avg response time', value: `${avgTime} s` },
+      ],
+    });
+    return;
+  }
+
+  // Fallback: legacy hidden print-section + native dialog.
   const now = new Date();
   el.printMeta.textContent =
     `Printed: ${now.toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' })} ` +

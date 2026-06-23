@@ -1,0 +1,21 @@
+# Cloudflare Pages headers — No Outcome ABA games
+# Cache strategy: HTML is set to no-cache by the worker (it rewrites HTML and
+# injects ?v=APP_VERSION into asset URLs). Versioned CSS/JS are immutable here —
+# a deploy bumps APP_VERSION, changing the URL, which busts the cache safely.
+# NOTE: Cache-Control is intentionally NOT set in /* — Pages *combines* same-name
+# headers across matching rules, so a /* Cache-Control would merge with the
+# asset rule and produce a contradictory value. HTML caching lives in the worker.
+# Security: low-risk hardening subset. A nonce-based CSP is intentionally deferred
+# (games rely on inline scripts: admin-hash block, intro toggle) and staged later.
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+/*.css
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.js
+  Cache-Control: public, max-age=31536000, immutable

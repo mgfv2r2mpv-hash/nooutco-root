@@ -14,18 +14,37 @@
     Topic image folders (T_*) are NOT shipped inside this directory; the app
     discovers them from a manifest at ../../IDMatchGame/IDMatchGame/manifest.json.
   -->
+  <link rel="stylesheet" href="../tokens.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <header id="app-header">
-    <a href="../" id="btn-back" title="Back to Games">← Games</a>
-    <h1>Matching Market</h1>
+  <header id="app-header" title="Tap the bar to show / hide settings">
+    <a href="../" id="btn-back" class="btn-back" title="Back to Games"><span class="back-label">← Games</span></a>
+
+    <div class="app-title">
+      <span class="app-title-text">Matching Market</span>
+      <span class="app-title-sub">No Outcome ABA · v<span id="app-version-label">0.1.0</span></span>
+    </div>
+
+    <button id="btn-prompt" class="btn-prompt" hidden>Prompt</button>
+
+    <div class="display-control">
+      <button type="button" id="display-toggle" class="display-toggle" role="switch" aria-checked="false" title="Display: Simple / Visual">
+        <span class="display-ico display-ico-simple" aria-hidden="true">○</span>
+        <span class="display-ico display-ico-visual" aria-hidden="true">◇</span>
+        <span class="display-knob" aria-hidden="true"></span>
+      </button>
+      <span class="display-ghost" aria-hidden="true"></span>
+    </div>
+
     <div id="timer-section">
       <span id="timer-display">00:00</span>
       <button id="btn-timer-toggle" class="btn-timer" title="Pause / Resume">Pause</button>
       <button id="btn-timer-reset"  class="btn-timer" title="Reset timer">Reset</button>
     </div>
+
+    <button type="button" id="btn-minimize" class="btn-minimize" aria-expanded="true" aria-controls="settings-bar" title="Show / hide settings">▾</button>
   </header>
 
   <div id="settings-bar">
@@ -53,10 +72,6 @@
         ⚙ Settings
         <button type="button" class="help-btn" data-help="Open additional game options.">?</button>
       </button>
-    </div>
-
-    <div class="setting-group">
-      <button id="btn-prompt" class="btn-prompt" hidden>Prompt</button>
     </div>
 
     <button id="btn-start" class="btn-primary">Start</button>
@@ -202,12 +217,12 @@
 
   <!-- ── Pre-start blurb ──────────────────────────────────────────── -->
   <style>
-    .game-intro { max-width: 720px; margin: 14px auto 6px; padding: 16px 20px; background: rgba(255,255,255,0.92); border: 1px solid rgba(0,0,0,0.08); border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,0.04); color: #2d3a1f; font-size: 14px; line-height: 1.5; font-family: 'Segoe UI', Inter, -apple-system, sans-serif; }
-    .game-intro h2 { font-size: 15px; font-weight: 700; margin: 0 0 8px; color: #1a1f14; }
-    .game-intro p { margin: 0 0 8px; }
-    .game-intro ul { margin: 6px 0 6px 20px; padding: 0; }
-    .game-intro li { margin-bottom: 3px; }
-    .game-intro .tip { margin-top: 8px; color: #5a6b4a; font-size: 13px; }
+    .game-intro { max-width: 720px; margin: var(--space-7) auto var(--space-3); padding: var(--space-7) var(--space-8); background: var(--surface-card); border: 1px solid var(--border-default); border-left: 3px solid var(--brand-primary); border-radius: var(--radius-xl); box-shadow: var(--shadow-md); color: var(--text-body); font-size: var(--text-md); line-height: var(--leading-normal); font-family: var(--font-sans); }
+    .game-intro h2 { font-size: var(--text-lg); font-weight: var(--weight-bold); margin: 0 0 var(--space-3); color: var(--text-primary); letter-spacing: var(--tracking-tight); }
+    .game-intro p { margin: 0 0 var(--space-3); }
+    .game-intro ul { margin: var(--space-2) 0 var(--space-2) var(--space-7); padding: 0; }
+    .game-intro li { margin-bottom: var(--space-1); }
+    .game-intro .tip { margin-top: var(--space-3); color: var(--text-link); font-size: var(--text-base); }
   </style>
   <!-- Token Board Display -->
   <div id="token-board" hidden aria-label="Token progress tracker">
@@ -419,7 +434,77 @@
     <div id="print-summary"></div>
   </div>
 
+  <!-- Toolbar chrome controller (presentational only — no game logic) -->
+  <script>
+  (function () {
+    var v = window.APP_VERSION || '0.1.0';
+    var vl = document.getElementById('app-version-label');
+    if (vl) vl.textContent = v;
+
+    var header = document.getElementById('app-header');
+    var minBtn = document.getElementById('btn-minimize');
+
+    function setCollapsed(collapsed) {
+      document.body.classList.toggle('settings-collapsed', collapsed);
+      if (minBtn) {
+        minBtn.setAttribute('aria-expanded', String(!collapsed));
+        minBtn.textContent = collapsed ? '▸' : '▾';
+      }
+    }
+    if (header) header.addEventListener('click', function (e) {
+      if (e.target.closest('a, select, input, label')) return;
+      var btn = e.target.closest('button');
+      if (btn && btn.id !== 'btn-minimize') return;
+      setCollapsed(!document.body.classList.contains('settings-collapsed'));
+    });
+
+    var back = document.getElementById('btn-back');
+    if (back) {
+      var armed = false, timer = null, label = back.querySelector('.back-label');
+      back.addEventListener('click', function (e) {
+        if (!armed) {
+          e.preventDefault();
+          armed = true;
+          if (label) label.textContent = 'Confirm back?';
+          back.classList.add('confirm');
+          timer = setTimeout(function () {
+            armed = false;
+            if (label) label.textContent = '← Games';
+            back.classList.remove('confirm');
+          }, 4000);
+        } else { clearTimeout(timer); }
+      });
+    }
+
+    // Display slider maps to the animation tier (Visual = full, Simple = minimal).
+    var dt = document.getElementById('display-toggle');
+    var ghost = document.querySelector('.display-ghost');
+    var ghostTimer = null;
+    function applyMode(mode, announce) {
+      var visual = mode === 'visual';
+      document.body.classList.toggle('display-visual', visual);
+      if (dt) dt.setAttribute('aria-checked', String(visual));
+      if (announce && ghost) {
+        ghost.textContent = visual ? 'Visual' : 'Simple';
+        ghost.classList.remove('show');
+        void ghost.offsetWidth;
+        ghost.classList.add('show');
+        clearTimeout(ghostTimer);
+        ghostTimer = setTimeout(function () { ghost.classList.remove('show'); }, 1300);
+      }
+    }
+    window.__syncDisplayToggle = function (mode) { applyMode(mode, false); };
+    if (dt) dt.addEventListener('click', function () {
+      var next = dt.getAttribute('aria-checked') === 'true' ? 'simple' : 'visual';
+      applyMode(next, true);
+      if (window.__setGameDisplayMode) window.__setGameDisplayMode(next);
+    });
+  })();
+  </script>
+
   <script src="../../tooltip-help.js"></script>
+  <script src="../migrate-config.js"></script>
+  <script src="../results-report.js"></script>
   <script src="characters.js"></script>
   <script src="game.js"></script>
   <script>

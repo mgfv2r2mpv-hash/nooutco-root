@@ -174,10 +174,36 @@ const el = {
 // ── Boot ───────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', async () => {
+  if (window.NooutcoConfig) NooutcoConfig.migrate();
   loadSettings();
+  restoreResults();
   bindEvents();
   await discoverTopics();
 });
+
+// ── Durable results persistence (device-local; never transmitted) ──────
+
+const RESULTS_KEY = 'mmResults';
+
+function persistResults() {
+  if (window.NooutcoResults) NooutcoResults.save(RESULTS_KEY, state.sessionData);
+}
+
+function restoreResults() {
+  if (!window.NooutcoResults) return;
+  const saved = NooutcoResults.load(RESULTS_KEY);
+  if (Array.isArray(saved) && saved.length) {
+    state.sessionData = saved;
+    state.trialNum = saved.reduce((max, d) => Math.max(max, d.trial || 0), 0);
+  }
+}
+
+// Toolbar display slider (Simple / Visual) maps to the animation tier.
+window.__setGameDisplayMode = function (mode) {
+  state.animTier = (mode === 'visual') ? 'full' : 'minimal';
+  if (el.selAnimTier) el.selAnimTier.value = state.animTier;
+  saveSettings();
+};
 
 // ── Settings ───────────────────────────────────────────────────────
 
@@ -211,6 +237,7 @@ function loadSettings() {
 
   el.inpSize.value                   = state.arraySize;
   el.selAnimTier.value               = state.animTier;
+  if (window.__syncDisplayToggle) window.__syncDisplayToggle(state.animTier === 'full' ? 'visual' : 'simple');
   el.chkCaption.checked              = state.showCaption;
   el.chkSameCustomer.checked         = state.sameCustomerOnRetry;
   el.chkRepresentErrors.checked      = state.representErrors;
@@ -367,6 +394,7 @@ function bindEvents() {
   el.selAnimTier.addEventListener('change', () => {
     state.animTier = el.selAnimTier.value;
     saveSettings();
+    if (window.__syncDisplayToggle) window.__syncDisplayToggle(state.animTier === 'full' ? 'visual' : 'simple');
   });
   el.chkCaption.addEventListener('change', () => {
     state.showCaption = el.chkCaption.checked;
@@ -433,6 +461,7 @@ function bindEvents() {
     state.sessionData = [];
     state.trialNum = 0;
     el.resultsBody.innerHTML = '';
+    if (window.NooutcoResults) NooutcoResults.clear(RESULTS_KEY);
   });
 
   // Token Board Events
@@ -766,6 +795,7 @@ function onCorrectClick(bucket) {
       state.animTier,
     ].join('|'),
   });
+  persistResults();
 
   // Award tokens on correct response
   if (outcome === 'Correct') {
@@ -950,6 +980,7 @@ function onRetryClick() {
   if (state.sessionData.length) {
     state.sessionData.pop();
     state.trialNum--;
+    persistResults();
   }
   removeTrialButtons();
   el.speechBubble.classList.remove('shown', 'hiding');
@@ -965,6 +996,57 @@ function printData() {
     alert('No trial data to print yet. Complete at least one trial first.');
     return;
   }
+
+  // Preferred path: durable, branded report in a new tab (raw data only).
+  if (window.NooutcoResults) {
+    const now = new Date();
+    const total = state.sessionData.length;
+    const meta =
+      `Printed: ${now.toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' })} ` +
+      `at ${now.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' })}  |  ` +
+      `Array size: ${state.arraySize}`;
+    const count = o => state.sessionData.filter(d => d.outcome === o).length;
+    const avgTime = (state.sessionData.reduce((s, d) => s + parseFloat(d.time), 0) / total).toFixed(1);
+    const outcomeCls = d =>
+      (d.outcome === 'Error' || d.outcome === 'Repeat Error') ? 'outcome-error'
+      : d.outcome === 'Prompted'   ? 'outcome-prompted'
+      : d.outcome === 'Correction' ? 'outcome-correction'
+      : 'outcome-ok';
+
+    NooutcoResults.open({
+      title: 'Matching Market — Session Results',
+      meta,
+      columns: [
+        { label: '#',          key: 'trial' },
+        { label: 'Topic',      key: 'topic' },
+        { label: 'Sample',     key: 'sample' },
+        { label: 'Array Size', key: 'arraySize' },
+        { label: 'Errors',     key: 'errors' },
+        { label: 'Prompted',   key: 'promptedLabel' },
+        { label: 'Delay (s)',  key: 'delayLabel' },
+        { label: 'Time (s)',   key: 'time' },
+        { label: 'Outcome',    key: 'outcome', cls: outcomeCls },
+      ],
+      rows: state.sessionData.map(d => ({
+        trial: d.trial, topic: d.topic, sample: d.sample, arraySize: d.arraySize,
+        errors: d.errors, time: d.time, outcome: d.outcome,
+        promptedLabel: d.prompted ? 'Yes' : 'No',
+        delayLabel: d.promptDelaySecs != null ? d.promptDelaySecs : '-',
+      })),
+      summary: [
+        { label: 'Total trials',      value: total },
+        { label: 'Correct',           value: count('Correct') },
+        { label: 'Prompted',          value: count('Prompted') },
+        { label: 'Error',             value: count('Error') },
+        { label: 'Correction',        value: count('Correction') },
+        { label: 'Repeat Error',      value: count('Repeat Error') },
+        { label: 'Avg response time', value: `${avgTime} s` },
+      ],
+    });
+    return;
+  }
+
+  // Fallback: legacy hidden print-section + native dialog.
   const now = new Date();
   el.printMeta.textContent =
     `Printed: ${now.toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' })} ` +

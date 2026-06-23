@@ -52,6 +52,29 @@ ABA therapy game platform hosted at **games.nooutco.me**. Static HTML game files
 - **Error handling:** Worker must return structured JSON errors, never raw stack traces
 - **No TODOs:** Either implement or leave a scoped note on what's missing
 
+
+## Versioning & Caching
+
+- **Single source of truth:** `APP_VERSION` in `_worker.js`. The worker injects
+  `?v=${APP_VERSION}` into local CSS/JS URLs in served HTML and exposes
+  `window.APP_VERSION` to the page.
+- **`_headers`:** HTML/dynamic routes are `no-cache` (always revalidate); versioned
+  CSS/JS are `immutable`. A version bump changes asset URLs, busting cache safely.
+- **Bump policy:** any deploy that changes CSS/JS **must** bump `APP_VERSION` —
+  patch for fixes, minor for features/reskins; major stays `0` for now (start `0.1.0`).
+- **Config migration:** `migrate-config.js` (`window.NooutcoConfig`) stamps the config
+  version and runs ordered, per-key transforms on bump so a saved configuration is
+  never silently dropped. Games call `NooutcoConfig.migrate()` early in boot.
+- **Results persistence:** `results-report.js` (`window.NooutcoResults`) persists trial
+  data to localStorage (device-local; never transmitted) and renders the branded
+  print/PDF report in a new tab. `clear()` fully wipes the store ("Clear data").
+
+## Collaboration Protocol
+
+- **After completing any set of changes:** ask "Anything else, or should I open a PR / merge to dev?"
+- **Before implementing a feature:** ask clarifying questions until 95% confident of intent and constraints. Do not write code until that bar is met.
+
+
 ## 4. Git Workflow
 
 1. Develop on `dev` branch
