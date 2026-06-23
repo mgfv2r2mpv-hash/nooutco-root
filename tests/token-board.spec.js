@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Token Board Feature', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/MatchingMarket/MatchingMarket/index.html');
+    await page.goto('/market/index.html');
     // Wait for app to load
     await page.waitForLoadState('networkidle');
   });
