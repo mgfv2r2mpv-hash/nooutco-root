@@ -2,85 +2,6 @@
    PATTERN PACK CO. — assembly-line skin for Sequences & Patterns
    ══════════════════════════════════════════════════════════════════ */
 
-/* ── Reset & base ──────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-[hidden] { display: none !important; }
-
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background:
-    radial-gradient(1200px 500px at 50% -10%, #3a4a63 0%, rgba(58,74,99,0) 60%),
-    linear-gradient(180deg, #e7ddca 0%, #d8ccb4 100%);
-  color: #2d3748;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-/* ── Header ────────────────────────────────────────────────────────── */
-#app-header {
-  background: linear-gradient(180deg, #2b2014 0%, #3a2a18 100%);
-  color: #fff;
-  padding: 10px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-shrink: 0;
-  border-bottom: 3px solid #ffc14d;
-}
-#app-header h1 {
-  font-size: 1.3rem; font-weight: 800; letter-spacing: 0.03em;
-  color: #ffd86b; text-shadow: 0 1px 0 rgba(0,0,0,0.4);
-}
-
-#btn-back {
-  display: inline-flex; align-items: center;
-  padding: 5px 13px;
-  background: rgba(255,255,255,0.15);
-  border: 1px solid rgba(255,255,255,0.3);
-  border-radius: 7px;
-  color: #fff; font-size: 0.84rem; font-weight: 600;
-  text-decoration: none; transition: background 0.15s; flex-shrink: 0;
-}
-#btn-back:hover { background: rgba(255,255,255,0.28); }
-
-#timer-section { display: flex; align-items: center; gap: 8px; }
-#timer-display {
-  font-family: 'Courier New', monospace;
-  font-size: 1.55rem; font-weight: 700;
-  background: rgba(0,0,0,0.4); color: #ffd86b;
-  padding: 3px 12px; border-radius: 6px;
-  min-width: 76px; text-align: center; letter-spacing: 0.05em;
-}
-.btn-timer {
-  background: rgba(255,255,255,0.15);
-  border: 1px solid rgba(255,255,255,0.3);
-  color: #fff; padding: 5px 12px; border-radius: 6px;
-  font-size: 0.82rem; cursor: pointer; transition: background 0.15s;
-  min-width: 70px; text-align: center;
-}
-.btn-timer:hover { background: rgba(255,255,255,0.28); }
-
-/* ── Settings bar ──────────────────────────────────────────────────── */
-#settings-bar {
-  background: #fff;
-  border-bottom: 2px solid #e3d6bd;
-  padding: 8px 20px;
-  display: flex; align-items: center; flex-wrap: wrap;
-  gap: 14px; flex-shrink: 0;
-}
-.setting-group { display: flex; align-items: center; gap: 6px; }
-.setting-group > label:first-child {
-  font-size: 0.82rem; font-weight: 600; color: #6b4a28; white-space: nowrap;
-}
-.setting-group select,
-.setting-group input[type="number"] {
-  padding: 5px 8px; border: 1px solid #d8c39c; border-radius: 6px;
-  font-size: 0.88rem; background: #fdfaf3; color: #2d3748; outline-color: #e89b2a;
-}
-.setting-group input[type="number"] { width: 64px; }
-
 .help-btn {
   width: 16px; height: 16px; line-height: 14px; padding: 0;
   border: 1px solid #cbb78d; border-radius: 50%;
@@ -127,7 +48,7 @@ body {
     linear-gradient(180deg, #46566f 0%, #394760 46%, #6f5a3e 46%, #5b482f 100%);
   border-radius: 18px;
   padding: 18px 26px 26px;
-  overflow: hidden;                 /* tunnels clip the travelling box */
+  overflow: hidden;
   box-shadow: 0 12px 30px rgba(0,0,0,0.28), inset 0 2px 0 rgba(255,255,255,0.08);
 }
 
@@ -178,9 +99,7 @@ body {
 #belt-treads.running { animation: belt-move 0.5s linear infinite; }
 @keyframes belt-move { from { background-position: 0 0; } to { background-position: -36px 0; } }
 
-/* Dark tunnels the box slides into at each end. Built from two layers:
-   ::after is the deep, vignetted interior the box disappears into; ::before
-   is the arched portal frame / jamb that gives the mouth a solid lip. */
+/* Dark tunnels the box slides into at each end. */
 .tunnel { position: absolute; bottom: 6px; width: 96px; height: 150px; z-index: 6; pointer-events: none; }
 #tunnel-left  { left: 0; }
 #tunnel-right { right: 0; }
@@ -202,7 +121,7 @@ body {
   border-radius: 78px 0 0 10px;
 }
 
-/* Arched portal frame on the inner edge — a beveled doorway jamb. */
+/* Arched portal frame on the inner edge */
 .tunnel::before {
   content: ''; position: absolute; top: -8px; bottom: -6px; width: 22px;
   background: linear-gradient(180deg, #79859e 0%, #4a5468 46%, #2c3346 100%);
@@ -225,9 +144,9 @@ body {
     0 12px 22px rgba(0,0,0,0.4),
     inset 0 2px 0 rgba(255,255,255,0.14),
     inset 0 -7px 14px rgba(0,0,0,0.4);
-  transform: translateX(170%);      /* parked in the right tunnel by default */
+  transform: translateX(170%);
   will-change: transform;
-  perspective: 760px;               /* for the bow lid */
+  perspective: 760px;
   z-index: 4;
 }
 #tray.belt-jolt { animation: belt-jolt 0.4s ease; }
@@ -256,17 +175,17 @@ body {
   background: linear-gradient(180deg, #9b5a34 0%, #7b3f24 100%);
   border-radius: 12px;
   transform-origin: top center;
-  transform: rotateX(-128deg);      /* stored up & away by default */
+  transform: rotateX(-128deg);
   backface-visibility: hidden;
   box-shadow: inset 0 2px 0 rgba(255,255,255,0.18), 0 6px 14px rgba(0,0,0,0.4);
   z-index: 5;
 }
-#bow-lid::before {        /* vertical ribbon */
+#bow-lid::before {
   content: ''; position: absolute; top: 0; bottom: 0; left: 50%;
   width: 16px; transform: translateX(-50%);
   background: linear-gradient(90deg, #ffcf5a, #ffe9a8, #ffcf5a);
 }
-#bow-lid::after {         /* horizontal ribbon */
+#bow-lid::after {
   content: ''; position: absolute; left: 0; right: 0; top: 50%;
   height: 16px; transform: translateY(-50%);
   background: linear-gradient(180deg, #ffcf5a, #ffe9a8, #ffcf5a);
@@ -347,7 +266,7 @@ body {
     linear-gradient(180deg, #5a6c8c 0%, #3c4a64 100%);
   border-radius: 12px;
   transform-origin: bottom center;
-  transform: rotateX(0deg);          /* closed (covering) by default */
+  transform: rotateX(0deg);
   backface-visibility: hidden;
   display: flex; align-items: center; justify-content: center;
   box-shadow: inset 0 2px 0 rgba(255,255,255,0.14), 0 6px 14px rgba(0,0,0,0.35);
@@ -390,35 +309,6 @@ body {
 }
 .shake { animation: shake 0.45s ease; }
 
-/* ── Extra settings panel ──────────────────────────────────────────── */
-.btn-extra {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 5px 10px; border: 1px solid #d8c39c; border-radius: 6px;
-  background: #fdfaf3; color: #4a3a22; font-size: 0.82rem; font-weight: 600; cursor: pointer;
-}
-.btn-extra:hover   { background: #f3e8d0; }
-.btn-extra.is-open { background: #ffe9c6; border-color: #e89b2a; }
-
-#extra-panel {
-  background: #fbf6ec; border-bottom: 2px solid #e3d6bd;
-  padding: 10px 20px; max-height: 40vh; overflow-y: auto;
-}
-.extra-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
-.extra-panel-title { font-weight: 700; color: #4a3a22; font-size: 0.9rem; }
-.btn-extra-close { border: none !important; background: transparent !important; font-size: 1.2rem; line-height: 1; padding: 2px 8px; cursor: pointer; }
-.extra-panel-body {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 10px 20px; align-items: center;
-}
-.extra-panel-body .checkbox-label { padding: 4px 0; }
-.extra-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-
-.checkbox-label {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 0.82rem; font-weight: 600; color: #5a4630; cursor: pointer; white-space: nowrap;
-}
-.checkbox-label input[type="checkbox"] { cursor: pointer; accent-color: #e07b1f; }
-
 /* Prompt button in settings bar */
 .btn-prompt {
   background: #c0561f; color: #fff; border: none;
@@ -445,7 +335,7 @@ body {
 #trial-overlay {
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center; gap: 16px;
-  z-index: 60;                       /* above the closed bulk lid */
+  z-index: 60;
 }
 .btn-watermark {
   padding: 11px 30px; border-radius: 12px;
@@ -475,8 +365,6 @@ body.reduce-motion #belt-treads.running { animation-duration: 0.3s; }
 body.reduce-motion .seq-box.slot-pop,
 body.reduce-motion #tray.belt-jolt { animation: none; }
 
-/* ── Print section ─────────────────────────────────────────────────── */
-#print-section { display: none; }
 @media print {
   body > *:not(#print-section) { display: none !important; }
   #print-section { display: block; padding: 18px 24px; font-family: Arial, sans-serif; font-size: 11pt; color: #000; }
@@ -497,14 +385,6 @@ body.reduce-motion #tray.belt-jolt { animation: none; }
 
 /* ── Responsive ────────────────────────────────────────────────────── */
 @media (max-width: 680px) {
-  #app-header { padding: 8px 12px; gap: 8px; }
-  #app-header h1 { font-size: 1.05rem; }
-  #timer-display { font-size: 1.25rem; min-width: 62px; padding: 2px 8px; }
-  .btn-timer { padding: 4px 9px; font-size: 0.76rem; }
-  #settings-bar { padding: 6px 12px; gap: 8px; }
-  .setting-group > label:first-child { font-size: 0.78rem; }
-  .setting-group select,
-  .setting-group input[type="number"] { font-size: 0.82rem; padding: 4px 6px; }
   #factory { padding: 14px 14px 18px; }
   #belt-zone { min-height: 150px; margin-top: 40px; padding-bottom: 28px; }
   .seq-box  { width: 50px; height: 50px; font-size: 1.6rem; }
