@@ -414,12 +414,25 @@
 
   function _applyComputedStyle(src, dst) {
     var cs = window.getComputedStyle(src);
-    [
-      "font", "fontSize", "fontFamily", "fontWeight", "lineHeight",
-      "letterSpacing", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
-      "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth",
-      "boxSizing", "wordWrap", "overflowWrap", "tabSize",
+    // Font metrics — every property that affects character position.
+    ["font", "fontSize", "fontFamily", "fontWeight", "fontStyle",
+     "lineHeight", "letterSpacing", "wordSpacing",
+     "wordWrap", "overflowWrap", "wordBreak", "tabSize", "textIndent",
+     "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+     "boxSizing",
     ].forEach(function (p) { try { dst.style[p] = cs[p]; } catch (e) {} });
+    // Transparent border — same dimensions as the textarea's border so the
+    // content area (where text starts) aligns exactly. Without this the hl
+    // text is offset left/up by the textarea's border width, causing the mark
+    // to appear under the wrong characters (e.g. "Swing" → only "wing" glows).
+    try {
+      dst.style.borderStyle = cs.borderStyle;
+      dst.style.borderTopWidth = cs.borderTopWidth;
+      dst.style.borderRightWidth = cs.borderRightWidth;
+      dst.style.borderBottomWidth = cs.borderBottomWidth;
+      dst.style.borderLeftWidth = cs.borderLeftWidth;
+      dst.style.borderColor = "transparent";
+    } catch (e) {}
   }
 
   // Attaches a highlight overlay to one textarea. Idempotent via data attribute.
@@ -433,21 +446,26 @@
 
     var hl = document.createElement("div");
     hl.setAttribute("aria-hidden", "true");
+    // overflow:scroll (not hidden) so scrollTop sync works; scrollbar hidden via CSS.
     hl.style.cssText = [
       "position:absolute", "inset:0",
       "pointer-events:none",
-      "overflow:hidden",
+      "overflow:scroll",
+      "-ms-overflow-style:none",
+      "scrollbar-width:none",
       "white-space:pre-wrap", "word-wrap:break-word",
       "color:transparent",
       "z-index:0",
     ].join(";");
 
     // Mark style: yellow bg, transparent text (real text in the textarea shows through).
-    var markCSS = document.createElement("style");
     if (!document.getElementById("phi-highlight-style")) {
+      var markCSS = document.createElement("style");
       markCSS.id = "phi-highlight-style";
-      markCSS.textContent = "[data-phi-hl] { background:transparent!important; position:relative; z-index:1; } " +
-        ".phi-hl-layer mark { background:#fffb80; color:transparent; border-radius:2px; }";
+      markCSS.textContent =
+        "[data-phi-hl]{background:transparent!important;position:relative;z-index:1;}" +
+        ".phi-hl-layer mark{background:#fffb80;color:transparent;border-radius:2px;}" +
+        ".phi-hl-layer::-webkit-scrollbar{display:none;}";
       document.head.appendChild(markCSS);
     }
     hl.className = "phi-hl-layer";

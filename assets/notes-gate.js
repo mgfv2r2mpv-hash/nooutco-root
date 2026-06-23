@@ -233,6 +233,71 @@
    "Sibling Peer")
     .split(/\s+/).forEach(function (w) { if (w) STOPWORDS[w.toLowerCase()] = true; });
 
+  // Common US first names (lowercase). Any word in the note matching one of these
+  // is flagged as a name candidate regardless of capitalisation, giving the clinician
+  // a chance to certify it as non-PII or assign a role token. Sourced from SSA
+  // most-popular baby names; intentionally excludes words that are also common English
+  // nouns/verbs (e.g. "grace", "may" are intentionally included as they are more
+  // often names in ABA clinical context than regular words).
+  var FIRST_NAMES = {};
+  ("james john robert michael william david richard joseph thomas charles " +
+   "christopher daniel matthew anthony mark donald steven paul andrew joshua " +
+   "kenneth kevin brian george timothy ronald edward jason jeffrey ryan jacob " +
+   "gary nicholas eric jonathan stephen larry justin scott brandon benjamin " +
+   "samuel raymond gregory frank alexander patrick jack dennis jerry tyler " +
+   "aaron adam nathan henry zachary douglas peter kyle noah ethan jeremy " +
+   "christian walter keith austin roger terry sean gerald carl harold dylan " +
+   "arthur lawrence jordan jesse bryan billy joe bruce gabriel logan albert " +
+   "willie alan wayne elijah roy eugene randy louis russell bobby philip " +
+   "johnny vincent liam mason caleb hunter evan carter eli luke landon owen " +
+   "oliver cole max aiden gavin cameron jayden ian brody blake nolan xavier " +
+   "chase sebastian tristan marcus travis cody garrett derek ricky nelson " +
+   "darius devonte jamal jaylen malik rashard tariq tyrone zion denzel " +
+   "marquis dante terrence lamar quinton deon demarcus jeremiah isaiah " +
+   "jose juan carlos miguel jorge alejandro diego pablo sergio andres " +
+   "manuel mario victor roberto enrique rafael omar ivan felix julian abel " +
+   "arturo hugo oscar pedro raul ernesto javier francisco alfonso hector " +
+   "armando antonio emilio rodrigo alberto mauricio leandro tomas " +
+   "wei ming jin yang kenji hiroshi yuki jun chen lei tao kai " +
+   "mary patricia jennifer linda barbara elizabeth susan jessica sarah karen " +
+   "lisa nancy betty margaret sandra ashley kimberly emily donna michelle " +
+   "carol amanda melissa deborah stephanie rebecca sharon laura cynthia " +
+   "kathleen amy angela shirley anna brenda pamela emma nicole helen samantha " +
+   "katherine christine debra rachel carolyn janet catherine maria heather " +
+   "diane julie joyce victoria kelly christina lauren joan evelyn olivia " +
+   "judith megan cheryl martha andrea frances hannah teresa jacqueline gloria " +
+   "kathryn sara janice jean alice madison doris abigail julia grace amber " +
+   "denise beverly danielle marilyn brittany diana natalie sophia rose " +
+   "isabella alexis tiffany kayla charlotte alyssa taylor brooke crystal " +
+   "destiny jasmine sierra autumn brianna savannah skylar sydney kaylee " +
+   "avery aaliyah alexa ava chloe claire ella gianna hailey haley lily " +
+   "mia naomi paige piper ruby stella zoe layla maya ariana kylie mackenzie " +
+   "peyton kennedy leah vanessa mariah tonya robin connie misty angie holly " +
+   "erica molly miranda penny vera agnes miriam yolanda wanda tanya candace " +
+   "felicia tracey stacy wendy gina sylvia lori tara april georgia dawn " +
+   "eleanor edna tina kristen monique nakia raven tanisha tiara imani " +
+   "keisha latoya ebony latasha shanice camille rosalyn deja essence fatima " +
+   "amara nadia sofia valentina camila lucia gabriela alejandra claudia " +
+   "monica rosa elena isabel carmen fernanda catalina adriana natalia " +
+   "daniela paola ana bianca carolina diana esperanza eva graciela " +
+   "guadalupe ingrid iris liliana lorena luisa marisol marta norma pilar " +
+   "raquel rocio rosario silvana verónica xochitl yasmin " +
+   "abby brianna breanna caitlin caroline cassandra cassidy cecilia celeste " +
+   "cheyenne courtney dakota darlene dawn deanna destiny devon diamond " +
+   "dolores dominique dora elaine elisa eliza elsie erin estelle esther " +
+   "eve faith flora florence gail genevieve gertrude ginger gladys glenda " +
+   "greta harriet ilene irene jade jada jenna jenny jewel jillian jolene " +
+   "josephine joy judy june justine kate katie kaylee kelsey kendra kim " +
+   "kira kirsten lacey leila lenora leona lillian lindsay lynne macy " +
+   "madeline madelyn maggie mandy maxine melanie mindy muriel myra nadine " +
+   "nellie nora norah paulette phyllis polly priscilla renee rhonda rita " +
+   "roberta rowena ruth sabrina sally selena selina sherry stacy stefanie " +
+   "sue tamara tammie tammy theresa tori traci tricia valerie viola violet " +
+   "virginia vivian whitney wilma zelda bethany concepcion consuela delia " +
+   "dominga elba elvira flor hortensia lupe marina marisol nereida nilda " +
+   "rafaela soledad xiomara yareli")
+    .split(/\s+/).forEach(function (w) { if (w) FIRST_NAMES[w] = true; });
+
   /* ─────────────── Certified-non-PII store ─────────────── */
 
   // Certified-non-PII store. localStorage is the fast cache; /api/nonpii is the
@@ -350,6 +415,18 @@
       if (lowerDetected.some(function (n) { return n !== wl && n.startsWith(wl); })) {
         push(w);
       }
+    }
+
+    // First-names dictionary pass — flags any word (any case) whose lowercase
+    // form is in the known-names list. Catches "mark", "barbara", etc. even when
+    // typed all-lowercase and not caught by the NAME_WORD capitalisation heuristic.
+    var dictRe = /\b([A-Za-z]{2,})\b/g;
+    var dm;
+    while ((dm = dictRe.exec(text)) !== null) {
+      var dw = dm[1];
+      var dwl = dw.toLowerCase();
+      if (seen[dwl] || excluded[dwl] || STOPWORDS[dwl]) continue;
+      if (FIRST_NAMES[dwl]) push(dw);
     }
 
     // Longest first so "Barbara Jean" is replaced before "Barbara".
