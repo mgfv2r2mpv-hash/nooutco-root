@@ -219,8 +219,37 @@
    "Took Gave Said Asked Began Run Tried Made Put Kept Held Played Ate Drank Slept Arrived Left Returned Spoke " +
    "Talked Walked Sat Stood Helped Modeled Practiced Provided Observed Noted Demonstrated Engaged Discussed " +
    "Reported Initiated Prompted Redirected Reinforced Transitioned Followed Implemented Conducted Administered " +
-   "Will Would Could Should May Might Must Can Do Does Done Get Go Come Make Take See")
+   "Will Would Could Should May Might Must Can Do Does Done Get Go Come Make Take See " +
+   // Pronouns that capitalise at sentence start
+   "His Her Him Hers Them Their " +
+   // Greetings / common sentence-starters
+   "Hi Hello Hey " +
+   // Common verbs / imperatives that capitalise at sentence start
+   "Call Called Ask Asked Tell Told Send Sent " +
+   // Number words and quantifiers
+   "One Two Three Four Five Six Seven Eight Nine Ten " +
+   // Role tokens (added as roles, should never be re-detected as names)
+   "Sibling Peer")
     .split(/\s+/).forEach(function (w) { if (w) STOPWORDS[w.toLowerCase()] = true; });
+
+  /* ─────────────── Certified-non-PII store ─────────────── */
+
+  // Persists terms the clinician has certified as non-PII across sessions.
+  // Each entry: { term: string (lowercase), certifiedAt: ISO string }.
+  var NONPII_KEY = "noaba.nonpii.v1";
+
+  function loadNonPii() {
+    try { return JSON.parse(localStorage.getItem(NONPII_KEY)) || []; } catch (e) { return []; }
+  }
+  function saveNonPiiTerm(term) {
+    var lc = (term || "").toLowerCase().trim();
+    if (!lc) return;
+    var list = loadNonPii();
+    if (list.some(function (e) { return e.term === lc; })) return;
+    list.push({ term: lc, certifiedAt: new Date().toISOString() });
+    try { localStorage.setItem(NONPII_KEY, JSON.stringify(list)); } catch (e) {}
+  }
+  function clearNonPii() { try { localStorage.removeItem(NONPII_KEY); } catch (e) {} }
 
   // Detect candidate person names: runs of 1–2 capitalized words not in the
   // stoplist. A "word" starts with a capital, may carry internal capitals,
@@ -230,29 +259,40 @@
   // ('s) is stripped so "Jacob's" maps to "Jacob" (applyScrub, case-insensitive,
   // then catches "Jacob" inside "Jacob's"). The review step backstops false
   // positives, so detection errs toward catching more.
-  var NAME_WORD = "[A-Z][A-Za-z’'\\-]*[a-z]";
+  var NAME_WORD = "[A-Z][A-Za-z’’\\-]*[a-z]";
   function detectNames(text) {
     if (!text) return [];
+
+    // Load clinician-certified non-PII terms so they are never flagged again.
+    var excluded = {};
+    loadNonPii().forEach(function (e) { excluded[e.term] = true; });
+
     var re = new RegExp("\\b(" + NAME_WORD + "(?:\\s+" + NAME_WORD + ")?)\\b", "g");
     var seen = {};
     var out = [];
     function push(name) {
       var key = name.toLowerCase();
-      if (!seen[key]) { seen[key] = true; out.push(name); }
+      if (!seen[key] && !excluded[key]) { seen[key] = true; out.push(name); }
     }
     var m;
     while ((m = re.exec(text)) !== null) {
-      var phrase = m[1].replace(/[’']s$/, ""); // drop possessive
+      var phrase = m[1].replace(/[‘’]s$/, ""); // drop possessive
       var words = phrase.split(/\s+/);
-      var meaningful = words.filter(function (w) { return !STOPWORDS[w.toLowerCase()]; });
+      var meaningful = words.filter(function (w) {
+        return !STOPWORDS[w.toLowerCase()] && !excluded[w.toLowerCase()];
+      });
       if (meaningful.length === 0) continue;
-      // Keep a multi-word phrase as one unit only when every word is a name
-      // ("John Smith"); if a stopword rode along ("Then Jacob"), keep just the
-      // name parts so the token replaces the name, not the leading word.
-      if (meaningful.length === words.length) push(phrase);
-      else meaningful.forEach(push);
+      if (meaningful.length === words.length) {
+        push(phrase);
+        // Also push each word individually so that a standalone lowercase occurrence
+        // (e.g. "barbara" when "Barbara Jean" was detected) is covered by
+        // applyScrub’s case-insensitive flag on the individual-word entry.
+        if (words.length > 1) words.forEach(push);
+      } else {
+        meaningful.forEach(push);
+      }
     }
-    // Longest first so "John Smith" is tokenized before "John".
+    // Longest first so "Barbara Jean" is replaced before "Barbara".
     out.sort(function (a, b) { return b.length - a.length; });
     return out;
   }
@@ -298,6 +338,8 @@
     logout: logout,
     token: getToken,
     generateNote: generateNote,
+    // Certified-non-PII store — persists across sessions in localStorage.
+    nonPii: { load: loadNonPii, saveTerm: saveNonPiiTerm, clear: clearNonPii },
     // exposed for testing / advanced use
     _scrub: { detectNames: detectNames, buildNameMap: buildNameMap, applyScrub: applyScrub, restoreDeep: restoreDeep },
   };

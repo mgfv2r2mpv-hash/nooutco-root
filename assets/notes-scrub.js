@@ -85,12 +85,17 @@
 
   // Find the sentence containing the first occurrence of name (case-insensitive)
   // and return a short clip, so the clinician sees context for each detection.
+  // Uses word-boundary regex (not indexOf) to avoid substring false-hits like
+  // "one" matching inside "done".
   function snippetFor(name, text) {
     if (!text) return "";
-    var lower = text.toLowerCase();
-    var lname = name.toLowerCase();
-    var idx = lower.indexOf(lname);
-    if (idx === -1) return "";
+    var re;
+    try {
+      re = new RegExp("\\b" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "i");
+    } catch (e) { return ""; }
+    var match = re.exec(text);
+    if (!match) return "";
+    var idx = match.index;
     var start = idx;
     while (start > 0 && !/[\n.!?]/.test(text[start - 1])) start--;
     var end = idx + name.length;
@@ -357,6 +362,10 @@
           selections.push({ name: names[i], replacement: reps[i].value, cert: certs[i].checked });
         }
         var built = buildMap(selections);
+        // Persist certified-non-PII terms so they are never flagged in future sessions.
+        if (window.NotesGate && window.NotesGate.nonPii) {
+          built.certified.forEach(function (name) { window.NotesGate.nonPii.saveTerm(name); });
+        }
         finish({ cancelled: false, map: built.map, certified: built.certified });
       });
       var go = document.getElementById("notes-scrub-go");
