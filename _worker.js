@@ -1,3 +1,6 @@
+// Notes tools that can be scoped to a managed password.
+const NOTES_TOOLS = ["bt", "sup", "parent", "assess", "sap"];
+
 // Old URL → new URL prefix mapping (specific paths before their parent prefix)
 const LEGACY_PREFIXES = [
   ['/NoteDrafter/BTNotes',       '/notes/bt/'],
@@ -175,12 +178,13 @@ async function handleLogin(request, env) {
     return jsonRes(200, { token, role: "admin" });
   }
 
-  // Managed access passwords (API_PASSWORDS KV) — Generate Note only.
+  // Managed access passwords (API_PASSWORDS KV) — scoped to specific tools.
   if (env.API_PASSWORDS) {
     const rec = await findPassword(env.API_PASSWORDS, password);
     if (rec && rec.active) {
-      const token = await signToken({ exp, role: "user", kid: rec.id }, secret);
-      return jsonRes(200, { token, role: "user" });
+      const tools = Array.isArray(rec.tools) ? rec.tools : [];
+      const token = await signToken({ exp, role: "user", kid: rec.id, tools }, secret);
+      return jsonRes(200, { token, role: "user", tools });
     }
   }
 
@@ -198,20 +202,24 @@ async function handleLlmCall(request, env) {
       return jsonRes(401, { error: "Not logged in. Please log in to generate a note." });
     }
 
-    // Managed passwords can be revoked instantly: re-check the KV on every call.
-    if (payload.role === "user") {
-      const active = env.API_PASSWORDS && (await isPasswordActive(env.API_PASSWORDS, payload.kid));
-      if (!active) return jsonRes(401, { error: "Access revoked. Please log in again." });
+    const body = await request.json();
+    const { systemPrompt, userPrompt, model, maxTokens, tool } = body;
+    if (!systemPrompt || !userPrompt) {
+      return jsonRes(400, { error: "Missing required fields: systemPrompt, userPrompt" });
+    }
+
+    // Managed passwords: re-check the KV every call for instant revocation AND
+    // per-tool scope enforcement. Admin bypasses scope.
+    if (payload.role !== "admin") {
+      const rec = env.API_PASSWORDS ? await getPasswordRecord(env.API_PASSWORDS, payload.kid) : null;
+      if (!rec || !rec.active) return jsonRes(401, { error: "Access revoked. Please log in again." });
+      if (tool && !rec.tools.includes(tool)) {
+        return jsonRes(403, { error: "Your access doesn't include this tool." });
+      }
     }
 
     const apiKey = (env.ANTHROPIC_API_KEY ?? "").trim();
     if (!apiKey) return jsonRes(503, { error: "Server API key is not configured." });
-
-    const body = await request.json();
-    const { systemPrompt, userPrompt, model, maxTokens } = body;
-    if (!systemPrompt || !userPrompt) {
-      return jsonRes(400, { error: "Missing required fields: systemPrompt, userPrompt" });
-    }
 
     const llmResponse = await callAnthropicApi(
       apiKey, systemPrompt, userPrompt, model || "claude-haiku-4-5-20251001", maxTokens || 3000
@@ -284,16 +292,17 @@ async function findPassword(kv, password) {
   for (const k of list.keys) {
     const md = k.metadata || {};
     if (md.hash === h) {
-      return { id: k.name.slice(3), label: md.label || "", active: !!md.active, createdAt: md.createdAt || null };
+      return { id: k.name.slice(3), label: md.label || "", active: !!md.active, tools: Array.isArray(md.tools) ? md.tools : [], createdAt: md.createdAt || null };
     }
   }
   return null;
 }
 
-async function isPasswordActive(kv, id) {
-  if (!id) return false;
+async function getPasswordRecord(kv, id) {
+  if (!id) return null;
   const { metadata } = await kv.getWithMetadata("pw:" + id);
-  return !!(metadata && metadata.active);
+  if (!metadata) return null;
+  return { active: !!metadata.active, tools: Array.isArray(metadata.tools) ? metadata.tools : [] };
 }
 
 // Admin-only management of the managed access passwords.
@@ -313,10 +322,11 @@ async function handleAdminPasswords(request, env) {
         id: k.name.slice(3),
         label: (k.metadata && k.metadata.label) || "",
         active: !!(k.metadata && k.metadata.active),
+        tools: (k.metadata && Array.isArray(k.metadata.tools)) ? k.metadata.tools : [],
         createdAt: (k.metadata && k.metadata.createdAt) || null,
       }))
       .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
-    return jsonRes(200, { passwords });
+    return jsonRes(200, { passwords, allTools: NOTES_TOOLS });
   }
 
   let body;
@@ -326,22 +336,30 @@ async function handleAdminPasswords(request, env) {
   if (request.method === "POST") {
     const label = (body.label ?? "").trim();
     const password = (body.password ?? "").trim();
+    const tools = Array.isArray(body.tools) ? body.tools.filter((t) => NOTES_TOOLS.includes(t)) : [];
     if (!password) return jsonRes(400, { error: "A password is required." });
+    if (tools.length === 0) return jsonRes(400, { error: "Select at least one tool this password can use." });
     if (password === secret) return jsonRes(409, { error: "That is the admin password — pick a different one." });
     if (await findPassword(kv, password)) return jsonRes(409, { error: "That password already exists." });
     const id = crypto.randomUUID();
-    const metadata = { label, hash: await sha256Hex(password), active: true, createdAt: new Date().toISOString() };
+    const metadata = { label, hash: await sha256Hex(password), active: true, tools, createdAt: new Date().toISOString() };
     await kv.put("pw:" + id, "1", { metadata });
-    return jsonRes(200, { id, label, active: true, createdAt: metadata.createdAt });
+    return jsonRes(200, { id, label, active: true, tools, createdAt: metadata.createdAt });
   }
 
   if (request.method === "PATCH") {
     const id = (body.id ?? "").trim();
     const { metadata } = await kv.getWithMetadata("pw:" + id);
     if (!metadata) return jsonRes(404, { error: "Password not found." });
-    const updated = { ...metadata, active: !!body.active };
+    const updated = { ...metadata };
+    if (typeof body.active === "boolean") updated.active = body.active;
+    if (Array.isArray(body.tools)) {
+      const t = body.tools.filter((x) => NOTES_TOOLS.includes(x));
+      if (t.length === 0) return jsonRes(400, { error: "A password must allow at least one tool." });
+      updated.tools = t;
+    }
     await kv.put("pw:" + id, "1", { metadata: updated });
-    return jsonRes(200, { id, active: updated.active });
+    return jsonRes(200, { id, active: !!updated.active, tools: updated.tools || [] });
   }
 
   if (request.method === "DELETE") {
