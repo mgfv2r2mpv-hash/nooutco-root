@@ -272,6 +272,8 @@
       const [copiedPrompt,      setCopiedPrompt]      = React.useState(false);
       const [isAdmin,           setIsAdmin]           = React.useState(() => hasAdminToken());
       const [loggedIn,          setLoggedIn]          = React.useState(() => !!(window.NotesGate && NotesGate.isLoggedIn()));
+      const TOOL_ID = "parent";
+      const canUse  = loggedIn && !!(window.NotesGate && NotesGate.canUseTool(TOOL_ID));
       React.useEffect(() => (window.NotesGate ? NotesGate.subscribe(setLoggedIn) : undefined), []);
       const [promptText,        setPromptText]        = React.useState("");
       const [expanded,          setExpanded]          = React.useState(() => new Set());
@@ -350,7 +352,7 @@ Terminology standards (apply rigorously):
         setLoading(true);
         setOutput(null);
         try {
-          const parsed = await NotesGate.generateNote({ systemPrompt: SYSTEM_CORE + JSON_FORMAT_BLOCK, userPrompt: buildUserPrompt() });
+          const parsed = await NotesGate.generateNote({ systemPrompt: SYSTEM_CORE + JSON_FORMAT_BLOCK, userPrompt: buildUserPrompt(), tool: TOOL_ID });
           setOutput(normalizeOutput(parsed));
         } catch (e) {
           setRawError(e.message || "");
@@ -475,16 +477,16 @@ Terminology standards (apply rigorously):
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button
-                onClick={loggedIn ? handleGenerate : () => NotesGate.openLogin()}
-                disabled={loading}
+                onClick={!loggedIn ? () => NotesGate.openLogin() : (canUse ? handleGenerate : undefined)}
+                disabled={loading || (loggedIn && !canUse)}
                 style={{
                   padding: "11px 28px", borderRadius: 8, border: "none",
-                  background: loading ? "#a0b890" : "#374528",
+                  background: (loading || (loggedIn && !canUse)) ? "#a0b890" : "#374528",
                   color: "white", fontSize: 15, fontWeight: 600,
-                  cursor: loading ? "not-allowed" : "pointer",
+                  cursor: (loading || (loggedIn && !canUse)) ? "not-allowed" : "pointer",
                 }}
               >
-                {loggedIn ? (loading ? "Generating…" : "Generate Note") : "Log in"}
+                {!loggedIn ? "Log in" : (canUse ? (loading ? "Generating…" : "Generate Note") : "No access for this tool")}
               </button>
               <button
                 onClick={handleGeneratePrompt}
@@ -497,6 +499,14 @@ Terminology standards (apply rigorously):
               >
                 Generate Prompt
               </button>
+              {loggedIn && (
+                <button onClick={() => NotesGate.logout()} style={{
+                  marginLeft: "auto", padding: "9px 16px", borderRadius: 8,
+                  border: "1.5px solid #c0d4a8", background: "white", color: "#5a6b4a", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                }}>
+                  Log out
+                </button>
+              )}
             </div>
           </div>
 

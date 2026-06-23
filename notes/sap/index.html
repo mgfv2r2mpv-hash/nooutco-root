@@ -392,6 +392,8 @@
       const [showKey,  setShowKey]  = React.useState(false);
       const [isAdmin,  setIsAdmin]  = React.useState(() => hasAdminToken());
       const [loggedIn, setLoggedIn] = React.useState(() => !!(window.NotesGate && NotesGate.isLoggedIn()));
+      const TOOL_ID = "sap";
+      const canUse  = loggedIn && !!(window.NotesGate && NotesGate.canUseTool(TOOL_ID));
       React.useEffect(() => (window.NotesGate ? NotesGate.subscribe(setLoggedIn) : undefined), []);
 
       const [goal,     setGoal]     = React.useState("");
@@ -441,7 +443,7 @@
         if (!NotesGate.isLoggedIn()) { NotesGate.openLogin(); return; }
         setError(""); setRawError(""); setLoading(true); setOutput(null);
         try {
-          const parsed = await NotesGate.generateNote({ systemPrompt: SYSTEM_PROMPT, userPrompt: window.sapBuildUserPrompt(goal, sapSpecs) });
+          const parsed = await NotesGate.generateNote({ systemPrompt: SYSTEM_PROMPT, userPrompt: window.sapBuildUserPrompt(goal, sapSpecs), tool: TOOL_ID });
           setOutput({
             refinedGoal:     parsed.refinedGoal || "",
             exercise:        window.sapFormatExercise(parsed.exercise || {}),
@@ -579,13 +581,13 @@
           <div style={{ marginBottom: 20 }}>
             <ApiErrorMessage error={error} rawError={rawError} provider={provider} isAdmin={isAdmin} onGeneratePrompt={handleGeneratePrompt} />
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button onClick={loggedIn ? handleGenerate : () => NotesGate.openLogin()} disabled={loading} style={{
+              <button onClick={!loggedIn ? () => NotesGate.openLogin() : (canUse ? handleGenerate : undefined)} disabled={loading || (loggedIn && !canUse)} style={{
                   padding: "11px 28px", borderRadius: 8, border: "none",
-                  background: loading ? "#a0b890" : "#374528",
+                  background: (loading || (loggedIn && !canUse)) ? "#a0b890" : "#374528",
                   color: "white", fontSize: 15, fontWeight: 600,
-                  cursor: loading ? "not-allowed" : "pointer",
+                  cursor: (loading || (loggedIn && !canUse)) ? "not-allowed" : "pointer",
                 }}>
-                  {loggedIn ? (loading ? "Generating…" : "Generate SAP") : "Log in"}
+                  {!loggedIn ? "Log in" : (canUse ? (loading ? "Generating…" : "Generate SAP") : "No access for this tool")}
                 </button>
               <button onClick={handleGeneratePrompt} style={{
                 padding: "11px 18px", borderRadius: 8,
@@ -596,6 +598,14 @@
               }}>
                 Generate Prompt
               </button>
+              {loggedIn && (
+                <button onClick={() => NotesGate.logout()} style={{
+                  marginLeft: "auto", padding: "9px 16px", borderRadius: 8,
+                  border: "1.5px solid #c0d4a8", background: "white", color: "#5a6b4a", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                }}>
+                  Log out
+                </button>
+              )}
             </div>
           </div>
 

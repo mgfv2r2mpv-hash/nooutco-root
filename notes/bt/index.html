@@ -484,6 +484,8 @@
       const [showKey,           setShowKey]          = React.useState(false);
       const [isAdmin,           setIsAdmin]          = React.useState(() => hasAdminToken());
       const [loggedIn,          setLoggedIn]         = React.useState(() => !!(window.NotesGate && NotesGate.isLoggedIn()));
+      const TOOL_ID = "bt";
+      const canUse  = loggedIn && !!(window.NotesGate && NotesGate.canUseTool(TOOL_ID));
 
       // Factual quick-picks (cannot be inferred from clinical narrative).
       const [placeOfService, setPlaceOfService] = React.useState(() => {
@@ -506,7 +508,7 @@
       const [copied,       setCopied]      = React.useState(null);
       const [promptText,   setPromptText]  = React.useState("");
       const [copiedPrompt, setCopiedPrompt]= React.useState(false);
-      const [showApiSection, setShowApiSection] = React.useState(false);
+      const [showApiSection, setShowApiSection] = React.useState(() => !(window.NotesGate && NotesGate.isLoggedIn()));
 
       React.useEffect(() => {
         const onStorage = () => setIsAdmin(hasAdminToken());
@@ -644,7 +646,7 @@ BT notes: "BCBA in 20 min. Arrived tired, slow to start. Ran tx-plan goals. Rece
         if (!NotesGate.isLoggedIn()) { NotesGate.openLogin(); return; }
         setError(""); setRawError(""); setLoading(true); setOutput(null);
         try {
-          const parsed = await NotesGate.generateNote({ systemPrompt: SYSTEM_CORE + JSON_FORMAT_BLOCK, userPrompt: buildUserPrompt() });
+          const parsed = await NotesGate.generateNote({ systemPrompt: SYSTEM_CORE + JSON_FORMAT_BLOCK, userPrompt: buildUserPrompt(), tool: TOOL_ID });
           setOutput(normalizeOutput(parsed));
         } catch (e) {
           setRawError(e.message || "");
@@ -828,12 +830,15 @@ BT notes: "BCBA in 20 min. Arrived tired, slow to start. Ran tx-plan goals. Rece
               <strong style={{ color: "#374528" }}>Generate Prompt</strong> produces the same request as text to run in a separate AI chat.
             </p>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <button onClick={loggedIn ? handleGenerate : () => NotesGate.openLogin()} disabled={loading} style={{
-                padding: "12px 28px", borderRadius: 8, border: "none",
-                background: loading ? "#a0b890" : "#374528", color: "white", fontSize: 15, fontWeight: 600,
-                cursor: loading ? "not-allowed" : "pointer",
-              }}>
-                {loggedIn ? (loading ? "Generating…" : "Generate Note") : "Log in"}
+              <button
+                onClick={!loggedIn ? () => NotesGate.openLogin() : (canUse ? handleGenerate : undefined)}
+                disabled={loading || (loggedIn && !canUse)}
+                style={{
+                  padding: "12px 28px", borderRadius: 8, border: "none",
+                  background: (loading || (loggedIn && !canUse)) ? "#a0b890" : "#374528", color: "white", fontSize: 15, fontWeight: 600,
+                  cursor: (loading || (loggedIn && !canUse)) ? "not-allowed" : "pointer",
+                }}>
+                {!loggedIn ? "Log in" : (canUse ? (loading ? "Generating…" : "Generate Note") : "No access for this tool")}
               </button>
               <button onClick={handleGeneratePrompt} style={{
                 padding: "11px 18px", borderRadius: 8,
@@ -842,6 +847,14 @@ BT notes: "BCBA in 20 min. Arrived tired, slow to start. Ran tx-plan goals. Rece
               }}>
                 Generate Prompt
               </button>
+              {loggedIn && (
+                <button onClick={() => NotesGate.logout()} style={{
+                  marginLeft: "auto", padding: "9px 16px", borderRadius: 8,
+                  border: "1.5px solid #c0d4a8", background: "white", color: "#5a6b4a", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                }}>
+                  Log out
+                </button>
+              )}
             </div>
           </div>
 

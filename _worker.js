@@ -32,22 +32,6 @@ export default {
       return handleAdminPasswords(request, env);
     }
 
-    // TEMP diagnostic — writes a marker through the binding so we can locate the
-    // namespace the worker actually uses. No secret values. Remove before prod.
-    if (url.pathname === "/api/_diag") {
-      let pw = null, marker = null;
-      if (env.API_PASSWORDS) {
-        marker = "diagmarker-" + Date.now();
-        await env.API_PASSWORDS.put(marker, "1");
-        const l = await env.API_PASSWORDS.list();
-        pw = { count: l.keys.length, keys: l.keys.map(k => k.name).slice(0, 10) };
-      }
-      return jsonRes(200, {
-        bindings: { API_PASSWORDS: !!env.API_PASSWORDS, SUGGEST_DUPES: !!env.SUGGEST_DUPES, ANTHROPIC_API_KEY: !!env.ANTHROPIC_API_KEY, ADMIN_SECRET: !!env.ADMIN_SECRET },
-        pw, marker,
-      });
-    }
-
     if (url.pathname === "/api/suggest" && request.method === "POST") {
       return handleSuggest(request, env);
     }
