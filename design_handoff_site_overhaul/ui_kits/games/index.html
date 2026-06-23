@@ -80,6 +80,13 @@
   .foot { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--slate-200); font-size: 12px; color: var(--slate-500); line-height: 1.6; max-width: 680px; }
   .foot a { color: var(--sage-600); text-decoration: none; font-weight: 600; }
   .badge-mode { display: inline-block; font-size: 11px; font-weight: 700; color: var(--sage-700); background: var(--sage-100); border-radius: var(--radius-pill); padding: 2px 9px; }
+
+  /* GM gear button */
+  .iconbtn { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--sage-200); border-radius: var(--radius-md); background: var(--white, #fff); cursor: pointer; font-size: 16px; color: var(--sage-700); transition: background .12s; flex-shrink: 0; }
+  .iconbtn:hover { background: var(--sage-100); }
+
+  /* GM overlay */
+  .gm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 200; display: flex; align-items: center; justify-content: center; }
 </style>
 </head>
 <body>
@@ -93,7 +100,10 @@
         <div class="sub">Games & Activities</div>
       </div>
     </div>
-    <a class="home" href="#">← nooutco.me</a>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <a class="home" href="#">← nooutco.me</a>
+      <button class="iconbtn" id="gmBtn" title="Game Master">⚙️</button>
+    </div>
   </div>
 
   <div class="head">
@@ -160,6 +170,29 @@
   </p>
 
 </div>
+<!-- GM Modal -->
+<div id="gmOverlay" class="gm-overlay" style="display:none">
+  <div style="background:#fff;border-radius:16px;padding:28px 28px 24px;width:304px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.22);position:relative;">
+    <button id="gmClose" title="Close" style="position:absolute;top:12px;right:12px;background:none;border:none;font-size:20px;cursor:pointer;color:#9aaa88;line-height:1;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;">×</button>
+    <h2 style="margin:0 0 20px;font-size:17px;font-weight:800;color:#374528;letter-spacing:-.02em;">Game Master</h2>
+
+    <!-- not-logged-in state -->
+    <div id="gmLogin">
+      <label style="display:block;font-size:11px;font-weight:700;color:#5a6b4a;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Admin password</label>
+      <input id="gmPw" type="password" autocomplete="current-password" placeholder="Password"
+        style="width:100%;padding:10px 12px;border:1.5px solid #c0d4a8;border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box;outline:none;">
+      <div id="gmErr" style="color:#c0392b;font-size:13px;min-height:18px;margin:6px 0 10px;"></div>
+      <button id="gmLoginBtn" style="width:100%;background:#374528;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;">Log in</button>
+    </div>
+
+    <!-- logged-in state -->
+    <div id="gmAdmin" style="display:none;flex-direction:column;gap:10px;">
+      <a href="/admin" style="display:flex;align-items:center;justify-content:center;font-size:28px;background:#374528;color:#fff;border-radius:10px;padding:18px;text-decoration:none;">🛠️</a>
+      <button id="gmLogout" style="background:#fff;color:#374528;border:1.5px solid #c0d4a8;border-radius:8px;padding:11px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;">Log out</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function () {
   const RANK_KEY = 'noaba.games.ranks.v1';
@@ -214,6 +247,87 @@
   });
 
   paintAll(); rerank(); loadTallies();
+})();
+</script>
+
+<script>
+(function () {
+  var TOKEN_KEY = 'notes_auth_token';
+
+  function isAdmin() {
+    try {
+      var t = localStorage.getItem(TOKEN_KEY) || '';
+      if (!t) return false;
+      var p = JSON.parse(atob(t.split('.')[0].replace(/-/g, '+').replace(/_/g, '/')));
+      return !!(p && p.role === 'admin' && (!p.exp || p.exp * 1000 > Date.now()));
+    } catch (e) { return false; }
+  }
+
+  var overlay  = document.getElementById('gmOverlay');
+  var loginDiv = document.getElementById('gmLogin');
+  var adminDiv = document.getElementById('gmAdmin');
+  var gmBtn    = document.getElementById('gmBtn');
+  var gmClose  = document.getElementById('gmClose');
+  var gmPw     = document.getElementById('gmPw');
+  var gmErr    = document.getElementById('gmErr');
+  var gmLoginBtn = document.getElementById('gmLoginBtn');
+  var gmLogout = document.getElementById('gmLogout');
+
+  function refreshPanel() {
+    if (isAdmin()) {
+      loginDiv.style.display = 'none';
+      adminDiv.style.display = 'flex';
+    } else {
+      loginDiv.style.display = 'block';
+      adminDiv.style.display = 'none';
+      gmPw.value = '';
+      gmErr.textContent = '';
+    }
+  }
+
+  function openModal() {
+    overlay.style.display = '';
+    refreshPanel();
+    if (!isAdmin()) setTimeout(function () { gmPw.focus(); }, 50);
+  }
+
+  function closeModal() { overlay.style.display = 'none'; }
+
+  function doLogin() {
+    var pw = gmPw.value.trim();
+    if (!pw) return;
+    gmErr.textContent = '';
+    gmLoginBtn.disabled = true;
+    gmLoginBtn.textContent = 'Logging in…';
+    fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw }),
+    })
+      .then(function (r) {
+        return r.json().then(function (d) {
+          if (!r.ok || !d.token) throw new Error(d.error || 'Login failed.');
+          return d;
+        });
+      })
+      .then(function (d) {
+        if (d.role !== 'admin') throw new Error("That password doesn't have admin access.");
+        localStorage.setItem(TOKEN_KEY, d.token);
+        refreshPanel();
+      })
+      .catch(function (ex) { gmErr.textContent = ex.message; })
+      .finally(function () { gmLoginBtn.disabled = false; gmLoginBtn.textContent = 'Log in'; });
+  }
+
+  gmBtn.addEventListener('click', openModal);
+  gmClose.addEventListener('click', closeModal);
+  overlay.addEventListener('click', function (e) { if (e.target === overlay) closeModal(); });
+  gmLoginBtn.addEventListener('click', doLogin);
+  gmPw.addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
+  gmLogout.addEventListener('click', function () {
+    localStorage.removeItem(TOKEN_KEY);
+    refreshPanel();
+  });
 })();
 </script>
 </body>

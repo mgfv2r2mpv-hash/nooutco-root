@@ -107,6 +107,13 @@
     <div class="spacer"></div>
     <button class="iconbtn" id="visualBtn" title="Visual mode">✦</button>
     <button class="iconbtn" id="gearBtn" title="Settings">⚙️</button>
+    <div style="position:relative">
+      <button class="iconbtn on" id="gmBtn" title="Admin" style="display:none">⚙️</button>
+      <div id="gmDrop" style="display:none;position:absolute;top:calc(100% + 6px);right:0;background:#fff;border:1px solid #c0d4a8;border-radius:12px;padding:6px;box-shadow:0 8px 28px rgba(20,28,14,.14);z-index:50;min-width:168px;">
+        <a href="/admin" style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;text-decoration:none;color:#374528;font-size:13px;font-weight:700;white-space:nowrap;">🛠️ Admin panel</a>
+        <button id="gmLogout" style="display:block;width:100%;text-align:left;background:none;border:none;border-top:1px solid #e2ead4;padding:9px 12px;margin-top:4px;font-family:inherit;font-size:13px;color:#374528;font-weight:600;cursor:pointer;border-radius:0 0 8px 8px;">Log out</button>
+      </div>
+    </div>
   </div>
 
   <!-- Settings -->
@@ -402,6 +409,45 @@
 
   renderTally();
   newTrial();
+})();
+</script>
+
+<script>
+(function () {
+  var TOKEN_KEY = 'notes_auth_token';
+
+  function isAdmin() {
+    try {
+      var t = localStorage.getItem(TOKEN_KEY) || '';
+      if (!t) return false;
+      var p = JSON.parse(atob(t.split('.')[0].replace(/-/g, '+').replace(/_/g, '/')));
+      return !!(p && p.role === 'admin' && (!p.exp || p.exp * 1000 > Date.now()));
+    } catch (e) { return false; }
+  }
+
+  var gmBtn    = document.getElementById('gmBtn');
+  var gmDrop   = document.getElementById('gmDrop');
+  var gmLogout = document.getElementById('gmLogout');
+
+  if (isAdmin()) gmBtn.style.display = '';
+
+  gmBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    var open = gmDrop.style.display !== 'none';
+    gmDrop.style.display = open ? 'none' : 'block';
+  });
+
+  document.addEventListener('click', function (e) {
+    if (!gmBtn.contains(e.target) && !gmDrop.contains(e.target)) {
+      gmDrop.style.display = 'none';
+    }
+  });
+
+  gmLogout.addEventListener('click', function () {
+    localStorage.removeItem(TOKEN_KEY);
+    gmBtn.style.display = 'none';
+    gmDrop.style.display = 'none';
+  });
 })();
 </script>
 </body>
