@@ -4,10 +4,14 @@
   "pages_build_output_dir": ".",
   "kv_namespaces": [
     {
-      // Replace with real ID from: npx wrangler kv namespace create SUGGEST_DUPES
-      // Also bind in Cloudflare dashboard → Pages → tools-nooutco-me → Settings → Functions → KV namespace bindings
+      // Account A (kaleb@nooutco.me) namespace. Bind in: Pages → tools-nooutco-me → Settings → Functions → KV namespace bindings
       "binding": "SUGGEST_DUPES",
-      "id": "81921b08db4d47218c9053fdbf01296d"
+      "id": "770ceeccadb94d78b519e628509beed8"
+    },
+    {
+      // Account A (kaleb@nooutco.me) namespace for the password-gated API upgrade
+      "binding": "API_PASSWORDS",
+      "id": "cdaf40fa2b814f7d94818b27042b9cf2"
     }
   ]
 }
