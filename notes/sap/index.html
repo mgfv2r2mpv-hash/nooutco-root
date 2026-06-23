@@ -7,6 +7,7 @@
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+  <script src="/assets/notes-gate.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -390,6 +391,8 @@
       const [apiKey,   setApiKey]   = React.useState(() => localStorage.getItem("sap_key_" + (localStorage.getItem("sap_provider") || "gemini")) || "");
       const [showKey,  setShowKey]  = React.useState(false);
       const [isAdmin,  setIsAdmin]  = React.useState(() => hasAdminToken());
+      const [loggedIn, setLoggedIn] = React.useState(() => !!(window.NotesGate && NotesGate.isLoggedIn()));
+      React.useEffect(() => (window.NotesGate ? NotesGate.subscribe(setLoggedIn) : undefined), []);
 
       const [goal,     setGoal]     = React.useState("");
       const [sapSpecs, setSapSpecs] = React.useState("");
@@ -435,10 +438,10 @@
       const handleGenerate = async () => {
         const err = validate();
         if (err) { setError(err); return; }
-        if (!apiKey.trim()) { setError("NO_KEY"); setRawError(""); return; }
+        if (!NotesGate.isLoggedIn()) { NotesGate.openLogin(); return; }
         setError(""); setRawError(""); setLoading(true); setOutput(null);
         try {
-          const parsed = await window.sapCallProvider(provider, apiKey, SYSTEM_PROMPT, window.sapBuildUserPrompt(goal, sapSpecs));
+          const parsed = await NotesGate.generateNote({ systemPrompt: SYSTEM_PROMPT, userPrompt: window.sapBuildUserPrompt(goal, sapSpecs) });
           setOutput({
             refinedGoal:     parsed.refinedGoal || "",
             exercise:        window.sapFormatExercise(parsed.exercise || {}),
@@ -576,16 +579,14 @@
           <div style={{ marginBottom: 20 }}>
             <ApiErrorMessage error={error} rawError={rawError} provider={provider} isAdmin={isAdmin} onGeneratePrompt={handleGeneratePrompt} />
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              {isAdmin && (
-                <button onClick={handleGenerate} disabled={loading} style={{
+              <button onClick={loggedIn ? handleGenerate : () => NotesGate.openLogin()} disabled={loading} style={{
                   padding: "11px 28px", borderRadius: 8, border: "none",
                   background: loading ? "#a0b890" : "#374528",
                   color: "white", fontSize: 15, fontWeight: 600,
                   cursor: loading ? "not-allowed" : "pointer",
                 }}>
-                  {loading ? "Generating…" : "Generate SAP"}
+                  {loggedIn ? (loading ? "Generating…" : "Generate SAP") : "Log in"}
                 </button>
-              )}
               <button onClick={handleGeneratePrompt} style={{
                 padding: "11px 18px", borderRadius: 8,
                 border: "1.5px solid #374528",

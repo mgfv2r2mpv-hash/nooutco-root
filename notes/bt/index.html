@@ -7,6 +7,7 @@
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+  <script src="/assets/notes-gate.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -482,6 +483,7 @@
       const [apiKey,            setApiKey]           = React.useState(() => localStorage.getItem(`bt_key_${localStorage.getItem("bt_provider") || "gemini"}`) || "");
       const [showKey,           setShowKey]          = React.useState(false);
       const [isAdmin,           setIsAdmin]          = React.useState(() => hasAdminToken());
+      const [loggedIn,          setLoggedIn]         = React.useState(() => !!(window.NotesGate && NotesGate.isLoggedIn()));
 
       // Factual quick-picks (cannot be inferred from clinical narrative).
       const [placeOfService, setPlaceOfService] = React.useState(() => {
@@ -511,6 +513,8 @@
         window.addEventListener("storage", onStorage);
         return () => window.removeEventListener("storage", onStorage);
       }, []);
+
+      React.useEffect(() => (window.NotesGate ? NotesGate.subscribe(setLoggedIn) : undefined), []);
 
       const switchProvider = (p) => {
         setProvider(p);
@@ -637,10 +641,10 @@ BT notes: "BCBA in 20 min. Arrived tired, slow to start. Ran tx-plan goals. Rece
       const handleGenerate = async () => {
         const err = validate();
         if (err) { setError(err); return; }
-        if (!apiKey.trim()) { setError("NO_KEY"); setRawError(""); return; }
+        if (!NotesGate.isLoggedIn()) { NotesGate.openLogin(); return; }
         setError(""); setRawError(""); setLoading(true); setOutput(null);
         try {
-          const parsed = await callProvider(provider, apiKey, SYSTEM_CORE + JSON_FORMAT_BLOCK, buildUserPrompt());
+          const parsed = await NotesGate.generateNote({ systemPrompt: SYSTEM_CORE + JSON_FORMAT_BLOCK, userPrompt: buildUserPrompt() });
           setOutput(normalizeOutput(parsed));
         } catch (e) {
           setRawError(e.message || "");
@@ -824,12 +828,12 @@ BT notes: "BCBA in 20 min. Arrived tired, slow to start. Ran tx-plan goals. Rece
               <strong style={{ color: "#374528" }}>Generate Prompt</strong> produces the same request as text to run in a separate AI chat.
             </p>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <button onClick={handleGenerate} disabled={loading} style={{
+              <button onClick={loggedIn ? handleGenerate : () => NotesGate.openLogin()} disabled={loading} style={{
                 padding: "12px 28px", borderRadius: 8, border: "none",
                 background: loading ? "#a0b890" : "#374528", color: "white", fontSize: 15, fontWeight: 600,
                 cursor: loading ? "not-allowed" : "pointer",
               }}>
-                {loading ? "Generating…" : "Generate Note"}
+                {loggedIn ? (loading ? "Generating…" : "Generate Note") : "Log in"}
               </button>
               <button onClick={handleGeneratePrompt} style={{
                 padding: "11px 18px", borderRadius: 8,

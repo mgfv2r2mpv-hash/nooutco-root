@@ -14,7 +14,12 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // API proxy endpoint for LLM calls
+    // Password login — returns a signed session token that unlocks Generate Note
+    if (url.pathname === "/api/login" && request.method === "POST") {
+      return handleLogin(request, env);
+    }
+
+    // API proxy endpoint for LLM calls (server-side key, requires a session token)
     if (url.pathname === "/api/llm-call" && request.method === "POST") {
       return handleLlmCall(request, env);
     }
@@ -125,42 +130,95 @@ function jsonRes(status, body) {
   });
 }
 
+// Validate a password and issue a signed session token.
+// One password for now (ADMIN_SECRET); the token is an HMAC over {exp}, signed
+// with ADMIN_SECRET, so rotating the secret invalidates every outstanding token.
+async function handleLogin(request, env) {
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonRes(400, { error: "Invalid request." }); }
+
+  const secret = (env.ADMIN_SECRET ?? "").trim();
+  const password = (body.password ?? "").trim();
+
+  if (!secret) return jsonRes(503, { error: "Login is not configured." });
+  if (!password || password !== secret) {
+    return jsonRes(401, { error: "Incorrect password." });
+  }
+
+  const token = await signToken({ exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30 }, secret);
+  return jsonRes(200, { token });
+}
+
 async function handleLlmCall(request, env) {
   try {
+    const secret = (env.ADMIN_SECRET ?? "").trim();
+    const auth = request.headers.get("Authorization") || "";
+    const token = auth.replace(/^Bearer\s+/i, "");
+
+    if (!secret || !(await verifyToken(token, secret))) {
+      return jsonRes(401, { error: "Not logged in. Please log in to generate a note." });
+    }
+
+    const apiKey = (env.ANTHROPIC_API_KEY ?? "").trim();
+    if (!apiKey) return jsonRes(503, { error: "Server API key is not configured." });
+
     const body = await request.json();
-    const { provider, apiKey, systemPrompt, userPrompt, model, maxTokens } = body;
-
-    if (!provider || !apiKey || !systemPrompt || !userPrompt) {
-      return new Response(
-        JSON.stringify({ error: "Missing required fields: provider, apiKey, systemPrompt, userPrompt" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
+    const { systemPrompt, userPrompt, model, maxTokens } = body;
+    if (!systemPrompt || !userPrompt) {
+      return jsonRes(400, { error: "Missing required fields: systemPrompt, userPrompt" });
     }
 
-    let llmResponse;
-    if (provider === "anthropic") {
-      llmResponse = await callAnthropicApi(apiKey, systemPrompt, userPrompt, model || "claude-haiku-4-5-20251001", maxTokens || 2048);
-    } else if (provider === "openai") {
-      llmResponse = await callOpenAiApi(apiKey, systemPrompt, userPrompt, model || "gpt-4o-mini", maxTokens || 2048);
-    } else if (provider === "gemini") {
-      llmResponse = await callGeminiApi(apiKey, systemPrompt, userPrompt, model || "gemini-2.5-flash", maxTokens || 2048);
-    } else {
-      return new Response(
-        JSON.stringify({ error: `Unsupported provider: ${provider}` }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    return new Response(JSON.stringify(llmResponse), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    const llmResponse = await callAnthropicApi(
+      apiKey, systemPrompt, userPrompt, model || "claude-haiku-4-5-20251001", maxTokens || 3000
+    );
+    return jsonRes(200, llmResponse);
   } catch (error) {
     console.error("LLM call error:", error);
-    return new Response(
-      JSON.stringify({ error: error.message || "Internal server error" }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+    return jsonRes(500, { error: error.message || "Internal server error" });
+  }
+}
+
+/* ── Session tokens: base64url(JSON payload) "." base64url(HMAC-SHA256) ── */
+
+function b64urlEncode(bytes) {
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function b64urlToBytes(str) {
+  const bin = atob(str.replace(/-/g, "+").replace(/_/g, "/"));
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+async function hmac(payloadStr, secret) {
+  const key = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payloadStr));
+  return new Uint8Array(sig);
+}
+async function signToken(payload, secret) {
+  const payloadStr = b64urlEncode(new TextEncoder().encode(JSON.stringify(payload)));
+  const sig = b64urlEncode(await hmac(payloadStr, secret));
+  return `${payloadStr}.${sig}`;
+}
+async function verifyToken(token, secret) {
+  if (!token || token.indexOf(".") === -1) return false;
+  const [payloadStr, sig] = token.split(".");
+  const expected = b64urlEncode(await hmac(payloadStr, secret));
+  // constant-time-ish compare
+  if (sig.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < sig.length; i++) diff |= sig.charCodeAt(i) ^ expected.charCodeAt(i);
+  if (diff !== 0) return false;
+  try {
+    const payload = JSON.parse(new TextDecoder().decode(b64urlToBytes(payloadStr)));
+    return !payload.exp || payload.exp * 1000 > Date.now();
+  } catch {
+    return false;
   }
 }
 

@@ -7,6 +7,7 @@
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+  <script src="/assets/notes-gate.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -256,6 +257,8 @@
       const [copied,           setCopied]           = React.useState(null);
       const [copiedPrompt,     setCopiedPrompt]     = React.useState(false);
       const [isAdmin,          setIsAdmin]          = React.useState(() => hasAdminToken());
+      const [loggedIn,         setLoggedIn]         = React.useState(() => !!(window.NotesGate && NotesGate.isLoggedIn()));
+      React.useEffect(() => (window.NotesGate ? NotesGate.subscribe(setLoggedIn) : undefined), []);
       const [promptText,       setPromptText]       = React.useState("");
       const [expanded,         setExpanded]         = React.useState(() => new Set());
       const toggleExpand = (i) => setExpanded(prev => {
@@ -317,12 +320,12 @@ Terminology standards (apply rigorously):
 
       const handleGenerate = async () => {
         if (!summaryNotes.trim()) { setError("Please enter Summary Notes of Activities."); return; }
-        if (!apiKey.trim())       { setError("NO_KEY"); setRawError(""); return; }
+        if (!NotesGate.isLoggedIn()) { NotesGate.openLogin(); return; }
         setError(""); setRawError("");
         setLoading(true);
         setOutput(null);
         try {
-          const parsed = await callProvider(provider, apiKey, SYSTEM_CORE + JSON_FORMAT_BLOCK, buildUserPrompt());
+          const parsed = await NotesGate.generateNote({ systemPrompt: SYSTEM_CORE + JSON_FORMAT_BLOCK, userPrompt: buildUserPrompt() });
           setOutput(normalizeOutput(parsed));
         } catch (e) {
           setRawError(e.message || "");
@@ -458,7 +461,7 @@ Terminology standards (apply rigorously):
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button
-                onClick={handleGenerate}
+                onClick={loggedIn ? handleGenerate : () => NotesGate.openLogin()}
                 disabled={loading}
                 style={{
                   padding: "11px 28px", borderRadius: 8, border: "none",
@@ -467,7 +470,7 @@ Terminology standards (apply rigorously):
                   cursor: loading ? "not-allowed" : "pointer",
                 }}
               >
-                {loading ? "Generating…" : "Generate Summary"}
+                {loggedIn ? (loading ? "Generating…" : "Generate Summary") : "Log in"}
               </button>
               <button
                 onClick={handleGeneratePrompt}
