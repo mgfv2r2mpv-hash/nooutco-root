@@ -58,6 +58,22 @@
     setToken("");
   }
 
+  // Decode the token payload (role + allowed tools). The server re-checks scope
+  // on every call; this only drives the UI (which button to show per tool).
+  function tokenPayload() {
+    var tok = getToken();
+    if (!tok) return null;
+    try {
+      return JSON.parse(atob(tok.split(".")[0].replace(/-/g, "+").replace(/_/g, "/")));
+    } catch (e) { return null; }
+  }
+  function canUseTool(toolId) {
+    var p = tokenPayload();
+    if (!p || (p.exp && p.exp * 1000 < Date.now())) return false;
+    if (p.role === "admin") return true;
+    return Array.isArray(p.tools) && p.tools.indexOf(toolId) !== -1;
+  }
+
   function subscribe(cb) {
     var handler = function () { cb(isLoggedIn()); };
     window.addEventListener(EVT, handler);
@@ -160,9 +176,15 @@
         userPrompt: scrubbedUser,
         model: opts.model || "claude-haiku-4-5-20251001",
         maxTokens: opts.maxTokens || 3000,
+        tool: opts.tool,
       }),
     }).then(function (res) {
       if (res.status === 401) { setToken(""); throw new Error("Session expired — please log in again."); }
+      if (res.status === 403) {
+        return res.json().then(function (data) {
+          throw new Error((data && data.error) || "Your access doesn't include this tool.");
+        });
+      }
       return res.json().then(function (data) {
         if (!res.ok) throw new Error("API error " + res.status + ": " + (data && data.error ? data.error : res.statusText));
         var raw = (data.content || []).map(function (b) { return b.text || ""; }).join("");
@@ -247,6 +269,7 @@
 
   window.NotesGate = {
     isLoggedIn: isLoggedIn,
+    canUseTool: canUseTool,
     subscribe: subscribe,
     openLogin: openLogin,
     login: login,

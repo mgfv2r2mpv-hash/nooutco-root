@@ -41,6 +41,11 @@
     .add-grid { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
     .add-grid > div { flex: 1; min-width: 150px; }
     h2 { margin: 0 0 14px; font-size: 16px; }
+    .tool-checks { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 2px; }
+    .tool-checks label { display: inline-flex; align-items: center; gap: 6px; margin: 0; text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--text); font-size: 13px; cursor: pointer; }
+    .tool-checks input { width: auto; padding: 0; }
+    .tool-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+    .tool-pill { background: #eaf1de; color: #4a5e2e; border-radius: 6px; padding: 1px 7px; font-size: 11px; font-weight: 600; white-space: nowrap; }
   </style>
 </head>
 <body>
@@ -79,12 +84,14 @@
           </div>
           <button id="addBtn" class="btn-primary">Add</button>
         </div>
+        <label style="margin-top: 14px;">Tools this password can use</label>
+        <div id="toolChecks" class="tool-checks"></div>
         <div id="addErr" class="err"></div>
       </div>
 
       <div class="card">
         <table>
-          <thead><tr><th>Label</th><th>Status</th><th>Created</th><th></th></tr></thead>
+          <thead><tr><th>Label</th><th>Tools</th><th>Status</th><th>Created</th><th></th></tr></thead>
           <tbody id="rows"></tbody>
         </table>
         <p id="empty" class="muted hidden" style="margin: 14px 4px 0;">No access passwords yet — add one above.</p>
@@ -96,6 +103,14 @@
     (function () {
       "use strict";
       var TOKEN_KEY = "notes_auth_token";
+      var TOOLS = [
+        { id: "bt", label: "BT Direct Session" },
+        { id: "sup", label: "Supervision" },
+        { id: "parent", label: "Parent" },
+        { id: "assess", label: "Assessment" },
+        { id: "sap", label: "SAP Goals" },
+      ];
+      function toolLabel(id) { for (var i = 0; i < TOOLS.length; i++) if (TOOLS[i].id === id) return TOOLS[i].label; return id; }
       function token() { return localStorage.getItem(TOKEN_KEY) || ""; }
       function payload() {
         try { return JSON.parse(atob(token().split(".")[0].replace(/-/g, "+").replace(/_/g, "/"))); }
@@ -147,6 +162,15 @@
       function fmt(iso) { if (!iso) return "—"; try { return new Date(iso).toLocaleDateString(); } catch (e) { return "—"; } }
       function escapeHtml(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
 
+      function renderToolChecks() {
+        document.getElementById("toolChecks").innerHTML = TOOLS.map(function (t) {
+          return '<label><input type="checkbox" value="' + t.id + '" /> ' + t.label + "</label>";
+        }).join("");
+      }
+      function selectedTools() {
+        return Array.prototype.slice.call(document.querySelectorAll("#toolChecks input:checked")).map(function (el) { return el.value; });
+      }
+
       function load() { api("GET").then(function (d) { render(d.passwords || []); }).catch(function () {}); }
 
       function render(list) {
@@ -154,8 +178,12 @@
         document.getElementById("empty").classList.toggle("hidden", list.length > 0);
         list.forEach(function (p) {
           var tr = document.createElement("tr");
+          var pills = (p.tools && p.tools.length)
+            ? '<div class="tool-pills">' + p.tools.map(function (t) { return '<span class="tool-pill">' + escapeHtml(toolLabel(t)) + "</span>"; }).join("") + "</div>"
+            : '<span class="muted">—</span>';
           tr.innerHTML =
             "<td>" + (p.label ? escapeHtml(p.label) : '<span class="muted">(no label)</span>') + "</td>" +
+            "<td>" + pills + "</td>" +
             '<td><span class="pill ' + (p.active ? "on" : "off") + '">' + (p.active ? "Active" : "Disabled") + "</span></td>" +
             '<td class="muted">' + fmt(p.createdAt) + "</td>" +
             '<td><div class="row-actions">' +
@@ -173,13 +201,17 @@
       document.getElementById("addBtn").addEventListener("click", function () {
         var label = document.getElementById("newLabel").value.trim();
         var pw = document.getElementById("newPw").value.trim();
+        var tools = selectedTools();
         var err = document.getElementById("addErr"); err.style.display = "none";
         if (!pw) { err.textContent = "Enter a password."; err.style.display = "block"; return; }
-        api("POST", { label: label, password: pw }).then(function () {
-          document.getElementById("newLabel").value = ""; document.getElementById("newPw").value = ""; load();
+        if (tools.length === 0) { err.textContent = "Select at least one tool this password can use."; err.style.display = "block"; return; }
+        api("POST", { label: label, password: pw, tools: tools }).then(function () {
+          document.getElementById("newLabel").value = ""; document.getElementById("newPw").value = "";
+          renderToolChecks(); load();
         }).catch(function (ex) { err.textContent = ex.message; err.style.display = "block"; });
       });
 
+      renderToolChecks();
       show();
     })();
   </script>
