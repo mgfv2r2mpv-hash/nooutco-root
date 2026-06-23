@@ -4,48 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Emotion ID — No Outcome ABA</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="../tokens.css">
+  <link rel="stylesheet" href="../tailwind.css">
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: var(--font-sans);
-      background: #eef1ea;
-      color: var(--slate-900);
-      padding: 22px 18px 44px;
-      min-height: 100vh;
-    }
-    .wrap { max-width: 760px; margin: 0 auto; }
-
-    /* ── Topbar ─────────────────────────────────────────────────────── */
-    .topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-    .topbar img { width: 38px; height: 38px; }
-    .topbar .name { font-size: 14px; font-weight: 800; color: var(--sage-700); line-height: 1.1; }
-    .topbar .name span { color: var(--sage-500); }
-    .topbar .sub { font-size: 11px; font-weight: 600; color: var(--slate-500); }
-    .topbar .spacer { flex: 1; }
-    .back {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 8px 14px; border: 1.5px solid var(--sage-200);
-      border-radius: var(--radius-md); background: transparent;
-      color: var(--sage-700); font-size: 13px; font-weight: 600;
-      text-decoration: none;
-      transition: background var(--duration-fast) var(--ease-standard);
-    }
-    .back:hover { background: #e2e8da; }
-    .iconbtn {
-      width: 36px; height: 36px;
-      display: inline-flex; align-items: center; justify-content: center;
-      border: 1px solid var(--sage-200); border-radius: var(--radius-md);
-      background: var(--white); cursor: pointer; font-size: 16px; color: var(--sage-700);
-      transition: background var(--duration-fast);
-    }
-    .iconbtn:hover { background: var(--sage-50); }
-    .iconbtn.on { background: var(--sage-500); color: #fff; border-color: var(--sage-500); }
 
     /* ── Mode + tally row ───────────────────────────────────────────── */
-    .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
     .seg { display: inline-flex; gap: 2px; padding: 2px; background: var(--sage-100); border-radius: var(--radius-md); }
     .seg button {
       border: none; background: transparent; padding: 8px 16px;
@@ -181,25 +143,48 @@
     .sizes button.on { background: var(--sage-500); color: #fff; }
     .saved { font-size: 11px; color: var(--sage-600); font-weight: 600; }
 
+    .wrap { max-width: 760px; margin: 0 auto; padding: 20px 18px 44px; }
     .foot { margin-top: 16px; font-size: 11px; color: var(--slate-400); line-height: 1.5; }
   </style>
 </head>
 <body>
-<div class="wrap">
 
-  <div class="topbar">
-    <img src="../logo-mark.svg" alt="No Outcome ABA" width="38" height="38">
-    <div>
-      <div class="name">No Outcome <span>ABA</span></div>
-      <div class="sub">Emotion ID</div>
+  <header id="app-header" title="Tap the bar to show / hide settings">
+    <a href="../" id="btn-back" class="btn-back" title="Back to Games"><span class="back-label">← Games</span></a>
+    <div class="app-title">
+      <span class="app-title-text">Emotion ID</span>
+      <span class="app-title-sub">No Outcome ABA · v<span id="app-version-label">0.1.0</span></span>
     </div>
-    <div class="spacer"></div>
-    <a class="back" href="../">← Games</a>
-    <button class="iconbtn" id="visualBtn" title="Visual mode" aria-label="Toggle Visual mode">✦</button>
-    <button class="iconbtn" id="gearBtn" title="Settings" aria-label="Settings">⚙️</button>
+    <div class="display-control">
+      <button type="button" id="display-toggle" class="display-toggle" role="switch" aria-checked="false" title="Simple / Visual mode">
+        <span class="display-ico display-ico-simple" aria-hidden="true">○</span>
+        <span class="display-ico display-ico-visual" aria-hidden="true">◇</span>
+        <span class="display-knob" aria-hidden="true"></span>
+      </button>
+      <span class="display-ghost" aria-hidden="true"></span>
+    </div>
+    <button type="button" id="gearBtn" class="btn-minimize" aria-expanded="false" aria-controls="panel" title="Settings">⚙</button>
+    <button type="button" id="btn-minimize" class="btn-minimize" aria-expanded="true" aria-controls="emotions-settings" title="Show / hide settings">▾</button>
+  </header>
+
+  <!-- Mode + tally bar (collapsible via minimize button) -->
+  <div id="settings-bar">
+    <div class="setting-group">
+      <label>Mode</label>
+      <div class="seg" id="mode">
+        <button class="on" data-v="receptive">Receptive</button>
+        <button data-v="expressive">Expressive</button>
+      </div>
+    </div>
+    <div class="tally">
+      <span><b id="tCorrect">0</b>/<span id="tTotal">0</span></span>
+      <span class="pct" id="tPct">—</span>
+      <button class="linkbtn" id="copyBtn">Copy data</button>
+      <button class="linkbtn" id="resetBtn">Reset</button>
+    </div>
   </div>
 
-  <!-- Settings panel -->
+  <!-- Settings panel (toggle via gear button) -->
   <div class="panel" id="panel">
     <div class="blk">
       <h3>Emotions in this set</h3>
@@ -252,19 +237,7 @@
     <div class="saved" id="savedMsg">Settings save automatically.</div>
   </div>
 
-  <!-- Mode + tally -->
-  <div class="controls">
-    <div class="seg" id="mode">
-      <button class="on" data-v="receptive">Receptive</button>
-      <button data-v="expressive">Expressive</button>
-    </div>
-    <div class="tally">
-      <span><b id="tCorrect">0</b>/<span id="tTotal">0</span></span>
-      <span class="pct" id="tPct">—</span>
-      <button class="linkbtn" id="copyBtn">Copy data</button>
-      <button class="linkbtn" id="resetBtn">Reset</button>
-    </div>
-  </div>
+<div class="wrap">
 
   <!-- SD banner -->
   <div class="sd">
@@ -279,8 +252,9 @@
 
   <p class="foot">Faces shown as emoji for demo; swap in your own photo/illustration set per learner. No client data is stored — only trial counts live in this browser session.</p>
 
-</div>
+</div><!-- .wrap -->
 
+<script src="../header-chrome.js"></script>
 <script>
 (function () {
   const EMOTIONS = [
@@ -488,18 +462,21 @@
 
   document.getElementById('gearBtn').addEventListener('click', function () {
     document.getElementById('panel').classList.toggle('show');
-    this.classList.toggle('on');
+    const expanded = document.getElementById('panel').classList.contains('show');
+    this.setAttribute('aria-expanded', String(expanded));
   });
 
-  const visualBtn = document.getElementById('visualBtn');
   function paintVisual() {
     document.body.classList.toggle('visual', cfg.visual);
-    visualBtn.classList.toggle('on', cfg.visual);
+    if (window.__syncDisplayToggle) window.__syncDisplayToggle(cfg.visual ? 'visual' : 'simple');
   }
-  visualBtn.addEventListener('click', () => {
-    cfg.visual = !cfg.visual; save(); paintVisual();
-    if (current) { mode === 'receptive' ? renderReceptive() : renderExpressive(); }
-  });
+  // Bridge from header-chrome.js display toggle → cfg.visual
+  window.__setGameDisplayMode = function(displayMode) {
+    cfg.visual = (displayMode === 'visual');
+    save();
+    paintVisual();
+    if (current) { (mode === 'receptive') ? renderReceptive() : renderExpressive(); }
+  };
   paintVisual();
 
   document.getElementById('resetBtn').addEventListener('click', () => {

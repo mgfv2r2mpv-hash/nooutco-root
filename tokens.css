@@ -1,9 +1,6 @@
 /* No Outcome ABA — design tokens (games-nooutco-me)
    Consolidated from design_handoff_site_overhaul/tokens/*.css */
 
-@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;600;700&display=swap');
-
 :root {
   /* ── Families ─────────────────────────────────────────────────────── */
   --font-sans: 'Atkinson Hyperlegible', -apple-system, BlinkMacSystemFont,

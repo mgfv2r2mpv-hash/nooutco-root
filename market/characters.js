@@ -50,6 +50,7 @@ function buildCustomer(seed) {
   const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('viewBox', '0 0 200 360');
   svg.setAttribute('xmlns', SVG_NS);
+  svg.setAttribute('shape-rendering', 'geometricPrecision');
   svg.classList.add('customer-svg');
 
   const NS = (tag, attrs = {}) => {
@@ -59,13 +60,13 @@ function buildCustomer(seed) {
   };
 
   // Neck — drawn BEFORE the body so the shirt covers the bottom of the
-  // neck rectangle and the head connects cleanly into the shoulders
-  // instead of floating above them.
-  svg.appendChild(NS('rect', { x: 86, y: 156, width: 28, height: 50, fill: skin, stroke: '#1a1a1a', 'stroke-width': '2.5' }));
+  // neck rectangle and the head connects cleanly into the shoulders.
+  // Extended 4px into head territory (y=152) and 8px deeper (height=58)
+  // so there is always solid overlap with both the head ellipse and the
+  // body path at every render scale, preventing sub-pixel seam gaps.
+  svg.appendChild(NS('rect', { x: 86, y: 152, width: 28, height: 58, fill: skin, stroke: '#1a1a1a', 'stroke-width': '2.5' }));
 
   // Body / shirt — trapezoid
-  // shoulders y=190, waist y=340; raised slightly so it tucks under the
-  // chin and the neck stub doesn't gap above it.
   const body = NS('path', {
     d: 'M 50 340 L 58 190 Q 100 172 142 190 L 150 340 Z',
     fill: shirt,

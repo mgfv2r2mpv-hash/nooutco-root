@@ -5,19 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="version" content="1.0">
   <title>Intraverbal Game</title>
+  <link rel="stylesheet" href="../tailwind.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
   <!-- ── Header ──────────────────────────────────────────────────── -->
-  <header id="app-header">
-    <a href="../" id="btn-back" title="Back to Games">← Games</a>
-    <h1>Intraverbal Game</h1>
+  <header id="app-header" title="Tap the bar to show / hide settings">
+    <a href="../" id="btn-back" class="btn-back" title="Back to Games"><span class="back-label">← Games</span></a>
+    <div class="app-title">
+      <span class="app-title-text">Intraverbal</span>
+      <span class="app-title-sub">No Outcome ABA · v<span id="app-version-label">0.1.0</span></span>
+    </div>
     <div id="timer-section">
       <span id="timer-display">00:00</span>
       <button id="btn-timer-toggle" class="btn-timer" title="Pause / Resume">Pause</button>
       <button id="btn-timer-reset"  class="btn-timer" title="Reset timer">Reset</button>
     </div>
+    <button type="button" id="btn-minimize" class="btn-minimize" aria-expanded="true" aria-controls="settings-bar" title="Show / hide settings">▾</button>
   </header>
 
   <!-- ── Settings bar ─────────────────────────────────────────────── -->
@@ -249,6 +254,7 @@
   </div>
 
   <script src="../../tooltip-help.js"></script>
+  <script src="../header-chrome.js"></script>
   <script src="game.js"></script>
   <script>
     const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
