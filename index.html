@@ -385,7 +385,7 @@
           ${authed
             ? `<div class="status">You are signed in${admin ? " as admin" : ""}.</div>
                <div class="actions">
-                 ${admin ? `<a class="btn-primary" href="/admin/" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;text-decoration:none;padding:9px 16px;font-size:14px;font-weight:600;border-radius:8px;">🛠️ Admin</a>` : ""}
+                 ${admin ? `<a class="btn-primary" href="/admin/" aria-label="Open API Passwords admin" title="API Passwords admin" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;padding:9px 13px;font-size:17px;line-height:1;border-radius:8px;">🛠️</a>` : ""}
                  <button type="button" class="btn-secondary" id="adminSignOut">Log out</button>
                </div>`
             : `<p>Enter the admin password</p>
