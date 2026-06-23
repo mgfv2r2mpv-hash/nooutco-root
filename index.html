@@ -350,21 +350,24 @@
 </div>
 
 <script>
-  // To change the admin password, replace ADMIN_SECRET_HASH with the SHA-256 hex digest of your new password.
-  const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
-
-  async function sha256Hex(str) {
-    const buf = new TextEncoder().encode(str);
-    const digest = await crypto.subtle.digest("SHA-256", buf);
-    return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
-  }
-
-  const hasAdminToken = () => localStorage.getItem("admin_token") === ADMIN_SECRET_HASH;
+  // Admin sign-in uses the server session token (same one the notes tools use).
+  // Signing in as admin here also authorizes the 🛠️ API Passwords admin screen.
+  const TOKEN_KEY = "notes_auth_token";
   const gearBtn = document.getElementById("adminGear");
   const modalRoot = document.getElementById("adminModalRoot");
 
+  function tokenPayload() {
+    try {
+      const t = localStorage.getItem(TOKEN_KEY) || "";
+      return JSON.parse(atob(t.split(".")[0].replace(/-/g, "+").replace(/_/g, "/")));
+    } catch (e) { return null; }
+  }
+  const isLive = p => !!(p && (!p.exp || p.exp * 1000 > Date.now()));
+  const loggedIn = () => isLive(tokenPayload());
+  const isAdmin = () => { const p = tokenPayload(); return isLive(p) && p.role === "admin"; };
+
   function updateGearState() {
-    if (hasAdminToken()) gearBtn.classList.add("is-admin");
+    if (loggedIn()) gearBtn.classList.add("is-admin");
     else gearBtn.classList.remove("is-admin");
   }
   updateGearState();
@@ -372,24 +375,24 @@
   function closeModal() { modalRoot.innerHTML = ""; }
 
   function renderModal() {
-    const admin = hasAdminToken();
+    const authed = loggedIn();
+    const admin = isAdmin();
     modalRoot.innerHTML = `
       <div class="admin-modal-backdrop" id="adminBackdrop">
-        <div class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="adminModalTitle">
-          <h2 id="adminModalTitle">${admin ? "Admin Access" : "Admin Sign-In"}</h2>
-          ${admin
-            ? `<div class="status">You are signed in as admin.</div>
-               <p>Sign out to return the tools to public (Generate Prompt only) mode.</p>
+        <div class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="adminModalTitle" style="position:relative;">
+          <button type="button" id="adminX" aria-label="Close" style="position:absolute;top:8px;right:12px;border:none;background:none;font-size:24px;line-height:1;color:#7a8a68;cursor:pointer;">&times;</button>
+          <h2 id="adminModalTitle">${authed ? "Admin" : "Admin Sign-In"}</h2>
+          ${authed
+            ? `<div class="status">You are signed in${admin ? " as admin" : ""}.</div>
                <div class="actions">
-                 <button type="button" class="btn-secondary" id="adminCancel">Close</button>
-                 <button type="button" class="btn-primary" id="adminSignOut">Sign out</button>
+                 ${admin ? `<a class="btn-primary" href="/admin/" style="display:inline-block;text-decoration:none;text-align:center;">🛠️ Admin</a>` : ""}
+                 <button type="button" class="btn-secondary" id="adminSignOut">Log out</button>
                </div>`
             : `<p>Enter the admin password</p>
                <form id="adminForm">
                  <input type="password" id="adminPw" placeholder="••••••••" autocomplete="current-password" autofocus />
                  <div class="error" id="adminError" style="display:none"></div>
                  <div class="actions">
-                   <button type="button" class="btn-secondary" id="adminCancel">Cancel</button>
                    <button type="submit" class="btn-primary">Unlock</button>
                  </div>
                </form>`
@@ -401,11 +404,11 @@
     document.getElementById("adminBackdrop").addEventListener("click", e => {
       if (e.target.id === "adminBackdrop") closeModal();
     });
-    document.getElementById("adminCancel").addEventListener("click", closeModal);
+    document.getElementById("adminX").addEventListener("click", closeModal);
 
-    if (admin) {
+    if (authed) {
       document.getElementById("adminSignOut").addEventListener("click", () => {
-        localStorage.removeItem("admin_token");
+        localStorage.removeItem(TOKEN_KEY);
         updateGearState();
         closeModal();
       });
@@ -414,14 +417,20 @@
       const errorEl = document.getElementById("adminError");
       form.addEventListener("submit", async e => {
         e.preventDefault();
-        const pw = document.getElementById("adminPw").value;
-        const hash = await sha256Hex(pw);
-        if (hash === ADMIN_SECRET_HASH) {
-          localStorage.setItem("admin_token", hash);
+        errorEl.style.display = "none";
+        try {
+          const res = await fetch("/api/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password: document.getElementById("adminPw").value }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.token) throw new Error(data.error || "Incorrect password.");
+          localStorage.setItem(TOKEN_KEY, data.token);
           updateGearState();
-          closeModal();
-        } else {
-          errorEl.textContent = "Incorrect password.";
+          renderModal();
+        } catch (ex) {
+          errorEl.textContent = ex.message || "Incorrect password.";
           errorEl.style.display = "block";
         }
       });

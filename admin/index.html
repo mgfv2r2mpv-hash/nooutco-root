@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>API Passwords Admin · No Outcome ABA</title>
+  <link rel="icon" href="/logo-mark.svg" />
+  <style>
+    :root {
+      --sage: #374528; --sage-light: #c0d4a8; --bg: #f4f7ee; --surface: #fff;
+      --text: #2d3a1f; --muted: #5a6b4a; --line: #e2ead4; --red: #c0392b;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+    .wrap { max-width: 740px; margin: 0 auto; padding: 36px 20px 80px; }
+    .topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 26px; }
+    h1 { font-size: 23px; margin: 0 0 4px; letter-spacing: -.01em; }
+    .sub { color: var(--muted); font-size: 14px; margin: 0; line-height: 1.5; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; box-shadow: 0 8px 24px rgba(20, 28, 14, .06); margin-bottom: 20px; }
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .03em; }
+    input[type=text], input[type=password] { width: 100%; padding: 10px 12px; border: 1.5px solid var(--sage-light); border-radius: 8px; font-size: 14px; font-family: inherit; }
+    input:focus { outline: none; border-color: var(--sage); }
+    button { font-family: inherit; cursor: pointer; border: none; border-radius: 8px; font-weight: 600; }
+    .btn-primary { background: var(--sage); color: #fff; padding: 11px 18px; font-size: 14px; }
+    .btn-primary:hover { background: #2d3a1f; }
+    .btn-ghost { background: #fff; color: var(--sage); border: 1.5px solid var(--sage-light); padding: 7px 12px; font-size: 13px; }
+    .btn-ghost:hover { background: #f0f5e8; }
+    .btn-danger { background: #fff; color: var(--red); border: 1.5px solid #e8c4be; padding: 7px 12px; font-size: 13px; }
+    .btn-danger:hover { background: #fcf2f0; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 11px 8px; border-bottom: 1px solid #eef2e6; font-size: 14px; vertical-align: middle; }
+    th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+    tr:last-child td { border-bottom: none; }
+    .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .pill.on { background: #e3f0d3; color: #3f6121; }
+    .pill.off { background: #f0e3e1; color: #9a4034; }
+    .err { color: var(--red); font-size: 13px; margin-top: 10px; display: none; }
+    .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .hidden { display: none; }
+    .add-grid { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+    .add-grid > div { flex: 1; min-width: 150px; }
+    h2 { margin: 0 0 14px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div>
+        <h1>🛠️ API Passwords Admin</h1>
+        <p class="sub">Create and manage access passwords that unlock <strong>Generate Note</strong>. Holders get note generation only — not this screen.</p>
+      </div>
+      <button id="logout" class="btn-ghost hidden">Log out</button>
+    </div>
+
+    <!-- Login gate -->
+    <div id="loginCard" class="card hidden" style="max-width: 380px;">
+      <label for="pw">Admin password</label>
+      <input id="pw" type="password" autocomplete="current-password" placeholder="Admin password" />
+      <div id="loginErr" class="err"></div>
+      <button id="loginBtn" class="btn-primary" style="margin-top: 14px; width: 100%;">Log in</button>
+    </div>
+
+    <!-- Admin UI -->
+    <div id="adminUI" class="hidden">
+      <div class="card">
+        <h2>Add an access password</h2>
+        <div class="add-grid">
+          <div>
+            <label for="newLabel">Label (who it's for)</label>
+            <input id="newLabel" type="text" placeholder="e.g. Front desk" />
+          </div>
+          <div>
+            <label for="newPw">Password</label>
+            <input id="newPw" type="text" placeholder="Access password" />
+          </div>
+          <button id="addBtn" class="btn-primary">Add</button>
+        </div>
+        <div id="addErr" class="err"></div>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead><tr><th>Label</th><th>Status</th><th>Created</th><th></th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <p id="empty" class="muted hidden" style="margin: 14px 4px 0;">No access passwords yet — add one above.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+      var TOKEN_KEY = "notes_auth_token";
+      function token() { return localStorage.getItem(TOKEN_KEY) || ""; }
+      function payload() {
+        try { return JSON.parse(atob(token().split(".")[0].replace(/-/g, "+").replace(/_/g, "/"))); }
+        catch (e) { return null; }
+      }
+      function isAdmin() { var p = payload(); return !!(p && p.role === "admin" && (!p.exp || p.exp * 1000 > Date.now())); }
+
+      var loginCard = document.getElementById("loginCard");
+      var adminUI = document.getElementById("adminUI");
+      var logoutBtn = document.getElementById("logout");
+
+      function show() {
+        if (isAdmin()) {
+          loginCard.classList.add("hidden"); adminUI.classList.remove("hidden"); logoutBtn.classList.remove("hidden");
+          load();
+        } else {
+          loginCard.classList.remove("hidden"); adminUI.classList.add("hidden"); logoutBtn.classList.add("hidden");
+          document.getElementById("pw").focus();
+        }
+      }
+
+      function doLogin() {
+        var pw = document.getElementById("pw");
+        var err = document.getElementById("loginErr");
+        err.style.display = "none";
+        fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: pw.value }) })
+          .then(function (r) { return r.json().then(function (d) { if (!r.ok || !d.token) throw new Error(d.error || "Login failed."); return d; }); })
+          .then(function (d) {
+            if (d.role !== "admin") throw new Error("That password doesn't have admin access.");
+            localStorage.setItem(TOKEN_KEY, d.token); pw.value = ""; show();
+          })
+          .catch(function (ex) { err.textContent = ex.message; err.style.display = "block"; });
+      }
+      document.getElementById("loginBtn").addEventListener("click", doLogin);
+      document.getElementById("pw").addEventListener("keydown", function (e) { if (e.key === "Enter") doLogin(); });
+      logoutBtn.addEventListener("click", function () { localStorage.removeItem(TOKEN_KEY); show(); });
+
+      function api(method, body) {
+        return fetch("/api/admin/passwords", {
+          method: method,
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token() },
+          body: body ? JSON.stringify(body) : undefined,
+        }).then(function (r) {
+          if (r.status === 401) { localStorage.removeItem(TOKEN_KEY); show(); throw new Error("Session expired."); }
+          return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ("Error " + r.status)); return d; });
+        });
+      }
+
+      function fmt(iso) { if (!iso) return "—"; try { return new Date(iso).toLocaleDateString(); } catch (e) { return "—"; } }
+      function escapeHtml(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+      function load() { api("GET").then(function (d) { render(d.passwords || []); }).catch(function () {}); }
+
+      function render(list) {
+        var rows = document.getElementById("rows"); rows.innerHTML = "";
+        document.getElementById("empty").classList.toggle("hidden", list.length > 0);
+        list.forEach(function (p) {
+          var tr = document.createElement("tr");
+          tr.innerHTML =
+            "<td>" + (p.label ? escapeHtml(p.label) : '<span class="muted">(no label)</span>') + "</td>" +
+            '<td><span class="pill ' + (p.active ? "on" : "off") + '">' + (p.active ? "Active" : "Disabled") + "</span></td>" +
+            '<td class="muted">' + fmt(p.createdAt) + "</td>" +
+            '<td><div class="row-actions">' +
+              '<button class="btn-ghost" data-act="toggle">' + (p.active ? "Deactivate" : "Activate") + "</button>" +
+              '<button class="btn-danger" data-act="delete">Delete</button>' +
+            "</div></td>";
+          tr.querySelector('[data-act=toggle]').addEventListener("click", function () { api("PATCH", { id: p.id, active: !p.active }).then(load).catch(function () {}); });
+          tr.querySelector('[data-act=delete]').addEventListener("click", function () {
+            if (confirm("Delete this password? Anyone using it will lose access immediately.")) api("DELETE", { id: p.id }).then(load).catch(function () {});
+          });
+          rows.appendChild(tr);
+        });
+      }
+
+      document.getElementById("addBtn").addEventListener("click", function () {
+        var label = document.getElementById("newLabel").value.trim();
+        var pw = document.getElementById("newPw").value.trim();
+        var err = document.getElementById("addErr"); err.style.display = "none";
+        if (!pw) { err.textContent = "Enter a password."; err.style.display = "block"; return; }
+        api("POST", { label: label, password: pw }).then(function () {
+          document.getElementById("newLabel").value = ""; document.getElementById("newPw").value = ""; load();
+        }).catch(function (ex) { err.textContent = ex.message; err.style.display = "block"; });
+      });
+
+      show();
+    })();
+  </script>
+</body>
+</html>
