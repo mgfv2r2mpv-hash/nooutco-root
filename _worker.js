@@ -36,6 +36,10 @@ export default {
       return handleNonPii(request, env);
     }
 
+    if (url.pathname === "/api/error-report" && request.method === "POST") {
+      return handleErrorReport(request, env);
+    }
+
     if (url.pathname === "/api/suggest" && request.method === "POST") {
       return handleSuggest(request, env);
     }
@@ -68,6 +72,41 @@ export default {
     return new Response(html, { status: response.status, headers });
   },
 };
+
+async function handleErrorReport(request, env) {
+  const secret = (env.ADMIN_SECRET ?? "").trim();
+  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!secret || !(await verifyToken(token, secret))) {
+    return jsonRes(401, { error: "Unauthorized." });
+  }
+
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonRes(400, { error: "Invalid request." }); }
+
+  const { message, tool, timestamp } = body;
+  if (!message) return jsonRes(400, { error: "Missing message." });
+
+  if (!env.RESEND_API_KEY) return jsonRes(200, { ok: true });
+
+  const toEmail = env.SUGGEST_TO_EMAIL || "feedback@nooutco.me";
+  const subject = `[Error] ${tool || "notes"} — ${(message || "").slice(0, 60)}`;
+  const text = [
+    `Tool: ${tool || "(unknown)"}`,
+    `Time: ${timestamp || new Date().toISOString()}`,
+    ``,
+    `Error:`,
+    message,
+  ].join("\n");
+
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.RESEND_API_KEY}` },
+    body: JSON.stringify({ from: "No Outcome ABA <noreply@nooutco.me>", to: [toEmail], subject, text }),
+  });
+
+  return jsonRes(200, { ok: true });
+}
 
 async function handleSuggest(request, env) {
   const MIN_CHARS = 30;
