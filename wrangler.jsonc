@@ -3,8 +3,9 @@
   "pages_build_output_dir": ".",
   "kv_namespaces": [
     {
+      // Account A (kaleb@nooutco.me) namespace — migrated from old account
       "binding": "VOTE_DATA",
-      "id": "955ceb7270204f4a86d8229b2c7dc2a7"
+      "id": "61efd899ac174fa99923f3d2acb1df66"
     }
   ]
 }
