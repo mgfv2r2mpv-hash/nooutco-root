@@ -59,7 +59,12 @@ export default {
       return handleScrubOverrides(request, env);
     }
 
-    // Admin-only: manually trigger the nightly learning run (for testing)
+    // Admin-only: review queue — list pending AI suggestions, approve/reject
+    if (url.pathname === "/api/admin/scrub-suggestions") {
+      return handleScrubSuggestions(request, env);
+    }
+
+    // Trigger the learning run — admin token OR CRON_SECRET (for the scheduled GitHub Action)
     if (url.pathname === "/api/admin/scrub-run" && request.method === "POST") {
       return handleScrubRun(request, env);
     }
@@ -613,28 +618,91 @@ async function handleScrubOverrides(request, env) {
   if (!env.API_PASSWORDS) return jsonRes(503, { error: "Storage not configured." });
   const raw = await env.API_PASSWORDS.get("scrub-overrides:v1");
   const data = raw ? JSON.parse(raw) : { stopwords: [], firstNames: [], lastRun: null, digest: null };
-  return jsonRes(200, data);
+  const sugRaw = await env.API_PASSWORDS.get("scrub-suggestions:v1");
+  const pending = sugRaw ? JSON.parse(sugRaw) : [];
+  return jsonRes(200, { ...data, pending: pending.length });
 }
 
-// Admin-only: manually trigger the nightly learning run without waiting for cron.
-async function handleScrubRun(request, env) {
+// Admin-only review queue. The nightly run only ever PROPOSES stopwords (never removes
+// names, never weakens detection); a human approves each one here before it goes live.
+async function handleScrubSuggestions(request, env) {
   const secret = (env.ADMIN_SECRET ?? "").trim();
   const auth = request.headers.get("Authorization") || "";
   const token = auth.replace(/^Bearer\s+/i, "");
   const payload = secret ? await readToken(token, secret) : null;
   if (!payload || payload.role !== "admin") return jsonRes(401, { error: "Admin access required." });
+  if (!env.API_PASSWORDS) return jsonRes(503, { error: "Storage not configured." });
+  const kv = env.API_PASSWORDS;
+  const SUG_KEY = "scrub-suggestions:v1";
+
+  if (request.method === "GET") {
+    const raw = await kv.get(SUG_KEY);
+    return jsonRes(200, { suggestions: raw ? JSON.parse(raw) : [] });
+  }
+
+  if (request.method === "POST") {
+    let body;
+    try { body = await request.json(); } catch { return jsonRes(400, { error: "Invalid body." }); }
+    const id = body.id;
+    const decision = body.decision;
+    if (!id || (decision !== "approve" && decision !== "reject")) {
+      return jsonRes(400, { error: "id and decision (approve|reject) are required." });
+    }
+    const raw = await kv.get(SUG_KEY);
+    const suggestions = raw ? JSON.parse(raw) : [];
+    const match = suggestions.find((s) => s.id === id);
+    if (!match) return jsonRes(404, { error: "Suggestion not found." });
+
+    if (decision === "approve") {
+      // Promote the term into the live stopword list the client reads via /api/scrub-config.
+      const ovRaw = await kv.get("scrub-overrides:v1");
+      const ov = ovRaw ? JSON.parse(ovRaw) : { stopwords: [], firstNames: [] };
+      const term = (match.term || "").toLowerCase().trim();
+      const stopwords = Array.from(new Set([...(ov.stopwords || []), term].filter(Boolean)));
+      await kv.put("scrub-overrides:v1", JSON.stringify({ ...ov, stopwords }));
+    }
+    // Both approve and reject remove the suggestion from the queue.
+    await kv.put(SUG_KEY, JSON.stringify(suggestions.filter((s) => s.id !== id)));
+    return jsonRes(200, { ok: true });
+  }
+
+  return jsonRes(405, { error: "Method not allowed." });
+}
+
+// Trigger the learning run. Accepts an admin login token (manual button) OR the
+// CRON_SECRET shared secret (the scheduled GitHub Action, which can't log in).
+async function handleScrubRun(request, env) {
+  const auth = request.headers.get("Authorization") || "";
+  const token = auth.replace(/^Bearer\s+/i, "");
+  const cronSecret = (env.CRON_SECRET ?? "").trim();
+  const adminSecret = (env.ADMIN_SECRET ?? "").trim();
+  const isCron = cronSecret && timingSafeEqual(token, cronSecret);
+  const payload = adminSecret ? await readToken(token, adminSecret) : null;
+  const isAdmin = payload && payload.role === "admin";
+  if (!isCron && !isAdmin) return jsonRes(401, { error: "Admin or cron authorization required." });
   await runScrubLearning(env);
   return jsonRes(200, { ok: true });
 }
 
+// Constant-time string comparison to avoid leaking the secret via timing.
+function timingSafeEqual(a, b) {
+  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
 // Core learning logic: called by scheduled() and handleScrubRun().
-// Analyzes today's certified non-PII terms + admin problem strings, proposes
-// STOPWORDS/FIRST_NAMES improvements, merges them, and sends a digest email.
+// PROPOSE-ONLY by design. This is a PHI de-identification control with no BAA, so the
+// only safe error direction is over-detection. The run can therefore only ever suggest
+// SUPPRESSING a human-certified false positive (adding a stopword) — never removing a
+// name, never weakening detection. Every suggestion is queued for human approval in the
+// admin Algorithm Lab; nothing here mutates the live detection config.
 async function runScrubLearning(env) {
   if (!env.API_PASSWORDS || !env.ANTHROPIC_API_KEY) return;
   const kv = env.API_PASSWORDS;
 
-  // Today's certified non-PII terms (false positives from the scrub algorithm)
+  // Today's certified non-PII terms (false positives a clinician explicitly cleared)
   const today = new Date();
   const todayMidnightMs = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
   const nonPiiRaw = await kv.get("nonpii:v1");
@@ -649,21 +717,30 @@ async function runScrubLearning(env) {
 
   if (todayTerms.length === 0 && problemStrings.length === 0) return;
 
+  // Vocabulary the AI is allowed to draw from (defense in depth: it cannot invent words).
+  const inputVocab = new Set();
+  todayTerms.forEach((t) => inputVocab.add(String(t).toLowerCase().trim()));
+  problemStrings.forEach((p) => String(p.text || "").split(/\s+/).forEach((w) => {
+    const clean = w.replace(/[^A-Za-z'\-]/g, "").toLowerCase().trim();
+    if (clean) inputVocab.add(clean);
+  }));
+
   const systemPrompt = [
-    "You are improving a client-side PHI name-detection algorithm used in ABA clinical notes tools.",
-    "The algorithm uses STOPWORDS (common words/ABA terms to always skip) and FIRST_NAMES (known names to always flag).",
-    "Analyze today's data and suggest changes. Be conservative — prefer false negatives over false positives.",
-    "Never add actual person names to addToStopwords.",
+    "You review terms flagged by a client-side PHI name-detection algorithm used in ABA clinical notes tools.",
+    "Your ONLY job is to decide which human-certified non-PII terms are safe to suppress globally by adding them to a STOPWORDS list (always-skip).",
+    "Suggest a term ONLY if it is unmistakably common English or ABA clinical vocabulary that could never be a person's name.",
+    "If a term could plausibly be anyone's first or last name — including uncommon, nickname, or international names like Raphael or Raphy — DO NOT suggest it; leave it flagged.",
+    "You may never remove names or weaken detection; a human reviews every suggestion before it takes effect. When in doubt, suggest nothing.",
   ].join(" ");
 
   const userPrompt = [
-    "Certified-not-PHI terms (algorithm flagged these but they are not person names):",
+    "Certified-not-PHI terms (a clinician flagged these as NOT person names):",
     todayTerms.length ? todayTerms.map((t) => "  - " + t).join("\n") : "  (none today)",
     "",
     "Admin problem strings (examples where detection went wrong):",
     problemStrings.length ? problemStrings.map((p) => "  - " + p.text).join("\n") : "  (none today)",
     "",
-    'Return ONLY valid JSON (no markdown): {"addToStopwords":[],"removeFromFirstNames":[],"digest":"1-2 sentence summary","confidence":"high|medium|low"}',
+    'Return ONLY valid JSON (no markdown): {"suggestions":[{"term":"word","reason":"why it is safe to suppress","confidence":"high|medium|low"}],"digest":"1-2 sentence summary"}',
   ].join("\n");
 
   let result;
@@ -679,7 +756,7 @@ async function runScrubLearning(env) {
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + env.RESEND_API_KEY },
         body: JSON.stringify({
           from: "tools@nooutco.me", to: env.SUGGEST_TO_EMAIL,
-          subject: "PHI Algorithm Update Failed — " + new Date().toISOString().slice(0, 10),
+          subject: "PHI scrub run failed — " + new Date().toISOString().slice(0, 10),
           text: "Nightly scrub learning run failed: " + (e.message || String(e)),
         }),
       }).catch(() => {});
@@ -689,40 +766,67 @@ async function runScrubLearning(env) {
 
   if (!result) return;
 
-  // Merge into scrub-overrides:v1
-  const existingRaw = await kv.get("scrub-overrides:v1");
-  const existing = existingRaw ? JSON.parse(existingRaw) : { stopwords: [], firstNames: [] };
-  const newStopwords = Array.from(new Set([...(existing.stopwords || []), ...(result.addToStopwords || [])]));
-  const newFirstNames = (existing.firstNames || []).filter((n) => !(result.removeFromFirstNames || []).includes(n));
+  // Load existing queue + already-approved stopwords to dedupe against.
+  const sugRaw = await kv.get("scrub-suggestions:v1");
+  const queue = sugRaw ? JSON.parse(sugRaw) : [];
+  const ovRaw = await kv.get("scrub-overrides:v1");
+  const ov = ovRaw ? JSON.parse(ovRaw) : { stopwords: [], firstNames: [] };
+  const approvedStopwords = new Set((ov.stopwords || []).map((w) => String(w).toLowerCase()));
+  const queuedTerms = new Set(queue.map((s) => String(s.term).toLowerCase()));
+
+  // Accept only terms that (a) the AI returned, (b) appeared in today's input vocab,
+  // (c) aren't already approved or queued. This is the hard guardrail.
+  const fresh = [];
+  (result.suggestions || []).forEach((s) => {
+    const term = String(s.term || "").toLowerCase().trim();
+    if (!term || !inputVocab.has(term)) return;
+    if (approvedStopwords.has(term) || queuedTerms.has(term)) return;
+    queuedTerms.add(term);
+    fresh.push({
+      id: crypto.randomUUID(),
+      term,
+      reason: String(s.reason || "").slice(0, 300),
+      confidence: ["high", "medium", "low"].includes(s.confidence) ? s.confidence : "low",
+      proposedAt: new Date().toISOString(),
+    });
+  });
+
   const runDate = new Date().toISOString().slice(0, 10);
+  await kv.put("scrub-suggestions:v1", JSON.stringify([...queue, ...fresh]));
+  // Record the run on the overrides object (last run + digest) without touching live config.
   await kv.put("scrub-overrides:v1", JSON.stringify({
-    stopwords: newStopwords, firstNames: newFirstNames,
-    lastRun: new Date().toISOString(), digest: result.digest || "",
+    stopwords: ov.stopwords || [],
+    firstNames: ov.firstNames || [],
+    lastRun: new Date().toISOString(),
+    digest: result.digest || "",
   }));
 
-  // Clear problem strings queue after processing
+  // Clear problem strings queue after processing.
   await kv.put("scrub-learn:v1", JSON.stringify([]));
 
-  // Send digest email
+  // Send a review digest — suggestions are pending, NOT applied.
   if (env.RESEND_API_KEY && env.SUGGEST_TO_EMAIL) {
-    const added = (result.addToStopwords || []);
-    const removed = (result.removeFromFirstNames || []);
+    const lines = fresh.length
+      ? fresh.map((s) => "  - " + s.term + " — " + s.reason + " (" + s.confidence + ")")
+      : ["  (no new suggestions)"];
     await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + env.RESEND_API_KEY },
       body: JSON.stringify({
         from: "tools@nooutco.me", to: env.SUGGEST_TO_EMAIL,
-        subject: "PHI Algorithm Update — " + runDate,
+        subject: "PHI scrub — " + fresh.length + " suggestion" + (fresh.length === 1 ? "" : "s") + " awaiting review",
         text: [
-          "PHI Algorithm Update — " + runDate,
+          "PHI scrub review digest — " + runDate,
           "",
           result.digest || "",
           "",
-          "Added to STOPWORDS (" + added.length + "): " + (added.length ? added.join(", ") : "none"),
-          "Removed from FIRST_NAMES (" + removed.length + "): " + (removed.length ? removed.join(", ") : "none"),
+          "These are SUGGESTIONS only — nothing has changed in detection. Approve or reject each at:",
+          "https://tools.nooutco.me/admin → Algorithm Lab",
+          "",
+          "Proposed stopwords (" + fresh.length + "):",
+          ...lines,
           "",
           "Input: " + todayTerms.length + " certified terms, " + problemStrings.length + " problem strings",
-          "Confidence: " + (result.confidence || "unknown"),
         ].join("\n"),
       }),
     }).catch(() => {});

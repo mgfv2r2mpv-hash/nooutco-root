@@ -145,6 +145,15 @@
 
       <!-- ── Algorithm Lab tab ── -->
       <div id="tab-alglab" class="tab-panel">
+        <div class="card" id="suggestionsCard" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <h2 style="margin: 0;">Pending Suggestions</h2>
+            <span class="pill on" id="sugCount">0</span>
+          </div>
+          <p class="muted" style="margin: 0 0 14px;">The nightly run proposes terms to suppress globally. Detection does <strong>not</strong> change until you approve. Reject anything that could be a real name.</p>
+          <div id="sugRows"></div>
+        </div>
+
         <div class="card">
           <h2>Test the Detection Algorithm</h2>
           <p class="muted" style="margin: 0 0 12px;">Paste a clinical note snippet to see which tokens the current algorithm would flag. Words highlighted yellow in the textarea are detected in real time.</p>
@@ -164,10 +173,10 @@
 
         <div class="card">
           <h2>Algorithm Status</h2>
-          <p class="muted" style="margin: 0 0 14px;">Nightly run: <strong>2am UTC daily</strong>. Runs only when there are new certified non-PII terms or submitted problem strings. Configure cron in Cloudflare Dashboard → Pages → Functions → Cron Triggers.</p>
+          <p class="muted" style="margin: 0 0 14px;">Nightly run: <strong>3am EDT daily</strong> via GitHub Action (Cloudflare Pages can't run cron). The run only <strong>proposes</strong> stopwords from clinician-certified false positives — it never removes names or weakens detection. Every suggestion needs your approval above.</p>
           <div class="status-grid" id="labStats">
-            <div class="stat-box"><div class="stat-label">Learned stopwords</div><div class="stat-val" id="statStopwords">—</div></div>
-            <div class="stat-box"><div class="stat-label">Modified first-names</div><div class="stat-val" id="statFirstNames">—</div></div>
+            <div class="stat-box"><div class="stat-label">Approved stopwords</div><div class="stat-val" id="statStopwords">—</div></div>
+            <div class="stat-box"><div class="stat-label">Pending suggestions</div><div class="stat-val" id="statPending">—</div></div>
           </div>
           <div id="labDigest" class="digest-box" style="display: none;"></div>
           <p class="muted" style="margin: 12px 0 0; font-size: 12px;" id="lastRunLabel"></p>
@@ -368,10 +377,45 @@
       function loadAlgStatus() {
         adminFetch("/api/admin/scrub-overrides").then(function (d) {
           document.getElementById("statStopwords").textContent = (d.stopwords || []).length;
-          document.getElementById("statFirstNames").textContent = (d.firstNames || []).length;
+          document.getElementById("statPending").textContent = d.pending || 0;
           var digest = document.getElementById("labDigest");
           if (d.digest) { digest.textContent = d.digest; digest.style.display = "block"; }
           document.getElementById("lastRunLabel").textContent = "Last run: " + fmtDateTime(d.lastRun);
+        }).catch(function () {});
+        loadSuggestions();
+      }
+
+      function loadSuggestions() {
+        adminFetch("/api/admin/scrub-suggestions").then(function (d) {
+          var list = d.suggestions || [];
+          var card = document.getElementById("suggestionsCard");
+          var rows = document.getElementById("sugRows");
+          document.getElementById("sugCount").textContent = list.length;
+          card.style.display = list.length ? "block" : "none";
+          rows.innerHTML = "";
+          list.forEach(function (s) {
+            var row = document.createElement("div");
+            row.style.cssText = "display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid #eef2e6;";
+            row.innerHTML =
+              '<div style="flex:1;min-width:0;">' +
+                '<div style="font-weight:700;font-size:15px;">' + escapeHtml(s.term) +
+                  ' <span class="pill ' + (s.confidence === "high" ? "on" : "off") + '" style="font-weight:600;">' + escapeHtml(s.confidence || "low") + "</span></div>" +
+                '<div class="muted" style="margin-top:3px;font-size:13px;">' + escapeHtml(s.reason || "") + "</div>" +
+              "</div>" +
+              '<div class="row-actions" style="flex-shrink:0;">' +
+                '<button class="btn-ghost" data-act="approve">Approve</button>' +
+                '<button class="btn-danger" data-act="reject">Reject</button>' +
+              "</div>";
+            row.querySelector('[data-act=approve]').addEventListener("click", function () {
+              if (confirm('Approve "' + s.term + '"? It will be globally suppressed and never flagged as a name again.')) {
+                adminFetch("/api/admin/scrub-suggestions", "POST", { id: s.id, decision: "approve" }).then(loadAlgStatus).catch(function () {});
+              }
+            });
+            row.querySelector('[data-act=reject]').addEventListener("click", function () {
+              adminFetch("/api/admin/scrub-suggestions", "POST", { id: s.id, decision: "reject" }).then(loadAlgStatus).catch(function () {});
+            });
+            rows.appendChild(row);
+          });
         }).catch(function () {});
       }
 
