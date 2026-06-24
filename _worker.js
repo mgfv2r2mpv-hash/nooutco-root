@@ -17,6 +17,16 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
+    // Bot Fight Mode (cannot be disabled on this plan) challenges every non-static
+    // request, which breaks fetch()/XHR to /api/* — an XHR can't solve an interactive
+    // challenge, so it receives challenge HTML instead of JSON. Cloudflare exempts
+    // static file extensions from the challenge, so the client appends a ".js" suffix
+    // to API paths (see API_SUFFIX in notes-gate.js). Strip it here so routing is
+    // unchanged. REMOVE this and API_SUFFIX once the edge stops challenging /api/*.
+    if (url.pathname.startsWith("/api/") && url.pathname.endsWith(".js")) {
+      url.pathname = url.pathname.slice(0, -3);
+    }
+
     // Password login — returns a signed session token that unlocks Generate Note
     if (url.pathname === "/api/login" && request.method === "POST") {
       return handleLogin(request, env);

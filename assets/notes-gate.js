@@ -26,6 +26,14 @@
   // must be configured for the check to be enforced.
   var TURNSTILE_SITEKEY = "0x4AAAAAADqSIXik1l5V3Nrd";
 
+  // Cloudflare Super Bot Fight Mode (can't be fully disabled on this plan) challenges
+  // every non-static request, so fetch()/XHR to /api/* receives challenge HTML instead
+  // of JSON. Static file extensions are exempt, so we suffix API paths with ".js"; the
+  // worker strips it before routing. Set to "" (and remove the worker strip) once the
+  // edge stops challenging /api/* (e.g. SBFM "Definitely automated" set to Allow).
+  var API_SUFFIX = ".js";
+  function apiUrl(path) { return path + API_SUFFIX; }
+
   /* ───────────────────────── Auth ───────────────────────── */
 
   function getToken() {
@@ -92,7 +100,7 @@
 
   // POST the password to the worker; on success store the returned session token.
   function login(password, turnstileToken) {
-    return fetch("/api/login", {
+    return fetch(apiUrl("/api/login"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password: password, turnstileToken: turnstileToken || "" }),
@@ -200,7 +208,7 @@
         // attempts are skipped. Best-effort and tokenless (the user isn't logged in yet);
         // bounded server-side by dedupe + an hourly budget.
         if (!/incorrect password/i.test(msg)) {
-          fetch("/api/error-report", {
+          fetch(apiUrl("/api/error-report"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ tool: "login", message: msg, timestamp: new Date().toISOString() }),
@@ -227,7 +235,7 @@
     var systemPrompt = opts.systemPrompt;
     var userPrompt = opts.userPrompt;
 
-    return fetch("/api/llm-call", {
+    return fetch(apiUrl("/api/llm-call"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -378,7 +386,7 @@
   function syncNonPii() {
     var tok = getToken();
     if (!tok) return;
-    fetch("/api/nonpii", { headers: { "Authorization": "Bearer " + tok } })
+    fetch(apiUrl("/api/nonpii"), { headers: { "Authorization": "Bearer " + tok } })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         if (!d || !Array.isArray(d.terms)) return;
@@ -402,7 +410,7 @@
     // Fire-and-forget to server; localStorage already updated so detection is instant.
     var tok = getToken();
     if (tok) {
-      fetch("/api/nonpii", {
+      fetch(apiUrl("/api/nonpii"), {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": "Bearer " + tok },
         body: JSON.stringify(entry),
@@ -414,7 +422,7 @@
     try { localStorage.removeItem(NONPII_KEY); } catch (e) {}
     var tok = getToken();
     if (tok) {
-      fetch("/api/nonpii", {
+      fetch(apiUrl("/api/nonpii"), {
         method: "DELETE",
         headers: { "Content-Type": "application/json", "Authorization": "Bearer " + tok },
         body: JSON.stringify({}),
@@ -580,7 +588,7 @@
 
   // Load AI-learned algorithm overrides (public endpoint, no token needed).
   // Merges Claude-suggested stopwords/firstNames into the in-memory dictionaries.
-  fetch("/api/scrub-config")
+  fetch(apiUrl("/api/scrub-config"))
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (d) {
       if (!d) return;
@@ -597,6 +605,7 @@
     login: login,
     logout: logout,
     token: getToken,
+    apiUrl: apiUrl,
     generateNote: generateNote,
     // Certified-non-PII store — localStorage cache + KV server backing.
     nonPii: { load: loadNonPii, saveTerm: saveNonPiiTerm, clear: clearNonPii, sync: syncNonPii },

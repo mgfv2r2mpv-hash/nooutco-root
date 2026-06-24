@@ -229,7 +229,7 @@ TERMINOLOGY (non-negotiable)
         } catch (e) {
           setError(e.message || "Generation failed. Please try again.");
           const _tok = localStorage.getItem("notes_auth_token");
-          if (_tok) fetch("/api/error-report", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + _tok }, body: JSON.stringify({ message: e.message || "unknown", tool: TOOL_ID, timestamp: new Date().toISOString() }) }).catch(() => {});
+          if (_tok) fetch(NotesGate.apiUrl("/api/error-report"), { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + _tok }, body: JSON.stringify({ message: e.message || "unknown", tool: TOOL_ID, timestamp: new Date().toISOString() }) }).catch(() => {});
         } finally {
           setLoading(false);
         }
