@@ -32,7 +32,11 @@
   // worker strips it before routing. Set to "" (and remove the worker strip) once the
   // edge stops challenging /api/* (e.g. SBFM "Definitely automated" set to Allow).
   var API_SUFFIX = ".js";
-  function apiUrl(path) { return path + API_SUFFIX; }
+  // The ".js" suffix dodges the bot challenge, but Pages' static-asset layer also
+  // intercepts clean ".js" GET paths (serving the SPA fallback) until a query string
+  // forces the request through to the worker. A per-call cache-buster guarantees the
+  // worker is hit and the response is never served stale from cache.
+  function apiUrl(path) { return path + API_SUFFIX + (path.indexOf("?") === -1 ? "?" : "&") + "_=" + Date.now(); }
 
   /* ───────────────────────── Auth ───────────────────────── */
 

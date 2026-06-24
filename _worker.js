@@ -248,7 +248,9 @@ async function handleSuggest(request, env) {
 function jsonRes(status, body) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    // no-store: API responses are served from ".js" paths (to dodge the bot challenge),
+    // which the CDN would otherwise treat as cacheable static assets.
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
   });
 }
 
