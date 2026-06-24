@@ -281,6 +281,7 @@
       const [loggedIn, setLoggedIn] = React.useState(() => !!(window.NotesGate && NotesGate.isLoggedIn()));
       const TOOL_ID = "sap";
       const canUse  = loggedIn && !!(window.NotesGate && NotesGate.canUseTool(TOOL_ID));
+      const isAdmin = false;
       React.useEffect(() => (window.NotesGate ? NotesGate.subscribe(setLoggedIn) : undefined), []);
 
       const [goal,     setGoal]     = React.useState("");
@@ -544,7 +545,24 @@
       );
     }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    class ErrorBoundary extends React.Component {
+      constructor(p) { super(p); this.state = { err: null }; }
+      static getDerivedStateFromError(err) { return { err }; }
+      render() {
+        if (!this.state.err) return this.props.children;
+        return (
+          <div style={{ maxWidth: 560, margin: "80px auto", padding: 24, textAlign: "center", color: "#374528", fontFamily: "inherit" }}>
+            <h1 style={{ fontSize: 20, marginBottom: 8 }}>Something went wrong</h1>
+            <p style={{ fontSize: 14, color: "#5a6b4a", marginBottom: 16 }}>This tool hit an unexpected error. Reloading usually fixes it.</p>
+            <button onClick={() => location.reload()} style={{ padding: "10px 22px", borderRadius: 8, border: "none", background: "#374528", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Reload</button>
+          </div>
+        );
+      }
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(
+      <ErrorBoundary><App /></ErrorBoundary>
+    );
   </script>
 </body>
 </html>
