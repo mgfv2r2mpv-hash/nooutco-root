@@ -484,7 +484,7 @@ TERMINOLOGY (non-negotiable)
         const err = validate();
         if (err) { setError(err); return; }
         if (!NotesGate.isLoggedIn()) { NotesGate.openLogin(); return; }
-        setError(""); setRawError("");
+        setError("");
         if (!(await NotesScrub.acknowledge())) return;
         const review = await NotesScrub.review({ freeText: collectFreeText() });
         if (review.cancelled) return;
@@ -505,7 +505,7 @@ TERMINOLOGY (non-negotiable)
       const handleGeneratePrompt = async () => {
         const err = validate();
         if (err) { setError(err); return; }
-        setError(""); setRawError("");
+        setError("");
         if (!(await NotesScrub.acknowledge())) return;
         const review = await NotesScrub.review({ freeText: collectFreeText() });
         if (review.cancelled) return;
