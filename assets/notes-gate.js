@@ -19,6 +19,13 @@
   var TOKEN_KEY = "notes_auth_token";
   var EVT = "notes-auth-change";
 
+  // Public Cloudflare Turnstile site key for the login bot check. This is a PUBLIC
+  // value and safe to commit. Paste the Site Key from the Turnstile widget created for
+  // tools.nooutco.me. Leave "" to disable Turnstile (login proceeds without it) — the
+  // worker likewise skips verification unless TURNSTILE_SECRET is set, so both sides
+  // must be configured for the check to be enforced.
+  var TURNSTILE_SITEKEY = "0x4AAAAAADqSIXik1l5V3Nrd";
+
   /* ───────────────────────── Auth ───────────────────────── */
 
   function getToken() {
@@ -84,13 +91,20 @@
   }
 
   // POST the password to the worker; on success store the returned session token.
-  function login(password) {
+  function login(password, turnstileToken) {
     return fetch("/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: password }),
+      body: JSON.stringify({ password: password, turnstileToken: turnstileToken || "" }),
     }).then(function (res) {
-      return res.json().then(function (data) {
+      // Read as text first: if a Cloudflare edge challenge intercepts the request it
+      // returns HTML, not JSON. Surface a clear message instead of a raw JSON-parse error.
+      return res.text().then(function (raw) {
+        var data;
+        try { data = JSON.parse(raw); }
+        catch (e) {
+          throw new Error("The login service is unreachable (a security check blocked the request). Please retry, or contact the administrator if it persists.");
+        }
         if (!res.ok || !data.token) {
           throw new Error(data && data.error ? data.error : "Login failed.");
         }
@@ -124,6 +138,7 @@
       '<input id="notes-login-pw" type="password" autocomplete="current-password" placeholder="Password" ' +
       'style="width:100%;padding:11px 12px;border:1.5px solid #c0d4a8;border-radius:8px;font-size:14px;box-sizing:border-box;" />' +
       '<div id="notes-login-err" style="display:none;color:#c0392b;font-size:13px;margin-top:8px;"></div>' +
+      '<div id="notes-login-turnstile" style="margin-top:12px;"></div>' +
       '<button id="notes-login-submit" type="submit" ' +
       'style="margin-top:14px;width:100%;padding:12px;border:none;border-radius:8px;background:#374528;color:#fff;' +
       'font-size:15px;font-weight:600;cursor:pointer;">Log in</button>' +
@@ -140,16 +155,62 @@
     var err = document.getElementById("notes-login-err");
     var submit = document.getElementById("notes-login-submit");
     pw.focus();
+
+    // Cloudflare Turnstile bot check — active only when a site key is configured.
+    // The script (challenges.cloudflare.com/turnstile/v0/api.js) loads async, so poll
+    // briefly for window.turnstile before rendering into the modal container.
+    var tsToken = "";
+    var tsWidgetId = null;
+    if (TURNSTILE_SITEKEY) {
+      submit.disabled = true; // require a verification token before enabling submit
+      (function renderTs(tries) {
+        if (!window.turnstile || !window.turnstile.render) {
+          if (tries > 0) setTimeout(function () { renderTs(tries - 1); }, 200);
+          return;
+        }
+        try {
+          tsWidgetId = window.turnstile.render("#notes-login-turnstile", {
+            sitekey: TURNSTILE_SITEKEY,
+            callback: function (t) { tsToken = t; submit.disabled = false; },
+            "expired-callback": function () { tsToken = ""; submit.disabled = true; },
+            "error-callback": function () { tsToken = ""; submit.disabled = true; },
+          });
+        } catch (e) {}
+      })(25);
+    }
+
     document.getElementById("notes-login-form").addEventListener("submit", function (e) {
       e.preventDefault();
       err.style.display = "none";
+      if (TURNSTILE_SITEKEY && !tsToken) {
+        err.textContent = "Please complete the verification check.";
+        err.style.display = "block";
+        return;
+      }
       submit.disabled = true; submit.textContent = "Logging in…";
-      login(pw.value).then(function () {
+      login(pw.value, tsToken).then(function () {
         close();
       }).catch(function (ex) {
-        err.textContent = ex.message || "Login failed.";
+        var msg = ex.message || "Login failed.";
+        err.textContent = msg;
         err.style.display = "block";
         submit.disabled = false; submit.textContent = "Log in";
+        // Email the admin about non-credential login failures (service/config/challenge
+        // errors) so breakage is noticed even if no one reports it. Routine wrong-password
+        // attempts are skipped. Best-effort and tokenless (the user isn't logged in yet);
+        // bounded server-side by dedupe + an hourly budget.
+        if (!/incorrect password/i.test(msg)) {
+          fetch("/api/error-report", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tool: "login", message: msg, timestamp: new Date().toISOString() }),
+          }).catch(function () {});
+        }
+        // Turnstile tokens are single-use; reset so the clinician can retry.
+        if (TURNSTILE_SITEKEY && window.turnstile && tsWidgetId !== null) {
+          try { window.turnstile.reset(tsWidgetId); } catch (e) {}
+          tsToken = ""; submit.disabled = true;
+        }
         pw.select();
       });
     });

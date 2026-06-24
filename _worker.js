@@ -102,38 +102,70 @@ export default {
   },
 };
 
+// Email an operational error to the admin, so failures are seen even if no user
+// reports them. Bounded against flooding by (a) a per-message dedupe (one email per
+// identical tool+message per hour) and (b) a global hourly budget. Never throws.
+async function notifyError(env, tool, message, meta) {
+  try {
+    if (!env.RESEND_API_KEY) return;
+    const msg = (message || "").toString().slice(0, 2000);
+    if (!msg) return;
+
+    if (env.SUGGEST_DUPES) {
+      // Per-message dedupe.
+      const dedupeKey = "errmail:" + (await sha256Hex((tool || "") + "|" + msg));
+      if (await env.SUGGEST_DUPES.get(dedupeKey)) return;
+      // Global hourly budget so a flood of distinct messages can't email-bomb.
+      const hour = new Date().toISOString().slice(0, 13); // YYYY-MM-DDTHH
+      const budgetKey = "errmail:budget:" + hour;
+      const used = parseInt((await env.SUGGEST_DUPES.get(budgetKey)) || "0", 10);
+      if (used >= 30) return;
+      await env.SUGGEST_DUPES.put(dedupeKey, "1", { expirationTtl: 3600 });
+      await env.SUGGEST_DUPES.put(budgetKey, String(used + 1), { expirationTtl: 3600 });
+    }
+
+    const toEmail = env.SUGGEST_TO_EMAIL || "feedback@nooutco.me";
+    const text = [
+      `Tool: ${tool || "(unknown)"}`,
+      `Time: ${new Date().toISOString()}`,
+      meta ? `Context: ${meta}` : null,
+      ``,
+      `Error:`,
+      msg,
+    ].filter((l) => l !== null).join("\n");
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.RESEND_API_KEY}` },
+      body: JSON.stringify({
+        from: "No Outcome ABA <noreply@nooutco.me>",
+        to: [toEmail],
+        subject: `[Error] ${tool || "notes"} — ${msg.slice(0, 60)}`,
+        text,
+      }),
+    });
+  } catch (e) {
+    // Reporting must never break the request path.
+    console.error("notifyError failed:", e && e.message ? e.message : "unknown");
+  }
+}
+
+// Client-reported error. A valid session token is optional: authenticated reports
+// (generation failures) are trusted; tokenless reports (e.g. login-stage failures,
+// where the user has no token yet) are still accepted but bounded by notifyError's
+// dedupe + hourly budget so the open path can't be abused to flood email.
 async function handleErrorReport(request, env) {
   const secret = (env.ADMIN_SECRET ?? "").trim();
   const token = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
-  if (!secret || !(await verifyToken(token, secret))) {
-    return jsonRes(401, { error: "Unauthorized." });
-  }
+  const authed = !!secret && (await verifyToken(token, secret));
 
   let body;
   try { body = await request.json(); }
   catch { return jsonRes(400, { error: "Invalid request." }); }
 
-  const { message, tool, timestamp } = body;
+  const { message, tool } = body;
   if (!message) return jsonRes(400, { error: "Missing message." });
 
-  if (!env.RESEND_API_KEY) return jsonRes(200, { ok: true });
-
-  const toEmail = env.SUGGEST_TO_EMAIL || "feedback@nooutco.me";
-  const subject = `[Error] ${tool || "notes"} — ${(message || "").slice(0, 60)}`;
-  const text = [
-    `Tool: ${tool || "(unknown)"}`,
-    `Time: ${timestamp || new Date().toISOString()}`,
-    ``,
-    `Error:`,
-    message,
-  ].join("\n");
-
-  await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.RESEND_API_KEY}` },
-    body: JSON.stringify({ from: "No Outcome ABA <noreply@nooutco.me>", to: [toEmail], subject, text }),
-  });
-
+  await notifyError(env, tool || "notes", message, authed ? "client (authenticated)" : "client (unauthenticated)");
   return jsonRes(200, { ok: true });
 }
 
@@ -223,28 +255,68 @@ async function handleLogin(request, env) {
   const secret = (env.ADMIN_SECRET ?? "").trim();
   const password = (body.password ?? "").trim();
 
-  if (!secret) return jsonRes(503, { error: "Login is not configured." });
+  if (!secret) { await notifyError(env, "login", "Login is not configured (ADMIN_SECRET missing)."); return jsonRes(503, { error: "Login is not configured." }); }
   if (!password) return jsonRes(401, { error: "Incorrect password." });
 
-  const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30;
-
-  // Admin password — full access including the API Passwords admin screen.
-  if (password === secret) {
-    const token = await signToken({ exp, role: "admin" }, secret);
-    return jsonRes(200, { token, role: "admin" });
-  }
-
-  // Managed access passwords (API_PASSWORDS KV) — scoped to specific tools.
-  if (env.API_PASSWORDS) {
-    const rec = await findPassword(env.API_PASSWORDS, password);
-    if (rec && rec.active) {
-      const tools = Array.isArray(rec.tools) ? rec.tools : [];
-      const token = await signToken({ exp, role: "user", kid: rec.id, tools }, secret);
-      return jsonRes(200, { token, role: "user", tools });
+  try {
+    // Turnstile bot check — enforced only when TURNSTILE_SECRET is configured. It runs
+    // before any password comparison so /api/login can be safely exempted from
+    // Cloudflare's edge bot challenge (which otherwise blocks the fetch outright).
+    const turnstileSecret = (env.TURNSTILE_SECRET ?? "").trim();
+    if (turnstileSecret) {
+      const ok = await verifyTurnstile(
+        turnstileSecret,
+        (body.turnstileToken ?? "").trim(),
+        request.headers.get("CF-Connecting-IP") || ""
+      );
+      if (!ok) return jsonRes(403, { error: "Verification failed. Please complete the challenge and retry." });
     }
-  }
 
-  return jsonRes(401, { error: "Incorrect password." });
+    const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30;
+
+    // Admin password — full access including the API Passwords admin screen.
+    if (password === secret) {
+      const token = await signToken({ exp, role: "admin" }, secret);
+      return jsonRes(200, { token, role: "admin" });
+    }
+
+    // Managed access passwords (API_PASSWORDS KV) — scoped to specific tools.
+    if (env.API_PASSWORDS) {
+      const rec = await findPassword(env.API_PASSWORDS, password);
+      if (rec && rec.active) {
+        const tools = Array.isArray(rec.tools) ? rec.tools : [];
+        const token = await signToken({ exp, role: "user", kid: rec.id, tools }, secret);
+        return jsonRes(200, { token, role: "user", tools });
+      }
+    }
+
+    return jsonRes(401, { error: "Incorrect password." });
+  } catch (err) {
+    // Unexpected failure (KV, crypto, Turnstile siteverify) — email the admin; a
+    // wrong password returns 401 above and is intentionally NOT reported.
+    await notifyError(env, "login", err && err.message ? err.message : "Unknown login error.");
+    return jsonRes(500, { error: "Login failed due to a server error. Please try again." });
+  }
+}
+
+// Verify a Cloudflare Turnstile token via siteverify. Returns true only on success.
+async function verifyTurnstile(secret, token, ip) {
+  if (!token) return false;
+  try {
+    const form = new URLSearchParams();
+    form.append("secret", secret);
+    form.append("response", token);
+    if (ip) form.append("remoteip", ip);
+    const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: form.toString(),
+    });
+    const data = await res.json().catch(() => ({}));
+    return !!data.success;
+  } catch {
+    return false;
+  }
 }
 
 async function handleLlmCall(request, env) {
@@ -285,7 +357,9 @@ async function handleLlmCall(request, env) {
     // PRIVACY: never log the request body, systemPrompt, or userPrompt. The client
     // de-identifies (scrubs names to role tokens) before sending, and we keep it that
     // way — log only the error message, never prompt content.
-    console.error("LLM call error:", error && error.message ? error.message : "unknown");
+    const m = error && error.message ? error.message : "unknown";
+    console.error("LLM call error:", m);
+    await notifyError(env, "llm-call", m);
     return jsonRes(500, { error: error.message || "Internal server error" });
   }
 }
