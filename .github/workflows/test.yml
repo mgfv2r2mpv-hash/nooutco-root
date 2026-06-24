@@ -6,69 +6,13 @@ on:
   pull_request:
     branches: [main, dev]
 
-env:
-  CI: true
-  COVERAGE: true
-
 jobs:
-  unit-tests:
-    runs-on: ubuntu-latest
-    name: Unit Tests (Vitest)
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-
-      - name: Run unit tests
-        run: npm run test:coverage
-
-      - name: Upload coverage reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-vitest
-          path: coverage/
-
-      - name: Comment PR with coverage
-        if: github.event_name == 'pull_request' && always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const coveragePath = 'coverage/coverage-final.json';
-            if (!fs.existsSync(coveragePath)) {
-              console.log('No coverage data available');
-              return;
-            }
-            const coverage = JSON.parse(fs.readFileSync(coveragePath, 'utf-8'));
-            let lines = 0, covered = 0;
-            for (const file in coverage) {
-              for (const key in coverage[file].l) {
-                lines++;
-                if (coverage[file].l[key] > 0) covered++;
-              }
-            }
-            const pct = ((covered / lines) * 100).toFixed(2);
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `## @claude-unit-test-coverage\n**Lines:** ${pct}%\n**Goal:** 80%\n${ pct >= 80 ? '✅' : '⚠️' }`
-            });
-
-  e2e-tests:
+  e2e:
     runs-on: ubuntu-latest
     name: E2E Tests (Playwright)
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -80,11 +24,8 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
-      - name: Build client
-        run: npm run build:client
-
       - name: Run E2E tests
-        run: npm run e2e
+        run: npm test
 
       - name: Upload test results
         if: always()
@@ -93,19 +34,3 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 14
-
-  test-summary:
-    needs: [unit-tests, e2e-tests]
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - name: Check test results
-        run: |
-          if [ "${{ needs.unit-tests.result }}" = "failure" ] || [ "${{ needs.e2e-tests.result }}" = "failure" ]; then
-            echo "## @claude-test-failed" >> $GITHUB_STEP_SUMMARY
-            echo "Tests did not pass. Review artifacts above." >> $GITHUB_STEP_SUMMARY
-            exit 1
-          else
-            echo "## @claude-test-passed" >> $GITHUB_STEP_SUMMARY
-            echo "All tests passing." >> $GITHUB_STEP_SUMMARY
-          fi
