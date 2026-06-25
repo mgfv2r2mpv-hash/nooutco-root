@@ -50,6 +50,10 @@ export default {
       return handleErrorReport(request, env);
     }
 
+    if (url.pathname === "/api/report-error" && request.method === "POST") {
+      return handleUserReport(request, env);
+    }
+
     if (url.pathname === "/api/suggest" && request.method === "POST") {
       return handleSuggest(request, env);
     }
@@ -176,6 +180,75 @@ async function handleErrorReport(request, env) {
   if (!message) return jsonRes(400, { error: "Missing message." });
 
   await notifyError(env, tool || "notes", message, authed ? "client (authenticated)" : "client (unauthenticated)");
+  return jsonRes(200, { ok: true });
+}
+
+// User-initiated error report from the floating ⚠️ button on tool pages.
+// Unlike notifyError(), this is never silently dropped — no hourly budget cap.
+// Dedup prevents the same report being submitted twice within 24 hours.
+async function handleUserReport(request, env) {
+  const MIN_CHARS = 10;
+
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonRes(400, { error: "Invalid request." }); }
+
+  const { message, tool, replyTo } = body;
+  const msg = (message || "").trim();
+
+  if (msg.length < MIN_CHARS) {
+    return jsonRes(400, { error: `Please describe the error (at least ${MIN_CHARS} characters).` });
+  }
+
+  if (env.SUGGEST_DUPES) {
+    const dedupeKey = "userreport:" + (await sha256Hex((tool || "") + "|" + msg.toLowerCase()));
+    if (await env.SUGGEST_DUPES.get(dedupeKey)) {
+      return jsonRes(409, { error: "Already reported — we have this one." });
+    }
+  }
+
+  if (!env.RESEND_API_KEY) {
+    return jsonRes(503, { error: "Email delivery not configured." });
+  }
+
+  const toEmail = env.SUGGEST_TO_EMAIL || "feedback@nooutco.me";
+  const subject = `[⚠️ Error Report] ${tool || "App"}: ${msg.slice(0, 60)}${msg.length > 60 ? "…" : ""}`;
+  const lines = [
+    `Tool: ${tool || "(unknown)"}`,
+    `Time: ${new Date().toISOString()}`,
+    ``,
+    msg,
+    replyTo ? `\nReply to: ${replyTo.trim()}` : null,
+  ].filter(l => l !== null);
+
+  const resendBody = {
+    from: "No Outcome ABA <noreply@nooutco.me>",
+    to: [toEmail],
+    subject,
+    text: lines.join("\n"),
+  };
+  if (replyTo) resendBody.reply_to = [replyTo.trim()];
+
+  const sendResp = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${env.RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(resendBody),
+  });
+
+  if (!sendResp.ok) {
+    const err = await sendResp.json().catch(() => ({}));
+    console.error("handleUserReport Resend error", sendResp.status, err);
+    return jsonRes(502, { error: "Send failed. Please try again." });
+  }
+
+  if (env.SUGGEST_DUPES) {
+    const dedupeKey = "userreport:" + (await sha256Hex((tool || "") + "|" + msg.toLowerCase()));
+    await env.SUGGEST_DUPES.put(dedupeKey, "1", { expirationTtl: 60 * 60 * 24 });
+  }
+
   return jsonRes(200, { ok: true });
 }
 
