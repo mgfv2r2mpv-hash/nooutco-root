@@ -656,7 +656,17 @@
       panel.hidden = !open;
       toggle.setAttribute('aria-expanded', String(open));
       toggle.classList.toggle('is-open', open);
-      if (open && otherPanelId) { document.getElementById(otherPanelId).hidden = true; }
+      if (open && otherPanelId) {
+        const otherPanel = document.getElementById(otherPanelId);
+        otherPanel.hidden = true;
+
+        const otherToggleId = otherPanelId === 'extra-panel' ? 'btn-extra-toggle' : 'btn-targets-toggle';
+        const otherToggle = document.getElementById(otherToggleId);
+        if (otherToggle) {
+          otherToggle.setAttribute('aria-expanded', 'false');
+          otherToggle.classList.remove('is-open');
+        }
+      }
     }
     toggle.addEventListener('click', () => setOpen(panel.hidden));
     if (closeId) document.getElementById(closeId).addEventListener('click', () => setOpen(false));
