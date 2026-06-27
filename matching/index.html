@@ -198,6 +198,9 @@
     <div id="token-emoji-display" class="token-emoji-simple"></div>
     <div id="token-progress-text" class="token-progress-simple">0 / 10</div>
   </div>
+  <div class="finish-sr-row" style="display:flex;justify-content:center;margin:10px 0">
+    <button type="button" id="btn-finish-sr" class="finish-sr-btn" hidden>⭐ Finish &amp; SR</button>
+  </div>
 
   <!-- ── Pre-start blurb ──────────────────────────────────────────── -->
   <style>
@@ -283,7 +286,9 @@
   <script src="../header-chrome.js"></script>
   <script src="../migrate-config.js"></script>
   <script src="../results-report.js"></script>
+  <script src="../../reward.js"></script>
   <script src="game.js"></script>
+  <script>NooutcoReward.attachGoalSR({ boardId: 'token-board', buttonId: 'btn-finish-sr', minutes: 5 });</script>
   <script>
     const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
     window.ADMIN_SECRET_HASH = ADMIN_SECRET_HASH;

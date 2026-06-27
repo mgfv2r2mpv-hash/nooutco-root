@@ -231,6 +231,9 @@
       <div id="token-progress-text" class="token-progress-text">0 / 10</div>
     </div>
   </div>
+  <div class="finish-sr-row" style="display:flex;justify-content:center;margin:10px 0">
+    <button type="button" id="btn-finish-sr" class="finish-sr-btn" hidden>⭐ Finish &amp; SR</button>
+  </div>
 
   <section class="game-intro" id="game-intro" aria-label="How this game works">
     <h2>Matching Market — themed matching</h2>
@@ -438,8 +441,10 @@
   <script src="../header-chrome.js"></script>
   <script src="../migrate-config.js"></script>
   <script src="../results-report.js"></script>
+  <script src="../../reward.js"></script>
   <script src="characters.js"></script>
   <script src="game.js"></script>
+  <script>NooutcoReward.attachGoalSR({ boardId: 'token-board', buttonId: 'btn-finish-sr', minutes: 5 });</script>
   <script>
     const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
     window.ADMIN_SECRET_HASH = ADMIN_SECRET_HASH;

@@ -8,3 +8,8 @@ AdminTools/facts_checkpoint.json
 node_modules/
 .DS_Store
 *.swp
+
+# Build / test artifacts
+.wrangler/
+playwright-report/
+test-results/
