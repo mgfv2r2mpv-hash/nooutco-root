@@ -497,6 +497,7 @@ function onBankPick(sym, btnEl) {
 }
 
 function onCorrectPick(sym, btnEl) {
+  if (window.__nooutcoTokens) window.__nooutcoTokens.award();
   // Cancel delayed auto-prompt
   clearTimeout(state.autoPromptHandle);
   state.autoPromptHandle = null;

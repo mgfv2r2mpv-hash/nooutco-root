@@ -179,6 +179,9 @@
     <div id="token-emoji-display" class="token-emoji-simple"></div>
     <div id="token-progress-text" class="token-progress-simple">0 / 10</div>
   </div>
+  <div class="finish-sr-row" style="display:flex;justify-content:center;margin:10px 0">
+    <button type="button" id="btn-finish-sr" class="finish-sr-btn" hidden>⭐ Finish &amp; SR</button>
+  </div>
 
   <!-- ── Pre-start blurb ──────────────────────────────────────────── -->
   <style>
@@ -262,7 +265,33 @@
 
   <script src="../../tooltip-help.js"></script>
   <script src="../header-chrome.js"></script>
+  <script src="../../reward.js"></script>
+  <script src="../../token-board.js"></script>
   <script src="game.js"></script>
+  <script>
+    // Token board: drive the (previously inert) markup with the shared module,
+    // and pop Finish & SR when the goal is met.
+    (function () {
+      var finishBtn = document.getElementById('btn-finish-sr');
+      window.__nooutcoTokens = NooutcoTokens.create({
+        namespace: 'ffc',
+        onGoal: function () {
+          finishBtn.hidden = false;
+          NooutcoReward.celebrate(document.getElementById('token-board'));
+        },
+      });
+      finishBtn.addEventListener('click', function () {
+        NooutcoReward.openSR({ minutes: 5, onBack: function () {
+          finishBtn.hidden = !document.getElementById('token-board').classList.contains('goal-reached');
+        } });
+      });
+      var start = document.getElementById('btn-start');
+      if (start) start.addEventListener('click', function () {
+        window.__nooutcoTokens.startSession();
+        finishBtn.hidden = true;
+      });
+    })();
+  </script>
   <script>
     const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
     window.ADMIN_SECRET_HASH = ADMIN_SECRET_HASH;

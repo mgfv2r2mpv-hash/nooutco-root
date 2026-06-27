@@ -430,6 +430,7 @@ function onChoiceClick(e) {
 
 function answerCorrect(card) {
   state.locked = true;
+  if (window.__nooutcoTokens) window.__nooutcoTokens.award();
   pauseTimer();                 // stop the per-trial timer on the correct response
   clearPromptTimer();
   clearPromptHighlight();

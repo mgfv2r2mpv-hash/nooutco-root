@@ -960,6 +960,7 @@ function recordOutcome() {
 
 function onCorrectClick(slot, tile) {
   state.resolving = true;
+  if (window.__nooutcoTokens) window.__nooutcoTokens.award();
   disableAllTiles();
   clearPrompt();
   if (state.timerRunning) { pauseTimer(); state.timerAutoPaused = true; }

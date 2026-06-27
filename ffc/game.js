@@ -812,6 +812,8 @@ function onCorrectClick(wrapper, tile) {
     ].join('|'),
   });
 
+  if (window.__nooutcoTokens) window.__nooutcoTokens.award();
+
   const backFace = tile.querySelector('.tile-back');
   const okSpan   = backFace.querySelector('.ok-text');
   if (outcome === 'Correct') {
