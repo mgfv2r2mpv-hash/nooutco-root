@@ -178,7 +178,15 @@
       el.chk.addEventListener('change', () => {
         cfg.enabled = el.chk.checked;
         updateSettingsVisibility();
-        if (el.board) el.board.hidden = !cfg.enabled;
+        if (el.board) {
+          el.board.hidden = !cfg.enabled;
+          // Clear goal-reached when disabling so anything keyed off it (e.g.
+          // attachGoalSR / Finish & SR) doesn't linger while the board is off.
+          if (!cfg.enabled) {
+            el.board.classList.remove('goal-reached');
+            run.goalFired = false;
+          }
+        }
         if (cfg.enabled) startSession();
         save();
       });

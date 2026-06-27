@@ -537,6 +537,8 @@ body.settings-collapsed #extra-panel { display: none !important; }
   background: var(--amber-50, #fffbeb);
   border-color: var(--amber-300, #fcd34d);
   color: var(--amber-700, #b45309);
+  /* Fallback solid ring first; browsers with color-mix support override it below. */
+  box-shadow: 0 0 0 3px rgba(252, 211, 77, 0.45);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--amber-300, #fcd34d) 35%, transparent);
 }
 .option-toggle--star .option-toggle-ico { font-size: 18px; }

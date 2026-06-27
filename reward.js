@@ -40,7 +40,8 @@
   function playChime() {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      [523, 659, 784].forEach((freq, i) => {
+      const notes = [523, 659, 784];
+      notes.forEach((freq, i) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.connect(gain);
@@ -52,6 +53,11 @@
         gain.gain.exponentialRampToValueAtTime(0.001, t + 1.1);
         osc.start(t);
         osc.stop(t + 1.2);
+        // Release the AudioContext once the final note has finished so we don't
+        // accumulate contexts / keep audio resources alive after the chime.
+        if (i === notes.length - 1) {
+          osc.onended = () => { if (ctx.state !== 'closed') ctx.close().catch(() => {}); };
+        }
       });
     } catch (_) {
       /* AudioContext unavailable — silent fallback */
@@ -368,8 +374,15 @@
     const minutes = typeof opts.minutes === 'number' ? opts.minutes : DEFAULT_MINUTES;
     let fired = false;
 
+    // The goal is "met" only when the board both carries the goal-reached class
+    // AND is visible. Games disable the token board by setting board.hidden =
+    // true; without checking that, the Finish & SR button could linger after the
+    // board is turned off.
+    function isMet() {
+      return board.classList.contains('goal-reached') && !board.hidden;
+    }
     function sync() {
-      const met = board.classList.contains('goal-reached');
+      const met = isMet();
       if (met && !fired) {
         fired = true;
         btn.hidden = false;
@@ -383,10 +396,10 @@
       openSR({
         minutes: minutes,
         title: opts.title || 'SR Timer',
-        onBack: () => { btn.hidden = !board.classList.contains('goal-reached'); },
+        onBack: () => { btn.hidden = !isMet(); },
       });
     });
-    new MutationObserver(sync).observe(board, { attributes: true, attributeFilter: ['class'] });
+    new MutationObserver(sync).observe(board, { attributes: true, attributeFilter: ['class', 'hidden'] });
     sync();
     return { sync };
   }
