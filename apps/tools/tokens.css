@@ -1,4 +1,6 @@
-/* No Outcome ABA — design tokens (tools-nooutco-me)
+/* No Outcome ABA — design tokens (shared)
+   CANONICAL SOURCE: packages/shared/css/tokens.css — edit here, never in
+   apps/<app>/tokens.css (generated copies; CI drift check fails on hand edits).
    Consolidated from design_handoff_site_overhaul/tokens/*.css */
 
 @import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&display=swap');

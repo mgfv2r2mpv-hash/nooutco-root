@@ -7,6 +7,7 @@
     "apps/tools/cpr"
   ],
   "scripts": {
+    "sync:shared": "node scripts/sync-shared.mjs",
     "build:cpr": "npm --prefix apps/tools/cpr run build",
     "build:games-css": "npm --prefix apps/games run build",
     "test:games": "npm --prefix apps/games test",
