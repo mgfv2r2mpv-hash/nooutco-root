@@ -278,9 +278,6 @@ async function handleUserReport(request, env) {
   return jsonRes(200, { ok: true });
 }
 
-// handleSuggest moved to packages/shared/worker/suggest.js (imported above).
-// jsonRes moved to packages/shared/worker/helpers.js (imported above).
-
 // Validate a password and issue a signed session token.
 // Two tiers: the ADMIN_SECRET (role "admin", also unlocks the passwords admin)
 // and managed access passwords in the API_PASSWORDS KV (role "user", Generate
@@ -1158,5 +1155,3 @@ async function runScrubLearning(env) {
     }).catch(() => {});
   }
 }
-
-// sha256Hex moved to packages/shared/worker/helpers.js (imported at top).
