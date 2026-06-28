@@ -67,6 +67,16 @@
     .stat-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
     .stat-val { font-size: 18px; font-weight: 700; color: var(--sage); }
     .digest-box { margin-top: 12px; padding: 12px 14px; background: #f4f7ee; border-radius: 10px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+    /* Pending review + add-term modal */
+    .pending-card { background: #fffdf3; border-color: #ece0b0; }
+    .count-pill { display: inline-block; background: #eaf1de; color: #4a5e2e; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 700; margin-left: 6px; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(20, 28, 14, .45); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+    .modal-overlay.hidden { display: none; }
+    .modal { background: var(--surface); border-radius: 14px; padding: 22px; width: 100%; max-width: 400px; box-shadow: 0 16px 48px rgba(20, 28, 14, .28); }
+    .radio-row { display: flex; gap: 10px; margin-top: 6px; }
+    .radio-opt { flex: 1; display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--sage-light); border-radius: 8px; padding: 10px 12px; cursor: pointer; font-size: 14px; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--text); margin: 0; }
+    .radio-opt input { width: auto; padding: 0; }
+    .radio-opt.sel { border-color: var(--sage); background: #f0f5e8; }
   </style>
 </head>
 <body>
@@ -74,7 +84,7 @@
     <div class="topbar">
       <div>
         <h1>Admin · No Outcome ABA</h1>
-        <p class="sub">Manage access passwords, review certified non-PII terms, and tune the PHI detection algorithm.</p>
+        <p class="sub">Manage access passwords, curate PII / non-PII terms, review technician submissions, and tune the PHI detection algorithm.</p>
       </div>
       <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
         <a class="btn-ghost" href="/" style="text-decoration: none;">← Tools</a>
@@ -94,6 +104,7 @@
     <div id="adminUI" class="hidden">
       <nav class="tab-nav">
         <button class="tab-btn active" data-tab="passwords">Passwords</button>
+        <button class="tab-btn" data-tab="pii">PII Terms</button>
         <button class="tab-btn" data-tab="nonpii">Non-PII Terms</button>
         <button class="tab-btn" data-tab="alglab">Algorithm Lab</button>
       </nav>
@@ -127,14 +138,51 @@
         </div>
       </div>
 
-      <!-- ── Non-PII Terms tab ── -->
-      <div id="tab-nonpii" class="tab-panel">
+      <!-- ── PII Terms tab ── -->
+      <div id="tab-pii" class="tab-panel">
+        <div class="card pending-card" id="piiPendingCard" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <h2 style="margin: 0;">Pending review — scrubbed names</h2>
+            <span class="pill on" id="piiPendingCount">0</span>
+          </div>
+          <p class="muted" style="margin: 0 0 14px;">Names technicians scrubbed that aren't yet in the detection dictionary. <strong>Approve</strong> to force-detect a name everywhere; <strong>reject</strong> to discard. Only the bare word is stored — never any note text.</p>
+          <div id="piiPendingRows"></div>
+        </div>
+
         <div class="card">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-            <h2 style="margin: 0;">Certified Non-PII Terms</h2>
-            <button id="clearNonPii" class="btn-danger">Clear all</button>
+            <h2 style="margin: 0;">PII Terms (force-detect)</h2>
+            <button class="btn-primary" data-add-term="pii">Add term</button>
           </div>
-          <p class="muted" style="margin: 0 0 14px;">Terms clinicians have certified as not being person names. These are permanently excluded from PHI detection.</p>
+          <p class="muted" style="margin: 0 0 14px;">Words always flagged as names, on top of the built-in dictionary. Approved scrubbed names land here.</p>
+          <table>
+            <thead><tr><th>Term</th><th></th></tr></thead>
+            <tbody id="piiRows"></tbody>
+          </table>
+          <p id="piiEmpty" class="muted hidden" style="margin: 14px 4px 0;">No custom PII terms yet.</p>
+        </div>
+      </div>
+
+      <!-- ── Non-PII Terms tab ── -->
+      <div id="tab-nonpii" class="tab-panel">
+        <div class="card pending-card" id="nonpiiPendingCard" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <h2 style="margin: 0;">Pending review — certified terms</h2>
+            <span class="pill on" id="nonpiiPendingCount">0</span>
+          </div>
+          <p class="muted" style="margin: 0 0 14px;">Terms technicians certified as <em>not</em> being names. <strong>Approve</strong> to exclude a term from detection globally; <strong>reject</strong> to discard. Approving weakens detection — only approve genuine non-names.</p>
+          <div id="nonpiiPendingRows"></div>
+        </div>
+
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 10px; flex-wrap: wrap;">
+            <h2 style="margin: 0;">Non-PII Terms</h2>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn-primary" data-add-term="nonpii">Add term</button>
+              <button id="clearNonPii" class="btn-danger">Clear all</button>
+            </div>
+          </div>
+          <p class="muted" style="margin: 0 0 14px;">Terms certified as not being person names. Permanently excluded from PHI detection.</p>
           <table id="nonpiiTable">
             <thead><tr><th>Term</th><th>Certified at</th><th></th></tr></thead>
             <tbody id="nonpiiRows"></tbody>
@@ -188,6 +236,26 @@
         </div>
       </div>
     </div>
+
+    <!-- Shared add-term modal (PII / Non-PII) -->
+    <div id="termModal" class="modal-overlay hidden">
+      <div class="modal">
+        <h2 style="margin: 0 0 4px;">Add a term</h2>
+        <p class="muted" style="margin: 0 0 16px;">Commits to the live list immediately.</p>
+        <label for="termInput">Term</label>
+        <input id="termInput" type="text" placeholder="A single word" autocomplete="off" />
+        <label style="margin-top: 14px;">Classify as</label>
+        <div class="radio-row">
+          <label class="radio-opt"><input type="radio" name="termKind" value="pii" /> PII (a name)</label>
+          <label class="radio-opt"><input type="radio" name="termKind" value="nonpii" /> Not PII</label>
+        </div>
+        <div id="termErr" class="err"></div>
+        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px;">
+          <button id="termCancel" class="btn-ghost">Cancel</button>
+          <button id="termSave" class="btn-primary">Save</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -217,7 +285,7 @@
       function show() {
         if (isAdmin()) {
           loginCard.classList.add("hidden"); adminUI.classList.remove("hidden"); logoutBtn.classList.remove("hidden");
-          load(); loadNonPii(); loadAlgStatus();
+          load(); loadPii(); loadNonPii(); loadTermQueues(); loadAlgStatus();
         } else {
           loginCard.classList.remove("hidden"); adminUI.classList.add("hidden"); logoutBtn.classList.add("hidden");
           document.getElementById("pw").focus();
@@ -351,6 +419,107 @@
         if (confirm("Clear all certified non-PII terms? Clinicians will need to re-certify them.")) {
           adminFetch("/api/nonpii", "DELETE", {}).then(loadNonPii).catch(function () {});
         }
+      });
+
+      /* ── PII Terms tab (live force-detect list) ── */
+      function loadPii() {
+        adminFetch("/api/admin/scrub-overrides").then(function (d) {
+          var terms = d.firstNames || [];
+          var tbody = document.getElementById("piiRows");
+          tbody.innerHTML = "";
+          document.getElementById("piiEmpty").classList.toggle("hidden", terms.length > 0);
+          terms.forEach(function (term) {
+            var tr = document.createElement("tr");
+            tr.innerHTML =
+              "<td><strong>" + escapeHtml(term) + "</strong></td>" +
+              '<td><div class="row-actions"><button class="btn-danger" data-act="del">Delete</button></div></td>';
+            tr.querySelector('[data-act=del]').addEventListener("click", function () {
+              adminFetch("/api/admin/terms", "DELETE", { list: "pii", term: term }).then(loadPii).catch(function () {});
+            });
+            tbody.appendChild(tr);
+          });
+        }).catch(function () {});
+      }
+
+      /* ── Pending review queues (tech submissions) ── */
+      function loadTermQueues() {
+        adminFetch("/api/admin/term-queue").then(function (d) {
+          renderPending("pii", d.piiPending || []);
+          renderPending("nonpii", d.nonPiiPending || []);
+        }).catch(function () {});
+      }
+
+      function renderPending(kind, rows) {
+        var card = document.getElementById(kind === "pii" ? "piiPendingCard" : "nonpiiPendingCard");
+        var rowsEl = document.getElementById(kind === "pii" ? "piiPendingRows" : "nonpiiPendingRows");
+        document.getElementById(kind === "pii" ? "piiPendingCount" : "nonpiiPendingCount").textContent = rows.length;
+        card.style.display = rows.length ? "block" : "none";
+        rowsEl.innerHTML = "";
+        rows.forEach(function (e) {
+          var row = document.createElement("div");
+          row.style.cssText = "display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid #eef2e6;";
+          var times = e.count && e.count > 1 ? '<span class="count-pill">×' + e.count + "</span>" : "";
+          row.innerHTML =
+            '<div style="flex:1;min-width:0;">' +
+              '<div style="font-weight:700;font-size:15px;">' + escapeHtml(e.term) + times + "</div>" +
+              '<div class="muted" style="margin-top:3px;font-size:12px;">last seen ' + fmtDateTime(e.lastSeen) + "</div>" +
+            "</div>" +
+            '<div class="row-actions" style="flex-shrink:0;">' +
+              '<button class="btn-ghost" data-act="approve">Approve</button>' +
+              '<button class="btn-danger" data-act="reject">Reject</button>' +
+            "</div>";
+          row.querySelector('[data-act=approve]').addEventListener("click", function () { decideTerm(kind, e.term, "approve"); });
+          row.querySelector('[data-act=reject]').addEventListener("click", function () { decideTerm(kind, e.term, "reject"); });
+          rowsEl.appendChild(row);
+        });
+      }
+
+      function decideTerm(kind, term, decision) {
+        adminFetch("/api/admin/term-queue", "POST", { list: kind, term: term, decision: decision })
+          .then(function () {
+            loadTermQueues();
+            if (decision === "approve") { if (kind === "pii") loadPii(); else loadNonPii(); }
+          })
+          .catch(function () {});
+      }
+
+      /* ── Shared add-term modal ── */
+      var termModal = document.getElementById("termModal");
+      function syncTermRadioUI() {
+        document.querySelectorAll(".radio-opt").forEach(function (opt) {
+          opt.classList.toggle("sel", opt.querySelector("input").checked);
+        });
+      }
+      function openTermModal(kind) {
+        document.getElementById("termErr").style.display = "none";
+        document.getElementById("termInput").value = "";
+        document.querySelectorAll('input[name="termKind"]').forEach(function (r) { r.checked = (r.value === kind); });
+        syncTermRadioUI();
+        termModal.classList.remove("hidden");
+        document.getElementById("termInput").focus();
+      }
+      function closeTermModal() { termModal.classList.add("hidden"); }
+      document.querySelectorAll("[data-add-term]").forEach(function (btn) {
+        btn.addEventListener("click", function () { openTermModal(btn.getAttribute("data-add-term")); });
+      });
+      document.querySelectorAll('input[name="termKind"]').forEach(function (r) {
+        r.addEventListener("change", syncTermRadioUI);
+      });
+      document.getElementById("termCancel").addEventListener("click", closeTermModal);
+      termModal.addEventListener("click", function (e) { if (e.target === termModal) closeTermModal(); });
+      document.getElementById("termInput").addEventListener("keydown", function (e) {
+        if (e.key === "Enter") document.getElementById("termSave").click();
+      });
+      document.getElementById("termSave").addEventListener("click", function () {
+        var term = document.getElementById("termInput").value.trim();
+        var kindEl = document.querySelector('input[name="termKind"]:checked');
+        var err = document.getElementById("termErr"); err.style.display = "none";
+        if (!term) { err.textContent = "Enter a term."; err.style.display = "block"; return; }
+        if (!kindEl) { err.textContent = "Choose PII or Not PII."; err.style.display = "block"; return; }
+        var kind = kindEl.value;
+        adminFetch("/api/admin/terms", "POST", { list: kind, term: term })
+          .then(function () { closeTermModal(); if (kind === "pii") loadPii(); else loadNonPii(); })
+          .catch(function (ex) { err.textContent = ex.message; err.style.display = "block"; });
       });
 
       /* ── Algorithm Lab tab ── */

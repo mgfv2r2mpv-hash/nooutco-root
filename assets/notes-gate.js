@@ -434,6 +434,32 @@
     }
   }
 
+  /* ─────────────── PII candidate capture (admin review queue) ─────────────── */
+
+  // Fire-and-forget: report bare scrubbed words into the admin PII review queue.
+  // PHI-safe by construction — only the lowercase word is sent (no surrounding text,
+  // no client/session/date linkage), and words already in the FIRST_NAMES dictionary
+  // are dropped here so we transmit only the heuristic-only catches worth reviewing.
+  function reportScrubbed(terms) {
+    var tok = getToken();
+    if (!tok || !terms || !terms.length) return;
+    var seen = {};
+    var out = [];
+    terms.forEach(function (t) {
+      var lc = (t || "").toLowerCase().trim();
+      if (!lc || seen[lc]) return;
+      seen[lc] = true;
+      if (FIRST_NAMES[lc]) return; // already in the dictionary — nothing to learn
+      out.push(lc);
+    });
+    if (!out.length) return;
+    fetch(apiUrl("/api/scrub-report"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + tok },
+      body: JSON.stringify({ terms: out }),
+    }).catch(function () {});
+  }
+
   // Detect candidate person names: runs of 1–2 capitalized words not in the
   // stoplist. ALL-CAPS acronyms (CLIENT, BCBA, ABA) are never matched. A trailing
   // possessive (‘s) is stripped so "Jacob’s" maps to "Jacob".
@@ -613,6 +639,8 @@
     generateNote: generateNote,
     // Certified-non-PII store — localStorage cache + KV server backing.
     nonPii: { load: loadNonPii, saveTerm: saveNonPiiTerm, clear: clearNonPii, sync: syncNonPii },
+    // PII candidate capture — reports bare scrubbed words to the admin review queue.
+    pii: { reportScrubbed: reportScrubbed },
     // exposed for testing / advanced use
     _scrub: { detectNames: detectNames, buildNameMap: buildNameMap, applyScrub: applyScrub, restoreDeep: restoreDeep },
   };

@@ -340,6 +340,12 @@
         done = true;
         document.removeEventListener("keydown", escHandler);
         wrap.remove();
+        // Report the bare scrubbed words (names only, no context) to the admin PII review
+        // queue. NotesGate.pii drops dictionary names and any words it can't transmit safely.
+        if (result && !result.cancelled && result.map && result.map.length &&
+            window.NotesGate && window.NotesGate.pii) {
+          window.NotesGate.pii.reportScrubbed(result.map.map(function (m) { return m.name; }));
+        }
         resolve(result);
       }
       function escHandler(e) { if (e.key === "Escape") finish({ cancelled: true, map: [], certified: [] }); }

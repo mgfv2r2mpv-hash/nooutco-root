@@ -83,6 +83,27 @@ export default {
       return handleScrubRun(request, env);
     }
 
+    // Any authenticated user: silently report bare scrubbed words (no context, no
+    // linkage) into the PII review queue. PHI-safe vocabulary capture only.
+    if (url.pathname === "/api/scrub-report" && request.method === "POST") {
+      return handleScrubReport(request, env);
+    }
+
+    // Admin-only: review queue for tech-submitted PII/non-PII candidate terms
+    if (url.pathname === "/api/admin/term-queue") {
+      return handleTermQueue(request, env);
+    }
+
+    // Admin-only: directly curate (add/remove) a live PII or non-PII term
+    if (url.pathname === "/api/admin/terms") {
+      return handleTerms(request, env);
+    }
+
+    // Weekly term digest — admin token OR CRON_SECRET (the Friday GitHub Action)
+    if (url.pathname === "/api/admin/term-digest" && request.method === "POST") {
+      return handleTermDigest(request, env);
+    }
+
     for (const [old, next] of LEGACY_PREFIXES) {
       if (url.pathname === old || url.pathname.startsWith(old + '/')) {
         const rest = url.pathname.slice(old.length).replace(/^\//, '');
@@ -555,8 +576,14 @@ async function handleNonPii(request, env) {
   if (request.method === "POST") {
     let body;
     try { body = await request.json(); } catch { return jsonRes(400, { error: "Invalid body." }); }
-    const term = (body.term ?? "").toLowerCase().trim();
+    const term = normalizeTerm(body.term);
     if (!term) return jsonRes(400, { error: "term is required." });
+    // A tech certification no longer commits globally — it lands in a review queue
+    // (handleTermQueue) for the admin to approve. Only an admin add commits live here.
+    if (payload.role !== "admin") {
+      await enqueueTerms(kv, "nonpii-pending:v1", [term], "tech-cert");
+      return jsonRes(200, { ok: true, queued: true });
+    }
     const raw = await kv.get(KV_KEY);
     const terms = raw ? JSON.parse(raw) : [];
     if (!terms.some((e) => e.term === term)) {
@@ -849,6 +876,213 @@ function timingSafeEqual(a, b) {
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return diff === 0;
+}
+
+// Normalize a candidate term to a single lowercase word (letters, apostrophe, hyphen),
+// capped at 40 chars. Returns "" if nothing usable remains. Keeps stored terms as bare
+// name-vocabulary — no surrounding context ever survives this.
+function normalizeTerm(raw) {
+  if (typeof raw !== "string") return "";
+  const first = raw.trim().split(/\s+/)[0] || "";
+  return first.toLowerCase().replace(/[^a-z'-]/g, "").slice(0, 40);
+}
+
+// Add terms to a pending review queue, deduped by term. A repeat bumps count/lastSeen
+// instead of adding a row, so the queue stays a vocabulary set, not an event log.
+async function enqueueTerms(kv, key, terms, source) {
+  const raw = await kv.get(key);
+  const list = raw ? JSON.parse(raw) : [];
+  const now = new Date().toISOString();
+  const index = new Map(list.map((e) => [e.term, e]));
+  for (const term of terms) {
+    if (!term) continue;
+    const existing = index.get(term);
+    if (existing) {
+      existing.count = (existing.count || 1) + 1;
+      existing.lastSeen = now;
+    } else {
+      const entry = { term, source, count: 1, firstSeen: now, lastSeen: now };
+      list.push(entry);
+      index.set(term, entry);
+    }
+  }
+  await kv.put(key, JSON.stringify(list));
+}
+
+// Commit a term to the appropriate LIVE list. "pii" -> force-detect (firstNames in
+// scrub-overrides, synced to clients via /api/scrub-config). "nonpii" -> the detection
+// exclusion whitelist (nonpii:v1).
+async function commitTerm(kv, list, term) {
+  if (list === "pii") {
+    const ovRaw = await kv.get("scrub-overrides:v1");
+    const ov = ovRaw ? JSON.parse(ovRaw) : { stopwords: [], firstNames: [] };
+    const firstNames = Array.from(new Set([...(ov.firstNames || []), term].filter(Boolean)));
+    await kv.put("scrub-overrides:v1", JSON.stringify({ ...ov, firstNames }));
+  } else {
+    const raw = await kv.get("nonpii:v1");
+    const terms = raw ? JSON.parse(raw) : [];
+    if (!terms.some((e) => e.term === term)) {
+      terms.push({ term, certifiedAt: new Date().toISOString() });
+      await kv.put("nonpii:v1", JSON.stringify(terms));
+    }
+  }
+}
+
+// Remove a term from the appropriate LIVE list (admin pruning a bad entry).
+async function removeTerm(kv, list, term) {
+  if (list === "pii") {
+    const ovRaw = await kv.get("scrub-overrides:v1");
+    const ov = ovRaw ? JSON.parse(ovRaw) : { stopwords: [], firstNames: [] };
+    const firstNames = (ov.firstNames || []).filter((t) => t !== term);
+    await kv.put("scrub-overrides:v1", JSON.stringify({ ...ov, firstNames }));
+  } else {
+    const raw = await kv.get("nonpii:v1");
+    const terms = raw ? JSON.parse(raw) : [];
+    await kv.put("nonpii:v1", JSON.stringify(terms.filter((e) => e.term !== term)));
+  }
+}
+
+// Any authenticated user: silently enqueue bare scrubbed words into the PII review queue.
+// The client only sends words NOT already in its FIRST_NAMES dictionary, and never any
+// surrounding text — this is PHI-safe name-vocabulary capture, nothing more.
+async function handleScrubReport(request, env) {
+  const secret = (env.ADMIN_SECRET ?? "").trim();
+  const auth = request.headers.get("Authorization") || "";
+  const token = auth.replace(/^Bearer\s+/i, "");
+  const payload = secret ? await readToken(token, secret) : null;
+  if (!payload) return jsonRes(401, { error: "Login required." });
+  if (!env.API_PASSWORDS) return jsonRes(503, { error: "Storage not configured." });
+  let body;
+  try { body = await request.json(); } catch { return jsonRes(400, { error: "Invalid body." }); }
+  const input = Array.isArray(body.terms) ? body.terms : [];
+  const seen = new Set();
+  for (const raw of input.slice(0, 50)) {
+    const term = normalizeTerm(raw);
+    if (term) seen.add(term);
+  }
+  if (seen.size) await enqueueTerms(env.API_PASSWORDS, "pii-pending:v1", [...seen], "tech-scrub");
+  return jsonRes(200, { ok: true });
+}
+
+// Admin-only: review queue for tech-submitted candidate terms.
+// GET -> { piiPending, nonPiiPending }. POST { list, term, decision } approves (commit to
+// live list) or rejects; either way the term leaves its pending queue.
+async function handleTermQueue(request, env) {
+  const secret = (env.ADMIN_SECRET ?? "").trim();
+  const auth = request.headers.get("Authorization") || "";
+  const token = auth.replace(/^Bearer\s+/i, "");
+  const payload = secret ? await readToken(token, secret) : null;
+  if (!payload || payload.role !== "admin") return jsonRes(401, { error: "Admin access required." });
+  if (!env.API_PASSWORDS) return jsonRes(503, { error: "Storage not configured." });
+  const kv = env.API_PASSWORDS;
+  const PII_Q = "pii-pending:v1";
+  const NONPII_Q = "nonpii-pending:v1";
+
+  if (request.method === "GET") {
+    const piiPending = JSON.parse((await kv.get(PII_Q)) || "[]");
+    const nonPiiPending = JSON.parse((await kv.get(NONPII_Q)) || "[]");
+    return jsonRes(200, { piiPending, nonPiiPending });
+  }
+
+  if (request.method === "POST") {
+    let body;
+    try { body = await request.json(); } catch { return jsonRes(400, { error: "Invalid body." }); }
+    const list = body.list;
+    const decision = body.decision;
+    const term = normalizeTerm(body.term);
+    if (!term || (list !== "pii" && list !== "nonpii") || (decision !== "approve" && decision !== "reject")) {
+      return jsonRes(400, { error: "list (pii|nonpii), term, and decision (approve|reject) are required." });
+    }
+    const queueKey = list === "pii" ? PII_Q : NONPII_Q;
+    const queue = JSON.parse((await kv.get(queueKey)) || "[]");
+    await kv.put(queueKey, JSON.stringify(queue.filter((e) => e.term !== term)));
+    if (decision === "approve") await commitTerm(kv, list, term);
+    return jsonRes(200, { ok: true });
+  }
+
+  return jsonRes(405, { error: "Method not allowed." });
+}
+
+// Admin-only: directly curate a LIVE term. POST commits immediately (the admin is the
+// approver); DELETE prunes a live term.
+async function handleTerms(request, env) {
+  const secret = (env.ADMIN_SECRET ?? "").trim();
+  const auth = request.headers.get("Authorization") || "";
+  const token = auth.replace(/^Bearer\s+/i, "");
+  const payload = secret ? await readToken(token, secret) : null;
+  if (!payload || payload.role !== "admin") return jsonRes(401, { error: "Admin access required." });
+  if (!env.API_PASSWORDS) return jsonRes(503, { error: "Storage not configured." });
+  const kv = env.API_PASSWORDS;
+
+  if (request.method === "POST" || request.method === "DELETE") {
+    let body;
+    try { body = await request.json(); } catch { return jsonRes(400, { error: "Invalid body." }); }
+    const list = body.list;
+    const term = normalizeTerm(body.term);
+    if (!term || (list !== "pii" && list !== "nonpii")) {
+      return jsonRes(400, { error: "list (pii|nonpii) and term are required." });
+    }
+    if (request.method === "POST") await commitTerm(kv, list, term);
+    else await removeTerm(kv, list, term);
+    return jsonRes(200, { ok: true });
+  }
+
+  return jsonRes(405, { error: "Method not allowed." });
+}
+
+// Weekly term digest — admin token OR CRON_SECRET (the Friday GitHub Action).
+async function handleTermDigest(request, env) {
+  const auth = request.headers.get("Authorization") || "";
+  const token = auth.replace(/^Bearer\s+/i, "");
+  const cronSecret = (env.CRON_SECRET ?? "").trim();
+  const adminSecret = (env.ADMIN_SECRET ?? "").trim();
+  const isCron = cronSecret && timingSafeEqual(token, cronSecret);
+  const payload = adminSecret ? await readToken(token, adminSecret) : null;
+  const isAdmin = payload && payload.role === "admin";
+  if (!isCron && !isAdmin) return jsonRes(401, { error: "Admin or cron authorization required." });
+  await sendTermDigest(env);
+  return jsonRes(200, { ok: true });
+}
+
+// Email a COUNTS-ONLY summary of term-queue activity. Terms are withheld by design —
+// pending PII candidates may be real names, so only aggregate counts ever leave the worker.
+async function sendTermDigest(env) {
+  if (!env.API_PASSWORDS) return;
+  const kv = env.API_PASSWORDS;
+  const piiPending = JSON.parse((await kv.get("pii-pending:v1")) || "[]");
+  const nonPiiPending = JSON.parse((await kv.get("nonpii-pending:v1")) || "[]");
+  const weekAgoMs = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const newThisWeek = (rows) =>
+    rows.filter((e) => e.firstSeen && new Date(e.firstSeen).getTime() >= weekAgoMs).length;
+  const piiNew = newThisWeek(piiPending);
+  const nonPiiNew = newThisWeek(nonPiiPending);
+
+  if (!env.RESEND_API_KEY || !env.SUGGEST_TO_EMAIL) return;
+  const runDate = new Date().toISOString().slice(0, 10);
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + env.RESEND_API_KEY },
+    body: JSON.stringify({
+      from: "tools@nooutco.me",
+      to: env.SUGGEST_TO_EMAIL,
+      subject: "PHI terms — weekly review digest (" + runDate + ")",
+      text: [
+        "Weekly term review digest — " + runDate,
+        "",
+        "New submissions this week (last 7 days):",
+        "  - PII candidates (names techs scrubbed): " + piiNew,
+        "  - Non-PII candidates (terms techs certified): " + nonPiiNew,
+        "",
+        "Total awaiting your review:",
+        "  - PII queue: " + piiPending.length,
+        "  - Non-PII queue: " + nonPiiPending.length,
+        "",
+        "Counts only — the terms themselves are withheld from email by design.",
+        "Review and approve/reject at:",
+        "https://tools.nooutco.me/admin → PII Terms / Non-PII Terms",
+      ].join("\n"),
+    }),
+  }).catch(() => {});
 }
 
 // Core learning logic: called by scheduled() and handleScrubRun().
