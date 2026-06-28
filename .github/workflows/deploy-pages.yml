@@ -59,6 +59,7 @@ jobs:
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
           command: >-
             pages deploy apps/tools
             --project-name=${{ steps.target.outputs.project }}
@@ -82,6 +83,7 @@ jobs:
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
           command: >-
             pages deploy apps/games
             --project-name=${{ steps.target.outputs.project }}
