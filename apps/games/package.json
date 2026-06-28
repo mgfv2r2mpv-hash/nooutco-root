@@ -1,0 +1,22 @@
+{
+  "name": "games-nooutco-me",
+  "version": "1.0.0",
+  "description": "ABA therapy games platform",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler pages dev . --port 8788",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "test:coverage": "playwright test",
+    "build": "tailwindcss -i tailwind.input.css -o tailwind.css --minify",
+    "build:watch": "tailwindcss -i tailwind.input.css -o tailwind.css --watch",
+    "build:client": "echo 'No build step needed for static site'",
+    "e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@tailwindcss/cli": "^4.3.1",
+    "tailwindcss": "^4"
+  }
+}

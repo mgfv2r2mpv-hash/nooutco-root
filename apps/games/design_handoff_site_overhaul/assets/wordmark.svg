@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="96" viewBox="0 0 360 96" font-family="&#39;Atkinson Hyperlegible&#39;, system-ui, sans-serif" role="img" aria-label="No Outcome ABA">
+  <g transform="translate(8 8) scale(0.4)">
+    <circle cx="100" cy="100" r="79" fill="#a6c2cf"></circle>
+    <path d="M64 150 L64 84 L136 150 L136 84" fill="none" stroke="#51616a" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"></path>
+    <circle cx="100" cy="100" r="82" fill="none" stroke="#3a4448" stroke-width="11" stroke-linecap="round" stroke-dasharray="446 69" transform="rotate(64 100 100)"></circle>
+  </g>
+  <text x="100" y="50" font-size="30" font-weight="800" fill="#2b3338" letter-spacing="-0.3">No Outcome <tspan fill="#6a7659">ABA</tspan></text>
+  <text x="101" y="70" font-size="13" font-weight="600" fill="#70787a" letter-spacing="0.4">SAssi — Schedule Assistant</text>
+</svg>

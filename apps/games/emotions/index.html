@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emotion ID — No Outcome ABA</title>
+  <link rel="stylesheet" href="../tailwind.css">
+  <style>
+    /* ── Tally row ──────────────────────────────────────────────────── */
+    .seg { display: inline-flex; gap: 2px; padding: 2px; background: var(--sage-100); border-radius: var(--radius-md); }
+    .seg button {
+      border: none; background: transparent; padding: 7px 14px;
+      font-family: var(--font-sans); font-size: 13px; font-weight: 700;
+      color: var(--sage-700); border-radius: var(--radius-sm); cursor: pointer;
+    }
+    .seg button.on { background: var(--sage-500); color: #fff; }
+    .tally {
+      margin-left: auto; display: flex; align-items: center; gap: 10px;
+      font-size: 12px; color: var(--slate-600);
+    }
+    .tally b { color: var(--slate-900); font-size: 14px; }
+    .tally .pct { font-weight: 800; color: var(--sage-700); }
+    .linkbtn {
+      background: none; border: none; color: var(--slate-500);
+      font-size: 11px; font-weight: 600; cursor: pointer;
+      text-decoration: underline; font-family: var(--font-sans);
+    }
+    .linkbtn:hover { color: var(--sage-700); }
+
+    /* ── SD banner ──────────────────────────────────────────────────── */
+    .sd {
+      background: var(--white); border: 1px solid var(--sage-200);
+      border-left: 4px solid var(--sage-500); border-radius: var(--radius-lg);
+      padding: 14px 18px; margin-bottom: 16px;
+    }
+    .sd .k {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.07em;
+      text-transform: uppercase; color: var(--slate-500); margin-bottom: 4px;
+    }
+    .sd .txt { font-size: 22px; font-weight: 800; color: var(--slate-900); letter-spacing: -0.2px; }
+    .sd .hint { font-size: 11.5px; color: var(--slate-500); margin-top: 5px; }
+
+    /* ── Stage ──────────────────────────────────────────────────────── */
+    .stage {
+      background: var(--white); border: 1px solid var(--sage-200);
+      border-radius: var(--radius-xl); padding: 22px;
+      box-shadow: 0 2px 10px rgba(55, 69, 40, .06);
+    }
+    .field { display: grid; gap: 14px; }
+    .face {
+      aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+      font-size: 64px;
+      background: var(--sage-50); border: 2px solid var(--sage-200);
+      border-radius: var(--radius-xl); cursor: pointer; user-select: none;
+      transition: transform .12s var(--ease-standard), border-color .12s, background .12s, opacity .12s;
+    }
+    .face:hover { border-color: #9fb18a; }
+    .face.tinted { background: var(--tint-bg); border-color: var(--tint-bd); }
+    .face.correct { border-color: var(--phase-open-500) !important; background: var(--phase-open-bg) !important; }
+    .face.wrong   { border-color: var(--red-500) !important; background: var(--red-50) !important; }
+    .face.errorless-off { opacity: .35; cursor: not-allowed; pointer-events: none; }
+    .face.prompted { border-color: var(--amber-300) !important; box-shadow: 0 0 0 5px var(--amber-100); }
+    @keyframes pop { 0%{transform:scale(1)} 45%{transform:scale(1.07)} 100%{transform:scale(1)} }
+    body.visual .face.correct { animation: pop .35s var(--ease-standard); }
+    @media (prefers-reduced-motion: reduce) { body.visual .face.correct { animation: none; } }
+
+    /* Expressive single */
+    .single { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+    .single .bigface {
+      width: 180px; height: 180px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 120px; background: var(--sage-50); border: 2px solid var(--sage-200);
+      border-radius: var(--radius-2xl);
+    }
+    .score { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .score button {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 11px 18px; font-family: var(--font-sans); font-size: 14px; font-weight: 700;
+      border-radius: var(--radius-md); border: 1px solid transparent; cursor: pointer;
+    }
+    .s-correct { background: var(--phase-open-bg); color: #0f6e56; border-color: #9fe1cb; }
+    .s-correct:hover { background: #d2efe4; }
+    .s-prompt  { background: var(--phase-ease-bg); color: #854f0b; border-color: #fac775; }
+    .s-prompt:hover  { background: #f4e3c4; }
+    .s-wrong   { background: var(--red-50); color: var(--red-700); border-color: var(--red-300); }
+    .s-wrong:hover   { background: #fde0e0; }
+    .reveal { font-size: 12px; color: var(--slate-500); }
+    .reveal b { color: var(--slate-800); }
+
+    /* ── Settings panel content ─────────────────────────────────────── */
+    .blk { margin-bottom: 16px; }
+    .blk:last-child { margin-bottom: 0; }
+    .lbl { font-size: 12px; font-weight: 700; color: var(--slate-700); margin-bottom: 7px; display: block; }
+    .chips { display: flex; flex-wrap: wrap; gap: 7px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px;
+      font-size: 13px; font-weight: 600; border: 1.5px solid var(--slate-300);
+      border-radius: var(--radius-pill); background: var(--white); color: var(--slate-600);
+      cursor: pointer; user-select: none;
+    }
+    .chip.on { border-color: var(--sage-500); background: var(--sage-50); color: var(--sage-700); }
+    .chip .em { font-size: 16px; }
+    .sdrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .extra-panel-body select, .extra-panel-body input[type=text] {
+      padding: 7px 9px; font-family: var(--font-sans); font-size: 13px;
+      border: 1px solid var(--border-strong); border-radius: var(--radius-md);
+      background: var(--surface-card); color: var(--slate-900);
+    }
+    .extra-panel-body input[type=text] { flex: 1; min-width: 200px; }
+    .options-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .sizes { display: inline-flex; gap: 2px; padding: 2px; background: var(--sage-100); border-radius: var(--radius-md); }
+    .sizes button {
+      border: none; background: transparent; width: 34px; padding: 6px 0;
+      font-family: var(--font-sans); font-size: 13px; font-weight: 700;
+      color: var(--sage-700); border-radius: var(--radius-sm); cursor: pointer;
+    }
+    .sizes button.on { background: var(--sage-500); color: #fff; }
+    .saved { font-size: 11px; color: var(--sage-600); font-weight: 600; }
+
+    .wrap { max-width: 760px; margin: 0 auto; padding: 20px 18px 44px; }
+    .finish-sr-row { display: flex; justify-content: center; margin-top: 16px; }
+    .foot { margin-top: 16px; font-size: 11px; color: var(--slate-400); line-height: 1.5; }
+  </style>
+</head>
+<body>
+
+  <header id="app-header" title="Tap the bar to show / hide settings">
+    <a href="../" id="btn-back" class="btn-back" title="Back to Games"><span class="back-label">← Games</span></a>
+    <div class="app-title">
+      <span class="app-title-text">Emotion ID</span>
+      <span class="app-title-sub">No Outcome ABA · v<span id="app-version-label">0.3.0</span></span>
+    </div>
+    <div class="display-control">
+      <button type="button" id="display-toggle" class="display-toggle" role="switch" aria-checked="false" title="Simple / Visual mode">
+        <span class="display-ico display-ico-simple" aria-hidden="true">○</span>
+        <span class="display-ico display-ico-visual" aria-hidden="true">◇</span>
+        <span class="display-knob" aria-hidden="true"></span>
+      </button>
+      <span class="display-ghost" aria-hidden="true"></span>
+    </div>
+    <button type="button" id="btn-minimize" class="btn-minimize" aria-expanded="true" aria-controls="settings-bar" title="Show / hide settings">▾</button>
+  </header>
+
+  <!-- Settings bar -->
+  <div id="settings-bar">
+    <div class="setting-group">
+      <label>Mode</label>
+      <div class="seg" id="mode">
+        <button class="on" data-v="receptive">Receptive</button>
+        <button data-v="expressive">Expressive</button>
+      </div>
+    </div>
+    <div class="setting-group" id="size-group">
+      <label>Field</label>
+      <div class="sizes" id="sizes">
+        <button data-n="2">2</button>
+        <button data-n="3">3</button>
+        <button data-n="4">4</button>
+        <button data-n="6">6</button>
+      </div>
+    </div>
+    <button type="button" id="btn-targets-toggle" class="btn-targets" aria-expanded="false">
+      Emotions <span class="targets-count" id="targets-count">0</span>
+    </button>
+    <button type="button" id="btn-extra-toggle" class="btn-extra" aria-expanded="false">⚙ Settings</button>
+    <div class="tally">
+      <span><b id="tCorrect">0</b>/<span id="tTotal">0</span></span>
+      <span class="pct" id="tPct">—</span>
+      <button class="linkbtn" id="copyBtn">Copy</button>
+      <button class="linkbtn" id="resetBtn">Reset</button>
+    </div>
+  </div>
+
+  <!-- Target panel: which emotions are in rotation -->
+  <section id="target-panel" hidden>
+    <div class="target-panel-header">
+      <span class="target-panel-title">Emotions in this set</span>
+      <button type="button" class="btn-targets-close" id="btn-targets-close" aria-label="Close">×</button>
+    </div>
+    <div class="chips" id="setChips" style="padding:4px 0"></div>
+  </section>
+
+  <!-- Extra panel: SD templates, pronoun, clinical options, token board -->
+  <section id="extra-panel" hidden>
+    <div class="extra-panel-header">
+      <span class="extra-panel-title">Options</span>
+      <button type="button" class="btn-extra-close" id="btn-extra-close" aria-label="Close">×</button>
+    </div>
+    <div class="extra-panel-body" style="display:block">
+      <div class="blk">
+        <span class="lbl">Receptive SD <span style="font-weight:500;color:var(--slate-400)">— listener · use {emotion}</span></span>
+        <div class="sdrow">
+          <select id="sdRPreset">
+            <option value="Touch {emotion}">Touch {emotion}</option>
+            <option value="Point to {emotion}">Point to {emotion}</option>
+            <option value="Find {emotion}">Find {emotion}</option>
+            <option value="Show me {emotion}">Show me {emotion}</option>
+            <option value="__custom">Custom…</option>
+          </select>
+          <input type="text" id="sdRText" value="Touch {emotion}">
+        </div>
+      </div>
+      <div class="blk">
+        <span class="lbl">Expressive SD <span style="font-weight:500;color:var(--slate-400)">— tact · single stimulus</span></span>
+        <div class="sdrow">
+          <select id="sdEPreset">
+            <option value="How does {pronoun} feel?">How does {pronoun} feel?</option>
+            <option value="How is {pronoun} feeling?">How is {pronoun} feeling?</option>
+            <option value="What feeling?">What feeling?</option>
+            <option value="Tell me the feeling.">Tell me the feeling.</option>
+            <option value="__custom">Custom…</option>
+          </select>
+          <input type="text" id="sdEText" value="How does {pronoun} feel?">
+        </div>
+      </div>
+      <div class="blk">
+        <span class="lbl">Pronoun <span style="font-weight:500;color:var(--slate-400)">— fills {pronoun} in the expressive SD</span></span>
+        <div class="seg" id="pron">
+          <button data-v="he">He</button>
+          <button data-v="she">She</button>
+          <button data-v="they">They</button>
+          <button data-v="rotate">Rotate</button>
+        </div>
+      </div>
+
+      <div class="blk">
+        <span class="lbl">Teaching options <span style="font-weight:500;color:var(--slate-400)">— receptive</span></span>
+        <div class="options-row">
+          <span class="option-toggle" id="opt-errorless" role="switch" aria-checked="false" tabindex="0">
+            <span class="option-toggle-ico" aria-hidden="true">🎯</span> Errorless
+            <button type="button" class="help-btn" data-help="Only the target is selectable; distractors are dimmed. Eliminates errors for high-anxiety or early learners.">?</button>
+          </span>
+          <span class="option-toggle" id="opt-represent" role="switch" aria-checked="false" tabindex="0">
+            <span class="option-toggle-ico" aria-hidden="true">↺</span> Re-present errors
+            <button type="button" class="help-btn" data-help="After an incorrect response, the same target is presented again on the next trial.">?</button>
+          </span>
+          <span class="option-toggle" id="opt-noerroranim" role="switch" aria-checked="false" tabindex="0">
+            <span class="option-toggle-ico" aria-hidden="true">🚫</span> No error animation
+            <button type="button" class="help-btn" data-help="Suppress the red incorrect highlight; the correct answer is simply revealed.">?</button>
+          </span>
+          <span class="option-toggle" id="opt-autoprompt" role="switch" aria-checked="false" tabindex="0">
+            <span class="option-toggle-ico" aria-hidden="true">✨</span> Auto-prompt
+            <button type="button" class="help-btn" data-help="After the prompt delay with no response, highlight the target to build independence through prompt fading.">?</button>
+          </span>
+        </div>
+        <div class="sdrow" id="prompt-delay-row" style="margin-top:8px;display:none">
+          <label class="lbl" for="sel-prompt-delay" style="margin:0">Prompt delay</label>
+          <select id="sel-prompt-delay">
+            <option value="1">1s</option>
+            <option value="2">2s</option>
+            <option value="3" selected>3s</option>
+            <option value="4">4s</option>
+            <option value="5">5s</option>
+            <option value="10">10s</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Token Board -->
+      <div class="blk token-board-settings-divider" style="border-top:1px solid var(--border-default);padding-top:14px">
+        <span class="option-toggle option-toggle--star" id="chk-token-board-btn" role="switch" aria-checked="false" tabindex="0">
+          <span class="option-toggle-ico" aria-hidden="true">⭐</span> Token Board
+          <button type="button" class="help-btn" data-help="Track tokens earned on a Fixed Ratio (FR) or Variable Ratio (VR) schedule. When the goal is met, a Finish & SR button appears.">?</button>
+        </span>
+        <!-- Hidden native checkbox keeps the canonical token-board.js contract -->
+        <input type="checkbox" id="chk-token-board" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0">
+
+        <div id="token-settings" style="display:none;margin-top:12px;padding-left:4px">
+          <div class="extra-row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+            <label for="sel-schedule-type" class="lbl" style="margin:0">Schedule</label>
+            <select id="sel-schedule-type">
+              <option value="FR">Fixed Ratio (FR)</option>
+              <option value="VR">Variable Ratio (VR)</option>
+            </select>
+            <input type="number" id="inp-schedule-value" min="1" max="100" value="1" style="width:50px">
+          </div>
+          <div class="extra-row" style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+            <label for="inp-starting-tokens" class="lbl" style="margin:0">Starting Tokens</label>
+            <input type="number" id="inp-starting-tokens" min="0" max="1000" value="0" style="width:70px">
+          </div>
+          <div class="extra-row" style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+            <label for="inp-goal-tokens" class="lbl" style="margin:0">Goal Tokens</label>
+            <input type="number" id="inp-goal-tokens" min="1" max="1000" value="10" style="width:70px">
+          </div>
+          <div class="extra-row" style="display:flex;gap:8px;align-items:center">
+            <label for="sel-token-emoji" class="lbl" style="margin:0">Token Emoji</label>
+            <select id="sel-token-emoji">
+              <option value="random">Random (each session)</option>
+              <option value="⭐">⭐ Star</option>
+              <option value="🔷">🔷 Diamond</option>
+              <option value="💎">💎 Gem</option>
+              <option value="✨">✨ Sparkle</option>
+              <option value="🎁">🎁 Gift</option>
+              <option value="🏆">🏆 Trophy</option>
+              <option value="💫">💫 Dizzy</option>
+              <option value="🌟">🌟 Glowing Star</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="saved" id="savedMsg">Settings save automatically.</div>
+    </div>
+  </section>
+
+<div class="wrap">
+
+  <!-- SD banner -->
+  <div class="sd">
+    <div class="k" id="sdRole">Deliver this SD</div>
+    <div class="txt" id="sdText">—</div>
+    <div class="hint" id="sdHint"></div>
+  </div>
+
+  <!-- Stage -->
+  <div class="stage" id="stage"></div>
+
+  <!-- Token board (shared display) -->
+  <div id="token-board" class="noaba-token-board" hidden aria-label="Token progress tracker">
+    <div class="token-board-content">
+      <div id="token-emoji-display" class="token-display"></div>
+      <div id="token-progress-text" class="token-progress-text">0 / 10</div>
+    </div>
+  </div>
+
+  <!-- Finish & SR (pops in when the token goal is met) -->
+  <div class="finish-sr-row">
+    <button type="button" id="btn-finish-sr" class="finish-sr-btn" hidden>⭐ Finish &amp; SR</button>
+  </div>
+
+  <p class="foot">Faces shown as emoji for demo; swap in your own photo/illustration set per learner. Trial data is stored only in this browser (never transmitted) — use Print for a report, Reset to clear.</p>
+
+</div><!-- .wrap -->
+
+<!-- Print section (built on demand) -->
+<div id="print-section"></div>
+
+<script src="../../tooltip-help.js"></script>
+<script src="../header-chrome.js"></script>
+<script src="../../results-report.js"></script>
+<script src="../../reward.js"></script>
+<script src="../../token-board.js"></script>
+<script>
+(function () {
+  const EMOTIONS = [
+    { key:'happy',     label:'Happy',     face:'😀', color:'#f5b301' },
+    { key:'sad',       label:'Sad',       face:'😢', color:'#4f86c6' },
+    { key:'angry',     label:'Angry',     face:'😠', color:'#e0552f' },
+    { key:'scared',    label:'Scared',    face:'😨', color:'#8b5cf6' },
+    { key:'surprised', label:'Surprised', face:'😮', color:'#ef9f27' },
+    { key:'tired',     label:'Tired',     face:'😴', color:'#6d93a4' },
+    { key:'calm',      label:'Calm',      face:'😌', color:'#1d9e75' },
+    { key:'excited',   label:'Excited',   face:'🤩', color:'#ec4899' },
+    { key:'sick',      label:'Sick',      face:'🤒', color:'#84a98c' },
+    { key:'silly',     label:'Silly',     face:'😜', color:'#f97316' },
+  ];
+  const byKey = k => EMOTIONS.find(e => e.key === k);
+  const KEY = 'noaba.emotionID.v1';
+  const TRIALS_KEY = 'noaba.emotionID.trials.v1';
+
+  /* ── Config (persisted) ──────────────────────────────────────────── */
+  const defaults = {
+    set:['happy','sad','angry','scared'], size:4,
+    sdR:'Touch {emotion}', sdE:'How does {pronoun} feel?', pronoun:'rotate', visual:false,
+    errorless:false, rePresentErrors:false, noErrorAnim:false, autoPrompt:false, promptDelay:3,
+  };
+  let cfg = Object.assign({}, defaults);
+  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s) cfg = Object.assign(cfg, s); } catch(e) {}
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch(e) {} }
+
+  /* ── Trial log (persisted, device-local) ─────────────────────────── */
+  let trials = NooutcoResults.load(TRIALS_KEY);
+  const stats = {};
+  let total = 0, correct = 0;
+  function rebuildStatsFromTrials() {
+    for (const k in stats) delete stats[k];
+    total = 0; correct = 0;
+    trials.forEach(t => applyToStats(t));
+  }
+  function applyToStats(t) {
+    const s = stats[t.key] || (stats[t.key] = { c:0, p:0, w:0, lv:{gestural:0, partial:0, model:0} });
+    total++;
+    if (t.result === 'correct') { s.c++; correct++; }
+    else if (t.result === 'wrong') { s.w++; }
+    else { s.p++; if (s.lv[t.result] != null) s.lv[t.result]++; }
+  }
+  function logTrial(key, result) {
+    const rec = { n: trials.length + 1, key, mode, result };
+    trials.push(rec);
+    applyToStats(rec);
+    NooutcoResults.save(TRIALS_KEY, trials);
+    renderTally();
+    if (result === 'correct') {
+      tokens.award();
+    }
+  }
+  function renderTally() {
+    document.getElementById('tCorrect').textContent = correct;
+    document.getElementById('tTotal').textContent = total;
+    document.getElementById('tPct').textContent = total ? Math.round(correct / total * 100) + '%' : '—';
+  }
+
+  /* ── Elements ────────────────────────────────────────────────────── */
+  const stage   = document.getElementById('stage');
+  const sdText  = document.getElementById('sdText');
+  const sdRole  = document.getElementById('sdRole');
+  const sdHint  = document.getElementById('sdHint');
+  const finishBtn = document.getElementById('btn-finish-sr');
+
+  let mode = 'receptive';
+  let current = null;
+  let pronounIdx = 0;
+  let forceTarget = null;          // re-present-errors carries the next target
+  let promptTimer = null;
+  const PRONOUNS = ['he','she','they'];
+  function applyPronoun(t, p) { return t.replace('{pronoun}', p || 'he'); }
+
+  function activeSet() {
+    const list = EMOTIONS.filter(e => cfg.set.includes(e.key));
+    return list.length ? list : EMOTIONS.slice(0,4);
+  }
+  function sample(arr, n) {
+    const a = arr.slice(); const out = [];
+    while (a.length && out.length < n) out.push(a.splice(Math.floor(Math.random() * a.length), 1)[0]);
+    return out;
+  }
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  function clearPromptTimer() { if (promptTimer) { clearTimeout(promptTimer); promptTimer = null; } }
+
+  function newTrial() {
+    clearPromptTimer();
+    const set = activeSet();
+    const target = forceTarget && set.includes(forceTarget) ? forceTarget : pick(set);
+    forceTarget = null;
+    if (mode === 'receptive') {
+      const n = Math.min(cfg.size, set.length);
+      const distractors = sample(set.filter(e => e.key !== target.key), n - 1);
+      const choices = sample([target, ...distractors], n);
+      current = { target, choices };
+      renderReceptive();
+    } else {
+      current = { target };
+      renderExpressive();
+    }
+  }
+
+  function renderReceptive() {
+    sdRole.textContent = 'Deliver this SD';
+    sdText.textContent = cfg.sdR.replace('{emotion}', current.target.label.toLowerCase());
+    sdHint.textContent = cfg.errorless ? 'Errorless — only the target is selectable.' : 'Then let the learner select. Tap is auto-scored.';
+    const n = current.choices.length;
+    const cols = n <= 2 ? 2 : n <= 4 ? 2 : 3;
+    stage.innerHTML = '<div class="field" style="grid-template-columns:repeat(' + cols + ',1fr)"></div>';
+    const field = stage.firstChild;
+    let answered = false;
+    current.choices.forEach(e => {
+      const d = document.createElement('div');
+      const isTarget = e.key === current.target.key;
+      d.className = 'face' + (cfg.visual ? ' tinted' : '') + (cfg.errorless && !isTarget ? ' errorless-off' : '');
+      d.textContent = e.face;
+      d.title = e.label;
+      if (cfg.visual) {
+        d.style.setProperty('--tint-bg', e.color + '22');
+        d.style.setProperty('--tint-bd', e.color + '66');
+      }
+      d.addEventListener('click', () => {
+        if (answered) return;
+        if (cfg.errorless && !isTarget) return;
+        answered = true;
+        clearPromptTimer();
+        const right = isTarget;
+        d.classList.add(right ? 'correct' : 'wrong');
+        if (!right && cfg.noErrorAnim) d.classList.remove('wrong');
+        if (!right) {
+          field.querySelectorAll('.face').forEach((el, i) => {
+            if (current.choices[i].key === current.target.key) el.classList.add('correct');
+          });
+          if (cfg.rePresentErrors) forceTarget = current.target;
+        }
+        logTrial(current.target.key, right ? 'correct' : 'wrong');
+        setTimeout(newTrial, right ? 650 : 1100);
+      });
+      field.appendChild(d);
+    });
+    if (cfg.autoPrompt) {
+      promptTimer = setTimeout(() => {
+        field.querySelectorAll('.face').forEach((el, i) => {
+          if (current.choices[i].key === current.target.key) el.classList.add('prompted');
+        });
+      }, cfg.promptDelay * 1000);
+    }
+  }
+
+  function renderExpressive() {
+    current.pronoun = cfg.pronoun === 'rotate' ? PRONOUNS[pronounIdx++ % 3] : cfg.pronoun;
+    sdRole.textContent = 'Ask the learner';
+    sdText.textContent = applyPronoun(cfg.sdE, current.pronoun);
+    sdHint.textContent = 'Single stimulus — score the response and prompt level.';
+    const visualStyle = cfg.visual
+      ? ' style="background:' + current.target.color + '1f;border-color:' + current.target.color + '66;box-shadow:0 0 0 6px ' + current.target.color + '14"'
+      : '';
+    stage.innerHTML =
+      '<div class="single">' +
+        '<div class="bigface"' + visualStyle + '>' + current.target.face + '</div>' +
+        '<div class="reveal">Target: <b>' + current.target.label + '</b></div>' +
+        '<div class="score">' +
+          '<button class="s-correct" data-r="correct">✓ Independent</button>' +
+          '<button class="s-prompt"  data-r="gestural">Gestural</button>' +
+          '<button class="s-prompt"  data-r="partial">Partial</button>' +
+          '<button class="s-prompt"  data-r="model">Model</button>' +
+          '<button class="s-wrong"   data-r="wrong">✗ Incorrect</button>' +
+        '</div>' +
+      '</div>';
+    stage.querySelectorAll('.score button').forEach(b => {
+      b.addEventListener('click', () => {
+        if (b.dataset.r === 'wrong' && cfg.rePresentErrors) forceTarget = current.target;
+        logTrial(current.target.key, b.dataset.r);
+        newTrial();
+      });
+    });
+  }
+
+  /* ── Settings UI: emotion chips (target panel) ───────────────────── */
+  const setChips = document.getElementById('setChips');
+  function updateTargetsCount() {
+    document.getElementById('targets-count').textContent = cfg.set.length;
+  }
+  EMOTIONS.forEach(e => {
+    const c = document.createElement('button');
+    c.className = 'chip' + (cfg.set.includes(e.key) ? ' on' : '');
+    c.innerHTML = '<span class="em">' + e.face + '</span>' + e.label;
+    c.addEventListener('click', () => {
+      const i = cfg.set.indexOf(e.key);
+      if (i >= 0) { if (cfg.set.length <= 2) return; cfg.set.splice(i, 1); c.classList.remove('on'); }
+      else { cfg.set.push(e.key); c.classList.add('on'); }
+      save(); updateTargetsCount(); newTrial();
+    });
+    setChips.appendChild(c);
+  });
+  updateTargetsCount();
+
+  /* ── Field size ──────────────────────────────────────────────────── */
+  const sizes = document.getElementById('sizes');
+  function paintSizes() { sizes.querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.n === cfg.size)); }
+  sizes.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    cfg.size = +b.dataset.n; paintSizes(); save(); if (mode === 'receptive') newTrial();
+  });
+  paintSizes();
+
+  /* ── Pronoun ─────────────────────────────────────────────────────── */
+  const pron = document.getElementById('pron');
+  function paintPron() { pron.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === cfg.pronoun)); }
+  pron.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    cfg.pronoun = b.dataset.v; paintPron(); save(); if (mode === 'expressive') refreshSD();
+  });
+  paintPron();
+
+  /* ── SD templates ────────────────────────────────────────────────── */
+  function wireSD(presetId, textId, key) {
+    const preset = document.getElementById(presetId), text = document.getElementById(textId);
+    text.value = cfg[key];
+    const match = [...preset.options].find(o => o.value === cfg[key]);
+    preset.value = match ? cfg[key] : '__custom';
+    preset.addEventListener('change', () => {
+      if (preset.value !== '__custom') { text.value = preset.value; cfg[key] = preset.value; save(); refreshSD(); }
+    });
+    text.addEventListener('input', () => {
+      cfg[key] = text.value;
+      const m = [...preset.options].find(o => o.value === text.value);
+      preset.value = m ? text.value : '__custom';
+      save(); refreshSD();
+    });
+  }
+  wireSD('sdRPreset', 'sdRText', 'sdR');
+  wireSD('sdEPreset', 'sdEText', 'sdE');
+
+  function refreshSD() {
+    if (!current) return;
+    if (mode === 'receptive') sdText.textContent = cfg.sdR.replace('{emotion}', current.target.label.toLowerCase());
+    else sdText.textContent = applyPronoun(cfg.sdE, cfg.pronoun === 'rotate' ? (current.pronoun || 'he') : cfg.pronoun);
+  }
+
+  /* ── Clinical option toggles ─────────────────────────────────────── */
+  function wireToggle(id, key, after) {
+    const btn = document.getElementById(id);
+    btn.setAttribute('aria-checked', String(!!cfg[key]));
+    function toggle(ev) {
+      if (ev.target.closest('.help-btn')) return;        // let help popups open
+      cfg[key] = !cfg[key];
+      btn.setAttribute('aria-checked', String(cfg[key]));
+      save();
+      if (after) after();
+    }
+    btn.addEventListener('click', toggle);
+    btn.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggle(ev); }
+    });
+  }
+  wireToggle('opt-errorless', 'errorless', () => { if (mode === 'receptive') newTrial(); });
+  wireToggle('opt-represent', 'rePresentErrors');
+  wireToggle('opt-noerroranim', 'noErrorAnim');
+  wireToggle('opt-autoprompt', 'autoPrompt', () => {
+    document.getElementById('prompt-delay-row').style.display = cfg.autoPrompt ? 'flex' : 'none';
+    if (mode === 'receptive') newTrial();
+  });
+  document.getElementById('prompt-delay-row').style.display = cfg.autoPrompt ? 'flex' : 'none';
+  const selDelay = document.getElementById('sel-prompt-delay');
+  selDelay.value = String(cfg.promptDelay);
+  selDelay.addEventListener('change', () => { cfg.promptDelay = parseInt(selDelay.value, 10) || 3; save(); });
+
+  /* ── Token board (shared module) ─────────────────────────────────── */
+  const tokens = NooutcoTokens.create({
+    namespace: 'emotionID',
+    onAward: () => {},
+    onGoal: () => {
+      finishBtn.hidden = false;
+      NooutcoReward.celebrate(document.getElementById('token-board'));
+    },
+  });
+  // Mirror the hero star button onto the canonical (hidden) checkbox.
+  const starBtn = document.getElementById('chk-token-board-btn');
+  const chk = document.getElementById('chk-token-board');
+  function syncStar() { starBtn.setAttribute('aria-checked', String(chk.checked)); }
+  function toggleStar(ev) {
+    if (ev.target.closest('.help-btn')) return;
+    chk.checked = !chk.checked;
+    chk.dispatchEvent(new Event('change', { bubbles: true }));
+    syncStar();
+    if (!chk.checked) finishBtn.hidden = true;
+  }
+  starBtn.addEventListener('click', toggleStar);
+  starBtn.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggleStar(ev); }
+  });
+  syncStar();
+
+  finishBtn.addEventListener('click', () => {
+    NooutcoReward.openSR({ minutes: 5, title: 'SR Timer', onBack: () => { finishBtn.hidden = false; } });
+  });
+
+  /* ── Mode + panels ───────────────────────────────────────────────── */
+  document.getElementById('mode').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    document.querySelectorAll('#mode button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on'); mode = b.dataset.v;
+    document.getElementById('size-group').style.display = mode === 'receptive' ? '' : 'none';
+    newTrial();
+  });
+
+  function wirePanel(toggleId, panelId, closeId, otherPanelId) {
+    const toggle = document.getElementById(toggleId), panel = document.getElementById(panelId);
+    function setOpen(open) {
+      panel.hidden = !open;
+      toggle.setAttribute('aria-expanded', String(open));
+      toggle.classList.toggle('is-open', open);
+      if (open && otherPanelId) {
+        const otherPanel = document.getElementById(otherPanelId);
+        otherPanel.hidden = true;
+
+        const otherToggleId = otherPanelId === 'extra-panel' ? 'btn-extra-toggle' : 'btn-targets-toggle';
+        const otherToggle = document.getElementById(otherToggleId);
+        if (otherToggle) {
+          otherToggle.setAttribute('aria-expanded', 'false');
+          otherToggle.classList.remove('is-open');
+        }
+      }
+    }
+    toggle.addEventListener('click', () => setOpen(panel.hidden));
+    if (closeId) document.getElementById(closeId).addEventListener('click', () => setOpen(false));
+  }
+  wirePanel('btn-targets-toggle', 'target-panel', 'btn-targets-close', 'extra-panel');
+  wirePanel('btn-extra-toggle', 'extra-panel', 'btn-extra-close', 'target-panel');
+
+  /* ── Display mode bridge (header-chrome.js) ──────────────────────── */
+  function paintVisual() {
+    document.body.classList.toggle('visual', cfg.visual);
+    if (window.__syncDisplayToggle) window.__syncDisplayToggle(cfg.visual ? 'visual' : 'simple');
+  }
+  window.__setGameDisplayMode = function(displayMode) {
+    cfg.visual = (displayMode === 'visual');
+    save(); paintVisual();
+    if (current) { (mode === 'receptive') ? renderReceptive() : renderExpressive(); }
+  };
+  paintVisual();
+
+  /* ── Tally controls ──────────────────────────────────────────────── */
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    trials = [];
+    NooutcoResults.clear(TRIALS_KEY);
+    rebuildStatsFromTrials();
+    renderTally();
+    tokens.reset();
+    finishBtn.hidden = true;
+  });
+
+  document.getElementById('copyBtn').addEventListener('click', async () => {
+    const rows = Object.keys(stats).map(k => {
+      const s = stats[k]; const t = s.c + s.p + s.w;
+      let line = byKey(k).label + ': ' + s.c + '/' + t + ' independent';
+      if (s.p) {
+        const lv = Object.keys(s.lv).filter(x => s.lv[x]).map(x => x + ' ' + s.lv[x]).join(', ');
+        line += ' · prompted ' + s.p + (lv ? ' (' + lv + ')' : '');
+      }
+      if (s.w) line += ' · ' + s.w + ' incorrect';
+      return line;
+    });
+    const text = [
+      'Emotion ID — session summary',
+      'Overall: ' + correct + '/' + total + ' (' + (total ? Math.round(correct / total * 100) : 0) + '%)',
+      ...rows
+    ].join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      const b = document.getElementById('copyBtn');
+      b.textContent = 'Copied ✓';
+      setTimeout(() => b.textContent = 'Copy', 1200);
+    } catch(e) {}
+  });
+
+  /* ── Print report (bottom-bar icon injected by chrome is absent here;
+        expose via a keyboard-free button in the tally as "Print") ──── */
+  function printReport() {
+    if (!trials.length) return;
+    const RESULT_LABEL = { correct:'Independent', wrong:'Incorrect', gestural:'Gestural', partial:'Partial', model:'Model' };
+    NooutcoResults.open({
+      title: 'Emotion ID — Session Results',
+      meta: 'Printed ' + new Date().toLocaleString() + ' · ' + trials.length + ' trials',
+      columns: [
+        { label:'#', key:'n' },
+        { label:'Emotion', key:'emotion' },
+        { label:'Mode', key:'mode' },
+        { label:'Result', key:'resultLabel', cls: r =>
+            r.result === 'correct' ? 'outcome-ok' : r.result === 'wrong' ? 'outcome-error' : 'outcome-prompted' },
+      ],
+      rows: trials.map(t => ({
+        n: t.n, emotion: byKey(t.key) ? byKey(t.key).label : t.key,
+        mode: t.mode === 'receptive' ? 'Receptive' : 'Expressive',
+        result: t.result, resultLabel: RESULT_LABEL[t.result] || t.result,
+      })),
+      summary: [
+        { label:'Total trials', value: total },
+        { label:'Independent', value: correct },
+        { label:'Accuracy', value: (total ? Math.round(correct/total*100) : 0) + '%' },
+      ],
+    });
+  }
+  // Add a Print link into the tally row.
+  (function addPrintLink() {
+    const tally = document.querySelector('.tally');
+    const btn = document.createElement('button');
+    btn.className = 'linkbtn'; btn.id = 'printBtn'; btn.textContent = 'Print';
+    btn.addEventListener('click', printReport);
+    tally.insertBefore(btn, document.getElementById('resetBtn'));
+  })();
+
+  /* ── Boot ────────────────────────────────────────────────────────── */
+  rebuildStatsFromTrials();
+  renderTally();
+  if (tokens.isEnabled() && tokens.isGoalMet()) finishBtn.hidden = false;
+  newTrial();
+})();
+</script>
+</body>
+</html>

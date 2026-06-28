@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Suggest a feature — No Outcome ABA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="../tokens.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-sans);
+      background: #eef1ea;
+      color: var(--slate-900);
+      padding: 28px 20px 48px;
+      min-height: 100vh;
+    }
+    .wrap { max-width: 600px; margin: 0 auto; }
+
+    /* ── Topbar ─────────────────────────────────────────────────────── */
+    .topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+    .topbar img { width: 40px; height: 40px; }
+    .topbar .name { font-size: 15px; font-weight: 800; color: var(--sage-700); line-height: 1.1; }
+    .topbar .name span { color: var(--sage-500); }
+    .topbar .sub { font-size: 11px; font-weight: 600; color: var(--slate-500); }
+    .topbar .spacer { flex: 1; }
+    .back {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border: 1.5px solid var(--sage-200);
+      border-radius: var(--radius-pill); background: var(--white);
+      color: var(--sage-700); font-size: 13px; font-weight: 600;
+      text-decoration: none;
+      transition: background var(--duration-fast) var(--ease-standard);
+    }
+    .back:hover { background: #e2e8da; }
+
+    /* ── Card ───────────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface-card); border: 1px solid var(--sage-200);
+      border-radius: var(--radius-xl); padding: 26px 26px 24px;
+      box-shadow: 0 2px 10px rgba(55, 69, 40, .06);
+    }
+    h1 { font-size: 23px; font-weight: 800; color: var(--slate-900); letter-spacing: -0.3px; }
+    .lede { font-size: 13.5px; color: var(--slate-600); margin-top: 5px; line-height: 1.5; }
+
+    /* ── Fields ─────────────────────────────────────────────────────── */
+    .field { margin-top: 18px; }
+    .label { display: block; font-size: 12px; font-weight: 700; color: var(--slate-700); margin-bottom: 7px; }
+    .label .opt { font-weight: 500; color: var(--slate-400); }
+
+    .seg {
+      display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 2px;
+      background: var(--sage-100); border-radius: var(--radius-md);
+    }
+    .seg button {
+      border: none; background: transparent; padding: 7px 14px;
+      font-family: var(--font-sans); font-size: 13px; font-weight: 700;
+      color: var(--sage-700); border-radius: var(--radius-sm); cursor: pointer;
+      transition: background var(--duration-fast) var(--ease-standard);
+    }
+    .seg button.on { background: var(--sage-500); color: #fff; }
+
+    input[type=text], input[type=email], textarea {
+      width: 100%; padding: 10px 12px;
+      font-family: var(--font-sans); font-size: 14px;
+      color: var(--slate-900); background: var(--white);
+      border: 1px solid var(--slate-300); border-radius: var(--radius-md);
+      outline: none;
+      transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard);
+    }
+    input:focus, textarea:focus { border-color: var(--sage-500); box-shadow: var(--shadow-focus); }
+    textarea { resize: vertical; min-height: 92px; line-height: 1.5; }
+    .count { font-size: 11px; color: var(--slate-400); text-align: right; margin-top: 4px; }
+
+    /* ── Guardrail notice ───────────────────────────────────────────── */
+    .guard {
+      display: flex; gap: 9px; align-items: flex-start;
+      margin-top: 18px; padding: 11px 13px;
+      background: var(--amber-50); border: 1px solid var(--amber-300);
+      border-radius: var(--radius-md);
+    }
+    .guard .ic { font-size: 15px; }
+    .guard .t { font-size: 12px; color: var(--amber-700); line-height: 1.45; }
+
+    /* ── Actions ────────────────────────────────────────────────────── */
+    .actions { display: flex; gap: 10px; align-items: center; margin-top: 20px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      padding: 11px 18px; font-family: var(--font-sans); font-size: 14px; font-weight: 700;
+      border-radius: var(--radius-md); border: 1px solid transparent; cursor: pointer;
+      transition: background var(--duration-fast) var(--ease-standard);
+    }
+    .btn-primary { background: var(--brand-primary); color: #fff; }
+    .btn-primary:hover { background: var(--brand-primary-hover); }
+    .btn-primary:disabled { background: var(--slate-200); color: var(--slate-400); cursor: not-allowed; }
+    .btn-ghost { background: transparent; color: var(--sage-700); border-color: var(--sage-200); }
+    .btn-ghost:hover { background: var(--sage-50); }
+
+    .note { font-size: 11.5px; color: var(--slate-500); margin-top: 12px; line-height: 1.5; }
+    .note code {
+      font-family: var(--font-mono); font-size: 11px;
+      background: var(--slate-100); padding: 1px 5px;
+      border-radius: 4px; color: var(--slate-700);
+    }
+
+    /* ── Draft reveal ───────────────────────────────────────────────── */
+    .sent { display: none; margin-top: 16px; padding: 14px 16px; background: var(--sage-50); border: 1px solid var(--sage-200); border-radius: var(--radius-md); }
+    .sent.show { display: block; }
+    .sent .h { font-size: 13px; font-weight: 800; color: var(--sage-700); }
+    .sent .p { font-size: 12.5px; color: var(--slate-600); margin-top: 4px; line-height: 1.5; }
+    .sent pre {
+      margin-top: 10px; padding: 11px;
+      background: var(--white); border: 1px solid var(--sage-200);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono); font-size: 11px; color: var(--slate-700);
+      white-space: pre-wrap; word-break: break-word; max-height: 160px; overflow: auto;
+    }
+    .result { display: none; margin-top: 14px; padding: 11px 13px; border-radius: var(--radius-md); font-size: 13px; line-height: 1.45; }
+    .result.ok   { display: block; background: var(--green-50);  border: 1px solid var(--green-100);  color: var(--green-800); }
+    .result.dupe { display: block; background: var(--amber-50);  border: 1px solid var(--amber-300);  color: var(--amber-700); }
+    .result.err  { display: block; background: var(--red-50);    border: 1px solid var(--red-100);    color: var(--red-700); }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <img src="../logo-mark.svg" alt="No Outcome ABA" width="40" height="40">
+    <div>
+      <div class="name">No Outcome <span>ABA</span></div>
+      <div class="sub">Suggest a feature</div>
+    </div>
+    <div class="spacer"></div>
+    <a class="back" href="/">← Games</a>
+  </div>
+
+  <div class="card">
+    <h1>Suggest a feature</h1>
+    <p class="lede">Got an idea for a new game, an activity tweak, or something else? Tell me. Nothing is stored here — sent straight to my inbox.</p>
+
+    <div class="field">
+      <span class="label">What's it about?</span>
+      <div class="seg" id="seg-kind">
+        <button class="on" data-v="Game">Game</button>
+        <button data-v="Activity">Activity</button>
+        <button data-v="Improvement">Improvement</button>
+        <button data-v="Other">Other</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="label">You are a… <span class="opt">(optional)</span></span>
+      <div class="seg" id="seg-role">
+        <button data-v="BT">BT</button>
+        <button data-v="BCBA">BCBA</button>
+        <button data-v="Parent">Parent</button>
+        <button data-v="Other">Other</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label" for="title">One-line summary</label>
+      <input type="text" id="title" maxlength="90" placeholder="e.g. Add a token board game for reinforcement schedules">
+    </div>
+
+    <div class="field">
+      <label class="label" for="idea">Your idea</label>
+      <textarea id="idea" maxlength="1200" placeholder="What would it do? What problem would it solve, and for whom?"></textarea>
+      <div class="count"><span id="minHint" style="transition:color .15s">30 min</span> · <span id="cnt">0</span> / 1200</div>
+    </div>
+
+    <div class="field">
+      <label class="label" for="email">Your email <span class="opt">(optional — so I can follow up)</span></label>
+      <input type="email" id="email" placeholder="you@example.com">
+    </div>
+
+    <div class="guard">
+      <span class="ic">🔒</span>
+      <span class="t">Please don't include any client information. This is a product suggestion box, not a clinical channel.</span>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="send" disabled>✉️ Send suggestion</button>
+      <button class="btn btn-ghost" id="copy">Copy instead</button>
+    </div>
+
+    <p class="note">
+      Sent server-side — no email app needed.
+      Use <strong>Copy instead</strong> to grab the text and paste it manually if you prefer.
+    </p>
+    <div class="result" id="result" role="alert" aria-live="polite"></div>
+
+    <div class="sent" id="sent">
+      <div class="h">Your email is ready ✓</div>
+      <div class="p">If your mail app didn't open, copy the draft below and send it manually.</div>
+      <pre id="draft"></pre>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const MIN_CHARS = 30;
+  const state = { kind: "Game", role: "" };
+
+  function wireSeg(id, key, clearable) {
+    const root = document.getElementById(id);
+    root.addEventListener("click", e => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      const already = b.classList.contains("on");
+      root.querySelectorAll("button").forEach(x => x.classList.remove("on"));
+      if (clearable && already) { state[key] = ""; return; }
+      b.classList.add("on");
+      state[key] = b.dataset.v;
+    });
+  }
+  wireSeg("seg-kind", "kind", false);
+  wireSeg("seg-role", "role", true);
+
+  const ideaEl   = document.getElementById("idea");
+  const titleEl  = document.getElementById("title");
+  const emailEl  = document.getElementById("email");
+  const cntEl    = document.getElementById("cnt");
+  const minHint  = document.getElementById("minHint");
+  const sendBtn  = document.getElementById("send");
+  const resultEl = document.getElementById("result");
+
+  function refresh() {
+    const len   = ideaEl.value.length;
+    const valid = ideaEl.value.trim().length >= MIN_CHARS;
+    cntEl.textContent   = len;
+    minHint.style.color = (!valid && len > 0) ? "var(--amber-700)" : "var(--slate-400)";
+    if (!sendBtn.dataset.sent) sendBtn.disabled = !valid;
+  }
+  ideaEl.addEventListener("input", refresh);
+
+  function build() {
+    const subject = "[Feature: " + state.kind + "] " + (titleEl.value.trim() || "Suggestion");
+    const lines = ["Type: " + state.kind];
+    if (state.role)           lines.push("From a: " + state.role);
+    if (titleEl.value.trim()) lines.push("Summary: " + titleEl.value.trim());
+    lines.push("", ideaEl.value.trim());
+    if (emailEl.value.trim()) lines.push("", "Reply to: " + emailEl.value.trim());
+    return { subject, body: lines.join("\n") };
+  }
+
+  function showResult(cls, html) {
+    resultEl.className = "result " + cls;
+    resultEl.innerHTML = html;
+  }
+
+  sendBtn.addEventListener("click", async () => {
+    sendBtn.disabled    = true;
+    sendBtn.textContent = "Sending…";
+    showResult("", "");
+
+    try {
+      const resp = await fetch("/api/suggest", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind:    state.kind,
+          role:    state.role    || undefined,
+          summary: titleEl.value.trim() || undefined,
+          idea:    ideaEl.value.trim(),
+          replyTo: emailEl.value.trim() || undefined,
+        }),
+      });
+      const data = await resp.json().catch(() => ({}));
+
+      if (resp.ok) {
+        sendBtn.textContent  = "Sent ✓";
+        sendBtn.dataset.sent = "1";
+        showResult("ok", "✓ Suggestion received — thank you!");
+      } else if (resp.status === 409) {
+        sendBtn.disabled    = false;
+        sendBtn.textContent = "✉️ Send suggestion";
+        showResult("dupe", data.error || "We already have this one — thanks!");
+      } else {
+        sendBtn.disabled    = false;
+        sendBtn.textContent = "✉️ Send suggestion";
+        showResult("err", (data.error || "Something went wrong.") + " Try <strong>Copy instead</strong>.");
+      }
+    } catch (e) {
+      sendBtn.disabled    = false;
+      sendBtn.textContent = "✉️ Send suggestion";
+      showResult("err", "Network error. Try <strong>Copy instead</strong>.");
+    }
+  });
+
+  document.getElementById("copy").addEventListener("click", async () => {
+    const { subject, body } = build();
+    const text = "Subject: " + subject + "\n\n" + body;
+    document.getElementById("draft").textContent = text;
+    document.getElementById("sent").classList.add("show");
+    try {
+      await navigator.clipboard.writeText(text);
+      document.getElementById("copy").textContent = "Copied ✓";
+    } catch(e) {}
+  });
+
+  refresh();
+</script>
+</body>
+</html>

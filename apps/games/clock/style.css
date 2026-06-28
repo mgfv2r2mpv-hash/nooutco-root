@@ -1,0 +1,769 @@
+/* ── CSS custom properties ─────────────────────────────────────────── */
+:root {
+  --tile-sz:  150px;
+  --clock-w:  160px;
+  --clock-h:  312px;
+}
+
+.btn-primary {
+  margin-left: auto;
+  background: #b5651d;
+  color: #fff;
+  border: none;
+  padding: 8px 24px;
+  border-radius: 8px;
+  font-size: 0.98rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.btn-primary:hover  { background: #97520f; }
+.btn-primary:active { transform: scale(0.97); }
+
+/* ── Game area ─────────────────────────────────────────────────────── */
+#game-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 18px 6px;
+  align-items: center;
+  min-height: 0;
+  background:
+    radial-gradient(circle at 50% 12%, #fbf2e2 0%, #efe2cc 55%, #e3d2b4 100%);
+}
+
+.area-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8a6a45;
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+/* ── Sample card (the "Find" sign) ─────────────────────────────────── */
+#sample-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(.34,1.4,.5,1);
+}
+/* Hidden until the rhyme intro hands off to the trial */
+#sample-section.intro-hide {
+  opacity: 0;
+  transform: translateY(-14px) scale(0.92);
+  pointer-events: none;
+}
+
+#sample-card {
+  width: 230px;
+  height: 62px;
+  background: linear-gradient(160deg, #6b4423, #8a5a2f);
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(74,47,28,0.35), inset 0 2px 0 rgba(255,255,255,0.12);
+  border: 3px solid #caa46a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 8px 16px;
+}
+
+#sample-word {
+  font-weight: 800;
+  color: #fff7e8;
+  text-align: center;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+/* ── Clock stage ───────────────────────────────────────────────────── */
+#clock-section {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  display: flex;
+}
+
+#clock-stage {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* The floor the clock stands on */
+.stage-floor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--floor-h, 24px);
+  background:
+    linear-gradient(180deg, #b98a52 0%, #9c6f3c 38%, #80582d 100%);
+  border-top: 2px solid #6b4423;
+  box-shadow: inset 0 3px 6px rgba(0,0,0,0.18);
+  z-index: 1;
+}
+
+/* ── Title card (intro): bubble letters, set down then lift off ────── */
+.rhyme-title {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 35;
+  opacity: 0;
+  font-family: "Baloo 2", "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  font-weight: 900;
+  font-size: clamp(2rem, 7.5vw, 4.6rem);
+  letter-spacing: 0.015em;
+  color: #fff7e8;
+  -webkit-text-stroke: 3px #6b4423;
+  paint-order: stroke fill;
+  text-shadow:
+    0 4px 0 #b5651d,
+    0 6px 2px rgba(107,68,35,0.45),
+    0 10px 18px rgba(0,0,0,0.30);
+}
+/* Entrance: fade in horizontally + set down with a soft settle */
+.rhyme-title.show {
+  animation: hdd-title-in 0.85s cubic-bezier(.18,.7,.28,1) forwards;
+}
+@keyframes hdd-title-in {
+  0%   { opacity: 0; transform: translate(-50%, calc(-50% - 46px)) scaleX(0.62) scaleY(0.9); }
+  55%  { opacity: 1; transform: translate(-50%, calc(-50% + 9px))  scaleX(1.05) scaleY(1.03); }
+  76%  {              transform: translate(-50%, calc(-50% - 4px))  scaleX(0.99) scaleY(0.99); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+/* Exit: fade out + lift up off the page (defined after .show so it wins) */
+.rhyme-title.leave {
+  animation: hdd-title-out 0.6s ease-in forwards;
+}
+@keyframes hdd-title-out {
+  0%   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, calc(-50% - 72px)) scale(1.08); }
+}
+
+/* ── Picture slots (fanned around the clock) ───────────────────────── */
+.slot {
+  position: absolute;
+  width: var(--tile-sz);
+  height: var(--tile-sz);
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  z-index: 5;
+  transition: opacity 0.5s ease, filter 0.5s ease;
+}
+.slot[style*="pointer-events: none"] { cursor: default; }
+
+/* Fades in, in place, during the rhyme intro */
+.slot.pre-in {
+  opacity: 0;
+  filter: blur(3px);
+  pointer-events: none;
+}
+
+/* The other tiles clear away when the right one is tapped */
+.slot.vanish {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.55);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  pointer-events: none;
+}
+
+.tile-wrapper {
+  width: 100%;
+  height: 100%;
+  will-change: transform, opacity;
+}
+
+.tile {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  border-radius: 14px;
+  border: 3px solid #caa46a;
+  background: #fffdf7;
+  box-shadow: 0 4px 10px rgba(74,47,28,0.20);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s;
+}
+.slot:not([style*="pointer-events: none"]) .tile:hover {
+  border-color: #b5651d;
+  box-shadow: 0 6px 16px rgba(181,101,29,0.35);
+  transform: scale(1.04);
+}
+.tile.tile-disabled { cursor: default; }
+
+.tile-front {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tile-front img {
+  max-width: 88%;
+  max-height: 88%;
+  object-fit: contain;
+  pointer-events: none;
+  display: block;
+}
+.tile-front .tile-label {
+  display: none;
+  width: 90%;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #2d3748;
+  word-break: break-word;
+  padding: 8px;
+  border: 2px dashed #cbd5e0;
+  border-radius: 8px;
+  background: #f7fafc;
+}
+.tile-front .tile-label-visible { display: block; }
+
+.tile-badge {
+  position: absolute;
+  inset: auto 6px 6px auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #2f855a;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity 0.2s, transform 0.25s cubic-bezier(.34,1.6,.5,1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+.tile.chosen {
+  border-color: #2f855a;
+  box-shadow: 0 0 0 4px rgba(47,133,90,0.35), 0 8px 20px rgba(0,0,0,0.25);
+}
+.tile.chosen .tile-badge { opacity: 1; transform: scale(1); }
+
+/* ── Climber (the chosen tile that runs up the clock) ──────────────── */
+.tile.climber {
+  border-color: #2f855a;
+  box-shadow: 0 0 0 4px rgba(47,133,90,0.30), 0 10px 22px rgba(0,0,0,0.30);
+}
+.tile.climber .tile-badge { opacity: 1; transform: scale(1); }
+
+/* Squash on landing */
+.tile-wrapper.squash .tile { transform: scaleY(0.82) scaleX(1.08); }
+
+/* Little scurrying wobble while climbing the case */
+@keyframes hdd-cling {
+  0%, 100% { rotate: -5deg; }
+  50%      { rotate: 5deg; }
+}
+.tile-wrapper.clinging .tile { animation: hdd-cling 0.34s ease-in-out infinite; }
+
+/* ── Wrong-answer feedback ─────────────────────────────────────────── */
+@keyframes hdd-jiggle {
+  0%   { transform: translateX(0)    rotate(0deg); }
+  15%  { transform: translateX(-8px) rotate(-3deg); }
+  30%  { transform: translateX(8px)  rotate(3deg); }
+  45%  { transform: translateX(-6px) rotate(-2deg); }
+  60%  { transform: translateX(6px)  rotate(2deg); }
+  75%  { transform: translateX(-3px) rotate(-1deg); }
+  90%  { transform: translateX(3px)  rotate(1deg); }
+  100% { transform: translateX(0)    rotate(0deg); }
+}
+.tile-wrapper.jiggle { animation: hdd-jiggle 0.5s ease; }
+
+@keyframes hdd-flash-red {
+  0%   { background: #fffdf7; }
+  20%  { background: #fed7d7; }
+  50%  { background: #fc8181; }
+  100% { background: #fffdf7; }
+}
+.tile-wrapper.flash-red .tile { animation: hdd-flash-red 0.5s ease; }
+
+/* ── Prompt effects ────────────────────────────────────────────────── */
+@keyframes hdd-sparkle {
+  0%   { box-shadow: 0 0 6px 3px #ffd700,
+                     0 0 14px 6px rgba(255,215,0,0.55),
+                     0 0 24px 10px rgba(255,165,0,0.25); }
+  50%  { box-shadow: 0 0 12px 6px #ffd700,
+                     0 0 28px 12px rgba(255,215,0,0.65),
+                     0 0 44px 20px rgba(255,140,0,0.35); }
+  100% { box-shadow: 0 0 6px 3px #ffd700,
+                     0 0 14px 6px rgba(255,215,0,0.55),
+                     0 0 24px 10px rgba(255,165,0,0.25); }
+}
+.tile.prompt-sparkle {
+  animation: hdd-sparkle 1s ease-in-out infinite;
+  border-color: #d69e2e !important;
+}
+.tile.prompt-outline {
+  border-color: #2f855a !important;
+  box-shadow: 0 0 0 4px rgba(47,133,90,0.4), 0 4px 10px rgba(0,0,0,0.15) !important;
+  background: rgba(47,133,90,0.06);
+}
+
+/* ── The grandfather clock ─────────────────────────────────────────── */
+.clock {
+  position: absolute;
+  width: var(--clock-w);
+  height: var(--clock-h);
+  transform: translateX(-50%);
+  transform-origin: bottom center;
+  z-index: 2;
+  filter: drop-shadow(0 12px 20px rgba(60,38,18,0.38));
+}
+.clock.chiming { animation: hdd-chime 0.9s ease; }
+@keyframes hdd-chime {
+  0%, 100% { transform: translateX(-50%) rotate(0deg); }
+  20%      { transform: translateX(-50%) rotate(-1.1deg); }
+  45%      { transform: translateX(-50%) rotate(1.1deg); }
+  70%      { transform: translateX(-50%) rotate(-0.55deg); }
+}
+
+/* Crown / pediment with the cuckoo door */
+.clock-crown {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 76%;
+  height: 15%;
+  background: linear-gradient(180deg, #7a4a24, #5e3818);
+  border-radius: 50% 50% 12% 12% / 70% 70% 12% 12%;
+  border: 2px solid #8a5a2f;
+  z-index: 3;
+}
+.cuckoo-door {
+  position: absolute;
+  top: 38%;
+  width: 22%;
+  height: 50%;
+  background: linear-gradient(180deg, #4a2c12, #3a2410);
+  border: 1px solid #2a1808;
+  transform-origin: top center;
+  transition: transform 0.35s ease;
+  z-index: 2;
+}
+.cuckoo-door.door-left  { left: 28%; border-radius: 4px 0 0 4px; }
+.cuckoo-door.door-right { right: 28%; border-radius: 0 4px 4px 0; }
+.clock-crown.open .cuckoo-door.door-left  { transform: perspective(140px) rotateY(108deg); }
+.clock-crown.open .cuckoo-door.door-right { transform: perspective(140px) rotateY(-108deg); }
+
+.cuckoo {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, 10px) scale(0.2);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(.34,1.7,.5,1), opacity 0.2s;
+  z-index: 4;
+}
+.clock-crown.open .cuckoo {
+  transform: translate(-50%, -62%) scale(1.32);
+  opacity: 1;
+}
+/* While the clock strikes, lift it (and the emerging cuckoo) in front
+   of the climbing tile so the bird is in the foreground. */
+.clock.striking { z-index: 45; }
+.cuckoo-bird {
+  position: relative;
+  width: 26px;
+  height: 22px;
+  background: radial-gradient(circle at 35% 35%, #ffd24d, #e8961f);
+  border-radius: 55% 55% 50% 50%;
+  border: 1.5px solid #b9700f;
+}
+.cuckoo-wing {
+  position: absolute;
+  left: 1px;
+  top: 7px;
+  width: 13px;
+  height: 9px;
+  background: #cf7d12;
+  border-radius: 60% 40% 50% 50%;
+  transform-origin: left center;
+}
+.clock-crown.open .cuckoo-wing { animation: hdd-flap 0.32s ease-in-out infinite; }
+@keyframes hdd-flap {
+  0%, 100% { transform: rotate(0deg); }
+  50%      { transform: rotate(-32deg); }
+}
+.cuckoo-beak {
+  position: absolute;
+  right: -7px;
+  top: 7px;
+  width: 0; height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 8px solid #e8761f;
+}
+.cuckoo-eye {
+  position: absolute;
+  right: 6px;
+  top: 5px;
+  width: 4px;
+  height: 4px;
+  background: #2a1808;
+  border-radius: 50%;
+}
+.cuckoo-bubble {
+  position: absolute;
+  bottom: 112%;
+  left: 50%;
+  transform: translateX(-50%) scale(0.5);
+  background: #fff;
+  color: #5e3818;
+  font-weight: 800;
+  font-size: 0.72rem;
+  padding: 3px 9px;
+  border-radius: 10px;
+  border: 1.5px solid #caa46a;
+  white-space: nowrap;
+  opacity: 0;
+  transition: transform 0.25s cubic-bezier(.34,1.7,.5,1), opacity 0.2s;
+}
+.clock-crown.open .cuckoo-bubble {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+  transition-delay: 0.15s;
+}
+
+/* Head — houses the dial */
+.clock-head {
+  position: absolute;
+  top: 13%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 96%;
+  height: 42%;
+  background: linear-gradient(180deg, #8a5a2f, #6b4423);
+  border-radius: 50% 50% 8% 8% / 38% 38% 6% 6%;
+  border: 3px solid #5e3818;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+.clock-face {
+  position: relative;
+  width: 78%;
+  aspect-ratio: 1 / 1;
+  max-height: 86%;
+}
+.clock-dial { width: 100%; height: 100%; display: block; }
+
+.hand {
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  transform-origin: bottom center;
+  border-radius: 3px;
+  background: #3a2410;
+}
+.hand-hour {
+  width: 4.5%;
+  height: 26%;
+  transform: translateX(-50%) rotate(360deg);
+}
+.hand-minute {
+  width: 3%;
+  height: 37%;
+  background: #5a3a1c;
+  transform: translateX(-50%) rotate(360deg);
+}
+.hand-cap {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8%;
+  aspect-ratio: 1 / 1;
+  background: #3a2410;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Body — tall case with pendulum */
+.clock-body {
+  position: absolute;
+  top: 54%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  height: 40%;
+  background: linear-gradient(180deg, #6b4423, #4a2f1c);
+  border-radius: 8px;
+  border: 3px solid #5e3818;
+  overflow: hidden;
+  z-index: 1;
+}
+.pendulum-window {
+  position: absolute;
+  inset: 12% 16%;
+  background: linear-gradient(180deg, #2a1808, #3a2410);
+  border-radius: 6px;
+  border: 1px solid #2a1808;
+  overflow: hidden;
+}
+.pendulum {
+  position: absolute;
+  top: 4%;
+  left: 50%;
+  width: 6%;
+  height: 78%;
+  background: #caa46a;
+  transform-origin: top center;
+  transform: translateX(-50%) rotate(0deg);
+  animation: hdd-swing 1.8s ease-in-out infinite;
+}
+.pendulum-bob {
+  position: absolute;
+  bottom: -6%;
+  left: 50%;
+  width: 360%;
+  aspect-ratio: 1 / 1;
+  background: radial-gradient(circle at 35% 35%, #ffe08a, #c9982f);
+  border: 1.5px solid #8a5a2f;
+  border-radius: 50%;
+  transform: translateX(-50%);
+}
+@keyframes hdd-swing {
+  0%, 100% { transform: translateX(-50%) rotate(13deg); }
+  50%      { transform: translateX(-50%) rotate(-13deg); }
+}
+.clock.chiming .pendulum { animation-duration: 0.6s; }
+
+.mouse {
+  position: absolute;
+  left: 18%;
+  bottom: -16%;
+  width: 16%;
+  aspect-ratio: 3 / 2;
+  background: radial-gradient(circle at 40% 35%, #c9c4bd, #8d877e);
+  border-radius: 60% 60% 50% 50%;
+  opacity: 0;
+}
+.mouse-ear {
+  position: absolute;
+  top: -28%;
+  right: 6%;
+  width: 42%;
+  aspect-ratio: 1 / 1;
+  background: #b8b2a8;
+  border-radius: 50%;
+}
+.mouse-tail {
+  position: absolute;
+  bottom: 28%;
+  left: -52%;
+  width: 56%;
+  height: 14%;
+  background: #8d877e;
+  border-radius: 4px;
+}
+.mouse.run { animation: hdd-mouse 1.5s ease-in-out; }
+@keyframes hdd-mouse {
+  0%   { opacity: 0; bottom: -16%; }
+  12%  { opacity: 1; }
+  50%  { opacity: 1; bottom: 78%; }
+  88%  { opacity: 1; }
+  100% { opacity: 0; bottom: -16%; }
+}
+
+.clock-base {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  height: 7%;
+  background: linear-gradient(180deg, #5e3818, #3a2410);
+  border-radius: 4px 4px 8px 8px;
+}
+
+/* ── Trial overlay (Next + Retry watermark buttons) ────────────────── */
+#trial-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  pointer-events: none;
+  z-index: 40;
+}
+
+.btn-watermark {
+  pointer-events: all;
+  padding: 12px 32px;
+  border-radius: 12px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 6px 22px rgba(0,0,0,0.32);
+  transition: opacity 0.15s, transform 0.1s;
+  letter-spacing: 0.02em;
+}
+.btn-watermark:hover  { opacity: 0.93; transform: scale(1.04); }
+.btn-watermark:active { transform: scale(0.97); }
+
+.btn-watermark-next  { background: rgba(47,133,90,0.95);  color: #fff; }
+.btn-watermark-retry { background: rgba(181,101,29,0.92); color: #fff; }
+
+/* ── Bottom bar ────────────────────────────────────────────────────── */
+#bottom-bar {
+  background: #fff;
+  border-top: 2px solid #e6dccb;
+  padding: 9px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.btn-prompt {
+  background: #dd6b20;
+  color: #fff;
+  border: none;
+  padding: 5px 14px;
+  border-radius: 7px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-prompt:hover { background: #c05621; }
+
+.btn-print {
+  background: #6b4423;
+  color: #fff;
+  border: none;
+  padding: 7px 18px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-print:hover { background: #4a2f1c; }
+
+.btn-clear-data {
+  background: #c53030;
+  color: #fff;
+  border: none;
+  padding: 7px 18px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-clear-data:hover { background: #9b2c2c; }
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 34px;
+  padding: 0;
+}
+.btn-icon svg { width: 20px; height: 20px; fill: currentColor; }
+
+@media print {
+  body > *:not(#print-section) { display: none !important; }
+
+  #print-section {
+    display: block;
+    padding: 18px 24px;
+    font-family: Arial, sans-serif;
+    font-size: 11pt;
+    color: #000;
+  }
+
+  #print-section h2 { font-size: 15pt; margin-bottom: 4px; }
+  #print-meta { font-size: 9pt; color: #444; margin-bottom: 14px; }
+
+  #results-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 14px;
+  }
+  #results-table th,
+  #results-table td {
+    border: 1px solid #666;
+    padding: 5px 8px;
+    text-align: left;
+    vertical-align: top;
+  }
+  #results-table th {
+    background: #e8e8e8;
+    font-weight: bold;
+    font-size: 9.5pt;
+  }
+  #results-table tr:nth-child(even) td { background: #f7f7f7; }
+  #results-table tr.settings-changed td { background: #e8e8e8 !important; }
+
+  #results-table td.outcome-error      { color: #c0392b; }
+  #results-table td.outcome-prompted   { color: #b7791f; }
+  #results-table td.outcome-ok         { color: #27ae60; }
+  #results-table td.outcome-correction { color: #6b46c1; }
+
+  #print-summary {
+    font-size: 9.5pt;
+    color: #333;
+    border-top: 1px solid #bbb;
+    padding-top: 8px;
+  }
+  #print-summary span { margin-right: 20px; }
+}
+
+/* ── Responsive ────────────────────────────────────────────────────── */
+@media (max-width: 680px) {
+  html, body {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: contain;
+  }
+  body { min-height: 0; }
+
+  #game-area { padding: 10px 8px 4px; }
+  .area-label { margin-bottom: 4px; font-size: 0.68rem; }
+  #sample-card { width: min(220px, 78vw); height: 52px; padding: 6px 14px; }
+
+  #bottom-bar { padding: 6px 10px; gap: 8px; }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  html, body {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+  body { min-height: 0; }
+
+  #game-area { flex-direction: row; align-items: center; gap: 10px; padding: 6px 10px; }
+  #sample-section { flex: 0 0 auto; }
+  #sample-card { width: 140px; height: 60px; padding: 6px 10px; }
+  #clock-section { flex: 1 1 auto; }
+}

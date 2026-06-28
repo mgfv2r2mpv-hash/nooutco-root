@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="version" content="1.0">
+  <title>Pattern Pack Co.</title>
+  <link rel="stylesheet" href="../tailwind.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ── Header ──────────────────────────────────────────────────── -->
+  <header id="app-header" title="Tap the bar to show / hide settings">
+    <a href="../" id="btn-back" class="btn-back" title="Back to Games"><span class="back-label">← Games</span></a>
+    <div class="app-title">
+      <span class="app-title-text">Pattern Pack Co.</span>
+      <span class="app-title-sub">No Outcome ABA · v<span id="app-version-label">0.1.0</span></span>
+    </div>
+    <div id="timer-section">
+      <span id="timer-display">00:00</span>
+      <button id="btn-timer-toggle" class="btn-timer" title="Pause / Resume">Pause</button>
+      <button id="btn-timer-reset"  class="btn-timer" title="Reset timer">Reset</button>
+    </div>
+    <button type="button" id="btn-minimize" class="btn-minimize" aria-expanded="true" aria-controls="settings-bar" title="Show / hide settings">▾</button>
+  </header>
+
+  <!-- ── Settings bar ─────────────────────────────────────────────── -->
+  <div id="settings-bar">
+    <div class="setting-group">
+      <label for="sel-set">Product Line<button type="button" class="help-btn" data-help="Choose which emoji category to pack on the line.">?</button></label>
+      <select id="sel-set">
+        <option value="">-- loading --</option>
+      </select>
+    </div>
+
+    <div class="setting-group">
+      <label for="inp-pattern-length">Pattern Length<button type="button" class="help-btn" data-help="How many unique items make up the repeating unit (2 = AB, 3 = ABC). Capped at 3 so the box stays a clean shape.">?</button></label>
+      <input type="number" id="inp-pattern-length" min="2" max="3" value="2">
+    </div>
+
+    <div class="setting-group">
+      <label for="inp-reps">Shown Reps<button type="button" class="help-btn" data-help="How many full repeats of the pattern are pre-packed before the empty slots. Capped at 2.">?</button></label>
+      <input type="number" id="inp-reps" min="1" max="2" value="2">
+    </div>
+
+    <div class="setting-group">
+      <label for="inp-blanks">Blanks to Fill<button type="button" class="help-btn" data-help="How many empty slots the learner fills. Capped at the pattern length (max 3).">?</button></label>
+      <input type="number" id="inp-blanks" min="1" max="3" value="1">
+    </div>
+
+    <div class="setting-group">
+      <label for="inp-bank">Bank Size<button type="button" class="help-btn" data-help="How many choices appear in the bulk bin below the box.">?</button></label>
+      <input type="number" id="inp-bank" min="2" max="8" value="4">
+    </div>
+
+    <div class="setting-group setting-extra">
+      <button type="button" id="btn-extra-toggle" class="btn-extra" aria-expanded="false">
+        ⚙ Settings
+        <button type="button" class="help-btn" data-help="Open additional game options.">?</button>
+      </button>
+    </div>
+
+    <div class="setting-group">
+      <button id="btn-prompt" class="btn-prompt" hidden>Prompt</button>
+    </div>
+
+    <button id="btn-start" class="btn-primary">Start</button>
+  </div>
+
+  <!-- ── Extra settings panel (hidden until toggled) ──────────────── -->
+  <section id="extra-panel" hidden>
+    <div class="extra-panel-header">
+      <span class="extra-panel-title">Options</span>
+      <button type="button" id="btn-extra-close" class="btn-extra-close" title="Close">×</button>
+    </div>
+    <div class="extra-panel-body">
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-represent-errors" checked>
+        Re-Present Errors
+        <button type="button" class="help-btn" data-help="After an error trial, immediately re-present the same pattern (auto-prompted) before moving on.">?</button>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-errorless">
+        Errorless
+        <button type="button" class="help-btn" data-help="When on, incorrect bank taps are ignored so the learner can only tap the prompted (correct) item.">?</button>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-no-error-anim">
+        No Incorrect Animation
+        <button type="button" class="help-btn" data-help="Suppresses the shake animation when the learner taps an incorrect item.">?</button>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-persists">
+        Prompt persists
+        <button type="button" class="help-btn" data-help="When on, the prompt highlight stays until the learner responds rather than fading after 3 seconds.">?</button>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-auto-prompt">
+        Auto-Prompt
+        <button type="button" class="help-btn" data-help="Automatically highlight the correct bank item at the start of each trial.">?</button>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-reduce-motion">
+        Reduce Motion
+        <button type="button" class="help-btn" data-help="Shortens the conveyor / lid animations for a snappier, lower-motion experience.">?</button>
+      </label>
+      <div class="extra-row">
+        <label class="checkbox-label">
+          <input type="checkbox" id="chk-prompt-delay" disabled>
+          Prompt Delay
+          <button type="button" class="help-btn" data-help="Wait this many seconds before the auto-prompt appears.">?</button>
+        </label>
+        <select id="sel-prompt-delay" disabled>
+          <option value="1">1s</option>
+          <option value="2">2s</option>
+          <option value="3" selected>3s</option>
+          <option value="4">4s</option>
+          <option value="5">5s</option>
+          <option value="10">10s</option>
+        </select>
+      </div>
+      <div class="extra-row">
+        <label for="sel-prompt-style">Prompt style</label>
+        <select id="sel-prompt-style">
+          <option value="sparkle">Sparkle</option>
+          <option value="outline">Outline</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Pre-start blurb ──────────────────────────────────────────── -->
+  <section class="game-intro" id="game-intro" aria-label="How this game works">
+    <h2>Pattern Pack&nbsp;Co. — finish packing the box</h2>
+    <p>A gift box rolls down the line already part-packed with a repeating pattern (e.g. ❤️ ⭐ ❤️ ⭐ …). The learner fills the empty slots from the bulk bin; a finished box gets a bow and ships out.</p>
+    <ul>
+      <li><strong>Product Line</strong> — pick an emoji category (animals, food, shapes, etc.).</li>
+      <li><strong>Pattern Length</strong> — items in the repeating unit (2 = AB, 3 = ABC).</li>
+      <li><strong>Shown Reps</strong> — full repeats pre-packed before the empty slots.</li>
+      <li><strong>Blanks to Fill</strong> — how many slots the learner packs.</li>
+      <li><strong>Bank Size</strong> — total choices in the bulk bin.</li>
+      <li><strong>⚙ Settings</strong> — errorless, re-present errors, prompts, and motion options.</li>
+    </ul>
+    <p class="tip">Set the options, then tap <strong>Start</strong>.</p>
+  </section>
+  <script>(function(){var b=document.getElementById('btn-start');if(b)b.addEventListener('click',function(){var i=document.getElementById('game-intro');if(i)i.hidden=true;},{once:true});})();</script>
+
+  <!-- ── Game area (hidden until Start) ───────────────────────────── -->
+  <main id="game-area" hidden>
+    <div id="factory">
+
+      <!-- Neon "approved" sign on the back wall -->
+      <div id="neon-sign" aria-hidden="true">
+        <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+          <path class="thumb-path" d="M20 27h-7a3 3 0 0 0-3 3v18a3 3 0 0 0 3 3h7V27zM26 27l9-15a4 4 0 0 1 7 3l-2 9h11a5 5 0 0 1 5 6l-3 14a6 6 0 0 1-6 5H26V27z"
+                fill="none" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+        </svg>
+        <span class="neon-label">PACKED!</span>
+      </div>
+
+      <!-- The conveyor / belt zone where the box rides in and out -->
+      <div id="belt-zone">
+        <div id="tunnel-left"  class="tunnel" aria-hidden="true"></div>
+        <div id="tunnel-right" class="tunnel" aria-hidden="true"></div>
+        <div id="conveyor" aria-hidden="true"><div id="belt-treads"></div></div>
+
+        <!-- The chocolate-box gift tray that holds the sequence -->
+        <section id="tray" aria-label="Pattern box">
+          <div id="bow-lid" aria-hidden="true">
+            <div class="bow">
+              <span class="bow-knot"></span>
+              <span class="bow-loop bow-loop-l"></span>
+              <span class="bow-loop bow-loop-r"></span>
+            </div>
+          </div>
+          <div id="pattern-section">
+            <div class="area-label">Pattern</div>
+            <div id="pattern-row"></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- The bulk bin with a flip lid that opens to reveal the choices -->
+      <section id="bulk-zone" aria-label="Bulk bin">
+        <div id="bulk-box">
+          <div id="bulk-lid" aria-hidden="true"><span class="bulk-lid-face">BULK</span></div>
+          <div id="bank-section">
+            <div class="area-label">Choose the next item</div>
+            <div id="bank-row"></div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ── Bottom controls ──────────────────────────────────────────── -->
+  <div id="bottom-bar">
+    <button id="btn-print"      class="btn-print btn-icon" title="Print data" aria-label="Print data">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M18 8H6c-1.66 0-3 1.34-3 3v6h4v4h10v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H9v-5h6v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/>
+      </svg>
+    </button>
+    <button id="btn-clear-data" class="btn-clear-data btn-icon" title="Clear data" aria-label="Clear data">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- ── Print-only section ───────────────────────────────────────── -->
+  <div id="print-section">
+    <div id="print-header">
+      <h2>Pattern Pack&nbsp;Co. &mdash; Session Results</h2>
+      <div id="print-meta"></div>
+    </div>
+    <table id="results-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Set</th>
+          <th>Pattern</th>
+          <th>Len</th>
+          <th>Reps</th>
+          <th>Blanks</th>
+          <th>Bank</th>
+          <th>Errors</th>
+          <th>Prompted</th>
+          <th>Delay (s)</th>
+          <th>Time (s)</th>
+          <th>Outcome</th>
+        </tr>
+      </thead>
+      <tbody id="results-body"></tbody>
+    </table>
+    <div id="print-summary"></div>
+  </div>
+
+  <script src="../../tooltip-help.js"></script>
+  <script src="../header-chrome.js"></script>
+  <script src="../../tooltip-help.js"></script>
+  <script src="../../reward.js"></script>
+  <script src="../../token-board.js"></script>
+  <script src="../../token-board-ui.js" data-namespace="patterns"></script>
+  <script src="skin.js"></script>
+  <script src="game.js"></script>
+  <script>
+    const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
+    window.ADMIN_SECRET_HASH = ADMIN_SECRET_HASH;
+    window.ADMIN_GEAR_PAGE = '../../AdminTools/SequencesManager/';
+  </script>
+  <script src="../../admin-gear.js"></script>
+</body>
+</html>

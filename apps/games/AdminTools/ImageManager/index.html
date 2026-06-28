@@ -1,0 +1,2156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Manager — Admin</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-height: 100vh; }
+
+/* ── Gear button + admin modal ── */
+.admin-gear {
+  position: fixed; bottom: 1rem; right: 1rem; z-index: 9999;
+  font-size: 1.3rem; background: none; border: none; cursor: pointer;
+  opacity: 0.35; transition: opacity 0.15s; padding: 0; line-height: 1;
+}
+.admin-gear:hover { opacity: 0.8; }
+.admin-gear.authed { opacity: 1; filter: sepia(1) saturate(3) hue-rotate(80deg); }
+#admin-modal {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7); z-index: 10000;
+  align-items: center; justify-content: center;
+}
+#admin-modal.open { display: flex; }
+.admin-modal-box {
+  background: #1e1e1e; border: 1px solid #333; border-radius: 12px;
+  padding: 2rem; width: 320px; text-align: center;
+}
+.admin-modal-box h1 { font-size: 1.3rem; margin-bottom: 1.25rem; color: #fff; }
+.admin-modal-box input {
+  width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px;
+  border: 1px solid #444; background: #2a2a2a; color: #eee;
+  font-size: 1rem; margin-bottom: 0.75rem; font-family: inherit;
+}
+.admin-modal-box .unlock-btn {
+  width: 100%; padding: 0.6rem; border-radius: 8px;
+  background: #3b82f6; color: #fff; border: none; cursor: pointer; font-size: 1rem;
+}
+.admin-modal-box .unlock-btn:hover { background: #2563eb; }
+#admin-pw-error { color: #f87171; font-size: 0.85rem; margin-top: 0.5rem; min-height: 1.2em; }
+
+/* ── App Shell ── */
+#app { padding: 1rem 1.5rem 2rem; }
+
+/* ── App Header ── */
+.app-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.btn-back {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 0.4rem 0.9rem; border-radius: 8px; border: 1px solid #444;
+  background: #1e1e1e; color: #aaa; text-decoration: none; font-size: 0.9rem;
+  white-space: nowrap; transition: background 0.15s;
+}
+.btn-back:hover { background: #2a2a2a; color: #fff; }
+.header-divider { width: 1px; height: 28px; background: #333; flex-shrink: 0; }
+
+/* ── Game Tabs ── */
+.game-tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.game-tab {
+  padding: 0.45rem 1rem; border-radius: 8px; border: 1px solid #444;
+  background: #1e1e1e; color: #aaa; cursor: pointer; font-size: 0.9rem;
+}
+.game-tab.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+
+/* ── Folder Tab Bar ── */
+.folder-bar-wrap {
+  display: flex; align-items: center; gap: 0.5rem;
+  margin-bottom: 1rem; flex-wrap: wrap;
+}
+.folder-tab {
+  padding: 0.35rem 0.9rem; border-radius: 6px; border: 1px solid #333;
+  background: #1e1e1e; color: #aaa; cursor: pointer; font-size: 0.82rem;
+}
+.folder-tab.active { background: #334155; color: #fff; border-color: #475569; }
+.folder-tab.archived-tab { border-color: #78350f; color: #fbbf24; }
+.folder-tab.archived-tab.active { background: #451a03; }
+.btn-new-topic {
+  margin-left: auto; padding: 0.35rem 0.9rem; border-radius: 6px;
+  border: 1px dashed #475569; background: transparent; color: #7dd3fc;
+  cursor: pointer; font-size: 0.82rem;
+}
+.btn-new-topic:hover { background: #1e3a5f; }
+
+/* ── Archive folder button ── */
+.folder-action-bar {
+  display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;
+}
+.btn-rename {
+  padding: 0.3rem 0.75rem; border-radius: 6px; font-size: 0.8rem;
+  background: #1e293b; color: #93c5fd; border: 1px solid #334155; cursor: pointer;
+}
+.btn-rename:hover { background: #1e3a5f; }
+.rename-inline { display: flex; align-items: center; gap: 0.4rem; }
+.rename-inline input {
+  padding: 0.25rem 0.5rem; border-radius: 6px; border: 1px solid #3b82f6;
+  background: #0f172a; color: #e2e8f0; font-size: 0.82rem; width: 160px;
+}
+.btn-archive {
+  padding: 0.3rem 0.75rem; border-radius: 6px; font-size: 0.8rem;
+  background: #451a03; color: #fbbf24; border: 1px solid #78350f; cursor: pointer;
+}
+.btn-archive:hover { background: #7c2d12; }
+.btn-restore {
+  padding: 0.3rem 0.75rem; border-radius: 6px; font-size: 0.8rem;
+  background: #14532d; color: #86efac; border: 1px solid #166534; cursor: pointer;
+}
+.btn-restore:hover { background: #15803d; }
+.btn-purge {
+  padding: 0.3rem 0.75rem; border-radius: 6px; font-size: 0.8rem;
+  background: #4c0519; color: #fca5a5; border: 1px solid #7f1d1d; cursor: pointer;
+}
+.btn-purge:hover { background: #7f1d1d; }
+
+/* ── Add Image ── */
+.btn-add-image {
+  padding: 0.3rem 0.75rem; border-radius: 6px; font-size: 0.8rem;
+  background: #1e3a5f; color: #7dd3fc; border: 1px solid #1e40af; cursor: pointer;
+}
+.btn-add-image:hover { background: #1e40af; }
+.add-form {
+  background: #1a2433; border: 1px solid #334155; border-radius: 10px;
+  padding: 1rem; margin-bottom: 1rem; display: none;
+}
+.add-form.open { display: block; }
+.add-form h3 { font-size: 0.9rem; margin-bottom: 0.75rem; color: #93c5fd; }
+.add-form label { display: block; font-size: 0.78rem; color: #94a3b8; margin-bottom: 0.25rem; margin-top: 0.5rem; }
+.add-form input, .add-form textarea {
+  width: 100%; padding: 0.4rem 0.6rem; border-radius: 6px;
+  border: 1px solid #334155; background: #0f172a; color: #e2e8f0;
+  font-size: 0.85rem;
+}
+.add-form textarea { resize: vertical; min-height: 70px; }
+.add-form .form-row { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+.add-form .form-row button {
+  padding: 0.4rem 1rem; border-radius: 6px; font-size: 0.85rem;
+  cursor: pointer; border: none;
+}
+.btn-submit { background: #3b82f6; color: #fff; }
+.btn-submit:hover { background: #2563eb; }
+.btn-cancel-form { background: #374151; color: #d1d5db; }
+.btn-cancel-form:hover { background: #4b5563; }
+
+/* ── Image Grid ── */
+.image-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+.img-card {
+  background: #1e1e1e; border: 1px solid #2e2e2e; border-radius: 8px;
+  overflow: hidden; cursor: pointer; transition: border-color 0.15s;
+  position: relative;
+}
+.img-card:hover { border-color: #3b82f6; }
+.img-card img {
+  width: 100%; aspect-ratio: 1; object-fit: contain;
+  background: #2a2a2a; display: block; padding: 6px;
+}
+.img-card .label {
+  font-size: 0.68rem; color: #94a3b8; padding: 0.35rem 0.4rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;
+}
+.cdn-badge {
+  position: absolute; top: 4px; right: 4px;
+  background: #d97706; color: #fff; font-size: 0.6rem;
+  padding: 1px 4px; border-radius: 3px; font-weight: 700;
+}
+
+/* ── Detail Panel ── */
+#detail-panel {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: #1a1a2e; border-top: 2px solid #334155;
+  padding: 1.25rem 1.5rem 1.5rem; z-index: 500;
+  transform: translateY(100%); transition: transform 0.25s ease;
+  max-height: 85vh; overflow-y: auto;
+}
+#detail-panel.open { transform: translateY(0); }
+.detail-header { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
+.detail-thumb {
+  width: 140px; height: 140px; object-fit: contain;
+  background: #2a2a2a; border-radius: 8px; flex-shrink: 0;
+}
+.detail-meta { flex: 1; min-width: 0; }
+.detail-meta h2 { font-size: 1rem; margin-bottom: 0.25rem; }
+.detail-meta .detail-sub { font-size: 0.78rem; color: #94a3b8; }
+.detail-close {
+  background: none; border: none; color: #94a3b8; font-size: 1.4rem;
+  cursor: pointer; line-height: 1; padding: 0 0.25rem;
+}
+.detail-close:hover { color: #fff; }
+
+.detail-section { margin-bottom: 1rem; }
+.detail-section label { display: block; font-size: 0.78rem; color: #94a3b8; margin-bottom: 0.3rem; }
+.detail-row { display: flex; gap: 0.5rem; }
+.detail-row input {
+  flex: 1; padding: 0.4rem 0.6rem; border-radius: 6px;
+  border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: 0.85rem;
+}
+.btn-sm {
+  padding: 0.4rem 0.85rem; border-radius: 6px; font-size: 0.82rem;
+  cursor: pointer; border: none; white-space: nowrap;
+}
+.btn-blue { background: #3b82f6; color: #fff; }
+.btn-blue:hover { background: #2563eb; }
+.btn-gray { background: #374151; color: #d1d5db; }
+.btn-gray:hover { background: #4b5563; }
+.btn-red { background: #7f1d1d; color: #fca5a5; }
+.btn-red:hover { background: #991b1b; }
+.btn-amber { background: #78350f; color: #fde68a; }
+.btn-amber:hover { background: #92400e; }
+
+.wiki-results { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.wiki-result {
+  width: 90px; background: #1e1e1e; border: 1px solid #334155;
+  border-radius: 6px; overflow: hidden; cursor: pointer;
+}
+.wiki-result:hover { border-color: #3b82f6; }
+.wiki-result img { width: 100%; aspect-ratio: 1; object-fit: contain; background: #2a2a2a; display: block; }
+.wiki-result span { display: block; font-size: 0.62rem; color: #94a3b8; padding: 2px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.status-msg { font-size: 0.8rem; min-height: 1.2em; margin-top: 0.3rem; }
+.status-msg.ok { color: #86efac; }
+.status-msg.err { color: #f87171; }
+
+.loading { color: #64748b; font-size: 0.9rem; padding: 1.5rem 0; }
+
+/* ── Duplicate resolution modal ── */
+.dup-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+}
+.dup-box {
+  background: #1e1e2e; border: 1px solid #475569; border-radius: 12px;
+  padding: 1.5rem; width: 400px; max-width: calc(100vw - 2rem);
+}
+.dup-box h3 { font-size: .95rem; color: #f87171; margin-bottom: .4rem; }
+.dup-box p  { font-size: .82rem; color: #94a3b8; margin-bottom: .9rem; }
+.dup-rename-row { display: flex; gap: .4rem; margin-bottom: 1rem; align-items: center; }
+.dup-rename-row label { font-size: .78rem; color: #94a3b8; white-space: nowrap; }
+.dup-rename-row input {
+  flex: 1; padding: .4rem .6rem; border-radius: 6px;
+  border: 1px solid #3b82f6; background: #0f172a; color: #e2e8f0; font-size: .85rem;
+}
+.dup-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+
+/* ── Batch Mode ── */
+.btn-batch-toggle {
+  margin-left: auto; padding: 0.35rem 0.9rem; border-radius: 6px; font-size: 0.82rem;
+  border: 1px solid #334155; background: #1e293b; color: #7dd3fc; cursor: pointer;
+  white-space: nowrap; transition: background 0.15s;
+}
+.btn-batch-toggle:hover { background: #1e3a5f; }
+.btn-batch-toggle.active { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+.btn-batch-toggle.active:hover { background: #6d28d9; }
+
+#batch-panel {
+  position: fixed; right: 0; top: 0; bottom: 0; width: 320px;
+  background: #0f172a; border-left: 2px solid #334155; z-index: 600;
+  display: flex; flex-direction: column; overflow: hidden;
+  transform: translateX(100%); transition: transform 0.25s ease;
+}
+#batch-panel.open { transform: translateX(0); }
+.batch-panel-header {
+  padding: 0.9rem 1rem 0.75rem; border-bottom: 1px solid #1e293b;
+  display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;
+}
+.batch-panel-title { font-size: 0.92rem; font-weight: 600; color: #e2e8f0; flex: 1; }
+.batch-count-badge {
+  background: #7c3aed; color: #fff; font-size: 0.7rem; padding: 1px 7px;
+  border-radius: 10px; font-weight: 700; min-width: 20px; text-align: center;
+}
+.batch-panel-close {
+  background: none; border: none; color: #64748b; font-size: 1.1rem;
+  cursor: pointer; padding: 2px 4px; line-height: 1;
+}
+.batch-panel-close:hover { color: #fff; }
+.batch-item-list {
+  flex: 1; overflow-y: auto; padding: 0.6rem;
+  display: flex; flex-direction: column; gap: 0.4rem;
+}
+.batch-empty { text-align: center; padding: 3rem 1rem; color: #475569; font-size: 0.82rem; line-height: 1.6; }
+.batch-item {
+  background: #1e293b; border: 1px solid #334155; border-radius: 8px;
+  padding: 0.45rem 0.6rem; display: flex; align-items: center; gap: 0.5rem;
+}
+.batch-item.status-running { border-color: #3b82f6; }
+.batch-item.status-done { border-color: #166534; }
+.batch-item.status-error { border-color: #7f1d1d; }
+.batch-item-thumb {
+  width: 38px; height: 38px; object-fit: contain; background: #2a2a2a;
+  border-radius: 4px; flex-shrink: 0;
+}
+.batch-item-info { flex: 1; min-width: 0; }
+.batch-item-label { font-size: 0.78rem; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.batch-item-op { font-size: 0.68rem; color: #64748b; margin-top: 1px; }
+.batch-item-msg { font-size: 0.7rem; margin-top: 2px; }
+.batch-item-msg.ok { color: #86efac; }
+.batch-item-msg.err { color: #f87171; }
+.batch-item-msg.run { color: #93c5fd; }
+.batch-item-remove {
+  background: none; border: none; color: #475569; font-size: 0.85rem;
+  cursor: pointer; padding: 2px; line-height: 1; flex-shrink: 0;
+}
+.batch-item-remove:hover { color: #f87171; }
+.batch-panel-footer { padding: 0.6rem; border-top: 1px solid #1e293b; flex-shrink: 0; }
+.batch-clear-done {
+  display: block; width: 100%; padding: 0.3rem; border-radius: 6px; border: none;
+  background: transparent; color: #475569; font-size: 0.75rem; cursor: pointer;
+  margin-bottom: 0.4rem; text-align: center;
+}
+.batch-clear-done:hover { color: #94a3b8; }
+.btn-batch-submit {
+  display: block; width: 100%; padding: 0.55rem; border-radius: 8px; border: none;
+  background: #7c3aed; color: #fff; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+}
+.btn-batch-submit:hover { background: #6d28d9; }
+.btn-batch-submit:disabled { background: #1e293b; color: #475569; cursor: default; }
+</style>
+</head>
+<body>
+
+<button class="admin-gear" id="admin-gear" title="Admin">⚙️</button>
+<div id="admin-modal">
+  <div class="admin-modal-box">
+    <h1>🔐 Image Manager</h1>
+    <input type="password" id="admin-pw-input" placeholder="Admin password" autocomplete="current-password">
+    <button class="unlock-btn" id="admin-unlock-btn">Unlock</button>
+    <div id="admin-pw-error"></div>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app">
+  <div class="app-header">
+    <a class="btn-back" href="../../">← Games</a>
+    <div class="header-divider"></div>
+    <div class="game-tabs" id="game-tabs"></div>
+    <button class="btn-batch-toggle" id="batch-mode-btn">⚡ Batch</button>
+  </div>
+  <div id="main-content"><p class="loading">Loading…</p></div>
+</div>
+
+<!-- Detail Panel -->
+<div id="detail-panel">
+  <div class="detail-header">
+    <img class="detail-thumb" id="dp-thumb" src="" alt="">
+    <div class="detail-meta">
+      <h2 id="dp-filename"></h2>
+      <div class="detail-sub" id="dp-sub"></div>
+    </div>
+    <button class="detail-close" id="dp-close">✕</button>
+  </div>
+
+  <div class="detail-section" id="dp-displayname-section" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:.75rem 1rem;">
+    <label style="color:#7dd3fc;font-weight:600;">Display name <span id="dp-displayname-hint" style="color:#64748b;font-weight:400;">(optional — shown to learners; leave blank to use the filename)</span></label>
+    <div class="detail-row">
+      <input type="text" id="dp-displayname-input" placeholder="e.g. On  (multiple files like on-squirrel.svg, on-book.svg can share this label)">
+      <button class="btn-sm btn-blue" id="dp-displayname-save-btn">Save</button>
+    </div>
+    <div class="status-msg" id="dp-displayname-status"></div>
+  </div>
+
+  <div class="detail-section">
+    <label>Replace image</label>
+    <div class="detail-row">
+      <input type="url" id="dp-url-input" placeholder="Paste URL…">
+    </div>
+    <div style="font-size:.72rem;color:#475569;text-align:center;margin:.35rem 0 .25rem;">— or —</div>
+    <div class="detail-row">
+      <input type="file" id="dp-file-input" accept="image/*" style="flex:1;font-size:.78rem;color:#94a3b8;min-width:0;background:#0f172a;border:1px dashed #334155;border-radius:6px;padding:.25rem .4rem;cursor:pointer;">
+    </div>
+    <div style="margin-top:.5rem;">
+      <button class="btn-sm btn-blue" id="dp-save-btn" style="width:100%;">Save</button>
+    </div>
+    <div class="status-msg" id="dp-save-status"></div>
+  </div>
+
+  <div class="detail-section">
+    <label>Search Wikimedia Commons</label>
+    <div class="detail-row">
+      <input type="text" id="dp-wiki-input" placeholder="Search query…">
+      <button class="btn-sm btn-gray" id="dp-wiki-btn">Search</button>
+      <button class="btn-sm btn-amber" id="dp-google-btn">Google ↗</button>
+    </div>
+    <div class="wiki-results" id="dp-wiki-results"></div>
+  </div>
+
+  <div class="detail-section">
+    <button class="btn-sm btn-red" id="dp-remove-btn">Remove image</button>
+    <span class="status-msg" id="dp-remove-status"></span>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ─── State ────────────────────────────────────────────────────────────────────
+
+const GAMES = [
+  { id: 'IDMatchGame',      label: 'Matching Game',     type: 'manifest' },
+  { id: 'NameIDGame',       label: 'Receptive Words Game', type: 'manifest' },
+  { id: 'FamousPersonGame', label: 'Famous Person Game', type: 'fpg'     },
+  { id: 'FFCGame',          label: 'FFC Game',          type: 'ffc'      },
+  { id: 'IntraverbalGame',  label: 'Intraverbal Game',  type: 'intraverbal' },
+];
+
+const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
+
+let token = localStorage.getItem('admin_token') || '';
+let activeGame = GAMES[0];
+let gameData = {}; // { [gameId]: { manifest | fpgPeople } }
+let activeFolder = null;
+let detailContext = null; // { gameId, folder, filename, person? }
+let batchMode    = false;
+let batchQueue   = []; // { id, label, opLabel, thumbSrc, op, onSuccess, status, errorMsg }
+let batchRunning = false;
+
+// ─── Auth / Gear ──────────────────────────────────────────────────────────────
+
+const adminGear    = document.getElementById('admin-gear');
+const adminModal   = document.getElementById('admin-modal');
+const adminPwInput = document.getElementById('admin-pw-input');
+const adminPwError = document.getElementById('admin-pw-error');
+
+function setGearAuthed(authed) { adminGear.classList.toggle('authed', authed); }
+
+function showAdminModal(msg) {
+  adminPwInput.value = '';
+  adminPwError.textContent = msg || '';
+  adminModal.classList.add('open');
+  setTimeout(() => adminPwInput.focus(), 50);
+}
+
+if (token) { setGearAuthed(true); initApp(); }
+else { showAdminModal(); }
+
+adminGear.addEventListener('click', () => {
+  adminModal.classList.toggle('open');
+  if (adminModal.classList.contains('open')) {
+    adminPwInput.value = '';
+    adminPwError.textContent = '';
+    setTimeout(() => adminPwInput.focus(), 50);
+  }
+});
+adminModal.addEventListener('click', e => { if (e.target === adminModal) adminModal.classList.remove('open'); });
+
+async function sha256Hex(str) {
+  const buf    = new TextEncoder().encode(str);
+  const digest = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function adminUnlock() {
+  const pw = adminPwInput.value;
+  if (!pw) { adminPwError.textContent = 'Enter your password.'; return; }
+  const hash = await sha256Hex(pw);
+  if (hash === ADMIN_SECRET_HASH) {
+    token = hash;
+    localStorage.setItem('admin_token', hash);
+    setGearAuthed(true);
+    adminModal.classList.remove('open');
+    initApp();
+  } else {
+    adminPwError.textContent = 'Incorrect password.';
+    adminPwInput.value = '';
+    adminPwInput.focus();
+  }
+}
+
+document.getElementById('admin-unlock-btn').addEventListener('click', adminUnlock);
+adminPwInput.addEventListener('keydown', e => { if (e.key === 'Enter') adminUnlock(); });
+
+function handle401() {
+  token = '';
+  localStorage.removeItem('admin_token');
+  setGearAuthed(false);
+  showAdminModal('Session expired — re-enter password.');
+}
+
+// ─── Fetch helpers ────────────────────────────────────────────────────────────
+
+async function adminPost(endpoint, body) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 35000);
+  let res;
+  try {
+    res = await fetch('../../api/admin/' + endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    throw new Error(err.name === 'AbortError' ? 'Request timed out (35s)' : err.message);
+  }
+  clearTimeout(timer);
+  if (res.status === 401) { handle401(); return null; }
+  return res;
+}
+
+// ─── Data Loading ─────────────────────────────────────────────────────────────
+
+async function loadGameData(game) {
+  if (gameData[game.id]) return gameData[game.id];
+
+  if (game.type === 'manifest') {
+    const path = game.id === 'IDMatchGame'
+      ? `../../IDMatchGame/IDMatchGame/manifest.json`
+      : `../../NameIDGame/NameIDGame/manifest.json`;
+    const res = await fetch(path);
+    const m = await res.json();
+    // archived is stored as object by worker; normalize to array of names for UI
+    if (m.archived && !Array.isArray(m.archived)) {
+      m.archived = Object.keys(m.archived);
+    } else if (!m.archived) {
+      m.archived = [];
+    }
+    gameData[game.id] = { manifest: m };
+  } else if (game.type === 'ffc') {
+    const res = await fetch('../../FFCGame/FFCGame/items.json');
+    const data = await res.json();
+    gameData[game.id] = { ffcData: data };
+  } else if (game.type === 'intraverbal') {
+    const res = await fetch('../../IntraverbalGame/IntraverbalGame/items.json');
+    const data = await res.json();
+    gameData[game.id] = { ivData: data };
+  } else {
+    const res = await fetch('../../FamousPersonGame/index.html');
+    const html = await res.text();
+    const match = html.match(/const PEOPLE\s*=\s*(\[[\s\S]*?\n\];)/);
+    let people = [];
+    if (match) {
+      try { people = Function('"use strict"; return ' + match[1])(); } catch(e) { console.error(e); }
+    }
+    gameData[game.id] = { fpgPeople: people };
+  }
+  return gameData[game.id];
+}
+
+// ─── App Init ─────────────────────────────────────────────────────────────────
+
+function initApp() {
+  renderGameTabs();
+  switchGame(GAMES[0]);
+}
+
+function renderGameTabs() {
+  const wrap = document.getElementById('game-tabs');
+  wrap.innerHTML = '';
+  GAMES.forEach(g => {
+    const btn = document.createElement('button');
+    btn.className = 'game-tab' + (g === activeGame ? ' active' : '');
+    btn.textContent = g.label;
+    btn.addEventListener('click', () => switchGame(g));
+    wrap.appendChild(btn);
+  });
+}
+
+async function switchGame(game) {
+  activeGame = game;
+  activeFolder = null;
+  document.querySelectorAll('.game-tab').forEach((b, i) => {
+    b.classList.toggle('active', GAMES[i] === game);
+  });
+  const content = document.getElementById('main-content');
+  content.innerHTML = '<p class="loading">Loading…</p>';
+  await loadGameData(game);
+  renderFolderBar();
+  renderContent();
+}
+
+// ─── Folder Bar ───────────────────────────────────────────────────────────────
+
+function getFolders() {
+  const d = gameData[activeGame.id];
+  if (!d) return [];
+  if (activeGame.type === 'fpg') return ['images'];
+  if (activeGame.type === 'ffc') return ['__all__', ...(d.ffcData.vocab.groups || [])];
+  if (activeGame.type === 'intraverbal') return ['__all__', ...(d.ivData.categories || [])];
+  return d.manifest.folders || [];
+}
+
+function getArchivedFolders() {
+  const d = gameData[activeGame.id];
+  if (!d || activeGame.type === 'fpg' || activeGame.type === 'ffc' || activeGame.type === 'intraverbal') return [];
+  const a = d.manifest.archived;
+  if (!a) return [];
+  return Array.isArray(a) ? a : Object.keys(a);
+}
+
+function renderFolderBar() {
+  const content = document.getElementById('main-content');
+
+  const barWrap = document.createElement('div');
+  barWrap.className = 'folder-bar-wrap';
+  barWrap.id = 'folder-bar';
+
+  const folders = getFolders();
+  const archived = getArchivedFolders();
+
+  if (!activeFolder || (!folders.includes(activeFolder) && activeFolder !== '__archived__')) {
+    activeFolder = folders[0] || (archived.length ? '__archived__' : null);
+  }
+
+  folders.forEach(f => {
+    const btn = document.createElement('button');
+    btn.className = 'folder-tab' + (activeFolder === f ? ' active' : '');
+    if (f === '__all__') {
+      btn.textContent = 'All Items';
+    } else if (activeGame.type === 'intraverbal') {
+      btn.textContent = f.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    } else {
+      btn.textContent = f.replace(/^T_/, '').replace(/_/g, ' ');
+    }
+    btn.dataset.folder = f;
+    btn.addEventListener('click', () => { activeFolder = f; renderFolderBar(); renderContent(); });
+    barWrap.appendChild(btn);
+  });
+
+  if (archived.length) {
+    const btn = document.createElement('button');
+    btn.className = 'folder-tab archived-tab' + (activeFolder === '__archived__' ? ' active' : '');
+    btn.textContent = '📦 Archived (' + archived.length + ')';
+    btn.addEventListener('click', () => { activeFolder = '__archived__'; renderFolderBar(); renderContent(); });
+    barWrap.appendChild(btn);
+  }
+
+  if (activeGame.type === 'manifest') {
+    const newBtn = document.createElement('button');
+    newBtn.className = 'btn-new-topic';
+    newBtn.textContent = '+ New Topic';
+    newBtn.addEventListener('click', showNewTopicModal);
+    barWrap.appendChild(newBtn);
+  }
+
+  content.innerHTML = '';
+  content.appendChild(barWrap);
+}
+
+// ─── Content Area ─────────────────────────────────────────────────────────────
+
+function renderContent() {
+  const content = document.getElementById('main-content');
+  // Remove everything after folder bar
+  while (content.children.length > 1) content.removeChild(content.lastChild);
+
+  if (activeFolder === '__archived__') {
+    renderArchivedView(content);
+    return;
+  }
+
+  // Folder action bar
+  if (activeGame.type === 'manifest' && activeFolder) {
+    const bar = document.createElement('div');
+    bar.className = 'folder-action-bar';
+    const renameBtn = document.createElement('button');
+    renameBtn.className = 'btn-rename';
+    renameBtn.textContent = '✏ Rename';
+    renameBtn.addEventListener('click', () => showRenameInline(bar, renameBtn, activeFolder));
+    bar.appendChild(renameBtn);
+
+    const archBtn = document.createElement('button');
+    archBtn.className = 'btn-archive';
+    archBtn.textContent = 'Archive Folder';
+    archBtn.addEventListener('click', () => doArchiveTopic(activeFolder));
+    bar.appendChild(archBtn);
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn-add-image';
+    addBtn.textContent = '+ Add Image';
+    addBtn.addEventListener('click', () => toggleAddForm(addForm, addBtn));
+    bar.appendChild(addBtn);
+    content.appendChild(bar);
+
+    const addForm = buildAddForm('manifest');
+    content.appendChild(addForm);
+  } else if (activeGame.type === 'fpg') {
+    const bar = document.createElement('div');
+    bar.className = 'folder-action-bar';
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn-add-image';
+    addBtn.textContent = '+ Add Person';
+    addBtn.addEventListener('click', () => toggleAddForm(addForm, addBtn));
+    bar.appendChild(addBtn);
+    content.appendChild(bar);
+
+    const addForm = buildAddForm('fpg');
+    content.appendChild(addForm);
+  } else if (activeGame.type === 'ffc') {
+    const bar = document.createElement('div');
+    bar.className = 'folder-action-bar';
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn-add-image';
+    addBtn.textContent = '+ Add Item';
+    addBtn.addEventListener('click', () => toggleAddForm(addForm, addBtn));
+    bar.appendChild(addBtn);
+    const managerLink = document.createElement('a');
+    managerLink.href = '../FFCGManager/';
+    managerLink.target = '_blank';
+    managerLink.style.cssText = 'font-size:.78rem;color:#93c5fd;text-decoration:none;margin-left:.5rem;';
+    managerLink.textContent = '🏷️ Edit tags in FFC Manager ↗';
+    bar.appendChild(managerLink);
+    content.appendChild(bar);
+
+    const addForm = buildAddForm('ffc');
+    content.appendChild(addForm);
+  } else if (activeGame.type === 'intraverbal') {
+    const bar = document.createElement('div');
+    bar.className = 'folder-action-bar';
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn-add-image';
+    addBtn.textContent = '+ Add Image';
+    addBtn.addEventListener('click', () => toggleAddForm(addForm, addBtn));
+    bar.appendChild(addBtn);
+    const managerLink = document.createElement('a');
+    managerLink.href = '../IntraverbalManager/';
+    managerLink.target = '_blank';
+    managerLink.style.cssText = 'font-size:.78rem;color:#93c5fd;text-decoration:none;margin-left:.5rem;';
+    managerLink.textContent = '🏷️ Edit in Intraverbal Manager ↗';
+    bar.appendChild(managerLink);
+    content.appendChild(bar);
+
+    const addForm = buildAddForm('intraverbal');
+    content.appendChild(addForm);
+  }
+
+  const grid = document.createElement('div');
+  grid.className = 'image-grid';
+  grid.id = 'image-grid';
+
+  const images = getImagesForFolder(activeFolder);
+  images.forEach(item => grid.appendChild(buildCard(item)));
+
+  content.appendChild(grid);
+}
+
+function getImagesForFolder(folder) {
+  const d = gameData[activeGame.id];
+  if (!d) return [];
+
+  if (activeGame.type === 'ffc') {
+    const items = d.ffcData.items || [];
+    const filtered = folder === '__all__'
+      ? items
+      : items.filter(it => (it.groups || []).includes(folder));
+    return filtered.map(it => ({ type: 'ffc', item: it }));
+  }
+
+  if (activeGame.type === 'intraverbal') {
+    const items = d.ivData.items || [];
+    let filtered = items;
+    if (folder !== '__all__') {
+      const itemIds = d.ivData.categoryItems[folder] || [];
+      filtered = items.filter(it => itemIds.includes(it.id));
+    }
+    const images = [];
+    filtered.forEach(item => {
+      (item.images || []).forEach((img, idx) => {
+        images.push({ type: 'intraverbal', item, imagePath: img, imageIdx: idx });
+      });
+    });
+    return images;
+  }
+
+  if (activeGame.type === 'fpg') {
+    return d.fpgPeople.map(p => ({ type: 'fpg', person: p }));
+  }
+
+  const paths = (d.manifest.images && d.manifest.images[folder]) || [];
+  return paths.map(p => ({ type: 'manifest', path: p, folder }));
+}
+
+function buildCard(item) {
+  const card = document.createElement('div');
+  card.className = 'img-card';
+
+  const img = document.createElement('img');
+  const label = document.createElement('div');
+  label.className = 'label';
+
+  if (item.type === 'ffc') {
+    const it = item.item;
+    img.src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + it.img;
+    img.alt = it.label;
+    label.textContent = it.label;
+    card.addEventListener('click', () => openDetail({ type: 'ffc', item: it }));
+  } else if (item.type === 'intraverbal') {
+    const it = item.item;
+    img.src = '../../IntraverbalGame/IntraverbalGame/_Resources/_imgSource/items/' + item.imagePath;
+    img.alt = it.label;
+    label.textContent = it.label;
+    card.addEventListener('click', () => openDetail({ type: 'intraverbal', item: it, imageIdx: item.imageIdx }));
+  } else if (item.type === 'fpg') {
+    const p = item.person;
+    const isCDN = p.img && p.img.startsWith('https://');
+    img.src = isCDN ? p.img : '../../FamousPersonGame/' + p.img;
+    img.alt = p.name;
+    label.textContent = p.name;
+    if (isCDN) {
+      const badge = document.createElement('span');
+      badge.className = 'cdn-badge';
+      badge.textContent = 'CDN';
+      card.appendChild(badge);
+    }
+    card.addEventListener('click', () => openDetail({ type: 'fpg', person: p }));
+  } else {
+    img.src = '../../' + activeGame.id + '/' + activeGame.id + '/' + item.path;
+    img.alt = item.path;
+    const filename = item.path.split('/').pop();
+    const displayName = gameData[activeGame.id]?.manifest?.displayNames?.[item.path];
+    if (displayName) {
+      label.innerHTML = `<span style="color:#7dd3fc;">"${escapeHtml(displayName)}"</span> · ${escapeHtml(filename)}`;
+      label.title = `Display name: "${displayName}"\nFilename: ${filename}`;
+    } else {
+      label.textContent = filename;
+    }
+    card.addEventListener('click', () => openDetail({ type: 'manifest', path: item.path, folder: item.folder, gameId: activeGame.id }));
+  }
+
+  img.onerror = () => { img.style.opacity = '0.3'; };
+  card.appendChild(img);
+  card.appendChild(label);
+  return card;
+}
+
+// ─── Archived View ────────────────────────────────────────────────────────────
+
+function renderArchivedView(content) {
+  const archived = getArchivedFolders();
+  if (!archived.length) {
+    const p = document.createElement('p');
+    p.className = 'loading';
+    p.textContent = 'No archived folders.';
+    content.appendChild(p);
+    return;
+  }
+
+  archived.forEach(folder => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;padding:.6rem 1rem;background:#1e1e1e;border-radius:8px;border:1px solid #334155;';
+
+    const name = document.createElement('span');
+    name.textContent = folder;
+    name.style.cssText = 'flex:1;font-size:.85rem;color:#fbbf24;';
+    row.appendChild(name);
+
+    const restoreBtn = document.createElement('button');
+    restoreBtn.className = 'btn-restore';
+    restoreBtn.textContent = 'Restore';
+    restoreBtn.addEventListener('click', () => doRestoreTopic(folder));
+    row.appendChild(restoreBtn);
+
+    const purgeBtn = document.createElement('button');
+    purgeBtn.className = 'btn-purge';
+    purgeBtn.textContent = 'Delete';
+    purgeBtn.addEventListener('click', () => doPurgeTopic(folder));
+    row.appendChild(purgeBtn);
+
+    content.appendChild(row);
+  });
+}
+
+// ─── Add Form ─────────────────────────────────────────────────────────────────
+
+function buildAddForm(formType) {
+  const form = document.createElement('div');
+  form.className = 'add-form';
+
+  if (formType === 'manifest') {
+    form.innerHTML = `
+      <h3>Add Image to ${activeFolder}</h3>
+      <label>Display name</label>
+      <input type="text" name="display-name" placeholder="Gas Station">
+      <small class="filename-preview" style="color:#64748b;font-size:.72rem;display:block;margin-top:2px;margin-bottom:.25rem;">Filename will be generated from the display name and image URL.</small>
+      <label>Image URL</label>
+      <input type="url" name="url" placeholder="https://…">
+      <label>Or upload from disk</label>
+      <input type="file" name="file-upload" accept="image/*">
+      <label>Search Wikimedia</label>
+      <div class="detail-row">
+        <input type="text" name="wiki-query" placeholder="Search query…">
+        <button class="btn-sm btn-gray form-wiki-btn">Search</button>
+        <button class="btn-sm btn-amber form-google-btn">Google ↗</button>
+      </div>
+      <div class="wiki-results form-wiki-results"></div>
+      <div class="form-row">
+        <button class="btn-submit">Add Image</button>
+        <button class="btn-cancel-form">Cancel</button>
+      </div>
+      <div class="status-msg" id="add-form-status"></div>
+    `;
+    const updateFilenamePreview = () => {
+      const dn = form.querySelector('[name=display-name]').value.trim();
+      const u  = form.querySelector('[name=url]').value.trim();
+      const file = form.querySelector('[name=file-upload]').files[0];
+      const preview = form.querySelector('.filename-preview');
+      if (dn) {
+        const ext = file ? extFromMime(file.type) : extFromUrl(u);
+        preview.textContent = 'Filename: ' + nameToSlug(dn) + ext;
+      } else {
+        preview.textContent = 'Filename will be generated from the display name and image URL.';
+      }
+    };
+    form.querySelector('[name=display-name]').addEventListener('input', updateFilenamePreview);
+    form.querySelector('[name=url]').addEventListener('input', updateFilenamePreview);
+    form.querySelector('[name=file-upload]').addEventListener('change', updateFilenamePreview);
+    form.querySelector('.btn-submit').addEventListener('click', async () => {
+      const displayName = form.querySelector('[name=display-name]').value.trim();
+      const url = form.querySelector('[name=url]').value.trim();
+      const file = form.querySelector('[name=file-upload]').files[0];
+      const status = form.querySelector('#add-form-status');
+      if (!displayName) { setStatus(status, 'err', 'Fill in all fields.'); return; }
+      if (!url && !file) { setStatus(status, 'err', 'Provide an image URL or upload a file.'); return; }
+
+      const ext = file ? extFromMime(file.type) : extFromUrl(url);
+      let filename = nameToSlug(displayName) + ext;
+
+      const existingFilenames = getManifestFilenames(activeFolder);
+      if (existingFilenames.includes(filename)) {
+        const choice = await showDuplicateModal(filename, existingFilenames);
+        if (choice.action === 'cancel') return;
+        if (choice.action === 'rename' || choice.action === 'keep-both') filename = choice.newName;
+      }
+
+      let imgPayload;
+      if (file) {
+        setStatus(status, '', 'Reading file…');
+        const imageData = await readFileAsBase64(file);
+        imgPayload = { imageData, imageMime: file.type };
+      } else {
+        imgPayload = { imageUrl: url };
+      }
+
+      const capturedGameId = activeGame.id, capturedFolder = activeFolder, capturedFilename = filename;
+      const op = { type: 'save-image', game: capturedGameId, folder: capturedFolder, filename: capturedFilename, ...imgPayload };
+      const onSuccess = (j) => {
+        const savedFilename = j.filename || capturedFilename;
+        const path = `_Resources/_imgSource/${capturedFolder}/${savedFilename}`;
+        const d = gameData[capturedGameId];
+        if (d?.manifest) {
+          if (!d.manifest.images[capturedFolder]) d.manifest.images[capturedFolder] = [];
+          if (!d.manifest.images[capturedFolder].includes(path)) d.manifest.images[capturedFolder].push(path);
+        }
+        const grid = document.getElementById('image-grid');
+        if (grid && activeGame.id === capturedGameId && activeFolder === capturedFolder) {
+          grid.appendChild(buildCard({ type: 'manifest', path, folder: capturedFolder }));
+        }
+      };
+
+      if (batchMode) {
+        enqueue({ id: crypto.randomUUID(), label: displayName, opLabel: `Add to ${capturedFolder.replace(/^T_/, '').replace(/_/g, ' ')}`, thumbSrc: file ? URL.createObjectURL(file) : url, op, onSuccess });
+        setStatus(status, 'ok', '↑ Queued');
+        form.querySelector('[name=display-name]').value = '';
+        form.querySelector('[name=url]').value = '';
+        form.querySelector('[name=file-upload]').value = '';
+        return;
+      }
+
+      setStatus(status, '', 'Saving…');
+      try {
+        const res = await adminPost('batch', { operations: [op] });
+        if (!res) { setStatus(status, '', ''); return; }
+        const data = await res.json().catch(() => ({}));
+        const result = data.results?.[0] || {};
+        if (res.ok && result.ok) { onSuccess(result); setStatus(status, 'ok', 'Saved!'); }
+        else setStatus(status, 'err', result.error || data.error || 'Error ' + res.status);
+      } catch (err) { setStatus(status, 'err', err.message || 'Network error'); }
+    });
+    const urlInput = form.querySelector('[name=url]');
+    const wikiQueryInput = form.querySelector('[name=wiki-query]');
+    const wikiResults = form.querySelector('.form-wiki-results');
+    form.querySelector('.form-wiki-btn').addEventListener('click', () =>
+      runWikiSearch(wikiQueryInput.value.trim(), urlInput, wikiResults));
+    wikiQueryInput.addEventListener('keydown', e => { if (e.key === 'Enter') form.querySelector('.form-wiki-btn').click(); });
+    form.querySelector('.form-google-btn').addEventListener('click', () =>
+      window.open('https://www.google.com/search?q=' + encodeURIComponent(wikiQueryInput.value.trim()) + '&tbm=isch', '_blank'));
+  } else if (formType === 'ffc') {
+    form.innerHTML = `
+      <h3>Add FFC Item</h3>
+      <label>Label (display name)</label>
+      <input type="text" name="label" placeholder="Pencil">
+      <label>ID (slug)</label>
+      <input type="text" name="item-id" placeholder="pencil">
+      <small class="filename-preview" style="color:#64748b;font-size:.72rem;display:block;margin-top:2px;margin-bottom:.25rem;">Filename will be generated from the ID and image URL.</small>
+      <label>Image URL</label>
+      <input type="url" name="url" placeholder="https://…">
+      <label>Or upload from disk</label>
+      <input type="file" name="file-upload" accept="image/*">
+      <label>Search Wikimedia</label>
+      <div class="detail-row">
+        <input type="text" name="wiki-query" placeholder="Search query…">
+        <button class="btn-sm btn-gray form-wiki-btn">Search</button>
+        <button class="btn-sm btn-amber form-google-btn">Google ↗</button>
+      </div>
+      <div class="wiki-results form-wiki-results"></div>
+      <div class="form-row">
+        <button class="btn-submit">Add Item</button>
+        <button class="btn-cancel-form">Cancel</button>
+      </div>
+      <div class="status-msg" id="add-form-status"></div>
+    `;
+    const labelInput  = form.querySelector('[name=label]');
+    const itemIdInput = form.querySelector('[name=item-id]');
+    labelInput.addEventListener('input', () => {
+      if (!itemIdInput._edited) itemIdInput.value = nameToSlug(labelInput.value.trim());
+      updateFFCFilenamePreview();
+    });
+    itemIdInput.addEventListener('input', () => {
+      itemIdInput._edited = true;
+      itemIdInput.value = nameToSlug(itemIdInput.value);
+      updateFFCFilenamePreview();
+    });
+    const updateFFCFilenamePreview = () => {
+      const id = nameToSlug(itemIdInput.value.trim());
+      const u  = form.querySelector('[name=url]').value.trim();
+      const file = form.querySelector('[name=file-upload]').files[0];
+      const preview = form.querySelector('.filename-preview');
+      if (id) {
+        const ext = file ? extFromMime(file.type) : extFromUrl(u);
+        preview.textContent = 'Filename: ' + id + ext;
+      } else {
+        preview.textContent = 'Filename will be generated from the ID and image URL.';
+      }
+    };
+    form.querySelector('[name=url]').addEventListener('input', updateFFCFilenamePreview);
+    form.querySelector('[name=file-upload]').addEventListener('change', updateFFCFilenamePreview);
+    form.querySelector('.btn-submit').addEventListener('click', async () => {
+      const itemId = nameToSlug(itemIdInput.value.trim());
+      const label  = labelInput.value.trim();
+      const url    = form.querySelector('[name=url]').value.trim();
+      const file   = form.querySelector('[name=file-upload]').files[0];
+      const status = form.querySelector('#add-form-status');
+      if (!itemId || !label) { setStatus(status, 'err', 'Fill in all fields.'); return; }
+      if (!url && !file) { setStatus(status, 'err', 'Provide an image URL or upload a file.'); return; }
+      const d = gameData['FFCGame'].ffcData;
+      if (d.items.find(i => i.id === itemId)) { setStatus(status, 'err', 'Item id already exists.'); return; }
+
+      const ext = file ? extFromMime(file.type) : extFromUrl(url);
+      let filename = itemId + ext;
+
+      const existingFilenames = getFFCFilenames();
+      if (existingFilenames.includes(filename)) {
+        const choice = await showDuplicateModal(filename, existingFilenames);
+        if (choice.action === 'cancel') return;
+        if (choice.action === 'rename' || choice.action === 'keep-both') filename = choice.newName;
+      }
+
+      let imgPayload;
+      if (file) {
+        setStatus(status, '', 'Reading file…');
+        const imageData = await readFileAsBase64(file);
+        imgPayload = { imageData, imageMime: file.type };
+      } else {
+        imgPayload = { imageUrl: url };
+      }
+
+      const newItem = { id: itemId, img: filename, label, groups: [], features: [], functions: [], classes: [] };
+      const op = { type: 'ffc-save', id: itemId, filename, ...imgPayload, newItem };
+      const onSuccess = (j) => {
+        const finalItem = { ...newItem, img: j.filename || filename };
+        d.items.push(finalItem);
+        document.getElementById('image-grid')?.appendChild(buildCard({ type: 'ffc', item: finalItem }));
+      };
+
+      if (batchMode) {
+        enqueue({ id: crypto.randomUUID(), label, opLabel: 'Add FFC item', thumbSrc: file ? URL.createObjectURL(file) : url, op, onSuccess });
+        setStatus(status, 'ok', '↑ Queued');
+        labelInput.value = ''; itemIdInput.value = '';
+        form.querySelector('[name=url]').value = '';
+        form.querySelector('[name=file-upload]').value = '';
+        return;
+      }
+
+      setStatus(status, '', 'Saving…');
+      try {
+        const res = await adminPost('batch', { operations: [op] });
+        if (!res) { setStatus(status, '', ''); return; }
+        const data = await res.json().catch(() => ({}));
+        const result = data.results?.[0] || {};
+        if (res.ok && result.ok) { onSuccess(result); setStatus(status, 'ok', 'Saved! Use FFC Manager to add tags.'); }
+        else setStatus(status, 'err', result.error || data.error || 'Error ' + res.status);
+      } catch (err) { setStatus(status, 'err', err.message || 'Network error'); }
+    });
+    const urlInput = form.querySelector('[name=url]');
+    const wikiQueryInput = form.querySelector('[name=wiki-query]');
+    const wikiResults = form.querySelector('.form-wiki-results');
+    form.querySelector('.form-wiki-btn').addEventListener('click', () =>
+      runWikiSearch(wikiQueryInput.value.trim(), urlInput, wikiResults));
+    wikiQueryInput.addEventListener('keydown', e => { if (e.key === 'Enter') form.querySelector('.form-wiki-btn').click(); });
+    form.querySelector('.form-google-btn').addEventListener('click', () =>
+      window.open('https://www.google.com/search?q=' + encodeURIComponent(wikiQueryInput.value.trim()) + '&tbm=isch', '_blank'));
+  } else if (formType === 'intraverbal') {
+    form.innerHTML = `
+      <h3>Add Image to Intraverbal Item</h3>
+      <label>Item ID</label>
+      <input type="text" list="iv-item-list" name="item-id" placeholder="dog, cat, etc.">
+      <datalist id="iv-item-list"></datalist>
+      <label>Image URL</label>
+      <input type="url" name="url" placeholder="https://…">
+      <label>Or upload from disk</label>
+      <input type="file" name="file-upload" accept="image/*">
+      <label>Search Wikimedia</label>
+      <div class="detail-row">
+        <input type="text" name="wiki-query" placeholder="Search query…">
+        <button class="btn-sm btn-gray form-wiki-btn">Search</button>
+        <button class="btn-sm btn-amber form-google-btn">Google ↗</button>
+      </div>
+      <div class="wiki-results form-wiki-results"></div>
+      <div class="form-row">
+        <button class="btn-submit">Add Image</button>
+        <button class="btn-cancel-form">Cancel</button>
+      </div>
+      <div class="status-msg" id="add-form-status"></div>
+    `;
+    const updateItemList = () => {
+      const datalist = form.querySelector('#iv-item-list');
+      datalist.innerHTML = '';
+      const d = gameData['IntraverbalGame']?.ivData;
+      if (d && d.items) {
+        d.items.forEach(item => {
+          const opt = document.createElement('option');
+          opt.value = item.id;
+          opt.textContent = item.label;
+          datalist.appendChild(opt);
+        });
+      }
+    };
+    updateItemList();
+    form.querySelector('.btn-submit').addEventListener('click', async () => {
+      const itemId = form.querySelector('[name=item-id]').value.trim();
+      const url = form.querySelector('[name=url]').value.trim();
+      const file = form.querySelector('[name=file-upload]').files[0];
+      const status = form.querySelector('#add-form-status');
+      if (!itemId) { setStatus(status, 'err', 'Fill in all fields.'); return; }
+      if (!url && !file) { setStatus(status, 'err', 'Provide an image URL or upload a file.'); return; }
+      const d = gameData['IntraverbalGame']?.ivData;
+      const item = (d?.items || []).find(i => i.id === itemId);
+      if (!item) { setStatus(status, 'err', 'Item not found.'); return; }
+
+      const ext = file ? extFromMime(file.type) : extFromUrl(url);
+      const filename = itemId + ext;
+
+      let imgPayload;
+      if (file) {
+        setStatus(status, '', 'Reading file…');
+        const imageData = await readFileAsBase64(file);
+        imgPayload = { imageData, imageMime: file.type };
+      } else {
+        imgPayload = { imageUrl: url };
+      }
+
+      const prevCount = (item.images || []).length;
+      const op = { type: 'iv-save', id: itemId, filename, ...imgPayload };
+      const onSuccess = (j) => {
+        const fn = j.filename;
+        if (fn) {
+          if (!item.images) item.images = [];
+          item.images.push(fn);
+          const grid = document.getElementById('image-grid');
+          if (grid && activeGame.id === 'IntraverbalGame') {
+            grid.appendChild(buildCard({ type: 'intraverbal', item, imagePath: fn, imageIdx: prevCount }));
+          }
+        }
+      };
+
+      if (batchMode) {
+        enqueue({ id: crypto.randomUUID(), label: item.label, opLabel: `Add image (${itemId})`, thumbSrc: file ? URL.createObjectURL(file) : url, op, onSuccess });
+        setStatus(status, 'ok', '↑ Queued');
+        form.querySelector('[name=item-id]').value = '';
+        form.querySelector('[name=url]').value = '';
+        form.querySelector('[name=file-upload]').value = '';
+        return;
+      }
+
+      setStatus(status, '', 'Saving…');
+      try {
+        const res = await adminPost('batch', { operations: [op] });
+        if (!res) { setStatus(status, '', ''); return; }
+        const data = await res.json().catch(() => ({}));
+        const result = data.results?.[0] || {};
+        if (res.ok && result.ok) {
+          onSuccess(result);
+          setStatus(status, 'ok', 'Saved!');
+          form.querySelector('[name=item-id]').value = '';
+          form.querySelector('[name=url]').value = '';
+        } else {
+          setStatus(status, 'err', result.error || data.error || 'Error ' + res.status);
+        }
+      } catch (err) { setStatus(status, 'err', err.message || 'Network error'); }
+    });
+    const urlInput = form.querySelector('[name=url]');
+    const wikiQueryInput = form.querySelector('[name=wiki-query]');
+    const wikiResults = form.querySelector('.form-wiki-results');
+    form.querySelector('.form-wiki-btn').addEventListener('click', () =>
+      runWikiSearch(wikiQueryInput.value.trim(), urlInput, wikiResults));
+    wikiQueryInput.addEventListener('keydown', e => { if (e.key === 'Enter') form.querySelector('.form-wiki-btn').click(); });
+    form.querySelector('.form-google-btn').addEventListener('click', () =>
+      window.open('https://www.google.com/search?q=' + encodeURIComponent(wikiQueryInput.value.trim()) + '&tbm=isch', '_blank'));
+  } else {
+    form.innerHTML = `
+      <h3>Add Famous Person</h3>
+      <label>Name</label>
+      <input type="text" name="name" placeholder="Albert Einstein">
+      <label>Years</label>
+      <input type="text" name="years" placeholder="1879–1955">
+      <label>Emoji</label>
+      <input type="text" name="emoji" placeholder="🧠">
+      <label>Tag</label>
+      <input type="text" name="tag" placeholder="Scientist">
+      <label>Facts (one per line)</label>
+      <textarea name="facts" placeholder="Fact 1&#10;Fact 2"></textarea>
+      <label>Image URL</label>
+      <input type="url" name="url" placeholder="https://…">
+      <label>Or upload from disk</label>
+      <input type="file" name="file-upload" accept="image/*">
+      <label>Search Wikimedia</label>
+      <div class="detail-row">
+        <input type="text" name="wiki-query" placeholder="Search query…">
+        <button class="btn-sm btn-gray form-wiki-btn">Search</button>
+        <button class="btn-sm btn-amber form-google-btn">Google ↗</button>
+      </div>
+      <div class="wiki-results form-wiki-results"></div>
+      <div class="form-row">
+        <button class="btn-submit">Add Person</button>
+        <button class="btn-cancel-form">Cancel</button>
+      </div>
+      <div class="status-msg" id="add-form-status"></div>
+    `;
+    form.querySelector('.btn-submit').addEventListener('click', async () => {
+      let name = form.querySelector('[name=name]').value.trim();
+      const years = form.querySelector('[name=years]').value.trim();
+      const emoji = form.querySelector('[name=emoji]').value.trim();
+      const tag = form.querySelector('[name=tag]').value.trim();
+      const factsRaw = form.querySelector('[name=facts]').value.trim();
+      const url = form.querySelector('[name=url]').value.trim();
+      const file = form.querySelector('[name=file-upload]').files[0];
+      const status = form.querySelector('#add-form-status');
+      if (!name) { setStatus(status, 'err', 'Name is required.'); return; }
+      if (!url && !file) { setStatus(status, 'err', 'Provide an image URL or upload a file.'); return; }
+
+      let isOverwrite = false;
+      const existingNames = getFPGNames();
+      if (existingNames.includes(name)) {
+        const choice = await showDuplicateModal(name, existingNames, true);
+        if (choice.action === 'cancel') return;
+        if (choice.action === 'rename' || choice.action === 'keep-both') {
+          name = choice.newName; form.querySelector('[name=name]').value = name;
+        } else if (choice.action === 'overwrite') { isOverwrite = true; }
+      }
+
+      const facts = factsRaw ? factsRaw.split('\n').map(s => s.trim()).filter(Boolean) : [];
+      let imgPayload;
+      if (file) {
+        setStatus(status, '', 'Reading file…');
+        const imageData = await readFileAsBase64(file);
+        imgPayload = { imageData, imageMime: file.type };
+      } else {
+        imgPayload = { imageUrl: url };
+      }
+      const ext = file ? extFromMime(file.type) : '.jpg';
+      const capturedName = name, capturedIsOverwrite = isOverwrite;
+      const op = {
+        type: 'save-image', game: 'FamousPersonGame', folder: 'images',
+        filename: nameToSlug(capturedName) + ext, ...imgPayload,
+        ...(capturedIsOverwrite ? { personName: capturedName } : { personMeta: { name: capturedName, years, emoji, tag, facts } }),
+      };
+      const onSuccess = (j) => {
+        const newPerson = { name: capturedName, years, emoji, tag, img: j.localPath || url, facts };
+        gameData['FamousPersonGame'].fpgPeople.push(newPerson);
+        document.getElementById('image-grid')?.appendChild(buildCard({ type: 'fpg', person: newPerson }));
+      };
+
+      if (batchMode) {
+        enqueue({ id: crypto.randomUUID(), label: capturedName, opLabel: capturedIsOverwrite ? 'Update Famous Person' : 'Add Famous Person', thumbSrc: file ? URL.createObjectURL(file) : url, op, onSuccess });
+        setStatus(status, 'ok', '↑ Queued');
+        return;
+      }
+
+      setStatus(status, '', 'Saving…');
+      try {
+        const res = await adminPost('batch', { operations: [op] });
+        if (!res) { setStatus(status, '', ''); return; }
+        const data = await res.json().catch(() => ({}));
+        const result = data.results?.[0] || {};
+        if (res.ok && result.ok) { onSuccess(result); setStatus(status, 'ok', 'Saved!'); }
+        else setStatus(status, 'err', result.error || data.error || 'Error ' + res.status);
+      } catch (err) { setStatus(status, 'err', err.message || 'Network error'); }
+    });
+    const urlInput = form.querySelector('[name=url]');
+    const wikiQueryInput = form.querySelector('[name=wiki-query]');
+    const wikiResults = form.querySelector('.form-wiki-results');
+    form.querySelector('.form-wiki-btn').addEventListener('click', () =>
+      runWikiSearch(wikiQueryInput.value.trim(), urlInput, wikiResults));
+    wikiQueryInput.addEventListener('keydown', e => { if (e.key === 'Enter') form.querySelector('.form-wiki-btn').click(); });
+    form.querySelector('.form-google-btn').addEventListener('click', () =>
+      window.open('https://www.google.com/search?q=' + encodeURIComponent(wikiQueryInput.value.trim()) + '&tbm=isch', '_blank'));
+  }
+
+  form.querySelector('.btn-cancel-form').addEventListener('click', () => {
+    form.classList.remove('open');
+  });
+
+  return form;
+}
+
+function toggleAddForm(form, btn) {
+  const isOpen = form.classList.toggle('open');
+  btn.textContent = isOpen ? '✕ Cancel' : (activeGame.type === 'fpg' ? '+ Add Person' : activeGame.type === 'ffc' ? '+ Add Item' : '+ Add Image');
+  if (isOpen) {
+    const wq = form.querySelector('[name=wiki-query]');
+    if (wq && !wq.value) {
+      wq.value = activeGame.type === 'manifest'
+        ? activeFolder.replace(/^T_/, '').replace(/_/g, ' ')
+        : '';
+    }
+  }
+}
+
+// ─── Topic Actions ────────────────────────────────────────────────────────────
+
+async function doArchiveTopic(folder) {
+  if (!confirm(`Archive folder "${folder}"? It will be moved to the Archived tab.`)) return;
+  const res = await adminPost('archive-topic', { game: activeGame.id, folder });
+  if (!res) return;
+  if (res.ok) {
+    const m = gameData[activeGame.id].manifest;
+    m.folders = m.folders.filter(f => f !== folder);
+    const archName = folder.replace(/^T_/, '_a_T_');
+    if (!m.archived) m.archived = [];
+    m.archived.push(archName);
+    activeFolder = m.folders[0] || (m.archived.length ? '__archived__' : null);
+    renderFolderBar();
+    renderContent();
+  } else {
+    const j = await res.json().catch(() => ({}));
+    alert('Error: ' + (j.error || res.status));
+  }
+}
+
+async function doRestoreTopic(archFolder) {
+  if (!confirm(`Restore "${archFolder}"?`)) return;
+  const res = await adminPost('restore-topic', { game: activeGame.id, folder: archFolder });
+  if (!res) return;
+  if (res.ok) {
+    const m = gameData[activeGame.id].manifest;
+    m.archived = m.archived.filter(f => f !== archFolder);
+    const restored = archFolder.replace(/^_a_T_/, 'T_');
+    m.folders.push(restored);
+    activeFolder = restored;
+    renderFolderBar();
+    renderContent();
+  } else {
+    const j = await res.json().catch(() => ({}));
+    alert('Error: ' + (j.error || res.status));
+  }
+}
+
+async function doPurgeTopic(archFolder) {
+  if (!confirm(`Permanently delete "${archFolder}"? This cannot be undone.`)) return;
+  const res = await adminPost('purge-topic', { game: activeGame.id, folder: archFolder });
+  if (!res) return;
+  if (res.ok) {
+    const m = gameData[activeGame.id].manifest;
+    m.archived = m.archived.filter(f => f !== archFolder);
+    activeFolder = m.folders[0] || (m.archived.length ? '__archived__' : null);
+    renderFolderBar();
+    renderContent();
+  } else {
+    const j = await res.json().catch(() => ({}));
+    alert('Error: ' + (j.error || res.status));
+  }
+}
+
+// ─── Rename Topic ─────────────────────────────────────────────────────────────
+
+function showRenameInline(bar, renameBtn, folder) {
+  if (bar.querySelector('.rename-inline')) return;
+  renameBtn.style.display = 'none';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'rename-inline';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = folder.replace(/^T_/, '');
+  attachSanitize(input, sanitizeSlug);
+
+  const okBtn = document.createElement('button');
+  okBtn.className = 'btn-sm btn-blue';
+  okBtn.textContent = 'OK';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn-sm btn-gray';
+  cancelBtn.textContent = 'Cancel';
+
+  const status = document.createElement('span');
+  status.style.cssText = 'font-size:.78rem;';
+
+  wrap.appendChild(input);
+  wrap.appendChild(okBtn);
+  wrap.appendChild(cancelBtn);
+  wrap.appendChild(status);
+  bar.insertBefore(wrap, renameBtn.nextSibling);
+  input.focus();
+  input.select();
+
+  function close() { wrap.remove(); renameBtn.style.display = ''; }
+  cancelBtn.addEventListener('click', close);
+  input.addEventListener('keydown', e => { if (e.key === 'Escape') close(); if (e.key === 'Enter') okBtn.click(); });
+
+  okBtn.addEventListener('click', async () => {
+    const newName = input.value.trim();
+    if (!newName || newName === folder.replace(/^T_/, '')) { close(); return; }
+    const newFolder = 'T_' + newName;
+    okBtn.disabled = cancelBtn.disabled = true;
+    status.textContent = 'Renaming…';
+    status.style.color = '#94a3b8';
+    try {
+      const res = await adminPost('rename-topic', { game: activeGame.id, folder, newFolder });
+      if (!res) { close(); return; }
+      if (res.ok) {
+        const m = gameData[activeGame.id].manifest;
+        m.folders = [...m.folders.filter(f => f !== folder), newFolder].sort();
+        m.images[newFolder] = (m.images[folder] || []).map(p => p.replace(`/${folder}/`, `/${newFolder}/`));
+        delete m.images[folder];
+        activeFolder = newFolder;
+        renderFolderBar();
+        renderContent();
+      } else {
+        const j = await res.json().catch(() => ({}));
+        status.textContent = j.error || 'Error ' + res.status;
+        status.style.color = '#f87171';
+        okBtn.disabled = cancelBtn.disabled = false;
+      }
+    } catch (err) {
+      status.textContent = err.message || 'Network error';
+      status.style.color = '#f87171';
+      okBtn.disabled = cancelBtn.disabled = false;
+    }
+  });
+}
+
+// ─── New Topic Modal ──────────────────────────────────────────────────────────
+
+function showNewTopicModal() {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:800;display:flex;align-items:center;justify-content:center;';
+
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#1e1e2e;border:1px solid #334155;border-radius:12px;padding:1.5rem;width:360px;';
+  box.innerHTML = `
+    <h2 style="font-size:1rem;margin-bottom:1rem;color:#93c5fd;">New Topic Folder</h2>
+    <label style="font-size:.78rem;color:#94a3b8;display:block;margin-bottom:.25rem;">Folder name (will be prefixed T_)</label>
+    <input type="text" id="nt-name" placeholder="animals" style="width:100%;padding:.4rem .6rem;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:.85rem;margin-bottom:.75rem;">
+    <label style="font-size:.78rem;color:#94a3b8;display:block;margin-bottom:.25rem;">First image filename</label>
+    <input type="text" id="nt-filename" placeholder="gas-station.jpg" style="width:100%;padding:.4rem .6rem;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:.85rem;margin-bottom:.1rem;">
+    <small style="color:#64748b;font-size:.72rem;display:block;margin-bottom:.6rem;">kebab-case, hyphens for spaces — extension must match image type</small>
+    <label style="font-size:.78rem;color:#94a3b8;display:block;margin-bottom:.25rem;">First image URL</label>
+    <input type="url" id="nt-url" placeholder="https://…" style="width:100%;padding:.4rem .6rem;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:.85rem;margin-bottom:.35rem;">
+    <label style="font-size:.78rem;color:#94a3b8;display:block;margin-bottom:.25rem;">Or upload from disk</label>
+    <input type="file" id="nt-file" accept="image/*" style="width:100%;margin-bottom:.75rem;color:#e2e8f0;font-size:.82rem;">
+    <div style="display:flex;gap:.5rem;margin-top:.25rem;">
+      <button id="nt-submit" style="flex:1;padding:.4rem;border-radius:6px;background:#3b82f6;color:#fff;border:none;cursor:pointer;">Create</button>
+      <button id="nt-cancel" style="flex:1;padding:.4rem;border-radius:6px;background:#374151;color:#d1d5db;border:none;cursor:pointer;">Cancel</button>
+    </div>
+    <div id="nt-status" style="font-size:.78rem;min-height:1.2em;margin-top:.4rem;"></div>
+  `;
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  box.querySelector('#nt-cancel').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  attachSanitize(box.querySelector('#nt-name'), sanitizeSlug);
+  attachSanitize(box.querySelector('#nt-filename'), sanitizeFilename);
+
+  box.querySelector('#nt-submit').addEventListener('click', async () => {
+    const name = box.querySelector('#nt-name').value.trim().replace(/^T_/, '');
+    const filename = box.querySelector('#nt-filename').value.trim();
+    const url = box.querySelector('#nt-url').value.trim();
+    const file = box.querySelector('#nt-file').files[0];
+    const status = box.querySelector('#nt-status');
+    if (!name || !filename) { setStatus(status, 'err', 'All fields required.'); return; }
+    if (!url && !file) { setStatus(status, 'err', 'Provide an image URL or upload a file.'); return; }
+    const folder = 'T_' + name;
+    let imgPayload;
+    if (file) {
+      setStatus(status, '', 'Reading file…');
+      const imageData = await readFileAsBase64(file);
+      imgPayload = { imageData, imageMime: file.type };
+    } else {
+      imgPayload = { imageUrl: url };
+    }
+    setStatus(status, '', 'Creating…');
+    try {
+      const res = await adminPost('save-image', {
+        game: activeGame.id, folder, filename, ...imgPayload,
+      });
+      if (!res) { setStatus(status, '', ''); return; }
+      if (res.ok) {
+        const m = gameData[activeGame.id].manifest;
+        if (!m.folders.includes(folder)) m.folders.push(folder);
+        if (!m.images) m.images = {};
+        if (!m.images[folder]) m.images[folder] = [];
+        const path = `_Resources/_imgSource/${folder}/${filename}`;
+        m.images[folder].push(path);
+        activeFolder = folder;
+        overlay.remove();
+        renderFolderBar();
+        renderContent();
+      } else {
+        const j = await res.json().catch(() => ({}));
+        setStatus(status, 'err', j.error || 'Error ' + res.status);
+      }
+    } catch (err) {
+      setStatus(status, 'err', err.message || 'Network error');
+    }
+  });
+}
+
+// ─── Detail Panel ─────────────────────────────────────────────────────────────
+
+const detailPanel = document.getElementById('detail-panel');
+const dpThumb = document.getElementById('dp-thumb');
+const dpFilename = document.getElementById('dp-filename');
+const dpSub = document.getElementById('dp-sub');
+const dpUrlInput = document.getElementById('dp-url-input');
+const dpSaveBtn = document.getElementById('dp-save-btn');
+const dpSaveStatus = document.getElementById('dp-save-status');
+const dpWikiInput = document.getElementById('dp-wiki-input');
+const dpWikiBtn = document.getElementById('dp-wiki-btn');
+const dpGoogleBtn = document.getElementById('dp-google-btn');
+const dpWikiResults = document.getElementById('dp-wiki-results');
+const dpRemoveBtn = document.getElementById('dp-remove-btn');
+const dpRemoveStatus = document.getElementById('dp-remove-status');
+const dpDisplayNameSection = document.getElementById('dp-displayname-section');
+const dpDisplayNameInput   = document.getElementById('dp-displayname-input');
+const dpDisplayNameSaveBtn = document.getElementById('dp-displayname-save-btn');
+const dpDisplayNameStatus  = document.getElementById('dp-displayname-status');
+
+document.getElementById('dp-close').addEventListener('click', closeDetail);
+
+function openDetail(ctx) {
+  detailContext = ctx;
+  dpUrlInput.value = '';
+  dpWikiInput.value = '';
+  dpWikiResults.innerHTML = '';
+  setStatus(dpSaveStatus, '', '');
+  setStatus(dpRemoveStatus, '', '');
+  setStatus(dpDisplayNameStatus, '', '');
+  dpDisplayNameInput.value = '';
+
+  const hint = document.getElementById('dp-displayname-hint');
+  dpDisplayNameSection.style.display = '';
+  if (ctx.type === 'manifest') {
+    hint.textContent = '(optional — shown to learners; leave blank to use the filename)';
+    dpDisplayNameInput.placeholder = 'e.g. On  (multiple files like on-squirrel.svg, on-book.svg can share this label)';
+    const manifest = gameData[ctx.gameId]?.manifest;
+    dpDisplayNameInput.value = manifest?.displayNames?.[ctx.path] || '';
+  } else if (ctx.type === 'ffc') {
+    hint.textContent = '(item label shown to learners)';
+    dpDisplayNameInput.placeholder = 'e.g. Pencil';
+    dpDisplayNameInput.value = ctx.item.label;
+  } else if (ctx.type === 'intraverbal') {
+    hint.textContent = '(item label shown to learners)';
+    dpDisplayNameInput.placeholder = 'e.g. woof';
+    dpDisplayNameInput.value = ctx.item.label;
+  } else if (ctx.type === 'fpg') {
+    hint.textContent = '(person\'s name shown to learners)';
+    dpDisplayNameInput.placeholder = 'e.g. Albert Einstein';
+    dpDisplayNameInput.value = ctx.person.name;
+  }
+
+  if (ctx.type === 'ffc') {
+    const it = ctx.item;
+    dpThumb.src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + it.img;
+    dpFilename.textContent = it.label;
+    dpSub.textContent = 'id: ' + it.id + '  |  groups: ' + (it.groups || []).join(', ');
+    dpWikiInput.value = it.label;
+  } else if (ctx.type === 'intraverbal') {
+    const it = ctx.item;
+    const img = it.images && it.images[ctx.imageIdx];
+    if (img) {
+      dpThumb.src = '../../IntraverbalGame/IntraverbalGame/_Resources/_imgSource/items/' + img;
+    } else {
+      dpThumb.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect fill="%23333" width="100" height="100"/%3E%3C/svg%3E';
+    }
+    dpFilename.textContent = img || 'Image ' + (ctx.imageIdx + 1);
+    dpSub.textContent = 'id: ' + it.id + '  |  item: ' + it.label;
+    dpWikiInput.value = it.label;
+  } else if (ctx.type === 'fpg') {
+    const p = ctx.person;
+    const isCDN = p.img && p.img.startsWith('https://');
+    dpThumb.src = isCDN ? p.img : '../../FamousPersonGame/' + p.img;
+    dpFilename.textContent = p.name;
+    dpSub.textContent = [p.years, p.emoji, p.tag].filter(Boolean).join(' · ');
+    dpWikiInput.value = p.name;
+  } else {
+    dpThumb.src = '../../' + ctx.gameId + '/' + ctx.gameId + '/' + ctx.path;
+    const filename = ctx.path.split('/').pop();
+    dpFilename.textContent = filename;
+    dpSub.textContent = ctx.path;
+    dpWikiInput.value = filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+  }
+
+  detailPanel.classList.add('open');
+}
+
+function clearDetailForm() {
+  dpUrlInput.value = '';
+  dpWikiInput.value = '';
+  dpWikiResults.innerHTML = '';
+  document.getElementById('dp-file-input').value = '';
+  setStatus(dpSaveStatus, '', '');
+  setStatus(dpRemoveStatus, '', '');
+  setStatus(dpDisplayNameStatus, '', '');
+}
+
+function closeDetail() {
+  detailPanel.classList.remove('open');
+  detailContext = null;
+  clearDetailForm();
+}
+
+// Save
+dpSaveBtn.addEventListener('click', async () => {
+  if (!detailContext) return;
+  const ctx = detailContext;
+  const url = dpUrlInput.value.trim();
+  const dpFileInput = document.getElementById('dp-file-input');
+  const file = dpFileInput?.files[0];
+  if (!url && !file) { setStatus(dpSaveStatus, 'err', 'Enter a URL or select a file.'); return; }
+
+  let imgPayload;
+  if (file) {
+    setStatus(dpSaveStatus, '', 'Reading file…');
+    const imageData = await readFileAsBase64(file);
+    imgPayload = { imageData, imageMime: file.type };
+  } else {
+    imgPayload = { imageUrl: url };
+  }
+
+  const newThumbSrc = file ? URL.createObjectURL(file) : url;
+  let op, label, onSuccess;
+
+  if (ctx.type === 'ffc') {
+    op = { type: 'ffc-save', id: ctx.item.id, filename: ctx.item.img, ...imgPayload };
+    label = ctx.item.label;
+    onSuccess = (j) => {
+      if (j.filename) {
+        ctx.item.img = j.filename;
+        dpThumb.src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + j.filename;
+      }
+    };
+  } else if (ctx.type === 'intraverbal') {
+    const existingFilename = ctx.item.images?.[ctx.imageIdx] || (ctx.item.id + '.jpg');
+    op = { type: 'iv-save', id: ctx.item.id, filename: existingFilename, imageIdx: ctx.imageIdx, ...imgPayload };
+    label = ctx.item.label;
+    onSuccess = (j) => {
+      const fn = j.filename;
+      if (fn) {
+        ctx.item.images[ctx.imageIdx] = fn;
+        dpThumb.src = '../../IntraverbalGame/IntraverbalGame/_Resources/_imgSource/items/' + fn;
+      }
+    };
+  } else if (ctx.type === 'fpg') {
+    const p = ctx.person;
+    op = { type: 'save-image', game: 'FamousPersonGame', folder: 'images', filename: p.img.split('/').pop(), ...imgPayload, personName: p.name };
+    label = p.name;
+    onSuccess = (j) => { if (j.localPath) { ctx.person.img = j.localPath; dpThumb.src = newThumbSrc; } };
+  } else {
+    const filename = ctx.path.split('/').pop();
+    op = { type: 'save-image', game: ctx.gameId, folder: ctx.folder, filename, ...imgPayload };
+    label = filename;
+    onSuccess = () => { dpThumb.src = newThumbSrc; };
+  }
+
+  if (batchMode) {
+    enqueue({ id: crypto.randomUUID(), label, opLabel: 'Replace image', thumbSrc: newThumbSrc, op, onSuccess });
+    setStatus(dpSaveStatus, 'ok', '↑ Queued');
+    dpUrlInput.value = '';
+    dpFileInput.value = '';
+    return;
+  }
+
+  setStatus(dpSaveStatus, '', 'Saving…');
+  try {
+    const res = await adminPost('batch', { operations: [op] });
+    if (detailContext !== ctx) return;
+    if (!res) { setStatus(dpSaveStatus, '', ''); return; }
+    const data = await res.json().catch(() => ({}));
+    const result = data.results?.[0] || {};
+    if (res.ok && result.ok) {
+      onSuccess(result);
+      dpUrlInput.value = '';
+      dpFileInput.value = '';
+      setStatus(dpSaveStatus, 'ok', 'Saved!');
+    } else {
+      setStatus(dpSaveStatus, 'err', result.error || data.error || 'Error ' + res.status);
+    }
+  } catch (err) {
+    setStatus(dpSaveStatus, 'err', err.message || 'Network error');
+  }
+});
+
+// ─── Shared Wikimedia search ──────────────────────────────────────────────────
+
+async function runWikiSearch(query, urlInput, resultsEl, onSelect) {
+  if (!query) return;
+  resultsEl.innerHTML = '<span style="font-size:.8rem;color:#64748b">Searching…</span>';
+  try {
+    const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srnamespace=6&srlimit=6&format=json&origin=*`;
+    const hits = ((await (await fetch(searchUrl)).json()).query || {}).search || [];
+    if (!hits.length) { resultsEl.innerHTML = '<span style="font-size:.8rem;color:#64748b">No results.</span>'; return; }
+    const titles = hits.slice(0, 6).map(h => h.title).join('|');
+    const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(titles)}&prop=imageinfo&iiprop=url&iiurlwidth=400&format=json&origin=*`;
+    const pages = Object.values(((await (await fetch(infoUrl)).json()).query || {}).pages || {});
+    resultsEl.innerHTML = '';
+    let count = 0;
+    pages.forEach(page => {
+      if (count >= 3) return;
+      const ii = page.imageinfo && page.imageinfo[0];
+      if (!ii) return;
+      count++;
+      const card = document.createElement('div');
+      card.className = 'wiki-result';
+      const img = document.createElement('img');
+      img.src = ii.thumburl || ii.url;
+      img.alt = page.title;
+      const lbl = document.createElement('span');
+      lbl.textContent = page.title.replace('File:', '');
+      card.appendChild(img);
+      card.appendChild(lbl);
+      card.addEventListener('click', () => { urlInput.value = ii.url; if (onSelect) onSelect(); });
+      resultsEl.appendChild(card);
+    });
+    if (!count) resultsEl.innerHTML = '<span style="font-size:.8rem;color:#64748b">No images found.</span>';
+  } catch (e) {
+    resultsEl.innerHTML = '<span style="font-size:.8rem;color:#f87171">Search failed.</span>';
+  }
+}
+
+dpDisplayNameSaveBtn.addEventListener('click', async () => {
+  if (!detailContext) return;
+  const ctx = detailContext;
+  const displayName = dpDisplayNameInput.value.trim();
+
+  if ((ctx.type === 'ffc' || ctx.type === 'intraverbal') && !displayName) {
+    setStatus(dpDisplayNameStatus, 'err', 'Label cannot be empty.'); return;
+  }
+  if (ctx.type === 'fpg' && !displayName) {
+    setStatus(dpDisplayNameStatus, 'err', 'Name cannot be empty.'); return;
+  }
+
+  let op, label, onSuccess;
+  if (ctx.type === 'manifest') {
+    op = { type: 'save-display-name', game: ctx.gameId, localPath: ctx.path, displayName };
+    label = ctx.path.split('/').pop();
+    onSuccess = () => {
+      const manifest = gameData[ctx.gameId]?.manifest;
+      if (manifest) {
+        if (!manifest.displayNames) manifest.displayNames = {};
+        if (displayName) manifest.displayNames[ctx.path] = displayName;
+        else delete manifest.displayNames[ctx.path];
+      }
+    };
+  } else if (ctx.type === 'ffc') {
+    op = { type: 'save-display-name', game: 'FFCGame', itemId: ctx.item.id, displayName };
+    label = ctx.item.label;
+    onSuccess = () => { ctx.item.label = displayName; dpFilename.textContent = displayName; };
+  } else if (ctx.type === 'intraverbal') {
+    op = { type: 'save-display-name', game: 'IntraverbalGame', itemId: ctx.item.id, displayName };
+    label = ctx.item.label;
+    onSuccess = () => { ctx.item.label = displayName; dpFilename.textContent = displayName; };
+  } else if (ctx.type === 'fpg') {
+    op = { type: 'save-display-name', game: 'FamousPersonGame', personName: ctx.person.name, displayName };
+    label = ctx.person.name;
+    onSuccess = () => { ctx.person.name = displayName; dpFilename.textContent = displayName; };
+  }
+
+  if (batchMode) {
+    enqueue({ id: crypto.randomUUID(), label, opLabel: displayName ? `Label: "${displayName}"` : 'Clear label', thumbSrc: dpThumb.src, op, onSuccess });
+    setStatus(dpDisplayNameStatus, 'ok', '↑ Queued');
+    return;
+  }
+
+  setStatus(dpDisplayNameStatus, '', 'Saving…');
+  try {
+    const res = await adminPost('batch', { operations: [op] });
+    if (detailContext !== ctx) return;
+    if (!res) { setStatus(dpDisplayNameStatus, '', ''); return; }
+    const data = await res.json().catch(() => ({}));
+    const result = data.results?.[0] || {};
+    if (res.ok && result.ok) {
+      onSuccess(result);
+      setStatus(dpDisplayNameStatus, 'ok', displayName ? 'Saved.' : 'Cleared.');
+    } else {
+      setStatus(dpDisplayNameStatus, 'err', result.error || data.error || 'Error ' + res.status);
+    }
+  } catch (err) {
+    setStatus(dpDisplayNameStatus, 'err', err.message || 'Network error');
+  }
+});
+
+dpDisplayNameInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') dpDisplayNameSaveBtn.click();
+});
+
+dpWikiBtn.addEventListener('click', () =>
+  runWikiSearch(dpWikiInput.value.trim(), dpUrlInput, dpWikiResults, () => dpSaveBtn.click()));
+
+dpWikiInput.addEventListener('keydown', e => { if (e.key === 'Enter') dpWikiBtn.click(); });
+
+// Google image search
+dpGoogleBtn.addEventListener('click', () => {
+  const q = dpWikiInput.value.trim() || dpFilename.textContent;
+  window.open('https://www.google.com/search?q=' + encodeURIComponent(q) + '&tbm=isch', '_blank');
+});
+
+// Remove
+dpRemoveBtn.addEventListener('click', async () => {
+  if (!detailContext) return;
+  if (!confirm('Remove this image? This cannot be undone.')) return;
+  const ctx = detailContext;
+
+  let op, label, onSuccess;
+  if (ctx.type === 'ffc') {
+    const it = ctx.item;
+    op = { type: 'ffc-remove', id: it.id, filename: it.img };
+    label = it.label;
+    onSuccess = () => {
+      gameData['FFCGame'].ffcData.items = gameData['FFCGame'].ffcData.items.filter(i => i.id !== it.id);
+      document.getElementById('image-grid')?.querySelectorAll('.img-card').forEach(card => {
+        if (card.querySelector('img')?.alt === it.label) card.remove();
+      });
+    };
+  } else if (ctx.type === 'intraverbal') {
+    const it = ctx.item;
+    const img = it.images?.[ctx.imageIdx] || '';
+    op = { type: 'iv-remove', id: it.id, filename: img, imageIdx: ctx.imageIdx };
+    label = it.label;
+    onSuccess = () => {
+      it.images.splice(ctx.imageIdx, 1);
+      document.getElementById('image-grid')?.querySelectorAll('.img-card').forEach(card => {
+        if (card.querySelector('img')?.alt === it.label) card.remove();
+      });
+    };
+  } else if (ctx.type === 'fpg') {
+    const p = ctx.person;
+    op = { type: 'remove-image', game: 'FamousPersonGame', folder: 'images', filename: p.img.split('/').pop(), personName: p.name };
+    label = p.name;
+    onSuccess = () => {
+      document.getElementById('image-grid')?.querySelectorAll('.img-card').forEach(card => {
+        const img = card.querySelector('img');
+        if (img && img.alt === dpFilename.textContent) card.remove();
+      });
+    };
+  } else {
+    op = { type: 'remove-image', game: ctx.gameId, folder: ctx.folder, filename: ctx.path.split('/').pop() };
+    label = ctx.path.split('/').pop();
+    onSuccess = () => {
+      document.getElementById('image-grid')?.querySelectorAll('.img-card').forEach(card => {
+        const img = card.querySelector('img');
+        if (img && (img.src === dpThumb.src || img.alt === dpFilename.textContent)) card.remove();
+      });
+    };
+  }
+
+  if (batchMode) {
+    enqueue({ id: crypto.randomUUID(), label, opLabel: '🗑 Remove', thumbSrc: dpThumb.src, op, onSuccess });
+    setStatus(dpRemoveStatus, 'ok', '↑ Queued');
+    closeDetail();
+    return;
+  }
+
+  setStatus(dpRemoveStatus, '', 'Removing…');
+  try {
+    const res = await adminPost('batch', { operations: [op] });
+    if (detailContext !== ctx) return;
+    if (!res) { setStatus(dpRemoveStatus, '', ''); return; }
+    const data = await res.json().catch(() => ({}));
+    const result = data.results?.[0] || {};
+    if (res.ok && result.ok) {
+      onSuccess();
+      setStatus(dpRemoveStatus, 'ok', 'Removed.');
+      setTimeout(closeDetail, 800);
+    } else {
+      setStatus(dpRemoveStatus, 'err', result.error || data.error || 'Error ' + res.status);
+    }
+  } catch (err) {
+    setStatus(dpRemoveStatus, 'err', err.message || 'Network error');
+  }
+});
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
+
+function setStatus(el, type, msg) {
+  el.className = 'status-msg' + (type ? ' ' + type : '');
+  el.textContent = msg;
+}
+
+function nameToSlug(name) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function extFromUrl(url) {
+  try {
+    const p = new URL(url).pathname;
+    const m = p.match(/\.([a-zA-Z0-9]+)$/);
+    return m ? '.' + m[1].toLowerCase() : '.jpg';
+  } catch { return '.jpg'; }
+}
+
+function extFromMime(mime) {
+  return { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp',
+           'image/gif': '.gif', 'image/avif': '.avif', 'image/svg+xml': '.svg' }[mime] || '.jpg';
+}
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
+
+function sanitizeFilename(val) {
+  return val.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9.\-]/g, '').replace(/-{2,}/g, '-');
+}
+
+function sanitizeSlug(val) {
+  return val.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '').replace(/-{2,}/g, '-');
+}
+
+function attachSanitize(input, fn) {
+  input.addEventListener('input', () => {
+    const pos = input.selectionStart;
+    const clean = fn(input.value);
+    if (clean !== input.value) { input.value = clean; input.setSelectionRange(pos, pos); }
+  });
+}
+
+// ─── Duplicate detection ─────────────────────────────────────────────────────
+
+function getManifestFilenames(folder) {
+  const paths = gameData[activeGame.id]?.manifest?.images?.[folder] || [];
+  return paths.map(p => p.split('/').pop());
+}
+
+function getFFCFilenames() {
+  return (gameData['FFCGame']?.ffcData?.items || []).map(i => i.img);
+}
+
+function getFPGNames() {
+  return (gameData['FamousPersonGame']?.fpgPeople || []).map(p => p.name);
+}
+
+function incrementName(name, existing) {
+  const dot  = name.lastIndexOf('.');
+  const base = dot >= 0 ? name.slice(0, dot) : name;
+  const ext  = dot >= 0 ? name.slice(dot) : '';
+  const clean = base.replace(/-(\d+)$/, '');
+  let n = 2;
+  while (existing.includes(`${clean}-${n}${ext}`)) n++;
+  return `${clean}-${n}${ext}`;
+}
+
+// Returns a Promise that resolves to:
+//   { action: 'rename', newName: string }
+//   { action: 'overwrite' }
+//   { action: 'keep-both', newName: string }
+//   { action: 'cancel' }
+function showDuplicateModal(name, existingNames, isPersonName = false) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'dup-overlay';
+
+    const autoName = incrementName(name, existingNames);
+    const itemWord = isPersonName ? 'name' : 'filename';
+
+    const box = document.createElement('div');
+    box.className = 'dup-box';
+    box.innerHTML = `
+      <h3>Duplicate ${itemWord}</h3>
+      <p><strong style="color:#fde68a;">${escapeHtml(name)}</strong> already exists${isPersonName ? '' : ' in this folder'}. Choose how to proceed:</p>
+      <div class="dup-rename-row">
+        <label>Rename to:</label>
+        <input type="text" id="dup-rename-input" value="${escapeHtml(name)}">
+      </div>
+      <div class="dup-actions">
+        <button class="btn-sm btn-blue" id="dup-rename-btn">Rename</button>
+        <button class="btn-sm btn-gray" id="dup-overwrite-btn">Overwrite</button>
+        <button class="btn-sm btn-amber" id="dup-keepboth-btn">Keep Both <span style="color:#94a3b8;font-size:.75em;">(→ ${escapeHtml(autoName)})</span></button>
+        <button class="btn-sm btn-gray" id="dup-cancel-btn">Cancel</button>
+      </div>
+    `;
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    const input = box.querySelector('#dup-rename-input');
+    if (!isPersonName) attachSanitize(input, sanitizeFilename);
+    input.focus();
+    input.select();
+
+    function close(result) { overlay.remove(); resolve(result); }
+
+    box.querySelector('#dup-rename-btn').addEventListener('click', () => {
+      const v = input.value.trim();
+      if (!v || v === name) return;
+      close({ action: 'rename', newName: v });
+    });
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') box.querySelector('#dup-rename-btn').click();
+      if (e.key === 'Escape') close({ action: 'cancel' });
+    });
+    box.querySelector('#dup-overwrite-btn').addEventListener('click', () => close({ action: 'overwrite' }));
+    box.querySelector('#dup-keepboth-btn').addEventListener('click', () => close({ action: 'keep-both', newName: autoName }));
+    box.querySelector('#dup-cancel-btn').addEventListener('click', () => close({ action: 'cancel' }));
+    overlay.addEventListener('click', e => { if (e.target === overlay) close({ action: 'cancel' }); });
+  });
+}
+
+// ─── Batch Mode ───────────────────────────────────────────────────────────────
+
+function toggleBatchMode() {
+  batchMode = !batchMode;
+  const btn = document.getElementById('batch-mode-btn');
+  if (btn) { btn.classList.toggle('active', batchMode); btn.textContent = batchMode ? '⚡ Batch On' : '⚡ Batch'; }
+  const panel = document.getElementById('batch-panel');
+  if (batchMode || batchQueue.length) panel.classList.add('open');
+  else panel.classList.remove('open');
+  updateBatchPanel();
+}
+
+function enqueue(item) {
+  batchQueue.push({ ...item, status: 'pending', errorMsg: '' });
+  updateBatchPanel();
+  document.getElementById('batch-panel').classList.add('open');
+}
+
+function dequeueItem(id) {
+  batchQueue = batchQueue.filter(i => i.id !== id);
+  updateBatchPanel();
+  if (!batchQueue.length && !batchMode) document.getElementById('batch-panel').classList.remove('open');
+}
+
+function updateBatchPanel() {
+  const list      = document.getElementById('batch-item-list');
+  const countEl   = document.getElementById('batch-count');
+  const submitBtn = document.getElementById('batch-submit-btn');
+  const pending   = batchQueue.filter(i => i.status === 'pending').length;
+
+  if (countEl)   countEl.textContent = batchQueue.length;
+  if (submitBtn) {
+    submitBtn.textContent = pending
+      ? `Submit ${pending} change${pending !== 1 ? 's' : ''} (1 deploy)`
+      : 'Nothing pending';
+    submitBtn.disabled = !pending || batchRunning;
+  }
+
+  if (!list) return;
+  list.innerHTML = '';
+  if (!batchQueue.length) {
+    list.innerHTML = `<div class="batch-empty">No changes queued.${batchMode ? '' : '<br>Enable batch mode to start queueing.'}</div>`;
+    return;
+  }
+  batchQueue.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'batch-item status-' + item.status;
+    const rmBtn  = item.status === 'pending' ? `<button class="batch-item-remove" data-id="${escapeHtml(item.id)}" title="Remove">✕</button>` : '';
+    const msgHtml = item.status === 'running' ? '<div class="batch-item-msg run">Saving…</div>'
+      : item.status === 'done'  ? '<div class="batch-item-msg ok">✓ Done</div>'
+      : item.status === 'error' ? `<div class="batch-item-msg err">✗ ${escapeHtml(item.errorMsg)}</div>`
+      : '';
+    el.innerHTML = `
+      <img class="batch-item-thumb" src="${escapeHtml(item.thumbSrc || '')}" alt="">
+      <div class="batch-item-info">
+        <div class="batch-item-label" title="${escapeHtml(item.label)}">${escapeHtml(item.label)}</div>
+        <div class="batch-item-op">${escapeHtml(item.opLabel || '')}</div>
+        ${msgHtml}
+      </div>${rmBtn}`;
+    el.querySelector('.batch-item-remove')?.addEventListener('click', () => dequeueItem(item.id));
+    list.appendChild(el);
+  });
+}
+
+async function runBatch() {
+  if (batchRunning) return;
+  const pending = batchQueue.filter(i => i.status === 'pending');
+  if (!pending.length) return;
+
+  batchRunning = true;
+  pending.forEach(item => { item.status = 'running'; });
+  updateBatchPanel();
+
+  const operations = pending.map(item => item.op);
+  try {
+    const res = await adminPost('batch', { operations });
+    if (!res) throw new Error('No response');
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Batch failed: ' + res.status);
+    const results = data.results || [];
+    pending.forEach((item, i) => {
+      const result = results[i] || {};
+      if (result.ok) {
+        item.status = 'done';
+        try { item.onSuccess?.(result); } catch (_) {}
+      } else {
+        item.status = 'error';
+        item.errorMsg = result.error || 'Failed';
+      }
+    });
+  } catch (err) {
+    pending.forEach(item => { item.status = 'error'; item.errorMsg = err.message || 'Network error'; });
+  }
+
+  batchRunning = false;
+  updateBatchPanel();
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+document.getElementById('batch-mode-btn').addEventListener('click', toggleBatchMode);
+document.getElementById('batch-panel-close').addEventListener('click', () => {
+  document.getElementById('batch-panel').classList.remove('open');
+});
+document.getElementById('batch-submit-btn').addEventListener('click', runBatch);
+document.getElementById('batch-clear-done').addEventListener('click', () => {
+  batchQueue = batchQueue.filter(i => i.status !== 'done');
+  updateBatchPanel();
+  if (!batchQueue.length && !batchMode) document.getElementById('batch-panel').classList.remove('open');
+});
+</script>
+
+<div id="batch-panel">
+  <div class="batch-panel-header">
+    <span class="batch-panel-title">Batch Queue</span>
+    <span class="batch-count-badge" id="batch-count">0</span>
+    <button class="batch-panel-close" id="batch-panel-close" title="Close panel">✕</button>
+  </div>
+  <div class="batch-item-list" id="batch-item-list">
+    <div class="batch-empty">No changes queued.<br>Enable batch mode to start queueing.</div>
+  </div>
+  <div class="batch-panel-footer">
+    <button class="batch-clear-done" id="batch-clear-done">Clear completed</button>
+    <button class="btn-batch-submit" id="batch-submit-btn" disabled>Submit changes</button>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,8 @@
+name = "noaba-prioritize"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# Create the namespace first (see README), then paste its id here:
+[[kv_namespaces]]
+binding = "VOTES"
+id = "PUT_YOUR_KV_NAMESPACE_ID_HERE"

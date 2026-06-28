@@ -1,0 +1,32 @@
+/* Google Fonts must be first per CSS spec */
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;600;700&display=swap');
+
+@import "tailwindcss";
+
+/* Preserve all CSS custom properties for game JS access (--sage-*, --slate-*, etc.) */
+@import "./tokens.css";
+
+/* Shared header chrome, settings bar, and panel styles for all games */
+@import "./game-chrome.css";
+
+@theme {
+  /* Override Tailwind's default sans/mono with No Outcome ABA brand fonts */
+  --font-family-sans: 'Atkinson Hyperlegible', system-ui, -apple-system, sans-serif;
+  --font-family-mono: 'Atkinson Hyperlegible Mono', ui-monospace, SFMono-Regular, monospace;
+
+  /* Sage — brand accent color (Tailwind has no built-in sage) */
+  --color-sage-50:  #f1f3ec;
+  --color-sage-100: #e2e6d9;
+  --color-sage-200: #c7cdb6;
+  --color-sage-500: #6a7659;
+  --color-sage-600: #5d6a4d;
+  --color-sage-700: #4d5840;
+  --color-sage-800: #3c4533;
+  --color-sage-900: #2c331f;
+
+  /* Clinical phase accent colors */
+  --color-phase-open:   #1d9e75;
+  --color-phase-ease:   #ef9f27;
+  --color-phase-repair: #d85a30;
+}

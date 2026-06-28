@@ -1,0 +1,399 @@
+/* ══════════════════════════════════════════════════════════════════
+   PATTERN PACK CO. — assembly-line skin for Sequences & Patterns
+   ══════════════════════════════════════════════════════════════════ */
+
+.help-btn {
+  width: 16px; height: 16px; line-height: 14px; padding: 0;
+  border: 1px solid #cbb78d; border-radius: 50%;
+  background: #f3e8d0; color: #8a6a3a; font-size: 0.7rem; font-weight: 700;
+  cursor: pointer; margin-left: 3px;
+}
+
+.btn-primary {
+  margin-left: auto;
+  background: #e07b1f; color: #fff; border: none;
+  padding: 8px 24px; border-radius: 8px;
+  font-size: 0.98rem; font-weight: 700; cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  box-shadow: 0 2px 0 #a3530f;
+}
+.btn-primary:hover  { background: #c96a14; }
+.btn-primary:active { transform: translateY(2px); box-shadow: 0 0 0 #a3530f; }
+
+/* ── Pre-start blurb ───────────────────────────────────────────────── */
+.game-intro {
+  max-width: 720px; margin: 14px auto 6px; padding: 16px 20px;
+  background: rgba(255,255,255,0.95); border: 1px solid rgba(120,80,30,0.18);
+  border-radius: 12px; box-shadow: 0 2px 10px rgba(80,50,10,0.08);
+  color: #4a3a22; font-size: 14px; line-height: 1.5;
+  font-family: 'Segoe UI', Inter, -apple-system, sans-serif;
+}
+.game-intro h2 { font-size: 15px; font-weight: 700; margin: 0 0 8px; color: #3a2a14; }
+.game-intro p  { margin: 0 0 8px; }
+.game-intro ul { margin: 6px 0 6px 20px; padding: 0; }
+.game-intro li { margin-bottom: 3px; }
+.game-intro .tip { margin-top: 8px; color: #8a6a3a; font-size: 13px; }
+
+/* ── Game area / factory stage ─────────────────────────────────────── */
+#game-area {
+  flex: 1;
+  display: flex; justify-content: center; align-items: flex-start;
+  padding: 22px 18px;
+}
+
+#factory {
+  position: relative;
+  width: 100%; max-width: 940px;
+  background:
+    linear-gradient(180deg, #46566f 0%, #394760 46%, #6f5a3e 46%, #5b482f 100%);
+  border-radius: 18px;
+  padding: 18px 26px 26px;
+  overflow: hidden;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.28), inset 0 2px 0 rgba(255,255,255,0.08);
+}
+
+/* Neon "approved" sign on the back wall */
+#neon-sign {
+  position: absolute; top: 14px; right: 20px;
+  display: flex; align-items: center; gap: 9px;
+  opacity: 0.22; filter: grayscale(0.7); transition: opacity 0.3s, filter 0.3s;
+  z-index: 7;
+}
+#neon-sign svg { width: 46px; height: 46px; display: block; }
+#neon-sign .thumb-path { stroke: #4dffa0; }
+#neon-sign .neon-label {
+  color: #4dffa0; font-weight: 800; letter-spacing: 0.14em; font-size: 0.92rem;
+}
+#neon-sign.lit { opacity: 1; filter: none; animation: neon-flicker 0.6s steps(1) 1; }
+#neon-sign.lit .thumb-path {
+  filter: drop-shadow(0 0 5px #4dffa0) drop-shadow(0 0 12px #19c46e);
+}
+#neon-sign.lit .neon-label {
+  text-shadow: 0 0 8px #4dffa0, 0 0 16px #19c46e;
+}
+@keyframes neon-flicker {
+  0%, 18%, 24%, 38% { opacity: 0.25; }
+  10%, 22%, 30%, 100% { opacity: 1; }
+}
+
+/* ── Belt zone (the box rides in here) ─────────────────────────────── */
+#belt-zone {
+  position: relative;
+  min-height: 180px;
+  margin-top: 46px;
+  display: flex; align-items: flex-end; justify-content: center;
+  padding-bottom: 34px;
+}
+
+#conveyor {
+  position: absolute; left: -5%; right: -5%; bottom: 12px; height: 44px;
+  background: #1b2230; border-radius: 8px;
+  box-shadow: inset 0 4px 8px rgba(0,0,0,0.55), 0 3px 6px rgba(0,0,0,0.3);
+  overflow: hidden; z-index: 1;
+}
+#belt-treads {
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(90deg, #2c3648 0 18px, #232c3c 18px 36px);
+  background-size: 36px 100%;
+}
+#belt-treads.running { animation: belt-move 0.5s linear infinite; }
+@keyframes belt-move { from { background-position: 0 0; } to { background-position: -36px 0; } }
+
+/* Dark tunnels the box slides into at each end. */
+.tunnel { position: absolute; bottom: 6px; width: 96px; height: 150px; z-index: 6; pointer-events: none; }
+#tunnel-left  { left: 0; }
+#tunnel-right { right: 0; }
+
+.tunnel::after {
+  content: ''; position: absolute; inset: 0;
+  box-shadow: inset 0 -8px 16px rgba(0,0,0,0.6);
+}
+#tunnel-left::after {
+  background:
+    radial-gradient(150% 120% at 0% 55%, #02040a 0%, #070b14 34%, rgba(8,12,21,0.78) 62%, rgba(8,12,21,0) 100%),
+    linear-gradient(90deg, #04060c 0%, #0a0f1a 40%, rgba(10,15,26,0) 100%);
+  border-radius: 0 78px 10px 0;
+}
+#tunnel-right::after {
+  background:
+    radial-gradient(150% 120% at 100% 55%, #02040a 0%, #070b14 34%, rgba(8,12,21,0.78) 62%, rgba(8,12,21,0) 100%),
+    linear-gradient(270deg, #04060c 0%, #0a0f1a 40%, rgba(10,15,26,0) 100%);
+  border-radius: 78px 0 0 10px;
+}
+
+/* Arched portal frame on the inner edge */
+.tunnel::before {
+  content: ''; position: absolute; top: -8px; bottom: -6px; width: 22px;
+  background: linear-gradient(180deg, #79859e 0%, #4a5468 46%, #2c3346 100%);
+  box-shadow:
+    0 0 0 2px rgba(0,0,0,0.45),
+    inset 0 2px 0 rgba(255,255,255,0.22),
+    0 6px 14px rgba(0,0,0,0.45);
+}
+#tunnel-left::before  { right: -4px; border-radius: 0 16px 16px 0; }
+#tunnel-right::before { left: -4px;  border-radius: 16px 0 0 16px; }
+
+/* ── The gift box (chocolate-box tray) ─────────────────────────────── */
+#tray {
+  position: relative;
+  margin: 0 auto; width: fit-content; max-width: 80%;
+  padding: 14px 16px 16px;
+  background: linear-gradient(180deg, #8a4a28 0%, #6e3a1e 60%, #5a2f17 100%);
+  border-radius: 12px;
+  box-shadow:
+    0 12px 22px rgba(0,0,0,0.4),
+    inset 0 2px 0 rgba(255,255,255,0.14),
+    inset 0 -7px 14px rgba(0,0,0,0.4);
+  transform: translateX(170%);
+  will-change: transform;
+  perspective: 760px;
+  z-index: 4;
+}
+#tray.belt-jolt { animation: belt-jolt 0.4s ease; }
+@keyframes belt-jolt {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px) rotate(-0.6deg); }
+  60% { transform: translateX(5px)  rotate(0.5deg); }
+}
+
+#tray .area-label {
+  font-size: 0.62rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.16em; color: #ffd9a8; opacity: 0.85;
+  text-align: center; margin-bottom: 8px;
+}
+
+#pattern-row {
+  display: flex; flex-wrap: nowrap; gap: 8px; justify-content: center;
+  background: rgba(0,0,0,0.22);
+  padding: 9px; border-radius: 8px;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.45);
+}
+
+/* The bow lid that drops onto a finished box */
+#bow-lid {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, #9b5a34 0%, #7b3f24 100%);
+  border-radius: 12px;
+  transform-origin: top center;
+  transform: rotateX(-128deg);
+  backface-visibility: hidden;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.18), 0 6px 14px rgba(0,0,0,0.4);
+  z-index: 5;
+}
+#bow-lid::before {
+  content: ''; position: absolute; top: 0; bottom: 0; left: 50%;
+  width: 16px; transform: translateX(-50%);
+  background: linear-gradient(90deg, #ffcf5a, #ffe9a8, #ffcf5a);
+}
+#bow-lid::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 50%;
+  height: 16px; transform: translateY(-50%);
+  background: linear-gradient(180deg, #ffcf5a, #ffe9a8, #ffcf5a);
+}
+#bow-lid .bow { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 64px; height: 34px; }
+#bow-lid .bow-knot {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 16px; height: 18px; border-radius: 4px; z-index: 2;
+  background: linear-gradient(180deg, #ffd86b, #e8a92e);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+#bow-lid .bow-loop {
+  position: absolute; top: 50%; width: 26px; height: 26px;
+  background: linear-gradient(180deg, #ffd86b, #f0b840);
+  box-shadow: inset 0 0 4px rgba(150,90,10,0.5);
+}
+#bow-lid .bow-loop-l { left: -2px;  transform: translateY(-50%) rotate(-18deg); border-radius: 60% 30% 60% 30%; }
+#bow-lid .bow-loop-r { right: -2px; transform: translateY(-50%) rotate(18deg);  border-radius: 30% 60% 30% 60%; }
+
+/* ── Sequence compartments ─────────────────────────────────────────── */
+.seq-box {
+  width: 64px; height: 64px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.1rem; line-height: 1; flex: 0 0 auto;
+}
+.seq-box-filled {
+  background: linear-gradient(180deg, #fffaf0, #ffe9c6);
+  border: 1px solid #e7c79c; color: #3a2a1a;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.8);
+}
+.seq-box-blank {
+  background: radial-gradient(circle at 50% 32%, #3a2317, #21130b);
+  border: 1px solid #170c06;
+  box-shadow: inset 0 4px 9px rgba(0,0,0,0.7);
+}
+.seq-box-blank::before {
+  content: '?'; font-size: 1.4rem; font-weight: 700; color: rgba(255,214,150,0.28);
+}
+.seq-box-active {
+  box-shadow:
+    inset 0 4px 9px rgba(0,0,0,0.6),
+    0 0 0 3px rgba(255,210,110,0.9),
+    0 0 16px rgba(255,190,80,0.75);
+}
+.seq-box.is-landing { color: transparent; }
+.seq-box.is-landing::before { content: none; }
+.seq-box.slot-pop { animation: slot-pop 0.24s ease; }
+@keyframes slot-pop {
+  0% { transform: scale(0.7); }
+  60% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+/* ── Bulk bin (the bank) ───────────────────────────────────────────── */
+#bulk-zone { margin-top: 22px; display: flex; justify-content: center; }
+#bulk-box {
+  position: relative; width: 100%; max-width: 780px;
+  padding: 14px 18px 18px;
+  background: linear-gradient(180deg, #44546f 0%, #313e56 100%);
+  border-radius: 12px;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.3), inset 0 2px 0 rgba(255,255,255,0.08);
+  perspective: 1000px;
+}
+#bulk-box .area-label {
+  font-size: 0.66rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.12em; color: #cfe0ff; opacity: 0.85;
+  text-align: center; margin-bottom: 10px;
+}
+#bank-row {
+  display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;
+}
+
+/* The bulk lid: covers the choices, flips down to reveal them */
+#bulk-lid {
+  position: absolute; inset: 0;
+  background:
+    repeating-linear-gradient(45deg, rgba(0,0,0,0.05) 0 14px, rgba(0,0,0,0.12) 14px 28px),
+    linear-gradient(180deg, #5a6c8c 0%, #3c4a64 100%);
+  border-radius: 12px;
+  transform-origin: bottom center;
+  transform: rotateX(0deg);
+  backface-visibility: hidden;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.14), 0 6px 14px rgba(0,0,0,0.35);
+  z-index: 30;
+}
+.bulk-lid-face {
+  color: #d7e3f7; font-weight: 800; letter-spacing: 0.28em; font-size: 1.1rem;
+  opacity: 0.7;
+}
+
+/* ── Bank tiles (bulk product) ─────────────────────────────────────── */
+.bank-tile {
+  width: 88px; height: 88px; border-radius: 14px;
+  background: linear-gradient(180deg, #fffaf0, #ffe7bf);
+  border: 1px solid #e6c594;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.85);
+  font-size: 2.6rem; line-height: 1; cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+  display: flex; align-items: center; justify-content: center; font-family: inherit;
+}
+.bank-tile:hover  { border-color: #e89b2a; box-shadow: 0 6px 14px rgba(232,155,42,0.4); }
+.bank-tile:active { transform: scale(0.95); }
+
+/* The item that flies from the bin into its slot */
+.ppc-fly {
+  position: fixed; z-index: 80; pointer-events: none;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.6rem; line-height: 1; border-radius: 12px;
+  background: linear-gradient(180deg, #fffaf0, #ffe7bf);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.3);
+}
+
+/* ── Shake (wrong answer) ──────────────────────────────────────────── */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px) rotate(-2deg); }
+  40% { transform: translateX(8px)  rotate(2deg); }
+  60% { transform: translateX(-6px) rotate(-1deg); }
+  80% { transform: translateX(6px)  rotate(1deg); }
+}
+.shake { animation: shake 0.45s ease; }
+
+/* Prompt button in settings bar */
+.btn-prompt {
+  background: #c0561f; color: #fff; border: none;
+  padding: 5px 14px; border-radius: 7px; font-size: 0.88rem; font-weight: 700;
+  cursor: pointer; transition: background 0.15s;
+}
+.btn-prompt:hover { background: #a3470f; }
+
+/* ── Prompt effects on bank tiles ──────────────────────────────────── */
+@keyframes sparkle-pulse {
+  0%   { box-shadow: 0 0 6px 3px #ffd700, 0 0 14px 6px rgba(255,215,0,0.55), 0 0 24px 10px rgba(255,165,0,0.25); }
+  50%  { box-shadow: 0 0 12px 6px #ffd700, 0 0 28px 12px rgba(255,215,0,0.65), 0 0 44px 20px rgba(255,140,0,0.35); }
+  100% { box-shadow: 0 0 6px 3px #ffd700, 0 0 14px 6px rgba(255,215,0,0.55), 0 0 24px 10px rgba(255,165,0,0.25); }
+}
+.bank-tile.prompt-sparkle { animation: sparkle-pulse 1s ease-in-out infinite; border-color: #d69e2e !important; }
+.bank-tile.prompt-outline {
+  border: 3px solid #38a169 !important;
+  box-shadow: 0 0 0 3px rgba(56,161,105,0.38), 0 3px 8px rgba(0,0,0,0.1) !important;
+  background: rgba(56,161,105,0.08);
+}
+
+/* ── Next / Retry overlay ──────────────────────────────────────────── */
+#bulk-box { position: relative; }
+#trial-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+  z-index: 60;
+}
+.btn-watermark {
+  padding: 11px 30px; border-radius: 12px;
+  font-size: 1.1rem; font-weight: 800; cursor: pointer; border: none;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.32);
+  transition: opacity 0.15s, transform 0.1s; letter-spacing: 0.02em;
+}
+.btn-watermark:hover  { opacity: 0.93; transform: scale(1.04); }
+.btn-watermark:active { transform: scale(0.97); }
+.btn-watermark-next  { background: rgba(34,160,90,0.95);  color: #fff; }
+.btn-watermark-retry { background: rgba(192,86,33,0.92);  color: #fff; }
+
+/* ── Bottom bar ────────────────────────────────────────────────────── */
+#bottom-bar {
+  background: #fff; border-top: 2px solid #e3d6bd;
+  padding: 9px 20px; display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+}
+.btn-print { background: #6b4a28; color: #fff; border: none; padding: 7px 18px; border-radius: 8px; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+.btn-print:hover { background: #50361b; }
+.btn-clear-data { background: #c53030; color: #fff; border: none; padding: 7px 18px; border-radius: 8px; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+.btn-clear-data:hover { background: #9b2c2c; }
+.btn-icon { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 34px; padding: 0; }
+.btn-icon svg { width: 20px; height: 20px; fill: currentColor; }
+
+/* ── Reduce motion (CSS side; JS shortens the timed sequences) ──────── */
+body.reduce-motion #belt-treads.running { animation-duration: 0.3s; }
+body.reduce-motion .seq-box.slot-pop,
+body.reduce-motion #tray.belt-jolt { animation: none; }
+
+@media print {
+  body > *:not(#print-section) { display: none !important; }
+  #print-section { display: block; padding: 18px 24px; font-family: Arial, sans-serif; font-size: 11pt; color: #000; }
+  #print-section h2 { font-size: 15pt; margin-bottom: 4px; }
+  #print-meta { font-size: 9pt; color: #444; margin-bottom: 14px; }
+  #results-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+  #results-table th, #results-table td { border: 1px solid #666; padding: 5px 8px; text-align: left; vertical-align: top; }
+  #results-table th { background: #e8e8e8; font-weight: bold; font-size: 9.5pt; }
+  #results-table tr:nth-child(even) td { background: #f7f7f7; }
+  #results-table tr.settings-changed td { background: #e8e8e8 !important; }
+  #results-table td.outcome-error      { color: #c0392b; }
+  #results-table td.outcome-prompted   { color: #b7791f; }
+  #results-table td.outcome-correction { color: #6b46c1; }
+  #results-table td.outcome-ok         { color: #27ae60; }
+  #print-summary { font-size: 9.5pt; color: #333; border-top: 1px solid #bbb; padding-top: 8px; }
+  #print-summary span { margin-right: 20px; }
+}
+
+/* ── Responsive ────────────────────────────────────────────────────── */
+@media (max-width: 680px) {
+  #factory { padding: 14px 14px 18px; }
+  #belt-zone { min-height: 150px; margin-top: 40px; padding-bottom: 28px; }
+  .seq-box  { width: 50px; height: 50px; font-size: 1.6rem; }
+  .bank-tile { width: 66px; height: 66px; font-size: 2rem; }
+  #neon-sign svg { width: 36px; height: 36px; }
+  #neon-sign .neon-label { font-size: 0.78rem; }
+}
+@media (max-width: 480px) {
+  .seq-box   { width: 42px; height: 42px; font-size: 1.3rem; }
+  .bank-tile { width: 56px; height: 56px; font-size: 1.7rem; }
+  #pattern-row { gap: 5px; padding: 7px; }
+}

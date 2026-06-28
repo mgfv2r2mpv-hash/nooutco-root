@@ -1,0 +1,516 @@
+/* ── Think or Say? ─────────────────────────────────────────────────
+   Accent palette:
+     header / primary  #3d5a98  (indigo blue)
+     THINK IT          amber  (#f6c453 fill on #fbe6a6 card)
+     SAY IT            green  (#48a86b fill on #d7f0df card)
+   ------------------------------------------------------------------- */
+:root {
+  --accent:      #3d5a98;
+  --accent-dark: #2f477a;
+  --accent-soft: #e6ebf6;
+  --think:       #d99c1f;
+  --think-soft:  #fbe6a6;
+  --say:         #2f8f57;
+  --say-soft:    #d2eedd;
+}
+
+.btn-primary {
+  margin-left: auto;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 8px 24px;
+  border-radius: 8px;
+  font-size: 0.98rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.btn-primary:hover  { background: var(--accent-dark); }
+.btn-primary:active { transform: scale(0.97); }
+
+.setting-modes { margin-left: auto; gap: 8px; }
+.setting-modes .btn-primary { margin-left: 0; }
+
+.btn-secondary {
+  background: #fff;
+  color: var(--accent);
+  border: 1.5px solid var(--accent);
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 0.98rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.btn-secondary:hover  { background: var(--accent-soft); }
+.btn-secondary:active { transform: scale(0.97); }
+
+.extra-row label { font-size: 0.82rem; font-weight: 600; color: #4a5568; }
+
+/* ── Pre-start blurb ───────────────────────────────────────────────── */
+.game-intro {
+  max-width: 720px;
+  margin: 16px auto 6px;
+  padding: 16px 20px;
+  background: #fff;
+  border: 1px solid var(--accent-soft);
+  border-radius: 12px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+  color: #2d3748;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.game-intro h2 { font-size: 15px; font-weight: 700; margin: 0 0 8px; color: #1a2438; }
+.game-intro p { margin: 0 0 8px; }
+.game-intro ul { margin: 6px 0 6px 20px; padding: 0; }
+.game-intro li { margin-bottom: 3px; }
+.game-intro .tip { margin-top: 8px; color: #5a6b8a; font-size: 13px; }
+
+/* ── Learn screen ──────────────────────────────────────────────────── */
+#learn-screen {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 24px 20px 32px;
+}
+.learn-inner {
+  width: min(680px, 100%);
+  background: #fff;
+  border: 1px solid var(--accent-soft);
+  border-radius: 16px;
+  box-shadow: 0 4px 18px rgba(61,90,152,0.12);
+  padding: 26px 28px 24px;
+}
+#learn-title {
+  font-size: 1.4rem;
+  color: #1a2438;
+  text-align: center;
+  margin-bottom: 16px;
+}
+#learn-video {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin-bottom: 18px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+}
+#learn-video iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.learn-lead { font-size: 1.05rem; line-height: 1.5; margin-bottom: 12px; color: #2d3748; }
+.learn-ask  { font-weight: 700; color: #1a2438; margin-bottom: 8px; }
+.learn-list { list-style: none; display: flex; flex-direction: column; gap: 10px; margin: 0 0 14px; }
+.learn-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1rem;
+  line-height: 1.4;
+  color: #2d3748;
+  background: #f7f9fc;
+  border: 1px solid var(--accent-soft);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.tag {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.tag-think { background: var(--think-soft); color: #6b4e0a; border: 1px solid #e7c463; }
+.tag-say   { background: var(--say-soft);   color: #1f5c39; border: 1px solid #8fd1a8; }
+.learn-tip { font-size: 0.95rem; color: #5a6b8a; margin-bottom: 18px; text-align: center; }
+#btn-learn-start { display: block; margin: 0 auto; padding: 11px 30px; font-size: 1.05rem; }
+
+/* ── Reveal panel (staff taps to show the choices) ─────────────────── */
+#reveal-panel {
+  width: min(460px, 100%);
+  min-height: 132px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 22px 24px;
+  border: 3px dashed #9fb0d4;
+  border-radius: 18px;
+  background: #f4f7fc;
+  color: var(--accent);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+#reveal-panel:hover  { background: var(--accent-soft); border-color: var(--accent); }
+#reveal-panel:active { transform: scale(0.99); }
+#reveal-panel .reveal-icon {
+  font-size: 1.8rem;
+  width: 54px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+}
+#reveal-panel .reveal-text {
+  font-size: 0.98rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.35;
+  max-width: 320px;
+}
+
+/* ── Game area ─────────────────────────────────────────────────────── */
+#game-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 22px 28px 28px;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.area-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #718096;
+  margin-bottom: 8px;
+  text-align: center;
+}
+#progress-label { margin-bottom: 0; }
+
+/* ── Scenario card ─────────────────────────────────────────────────── */
+#scenario-section { display: flex; flex-direction: column; align-items: center; width: 100%; }
+
+#scenario-card {
+  width: min(680px, 100%);
+  min-height: 96px;
+  background: linear-gradient(145deg, var(--accent), #5c74b5);
+  border-radius: 16px;
+  box-shadow: 0 5px 22px rgba(61,90,152,0.30);
+  border: 2px solid #7d92c4;
+  padding: 22px 30px;
+  color: #fff;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  justify-content: center;
+}
+#scenario-situation {
+  font-size: 1.18rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+#scenario-thought {
+  font-size: 1.18rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+#scenario-thought .quote {
+  display: inline-block;
+  background: rgba(255,255,255,0.16);
+  border: 1px dashed rgba(255,255,255,0.6);
+  border-radius: 10px;
+  padding: 4px 12px;
+  margin-top: 4px;
+}
+
+#scenario-reason {
+  width: min(680px, 100%);
+  margin-top: 12px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-size: 1rem;
+  line-height: 1.4;
+  text-align: center;
+  font-weight: 600;
+  animation: reason-in 0.3s ease;
+}
+#scenario-reason.reason-think { background: var(--think-soft); color: #6b4e0a; border: 1px solid #e7c463; }
+#scenario-reason.reason-say   { background: var(--say-soft);   color: #1f5c39; border: 1px solid #8fd1a8; }
+@keyframes reason-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── Choices ───────────────────────────────────────────────────────── */
+#choice-section { display: flex; flex-direction: column; align-items: center; width: 100%; }
+
+#choices {
+  display: flex;
+  gap: 28px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.choice {
+  width: 230px;
+  min-height: 220px;
+  border-radius: 18px;
+  border: 3px solid transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 20px 16px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 0.12s, box-shadow 0.15s, background 0.3s, border-color 0.15s;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.10);
+}
+.choice-think { background: var(--think-soft); color: var(--think); }
+.choice-say   { background: var(--say-soft);   color: var(--say); }
+.choice:not(.locked):hover { transform: translateY(-4px); box-shadow: 0 8px 22px rgba(0,0,0,0.16); }
+.choice:not(.locked):active { transform: translateY(-1px) scale(0.99); }
+.choice.locked { cursor: default; }
+.choice.dim { opacity: 0.45; filter: saturate(0.6); }
+
+.choice-label {
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  color: #2d3748;
+}
+
+/* Bubbles holding the brain / mouth */
+.bubble {
+  width: 124px;
+  height: 100px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow: inset 0 0 0 3px currentColor;
+}
+.bubble .face { font-size: 3.1rem; line-height: 1; }
+
+/* Thought bubble = rounded cloud with trailing dots */
+.bubble-thought {
+  border-radius: 50% / 46%;
+}
+.bubble-thought::before,
+.bubble-thought::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 3px currentColor;
+}
+.bubble-thought::before { left: 26px; width: 20px; height: 20px; }
+.bubble-thought::after  { left: 14px; bottom: -22px; width: 12px; height: 12px; }
+
+/* Speech bubble = rounded rectangle with a tail */
+.bubble-speech {
+  border-radius: 22px;
+}
+.bubble-speech::after {
+  content: '';
+  position: absolute;
+  bottom: -14px;
+  left: 30px;
+  width: 0;
+  height: 0;
+  border: 11px solid transparent;
+  border-top-color: #fff;
+  border-bottom: 0;
+  filter: drop-shadow(0 3px 0 currentColor);
+}
+
+/* ── Feedback states ───────────────────────────────────────────────── */
+.choice.correct {
+  background: var(--say);
+  border-color: #1f5c39;
+  box-shadow: 0 6px 22px rgba(47,143,87,0.45);
+  animation: correct-pop 0.45s ease;
+}
+.choice.correct .choice-label,
+.choice.correct .bubble .face { color: #fff; }
+.choice.correct .bubble { box-shadow: inset 0 0 0 3px #fff; background: rgba(255,255,255,0.18); }
+@keyframes correct-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+.choice.wrong {
+  border-color: #c0392b;
+  background: #f8d7d2;
+}
+.choice.wrong .choice-label { color: #9b2c2c; }
+@keyframes wiggle {
+  0%   { transform: translateX(0)    rotate(0); }
+  15%  { transform: translateX(-9px) rotate(-3deg); }
+  30%  { transform: translateX(9px)  rotate(3deg); }
+  45%  { transform: translateX(-7px) rotate(-2deg); }
+  60%  { transform: translateX(7px)  rotate(2deg); }
+  75%  { transform: translateX(-4px) rotate(-1deg); }
+  90%  { transform: translateX(4px)  rotate(1deg); }
+  100% { transform: translateX(0)    rotate(0); }
+}
+.choice.wiggle { animation: wiggle 0.5s ease; }
+
+@keyframes flash-red {
+  0%   { background: #f8d7d2; }
+  35%  { background: #f4a39a; }
+  100% { background: #f8d7d2; }
+}
+.choice.flash-red { animation: flash-red 0.5s ease; }
+
+/* ── Prompt effects ────────────────────────────────────────────────── */
+@keyframes sparkle-pulse {
+  0%   { box-shadow: 0 0 6px 3px #ffd700, 0 0 16px 7px rgba(255,215,0,0.55), 0 0 26px 11px rgba(255,165,0,0.25); }
+  50%  { box-shadow: 0 0 12px 6px #ffd700, 0 0 30px 13px rgba(255,215,0,0.65), 0 0 46px 21px rgba(255,140,0,0.35); }
+  100% { box-shadow: 0 0 6px 3px #ffd700, 0 0 16px 7px rgba(255,215,0,0.55), 0 0 26px 11px rgba(255,165,0,0.25); }
+}
+.choice.prompt-sparkle {
+  animation: sparkle-pulse 1s ease-in-out infinite;
+  border-color: #d69e2e;
+}
+.choice.prompt-outline {
+  border-color: #2f8f57;
+  box-shadow: 0 0 0 4px rgba(47,143,87,0.4), 0 4px 14px rgba(0,0,0,0.12);
+}
+
+/* ── Next button (injected by JS) ──────────────────────────────────── */
+#btn-next {
+  display: block;
+  margin: 4px auto 0;
+  background: var(--say);
+  color: #fff;
+  border: none;
+  padding: 11px 34px;
+  border-radius: 10px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  box-shadow: 0 3px 8px rgba(47,143,87,0.35);
+}
+#btn-next:hover  { background: #25774a; }
+#btn-next:active { transform: scale(0.97); }
+
+/* ── Completion card ───────────────────────────────────────────────── */
+#done-card {
+  width: min(560px, 100%);
+  margin: 10px auto 0;
+  background: #fff;
+  border: 2px solid var(--accent-soft);
+  border-radius: 16px;
+  padding: 28px 26px;
+  text-align: center;
+  box-shadow: 0 4px 18px rgba(61,90,152,0.14);
+}
+#done-card .done-emoji { font-size: 3rem; }
+#done-card h2 { font-size: 1.35rem; color: #1a2438; margin: 8px 0 6px; }
+#done-card p { color: #4a5568; font-size: 0.98rem; margin-bottom: 16px; }
+#done-card button {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 11px 30px;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+#done-card button:hover { background: var(--accent-dark); }
+
+/* ── Bottom bar ────────────────────────────────────────────────────── */
+#bottom-bar {
+  background: #fff;
+  border-top: 2px solid var(--accent-soft);
+  padding: 9px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.btn-prompt {
+  background: #dd6b20;
+  color: #fff;
+  border: none;
+  padding: 5px 14px;
+  border-radius: 7px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-prompt:hover { background: #c05621; }
+.btn-prompt:disabled { opacity: 0.5; cursor: default; }
+
+.btn-print { background: #4a5568; color: #fff; }
+.btn-print:hover { background: #2d3748; }
+.btn-clear-data { background: #c53030; color: #fff; }
+.btn-clear-data:hover { background: #9b2c2c; }
+.btn-icon {
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 34px;
+  padding: 0;
+  transition: background 0.15s;
+}
+.btn-icon svg { width: 20px; height: 20px; fill: currentColor; }
+
+@media print {
+  body > *:not(#print-section) { display: none !important; }
+  #print-section {
+    display: block;
+    padding: 18px 24px;
+    font-family: Arial, sans-serif;
+    font-size: 11pt;
+    color: #000;
+  }
+  #print-section h2 { font-size: 15pt; margin-bottom: 4px; }
+  #print-meta { font-size: 9pt; color: #444; margin-bottom: 14px; }
+  #results-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+  #results-table th, #results-table td {
+    border: 1px solid #666;
+    padding: 5px 8px;
+    text-align: left;
+    vertical-align: top;
+  }
+  #results-table th { background: #e8e8e8; font-weight: bold; font-size: 9.5pt; }
+  #results-table tr:nth-child(even) td { background: #f7f7f7; }
+  #results-table td.outcome-error    { color: #c0392b; }
+  #results-table td.outcome-prompted { color: #b7791f; }
+  #results-table td.outcome-ok       { color: #27ae60; }
+  #print-summary { font-size: 9.5pt; color: #333; border-top: 1px solid #bbb; padding-top: 8px; }
+  #print-summary span { margin-right: 20px; }
+}
+
+/* ── Responsive ────────────────────────────────────────────────────── */
+@media (max-width: 680px) {
+  #game-area { padding: 16px 12px 22px; gap: 14px; }
+  #scenario-situation, #scenario-thought { font-size: 1.02rem; }
+  #choices { gap: 16px; }
+  .choice { width: 150px; min-height: 168px; gap: 12px; padding: 14px 10px; }
+  .bubble { width: 96px; height: 78px; }
+  .bubble .face { font-size: 2.4rem; }
+  .choice-label { font-size: 1.2rem; }
+}
+
+@media (max-width: 360px) {
+  .choice { width: 130px; }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "games-nooutco-me",
+  "compatibility_date": "2026-04-15",
+  "pages_build_output_dir": ".",
+  "env": {
+    "production": {
+      "services": [
+        { "binding": "API_WORKER", "service": "games-save-photo" }
+      ],
+      "kv_namespaces": [
+        { "binding": "SUGGEST_DUPES", "id": "770ceeccadb94d78b519e628509beed8" }
+      ]
+    },
+    "preview": {
+      "services": [
+        { "binding": "API_WORKER", "service": "games-save-photo-dev" }
+      ],
+      "kv_namespaces": [
+        { "binding": "SUGGEST_DUPES", "id": "770ceeccadb94d78b519e628509beed8" }
+      ]
+    }
+  }
+}

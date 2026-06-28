@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FFC Manager</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; font-size: 14px; }
+
+    /* ── Gear button + admin modal ── */
+    .admin-gear { position: fixed; bottom: 1rem; right: 1rem; z-index: 9999; font-size: 1.3rem; background: none; border: none; cursor: pointer; opacity: .35; transition: opacity .15s; padding: 0; line-height: 1; }
+    .admin-gear:hover { opacity: .8; }
+    .admin-gear.authed { opacity: 1; filter: sepia(1) saturate(3) hue-rotate(80deg); }
+    #admin-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 10000; align-items: center; justify-content: center; }
+    #admin-modal.open { display: flex; }
+    .admin-modal-box { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 2rem; width: 320px; }
+    .admin-modal-box h2 { font-size: 1rem; margin-bottom: .5rem; color: #93c5fd; }
+    .admin-modal-box p  { font-size: .8rem; color: #94a3b8; margin-bottom: 1rem; }
+    #admin-pw-input  { width: 100%; padding: .4rem .6rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: .9rem; margin-bottom: .5rem; font-family: inherit; }
+    .admin-modal-box .unlock-btn { width: 100%; padding: .4rem; border-radius: 6px; background: #3b82f6; color: #fff; border: none; cursor: pointer; font-size: .9rem; }
+    #admin-pw-error  { font-size: .75rem; color: #f87171; margin-top: .3rem; min-height: 1em; }
+
+    /* ── Layout ── */
+    #topbar { background: #1e293b; border-bottom: 1px solid #334155; padding: .6rem 1.2rem; display: flex; align-items: center; gap: 1rem; }
+    #topbar a { color: #93c5fd; text-decoration: none; font-size: .82rem; }
+    #topbar h1 { font-size: .95rem; font-weight: 700; color: #e2e8f0; flex: 1; }
+    #topbar .status-msg { font-size: .78rem; min-width: 120px; text-align: right; }
+
+    #filter-bar { background: #1e293b; border-bottom: 1px solid #334155; padding: .5rem 1.2rem; display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+    .filter-pill { padding: .28rem .75rem; border-radius: 20px; border: 1px solid #334155; background: #0f172a; color: #94a3b8; font-size: .78rem; cursor: pointer; transition: all .15s; white-space: nowrap; }
+    .filter-pill:hover { border-color: #60a5fa; color: #e2e8f0; }
+    .filter-pill.active { background: #1d4ed8; border-color: #3b82f6; color: #fff; }
+    .filter-bucket { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+    .bucket-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #64748b; padding-right: .3rem; white-space: nowrap; }
+    .bucket-sep { width: 1px; height: 24px; background: #334155; margin: 0 .2rem; }
+    .btn-edit-vocab { padding: .2rem .5rem; border-radius: 6px; border: 1px solid #334155; background: transparent; color: #64748b; font-size: .72rem; cursor: pointer; }
+    .btn-edit-vocab:hover { border-color: #60a5fa; color: #93c5fd; }
+
+    /* ── Grid ── */
+    #content-area { padding: 1rem 1.2rem; }
+    #action-bar { display: flex; align-items: center; gap: .75rem; margin-bottom: .75rem; }
+    .btn-primary { padding: .35rem .9rem; border-radius: 7px; background: #1d4ed8; color: #fff; border: none; cursor: pointer; font-size: .82rem; font-weight: 600; }
+    .btn-primary:hover { background: #1e40af; }
+
+    #image-grid { display: flex; flex-wrap: wrap; gap: .75rem; }
+    .img-card { background: #1e293b; border: 1px solid #334155; border-radius: 10px; width: 130px; cursor: pointer; overflow: hidden; transition: border-color .15s; }
+    .img-card:hover { border-color: #60a5fa; }
+    .img-card img { width: 100%; height: 100px; object-fit: contain; background: #0f172a; display: block; }
+    .img-card .label { font-size: .75rem; text-align: center; padding: .3rem .4rem; color: #cbd5e1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ── Detail panel ── */
+    #detail-panel { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 500; display: none; align-items: flex-end; justify-content: center; }
+    #detail-panel.open { display: flex; }
+    #detail-box { background: #1e293b; border: 1px solid #334155; border-top-left-radius: 16px; border-top-right-radius: 16px; width: 100%; max-width: 640px; max-height: 88vh; overflow-y: auto; padding: 1.2rem 1.4rem 2rem; }
+    #dp-close { float: right; background: none; border: none; color: #94a3b8; font-size: 1.2rem; cursor: pointer; line-height: 1; }
+    #dp-title { font-size: .95rem; font-weight: 700; margin-bottom: .1rem; padding-right: 2rem; }
+    #dp-sub   { font-size: .75rem; color: #64748b; margin-bottom: .9rem; }
+    .dp-section { margin-bottom: 1rem; }
+    .dp-section-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #64748b; margin-bottom: .4rem; }
+    .dp-row { display: flex; align-items: center; gap: .5rem; margin-bottom: .4rem; flex-wrap: wrap; }
+    #dp-thumb { height: 90px; border-radius: 8px; background: #0f172a; display: block; margin-bottom: .75rem; }
+    #dp-label-input { padding: .35rem .6rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: .88rem; width: 200px; }
+
+    /* tag chips */
+    .chip { display: inline-flex; align-items: center; gap: .3rem; padding: .2rem .55rem; border-radius: 14px; border: 1px solid #334155; background: #0f172a; color: #94a3b8; font-size: .75rem; cursor: pointer; }
+    .chip.active { background: #1d4ed8; border-color: #3b82f6; color: #fff; }
+    .chip:hover { border-color: #60a5fa; }
+
+    /* Url input section */
+    #dp-img-section input[type=url] { width: 100%; padding: .35rem .6rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: .82rem; margin-bottom: .4rem; }
+    .wiki-row { display: flex; gap: .4rem; margin-bottom: .4rem; }
+    .wiki-row input { flex: 1; padding: .3rem .5rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: .78rem; }
+    .btn-sm { padding: .25rem .55rem; border-radius: 6px; border: 1px solid #334155; background: #334155; color: #e2e8f0; font-size: .75rem; cursor: pointer; white-space: nowrap; }
+    .btn-sm:hover { background: #475569; }
+    .btn-amber { background: #92400e; border-color: #b45309; color: #fcd34d; }
+    .btn-amber:hover { background: #78350f; }
+    .wiki-results { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: .4rem; }
+    .wiki-result { width: 80px; cursor: pointer; background: #0f172a; border: 1px solid #334155; border-radius: 6px; overflow: hidden; }
+    .wiki-result img { width: 100%; height: 60px; object-fit: cover; display: block; }
+    .wiki-result span { display: block; font-size: .62rem; color: #94a3b8; padding: .15rem .2rem; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* buttons */
+    .btn-save { padding: .35rem .9rem; border-radius: 7px; background: #16a34a; color: #fff; border: none; cursor: pointer; font-size: .82rem; font-weight: 600; }
+    .btn-save:hover { background: #15803d; }
+    .btn-red { padding: .3rem .7rem; border-radius: 7px; background: #7f1d1d; color: #fca5a5; border: 1px solid #991b1b; cursor: pointer; font-size: .78rem; }
+    .btn-red:hover { background: #991b1b; }
+    .status-msg { font-size: .75rem; min-height: 1.1em; }
+    .status-msg.ok  { color: #4ade80; }
+    .status-msg.err { color: #f87171; }
+
+    /* ── Add form ── */
+    .add-form { display: none; background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 1rem 1.2rem; margin-bottom: .75rem; }
+    .add-form.open { display: block; }
+    .add-form h3 { font-size: .88rem; margin-bottom: .75rem; color: #93c5fd; }
+    .add-form label { display: block; font-size: .75rem; color: #94a3b8; margin-bottom: .2rem; margin-top: .5rem; }
+    .add-form input, .add-form textarea { width: 100%; padding: .35rem .55rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: .82rem; }
+    .form-row { display: flex; gap: .5rem; margin-top: .75rem; }
+    .btn-cancel-form { padding: .3rem .7rem; border-radius: 7px; background: #374151; color: #d1d5db; border: none; cursor: pointer; font-size: .82rem; }
+
+    /* ── Vocab modal ── */
+    #vocab-modal { position: fixed; inset: 0; background: rgba(0,0,0,.8); z-index: 700; display: none; align-items: center; justify-content: center; }
+    #vocab-modal.open { display: flex; }
+    #vocab-box { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.4rem; width: 380px; max-height: 80vh; overflow-y: auto; }
+    #vocab-box h2 { font-size: .95rem; margin-bottom: .75rem; color: #93c5fd; }
+    .vocab-tag-row { display: flex; align-items: center; gap: .4rem; margin-bottom: .4rem; }
+    .vocab-tag-row input { flex: 1; padding: .25rem .45rem; border-radius: 5px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: .8rem; }
+    .btn-icon { padding: .2rem .45rem; border-radius: 5px; background: #7f1d1d; border: 1px solid #991b1b; color: #fca5a5; cursor: pointer; font-size: .75rem; }
+    .btn-icon:hover { background: #991b1b; }
+    #vocab-add-row { display: flex; gap: .4rem; margin-top: .5rem; }
+    #vocab-add-row input { flex: 1; padding: .25rem .45rem; border-radius: 5px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: .8rem; }
+    #vocab-modal-status { font-size: .75rem; min-height: 1em; margin-top: .4rem; }
+    #vocab-close-row { display: flex; gap: .5rem; margin-top: .8rem; }
+  </style>
+</head>
+<body>
+
+<button class="admin-gear" id="admin-gear" title="Admin">⚙️</button>
+<div id="admin-modal">
+  <div class="admin-modal-box">
+    <h2>FFC Manager</h2>
+    <p>Enter the admin password to continue.</p>
+    <input type="password" id="admin-pw-input" placeholder="Password">
+    <button class="unlock-btn" id="admin-unlock-btn">Unlock</button>
+    <div id="admin-pw-error"></div>
+  </div>
+</div>
+
+<!-- Top bar -->
+<div id="topbar">
+  <a href="../../GM/">← GM</a>
+  <h1>FFC Manager</h1>
+  <span class="status-msg" id="global-status"></span>
+</div>
+
+<!-- Filter bar -->
+<div id="filter-bar">
+  <div class="filter-bucket">
+    <span class="bucket-label">Show</span>
+    <button class="filter-pill active" data-bucket="all" data-tag="__all__">All</button>
+  </div>
+  <div class="bucket-sep"></div>
+  <div class="filter-bucket" id="bucket-groups">
+    <span class="bucket-label">Groups</span>
+    <button class="btn-edit-vocab" data-bucket="groups">✏️</button>
+  </div>
+  <div class="bucket-sep"></div>
+  <div class="filter-bucket" id="bucket-features">
+    <span class="bucket-label">Features</span>
+    <button class="btn-edit-vocab" data-bucket="features">✏️</button>
+  </div>
+  <div class="bucket-sep"></div>
+  <div class="filter-bucket" id="bucket-functions">
+    <span class="bucket-label">Functions</span>
+    <button class="btn-edit-vocab" data-bucket="functions">✏️</button>
+  </div>
+  <div class="bucket-sep"></div>
+  <div class="filter-bucket" id="bucket-classes">
+    <span class="bucket-label">Classes</span>
+    <button class="btn-edit-vocab" data-bucket="classes">✏️</button>
+  </div>
+</div>
+
+<!-- Content area -->
+<div id="content-area">
+  <div id="action-bar">
+    <button class="btn-primary" id="btn-add-item">+ Add Item</button>
+  </div>
+  <div class="add-form" id="add-item-form">
+    <h3>Add New Item</h3>
+    <label>ID (slug, e.g. pencil)</label>
+    <input type="text" id="af-id" placeholder="pencil">
+    <label>Label</label>
+    <input type="text" id="af-label" placeholder="Pencil">
+    <label>Image filename (e.g. pencil.svg)</label>
+    <input type="text" id="af-filename" placeholder="pencil.svg">
+    <label>Image URL</label>
+    <input type="url" id="af-url" placeholder="https://…">
+    <label>Search Wikimedia</label>
+    <div class="wiki-row">
+      <input type="text" id="af-wiki-query" placeholder="Search…">
+      <button class="btn-sm" id="af-wiki-btn">Search</button>
+      <button class="btn-sm btn-amber" id="af-google-btn">Google ↗</button>
+    </div>
+    <div class="wiki-results" id="af-wiki-results"></div>
+    <div class="form-row">
+      <button class="btn-save" id="af-submit">Add Item</button>
+      <button class="btn-cancel-form" id="af-cancel">Cancel</button>
+    </div>
+    <div class="status-msg" id="af-status"></div>
+  </div>
+  <div id="image-grid"></div>
+</div>
+
+<!-- Detail panel -->
+<div id="detail-panel">
+  <div id="detail-box">
+    <button id="dp-close">✕</button>
+    <div id="dp-title"></div>
+    <div id="dp-sub"></div>
+
+    <div class="dp-section" id="dp-img-section">
+      <img id="dp-thumb" src="" alt="">
+      <div class="dp-section-label">Replace Image</div>
+      <input type="url" id="dp-url-input" placeholder="New image URL…">
+      <div class="wiki-row">
+        <input type="text" id="dp-wiki-input" placeholder="Search Wikimedia…">
+        <button class="btn-sm" id="dp-wiki-btn">Search</button>
+        <button class="btn-sm btn-amber" id="dp-google-btn">Google ↗</button>
+      </div>
+      <div class="wiki-results" id="dp-wiki-results"></div>
+      <div class="dp-row">
+        <button class="btn-save" id="dp-img-save">Save Image</button>
+        <span class="status-msg" id="dp-img-status"></span>
+      </div>
+    </div>
+
+    <div class="dp-section">
+      <div class="dp-section-label">Label</div>
+      <div class="dp-row">
+        <input type="text" id="dp-label-input">
+      </div>
+    </div>
+
+    <div class="dp-section">
+      <div class="dp-section-label">Groups</div>
+      <div class="dp-row" id="dp-chips-groups"></div>
+    </div>
+    <div class="dp-section">
+      <div class="dp-section-label">Features</div>
+      <div class="dp-row" id="dp-chips-features"></div>
+    </div>
+    <div class="dp-section">
+      <div class="dp-section-label">Functions</div>
+      <div class="dp-row" id="dp-chips-functions"></div>
+    </div>
+    <div class="dp-section">
+      <div class="dp-section-label">Classes</div>
+      <div class="dp-row" id="dp-chips-classes"></div>
+    </div>
+
+    <div class="dp-row" style="margin-top:.5rem;">
+      <button class="btn-save" id="dp-save">Save Item</button>
+      <button class="btn-red" id="dp-delete">Delete Item</button>
+      <span class="status-msg" id="dp-save-status"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Vocab editor modal -->
+<div id="vocab-modal">
+  <div id="vocab-box">
+    <h2 id="vocab-title">Edit Vocab</h2>
+    <div id="vocab-list"></div>
+    <div id="vocab-add-row">
+      <input type="text" id="vocab-new-tag" placeholder="New tag…">
+      <button class="btn-sm" id="vocab-add-btn">+ Add</button>
+    </div>
+    <div id="vocab-modal-status"></div>
+    <div id="vocab-close-row">
+      <button class="btn-save" id="vocab-save-btn">Save Vocab</button>
+      <button class="btn-cancel-form" id="vocab-close-btn">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── State ──────────────────────────────────────────────────────────
+
+const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
+
+let token = localStorage.getItem('admin_token') || '';
+let ffcData = null;        // full items.json object
+let activeFilter = { bucket: 'all', tag: '__all__' };
+let detailItem = null;     // item object being edited
+let vocabBucket = null;    // which bucket the vocab modal is editing
+let vocabDraft  = [];      // mutable draft of the vocab list in modal
+
+// ── Gear / Auth ────────────────────────────────────────────────────
+
+const adminGear    = document.getElementById('admin-gear');
+const adminModal   = document.getElementById('admin-modal');
+const adminPwInput = document.getElementById('admin-pw-input');
+const adminPwError = document.getElementById('admin-pw-error');
+
+function setGearAuthed(authed) { adminGear.classList.toggle('authed', authed); }
+
+function showAdminModal(msg) {
+  adminPwInput.value = '';
+  adminPwError.textContent = msg || '';
+  adminModal.classList.add('open');
+  setTimeout(() => adminPwInput.focus(), 50);
+}
+
+if (token) { setGearAuthed(true); initApp(); }
+else { showAdminModal(); }
+
+adminGear.addEventListener('click', () => {
+  adminModal.classList.toggle('open');
+  if (adminModal.classList.contains('open')) {
+    adminPwInput.value = '';
+    adminPwError.textContent = '';
+    setTimeout(() => adminPwInput.focus(), 50);
+  }
+});
+adminModal.addEventListener('click', e => { if (e.target === adminModal) adminModal.classList.remove('open'); });
+
+async function sha256Hex(str) {
+  const buf    = new TextEncoder().encode(str);
+  const digest = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function adminUnlock() {
+  const pw = adminPwInput.value;
+  if (!pw) { adminPwError.textContent = 'Enter password.'; return; }
+  const hash = await sha256Hex(pw);
+  if (hash === ADMIN_SECRET_HASH) {
+    token = hash;
+    localStorage.setItem('admin_token', hash);
+    setGearAuthed(true);
+    adminModal.classList.remove('open');
+    initApp();
+  } else {
+    adminPwError.textContent = 'Incorrect password.';
+    adminPwInput.value = '';
+    adminPwInput.focus();
+  }
+}
+
+document.getElementById('admin-unlock-btn').addEventListener('click', adminUnlock);
+adminPwInput.addEventListener('keydown', e => { if (e.key === 'Enter') adminUnlock(); });
+
+function handle401() {
+  token = '';
+  localStorage.removeItem('admin_token');
+  setGearAuthed(false);
+  showAdminModal('Session expired — re-enter password.');
+}
+
+// ── API ────────────────────────────────────────────────────────────
+
+async function adminPost(endpoint, body) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 35000);
+  let res;
+  try {
+    res = await fetch('../../api/admin/' + endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+  } catch (e) {
+    clearTimeout(timer);
+    throw new Error(e.name === 'AbortError' ? 'Request timed out' : e.message);
+  }
+  clearTimeout(timer);
+  if (res.status === 401) { handle401(); return null; }
+  return res;
+}
+
+// ── Boot ───────────────────────────────────────────────────────────
+
+async function initApp() {
+  try {
+    const res = await fetch('../../FFCGame/FFCGame/items.json');
+    ffcData = await res.json();
+  } catch (e) {
+    setStatus(document.getElementById('global-status'), 'err', 'Could not load items.json');
+    return;
+  }
+  renderFilterBar();
+  renderGrid();
+  bindEvents();
+}
+
+// ── Utilities ──────────────────────────────────────────────────────
+
+function setStatus(el, type, msg) {
+  el.className = 'status-msg' + (type ? ' ' + type : '');
+  el.textContent = msg;
+}
+
+function nameToSlug(name) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function tagLabel(tag) {
+  return tag.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// ── Filter bar ────────────────────────────────────────────────────
+
+function renderFilterBar() {
+  const BUCKETS = ['groups', 'features', 'functions', 'classes'];
+  BUCKETS.forEach(bucket => {
+    const container = document.getElementById('bucket-' + bucket);
+    // Remove existing pills (keep label and edit button)
+    container.querySelectorAll('.filter-pill').forEach(p => p.remove());
+    const editBtn = container.querySelector('.btn-edit-vocab');
+
+    (ffcData.vocab[bucket] || []).forEach(tag => {
+      const pill = document.createElement('button');
+      pill.className = 'filter-pill' + (activeFilter.bucket === bucket && activeFilter.tag === tag ? ' active' : '');
+      pill.dataset.bucket = bucket;
+      pill.dataset.tag    = tag;
+      pill.textContent    = tagLabel(tag);
+      pill.addEventListener('click', () => { setFilter(bucket, tag); });
+      container.insertBefore(pill, editBtn);
+    });
+  });
+
+  // Highlight All pill
+  document.querySelector('.filter-pill[data-bucket="all"]').classList.toggle('active', activeFilter.bucket === 'all');
+}
+
+function setFilter(bucket, tag) {
+  activeFilter = { bucket, tag };
+  renderFilterBar();
+  renderGrid();
+}
+
+// ── Grid ──────────────────────────────────────────────────────────
+
+function filteredItems() {
+  if (activeFilter.bucket === 'all') return ffcData.items || [];
+  const { bucket, tag } = activeFilter;
+  const key = bucket; // groups, features, functions, classes
+  return (ffcData.items || []).filter(it => (it[key] || []).includes(tag));
+}
+
+function renderGrid() {
+  const grid = document.getElementById('image-grid');
+  grid.innerHTML = '';
+  filteredItems().forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'img-card';
+
+    const img = document.createElement('img');
+    img.src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + item.img;
+    img.alt = item.label;
+    img.onerror = () => { img.style.opacity = '.3'; };
+
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = item.label;
+
+    card.appendChild(img);
+    card.appendChild(label);
+    card.addEventListener('click', () => openDetail(item));
+    grid.appendChild(card);
+  });
+}
+
+// ── Detail panel ──────────────────────────────────────────────────
+
+const detailPanel = document.getElementById('detail-panel');
+
+function openDetail(item) {
+  detailItem = item;
+  document.getElementById('dp-title').textContent = item.label;
+  document.getElementById('dp-sub').textContent   = 'id: ' + item.id;
+  document.getElementById('dp-thumb').src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + item.img;
+  document.getElementById('dp-label-input').value = item.label;
+  document.getElementById('dp-url-input').value   = '';
+  document.getElementById('dp-wiki-input').value  = item.label;
+  document.getElementById('dp-wiki-results').innerHTML = '';
+  setStatus(document.getElementById('dp-img-status'), '', '');
+  setStatus(document.getElementById('dp-save-status'), '', '');
+
+  renderDetailChips();
+  detailPanel.classList.add('open');
+}
+
+function closeDetail() {
+  detailPanel.classList.remove('open');
+  detailItem = null;
+}
+
+function renderDetailChips() {
+  const BUCKETS = ['groups', 'features', 'functions', 'classes'];
+  BUCKETS.forEach(bucket => {
+    const container = document.getElementById('dp-chips-' + bucket);
+    container.innerHTML = '';
+    (ffcData.vocab[bucket] || []).forEach(tag => {
+      const chip = document.createElement('span');
+      chip.className = 'chip' + ((detailItem[bucket] || []).includes(tag) ? ' active' : '');
+      chip.textContent = tagLabel(tag);
+      chip.dataset.tag    = tag;
+      chip.dataset.bucket = bucket;
+      chip.addEventListener('click', () => {
+        const arr = detailItem[bucket] || (detailItem[bucket] = []);
+        const idx = arr.indexOf(tag);
+        if (idx >= 0) { arr.splice(idx, 1); chip.classList.remove('active'); }
+        else { arr.push(tag); chip.classList.add('active'); }
+      });
+      container.appendChild(chip);
+    });
+  });
+}
+
+// ── Vocab modal ───────────────────────────────────────────────────
+
+const vocabModal = document.getElementById('vocab-modal');
+
+function openVocabModal(bucket) {
+  vocabBucket = bucket;
+  vocabDraft  = [...(ffcData.vocab[bucket] || [])];
+  document.getElementById('vocab-title').textContent = 'Edit ' + tagLabel(bucket);
+  setStatus(document.getElementById('vocab-modal-status'), '', '');
+  document.getElementById('vocab-new-tag').value = '';
+  renderVocabList();
+  vocabModal.classList.add('open');
+}
+
+function renderVocabList() {
+  const list = document.getElementById('vocab-list');
+  list.innerHTML = '';
+  vocabDraft.forEach((tag, i) => {
+    const row = document.createElement('div');
+    row.className = 'vocab-tag-row';
+    const inp = document.createElement('input');
+    inp.type  = 'text';
+    inp.value = tag;
+    inp.addEventListener('change', () => { vocabDraft[i] = inp.value.trim().replace(/\s+/g, '_').toLowerCase(); });
+
+    const del = document.createElement('button');
+    del.className   = 'btn-icon';
+    del.textContent = '✕';
+    del.title       = 'Delete "' + tag + '"';
+    del.addEventListener('click', () => {
+      if (!confirm(`Delete tag "${tag}" from all items?\nThis cannot be undone.`)) return;
+      vocabDraft.splice(i, 1);
+      renderVocabList();
+    });
+
+    row.appendChild(inp);
+    row.appendChild(del);
+    list.appendChild(row);
+  });
+}
+
+// ── Wikimedia search ──────────────────────────────────────────────
+
+async function runWikiSearch(query, urlInput, resultsEl) {
+  if (!query) return;
+  resultsEl.innerHTML = '<span style="font-size:.75rem;color:#64748b">Searching…</span>';
+  try {
+    const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srnamespace=6&srlimit=6&format=json&origin=*`;
+    const hits = ((await (await fetch(searchUrl)).json()).query || {}).search || [];
+    if (!hits.length) { resultsEl.innerHTML = '<span style="font-size:.75rem;color:#64748b">No results.</span>'; return; }
+    const titles = hits.slice(0, 6).map(h => h.title).join('|');
+    const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(titles)}&prop=imageinfo&iiprop=url&iiurlwidth=400&format=json&origin=*`;
+    const pages = Object.values(((await (await fetch(infoUrl)).json()).query || {}).pages || {});
+    resultsEl.innerHTML = '';
+    let count = 0;
+    pages.forEach(page => {
+      if (count >= 3) return;
+      const ii = page.imageinfo && page.imageinfo[0];
+      if (!ii) return;
+      count++;
+      const card = document.createElement('div');
+      card.className = 'wiki-result';
+      const img = document.createElement('img');
+      img.src = ii.thumburl || ii.url;
+      img.alt = page.title;
+      const lbl = document.createElement('span');
+      lbl.textContent = page.title.replace('File:', '');
+      card.appendChild(img);
+      card.appendChild(lbl);
+      card.addEventListener('click', () => { urlInput.value = ii.url; });
+      resultsEl.appendChild(card);
+    });
+    if (!count) resultsEl.innerHTML = '<span style="font-size:.75rem;color:#64748b">No images.</span>';
+  } catch {
+    resultsEl.innerHTML = '<span style="font-size:.75rem;color:#f87171">Search failed.</span>';
+  }
+}
+
+// ── Bind events ───────────────────────────────────────────────────
+
+function bindEvents() {
+  // All items filter
+  document.querySelector('.filter-pill[data-bucket="all"]').addEventListener('click', () => setFilter('all', '__all__'));
+
+  // Vocab edit buttons
+  document.querySelectorAll('.btn-edit-vocab').forEach(btn => {
+    btn.addEventListener('click', () => openVocabModal(btn.dataset.bucket));
+  });
+
+  // Detail panel close / backdrop
+  document.getElementById('dp-close').addEventListener('click', closeDetail);
+  detailPanel.addEventListener('click', e => { if (e.target === detailPanel) closeDetail(); });
+
+  // Detail image save
+  document.getElementById('dp-img-save').addEventListener('click', async () => {
+    if (!detailItem) return;
+    const url    = document.getElementById('dp-url-input').value.trim();
+    const status = document.getElementById('dp-img-status');
+    if (!url) { setStatus(status, 'err', 'Enter a URL.'); return; }
+    setStatus(status, '', 'Saving…');
+    try {
+      const res = await adminPost('ffc-save-image', { id: detailItem.id, filename: detailItem.img, imageUrl: url });
+      if (!res) { setStatus(status, '', ''); return; }
+      if (res.ok) {
+        const j = await res.json().catch(() => ({}));
+        if (j.localPath) detailItem.img = j.localPath.split('/').pop();
+        const saveRes = await adminPost('ffc-save-items', { items: ffcData });
+        if (!saveRes || !saveRes.ok) { setStatus(status, 'err', 'Image saved but record update failed'); return; }
+        setStatus(status, 'ok', 'Saved!');
+        const localSrc = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + detailItem.img;
+        document.getElementById('dp-thumb').src = localSrc;
+        const gridImg = document.querySelector(`#image-grid .img-card img[alt="${detailItem.label}"]`);
+        if (gridImg) gridImg.src = localSrc;
+      } else {
+        const j = await res.json().catch(() => ({}));
+        setStatus(status, 'err', j.error || 'Error ' + res.status);
+      }
+    } catch (e) {
+      setStatus(status, 'err', e.message || 'Network error');
+    }
+  });
+
+  document.getElementById('dp-wiki-btn').addEventListener('click', () =>
+    runWikiSearch(document.getElementById('dp-wiki-input').value.trim(),
+      document.getElementById('dp-url-input'), document.getElementById('dp-wiki-results')));
+  document.getElementById('dp-wiki-input').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('dp-wiki-btn').click(); });
+  document.getElementById('dp-google-btn').addEventListener('click', () =>
+    window.open('https://www.google.com/search?q=' + encodeURIComponent(document.getElementById('dp-wiki-input').value.trim()) + '&tbm=isch', '_blank'));
+
+  // Detail save item
+  document.getElementById('dp-save').addEventListener('click', async () => {
+    if (!detailItem) return;
+    const status = document.getElementById('dp-save-status');
+    detailItem.label = document.getElementById('dp-label-input').value.trim() || detailItem.label;
+    setStatus(status, '', 'Saving…');
+    try {
+      const res = await adminPost('ffc-save-items', { items: ffcData });
+      if (!res) { setStatus(status, '', ''); return; }
+      if (res.ok) {
+        setStatus(status, 'ok', 'Saved!');
+        renderGrid();
+      } else {
+        const j = await res.json().catch(() => ({}));
+        setStatus(status, 'err', j.error || 'Error ' + res.status);
+      }
+    } catch (e) {
+      setStatus(status, 'err', e.message || 'Network error');
+    }
+  });
+
+  // Detail delete item
+  document.getElementById('dp-delete').addEventListener('click', async () => {
+    if (!detailItem) return;
+    if (!confirm(`Delete item "${detailItem.label}"? This removes the record and image file.`)) return;
+    const status = document.getElementById('dp-save-status');
+    setStatus(status, '', 'Deleting…');
+    try {
+      await adminPost('ffc-remove-image', { localPath: 'FFCGame/FFCGame/_Resources/_imgSource/items/' + detailItem.img });
+      ffcData.items = ffcData.items.filter(i => i.id !== detailItem.id);
+      const res = await adminPost('ffc-save-items', { items: ffcData });
+      if (!res) { setStatus(status, '', ''); return; }
+      if (res.ok) {
+        closeDetail();
+        renderGrid();
+        renderFilterBar();
+      } else {
+        const j = await res.json().catch(() => ({}));
+        setStatus(status, 'err', j.error || 'Error ' + res.status);
+      }
+    } catch (e) {
+      setStatus(status, 'err', e.message || 'Network error');
+    }
+  });
+
+  // Vocab modal close / save
+  document.getElementById('vocab-close-btn').addEventListener('click', () => vocabModal.classList.remove('open'));
+  vocabModal.addEventListener('click', e => { if (e.target === vocabModal) vocabModal.classList.remove('open'); });
+
+  document.getElementById('vocab-add-btn').addEventListener('click', () => {
+    const inp = document.getElementById('vocab-new-tag');
+    const tag = inp.value.trim().replace(/\s+/g, '_').toLowerCase();
+    if (!tag) return;
+    if (vocabDraft.includes(tag)) { return; }
+    vocabDraft.push(tag);
+    inp.value = '';
+    renderVocabList();
+  });
+  document.getElementById('vocab-new-tag').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('vocab-add-btn').click(); });
+
+  document.getElementById('vocab-save-btn').addEventListener('click', async () => {
+    const status = document.getElementById('vocab-modal-status');
+    // Cascade: remove deleted tags from all items
+    const oldTags = new Set(ffcData.vocab[vocabBucket] || []);
+    const newTags = new Set(vocabDraft);
+    const removed = [...oldTags].filter(t => !newTags.has(t));
+
+    if (removed.length) {
+      ffcData.items.forEach(item => {
+        item[vocabBucket] = (item[vocabBucket] || []).filter(t => !removed.includes(t));
+      });
+      // Also cascade from prompts
+      const MODE_BUCKETS = {
+        features:  ['feature'],
+        functions: ['function'],
+        classes:   ['classWithinGroup', 'classCrossCategory'],
+        groups:    [],
+      };
+      (MODE_BUCKETS[vocabBucket] || []).forEach(mode => {
+        if (ffcData.prompts[mode]) {
+          removed.forEach(t => { delete ffcData.prompts[mode][t]; });
+        }
+      });
+    }
+
+    ffcData.vocab[vocabBucket] = [...vocabDraft];
+    setStatus(status, '', 'Saving…');
+    try {
+      const res = await adminPost('ffc-save-items', { items: ffcData });
+      if (!res) { setStatus(status, '', ''); return; }
+      if (res.ok) {
+        setStatus(status, 'ok', 'Saved!');
+        vocabModal.classList.remove('open');
+        renderFilterBar();
+        renderGrid();
+        if (detailItem) renderDetailChips();
+      } else {
+        const j = await res.json().catch(() => ({}));
+        setStatus(status, 'err', j.error || 'Error ' + res.status);
+      }
+    } catch (e) {
+      setStatus(status, 'err', e.message || 'Network error');
+    }
+  });
+
+  // Add item form
+  document.getElementById('btn-add-item').addEventListener('click', () => {
+    const form = document.getElementById('add-item-form');
+    const open = form.classList.toggle('open');
+    document.getElementById('btn-add-item').textContent = open ? '✕ Cancel' : '+ Add Item';
+  });
+  document.getElementById('af-cancel').addEventListener('click', () => {
+    document.getElementById('add-item-form').classList.remove('open');
+    document.getElementById('btn-add-item').textContent = '+ Add Item';
+  });
+  document.getElementById('af-wiki-btn').addEventListener('click', () =>
+    runWikiSearch(document.getElementById('af-wiki-query').value.trim(),
+      document.getElementById('af-url'), document.getElementById('af-wiki-results')));
+  document.getElementById('af-wiki-query').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('af-wiki-btn').click(); });
+  document.getElementById('af-google-btn').addEventListener('click', () =>
+    window.open('https://www.google.com/search?q=' + encodeURIComponent(document.getElementById('af-wiki-query').value.trim()) + '&tbm=isch', '_blank'));
+
+  document.getElementById('af-submit').addEventListener('click', async () => {
+    const itemId   = nameToSlug(document.getElementById('af-id').value.trim());
+    const label    = document.getElementById('af-label').value.trim();
+    const filename = document.getElementById('af-filename').value.trim();
+    const url      = document.getElementById('af-url').value.trim();
+    const status   = document.getElementById('af-status');
+    if (!itemId || !label || !filename || !url) { setStatus(status, 'err', 'Fill in all fields.'); return; }
+    if ((ffcData.items || []).find(i => i.id === itemId)) { setStatus(status, 'err', 'ID already exists.'); return; }
+
+    setStatus(status, '', 'Saving image…');
+    try {
+      const imgRes = await adminPost('ffc-save-image', { id: itemId, filename, imageUrl: url });
+      if (!imgRes) { setStatus(status, '', ''); return; }
+      if (!imgRes.ok) {
+        const j = await imgRes.json().catch(() => ({}));
+        setStatus(status, 'err', j.error || 'Image error');
+        return;
+      }
+      const imgJ = await imgRes.json().catch(() => ({}));
+      const actualFilename = imgJ.localPath ? imgJ.localPath.split('/').pop() : filename;
+      setStatus(status, '', 'Saving record…');
+      const newItem = { id: itemId, img: actualFilename, label, groups: [], features: [], functions: [], classes: [] };
+      ffcData.items.push(newItem);
+      const res = await adminPost('ffc-save-items', { items: ffcData });
+      if (!res) { setStatus(status, '', ''); return; }
+      if (res.ok) {
+        setStatus(status, 'ok', 'Added! Click item to assign tags.');
+        document.getElementById('add-item-form').classList.remove('open');
+        document.getElementById('btn-add-item').textContent = '+ Add Item';
+        ['af-id','af-label','af-filename','af-url'].forEach(id => { document.getElementById(id).value = ''; });
+        renderGrid();
+        renderFilterBar();
+      } else {
+        const j = await res.json().catch(() => ({}));
+        setStatus(status, 'err', j.error || 'Error ' + res.status);
+      }
+    } catch (e) {
+      setStatus(status, 'err', e.message || 'Network error');
+    }
+  });
+}
+</script>
+</body>
+</html>

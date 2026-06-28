@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+AdminTools/facts_checkpoint.json
+
+# Node / editors
+node_modules/
+.DS_Store
+*.swp
+
+# Build / test artifacts
+.wrangler/
+playwright-report/
+test-results/

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="version" content="1.0">
+  <title>Receptive Words</title>
+  <!--
+    IMPORTANT: This app discovers images by fetching directory listings.
+    You must serve it via a local HTTP server that returns directory listings, e.g.:
+      python3 -m http.server 8000
+    Opening index.html as a file:// URL will NOT work for image discovery.
+  -->
+  <link rel="stylesheet" href="../tailwind.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ── Header ──────────────────────────────────────────────────── -->
+  <header id="app-header" title="Tap the bar to show / hide settings">
+    <a href="../" id="btn-back" class="btn-back" title="Back to Games"><span class="back-label">← Games</span></a>
+    <div class="app-title">
+      <span class="app-title-text">Receptive Words</span>
+      <span class="app-title-sub">No Outcome ABA · v<span id="app-version-label">0.1.0</span></span>
+    </div>
+    <div id="timer-section">
+      <span id="timer-display">00:00</span>
+      <button id="btn-timer-toggle" class="btn-timer" title="Pause / Resume">Pause</button>
+      <button id="btn-timer-reset"  class="btn-timer" title="Reset timer">Reset</button>
+    </div>
+    <button type="button" id="btn-minimize" class="btn-minimize" aria-expanded="true" aria-controls="settings-bar" title="Show / hide settings">▾</button>
+  </header>
+
+  <!-- ── Settings bar ─────────────────────────────────────────────── -->
+  <div id="settings-bar">
+    <div class="setting-group">
+      <label for="sel-topic">Topic<button type="button" class="help-btn" data-help="Choose the image category to use for this session.">?</button></label>
+      <select id="sel-topic">
+        <option value="">-- scanning --</option>
+      </select>
+    </div>
+
+    <div class="setting-group">
+      <label for="inp-size">Array Size<button type="button" class="help-btn" data-help="How many images appear in the choice array (1–10).">?</button></label>
+      <input type="number" id="inp-size" min="1" max="10" value="4">
+    </div>
+
+    <div class="setting-group setting-targets">
+      <button type="button" id="btn-targets-toggle" class="btn-targets" aria-expanded="false">
+        Targets <span id="targets-count" class="targets-count">0 of 0</span>
+        <button type="button" class="help-btn" data-help="Choose which images from the topic can appear as the target (correct answer).">?</button>
+      </button>
+    </div>
+
+    <div class="setting-group setting-extra">
+      <button type="button" id="btn-extra-toggle" class="btn-extra" aria-expanded="false">
+        ⚙ Settings
+        <button type="button" class="help-btn" data-help="Open additional game options.">?</button>
+      </button>
+    </div>
+
+    <div class="setting-group">
+      <button id="btn-prompt" class="btn-prompt" hidden>Prompt</button>
+    </div>
+
+    <button id="btn-start" class="btn-primary">Start</button>
+  </div>
+
+  <!-- ── Target picker panel (hidden until toggled) ───────────────── -->
+  <section id="target-panel" hidden>
+    <div class="target-panel-header">
+      <span class="target-panel-title">Targets for <span id="target-panel-topic-label"></span></span>
+      <div class="target-panel-actions">
+        <button type="button" id="btn-targets-all">Select all</button>
+        <button type="button" id="btn-targets-none">Deselect all</button>
+        <button type="button" id="btn-targets-close" title="Close" class="btn-targets-close">×</button>
+      </div>
+    </div>
+    <div id="target-panel-body" class="target-panel-body"></div>
+  </section>
+
+  <!-- ── Extra settings panel (hidden until toggled) ──────────────── -->
+  <section id="extra-panel" hidden>
+    <div class="extra-panel-header">
+      <span class="extra-panel-title">Options</span>
+      <button type="button" id="btn-extra-close" class="btn-extra-close" title="Close">×</button>
+    </div>
+    <div class="extra-panel-body">
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-represent-errors" checked>
+        Re-Present Errors
+        <button type="button" class="help-btn" data-help="After an incorrect response, the same target is repeated (with tiles reshuffled and a prompt applied) before moving on.">?</button>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-errorless">
+        Errorless
+        <button type="button" class="help-btn" data-help="The correct answer is highlighted immediately at the start of each trial so the client always responds correctly.">?</button>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-no-error-anim">
+        No Incorrect Animation
+        <button type="button" class="help-btn" data-help="Suppresses the shake/red animation when the client taps an incorrect image.">?</button>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-non-target-distractor" checked>
+        Non-Target Category Distractors
+        <button type="button" class="help-btn" data-help="When on, images in the topic that are NOT selected as targets can still appear as distractors. When off, only selected targets appear in the array.">?</button>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-cross">
+        Non-category distractors
+        <button type="button" class="help-btn" data-help="When on, distractors are drawn from ALL topics, not just the current one.">?</button>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-persists">
+        Prompt persists
+        <button type="button" class="help-btn" data-help="The prompt highlight stays visible for the whole trial instead of fading after a moment.">?</button>
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-auto-prompt">
+        Auto-Prompt
+        <button type="button" class="help-btn" data-help="Automatically applies a prompt at the start of every trial (or after a delay if Prompt Delay is on).">?</button>
+      </label>
+      <div class="extra-row">
+        <label class="checkbox-label">
+          <input type="checkbox" id="chk-prompt-delay" disabled>
+          Prompt Delay
+          <button type="button" class="help-btn" data-help="Wait the selected number of seconds before the auto-prompt appears.">?</button>
+        </label>
+        <select id="sel-prompt-delay" disabled>
+          <option value="1">1s</option>
+          <option value="2">2s</option>
+          <option value="3" selected>3s</option>
+          <option value="4">4s</option>
+          <option value="5">5s</option>
+          <option value="10">10s</option>
+        </select>
+      </div>
+      <div class="extra-row">
+        <label for="sel-prompt-style">Prompt style<button type="button" class="help-btn" data-help="Visual style used to highlight the correct answer when prompted.">?</button></label>
+        <select id="sel-prompt-style">
+          <option value="sparkle">Sparkle</option>
+          <option value="outline">Outline</option>
+        </select>
+      </div>
+
+      <!-- Token Board Settings -->
+      <div class="token-board-settings-divider">
+        <label class="checkbox-label">
+          <input type="checkbox" id="chk-token-board">
+          Token Board
+          <button type="button" class="help-btn" data-help="Track tokens earned using FR (Fixed Ratio) or VR (Variable Ratio) reinforcement schedules.">?</button>
+        </label>
+      </div>
+
+      <div id="token-settings" style="display: none; margin-top: 12px; padding-left: 24px;">
+        <div class="extra-row">
+          <label for="sel-schedule-type">Schedule</label>
+          <select id="sel-schedule-type">
+            <option value="FR">Fixed Ratio (FR)</option>
+            <option value="VR">Variable Ratio (VR)</option>
+          </select>
+          <input type="number" id="inp-schedule-value" min="1" max="100" value="1" style="width: 50px;">
+        </div>
+        <div class="extra-row">
+          <label for="inp-starting-tokens">Starting Tokens</label>
+          <input type="number" id="inp-starting-tokens" min="0" max="1000" value="0">
+        </div>
+        <div class="extra-row">
+          <label for="inp-goal-tokens">Goal Tokens</label>
+          <input type="number" id="inp-goal-tokens" min="1" max="1000" value="10">
+        </div>
+        <div class="extra-row">
+          <label for="sel-token-emoji">Token Emoji</label>
+          <select id="sel-token-emoji">
+            <option value="random">Random (each session)</option>
+            <option value="⭐">⭐ Star</option>
+            <option value="🔷">🔷 Diamond</option>
+            <option value="💎">💎 Gem</option>
+            <option value="✨">✨ Sparkle</option>
+            <option value="🎁">🎁 Gift</option>
+            <option value="🏆">🏆 Trophy</option>
+            <option value="💫">💫 Dizzy</option>
+            <option value="🌟">🌟 Glowing Star</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Token Board Display (simple horizontal bar) ──────────────────── -->
+  <div id="token-board" hidden class="token-board-simple" aria-label="Token progress tracker">
+    <div id="token-emoji-display" class="token-emoji-simple"></div>
+    <div id="token-progress-text" class="token-progress-simple">0 / 10</div>
+  </div>
+  <div class="finish-sr-row" style="display:flex;justify-content:center;margin:10px 0">
+    <button type="button" id="btn-finish-sr" class="finish-sr-btn" hidden>⭐ Finish &amp; SR</button>
+  </div>
+
+  <!-- ── Pre-start blurb ──────────────────────────────────────────── -->
+  <style>
+    .game-intro { max-width: 720px; margin: 14px auto 6px; padding: 16px 20px; background: rgba(255,255,255,0.92); border: 1px solid rgba(0,0,0,0.08); border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,0.04); color: #2d3a1f; font-size: 14px; line-height: 1.5; font-family: 'Segoe UI', Inter, -apple-system, sans-serif; }
+    .game-intro h2 { font-size: 15px; font-weight: 700; margin: 0 0 8px; color: #1a1f14; }
+    .game-intro p { margin: 0 0 8px; }
+    .game-intro ul { margin: 6px 0 6px 20px; padding: 0; }
+    .game-intro li { margin-bottom: 3px; }
+    .game-intro .tip { margin-top: 8px; color: #5a6b4a; font-size: 13px; }
+  </style>
+  <section class="game-intro" id="game-intro" aria-label="How this game works">
+    <h2>Receptive Words — find-by-name</h2>
+    <p>The target word is shown (and spoken). The learner picks the matching picture from the array. Builds receptive language and listener responding.</p>
+    <ul>
+      <li><strong>Topic</strong> — pick an image category.</li>
+      <li><strong>Array Size</strong> — number of choices shown (1–10). Start with 2–3 for new learners.</li>
+      <li><strong>Targets</strong> — open the Targets panel to pick which words can be the correct answer.</li>
+      <li><strong>⚙ Settings</strong> — errorless, re-present errors, prompts, distractor sources.</li>
+    </ul>
+    <p class="tip">Set Topic, Array Size, and Targets, then tap <strong>Start</strong>.</p>
+  </section>
+  <script>(function(){var b=document.getElementById('btn-start');if(b)b.addEventListener('click',function(){var i=document.getElementById('game-intro');if(i)i.hidden=true;},{once:true});})();</script>
+
+  <!-- ── Game area (hidden until Start) ───────────────────────────── -->
+  <main id="game-area" hidden>
+
+    <section id="sample-section">
+      <div class="area-label">Find</div>
+      <div id="sample-card">
+        <div id="sample-word"></div>
+      </div>
+    </section>
+
+    <section id="comp-section">
+      <div class="area-label">Choose the picture</div>
+      <div id="comp-grid"></div>
+    </section>
+
+  </main>
+
+  <!-- ── Bottom controls ──────────────────────────────────────────── -->
+  <div id="bottom-bar">
+    <button id="btn-print"      class="btn-print btn-icon" title="Print data" aria-label="Print data">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M18 8H6c-1.66 0-3 1.34-3 3v6h4v4h10v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H9v-5h6v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/>
+      </svg>
+    </button>
+    <button id="btn-clear-data" class="btn-clear-data btn-icon" title="Clear data" aria-label="Clear data">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- ── Print-only section ───────────────────────────────────────── -->
+  <div id="print-section">
+    <div id="print-header">
+      <h2>Receptive Words Game &mdash; Session Results</h2>
+      <div id="print-meta"></div>
+    </div>
+    <table id="results-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Topic</th>
+          <th>Target Word</th>
+          <th>Array Size</th>
+          <th>Errors</th>
+          <th>Prompted</th>
+          <th>Delay (s)</th>
+          <th>Time (s)</th>
+          <th>Outcome</th>
+        </tr>
+      </thead>
+      <tbody id="results-body"></tbody>
+    </table>
+    <div id="print-summary"></div>
+  </div>
+
+  <script src="../../tooltip-help.js"></script>
+  <script src="../header-chrome.js"></script>
+  <script src="../../reward.js"></script>
+  <script src="game.js"></script>
+  <script>NooutcoReward.attachGoalSR({ boardId: 'token-board', buttonId: 'btn-finish-sr', minutes: 5 });</script>
+  <script>
+    const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
+    window.ADMIN_SECRET_HASH = ADMIN_SECRET_HASH;
+    window.ADMIN_GEAR_PAGE = '../../AdminTools/ImageManager/';
+  </script>
+  <script src="../../admin-gear.js"></script>
+</body>
+</html>
