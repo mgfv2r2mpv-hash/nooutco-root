@@ -1,0 +1,57 @@
+/* ============================================================================
+   SPACING, RADII, SHADOWS — No Outcome ABA
+   A 4px base grid (the app's spacing is built on multiples of 2/4). Radii and
+   shadows are catalogued straight from the shipped components.
+   ========================================================================== */
+
+:root {
+  /* ---- Spacing scale (4px base grid) ------------------------------------ */
+  --space-0:  0;
+  --space-1:  4px;
+  --space-2:  6px;   /* tight inter-control gap (the app's most common gap) */
+  --space-3:  8px;
+  --space-4:  10px;
+  --space-5:  12px;  /* card padding, comfortable gap */
+  --space-6:  16px;  /* section padding */
+  --space-7:  20px;  /* modal padding */
+  --space-8:  24px;  /* section separation */
+  --space-10: 32px;
+  --space-12: 48px;
+
+  /* ---- Corner radii ------------------------------------------------------ */
+  --radius-xs:   3px;  /* calendar chips, tiny tags */
+  --radius-sm:   4px;  /* small buttons, inline chips */
+  --radius-md:   6px;  /* buttons, inputs, panels */
+  --radius-lg:   8px;  /* cards, modals */
+  --radius-xl:   12px; /* large modals, bottom sheets */
+  --radius-2xl:  16px; /* full-screen sheets, wizard cards */
+  --radius-pill: 999px;/* status pills, dots, toggles */
+
+  /* ---- Borders ----------------------------------------------------------- */
+  --border-width: 1px;
+  --border-hairline: 1px solid var(--border-default);
+  --border-control:  1px solid var(--border-strong);
+
+  /* ---- Elevation / shadows ---------------------------------------------- */
+  --shadow-sm:    0 1px 3px rgba(17, 24, 39, 0.10);  /* header, resting chip */
+  --shadow-md:    0 2px 8px rgba(17, 24, 39, 0.12);  /* raised card, FAB */
+  --shadow-lg:    0 4px 12px rgba(17, 24, 39, 0.12); /* popovers, dropdowns */
+  --shadow-modal: 0 8px 24px rgba(0, 0, 0, 0.25);    /* dialogs */
+  --shadow-sheet: 0 -6px 24px rgba(0, 0, 0, 0.18);   /* bottom sheets (upward) */
+  --shadow-pop:   0 20px 60px rgba(0, 0, 0, 0.30);   /* wizards, big overlays */
+  --shadow-focus: 0 0 0 3px rgba(106, 118, 89, 0.38);/* focus ring (sage) */
+
+  /* ---- Motion ------------------------------------------------------------ */
+  /* Calm, never bouncy — the brand is low-arousal and sensory-considerate.
+     Transitions are short fades/slides on an ease-out curve; no spring,
+     no infinite loops on content. */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1); /* @kind other */
+  --duration-fast:  0.15s; /* @kind other */
+  --duration-base:  0.25s; /* @kind other */
+  --duration-slow:  0.3s;  /* @kind other */
+
+  /* ---- Layout ------------------------------------------------------------ */
+  --header-height: 56px;
+  --pane-width:    400px;  /* docked context pane on tablet/desktop */
+  --tap-target:    44px;   /* minimum hit target (accessibility floor) */
+}

@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Shared input style */
+.input {
+  @apply w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800
+    px-3 py-1.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400
+    focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400;
+}
+
+/* Button base */
+.btn {
+  @apply inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium
+    transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1
+    disabled:opacity-50 disabled:pointer-events-none;
+}
+
+.btn-primary {
+  @apply bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600;
+}
+
+.btn-secondary {
+  @apply bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200
+    border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700;
+}
+
+/* ── Print / PDF styles ── */
+@media print {
+  .no-print { display: none !important; }
+
+  * {
+    color-scheme: light !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Two conditions stacked per page (2×2: 2 conditions × 2 tables side-by-side) */
+  .print-conditions-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  /* Prevent a condition from splitting across pages */
+  .print-conditions-grid > * {
+    margin-top: 0 !important;
+    break-inside: avoid;
+  }
+
+  /* Page break after every 2nd condition */
+  .print-conditions-grid > *:nth-child(2n) {
+    break-after: page;
+  }
+
+  /* Consequence + antecedent tables side-by-side within each condition */
+  .print-conditions-grid .condition-tables {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  /* Force equal row heights so side-by-side tables align horizontally */
+  .print-conditions-grid .condition-tables thead tr {
+    height: 38pt;
+    vertical-align: middle;
+  }
+  .print-conditions-grid .condition-tables tbody tr {
+    height: 22pt;
+    vertical-align: middle;
+  }
+  /* Prob/CV rows are flex divs — pin height so both tables stay in sync */
+  .print-conditions-grid .condition-tables .flex.items-center.px-3 {
+    min-height: 20pt !important;
+    max-height: 20pt !important;
+    overflow: hidden;
+  }
+
+  /* Smaller text for print */
+  .print-conditions-grid {
+    font-size: 8pt;
+  }
+
+  .print-conditions-grid h3 {
+    font-size: 9pt;
+    margin-bottom: 4px;
+  }
+
+  /* Summary block occupies the entire first page */
+  .print-summary {
+    break-after: page;
+    min-height: 22cm;
+  }
+
+  /* Graph/summary table section: own page, and force next section onto new page */
+  .print-graphs-section {
+    break-before: page;
+    break-after: page;
+  }
+  .print-graphs-section .space-y-3 > * {
+    break-inside: avoid;
+  }
+
+  /* Synthesized section starts on a new page when following separate conditions */
+  .print-synth-section {
+    break-before: page;
+  }
+
+  /* Keep .print-hide for any legacy uses */
+  .print-hide { display: none !important; }
+}

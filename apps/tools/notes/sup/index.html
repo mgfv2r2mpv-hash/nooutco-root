@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Supervision Notes</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <script src="/assets/notes-gate.js"></script>
+  <script src="/assets/notes-scrub.js"></script>
+  <script src="/assets/error-button.js" defer></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Inter, sans-serif;
+      background: #f0f4ec;
+      min-height: 100vh;
+      padding: 32px 20px;
+      color: #2d3a1f;
+    }
+    .info-tip {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .info-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 1px solid #c0d4a8;
+      background: #eef4e6;
+      color: #5a7040;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: help;
+      line-height: 1;
+      user-select: none;
+    }
+    .info-icon:focus { outline: 2px solid #5a7040; outline-offset: 1px; }
+    .info-bubble {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      visibility: hidden;
+      opacity: 0;
+      background: #2d3a1f;
+      color: white;
+      padding: 9px 12px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 1.55;
+      width: 260px;
+      text-align: left;
+      z-index: 100;
+      pointer-events: none;
+      transition: opacity 0.12s ease;
+      white-space: normal;
+      box-shadow: 0 4px 14px rgba(45, 58, 31, 0.18);
+    }
+    .info-bubble::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: #2d3a1f;
+    }
+    .info-tip:hover .info-bubble,
+    .info-tip:focus-within .info-bubble {
+      visibility: visible;
+      opacity: 1;
+    }
+    /* Output sections: responsive 2-up grid; any card can expand to a full row */
+    .output-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+    .output-grid .full-row { grid-column: 1 / -1; }
+    @media (max-width: 640px) { .output-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // Canonical session-check options the AI may infer from the notes.
+    const SESSION_CHECKS = ["Performance Feedback (PF)", "IOA check", "Reviewed last week's notes", "Follow-up items"];
+
+    const GROUP_OPTIONS = { sessionChecks: SESSION_CHECKS };
+
+    // Output render config — suggested checks first, then the four narrative sections.
+    const FORM_SECTIONS = [
+      { kind: "checklist", heading: "Session Checks Completed",                       group: "sessionChecks" },
+      { kind: "narrative", heading: "1. Client Narrative Progress",                   key: "progress" },
+      { kind: "narrative", heading: "2. Programming & BIP Changes",                   key: "programming" },
+      { kind: "narrative", heading: "3. Staff Feedback / Behavior Analyst Modeling",  key: "feedback" },
+      { kind: "narrative", heading: "4. Follow-Up Items",                             key: "followup" },
+    ];
+
+    const menu = (arr) => arr.map(x => `"${x}"`).join(" | ");
+
+    // Read-only checklist that mirrors a real-form checkbox group: the whole
+    // option list is shown, with AI-suggested options ticked (and bolded).
+    function Checklist({ options, selected, single = false }) {
+      const sel = single ? (selected ? [selected] : []) : (Array.isArray(selected) ? selected : []);
+      return (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", columnGap: 20, rowGap: 7 }}>
+          {options.map(label => {
+            const on = sel.includes(label);
+            return (
+              <div key={label} style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
+                <span aria-hidden="true" style={{
+                  flexShrink: 0, marginTop: 1, width: 17, height: 17, borderRadius: single ? "50%" : 4,
+                  border: on ? "1.5px solid #374528" : "1.5px solid #c0d4a8",
+                  background: on ? "#374528" : "white", color: "white",
+                  fontSize: 12, fontWeight: 700, lineHeight: "15px", textAlign: "center",
+                }}>{on ? "✓" : ""}</span>
+                <span style={{ fontSize: 13.5, lineHeight: 1.45, color: on ? "#2d3a1f" : "#9aab86", fontWeight: on ? 600 : 400 }}>{label}</span>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    function App() {
+      const [notes,      setNotes]      = React.useState("");
+      const [btPresent,  setBtPresent]  = React.useState(null);
+      const [output,     setOutput]     = React.useState(null);
+      const [loading,    setLoading]    = React.useState(false);
+      const [error,      setError]      = React.useState("");
+      const [copied,     setCopied]     = React.useState(null);
+      const [copiedPrompt, setCopiedPrompt] = React.useState(false);
+      const [loggedIn,   setLoggedIn]   = React.useState(() => !!(window.NotesGate && NotesGate.isLoggedIn()));
+      const TOOL_ID = "sup";
+      const canUse  = loggedIn && !!(window.NotesGate && NotesGate.canUseTool(TOOL_ID));
+      React.useEffect(() => (window.NotesGate ? NotesGate.subscribe(setLoggedIn) : undefined), []);
+      const [promptText, setPromptText] = React.useState("");
+      const [scrubNotice, setScrubNotice] = React.useState("");
+      const [expanded,   setExpanded]   = React.useState(() => new Set());
+      const toggleExpand = (i) => setExpanded(prev => {
+        const next = new Set(prev);
+        next.has(i) ? next.delete(i) : next.add(i);
+        return next;
+      });
+
+      const SYSTEM_CORE = `You are documenting a Behavior Analyst's supervision session. The BCBA is the author documenting their own session. Write in third-person clinical prose: "The Behavior Analyst reviewed…", "The behavior technician demonstrated…."
+
+For programming changes and clinical decisions, fold rationale into the decision sentence — "[data observation or trend], so [decision] was made to [expected clinical outcome]" — not as a separate rationale sentence. Example: "Stalled progress data prompted a phase line addition to enable comparison before and after BST retraining" — not "A phase line was added. Rationale: to track BST impact."
+
+OUTPUT: (a) polished third-person clinical narratives for the four note sections, (b) conservative session-check inferences for the BCBA to verify.
+
+RULES
+- Never invent activities, programs, data, or staff actions not in the notes. Sparse section → brief honest sentence.
+- Plain, precise clinical language — no filler, no elevated vocabulary.
+
+CHECKBOX INFERENCE: For "sessionChecks" return ONLY verbatim values from the allowed list, only when clearly supported (e.g., performance feedback delivered, IOA run, notes reviewed, follow-up raised). Empty array if none supported. Fold results into the relevant narrative.
+
+TERMINOLOGY (non-negotiable)
+- Reinforcement is contingent on behavior. Never write that a person "was reinforced." Write "[behavior] was reinforced" or "reinforcement was delivered contingent on [behavior]." For staff: "performance feedback was delivered," "the BT contacted reinforcement for [specific behavior]."
+- Precise verbs: prompted, faded, modeled, shaped, chained, redirected, blocked, delivered/withheld reinforcement, presented the SD, provided BST, gave performance feedback, conducted IOA.
+- Name prompt types and procedures specifically. No loose synonyms (rewarded, encouraged, motivated).
+- Objective, observable language — no value-laden phrasing.`;
+
+      const JSON_FORMAT_BLOCK = `\n\nOUTPUT FORMAT\nReturn ONLY a single JSON object. No markdown, no preamble. Use EXACTLY these keys; "sessionChecks" holds verbatim option labels (empty [] if none); each narrative is a string of 1–4 clean clinical sentences.\n{\n  "sessionChecks": [],\n  "progress": "",\n  "programming": "",\n  "feedback": "",\n  "followup": ""\n}`;
+
+      const LABELED_FORMAT_BLOCK = `\n\nOUTPUT FORMAT\nReturn labeled sections in the exact order below. For the "[tick]" line, list ONLY the checks that apply, comma-separated and verbatim from the allowed list; if none apply write "None selected." For each "[narrative]" write 1–4 clinical sentences. No JSON, no preamble, no commentary.\n\nSESSION CHECKS COMPLETED [tick]\nCLIENT NARRATIVE PROGRESS [narrative]\nPROGRAMMING & BIP CHANGES [narrative]\nSTAFF FEEDBACK / BEHAVIOR ANALYST MODELING [narrative]\nFOLLOW-UP ITEMS [narrative]`;
+
+      const buildUserPrompt = () => [
+        `BT/RBT present during session: ${btPresent ? "Yes" : "No"}`,
+        ``,
+        `Raw session notes (primary source — expand faithfully, never fabricate):`,
+        notes.trim() || "(none provided)",
+        ``,
+        `ALLOWED SESSION-CHECK OPTIONS (return only verbatim values from this list, only if supported by the notes):`,
+        `- sessionChecks: ${menu(SESSION_CHECKS)}`,
+        ``,
+        `Narrative guidance for the four sections:`,
+        `- progress: Client narrative progress on skills and behavior goals observed this session.`,
+        `- programming: Programming, prompting, or BIP changes made or needed (including probe/baseline/generalization/maintenance findings if applicable).`,
+        `- feedback: ${btPresent ? "Feedback provided to direct service staff (BT/RBT) regarding implementation, skill acquisition targets, or behavior intervention." : "Behavior Analyst-only activities: what was run, evaluated, modeled, or explained. If no technician was present, begin with: 'No technician was present; Behavior Analyst performed…'"}`,
+        `- followup: Specific follow-up items to complete before or address at next session.`,
+      ].join("\n");
+
+      const NARRATIVE_KEYS = ["progress", "programming", "feedback", "followup"];
+      const normalizeOutput = (raw) => {
+        const o = raw && typeof raw === "object" ? raw : {};
+        const out = {};
+        out.sessionChecks = (Array.isArray(o.sessionChecks) ? o.sessionChecks : []).filter(v => SESSION_CHECKS.includes(v));
+        NARRATIVE_KEYS.forEach(k => { out[k] = typeof o[k] === "string" ? o[k] : ""; });
+        return out;
+      };
+
+      const collectFreeText = () => notes;
+
+      const handleGenerate = async () => {
+        if (!notes.trim())      { setError("Please enter session notes."); return; }
+        if (btPresent === null) { setError("Please indicate whether a BT/RBT was present."); return; }
+        if (!NotesGate.isLoggedIn()) { NotesGate.openLogin(); return; }
+        setError("");
+        if (!(await NotesScrub.acknowledge())) return;
+        const review = await NotesScrub.review({ freeText: collectFreeText() });
+        if (review.cancelled) return;
+        setScrubNotice(NotesScrub.noticeText(review.map));
+        setLoading(true);
+        setOutput(null);
+        try {
+          const parsed = await NotesGate.generateNote({ systemPrompt: SYSTEM_CORE + JSON_FORMAT_BLOCK, userPrompt: NotesScrub.applyMap(buildUserPrompt(), review.map), tool: TOOL_ID });
+          setOutput(normalizeOutput(parsed));
+        } catch (e) {
+          setError(e.message || "Generation failed. Please try again.");
+          const _tok = localStorage.getItem("notes_auth_token");
+          if (_tok) fetch(NotesGate.apiUrl("/api/error-report"), { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + _tok }, body: JSON.stringify({ message: e.message || "unknown", tool: TOOL_ID, timestamp: new Date().toISOString() }) }).catch(() => {});
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const handleCopy = (id, text) => {
+        navigator.clipboard.writeText(text);
+        setCopied(id);
+        setTimeout(() => setCopied(null), 1800);
+      };
+
+      const handleGeneratePrompt = async () => {
+        if (!notes.trim())      { setError("Please enter session notes first."); return; }
+        if (btPresent === null) { setError("Please indicate whether a BT/RBT was present."); return; }
+        setError("");
+        if (!(await NotesScrub.acknowledge())) return;
+        const review = await NotesScrub.review({ freeText: collectFreeText() });
+        if (review.cancelled) return;
+        setScrubNotice(NotesScrub.noticeText(review.map));
+        setPromptText(NotesScrub.applyMap(`${SYSTEM_CORE + LABELED_FORMAT_BLOCK}\n\n---\n\n${buildUserPrompt()}`, review.map));
+        setCopiedPrompt(false);
+      };
+
+      const handleCopyPromptText = () => {
+        if (!promptText) return;
+        navigator.clipboard.writeText(promptText);
+        setCopiedPrompt(true);
+        setTimeout(() => setCopiedPrompt(false), 1800);
+      };
+
+      const sectionToText = (s) => {
+        if (s.kind === "narrative") return `${s.heading}\n${output[s.key] || ""}`;
+        const ticks = output[s.group] || [];
+        return `${s.heading}\nTick: ${ticks.length ? ticks.join(", ") : "None selected"}`;
+      };
+
+      const handleCopyAll = () => {
+        if (!output) return;
+        navigator.clipboard.writeText(FORM_SECTIONS.map(sectionToText).join("\n\n"));
+        setCopied("all");
+        setTimeout(() => setCopied(null), 1800);
+      };
+
+      const card     = { background: "white", borderRadius: 12, border: "1px solid #c0d4a8", padding: 24, marginBottom: 20 };
+      const lbl      = { fontSize: 13, fontWeight: 600, color: "#374528", textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 8 };
+      const inputBase = { width: "100%", padding: "10px 14px", borderRadius: 8, border: "1.5px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", background: "#fafcf8" };
+      return (
+        <div style={{ maxWidth: 820, margin: "0 auto" }}>
+
+          {/* Header */}
+          <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <h1 style={{ fontSize: 26, fontWeight: 700, color: "#2d3a1f", marginBottom: 4 }}>Supervision Note Tool</h1>
+              <p style={{ fontSize: 14, color: "#5a6b4a" }}>Paste raw session bullets — the tool drafts the note and suggests which session-check boxes to select on your EHR form.</p>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <a href="../scrubber.html" target="_blank" style={{ padding: "7px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "#f0f4ec", color: "#374528", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>Scrubber →</a>
+              <a href="/" style={{ padding: "7px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>← Back</a>
+            </div>
+          </div>
+
+          {/* Disclaimer */}
+          <div style={{ marginBottom: 24, padding: "14px 18px", borderRadius: 10, border: "1.5px solid #d4b483", background: "#fdf6e8", color: "#5a4420", fontSize: 13, lineHeight: 1.55 }}>
+            <strong style={{ color: "#7a5a1a" }}>Disclaimer:</strong> Use of these AI-assisted queries is subject to the legal and regulatory constraints of the user's jurisdiction. These tools do not remove the user's responsibility to review all output for accuracy and to maintain compliance with the ethical standards of their credentialing board for professional behavior analysis work.{" "}
+            <strong style={{ color: "#7a5a1a" }}>Do not enter any PHI (Protected Health Information) into this tool.</strong> PHI is any detail that could identify a specific client — including names, dates of birth, addresses, phone numbers, ID or insurance numbers, or any other personal identifiers.
+          </div>
+
+          {/* Input card */}
+          <div style={card}>
+
+            {/* BT toggle */}
+            <div style={{ marginBottom: 20 }}>
+              <p style={lbl}>BT / RBT Present?</p>
+              <div style={{ display: "flex", gap: 10 }}>
+                {[true, false].map(val => (
+                  <button
+                    key={String(val)}
+                    onClick={() => setBtPresent(val)}
+                    style={{
+                      padding: "8px 22px", borderRadius: 8,
+                      border: btPresent === val ? "2px solid #374528" : "1.5px solid #c0d4a8",
+                      background: btPresent === val ? "#374528" : "white",
+                      color: btPresent === val ? "white" : "#374528",
+                      fontWeight: 600, fontSize: 14, cursor: "pointer",
+                    }}
+                  >
+                    {val ? "Yes" : "No — Behavior Analyst only"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Notes textarea */}
+            <div style={{ marginBottom: 18 }}>
+              <label style={lbl}>Raw Session Notes</label>
+              <p style={{ fontSize: 12.5, color: "#7a9460", marginBottom: 10, lineHeight: 1.55 }}>Paste brief bullets covering client progress, programming/BIP changes, and any staff feedback. Also mention session checks if you did them — performance feedback, an IOA/reliability check, reviewing last week's notes, or follow-up items — and the tool will suggest those boxes for you.</p>
+              <textarea
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder={`No PHI. Bullets are fine, e.g.:\n- Worked tacts with DTT, 80% accuracy\n- Reduced prompt level on manding from FP to PP\n- Elopement x2, blocked, no escalation\n- Ran IOA on tact data, high agreement\n- Gave BT performance feedback on ECO; reviewed last week's notes\n- Follow-up: print new visual schedule`}
+                style={{ ...inputBase, height: 200, resize: "vertical", lineHeight: 1.6 }}
+              />
+            </div>
+
+            {error && <p style={{ color: "#c0392b", fontSize: 13, marginBottom: 12 }}>{error}</p>}
+            {scrubNotice && (
+              <div style={{ margin: "0 0 16px", borderRadius: 10, border: "2px solid #c8962a", overflow: "hidden" }}>
+                <div style={{ padding: "8px 14px", background: "#fdf3dc", color: "#5a3d00", fontSize: 12, lineHeight: 1.5 }}>
+                  <strong>Removed before this left your device:</strong> {scrubNotice}{" "}
+                  <span style={{ color: "#7a6020" }}>— substitute back in your EHR.</span>
+                </div>
+                <div style={{ padding: "10px 14px", background: "#fff8ec", color: "#3d2a00", fontSize: 13.5, fontWeight: 600, lineHeight: 1.55 }}>
+                  ⚠️ {NotesScrub.SCRUB_GUIDANCE}
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button
+                onClick={!loggedIn ? () => NotesGate.openLogin() : (canUse ? handleGenerate : undefined)}
+                disabled={loading || (loggedIn && !canUse)}
+                style={{
+                  padding: "11px 28px", borderRadius: 8, border: "none",
+                  background: (loading || (loggedIn && !canUse)) ? "#a0b890" : "#374528",
+                  color: "white", fontSize: 15, fontWeight: 600,
+                  cursor: (loading || (loggedIn && !canUse)) ? "not-allowed" : "pointer",
+                }}
+              >
+                {!loggedIn ? "Log in" : (canUse ? (loading ? "Generating…" : "Generate Note") : "No access for this tool")}
+              </button>
+              <button
+                onClick={handleGeneratePrompt}
+                style={{
+                  padding: "11px 18px", borderRadius: 8,
+                  border: "1.5px solid #374528",
+                  background: "white", color: "#374528",
+                  fontSize: 14, fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                Generate Prompt
+              </button>
+              {loggedIn && (
+                <button onClick={() => NotesGate.logout()} style={{
+                  marginLeft: "auto", padding: "9px 16px", borderRadius: 8,
+                  border: "1.5px solid #c0d4a8", background: "white", color: "#5a6b4a", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                }}>
+                  Log out
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Generated Prompt output */}
+          {promptText && (
+            <div style={{ ...card }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>Generated Prompt</h2>
+                <button
+                  onClick={handleCopyPromptText}
+                  style={{ padding: "7px 16px", borderRadius: 7, border: "1.5px solid #374528", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                >
+                  {copiedPrompt ? "Copied!" : "Copy"}
+                </button>
+              </div>
+              <textarea
+                readOnly
+                value={promptText}
+                style={{ width: "100%", minHeight: 220, padding: 12, borderRadius: 8, border: "1px solid #c0d4a8", fontSize: 13, color: "#2d3a1f", lineHeight: 1.6, resize: "vertical", background: "#f7fbf3", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+              />
+            </div>
+          )}
+
+          {/* Output — narratives + suggested session-check ticks */}
+          {output && (
+            <div style={{ ...card, marginBottom: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>Generated Note</h2>
+                <button
+                  onClick={handleCopyAll}
+                  style={{ padding: "7px 16px", borderRadius: 7, border: "1.5px solid #374528", background: copied === "all" ? "#374528" : "white", color: copied === "all" ? "white" : "#374528", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                >
+                  {copied === "all" ? "Copied!" : "Copy All"}
+                </button>
+              </div>
+              <p style={{ fontSize: 13, color: "#7a9460", marginBottom: 20, lineHeight: 1.55 }}>The checklist is a suggestion from your notes — review, then tick the matching boxes on your form. Narratives are editable before you copy them.</p>
+
+              <div className="output-grid">
+                {FORM_SECTIONS.map((s, i) => {
+                  const isNarrative = s.kind === "narrative";
+                  const isOpen = expanded.has(i);
+                  // Checklists span the full row; narratives sit 2-up and expand on demand.
+                  const fullRow = !isNarrative || isOpen;
+                  return (
+                  <div key={i} className={fullRow ? "full-row" : undefined} style={{ borderRadius: 9, border: "1px solid #ddecd0", background: "#f7fbf3", padding: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, gap: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#374528" }}>{s.heading}</span>
+                      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                        {isNarrative && (
+                          <button
+                            onClick={() => toggleExpand(i)}
+                            title={isOpen ? "Collapse to half width" : "Expand to full row"}
+                            style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #c0d4a8", background: "white", color: "#374528", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
+                          >
+                            {isOpen ? "⤡ Collapse" : "⤢ Expand"}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleCopy("sec" + i, sectionToText(s))}
+                          style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #c0d4a8", background: "white", color: "#374528", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
+                        >
+                          {copied === "sec" + i ? "Copied!" : "Copy"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {isNarrative && (
+                      <textarea
+                        value={output[s.key]}
+                        onChange={e => setOutput(prev => ({ ...prev, [s.key]: e.target.value }))}
+                        style={{ width: "100%", minHeight: isOpen ? 140 : 90, padding: 10, borderRadius: 7, border: "1px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", lineHeight: 1.65, resize: "vertical", background: "white" }}
+                      />
+                    )}
+
+                    {s.kind === "checklist" && (
+                      (output[s.group] && output[s.group].length)
+                        ? <Checklist options={GROUP_OPTIONS[s.group]} selected={output[s.group]} />
+                        : <p style={{ fontSize: 13, color: "#9aab86", fontStyle: "italic" }}>No checks suggested — leave blank or review your notes.</p>
+                    )}
+                  </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

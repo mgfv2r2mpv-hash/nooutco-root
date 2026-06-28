@@ -1,0 +1,22 @@
+{
+  "name": "tools-nooutco-me",
+  "compatibility_date": "2026-04-15",
+  "pages_build_output_dir": ".",
+  // Cloudflare Pages applies bindings declared under env.production / env.preview,
+  // NOT top-level — top-level kv_namespaces silently don't bind on Git builds.
+  // Account A (kaleb@nooutco.me) namespaces.
+  "env": {
+    "production": {
+      "kv_namespaces": [
+        { "binding": "SUGGEST_DUPES", "id": "770ceeccadb94d78b519e628509beed8" },
+        { "binding": "API_PASSWORDS", "id": "cdaf40fa2b814f7d94818b27042b9cf2" }
+      ]
+    },
+    "preview": {
+      "kv_namespaces": [
+        { "binding": "SUGGEST_DUPES", "id": "770ceeccadb94d78b519e628509beed8" },
+        { "binding": "API_PASSWORDS", "id": "cdaf40fa2b814f7d94818b27042b9cf2" }
+      ]
+    }
+  }
+}

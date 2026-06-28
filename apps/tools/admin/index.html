@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin · No Outcome ABA</title>
+  <link rel="icon" href="/logo-mark.svg" />
+  <!-- notes-gate.js needed for FIRST_NAMES/STOPWORDS in Algorithm Lab -->
+  <script src="/assets/notes-gate.js"></script>
+  <script src="/assets/notes-scrub.js"></script>
+  <style>
+    :root {
+      --sage: #374528; --sage-light: #c0d4a8; --bg: #f4f7ee; --surface: #fff;
+      --text: #2d3a1f; --muted: #5a6b4a; --line: #e2ead4; --red: #c0392b;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+    .wrap { max-width: 740px; margin: 0 auto; padding: 36px 20px 80px; }
+    .topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 26px; }
+    h1 { font-size: 23px; margin: 0 0 4px; letter-spacing: -.01em; }
+    .sub { color: var(--muted); font-size: 14px; margin: 0; line-height: 1.5; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; box-shadow: 0 8px 24px rgba(20, 28, 14, .06); margin-bottom: 20px; }
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .03em; }
+    input[type=text], input[type=password], textarea { width: 100%; padding: 10px 12px; border: 1.5px solid var(--sage-light); border-radius: 8px; font-size: 14px; font-family: inherit; }
+    input:focus, textarea:focus { outline: none; border-color: var(--sage); }
+    textarea { resize: vertical; min-height: 90px; }
+    button { font-family: inherit; cursor: pointer; border: none; border-radius: 8px; font-weight: 600; }
+    .btn-primary { background: var(--sage); color: #fff; padding: 11px 18px; font-size: 14px; }
+    .btn-primary:hover { background: #2d3a1f; }
+    .btn-ghost { background: #fff; color: var(--sage); border: 1.5px solid var(--sage-light); padding: 7px 12px; font-size: 13px; }
+    .btn-ghost:hover { background: #f0f5e8; }
+    .btn-danger { background: #fff; color: var(--red); border: 1.5px solid #e8c4be; padding: 7px 12px; font-size: 13px; }
+    .btn-danger:hover { background: #fcf2f0; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 11px 8px; border-bottom: 1px solid #eef2e6; font-size: 14px; vertical-align: middle; }
+    th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+    tr:last-child td { border-bottom: none; }
+    .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .pill.on { background: #e3f0d3; color: #3f6121; }
+    .pill.off { background: #f0e3e1; color: #9a4034; }
+    .err { color: var(--red); font-size: 13px; margin-top: 10px; display: none; }
+    .ok  { color: #3f6121; font-size: 13px; margin-top: 10px; display: none; }
+    .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .hidden { display: none; }
+    .add-grid { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+    .add-grid > div { flex: 1; min-width: 150px; }
+    h2 { margin: 0 0 14px; font-size: 16px; }
+    h3 { margin: 0 0 10px; font-size: 14px; font-weight: 700; }
+    .tool-checks { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 2px; }
+    .tool-checks label { display: inline-flex; align-items: center; gap: 6px; margin: 0; text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--text); font-size: 13px; cursor: pointer; }
+    .tool-checks input { width: auto; padding: 0; }
+    .tool-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+    .tool-pill { background: #eaf1de; color: #4a5e2e; border-radius: 6px; padding: 1px 7px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+    /* Tabs */
+    .tab-nav { display: flex; gap: 0; margin-bottom: 22px; border-bottom: 2px solid var(--line); }
+    .tab-btn { background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; padding: 9px 18px; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; border-radius: 0; }
+    .tab-btn.active { color: var(--sage); border-bottom-color: var(--sage); }
+    .tab-btn:hover:not(.active) { color: var(--text); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    /* Algorithm Lab */
+    .badge-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; min-height: 28px; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #fff5c2; color: #6b5000; border: 1px solid #e5cc60; }
+    .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+    .stat-box { background: #f4f7ee; border-radius: 10px; padding: 12px 14px; }
+    .stat-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
+    .stat-val { font-size: 18px; font-weight: 700; color: var(--sage); }
+    .digest-box { margin-top: 12px; padding: 12px 14px; background: #f4f7ee; border-radius: 10px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+    /* Pending review + add-term modal */
+    .pending-card { background: #fffdf3; border-color: #ece0b0; }
+    .count-pill { display: inline-block; background: #eaf1de; color: #4a5e2e; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 700; margin-left: 6px; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(20, 28, 14, .45); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+    .modal-overlay.hidden { display: none; }
+    .modal { background: var(--surface); border-radius: 14px; padding: 22px; width: 100%; max-width: 400px; box-shadow: 0 16px 48px rgba(20, 28, 14, .28); }
+    .radio-row { display: flex; gap: 10px; margin-top: 6px; }
+    .radio-opt { flex: 1; display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--sage-light); border-radius: 8px; padding: 10px 12px; cursor: pointer; font-size: 14px; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--text); margin: 0; }
+    .radio-opt input { width: auto; padding: 0; }
+    .radio-opt.sel { border-color: var(--sage); background: #f0f5e8; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div>
+        <h1>Admin · No Outcome ABA</h1>
+        <p class="sub">Manage access passwords, curate PII / non-PII terms, review technician submissions, and tune the PHI detection algorithm.</p>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+        <a class="btn-ghost" href="/" style="text-decoration: none;">← Tools</a>
+        <button id="logout" class="btn-ghost hidden">Log out</button>
+      </div>
+    </div>
+
+    <!-- Login gate -->
+    <div id="loginCard" class="card hidden" style="max-width: 380px;">
+      <label for="pw">Admin password</label>
+      <input id="pw" type="password" autocomplete="current-password" placeholder="Admin password" />
+      <div id="loginErr" class="err"></div>
+      <button id="loginBtn" class="btn-primary" style="margin-top: 14px; width: 100%;">Log in</button>
+    </div>
+
+    <!-- Admin UI -->
+    <div id="adminUI" class="hidden">
+      <nav class="tab-nav">
+        <button class="tab-btn active" data-tab="passwords">Passwords</button>
+        <button class="tab-btn" data-tab="pii">PII Terms</button>
+        <button class="tab-btn" data-tab="nonpii">Non-PII Terms</button>
+        <button class="tab-btn" data-tab="alglab">Algorithm Lab</button>
+      </nav>
+
+      <!-- ── Passwords tab ── -->
+      <div id="tab-passwords" class="tab-panel active">
+        <div class="card">
+          <h2>Add an access password</h2>
+          <div class="add-grid">
+            <div>
+              <label for="newLabel">Label (who it's for)</label>
+              <input id="newLabel" type="text" placeholder="e.g. Front desk" />
+            </div>
+            <div>
+              <label for="newPw">Password</label>
+              <input id="newPw" type="text" placeholder="Access password" />
+            </div>
+            <button id="addBtn" class="btn-primary">Add</button>
+          </div>
+          <label style="margin-top: 14px;">Tools this password can use</label>
+          <div id="toolChecks" class="tool-checks"></div>
+          <div id="addErr" class="err"></div>
+        </div>
+
+        <div class="card">
+          <table>
+            <thead><tr><th>Label</th><th>Tools</th><th>Status</th><th>Created</th><th></th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+          <p id="empty" class="muted hidden" style="margin: 14px 4px 0;">No access passwords yet — add one above.</p>
+        </div>
+      </div>
+
+      <!-- ── PII Terms tab ── -->
+      <div id="tab-pii" class="tab-panel">
+        <div class="card pending-card" id="piiPendingCard" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <h2 style="margin: 0;">Pending review — scrubbed names</h2>
+            <span class="pill on" id="piiPendingCount">0</span>
+          </div>
+          <p class="muted" style="margin: 0 0 14px;">Names technicians scrubbed that aren't yet in the detection dictionary. <strong>Approve</strong> to force-detect a name everywhere; <strong>reject</strong> to discard. Only the bare word is stored — never any note text.</p>
+          <div id="piiPendingRows"></div>
+        </div>
+
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <h2 style="margin: 0;">PII Terms (force-detect)</h2>
+            <button class="btn-primary" data-add-term="pii">Add term</button>
+          </div>
+          <p class="muted" style="margin: 0 0 14px;">Words always flagged as names, on top of the built-in dictionary. Approved scrubbed names land here.</p>
+          <table>
+            <thead><tr><th>Term</th><th></th></tr></thead>
+            <tbody id="piiRows"></tbody>
+          </table>
+          <p id="piiEmpty" class="muted hidden" style="margin: 14px 4px 0;">No custom PII terms yet.</p>
+        </div>
+      </div>
+
+      <!-- ── Non-PII Terms tab ── -->
+      <div id="tab-nonpii" class="tab-panel">
+        <div class="card pending-card" id="nonpiiPendingCard" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <h2 style="margin: 0;">Pending review — certified terms</h2>
+            <span class="pill on" id="nonpiiPendingCount">0</span>
+          </div>
+          <p class="muted" style="margin: 0 0 14px;">Terms technicians certified as <em>not</em> being names. <strong>Approve</strong> to exclude a term from detection globally; <strong>reject</strong> to discard. Approving weakens detection — only approve genuine non-names.</p>
+          <div id="nonpiiPendingRows"></div>
+        </div>
+
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 10px; flex-wrap: wrap;">
+            <h2 style="margin: 0;">Non-PII Terms</h2>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn-primary" data-add-term="nonpii">Add term</button>
+              <button id="clearNonPii" class="btn-danger">Clear all</button>
+            </div>
+          </div>
+          <p class="muted" style="margin: 0 0 14px;">Terms certified as not being person names. Permanently excluded from PHI detection.</p>
+          <table id="nonpiiTable">
+            <thead><tr><th>Term</th><th>Certified at</th><th></th></tr></thead>
+            <tbody id="nonpiiRows"></tbody>
+          </table>
+          <p id="nonpiiEmpty" class="muted hidden" style="margin: 14px 4px 0;">No certified non-PII terms yet.</p>
+        </div>
+      </div>
+
+      <!-- ── Algorithm Lab tab ── -->
+      <div id="tab-alglab" class="tab-panel">
+        <div class="card" id="suggestionsCard" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <h2 style="margin: 0;">Pending Suggestions</h2>
+            <span class="pill on" id="sugCount">0</span>
+          </div>
+          <p class="muted" style="margin: 0 0 14px;">The nightly run proposes terms to suppress globally. Detection does <strong>not</strong> change until you approve. Reject anything that could be a real name.</p>
+          <div id="sugRows"></div>
+        </div>
+
+        <div class="card">
+          <h2>Test the Detection Algorithm</h2>
+          <p class="muted" style="margin: 0 0 12px;">Paste a clinical note snippet to see which tokens the current algorithm would flag. Words highlighted yellow in the textarea are detected in real time.</p>
+          <label for="labText">Test string</label>
+          <textarea id="labText" placeholder="e.g. The BT worked with Jacob today. Sarah's program was reviewed."></textarea>
+          <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center;">
+            <button id="labTest" class="btn-primary">Test string</button>
+            <button id="labSubmit" class="btn-ghost">Submit for learning</button>
+            <span id="labOk" class="ok" style="margin: 0;">Submitted — will be reviewed in tonight's run.</span>
+            <span id="labErr" class="err" style="margin: 0;"></span>
+          </div>
+          <div>
+            <p class="muted" style="margin: 12px 0 4px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;">Detected tokens</p>
+            <div id="labBadges" class="badge-list"><span class="muted" style="font-size: 13px;">Run a test to see results.</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Algorithm Status</h2>
+          <p class="muted" style="margin: 0 0 14px;">Nightly run: <strong>3am EDT daily</strong> via GitHub Action (Cloudflare Pages can't run cron). The run only <strong>proposes</strong> stopwords from clinician-certified false positives — it never removes names or weakens detection. Every suggestion needs your approval above.</p>
+          <div class="status-grid" id="labStats">
+            <div class="stat-box"><div class="stat-label">Approved stopwords</div><div class="stat-val" id="statStopwords">—</div></div>
+            <div class="stat-box"><div class="stat-label">Pending suggestions</div><div class="stat-val" id="statPending">—</div></div>
+          </div>
+          <div id="labDigest" class="digest-box" style="display: none;"></div>
+          <p class="muted" style="margin: 12px 0 0; font-size: 12px;" id="lastRunLabel"></p>
+          <div style="margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap;">
+            <button id="labRunNow" class="btn-ghost">Trigger run now</button>
+            <span id="labRunOk" class="ok" style="margin: 0;">Run complete — check your email for the digest.</span>
+            <span id="labRunErr" class="err" style="margin: 0;"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Shared add-term modal (PII / Non-PII) -->
+    <div id="termModal" class="modal-overlay hidden">
+      <div class="modal">
+        <h2 style="margin: 0 0 4px;">Add a term</h2>
+        <p class="muted" style="margin: 0 0 16px;">Commits to the live list immediately.</p>
+        <label for="termInput">Term</label>
+        <input id="termInput" type="text" placeholder="A single word" autocomplete="off" />
+        <label style="margin-top: 14px;">Classify as</label>
+        <div class="radio-row">
+          <label class="radio-opt"><input type="radio" name="termKind" value="pii" /> PII (a name)</label>
+          <label class="radio-opt"><input type="radio" name="termKind" value="nonpii" /> Not PII</label>
+        </div>
+        <div id="termErr" class="err"></div>
+        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px;">
+          <button id="termCancel" class="btn-ghost">Cancel</button>
+          <button id="termSave" class="btn-primary">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+      var TOKEN_KEY = "notes_auth_token";
+      var TOOLS = [
+        { id: "bt", label: "BT Direct Session" },
+        { id: "sup", label: "Supervision" },
+        { id: "parent", label: "Parent" },
+        { id: "assess", label: "Assessment" },
+        { id: "sap", label: "SAP Goals" },
+      ];
+      function toolLabel(id) { for (var i = 0; i < TOOLS.length; i++) if (TOOLS[i].id === id) return TOOLS[i].label; return id; }
+      function token() { return localStorage.getItem(TOKEN_KEY) || ""; }
+      function payload() {
+        try { return JSON.parse(atob(token().split(".")[0].replace(/-/g, "+").replace(/_/g, "/"))); }
+        catch (e) { return null; }
+      }
+      function isAdmin() { var p = payload(); return !!(p && p.role === "admin" && (!p.exp || p.exp * 1000 > Date.now())); }
+      function authHeader() { return { "Content-Type": "application/json", "Authorization": "Bearer " + token() }; }
+
+      var loginCard = document.getElementById("loginCard");
+      var adminUI = document.getElementById("adminUI");
+      var logoutBtn = document.getElementById("logout");
+
+      function show() {
+        if (isAdmin()) {
+          loginCard.classList.add("hidden"); adminUI.classList.remove("hidden"); logoutBtn.classList.remove("hidden");
+          load(); loadPii(); loadNonPii(); loadTermQueues(); loadAlgStatus();
+        } else {
+          loginCard.classList.remove("hidden"); adminUI.classList.add("hidden"); logoutBtn.classList.add("hidden");
+          document.getElementById("pw").focus();
+        }
+      }
+
+      function doLogin() {
+        var pw = document.getElementById("pw");
+        var err = document.getElementById("loginErr");
+        err.style.display = "none";
+        fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: pw.value }) })
+          .then(function (r) { return r.json().then(function (d) { if (!r.ok || !d.token) throw new Error(d.error || "Login failed."); return d; }); })
+          .then(function (d) {
+            if (d.role !== "admin") throw new Error("That password doesn't have admin access.");
+            localStorage.setItem(TOKEN_KEY, d.token); pw.value = ""; show();
+          })
+          .catch(function (ex) { err.textContent = ex.message; err.style.display = "block"; });
+      }
+      document.getElementById("loginBtn").addEventListener("click", doLogin);
+      document.getElementById("pw").addEventListener("keydown", function (e) { if (e.key === "Enter") doLogin(); });
+      logoutBtn.addEventListener("click", function () { localStorage.removeItem(TOKEN_KEY); show(); });
+
+      /* ── Tab switching ── */
+      document.querySelectorAll(".tab-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          document.querySelectorAll(".tab-btn").forEach(function (b) { b.classList.remove("active"); });
+          document.querySelectorAll(".tab-panel").forEach(function (p) { p.classList.remove("active"); });
+          btn.classList.add("active");
+          document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+        });
+      });
+
+      /* ── Passwords tab ── */
+      function api(method, body) {
+        return fetch("/api/admin/passwords", {
+          method: method,
+          headers: authHeader(),
+          body: body ? JSON.stringify(body) : undefined,
+        }).then(function (r) {
+          if (r.status === 401) { localStorage.removeItem(TOKEN_KEY); show(); throw new Error("Session expired."); }
+          return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ("Error " + r.status)); return d; });
+        });
+      }
+
+      function fmt(iso) { if (!iso) return "—"; try { return new Date(iso).toLocaleDateString(); } catch (e) { return "—"; } }
+      function fmtDateTime(iso) { if (!iso) return "never"; try { return new Date(iso).toLocaleString(); } catch (e) { return "—"; } }
+      function escapeHtml(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+      function renderToolChecks() {
+        document.getElementById("toolChecks").innerHTML = TOOLS.map(function (t) {
+          return '<label><input type="checkbox" value="' + t.id + '" /> ' + t.label + "</label>";
+        }).join("");
+      }
+      function selectedTools() {
+        return Array.prototype.slice.call(document.querySelectorAll("#toolChecks input:checked")).map(function (el) { return el.value; });
+      }
+
+      function load() { api("GET").then(function (d) { render(d.passwords || []); }).catch(function () {}); }
+
+      function render(list) {
+        var rows = document.getElementById("rows"); rows.innerHTML = "";
+        document.getElementById("empty").classList.toggle("hidden", list.length > 0);
+        list.forEach(function (p) {
+          var tr = document.createElement("tr");
+          var pills = (p.tools && p.tools.length)
+            ? '<div class="tool-pills">' + p.tools.map(function (t) { return '<span class="tool-pill">' + escapeHtml(toolLabel(t)) + "</span>"; }).join("") + "</div>"
+            : '<span class="muted">—</span>';
+          tr.innerHTML =
+            "<td>" + (p.label ? escapeHtml(p.label) : '<span class="muted">(no label)</span>') + "</td>" +
+            "<td>" + pills + "</td>" +
+            '<td><span class="pill ' + (p.active ? "on" : "off") + '">' + (p.active ? "Active" : "Disabled") + "</span></td>" +
+            '<td class="muted">' + fmt(p.createdAt) + "</td>" +
+            '<td><div class="row-actions">' +
+              '<button class="btn-ghost" data-act="toggle">' + (p.active ? "Deactivate" : "Activate") + "</button>" +
+              '<button class="btn-danger" data-act="delete">Delete</button>' +
+            "</div></td>";
+          tr.querySelector('[data-act=toggle]').addEventListener("click", function () { api("PATCH", { id: p.id, active: !p.active }).then(load).catch(function () {}); });
+          tr.querySelector('[data-act=delete]').addEventListener("click", function () {
+            if (confirm("Delete this password? Anyone using it will lose access immediately.")) api("DELETE", { id: p.id }).then(load).catch(function () {});
+          });
+          rows.appendChild(tr);
+        });
+      }
+
+      document.getElementById("addBtn").addEventListener("click", function () {
+        var label = document.getElementById("newLabel").value.trim();
+        var pw = document.getElementById("newPw").value.trim();
+        var tools = selectedTools();
+        var err = document.getElementById("addErr"); err.style.display = "none";
+        if (!pw) { err.textContent = "Enter a password."; err.style.display = "block"; return; }
+        if (tools.length === 0) { err.textContent = "Select at least one tool this password can use."; err.style.display = "block"; return; }
+        api("POST", { label: label, password: pw, tools: tools }).then(function () {
+          document.getElementById("newLabel").value = ""; document.getElementById("newPw").value = "";
+          renderToolChecks(); load();
+        }).catch(function (ex) { err.textContent = ex.message; err.style.display = "block"; });
+      });
+
+      /* ── Non-PII Terms tab ── */
+      function adminFetch(path, method, body) {
+        return fetch(path, {
+          method: method || "GET",
+          headers: authHeader(),
+          body: body ? JSON.stringify(body) : undefined,
+        }).then(function (r) {
+          if (r.status === 401) { localStorage.removeItem(TOKEN_KEY); show(); throw new Error("Session expired."); }
+          return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ("Error " + r.status)); return d; });
+        });
+      }
+
+      function loadNonPii() {
+        adminFetch("/api/nonpii").then(function (d) {
+          var terms = d.terms || [];
+          var tbody = document.getElementById("nonpiiRows");
+          tbody.innerHTML = "";
+          document.getElementById("nonpiiEmpty").classList.toggle("hidden", terms.length > 0);
+          terms.forEach(function (e) {
+            var tr = document.createElement("tr");
+            tr.innerHTML =
+              "<td><strong>" + escapeHtml(e.term) + "</strong></td>" +
+              '<td class="muted">' + fmtDateTime(e.certifiedAt) + "</td>" +
+              '<td><div class="row-actions"><button class="btn-danger" data-act="del">Delete</button></div></td>';
+            tr.querySelector('[data-act=del]').addEventListener("click", function () {
+              adminFetch("/api/nonpii", "DELETE", { term: e.term }).then(loadNonPii).catch(function () {});
+            });
+            tbody.appendChild(tr);
+          });
+        }).catch(function () {});
+      }
+
+      document.getElementById("clearNonPii").addEventListener("click", function () {
+        if (confirm("Clear all certified non-PII terms? Clinicians will need to re-certify them.")) {
+          adminFetch("/api/nonpii", "DELETE", {}).then(loadNonPii).catch(function () {});
+        }
+      });
+
+      /* ── PII Terms tab (live force-detect list) ── */
+      function loadPii() {
+        adminFetch("/api/admin/scrub-overrides").then(function (d) {
+          var terms = d.firstNames || [];
+          var tbody = document.getElementById("piiRows");
+          tbody.innerHTML = "";
+          document.getElementById("piiEmpty").classList.toggle("hidden", terms.length > 0);
+          terms.forEach(function (term) {
+            var tr = document.createElement("tr");
+            tr.innerHTML =
+              "<td><strong>" + escapeHtml(term) + "</strong></td>" +
+              '<td><div class="row-actions"><button class="btn-danger" data-act="del">Delete</button></div></td>';
+            tr.querySelector('[data-act=del]').addEventListener("click", function () {
+              adminFetch("/api/admin/terms", "DELETE", { list: "pii", term: term }).then(loadPii).catch(function () {});
+            });
+            tbody.appendChild(tr);
+          });
+        }).catch(function () {});
+      }
+
+      /* ── Pending review queues (tech submissions) ── */
+      function loadTermQueues() {
+        adminFetch("/api/admin/term-queue").then(function (d) {
+          renderPending("pii", d.piiPending || []);
+          renderPending("nonpii", d.nonPiiPending || []);
+        }).catch(function () {});
+      }
+
+      function renderPending(kind, rows) {
+        var card = document.getElementById(kind === "pii" ? "piiPendingCard" : "nonpiiPendingCard");
+        var rowsEl = document.getElementById(kind === "pii" ? "piiPendingRows" : "nonpiiPendingRows");
+        document.getElementById(kind === "pii" ? "piiPendingCount" : "nonpiiPendingCount").textContent = rows.length;
+        card.style.display = rows.length ? "block" : "none";
+        rowsEl.innerHTML = "";
+        rows.forEach(function (e) {
+          var row = document.createElement("div");
+          row.style.cssText = "display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid #eef2e6;";
+          var times = e.count && e.count > 1 ? '<span class="count-pill">×' + e.count + "</span>" : "";
+          row.innerHTML =
+            '<div style="flex:1;min-width:0;">' +
+              '<div style="font-weight:700;font-size:15px;">' + escapeHtml(e.term) + times + "</div>" +
+              '<div class="muted" style="margin-top:3px;font-size:12px;">last seen ' + fmtDateTime(e.lastSeen) + "</div>" +
+            "</div>" +
+            '<div class="row-actions" style="flex-shrink:0;">' +
+              '<button class="btn-ghost" data-act="approve">Approve</button>' +
+              '<button class="btn-danger" data-act="reject">Reject</button>' +
+            "</div>";
+          row.querySelector('[data-act=approve]').addEventListener("click", function () { decideTerm(kind, e.term, "approve"); });
+          row.querySelector('[data-act=reject]').addEventListener("click", function () { decideTerm(kind, e.term, "reject"); });
+          rowsEl.appendChild(row);
+        });
+      }
+
+      function decideTerm(kind, term, decision) {
+        adminFetch("/api/admin/term-queue", "POST", { list: kind, term: term, decision: decision })
+          .then(function () {
+            loadTermQueues();
+            if (decision === "approve") { if (kind === "pii") loadPii(); else loadNonPii(); }
+          })
+          .catch(function () {});
+      }
+
+      /* ── Shared add-term modal ── */
+      var termModal = document.getElementById("termModal");
+      function syncTermRadioUI() {
+        document.querySelectorAll(".radio-opt").forEach(function (opt) {
+          opt.classList.toggle("sel", opt.querySelector("input").checked);
+        });
+      }
+      function openTermModal(kind) {
+        document.getElementById("termErr").style.display = "none";
+        document.getElementById("termInput").value = "";
+        document.querySelectorAll('input[name="termKind"]').forEach(function (r) { r.checked = (r.value === kind); });
+        syncTermRadioUI();
+        termModal.classList.remove("hidden");
+        document.getElementById("termInput").focus();
+      }
+      function closeTermModal() { termModal.classList.add("hidden"); }
+      document.querySelectorAll("[data-add-term]").forEach(function (btn) {
+        btn.addEventListener("click", function () { openTermModal(btn.getAttribute("data-add-term")); });
+      });
+      document.querySelectorAll('input[name="termKind"]').forEach(function (r) {
+        r.addEventListener("change", syncTermRadioUI);
+      });
+      document.getElementById("termCancel").addEventListener("click", closeTermModal);
+      termModal.addEventListener("click", function (e) { if (e.target === termModal) closeTermModal(); });
+      document.getElementById("termInput").addEventListener("keydown", function (e) {
+        if (e.key === "Enter") document.getElementById("termSave").click();
+      });
+      document.getElementById("termSave").addEventListener("click", function () {
+        var term = document.getElementById("termInput").value.trim();
+        var kindEl = document.querySelector('input[name="termKind"]:checked');
+        var err = document.getElementById("termErr"); err.style.display = "none";
+        if (!term) { err.textContent = "Enter a term."; err.style.display = "block"; return; }
+        if (!kindEl) { err.textContent = "Choose PII or Not PII."; err.style.display = "block"; return; }
+        var kind = kindEl.value;
+        adminFetch("/api/admin/terms", "POST", { list: kind, term: term })
+          .then(function () { closeTermModal(); if (kind === "pii") loadPii(); else loadNonPii(); })
+          .catch(function (ex) { err.textContent = ex.message; err.style.display = "block"; });
+      });
+
+      /* ── Algorithm Lab tab ── */
+      document.getElementById("labTest").addEventListener("click", function () {
+        var text = document.getElementById("labText").value;
+        var badges = document.getElementById("labBadges");
+        var detected = (window.NotesScrub && window.NotesScrub._detect) ? window.NotesScrub._detect(text) : [];
+        badges.innerHTML = detected.length
+          ? detected.map(function (n) { return '<span class="badge">' + escapeHtml(n) + "</span>"; }).join("")
+          : '<span class="muted" style="font-size:13px;">No names detected.</span>';
+      });
+
+      document.getElementById("labSubmit").addEventListener("click", function () {
+        var text = document.getElementById("labText").value.trim();
+        var ok = document.getElementById("labOk");
+        var err = document.getElementById("labErr");
+        ok.style.display = "none"; err.style.display = "none";
+        if (!text) { err.textContent = "Enter a test string first."; err.style.display = "inline"; return; }
+        adminFetch("/api/admin/scrub-learn", "POST", { text: text })
+          .then(function () { ok.style.display = "inline"; document.getElementById("labText").value = ""; })
+          .catch(function (ex) { err.textContent = ex.message; err.style.display = "inline"; });
+      });
+
+      function loadAlgStatus() {
+        adminFetch("/api/admin/scrub-overrides").then(function (d) {
+          document.getElementById("statStopwords").textContent = (d.stopwords || []).length;
+          document.getElementById("statPending").textContent = d.pending || 0;
+          var digest = document.getElementById("labDigest");
+          if (d.digest) { digest.textContent = d.digest; digest.style.display = "block"; }
+          document.getElementById("lastRunLabel").textContent = "Last run: " + fmtDateTime(d.lastRun);
+        }).catch(function () {});
+        loadSuggestions();
+      }
+
+      function loadSuggestions() {
+        adminFetch("/api/admin/scrub-suggestions").then(function (d) {
+          var list = d.suggestions || [];
+          var card = document.getElementById("suggestionsCard");
+          var rows = document.getElementById("sugRows");
+          document.getElementById("sugCount").textContent = list.length;
+          card.style.display = list.length ? "block" : "none";
+          rows.innerHTML = "";
+          list.forEach(function (s) {
+            var row = document.createElement("div");
+            row.style.cssText = "display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid #eef2e6;";
+            row.innerHTML =
+              '<div style="flex:1;min-width:0;">' +
+                '<div style="font-weight:700;font-size:15px;">' + escapeHtml(s.term) +
+                  ' <span class="pill ' + (s.confidence === "high" ? "on" : "off") + '" style="font-weight:600;">' + escapeHtml(s.confidence || "low") + "</span></div>" +
+                '<div class="muted" style="margin-top:3px;font-size:13px;">' + escapeHtml(s.reason || "") + "</div>" +
+              "</div>" +
+              '<div class="row-actions" style="flex-shrink:0;">' +
+                '<button class="btn-ghost" data-act="approve">Approve</button>' +
+                '<button class="btn-danger" data-act="reject">Reject</button>' +
+              "</div>";
+            row.querySelector('[data-act=approve]').addEventListener("click", function () {
+              if (confirm('Approve "' + s.term + '"? It will be globally suppressed and never flagged as a name again.')) {
+                adminFetch("/api/admin/scrub-suggestions", "POST", { id: s.id, decision: "approve" }).then(loadAlgStatus).catch(function () {});
+              }
+            });
+            row.querySelector('[data-act=reject]').addEventListener("click", function () {
+              adminFetch("/api/admin/scrub-suggestions", "POST", { id: s.id, decision: "reject" }).then(loadAlgStatus).catch(function () {});
+            });
+            rows.appendChild(row);
+          });
+        }).catch(function () {});
+      }
+
+      document.getElementById("labRunNow").addEventListener("click", function () {
+        var ok = document.getElementById("labRunOk");
+        var err = document.getElementById("labRunErr");
+        ok.style.display = "none"; err.style.display = "none";
+        document.getElementById("labRunNow").textContent = "Running…";
+        adminFetch("/api/admin/scrub-run", "POST")
+          .then(function () {
+            ok.style.display = "inline";
+            document.getElementById("labRunNow").textContent = "Trigger run now";
+            loadAlgStatus();
+          })
+          .catch(function (ex) {
+            err.textContent = ex.message; err.style.display = "inline";
+            document.getElementById("labRunNow").textContent = "Trigger run now";
+          });
+      });
+
+      renderToolChecks();
+      show();
+    })();
+  </script>
+</body>
+</html>

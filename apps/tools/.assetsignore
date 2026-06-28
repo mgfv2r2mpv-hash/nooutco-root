@@ -1,0 +1,17 @@
+.git/
+.gitignore
+.gitattributes
+.assetsignore
+.wrangler/
+.DS_Store
+node_modules/
+**/node_modules/
+**/src/
+**/package.json
+**/package-lock.json
+**/tsconfig*.json
+**/eslint.config.js
+**/vite.config.ts
+**/wrangler.jsonc
+**/README.md
+CPRAnalyzer/index.html

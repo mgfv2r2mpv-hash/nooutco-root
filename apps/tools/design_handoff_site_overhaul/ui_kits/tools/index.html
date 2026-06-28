@@ -1,0 +1,142 @@
+<!-- handoff-reference group="Tools" viewport="1200x820" name="Tools hub — visual upgrade" subtitle="tools.nooutco.me rebuilt in the No Outcome system; privacy-first framing" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Behavior Analysis Tools — No Outcome ABA</title>
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-sans); background: #eef1ea; color: var(--slate-900); padding: 28px 22px 56px; min-height: 100vh; }
+  .wrap { max-width: 980px; margin: 0 auto; }
+
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand img { width: 44px; height: 44px; }
+  .brand .name { font-size: 16px; font-weight: 800; color: var(--sage-700); letter-spacing: -0.01em; line-height: 1.1; }
+  .brand .name span { color: var(--sage-500); }
+  .brand .sub { font-size: 11px; font-weight: 600; color: var(--slate-500); }
+  .home { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border: 1.5px solid var(--sage-200); border-radius: var(--radius-pill); background: var(--white); color: var(--sage-700); font-size: 13px; font-weight: 600; text-decoration: none; transition: background .15s var(--ease-standard); }
+  .home:hover { background: #e2e8da; }
+
+  h1 { font-size: 30px; font-weight: 800; color: var(--slate-900); letter-spacing: -0.4px; }
+  .lede { font-size: 14px; color: var(--slate-600); margin-top: 5px; max-width: 600px; line-height: 1.5; }
+
+  /* Privacy band — the product's core guardrail, made explicit */
+  .privacy { display: flex; gap: 12px; align-items: flex-start; margin: 18px 0 26px; padding: 13px 16px; background: var(--sage-50); border: 1px solid var(--sage-200); border-radius: var(--radius-lg); }
+  .privacy .ic { font-size: 18px; line-height: 1.3; }
+  .privacy .t { font-size: 12.5px; color: var(--slate-700); line-height: 1.5; }
+  .privacy .t b { color: var(--sage-700); font-weight: 700; }
+
+  .group-head { display: flex; align-items: center; gap: 10px; margin: 24px 0 12px; }
+  .group-head .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .group-head .t { font-size: 11px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--slate-600); }
+  .group-head .rule { flex: 1; height: 1px; background: var(--slate-200); }
+
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+
+  .tool { position: relative; display: block; padding: 18px 22px 18px 24px; background: var(--surface-card); border: 1px solid var(--sage-200); border-radius: var(--radius-lg); text-decoration: none; color: inherit; overflow: hidden; transition: border-color .15s var(--ease-standard), box-shadow .15s var(--ease-standard), transform .15s var(--ease-standard); }
+  .tool .accent { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+  .tool:hover { border-color: var(--sage-500); box-shadow: 0 6px 18px rgba(55,69,40,.10); transform: translateY(-1px); }
+  .tool .cat { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .tool .title { font-size: 17px; font-weight: 800; color: var(--slate-900); margin-bottom: 6px; line-height: 1.25; }
+  .tool .desc { font-size: 13px; color: var(--slate-600); line-height: 1.5; }
+  .tool .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 11px; }
+  .tag { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: var(--radius-pill); background: var(--sage-100); color: var(--sage-700); }
+  .tag.prompt { background: var(--violet-50); color: var(--violet-700); }
+  .tag.local { background: var(--blue-50); color: var(--blue-700); }
+  .tag.print { background: var(--amber-100); color: var(--amber-700); }
+
+  .foot { margin-top: 38px; padding-top: 20px; border-top: 1px solid var(--slate-200); font-size: 12px; color: var(--slate-500); line-height: 1.6; max-width: 700px; }
+  .foot b { color: var(--slate-700); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">
+      <img src="assets/logo-mark.svg" alt="No Outcome ABA">
+      <div>
+        <div class="name">No Outcome <span>ABA</span></div>
+        <div class="sub">Behavior Analysis Tools</div>
+      </div>
+    </div>
+    <a class="home" href="#">← nooutco.me</a>
+  </div>
+
+  <h1>Behavior Analysis Tools</h1>
+  <p class="lede">Practical tools for assessing, documenting, planning, and structuring sessions — for BTs and BCBAs. Select a tool to get started.</p>
+
+  <div class="privacy">
+    <span class="ic">🔒</span>
+    <span class="t"><b>Your client data stays with you.</b> These tools structure <i>your</i> writing or generate a prompt you run yourself — they don't store client data, send it anywhere, or stand in for your clinical record. You remain the author of every note.</span>
+  </div>
+
+  <!-- Direct Service -->
+  <div class="group-head"><span class="dot" style="background:var(--sage-500)"></span><span class="t">Direct Service</span><span class="rule"></span></div>
+  <div class="grid">
+    <a class="tool" href="#"><span class="accent" style="background:var(--sage-500)"></span>
+      <div class="cat" style="color:var(--sage-600)">Direct Service · BT</div>
+      <div class="title">In-Home Session Flow Guide</div>
+      <div class="desc">A research-informed compass for in-home sessions — pairing, DTT/NET work cycles, easing off, and rapport repair, scaled to any session length. Built to help, not grade.</div>
+      <div class="tags"><span class="tag print">Replaces printout</span><span class="tag local">Cited</span></div>
+    </a>
+    <a class="tool" href="#"><span class="accent" style="background:var(--sage-500)"></span>
+      <div class="cat" style="color:var(--sage-600)">Direct Service · BT</div>
+      <div class="title">BT Session Note Tool</div>
+      <div class="desc">Pick session details, drop in rough notes (bullets are fine) — generate a prompt that drafts polished documentation for every free-text field.</div>
+      <div class="tags"><span class="tag prompt">Prompt-only</span><span class="tag">No PHI stored</span></div>
+    </a>
+  </div>
+
+  <!-- Supervision & Parent Training -->
+  <div class="group-head"><span class="dot" style="background:var(--violet-600)"></span><span class="t">Supervision · Parent Training</span><span class="rule"></span></div>
+  <div class="grid">
+    <a class="tool" href="#"><span class="accent" style="background:var(--violet-600)"></span>
+      <div class="cat" style="color:var(--violet-700)">Supervision · BCBA</div>
+      <div class="title">Supervision Session Note Tool</div>
+      <div class="desc">Enter brief notes (bullets welcome) — receive polished documentation across the supervision note sections.</div>
+      <div class="tags"><span class="tag prompt">Prompt-only</span></div>
+    </a>
+    <a class="tool" href="#"><span class="accent" style="background:#6d93a4"></span>
+      <div class="cat" style="color:#557585">Parent Training</div>
+      <div class="title">Parent Session Note Tool</div>
+      <div class="desc">Select session activities and caregiver progress — receive documentation for parent / coordination-of-care sessions.</div>
+      <div class="tags"><span class="tag prompt">Prompt-only</span></div>
+    </a>
+  </div>
+
+  <!-- Assessment & Planning -->
+  <div class="group-head"><span class="dot" style="background:var(--sky-500)"></span><span class="t">Assessment · Planning</span><span class="rule"></span></div>
+  <div class="grid">
+    <a class="tool" href="#"><span class="accent" style="background:var(--sky-500)"></span>
+      <div class="cat" style="color:#0a6c97">Assessment · BCBA</div>
+      <div class="title">Assessment / Case Planning Note Tool</div>
+      <div class="desc">Select assessment items, add bullet details — receive documentation of assessment and case-planning activities.</div>
+      <div class="tags"><span class="tag prompt">Prompt-only</span></div>
+    </a>
+    <a class="tool" href="#"><span class="accent" style="background:var(--sky-500)"></span>
+      <div class="cat" style="color:#0a6c97">Assessment · Functional</div>
+      <div class="title">Conditional Probability Record &amp; Analysis</div>
+      <div class="desc">Turn structured descriptive-assessment data into conditional-probability graphs, tables, CV/ACV scores, and file exports.</div>
+      <div class="tags"><span class="tag local">Runs locally</span><span class="tag">Exports</span></div>
+    </a>
+    <a class="tool" href="#"><span class="accent" style="background:var(--amber-500)"></span>
+      <div class="cat" style="color:var(--amber-700)">Service Authorization</div>
+      <div class="title">SAP Goals &amp; Planning Tool</div>
+      <div class="desc">Enter a medically-necessary goal and SAP specs — refine it to be SMART and draft a complete Service Authorization Plan for clinical review.</div>
+      <div class="tags"><span class="tag prompt">Prompt-only</span><span class="tag">SMART check</span></div>
+    </a>
+  </div>
+
+  <p class="foot">
+    <b>Not a clinical record.</b> Every tool here assists drafting and structure; the clinician reviews, edits, and owns the final documentation. Tools never replace clinical judgment, a treatment plan, a behavior plan, or BCBA supervision.<br>
+    Source-available under a non-commercial license with exemptions for clinicians, educators, researchers, and non-profits.
+  </p>
+
+</div>
+</body>
+</html>

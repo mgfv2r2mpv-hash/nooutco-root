@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Assessment Notes</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <script src="/assets/notes-gate.js"></script>
+  <script src="/assets/notes-scrub.js"></script>
+  <script src="/assets/error-button.js" defer></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Inter, sans-serif;
+      background: #f0f4ec;
+      min-height: 100vh;
+      padding: 32px 20px;
+      color: #2d3a1f;
+    }
+    .info-tip {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .info-bubble {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      visibility: hidden;
+      opacity: 0;
+      background: #2d3a1f;
+      color: white;
+      padding: 9px 12px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 1.55;
+      width: 260px;
+      text-align: left;
+      z-index: 100;
+      pointer-events: none;
+      transition: opacity 0.12s ease;
+      white-space: normal;
+      box-shadow: 0 4px 14px rgba(45, 58, 31, 0.18);
+    }
+    .info-bubble::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: #2d3a1f;
+    }
+    .info-tip:hover .info-bubble,
+    .info-tip:focus-within .info-bubble {
+      visibility: visible;
+      opacity: 1;
+    }
+    /* Output sections: responsive 2-up grid; any card can expand to a full row */
+    .output-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+    .output-grid .full-row { grid-column: 1 / -1; }
+    @media (max-width: 640px) { .output-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // Canonical option lists — both the menu the AI may choose from and the
+    // strings the output checklist renders. They match the EHR form.
+    const ACTIVITIES = [
+      "Administration of assessment tool",
+      "Caregiver/Guardian interview",
+      "Functional Behavior Assessment",
+      "Functional Analysis",
+      "Client Observation",
+      "Review results with parent",
+    ];
+
+    const REPORTING = [
+      "Medical Record Review",
+      "Analysis of past data",
+      "Assessment Scoring / Interpretation of results",
+      "Treatment plan / goal development",
+      "Report Review and Edits",
+    ];
+
+    const GROUP_OPTIONS = { activities: ACTIVITIES, reporting: REPORTING };
+
+    // Output render config — suggested checkboxes, then the narrative field.
+    const FORM_SECTIONS = [
+      { kind: "checklist", heading: "Activities Performed",                  group: "activities" },
+      { kind: "checklist", heading: "Assessment Reporting Tasks",            group: "reporting" },
+      { kind: "narrative", heading: "Brief Summary of Activities Completed", key: "narrative" },
+    ];
+
+    const menu = (arr) => arr.map(x => `"${x}"`).join(" | ");
+
+    // Read-only checklist that mirrors a real-form checkbox group: the whole
+    // option list is shown, with AI-suggested options ticked (and bolded).
+    function Checklist({ options, selected }) {
+      const sel = Array.isArray(selected) ? selected : [];
+      return (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", columnGap: 20, rowGap: 7 }}>
+          {options.map(label => {
+            const on = sel.includes(label);
+            return (
+              <div key={label} style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
+                <span aria-hidden="true" style={{
+                  flexShrink: 0, marginTop: 1, width: 17, height: 17, borderRadius: 4,
+                  border: on ? "1.5px solid #374528" : "1.5px solid #c0d4a8",
+                  background: on ? "#374528" : "white", color: "white",
+                  fontSize: 12, fontWeight: 700, lineHeight: "15px", textAlign: "center",
+                }}>{on ? "✓" : ""}</span>
+                <span style={{ fontSize: 13.5, lineHeight: 1.45, color: on ? "#2d3a1f" : "#9aab86", fontWeight: on ? 600 : 400 }}>{label}</span>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    function App() {
+      const [summaryNotes,     setSummaryNotes]     = React.useState("");
+      const [output,           setOutput]           = React.useState(null);
+      const [loading,          setLoading]          = React.useState(false);
+      const [error,            setError]            = React.useState("");
+      const [copied,           setCopied]           = React.useState(null);
+      const [copiedPrompt,     setCopiedPrompt]     = React.useState(false);
+      const [loggedIn,         setLoggedIn]         = React.useState(() => !!(window.NotesGate && NotesGate.isLoggedIn()));
+      const TOOL_ID = "assess";
+      const canUse  = loggedIn && !!(window.NotesGate && NotesGate.canUseTool(TOOL_ID));
+      React.useEffect(() => (window.NotesGate ? NotesGate.subscribe(setLoggedIn) : undefined), []);
+      const [promptText,       setPromptText]       = React.useState("");
+      const [scrubNotice,      setScrubNotice]      = React.useState("");
+      const [expanded,         setExpanded]         = React.useState(() => new Set());
+      const toggleExpand = (i) => setExpanded(prev => {
+        const next = new Set(prev);
+        next.has(i) ? next.delete(i) : next.add(i);
+        return next;
+      });
+
+      const SYSTEM_CORE = `You are documenting a Behavior Analyst's assessment session. The BCBA is the author documenting their own work. Write in third-person clinical prose: "The Behavior Analyst administered…", "Results indicated…."
+
+Frame all content for medical necessity. Embed clinical purpose inline — "[instrument] was administered to identify [deficit or function], [how findings inform planning]" — not as a separate purpose sentence. Example: "The VB-MAPP was administered to identify language repertoire gaps informing skill acquisition targets for the upcoming authorization period" — not "The VB-MAPP was administered. Purpose: assess language skills."
+
+OUTPUT: (a) a 5–8 sentence third-person clinical narrative for the "Brief Summary of Activities Completed" field, (b) conservative checkbox inferences for the BCBA to verify.
+
+RULES
+- Stick strictly to what is reported. Do not embellish or invent instruments, scores, or outcomes.
+- Plain, precise clinical language. Sparse notes → brief honest sentences.
+- Scope to assessment activities, protocol review, and follow-up items only.
+
+CHECKBOX INFERENCE: For "activities" and "reporting" return ONLY verbatim values from the allowed lists. Empty array if unsupported.
+
+TERMINOLOGY (non-negotiable)
+- Reinforcement is contingent on behavior. Never "[person] was reinforced."
+- Precise verbs: administered [instrument], conducted a preference assessment, conducted FBA/FA, ran probes, established baseline, observed, interviewed, scored, identified function.
+- Name instruments specifically (VB-MAPP, AFLS, Vineland-3, MSWO, indirect FA). No generic phrases like "assessment was conducted."
+- Objective, observable language — no value-laden phrasing.`;
+
+      const JSON_FORMAT_BLOCK = `\n\nOUTPUT FORMAT\nReturn ONLY a single JSON object. No markdown, no preamble. Use EXACTLY these keys; arrays hold verbatim option labels (empty [] if unsupported); "narrative" is the 5–8 sentence clinical summary.\n{\n  "activities": [],\n  "reporting": [],\n  "narrative": ""\n}`;
+
+      const LABELED_FORMAT_BLOCK = `\n\nOUTPUT FORMAT\nReturn labeled sections in the exact order below. For each "[tick]" line, list ONLY the options that apply, comma-separated and verbatim from that section's allowed list; if none apply write "None selected." For "[narrative]" write the 5–8 sentence summary. No JSON, no preamble, no commentary.\n\nACTIVITIES PERFORMED [tick]\nASSESSMENT REPORTING TASKS [tick]\nBRIEF SUMMARY OF ACTIVITIES COMPLETED [narrative]`;
+
+      const buildUserPrompt = () => [
+        `Summary notes of activities (primary source — use as the basis of the narrative and the checkbox inference):`,
+        summaryNotes.trim() || "(none provided)",
+        ``,
+        `ALLOWED CHECKBOX OPTIONS (return only verbatim values from these lists):`,
+        `- activities: ${menu(ACTIVITIES)}`,
+        `- reporting: ${menu(REPORTING)}`,
+      ].join("\n");
+
+      const normalizeOutput = (raw) => {
+        const o = raw && typeof raw === "object" ? raw : {};
+        return {
+          activities: (Array.isArray(o.activities) ? o.activities : []).filter(v => ACTIVITIES.includes(v)),
+          reporting:  (Array.isArray(o.reporting)  ? o.reporting  : []).filter(v => REPORTING.includes(v)),
+          narrative:  typeof o.narrative === "string" ? o.narrative : "",
+        };
+      };
+
+      const collectFreeText = () => summaryNotes;
+
+      const handleGenerate = async () => {
+        if (!summaryNotes.trim()) { setError("Please enter Summary Notes of Activities."); return; }
+        if (!NotesGate.isLoggedIn()) { NotesGate.openLogin(); return; }
+        setError("");
+        if (!(await NotesScrub.acknowledge())) return;
+        const review = await NotesScrub.review({ freeText: collectFreeText() });
+        if (review.cancelled) return;
+        setScrubNotice(NotesScrub.noticeText(review.map));
+        setLoading(true);
+        setOutput(null);
+        try {
+          const parsed = await NotesGate.generateNote({ systemPrompt: SYSTEM_CORE + JSON_FORMAT_BLOCK, userPrompt: NotesScrub.applyMap(buildUserPrompt(), review.map), tool: TOOL_ID });
+          setOutput(normalizeOutput(parsed));
+        } catch (e) {
+          setError(e.message || "Generation failed. Please try again.");
+          const _tok = localStorage.getItem("notes_auth_token");
+          if (_tok) fetch(NotesGate.apiUrl("/api/error-report"), { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + _tok }, body: JSON.stringify({ message: e.message || "unknown", tool: TOOL_ID, timestamp: new Date().toISOString() }) }).catch(() => {});
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const handleGeneratePrompt = async () => {
+        if (!summaryNotes.trim()) { setError("Please enter Summary Notes of Activities."); return; }
+        setError("");
+        if (!(await NotesScrub.acknowledge())) return;
+        const review = await NotesScrub.review({ freeText: collectFreeText() });
+        if (review.cancelled) return;
+        setScrubNotice(NotesScrub.noticeText(review.map));
+        setPromptText(NotesScrub.applyMap(`${SYSTEM_CORE + LABELED_FORMAT_BLOCK}\n\n---\n\n${buildUserPrompt()}`, review.map));
+        setCopiedPrompt(false);
+      };
+
+      const handleCopyPromptText = () => {
+        if (!promptText) return;
+        navigator.clipboard.writeText(promptText);
+        setCopiedPrompt(true);
+        setTimeout(() => setCopiedPrompt(false), 1800);
+      };
+
+      const handleCopy = (id, text) => {
+        navigator.clipboard.writeText(text);
+        setCopied(id);
+        setTimeout(() => setCopied(null), 1800);
+      };
+
+      const sectionToText = (s) => {
+        if (s.kind === "narrative") return `${s.heading}\n${output[s.key] || ""}`;
+        const ticks = output[s.group] || [];
+        return `${s.heading}\nTick: ${ticks.length ? ticks.join(", ") : "None selected"}`;
+      };
+
+      const handleCopyAll = () => {
+        if (!output) return;
+        navigator.clipboard.writeText(FORM_SECTIONS.map(sectionToText).join("\n\n"));
+        setCopied("all");
+        setTimeout(() => setCopied(null), 1800);
+      };
+
+      const card      = { background: "white", borderRadius: 12, border: "1px solid #c0d4a8", padding: 24, marginBottom: 20 };
+      const lbl       = { fontSize: 13, fontWeight: 600, color: "#374528", textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 8 };
+      const subLbl    = { fontSize: 14, fontWeight: 600, color: "#374528", display: "block", marginBottom: 10 };
+      const inputBase = { width: "100%", padding: "10px 14px", borderRadius: 8, border: "1.5px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", background: "#fafcf8" };
+
+      return (
+        <div style={{ maxWidth: 820, margin: "0 auto" }}>
+
+          {/* Header */}
+          <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <h1 style={{ fontSize: 26, fontWeight: 700, color: "#2d3a1f", marginBottom: 4 }}>Assessment Note Tool</h1>
+              <p style={{ fontSize: 14, color: "#5a6b4a" }}>Describe what was done — the tool drafts the clinical summary and suggests which checkboxes to select on your EHR form.</p>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <a href="../scrubber.html" target="_blank" style={{ padding: "7px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "#f0f4ec", color: "#374528", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>Scrubber →</a>
+              <a href="/" style={{ padding: "7px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>← Back</a>
+            </div>
+          </div>
+
+          {/* Disclaimer */}
+          <div style={{ marginBottom: 24, padding: "14px 18px", borderRadius: 10, border: "1.5px solid #d4b483", background: "#fdf6e8", color: "#5a4420", fontSize: 13, lineHeight: 1.55 }}>
+            <strong style={{ color: "#7a5a1a" }}>Disclaimer:</strong> Use of these AI-assisted queries is subject to the legal and regulatory constraints of the user's jurisdiction. These tools do not remove the user's responsibility to review all output for accuracy and to maintain compliance with the ethical standards of their credentialing board for professional behavior analysis work.{" "}
+            <strong style={{ color: "#7a5a1a" }}>Do not enter any PHI (Protected Health Information) into this tool.</strong> PHI is any detail that could identify a specific client — including names, dates of birth, addresses, phone numbers, ID or insurance numbers, or any other personal identifiers.
+          </div>
+
+          {/* Inputs card */}
+          <div style={card}>
+
+            {/* Summary notes of activities */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={subLbl}>Summary Notes of Activities <span style={{ color: "#c0392b" }}>*</span></label>
+              <p style={{ fontSize: 12.5, color: "#7a9460", marginBottom: 10, lineHeight: 1.55 }}>
+                Describe what was done this session — which assessment tools/interviews/observations/analyses you ran, reporting tasks (record review, scoring, treatment-plan work), findings, scores, and follow-up items. Name instruments (e.g. VB-MAPP, Vineland-3). The tool drafts the narrative and suggests which activity and reporting checkboxes to select on your form.
+              </p>
+              <textarea
+                value={summaryNotes}
+                onChange={e => setSummaryNotes(e.target.value)}
+                placeholder={"No PHI. Bullets are fine, e.g.:\n- VB-MAPP milestones administered, levels 1–2 complete\n- Caregiver interview re: increase in tantrums over past 2 weeks\n- Observed 4 instances of elopement during 30-min play\n- Scored protocol; began treatment-plan goal development\n- Need to schedule follow-up for preference assessment"}
+                style={{ ...inputBase, height: 200, resize: "vertical", lineHeight: 1.6 }}
+              />
+            </div>
+
+            {error && <p style={{ color: "#c0392b", fontSize: 13, marginBottom: 12 }}>{error}</p>}
+            {scrubNotice && (
+              <div style={{ margin: "0 0 16px", borderRadius: 10, border: "2px solid #c8962a", overflow: "hidden" }}>
+                <div style={{ padding: "8px 14px", background: "#fdf3dc", color: "#5a3d00", fontSize: 12, lineHeight: 1.5 }}>
+                  <strong>Removed before this left your device:</strong> {scrubNotice}{" "}
+                  <span style={{ color: "#7a6020" }}>— substitute back in your EHR.</span>
+                </div>
+                <div style={{ padding: "10px 14px", background: "#fff8ec", color: "#3d2a00", fontSize: 13.5, fontWeight: 600, lineHeight: 1.55 }}>
+                  ⚠️ {NotesScrub.SCRUB_GUIDANCE}
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button
+                onClick={!loggedIn ? () => NotesGate.openLogin() : (canUse ? handleGenerate : undefined)}
+                disabled={loading || (loggedIn && !canUse)}
+                style={{
+                  padding: "11px 28px", borderRadius: 8, border: "none",
+                  background: (loading || (loggedIn && !canUse)) ? "#a0b890" : "#374528",
+                  color: "white", fontSize: 15, fontWeight: 600,
+                  cursor: (loading || (loggedIn && !canUse)) ? "not-allowed" : "pointer",
+                }}
+              >
+                {!loggedIn ? "Log in" : (canUse ? (loading ? "Generating…" : "Generate Summary") : "No access for this tool")}
+              </button>
+              <button
+                onClick={handleGeneratePrompt}
+                style={{
+                  padding: "11px 18px", borderRadius: 8,
+                  border: "1.5px solid #374528",
+                  background: "white", color: "#374528",
+                  fontSize: 14, fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                Generate Prompt
+              </button>
+              {loggedIn && (
+                <button onClick={() => NotesGate.logout()} style={{
+                  marginLeft: "auto", padding: "9px 16px", borderRadius: 8,
+                  border: "1.5px solid #c0d4a8", background: "white", color: "#5a6b4a", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                }}>
+                  Log out
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Generated Prompt output */}
+          {promptText && (
+            <div style={{ ...card }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>Generated Prompt</h2>
+                <button
+                  onClick={handleCopyPromptText}
+                  style={{ padding: "7px 16px", borderRadius: 7, border: "1.5px solid #374528", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                >
+                  {copiedPrompt ? "Copied!" : "Copy"}
+                </button>
+              </div>
+              <textarea
+                readOnly
+                value={promptText}
+                style={{ width: "100%", minHeight: 220, padding: 12, borderRadius: 8, border: "1px solid #c0d4a8", fontSize: 13, color: "#2d3a1f", lineHeight: 1.6, resize: "vertical", background: "#f7fbf3", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+              />
+            </div>
+          )}
+
+          {/* Output — suggested checkbox ticks + narrative, mirroring the EHR form */}
+          {output && (
+            <div style={{ ...card, marginBottom: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>Generated Summary</h2>
+                <button
+                  onClick={handleCopyAll}
+                  style={{ padding: "7px 16px", borderRadius: 7, border: "1.5px solid #374528", background: copied === "all" ? "#374528" : "white", color: copied === "all" ? "white" : "#374528", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                >
+                  {copied === "all" ? "Copied!" : "Copy All"}
+                </button>
+              </div>
+              <p style={{ fontSize: 13, color: "#7a9460", marginBottom: 20, lineHeight: 1.55 }}>Checklists are suggestions from your notes — review, then tick the matching boxes on your form. The narrative is editable before you copy it.</p>
+
+              <div className="output-grid">
+                {FORM_SECTIONS.map((s, i) => {
+                  const isNarrative = s.kind === "narrative";
+                  const isOpen = expanded.has(i);
+                  // Checklists span the full row; narratives sit 2-up and expand on demand.
+                  const fullRow = !isNarrative || isOpen;
+                  return (
+                  <div key={i} className={fullRow ? "full-row" : undefined} style={{ borderRadius: 9, border: "1px solid #ddecd0", background: "#f7fbf3", padding: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, gap: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#374528" }}>{s.heading}</span>
+                      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                        {isNarrative && (
+                          <button
+                            onClick={() => toggleExpand(i)}
+                            title={isOpen ? "Collapse to half width" : "Expand to full row"}
+                            style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #c0d4a8", background: "white", color: "#374528", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
+                          >
+                            {isOpen ? "⤡ Collapse" : "⤢ Expand"}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleCopy("sec" + i, sectionToText(s))}
+                          style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #c0d4a8", background: "white", color: "#374528", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
+                        >
+                          {copied === "sec" + i ? "Copied!" : "Copy"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {isNarrative && (
+                      <textarea
+                        value={output[s.key]}
+                        onChange={e => setOutput(prev => ({ ...prev, [s.key]: e.target.value }))}
+                        style={{ width: "100%", minHeight: isOpen ? 180 : 140, padding: 12, borderRadius: 8, border: "1px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", lineHeight: 1.7, resize: "vertical", background: "white" }}
+                      />
+                    )}
+
+                    {s.kind === "checklist" && (
+                      (output[s.group] && output[s.group].length)
+                        ? <Checklist options={GROUP_OPTIONS[s.group]} selected={output[s.group]} />
+                        : <p style={{ fontSize: 13, color: "#9aab86", fontStyle: "italic" }}>No selection suggested — leave blank or review your notes.</p>
+                    )}
+                  </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

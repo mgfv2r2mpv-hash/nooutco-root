@@ -1,0 +1,20 @@
+name: scrub-learning-nightly
+
+# Cloudflare Pages cannot run cron triggers, so the nightly PHI scrub-learning run is
+# fired from here. It POSTs to /api/admin/scrub-run, authenticated with CRON_SECRET
+# (set as both a Cloudflare Worker secret and a GitHub repo secret). The run only
+# PROPOSES stopwords for human review — it never changes detection on its own.
+
+on:
+  schedule:
+    - cron: "0 7 * * *" # 07:00 UTC = 3am EDT
+  workflow_dispatch: {} # manual "Run workflow" button for testing
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger scrub-learning run
+        run: |
+          curl -fsS -X POST https://tools.nooutco.me/api/admin/scrub-run \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

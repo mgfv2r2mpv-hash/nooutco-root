@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BT Notes</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <script src="/assets/notes-gate.js"></script>
+  <script src="/assets/notes-scrub.js"></script>
+  <script src="/assets/error-button.js" defer></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Inter, sans-serif;
+      background: #f0f4ec;
+      min-height: 100vh;
+      padding: 32px 20px;
+      color: #2d3a1f;
+    }
+    .info-tip {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .info-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 1px solid #c0d4a8;
+      background: #eef4e6;
+      color: #5a7040;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: help;
+      line-height: 1;
+      user-select: none;
+    }
+    .info-icon:focus { outline: 2px solid #5a7040; outline-offset: 1px; }
+    .info-bubble {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      visibility: hidden;
+      opacity: 0;
+      background: #2d3a1f;
+      color: white;
+      padding: 9px 12px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 1.55;
+      width: 260px;
+      text-align: left;
+      z-index: 100;
+      pointer-events: none;
+      transition: opacity 0.12s ease;
+      white-space: normal;
+      box-shadow: 0 4px 14px rgba(45, 58, 31, 0.18);
+    }
+    .info-bubble::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: #2d3a1f;
+    }
+    .info-tip:hover .info-bubble,
+    .info-tip:focus-within .info-bubble {
+      visibility: visible;
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // ── Canonical option lists ──────────────────────────────────────────────
+    // These labels are BOTH the menu the AI may choose from AND the strings the
+    // output checklist renders/compares. They must match the EHR form's wording.
+    const INDIVIDUALS_PRESENT = ["Client", "BCBA", "Parent/Caregiver", "Sibling(s)/Peer(s)", "Other"];
+
+    const CLINICAL_STATUS = [
+      "Ready to Start Learning",
+      "Presented Tired",
+      "Presented Hungry/Thirsty",
+      "Presented Distracted/Unfocused",
+      "Appeared unwell/ill",
+      "Dysregulated/Engaging in Behavior of Concern",
+      "Recent Medication Use/Change",
+    ];
+
+    const PURPOSE_OF_SESSION = [
+      "Worked on goals as stated in the treatment plan",
+      "Paired staff with reinforcement and established instructional control",
+      "Implemented Behavior Plans",
+    ];
+
+    const ABA_TECHNIQUES = [
+      "Discrete Trial Training",
+      "Natural Environment Training",
+      "Task Analysis",
+      "Functional Communication Training",
+      "Errorless Learning",
+      "Most to Least Prompting",
+      "Least to Most Prompting",
+      "Differential Reinforcement",
+      "Token Economy",
+    ];
+
+    const ANTECEDENT_STRATEGIES = [
+      "Environmental arrangement",
+      "Visual schedule",
+      "Offered choices",
+      "Utilized Premack principle (first-then)",
+      "Priming/provided warning",
+      "Motivation alteration / manipulation",
+      "Other",
+    ];
+
+    const CONSEQUENCE_STRATEGIES = [
+      "Redirection",
+      "Lessened response requirement",
+      "Prompted functional communication",
+      "Allowed break",
+      "Differential reinforcement",
+      "Other",
+    ];
+
+    const EFFECTIVENESS = [
+      "Highly effective at addressing behaviors and mitigating future incidents",
+      "Moderately effective at addressing behaviors within session",
+      "Not effective at addressing behaviors within session, additional support needed",
+    ];
+
+    const CLIENT_PROGRESS = [
+      "Steady progress towards goals and behaviors",
+      "Behavior of concern impacted session and progress towards goals",
+      "Limited progress towards achieving goals",
+    ];
+
+    const BCBA_ACTION_ITEMS = [
+      "Contact family – scheduling/staffing",
+      "Contact family – new behavior",
+      "Contact family – billing questions",
+      "Contact staff",
+      "Materials needed for programming",
+      "None",
+    ];
+
+    const PLACE_OF_SERVICE = ["Home", "Clinic/Center", "School", "Community", "Other"];
+
+    // Map each AI checkbox/single-select key to its canonical option list, used by
+    // both the output render and the post-parse value filtering.
+    const GROUP_OPTIONS = {
+      individualsPresent: INDIVIDUALS_PRESENT,
+      clinicalStatus: CLINICAL_STATUS,
+      purpose: PURPOSE_OF_SESSION,
+      abaTechniques: ABA_TECHNIQUES,
+      antecedentStrategies: ANTECEDENT_STRATEGIES,
+      consequenceStrategies: CONSEQUENCE_STRATEGIES,
+      actionItems: BCBA_ACTION_ITEMS,
+      consequenceEffectiveness: EFFECTIVENESS,
+      clientProgress: CLIENT_PROGRESS,
+    };
+
+    // Output render config — mirrors the EHR form top-to-bottom.
+    //   kind: "checklist" (multi) | "single" (one choice) | "narrative" (prose) | "facts"
+    const FORM_SECTIONS = [
+      { kind: "checklist", heading: "Individuals Present",                         group: "individualsPresent" },
+      { kind: "checklist", heading: "Clinical Status Of Client Upon Arrival",      group: "clinicalStatus" },
+      { kind: "narrative", heading: "Further Detail On Clinical Status",           key: "clinicalStatusNarrative" },
+      { kind: "checklist", heading: "Purpose of Session",                          group: "purpose" },
+      { kind: "facts",     heading: "Place of Service / Telehealth / Service Paused" },
+      { kind: "checklist", heading: "ABA Teaching Techniques Used",                group: "abaTechniques" },
+      { kind: "narrative", heading: "Narrative of Lesson Progress",                key: "lessonProgressNarrative" },
+      { kind: "checklist", heading: "Antecedent Strategies Utilized",              group: "antecedentStrategies" },
+      { kind: "narrative", heading: "Describe Antecedent Modifications Implemented in Session and Impact", key: "antecedentNarrative" },
+      { kind: "checklist", heading: "Consequence Strategies Utilized",             group: "consequenceStrategies" },
+      { kind: "single",    heading: "Effectiveness of Consequence Strategies",     group: "consequenceEffectiveness" },
+      { kind: "narrative", heading: "Narrative of Behavior Support Plan Goals Progress", key: "behaviorPlanNarrative" },
+      { kind: "single",    heading: "Client Progress",                             group: "clientProgress" },
+      { kind: "checklist", heading: "Action Items for BCBA",                       group: "actionItems" },
+      { kind: "narrative", heading: "Summary of Concerns/Questions/Involvement",   key: "followUpNarrative" },
+    ];
+
+    // ── Recognition-framed help content (rendered as a scannable list) ───────
+    const HELP_SESSION = {
+      intro: "Just jot what you saw — no need to label anything.",
+      items: [
+        { t: "How they arrived", d: "ready & engaged, tired, hungry/thirsty, distracted, seemed unwell, upset or already having behavior, or a recent medication change" },
+        { t: "Focus of session", d: "building rapport / getting them to work with you (pairing), running learning programs, or working on a behavior plan" },
+        { t: "Pauses", d: "mention if the session was unexpectedly paused (e.g., a nap)" },
+      ],
+    };
+    const HELP_LESSON = {
+      intro: "Did any of these happen? Name the ones you used.",
+      items: [
+        { t: "Differential reinforcement", d: "you reinforced the behavior you want to see (the replacement skill or appropriate behavior) and gave little to no reinforcement to the problem behavior you're trying to reduce" },
+        { t: "Errorless", d: "prompted right away so they didn't make mistakes" },
+        { t: "Most-to-Least", d: "started with strong help and faded it" },
+        { t: "Least-to-Most", d: "started with little help, added more only if needed" },
+        { t: "Discrete Trial Training", d: "structured repeated trials" },
+        { t: "Natural Environment Training", d: "teaching during play / natural routines" },
+        { t: "Task Analysis", d: "breaking a multi-step skill into steps" },
+        { t: "Functional Communication Training", d: "teaching them to communicate instead of using behavior" },
+        { t: "Token Economy", d: "earning tokens toward a reward" },
+      ],
+    };
+    const HELP_ANTECEDENT = {
+      intro: "Did you do any of these to prevent problems before they started?",
+      items: [
+        { t: "Environmental arrangement", d: "set up the space / removed distractions or unsafe items" },
+        { t: "Visual schedule", d: "showed what's coming with a picture schedule" },
+        { t: "Offered choices", d: "let them pick between options" },
+        { t: "Premack / first-then", d: "said “first this, then that” — most people do this without knowing the name" },
+        { t: "Priming / warning", d: "a heads-up or countdown before a transition or before ending something fun" },
+        { t: "Motivation alteration", d: "adjusted things to meet a need — e.g., a break before a hard task, or held back a preferred item so it stayed motivating" },
+        { t: "Also worth a mention", d: "non-contingent reinforcement, easy wins first (behavior momentum), pre-session pairing, simplified instructions" },
+      ],
+    };
+    const HELP_BEHAVIOR = {
+      intro: "What behavior(s) of concern happened (even if zero), and how did you respond?",
+      items: [
+        { t: "Redirection", d: "redirected to an appropriate task" },
+        { t: "Lessened response requirement", d: "briefly lowered the demand" },
+        { t: "Prompted functional communication", d: "cued them to ask / communicate" },
+        { t: "Allowed break", d: "gave a break to de-escalate" },
+        { t: "Differential reinforcement", d: "reinforced the replacement behavior, withheld for the target" },
+        { t: "Then say", d: "how well it worked (highly / moderately / not effective) and how rates compared to recent sessions" },
+      ],
+    };
+    const HELP_FOLLOWUP = {
+      intro: "Anything the BCBA should do or know.",
+      items: [
+        { t: "Action items", d: "scheduling/staffing, a new behavior, billing, contact staff, materials needed — or nothing new" },
+        { t: "Overall progress", d: "steady, impacted by behavior of concern, or limited" },
+        { t: "No need to repeat", d: "things you mentioned above are surfaced here automatically" },
+      ],
+    };
+
+    function Tip({ text }) {
+      const style = {
+        fontSize: 12,
+        color: "#5a7040",
+        background: "#eef4e6",
+        border: "1px solid #c8dba8",
+        borderRadius: 7,
+        padding: "7px 11px",
+        marginTop: 7,
+        lineHeight: 1.55,
+      };
+      return <div style={style}>{text}</div>;
+    }
+
+    function InfoTooltip({ text }) {
+      return (
+        <span className="info-tip">
+          <span className="info-icon" tabIndex="0" role="button" aria-label="More information">i</span>
+          <span className="info-bubble" role="tooltip">{text}</span>
+        </span>
+      );
+    }
+
+    // Read-only checklist that mirrors a real-form checkbox group: the whole
+    // option list is shown, with AI-suggested options ticked (and bolded).
+    function Checklist({ options, selected, single = false }) {
+      const sel = single ? (selected ? [selected] : []) : (Array.isArray(selected) ? selected : []);
+      return (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", columnGap: 20, rowGap: 7 }}>
+          {options.map(label => {
+            const on = sel.includes(label);
+            return (
+              <div key={label} style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
+                <span aria-hidden="true" style={{
+                  flexShrink: 0, marginTop: 1, width: 17, height: 17, borderRadius: single ? "50%" : 4,
+                  border: on ? "1.5px solid #374528" : "1.5px solid #c0d4a8",
+                  background: on ? "#374528" : "white", color: "white",
+                  fontSize: 12, fontWeight: 700, lineHeight: "15px", textAlign: "center",
+                }}>{on ? "✓" : ""}</span>
+                <span style={{ fontSize: 13.5, lineHeight: 1.45, color: on ? "#2d3a1f" : "#9aab86", fontWeight: on ? 600 : 400 }}>{label}</span>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // ── Shared style tokens (module scope so GuidedField can use them too) ────
+    const CARD   = { background: "white", borderRadius: 12, border: "1px solid #c0d4a8", padding: 24, marginBottom: 20 };
+    const LBL    = { fontSize: 13, fontWeight: 600, color: "#374528", textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: 8 };
+    const SUBLBL = { fontSize: 15, fontWeight: 700, color: "#2d3a1f", display: "block", marginBottom: 6 };
+    const HINT   = { fontSize: 12.5, color: "#7a9460", marginBottom: 10, lineHeight: 1.55 };
+    const INPUT  = { width: "100%", padding: "10px 14px", borderRadius: 8, border: "1.5px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", background: "#fafcf8" };
+
+    // Scannable, in-flow help panel (replaces hover tooltips): bold term — plain description.
+    function HelpList({ intro, items }) {
+      return (
+        <div style={{ background: "#eef4e6", border: "1px solid #c8dba8", borderRadius: 8, padding: "11px 14px", margin: "2px 0 12px", fontSize: 12.5, color: "#41502c", lineHeight: 1.5 }}>
+          {intro && <p style={{ marginBottom: items && items.length ? 8 : 0 }}>{intro}</p>}
+          {items && items.length > 0 && (
+            <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(330px, 1fr))", columnGap: 18, rowGap: 5 }}>
+              {items.map((it, i) => (
+                <li key={i}><strong style={{ color: "#2d3a1f" }}>{it.t}</strong>{it.d ? ` — ${it.d}` : ""}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      );
+    }
+
+    // A guided free-text field: label, optional click-to-expand help list, hint, textarea.
+    // Module-scope so its open/closed state survives parent re-renders (typing).
+    function GuidedField({ title, required, help, hint, value, onChange, placeholder, height }) {
+      const [open, setOpen] = React.useState(false);
+      return (
+        <div style={CARD}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 6 }}>
+            <span style={{ ...SUBLBL, marginBottom: 0 }}>{title}{required && <span style={{ color: "#c0392b" }}> *</span>}</span>
+            {help && (
+              <button onClick={() => setOpen(o => !o)} style={{
+                flexShrink: 0, padding: "4px 12px", borderRadius: 20, cursor: "pointer",
+                border: open ? "1.5px solid #374528" : "1.5px solid #c0d4a8",
+                background: open ? "#374528" : "white", color: open ? "white" : "#5a7040",
+                fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
+              }}>{open ? "Hide examples ▴" : "Examples ▾"}</button>
+            )}
+          </div>
+          {open && help && <HelpList intro={help.intro} items={help.items} />}
+          <p style={HINT}>{hint}</p>
+          <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+            style={{ ...INPUT, height, resize: "vertical", lineHeight: 1.6 }}
+          />
+        </div>
+      );
+    }
+
+    function App() {
+      const [loggedIn,          setLoggedIn]         = React.useState(() => !!(window.NotesGate && NotesGate.isLoggedIn()));
+      const TOOL_ID = "bt";
+      const canUse  = loggedIn && !!(window.NotesGate && NotesGate.canUseTool(TOOL_ID));
+
+      // Factual quick-picks (cannot be inferred from clinical narrative).
+      const [placeOfService, setPlaceOfService] = React.useState(() => {
+        const saved = localStorage.getItem("bt_pos");
+        return saved || "Home";
+      });
+      const [telehealth,     setTelehealth]     = React.useState("No");
+
+      // The five guided free-text fields.
+      const [fSession,    setFSession]    = React.useState("");
+      const [fLesson,     setFLesson]     = React.useState("");
+      const [fAntecedent, setFAntecedent] = React.useState("");
+      const [fBehavior,   setFBehavior]   = React.useState("");
+      const [fFollowUp,   setFFollowUp]   = React.useState("");
+
+      const [output,       setOutput]      = React.useState(null);
+      const [loading,      setLoading]     = React.useState(false);
+      const [error,        setError]       = React.useState("");
+      const [copied,       setCopied]      = React.useState(null);
+      const [promptText,   setPromptText]  = React.useState("");
+      const [copiedPrompt, setCopiedPrompt]= React.useState(false);
+      const [scrubNotice,  setScrubNotice] = React.useState("");
+
+      React.useEffect(() => (window.NotesGate ? NotesGate.subscribe(setLoggedIn) : undefined), []);
+
+      const menu = (arr) => arr.map(x => `"${x}"`).join(" | ");
+
+      // Shared core — role, voice, guardrails, terminology.
+      const SYSTEM_CORE =
+        `You are an ABA clinical documentation assistant turning a BT's raw session notes into a polished "Adaptive Behavior Treatment by Protocol" note. The BT is the author; write third-person clinical prose — "The behavior technician implemented…", "The client demonstrated…" — for funders/payers and the supervising BCBA.
+
+OUTPUT: (a) third-person clinical narratives for free-text sections, (b) conservative checkbox inferences for the BT to verify.
+
+RULES
+- Report concrete implementation: programs run, prompt types/levels/fading decisions, behavioral occurrences + BT response, antecedent strategies as applied, observable client outcomes.
+- Plain, precise clinical language. Expand fragments into complete sentences; sparse sections get a brief honest sentence.
+- ANTI-FABRICATION: Never invent activities, programs, data points, prompt levels, strategies, or outcomes not in the notes. Unsupported sections → minimal honest statement + empty checkboxes.
+
+CHECKBOX INFERENCE
+- Return ONLY verbatim values from each group's allowed list. Never invent or reword options.
+- Infer conservatively; cross-read the whole note — purpose follows what was done, action items surface from anything mentioned anywhere.
+
+BEHAVIORAL RECHARACTERIZATION
+Translate mentalistic or colloquial language into behavioral observation using only what was reported — never add behaviors or clinical meaning not stated. "He was cranky" alone → "the client presented with apparent negative affect"; with "aggression x2" added → "the client engaged in aggression on two occasions."
+
+TERMINOLOGY (non-negotiable)
+- Reinforcement is contingent on behavior. Write "[behavior] was reinforced" or "reinforcement was delivered contingent on [behavior]" — never "[person] was reinforced."
+- Precise verbs: prompted, faded, modeled, shaped, chained, redirected, blocked, delivered/withheld reinforcement, ran a trial, presented the SD.
+- Name prompt types specifically (gestural, partial verbal, full physical, errorless). No loose synonyms (rewarded, encouraged, motivated).
+- Objective, observable language. No value-laden phrasing.`;
+
+      // Output-format block for the JSON (direct-generation) path.
+      const JSON_FORMAT_BLOCK =
+        `\n\nOUTPUT FORMAT\nReturn ONLY a single JSON object. No markdown, no preamble, no commentary. Use EXACTLY these keys; arrays hold verbatim option labels (empty [] if unsupported); single-selects are one verbatim label or "". servicePaused is "Yes" or "No" (default "No" unless the notes mention an unexpected pause).\n{\n  "individualsPresent": [],\n  "clinicalStatus": [],\n  "clinicalStatusNarrative": "",\n  "purpose": [],\n  "servicePaused": "No",\n  "abaTechniques": [],\n  "lessonProgressNarrative": "",\n  "antecedentStrategies": [],\n  "antecedentNarrative": "",\n  "consequenceStrategies": [],\n  "consequenceEffectiveness": "",\n  "behaviorPlanNarrative": "",\n  "clientProgress": "",\n  "actionItems": [],\n  "followUpNarrative": ""\n}`;
+
+      // Output-format block for the copy-paste path.
+      const LABELED_FORMAT_BLOCK =
+        `\n\nOUTPUT FORMAT\nReturn labeled sections in the exact order below. For each "[tick]" line, list ONLY the options that apply, comma-separated and verbatim from that section's allowed list; if none apply write "None selected." For "[choose one]" pick exactly one allowed option (or "None"). For "[narrative]" write the prose. No JSON, no preamble, no commentary.\n\nINDIVIDUALS PRESENT [tick]\nCLINICAL STATUS UPON ARRIVAL [tick]\nFURTHER DETAIL ON CLINICAL STATUS [narrative]\nPURPOSE OF SESSION [tick]\nSERVICE PAUSED DURING SESSION [choose one: Yes / No]\nABA TEACHING TECHNIQUES USED [tick]\nNARRATIVE OF LESSON PROGRESS [narrative]\nANTECEDENT STRATEGIES UTILIZED [tick]\nDESCRIBE ANTECEDENT MODIFICATIONS AND IMPACT [narrative]\nCONSEQUENCE STRATEGIES UTILIZED [tick]\nEFFECTIVENESS OF CONSEQUENCE STRATEGIES [choose one]\nNARRATIVE OF BEHAVIOR SUPPORT PLAN GOALS PROGRESS [narrative]\nCLIENT PROGRESS [choose one]\nACTION ITEMS FOR BCBA [tick]\nSUMMARY OF CONCERNS/QUESTIONS/INVOLVEMENT [narrative]\n\nIf the BT notes for a cluster are empty or nonsense, leave its ticks "None selected" and write a brief note prompting the BT to add detail.`;
+
+      const buildUserPrompt = () => [
+        `FACTUAL SESSION DATA (provided — do not infer, do not include in JSON):`,
+        `- Place of service: ${placeOfService || "Not specified"}`,
+        `- Provided via telehealth: ${telehealth || "Not specified"}`,
+        ``,
+        `BT NOTES BY CLUSTER (raw; expand faithfully, never fabricate):`,
+        ``,
+        `[1] SESSION START & CONTEXT (who was present, how the client presented on arrival, purpose, any unexpected pause):`,
+        fSession.trim() || "(none provided)",
+        ``,
+        `[2] SKILL ACQUISITION / LESSON (teaching techniques used + lesson progress across ideally two programs):`,
+        fLesson.trim() || "(none provided)",
+        ``,
+        `[3] ANTECEDENT STRATEGIES (proactive strategies used to prevent/reduce behavior, and their impact):`,
+        fAntecedent.trim() || "(none provided)",
+        ``,
+        `[4] BEHAVIOR & STAFF RESPONSE (behavior of concern incl. zero, consequence strategies, how well they worked, rates vs. recent sessions):`,
+        fBehavior.trim() || "(none provided)",
+        ``,
+        `[5] FOLLOW-UP & CONCERNS (BCBA action items, questions, involvement, overall progress):`,
+        fFollowUp.trim() || `(none provided — default concernsSummary to: "Direct staff do not report new questions or concerns for the BCBA.")`,
+        ``,
+        `ALLOWED CHECKBOX OPTIONS (return only verbatim values from these lists):`,
+        `- individualsPresent: ${menu(INDIVIDUALS_PRESENT)}`,
+        `- clinicalStatus: ${menu(CLINICAL_STATUS)}`,
+        `- purpose: ${menu(PURPOSE_OF_SESSION)}`,
+        `- abaTechniques: ${menu(ABA_TECHNIQUES)}`,
+        `- antecedentStrategies: ${menu(ANTECEDENT_STRATEGIES)}`,
+        `- consequenceStrategies: ${menu(CONSEQUENCE_STRATEGIES)}`,
+        `- actionItems: ${menu(BCBA_ACTION_ITEMS)}`,
+        ``,
+        `ALLOWED SINGLE-SELECT OPTIONS (one verbatim value, or "" if unclear):`,
+        `- consequenceEffectiveness: ${menu(EFFECTIVENESS)}`,
+        `- clientProgress: ${menu(CLIENT_PROGRESS)}`,
+        ``,
+        `NARRATIVE GUIDANCE:`,
+        `- lessonProgressNarrative: 4–8 sentences, ideally across two programs (one social/communication, one adaptive/repetitive-behavior-replacement). Qualitative, specific.`,
+        `- behaviorPlanNarrative: 2–4 sentences, quantitative where reported; state whether behavior increased, decreased, or held steady relative to recent sessions.`,
+        `- antecedentNarrative: describe the antecedent strategies as applied and their impact.`,
+        `- clinicalStatusNarrative: 1–2 sentences on mood/behavior at session start.`,
+        `- concernsSummary (followUpNarrative): brief; use the default sentence above if nothing reported.`,
+      ].join("\n");
+
+      const validate = () => {
+        if (!fLesson.trim())     return "Please add notes for Skill Acquisition / Lesson Progress.";
+        if (!fAntecedent.trim()) return "Please add notes for Antecedent Strategies.";
+        if (!fBehavior.trim())   return "Please add notes for Behavior & Staff Response.";
+        return null;
+      };
+
+      // Coerce the model's JSON into a safe, render-ready shape; drop any
+      // hallucinated/reworded values that aren't on the canonical lists.
+      const NARRATIVE_KEYS = ["clinicalStatusNarrative", "lessonProgressNarrative", "antecedentNarrative", "behaviorPlanNarrative", "followUpNarrative"];
+      const normalizeOutput = (raw) => {
+        const o = raw && typeof raw === "object" ? raw : {};
+        const out = {};
+        Object.keys(GROUP_OPTIONS).forEach(key => {
+          const opts = GROUP_OPTIONS[key];
+          const isSingle = key === "consequenceEffectiveness" || key === "clientProgress";
+          if (isSingle) {
+            out[key] = opts.includes(o[key]) ? o[key] : "";
+          } else {
+            const arr = Array.isArray(o[key]) ? o[key] : [];
+            out[key] = arr.filter(v => opts.includes(v));
+          }
+        });
+        NARRATIVE_KEYS.forEach(key => { out[key] = typeof o[key] === "string" ? o[key] : ""; });
+        out.servicePaused = o.servicePaused === "Yes" ? "Yes" : "No";
+        return out;
+      };
+
+      const collectFreeText = () => [fSession, fLesson, fAntecedent, fBehavior, fFollowUp].join("\n");
+
+      const handleGenerate = async () => {
+        const err = validate();
+        if (err) { setError(err); return; }
+        if (!NotesGate.isLoggedIn()) { NotesGate.openLogin(); return; }
+        setError("");
+        if (!(await NotesScrub.acknowledge())) return;
+        const review = await NotesScrub.review({ freeText: collectFreeText() });
+        if (review.cancelled) return;
+        setScrubNotice(NotesScrub.noticeText(review.map));
+        setLoading(true); setOutput(null);
+        try {
+          const parsed = await NotesGate.generateNote({ systemPrompt: SYSTEM_CORE + JSON_FORMAT_BLOCK, userPrompt: NotesScrub.applyMap(buildUserPrompt(), review.map), tool: TOOL_ID });
+          setOutput(normalizeOutput(parsed));
+        } catch (e) {
+          setError(e.message || "Generation failed. Please try again.");
+          const _tok = localStorage.getItem("notes_auth_token");
+          if (_tok) fetch(NotesGate.apiUrl("/api/error-report"), { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + _tok }, body: JSON.stringify({ message: e.message || "unknown", tool: TOOL_ID, timestamp: new Date().toISOString() }) }).catch(() => {});
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const handleGeneratePrompt = async () => {
+        const err = validate();
+        if (err) { setError(err); return; }
+        setError("");
+        if (!(await NotesScrub.acknowledge())) return;
+        const review = await NotesScrub.review({ freeText: collectFreeText() });
+        if (review.cancelled) return;
+        setScrubNotice(NotesScrub.noticeText(review.map));
+        setPromptText(NotesScrub.applyMap(`${SYSTEM_CORE + LABELED_FORMAT_BLOCK}\n\n---\n\n${buildUserPrompt()}`, review.map));
+        setCopiedPrompt(false);
+      };
+
+      const handleCopy = (id, text) => {
+        navigator.clipboard.writeText(text);
+        setCopied(id);
+        setTimeout(() => setCopied(null), 1800);
+      };
+
+      // Build a plain-text transcript of a section (ticks/choice/narrative).
+      const sectionToText = (s) => {
+        if (s.kind === "facts") {
+          return `${s.heading}\n- Place of Service: ${placeOfService || "Not specified"}\n- Telehealth: ${telehealth || "Not specified"}\n- Service Paused: ${output.servicePaused || "No"}`;
+        }
+        if (s.kind === "narrative") return `${s.heading}\n${output[s.key] || ""}`;
+        if (s.kind === "single") {
+          return `${s.heading}\nSuggested: ${output[s.group] || "(none)"}`;
+        }
+        const ticks = (output[s.group] || []);
+        return `${s.heading}\nTick: ${ticks.length ? ticks.join(", ") : "None selected"}`;
+      };
+
+      const handleCopyAll = () => {
+        if (!output) return;
+        navigator.clipboard.writeText(FORM_SECTIONS.map(sectionToText).join("\n\n"));
+        setCopied("all");
+        setTimeout(() => setCopied(null), 1800);
+      };
+
+      const card = CARD, lbl = LBL, subLbl = SUBLBL, hint = HINT, inputBase = INPUT;
+
+      return (
+        <div style={{ maxWidth: 820, margin: "0 auto" }}>
+
+          {/* Header */}
+          <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <h1 style={{ fontSize: 26, fontWeight: 700, color: "#2d3a1f", marginBottom: 4 }}>BT Direct Service Note Tool</h1>
+              <p style={{ fontSize: 14, color: "#5a6b4a" }}>Enter your session notes as free text. The tool drafts each clinical narrative and suggests which checkboxes to select on your EHR form.</p>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <a href="../scrubber.html" target="_blank" style={{ padding: "7px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "#f0f4ec", color: "#374528", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>Scrubber →</a>
+              <a href="/" style={{ padding: "7px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>← Back</a>
+            </div>
+          </div>
+
+          {/* Disclaimer */}
+          <div style={{ marginBottom: 24, padding: "14px 18px", borderRadius: 10, border: "1.5px solid #d4b483", background: "#fdf6e8", color: "#5a4420", fontSize: 13, lineHeight: 1.55 }}>
+            <strong style={{ color: "#7a5a1a" }}>Disclaimer:</strong> Use of these AI-assisted queries is subject to the legal and regulatory constraints of the user's jurisdiction. These tools do not remove the user's responsibility to review all output for accuracy and to maintain compliance with the ethical standards of their credentialing board for professional behavior analysis work.{" "}
+            <strong style={{ color: "#7a5a1a" }}>Do not enter any PHI (Protected Health Information) into this tool.</strong> PHI is any detail that could identify a specific client — including names, dates of birth, addresses, phone numbers, ID or insurance numbers, or any other personal identifiers.
+          </div>
+
+          {/* ── Quick-picks: facts the AI can't infer (no PHI — category only) ── */}
+          <div style={card}>
+            <span style={subLbl}>Session Facts</span>
+            <p style={hint}>Place of service defaults to <strong>Home</strong> — change if needed. Telehealth defaults to <strong>No</strong>.</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 28 }}>
+              <div>
+                <label style={lbl}>Place of Service</label>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {PLACE_OF_SERVICE.map(p => (
+                    <button key={p} onClick={() => { setPlaceOfService(p); localStorage.setItem("bt_pos", p); }} style={{
+                      padding: "7px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer",
+                      border: placeOfService === p ? "2px solid #374528" : "1.5px solid #c0d4a8",
+                      background: placeOfService === p ? "#374528" : "white",
+                      color: placeOfService === p ? "white" : "#374528",
+                    }}>{p}</button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label style={lbl}>Provided via Telehealth?</label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {["No", "Yes"].map(v => (
+                    <button key={v} onClick={() => setTelehealth(v)} style={{
+                      padding: "7px 20px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer",
+                      border: telehealth === v ? "2px solid #374528" : "1.5px solid #c0d4a8",
+                      background: telehealth === v ? "#374528" : "white",
+                      color: telehealth === v ? "white" : "#374528",
+                    }}>{v}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <GuidedField
+            title="Session Start & Context" help={HELP_SESSION}
+            hint={<>Who was there, how the client seemed when you started, and — in a few words — whether you worked on <strong>building rapport/pairing, skill goals, or reducing a behavior</strong>. We'll suggest the Individuals, Clinical Status, and Purpose checkboxes for you.</>}
+            value={fSession} onChange={setFSession} height={120}
+            placeholder={"No names or other PHI (anything that could identify a specific person).\nFragments are fine, e.g.:\n- BCBA present 20 min; parent home in another room\n- Arrived tired, slow to engage, asked for tablet\n- Ran treatment-plan goals + behavior plan"}
+          />
+
+          <GuidedField
+            title="Skill Acquisition / Lesson Progress" required help={HELP_LESSON}
+            hint={<>What you taught and how it went. Ideally two programs (e.g. one communication/social, one adaptive/daily-living or replacing a repetitive behavior). Include prompting, accuracy/progress, and barriers. If you mention skills worked on, we'll suggest "Worked on goals as stated in the treatment plan" for you.</>}
+            value={fLesson} onChange={setFLesson} height={150}
+            placeholder={"No names or other PHI.\nFragments are fine, e.g.:\n- Receptive ID in DTT, 3-item array; full physical → independent, 2 indep at end\n- Tact training in NET during play, ~70% accuracy\n- Errorless start, faded to gestural prompt"}
+          />
+
+          <GuidedField
+            title="Antecedent Strategies" required help={HELP_ANTECEDENT}
+            hint={<>What you did <strong>proactively</strong> to prevent or reduce behavior of concern, and whether it helped. See <em>Examples</em> for common strategies.</>}
+            value={fAntecedent} onChange={setFAntecedent} height={120}
+            placeholder={"No names or other PHI.\ne.g.:\n- First/then board for transitions\n- 1-min warnings before switching activities\n- Offered choice of work order\n- Reduced noise/distractions; helped engagement"}
+          />
+
+          <GuidedField
+            title="Behavior & Staff Response" required help={HELP_BEHAVIOR}
+            hint={<>Behavior(s) of concern this session (rates vs. recent sessions, even if zero), how you responded, whether it worked, and overall progress.</>}
+            value={fBehavior} onChange={setFBehavior} height={130}
+            placeholder={"No names or other PHI.\ne.g.:\n- Elopement x2; blocked + redirected, no escalation\n- Prompted 'break please'; allowed break, behavior dropped\n- Lower rate than last week; responses worked well"}
+          />
+
+          <GuidedField
+            title="Follow-Up & Concerns" help={HELP_FOLLOWUP}
+            hint={<>Anything the BCBA should do or know — scheduling/staffing, a new behavior, billing, materials, involvement. Items mentioned in earlier fields are surfaced here automatically; leave blank if there is nothing new.</>}
+            value={fFollowUp} onChange={setFFollowUp} height={110}
+            placeholder={"No names or other PHI.\ne.g.:\n- Ask BCBA to update elopement protocol\n- Need new visual schedule printed\n- No new concerns this session"}
+          />
+
+          {/* Error + Buttons */}
+          <div style={{ marginBottom: 20 }}>
+            {error && <p style={{ color: "#c0392b", fontSize: 13, marginBottom: 12 }}>{error}</p>}
+            {scrubNotice && (
+              <div style={{ margin: "0 0 16px", borderRadius: 10, border: "2px solid #c8962a", overflow: "hidden" }}>
+                <div style={{ padding: "8px 14px", background: "#fdf3dc", color: "#5a3d00", fontSize: 12, lineHeight: 1.5 }}>
+                  <strong>Removed before this left your device:</strong> {scrubNotice}{" "}
+                  <span style={{ color: "#7a6020" }}>— substitute back in your EHR.</span>
+                </div>
+                <div style={{ padding: "10px 14px", background: "#fff8ec", color: "#3d2a00", fontSize: 13.5, fontWeight: 600, lineHeight: 1.55 }}>
+                  ⚠️ {NotesScrub.SCRUB_GUIDANCE}
+                </div>
+              </div>
+            )}
+            <p style={{ fontSize: 13, color: "#5a6b4a", marginBottom: 12, lineHeight: 1.55 }}>
+              <strong style={{ color: "#374528" }}>Generate Note</strong> drafts the note on this page (login required).{" "}
+              <strong style={{ color: "#374528" }}>Generate Prompt</strong> produces the same request as text you can paste into any AI chat — no login needed.
+            </p>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <button
+                onClick={!loggedIn ? () => NotesGate.openLogin() : (canUse ? handleGenerate : undefined)}
+                disabled={loading || (loggedIn && !canUse)}
+                style={{
+                  padding: "12px 28px", borderRadius: 8, border: "none",
+                  background: (loading || (loggedIn && !canUse)) ? "#a0b890" : "#374528", color: "white", fontSize: 15, fontWeight: 600,
+                  cursor: (loading || (loggedIn && !canUse)) ? "not-allowed" : "pointer",
+                }}>
+                {!loggedIn ? "Log in" : (canUse ? (loading ? "Generating…" : "Generate Note") : "No access for this tool")}
+              </button>
+              <button onClick={handleGeneratePrompt} style={{
+                padding: "11px 18px", borderRadius: 8,
+                border: "1.5px solid #374528",
+                background: "white", color: "#374528", fontSize: 14, fontWeight: 600, cursor: "pointer",
+              }}>
+                Generate Prompt
+              </button>
+              {loggedIn && (
+                <button onClick={() => NotesGate.logout()} style={{
+                  marginLeft: "auto", padding: "9px 16px", borderRadius: 8,
+                  border: "1.5px solid #c0d4a8", background: "white", color: "#5a6b4a", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                }}>
+                  Log out
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Generated Prompt */}
+          {promptText && (
+            <div style={card}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <div>
+                  <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>Generated Prompt</h2>
+                  <p style={{ fontSize: 13, color: "#5a6b4a", marginTop: 3 }}>Returns each form section with its narrative and a "Tick:" line indicating which boxes to select on your EHR.</p>
+                </div>
+                <button onClick={() => { navigator.clipboard.writeText(promptText); setCopiedPrompt(true); setTimeout(() => setCopiedPrompt(false), 1800); }}
+                  style={{ padding: "7px 16px", borderRadius: 7, border: "1.5px solid #374528", background: copiedPrompt ? "#374528" : "white", color: copiedPrompt ? "white" : "#374528", fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", marginLeft: 16 }}>
+                  {copiedPrompt ? "Copied!" : "Copy prompt"}
+                </button>
+              </div>
+              <div style={{ background: "#f7fbf3", border: "1px solid #c0d4a8", borderRadius: 8, padding: "11px 14px", marginBottom: 12, fontSize: 13, color: "#374528", lineHeight: 1.6 }}>
+                Copy this prompt, paste it into an AI chat —{" "}
+                <a href="https://chatgpt.com" target="_blank" rel="noopener noreferrer" style={{ color: "#374528", fontWeight: 600 }}>ChatGPT</a>,{" "}
+                <a href="https://gemini.google.com" target="_blank" rel="noopener noreferrer" style={{ color: "#374528", fontWeight: 600 }}>Gemini</a>, or{" "}
+                <a href="https://claude.ai" target="_blank" rel="noopener noreferrer" style={{ color: "#374528", fontWeight: 600 }}>Claude</a>{" "}
+                — then copy the result back into your EHR form.
+              </div>
+              <textarea readOnly value={promptText}
+                style={{ width: "100%", minHeight: 240, padding: 12, borderRadius: 8, border: "1px solid #c0d4a8", fontSize: 13, color: "#2d3a1f", lineHeight: 1.6, resize: "vertical", background: "#f7fbf3", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+              />
+            </div>
+          )}
+
+          {/* Direct-generate output — narratives + suggested checkbox ticks, mirroring the EHR form */}
+          {output && (
+            <div style={{ ...card, marginBottom: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>Generated Note</h2>
+                <button onClick={handleCopyAll}
+                  style={{ padding: "7px 16px", borderRadius: 7, border: "1.5px solid #374528", background: copied === "all" ? "#374528" : "white", color: copied === "all" ? "white" : "#374528", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                  {copied === "all" ? "Copied!" : "Copy All"}
+                </button>
+              </div>
+              <p style={{ fontSize: 13, color: "#7a9460", marginBottom: 20, lineHeight: 1.55 }}>Checklists below are <strong>suggestions</strong> from your notes — review, then tick the matching boxes on your form. Narratives are editable before you copy them.</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {FORM_SECTIONS.map((s, i) => (
+                  <div key={i} style={{ borderRadius: 9, border: "1px solid #ddecd0", background: "#f7fbf3", padding: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, gap: 12 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#374528" }}>{s.heading}</span>
+                      <button onClick={() => handleCopy("sec" + i, sectionToText(s))}
+                        style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #c0d4a8", background: "white", color: "#374528", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                        {copied === "sec" + i ? "Copied!" : "Copy"}
+                      </button>
+                    </div>
+
+                    {s.kind === "narrative" && (
+                      <textarea value={output[s.key]} onChange={e => setOutput(prev => ({ ...prev, [s.key]: e.target.value }))}
+                        style={{ width: "100%", minHeight: 80, padding: 10, borderRadius: 7, border: "1px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", lineHeight: 1.65, resize: "vertical", background: "white" }}
+                      />
+                    )}
+
+                    {(s.kind === "checklist" || s.kind === "single") && (() => {
+                      const sel = output[s.group];
+                      const isEmpty = s.kind === "single" ? !sel : !(sel && sel.length);
+                      return isEmpty
+                        ? <p style={{ fontSize: 13, color: "#9aab86", fontStyle: "italic" }}>No selection suggested — leave blank or review your notes.</p>
+                        : <Checklist options={GROUP_OPTIONS[s.group]} selected={sel} single={s.kind === "single"} />;
+                    })()}
+
+                    {s.kind === "facts" && (
+                      <div style={{ fontSize: 13.5, color: "#2d3a1f", lineHeight: 1.8 }}>
+                        <div>Place of Service: <strong>{placeOfService || "Not specified"}</strong></div>
+                        <div>Telehealth: <strong>{telehealth || "Not specified"}</strong></div>
+                        <div>Service Paused: <strong>{output.servicePaused || "No"}</strong></div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scrub stress test — nooutco tools</title>
+  <script src="/assets/notes-gate.js"></script>
+  <script src="/assets/notes-scrub.js"></script>
+  <style>
+    :root { --green:#374528; --line:#c0d4a8; --bg:#f7fbf3; --ink:#2d3a1f; }
+    * { box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, sans-serif; color: var(--ink); margin: 0; background: #fbfdf8; }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 28px 20px 80px; }
+    h1 { font-size: 24px; margin: 0 0 6px; }
+    p.lead { color: #5a6b4a; font-size: 14px; margin: 0 0 22px; line-height: 1.55; }
+    h2 { font-size: 16px; margin: 28px 0 10px; }
+    .live textarea { width: 100%; min-height: 110px; padding: 12px; border: 1.5px solid var(--line);
+      border-radius: 8px; font-size: 14px; line-height: 1.6; background: var(--bg); resize: vertical; }
+    .live .out { margin-top: 10px; display: grid; gap: 8px; }
+    .pill { display: inline-block; background: #eef4e6; border: 1px solid var(--line); border-radius: 999px;
+      padding: 2px 10px; font-size: 12px; margin: 2px 4px 2px 0; }
+    pre.scrubbed { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
+      font-size: 13px; white-space: pre-wrap; word-break: break-word; margin: 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid #e6eedb; }
+    th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #7a8a68; }
+    td.input { font-family: ui-monospace, Menlo, monospace; white-space: pre-wrap; color: #3a4326; }
+    .ok { color: #2e6b2a; font-weight: 700; }
+    .fail { color: #b3261e; font-weight: 700; }
+    .gap { color: #a06a00; font-weight: 700; }
+    tr.fail-row { background: #fdecea; }
+    .summary { margin: 10px 0 4px; font-size: 14px; font-weight: 700; }
+    .names { color: #2d3a1f; }
+    .demo button { padding: 9px 16px; border: 1.5px solid var(--green); border-radius: 8px; background: #fff;
+      color: var(--green); font-size: 13px; font-weight: 600; cursor: pointer; }
+    code { background: #eef4e6; padding: 1px 5px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>PHI scrubbing — stress test</h1>
+    <p class="lead">
+      Exercises name detection (<code>NotesScrub._detect</code>) and replacement
+      (<code>applyScrub</code>) against tricky inputs. Detection is intentionally
+      aggressive — the in-app review step lets a clinician uncheck false positives or
+      certify a term is not PII, so over-detection is safe and under-detection is the
+      real risk. Rows marked <span class="gap">KNOWN GAP</span> document a limitation
+      (a name that appears <em>only</em> in lowercase is not auto-detected; the review
+      step and any capitalized occurrence elsewhere are the safety net).
+    </p>
+
+    <h2>Live tester</h2>
+    <div class="live">
+      <textarea id="live" placeholder="Type or paste notes with dummy names…">Met with Jacob and his mom Sarah. BT Mike redirected. jacob smiled later. McKenzie and O'Brien attended on Monday at the Clinic.</textarea>
+      <div class="out" id="liveOut"></div>
+    </div>
+
+    <h2>Try the review + acknowledgment UI</h2>
+    <p class="lead" style="margin-bottom:10px;">Runs the same gates the tools use, on the live text above.</p>
+    <div class="demo"><button id="demoBtn">Run acknowledge → review</button> <span id="demoResult" style="font-size:13px;color:#5a6b4a;"></span></div>
+
+    <h2>Case battery</h2>
+    <div class="summary" id="summary"></div>
+    <table>
+      <thead><tr><th style="width:38%">Input</th><th style="width:24%">Expected names</th><th style="width:24%">Detected</th><th style="width:14%">Result</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+
+    <h2 style="margin-top:26px;">Scrub previews</h2>
+    <table>
+      <thead><tr><th style="width:50%">Input</th><th style="width:50%">Scrubbed (all names → CLIENT)</th></tr></thead>
+      <tbody id="previews"></tbody>
+    </table>
+  </div>
+
+  <script>
+    (function () {
+      var detect = window.NotesScrub._detect;
+      var applyScrub = window.NotesGate._scrub.applyScrub;
+
+      // Build a CLIENT-only map for preview (CLIENT, CLIENT 2, …).
+      function previewMap(names) {
+        var i = 0;
+        return names.map(function (n) {
+          i++;
+          return { name: n, token: i === 1 ? "CLIENT" : "CLIENT " + i };
+        });
+      }
+      function scrubPreview(text) {
+        return applyScrub(text, previewMap(detect(text)));
+      }
+
+      function setEq(a, b) {
+        if (a.length !== b.length) return false;
+        var sa = a.map(function (x) { return x.toLowerCase(); }).sort();
+        var sb = b.map(function (x) { return x.toLowerCase(); }).sort();
+        return sa.every(function (x, i) { return x === sb[i]; });
+      }
+
+      // [input, expectedNames, kind]  kind: "match" (must equal) | "gap" (documents a limitation)
+      var CASES = [
+        ["Met with\nJacob today.", ["Jacob"], "match"],
+        ["Then Jacob and Sarah played.", ["Jacob", "Sarah"], "match"],
+        ["McKenzie did great today.", ["McKenzie"], "match"],
+        ["DeShawn arrived on time.", ["DeShawn"], "match"],
+        ["Saw MacArthur in session.", ["MacArthur"], "match"],
+        ["O'Brien helped clean up.", ["O'Brien"], "match"],
+        ["D'Angelo ran the drill.", ["D'Angelo"], "match"],
+        ["Anne-Marie smiled the whole time.", ["Anne-Marie"], "match"],
+        ["John Smith attended the meeting.", ["John Smith"], "match"],
+        ["(Jacob), \"Jacob\", —Jacob, ...Jacob, Jacob.", ["Jacob"], "match"],
+        ["Jacob's mom helped him.", ["Jacob"], "match"],
+        ["Jacob played. jacob smiled. JACOB ran.", ["Jacob"], "match"],
+        ["On Monday at the Clinic via Telehealth in the Community.", [], "match"],
+        ["The session went well. Behavior improved. Antecedent strategies used.", [], "match"],
+        ["CLIENT and CAREGIVER met. BCBA reviewed. ABA goals on track.", [], "match"],
+        ["jacob hit the table.", [], "gap"],
+      ];
+
+      var rows = document.getElementById("rows");
+      var previews = document.getElementById("previews");
+      var pass = 0, fail = 0, gaps = 0;
+
+      CASES.forEach(function (c) {
+        var input = c[0], expected = c[1], kind = c[2];
+        var got = detect(input);
+        var eq = setEq(got, expected);
+
+        var resultHtml, rowClass = "";
+        if (kind === "gap") { resultHtml = '<span class="gap">KNOWN GAP</span>'; gaps++; }
+        else if (eq) { resultHtml = '<span class="ok">PASS</span>'; pass++; }
+        else { resultHtml = '<span class="fail">FAIL</span>'; fail++; rowClass = "fail-row"; }
+
+        var tr = document.createElement("tr");
+        if (rowClass) tr.className = rowClass;
+        tr.innerHTML =
+          '<td class="input"></td>' +
+          '<td class="names"></td>' +
+          '<td class="names"></td>' +
+          "<td>" + resultHtml + "</td>";
+        tr.children[0].textContent = input;
+        tr.children[1].textContent = expected.length ? expected.join(", ") : "(none)";
+        tr.children[2].textContent = got.length ? got.join(", ") : "(none)";
+        rows.appendChild(tr);
+
+        var pr = document.createElement("tr");
+        pr.innerHTML = '<td class="input"></td><td><pre class="scrubbed"></pre></td>';
+        pr.children[0].textContent = input;
+        pr.querySelector("pre").textContent = scrubPreview(input);
+        previews.appendChild(pr);
+      });
+
+      document.getElementById("summary").innerHTML =
+        '<span class="ok">' + pass + " passed</span> · " +
+        '<span class="' + (fail ? "fail" : "ok") + '">' + fail + " failed</span> · " +
+        '<span class="gap">' + gaps + " known gap" + (gaps === 1 ? "" : "s") + "</span>";
+
+      // Live tester
+      var live = document.getElementById("live");
+      var liveOut = document.getElementById("liveOut");
+      function renderLive() {
+        var names = detect(live.value);
+        var pills = names.length
+          ? names.map(function (n) { return '<span class="pill"></span>'; }).join("")
+          : '<span style="color:#7a8a68;font-size:13px;">No names detected.</span>';
+        liveOut.innerHTML =
+          '<div><strong style="font-size:12px;color:#7a8a68;">DETECTED</strong><div id="lp" style="margin-top:4px;">' + pills + "</div></div>" +
+          '<div><strong style="font-size:12px;color:#7a8a68;">SCRUBBED PREVIEW</strong><pre class="scrubbed" id="ls" style="margin-top:4px;"></pre></div>';
+        var lp = document.getElementById("lp");
+        if (names.length) {
+          var spans = lp.querySelectorAll(".pill");
+          names.forEach(function (n, i) { spans[i].textContent = n; });
+        }
+        document.getElementById("ls").textContent = scrubPreview(live.value);
+      }
+      live.addEventListener("input", renderLive);
+      renderLive();
+
+      // Demo the real gates
+      document.getElementById("demoBtn").addEventListener("click", function () {
+        var res = document.getElementById("demoResult");
+        res.textContent = "…";
+        NotesScrub.acknowledge().then(function (ok) {
+          if (!ok) { res.textContent = "Acknowledgment declined."; return; }
+          return NotesScrub.review({ freeText: live.value }).then(function (r) {
+            if (r.cancelled) { res.textContent = "Review cancelled."; return; }
+            res.textContent = r.map.length
+              ? "Replaced: " + NotesScrub.noticeText(r.map) + (r.certified.length ? "  |  certified not PII: " + r.certified.join(", ") : "")
+              : "Nothing to replace.";
+          });
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

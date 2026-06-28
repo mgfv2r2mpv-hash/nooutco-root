@@ -1,0 +1,7 @@
+{
+  "name": "supervision-note-tool",
+  "compatibility_date": "2026-04-15",
+  "assets": {
+    "directory": "."
+  }
+}

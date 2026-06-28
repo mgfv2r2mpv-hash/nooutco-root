@@ -1,0 +1,20 @@
+name: term-digest-weekly
+
+# Cloudflare Pages cannot run cron triggers, so the weekly term-review digest is fired
+# from here. It POSTs to /api/admin/term-digest, authenticated with CRON_SECRET (set as
+# both a Cloudflare Worker secret and a GitHub repo secret). The email reports COUNTS ONLY
+# of pending PII/non-PII submissions — the terms themselves never leave the worker.
+
+on:
+  schedule:
+    - cron: "0 13 * * 5" # 13:00 UTC Friday = 9am EDT
+  workflow_dispatch: {} # manual "Run workflow" button for testing
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger weekly term digest
+        run: |
+          curl -fsS -X POST https://tools.nooutco.me/api/admin/term-digest \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
