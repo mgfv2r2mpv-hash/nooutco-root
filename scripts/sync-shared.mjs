@@ -22,18 +22,11 @@ const files = [
   ["worker/suggest.js", "shared/suggest.js"],
 ];
 
-const banner = (dst) =>
-  `Synced ${dst.padEnd(18)} <- packages/shared`;
-
-let count = 0;
 for (const app of apps) {
   for (const [src, dst] of files) {
-    const from = join(shared, src);
-    const to = join(root, "apps", app, dst);
-    mkdirSync(dirname(to), { recursive: true });
-    copyFileSync(from, to);
-    console.log(`apps/${app}/`.padEnd(12) + banner(dst));
-    count++;
+    mkdirSync(dirname(join(root, "apps", app, dst)), { recursive: true });
+    copyFileSync(join(shared, src), join(root, "apps", app, dst));
+    console.log(`apps/${app}/`.padEnd(12) + `${dst.padEnd(18)} <- packages/shared/${src}`);
   }
 }
-console.log(`\nsync-shared: ${count} files written.`);
+console.log(`\nsync-shared: ${apps.length * files.length} files written.`);

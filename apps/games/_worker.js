@@ -85,6 +85,3 @@ export default {
     return new Response(html, { status: response.status, headers });
   },
 };
-
-// handleSuggest moved to packages/shared/worker/suggest.js (imported above).
-// jsonRes + sha256Hex moved to packages/shared/worker/helpers.js (imported above).
