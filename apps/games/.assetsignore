@@ -1,0 +1,10 @@
+.git/
+.gitignore
+.gitattributes
+.assetsignore
+.wrangler/
+.DS_Store
+node_modules/
+**/node_modules/
+# Shared worker source — bundled into _worker.js by wrangler, never served publicly.
+shared/

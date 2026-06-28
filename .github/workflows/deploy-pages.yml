@@ -42,8 +42,18 @@ jobs:
             games:
               - 'apps/games/**'
 
+  # Guard: the apps/*/shared and apps/*/tokens.css copies are generated from
+  # packages/shared. Re-run the sync and fail if anyone edited a copy directly
+  # instead of the canonical source.
+  drift-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm run sync:shared
+      - run: git diff --exit-code apps
+
   deploy-tools:
-    needs: changes
+    needs: [changes, drift-check]
     if: ${{ needs.changes.outputs.tools == 'true' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
@@ -67,7 +77,7 @@ jobs:
             --commit-dirty=true
 
   deploy-games:
-    needs: changes
+    needs: [changes, drift-check]
     if: ${{ needs.changes.outputs.games == 'true' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
