@@ -1,0 +1,89 @@
+name: Deploy Pages apps
+
+# Deploys apps/tools and apps/games to their existing Cloudflare Pages projects
+# via `wrangler pages deploy` (direct upload). The projects keep their custom
+# domains, KV/service bindings, and secrets — only the delivery method changes
+# from git-auto-deploy to CI upload, because Cloudflare does not allow an existing
+# Pages project to switch its connected repo.
+#
+#   branch main -> prod projects (tools-nooutco-me, games-nooutco-me)
+#   branch dev  -> dev projects  (dev-tools-nooutco-me, dev-games-nooutco-me)
+#
+# Apex (apps/apex) keeps native git integration on the nooutco-root / dev-nooutco-root
+# projects (with Root directory set to apps/apex) and is NOT deployed here.
+
+on:
+  push:
+    branches: [main, dev]
+  workflow_dispatch:
+    inputs:
+      force_all:
+        description: "Deploy both apps regardless of changed paths"
+        type: boolean
+        default: true
+
+env:
+  CLOUDFLARE_ACCOUNT_ID: aa9d905614ee070b1013569b08b46776
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      tools: ${{ steps.filter.outputs.tools }}
+      games: ${{ steps.filter.outputs.games }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            tools:
+              - 'apps/tools/**'
+            games:
+              - 'apps/games/**'
+
+  deploy-tools:
+    needs: changes
+    if: ${{ needs.changes.outputs.tools == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve target project
+        id: target
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "project=tools-nooutco-me" >> "$GITHUB_OUTPUT"
+          else
+            echo "project=dev-tools-nooutco-me" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: >-
+            pages deploy apps/tools
+            --project-name=${{ steps.target.outputs.project }}
+            --branch=${{ github.ref_name }}
+            --commit-dirty=true
+
+  deploy-games:
+    needs: changes
+    if: ${{ needs.changes.outputs.games == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve target project
+        id: target
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "project=games-nooutco-me" >> "$GITHUB_OUTPUT"
+          else
+            echo "project=dev-games-nooutco-me" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: >-
+            pages deploy apps/games
+            --project-name=${{ steps.target.outputs.project }}
+            --branch=${{ github.ref_name }}
+            --commit-dirty=true
