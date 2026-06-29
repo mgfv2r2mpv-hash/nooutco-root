@@ -11,7 +11,7 @@
   var style = document.createElement("style");
   style.textContent = [
     "#" + BTN_ID + " {",
-    "  position: fixed; top: 14px; right: 14px; z-index: 500;",
+    "  position: fixed; bottom: 14px; right: 14px; z-index: 500;",
     "  width: 40px; height: 40px;",
     "  border-radius: 50%; border: none;",
     "  background: #d97706;",
