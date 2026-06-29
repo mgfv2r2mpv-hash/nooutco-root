@@ -4,65 +4,85 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sequences Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="/tokens.css">
+  <link rel="stylesheet" href="/assets/nav-bar.css">
+  <link rel="stylesheet" href="/assets/admin-shell.css">
+  <script src="/assets/nav-bar.js" defer></script>
+  <script src="/assets/admin-shell.js" defer></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; font-size: 14px; }
+    body {
+      font-family: var(--font-sans, 'Atkinson Hyperlegible', system-ui, sans-serif);
+      background: var(--ash-backdrop, #e7ebe0);
+      color: var(--text-primary, #1a1f14);
+      min-height: 100dvh; font-size: 13px;
+    }
 
-    /* ── Gear button + admin modal ── */
-    .admin-gear { position: fixed; bottom: 1rem; right: 1rem; z-index: 9999; font-size: 1.3rem; background: none; border: none; cursor: pointer; opacity: .35; transition: opacity .15s; padding: 0; line-height: 1; }
-    .admin-gear:hover { opacity: .8; }
-    .admin-gear.authed { opacity: 1; filter: sepia(1) saturate(3) hue-rotate(80deg); }
-    #admin-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 10000; align-items: center; justify-content: center; }
+    /* ── Floating gear + admin modal (this page owns its own auth) ── */
+    .admin-gear { position: fixed; bottom: 1rem; right: 1rem; z-index: 9999; font-size: 1.3rem; background: none; border: none; cursor: pointer; opacity: .4; transition: opacity .15s, filter .15s; padding: 0; line-height: 1; }
+    .admin-gear:hover { opacity: .85; }
+    .admin-gear.authed { opacity: 1; filter: sepia(1) saturate(2.2) hue-rotate(40deg) brightness(.9); }
+    #admin-modal { display: none; position: fixed; inset: 0; background: rgba(44,51,31,.32); z-index: 10000; align-items: center; justify-content: center; padding: 20px; }
     #admin-modal.open { display: flex; }
-    .admin-modal-box { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 2rem; width: 320px; }
-    .admin-modal-box h2 { font-size: 1rem; margin-bottom: .5rem; color: #93c5fd; }
-    .admin-modal-box p  { font-size: .8rem; color: #94a3b8; margin-bottom: 1rem; }
-    #admin-pw-input  { width: 100%; padding: .4rem .6rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: .9rem; margin-bottom: .5rem; font-family: inherit; }
-    .admin-modal-box .unlock-btn { width: 100%; padding: .4rem; border-radius: 6px; background: #3b82f6; color: #fff; border: none; cursor: pointer; font-size: .9rem; }
-    #admin-pw-error  { font-size: .75rem; color: #f87171; margin-top: .3rem; min-height: 1em; }
+    .admin-modal-box { background: #fff; border: 1px solid var(--sage-100, #e2e6d9); border-radius: 16px; box-shadow: 0 16px 42px rgba(44,51,31,.16); padding: 1.6rem; width: 320px; }
+    .admin-modal-box h2 { font-size: 1rem; margin-bottom: .35rem; color: var(--sage-900, #2c331f); }
+    .admin-modal-box p  { font-size: .8rem; color: var(--sage-600, #5d6a4d); margin-bottom: 1rem; }
+    #admin-pw-input  { width: 100%; padding: .5rem .6rem; border-radius: 8px; border: 1px solid var(--sage-100, #e2e6d9); background: var(--ash-tile, #f4f6ef); color: var(--sage-900, #2c331f); font-size: .9rem; margin-bottom: .5rem; font-family: inherit; }
+    .admin-modal-box .unlock-btn { width: 100%; padding: .55rem; border-radius: 8px; background: var(--sage-700, #4d5840); color: #fff; border: none; cursor: pointer; font-size: .9rem; font-weight: 700; }
+    .admin-modal-box .unlock-btn:hover { background: var(--sage-800, #3c4533); }
+    #admin-pw-error  { font-size: .75rem; color: var(--red-700, #b91c1c); margin-top: .3rem; min-height: 1em; }
 
-    /* ── Layout ── */
-    #topbar { background: #1e293b; border-bottom: 1px solid #334155; padding: .6rem 1.2rem; display: flex; align-items: center; gap: 1rem; }
-    #topbar a { color: #93c5fd; text-decoration: none; font-size: .82rem; }
-    #topbar h1 { font-size: .95rem; font-weight: 700; color: #e2e8f0; flex: 1; }
-    #topbar .status-msg { font-size: .78rem; min-width: 160px; text-align: right; }
-    .status-msg.ok  { color: #4ade80; }
-    .status-msg.err { color: #f87171; }
+    .status-msg { font-size: 12px; min-height: 1.1em; color: var(--sage-500, #6a7659); }
+    .status-msg.ok  { color: var(--green-700, #16a34a); }
+    .status-msg.err { color: var(--red-700, #b91c1c); }
 
-    /* ── Main grid ── */
-    #content { display: grid; grid-template-columns: 240px 1fr; gap: 1.2rem; padding: 1rem 1.2rem; min-height: calc(100vh - 50px); }
-    #sets-pane { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: .75rem; }
-    #sets-pane h2 { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: #64748b; margin-bottom: .5rem; }
-    .set-row { display: flex; align-items: center; padding: .4rem .55rem; border-radius: 6px; cursor: pointer; color: #cbd5e1; font-size: .85rem; margin-bottom: .15rem; border: 1px solid transparent; }
-    .set-row:hover { background: #0f172a; border-color: #334155; }
-    .set-row.active { background: #1d4ed8; color: #fff; border-color: #3b82f6; }
-    .btn-primary { padding: .35rem .9rem; border-radius: 7px; background: #1d4ed8; color: #fff; border: none; cursor: pointer; font-size: .82rem; font-weight: 600; width: 100%; margin-top: .6rem; }
-    .btn-primary:hover { background: #1e40af; }
+    /* ── Toolbar actions slot ── */
+    #action-bar { display: flex; align-items: center; gap: .6rem; }
+    #seq-unsaved { display: none; align-items: center; gap: 7px; background: var(--amber-100, #fef3c7); border: 1px solid #fae3a0; color: var(--amber-700, #92722a); border-radius: 999px; padding: 5px 12px; font-size: 11.5px; font-weight: 700; }
+    #seq-unsaved .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--amber-500, #f59e0b); }
+    #toolbar-save { display: inline-flex; align-items: center; gap: 6px; padding: 9px 15px; border-radius: 9px; background: var(--green-700, #16a34a); color: #fff; border: none; cursor: pointer; font: inherit; font-size: 13px; font-weight: 700; transition: background .15s; }
+    #toolbar-save:hover { background: var(--green-800, #15803d); }
 
-    #editor-pane { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 1.2rem 1.4rem; }
-    #editor-empty { color: #64748b; font-style: italic; font-size: .85rem; }
+    /* ── Two-pane editor ── */
+    #content { display: grid; grid-template-columns: 236px 1fr; gap: 18px; padding: 18px 22px; align-items: start; }
+    #sets-pane { background: #fff; border: 1px solid #e9ece2; border-radius: 13px; padding: 14px; }
+    #sets-pane h2 { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: var(--ash-label-muted, #a3ad92); margin-bottom: .6rem; padding: 0 4px; }
+    .set-row { display: flex; align-items: center; padding: 9px 11px; border-radius: 10px; cursor: pointer; color: var(--sage-700, #4d5840); font-size: 13px; font-weight: 600; margin-bottom: .15rem; border: 1px solid transparent; transition: background .15s; }
+    .set-row:hover { background: var(--sage-50, #f1f3ec); }
+    .set-row.active { background: var(--sage-100, #e2e6d9); color: var(--sage-900, #2c331f); font-weight: 700; }
+    .btn-primary { padding: 9px 14px; border-radius: 9px; background: transparent; color: var(--sage-600, #5d6a4d); border: 1px dashed var(--sage-200, #c7cdb6); cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 700; width: 100%; margin-top: .6rem; transition: background .15s; }
+    .btn-primary:hover { background: var(--sage-50, #f1f3ec); }
+
+    #editor-pane { background: #fff; border: 1px solid #e9ece2; border-radius: 13px; padding: 1.3rem 1.4rem; min-height: 320px; }
+    #editor-empty { color: var(--sage-500, #6a7659); font-style: italic; font-size: 13px; }
     .editor-section { margin-bottom: 1.2rem; }
-    .editor-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #64748b; margin-bottom: .4rem; }
-    .editor-input { padding: .35rem .6rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: .88rem; }
+    .editor-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ash-label-muted, #a3ad92); margin-bottom: .4rem; }
+    .editor-input { padding: .45rem .6rem; border-radius: 8px; border: 1px solid var(--sage-100, #e2e6d9); background: #fff; color: var(--sage-900, #2c331f); font-size: .88rem; font-family: inherit; }
 
-    .emoji-grid { display: flex; flex-wrap: wrap; gap: .4rem; }
-    .emoji-chip { position: relative; width: 56px; height: 56px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; }
-    .emoji-chip .remove-btn { position: absolute; top: -6px; right: -6px; background: #7f1d1d; color: #fca5a5; border: none; cursor: pointer; font-size: .75rem; width: 18px; height: 18px; border-radius: 50%; padding: 0; line-height: 1; }
+    .emoji-grid { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .emoji-chip { position: relative; width: 62px; height: 62px; background: var(--ash-tile, #f4f6ef); border: 1px solid var(--sage-100, #e2e6d9); border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 1.9rem; }
+    .emoji-chip .remove-btn { position: absolute; top: -6px; right: -6px; background: var(--red-700, #b91c1c); color: #fff; border: 1px solid #fff; cursor: pointer; font-size: .75rem; width: 19px; height: 19px; border-radius: 50%; padding: 0; line-height: 1; }
     .emoji-chip .remove-btn:hover { background: #991b1b; }
 
-    .add-row { display: flex; gap: .5rem; margin-top: .6rem; }
-    .add-row input { flex: 1; padding: .35rem .6rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: 1rem; }
-    .btn-sm { padding: .3rem .75rem; border-radius: 6px; border: 1px solid #334155; background: #334155; color: #e2e8f0; font-size: .78rem; cursor: pointer; white-space: nowrap; }
-    .btn-sm:hover { background: #475569; }
+    .add-row { display: flex; gap: .5rem; margin-top: .6rem; max-width: 360px; }
+    .add-row input { flex: 1; padding: .45rem .6rem; border-radius: 8px; border: 1px solid var(--sage-100, #e2e6d9); background: #fff; color: var(--sage-900, #2c331f); font-size: 1rem; font-family: inherit; }
+    .btn-sm { padding: .4rem .8rem; border-radius: 8px; border: 1px solid var(--sage-200, #c7cdb6); background: var(--sage-50, #f1f3ec); color: var(--sage-700, #4d5840); font-size: .78rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .btn-sm:hover { background: var(--sage-100, #e2e6d9); }
 
-    .actions-row { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #334155; }
-    .btn-save { padding: .4rem 1rem; border-radius: 7px; background: #16a34a; color: #fff; border: none; cursor: pointer; font-size: .85rem; font-weight: 600; }
-    .btn-save:hover { background: #15803d; }
-    .btn-red { padding: .4rem .8rem; border-radius: 7px; background: #7f1d1d; color: #fca5a5; border: 1px solid #991b1b; cursor: pointer; font-size: .8rem; }
-    .btn-red:hover { background: #991b1b; }
+    .actions-row { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--ash-hairline-soft, #eef0e9); }
+    .btn-save { padding: 9px 15px; border-radius: 9px; background: var(--green-700, #16a34a); color: #fff; border: none; cursor: pointer; font: inherit; font-size: 13px; font-weight: 700; }
+    .btn-save:hover { background: var(--green-800, #15803d); }
+    .btn-red { padding: 8px 13px; border-radius: 9px; background: transparent; color: var(--red-700, #b91c1c); border: 1px solid #f0d4d4; cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 700; }
+    .btn-red:hover { background: var(--red-50, #fef2f2); }
+
+    @media (max-width: 760px) { #content { grid-template-columns: 1fr; } }
   </style>
 </head>
-<body>
+<body class="ash-page">
+
+<noaba-bar product="games" crumbs="Game Master/Sequences Manager" crumb-hrefs="/,/GM/" no-admin></noaba-bar>
 
 <button class="admin-gear" id="admin-gear" title="Admin">⚙️</button>
 <div id="admin-modal">
@@ -75,44 +95,50 @@
   </div>
 </div>
 
-<div id="topbar">
-  <a href="../../GM/">← GM</a>
-  <h1>Sequences Manager</h1>
-  <span class="status-msg" id="global-status"></span>
-</div>
+<noaba-admin-shell active="sequences" current="Sequences Manager">
 
-<div id="content">
-  <div id="sets-pane">
-    <h2>Symbol Sets</h2>
-    <div id="sets-list"></div>
-    <button class="btn-primary" id="btn-new-set">+ New Set</button>
+  <!-- breadcrumb toolbar actions -->
+  <div data-ash-slot="actions" id="action-bar">
+    <span class="status-msg" id="global-status"></span>
+    <span id="seq-unsaved"><span class="dot"></span><span id="seq-unsaved-text">unsaved</span></span>
+    <button id="toolbar-save">✓ Save all sets</button>
   </div>
 
-  <div id="editor-pane">
-    <div id="editor-empty">Select a set on the left, or create a new one.</div>
-    <div id="editor-body" hidden>
-      <div class="editor-section">
-        <div class="editor-label">Set Name</div>
-        <input type="text" class="editor-input" id="ed-name" style="width: 260px;">
-      </div>
+  <div id="content">
+    <div id="sets-pane">
+      <h2>Symbol Sets</h2>
+      <div id="sets-list"></div>
+      <button class="btn-primary" id="btn-new-set">＋ New set</button>
+    </div>
 
-      <div class="editor-section">
-        <div class="editor-label">Emojis</div>
-        <div class="emoji-grid" id="ed-emojis"></div>
-        <div class="add-row">
-          <input type="text" id="ed-add-input" placeholder="Paste or type an emoji" maxlength="8">
-          <button class="btn-sm" id="ed-add-btn">+ Add</button>
+    <div id="editor-pane">
+      <div id="editor-empty">Select a set on the left, or create a new one.</div>
+      <div id="editor-body" hidden>
+        <div class="editor-section">
+          <div class="editor-label">Set Name</div>
+          <input type="text" class="editor-input" id="ed-name" style="width: 260px;">
         </div>
-      </div>
 
-      <div class="actions-row">
-        <button class="btn-save" id="ed-save">Save All Sets</button>
-        <button class="btn-red" id="ed-delete">Delete This Set</button>
-        <span class="status-msg" id="ed-status"></span>
+        <div class="editor-section">
+          <div class="editor-label">Emojis</div>
+          <div class="emoji-grid" id="ed-emojis"></div>
+          <div class="add-row">
+            <input type="text" id="ed-add-input" placeholder="Paste or type an emoji" maxlength="8">
+            <button class="btn-sm" id="ed-add-btn">+ Add</button>
+          </div>
+        </div>
+
+        <div class="actions-row">
+          <button class="btn-save" id="ed-save">Save All Sets</button>
+          <button class="btn-red" id="ed-delete">Delete This Set</button>
+          <span class="status-msg" id="ed-status"></span>
+        </div>
+        <p style="font-size:12px;color:var(--sage-500,#6a7659);margin-top:.6rem;">Switch sets freely. Edits are kept until you <strong>Save all sets</strong>.</p>
       </div>
     </div>
   </div>
-</div>
+
+</noaba-admin-shell>
 
 <script>
 'use strict';
@@ -190,6 +216,22 @@ function setStatus(elem, cls, msg) {
   if (msg && cls === 'ok') setTimeout(() => { if (elem.textContent === msg) elem.textContent = ''; }, 3500);
 }
 
+// ── Dirty-state (Frame 05 guard via the admin shell) ───────────────
+function dirtyCount() { return symData ? Object.keys(symData.sets).length : 0; }
+function markDirty() {
+  const pill = document.getElementById('seq-unsaved');
+  if (pill) {
+    pill.style.display = 'inline-flex';
+    document.getElementById('seq-unsaved-text').textContent = 'unsaved changes';
+  }
+  if (window.NoabaShell) window.NoabaShell.markDirty('sequences', { emoji: '🔁', name: 'Symbol sets' });
+}
+function markClean() {
+  const pill = document.getElementById('seq-unsaved');
+  if (pill) pill.style.display = 'none';
+  if (window.NoabaShell) window.NoabaShell.markClean('sequences');
+}
+
 // ── API ────────────────────────────────────────────────────────────
 async function adminPost(endpoint, body) {
   const ctrl  = new AbortController();
@@ -265,6 +307,7 @@ function renderEditor() {
     rm.title = 'Remove';
     rm.addEventListener('click', () => {
       symData.sets[activeSet].splice(idx, 1);
+      markDirty();
       renderEditor();
       renderSetsList();
     });
@@ -275,6 +318,12 @@ function renderEditor() {
 
 // ── Event wiring ───────────────────────────────────────────────────
 function bindEvents() {
+  if (window.NoabaShell) window.NoabaShell.onSaveAll(async () => {
+    const ok = await saveAll();
+    if (!ok) throw new Error('Save failed');
+  });
+  document.getElementById('toolbar-save').addEventListener('click', saveAll);
+
   document.getElementById('btn-new-set').addEventListener('click', () => {
     let base = 'New Set';
     let name = base;
@@ -282,6 +331,7 @@ function bindEvents() {
     while (name in symData.sets) { n++; name = `${base} ${n}`; }
     symData.sets[name] = [];
     activeSet = name;
+    markDirty();
     renderSetsList();
     renderEditor();
   });
@@ -301,6 +351,7 @@ function bindEvents() {
     });
     symData.sets = rebuilt;
     activeSet = newName;
+    markDirty();
     renderSetsList();
   });
 
@@ -315,6 +366,7 @@ function bindEvents() {
     delete symData.sets[activeSet];
     const names = Object.keys(symData.sets);
     activeSet = names[0] || null;
+    markDirty();
     renderSetsList();
     renderEditor();
   });
@@ -328,6 +380,7 @@ function addEmoji() {
   if (!val || !activeSet) return;
   symData.sets[activeSet].push(val);
   input.value = '';
+  markDirty();
   renderEditor();
   renderSetsList();
   input.focus();
@@ -338,16 +391,19 @@ async function saveAll() {
   setStatus(statusEl, '', 'Saving…');
   try {
     const res = await adminPost('sequences-save-symbols', { symbols: symData });
-    if (!res) return; // 401 handled
+    if (!res) return false; // 401 handled
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       setStatus(statusEl, 'err', data.error || `Save failed (${res.status})`);
-      return;
+      return false;
     }
     symData.generated = data.generated || new Date().toISOString();
     setStatus(statusEl, 'ok', 'Saved.');
+    markClean();
+    return true;
   } catch (e) {
     setStatus(statusEl, 'err', e.message);
+    return false;
   }
 }
 </script>
