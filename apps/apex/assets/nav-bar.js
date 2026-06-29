@@ -162,7 +162,11 @@
 
       row.appendChild(el("div", "noaba-spacer"));
 
-      // Admin gear
+      // Admin gear — suppressed on pages with no admin concept (`no-admin`).
+      if (this.hasAttribute("no-admin")) {
+        this.replaceChildren(row);
+        return;
+      }
       var gear = el("button", "noaba-gear");
       gear.type = "button";
       gear.setAttribute("aria-label", "Admin");
