@@ -1,3 +1,7 @@
 .wrangler/
 node_modules/
 .DS_Store
+
+# Phase 3 design references (reference-only, originals live in the DEV folder zips)
+/design_handoff_unified_nav/
+/design_handoff_admin_redesign/

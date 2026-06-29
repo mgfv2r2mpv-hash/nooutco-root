@@ -1,0 +1,198 @@
+/* No Outcome ABA — unified navigation bar (<noaba-bar>)
+   CANONICAL SOURCE: packages/shared/ui/nav-bar.css — edit here, never in
+   apps/<app>/assets/nav-bar.css (generated copies; CI drift check fails on hand
+   edits). Run `npm run sync:shared` after editing.
+
+   Served client asset. Each page must load tokens.css BEFORE this file so the
+   --sage-*, --font-sans, --radius-* variables resolve. Light-DOM component, so
+   page styles cascade in; all selectors are scoped under `noaba-bar`. */
+
+noaba-bar {
+  /* Bar-local palette — design-reference exacts not all present as global tokens.
+     Override any of these per page/app by setting them on the element. */
+  --noaba-bar-bg:        var(--surface-card, #ffffff);
+  --noaba-hairline:      #e7ebe0;
+  --noaba-brand:         var(--sage-700, #4d5840);
+  --noaba-brand-muted:   #8a9678;
+  --noaba-track:         #eef0e9;
+  --noaba-seg-inactive:  #6b7280;
+  --noaba-seg-active-bg: var(--sage-700, #4d5840);
+  --noaba-crumb-parent:  #9aa589;
+  --noaba-crumb-sep:     var(--sage-200, #c7cdb6);
+  --noaba-crumb-current: #1a1f14;
+  --noaba-gear-border:   #dfe6d2;
+  --noaba-gear-glyph:    var(--sage-700, #4d5840);
+  --noaba-subbar-bg:     #fbfcf9;
+  --noaba-collapse-at:   820px;
+
+  display: block;
+  font-family: var(--font-sans, 'Atkinson Hyperlegible', -apple-system, 'Segoe UI', sans-serif);
+  -webkit-font-smoothing: antialiased;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+noaba-bar * { box-sizing: border-box; }
+
+/* ── The bar row ──────────────────────────────────────────────────────── */
+.noaba-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 20px;
+  min-height: 58px;
+  background: var(--noaba-bar-bg);
+  border-bottom: 1px solid var(--noaba-hairline);
+}
+
+/* ── Brand lockup = home ──────────────────────────────────────────────── */
+.noaba-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  text-decoration: none;
+  flex-shrink: 0;
+  min-height: 44px;        /* tap target */
+}
+.noaba-brand img { width: 32px; height: 32px; display: block; }
+.noaba-wordmark {
+  font-size: 14.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--noaba-brand);
+  line-height: 1;
+  white-space: nowrap;
+}
+.noaba-wordmark span { color: var(--noaba-brand-muted); }
+
+/* ── Product switch (2-segment) ───────────────────────────────────────── */
+.noaba-switch {
+  display: inline-flex;
+  background: var(--noaba-track);
+  border-radius: 9px;
+  padding: 3px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.noaba-seg {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--noaba-seg-inactive);
+  background: transparent;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  min-height: 36px;        /* visual; row keeps 44px tap height */
+}
+.noaba-seg[aria-current="page"] {
+  color: #fff;
+  background: var(--noaba-seg-active-bg);
+  box-shadow: 0 1px 2px rgba(44, 51, 31, 0.18);
+  cursor: default;
+}
+.noaba-seg .noaba-seg-label { display: inline; }
+
+/* ── Breadcrumb = location + back ─────────────────────────────────────── */
+.noaba-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.noaba-crumb {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--noaba-crumb-parent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+a.noaba-crumb:hover { text-decoration: underline; }
+.noaba-crumb[aria-current="page"] {
+  font-weight: 700;
+  color: var(--noaba-crumb-current);
+}
+.noaba-sep { color: var(--noaba-crumb-sep); user-select: none; }
+.noaba-back-chevron { display: none; color: var(--noaba-crumb-parent); }
+
+.noaba-spacer { flex: 1; }
+
+/* ── Admin gear — one affordance ──────────────────────────────────────── */
+/* 44px transparent button = tap target; 38px bordered ring = the visual. */
+.noaba-gear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  border-radius: 50%;
+}
+.noaba-gear:focus-visible { outline: none; box-shadow: var(--shadow-focus, 0 0 0 3px rgba(106,118,89,0.38)); }
+.noaba-gear-ring {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 1.5px solid var(--noaba-gear-border);
+  border-radius: 50%;
+  color: var(--noaba-gear-glyph);
+  font-size: 16px;
+  line-height: 1;
+  transition: background-color var(--duration-fast, 150ms) ease,
+              border-color var(--duration-fast, 150ms) ease;
+}
+.noaba-gear:hover .noaba-gear-ring { background: #f1f3ec; }
+/* authed = filled */
+.noaba-gear[data-authed="true"] .noaba-gear-ring {
+  background: var(--noaba-seg-active-bg);
+  border-color: var(--noaba-seg-active-bg);
+  color: #fff;
+}
+
+/* ── Collapse: narrow / iPad portrait ─────────────────────────────────── */
+@media (max-width: 820px) {
+  .noaba-row { flex-wrap: wrap; gap: 12px; padding: 10px 14px; min-height: 0; }
+  .noaba-seg .noaba-seg-label { display: none; } /* icon-only switch */
+  .noaba-seg { padding: 8px 10px; }
+  /* breadcrumb drops to its own full-width line below the top row */
+  .noaba-crumbs {
+    order: 10;
+    flex-basis: 100%;
+    margin: 2px -14px -10px;
+    padding: 9px 14px;
+    background: var(--noaba-subbar-bg);
+    border-top: 1px solid var(--noaba-hairline);
+  }
+  .noaba-back-chevron { display: inline; }
+}
+
+/* Very narrow: drop the wordmark so brand + switch + gear stay on one row. */
+@media (max-width: 380px) {
+  .noaba-wordmark { display: none; }
+}
+
+/* ── Touch devices (iPad, any width): enforce ≥44px tap targets ───────── */
+@media (pointer: coarse) {
+  .noaba-seg { min-height: 44px; }
+  .noaba-crumb { display: inline-block; padding-block: 6px; }
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  noaba-bar * { transition: none !important; animation: none !important; }
+}
