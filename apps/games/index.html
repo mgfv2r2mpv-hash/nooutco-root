@@ -8,6 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="tailwind.css">
+  <link rel="stylesheet" href="/assets/nav-bar.css">
+  <script src="/assets/nav-bar.js" defer></script>
   <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -227,6 +229,7 @@
   </style>
 </head>
 <body>
+  <noaba-bar product="games"></noaba-bar>
 <div class="wrap">
 
   <!-- GM modal -->
@@ -250,24 +253,6 @@
   </div>
 
   <!-- Topbar -->
-  <div class="topbar">
-    <div class="brand">
-      <img src="logo-mark.svg" alt="No Outcome ABA" width="44" height="44">
-      <div>
-        <div class="name">No Outcome <span>ABA</span></div>
-        <div class="sub">Games &amp; Activities</div>
-      </div>
-    </div>
-    <div class="topbar-right">
-      <a class="home" href="https://nooutco.me">← nooutco.me</a>
-      <button class="btn-admin" id="gear-btn" title="Game Master" aria-label="Game Master">
-        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.92c.04-.34.07-.69.07-1.08s-.03-.74-.07-1.08l2.32-1.82a.55.55 0 0 0 .13-.71l-2.2-3.82a.55.55 0 0 0-.67-.24l-2.74 1.1c-.57-.44-1.18-.81-1.86-1.08l-.41-2.92A.544.544 0 0 0 14 2h-4c-.27 0-.5.19-.54.44l-.41 2.92c-.68.27-1.29.64-1.86 1.08L4.45 5.34a.55.55 0 0 0-.67.24L1.58 9.4a.54.54 0 0 0 .13.71l2.32 1.82c-.04.34-.07.69-.07 1.08s.03.74.07 1.08L1.71 15.9a.55.55 0 0 0-.13.71l2.2 3.82c.13.24.41.33.67.24l2.74-1.1c.57.44 1.18.81 1.86 1.08l.41 2.92c.04.25.27.44.54.44h4c.27 0 .5-.19.54-.44l.41-2.92c.68-.27 1.29-.64 1.86-1.08l2.74 1.1c.26.09.54 0 .67-.24l2.2-3.82a.54.54 0 0 0-.13-.71l-2.32-1.81z"/>
-        </svg>
-      </button>
-    </div>
-  </div>
-
   <!-- Title + toggle -->
   <div class="head">
     <div>
@@ -479,13 +464,15 @@
   }
   function closeModal() { overlay.classList.remove('open'); }
 
-  document.getElementById('gear-btn').addEventListener('click', openModal);
+  function emitAuth() { document.dispatchEvent(new CustomEvent('noaba:auth-state', { detail: { authed: isAdmin() } })); }
+  window.__noabaAuthProbe = isAdmin;
+  document.addEventListener('noaba:admin-invoke', openModal);
   document.getElementById('gm-modal-close-x').addEventListener('click', closeModal);
   overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
   document.getElementById('gm-page-btn').addEventListener('click', () => { window.location.assign('./GM/'); });
   document.getElementById('gm-signout-btn').addEventListener('click', () => {
-    localStorage.removeItem('admin_token'); closeModal();
+    localStorage.removeItem('admin_token'); emitAuth(); closeModal();
   });
 
   async function sha256Hex(str) {
@@ -505,6 +492,7 @@
       });
       if (res.ok) {
         localStorage.setItem('admin_token', hash);
+        emitAuth();
         closeModal();
         setTimeout(openModal, 50);
       } else {
@@ -518,6 +506,7 @@
   }
   document.getElementById('gm-go').addEventListener('click', tryUnlock);
   pwInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
+  emitAuth();
 })();
 
 /* ── Display toggle ───────────────────────────────────────────────────── */
