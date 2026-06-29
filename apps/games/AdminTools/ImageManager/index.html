@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Image Manager — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="/tokens.css">
+<link rel="stylesheet" href="/assets/nav-bar.css">
+<link rel="stylesheet" href="/assets/admin-shell.css">
+<script src="/assets/nav-bar.js" defer></script>
+<script src="/assets/admin-shell.js" defer></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-height: 100vh; }
@@ -313,9 +320,133 @@ body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-he
 }
 .btn-batch-submit:hover { background: #6d28d9; }
 .btn-batch-submit:disabled { background: #1e293b; color: #475569; cursor: default; }
+
+/* ══ Sage reskin override (No Outcome ABA Game Master shell) ══════════════
+   Layered after the original dark theme so these win; selectors mirror the
+   classes above (incl. ones built dynamically in JS) so the whole tool reskins. */
+body { font-family: var(--font-sans, 'Atkinson Hyperlegible', system-ui, sans-serif); background: var(--ash-backdrop, #e7ebe0); color: var(--text-primary, #1a1f14); }
+
+.admin-gear.authed { filter: sepia(1) saturate(2.2) hue-rotate(40deg) brightness(.9); }
+#admin-modal { background: rgba(44,51,31,.32); }
+.admin-modal-box { background: #fff; border: 1px solid var(--sage-100, #e2e6d9); border-radius: 16px; box-shadow: 0 16px 42px rgba(44,51,31,.16); }
+.admin-modal-box h1 { color: var(--sage-900, #2c331f); }
+.admin-modal-box input { border: 1px solid var(--sage-100, #e2e6d9); background: var(--ash-tile, #f4f6ef); color: var(--sage-900, #2c331f); }
+.admin-modal-box .unlock-btn { background: var(--sage-700, #4d5840); }
+.admin-modal-box .unlock-btn:hover { background: var(--sage-800, #3c4533); }
+#admin-pw-error { color: var(--red-700, #b91c1c); }
+
+#app { padding: 18px 22px; }
+.app-header { margin-bottom: 1rem; }
+.header-divider { background: var(--ash-hairline, #e7ebe0); }
+
+/* game + folder tabs */
+.game-tab { border: 1px solid #dfe3d6; background: #fff; color: var(--sage-600, #5d6a4d); border-radius: 999px; font-weight: 700; }
+.game-tab.active { background: var(--sage-700, #4d5840); color: #fff; border-color: var(--sage-700, #4d5840); }
+.folder-tab { border: 1px solid #dfe3d6; background: #fff; color: var(--sage-600, #5d6a4d); border-radius: 999px; }
+.folder-tab.active { background: var(--sage-100, #e2e6d9); color: var(--sage-900, #2c331f); border-color: var(--sage-200, #c7cdb6); }
+.folder-tab.archived-tab { border-color: #fae3a0; color: var(--amber-700, #92722a); }
+.folder-tab.archived-tab.active { background: var(--amber-100, #fef3c7); }
+.btn-new-topic { border: 1px dashed var(--sage-200, #c7cdb6); color: var(--sage-600, #5d6a4d); }
+.btn-new-topic:hover { background: var(--sage-50, #f1f3ec); }
+
+/* folder actions */
+.btn-rename { background: var(--sage-50, #f1f3ec); color: var(--sage-700, #4d5840); border: 1px solid var(--sage-200, #c7cdb6); }
+.btn-rename:hover { background: var(--sage-100, #e2e6d9); }
+.rename-inline input { border: 1px solid var(--sage-500, #6a7659); background: #fff; color: var(--sage-900, #2c331f); }
+.btn-archive { background: var(--amber-100, #fef3c7); color: var(--amber-700, #92722a); border: 1px solid #fae3a0; }
+.btn-archive:hover { background: #fce8b8; }
+.btn-restore { background: var(--green-100, #dcfce7); color: var(--green-800, #15803d); border: 1px solid #bbf0c9; }
+.btn-restore:hover { background: #c6f0d2; }
+.btn-purge { background: var(--red-50, #fef2f2); color: var(--red-700, #b91c1c); border: 1px solid #f0d4d4; }
+.btn-purge:hover { background: #fbe0e0; }
+
+/* add image */
+.btn-add-image { background: var(--sage-50, #f1f3ec); color: var(--sage-700, #4d5840); border: 1px solid var(--sage-200, #c7cdb6); }
+.btn-add-image:hover { background: var(--sage-100, #e2e6d9); }
+.add-form { background: #fff; border: 1px solid #e9ece2; border-radius: 13px; }
+.add-form h3 { color: var(--sage-900, #2c331f); }
+.add-form label { color: var(--sage-500, #6a7659); }
+.add-form input, .add-form textarea { border: 1px solid var(--sage-100, #e2e6d9); background: #fff; color: var(--sage-900, #2c331f); }
+.btn-submit { background: var(--sage-700, #4d5840); }
+.btn-submit:hover { background: var(--sage-800, #3c4533); }
+.btn-cancel-form { background: var(--ash-hairline-soft, #eef0e9); color: var(--sage-800, #3c4533); }
+.btn-cancel-form:hover { background: var(--sage-100, #e2e6d9); }
+
+/* image grid */
+.img-card { background: #fff; border: 1px solid #e9ece2; border-radius: 11px; }
+.img-card:hover { border-color: var(--sage-200, #c7cdb6); box-shadow: 0 4px 16px rgba(44,51,31,.08); }
+.img-card img { background: var(--ash-tile, #f4f6ef); }
+.img-card .label { color: var(--sage-700, #4d5840); font-weight: 600; }
+.cdn-badge { background: var(--amber-700, #b45309); }
+
+/* detail panel */
+#detail-panel { background: #fff; border-top: 1px solid var(--sage-100, #e2e6d9); box-shadow: 0 -16px 42px rgba(44,51,31,.16); }
+.detail-meta h2 { color: var(--sage-900, #1a1f14); }
+.detail-meta .detail-sub { color: var(--sage-500, #6a7659); }
+.detail-thumb { background: var(--ash-tile, #f4f6ef); }
+.detail-close { color: var(--sage-500, #6a7659); }
+.detail-close:hover { color: var(--sage-900, #2c331f); }
+.detail-section label { color: var(--sage-500, #6a7659); }
+.detail-row input { border: 1px solid var(--sage-100, #e2e6d9); background: #fff; color: var(--sage-900, #2c331f); }
+.btn-blue { background: var(--sage-700, #4d5840); color: #fff; }
+.btn-blue:hover { background: var(--sage-800, #3c4533); }
+.btn-gray { background: var(--ash-hairline-soft, #eef0e9); color: var(--sage-800, #3c4533); }
+.btn-gray:hover { background: var(--sage-100, #e2e6d9); }
+.btn-red { background: var(--red-50, #fef2f2); color: var(--red-700, #b91c1c); }
+.btn-red:hover { background: #fbe0e0; }
+.btn-amber { background: var(--amber-100, #fef3c7); color: var(--amber-700, #92722a); }
+.btn-amber:hover { background: #fce8b8; }
+.wiki-result { background: #fff; border: 1px solid var(--sage-100, #e2e6d9); }
+.wiki-result:hover { border-color: var(--sage-200, #c7cdb6); }
+.wiki-result img { background: var(--ash-tile, #f4f6ef); }
+.wiki-result span { color: var(--sage-500, #6a7659); }
+.status-msg.ok { color: var(--green-700, #16a34a); }
+.status-msg.err { color: var(--red-700, #b91c1c); }
+.loading { color: var(--sage-500, #6a7659); }
+
+/* dup modal */
+.dup-overlay { background: rgba(44,51,31,.4); }
+.dup-box { background: #fff; border: 1px solid var(--sage-100, #e2e6d9); border-radius: 16px; box-shadow: 0 16px 42px rgba(44,51,31,.16); }
+.dup-box h3 { color: var(--red-700, #b91c1c); }
+.dup-box p { color: var(--sage-600, #5d6a4d); }
+.dup-rename-row label { color: var(--sage-500, #6a7659); }
+.dup-rename-row input { border: 1px solid var(--sage-500, #6a7659); background: #fff; color: var(--sage-900, #2c331f); }
+
+/* batch */
+.btn-batch-toggle { border: 1px solid var(--sage-200, #c7cdb6); background: var(--sage-50, #f1f3ec); color: var(--sage-700, #4d5840); border-radius: 999px; }
+.btn-batch-toggle:hover { background: var(--sage-100, #e2e6d9); }
+.btn-batch-toggle.active { background: var(--violet-600, #7c3aed); border-color: var(--violet-600, #7c3aed); color: #fff; }
+.btn-batch-toggle.active:hover { background: #6d28d9; }
+#batch-panel { background: #fff; border-left: 1px solid var(--sage-100, #e2e6d9); box-shadow: -16px 0 42px rgba(44,51,31,.10); }
+.batch-panel-header { border-bottom: 1px solid var(--ash-hairline-soft, #eef0e9); }
+.batch-panel-title { color: var(--sage-900, #2c331f); }
+.batch-count-badge { background: var(--violet-600, #7c3aed); }
+.batch-panel-close { color: var(--sage-500, #6a7659); }
+.batch-panel-close:hover { color: var(--sage-900, #2c331f); }
+.batch-empty { color: var(--sage-500, #9aa589); }
+.batch-item { background: #fff; border: 1px solid #e9ece2; }
+.batch-item.status-running { border-color: var(--sage-500, #6a7659); }
+.batch-item.status-done { border-color: var(--green-700, #16a34a); }
+.batch-item.status-error { border-color: var(--red-700, #b91c1c); }
+.batch-item-thumb { background: var(--ash-tile, #f4f6ef); }
+.batch-item-label { color: var(--sage-900, #2c331f); }
+.batch-item-op { color: var(--sage-500, #6a7659); }
+.batch-item-msg.ok { color: var(--green-700, #16a34a); }
+.batch-item-msg.err { color: var(--red-700, #b91c1c); }
+.batch-item-msg.run { color: var(--sage-700, #4d5840); }
+.batch-item-remove { color: var(--sage-400, #9aa589); }
+.batch-item-remove:hover { color: var(--red-700, #b91c1c); }
+.batch-panel-footer { border-top: 1px solid var(--ash-hairline-soft, #eef0e9); }
+.batch-clear-done { color: var(--sage-500, #9aa589); }
+.batch-clear-done:hover { color: var(--sage-700, #4d5840); }
+.btn-batch-submit { background: var(--violet-600, #7c3aed); }
+.btn-batch-submit:hover { background: #6d28d9; }
+.btn-batch-submit:disabled { background: var(--ash-hairline-soft, #eef0e9); color: var(--sage-400, #9aa589); }
 </style>
 </head>
-<body>
+<body class="ash-page">
+
+<noaba-bar product="games" crumbs="Game Master/Image Manager" crumb-hrefs="/,/GM/" no-admin></noaba-bar>
 
 <button class="admin-gear" id="admin-gear" title="Admin">⚙️</button>
 <div id="admin-modal">
@@ -328,15 +459,17 @@ body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-he
 </div>
 
 <!-- App -->
-<div id="app">
-  <div class="app-header">
-    <a class="btn-back" href="../../">← Games</a>
-    <div class="header-divider"></div>
-    <div class="game-tabs" id="game-tabs"></div>
+<noaba-admin-shell active="images" current="Image Manager">
+  <div data-ash-slot="actions">
     <button class="btn-batch-toggle" id="batch-mode-btn">⚡ Batch</button>
   </div>
-  <div id="main-content"><p class="loading">Loading…</p></div>
-</div>
+  <div id="app">
+    <div class="app-header">
+      <div class="game-tabs" id="game-tabs"></div>
+    </div>
+    <div id="main-content"><p class="loading">Loading…</p></div>
+  </div>
+</noaba-admin-shell>
 
 <!-- Detail Panel -->
 <div id="detail-panel">
@@ -349,8 +482,8 @@ body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-he
     <button class="detail-close" id="dp-close">✕</button>
   </div>
 
-  <div class="detail-section" id="dp-displayname-section" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:.75rem 1rem;">
-    <label style="color:#7dd3fc;font-weight:600;">Display name <span id="dp-displayname-hint" style="color:#64748b;font-weight:400;">(optional — shown to learners; leave blank to use the filename)</span></label>
+  <div class="detail-section" id="dp-displayname-section" style="background:var(--ash-tile,#f4f6ef);border:1px solid var(--sage-100,#e2e6d9);border-radius:9px;padding:.75rem 1rem;">
+    <label style="color:var(--sage-700,#4d5840);font-weight:700;">Display name <span id="dp-displayname-hint" style="color:var(--sage-500,#6a7659);font-weight:400;">(optional — shown to learners; leave blank to use the filename)</span></label>
     <div class="detail-row">
       <input type="text" id="dp-displayname-input" placeholder="e.g. On  (multiple files like on-squirrel.svg, on-book.svg can share this label)">
       <button class="btn-sm btn-blue" id="dp-displayname-save-btn">Save</button>
@@ -363,9 +496,9 @@ body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-he
     <div class="detail-row">
       <input type="url" id="dp-url-input" placeholder="Paste URL…">
     </div>
-    <div style="font-size:.72rem;color:#475569;text-align:center;margin:.35rem 0 .25rem;">— or —</div>
+    <div style="font-size:.72rem;color:var(--sage-500,#6a7659);text-align:center;margin:.35rem 0 .25rem;">— or —</div>
     <div class="detail-row">
-      <input type="file" id="dp-file-input" accept="image/*" style="flex:1;font-size:.78rem;color:#94a3b8;min-width:0;background:#0f172a;border:1px dashed #334155;border-radius:6px;padding:.25rem .4rem;cursor:pointer;">
+      <input type="file" id="dp-file-input" accept="image/*" style="flex:1;font-size:.78rem;color:var(--sage-600,#5d6a4d);min-width:0;background:#fff;border:1px dashed var(--sage-200,#c7cdb6);border-radius:8px;padding:.25rem .4rem;cursor:pointer;">
     </div>
     <div style="margin-top:.5rem;">
       <button class="btn-sm btn-blue" id="dp-save-btn" style="width:100%;">Save</button>
@@ -696,7 +829,7 @@ function renderContent() {
     const managerLink = document.createElement('a');
     managerLink.href = '../FFCGManager/';
     managerLink.target = '_blank';
-    managerLink.style.cssText = 'font-size:.78rem;color:#93c5fd;text-decoration:none;margin-left:.5rem;';
+    managerLink.style.cssText = 'font-size:.78rem;color:var(--sage-700,#4d5840);font-weight:700;text-decoration:none;margin-left:.5rem;';
     managerLink.textContent = '🏷️ Edit tags in FFC Manager ↗';
     bar.appendChild(managerLink);
     content.appendChild(bar);
@@ -714,7 +847,7 @@ function renderContent() {
     const managerLink = document.createElement('a');
     managerLink.href = '../IntraverbalManager/';
     managerLink.target = '_blank';
-    managerLink.style.cssText = 'font-size:.78rem;color:#93c5fd;text-decoration:none;margin-left:.5rem;';
+    managerLink.style.cssText = 'font-size:.78rem;color:var(--sage-700,#4d5840);font-weight:700;text-decoration:none;margin-left:.5rem;';
     managerLink.textContent = '🏷️ Edit in Intraverbal Manager ↗';
     bar.appendChild(managerLink);
     content.appendChild(bar);
@@ -808,7 +941,7 @@ function buildCard(item) {
     const filename = item.path.split('/').pop();
     const displayName = gameData[activeGame.id]?.manifest?.displayNames?.[item.path];
     if (displayName) {
-      label.innerHTML = `<span style="color:#7dd3fc;">"${escapeHtml(displayName)}"</span> · ${escapeHtml(filename)}`;
+      label.innerHTML = `<span style="color:var(--sage-700,#4d5840);">"${escapeHtml(displayName)}"</span> · ${escapeHtml(filename)}`;
       label.title = `Display name: "${displayName}"\nFilename: ${filename}`;
     } else {
       label.textContent = filename;
@@ -836,7 +969,7 @@ function renderArchivedView(content) {
 
   archived.forEach(folder => {
     const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;padding:.6rem 1rem;background:#1e1e1e;border-radius:8px;border:1px solid #334155;';
+    row.style.cssText = 'display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;padding:.6rem 1rem;background:#fff;border-radius:11px;border:1px solid #e9ece2;';
 
     const name = document.createElement('span');
     name.textContent = folder;
@@ -1443,21 +1576,21 @@ function showRenameInline(bar, renameBtn, folder) {
 
 function showNewTopicModal() {
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:800;display:flex;align-items:center;justify-content:center;';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(44,51,31,.4);z-index:800;display:flex;align-items:center;justify-content:center;';
 
   const box = document.createElement('div');
-  box.style.cssText = 'background:#1e1e2e;border:1px solid #334155;border-radius:12px;padding:1.5rem;width:360px;';
+  box.style.cssText = 'background:#fff;border:1px solid var(--sage-100,#e2e6d9);border-radius:16px;box-shadow:0 16px 42px rgba(44,51,31,.16);padding:1.5rem;width:360px;';
   box.innerHTML = `
-    <h2 style="font-size:1rem;margin-bottom:1rem;color:#93c5fd;">New Topic Folder</h2>
-    <label style="font-size:.78rem;color:#94a3b8;display:block;margin-bottom:.25rem;">Folder name (will be prefixed T_)</label>
-    <input type="text" id="nt-name" placeholder="animals" style="width:100%;padding:.4rem .6rem;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:.85rem;margin-bottom:.75rem;">
-    <label style="font-size:.78rem;color:#94a3b8;display:block;margin-bottom:.25rem;">First image filename</label>
-    <input type="text" id="nt-filename" placeholder="gas-station.jpg" style="width:100%;padding:.4rem .6rem;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:.85rem;margin-bottom:.1rem;">
+    <h2 style="font-size:1rem;margin-bottom:1rem;color:var(--sage-900,#2c331f);">New Topic Folder</h2>
+    <label style="font-size:.78rem;color:var(--sage-500,#6a7659);display:block;margin-bottom:.25rem;">Folder name (will be prefixed T_)</label>
+    <input type="text" id="nt-name" placeholder="animals" style="width:100%;padding:.4rem .6rem;border-radius:6px;border:1px solid var(--sage-100,#e2e6d9);background:#fff;color:var(--sage-900,#2c331f);font-size:.85rem;margin-bottom:.75rem;">
+    <label style="font-size:.78rem;color:var(--sage-500,#6a7659);display:block;margin-bottom:.25rem;">First image filename</label>
+    <input type="text" id="nt-filename" placeholder="gas-station.jpg" style="width:100%;padding:.4rem .6rem;border-radius:6px;border:1px solid var(--sage-100,#e2e6d9);background:#fff;color:var(--sage-900,#2c331f);font-size:.85rem;margin-bottom:.1rem;">
     <small style="color:#64748b;font-size:.72rem;display:block;margin-bottom:.6rem;">kebab-case, hyphens for spaces — extension must match image type</small>
-    <label style="font-size:.78rem;color:#94a3b8;display:block;margin-bottom:.25rem;">First image URL</label>
-    <input type="url" id="nt-url" placeholder="https://…" style="width:100%;padding:.4rem .6rem;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:.85rem;margin-bottom:.35rem;">
-    <label style="font-size:.78rem;color:#94a3b8;display:block;margin-bottom:.25rem;">Or upload from disk</label>
-    <input type="file" id="nt-file" accept="image/*" style="width:100%;margin-bottom:.75rem;color:#e2e8f0;font-size:.82rem;">
+    <label style="font-size:.78rem;color:var(--sage-500,#6a7659);display:block;margin-bottom:.25rem;">First image URL</label>
+    <input type="url" id="nt-url" placeholder="https://…" style="width:100%;padding:.4rem .6rem;border-radius:6px;border:1px solid var(--sage-100,#e2e6d9);background:#fff;color:var(--sage-900,#2c331f);font-size:.85rem;margin-bottom:.35rem;">
+    <label style="font-size:.78rem;color:var(--sage-500,#6a7659);display:block;margin-bottom:.25rem;">Or upload from disk</label>
+    <input type="file" id="nt-file" accept="image/*" style="width:100%;margin-bottom:.75rem;color:var(--sage-600,#5d6a4d);font-size:.82rem;">
     <div style="display:flex;gap:.5rem;margin-top:.25rem;">
       <button id="nt-submit" style="flex:1;padding:.4rem;border-radius:6px;background:#3b82f6;color:#fff;border:none;cursor:pointer;">Create</button>
       <button id="nt-cancel" style="flex:1;padding:.4rem;border-radius:6px;background:#374151;color:#d1d5db;border:none;cursor:pointer;">Cancel</button>
@@ -1996,7 +2129,7 @@ function showDuplicateModal(name, existingNames, isPersonName = false) {
       <div class="dup-actions">
         <button class="btn-sm btn-blue" id="dup-rename-btn">Rename</button>
         <button class="btn-sm btn-gray" id="dup-overwrite-btn">Overwrite</button>
-        <button class="btn-sm btn-amber" id="dup-keepboth-btn">Keep Both <span style="color:#94a3b8;font-size:.75em;">(→ ${escapeHtml(autoName)})</span></button>
+        <button class="btn-sm btn-amber" id="dup-keepboth-btn">Keep Both <span style="color:var(--sage-500,#6a7659);font-size:.75em;">(→ ${escapeHtml(autoName)})</span></button>
         <button class="btn-sm btn-gray" id="dup-cancel-btn">Cancel</button>
       </div>
     `;
