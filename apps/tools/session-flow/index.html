@@ -4,12 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Session Flow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="/tokens.css">
+  <link rel="stylesheet" href="/assets/nav-bar.css">
+  <script src="/assets/nav-bar.js" defer></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
   body {
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    background: #f8f7f2;
+    font-family: var(--font-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+    background: #eef1ea;
     color: #2c2c2a;
     margin: 0;
     padding: 20px 18px 48px;
@@ -262,11 +267,10 @@
 </style>
 </head>
 <body>
+  <noaba-bar product="tools" crumbs="Session flow guide" crumb-hrefs="/" no-admin></noaba-bar>
 <div class="wrap" id="top">
 
   <nav class="topnav" aria-label="Jump to section">
-    <a class="home-link" href="/">&#8592; All tools</a>
-    <span class="nav-sep"></span>
     <a href="#ph-open">Session open</a>
     <a href="#ph-pair">Pre-session pairing</a>
     <a href="#ph-dtt">DTT</a>
