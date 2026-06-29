@@ -11,15 +11,22 @@
   <script src="/assets/notes-gate.js"></script>
   <script src="/assets/notes-scrub.js"></script>
   <script src="/assets/error-button.js" defer></script>
+  <!-- Unified shared chrome — tokens before nav-bar.css so its variables resolve. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="/tokens.css">
+  <link rel="stylesheet" href="/assets/nav-bar.css">
+  <script src="/assets/nav-bar.js" defer></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Segoe UI', Inter, sans-serif;
-      background: #f0f4ec;
+      font-family: var(--font-sans, 'Atkinson Hyperlegible', 'Segoe UI', Inter, sans-serif);
+      background: #eef1ea;
       min-height: 100vh;
-      padding: 32px 20px;
       color: #2d3a1f;
     }
+    /* Bar is full-bleed/sticky; page padding moves to the content wrapper. */
+    #root { padding: 28px 20px; }
     .info-tip {
       position: relative;
       display: inline-flex;
@@ -70,7 +77,27 @@
   </style>
 </head>
 <body>
+  <noaba-bar product="tools" crumbs="Notes/Assessment note" crumb-hrefs="/notes/"></noaba-bar>
   <div id="root"></div>
+  <!-- Gear ↔ NotesGate bridge. Visual unification only; the gate's auth logic is
+       untouched. Gear opens login when logged out, logs out when logged in; the
+       bar reflects login state. -->
+  <script>
+    (function () {
+      function authed() { return !!(window.NotesGate && window.NotesGate.isLoggedIn()); }
+      window.__noabaAuthProbe = authed;
+      function emit() {
+        document.dispatchEvent(new CustomEvent("noaba:auth-state", { detail: { authed: authed() } }));
+      }
+      document.addEventListener("noaba:admin-invoke", function () {
+        if (!window.NotesGate) return;
+        if (window.NotesGate.isLoggedIn()) window.NotesGate.logout();
+        else window.NotesGate.openLogin();
+      });
+      if (window.NotesGate && window.NotesGate.subscribe) window.NotesGate.subscribe(emit);
+      emit();
+    })();
+  </script>
 
   <script type="text/babel">
     // Canonical option lists — both the menu the AI may choose from and the
@@ -265,7 +292,6 @@ TERMINOLOGY (non-negotiable)
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
               <a href="../scrubber.html" target="_blank" style={{ padding: "7px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "#f0f4ec", color: "#374528", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>Scrubber →</a>
-              <a href="/" style={{ padding: "7px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>← Back</a>
             </div>
           </div>
 
