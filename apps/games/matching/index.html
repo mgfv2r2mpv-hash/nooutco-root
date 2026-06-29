@@ -12,11 +12,15 @@
     Opening index.html as a file:// URL will NOT work for image discovery.
   -->
   <link rel="stylesheet" href="../tailwind.css">
+  <link rel="stylesheet" href="/assets/nav-bar.css">
+  <script src="/assets/nav-bar.js" defer></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
   <!-- ── Header / compact session toolbar ───────────────────────────── -->
+  <noaba-bar product="games" crumbs="Matching Game" crumb-hrefs="/" no-admin></noaba-bar>
+
   <header id="app-header" title="Tap the bar to show / hide settings">
     <a href="../" id="btn-back" class="btn-back" title="Back to Games"><span class="back-label">← Games</span></a>
 
