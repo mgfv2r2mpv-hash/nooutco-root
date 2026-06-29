@@ -1,0 +1,263 @@
+/* No Outcome ABA — Game Master admin shell (<noaba-admin-shell>)
+   CANONICAL SOURCE: packages/shared/ui/admin-shell.css — edit here, never in
+   apps/games/assets/admin-shell.css (generated copy; CI drift check fails on
+   hand edits). Run `npm run sync:shared` after editing. Games-only.
+
+   The persistent chrome every Game Master manager lives in: a left nav rail
+   (218px full / 64px icon rail), a content toolbar ("Game Master / <current>" +
+   count pill + per-page actions slot), and an unsaved-changes guard dialog.
+   Pairs with tokens.css for the sage palette + Atkinson. See admin-shell.js. */
+
+/* Admin-only surfaces the shared token set doesn't carry; sage hues that DO map
+   to tokens fall back to the literal design hex when tokens.css is absent.
+   Defined on :root (not the component) so the guard dialog — which the JS appends
+   to document.body, outside <noaba-admin-shell> — still resolves them. */
+:root {
+  --ash-backdrop:      #e7ebe0;
+  --ash-rail:          #f3f6ee;
+  --ash-hairline:      #e7ebe0;
+  --ash-hairline-soft: #eef0e9;
+  --ash-tile:          #f4f6ef;
+  --ash-active:        var(--sage-100, #e2e6d9);
+  --ash-accent:        var(--sage-700, #4d5840);
+  --ash-accent-hover:  var(--sage-800, #3c4533);
+  --ash-active-text:   var(--sage-900, #2c331f);
+  --ash-nav-text:      #5a6b4a;
+  --ash-eyebrow:       #9aa589;
+  --ash-label-muted:   #a3ad92;
+  --ash-gm-dot:        #5fae7e;
+  --ash-gm-text:       #7a8568;
+  --ash-exit-text:     #8a9678;
+  --ash-title:         #1a1f14;
+  --ash-divider:       #c7cdb6;
+  --ash-count-text:    #8a9678;
+  --ash-count-bg:      #f1f3ec;
+  --ash-success:       var(--green-700, #16a34a);
+  --ash-success-hover: var(--green-800, #15803d);
+  --ash-danger:        var(--red-700, #b91c1c);
+  --ash-danger-border: #f0d4d4;
+}
+
+noaba-admin-shell {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  font-family: var(--font-sans, 'Atkinson Hyperlegible', -apple-system, 'Segoe UI', sans-serif);
+  color: var(--text-primary, #1a1f14);
+  background: var(--ash-backdrop);
+}
+
+/* When the host page just drops the element in <body> without a flex column,
+   still fill the viewport gracefully. */
+body.ash-page { display: flex; flex-direction: column; min-height: 100dvh; margin: 0; background: var(--ash-backdrop, #e7ebe0); }
+
+/* ── Nav rail ─────────────────────────────────────────────────────────── */
+.ash-rail {
+  width: 218px;
+  flex-shrink: 0;
+  background: var(--ash-rail);
+  border-right: 1px solid var(--ash-hairline);
+  display: flex;
+  flex-direction: column;
+  padding: 18px 14px;
+  gap: 2px;
+}
+
+.ash-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 6px 18px;
+  text-decoration: none;
+  color: inherit;
+}
+.ash-brand img { width: 36px; height: 36px; display: block; flex-shrink: 0; }
+.ash-brand-text { line-height: 1.05; min-width: 0; }
+.ash-brand-name { font-size: 14px; font-weight: 700; color: var(--ash-active-text); }
+.ash-brand-eyebrow {
+  font-size: 10px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ash-eyebrow);
+}
+
+.ash-manage {
+  font-size: 10px; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--ash-label-muted);
+  padding: 4px 8px 6px;
+}
+
+.ash-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  min-height: 40px;
+  border-radius: 10px;
+  color: var(--ash-nav-text);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--duration-fast, .15s) var(--ease-standard, cubic-bezier(.4,0,.2,1));
+}
+.ash-nav-item:hover { background: rgba(226, 230, 217, .55); }
+.ash-nav-accent { width: 3px; height: 18px; border-radius: 2px; background: transparent; flex-shrink: 0; }
+.ash-nav-glyph { font-size: 15px; width: 18px; text-align: center; }
+.ash-nav-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ash-nav-item.is-active {
+  background: var(--ash-active);
+  color: var(--ash-active-text);
+  font-weight: 700;
+}
+.ash-nav-item.is-active .ash-nav-accent { background: var(--ash-accent); }
+.ash-nav-item:focus-visible { outline: none; box-shadow: var(--shadow-focus, 0 0 0 3px rgba(106,118,89,.38)); }
+
+.ash-rail-spacer { flex: 1; }
+
+.ash-foot {
+  border-top: 1px solid var(--ash-hairline);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ash-gm {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 11px; border-radius: 10px;
+  color: var(--ash-gm-text); font-size: 12px; font-weight: 600;
+}
+.ash-gm-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ash-gm-dot); flex-shrink: 0; }
+.ash-exit {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 11px; min-height: 40px; border-radius: 10px;
+  color: var(--ash-exit-text); font-size: 12.5px; font-weight: 600;
+  text-decoration: none; cursor: pointer;
+  transition: background var(--duration-fast, .15s) var(--ease-standard, cubic-bezier(.4,0,.2,1));
+}
+.ash-exit:hover { background: rgba(226, 230, 217, .55); }
+.ash-exit-glyph { font-size: 14px; }
+
+/* ── Content column ───────────────────────────────────────────────────── */
+.ash-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--surface-card, #fff);
+}
+
+.ash-bar {
+  min-height: 62px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--ash-hairline-soft);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 22px;
+  flex-wrap: wrap;
+}
+.ash-crumbs { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ash-crumb-root { font-size: 13px; font-weight: 600; color: var(--ash-eyebrow); }
+.ash-crumb-sep { color: var(--ash-divider); font-size: 13px; }
+.ash-crumb-current { font-size: 15px; font-weight: 700; color: var(--ash-title); white-space: nowrap; }
+.ash-count {
+  font-size: 11px; font-weight: 700; color: var(--ash-count-text);
+  background: var(--ash-count-bg); border-radius: 999px; padding: 2px 9px; margin-left: 4px;
+  white-space: nowrap;
+}
+.ash-bar-spacer { flex: 1; }
+.ash-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.ash-body { flex: 1; min-height: 0; min-width: 0; overflow: auto; }
+
+/* ── Icon-rail collapse (narrow widths, or [data-collapsed]) ──────────── */
+@media (max-width: 860px) {
+  .ash-rail:not(.ash-rail--force-full) { width: 64px; padding: 18px 0; align-items: center; gap: 6px; }
+  .ash-rail:not(.ash-rail--force-full) .ash-brand { padding: 0 0 12px; gap: 0; }
+  .ash-rail:not(.ash-rail--force-full) .ash-brand-text,
+  .ash-rail:not(.ash-rail--force-full) .ash-manage,
+  .ash-rail:not(.ash-rail--force-full) .ash-nav-label,
+  .ash-rail:not(.ash-rail--force-full) .ash-nav-accent,
+  .ash-rail:not(.ash-rail--force-full) .ash-gm span:last-child,
+  .ash-rail:not(.ash-rail--force-full) .ash-exit-label { display: none; }
+  .ash-rail:not(.ash-rail--force-full) .ash-nav-item,
+  .ash-rail:not(.ash-rail--force-full) .ash-exit {
+    width: 44px; height: 44px; padding: 0; justify-content: center; border-radius: 11px;
+  }
+  .ash-rail:not(.ash-rail--force-full) .ash-nav-item.is-active {
+    box-shadow: inset 3px 0 0 var(--ash-accent);
+  }
+  .ash-rail:not(.ash-rail--force-full) .ash-nav-glyph { font-size: 18px; width: auto; }
+  .ash-rail:not(.ash-rail--force-full) .ash-gm { justify-content: center; padding: 8px 0; }
+}
+
+noaba-admin-shell[data-collapsed] .ash-rail { width: 64px; padding: 18px 0; align-items: center; gap: 6px; }
+noaba-admin-shell[data-collapsed] .ash-brand { padding: 0 0 12px; gap: 0; }
+noaba-admin-shell[data-collapsed] .ash-brand-text,
+noaba-admin-shell[data-collapsed] .ash-manage,
+noaba-admin-shell[data-collapsed] .ash-nav-label,
+noaba-admin-shell[data-collapsed] .ash-nav-accent,
+noaba-admin-shell[data-collapsed] .ash-gm span:last-child,
+noaba-admin-shell[data-collapsed] .ash-exit-label { display: none; }
+noaba-admin-shell[data-collapsed] .ash-nav-item,
+noaba-admin-shell[data-collapsed] .ash-exit {
+  width: 44px; height: 44px; padding: 0; justify-content: center; border-radius: 11px;
+}
+noaba-admin-shell[data-collapsed] .ash-nav-item.is-active { box-shadow: inset 3px 0 0 var(--ash-accent); }
+noaba-admin-shell[data-collapsed] .ash-nav-glyph { font-size: 18px; width: auto; }
+noaba-admin-shell[data-collapsed] .ash-gm { justify-content: center; padding: 8px 0; }
+
+/* ── Unsaved-changes guard dialog (Frame 05) ─────────────────────────── */
+.ash-guard {
+  position: fixed; inset: 0; z-index: 10050;
+  display: none; align-items: center; justify-content: center;
+  background: rgba(44, 51, 31, .28);
+  padding: 22px;
+}
+.ash-guard.is-open { display: flex; }
+.ash-guard-box {
+  background: #fff; border: 1px solid var(--ash-active);
+  border-radius: 16px; box-shadow: 0 16px 42px rgba(44, 51, 31, .18);
+  padding: 22px; width: min(386px, 100%);
+}
+.ash-guard-head { display: flex; align-items: center; gap: 13px; margin-bottom: 13px; }
+.ash-guard-icon {
+  width: 44px; height: 44px; flex-shrink: 0; border-radius: 12px;
+  background: var(--amber-100, #fef3c7);
+  display: flex; align-items: center; justify-content: center; font-size: 21px;
+}
+.ash-guard-title { font-size: 17px; font-weight: 700; color: var(--ash-title); line-height: 1.2; }
+.ash-guard-body { font-size: 13px; color: var(--sage-600, #5d6a4d); line-height: 1.5; margin-bottom: 14px; }
+.ash-guard-list {
+  background: var(--ash-tile); border: 1px solid var(--ash-hairline);
+  border-radius: 11px; padding: 11px 13px; margin-bottom: 18px;
+  display: flex; flex-direction: column; gap: 9px;
+  max-height: 38vh; overflow: auto;
+}
+.ash-guard-row { display: flex; align-items: center; gap: 10px; }
+.ash-guard-row-name { flex: 1; font-size: 13px; font-weight: 700; color: var(--ash-active-text); }
+.ash-guard-row-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber-500, #f59e0b); }
+.ash-guard-divider { height: 1px; background: var(--ash-hairline); }
+.ash-guard-save {
+  width: 100%; background: var(--ash-success); color: #fff; border: none;
+  border-radius: 10px; padding: 12px; font: inherit; font-size: 14px; font-weight: 700;
+  cursor: pointer; margin-bottom: 10px;
+  transition: background var(--duration-fast, .15s) var(--ease-standard, cubic-bezier(.4,0,.2,1));
+}
+.ash-guard-save:hover { background: var(--ash-success-hover); }
+.ash-guard-save[disabled] { opacity: .6; cursor: not-allowed; }
+.ash-guard-alt { display: flex; gap: 10px; }
+.ash-guard-discard, .ash-guard-keep {
+  flex: 1; border-radius: 10px; padding: 11px; font: inherit;
+  font-size: 12.5px; font-weight: 700; cursor: pointer;
+}
+.ash-guard-discard { background: transparent; color: var(--ash-danger); border: 1px solid var(--ash-danger-border); }
+.ash-guard-keep { background: var(--ash-hairline-soft); color: var(--ash-accent-hover); border: 1px solid var(--ash-active); }
+.ash-guard-save:focus-visible, .ash-guard-discard:focus-visible, .ash-guard-keep:focus-visible {
+  outline: none; box-shadow: var(--shadow-focus, 0 0 0 3px rgba(106, 118, 89, .38));
+}
+
+/* ── Motion preference ───────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  noaba-admin-shell *, noaba-admin-shell *::before, noaba-admin-shell *::after { transition: none !important; }
+}
