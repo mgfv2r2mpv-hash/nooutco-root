@@ -7,15 +7,21 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="icon" type="image/png" href="N-O.png">
   <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="/tokens.css">
+  <link rel="stylesheet" href="/assets/nav-bar.css">
+  <script src="/assets/nav-bar.js" defer></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #edf0e9;
+      font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+      background: #eef1ea;
       min-height: 100vh;
-      padding: 48px 24px;
     }
+    /* Bar is full-bleed/sticky; page padding lives on the content wrapper. */
+    .apex-main { padding: 40px 24px 56px; }
 
     h1 {
       font-size: 30px;
@@ -169,6 +175,8 @@
   </style>
 </head>
 <body>
+  <noaba-bar product="apex"></noaba-bar>
+  <main class="apex-main">
   <h1>No Outcome - Progress is a Process</h1>
   <p class="subtitle">Choose an Option:</p>
 
@@ -346,5 +354,9 @@
   loadCards();
 })();
 </script>
+  </main>
+  <script>
+    document.addEventListener("noaba:admin-invoke", function () { location.href = "/admin/"; });
+  </script>
 </body>
 </html>
