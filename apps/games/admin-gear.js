@@ -36,7 +36,7 @@
       #admin-gear-btn {
         display: none;
         position: fixed;
-        top: 12px;
+        bottom: 12px;
         right: 12px;
         z-index: 1500;
         width: 36px;
