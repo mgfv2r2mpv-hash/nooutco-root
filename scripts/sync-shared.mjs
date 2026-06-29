@@ -32,8 +32,9 @@ const files = [
   // One canonical brand mark — served at each app root (component defaults to /logo-mark.svg).
   { src: "ui/logo-mark.svg", dst: "logo-mark.svg", apps: ["tools", "games", "apex"] },
 
-  // Games admin shell — served client assets, games only. (Added in Phase 6 once
-  // packages/shared/ui/admin-shell.{js,css} exist.)
+  // Games admin shell — served client assets, games only (Game Master managers).
+  { src: "ui/admin-shell.css", dst: "assets/admin-shell.css", apps: ["games"] },
+  { src: "ui/admin-shell.js",  dst: "assets/admin-shell.js",  apps: ["games"] },
 
   // Worker source — bundled into _worker.js (tools + games only).
   { src: "worker/helpers.js", dst: "shared/helpers.js", apps: ["tools", "games"] },
