@@ -23,6 +23,10 @@
           rows:    [ recordObject ],
           summary: [{ label, value }]
         }
+        // Or pass a fully pre-built document to bypass the generic table and
+        // render a bespoke sheet (e.g. the FFC clinical data sheet) while still
+        // reusing the quiet new-tab + pop-up-blocked retry plumbing:
+        report = { html: '<!DOCTYPE html>…' }
         opts.onBlocked(retry)  optional; default shows an in-page banner whose
                                button retries open() inside a user gesture.
    ════════════════════════════════════════════════════════════════════ */
@@ -178,7 +182,10 @@
    */
   function open(report, opts) {
     opts = opts || {};
-    var html = buildHtml(report);
+    // A caller may supply a fully pre-built document via report.html (bespoke
+    // sheets); otherwise render the generic branded table. Existing callers
+    // pass no `html`, so their output is unchanged.
+    var html = (typeof report.html === 'string') ? report.html : buildHtml(report);
 
     function attempt() {
       var w = global.open('', '_blank');
