@@ -2259,15 +2259,20 @@ async function runBatch() {
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
-document.getElementById('batch-mode-btn').addEventListener('click', toggleBatchMode);
-document.getElementById('batch-panel-close').addEventListener('click', () => {
-  document.getElementById('batch-panel').classList.remove('open');
-});
-document.getElementById('batch-submit-btn').addEventListener('click', runBatch);
-document.getElementById('batch-clear-done').addEventListener('click', () => {
-  batchQueue = batchQueue.filter(i => i.status !== 'done');
-  updateBatchPanel();
-  if (!batchQueue.length && !batchMode) document.getElementById('batch-panel').classList.remove('open');
+// The #batch-panel markup lives AFTER this script, so wait for the DOM to finish
+// parsing before wiring its buttons — otherwise getElementById returns null here
+// and the listener wiring throws (leaving the close/submit/clear buttons dead).
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('batch-mode-btn').addEventListener('click', toggleBatchMode);
+  document.getElementById('batch-panel-close').addEventListener('click', () => {
+    document.getElementById('batch-panel').classList.remove('open');
+  });
+  document.getElementById('batch-submit-btn').addEventListener('click', runBatch);
+  document.getElementById('batch-clear-done').addEventListener('click', () => {
+    batchQueue = batchQueue.filter(i => i.status !== 'done');
+    updateBatchPanel();
+    if (!batchQueue.length && !batchMode) document.getElementById('batch-panel').classList.remove('open');
+  });
 });
 </script>
 
