@@ -154,6 +154,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadSettings();
   bindEvents();
   await loadItems();
+  restoreResults();
 });
 
 // ── Settings (localStorage) ────────────────────────────────────────
@@ -208,6 +209,25 @@ function saveSettings() {
     promptDelaySecs:   state.promptDelaySecs,
     targetFilters:     state.targetFilters,
   }));
+}
+
+// ── Durable results persistence (device-local; never transmitted) ──
+// Trial data is kept across reloads so a closed tab doesn't lose a session.
+// Pseudonymous only — no PHI, never touches admin_token. "Clear data" wipes it.
+
+const RESULTS_KEY = 'nooutco.results.ffc';
+
+function persistResults() {
+  if (window.NooutcoResults) NooutcoResults.save(RESULTS_KEY, state.sessionData);
+}
+
+function restoreResults() {
+  if (!window.NooutcoResults) return;
+  const saved = NooutcoResults.load(RESULTS_KEY);
+  if (Array.isArray(saved) && saved.length) {
+    state.sessionData = saved;
+    state.trialNum = saved.reduce((max, d) => Math.max(max, d.trial || 0), 0);
+  }
 }
 
 // ── Data loading ───────────────────────────────────────────────────
@@ -391,6 +411,7 @@ function bindEvents() {
     state.sessionData = [];
     state.trialNum    = 0;
     el.resultsBody.innerHTML = '';
+    if (window.NooutcoResults) NooutcoResults.clear(RESULTS_KEY);
   });
 }
 
@@ -811,6 +832,7 @@ function onCorrectClick(wrapper, tile) {
       state.promptDelay ? state.promptDelaySecs : 0,
     ].join('|'),
   });
+  persistResults();
 
   if (window.__nooutcoTokens) window.__nooutcoTokens.award();
 
@@ -935,6 +957,7 @@ function onRetryClick() {
   if (state.sessionData.length) {
     state.sessionData.pop();
     state.trialNum--;
+    persistResults();
   }
   removeTrialButtons();
   if (state.timerAutoPaused) { state.timerAutoPaused = false; startTimer(); }
@@ -949,6 +972,152 @@ function printData() {
     return;
   }
 
+  // Preferred path: branded clinical "FFC session · data sheet" in a new tab
+  // (Frame 08) — a transcription aid, device-local, never transmitted.
+  if (window.NooutcoResults) {
+    NooutcoResults.open({ html: buildFfcDataSheet() });
+    return;
+  }
+
+  // Fallback: legacy hidden print-section + the native print dialog.
+  legacyPrintData();
+}
+
+// ── Frame 08 · clinical data sheet ─────────────────────────────────
+// Builds the print-to-PDF trial sheet a technician scans to transcribe into
+// the system of record. Clinical 3-code scoring (+/P/−); error-correction
+// repeats are NOT separate rows — only the original error is recorded.
+
+const SHEET_TYPE = {
+  features:  { label: 'Feature',  dot: '#3b82f6' },  // blue
+  functions: { label: 'Function', dot: '#7c3aed' },  // violet
+  classes:   { label: 'Class',    dot: '#b45309' },  // amber
+};
+
+const SHEET_SCORE = {
+  Correct:  { glyph: '+', cls: 'plus'  },
+  Prompted: { glyph: 'P', cls: 'p'     },
+  Error:    { glyph: '−', cls: 'minus' },
+};
+
+function sheetEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, c =>
+    ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+}
+
+function buildFfcDataSheet() {
+  // Error correction (repeat trials) is performed but never a separate row.
+  const primary = state.sessionData.filter(
+    d => d.outcome !== 'Correction' && d.outcome !== 'Repeat Error');
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric' });
+  const timeStr = now.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
+
+  const rows = primary.map((d, i) => {
+    const type  = SHEET_TYPE[MODE_CONFIG[d.mode]?.bucket] || { label: modeLabel(d.mode), dot: '#9aa589' };
+    const score = SHEET_SCORE[d.outcome] || SHEET_SCORE.Error;
+    // FFC's current prompt model is a single visual prompt; Frame 07 will
+    // populate the full Most-to-Least / Least-to-Most / Time-Delay taxonomy.
+    const prompt = d.prompted ? (d.promptDelaySecs != null ? 'Delay' : 'Prompted') : '—';
+    return (
+      `<tr>` +
+        `<td class="c-n">${i + 1}</td>` +
+        `<td class="c-target"><strong>${sheetEsc(d.target)}</strong> · ${sheetEsc(tagLabel(d.tag))}</td>` +
+        `<td><span class="type"><span class="type-dot" style="background:${type.dot}"></span>${sheetEsc(type.label)}</span></td>` +
+        `<td class="c-prompt">${sheetEsc(prompt)}</td>` +
+        `<td class="c-score"><span class="badge badge-${score.cls}">${score.glyph}</span></td>` +
+      `</tr>`
+    );
+  }).join('');
+
+  const total       = primary.length;
+  const independent = primary.filter(d => d.outcome === 'Correct').length;
+  const prompted    = primary.filter(d => d.outcome === 'Prompted').length;
+  const errors      = primary.filter(d => d.outcome === 'Error').length;
+  const pct         = total ? Math.round((independent / total) * 100) : 0;
+
+  return (
+    `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">` +
+    `<meta name="viewport" content="width=device-width, initial-scale=1.0">` +
+    `<title>FFC session · data sheet</title>` +
+    `<style>${SHEET_CSS}</style></head><body>` +
+    `<div class="toolbar"><button type="button" onclick="window.print()">🖨 Print / Save as PDF</button></div>` +
+    `<main class="paper">` +
+      `<header class="title">` +
+        `<img src="/logo-mark.svg" alt="" width="32" height="32">` +
+        `<div class="title-main"><div class="title-h">FFC session · data sheet</div>` +
+        `<div class="title-sub">Receptive identification by feature, function &amp; class</div></div>` +
+        `<div class="title-right"><div><strong>${sheetEsc(dateStr)}</strong> · ${sheetEsc(timeStr)}</div>` +
+        `<div>Array of ${sheetEsc(state.arraySize)}</div></div>` +
+      `</header>` +
+      `<div class="meta">` +
+        `<div><div class="meta-k">Learner</div><div class="meta-v meta-sign">&nbsp;</div></div>` +
+        `<div><div class="meta-k">Technician</div><div class="meta-v meta-sign">&nbsp;</div></div>` +
+        `<div><div class="meta-k">Program</div><div class="meta-v">FFC · Receptive ID</div></div>` +
+        `<div><div class="meta-k">Trials</div><div class="meta-v">${total}</div></div>` +
+      `</div>` +
+      `<table class="sheet"><thead><tr>` +
+        `<th class="c-n">#</th><th>Target</th><th class="th-type">Type</th>` +
+        `<th class="th-prompt">Prompt</th><th class="th-score">Score</th>` +
+      `</tr></thead><tbody>${rows}</tbody></table>` +
+      `<div class="summary">` +
+        `<div class="sum"><div class="meta-k">Independent</div><div class="sum-v sum-plus">${independent} / ${total} <span>· ${pct}%</span></div></div>` +
+        `<div class="sum"><div class="meta-k">Prompted</div><div class="sum-v sum-p">${prompted}</div></div>` +
+        `<div class="sum"><div class="meta-k">Errors</div><div class="sum-v sum-minus">${errors}</div></div>` +
+        `<div class="legend"><strong>+</strong> independent &nbsp; <strong>P</strong> prompted &nbsp; <strong>−</strong> error</div>` +
+      `</div>` +
+      `<div class="note"><span>ℹ️</span><div>Error correction is performed in session but is <strong>not logged as a separate trial</strong> — only the error is recorded. Defer to the program's specifications where they differ.</div></div>` +
+      `<div class="genby">Generated by SAssi · No Outcome ABA · for transcription into the client record</div>` +
+    `</main></body></html>`
+  );
+}
+
+const SHEET_CSS = [
+  '*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}',
+  'body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#e7ebe0;color:#374151;line-height:1.5;padding:24px}',
+  '.toolbar{max-width:760px;margin:0 auto 14px;display:flex;justify-content:flex-end}',
+  '.toolbar button{background:#4d5840;color:#fff;border:none;border-radius:8px;padding:9px 16px;font:inherit;font-weight:700;font-size:13px;cursor:pointer}',
+  '.toolbar button:hover{background:#3f4a35}',
+  '.paper{max-width:760px;margin:0 auto;background:#fff;border-radius:8px;padding:30px 34px;box-shadow:0 1px 3px rgba(0,0,0,.08)}',
+  '.title{display:flex;align-items:flex-start;gap:12px;padding-bottom:16px;border-bottom:2px solid #1a1f14}',
+  '.title-main{flex:1}',
+  '.title-h{font-size:18px;font-weight:700;color:#1a1f14}',
+  '.title-sub{font-size:12px;color:#6b7280}',
+  '.title-right{text-align:right;font-size:12px;color:#374151;line-height:1.55}',
+  '.title-right strong{color:#1a1f14}',
+  '.meta{display:flex;gap:30px;flex-wrap:wrap;padding:14px 0 16px}',
+  '.meta-k{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9aa589}',
+  '.meta-v{font-size:13.5px;font-weight:700;color:#1a1f14;margin-top:2px}',
+  '.meta-sign{font-weight:400;color:#9aa589;border-bottom:1px solid #d4d9c8;min-width:140px}',
+  '.sheet{width:100%;border-collapse:collapse;font-size:13px}',
+  '.sheet th{text-align:left;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#7a8568;padding:8px 10px;border-bottom:1px solid #d4d9c8;background:#f4f6ef}',
+  '.sheet td{padding:8px 10px;border-bottom:1px solid #eef0e9;color:#1a1f14}',
+  '.c-n{width:38px;color:#9aa589;font-weight:700}',
+  '.th-type{width:96px}.th-prompt{width:104px}.th-score{width:118px;text-align:center}',
+  '.c-prompt{color:#6b7280}',
+  '.c-score{text-align:center}',
+  '.type{display:inline-flex;align-items:center;gap:6px;color:#374151}',
+  '.type-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}',
+  '.badge{font-weight:700;font-size:13px;border-radius:6px;padding:3px 12px;display:inline-block;min-width:30px}',
+  '.badge-plus{color:#15803d;background:#dcfce7}',
+  '.badge-p{color:#92722a;background:#fef3c7}',
+  '.badge-minus{color:#b91c1c;background:#fee2e2}',
+  '.summary{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;padding:14px 16px;background:#f4f6ef;border:1px solid #e7ebe0;border-radius:10px}',
+  '.sum{flex:1;min-width:120px}',
+  '.sum-v{font-size:18px;font-weight:700;margin-top:2px}',
+  '.sum-v span{font-size:12px;color:#6b7280}',
+  '.sum-plus{color:#15803d}.sum-p{color:#92722a}.sum-minus{color:#b91c1c}',
+  '.legend{flex:2;min-width:180px;align-self:center;font-size:11.5px;color:#6b7280}',
+  '.legend strong{color:#374151}',
+  '.note{display:flex;gap:9px;margin-top:14px;padding:11px 14px;background:#fffdf6;border:1px solid #f3e3b8;border-radius:10px}',
+  '.note span{font-size:14px;flex-shrink:0}',
+  '.note div{font-size:11.5px;color:#8a6c2e;line-height:1.55}',
+  '.genby{margin-top:16px;font-size:10.5px;color:#aab199;text-align:right}',
+  '@media print{body{background:#fff;padding:0}.toolbar{display:none}.paper{box-shadow:none;border-radius:0;max-width:none;padding:0}tr{break-inside:avoid}}'
+].join('');
+
+function legacyPrintData() {
   const now = new Date();
   el.printMeta.textContent =
     `Printed: ${now.toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' })} ` +
