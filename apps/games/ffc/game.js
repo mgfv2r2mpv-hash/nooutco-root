@@ -103,6 +103,12 @@ const state = {
   // Prompt timeouts
   promptHandle:     null,
   autoPromptHandle: null,
+
+  // Post-answer reveal timeouts (tile flip + Next/Retry overlay). Tracked so a
+  // new trial (Start / Next / Retry) can cancel a pending reveal — otherwise a
+  // deferred showTrialButtons() from the finished trial lands on the fresh one.
+  revealHandle:     null,
+  btnHandle:        null,
 };
 
 // ── DOM references ─────────────────────────────────────────────────
@@ -591,6 +597,11 @@ function beginTrial(keepTarget = false, isRetry = false) {
   clearTimeout(state.autoPromptHandle);
   state.autoPromptHandle = null;
 
+  // Cancel any pending reveal from the trial we're leaving so its deferred
+  // Next/Retry overlay can't appear over this fresh trial.
+  clearTimeout(state.revealHandle); state.revealHandle = null;
+  clearTimeout(state.btnHandle);    state.btnHandle    = null;
+
   clearPrompt();
 
   if (!keepTarget && !isRetry) {
@@ -848,10 +859,14 @@ function onCorrectClick(wrapper, tile) {
   }
 
   wrapper.classList.add('expanding');
-  setTimeout(() => {
+  state.revealHandle = setTimeout(() => {
+    state.revealHandle = null;
     wrapper.classList.remove('expanding');
     tile.classList.add('flipped');
-    setTimeout(showTrialButtons, 580);
+    state.btnHandle = setTimeout(() => {
+      state.btnHandle = null;
+      showTrialButtons();
+    }, 580);
   }, 280);
 }
 
