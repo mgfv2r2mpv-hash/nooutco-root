@@ -97,6 +97,9 @@ export default {
     if (request.method === 'POST' && pathname === '/api/admin/ffc-remove-image') {
       return handleFFCRemoveImage(request, env);
     }
+    if (request.method === 'POST' && pathname === '/api/admin/ffc-suggest-mappings') {
+      return handleAdminFfcSuggestMappings(request, env);
+    }
     if (request.method === 'POST' && pathname === '/api/admin/intraverbal-save-items') {
       return handleIVSaveItems(request, env);
     }
@@ -129,6 +132,111 @@ async function handleAdminPing(request, env) {
   const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
   return json({ ok: true });
+}
+
+// ─── Admin: ffc-suggest-mappings ─────────────────────────────────────────────
+// Suggest which FFC stimuli plausibly belong to a single {bucket, tag} label, to
+// drive the Mass Assign "✨ Suggest" pass. Uses Anthropic when ANTHRO_KEY is set;
+// otherwise a deterministic tag-overlap heuristic. The page applies the result as
+// reviewable "suggested" tiles — the actual write still goes through ffc-save-items.
+// Returns { suggested:[id…], source:'ai'|'heuristic' }.
+
+const FFC_SUGGEST_MODEL   = 'claude-haiku-4-5';
+const FFC_SUGGEST_BUCKETS = ['groups', 'features', 'functions', 'classes'];
+const FFC_SUGGEST_TIMEOUT = 35000;
+
+async function handleAdminFfcSuggestMappings(request, env) {
+  const authErr = await requireAdmin(request, env);
+  if (authErr) return authErr;
+
+  let body = {};
+  try { body = await request.json(); } catch (_) { return jsonError('Invalid JSON body', 400); }
+
+  const bucket = String(body.bucket || '');
+  const tag    = String(body.label  || '');
+  const items  = Array.isArray(body.items) ? body.items : null;
+  if (!FFC_SUGGEST_BUCKETS.includes(bucket)) {
+    return jsonError('bucket must be one of: ' + FFC_SUGGEST_BUCKETS.join(', '), 400);
+  }
+  if (!tag) return jsonError('label (tag) is required', 400);
+  if (!items || !items.length) return jsonError('items must be a non-empty array', 400);
+
+  // Normalise to { id, label, tags:[…] }; track valid ids + ids already carrying the tag.
+  const norm = items.map(it => ({
+    id:    String(it.id ?? ''),
+    label: String(it.label ?? ''),
+    tags:  Array.isArray(it.tags) ? it.tags.map(String) : [],
+  })).filter(it => it.id);
+  const validIds      = new Set(norm.map(it => it.id));
+  const alreadyTagged = new Set(norm.filter(it => it.tags.includes(tag)).map(it => it.id));
+
+  if (env.ANTHRO_KEY) {
+    try {
+      const ai = await ffcSuggestViaAI(env, bucket, tag, norm);
+      const suggested = ai.filter(id => validIds.has(id) && !alreadyTagged.has(id));
+      return json({ suggested, source: 'ai' });
+    } catch (_) {
+      // fall through to the deterministic heuristic on any AI/parse/timeout failure
+    }
+  }
+
+  return json({ suggested: ffcSuggestViaOverlap(norm, alreadyTagged), source: 'heuristic' });
+}
+
+// Deterministic no-key fallback: an untagged item is suggested when it shares ≥1
+// tag (any bucket) with an item that already carries the target {bucket, tag}.
+function ffcSuggestViaOverlap(norm, alreadyTagged) {
+  const seedTags = new Set();
+  norm.forEach(it => { if (alreadyTagged.has(it.id)) it.tags.forEach(t => seedTags.add(t)); });
+  if (!seedTags.size) return [];
+  return norm
+    .filter(it => !alreadyTagged.has(it.id) && it.tags.some(t => seedTags.has(t)))
+    .map(it => it.id);
+}
+
+async function ffcSuggestViaAI(env, bucket, tag, norm) {
+  const system =
+    'You classify children\'s learning stimuli for an ABA "Feature / Function / Class" game. ' +
+    'Given a target label and a list of stimuli (each with an id, a human label, and its current tags), ' +
+    'return ONLY the stimuli that genuinely belong to the target label. ' +
+    'Reply with a single JSON object and nothing else — no markdown fences, no preamble: ' +
+    '{"suggested":[<id>,…]} using the exact ids given. ' +
+    'Be precise: include an id only when the stimulus clearly fits the label; an empty list is fine.';
+  const userPayload = {
+    target:  { bucket, tag },
+    stimuli: norm.map(it => ({ id: it.id, label: it.label, tags: it.tags })),
+  };
+
+  const ctrl  = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), FFC_SUGGEST_TIMEOUT);
+  let res;
+  try {
+    res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type':      'application/json',
+        'x-api-key':         env.ANTHRO_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model:      FFC_SUGGEST_MODEL,
+        max_tokens: 1024,
+        system,
+        messages:   [{ role: 'user', content: JSON.stringify(userPayload) }],
+      }),
+      signal: ctrl.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (!res.ok) throw new Error(`anthropic ${res.status}`);
+  const data = await res.json();
+  const textBlock = (data.content || []).find(b => b.type === 'text');
+  if (!textBlock) throw new Error('no text block');
+  const raw = textBlock.text.trim().replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
+  const parsed = JSON.parse(raw);
+  return Array.isArray(parsed.suggested) ? parsed.suggested.map(String) : [];
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
