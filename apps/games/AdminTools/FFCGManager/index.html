@@ -124,6 +124,62 @@
     #vocab-add-row input { flex: 1; padding: .35rem .45rem; border-radius: 7px; border: 1px solid var(--sage-100, #e2e6d9); background: #fff; color: var(--sage-900, #2c331f); font-size: .8rem; font-family: inherit; }
     #vocab-modal-status { font-size: 12px; min-height: 1em; margin-top: .4rem; }
     #vocab-close-row { display: flex; gap: .5rem; margin-top: .8rem; }
+
+    /* ── Mass Assign (Frame 06) ─────────────────────────────────────── */
+    .btn-ghost { display: inline-flex; align-items: center; gap: 6px; padding: 9px 13px; border-radius: 9px; background: var(--ash-hairline-soft, #eef0e9); color: var(--sage-800, #3c4533); border: 1px solid var(--sage-100, #d7ddc9); cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 700; transition: background .15s, border-color .15s; }
+    .btn-ghost:hover { background: var(--sage-100, #e2e6d9); }
+    #mass-assign { position: fixed; inset: 0; background: rgba(44,51,31,.42); z-index: 750; display: none; align-items: center; justify-content: center; padding: 24px; }
+    #mass-assign.open { display: flex; }
+    #ma-box { background: #fff; border: 1px solid var(--sage-100, #e2e6d9); border-radius: 16px; box-shadow: 0 16px 42px rgba(44,51,31,.22); width: min(1180px, 96vw); max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; }
+    #ma-header { display: flex; align-items: center; gap: 14px; padding: 16px 22px; border-bottom: 1px solid var(--ash-hairline-soft, #eef0e9); }
+    .ma-tile { width: 40px; height: 40px; border-radius: 11px; background: var(--ash-hairline-soft, #eef0e9); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .ma-head-text { flex: 1; min-width: 0; }
+    .ma-title { font-size: 17px; font-weight: 700; color: var(--sage-900, #1a1f14); }
+    .ma-sub { font-size: 12.5px; color: var(--sage-500, #9aa589); }
+    #ma-close { width: 30px; height: 30px; border-radius: 50%; background: var(--ash-tile, #f1f3ec); border: none; color: #8a9678; font-size: 15px; cursor: pointer; }
+    #ma-close:hover { background: var(--sage-100, #e2e6d9); }
+    #ma-target-bar { display: flex; align-items: center; gap: 12px; padding: 13px 22px; background: var(--ash-tile-soft, #fbfcf9); border-bottom: 1px solid var(--ash-hairline-soft, #eef0e9); flex-wrap: wrap; }
+    .ma-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ash-label-muted, #a3ad92); }
+    .ma-seg { display: inline-flex; background: var(--ash-hairline-soft, #eef0e9); border-radius: 10px; padding: 3px; gap: 2px; }
+    .ma-seg button { border: none; background: transparent; color: #6b7280; font: inherit; font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 7px; cursor: pointer; }
+    .ma-seg button.active { background: #fff; color: var(--sage-900, #2c331f); box-shadow: 0 1px 2px rgba(44,51,31,.12); }
+    .ma-tag-select { display: flex; align-items: center; gap: 9px; background: #fff; border: 1px solid var(--sage-100, #e2e6d9); border-radius: 9px; padding: 6px 12px; }
+    .ma-tag-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--sage-700, #4d5840); flex: none; }
+    #ma-tag { border: none; background: transparent; font: inherit; font-size: 13.5px; font-weight: 700; color: var(--sage-900, #1a1f14); cursor: pointer; }
+    .ma-spacer { flex: 1; }
+    .ma-count { background: var(--sage-50, #f3f6ee); border: 1px solid #dfe6d2; color: var(--sage-700, #4d5840); border-radius: 999px; padding: 6px 14px; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+    #ma-ai-bar { margin: 14px 22px 0; display: flex; align-items: center; gap: 12px; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 12px; padding: 11px 15px; }
+    .ma-ai-spark { font-size: 18px; }
+    .ma-ai-text { flex: 1; min-width: 0; }
+    .ma-ai-title { font-size: 13px; font-weight: 700; color: #5b21b6; }
+    .ma-ai-sub { font-size: 11.5px; color: #7c6bb0; line-height: 1.4; }
+    .ma-ai-btn { border-radius: 9px; padding: 8px 13px; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; white-space: nowrap; background: #ede9fe; border: 1px solid #ddd6fe; color: #6b46c1; }
+    .ma-ai-btn:hover { background: #e3dcff; }
+    .ma-ai-btn:disabled { opacity: .55; cursor: default; }
+    .ma-ai-ghost { background: transparent; border: 1px solid #c4b5fd; }
+    .ma-ai-solid { background: #7c3aed; border: none; color: #fff; }
+    .ma-ai-solid:hover { background: #6d28d9; }
+    #ma-toolbar { display: flex; align-items: center; gap: 12px; padding: 14px 22px 6px; flex-wrap: wrap; }
+    #ma-search { background: var(--ash-tile, #f4f6ef); border: 1px solid var(--ash-hairline, #e7ebe0); border-radius: 9px; padding: 8px 12px; width: 220px; font: inherit; font-size: 13px; color: var(--sage-900, #2c331f); }
+    #ma-grid-wrap { overflow-y: auto; padding: 10px 22px 6px; }
+    #ma-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+    @media (max-width: 1024px) { #ma-grid { grid-template-columns: repeat(4, 1fr); } }
+    @media (max-width: 680px)  { #ma-grid { grid-template-columns: repeat(3, 1fr); } }
+    .ma-cell { position: relative; border: 1px solid #e9ece2; background: #fff; border-radius: 12px; padding: 11px 8px 9px; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; transition: border-color .12s, background .12s; }
+    .ma-cell img { width: 46px; height: 46px; object-fit: contain; }
+    .ma-cell .ma-cell-label { font-size: 11.5px; font-weight: 600; color: var(--sage-600, #5d6a4d); text-align: center; line-height: 1.2; }
+    .ma-badge { position: absolute; top: 7px; right: 7px; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid #d4d9c8; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+    .ma-cell.tagged { border: 1.5px solid var(--sage-700, #4d5840); background: var(--sage-50, #f3f6ee); }
+    .ma-cell.tagged .ma-cell-label { color: var(--sage-900, #2c331f); font-weight: 700; }
+    .ma-cell.tagged .ma-badge { background: var(--sage-700, #4d5840); border-color: var(--sage-700, #4d5840); color: #fff; }
+    .ma-cell.suggested { border: 1.5px dashed #eab308; background: #fffdf6; }
+    .ma-cell.suggested .ma-cell-label { color: #7a5b16; font-weight: 700; }
+    .ma-cell.suggested .ma-badge { border-color: #eab308; color: #92722a; }
+    #ma-footer { display: flex; align-items: center; gap: 14px; padding: 14px 22px; border-top: 1px solid var(--ash-hairline-soft, #eef0e9); }
+    .ma-diff { font-size: 12.5px; color: var(--sage-600, #5d6a4d); }
+    .ma-diff strong.add { color: #16a34a; }
+    .ma-diff strong.rem { color: #b45309; }
+    .ma-diff strong.tot { color: var(--sage-900, #1a1f14); }
   </style>
 </head>
 <body class="ash-page">
@@ -146,6 +202,7 @@
   <!-- breadcrumb toolbar actions -->
   <div data-ash-slot="actions" id="action-bar">
     <span class="status-msg" id="global-status"></span>
+    <button class="btn-ghost" id="btn-mass-assign">⊞ Mass assign</button>
     <button class="btn-primary" id="btn-add-item">＋ Add item</button>
   </div>
 
@@ -275,6 +332,59 @@
     <div id="vocab-close-row">
       <button class="btn-save" id="vocab-save-btn">Save Vocab</button>
       <button class="btn-cancel-form" id="vocab-close-btn">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Mass Assign overlay (Frame 06) -->
+<div id="mass-assign">
+  <div id="ma-box">
+    <div id="ma-header">
+      <div class="ma-tile">⊞</div>
+      <div class="ma-head-text">
+        <div class="ma-title">Mass assign</div>
+        <div class="ma-sub">Add or remove many stimuli from one label.</div>
+      </div>
+      <button id="ma-close" title="Close">✕</button>
+    </div>
+
+    <div id="ma-target-bar">
+      <span class="ma-eyebrow">Assigning to</span>
+      <div class="ma-seg" id="ma-bucket-seg"></div>
+      <div class="ma-tag-select">
+        <span class="ma-tag-dot" id="ma-tag-dot"></span>
+        <select id="ma-tag"></select>
+      </div>
+      <div class="ma-spacer"></div>
+      <div class="ma-count" id="ma-count">0 of 0 tagged</div>
+    </div>
+
+    <div id="ma-ai-bar">
+      <span class="ma-ai-spark">✨</span>
+      <div class="ma-ai-text">
+        <div class="ma-ai-title" id="ma-ai-title">AI suggestions</div>
+        <div class="ma-ai-sub" id="ma-ai-sub">Propose stimuli that belong to the selected label.</div>
+      </div>
+      <button class="ma-ai-btn ma-ai-solid" id="ma-suggest">✨ Suggest</button>
+      <button class="ma-ai-btn ma-ai-ghost" id="ma-rerun" hidden>↻ Re-run</button>
+      <button class="ma-ai-btn ma-ai-solid" id="ma-add-all" hidden>Add all</button>
+    </div>
+
+    <div id="ma-toolbar">
+      <input type="text" id="ma-search" placeholder="🔍 Search stimuli…">
+      <div class="ma-seg" id="ma-view-seg"></div>
+      <div class="ma-spacer"></div>
+      <button class="btn-cancel-form" id="ma-select-visible">Select all visible</button>
+    </div>
+
+    <div id="ma-grid-wrap"><div id="ma-grid"></div></div>
+
+    <div id="ma-footer">
+      <div class="ma-diff" id="ma-diff"></div>
+      <div class="ma-spacer"></div>
+      <span class="status-msg" id="ma-status"></span>
+      <button class="btn-cancel-form" id="ma-cancel">Cancel</button>
+      <button class="btn-primary" id="ma-save">Save assignments</button>
     </div>
   </div>
 </div>
@@ -809,6 +919,275 @@ function bindEvents() {
     }
   });
 }
+
+// ── Mass Assign (Frame 06) ──────────────────────────────────────────
+(function massAssign() {
+  const MA_BUCKETS = [
+    { key: 'groups',    label: 'Group',    accent: 'var(--sage-700, #4d5840)' },
+    { key: 'features',  label: 'Feature',  accent: '#3b82f6' },
+    { key: 'functions', label: 'Function', accent: '#7c3aed' },
+    { key: 'classes',   label: 'Class',    accent: '#b45309' },
+  ];
+  const MA_VIEWS = [['all', 'All'], ['tagged', 'Tagged'], ['untagged', 'Untagged']];
+  const IMG_BASE = '../../FFCGame/FFCGame/_Resources/_imgSource/items/';
+
+  const overlay = document.getElementById('mass-assign');
+  let bucket = 'features', tag = null, view = 'all', search = '';
+  const staged    = new Map();   // id → desired membership (only when ≠ current)
+  const suggested = new Set();    // ids flagged by the last Suggest pass
+
+  const items = () => ffcData.items || [];
+  const vocab = (b) => ffcData.vocab[b] || [];
+  const accentOf = (b) => (MA_BUCKETS.find(x => x.key === b) || MA_BUCKETS[0]).accent;
+  const current  = (it) => (it[bucket] || []).includes(tag);
+  const effective = (it) => staged.has(it.id) ? staged.get(it.id) : current(it);
+
+  function applyMembership(it, on) {
+    const arr = it[bucket] || (it[bucket] = []);
+    const i = arr.indexOf(tag);
+    if (on && i < 0) arr.push(tag);
+    if (!on && i >= 0) arr.splice(i, 1);
+  }
+
+  function open() {
+    if (!ffcData) return;
+    if (!vocab(bucket).length) {
+      const firstFilled = MA_BUCKETS.find(b => vocab(b.key).length);
+      if (!firstFilled) { alert('Add some tags first (✏️ on a filter row).'); return; }
+      bucket = firstFilled.key;
+    }
+    tag = vocab(bucket)[0];
+    staged.clear(); suggested.clear();
+    view = 'all'; search = '';
+    document.getElementById('ma-search').value = '';
+    resetAiBar();
+    buildSegs(); buildTagSelect(); renderAll();
+    overlay.classList.add('open');
+  }
+  function close() { overlay.classList.remove('open'); }
+
+  function buildSegs() {
+    const bSeg = document.getElementById('ma-bucket-seg');
+    bSeg.innerHTML = '';
+    MA_BUCKETS.forEach(b => {
+      const btn = document.createElement('button');
+      btn.textContent = b.label;
+      btn.className = b.key === bucket ? 'active' : '';
+      btn.addEventListener('click', () => setBucket(b.key));
+      bSeg.appendChild(btn);
+    });
+    const vSeg = document.getElementById('ma-view-seg');
+    vSeg.innerHTML = '';
+    MA_VIEWS.forEach(([key, label]) => {
+      const btn = document.createElement('button');
+      btn.textContent = label;
+      btn.className = key === view ? 'active' : '';
+      btn.addEventListener('click', () => { view = key; buildSegs(); renderGridMA(); });
+      vSeg.appendChild(btn);
+    });
+  }
+
+  function buildTagSelect() {
+    const sel = document.getElementById('ma-tag');
+    sel.innerHTML = '';
+    vocab(bucket).forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t; opt.textContent = tagLabel(t);
+      if (t === tag) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    document.getElementById('ma-tag-dot').style.background = accentOf(bucket);
+  }
+
+  function setBucket(key) {
+    bucket = key; tag = vocab(bucket)[0];
+    staged.clear(); suggested.clear(); resetAiBar();
+    buildSegs(); buildTagSelect(); renderAll();
+  }
+  function setTag(t) {
+    tag = t; staged.clear(); suggested.clear(); resetAiBar(); renderAll();
+  }
+
+  function visible() {
+    const q = search.trim().toLowerCase();
+    return items().filter(it => {
+      if (view === 'tagged'   && !effective(it)) return false;
+      if (view === 'untagged' &&  effective(it)) return false;
+      if (q && !(it.label || '').toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }
+
+  function renderAll() { renderGridMA(); renderCount(); renderFooter(); }
+
+  function renderGridMA() {
+    const grid = document.getElementById('ma-grid');
+    grid.innerHTML = '';
+    visible().forEach(it => {
+      const cell = document.createElement('div');
+      const isTagged = effective(it);
+      const isSugg   = !isTagged && suggested.has(it.id);
+      cell.className = 'ma-cell' + (isTagged ? ' tagged' : isSugg ? ' suggested' : '');
+
+      const img = document.createElement('img');
+      img.src = IMG_BASE + it.img; img.alt = it.label;
+      img.onerror = () => { img.style.opacity = '.3'; };
+
+      const label = document.createElement('div');
+      label.className = 'ma-cell-label';
+      label.textContent = it.label;
+
+      const badge = document.createElement('span');
+      badge.className = 'ma-badge';
+      badge.textContent = isTagged ? '✓' : isSugg ? '＋' : '';
+
+      cell.append(badge, img, label);
+      cell.addEventListener('click', () => toggle(it));
+      grid.appendChild(cell);
+    });
+    if (!grid.children.length) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#9aa589;font-size:13px;padding:24px;">No stimuli match.</div>';
+    }
+  }
+
+  function toggle(it) {
+    const target = !effective(it);
+    if (target === current(it)) staged.delete(it.id);
+    else staged.set(it.id, target);
+    suggested.delete(it.id);
+    renderAll();
+  }
+
+  function renderCount() {
+    const all = items();
+    const n = all.filter(effective).length;
+    document.getElementById('ma-count').textContent = `${n} of ${all.length} tagged`;
+  }
+
+  function renderFooter() {
+    let add = 0, rem = 0;
+    staged.forEach((target, id) => {
+      const it = items().find(x => x.id === id);
+      if (!it) return;
+      if (target && !current(it)) add++;
+      if (!target && current(it)) rem++;
+    });
+    const already = items().filter(current).length;
+    const after   = items().filter(effective).length;
+    const parts = [];
+    if (add) parts.push(`<strong class="add">+${add} to add</strong>`);
+    if (rem) parts.push(`<strong class="rem">−${rem} to remove</strong>`);
+    parts.push(`${already} already tagged`);
+    parts.push(`<strong class="tot">${after} total after save</strong>`);
+    document.getElementById('ma-diff').innerHTML = parts.join(' · ');
+    document.getElementById('ma-save').disabled = staged.size === 0;
+  }
+
+  function resetAiBar() {
+    document.getElementById('ma-ai-title').textContent = 'AI suggestions';
+    document.getElementById('ma-ai-sub').textContent = 'Propose stimuli that belong to the selected label.';
+    document.getElementById('ma-rerun').hidden = true;
+    document.getElementById('ma-add-all').hidden = true;
+  }
+
+  async function suggest() {
+    const btn = document.getElementById('ma-suggest');
+    const rerun = document.getElementById('ma-rerun');
+    btn.disabled = true; rerun.disabled = true;
+    document.getElementById('ma-ai-sub').textContent = 'Asking the assistant…';
+    const payload = {
+      label:  tag,
+      bucket: bucket,
+      items:  items().map(it => ({
+        id: it.id, label: it.label,
+        tags: MA_BUCKETS.flatMap(b => it[b.key] || []),
+      })),
+    };
+    try {
+      const res = await adminPost('ffc-suggest-mappings', payload);
+      if (!res) return;                      // 401 → handle401 already fired
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        document.getElementById('ma-ai-sub').textContent = j.error || ('Error ' + res.status);
+        return;
+      }
+      const j = await res.json();
+      suggested.clear();
+      (j.suggested || []).forEach(id => {
+        const it = items().find(x => x.id === id);
+        if (it && !effective(it)) suggested.add(id);
+      });
+      const n = suggested.size;
+      document.getElementById('ma-ai-title').textContent =
+        n ? `AI proposed ${n} item${n === 1 ? '' : 's'} for “${tagLabel(tag)}”`
+          : `No new suggestions for “${tagLabel(tag)}”`;
+      document.getElementById('ma-ai-sub').textContent =
+        `Reviewed ${payload.items.length} stimuli${j.source === 'heuristic' ? ' (tag-overlap heuristic)' : ''}.`;
+      rerun.hidden = false;
+      const addAll = document.getElementById('ma-add-all');
+      addAll.hidden = n === 0;
+      addAll.textContent = `Add all ${n}`;
+      renderGridMA();
+    } catch (e) {
+      document.getElementById('ma-ai-sub').textContent = e.message || 'Request failed';
+    } finally {
+      btn.disabled = false; rerun.disabled = false;
+    }
+  }
+
+  function addAll() {
+    suggested.forEach(id => {
+      const it = items().find(x => x.id === id);
+      if (it && !current(it)) staged.set(id, true);
+    });
+    suggested.clear();
+    document.getElementById('ma-add-all').hidden = true;
+    renderAll();
+  }
+
+  function selectVisible() {
+    visible().forEach(it => { if (!effective(it)) { staged.set(it.id, true); suggested.delete(it.id); } });
+    renderAll();
+  }
+
+  async function save() {
+    const status = document.getElementById('ma-status');
+    if (!staged.size) return;
+    setStatus(status, '', 'Saving…');
+    staged.forEach((target, id) => {
+      const it = items().find(x => x.id === id);
+      if (it) applyMembership(it, target);
+    });
+    try {
+      const res = await adminPost('ffc-save-items', { items: ffcData });
+      if (!res) { setStatus(status, '', ''); return; }   // 401 handled
+      if (res.ok) {
+        setStatus(status, 'ok', 'Saved!');
+        staged.clear(); suggested.clear();
+        renderGrid(); renderFilterBar();
+        setTimeout(close, 450);
+      } else {
+        const j = await res.json().catch(() => ({}));
+        setStatus(status, 'err', j.error || 'Error ' + res.status);
+      }
+    } catch (e) {
+      setStatus(status, 'err', e.message || 'Network error');
+    }
+  }
+
+  // Wiring
+  document.getElementById('btn-mass-assign').addEventListener('click', open);
+  document.getElementById('ma-close').addEventListener('click', close);
+  document.getElementById('ma-cancel').addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  document.getElementById('ma-tag').addEventListener('change', e => setTag(e.target.value));
+  document.getElementById('ma-search').addEventListener('input', e => { search = e.target.value; renderGridMA(); });
+  document.getElementById('ma-suggest').addEventListener('click', suggest);
+  document.getElementById('ma-rerun').addEventListener('click', suggest);
+  document.getElementById('ma-add-all').addEventListener('click', addAll);
+  document.getElementById('ma-select-visible').addEventListener('click', selectVisible);
+  document.getElementById('ma-save').addEventListener('click', save);
+})();
 </script>
 </body>
 </html>
