@@ -207,7 +207,7 @@
   pointer-events: none;
   display: block;
 }
-.tile-text {
+.tile-label {
   display: none;
   font-weight: 700;
   color: #2d3748;
@@ -216,7 +216,7 @@
   word-break: break-word;
   line-height: 1.2;
 }
-.tile-text-visible { display: block; }
+.tile-label-visible { display: block; }
 .tile:not(.tile-disabled):hover .tile-front {
   border-color: #8c5ec5;
   box-shadow: 0 4px 12px rgba(140,94,197,0.28);
@@ -285,24 +285,6 @@
   box-shadow: 0 0 0 3px rgba(56,161,105,0.38), 0 3px 8px rgba(0,0,0,0.1) !important;
   background: rgba(56,161,105,0.05);
 }
-
-/* ── Next button (injected by JS) ──────────────────────────────────── */
-#btn-next {
-  display: block;
-  margin: 14px auto 0;
-  background: #38a169;
-  color: #fff;
-  border: none;
-  padding: 10px 32px;
-  border-radius: 10px;
-  font-size: 1.05rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
-  box-shadow: 0 3px 8px rgba(56,161,105,0.35);
-}
-#btn-next:hover  { background: #2f855a; }
-#btn-next:active { transform: scale(0.97); }
 
 /* ── Bottom bar ────────────────────────────────────────────────────── */
 #bottom-bar {
