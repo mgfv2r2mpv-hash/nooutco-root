@@ -49,6 +49,12 @@
     .filter-pill.active { background: var(--sage-700, #4d5840); border-color: var(--sage-700, #4d5840); color: #fff; }
     .btn-edit-vocab { padding: 5px 9px; border-radius: 8px; border: 1px solid var(--sage-200, #c7cdb6); background: transparent; color: var(--sage-600, #5d6a4d); font-size: 12px; cursor: pointer; transition: background .15s; }
     .btn-edit-vocab:hover { background: var(--sage-50, #f1f3ec); }
+    .filter-seg { display: inline-flex; background: var(--ash-hairline-soft, #eef0e9); border-radius: 10px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+    .filter-seg .seg-btn { border: none; background: transparent; color: #6b7280; font: inherit; font-size: 12.5px; font-weight: 700; padding: 6px 13px; border-radius: 7px; cursor: pointer; transition: background .15s, color .15s; }
+    .filter-seg .seg-btn:hover { color: var(--sage-900, #2c331f); }
+    .filter-seg .seg-btn.active { background: #fff; color: var(--sage-900, #2c331f); box-shadow: 0 1px 2px rgba(44,51,31,.12); }
+    .filter-spacer { flex: 1; }
+    #filter-tags { display: none; gap: .45rem; flex-wrap: wrap; align-items: center; padding: 12px 22px; background: var(--ash-tile-soft, #fbfcf9); border-bottom: 1px solid var(--ash-hairline-soft, #eef0e9); }
 
     /* ── Grid ── */
     #content-area { padding: 18px 22px; }
@@ -202,37 +208,23 @@
   <!-- breadcrumb toolbar actions -->
   <div data-ash-slot="actions" id="action-bar">
     <span class="status-msg" id="global-status"></span>
-    <button class="btn-ghost" id="btn-mass-assign">⊞ Mass assign</button>
     <button class="btn-primary" id="btn-add-item">＋ Add item</button>
   </div>
 
-  <!-- Filter strip -->
+  <!-- Filter strip (Frame 01: progressive disclosure — pick a bucket, then its tags) -->
   <div id="filter-bar">
-    <div class="filter-bucket">
-      <span class="bucket-label">Show</span>
-      <button class="filter-pill active" data-bucket="all" data-tag="__all__">All</button>
+    <div class="filter-seg" id="filter-seg">
+      <button class="seg-btn active" data-bucket="all">All</button>
+      <button class="seg-btn" data-bucket="groups">Groups</button>
+      <button class="seg-btn" data-bucket="features">Features</button>
+      <button class="seg-btn" data-bucket="functions">Functions</button>
+      <button class="seg-btn" data-bucket="classes">Classes</button>
     </div>
-    <div class="bucket-sep"></div>
-    <div class="filter-bucket" id="bucket-groups">
-      <span class="bucket-label">Groups</span>
-      <button class="btn-edit-vocab" data-bucket="groups">✏️</button>
-    </div>
-    <div class="bucket-sep"></div>
-    <div class="filter-bucket" id="bucket-features">
-      <span class="bucket-label">Features</span>
-      <button class="btn-edit-vocab" data-bucket="features">✏️</button>
-    </div>
-    <div class="bucket-sep"></div>
-    <div class="filter-bucket" id="bucket-functions">
-      <span class="bucket-label">Functions</span>
-      <button class="btn-edit-vocab" data-bucket="functions">✏️</button>
-    </div>
-    <div class="bucket-sep"></div>
-    <div class="filter-bucket" id="bucket-classes">
-      <span class="bucket-label">Classes</span>
-      <button class="btn-edit-vocab" data-bucket="classes">✏️</button>
-    </div>
+    <div class="filter-spacer"></div>
+    <button class="btn-ghost" id="btn-mass-assign">⊞ Mass assign</button>
+    <button class="btn-ghost" id="btn-edit-vocab" hidden>✎ Edit vocabulary</button>
   </div>
+  <div id="filter-tags"></div>
 
   <!-- Content area -->
   <div id="content-area">
@@ -520,26 +512,36 @@ function tagLabel(tag) {
 // ── Filter bar ────────────────────────────────────────────────────
 
 function renderFilterBar() {
-  const BUCKETS = ['groups', 'features', 'functions', 'classes'];
-  BUCKETS.forEach(bucket => {
-    const container = document.getElementById('bucket-' + bucket);
-    // Remove existing pills (keep label and edit button)
-    container.querySelectorAll('.filter-pill').forEach(p => p.remove());
-    const editBtn = container.querySelector('.btn-edit-vocab');
-
-    (ffcData.vocab[bucket] || []).forEach(tag => {
-      const pill = document.createElement('button');
-      pill.className = 'filter-pill' + (activeFilter.bucket === bucket && activeFilter.tag === tag ? ' active' : '');
-      pill.dataset.bucket = bucket;
-      pill.dataset.tag    = tag;
-      pill.textContent    = tagLabel(tag);
-      pill.addEventListener('click', () => { setFilter(bucket, tag); });
-      container.insertBefore(pill, editBtn);
-    });
+  // Segmented bucket selector reflects the active bucket.
+  document.querySelectorAll('#filter-seg .seg-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.bucket === activeFilter.bucket);
   });
 
-  // Highlight All pill
-  document.querySelector('.filter-pill[data-bucket="all"]').classList.toggle('active', activeFilter.bucket === 'all');
+  // Progressive disclosure: only the selected bucket's tags show as pills.
+  const tagsRow = document.getElementById('filter-tags');
+  const editBtn = document.getElementById('btn-edit-vocab');
+  tagsRow.innerHTML = '';
+  if (activeFilter.bucket === 'all') {
+    tagsRow.style.display = 'none';
+    editBtn.hidden = true;
+    return;
+  }
+  tagsRow.style.display = 'flex';
+  editBtn.hidden = false;
+
+  const allPill = document.createElement('button');
+  allPill.className = 'filter-pill' + (activeFilter.tag === '__all__' ? ' active' : '');
+  allPill.textContent = 'All ' + tagLabel(activeFilter.bucket);
+  allPill.addEventListener('click', () => setFilter(activeFilter.bucket, '__all__'));
+  tagsRow.appendChild(allPill);
+
+  (ffcData.vocab[activeFilter.bucket] || []).forEach(tag => {
+    const pill = document.createElement('button');
+    pill.className = 'filter-pill' + (activeFilter.tag === tag ? ' active' : '');
+    pill.textContent = tagLabel(tag);
+    pill.addEventListener('click', () => setFilter(activeFilter.bucket, tag));
+    tagsRow.appendChild(pill);
+  });
 }
 
 function setFilter(bucket, tag) {
@@ -551,10 +553,9 @@ function setFilter(bucket, tag) {
 // ── Grid ──────────────────────────────────────────────────────────
 
 function filteredItems() {
-  if (activeFilter.bucket === 'all') return ffcData.items || [];
   const { bucket, tag } = activeFilter;
-  const key = bucket; // groups, features, functions, classes
-  return (ffcData.items || []).filter(it => (it[key] || []).includes(tag));
+  if (bucket === 'all' || tag === '__all__') return ffcData.items || [];
+  return (ffcData.items || []).filter(it => (it[bucket] || []).includes(tag));
 }
 
 function renderGrid() {
@@ -708,12 +709,14 @@ async function runWikiSearch(query, urlInput, resultsEl) {
 // ── Bind events ───────────────────────────────────────────────────
 
 function bindEvents() {
-  // All items filter
-  document.querySelector('.filter-pill[data-bucket="all"]').addEventListener('click', () => setFilter('all', '__all__'));
+  // Segmented bucket selector — picking a bucket resets to its "All" tag view
+  document.querySelectorAll('#filter-seg .seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => setFilter(btn.dataset.bucket, '__all__'));
+  });
 
-  // Vocab edit buttons
-  document.querySelectorAll('.btn-edit-vocab').forEach(btn => {
-    btn.addEventListener('click', () => openVocabModal(btn.dataset.bucket));
+  // Edit vocabulary acts on the currently-selected bucket
+  document.getElementById('btn-edit-vocab').addEventListener('click', () => {
+    if (activeFilter.bucket !== 'all') openVocabModal(activeFilter.bucket);
   });
 
   // Detail panel close / backdrop
@@ -849,6 +852,11 @@ function bindEvents() {
       if (res.ok) {
         setStatus(status, 'ok', 'Saved!');
         vocabModal.classList.remove('open');
+        // If the active tag was just renamed/deleted, fall back to the bucket's "All" view.
+        if (activeFilter.bucket === vocabBucket && activeFilter.tag !== '__all__'
+            && !(ffcData.vocab[vocabBucket] || []).includes(activeFilter.tag)) {
+          activeFilter = { bucket: vocabBucket, tag: '__all__' };
+        }
         renderFilterBar();
         renderGrid();
         if (detailItem) renderDetailChips();
