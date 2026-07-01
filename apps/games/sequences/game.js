@@ -16,6 +16,33 @@ function shuffle(arr) {
 
 function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
 
+function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function escHtml(s) {
+  return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+const escAttr = escHtml;
+
+// ── Round setup (Frame 04 — gated in-game settings + ABA prompting) ──
+// Pattern templates as position-index arrays; distinct symbols needed =
+// max(index) + 1. AABB/ABB repeat positions within the unit.
+const PATTERN_TEMPLATES = {
+  'AB':   [0, 1],
+  'ABC':  [0, 1, 2],
+  'AABB': [0, 0, 1, 1],
+  'ABB':  [0, 1, 1],
+};
+
+const ROUND_KEY = 'nooutco.settings.sequences';
+
+// Prompting method (UI radio) → recorded prompt type when a prompt fires.
+const PROMPT_TYPE_BY_METHOD = {
+  'most-to-least': 'model',
+  'least-to-most': 'gesture',
+  'time-delay':    'delay',
+};
+const ROUND_TIME_DELAY_SECS = 3;
+
 // ── State ──────────────────────────────────────────────────────────
 
 const state = {
@@ -37,6 +64,12 @@ const state = {
   promptDelay:       false,
   promptDelaySecs:   3,
   extraPanelOpen:    false,
+
+  // Round setup (Frame 04 — gated). Working config + panel/lock flags.
+  round:          null,   // roundConfig: {patterns, reps, setName, prompting, sound}
+  roundActive:    false,  // a curated round is currently in play
+  roundEditing:   false,  // panel unlocked for editing (long-press)
+  roundPanelOpen: false,
 
   // Session
   active:      false,
@@ -88,6 +121,20 @@ const el = {
   chkPromptDelay:  $('chk-prompt-delay'),
   selPromptDelay:  $('sel-prompt-delay'),
   selPromptStyle:  $('sel-prompt-style'),
+  // Round setup panel (Frame 04)
+  btnRoundToggle:  $('btn-round-toggle'),
+  roundPanel:      $('round-panel'),
+  selRoundSet:     $('sel-round-set'),
+  roundGatePill:   $('round-gate-pill'),
+  btnRoundClose:   $('btn-round-close'),
+  roundPatterns:   $('round-patterns'),
+  roundRepsVal:    $('round-reps-val'),
+  selRoundSymbols: $('sel-round-symbols'),
+  roundPrompting:  $('round-prompting'),
+  roundSound:      $('round-sound'),
+  btnRoundStart:   $('btn-round-start'),
+  btnRoundSave:    $('btn-round-save'),
+  btnRoundReset:   $('btn-round-reset'),
   btnStart:        $('btn-start'),
   btnPrompt:       $('btn-prompt'),
   gameArea:        $('game-area'),
@@ -256,7 +303,7 @@ function bindEvents() {
     saveSettings();
   });
 
-  el.btnStart.addEventListener('click',  startGame);
+  el.btnStart.addEventListener('click',  startLegacyGame);
   el.btnPrompt.addEventListener('click', onPromptButton);
   el.btnPrint.addEventListener('click',  printData);
 
@@ -371,17 +418,28 @@ function beginTrial(keepUnit = false, isRetry = false) {
 
 function buildTrial(keepUnit) {
   if (!keepUnit) {
-    const pool = state.symbolsData.sets[state.setName].slice();
-    shuffle(pool);
-    state.unit = pool.slice(0, state.patternLength);
+    const src = state.symbolsData.sets[state.setName].slice();
+    shuffle(src);
+    if (state.roundActive) {
+      // Round mode: expand a random selected template into the unit.
+      const template      = PATTERN_TEMPLATES[pickRandom(state.round.patterns)];
+      const distinctCount = Math.max(...template) + 1;
+      const chosen        = src.slice(0, distinctCount);
+      state.unit          = template.map(i => chosen[i]);
+      state.patternLength = state.unit.length;
+      if (state.blanksToFill > state.patternLength) state.blanksToFill = state.patternLength;
+    } else {
+      state.unit = src.slice(0, state.patternLength);
+    }
   }
 
-  const pool       = state.symbolsData.sets[state.setName].slice();
-  const unitSet    = new Set(state.unit);
+  const pool        = state.symbolsData.sets[state.setName].slice();
+  const unitSet     = new Set(state.unit);
   const distractors = pool.filter(s => !unitSet.has(s));
   shuffle(distractors);
 
-  let bank = state.unit.slice();
+  // Bank holds DISTINCT symbols only (templates like AABB repeat within the unit).
+  let bank = [...unitSet];
   const needed = state.bankSize - bank.length;
   for (let i = 0; i < needed && i < distractors.length; i++) {
     bank.push(distractors[i]);
@@ -572,6 +630,11 @@ function finishTrial() {
     bankSize:   state.bankSize,
     errors:     state.trialErrors,
     prompted:   state.prompted || state.autoPrompted,
+    promptType: (state.prompted || state.autoPrompted)
+      ? (state.roundActive
+          ? (PROMPT_TYPE_BY_METHOD[state.round.prompting] || 'model')
+          : (state.autoPromptEnabled && state.promptDelay ? 'delay' : 'model'))
+      : 'none',
     promptDelaySecs: (!state.isRepeatTrial && state.autoPromptEnabled && state.promptDelay)
       ? state.promptDelaySecs : null,
     time:       elapsed,
@@ -698,11 +761,286 @@ function printData() {
   window.print();
 }
 
+// ════════════════════════════════════════════════════════════════════
+// Round setup (Frame 04) — gated compact settings + ABA prompting.
+// A curated pattern round (which templates, repeats, symbol set, prompting
+// method, sound) that persists per game to localStorage `nooutco.settings.
+// sequences` (pseudonymous set names only — no PHI). The legacy #settings-bar
+// path is untouched and remains the fallback.
+// ════════════════════════════════════════════════════════════════════
+
+function defaultRound() {
+  return { patterns: ['AB'], reps: 2, setName: '', prompting: 'most-to-least', sound: true };
+}
+function clampReps(n) { return Math.max(1, Math.min(10, parseInt(n, 10) || 2)); }
+
+// Validation guard — keeps saved sets resilient to content/version changes.
+function normalizeRound(cfg) {
+  const out  = defaultRound();
+  const sets = (state.symbolsData && state.symbolsData.sets) || {};
+  const names = Object.keys(sets);
+  out.patterns = Array.isArray(cfg.patterns) ? cfg.patterns.filter(p => PATTERN_TEMPLATES[p]) : [];
+  if (!out.patterns.length) out.patterns = ['AB'];
+  out.reps      = clampReps(cfg.reps);
+  out.setName   = (cfg.setName && names.includes(cfg.setName)) ? cfg.setName : (state.setName || names[0] || '');
+  out.prompting = PROMPT_TYPE_BY_METHOD[cfg.prompting] ? cfg.prompting : 'most-to-least';
+  out.sound     = cfg.sound !== false;
+  return out;
+}
+
+// ── Persistence ────────────────────────────────────────────────────
+function loadRoundStore() {
+  try { return JSON.parse(localStorage.getItem(ROUND_KEY) || '{}'); }
+  catch (e) { return {}; }
+}
+function saveRoundStore(store) {
+  try { localStorage.setItem(ROUND_KEY, JSON.stringify(store)); }
+  catch (e) { /* storage full / unavailable — non-fatal */ }
+}
+
+// ── Rendering ──────────────────────────────────────────────────────
+function renderRoundSetPicker(store) {
+  store = store || loadRoundStore();
+  const sel = el.selRoundSet;
+  if (!sel) return;
+  const names = Object.keys(store.sets || {});
+  sel.innerHTML = '<option value="">📁 Unsaved round</option>' +
+    names.map(n => `<option value="${escAttr(n)}">📁 ${escHtml(n)}</option>`).join('');
+  sel.value = (store.last && (store.sets || {})[store.last]) ? store.last : '';
+}
+
+function renderRoundPatterns() {
+  const box = el.roundPatterns;
+  if (!box) return;
+  box.innerHTML = '';
+  Object.keys(PATTERN_TEMPLATES).forEach(name => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'round-pill' + (state.round.patterns.includes(name) ? ' is-on' : '');
+    b.dataset.pattern = name;
+    b.textContent = name;
+    box.appendChild(b);
+  });
+}
+
+function renderRoundSymbols() {
+  const sel = el.selRoundSymbols;
+  if (!sel) return;
+  const names = Object.keys((state.symbolsData && state.symbolsData.sets) || {});
+  sel.innerHTML = names.map(n => `<option value="${escAttr(n)}">${escHtml(n)}</option>`).join('');
+  if (!names.includes(state.round.setName)) state.round.setName = names[0] || '';
+  sel.value = state.round.setName;
+}
+
+function renderRoundPrompting() {
+  [...el.roundPrompting.querySelectorAll('.round-radio')].forEach(r =>
+    r.classList.toggle('is-on', r.dataset.method === state.round.prompting));
+}
+
+function renderRoundReps()  { el.roundRepsVal.textContent = String(state.round.reps); }
+function renderRoundSound() {
+  el.roundSound.setAttribute('aria-checked', String(state.round.sound));
+  el.roundSound.classList.toggle('is-on', state.round.sound);
+}
+
+function updateRoundStart() {
+  const ok = state.round.patterns.length > 0 && !!state.round.setName;
+  el.btnRoundStart.disabled = !ok;
+  el.btnRoundStart.style.opacity = ok ? '' : '0.5';
+}
+
+function renderRoundPanel() {
+  renderRoundPatterns();
+  renderRoundReps();
+  renderRoundSymbols();
+  renderRoundPrompting();
+  renderRoundSound();
+  updateRoundStart();
+}
+
+// ── Gating (Frame 04 — long-press the gear to edit) ────────────────
+let _roundHoldTimer = null, _roundDidHold = false;
+function setRoundEditing(on) {
+  state.roundEditing = on;
+  el.roundPanel.dataset.editing = String(on);
+}
+function openRoundPanel(editing) {
+  setRoundPanelOpen(true);
+  if (editing) setRoundEditing(true);
+}
+function setRoundPanelOpen(open) {
+  state.roundPanelOpen = open;
+  el.btnRoundToggle.setAttribute('aria-expanded', String(open));
+  el.btnRoundToggle.classList.toggle('is-open', open);
+  if (open) { el.roundPanel.removeAttribute('hidden'); renderRoundPanel(); }
+  else      { el.roundPanel.setAttribute('hidden', ''); setRoundEditing(false); }
+}
+
+function bindRoundEvents() {
+  const gear = el.btnRoundToggle;
+  if (!gear) return;
+
+  // Press-and-hold → open unlocked; quick tap → toggle (locked) view.
+  const startHold = () => {
+    _roundDidHold = false;
+    gear.classList.add('is-holding');
+    _roundHoldTimer = setTimeout(() => {
+      _roundDidHold = true;
+      gear.classList.remove('is-holding');
+      openRoundPanel(true);
+    }, 600);
+  };
+  const endHold = () => {
+    gear.classList.remove('is-holding');
+    if (_roundHoldTimer) { clearTimeout(_roundHoldTimer); _roundHoldTimer = null; }
+  };
+  gear.addEventListener('pointerdown', startHold);
+  gear.addEventListener('pointerup', endHold);
+  gear.addEventListener('pointerleave', endHold);
+  gear.addEventListener('pointercancel', endHold);
+  gear.addEventListener('click', () => {
+    if (_roundDidHold) { _roundDidHold = false; return; }   // hold already handled it
+    setRoundPanelOpen(!state.roundPanelOpen);
+  });
+
+  el.btnRoundClose.addEventListener('click', () => setRoundPanelOpen(false));
+
+  el.roundPatterns.addEventListener('click', (e) => {
+    const pill = e.target.closest('.round-pill');
+    if (!pill) return;
+    const p = pill.dataset.pattern;
+    const arr = state.round.patterns;
+    const i = arr.indexOf(p);
+    if (i >= 0) arr.splice(i, 1); else arr.push(p);
+    renderRoundPatterns();
+    updateRoundStart();
+  });
+
+  el.roundRepsVal.parentElement.addEventListener('click', (e) => {
+    const btn = e.target.closest('.round-step');
+    if (!btn) return;
+    state.round.reps = clampReps(state.round.reps + parseInt(btn.dataset.dir, 10));
+    renderRoundReps();
+  });
+
+  el.selRoundSymbols.addEventListener('change', () => {
+    state.round.setName = el.selRoundSymbols.value;
+    updateRoundStart();
+  });
+
+  el.roundPrompting.addEventListener('click', (e) => {
+    const r = e.target.closest('.round-radio');
+    if (!r) return;
+    state.round.prompting = r.dataset.method;
+    renderRoundPrompting();
+  });
+
+  el.roundSound.addEventListener('click', () => {
+    state.round.sound = !state.round.sound;
+    renderRoundSound();
+  });
+
+  el.selRoundSet.addEventListener('change', () => applyRoundByName(el.selRoundSet.value));
+  el.btnRoundSave.addEventListener('click', saveCurrentRound);
+  el.btnRoundReset.addEventListener('click', () => {
+    state.round = defaultRound();
+    renderRoundPanel();
+  });
+  el.btnRoundStart.addEventListener('click', startRound);
+}
+
+// ── Saved sets ─────────────────────────────────────────────────────
+function applyRoundByName(name) {
+  if (!name) return;
+  const store = loadRoundStore();
+  const set = store.sets && store.sets[name];
+  if (!set) return;
+  state.round = normalizeRound(set);
+  store.last = name; saveRoundStore(store);
+  renderRoundPanel();
+}
+
+function saveCurrentRound() {
+  const name = (prompt('Name this set (pseudonym only — no learner identifiers):', '') || '').trim();
+  if (!name) return;
+  const store = loadRoundStore();
+  store.sets = store.sets || {};
+  store.sets[name] = JSON.parse(JSON.stringify(state.round));
+  store.last = name;
+  saveRoundStore(store);
+  renderRoundSetPicker(store);
+}
+
+// ── Start a curated round ──────────────────────────────────────────
+function applyRoundToEngine() {
+  const r = state.round;
+  state.roundActive  = true;
+  state.setName      = r.setName;
+  state.shownReps    = clampReps(r.reps);
+  state.blanksToFill = 1;
+  // ABA method → existing prompt engine fields (reused by beginTrial/onCorrectPick).
+  if (r.prompting === 'most-to-least') {          // Model first / errorless
+    state.autoPromptEnabled = true;  state.promptDelay = false;
+  } else if (r.prompting === 'time-delay') {      // Wait, then help
+    state.autoPromptEnabled = true;  state.promptDelay = true;
+    state.promptDelaySecs   = ROUND_TIME_DELAY_SECS;
+  } else {                                          // least-to-most / Try first
+    state.autoPromptEnabled = false; state.promptDelay = false;
+  }
+  window.__noabaMuted = !r.sound;                  // gates the shared reward chime
+}
+
+function startRound() {
+  const r = state.round;
+  const sets = (state.symbolsData && state.symbolsData.sets) || {};
+  if (!r.patterns.length) { alert('Pick at least one pattern to run.'); return; }
+  const pool = sets[r.setName] || [];
+  const maxDistinct = Math.max(...r.patterns.map(p => Math.max(...PATTERN_TEMPLATES[p]) + 1));
+  if (pool.length < maxDistinct) {
+    alert(`The "${r.setName}" set has only ${pool.length} symbols; needs at least ${maxDistinct} for the selected patterns.`);
+    return;
+  }
+
+  // Persist as the working/last config so a reload restores it.
+  const store = loadRoundStore();
+  store.working = JSON.parse(JSON.stringify(r));
+  saveRoundStore(store);
+
+  applyRoundToEngine();
+  setRoundEditing(false);       // re-lock on start
+  setRoundPanelOpen(false);
+
+  const intro = document.getElementById('game-intro');
+  if (intro) intro.hidden = true;
+  if (window.__nooutcoTokens) window.__nooutcoTokens.startSession();
+
+  startGame();
+}
+
+// Legacy Start button — exits round mode and restores default sound.
+function startLegacyGame() {
+  state.roundActive = false;
+  window.__noabaMuted = false;
+  startGame();
+}
+
+function initRound() {
+  const store = loadRoundStore();
+  const last = store.last && store.sets && store.sets[store.last];
+  state.round = normalizeRound(last || defaultRound());
+  state.roundActive = false;
+  state.roundEditing = false;
+  state.roundPanelOpen = false;
+  bindRoundEvents();
+  renderRoundSetPicker(store);
+}
+
 // ── Init ───────────────────────────────────────────────────────────
 
 (async function init() {
   loadSettings();
   bindEvents();
   await loadSymbols();
+  initRound();
   renderTimer();
 })();

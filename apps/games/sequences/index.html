@@ -58,6 +58,14 @@
       <input type="number" id="inp-bank" min="2" max="8" value="4">
     </div>
 
+    <div class="setting-group setting-round">
+      <button type="button" id="btn-round-toggle" class="btn-round" aria-expanded="false"
+              title="Tap to open · press &amp; hold to edit">
+        🎯 Round setup
+        <button type="button" class="help-btn" data-help="A curated pattern round with ABA prompting. Tap to view; press and hold to unlock for editing.">?</button>
+      </button>
+    </div>
+
     <div class="setting-group setting-extra">
       <button type="button" id="btn-extra-toggle" class="btn-extra" aria-expanded="false">
         ⚙ Settings
@@ -126,6 +134,95 @@
           <option value="outline">Outline</option>
         </select>
       </div>
+    </div>
+  </section>
+
+  <!-- ── Round setup panel (Frame 04 — gated compact settings) ────── -->
+  <section id="round-panel" hidden aria-label="Sequences round setup" data-editing="false">
+    <div class="round-head">
+      <div class="round-eyebrow-wrap">
+        <div class="round-eyebrow">Sequences · Round setup</div>
+        <div class="round-title">Settings</div>
+      </div>
+      <div class="round-head-actions">
+        <div class="round-set-picker">
+          <select id="sel-round-set" aria-label="Saved round sets"></select>
+        </div>
+        <span id="round-gate-pill" class="round-gate-pill" role="status">🔒 Locked</span>
+        <button type="button" id="btn-round-close" class="round-close" title="Close">×</button>
+      </div>
+    </div>
+
+    <div class="round-body">
+      <!-- Patterns (multi-select) -->
+      <div class="round-field">
+        <div class="round-field-label">Patterns <span class="round-field-note">· mixed at random across trials</span></div>
+        <div id="round-patterns" class="round-patterns"></div>
+      </div>
+
+      <!-- Repeats shown -->
+      <div class="round-field round-field-row">
+        <div>
+          <div class="round-field-label">Repeats shown</div>
+          <div class="round-field-sub">Full pattern repeats before the blank</div>
+        </div>
+        <div class="round-stepper" data-stepper="reps">
+          <button type="button" class="round-step" data-dir="-1" aria-label="Fewer repeats">−</button>
+          <div id="round-reps-val" class="round-step-val">2</div>
+          <button type="button" class="round-step" data-dir="1" aria-label="More repeats">＋</button>
+        </div>
+      </div>
+
+      <!-- Symbol set -->
+      <div class="round-field round-field-row">
+        <div>
+          <div class="round-field-label">Symbol set</div>
+          <div class="round-field-sub">Pulled from Sequences Manager</div>
+        </div>
+        <select id="sel-round-symbols" class="round-symbols"></select>
+      </div>
+
+      <!-- Prompting method -->
+      <div class="round-field">
+        <div class="round-field-label">Prompting method</div>
+        <div id="round-prompting" class="round-prompting">
+          <button type="button" class="round-radio" data-method="most-to-least">
+            <span class="round-radio-dot" aria-hidden="true"></span>
+            <span class="round-radio-text">
+              <strong>Model first</strong>
+              <span>Most-to-Least (Errorless): highlights the correct symbol before the learner answers, then fades that help over trials.</span>
+            </span>
+          </button>
+          <button type="button" class="round-radio" data-method="least-to-most">
+            <span class="round-radio-dot" aria-hidden="true"></span>
+            <span class="round-radio-text">
+              <strong>Try first</strong>
+              <span>Least-to-Most: learner attempts on their own; a hint appears only if they miss.</span>
+            </span>
+          </button>
+          <button type="button" class="round-radio" data-method="time-delay">
+            <span class="round-radio-dot" aria-hidden="true"></span>
+            <span class="round-radio-text">
+              <strong>Wait, then help</strong>
+              <span>Time-Delay: shows the pattern, waits a set delay, then prompts if there's no response.</span>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Sound toggle -->
+      <div class="round-field round-field-row">
+        <div class="round-field-label">Sound &amp; chimes</div>
+        <button type="button" id="round-sound" class="round-toggle is-on" role="switch" aria-checked="true" aria-label="Sound and chimes">
+          <span class="round-toggle-knob" aria-hidden="true"></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="round-foot">
+      <button type="button" id="btn-round-start" class="btn-round-start">Start round</button>
+      <button type="button" id="btn-round-save" class="btn-round-save">💾 Save as set</button>
+      <button type="button" id="btn-round-reset" class="btn-round-reset">Reset</button>
     </div>
   </section>
 

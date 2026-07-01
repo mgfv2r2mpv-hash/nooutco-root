@@ -38,6 +38,8 @@
 
   // ── Audio: ascending 3-note chime (C5, E5, G5) ──────────────────────────────
   function playChime() {
+    // Host games may mute the chime (e.g. Sequences' Round-setup Sound toggle).
+    if (window.__noabaMuted) return;
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const notes = [523, 659, 784];
