@@ -312,8 +312,15 @@
       const isAdmin = false;
       React.useEffect(() => (window.NotesGate ? NotesGate.subscribe(setLoggedIn) : undefined), []);
 
-      const [goal,     setGoal]     = React.useState("");
-      const [sapSpecs, setSapSpecs] = React.useState("");
+      // Restore any locally-saved draft so a reload never loses typed work.
+      const _savedDraft = React.useMemo(() => (window.NotesGate && NotesGate.draft.load("sap")) || {}, []);
+      const [goal,     setGoal]     = React.useState(() => _savedDraft.goal     || "");
+      const [sapSpecs, setSapSpecs] = React.useState(() => _savedDraft.sapSpecs || "");
+
+      // Persist the typed note on every change so a reload restores it.
+      React.useEffect(() => {
+        if (window.NotesGate) NotesGate.draft.save(TOOL_ID, { goal, sapSpecs });
+      }, [goal, sapSpecs]);
 
       const [output,       setOutput]       = React.useState(null);
       const [loading,      setLoading]      = React.useState(false);

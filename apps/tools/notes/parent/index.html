@@ -169,7 +169,9 @@
     }
 
     function App() {
-      const [sessionNotes,      setSessionNotes]      = React.useState("");
+      // Restore any locally-saved draft so a reload never loses typed work.
+      const _savedDraft = React.useMemo(() => (window.NotesGate && NotesGate.draft.load("parent")) || {}, []);
+      const [sessionNotes,      setSessionNotes]      = React.useState(() => _savedDraft.sessionNotes || "");
       const [output,            setOutput]            = React.useState(null);
       const [loading,           setLoading]           = React.useState(false);
       const [error,             setError]             = React.useState("");
@@ -179,6 +181,11 @@
       const TOOL_ID = "parent";
       const canUse  = loggedIn && !!(window.NotesGate && NotesGate.canUseTool(TOOL_ID));
       React.useEffect(() => (window.NotesGate ? NotesGate.subscribe(setLoggedIn) : undefined), []);
+
+      // Persist the typed note on every change so a reload restores it.
+      React.useEffect(() => {
+        if (window.NotesGate) NotesGate.draft.save(TOOL_ID, { sessionNotes });
+      }, [sessionNotes]);
       const [promptText,        setPromptText]        = React.useState("");
       const [scrubNotice,       setScrubNotice]       = React.useState("");
       const [expanded,          setExpanded]          = React.useState(() => new Set());

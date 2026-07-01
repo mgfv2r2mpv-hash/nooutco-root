@@ -1,0 +1,15 @@
+{
+  "name": "nooutco-tools",
+  "private": true,
+  "version": "0.0.0",
+  "description": "ABA clinician tools (tools.nooutco.me) — static HTML/JS/CSS served via Cloudflare Pages worker.",
+  "scripts": {
+    "dev": "wrangler pages dev . --port 8789",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  }
+}
