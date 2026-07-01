@@ -6,7 +6,7 @@ import { handleSuggest } from "./shared/suggest.js";
 // Single source of truth for the deployed app version. Bump on every deploy that
 // changes CSS/JS so the asset ?v= query changes and clients fetch fresh files.
 // Policy: patch = fixes, minor = features/reskins; major stays 0 for now.
-const APP_VERSION = "0.4.2";
+const APP_VERSION = "0.5.0";
 
 // Append ?v=APP_VERSION to local (relative) css/js URLs in served HTML, and expose
 // the version to the page as window.APP_VERSION. External/CDN URLs (http(s):, //)

@@ -161,6 +161,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindEvents();
   await loadItems();
   restoreResults();
+  initSession();
 });
 
 // ── Settings (localStorage) ────────────────────────────────────────
@@ -407,7 +408,7 @@ function bindEvents() {
   el.chkErrorless.addEventListener('change',       () => { state.errorless       = el.chkErrorless.checked;       saveSettings(); });
   el.chkNoErrorAnim.addEventListener('change',     () => { state.noErrorAnim     = el.chkNoErrorAnim.checked;     saveSettings(); });
 
-  el.btnStart.addEventListener('click',  startGame);
+  el.btnStart.addEventListener('click',  () => { state.sessionActive = false; startGame(); });
   el.btnPrompt.addEventListener('click', onPromptButton);
   el.btnPrint.addEventListener('click',  printData);
 
@@ -604,7 +605,22 @@ function beginTrial(keepTarget = false, isRetry = false) {
 
   clearPrompt();
 
-  if (!keepTarget && !isRetry) {
+  if (!keepTarget && !isRetry && state.sessionActive) {
+    // Session mode: a mixed-type trial drawn from the active-target map.
+    const picked = buildSessionTrial();
+    if (!picked) {
+      alert('No active targets to run. Open Session setup and select some traits.');
+      state.active = false;
+      return;
+    }
+    state.mode           = picked.mode;     // drives distractor bucket + record
+    state.currentType    = picked.type;
+    state.targetItem     = picked.trial.targetItem;
+    state.targetTag      = picked.tag;
+    state.promptSentence = picked.trial.promptSentence;
+    state.tileItems      = picked.trial.tileItems;
+    state.correctIdx     = picked.trial.correctIdx;
+  } else if (!keepTarget && !isRetry) {
     const tag = state.tag;
     if (!tag) { alert('No tag selected. Pick a tag or adjust your target filter.'); return; }
     const trial = buildTrialData(state.mode, tag, state.arraySize);
@@ -617,6 +633,7 @@ function beginTrial(keepTarget = false, isRetry = false) {
     state.promptSentence = trial.promptSentence;
     state.tileItems      = trial.tileItems;
     state.correctIdx     = trial.correctIdx;
+    state.currentType    = null;
   } else {
     // Error correction or retry: keep the same target item, rebuild distractors/positions.
     const trial = buildTrialData(state.mode, state.targetTag, state.arraySize, state.targetItem);
@@ -632,6 +649,20 @@ function beginTrial(keepTarget = false, isRetry = false) {
     // Error correction: always auto-prompt immediately.
     state.autoPrompted = true;
     setTimeout(applyPrompt, 80);
+  } else if (!keepTarget && !isRetry && state.sessionActive) {
+    // Session mode: prompting is driven by the chosen ABA method.
+    const method = state.session.prompting;
+    if (method === 'most-to-least') {           // errorless: model up-front
+      state.autoPrompted = true;
+      setTimeout(applyPrompt, 80);
+    } else if (method === 'time-delay') {        // wait, then prompt
+      state.autoPromptHandle = setTimeout(() => {
+        state.autoPrompted = true;
+        state.autoPromptHandle = null;
+        applyPrompt();
+      }, TIME_DELAY_SECS * 1000);
+    }
+    // least-to-most: no pre-prompt; the hint appears on a miss (onWrongClick).
   } else if (!keepTarget && !isRetry && state.autoPromptEnabled) {
     if (state.promptDelay) {
       state.autoPromptHandle = setTimeout(() => {
@@ -830,6 +861,10 @@ function onCorrectClick(wrapper, tile) {
     prompted:  state.prompted || state.autoPrompted,
     promptDelaySecs: (!state.isRepeatTrial && state.autoPromptEnabled && state.promptDelay)
       ? state.promptDelaySecs : null,
+    promptType: !(state.prompted || state.autoPrompted) ? 'none'
+      : (state.sessionActive ? (PROMPT_TYPE_BY_METHOD[state.session.prompting] || 'model')
+        : (state.promptDelaySecs != null ? 'delay' : 'model')),
+    type: state.currentType || null,
     time: elapsed,
     outcome,
     settingsKey: [
@@ -1015,6 +1050,8 @@ const SHEET_SCORE = {
   Error:    { glyph: '−', cls: 'minus' },
 };
 
+const SHEET_PROMPT_LABEL = { none: '—', model: 'Model', gesture: 'Gesture', delay: 'Delay' };
+
 function sheetEsc(s) {
   return String(s == null ? '' : s).replace(/[&<>"]/g, c =>
     ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
@@ -1032,9 +1069,11 @@ function buildFfcDataSheet() {
   const rows = primary.map((d, i) => {
     const type  = SHEET_TYPE[MODE_CONFIG[d.mode]?.bucket] || { label: modeLabel(d.mode), dot: '#9aa589' };
     const score = SHEET_SCORE[d.outcome] || SHEET_SCORE.Error;
-    // FFC's current prompt model is a single visual prompt; Frame 07 will
-    // populate the full Most-to-Least / Least-to-Most / Time-Delay taxonomy.
-    const prompt = d.prompted ? (d.promptDelaySecs != null ? 'Delay' : 'Prompted') : '—';
+    // Prompt type comes from the session prompting taxonomy (Frame 07); fall
+    // back to legacy delay/generic for pre-session trial records.
+    const prompt = d.promptType
+      ? (SHEET_PROMPT_LABEL[d.promptType] || '—')
+      : (d.prompted ? (d.promptDelaySecs != null ? 'Delay' : 'Prompted') : '—');
     return (
       `<tr>` +
         `<td class="c-n">${i + 1}</td>` +
@@ -1370,4 +1409,468 @@ function setExtraPanelOpen(open) {
   el.btnExtraToggle.classList.toggle('is-open', open);
   if (open) { el.extraPanel.removeAttribute('hidden'); }
   else       { el.extraPanel.setAttribute('hidden', ''); }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Session setup (Frame 07) — gated per-learner session targets.
+// A curated stimulus pool + per-item active feature/function/class traits
+// drives a mixed-type trial generator. Config persists per game to
+// localStorage `nooutco.settings.ffc` (pseudonymous set names only — no PHI).
+// ════════════════════════════════════════════════════════════════════
+
+const SESSION_KEY = 'nooutco.settings.ffc';
+
+// type (UI) → engine bucket + mode used by buildTrialData()
+const TYPE_MAP = {
+  feature:  { bucket: 'features',  mode: 'feature' },
+  function: { bucket: 'functions', mode: 'function' },
+  class:    { bucket: 'classes',   mode: 'classWithinGroup' },
+};
+const TYPE_ORDER = ['feature', 'function', 'class'];
+
+// session.prompting → recorded prompt type (Frame 08 sheet) when a prompt fires
+const PROMPT_TYPE_BY_METHOD = {
+  'most-to-least': 'model',
+  'least-to-most': 'gesture',
+  'time-delay':    'delay',
+};
+const TIME_DELAY_SECS = 3;
+
+const sEl = {};
+function cacheSessionEls() {
+  [
+    'btn-session-toggle','session-panel','session-gate-pill','btn-session-close',
+    'sel-session-set','session-pool-list','session-pool-count','inp-session-search',
+    'btn-session-add','session-targets','session-array-val','session-types',
+    'sel-session-prompting','session-prompting-sub','btn-session-start',
+    'session-start-count','btn-session-save','btn-session-reset',
+  ].forEach(id => { sEl[id] = document.getElementById(id); });
+}
+
+function itemById(id) { return state.items.find(it => it.id === id) || null; }
+
+// Local escapers (sheetEsc handles & < > "); set names are user-entered.
+function escHtml(s) { return sheetEsc(s); }
+function escAttr(s) { return sheetEsc(s); }
+
+function blankTargets(it) {
+  // New items default to ALL their traits active; the tech then trims.
+  return {
+    feature:  [...(it.features  || [])],
+    function: [...(it.functions || [])],
+    class:    [...(it.classes   || [])],
+  };
+}
+
+function activeCount(id, type) {
+  const t = state.session.targets[id];
+  return (t && t[type]) ? t[type].length : 0;
+}
+
+function eligiblePairCount() {
+  // (item,type) pairs runnable: in pool, type included, ≥1 active trait.
+  let n = 0;
+  state.session.items.forEach(id => {
+    state.session.includeTypes.forEach(type => {
+      if (activeCount(id, type) > 0) n++;
+    });
+  });
+  return n;
+}
+function sessionRunnable() { return eligiblePairCount() > 0; }
+
+// ── Persistence ────────────────────────────────────────────────────
+function loadSessionStore() {
+  try { return JSON.parse(localStorage.getItem(SESSION_KEY) || '{}'); }
+  catch (e) { return {}; }
+}
+function saveSessionStore(store) {
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify(store)); }
+  catch (e) { /* storage full / unavailable — non-fatal */ }
+}
+
+function defaultSession() {
+  return {
+    items: [], targets: {},
+    includeTypes: ['feature', 'function', 'class'],
+    arraySize: state.arraySize || 4,
+    prompting: 'most-to-least',
+  };
+}
+
+function initSession() {
+  cacheSessionEls();
+  const store = loadSessionStore();
+  // Restore the last-used set if present; else start from a blank session.
+  const last = store.last && store.sets && store.sets[store.last];
+  state.session = last ? normalizeSet(last) : defaultSession();
+  state.sessionActive  = false;
+  state.sessionEditing = false;
+  state.sessionAddMode = false;
+  state.sessionSel = state.session.items[0] || null;
+  bindSessionEvents();
+  renderSetPicker(store);
+  renderSessionPanel();
+}
+
+function normalizeSet(set) {
+  const out = defaultSession();
+  out.items = Array.isArray(set.items) ? set.items.filter(id => itemById(id)) : [];
+  out.includeTypes = Array.isArray(set.includeTypes) && set.includeTypes.length
+    ? set.includeTypes.filter(t => TYPE_MAP[t]) : ['feature','function','class'];
+  out.arraySize = clampArray(set.arraySize || 4);
+  out.prompting = PROMPT_TYPE_BY_METHOD[set.prompting] ? set.prompting : 'most-to-least';
+  out.targets = {};
+  out.items.forEach(id => {
+    const it = itemById(id);
+    const src = (set.targets && set.targets[id]) || {};
+    out.targets[id] = {
+      feature:  intersectTraits(src.feature,  it.features),
+      function: intersectTraits(src.function, it.functions),
+      class:    intersectTraits(src.class,    it.classes),
+    };
+  });
+  return out;
+}
+function intersectTraits(saved, available) {
+  const avail = new Set(available || []);
+  return Array.isArray(saved) ? saved.filter(t => avail.has(t)) : [...avail];
+}
+function clampArray(n) { return Math.max(1, Math.min(10, parseInt(n, 10) || 4)); }
+
+// ── Rendering ──────────────────────────────────────────────────────
+function renderSetPicker(store) {
+  store = store || loadSessionStore();
+  const sel = sEl['sel-session-set'];
+  if (!sel) return;
+  const names = Object.keys(store.sets || {});
+  sel.innerHTML = '<option value="">📁 Unsaved session</option>' +
+    names.map(n => `<option value="${escAttr(n)}">📁 ${escHtml(n)}</option>`).join('');
+  sel.value = (store.last && (store.sets || {})[store.last]) ? store.last : '';
+}
+
+function renderSessionPanel() {
+  renderSessionPool();
+  renderSessionTargets();
+  renderSessionBand();
+  updateSessionStartCount();
+}
+
+function renderSessionPool() {
+  const list = sEl['session-pool-list'];
+  if (!list) return;
+  const search = (sEl['inp-session-search'].value || '').trim().toLowerCase();
+  list.innerHTML = '';
+
+  const inPlay = new Set(state.session.items);
+  const source = state.sessionAddMode ? state.items : state.session.items.map(itemById).filter(Boolean);
+  const rows = source.filter(it => it && (!search || it.label.toLowerCase().includes(search)));
+
+  sEl['session-pool-count'].textContent = String(state.session.items.length);
+  sEl['btn-session-add'].textContent = state.sessionAddMode ? '✓ Done adding' : '＋ Add items';
+
+  if (!rows.length) {
+    const empty = document.createElement('div');
+    empty.className = 'session-pool-row is-out';
+    empty.style.cursor = 'default';
+    empty.textContent = state.sessionAddMode ? 'No stimuli match.' : 'No items yet — tap “＋ Add items”.';
+    list.appendChild(empty);
+    return;
+  }
+
+  rows.forEach(it => {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'session-pool-row';
+    if (!state.sessionAddMode && it.id === state.sessionSel) row.classList.add('is-selected');
+    if (state.sessionAddMode && !inPlay.has(it.id)) row.classList.add('is-out');
+
+    const emoji = document.createElement('img');
+    emoji.className = 'pool-emoji';
+    emoji.src = `_Resources/_imgSource/items/${it.img}`;
+    emoji.alt = '';
+    emoji.addEventListener('error', () => {
+      const span = document.createElement('span');
+      span.className = 'pool-emoji';
+      span.textContent = '🔹';
+      emoji.replaceWith(span);
+    });
+
+    const meta = document.createElement('div');
+    meta.className = 'pool-meta';
+    const name = document.createElement('div');
+    name.className = 'pool-name';
+    name.textContent = it.label;
+    const sub = document.createElement('div');
+    sub.className = 'pool-sub';
+    if (state.sessionAddMode) {
+      sub.textContent = inPlay.has(it.id) ? 'In play — tap to remove' : 'Tap to add';
+    } else {
+      sub.textContent = `${activeCount(it.id,'feature')} feature · ${activeCount(it.id,'function')} function · ${activeCount(it.id,'class')} class`;
+    }
+    meta.appendChild(name); meta.appendChild(sub);
+
+    row.appendChild(emoji); row.appendChild(meta);
+    row.addEventListener('click', () => {
+      if (state.sessionAddMode) togglePoolItem(it.id);
+      else { state.sessionSel = it.id; renderSessionPool(); renderSessionTargets(); }
+    });
+    list.appendChild(row);
+  });
+}
+
+function togglePoolItem(id) {
+  const idx = state.session.items.indexOf(id);
+  if (idx >= 0) {
+    state.session.items.splice(idx, 1);
+    delete state.session.targets[id];
+    if (state.sessionSel === id) state.sessionSel = state.session.items[0] || null;
+  } else {
+    state.session.items.push(id);
+    state.session.targets[id] = blankTargets(itemById(id));
+    state.sessionSel = id;
+  }
+  renderSessionPool();
+  renderSessionTargets();
+  updateSessionStartCount();
+}
+
+function renderSessionTargets() {
+  const host = sEl['session-targets'];
+  if (!host) return;
+  const id = state.sessionSel;
+  const it = id ? itemById(id) : null;
+  if (!it || !state.session.targets[id]) {
+    host.innerHTML = '<p class="session-empty">Select an item to set its active targets.</p>';
+    return;
+  }
+
+  host.innerHTML = '';
+  const head = document.createElement('div');
+  head.className = 'session-sel-head';
+  const emojiBox = document.createElement('div');
+  emojiBox.className = 'session-sel-emoji';
+  const emoji = document.createElement('img');
+  emoji.src = `_Resources/_imgSource/items/${it.img}`;
+  emoji.alt = '';
+  emoji.addEventListener('error', () => { emojiBox.textContent = '🔹'; });
+  emojiBox.appendChild(emoji);
+  const headText = document.createElement('div');
+  headText.innerHTML = `<div class="session-sel-name">${escHtml(it.label)}</div>` +
+    `<div class="session-sel-note">Active targets for this learner</div>`;
+  head.appendChild(emojiBox); head.appendChild(headText);
+  host.appendChild(head);
+
+  const buckets = { feature: it.features, function: it.functions, class: it.classes };
+  TYPE_ORDER.forEach(type => {
+    const all = buckets[type] || [];
+    if (!all.length) return;
+    const active = new Set(state.session.targets[id][type] || []);
+
+    const gh = document.createElement('div');
+    gh.className = 'session-trait-group-head';
+    gh.innerHTML = `<span class="gh-label">${type[0].toUpperCase()+type.slice(1)}</span><span class="gh-rule"></span>`;
+    host.appendChild(gh);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'session-trait-pills';
+    all.forEach(trait => {
+      const pill = document.createElement('button');
+      pill.type = 'button';
+      pill.className = 'session-pill' + (active.has(trait) ? ' is-on' : '');
+      pill.textContent = tagLabel(trait);
+      pill.addEventListener('click', () => toggleTrait(id, type, trait));
+      wrap.appendChild(pill);
+    });
+    host.appendChild(wrap);
+  });
+
+  const hint = document.createElement('div');
+  hint.className = 'session-trait-hint';
+  hint.textContent = "Tap a trait to set it as a target. Greyed traits stay out of this learner's runs.";
+  host.appendChild(hint);
+}
+
+function toggleTrait(id, type, trait) {
+  const arr = state.session.targets[id][type];
+  const i = arr.indexOf(trait);
+  if (i >= 0) arr.splice(i, 1); else arr.push(trait);
+  renderSessionTargets();
+  renderSessionPool();          // refresh the item's trait-count summary
+  updateSessionStartCount();
+}
+
+function renderSessionBand() {
+  sEl['session-array-val'].textContent = String(state.session.arraySize);
+  [...sEl['session-types'].querySelectorAll('.session-type-pill')].forEach(pill => {
+    pill.classList.toggle('is-on', state.session.includeTypes.includes(pill.dataset.type));
+  });
+  sEl['sel-session-prompting'].value = state.session.prompting;
+  const subs = { 'most-to-least': 'Errorless start', 'least-to-most': 'Hints on miss', 'time-delay': `Waits ${TIME_DELAY_SECS}s` };
+  sEl['session-prompting-sub'].textContent = subs[state.session.prompting] || '';
+}
+
+function updateSessionStartCount() {
+  const eligibleItems = state.session.items.filter(id =>
+    state.session.includeTypes.some(type => activeCount(id, type) > 0));
+  sEl['session-start-count'].textContent = String(eligibleItems.length);
+  const runnable = sessionRunnable();
+  sEl['btn-session-start'].disabled = !runnable;
+  sEl['btn-session-start'].style.opacity = runnable ? '' : '0.5';
+}
+
+// ── Gating (Frame 04 — long-press the gear to edit) ────────────────
+let _holdTimer = null, _didHold = false;
+function setSessionEditing(on) {
+  state.sessionEditing = on;
+  sEl['session-panel'].dataset.editing = String(on);
+}
+function openSessionPanel(editing) {
+  setSessionPanelOpen(true);
+  if (editing) setSessionEditing(true);
+}
+function setSessionPanelOpen(open) {
+  state.sessionPanelOpen = open;
+  sEl['btn-session-toggle'].setAttribute('aria-expanded', String(open));
+  sEl['btn-session-toggle'].classList.toggle('is-open', open);
+  if (open) { sEl['session-panel'].removeAttribute('hidden'); renderSessionPanel(); }
+  else      { sEl['session-panel'].setAttribute('hidden', ''); setSessionEditing(false); }
+}
+
+function bindSessionEvents() {
+  const gear = sEl['btn-session-toggle'];
+
+  // Press-and-hold → open in editing mode; quick tap → toggle (locked) view.
+  const startHold = (e) => {
+    _didHold = false;
+    gear.classList.add('is-holding');
+    _holdTimer = setTimeout(() => {
+      _didHold = true;
+      gear.classList.remove('is-holding');
+      openSessionPanel(true);            // unlocked
+    }, 600);
+  };
+  const endHold = () => {
+    gear.classList.remove('is-holding');
+    if (_holdTimer) { clearTimeout(_holdTimer); _holdTimer = null; }
+  };
+  gear.addEventListener('pointerdown', startHold);
+  gear.addEventListener('pointerup', endHold);
+  gear.addEventListener('pointerleave', endHold);
+  gear.addEventListener('pointercancel', endHold);
+  gear.addEventListener('click', (e) => {
+    if (_didHold) { _didHold = false; return; }   // hold already handled it
+    setSessionPanelOpen(!state.sessionPanelOpen);
+  });
+
+  sEl['btn-session-close'].addEventListener('click', () => setSessionPanelOpen(false));
+
+  sEl['inp-session-search'].addEventListener('input', renderSessionPool);
+
+  sEl['btn-session-add'].addEventListener('click', () => {
+    state.sessionAddMode = !state.sessionAddMode;
+    sEl['inp-session-search'].value = '';
+    renderSessionPool();
+  });
+
+  // Array stepper
+  sEl['session-array-val'].parentElement.addEventListener('click', (e) => {
+    const btn = e.target.closest('.session-step');
+    if (!btn) return;
+    state.session.arraySize = clampArray(state.session.arraySize + parseInt(btn.dataset.dir, 10));
+    renderSessionBand();
+  });
+
+  // Types-to-include
+  sEl['session-types'].addEventListener('click', (e) => {
+    const pill = e.target.closest('.session-type-pill');
+    if (!pill) return;
+    const type = pill.dataset.type;
+    const inc = state.session.includeTypes;
+    const i = inc.indexOf(type);
+    if (i >= 0) { if (inc.length > 1) inc.splice(i, 1); }   // keep ≥1
+    else inc.push(type);
+    renderSessionBand();
+    updateSessionStartCount();
+  });
+
+  sEl['sel-session-prompting'].addEventListener('change', () => {
+    state.session.prompting = sEl['sel-session-prompting'].value;
+    renderSessionBand();
+  });
+
+  sEl['sel-session-set'].addEventListener('change', () => applySetByName(sEl['sel-session-set'].value));
+
+  sEl['btn-session-save'].addEventListener('click', saveCurrentSet);
+  sEl['btn-session-reset'].addEventListener('click', () => {
+    state.session = defaultSession();
+    state.sessionSel = null;
+    renderSessionPanel();
+  });
+
+  sEl['btn-session-start'].addEventListener('click', startSession);
+}
+
+// ── Saved sets ─────────────────────────────────────────────────────
+function applySetByName(name) {
+  if (!name) return;
+  const store = loadSessionStore();
+  const set = store.sets && store.sets[name];
+  if (!set) return;
+  state.session = normalizeSet(set);
+  state.sessionSel = state.session.items[0] || null;
+  store.last = name; saveSessionStore(store);
+  renderSessionPanel();
+}
+
+function saveCurrentSet() {
+  const name = (prompt('Name this set (pseudonym only — no learner identifiers):', '') || '').trim();
+  if (!name) return;
+  const store = loadSessionStore();
+  store.sets = store.sets || {};
+  store.sets[name] = JSON.parse(JSON.stringify(state.session));
+  store.last = name;
+  saveSessionStore(store);
+  renderSetPicker(store);
+}
+
+// ── Session trial generator ────────────────────────────────────────
+function buildSessionTrial() {
+  const s = state.session;
+  const pairs = [];
+  s.items.forEach(id => {
+    const it = itemById(id);
+    if (!it) return;
+    s.includeTypes.forEach(type => {
+      const traits = (s.targets[id] && s.targets[id][type]) || [];
+      if (traits.length) pairs.push({ it, type, traits });
+    });
+  });
+  if (!pairs.length) return null;
+
+  const { it, type, traits } = pickRandom(pairs);
+  const trait = pickRandom(traits);
+  const mode  = TYPE_MAP[type].mode;
+  // Use state.arraySize (engine source of truth — nextPosition()/fitGrid read it);
+  // startSession() syncs it to session.arraySize before play begins.
+  const trial = buildTrialData(mode, trait, state.arraySize, it);   // forcedTarget = it
+  if (!trial) return null;
+  return { trial, mode, tag: trait, type };
+}
+
+function startSession() {
+  if (!sessionRunnable()) {
+    alert('No active targets to run. Add items and tap some traits first.');
+    return;
+  }
+  // Persist as the working/last config so a reload restores it.
+  const store = loadSessionStore();
+  store.working = JSON.parse(JSON.stringify(state.session));
+  saveSessionStore(store);
+
+  state.sessionActive = true;
+  state.arraySize = state.session.arraySize;   // engine + fitGrid read this
+  setSessionEditing(false);                    // re-lock on start
+  setSessionPanelOpen(false);
+  startGame();
 }

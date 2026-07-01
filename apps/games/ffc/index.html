@@ -58,6 +58,14 @@
       </button>
     </div>
 
+    <div class="setting-group setting-session">
+      <button type="button" id="btn-session-toggle" class="btn-session" aria-expanded="false"
+              title="Tap to open · press &amp; hold to edit">
+        🎯 Session setup
+        <button type="button" class="help-btn" data-help="Pick the stimulus pool and, per item, which feature/function/class traits are active targets for this learner. Press and hold to unlock for editing.">?</button>
+      </button>
+    </div>
+
     <div class="setting-group setting-extra">
       <button type="button" id="btn-extra-toggle" class="btn-extra" aria-expanded="false">
         ⚙ Settings
@@ -175,6 +183,86 @@
           </select>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- ── Session setup panel (Frame 07 — gated session targets) ───── -->
+  <section id="session-panel" hidden aria-label="FFC session setup" data-editing="false">
+    <div class="session-head">
+      <div class="session-eyebrow-wrap">
+        <div class="session-eyebrow">FFC · Session setup</div>
+        <div class="session-title">Targets</div>
+      </div>
+      <div class="session-head-actions">
+        <div class="session-set-picker">
+          <select id="sel-session-set" aria-label="Saved session sets"></select>
+        </div>
+        <span id="session-gate-pill" class="session-gate-pill" role="status">🔒 Locked</span>
+        <button type="button" id="btn-session-close" class="session-close" title="Close">×</button>
+      </div>
+    </div>
+
+    <div class="session-body">
+      <!-- Left · items in play -->
+      <div class="session-pool">
+        <div class="session-pool-head">
+          <span class="session-pool-title">Items in play</span>
+          <span id="session-pool-count" class="session-pool-count">0</span>
+        </div>
+        <div class="session-search">
+          <span aria-hidden="true">🔍</span>
+          <input type="search" id="inp-session-search" placeholder="Search stimuli…" autocomplete="off">
+        </div>
+        <div id="session-pool-list" class="session-pool-list"></div>
+        <div class="session-pool-foot">
+          <button type="button" id="btn-session-add" class="session-add-btn">＋ Add items</button>
+        </div>
+      </div>
+
+      <!-- Right · active targets for selected item -->
+      <div id="session-targets" class="session-targets">
+        <p class="session-empty">Select an item to set its active targets.</p>
+      </div>
+    </div>
+
+    <!-- Session band -->
+    <div class="session-band">
+      <div class="session-band-group">
+        <div class="session-band-label">Comparison array</div>
+        <div class="session-stepper" data-stepper="array">
+          <button type="button" class="session-step" data-dir="-1" aria-label="Fewer choices">−</button>
+          <div id="session-array-val" class="session-step-val">3</div>
+          <button type="button" class="session-step" data-dir="1" aria-label="More choices">＋</button>
+        </div>
+        <div class="session-band-sub">Choices shown per trial · 1–10</div>
+      </div>
+
+      <div class="session-band-group">
+        <div class="session-band-label">Types to include</div>
+        <div id="session-types" class="session-types">
+          <button type="button" class="session-type-pill" data-type="feature">Feature</button>
+          <button type="button" class="session-type-pill" data-type="function">Function</button>
+          <button type="button" class="session-type-pill" data-type="class">Class</button>
+        </div>
+        <div class="session-band-sub">Which prompt types run</div>
+      </div>
+
+      <div class="session-band-group">
+        <div class="session-band-label">Prompting</div>
+        <select id="sel-session-prompting" class="session-prompting">
+          <option value="most-to-least">Most-to-Least</option>
+          <option value="least-to-most">Least-to-Most</option>
+          <option value="time-delay">Time-Delay</option>
+        </select>
+        <div id="session-prompting-sub" class="session-band-sub">Errorless start</div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="session-foot">
+      <button type="button" id="btn-session-start" class="btn-session-start">Start session · <span id="session-start-count">0</span> items</button>
+      <button type="button" id="btn-session-save" class="btn-session-save">💾 Save as set</button>
+      <button type="button" id="btn-session-reset" class="btn-session-reset">Reset</button>
     </div>
   </section>
 

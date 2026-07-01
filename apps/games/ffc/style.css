@@ -520,3 +520,176 @@
   margin-top: 12px;
   padding-top: 12px;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   Session setup panel (Frame 07 — gated session targets)
+   Sage clinical palette mirrors design_handoff_admin_redesign Frame 07.
+   ══════════════════════════════════════════════════════════════════ */
+.btn-session {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f3f6ee;
+  border: 1px solid #dfe6d2;
+  color: #4d5840;
+  border-radius: 9px;
+  padding: 8px 13px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;            /* let press-hold work cleanly on touch */
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.btn-session:hover { background: #eaf0e0; }
+.btn-session.is-holding { box-shadow: 0 0 0 3px rgba(77,88,64,0.22); }
+.btn-session.is-open { background: #4d5840; color: #fff; border-color: #4d5840; }
+
+#session-panel {
+  max-width: 880px;
+  margin: 14px auto 6px;
+  background: #fff;
+  border: 1px solid #e2e6d9;
+  border-radius: 16px;
+  box-shadow: 0 16px 42px rgba(44,51,31,0.16);
+  overflow: hidden;
+  font-family: 'Segoe UI', Inter, -apple-system, sans-serif;
+  color: #1a1f14;
+}
+
+.session-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px 14px;
+}
+.session-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: #a3ad92; }
+.session-title { font-size: 18px; font-weight: 700; color: #1a1f14; margin-top: 2px; }
+.session-head-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.session-set-picker select {
+  background: #f3f6ee; border: 1px solid #dfe6d2; color: #4d5840;
+  border-radius: 9px; padding: 7px 10px; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+}
+.session-gate-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  border-radius: 999px; padding: 5px 11px; font-size: 11.5px; font-weight: 700;
+  background: #eef1e8; border: 1px solid #dfe3d6; color: #7a8568;
+}
+#session-panel[data-editing="true"] .session-gate-pill { background: #fef3c7; border-color: #fae3a0; color: #92722a; }
+#session-panel[data-editing="true"] .session-gate-pill::before { content: "🔓"; }
+#session-panel[data-editing="true"] .session-gate-pill { font-size: 0; }
+#session-panel[data-editing="true"] .session-gate-pill::after { content: "Editing"; font-size: 11.5px; }
+.session-close {
+  background: transparent; border: none; color: #9aa589; font-size: 22px; line-height: 1;
+  cursor: pointer; padding: 0 4px;
+}
+.session-close:hover { color: #5d6a4d; }
+
+.session-body { padding: 0 20px 18px; display: flex; gap: 18px; align-items: flex-start; }
+
+/* Left · items in play */
+.session-pool {
+  width: 288px; flex-shrink: 0; border: 1px solid #eef0e9; border-radius: 12px;
+  overflow: hidden; display: flex; flex-direction: column;
+}
+.session-pool-head {
+  display: flex; align-items: center; gap: 8px; padding: 11px 13px;
+  background: #fbfcf9; border-bottom: 1px solid #eef0e9;
+}
+.session-pool-title { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #7a8568; }
+.session-pool-count { font-size: 11px; font-weight: 700; color: #4d5840; background: #eef1e8; border-radius: 999px; padding: 1px 8px; }
+.session-search { padding: 10px 11px 0; }
+.session-search > div, .session-search { display: block; }
+.session-search { position: relative; }
+.session-search span { position: absolute; left: 21px; top: 18px; font-size: 12px; opacity: 0.5; pointer-events: none; }
+.session-search input {
+  width: 100%; background: #f4f6ef; border: 1px solid #e7ebe0; border-radius: 8px;
+  padding: 7px 11px 7px 30px; font: inherit; font-size: 12.5px; color: #2c331f;
+}
+.session-pool-list { padding: 9px 9px 4px; display: flex; flex-direction: column; gap: 3px; max-height: 320px; overflow-y: auto; }
+.session-pool-row {
+  display: flex; align-items: center; gap: 10px; padding: 8px 9px; border-radius: 9px;
+  cursor: pointer; border: none; background: transparent; width: 100%; text-align: left; font: inherit;
+}
+.session-pool-row:hover { background: #f7f9f3; }
+.session-pool-row.is-selected { background: #f3f6ee; box-shadow: inset 3px 0 0 #4d5840; }
+.session-pool-row .pool-emoji { font-size: 21px; width: 26px; text-align: center; flex-shrink: 0; }
+.session-pool-row img.pool-emoji { width: 26px; height: 26px; object-fit: contain; border-radius: 5px; }
+.session-pool-row .pool-meta { flex: 1; min-width: 0; }
+.session-pool-row .pool-name { font-size: 13px; font-weight: 700; color: #2c331f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.session-pool-row:not(.is-selected) .pool-name { font-weight: 600; color: #3c4533; }
+.session-pool-row .pool-sub { font-size: 10.5px; color: #8a9678; }
+.session-pool-row.is-out { opacity: 0.45; }
+.session-pool-foot { padding: 8px 11px 12px; }
+.session-add-btn, .session-pool-row.is-add {
+  width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;
+  background: transparent; border: 1.5px dashed #c7cdb6; color: #5d6a4d; border-radius: 9px;
+  padding: 9px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.session-add-btn:hover { background: #f7f9f3; }
+
+/* Right · active targets */
+.session-targets { flex: 1; min-width: 0; }
+.session-empty { font-size: 13px; color: #9aa589; padding: 20px 4px; }
+.session-sel-head { display: flex; align-items: center; gap: 11px; margin-bottom: 4px; }
+.session-sel-emoji { width: 40px; height: 40px; border-radius: 10px; background: #f4f6ef; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+.session-sel-emoji img { width: 30px; height: 30px; object-fit: contain; }
+.session-sel-name { font-size: 16px; font-weight: 700; color: #1a1f14; }
+.session-sel-note { font-size: 11.5px; color: #9aa589; }
+.session-trait-group-head { display: flex; align-items: center; gap: 8px; margin: 14px 0 8px; }
+.session-trait-group-head .gh-label { font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: #a3ad92; }
+.session-trait-group-head .gh-rule { height: 1px; flex: 1; background: #eef0e9; }
+.session-trait-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.session-pill {
+  font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 999px;
+  background: #fff; border: 1px solid #dfe3d6; color: #aab199; cursor: pointer; font-family: inherit;
+}
+.session-pill:hover { border-color: #c7cdb6; }
+.session-pill.is-on { font-weight: 700; background: #4d5840; border-color: #4d5840; color: #fff; }
+.session-pill.is-on::before { content: "✓ "; }
+.session-trait-hint { margin-top: 11px; font-size: 11px; color: #9aa589; }
+
+/* Session band */
+.session-band {
+  padding: 15px 20px; background: #fbfcf9; border-top: 1px solid #eef0e9;
+  display: flex; gap: 26px; align-items: flex-start; flex-wrap: wrap;
+}
+.session-band-label { font-size: 11px; font-weight: 700; color: #5d6a4d; margin-bottom: 6px; }
+.session-band-sub { font-size: 10.5px; color: #a3ad92; margin-top: 5px; }
+.session-stepper { display: inline-flex; align-items: center; gap: 2px; background: #f4f6ef; border: 1px solid #e7ebe0; border-radius: 9px; padding: 3px; }
+.session-step { width: 30px; height: 30px; border: none; background: #fff; border-radius: 7px; font-size: 17px; color: #5d6a4d; cursor: pointer; box-shadow: 0 1px 2px rgba(44,51,31,0.08); }
+.session-step:hover { background: #eef1e8; }
+.session-step-val { width: 34px; text-align: center; font-size: 15px; font-weight: 700; color: #1a1f14; }
+.session-types { display: flex; gap: 6px; }
+.session-type-pill { font-size: 12.5px; font-weight: 600; padding: 6px 13px; border-radius: 999px; background: #fff; border: 1px solid #dfe3d6; color: #aab199; cursor: pointer; font-family: inherit; }
+.session-type-pill.is-on { font-weight: 700; background: #4d5840; border-color: #4d5840; color: #fff; }
+.session-type-pill.is-on::before { content: "✓ "; }
+.session-prompting { background: #fff; border: 1px solid #e2e6d9; border-radius: 9px; padding: 8px 12px; font: inherit; font-size: 12.5px; font-weight: 700; color: #1a1f14; cursor: pointer; }
+
+/* Footer */
+.session-foot { display: flex; align-items: center; gap: 12px; padding: 16px 20px; }
+.btn-session-start { flex: 1; background: #4d5840; color: #fff; border: none; border-radius: 10px; padding: 12px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.btn-session-start:hover { background: #3f4a35; }
+.btn-session-save { background: transparent; color: #5d6a4d; border: 1px solid #e2e6d9; border-radius: 10px; padding: 11px 14px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.btn-session-save:hover { background: #f4f6ef; }
+.btn-session-reset { background: transparent; color: #8a9678; border: none; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: underline; }
+
+/* Gating — when locked, the editable controls are inert + muted */
+#session-panel[data-editing="false"] .session-pill,
+#session-panel[data-editing="false"] .session-type-pill,
+#session-panel[data-editing="false"] .session-step,
+#session-panel[data-editing="false"] .session-add-btn,
+#session-panel[data-editing="false"] .session-prompting,
+#session-panel[data-editing="false"] .session-search input,
+#session-panel[data-editing="false"] .btn-session-save,
+#session-panel[data-editing="false"] .btn-session-reset {
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+@media (max-width: 720px) {
+  .session-body { flex-direction: column; }
+  .session-pool { width: 100%; }
+}
