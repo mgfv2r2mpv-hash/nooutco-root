@@ -378,6 +378,9 @@
       const TOOL_ID = "bt";
       const canUse  = loggedIn && !!(window.NotesGate && NotesGate.canUseTool(TOOL_ID));
 
+      // Restore any locally-saved draft so a reload never loses typed work.
+      const _savedDraft = React.useMemo(() => (window.NotesGate && NotesGate.draft.load(TOOL_ID)) || {}, []);
+
       // Factual quick-picks (cannot be inferred from clinical narrative).
       const [placeOfService, setPlaceOfService] = React.useState(() => {
         const saved = localStorage.getItem("bt_pos");
@@ -386,11 +389,11 @@
       const [telehealth,     setTelehealth]     = React.useState("No");
 
       // The five guided free-text fields.
-      const [fSession,    setFSession]    = React.useState("");
-      const [fLesson,     setFLesson]     = React.useState("");
-      const [fAntecedent, setFAntecedent] = React.useState("");
-      const [fBehavior,   setFBehavior]   = React.useState("");
-      const [fFollowUp,   setFFollowUp]   = React.useState("");
+      const [fSession,    setFSession]    = React.useState(() => _savedDraft.fSession    || "");
+      const [fLesson,     setFLesson]     = React.useState(() => _savedDraft.fLesson     || "");
+      const [fAntecedent, setFAntecedent] = React.useState(() => _savedDraft.fAntecedent || "");
+      const [fBehavior,   setFBehavior]   = React.useState(() => _savedDraft.fBehavior   || "");
+      const [fFollowUp,   setFFollowUp]   = React.useState(() => _savedDraft.fFollowUp   || "");
 
       const [output,       setOutput]      = React.useState(null);
       const [loading,      setLoading]     = React.useState(false);
@@ -401,6 +404,11 @@
       const [scrubNotice,  setScrubNotice] = React.useState("");
 
       React.useEffect(() => (window.NotesGate ? NotesGate.subscribe(setLoggedIn) : undefined), []);
+
+      // Persist the typed note on every change so a reload restores it.
+      React.useEffect(() => {
+        if (window.NotesGate) NotesGate.draft.save(TOOL_ID, { fSession, fLesson, fAntecedent, fBehavior, fFollowUp });
+      }, [fSession, fLesson, fAntecedent, fBehavior, fFollowUp]);
 
       const menu = (arr) => arr.map(x => `"${x}"`).join(" | ");
 

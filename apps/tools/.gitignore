@@ -3,3 +3,7 @@ dist/
 !cpr/dist/
 .DS_Store
 .wrangler/
+
+# Playwright test output
+playwright-report/
+test-results/

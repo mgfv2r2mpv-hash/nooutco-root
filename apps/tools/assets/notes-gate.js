@@ -18,6 +18,10 @@
 
   var TOKEN_KEY = "notes_auth_token";
   var EVT = "notes-auth-change";
+  // Prefix for locally-saved note drafts (one key per tool). Kept as a constant so
+  // logout can wipe every tool's draft — clinician free-text may contain PHI and
+  // must not linger in localStorage past the session on a shared/kiosk machine.
+  var DRAFT_PREFIX = "notes_draft_";
 
   // Public Cloudflare Turnstile site key for the login bot check. This is a PUBLIC
   // value and safe to commit. Paste the Site Key from the Turnstile widget created for
@@ -37,6 +41,23 @@
   // forces the request through to the worker. A per-call cache-buster guarantees the
   // worker is hit and the response is never served stale from cache.
   function apiUrl(path) { return path + API_SUFFIX + (path.indexOf("?") === -1 ? "?" : "&") + "_=" + Date.now(); }
+
+  // Reject with a clear, retryable error if a request stalls at the edge. Behind
+  // Super Bot Fight Mode + Pages static-asset interception an /api/* request can
+  // intermittently hang; without this the login modal would sit forever on
+  // "Logging in…" with neither a close nor an error, forcing a note-losing refresh.
+  var LOGIN_TIMEOUT_MS = 20000;
+  var GEN_TIMEOUT_MS = 45000; // generation is a real LLM round-trip — allow longer
+  function fetchWithTimeout(url, opts, ms, timeoutMsg) {
+    var ctrl = new AbortController();
+    var timer = setTimeout(function () { ctrl.abort(); }, ms);
+    return fetch(url, Object.assign({}, opts, { signal: ctrl.signal }))
+      .catch(function (e) {
+        if (e && e.name === "AbortError") throw new Error(timeoutMsg);
+        throw e;
+      })
+      .finally(function () { clearTimeout(timer); });
+  }
 
   /* ───────────────────────── Auth ───────────────────────── */
 
@@ -73,7 +94,21 @@
     window.dispatchEvent(new Event(EVT));
   }
 
+  // Remove every tool's saved draft. Called on logout so pre-scrub clinician
+  // free-text (possible PHI) never outlives the session on a shared machine.
+  function clearAllDrafts() {
+    try {
+      var keys = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf(DRAFT_PREFIX) === 0) keys.push(k);
+      }
+      keys.forEach(function (k) { localStorage.removeItem(k); });
+    } catch (e) {}
+  }
+
   function logout() {
+    clearAllDrafts();
     setToken("");
   }
 
@@ -104,11 +139,11 @@
 
   // POST the password to the worker; on success store the returned session token.
   function login(password, turnstileToken) {
-    return fetch(apiUrl("/api/login"), {
+    return fetchWithTimeout(apiUrl("/api/login"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password: password, turnstileToken: turnstileToken || "" }),
-    }).then(function (res) {
+    }, LOGIN_TIMEOUT_MS, "Login is taking too long — please retry.").then(function (res) {
       // Read as text first: if a Cloudflare edge challenge intercepts the request it
       // returns HTML, not JSON. Surface a clear message instead of a raw JSON-parse error.
       return res.text().then(function (raw) {
@@ -239,7 +274,7 @@
     var systemPrompt = opts.systemPrompt;
     var userPrompt = opts.userPrompt;
 
-    return fetch(apiUrl("/api/llm-call"), {
+    return fetchWithTimeout(apiUrl("/api/llm-call"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -252,7 +287,7 @@
         maxTokens: opts.maxTokens || 3000,
         tool: opts.tool,
       }),
-    }).then(function (res) {
+    }, GEN_TIMEOUT_MS, "Note generation timed out — please retry.").then(function (res) {
       if (res.status === 401) { setToken(""); throw new Error("Session expired — please log in again."); }
       if (res.status === 403) {
         return res.json().then(function (data) {
@@ -641,6 +676,22 @@
     nonPii: { load: loadNonPii, saveTerm: saveNonPiiTerm, clear: clearNonPii, sync: syncNonPii },
     // PII candidate capture — reports bare scrubbed words to the admin review queue.
     pii: { reportScrubbed: reportScrubbed },
+    // Local draft persistence for the note tools — keeps a clinician's typed note
+    // across a page reload so a refresh (or an errant one) never loses their work.
+    // Stored per tool as a JSON blob; PHI stays only in the clinician's own browser.
+    draft: {
+      load: function (key) {
+        try { return JSON.parse(localStorage.getItem(DRAFT_PREFIX + key) || "null"); }
+        catch (e) { return null; }
+      },
+      save: function (key, obj) {
+        try { localStorage.setItem(DRAFT_PREFIX + key, JSON.stringify(obj)); } catch (e) {}
+      },
+      clear: function (key) {
+        try { localStorage.removeItem(DRAFT_PREFIX + key); } catch (e) {}
+      },
+      clearAll: clearAllDrafts,
+    },
     // exposed for testing / advanced use
     _scrub: { detectNames: detectNames, buildNameMap: buildNameMap, applyScrub: applyScrub, restoreDeep: restoreDeep },
   };
