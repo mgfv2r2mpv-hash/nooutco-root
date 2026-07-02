@@ -246,15 +246,14 @@
 .btn-round.is-open { background: #4d5840; color: #fff; border-color: #4d5840; }
 
 #round-panel {
-  max-width: 480px; margin: 14px auto 6px;
+  width: min(720px, 94vw); max-width: none; margin: 14px auto 6px;
   background: #fff; border: 1px solid #e2e6d9; border-radius: 16px;
   box-shadow: 0 16px 42px rgba(44,51,31,0.16); overflow: hidden;
   font-family: 'Segoe UI', Inter, -apple-system, sans-serif; color: #1a1f14;
 }
 
-.round-head { display: flex; align-items: center; gap: 12px; padding: 16px 20px 14px; }
-.round-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: #a3ad92; }
-.round-title { font-size: 18px; font-weight: 700; color: #1a1f14; margin-top: 2px; }
+.round-head { display: flex; align-items: center; gap: 12px; padding: 12px 18px; }
+.round-title { font-size: 16px; font-weight: 700; color: #1a1f14; }
 .round-head-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 .round-set-picker select {
   background: #f3f6ee; border: 1px solid #dfe6d2; color: #4d5840;
@@ -271,13 +270,28 @@
 .round-close:hover { color: #5d6a4d; }
 
 /* Body · one field per row, top to bottom, divided (no scanning) */
-.round-body { padding: 4px 20px 4px; }
-.round-field { padding: 15px 0; border-top: 1px solid #eef0e9; }
+.round-body { padding: 4px 18px 6px; }
+.round-field { padding: 9px 0; border-top: 1px solid #eef0e9; }
 .round-field:first-child { border-top: none; }
 .round-field-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+
+/* Two-column body on desktop: Patterns spans the top; small controls left, prompting right */
+.round-field-patterns { border-top: none; }
+.round-cols { display: grid; grid-template-columns: 1fr 1fr; align-items: start; border-top: 1px solid #eef0e9; }
+.round-col { display: flex; flex-direction: column; min-width: 0; }
+.round-col > .round-field:first-child { border-top: none; }
+.round-col:not(.round-col-prompting) { padding-right: 22px; }
+.round-col-prompting { border-left: 1px solid #eef0e9; padding-left: 22px; }
+
+@media (max-width: 639px) {
+  /* Collapse to a single column; restore horizontal dividers */
+  .round-cols { grid-template-columns: 1fr; border-top: none; }
+  .round-col:not(.round-col-prompting) { padding-right: 0; }
+  .round-col-prompting { border-left: none; padding-left: 0; }
+  .round-col-prompting > .round-field:first-child { border-top: 1px solid #eef0e9; }
+}
 .round-field-label { font-size: 13px; font-weight: 700; color: #2c331f; }
 .round-field-note  { font-weight: 500; color: #a3ad92; }
-.round-field-sub   { font-size: 11px; color: #a3ad92; margin-top: 3px; }
 
 .round-patterns { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
 .round-pill {
@@ -295,17 +309,17 @@
 
 .round-symbols { background: #fff; border: 1px solid #e2e6d9; border-radius: 9px; padding: 8px 12px; font: inherit; font-size: 12.5px; font-weight: 700; color: #1a1f14; cursor: pointer; }
 
-.round-prompting { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.round-prompting { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
 .round-radio {
-  display: flex; align-items: flex-start; gap: 11px; text-align: left;
-  background: #fff; border: 1px solid #e2e6d9; border-radius: 11px; padding: 11px 13px;
+  display: flex; align-items: center; gap: 10px; text-align: left;
+  background: #fff; border: 1px solid #e2e6d9; border-radius: 9px; padding: 8px 12px;
   cursor: pointer; font-family: inherit; width: 100%;
 }
 .round-radio:hover { border-color: #c7cdb6; }
-.round-radio-dot { flex-shrink: 0; width: 16px; height: 16px; margin-top: 2px; border-radius: 999px; border: 2px solid #cdd4c0; background: #fff; }
-.round-radio-text strong { display: block; font-size: 13px; font-weight: 700; color: #2c331f; margin-bottom: 2px; }
-.round-radio-text span { font-size: 11.5px; line-height: 1.4; color: #7a8568; }
+.round-radio-dot { flex-shrink: 0; width: 16px; height: 16px; border-radius: 999px; border: 2px solid #cdd4c0; background: #fff; }
+.round-radio-label { font-size: 13px; font-weight: 600; color: #2c331f; }
 .round-radio.is-on { border-color: #4d5840; box-shadow: inset 0 0 0 1px #4d5840; }
+.round-radio.is-on .round-radio-label { font-weight: 700; }
 .round-radio.is-on .round-radio-dot { border-color: #4d5840; background: radial-gradient(circle at center, #4d5840 0 5px, #fff 6px); }
 
 .round-toggle { position: relative; width: 46px; height: 26px; border-radius: 999px; border: none; background: #d4dac9; cursor: pointer; transition: background 0.15s; }
@@ -314,7 +328,7 @@
 .round-toggle.is-on .round-toggle-knob { transform: translateX(20px); }
 
 /* Footer */
-.round-foot { display: flex; align-items: center; gap: 12px; padding: 16px 20px; }
+.round-foot { display: flex; align-items: center; gap: 12px; padding: 12px 18px; }
 .btn-round-start { flex: 1; background: #4d5840; color: #fff; border: none; border-radius: 10px; padding: 12px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
 .btn-round-start:hover { background: #3f4a35; }
 .btn-round-save { background: transparent; color: #5d6a4d; border: 1px solid #e2e6d9; border-radius: 10px; padding: 11px 14px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }

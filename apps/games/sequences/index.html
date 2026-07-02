@@ -137,10 +137,7 @@
   <!-- ── Round setup panel (Frame 04 — gated compact settings) ────── -->
   <section id="round-panel" hidden aria-label="Sequences round setup" data-editing="false">
     <div class="round-head">
-      <div class="round-eyebrow-wrap">
-        <div class="round-eyebrow">Sequences · Round setup</div>
-        <div class="round-title">Settings</div>
-      </div>
+      <div class="round-title">Settings</div>
       <div class="round-head-actions">
         <div class="round-set-picker">
           <select id="sel-round-set" aria-label="Saved round sets"></select>
@@ -151,68 +148,57 @@
     </div>
 
     <div class="round-body">
-      <!-- Patterns (multi-select) -->
-      <div class="round-field">
+      <!-- Patterns (multi-select) · full width -->
+      <div class="round-field round-field-patterns">
         <div class="round-field-label">Patterns <span class="round-field-note">· mixed at random across trials</span></div>
         <div id="round-patterns" class="round-patterns"></div>
       </div>
 
-      <!-- Repeats shown -->
-      <div class="round-field round-field-row">
-        <div>
-          <div class="round-field-label">Repeats shown</div>
-          <div class="round-field-sub">Full pattern repeats before the blank</div>
-        </div>
-        <div class="round-stepper" data-stepper="reps">
-          <button type="button" class="round-step" data-dir="-1" aria-label="Fewer repeats">−</button>
-          <div id="round-reps-val" class="round-step-val">2</div>
-          <button type="button" class="round-step" data-dir="1" aria-label="More repeats">＋</button>
-        </div>
-      </div>
+      <div class="round-cols">
+        <!-- Left column: compact single-value controls -->
+        <div class="round-col">
+          <div class="round-field round-field-row">
+            <div class="round-field-label">Repeats shown</div>
+            <div class="round-stepper" data-stepper="reps">
+              <button type="button" class="round-step" data-dir="-1" aria-label="Fewer repeats">−</button>
+              <div id="round-reps-val" class="round-step-val">2</div>
+              <button type="button" class="round-step" data-dir="1" aria-label="More repeats">＋</button>
+            </div>
+          </div>
 
-      <!-- Symbol set -->
-      <div class="round-field round-field-row">
-        <div>
-          <div class="round-field-label">Symbol set</div>
-          <div class="round-field-sub">Pulled from Sequences Manager</div>
-        </div>
-        <select id="sel-round-symbols" class="round-symbols"></select>
-      </div>
+          <div class="round-field round-field-row">
+            <div class="round-field-label">Symbol set</div>
+            <select id="sel-round-symbols" class="round-symbols"></select>
+          </div>
 
-      <!-- Prompting method -->
-      <div class="round-field">
-        <div class="round-field-label">Prompting method</div>
-        <div id="round-prompting" class="round-prompting">
-          <button type="button" class="round-radio" data-method="most-to-least">
-            <span class="round-radio-dot" aria-hidden="true"></span>
-            <span class="round-radio-text">
-              <strong>Model first</strong>
-              <span>Most-to-Least (Errorless): highlights the correct symbol before the learner answers, then fades that help over trials.</span>
-            </span>
-          </button>
-          <button type="button" class="round-radio" data-method="least-to-most">
-            <span class="round-radio-dot" aria-hidden="true"></span>
-            <span class="round-radio-text">
-              <strong>Try first</strong>
-              <span>Least-to-Most: learner attempts on their own; a hint appears only if they miss.</span>
-            </span>
-          </button>
-          <button type="button" class="round-radio" data-method="time-delay">
-            <span class="round-radio-dot" aria-hidden="true"></span>
-            <span class="round-radio-text">
-              <strong>Wait, then help</strong>
-              <span>Time-Delay: shows the pattern, waits a set delay, then prompts if there's no response.</span>
-            </span>
-          </button>
+          <div class="round-field round-field-row">
+            <div class="round-field-label">Sound &amp; chimes</div>
+            <button type="button" id="round-sound" class="round-toggle is-on" role="switch" aria-checked="true" aria-label="Sound and chimes">
+              <span class="round-toggle-knob" aria-hidden="true"></span>
+            </button>
+          </div>
         </div>
-      </div>
 
-      <!-- Sound toggle -->
-      <div class="round-field round-field-row">
-        <div class="round-field-label">Sound &amp; chimes</div>
-        <button type="button" id="round-sound" class="round-toggle is-on" role="switch" aria-checked="true" aria-label="Sound and chimes">
-          <span class="round-toggle-knob" aria-hidden="true"></span>
-        </button>
+        <!-- Right column: prompting method -->
+        <div class="round-col round-col-prompting">
+          <div class="round-field round-field-prompting">
+            <div class="round-field-label">Prompting method</div>
+            <div id="round-prompting" class="round-prompting">
+              <button type="button" class="round-radio" data-method="most-to-least">
+                <span class="round-radio-dot" aria-hidden="true"></span>
+                <span class="round-radio-label">Immediate (Most to Least)</span>
+              </button>
+              <button type="button" class="round-radio" data-method="least-to-most">
+                <span class="round-radio-dot" aria-hidden="true"></span>
+                <span class="round-radio-label">Independent First (Least to Most)</span>
+              </button>
+              <button type="button" class="round-radio" data-method="time-delay">
+                <span class="round-radio-dot" aria-hidden="true"></span>
+                <span class="round-radio-label">Delayed (Fixed Time Delay)</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 

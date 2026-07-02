@@ -979,12 +979,12 @@ function applyRoundToEngine() {
   state.shownReps    = clampReps(r.reps);
   state.blanksToFill = 1;
   // ABA method → existing prompt engine fields (reused by beginTrial/onCorrectPick).
-  if (r.prompting === 'most-to-least') {          // Model first / errorless
+  if (r.prompting === 'most-to-least') {          // Immediate (Most to Least) — errorless
     state.autoPromptEnabled = true;  state.promptDelay = false;
-  } else if (r.prompting === 'time-delay') {      // Wait, then help
+  } else if (r.prompting === 'time-delay') {      // Delayed (Fixed Time Delay)
     state.autoPromptEnabled = true;  state.promptDelay = true;
     state.promptDelaySecs   = ROUND_TIME_DELAY_SECS;
-  } else {                                          // least-to-most / Try first
+  } else {                                          // Independent First (Least to Most)
     state.autoPromptEnabled = false; state.promptDelay = false;
   }
   window.__noabaMuted = !r.sound;                  // gates the shared reward chime
