@@ -63,10 +63,9 @@ const state = {
   autoPromptEnabled: false,
   promptDelay:       false,
   promptDelaySecs:   3,
-  extraPanelOpen:    false,
 
   // Round setup (Frame 04 — gated). Working config + panel/lock flags.
-  round:          null,   // roundConfig: {patterns, reps, setName, prompting, sound}
+  round:          null,   // roundConfig — see defaultRound() for the full schema
   roundActive:    false,  // a curated round is currently in play
   roundEditing:   false,  // panel unlocked for editing (long-press)
   roundPanelOpen: false,
@@ -105,14 +104,7 @@ const el = {
   timerDisplay:    $('timer-display'),
   btnTimerToggle:  $('btn-timer-toggle'),
   btnTimerReset:   $('btn-timer-reset'),
-  selSet:          $('sel-set'),
-  inpPatternLen:   $('inp-pattern-length'),
-  inpReps:         $('inp-reps'),
-  inpBlanks:       $('inp-blanks'),
-  inpBank:         $('inp-bank'),
-  btnExtraToggle:  $('btn-extra-toggle'),
-  extraPanel:      $('extra-panel'),
-  btnExtraClose:   $('btn-extra-close'),
+  // Advanced overrides — moved from the retired #extra-panel into #round-panel.
   chkRepresentErrors: $('chk-represent-errors'),
   chkErrorless:    $('chk-errorless'),
   chkNoErrorAnim:  $('chk-no-error-anim'),
@@ -121,14 +113,13 @@ const el = {
   chkPromptDelay:  $('chk-prompt-delay'),
   selPromptDelay:  $('sel-prompt-delay'),
   selPromptStyle:  $('sel-prompt-style'),
-  // Round setup panel (Frame 04)
+  // Round / settings panel
   btnRoundToggle:  $('btn-round-toggle'),
   roundPanel:      $('round-panel'),
   selRoundSet:     $('sel-round-set'),
   roundGatePill:   $('round-gate-pill'),
   btnRoundClose:   $('btn-round-close'),
   roundPatterns:   $('round-patterns'),
-  roundRepsVal:    $('round-reps-val'),
   selRoundSymbols: $('sel-round-symbols'),
   roundPrompting:  $('round-prompting'),
   roundSound:      $('round-sound'),
@@ -148,60 +139,6 @@ const el = {
   printSummary:    $('print-summary'),
 };
 
-// ── Settings persistence ───────────────────────────────────────────
-
-function loadSettings() {
-  const s = JSON.parse(localStorage.getItem('seqSettings') || '{}');
-  state.setName           = s.setName           ?? '';
-  state.patternLength     = s.patternLength     ?? 2;
-  state.shownReps         = s.shownReps         ?? 2;
-  state.blanksToFill      = s.blanksToFill      ?? 1;
-  state.bankSize          = s.bankSize          ?? 4;
-  state.representErrors   = s.representErrors   ?? true;
-  state.errorless         = s.errorless         ?? false;
-  state.noErrorAnim       = s.noErrorAnim       ?? false;
-  state.promptPersists    = s.promptPersists    ?? false;
-  state.promptStyle       = s.promptStyle       ?? 'sparkle';
-  state.autoPromptEnabled = s.autoPromptEnabled ?? false;
-  state.promptDelay       = s.promptDelay       ?? false;
-  state.promptDelaySecs   = s.promptDelaySecs   ?? 3;
-
-  el.inpPatternLen.value        = state.patternLength;
-  el.inpReps.value              = state.shownReps;
-  el.inpBlanks.value            = state.blanksToFill;
-  el.inpBlanks.max              = state.patternLength;
-  el.inpBank.value              = state.bankSize;
-  el.chkRepresentErrors.checked = state.representErrors;
-  el.chkErrorless.checked       = state.errorless;
-  el.chkNoErrorAnim.checked     = state.noErrorAnim;
-  el.chkPersists.checked        = state.promptPersists;
-  el.chkAutoPrompt.checked      = state.autoPromptEnabled;
-  el.chkPromptDelay.checked     = state.promptDelay;
-  el.selPromptDelay.value       = state.promptDelaySecs;
-  el.selPromptStyle.value       = state.promptStyle;
-
-  el.chkPromptDelay.disabled = !state.autoPromptEnabled;
-  el.selPromptDelay.disabled = !state.autoPromptEnabled || !state.promptDelay;
-}
-
-function saveSettings() {
-  localStorage.setItem('seqSettings', JSON.stringify({
-    setName:           state.setName,
-    patternLength:     state.patternLength,
-    shownReps:         state.shownReps,
-    blanksToFill:      state.blanksToFill,
-    bankSize:          state.bankSize,
-    representErrors:   state.representErrors,
-    errorless:         state.errorless,
-    noErrorAnim:       state.noErrorAnim,
-    promptPersists:    state.promptPersists,
-    promptStyle:       state.promptStyle,
-    autoPromptEnabled: state.autoPromptEnabled,
-    promptDelay:       state.promptDelay,
-    promptDelaySecs:   state.promptDelaySecs,
-  }));
-}
-
 // ── Symbol set loading ─────────────────────────────────────────────
 
 async function loadSymbols() {
@@ -213,97 +150,17 @@ async function loadSymbols() {
     console.warn('symbols.json load failed:', e);
     state.symbolsData = { sets: {} };
   }
-  populateSetDropdown();
-}
-
-function populateSetDropdown() {
-  const names = Object.keys(state.symbolsData.sets || {});
-  el.selSet.innerHTML = '';
-  if (!names.length) {
-    el.selSet.innerHTML = '<option value="">(no sets)</option>';
-    return;
-  }
-  names.forEach(name => {
-    const opt = document.createElement('option');
-    opt.value = name;
-    opt.textContent = name;
-    el.selSet.appendChild(opt);
-  });
-  // Restore saved selection if still available
-  const saved = state.setName && names.includes(state.setName) ? state.setName : names[0];
-  state.setName = saved;
-  el.selSet.value = saved;
 }
 
 // ── Event bindings ─────────────────────────────────────────────────
+// The settings-bar numeric inputs and the #extra-panel are gone; every control
+// now lives in #round-panel and is bound in bindRoundEvents().
 
 function bindEvents() {
   el.btnTimerToggle.addEventListener('click', toggleTimer);
   el.btnTimerReset.addEventListener('click',  resetTimer);
 
-  el.selSet.addEventListener('change', () => {
-    state.setName = el.selSet.value;
-    saveSettings();
-  });
-
-  el.inpPatternLen.addEventListener('change', () => {
-    state.patternLength = clamp(parseInt(el.inpPatternLen.value, 10) || 2, 2, 5);
-    el.inpPatternLen.value = state.patternLength;
-    if (state.blanksToFill > state.patternLength) {
-      state.blanksToFill = state.patternLength;
-      el.inpBlanks.value = state.blanksToFill;
-    }
-    el.inpBlanks.max = state.patternLength;
-    saveSettings();
-  });
-
-  el.inpReps.addEventListener('change', () => {
-    state.shownReps = clamp(parseInt(el.inpReps.value, 10) || 2, 1, 4);
-    el.inpReps.value = state.shownReps;
-    saveSettings();
-  });
-
-  el.inpBlanks.addEventListener('change', () => {
-    state.blanksToFill = clamp(parseInt(el.inpBlanks.value, 10) || 1, 1, state.patternLength);
-    el.inpBlanks.value = state.blanksToFill;
-    saveSettings();
-  });
-
-  el.inpBank.addEventListener('change', () => {
-    state.bankSize = clamp(parseInt(el.inpBank.value, 10) || 4, 2, 8);
-    el.inpBank.value = state.bankSize;
-    saveSettings();
-  });
-
-  // Extra panel
-  el.btnExtraToggle.addEventListener('click', () => setExtraPanelOpen(!state.extraPanelOpen));
-  el.btnExtraClose.addEventListener('click',  () => setExtraPanelOpen(false));
-
-  el.chkRepresentErrors.addEventListener('change', () => { state.representErrors   = el.chkRepresentErrors.checked; saveSettings(); });
-  el.chkErrorless.addEventListener('change',       () => { state.errorless         = el.chkErrorless.checked;       saveSettings(); });
-  el.chkNoErrorAnim.addEventListener('change',     () => { state.noErrorAnim       = el.chkNoErrorAnim.checked;     saveSettings(); });
-  el.chkPersists.addEventListener('change',        () => { state.promptPersists    = el.chkPersists.checked;        saveSettings(); });
-  el.selPromptStyle.addEventListener('change',     () => { state.promptStyle       = el.selPromptStyle.value;       saveSettings(); });
-
-  el.chkAutoPrompt.addEventListener('change', () => {
-    state.autoPromptEnabled = el.chkAutoPrompt.checked;
-    el.chkPromptDelay.disabled = !state.autoPromptEnabled;
-    el.selPromptDelay.disabled = !state.autoPromptEnabled || !state.promptDelay;
-    saveSettings();
-  });
-
-  el.chkPromptDelay.addEventListener('change', () => {
-    state.promptDelay = el.chkPromptDelay.checked;
-    el.selPromptDelay.disabled = !state.promptDelay;
-    saveSettings();
-  });
-
-  el.selPromptDelay.addEventListener('change', () => {
-    state.promptDelaySecs = parseInt(el.selPromptDelay.value, 10);
-    saveSettings();
-  });
-
-  el.btnStart.addEventListener('click',  startLegacyGame);
+  el.btnStart.addEventListener('click',  startRound);   // unified: the bar Start runs the round config
   el.btnPrompt.addEventListener('click', onPromptButton);
   el.btnPrint.addEventListener('click',  printData);
 
@@ -314,16 +171,6 @@ function bindEvents() {
     state.trialNum    = 0;
     el.resultsBody.innerHTML = '';
   });
-}
-
-// ── Extra settings panel ───────────────────────────────────────────
-
-function setExtraPanelOpen(open) {
-  state.extraPanelOpen = open;
-  el.btnExtraToggle.setAttribute('aria-expanded', String(open));
-  el.btnExtraToggle.classList.toggle('is-open', open);
-  if (open) el.extraPanel.removeAttribute('hidden');
-  else      el.extraPanel.setAttribute('hidden', '');
 }
 
 // ── Timer ──────────────────────────────────────────────────────────
@@ -769,10 +616,22 @@ function printData() {
 // path is untouched and remains the fallback.
 // ════════════════════════════════════════════════════════════════════
 
+// The round config is the single source of truth for the whole settings panel:
+// pattern selection + core trial shape + advanced prompt overrides.
 function defaultRound() {
-  return { patterns: ['AB'], reps: 2, setName: '', prompting: 'most-to-least', sound: true };
+  return {
+    patterns: ['AB'], reps: 2, setName: '', prompting: 'most-to-least', sound: true,
+    // Core trial shape (pattern LENGTH is intrinsic to the selected templates).
+    blanksToFill: 1, bankSize: 4,
+    // Advanced overrides (formerly the #extra-panel "Options").
+    representErrors: true, errorless: false, noErrorAnim: false,
+    promptPersists: false, promptStyle: 'sparkle',
+    // Prompt behaviour — the method radio presets these; Advanced can override.
+    autoPromptEnabled: true, promptDelay: false, promptDelaySecs: ROUND_TIME_DELAY_SECS,
+  };
 }
 function clampReps(n) { return Math.max(1, Math.min(10, parseInt(n, 10) || 2)); }
+function clampInt(n, min, max) { return Math.max(min, Math.min(max, parseInt(n, 10) || min)); }
 
 // Validation guard — keeps saved sets resilient to content/version changes.
 function normalizeRound(cfg) {
@@ -785,6 +644,16 @@ function normalizeRound(cfg) {
   out.setName   = (cfg.setName && names.includes(cfg.setName)) ? cfg.setName : (state.setName || names[0] || '');
   out.prompting = PROMPT_TYPE_BY_METHOD[cfg.prompting] ? cfg.prompting : 'most-to-least';
   out.sound     = cfg.sound !== false;
+  out.blanksToFill    = clampInt(cfg.blanksToFill ?? 1, 1, 5);
+  out.bankSize        = clampInt(cfg.bankSize ?? 4, 2, 8);
+  out.representErrors = cfg.representErrors ?? true;
+  out.errorless       = cfg.errorless ?? false;
+  out.noErrorAnim     = cfg.noErrorAnim ?? false;
+  out.promptPersists  = cfg.promptPersists ?? false;
+  out.promptStyle     = (cfg.promptStyle === 'outline') ? 'outline' : 'sparkle';
+  out.autoPromptEnabled = cfg.autoPromptEnabled ?? true;
+  out.promptDelay       = cfg.promptDelay ?? false;
+  out.promptDelaySecs   = clampInt(cfg.promptDelaySecs ?? ROUND_TIME_DELAY_SECS, 1, 10);
   return out;
 }
 
@@ -796,6 +665,12 @@ function loadRoundStore() {
 function saveRoundStore(store) {
   try { localStorage.setItem(ROUND_KEY, JSON.stringify(store)); }
   catch (e) { /* storage full / unavailable — non-fatal */ }
+}
+// Persist live edits as the working config so a reload restores the panel state.
+function saveWorkingRound() {
+  const store = loadRoundStore();
+  store.working = JSON.parse(JSON.stringify(state.round));
+  saveRoundStore(store);
 }
 
 // ── Rendering ──────────────────────────────────────────────────────
@@ -837,10 +712,50 @@ function renderRoundPrompting() {
     r.classList.toggle('is-on', r.dataset.method === state.round.prompting));
 }
 
-function renderRoundReps()  { el.roundRepsVal.textContent = String(state.round.reps); }
+// Steppers share one delegated handler; keys map straight onto round config fields.
+const STEPPER_LIMITS = { reps: [1, 10], blanksToFill: [1, 5], bankSize: [2, 8] };
+function setStepperVal(key, val) {
+  const node = el.roundPanel.querySelector(`.round-stepper[data-stepper="${key}"] .round-step-val`);
+  if (node) node.textContent = String(val);
+}
+function renderRoundSteppers() {
+  setStepperVal('reps',         state.round.reps);
+  setStepperVal('blanksToFill', state.round.blanksToFill);
+  setStepperVal('bankSize',     state.round.bankSize);
+}
+
 function renderRoundSound() {
   el.roundSound.setAttribute('aria-checked', String(state.round.sound));
   el.roundSound.classList.toggle('is-on', state.round.sound);
+}
+
+// Advanced overrides — reflect round config into the moved #extra-panel controls.
+function renderRoundAdvanced() {
+  const r = state.round;
+  el.chkRepresentErrors.checked = r.representErrors;
+  el.chkErrorless.checked       = r.errorless;
+  el.chkNoErrorAnim.checked     = r.noErrorAnim;
+  el.chkPersists.checked        = r.promptPersists;
+  el.chkAutoPrompt.checked      = r.autoPromptEnabled;
+  el.chkPromptDelay.checked     = r.promptDelay;
+  el.selPromptDelay.value       = r.promptDelaySecs;
+  el.selPromptStyle.value       = r.promptStyle;
+  el.chkPromptDelay.disabled    = !r.autoPromptEnabled;
+  el.selPromptDelay.disabled    = !r.autoPromptEnabled || !r.promptDelay;
+}
+
+// Prompting-method radios are presets for the three prompt-behaviour fields.
+const METHOD_PRESETS = {
+  'most-to-least': { autoPromptEnabled: true,  promptDelay: false },
+  'time-delay':    { autoPromptEnabled: true,  promptDelay: true, promptDelaySecs: ROUND_TIME_DELAY_SECS },
+  'least-to-most': { autoPromptEnabled: false, promptDelay: false },
+};
+function applyMethodPreset(method) {
+  const p = METHOD_PRESETS[method] || METHOD_PRESETS['most-to-least'];
+  state.round.prompting        = method;
+  state.round.autoPromptEnabled = p.autoPromptEnabled;
+  state.round.promptDelay       = p.promptDelay;
+  if (p.promptDelaySecs != null) state.round.promptDelaySecs = p.promptDelaySecs;
 }
 
 function updateRoundStart() {
@@ -851,10 +766,11 @@ function updateRoundStart() {
 
 function renderRoundPanel() {
   renderRoundPatterns();
-  renderRoundReps();
+  renderRoundSteppers();
   renderRoundSymbols();
   renderRoundPrompting();
   renderRoundSound();
+  renderRoundAdvanced();
   updateRoundStart();
 }
 
@@ -914,30 +830,62 @@ function bindRoundEvents() {
     if (i >= 0) arr.splice(i, 1); else arr.push(p);
     renderRoundPatterns();
     updateRoundStart();
+    saveWorkingRound();
   });
 
-  el.roundRepsVal.parentElement.addEventListener('click', (e) => {
+  // Delegated stepper handler for reps / blanks / bank size.
+  el.roundPanel.addEventListener('click', (e) => {
     const btn = e.target.closest('.round-step');
     if (!btn) return;
-    state.round.reps = clampReps(state.round.reps + parseInt(btn.dataset.dir, 10));
-    renderRoundReps();
+    const stepper = btn.closest('.round-stepper');
+    const key = stepper && stepper.dataset.stepper;
+    const limits = STEPPER_LIMITS[key];
+    if (!limits) return;
+    state.round[key] = clampInt(state.round[key] + parseInt(btn.dataset.dir, 10), limits[0], limits[1]);
+    renderRoundSteppers();
+    saveWorkingRound();
   });
 
   el.selRoundSymbols.addEventListener('change', () => {
     state.round.setName = el.selRoundSymbols.value;
     updateRoundStart();
+    saveWorkingRound();
   });
 
   el.roundPrompting.addEventListener('click', (e) => {
     const r = e.target.closest('.round-radio');
     if (!r) return;
-    state.round.prompting = r.dataset.method;
+    applyMethodPreset(r.dataset.method);
     renderRoundPrompting();
+    renderRoundAdvanced();
+    saveWorkingRound();
   });
 
   el.roundSound.addEventListener('click', () => {
     state.round.sound = !state.round.sound;
     renderRoundSound();
+    saveWorkingRound();
+  });
+
+  // Advanced overrides (moved from #extra-panel) — write straight to round config.
+  el.chkRepresentErrors.addEventListener('change', () => { state.round.representErrors = el.chkRepresentErrors.checked; saveWorkingRound(); });
+  el.chkErrorless.addEventListener('change',       () => { state.round.errorless       = el.chkErrorless.checked;       saveWorkingRound(); });
+  el.chkNoErrorAnim.addEventListener('change',     () => { state.round.noErrorAnim     = el.chkNoErrorAnim.checked;     saveWorkingRound(); });
+  el.chkPersists.addEventListener('change',        () => { state.round.promptPersists  = el.chkPersists.checked;        saveWorkingRound(); });
+  el.selPromptStyle.addEventListener('change',     () => { state.round.promptStyle      = el.selPromptStyle.value;       saveWorkingRound(); });
+  el.chkAutoPrompt.addEventListener('change', () => {
+    state.round.autoPromptEnabled = el.chkAutoPrompt.checked;
+    renderRoundAdvanced();
+    saveWorkingRound();
+  });
+  el.chkPromptDelay.addEventListener('change', () => {
+    state.round.promptDelay = el.chkPromptDelay.checked;
+    renderRoundAdvanced();
+    saveWorkingRound();
+  });
+  el.selPromptDelay.addEventListener('change', () => {
+    state.round.promptDelaySecs = clampInt(el.selPromptDelay.value, 1, 10);
+    saveWorkingRound();
   });
 
   el.selRoundSet.addEventListener('change', () => applyRoundByName(el.selRoundSet.value));
@@ -974,20 +922,23 @@ function saveCurrentRound() {
 // ── Start a curated round ──────────────────────────────────────────
 function applyRoundToEngine() {
   const r = state.round;
-  state.roundActive  = true;
-  state.setName      = r.setName;
-  state.shownReps    = clampReps(r.reps);
-  state.blanksToFill = 1;
-  // ABA method → existing prompt engine fields (reused by beginTrial/onCorrectPick).
-  if (r.prompting === 'most-to-least') {          // Immediate (Most to Least) — errorless
-    state.autoPromptEnabled = true;  state.promptDelay = false;
-  } else if (r.prompting === 'time-delay') {      // Delayed (Fixed Time Delay)
-    state.autoPromptEnabled = true;  state.promptDelay = true;
-    state.promptDelaySecs   = ROUND_TIME_DELAY_SECS;
-  } else {                                          // Independent First (Least to Most)
-    state.autoPromptEnabled = false; state.promptDelay = false;
-  }
-  window.__noabaMuted = !r.sound;                  // gates the shared reward chime
+  state.roundActive     = true;
+  state.setName         = r.setName;
+  state.shownReps       = clampReps(r.reps);
+  state.blanksToFill    = clampInt(r.blanksToFill, 1, 5);  // clamped per-trial to the template length
+  state.bankSize        = clampInt(r.bankSize, 2, 8);
+  // Advanced overrides (formerly #extra-panel).
+  state.representErrors = r.representErrors;
+  state.errorless       = r.errorless;
+  state.noErrorAnim     = r.noErrorAnim;
+  state.promptPersists  = r.promptPersists;
+  state.promptStyle     = r.promptStyle;
+  // Prompt behaviour: the method radio presets these three (see applyMethodPreset);
+  // the Advanced group may override them. Values live on state.round, so copy straight through.
+  state.autoPromptEnabled = r.autoPromptEnabled;
+  state.promptDelay       = r.promptDelay;
+  state.promptDelaySecs   = clampInt(r.promptDelaySecs, 1, 10);
+  window.__noabaMuted     = !r.sound;              // gates the shared reward chime
 }
 
 function startRound() {
@@ -1017,17 +968,40 @@ function startRound() {
   startGame();
 }
 
-// Legacy Start button — exits round mode and restores default sound.
-function startLegacyGame() {
-  state.roundActive = false;
-  window.__noabaMuted = false;
-  startGame();
+// One-time fold of the retired `seqSettings` store into the round working config,
+// so a user who configured the old settings-bar/Options keeps their choices.
+const LEGACY_SETTINGS_KEY = 'seqSettings';
+function migrateLegacyIntoStore(store) {
+  if (store.working || store._legacyMigrated) return;
+  let legacy = null;
+  try { legacy = JSON.parse(localStorage.getItem(LEGACY_SETTINGS_KEY) || 'null'); }
+  catch (e) { legacy = null; }
+  if (!legacy) return;
+  const base = (store.last && store.sets && store.sets[store.last]) || defaultRound();
+  store.working = normalizeRound({
+    ...base,
+    blanksToFill:      legacy.blanksToFill,
+    bankSize:          legacy.bankSize,
+    representErrors:   legacy.representErrors,
+    errorless:         legacy.errorless,
+    noErrorAnim:       legacy.noErrorAnim,
+    promptPersists:    legacy.promptPersists,
+    promptStyle:       legacy.promptStyle,
+    autoPromptEnabled: legacy.autoPromptEnabled,
+    promptDelay:       legacy.promptDelay,
+    promptDelaySecs:   legacy.promptDelaySecs,
+  });
+  store._legacyMigrated = true;
+  saveRoundStore(store);
 }
 
 function initRound() {
   const store = loadRoundStore();
-  const last = store.last && store.sets && store.sets[store.last];
-  state.round = normalizeRound(last || defaultRound());
+  migrateLegacyIntoStore(store);
+  const source = store.working
+    || (store.last && store.sets && store.sets[store.last])
+    || defaultRound();
+  state.round = normalizeRound(source);
   state.roundActive = false;
   state.roundEditing = false;
   state.roundPanelOpen = false;
@@ -1038,7 +1012,6 @@ function initRound() {
 // ── Init ───────────────────────────────────────────────────────────
 
 (async function init() {
-  loadSettings();
   bindEvents();
   await loadSymbols();
   initRound();
