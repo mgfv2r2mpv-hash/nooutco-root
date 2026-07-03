@@ -288,19 +288,45 @@
         tool: opts.tool,
       }),
     }, GEN_TIMEOUT_MS, "Note generation timed out — please retry.").then(function (res) {
-      if (res.status === 401) { setToken(""); throw new Error("Session expired — please log in again."); }
-      if (res.status === 403) {
-        return res.json().then(function (data) {
-          throw new Error((data && data.error) || "Your access doesn't include this tool.");
-        });
-      }
+      return parseNoteResponse(res).then(function (r) { return r.parsed; });
+    });
+  }
+
+  // Multi-turn variant for the revision flow: sends the whole conversation
+  // ({system, messages}); the worker adds prompt-cache markers so replayed
+  // history is served from Anthropic's 5-minute prefix cache instead of being
+  // recomputed. Resolves {parsed, rawText, usage} — rawText must be appended to
+  // the conversation verbatim so the next turn's cache prefix matches.
+  function generateConversation(opts) {
+    return fetchWithTimeout(apiUrl("/api/llm-call"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + getToken(),
+      },
+      body: JSON.stringify({
+        system: opts.system,
+        messages: opts.messages,
+        model: opts.model || "claude-haiku-4-5-20251001",
+        maxTokens: opts.maxTokens || 3000,
+        tool: opts.tool,
+      }),
+    }, GEN_TIMEOUT_MS, "Note generation timed out — please retry.").then(parseNoteResponse);
+  }
+
+  function parseNoteResponse(res) {
+    if (res.status === 401) { setToken(""); throw new Error("Session expired — please log in again."); }
+    if (res.status === 403) {
       return res.json().then(function (data) {
-        if (!res.ok) throw new Error("API error " + res.status + ": " + (data && data.error ? data.error : res.statusText));
-        var raw = (data.content || []).map(function (b) { return b.text || ""; }).join("");
-        var match = raw.match(/\{[\s\S]*\}/);
-        if (!match) throw new Error("No JSON found in response. Try again.");
-        return JSON.parse(match[0]);
+        throw new Error((data && data.error) || "Your access doesn't include this tool.");
       });
+    }
+    return res.json().then(function (data) {
+      if (!res.ok) throw new Error("API error " + res.status + ": " + (data && data.error ? data.error : res.statusText));
+      var raw = (data.content || []).map(function (b) { return b.text || ""; }).join("");
+      var match = raw.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error("No JSON found in response. Try again.");
+      return { parsed: JSON.parse(match[0]), rawText: raw, usage: data.usage || null };
     });
   }
 
@@ -672,6 +698,7 @@
     token: getToken,
     apiUrl: apiUrl,
     generateNote: generateNote,
+    generateConversation: generateConversation,
     // Certified-non-PII store — localStorage cache + KV server backing.
     nonPii: { load: loadNonPii, saveTerm: saveNonPiiTerm, clear: clearNonPii, sync: syncNonPii },
     // PII candidate capture — reports bare scrubbed words to the admin review queue.

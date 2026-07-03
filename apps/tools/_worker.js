@@ -6,16 +6,21 @@ import { handleSuggest } from "./shared/suggest.js";
 // Notes tools that can be scoped to a managed password.
 const NOTES_TOOLS = ["bt", "sup", "parent", "assess", "sap"];
 
-// Old URL → new URL prefix mapping (specific paths before their parent prefix)
+// Old URL → new URL prefix mapping (specific paths before their parent prefix).
+// The four BCBA note tools live on one unified page at /notes/bcba/?tool=<id>.
 const LEGACY_PREFIXES = [
   ['/NoteDrafter/BTNotes',       '/notes/bt/'],
-  ['/NoteDrafter/SupNotes',      '/notes/sup/'],
-  ['/NoteDrafter/PTNotes',       '/notes/parent/'],
-  ['/NoteDrafter/AssessNotes',   '/notes/assess/'],
-  ['/NoteDrafter/SAPGoalsDrafter', '/notes/sap/'],
+  ['/NoteDrafter/SupNotes',      '/notes/bcba/?tool=sup'],
+  ['/NoteDrafter/PTNotes',       '/notes/bcba/?tool=parent'],
+  ['/NoteDrafter/AssessNotes',   '/notes/bcba/?tool=assess'],
+  ['/NoteDrafter/SAPGoalsDrafter', '/notes/bcba/?tool=sap'],
   ['/NoteDrafter',               '/notes/'],
   ['/SessionFlow',               '/session-flow/'],
   ['/CPRAnalyzer',               '/cpr/'],
+  ['/notes/sup',                 '/notes/bcba/?tool=sup'],
+  ['/notes/sap',                 '/notes/bcba/?tool=sap'],
+  ['/notes/assess',              '/notes/bcba/?tool=assess'],
+  ['/notes/parent',              '/notes/bcba/?tool=parent'],
 ];
 
 export default {
@@ -111,7 +116,8 @@ export default {
 
     for (const [old, next] of LEGACY_PREFIXES) {
       if (url.pathname === old || url.pathname.startsWith(old + '/')) {
-        const rest = url.pathname.slice(old.length).replace(/^\//, '');
+        // Targets with a query string are exact destinations — don't append the rest.
+        const rest = next.includes('?') ? '' : url.pathname.slice(old.length).replace(/^\//, '');
         return Response.redirect(new URL(next + rest, request.url).href, 301);
       }
     }
@@ -367,9 +373,16 @@ async function handleLlmCall(request, env) {
     }
 
     const body = await request.json();
-    const { systemPrompt, userPrompt, model, maxTokens, tool } = body;
-    if (!systemPrompt || !userPrompt) {
-      return jsonRes(400, { error: "Missing required fields: systemPrompt, userPrompt" });
+    const { systemPrompt, userPrompt, system, messages, model, maxTokens, tool } = body;
+    // Two accepted shapes: legacy single-shot {systemPrompt, userPrompt}, or a
+    // conversation {system, messages} for the multi-turn revision flow.
+    const isConversation = typeof system === "string" && Array.isArray(messages);
+    if (!isConversation && (!systemPrompt || !userPrompt)) {
+      return jsonRes(400, { error: "Missing required fields: systemPrompt+userPrompt or system+messages" });
+    }
+    if (isConversation) {
+      const err = validateConversation(system, messages);
+      if (err) return jsonRes(400, { error: err });
     }
 
     // Managed passwords: re-check the KV every call for instant revocation AND
@@ -385,9 +398,13 @@ async function handleLlmCall(request, env) {
     const apiKey = (env.ANTHROPIC_API_KEY ?? "").trim();
     if (!apiKey) return jsonRes(503, { error: "Server API key is not configured." });
 
-    const llmResponse = await callAnthropicApi(
-      apiKey, systemPrompt, userPrompt, model || "claude-haiku-4-5-20251001", maxTokens || 3000
-    );
+    const llmResponse = isConversation
+      ? await callAnthropicConversation(
+          apiKey, system, messages, model || "claude-haiku-4-5-20251001", maxTokens || 3000
+        )
+      : await callAnthropicApi(
+          apiKey, systemPrompt, userPrompt, model || "claude-haiku-4-5-20251001", maxTokens || 3000
+        );
     return jsonRes(200, llmResponse);
   } catch (error) {
     // PRIVACY: never log the request body, systemPrompt, or userPrompt. The client
@@ -608,6 +625,58 @@ async function handleAdminPasswords(request, env) {
   }
 
   return jsonRes(405, { error: "Method not allowed." });
+}
+
+// Fail fast on malformed conversations before they reach the API. Limits are
+// generous for the revision flow (a note session is ~10-20 turns) but block
+// runaway payloads.
+const MAX_CONVERSATION_MESSAGES = 60;
+const MAX_MESSAGE_CHARS = 60000;
+
+function validateConversation(system, messages) {
+  if (!system.trim()) return "system must be a non-empty string";
+  if (!messages.length) return "messages must be a non-empty array";
+  if (messages.length > MAX_CONVERSATION_MESSAGES) return "Conversation too long — start a fresh note.";
+  for (const m of messages) {
+    if (!m || (m.role !== "user" && m.role !== "assistant")) return "Each message needs role user|assistant";
+    if (typeof m.content !== "string" || !m.content.trim()) return "Each message needs non-empty string content";
+    if (m.content.length > MAX_MESSAGE_CHARS) return "A message exceeds the size limit.";
+  }
+  if (messages[0].role !== "user") return "First message must be role user";
+  return null;
+}
+
+// Multi-turn call with prompt caching. Two cache_control breakpoints: the system
+// block and the last message's content block. Anthropic's servers keep the
+// computed prefix for 5 minutes (refreshed on each use) and bill cache reads at
+// ~0.1x input price, so replayed conversation history is not recomputed.
+async function callAnthropicConversation(apiKey, system, messages, model, maxTokens) {
+  const msgs = messages.map((m, i) =>
+    i === messages.length - 1
+      ? { role: m.role, content: [{ type: "text", text: m.content, cache_control: { type: "ephemeral" } }] }
+      : { role: m.role, content: m.content }
+  );
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: maxTokens,
+      system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
+      messages: msgs,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(`Anthropic API error ${response.status}: ${error?.error?.message || response.statusText}`);
+  }
+
+  return await response.json();
 }
 
 async function callAnthropicApi(apiKey, systemPrompt, userPrompt, model, maxTokens) {
