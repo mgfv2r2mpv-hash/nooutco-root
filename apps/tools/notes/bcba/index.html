@@ -54,8 +54,9 @@
     .info-bubble {
       position: absolute;
       bottom: calc(100% + 8px);
-      left: 50%;
-      transform: translateX(-50%);
+      /* Anchor to the icon's left so the wide bubble extends rightward and
+         never runs off the left edge on narrow (mobile) viewports. */
+      left: 0;
       visibility: hidden;
       opacity: 0;
       background: #2d3a1f;
@@ -65,28 +66,35 @@
       font-size: 12px;
       font-weight: 400;
       line-height: 1.55;
-      width: 260px;
+      width: max-content;
+      max-width: min(280px, calc(100vw - 32px));
+      max-height: 50vh;
+      overflow-y: auto;
       text-align: left;
       z-index: 100;
       pointer-events: none;
       transition: opacity 0.12s ease;
-      white-space: normal;
+      white-space: pre-line;
       box-shadow: 0 4px 14px rgba(45, 58, 31, 0.18);
     }
     .info-bubble::after {
       content: "";
       position: absolute;
       top: 100%;
-      left: 50%;
+      /* Points at the icon. JS sets --arrow-left when the bubble is clamped to
+         the viewport on open; falls back to ~8px for the hover/focus case. */
+      left: var(--arrow-left, 8px);
       transform: translateX(-50%);
       border: 6px solid transparent;
       border-top-color: #2d3a1f;
     }
     .info-tip:hover .info-bubble,
-    .info-tip:focus-within .info-bubble {
+    .info-tip:focus-within .info-bubble,
+    .info-tip.open .info-bubble {
       visibility: visible;
       opacity: 1;
     }
+    .info-tip.open .info-bubble { pointer-events: auto; }
     /* Output sections: responsive 2-up grid; any card can expand to a full row */
     .output-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
     .output-grid .full-row { grid-column: 1 / -1; }
