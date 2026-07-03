@@ -894,7 +894,7 @@ async function atomicManifestRemoveCommit(env, game, folder, filename, repoPath)
 // ─── Atomic commit: topic folder rename (archive / restore / purge) ───────────
 
 async function atomicTopicRenameCommit(env, game, fromFolder, toFolder, action) {
-  const imgSourcePrefix = `${game}/${game}/_Resources/_imgSource`;
+  const imgSourcePrefix = `${gameFolder(game)}/_Resources/_imgSource`;
   const manifestRepoPath = `${gameFolder(game)}/manifest.json`;
 
   // 1. Get HEAD
@@ -1555,7 +1555,7 @@ async function doBatchCommit(env, branch, resolved) {
         const base         = filename.replace(/\.[^.]+$/, '');
         const saveFilename = `${base}.${ext}`;
         const oldFilename  = filename !== saveFilename ? filename : null;
-        const repoPath     = `${game}/${game}/_Resources/_imgSource/${folder}/${saveFilename}`;
+        const repoPath     = `${gameFolder(game)}/_Resources/_imgSource/${folder}/${saveFilename}`;
         const localPath    = `_Resources/_imgSource/${folder}/${saveFilename}`;
         const oldLocalPath = oldFilename ? `_Resources/_imgSource/${folder}/${oldFilename}` : null;
         treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: blobSha });
@@ -1628,7 +1628,7 @@ async function doBatchCommit(env, branch, resolved) {
         treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: null });
         if (personName && fpgHtml) fpgHtml = patchImg(fpgHtml, personName, '');
       } else if (manifests[game]) {
-        const repoPath = `${game}/${game}/_Resources/_imgSource/${folder}/${filename}`;
+        const repoPath = `${gameFolder(game)}/_Resources/_imgSource/${folder}/${filename}`;
         treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: null });
         const m = manifests[game];
         if (m.images[folder]) {
