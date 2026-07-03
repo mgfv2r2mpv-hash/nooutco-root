@@ -6,13 +6,14 @@ import { test, expect } from '@playwright/test';
 // note lived only in React state and was never persisted, so any refresh (the
 // only escape from the hung login modal) threw the draft away. The note must now
 // survive a reload via localStorage. Every note tool is covered so a JSX/wiring
-// regression on any one page is caught.
+// regression on any one page is caught. The four BCBA tools share the unified
+// /notes/bcba/ page (selected via ?tool=); bt keeps its own page.
 const PAGES = [
   { tool: 'bt', path: '/notes/bt/index.html' },
-  { tool: 'sap', path: '/notes/sap/index.html' },
-  { tool: 'sup', path: '/notes/sup/index.html' },
-  { tool: 'assess', path: '/notes/assess/index.html' },
-  { tool: 'parent', path: '/notes/parent/index.html' },
+  { tool: 'sap', path: '/notes/bcba/index.html?tool=sap' },
+  { tool: 'sup', path: '/notes/bcba/index.html?tool=sup' },
+  { tool: 'assess', path: '/notes/bcba/index.html?tool=assess' },
+  { tool: 'parent', path: '/notes/bcba/index.html?tool=parent' },
 ];
 
 test.describe('note draft persistence', () => {

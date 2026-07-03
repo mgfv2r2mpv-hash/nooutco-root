@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BCBA Notes</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <script src="/assets/notes-gate.js"></script>
+  <script src="/assets/notes-scrub.js"></script>
+  <script src="/assets/error-button.js" defer></script>
+  <!-- Unified shared chrome — tokens before nav-bar.css so its variables resolve. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="/tokens.css">
+  <link rel="stylesheet" href="/assets/nav-bar.css">
+  <script src="/assets/nav-bar.js" defer></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-sans, 'Atkinson Hyperlegible', 'Segoe UI', Inter, sans-serif);
+      background: #eef1ea;
+      min-height: 100vh;
+      color: #2d3a1f;
+    }
+    /* Bar is full-bleed/sticky; page padding moves to the content wrapper. */
+    #root { padding: 28px 20px; }
+    .info-tip {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .info-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 1px solid #c0d4a8;
+      background: #eef4e6;
+      color: #5a7040;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: help;
+      line-height: 1;
+      user-select: none;
+    }
+    .info-icon:focus { outline: 2px solid #5a7040; outline-offset: 1px; }
+    .info-bubble {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      visibility: hidden;
+      opacity: 0;
+      background: #2d3a1f;
+      color: white;
+      padding: 9px 12px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 1.55;
+      width: 260px;
+      text-align: left;
+      z-index: 100;
+      pointer-events: none;
+      transition: opacity 0.12s ease;
+      white-space: normal;
+      box-shadow: 0 4px 14px rgba(45, 58, 31, 0.18);
+    }
+    .info-bubble::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: #2d3a1f;
+    }
+    .info-tip:hover .info-bubble,
+    .info-tip:focus-within .info-bubble {
+      visibility: visible;
+      opacity: 1;
+    }
+    /* Output sections: responsive 2-up grid; any card can expand to a full row */
+    .output-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+    .output-grid .full-row { grid-column: 1 / -1; }
+    @media (max-width: 640px) { .output-grid { grid-template-columns: 1fr; } }
+
+    /* Tool ribbon — the toggle between the four BCBA note tools */
+    .tool-ribbon {
+      display: flex;
+      gap: 6px;
+      padding: 5px;
+      background: #e2e8d8;
+      border: 1px solid #c0d4a8;
+      border-radius: 11px;
+      margin-bottom: 22px;
+      flex-wrap: wrap;
+    }
+    .tool-ribbon button {
+      flex: 1 1 auto;
+      min-width: 110px;
+      padding: 9px 14px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: #4a5a38;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+      white-space: nowrap;
+    }
+    .tool-ribbon button:hover { background: rgba(255,255,255,0.55); }
+    .tool-ribbon button.active {
+      background: #374528;
+      color: white;
+      box-shadow: 0 2px 8px rgba(45, 58, 31, 0.25);
+    }
+    .tool-ribbon button:focus-visible { outline: 2px solid #5a7040; outline-offset: 1px; }
+
+    /* Panel switch animation — content fades/slides as the ribbon toggles */
+    .tool-panel { animation: panelIn 0.22s ease; }
+    @keyframes panelIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .tool-panel { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <noaba-bar product="tools" crumbs="Notes/BCBA notes" crumb-hrefs="/notes/"></noaba-bar>
+  <div id="root"></div>
+  <!-- Gear ↔ NotesGate bridge. Visual unification only; the gate's auth logic is
+       untouched. Gear opens login when logged out, logs out when logged in; the
+       bar reflects login state. -->
+  <script>
+    (function () {
+      function authed() { return !!(window.NotesGate && window.NotesGate.isLoggedIn()); }
+      window.__noabaAuthProbe = authed;
+      function emit() {
+        document.dispatchEvent(new CustomEvent("noaba:auth-state", { detail: { authed: authed() } }));
+      }
+      document.addEventListener("noaba:admin-invoke", function () {
+        if (!window.NotesGate) return;
+        if (window.NotesGate.isLoggedIn()) window.NotesGate.logout();
+        else window.NotesGate.openLogin();
+      });
+      if (window.NotesGate && window.NotesGate.subscribe) window.NotesGate.subscribe(emit);
+      emit();
+    })();
+  </script>
+
+  <!-- Shared helpers used by the tool configs (plain JS, loaded before them) -->
+  <script>
+    window.NOTE_TOOLS = [];
+    window.NoteToolsUtil = {
+      // "a" | "b" | "c" menu string for ALLOWED-value lists in prompts.
+      menu: function (arr) { return arr.map(function (x) { return '"' + x + '"'; }).join(" | "); },
+      // Validate the model's hint codes against the tool's catalog and the note's
+      // known section keys; anything unrecognized is dropped (fabrication-proof).
+      normalizeHints: function (raw, catalog, validSections) {
+        if (!Array.isArray(raw)) return [];
+        return raw.filter(function (h) {
+          return h && typeof h.section === "string" && typeof h.code === "string" &&
+            validSections.indexOf(h.section) !== -1 &&
+            Object.prototype.hasOwnProperty.call(catalog, h.code);
+        }).map(function (h) {
+          return { section: h.section, code: h.code, detail: typeof h.detail === "string" ? h.detail.slice(0, 120) : "" };
+        }).slice(0, 8);
+      },
+    };
+  </script>
+
+  <!-- Tool configs (plain JS — prompts, sections, normalizers) -->
+  <script src="./tools/sup.js"></script>
+  <script src="./tools/sap.js"></script>
+  <script src="./tools/assess.js"></script>
+  <script src="./tools/parent.js"></script>
+
+  <!-- Shared engine (JSX — transpiled in-browser by Babel standalone) -->
+  <script type="text/babel" src="./engine.jsx"></script>
+</body>
+</html>
