@@ -74,11 +74,70 @@ const hintStyle = { fontSize: 12.5, color: "#7a9460", marginBottom: 10, lineHeig
 const inputBase = { width: "100%", padding: "10px 14px", borderRadius: 8, border: "1.5px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", background: "#fafcf8" };
 const smallBtn = { padding: "4px 12px", borderRadius: 6, border: "1px solid #c0d4a8", background: "white", color: "#374528", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" };
 
+// Label-adjacent "i" help affordance. Shows on hover/focus (desktop) and on
+// tap (mobile) via a click toggle; taps outside or Escape dismiss it. On open,
+// the bubble is clamped horizontally to the viewport so it never runs off an
+// edge regardless of where the icon sits in the label row.
 function InfoTooltip({ text }) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef(null);
+  const iconRef = React.useRef(null);
+  const bubbleRef = React.useRef(null);
+
+  const position = React.useCallback(() => {
+    const icon = iconRef.current, bubble = bubbleRef.current;
+    if (!icon || !bubble) return;
+    const GUTTER = 8;
+    // Clamp to the visible viewport width (clientWidth), not innerWidth — the
+    // latter includes any horizontal overflow and would let the bubble sit
+    // past the right edge on mobile.
+    const vw = document.documentElement.clientWidth || window.innerWidth;
+    const iconRect = icon.getBoundingClientRect();
+    const bubbleW = bubble.offsetWidth;
+    let vpLeft = iconRect.left; // default: anchor bubble's left to the icon
+    if (vpLeft + bubbleW > vw - GUTTER) vpLeft = vw - GUTTER - bubbleW;
+    if (vpLeft < GUTTER) vpLeft = GUTTER;
+    bubble.style.left = (vpLeft - iconRect.left) + "px";
+    bubble.style.setProperty("--arrow-left", (iconRect.left + iconRect.width / 2 - vpLeft) + "px");
+  }, []);
+
+  // Keep the bubble clamped to the viewport at all times — even while hidden —
+  // so a right-side icon's (position:absolute) bubble never expands the page's
+  // horizontal scroll area. Reposition on resize/orientation change and on open.
+  React.useLayoutEffect(() => {
+    position();
+    const onResize = () => position();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [position]);
+
+  React.useLayoutEffect(() => { if (open) position(); }, [open, position]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onDocDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("pointerdown", onDocDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDocDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
   return (
-    <span className="info-tip">
-      <span className="info-icon" tabIndex="0" role="button" aria-label="More information">i</span>
-      <span className="info-bubble" role="tooltip">{text}</span>
+    <span ref={ref} className={"info-tip" + (open ? " open" : "")}>
+      <span
+        ref={iconRef}
+        className="info-icon"
+        tabIndex="0"
+        role="button"
+        aria-label="More information"
+        aria-expanded={open}
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen((o) => !o); } }}
+      >i</span>
+      <span ref={bubbleRef} className="info-bubble" role="tooltip">{text}</span>
     </span>
   );
 }
@@ -476,7 +535,7 @@ function App() {
       <div key={f.id} style={{ marginBottom: 20 }}>
         <label style={subLbl}>
           {f.label}{f.required ? <span style={{ color: "#c0392b" }}> *</span> : null}
-          {f.tooltip ? <InfoTooltip text={f.tooltip} /> : null}
+          {(f.tooltip || f.placeholder) ? <InfoTooltip text={f.tooltip || f.placeholder} /> : null}
         </label>
         {f.tip ? <Tip text={f.tip} /> : null}
         {f.hint ? <p style={hintStyle}>{f.hint}</p> : null}
