@@ -1,6 +1,6 @@
 {
   "_note": "Red Carpet Convos roster. Per person: {name, years, tag, emoji, img, accent, accentBg, converted, facts:[{text, topic, say, sayShort, ask, askYou, bridge}]}. `converted` is the MIGRATION FLAG: true = migrated to the new schema and live in the game; false = a stub pending fact population (kept OUT of the game for now). During migration the game surfaces only converted people. Fade levels (comment/volley Partial/Minimal) are derived at runtime from say/ask. `bridge` is the partner's recall opener INTO this fact (fact 1's bridge is empty). Edited via AdminTools/FamousPersonManager; the rcc-generate-facts populator writes facts + sets converted. Store only public-figure content — never learner/session data.",
-  "generated": "2026-07-08T20:43:48.914Z",
+  "generated": "2026-07-08T20:46:40.560Z",
   "people": [
     {
       "name": "Lin-Manuel Miranda",
@@ -13051,8 +13051,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/ashoka.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Ashoka was a king in India who chose to lead with peace and kindness.",
+          "topic": "choosing kindness",
+          "say": "Ashoka chose to lead with peace and kindness.",
+          "sayShort": "He chose kindness.",
+          "ask": "How do you show kindness?",
+          "askYou": "What is a kind thing you did today?",
+          "bridge": ""
+        },
+        {
+          "text": "He built hospitals and rest stops to help travelers and animals.",
+          "topic": "helping others",
+          "say": "Ashoka built places to help people and animals.",
+          "sayShort": "He helped people and animals.",
+          "ask": "How would you help travelers?",
+          "askYou": "What animal would you help?",
+          "bridge": "I liked the part about him choosing kindness. Remember?"
+        },
+        {
+          "text": "Ashoka had his kind rules carved onto big stone pillars.",
+          "topic": "stone messages",
+          "say": "Ashoka carved his kind rules onto stone pillars.",
+          "sayShort": "He carved kind rules.",
+          "ask": "What kind rule would you carve in stone?",
+          "askYou": "What message would you leave forever?",
+          "bridge": "I liked the part about him helping others. Remember?"
+        },
+        {
+          "text": "People still remember Ashoka as a peaceful, caring king.",
+          "topic": "a caring king",
+          "say": "Ashoka is remembered as a caring king.",
+          "sayShort": "He was a caring king.",
+          "ask": "What would you like to be remembered for?",
+          "askYou": "Who is a caring leader you know?",
+          "bridge": "I liked the part about his stone messages. Remember?"
+        }
+      ]
     },
     {
       "name": "Kublai Khan",
@@ -13062,8 +13099,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/kublai-khan.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Kublai Khan was an emperor who ruled a huge land in China long ago.",
+          "topic": "a great emperor",
+          "say": "Kublai Khan ruled a huge land in China.",
+          "sayShort": "He was a great emperor.",
+          "ask": "What would you do as an emperor?",
+          "askYou": "What would your palace be like?",
+          "bridge": ""
+        },
+        {
+          "text": "He built a grand new capital city that amazed visitors.",
+          "topic": "a grand city",
+          "say": "Kublai built a grand city that wowed people.",
+          "sayShort": "He built a grand city.",
+          "ask": "What would your dream city have?",
+          "askYou": "What makes a city amazing?",
+          "bridge": "I liked the part about him being a great emperor. Remember?"
+        },
+        {
+          "text": "The traveler Marco Polo came all the way to visit him.",
+          "topic": "a famous visitor",
+          "say": "The explorer Marco Polo visited Kublai Khan.",
+          "sayShort": "Marco Polo visited him.",
+          "ask": "Who would you love to have visit you?",
+          "askYou": "Where would you travel to visit?",
+          "bridge": "I liked the part about his grand city. Remember?"
+        },
+        {
+          "text": "Kublai welcomed traders and ideas from far-away places.",
+          "topic": "welcoming everyone",
+          "say": "Kublai welcomed traders and new ideas.",
+          "sayShort": "He welcomed everyone.",
+          "ask": "How do you make new people feel welcome?",
+          "askYou": "What would you trade with a friend?",
+          "bridge": "I liked the part about his famous visitor. Remember?"
+        }
+      ]
     },
     {
       "name": "Simón Bolívar",
@@ -13073,8 +13147,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/simon-bolivar.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Simón helped free several countries in South America.",
+          "topic": "a freedom leader",
+          "say": "Simón helped free countries in South America.",
+          "sayShort": "He helped free his lands.",
+          "ask": "What does freedom mean to you?",
+          "askYou": "When did you help set something right?",
+          "bridge": ""
+        },
+        {
+          "text": "People call him \"the Liberator\" for helping people become free.",
+          "topic": "the Liberator",
+          "say": "People call Simón \"the Liberator.\"",
+          "sayShort": "He earned a big title.",
+          "ask": "What title would you like?",
+          "askYou": "What are you proud of?",
+          "bridge": "I liked the part about him being a freedom leader. Remember?"
+        },
+        {
+          "text": "He dreamed of many South American countries working together.",
+          "topic": "a big dream",
+          "say": "Simón dreamed of countries working together.",
+          "sayShort": "He had a big dream.",
+          "ask": "How do you get people to work together?",
+          "askYou": "What is a big dream you have?",
+          "bridge": "I liked the part about him being the Liberator. Remember?"
+        },
+        {
+          "text": "A whole country, Bolivia, is named in his honor.",
+          "topic": "a country named for him",
+          "say": "A country, Bolivia, is named after Simón.",
+          "sayShort": "A country bears his name.",
+          "ask": "What would you like named after you?",
+          "askYou": "What place would you like to visit?",
+          "bridge": "I liked the part about his big dream. Remember?"
+        }
+      ]
     },
     {
       "name": "Sun Yat-sen",
@@ -13084,8 +13195,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/sun-yat-sen.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Sun Yat-sen helped start a brand-new kind of government in China.",
+          "topic": "a new start",
+          "say": "Sun helped start a new government in China.",
+          "sayShort": "He helped start something new.",
+          "ask": "What would you change to make things better?",
+          "askYou": "What makes a good leader?",
+          "bridge": ""
+        },
+        {
+          "text": "He was a doctor before he became a leader.",
+          "topic": "doctor first",
+          "say": "Sun was a doctor before he became a leader.",
+          "sayShort": "He was a doctor first.",
+          "ask": "What would you like to help people with?",
+          "askYou": "Who takes care of you when sick?",
+          "bridge": "I liked the part about his new start. Remember?"
+        },
+        {
+          "text": "People call him a \"father of the nation\" in China.",
+          "topic": "father of the nation",
+          "say": "People call Sun a father of the nation.",
+          "sayShort": "He earned a big title.",
+          "ask": "What would you like to be known for?",
+          "askYou": "What are you proud of?",
+          "bridge": "I liked the part about him being a doctor first. Remember?"
+        },
+        {
+          "text": "Sun believed people should have a say in how they are led.",
+          "topic": "having a say",
+          "say": "Sun believed people should have a say.",
+          "sayShort": "He wanted everyone heard.",
+          "ask": "Why is it good when everyone has a say?",
+          "askYou": "How does your class make choices?",
+          "bridge": "I liked the part about him being father of the nation. Remember?"
+        }
+      ]
     },
     {
       "name": "Mikhail Gorbachev",
@@ -13095,8 +13243,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/mikhail-gorbachev.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Mikhail was a leader who brought big, peaceful changes to his country.",
+          "topic": "peaceful changes",
+          "say": "Mikhail brought big, peaceful changes.",
+          "sayShort": "He made peaceful change.",
+          "ask": "How do you make a change without fighting?",
+          "askYou": "What would you like to change?",
+          "bridge": ""
+        },
+        {
+          "text": "He believed in being more open and honest with people.",
+          "topic": "being open",
+          "say": "Mikhail believed in being open and honest.",
+          "sayShort": "He valued openness.",
+          "ask": "Why is being honest important?",
+          "askYou": "How do you show you are honest?",
+          "bridge": "I liked the part about his peaceful changes. Remember?"
+        },
+        {
+          "text": "Mikhail won the Nobel Peace Prize for helping end a tense time.",
+          "topic": "Nobel Peace Prize",
+          "say": "Mikhail won a peace prize for calming tensions.",
+          "sayShort": "He won a peace prize.",
+          "ask": "How do you help people calm down?",
+          "askYou": "How do you make peace with a friend?",
+          "bridge": "I liked the part about him being open. Remember?"
+        },
+        {
+          "text": "He helped countries get along better instead of being scared of each other.",
+          "topic": "helping get along",
+          "say": "Mikhail helped countries get along better.",
+          "sayShort": "He helped people get along.",
+          "ask": "How do you help people get along?",
+          "askYou": "When did you help friends make up?",
+          "bridge": "I liked the part about his peace prize. Remember?"
+        }
+      ]
     },
     {
       "name": "Eva Perón",
@@ -13106,8 +13291,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/eva-peron.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Eva, called Evita, was a beloved leader's wife in Argentina.",
+          "topic": "beloved Evita",
+          "say": "Eva, called Evita, was a beloved leader in Argentina.",
+          "sayShort": "She was beloved Evita.",
+          "ask": "What would you do to help your country?",
+          "askYou": "What makes someone beloved?",
+          "bridge": ""
+        },
+        {
+          "text": "She worked hard to help poor people and children.",
+          "topic": "helping the poor",
+          "say": "Eva worked hard to help the poor and kids.",
+          "sayShort": "She helped people in need.",
+          "ask": "How do you like to help people?",
+          "askYou": "Who is someone you help?",
+          "bridge": "I liked the part about her being beloved Evita. Remember?"
+        },
+        {
+          "text": "Eva helped women in her country win the right to vote.",
+          "topic": "votes for women",
+          "say": "Eva helped women win the right to vote.",
+          "sayShort": "She helped women vote.",
+          "ask": "Why is it good when everyone has a say?",
+          "askYou": "How does your class decide things?",
+          "bridge": "I liked the part about her helping the poor. Remember?"
+        },
+        {
+          "text": "She started out as an actor before she helped lead.",
+          "topic": "actor first",
+          "say": "Eva was an actor before she helped lead.",
+          "sayShort": "She was an actor first.",
+          "ask": "Would you like to act?",
+          "askYou": "What role would you play?",
+          "bridge": "I liked the part about votes for women. Remember?"
+        }
+      ]
     },
     {
       "name": "Indira Gandhi",
@@ -13117,8 +13339,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/indira-gandhi.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Indira was the first woman to lead the country of India.",
+          "topic": "first woman leader",
+          "say": "Indira was India's first woman leader.",
+          "sayShort": "She led India first.",
+          "ask": "What would you do as a leader?",
+          "askYou": "What makes a strong leader?",
+          "bridge": ""
+        },
+        {
+          "text": "She was a strong leader who made big decisions for her country.",
+          "topic": "a strong leader",
+          "say": "Indira made big, brave decisions for India.",
+          "sayShort": "She was a strong leader.",
+          "ask": "When did you make a brave choice?",
+          "askYou": "Do you like making decisions?",
+          "bridge": "I liked the part about her being first woman leader. Remember?"
+        },
+        {
+          "text": "Indira loved nature and worked to protect India's wildlife.",
+          "topic": "protecting nature",
+          "say": "Indira worked to protect India's wild animals.",
+          "sayShort": "She protected nature.",
+          "ask": "What animal would you protect?",
+          "askYou": "What do you love about nature?",
+          "bridge": "I liked the part about her being a strong leader. Remember?"
+        },
+        {
+          "text": "She grew up around leaders and learned about her country young.",
+          "topic": "learning young",
+          "say": "Indira learned about leading when she was young.",
+          "sayShort": "She learned young.",
+          "ask": "What did you learn about young?",
+          "askYou": "What would you like to lead?",
+          "bridge": "I liked the part about her protecting nature. Remember?"
+        }
+      ]
     },
     {
       "name": "Aung San Suu Kyi",
@@ -13139,8 +13398,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/kwame-nkrumah.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Kwame helped his country, Ghana, become free and lead itself.",
+          "topic": "freedom for Ghana",
+          "say": "Kwame helped Ghana become free.",
+          "sayShort": "He helped free Ghana.",
+          "ask": "What does freedom mean to you?",
+          "askYou": "When did you help set something right?",
+          "bridge": ""
+        },
+        {
+          "text": "He was the first leader of a free Ghana.",
+          "topic": "a first leader",
+          "say": "Kwame was the first leader of free Ghana.",
+          "sayShort": "He led first.",
+          "ask": "What would you do as a first leader?",
+          "askYou": "What are you proud to be first at?",
+          "bridge": "I liked the part about freedom for Ghana. Remember?"
+        },
+        {
+          "text": "Kwame dreamed of all of Africa working together as friends.",
+          "topic": "a big dream",
+          "say": "Kwame dreamed of Africa working together.",
+          "sayShort": "He had a big dream.",
+          "ask": "How do you get people to team up?",
+          "askYou": "What is a big dream you have?",
+          "bridge": "I liked the part about him being a first leader. Remember?"
+        },
+        {
+          "text": "He built new schools and roads to help his country grow.",
+          "topic": "building up Ghana",
+          "say": "Kwame built schools and roads for Ghana.",
+          "sayShort": "He built up his country.",
+          "ask": "What would you build to help people?",
+          "askYou": "What would your dream school have?",
+          "bridge": "I liked the part about his big dream. Remember?"
+        }
+      ]
     },
     {
       "name": "Cesar Chavez",
@@ -13150,8 +13446,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/cesar-chavez.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Cesar helped farm workers get fair pay and better treatment.",
+          "topic": "helping workers",
+          "say": "Cesar helped farm workers be treated fairly.",
+          "sayShort": "He helped workers.",
+          "ask": "What is something that should be fair?",
+          "askYou": "How do you help people?",
+          "bridge": ""
+        },
+        {
+          "text": "He led peaceful marches and asked people to work together.",
+          "topic": "peaceful marches",
+          "say": "Cesar led peaceful marches for fairness.",
+          "sayShort": "He marched for fairness.",
+          "ask": "How can people work together for a change?",
+          "askYou": "Have you ever joined a group effort?",
+          "bridge": "I liked the part about him helping workers. Remember?"
+        },
+        {
+          "text": "His helpers said \"Sí se puede,\" which means \"Yes, we can!\"",
+          "topic": "yes we can",
+          "say": "Cesar's group said \"Sí se puede — yes, we can!\"",
+          "sayShort": "He said \"yes, we can!\"",
+          "ask": "What is something you believe you can do?",
+          "askYou": "What helps you feel you can do it?",
+          "bridge": "I liked the part about his peaceful marches. Remember?"
+        },
+        {
+          "text": "Cesar grew up working on farms and never forgot it.",
+          "topic": "a farm-working kid",
+          "say": "Cesar grew up working hard on farms.",
+          "sayShort": "He grew up on farms.",
+          "ask": "What hard work have you done?",
+          "askYou": "Would you like to work on a farm?",
+          "bridge": "I liked the part about \"yes we can.\" Remember?"
+        }
+      ]
     },
     {
       "name": "Dolores Huerta",
@@ -13161,8 +13494,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/dolores-huerta.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Dolores worked with farm workers to help them get treated fairly.",
+          "topic": "helping workers",
+          "say": "Dolores helped farm workers be treated fairly.",
+          "sayShort": "She helped workers.",
+          "ask": "What is something that should be fair?",
+          "askYou": "How do you help others?",
+          "bridge": ""
+        },
+        {
+          "text": "She helped come up with the cheer \"Sí se puede — yes, we can!\"",
+          "topic": "yes we can",
+          "say": "Dolores helped make the cheer \"yes, we can!\"",
+          "sayShort": "She made a famous cheer.",
+          "ask": "What cheer would you make up?",
+          "askYou": "What do you say to feel brave?",
+          "bridge": "I liked the part about her helping workers. Remember?"
+        },
+        {
+          "text": "Dolores has spent her whole life standing up for fairness.",
+          "topic": "a lifetime of fairness",
+          "say": "Dolores has fought for fairness her whole life.",
+          "sayShort": "She fights for fairness.",
+          "ask": "What would you stand up for?",
+          "askYou": "When did you stand up for someone?",
+          "bridge": "I liked the part about \"yes we can.\" Remember?"
+        },
+        {
+          "text": "She also worked to help women and families.",
+          "topic": "helping families",
+          "say": "Dolores worked to help women and families.",
+          "sayShort": "She helps families.",
+          "ask": "How do you help your family?",
+          "askYou": "Who do you like to take care of?",
+          "bridge": "I liked the part about her lifetime of fairness. Remember?"
+        }
+      ]
     },
     {
       "name": "John Lewis",
@@ -13172,8 +13542,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/john-lewis.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "John was a brave leader who peacefully stood up for fairness.",
+          "topic": "standing up bravely",
+          "say": "John bravely stood up for fairness in a peaceful way.",
+          "sayShort": "He stood up bravely.",
+          "ask": "When were you brave?",
+          "askYou": "What is worth standing up for?",
+          "bridge": ""
+        },
+        {
+          "text": "He marched with Martin Luther King Jr. for equal rights.",
+          "topic": "marching with MLK",
+          "say": "John marched with Dr. King for equal rights.",
+          "sayShort": "He marched with MLK.",
+          "ask": "How can people march for good together?",
+          "askYou": "Who would you march with?",
+          "bridge": "I liked the part about him standing up bravely. Remember?"
+        },
+        {
+          "text": "John told people to make \"good trouble\" by doing what is right.",
+          "topic": "good trouble",
+          "say": "John said to make \"good trouble\" for what is right.",
+          "sayShort": "He liked \"good trouble.\"",
+          "ask": "What is a right thing worth doing?",
+          "askYou": "When did you do the right thing?",
+          "bridge": "I liked the part about marching with MLK. Remember?"
+        },
+        {
+          "text": "Later, John helped make the rules as a leader in the government.",
+          "topic": "a lawmaker",
+          "say": "John became a leader who helped make the rules.",
+          "sayShort": "He became a lawmaker.",
+          "ask": "What good rule would you make?",
+          "askYou": "Why do we have rules?",
+          "bridge": "I liked the part about good trouble. Remember?"
+        }
+      ]
     },
     {
       "name": "W.E.B. Du Bois",
@@ -13183,8 +13590,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/w.e.b.-du-bois.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "W.E.B. Du Bois was a writer and thinker who fought for fairness.",
+          "topic": "fighting for fairness",
+          "say": "Du Bois fought for fairness with his writing.",
+          "sayShort": "He fought for fairness.",
+          "ask": "What is something that should be fair?",
+          "askYou": "How do you show you care?",
+          "bridge": ""
+        },
+        {
+          "text": "He was the first Black person to earn a special degree from Harvard.",
+          "topic": "a big first",
+          "say": "Du Bois was a first at a famous school.",
+          "sayShort": "He made history at school.",
+          "ask": "What would you like to be first at?",
+          "askYou": "What are you working hard to learn?",
+          "bridge": "I liked the part about him fighting for fairness. Remember?"
+        },
+        {
+          "text": "He helped start a big group that works for equal rights.",
+          "topic": "starting a group",
+          "say": "Du Bois helped start a group for equal rights.",
+          "sayShort": "He helped start a group.",
+          "ask": "How could you and friends help others?",
+          "askYou": "Do you like to work as a team?",
+          "bridge": "I liked the part about his big first. Remember?"
+        },
+        {
+          "text": "Du Bois wrote many books to help people understand each other.",
+          "topic": "his books",
+          "say": "Du Bois wrote books to help people understand.",
+          "sayShort": "He wrote helpful books.",
+          "ask": "What would you write a book about?",
+          "askYou": "What is a book that taught you something?",
+          "bridge": "I liked the part about him starting a group. Remember?"
+        }
+      ]
     },
     {
       "name": "Ida B. Wells",
@@ -13194,8 +13638,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/ida-b.-wells.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Ida was a brave reporter who told the truth to help people.",
+          "topic": "a brave reporter",
+          "say": "Ida bravely told the truth to help people.",
+          "sayShort": "She told the truth.",
+          "ask": "Why is telling the truth important?",
+          "askYou": "When did you tell the truth even though it was hard?",
+          "bridge": ""
+        },
+        {
+          "text": "She wrote in newspapers to stand up for fairness.",
+          "topic": "writing for fairness",
+          "say": "Ida wrote in the news to stand up for fairness.",
+          "sayShort": "She wrote for fairness.",
+          "ask": "What would you write about to help people?",
+          "askYou": "What is something that should be fair?",
+          "bridge": "I liked the part about her being a brave reporter. Remember?"
+        },
+        {
+          "text": "Ida also helped women win the right to vote.",
+          "topic": "votes for women",
+          "say": "Ida helped women win the right to vote.",
+          "sayShort": "She helped women vote.",
+          "ask": "Why is it good when everyone gets a say?",
+          "askYou": "How does your class decide things?",
+          "bridge": "I liked the part about her writing for fairness. Remember?"
+        },
+        {
+          "text": "She helped start groups that still work for equal rights today.",
+          "topic": "starting groups",
+          "say": "Ida helped start groups that still help today.",
+          "sayShort": "She started helpful groups.",
+          "ask": "How could you help make things fair?",
+          "askYou": "Do you like being part of a team?",
+          "bridge": "I liked the part about votes for women. Remember?"
+        }
+      ]
     },
     {
       "name": "Eleanor Roosevelt",
@@ -13205,8 +13686,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/eleanor-roosevelt.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Eleanor was a First Lady who cared deeply about helping people.",
+          "topic": "caring First Lady",
+          "say": "Eleanor was a First Lady who helped people.",
+          "sayShort": "She cared about people.",
+          "ask": "How do you like to help people?",
+          "askYou": "Who is someone kind you know?",
+          "bridge": ""
+        },
+        {
+          "text": "She helped write a famous list of rights for all people in the world.",
+          "topic": "rights for everyone",
+          "say": "Eleanor helped write rights for all people.",
+          "sayShort": "She helped list our rights.",
+          "ask": "What is a right everyone should have?",
+          "askYou": "What should be fair for all?",
+          "bridge": "I liked the part about her being a caring First Lady. Remember?"
+        },
+        {
+          "text": "People called Eleanor the \"First Lady of the World.\"",
+          "topic": "a big title",
+          "say": "People called Eleanor the First Lady of the World.",
+          "sayShort": "She earned a big title.",
+          "ask": "What would you like to be known for?",
+          "askYou": "What are you proud of?",
+          "bridge": "I liked the part about rights for everyone. Remember?"
+        },
+        {
+          "text": "She was shy as a kid but grew up to speak bravely for others.",
+          "topic": "shy to brave",
+          "say": "Eleanor went from shy to brave and bold.",
+          "sayShort": "She grew brave.",
+          "ask": "When have you been brave even when shy?",
+          "askYou": "What helps you feel brave?",
+          "bridge": "I liked the part about her big title. Remember?"
+        }
+      ]
     },
     {
       "name": "John F. Kennedy",
@@ -13216,8 +13734,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/john-f.-kennedy.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "John F. Kennedy was a U.S. president who inspired lots of people.",
+          "topic": "inspiring president",
+          "say": "John F. Kennedy inspired people as president.",
+          "sayShort": "He inspired people.",
+          "ask": "What would you do as a leader?",
+          "askYou": "Who inspires you?",
+          "bridge": ""
+        },
+        {
+          "text": "He set a big goal for America to land people on the Moon.",
+          "topic": "the Moon goal",
+          "say": "Kennedy set a big goal to reach the Moon.",
+          "sayShort": "He aimed for the Moon.",
+          "ask": "What is a big goal you have?",
+          "askYou": "Would you like to go to the Moon?",
+          "bridge": "I liked the part about him being an inspiring president. Remember?"
+        },
+        {
+          "text": "Kennedy started a group where people help others around the world.",
+          "topic": "helping the world",
+          "say": "Kennedy started a group to help people worldwide.",
+          "sayShort": "He started a helping group.",
+          "ask": "Where in the world would you like to help?",
+          "askYou": "How do you like to help others?",
+          "bridge": "I liked the part about the Moon goal. Remember?"
+        },
+        {
+          "text": "He was one of the youngest people ever to become president.",
+          "topic": "a young leader",
+          "say": "Kennedy was a young president.",
+          "sayShort": "He led while young.",
+          "ask": "What would you like to do while young?",
+          "askYou": "What are you good at for your age?",
+          "bridge": "I liked the part about helping the world. Remember?"
+        }
+      ]
     },
     {
       "name": "Thomas Jefferson",
@@ -13227,8 +13782,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/thomas-jefferson.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Thomas Jefferson wrote a famous paper about America being free.",
+          "topic": "a famous paper",
+          "say": "Thomas wrote a famous paper about freedom.",
+          "sayShort": "He wrote about freedom.",
+          "ask": "What does freedom mean to you?",
+          "askYou": "What big idea would you write down?",
+          "bridge": ""
+        },
+        {
+          "text": "He was the third president of the United States.",
+          "topic": "a president",
+          "say": "Thomas was the third U.S. president.",
+          "sayShort": "He was a president.",
+          "ask": "What would you do as a leader?",
+          "askYou": "What makes a good leader?",
+          "bridge": "I liked the part about his famous paper. Remember?"
+        },
+        {
+          "text": "Thomas loved inventing gadgets and drawing plans for buildings.",
+          "topic": "inventing and designing",
+          "say": "Thomas loved inventing and designing buildings.",
+          "sayShort": "He loved to invent.",
+          "ask": "What would you like to invent?",
+          "askYou": "What would you design?",
+          "bridge": "I liked the part about him being a president. Remember?"
+        },
+        {
+          "text": "He also loved books and started a big university.",
+          "topic": "loving books",
+          "say": "Thomas loved books and started a university.",
+          "sayShort": "He loved books.",
+          "ask": "What is your favorite book?",
+          "askYou": "Do you like the library?",
+          "bridge": "I liked the part about him inventing and designing. Remember?"
+        }
+      ]
     },
     {
       "name": "Babe Ruth",
@@ -13238,8 +13830,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/babe-ruth.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Babe Ruth was a baseball legend famous for hitting home runs.",
+          "topic": "home run king",
+          "say": "Babe Ruth hit tons of home runs.",
+          "sayShort": "He was the home run king.",
+          "ask": "Do you like baseball?",
+          "askYou": "What is your best hit or throw?",
+          "bridge": ""
+        },
+        {
+          "text": "He hit the ball so far that people came just to watch him.",
+          "topic": "huge hits",
+          "say": "Babe hit the ball so far crowds came to watch.",
+          "sayShort": "He hit huge home runs.",
+          "ask": "How far can you hit or throw?",
+          "askYou": "What are you great at?",
+          "bridge": "I liked the part about him being the home run king. Remember?"
+        },
+        {
+          "text": "Babe grew up in a big group home and worked his way up.",
+          "topic": "his humble start",
+          "say": "Babe started small and worked his way up.",
+          "sayShort": "He worked his way up.",
+          "ask": "What did you work hard to get better at?",
+          "askYou": "What helps you keep trying?",
+          "bridge": "I liked the part about his huge hits. Remember?"
+        },
+        {
+          "text": "He loved kids and often visited them in hospitals.",
+          "topic": "loving kids",
+          "say": "Babe loved kids and visited them in hospitals.",
+          "sayShort": "He loved to help kids.",
+          "ask": "How do you cheer up a friend?",
+          "askYou": "What would you do to make a kid smile?",
+          "bridge": "I liked the part about his humble start. Remember?"
+        }
+      ]
     },
     {
       "name": "Jesse Owens",
@@ -13249,8 +13878,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/jesse-owens.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Jesse was a runner who won four gold medals at the Olympics.",
+          "topic": "four gold medals",
+          "say": "Jesse won four Olympic gold medals in running.",
+          "sayShort": "He won four golds.",
+          "ask": "Do you like to run fast?",
+          "askYou": "What would you like to win?",
+          "bridge": ""
+        },
+        {
+          "text": "He was one of the fastest runners of his time.",
+          "topic": "super fast",
+          "say": "Jesse was one of the fastest runners ever.",
+          "sayShort": "He was super fast.",
+          "ask": "How fast do you think you can run?",
+          "askYou": "Do you like to race?",
+          "bridge": "I liked the part about his four gold medals. Remember?"
+        },
+        {
+          "text": "Jesse showed grace and stayed proud even when treated unfairly.",
+          "topic": "staying proud",
+          "say": "Jesse stayed proud even when it was unfair.",
+          "sayShort": "He stayed proud.",
+          "ask": "How do you stay proud on a hard day?",
+          "askYou": "What are you proud of?",
+          "bridge": "I liked the part about him being super fast. Remember?"
+        },
+        {
+          "text": "People all over the world still cheer for what he did.",
+          "topic": "a hero to many",
+          "say": "People still cheer for what Jesse did.",
+          "sayShort": "He is a hero to many.",
+          "ask": "Who is a hero you cheer for?",
+          "askYou": "What makes someone a hero?",
+          "bridge": "I liked the part about him staying proud. Remember?"
+        }
+      ]
     },
     {
       "name": "Jackie Robinson",
@@ -13308,8 +13974,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/billie-jean-king.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Billie Jean was a tennis champion who won many big titles.",
+          "topic": "tennis champion",
+          "say": "Billie Jean won many big tennis titles.",
+          "sayShort": "She was a tennis champ.",
+          "ask": "Do you like tennis?",
+          "askYou": "What would you love to win at?",
+          "bridge": ""
+        },
+        {
+          "text": "She worked hard so women in sports could be paid the same as men.",
+          "topic": "fair pay",
+          "say": "Billie Jean fought for equal pay in sports.",
+          "sayShort": "She fought for fair pay.",
+          "ask": "What is something that should be fair?",
+          "askYou": "When did you stand up for fairness?",
+          "bridge": "I liked the part about her being a tennis champion. Remember?"
+        },
+        {
+          "text": "Billie Jean won a famous match called the \"Battle of the Sexes.\"",
+          "topic": "a famous match",
+          "say": "Billie Jean won a famous, historic match.",
+          "sayShort": "She won a big match.",
+          "ask": "When did you win something big?",
+          "askYou": "Do you like a good challenge?",
+          "bridge": "I liked the part about her fair pay. Remember?"
+        },
+        {
+          "text": "She still helps girls and boys believe they can do anything.",
+          "topic": "believing in kids",
+          "say": "Billie Jean helps kids believe in themselves.",
+          "sayShort": "She believes in kids.",
+          "ask": "What do you believe you can do?",
+          "askYou": "What helps you feel you can do it?",
+          "bridge": "I liked the part about her famous match. Remember?"
+        }
+      ]
     },
     {
       "name": "Arthur Ashe",
@@ -13319,8 +14022,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/arthur-ashe.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Arthur was a tennis champion known for being calm and kind.",
+          "topic": "calm champion",
+          "say": "Arthur was a calm, kind tennis champion.",
+          "sayShort": "He was a calm champ.",
+          "ask": "How do you stay calm in a game?",
+          "askYou": "Do you like tennis?",
+          "bridge": ""
+        },
+        {
+          "text": "He was the first Black man to win a famous tournament called Wimbledon.",
+          "topic": "a big first",
+          "say": "Arthur was the first Black man to win Wimbledon.",
+          "sayShort": "He made history.",
+          "ask": "What would you like to be first at?",
+          "askYou": "What are you proud of?",
+          "bridge": "I liked the part about him being a calm champion. Remember?"
+        },
+        {
+          "text": "Arthur was smart and thoughtful, and he read a lot.",
+          "topic": "smart and kind",
+          "say": "Arthur was smart, kind, and loved reading.",
+          "sayShort": "He was smart and kind.",
+          "ask": "What do you like to read about?",
+          "askYou": "How do you show you are kind?",
+          "bridge": "I liked the part about his big first. Remember?"
+        },
+        {
+          "text": "He worked to help others and teach kids to play tennis.",
+          "topic": "helping others",
+          "say": "Arthur helped others and taught kids tennis.",
+          "sayShort": "He helped and taught.",
+          "ask": "What would you love to teach a kid?",
+          "askYou": "How do you help your friends?",
+          "bridge": "I liked the part about him being smart and kind. Remember?"
+        }
+      ]
     },
     {
       "name": "Wayne Gretzky",
@@ -13330,8 +14070,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/wayne-gretzky.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Wayne is a hockey legend called \"the Great One.\"",
+          "topic": "the Great One",
+          "say": "Wayne is a hockey legend, the Great One.",
+          "sayShort": "He is the Great One.",
+          "ask": "Do you like hockey or ice skating?",
+          "askYou": "What are you great at?",
+          "bridge": ""
+        },
+        {
+          "text": "He scored more goals and points than anyone in hockey.",
+          "topic": "the most points",
+          "say": "Wayne scored more than anyone in hockey.",
+          "sayShort": "He scored the most.",
+          "ask": "What would you like to be number one at?",
+          "askYou": "What are you the best at?",
+          "bridge": "I liked the part about him being the Great One. Remember?"
+        },
+        {
+          "text": "Wayne started skating on a little rink in his backyard as a kid.",
+          "topic": "a backyard rink",
+          "say": "Wayne practiced on a backyard rink as a kid.",
+          "sayShort": "He started in his backyard.",
+          "ask": "What would you practice in your yard?",
+          "askYou": "Do you like to skate?",
+          "bridge": "I liked the part about the most points. Remember?"
+        },
+        {
+          "text": "He was great at seeing where the puck would go next.",
+          "topic": "thinking ahead",
+          "say": "Wayne was great at seeing plays before they happened.",
+          "sayShort": "He thought ahead.",
+          "ask": "How do you plan your next move?",
+          "askYou": "Do you like to think ahead?",
+          "bridge": "I liked the part about his backyard rink. Remember?"
+        }
+      ]
     },
     {
       "name": "Tom Brady",
@@ -13341,8 +14118,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/tom-brady.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Tom Brady is a football star who won seven Super Bowls.",
+          "topic": "seven Super Bowls",
+          "say": "Tom Brady won seven Super Bowls.",
+          "sayShort": "He won seven titles.",
+          "ask": "Do you like football?",
+          "askYou": "What would you love to win?",
+          "bridge": ""
+        },
+        {
+          "text": "He kept playing at the top even into his forties.",
+          "topic": "playing a long time",
+          "say": "Tom played great even into his forties.",
+          "sayShort": "He played a long time.",
+          "ask": "What do you hope to still do when older?",
+          "askYou": "What could you do forever?",
+          "bridge": "I liked the part about his seven Super Bowls. Remember?"
+        },
+        {
+          "text": "Tom was picked very late but worked super hard to become the best.",
+          "topic": "never giving up",
+          "say": "Tom was picked late but became the best.",
+          "sayShort": "He proved everyone wrong.",
+          "ask": "When did you surprise people?",
+          "askYou": "What helps you keep trying?",
+          "bridge": "I liked the part about him playing a long time. Remember?"
+        },
+        {
+          "text": "He is famous for his healthy habits and lots of practice.",
+          "topic": "healthy habits",
+          "say": "Tom stays healthy and practices a lot.",
+          "sayShort": "He has healthy habits.",
+          "ask": "What healthy habit do you have?",
+          "askYou": "How do you take care of yourself?",
+          "bridge": "I liked the part about him never giving up. Remember?"
+        }
+      ]
     },
     {
       "name": "Tiger Woods",
@@ -13352,8 +14166,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/tiger-woods.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Tiger Woods is one of the greatest golf players ever.",
+          "topic": "golf great",
+          "say": "Tiger is one of the greatest golfers ever.",
+          "sayShort": "He is a golf great.",
+          "ask": "Have you ever played mini golf?",
+          "askYou": "What sport would you love to master?",
+          "bridge": ""
+        },
+        {
+          "text": "He started swinging a golf club when he was just a toddler.",
+          "topic": "starting super young",
+          "say": "Tiger started golf as a tiny toddler.",
+          "sayShort": "He started super young.",
+          "ask": "What did you love to do when you were little?",
+          "askYou": "What are you great at for your age?",
+          "bridge": "I liked the part about him being a golf great. Remember?"
+        },
+        {
+          "text": "Tiger has won a huge number of big golf tournaments.",
+          "topic": "so many wins",
+          "say": "Tiger has won tons of big golf tournaments.",
+          "sayShort": "He won a whole lot.",
+          "ask": "What would you like to win a lot of?",
+          "askYou": "What are you the best at?",
+          "bridge": "I liked the part about him starting super young. Remember?"
+        },
+        {
+          "text": "He is famous for his focus and for never giving up.",
+          "topic": "strong focus",
+          "say": "Tiger is famous for his focus and grit.",
+          "sayShort": "He has strong focus.",
+          "ask": "How do you focus really hard?",
+          "askYou": "What helps you concentrate?",
+          "bridge": "I liked the part about his many wins. Remember?"
+        }
+      ]
     },
     {
       "name": "Nadia Comăneci",
@@ -13363,8 +14214,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/nadia-comaneci.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Nadia was a gymnast who did a routine so perfect it scored a perfect 10.",
+          "topic": "a perfect score",
+          "say": "Nadia earned the first perfect 10 in gymnastics.",
+          "sayShort": "She got a perfect 10.",
+          "ask": "Can you do a flip or a cartwheel?",
+          "askYou": "What trick would you love to do?",
+          "bridge": ""
+        },
+        {
+          "text": "She was the first gymnast ever to get a perfect 10 at the Olympics.",
+          "topic": "a big first",
+          "say": "Nadia was the first to score a perfect 10 there.",
+          "sayShort": "She made history.",
+          "ask": "What would you like to be first at?",
+          "askYou": "What are you proud of?",
+          "bridge": "I liked the part about her perfect score. Remember?"
+        },
+        {
+          "text": "Nadia was only fourteen years old when she did it.",
+          "topic": "young champion",
+          "say": "Nadia did it at only fourteen years old.",
+          "sayShort": "She was a young champ.",
+          "ask": "What big thing do you hope to do young?",
+          "askYou": "What are you great at?",
+          "bridge": "I liked the part about her big first. Remember?"
+        },
+        {
+          "text": "She was from Romania and practiced gymnastics very hard.",
+          "topic": "lots of practice",
+          "say": "Nadia practiced gymnastics really hard.",
+          "sayShort": "She practiced a lot.",
+          "ask": "What do you practice to get better?",
+          "askYou": "How does practice help you?",
+          "bridge": "I liked the part about her being a young champion. Remember?"
+        }
+      ]
     },
     {
       "name": "Magic Johnson",
@@ -13374,8 +14262,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/magic-johnson.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Magic was a basketball star famous for his amazing passes.",
+          "topic": "amazing passes",
+          "say": "Magic was famous for his amazing passes.",
+          "sayShort": "He was a great passer.",
+          "ask": "Do you like to pass or shoot?",
+          "askYou": "What are you great at in a game?",
+          "bridge": ""
+        },
+        {
+          "text": "He won five championships with the Lakers.",
+          "topic": "five championships",
+          "say": "Magic won five championships with the Lakers.",
+          "sayShort": "He won five titles.",
+          "ask": "What would you love to win?",
+          "askYou": "Do you like playing on a team?",
+          "bridge": "I liked the part about his amazing passes. Remember?"
+        },
+        {
+          "text": "Magic was known for his huge, friendly smile.",
+          "topic": "his big smile",
+          "say": "Magic was known for his big, friendly smile.",
+          "sayShort": "He had a big smile.",
+          "ask": "What makes you smile big?",
+          "askYou": "What makes you happy?",
+          "bridge": "I liked the part about his five championships. Remember?"
+        },
+        {
+          "text": "After basketball, he started businesses to help his community.",
+          "topic": "helping his community",
+          "say": "Magic started businesses to help his community.",
+          "sayShort": "He helped his community.",
+          "ask": "How would you help your neighborhood?",
+          "askYou": "What is a kind thing you like to do?",
+          "bridge": "I liked the part about his big smile. Remember?"
+        }
+      ]
     }
   ]
 }
