@@ -1,6 +1,6 @@
 {
   "_note": "Red Carpet Convos roster. Per person: {name, years, tag, emoji, img, accent, accentBg, converted, facts:[{text, topic, say, sayShort, ask, askYou, bridge}]}. `converted` is the MIGRATION FLAG: true = migrated to the new schema and live in the game; false = a stub pending fact population (kept OUT of the game for now). During migration the game surfaces only converted people. Fade levels (comment/volley Partial/Minimal) are derived at runtime from say/ask. `bridge` is the partner's recall opener INTO this fact (fact 1's bridge is empty). Edited via AdminTools/FamousPersonManager; the rcc-generate-facts populator writes facts + sets converted. Store only public-figure content — never learner/session data.",
-  "generated": "2026-07-08T18:49:14.053Z",
+  "generated": "2026-07-08T20:23:15.784Z",
   "people": [
     {
       "name": "Lin-Manuel Miranda",
@@ -2026,8 +2026,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/princess-diana.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Diana was a princess who used her fame to help people in need.",
+          "topic": "helping people",
+          "say": "Diana used being famous to help people.",
+          "sayShort": "She helped people in need.",
+          "ask": "How do you like to help people?",
+          "askYou": "Who is someone you help?",
+          "bridge": ""
+        },
+        {
+          "text": "She visited people who were sick when others were too shy to.",
+          "topic": "visiting the sick",
+          "say": "Diana visited sick people to cheer them up.",
+          "sayShort": "She cheered up sick people.",
+          "ask": "How do you cheer someone up?",
+          "askYou": "What helps you feel better when you're sick?",
+          "bridge": "I liked the part about her helping people. Remember?"
+        },
+        {
+          "text": "Diana worked to make places safer for kids to play.",
+          "topic": "keeping kids safe",
+          "say": "Diana helped make play areas safe for kids.",
+          "sayShort": "She kept kids safe.",
+          "ask": "What helps you feel safe when you play?",
+          "askYou": "Where is your favorite place to play?",
+          "bridge": "I liked the part about her visiting the sick. Remember?"
+        },
+        {
+          "text": "She had two sons and was a very loving mom.",
+          "topic": "her two sons",
+          "say": "Diana was a loving mom to her two boys.",
+          "sayShort": "She was a loving mom.",
+          "ask": "Who takes good care of you?",
+          "askYou": "What do you love doing with family?",
+          "bridge": "I liked the part about her keeping kids safe. Remember?"
+        }
+      ]
     },
     {
       "name": "Napoleon Bonaparte",
@@ -2229,8 +2266,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/joan-of-arc.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Joan was a brave teenage girl who led her country long ago.",
+          "topic": "a brave leader",
+          "say": "Joan bravely led her country as a teen.",
+          "sayShort": "She was a brave leader.",
+          "ask": "When have you been really brave?",
+          "askYou": "What helps you feel brave?",
+          "bridge": ""
+        },
+        {
+          "text": "She followed what she believed was right, even when it was hard.",
+          "topic": "following her heart",
+          "say": "Joan followed what she felt was right.",
+          "sayShort": "She followed her heart.",
+          "ask": "How do you know what is right?",
+          "askYou": "When did you do the right thing?",
+          "bridge": "I liked the part about her being a brave leader. Remember?"
+        },
+        {
+          "text": "Joan wore armor like a knight and rode a horse.",
+          "topic": "armor and horse",
+          "say": "Joan wore armor and rode a horse like a knight.",
+          "sayShort": "She rode like a knight.",
+          "ask": "Would you like to ride a horse?",
+          "askYou": "What would your knight armor look like?",
+          "bridge": "I liked the part about her following her heart. Remember?"
+        },
+        {
+          "text": "Long after, people honored Joan as a hero for her courage.",
+          "topic": "honored as a hero",
+          "say": "People still honor Joan as a brave hero.",
+          "sayShort": "She became a hero.",
+          "ask": "Who is a hero you look up to?",
+          "askYou": "What makes someone a hero?",
+          "bridge": "I liked the part about her armor and horse. Remember?"
+        }
+      ]
     },
     {
       "name": "Josephine Baker",
@@ -2240,8 +2314,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/josephine-baker.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Josephine was a famous dancer and singer who lit up stages in Paris.",
+          "topic": "stages in Paris",
+          "say": "Josephine danced and sang on famous Paris stages.",
+          "sayShort": "She was a Paris star.",
+          "ask": "Do you like to dance or sing?",
+          "askYou": "What would you perform on a big stage?",
+          "bridge": ""
+        },
+        {
+          "text": "She was very brave and secretly helped her side during a big war.",
+          "topic": "her secret work",
+          "say": "Josephine bravely helped in secret during a war.",
+          "sayShort": "She did brave secret work.",
+          "ask": "Would you be good at keeping a secret?",
+          "askYou": "When were you really brave?",
+          "bridge": "I liked the part about the stages in Paris. Remember?"
+        },
+        {
+          "text": "She adopted twelve children from different countries and called them her \"rainbow tribe.\"",
+          "topic": "her big family",
+          "say": "Josephine adopted kids from all over the world.",
+          "sayShort": "She had a rainbow family.",
+          "ask": "What do you love about your family?",
+          "askYou": "What makes a family special?",
+          "bridge": "I liked the part about her secret work. Remember?"
+        },
+        {
+          "text": "Josephine stood up against unfair rules so everyone would be treated the same.",
+          "topic": "standing up for fairness",
+          "say": "Josephine stood up so people were treated fairly.",
+          "sayShort": "She stood up for fairness.",
+          "ask": "What is something that should be fair?",
+          "askYou": "When did you stand up for someone?",
+          "bridge": "I liked the part about her big family. Remember?"
+        }
+      ]
     },
     {
       "name": "Malcolm X",
@@ -2251,8 +2362,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/600px-Malcolm_X_1963_press_photo.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Malcolm spoke up strongly for equal rights and fair treatment.",
+          "topic": "speaking for rights",
+          "say": "Malcolm spoke up for equal rights for everyone.",
+          "sayShort": "He spoke up for fairness.",
+          "ask": "What would you speak up about?",
+          "askYou": "What does fairness mean to you?",
+          "bridge": ""
+        },
+        {
+          "text": "He taught himself a lot of new things by reading books.",
+          "topic": "teaching himself",
+          "say": "Malcolm taught himself by reading many books.",
+          "sayShort": "He taught himself.",
+          "ask": "What have you taught yourself?",
+          "askYou": "What would you like to learn on your own?",
+          "bridge": "I liked the part about him speaking for rights. Remember?"
+        },
+        {
+          "text": "Malcolm took a long trip that opened his eyes to the whole world.",
+          "topic": "a big trip",
+          "say": "A big trip changed how Malcolm saw the world.",
+          "sayShort": "A trip changed his view.",
+          "ask": "Where would a big trip take you?",
+          "askYou": "How has a trip changed you?",
+          "bridge": "I liked the part about him teaching himself. Remember?"
+        },
+        {
+          "text": "He shared his life story in a book that millions have read.",
+          "topic": "his life story",
+          "say": "Malcolm wrote his life story in a famous book.",
+          "sayShort": "He wrote his story.",
+          "ask": "What part of your life would you put in a book?",
+          "askYou": "What is a true story you love?",
+          "bridge": "I liked the part about his big trip. Remember?"
+        }
+      ]
     },
     {
       "name": "Audrey Hepburn",
@@ -2310,8 +2458,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/aristotle.jpeg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Aristotle was a wise teacher who lived in Greece a very long time ago.",
+          "topic": "a wise teacher",
+          "say": "Aristotle was a very wise teacher in old Greece.",
+          "sayShort": "He was a wise teacher.",
+          "ask": "Who is a teacher you really like?",
+          "askYou": "What would you love to teach someone?",
+          "bridge": ""
+        },
+        {
+          "text": "He studied plants, animals, stars, and how people should live.",
+          "topic": "studying everything",
+          "say": "Aristotle studied nearly everything around him.",
+          "sayShort": "He studied everything.",
+          "ask": "What are you most curious about?",
+          "askYou": "What would you love to study?",
+          "bridge": "I liked the part about him being a wise teacher. Remember?"
+        },
+        {
+          "text": "He was the teacher of Alexander, who grew up to be a famous king.",
+          "topic": "teaching a king",
+          "say": "Aristotle taught a boy who became a famous king.",
+          "sayShort": "He taught a future king.",
+          "ask": "What good advice would you give a friend?",
+          "askYou": "Who taught you something important?",
+          "bridge": "I liked the part about him studying everything. Remember?"
+        },
+        {
+          "text": "Aristotle said it is smart to think carefully before you act.",
+          "topic": "thinking first",
+          "say": "Aristotle said to think carefully before acting.",
+          "sayShort": "He said to think first.",
+          "ask": "When is it good to stop and think?",
+          "askYou": "How do you make a good choice?",
+          "bridge": "I liked the part about him teaching a king. Remember?"
+        }
+      ]
     },
     {
       "name": "Simone Biles",
@@ -2417,8 +2602,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/misty-copeland.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Misty was the first Black woman to become a top ballerina at her big company.",
+          "topic": "first Black ballerina",
+          "say": "Misty became a top ballerina, a first for her company.",
+          "sayShort": "She made ballet history.",
+          "ask": "Do you like to dance?",
+          "askYou": "What kind of dancing looks fun?",
+          "bridge": ""
+        },
+        {
+          "text": "She started ballet at thirteen, which is late for a dancer.",
+          "topic": "starting later",
+          "say": "Misty started ballet late but caught right up.",
+          "sayShort": "She started ballet late.",
+          "ask": "What is something you started later and still love?",
+          "askYou": "What would you like to start now?",
+          "bridge": "I liked the part about her being a first. Remember?"
+        },
+        {
+          "text": "Misty practices for many hours every single day.",
+          "topic": "lots of practice",
+          "say": "Misty practices ballet for hours every day.",
+          "sayShort": "She practices a lot.",
+          "ask": "What do you practice to get better?",
+          "askYou": "How does practice help you?",
+          "bridge": "I liked the part about her starting later. Remember?"
+        },
+        {
+          "text": "She writes books to help young dancers chase their dreams.",
+          "topic": "helping young dancers",
+          "say": "Misty writes books to help young dancers.",
+          "sayShort": "She helps young dancers.",
+          "ask": "What is a dream you are chasing?",
+          "askYou": "How do you cheer on your friends?",
+          "bridge": "I liked the part about her practice. Remember?"
+        }
+      ]
     },
     {
       "name": "Kendrick Lamar",
@@ -2428,8 +2650,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/kendrick-lamar.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Kendrick is a famous rapper who tells stories about real life in his songs.",
+          "topic": "storytelling rapper",
+          "say": "Kendrick tells real-life stories in his raps.",
+          "sayShort": "He raps real stories.",
+          "ask": "What story would you put in a song?",
+          "askYou": "Do you like music that tells a story?",
+          "bridge": ""
+        },
+        {
+          "text": "He won a big writing prize for his music.",
+          "topic": "a big prize",
+          "say": "Kendrick won a big prize for his songwriting.",
+          "sayShort": "He won a big prize.",
+          "ask": "What would you like to win a prize for?",
+          "askYou": "Have you ever won something?",
+          "bridge": "I liked the part about him telling stories. Remember?"
+        },
+        {
+          "text": "Kendrick grew up in Compton and made music with his friends as a kid.",
+          "topic": "making music young",
+          "say": "Kendrick made music with friends as a kid.",
+          "sayShort": "He made music young.",
+          "ask": "What do you love to make with friends?",
+          "askYou": "Who do you like to be creative with?",
+          "bridge": "I liked the part about his big prize. Remember?"
+        },
+        {
+          "text": "He performed at the Super Bowl halftime show for millions of fans.",
+          "topic": "the big show",
+          "say": "Kendrick performed for millions at the Super Bowl.",
+          "sayShort": "He did a huge show.",
+          "ask": "Would you like to perform for a huge crowd?",
+          "askYou": "What would you perform?",
+          "bridge": "I liked the part about him making music young. Remember?"
+        }
+      ]
     },
     {
       "name": "Harriet Beecher Stowe",
@@ -2439,8 +2698,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/harriet-beecher-stowe.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Harriet wrote a book that helped many people see that slavery was wrong.",
+          "topic": "her powerful book",
+          "say": "Harriet's book helped change people's minds.",
+          "sayShort": "She wrote a powerful book.",
+          "ask": "What would you write a book to change?",
+          "askYou": "What is a book that taught you something?",
+          "bridge": ""
+        },
+        {
+          "text": "Her famous book was called Uncle Tom's Cabin.",
+          "topic": "Uncle Tom's Cabin",
+          "say": "Harriet wrote the famous Uncle Tom's Cabin.",
+          "sayShort": "She wrote a famous book.",
+          "ask": "What would you name a book you wrote?",
+          "askYou": "What is a title you like?",
+          "bridge": "I liked the part about her powerful book. Remember?"
+        },
+        {
+          "text": "She grew up in a family of writers and teachers who cared about fairness.",
+          "topic": "her family",
+          "say": "Harriet grew up with writers who cared about fairness.",
+          "sayShort": "Her family loved fairness.",
+          "ask": "What does your family care about?",
+          "askYou": "What did your family teach you?",
+          "bridge": "I liked the part about Uncle Tom's Cabin. Remember?"
+        },
+        {
+          "text": "Harriet had seven children and still found time to write her book.",
+          "topic": "busy but writing",
+          "say": "Harriet raised seven kids and still wrote her book.",
+          "sayShort": "She stayed busy and wrote.",
+          "ask": "How do you make time for what you love?",
+          "askYou": "What do you do even when you're busy?",
+          "bridge": "I liked the part about her family. Remember?"
+        }
+      ]
     },
     {
       "name": "Socrates",
@@ -2450,8 +2746,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/socrates.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Socrates was a teacher in Greece who taught by asking lots of questions.",
+          "topic": "asking questions",
+          "say": "Socrates taught people by asking questions.",
+          "sayShort": "He taught with questions.",
+          "ask": "What is a big question you wonder about?",
+          "askYou": "Do you like asking why?",
+          "bridge": ""
+        },
+        {
+          "text": "He helped people think harder by asking them to explain their answers.",
+          "topic": "thinking harder",
+          "say": "Socrates made people think harder about their ideas.",
+          "sayShort": "He made people think.",
+          "ask": "What makes you stop and really think?",
+          "askYou": "How do you figure out a tricky answer?",
+          "bridge": "I liked the part about him asking questions. Remember?"
+        },
+        {
+          "text": "He said \"I know that I know nothing,\" meaning we should keep learning.",
+          "topic": "always learning",
+          "say": "Socrates said we should always keep learning.",
+          "sayShort": "He loved to keep learning.",
+          "ask": "What is something you want to learn more about?",
+          "askYou": "What did you learn today?",
+          "bridge": "I liked the part about him making people think. Remember?"
+        },
+        {
+          "text": "Socrates wrote no books himself, but his student Plato wrote about him.",
+          "topic": "a student wrote it",
+          "say": "Socrates' student wrote down his ideas for us.",
+          "sayShort": "His student saved his ideas.",
+          "ask": "Who would you want to write down your ideas?",
+          "askYou": "Who is a friend you learn with?",
+          "bridge": "I liked the part about him always learning. Remember?"
+        }
+      ]
     },
     {
       "name": "Alexander the Great",
@@ -2461,8 +2794,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/alexander-the-great.webp",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Alexander became a king when he was only twenty years old.",
+          "topic": "young king",
+          "say": "Alexander became a king at just twenty.",
+          "sayShort": "He was a young king.",
+          "ask": "What would you do as a young leader?",
+          "askYou": "What are you in charge of?",
+          "bridge": ""
+        },
+        {
+          "text": "He traveled with his group all the way from Greece to India.",
+          "topic": "a huge journey",
+          "say": "Alexander traveled all the way to India.",
+          "sayShort": "He went on a huge journey.",
+          "ask": "Where would you travel far to see?",
+          "askYou": "What is the farthest you have gone?",
+          "bridge": "I liked the part about him being a young king. Remember?"
+        },
+        {
+          "text": "His teacher was a wise man named Aristotle.",
+          "topic": "a wise teacher",
+          "say": "Alexander was taught by the wise Aristotle.",
+          "sayShort": "A wise man taught him.",
+          "ask": "Who has taught you a lot?",
+          "askYou": "What is the best thing a teacher told you?",
+          "bridge": "I liked the part about his huge journey. Remember?"
+        },
+        {
+          "text": "Alexander was a bold, brave leader his whole life.",
+          "topic": "bold and brave",
+          "say": "Alexander was bold and brave as a leader.",
+          "sayShort": "He was bold and brave.",
+          "ask": "When were you bold and brave?",
+          "askYou": "What makes a leader brave?",
+          "bridge": "I liked the part about his wise teacher. Remember?"
+        }
+      ]
     },
     {
       "name": "Julius Caesar",
@@ -2472,8 +2842,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/julius-caesar.jpeg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Julius was a famous Roman leader who helped Rome grow.",
+          "topic": "Roman leader",
+          "say": "Julius was a famous leader who grew Rome.",
+          "sayShort": "He led ancient Rome.",
+          "ask": "What would you do as a leader?",
+          "askYou": "What makes a place great?",
+          "bridge": ""
+        },
+        {
+          "text": "He was a strong, clever leader who people followed.",
+          "topic": "a strong leader",
+          "say": "Julius was a strong, clever leader.",
+          "sayShort": "He was a bold leader.",
+          "ask": "What makes people want to follow a leader?",
+          "askYou": "Are you more a leader or a helper?",
+          "bridge": "I liked the part about him leading Rome. Remember?"
+        },
+        {
+          "text": "Julius helped change the calendar so it matched the year better.",
+          "topic": "a new calendar",
+          "say": "Julius helped fix the calendar to match the year.",
+          "sayShort": "He improved the calendar.",
+          "ask": "What would you change to make things work better?",
+          "askYou": "What is your favorite month?",
+          "bridge": "I liked the part about him being a strong leader. Remember?"
+        },
+        {
+          "text": "The month of July is named after him.",
+          "topic": "July is his",
+          "say": "The whole month of July is named for Julius.",
+          "sayShort": "A month is named for him.",
+          "ask": "If a month was named for you, which one?",
+          "askYou": "When is your birthday month?",
+          "bridge": "I liked the part about the calendar. Remember?"
+        }
+      ]
     },
     {
       "name": "Genghis Khan",
@@ -2483,8 +2890,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/genghis-khan.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Genghis built one of the biggest empires the world has ever seen.",
+          "topic": "a huge empire",
+          "say": "Genghis built a giant empire long ago.",
+          "sayShort": "He built a huge empire.",
+          "ask": "What big thing would you like to build?",
+          "askYou": "What is the biggest thing you have made?",
+          "bridge": ""
+        },
+        {
+          "text": "He led the Mongol people from a small group to a mighty one.",
+          "topic": "a mighty leader",
+          "say": "Genghis led the Mongol people to become mighty.",
+          "sayShort": "He led his people up.",
+          "ask": "How do you help a group work together?",
+          "askYou": "Do you like to lead a team?",
+          "bridge": "I liked the part about his huge empire. Remember?"
+        },
+        {
+          "text": "Genghis was a great horse rider, and his group moved super fast.",
+          "topic": "fast riders",
+          "say": "Genghis and his riders moved super fast.",
+          "sayShort": "He rode horses fast.",
+          "ask": "Would you like to ride a horse fast?",
+          "askYou": "What is the fastest you have moved?",
+          "bridge": "I liked the part about him being a mighty leader. Remember?"
+        },
+        {
+          "text": "He made it safer for people to travel and trade far away.",
+          "topic": "safer travel",
+          "say": "Genghis made travel and trade safer for people.",
+          "sayShort": "He made travel safer.",
+          "ask": "Where would you travel if it was easy?",
+          "askYou": "What would you trade with a friend?",
+          "bridge": "I liked the part about his fast riders. Remember?"
+        }
+      ]
     },
     {
       "name": "Queen Victoria",
@@ -2542,8 +2986,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/600px-Plato_Silanion_Musei_Capitolini_MC1377.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Plato was a wise teacher in Greece who wrote many books about big ideas.",
+          "topic": "big ideas",
+          "say": "Plato wrote books about big, deep ideas.",
+          "sayShort": "He wrote about big ideas.",
+          "ask": "What big idea do you think about?",
+          "askYou": "Do you like to wonder about things?",
+          "bridge": ""
+        },
+        {
+          "text": "He started a school where people came to learn and talk about life.",
+          "topic": "his school",
+          "say": "Plato started a school to learn and talk.",
+          "sayShort": "He started a school.",
+          "ask": "What would you teach at your own school?",
+          "askYou": "What is your favorite thing to learn?",
+          "bridge": "I liked the part about his big ideas. Remember?"
+        },
+        {
+          "text": "Plato wrote about a make-believe perfect city.",
+          "topic": "a perfect city",
+          "say": "Plato imagined a perfect make-believe city.",
+          "sayShort": "He dreamed up a city.",
+          "ask": "What would your perfect city have?",
+          "askYou": "What makes a place great to live?",
+          "bridge": "I liked the part about his school. Remember?"
+        },
+        {
+          "text": "He was the student of Socrates and the teacher of Aristotle.",
+          "topic": "student and teacher",
+          "say": "Plato learned from one wise man and taught another.",
+          "sayShort": "He learned and taught.",
+          "ask": "Who do you learn from and who do you teach?",
+          "askYou": "What did a friend teach you?",
+          "bridge": "I liked the part about his perfect city. Remember?"
+        }
+      ]
     },
     {
       "name": "Confucius",
@@ -2553,8 +3034,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/confucius.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Confucius was a wise teacher in China who taught how to live a good life.",
+          "topic": "a wise teacher",
+          "say": "Confucius taught people how to live a good life.",
+          "sayShort": "He taught good living.",
+          "ask": "What does living a good life mean to you?",
+          "askYou": "Who teaches you good things?",
+          "bridge": ""
+        },
+        {
+          "text": "He said you should treat others the way you want to be treated.",
+          "topic": "treating others kindly",
+          "say": "Confucius said to treat others kindly.",
+          "sayShort": "He taught kindness.",
+          "ask": "How do you like to be treated?",
+          "askYou": "What is a kind thing you did today?",
+          "bridge": "I liked the part about him being a wise teacher. Remember?"
+        },
+        {
+          "text": "Confucius wanted leaders to be wise and kind, not just powerful.",
+          "topic": "kind leaders",
+          "say": "Confucius wanted leaders to be wise and kind.",
+          "sayShort": "He wanted kind leaders.",
+          "ask": "What makes a leader kind?",
+          "askYou": "Who is a kind leader you know?",
+          "bridge": "I liked the part about treating others kindly. Remember?"
+        },
+        {
+          "text": "His good ideas are still taught in many parts of the world today.",
+          "topic": "ideas that last",
+          "say": "Confucius' ideas are still taught today.",
+          "sayShort": "His ideas still last.",
+          "ask": "What idea would you want to last forever?",
+          "askYou": "What is good advice you remember?",
+          "bridge": "I liked the part about kind leaders. Remember?"
+        }
+      ]
     },
     {
       "name": "Archimedes",
@@ -2564,8 +3082,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/archimedes.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Archimedes was a math whiz in ancient Greece who figured out lots of things.",
+          "topic": "a math whiz",
+          "say": "Archimedes was a math whiz who solved big puzzles.",
+          "sayShort": "He was a math whiz.",
+          "ask": "Do you like math puzzles?",
+          "askYou": "What is a tricky problem you solved?",
+          "bridge": ""
+        },
+        {
+          "text": "He shouted \"Eureka!\" in the bath after figuring out a tricky problem.",
+          "topic": "Eureka in the bath",
+          "say": "Archimedes shouted \"Eureka!\" when he figured it out.",
+          "sayShort": "He shouted Eureka!",
+          "ask": "What do you say when you solve something?",
+          "askYou": "Where do you get your best ideas?",
+          "bridge": "I liked the part about him being a math whiz. Remember?"
+        },
+        {
+          "text": "He built clever machines that could lift really heavy things.",
+          "topic": "lifting machines",
+          "say": "Archimedes built machines to lift heavy things.",
+          "sayShort": "He built clever machines.",
+          "ask": "What machine would you love to build?",
+          "askYou": "What is the heaviest thing you've lifted?",
+          "bridge": "I liked the part about Eureka. Remember?"
+        },
+        {
+          "text": "Archimedes said: \"Give me a lever long enough and I can move the world.\"",
+          "topic": "moving the world",
+          "say": "Archimedes said a lever could move the whole world.",
+          "sayShort": "He believed in big ideas.",
+          "ask": "What big thing would you like to move?",
+          "askYou": "What tool do you think is clever?",
+          "bridge": "I liked the part about his lifting machines. Remember?"
+        }
+      ]
     },
     {
       "name": "Mansa Musa",
@@ -2575,8 +3130,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/mansa-musa.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Mansa Musa was a king in Africa long ago — maybe the richest person ever.",
+          "topic": "a rich king",
+          "say": "Mansa Musa may have been the richest person ever.",
+          "sayShort": "He was a super-rich king.",
+          "ask": "What would you do if you were rich?",
+          "askYou": "What is a treasure you would love?",
+          "bridge": ""
+        },
+        {
+          "text": "He made a long trip across the desert and gave away gold along the way.",
+          "topic": "giving away gold",
+          "say": "Mansa Musa gave away gold on his long journey.",
+          "sayShort": "He gave away gold.",
+          "ask": "What would you love to give people?",
+          "askYou": "Have you ever given a gift?",
+          "bridge": "I liked the part about him being a rich king. Remember?"
+        },
+        {
+          "text": "He built lots of schools and libraries in his home of Mali.",
+          "topic": "schools and libraries",
+          "say": "Mansa Musa built schools and libraries in Mali.",
+          "sayShort": "He built schools.",
+          "ask": "What would your dream school have?",
+          "askYou": "Do you like the library?",
+          "bridge": "I liked the part about him giving away gold. Remember?"
+        },
+        {
+          "text": "Mali was a busy place where people from many countries came to trade.",
+          "topic": "a busy trading place",
+          "say": "People came from far away to trade in Mali.",
+          "sayShort": "His land was busy trading.",
+          "ask": "What would you trade with a friend?",
+          "askYou": "What would you like to buy at a market?",
+          "bridge": "I liked the part about his schools. Remember?"
+        }
+      ]
     },
     {
       "name": "Hatshepsut",
@@ -2586,8 +3178,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/hatshepsut.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Hatshepsut was one of the first women to be a ruler of ancient Egypt.",
+          "topic": "woman pharaoh",
+          "say": "Hatshepsut was one of Egypt's first woman rulers.",
+          "sayShort": "She was a woman pharaoh.",
+          "ask": "What would you do as a ruler?",
+          "askYou": "What would your crown look like?",
+          "bridge": ""
+        },
+        {
+          "text": "She sometimes wore a special beard to look like the other rulers.",
+          "topic": "her special look",
+          "say": "Hatshepsut wore a special beard like other rulers.",
+          "sayShort": "She had a special look.",
+          "ask": "What would you wear to look important?",
+          "askYou": "What is your favorite fancy outfit?",
+          "bridge": "I liked the part about her being a woman pharaoh. Remember?"
+        },
+        {
+          "text": "During her rule, Egypt was peaceful with lots of food and trade.",
+          "topic": "a peaceful time",
+          "say": "Egypt was peaceful and happy while she ruled.",
+          "sayShort": "She led a peaceful time.",
+          "ask": "What makes a place peaceful and happy?",
+          "askYou": "What do you do to keep the peace?",
+          "bridge": "I liked the part about her special look. Remember?"
+        },
+        {
+          "text": "She built a beautiful temple that still stands in Egypt today.",
+          "topic": "her temple",
+          "say": "Hatshepsut built a temple that still stands today.",
+          "sayShort": "She built a lasting temple.",
+          "ask": "What would you build to last forever?",
+          "askYou": "What old building would you like to see?",
+          "bridge": "I liked the part about her peaceful time. Remember?"
+        }
+      ]
     },
     {
       "name": "Wu Zetian",
@@ -2597,8 +3226,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/wu-zetian.jpeg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Wu Zetian was the only woman ever to rule China all on her own.",
+          "topic": "first woman emperor",
+          "say": "Wu Zetian ruled all of China by herself.",
+          "sayShort": "She ruled China alone.",
+          "ask": "What would you do as a ruler?",
+          "askYou": "Do you like to be in charge?",
+          "bridge": ""
+        },
+        {
+          "text": "She made sure smart people could earn good jobs by taking tests.",
+          "topic": "fair job tests",
+          "say": "Wu Zetian let smart people earn jobs with tests.",
+          "sayShort": "She made jobs fair.",
+          "ask": "What job would you like to earn?",
+          "askYou": "Do you like a good challenge?",
+          "bridge": "I liked the part about her ruling China. Remember?"
+        },
+        {
+          "text": "She helped art and music grow all across her land.",
+          "topic": "art and music",
+          "say": "Wu Zetian helped art and music grow.",
+          "sayShort": "She grew art and music.",
+          "ask": "Do you like making art or music more?",
+          "askYou": "What would you create?",
+          "bridge": "I liked the part about her fair job tests. Remember?"
+        },
+        {
+          "text": "Wu Zetian was a very smart planner and ruled for many years.",
+          "topic": "a smart planner",
+          "say": "Wu Zetian was a smart planner for many years.",
+          "sayShort": "She was a smart planner.",
+          "ask": "What are you good at planning?",
+          "askYou": "How do you plan something fun?",
+          "bridge": "I liked the part about art and music. Remember?"
+        }
+      ]
     },
     {
       "name": "Suleiman the Magnificent",
@@ -2608,8 +3274,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/suleiman-the-magnificent.jpeg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Suleiman led a giant empire called the Ottoman Empire for a long time.",
+          "topic": "a great leader",
+          "say": "Suleiman led a giant empire for many years.",
+          "sayShort": "He led a giant empire.",
+          "ask": "What would you lead if you could?",
+          "askYou": "What makes a good leader?",
+          "bridge": ""
+        },
+        {
+          "text": "He made fair rules so people would be treated the same by the law.",
+          "topic": "fair rules",
+          "say": "Suleiman made fair rules for everyone.",
+          "sayShort": "He made fair rules.",
+          "ask": "What is a fair rule you would make?",
+          "askYou": "Why are rules helpful?",
+          "bridge": "I liked the part about him being a great leader. Remember?"
+        },
+        {
+          "text": "Suleiman wrote poems too, and people still read them.",
+          "topic": "his poems",
+          "say": "Suleiman was a leader who also wrote poems.",
+          "sayShort": "He wrote poems.",
+          "ask": "What would your poem be about?",
+          "askYou": "Do you like poems?",
+          "bridge": "I liked the part about his fair rules. Remember?"
+        },
+        {
+          "text": "He built beautiful buildings, including one of the largest mosques ever.",
+          "topic": "grand buildings",
+          "say": "Suleiman built grand, beautiful buildings.",
+          "sayShort": "He built grand buildings.",
+          "ask": "What amazing building would you design?",
+          "askYou": "What is a building you love?",
+          "bridge": "I liked the part about his poems. Remember?"
+        }
+      ]
     },
     {
       "name": "Saladin",
@@ -2619,8 +3322,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/saladin.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Saladin was a great leader in the Middle East about 800 years ago.",
+          "topic": "a great leader",
+          "say": "Saladin was a respected leader long ago.",
+          "sayShort": "He was a great leader.",
+          "ask": "What makes someone a great leader?",
+          "askYou": "Who is a leader you admire?",
+          "bridge": ""
+        },
+        {
+          "text": "He was known for being fair and kind, even to people who disagreed with him.",
+          "topic": "fair and kind",
+          "say": "Saladin stayed fair and kind to everyone.",
+          "sayShort": "He was fair and kind.",
+          "ask": "How do you stay kind when you disagree?",
+          "askYou": "When were you kind to someone tricky?",
+          "bridge": "I liked the part about him being a great leader. Remember?"
+        },
+        {
+          "text": "Saladin was famous for his honor and his calm, wise way.",
+          "topic": "his honor",
+          "say": "Saladin was famous for being honorable and wise.",
+          "sayShort": "He was honorable.",
+          "ask": "What does being honorable mean to you?",
+          "askYou": "How do you keep a promise?",
+          "bridge": "I liked the part about him being fair and kind. Remember?"
+        },
+        {
+          "text": "He gave a lot of his money to help poor people.",
+          "topic": "helping the poor",
+          "say": "Saladin gave much of his money to help the poor.",
+          "sayShort": "He helped the poor.",
+          "ask": "How would you help people with less?",
+          "askYou": "What do you like to share?",
+          "bridge": "I liked the part about his honor. Remember?"
+        }
+      ]
     },
     {
       "name": "Pachacuti",
@@ -2630,8 +3370,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/pachacuti.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Pachacuti was a king of the Inca people in South America.",
+          "topic": "an Inca king",
+          "say": "Pachacuti was a king of the Inca people.",
+          "sayShort": "He was an Inca king.",
+          "ask": "What would you do as a king?",
+          "askYou": "What would your kingdom look like?",
+          "bridge": ""
+        },
+        {
+          "text": "He helped build the famous mountain city called Machu Picchu.",
+          "topic": "Machu Picchu",
+          "say": "Pachacuti helped build the city of Machu Picchu.",
+          "sayShort": "He built a mountain city.",
+          "ask": "Would you like to live high on a mountain?",
+          "askYou": "What would you build up high?",
+          "bridge": "I liked the part about him being an Inca king. Remember?"
+        },
+        {
+          "text": "Pachacuti made the Inca land much bigger and stronger.",
+          "topic": "growing his land",
+          "say": "Pachacuti made the Inca land bigger and stronger.",
+          "sayShort": "He grew his land.",
+          "ask": "What would you like to grow or build up?",
+          "askYou": "How do you make something stronger?",
+          "bridge": "I liked the part about Machu Picchu. Remember?"
+        },
+        {
+          "text": "His name means \"Earth-shaker\" in his language.",
+          "topic": "his big name",
+          "say": "Pachacuti's name means \"Earth-shaker.\"",
+          "sayShort": "His name means Earth-shaker.",
+          "ask": "What would you want your name to mean?",
+          "askYou": "Do you like your name?",
+          "bridge": "I liked the part about him growing his land. Remember?"
+        }
+      ]
     },
     {
       "name": "Montezuma II",
@@ -2641,8 +3418,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/montezuma-ii.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Montezuma was the king of the Aztec people in old Mexico.",
+          "topic": "Aztec king",
+          "say": "Montezuma was the king of the Aztec people.",
+          "sayShort": "He was an Aztec king.",
+          "ask": "What would you do as a king?",
+          "askYou": "What would your palace be like?",
+          "bridge": ""
+        },
+        {
+          "text": "He led from a big city built on a lake, called Tenochtitlan.",
+          "topic": "a city on a lake",
+          "say": "Montezuma led a city built right on a lake.",
+          "sayShort": "His city was on a lake.",
+          "ask": "Would you like a home on the water?",
+          "askYou": "What would you build on a lake?",
+          "bridge": "I liked the part about him being an Aztec king. Remember?"
+        },
+        {
+          "text": "Montezuma loved gardens full of bright flowers and animals.",
+          "topic": "his gardens",
+          "say": "Montezuma loved beautiful gardens and animals.",
+          "sayShort": "He loved his gardens.",
+          "ask": "What would you plant in a garden?",
+          "askYou": "What animals would you keep?",
+          "bridge": "I liked the part about his city on a lake. Remember?"
+        },
+        {
+          "text": "He drank a special hot chocolate made from cacao beans.",
+          "topic": "his hot chocolate",
+          "say": "Montezuma drank special hot chocolate.",
+          "sayShort": "He loved hot chocolate.",
+          "ask": "Do you like hot chocolate?",
+          "askYou": "What is your favorite treat?",
+          "bridge": "I liked the part about his gardens. Remember?"
+        }
+      ]
     },
     {
       "name": "Akbar",
@@ -2652,8 +3466,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/600px-Govardhan._Akbar_With_Lion_and_Calf_ca._1630%2C_Metmuseum_%28cropped%29.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Akbar was a great king in India long ago.",
+          "topic": "king of India",
+          "say": "Akbar was a great king of India.",
+          "sayShort": "He was a great king.",
+          "ask": "What would you do as a king?",
+          "askYou": "What makes a good ruler?",
+          "bridge": ""
+        },
+        {
+          "text": "He made sure people of different beliefs could live together in peace.",
+          "topic": "people getting along",
+          "say": "Akbar helped different people live in peace.",
+          "sayShort": "He helped people get along.",
+          "ask": "How do you help people get along?",
+          "askYou": "What do you do to include everyone?",
+          "bridge": "I liked the part about him being king. Remember?"
+        },
+        {
+          "text": "Akbar loved art and music and brought poets and painters from far away.",
+          "topic": "love of art",
+          "say": "Akbar loved art and music and shared it.",
+          "sayShort": "He loved art and music.",
+          "ask": "Do you like art or music more?",
+          "askYou": "What would you create?",
+          "bridge": "I liked the part about people getting along. Remember?"
+        },
+        {
+          "text": "He was not great at reading, but he loved having books read to him.",
+          "topic": "loving stories",
+          "say": "Akbar loved listening to books read out loud.",
+          "sayShort": "He loved hearing stories.",
+          "ask": "Do you like being read to?",
+          "askYou": "What is a story you love to hear?",
+          "bridge": "I liked the part about his love of art. Remember?"
+        }
+      ]
     },
     {
       "name": "Shaka Zulu",
@@ -2663,8 +3514,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/shaka-zulu.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Shaka was a strong leader of the Zulu people in southern Africa.",
+          "topic": "a Zulu leader",
+          "say": "Shaka was a strong leader of the Zulu people.",
+          "sayShort": "He led the Zulu people.",
+          "ask": "What would you do as a leader?",
+          "askYou": "How do you help a group work together?",
+          "bridge": ""
+        },
+        {
+          "text": "He came up with clever new ideas for his people.",
+          "topic": "clever ideas",
+          "say": "Shaka thought up clever new ideas.",
+          "sayShort": "He had clever ideas.",
+          "ask": "What clever idea have you had?",
+          "askYou": "How do you solve a hard problem?",
+          "bridge": "I liked the part about him being a leader. Remember?"
+        },
+        {
+          "text": "Shaka made the Zulu people much bigger and stronger.",
+          "topic": "growing his people",
+          "say": "Shaka made the Zulu group bigger and stronger.",
+          "sayShort": "He grew his people.",
+          "ask": "How do you make a team stronger?",
+          "askYou": "Do you like being on a team?",
+          "bridge": "I liked the part about his clever ideas. Remember?"
+        },
+        {
+          "text": "Stories about Shaka are still told today in songs and books.",
+          "topic": "stories still told",
+          "say": "People still tell Shaka's story in songs and books.",
+          "sayShort": "His story is still told.",
+          "ask": "What story would you want told about you?",
+          "askYou": "What is a story your family tells?",
+          "bridge": "I liked the part about him growing his people. Remember?"
+        }
+      ]
     },
     {
       "name": "Marie Antoinette",
