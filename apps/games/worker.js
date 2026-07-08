@@ -118,6 +118,12 @@ export default {
     if (request.method === 'POST' && pathname === '/api/admin/update-facts') {
       return handleAdminUpdateFacts(request, env);
     }
+    if (request.method === 'POST' && pathname === '/api/admin/rcc-save-facts') {
+      return handleRccSaveFacts(request, env);
+    }
+    if (request.method === 'POST' && pathname === '/api/admin/rcc-generate-facts') {
+      return handleRccGenerateFacts(request, env);
+    }
     if (request.method === 'POST' && pathname === '/api/admin/batch') {
       return handleAdminBatch(request, env);
     }
@@ -894,7 +900,7 @@ async function atomicManifestRemoveCommit(env, game, folder, filename, repoPath)
 // ─── Atomic commit: topic folder rename (archive / restore / purge) ───────────
 
 async function atomicTopicRenameCommit(env, game, fromFolder, toFolder, action) {
-  const imgSourcePrefix = `${game}/${game}/_Resources/_imgSource`;
+  const imgSourcePrefix = `${gameFolder(game)}/_Resources/_imgSource`;
   const manifestRepoPath = `${gameFolder(game)}/manifest.json`;
 
   // 1. Get HEAD
@@ -1555,7 +1561,7 @@ async function doBatchCommit(env, branch, resolved) {
         const base         = filename.replace(/\.[^.]+$/, '');
         const saveFilename = `${base}.${ext}`;
         const oldFilename  = filename !== saveFilename ? filename : null;
-        const repoPath     = `${game}/${game}/_Resources/_imgSource/${folder}/${saveFilename}`;
+        const repoPath     = `${gameFolder(game)}/_Resources/_imgSource/${folder}/${saveFilename}`;
         const localPath    = `_Resources/_imgSource/${folder}/${saveFilename}`;
         const oldLocalPath = oldFilename ? `_Resources/_imgSource/${folder}/${oldFilename}` : null;
         treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: blobSha });
@@ -1628,7 +1634,7 @@ async function doBatchCommit(env, branch, resolved) {
         treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: null });
         if (personName && fpgHtml) fpgHtml = patchImg(fpgHtml, personName, '');
       } else if (manifests[game]) {
-        const repoPath = `${game}/${game}/_Resources/_imgSource/${folder}/${filename}`;
+        const repoPath = `${gameFolder(game)}/_Resources/_imgSource/${folder}/${filename}`;
         treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: null });
         const m = manifests[game];
         if (m.images[folder]) {
@@ -2029,6 +2035,199 @@ async function atomicFpgFactsCommit(env, htmlContent, count, mode) {
   const refRes = await ghRaw(env, 'PATCH', 'git/refs/heads/main', { sha: newCommit.sha, force: false });
   if (refRes.status === 422) throw new Error('CONFLICT');
   if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
+}
+
+// ─── Red Carpet Convos: roster (people.json) save + AI draft ──────────────────
+// The redesigned Famous Person game (red-carpet-convos/) stores its roster as a
+// JSON file with the NEW 7-field fact schema (fade levels derived at runtime).
+// The Famous Person Manager edits it; these endpoints commit + AI-draft it.
+
+const RCC_JSON_PATH  = 'red-carpet-convos/people.json';
+const RCC_MODEL      = 'claude-opus-4-8';
+const RCC_MAX_TOKENS = 6000;
+const RCC_BATCH_SIZE = 8;
+const RCC_FACT_SLOTS = ['text', 'topic', 'say', 'sayShort', 'ask', 'askYou', 'bridge'];
+
+const RCC_SYSTEM_PROMPT =
+`You write material for "Red Carpet Convos," a conversation game used by ABA technicians one-on-one with learners (often children or teens, including autistic learners) practicing reciprocal conversation. Two people chat ABOUT a famous person: the learner makes a COMMENT, then asks a QUESTION back (a "volley"). First they "meet" the person by reading a few facts together, then they talk.
+
+For each person you are given, write EXACTLY 4 facts that together form ONE connected conversation — not four disconnected trivia items:
+  Fact 1 — what the person is best known for (the hook).
+  Fact 2 — a related achievement or moment that follows from Fact 1.
+  Fact 3 — a warm or surprising personal detail.
+  Fact 4 — why they still matter, ending by turning toward the learner.
+
+Each fact is a JSON object with these 7 fields. EVERY field is required, in plain, warm, spoken language a 6th grader could read — short words, one idea at a time, positive and kind, nothing grim or violent. Use the person's FIRST name.
+  text     — the fact, read together in the "meet" phase. ONE simple sentence, about 10–18 words.
+  topic    — a 2–4 word lowercase label for the fact (e.g. "the moon landing").
+  say      — a COMMENT the learner can say about this fact: a complete, plain first-person statement (NOT an exclamation, NOT a question).
+  sayShort — the same comment boiled down to a few words; still a complete short version (the "in a few words" hook).
+  ask      — a VOLLEY: a genuine, open question the learner asks their PARTNER about this topic. Do NOT restate the fact first; just ask.
+  askYou   — an alternate volley that turns the question toward the partner's own life or opinion ("Have you ever…", "What would you…").
+  bridge   — a short line the PARTNER says to lead INTO this fact by recalling it from the "meet" phase, e.g. "I liked the part about {this topic}. Remember?". For Fact 1 ONLY, set bridge to an empty string "" (there is no fact before it).
+
+Hard rules:
+  • say and sayShort are statements the learner says; ask and askYou are questions the learner asks the partner. Keep them clearly distinct.
+  • bridge is the PARTNER's short recall opener into THIS fact and must refer to this fact's topic. Fact 1's bridge = "".
+  • Be accurate and upbeat — no death details, violence, or anything distressing.
+  • Vary how sentences open; don't start every line the same way.
+
+Return ONLY a JSON object — no markdown fences, no preamble. Keys are the person names EXACTLY as given. Each value is an array of exactly 4 fact objects, each with all 7 fields.
+
+Example (Facts 1→2 only, illustration — do NOT reuse this text):
+{"Example Person":[
+  {"text":"Amelia was the first woman to fly a plane alone across the ocean.","topic":"flying across the ocean","say":"Amelia flew all by herself across the whole ocean.","sayShort":"She flew across the ocean alone.","ask":"Have you ever been on a plane?","askYou":"Where would you fly if you could go anywhere?","bridge":""},
+  {"text":"She set speed records and won a big medal for flying.","topic":"speed records","say":"Amelia was so fast she won a special flying medal.","sayShort":"She won a flying medal.","ask":"What is something you are really good at?","askYou":"Have you ever won a prize?","bridge":"I liked the part about her speed records. Remember?"}
+]}`;
+
+async function rccLoadRoster(env) {
+  const file = await gh(env, 'GET', 'contents/' + RCC_JSON_PATH);
+  const text = base64ToUtf8((file.content || '').replace(/\n/g, ''));
+  const data = JSON.parse(text);
+  const people = Array.isArray(data) ? data : (data.people || []);
+  return { data, people };
+}
+
+// Enforce the 7-slot shape; fact 1 always has an empty inbound bridge.
+function rccNormalizeFacts(arr) {
+  return (arr || []).slice(0, 4).map((f, i) => {
+    const o = {};
+    for (const k of RCC_FACT_SLOTS) o[k] = (f && typeof f[k] === 'string') ? f[k] : '';
+    if (i === 0) o.bridge = '';
+    return o;
+  });
+}
+
+async function atomicRccSaveCommit(env, rosterObj, message) {
+  const branch     = env.GITHUB_BRANCH || 'main';
+  const refData    = await gh(env, 'GET', `git/ref/heads/${branch}`);
+  const headSha    = refData.object.sha;
+  const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
+  const treeSha    = commitData.tree.sha;
+
+  const blob = await gh(env, 'POST', 'git/blobs', {
+    content:  utf8ToBase64(JSON.stringify(rosterObj, null, 2) + '\n'),
+    encoding: 'base64',
+  });
+  const newTree = await gh(env, 'POST', 'git/trees', {
+    base_tree: treeSha,
+    tree: [{ path: RCC_JSON_PATH, mode: '100644', type: 'blob', sha: blob.sha }],
+  });
+  const newCommit = await gh(env, 'POST', 'git/commits', {
+    message: message || 'Admin: update Red Carpet Convos roster',
+    tree:    newTree.sha,
+    parents: [headSha],
+  });
+  const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${branch}`, { sha: newCommit.sha, force: false });
+  if (refRes.status === 422) throw new Error('CONFLICT');
+  if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
+}
+
+// Commit hand-edited roster back to people.json (from the manager's Save).
+async function handleRccSaveFacts(request, env) {
+  const authErr = await requireAdmin(request, env);
+  if (authErr) return authErr;
+
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonError('Invalid JSON body', 400); }
+
+  const people = body && body.people;
+  if (!Array.isArray(people)) return jsonError('people array is required', 400);
+  for (const p of people) {
+    if (!p || typeof p.name !== 'string' || !p.name.trim()) return jsonError('Every person needs a name', 400);
+  }
+  // Migration flag: a person is live (converted) only with a full fact set,
+  // unless explicitly hidden (an incoming converted:false is preserved).
+  people.forEach(p => { const complete = !!(p.facts && p.facts.length >= 4); p.converted = complete && p.converted !== false; });
+
+  // Preserve any top-level wrapper fields (e.g. _note) already in the file.
+  let roster;
+  try { roster = await rccLoadRoster(env); }
+  catch { roster = { data: {}, people: [] }; }
+  const out = (roster.data && typeof roster.data === 'object' && !Array.isArray(roster.data)) ? { ...roster.data } : {};
+  out.people    = people;
+  out.generated = new Date().toISOString();
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try { await atomicRccSaveCommit(env, out, 'Admin: update Red Carpet Convos roster'); break; }
+    catch (err) {
+      if (err.message === 'CONFLICT' && attempt < 2) continue;
+      return jsonError('GitHub commit failed: ' + err.message, 502);
+    }
+  }
+  return json({ ok: true, generated: out.generated, count: people.length });
+}
+
+async function rccGenerateFacts(env, batch) {
+  const peopleList = batch.map(p => ({
+    name: p.name,
+    ...(p.years && { years: p.years }),
+    ...(p.tag   && { tag:   p.tag   }),
+  }));
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHRO_KEY, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: RCC_MODEL, max_tokens: RCC_MAX_TOKENS, system: RCC_SYSTEM_PROMPT, messages: [{ role: 'user', content: JSON.stringify(peopleList, null, 2) }] }),
+  });
+  if (!res.ok) { const txt = await res.text(); throw new Error(`${res.status}: ${txt.slice(0, 300)}`); }
+  const data = await res.json();
+  const textBlock = (data.content || []).find(b => b.type === 'text');
+  if (!textBlock) throw new Error('no text block in model response');
+  let raw = textBlock.text.trim().replace(/^\`\`\`(?:json)?\s*/, '').replace(/\s*\`\`\`$/, '');
+  return JSON.parse(raw);
+}
+
+// AI-draft facts. With { name } → return facts for review (no commit, used by the
+// manager). With { limit } → fill factless people in people.json and COMMIT
+// (used by the GM "populate" button / bulk conversion).
+async function handleRccGenerateFacts(request, env) {
+  const authErr = await requireAdmin(request, env);
+  if (authErr) return authErr;
+  if (!env.ANTHRO_KEY) return jsonError('AI not configured (ANTHRO_KEY missing)', 503);
+
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonError('Invalid JSON body', 400); }
+
+  // Single-person draft — return facts, do NOT commit (human reviews then Saves).
+  if (body && body.name) {
+    let gen;
+    try { gen = await rccGenerateFacts(env, [{ name: body.name, years: body.years, tag: body.tag }]); }
+    catch (err) { return jsonError('Generation failed: ' + err.message, 502); }
+    const arr   = gen[body.name] || Object.values(gen)[0] || [];
+    const facts = rccNormalizeFacts(arr);
+    if (facts.length < 4) return jsonError('Model returned too few facts', 502);
+    return json({ ok: true, facts });
+  }
+
+  // Batch fill — draft facts for people that still need them, then commit.
+  const limit = Math.max(1, Math.min(RCC_BATCH_SIZE, Number(body && body.limit) || RCC_BATCH_SIZE));
+  let roster;
+  try { roster = await rccLoadRoster(env); }
+  catch (err) { return jsonError('Could not read people.json: ' + err.message, 502); }
+  const need = roster.people.filter(p => !(p.facts && p.facts.length >= 4)).slice(0, limit);
+  if (!need.length) return json({ ok: true, filled: [], message: 'Every person already has facts.' });
+
+  let gen;
+  try { gen = await rccGenerateFacts(env, need.map(p => ({ name: p.name, years: p.years, tag: p.tag }))); }
+  catch (err) { return jsonError('Generation failed: ' + err.message, 502); }
+
+  const filled = [];
+  for (const p of need) {
+    const arr = gen[p.name];
+    if (arr && arr.length) { p.facts = rccNormalizeFacts(arr); p.converted = true; filled.push(p.name); }
+  }
+  if (!filled.length) return jsonError('Model returned no usable facts', 502);
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try { await atomicRccSaveCommit(env, roster.data, `Admin: draft Red Carpet Convos facts (${filled.length} people)`); break; }
+    catch (err) {
+      if (err.message === 'CONFLICT' && attempt < 2) continue;
+      return jsonError('GitHub commit failed: ' + err.message, 502);
+    }
+  }
+  return json({ ok: true, filled });
 }
 
 // ─── HTML patch helpers ────────────────────────────────────────────────────────

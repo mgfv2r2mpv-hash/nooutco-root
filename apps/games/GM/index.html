@@ -268,6 +268,15 @@
         </div>
       </a>
 
+      <a class="card" href="../AdminTools/FamousPersonManager/">
+        <div class="card-icon">🎬</div>
+        <div>
+          <div class="card-label">Red Carpet Convos Content</div>
+          <div class="card-title">Famous Person Manager</div>
+          <div class="card-desc">Edit prompts + facts for Red Carpet Convos, and review person suggestions from the game search box</div>
+        </div>
+      </a>
+
       <div class="card card-action">
         <div class="card-icon">🧠</div>
         <div style="flex:1;min-width:0">
@@ -282,6 +291,19 @@
             <summary>Terminal alternative</summary>
             <code>ANTHROPIC_API_KEY=sk-ant-… python3 AdminTools/update_facts.py</code>
           </details>
+        </div>
+      </div>
+
+      <div class="card card-action">
+        <div class="card-icon">🎬</div>
+        <div style="flex:1;min-width:0">
+          <div class="card-label">Red Carpet Convos</div>
+          <div class="card-title">Populate Red Carpet Facts</div>
+          <div class="card-desc">Use AI to draft a connected 4-fact set (new schema) for Red Carpet Convos people that still need facts — one reviewable batch per click, committed to <code style="font-size:11px;background:#f0f4e8;padding:1px 4px;border-radius:4px">people.json</code>. Review each on the Famous Person Manager. Requires <code style="font-size:11px;background:#f0f4e8;padding:1px 4px;border-radius:4px">ANTHRO_KEY</code> set in the Worker.</div>
+          <div class="card-action-row">
+            <button class="run-btn" id="rcc-facts-btn">Populate next batch</button>
+            <span class="run-status" id="rcc-facts-status"></span>
+          </div>
         </div>
       </div>
 
@@ -337,6 +359,35 @@
         const data = await res.json();
         if (data.ok) {
           status.textContent = '✓ ' + data.message;
+        } else {
+          status.textContent = '✗ ' + (data.error || 'Unknown error');
+          status.className   = 'run-status error';
+        }
+      } catch (err) {
+        status.textContent = '✗ Network error: ' + err.message;
+        status.className   = 'run-status error';
+      }
+      btn.disabled    = false;
+      btn.textContent = 'Populate next batch';
+    });
+
+    document.getElementById('rcc-facts-btn').addEventListener('click', async () => {
+      const btn    = document.getElementById('rcc-facts-btn');
+      const status = document.getElementById('rcc-facts-status');
+      btn.disabled    = true;
+      btn.textContent = 'Running…';
+      status.textContent = 'Drafting a batch of conversation sets — this may take ~30–60 s…';
+      status.className   = 'run-status';
+      try {
+        const res  = await fetch('/api/admin/rcc-generate-facts', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body:    JSON.stringify({ mode: 'fill', limit: 8 }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          const n = (data.filled || []).length;
+          status.textContent = n ? ('✓ Drafted ' + n + ' — review on the Famous Person Manager') : ('✓ ' + (data.message || 'Nothing to fill'));
         } else {
           status.textContent = '✗ ' + (data.error || 'Unknown error');
           status.className   = 'run-status error';

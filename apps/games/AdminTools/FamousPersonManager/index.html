@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Famous Person Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="/tokens.css">
+  <link rel="stylesheet" href="/assets/nav-bar.css">
+  <script src="/assets/nav-bar.js" defer></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    /* Scoped token top-up (same two shades the game adds) */
+    :root { --sage-300: #cbd09f; --sage-400: #9aa87f; }
+    body { font-family: var(--font-sans, 'Atkinson Hyperlegible', system-ui, sans-serif); background: #eef1ea; color: var(--slate-900); min-height: 100dvh; -webkit-font-smoothing: antialiased; }
+    button { font-family: inherit; }
+    textarea, input { font-family: inherit; }
+    textarea:focus, input:focus { outline: none; border-color: var(--sage-500) !important; box-shadow: 0 0 0 3px rgba(106,118,89,.18); }
+    a { color: var(--sage-600); text-decoration: none; }
+    a:hover { color: var(--sage-700); }
+    .fpm-scroll::-webkit-scrollbar { width: 9px; }
+    .fpm-scroll::-webkit-scrollbar-thumb { background: #cfd6c4; border-radius: 9px; }
+    @keyframes fpm-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Floating gear + admin modal (this page owns its own auth, like the other managers) */
+    .admin-gear { position: fixed; bottom: 1rem; right: 1rem; z-index: 9999; font-size: 1.3rem; background: none; border: none; cursor: pointer; opacity: .4; transition: opacity .15s, filter .15s; padding: 0; line-height: 1; }
+    .admin-gear:hover { opacity: .85; }
+    .admin-gear.authed { opacity: 1; filter: sepia(1) saturate(2.2) hue-rotate(40deg) brightness(.9); }
+    #admin-modal { display: none; position: fixed; inset: 0; background: rgba(44,51,31,.32); z-index: 10000; align-items: center; justify-content: center; padding: 20px; }
+    #admin-modal.open { display: flex; }
+    .admin-modal-box { background: #fff; border: 1px solid var(--sage-100, #e2e6d9); border-radius: 16px; box-shadow: 0 16px 42px rgba(44,51,31,.16); padding: 1.6rem; width: 320px; }
+    .admin-modal-box h2 { font-size: 1rem; margin-bottom: .35rem; color: var(--sage-900, #2c331f); }
+    .admin-modal-box p { font-size: .8rem; color: var(--sage-600, #5d6a4d); margin-bottom: 1rem; }
+    .admin-modal-box input { width: 100%; padding: .55rem .7rem; border: 1px solid var(--sage-200, #c7cdb6); border-radius: 8px; font-size: .9rem; margin-bottom: .6rem; }
+    .admin-modal-box .unlock-btn { width: 100%; padding: .55rem; border-radius: 8px; background: var(--sage-700, #4d5840); color: #fff; border: none; cursor: pointer; font-size: .9rem; font-weight: 700; }
+    .admin-modal-box .unlock-btn:hover { background: var(--sage-800, #3c4533); }
+    #admin-pw-error { color: #b91c1c; font-size: .78rem; margin-top: .5rem; min-height: 1em; }
+
+    #fpm { height: 100vh; display: flex; flex-direction: column; }
+  </style>
+</head>
+<body>
+
+  <noaba-bar product="games" crumbs="Game Master/Famous Person Manager" crumb-hrefs="/,/GM/" no-admin></noaba-bar>
+
+  <button class="admin-gear" id="admin-gear" title="Admin">⚙️</button>
+  <div id="admin-modal">
+    <div class="admin-modal-box">
+      <h2>Famous Person Manager</h2>
+      <p>Enter the admin password to continue.</p>
+      <input type="password" id="admin-pw-input" placeholder="Password">
+      <button class="unlock-btn" id="admin-unlock-btn">Unlock</button>
+      <div id="admin-pw-error"></div>
+    </div>
+  </div>
+
+  <div id="fpm"><!-- manager renders here once authed --></div>
+
+  <!-- _worker.js rewrites ADMIN_SECRET_HASH per request (HTML only), so it must
+       live here in the page, not in manager.js. manager.js reads the global. -->
+  <script>
+    const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
+    window.ADMIN_SECRET_HASH = ADMIN_SECRET_HASH;
+  </script>
+  <script src="manager.js"></script>
+</body>
+</html>
