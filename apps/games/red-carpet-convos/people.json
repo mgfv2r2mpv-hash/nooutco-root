@@ -1,6 +1,6 @@
 {
   "_note": "Red Carpet Convos roster. Per person: {name, years, tag, emoji, img, accent, accentBg, converted, facts:[{text, topic, say, sayShort, ask, askYou, bridge}]}. `converted` is the MIGRATION FLAG: true = migrated to the new schema and live in the game; false = a stub pending fact population (kept OUT of the game for now). During migration the game surfaces only converted people. Fade levels (comment/volley Partial/Minimal) are derived at runtime from say/ask. `bridge` is the partner's recall opener INTO this fact (fact 1's bridge is empty). Edited via AdminTools/FamousPersonManager; the rcc-generate-facts populator writes facts + sets converted. Store only public-figure content — never learner/session data.",
-  "generated": "2026-07-08T18:36:21.860Z",
+  "generated": "2026-07-08T18:45:16.028Z",
   "people": [
     {
       "name": "Lin-Manuel Miranda",
@@ -970,8 +970,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/charles-darwin.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Charles came up with a big idea about how animals and plants change over time.",
+          "topic": "how life changes",
+          "say": "Charles had a big idea about how living things change.",
+          "sayShort": "He studied how life changes.",
+          "ask": "What animal do you find really interesting?",
+          "askYou": "If you could study any animal, which one?",
+          "bridge": ""
+        },
+        {
+          "text": "He sailed around the world for five years on a ship called the Beagle.",
+          "topic": "sailing the world",
+          "say": "Charles sailed all the way around the world.",
+          "sayShort": "He sailed the whole world.",
+          "ask": "Where in the world would you like to sail?",
+          "askYou": "Have you ever been on a boat?",
+          "bridge": "I liked the part about him sailing the world. Remember?"
+        },
+        {
+          "text": "As a boy, Charles loved collecting beetles and exploring in nature.",
+          "topic": "loving nature",
+          "say": "Charles loved collecting bugs and exploring outside.",
+          "sayShort": "He loved exploring nature.",
+          "ask": "What do you like to look for outside?",
+          "askYou": "Do you like collecting things?",
+          "bridge": "I liked the part about him loving nature. Remember?"
+        },
+        {
+          "text": "Charles loved his family and lived a happy, quiet life in the countryside.",
+          "topic": "his quiet home",
+          "say": "Charles lived a happy, quiet life with his family.",
+          "sayShort": "He loved his quiet home.",
+          "ask": "What do you like to do at home?",
+          "askYou": "What makes home feel cozy to you?",
+          "bridge": "I liked the part about his quiet home. Remember?"
+        }
+      ]
     },
     {
       "name": "Isaac Newton",
@@ -1221,8 +1258,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/winston-churchill.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Winston led Britain as prime minister during a very hard time.",
+          "topic": "leading Britain",
+          "say": "Winston led his country through a hard time.",
+          "sayShort": "He led Britain.",
+          "ask": "What would you do to help people feel brave?",
+          "askYou": "What makes a good leader to you?",
+          "bridge": ""
+        },
+        {
+          "text": "He gave powerful speeches that gave people hope.",
+          "topic": "hopeful speeches",
+          "say": "Winston gave speeches that filled people with hope.",
+          "sayShort": "He gave hopeful speeches.",
+          "ask": "What could you say to cheer someone up?",
+          "askYou": "Have you ever given a speech?",
+          "bridge": "I liked the part about his hopeful speeches. Remember?"
+        },
+        {
+          "text": "Winston also wrote many books and even won a big prize for his writing.",
+          "topic": "his writing",
+          "say": "Winston wrote books and won a big writing prize.",
+          "sayShort": "He was a prize-winning writer.",
+          "ask": "What would you write a book about?",
+          "askYou": "Do you like to write stories?",
+          "bridge": "I liked the part about his writing. Remember?"
+        },
+        {
+          "text": "He loved to paint pictures of the countryside in his free time.",
+          "topic": "his painting hobby",
+          "say": "Winston loved to paint pictures for fun.",
+          "sayShort": "He loved to paint.",
+          "ask": "What is a hobby you love?",
+          "askYou": "What do you like to do to relax?",
+          "bridge": "I liked the part about his painting hobby. Remember?"
+        }
+      ]
     },
     {
       "name": "Abraham Lincoln",
@@ -1280,8 +1354,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/cleopatra.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Cleopatra was the last queen of ancient Egypt.",
+          "topic": "queen of Egypt",
+          "say": "Cleopatra was the last queen of old Egypt.",
+          "sayShort": "She was Egypt's queen.",
+          "ask": "What would you do if you were a queen or king?",
+          "askYou": "What would your palace look like?",
+          "bridge": ""
+        },
+        {
+          "text": "She could speak many languages and was famous for being super smart.",
+          "topic": "many languages",
+          "say": "Cleopatra spoke lots of languages and was very smart.",
+          "sayShort": "She knew many languages.",
+          "ask": "What language would you like to learn?",
+          "askYou": "Do you know any words in another language?",
+          "bridge": "I liked the part about her many languages. Remember?"
+        },
+        {
+          "text": "Cleopatra loved books and made a big library even bigger.",
+          "topic": "her big library",
+          "say": "Cleopatra loved books and grew a huge library.",
+          "sayShort": "She loved her library.",
+          "ask": "What books would you put in your own library?",
+          "askYou": "Do you like the library?",
+          "bridge": "I liked the part about her big library. Remember?"
+        },
+        {
+          "text": "She wore pretty makeup and jewelry that people still copy today.",
+          "topic": "her style",
+          "say": "Cleopatra had a style people still copy today.",
+          "sayShort": "She had famous style.",
+          "ask": "What kind of jewelry or clothes do you like?",
+          "askYou": "What is your favorite thing to wear?",
+          "bridge": "I liked the part about her style. Remember?"
+        }
+      ]
     },
     {
       "name": "Galileo Galilei",
@@ -1937,8 +2048,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/bruce-lee.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Bruce was a martial arts master and a movie star.",
+          "topic": "martial arts star",
+          "say": "Bruce was a martial arts master and a movie star.",
+          "sayShort": "He was a kung fu star.",
+          "ask": "Have you ever tried karate or a sport like it?",
+          "askYou": "What sport would you love to master?",
+          "bridge": ""
+        },
+        {
+          "text": "He made his very own style of martial arts.",
+          "topic": "his own style",
+          "say": "Bruce invented his own martial arts style.",
+          "sayShort": "He made his own style.",
+          "ask": "What is something you do your own special way?",
+          "askYou": "What would you invent?",
+          "bridge": "I liked the part about his own style. Remember?"
+        },
+        {
+          "text": "Bruce trained super hard and was famous for being really strong.",
+          "topic": "amazing strength",
+          "say": "Bruce trained hard and got amazingly strong.",
+          "sayShort": "He was super strong.",
+          "ask": "What do you do to get stronger?",
+          "askYou": "Do you like to exercise?",
+          "bridge": "I liked the part about his amazing strength. Remember?"
+        },
+        {
+          "text": "He said \"be like water\" — meaning stay ready to change and flow.",
+          "topic": "be like water",
+          "say": "Bruce said to \"be like water\" and stay flexible.",
+          "sayShort": "He said be like water.",
+          "ask": "How do you handle changes or surprises?",
+          "askYou": "What helps you go with the flow?",
+          "bridge": "I liked the part about \"be like water.\" Remember?"
+        }
+      ]
     },
     {
       "name": "Michelangelo",
@@ -1948,8 +2096,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/michelangelo.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Michelangelo painted the ceiling of a huge church, lying on his back.",
+          "topic": "painting the ceiling",
+          "say": "Michelangelo painted a giant ceiling on his back.",
+          "sayShort": "He painted a huge ceiling.",
+          "ask": "What would you paint on a giant ceiling?",
+          "askYou": "Would you rather paint up high or down low?",
+          "bridge": ""
+        },
+        {
+          "text": "He also carved a famous statue out of one big block of marble.",
+          "topic": "his famous statue",
+          "say": "Michelangelo carved a famous statue from marble.",
+          "sayShort": "He carved a famous statue.",
+          "ask": "What would you carve or build?",
+          "askYou": "Have you ever made something out of clay?",
+          "bridge": "I liked the part about his famous statue. Remember?"
+        },
+        {
+          "text": "Michelangelo was a painter, a sculptor, and even a builder.",
+          "topic": "so many talents",
+          "say": "Michelangelo was great at painting and building.",
+          "sayShort": "He had many talents.",
+          "ask": "What are a few things you are good at?",
+          "askYou": "What new thing would you like to try?",
+          "bridge": "I liked the part about his many talents. Remember?"
+        },
+        {
+          "text": "He kept making beautiful art even when he was very old.",
+          "topic": "never stopping",
+          "say": "Michelangelo made art his whole long life.",
+          "sayShort": "He never stopped making art.",
+          "ask": "What do you hope to still do when you are old?",
+          "askYou": "What could you do forever?",
+          "bridge": "I liked the part about him never stopping. Remember?"
+        }
+      ]
     },
     {
       "name": "Coco Chanel",
@@ -1959,8 +2144,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/coco-chanel.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Coco started a clothing brand that changed how people dressed.",
+          "topic": "her clothing brand",
+          "say": "Coco made a clothing brand that changed fashion.",
+          "sayShort": "She started a fashion brand.",
+          "ask": "What clothes would you design?",
+          "askYou": "What is your favorite outfit?",
+          "bridge": ""
+        },
+        {
+          "text": "She made the simple \"little black dress\" famous.",
+          "topic": "the little black dress",
+          "say": "Coco made the little black dress famous.",
+          "sayShort": "She made a famous dress.",
+          "ask": "What color would your special outfit be?",
+          "askYou": "What do you like to wear on a special day?",
+          "bridge": "I liked the part about the little black dress. Remember?"
+        },
+        {
+          "text": "Coco also made a perfume that is still popular today.",
+          "topic": "her famous perfume",
+          "say": "Coco made a perfume people still love today.",
+          "sayShort": "She made a famous perfume.",
+          "ask": "What is a smell you really like?",
+          "askYou": "What smells make you happy?",
+          "bridge": "I liked the part about her famous perfume. Remember?"
+        },
+        {
+          "text": "She learned to sew when she was young and got better and better.",
+          "topic": "learning to sew",
+          "say": "Coco learned to sew young and kept improving.",
+          "sayShort": "She learned to sew young.",
+          "ask": "What is something you are getting better at?",
+          "askYou": "What would you like to learn to make?",
+          "bridge": "I liked the part about her learning to sew. Remember?"
+        }
+      ]
     },
     {
       "name": "Joan of Arc",
@@ -2003,8 +2225,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/audrey-hepburn.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Audrey was a famous movie star that everyone adored.",
+          "topic": "movie star",
+          "say": "Audrey was a beloved movie star.",
+          "sayShort": "She was a movie star.",
+          "ask": "What kind of movie would you star in?",
+          "askYou": "What is a movie you really like?",
+          "bridge": ""
+        },
+        {
+          "text": "She started out as a dancer before she became an actress.",
+          "topic": "dancer first",
+          "say": "Audrey was a dancer before she made movies.",
+          "sayShort": "She danced first.",
+          "ask": "Do you like to dance?",
+          "askYou": "What kind of dancing looks fun to you?",
+          "bridge": "I liked the part about her dancing. Remember?"
+        },
+        {
+          "text": "Audrey traveled the world to help kids who did not have enough food.",
+          "topic": "helping kids",
+          "say": "Audrey helped kids around the world.",
+          "sayShort": "She helped hungry kids.",
+          "ask": "How do you like to help other people?",
+          "askYou": "Who is someone you like to help?",
+          "bridge": "I liked the part about her helping kids. Remember?"
+        },
+        {
+          "text": "She had a kind, gentle way that people loved.",
+          "topic": "her kindness",
+          "say": "Audrey was known for being so kind.",
+          "sayShort": "She was very kind.",
+          "ask": "What is a kind thing you like to do?",
+          "askYou": "Who is the kindest person you know?",
+          "bridge": "I liked the part about her kindness. Remember?"
+        }
+      ]
     },
     {
       "name": "Aristotle",
@@ -2025,8 +2284,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/simone-biles.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Simone is one of the best gymnasts ever, with lots of Olympic medals.",
+          "topic": "gymnast champion",
+          "say": "Simone is one of the best gymnasts in the world.",
+          "sayShort": "She is a gymnastics star.",
+          "ask": "Can you do a flip or a cartwheel?",
+          "askYou": "What is a cool trick you can do?",
+          "bridge": ""
+        },
+        {
+          "text": "She has done moves so new that they are named after her.",
+          "topic": "moves named for her",
+          "say": "Simone made new moves named just for her.",
+          "sayShort": "She has moves named for her.",
+          "ask": "What would you name a move you made up?",
+          "askYou": "What is something you invented?",
+          "bridge": "I liked the part about her special moves. Remember?"
+        },
+        {
+          "text": "Simone reminds people to take care of their minds, not just their bodies.",
+          "topic": "taking care of you",
+          "say": "Simone says to take care of your mind too.",
+          "sayShort": "She cares about feelings.",
+          "ask": "What helps you feel calm and happy?",
+          "askYou": "What do you do when you feel worried?",
+          "bridge": "I liked the part about taking care of you. Remember?"
+        },
+        {
+          "text": "She is short for a gymnast, and that helps her spin extra fast in the air.",
+          "topic": "small but mighty",
+          "say": "Being small helps Simone spin super fast.",
+          "sayShort": "She is small but mighty.",
+          "ask": "What is something you are great at?",
+          "askYou": "What makes you special?",
+          "bridge": "I liked the part about her being small but mighty. Remember?"
+        }
+      ]
     },
     {
       "name": "Greta Thunberg",
@@ -2036,8 +2332,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/greta-thunberg.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Greta started skipping school on Fridays to ask grown-ups to care for the planet.",
+          "topic": "her big idea",
+          "say": "Greta stood up to help take care of the Earth.",
+          "sayShort": "She spoke up for the planet.",
+          "ask": "How do you help take care of the Earth?",
+          "askYou": "What do you love most about nature?",
+          "bridge": ""
+        },
+        {
+          "text": "Kids in lots of countries joined her and did the same thing.",
+          "topic": "kids joined in",
+          "say": "Kids all over joined Greta to help the planet.",
+          "sayShort": "Kids everywhere joined her.",
+          "ask": "How could you get friends to help a good cause?",
+          "askYou": "Have you ever done a good thing with friends?",
+          "bridge": "I liked the part about kids joining in. Remember?"
+        },
+        {
+          "text": "She spoke to leaders all over the world about saving the Earth.",
+          "topic": "speaking to leaders",
+          "say": "Greta told world leaders to care for the Earth.",
+          "sayShort": "She spoke to big leaders.",
+          "ask": "What would you tell world leaders?",
+          "askYou": "What change do you wish for?",
+          "bridge": "I liked the part about her speaking to leaders. Remember?"
+        },
+        {
+          "text": "Greta sailed across the ocean instead of flying, to save fuel.",
+          "topic": "sailing to save fuel",
+          "say": "Greta sailed the ocean to help the planet.",
+          "sayShort": "She sailed to save fuel.",
+          "ask": "What could you do to help the Earth?",
+          "askYou": "Do you like to recycle?",
+          "bridge": "I liked the part about her sailing to save fuel. Remember?"
+        }
+      ]
     },
     {
       "name": "Misty Copeland",
@@ -2487,8 +2820,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/anne-frank.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Anne wrote a famous diary when she was a young girl.",
+          "topic": "her famous diary",
+          "say": "Anne wrote a famous diary as a young girl.",
+          "sayShort": "She wrote a famous diary.",
+          "ask": "Do you ever write in a journal?",
+          "askYou": "What would you write about today?",
+          "bridge": ""
+        },
+        {
+          "text": "She was only thirteen when she started writing her diary.",
+          "topic": "writing young",
+          "say": "Anne started her diary when she was thirteen.",
+          "sayShort": "She wrote it very young.",
+          "ask": "What is something you started doing young?",
+          "askYou": "What do you like to do at your age?",
+          "bridge": "I liked the part about her writing young. Remember?"
+        },
+        {
+          "text": "Anne wrote about her hopes, her dreams, and her everyday life.",
+          "topic": "her hopes and dreams",
+          "say": "Anne wrote about her hopes and her dreams.",
+          "sayShort": "She wrote her dreams down.",
+          "ask": "What is a hope or dream you have?",
+          "askYou": "What do you daydream about?",
+          "bridge": "I liked the part about her hopes and dreams. Remember?"
+        },
+        {
+          "text": "Her diary is now read by people all over the world.",
+          "topic": "read everywhere",
+          "say": "Anne's diary is read all over the world now.",
+          "sayShort": "Her diary is read everywhere.",
+          "ask": "What would you want the world to read?",
+          "askYou": "What is a book you would share with everyone?",
+          "bridge": "I liked the part about her diary being read everywhere. Remember?"
+        }
+      ]
     },
     {
       "name": "William Shakespeare",
@@ -2773,8 +3143,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/florence-nightingale.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Florence helped turn nursing into a real, caring job that helps people.",
+          "topic": "modern nursing",
+          "say": "Florence made nursing a real, helping job.",
+          "sayShort": "She helped start nursing.",
+          "ask": "Who takes care of you when you are sick?",
+          "askYou": "How do you help someone feel better?",
+          "bridge": ""
+        },
+        {
+          "text": "She took care of sick people and made hospitals much cleaner.",
+          "topic": "cleaner hospitals",
+          "say": "Florence made hospitals cleaner and safer.",
+          "sayShort": "She made hospitals clean.",
+          "ask": "Why is it good to keep things clean?",
+          "askYou": "How do you help clean up?",
+          "bridge": "I liked the part about cleaner hospitals. Remember?"
+        },
+        {
+          "text": "People called her \"the Lady with the Lamp\" because she checked on patients at night.",
+          "topic": "Lady with the Lamp",
+          "say": "Florence checked on patients at night with a lamp.",
+          "sayShort": "She was the Lady with the Lamp.",
+          "ask": "What do you do to help others feel safe?",
+          "askYou": "Are you afraid of the dark, or do you like it?",
+          "bridge": "I liked the part about the Lady with the Lamp. Remember?"
+        },
+        {
+          "text": "She made charts and graphs to show people what changes would help.",
+          "topic": "using charts",
+          "say": "Florence used charts to show good ideas.",
+          "sayShort": "She made helpful charts.",
+          "ask": "What could you show with a chart?",
+          "askYou": "Do you like drawing graphs or pictures?",
+          "bridge": "I liked the part about her charts. Remember?"
+        }
+      ]
     },
     {
       "name": "Louis Pasteur",
@@ -2806,8 +3213,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/katherine-johnson.jpeg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Katherine did the math that helped send astronauts to space and back.",
+          "topic": "math for space",
+          "say": "Katherine's math helped astronauts reach space.",
+          "sayShort": "Her math sent people to space.",
+          "ask": "What do you think space is like?",
+          "askYou": "Would you like to be an astronaut?",
+          "bridge": ""
+        },
+        {
+          "text": "She was so good that astronauts asked for her by name to check their numbers.",
+          "topic": "trusted by astronauts",
+          "say": "Astronauts trusted Katherine to check their math.",
+          "sayShort": "Astronauts trusted her.",
+          "ask": "Who do you trust to help you?",
+          "askYou": "What are you the go-to person for?",
+          "bridge": "I liked the part about astronauts trusting her. Remember?"
+        },
+        {
+          "text": "Katherine loved math her whole life, even as a little girl.",
+          "topic": "loving math",
+          "say": "Katherine loved math ever since she was little.",
+          "sayShort": "She loved math young.",
+          "ask": "What subject do you love the most?",
+          "askYou": "What is fun about numbers?",
+          "bridge": "I liked the part about her loving math. Remember?"
+        },
+        {
+          "text": "Katherine was one of the amazing women in the movie Hidden Figures.",
+          "topic": "her famous story",
+          "say": "Katherine's story became a famous movie.",
+          "sayShort": "She's in a famous movie.",
+          "ask": "What part of your story would go in a movie?",
+          "askYou": "What movie makes you feel proud?",
+          "bridge": "I liked the part about her famous story. Remember?"
+        }
+      ]
     },
     {
       "name": "Chien-Shiung Wu",
@@ -3074,8 +3518,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/pablo-picasso.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Pablo painted in many bold new styles that changed art forever.",
+          "topic": "bold new styles",
+          "say": "Pablo painted in bold, brand-new ways.",
+          "sayShort": "He changed art forever.",
+          "ask": "What style would you paint in?",
+          "askYou": "Do you like colorful or simple art?",
+          "bridge": ""
+        },
+        {
+          "text": "He helped invent a style where things look like shapes.",
+          "topic": "shapes and angles",
+          "say": "Pablo helped invent art made of shapes.",
+          "sayShort": "He painted with shapes.",
+          "ask": "What shapes would you use in a picture?",
+          "askYou": "What is your favorite shape?",
+          "bridge": "I liked the part about his shapes. Remember?"
+        },
+        {
+          "text": "Pablo made over twenty thousand pieces of art in his life.",
+          "topic": "so much art",
+          "say": "Pablo made more than twenty thousand artworks.",
+          "sayShort": "He made tons of art.",
+          "ask": "What do you love to make again and again?",
+          "askYou": "How many drawings do you think you've made?",
+          "bridge": "I liked the part about his art. Remember?"
+        },
+        {
+          "text": "He could draw amazing pictures by the time he was only eight.",
+          "topic": "drawing young",
+          "say": "Pablo drew amazing pictures when he was eight.",
+          "sayShort": "He drew great art young.",
+          "ask": "What do you like to draw?",
+          "askYou": "When did you start drawing?",
+          "bridge": "I liked the part about him drawing young. Remember?"
+        }
+      ]
     },
     {
       "name": "Salvador Dalí",
@@ -3188,8 +3669,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/louis-armstrong.jpeg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Louis was a jazz musician who played the trumpet better than almost anyone.",
+          "topic": "jazz trumpet",
+          "say": "Louis played the trumpet like almost no one else.",
+          "sayShort": "He was a trumpet star.",
+          "ask": "What instrument would you like to play?",
+          "askYou": "Do you like happy, bouncy music?",
+          "bridge": ""
+        },
+        {
+          "text": "He also sang in a deep, fun voice that people loved.",
+          "topic": "his fun voice",
+          "say": "Louis sang in a deep, fun voice people loved.",
+          "sayShort": "He had a fun voice.",
+          "ask": "Do you like to sing high or low?",
+          "askYou": "What song do you love to sing?",
+          "bridge": "I liked the part about his fun voice. Remember?"
+        },
+        {
+          "text": "Louis grew up in New Orleans and got his first trumpet from a kind family.",
+          "topic": "New Orleans start",
+          "say": "Louis got his first trumpet from a kind family.",
+          "sayShort": "He started in New Orleans.",
+          "ask": "Who has been really kind to you?",
+          "askYou": "What is a gift that made you happy?",
+          "bridge": "I liked the part about his New Orleans start. Remember?"
+        },
+        {
+          "text": "He sang a song called \"What a Wonderful World\" that people still love.",
+          "topic": "Wonderful World",
+          "say": "Louis sang the famous \"What a Wonderful World.\"",
+          "sayShort": "He sang a famous happy song.",
+          "ask": "What makes the world wonderful to you?",
+          "askYou": "What is something beautiful you saw today?",
+          "bridge": "I liked the part about \"Wonderful World.\" Remember?"
+        }
+      ]
     },
     {
       "name": "Billie Holiday",
@@ -3243,8 +3761,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/bob-marley.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Bob made reggae music in Jamaica and shared songs of peace and love.",
+          "topic": "reggae music",
+          "say": "Bob made reggae music about peace and love.",
+          "sayShort": "He made peaceful music.",
+          "ask": "What kind of music makes you feel calm?",
+          "askYou": "Do you like music with a strong beat?",
+          "bridge": ""
+        },
+        {
+          "text": "He sang a famous song called \"One Love\" that asked everyone to get along.",
+          "topic": "One Love",
+          "say": "Bob sang \"One Love\" about everyone getting along.",
+          "sayShort": "He sang about getting along.",
+          "ask": "How do you help people get along?",
+          "askYou": "How do you make up with a friend?",
+          "bridge": "I liked the part about \"One Love.\" Remember?"
+        },
+        {
+          "text": "Bob loved soccer and played all the time when he could.",
+          "topic": "loving soccer",
+          "say": "Bob loved to play soccer whenever he could.",
+          "sayShort": "He loved soccer.",
+          "ask": "What game do you love to play?",
+          "askYou": "Do you like to play outside?",
+          "bridge": "I liked the part about him loving soccer. Remember?"
+        },
+        {
+          "text": "He learned to play guitar from a friend when he was young.",
+          "topic": "learning guitar",
+          "say": "Bob learned guitar from a friend as a kid.",
+          "sayShort": "A friend taught him guitar.",
+          "ask": "What would you like a friend to teach you?",
+          "askYou": "What have you taught a friend?",
+          "bridge": "I liked the part about him learning guitar. Remember?"
+        }
+      ]
     },
     {
       "name": "Tupac Shakur",
@@ -3793,8 +4348,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/stevie-wonder.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Stevie Wonder is a famous singer who plays lots of instruments.",
+          "topic": "music star",
+          "say": "Stevie is a famous singer who plays many instruments.",
+          "sayShort": "He is a music star.",
+          "ask": "What instrument would you love to play?",
+          "askYou": "Do you like to make music?",
+          "bridge": ""
+        },
+        {
+          "text": "He was a music star even when he was a kid.",
+          "topic": "famous young",
+          "say": "Stevie was a music star as a kid.",
+          "sayShort": "He was famous young.",
+          "ask": "What amazing thing can you do?",
+          "askYou": "What did you love to do as a little kid?",
+          "bridge": "I liked the part about him being famous young. Remember?"
+        },
+        {
+          "text": "Stevie is blind, and he makes some of the happiest music ever.",
+          "topic": "joyful music",
+          "say": "Stevie is blind and makes super happy music.",
+          "sayShort": "He makes joyful music.",
+          "ask": "What song makes you feel happy?",
+          "askYou": "What do you do when a good song comes on?",
+          "bridge": "I liked the part about his joyful music. Remember?"
+        },
+        {
+          "text": "He wrote cheerful songs that people sing at parties and birthdays.",
+          "topic": "party songs",
+          "say": "Stevie wrote songs people sing at parties.",
+          "sayShort": "He wrote party songs.",
+          "ask": "What song do you like at a party?",
+          "askYou": "What do you like to do at birthdays?",
+          "bridge": "I liked the part about his party songs. Remember?"
+        }
+      ]
     },
     {
       "name": "Ella Fitzgerald",
@@ -4750,8 +5342,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/jackie-robinson.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Jackie Robinson was the first Black player in big-league baseball in modern times.",
+          "topic": "breaking barriers",
+          "say": "Jackie was the first Black player in the big leagues.",
+          "sayShort": "He broke a big barrier.",
+          "ask": "Do you like baseball?",
+          "askYou": "What sport would you love to play?",
+          "bridge": ""
+        },
+        {
+          "text": "He wore the number 42, and now every team honors that number.",
+          "topic": "number 42",
+          "say": "Jackie wore 42, a number every team now honors.",
+          "sayShort": "He wore the famous 42.",
+          "ask": "What is your favorite number?",
+          "askYou": "If you had a jersey number, what would it be?",
+          "bridge": "I liked the part about his number 42. Remember?"
+        },
+        {
+          "text": "Jackie stayed calm and strong even when people were unkind.",
+          "topic": "staying strong",
+          "say": "Jackie stayed strong and kind under pressure.",
+          "sayShort": "He stayed strong.",
+          "ask": "How do you stay calm when things are hard?",
+          "askYou": "When have you been really strong?",
+          "bridge": "I liked the part about him staying strong. Remember?"
+        },
+        {
+          "text": "He was such a great player that he won a big award in his very first year.",
+          "topic": "his big award",
+          "say": "Jackie won a top award in his very first year.",
+          "sayShort": "He won a big award.",
+          "ask": "What would you like to win an award for?",
+          "askYou": "Have you ever won something?",
+          "bridge": "I liked the part about his big award. Remember?"
+        }
+      ]
     },
     {
       "name": "Billie Jean King",
