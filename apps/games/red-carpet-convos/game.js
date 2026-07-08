@@ -156,10 +156,16 @@
 
   // ── Flow ───────────────────────────────────────────────────────────
   function pickNext() {
-    var n = PEOPLE.length, used = state.used;
+    // 🎲 a real roll: pick a RANDOM person we haven't shown yet (never the same
+    // one twice in a row). Once everyone's been seen, empty the bag and reroll.
+    var n = PEOPLE.length;
+    if (n <= 1) return { i: state.pIdx, used: state.used };
+    var used = state.used;
     if (used.length >= n) used = [];
-    var i = state.pIdx;
-    for (var k = 0; k < n; k++) { var c = (state.pIdx + 1 + k) % n; if (used.indexOf(c) < 0) { i = c; break; } }
+    var pool = [];
+    for (var c = 0; c < n; c++) { if (c !== state.pIdx && used.indexOf(c) < 0) pool.push(c); }
+    if (!pool.length) { for (var d = 0; d < n; d++) if (d !== state.pIdx) pool.push(d); }
+    var i = pool[Math.floor(Math.random() * pool.length)];
     return { i: i, used: used.concat([i]) };
   }
   function begin() { setState({ phase: 'explore', exploreShown: 1, used: [state.pIdx] }); }
@@ -485,8 +491,10 @@
   }
 
   function stageSpotlight(p, move) {
-    return '<div><div style="margin-bottom:0">' + heroImgHTML(p, 'clamp(240px,42vh,380px)') + '</div>' +
-      '<div style="position:relative;margin:-30px 16px 0;background:#fff;border:1px solid var(--sage-200);border-radius:var(--radius-lg);box-shadow:var(--shadow-md);padding:16px 18px">' +
+    // Caption card sits BELOW the photo (not overlapping) so the name/tag
+    // overlay on the image is never covered.
+    return '<div>' + heroImgHTML(p, 'clamp(240px,42vh,380px)') +
+      '<div style="margin:14px 0 0;background:#fff;border:1px solid var(--sage-200);border-radius:var(--radius-lg);box-shadow:var(--shadow-md);padding:16px 18px">' +
       '<div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--slate-400);margin-bottom:10px">' + move.prompt + '</div>' +
       '<div>' + hintNodeHTML(hintPayload()) + '</div></div></div>';
   }
@@ -519,6 +527,7 @@
   }
 
   function stageTranscript() {
+    var p = person();
     var thread = '';
     for (var m = 0; m < state.moveIdx; m++) {
       var rec = state.records[m]; if (!rec) continue;
@@ -535,11 +544,22 @@
           '<div style="max-width:78%;background:var(--sage-100);color:var(--slate-700);border-radius:14px 14px 4px 14px;padding:9px 13px"><div style="font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;opacity:.65;margin-bottom:2px">Partner</div><div style="font-size:15px;line-height:1.4;font-weight:600">' + escHtml(pt) + '</div></div></div>';
       }
     }
-    return '<div style="background:#fff;border:1px solid var(--sage-200);border-radius:var(--radius-xl);padding:8px 8px 0;display:flex;flex-direction:column">' +
-      '<div class="rcc-scroll" style="max-height:300px;overflow-y:auto;padding:12px 12px 4px;display:flex;flex-direction:column;gap:10px">' + thread + '</div>' +
+    // Two columns: the conversation stream grows on the LEFT, the person's
+    // photo stays on the RIGHT (stacks on narrow screens).
+    var chat = '<div style="flex:2 1 280px;min-width:240px;background:#fff;border:1px solid var(--sage-200);border-radius:var(--radius-xl);padding:8px 8px 0;display:flex;flex-direction:column">' +
+      '<div class="rcc-scroll" style="flex:1;max-height:clamp(280px,48vh,460px);overflow-y:auto;padding:12px 12px 4px;display:flex;flex-direction:column;gap:10px">' +
+      (thread || '<div style="margin:auto;font-size:13px;color:var(--slate-400);font-style:italic;text-align:center;padding:16px">Your chat will appear here as you talk.</div>') + '</div>' +
       '<div style="border-top:1px dashed var(--sage-300);margin-top:4px;padding:14px 14px 16px;background:#fbfcf9;border-radius:0 0 var(--radius-xl) var(--radius-xl)">' +
       '<div style="font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--slate-400);margin-bottom:9px">Your turn 🦸</div>' +
       '<div>' + hintNodeHTML(hintPayload()) + '</div></div></div>';
+    var fit = state.imgFull ? 'contain' : 'cover', pos = state.imgFull ? 'center' : 'center 30%';
+    var pic = '<div style="flex:1 1 200px;min-width:180px;display:flex">' +
+      '<div style="position:relative;flex:1;min-height:300px;border-radius:var(--radius-xl);overflow:hidden;border:1px solid var(--sage-200);background:var(--pabg)">' +
+      '<img src="' + escAttr(p.img) + '" alt="' + escAttr(p.name) + '" referrerpolicy="no-referrer" data-imgerr data-act="toggleImg" style="position:absolute;inset:0;width:100%;height:100%;object-fit:' + fit + ';object-position:' + pos + ';cursor:' + (state.imgFull ? 'zoom-out' : 'zoom-in') + '" />' +
+      '<button data-act="toggleImg" title="' + (state.imgFull ? 'Back to close-up' : 'See the whole photo') + '" aria-label="Zoom photo" style="position:absolute;top:10px;right:10px;width:32px;height:32px;border-radius:999px;border:none;background:rgba(17,24,39,.55);color:#fff;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)">' + (state.imgFull ? '↩' : '⤢') + '</button>' +
+      '<div style="position:absolute;left:0;right:0;bottom:0;padding:16px 14px 12px;background:linear-gradient(to top,rgba(17,24,39,.82),rgba(17,24,39,0));color:#fff"><div style="font-size:18px;font-weight:800;line-height:1.1">' + escHtml(p.name) + '</div><div style="font-size:11.5px;opacity:.9;font-weight:700;margin-top:1px">' + escHtml(p.tag) + ' · ' + escHtml(p.years) + '</div></div>' +
+      '</div></div>';
+    return '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:stretch">' + chat + pic + '</div>';
   }
 
   function stageMap() {
@@ -556,7 +576,8 @@
       var ss = rec ? 'background:var(--pabg);color:var(--pa);border:1.5px solid var(--pa)' : isCur ? 'background:var(--pa);color:#fff;border:1.5px solid var(--pa)' : 'background:#fff;color:var(--slate-400);border:1.5px solid var(--sage-200)';
       return '<span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:800;' + ss + '">' + s.icon + ' ' + s.key + ' ' + (rec ? '✓' : (isCur ? '●' : '○')) + '</span>';
     }).join('');
-    return '<div style="background:#fff;border:1px solid var(--sage-200);border-radius:var(--radius-xl);padding:20px 20px 18px">' +
+    return '<div style="margin-bottom:14px">' + heroImgHTML(person(), 'clamp(220px,36vh,340px)') + '</div>' +
+      '<div style="background:#fff;border:1px solid var(--sage-200);border-radius:var(--radius-xl);padding:20px 20px 18px">' +
       '<div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--slate-400);margin-bottom:16px">The conversation route</div>' +
       '<div style="position:relative;display:flex;justify-content:space-between;align-items:flex-start;padding:0 6px"><div style="position:absolute;top:19px;left:34px;right:34px;height:3px;background:var(--sage-200);border-radius:2px"></div>' + nodes + '</div>' +
       '<div style="border-top:1px dashed var(--sage-300);margin-top:16px;padding-top:14px"><div style="display:flex;align-items:center;gap:9px;margin-bottom:13px;flex-wrap:wrap"><span style="font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--slate-500)">You are here</span>' + steps + '</div>' +
