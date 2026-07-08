@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="version" content="1.0">
+  <title>Red Carpet Convos</title>
+
+  <!-- Shared design tokens + Atkinson fonts (compiled bundle) -->
+  <link rel="stylesheet" href="../tailwind.css">
+  <!-- Site nav bar (same as the other games) -->
+  <link rel="stylesheet" href="/assets/nav-bar.css">
+  <script src="/assets/nav-bar.js" defer></script>
+  <!-- Dancing Script: net-new font, used only for the reward autograph -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&display=swap">
+  <!-- Game-local static styles (reset, keyframes, scoped token top-up) -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <noaba-bar product="games" crumbs="Red Carpet Convos" crumb-hrefs="/" no-admin></noaba-bar>
+
+  <!-- The whole game (a bespoke full-screen conversation app) renders here.
+       Unlike the standard-chrome games, Red Carpet Convos carries its own app
+       bar and screens, so it mirrors famous-person's minimal boot: tokens +
+       nav-bar + admin-gear only. -->
+  <div id="rcc" class="rcc-app" aria-live="polite"></div>
+
+  <script src="game.js"></script>
+
+  <!-- Admin gear → GM hub. _worker.js rewrites ADMIN_SECRET_HASH per request. -->
+  <script>
+    const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
+    window.ADMIN_SECRET_HASH = ADMIN_SECRET_HASH;
+    window.ADMIN_GEAR_PAGE = '../GM/';
+  </script>
+  <script src="../admin-gear.js"></script>
+</body>
+</html>
