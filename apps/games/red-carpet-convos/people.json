@@ -1,6 +1,6 @@
 {
   "_note": "Red Carpet Convos roster. Per person: {name, years, tag, emoji, img, accent, accentBg, converted, facts:[{text, topic, say, sayShort, ask, askYou, bridge}]}. `converted` is the MIGRATION FLAG: true = migrated to the new schema and live in the game; false = a stub pending fact population (kept OUT of the game for now). During migration the game surfaces only converted people. Fade levels (comment/volley Partial/Minimal) are derived at runtime from say/ask. `bridge` is the partner's recall opener INTO this fact (fact 1's bridge is empty). Edited via AdminTools/FamousPersonManager; the rcc-generate-facts populator writes facts + sets converted. Store only public-figure content — never learner/session data.",
-  "generated": "2026-07-08T20:37:51.724Z",
+  "generated": "2026-07-08T20:40:48.760Z",
   "people": [
     {
       "name": "Lin-Manuel Miranda",
@@ -10784,8 +10784,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/dante-alighieri.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Dante was an Italian poet who wrote a famous long poem about a big journey.",
+          "topic": "a famous poem",
+          "say": "Dante wrote a famous long poem about a journey.",
+          "sayShort": "He wrote an epic poem.",
+          "ask": "Where would you go on a big journey?",
+          "askYou": "Do you like adventure stories?",
+          "bridge": ""
+        },
+        {
+          "text": "He wrote in everyday Italian so regular people could read it.",
+          "topic": "writing for everyone",
+          "say": "Dante wrote so everyone could read his work.",
+          "sayShort": "He wrote for everyone.",
+          "ask": "How do you make things easy to understand?",
+          "askYou": "What would you write for people?",
+          "bridge": "I liked the part about his famous poem. Remember?"
+        },
+        {
+          "text": "In his poem, Dante imagined amazing, magical places.",
+          "topic": "magical places",
+          "say": "Dante imagined amazing magical places.",
+          "sayShort": "He dreamed up magic worlds.",
+          "ask": "What magical place would you dream up?",
+          "askYou": "Do you like made-up worlds?",
+          "bridge": "I liked the part about him writing for everyone. Remember?"
+        },
+        {
+          "text": "People have loved his poem for over 700 years.",
+          "topic": "loved for ages",
+          "say": "Dante's poem has been loved for 700 years.",
+          "sayShort": "His poem still lasts.",
+          "ask": "What would you want people to love forever?",
+          "askYou": "What is a story that lasts?",
+          "bridge": "I liked the part about his magical places. Remember?"
+        }
+      ]
     },
     {
       "name": "Miguel de Cervantes",
@@ -10795,8 +10832,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/miguel-de-cervantes.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Miguel was a Spanish writer who wrote a very famous, funny book.",
+          "topic": "a funny book",
+          "say": "Miguel wrote a very famous, funny book.",
+          "sayShort": "He wrote a funny book.",
+          "ask": "Do you like funny stories?",
+          "askYou": "What would your funny story be about?",
+          "bridge": ""
+        },
+        {
+          "text": "His book is about a man who thinks windmills are giants!",
+          "topic": "windmill giants",
+          "say": "His hero thinks windmills are scary giants.",
+          "sayShort": "He wrote about windmill giants.",
+          "ask": "What everyday thing looks like something else?",
+          "askYou": "Do you like to use your imagination?",
+          "bridge": "I liked the part about his funny book. Remember?"
+        },
+        {
+          "text": "Many people call it one of the very first novels ever written.",
+          "topic": "an early novel",
+          "say": "Miguel wrote one of the first novels ever.",
+          "sayShort": "He wrote an early novel.",
+          "ask": "What story would you love to write?",
+          "askYou": "Do you like long books?",
+          "bridge": "I liked the part about the windmill giants. Remember?"
+        },
+        {
+          "text": "Miguel had an adventurous life full of travel before he wrote it.",
+          "topic": "his adventures",
+          "say": "Miguel had lots of adventures before writing.",
+          "sayShort": "He was an adventurer.",
+          "ask": "What adventure would you love to have?",
+          "askYou": "Where would you travel?",
+          "bridge": "I liked the part about it being an early novel. Remember?"
+        }
+      ]
     },
     {
       "name": "J.R.R. Tolkien",
@@ -10806,8 +10880,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/j.r.r.-tolkien.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Tolkien wrote The Hobbit and The Lord of the Rings.",
+          "topic": "his famous books",
+          "say": "Tolkien wrote The Hobbit and Lord of the Rings.",
+          "sayShort": "He wrote famous fantasy.",
+          "ask": "Do you like stories with magic and quests?",
+          "askYou": "What creature would be in your story?",
+          "bridge": ""
+        },
+        {
+          "text": "He made up whole worlds, maps, and even brand-new languages.",
+          "topic": "a whole world",
+          "say": "Tolkien built whole worlds and languages.",
+          "sayShort": "He built a magic world.",
+          "ask": "What would your made-up world have?",
+          "askYou": "Would you invent a secret language?",
+          "bridge": "I liked the part about his famous books. Remember?"
+        },
+        {
+          "text": "Tolkien loved trees and nature, which show up in his stories.",
+          "topic": "loving nature",
+          "say": "Tolkien loved trees and nature in his tales.",
+          "sayShort": "He loved nature.",
+          "ask": "What is your favorite thing in nature?",
+          "askYou": "Do you like being outside?",
+          "bridge": "I liked the part about his whole world. Remember?"
+        },
+        {
+          "text": "He was also a teacher who taught about old words and stories.",
+          "topic": "a teacher too",
+          "say": "Tolkien taught about old words and tales.",
+          "sayShort": "He was a teacher too.",
+          "ask": "What would you love to teach?",
+          "askYou": "What is a cool old word you know?",
+          "bridge": "I liked the part about him loving nature. Remember?"
+        }
+      ]
     },
     {
       "name": "Agatha Christie",
@@ -10817,8 +10928,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/agatha-christie.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Agatha wrote mystery stories and is called the \"Queen of Mystery.\"",
+          "topic": "Queen of Mystery",
+          "say": "Agatha was the famous Queen of Mystery.",
+          "sayShort": "She wrote mysteries.",
+          "ask": "Do you like solving mysteries?",
+          "askYou": "What mystery would you like to solve?",
+          "bridge": ""
+        },
+        {
+          "text": "Her clever detectives figure out tricky puzzles in her books.",
+          "topic": "clever detectives",
+          "say": "Agatha's detectives solve tricky puzzles.",
+          "sayShort": "Her detectives are clever.",
+          "ask": "Would you be a good detective?",
+          "askYou": "How do you solve a tricky puzzle?",
+          "bridge": "I liked the part about her being the Queen of Mystery. Remember?"
+        },
+        {
+          "text": "She is one of the most-read writers in the whole world.",
+          "topic": "read everywhere",
+          "say": "Agatha is one of the most-read writers ever.",
+          "sayShort": "People read her everywhere.",
+          "ask": "What would you want the world to read?",
+          "askYou": "What is a book you loved?",
+          "bridge": "I liked the part about her clever detectives. Remember?"
+        },
+        {
+          "text": "Agatha kept readers guessing right up to the very last page.",
+          "topic": "surprise endings",
+          "say": "Agatha surprised readers at the very end.",
+          "sayShort": "She loved surprise endings.",
+          "ask": "Do you like surprise endings?",
+          "askYou": "What is a surprise you liked?",
+          "bridge": "I liked the part about her being read everywhere. Remember?"
+        }
+      ]
     },
     {
       "name": "Roald Dahl",
@@ -10828,8 +10976,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/roald-dahl.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Roald wrote funny, magical kids' books like Charlie and the Chocolate Factory.",
+          "topic": "magical kids books",
+          "say": "Roald wrote funny, magical books for kids.",
+          "sayShort": "He wrote magical kid books.",
+          "ask": "What is your favorite kids' book?",
+          "askYou": "Would you visit a chocolate factory?",
+          "bridge": ""
+        },
+        {
+          "text": "He also wrote Matilda and The BFG.",
+          "topic": "more famous books",
+          "say": "Roald wrote Matilda and The BFG too.",
+          "sayShort": "He wrote lots of hits.",
+          "ask": "What magical power would you want?",
+          "askYou": "What book would you read again?",
+          "bridge": "I liked the part about his magical kids books. Remember?"
+        },
+        {
+          "text": "Roald wrote in a little cozy hut in his garden.",
+          "topic": "his writing hut",
+          "say": "Roald wrote in a cozy little garden hut.",
+          "sayShort": "He wrote in a hut.",
+          "ask": "Where would your cozy writing spot be?",
+          "askYou": "Do you like small cozy places?",
+          "bridge": "I liked the part about his more famous books. Remember?"
+        },
+        {
+          "text": "He loved to make up brand-new silly words.",
+          "topic": "silly words",
+          "say": "Roald made up fun, silly new words.",
+          "sayShort": "He made up silly words.",
+          "ask": "What silly word would you make up?",
+          "askYou": "What is a funny word you like?",
+          "bridge": "I liked the part about his writing hut. Remember?"
+        }
+      ]
     },
     {
       "name": "Dr. Seuss",
@@ -10839,8 +11024,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/dr.-seuss.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Dr. Seuss wrote rhyming books like The Cat in the Hat.",
+          "topic": "rhyming books",
+          "say": "Dr. Seuss wrote fun rhyming books.",
+          "sayShort": "He wrote rhyming books.",
+          "ask": "Do you like rhymes?",
+          "askYou": "What rhymes with your name?",
+          "bridge": ""
+        },
+        {
+          "text": "He made up silly words and funny creatures.",
+          "topic": "silly creatures",
+          "say": "Dr. Seuss invented silly words and creatures.",
+          "sayShort": "He made silly creatures.",
+          "ask": "What silly creature would you draw?",
+          "askYou": "Would you make up a new animal?",
+          "bridge": "I liked the part about his rhyming books. Remember?"
+        },
+        {
+          "text": "Dr. Seuss also drew all his own colorful pictures.",
+          "topic": "his own pictures",
+          "say": "Dr. Seuss drew his own colorful pictures.",
+          "sayShort": "He drew his own art.",
+          "ask": "Do you like to draw?",
+          "askYou": "What colors would you use?",
+          "bridge": "I liked the part about his silly creatures. Remember?"
+        },
+        {
+          "text": "His book Green Eggs and Ham uses only a few different words.",
+          "topic": "clever wordplay",
+          "say": "Dr. Seuss wrote a book with very few words.",
+          "sayShort": "He played with words.",
+          "ask": "What food would you rhyme about?",
+          "askYou": "Would you try green eggs and ham?",
+          "bridge": "I liked the part about his own pictures. Remember?"
+        }
+      ]
     },
     {
       "name": "Hans Christian Andersen",
@@ -10850,8 +11072,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/hans-christian-andersen.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Hans wrote famous fairy tales like The Little Mermaid.",
+          "topic": "fairy tales",
+          "say": "Hans wrote famous fairy tales for everyone.",
+          "sayShort": "He wrote fairy tales.",
+          "ask": "What fairy tale do you love?",
+          "askYou": "Would you write a fairy tale?",
+          "bridge": ""
+        },
+        {
+          "text": "He also wrote The Ugly Duckling and The Emperor's New Clothes.",
+          "topic": "more famous tales",
+          "say": "Hans wrote many famous tales we still love.",
+          "sayShort": "He wrote lots of tales.",
+          "ask": "What animal would star in your story?",
+          "askYou": "What is a story you know well?",
+          "bridge": "I liked the part about his fairy tales. Remember?"
+        },
+        {
+          "text": "Hans grew up poor and worked hard to become a great writer.",
+          "topic": "working hard",
+          "say": "Hans worked hard to become a great writer.",
+          "sayShort": "He worked hard for his dream.",
+          "ask": "What are you working hard toward?",
+          "askYou": "What helps you keep trying?",
+          "bridge": "I liked the part about his more famous tales. Remember?"
+        },
+        {
+          "text": "He loved making art by cutting shapes out of paper.",
+          "topic": "paper cutting",
+          "say": "Hans loved cutting shapes out of paper.",
+          "sayShort": "He loved paper art.",
+          "ask": "What would you cut out of paper?",
+          "askYou": "Do you like arts and crafts?",
+          "bridge": "I liked the part about him working hard. Remember?"
+        }
+      ]
     },
     {
       "name": "Walt Whitman",
@@ -10861,8 +11120,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/walt-whitman.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Walt was an American poet who celebrated everyday people and nature.",
+          "topic": "poems of everyday",
+          "say": "Walt wrote poems about everyday people.",
+          "sayShort": "He celebrated everyone.",
+          "ask": "What everyday thing would you write about?",
+          "askYou": "What do you love about regular days?",
+          "bridge": ""
+        },
+        {
+          "text": "His most famous poems are in a book called Leaves of Grass.",
+          "topic": "his poem book",
+          "say": "Walt's poems are in Leaves of Grass.",
+          "sayShort": "He wrote a poem book.",
+          "ask": "What would you name a poem book?",
+          "askYou": "Do you like poems?",
+          "bridge": "I liked the part about his poems of everyday. Remember?"
+        },
+        {
+          "text": "Walt wrote in a free, flowing way, without strict rhymes.",
+          "topic": "free-flowing poems",
+          "say": "Walt wrote free, flowing poems.",
+          "sayShort": "He wrote free poems.",
+          "ask": "Do you like rhymes or free words?",
+          "askYou": "How would you write a poem?",
+          "bridge": "I liked the part about his poem book. Remember?"
+        },
+        {
+          "text": "He loved the outdoors and wrote a lot about nature.",
+          "topic": "loving nature",
+          "say": "Walt loved nature and wrote about it.",
+          "sayShort": "He loved the outdoors.",
+          "ask": "What is your favorite place outside?",
+          "askYou": "Do you like being in nature?",
+          "bridge": "I liked the part about his free-flowing poems. Remember?"
+        }
+      ]
     },
     {
       "name": "Pablo Neruda",
@@ -10872,8 +11168,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/pablo-neruda.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Pablo was a poet from Chile who wrote about love and everyday things.",
+          "topic": "everyday poems",
+          "say": "Pablo wrote poems about love and little things.",
+          "sayShort": "He wrote sweet poems.",
+          "ask": "What everyday thing would you write about?",
+          "askYou": "What small thing makes you happy?",
+          "bridge": ""
+        },
+        {
+          "text": "He even wrote a poem about an ordinary onion!",
+          "topic": "a poem about an onion",
+          "say": "Pablo wrote a whole poem about an onion.",
+          "sayShort": "He wrote about an onion.",
+          "ask": "What food would you write a poem about?",
+          "askYou": "What is your favorite food?",
+          "bridge": "I liked the part about his everyday poems. Remember?"
+        },
+        {
+          "text": "Pablo won a big prize for his beautiful writing.",
+          "topic": "a big prize",
+          "say": "Pablo won a big prize for his poems.",
+          "sayShort": "He won a big prize.",
+          "ask": "What would you like to win a prize for?",
+          "askYou": "What are you really good at?",
+          "bridge": "I liked the part about his onion poem. Remember?"
+        },
+        {
+          "text": "He loved the sea and collected all kinds of interesting things.",
+          "topic": "a collector",
+          "say": "Pablo loved the sea and collecting things.",
+          "sayShort": "He was a collector.",
+          "ask": "What do you like to collect?",
+          "askYou": "Do you like the ocean?",
+          "bridge": "I liked the part about his big prize. Remember?"
+        }
+      ]
     },
     {
       "name": "Harper Lee",
@@ -10883,8 +11216,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/harper-lee.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Harper wrote a famous book about fairness and kindness.",
+          "topic": "a famous book",
+          "say": "Harper wrote a famous book about kindness.",
+          "sayShort": "She wrote a famous book.",
+          "ask": "What is a kind thing you like to do?",
+          "askYou": "What should be fair for everyone?",
+          "bridge": ""
+        },
+        {
+          "text": "Her book is called To Kill a Mockingbird.",
+          "topic": "her book title",
+          "say": "Harper wrote To Kill a Mockingbird.",
+          "sayShort": "Her book has a famous name.",
+          "ask": "What would you name your book?",
+          "askYou": "What is a story you love?",
+          "bridge": "I liked the part about her famous book. Remember?"
+        },
+        {
+          "text": "She grew up in a small town in the southern U.S.",
+          "topic": "a small-town girl",
+          "say": "Harper grew up in a small southern town.",
+          "sayShort": "She was a small-town girl.",
+          "ask": "What is special about your town?",
+          "askYou": "Do you like small or big places?",
+          "bridge": "I liked the part about her book title. Remember?"
+        },
+        {
+          "text": "Harper was good friends with another famous writer as a kid.",
+          "topic": "her writer friend",
+          "say": "Harper had a famous writer friend as a kid.",
+          "sayShort": "She had a writer buddy.",
+          "ask": "Who do you like to be creative with?",
+          "askYou": "Who is your best friend?",
+          "bridge": "I liked the part about her being a small-town girl. Remember?"
+        }
+      ]
     },
     {
       "name": "James Baldwin",
@@ -10894,8 +11264,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/james-baldwin.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "James was a writer who wrote powerfully about fairness and feelings.",
+          "topic": "writing about fairness",
+          "say": "James wrote powerfully about fairness.",
+          "sayShort": "He wrote about fairness.",
+          "ask": "What is something that should be fair?",
+          "askYou": "How do you show you care?",
+          "bridge": ""
+        },
+        {
+          "text": "He wrote essays and books that made people think and talk.",
+          "topic": "making people think",
+          "say": "James made people think with his writing.",
+          "sayShort": "He made people think.",
+          "ask": "What would you write to make people think?",
+          "askYou": "What makes you stop and think?",
+          "bridge": "I liked the part about him writing about fairness. Remember?"
+        },
+        {
+          "text": "James lived in France for a while and wrote there.",
+          "topic": "living in France",
+          "say": "James lived and wrote in France for a time.",
+          "sayShort": "He wrote in France.",
+          "ask": "Where would you love to live and write?",
+          "askYou": "Where would you travel to?",
+          "bridge": "I liked the part about him making people think. Remember?"
+        },
+        {
+          "text": "He was also a wonderful speaker who spoke up for people.",
+          "topic": "a great speaker",
+          "say": "James was a wonderful speaker for others.",
+          "sayShort": "He was a great speaker.",
+          "ask": "What would you speak up about?",
+          "askYou": "Do you like speaking to people?",
+          "bridge": "I liked the part about him living in France. Remember?"
+        }
+      ]
     },
     {
       "name": "Octavia Butler",
@@ -10905,8 +11312,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/octavia-butler.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Octavia wrote science fiction stories about the future.",
+          "topic": "future stories",
+          "say": "Octavia wrote science fiction about the future.",
+          "sayShort": "She wrote future stories.",
+          "ask": "What do you think the future will be like?",
+          "askYou": "Do you like space or robot stories?",
+          "bridge": ""
+        },
+        {
+          "text": "She was one of the first famous Black women to write science fiction.",
+          "topic": "a big first",
+          "say": "Octavia was a pioneer in science fiction.",
+          "sayShort": "She was a sci-fi pioneer.",
+          "ask": "What would you like to be first at?",
+          "askYou": "What are you proud of?",
+          "bridge": "I liked the part about her future stories. Remember?"
+        },
+        {
+          "text": "Octavia taught herself and got up super early to write every day.",
+          "topic": "early writer",
+          "say": "Octavia woke up early to write each day.",
+          "sayShort": "She wrote early every day.",
+          "ask": "When do you do your best work?",
+          "askYou": "Are you an early bird?",
+          "bridge": "I liked the part about her being a big first. Remember?"
+        },
+        {
+          "text": "She believed that if you keep trying, you can reach your dreams.",
+          "topic": "never giving up",
+          "say": "Octavia believed trying hard reaches dreams.",
+          "sayShort": "She believed in trying.",
+          "ask": "What dream are you working toward?",
+          "askYou": "What helps you keep going?",
+          "bridge": "I liked the part about her being an early writer. Remember?"
+        }
+      ]
     },
     {
       "name": "Stephen King",
@@ -10916,8 +11360,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/stephen-king.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Stephen writes exciting, spooky stories that keep you on the edge of your seat.",
+          "topic": "spooky stories",
+          "say": "Stephen writes exciting, spooky stories.",
+          "sayShort": "He writes spooky tales.",
+          "ask": "Do you like a good spooky story?",
+          "askYou": "What is the spookiest thing you know?",
+          "bridge": ""
+        },
+        {
+          "text": "He has a huge imagination and has written a LOT of books.",
+          "topic": "a big imagination",
+          "say": "Stephen has a huge imagination and many books.",
+          "sayShort": "He has big ideas.",
+          "ask": "What story would your imagination make?",
+          "askYou": "Where do you get ideas?",
+          "bridge": "I liked the part about his spooky stories. Remember?"
+        },
+        {
+          "text": "Many of his books have become movies and TV shows.",
+          "topic": "books to movies",
+          "say": "Stephen's books often become movies.",
+          "sayShort": "His books become movies.",
+          "ask": "What book would you turn into a movie?",
+          "askYou": "What is a movie you love?",
+          "bridge": "I liked the part about his big imagination. Remember?"
+        },
+        {
+          "text": "He was a teacher before he became a famous writer.",
+          "topic": "teacher first",
+          "say": "Stephen was a teacher before writing.",
+          "sayShort": "He was a teacher first.",
+          "ask": "What would you like to teach?",
+          "askYou": "Who is a teacher you like?",
+          "bridge": "I liked the part about his books becoming movies. Remember?"
+        }
+      ]
     },
     {
       "name": "Dmitri Mendeleev",
@@ -10927,8 +11408,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/dmitri-mendeleev.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Dmitri made a famous chart of all the building blocks of everything.",
+          "topic": "the big chart",
+          "say": "Dmitri made a chart of everything's building blocks.",
+          "sayShort": "He made a famous chart.",
+          "ask": "What would you make a chart of?",
+          "askYou": "Do you like to sort and organize things?",
+          "bridge": ""
+        },
+        {
+          "text": "His chart is called the periodic table, and we still use it today.",
+          "topic": "the periodic table",
+          "say": "Dmitri's chart is the periodic table.",
+          "sayShort": "He made the periodic table.",
+          "ask": "How do you like to organize your things?",
+          "askYou": "Do you like science?",
+          "bridge": "I liked the part about his big chart. Remember?"
+        },
+        {
+          "text": "He said the idea for the chart came to him in a dream!",
+          "topic": "a dream idea",
+          "say": "Dmitri got his big idea in a dream.",
+          "sayShort": "His idea came in a dream.",
+          "ask": "Have you ever had a great idea in a dream?",
+          "askYou": "What do you dream about?",
+          "bridge": "I liked the part about the periodic table. Remember?"
+        },
+        {
+          "text": "Dmitri even left empty spots for things not discovered yet.",
+          "topic": "saving spaces",
+          "say": "Dmitri left spaces for things not found yet.",
+          "sayShort": "He guessed the future.",
+          "ask": "What would you like to discover?",
+          "askYou": "What do you think we'll find next?",
+          "bridge": "I liked the part about his dream idea. Remember?"
+        }
+      ]
     },
     {
       "name": "Gregor Mendel",
@@ -10938,8 +11456,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/gregor-mendel.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Gregor was a monk who studied pea plants in his garden.",
+          "topic": "his pea plants",
+          "say": "Gregor studied pea plants in his garden.",
+          "sayShort": "He studied pea plants.",
+          "ask": "Would you like to grow plants?",
+          "askYou": "What would you plant in a garden?",
+          "bridge": ""
+        },
+        {
+          "text": "He figured out how parents pass traits to their kids.",
+          "topic": "passing traits",
+          "say": "Gregor learned how traits pass to kids.",
+          "sayShort": "He studied families of plants.",
+          "ask": "Who in your family do you look like?",
+          "askYou": "What did you get from your family?",
+          "bridge": "I liked the part about his pea plants. Remember?"
+        },
+        {
+          "text": "People call Gregor the \"father of genetics\" for his work.",
+          "topic": "father of genetics",
+          "say": "Gregor is called the father of genetics.",
+          "sayShort": "He started genetics.",
+          "ask": "What makes you special and unique?",
+          "askYou": "What are you curious about in science?",
+          "bridge": "I liked the part about passing traits. Remember?"
+        },
+        {
+          "text": "He counted thousands of pea plants very carefully.",
+          "topic": "careful counting",
+          "say": "Gregor carefully counted thousands of plants.",
+          "sayShort": "He counted very carefully.",
+          "ask": "What do you like to count or collect?",
+          "askYou": "Are you good at being careful?",
+          "bridge": "I liked the part about him being the father of genetics. Remember?"
+        }
+      ]
     },
     {
       "name": "Niels Bohr",
@@ -10949,8 +11504,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/niels-bohr.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Niels was a scientist who helped us understand tiny atoms.",
+          "topic": "studying atoms",
+          "say": "Niels helped us understand tiny atoms.",
+          "sayShort": "He studied atoms.",
+          "ask": "What is the smallest thing you can imagine?",
+          "askYou": "Do you like science?",
+          "bridge": ""
+        },
+        {
+          "text": "He drew the atom a bit like a tiny solar system.",
+          "topic": "atom like space",
+          "say": "Niels drew atoms like tiny solar systems.",
+          "sayShort": "He pictured atoms as space.",
+          "ask": "What does a tiny world look like to you?",
+          "askYou": "Do you like space?",
+          "bridge": "I liked the part about him studying atoms. Remember?"
+        },
+        {
+          "text": "Niels was from Denmark and loved to think deeply.",
+          "topic": "a deep thinker",
+          "say": "Niels loved to think deeply about science.",
+          "sayShort": "He was a deep thinker.",
+          "ask": "What do you love to think about?",
+          "askYou": "What is a big question you have?",
+          "bridge": "I liked the part about atom like space. Remember?"
+        },
+        {
+          "text": "He was also a good soccer player when he was young.",
+          "topic": "a soccer player",
+          "say": "Niels played soccer well when he was young.",
+          "sayShort": "He played soccer too.",
+          "ask": "Do you like soccer?",
+          "askYou": "What sport do you enjoy?",
+          "bridge": "I liked the part about him being a deep thinker. Remember?"
+        }
+      ]
     },
     {
       "name": "Richard Feynman",
@@ -10960,8 +11552,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/richard-feynman.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Richard was a fun scientist who made hard ideas easy to understand.",
+          "topic": "making science fun",
+          "say": "Richard made hard science easy and fun.",
+          "sayShort": "He made science fun.",
+          "ask": "What science do you find cool?",
+          "askYou": "Do you like to explain things?",
+          "bridge": ""
+        },
+        {
+          "text": "He loved solving puzzles and asking \"why\" about everything.",
+          "topic": "loving puzzles",
+          "say": "Richard loved puzzles and asking why.",
+          "sayShort": "He loved puzzles.",
+          "ask": "What is your favorite puzzle?",
+          "askYou": "Do you like asking why?",
+          "bridge": "I liked the part about him making science fun. Remember?"
+        },
+        {
+          "text": "Richard also loved playing the bongo drums for fun.",
+          "topic": "playing drums",
+          "say": "Richard played the bongo drums for fun.",
+          "sayShort": "He loved playing drums.",
+          "ask": "What instrument would you play for fun?",
+          "askYou": "Do you like to make beats?",
+          "bridge": "I liked the part about him loving puzzles. Remember?"
+        },
+        {
+          "text": "He was always curious and loved learning new things.",
+          "topic": "always curious",
+          "say": "Richard was curious and loved to learn.",
+          "sayShort": "He was super curious.",
+          "ask": "What are you curious about?",
+          "askYou": "What would you love to learn?",
+          "bridge": "I liked the part about him playing drums. Remember?"
+        }
+      ]
     },
     {
       "name": "Max Planck",
@@ -10971,8 +11600,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/max-planck.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Max was a scientist who found that energy comes in tiny packets.",
+          "topic": "tiny energy packets",
+          "say": "Max found that energy comes in tiny packets.",
+          "sayShort": "He studied tiny energy.",
+          "ask": "What tiny thing are you curious about?",
+          "askYou": "Do you like science?",
+          "bridge": ""
+        },
+        {
+          "text": "His idea helped start a whole new kind of science.",
+          "topic": "a new science",
+          "say": "Max helped start a brand-new science.",
+          "sayShort": "He began a new science.",
+          "ask": "What would you like to discover?",
+          "askYou": "What is cool about science?",
+          "bridge": "I liked the part about tiny energy packets. Remember?"
+        },
+        {
+          "text": "Max also loved music and played the piano beautifully.",
+          "topic": "loving music",
+          "say": "Max loved music and played the piano.",
+          "sayShort": "He loved to play piano.",
+          "ask": "What instrument would you play?",
+          "askYou": "Do you like music?",
+          "bridge": "I liked the part about his new science. Remember?"
+        },
+        {
+          "text": "He was known for being thoughtful and kind.",
+          "topic": "thoughtful and kind",
+          "say": "Max was thoughtful and kind to people.",
+          "sayShort": "He was kind.",
+          "ask": "What is a kind thing you do?",
+          "askYou": "Who is the kindest person you know?",
+          "bridge": "I liked the part about him loving music. Remember?"
+        }
+      ]
     },
     {
       "name": "Enrico Fermi",
@@ -10982,8 +11648,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/enrico-fermi.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Enrico was a scientist who studied atoms and how they give off energy.",
+          "topic": "studying atoms",
+          "say": "Enrico studied atoms and their energy.",
+          "sayShort": "He studied atoms.",
+          "ask": "What tiny thing would you study?",
+          "askYou": "Do you like science?",
+          "bridge": ""
+        },
+        {
+          "text": "He could guess the answer to hard questions super fast in his head.",
+          "topic": "quick thinking",
+          "say": "Enrico could guess tough answers super fast.",
+          "sayShort": "He was a quick thinker.",
+          "ask": "What can you figure out quickly?",
+          "askYou": "Do you like estimating?",
+          "bridge": "I liked the part about him studying atoms. Remember?"
+        },
+        {
+          "text": "Enrico came from Italy and did science in many places.",
+          "topic": "from Italy",
+          "say": "Enrico was from Italy and worked far and wide.",
+          "sayShort": "He was from Italy.",
+          "ask": "Where would you love to do your work?",
+          "askYou": "Have you ever traveled far?",
+          "bridge": "I liked the part about his quick thinking. Remember?"
+        },
+        {
+          "text": "He loved teaching students and explaining his ideas.",
+          "topic": "a great teacher",
+          "say": "Enrico loved teaching and explaining ideas.",
+          "sayShort": "He was a great teacher.",
+          "ask": "What would you love to teach?",
+          "askYou": "Who explains things well to you?",
+          "bridge": "I liked the part about him being from Italy. Remember?"
+        }
+      ]
     },
     {
       "name": "Michael Faraday",
@@ -10993,8 +11696,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/michael-faraday.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Michael studied electricity and magnets and made big discoveries.",
+          "topic": "electricity and magnets",
+          "say": "Michael studied electricity and magnets.",
+          "sayShort": "He studied electricity.",
+          "ask": "What do you use electricity for?",
+          "askYou": "Have you played with magnets?",
+          "bridge": ""
+        },
+        {
+          "text": "He built the first simple electric motor.",
+          "topic": "the first motor",
+          "say": "Michael built the very first electric motor.",
+          "sayShort": "He made the first motor.",
+          "ask": "What would you power with a motor?",
+          "askYou": "What machine do you like?",
+          "bridge": "I liked the part about electricity and magnets. Remember?"
+        },
+        {
+          "text": "Michael started poor and taught himself by reading books.",
+          "topic": "self-taught",
+          "say": "Michael taught himself science from books.",
+          "sayShort": "He taught himself.",
+          "ask": "What did you teach yourself?",
+          "askYou": "What would you like to learn on your own?",
+          "bridge": "I liked the part about the first motor. Remember?"
+        },
+        {
+          "text": "He gave fun science talks just for kids at Christmastime.",
+          "topic": "science for kids",
+          "say": "Michael gave fun science talks for kids.",
+          "sayShort": "He taught kids science.",
+          "ask": "What science would you show kids?",
+          "askYou": "What is a cool science fact you know?",
+          "bridge": "I liked the part about him being self-taught. Remember?"
+        }
+      ]
     },
     {
       "name": "Robert Oppenheimer",
@@ -11015,8 +11755,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/jonas-salk.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Jonas made a shot that stopped a scary sickness called polio.",
+          "topic": "a helpful shot",
+          "say": "Jonas made a shot that stopped polio.",
+          "sayShort": "He made a helpful shot.",
+          "ask": "How do you stay healthy?",
+          "askYou": "Are shots okay or scary for you?",
+          "bridge": ""
+        },
+        {
+          "text": "His shot helped keep millions of kids safe and healthy.",
+          "topic": "keeping kids safe",
+          "say": "Jonas' shot kept millions of kids healthy.",
+          "sayShort": "He kept kids safe.",
+          "ask": "How do you take care of yourself?",
+          "askYou": "What helps you feel better when sick?",
+          "bridge": "I liked the part about his helpful shot. Remember?"
+        },
+        {
+          "text": "Jonas gave his discovery away free so everyone could use it.",
+          "topic": "sharing freely",
+          "say": "Jonas gave his shot away free for everyone.",
+          "sayShort": "He shared it for free.",
+          "ask": "What would you love to give everyone?",
+          "askYou": "What is a nice thing to share?",
+          "bridge": "I liked the part about keeping kids safe. Remember?"
+        },
+        {
+          "text": "He spent many years in his lab to make it work.",
+          "topic": "lots of hard work",
+          "say": "Jonas worked in his lab for years to help.",
+          "sayShort": "He worked super hard.",
+          "ask": "What are you working hard on?",
+          "askYou": "What helps you keep trying?",
+          "bridge": "I liked the part about him sharing freely. Remember?"
+        }
+      ]
     },
     {
       "name": "Alexander Fleming",
@@ -11026,8 +11803,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/alexander-fleming.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Alexander discovered a medicine that fights germs, kind of by accident.",
+          "topic": "a lucky discovery",
+          "say": "Alexander discovered a germ-fighting medicine.",
+          "sayShort": "He found a medicine.",
+          "ask": "Have you ever found something by accident?",
+          "askYou": "What is a happy surprise you had?",
+          "bridge": ""
+        },
+        {
+          "text": "He noticed some mold in his lab was stopping germs from growing.",
+          "topic": "helpful mold",
+          "say": "Alexander saw mold that stopped germs.",
+          "sayShort": "He noticed helpful mold.",
+          "ask": "What have you noticed that others missed?",
+          "askYou": "Are you good at noticing things?",
+          "bridge": "I liked the part about his lucky discovery. Remember?"
+        },
+        {
+          "text": "His medicine has helped save many, many lives.",
+          "topic": "saving lives",
+          "say": "Alexander's medicine helped save many lives.",
+          "sayShort": "His medicine helps people.",
+          "ask": "How do you like to help people?",
+          "askYou": "Who helps you when you're sick?",
+          "bridge": "I liked the part about the helpful mold. Remember?"
+        },
+        {
+          "text": "Alexander was curious and paid close attention in his lab.",
+          "topic": "paying attention",
+          "say": "Alexander paid close attention to details.",
+          "sayShort": "He noticed little things.",
+          "ask": "What tiny thing do you notice?",
+          "askYou": "Are you a good detective?",
+          "bridge": "I liked the part about him saving lives. Remember?"
+        }
+      ]
     },
     {
       "name": "Tu Youyou",
@@ -11037,8 +11851,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/tu-youyou.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Tu Youyou is a scientist who found a medicine to fight a sickness called malaria.",
+          "topic": "a helpful medicine",
+          "say": "Tu Youyou found a medicine to fight malaria.",
+          "sayShort": "She found a helpful medicine.",
+          "ask": "How do you stay healthy?",
+          "askYou": "Do you like science?",
+          "bridge": ""
+        },
+        {
+          "text": "She found her medicine by studying an old plant recipe.",
+          "topic": "from a plant",
+          "say": "Tu Youyou's medicine came from a plant.",
+          "sayShort": "She used a plant.",
+          "ask": "What plant do you think is useful?",
+          "askYou": "Do you like gardens?",
+          "bridge": "I liked the part about her helpful medicine. Remember?"
+        },
+        {
+          "text": "Tu Youyou won the Nobel Prize for her important work.",
+          "topic": "Nobel Prize",
+          "say": "Tu Youyou won the Nobel Prize.",
+          "sayShort": "She won a big prize.",
+          "ask": "What would you like to win a prize for?",
+          "askYou": "What are you really good at?",
+          "bridge": "I liked the part about her medicine from a plant. Remember?"
+        },
+        {
+          "text": "She read many old books to find her big answer.",
+          "topic": "reading old books",
+          "say": "Tu Youyou read old books to find her answer.",
+          "sayShort": "She learned from old books.",
+          "ask": "What would you look up in a book?",
+          "askYou": "Do you like to research?",
+          "bridge": "I liked the part about her Nobel Prize. Remember?"
+        }
+      ]
     },
     {
       "name": "Barbara McClintock",
