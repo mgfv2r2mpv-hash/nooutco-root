@@ -1,6 +1,6 @@
 {
   "_note": "Red Carpet Convos roster. Per person: {name, years, tag, emoji, img, accent, accentBg, converted, facts:[{text, topic, say, sayShort, ask, askYou, bridge}]}. `converted` is the MIGRATION FLAG: true = migrated to the new schema and live in the game; false = a stub pending fact population (kept OUT of the game for now). During migration the game surfaces only converted people. Fade levels (comment/volley Partial/Minimal) are derived at runtime from say/ask. `bridge` is the partner's recall opener INTO this fact (fact 1's bridge is empty). Edited via AdminTools/FamousPersonManager; the rcc-generate-facts populator writes facts + sets converted. Store only public-figure content — never learner/session data.",
-  "generated": "2026-07-08T18:05:42.608Z",
+  "generated": "2026-07-08T18:36:21.860Z",
   "people": [
     {
       "name": "Lin-Manuel Miranda",
@@ -730,8 +730,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/leonardo-da-vinci.jpeg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Leonardo painted the Mona Lisa and The Last Supper, two of the most famous pictures ever.",
+          "topic": "his famous paintings",
+          "say": "Leonardo painted two of the most famous pictures in the world.",
+          "sayShort": "He made super famous paintings.",
+          "ask": "What would you like to paint a picture of?",
+          "askYou": "Do you have a favorite painting?",
+          "bridge": ""
+        },
+        {
+          "text": "He also drew flying machines and studied the body, way ahead of his time.",
+          "topic": "flying machines",
+          "say": "Leonardo drew flying machines long before real airplanes.",
+          "sayShort": "He dreamed up flying machines.",
+          "ask": "What machine would you love to invent?",
+          "askYou": "If you could fly, where would you go?",
+          "bridge": "I liked the part about his flying machines. Remember?"
+        },
+        {
+          "text": "He filled thousands of notebook pages with sketches and ideas written backwards.",
+          "topic": "his notebooks",
+          "say": "Leonardo filled notebooks with drawings and backwards writing.",
+          "sayShort": "He kept secret notebooks.",
+          "ask": "What would you draw in your own notebook?",
+          "askYou": "Do you like to draw or write your ideas?",
+          "bridge": "I liked the part about his notebooks. Remember?"
+        },
+        {
+          "text": "Leonardo was good at painting, building, science, and studying the body.",
+          "topic": "so many skills",
+          "say": "Leonardo was great at many things at once.",
+          "sayShort": "He was good at everything.",
+          "ask": "What are some things you are good at?",
+          "askYou": "What is a new skill you want to learn?",
+          "bridge": "I liked the part about his many skills. Remember?"
+        }
+      ]
     },
     {
       "name": "Harriet Tubman",
@@ -789,8 +826,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/nikola-tesla.jpeg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Nikola invented the kind of electricity that powers homes today.",
+          "topic": "electricity",
+          "say": "Nikola made the electricity we use in our homes.",
+          "sayShort": "He invented home electricity.",
+          "ask": "What do you use electricity for every day?",
+          "askYou": "What is your favorite thing that plugs in?",
+          "bridge": ""
+        },
+        {
+          "text": "He had over 300 inventions and dreamed of sending messages through the air.",
+          "topic": "his inventions",
+          "say": "Nikola had hundreds of inventions and big dreams.",
+          "sayShort": "He invented tons of things.",
+          "ask": "What would you like to invent?",
+          "askYou": "What problem would you love to solve?",
+          "bridge": "I liked the part about his inventions. Remember?"
+        },
+        {
+          "text": "He could memorize whole books and do hard math right in his head.",
+          "topic": "amazing memory",
+          "say": "Nikola could do hard math all in his head.",
+          "sayShort": "He had an amazing memory.",
+          "ask": "What is something you remember really well?",
+          "askYou": "Do you like to solve puzzles in your head?",
+          "bridge": "I liked the part about his amazing memory. Remember?"
+        },
+        {
+          "text": "Nikola loved pigeons and would feed them in the park when he was older.",
+          "topic": "his pigeons",
+          "say": "Nikola loved pigeons and fed them in the park.",
+          "sayShort": "He loved feeding pigeons.",
+          "ask": "What animals do you like to watch?",
+          "askYou": "Have you ever fed a bird or a pet?",
+          "bridge": "I liked the part about his pigeons. Remember?"
+        }
+      ]
     },
     {
       "name": "Frida Kahlo",
@@ -800,8 +874,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/frida-kahlo.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Frida painted many pictures of herself that showed her feelings and her home country.",
+          "topic": "her self-portraits",
+          "say": "Frida painted pictures of herself that showed her feelings.",
+          "sayShort": "She painted herself a lot.",
+          "ask": "How do you show your feelings?",
+          "askYou": "If you painted yourself, what would you add?",
+          "bridge": ""
+        },
+        {
+          "text": "She taught herself to paint while she was resting and getting better.",
+          "topic": "learning to paint",
+          "say": "Frida taught herself to paint all on her own.",
+          "sayShort": "She taught herself to paint.",
+          "ask": "What is something you taught yourself to do?",
+          "askYou": "What would you like to teach yourself?",
+          "bridge": "I liked the part about her learning to paint. Remember?"
+        },
+        {
+          "text": "She also painted big, colorful pictures right on walls.",
+          "topic": "painting on walls",
+          "say": "Frida painted big, bright pictures on walls.",
+          "sayShort": "She painted giant wall art.",
+          "ask": "What would you paint on a big wall?",
+          "askYou": "Would you rather paint big or small?",
+          "bridge": "I liked the part about her painting on walls. Remember?"
+        },
+        {
+          "text": "Frida wore colorful clothes and flowers in her hair, and people still copy her style.",
+          "topic": "her style",
+          "say": "Frida wore bright clothes and flowers in her hair.",
+          "sayShort": "She had a colorful style.",
+          "ask": "What colors do you like to wear?",
+          "askYou": "What is your favorite thing to wear?",
+          "bridge": "I liked the part about her colorful style. Remember?"
+        }
+      ]
     },
     {
       "name": "Nelson Mandela",
@@ -870,8 +981,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/isaac-newton.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Isaac figured out the rules of motion and how gravity pulls things down.",
+          "topic": "rules of motion",
+          "say": "Isaac figured out how gravity pulls things down.",
+          "sayShort": "He figured out gravity.",
+          "ask": "What happens when you drop a ball?",
+          "askYou": "Have you ever wondered why things fall?",
+          "bridge": ""
+        },
+        {
+          "text": "He showed that white light is really made of all the colors mixed together.",
+          "topic": "colors in light",
+          "say": "Isaac showed that white light holds every color.",
+          "sayShort": "He found colors in light.",
+          "ask": "What colors do you see in a rainbow?",
+          "askYou": "What is your favorite color?",
+          "bridge": "I liked the part about colors in light. Remember?"
+        },
+        {
+          "text": "He worked very hard and could spend many days on one tough problem.",
+          "topic": "hard work",
+          "say": "Isaac would work for days on one hard problem.",
+          "sayShort": "He worked really hard.",
+          "ask": "What is a tough problem you kept trying at?",
+          "askYou": "What helps you keep going when it is hard?",
+          "bridge": "I liked the part about his hard work. Remember?"
+        },
+        {
+          "text": "Isaac also ran the place that made all the coins for England.",
+          "topic": "making coins",
+          "say": "Isaac ran the place that made England's coins.",
+          "sayShort": "He was in charge of coins.",
+          "ask": "What would you put on a coin?",
+          "askYou": "Do you like to collect anything?",
+          "bridge": "I liked the part about him making coins. Remember?"
+        }
+      ]
     },
     {
       "name": "Rosa Parks",
@@ -929,8 +1077,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/mozart.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Mozart wrote over 800 pieces of music — symphonies, operas, and more.",
+          "topic": "800 songs",
+          "say": "Mozart wrote more than eight hundred pieces of music.",
+          "sayShort": "He wrote tons of music.",
+          "ask": "What kind of music makes you happy?",
+          "askYou": "Do you like to make up songs?",
+          "bridge": ""
+        },
+        {
+          "text": "He wrote his very first symphony when he was only eight years old.",
+          "topic": "writing music young",
+          "say": "Mozart wrote big music when he was only eight.",
+          "sayShort": "He wrote music super young.",
+          "ask": "What is something amazing you can do?",
+          "askYou": "What did you learn to do when you were little?",
+          "bridge": "I liked the part about him writing music young. Remember?"
+        },
+        {
+          "text": "People all over loved his music and asked him to play for kings and queens.",
+          "topic": "playing for kings",
+          "say": "Mozart even played his music for kings and queens.",
+          "sayShort": "He played for royalty.",
+          "ask": "Who would you want to play or perform for?",
+          "askYou": "Have you ever performed for anyone?",
+          "bridge": "I liked the part about him playing for kings. Remember?"
+        },
+        {
+          "text": "Mozart was silly and funny and wrote lots of joking letters to his friends.",
+          "topic": "his sense of humor",
+          "say": "Mozart was silly and loved to make jokes.",
+          "sayShort": "He was funny and silly.",
+          "ask": "What makes you laugh the most?",
+          "askYou": "Do you like telling jokes?",
+          "bridge": "I liked the part about his sense of humor. Remember?"
+        }
+      ]
     },
     {
       "name": "Mahatma Gandhi",
@@ -940,8 +1125,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/mahatma-gandhi.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Gandhi led a peaceful fight to make his country India free.",
+          "topic": "peaceful fight",
+          "say": "Gandhi helped free his country in a peaceful way.",
+          "sayShort": "He led a peaceful fight.",
+          "ask": "How can you stand up for something without fighting?",
+          "askYou": "When have you solved a problem calmly?",
+          "bridge": ""
+        },
+        {
+          "text": "His peaceful way of standing up gave ideas to leaders all over the world.",
+          "topic": "inspiring others",
+          "say": "Gandhi's peaceful ideas inspired leaders everywhere.",
+          "sayShort": "He inspired the whole world.",
+          "ask": "Who is someone who inspires you?",
+          "askYou": "How do you inspire your friends?",
+          "bridge": "I liked the part about him inspiring others. Remember?"
+        },
+        {
+          "text": "He wore simple clothes that he made himself on a small loom.",
+          "topic": "his own clothes",
+          "say": "Gandhi made his own simple clothes.",
+          "sayShort": "He made his own clothes.",
+          "ask": "What would you like to make yourself?",
+          "askYou": "Have you ever made something to wear?",
+          "bridge": "I liked the part about his own clothes. Remember?"
+        },
+        {
+          "text": "Gandhi lived in a very simple way and shared what he had.",
+          "topic": "simple living",
+          "say": "Gandhi lived simply and shared with others.",
+          "sayShort": "He lived a simple life.",
+          "ask": "What is something you like to share?",
+          "askYou": "What do you really need to be happy?",
+          "bridge": "I liked the part about his simple living. Remember?"
+        }
+      ]
     },
     {
       "name": "Ada Lovelace",
@@ -951,8 +1173,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/ada-lovelace.jpeg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Ada wrote the first computer program, way before computers even existed.",
+          "topic": "first computer program",
+          "say": "Ada wrote the very first computer program.",
+          "sayShort": "She was the first coder.",
+          "ask": "What would you want a computer to do for you?",
+          "askYou": "Do you like using computers or tablets?",
+          "bridge": ""
+        },
+        {
+          "text": "She worked on an early idea for a thinking machine made of gears.",
+          "topic": "a thinking machine",
+          "say": "Ada helped design an early kind of computer.",
+          "sayShort": "She designed a math machine.",
+          "ask": "What machine do you wish someone would build?",
+          "askYou": "What is the coolest gadget you know?",
+          "bridge": "I liked the part about the thinking machine. Remember?"
+        },
+        {
+          "text": "She loved both math and poetry and called her work \"poetical science.\"",
+          "topic": "math and poetry",
+          "say": "Ada loved math and poetry at the same time.",
+          "sayShort": "She mixed math and poetry.",
+          "ask": "What two things do you love that seem different?",
+          "askYou": "Do you like numbers or words more?",
+          "bridge": "I liked the part about math and poetry. Remember?"
+        },
+        {
+          "text": "Ada saw that machines could one day make music and pictures, not just numbers.",
+          "topic": "big vision",
+          "say": "Ada guessed that machines could make music and art.",
+          "sayShort": "She saw the future.",
+          "ask": "What do you think computers will do next?",
+          "askYou": "What would you make a computer create?",
+          "bridge": "I liked the part about her big vision. Remember?"
+        }
+      ]
     },
     {
       "name": "Winston Churchill",
@@ -973,8 +1232,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/abraham-lincoln.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Abraham was the sixteenth president and led the country through a hard time.",
+          "topic": "leading the country",
+          "say": "Abraham led the whole country as president.",
+          "sayShort": "He was a famous president.",
+          "ask": "What would you do if you were the leader?",
+          "askYou": "What makes someone a good leader?",
+          "bridge": ""
+        },
+        {
+          "text": "He signed a paper that ended slavery in the United States.",
+          "topic": "ending slavery",
+          "say": "Abraham signed a paper to end slavery.",
+          "sayShort": "He helped end slavery.",
+          "ask": "Why is it important to treat everyone fairly?",
+          "askYou": "How do you make sure everyone is included?",
+          "bridge": "I liked the part about him ending slavery. Remember?"
+        },
+        {
+          "text": "Abraham grew up in a log cabin and taught himself most of what he knew.",
+          "topic": "log cabin life",
+          "say": "Abraham grew up in a log cabin and taught himself.",
+          "sayShort": "He taught himself a lot.",
+          "ask": "What is something you learned all by yourself?",
+          "askYou": "What do you want to learn next?",
+          "bridge": "I liked the part about his log cabin life. Remember?"
+        },
+        {
+          "text": "He was very tall and loved telling funny stories and jokes.",
+          "topic": "tall and funny",
+          "say": "Abraham was super tall and loved telling jokes.",
+          "sayShort": "He was tall and funny.",
+          "ask": "What is a funny story you like to tell?",
+          "askYou": "Do you like being the one who makes people laugh?",
+          "bridge": "I liked the part about him being tall and funny. Remember?"
+        }
+      ]
     },
     {
       "name": "Cleopatra",
@@ -995,8 +1291,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/galileo-galilei.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Galileo looked through one of the first telescopes and saw moons around Jupiter.",
+          "topic": "moons of Jupiter",
+          "say": "Galileo saw moons around Jupiter through a telescope.",
+          "sayShort": "He spotted Jupiter's moons.",
+          "ask": "What would you look at with a telescope?",
+          "askYou": "Have you ever looked at the stars?",
+          "bridge": ""
+        },
+        {
+          "text": "He showed that the Earth goes around the Sun.",
+          "topic": "Earth around the Sun",
+          "say": "Galileo showed that Earth circles the Sun.",
+          "sayShort": "He studied the Sun and Earth.",
+          "ask": "What do you wonder about in space?",
+          "askYou": "Would you like to visit another planet?",
+          "bridge": "I liked the part about the Earth and the Sun. Remember?"
+        },
+        {
+          "text": "At first many people did not believe him, but he turned out to be right.",
+          "topic": "being right",
+          "say": "People doubted Galileo, but he was right all along.",
+          "sayShort": "He was right in the end.",
+          "ask": "When were you right even though others doubted?",
+          "askYou": "How does it feel to be proven right?",
+          "bridge": "I liked the part about him being right. Remember?"
+        },
+        {
+          "text": "He kept doing science even when he was old and could barely see.",
+          "topic": "never stopping",
+          "say": "Galileo kept doing science his whole life.",
+          "sayShort": "He never stopped exploring.",
+          "ask": "What is something you never want to stop doing?",
+          "askYou": "What do you hope to still do when you are old?",
+          "bridge": "I liked the part about him never stopping. Remember?"
+        }
+      ]
     },
     {
       "name": "Frederick Douglass",
@@ -1006,8 +1339,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/frederick-douglass.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Frederick was not free when he was young, and he bravely made his way to freedom.",
+          "topic": "finding freedom",
+          "say": "Frederick was very brave and found his freedom.",
+          "sayShort": "He bravely became free.",
+          "ask": "When is a time you were really brave?",
+          "askYou": "What does freedom mean to you?",
+          "bridge": ""
+        },
+        {
+          "text": "He taught himself how to read and write when it was not allowed.",
+          "topic": "learning to read",
+          "say": "Frederick secretly taught himself to read and write.",
+          "sayShort": "He taught himself to read.",
+          "ask": "What is your favorite thing to read?",
+          "askYou": "How did you learn to read?",
+          "bridge": "I liked the part about him learning to read. Remember?"
+        },
+        {
+          "text": "Frederick became a powerful speaker who told people that everyone should be free.",
+          "topic": "great speaker",
+          "say": "Frederick spoke up so everyone could be free.",
+          "sayShort": "He was a great speaker.",
+          "ask": "What is something you would speak up about?",
+          "askYou": "Do you like speaking in front of people?",
+          "bridge": "I liked the part about him being a great speaker. Remember?"
+        },
+        {
+          "text": "He wrote books about his life that helped change many minds.",
+          "topic": "his books",
+          "say": "Frederick wrote books that changed people's minds.",
+          "sayShort": "He wrote important books.",
+          "ask": "What would you write a book about?",
+          "askYou": "What is a book that changed how you think?",
+          "bridge": "I liked the part about his books. Remember?"
+        }
+      ]
     },
     {
       "name": "Muhammad Ali",
@@ -1017,8 +1387,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/muhammad-ali.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Muhammad was a boxing champion who won the top title three different times.",
+          "topic": "boxing champion",
+          "say": "Muhammad was a boxing champ three times over.",
+          "sayShort": "He was a boxing champ.",
+          "ask": "What sport would you love to be great at?",
+          "askYou": "Do you like to watch or play sports?",
+          "bridge": ""
+        },
+        {
+          "text": "He said he could \"float like a butterfly, sting like a bee.\"",
+          "topic": "his famous words",
+          "say": "Muhammad had a famous, fun way of talking.",
+          "sayShort": "He had cool sayings.",
+          "ask": "What is a saying you really like?",
+          "askYou": "If you had a catchphrase, what would it be?",
+          "bridge": "I liked the part about his famous words. Remember?"
+        },
+        {
+          "text": "He won an Olympic gold medal in boxing when he was only eighteen.",
+          "topic": "Olympic gold",
+          "say": "Muhammad won Olympic gold when he was young.",
+          "sayShort": "He won an Olympic medal.",
+          "ask": "What would you like to win a medal for?",
+          "askYou": "Have you ever won a game or race?",
+          "bridge": "I liked the part about his Olympic gold. Remember?"
+        },
+        {
+          "text": "Muhammad stood up for what he believed in, even when it was hard.",
+          "topic": "standing up",
+          "say": "Muhammad always stood up for what he believed.",
+          "sayShort": "He stood up for himself.",
+          "ask": "What is something you believe in?",
+          "askYou": "When have you stood up for something?",
+          "bridge": "I liked the part about him standing up. Remember?"
+        }
+      ]
     },
     {
       "name": "Malala Yousafzai",
@@ -1076,8 +1483,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/oprah-winfrey.jpeg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Oprah hosted a talk show that millions of people watched for many years.",
+          "topic": "her talk show",
+          "say": "Oprah had a talk show millions of people loved.",
+          "sayShort": "She had a famous show.",
+          "ask": "If you had a show, who would you talk to?",
+          "askYou": "What would your show be about?",
+          "bridge": ""
+        },
+        {
+          "text": "She grew up with very little and worked super hard to reach her dreams.",
+          "topic": "working hard",
+          "say": "Oprah worked super hard to reach her dreams.",
+          "sayShort": "She worked hard for her dreams.",
+          "ask": "What is a dream you are working toward?",
+          "askYou": "What helps you keep trying?",
+          "bridge": "I liked the part about her working hard. Remember?"
+        },
+        {
+          "text": "Oprah started a book club that helped millions of people love reading.",
+          "topic": "her book club",
+          "say": "Oprah got millions of people excited about reading.",
+          "sayShort": "She started a book club.",
+          "ask": "What book would you tell everyone to read?",
+          "askYou": "Do you like reading with other people?",
+          "bridge": "I liked the part about her book club. Remember?"
+        },
+        {
+          "text": "She built a school for girls in South Africa.",
+          "topic": "building a school",
+          "say": "Oprah built a whole school for girls.",
+          "sayShort": "She built a school.",
+          "ask": "If you built a school, what would it teach?",
+          "askYou": "What is your favorite thing about school?",
+          "bridge": "I liked the part about her building a school. Remember?"
+        }
+      ]
     },
     {
       "name": "Barack Obama",
@@ -1087,8 +1531,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/barack-obama.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Barack was the first Black president of the United States.",
+          "topic": "first Black president",
+          "say": "Barack was the first Black U.S. president.",
+          "sayShort": "He was a history-making president.",
+          "ask": "What would you do first as a leader?",
+          "askYou": "What makes a leader kind?",
+          "bridge": ""
+        },
+        {
+          "text": "He grew up in Hawaii and lived in different parts of the world as a kid.",
+          "topic": "growing up",
+          "say": "Barack grew up in Hawaii and other places too.",
+          "sayShort": "He lived in many places.",
+          "ask": "Where have you traveled or lived?",
+          "askYou": "Where would you love to live someday?",
+          "bridge": "I liked the part about him growing up. Remember?"
+        },
+        {
+          "text": "He wrote books about his life that lots of people loved to read.",
+          "topic": "his books",
+          "say": "Barack wrote popular books about his life.",
+          "sayShort": "He wrote books people loved.",
+          "ask": "What is a story from your life you would share?",
+          "askYou": "Do you like reading true stories?",
+          "bridge": "I liked the part about his books. Remember?"
+        },
+        {
+          "text": "Barack and his family love sports, and he plays basketball when he can.",
+          "topic": "loving basketball",
+          "say": "Barack loves to play basketball with friends.",
+          "sayShort": "He loves basketball.",
+          "ask": "What sport or game do you love?",
+          "askYou": "Do you like playing on a team?",
+          "bridge": "I liked the part about him loving basketball. Remember?"
+        }
+      ]
     },
     {
       "name": "Usain Bolt",
@@ -1098,8 +1579,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/usain-bolt.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Usain is the fastest runner ever and won eight Olympic gold medals.",
+          "topic": "fastest runner",
+          "say": "Usain is the fastest runner in the whole world.",
+          "sayShort": "He is the fastest ever.",
+          "ask": "How fast do you think you can run?",
+          "askYou": "Do you like to race your friends?",
+          "bridge": ""
+        },
+        {
+          "text": "He set world records that nobody has beaten yet.",
+          "topic": "world records",
+          "say": "Usain set records no one has beaten.",
+          "sayShort": "He set world records.",
+          "ask": "What record would you love to set?",
+          "askYou": "What are you the best at?",
+          "bridge": "I liked the part about his world records. Remember?"
+        },
+        {
+          "text": "Before a race, Usain often danced and joked to stay loose.",
+          "topic": "his fun spirit",
+          "say": "Usain danced and joked before his big races.",
+          "sayShort": "He was fun and playful.",
+          "ask": "What do you do to feel calm before something big?",
+          "askYou": "Do you like to dance?",
+          "bridge": "I liked the part about his fun spirit. Remember?"
+        },
+        {
+          "text": "Usain comes from Jamaica and loves cricket and soccer too.",
+          "topic": "from Jamaica",
+          "say": "Usain is from Jamaica and loves other sports too.",
+          "sayShort": "He is from Jamaica.",
+          "ask": "What other sports would you like to try?",
+          "askYou": "Where is a place you would love to visit?",
+          "bridge": "I liked the part about him being from Jamaica. Remember?"
+        }
+      ]
     },
     {
       "name": "Michael Jordan",
@@ -1109,8 +1627,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/600px-Michael_Jordan_in_2014.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Michael won six basketball championships with the Chicago Bulls.",
+          "topic": "six championships",
+          "say": "Michael won six basketball championships.",
+          "sayShort": "He won six titles.",
+          "ask": "What team do you like to cheer for?",
+          "askYou": "Do you like to play basketball?",
+          "bridge": ""
+        },
+        {
+          "text": "He was once cut from his school team and worked super hard to come back.",
+          "topic": "never giving up",
+          "say": "Michael got cut, then worked hard and came back.",
+          "sayShort": "He never gave up.",
+          "ask": "When did you keep trying after a setback?",
+          "askYou": "What helps you bounce back?",
+          "bridge": "I liked the part about him never giving up. Remember?"
+        },
+        {
+          "text": "Michael could jump so high that people called him \"Air Jordan.\"",
+          "topic": "jumping high",
+          "say": "Michael jumped so high they called him Air Jordan.",
+          "sayShort": "He could really fly.",
+          "ask": "How high do you think you can jump?",
+          "askYou": "What is something your body can do well?",
+          "bridge": "I liked the part about him jumping high. Remember?"
+        },
+        {
+          "text": "He has his own shoe brand that is famous all over the world.",
+          "topic": "his famous shoes",
+          "say": "Michael has famous shoes named after him.",
+          "sayShort": "He has his own shoes.",
+          "ask": "What would your own sneakers look like?",
+          "askYou": "What are your favorite shoes?",
+          "bridge": "I liked the part about his famous shoes. Remember?"
+        }
+      ]
     },
     {
       "name": "Freddie Mercury",
@@ -1120,8 +1675,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/freddie-mercury.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Freddie was the singer of a famous rock band called Queen.",
+          "topic": "singer of Queen",
+          "say": "Freddie was the lead singer of the band Queen.",
+          "sayShort": "He sang in a rock band.",
+          "ask": "What band or singer do you like?",
+          "askYou": "Do you like rock music?",
+          "bridge": ""
+        },
+        {
+          "text": "He had a huge singing voice and could hit notes most people cannot.",
+          "topic": "amazing voice",
+          "say": "Freddie could sing notes almost no one else could.",
+          "sayShort": "He had an amazing voice.",
+          "ask": "Do you like to sing loud or soft?",
+          "askYou": "What song do you love to sing?",
+          "bridge": "I liked the part about his amazing voice. Remember?"
+        },
+        {
+          "text": "He wrote one of the most famous songs ever, called \"Bohemian Rhapsody.\"",
+          "topic": "a famous song",
+          "say": "Freddie wrote a super famous song people still love.",
+          "sayShort": "He wrote a hit song.",
+          "ask": "If you wrote a song, what would it be about?",
+          "askYou": "What is a song everyone seems to know?",
+          "bridge": "I liked the part about his famous song. Remember?"
+        },
+        {
+          "text": "Freddie wore wild clothes on stage and put on huge, exciting shows.",
+          "topic": "his big shows",
+          "say": "Freddie put on wild, exciting shows on stage.",
+          "sayShort": "He put on big shows.",
+          "ask": "What would you wear on a big stage?",
+          "askYou": "Have you ever been to a concert?",
+          "bridge": "I liked the part about his big shows. Remember?"
+        }
+      ]
     },
     {
       "name": "J.K. Rowling",
@@ -1131,8 +1723,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/j.-k.-rowling.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "J.K. Rowling wrote the Harry Potter books that millions of kids read.",
+          "topic": "Harry Potter books",
+          "say": "J.K. Rowling wrote the Harry Potter books.",
+          "sayShort": "She wrote Harry Potter.",
+          "ask": "What is your favorite magical story?",
+          "askYou": "If you went to a magic school, what would you learn?",
+          "bridge": ""
+        },
+        {
+          "text": "She first thought of the idea on a long train ride.",
+          "topic": "a train ride idea",
+          "say": "She dreamed up Harry Potter on a train ride.",
+          "sayShort": "The idea came on a train.",
+          "ask": "Where do you get your best ideas?",
+          "askYou": "What is a fun idea you had lately?",
+          "bridge": "I liked the part about her train ride idea. Remember?"
+        },
+        {
+          "text": "Many people said no to her book before one finally said yes.",
+          "topic": "never giving up",
+          "say": "J.K. kept trying even when people said no.",
+          "sayShort": "She never gave up.",
+          "ask": "When did you keep going after a no?",
+          "askYou": "What helps you not give up?",
+          "bridge": "I liked the part about her never giving up. Remember?"
+        },
+        {
+          "text": "She wrote her first book in cafes while taking care of her daughter.",
+          "topic": "writing in cafes",
+          "say": "J.K. wrote her first book in cozy little cafes.",
+          "sayShort": "She wrote in cafes.",
+          "ask": "Where do you like to do your best work?",
+          "askYou": "Do you like quiet or busy places?",
+          "bridge": "I liked the part about her writing in cafes. Remember?"
+        }
+      ]
     },
     {
       "name": "Stephen Hawking",
@@ -1142,8 +1771,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/stephen-hawking.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Stephen used science to figure out how black holes in space work.",
+          "topic": "black holes",
+          "say": "Stephen figured out how black holes work.",
+          "sayShort": "He studied black holes.",
+          "ask": "What do you wonder about in space?",
+          "askYou": "Would you like to explore space?",
+          "bridge": ""
+        },
+        {
+          "text": "His body stopped moving easily, but his amazing mind never stopped.",
+          "topic": "his strong mind",
+          "say": "Stephen's body slowed down, but his mind stayed strong.",
+          "sayShort": "His mind was super strong.",
+          "ask": "What is something your mind is really good at?",
+          "askYou": "What do you love to think about?",
+          "bridge": "I liked the part about his strong mind. Remember?"
+        },
+        {
+          "text": "He talked using a special computer that turned his words into sound.",
+          "topic": "his speech computer",
+          "say": "Stephen spoke with a special talking computer.",
+          "sayShort": "He used a talking computer.",
+          "ask": "How do you like to share your ideas?",
+          "askYou": "What helpful gadget do you like?",
+          "bridge": "I liked the part about his speech computer. Remember?"
+        },
+        {
+          "text": "Stephen wrote a famous book that helped people understand space.",
+          "topic": "his famous book",
+          "say": "Stephen wrote a book that made space easy to understand.",
+          "sayShort": "He wrote a space book.",
+          "ask": "What would you teach people about in a book?",
+          "askYou": "What is something about space you think is cool?",
+          "bridge": "I liked the part about his famous book. Remember?"
+        }
+      ]
     },
     {
       "name": "Cristiano Ronaldo",
@@ -1153,8 +1819,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/cristiano-ronaldo.jpeg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Cristiano is one of the best soccer players ever, with hundreds of goals.",
+          "topic": "soccer goals",
+          "say": "Cristiano has scored hundreds of soccer goals.",
+          "sayShort": "He scores tons of goals.",
+          "ask": "Do you like to play soccer?",
+          "askYou": "What is your favorite way to score in a game?",
+          "bridge": ""
+        },
+        {
+          "text": "He grew up in a small town and worked hard to get really good.",
+          "topic": "small-town start",
+          "say": "Cristiano started small and worked hard to be great.",
+          "sayShort": "He worked his way up.",
+          "ask": "What is something you practice a lot?",
+          "askYou": "What would you like to get better at?",
+          "bridge": "I liked the part about his small-town start. Remember?"
+        },
+        {
+          "text": "Cristiano practices for hours every day to stay at the top.",
+          "topic": "practicing every day",
+          "say": "Cristiano practices hard every single day.",
+          "sayShort": "He practices all the time.",
+          "ask": "What do you practice to get better?",
+          "askYou": "How does practicing help you?",
+          "bridge": "I liked the part about him practicing every day. Remember?"
+        },
+        {
+          "text": "He has won the top player-of-the-year award five times.",
+          "topic": "best player",
+          "say": "Cristiano has been named the best player five times.",
+          "sayShort": "He is a top player.",
+          "ask": "What would you like to be the best at?",
+          "askYou": "What are you really proud of?",
+          "bridge": "I liked the part about him being the best player. Remember?"
+        }
+      ]
     },
     {
       "name": "Elvis Presley",
@@ -1164,8 +1867,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/600px-Elvis_Presley_promoting_Jailhouse_Rock.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Elvis was a famous rock and roll singer people called \"the King.\"",
+          "topic": "the King of rock",
+          "say": "Elvis was a rock star people called the King.",
+          "sayShort": "He was a rock legend.",
+          "ask": "What kind of music makes you want to dance?",
+          "askYou": "Do you like older songs or new ones?",
+          "bridge": ""
+        },
+        {
+          "text": "He danced and moved a lot on stage, which was new and exciting.",
+          "topic": "his dancing",
+          "say": "Elvis danced in a fun, brand-new way on stage.",
+          "sayShort": "He had cool dance moves.",
+          "ask": "What are your best dance moves?",
+          "askYou": "Do you like to dance to music?",
+          "bridge": "I liked the part about his dancing. Remember?"
+        },
+        {
+          "text": "Elvis was also a movie star and made over thirty films.",
+          "topic": "his movies",
+          "say": "Elvis starred in more than thirty movies.",
+          "sayShort": "He was a movie star too.",
+          "ask": "What kind of movie would you star in?",
+          "askYou": "What is a movie you love?",
+          "bridge": "I liked the part about his movies. Remember?"
+        },
+        {
+          "text": "He lived in a big house called Graceland that people still visit.",
+          "topic": "his home Graceland",
+          "say": "Elvis lived in a famous big house called Graceland.",
+          "sayShort": "He had a famous house.",
+          "ask": "What would your dream house have in it?",
+          "askYou": "What is your favorite room at home?",
+          "bridge": "I liked the part about his home Graceland. Remember?"
+        }
+      ]
     },
     {
       "name": "Princess Diana",
@@ -2110,8 +2850,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/jane-goodall.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Jane spent years living in the forest, watching chimpanzees up close.",
+          "topic": "living with chimps",
+          "say": "Jane lived in the forest to watch chimpanzees.",
+          "sayShort": "She studied chimps up close.",
+          "ask": "What animal would you love to watch all day?",
+          "askYou": "Have you ever watched an animal closely?",
+          "bridge": ""
+        },
+        {
+          "text": "She discovered that chimps use sticks as tools, just like people do.",
+          "topic": "chimps use tools",
+          "say": "Jane found out chimps use sticks as tools.",
+          "sayShort": "She saw chimps use tools.",
+          "ask": "What tools do you use every day?",
+          "askYou": "What clever thing have you seen an animal do?",
+          "bridge": "I liked the part about chimps using tools. Remember?"
+        },
+        {
+          "text": "Jane gave each chimp a name, like David and Flo.",
+          "topic": "naming the chimps",
+          "say": "Jane gave all the chimps their own names.",
+          "sayShort": "She named the chimps.",
+          "ask": "What would you name a chimp?",
+          "askYou": "What are the names of any pets you know?",
+          "bridge": "I liked the part about her naming the chimps. Remember?"
+        },
+        {
+          "text": "She travels around the world to help kids care about animals.",
+          "topic": "helping kids care",
+          "say": "Jane helps kids everywhere care about animals.",
+          "sayShort": "She teaches kids to care.",
+          "ask": "How do you take care of animals?",
+          "askYou": "What animal do you care about most?",
+          "bridge": "I liked the part about her helping kids care. Remember?"
+        }
+      ]
     },
     {
       "name": "Carl Sagan",
@@ -2352,8 +3129,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/beethoven.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Beethoven wrote music that people still play in concerts today.",
+          "topic": "famous music",
+          "say": "Beethoven wrote music we still hear today.",
+          "sayShort": "He wrote timeless music.",
+          "ask": "What music do you never get tired of?",
+          "askYou": "Do you like loud music or calm music?",
+          "bridge": ""
+        },
+        {
+          "text": "He slowly lost his hearing but kept writing beautiful music anyway.",
+          "topic": "never stopping",
+          "say": "Beethoven kept making music even as it got harder.",
+          "sayShort": "He never stopped composing.",
+          "ask": "When did you keep going even though it was hard?",
+          "askYou": "What helps you keep trying?",
+          "bridge": "I liked the part about him never stopping. Remember?"
+        },
+        {
+          "text": "His ninth symphony has the famous, happy song \"Ode to Joy\" in it.",
+          "topic": "Ode to Joy",
+          "say": "Beethoven wrote the happy song \"Ode to Joy.\"",
+          "sayShort": "He wrote a joyful song.",
+          "ask": "What song makes you feel happy?",
+          "askYou": "What do you do when you feel joyful?",
+          "bridge": "I liked the part about \"Ode to Joy.\" Remember?"
+        },
+        {
+          "text": "He could play the piano really well by the time he was seven.",
+          "topic": "piano at seven",
+          "say": "Beethoven played piano beautifully by age seven.",
+          "sayShort": "He played piano super young.",
+          "ask": "What instrument would you like to play?",
+          "askYou": "What did you learn to do when you were little?",
+          "bridge": "I liked the part about him playing piano young. Remember?"
+        }
+      ]
     },
     {
       "name": "Tchaikovsky",
