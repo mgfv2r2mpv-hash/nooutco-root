@@ -1,6 +1,6 @@
 {
   "_note": "Red Carpet Convos roster. Per person: {name, years, tag, emoji, img, accent, accentBg, converted, facts:[{text, topic, say, sayShort, ask, askYou, bridge}]}. `converted` is the MIGRATION FLAG: true = migrated to the new schema and live in the game; false = a stub pending fact population (kept OUT of the game for now). During migration the game surfaces only converted people. Fade levels (comment/volley Partial/Minimal) are derived at runtime from say/ask. `bridge` is the partner's recall opener INTO this fact (fact 1's bridge is empty). Edited via AdminTools/FamousPersonManager; the rcc-generate-facts populator writes facts + sets converted. Store only public-figure content — never learner/session data.",
-  "generated": "2026-07-08T20:23:15.784Z",
+  "generated": "2026-07-08T20:26:06.554Z",
   "people": [
     {
       "name": "Lin-Manuel Miranda",
@@ -3562,8 +3562,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/marie-antoinette.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Marie Antoinette was a queen of France about 250 years ago.",
+          "topic": "queen of France",
+          "say": "Marie Antoinette was a queen of France.",
+          "sayShort": "She was a French queen.",
+          "ask": "What would you do as a queen?",
+          "askYou": "What would your crown look like?",
+          "bridge": ""
+        },
+        {
+          "text": "She became a queen when she was still very young.",
+          "topic": "a young queen",
+          "say": "Marie became a queen when she was very young.",
+          "sayShort": "She was a young queen.",
+          "ask": "What big thing might you do young?",
+          "askYou": "What are you in charge of at home?",
+          "bridge": "I liked the part about her being queen of France. Remember?"
+        },
+        {
+          "text": "Marie loved fancy clothes and big hairstyles, and many people copied her.",
+          "topic": "her fancy style",
+          "say": "Marie had a fancy style people loved to copy.",
+          "sayShort": "She had a fancy style.",
+          "ask": "What fancy outfit would you wear?",
+          "askYou": "What is your favorite thing to wear?",
+          "bridge": "I liked the part about her being a young queen. Remember?"
+        },
+        {
+          "text": "She loved playing in a tiny pretend village built on her land.",
+          "topic": "her pretend village",
+          "say": "Marie loved her own little pretend village.",
+          "sayShort": "She had a pretend village.",
+          "ask": "What would you put in a pretend village?",
+          "askYou": "Do you like to build make-believe places?",
+          "bridge": "I liked the part about her fancy style. Remember?"
+        }
+      ]
     },
     {
       "name": "George Washington",
@@ -3669,8 +3706,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/franklin-d.-roosevelt.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Franklin was president of the United States for over twelve years.",
+          "topic": "a long-time president",
+          "say": "Franklin was president for over twelve years.",
+          "sayShort": "He led for a long time.",
+          "ask": "What would you do as a leader?",
+          "askYou": "What makes a good leader?",
+          "bridge": ""
+        },
+        {
+          "text": "He helped the country stay strong and hopeful through very hard times.",
+          "topic": "staying hopeful",
+          "say": "Franklin kept people hopeful in hard times.",
+          "sayShort": "He kept people hopeful.",
+          "ask": "What could you say to give someone hope?",
+          "askYou": "What cheers you up on a hard day?",
+          "bridge": "I liked the part about him being president. Remember?"
+        },
+        {
+          "text": "Franklin used a wheelchair, and he still led the whole country.",
+          "topic": "his wheelchair",
+          "say": "Franklin led the country from a wheelchair.",
+          "sayShort": "He led from a wheelchair.",
+          "ask": "What is something hard you did anyway?",
+          "askYou": "What helps you keep going?",
+          "bridge": "I liked the part about staying hopeful. Remember?"
+        },
+        {
+          "text": "He talked to people on the radio in friendly \"fireside chats.\"",
+          "topic": "fireside chats",
+          "say": "Franklin talked to people in cozy radio chats.",
+          "sayShort": "He did radio chats.",
+          "ask": "What would you tell everyone on the radio?",
+          "askYou": "Do you like to listen to music or shows?",
+          "bridge": "I liked the part about his wheelchair. Remember?"
+        }
+      ]
     },
     {
       "name": "Theodore Roosevelt",
@@ -3680,8 +3754,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/theodore-roosevelt.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Theodore was a U.S. president who also loved exploring nature.",
+          "topic": "nature-loving president",
+          "say": "Theodore was a president who loved nature.",
+          "sayShort": "He loved nature.",
+          "ask": "What do you like to do outside?",
+          "askYou": "What is your favorite place in nature?",
+          "bridge": ""
+        },
+        {
+          "text": "He helped save lots of land for parks so wild animals would have homes.",
+          "topic": "saving the parks",
+          "say": "Theodore saved land for parks and animals.",
+          "sayShort": "He saved parks.",
+          "ask": "What animal would you want to protect?",
+          "askYou": "Have you been to a park?",
+          "bridge": "I liked the part about him loving nature. Remember?"
+        },
+        {
+          "text": "The teddy bear is named after him, after he would not hunt a bear cub.",
+          "topic": "the teddy bear",
+          "say": "The teddy bear is named after Theodore.",
+          "sayShort": "He inspired the teddy bear.",
+          "ask": "Do you have a favorite stuffed animal?",
+          "askYou": "What would you name a teddy bear?",
+          "bridge": "I liked the part about him saving the parks. Remember?"
+        },
+        {
+          "text": "Theodore wore round glasses and was full of energy his whole life.",
+          "topic": "full of energy",
+          "say": "Theodore was full of energy his whole life.",
+          "sayShort": "He had tons of energy.",
+          "ask": "What gives you lots of energy?",
+          "askYou": "What do you love to do with your energy?",
+          "bridge": "I liked the part about the teddy bear. Remember?"
+        }
+      ]
     },
     {
       "name": "Mao Zedong",
@@ -3702,8 +3813,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/600px-Kamala_Harris_Vice_Presidential_Portrait.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Kamala became the first woman vice president of the United States.",
+          "topic": "first woman VP",
+          "say": "Kamala was the first woman vice president.",
+          "sayShort": "She made history.",
+          "ask": "What would you like to be first at?",
+          "askYou": "What are you proud of?",
+          "bridge": ""
+        },
+        {
+          "text": "She was a lawyer before she became a leader in the government.",
+          "topic": "lawyer first",
+          "say": "Kamala was a lawyer before she led.",
+          "sayShort": "She was a lawyer first.",
+          "ask": "What job would you like to try?",
+          "askYou": "What job sounds interesting to you?",
+          "bridge": "I liked the part about her being first woman VP. Remember?"
+        },
+        {
+          "text": "Her mom came from India and her dad came from Jamaica.",
+          "topic": "her family",
+          "say": "Kamala's family came from India and Jamaica.",
+          "sayShort": "Her family came from far.",
+          "ask": "Where is your family from?",
+          "askYou": "What do you love about your family?",
+          "bridge": "I liked the part about her being a lawyer. Remember?"
+        },
+        {
+          "text": "Kamala loves to cook and even shares recipes online.",
+          "topic": "her cooking",
+          "say": "Kamala loves to cook and share recipes.",
+          "sayShort": "She loves to cook.",
+          "ask": "What is your favorite food to make or eat?",
+          "askYou": "Do you like to help cook?",
+          "bridge": "I liked the part about her family. Remember?"
+        }
+      ]
     },
     {
       "name": "Jacinda Ardern",
@@ -3713,8 +3861,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/jacinda-ardern.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Jacinda became the leader of New Zealand when she was only thirty-seven.",
+          "topic": "a young leader",
+          "say": "Jacinda led New Zealand at just thirty-seven.",
+          "sayShort": "She was a young leader.",
+          "ask": "What would you do as a leader?",
+          "askYou": "Do you like to be in charge?",
+          "bridge": ""
+        },
+        {
+          "text": "She had a baby while she was leading the whole country.",
+          "topic": "a busy mom",
+          "say": "Jacinda had a baby while leading the country.",
+          "sayShort": "She was a busy mom.",
+          "ask": "How do you juggle a few things at once?",
+          "askYou": "What two things do you do together?",
+          "bridge": "I liked the part about her being a young leader. Remember?"
+        },
+        {
+          "text": "She was known for being kind even when things were hard.",
+          "topic": "staying kind",
+          "say": "Jacinda stayed kind even when things were hard.",
+          "sayShort": "She stayed kind.",
+          "ask": "How do you stay kind on a hard day?",
+          "askYou": "Who is the kindest person you know?",
+          "bridge": "I liked the part about her being a busy mom. Remember?"
+        },
+        {
+          "text": "Jacinda made new rules to help keep people safe.",
+          "topic": "keeping people safe",
+          "say": "Jacinda made rules to keep people safe.",
+          "sayShort": "She kept people safe.",
+          "ask": "What rule would you make to keep people safe?",
+          "askYou": "What helps you feel safe?",
+          "bridge": "I liked the part about her staying kind. Remember?"
+        }
+      ]
     },
     {
       "name": "Alexandria Ocasio-Cortez",
@@ -3724,8 +3909,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/alexandria-ocasio-cortez.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Alexandria, called AOC, became one of the youngest people ever in Congress.",
+          "topic": "youngest in Congress",
+          "say": "AOC was one of the youngest people in Congress.",
+          "sayShort": "She was a young leader.",
+          "ask": "What would you do if you helped make the rules?",
+          "askYou": "What are you young but good at?",
+          "bridge": ""
+        },
+        {
+          "text": "She was a waitress before she ran to help make the rules.",
+          "topic": "from waitress to leader",
+          "say": "AOC was a waitress before she became a leader.",
+          "sayShort": "She worked her way up.",
+          "ask": "What job would you like to try first?",
+          "askYou": "What job sounds fun to you?",
+          "bridge": "I liked the part about her being youngest in Congress. Remember?"
+        },
+        {
+          "text": "AOC talks to people online and shares what is going on in her job.",
+          "topic": "sharing online",
+          "say": "AOC shares her work with people online.",
+          "sayShort": "She talks to people online.",
+          "ask": "What would you share online about your day?",
+          "askYou": "What do you like to watch online?",
+          "bridge": "I liked the part about her from waitress to leader. Remember?"
+        },
+        {
+          "text": "She works hard for things like clean air, fair pay, and good schools.",
+          "topic": "her causes",
+          "say": "AOC works for clean air, fair pay, and schools.",
+          "sayShort": "She fights for fairness.",
+          "ask": "What would you want to make better?",
+          "askYou": "What change do you wish for?",
+          "bridge": "I liked the part about her sharing online. Remember?"
+        }
+      ]
     },
     {
       "name": "Michelle Obama",
@@ -3783,8 +4005,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/sonia-sotomayor.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Sonia became the first Latina judge on the highest court in the U.S.",
+          "topic": "first Latina judge",
+          "say": "Sonia was the first Latina judge on the top court.",
+          "sayShort": "She made history as a judge.",
+          "ask": "What would you decide if you were a judge?",
+          "askYou": "How do you make a fair choice?",
+          "bridge": ""
+        },
+        {
+          "text": "She grew up in the Bronx without a lot of money and loved reading.",
+          "topic": "a reader from the Bronx",
+          "say": "Sonia grew up loving books in the Bronx.",
+          "sayShort": "She loved to read.",
+          "ask": "What is your favorite book?",
+          "askYou": "Where do you like to read?",
+          "bridge": "I liked the part about her being a judge. Remember?"
+        },
+        {
+          "text": "Sonia found out she had diabetes when she was very young, and stayed strong.",
+          "topic": "staying strong",
+          "say": "Sonia stayed strong through a health challenge.",
+          "sayShort": "She stayed strong.",
+          "ask": "What helps you stay strong?",
+          "askYou": "When have you been really brave?",
+          "bridge": "I liked the part about her loving to read. Remember?"
+        },
+        {
+          "text": "She wrote a book to help kids feel good about who they are.",
+          "topic": "helping kids",
+          "say": "Sonia wrote a book to help kids feel proud.",
+          "sayShort": "She helps kids feel good.",
+          "ask": "What makes you feel proud of yourself?",
+          "askYou": "What is special about you?",
+          "bridge": "I liked the part about her staying strong. Remember?"
+        }
+      ]
     },
     {
       "name": "Desmond Tutu",
@@ -3794,8 +4053,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/desmond-tutu.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Desmond was a kind leader who helped end unfair rules in South Africa.",
+          "topic": "ending unfair rules",
+          "say": "Desmond helped end unfair rules in his country.",
+          "sayShort": "He fought unfair rules.",
+          "ask": "What is an unfair rule you would change?",
+          "askYou": "How do you make things fair?",
+          "bridge": ""
+        },
+        {
+          "text": "He won the Nobel Peace Prize for his peaceful work.",
+          "topic": "Nobel Peace Prize",
+          "say": "Desmond won a peace prize for his kind work.",
+          "sayShort": "He won a peace prize.",
+          "ask": "What would you like to be known for?",
+          "askYou": "What kind thing are you proud of?",
+          "bridge": "I liked the part about ending unfair rules. Remember?"
+        },
+        {
+          "text": "Desmond was a church leader known for his big, happy laugh.",
+          "topic": "his big laugh",
+          "say": "Desmond was famous for his big, happy laugh.",
+          "sayShort": "He had a huge laugh.",
+          "ask": "What makes you laugh really hard?",
+          "askYou": "Do you have a big laugh?",
+          "bridge": "I liked the part about his peace prize. Remember?"
+        },
+        {
+          "text": "He led a group that helped people heal and forgive each other.",
+          "topic": "healing and forgiving",
+          "say": "Desmond helped people heal and forgive.",
+          "sayShort": "He helped people forgive.",
+          "ask": "How do you make up after a fight?",
+          "askYou": "How do you forgive a friend?",
+          "bridge": "I liked the part about his big laugh. Remember?"
+        }
+      ]
     },
     {
       "name": "Wangari Maathai",
@@ -3805,8 +4101,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/wangari-maathai.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Wangari planted millions of trees all across Kenya.",
+          "topic": "planting trees",
+          "say": "Wangari planted millions of trees in Kenya.",
+          "sayShort": "She planted lots of trees.",
+          "ask": "Would you like to plant a tree?",
+          "askYou": "What is your favorite kind of tree?",
+          "bridge": ""
+        },
+        {
+          "text": "She won the Nobel Peace Prize for helping the Earth and her country.",
+          "topic": "Nobel Peace Prize",
+          "say": "Wangari won a peace prize for helping the Earth.",
+          "sayShort": "She won a peace prize.",
+          "ask": "How do you help take care of the Earth?",
+          "askYou": "What do you love about nature?",
+          "bridge": "I liked the part about her planting trees. Remember?"
+        },
+        {
+          "text": "She started a group so women could plant trees together too.",
+          "topic": "her tree group",
+          "say": "Wangari started a group to plant trees together.",
+          "sayShort": "She led a tree group.",
+          "ask": "How could you and friends help the Earth?",
+          "askYou": "Do you like to work as a team?",
+          "bridge": "I liked the part about her peace prize. Remember?"
+        },
+        {
+          "text": "Wangari was the first African woman to win the Nobel Peace Prize.",
+          "topic": "a big first",
+          "say": "Wangari was the first African woman to win it.",
+          "sayShort": "She was a big first.",
+          "ask": "What would you like to be first at?",
+          "askYou": "What are you proud of?",
+          "bridge": "I liked the part about her tree group. Remember?"
+        }
+      ]
     },
     {
       "name": "Rigoberta Menchú",
@@ -3816,8 +4149,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/rigoberta-menchu.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Rigoberta spoke up for native people in Guatemala when their rights were taken.",
+          "topic": "speaking for her people",
+          "say": "Rigoberta spoke up for her people's rights.",
+          "sayShort": "She spoke for her people.",
+          "ask": "What would you speak up for?",
+          "askYou": "When did you help someone be treated fairly?",
+          "bridge": ""
+        },
+        {
+          "text": "She won the Nobel Peace Prize when she was only thirty-three.",
+          "topic": "young peace winner",
+          "say": "Rigoberta won a peace prize when she was young.",
+          "sayShort": "She won a young prize.",
+          "ask": "What big thing do you hope to do young?",
+          "askYou": "What are you proud of?",
+          "bridge": "I liked the part about her speaking for her people. Remember?"
+        },
+        {
+          "text": "Rigoberta wrote a book about her life that opened the world's eyes.",
+          "topic": "her life story",
+          "say": "Rigoberta shared her life in a powerful book.",
+          "sayShort": "She wrote her story.",
+          "ask": "What part of your life would you share?",
+          "askYou": "What is a true story you love?",
+          "bridge": "I liked the part about her young prize. Remember?"
+        },
+        {
+          "text": "She speaks her family's native language and wears traditional clothes.",
+          "topic": "her culture",
+          "say": "Rigoberta is proud of her language and clothes.",
+          "sayShort": "She loves her culture.",
+          "ask": "What is special about your family's traditions?",
+          "askYou": "What do you wear on a special day?",
+          "bridge": "I liked the part about her life story. Remember?"
+        }
+      ]
     },
     {
       "name": "Ruth Bader Ginsburg",
@@ -3827,8 +4197,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/ruth-bader-ginsburg.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Ruth was a judge on the highest court in the U.S. for many years.",
+          "topic": "a top judge",
+          "say": "Ruth was a judge on the very top court.",
+          "sayShort": "She was a top judge.",
+          "ask": "What would you decide as a judge?",
+          "askYou": "How do you make a fair choice?",
+          "bridge": ""
+        },
+        {
+          "text": "She fought hard for women to be treated the same as men.",
+          "topic": "fairness for all",
+          "say": "Ruth fought for women to be treated fairly.",
+          "sayShort": "She fought for fairness.",
+          "ask": "What should be fair for everyone?",
+          "askYou": "When did you stand up for fairness?",
+          "bridge": "I liked the part about her being a top judge. Remember?"
+        },
+        {
+          "text": "People called her \"Notorious RBG\" because she was so cool and strong.",
+          "topic": "her cool nickname",
+          "say": "People gave Ruth the cool nickname \"RBG.\"",
+          "sayShort": "She had a cool nickname.",
+          "ask": "What nickname would you like?",
+          "askYou": "Do you have a nickname you like?",
+          "bridge": "I liked the part about her fairness for all. Remember?"
+        },
+        {
+          "text": "Ruth worked out and stayed strong even when she was very old.",
+          "topic": "staying strong",
+          "say": "Ruth stayed strong with exercise her whole life.",
+          "sayShort": "She stayed strong.",
+          "ask": "What do you do to stay strong?",
+          "askYou": "Do you like to exercise?",
+          "bridge": "I liked the part about her cool nickname. Remember?"
+        }
+      ]
     },
     {
       "name": "Sojourner Truth",
@@ -3838,8 +4245,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/sojourner-truth.jpeg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Sojourner became free and then bravely spoke up for fairness for everyone.",
+          "topic": "speaking for fairness",
+          "say": "Sojourner bravely spoke up for fairness.",
+          "sayShort": "She spoke for fairness.",
+          "ask": "What would you speak up about?",
+          "askYou": "When were you brave?",
+          "bridge": ""
+        },
+        {
+          "text": "She gave a famous speech that asked, \"Ain't I a woman?\"",
+          "topic": "her famous speech",
+          "say": "Sojourner gave a famous, powerful speech.",
+          "sayShort": "She gave a famous speech.",
+          "ask": "What would you say in a big speech?",
+          "askYou": "Do you like speaking to people?",
+          "bridge": "I liked the part about her speaking for fairness. Remember?"
+        },
+        {
+          "text": "Sojourner walked all across the country to share her words.",
+          "topic": "sharing her words",
+          "say": "Sojourner walked far to share her message.",
+          "sayShort": "She shared her words far.",
+          "ask": "How far would you go for something you believe?",
+          "askYou": "Do you like long walks or trips?",
+          "bridge": "I liked the part about her famous speech. Remember?"
+        },
+        {
+          "text": "She also helped soldiers by getting them supplies they needed.",
+          "topic": "helping soldiers",
+          "say": "Sojourner helped soldiers get what they needed.",
+          "sayShort": "She helped soldiers.",
+          "ask": "How do you like to help people?",
+          "askYou": "Who is someone you helped?",
+          "bridge": "I liked the part about her sharing her words. Remember?"
+        }
+      ]
     },
     {
       "name": "Susan B. Anthony",
@@ -3849,8 +4293,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/susan-b.-anthony.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Susan worked hard so that women could be allowed to vote.",
+          "topic": "votes for women",
+          "say": "Susan worked so women could vote.",
+          "sayShort": "She fought for voting.",
+          "ask": "Why is it good when everyone has a say?",
+          "askYou": "How does your class make choices?",
+          "bridge": ""
+        },
+        {
+          "text": "She once voted to make a point, even though the rules did not allow it yet.",
+          "topic": "standing up",
+          "say": "Susan voted to bravely make a point.",
+          "sayShort": "She stood up boldly.",
+          "ask": "When did you stand up for what is right?",
+          "askYou": "What is something worth standing up for?",
+          "bridge": "I liked the part about votes for women. Remember?"
+        },
+        {
+          "text": "Susan gave thousands of speeches all across the country.",
+          "topic": "so many speeches",
+          "say": "Susan gave thousands of speeches everywhere.",
+          "sayShort": "She gave tons of speeches.",
+          "ask": "What would you give a speech about?",
+          "askYou": "Do you like talking to a crowd?",
+          "bridge": "I liked the part about her standing up. Remember?"
+        },
+        {
+          "text": "Her hard work helped women finally win the right to vote.",
+          "topic": "her work paid off",
+          "say": "Susan's hard work helped women win the vote.",
+          "sayShort": "Her work paid off.",
+          "ask": "What are you working hard for?",
+          "askYou": "What is a goal you have?",
+          "bridge": "I liked the part about her many speeches. Remember?"
+        }
+      ]
     },
     {
       "name": "Emmeline Pankhurst",
@@ -3860,8 +4341,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/emmeline-pankhurst.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Emmeline worked in England to win votes for women.",
+          "topic": "votes for women",
+          "say": "Emmeline fought so women in England could vote.",
+          "sayShort": "She fought for voting.",
+          "ask": "Why is it good when everyone gets a say?",
+          "askYou": "How do you make a fair choice with friends?",
+          "bridge": ""
+        },
+        {
+          "text": "She and her group marched and spoke out loudly so they would be heard.",
+          "topic": "loud and brave",
+          "say": "Emmeline's group marched and spoke out loudly.",
+          "sayShort": "She spoke out loudly.",
+          "ask": "How do you make sure people hear you?",
+          "askYou": "When did you speak up loud and proud?",
+          "bridge": "I liked the part about votes for women. Remember?"
+        },
+        {
+          "text": "Emmeline never gave up, even when it was really hard.",
+          "topic": "never giving up",
+          "say": "Emmeline never gave up on her big goal.",
+          "sayShort": "She never gave up.",
+          "ask": "What is a goal you will not give up on?",
+          "askYou": "What helps you keep trying?",
+          "bridge": "I liked the part about her being loud and brave. Remember?"
+        },
+        {
+          "text": "Her hard work helped women in England finally win the vote.",
+          "topic": "her work paid off",
+          "say": "Emmeline's work helped women win the vote.",
+          "sayShort": "Her work paid off.",
+          "ask": "What are you working hard for?",
+          "askYou": "What are you proud of finishing?",
+          "bridge": "I liked the part about her never giving up. Remember?"
+        }
+      ]
     },
     {
       "name": "Dalai Lama",
@@ -3871,8 +4389,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/dalai-lama.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "The Dalai Lama is a kind Buddhist leader from Tibet.",
+          "topic": "a kind leader",
+          "say": "The Dalai Lama is a very kind leader.",
+          "sayShort": "He is a kind leader.",
+          "ask": "Who is a kind leader you know?",
+          "askYou": "What makes someone kind?",
+          "bridge": ""
+        },
+        {
+          "text": "He won the Nobel Peace Prize for choosing peace over fighting.",
+          "topic": "choosing peace",
+          "say": "The Dalai Lama won a prize for choosing peace.",
+          "sayShort": "He chose peace.",
+          "ask": "How do you solve a problem peacefully?",
+          "askYou": "How do you make up with a friend?",
+          "bridge": "I liked the part about him being a kind leader. Remember?"
+        },
+        {
+          "text": "He says that kindness is the very best way to live.",
+          "topic": "kindness first",
+          "say": "The Dalai Lama says kindness is best.",
+          "sayShort": "He says kindness is best.",
+          "ask": "What is a kind thing you did today?",
+          "askYou": "How does kindness make you feel?",
+          "bridge": "I liked the part about him choosing peace. Remember?"
+        },
+        {
+          "text": "The Dalai Lama travels the world to teach about peace and being happy.",
+          "topic": "teaching happiness",
+          "say": "The Dalai Lama travels to teach about happiness.",
+          "sayShort": "He teaches happiness.",
+          "ask": "What makes you truly happy?",
+          "askYou": "What would you teach the world?",
+          "bridge": "I liked the part about kindness first. Remember?"
+        }
+      ]
     },
     {
       "name": "Mother Teresa",
@@ -4074,8 +4629,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/virginia-woolf.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Virginia wrote books that showed how people's thoughts feel on the inside.",
+          "topic": "inside thoughts",
+          "say": "Virginia wrote about people's inside thoughts.",
+          "sayShort": "She wrote inner feelings.",
+          "ask": "What are you thinking about right now?",
+          "askYou": "Do you like to daydream?",
+          "bridge": ""
+        },
+        {
+          "text": "She and her clever friends were a group who loved art and ideas.",
+          "topic": "her clever friends",
+          "say": "Virginia had a group of friends who loved ideas.",
+          "sayShort": "She had clever friends.",
+          "ask": "What do you love to talk about with friends?",
+          "askYou": "Who do you share your ideas with?",
+          "bridge": "I liked the part about her inside thoughts. Remember?"
+        },
+        {
+          "text": "Virginia said writers need a quiet room of their own to create.",
+          "topic": "a quiet room",
+          "say": "Virginia said writers need a quiet space.",
+          "sayShort": "She loved a quiet room.",
+          "ask": "Where is your favorite quiet spot?",
+          "askYou": "Do you like quiet or busy places?",
+          "bridge": "I liked the part about her clever friends. Remember?"
+        },
+        {
+          "text": "She wrote honestly about everyday feelings, even feeling sad sometimes.",
+          "topic": "real feelings",
+          "say": "Virginia wrote honestly about real feelings.",
+          "sayShort": "She wrote real feelings.",
+          "ask": "How do you feel better when you are sad?",
+          "askYou": "What makes you feel happy?",
+          "bridge": "I liked the part about her quiet room. Remember?"
+        }
+      ]
     },
     {
       "name": "George Orwell",
@@ -4085,8 +4677,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/george-orwell.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "George wrote a famous book called Animal Farm about animals who run a farm.",
+          "topic": "Animal Farm",
+          "say": "George wrote Animal Farm about clever animals.",
+          "sayShort": "He wrote Animal Farm.",
+          "ask": "What animals would you write a story about?",
+          "askYou": "Do you like animal stories?",
+          "bridge": ""
+        },
+        {
+          "text": "He also wrote a book about a future where people are always watched.",
+          "topic": "a future story",
+          "say": "George wrote a story about a watched future.",
+          "sayShort": "He wrote a future story.",
+          "ask": "What do you think the future will be like?",
+          "askYou": "What would you invent for the future?",
+          "bridge": "I liked the part about Animal Farm. Remember?"
+        },
+        {
+          "text": "George Orwell was a pen name; his real name was Eric.",
+          "topic": "his pen name",
+          "say": "George used a made-up name for his books.",
+          "sayShort": "He had a pen name.",
+          "ask": "What pen name would you choose?",
+          "askYou": "Do you like your name?",
+          "bridge": "I liked the part about his future story. Remember?"
+        },
+        {
+          "text": "He worked hard, everyday jobs to understand how regular people lived.",
+          "topic": "learning about people",
+          "say": "George worked regular jobs to understand people.",
+          "sayShort": "He learned about people.",
+          "ask": "What job would teach you a lot?",
+          "askYou": "What do you want to understand better?",
+          "bridge": "I liked the part about his pen name. Remember?"
+        }
+      ]
     },
     {
       "name": "Maya Angelou",
@@ -4144,8 +4773,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/toni-morrison.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Toni was an American writer who told stories about Black life in the U.S.",
+          "topic": "her powerful stories",
+          "say": "Toni told powerful stories about Black life.",
+          "sayShort": "She told powerful stories.",
+          "ask": "What story would you love to tell?",
+          "askYou": "What is a book that stuck with you?",
+          "bridge": ""
+        },
+        {
+          "text": "She won the Nobel Prize for her wonderful books.",
+          "topic": "Nobel Prize",
+          "say": "Toni won the Nobel Prize for her books.",
+          "sayShort": "She won a big book prize.",
+          "ask": "What would you like to win a prize for?",
+          "askYou": "What are you really good at?",
+          "bridge": "I liked the part about her powerful stories. Remember?"
+        },
+        {
+          "text": "She worked as a book editor before she became a famous writer.",
+          "topic": "editor first",
+          "say": "Toni edited books before she wrote them.",
+          "sayShort": "She was an editor first.",
+          "ask": "What job would you like to try first?",
+          "askYou": "Do you like to fix and improve things?",
+          "bridge": "I liked the part about her Nobel Prize. Remember?"
+        },
+        {
+          "text": "Toni wrote Beloved, one of the most famous books in American writing.",
+          "topic": "her famous book",
+          "say": "Toni wrote the famous book Beloved.",
+          "sayShort": "She wrote a famous book.",
+          "ask": "What would you name a book you wrote?",
+          "askYou": "What is a title you like?",
+          "bridge": "I liked the part about her being an editor first. Remember?"
+        }
+      ]
     },
     {
       "name": "Chimamanda Ngozi Adichie",
@@ -4155,8 +4821,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/chimamanda-ngozi-adichie.jpeg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Chimamanda is a writer from Nigeria whose books are read all over the world.",
+          "topic": "a world writer",
+          "say": "Chimamanda's books are read around the world.",
+          "sayShort": "She is a world writer.",
+          "ask": "Where in the world would you love to visit?",
+          "askYou": "Do you like books from other places?",
+          "bridge": ""
+        },
+        {
+          "text": "She gave a famous talk about treating girls and boys the same.",
+          "topic": "fairness talk",
+          "say": "Chimamanda gave a famous talk about fairness.",
+          "sayShort": "She gave a fairness talk.",
+          "ask": "What should be the same for everyone?",
+          "askYou": "What is fair in your class?",
+          "bridge": "I liked the part about her being a world writer. Remember?"
+        },
+        {
+          "text": "She said knowing only one story about a place is not enough.",
+          "topic": "more than one story",
+          "say": "Chimamanda said to learn more than one story.",
+          "sayShort": "She said learn many stories.",
+          "ask": "What is a story you would like to learn?",
+          "askYou": "How do you learn about new places?",
+          "bridge": "I liked the part about her fairness talk. Remember?"
+        },
+        {
+          "text": "Her books are about love, family, and her home country.",
+          "topic": "love and family",
+          "say": "Chimamanda writes about love and family.",
+          "sayShort": "She writes about family.",
+          "ask": "What do you love about your family?",
+          "askYou": "What story from home would you tell?",
+          "bridge": "I liked the part about more than one story. Remember?"
+        }
+      ]
     },
     {
       "name": "Langston Hughes",
@@ -4166,8 +4869,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/langston-hughes.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Langston was a poet who wrote about Black life and dreams in America.",
+          "topic": "poet of dreams",
+          "say": "Langston wrote poems about hopes and dreams.",
+          "sayShort": "He wrote about dreams.",
+          "ask": "What is a big dream you have?",
+          "askYou": "Do you like to read or write poems?",
+          "bridge": ""
+        },
+        {
+          "text": "He wrote a famous short poem that asks what happens to a dream put off.",
+          "topic": "a dream poem",
+          "say": "Langston wrote a famous poem about dreams.",
+          "sayShort": "He wrote a dream poem.",
+          "ask": "What dream do you hope comes true?",
+          "askYou": "What do you daydream about?",
+          "bridge": "I liked the part about him being a poet of dreams. Remember?"
+        },
+        {
+          "text": "He helped start a great time of art called the Harlem Renaissance.",
+          "topic": "a time of great art",
+          "say": "Langston helped start a great art movement.",
+          "sayShort": "He helped grow great art.",
+          "ask": "What kind of art do you love?",
+          "askYou": "What would you love to create?",
+          "bridge": "I liked the part about his dream poem. Remember?"
+        },
+        {
+          "text": "Langston traveled a lot and wrote about all the people he met.",
+          "topic": "a traveling poet",
+          "say": "Langston traveled and wrote about people.",
+          "sayShort": "He traveled and wrote.",
+          "ask": "Where would you travel to write about?",
+          "askYou": "Who is someone interesting you have met?",
+          "bridge": "I liked the part about the time of great art. Remember?"
+        }
+      ]
     },
     {
       "name": "Gabriel García Márquez",
@@ -4177,8 +4917,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/gabriel-garcia-marquez.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Gabriel was a writer from Colombia who mixed magic and real life in his stories.",
+          "topic": "magical stories",
+          "say": "Gabriel mixed magic and real life in his tales.",
+          "sayShort": "He wrote magical stories.",
+          "ask": "What magic would you put in a story?",
+          "askYou": "Do you like fantasy stories?",
+          "bridge": ""
+        },
+        {
+          "text": "His most famous book is called One Hundred Years of Solitude.",
+          "topic": "his famous book",
+          "say": "Gabriel wrote a very famous long book.",
+          "sayShort": "He wrote a famous book.",
+          "ask": "What would your big story be about?",
+          "askYou": "What is a long book you know?",
+          "bridge": "I liked the part about his magical stories. Remember?"
+        },
+        {
+          "text": "He won the Nobel Prize for his amazing writing.",
+          "topic": "Nobel Prize",
+          "say": "Gabriel won the Nobel Prize for his writing.",
+          "sayShort": "He won a big book prize.",
+          "ask": "What would you like to be famous for?",
+          "askYou": "What are you really good at?",
+          "bridge": "I liked the part about his famous book. Remember?"
+        },
+        {
+          "text": "He worked as a news writer before he wrote story books.",
+          "topic": "news writer first",
+          "say": "Gabriel wrote the news before writing books.",
+          "sayShort": "He wrote news first.",
+          "ask": "What news would you like to report?",
+          "askYou": "Do you like to write?",
+          "bridge": "I liked the part about his Nobel Prize. Remember?"
+        }
+      ]
     },
     {
       "name": "Rumi",
@@ -4188,8 +4965,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/rumi.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Rumi was a poet from Persia who wrote about love and kindness long ago.",
+          "topic": "love and kindness",
+          "say": "Rumi wrote beautiful poems about kindness.",
+          "sayShort": "He wrote about kindness.",
+          "ask": "What is a kind thing you love to do?",
+          "askYou": "How does kindness feel?",
+          "bridge": ""
+        },
+        {
+          "text": "His poems are still some of the most read in the whole world.",
+          "topic": "poems people love",
+          "say": "Rumi's poems are still loved everywhere.",
+          "sayShort": "People still love his poems.",
+          "ask": "What is a poem or song you love?",
+          "askYou": "Do you like rhymes?",
+          "bridge": "I liked the part about love and kindness. Remember?"
+        },
+        {
+          "text": "He once said: \"What you seek is seeking you.\"",
+          "topic": "a wise saying",
+          "say": "Rumi had a famous, wise little saying.",
+          "sayShort": "He had a wise saying.",
+          "ask": "What is a saying you like?",
+          "askYou": "What are you seeking or hoping for?",
+          "bridge": "I liked the part about his poems people love. Remember?"
+        },
+        {
+          "text": "Rumi was a teacher who wrote thousands of lines of poems.",
+          "topic": "so many poems",
+          "say": "Rumi wrote thousands and thousands of poems.",
+          "sayShort": "He wrote tons of poems.",
+          "ask": "What would you write a poem about?",
+          "askYou": "Do you like to make up rhymes?",
+          "bridge": "I liked the part about his wise saying. Remember?"
+        }
+      ]
     },
     {
       "name": "Murasaki Shikibu",
@@ -4199,8 +5013,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/murasaki-shikibu.png",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Murasaki wrote what many call the world's first novel, over 1,000 years ago.",
+          "topic": "the first novel",
+          "say": "Murasaki wrote one of the world's first novels.",
+          "sayShort": "She wrote an early novel.",
+          "ask": "What story would you love to write?",
+          "askYou": "Do you like long stories?",
+          "bridge": ""
+        },
+        {
+          "text": "Her famous book is called The Tale of Genji.",
+          "topic": "her famous tale",
+          "say": "Murasaki wrote the famous Tale of Genji.",
+          "sayShort": "She wrote a famous tale.",
+          "ask": "What would you name a book you wrote?",
+          "askYou": "What is a tale you know well?",
+          "bridge": "I liked the part about the first novel. Remember?"
+        },
+        {
+          "text": "She was a lady at the queen's palace in old Japan.",
+          "topic": "palace lady",
+          "say": "Murasaki lived and wrote at a royal palace.",
+          "sayShort": "She lived at a palace.",
+          "ask": "What would you do at a palace?",
+          "askYou": "What would your palace be like?",
+          "bridge": "I liked the part about her famous tale. Remember?"
+        },
+        {
+          "text": "She wrote her stories in beautiful handwriting with a brush and ink.",
+          "topic": "brush and ink",
+          "say": "Murasaki wrote with a brush and ink beautifully.",
+          "sayShort": "She wrote with a brush.",
+          "ask": "Do you like nice handwriting?",
+          "askYou": "What would you write with a brush?",
+          "bridge": "I liked the part about her being a palace lady. Remember?"
+        }
+      ]
     },
     {
       "name": "Sor Juana Inés de la Cruz",
