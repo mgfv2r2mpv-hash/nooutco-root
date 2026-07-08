@@ -1,6 +1,6 @@
 {
   "_note": "Red Carpet Convos roster. Schema per person: {name, years, tag, emoji, img, accent, accentBg, facts:[{text, topic, say, sayShort, ask, askYou, bridge}]}. Fade levels (comment/volley Partial/Minimal) are derived at runtime from say/ask — do NOT author them. `bridge` is the partner's recall opener INTO this fact (fact 1's bridge is empty). Edited via AdminTools/FamousPersonManager; the AI populator writes this file. Store only public-figure content — never learner/session data.",
-  "generated": "2026-07-08T17:59:55.349Z",
+  "generated": "2026-07-08T18:05:42.608Z",
   "people": [
     {
       "name": "Lin-Manuel Miranda",
@@ -527,7 +527,44 @@
       "img": "/famous-person/_Resources/_imgSource/images/albert-einstein.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "facts": []
+      "facts": [
+        {
+          "text": "Albert came up with brand-new ideas about space, time, and gravity.",
+          "topic": "big science ideas",
+          "say": "Albert thought up brand-new ideas about space and time.",
+          "sayShort": "He had big science ideas.",
+          "ask": "What is something you like to wonder about?",
+          "askYou": "If you could learn about anything, what would it be?",
+          "bridge": ""
+        },
+        {
+          "text": "He won a big prize called the Nobel Prize for showing how light works.",
+          "topic": "Nobel Prize",
+          "say": "Albert won a huge science prize called the Nobel Prize.",
+          "sayShort": "He won a giant science prize.",
+          "ask": "What would you like to win a prize for?",
+          "askYou": "Have you ever gotten an award?",
+          "bridge": "I liked the part about his big science ideas. Remember?"
+        },
+        {
+          "text": "He played the violin and used music to help himself think.",
+          "topic": "playing the violin",
+          "say": "Albert played the violin to help himself think.",
+          "sayShort": "He played the violin.",
+          "ask": "Does music ever help you feel calm or focused?",
+          "askYou": "Do you play an instrument, or want to?",
+          "bridge": "I liked the part about his Nobel Prize. Remember?"
+        },
+        {
+          "text": "Albert loved nature and spent time sailing on lakes near his home.",
+          "topic": "sailing on lakes",
+          "say": "Albert loved to sail on the lakes near his home.",
+          "sayShort": "He loved to go sailing.",
+          "ask": "What do you like to do outside?",
+          "askYou": "Have you ever been on a boat?",
+          "bridge": "I liked the part about him playing the violin. Remember?"
+        }
+      ]
     },
     {
       "name": "Marie Curie",
@@ -537,7 +574,44 @@
       "img": "/famous-person/_Resources/_imgSource/images/marie-curie.jpeg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "facts": []
+      "facts": [
+        {
+          "text": "Marie was the first person to win two Nobel Prizes in two different sciences.",
+          "topic": "two Nobel Prizes",
+          "say": "Marie won two Nobel Prizes, more than almost anyone.",
+          "sayShort": "She won two big prizes.",
+          "ask": "What are two things you are good at?",
+          "askYou": "Have you ever won something twice?",
+          "bridge": ""
+        },
+        {
+          "text": "She discovered two brand-new materials called polonium and radium.",
+          "topic": "new discoveries",
+          "say": "Marie discovered two new materials nobody knew about.",
+          "sayShort": "She found new materials.",
+          "ask": "What would you like to discover someday?",
+          "askYou": "Have you ever found something surprising?",
+          "bridge": "I liked the part about her two Nobel Prizes. Remember?"
+        },
+        {
+          "text": "She moved from Poland to Paris so she could go to a big school and study.",
+          "topic": "moving to study",
+          "say": "Marie moved far away to Paris just so she could study.",
+          "sayShort": "She moved to go to school.",
+          "ask": "What is something you really want to learn?",
+          "askYou": "Would you travel far to do something you love?",
+          "bridge": "I liked the part about her new discoveries. Remember?"
+        },
+        {
+          "text": "Marie did her famous work in an old shed with hardly any tools.",
+          "topic": "her old shed",
+          "say": "Marie did amazing work in a tiny old shed.",
+          "sayShort": "She worked in a little shed.",
+          "ask": "Where do you like to make or build things?",
+          "askYou": "Have you ever made something with just a few things?",
+          "bridge": "I liked the part about her moving to study. Remember?"
+        }
+      ]
     },
     {
       "name": "Martin Luther King Jr.",
@@ -547,7 +621,44 @@
       "img": "/famous-person/_Resources/_imgSource/images/martin-luther-king-jr.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "facts": []
+      "facts": [
+        {
+          "text": "Martin gave the famous 'I Have a Dream' speech to a huge, cheering crowd.",
+          "topic": "I Have a Dream",
+          "say": "Martin gave a famous speech about his big dream.",
+          "sayShort": "He gave a famous speech.",
+          "ask": "What is a big dream you have?",
+          "askYou": "If everyone listened to you, what would you say?",
+          "bridge": ""
+        },
+        {
+          "text": "He won the Nobel Peace Prize when he was only thirty-five years old.",
+          "topic": "Nobel Peace Prize",
+          "say": "Martin won a peace prize when he was still pretty young.",
+          "sayShort": "He won a peace prize.",
+          "ask": "What would you like to be known for?",
+          "askYou": "Have you ever felt proud of something you did?",
+          "bridge": "I liked the part about his famous dream. Remember?"
+        },
+        {
+          "text": "Martin was a great organ player and loved music his whole life.",
+          "topic": "playing the organ",
+          "say": "Martin played the organ and loved music.",
+          "sayShort": "He loved music.",
+          "ask": "What kind of music do you love?",
+          "askYou": "Do you play any instruments?",
+          "bridge": "I liked the part about his peace prize. Remember?"
+        },
+        {
+          "text": "He studied hard and earned a special degree that made him a doctor of ideas.",
+          "topic": "studying hard",
+          "say": "Martin studied hard and earned a special degree.",
+          "sayShort": "He studied really hard.",
+          "ask": "What subject do you like to study?",
+          "askYou": "What are you learning about right now?",
+          "bridge": "I liked the part about him playing the organ. Remember?"
+        }
+      ]
     },
     {
       "name": "Amelia Earhart",
@@ -557,7 +668,44 @@
       "img": "/famous-person/_Resources/_imgSource/images/amelia-earhart.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "facts": []
+      "facts": [
+        {
+          "text": "Amelia was the first woman to fly a plane alone across the Atlantic Ocean.",
+          "topic": "flying the Atlantic",
+          "say": "Amelia flew all by herself across the whole ocean.",
+          "sayShort": "She flew across the ocean.",
+          "ask": "Have you ever flown on a plane?",
+          "askYou": "Where would you fly if you could go anywhere?",
+          "bridge": ""
+        },
+        {
+          "text": "She once set off to fly all the way around the world — a giant adventure.",
+          "topic": "around the world",
+          "say": "Amelia tried to fly all the way around the world.",
+          "sayShort": "She flew huge adventures.",
+          "ask": "Where in the world would you want to go?",
+          "askYou": "What is the biggest adventure you can imagine?",
+          "bridge": "I liked the part about her flying the Atlantic. Remember?"
+        },
+        {
+          "text": "Amelia worked lots of jobs to save up money for her flying lessons.",
+          "topic": "saving up",
+          "say": "Amelia worked hard to save money for flying lessons.",
+          "sayShort": "She saved up to fly.",
+          "ask": "What is something you would save up for?",
+          "askYou": "Have you ever worked hard for something you wanted?",
+          "bridge": "I liked the part about her flying around the world. Remember?"
+        },
+        {
+          "text": "She set a world speed record and wrote fun books about flying.",
+          "topic": "speed record",
+          "say": "Amelia set a speed record and wrote books about flying.",
+          "sayShort": "She was super fast.",
+          "ask": "What is the fastest you have ever gone?",
+          "askYou": "Would you rather go fast or go high?",
+          "bridge": "I liked the part about her saving up. Remember?"
+        }
+      ]
     },
     {
       "name": "Leonardo da Vinci",
@@ -577,7 +725,44 @@
       "img": "/famous-person/_Resources/_imgSource/images/harriet-tubman.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "facts": []
+      "facts": [
+        {
+          "text": "Harriet Tubman was very brave and secretly led many people to freedom and safety.",
+          "topic": "leading to freedom",
+          "say": "Harriet bravely led many people to freedom.",
+          "sayShort": "She led people to freedom.",
+          "ask": "When is a time you were really brave?",
+          "askYou": "Who helps you feel safe?",
+          "bridge": ""
+        },
+        {
+          "text": "She went back again and again to help about seventy people find a better life.",
+          "topic": "helping again and again",
+          "say": "Harriet went back many times to help more people.",
+          "sayShort": "She helped again and again.",
+          "ask": "Why is it good to keep helping others?",
+          "askYou": "Have you ever helped someone more than once?",
+          "bridge": "I liked the part about leading to freedom. Remember?"
+        },
+        {
+          "text": "People called Harriet 'Moses' because she guided so many people to freedom.",
+          "topic": "her nickname Moses",
+          "say": "People gave Harriet the special nickname 'Moses.'",
+          "sayShort": "They called her Moses.",
+          "ask": "If you had a nickname, what would it be?",
+          "askYou": "Do you have a nickname you like?",
+          "bridge": "I liked the part about her helping again and again. Remember?"
+        },
+        {
+          "text": "Later, Harriet started a warm home to take care of older people.",
+          "topic": "caring for elders",
+          "say": "Harriet made a home to care for older people.",
+          "sayShort": "She cared for elders.",
+          "ask": "How do you like to take care of people you love?",
+          "askYou": "Who is an older person you care about?",
+          "bridge": "I liked the part about her nickname Moses. Remember?"
+        }
+      ]
     },
     {
       "name": "Nikola Tesla",
@@ -607,7 +792,44 @@
       "img": "/famous-person/_Resources/_imgSource/images/nelson-mandela.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "facts": []
+      "facts": [
+        {
+          "text": "Nelson Mandela never gave up hope and became the first Black president of South Africa.",
+          "topic": "becoming president",
+          "say": "Nelson kept hoping, and became his country's president.",
+          "sayShort": "He became president.",
+          "ask": "What is something worth never giving up on?",
+          "askYou": "When is a time you did not give up?",
+          "bridge": ""
+        },
+        {
+          "text": "He won the Nobel Peace Prize for helping bring his whole country together.",
+          "topic": "Nobel Peace Prize",
+          "say": "Nelson won a peace prize for bringing people together.",
+          "sayShort": "He won a peace prize.",
+          "ask": "How do you help people get along?",
+          "askYou": "Have you ever helped friends make up?",
+          "bridge": "I liked the part about him becoming president. Remember?"
+        },
+        {
+          "text": "He even learned a whole new language so he could understand more people.",
+          "topic": "learning a language",
+          "say": "Nelson learned a new language to understand people.",
+          "sayShort": "He learned a new language.",
+          "ask": "What language would you like to learn?",
+          "askYou": "Do you know any words in another language?",
+          "bridge": "I liked the part about his peace prize. Remember?"
+        },
+        {
+          "text": "Nelson was a good boxer and used sports to stay strong and healthy.",
+          "topic": "boxing and sports",
+          "say": "Nelson boxed and used sports to stay strong.",
+          "sayShort": "He loved boxing.",
+          "ask": "What sport makes you feel strong?",
+          "askYou": "Do you like to exercise or play sports?",
+          "bridge": "I liked the part about him learning a language. Remember?"
+        }
+      ]
     },
     {
       "name": "Charles Darwin",
@@ -637,7 +859,44 @@
       "img": "/famous-person/_Resources/_imgSource/images/rosa-parks.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "facts": []
+      "facts": [
+        {
+          "text": "Rosa Parks would not give up her bus seat when the rules were unfair.",
+          "topic": "the bus seat",
+          "say": "Rosa stayed in her seat because the rule was not fair.",
+          "sayShort": "She kept her bus seat.",
+          "ask": "What do you do when something is not fair?",
+          "askYou": "Has something ever felt unfair to you?",
+          "bridge": ""
+        },
+        {
+          "text": "Her brave choice helped start a big, peaceful protest all over her city.",
+          "topic": "a big protest",
+          "say": "Rosa's brave choice started a big, peaceful protest.",
+          "sayShort": "She started a big protest.",
+          "ask": "How can people work together to fix something?",
+          "askYou": "Have you ever stood up for someone?",
+          "bridge": "I liked the part about her bus seat. Remember?"
+        },
+        {
+          "text": "Before that day, Rosa loved to sew and helped out at her church.",
+          "topic": "her sewing",
+          "say": "Rosa loved to sew and helped at her church.",
+          "sayShort": "She loved to sew.",
+          "ask": "What is something you like to make with your hands?",
+          "askYou": "Do you like arts and crafts?",
+          "bridge": "I liked the part about the big protest. Remember?"
+        },
+        {
+          "text": "Later, Rosa kept helping people and worked to make things more fair.",
+          "topic": "helping others",
+          "say": "Rosa kept helping people her whole life.",
+          "sayShort": "She kept helping others.",
+          "ask": "How do you like to help other people?",
+          "askYou": "Who is someone you like to help?",
+          "bridge": "I liked the part about her sewing. Remember?"
+        }
+      ]
     },
     {
       "name": "Mozart",
@@ -737,7 +996,44 @@
       "img": "/famous-person/_Resources/_imgSource/images/malala-yousafzai.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "facts": []
+      "facts": [
+        {
+          "text": "Malala spoke up so that girls in her country could go to school.",
+          "topic": "school for girls",
+          "say": "Malala spoke up so girls could go to school.",
+          "sayShort": "She stood up for school.",
+          "ask": "What do you like best about school?",
+          "askYou": "What is your favorite thing to learn?",
+          "bridge": ""
+        },
+        {
+          "text": "She stayed brave and kept speaking up, even when it was really hard.",
+          "topic": "staying brave",
+          "say": "Malala kept being brave even when it was hard.",
+          "sayShort": "She stayed brave.",
+          "ask": "When have you had to be brave?",
+          "askYou": "What helps you feel brave?",
+          "bridge": "I liked the part about school for girls. Remember?"
+        },
+        {
+          "text": "At seventeen, Malala became the youngest person ever to win the Nobel Peace Prize.",
+          "topic": "youngest winner",
+          "say": "Malala won a peace prize when she was only seventeen.",
+          "sayShort": "She won a prize super young.",
+          "ask": "What is something big you hope to do young?",
+          "askYou": "What do you want to do when you grow up?",
+          "bridge": "I liked the part about her staying brave. Remember?"
+        },
+        {
+          "text": "Now Malala helps girls all around the world get to go to school.",
+          "topic": "helping girls",
+          "say": "Malala helps girls everywhere get to go to school.",
+          "sayShort": "She helps girls learn.",
+          "ask": "How would you help other kids if you could?",
+          "askYou": "Who would you like to help someday?",
+          "bridge": "I liked the part about her being the youngest winner. Remember?"
+        }
+      ]
     },
     {
       "name": "Oprah Winfrey",
