@@ -156,10 +156,16 @@
 
   // ── Flow ───────────────────────────────────────────────────────────
   function pickNext() {
-    var n = PEOPLE.length, used = state.used;
+    // 🎲 a real roll: pick a RANDOM person we haven't shown yet (never the same
+    // one twice in a row). Once everyone's been seen, empty the bag and reroll.
+    var n = PEOPLE.length;
+    if (n <= 1) return { i: state.pIdx, used: state.used };
+    var used = state.used;
     if (used.length >= n) used = [];
-    var i = state.pIdx;
-    for (var k = 0; k < n; k++) { var c = (state.pIdx + 1 + k) % n; if (used.indexOf(c) < 0) { i = c; break; } }
+    var pool = [];
+    for (var c = 0; c < n; c++) { if (c !== state.pIdx && used.indexOf(c) < 0) pool.push(c); }
+    if (!pool.length) { for (var d = 0; d < n; d++) if (d !== state.pIdx) pool.push(d); }
+    var i = pool[Math.floor(Math.random() * pool.length)];
     return { i: i, used: used.concat([i]) };
   }
   function begin() { setState({ phase: 'explore', exploreShown: 1, used: [state.pIdx] }); }
