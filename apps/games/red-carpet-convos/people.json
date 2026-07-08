@@ -1,5 +1,5 @@
 {
-  "_note": "Red Carpet Convos roster. Schema per person: {name, years, tag, emoji, img, accent, accentBg, facts:[{text, topic, say, sayShort, ask, askYou, bridge}]}. Fade levels (comment/volley Partial/Minimal) are derived at runtime from say/ask — do NOT author them. `bridge` is the partner's recall opener INTO this fact (fact 1's bridge is empty). Edited via AdminTools/FamousPersonManager; the AI populator writes this file. Store only public-figure content — never learner/session data.",
+  "_note": "Red Carpet Convos roster. Per person: {name, years, tag, emoji, img, accent, accentBg, converted, facts:[{text, topic, say, sayShort, ask, askYou, bridge}]}. `converted` is the MIGRATION FLAG: true = migrated to the new schema and live in the game; false = a stub pending fact population (kept OUT of the game for now). During migration the game surfaces only converted people. Fade levels (comment/volley Partial/Minimal) are derived at runtime from say/ask. `bridge` is the partner's recall opener INTO this fact (fact 1's bridge is empty). Edited via AdminTools/FamousPersonManager; the rcc-generate-facts populator writes facts + sets converted. Store only public-figure content — never learner/session data.",
   "generated": "2026-07-08T18:05:42.608Z",
   "people": [
     {
@@ -10,6 +10,7 @@
       "img": "images/lin-manuel-miranda.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": true,
       "facts": [
         {
           "text": "Lin-Manuel wrote the musical Hamilton, where rap meets history.",
@@ -57,6 +58,7 @@
       "img": "images/emma-watson.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": true,
       "facts": [
         {
           "text": "Emma played Hermione in the Harry Potter movies as a kid.",
@@ -104,6 +106,7 @@
       "img": "images/charles-dickens.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": true,
       "facts": [
         {
           "text": "Charles wrote books about poor people in old England that everyone loved.",
@@ -151,6 +154,7 @@
       "img": "images/ibn-battuta.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": true,
       "facts": [
         {
           "text": "Ibn Battuta traveled over 75,000 miles around the world about 700 years ago.",
@@ -198,6 +202,7 @@
       "img": "images/jean-michel-basquiat.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": true,
       "facts": [
         {
           "text": "Jean-Michel started by painting on walls in New York City.",
@@ -245,6 +250,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/serena-williams.jpeg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": true,
       "facts": [
         {
           "text": "Serena Williams is one of the best tennis players the world has ever seen.",
@@ -292,6 +298,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/neil-armstrong.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": true,
       "facts": [
         {
           "text": "Neil Armstrong was the very first person ever to walk on the moon.",
@@ -339,6 +346,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/mae-jemison.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": true,
       "facts": [
         {
           "text": "Mae Jemison was the first Black woman ever to travel into space.",
@@ -386,6 +394,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/dolly-parton.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": true,
       "facts": [
         {
           "text": "Dolly Parton is a famous singer who writes happy country songs.",
@@ -433,6 +442,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/steve-jobs.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": true,
       "facts": [
         {
           "text": "Steve Jobs helped make Apple, the company that makes the iPhone.",
@@ -480,6 +490,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/vincent-van-gogh.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": true,
       "facts": [
         {
           "text": "Vincent van Gogh made paintings with big, bright, bold colors.",
@@ -527,6 +538,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/albert-einstein.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": true,
       "facts": [
         {
           "text": "Albert came up with brand-new ideas about space, time, and gravity.",
@@ -574,6 +586,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/marie-curie.jpeg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": true,
       "facts": [
         {
           "text": "Marie was the first person to win two Nobel Prizes in two different sciences.",
@@ -621,6 +634,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/martin-luther-king-jr.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": true,
       "facts": [
         {
           "text": "Martin gave the famous 'I Have a Dream' speech to a huge, cheering crowd.",
@@ -668,6 +682,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/amelia-earhart.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": true,
       "facts": [
         {
           "text": "Amelia was the first woman to fly a plane alone across the Atlantic Ocean.",
@@ -715,6 +730,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/leonardo-da-vinci.jpeg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -725,6 +741,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/harriet-tubman.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": true,
       "facts": [
         {
           "text": "Harriet Tubman was very brave and secretly led many people to freedom and safety.",
@@ -772,6 +789,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/nikola-tesla.jpeg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -782,6 +800,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/frida-kahlo.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -792,6 +811,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/nelson-mandela.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": true,
       "facts": [
         {
           "text": "Nelson Mandela never gave up hope and became the first Black president of South Africa.",
@@ -839,6 +859,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/charles-darwin.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -849,6 +870,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/isaac-newton.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -859,6 +881,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/rosa-parks.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": true,
       "facts": [
         {
           "text": "Rosa Parks would not give up her bus seat when the rules were unfair.",
@@ -906,6 +929,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/mozart.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -916,6 +940,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/mahatma-gandhi.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -926,6 +951,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/ada-lovelace.jpeg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -936,6 +962,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/winston-churchill.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -946,6 +973,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/abraham-lincoln.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -956,6 +984,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/cleopatra.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -966,6 +995,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/galileo-galilei.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -976,6 +1006,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/frederick-douglass.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -986,6 +1017,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/muhammad-ali.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -996,6 +1028,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/malala-yousafzai.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": true,
       "facts": [
         {
           "text": "Malala spoke up so that girls in her country could go to school.",
@@ -1043,6 +1076,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/oprah-winfrey.jpeg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -1053,6 +1087,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/barack-obama.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -1063,6 +1098,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/usain-bolt.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1073,6 +1109,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/600px-Michael_Jordan_in_2014.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -1083,6 +1120,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/freddie-mercury.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1093,6 +1131,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/j.-k.-rowling.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -1103,6 +1142,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/stephen-hawking.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -1113,6 +1153,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/cristiano-ronaldo.jpeg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1123,6 +1164,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/600px-Elvis_Presley_promoting_Jailhouse_Rock.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -1133,6 +1175,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/princess-diana.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1143,6 +1186,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/napoleon-bonaparte.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -1153,6 +1197,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/bruce-lee.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -1163,6 +1208,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/michelangelo.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1173,6 +1219,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/coco-chanel.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -1183,6 +1230,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/joan-of-arc.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1193,6 +1241,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/josephine-baker.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -1203,6 +1252,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/600px-Malcolm_X_1963_press_photo.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -1213,6 +1263,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/audrey-hepburn.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1223,6 +1274,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/aristotle.jpeg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -1233,6 +1285,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/simone-biles.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1243,6 +1296,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/greta-thunberg.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -1253,6 +1307,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/misty-copeland.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -1263,6 +1318,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/kendrick-lamar.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1273,6 +1329,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/harriet-beecher-stowe.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -1283,6 +1340,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/socrates.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1293,6 +1351,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/alexander-the-great.webp",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -1303,6 +1362,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/julius-caesar.jpeg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -1313,6 +1373,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/genghis-khan.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1323,6 +1384,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/queen-victoria.jpeg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -1333,6 +1395,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/600px-Plato_Silanion_Musei_Capitolini_MC1377.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1343,6 +1406,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/confucius.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -1353,6 +1417,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/archimedes.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -1363,6 +1428,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/mansa-musa.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1373,6 +1439,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/hatshepsut.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -1383,6 +1450,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/wu-zetian.jpeg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1393,6 +1461,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/suleiman-the-magnificent.jpeg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -1403,6 +1472,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/saladin.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -1413,6 +1483,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/pachacuti.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1423,6 +1494,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/montezuma-ii.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -1433,6 +1505,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/600px-Govardhan._Akbar_With_Lion_and_Calf_ca._1630%2C_Metmuseum_%28cropped%29.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1443,6 +1516,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/shaka-zulu.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -1453,6 +1527,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/marie-antoinette.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -1463,6 +1538,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/george-washington.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1473,6 +1549,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/benjamin-franklin.jpeg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -1483,6 +1560,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/franklin-d.-roosevelt.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1493,6 +1571,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/theodore-roosevelt.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -1503,6 +1582,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/mao-zedong.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -1513,6 +1593,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/600px-Kamala_Harris_Vice_Presidential_Portrait.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1523,6 +1604,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/jacinda-ardern.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -1533,6 +1615,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/alexandria-ocasio-cortez.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1543,6 +1626,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/600px-Michelle_Obama_2013_official_portrait.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -1553,6 +1637,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/sonia-sotomayor.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -1563,6 +1648,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/desmond-tutu.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1573,6 +1659,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/wangari-maathai.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -1583,6 +1670,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/rigoberta-menchu.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1593,6 +1681,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/ruth-bader-ginsburg.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -1603,6 +1692,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/sojourner-truth.jpeg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -1613,6 +1703,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/susan-b.-anthony.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1623,6 +1714,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/emmeline-pankhurst.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -1633,6 +1725,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/dalai-lama.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1643,6 +1736,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/mother-teresa.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -1653,6 +1747,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/anne-frank.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -1663,6 +1758,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/william-shakespeare.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1673,6 +1769,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/mark-twain.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -1683,6 +1780,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/virginia-woolf.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1693,6 +1791,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/george-orwell.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -1703,6 +1802,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/maya-angelou.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -1713,6 +1813,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/toni-morrison.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1723,6 +1824,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/chimamanda-ngozi-adichie.jpeg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -1733,6 +1835,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/langston-hughes.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1743,6 +1846,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/gabriel-garcia-marquez.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -1753,6 +1857,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/rumi.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -1763,6 +1868,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/murasaki-shikibu.png",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1773,6 +1879,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/sor-juana-ines-de-la-cruz.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -1783,6 +1890,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/emily-dickinson.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1793,6 +1901,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/edgar-allan-poe.jpeg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -1803,6 +1912,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/mary-shelley.jpeg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -1813,6 +1923,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/mary_wollstonecraft.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1823,6 +1934,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/thomas-edison.jpeg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -1833,6 +1945,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/hedy-lamarr.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1843,6 +1956,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/grace-hopper.jpeg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -1853,6 +1967,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/tim-berners-lee.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -1863,6 +1978,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/wright-brothers.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1873,6 +1989,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/alan-turing.jpeg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -1883,6 +2000,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/elon-musk.jpeg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1893,6 +2011,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/bill-gates.jpeg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -1903,6 +2022,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/mark-zuckerberg.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -1913,6 +2033,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/florence-nightingale.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1923,6 +2044,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/louis-pasteur.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -1933,6 +2055,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/rosalind-franklin.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1943,6 +2066,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/katherine-johnson.jpeg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -1953,6 +2077,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/chien-shiung-wu.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -1963,6 +2088,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/srinivasa_ramanujan.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1973,6 +2099,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/neil-degrasse-tyson.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -1983,6 +2110,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/jane-goodall.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -1993,6 +2121,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/carl-sagan.jpeg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -2003,6 +2132,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/al-khwarizmi.jpeg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -2013,6 +2143,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/avicenna.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2023,6 +2154,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/marco-polo.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -2033,6 +2165,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/ferdinand-magellan.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2043,6 +2176,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/ernest-shackleton.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -2053,6 +2187,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/edmund-hillary.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -2063,6 +2198,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/tenzing-norgay.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2073,6 +2209,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/jacques-cousteau.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -2083,6 +2220,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/yuri-gagarin.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2093,6 +2231,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/valentina-tereshkova.jpeg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -2103,6 +2242,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/sally-ride.jpeg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -2113,6 +2253,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/buzz-aldrin.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2123,6 +2264,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/karl-marx.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -2133,6 +2275,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/friedrich-nietzsche.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2143,6 +2286,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/voltaire.jpeg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -2153,6 +2297,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/pablo-picasso.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -2163,6 +2308,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/salvador-dali.jpeg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2173,6 +2319,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/georgia-okeeffe.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -2183,6 +2330,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/600px-Yayoi_Kusama_wax_model_at_Louis_Vitton.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2193,6 +2341,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/rembrandt.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -2203,6 +2352,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/beethoven.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -2213,6 +2363,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/tchaikovsky.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2223,6 +2374,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/louis-armstrong.jpeg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -2233,6 +2385,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/billie-holiday.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2243,6 +2396,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/jimi-hendrix.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -2253,6 +2407,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/david-bowie.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -2263,6 +2418,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/whitney-houston.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2273,6 +2429,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/bob-marley.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -2283,6 +2440,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/tupac-shakur.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2293,6 +2451,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/michael-jackson.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -2303,6 +2462,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/beyonce.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -2313,6 +2473,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/rihanna.png",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2323,6 +2484,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/taylor-swift.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -2333,6 +2495,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/billie-eilish.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2343,6 +2506,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/harry-styles.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -2353,6 +2517,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/olivia-rodrigo.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -2363,6 +2528,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/bad-bunny.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2373,6 +2539,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/shakira.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -2383,6 +2550,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/missy-elliott.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2393,6 +2561,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/jay-z.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -2403,6 +2572,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/eminem.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -2413,6 +2583,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/stormzy.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2423,6 +2594,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/bts.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -2433,6 +2605,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/lebron-james.jpeg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2443,6 +2616,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/kobe-bryant.jpeg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -2453,6 +2627,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/nikola-jokic.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -2463,6 +2638,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/stephen-curry.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2473,6 +2649,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/caitlin-clark.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -2483,6 +2660,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/lionel-messi.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2493,6 +2671,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/diego-maradona.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -2503,6 +2682,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/pele.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -2513,6 +2693,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/naomi-osaka.jpeg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2523,6 +2704,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/venus-williams.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -2533,6 +2715,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/sha-carri-richardson.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2543,6 +2726,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/600px-Monroecirca1953.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -2553,6 +2737,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/charlie-chaplin.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -2563,6 +2748,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/jackie-chan.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2573,6 +2759,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/viola-davis.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -2583,6 +2770,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/chadwick-boseman.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2593,6 +2781,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/lupita-nyongo.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -2603,6 +2792,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/zendaya.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -2613,6 +2803,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/keanu-reeves.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2623,6 +2814,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/simone-de-beauvoir.jpeg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -2633,6 +2825,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/roald-amundsen.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2643,6 +2836,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/megan-rapinoe.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -2653,6 +2847,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/roger-federer.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -2663,6 +2858,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/dwayne-johnson.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2673,6 +2869,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/meryl-streep.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -2683,6 +2880,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/elton-john.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2693,6 +2891,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/nina-simone.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -2703,6 +2902,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/sabrina-carpenter.jpeg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -2713,6 +2913,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/600px-Immanuel_Kant_-_Gemaelde_1.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2723,6 +2924,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/johann-sebastian-bach.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -2733,6 +2935,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/frederic-chopin.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2743,6 +2946,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/antonio-vivaldi.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -2753,6 +2957,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/aretha-franklin.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -2763,6 +2968,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/ray-charles.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2773,6 +2979,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/stevie-wonder.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -2783,6 +2990,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/ella-fitzgerald.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2793,6 +3001,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/duke-ellington.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -2803,6 +3012,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/miles-davis.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -2813,6 +3023,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/johnny-cash.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2823,6 +3034,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/frank-sinatra.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -2833,6 +3045,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/bob-dylan.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2843,6 +3056,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/paul-mccartney.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -2853,6 +3067,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/john-lennon.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -2863,6 +3078,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/prince.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2873,6 +3089,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/madonna.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -2883,6 +3100,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/lady-gaga.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2893,6 +3111,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/adele.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -2903,6 +3122,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/leo-tolstoy.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -2913,6 +3133,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/fyodor-dostoevsky.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2923,6 +3144,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/jane-austen.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -2933,6 +3155,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/oscar-wilde.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2943,6 +3166,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/ernest-hemingway.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -2953,6 +3177,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/franz-kafka.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -2963,6 +3188,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/victor-hugo.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2973,6 +3199,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/dante-alighieri.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -2983,6 +3210,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/miguel-de-cervantes.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -2993,6 +3221,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/j.r.r.-tolkien.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -3003,6 +3232,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/agatha-christie.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -3013,6 +3243,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/roald-dahl.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3023,6 +3254,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/dr.-seuss.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -3033,6 +3265,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/hans-christian-andersen.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3043,6 +3276,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/walt-whitman.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -3053,6 +3287,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/pablo-neruda.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -3063,6 +3298,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/harper-lee.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3073,6 +3309,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/james-baldwin.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -3083,6 +3320,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/octavia-butler.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3093,6 +3331,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/stephen-king.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -3103,6 +3342,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/dmitri-mendeleev.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -3113,6 +3353,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/gregor-mendel.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3123,6 +3364,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/niels-bohr.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -3133,6 +3375,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/richard-feynman.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3143,6 +3386,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/max-planck.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -3153,6 +3397,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/enrico-fermi.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -3163,6 +3408,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/michael-faraday.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3173,6 +3419,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/robert-oppenheimer.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -3183,6 +3430,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/jonas-salk.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3193,6 +3441,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/alexander-fleming.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -3203,6 +3452,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/tu-youyou.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -3213,6 +3463,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/barbara-mcclintock.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3223,6 +3474,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/lise-meitner.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -3233,6 +3485,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/emmy-noether.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3243,6 +3496,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/carl-friedrich-gauss.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -3253,6 +3507,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/leonhard-euler.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -3263,6 +3518,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/euclid.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3273,6 +3529,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/johannes-kepler.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -3283,6 +3540,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/edwin-hubble.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3293,6 +3551,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/george-washington-carver.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -3303,6 +3562,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/norman-borlaug.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -3313,6 +3573,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/claude-monet.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3323,6 +3584,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/henri-matisse.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -3333,6 +3595,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/andy-warhol.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3343,6 +3606,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/diego-rivera.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -3353,6 +3617,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/auguste-rodin.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -3363,6 +3628,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/johannes-vermeer.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3373,6 +3639,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/raphael.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -3383,6 +3650,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/katsushika-hokusai.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3393,6 +3661,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/queen-elizabeth-i.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -3403,6 +3672,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/queen-elizabeth-ii.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -3413,6 +3683,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/catherine-the-great.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3423,6 +3694,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/charlemagne.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -3433,6 +3705,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/tutankhamun.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3443,6 +3716,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/nefertiti.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -3453,6 +3727,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/ashoka.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -3463,6 +3738,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/kublai-khan.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3473,6 +3749,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/simon-bolivar.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -3483,6 +3760,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/sun-yat-sen.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3493,6 +3771,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/mikhail-gorbachev.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -3503,6 +3782,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/eva-peron.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -3513,6 +3793,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/indira-gandhi.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3523,6 +3804,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/aung-san-suu-kyi.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -3533,6 +3815,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/kwame-nkrumah.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3543,6 +3826,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/cesar-chavez.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -3553,6 +3837,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/dolores-huerta.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -3563,6 +3848,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/john-lewis.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3573,6 +3859,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/w.e.b.-du-bois.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -3583,6 +3870,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/ida-b.-wells.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3593,6 +3881,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/eleanor-roosevelt.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -3603,6 +3892,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/john-f.-kennedy.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -3613,6 +3903,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/thomas-jefferson.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3623,6 +3914,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/babe-ruth.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -3633,6 +3925,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/jesse-owens.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3643,6 +3936,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/jackie-robinson.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -3653,6 +3947,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/billie-jean-king.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -3663,6 +3958,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/arthur-ashe.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3673,6 +3969,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/wayne-gretzky.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
+      "converted": false,
       "facts": []
     },
     {
@@ -3683,6 +3980,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/tom-brady.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
+      "converted": false,
       "facts": []
     },
     {
@@ -3693,6 +3991,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/tiger-woods.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
+      "converted": false,
       "facts": []
     },
     {
@@ -3703,6 +4002,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/nadia-comaneci.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
+      "converted": false,
       "facts": []
     },
     {
@@ -3713,6 +4013,7 @@
       "img": "/famous-person/_Resources/_imgSource/images/magic-johnson.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
+      "converted": false,
       "facts": []
     }
   ]

@@ -2137,6 +2137,9 @@ async function handleRccSaveFacts(request, env) {
   for (const p of people) {
     if (!p || typeof p.name !== 'string' || !p.name.trim()) return jsonError('Every person needs a name', 400);
   }
+  // Migration flag: a person is live (converted) only with a full fact set,
+  // unless explicitly hidden (an incoming converted:false is preserved).
+  people.forEach(p => { const complete = !!(p.facts && p.facts.length >= 4); p.converted = complete && p.converted !== false; });
 
   // Preserve any top-level wrapper fields (e.g. _note) already in the file.
   let roster;
@@ -2213,7 +2216,7 @@ async function handleRccGenerateFacts(request, env) {
   const filled = [];
   for (const p of need) {
     const arr = gen[p.name];
-    if (arr && arr.length) { p.facts = rccNormalizeFacts(arr); filled.push(p.name); }
+    if (arr && arr.length) { p.facts = rccNormalizeFacts(arr); p.converted = true; filled.push(p.name); }
   }
   if (!filled.length) return jsonError('Model returned no usable facts', 502);
 

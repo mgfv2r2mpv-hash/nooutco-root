@@ -153,7 +153,7 @@
   }
   function approve(name) {
     var i = m.people.map(function (p) { return p.name.toLowerCase(); }).indexOf(name.toLowerCase());
-    if (i < 0) { m.people.push({ name: name, years: '', tag: 'Pending', emoji: '⭐', img: '', accent: '', accentBg: '', facts: [] }); i = m.people.length - 1; }
+    if (i < 0) { m.people.push({ name: name, years: '', tag: 'Pending', emoji: '⭐', img: '', accent: '', accentBg: '', converted: false, facts: [] }); i = m.people.length - 1; }
     m.suggestions = m.suggestions.filter(function (s) { return s.name !== name; });
     m.tab = 'prompts'; m.pIdx = i; recomputeDirty();
     adminPost('person-suggestions', { action: 'dismiss', name: name }).catch(function () {});
@@ -185,12 +185,12 @@
     var f = m.filter.trim().toLowerCase();
     var rows = m.people.map(function (p, i) {
       if (f && p.name.toLowerCase().indexOf(f) < 0) return '';
-      var active = i === m.pIdx, done = (p.facts || []).length >= 4;
+      var active = i === m.pIdx, done = p.converted === true;
       var img = imgSrc(p);
       var imgTag = img ? '<img src="' + escA(img) + '" alt="" referrerpolicy="no-referrer" data-imgerr style="width:34px;height:34px;border-radius:8px;object-fit:cover;object-position:center 30%;flex:0 0 auto;background:var(--slate-100)" />' : '<span style="width:34px;height:34px;border-radius:8px;flex:0 0 auto;background:var(--slate-100);display:flex;align-items:center;justify-content:center;font-size:16px">' + (p.emoji || '⭐') + '</span>';
       return '<button data-act="selectPerson" data-arg="' + i + '" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px;border:1px solid ' + (active ? 'var(--sage-500)' : 'transparent') + ';background:' + (active ? '#fff' : 'transparent') + ';border-radius:var(--radius-md);cursor:pointer;margin-bottom:2px;box-shadow:' + (active ? 'var(--shadow-sm)' : 'none') + '">' +
         imgTag + '<span style="flex:1;min-width:0;text-align:left"><span style="display:block;font-size:13px;font-weight:800;color:var(--slate-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(p.name) + '</span><span style="display:block;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--slate-400)">' + esc(p.tag) + '</span></span>' +
-        '<span title="' + (done ? 'Facts complete' : 'Needs facts') + '" style="width:9px;height:9px;border-radius:999px;flex:0 0 auto;background:' + (done ? 'var(--sage-400)' : 'var(--amber-300)') + '"></span></button>';
+        '<span title="' + (done ? 'Live in game' : 'Pending — needs facts') + '" style="width:9px;height:9px;border-radius:999px;flex:0 0 auto;background:' + (done ? 'var(--sage-400)' : 'var(--amber-300)') + '"></span></button>';
     }).join('');
     return '<div style="flex:0 0 260px;border-right:1px solid var(--sage-200);background:#fbfcf9;display:flex;flex-direction:column;min-height:0">' +
       '<div style="padding:12px 14px;border-bottom:1px solid var(--sage-200)"><input id="fpm-filter" value="' + escA(m.filter) + '" placeholder="Filter people…" style="width:100%;padding:8px 11px;border:1px solid var(--sage-300);border-radius:var(--radius-md);font-size:13px;background:#fff;color:var(--slate-900)" /></div>' +
@@ -272,11 +272,11 @@
     var f = m.filter.trim().toLowerCase();
     var rows = m.people.map(function (p, i) {
       if (f && p.name.toLowerCase().indexOf(f) < 0) return '';
-      var active = i === m.pIdx, done = (p.facts || []).length >= 4, img = imgSrc(p);
+      var active = i === m.pIdx, done = p.converted === true, img = imgSrc(p);
       var imgTag = img ? '<img src="' + escA(img) + '" alt="" referrerpolicy="no-referrer" data-imgerr style="width:34px;height:34px;border-radius:8px;object-fit:cover;object-position:center 30%;flex:0 0 auto;background:var(--slate-100)" />' : '<span style="width:34px;height:34px;border-radius:8px;flex:0 0 auto;background:var(--slate-100);display:flex;align-items:center;justify-content:center;font-size:16px">' + (p.emoji || '⭐') + '</span>';
       return '<button data-act="selectPerson" data-arg="' + i + '" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px;border:1px solid ' + (active ? 'var(--sage-500)' : 'transparent') + ';background:' + (active ? '#fff' : 'transparent') + ';border-radius:var(--radius-md);cursor:pointer;margin-bottom:2px;box-shadow:' + (active ? 'var(--shadow-sm)' : 'none') + '">' + imgTag +
         '<span style="flex:1;min-width:0;text-align:left"><span style="display:block;font-size:13px;font-weight:800;color:var(--slate-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(p.name) + '</span><span style="display:block;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--slate-400)">' + esc(p.tag) + '</span></span>' +
-        '<span title="' + (done ? 'Facts complete' : 'Needs facts') + '" style="width:9px;height:9px;border-radius:999px;flex:0 0 auto;background:' + (done ? 'var(--sage-400)' : 'var(--amber-300)') + '"></span></button>';
+        '<span title="' + (done ? 'Live in game' : 'Pending — needs facts') + '" style="width:9px;height:9px;border-radius:999px;flex:0 0 auto;background:' + (done ? 'var(--sage-400)' : 'var(--amber-300)') + '"></span></button>';
     }).join('');
     return rows || '<div style="padding:14px;font-size:12.5px;color:var(--slate-400)">No match.</div>';
   }
