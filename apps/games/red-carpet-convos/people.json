@@ -1,0 +1,523 @@
+{
+  "_note": "Red Carpet Convos roster. Schema per person: {name, years, tag, emoji, img, accent, accentBg, facts:[{text, topic, say, sayShort, ask, askYou, bridge}]}. Fade levels (comment/volley Partial/Minimal) are derived at runtime from say/ask — do NOT author them. `bridge` is the partner's recall opener INTO this fact (fact 1's bridge is empty). Edited via AdminTools/FamousPersonManager; the AI populator writes this file. Store only public-figure content — never learner/session data.",
+  "people": [
+    {
+      "name": "Lin-Manuel Miranda",
+      "years": "1980–",
+      "tag": "Artist",
+      "emoji": "🎭",
+      "img": "images/lin-manuel-miranda.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": [
+        {
+          "text": "Lin-Manuel wrote the musical Hamilton, where rap meets history.",
+          "topic": "Hamilton",
+          "say": "Lin-Manuel put rap music into a show all about history.",
+          "sayShort": "He mixed rap and history.",
+          "ask": "Have you ever seen a play or a show like that?",
+          "askYou": "What show would you want to see?",
+          "bridge": ""
+        },
+        {
+          "text": "He acts, sings, and dances in his own shows.",
+          "topic": "performing",
+          "say": "Lin-Manuel acts, sings, and dances all in the same show.",
+          "sayShort": "He does it all on stage.",
+          "ask": "What would you like to do up on a stage?",
+          "askYou": "Would you rather sing or dance?",
+          "bridge": "I liked the part about how he acts, sings, and dances. Do you remember that?"
+        },
+        {
+          "text": "Lin-Manuel wrote songs for Disney movies like Moana and Encanto.",
+          "topic": "Disney songs",
+          "say": "Lin-Manuel wrote the songs for Moana and Encanto.",
+          "sayShort": "He wrote Disney songs.",
+          "ask": "What is your favorite Disney song?",
+          "askYou": "Have you seen Moana or Encanto?",
+          "bridge": "I liked the part about his Disney songs. Remember?"
+        },
+        {
+          "text": "He loves Puerto Rico, where his family is from, and helps people there.",
+          "topic": "Puerto Rico",
+          "say": "His family is from Puerto Rico, and he helps people who live there.",
+          "sayShort": "He helps Puerto Rico.",
+          "ask": "Where is your family from?",
+          "askYou": "Have you been somewhere your family is from?",
+          "bridge": "The part about Puerto Rico was interesting. Do you remember that?"
+        }
+      ]
+    },
+    {
+      "name": "Emma Watson",
+      "years": "1990–",
+      "tag": "Actor",
+      "emoji": "🎬",
+      "img": "images/emma-watson.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": [
+        {
+          "text": "Emma played Hermione in the Harry Potter movies as a kid.",
+          "topic": "Hermione",
+          "say": "Emma played Hermione in the Harry Potter movies.",
+          "sayShort": "She was Hermione.",
+          "ask": "Have you seen the Harry Potter movies?",
+          "askYou": "Who is your favorite movie character?",
+          "bridge": ""
+        },
+        {
+          "text": "She speaks up so girls have the same chances as boys.",
+          "topic": "fair chances",
+          "say": "Emma speaks up so girls get the same chances as boys.",
+          "sayShort": "She stands up for girls.",
+          "ask": "What is something you think should be fair for everyone?",
+          "askYou": "What do you think is fair?",
+          "bridge": "I liked the part about fair chances. Remember?"
+        },
+        {
+          "text": "Emma loves reading and even hides books in cities for people to find.",
+          "topic": "hiding books",
+          "say": "Emma hides books around the city for strangers to find.",
+          "sayShort": "She hides books for fun.",
+          "ask": "What book would you leave for someone to find?",
+          "askYou": "What is a book you like?",
+          "bridge": "She loves hiding books. That was interesting. Do you remember that part?"
+        },
+        {
+          "text": "She also went to college while still acting in movies.",
+          "topic": "college and acting",
+          "say": "Emma went to college while she was still making movies.",
+          "sayShort": "She did school and movies.",
+          "ask": "Have you ever done two big things at the same time?",
+          "askYou": "What two things do you juggle?",
+          "bridge": "I liked the part about her going to college. Remember?"
+        }
+      ]
+    },
+    {
+      "name": "Charles Dickens",
+      "years": "1812–1870",
+      "tag": "Author",
+      "emoji": "📖",
+      "img": "images/charles-dickens.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": [
+        {
+          "text": "Charles wrote books about poor people in old England that everyone loved.",
+          "topic": "stories about the poor",
+          "say": "Charles wrote stories about poor families in old England.",
+          "sayShort": "He wrote about the poor.",
+          "ask": "What kind of stories do you like to read?",
+          "askYou": "Do you like happy or sad stories?",
+          "bridge": ""
+        },
+        {
+          "text": "He wrote Oliver Twist, A Christmas Carol, and many other classics.",
+          "topic": "A Christmas Carol",
+          "say": "Charles wrote A Christmas Carol and Oliver Twist.",
+          "sayShort": "He wrote famous books.",
+          "ask": "Have you heard the story of A Christmas Carol?",
+          "askYou": "What is a story you know well?",
+          "bridge": "I liked the part about his famous books. Remember?"
+        },
+        {
+          "text": "Charles had to work in a factory at 12, and never forgot what it felt like.",
+          "topic": "working young",
+          "say": "Charles had to work in a factory when he was only twelve.",
+          "sayShort": "He worked when he was young.",
+          "ask": "What job would you like to try one day?",
+          "askYou": "What job sounds fun to you?",
+          "bridge": "The part about him working so young was interesting. Do you remember?"
+        },
+        {
+          "text": "He gave readings of his own stories in front of huge crowds.",
+          "topic": "reading out loud",
+          "say": "Charles read his own stories out loud to huge crowds.",
+          "sayShort": "He read to big crowds.",
+          "ask": "Do you like reading out loud?",
+          "askYou": "Would you read to a crowd?",
+          "bridge": "I liked the part about him reading out loud. Remember?"
+        }
+      ]
+    },
+    {
+      "name": "Ibn Battuta",
+      "years": "1304–1368",
+      "tag": "Explorer",
+      "emoji": "🌍",
+      "img": "images/ibn-battuta.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": [
+        {
+          "text": "Ibn Battuta traveled over 75,000 miles around the world about 700 years ago.",
+          "topic": "traveling the world",
+          "say": "Ibn Battuta traveled more than seventy-five thousand miles.",
+          "sayShort": "He traveled really far.",
+          "ask": "Where would you go if you could travel anywhere?",
+          "askYou": "What place do you dream of visiting?",
+          "bridge": ""
+        },
+        {
+          "text": "He went all over Africa, Asia, and parts of Europe.",
+          "topic": "many countries",
+          "say": "Ibn Battuta visited Africa, Asia, and parts of Europe.",
+          "sayShort": "He went to many places.",
+          "ask": "What part of the world would you like to see?",
+          "askYou": "Which country sounds exciting?",
+          "bridge": "I liked the part about all the places he went. Remember?"
+        },
+        {
+          "text": "Ibn Battuta wrote a book about everything he saw on his trips.",
+          "topic": "his travel book",
+          "say": "Ibn Battuta wrote a book about everything he saw.",
+          "sayShort": "He wrote it all down.",
+          "ask": "What would you write a book about?",
+          "askYou": "What would go in your book?",
+          "bridge": "The part about his travel book was interesting. Do you remember that?"
+        },
+        {
+          "text": "He started traveling when he was about 21 years old.",
+          "topic": "starting young",
+          "say": "Ibn Battuta set off on his travels when he was only twenty-one.",
+          "sayShort": "He left home young.",
+          "ask": "Where would you like to go on your own someday?",
+          "askYou": "Where would you travel first?",
+          "bridge": "I liked the part about him leaving home so young. Remember?"
+        }
+      ]
+    },
+    {
+      "name": "Jean-Michel Basquiat",
+      "years": "1960–1988",
+      "tag": "Artist",
+      "emoji": "🎨",
+      "img": "images/jean-michel-basquiat.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": [
+        {
+          "text": "Jean-Michel started by painting on walls in New York City.",
+          "topic": "street art",
+          "say": "Jean-Michel started out painting on walls in New York City.",
+          "sayShort": "He painted on walls.",
+          "ask": "What would you paint if you could paint anywhere?",
+          "askYou": "What would you make?",
+          "bridge": ""
+        },
+        {
+          "text": "He used bright colors, words, and crowns in his bold paintings.",
+          "topic": "his paintings",
+          "say": "Jean-Michel painted with bright colors, words, and crowns.",
+          "sayShort": "He painted crowns.",
+          "ask": "What colors would you use in a painting?",
+          "askYou": "What would you draw?",
+          "bridge": "I liked the part about his bold paintings. Remember?"
+        },
+        {
+          "text": "Jean-Michel became famous when he was very young.",
+          "topic": "famous young",
+          "say": "Jean-Michel became famous when he was still really young.",
+          "sayShort": "He was famous young.",
+          "ask": "What is something you are really good at?",
+          "askYou": "What are you proud of?",
+          "bridge": "The part about him getting famous so young was interesting. Do you remember?"
+        },
+        {
+          "text": "He worked with the famous artist Andy Warhol on some paintings.",
+          "topic": "making art together",
+          "say": "Jean-Michel made art together with the famous Andy Warhol.",
+          "sayShort": "He made art with a friend.",
+          "ask": "Have you ever made something with a friend?",
+          "askYou": "Who would you make art with?",
+          "bridge": "I liked the part about him making art with a friend. Remember?"
+        }
+      ]
+    },
+    {
+      "name": "Serena Williams",
+      "years": "1981–",
+      "tag": "Athlete",
+      "emoji": "🎾",
+      "img": "/famous-person/_Resources/_imgSource/images/serena-williams.jpeg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": [
+        {
+          "text": "Serena Williams is one of the best tennis players the world has ever seen.",
+          "topic": "playing tennis",
+          "say": "Serena is one of the best tennis players ever.",
+          "sayShort": "She is amazing at tennis.",
+          "ask": "Have you ever played tennis or watched it?",
+          "askYou": "What sport would you like to try?",
+          "bridge": ""
+        },
+        {
+          "text": "She won more than twenty of the biggest tennis trophies in the world.",
+          "topic": "winning trophies",
+          "say": "Serena won more than twenty huge tennis trophies.",
+          "sayShort": "She won lots of trophies.",
+          "ask": "What would you do if you won a big trophy?",
+          "askYou": "Have you ever won a game or a prize?",
+          "bridge": "I liked the part about all her trophies. Remember?"
+        },
+        {
+          "text": "Serena learned to play tennis as a little kid with her sister Venus.",
+          "topic": "learning young",
+          "say": "Serena learned tennis when she was little, with her sister.",
+          "sayShort": "She learned tennis with her sister.",
+          "ask": "Who do you like to play games with?",
+          "askYou": "Do you have a brother or sister you do things with?",
+          "bridge": "I liked the part about her learning with her sister. Remember?"
+        },
+        {
+          "text": "Serena tells girls everywhere that they can be strong and chase big dreams.",
+          "topic": "chasing dreams",
+          "say": "Serena tells kids they can be strong and follow their dreams.",
+          "sayShort": "She says to follow your dreams.",
+          "ask": "What is a big dream you have?",
+          "askYou": "What do you want to be really good at someday?",
+          "bridge": "I liked the part about chasing big dreams. Remember?"
+        }
+      ]
+    },
+    {
+      "name": "Neil Armstrong",
+      "years": "1930–2012",
+      "tag": "Astronaut",
+      "emoji": "🚀",
+      "img": "/famous-person/_Resources/_imgSource/images/neil-armstrong.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": [
+        {
+          "text": "Neil Armstrong was the very first person ever to walk on the moon.",
+          "topic": "walking on the moon",
+          "say": "Neil was the first person to walk on the moon.",
+          "sayShort": "He walked on the moon first.",
+          "ask": "Have you ever looked up at the moon at night?",
+          "askYou": "Would you want to travel to space someday?",
+          "bridge": ""
+        },
+        {
+          "text": "When he stepped onto the moon, he said it was a giant leap for everyone.",
+          "topic": "his famous words",
+          "say": "Neil said stepping on the moon was a giant leap for all of us.",
+          "sayShort": "He said famous words on the moon.",
+          "ask": "What would you say if you were on the moon?",
+          "askYou": "Have you ever said something you felt proud of?",
+          "bridge": "I liked the part about his famous words. Remember?"
+        },
+        {
+          "text": "Before space, Neil was a pilot who loved flying planes very fast.",
+          "topic": "flying planes",
+          "say": "Before space, Neil flew planes really fast.",
+          "sayShort": "He loved flying planes.",
+          "ask": "Would you rather fly a plane or a rocket?",
+          "askYou": "What is the fastest thing you have ever ridden?",
+          "bridge": "I liked the part about him flying planes. Remember?"
+        },
+        {
+          "text": "Neil showed the whole world that people can do things no one has done before.",
+          "topic": "doing new things",
+          "say": "Neil showed us that people can do brand-new things.",
+          "sayShort": "He did what no one had done.",
+          "ask": "What is something new you would like to try?",
+          "askYou": "What is something you did for the very first time?",
+          "bridge": "I liked the part about doing new things. Remember?"
+        }
+      ]
+    },
+    {
+      "name": "Mae Jemison",
+      "years": "1956–",
+      "tag": "Astronaut",
+      "emoji": "🌟",
+      "img": "/famous-person/_Resources/_imgSource/images/mae-jemison.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": [
+        {
+          "text": "Mae Jemison was the first Black woman ever to travel into space.",
+          "topic": "going to space",
+          "say": "Mae was the first Black woman to go to space.",
+          "sayShort": "She flew into space.",
+          "ask": "What do you think space looks like up close?",
+          "askYou": "Would you like to float around in space?",
+          "bridge": ""
+        },
+        {
+          "text": "Mae was also a doctor who helped sick people feel better.",
+          "topic": "being a doctor",
+          "say": "Mae was a doctor who helped people feel better.",
+          "sayShort": "She was also a doctor.",
+          "ask": "Have you ever helped someone feel better?",
+          "askYou": "Who takes care of you when you feel sick?",
+          "bridge": "I liked the part about her being a doctor. Remember?"
+        },
+        {
+          "text": "As a kid, Mae loved to dance and loved science just as much.",
+          "topic": "dancing and science",
+          "say": "Mae loved both dancing and science when she was a kid.",
+          "sayShort": "She loved dancing and science.",
+          "ask": "What are two things you really love to do?",
+          "askYou": "Do you like to dance?",
+          "bridge": "I liked the part about her dancing and science. Remember?"
+        },
+        {
+          "text": "Mae now teaches kids that they can love science and reach for the stars.",
+          "topic": "loving science",
+          "say": "Mae teaches kids they can love science and reach the stars.",
+          "sayShort": "She helps kids love science.",
+          "ask": "What is something about science you think is cool?",
+          "askYou": "What would you like to learn more about?",
+          "bridge": "I liked the part about loving science. Remember?"
+        }
+      ]
+    },
+    {
+      "name": "Dolly Parton",
+      "years": "1946–",
+      "tag": "Musician",
+      "emoji": "🎸",
+      "img": "/famous-person/_Resources/_imgSource/images/dolly-parton.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": [
+        {
+          "text": "Dolly Parton is a famous singer who writes happy country songs.",
+          "topic": "singing country songs",
+          "say": "Dolly is a famous singer who writes country songs.",
+          "sayShort": "She sings country music.",
+          "ask": "What kind of music do you like to listen to?",
+          "askYou": "Do you like to sing?",
+          "bridge": ""
+        },
+        {
+          "text": "Dolly has written thousands of songs, more than almost anyone.",
+          "topic": "writing songs",
+          "say": "Dolly wrote thousands of songs all by herself.",
+          "sayShort": "She wrote tons of songs.",
+          "ask": "If you wrote a song, what would it be about?",
+          "askYou": "What song do you know all the words to?",
+          "bridge": "I liked the part about all her songs. Remember?"
+        },
+        {
+          "text": "Dolly grew up in the mountains in a big family with lots of kids.",
+          "topic": "her big family",
+          "say": "Dolly grew up in the mountains in a big family.",
+          "sayShort": "She grew up in a big family.",
+          "ask": "What do you like to do with your family?",
+          "askYou": "Do you have a big family or a small one?",
+          "bridge": "I liked the part about her big family. Remember?"
+        },
+        {
+          "text": "Dolly gives free books to little kids so they can learn to read.",
+          "topic": "giving books",
+          "say": "Dolly gives free books to kids so they can read.",
+          "sayShort": "She gives kids free books.",
+          "ask": "What is a book you really like?",
+          "askYou": "Do you like it when someone reads to you?",
+          "bridge": "I liked the part about her giving books. Remember?"
+        }
+      ]
+    },
+    {
+      "name": "Steve Jobs",
+      "years": "1955–2011",
+      "tag": "Inventor",
+      "emoji": "💡",
+      "img": "/famous-person/_Resources/_imgSource/images/steve-jobs.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": [
+        {
+          "text": "Steve Jobs helped make Apple, the company that makes the iPhone.",
+          "topic": "making the iPhone",
+          "say": "Steve helped make Apple and the iPhone.",
+          "sayShort": "He helped make the iPhone.",
+          "ask": "What do you like to do on a phone or tablet?",
+          "askYou": "What is your favorite app or game?",
+          "bridge": ""
+        },
+        {
+          "text": "He wanted computers to be easy and fun for everyone to use.",
+          "topic": "easy computers",
+          "say": "Steve made computers easy and fun to use.",
+          "sayShort": "He made computers easy.",
+          "ask": "What makes something fun and easy to use?",
+          "askYou": "What is a gadget you think is really cool?",
+          "bridge": "I liked the part about easy computers. Remember?"
+        },
+        {
+          "text": "Steve built one of his first computers right in his family’s garage.",
+          "topic": "starting in a garage",
+          "say": "Steve built an early computer in his garage.",
+          "sayShort": "He started in a garage.",
+          "ask": "Where do you like to build or make things?",
+          "askYou": "Have you ever built something yourself?",
+          "bridge": "I liked the part about the garage. Remember?"
+        },
+        {
+          "text": "Steve changed the way people all over the world use phones every day.",
+          "topic": "changing phones",
+          "say": "Steve changed how the whole world uses phones.",
+          "sayShort": "He changed how we use phones.",
+          "ask": "How do you think phones will change next?",
+          "askYou": "What would you invent if you could?",
+          "bridge": "I liked the part about changing phones. Remember?"
+        }
+      ]
+    },
+    {
+      "name": "Vincent van Gogh",
+      "years": "1853–1890",
+      "tag": "Artist",
+      "emoji": "🎨",
+      "img": "/famous-person/_Resources/_imgSource/images/vincent-van-gogh.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": [
+        {
+          "text": "Vincent van Gogh made paintings with big, bright, bold colors.",
+          "topic": "bright paintings",
+          "say": "Vincent painted with big, bright, bold colors.",
+          "sayShort": "He painted bright colors.",
+          "ask": "What colors would you use in a painting?",
+          "askYou": "What would you like to paint?",
+          "bridge": ""
+        },
+        {
+          "text": "He painted bright yellow sunflowers and a swirly, starry night sky.",
+          "topic": "sunflowers and stars",
+          "say": "Vincent painted sunflowers and a swirly starry sky.",
+          "sayShort": "He painted sunflowers and stars.",
+          "ask": "Would you rather paint flowers or the sky?",
+          "askYou": "Have you ever painted a picture of the sky?",
+          "bridge": "I liked the part about his sunflowers and stars. Remember?"
+        },
+        {
+          "text": "Vincent painted so much that he made hundreds and hundreds of pictures.",
+          "topic": "painting a lot",
+          "say": "Vincent painted hundreds and hundreds of pictures.",
+          "sayShort": "He painted a whole lot.",
+          "ask": "What is something you like to make again and again?",
+          "askYou": "Do you like to draw or paint a lot?",
+          "bridge": "I liked the part about him painting so much. Remember?"
+        },
+        {
+          "text": "Today people all over the world travel to see Vincent’s colorful art.",
+          "topic": "his famous art",
+          "say": "People everywhere go to see Vincent’s colorful art.",
+          "sayShort": "People love his art now.",
+          "ask": "What painting would you want to go see?",
+          "askYou": "Have you ever been to a museum?",
+          "bridge": "I liked the part about people loving his art. Remember?"
+        }
+      ]
+    }
+  ],
+  "generated": "2026-07-08T17:46:37.734Z"
+}

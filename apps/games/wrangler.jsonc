@@ -8,7 +8,8 @@
         { "binding": "API_WORKER", "service": "games-save-photo" }
       ],
       "kv_namespaces": [
-        { "binding": "SUGGEST_DUPES", "id": "770ceeccadb94d78b519e628509beed8" }
+        { "binding": "SUGGEST_DUPES", "id": "770ceeccadb94d78b519e628509beed8" },
+        { "binding": "PERSON_SUGGESTIONS", "id": "66a4206c3dd2405da54fc1f8ba0070c1" }
       ]
     },
     "preview": {
@@ -16,7 +17,8 @@
         { "binding": "API_WORKER", "service": "games-save-photo-dev" }
       ],
       "kv_namespaces": [
-        { "binding": "SUGGEST_DUPES", "id": "770ceeccadb94d78b519e628509beed8" }
+        { "binding": "SUGGEST_DUPES", "id": "770ceeccadb94d78b519e628509beed8" },
+        { "binding": "PERSON_SUGGESTIONS", "id": "66a4206c3dd2405da54fc1f8ba0070c1" }
       ]
     }
   }

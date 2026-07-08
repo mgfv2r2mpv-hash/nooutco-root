@@ -1,0 +1,60 @@
+/* ══════════════════════════════════════════════════════════════════
+   Red Carpet Convos — a version of the Famous Person Game.
+   Two-phase conversation activity (Meet → Talk) with a faded prompt
+   hierarchy, four Talk layouts, and a reward/celebration screen.
+
+   Static styles only. Per-element dynamic styling (active states, person
+   accents, etc.) is computed inline in game.js, mapped onto the shared
+   tokens.css variables the whole games surface uses.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Scoped token top-up — the two sage shades the design uses that are not
+   in the shared tokens.css (which stops at 200/500). Everything else
+   (slate / violet / blue / green / amber / orange / red / sky ramps,
+   radii, shadows, motion) resolves against ../tailwind.css. */
+:root {
+  --sage-300: #cbd09f;
+  --sage-400: #9aa87f;
+}
+
+#rcc, #rcc *, #rcc *::before, #rcc *::after { box-sizing: border-box; }
+#rcc {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #eef1ea;
+  color: var(--slate-900);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+#rcc button { font-family: inherit; }
+#rcc a { color: var(--sage-600); text-decoration: none; }
+#rcc a:hover { color: var(--sage-700); }
+#rcc input, #rcc textarea { font-family: inherit; }
+
+/* Custom scrollbars for the scroll surfaces */
+.rcc-scroll::-webkit-scrollbar { width: 9px; height: 9px; }
+.rcc-scroll::-webkit-scrollbar-thumb { background: #cfd6c4; border-radius: 9px; }
+
+/* ── Keyframes (ported from the prototype) ─────────────────────────── */
+@keyframes fpg-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fpg-pop  { from { opacity: 0; transform: translateY(-3px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes fpg-float { 0% { transform: translateY(4px) rotate(var(--rot, 0deg)); } 100% { transform: translateY(-14px) rotate(var(--rot, 0deg)); } }
+@keyframes fpg-sign { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes fpg-draw { to { stroke-dashoffset: 0; } }
+@keyframes fpg-rise { from { opacity: 0; transform: translateY(10px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes fpg-burst { 0% { transform: translate(-50%, -50%) scale(.5) rotate(0deg); opacity: 0; } 45% { opacity: .5; } 100% { transform: translate(-50%, -50%) scale(1) rotate(6deg); opacity: .34; } }
+@keyframes fpg-flash { 0%, 100% { opacity: 0; } 50% { opacity: .5; } }
+
+/* ── Reduced motion: kill all looping / decorative motion ──────────── */
+@media (prefers-reduced-motion: reduce) {
+  #rcc .fpg-float,
+  #rcc .fpg-auto,
+  #rcc .fpg-flourish,
+  #rcc [style*="fpg-burst"],
+  #rcc [style*="fpg-flash"] { animation: none !important; }
+  #rcc .fpg-auto { clip-path: none !important; }
+  #rcc .fpg-flourish { stroke-dashoffset: 0 !important; }
+  /* Entrance fades/pops collapse to instant so nothing is lost. */
+  #rcc * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; }
+}
