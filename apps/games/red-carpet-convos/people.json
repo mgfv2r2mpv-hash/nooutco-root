@@ -1,6 +1,6 @@
 {
   "_note": "Red Carpet Convos roster. Per person: {name, years, tag, emoji, img, accent, accentBg, converted, facts:[{text, topic, say, sayShort, ask, askYou, bridge}]}. `converted` is the MIGRATION FLAG: true = migrated to the new schema and live in the game; false = a stub pending fact population (kept OUT of the game for now). During migration the game surfaces only converted people. Fade levels (comment/volley Partial/Minimal) are derived at runtime from say/ask. `bridge` is the partner's recall opener INTO this fact (fact 1's bridge is empty). Edited via AdminTools/FamousPersonManager; the rcc-generate-facts populator writes facts + sets converted. Store only public-figure content — never learner/session data.",
-  "generated": "2026-07-08T20:40:48.760Z",
+  "generated": "2026-07-08T20:43:48.914Z",
   "people": [
     {
       "name": "Lin-Manuel Miranda",
@@ -11899,8 +11899,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/barbara-mcclintock.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Barbara was a scientist who studied corn to learn how living things work.",
+          "topic": "studying corn",
+          "say": "Barbara studied corn to learn how life works.",
+          "sayShort": "She studied corn.",
+          "ask": "What plant would you like to study?",
+          "askYou": "Do you like corn?",
+          "bridge": ""
+        },
+        {
+          "text": "She discovered that tiny genes can jump around inside living things.",
+          "topic": "jumping genes",
+          "say": "Barbara found genes that can jump around.",
+          "sayShort": "She found jumping genes.",
+          "ask": "What surprising thing would you love to find?",
+          "askYou": "Do you like solving mysteries?",
+          "bridge": "I liked the part about her studying corn. Remember?"
+        },
+        {
+          "text": "Barbara won the Nobel Prize for her patient, careful work.",
+          "topic": "Nobel Prize",
+          "say": "Barbara won the Nobel Prize for her work.",
+          "sayShort": "She won a big prize.",
+          "ask": "What would you like to win a prize for?",
+          "askYou": "Are you good at being patient?",
+          "bridge": "I liked the part about jumping genes. Remember?"
+        },
+        {
+          "text": "She loved working quietly on her own in the fields and lab.",
+          "topic": "working quietly",
+          "say": "Barbara loved working quietly on her science.",
+          "sayShort": "She loved quiet work.",
+          "ask": "Do you like working alone or with others?",
+          "askYou": "Where do you focus best?",
+          "bridge": "I liked the part about her Nobel Prize. Remember?"
+        }
+      ]
     },
     {
       "name": "Lise Meitner",
@@ -11910,8 +11947,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/lise-meitner.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Lise was a scientist who studied atoms and the energy inside them.",
+          "topic": "studying atoms",
+          "say": "Lise studied atoms and their energy.",
+          "sayShort": "She studied atoms.",
+          "ask": "What tiny thing are you curious about?",
+          "askYou": "Do you like science?",
+          "bridge": ""
+        },
+        {
+          "text": "She helped explain how atoms can split apart.",
+          "topic": "splitting atoms",
+          "say": "Lise helped explain how atoms split.",
+          "sayShort": "She studied splitting atoms.",
+          "ask": "What would you love to figure out?",
+          "askYou": "Do you like big puzzles?",
+          "bridge": "I liked the part about her studying atoms. Remember?"
+        },
+        {
+          "text": "Lise cared about using science for good, kind reasons.",
+          "topic": "science for good",
+          "say": "Lise wanted science used for good.",
+          "sayShort": "She wanted science to help.",
+          "ask": "How could science help people?",
+          "askYou": "What good thing would you invent?",
+          "bridge": "I liked the part about splitting atoms. Remember?"
+        },
+        {
+          "text": "A tiny piece of matter called an element is named after her.",
+          "topic": "named for her",
+          "say": "An element is named after Lise.",
+          "sayShort": "Something is named for her.",
+          "ask": "What would you like named after you?",
+          "askYou": "What are you proud of?",
+          "bridge": "I liked the part about science for good. Remember?"
+        }
+      ]
     },
     {
       "name": "Emmy Noether",
@@ -11921,8 +11995,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/emmy-noether.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Emmy was a math genius with big ideas that helped science too.",
+          "topic": "math genius",
+          "say": "Emmy was a math genius who helped science.",
+          "sayShort": "She was a math genius.",
+          "ask": "Do you like math?",
+          "askYou": "What is a math trick you know?",
+          "bridge": ""
+        },
+        {
+          "text": "She found deep links between math and how nature works.",
+          "topic": "math in nature",
+          "say": "Emmy linked math to how nature works.",
+          "sayShort": "She found math in nature.",
+          "ask": "Where do you see numbers in the world?",
+          "askYou": "What patterns do you notice?",
+          "bridge": "I liked the part about her being a math genius. Remember?"
+        },
+        {
+          "text": "Emmy taught students even when she was not allowed to be paid.",
+          "topic": "a giving teacher",
+          "say": "Emmy taught for free because she loved it.",
+          "sayShort": "She taught for love of it.",
+          "ask": "What would you teach for free?",
+          "askYou": "Who has helped you learn?",
+          "bridge": "I liked the part about math in nature. Remember?"
+        },
+        {
+          "text": "She was a kind mentor who cheered on younger thinkers.",
+          "topic": "a kind mentor",
+          "say": "Emmy cheered on younger thinkers kindly.",
+          "sayShort": "She was a kind mentor.",
+          "ask": "Who do you like to cheer on?",
+          "askYou": "How do you help friends learn?",
+          "bridge": "I liked the part about her being a giving teacher. Remember?"
+        }
+      ]
     },
     {
       "name": "Carl Friedrich Gauss",
@@ -11932,8 +12043,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/carl-friedrich-gauss.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Carl was a math whiz who was amazing at numbers as a young kid.",
+          "topic": "a math whiz",
+          "say": "Carl was a math whiz even as a young kid.",
+          "sayShort": "He was a math whiz.",
+          "ask": "Do you like number puzzles?",
+          "askYou": "What are you great at?",
+          "bridge": ""
+        },
+        {
+          "text": "As a boy, he added up all the numbers from 1 to 100 super fast.",
+          "topic": "a fast trick",
+          "say": "Carl added 1 to 100 super fast as a boy.",
+          "sayShort": "He did a fast math trick.",
+          "ask": "What math trick would you love to learn?",
+          "askYou": "How do you do math quickly?",
+          "bridge": "I liked the part about him being a math whiz. Remember?"
+        },
+        {
+          "text": "People call him the \"Prince of Mathematics.\"",
+          "topic": "a royal nickname",
+          "say": "People call Carl the Prince of Mathematics.",
+          "sayShort": "He has a royal math name.",
+          "ask": "What cool title would you like?",
+          "askYou": "What are you the best at?",
+          "bridge": "I liked the part about his fast trick. Remember?"
+        },
+        {
+          "text": "Carl also studied the stars and how they move.",
+          "topic": "studying stars",
+          "say": "Carl studied the stars and their paths.",
+          "sayShort": "He studied the stars.",
+          "ask": "What do you wonder about in space?",
+          "askYou": "Do you like looking at the sky?",
+          "bridge": "I liked the part about his royal nickname. Remember?"
+        }
+      ]
     },
     {
       "name": "Leonhard Euler",
@@ -11943,8 +12091,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/leonhard-euler.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Leonhard was one of the busiest, brightest mathematicians ever.",
+          "topic": "a busy genius",
+          "say": "Leonhard was one of the busiest math geniuses.",
+          "sayShort": "He was a math genius.",
+          "ask": "Do you like math?",
+          "askYou": "What do you work really hard on?",
+          "bridge": ""
+        },
+        {
+          "text": "He invented lots of the math symbols we still use today.",
+          "topic": "math symbols",
+          "say": "Leonhard invented math symbols we still use.",
+          "sayShort": "He made math symbols.",
+          "ask": "What symbol would you invent?",
+          "askYou": "What is your favorite math sign?",
+          "bridge": "I liked the part about him being a busy genius. Remember?"
+        },
+        {
+          "text": "Leonhard could do amazing math all in his head.",
+          "topic": "math in his head",
+          "say": "Leonhard did big math in his head.",
+          "sayShort": "He did math in his head.",
+          "ask": "What can you figure out in your head?",
+          "askYou": "Do you like mental math?",
+          "bridge": "I liked the part about math symbols. Remember?"
+        },
+        {
+          "text": "He kept doing math even when it got hard to see.",
+          "topic": "never stopping",
+          "say": "Leonhard kept doing math no matter what.",
+          "sayShort": "He never stopped.",
+          "ask": "What do you love enough to never quit?",
+          "askYou": "What helps you keep going?",
+          "bridge": "I liked the part about math in his head. Remember?"
+        }
+      ]
     },
     {
       "name": "Euclid",
@@ -11954,8 +12139,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/euclid.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Euclid was a math teacher in ancient Greece who studied shapes.",
+          "topic": "shapes and lines",
+          "say": "Euclid studied shapes and lines long ago.",
+          "sayShort": "He studied shapes.",
+          "ask": "What is your favorite shape?",
+          "askYou": "Do you like drawing shapes?",
+          "bridge": ""
+        },
+        {
+          "text": "People call him the \"father of geometry.\"",
+          "topic": "father of geometry",
+          "say": "Euclid is called the father of geometry.",
+          "sayShort": "He started geometry.",
+          "ask": "What shapes do you see around you?",
+          "askYou": "Do you like building things?",
+          "bridge": "I liked the part about shapes and lines. Remember?"
+        },
+        {
+          "text": "He wrote a math book that was used for over 2,000 years!",
+          "topic": "a long-lasting book",
+          "say": "Euclid's math book lasted 2,000 years.",
+          "sayShort": "His book lasted ages.",
+          "ask": "What would you want to last forever?",
+          "askYou": "What is something really old you like?",
+          "bridge": "I liked the part about him being the father of geometry. Remember?"
+        },
+        {
+          "text": "Euclid showed how to prove that ideas are really true.",
+          "topic": "proving ideas",
+          "say": "Euclid showed how to prove ideas are true.",
+          "sayShort": "He proved ideas.",
+          "ask": "How do you show something is true?",
+          "askYou": "Do you like to explain your thinking?",
+          "bridge": "I liked the part about his long-lasting book. Remember?"
+        }
+      ]
     },
     {
       "name": "Johannes Kepler",
@@ -11965,8 +12187,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/johannes-kepler.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Johannes figured out how the planets move around the Sun.",
+          "topic": "how planets move",
+          "say": "Johannes figured out how planets move.",
+          "sayShort": "He studied the planets.",
+          "ask": "What is your favorite planet?",
+          "askYou": "Do you like space?",
+          "bridge": ""
+        },
+        {
+          "text": "He found that planets travel in oval-shaped paths, not circles.",
+          "topic": "oval paths",
+          "say": "Johannes found planets move in oval paths.",
+          "sayShort": "He found oval orbits.",
+          "ask": "What shape would you trace in the sky?",
+          "askYou": "Do you like ovals or circles?",
+          "bridge": "I liked the part about how planets move. Remember?"
+        },
+        {
+          "text": "Johannes loved both stars and math.",
+          "topic": "stars and math",
+          "say": "Johannes loved the stars and math together.",
+          "sayShort": "He loved stars and math.",
+          "ask": "What two things do you love?",
+          "askYou": "Do you like stargazing?",
+          "bridge": "I liked the part about oval paths. Remember?"
+        },
+        {
+          "text": "His ideas helped later scientists understand space.",
+          "topic": "helping others",
+          "say": "Johannes' ideas helped later scientists.",
+          "sayShort": "He helped others learn.",
+          "ask": "What would you like to teach about space?",
+          "askYou": "What is a cool space fact you know?",
+          "bridge": "I liked the part about stars and math. Remember?"
+        }
+      ]
     },
     {
       "name": "Edwin Hubble",
@@ -11976,8 +12235,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/edwin-hubble.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Edwin discovered that there are other galaxies far beyond our own.",
+          "topic": "other galaxies",
+          "say": "Edwin found galaxies far beyond ours.",
+          "sayShort": "He found other galaxies.",
+          "ask": "How big do you think space is?",
+          "askYou": "Would you like to explore space?",
+          "bridge": ""
+        },
+        {
+          "text": "He showed that the whole universe is getting bigger.",
+          "topic": "a growing universe",
+          "say": "Edwin showed the universe is growing.",
+          "sayShort": "He found space is growing.",
+          "ask": "What do you wonder about the universe?",
+          "askYou": "What is the biggest thing you can imagine?",
+          "bridge": "I liked the part about other galaxies. Remember?"
+        },
+        {
+          "text": "A famous space telescope is named after Edwin.",
+          "topic": "a telescope named for him",
+          "say": "A space telescope is named after Edwin.",
+          "sayShort": "A telescope has his name.",
+          "ask": "What would you look at with a telescope?",
+          "askYou": "Have you seen the stars up close?",
+          "bridge": "I liked the part about a growing universe. Remember?"
+        },
+        {
+          "text": "He helped people see that space is huge and full of wonders.",
+          "topic": "space is huge",
+          "say": "Edwin showed how huge and amazing space is.",
+          "sayShort": "He showed space is huge.",
+          "ask": "What do you think is out in space?",
+          "askYou": "What is your favorite thing in the sky?",
+          "bridge": "I liked the part about the telescope named for him. Remember?"
+        }
+      ]
     },
     {
       "name": "George Washington Carver",
@@ -11987,8 +12283,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/george-washington-carver.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "George found hundreds of clever ways to use the peanut.",
+          "topic": "peanut power",
+          "say": "George found hundreds of uses for peanuts.",
+          "sayShort": "He loved peanuts.",
+          "ask": "Do you like peanut butter?",
+          "askYou": "What food could you use in new ways?",
+          "bridge": ""
+        },
+        {
+          "text": "He helped farmers grow healthier crops and better soil.",
+          "topic": "helping farmers",
+          "say": "George helped farmers grow healthy crops.",
+          "sayShort": "He helped farmers.",
+          "ask": "Would you like to grow food?",
+          "askYou": "What would you plant?",
+          "bridge": "I liked the part about peanut power. Remember?"
+        },
+        {
+          "text": "George started life with almost nothing and worked hard to learn.",
+          "topic": "working hard to learn",
+          "say": "George worked hard to learn from very little.",
+          "sayShort": "He worked hard to learn.",
+          "ask": "What are you working hard to learn?",
+          "askYou": "What helps you keep trying?",
+          "bridge": "I liked the part about him helping farmers. Remember?"
+        },
+        {
+          "text": "He loved plants so much that people called him the \"Plant Doctor.\"",
+          "topic": "the Plant Doctor",
+          "say": "People called George the Plant Doctor.",
+          "sayShort": "He was the Plant Doctor.",
+          "ask": "What would you like to be an expert on?",
+          "askYou": "Do you like plants?",
+          "bridge": "I liked the part about him working hard to learn. Remember?"
+        }
+      ]
     },
     {
       "name": "Norman Borlaug",
@@ -11998,8 +12331,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/norman-borlaug.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Norman grew stronger wheat that helped feed millions of hungry people.",
+          "topic": "better wheat",
+          "say": "Norman grew wheat that fed millions.",
+          "sayShort": "He grew super wheat.",
+          "ask": "What food would you like to grow?",
+          "askYou": "How do you help people who are hungry?",
+          "bridge": ""
+        },
+        {
+          "text": "His work is said to have helped save a huge number of lives.",
+          "topic": "saving lives",
+          "say": "Norman's wheat helped save many lives.",
+          "sayShort": "His work saved lives.",
+          "ask": "How would you help feed people?",
+          "askYou": "What is a kind thing you like to do?",
+          "bridge": "I liked the part about his better wheat. Remember?"
+        },
+        {
+          "text": "Norman worked on farms and got his hands in the dirt.",
+          "topic": "working the fields",
+          "say": "Norman worked hard right out in the fields.",
+          "sayShort": "He worked the fields.",
+          "ask": "Do you like getting your hands dirty?",
+          "askYou": "Would you like to farm?",
+          "bridge": "I liked the part about him saving lives. Remember?"
+        },
+        {
+          "text": "He won the Nobel Peace Prize for helping feed the world.",
+          "topic": "Nobel Peace Prize",
+          "say": "Norman won a peace prize for feeding people.",
+          "sayShort": "He won a peace prize.",
+          "ask": "What would you like to be known for?",
+          "askYou": "What good thing are you proud of?",
+          "bridge": "I liked the part about him working the fields. Remember?"
+        }
+      ]
     },
     {
       "name": "Claude Monet",
@@ -12009,8 +12379,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/claude-monet.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Claude painted light, gardens, and water in soft, dreamy colors.",
+          "topic": "painting light",
+          "say": "Claude painted light and gardens dreamily.",
+          "sayShort": "He painted soft light.",
+          "ask": "What would you paint in a garden?",
+          "askYou": "What is your favorite flower?",
+          "bridge": ""
+        },
+        {
+          "text": "He helped start a new art style with quick, dabbing brush strokes.",
+          "topic": "a new art style",
+          "say": "Claude helped start a new painting style.",
+          "sayShort": "He made a new art style.",
+          "ask": "How would you paint your own way?",
+          "askYou": "Do you like soft or bold art?",
+          "bridge": "I liked the part about him painting light. Remember?"
+        },
+        {
+          "text": "Claude painted his own garden and its lily pond over and over.",
+          "topic": "his garden",
+          "say": "Claude painted his garden and lily pond a lot.",
+          "sayShort": "He loved his garden.",
+          "ask": "What place would you paint again and again?",
+          "askYou": "Do you like ponds and water?",
+          "bridge": "I liked the part about his new art style. Remember?"
+        },
+        {
+          "text": "He painted the same scene at different times of day.",
+          "topic": "painting the day",
+          "say": "Claude painted one scene at many times of day.",
+          "sayShort": "He painted the changing day.",
+          "ask": "What looks different in morning and night?",
+          "askYou": "Do you like sunrises or sunsets?",
+          "bridge": "I liked the part about his garden. Remember?"
+        }
+      ]
     },
     {
       "name": "Henri Matisse",
@@ -12020,8 +12427,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/henri-matisse.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Henri painted with big, bright, happy colors.",
+          "topic": "bright colors",
+          "say": "Henri painted with big, bright, happy colors.",
+          "sayShort": "He loved bright colors.",
+          "ask": "What bright colors do you like?",
+          "askYou": "What makes a picture feel happy?",
+          "bridge": ""
+        },
+        {
+          "text": "When he got older, he made art by cutting out colorful paper shapes.",
+          "topic": "paper cut-outs",
+          "say": "Henri made art from cut-out paper shapes.",
+          "sayShort": "He made paper art.",
+          "ask": "What shapes would you cut out?",
+          "askYou": "Do you like arts and crafts?",
+          "bridge": "I liked the part about his bright colors. Remember?"
+        },
+        {
+          "text": "Henri wanted his art to feel joyful and restful.",
+          "topic": "joyful art",
+          "say": "Henri wanted his art to feel joyful.",
+          "sayShort": "He made joyful art.",
+          "ask": "What kind of art makes you happy?",
+          "askYou": "What relaxes you?",
+          "bridge": "I liked the part about his paper cut-outs. Remember?"
+        },
+        {
+          "text": "He was friends and friendly rivals with Pablo Picasso.",
+          "topic": "his artist friend",
+          "say": "Henri was friends with Pablo Picasso.",
+          "sayShort": "He knew Picasso.",
+          "ask": "Who do you like to be creative with?",
+          "askYou": "Do you like friendly competition?",
+          "bridge": "I liked the part about his joyful art. Remember?"
+        }
+      ]
     },
     {
       "name": "Andy Warhol",
@@ -12031,8 +12475,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/andy-warhol.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Andy made bright, bold art of everyday things — even soup cans!",
+          "topic": "soup can art",
+          "say": "Andy painted everyday things like soup cans.",
+          "sayShort": "He painted soup cans.",
+          "ask": "What everyday thing would you turn into art?",
+          "askYou": "What is in your kitchen?",
+          "bridge": ""
+        },
+        {
+          "text": "He also made colorful, repeated pictures of famous people.",
+          "topic": "colorful repeats",
+          "say": "Andy made bright, repeated pictures of stars.",
+          "sayShort": "He repeated bright pictures.",
+          "ask": "Whose picture would you make colorful?",
+          "askYou": "Do you like bright, bold art?",
+          "bridge": "I liked the part about his soup can art. Remember?"
+        },
+        {
+          "text": "Andy said everyone can be famous for fifteen minutes.",
+          "topic": "fifteen minutes of fame",
+          "say": "Andy said everyone gets fifteen minutes of fame.",
+          "sayShort": "He talked about fame.",
+          "ask": "What would you like to be famous for?",
+          "askYou": "What are you great at?",
+          "bridge": "I liked the part about his colorful repeats. Remember?"
+        },
+        {
+          "text": "He called his art studio \"the Factory.\"",
+          "topic": "the Factory",
+          "say": "Andy called his art studio the Factory.",
+          "sayShort": "His studio was the Factory.",
+          "ask": "What would you name your art space?",
+          "askYou": "Where do you like to make things?",
+          "bridge": "I liked the part about fifteen minutes of fame. Remember?"
+        }
+      ]
     },
     {
       "name": "Diego Rivera",
@@ -12042,8 +12523,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/diego-rivera.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Diego painted giant, colorful pictures right on walls.",
+          "topic": "giant wall art",
+          "say": "Diego painted huge, colorful pictures on walls.",
+          "sayShort": "He painted giant murals.",
+          "ask": "What would you paint on a huge wall?",
+          "askYou": "Do you like big or small art?",
+          "bridge": ""
+        },
+        {
+          "text": "His wall paintings told stories about people and history.",
+          "topic": "painting stories",
+          "say": "Diego's wall art told stories of people.",
+          "sayShort": "His art told stories.",
+          "ask": "What story would you paint?",
+          "askYou": "What history do you find cool?",
+          "bridge": "I liked the part about his giant wall art. Remember?"
+        },
+        {
+          "text": "Diego was from Mexico and was married to the artist Frida Kahlo.",
+          "topic": "artist couple",
+          "say": "Diego was married to the artist Frida Kahlo.",
+          "sayShort": "He married Frida Kahlo.",
+          "ask": "Do you like making art with someone?",
+          "askYou": "Who would you make art with?",
+          "bridge": "I liked the part about him painting stories. Remember?"
+        },
+        {
+          "text": "He used bright colors to celebrate his home country.",
+          "topic": "celebrating home",
+          "say": "Diego painted bright art about his home.",
+          "sayShort": "He celebrated his home.",
+          "ask": "What do you love about where you live?",
+          "askYou": "What colors remind you of home?",
+          "bridge": "I liked the part about the artist couple. Remember?"
+        }
+      ]
     },
     {
       "name": "Auguste Rodin",
@@ -12053,8 +12571,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/auguste-rodin.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Auguste was a sculptor who made statues that look almost alive.",
+          "topic": "lifelike statues",
+          "say": "Auguste made statues that look alive.",
+          "sayShort": "He made lifelike statues.",
+          "ask": "What would you make a statue of?",
+          "askYou": "Do you like sculptures?",
+          "bridge": ""
+        },
+        {
+          "text": "His most famous statue is a man sitting and thinking, called The Thinker.",
+          "topic": "The Thinker",
+          "say": "Auguste made a famous statue, The Thinker.",
+          "sayShort": "He made The Thinker.",
+          "ask": "What do you think about when you sit quietly?",
+          "askYou": "Where do you like to sit and think?",
+          "bridge": "I liked the part about his lifelike statues. Remember?"
+        },
+        {
+          "text": "He shaped his statues out of clay and then bronze.",
+          "topic": "clay and bronze",
+          "say": "Auguste shaped statues from clay and bronze.",
+          "sayShort": "He worked with clay.",
+          "ask": "Do you like to make things with clay?",
+          "askYou": "What would you build with clay?",
+          "bridge": "I liked the part about The Thinker. Remember?"
+        },
+        {
+          "text": "Auguste worked very hard to make every little detail perfect.",
+          "topic": "careful details",
+          "say": "Auguste made every tiny detail just right.",
+          "sayShort": "He loved the details.",
+          "ask": "Are you good at careful work?",
+          "askYou": "What do you like to make just right?",
+          "bridge": "I liked the part about clay and bronze. Remember?"
+        }
+      ]
     },
     {
       "name": "Johannes Vermeer",
@@ -12064,8 +12619,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/johannes-vermeer.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Johannes was a Dutch painter famous for beautiful, calm pictures.",
+          "topic": "calm paintings",
+          "say": "Johannes painted beautiful, calm pictures.",
+          "sayShort": "He painted calm scenes.",
+          "ask": "What calm scene would you paint?",
+          "askYou": "What makes a picture peaceful?",
+          "bridge": ""
+        },
+        {
+          "text": "His most famous painting is called Girl with a Pearl Earring.",
+          "topic": "his famous painting",
+          "say": "Johannes painted the famous Girl with a Pearl Earring.",
+          "sayShort": "He made a famous painting.",
+          "ask": "What would you paint a portrait of?",
+          "askYou": "Do you like jewelry?",
+          "bridge": "I liked the part about his calm paintings. Remember?"
+        },
+        {
+          "text": "He was amazing at painting soft, glowing light.",
+          "topic": "painting light",
+          "say": "Johannes painted soft, glowing light beautifully.",
+          "sayShort": "He painted glowing light.",
+          "ask": "What makes light look pretty?",
+          "askYou": "Do you like sunny windows?",
+          "bridge": "I liked the part about his famous painting. Remember?"
+        },
+        {
+          "text": "Johannes painted quiet moments of people at home.",
+          "topic": "quiet moments",
+          "say": "Johannes painted quiet moments at home.",
+          "sayShort": "He painted home life.",
+          "ask": "What quiet moment would you paint?",
+          "askYou": "What do you like to do at home?",
+          "bridge": "I liked the part about him painting light. Remember?"
+        }
+      ]
     },
     {
       "name": "Raphael",
@@ -12075,8 +12667,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/raphael.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Raphael was a painter who made gentle, beautiful pictures.",
+          "topic": "beautiful paintings",
+          "say": "Raphael made gentle, beautiful paintings.",
+          "sayShort": "He painted beautifully.",
+          "ask": "What would you love to paint?",
+          "askYou": "What art do you find beautiful?",
+          "bridge": ""
+        },
+        {
+          "text": "He painted in Italy at the same time as Leonardo and Michelangelo.",
+          "topic": "famous friends",
+          "say": "Raphael painted near Leonardo and Michelangelo.",
+          "sayShort": "He knew famous artists.",
+          "ask": "Who would you love to create with?",
+          "askYou": "Do you like to team up?",
+          "bridge": "I liked the part about his beautiful paintings. Remember?"
+        },
+        {
+          "text": "Raphael was known for being kind and easy to work with.",
+          "topic": "kind and friendly",
+          "say": "Raphael was kind and easy to work with.",
+          "sayShort": "He was kind and friendly.",
+          "ask": "What makes someone nice to work with?",
+          "askYou": "How do you help a team?",
+          "bridge": "I liked the part about his famous friends. Remember?"
+        },
+        {
+          "text": "He became very famous while he was still quite young.",
+          "topic": "famous young",
+          "say": "Raphael got famous while he was young.",
+          "sayShort": "He was famous young.",
+          "ask": "What would you like to do while young?",
+          "askYou": "What are you great at for your age?",
+          "bridge": "I liked the part about him being kind and friendly. Remember?"
+        }
+      ]
     },
     {
       "name": "Katsushika Hokusai",
@@ -12086,8 +12715,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/katsushika-hokusai.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Hokusai was a Japanese artist famous for a picture of a giant wave.",
+          "topic": "the Great Wave",
+          "say": "Hokusai made a famous giant-wave picture.",
+          "sayShort": "He drew a huge wave.",
+          "ask": "Do you like the ocean?",
+          "askYou": "What would you draw about water?",
+          "bridge": ""
+        },
+        {
+          "text": "He also drew Mount Fuji, a beautiful mountain in Japan, many times.",
+          "topic": "drawing a mountain",
+          "say": "Hokusai drew Mount Fuji many times.",
+          "sayShort": "He loved a big mountain.",
+          "ask": "What mountain or place would you draw?",
+          "askYou": "Do you like mountains?",
+          "bridge": "I liked the part about the Great Wave. Remember?"
+        },
+        {
+          "text": "Hokusai drew and painted his whole long life.",
+          "topic": "drawing forever",
+          "say": "Hokusai drew and painted his whole life.",
+          "sayShort": "He never stopped drawing.",
+          "ask": "What could you draw forever?",
+          "askYou": "Do you like to draw?",
+          "bridge": "I liked the part about him drawing a mountain. Remember?"
+        },
+        {
+          "text": "He made thousands and thousands of pictures.",
+          "topic": "so many pictures",
+          "say": "Hokusai made thousands of pictures.",
+          "sayShort": "He made tons of art.",
+          "ask": "How many drawings have you made?",
+          "askYou": "What do you love to draw again and again?",
+          "bridge": "I liked the part about him drawing forever. Remember?"
+        }
+      ]
     },
     {
       "name": "Queen Elizabeth I",
@@ -12097,8 +12763,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/queen-elizabeth-i.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Elizabeth I was a powerful queen of England long ago.",
+          "topic": "a powerful queen",
+          "say": "Elizabeth I was a strong queen of England.",
+          "sayShort": "She was a powerful queen.",
+          "ask": "What would you do as a queen?",
+          "askYou": "What would your kingdom be like?",
+          "bridge": ""
+        },
+        {
+          "text": "She said she was \"married to her country\" and led on her own.",
+          "topic": "leading on her own",
+          "say": "Elizabeth led her country all on her own.",
+          "sayShort": "She led by herself.",
+          "ask": "What are you in charge of?",
+          "askYou": "Do you like to lead?",
+          "bridge": "I liked the part about her being a powerful queen. Remember?"
+        },
+        {
+          "text": "During her rule, plays and music grew — it was Shakespeare's time!",
+          "topic": "a golden time",
+          "say": "Elizabeth's time was full of plays and music.",
+          "sayShort": "Art grew while she ruled.",
+          "ask": "Do you like plays or music more?",
+          "askYou": "What would you like to see grow?",
+          "bridge": "I liked the part about her leading on her own. Remember?"
+        },
+        {
+          "text": "Elizabeth was known for her fancy dresses and bright red hair.",
+          "topic": "her fancy style",
+          "say": "Elizabeth had fancy dresses and red hair.",
+          "sayShort": "She had a fancy style.",
+          "ask": "What fancy outfit would you wear?",
+          "askYou": "What is your favorite thing to wear?",
+          "bridge": "I liked the part about the golden time. Remember?"
+        }
+      ]
     },
     {
       "name": "Queen Elizabeth II",
@@ -12108,8 +12811,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/queen-elizabeth-ii.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Elizabeth II was the queen of Britain for over seventy years.",
+          "topic": "a very long reign",
+          "say": "Elizabeth II was queen for over seventy years.",
+          "sayShort": "She ruled a long time.",
+          "ask": "What would you do as a queen?",
+          "askYou": "What would your palace be like?",
+          "bridge": ""
+        },
+        {
+          "text": "She became queen when she was just twenty-five years old.",
+          "topic": "young queen",
+          "say": "Elizabeth became queen at only twenty-five.",
+          "sayShort": "She was a young queen.",
+          "ask": "What big thing might you do young?",
+          "askYou": "What are you in charge of at home?",
+          "bridge": "I liked the part about her long reign. Remember?"
+        },
+        {
+          "text": "She loved her little dogs called corgis and loved horses too.",
+          "topic": "her pets",
+          "say": "Elizabeth loved her corgis and her horses.",
+          "sayShort": "She loved her pets.",
+          "ask": "What pet would you love to have?",
+          "askYou": "Do you like dogs or horses?",
+          "bridge": "I liked the part about her being a young queen. Remember?"
+        },
+        {
+          "text": "Elizabeth was known for always doing her duty with a smile.",
+          "topic": "always dependable",
+          "say": "Elizabeth always did her job with a smile.",
+          "sayShort": "She was dependable.",
+          "ask": "What job do you always do well?",
+          "askYou": "What are you counted on for?",
+          "bridge": "I liked the part about her pets. Remember?"
+        }
+      ]
     },
     {
       "name": "Catherine the Great",
@@ -12119,8 +12859,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/catherine-the-great.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Catherine was a powerful empress who ruled Russia long ago.",
+          "topic": "empress of Russia",
+          "say": "Catherine was a powerful empress of Russia.",
+          "sayShort": "She ruled Russia.",
+          "ask": "What would you do as a ruler?",
+          "askYou": "What would your kingdom be like?",
+          "bridge": ""
+        },
+        {
+          "text": "She loved books, art, and learning, and collected lots of art.",
+          "topic": "loving art and books",
+          "say": "Catherine loved art, books, and learning.",
+          "sayShort": "She loved art and books.",
+          "ask": "What would you love to collect?",
+          "askYou": "Do you like the library or museums?",
+          "bridge": "I liked the part about her being empress of Russia. Remember?"
+        },
+        {
+          "text": "Catherine made Russia bigger and started new schools.",
+          "topic": "building up Russia",
+          "say": "Catherine made Russia bigger and built schools.",
+          "sayShort": "She built up her land.",
+          "ask": "What would your dream school teach?",
+          "askYou": "What would you like to build?",
+          "bridge": "I liked the part about her loving art and books. Remember?"
+        },
+        {
+          "text": "She wrote letters to famous thinkers all across Europe.",
+          "topic": "writing to thinkers",
+          "say": "Catherine wrote to famous thinkers far away.",
+          "sayShort": "She loved smart letters.",
+          "ask": "Who would you love to write to?",
+          "askYou": "Do you like writing letters?",
+          "bridge": "I liked the part about her building up Russia. Remember?"
+        }
+      ]
     },
     {
       "name": "Charlemagne",
@@ -12130,8 +12907,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/charlemagne.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Charlemagne was a king who brought much of Europe together long ago.",
+          "topic": "uniting Europe",
+          "say": "Charlemagne brought much of Europe together.",
+          "sayShort": "He united Europe.",
+          "ask": "How do you help people work together?",
+          "askYou": "What would you do as a king?",
+          "bridge": ""
+        },
+        {
+          "text": "He loved learning and started schools to help people read.",
+          "topic": "loving learning",
+          "say": "Charlemagne started schools so people could read.",
+          "sayShort": "He loved learning.",
+          "ask": "What is your favorite thing to learn?",
+          "askYou": "Do you like school?",
+          "bridge": "I liked the part about him uniting Europe. Remember?"
+        },
+        {
+          "text": "Charlemagne could speak a few different languages.",
+          "topic": "many languages",
+          "say": "Charlemagne spoke a few different languages.",
+          "sayShort": "He knew many languages.",
+          "ask": "What language would you like to learn?",
+          "askYou": "Do you know words in another language?",
+          "bridge": "I liked the part about him loving learning. Remember?"
+        },
+        {
+          "text": "People sometimes call him the \"Father of Europe.\"",
+          "topic": "Father of Europe",
+          "say": "People call Charlemagne the Father of Europe.",
+          "sayShort": "He earned a big title.",
+          "ask": "What big title would you like?",
+          "askYou": "What are you proud of?",
+          "bridge": "I liked the part about him knowing many languages. Remember?"
+        }
+      ]
     },
     {
       "name": "Tutankhamun",
@@ -12141,8 +12955,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/tutankhamun.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Tutankhamun was a king of ancient Egypt — a boy king called King Tut.",
+          "topic": "a boy king",
+          "say": "Tutankhamun was a boy king of Egypt.",
+          "sayShort": "He was a boy king.",
+          "ask": "What would you do as a young king?",
+          "askYou": "What would your crown look like?",
+          "bridge": ""
+        },
+        {
+          "text": "He became the ruler of Egypt when he was just a child.",
+          "topic": "ruling as a child",
+          "say": "Tut became a ruler when he was a child.",
+          "sayShort": "He ruled as a kid.",
+          "ask": "What are you in charge of?",
+          "askYou": "What would you be great at leading?",
+          "bridge": "I liked the part about him being a boy king. Remember?"
+        },
+        {
+          "text": "His famous golden mask and treasures were found long, long after.",
+          "topic": "golden treasures",
+          "say": "Tut's golden mask and treasures were found later.",
+          "sayShort": "He had golden treasures.",
+          "ask": "What treasure would you love to find?",
+          "askYou": "Do you like gold and shiny things?",
+          "bridge": "I liked the part about him ruling as a child. Remember?"
+        },
+        {
+          "text": "People all over the world love to learn about King Tut.",
+          "topic": "famous today",
+          "say": "People everywhere love learning about King Tut.",
+          "sayShort": "He is famous today.",
+          "ask": "What ancient thing would you love to see?",
+          "askYou": "Do you like history?",
+          "bridge": "I liked the part about his golden treasures. Remember?"
+        }
+      ]
     },
     {
       "name": "Nefertiti",
@@ -12152,8 +13003,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/nefertiti.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Nefertiti was a queen of ancient Egypt, known for being beautiful.",
+          "topic": "Egyptian queen",
+          "say": "Nefertiti was a famous queen of Egypt.",
+          "sayShort": "She was an Egyptian queen.",
+          "ask": "What would you do as a queen?",
+          "askYou": "What would your palace be like?",
+          "bridge": ""
+        },
+        {
+          "text": "A famous painted statue of her face was found long after.",
+          "topic": "her famous statue",
+          "say": "A famous statue shows Nefertiti's face.",
+          "sayShort": "She has a famous statue.",
+          "ask": "Would you like a statue of you?",
+          "askYou": "What pose would you make for a statue?",
+          "bridge": "I liked the part about her being an Egyptian queen. Remember?"
+        },
+        {
+          "text": "She was a powerful queen who helped rule Egypt.",
+          "topic": "a powerful queen",
+          "say": "Nefertiti helped rule Egypt with power.",
+          "sayShort": "She was a powerful queen.",
+          "ask": "What would you be a great leader of?",
+          "askYou": "Do you like to be in charge?",
+          "bridge": "I liked the part about her famous statue. Remember?"
+        },
+        {
+          "text": "Her name means \"the beautiful one has come.\"",
+          "topic": "her lovely name",
+          "say": "Nefertiti's name means \"a beauty has come.\"",
+          "sayShort": "Her name is beautiful.",
+          "ask": "What would you like your name to mean?",
+          "askYou": "Do you like your name?",
+          "bridge": "I liked the part about her being a powerful queen. Remember?"
+        }
+      ]
     },
     {
       "name": "Ashoka",
