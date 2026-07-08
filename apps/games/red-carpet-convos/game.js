@@ -739,7 +739,10 @@
     .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
     .then(function (data) {
       var list = Array.isArray(data) ? data : (data && data.people) || [];
-      PEOPLE = assignAccents(list.filter(function (p) { return p && p.name && p.facts && p.facts.length; }));
+      // Migration gate: during the roster migration the game surfaces ONLY
+      // people flagged converted (migrated to the new schema). Un-converted
+      // stubs stay hidden until their facts are populated + flipped.
+      PEOPLE = assignAccents(list.filter(function (p) { return p && p.name && p.converted === true && p.facts && p.facts.length; }));
       render();
     })
     .catch(function () { PEOPLE = []; render(); });
