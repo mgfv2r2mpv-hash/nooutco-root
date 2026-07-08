@@ -1,6 +1,6 @@
 {
   "_note": "Red Carpet Convos roster. Per person: {name, years, tag, emoji, img, accent, accentBg, converted, facts:[{text, topic, say, sayShort, ask, askYou, bridge}]}. `converted` is the MIGRATION FLAG: true = migrated to the new schema and live in the game; false = a stub pending fact population (kept OUT of the game for now). During migration the game surfaces only converted people. Fade levels (comment/volley Partial/Minimal) are derived at runtime from say/ask. `bridge` is the partner's recall opener INTO this fact (fact 1's bridge is empty). Edited via AdminTools/FamousPersonManager; the rcc-generate-facts populator writes facts + sets converted. Store only public-figure content — never learner/session data.",
-  "generated": "2026-07-08T20:34:38.054Z",
+  "generated": "2026-07-08T20:37:51.724Z",
   "people": [
     {
       "name": "Lin-Manuel Miranda",
@@ -9584,8 +9584,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/johann-sebastian-bach.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Bach wrote beautiful music that people still play in churches and concerts today.",
+          "topic": "his famous music",
+          "say": "Bach wrote music people still play today.",
+          "sayShort": "He wrote timeless music.",
+          "ask": "What music do you never get tired of?",
+          "askYou": "Do you like calm or lively music?",
+          "bridge": ""
+        },
+        {
+          "text": "He was amazing at the organ, a giant instrument with lots of pipes.",
+          "topic": "the organ",
+          "say": "Bach played the organ, a giant pipe instrument.",
+          "sayShort": "He played the big organ.",
+          "ask": "What instrument would you love to play?",
+          "askYou": "Have you ever heard a pipe organ?",
+          "bridge": "I liked the part about his famous music. Remember?"
+        },
+        {
+          "text": "Bach had a huge family, and many of his kids became musicians too.",
+          "topic": "his musical family",
+          "say": "Bach's big family was full of musicians.",
+          "sayShort": "His whole family made music.",
+          "ask": "What do you love to do with your family?",
+          "askYou": "Does anyone in your family play music?",
+          "bridge": "I liked the part about the organ. Remember?"
+        },
+        {
+          "text": "He worked hard every week to write brand-new music for church.",
+          "topic": "always creating",
+          "say": "Bach wrote fresh new music every single week.",
+          "sayShort": "He always made new music.",
+          "ask": "What do you like to make over and over?",
+          "askYou": "How do you get new ideas?",
+          "bridge": "I liked the part about his musical family. Remember?"
+        }
+      ]
     },
     {
       "name": "Frédéric Chopin",
@@ -9595,8 +9632,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/frederic-chopin.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Chopin wrote gentle, beautiful music just for the piano.",
+          "topic": "piano music",
+          "say": "Chopin wrote lovely music for the piano.",
+          "sayShort": "He wrote piano music.",
+          "ask": "Do you like piano music?",
+          "askYou": "What instrument would you play?",
+          "bridge": ""
+        },
+        {
+          "text": "He could play the piano wonderfully when he was still a little kid.",
+          "topic": "playing young",
+          "say": "Chopin played piano beautifully as a young kid.",
+          "sayShort": "He played piano super young.",
+          "ask": "What are you great at for your age?",
+          "askYou": "What did you learn young?",
+          "bridge": "I liked the part about his piano music. Remember?"
+        },
+        {
+          "text": "Chopin loved to play for small groups of friends in cozy rooms.",
+          "topic": "cozy concerts",
+          "say": "Chopin liked to play for small, cozy groups.",
+          "sayShort": "He played cozy shows.",
+          "ask": "Would you rather perform for a few or a lot?",
+          "askYou": "Do you like small or big groups?",
+          "bridge": "I liked the part about him playing young. Remember?"
+        },
+        {
+          "text": "He was from Poland and always loved his home country.",
+          "topic": "loving Poland",
+          "say": "Chopin always loved his home, Poland.",
+          "sayShort": "He loved his homeland.",
+          "ask": "What do you love about where you're from?",
+          "askYou": "What makes home special to you?",
+          "bridge": "I liked the part about his cozy concerts. Remember?"
+        }
+      ]
     },
     {
       "name": "Antonio Vivaldi",
@@ -9606,8 +9680,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/antonio-vivaldi.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Vivaldi wrote a famous set of music called The Four Seasons.",
+          "topic": "The Four Seasons",
+          "say": "Vivaldi wrote music called The Four Seasons.",
+          "sayShort": "He wrote season music.",
+          "ask": "What is your favorite season?",
+          "askYou": "What does spring or winter sound like to you?",
+          "bridge": ""
+        },
+        {
+          "text": "His music sounds like spring birds, summer storms, and winter snow.",
+          "topic": "music like weather",
+          "say": "Vivaldi's music sounds like the weather.",
+          "sayShort": "His music paints weather.",
+          "ask": "What weather would you turn into music?",
+          "askYou": "Do you like sunny or snowy days?",
+          "bridge": "I liked the part about The Four Seasons. Remember?"
+        },
+        {
+          "text": "He played the violin and was really good at it.",
+          "topic": "the violin",
+          "say": "Vivaldi played the violin beautifully.",
+          "sayShort": "He played the violin.",
+          "ask": "Would you like to play the violin?",
+          "askYou": "What sound do you love to hear?",
+          "bridge": "I liked the part about music like weather. Remember?"
+        },
+        {
+          "text": "Vivaldi taught music to kids in Italy long ago.",
+          "topic": "teaching kids",
+          "say": "Vivaldi taught music to children in Italy.",
+          "sayShort": "He taught kids music.",
+          "ask": "What would you love to teach a kid?",
+          "askYou": "Who taught you something fun?",
+          "bridge": "I liked the part about the violin. Remember?"
+        }
+      ]
     },
     {
       "name": "Aretha Franklin",
@@ -9617,8 +9728,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/aretha-franklin.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Aretha was a singer called the \"Queen of Soul\" for her amazing voice.",
+          "topic": "Queen of Soul",
+          "say": "Aretha was called the Queen of Soul.",
+          "sayShort": "She was the Queen of Soul.",
+          "ask": "Do you like to sing?",
+          "askYou": "What song do you belt out?",
+          "bridge": ""
+        },
+        {
+          "text": "Her most famous song spells out the word R-E-S-P-E-C-T.",
+          "topic": "her famous song",
+          "say": "Aretha sang a famous song that spells RESPECT.",
+          "sayShort": "She sang a famous song.",
+          "ask": "What word would you spell in a song?",
+          "askYou": "What song do you know all the words to?",
+          "bridge": "I liked the part about her being the Queen of Soul. Remember?"
+        },
+        {
+          "text": "She started singing in her church when she was a little girl.",
+          "topic": "church start",
+          "say": "Aretha started singing in church as a kid.",
+          "sayShort": "She sang young in church.",
+          "ask": "Where do you like to sing?",
+          "askYou": "When did you start singing?",
+          "bridge": "I liked the part about her famous song. Remember?"
+        },
+        {
+          "text": "Aretha also played the piano while she sang.",
+          "topic": "singing and piano",
+          "say": "Aretha played piano and sang at the same time.",
+          "sayShort": "She sang and played piano.",
+          "ask": "Could you sing and play at once?",
+          "askYou": "What instrument would you play?",
+          "bridge": "I liked the part about her church start. Remember?"
+        }
+      ]
     },
     {
       "name": "Ray Charles",
@@ -9628,8 +9776,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/ray-charles.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Ray was a musician who mixed church music and soul into something new.",
+          "topic": "a new sound",
+          "say": "Ray blended church music and soul in a new way.",
+          "sayShort": "He made a new sound.",
+          "ask": "What kinds of music would you mix?",
+          "askYou": "What music makes you feel good?",
+          "bridge": ""
+        },
+        {
+          "text": "He was blind and played the piano by feel and by ear.",
+          "topic": "playing by ear",
+          "say": "Ray was blind and played piano by ear.",
+          "sayShort": "He played by ear.",
+          "ask": "Can you play a tune by ear?",
+          "askYou": "What can you do with your eyes closed?",
+          "bridge": "I liked the part about his new sound. Remember?"
+        },
+        {
+          "text": "Ray sang a famous, sweet song about the state of Georgia.",
+          "topic": "a famous song",
+          "say": "Ray sang a famous song about Georgia.",
+          "sayShort": "He sang a famous song.",
+          "ask": "What place would you write a song about?",
+          "askYou": "Where do you love to be?",
+          "bridge": "I liked the part about him playing by ear. Remember?"
+        },
+        {
+          "text": "He never let anything stop him from making joyful music.",
+          "topic": "never stopping",
+          "say": "Ray always kept making joyful music.",
+          "sayShort": "He never stopped.",
+          "ask": "What do you never want to stop doing?",
+          "askYou": "What helps you keep going?",
+          "bridge": "I liked the part about his famous song. Remember?"
+        }
+      ]
     },
     {
       "name": "Stevie Wonder",
@@ -9687,8 +9872,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/ella-fitzgerald.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Ella was a jazz singer called the \"First Lady of Song.\"",
+          "topic": "First Lady of Song",
+          "say": "Ella was called the First Lady of Song.",
+          "sayShort": "She was a jazz queen.",
+          "ask": "Do you like jazz music?",
+          "askYou": "What music makes you happy?",
+          "bridge": ""
+        },
+        {
+          "text": "She could sing silly made-up sounds super fast, called scat singing.",
+          "topic": "scat singing",
+          "say": "Ella sang fast made-up sounds called scat.",
+          "sayShort": "She sang silly fast sounds.",
+          "ask": "Can you make up a silly sound song?",
+          "askYou": "Do you like to be silly?",
+          "bridge": "I liked the part about her being the First Lady of Song. Remember?"
+        },
+        {
+          "text": "Ella's voice could go really high and really low.",
+          "topic": "her amazing range",
+          "say": "Ella could sing very high and very low.",
+          "sayShort": "She had an amazing range.",
+          "ask": "Can you sing high and low?",
+          "askYou": "Do you like high notes or low notes?",
+          "bridge": "I liked the part about her scat singing. Remember?"
+        },
+        {
+          "text": "She won lots of awards and sang for people all over the world.",
+          "topic": "a world star",
+          "say": "Ella sang all over the world and won awards.",
+          "sayShort": "She was a world star.",
+          "ask": "Where would you love to perform?",
+          "askYou": "What would you like to win?",
+          "bridge": "I liked the part about her amazing range. Remember?"
+        }
+      ]
     },
     {
       "name": "Duke Ellington",
@@ -9698,8 +9920,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/duke-ellington.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Duke was a jazz leader who wrote over a thousand songs.",
+          "topic": "so many songs",
+          "say": "Duke wrote more than a thousand jazz songs.",
+          "sayShort": "He wrote tons of songs.",
+          "ask": "What would your song be about?",
+          "askYou": "Do you like to make up tunes?",
+          "bridge": ""
+        },
+        {
+          "text": "He led a big band and played the piano beautifully.",
+          "topic": "his big band",
+          "say": "Duke led a big band and played piano.",
+          "sayShort": "He led a big band.",
+          "ask": "Would you like to lead a band?",
+          "askYou": "What instrument would you play?",
+          "bridge": "I liked the part about his many songs. Remember?"
+        },
+        {
+          "text": "Duke was known for his fancy suits and elegant, cool style.",
+          "topic": "his cool style",
+          "say": "Duke had a fancy, elegant, cool style.",
+          "sayShort": "He had a cool style.",
+          "ask": "What fancy outfit would you wear?",
+          "askYou": "What is your coolest outfit?",
+          "bridge": "I liked the part about his big band. Remember?"
+        },
+        {
+          "text": "His music makes people want to tap their feet and dance.",
+          "topic": "toe-tapping music",
+          "say": "Duke's music makes you want to dance.",
+          "sayShort": "His music makes you dance.",
+          "ask": "What song makes you dance?",
+          "askYou": "Do you tap your feet to music?",
+          "bridge": "I liked the part about his cool style. Remember?"
+        }
+      ]
     },
     {
       "name": "Miles Davis",
@@ -9709,8 +9968,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/miles-davis.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Miles was a jazz trumpet player with a cool, quiet sound.",
+          "topic": "cool trumpet",
+          "say": "Miles played the trumpet in a cool, quiet way.",
+          "sayShort": "He had a cool sound.",
+          "ask": "What instrument would you love to play?",
+          "askYou": "Do you like quiet or loud music?",
+          "bridge": ""
+        },
+        {
+          "text": "He kept changing his music and trying brand-new styles.",
+          "topic": "always new",
+          "say": "Miles always tried brand-new music styles.",
+          "sayShort": "He always changed it up.",
+          "ask": "How do you like to try new things?",
+          "askYou": "What new thing would you try?",
+          "bridge": "I liked the part about his cool trumpet. Remember?"
+        },
+        {
+          "text": "Miles made one of the most loved jazz albums ever.",
+          "topic": "a famous album",
+          "say": "Miles made a super-famous jazz album.",
+          "sayShort": "He made a famous album.",
+          "ask": "What songs would be on your album?",
+          "askYou": "What is a song everyone knows?",
+          "bridge": "I liked the part about him always being new. Remember?"
+        },
+        {
+          "text": "He believed it is okay to leave quiet spaces in music.",
+          "topic": "the quiet parts",
+          "say": "Miles said quiet spaces make music special.",
+          "sayShort": "He loved quiet parts.",
+          "ask": "Do you like a little quiet sometimes?",
+          "askYou": "What is your favorite calm moment?",
+          "bridge": "I liked the part about his famous album. Remember?"
+        }
+      ]
     },
     {
       "name": "Johnny Cash",
@@ -9720,8 +10016,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/johnny-cash.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Johnny was a country singer known as \"the Man in Black.\"",
+          "topic": "the Man in Black",
+          "say": "Johnny was a singer called the Man in Black.",
+          "sayShort": "He wore all black.",
+          "ask": "What color would you always wear?",
+          "askYou": "Do you like country music?",
+          "bridge": ""
+        },
+        {
+          "text": "He had a deep, rumbly voice that everyone could recognize.",
+          "topic": "his deep voice",
+          "say": "Johnny had a deep, rumbly, famous voice.",
+          "sayShort": "He had a deep voice.",
+          "ask": "Do you like a deep voice or a high one?",
+          "askYou": "Can you sing low?",
+          "bridge": "I liked the part about him being the Man in Black. Remember?"
+        },
+        {
+          "text": "Johnny wrote a famous song called \"Ring of Fire.\"",
+          "topic": "his famous song",
+          "say": "Johnny wrote the famous song \"Ring of Fire.\"",
+          "sayShort": "He wrote a famous song.",
+          "ask": "What would your song be called?",
+          "askYou": "What song do you love?",
+          "bridge": "I liked the part about his deep voice. Remember?"
+        },
+        {
+          "text": "He often sang for people who were having a hard time, to cheer them up.",
+          "topic": "cheering people up",
+          "say": "Johnny sang to cheer up people in hard times.",
+          "sayShort": "He cheered people up.",
+          "ask": "How do you cheer someone up?",
+          "askYou": "What song makes you feel better?",
+          "bridge": "I liked the part about his famous song. Remember?"
+        }
+      ]
     },
     {
       "name": "Frank Sinatra",
@@ -9731,8 +10064,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/frank-sinatra.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Frank was a smooth singer people loved to listen to.",
+          "topic": "a smooth singer",
+          "say": "Frank was a super smooth, cool singer.",
+          "sayShort": "He was a smooth singer.",
+          "ask": "What kind of singing do you like?",
+          "askYou": "Do you like slow songs?",
+          "bridge": ""
+        },
+        {
+          "text": "He sang a famous song called \"Fly Me to the Moon.\"",
+          "topic": "his famous song",
+          "say": "Frank sang the famous \"Fly Me to the Moon.\"",
+          "sayShort": "He sang a famous song.",
+          "ask": "Where would you fly if you could?",
+          "askYou": "What song do you know well?",
+          "bridge": "I liked the part about him being a smooth singer. Remember?"
+        },
+        {
+          "text": "People called him \"Ol' Blue Eyes\" because of his bright blue eyes.",
+          "topic": "his nickname",
+          "say": "People called Frank \"Ol' Blue Eyes.\"",
+          "sayShort": "He had a cool nickname.",
+          "ask": "What nickname would you like?",
+          "askYou": "What color are your eyes?",
+          "bridge": "I liked the part about his famous song. Remember?"
+        },
+        {
+          "text": "Frank was also a movie star, not just a singer.",
+          "topic": "movie star too",
+          "say": "Frank acted in movies as well as sang.",
+          "sayShort": "He was a movie star too.",
+          "ask": "Would you rather sing or act?",
+          "askYou": "What movie would you star in?",
+          "bridge": "I liked the part about his nickname. Remember?"
+        }
+      ]
     },
     {
       "name": "Bob Dylan",
@@ -9742,8 +10112,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/bob-dylan.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Bob is a singer who writes songs with words like poems.",
+          "topic": "songs like poems",
+          "say": "Bob writes songs that are like poems.",
+          "sayShort": "His songs are poetic.",
+          "ask": "Do you like songs with lots of words?",
+          "askYou": "What would your song be about?",
+          "bridge": ""
+        },
+        {
+          "text": "He plays the guitar and the harmonica at the same time.",
+          "topic": "guitar and harmonica",
+          "say": "Bob plays guitar and harmonica together.",
+          "sayShort": "He plays two at once.",
+          "ask": "Could you play two things at once?",
+          "askYou": "What instrument would you play?",
+          "bridge": "I liked the part about his songs like poems. Remember?"
+        },
+        {
+          "text": "Bob even won a big prize usually given to book writers.",
+          "topic": "a big writing prize",
+          "say": "Bob won a big prize for his song words.",
+          "sayShort": "He won a writing prize.",
+          "ask": "What would you like to win a prize for?",
+          "askYou": "Do you like to write?",
+          "bridge": "I liked the part about his guitar and harmonica. Remember?"
+        },
+        {
+          "text": "His songs ask big questions about peace and fairness.",
+          "topic": "big questions",
+          "say": "Bob's songs ask about peace and fairness.",
+          "sayShort": "He sings big questions.",
+          "ask": "What big question do you wonder about?",
+          "askYou": "What would you wish for the world?",
+          "bridge": "I liked the part about his big writing prize. Remember?"
+        }
+      ]
     },
     {
       "name": "Paul McCartney",
@@ -9753,8 +10160,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/paul-mccartney.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Paul was in the Beatles, one of the most famous bands ever.",
+          "topic": "the Beatles",
+          "say": "Paul was in the super-famous band the Beatles.",
+          "sayShort": "He was a Beatle.",
+          "ask": "What band do you love?",
+          "askYou": "Would you like to be in a band?",
+          "bridge": ""
+        },
+        {
+          "text": "He has written a huge number of catchy, happy songs.",
+          "topic": "catchy songs",
+          "say": "Paul wrote tons of catchy, happy songs.",
+          "sayShort": "He wrote catchy songs.",
+          "ask": "What is a song stuck in your head?",
+          "askYou": "What makes a song catchy?",
+          "bridge": "I liked the part about the Beatles. Remember?"
+        },
+        {
+          "text": "Paul plays many instruments and is left-handed on the bass.",
+          "topic": "many instruments",
+          "say": "Paul plays many instruments, lefty on bass.",
+          "sayShort": "He plays lots of instruments.",
+          "ask": "Are you left- or right-handed?",
+          "askYou": "What instrument would you play?",
+          "bridge": "I liked the part about his catchy songs. Remember?"
+        },
+        {
+          "text": "He still plays concerts for happy crowds today.",
+          "topic": "still playing",
+          "say": "Paul still plays shows for happy crowds.",
+          "sayShort": "He still performs today.",
+          "ask": "Would you like to go to a concert?",
+          "askYou": "What would you do at a show?",
+          "bridge": "I liked the part about his many instruments. Remember?"
+        }
+      ]
     },
     {
       "name": "John Lennon",
@@ -9764,8 +10208,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/john-lennon.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "John was in the Beatles and helped write their famous songs.",
+          "topic": "the Beatles",
+          "say": "John was a Beatle who wrote famous songs.",
+          "sayShort": "He was a Beatle.",
+          "ask": "What band do you love?",
+          "askYou": "Do you like to make up songs?",
+          "bridge": ""
+        },
+        {
+          "text": "He wrote a famous song called \"Imagine\" about a world of peace.",
+          "topic": "a peace song",
+          "say": "John wrote a famous song about peace.",
+          "sayShort": "He wrote a peace song.",
+          "ask": "What would a peaceful world look like?",
+          "askYou": "How do you make peace with a friend?",
+          "bridge": "I liked the part about the Beatles. Remember?"
+        },
+        {
+          "text": "John loved to draw funny little pictures, too.",
+          "topic": "drawing pictures",
+          "say": "John loved drawing funny little doodles.",
+          "sayShort": "He loved to doodle.",
+          "ask": "Do you like to draw?",
+          "askYou": "What silly thing would you draw?",
+          "bridge": "I liked the part about his peace song. Remember?"
+        },
+        {
+          "text": "He was known for being clever and funny.",
+          "topic": "clever and funny",
+          "say": "John was clever and really funny.",
+          "sayShort": "He was funny.",
+          "ask": "What makes you laugh?",
+          "askYou": "Do you like telling jokes?",
+          "bridge": "I liked the part about his drawing. Remember?"
+        }
+      ]
     },
     {
       "name": "Prince",
@@ -9775,8 +10256,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/prince.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Prince was a music star who could play tons of instruments himself.",
+          "topic": "a music genius",
+          "say": "Prince played tons of instruments all by himself.",
+          "sayShort": "He played everything.",
+          "ask": "What instrument would you learn?",
+          "askYou": "Do you like to make music?",
+          "bridge": ""
+        },
+        {
+          "text": "His favorite color was purple, and he wore it a lot.",
+          "topic": "the color purple",
+          "say": "Prince loved the color purple.",
+          "sayShort": "He loved purple.",
+          "ask": "What is your favorite color?",
+          "askYou": "What color do you wear a lot?",
+          "bridge": "I liked the part about him being a music genius. Remember?"
+        },
+        {
+          "text": "He wrote a famous song and movie both called \"Purple Rain.\"",
+          "topic": "Purple Rain",
+          "say": "Prince made a famous song called Purple Rain.",
+          "sayShort": "He made Purple Rain.",
+          "ask": "What would your famous song be called?",
+          "askYou": "What song do you love?",
+          "bridge": "I liked the part about the color purple. Remember?"
+        },
+        {
+          "text": "Prince even made his name into a special symbol.",
+          "topic": "his own symbol",
+          "say": "Prince turned his name into a cool symbol.",
+          "sayShort": "He had his own symbol.",
+          "ask": "What symbol would stand for you?",
+          "askYou": "What would your logo look like?",
+          "bridge": "I liked the part about Purple Rain. Remember?"
+        }
+      ]
     },
     {
       "name": "Madonna",
@@ -9786,8 +10304,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/madonna.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Madonna is a pop star known as the \"Queen of Pop.\"",
+          "topic": "Queen of Pop",
+          "say": "Madonna is called the Queen of Pop.",
+          "sayShort": "She is the Queen of Pop.",
+          "ask": "Do you like pop music?",
+          "askYou": "What song makes you dance?",
+          "bridge": ""
+        },
+        {
+          "text": "She keeps changing her look and her music to surprise everyone.",
+          "topic": "always changing",
+          "say": "Madonna always changes her look and sound.",
+          "sayShort": "She loves to change it up.",
+          "ask": "How do you like to switch things up?",
+          "askYou": "What new look would you try?",
+          "bridge": "I liked the part about her being the Queen of Pop. Remember?"
+        },
+        {
+          "text": "Madonna puts on huge dance shows with lots of costumes.",
+          "topic": "big dance shows",
+          "say": "Madonna puts on huge shows with dancing.",
+          "sayShort": "She does big dance shows.",
+          "ask": "What would your big show look like?",
+          "askYou": "Do you like to dance?",
+          "bridge": "I liked the part about her always changing. Remember?"
+        },
+        {
+          "text": "She worked very hard for many years to become a superstar.",
+          "topic": "lots of hard work",
+          "say": "Madonna worked hard for years to make it big.",
+          "sayShort": "She worked super hard.",
+          "ask": "What are you working hard for?",
+          "askYou": "What helps you keep trying?",
+          "bridge": "I liked the part about her big shows. Remember?"
+        }
+      ]
     },
     {
       "name": "Lady Gaga",
@@ -9797,8 +10352,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/lady-gaga.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Lady Gaga is a pop star famous for her wild, creative costumes.",
+          "topic": "wild costumes",
+          "say": "Lady Gaga wears wild, creative costumes.",
+          "sayShort": "She wears wild outfits.",
+          "ask": "What wild costume would you wear?",
+          "askYou": "What is the coolest costume you've seen?",
+          "bridge": ""
+        },
+        {
+          "text": "She writes her own songs and plays the piano.",
+          "topic": "her own songs",
+          "say": "Lady Gaga writes songs and plays piano.",
+          "sayShort": "She writes her own music.",
+          "ask": "What would your song be about?",
+          "askYou": "Would you like to play piano?",
+          "bridge": "I liked the part about her wild costumes. Remember?"
+        },
+        {
+          "text": "Lady Gaga also acts in movies and won a big award for a song.",
+          "topic": "acting and singing",
+          "say": "Lady Gaga acts in movies and sings hits.",
+          "sayShort": "She acts and sings.",
+          "ask": "Would you rather act or sing?",
+          "askYou": "What movie would you be in?",
+          "bridge": "I liked the part about her own songs. Remember?"
+        },
+        {
+          "text": "She is very kind to her fans and helps kids feel good about themselves.",
+          "topic": "kind to fans",
+          "say": "Lady Gaga is super kind and helps kids.",
+          "sayShort": "She is kind to fans.",
+          "ask": "How do you help friends feel good?",
+          "askYou": "What makes you feel proud of yourself?",
+          "bridge": "I liked the part about her acting and singing. Remember?"
+        }
+      ]
     },
     {
       "name": "Adele",
@@ -9808,8 +10400,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/adele.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Adele is a singer with a powerful voice that gives you goosebumps.",
+          "topic": "a powerful voice",
+          "say": "Adele has a powerful, goosebump voice.",
+          "sayShort": "She has an amazing voice.",
+          "ask": "Do you like to sing loud?",
+          "askYou": "What song do you sing your heart out to?",
+          "bridge": ""
+        },
+        {
+          "text": "She sings emotional songs about love and feelings.",
+          "topic": "songs of feeling",
+          "say": "Adele sings emotional songs about feelings.",
+          "sayShort": "She sings her feelings.",
+          "ask": "What feeling would you sing about?",
+          "askYou": "What song makes you feel something?",
+          "bridge": "I liked the part about her powerful voice. Remember?"
+        },
+        {
+          "text": "One of her famous songs is just called \"Hello.\"",
+          "topic": "her famous song",
+          "say": "Adele has a famous song called \"Hello.\"",
+          "sayShort": "She sang \"Hello.\"",
+          "ask": "How do you say hello to a friend?",
+          "askYou": "What is a simple word you'd name a song?",
+          "bridge": "I liked the part about her songs of feeling. Remember?"
+        },
+        {
+          "text": "Adele is from London and has won a big pile of music awards.",
+          "topic": "from London",
+          "say": "Adele is from London and has won lots of awards.",
+          "sayShort": "She is from London.",
+          "ask": "Where would you love to visit?",
+          "askYou": "What would you like to win?",
+          "bridge": "I liked the part about her famous song. Remember?"
+        }
+      ]
     },
     {
       "name": "Leo Tolstoy",
@@ -9819,8 +10448,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/leo-tolstoy.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Leo was a Russian writer famous for very long, wonderful books.",
+          "topic": "long books",
+          "say": "Leo wrote very long, wonderful books.",
+          "sayShort": "He wrote long books.",
+          "ask": "Do you like long stories or short ones?",
+          "askYou": "What is the longest book you've read?",
+          "bridge": ""
+        },
+        {
+          "text": "One of his most famous books is called War and Peace.",
+          "topic": "his famous book",
+          "say": "Leo wrote a famous book, War and Peace.",
+          "sayShort": "He wrote a famous book.",
+          "ask": "What would you name a big book?",
+          "askYou": "What is a story you love?",
+          "bridge": "I liked the part about his long books. Remember?"
+        },
+        {
+          "text": "Leo cared about being kind and living a simple life.",
+          "topic": "kindness and simple living",
+          "say": "Leo believed in kindness and simple living.",
+          "sayShort": "He valued kindness.",
+          "ask": "What is a kind thing you like to do?",
+          "askYou": "What do you really need to be happy?",
+          "bridge": "I liked the part about his famous book. Remember?"
+        },
+        {
+          "text": "He started a little school to teach kids on his own land.",
+          "topic": "teaching kids",
+          "say": "Leo started a school to teach children.",
+          "sayShort": "He taught kids.",
+          "ask": "What would you love to teach a kid?",
+          "askYou": "Who taught you something great?",
+          "bridge": "I liked the part about kindness and simple living. Remember?"
+        }
+      ]
     },
     {
       "name": "Fyodor Dostoevsky",
@@ -9830,8 +10496,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/fyodor-dostoevsky.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Fyodor was a Russian writer who wrote deep stories about people's hearts.",
+          "topic": "deep stories",
+          "say": "Fyodor wrote deep stories about people.",
+          "sayShort": "He wrote deep stories.",
+          "ask": "What makes a story feel real?",
+          "askYou": "Do you like stories about feelings?",
+          "bridge": ""
+        },
+        {
+          "text": "His books ask big questions about right and wrong.",
+          "topic": "big questions",
+          "say": "Fyodor's books ask about right and wrong.",
+          "sayShort": "He asked big questions.",
+          "ask": "How do you decide what is right?",
+          "askYou": "What is a tricky choice you made?",
+          "bridge": "I liked the part about his deep stories. Remember?"
+        },
+        {
+          "text": "He faced hard times but kept on writing anyway.",
+          "topic": "never giving up",
+          "say": "Fyodor kept writing through hard times.",
+          "sayShort": "He never gave up.",
+          "ask": "When did you keep going when it was hard?",
+          "askYou": "What helps you not give up?",
+          "bridge": "I liked the part about his big questions. Remember?"
+        },
+        {
+          "text": "People all over the world still read his famous books.",
+          "topic": "read everywhere",
+          "say": "Fyodor's books are read all over the world.",
+          "sayShort": "His books are famous.",
+          "ask": "What would you want the world to read?",
+          "askYou": "What is a book you would share?",
+          "bridge": "I liked the part about him never giving up. Remember?"
+        }
+      ]
     },
     {
       "name": "Jane Austen",
@@ -9841,8 +10544,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/jane-austen.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Jane was an English writer of witty, clever stories about families.",
+          "topic": "clever stories",
+          "say": "Jane wrote witty, clever family stories.",
+          "sayShort": "She wrote clever stories.",
+          "ask": "Do you like funny or serious books?",
+          "askYou": "What story would you write?",
+          "bridge": ""
+        },
+        {
+          "text": "Her most famous book is called Pride and Prejudice.",
+          "topic": "her famous book",
+          "say": "Jane wrote the famous Pride and Prejudice.",
+          "sayShort": "She wrote a famous book.",
+          "ask": "What would you name a book?",
+          "askYou": "What is a story you love?",
+          "bridge": "I liked the part about her clever stories. Remember?"
+        },
+        {
+          "text": "She often wrote quietly at home, sometimes keeping it a secret.",
+          "topic": "writing in secret",
+          "say": "Jane wrote quietly at home, sometimes in secret.",
+          "sayShort": "She wrote in secret.",
+          "ask": "Do you keep a journal or secret?",
+          "askYou": "Where do you like to write?",
+          "bridge": "I liked the part about her famous book. Remember?"
+        },
+        {
+          "text": "People still love and make movies of her stories today.",
+          "topic": "stories that last",
+          "say": "Jane's stories are still loved and filmed today.",
+          "sayShort": "Her stories still last.",
+          "ask": "What story would you turn into a movie?",
+          "askYou": "What book would make a good movie?",
+          "bridge": "I liked the part about her writing in secret. Remember?"
+        }
+      ]
     },
     {
       "name": "Oscar Wilde",
@@ -9852,8 +10592,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/oscar-wilde.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Oscar was a writer famous for being funny and super clever.",
+          "topic": "funny and clever",
+          "say": "Oscar was famous for being funny and clever.",
+          "sayShort": "He was witty.",
+          "ask": "Do you like clever jokes?",
+          "askYou": "What is a funny thing you say?",
+          "bridge": ""
+        },
+        {
+          "text": "He wrote funny plays that made audiences laugh out loud.",
+          "topic": "funny plays",
+          "say": "Oscar wrote plays that made people laugh.",
+          "sayShort": "He wrote funny plays.",
+          "ask": "What would your funny play be about?",
+          "askYou": "Do you like watching comedies?",
+          "bridge": "I liked the part about him being funny and clever. Remember?"
+        },
+        {
+          "text": "Oscar also wrote sweet fairy tales for children, like \"The Happy Prince.\"",
+          "topic": "his fairy tales",
+          "say": "Oscar wrote sweet fairy tales for kids.",
+          "sayShort": "He wrote fairy tales.",
+          "ask": "What fairy tale would you write?",
+          "askYou": "What is a fairy tale you love?",
+          "bridge": "I liked the part about his funny plays. Remember?"
+        },
+        {
+          "text": "People still share his clever little sayings today.",
+          "topic": "his clever sayings",
+          "say": "People still repeat Oscar's clever sayings.",
+          "sayShort": "His sayings still last.",
+          "ask": "What is a saying you like?",
+          "askYou": "What clever thing have you said?",
+          "bridge": "I liked the part about his fairy tales. Remember?"
+        }
+      ]
     },
     {
       "name": "Ernest Hemingway",
@@ -9863,8 +10640,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/ernest-hemingway.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Ernest was a writer who used short, simple sentences that pack a punch.",
+          "topic": "simple writing",
+          "say": "Ernest wrote with short, powerful sentences.",
+          "sayShort": "He wrote simply.",
+          "ask": "Do you like short or long sentences?",
+          "askYou": "What story would you tell in a few words?",
+          "bridge": ""
+        },
+        {
+          "text": "He wrote a famous book about an old man and a big fish.",
+          "topic": "a fish story",
+          "say": "Ernest wrote a famous story about a big fish.",
+          "sayShort": "He wrote a fish story.",
+          "ask": "Have you ever gone fishing?",
+          "askYou": "What is the biggest fish you can imagine?",
+          "bridge": "I liked the part about his simple writing. Remember?"
+        },
+        {
+          "text": "Ernest loved adventures like fishing and traveling the world.",
+          "topic": "his adventures",
+          "say": "Ernest loved adventures and traveling.",
+          "sayShort": "He loved adventures.",
+          "ask": "What adventure would you love?",
+          "askYou": "Where would you travel?",
+          "bridge": "I liked the part about his fish story. Remember?"
+        },
+        {
+          "text": "He worked as a news reporter before he wrote story books.",
+          "topic": "reporter first",
+          "say": "Ernest was a reporter before writing books.",
+          "sayShort": "He was a reporter first.",
+          "ask": "What news would you report?",
+          "askYou": "Do you like to write?",
+          "bridge": "I liked the part about his adventures. Remember?"
+        }
+      ]
     },
     {
       "name": "Franz Kafka",
@@ -9874,8 +10688,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/franz-kafka.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Franz wrote strange, dreamlike stories that feel like odd dreams.",
+          "topic": "dreamlike stories",
+          "say": "Franz wrote strange, dreamy stories.",
+          "sayShort": "He wrote odd, dreamy tales.",
+          "ask": "Do you remember your dreams?",
+          "askYou": "What is the strangest dream you've had?",
+          "bridge": ""
+        },
+        {
+          "text": "In one famous story, a man wakes up turned into a giant bug!",
+          "topic": "the bug story",
+          "say": "Franz wrote a story about a man who becomes a bug.",
+          "sayShort": "He wrote a bug story.",
+          "ask": "What would you turn into in a story?",
+          "askYou": "Do you like bugs or find them scary?",
+          "bridge": "I liked the part about his dreamlike stories. Remember?"
+        },
+        {
+          "text": "He had a regular day job and wrote his stories at night.",
+          "topic": "writing at night",
+          "say": "Franz worked by day and wrote at night.",
+          "sayShort": "He wrote at night.",
+          "ask": "When do you like to be creative?",
+          "askYou": "Are you a morning or night person?",
+          "bridge": "I liked the part about the bug story. Remember?"
+        },
+        {
+          "text": "People all over the world still read his unusual stories.",
+          "topic": "read everywhere",
+          "say": "Franz's unusual stories are read everywhere.",
+          "sayShort": "His stories are famous.",
+          "ask": "What unusual story would you write?",
+          "askYou": "What is a weird idea you have?",
+          "bridge": "I liked the part about him writing at night. Remember?"
+        }
+      ]
     },
     {
       "name": "Victor Hugo",
@@ -9885,8 +10736,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/victor-hugo.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Victor was a French writer of big, exciting stories.",
+          "topic": "big stories",
+          "say": "Victor wrote big, exciting French stories.",
+          "sayShort": "He wrote big stories.",
+          "ask": "Do you like exciting stories?",
+          "askYou": "What story would you write?",
+          "bridge": ""
+        },
+        {
+          "text": "He wrote Les Misérables and a story about a bell-ringer at a big church.",
+          "topic": "his famous books",
+          "say": "Victor wrote famous books people still love.",
+          "sayShort": "He wrote famous books.",
+          "ask": "What would you name a book?",
+          "askYou": "What is a story you love?",
+          "bridge": "I liked the part about his big stories. Remember?"
+        },
+        {
+          "text": "Victor cared a lot about helping poor people.",
+          "topic": "caring for others",
+          "say": "Victor cared about helping poor people.",
+          "sayShort": "He cared about others.",
+          "ask": "How do you like to help people?",
+          "askYou": "Who is someone you help?",
+          "bridge": "I liked the part about his famous books. Remember?"
+        },
+        {
+          "text": "His stories have become famous plays and movies.",
+          "topic": "plays and movies",
+          "say": "Victor's stories became plays and movies.",
+          "sayShort": "His stories are on stage.",
+          "ask": "What story would you make into a play?",
+          "askYou": "Do you like musicals?",
+          "bridge": "I liked the part about him caring for others. Remember?"
+        }
+      ]
     },
     {
       "name": "Dante Alighieri",
