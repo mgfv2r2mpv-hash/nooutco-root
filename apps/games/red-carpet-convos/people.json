@@ -1,6 +1,6 @@
 {
   "_note": "Red Carpet Convos roster. Per person: {name, years, tag, emoji, img, accent, accentBg, converted, facts:[{text, topic, say, sayShort, ask, askYou, bridge}]}. `converted` is the MIGRATION FLAG: true = migrated to the new schema and live in the game; false = a stub pending fact population (kept OUT of the game for now). During migration the game surfaces only converted people. Fade levels (comment/volley Partial/Minimal) are derived at runtime from say/ask. `bridge` is the partner's recall opener INTO this fact (fact 1's bridge is empty). Edited via AdminTools/FamousPersonManager; the rcc-generate-facts populator writes facts + sets converted. Store only public-figure content — never learner/session data.",
-  "generated": "2026-07-08T20:28:45.462Z",
+  "generated": "2026-07-08T20:31:35.185Z",
   "people": [
     {
       "name": "Lin-Manuel Miranda",
@@ -6501,8 +6501,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/jacques-cousteau.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Jacques explored the deep ocean and helped people see what is underwater.",
+          "topic": "ocean explorer",
+          "say": "Jacques explored the deep, deep ocean.",
+          "sayShort": "He explored the ocean.",
+          "ask": "What sea animal would you love to see?",
+          "askYou": "Do you like the ocean?",
+          "bridge": ""
+        },
+        {
+          "text": "He helped invent special gear to breathe underwater.",
+          "topic": "breathing underwater",
+          "say": "Jacques helped make gear to breathe underwater.",
+          "sayShort": "He made diving gear.",
+          "ask": "Would you like to go scuba diving?",
+          "askYou": "Can you hold your breath a long time?",
+          "bridge": "I liked the part about him exploring the ocean. Remember?"
+        },
+        {
+          "text": "Jacques made award-winning movies all about the ocean.",
+          "topic": "ocean movies",
+          "say": "Jacques made famous movies about the sea.",
+          "sayShort": "He made ocean movies.",
+          "ask": "What ocean movie would you make?",
+          "askYou": "What is your favorite sea creature?",
+          "bridge": "I liked the part about breathing underwater. Remember?"
+        },
+        {
+          "text": "He sailed on a ship called the Calypso to explore many seas.",
+          "topic": "his ship Calypso",
+          "say": "Jacques sailed the seas on his ship Calypso.",
+          "sayShort": "He had a famous ship.",
+          "ask": "What would you name your own ship?",
+          "askYou": "Where would you sail first?",
+          "bridge": "I liked the part about his ocean movies. Remember?"
+        }
+      ]
     },
     {
       "name": "Yuri Gagarin",
@@ -6512,8 +6549,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/yuri-gagarin.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Yuri was the very first person ever to go to space.",
+          "topic": "first in space",
+          "say": "Yuri was the first person ever in space.",
+          "sayShort": "He went to space first.",
+          "ask": "What do you think space feels like?",
+          "askYou": "Would you like to go to space?",
+          "bridge": ""
+        },
+        {
+          "text": "He flew all the way around the Earth one time in about 108 minutes.",
+          "topic": "around the Earth",
+          "say": "Yuri flew around the whole Earth super fast.",
+          "sayShort": "He circled the Earth.",
+          "ask": "How fast do you think a rocket goes?",
+          "askYou": "What would you look at from space?",
+          "bridge": "I liked the part about him being first in space. Remember?"
+        },
+        {
+          "text": "Yuri was a pilot from Russia before he went to space.",
+          "topic": "a pilot first",
+          "say": "Yuri flew planes before he flew to space.",
+          "sayShort": "He was a pilot first.",
+          "ask": "Would you rather fly a plane or a rocket?",
+          "askYou": "What would you like to pilot?",
+          "bridge": "I liked the part about him going around the Earth. Remember?"
+        },
+        {
+          "text": "He was small for a pilot, which helped him fit in the tiny space capsule.",
+          "topic": "a good fit",
+          "say": "Being small helped Yuri fit in the capsule.",
+          "sayShort": "He fit the tiny capsule.",
+          "ask": "What is something you are just the right size for?",
+          "askYou": "Do you like small cozy spaces?",
+          "bridge": "I liked the part about him being a pilot. Remember?"
+        }
+      ]
     },
     {
       "name": "Valentina Tereshkova",
@@ -6523,8 +6597,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/valentina-tereshkova.jpeg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Valentina was the first woman ever to go to space.",
+          "topic": "first woman in space",
+          "say": "Valentina was the first woman in space.",
+          "sayShort": "She flew to space first.",
+          "ask": "Would you like to float in space?",
+          "askYou": "What would you pack for space?",
+          "bridge": ""
+        },
+        {
+          "text": "She was a parachute jumper before she became an astronaut.",
+          "topic": "parachute jumper",
+          "say": "Valentina jumped with parachutes before space.",
+          "sayShort": "She was a parachute jumper.",
+          "ask": "Would you like to jump with a parachute?",
+          "askYou": "Do you like fast, exciting things?",
+          "bridge": "I liked the part about her being first in space. Remember?"
+        },
+        {
+          "text": "Valentina went around the Earth 48 times in three days.",
+          "topic": "around and around",
+          "say": "Valentina circled Earth 48 times in space.",
+          "sayShort": "She circled Earth a lot.",
+          "ask": "How many times would you want to circle Earth?",
+          "askYou": "What would you do all day in space?",
+          "bridge": "I liked the part about her being a parachute jumper. Remember?"
+        },
+        {
+          "text": "She grew up on a farm in Russia.",
+          "topic": "a farm kid",
+          "say": "Valentina grew up on a farm.",
+          "sayShort": "She was a farm kid.",
+          "ask": "Would you like to live on a farm?",
+          "askYou": "What farm animal do you like?",
+          "bridge": "I liked the part about her going around and around. Remember?"
+        }
+      ]
     },
     {
       "name": "Sally Ride",
@@ -6534,8 +6645,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/sally-ride.jpeg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Sally was the first American woman to go to space.",
+          "topic": "first American woman",
+          "say": "Sally was the first U.S. woman in space.",
+          "sayShort": "She flew to space first.",
+          "ask": "Would you like to be an astronaut?",
+          "askYou": "What would you do in space?",
+          "bridge": ""
+        },
+        {
+          "text": "She was also really great at tennis when she was younger.",
+          "topic": "a tennis star",
+          "say": "Sally was great at tennis before space.",
+          "sayShort": "She was a tennis star.",
+          "ask": "Do you like tennis?",
+          "askYou": "What sport are you good at?",
+          "bridge": "I liked the part about her being first in space. Remember?"
+        },
+        {
+          "text": "Sally started groups to get girls excited about science.",
+          "topic": "science for girls",
+          "say": "Sally helped girls get excited about science.",
+          "sayShort": "She inspired kids in science.",
+          "ask": "What part of science do you like?",
+          "askYou": "What would you like to explore?",
+          "bridge": "I liked the part about her being a tennis star. Remember?"
+        },
+        {
+          "text": "She used a robot arm on the space ship to help do her job.",
+          "topic": "a space robot arm",
+          "say": "Sally used a robot arm up in space.",
+          "sayShort": "She used a robot arm.",
+          "ask": "What would you do with a robot arm?",
+          "askYou": "Do you like robots?",
+          "bridge": "I liked the part about science for girls. Remember?"
+        }
+      ]
     },
     {
       "name": "Buzz Aldrin",
@@ -6545,8 +6693,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/buzz-aldrin.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Buzz was the second person ever to walk on the Moon.",
+          "topic": "walking the Moon",
+          "say": "Buzz was the second person to walk the Moon.",
+          "sayShort": "He walked on the Moon.",
+          "ask": "What would it feel like to walk on the Moon?",
+          "askYou": "Would you like to visit the Moon?",
+          "bridge": ""
+        },
+        {
+          "text": "He took the first-ever selfie in space.",
+          "topic": "first space selfie",
+          "say": "Buzz snapped the first selfie in space.",
+          "sayShort": "He took a space selfie.",
+          "ask": "Where would you take a cool selfie?",
+          "askYou": "Do you like taking pictures?",
+          "bridge": "I liked the part about him walking the Moon. Remember?"
+        },
+        {
+          "text": "Buzz was a pilot in the air force before going to space.",
+          "topic": "a pilot first",
+          "say": "Buzz flew planes before he flew to space.",
+          "sayShort": "He was a pilot first.",
+          "ask": "Would you like to fly a plane?",
+          "askYou": "What would you pilot?",
+          "bridge": "I liked the part about his space selfie. Remember?"
+        },
+        {
+          "text": "His nickname Buzz came from his little sister.",
+          "topic": "his nickname",
+          "say": "Buzz got his fun nickname from his sister.",
+          "sayShort": "His sister named him Buzz.",
+          "ask": "Do you have a nickname?",
+          "askYou": "What nickname would you pick?",
+          "bridge": "I liked the part about him being a pilot. Remember?"
+        }
+      ]
     },
     {
       "name": "Karl Marx",
@@ -6567,8 +6752,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/friedrich-nietzsche.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Friedrich was a thinker who asked big questions about how we should live.",
+          "topic": "big questions",
+          "say": "Friedrich asked big questions about life.",
+          "sayShort": "He asked big questions.",
+          "ask": "What is a big question you wonder about?",
+          "askYou": "Do you like to think deeply?",
+          "bridge": ""
+        },
+        {
+          "text": "He believed that getting through hard times can make you stronger.",
+          "topic": "growing stronger",
+          "say": "Friedrich said hard times can make you stronger.",
+          "sayShort": "He said we grow stronger.",
+          "ask": "When did a hard thing make you stronger?",
+          "askYou": "What helps you through tough days?",
+          "bridge": "I liked the part about his big questions. Remember?"
+        },
+        {
+          "text": "Friedrich loved walking in the mountains and got many ideas there.",
+          "topic": "mountain walks",
+          "say": "Friedrich got his best ideas on mountain walks.",
+          "sayShort": "He loved mountain walks.",
+          "ask": "Where do you get your best ideas?",
+          "askYou": "Do you like walking outside?",
+          "bridge": "I liked the part about growing stronger. Remember?"
+        },
+        {
+          "text": "He also wrote books about music, art, and ancient Greece.",
+          "topic": "music and art",
+          "say": "Friedrich wrote about music, art, and history.",
+          "sayShort": "He loved music and art.",
+          "ask": "Do you like music or art more?",
+          "askYou": "What would you write a book about?",
+          "bridge": "I liked the part about his mountain walks. Remember?"
+        }
+      ]
     },
     {
       "name": "Voltaire",
@@ -6578,8 +6800,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/voltaire.jpeg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Voltaire was a French writer who used jokes to poke fun at unfair rules.",
+          "topic": "a witty writer",
+          "say": "Voltaire used jokes to point out unfair rules.",
+          "sayShort": "He was a funny writer.",
+          "ask": "What would you make a joke about?",
+          "askYou": "Do you like clever jokes?",
+          "bridge": ""
+        },
+        {
+          "text": "He bravely spoke up for freedom and fairness.",
+          "topic": "speaking for freedom",
+          "say": "Voltaire bravely spoke up for freedom.",
+          "sayShort": "He spoke up for freedom.",
+          "ask": "What is worth speaking up for?",
+          "askYou": "When did you speak up bravely?",
+          "bridge": "I liked the part about him being witty. Remember?"
+        },
+        {
+          "text": "Voltaire wrote a famous funny book called Candide.",
+          "topic": "his famous book",
+          "say": "Voltaire wrote the famous funny book Candide.",
+          "sayShort": "He wrote a funny book.",
+          "ask": "What funny story would you write?",
+          "askYou": "What is a book that made you laugh?",
+          "bridge": "I liked the part about him speaking for freedom. Remember?"
+        },
+        {
+          "text": "He drank a LOT of coffee — some say forty cups a day!",
+          "topic": "lots of coffee",
+          "say": "Voltaire drank tons and tons of coffee.",
+          "sayShort": "He loved his coffee.",
+          "ask": "What is your favorite drink?",
+          "askYou": "What gives you lots of energy?",
+          "bridge": "I liked the part about his famous book. Remember?"
+        }
+      ]
     },
     {
       "name": "Pablo Picasso",
@@ -6637,8 +6896,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/salvador-dali.jpeg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Salvador painted dreamlike pictures, like clocks that look like they are melting.",
+          "topic": "melting clocks",
+          "say": "Salvador painted dreamy, melting-clock pictures.",
+          "sayShort": "He painted dreamy art.",
+          "ask": "What dreamy thing would you paint?",
+          "askYou": "Do you remember your dreams?",
+          "bridge": ""
+        },
+        {
+          "text": "He had a famous curly mustache that pointed straight up.",
+          "topic": "his mustache",
+          "say": "Salvador had a wild, curly, pointy mustache.",
+          "sayShort": "He had a famous mustache.",
+          "ask": "What silly look would you try?",
+          "askYou": "What is the funniest hairstyle you have seen?",
+          "bridge": "I liked the part about his melting clocks. Remember?"
+        },
+        {
+          "text": "Salvador had a pet ocelot, which is a kind of wild cat.",
+          "topic": "his wild-cat pet",
+          "say": "Salvador kept a wild cat as a pet!",
+          "sayShort": "He had a wild-cat pet.",
+          "ask": "What unusual pet would you want?",
+          "askYou": "What is your favorite animal?",
+          "bridge": "I liked the part about his mustache. Remember?"
+        },
+        {
+          "text": "He made art in many ways, even helping with movies and store windows.",
+          "topic": "art everywhere",
+          "say": "Salvador made art for movies and shop windows.",
+          "sayShort": "He made art everywhere.",
+          "ask": "Where would you like to put your art?",
+          "askYou": "What would you love to decorate?",
+          "bridge": "I liked the part about his wild-cat pet. Remember?"
+        }
+      ]
     },
     {
       "name": "Georgia O'Keeffe",
@@ -6648,8 +6944,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/georgia-okeeffe.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Georgia painted giant flowers that fill up the whole picture.",
+          "topic": "giant flowers",
+          "say": "Georgia painted flowers big enough to fill the frame.",
+          "sayShort": "She painted giant flowers.",
+          "ask": "What flower would you paint big?",
+          "askYou": "What is your favorite flower?",
+          "bridge": ""
+        },
+        {
+          "text": "She moved to the desert and loved painting the rocks and sky there.",
+          "topic": "desert painter",
+          "say": "Georgia loved painting the desert around her.",
+          "sayShort": "She painted the desert.",
+          "ask": "Would you like to visit a desert?",
+          "askYou": "What place would you love to paint?",
+          "bridge": "I liked the part about her giant flowers. Remember?"
+        },
+        {
+          "text": "Georgia kept painting until she was almost 100 years old.",
+          "topic": "painting a lifetime",
+          "say": "Georgia painted for almost her whole long life.",
+          "sayShort": "She painted forever.",
+          "ask": "What could you do your whole life?",
+          "askYou": "What do you never get tired of?",
+          "bridge": "I liked the part about her being a desert painter. Remember?"
+        },
+        {
+          "text": "She used bright, warm colors that show how the desert sun feels.",
+          "topic": "warm colors",
+          "say": "Georgia painted with bright, warm, sunny colors.",
+          "sayShort": "She used warm colors.",
+          "ask": "What colors feel warm and happy to you?",
+          "askYou": "What is your favorite color?",
+          "bridge": "I liked the part about her painting a lifetime. Remember?"
+        }
+      ]
     },
     {
       "name": "Yayoi Kusama",
@@ -6659,8 +6992,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/600px-Yayoi_Kusama_wax_model_at_Louis_Vitton.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Yayoi is an artist from Japan who covers her art in dots and bright colors.",
+          "topic": "polka dots",
+          "say": "Yayoi fills her art with dots and bright colors.",
+          "sayShort": "She loves polka dots.",
+          "ask": "What would you cover in polka dots?",
+          "askYou": "Do you like bright colors?",
+          "bridge": ""
+        },
+        {
+          "text": "She makes rooms full of mirrors and lights that feel like outer space.",
+          "topic": "magic rooms",
+          "say": "Yayoi builds sparkly rooms that feel like space.",
+          "sayShort": "She makes magic rooms.",
+          "ask": "What would your magic room look like?",
+          "askYou": "Would you like a room full of lights?",
+          "bridge": "I liked the part about her polka dots. Remember?"
+        },
+        {
+          "text": "Yayoi has been making art for over seventy years.",
+          "topic": "a lifetime of art",
+          "say": "Yayoi has made art for over seventy years.",
+          "sayShort": "She makes art forever.",
+          "ask": "What do you love to make again and again?",
+          "askYou": "What could you do for years and years?",
+          "bridge": "I liked the part about her magic rooms. Remember?"
+        },
+        {
+          "text": "She wears bright colored wigs and outfits that match her art.",
+          "topic": "her bright style",
+          "say": "Yayoi dresses in bright colors to match her art.",
+          "sayShort": "She has a bright style.",
+          "ask": "What bright outfit would you wear?",
+          "askYou": "What is your most colorful clothing?",
+          "bridge": "I liked the part about her lifetime of art. Remember?"
+        }
+      ]
     },
     {
       "name": "Rembrandt",
@@ -6670,8 +7040,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/rembrandt.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Rembrandt was a Dutch painter who used light in very clever ways.",
+          "topic": "painter of light",
+          "say": "Rembrandt painted light in clever, glowing ways.",
+          "sayShort": "He painted with light.",
+          "ask": "What makes a picture feel warm or glowy?",
+          "askYou": "Do you like bright or soft light?",
+          "bridge": ""
+        },
+        {
+          "text": "He painted many pictures of himself, even as he grew older.",
+          "topic": "his self-portraits",
+          "say": "Rembrandt painted himself many times.",
+          "sayShort": "He painted himself a lot.",
+          "ask": "If you painted yourself, what would you add?",
+          "askYou": "What do you like about how you look?",
+          "bridge": "I liked the part about him being a painter of light. Remember?"
+        },
+        {
+          "text": "Rembrandt also painted big group pictures of people together.",
+          "topic": "group paintings",
+          "say": "Rembrandt painted big groups of people together.",
+          "sayShort": "He painted big groups.",
+          "ask": "Who would you paint in a group picture?",
+          "askYou": "Do you like big group photos?",
+          "bridge": "I liked the part about his self-portraits. Remember?"
+        },
+        {
+          "text": "He used dark backgrounds so the faces in his paintings would pop out.",
+          "topic": "making faces pop",
+          "say": "Rembrandt made faces pop with dark backgrounds.",
+          "sayShort": "He made faces stand out.",
+          "ask": "How would you make your art stand out?",
+          "askYou": "What draws your eye in a picture?",
+          "bridge": "I liked the part about his group paintings. Remember?"
+        }
+      ]
     },
     {
       "name": "Beethoven",
@@ -6729,8 +7136,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/tchaikovsky.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Tchaikovsky wrote the music for the ballet The Nutcracker.",
+          "topic": "The Nutcracker",
+          "say": "Tchaikovsky wrote the music for The Nutcracker.",
+          "sayShort": "He wrote Nutcracker music.",
+          "ask": "Have you seen a ballet or a dance show?",
+          "askYou": "Do you like to dance?",
+          "bridge": ""
+        },
+        {
+          "text": "He also wrote the music for Swan Lake and Sleeping Beauty.",
+          "topic": "more ballets",
+          "say": "Tchaikovsky wrote music for famous ballets.",
+          "sayShort": "He wrote ballet music.",
+          "ask": "What story would you set to music?",
+          "askYou": "What is a fairy tale you love?",
+          "bridge": "I liked the part about The Nutcracker. Remember?"
+        },
+        {
+          "text": "One of his pieces has big drums and even real cannon booms in it!",
+          "topic": "big booming music",
+          "say": "Tchaikovsky's music has drums and cannon booms.",
+          "sayShort": "His music goes BOOM.",
+          "ask": "What loud sound would you put in a song?",
+          "askYou": "Do you like loud or soft music?",
+          "bridge": "I liked the part about more ballets. Remember?"
+        },
+        {
+          "text": "He was from Russia, and his music can feel like a snowy winter.",
+          "topic": "wintry music",
+          "say": "Tchaikovsky's music feels like a snowy winter.",
+          "sayShort": "His music feels wintry.",
+          "ask": "What does snowy weather make you feel?",
+          "askYou": "Do you like winter?",
+          "bridge": "I liked the part about his booming music. Remember?"
+        }
+      ]
     },
     {
       "name": "Louis Armstrong",
@@ -6788,8 +7232,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/billie-holiday.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Billie was a jazz singer with a sweet, beautiful voice.",
+          "topic": "jazz singer",
+          "say": "Billie was a jazz singer with a lovely voice.",
+          "sayShort": "She was a jazz singer.",
+          "ask": "Do you like slow, pretty songs?",
+          "askYou": "What song calms you down?",
+          "bridge": ""
+        },
+        {
+          "text": "She always wore a flower in her hair when she sang.",
+          "topic": "flower in her hair",
+          "say": "Billie always wore a flower in her hair.",
+          "sayShort": "She wore a flower.",
+          "ask": "What would you wear when you perform?",
+          "askYou": "Do you like flowers?",
+          "bridge": "I liked the part about her being a jazz singer. Remember?"
+        },
+        {
+          "text": "Billie sang a brave song that asked people to treat everyone fairly.",
+          "topic": "a brave song",
+          "say": "Billie sang a brave song about being fair.",
+          "sayShort": "She sang for fairness.",
+          "ask": "What is something that should be fair?",
+          "askYou": "How do you make sure everyone is included?",
+          "bridge": "I liked the part about the flower in her hair. Remember?"
+        },
+        {
+          "text": "She used her music to share how she felt inside.",
+          "topic": "music for feelings",
+          "say": "Billie put her real feelings into her music.",
+          "sayShort": "She sang her feelings.",
+          "ask": "How do you share your feelings?",
+          "askYou": "Does music help you feel better?",
+          "bridge": "I liked the part about her brave song. Remember?"
+        }
+      ]
     },
     {
       "name": "Jimi Hendrix",
@@ -6799,8 +7280,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/jimi-hendrix.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Jimi could play the guitar like no one else — even using his teeth!",
+          "topic": "amazing guitar",
+          "say": "Jimi played guitar in wild, amazing ways.",
+          "sayShort": "He was a guitar wizard.",
+          "ask": "What instrument would you love to play?",
+          "askYou": "Do you like rock music?",
+          "bridge": ""
+        },
+        {
+          "text": "He played the country's song in a brand-new way at a big show.",
+          "topic": "a new sound",
+          "say": "Jimi gave a famous song a brand-new sound.",
+          "sayShort": "He made a new sound.",
+          "ask": "How would you make a song your own?",
+          "askYou": "What song would you remix?",
+          "bridge": "I liked the part about his amazing guitar. Remember?"
+        },
+        {
+          "text": "He was left-handed and played his guitar upside-down.",
+          "topic": "left-handed style",
+          "say": "Jimi played his guitar flipped upside-down.",
+          "sayShort": "He played upside-down.",
+          "ask": "Are you left- or right-handed?",
+          "askYou": "What do you do your own special way?",
+          "bridge": "I liked the part about his new sound. Remember?"
+        },
+        {
+          "text": "Jimi taught himself to play guitar when he was a kid.",
+          "topic": "self-taught",
+          "say": "Jimi taught himself guitar as a kid.",
+          "sayShort": "He taught himself.",
+          "ask": "What did you teach yourself to do?",
+          "askYou": "What would you like to learn?",
+          "bridge": "I liked the part about his left-handed style. Remember?"
+        }
+      ]
     },
     {
       "name": "David Bowie",
@@ -6810,8 +7328,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/david-bowie.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "David was a musician who changed his look and music a lot over the years.",
+          "topic": "always changing",
+          "say": "David loved changing his look and his music.",
+          "sayShort": "He loved to change it up.",
+          "ask": "How do you like to switch things up?",
+          "askYou": "What is a new look you would try?",
+          "bridge": ""
+        },
+        {
+          "text": "One of his characters was a singing space alien named Ziggy Stardust.",
+          "topic": "Ziggy Stardust",
+          "say": "David became a space-alien character on stage.",
+          "sayShort": "He played a space alien.",
+          "ask": "What character would you become on stage?",
+          "askYou": "Do you like space and aliens?",
+          "bridge": "I liked the part about him always changing. Remember?"
+        },
+        {
+          "text": "David had one blue eye and one that looked darker, which made his look unique.",
+          "topic": "his unique eyes",
+          "say": "David had two different-looking eyes.",
+          "sayShort": "He had unique eyes.",
+          "ask": "What is something unique about you?",
+          "askYou": "What color are your eyes?",
+          "bridge": "I liked the part about Ziggy Stardust. Remember?"
+        },
+        {
+          "text": "He acted in movies too, including one as a goblin king.",
+          "topic": "movie roles",
+          "say": "David acted in movies, even as a goblin king!",
+          "sayShort": "He was in movies too.",
+          "ask": "What character would you play in a movie?",
+          "askYou": "What is a fantasy movie you like?",
+          "bridge": "I liked the part about his unique eyes. Remember?"
+        }
+      ]
     },
     {
       "name": "Whitney Houston",
@@ -6821,8 +7376,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/whitney-houston.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Whitney had one of the most beautiful, powerful voices ever recorded.",
+          "topic": "powerful voice",
+          "say": "Whitney had an amazing, powerful singing voice.",
+          "sayShort": "She had an amazing voice.",
+          "ask": "Do you like to sing loud?",
+          "askYou": "What song do you belt out?",
+          "bridge": ""
+        },
+        {
+          "text": "She started singing in her church when she was just a little girl.",
+          "topic": "church singer",
+          "say": "Whitney started singing in church as a kid.",
+          "sayShort": "She sang young in church.",
+          "ask": "Where do you like to sing?",
+          "askYou": "When did you start singing?",
+          "bridge": "I liked the part about her powerful voice. Remember?"
+        },
+        {
+          "text": "Whitney sang the national song so well at the Super Bowl that it became a hit.",
+          "topic": "a famous performance",
+          "say": "Whitney's Super Bowl song became a huge hit.",
+          "sayShort": "She had a famous show.",
+          "ask": "Would you sing in front of a huge crowd?",
+          "askYou": "What would you perform?",
+          "bridge": "I liked the part about her being a church singer. Remember?"
+        },
+        {
+          "text": "She was also in movies, including one called The Bodyguard.",
+          "topic": "movie star",
+          "say": "Whitney acted in movies too.",
+          "sayShort": "She was a movie star.",
+          "ask": "What movie would you star in?",
+          "askYou": "Do you like movies with singing?",
+          "bridge": "I liked the part about her famous performance. Remember?"
+        }
+      ]
     },
     {
       "name": "Bob Marley",
@@ -6880,8 +7472,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/tupac-shakur.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Tupac was a rapper who put real-life feelings into his songs.",
+          "topic": "real-life rapper",
+          "say": "Tupac put real feelings into his raps.",
+          "sayShort": "He rapped real feelings.",
+          "ask": "What feeling would you put in a song?",
+          "askYou": "Do you like music that means something?",
+          "bridge": ""
+        },
+        {
+          "text": "He also acted in movies and wrote poems.",
+          "topic": "actor and poet",
+          "say": "Tupac acted in movies and wrote poems too.",
+          "sayShort": "He acted and wrote poems.",
+          "ask": "Would you rather act or write?",
+          "askYou": "Do you like to write?",
+          "bridge": "I liked the part about him being a real-life rapper. Remember?"
+        },
+        {
+          "text": "Tupac grew up in tough times and used music to share his story.",
+          "topic": "sharing his story",
+          "say": "Tupac shared his life story through music.",
+          "sayShort": "He shared his story.",
+          "ask": "What part of your story would you share?",
+          "askYou": "How do you share what you feel?",
+          "bridge": "I liked the part about him being an actor and poet. Remember?"
+        },
+        {
+          "text": "His songs are still played and loved today.",
+          "topic": "still loved",
+          "say": "Tupac's songs are still loved today.",
+          "sayShort": "People still love his music.",
+          "ask": "What song do you think people will always love?",
+          "askYou": "What music do you replay a lot?",
+          "bridge": "I liked the part about him sharing his story. Remember?"
+        }
+      ]
     },
     {
       "name": "Michael Jackson",
@@ -7083,8 +7712,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/billie-eilish.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Billie became famous singing songs she made at home with her brother.",
+          "topic": "songs at home",
+          "say": "Billie made her hit songs at home with her brother.",
+          "sayShort": "She made songs at home.",
+          "ask": "What would you make with a brother or sister?",
+          "askYou": "Who do you like being creative with?",
+          "bridge": ""
+        },
+        {
+          "text": "She wears baggy clothes so people focus on her music, not her looks.",
+          "topic": "her own style",
+          "say": "Billie dresses her own way, all about the music.",
+          "sayShort": "She has her own style.",
+          "ask": "What clothes make you feel like you?",
+          "askYou": "What is your comfiest outfit?",
+          "bridge": "I liked the part about her songs at home. Remember?"
+        },
+        {
+          "text": "Billie won a bunch of Grammy awards when she was only eighteen.",
+          "topic": "young winner",
+          "say": "Billie won big music awards at eighteen.",
+          "sayShort": "She won awards super young.",
+          "ask": "What would you love to win young?",
+          "askYou": "What are you great at for your age?",
+          "bridge": "I liked the part about her own style. Remember?"
+        },
+        {
+          "text": "She likes spiders and has even had pet ones.",
+          "topic": "her pet spiders",
+          "say": "Billie likes spiders and has kept pet ones.",
+          "sayShort": "She likes spiders.",
+          "ask": "Are you scared of spiders, or do you like them?",
+          "askYou": "What is a bug you think is cool?",
+          "bridge": "I liked the part about her being a young winner. Remember?"
+        }
+      ]
     },
     {
       "name": "Harry Styles",
@@ -7094,8 +7760,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/harry-styles.jpg",
       "accent": "#6b7c47",
       "accentBg": "#eef0da",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Harry first sang in a boy band called One Direction.",
+          "topic": "his first band",
+          "say": "Harry started out in the band One Direction.",
+          "sayShort": "He started in a band.",
+          "ask": "Would you rather sing alone or in a group?",
+          "askYou": "Who would be in your band?",
+          "bridge": ""
+        },
+        {
+          "text": "He started his own music and writes songs about love and feelings.",
+          "topic": "his own songs",
+          "say": "Harry now writes his own heartfelt songs.",
+          "sayShort": "He writes his own music.",
+          "ask": "What would your song be about?",
+          "askYou": "What song do you love right now?",
+          "bridge": "I liked the part about his first band. Remember?"
+        },
+        {
+          "text": "Harry loves wearing colorful, sparkly clothes when he performs.",
+          "topic": "sparkly style",
+          "say": "Harry wears bright, sparkly clothes on stage.",
+          "sayShort": "He has a sparkly style.",
+          "ask": "What sparkly thing would you wear?",
+          "askYou": "What is your favorite thing to wear?",
+          "bridge": "I liked the part about his own songs. Remember?"
+        },
+        {
+          "text": "He has also acted in movies.",
+          "topic": "movie roles",
+          "say": "Harry acts in movies too, not just sings.",
+          "sayShort": "He acts in movies too.",
+          "ask": "What kind of movie would you be in?",
+          "askYou": "What is a movie you love?",
+          "bridge": "I liked the part about his sparkly style. Remember?"
+        }
+      ]
     },
     {
       "name": "Olivia Rodrigo",
@@ -7105,8 +7808,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/olivia-rodrigo.jpg",
       "accent": "#ea580c",
       "accentBg": "#ffedd5",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Olivia became famous as a teen with songs about big feelings.",
+          "topic": "teen songwriter",
+          "say": "Olivia wrote hit songs as a teenager.",
+          "sayShort": "She writes about feelings.",
+          "ask": "What feeling would you write a song about?",
+          "askYou": "Do you like to write?",
+          "bridge": ""
+        },
+        {
+          "text": "She started out acting on a Disney show.",
+          "topic": "a Disney start",
+          "say": "Olivia started by acting on a Disney show.",
+          "sayShort": "She started on Disney.",
+          "ask": "What show would you like to be on?",
+          "askYou": "What is your favorite show?",
+          "bridge": "I liked the part about her being a teen songwriter. Remember?"
+        },
+        {
+          "text": "Her song \"drivers license\" became huge all over the world.",
+          "topic": "a giant hit",
+          "say": "Olivia's song became a giant worldwide hit.",
+          "sayShort": "She had a huge hit.",
+          "ask": "What would make your song a hit?",
+          "askYou": "What song is stuck in your head?",
+          "bridge": "I liked the part about her Disney start. Remember?"
+        },
+        {
+          "text": "She likes to wear purple a lot, and you can see it in her shows.",
+          "topic": "loving purple",
+          "say": "Olivia loves the color purple in her shows.",
+          "sayShort": "She loves purple.",
+          "ask": "What is your favorite color?",
+          "askYou": "What color do you wear the most?",
+          "bridge": "I liked the part about her giant hit. Remember?"
+        }
+      ]
     },
     {
       "name": "Bad Bunny",
@@ -7116,8 +7856,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/bad-bunny.jpg",
       "accent": "#7c3aed",
       "accentBg": "#ede9fe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Bad Bunny is a rapper and singer from Puerto Rico.",
+          "topic": "from Puerto Rico",
+          "say": "Bad Bunny is a music star from Puerto Rico.",
+          "sayShort": "He is from Puerto Rico.",
+          "ask": "Where would you love to visit?",
+          "askYou": "Do you like music from other places?",
+          "bridge": ""
+        },
+        {
+          "text": "He sings in Spanish, and his songs are loved all over the world.",
+          "topic": "singing in Spanish",
+          "say": "Bad Bunny sings in Spanish for the whole world.",
+          "sayShort": "He sings in Spanish.",
+          "ask": "What languages do you like to hear?",
+          "askYou": "Do you know any Spanish words?",
+          "bridge": "I liked the part about him being from Puerto Rico. Remember?"
+        },
+        {
+          "text": "Bad Bunny wears bright clothes, sparkly nails, and big sunglasses.",
+          "topic": "his bold style",
+          "say": "Bad Bunny rocks a bold, colorful style.",
+          "sayShort": "He has a bold style.",
+          "ask": "What bold look would you try?",
+          "askYou": "What is the coolest outfit you have seen?",
+          "bridge": "I liked the part about him singing in Spanish. Remember?"
+        },
+        {
+          "text": "He also does pro wrestling for fun.",
+          "topic": "wrestling for fun",
+          "say": "Bad Bunny wrestles for fun too!",
+          "sayShort": "He wrestles for fun.",
+          "ask": "What fun hobby would you try?",
+          "askYou": "What do you do just for fun?",
+          "bridge": "I liked the part about his bold style. Remember?"
+        }
+      ]
     },
     {
       "name": "Shakira",
@@ -7127,8 +7904,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/shakira.jpg",
       "accent": "#0ea5e9",
       "accentBg": "#e2f2fb",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Shakira is a singer from Colombia who is famous for her belly dancing.",
+          "topic": "singer and dancer",
+          "say": "Shakira is a famous singer and dancer.",
+          "sayShort": "She sings and dances.",
+          "ask": "Do you like to dance?",
+          "askYou": "What dance move do you like?",
+          "bridge": ""
+        },
+        {
+          "text": "She wrote her very first song when she was only eight years old.",
+          "topic": "writing songs young",
+          "say": "Shakira wrote her first song at only eight.",
+          "sayShort": "She wrote songs young.",
+          "ask": "What would your first song be about?",
+          "askYou": "What did you love doing at eight?",
+          "bridge": "I liked the part about her being a singer and dancer. Remember?"
+        },
+        {
+          "text": "Shakira sings in both Spanish and English.",
+          "topic": "two languages",
+          "say": "Shakira sings in Spanish and in English.",
+          "sayShort": "She sings in two languages.",
+          "ask": "What language would you like to learn?",
+          "askYou": "Do you know words in another language?",
+          "bridge": "I liked the part about her writing songs young. Remember?"
+        },
+        {
+          "text": "She also helps build schools for kids in her home country.",
+          "topic": "building schools",
+          "say": "Shakira helps build schools for kids.",
+          "sayShort": "She builds schools.",
+          "ask": "What would your dream school have?",
+          "askYou": "How would you help other kids?",
+          "bridge": "I liked the part about her two languages. Remember?"
+        }
+      ]
     },
     {
       "name": "Missy Elliott",
@@ -7138,8 +7952,45 @@
       "img": "/famous-person/_Resources/_imgSource/images/missy-elliott.jpg",
       "accent": "#2563eb",
       "accentBg": "#dbeafe",
-      "converted": false,
-      "facts": []
+      "converted": true,
+      "facts": [
+        {
+          "text": "Missy is a rapper who also makes her own cool music videos.",
+          "topic": "cool videos",
+          "say": "Missy makes her own super-cool music videos.",
+          "sayShort": "She makes cool videos.",
+          "ask": "What would your music video look like?",
+          "askYou": "Do you like watching music videos?",
+          "bridge": ""
+        },
+        {
+          "text": "She raps fast and has a really fun, playful style.",
+          "topic": "her fun style",
+          "say": "Missy raps fast with a fun, playful style.",
+          "sayShort": "She has a fun style.",
+          "ask": "Do you like fast or slow songs?",
+          "askYou": "What makes a song fun to you?",
+          "bridge": "I liked the part about her cool videos. Remember?"
+        },
+        {
+          "text": "Missy was the first woman rapper honored in a hall of fame for songwriters.",
+          "topic": "a big honor",
+          "say": "Missy earned a big first-ever songwriting honor.",
+          "sayShort": "She earned a big honor.",
+          "ask": "What would you like to be honored for?",
+          "askYou": "What are you really good at?",
+          "bridge": "I liked the part about her fun style. Remember?"
+        },
+        {
+          "text": "She helped lots of younger singers and rappers become famous too.",
+          "topic": "lifting others up",
+          "say": "Missy helped younger artists shine.",
+          "sayShort": "She lifts others up.",
+          "ask": "How do you cheer on your friends?",
+          "askYou": "Who has helped you get better?",
+          "bridge": "I liked the part about her big honor. Remember?"
+        }
+      ]
     },
     {
       "name": "Jay-Z",
