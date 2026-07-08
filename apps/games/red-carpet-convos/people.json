@@ -1,5 +1,6 @@
 {
   "_note": "Red Carpet Convos roster. Schema per person: {name, years, tag, emoji, img, accent, accentBg, facts:[{text, topic, say, sayShort, ask, askYou, bridge}]}. Fade levels (comment/volley Partial/Minimal) are derived at runtime from say/ask — do NOT author them. `bridge` is the partner's recall opener INTO this fact (fact 1's bridge is empty). Edited via AdminTools/FamousPersonManager; the AI populator writes this file. Store only public-figure content — never learner/session data.",
+  "generated": "2026-07-08T17:59:55.349Z",
   "people": [
     {
       "name": "Lin-Manuel Miranda",
@@ -517,7 +518,2906 @@
           "bridge": "I liked the part about people loving his art. Remember?"
         }
       ]
+    },
+    {
+      "name": "Albert Einstein",
+      "years": "1879–1955",
+      "tag": "Scientist",
+      "emoji": "🧠",
+      "img": "/famous-person/_Resources/_imgSource/images/albert-einstein.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Marie Curie",
+      "years": "1867–1934",
+      "tag": "Scientist",
+      "emoji": "⚗️",
+      "img": "/famous-person/_Resources/_imgSource/images/marie-curie.jpeg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Martin Luther King Jr.",
+      "years": "1929–1968",
+      "tag": "Activist",
+      "emoji": "✊",
+      "img": "/famous-person/_Resources/_imgSource/images/martin-luther-king-jr.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Amelia Earhart",
+      "years": "1897–1937",
+      "tag": "Pioneer",
+      "emoji": "✈️",
+      "img": "/famous-person/_Resources/_imgSource/images/amelia-earhart.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Leonardo da Vinci",
+      "years": "1452–1519",
+      "tag": "Artist",
+      "emoji": "🎨",
+      "img": "/famous-person/_Resources/_imgSource/images/leonardo-da-vinci.jpeg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Harriet Tubman",
+      "years": "1822–1913",
+      "tag": "Activist",
+      "emoji": "🗽",
+      "img": "/famous-person/_Resources/_imgSource/images/harriet-tubman.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Nikola Tesla",
+      "years": "1856–1943",
+      "tag": "Inventor",
+      "emoji": "⚡",
+      "img": "/famous-person/_Resources/_imgSource/images/nikola-tesla.jpeg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Frida Kahlo",
+      "years": "1907–1954",
+      "tag": "Artist",
+      "emoji": "🌺",
+      "img": "/famous-person/_Resources/_imgSource/images/frida-kahlo.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Nelson Mandela",
+      "years": "1918–2013",
+      "tag": "Leader",
+      "emoji": "🕊️",
+      "img": "/famous-person/_Resources/_imgSource/images/nelson-mandela.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Charles Darwin",
+      "years": "1809–1882",
+      "tag": "Scientist",
+      "emoji": "🦎",
+      "img": "/famous-person/_Resources/_imgSource/images/charles-darwin.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Isaac Newton",
+      "years": "1643–1727",
+      "tag": "Scientist",
+      "emoji": "🍎",
+      "img": "/famous-person/_Resources/_imgSource/images/isaac-newton.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Rosa Parks",
+      "years": "1913–2005",
+      "tag": "Activist",
+      "emoji": "🚌",
+      "img": "/famous-person/_Resources/_imgSource/images/rosa-parks.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Mozart",
+      "years": "1756–1791",
+      "tag": "Musician",
+      "emoji": "🎹",
+      "img": "/famous-person/_Resources/_imgSource/images/mozart.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Mahatma Gandhi",
+      "years": "1869–1948",
+      "tag": "Leader",
+      "emoji": "🕊️",
+      "img": "/famous-person/_Resources/_imgSource/images/mahatma-gandhi.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Ada Lovelace",
+      "years": "1815–1852",
+      "tag": "Mathematician",
+      "emoji": "💻",
+      "img": "/famous-person/_Resources/_imgSource/images/ada-lovelace.jpeg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Winston Churchill",
+      "years": "1874–1965",
+      "tag": "Leader",
+      "emoji": "🎖️",
+      "img": "/famous-person/_Resources/_imgSource/images/winston-churchill.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Abraham Lincoln",
+      "years": "1809–1865",
+      "tag": "Leader",
+      "emoji": "🎩",
+      "img": "/famous-person/_Resources/_imgSource/images/abraham-lincoln.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Cleopatra",
+      "years": "69–30 BC",
+      "tag": "Ruler",
+      "emoji": "👑",
+      "img": "/famous-person/_Resources/_imgSource/images/cleopatra.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Galileo Galilei",
+      "years": "1564–1642",
+      "tag": "Scientist",
+      "emoji": "🔭",
+      "img": "/famous-person/_Resources/_imgSource/images/galileo-galilei.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Frederick Douglass",
+      "years": "1818–1895",
+      "tag": "Activist",
+      "emoji": "✍️",
+      "img": "/famous-person/_Resources/_imgSource/images/frederick-douglass.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Muhammad Ali",
+      "years": "1942–2016",
+      "tag": "Athlete",
+      "emoji": "🥊",
+      "img": "/famous-person/_Resources/_imgSource/images/muhammad-ali.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Malala Yousafzai",
+      "years": "1997–",
+      "tag": "Activist",
+      "emoji": "📚",
+      "img": "/famous-person/_Resources/_imgSource/images/malala-yousafzai.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Oprah Winfrey",
+      "years": "1954–",
+      "tag": "Media",
+      "emoji": "🎙️",
+      "img": "/famous-person/_Resources/_imgSource/images/oprah-winfrey.jpeg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Barack Obama",
+      "years": "1961–",
+      "tag": "Leader",
+      "emoji": "🇺🇸",
+      "img": "/famous-person/_Resources/_imgSource/images/barack-obama.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Usain Bolt",
+      "years": "1986–",
+      "tag": "Athlete",
+      "emoji": "⚡",
+      "img": "/famous-person/_Resources/_imgSource/images/usain-bolt.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Michael Jordan",
+      "years": "1963–",
+      "tag": "Athlete",
+      "emoji": "🏀",
+      "img": "/famous-person/_Resources/_imgSource/images/600px-Michael_Jordan_in_2014.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Freddie Mercury",
+      "years": "1946–1991",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/freddie-mercury.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "J.K. Rowling",
+      "years": "1965–",
+      "tag": "Author",
+      "emoji": "📖",
+      "img": "/famous-person/_Resources/_imgSource/images/j.-k.-rowling.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Stephen Hawking",
+      "years": "1942–2018",
+      "tag": "Scientist",
+      "emoji": "🌌",
+      "img": "/famous-person/_Resources/_imgSource/images/stephen-hawking.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Cristiano Ronaldo",
+      "years": "1985–",
+      "tag": "Athlete",
+      "emoji": "⚽",
+      "img": "/famous-person/_Resources/_imgSource/images/cristiano-ronaldo.jpeg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Elvis Presley",
+      "years": "1935–1977",
+      "tag": "Musician",
+      "emoji": "🎸",
+      "img": "/famous-person/_Resources/_imgSource/images/600px-Elvis_Presley_promoting_Jailhouse_Rock.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Princess Diana",
+      "years": "1961–1997",
+      "tag": "Royal",
+      "emoji": "👸",
+      "img": "/famous-person/_Resources/_imgSource/images/princess-diana.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Napoleon Bonaparte",
+      "years": "1769–1821",
+      "tag": "Leader",
+      "emoji": "⚔️",
+      "img": "/famous-person/_Resources/_imgSource/images/napoleon-bonaparte.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Bruce Lee",
+      "years": "1940–1973",
+      "tag": "Athlete",
+      "emoji": "🥋",
+      "img": "/famous-person/_Resources/_imgSource/images/bruce-lee.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Michelangelo",
+      "years": "1475–1564",
+      "tag": "Artist",
+      "emoji": "🖼️",
+      "img": "/famous-person/_Resources/_imgSource/images/michelangelo.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Coco Chanel",
+      "years": "1883–1971",
+      "tag": "Designer",
+      "emoji": "👗",
+      "img": "/famous-person/_Resources/_imgSource/images/coco-chanel.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Joan of Arc",
+      "years": "1412–1431",
+      "tag": "Leader",
+      "emoji": "⚔️",
+      "img": "/famous-person/_Resources/_imgSource/images/joan-of-arc.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Josephine Baker",
+      "years": "1906–1975",
+      "tag": "Performer",
+      "emoji": "🎭",
+      "img": "/famous-person/_Resources/_imgSource/images/josephine-baker.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Malcolm X",
+      "years": "1925–1965",
+      "tag": "Activist",
+      "emoji": "✊",
+      "img": "/famous-person/_Resources/_imgSource/images/600px-Malcolm_X_1963_press_photo.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Audrey Hepburn",
+      "years": "1929–1993",
+      "tag": "Actress",
+      "emoji": "🎬",
+      "img": "/famous-person/_Resources/_imgSource/images/audrey-hepburn.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Aristotle",
+      "years": "384–322 BC",
+      "tag": "Philosopher",
+      "emoji": "📜",
+      "img": "/famous-person/_Resources/_imgSource/images/aristotle.jpeg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Simone Biles",
+      "years": "1997–",
+      "tag": "Athlete",
+      "emoji": "🤸",
+      "img": "/famous-person/_Resources/_imgSource/images/simone-biles.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Greta Thunberg",
+      "years": "2003–",
+      "tag": "Activist",
+      "emoji": "🌱",
+      "img": "/famous-person/_Resources/_imgSource/images/greta-thunberg.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Misty Copeland",
+      "years": "1982–",
+      "tag": "Dancer",
+      "emoji": "🩰",
+      "img": "/famous-person/_Resources/_imgSource/images/misty-copeland.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Kendrick Lamar",
+      "years": "1987–",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/kendrick-lamar.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Harriet Beecher Stowe",
+      "years": "1811–1896",
+      "tag": "Author",
+      "emoji": "📝",
+      "img": "/famous-person/_Resources/_imgSource/images/harriet-beecher-stowe.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Socrates",
+      "years": "470–399 BC",
+      "tag": "Philosopher",
+      "emoji": "🏛️",
+      "img": "/famous-person/_Resources/_imgSource/images/socrates.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Alexander the Great",
+      "years": "356–323 BC",
+      "tag": "Ruler",
+      "emoji": "⚔️",
+      "img": "/famous-person/_Resources/_imgSource/images/alexander-the-great.webp",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Julius Caesar",
+      "years": "100–44 BC",
+      "tag": "Ruler",
+      "emoji": "🏛️",
+      "img": "/famous-person/_Resources/_imgSource/images/julius-caesar.jpeg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Genghis Khan",
+      "years": "1162–1227",
+      "tag": "Ruler",
+      "emoji": "🐎",
+      "img": "/famous-person/_Resources/_imgSource/images/genghis-khan.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Queen Victoria",
+      "years": "1819–1901",
+      "tag": "Royal",
+      "emoji": "👑",
+      "img": "/famous-person/_Resources/_imgSource/images/queen-victoria.jpeg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Plato",
+      "years": "428–348 BC",
+      "tag": "Philosopher",
+      "emoji": "📜",
+      "img": "/famous-person/_Resources/_imgSource/images/600px-Plato_Silanion_Musei_Capitolini_MC1377.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Confucius",
+      "years": "551–479 BC",
+      "tag": "Philosopher",
+      "emoji": "☯️",
+      "img": "/famous-person/_Resources/_imgSource/images/confucius.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Archimedes",
+      "years": "287–212 BC",
+      "tag": "Mathematician",
+      "emoji": "⚙️",
+      "img": "/famous-person/_Resources/_imgSource/images/archimedes.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Mansa Musa",
+      "years": "1280–1337",
+      "tag": "Ruler",
+      "emoji": "💰",
+      "img": "/famous-person/_Resources/_imgSource/images/mansa-musa.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Hatshepsut",
+      "years": "1507–1458 BC",
+      "tag": "Ruler",
+      "emoji": "👑",
+      "img": "/famous-person/_Resources/_imgSource/images/hatshepsut.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Wu Zetian",
+      "years": "624–705",
+      "tag": "Ruler",
+      "emoji": "👑",
+      "img": "/famous-person/_Resources/_imgSource/images/wu-zetian.jpeg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Suleiman the Magnificent",
+      "years": "1494–1566",
+      "tag": "Ruler",
+      "emoji": "⚔️",
+      "img": "/famous-person/_Resources/_imgSource/images/suleiman-the-magnificent.jpeg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Saladin",
+      "years": "1137–1193",
+      "tag": "Ruler",
+      "emoji": "⚔️",
+      "img": "/famous-person/_Resources/_imgSource/images/saladin.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Pachacuti",
+      "years": "1418–1471",
+      "tag": "Ruler",
+      "emoji": "🏔️",
+      "img": "/famous-person/_Resources/_imgSource/images/pachacuti.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Montezuma II",
+      "years": "1466–1520",
+      "tag": "Ruler",
+      "emoji": "🌽",
+      "img": "/famous-person/_Resources/_imgSource/images/montezuma-ii.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Akbar",
+      "years": "1542–1605",
+      "tag": "Ruler",
+      "emoji": "👑",
+      "img": "/famous-person/_Resources/_imgSource/images/600px-Govardhan._Akbar_With_Lion_and_Calf_ca._1630%2C_Metmuseum_%28cropped%29.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Shaka Zulu",
+      "years": "1787–1828",
+      "tag": "Ruler",
+      "emoji": "⚔️",
+      "img": "/famous-person/_Resources/_imgSource/images/shaka-zulu.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Marie Antoinette",
+      "years": "1755–1793",
+      "tag": "Royal",
+      "emoji": "👑",
+      "img": "/famous-person/_Resources/_imgSource/images/marie-antoinette.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "George Washington",
+      "years": "1732–1799",
+      "tag": "Leader",
+      "emoji": "🇺🇸",
+      "img": "/famous-person/_Resources/_imgSource/images/george-washington.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Benjamin Franklin",
+      "years": "1706–1790",
+      "tag": "Inventor",
+      "emoji": "⚡",
+      "img": "/famous-person/_Resources/_imgSource/images/benjamin-franklin.jpeg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Franklin D. Roosevelt",
+      "years": "1882–1945",
+      "tag": "Leader",
+      "emoji": "🏛️",
+      "img": "/famous-person/_Resources/_imgSource/images/franklin-d.-roosevelt.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Theodore Roosevelt",
+      "years": "1858–1919",
+      "tag": "Leader",
+      "emoji": "🦁",
+      "img": "/famous-person/_Resources/_imgSource/images/theodore-roosevelt.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Mao Zedong",
+      "years": "1893–1976",
+      "tag": "Leader",
+      "emoji": "⭐",
+      "img": "/famous-person/_Resources/_imgSource/images/mao-zedong.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Kamala Harris",
+      "years": "1964–",
+      "tag": "Leader",
+      "emoji": "🏛️",
+      "img": "/famous-person/_Resources/_imgSource/images/600px-Kamala_Harris_Vice_Presidential_Portrait.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Jacinda Ardern",
+      "years": "1980–",
+      "tag": "Leader",
+      "emoji": "🕊️",
+      "img": "/famous-person/_Resources/_imgSource/images/jacinda-ardern.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Alexandria Ocasio-Cortez",
+      "years": "1989–",
+      "tag": "Leader",
+      "emoji": "✊",
+      "img": "/famous-person/_Resources/_imgSource/images/alexandria-ocasio-cortez.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Michelle Obama",
+      "years": "1964–",
+      "tag": "Leader",
+      "emoji": "✨",
+      "img": "/famous-person/_Resources/_imgSource/images/600px-Michelle_Obama_2013_official_portrait.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Sonia Sotomayor",
+      "years": "1954–",
+      "tag": "Leader",
+      "emoji": "⚖️",
+      "img": "/famous-person/_Resources/_imgSource/images/sonia-sotomayor.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Desmond Tutu",
+      "years": "1931–2021",
+      "tag": "Activist",
+      "emoji": "✝️",
+      "img": "/famous-person/_Resources/_imgSource/images/desmond-tutu.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Wangari Maathai",
+      "years": "1940–2011",
+      "tag": "Activist",
+      "emoji": "🌳",
+      "img": "/famous-person/_Resources/_imgSource/images/wangari-maathai.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Rigoberta Menchú",
+      "years": "1959–",
+      "tag": "Activist",
+      "emoji": "✊",
+      "img": "/famous-person/_Resources/_imgSource/images/rigoberta-menchu.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Ruth Bader Ginsburg",
+      "years": "1933–2020",
+      "tag": "Activist",
+      "emoji": "⚖️",
+      "img": "/famous-person/_Resources/_imgSource/images/ruth-bader-ginsburg.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Sojourner Truth",
+      "years": "1797–1883",
+      "tag": "Activist",
+      "emoji": "✊",
+      "img": "/famous-person/_Resources/_imgSource/images/sojourner-truth.jpeg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Susan B. Anthony",
+      "years": "1820–1906",
+      "tag": "Activist",
+      "emoji": "🗳️",
+      "img": "/famous-person/_Resources/_imgSource/images/susan-b.-anthony.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Emmeline Pankhurst",
+      "years": "1858–1928",
+      "tag": "Activist",
+      "emoji": "✊",
+      "img": "/famous-person/_Resources/_imgSource/images/emmeline-pankhurst.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Dalai Lama",
+      "years": "1935–",
+      "tag": "Leader",
+      "emoji": "☮️",
+      "img": "/famous-person/_Resources/_imgSource/images/dalai-lama.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Mother Teresa",
+      "years": "1910–1997",
+      "tag": "Activist",
+      "emoji": "✝️",
+      "img": "/famous-person/_Resources/_imgSource/images/mother-teresa.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Anne Frank",
+      "years": "1929–1945",
+      "tag": "Author",
+      "emoji": "📔",
+      "img": "/famous-person/_Resources/_imgSource/images/anne-frank.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "William Shakespeare",
+      "years": "1564–1616",
+      "tag": "Author",
+      "emoji": "🎭",
+      "img": "/famous-person/_Resources/_imgSource/images/william-shakespeare.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Mark Twain",
+      "years": "1835–1910",
+      "tag": "Author",
+      "emoji": "✍️",
+      "img": "/famous-person/_Resources/_imgSource/images/mark-twain.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Virginia Woolf",
+      "years": "1882–1941",
+      "tag": "Author",
+      "emoji": "✍️",
+      "img": "/famous-person/_Resources/_imgSource/images/virginia-woolf.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "George Orwell",
+      "years": "1903–1950",
+      "tag": "Author",
+      "emoji": "📖",
+      "img": "/famous-person/_Resources/_imgSource/images/george-orwell.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Maya Angelou",
+      "years": "1928–2014",
+      "tag": "Author",
+      "emoji": "✍️",
+      "img": "/famous-person/_Resources/_imgSource/images/maya-angelou.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Toni Morrison",
+      "years": "1931–2019",
+      "tag": "Author",
+      "emoji": "📖",
+      "img": "/famous-person/_Resources/_imgSource/images/toni-morrison.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Chimamanda Ngozi Adichie",
+      "years": "1977–",
+      "tag": "Author",
+      "emoji": "✍️",
+      "img": "/famous-person/_Resources/_imgSource/images/chimamanda-ngozi-adichie.jpeg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Langston Hughes",
+      "years": "1902–1967",
+      "tag": "Author",
+      "emoji": "✍️",
+      "img": "/famous-person/_Resources/_imgSource/images/langston-hughes.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Gabriel García Márquez",
+      "years": "1927–2014",
+      "tag": "Author",
+      "emoji": "📖",
+      "img": "/famous-person/_Resources/_imgSource/images/gabriel-garcia-marquez.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Rumi",
+      "years": "1207–1273",
+      "tag": "Author",
+      "emoji": "☯️",
+      "img": "/famous-person/_Resources/_imgSource/images/rumi.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Murasaki Shikibu",
+      "years": "978–1014",
+      "tag": "Author",
+      "emoji": "✍️",
+      "img": "/famous-person/_Resources/_imgSource/images/murasaki-shikibu.png",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Sor Juana Inés de la Cruz",
+      "years": "1651–1695",
+      "tag": "Author",
+      "emoji": "✍️",
+      "img": "/famous-person/_Resources/_imgSource/images/sor-juana-ines-de-la-cruz.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Emily Dickinson",
+      "years": "1830–1886",
+      "tag": "Author",
+      "emoji": "✍️",
+      "img": "/famous-person/_Resources/_imgSource/images/emily-dickinson.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Edgar Allan Poe",
+      "years": "1809–1849",
+      "tag": "Author",
+      "emoji": "🐦‍⬛",
+      "img": "/famous-person/_Resources/_imgSource/images/edgar-allan-poe.jpeg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Mary Shelley",
+      "years": "1797–1851",
+      "tag": "Author",
+      "emoji": "📖",
+      "img": "/famous-person/_Resources/_imgSource/images/mary-shelley.jpeg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Mary Wollstonecraft",
+      "years": "1759–1797",
+      "tag": "Author",
+      "emoji": "✍️",
+      "img": "/famous-person/_Resources/_imgSource/images/mary_wollstonecraft.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Thomas Edison",
+      "years": "1847–1931",
+      "tag": "Inventor",
+      "emoji": "💡",
+      "img": "/famous-person/_Resources/_imgSource/images/thomas-edison.jpeg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Hedy Lamarr",
+      "years": "1914–2000",
+      "tag": "Inventor",
+      "emoji": "📡",
+      "img": "/famous-person/_Resources/_imgSource/images/hedy-lamarr.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Grace Hopper",
+      "years": "1906–1992",
+      "tag": "Inventor",
+      "emoji": "💻",
+      "img": "/famous-person/_Resources/_imgSource/images/grace-hopper.jpeg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Tim Berners-Lee",
+      "years": "1955–",
+      "tag": "Inventor",
+      "emoji": "🌐",
+      "img": "/famous-person/_Resources/_imgSource/images/tim-berners-lee.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Wright Brothers",
+      "years": "1867–1948 / 1871–1948",
+      "tag": "Inventor",
+      "emoji": "✈️",
+      "img": "/famous-person/_Resources/_imgSource/images/wright-brothers.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Alan Turing",
+      "years": "1912–1954",
+      "tag": "Inventor",
+      "emoji": "💻",
+      "img": "/famous-person/_Resources/_imgSource/images/alan-turing.jpeg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Elon Musk",
+      "years": "1971–",
+      "tag": "Innovator",
+      "emoji": "🚀",
+      "img": "/famous-person/_Resources/_imgSource/images/elon-musk.jpeg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Bill Gates",
+      "years": "1955–",
+      "tag": "Innovator",
+      "emoji": "💻",
+      "img": "/famous-person/_Resources/_imgSource/images/bill-gates.jpeg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Mark Zuckerberg",
+      "years": "1984–",
+      "tag": "Innovator",
+      "emoji": "📱",
+      "img": "/famous-person/_Resources/_imgSource/images/mark-zuckerberg.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Florence Nightingale",
+      "years": "1820–1910",
+      "tag": "Pioneer",
+      "emoji": "🏥",
+      "img": "/famous-person/_Resources/_imgSource/images/florence-nightingale.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Louis Pasteur",
+      "years": "1822–1895",
+      "tag": "Scientist",
+      "emoji": "🔬",
+      "img": "/famous-person/_Resources/_imgSource/images/louis-pasteur.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Rosalind Franklin",
+      "years": "1920–1958",
+      "tag": "Scientist",
+      "emoji": "🔬",
+      "img": "/famous-person/_Resources/_imgSource/images/rosalind-franklin.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Katherine Johnson",
+      "years": "1918–2020",
+      "tag": "Mathematician",
+      "emoji": "🚀",
+      "img": "/famous-person/_Resources/_imgSource/images/katherine-johnson.jpeg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Chien-Shiung Wu",
+      "years": "1912–1997",
+      "tag": "Scientist",
+      "emoji": "⚛️",
+      "img": "/famous-person/_Resources/_imgSource/images/chien-shiung-wu.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Srinivasa Ramanujan",
+      "years": "1887–1920",
+      "tag": "Mathematician",
+      "emoji": "🔢",
+      "img": "/famous-person/_Resources/_imgSource/images/srinivasa_ramanujan.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Neil deGrasse Tyson",
+      "years": "1958–",
+      "tag": "Scientist",
+      "emoji": "🔭",
+      "img": "/famous-person/_Resources/_imgSource/images/neil-degrasse-tyson.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Jane Goodall",
+      "years": "1934–",
+      "tag": "Scientist",
+      "emoji": "🦍",
+      "img": "/famous-person/_Resources/_imgSource/images/jane-goodall.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Carl Sagan",
+      "years": "1934–1996",
+      "tag": "Scientist",
+      "emoji": "🔭",
+      "img": "/famous-person/_Resources/_imgSource/images/carl-sagan.jpeg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Al-Khwarizmi",
+      "years": "780–850",
+      "tag": "Mathematician",
+      "emoji": "➕",
+      "img": "/famous-person/_Resources/_imgSource/images/al-khwarizmi.jpeg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Avicenna",
+      "years": "980–1037",
+      "tag": "Scientist",
+      "emoji": "🏥",
+      "img": "/famous-person/_Resources/_imgSource/images/avicenna.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Marco Polo",
+      "years": "1254–1324",
+      "tag": "Explorer",
+      "emoji": "🗺️",
+      "img": "/famous-person/_Resources/_imgSource/images/marco-polo.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Ferdinand Magellan",
+      "years": "1480–1521",
+      "tag": "Explorer",
+      "emoji": "🌍",
+      "img": "/famous-person/_Resources/_imgSource/images/ferdinand-magellan.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Ernest Shackleton",
+      "years": "1874–1922",
+      "tag": "Explorer",
+      "emoji": "🧊",
+      "img": "/famous-person/_Resources/_imgSource/images/ernest-shackleton.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Edmund Hillary",
+      "years": "1919–2008",
+      "tag": "Explorer",
+      "emoji": "🏔️",
+      "img": "/famous-person/_Resources/_imgSource/images/edmund-hillary.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Tenzing Norgay",
+      "years": "1914–1986",
+      "tag": "Explorer",
+      "emoji": "🏔️",
+      "img": "/famous-person/_Resources/_imgSource/images/tenzing-norgay.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Jacques Cousteau",
+      "years": "1910–1997",
+      "tag": "Explorer",
+      "emoji": "🤿",
+      "img": "/famous-person/_Resources/_imgSource/images/jacques-cousteau.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Yuri Gagarin",
+      "years": "1934–1968",
+      "tag": "Astronaut",
+      "emoji": "🚀",
+      "img": "/famous-person/_Resources/_imgSource/images/yuri-gagarin.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Valentina Tereshkova",
+      "years": "1937–",
+      "tag": "Astronaut",
+      "emoji": "🚀",
+      "img": "/famous-person/_Resources/_imgSource/images/valentina-tereshkova.jpeg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Sally Ride",
+      "years": "1951–2012",
+      "tag": "Astronaut",
+      "emoji": "🚀",
+      "img": "/famous-person/_Resources/_imgSource/images/sally-ride.jpeg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Buzz Aldrin",
+      "years": "1930–",
+      "tag": "Astronaut",
+      "emoji": "🌕",
+      "img": "/famous-person/_Resources/_imgSource/images/buzz-aldrin.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Karl Marx",
+      "years": "1818–1883",
+      "tag": "Philosopher",
+      "emoji": "📜",
+      "img": "/famous-person/_Resources/_imgSource/images/karl-marx.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Friedrich Nietzsche",
+      "years": "1844–1900",
+      "tag": "Philosopher",
+      "emoji": "📜",
+      "img": "/famous-person/_Resources/_imgSource/images/friedrich-nietzsche.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Voltaire",
+      "years": "1694–1778",
+      "tag": "Philosopher",
+      "emoji": "✍️",
+      "img": "/famous-person/_Resources/_imgSource/images/voltaire.jpeg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Pablo Picasso",
+      "years": "1881–1973",
+      "tag": "Artist",
+      "emoji": "🎨",
+      "img": "/famous-person/_Resources/_imgSource/images/pablo-picasso.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Salvador Dalí",
+      "years": "1904–1989",
+      "tag": "Artist",
+      "emoji": "🎨",
+      "img": "/famous-person/_Resources/_imgSource/images/salvador-dali.jpeg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Georgia O'Keeffe",
+      "years": "1887–1986",
+      "tag": "Artist",
+      "emoji": "🌸",
+      "img": "/famous-person/_Resources/_imgSource/images/georgia-okeeffe.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Yayoi Kusama",
+      "years": "1929–",
+      "tag": "Artist",
+      "emoji": "🟡",
+      "img": "/famous-person/_Resources/_imgSource/images/600px-Yayoi_Kusama_wax_model_at_Louis_Vitton.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Rembrandt",
+      "years": "1606–1669",
+      "tag": "Artist",
+      "emoji": "🎨",
+      "img": "/famous-person/_Resources/_imgSource/images/rembrandt.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Beethoven",
+      "years": "1770–1827",
+      "tag": "Musician",
+      "emoji": "🎹",
+      "img": "/famous-person/_Resources/_imgSource/images/beethoven.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Tchaikovsky",
+      "years": "1840–1893",
+      "tag": "Musician",
+      "emoji": "🎻",
+      "img": "/famous-person/_Resources/_imgSource/images/tchaikovsky.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Louis Armstrong",
+      "years": "1901–1971",
+      "tag": "Musician",
+      "emoji": "🎺",
+      "img": "/famous-person/_Resources/_imgSource/images/louis-armstrong.jpeg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Billie Holiday",
+      "years": "1915–1959",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/billie-holiday.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Jimi Hendrix",
+      "years": "1942–1970",
+      "tag": "Musician",
+      "emoji": "🎸",
+      "img": "/famous-person/_Resources/_imgSource/images/jimi-hendrix.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "David Bowie",
+      "years": "1947–2016",
+      "tag": "Musician",
+      "emoji": "🎸",
+      "img": "/famous-person/_Resources/_imgSource/images/david-bowie.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Whitney Houston",
+      "years": "1963–2012",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/whitney-houston.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Bob Marley",
+      "years": "1945–1981",
+      "tag": "Musician",
+      "emoji": "🎵",
+      "img": "/famous-person/_Resources/_imgSource/images/bob-marley.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Tupac Shakur",
+      "years": "1971–1996",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/tupac-shakur.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Michael Jackson",
+      "years": "1958–2009",
+      "tag": "Musician",
+      "emoji": "🕺",
+      "img": "/famous-person/_Resources/_imgSource/images/michael-jackson.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Beyoncé",
+      "years": "1981–",
+      "tag": "Performer",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/beyonce.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Rihanna",
+      "years": "1988–",
+      "tag": "Performer",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/rihanna.png",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Taylor Swift",
+      "years": "1989–",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/taylor-swift.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Billie Eilish",
+      "years": "2001–",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/billie-eilish.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Harry Styles",
+      "years": "1994–",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/harry-styles.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Olivia Rodrigo",
+      "years": "2003–",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/olivia-rodrigo.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Bad Bunny",
+      "years": "1994–",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/bad-bunny.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Shakira",
+      "years": "1977–",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/shakira.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Missy Elliott",
+      "years": "1971–",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/missy-elliott.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Jay-Z",
+      "years": "1969–",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/jay-z.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Eminem",
+      "years": "1972–",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/eminem.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Stormzy",
+      "years": "1993–",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/stormzy.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "BTS",
+      "years": "2010–",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/bts.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "LeBron James",
+      "years": "1984–",
+      "tag": "Athlete",
+      "emoji": "🏀",
+      "img": "/famous-person/_Resources/_imgSource/images/lebron-james.jpeg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Kobe Bryant",
+      "years": "1978–2020",
+      "tag": "Athlete",
+      "emoji": "🏀",
+      "img": "/famous-person/_Resources/_imgSource/images/kobe-bryant.jpeg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Nikola Jokić",
+      "years": "1995–",
+      "tag": "Athlete",
+      "emoji": "🏀",
+      "img": "/famous-person/_Resources/_imgSource/images/nikola-jokic.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Stephen Curry",
+      "years": "1988–",
+      "tag": "Athlete",
+      "emoji": "🏀",
+      "img": "/famous-person/_Resources/_imgSource/images/stephen-curry.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Caitlin Clark",
+      "years": "2002–",
+      "tag": "Athlete",
+      "emoji": "🏀",
+      "img": "/famous-person/_Resources/_imgSource/images/caitlin-clark.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Lionel Messi",
+      "years": "1987–",
+      "tag": "Athlete",
+      "emoji": "⚽",
+      "img": "/famous-person/_Resources/_imgSource/images/lionel-messi.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Diego Maradona",
+      "years": "1960–2020",
+      "tag": "Athlete",
+      "emoji": "⚽",
+      "img": "/famous-person/_Resources/_imgSource/images/diego-maradona.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Pelé",
+      "years": "1940–2022",
+      "tag": "Athlete",
+      "emoji": "⚽",
+      "img": "/famous-person/_Resources/_imgSource/images/pele.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Naomi Osaka",
+      "years": "1997–",
+      "tag": "Athlete",
+      "emoji": "🎾",
+      "img": "/famous-person/_Resources/_imgSource/images/naomi-osaka.jpeg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Venus Williams",
+      "years": "1980–",
+      "tag": "Athlete",
+      "emoji": "🎾",
+      "img": "/famous-person/_Resources/_imgSource/images/venus-williams.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Sha'Carri Richardson",
+      "years": "2000–",
+      "tag": "Athlete",
+      "emoji": "🏃",
+      "img": "/famous-person/_Resources/_imgSource/images/sha-carri-richardson.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Marilyn Monroe",
+      "years": "1926–1962",
+      "tag": "Actor",
+      "emoji": "⭐",
+      "img": "/famous-person/_Resources/_imgSource/images/600px-Monroecirca1953.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Charlie Chaplin",
+      "years": "1889–1977",
+      "tag": "Actor",
+      "emoji": "🎬",
+      "img": "/famous-person/_Resources/_imgSource/images/charlie-chaplin.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Jackie Chan",
+      "years": "1954–",
+      "tag": "Actor",
+      "emoji": "🥋",
+      "img": "/famous-person/_Resources/_imgSource/images/jackie-chan.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Viola Davis",
+      "years": "1965–",
+      "tag": "Actor",
+      "emoji": "🎬",
+      "img": "/famous-person/_Resources/_imgSource/images/viola-davis.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Chadwick Boseman",
+      "years": "1976–2020",
+      "tag": "Actor",
+      "emoji": "🦸",
+      "img": "/famous-person/_Resources/_imgSource/images/chadwick-boseman.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Lupita Nyong'o",
+      "years": "1983–",
+      "tag": "Actor",
+      "emoji": "🎬",
+      "img": "/famous-person/_Resources/_imgSource/images/lupita-nyongo.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Zendaya",
+      "years": "2000–",
+      "tag": "Actor",
+      "emoji": "🎬",
+      "img": "/famous-person/_Resources/_imgSource/images/zendaya.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Keanu Reeves",
+      "years": "1964–",
+      "tag": "Actor",
+      "emoji": "🎬",
+      "img": "/famous-person/_Resources/_imgSource/images/keanu-reeves.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Simone de Beauvoir",
+      "years": "1908–1986",
+      "tag": "Philosopher",
+      "emoji": "✍️",
+      "img": "/famous-person/_Resources/_imgSource/images/simone-de-beauvoir.jpeg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Roald Amundsen",
+      "years": "1872–1928",
+      "tag": "Explorer",
+      "emoji": "🧭",
+      "img": "/famous-person/_Resources/_imgSource/images/roald-amundsen.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Megan Rapinoe",
+      "years": "1985–",
+      "tag": "Athlete",
+      "emoji": "⚽",
+      "img": "/famous-person/_Resources/_imgSource/images/megan-rapinoe.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Roger Federer",
+      "years": "1981–",
+      "tag": "Athlete",
+      "emoji": "🎾",
+      "img": "/famous-person/_Resources/_imgSource/images/roger-federer.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Dwayne Johnson",
+      "years": "1972–",
+      "tag": "Actor",
+      "emoji": "💪",
+      "img": "/famous-person/_Resources/_imgSource/images/dwayne-johnson.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Meryl Streep",
+      "years": "1949–",
+      "tag": "Actor",
+      "emoji": "🎬",
+      "img": "/famous-person/_Resources/_imgSource/images/meryl-streep.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Elton John",
+      "years": "1947–",
+      "tag": "Musician",
+      "emoji": "🎹",
+      "img": "/famous-person/_Resources/_imgSource/images/elton-john.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Nina Simone",
+      "years": "1933–2003",
+      "tag": "Musician",
+      "emoji": "🎹",
+      "img": "/famous-person/_Resources/_imgSource/images/nina-simone.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Sabrina Carpenter",
+      "years": "2000–",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/sabrina-carpenter.jpeg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Immanuel Kant",
+      "years": "1724–1804",
+      "tag": "Philosopher",
+      "emoji": "📜",
+      "img": "/famous-person/_Resources/_imgSource/images/600px-Immanuel_Kant_-_Gemaelde_1.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Johann Sebastian Bach",
+      "years": "1685–1750",
+      "tag": "Musician",
+      "emoji": "🎼",
+      "img": "/famous-person/_Resources/_imgSource/images/johann-sebastian-bach.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Frédéric Chopin",
+      "years": "1810–1849",
+      "tag": "Musician",
+      "emoji": "🎹",
+      "img": "/famous-person/_Resources/_imgSource/images/frederic-chopin.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Antonio Vivaldi",
+      "years": "1678–1741",
+      "tag": "Musician",
+      "emoji": "🎻",
+      "img": "/famous-person/_Resources/_imgSource/images/antonio-vivaldi.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Aretha Franklin",
+      "years": "1942–2018",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/aretha-franklin.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Ray Charles",
+      "years": "1930–2004",
+      "tag": "Musician",
+      "emoji": "🎹",
+      "img": "/famous-person/_Resources/_imgSource/images/ray-charles.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Stevie Wonder",
+      "years": "1950–",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/stevie-wonder.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Ella Fitzgerald",
+      "years": "1917–1996",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/ella-fitzgerald.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Duke Ellington",
+      "years": "1899–1974",
+      "tag": "Musician",
+      "emoji": "🎹",
+      "img": "/famous-person/_Resources/_imgSource/images/duke-ellington.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Miles Davis",
+      "years": "1926–1991",
+      "tag": "Musician",
+      "emoji": "🎺",
+      "img": "/famous-person/_Resources/_imgSource/images/miles-davis.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Johnny Cash",
+      "years": "1932–2003",
+      "tag": "Musician",
+      "emoji": "🎸",
+      "img": "/famous-person/_Resources/_imgSource/images/johnny-cash.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Frank Sinatra",
+      "years": "1915–1998",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/frank-sinatra.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Bob Dylan",
+      "years": "1941–",
+      "tag": "Musician",
+      "emoji": "🎸",
+      "img": "/famous-person/_Resources/_imgSource/images/bob-dylan.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Paul McCartney",
+      "years": "1942–",
+      "tag": "Musician",
+      "emoji": "🎸",
+      "img": "/famous-person/_Resources/_imgSource/images/paul-mccartney.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "John Lennon",
+      "years": "1940–1980",
+      "tag": "Musician",
+      "emoji": "🎸",
+      "img": "/famous-person/_Resources/_imgSource/images/john-lennon.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Prince",
+      "years": "1958–2016",
+      "tag": "Musician",
+      "emoji": "🎸",
+      "img": "/famous-person/_Resources/_imgSource/images/prince.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Madonna",
+      "years": "1958–",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/madonna.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Lady Gaga",
+      "years": "1986–",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/lady-gaga.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Adele",
+      "years": "1988–",
+      "tag": "Musician",
+      "emoji": "🎤",
+      "img": "/famous-person/_Resources/_imgSource/images/adele.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Leo Tolstoy",
+      "years": "1828–1910",
+      "tag": "Author",
+      "emoji": "📖",
+      "img": "/famous-person/_Resources/_imgSource/images/leo-tolstoy.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Fyodor Dostoevsky",
+      "years": "1821–1881",
+      "tag": "Author",
+      "emoji": "📖",
+      "img": "/famous-person/_Resources/_imgSource/images/fyodor-dostoevsky.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Jane Austen",
+      "years": "1775–1817",
+      "tag": "Author",
+      "emoji": "📖",
+      "img": "/famous-person/_Resources/_imgSource/images/jane-austen.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Oscar Wilde",
+      "years": "1854–1900",
+      "tag": "Author",
+      "emoji": "🖋️",
+      "img": "/famous-person/_Resources/_imgSource/images/oscar-wilde.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Ernest Hemingway",
+      "years": "1899–1961",
+      "tag": "Author",
+      "emoji": "📖",
+      "img": "/famous-person/_Resources/_imgSource/images/ernest-hemingway.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Franz Kafka",
+      "years": "1883–1924",
+      "tag": "Author",
+      "emoji": "📖",
+      "img": "/famous-person/_Resources/_imgSource/images/franz-kafka.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Victor Hugo",
+      "years": "1802–1885",
+      "tag": "Author",
+      "emoji": "📖",
+      "img": "/famous-person/_Resources/_imgSource/images/victor-hugo.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Dante Alighieri",
+      "years": "1265–1321",
+      "tag": "Author",
+      "emoji": "📜",
+      "img": "/famous-person/_Resources/_imgSource/images/dante-alighieri.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Miguel de Cervantes",
+      "years": "1547–1616",
+      "tag": "Author",
+      "emoji": "📖",
+      "img": "/famous-person/_Resources/_imgSource/images/miguel-de-cervantes.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "J.R.R. Tolkien",
+      "years": "1892–1973",
+      "tag": "Author",
+      "emoji": "🧙",
+      "img": "/famous-person/_Resources/_imgSource/images/j.r.r.-tolkien.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Agatha Christie",
+      "years": "1890–1976",
+      "tag": "Author",
+      "emoji": "🔎",
+      "img": "/famous-person/_Resources/_imgSource/images/agatha-christie.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Roald Dahl",
+      "years": "1916–1990",
+      "tag": "Author",
+      "emoji": "📚",
+      "img": "/famous-person/_Resources/_imgSource/images/roald-dahl.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Dr. Seuss",
+      "years": "1904–1991",
+      "tag": "Author",
+      "emoji": "📚",
+      "img": "/famous-person/_Resources/_imgSource/images/dr.-seuss.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Hans Christian Andersen",
+      "years": "1805–1875",
+      "tag": "Author",
+      "emoji": "📚",
+      "img": "/famous-person/_Resources/_imgSource/images/hans-christian-andersen.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Walt Whitman",
+      "years": "1819–1892",
+      "tag": "Author",
+      "emoji": "🖋️",
+      "img": "/famous-person/_Resources/_imgSource/images/walt-whitman.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Pablo Neruda",
+      "years": "1904–1973",
+      "tag": "Author",
+      "emoji": "🖋️",
+      "img": "/famous-person/_Resources/_imgSource/images/pablo-neruda.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Harper Lee",
+      "years": "1926–2016",
+      "tag": "Author",
+      "emoji": "📖",
+      "img": "/famous-person/_Resources/_imgSource/images/harper-lee.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "James Baldwin",
+      "years": "1924–1987",
+      "tag": "Author",
+      "emoji": "🖋️",
+      "img": "/famous-person/_Resources/_imgSource/images/james-baldwin.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Octavia Butler",
+      "years": "1947–2006",
+      "tag": "Author",
+      "emoji": "🚀",
+      "img": "/famous-person/_Resources/_imgSource/images/octavia-butler.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Stephen King",
+      "years": "1947–",
+      "tag": "Author",
+      "emoji": "📖",
+      "img": "/famous-person/_Resources/_imgSource/images/stephen-king.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Dmitri Mendeleev",
+      "years": "1834–1907",
+      "tag": "Scientist",
+      "emoji": "⚗️",
+      "img": "/famous-person/_Resources/_imgSource/images/dmitri-mendeleev.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Gregor Mendel",
+      "years": "1822–1884",
+      "tag": "Scientist",
+      "emoji": "🌱",
+      "img": "/famous-person/_Resources/_imgSource/images/gregor-mendel.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Niels Bohr",
+      "years": "1885–1962",
+      "tag": "Scientist",
+      "emoji": "⚛️",
+      "img": "/famous-person/_Resources/_imgSource/images/niels-bohr.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Richard Feynman",
+      "years": "1918–1988",
+      "tag": "Scientist",
+      "emoji": "⚛️",
+      "img": "/famous-person/_Resources/_imgSource/images/richard-feynman.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Max Planck",
+      "years": "1858–1947",
+      "tag": "Scientist",
+      "emoji": "⚛️",
+      "img": "/famous-person/_Resources/_imgSource/images/max-planck.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Enrico Fermi",
+      "years": "1901–1954",
+      "tag": "Scientist",
+      "emoji": "⚛️",
+      "img": "/famous-person/_Resources/_imgSource/images/enrico-fermi.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Michael Faraday",
+      "years": "1791–1867",
+      "tag": "Scientist",
+      "emoji": "🧲",
+      "img": "/famous-person/_Resources/_imgSource/images/michael-faraday.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Robert Oppenheimer",
+      "years": "1904–1967",
+      "tag": "Scientist",
+      "emoji": "⚛️",
+      "img": "/famous-person/_Resources/_imgSource/images/robert-oppenheimer.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Jonas Salk",
+      "years": "1914–1995",
+      "tag": "Scientist",
+      "emoji": "💉",
+      "img": "/famous-person/_Resources/_imgSource/images/jonas-salk.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Alexander Fleming",
+      "years": "1881–1955",
+      "tag": "Scientist",
+      "emoji": "🧫",
+      "img": "/famous-person/_Resources/_imgSource/images/alexander-fleming.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Tu Youyou",
+      "years": "1930–",
+      "tag": "Scientist",
+      "emoji": "🌿",
+      "img": "/famous-person/_Resources/_imgSource/images/tu-youyou.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Barbara McClintock",
+      "years": "1902–1992",
+      "tag": "Scientist",
+      "emoji": "🌽",
+      "img": "/famous-person/_Resources/_imgSource/images/barbara-mcclintock.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Lise Meitner",
+      "years": "1878–1968",
+      "tag": "Scientist",
+      "emoji": "⚛️",
+      "img": "/famous-person/_Resources/_imgSource/images/lise-meitner.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Emmy Noether",
+      "years": "1882–1935",
+      "tag": "Mathematician",
+      "emoji": "➗",
+      "img": "/famous-person/_Resources/_imgSource/images/emmy-noether.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Carl Friedrich Gauss",
+      "years": "1777–1855",
+      "tag": "Mathematician",
+      "emoji": "➗",
+      "img": "/famous-person/_Resources/_imgSource/images/carl-friedrich-gauss.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Leonhard Euler",
+      "years": "1707–1783",
+      "tag": "Mathematician",
+      "emoji": "➗",
+      "img": "/famous-person/_Resources/_imgSource/images/leonhard-euler.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Euclid",
+      "years": "~300 BCE",
+      "tag": "Mathematician",
+      "emoji": "📐",
+      "img": "/famous-person/_Resources/_imgSource/images/euclid.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Johannes Kepler",
+      "years": "1571–1630",
+      "tag": "Scientist",
+      "emoji": "🔭",
+      "img": "/famous-person/_Resources/_imgSource/images/johannes-kepler.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Edwin Hubble",
+      "years": "1889–1953",
+      "tag": "Scientist",
+      "emoji": "🔭",
+      "img": "/famous-person/_Resources/_imgSource/images/edwin-hubble.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "George Washington Carver",
+      "years": "1864–1943",
+      "tag": "Inventor",
+      "emoji": "🥜",
+      "img": "/famous-person/_Resources/_imgSource/images/george-washington-carver.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Norman Borlaug",
+      "years": "1914–2009",
+      "tag": "Scientist",
+      "emoji": "🌾",
+      "img": "/famous-person/_Resources/_imgSource/images/norman-borlaug.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Claude Monet",
+      "years": "1840–1926",
+      "tag": "Artist",
+      "emoji": "🎨",
+      "img": "/famous-person/_Resources/_imgSource/images/claude-monet.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Henri Matisse",
+      "years": "1869–1954",
+      "tag": "Artist",
+      "emoji": "🎨",
+      "img": "/famous-person/_Resources/_imgSource/images/henri-matisse.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Andy Warhol",
+      "years": "1928–1987",
+      "tag": "Artist",
+      "emoji": "🎨",
+      "img": "/famous-person/_Resources/_imgSource/images/andy-warhol.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Diego Rivera",
+      "years": "1886–1957",
+      "tag": "Artist",
+      "emoji": "🎨",
+      "img": "/famous-person/_Resources/_imgSource/images/diego-rivera.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Auguste Rodin",
+      "years": "1840–1917",
+      "tag": "Artist",
+      "emoji": "🗿",
+      "img": "/famous-person/_Resources/_imgSource/images/auguste-rodin.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Johannes Vermeer",
+      "years": "1632–1675",
+      "tag": "Artist",
+      "emoji": "🎨",
+      "img": "/famous-person/_Resources/_imgSource/images/johannes-vermeer.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Raphael",
+      "years": "1483–1520",
+      "tag": "Artist",
+      "emoji": "🎨",
+      "img": "/famous-person/_Resources/_imgSource/images/raphael.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Katsushika Hokusai",
+      "years": "1760–1849",
+      "tag": "Artist",
+      "emoji": "🌊",
+      "img": "/famous-person/_Resources/_imgSource/images/katsushika-hokusai.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Queen Elizabeth I",
+      "years": "1533–1603",
+      "tag": "Ruler",
+      "emoji": "👑",
+      "img": "/famous-person/_Resources/_imgSource/images/queen-elizabeth-i.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Queen Elizabeth II",
+      "years": "1926–2022",
+      "tag": "Royal",
+      "emoji": "👑",
+      "img": "/famous-person/_Resources/_imgSource/images/queen-elizabeth-ii.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Catherine the Great",
+      "years": "1729–1796",
+      "tag": "Ruler",
+      "emoji": "👑",
+      "img": "/famous-person/_Resources/_imgSource/images/catherine-the-great.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Charlemagne",
+      "years": "748–814",
+      "tag": "Ruler",
+      "emoji": "👑",
+      "img": "/famous-person/_Resources/_imgSource/images/charlemagne.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Tutankhamun",
+      "years": "~1341–1323 BCE",
+      "tag": "Ruler",
+      "emoji": "👑",
+      "img": "/famous-person/_Resources/_imgSource/images/tutankhamun.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Nefertiti",
+      "years": "~1370–1330 BCE",
+      "tag": "Ruler",
+      "emoji": "👑",
+      "img": "/famous-person/_Resources/_imgSource/images/nefertiti.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Ashoka",
+      "years": "~304–232 BCE",
+      "tag": "Ruler",
+      "emoji": "👑",
+      "img": "/famous-person/_Resources/_imgSource/images/ashoka.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Kublai Khan",
+      "years": "1215–1294",
+      "tag": "Ruler",
+      "emoji": "🏹",
+      "img": "/famous-person/_Resources/_imgSource/images/kublai-khan.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Simón Bolívar",
+      "years": "1783–1830",
+      "tag": "Leader",
+      "emoji": "⚔️",
+      "img": "/famous-person/_Resources/_imgSource/images/simon-bolivar.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Sun Yat-sen",
+      "years": "1866–1925",
+      "tag": "Leader",
+      "emoji": "🇨🇳",
+      "img": "/famous-person/_Resources/_imgSource/images/sun-yat-sen.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Mikhail Gorbachev",
+      "years": "1931–2022",
+      "tag": "Leader",
+      "emoji": "🕊️",
+      "img": "/famous-person/_Resources/_imgSource/images/mikhail-gorbachev.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Eva Perón",
+      "years": "1919–1952",
+      "tag": "Leader",
+      "emoji": "🌹",
+      "img": "/famous-person/_Resources/_imgSource/images/eva-peron.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Indira Gandhi",
+      "years": "1917–1984",
+      "tag": "Leader",
+      "emoji": "🇮🇳",
+      "img": "/famous-person/_Resources/_imgSource/images/indira-gandhi.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Aung San Suu Kyi",
+      "years": "1945–",
+      "tag": "Activist",
+      "emoji": "🕊️",
+      "img": "/famous-person/_Resources/_imgSource/images/aung-san-suu-kyi.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Kwame Nkrumah",
+      "years": "1909–1972",
+      "tag": "Leader",
+      "emoji": "🌍",
+      "img": "/famous-person/_Resources/_imgSource/images/kwame-nkrumah.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Cesar Chavez",
+      "years": "1927–1993",
+      "tag": "Activist",
+      "emoji": "🍇",
+      "img": "/famous-person/_Resources/_imgSource/images/cesar-chavez.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Dolores Huerta",
+      "years": "1930–",
+      "tag": "Activist",
+      "emoji": "✊",
+      "img": "/famous-person/_Resources/_imgSource/images/dolores-huerta.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "John Lewis",
+      "years": "1940–2020",
+      "tag": "Activist",
+      "emoji": "✊",
+      "img": "/famous-person/_Resources/_imgSource/images/john-lewis.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "W.E.B. Du Bois",
+      "years": "1868–1963",
+      "tag": "Activist",
+      "emoji": "📚",
+      "img": "/famous-person/_Resources/_imgSource/images/w.e.b.-du-bois.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Ida B. Wells",
+      "years": "1862–1931",
+      "tag": "Activist",
+      "emoji": "📰",
+      "img": "/famous-person/_Resources/_imgSource/images/ida-b.-wells.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Eleanor Roosevelt",
+      "years": "1884–1962",
+      "tag": "Leader",
+      "emoji": "🕊️",
+      "img": "/famous-person/_Resources/_imgSource/images/eleanor-roosevelt.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "John F. Kennedy",
+      "years": "1917–1963",
+      "tag": "Leader",
+      "emoji": "🇺🇸",
+      "img": "/famous-person/_Resources/_imgSource/images/john-f.-kennedy.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Thomas Jefferson",
+      "years": "1743–1826",
+      "tag": "Leader",
+      "emoji": "📜",
+      "img": "/famous-person/_Resources/_imgSource/images/thomas-jefferson.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Babe Ruth",
+      "years": "1895–1948",
+      "tag": "Athlete",
+      "emoji": "⚾",
+      "img": "/famous-person/_Resources/_imgSource/images/babe-ruth.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Jesse Owens",
+      "years": "1913–1980",
+      "tag": "Athlete",
+      "emoji": "🏃",
+      "img": "/famous-person/_Resources/_imgSource/images/jesse-owens.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Jackie Robinson",
+      "years": "1919–1972",
+      "tag": "Athlete",
+      "emoji": "⚾",
+      "img": "/famous-person/_Resources/_imgSource/images/jackie-robinson.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Billie Jean King",
+      "years": "1943–",
+      "tag": "Athlete",
+      "emoji": "🎾",
+      "img": "/famous-person/_Resources/_imgSource/images/billie-jean-king.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Arthur Ashe",
+      "years": "1943–1993",
+      "tag": "Athlete",
+      "emoji": "🎾",
+      "img": "/famous-person/_Resources/_imgSource/images/arthur-ashe.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
+    },
+    {
+      "name": "Wayne Gretzky",
+      "years": "1961–",
+      "tag": "Athlete",
+      "emoji": "🏒",
+      "img": "/famous-person/_Resources/_imgSource/images/wayne-gretzky.jpg",
+      "accent": "#0ea5e9",
+      "accentBg": "#e2f2fb",
+      "facts": []
+    },
+    {
+      "name": "Tom Brady",
+      "years": "1977–",
+      "tag": "Athlete",
+      "emoji": "🏈",
+      "img": "/famous-person/_Resources/_imgSource/images/tom-brady.jpg",
+      "accent": "#2563eb",
+      "accentBg": "#dbeafe",
+      "facts": []
+    },
+    {
+      "name": "Tiger Woods",
+      "years": "1975–",
+      "tag": "Athlete",
+      "emoji": "⛳",
+      "img": "/famous-person/_Resources/_imgSource/images/tiger-woods.jpg",
+      "accent": "#6b7c47",
+      "accentBg": "#eef0da",
+      "facts": []
+    },
+    {
+      "name": "Nadia Comăneci",
+      "years": "1961–",
+      "tag": "Athlete",
+      "emoji": "🤸",
+      "img": "/famous-person/_Resources/_imgSource/images/nadia-comaneci.jpg",
+      "accent": "#ea580c",
+      "accentBg": "#ffedd5",
+      "facts": []
+    },
+    {
+      "name": "Magic Johnson",
+      "years": "1959–",
+      "tag": "Athlete",
+      "emoji": "🏀",
+      "img": "/famous-person/_Resources/_imgSource/images/magic-johnson.jpg",
+      "accent": "#7c3aed",
+      "accentBg": "#ede9fe",
+      "facts": []
     }
-  ],
-  "generated": "2026-07-08T17:46:37.734Z"
+  ]
 }
