@@ -1446,34 +1446,52 @@ async function handleAdminBatch(request, env) {
     const anyOk = results.some(r => r && r.ok);
     return json({ ok: anyOk, results });
   } catch (err) {
-    return jsonError('Batch commit failed: ' + err.message, 502);
+    const m = err.message || 'error';
+    // GitHub secondary-rate-limit (403/429), transient upstream (5xx), or a
+    // ref conflict that outlived its retries → tell the client to wait & retry,
+    // instead of a bodiless-looking 502.
+    if (m === 'CONFLICT' || /: (403|429|5\d\d)\b/.test(m)) {
+      return jsonError('GitHub is throttling commits — wait a few seconds and retry. (' + m + ')', 429);
+    }
+    return jsonError('Batch commit failed: ' + m, 502);
   }
 }
 
 async function executeBatch(env, operations) {
   const BRANCH = env.GITHUB_BRANCH || 'main';
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  // Phase 1: resolve all images in parallel (download / base64 decode + create git blobs)
-  const resolved = await Promise.all(operations.map(async (op, idx) => {
-    const hasImage = !!(op.imageUrl || op.imageData);
-    if (!hasImage) return { idx, op, blobSha: null, ext: null };
-    try {
-      const { bytes, ext } = await resolveImage(op.imageUrl, op.imageData, op.imageMime);
-      const blob = await gh(env, 'POST', 'git/blobs', {
-        content: arrayBufferToBase64(bytes), encoding: 'base64',
-      });
-      return { idx, op, blobSha: blob.sha, ext };
-    } catch (err) {
-      return { idx, op, blobSha: null, ext: null, error: 'Image failed: ' + err.message };
+  // Phase 1: resolve images + create git blobs, capped at a few at a time. Firing
+  // one subrequest-pair per image via an unbounded Promise.all is what blows
+  // Cloudflare's per-invocation subrequest limit on large batches; a small pool
+  // keeps concurrent outbound requests bounded regardless of batch size.
+  const resolved = new Array(operations.length);
+  const CONCURRENCY = 5;
+  let cursor = 0;
+  async function pump() {
+    while (cursor < operations.length) {
+      const idx = cursor++;
+      const op = operations[idx];
+      const hasImage = !!(op.imageUrl || op.imageData);
+      if (!hasImage) { resolved[idx] = { idx, op, blobSha: null, ext: null }; continue; }
+      try {
+        const { bytes, ext } = await resolveImage(op.imageUrl, op.imageData, op.imageMime);
+        const blob = await gh(env, 'POST', 'git/blobs', { content: arrayBufferToBase64(bytes), encoding: 'base64' });
+        resolved[idx] = { idx, op, blobSha: blob.sha, ext };
+      } catch (err) {
+        resolved[idx] = { idx, op, blobSha: null, ext: null, error: 'Image failed: ' + err.message };
+      }
     }
-  }));
+  }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, operations.length) }, pump));
 
-  // Phase 2: build and push a single commit (retry up to 3x on conflict)
+  // Phase 2: build and push a single commit (retry on conflict, with backoff so
+  // a race against a still-settling previous commit doesn't hammer the ref).
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       return await doBatchCommit(env, BRANCH, resolved);
     } catch (err) {
-      if (err.message === 'CONFLICT' && attempt < 2) continue;
+      if (err.message === 'CONFLICT' && attempt < 2) { await sleep(400 * (attempt + 1)); continue; }
       throw err;
     }
   }
@@ -2273,6 +2291,20 @@ function ghUrl(env, path) {
 }
 
 async function gh(env, method, path, body) {
+  // Repo retarget: when REPO_SUBDIR is set (e.g. "apps/games"), the game files
+  // live under that subdirectory of GITHUB_REPO. Prefix the file paths — content
+  // reads and git-tree entry paths — while leaving the repo-wide git-data
+  // endpoints (git/ref, git/refs, git/blobs, git/trees, git/commits) untouched.
+  // Unset (default) = no prefix, i.e. current behavior — safe to deploy before
+  // the GITHUB_REPO/REPO_SUBDIR secrets are flipped.
+  const sub = (env.REPO_SUBDIR || '').replace(/^\/+|\/+$/g, '');
+  if (sub) {
+    if (method === 'GET' && path.startsWith('contents/')) {
+      path = 'contents/' + sub + '/' + path.slice(9); // "contents/".length === 9
+    } else if (method === 'POST' && path === 'git/trees' && body && Array.isArray(body.tree)) {
+      body = { ...body, tree: body.tree.map(e => (e && e.path) ? { ...e, path: sub + '/' + e.path } : e) };
+    }
+  }
   let url = ghUrl(env, path);
   if (method === 'GET' && path.startsWith('contents/')) {
     url += `?ref=${encodeURIComponent(env.GITHUB_BRANCH || 'main')}`;
