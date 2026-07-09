@@ -128,6 +128,26 @@ export default {
       }
     }
 
+    // R2-backed famous-person portraits. Try R2 (via the API worker) first; fall
+    // back to the static asset for portraits not yet migrated. The URL is identical
+    // either way, so no game or roster changes are needed. Red Carpet Convos reuses
+    // these same portrait paths, so it resolves from R2 for free.
+    const portraitMatch = url.pathname.match(
+      /^\/famous-person\/_Resources\/_imgSource\/images\/([^/]+)\.(?:jpe?g|png|gif|webp|avif|svg)$/i
+    );
+    if (request.method === "GET" && portraitMatch) {
+      try {
+        const r2Res = await env.API_WORKER.fetch(
+          new Request(new URL("/api/img/fpg/" + encodeURIComponent(portraitMatch[1]), request.url).href)
+        );
+        if (r2Res.ok) {
+          const headers = new Headers(r2Res.headers);
+          headers.set("Cache-Control", "public, max-age=600");
+          return new Response(r2Res.body, { status: 200, headers });
+        }
+      } catch (_) { /* fall through to the static asset */ }
+    }
+
     const response = await env.ASSETS.fetch(request);
 
     const contentType = response.headers.get("content-type") || "";

@@ -64,11 +64,21 @@ export default {
       return new Response(null, { status: 204, headers: corsHeaders() });
     }
 
+    // Public: serve an image straight from R2. The Pages worker rewrites portrait
+    // URLs (/famous-person/_Resources/…/<slug>.<ext>) to /api/img/fpg/<slug> and
+    // falls back to the static asset when the object isn't in R2 yet.
+    if (request.method === 'GET' && pathname.startsWith('/api/img/')) {
+      return handleServeImage(pathname, env);
+    }
+
     if (request.method === 'POST' && pathname === '/api/save-photo') {
       return handleSavePhoto(request, env);
     }
     if (request.method === 'POST' && pathname === '/api/admin/save-image') {
       return handleAdminSaveImage(request, env);
+    }
+    if (request.method === 'POST' && pathname === '/api/admin/migrate-portraits-r2') {
+      return handleMigratePortraitsR2(request, env);
     }
     if (request.method === 'POST' && pathname === '/api/admin/remove-image') {
       return handleAdminRemoveImage(request, env);
@@ -290,17 +300,21 @@ async function handleSavePhoto(request, env) {
   }
 
   const slug      = nameToSlug(personName);
-  const imgPath   = `famous-person/_Resources/_imgSource/images/${slug}.${ext}`;
   const localPath = `_Resources/_imgSource/images/${slug}.${ext}`;
 
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      await atomicFPGCommit(env, personName, imgPath, imgBytes, localPath);
-      break;
-    } catch (err) {
-      if (err.message === 'CONFLICT' && attempt < 2) continue;
-      return jsonError('GitHub commit failed: ' + err.message, 502);
-    }
+  // Portrait bytes → R2 (instant, no commit/deploy). The roster img field is
+  // patched into git only when it actually changes (see commitFPGMeta).
+  try {
+    await putPortraitR2(env, slug, imgBytes, ext);
+  } catch (err) {
+    return jsonError('R2 image save failed: ' + err.message, 502);
+  }
+  try {
+    await commitFPGMetaWithRetry(env, { personName, localPath });
+  } catch (err) {
+    // Image is already in R2 and serves fine; a stale roster img field still
+    // resolves via the extension-agnostic key, so a meta failure is non-fatal.
+    return json({ ok: true, localPath, metaWarning: err.message });
   }
 
   return json({ ok: true, localPath });
@@ -347,13 +361,24 @@ async function handleAdminSaveImage(request, env) {
     oldLocalPath = oldFilename ? `_Resources/_imgSource/${folder}/${oldFilename}` : null;
   }
 
+  if (game === 'FamousPersonGame') {
+    const base = saveFilename.replace(/\.[^.]+$/, '');
+    try {
+      await putPortraitR2(env, base, imgBytes, ext);
+    } catch (err) {
+      return jsonError('R2 image save failed: ' + err.message, 502);
+    }
+    try {
+      await commitFPGMetaWithRetry(env, { personName, personMeta, localPath });
+    } catch (err) {
+      return json({ ok: true, path: localPath, filename: saveFilename, metaWarning: err.message });
+    }
+    return json({ ok: true, path: localPath, filename: saveFilename });
+  }
+
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      if (game === 'FamousPersonGame') {
-        await atomicFPGCommit(env, personName, repoPath, imgBytes, localPath, personMeta);
-      } else {
-        await atomicManifestSaveCommit(env, game, folder, saveFilename, repoPath, imgBytes, localPath, oldLocalPath);
-      }
+      await atomicManifestSaveCommit(env, game, folder, saveFilename, repoPath, imgBytes, localPath, oldLocalPath);
       break;
     } catch (err) {
       if (err.message === 'CONFLICT' && attempt < 2) continue;
@@ -389,6 +414,13 @@ async function handleAdminRemoveImage(request, env) {
     repoPath = `${gameFolder(game)}/_Resources/_imgSource/${folder}/${filename}`;
   }
 
+  // Portrait bytes live in R2 — delete the object so a removed portrait stops
+  // serving. Best-effort; the git commit below still removes any legacy static
+  // file and clears the roster img field.
+  if (game === 'FamousPersonGame' && env.IMAGES) {
+    try { await env.IMAGES.delete(fpgR2Key(filename.replace(/\.[^.]+$/, ''))); } catch { /* non-fatal */ }
+  }
+
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       if (game === 'FamousPersonGame') {
@@ -404,6 +436,82 @@ async function handleAdminRemoveImage(request, env) {
   }
 
   return json({ ok: true });
+}
+
+// ─── Public: serve an image from R2 ──────────────────────────────────────────
+// GET /api/img/<key>. Returns the stored bytes + content-type, or 404 when the
+// object isn't in R2 (the Pages worker then falls back to the static asset).
+async function handleServeImage(pathname, env) {
+  const key = decodeURIComponent(pathname.slice('/api/img/'.length));
+  if (!key || key.includes('..')) return new Response('Not found', { status: 404 });
+  if (!env.IMAGES)                 return new Response('Not found', { status: 404 });
+
+  let obj;
+  try { obj = await env.IMAGES.get(key); }
+  catch { return new Response('Not found', { status: 404 }); }
+  if (!obj) return new Response('Not found', { status: 404 });
+
+  const headers = new Headers();
+  obj.writeHttpMetadata(headers);
+  if (!headers.has('content-type')) headers.set('content-type', 'image/jpeg');
+  headers.set('etag', obj.httpEtag);
+  headers.set('Cache-Control', 'public, max-age=600');
+  headers.set('Access-Control-Allow-Origin', '*');
+  return new Response(obj.body, { headers });
+}
+
+// ─── Admin: migrate existing portraits into R2 ───────────────────────────────
+// One-time backfill: copy the deployed famous-person portraits (repo files) into
+// R2 under fpg/<slug>. Chunked + resumable so a single invocation stays within
+// Cloudflare limits — POST { start, limit }, repeat with the returned nextStart
+// until { done:true }. Idempotent (re-running just re-PUTs the same bytes).
+async function handleMigratePortraitsR2(request, env) {
+  const authErr = await requireAdmin(request, env);
+  if (authErr) return authErr;
+  if (!env.IMAGES) return jsonError('R2 bucket IMAGES not bound', 500);
+
+  let body = {};
+  try { body = await request.json(); } catch { /* defaults */ }
+  const start = Number.isInteger(body.start) ? Math.max(0, body.start) : 0;
+  const limit = Number.isInteger(body.limit) ? Math.min(Math.max(1, body.limit), 50) : 40;
+
+  let listing;
+  try {
+    listing = await gh(env, 'GET', 'contents/famous-person/_Resources/_imgSource/images');
+  } catch (err) {
+    return jsonError('Failed to list portraits: ' + err.message, 502);
+  }
+  const files = (Array.isArray(listing) ? listing : [])
+    .filter(f => f.type === 'file' && /\.(jpe?g|png|webp|gif|avif|svg)$/i.test(f.name))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const total = files.length;
+  const slice = files.slice(start, start + limit);
+
+  const migrated = [];
+  const failed   = [];
+  const CONCURRENCY = 5;
+  let cursor = 0;
+  async function pump() {
+    while (cursor < slice.length) {
+      const f    = slice[cursor++];
+      const base = f.name.replace(/\.[^.]+$/, '');
+      const ext  = f.name.split('.').pop().toLowerCase();
+      try {
+        const blob   = await gh(env, 'GET', `git/blobs/${f.sha}`);
+        const binary = atob(blob.content.replace(/\s/g, ''));
+        const bytes  = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        await env.IMAGES.put(fpgR2Key(base), bytes.buffer, { httpMetadata: { contentType: mimeForExt(ext) } });
+        migrated.push(base);
+      } catch (err) {
+        failed.push({ name: f.name, error: err.message });
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, slice.length) }, pump));
+
+  const nextStart = start + slice.length;
+  return json({ ok: true, total, start, count: migrated.length, migrated, failed, nextStart, done: nextStart >= total });
 }
 
 // ─── Admin: archive-topic ─────────────────────────────────────────────────────
@@ -703,60 +811,52 @@ async function atomicFPGRenamePersonCommit(env, currentName, newName) {
   if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
 }
 
-// ─── Atomic commit: FamousPersonGame image save/add ──────────────────────────
+// ─── Commit ONLY the FPG roster text (img field / new person) ────────────────
+// The portrait bytes now live in R2, so a save no longer commits an image blob.
+// This patches famous-person/index.html and commits *only when the roster text
+// actually changes*. Replacing an existing portrait (img field already correct)
+// is a no-op here → no commit, no deploy, instant. Returns { changed }.
+async function commitFPGMeta(env, { personName, personMeta, localPath }) {
+  const branch = env.GITHUB_BRANCH || 'main';
 
-async function atomicFPGCommit(env, personName, imgPath, imgBytes, localPath, personMeta) {
-  const refData    = await gh(env, 'GET', `git/ref/heads/${env.GITHUB_BRANCH || 'main'}`);
+  const htmlFile = await gh(env, 'GET', 'contents/famous-person/index.html');
+  const htmlNow  = base64ToUtf8(htmlFile.content.replace(/\s/g, ''));
+  let   htmlPatched = htmlNow;
+  if (personName)      htmlPatched = patchImg(htmlNow, personName, localPath);
+  else if (personMeta) htmlPatched = appendPerson(htmlNow, localPath, personMeta);
+
+  if (htmlPatched === htmlNow) return { changed: false };
+
+  const refData    = await gh(env, 'GET', `git/ref/heads/${branch}`);
   const headSha    = refData.object.sha;
   const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
   const treeSha    = commitData.tree.sha;
 
-  const htmlFile   = await gh(env, 'GET', 'contents/famous-person/index.html');
-  const htmlNow    = base64ToUtf8(htmlFile.content.replace(/\s/g, ''));
-  let   htmlPatched;
-
-  if (personName) {
-    // Replace existing person's img field
-    htmlPatched = patchImg(htmlNow, personName, localPath);
-  } else if (personMeta) {
-    // Append new person entry
-    htmlPatched = appendPerson(htmlNow, localPath, personMeta);
-  } else {
-    htmlPatched = htmlNow;
-  }
-
-  const imgBlob = await gh(env, 'POST', 'git/blobs', {
-    content:  arrayBufferToBase64(imgBytes),
-    encoding: 'base64',
+  const htmlBlob = await gh(env, 'POST', 'git/blobs', { content: utf8ToBase64(htmlPatched), encoding: 'base64' });
+  const newTree  = await gh(env, 'POST', 'git/trees', {
+    base_tree: treeSha,
+    tree: [{ path: 'famous-person/index.html', mode: '100644', type: 'blob', sha: htmlBlob.sha }],
   });
-
-  const treeEntries = [
-    { path: imgPath, mode: '100644', type: 'blob', sha: imgBlob.sha },
-  ];
-
-  if (htmlPatched !== htmlNow) {
-    const htmlBlob = await gh(env, 'POST', 'git/blobs', {
-      content:  utf8ToBase64(htmlPatched),
-      encoding: 'base64',
-    });
-    treeEntries.push({
-      path: 'famous-person/index.html',
-      mode: '100644',
-      type: 'blob',
-      sha:  htmlBlob.sha,
-    });
-  }
-
-  const newTree   = await gh(env, 'POST', 'git/trees', { base_tree: treeSha, tree: treeEntries });
   const newCommit = await gh(env, 'POST', 'git/commits', {
-    message: personName ? `Update image for ${personName}` : `Add image ${imgPath}`,
+    message: personName ? `Update roster img for ${personName}` : `Add person ${(personMeta && personMeta.name) || ''}`.trim(),
     tree:    newTree.sha,
     parents: [headSha],
   });
-
-  const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${env.GITHUB_BRANCH || 'main'}`, { sha: newCommit.sha, force: false });
+  const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${branch}`, { sha: newCommit.sha, force: false });
   if (refRes.status === 422) throw new Error('CONFLICT');
   if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
+  return { changed: true };
+}
+
+async function commitFPGMetaWithRetry(env, args) {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try { return await commitFPGMeta(env, args); }
+    catch (err) {
+      if (err.message === 'CONFLICT' && attempt < 2) { await sleep(400 * (attempt + 1)); continue; }
+      throw err;
+    }
+  }
 }
 
 // ─── Atomic commit: FamousPersonGame image remove ────────────────────────────
@@ -1476,8 +1576,16 @@ async function executeBatch(env, operations) {
       if (!hasImage) { resolved[idx] = { idx, op, blobSha: null, ext: null }; continue; }
       try {
         const { bytes, ext } = await resolveImage(op.imageUrl, op.imageData, op.imageMime);
-        const blob = await gh(env, 'POST', 'git/blobs', { content: arrayBufferToBase64(bytes), encoding: 'base64' });
-        resolved[idx] = { idx, op, blobSha: blob.sha, ext };
+        // Famous-person portraits go straight to R2 — no git blob, no tree entry.
+        // Other games still commit their image bytes as a git blob.
+        if (op.type === 'save-image' && op.game === 'FamousPersonGame') {
+          const base = (op.filename || '').replace(/\.[^.]+$/, '') || nameToSlug(op.personName || '');
+          await putPortraitR2(env, base, bytes, ext);
+          resolved[idx] = { idx, op, blobSha: null, ext, r2Base: base };
+        } else {
+          const blob = await gh(env, 'POST', 'git/blobs', { content: arrayBufferToBase64(bytes), encoding: 'base64' });
+          resolved[idx] = { idx, op, blobSha: blob.sha, ext };
+        }
       } catch (err) {
         resolved[idx] = { idx, op, blobSha: null, ext: null, error: 'Image failed: ' + err.message };
       }
@@ -1569,9 +1677,10 @@ async function doBatchCommit(env, branch, resolved) {
       if (game === 'FamousPersonGame') {
         const base         = filename.replace(/\.[^.]+$/, '');
         const saveFilename = `${base}.${ext}`;
-        const repoPath     = `famous-person/_Resources/_imgSource/images/${saveFilename}`;
         const localPath    = `_Resources/_imgSource/images/${saveFilename}`;
-        treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: blobSha });
+        // Portrait bytes were written to R2 in phase 1 — no git blob/tree entry.
+        // Only the roster text is committed, and only if patchImg/appendPerson
+        // actually changes it (an existing-portrait replace touches nothing).
         if (op.personName) fpgHtml = patchImg(fpgHtml, op.personName, localPath);
         else if (op.personMeta) fpgHtml = appendPerson(fpgHtml, localPath, op.personMeta);
         results[idx] = { ok: true, localPath, filename: saveFilename };
@@ -1651,6 +1760,7 @@ async function doBatchCommit(env, branch, resolved) {
         const repoPath = `famous-person/_Resources/_imgSource/images/${filename}`;
         treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: null });
         if (personName && fpgHtml) fpgHtml = patchImg(fpgHtml, personName, '');
+        if (env.IMAGES) { try { await env.IMAGES.delete(fpgR2Key(filename.replace(/\.[^.]+$/, ''))); } catch { /* non-fatal */ } }
       } else if (manifests[game]) {
         const repoPath = `${gameFolder(game)}/_Resources/_imgSource/${folder}/${filename}`;
         treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: null });
@@ -2366,6 +2476,30 @@ async function downloadImage(url) {
         : 'jpg');
 
   return { bytes: await res.arrayBuffer(), ext };
+}
+
+// ─── R2 image storage ─────────────────────────────────────────────────────────
+// Famous-person portraits live in R2 under an extension-agnostic key
+// (`fpg/<slug>`) so a portrait resolves no matter which .jpg/.png the roster
+// happens to reference. The content-type is stored as R2 metadata and replayed
+// on serve. All game/roster image URLs are unchanged — only the backing store is.
+
+const EXT_TO_MIME = {
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+  webp: 'image/webp', gif: 'image/gif', avif: 'image/avif', svg: 'image/svg+xml',
+};
+function mimeForExt(ext) { return EXT_TO_MIME[(ext || '').toLowerCase()] || 'image/jpeg'; }
+
+const FPG_R2_PREFIX = 'fpg/';
+function fpgR2Key(base) { return FPG_R2_PREFIX + base; }
+
+// Write a famous-person portrait to R2. `bytes` is an ArrayBuffer; `base` is the
+// slug (filename without extension). Throws if the IMAGES binding is missing.
+async function putPortraitR2(env, base, bytes, ext) {
+  if (!env.IMAGES) throw new Error('R2 bucket IMAGES not bound');
+  await env.IMAGES.put(fpgR2Key(base), bytes, {
+    httpMetadata: { contentType: mimeForExt(ext) },
+  });
 }
 
 // ─── Encoding helpers ─────────────────────────────────────────────────────────
