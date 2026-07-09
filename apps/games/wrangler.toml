@@ -2,3 +2,11 @@ name = "games-save-photo"
 main = "worker.js"
 compatibility_date = "2025-01-01"
 account_id = "aa9d905614ee070b1013569b08b46776"
+
+# Portrait / image storage. Famous-person portraits are written straight to R2
+# (instant — no GitHub commit, no Pages deploy, no 502-class failures) and served
+# back through the /api/img/* route. Shared across prod + dev: a portrait is the
+# same content in either environment, so there's no dev/prod data to diverge.
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "games-images"
