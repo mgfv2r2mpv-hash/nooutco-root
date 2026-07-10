@@ -62,6 +62,16 @@ const ART_GATE_NEW = `personArt:base==='person'&&s.theme==='social'&&!!this.artB
 if (!payload.includes(ART_GATE_OLD)) throw new Error('build_index: personArt gate line not found — source logic changed, re-derive the patch');
 payload = payload.replace(ART_GATE_OLD, ART_GATE_NEW);
 
+// M1 scope: ship the makeover (social/person) only. Remove the Pet show +
+// Superhero theme <option>s from the settings dropdown so those unfinished
+// themes (procedural-placeholder art, M2) aren't reachable. `social` stays the
+// default, and the game logic still supports the other themes for M2.
+for (const t of ['pet', 'hero']) {
+  const re = new RegExp(`<option value="${t}">[^<]*</option>`);
+  if (!re.test(payload)) throw new Error(`build_index: theme option '${t}' not found — settings markup changed`);
+  payload = payload.replace(re, '');
+}
+
 // Post-conditions: both nodes survived.
 if (!/<x-dc>[\s\S]*<\/x-dc>/.test(payload)) throw new Error('build_index: <x-dc>…</x-dc> missing after transform');
 if (!/type="text\/x-dc"\s+data-dc-script/.test(payload)) throw new Error('build_index: data-dc-script missing after transform');
