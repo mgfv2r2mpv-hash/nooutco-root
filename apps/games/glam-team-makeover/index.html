@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="version" content="1.0">
+<title>Glam Team Makeover</title>
+
+<!-- Shared design tokens + Atkinson fonts (compiled bundle, same as every game) -->
+<link rel="stylesheet" href="../tailwind.css">
+
+<style>
+  body { margin:0; background:var(--surface-page); font-family:var(--font-sans); color:var(--text-body); }
+  @keyframes gtm-cue { 0%,100%{ box-shadow:0 0 0 0 rgba(245,158,11,0);} 50%{ box-shadow:0 0 0 6px rgba(245,158,11,.30);} }
+  @keyframes gtm-pop { 0%{ opacity:0; transform:scale(.85);} 60%{ transform:scale(1.04);} 100%{ opacity:1; transform:scale(1);} }
+  @keyframes gtm-target { 0%,100%{ box-shadow:0 0 0 3px rgba(106,118,89,.30);} 50%{ box-shadow:0 0 0 8px rgba(106,118,89,.12);} }
+  @keyframes gtm-pim { 0%,100%{ box-shadow:0 0 0 0 rgba(220,38,38,.35);} 50%{ box-shadow:0 0 0 6px rgba(220,38,38,.12);} }
+  .gtm-scroll::-webkit-scrollbar{ width:8px;height:8px; } .gtm-scroll::-webkit-scrollbar-thumb{ background:var(--slate-300); border-radius:8px; }
+  .gtm-tool{ touch-action:none; }
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; } }
+</style>
+
+<!-- Shared reinforcement (SR) screen · this game's art manifest.
+     Loaded here (not via the design-canvas helmet) so window.NooutcoReward and
+     window.NooutcoArt exist before the runtime boots and first-renders. -->
+<script src="../reward.js"></script>
+<script src="assets/art-manifest.js"></script>
+
+<!-- Vendored React 18 (UMD) + the design-canvas runtime. Scoped to this one game;
+     no other game uses a framework. Must load before the runtime auto-boots. -->
+<script src="vendor/react.production.min.js"></script>
+<script src="vendor/react-dom.production.min.js"></script>
+<script src="vendor/support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="min-height:100vh;display:flex;flex-direction:column">
+
+  <!-- HEADER -->
+  <header style="display:flex;align-items:center;gap:10px;background:var(--slate-800);color:#fff;padding:9px 15px;flex-shrink:0;border-bottom:2px solid var(--sage-700)">
+    <a href="/" style="display:inline-flex;align-items:center;padding:5px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);border-radius:6px;font-size:12px;font-weight:600;color:#fff;text-decoration:none;white-space:nowrap;flex-shrink:0">← Games</a>
+    <div style="display:flex;flex-direction:column;line-height:1.15;margin-right:auto;white-space:nowrap;min-width:150px">
+      <span style="font-size:15px;font-weight:800;letter-spacing:-.01em;white-space:nowrap">Glam Team Makeover</span>
+      <span style="font-size:10px;font-weight:500;color:var(--slate-400);letter-spacing:.03em;white-space:nowrap">No Outcome ABA · take turns, together</span>
+    </div>
+    <button onClick="{{ onMethod }}" style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);color:#fff;font-family:inherit;font-size:11px;font-weight:700;padding:6px 11px;border-radius:6px;cursor:pointer;white-space:nowrap">ⓘ Method</button>
+    <span style="font-family:var(--font-mono);font-size:17px;font-weight:700;background:rgba(0,0,0,.32);padding:3px 11px;border-radius:6px;letter-spacing:.05em">{{ clock }}</span>
+    <button onClick="{{ onMinimize }}" title="Show / hide setup" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);color:#fff;width:32px;height:30px;border-radius:6px;font-size:16px;line-height:1;cursor:pointer;flex-shrink:0">{{ minGlyph }}</button>
+  </header>
+
+  <!-- SETTINGS -->
+  <div style="{{ settingsStyle }}">
+    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:11px 15px;background:var(--surface-card);border-bottom:1px solid var(--border-default);padding:9px 16px;box-shadow:var(--shadow-sm)">
+      <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Theme</label>
+        <select value="{{ theme }}" onChange="{{ onTheme }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="social">🎉 Social event</option><option value="pet">🐾 Pet show</option><option value="hero">🦸 Superhero</option></select></div>
+      <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Turn map</label>
+        <select value="{{ turnMap }}" onChange="{{ onMap }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="banner">Banner</option><option value="vanity">Vanity stations</option><option value="runway">Turn runway</option></select></div>
+      <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">My turn</label>
+        <select value="{{ countMode }}" onChange="{{ onCount }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="shown">Count shown</option><option value="hidden">Count hidden</option><option value="timed">Timed</option></select>
+        <select value="{{ actionGoal }}" onChange="{{ onActionGoal }}" style="padding:5px 6px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select>
+        <span style="font-size:11px;color:var(--text-muted)">{{ myTurnUnit }}</span></div>
+      <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Their turn</label>
+        <select value="{{ partnerTurn }}" onChange="{{ onPartnerTurn }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="match">Same as mine (fair)</option><option value="2">2 actions</option><option value="3">3 actions</option><option value="4">4 actions</option><option value="t20">Timed 20s</option><option value="t30">Timed 30s</option></select></div>
+      <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Give-back</label>
+        <select value="{{ giveBack }}" onChange="{{ onGiveBack }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="prompted">They hand it back</option><option value="forgets">They "forget" → I ask</option></select></div>
+      <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Ask cue</label>
+        <select value="{{ cueLevel }}" onChange="{{ onCueLevel }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="full">Full sentence</option><option value="short">Short</option><option value="icon">Icon only</option><option value="none">None (probe)</option></select></div>
+      <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Goal</label>
+        <select value="{{ tokenGoal }}" onChange="{{ onTokenGoal }}" style="padding:5px 6px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="3">3 ⭐</option><option value="5">5 ⭐</option><option value="8">8 ⭐</option></select></div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:var(--text-body);cursor:pointer"><input type="checkbox" checked="{{ extraTime }}" onChange="{{ onExtra }}" style="accent-color:var(--brand-primary);cursor:pointer">Earn more time after I hand it back</label>
+      <button onClick="{{ onPlay }}" style="margin-left:auto;background:var(--brand-primary);color:#fff;border:none;padding:9px 28px;border-radius:8px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-sm)">▶ Play</button>
+    </div>
+  </div>
+
+  <!-- INTRO -->
+  <sc-if value="{{ isIntro }}" hint-placeholder-val="{{ true }}">
+    <section style="flex:1;display:flex;justify-content:center;align-items:flex-start;padding:26px 20px">
+      <div style="width:min(680px,100%);background:var(--surface-card);border:1px solid var(--border-default);border-radius:16px;box-shadow:var(--shadow-md);padding:28px 30px;text-align:center">
+        <div style="font-size:56px;line-height:1">{{ introEmoji }}</div>
+        <h2 style="font-size:24px;font-weight:800;color:var(--text-primary);margin:10px 0 8px;letter-spacing:-.01em">{{ introTitle }}</h2>
+        <p style="font-size:15px;line-height:1.55;color:var(--text-body);max-width:520px;margin:0 auto 18px">{{ introText }}</p>
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:22px">
+          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted)">The routine</span>
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:var(--sage-50);border:1px solid var(--sage-200);border-radius:999px;font-size:12px;font-weight:700;color:var(--sage-700)">🧼 Skincare</span>
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:var(--sage-50);border:1px solid var(--sage-200);border-radius:999px;font-size:12px;font-weight:700;color:var(--sage-700)">💇 Hair</span>
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:var(--sage-50);border:1px solid var(--sage-200);border-radius:999px;font-size:12px;font-weight:700;color:var(--sage-700)">💄 Makeup</span>
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:var(--sage-50);border:1px solid var(--sage-200);border-radius:999px;font-size:12px;font-weight:700;color:var(--sage-700)">👗 Outfit</span>
+        </div>
+        <button onClick="{{ onPlay }}" style="background:var(--brand-primary);color:#fff;border:none;padding:12px 34px;border-radius:10px;font-size:17px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md)">Start — my turn first ▸</button>
+      </div>
+    </section>
+  </sc-if>
+
+  <!-- GAME -->
+  <sc-if value="{{ showGame }}" hint-placeholder-val="{{ false }}">
+    <main style="flex:1;display:flex;flex-direction:column;padding:12px 16px 16px;gap:11px">
+
+      <sc-if value="{{ mapBanner }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ bannerStyle }}">
+          <div style="width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:25px;flex-shrink:0;{{ bannerAvatarStyle }}">{{ whoseGlyph }}</div>
+          <div style="min-width:0"><div style="font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;{{ turnLabelColor }}">{{ turnLabel }}</div><div style="font-size:19px;font-weight:800;color:var(--slate-900);letter-spacing:-.01em">{{ instruction }}</div></div>
+          <div style="margin-left:auto;text-align:right">{{ turnMeter }}</div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ mapVanity }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:stretch;gap:10px">
+          <div style="{{ stationMeStyle }}"><span style="font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;{{ stationMeLabelColor }}">{{ stationMeLabel }}</span><div style="width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:23px;background:#fff;{{ stationMeRing }}">🦸</div><div style="font-size:13px;font-weight:800;color:var(--slate-900)">Me</div><div style="{{ meBrushStyle }}">🖌 my brush</div></div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:6px 10px;background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;font-size:14px;font-weight:700;color:var(--slate-700);text-align:center">{{ instruction }}</div>
+          <div style="{{ stationThemStyle }}"><span style="font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;{{ stationThemLabelColor }}">{{ stationThemLabel }}</span><div style="width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:23px;background:#fff;{{ stationThemRing }}">🧑‍⚕️</div><div style="font-size:13px;font-weight:800;color:var(--slate-900)">Them</div><div style="{{ themBrushStyle }}">🖌 their brush</div></div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ mapRunway }}" hint-placeholder-val="{{ false }}">
+        <div class="gtm-scroll" style="display:flex;align-items:center;gap:5px;padding:10px 14px;background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;overflow-x:auto">
+          <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-right:4px;flex-shrink:0">Turns</span>
+          <sc-for list="{{ runwayTiles }}" as="tile" hint-placeholder-count="5"><div style="{{ tile.style }}"><span style="font-size:{{ tile.glyphSize }}">{{ tile.glyph }}</span><span style="font-size:9px;font-weight:800;{{ tile.badgeColor }}">{{ tile.badge }}</span></div></sc-for>
+        </div>
+      </sc-if>
+
+      <div style="flex:1;display:flex;gap:14px;flex-wrap:wrap;align-items:stretch">
+        <!-- STAGE -->
+        <div style="{{ stageStyle }}">
+          <span style="position:absolute;top:12px;left:14px;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint);z-index:3">Our makeover</span>
+          <sc-if value="{{ artModelPicker }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;top:8px;right:12px;display:flex;gap:6px;z-index:6">
+              <sc-for list="{{ artModels }}" as="am" hint-placeholder-count="0">
+                <button onClick="{{ am.pick }}" style="{{ am.style }}">{{ am.label }}</button>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ sceneFrame }}" hint-placeholder-val="{{ false }}"><img src="{{ sceneFrame }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:2"></sc-if>
+
+          <sc-if value="{{ personShow }}" hint-placeholder-val="{{ true }}">
+            <div style="position:relative;width:320px;height:360px">
+              <sc-if value="{{ personArt }}" hint-placeholder-val="{{ false }}">
+                <img src="{{ personArtBase }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:1">
+                <sc-for list="{{ personArtLayers }}" as="ly" hint-placeholder-count="0"><img src="{{ ly.src }}" style="{{ ly.style }}"></sc-for>
+              </sc-if>
+              <sc-if value="{{ personProcedural }}" hint-placeholder-val="{{ true }}">
+              <svg viewBox="0 0 260 300" style="width:100%;height:100%">
+                <defs>
+                  <radialGradient id="gtmSkin" cx="47%" cy="37%" r="70%"><stop offset="0%" stop-color="#fbdcbb"></stop><stop offset="60%" stop-color="#f2c398"></stop><stop offset="100%" stop-color="#e3ac82"></stop></radialGradient>
+                  <radialGradient id="gtmGlow" cx="50%" cy="45%" r="60%"><stop offset="0%" stop-color="#fff7e6" stop-opacity=".9"></stop><stop offset="100%" stop-color="#fff7e6" stop-opacity="0"></stop></radialGradient>
+                  <radialGradient id="gtmIris" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#8d6a4a"></stop><stop offset="70%" stop-color="#5b4128"></stop><stop offset="100%" stop-color="#3c2a17"></stop></radialGradient>
+                  <filter id="gtmSft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="4"></feGaussianBlur></filter>
+                  <filter id="gtmSft2" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2"></feGaussianBlur></filter>
+                </defs>
+                <path d="{{ V.capePath }}" fill="{{ V.capeFill }}" opacity="{{ V.capeOp }}"></path>
+                <path d="{{ V.garmentPath }}" fill="{{ V.garmentFill }}"></path>
+                <path d="{{ V.garmentTrim }}" fill="{{ V.garmentTrimFill }}" opacity="{{ V.garmentTrimOp }}"></path>
+                <path d="M116 190 C116 206 113 216 107 223 L153 223 C147 216 144 206 144 190 C138 197 122 197 116 190 Z" fill="#e9b788"></path>
+                <path d="M82 128 C79 88 102 62 130 62 C158 62 181 88 178 128 C176 168 160 202 130 210 C100 202 84 168 82 128 Z" fill="url(#gtmSkin)"></path>
+                <path d="M84 130 C75 127 70 138 76 149 C80 158 90 159 93 151 C88 148 86 140 89 135 Z" fill="#e9b788"></path>
+                <path d="M176 130 C185 127 190 138 184 149 C180 158 170 159 167 151 C172 148 174 140 171 135 Z" fill="#e9b788"></path>
+                <ellipse cx="130" cy="128" rx="49" ry="62" fill="#b7a68f" opacity="{{ V.dullOp }}" filter="url(#gtmSft)"></ellipse>
+                <ellipse cx="104" cy="112" rx="15" ry="12" fill="#caa07d" opacity="{{ V.dullOp }}" filter="url(#gtmSft)"></ellipse>
+                <ellipse cx="152" cy="150" rx="16" ry="12" fill="#b98f74" opacity="{{ V.dullOp }}" filter="url(#gtmSft)"></ellipse>
+                <ellipse cx="130" cy="118" rx="48" ry="55" fill="url(#gtmGlow)" opacity="{{ V.moistOp }}"></ellipse>
+                <path d="M76 166 C66 128 70 50 94 36 C110 26 122 24 130 24 C138 24 150 26 166 36 C190 50 194 128 184 166 C180 136 172 114 158 108 C146 101 140 100 130 100 C120 100 114 101 102 108 C88 114 80 136 76 166 Z" fill="{{ V.hairFill }}"></path>
+                <text x="85" y="149" font-size="12" text-anchor="middle" opacity="{{ V.earOp }}">{{ V.earGlyph }}</text>
+                <text x="175" y="149" font-size="12" text-anchor="middle" opacity="{{ V.earOp }}">{{ V.earGlyph }}</text>
+                <path d="{{ V.contourPath }}" fill="#b07a52" opacity="{{ V.contourOp }}" filter="url(#gtmSft)"></path>
+                <ellipse cx="100" cy="150" rx="15" ry="10" fill="{{ V.blushFill }}" opacity="{{ V.blushOp }}" filter="url(#gtmSft)"></ellipse><ellipse cx="160" cy="150" rx="15" ry="10" fill="{{ V.blushFill }}" opacity="{{ V.blushOp }}" filter="url(#gtmSft)"></ellipse>
+                <ellipse cx="108" cy="134" rx="8" ry="5" fill="#fff6d8" opacity="{{ V.hlOp }}" filter="url(#gtmSft2)"></ellipse><ellipse cx="152" cy="134" rx="8" ry="5" fill="#fff6d8" opacity="{{ V.hlOp }}" filter="url(#gtmSft2)"></ellipse><ellipse cx="130" cy="160" rx="6" ry="3" fill="#fff6d8" opacity="{{ V.hlOp }}" filter="url(#gtmSft2)"></ellipse>
+                <ellipse cx="108" cy="125" rx="14" ry="7" fill="{{ V.shadowFill }}" opacity="{{ V.shadowOp }}" filter="url(#gtmSft)"></ellipse><ellipse cx="152" cy="125" rx="14" ry="7" fill="{{ V.shadowFill }}" opacity="{{ V.shadowOp }}" filter="url(#gtmSft)"></ellipse>
+                <path d="M91 113 C103 105 121 106 132 113 C121 109 105 110 93 117 Z" fill="#6b533f" opacity="{{ V.browBushyOp }}"></path><path d="M128 113 C139 106 157 105 169 113 C167 110 151 109 138 117 Z" fill="#6b533f" opacity="{{ V.browBushyOp }}"></path>
+                <path d="M126 111 C116 106 103 107 95 112 C104 111 117 110 126 114 C128 113 128 112 126 111 Z" fill="{{ V.browColor }}" opacity="{{ V.browShapedOp }}"></path><path d="M134 111 C144 106 157 107 165 112 C156 111 143 110 134 114 C132 113 132 112 134 111 Z" fill="{{ V.browColor }}" opacity="{{ V.browShapedOp }}"></path>
+                <path d="M96 132 C104 125 118 125 125 132 C118 139 104 139 96 132 Z" fill="#fff"></path><path d="M135 132 C142 125 156 125 164 132 C156 139 142 139 135 132 Z" fill="#fff"></path>
+                <circle cx="110" cy="132" r="6.4" fill="url(#gtmIris)"></circle><circle cx="150" cy="132" r="6.4" fill="url(#gtmIris)"></circle>
+                <circle cx="110" cy="132" r="2.9" fill="#241810"></circle><circle cx="150" cy="132" r="2.9" fill="#241810"></circle>
+                <circle cx="112" cy="130" r="1.5" fill="#fff"></circle><circle cx="152" cy="130" r="1.5" fill="#fff"></circle>
+                <path d="M125 131 C118 126 104 126 96 131 M96 131 l-4 -4" stroke="#241810" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="{{ V.linerOp }}"></path><path d="M135 131 C142 126 156 126 164 131 M164 131 l4 -4" stroke="#241810" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="{{ V.linerOp }}"></path>
+                <path d="M96 129 l-3 -4 M101 127 l-2 -4 M159 127 l2 -4 M164 129 l3 -4" stroke="#241810" stroke-width="1.4" stroke-linecap="round" opacity="{{ V.mascaraOp }}"></path>
+                <path d="M130 134 C127 148 123 154 118 157 C123 160 130 159 134 156" stroke="#d9a97e" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path>
+                <circle cx="118" cy="90" r="4.6" fill="#df7059"></circle><circle cx="117" cy="89" r="1.6" fill="#f4b3a6"></circle><g opacity="{{ V.pim0 }}"></g>
+                <circle cx="118" cy="90" r="4.6" fill="#df7059" opacity="{{ V.pim0 }}"></circle><circle cx="99" cy="151" r="4.6" fill="#df7059" opacity="{{ V.pim1 }}"></circle><circle cx="137" cy="185" r="4.6" fill="#df7059" opacity="{{ V.pim2 }}"></circle>
+                <path d="M114 168 C122 162 128 164 130 167 C132 164 138 162 146 168 C138 172 132 171 130 171 C128 171 122 172 114 168 Z" fill="#c9756f"></path>
+                <path d="M114 168 C124 176 136 176 146 168 C138 173 122 173 114 168 Z" fill="{{ V.lipFill }}" opacity="{{ V.lipOp }}"></path>
+                <path d="M114 168 C122 162 128 164 130 167 C132 164 138 162 146 168 C138 172 132 171 130 171 C128 171 122 172 114 168 Z" fill="{{ V.lipFill }}" opacity="{{ V.lipOp }}"></path>
+                <path d="M114 168 C122 163 128 164 130 167 C132 164 138 163 146 168" stroke="{{ V.lipLinerColor }}" stroke-width="1.5" fill="none" opacity="{{ V.lipLinerOp }}"></path>
+                <path d="M120 170 C126 173 134 173 140 170 C134 172 126 172 120 170 Z" fill="#fff" opacity="{{ V.lipOp }}" filter="url(#gtmSft2)"></path>
+                <path d="M92 127 C110 120 150 120 168 127 L168 135 C150 128 110 128 92 135 Z" fill="{{ V.maskFill }}" opacity="{{ V.maskOp }}"></path>
+                <text x="150" y="150" font-size="15" text-anchor="middle" opacity="{{ V.paintOp }}">{{ V.paintGlyph }}</text>
+                <text x="130" y="248" font-size="22" text-anchor="middle" opacity="{{ V.emblemOp }}">{{ V.emblemGlyph }}</text>
+              </svg>
+              </sc-if>
+              <!-- overlays -->
+              <sc-if value="{{ target.drag }}" hint-placeholder-val="{{ false }}"><div class="gtm-tool" onPointerDown="{{ target.onDown }}" onPointerMove="{{ target.onMove }}" onPointerUp="{{ target.onUp }}" onPointerLeave="{{ target.onUp }}" style="{{ target.style }}"><span style="{{ target.labelStyle }}">{{ target.label }}</span></div></sc-if>
+              <sc-if value="{{ target.tap }}" hint-placeholder-val="{{ false }}"><div onClick="{{ target.onTap }}" style="{{ target.style }}"><span style="{{ target.labelStyle }}">{{ target.label }}</span></div></sc-if>
+              <sc-if value="{{ target.pop }}" hint-placeholder-val="{{ false }}"><sc-for list="{{ target.pimples }}" as="p" hint-placeholder-count="3"><div onClick="{{ p.onClick }}" style="{{ p.style }}"></div></sc-for></sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isPet }}" hint-placeholder-val="{{ false }}">
+            <div style="position:relative;width:320px;height:360px">
+              <sc-if value="{{ petArt }}" hint-placeholder-val="{{ false }}">
+                <img src="{{ petArtBase }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:1">
+                <sc-for list="{{ petArtLayers }}" as="ly" hint-placeholder-count="0"><img src="{{ ly.src }}" style="{{ ly.style }}"></sc-for>
+              </sc-if>
+              <sc-if value="{{ petProcedural }}" hint-placeholder-val="{{ true }}">
+              <svg viewBox="0 0 260 300" style="width:100%;height:100%">
+                <path d="{{ V.garmentPath }}" fill="{{ V.garmentFill }}"></path>
+                <ellipse cx="70" cy="128" rx="24" ry="44" fill="{{ V.furShade }}"></ellipse><ellipse cx="190" cy="128" rx="24" ry="44" fill="{{ V.furShade }}"></ellipse>
+                <ellipse cx="130" cy="140" rx="72" ry="66" fill="{{ V.hairFill }}"></ellipse>
+                <ellipse cx="130" cy="136" rx="68" ry="62" fill="#8a6a4a" opacity="{{ V.dullOp }}"></ellipse>
+                <ellipse cx="130" cy="128" rx="64" ry="56" fill="url(#gtmGlow)" opacity="{{ V.moistOp }}"></ellipse>
+                <ellipse cx="130" cy="166" rx="38" ry="30" fill="#fbeee0"></ellipse>
+                <ellipse cx="130" cy="146" rx="11" ry="9" fill="#4a3626"></ellipse>
+                <path d="M130 155 L130 166 M130 166 Q121 175 114 168 M130 166 Q139 175 146 168" stroke="#7a5b45" stroke-width="2.6" fill="none" stroke-linecap="round"></path>
+                <circle cx="103" cy="128" r="9" fill="#3a2c20"></circle><circle cx="157" cy="128" r="9" fill="#3a2c20"></circle><circle cx="105" cy="125" r="2.6" fill="#fff"></circle><circle cx="159" cy="125" r="2.6" fill="#fff"></circle>
+                <circle cx="96" cy="120" r="5" fill="#6b4a30" opacity="{{ V.dirt0 }}"></circle><circle cx="150" cy="164" r="6" fill="#6b4a30" opacity="{{ V.dirt1 }}"></circle><circle cx="112" cy="176" r="5" fill="#6b4a30" opacity="{{ V.dirt2 }}"></circle>
+                <ellipse cx="100" cy="150" rx="13" ry="8" fill="{{ V.blushFill }}" opacity="{{ V.blushOp }}"></ellipse><ellipse cx="160" cy="150" rx="13" ry="8" fill="{{ V.blushFill }}" opacity="{{ V.blushOp }}"></ellipse>
+                <rect x="92" y="198" width="76" height="17" rx="8" fill="{{ V.collarFill }}" opacity="{{ V.collarOp }}"></rect>
+                <text x="130" y="120" font-size="18" text-anchor="middle" opacity="{{ V.gemOp }}">{{ V.gemGlyph }}</text>
+                <text x="184" y="96" font-size="24" text-anchor="middle" opacity="{{ V.bowOp }}">{{ V.bowGlyph }}</text>
+                <text x="130" y="132" font-size="22" text-anchor="middle" opacity="{{ V.shadesOp }}">{{ V.shadesGlyph }}</text>
+                <text x="130" y="70" font-size="26" text-anchor="middle" opacity="{{ V.hatOp }}">{{ V.hatGlyph }}</text>
+                <text x="130" y="150" font-size="13" text-anchor="middle" opacity="{{ V.noseOp }}">✨</text>
+              </svg>
+              </sc-if>
+              <sc-if value="{{ target.drag }}" hint-placeholder-val="{{ false }}"><div class="gtm-tool" onPointerDown="{{ target.onDown }}" onPointerMove="{{ target.onMove }}" onPointerUp="{{ target.onUp }}" onPointerLeave="{{ target.onUp }}" style="{{ target.style }}"><span style="{{ target.labelStyle }}">{{ target.label }}</span></div></sc-if>
+              <sc-if value="{{ target.tap }}" hint-placeholder-val="{{ false }}"><div onClick="{{ target.onTap }}" style="{{ target.style }}"><span style="{{ target.labelStyle }}">{{ target.label }}</span></div></sc-if>
+            </div>
+          </sc-if>
+        </div>
+
+        <!-- PALETTE -->
+        <div style="width:300px;display:flex;flex-direction:column">
+          <div class="gtm-scroll" style="flex:1;max-height:430px;overflow-y:auto;background:var(--surface-card);border:1px solid var(--border-default);border-radius:16px;padding:13px">
+            <div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)">{{ paletteHint }}</div>
+            <sc-for list="{{ palette }}" as="grp" hint-placeholder-count="4">
+              <div style="margin-top:10px">
+                <div style="font-size:11px;font-weight:800;color:var(--slate-600);margin-bottom:6px;display:flex;align-items:center;gap:5px">{{ grp.icon }} {{ grp.label }}</div>
+                <div style="display:flex;gap:7px;flex-wrap:wrap">
+                  <sc-for list="{{ grp.options }}" as="opt" hint-placeholder-count="3"><button onClick="{{ opt.handler }}" title="{{ opt.label }}" style="{{ opt.btnStyle }}"><span style="{{ opt.swatchStyle }}">{{ opt.glyph }}</span><span style="font-size:10px;font-weight:700;color:var(--slate-600);max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ opt.label }}</span></button></sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONTROLS -->
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;padding:10px 16px">
+        <div style="display:inline-flex;align-items:center;gap:9px;padding:7px 13px;background:#fff;border:1px solid var(--border-default);border-bottom:3px solid var(--sage-500);border-radius:10px"><span style="font-size:19px;letter-spacing:1px">{{ tokenStars }}</span><span style="font-size:13px;font-weight:800;color:var(--text-muted)">{{ tokenText }}</span></div>
+        <div style="flex:1;min-width:170px;text-align:center">{{ phaseMsg }}</div>
+        <sc-if value="{{ isReady }}" hint-placeholder-val="{{ false }}"><button onClick="{{ onGo }}" style="background:var(--sage-500);color:#fff;border:none;padding:12px 26px;border-radius:999px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md);animation:gtm-pop .3s var(--ease-standard)">▸ Go — my turn!</button></sc-if>
+        <sc-if value="{{ isMine }}" hint-placeholder-val="{{ false }}"><button onClick="{{ onHandoff }}" style="{{ handoffStyle }}">Done — their turn ▸</button></sc-if>
+        <sc-if value="{{ isGiveback }}" hint-placeholder-val="{{ false }}"><button onClick="{{ onGiveBack2 }}" style="background:var(--sage-500);color:#fff;border:none;padding:12px 24px;border-radius:999px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md);animation:gtm-pop .3s var(--ease-standard)">▸ My turn again</button></sc-if>
+        <sc-if value="{{ isAsk }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:10px"><div style="{{ cueStyle }}">{{ cueText }}</div><button onClick="{{ onConfirmAsk }}" style="background:var(--slate-800);color:#fff;border:none;padding:11px 16px;border-radius:9px;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer;white-space:nowrap">✓ I asked!</button></div></sc-if>
+      </div>
+    </main>
+  </sc-if>
+
+  <!-- DONE -->
+  <sc-if value="{{ isDone }}" hint-placeholder-val="{{ false }}">
+    <section style="flex:1;display:flex;justify-content:center;align-items:flex-start;padding:22px 20px">
+      <div style="width:min(680px,100%);background:var(--surface-card);border:2px solid var(--sage-200);border-radius:18px;box-shadow:var(--shadow-md);padding:24px 28px;text-align:center;animation:gtm-pop .4s var(--ease-standard)">
+        <div style="font-size:56px;line-height:1">{{ outcomeEmoji }}</div>
+        <h2 style="font-size:24px;font-weight:800;color:var(--text-primary);margin:8px 0 6px;letter-spacing:-.01em">{{ outcomeTitle }}</h2>
+        <p style="font-size:15px;line-height:1.5;color:var(--text-body);max-width:500px;margin:0 auto 12px">{{ outcomeText }}</p>
+        <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;background:var(--sage-50);border:1px solid var(--sage-200);border-radius:999px;font-size:14px;font-weight:800;color:var(--sage-700);margin-bottom:18px">{{ tokenStars }} <span>{{ tokenText }}</span></div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button onClick="{{ onFinishSR }}" style="display:inline-flex;align-items:center;gap:8px;background:var(--brand-primary);color:#fff;border:none;padding:12px 24px;border-radius:10px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md)">⭐ Finish &amp; SR</button><button onClick="{{ onReplay }}" style="background:#fff;color:var(--sage-700);border:1.5px solid var(--sage-500);padding:12px 24px;border-radius:10px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer">↺ Play again</button></div>
+      </div>
+    </section>
+  </sc-if>
+
+  <!-- METHOD -->
+  <sc-if value="{{ methodOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onMethod }}" style="position:fixed;inset:0;background:var(--surface-overlay);z-index:100;display:flex;align-items:center;justify-content:center;padding:24px">
+      <div style="width:min(600px,100%);max-height:86vh;overflow-y:auto;background:#fff;border-radius:14px;box-shadow:var(--shadow-modal);padding:24px 26px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px"><h2 style="font-size:18px;font-weight:800;color:var(--text-primary);margin:0">Method &amp; sources</h2><button onClick="{{ onMethod }}" style="background:none;border:none;font-size:22px;line-height:1;color:var(--text-muted);cursor:pointer">✕</button></div>
+        <p style="font-size:11px;color:var(--text-muted);margin:0 0 14px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Clinician reference — not shown to the learner</p>
+        <div style="font-size:13.5px;line-height:1.55;color:var(--text-body)">
+          <p style="margin:0 0 12px">Turn-taking taught as a short behavior chain — <b>take a turn → relinquish → wait → ask for it back → resume</b> — inside a motivating shared activity (a collaborative glam makeover). Both players take the <b>same-size</b> turn; the learner earns extra time as a reward for handing over.</p>
+          <div style="border-left:4px solid var(--sage-500);background:var(--sage-50);border-radius:0 8px 8px 0;padding:10px 14px;margin:0 0 10px"><div style="font-weight:800;color:var(--sage-700);font-size:13px;margin-bottom:2px">Relinquish &amp; wait = tolerance for delayed reinforcement</div><div>Handing over is reinforced (a token); "earn more time" fades the delay in reverse. Fisher, Thompson, Hagopian, Bowman &amp; Krug (2000), <i>Behavior Modification</i>.</div></div>
+          <div style="border-left:4px solid var(--blue-500);background:var(--blue-50);border-radius:0 8px 8px 0;padding:10px 14px;margin:0 0 10px"><div style="font-weight:800;color:var(--blue-700);font-size:13px;margin-bottom:2px">"They forget" → I ask = contrived MO + interrupted chain</div><div>Withholding the expected turn contrives a motivating operation, evoking the mand under MO control. Sundberg et al. (2002); Hall &amp; Sundberg (1987); Endicott &amp; Higbee (2007).</div></div>
+          <div style="border-left:4px solid var(--amber-500);background:var(--amber-50);border-radius:0 8px 8px 0;padding:10px 14px;margin:0 0 10px"><div style="font-weight:800;color:var(--amber-700);font-size:13px;margin-bottom:2px">Fadeable visual cue &gt; vocal prompt</div><div>The ask-cue steps down (full → short → icon → none) so responding transfers to the MO, not the prompt. Sweeney-Kerwin et al. (2007).</div></div>
+          <div style="border-left:4px solid var(--violet-600);background:var(--violet-50);border-radius:0 8px 8px 0;padding:10px 14px;margin:0 0 4px"><div style="font-weight:800;color:var(--violet-700);font-size:13px;margin-bottom:2px">Turn-taking as a social-communication target</div><div>Structured back-and-forth with visual "my turn / their turn" supports and reinforcement (Lee &amp; Staggs, 2021; Schertz et al., 2018).</div></div>
+          <p style="margin:14px 0 0;font-size:12px;color:var(--text-muted)">This session: <b style="color:var(--text-body)">{{ statLine }}</b></p>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1120,&quot;height&quot;:780}}">
+const OUTFITS = {
+  gown:   { path:'M74 300 Q78 228 130 222 Q182 228 186 300 Z', trim:'M110 224 Q130 214 150 224 L150 234 Q130 226 110 234 Z' },
+  dress:  { path:'M88 300 Q92 236 130 230 Q168 236 172 300 Z', trim:'M100 300 Q130 250 160 300 Z' },
+  casual: { path:'M78 300 L78 250 Q104 230 130 230 Q156 230 182 250 L182 300 Z', trim:'M118 232 Q130 244 142 232 Z' },
+  sparkle:{ path:'M84 300 Q90 240 130 232 Q170 240 176 300 Z', trim:'M104 250 l5 10 5-10 5 10 M146 258 l5 10 5-10 5 10' },
+};
+
+const THEMES = {
+  social: {
+    badge:'🎉', base:'person', flaws:'person',
+    intro:{ emoji:'🎉', title:'Party in a flash!', text:'The party starts in a few minutes — and it is total bedhead, a couple of surprise spots, and no outfit yet! Good thing the glam team takes turns: skincare first, then hair, makeup, and an outfit.' },
+    outcome:{ emoji:'✨', title:'Ta-da — what a team!', text:'Everyone took turns and the whole look came together just in time. Best night ever — because the team worked together!' },
+    cats:[
+      { label:'Skincare', icon:'🧼', options:[
+        {id:'wash',label:'Wash',glyph:'🧼',mech:'paint',slot:'wash',zone:'face'},
+        {id:'pop',label:'Pop spots',glyph:'🫧',mech:'pop'},
+        {id:'brows',label:'Shape brows',glyph:'✂️',mech:'tap',apply:'toggle',slot:'brows',zone:'brows'},
+        {id:'moist',label:'Moisturize',glyph:'🧴',mech:'paint',slot:'moist',zone:'face'} ] },
+      { label:'Hair', icon:'💇', options:[
+        {id:'h1',label:'Brunette',color:'#5b4636',mech:'tap',apply:'recolor',slot:'hair',zone:'hair'},
+        {id:'h2',label:'Copper',color:'#b5651d',mech:'tap',apply:'recolor',slot:'hair',zone:'hair'},
+        {id:'h3',label:'Berry',color:'#8b5cf6',mech:'tap',apply:'recolor',slot:'hair',zone:'hair'},
+        {id:'h4',label:'Blonde',color:'#e0b064',mech:'tap',apply:'recolor',slot:'hair',zone:'hair'} ] },
+      { label:'Makeup', icon:'💄', options:[
+        {id:'pencil',label:'Brow pencil',glyph:'✏️',color:'#4a3626',mech:'tap',apply:'toggle',slot:'pencil',zone:'brows'},
+        {id:'es1',label:'Shadow violet',color:'#a06cc9',mech:'paint',slot:'shadow',zone:'eyes'},
+        {id:'es2',label:'Shadow bronze',color:'#b5793f',mech:'paint',slot:'shadow',zone:'eyes'},
+        {id:'liner',label:'Eyeliner',glyph:'〰️',mech:'tap',apply:'toggle',slot:'liner',zone:'eyes'},
+        {id:'mascara',label:'Mascara',glyph:'💫',mech:'tap',apply:'toggle',slot:'mascara',zone:'eyes'},
+        {id:'contour',label:'Contour',glyph:'🔻',mech:'paint',slot:'contour',zone:'contour'},
+        {id:'hl',label:'Highlight',glyph:'✨',mech:'paint',slot:'hl',zone:'hl'},
+        {id:'bl1',label:'Blush rose',color:'#f28ba0',mech:'paint',slot:'blush',zone:'cheeks'},
+        {id:'bl2',label:'Blush peach',color:'#f6a37a',mech:'paint',slot:'blush',zone:'cheeks'},
+        {id:'lipliner',label:'Lip liner',glyph:'✏️',color:'#b23a56',mech:'tap',apply:'toggle',slot:'lipliner',zone:'lips'},
+        {id:'lp1',label:'Lips red',color:'#d64b6a',mech:'paint',slot:'lips',zone:'lips'},
+        {id:'lp2',label:'Lips coral',color:'#e07a5f',mech:'paint',slot:'lips',zone:'lips'},
+        {id:'lp3',label:'Lips berry',color:'#a83f6b',mech:'paint',slot:'lips',zone:'lips'} ] },
+      { label:'Outfit', icon:'👗', options:[
+        {id:'ear1',label:'Stud',glyph:'💠',mech:'tap',apply:'place',slot:'ear',zone:'ears'},
+        {id:'ear2',label:'Hoop',glyph:'⭕',mech:'tap',apply:'place',slot:'ear',zone:'ears'},
+        {id:'ear3',label:'Drop',glyph:'💎',mech:'tap',apply:'place',slot:'ear',zone:'ears'},
+        {id:'of1',label:'Teal gown',glyph:'👗',color:'#2f8f8a',mech:'choose',slot:'outfit',value:'gown'},
+        {id:'of2',label:'Rose dress',glyph:'👗',color:'#d6608a',mech:'choose',slot:'outfit',value:'dress'},
+        {id:'of3',label:'Denim top',glyph:'👚',color:'#5477b0',mech:'choose',slot:'outfit',value:'casual'},
+        {id:'of4',label:'Sparkle top',glyph:'✨',color:'#c48fd0',mech:'choose',slot:'outfit',value:'sparkle'} ] },
+    ],
+  },
+  pet: {
+    badge:'🐾', base:'pet', flaws:'pet',
+    intro:{ emoji:'🐾', title:"It's the big Pet Show!", text:'The pup is on stage next — but came in muddy and a bit matted! Time for a spa, a fresh groom, some sparkle, and a show outfit. The owner and stylists take turns getting the look ready.' },
+    outcome:{ emoji:'🏆', title:'Winners — Cutest Pet & Best Team!', text:'The judges loved every bit of it. The pup took home Cutest Pet AND Best Team — because the owner and stylists took turns and worked together!' },
+    cats:[
+      { label:'Spa', icon:'🛁', options:[
+        {id:'bath',label:'Bath',glyph:'🫧',mech:'paint',slot:'wash',zone:'face'},
+        {id:'brush',label:'Brush out',glyph:'🪮',mech:'paint',slot:'moist',zone:'face'} ] },
+      { label:'Fur', icon:'💇', options:[
+        {id:'f1',label:'Cream',color:'#efe0c8',mech:'tap',apply:'recolor',slot:'hair',zone:'hair'},
+        {id:'f2',label:'Caramel',color:'#c98a4b',mech:'tap',apply:'recolor',slot:'hair',zone:'hair'},
+        {id:'f3',label:'Grey',color:'#b9c0c7',mech:'tap',apply:'recolor',slot:'hair',zone:'hair'} ] },
+      { label:'Glam', icon:'💎', options:[
+        {id:'gem',label:'Face gem',glyph:'💎',mech:'tap',apply:'place',slot:'gem',zone:'forehead'},
+        {id:'bow',label:'Ear bow',glyph:'🎀',mech:'tap',apply:'place',slot:'bow',zone:'ear'},
+        {id:'shades',label:'Shades',glyph:'🕶️',mech:'tap',apply:'place',slot:'shades',zone:'eyes'},
+        {id:'bl',label:'Cheek blush',color:'#f4a0b0',mech:'paint',slot:'blush',zone:'cheeks'} ] },
+      { label:'Outfit', icon:'👗', options:[
+        {id:'c1',label:'Pink collar',color:'#e0567a',mech:'choose',slot:'collar',value:1},
+        {id:'c2',label:'Blue collar',color:'#4f8fd0',mech:'choose',slot:'collar',value:1},
+        {id:'hat',label:'Party hat',glyph:'🎉',mech:'tap',apply:'place',slot:'hat',zone:'head'},
+        {id:'cape',label:'Show cape',glyph:'🧣',color:'#6a7659',mech:'choose',slot:'outfit',value:'gown'} ] },
+    ],
+  },
+  hero: {
+    badge:'🦸', base:'person', flaws:'none',
+    intro:{ emoji:'🚨', title:'The city needs a hero — in 3 minutes!', text:'Alarms downtown and only minutes to suit up: a power-up glow, heroic hair, a mask, and a cape. The hero squad takes turns getting ready.' },
+    outcome:{ emoji:'💥', title:'Suited up — day saved!', text:'Fully suited and ready, the hero swooped in and saved the day. The whole squad took turns and made it happen — team power!' },
+    cats:[
+      { label:'Power-up', icon:'⚡', options:[
+        {id:'glow',label:'Energy wash',glyph:'⚡',mech:'paint',slot:'moist',zone:'face'},
+        {id:'shine',label:'Shield shine',glyph:'🛡️',mech:'paint',slot:'hl',zone:'hl'} ] },
+      { label:'Hair', icon:'💇', options:[
+        {id:'hh1',label:'Bold blue',color:'#2a6fdb',mech:'tap',apply:'recolor',slot:'hair',zone:'hair'},
+        {id:'hh2',label:'Flame',color:'#e5533b',mech:'tap',apply:'recolor',slot:'hair',zone:'hair'},
+        {id:'hh3',label:'Silver',color:'#c7cdd6',mech:'tap',apply:'recolor',slot:'hair',zone:'hair'} ] },
+      { label:'Makeup', icon:'🎭', options:[
+        {id:'mk1',label:'Blue mask',color:'#2a6fdb',mech:'paint',slot:'mask',zone:'eyes'},
+        {id:'mk2',label:'Violet mask',color:'#7c3aed',mech:'paint',slot:'mask',zone:'eyes'},
+        {id:'wp',label:'War stripes',color:'#dc2626',mech:'paint',slot:'blush',zone:'cheeks'},
+        {id:'bolt',label:'Cheek bolt',glyph:'⚡',mech:'tap',apply:'place',slot:'paint',zone:'cheek'} ] },
+      { label:'Outfit', icon:'🦸', options:[
+        {id:'cp1',label:'Red cape',glyph:'🧣',color:'#dc2626',mech:'choose',slot:'cape',value:1},
+        {id:'cp2',label:'Blue cape',glyph:'🧣',color:'#2563eb',mech:'choose',slot:'cape',value:1},
+        {id:'su',label:'Hero suit',glyph:'🦸',color:'#2563eb',mech:'choose',slot:'outfit',value:'casual'},
+        {id:'em1',label:'Shield emblem',glyph:'🛡️',mech:'tap',apply:'place',slot:'emblem',zone:'chest'},
+        {id:'em2',label:'Star emblem',glyph:'⭐',mech:'tap',apply:'place',slot:'emblem',zone:'chest'} ] },
+    ],
+  },
+};
+
+const ZONES = {
+  person: {
+    face:{t:26,l:24,w:52,h:42,label:'Drag all over the face'},
+    brows:{t:33,l:26,w:48,h:9,label:'Tap the brows'},
+    eyes:{t:38,l:25,w:50,h:11,label:'Drag across the eyes'},
+    cheeks:{t:49,l:22,w:56,h:12,label:'Drag over the cheeks'},
+    contour:{t:42,l:14,w:72,h:24,label:'Drag along the cheeks'},
+    hl:{t:40,l:38,w:24,h:18,label:'Drag the cheekbones'},
+    lips:{t:59,l:38,w:24,h:11,label:'Drag over the lips'},
+    ears:{t:44,l:6,w:88,h:9,label:'Tap to add earrings'},
+    hair:{t:9,l:24,w:52,h:22,label:'Tap the hair'},
+    cheek:{t:50,l:58,w:18,h:12,label:'Tap the cheek'},
+    chest:{t:80,l:40,w:20,h:12,label:'Tap the chest'},
+  },
+  pet: {
+    face:{t:34,l:30,w:40,h:32,label:'Drag all over'},
+    hair:{t:22,l:20,w:60,h:40,label:'Tap the fur'},
+    forehead:{t:30,l:43,w:14,h:10,label:'Tap the forehead'},
+    ear:{t:20,l:60,w:22,h:16,label:'Tap the ear'},
+    eyes:{t:40,l:32,w:36,h:12,label:'Tap the eyes'},
+    cheeks:{t:46,l:26,w:48,h:12,label:'Drag the cheeks'},
+    head:{t:6,l:36,w:28,h:14,label:'Tap on top'},
+  },
+};
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      phase:'intro', theme:'social', turnMap:'banner',
+      countMode:'shown', actionGoal:3, partnerTurn:'match',
+      giveBack:'forgets', cueLevel:'short', tokenGoal:5, extraTime:true,
+      tokens:0, actionsThisTurn:0, bonus:0,
+      ed:this.freshEd('person'), armed:null,
+      myLeft:0, partnerLeft:0, partnerTimed:false, partnerGoal:3, cueVisible:false,
+      settingsOpen:true, methodOpen:false,
+      elapsed:0, turnsTaken:0, indAsks:0, promptedAsks:0,
+    };
+    this._iv=null; this._cueTO=null; this._clockIv=null; this._paint=false;
+  }
+  freshEd(flaws){ return { cov:{}, col:{}, gl:{}, done:{}, outfit:null,
+    pimples:(flaws==='person')?[true,true,true]:[false,false,false],
+    dirt:(flaws==='pet')?[true,true,true]:[false,false,false] }; }
+  componentDidMount(){ this._clockIv=setInterval(()=>this.setState(s=>({elapsed:s.elapsed+1})),1000); }
+  componentWillUnmount(){ clearInterval(this._iv); clearInterval(this._clockIv); clearTimeout(this._cueTO); }
+
+  cfg(){ return THEMES[this.state.theme]; }
+  base(){ return this.cfg().base; }
+  onSel(f,num){ return e=>this.setState({[f]:num?+e.target.value:e.target.value}); }
+  stopTick(){ clearInterval(this._iv); this._iv=null; }
+  startMyTick(){ this.stopTick(); if(this.state.countMode!=='timed') return;
+    this._iv=setInterval(()=>this.setState(s=>{ if(s.myLeft<=1){clearInterval(this._iv);this._iv=null;setTimeout(()=>this.handoff(),0);return{myLeft:0};} return{myLeft:s.myLeft-1}; }),1000); }
+  startPartnerTick(){ this.stopTick();
+    this._iv=setInterval(()=>this.setState(s=>{ if(s.partnerLeft<=1){clearInterval(this._iv);this._iv=null;setTimeout(()=>this.partnerDone(),0);return{partnerLeft:0};} return{partnerLeft:s.partnerLeft-1}; }),1000); }
+
+  partnerSpec(){ const s=this.state; const p=s.partnerTurn;
+    if(p==='match') return s.countMode==='timed' ? {timed:true,secs:30} : {timed:false,count:s.actionGoal};
+    if(p[0]==='t') return {timed:true,secs:+p.slice(1)};
+    return {timed:false,count:+p}; }
+  effGoal(){ return this.state.actionGoal + this.state.bonus; }
+
+  play(){ this.setState({ phase:'ready', tokens:0, ed:this.freshEd(this.cfg().flaws), armed:null, actionsThisTurn:0, bonus:0, turnsTaken:0, indAsks:0, promptedAsks:0, settingsOpen:false }); }
+  go(){ const myTime=30+this.state.bonus*5; this.setState({phase:'mine',actionsThisTurn:0,armed:null,myLeft:myTime}); setTimeout(()=>this.startMyTick(),0); }
+
+  arm(opt){ if(opt.mech==='choose'){ this.applyChoose(opt); return; } this.setState({armed:opt}); }
+  bumpAction(){ this.setState(s=>({actionsThisTurn:s.actionsThisTurn+1}), ()=>this.afterAction()); }
+  afterAction(){ const s=this.state; if(s.phase==='theirs' && !s.partnerTimed && s.actionsThisTurn>=s.partnerGoal){ setTimeout(()=>this.partnerDone(),500); } }
+
+  applyChoose(opt){ this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); let first=false;
+      if(opt.slot==='outfit'){ ed.outfit=opt.value; ed.col.garment=opt.color; if(!ed.done.outfit){ed.done.outfit=true;first=true;} }
+      else { ed.gl[opt.slot]=opt.glyph||'x'; ed.col[opt.slot]=opt.color; if(!ed.done[opt.slot]){ed.done[opt.slot]=true;first=true;} }
+      return { ed, armed:null, actionsThisTurn: s.actionsThisTurn + (first?1:0) }; }, ()=>this.afterAction()); }
+
+  tapApply(){ const t=this.state.armed; if(!t) return; this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); let first=false; const slot=t.slot;
+      if(t.apply==='recolor') ed.col[slot]=t.color;
+      else if(t.apply==='place'){ ed.gl[slot]=t.glyph; if(t.color) ed.col[slot]=t.color; }
+      else { ed.cov[slot]=1; if(t.color) ed.col[slot]=t.color; }
+      if(!ed.done[slot]){ ed.done[slot]=true; first=true; }
+      return { ed, armed:null, actionsThisTurn: s.actionsThisTurn + (first?1:0) }; }, ()=>this.afterAction()); }
+
+  popOne(i){ this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); ed.pimples[i]=false; const key='pim'+i; let first=false; if(!ed.done[key]){ed.done[key]=true;first=true;}
+      const anyLeft=ed.pimples.some(Boolean); return { ed, armed: anyLeft? s.armed : null, actionsThisTurn:s.actionsThisTurn+(first?1:0) }; }, ()=>this.afterAction()); }
+
+  paintStep(){ const t=this.state.armed; if(!t||t.mech!=='paint') return; const slot=t.slot; let completed=false;
+    this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); const cur=ed.cov[slot]||0; const nx=Math.min(1,cur+0.11); ed.cov[slot]=nx; if(t.color) ed.col[slot]=t.color;
+      let first=false; if(nx>=1 && !ed.done[slot]){ ed.done[slot]=true; first=true; completed=true; }
+      return { ed, actionsThisTurn: s.actionsThisTurn+(first?1:0) }; },
+      ()=>{ if(completed){ this._paint=false; this.setState({armed:null}); this.afterAction(); } }); }
+  pDown(e){ if(e.currentTarget&&e.currentTarget.setPointerCapture&&e.pointerId!=null){ try{e.currentTarget.setPointerCapture(e.pointerId);}catch(_){} } this._paint=true; this.paintStep(); }
+  pMove(e){ if(this._paint || e.buttons===1) this.paintStep(); }
+  pUp(){ this._paint=false; }
+
+  handoff(){ this.stopTick(); const s=this.state; let tokens=Math.min(s.tokenGoal,s.tokens+1); let bonus=s.extraTime?Math.min(3,s.bonus+1):s.bonus; const turnsTaken=s.turnsTaken+1;
+    if(tokens>=s.tokenGoal){ this.setState({phase:'done',tokens,turnsTaken}); setTimeout(()=>{ if(window.NooutcoReward) window.NooutcoReward.celebrate(document.body); },60); return; }
+    const spec=this.partnerSpec();
+    this.setState({ phase:'theirs', tokens, bonus, turnsTaken, actionsThisTurn:0, armed:null, partnerTimed:spec.timed, partnerGoal:spec.timed?0:spec.count, partnerLeft:spec.timed?spec.secs:0 });
+    setTimeout(()=>{ if(spec.timed) this.startPartnerTick(); },0); }
+  partnerDone(){ this.stopTick(); if(this.state.giveBack==='prompted'){ this.setState({phase:'giveback'}); return; }
+    this.setState({phase:'ask',cueVisible:false}); clearTimeout(this._cueTO); if(this.state.cueLevel!=='none') this._cueTO=setTimeout(()=>this.setState({cueVisible:true}),3500); }
+  giveBack(){ this.setState({phase:'ready'}); }
+  confirmAsk(){ clearTimeout(this._cueTO); const independent=!this.state.cueVisible; this.setState(s=>({phase:'ready',cueVisible:false,indAsks:s.indAsks+(independent?1:0),promptedAsks:s.promptedAsks+(independent?0:1)})); }
+  finishSR(){ if(window.NooutcoReward) window.NooutcoReward.openSR({minutes:5,title:'SR Timer'}); }
+  replay(){ this.stopTick(); clearTimeout(this._cueTO); this.setState({phase:'intro',tokens:0,ed:this.freshEd(this.cfg().flaws),armed:null,bonus:0,settingsOpen:true}); }
+
+  fmt(sec){ return Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0'); }
+
+  buildV(){ const ed=this.state.ed; const base=this.base(); const th=this.state.theme;
+    const cov=k=>ed.cov[k]||0; const col=(k,d)=>ed.col[k]||d; const gl=k=>ed.gl[k]||'';
+    if(base==='pet'){ const washed=cov('wash')>=1?0:0.34; return {
+      hairFill:col('hair','#efe0c8'), furShade:this.shade(col('hair','#efe0c8')),
+      dullOp: washed*(ed.pimples?1:1), moistOp:(cov('moist')||0)*0.5,
+      dirt0:ed.dirt[0]?(cov('wash')>=1?0:1):0, dirt1:ed.dirt[1]?(cov('wash')>=1?0:1):0, dirt2:ed.dirt[2]?(cov('wash')>=1?0:1):0,
+      blushFill:col('blush','#f4a0b0'), blushOp:cov('blush'),
+      collarFill:col('collar','#e0567a'), collarOp: gl['collar']||ed.col['collar']?1:0,
+      gemGlyph:gl('gem'), gemOp:gl('gem')?1:0, bowGlyph:gl('bow'), bowOp:gl('bow')?1:0,
+      shadesGlyph:gl('shades'), shadesOp:gl('shades')?1:0, hatGlyph:gl('hat'), hatOp:gl('hat')?1:0,
+      noseOp:cov('nose')>=1?1:0,
+      garmentPath: ed.outfit?OUTFITS[ed.outfit].path:'M78 300 Q84 250 130 246 Q176 250 182 300 Z', garmentFill: ed.outfit?col('garment','#c9a06a'):'#c9a06a',
+    }; }
+    // person (social + hero)
+    const outfit=ed.outfit; const g=outfit?OUTFITS[outfit]:null;
+    return {
+      dullOp: cov('wash')>=1?0:0.26, moistOp:(cov('moist')||0)*0.42,
+      pim0:ed.pimples[0]?1:0, pim1:ed.pimples[1]?1:0, pim2:ed.pimples[2]?1:0,
+      hairFill:col('hair','#5b4636'),
+      browBushyOp: cov('brows')>=1?0:1, browShapedOp: cov('brows')>=1?1:0, browColor: cov('pencil')>=1?'#3a2a1c':'#6b533f',
+      shadowFill:col('shadow','#a06cc9'), shadowOp:cov('shadow')*0.8,
+      linerOp:cov('liner')>=1?1:0, mascaraOp:cov('mascara')>=1?1:0,
+      contourOp:cov('contour')*0.55, hlOp:cov('hl')*0.85,
+      blushFill:col('blush','#f28ba0'), blushOp:cov('blush')*0.9,
+      lipLinerColor:col('lipliner','#b23a56'), lipLinerOp:cov('lipliner')>=1?1:0,
+      lipFill:col('lips','#d64b6a'), lipOp:cov('lips'),
+      earGlyph:gl('ear'), earOp:gl('ear')?1:0,
+      contourPath:'M74 118 Q66 150 84 178 Q78 150 82 122 Z M186 118 Q194 150 176 178 Q182 150 178 122 Z',
+      maskFill:col('mask','#2a6fdb'), maskOp:cov('mask')*0.95,
+      paintGlyph:gl('paint'), paintOp:gl('paint')?1:0,
+      emblemGlyph:gl('emblem'), emblemOp:gl('emblem')?1:0,
+      capePath:'M84 300 Q60 210 130 200 Q200 210 176 300 Z', capeFill:col('cape','#dc2626'), capeOp: ed.gl['cape']||ed.col['cape']?0.95:0,
+      garmentPath: g?g.path:'M86 300 Q92 250 130 244 Q168 250 174 300 Z', garmentFill: g?col('garment','#d8dade'):'#d8dade',
+      garmentTrim: g?g.trim:'', garmentTrimFill:'#ffffff', garmentTrimOp: g?0.5:0,
+    }; }
+  shade(hex){ try{ const n=parseInt(hex.slice(1),16); let r=Math.max(0,(n>>16)-28),g=Math.max(0,((n>>8)&255)-28),b=Math.max(0,(n&255)-28); return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1); }catch(e){ return hex; } }
+
+  art(){ return (typeof window!=='undefined' && window.NooutcoArt) || {}; }
+  setArtModel(id){ const A=this.art(); const M=(A.meta&&A.meta.models)||{}; const m=M[id]; if(!m||!m.base) return;
+    A.bases.person={ src:m.base, flaws:m.flaws };
+    A.layers.person=m.layers;
+    if(A.meta.spotAnchors) A.meta.spotAnchors.person=m.spotAnchors;
+    A.meta.activeModel=id;
+    this.forceUpdate(); }
+  artModelList(){ const A=this.art(); const M=(A.meta&&A.meta.models)||{}; const act=(A.meta&&A.meta.activeModel)||'';
+    return Object.keys(M).filter(id=>M[id]&&M[id].base).map(id=>({
+      label:id.toUpperCase(), pick:()=>this.setArtModel(id),
+      style:'padding:5px 11px;border-radius:999px;font-size:11px;font-weight:800;font-family:inherit;cursor:pointer;border:1px solid '+(id===act?'var(--sage-500)':'var(--border-default)')+';background:'+(id===act?'var(--sage-500)':'var(--surface-card)')+';color:'+(id===act?'#fff':'var(--text-muted)') })); }
+  artBaseSrc(base){ const b=(this.art().bases||{})[base]; return (b&&b.src)||''; }
+  lz(base,slot){ const L=((this.art().layers||{})[base]||{})[slot]; return (L&&L.z)||0; }
+  lsrc(base,slot,key){ const L=((this.art().layers||{})[base]||{})[slot]; if(!L) return ''; return key!=null ? ((L.variants&&L.variants[key])||'') : (L.src||''); }
+  flawSrc(base,name){ const b=(this.art().bases||{})[base]; return (b&&b.flaws&&b.flaws[name])||''; }
+  sceneArt(){ return (this.art().scene||{})[this.state.theme]||{}; }
+  buildArtLayers(base){ const ed=this.state.ed; const out=[]; const cov=k=>ed.cov[k]||0; const col=k=>ed.col[k]; const gl=k=>ed.gl[k];
+    const add=(slot,key,active,opacity)=>{ if(!active) return; const src=this.lsrc(base,slot,key); if(!src) return; out.push({ src, z:this.lz(base,slot), op:(opacity!=null?opacity:1) }); };
+    const placed=(src,z,an,sz)=>{ if(!src||!an) return; out.push({ src, z, placed:true, l:an.l, t:an.t, s:sz||12 }); };
+    const anchors=((this.art().meta||{}).spotAnchors||{})[base]||[];
+    if(base==='person'){
+      add('cape', col('cape'), !!(ed.gl.cape||ed.col.cape), .95);
+      add('outfit', ed.outfit, !!ed.outfit);
+      add('emblem', gl('emblem'), !!gl('emblem'));
+      if(cov('wash')<1) out.push({ src:this.flawSrc('person','dull'), z:4, op:1 });
+      add('wash', null, cov('wash')>=1);
+      add('moist', null, cov('moist')>0, Math.min(1,cov('moist')));
+      add('hair', col('hair'), !!col('hair'));
+      if(cov('brows')<1) out.push({ src:this.flawSrc('person','browsBushy'), z:19, op:1 });
+      add('brows', null, cov('brows')>=1);
+      add('pencil', null, cov('pencil')>=1);
+      add('shadow', col('shadow'), cov('shadow')>0, Math.min(1,cov('shadow')));
+      add('liner', null, cov('liner')>=1);
+      add('mascara', null, cov('mascara')>=1);
+      add('mask', col('mask'), cov('mask')>0, Math.min(1,cov('mask')));
+      add('contour', null, cov('contour')>0, Math.min(1,cov('contour')));
+      add('hl', null, cov('hl')>0, Math.min(1,cov('hl')));
+      add('blush', col('blush'), cov('blush')>0, Math.min(1,cov('blush')));
+      add('lipliner', null, cov('lipliner')>=1);
+      add('lips', col('lips'), cov('lips')>0, Math.min(1,cov('lips')));
+      add('ear', gl('ear'), !!gl('ear'));
+      add('paint', gl('paint'), !!gl('paint'));
+      (ed.pimples||[]).forEach((p,i)=>{ if(p) placed(this.flawSrc('person','spot'),18,anchors[i],12); });
+    } else if(base==='pet'){
+      add('outfit', ed.outfit, !!ed.outfit);
+      add('collar', col('collar'), !!(ed.col.collar||ed.gl.collar));
+      if(cov('wash')<1) out.push({ src:this.flawSrc('pet','matted'), z:4, op:1 });
+      add('wash', null, cov('wash')>=1);
+      add('moist', null, cov('moist')>0, Math.min(1,cov('moist')));
+      add('hair', col('hair'), !!col('hair'));
+      add('blush', null, cov('blush')>0, Math.min(1,cov('blush')));
+      add('shades', gl('shades'), !!gl('shades'));
+      add('gem', gl('gem'), !!gl('gem'));
+      add('bow', gl('bow'), !!gl('bow'));
+      add('hat', gl('hat'), !!gl('hat'));
+      if(cov('wash')<1)(ed.dirt||[]).forEach((p,i)=>{ if(p) placed(this.flawSrc('pet','dirt'),18,anchors[i],14); });
+    }
+    return out.filter(o=>o.src).sort((a,b)=>a.z-b.z).map(o=> o.placed
+      ? ({ src:o.src, style:'position:absolute;top:'+o.t+'%;left:'+o.l+'%;width:'+o.s+'%;height:'+o.s+'%;object-fit:contain;pointer-events:none;z-index:'+o.z })
+      : ({ src:o.src, style:'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:'+o.z+';opacity:'+(o.op!=null?o.op:1) }) );
+  }
+  renderVals(){ const s=this.state; const cfg=this.cfg(); const base=this.base();
+    const isMine=s.phase==='mine',isReady=s.phase==='ready',isTheirs=s.phase==='theirs',isGiveback=s.phase==='giveback',isAsk=s.phase==='ask',isDone=s.phase==='done',isIntro=s.phase==='intro';
+    const whoseMe=isMine||isReady; const whose=isDone?'done':(whoseMe?'me':'them');
+    const V=this.buildV(); const SAGE='#6a7659',BLUE='#3b82f6';
+
+    let instruction='';
+    if(isReady) instruction='My turn is ready — tap Go!';
+    else if(isMine){ if(s.countMode==='timed') instruction='My turn — glam as much as I can!'; else if(s.countMode==='hidden') instruction='My turn — add some things!'; else { const left=Math.max(0,this.effGoal()-s.actionsThisTurn); instruction=left>0?('My turn — do '+left+' more!'):'All set — now I hand it over!'; } }
+    else if(isTheirs) instruction='Their turn — I wait 🕐';
+    else if(isGiveback) instruction='Their turn is done';
+    else if(isAsk) instruction="It's really my turn now…";
+
+    const pips=(goal,filled,color)=>{ const a=[]; for(let i=0;i<goal;i++) a.push(React.createElement('span',{key:i,style:{width:'15px',height:'15px',borderRadius:'50%',background:i<filled?color:'#fff',border:'2px solid '+(i<filled?color:'#cfd4c4'),display:'inline-block'}})); return a; };
+    let turnMeter=React.createElement('span',{});
+    if(isMine&&s.countMode==='timed') turnMeter=React.createElement('span',{style:{fontFamily:'var(--font-mono)',fontSize:'22px',fontWeight:800,color:SAGE}},this.fmt(s.myLeft));
+    else if(isMine&&s.countMode==='shown') turnMeter=React.createElement('div',{},[React.createElement('div',{key:'l',style:{fontSize:'9px',fontWeight:800,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--text-muted)',marginBottom:'4px'}},'Actions left'),React.createElement('div',{key:'p',style:{display:'flex',gap:'5px',justifyContent:'flex-end'}},pips(this.effGoal(),s.actionsThisTurn,SAGE))]);
+    else if(isTheirs&&s.partnerTimed) turnMeter=React.createElement('span',{style:{fontFamily:'var(--font-mono)',fontSize:'20px',fontWeight:800,color:BLUE}},this.fmt(s.partnerLeft));
+    else if(isTheirs) turnMeter=React.createElement('div',{},[React.createElement('div',{key:'l',style:{fontSize:'9px',fontWeight:800,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--text-muted)',marginBottom:'4px'}},'Their actions'),React.createElement('div',{key:'p',style:{display:'flex',gap:'5px',justifyContent:'flex-end'}},pips(s.partnerGoal,s.actionsThisTurn,BLUE))]);
+    else if(s.bonus>0&&whoseMe) turnMeter=React.createElement('span',{style:{fontSize:'12px',fontWeight:800,color:SAGE}},'+'+s.bonus+' bonus 🎉');
+
+    let phaseMsg=React.createElement('span',{});
+    if(isReady) phaseMsg=React.createElement('span',{style:{fontSize:'13px',color:'var(--text-muted)'}},'Nice waiting! Tap Go to start.');
+    else if(isTheirs) phaseMsg=React.createElement('span',{style:{fontSize:'13px',fontWeight:700,color:BLUE}},'They take the same-size turn — I wait.');
+    else if(isGiveback) phaseMsg=React.createElement('span',{style:{fontSize:'13px',fontWeight:700,color:'var(--slate-700)'}},'They finished their turn.');
+    else if(isAsk) phaseMsg=React.createElement('span',{style:{fontSize:'13px',fontWeight:700,color:'var(--amber-700)'}},'Their turn ran long — time to ask for my turn.');
+    else if(isMine) phaseMsg=React.createElement('span',{style:{fontSize:'13px',color:'var(--text-muted)'}},s.armed?'Now do it on the face →':'Pick a step to start.');
+
+    const cueTexts={full:"I say: \u201CIt's my turn now, please.\u201D",short:"\u201CMy turn, please.\u201D",icon:'🖐️ ➡️',none:''};
+    const cueText=s.cueVisible?(cueTexts[s.cueLevel]||''):' ';
+    const cueStyle='display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;font-weight:800;font-size:14px;'+(s.cueVisible?'background:var(--amber-100);border:1.5px solid var(--amber-300);color:var(--amber-700);animation:gtm-cue 2s var(--ease-standard) infinite':'background:var(--slate-100);border:1.5px dashed var(--slate-300);color:var(--slate-400)');
+
+    const canAct=isMine||isTheirs;
+    const ICONS=(this.art().icons)||{};
+    const palette=cfg.cats.map(grp=>({ label:grp.label, icon:grp.icon, options:grp.options.map(opt=>{ const armed=s.armed&&s.armed.id===opt.id;
+      const iconSrc=ICONS[opt.id]||'';
+      let glyph=opt.glyph||''; let swatch;
+      if(iconSrc){ swatch='width:24px;height:24px;background-image:url("'+iconSrc+'");background-size:contain;background-repeat:no-repeat;background-position:center;flex-shrink:0'; glyph=''; }
+      else if(opt.color){ swatch='width:22px;height:22px;border-radius:50%;background:'+opt.color+';box-shadow:0 0 0 1.5px var(--slate-300);flex-shrink:0'; }
+      else { swatch='width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0'; }
+      return { label:opt.label, glyph, swatchStyle:swatch, handler:()=>this.arm(opt),
+        btnStyle:'display:flex;align-items:center;gap:6px;padding:6px 9px 6px 6px;border-radius:10px;cursor:pointer;font-family:inherit;background:'+(armed?'var(--sage-50)':'#fff')+';border:1.5px solid '+(armed?'var(--sage-500)':'var(--slate-200)')+';box-shadow:'+(armed?'0 0 0 3px rgba(106,118,89,.18)':'none') }; }) }));
+
+    // target overlay
+    let target={ drag:false, tap:false, pop:false, style:'display:none', label:'', labelStyle:'', pimples:[] };
+    const t=s.armed;
+    if(t&&canAct){ const lab='font-size:11px;font-weight:800;color:var(--sage-700);background:#fff;border-radius:6px;padding:2px 8px;white-space:nowrap;box-shadow:var(--shadow-sm)';
+      if(t.mech==='pop'){ const Z=ZONES[base]; const positions=[{l:41,t:28},{l:31,t:47},{l:48,t:56}]; const pim=[];
+        s.ed.pimples.forEach((present,i)=>{ if(present) pim.push({ onClick:()=>this.popOne(i), style:'position:absolute;top:'+positions[i].t+'%;left:'+positions[i].l+'%;width:11%;height:9%;border-radius:50%;border:2.5px solid var(--red-500);background:rgba(220,38,38,.12);cursor:pointer;animation:gtm-pim 1.2s var(--ease-standard) infinite' }); });
+        target={ drag:false,tap:false,pop:true, pimples:pim, style:'', label:'', labelStyle:'' };
+      } else { const z=(ZONES[base]||{})[t.zone]; if(z){ const box='position:absolute;top:'+z.t+'%;left:'+z.l+'%;width:'+z.w+'%;height:'+z.h+'%;border:2.5px dashed '+SAGE+';border-radius:12px;background:rgba(106,118,89,.10);display:flex;align-items:center;justify-content:center;cursor:'+(t.mech==='paint'?'grab':'pointer')+';animation:gtm-target 1.4s var(--ease-standard) infinite;padding:0';
+        const covPct=Math.round((s.ed.cov[t.slot]||0)*100);
+        const lbl=t.mech==='paint'?(covPct>0?('Keep painting… '+covPct+'%'):z.label):z.label;
+        if(t.mech==='paint') target={ drag:true,tap:false,pop:false, style:box, label:lbl, labelStyle:lab, onDown:e=>this.pDown(e), onMove:e=>this.pMove(e), onUp:()=>this.pUp() };
+        else target={ drag:false,tap:true,pop:false, style:box, label:z.label, labelStyle:lab, onTap:()=>this.tapApply() };
+      } }
+    }
+
+    let stars=''; for(let i=0;i<s.tokenGoal;i++) stars+=i<s.tokens?'⭐':'☆';
+
+    const runwayTiles=[]; const mk=(who,st)=>{ const me=who==='me'; const now=st==='now';
+      const bg=now?(me?SAGE:BLUE):(st==='done'?(me?'var(--sage-50)':'var(--blue-50)'):'#fff'); const bd=st==='future'?'1.5px dashed var(--slate-300)':('1.5px solid '+(me?'var(--sage-500)':'var(--blue-500)')); const op=st==='done'?'.6':(st==='future'?'.7':'1'); const ring=now?';box-shadow:0 0 0 4px '+(me?'rgba(106,118,89,.2)':'rgba(59,130,246,.2)'):'';
+      return { glyph:me?'🦸':'🧑‍⚕️', glyphSize:now?'22px':'16px', badge:now?'NOW':(st==='done'?'✓':''), badgeColor:now?'color:#fff':(me?'color:var(--sage-700)':'color:var(--blue-700)'), style:'flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:'+(now?'9px 12px':'6px 8px')+';border-radius:11px;min-width:'+(now?'54px':'42px')+';background:'+bg+';border:'+bd+';opacity:'+op+ring }; };
+    for(let i=0;i<s.turnsTaken;i++) runwayTiles.push(mk(i%2===0?'me':'them','done'));
+    if(!isDone){ runwayTiles.push(mk(whose,'now')); runwayTiles.push(mk(whose==='me'?'them':'me','next')); runwayTiles.push(mk(whose,'future')); }
+    runwayTiles.push({ glyph:'⭐', glyphSize:'17px', badge:s.tokens+'/'+s.tokenGoal, badgeColor:'color:var(--amber-700)', style:'flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 9px;border-radius:11px;min-width:44px;background:var(--amber-50);border:1.5px solid var(--amber-300)' });
+
+    const stBase='width:128px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:6px;padding:11px 8px;border-radius:14px;';
+    const chip=c=>'display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:700;'+c;
+
+    return {
+      clock:this.fmt(s.elapsed), minGlyph:s.settingsOpen?'▾':'▸', settingsStyle:s.settingsOpen?'':'display:none',
+      theme:s.theme, turnMap:s.turnMap, countMode:s.countMode, actionGoal:String(s.actionGoal),
+      partnerTurn:s.partnerTurn, giveBack:s.giveBack, cueLevel:s.cueLevel, tokenGoal:String(s.tokenGoal), extraTime:s.extraTime,
+      myTurnUnit:s.countMode==='timed'?'(auto '+(30+s.bonus*5)+'s)':'actions',
+      onTheme:e=>this.setState({theme:e.target.value,ed:this.freshEd(THEMES[e.target.value].flaws)}),
+      onMap:this.onSel('turnMap'), onCount:this.onSel('countMode'), onActionGoal:this.onSel('actionGoal',true),
+      onPartnerTurn:this.onSel('partnerTurn'), onGiveBack:this.onSel('giveBack'), onCueLevel:this.onSel('cueLevel'), onTokenGoal:this.onSel('tokenGoal',true),
+      onExtra:e=>this.setState({extraTime:e.target.checked}),
+      onPlay:()=>this.play(), onGo:()=>this.go(), onHandoff:()=>this.handoff(), onGiveBack2:()=>this.giveBack(), onConfirmAsk:()=>this.confirmAsk(),
+      onMethod:()=>this.setState(x=>({methodOpen:!x.methodOpen})), onMinimize:()=>this.setState(x=>({settingsOpen:!x.settingsOpen})), onFinishSR:()=>this.finishSR(), onReplay:()=>this.replay(),
+      isIntro,isReady,isMine,isTheirs,isGiveback,isAsk,isDone, showGame:isReady||isMine||isTheirs||isGiveback||isAsk,
+      mapBanner:s.turnMap==='banner', mapVanity:s.turnMap==='vanity', mapRunway:s.turnMap==='runway',
+      personShow:base==='person', isPet:base==='pet', V, palette, target, runwayTiles,
+      stageStyle:'flex:1;min-width:300px;position:relative;display:flex;align-items:center;justify-content:center;background:var(--surface-card);border:1px solid var(--border-default);border-radius:16px;padding:12px;overflow:hidden'+(this.sceneArt().bg?';background-image:url("'+this.sceneArt().bg+'");background-size:cover;background-position:center':''),
+      artModels:this.artModelList(), artModelPicker:base==='person'&&this.artModelList().length>1,
+      personArt:base==='person'&&s.theme==='social'&&!!this.artBaseSrc('person'), personProcedural:base!=='person'||!(s.theme==='social'&&!!this.artBaseSrc('person')),
+      personArtBase:this.artBaseSrc('person'), personArtLayers:(base==='person'&&this.artBaseSrc('person'))?this.buildArtLayers('person'):[],
+      petArt:base==='pet'&&!!this.artBaseSrc('pet'), petProcedural:base!=='pet'||!this.artBaseSrc('pet'),
+      petArtBase:this.artBaseSrc('pet'), petArtLayers:(base==='pet'&&this.artBaseSrc('pet'))?this.buildArtLayers('pet'):[],
+      sceneFrame:this.sceneArt().frame||'',
+      whoseGlyph:whose==='me'?'🦸':'🧑‍⚕️', turnLabel:whose==='me'?'MY TURN':'THEIR TURN', turnLabelColor:'color:'+(whose==='me'?'var(--sage-700)':'var(--blue-700)'),
+      bannerStyle:'display:flex;align-items:center;gap:14px;padding:12px 18px;border-radius:14px;background:'+(whose==='me'?'var(--sage-50)':'var(--blue-50)')+';border-left:6px solid '+(whose==='me'?SAGE:BLUE),
+      bannerAvatarStyle:whose==='me'?'background:var(--sage-100);border:2px solid var(--sage-500)':'background:var(--blue-100);border:2px solid var(--blue-500)',
+      instruction, turnMeter, phaseMsg, cueText, cueStyle,
+      handoffStyle:'background:'+SAGE+';color:#fff;border:none;padding:12px 24px;border-radius:999px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md)'+((isMine&&s.countMode!=='timed'&&s.actionsThisTurn>=this.effGoal())?';animation:gtm-cue 1.6s var(--ease-standard) infinite':''),
+      tokenStars:stars, tokenText:s.tokens+' / '+s.tokenGoal,
+      paletteHint:s.armed?'✋ Now do it on the face →':'Pick a step to put on',
+      introEmoji:cfg.intro.emoji, introTitle:cfg.intro.title, introText:cfg.intro.text,
+      outcomeEmoji:cfg.outcome.emoji, outcomeTitle:cfg.outcome.title, outcomeText:cfg.outcome.text,
+      methodOpen:s.methodOpen, statLine:s.turnsTaken+' turns handed over · '+s.indAsks+' independent asks · '+s.promptedAsks+' prompted asks',
+      stationMeStyle:stBase+(whose==='me'?'background:var(--sage-50);border:2px solid var(--sage-500);box-shadow:0 0 0 4px rgba(106,118,89,.16)':'background:#fff;border:1.5px dashed var(--slate-300);opacity:.7'),
+      stationThemStyle:stBase+(whose==='them'?'background:var(--blue-50);border:2px solid var(--blue-500);box-shadow:0 0 0 4px rgba(59,130,246,.16)':'background:#fff;border:1.5px dashed var(--slate-300);opacity:.7'),
+      stationMeLabel:whose==='me'?'MY TURN':'waiting', stationMeLabelColor:'color:'+(whose==='me'?'var(--sage-700)':'var(--text-muted)'),
+      stationThemLabel:whose==='them'?'THEIR TURN':'waiting', stationThemLabelColor:'color:'+(whose==='them'?'var(--blue-700)':'var(--text-muted)'),
+      stationMeRing:whose==='me'?'border:2px solid var(--sage-500)':'border:2px solid var(--slate-300)',
+      stationThemRing:whose==='them'?'border:2px solid var(--blue-500)':'border:2px solid var(--slate-300)',
+      meBrushStyle:chip(whose==='me'?'background:#fff;border:1.5px solid var(--sage-500);color:var(--sage-700)':'background:var(--slate-100);border:1px solid var(--slate-200);color:var(--slate-400)'),
+      themBrushStyle:chip(whose==='them'?'background:#fff;border:1.5px solid var(--blue-500);color:var(--blue-700)':'background:var(--slate-100);border:1px solid var(--slate-200);color:var(--slate-400)'),
+    };
+  }
+}
+</script>
+
+<!-- Admin gear → GM hub. _worker.js rewrites the `const ADMIN_SECRET_HASH = "…"`
+     line per request (regex needs the `const` form — matches every other game). -->
+<script>
+  const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
+  window.ADMIN_SECRET_HASH = ADMIN_SECRET_HASH;
+  window.ADMIN_GEAR_PAGE = '../GM/';
+</script>
+<script src="../admin-gear.js"></script>
+</body>
+</html>
