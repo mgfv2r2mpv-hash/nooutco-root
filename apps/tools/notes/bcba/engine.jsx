@@ -8,10 +8,11 @@
 const TOOLS = window.NOTE_TOOLS || [];
 const DEFAULT_TOOL = TOOLS.length ? TOOLS[0].id : "sup";
 
-// Cache-aware session timer: Anthropic's prompt cache lives 5 minutes from the
-// LAST call (each use refreshes it). Warn shortly before expiry; announce after.
-const CACHE_WARN_S = 240;
-const CACHE_EXPIRED_S = 310;
+// Note-freshness window: Anthropic's prompt cache lives ~5 minutes from the LAST
+// call (each generation/revision refreshes it). A gentle floating countdown nudges
+// prompt edits while the note is still "warm"; nothing blocks when it reaches zero.
+const CACHE_WINDOW_S = 300;
+const CACHE_LOW_S = 60;
 
 function toolById(id) {
   for (const t of TOOLS) if (t.id === id) return t;
@@ -145,6 +146,52 @@ function InfoTooltip({ text }) {
 function Tip({ text }) {
   return (
     <div style={{ fontSize: 12, color: "#5a7040", background: "#eef4e6", border: "1px solid #c8dba8", borderRadius: 7, padding: "7px 11px", marginBottom: 10, lineHeight: 1.55 }}>{text}</div>
+  );
+}
+
+// Floating note-freshness countdown. Fixed top-right, out of the way; shows the
+// warm-window remaining (mm:ss) after a note is generated and resets on each turn.
+// Hover (desktop) or tap (mobile) reveals why prompt edits are best made in time.
+// "Nothing happens" at zero — it just rests muted; revisions still work.
+function CacheTimer({ remaining }) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const expired = remaining <= 0;
+  const low = !expired && remaining <= CACHE_LOW_S;
+  const state = expired ? "expired" : (low ? "low" : "ok");
+  const mmss = Math.floor(remaining / 60) + ":" + String(remaining % 60).padStart(2, "0");
+
+  return (
+    <div ref={ref} className={"cache-timer state-" + state + (open ? " open" : "")}>
+      <button
+        type="button"
+        className="cache-timer-pill"
+        aria-label={"Note-freshness timer: " + (expired ? "window elapsed" : mmss + " remaining") + ". Activate for details."}
+        aria-expanded={open}
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+      >
+        <span className="cache-timer-dot" aria-hidden="true" />
+        <span className="cache-timer-time">{expired ? "0:00" : mmss}</span>
+      </button>
+      <span className="cache-timer-bubble" role="tooltip">
+        {expired
+          ? "The quick-edit window has passed. Revisions still work — the next one just takes a moment longer while the tool re-reads the note. Edits made soon after generating are the fastest."
+          : "Edits are most useful when made promptly. For about 5 minutes after each generation the tool keeps your note “warm,” so revisions apply fastest — each revision resets the timer."}
+      </span>
+    </div>
   );
 }
 
@@ -489,16 +536,38 @@ function App() {
     setTimeout(() => setCopied(null), 1800);
   };
 
-  /* ── Cache banner ──────────────────────────────────────────────────── */
+  /* ── Clear / reset ─────────────────────────────────────────────────── */
 
-  let cacheBanner = null;
-  if (S.conversation.length && S.lastCallAt) {
-    const idleS = Math.floor((nowTick - S.lastCallAt) / 1000);
-    if (idleS >= CACHE_EXPIRED_S) {
-      cacheBanner = { tone: "muted", text: "Session cache expired — revisions still work; the next one re-processes the conversation once, then caching resumes." };
-    } else if (idleS >= CACHE_WARN_S) {
-      cacheBanner = { tone: "warn", text: `Session cache expires in ~${Math.max(0, 300 - idleS)}s. Send any pending revision now — after expiry the next turn re-processes the full conversation at standard price.` };
-    }
+  // True when the active tool holds anything worth confirming before wiping —
+  // typed input, a generated note, or a built prompt. Drives whether Clear shows
+  // and whether it double-checks first.
+  const hasContent = () =>
+    tool.inputs.some((f) => (f.type === "toggle" ? S.values[f.id] != null : (S.values[f.id] || "").trim() !== "")) ||
+    !!S.output || !!S.promptText;
+
+  // One-click reset for the next use. Wipes this tool's saved draft, then rebuilds
+  // a blank session (freshSession reloads the now-empty draft). Autosave keeps the
+  // note across an accidental reload; this is the deliberate "start fresh" escape.
+  const handleClear = () => {
+    if (loading) return;
+    if (hasContent() && !window.confirm("Clear this tool's inputs and generated note to start fresh? This can't be undone.")) return;
+    if (window.NotesGate) NotesGate.draft.clear(tool.id);
+    setSessions((prev) => ({ ...prev, [tool.id]: freshSession(tool) }));
+    setCopied(null);
+    setCopiedPrompt(false);
+  };
+
+  /* ── Note-freshness countdown ──────────────────────────────────────── */
+
+  // Visible once a note exists, counting down the ~5-minute warm window from the
+  // last call. Each generation/revision resets it (lastCallAt updates). At zero it
+  // just rests — revisions still work, they only re-process the conversation once.
+  // Read the live clock here (nowTick above is only the 1s re-render heartbeat) and
+  // clamp to the window so a throttled/backgrounded tab can never show over 5:00.
+  let cacheRemaining = null;
+  if (S.output && S.lastCallAt) {
+    const idleS = Math.max(0, Math.floor((Date.now() - S.lastCallAt) / 1000));
+    cacheRemaining = Math.min(CACHE_WINDOW_S, CACHE_WINDOW_S - idleS);
   }
 
   /* ── Render helpers ────────────────────────────────────────────────── */
@@ -613,10 +682,50 @@ function App() {
     return <Checklist options={tool.groupOptions[c.id]} selected={c.value} />;
   };
 
+  // The proposal preview renders in-place — inside the revised section, or below
+  // the corrections box for a global edit — so the change appears where the BCBA
+  // is looking, not scrolled off the top. Bring it into view when it arrives.
+  const proposalRef = React.useRef(null);
+  const proposalKey = S.proposal ? (S.proposal.targetSectionId || "global") + ":" + S.lastCallAt : "";
+  React.useEffect(() => {
+    if (!proposalKey || !proposalRef.current) return;
+    const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    proposalRef.current.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+  }, [proposalKey]); // proposalKey encodes which proposal (section + turn) is showing
+
+  const renderProposalCard = () => (
+    <div ref={proposalRef} style={{ marginTop: 14, borderRadius: 10, border: "2px solid #c8b26a", background: "#fffbef", padding: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, gap: 8, flexWrap: "wrap" }}>
+        <h3 style={{ fontSize: 15, fontWeight: 700, color: "#6d5613" }}>Proposed revision</h3>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={acceptProposal} style={{ padding: "7px 18px", borderRadius: 7, border: "none", background: "#374528", color: "white", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Accept</button>
+          <button onClick={discardProposal} style={{ padding: "7px 14px", borderRadius: 7, border: "1.5px solid #b0a070", background: "white", color: "#6d5613", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Discard</button>
+        </div>
+      </div>
+      <p style={{ fontSize: 12.5, color: "#8a7430", marginBottom: 14, lineHeight: 1.5 }}>
+        Review before it lands in the note — edit the text below, Accept to apply, or Discard to keep the current version. To push back, discard and send another revision.
+      </p>
+      {S.proposal.changes.length === 0 && (
+        <p style={{ fontSize: 13, color: "#8a7430", fontStyle: "italic" }}>The model made no changes for that instruction — the section already reflects it, or the requested detail isn't in the notes (check for a new hint after accepting).</p>
+      )}
+      {S.proposal.changes.map((c, idx) => (
+        <div key={c.id} style={{ marginBottom: 12 }}>
+          <p style={{ fontSize: 12.5, fontWeight: 700, color: "#6d5613", marginBottom: 6 }}>{c.heading}</p>
+          {renderProposalValue(c, idx)}
+        </div>
+      ))}
+    </div>
+  );
+
   /* ── Layout ────────────────────────────────────────────────────────── */
 
   return (
-    <div style={{ maxWidth: 860, margin: "0 auto" }}>
+    <React.Fragment>
+
+      {/* Floating note-freshness countdown — sits above the page, out of the way. */}
+      {cacheRemaining !== null && <CacheTimer remaining={cacheRemaining} />}
+
+      <div style={{ maxWidth: 860, margin: "0 auto" }}>
 
       {/* Ribbon */}
       <div className="tool-ribbon" role="tablist" aria-label="BCBA note tools">
@@ -682,6 +791,16 @@ function App() {
             >
               Generate Prompt
             </button>
+            {hasContent() && (
+              <button
+                onClick={handleClear}
+                disabled={loading}
+                title="Clear inputs and generated note to start fresh"
+                style={{ padding: "11px 18px", borderRadius: 8, border: "1.5px solid #d4b483", background: "white", color: "#7a5a1a", fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.6 : 1 }}
+              >
+                Clear
+              </button>
+            )}
             {loggedIn && (
               <button onClick={() => NotesGate.logout()} style={{ marginLeft: "auto", padding: "9px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "white", color: "#5a6b4a", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 Log out
@@ -710,43 +829,6 @@ function App() {
               value={S.promptText}
               style={{ width: "100%", minHeight: 220, padding: 12, borderRadius: 8, border: "1px solid #c0d4a8", fontSize: 13, color: "#2d3a1f", lineHeight: 1.6, resize: "vertical", background: "#f7fbf3", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
             />
-          </div>
-        )}
-
-        {/* Cache-expiry banner */}
-        {cacheBanner && (
-          <div style={{
-            marginBottom: 16, padding: "10px 16px", borderRadius: 9, fontSize: 13, lineHeight: 1.5,
-            border: cacheBanner.tone === "warn" ? "1.5px solid #c8962a" : "1px solid #c0d4a8",
-            background: cacheBanner.tone === "warn" ? "#fdf3dc" : "#f0f4ec",
-            color: cacheBanner.tone === "warn" ? "#5a3d00" : "#5a6b4a",
-          }}>
-            {cacheBanner.tone === "warn" ? "⏱ " : ""}{cacheBanner.text}
-          </div>
-        )}
-
-        {/* Revision proposal preview */}
-        {S.proposal && (
-          <div style={{ ...card, border: "2px solid #c8b26a", background: "#fffbef" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700, color: "#6d5613" }}>Proposed revision</h2>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={acceptProposal} style={{ padding: "7px 18px", borderRadius: 7, border: "none", background: "#374528", color: "white", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Accept</button>
-                <button onClick={discardProposal} style={{ padding: "7px 14px", borderRadius: 7, border: "1.5px solid #b0a070", background: "white", color: "#6d5613", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Discard</button>
-              </div>
-            </div>
-            <p style={{ fontSize: 12.5, color: "#8a7430", marginBottom: 14, lineHeight: 1.5 }}>
-              Review before it lands in the note — edit the text below, Accept to apply, or Discard to keep the current version. To push back, discard and send another revision.
-            </p>
-            {S.proposal.changes.length === 0 && (
-              <p style={{ fontSize: 13, color: "#8a7430", fontStyle: "italic" }}>The model made no changes for that instruction — the section already reflects it, or the requested detail isn't in the notes (check for a new hint after accepting).</p>
-            )}
-            {S.proposal.changes.map((c, idx) => (
-              <div key={c.id} style={{ marginBottom: 12 }}>
-                <p style={{ fontSize: 12.5, fontWeight: 700, color: "#6d5613", marginBottom: 6 }}>{c.heading}</p>
-                {renderProposalValue(c, idx)}
-              </div>
-            ))}
           </div>
         )}
 
@@ -814,6 +896,9 @@ function App() {
                         </button>
                       </div>
                     )}
+
+                    {/* Revision preview appears right here, in the section being revised. */}
+                    {S.proposal && S.proposal.targetSectionId === id && renderProposalCard()}
                   </div>
                 );
               })}
@@ -837,11 +922,15 @@ function App() {
                 </button>
               </div>
             </div>
+
+            {/* Cross-note revision preview appears by the corrections box that sent it. */}
+            {S.proposal && !S.proposal.targetSectionId && renderProposalCard()}
           </div>
         )}
 
       </div>
     </div>
+    </React.Fragment>
   );
 }
 
