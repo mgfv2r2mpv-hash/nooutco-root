@@ -360,6 +360,7 @@
     { key:'sad',       label:'Sad',       face:'😢', color:'#4f86c6' },
     { key:'angry',     label:'Angry',     face:'😠', color:'#e0552f' },
     { key:'scared',    label:'Scared',    face:'😨', color:'#8b5cf6' },
+    { key:'nervous',   label:'Nervous',   face:'😰', color:'#20a4a4' },
     { key:'surprised', label:'Surprised', face:'😮', color:'#ef9f27' },
     { key:'tired',     label:'Tired',     face:'😴', color:'#6d93a4' },
     { key:'calm',      label:'Calm',      face:'😌', color:'#1d9e75' },
@@ -368,7 +369,7 @@
     { key:'silly',     label:'Silly',     face:'😜', color:'#f97316' },
   ];
   const byKey = k => EMOTIONS.find(e => e.key === k);
-  const faceImg = e => 'faces/' + e.key + '.webp';
+  const faceImg = e => 'faces/' + e.key + '.webp' + (window.APP_VERSION ? '?v=' + window.APP_VERSION : '');
   // Render an emotion's "face" into a container: cel-shaded picture (image mode)
   // or emoji (emoji mode). Falls back to the emoji if the image fails to load.
   function paintFace(container, e) {
