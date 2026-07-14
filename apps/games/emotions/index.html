@@ -62,6 +62,7 @@
     .face.wrong   { border-color: var(--red-500) !important; background: var(--red-50) !important; }
     .face.errorless-off { opacity: .35; cursor: not-allowed; pointer-events: none; }
     .face.prompted { border-color: var(--amber-300) !important; box-shadow: 0 0 0 5px var(--amber-100); }
+    .face-img { width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; }
     @keyframes pop { 0%{transform:scale(1)} 45%{transform:scale(1.07)} 100%{transform:scale(1)} }
     body.visual .face.correct { animation: pop .35s var(--ease-standard); }
     @media (prefers-reduced-motion: reduce) { body.visual .face.correct { animation: none; } }
@@ -74,6 +75,7 @@
       font-size: 120px; background: var(--sage-50); border: 2px solid var(--sage-200);
       border-radius: var(--radius-2xl);
     }
+    .single .bigface img { width: 100%; height: 100%; object-fit: contain; }
     .score { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
     .score button {
       display: inline-flex; align-items: center; gap: 7px;
@@ -161,6 +163,13 @@
         <button data-n="3">3</button>
         <button data-n="4">4</button>
         <button data-n="6">6</button>
+      </div>
+    </div>
+    <div class="setting-group" id="faceMode-group">
+      <label>Faces</label>
+      <div class="seg" id="faceMode">
+        <button data-v="image">Pictures</button>
+        <button data-v="emoji">Emoji</button>
       </div>
     </div>
     <button type="button" id="btn-targets-toggle" class="btn-targets" aria-expanded="false">
@@ -332,7 +341,7 @@
     <button type="button" id="btn-finish-sr" class="finish-sr-btn" hidden>⭐ Finish &amp; SR</button>
   </div>
 
-  <p class="foot">Faces shown as emoji for demo; swap in your own photo/illustration set per learner. Trial data is stored only in this browser (never transmitted) — use Print for a report, Reset to clear.</p>
+  <p class="foot">Faces show as cel-shaded picture cards by default; switch to Emoji anytime with the Faces toggle. Trial data is stored only in this browser (never transmitted) — use Print for a report, Reset to clear.</p>
 
 </div><!-- .wrap -->
 
@@ -351,7 +360,10 @@
     { key:'sad',       label:'Sad',       face:'😢', color:'#4f86c6' },
     { key:'angry',     label:'Angry',     face:'😠', color:'#e0552f' },
     { key:'scared',    label:'Scared',    face:'😨', color:'#8b5cf6' },
+    { key:'nervous',   label:'Nervous',   face:'😰', color:'#20a4a4' },
     { key:'surprised', label:'Surprised', face:'😮', color:'#ef9f27' },
+    { key:'shocked',   label:'Shocked',   face:'😲', color:'#e11d48' },
+    { key:'interested',label:'Interested',face:'🤔', color:'#84cc16' },
     { key:'tired',     label:'Tired',     face:'😴', color:'#6d93a4' },
     { key:'calm',      label:'Calm',      face:'😌', color:'#1d9e75' },
     { key:'excited',   label:'Excited',   face:'🤩', color:'#ec4899' },
@@ -359,13 +371,27 @@
     { key:'silly',     label:'Silly',     face:'😜', color:'#f97316' },
   ];
   const byKey = k => EMOTIONS.find(e => e.key === k);
+  const faceImg = e => 'faces/' + e.key + '.webp' + (window.APP_VERSION ? '?v=' + window.APP_VERSION : '');
+  // Render an emotion's "face" into a container: cel-shaded picture (image mode)
+  // or emoji (emoji mode). Falls back to the emoji if the image fails to load.
+  function paintFace(container, e) {
+    if (cfg.faceMode !== 'image') { container.textContent = e.face; return; }
+    const img = new Image();
+    img.className = 'face-img';
+    img.src = faceImg(e);
+    img.alt = e.label;
+    img.loading = 'lazy';
+    img.draggable = false;
+    img.addEventListener('error', () => { container.textContent = e.face; });
+    container.replaceChildren(img);
+  }
   const KEY = 'noaba.emotionID.v1';
   const TRIALS_KEY = 'noaba.emotionID.trials.v1';
 
   /* ── Config (persisted) ──────────────────────────────────────────── */
   const defaults = {
     set:['happy','sad','angry','scared'], size:4,
-    sdR:'Touch {emotion}', sdE:'How does {pronoun} feel?', pronoun:'rotate', visual:false,
+    sdR:'Touch {emotion}', sdE:'How does {pronoun} feel?', pronoun:'rotate', visual:false, faceMode:'image',
     errorless:false, rePresentErrors:false, noErrorAnim:false, autoPrompt:false, promptDelay:3,
   };
   let cfg = Object.assign({}, defaults);
@@ -462,7 +488,7 @@
       const d = document.createElement('div');
       const isTarget = e.key === current.target.key;
       d.className = 'face' + (cfg.visual ? ' tinted' : '') + (cfg.errorless && !isTarget ? ' errorless-off' : '');
-      d.textContent = e.face;
+      paintFace(d, e);
       d.title = e.label;
       if (cfg.visual) {
         d.style.setProperty('--tint-bg', e.color + '22');
@@ -506,7 +532,7 @@
       : '';
     stage.innerHTML =
       '<div class="single">' +
-        '<div class="bigface"' + visualStyle + '>' + current.target.face + '</div>' +
+        '<div class="bigface"' + visualStyle + '></div>' +
         '<div class="reveal">Target: <b>' + current.target.label + '</b></div>' +
         '<div class="score">' +
           '<button class="s-correct" data-r="correct">✓ Independent</button>' +
@@ -516,6 +542,7 @@
           '<button class="s-wrong"   data-r="wrong">✗ Incorrect</button>' +
         '</div>' +
       '</div>';
+    paintFace(stage.querySelector('.bigface'), current.target);
     stage.querySelectorAll('.score button').forEach(b => {
       b.addEventListener('click', () => {
         if (b.dataset.r === 'wrong' && cfg.rePresentErrors) forceTarget = current.target;
@@ -552,6 +579,18 @@
     cfg.size = +b.dataset.n; paintSizes(); save(); if (mode === 'receptive') newTrial();
   });
   paintSizes();
+
+  /* ── Faces: pictures / emoji ─────────────────────────────────────── */
+  const faceModeSeg = document.getElementById('faceMode');
+  function paintFaceMode() {
+    faceModeSeg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === cfg.faceMode));
+  }
+  faceModeSeg.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    cfg.faceMode = b.dataset.v; paintFaceMode(); save();
+    if (current) { (mode === 'receptive') ? renderReceptive() : renderExpressive(); }
+  });
+  paintFaceMode();
 
   /* ── Pronoun ─────────────────────────────────────────────────────── */
   const pron = document.getElementById('pron');
