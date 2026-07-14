@@ -65,11 +65,12 @@ async function run() {
     const baseUrl = await dataUrl(masterPath('base', suffix));
     const strip = await page.evaluate((u) => window.GlamPipeline.stripBase(u), baseUrl);
     const frame = bboxToFrame(strip.bbox);
-    const meta = { bbox: strip.bbox, frame, srcW: strip.srcW, srcH: strip.srcH, clusters: strip.clusters };
+    const face = await page.evaluate((f) => window.GlamPipeline.faceAnchors(f), frame);
+    const meta = { bbox: strip.bbox, frame, srcW: strip.srcW, srcH: strip.srcH, clusters: strip.clusters, face };
     await fs.writeFile(path.join(outDir, '_meta.json'), JSON.stringify(meta));
     const basePng = await page.evaluate((f) => window.GlamPipeline.exportBase(f), frame);
     await writePng(outDir, 'base', basePng);
-    console.log(`  base   bbox=${JSON.stringify(strip.bbox)} frame=${JSON.stringify(frame)}`);
+    console.log(`  base   eyeE=${strip.eyeE}  face=${JSON.stringify(face)}`);
 
     // 2) diffed layers
     for (const key of DIFF_KEYS) {

@@ -2,31 +2,58 @@
  * modes.mjs — the per-layer diff modes + the delivered-color output plan for
  * Milestone 1 (matches exactly what the shipped m1/m3 rigs reference).
  *
- * MODES is ported verbatim from the reference assets/art/_pipeline.js.txt (zones,
- * seed/grow thresholds preserved). The pipeline adds the §3 fixes on top; the
- * mode objects themselves are unchanged so the tuned parameters carry over.
+ * MODES follows the reference assets/art/_pipeline.js.txt (dmax seed/grow
+ * thresholds preserved; zones re-tuned to the measured faces). On top of the
+ * reference each feature carries a `prune` spec — geometry cleanup (thin-stroke
+ * component pruning) that replaces color heuristics entirely. Washes keep their
+ * verified signature gates. See the plan: geometry-based extraction.
  */
 
-// feature helper
-const F = (zone, seed, grow) => ({ kind: 'feature', zone, seed, grow });
+// feature helper: zoneE + hysteresis seed/grow on the RAW dmax diff (reference-
+// tuned scale — these captured features faithfully, colors and outlines intact),
+// plus `prune` = the geometry cleanup that replaces all color heuristics:
+// a component must survive `coreR` erosions somewhere (thin-everywhere ghost
+// strokes die) and cover ≥ minArea px. BLOB for solid features; STROKE for
+// layers that ARE thin lines (liner/mascara/pencils), where only whisker-level
+// noise can be pruned and the tight zone does the rest.
+//
+// zoneE = [x0, dy0, x1, dy1]: x as bbox fractions; y as offsets from the
+// model's MEASURED eye-line (pipeline detectEyeLine). The probe proved fixed
+// fractions sit 0.10–0.15 above the real anatomy on this bbox convention
+// (the old "lips" zone missed the lips entirely; "brows" caught the hairline).
+const F = (zoneE, seed, grow, prune) => ({ kind: 'feature', zoneE, seed, grow, prune });
+const BLOB = { coreR: 3, minArea: 60 };
+const STROKE = { coreR: 1, minArea: 30 };
+// liner/mascara/lip-liner are ≤6px strokes — any component with a ≥7px-thick
+// core is an iris/sclera ghost blob, not the feature (inverse of BLOB).
+const THIN_STROKE = { coreR: 1, minArea: 30, maxCoreR: 3 };
 
 export const MODES = {
-  'skin-dull': { kind: 'wash' }, 'skin-clean': { kind: 'wash' }, 'glow': { kind: 'wash' },
-  'brows-bushy':  F([0.15, 0.06, 0.85, 0.24], 40, 14),
-  'brows-shaped': F([0.15, 0.06, 0.85, 0.24], 40, 14),
-  'brow-pencil':  F([0.15, 0.06, 0.85, 0.24], 35, 12),
-  'eyeliner':     F([0.12, 0.10, 0.88, 0.26], 38, 14),
-  'mascara':      F([0.12, 0.10, 0.88, 0.26], 38, 14),
-  'eyeshadow-violet': F([0.12, 0.08, 0.88, 0.26], 30, 12),
-  'eyeshadow-bronze': F([0.12, 0.08, 0.88, 0.26], 30, 12),
-  'contour':   F([0.02, 0.06, 0.98, 0.42], 30, 12),
-  'highlight': F([0.05, 0.06, 0.95, 0.40], 26, 10),
-  'blush-rose':  F([0.08, 0.18, 0.92, 0.38], 26, 10),
-  'blush-peach': F([0.08, 0.18, 0.92, 0.38], 26, 10),
-  'lip-liner':  F([0.28, 0.26, 0.72, 0.42], 30, 12),
-  'lips-red':   F([0.28, 0.26, 0.72, 0.42], 35, 12),
-  'lips-coral': F([0.28, 0.26, 0.72, 0.42], 35, 12),
-  'lips-berry': F([0.28, 0.26, 0.72, 0.42], 35, 12),
+  // NOTE: skin-dull, glow, blush-*, eyeshadow-* are NO LONGER extracted — they
+  // are rendered procedurally in-game (soft color/luminance over skin regions),
+  // positioned from per-model `face` anchors. See the plan (procedural pivot).
+
+  // skin-clean = base-skin region × any-change (pipeline.js): solid face+neck
+  // wash that self-carves lips/eyes/brows (not base-skin), can't touch shirt or
+  // backdrop. closing + reconstruct + sweep clean the residue.
+  'skin-clean': { kind: 'wash', seed: 10, prune: { coreR: 2, geo: 24, minArea: 200 } },
+  // brows diff thin (the base already has brows; the delta is arc edges) → STROKE
+  'brows-bushy':  F([0.15, -0.075, 0.85, -0.008], 40, 14, STROKE),
+  'brows-shaped': F([0.15, -0.075, 0.85, -0.008], 40, 14, STROKE),
+  'brow-pencil':  F([0.15, -0.075, 0.85, -0.008], 35, 12, STROKE),
+  'eyeliner':     F([0.12, -0.035, 0.88, 0.028], 38, 14, THIN_STROKE),
+  'mascara':      F([0.12, -0.035, 0.88, 0.028], 38, 14, THIN_STROKE),
+  // contour keeps the 'dull' skin-darkening gate (cleared its audit).
+  'contour':   { kind: 'feature', zoneE: [0.02, -0.05, 0.98, 0.17], seed: 20, grow: 11, gate: 'dull', prune: BLOB, softAlpha: 55 },
+  // highlight = lighter SKIN sheen — the 'lighten' gate rejects the light ghost
+  // rings around eyes/nose that plain dmax kept (proof-sheet evidence).
+  'highlight': { kind: 'feature', zoneE: [0.05, -0.045, 0.95, 0.13], seed: 16, grow: 8, gate: 'lighten', prune: BLOB, softAlpha: 50 },
+  'lip-liner':  F([0.28, 0.085, 0.72, 0.195], 30, 12, THIN_STROKE),
+  'lips-red':   F([0.28, 0.085, 0.72, 0.195], 35, 12, BLOB),
+  'lips-coral': F([0.28, 0.085, 0.72, 0.195], 35, 12, BLOB),
+  'lips-berry': F([0.28, 0.085, 0.72, 0.195], 35, 12, BLOB),
+  // hair: reference dmax diff + core-reconstruction + capped hole-fill
+  // (pipeline.js); face rect is eye-anchored via DEFAULT_HAIR.rectE.
   'hair-brunette': { kind: 'hair' }, 'hair-copper': { kind: 'hair' },
   'hair-berry': { kind: 'hair' }, 'hair-blonde': { kind: 'hair' },
 };
@@ -67,11 +94,13 @@ export const EAR_ANCHORS = {
 
 // Per-model spot anchors (game-side placement; not used by processing). m1/m3
 // from the shipped rigs; m2/m4 by-eye defaults, refined in QA.
+// 3 pimples (forehead + two cheeks), top-left of a 12% sprite, from each model's
+// measured eye-line (measure_faces.mjs). Kept in sync with art-manifest.js.
 export const SPOT_ANCHORS = {
-  m1: [{ l: 38, t: 26 }, { l: 30, t: 50 }, { l: 62, t: 54 }],
-  m2: [{ l: 41, t: 28 }, { l: 31, t: 47 }, { l: 48, t: 56 }],
-  m3: [{ l: 40, t: 24 }, { l: 31, t: 46 }, { l: 63, t: 50 }],
-  m4: [{ l: 41, t: 28 }, { l: 31, t: 47 }, { l: 48, t: 56 }],
+  m1: [{ l: 44, t: 21 }, { l: 30, t: 45 }, { l: 58, t: 45 }],
+  m2: [{ l: 44, t: 19 }, { l: 30, t: 43 }, { l: 58, t: 43 }],
+  m3: [{ l: 44, t: 17 }, { l: 30, t: 41 }, { l: 58, t: 41 }],
+  m4: [{ l: 44, t: 18 }, { l: 30, t: 42 }, { l: 58, t: 42 }],
 };
 
 // Optional per-model hair overrides (§3.3). Empty = use the reference default

@@ -52,15 +52,9 @@ const hashCount = (payload.match(/href="#"/g) || []).length;
 if (hashCount !== 1) throw new Error(`build_index: expected exactly 1 href="#", found ${hashCount}`);
 payload = payload.replace('href="#"', 'href="/"');
 
-// M1 art gate: the person PNG rig only exists for the 'social' theme. The 'hero'
-// theme also has base:'person' but no cape/mask/emblem/hero-hair layers, so
-// without this gate selecting Superhero would silently swap to the person PNG
-// stack and render every hero-specific step as nothing. Keep hero (and pet) on
-// their procedural SVG until that art ships (manifest `later:{ superhero:'v2' }`).
-const ART_GATE_OLD = `personArt:base==='person'&&!!this.artBaseSrc('person'), personProcedural:base!=='person'||!this.artBaseSrc('person'),`;
-const ART_GATE_NEW = `personArt:base==='person'&&s.theme==='social'&&!!this.artBaseSrc('person'), personProcedural:base!=='person'||!(s.theme==='social'&&!!this.artBaseSrc('person')),`;
-if (!payload.includes(ART_GATE_OLD)) throw new Error('build_index: personArt gate line not found — source logic changed, re-derive the patch');
-payload = payload.replace(ART_GATE_OLD, ART_GATE_NEW);
+// The social-only art gate is now baked into staging (renderVals personArt reads
+// s.theme==='social' && this.hasPersonArt()) — the Canvas2D compositor rewrite
+// made the old string patch obsolete. Hero/pet stay on their procedural SVG.
 
 // M1 scope: ship the makeover (social/person) only. Remove the Pet show +
 // Superhero theme <option>s from the settings dropdown so those unfinished
@@ -71,6 +65,10 @@ for (const t of ['pet', 'hero']) {
   if (!re.test(payload)) throw new Error(`build_index: theme option '${t}' not found — settings markup changed`);
   payload = payload.replace(re, '');
 }
+
+// ZONES.person + pop-spot hitboxes are now authored directly in staging for the
+// eye-anchored (Canvas2D) frame — pop positions come from genEntry face anchors
+// (this._spotPct). The old per-model re-tune + spotAnchors patches are obsolete.
 
 // Post-conditions: both nodes survived.
 if (!/<x-dc>[\s\S]*<\/x-dc>/.test(payload)) throw new Error('build_index: <x-dc>…</x-dc> missing after transform');
@@ -94,6 +92,7 @@ ${gameStyle}
      Loaded here (not via the design-canvas helmet) so window.NooutcoReward and
      window.NooutcoArt exist before the runtime boots and first-renders. -->
 <script src="../reward.js"></script>
+<script src="assets/art-generated.js"></script>
 <script src="assets/art-manifest.js"></script>
 
 <!-- Vendored React 18 (UMD) + the design-canvas runtime. Scoped to this one game;

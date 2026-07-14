@@ -30,34 +30,46 @@
   };
   const HAIR_STYLES = ['brunette', 'copper', 'berry', 'blonde', 'silver', 'flame', 'heroblue'];
 
-  const rig = (dir, spotAnchors, earAnchors) => ({
+  // Per-model face anchors (box-% of the 320×360 stage) from the pipeline
+  // (tools/glam-art run: detectEyeLine + detectEyeBoxes). Drive the PROCEDURAL
+  // cosmetics — eyeshadow on the eyelids, blush on the cheeks, glow on the
+  // forehead/cheekbones, dull over the whole face. See _meta.json per model.
+  const FACES = {
+    m1: { eyeL: { l: 38.5, t: 36.4 }, eyeR: { l: 61.4, t: 36.5 }, cheekL: { l: 37.4, t: 49.4 }, cheekR: { l: 62.5, t: 49.4 }, faceCx: 50, eyeY: 37.9, faceTop: 6.7, faceBot: 61.5, faceHalfW: 22.1 },
+    m2: { eyeL: { l: 40.0, t: 34.0 }, eyeR: { l: 59.8, t: 34.1 }, cheekL: { l: 38.7, t: 47.0 }, cheekR: { l: 61.1, t: 47.0 }, faceCx: 49.9, eyeY: 36.3, faceTop: 6.7, faceBot: 61.5, faceHalfW: 25.2 },
+    m3: { eyeL: { l: 39.7, t: 32.2 }, eyeR: { l: 59.8, t: 32.2 }, cheekL: { l: 38.5, t: 45.2 }, cheekR: { l: 61.0, t: 45.1 }, faceCx: 50, eyeY: 33.7, faceTop: 6.7, faceBot: 61.5, faceHalfW: 23.9 },
+    m4: { eyeL: { l: 39.5, t: 32.8 }, eyeR: { l: 60.5, t: 32.8 }, cheekL: { l: 38.4, t: 45.8 }, cheekR: { l: 61.6, t: 45.7 }, faceCx: 50, eyeY: 34.9, faceTop: 6.7, faceBot: 61.5, faceHalfW: 22.1 },
+  };
+
+  // dull / glow / shadow(eyeshadow) / blush are rendered procedurally in-game
+  // from `face` anchors — not PNG layers (they extracted too noisily).
+  const rig = (dir, spotAnchors, earAnchors, face) => ({
     base: dir + 'base.png',
-    flaws: { dull: dir + 'skin-dull.png', spot: dir + 'spot.png', browsBushy: dir + 'brows-bushy.png' },
+    flaws: { spot: dir + 'spot.png', browsBushy: dir + 'brows-bushy.png' },
     layers: {
       outfit:   { z: 3,  variants: { gown: dir + 'shirt-gown.png', dress: dir + 'shirt-dress.png', casual: dir + 'shirt-casual.png', sparkle: dir + 'shirt-sparkle.png' } },
       wash:     { z: 5,  src: dir + 'skin-clean.png' },
-      moist:    { z: 6,  src: dir + 'glow.png' },
       hair:     { z: 10, variants: { '#5b4636': dir + 'hair-brunette.png', '#b5651d': dir + 'hair-copper.png', '#8b5cf6': dir + 'hair-berry.png', '#e0b064': dir + 'hair-blonde.png' } },
       brows:    { z: 20, src: dir + 'brows-shaped.png' },
       pencil:   { z: 21, src: dir + 'brow-pencil.png' },
-      shadow:   { z: 30, variants: { '#a06cc9': dir + 'eyeshadow-violet.png', '#b5793f': dir + 'eyeshadow-bronze.png' } },
       liner:    { z: 31, src: dir + 'eyeliner.png' },
       mascara:  { z: 32, src: dir + 'mascara.png' },
       contour:  { z: 34, src: dir + 'contour.png' },
       hl:       { z: 35, src: dir + 'highlight.png' },
-      blush:    { z: 37, variants: { '#f28ba0': dir + 'blush-rose.png', '#f6a37a': dir + 'blush-peach.png' } },
       lipliner: { z: 40, src: dir + 'lip-liner.png' },
       lips:     { z: 41, variants: { '#d64b6a': dir + 'lips-red.png', '#e07a5f': dir + 'lips-coral.png', '#a83f6b': dir + 'lips-berry.png' } },
       ear:      { z: 50, variants: { '💠': dir + 'ear-a.png', '⭕': dir + 'ear-b.png', '💎': dir + 'ear-c.png' } },
     },
-    spotAnchors, earAnchors,
+    spotAnchors, earAnchors, face,
   });
 
   const MODELS = {
-    m1: rig('assets/art/person/m1/', [{ l: 38, t: 26 }, { l: 30, t: 50 }, { l: 62, t: 54 }], { l: 22.5, r: 77.5, t: 39.5 }),
-    m2: rig('assets/art/person/m2/', [{ l: 41, t: 28 }, { l: 31, t: 47 }, { l: 48, t: 56 }], { l: 24.0, r: 76.0, t: 39.0 }),
-    m3: rig('assets/art/person/m3/', [{ l: 40, t: 24 }, { l: 31, t: 46 }, { l: 63, t: 50 }], { l: 26.2, r: 74.2, t: 38.5 }),
-    m4: rig('assets/art/person/m4/', [{ l: 41, t: 28 }, { l: 31, t: 47 }, { l: 48, t: 56 }], { l: 25.0, r: 75.0, t: 39.0 }),
+    // spotAnchors = 3 pimples (forehead + two cheeks), top-left of a 12% sprite,
+    // derived from each model's measured eye-line.
+    m1: rig('assets/art/person/m1/', [{ l: 44, t: 21 }, { l: 30, t: 45 }, { l: 58, t: 45 }], { l: 22.5, r: 77.5, t: 39.5 }, FACES.m1),
+    m2: rig('assets/art/person/m2/', [{ l: 44, t: 19 }, { l: 30, t: 43 }, { l: 58, t: 43 }], { l: 24.0, r: 76.0, t: 39.0 }, FACES.m2),
+    m3: rig('assets/art/person/m3/', [{ l: 44, t: 17 }, { l: 30, t: 41 }, { l: 58, t: 41 }], { l: 26.2, r: 74.2, t: 38.5 }, FACES.m3),
+    m4: rig('assets/art/person/m4/', [{ l: 44, t: 18 }, { l: 30, t: 42 }, { l: 58, t: 42 }], { l: 25.0, r: 75.0, t: 39.0 }, FACES.m4),
   };
 
   const ACTIVE_MODEL = 'm1';
@@ -70,6 +82,7 @@
       scope: 'person-only: all 4 models live, delivered colors. Recolor matrices → M2.',
       canvas: { person: { w: 320, h: 360, viewBox: '0 0 260 300' } },
       spotAnchors: { person: active.spotAnchors },
+      face: { person: active.face },
       palettes: PALETTES,
       hairStyles: HAIR_STYLES,
       models: MODELS,
