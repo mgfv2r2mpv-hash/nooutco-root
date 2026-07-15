@@ -557,18 +557,21 @@ TERMINOLOGY (non-negotiable)
         setTimeout(() => setCopied(null), 1800);
       };
 
-      // Build a plain-text transcript of a section (ticks/choice/narrative).
-      const sectionToText = (s) => {
+      // Body of a section WITHOUT its heading — what a single "Copy" yields,
+      // ready to paste straight into a document.
+      const sectionBody = (s) => {
         if (s.kind === "facts") {
-          return `${s.heading}\n- Place of Service: ${placeOfService || "Not specified"}\n- Telehealth: ${telehealth || "Not specified"}\n- Service Paused: ${output.servicePaused || "No"}`;
+          return `- Place of Service: ${placeOfService || "Not specified"}\n- Telehealth: ${telehealth || "Not specified"}\n- Service Paused: ${output.servicePaused || "No"}`;
         }
-        if (s.kind === "narrative") return `${s.heading}\n${output[s.key] || ""}`;
-        if (s.kind === "single") {
-          return `${s.heading}\nSuggested: ${output[s.group] || "(none)"}`;
-        }
+        if (s.kind === "narrative") return output[s.key] || "";
+        if (s.kind === "single") return `Suggested: ${output[s.group] || "(none)"}`;
         const ticks = (output[s.group] || []);
-        return `${s.heading}\nTick: ${ticks.length ? ticks.join(", ") : "None selected"}`;
+        return `Tick: ${ticks.length ? ticks.join(", ") : "None selected"}`;
       };
+
+      // Full section transcript WITH its heading — used only by "Copy All" so the
+      // combined text differentiates the sections.
+      const sectionToText = (s) => `${s.heading}\n${sectionBody(s)}`;
 
       const handleCopyAll = () => {
         if (!output) return;
@@ -757,7 +760,7 @@ TERMINOLOGY (non-negotiable)
                   <div key={i} style={{ borderRadius: 9, border: "1px solid #ddecd0", background: "#f7fbf3", padding: 16 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, gap: 12 }}>
                       <span style={{ fontSize: 13, fontWeight: 700, color: "#374528" }}>{s.heading}</span>
-                      <button onClick={() => handleCopy("sec" + i, sectionToText(s))}
+                      <button onClick={() => handleCopy("sec" + i, sectionBody(s))}
                         style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #c0d4a8", background: "white", color: "#374528", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                         {copied === "sec" + i ? "Copied!" : "Copy"}
                       </button>
