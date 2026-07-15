@@ -739,6 +739,18 @@ class Component extends DCLogic {
     for(let y=1;y<H-1;y++) for(let x=1;x<W-1;x++){ const i=y*W+x; if(G(i)>0.4 && (G(i-1)<0.25||G(i+1)<0.25||G(i-W)<0.25||G(i+W)<0.25)){
       const j=i*4; o[j]=dr;o[j+1]=dg;o[j+2]=db; o[j+3]=(b[j+3]/255)*235; } }
     octx.putImageData(od,0,0); c.key=key; c.cv=out; return out; }
+  // Recolour a brow sprite to the hair hue (tint × luminance): keeps the ink's darkest core dark
+  // and the softer fill hair-toned, so a black m4 brow reads as the hair colour without going flat.
+  _browTint(src,hex){ const rec=this._img(src); if(!rec.ok) return null;
+    const key=src+'|'+hex; const c=this._browtc||(this._browtc={}); if(c[key]) return c[key];
+    const im=rec.img, W=im.naturalWidth||im.width, H=im.naturalHeight||im.height;
+    const cn=document.createElement('canvas'); cn.width=W; cn.height=H; const cx=cn.getContext('2d');
+    cx.drawImage(im,0,0,W,H); let id; try{ id=cx.getImageData(0,0,W,H); }catch(e){ return null; }
+    const d=id.data, [tr,tg,tb]=this._hex(hex);
+    for(let i=0;i<d.length;i+=4){ if(d[i+3]<8) continue;
+      const L=(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2])/255, k=0.42+0.58*L;
+      d[i]=tr*k; d[i+1]=tg*k; d[i+2]=tb*k; }
+    cx.putImageData(id,0,0); c[key]=cn; return cn; }
 
   _blob(ctx,cx,cy,rx,ry,rot,hex,alpha,blend,soft){ if(alpha<=0.003||rx<=0||ry<=0) return;
     const [r,g,b]=this._hex(hex); const rgba=a=>'rgba('+r+','+g+','+b+','+a+')';
@@ -812,9 +824,23 @@ class Component extends DCLogic {
       ctx.fillStyle='#140f12'; ctx.beginPath(); ctx.arc(X,y,ir*0.46,0,6.2832); ctx.fill();
       ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.beginPath(); ctx.arc(X-ir*0.28,y-ir*0.30,ir*0.17,0,6.2832); ctx.fill();
       ctx.restore(); } }
-    // brow pencil / shaping — subtle definition clipped to the brow band (above eyes)
-    if(cov('pencil')>=1||cov('brows')>=1){ const a=cov('pencil')>=1?0.5:0.32; ctx.save(); ctx.beginPath(); ctx.rect(0,0,W,cym-lh*0.55); ctx.clip();
-      for(const e of eyes) this._blob(ctx,e[0],e[1]-e[3]*1.05,e[2]*0.9,e[3]*0.5,-e[4]*0.16,'#3a2a1c',a,'multiply',true); ctx.restore(); }
+    // ===== BROWS — the base render's baked brows are skin-filled at build time, so drop in the
+    // state sprite: default bushy → "Shape brows" ✂️ cleaned → "Brow pencil" ✏️ shaped (pencil
+    // wins). Real L/R pair (no mirror; brows are directional). Centre-anchored above the eye per
+    // per-model BROWCFG {wf: width×eye-width, dx: lateral nudge, dy: height above eye centre}. =====
+    const browSet=(this.gen().brows||{})[this.state.model];
+    if(browSet){
+      const bt=browSet[cov('pencil')>=1?'shaped':(cov('brows')>=1?'cleaned':'bushy')]||browSet.bushy;
+      const BROWCFG=({m1:{wf:1.3,dx:0,dy:1.9},m2:{wf:1.3,dx:0,dy:1.65},m3:{wf:1.3,dx:0,dy:1.75},m4:{wf:1.3,dx:0,dy:1.5}})[this.state.model]||{wf:1.3,dx:0,dy:1.75};
+      // brows default-MATCH the hair colour (and follow a recolour). tint × luminance keeps the
+      // ink's own shading + outline while shifting hue. HAIRHEX mirrors the hair-colour swatches.
+      const HAIRHEX={brunette:'#5b4636',blonde:'#e0b064',copper:'#c8712c',berry:'#a24a8f',flame:'#e5533b',heroblue:'#2a6fdb',silver:'#c7cdd6'};
+      const browHex=HAIRHEX[col('hair')||E.native]||'#5b4636';
+      if(bt) for(const e of eyes){ const [x,y,w,h,o]=e, meta=bt[o>0?'R':'L']; if(!meta) continue;
+        const tc=this._browTint(meta.src,browHex); if(!tc) continue;
+        const bw=BROWCFG.wf*(2*w), bh=bw/meta.aspect, bx=x+o*BROWCFG.dx*w, by=y-BROWCFG.dy*h;
+        ctx.drawImage(tc, bx-bw/2, by-bh/2, bw, bh); }
+    }
     // eyeliner + mascara are sprite states now (drawn with the eyes above), not procedural.
     if(cov('lips')>0){ const lcv=this._lipsCanvas(E,col('lips')||'#d64b6a'); if(lcv){ ctx.save(); ctx.globalAlpha=Math.min(1,cov('lips')); ctx.drawImage(lcv,0,0,W,H); ctx.restore(); } }
     if(cov('lipliner')>=1){ const llv=this._lipLinerCanvas(E,col('lipliner')||'#b23a56'); if(llv) ctx.drawImage(llv,0,0,W,H); }

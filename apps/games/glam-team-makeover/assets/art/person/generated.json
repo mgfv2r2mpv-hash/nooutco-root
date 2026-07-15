@@ -206,27 +206,157 @@
  "eyes": {
   "natural": {
    "src": "assets/art/eyes/natural.png",
-   "aspect": 1.6425,
+   "aspect": 1.8085,
    "cx": 0.5,
    "cy": 0.5
   },
   "glam": {
    "src": "assets/art/eyes/glam.png",
-   "aspect": 1.6425,
+   "aspect": 1.8085,
    "cx": 0.5,
    "cy": 0.5
   },
   "eyelinerR": {
    "src": "assets/art/eyes/eyeliner_r.png",
-   "aspect": 1.6425,
+   "aspect": 1.8085,
    "cx": 0.5,
    "cy": 0.5
   },
   "eyelinerL": {
    "src": "assets/art/eyes/eyeliner_l.png",
-   "aspect": 1.6425,
+   "aspect": 1.8085,
    "cx": 0.5,
    "cy": 0.5
+  }
+ },
+ "brows": {
+  "m1": {
+   "bushy": {
+    "L": {
+     "src": "assets/art/brows/bushy-L-m1.png",
+     "aspect": 2.3622
+    },
+    "R": {
+     "src": "assets/art/brows/bushy-R-m1.png",
+     "aspect": 2.3622
+    }
+   },
+   "cleaned": {
+    "L": {
+     "src": "assets/art/brows/cleaned-L-m1.png",
+     "aspect": 2.8846
+    },
+    "R": {
+     "src": "assets/art/brows/cleaned-R-m1.png",
+     "aspect": 2.8846
+    }
+   },
+   "shaped": {
+    "L": {
+     "src": "assets/art/brows/shaped-L-m1.png",
+     "aspect": 2.381
+    },
+    "R": {
+     "src": "assets/art/brows/shaped-R-m1.png",
+     "aspect": 2.4
+    }
+   }
+  },
+  "m2": {
+   "bushy": {
+    "L": {
+     "src": "assets/art/brows/bushy-L-m2.png",
+     "aspect": 1.6667
+    },
+    "R": {
+     "src": "assets/art/brows/bushy-R-m2.png",
+     "aspect": 1.6216
+    }
+   },
+   "cleaned": {
+    "L": {
+     "src": "assets/art/brows/cleaned-L-m2.png",
+     "aspect": 2.8846
+    },
+    "R": {
+     "src": "assets/art/brows/cleaned-R-m2.png",
+     "aspect": 2.8846
+    }
+   },
+   "shaped": {
+    "L": {
+     "src": "assets/art/brows/shaped-L-m2.png",
+     "aspect": 3.0
+    },
+    "R": {
+     "src": "assets/art/brows/shaped-R-m2.png",
+     "aspect": 2.8571
+    }
+   }
+  },
+  "m3": {
+   "bushy": {
+    "L": {
+     "src": "assets/art/brows/bushy-L-m3.png",
+     "aspect": 2.0
+    },
+    "R": {
+     "src": "assets/art/brows/bushy-R-m3.png",
+     "aspect": 2.0
+    }
+   },
+   "cleaned": {
+    "L": {
+     "src": "assets/art/brows/cleaned-L-m3.png",
+     "aspect": 2.7273
+    },
+    "R": {
+     "src": "assets/art/brows/cleaned-R-m3.png",
+     "aspect": 2.7523
+    }
+   },
+   "shaped": {
+    "L": {
+     "src": "assets/art/brows/shaped-L-m3.png",
+     "aspect": 2.439
+    },
+    "R": {
+     "src": "assets/art/brows/shaped-R-m3.png",
+     "aspect": 2.439
+    }
+   }
+  },
+  "m4": {
+   "bushy": {
+    "L": {
+     "src": "assets/art/brows/bushy-L-m4.png",
+     "aspect": 2.2388
+    },
+    "R": {
+     "src": "assets/art/brows/bushy-R-m4.png",
+     "aspect": 2.2388
+    }
+   },
+   "cleaned": {
+    "L": {
+     "src": "assets/art/brows/cleaned-L-m4.png",
+     "aspect": 3.0612
+    },
+    "R": {
+     "src": "assets/art/brows/cleaned-R-m4.png",
+     "aspect": 3.0928
+    }
+   },
+   "shaped": {
+    "L": {
+     "src": "assets/art/brows/shaped-L-m4.png",
+     "aspect": 2.7778
+    },
+    "R": {
+     "src": "assets/art/brows/shaped-R-m4.png",
+     "aspect": 2.7778
+    }
+   }
   }
  },
  "models": {
