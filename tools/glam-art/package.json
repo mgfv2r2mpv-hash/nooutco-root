@@ -1,0 +1,7 @@
+{
+  "name": "glam-art-pipeline",
+  "private": true,
+  "type": "module",
+  "description": "Build-time art pipeline for Glam Team Makeover (not served).",
+  "dependencies": { "playwright": "1.61.1" }
+}

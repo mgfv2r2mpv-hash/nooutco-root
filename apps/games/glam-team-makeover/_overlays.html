@@ -1,0 +1,48 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Glam overlays review</title><style>
+  body{margin:0;background:#2a2a2e;color:#eee;font:13px system-ui;padding:12px}
+  .bar{position:sticky;top:0;background:#1b1b1f;padding:10px 12px;border-radius:8px;margin-bottom:12px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;z-index:9}
+  .bar b{color:#fff} button{background:#3a3a40;color:#eee;border:1px solid #555;border-radius:6px;padding:5px 11px;cursor:pointer;font:inherit}
+  button.on{background:#6b8; color:#111; border-color:#6b8; font-weight:700}
+  .grid{display:grid;grid-template-columns:120px repeat(4,1fr);gap:4px;align-items:center}
+  .hd{font-weight:800;text-align:center;color:#9cf;padding:4px}
+  .lyr{font-weight:700;color:#cda;font-size:12px;padding:4px 6px;position:sticky;left:0}
+  .cell{position:relative;aspect-ratio:520/600;border:1px solid #444;border-radius:4px;overflow:hidden}
+  .cell img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+  .cell .bg{position:absolute;inset:0}
+</style></head><body>
+<div class="bar">
+  <b>Glam extracted overlays</b> — every processed PNG layer, all 4 models.
+  <span>Background: <button id="bgMag" class="on">magenta</button><button id="bgWhite">white</button></span>
+  <span>Underlay: <button id="ulNone" class="on">layer alone</button><button id="ulBase">over base</button></span>
+  <span style="color:#9a9">skin-dull / glow / blush / eyeshadow are now procedural (in-game) — not here.</span>
+</div>
+<div class="grid" id="grid"></div>
+<script>
+const MODELS=['m1','m2','m3','m4'];
+const LAYERS=['skin-clean','brows-bushy','brows-shaped','brow-pencil','eyeliner','mascara','contour','highlight',
+  'lip-liner','lips-red','lips-coral','lips-berry','hair-brunette','hair-copper','hair-berry','hair-blonde',
+  'ear-a','ear-b','ear-c','spot','shirt-gown','shirt-dress','shirt-casual','shirt-sparkle'];
+let bg='#ff00ff', underlay=false;
+const grid=document.getElementById('grid');
+function build(){
+  grid.innerHTML='';
+  const corner=document.createElement('div');corner.className='hd';corner.textContent='layer \\ model';grid.appendChild(corner);
+  for(const m of MODELS){const h=document.createElement('div');h.className='hd';h.textContent=m;grid.appendChild(h);}
+  for(const L of LAYERS){
+    const lab=document.createElement('div');lab.className='lyr';lab.textContent=L;grid.appendChild(lab);
+    for(const m of MODELS){
+      const c=document.createElement('div');c.className='cell';
+      const b=document.createElement('div');b.className='bg';b.style.background=bg;c.appendChild(b);
+      if(underlay){const base=document.createElement('img');base.src=`assets/art/person/${m}/base.png`;c.appendChild(base);}
+      const img=document.createElement('img');img.src=`assets/art/person/${m}/${L}.png`;img.onerror=()=>{c.style.opacity=.25};c.appendChild(img);
+      grid.appendChild(c);
+    }
+  }
+}
+function setBtn(id,on){document.getElementById(id).classList.toggle('on',on);}
+document.getElementById('bgMag').onclick=()=>{bg='#ff00ff';setBtn('bgMag',1);setBtn('bgWhite',0);build();};
+document.getElementById('bgWhite').onclick=()=>{bg='#ffffff';setBtn('bgMag',0);setBtn('bgWhite',1);build();};
+document.getElementById('ulNone').onclick=()=>{underlay=false;setBtn('ulNone',1);setBtn('ulBase',0);build();};
+document.getElementById('ulBase').onclick=()=>{underlay=true;setBtn('ulNone',0);setBtn('ulBase',1);build();};
+build();
+</script></body></html>

@@ -1,0 +1,17 @@
+# Build-time art pipeline working files — not part of the served repo.
+# The uncompressed masters live on the user's machine; the committed artifacts
+# are the processed layer PNGs under apps/games/glam-team-makeover/assets/art/.
+
+# Uncompressed masters (symlink to ~/Desktop/MakeoverGame_Resources; 117 MB)
+masters
+masters/
+
+# Ephemeral staging pulled from the Claude Design project (re-derivable)
+staging_*.html
+staging_*.js
+
+# Pipeline intermediates / scratch
+out/
+_scratch/
+node_modules/
+*.log

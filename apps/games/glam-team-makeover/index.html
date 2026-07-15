@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="version" content="1.0">
+<title>Glam Team Makeover</title>
+
+<!-- Shared design tokens + Atkinson fonts (compiled bundle, same as every game) -->
+<link rel="stylesheet" href="../tailwind.css">
+
+<style>
+  body { margin:0; background:var(--surface-page); font-family:var(--font-sans); color:var(--text-body); }
+  @keyframes gtm-cue { 0%,100%{ box-shadow:0 0 0 0 rgba(245,158,11,0);} 50%{ box-shadow:0 0 0 6px rgba(245,158,11,.30);} }
+  @keyframes gtm-pop { 0%{ opacity:0; transform:scale(.85);} 60%{ transform:scale(1.04);} 100%{ opacity:1; transform:scale(1);} }
+  @keyframes gtm-target { 0%,100%{ box-shadow:0 0 0 3px rgba(106,118,89,.30);} 50%{ box-shadow:0 0 0 8px rgba(106,118,89,.12);} }
+  @keyframes gtm-pim { 0%,100%{ box-shadow:0 0 0 0 rgba(220,38,38,.35);} 50%{ box-shadow:0 0 0 6px rgba(220,38,38,.12);} }
+  .gtm-scroll::-webkit-scrollbar{ width:8px;height:8px; } .gtm-scroll::-webkit-scrollbar-thumb{ background:var(--slate-300); border-radius:8px; }
+  .gtm-tool{ touch-action:none; }
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; } }
+</style>
+
+<!-- Shared reinforcement (SR) screen · this game's art manifest.
+     Loaded here (not via the design-canvas helmet) so window.NooutcoReward and
+     window.NooutcoArt exist before the runtime boots and first-renders. -->
+<script src="../reward.js"></script>
+<script src="assets/art-generated.js"></script>
+<script src="assets/art-manifest.js"></script>
+
+<!-- Vendored React 18 (UMD) + the design-canvas runtime. Scoped to this one game;
+     no other game uses a framework. Must load before the runtime auto-boots. -->
+<script src="vendor/react.production.min.js"></script>
+<script src="vendor/react-dom.production.min.js"></script>
+<script src="vendor/support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="min-height:100vh;display:flex;flex-direction:column">
+
+  <!-- HEADER -->
+  <header style="display:flex;align-items:center;gap:10px;background:var(--slate-800);color:#fff;padding:9px 15px;flex-shrink:0;border-bottom:2px solid var(--sage-700)">
+    <a href="/" style="display:inline-flex;align-items:center;padding:5px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);border-radius:6px;font-size:12px;font-weight:600;color:#fff;text-decoration:none;white-space:nowrap;flex-shrink:0">← Games</a>
+    <div style="display:flex;flex-direction:column;line-height:1.15;margin-right:auto;white-space:nowrap;min-width:150px">
+      <span style="font-size:15px;font-weight:800;letter-spacing:-.01em;white-space:nowrap">Glam Team Makeover</span>
+      <span style="font-size:10px;font-weight:500;color:var(--slate-400);letter-spacing:.03em;white-space:nowrap">No Outcome ABA · take turns, together</span>
+    </div>
+    <button onClick="{{ onMethod }}" style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);color:#fff;font-family:inherit;font-size:11px;font-weight:700;padding:6px 11px;border-radius:6px;cursor:pointer;white-space:nowrap">ⓘ Method</button>
+    <span style="font-family:var(--font-mono);font-size:17px;font-weight:700;background:rgba(0,0,0,.32);padding:3px 11px;border-radius:6px;letter-spacing:.05em">{{ clock }}</span>
+    <button onClick="{{ onMinimize }}" title="Show / hide setup" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);color:#fff;width:32px;height:30px;border-radius:6px;font-size:16px;line-height:1;cursor:pointer;flex-shrink:0">{{ minGlyph }}</button>
+  </header>
+
+  <!-- SETTINGS -->
+  <div style="{{ settingsStyle }}">
+    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:11px 15px;background:var(--surface-card);border-bottom:1px solid var(--border-default);padding:9px 16px;box-shadow:var(--shadow-sm)">
+      <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Theme</label>
+        <select value="{{ theme }}" onChange="{{ onTheme }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="social">🎉 Social event</option></select></div>
+      <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Routine</label>
+        <select value="{{ staged }}" onChange="{{ onStaged }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="on">Staged (in order)</option><option value="free">Free play</option></select></div>
+      <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Turn map</label>
+        <select value="{{ turnMap }}" onChange="{{ onMap }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="banner">Banner</option><option value="vanity">Vanity stations</option><option value="runway">Turn runway</option></select></div>
+      <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">My turn</label>
+        <select value="{{ countMode }}" onChange="{{ onCount }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="shown">Count shown</option><option value="hidden">Count hidden</option><option value="timed">Timed</option></select>
+        <select value="{{ actionGoal }}" onChange="{{ onActionGoal }}" style="padding:5px 6px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select>
+        <span style="font-size:11px;color:var(--text-muted)">{{ myTurnUnit }}</span></div>
+      <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Their turn</label>
+        <select value="{{ partnerTurn }}" onChange="{{ onPartnerTurn }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="match">Same as mine (fair)</option><option value="2">2 actions</option><option value="3">3 actions</option><option value="4">4 actions</option><option value="t20">Timed 20s</option><option value="t30">Timed 30s</option></select></div>
+      <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Give-back</label>
+        <select value="{{ giveBack }}" onChange="{{ onGiveBack }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="prompted">They hand it back</option><option value="forgets">They "forget" → I ask</option></select></div>
+      <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Ask cue</label>
+        <select value="{{ cueLevel }}" onChange="{{ onCueLevel }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="full">Full sentence</option><option value="short">Short</option><option value="icon">Icon only</option><option value="none">None (probe)</option></select></div>
+      <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Goal</label>
+        <select value="{{ tokenGoal }}" onChange="{{ onTokenGoal }}" style="padding:5px 6px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="3">3 ⭐</option><option value="5">5 ⭐</option><option value="8">8 ⭐</option></select></div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:var(--text-body);cursor:pointer"><input type="checkbox" checked="{{ extraTime }}" onChange="{{ onExtra }}" style="accent-color:var(--brand-primary);cursor:pointer">Earn more time after I hand it back</label>
+      <button onClick="{{ onPlay }}" style="margin-left:auto;background:var(--brand-primary);color:#fff;border:none;padding:9px 28px;border-radius:8px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-sm)">▶ Play</button>
+    </div>
+  </div>
+
+  <!-- INTRO -->
+  <sc-if value="{{ isIntro }}" hint-placeholder-val="{{ true }}">
+    <section style="flex:1;display:flex;justify-content:center;align-items:flex-start;padding:26px 20px">
+      <div style="width:min(680px,100%);background:var(--surface-card);border:1px solid var(--border-default);border-radius:16px;box-shadow:var(--shadow-md);padding:28px 30px;text-align:center">
+        <div style="font-size:56px;line-height:1">{{ introEmoji }}</div>
+        <h2 style="font-size:24px;font-weight:800;color:var(--text-primary);margin:10px 0 8px;letter-spacing:-.01em">{{ introTitle }}</h2>
+        <p style="font-size:15px;line-height:1.55;color:var(--text-body);max-width:520px;margin:0 auto 18px">{{ introText }}</p>
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:22px">
+          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted)">The routine</span>
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:var(--sage-50);border:1px solid var(--sage-200);border-radius:999px;font-size:12px;font-weight:700;color:var(--sage-700)">🧼 Skincare</span>
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:var(--sage-50);border:1px solid var(--sage-200);border-radius:999px;font-size:12px;font-weight:700;color:var(--sage-700)">💄 Makeup</span>
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:var(--sage-50);border:1px solid var(--sage-200);border-radius:999px;font-size:12px;font-weight:700;color:var(--sage-700)">💇 Hair</span>
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:var(--sage-50);border:1px solid var(--sage-200);border-radius:999px;font-size:12px;font-weight:700;color:var(--sage-700)">💎 Accessories</span>
+        </div>
+        <button onClick="{{ onPlay }}" style="background:var(--brand-primary);color:#fff;border:none;padding:12px 34px;border-radius:10px;font-size:17px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md)">Start — my turn first ▸</button>
+      </div>
+    </section>
+  </sc-if>
+
+  <!-- GAME -->
+  <sc-if value="{{ showGame }}" hint-placeholder-val="{{ false }}">
+    <main style="flex:1;display:flex;flex-direction:column;padding:12px 16px 16px;gap:11px">
+
+      <sc-if value="{{ mapBanner }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ bannerStyle }}">
+          <div style="width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:25px;flex-shrink:0;{{ bannerAvatarStyle }}">{{ whoseGlyph }}</div>
+          <div style="min-width:0"><div style="font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;{{ turnLabelColor }}">{{ turnLabel }}</div><div style="font-size:19px;font-weight:800;color:var(--slate-900);letter-spacing:-.01em">{{ instruction }}</div></div>
+          <div style="margin-left:auto;text-align:right">{{ turnMeter }}</div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ mapVanity }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:stretch;gap:10px">
+          <div style="{{ stationMeStyle }}"><span style="font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;{{ stationMeLabelColor }}">{{ stationMeLabel }}</span><div style="width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:23px;background:#fff;{{ stationMeRing }}">🦸</div><div style="font-size:13px;font-weight:800;color:var(--slate-900)">Me</div><div style="{{ meBrushStyle }}">🖌 my brush</div></div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:6px 10px;background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;font-size:14px;font-weight:700;color:var(--slate-700);text-align:center">{{ instruction }}</div>
+          <div style="{{ stationThemStyle }}"><span style="font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;{{ stationThemLabelColor }}">{{ stationThemLabel }}</span><div style="width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:23px;background:#fff;{{ stationThemRing }}">🧑‍⚕️</div><div style="font-size:13px;font-weight:800;color:var(--slate-900)">Them</div><div style="{{ themBrushStyle }}">🖌 their brush</div></div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ mapRunway }}" hint-placeholder-val="{{ false }}">
+        <div class="gtm-scroll" style="display:flex;align-items:center;gap:5px;padding:10px 14px;background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;overflow-x:auto">
+          <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-right:4px;flex-shrink:0">Turns</span>
+          <sc-for list="{{ runwayTiles }}" as="tile" hint-placeholder-count="5"><div style="{{ tile.style }}"><span style="font-size:{{ tile.glyphSize }}">{{ tile.glyph }}</span><span style="font-size:9px;font-weight:800;{{ tile.badgeColor }}">{{ tile.badge }}</span></div></sc-for>
+        </div>
+      </sc-if>
+
+      <div style="flex:1;display:flex;gap:14px;flex-wrap:wrap;align-items:stretch">
+        <!-- STAGE -->
+        <div style="{{ stageStyle }}">
+          <span style="position:absolute;top:12px;left:14px;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint);z-index:3">Our makeover</span>
+          <sc-if value="{{ artModelPicker }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;top:8px;right:12px;display:flex;gap:6px;z-index:6">
+              <sc-for list="{{ artModels }}" as="am" hint-placeholder-count="0">
+                <button onClick="{{ am.pick }}" style="{{ am.style }}">{{ am.label }}</button>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ sceneFrame }}" hint-placeholder-val="{{ false }}"><img src="{{ sceneFrame }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:2"></sc-if>
+
+          <sc-if value="{{ personShow }}" hint-placeholder-val="{{ true }}">
+            <div style="position:relative;width:320px;height:360px;isolation:isolate">
+              <sc-if value="{{ personArt }}" hint-placeholder-val="{{ false }}">
+                <canvas id="gtm-canvas" width="512" height="576" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1"></canvas>
+              </sc-if>
+              <sc-if value="{{ personProcedural }}" hint-placeholder-val="{{ true }}">
+              <svg viewBox="0 0 260 300" style="width:100%;height:100%">
+                <defs>
+                  <radialGradient id="gtmSkin" cx="47%" cy="37%" r="70%"><stop offset="0%" stop-color="#fbdcbb"></stop><stop offset="60%" stop-color="#f2c398"></stop><stop offset="100%" stop-color="#e3ac82"></stop></radialGradient>
+                  <radialGradient id="gtmGlow" cx="50%" cy="45%" r="60%"><stop offset="0%" stop-color="#fff7e6" stop-opacity=".9"></stop><stop offset="100%" stop-color="#fff7e6" stop-opacity="0"></stop></radialGradient>
+                  <radialGradient id="gtmIris" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#8d6a4a"></stop><stop offset="70%" stop-color="#5b4128"></stop><stop offset="100%" stop-color="#3c2a17"></stop></radialGradient>
+                  <filter id="gtmSft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="4"></feGaussianBlur></filter>
+                  <filter id="gtmSft2" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2"></feGaussianBlur></filter>
+                </defs>
+                <path d="{{ V.capePath }}" fill="{{ V.capeFill }}" opacity="{{ V.capeOp }}"></path>
+                <path d="{{ V.garmentPath }}" fill="{{ V.garmentFill }}"></path>
+                <path d="{{ V.garmentTrim }}" fill="{{ V.garmentTrimFill }}" opacity="{{ V.garmentTrimOp }}"></path>
+                <path d="M116 190 C116 206 113 216 107 223 L153 223 C147 216 144 206 144 190 C138 197 122 197 116 190 Z" fill="#e9b788"></path>
+                <path d="M82 128 C79 88 102 62 130 62 C158 62 181 88 178 128 C176 168 160 202 130 210 C100 202 84 168 82 128 Z" fill="url(#gtmSkin)"></path>
+                <path d="M84 130 C75 127 70 138 76 149 C80 158 90 159 93 151 C88 148 86 140 89 135 Z" fill="#e9b788"></path>
+                <path d="M176 130 C185 127 190 138 184 149 C180 158 170 159 167 151 C172 148 174 140 171 135 Z" fill="#e9b788"></path>
+                <ellipse cx="130" cy="128" rx="49" ry="62" fill="#b7a68f" opacity="{{ V.dullOp }}" filter="url(#gtmSft)"></ellipse>
+                <ellipse cx="104" cy="112" rx="15" ry="12" fill="#caa07d" opacity="{{ V.dullOp }}" filter="url(#gtmSft)"></ellipse>
+                <ellipse cx="152" cy="150" rx="16" ry="12" fill="#b98f74" opacity="{{ V.dullOp }}" filter="url(#gtmSft)"></ellipse>
+                <ellipse cx="130" cy="118" rx="48" ry="55" fill="url(#gtmGlow)" opacity="{{ V.moistOp }}"></ellipse>
+                <path d="M76 166 C66 128 70 50 94 36 C110 26 122 24 130 24 C138 24 150 26 166 36 C190 50 194 128 184 166 C180 136 172 114 158 108 C146 101 140 100 130 100 C120 100 114 101 102 108 C88 114 80 136 76 166 Z" fill="{{ V.hairFill }}"></path>
+                <text x="85" y="149" font-size="12" text-anchor="middle" opacity="{{ V.earOp }}">{{ V.earGlyph }}</text>
+                <text x="175" y="149" font-size="12" text-anchor="middle" opacity="{{ V.earOp }}">{{ V.earGlyph }}</text>
+                <path d="{{ V.contourPath }}" fill="#b07a52" opacity="{{ V.contourOp }}" filter="url(#gtmSft)"></path>
+                <ellipse cx="100" cy="150" rx="15" ry="10" fill="{{ V.blushFill }}" opacity="{{ V.blushOp }}" filter="url(#gtmSft)"></ellipse><ellipse cx="160" cy="150" rx="15" ry="10" fill="{{ V.blushFill }}" opacity="{{ V.blushOp }}" filter="url(#gtmSft)"></ellipse>
+                <ellipse cx="108" cy="134" rx="8" ry="5" fill="#fff6d8" opacity="{{ V.hlOp }}" filter="url(#gtmSft2)"></ellipse><ellipse cx="152" cy="134" rx="8" ry="5" fill="#fff6d8" opacity="{{ V.hlOp }}" filter="url(#gtmSft2)"></ellipse><ellipse cx="130" cy="160" rx="6" ry="3" fill="#fff6d8" opacity="{{ V.hlOp }}" filter="url(#gtmSft2)"></ellipse>
+                <ellipse cx="108" cy="125" rx="14" ry="7" fill="{{ V.shadowFill }}" opacity="{{ V.shadowOp }}" filter="url(#gtmSft)"></ellipse><ellipse cx="152" cy="125" rx="14" ry="7" fill="{{ V.shadowFill }}" opacity="{{ V.shadowOp }}" filter="url(#gtmSft)"></ellipse>
+                <path d="M91 113 C103 105 121 106 132 113 C121 109 105 110 93 117 Z" fill="#6b533f" opacity="{{ V.browBushyOp }}"></path><path d="M128 113 C139 106 157 105 169 113 C167 110 151 109 138 117 Z" fill="#6b533f" opacity="{{ V.browBushyOp }}"></path>
+                <path d="M126 111 C116 106 103 107 95 112 C104 111 117 110 126 114 C128 113 128 112 126 111 Z" fill="{{ V.browColor }}" opacity="{{ V.browShapedOp }}"></path><path d="M134 111 C144 106 157 107 165 112 C156 111 143 110 134 114 C132 113 132 112 134 111 Z" fill="{{ V.browColor }}" opacity="{{ V.browShapedOp }}"></path>
+                <path d="M96 132 C104 125 118 125 125 132 C118 139 104 139 96 132 Z" fill="#fff"></path><path d="M135 132 C142 125 156 125 164 132 C156 139 142 139 135 132 Z" fill="#fff"></path>
+                <circle cx="110" cy="132" r="6.4" fill="url(#gtmIris)"></circle><circle cx="150" cy="132" r="6.4" fill="url(#gtmIris)"></circle>
+                <circle cx="110" cy="132" r="2.9" fill="#241810"></circle><circle cx="150" cy="132" r="2.9" fill="#241810"></circle>
+                <circle cx="112" cy="130" r="1.5" fill="#fff"></circle><circle cx="152" cy="130" r="1.5" fill="#fff"></circle>
+                <path d="M125 131 C118 126 104 126 96 131 M96 131 l-4 -4" stroke="#241810" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="{{ V.linerOp }}"></path><path d="M135 131 C142 126 156 126 164 131 M164 131 l4 -4" stroke="#241810" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="{{ V.linerOp }}"></path>
+                <path d="M96 129 l-3 -4 M101 127 l-2 -4 M159 127 l2 -4 M164 129 l3 -4" stroke="#241810" stroke-width="1.4" stroke-linecap="round" opacity="{{ V.mascaraOp }}"></path>
+                <path d="M130 134 C127 148 123 154 118 157 C123 160 130 159 134 156" stroke="#d9a97e" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path>
+                <circle cx="118" cy="90" r="4.6" fill="#df7059"></circle><circle cx="117" cy="89" r="1.6" fill="#f4b3a6"></circle><g opacity="{{ V.pim0 }}"></g>
+                <circle cx="118" cy="90" r="4.6" fill="#df7059" opacity="{{ V.pim0 }}"></circle><circle cx="99" cy="151" r="4.6" fill="#df7059" opacity="{{ V.pim1 }}"></circle><circle cx="137" cy="185" r="4.6" fill="#df7059" opacity="{{ V.pim2 }}"></circle>
+                <path d="M114 168 C122 162 128 164 130 167 C132 164 138 162 146 168 C138 172 132 171 130 171 C128 171 122 172 114 168 Z" fill="#c9756f"></path>
+                <path d="M114 168 C124 176 136 176 146 168 C138 173 122 173 114 168 Z" fill="{{ V.lipFill }}" opacity="{{ V.lipOp }}"></path>
+                <path d="M114 168 C122 162 128 164 130 167 C132 164 138 162 146 168 C138 172 132 171 130 171 C128 171 122 172 114 168 Z" fill="{{ V.lipFill }}" opacity="{{ V.lipOp }}"></path>
+                <path d="M114 168 C122 163 128 164 130 167 C132 164 138 163 146 168" stroke="{{ V.lipLinerColor }}" stroke-width="1.5" fill="none" opacity="{{ V.lipLinerOp }}"></path>
+                <path d="M120 170 C126 173 134 173 140 170 C134 172 126 172 120 170 Z" fill="#fff" opacity="{{ V.lipOp }}" filter="url(#gtmSft2)"></path>
+                <path d="M92 127 C110 120 150 120 168 127 L168 135 C150 128 110 128 92 135 Z" fill="{{ V.maskFill }}" opacity="{{ V.maskOp }}"></path>
+                <text x="150" y="150" font-size="15" text-anchor="middle" opacity="{{ V.paintOp }}">{{ V.paintGlyph }}</text>
+                <text x="130" y="248" font-size="22" text-anchor="middle" opacity="{{ V.emblemOp }}">{{ V.emblemGlyph }}</text>
+              </svg>
+              </sc-if>
+              <!-- overlays -->
+              <sc-if value="{{ target.drag }}" hint-placeholder-val="{{ false }}"><div class="gtm-tool" onPointerDown="{{ target.onDown }}" onPointerMove="{{ target.onMove }}" onPointerUp="{{ target.onUp }}" onPointerLeave="{{ target.onUp }}" style="{{ target.style }}"><span style="{{ target.labelStyle }}">{{ target.label }}</span></div></sc-if>
+              <sc-if value="{{ target.tap }}" hint-placeholder-val="{{ false }}"><div onClick="{{ target.onTap }}" style="{{ target.style }}"><span style="{{ target.labelStyle }}">{{ target.label }}</span></div></sc-if>
+              <sc-if value="{{ target.pop }}" hint-placeholder-val="{{ false }}"><sc-for list="{{ target.pimples }}" as="p" hint-placeholder-count="3"><div onClick="{{ p.onClick }}" style="{{ p.style }}"></div></sc-for><span style="{{ target.labelStyle }}">{{ target.label }}</span></sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isPet }}" hint-placeholder-val="{{ false }}">
+            <div style="position:relative;width:320px;height:360px">
+              <sc-if value="{{ petArt }}" hint-placeholder-val="{{ false }}">
+                <img src="{{ petArtBase }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:1">
+                <sc-for list="{{ petArtLayers }}" as="ly" hint-placeholder-count="0"><img src="{{ ly.src }}" style="{{ ly.style }}"></sc-for>
+              </sc-if>
+              <sc-if value="{{ petProcedural }}" hint-placeholder-val="{{ true }}">
+              <svg viewBox="0 0 260 300" style="width:100%;height:100%">
+                <path d="{{ V.garmentPath }}" fill="{{ V.garmentFill }}"></path>
+                <ellipse cx="70" cy="128" rx="24" ry="44" fill="{{ V.furShade }}"></ellipse><ellipse cx="190" cy="128" rx="24" ry="44" fill="{{ V.furShade }}"></ellipse>
+                <ellipse cx="130" cy="140" rx="72" ry="66" fill="{{ V.hairFill }}"></ellipse>
+                <ellipse cx="130" cy="136" rx="68" ry="62" fill="#8a6a4a" opacity="{{ V.dullOp }}"></ellipse>
+                <ellipse cx="130" cy="128" rx="64" ry="56" fill="url(#gtmGlow)" opacity="{{ V.moistOp }}"></ellipse>
+                <ellipse cx="130" cy="166" rx="38" ry="30" fill="#fbeee0"></ellipse>
+                <ellipse cx="130" cy="146" rx="11" ry="9" fill="#4a3626"></ellipse>
+                <path d="M130 155 L130 166 M130 166 Q121 175 114 168 M130 166 Q139 175 146 168" stroke="#7a5b45" stroke-width="2.6" fill="none" stroke-linecap="round"></path>
+                <circle cx="103" cy="128" r="9" fill="#3a2c20"></circle><circle cx="157" cy="128" r="9" fill="#3a2c20"></circle><circle cx="105" cy="125" r="2.6" fill="#fff"></circle><circle cx="159" cy="125" r="2.6" fill="#fff"></circle>
+                <circle cx="96" cy="120" r="5" fill="#6b4a30" opacity="{{ V.dirt0 }}"></circle><circle cx="150" cy="164" r="6" fill="#6b4a30" opacity="{{ V.dirt1 }}"></circle><circle cx="112" cy="176" r="5" fill="#6b4a30" opacity="{{ V.dirt2 }}"></circle>
+                <ellipse cx="100" cy="150" rx="13" ry="8" fill="{{ V.blushFill }}" opacity="{{ V.blushOp }}"></ellipse><ellipse cx="160" cy="150" rx="13" ry="8" fill="{{ V.blushFill }}" opacity="{{ V.blushOp }}"></ellipse>
+                <rect x="92" y="198" width="76" height="17" rx="8" fill="{{ V.collarFill }}" opacity="{{ V.collarOp }}"></rect>
+                <text x="130" y="120" font-size="18" text-anchor="middle" opacity="{{ V.gemOp }}">{{ V.gemGlyph }}</text>
+                <text x="184" y="96" font-size="24" text-anchor="middle" opacity="{{ V.bowOp }}">{{ V.bowGlyph }}</text>
+                <text x="130" y="132" font-size="22" text-anchor="middle" opacity="{{ V.shadesOp }}">{{ V.shadesGlyph }}</text>
+                <text x="130" y="70" font-size="26" text-anchor="middle" opacity="{{ V.hatOp }}">{{ V.hatGlyph }}</text>
+                <text x="130" y="150" font-size="13" text-anchor="middle" opacity="{{ V.noseOp }}">✨</text>
+              </svg>
+              </sc-if>
+              <sc-if value="{{ target.drag }}" hint-placeholder-val="{{ false }}"><div class="gtm-tool" onPointerDown="{{ target.onDown }}" onPointerMove="{{ target.onMove }}" onPointerUp="{{ target.onUp }}" onPointerLeave="{{ target.onUp }}" style="{{ target.style }}"><span style="{{ target.labelStyle }}">{{ target.label }}</span></div></sc-if>
+              <sc-if value="{{ target.tap }}" hint-placeholder-val="{{ false }}"><div onClick="{{ target.onTap }}" style="{{ target.style }}"><span style="{{ target.labelStyle }}">{{ target.label }}</span></div></sc-if>
+            </div>
+          </sc-if>
+        </div>
+
+        <!-- PALETTE -->
+        <div style="{{ toolsColStyle }}">
+          <div class="gtm-scroll" style="flex:1;min-height:0;overflow-y:auto;background:var(--surface-card);border:1px solid var(--border-default);border-radius:16px;padding:13px">
+            <div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)">{{ paletteHint }}</div>
+            <div style="display:flex;gap:4px;margin:8px 0 2px;flex-wrap:wrap"><sc-for list="{{ stageChips }}" as="ch" hint-placeholder-count="4"><span style="{{ ch.style }}">{{ ch.label }}</span></sc-for></div>
+            <sc-for list="{{ palette }}" as="grp" hint-placeholder-count="4">
+              <div style="margin-top:10px">
+                <div style="font-size:11px;font-weight:800;color:var(--slate-600);margin-bottom:6px;display:flex;align-items:center;gap:5px">{{ grp.icon }} {{ grp.label }}</div>
+                <div style="display:flex;gap:7px;flex-wrap:wrap">
+                  <sc-for list="{{ grp.options }}" as="opt" hint-placeholder-count="3"><button onClick="{{ opt.handler }}" title="{{ opt.label }}" style="{{ opt.btnStyle }}"><span style="{{ opt.swatchStyle }}">{{ opt.glyph }}</span><span style="font-size:10px;font-weight:700;color:var(--slate-600);text-align:center;line-height:1.15;max-width:78px;min-height:13px">{{ opt.label }}</span></button></sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONTROLS -->
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;padding:10px 16px">
+        <div style="display:inline-flex;align-items:center;gap:9px;padding:7px 13px;background:#fff;border:1px solid var(--border-default);border-bottom:3px solid var(--sage-500);border-radius:10px"><span style="font-size:19px;letter-spacing:1px">{{ tokenStars }}</span><span style="font-size:13px;font-weight:800;color:var(--text-muted)">{{ tokenText }}</span></div>
+        <div style="flex:1;min-width:170px;text-align:center">{{ phaseMsg }}</div>
+        <sc-if value="{{ isReady }}" hint-placeholder-val="{{ false }}"><button onClick="{{ onGo }}" style="background:var(--sage-500);color:#fff;border:none;padding:12px 26px;border-radius:999px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md);animation:gtm-pop .3s var(--ease-standard)">▸ Go — my turn!</button></sc-if>
+        <sc-if value="{{ isMine }}" hint-placeholder-val="{{ false }}"><button onClick="{{ onHandoff }}" style="{{ handoffStyle }}">Done — their turn ▸</button></sc-if>
+        <sc-if value="{{ isGiveback }}" hint-placeholder-val="{{ false }}"><button onClick="{{ onGiveBack2 }}" style="background:var(--sage-500);color:#fff;border:none;padding:12px 24px;border-radius:999px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md);animation:gtm-pop .3s var(--ease-standard)">▸ My turn again</button></sc-if>
+        <sc-if value="{{ isAsk }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:10px"><div style="{{ cueStyle }}">{{ cueText }}</div><button onClick="{{ onConfirmAsk }}" style="background:var(--slate-800);color:#fff;border:none;padding:11px 16px;border-radius:9px;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer;white-space:nowrap">✓ I asked!</button></div></sc-if>
+      </div>
+    </main>
+  </sc-if>
+
+  <!-- DONE -->
+  <sc-if value="{{ isDone }}" hint-placeholder-val="{{ false }}">
+    <section style="flex:1;display:flex;justify-content:center;align-items:flex-start;padding:22px 20px">
+      <div style="width:min(680px,100%);background:var(--surface-card);border:2px solid var(--sage-200);border-radius:18px;box-shadow:var(--shadow-md);padding:24px 28px;text-align:center;animation:gtm-pop .4s var(--ease-standard)">
+        <div style="font-size:56px;line-height:1">{{ outcomeEmoji }}</div>
+        <h2 style="font-size:24px;font-weight:800;color:var(--text-primary);margin:8px 0 6px;letter-spacing:-.01em">{{ outcomeTitle }}</h2>
+        <p style="font-size:15px;line-height:1.5;color:var(--text-body);max-width:500px;margin:0 auto 12px">{{ outcomeText }}</p>
+        <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;background:var(--sage-50);border:1px solid var(--sage-200);border-radius:999px;font-size:14px;font-weight:800;color:var(--sage-700);margin-bottom:18px">{{ tokenStars }} <span>{{ tokenText }}</span></div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button onClick="{{ onFinishSR }}" style="display:inline-flex;align-items:center;gap:8px;background:var(--brand-primary);color:#fff;border:none;padding:12px 24px;border-radius:10px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md)">⭐ Finish &amp; SR</button><button onClick="{{ onReplay }}" style="background:#fff;color:var(--sage-700);border:1.5px solid var(--sage-500);padding:12px 24px;border-radius:10px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer">↺ Play again</button></div>
+      </div>
+    </section>
+  </sc-if>
+
+  <!-- METHOD -->
+  <sc-if value="{{ methodOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onMethod }}" style="position:fixed;inset:0;background:var(--surface-overlay);z-index:100;display:flex;align-items:center;justify-content:center;padding:24px">
+      <div style="width:min(600px,100%);max-height:86vh;overflow-y:auto;background:#fff;border-radius:14px;box-shadow:var(--shadow-modal);padding:24px 26px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px"><h2 style="font-size:18px;font-weight:800;color:var(--text-primary);margin:0">Method &amp; sources</h2><button onClick="{{ onMethod }}" style="background:none;border:none;font-size:22px;line-height:1;color:var(--text-muted);cursor:pointer">✕</button></div>
+        <p style="font-size:11px;color:var(--text-muted);margin:0 0 14px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Clinician reference — not shown to the learner</p>
+        <div style="font-size:13.5px;line-height:1.55;color:var(--text-body)">
+          <p style="margin:0 0 12px">Turn-taking taught as a short behavior chain — <b>take a turn → relinquish → wait → ask for it back → resume</b> — inside a motivating shared activity (a collaborative glam makeover). Both players take the <b>same-size</b> turn; the learner earns extra time as a reward for handing over.</p>
+          <div style="border-left:4px solid var(--sage-500);background:var(--sage-50);border-radius:0 8px 8px 0;padding:10px 14px;margin:0 0 10px"><div style="font-weight:800;color:var(--sage-700);font-size:13px;margin-bottom:2px">Relinquish &amp; wait = tolerance for delayed reinforcement</div><div>Handing over is reinforced (a token); "earn more time" fades the delay in reverse. Fisher, Thompson, Hagopian, Bowman &amp; Krug (2000), <i>Behavior Modification</i>.</div></div>
+          <div style="border-left:4px solid var(--blue-500);background:var(--blue-50);border-radius:0 8px 8px 0;padding:10px 14px;margin:0 0 10px"><div style="font-weight:800;color:var(--blue-700);font-size:13px;margin-bottom:2px">"They forget" → I ask = contrived MO + interrupted chain</div><div>Withholding the expected turn contrives a motivating operation, evoking the mand under MO control. Sundberg et al. (2002); Hall &amp; Sundberg (1987); Endicott &amp; Higbee (2007).</div></div>
+          <div style="border-left:4px solid var(--amber-500);background:var(--amber-50);border-radius:0 8px 8px 0;padding:10px 14px;margin:0 0 10px"><div style="font-weight:800;color:var(--amber-700);font-size:13px;margin-bottom:2px">Fadeable visual cue &gt; vocal prompt</div><div>The ask-cue steps down (full → short → icon → none) so responding transfers to the MO, not the prompt. Sweeney-Kerwin et al. (2007).</div></div>
+          <div style="border-left:4px solid var(--violet-600);background:var(--violet-50);border-radius:0 8px 8px 0;padding:10px 14px;margin:0 0 4px"><div style="font-weight:800;color:var(--violet-700);font-size:13px;margin-bottom:2px">Turn-taking as a social-communication target</div><div>Structured back-and-forth with visual "my turn / their turn" supports and reinforcement (Lee &amp; Staggs, 2021; Schertz et al., 2018).</div></div>
+          <p style="margin:14px 0 0;font-size:12px;color:var(--text-muted)">This session: <b style="color:var(--text-body)">{{ statLine }}</b></p>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1120,&quot;height&quot;:780}}">
+const OUTFITS = {
+  gown:   { path:'M74 300 Q78 228 130 222 Q182 228 186 300 Z', trim:'M110 224 Q130 214 150 224 L150 234 Q130 226 110 234 Z' },
+  dress:  { path:'M88 300 Q92 236 130 230 Q168 236 172 300 Z', trim:'M100 300 Q130 250 160 300 Z' },
+  casual: { path:'M78 300 L78 250 Q104 230 130 230 Q156 230 182 250 L182 300 Z', trim:'M118 232 Q130 244 142 232 Z' },
+  sparkle:{ path:'M84 300 Q90 240 130 232 Q170 240 176 300 Z', trim:'M104 250 l5 10 5-10 5 10 M146 258 l5 10 5-10 5 10' },
+};
+
+const THEMES = {
+  social: {
+    badge:'🎉', base:'person', flaws:'person',
+    intro:{ emoji:'🎉', title:'Party in a flash!', text:'The party starts in a few minutes — and it is total bedhead, a couple of surprise spots, and no outfit yet! Good thing the glam team takes turns: skincare first, then hair, makeup, and an outfit.' },
+    outcome:{ emoji:'✨', title:'Ta-da — what a team!', text:'Everyone took turns and the whole look came together just in time. Best night ever — because the team worked together!' },
+    cats:[
+      { label:'Skincare', icon:'🧼', options:[
+        {id:'wash',label:'Wash',glyph:'🧼',mech:'paint',slot:'wash',zone:'face',step:1},
+        {id:'moist',label:'Moisturize',glyph:'🧴',mech:'paint',slot:'moist',zone:'face',step:2},
+        {id:'patch',label:'Treat spots',glyph:'🩹',mech:'patch',step:3},
+        {id:'conceal',label:'Conceal',glyph:'✨',mech:'conceal',step:3},
+        {id:'brows',label:'Shape brows',glyph:'✂️',mech:'tap',apply:'toggle',slot:'brows',zone:'brows'} ] },
+      { label:'Makeup', icon:'💄', options:[
+        {id:'contour',label:'Contour',glyph:'🔻',mech:'paint',slot:'contour',zone:'contour',step:4},
+        {id:'bl1',label:'Blush rose',color:'#f28ba0',mech:'paint',slot:'blush',zone:'cheeks',step:5},
+        {id:'bl2',label:'Blush peach',color:'#f6a37a',mech:'paint',slot:'blush',zone:'cheeks',step:5},
+        {id:'hl',label:'Highlight',glyph:'✨',mech:'paint',slot:'hl',zone:'hl',step:6},
+        {id:'es1',label:'Shadow violet',color:'#a06cc9',mech:'paint',slot:'shadow',zone:'eyes',step:7},
+        {id:'es2',label:'Shadow bronze',color:'#b5793f',mech:'paint',slot:'shadow',zone:'eyes',step:7},
+        {id:'liner',label:'Eyeliner',glyph:'〰️',mech:'tap',apply:'toggle',slot:'liner',zone:'eyes',step:8},
+        {id:'mascara',label:'Mascara',glyph:'💫',mech:'tap',apply:'toggle',slot:'mascara',zone:'eyes',step:9},
+        {id:'lipliner',label:'Lip liner',glyph:'✏️',color:'#b23a56',mech:'tap',apply:'toggle',slot:'lipliner',zone:'lips',step:10},
+        {id:'lp1',label:'Lips red',color:'#d64b6a',mech:'paint',slot:'lips',zone:'lips',step:11},
+        {id:'lp2',label:'Lips coral',color:'#e07a5f',mech:'paint',slot:'lips',zone:'lips',step:11},
+        {id:'lp3',label:'Lips berry',color:'#a83f6b',mech:'paint',slot:'lips',zone:'lips',step:11},
+        {id:'pencil',label:'Brow pencil',glyph:'✏️',color:'#4a3626',mech:'tap',apply:'toggle',slot:'pencil',zone:'brows'} ] },
+      { label:'Hair style', icon:'💇', options:[
+        {id:'sh_buzz',label:'Buzz',glyph:'💇',mech:'choose',slot:'hairShape',value:'base',ph:'hair'},
+        {id:'sh_tousled',label:'Tousled',glyph:'💇',mech:'choose',slot:'hairShape',value:'hair-berry',ph:'hair'},
+        {id:'sh_long',label:'Long bob',glyph:'💇',mech:'choose',slot:'hairShape',value:'hair-blonde',ph:'hair'},
+        {id:'sh_bob',label:'Bob',glyph:'💇',mech:'choose',slot:'hairShape',value:'hair-copper',ph:'hair'},
+        {id:'sh_spiky',label:'Spiky',glyph:'💇',mech:'choose',slot:'hairShape',value:'hair-flame',ph:'hair'},
+        {id:'sh_crop',label:'Cropped',glyph:'💇',mech:'choose',slot:'hairShape',value:'hair-heroblue',ph:'hair'},
+        {id:'sh_pixie',label:'Pixie',glyph:'💇',mech:'choose',slot:'hairShape',value:'hair-silver',ph:'hair'} ] },
+      { label:'Hair color', icon:'🎨', options:[
+        {id:'hc_brunette',label:'Brunette',color:'#5b4636',value:'brunette',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'},
+        {id:'hc_blonde',label:'Blonde',color:'#e0b064',value:'blonde',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'},
+        {id:'hc_copper',label:'Copper',color:'#c8712c',value:'copper',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'},
+        {id:'hc_berry',label:'Berry',color:'#a24a8f',value:'berry',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'},
+        {id:'hc_flame',label:'Flame',color:'#e5533b',value:'flame',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'},
+        {id:'hc_blue',label:'Bold blue',color:'#2a6fdb',value:'heroblue',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'},
+        {id:'hc_silver',label:'Silver',color:'#c7cdd6',value:'silver',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'} ] },
+      { label:'Earrings', icon:'💎', options:[
+        {id:'ear1',label:'Pearl stud',glyph:'💠',value:'stud',mech:'tap',apply:'place',slot:'ear',zone:'ears',ph:'acc'},
+        {id:'ear2',label:'Diamond',glyph:'💍',value:'ring',mech:'tap',apply:'place',slot:'ear',zone:'ears',ph:'acc'},
+        {id:'ear3',label:'Sapphire',glyph:'💎',value:'sapphire',mech:'tap',apply:'place',slot:'ear',zone:'ears',ph:'acc'} ] },
+      { label:'Shirt color', icon:'👕', options:[
+        {id:'of1',label:'Teal',glyph:'👕',color:'#2f8f8a',mech:'choose',slot:'outfit',value:'gown',ph:'acc'},
+        {id:'of2',label:'Rose',glyph:'👕',color:'#d6608a',mech:'choose',slot:'outfit',value:'dress',ph:'acc'},
+        {id:'of3',label:'Blue',glyph:'👕',color:'#5477b0',mech:'choose',slot:'outfit',value:'casual',ph:'acc'},
+        {id:'of4',label:'Purple',glyph:'👕',color:'#c48fd0',mech:'choose',slot:'outfit',value:'sparkle',ph:'acc'} ] },
+      { label:'Colored contacts', icon:'👁️', options:[
+        {id:'ct1',label:'Blue',color:'#4a90d9',value:'#4a90d9',mech:'tap',apply:'recolor',slot:'contacts',zone:'eyes',ph:'acc'},
+        {id:'ct2',label:'Green',color:'#4f9d6c',value:'#4f9d6c',mech:'tap',apply:'recolor',slot:'contacts',zone:'eyes',ph:'acc'},
+        {id:'ct3',label:'Hazel',color:'#a9773f',value:'#a9773f',mech:'tap',apply:'recolor',slot:'contacts',zone:'eyes',ph:'acc'},
+        {id:'ct4',label:'Violet',color:'#8a6fc9',value:'#8a6fc9',mech:'tap',apply:'recolor',slot:'contacts',zone:'eyes',ph:'acc'} ] },
+    ],
+  },
+  pet: {
+    badge:'🐾', base:'pet', flaws:'pet',
+    intro:{ emoji:'🐾', title:"It's the big Pet Show!", text:'The pup is on stage next — but came in muddy and a bit matted! Time for a spa, a fresh groom, some sparkle, and a show outfit. The owner and stylists take turns getting the look ready.' },
+    outcome:{ emoji:'🏆', title:'Winners — Cutest Pet & Best Team!', text:'The judges loved every bit of it. The pup took home Cutest Pet AND Best Team — because the owner and stylists took turns and worked together!' },
+    cats:[
+      { label:'Spa', icon:'🛁', options:[
+        {id:'bath',label:'Bath',glyph:'🫧',mech:'paint',slot:'wash',zone:'face'},
+        {id:'brush',label:'Brush out',glyph:'🪮',mech:'paint',slot:'moist',zone:'face'} ] },
+      { label:'Fur', icon:'💇', options:[
+        {id:'f1',label:'Cream',color:'#efe0c8',mech:'tap',apply:'recolor',slot:'hair',zone:'hair'},
+        {id:'f2',label:'Caramel',color:'#c98a4b',mech:'tap',apply:'recolor',slot:'hair',zone:'hair'},
+        {id:'f3',label:'Grey',color:'#b9c0c7',mech:'tap',apply:'recolor',slot:'hair',zone:'hair'} ] },
+      { label:'Glam', icon:'💎', options:[
+        {id:'gem',label:'Face gem',glyph:'💎',mech:'tap',apply:'place',slot:'gem',zone:'forehead'},
+        {id:'bow',label:'Ear bow',glyph:'🎀',mech:'tap',apply:'place',slot:'bow',zone:'ear'},
+        {id:'shades',label:'Shades',glyph:'🕶️',mech:'tap',apply:'place',slot:'shades',zone:'eyes'},
+        {id:'bl',label:'Cheek blush',color:'#f4a0b0',mech:'paint',slot:'blush',zone:'cheeks'} ] },
+      { label:'Outfit', icon:'👗', options:[
+        {id:'c1',label:'Pink collar',color:'#e0567a',mech:'choose',slot:'collar',value:1},
+        {id:'c2',label:'Blue collar',color:'#4f8fd0',mech:'choose',slot:'collar',value:1},
+        {id:'hat',label:'Party hat',glyph:'🎉',mech:'tap',apply:'place',slot:'hat',zone:'head'},
+        {id:'cape',label:'Show cape',glyph:'🧣',color:'#6a7659',mech:'choose',slot:'outfit',value:'gown'} ] },
+    ],
+  },
+  hero: {
+    badge:'🦸', base:'person', flaws:'none',
+    intro:{ emoji:'🚨', title:'The city needs a hero — in 3 minutes!', text:'Alarms downtown and only minutes to suit up: a power-up glow, heroic hair, a mask, and a cape. The hero squad takes turns getting ready.' },
+    outcome:{ emoji:'💥', title:'Suited up — day saved!', text:'Fully suited and ready, the hero swooped in and saved the day. The whole squad took turns and made it happen — team power!' },
+    cats:[
+      { label:'Power-up', icon:'⚡', options:[
+        {id:'glow',label:'Energy wash',glyph:'⚡',mech:'paint',slot:'moist',zone:'face'},
+        {id:'shine',label:'Shield shine',glyph:'🛡️',mech:'paint',slot:'hl',zone:'hl'} ] },
+      { label:'Hair', icon:'💇', options:[
+        {id:'hh1',label:'Bold blue',color:'#2a6fdb',mech:'tap',apply:'recolor',slot:'hair',zone:'hair'},
+        {id:'hh2',label:'Flame',color:'#e5533b',mech:'tap',apply:'recolor',slot:'hair',zone:'hair'},
+        {id:'hh3',label:'Silver',color:'#c7cdd6',mech:'tap',apply:'recolor',slot:'hair',zone:'hair'} ] },
+      { label:'Makeup', icon:'🎭', options:[
+        {id:'mk1',label:'Blue mask',color:'#2a6fdb',mech:'paint',slot:'mask',zone:'eyes'},
+        {id:'mk2',label:'Violet mask',color:'#7c3aed',mech:'paint',slot:'mask',zone:'eyes'},
+        {id:'wp',label:'War stripes',color:'#dc2626',mech:'paint',slot:'blush',zone:'cheeks'},
+        {id:'bolt',label:'Cheek bolt',glyph:'⚡',mech:'tap',apply:'place',slot:'paint',zone:'cheek'} ] },
+      { label:'Outfit', icon:'🦸', options:[
+        {id:'cp1',label:'Red cape',glyph:'🧣',color:'#dc2626',mech:'choose',slot:'cape',value:1},
+        {id:'cp2',label:'Blue cape',glyph:'🧣',color:'#2563eb',mech:'choose',slot:'cape',value:1},
+        {id:'su',label:'Hero suit',glyph:'🦸',color:'#2563eb',mech:'choose',slot:'outfit',value:'casual'},
+        {id:'em1',label:'Shield emblem',glyph:'🛡️',mech:'tap',apply:'place',slot:'emblem',zone:'chest'},
+        {id:'em2',label:'Star emblem',glyph:'⭐',mech:'tap',apply:'place',slot:'emblem',zone:'chest'} ] },
+    ],
+  },
+};
+
+const ZONES = {
+  person: {
+    face:{t:27,l:24,w:52,h:42,label:'Drag all over the face'},
+    brows:{t:37,l:28,w:44,h:6,label:'Tap the brows'},
+    eyes:{t:40,l:26,w:48,h:9,label:'Drag across the eyes'},
+    cheeks:{t:49,l:24,w:52,h:12,label:'Drag over the cheeks'},
+    contour:{t:45,l:16,w:68,h:20,label:'Drag along the cheeks'},
+    hl:{t:44,l:34,w:32,h:13,label:'Drag the cheekbones'},
+    lips:{t:54,l:38,w:24,h:9,label:'Drag over the lips'},
+    ears:{t:42,l:8,w:84,h:12,label:'Tap to add earrings'},
+    hair:{t:8,l:22,w:56,h:28,label:'Tap the hair'},
+    cheek:{t:52,l:56,w:18,h:12,label:'Tap the cheek'},
+    chest:{t:80,l:40,w:20,h:12,label:'Tap the chest'},
+  },
+  pet: {
+    face:{t:34,l:30,w:40,h:32,label:'Drag all over'},
+    hair:{t:22,l:20,w:60,h:40,label:'Tap the fur'},
+    forehead:{t:30,l:43,w:14,h:10,label:'Tap the forehead'},
+    ear:{t:20,l:60,w:22,h:16,label:'Tap the ear'},
+    eyes:{t:40,l:32,w:36,h:12,label:'Tap the eyes'},
+    cheeks:{t:46,l:26,w:48,h:12,label:'Drag the cheeks'},
+    head:{t:6,l:36,w:28,h:14,label:'Tap on top'},
+  },
+};
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      phase:'intro', theme:'social', turnMap:'banner', model:'m2',   // m1 gated off (see artGated)
+      countMode:'shown', actionGoal:3, partnerTurn:'match', staged:'on',
+      giveBack:'forgets', cueLevel:'short', tokenGoal:5, extraTime:true,
+      tokens:0, actionsThisTurn:0, chargedThisTurn:{}, bonus:0,
+      ed:this.freshEd('person'), armed:null,
+      myLeft:0, partnerLeft:0, partnerTimed:false, partnerGoal:3, cueVisible:false,
+      settingsOpen:true, methodOpen:false,
+      elapsed:0, turnsTaken:0, indAsks:0, promptedAsks:0,
+    };
+    this._iv=null; this._cueTO=null; this._clockIv=null; this._paint=false;
+  }
+  freshEd(flaws){ return { cov:{}, col:{}, gl:{}, done:{}, outfit:null, hairShape:'hair-copper',
+    pimples:[0,0,0],   // tri-state per spot: 0=zit, 1=patched, 2=clear (person only; rendered when flaws==='person')
+    dirt:(flaws==='pet')?[true,true,true]:[false,false,false],
+    spotSeed:Math.random() }; }
+  componentDidMount(){ this._clockIv=setInterval(()=>this.setState(s=>({elapsed:s.elapsed+1})),1000); this.paintAvatar(); }
+  componentDidUpdate(){ this.paintAvatar(); }
+  componentWillUnmount(){ clearInterval(this._iv); clearInterval(this._clockIv); clearTimeout(this._cueTO); }
+
+  cfg(){ return THEMES[this.state.theme]; }
+  base(){ return this.cfg().base; }
+  onSel(f,num){ return e=>this.setState({[f]:num?+e.target.value:e.target.value}); }
+  stopTick(){ clearInterval(this._iv); this._iv=null; }
+  startMyTick(){ this.stopTick(); if(this.state.countMode!=='timed') return;
+    this._iv=setInterval(()=>this.setState(s=>{ if(s.myLeft<=1){clearInterval(this._iv);this._iv=null;setTimeout(()=>this.handoff(),0);return{myLeft:0};} return{myLeft:s.myLeft-1}; }),1000); }
+  startPartnerTick(){ this.stopTick();
+    this._iv=setInterval(()=>this.setState(s=>{ if(s.partnerLeft<=1){clearInterval(this._iv);this._iv=null;setTimeout(()=>this.partnerDone(),0);return{partnerLeft:0};} return{partnerLeft:s.partnerLeft-1}; }),1000); }
+
+  partnerSpec(){ const s=this.state; const p=s.partnerTurn;
+    if(p==='match') return s.countMode==='timed' ? {timed:true,secs:30} : {timed:false,count:s.actionGoal};
+    if(p[0]==='t') return {timed:true,secs:+p.slice(1)};
+    return {timed:false,count:+p}; }
+  effGoal(){ return this.state.actionGoal + this.state.bonus; }
+
+  play(){ this.setState({ phase:'ready', tokens:0, ed:this.freshEd(this.cfg().flaws), armed:null, actionsThisTurn:0, chargedThisTurn:{}, bonus:0, turnsTaken:0, indAsks:0, promptedAsks:0, settingsOpen:false }); }
+  go(){ const myTime=30+this.state.bonus*5; this.setState({phase:'mine',actionsThisTurn:0,chargedThisTurn:{},armed:null,myLeft:myTime}); setTimeout(()=>this.startMyTick(),0); }
+
+  // ── TA staging gate (default ON; settings 'staged'==='free' ungates everything) ──
+  _stepDone(n){ const ed=this.state.ed; switch(n){
+    case 1: return !!ed.done['wash'];
+    case 2: return !!ed.done['moist'];
+    case 3: return (ed.pimples||[]).every(v=>v===2);   // pimples: all concealed
+    case 4: return !!ed.done['contour'];
+    case 5: return !!ed.done['blush'];
+    case 6: return !!ed.done['hl'];
+    case 7: return !!ed.done['shadow'];
+    case 8: return !!ed.done['liner'];
+    case 9: return !!ed.done['mascara'];
+    case 10: return !!ed.done['lipliner'];
+    case 11: return !!ed.done['lips'];
+    default: return true; } }
+  _skinMakeupDone(){ for(let n=1;n<=11;n++) if(!this._stepDone(n)) return false; return true; }
+  _hairDone(){ const ed=this.state.ed; return !!ed.done['hairShape'] && !!ed.done['hair']; }
+  _optLocked(opt){ if(this.state.staged==='free') return false;
+    if(opt.step){ for(let n=1;n<opt.step;n++) if(!this._stepDone(n)) return true; return false; }
+    if(opt.ph==='hair') return !this._skinMakeupDone();
+    if(opt.ph==='acc') return !(this._skinMakeupDone() && this._hairDone());
+    return false; }   // untracked tools (brow shape, brow pencil) stay free
+  _phaseState(){ // {cur:'skin'|'makeup'|'hair'|'acc', done:{skin,makeup,hair}}
+    const skin=this._stepDone(1)&&this._stepDone(2)&&this._stepDone(3);
+    const makeup=this._skinMakeupDone(); const hair=this._hairDone();
+    const cur = !skin?'skin' : !makeup?'makeup' : !hair?'hair' : 'acc';
+    return { cur, skin, makeup, hair }; }
+  arm(opt){ if(this._optLocked(opt)) return; if(opt.mech==='choose'){ this.applyChoose(opt); return; } this.setState({armed:opt}); }
+  bumpAction(){ this.setState(s=>({actionsThisTurn:s.actionsThisTurn+1}), ()=>this.afterAction()); }
+  afterAction(){ const s=this.state; if(s.phase==='theirs' && !s.partnerTimed && s.actionsThisTurn>=s.partnerGoal){ setTimeout(()=>this.partnerDone(),500); } }
+  // Per-turn action economy (user-locked): an action is spent the FIRST time in a turn a
+  // given key is touched — `item:<slot>` (select/place/toggle a thing), `color:<slot>`
+  // (recolour an article), or `style` (hairstyle). So selecting an item costs 1; its first
+  // colour change costs 1; further same-article recolours or restyles in the SAME turn are
+  // free; and it all resets next turn (chargedThisTurn cleared in go/handoff). `ed.done` is
+  // still set for gating/✓, decoupled from the charge.
+  _chargeKey(s,key){ const c=s.chargedThisTurn||{}; if(c[key]) return {inc:0,charged:c};
+    const n=Object.assign({},c); n[key]=1; return {inc:1,charged:n}; }
+
+  applyChoose(opt){ this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); let key;
+      if(opt.slot==='outfit'){ ed.outfit=opt.value; ed.col.garment=opt.color; ed.done.outfit=true; key='color:outfit'; }
+      else if(opt.slot==='hairShape'){ ed.hairShape=opt.value; ed.done.hairShape=true; key='style'; }
+      else { ed.gl[opt.slot]=opt.glyph||'x'; ed.col[opt.slot]=opt.color; ed.done[opt.slot]=true; key='item:'+opt.slot; }
+      const {inc,charged}=this._chargeKey(s,key);
+      return { ed, armed:null, actionsThisTurn: s.actionsThisTurn+inc, chargedThisTurn:charged }; }, ()=>this.afterAction()); }
+
+  tapApply(){ const t=this.state.armed; if(!t) return; this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); const slot=t.slot; let key;
+      if(t.apply==='recolor'){ ed.col[slot]=(t.value!=null?t.value:t.color); key='color:'+slot; }
+      else if(t.apply==='place'){ ed.gl[slot]=(t.value!=null?t.value:t.glyph); if(t.color) ed.col[slot]=t.color; key='item:'+slot; }
+      else { ed.cov[slot]=1; if(t.color) ed.col[slot]=t.color; key='item:'+slot; }
+      ed.done[slot]=true;
+      const {inc,charged}=this._chargeKey(s,key);
+      return { ed, armed:null, actionsThisTurn: s.actionsThisTurn+inc, chargedThisTurn:charged }; }, ()=>this.afterAction()); }
+
+  // Treat/patch step: tap a zit (state 0) → patched (1). Stay armed while zits remain.
+  patchOne(i){ this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); if(ed.pimples[i]!==0) return {}; ed.pimples[i]=1;
+      ed.done['patch'+i]=true; const {inc,charged}=this._chargeKey(s,'item:patch'+i);
+      const anyZit=ed.pimples.some(v=>v===0); return { ed, armed: anyZit? s.armed : null, actionsThisTurn:s.actionsThisTurn+inc, chargedThisTurn:charged }; }, ()=>this.afterAction()); }
+  // Conceal step (unlocks once ALL spots patched): tap a patch (state 1) → clear (2).
+  concealOne(i){ this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); if(ed.pimples[i]!==1) return {}; ed.pimples[i]=2;
+      ed.done['conceal'+i]=true; const {inc,charged}=this._chargeKey(s,'item:conceal'+i);
+      const anyPatched=ed.pimples.some(v=>v===1); return { ed, armed: anyPatched? s.armed : null, actionsThisTurn:s.actionsThisTurn+inc, chargedThisTurn:charged }; }, ()=>this.afterAction()); }
+
+  paintStep(){ const t=this.state.armed; if(!t||t.mech!=='paint') return; const slot=t.slot; let completed=false;
+    this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); const cur=ed.cov[slot]||0; const nx=Math.min(1,cur+0.11); ed.cov[slot]=nx; if(t.color) ed.col[slot]=t.color;
+      let inc=0, charged=s.chargedThisTurn||{};
+      if(nx>=1){ ed.done[slot]=true; completed=true; const r=this._chargeKey(s,(t.color?'color:':'item:')+slot); inc=r.inc; charged=r.charged; }
+      return { ed, actionsThisTurn: s.actionsThisTurn+inc, chargedThisTurn:charged }; },
+      ()=>{ if(completed){ this._paint=false; this.setState({armed:null}); this.afterAction(); } }); }
+  pDown(e){ if(e.currentTarget&&e.currentTarget.setPointerCapture&&e.pointerId!=null){ try{e.currentTarget.setPointerCapture(e.pointerId);}catch(_){} } this._paint=true; this.paintStep(); }
+  pMove(e){ if(this._paint || e.buttons===1) this.paintStep(); }
+  pUp(){ this._paint=false; }
+
+  handoff(){ this.stopTick(); const s=this.state; let tokens=Math.min(s.tokenGoal,s.tokens+1); let bonus=s.extraTime?Math.min(3,s.bonus+1):s.bonus; const turnsTaken=s.turnsTaken+1;
+    if(tokens>=s.tokenGoal){ this.setState({phase:'done',tokens,turnsTaken}); setTimeout(()=>{ if(window.NooutcoReward) window.NooutcoReward.celebrate(document.body); },60); return; }
+    const spec=this.partnerSpec();
+    this.setState({ phase:'theirs', tokens, bonus, turnsTaken, actionsThisTurn:0, chargedThisTurn:{}, armed:null, partnerTimed:spec.timed, partnerGoal:spec.timed?0:spec.count, partnerLeft:spec.timed?spec.secs:0 });
+    setTimeout(()=>{ if(spec.timed) this.startPartnerTick(); },0); }
+  partnerDone(){ this.stopTick(); if(this.state.giveBack==='prompted'){ this.setState({phase:'giveback'}); return; }
+    this.setState({phase:'ask',cueVisible:false}); clearTimeout(this._cueTO); if(this.state.cueLevel!=='none') this._cueTO=setTimeout(()=>this.setState({cueVisible:true}),3500); }
+  giveBack(){ this.setState({phase:'ready'}); }
+  confirmAsk(){ clearTimeout(this._cueTO); const independent=!this.state.cueVisible; this.setState(s=>({phase:'ready',cueVisible:false,indAsks:s.indAsks+(independent?1:0),promptedAsks:s.promptedAsks+(independent?0:1)})); }
+  finishSR(){ if(window.NooutcoReward) window.NooutcoReward.openSR({minutes:5,title:'SR Timer'}); }
+  replay(){ this.stopTick(); clearTimeout(this._cueTO); this.setState({phase:'intro',tokens:0,ed:this.freshEd(this.cfg().flaws),armed:null,bonus:0,settingsOpen:true}); }
+
+  fmt(sec){ return Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0'); }
+
+  buildV(){ const ed=this.state.ed; const base=this.base(); const th=this.state.theme;
+    const cov=k=>ed.cov[k]||0; const col=(k,d)=>ed.col[k]||d; const gl=k=>ed.gl[k]||'';
+    if(base==='pet'){ const washed=cov('wash')>=1?0:0.34; return {
+      hairFill:col('hair','#efe0c8'), furShade:this.shade(col('hair','#efe0c8')),
+      dullOp: washed*(ed.pimples?1:1), moistOp:(cov('moist')||0)*0.5,
+      dirt0:ed.dirt[0]?(cov('wash')>=1?0:1):0, dirt1:ed.dirt[1]?(cov('wash')>=1?0:1):0, dirt2:ed.dirt[2]?(cov('wash')>=1?0:1):0,
+      blushFill:col('blush','#f4a0b0'), blushOp:cov('blush'),
+      collarFill:col('collar','#e0567a'), collarOp: gl['collar']||ed.col['collar']?1:0,
+      gemGlyph:gl('gem'), gemOp:gl('gem')?1:0, bowGlyph:gl('bow'), bowOp:gl('bow')?1:0,
+      shadesGlyph:gl('shades'), shadesOp:gl('shades')?1:0, hatGlyph:gl('hat'), hatOp:gl('hat')?1:0,
+      noseOp:cov('nose')>=1?1:0,
+      garmentPath: ed.outfit?OUTFITS[ed.outfit].path:'M78 300 Q84 250 130 246 Q176 250 182 300 Z', garmentFill: ed.outfit?col('garment','#c9a06a'):'#c9a06a',
+    }; }
+    // person (social + hero)
+    const outfit=ed.outfit; const g=outfit?OUTFITS[outfit]:null;
+    return {
+      dullOp: cov('wash')>=1?0:0.26, moistOp:(cov('moist')||0)*0.42,
+      pim0:ed.pimples[0]===0?1:0, pim1:ed.pimples[1]===0?1:0, pim2:ed.pimples[2]===0?1:0,
+      hairFill:col('hair','#5b4636'),
+      browBushyOp: cov('brows')>=1?0:1, browShapedOp: cov('brows')>=1?1:0, browColor: cov('pencil')>=1?'#3a2a1c':'#6b533f',
+      shadowFill:col('shadow','#a06cc9'), shadowOp:cov('shadow')*0.8,
+      linerOp:cov('liner')>=1?1:0, mascaraOp:cov('mascara')>=1?1:0,
+      contourOp:cov('contour')*0.55, hlOp:cov('hl')*0.85,
+      blushFill:col('blush','#f28ba0'), blushOp:cov('blush')*0.9,
+      lipLinerColor:col('lipliner','#b23a56'), lipLinerOp:cov('lipliner')>=1?1:0,
+      lipFill:col('lips','#d64b6a'), lipOp:cov('lips'),
+      earGlyph:gl('ear'), earOp:gl('ear')?1:0,
+      contourPath:'M74 118 Q66 150 84 178 Q78 150 82 122 Z M186 118 Q194 150 176 178 Q182 150 178 122 Z',
+      maskFill:col('mask','#2a6fdb'), maskOp:cov('mask')*0.95,
+      paintGlyph:gl('paint'), paintOp:gl('paint')?1:0,
+      emblemGlyph:gl('emblem'), emblemOp:gl('emblem')?1:0,
+      capePath:'M84 300 Q60 210 130 200 Q200 210 176 300 Z', capeFill:col('cape','#dc2626'), capeOp: ed.gl['cape']||ed.col['cape']?0.95:0,
+      garmentPath: g?g.path:'M86 300 Q92 250 130 244 Q168 250 174 300 Z', garmentFill: g?col('garment','#d8dade'):'#d8dade',
+      garmentTrim: g?g.trim:'', garmentTrimFill:'#ffffff', garmentTrimOp: g?0.5:0,
+    }; }
+  shade(hex){ try{ const n=parseInt(hex.slice(1),16); let r=Math.max(0,(n>>16)-28),g=Math.max(0,((n>>8)&255)-28),b=Math.max(0,(n&255)-28); return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1); }catch(e){ return hex; } }
+
+  art(){ return (typeof window!=='undefined' && window.NooutcoArt) || {}; }
+  // NOTE: M1 is gated OFF pending an eye-art redo — her replacement sprite eyes read worse than
+  // the other models. Her art is still generated, so re-enabling is just deleting her from here
+  // (and re-check EYECFG in paintAvatar). Keep the default model off m1 too (see initial state).
+  artGated(){ return {m1:true}; }
+  setArtModel(id){ if(this.artGated()[id] || !((this.gen().models||{})[id])) return; this.setState({model:id}); }
+  artModelList(){ const M=(this.gen().models)||{}, G=this.artGated(); const act=this.state.model;
+    return Object.keys(M).filter(id=>!G[id]).map(id=>({
+      label:id.toUpperCase(), pick:()=>this.setArtModel(id),
+      style:'padding:5px 11px;border-radius:999px;font-size:11px;font-weight:800;font-family:inherit;cursor:pointer;border:1px solid '+(id===act?'var(--sage-500)':'var(--border-default)')+';background:'+(id===act?'var(--sage-500)':'var(--surface-card)')+';color:'+(id===act?'#fff':'var(--text-muted)') })); }
+  artBaseSrc(base){ const b=(this.art().bases||{})[base]; return (b&&b.src)||''; }
+  lz(base,slot){ const L=((this.art().layers||{})[base]||{})[slot]; return (L&&L.z)||0; }
+  lsrc(base,slot,key){ const L=((this.art().layers||{})[base]||{})[slot]; if(!L) return ''; return key!=null ? ((L.variants&&L.variants[key])||'') : (L.src||''); }
+  flawSrc(base,name){ const b=(this.art().bases||{})[base]; return (b&&b.flaws&&b.flaws[name])||''; }
+  sceneArt(){ return (this.art().scene||{})[this.state.theme]||{}; }
+
+  // ── procedural avatar compositor (Canvas2D) ────────────────────────────────
+  // The person/social avatar is painted on one <canvas> from avatar-kit's
+  // combo-bases + packed masks (window.__GLAM_ART_GEN__), reproducing washes.py:
+  // programmatic hair value-ramp recolor, gradient cosmetics, and eyes/brows
+  // re-stamped ABOVE the shadow. Recolor passes are cached; gradients are cheap.
+  gen(){ return (typeof window!=='undefined' && window.__GLAM_ART_GEN__) || {}; }
+  genEntry(){ const m=(this.gen().models||{})[this.state.model]; if(!m) return null;
+    return (m.styles||{})[this.state.ed.hairShape] || (m.styles||{}).base || null; }
+  hasPersonArt(){ return !!this.genEntry(); }
+  setHairShape(st){ this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); ed.hairShape=st; return {ed}; }); }
+
+  _img(src){ const c=this._imgc||(this._imgc={}); if(c[src]) return c[src];
+    const im=new Image(); const rec={img:im,ok:false}; c[src]=rec;
+    im.onload=()=>{ rec.ok=true; this.paintAvatar(); this.setState(s=>({iv:(s.iv||0)+1})); }; im.src=src; return rec; }
+  _data(src){ const rec=this._img(src); if(!rec.ok) return null; if(rec.data) return rec.data;
+    const W=rec.img.naturalWidth,H=rec.img.naturalHeight; const cv=document.createElement('canvas');
+    cv.width=W; cv.height=H; const cx=cv.getContext('2d'); cx.drawImage(rec.img,0,0);
+    try{ rec.data=cx.getImageData(0,0,W,H); }catch(e){ return null; } return rec.data; }
+  _hex(h){ h=(h||'').replace('#',''); if(h.length===3) h=h.split('').map(x=>x+x).join('');
+    const n=parseInt(h||'0',16); return [(n>>16)&255,(n>>8)&255,n&255]; }
+  // Recolor a neutral grayscale button icon → data URL via tint×luminance (light body
+  // takes the shade, dark handles/outline stay dark), alpha preserved. Cached per src+hex.
+  _tintIcon(src,hex){ const k=src+'|'+hex, c=this._tic||(this._tic={}); if(c[k]!==undefined) return c[k];
+    const d=this._data(src); if(!d) return null;   // base not decoded yet → onload repaints
+    const [tr,tg,tb]=this._hex(hex), W=d.width,H=d.height, s=d.data;
+    const cv=document.createElement('canvas'); cv.width=W; cv.height=H; const cx=cv.getContext('2d');
+    const out=cx.createImageData(W,H), o=out.data;
+    for(let i=0;i<s.length;i+=4){ const a=s[i+3];
+      if(a<8){ o[i+3]=0; continue; }
+      const lum=Math.pow((0.299*s[i]+0.587*s[i+1]+0.114*s[i+2])/255, 0.72);
+      o[i]=Math.min(255,tr*lum); o[i+1]=Math.min(255,tg*lum); o[i+2]=Math.min(255,tb*lum); o[i+3]=a; }
+    cx.putImageData(out,0,0);
+    // blob: URL, not data: — the dc-runtime splits inline styles on ";", so a data
+    // URL's ";base64," gets truncated mid-value. blob URLs carry no ";".
+    const du=cv.toDataURL('image/png'), bin=atob(du.split(',')[1]), a8=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) a8[i]=bin.charCodeAt(i);
+    const url=URL.createObjectURL(new Blob([a8],{type:'image/png'})); c[k]=url; return url; }
+  // Diagonal light→shade→dark gradient for pure-color swatch buttons (not a flat chip).
+  _swatchGrad(hex){ const [r,g,b]=this._hex(hex);
+    const lt='rgb('+Math.min(255,r+46)+','+Math.min(255,g+46)+','+Math.min(255,b+46)+')';
+    const dk='rgb('+((r*0.66)|0)+','+((g*0.66)|0)+','+((b*0.66)|0)+')';
+    return 'linear-gradient(135deg,'+lt+' 0%,'+hex+' 52%,'+dk+' 100%)'; }
+  _ramp(x,a){ const c=2*a[1]-0.5*(a[0]+a[2]); const t=Math.min(1,Math.max(0,x)); return (1-t)*(1-t)*a[0]+2*(1-t)*t*c+t*t*a[2]; }
+  _hsv2rgb(h,s,v){ const i=((Math.floor(h*6)%6)+6)%6, f=h*6-Math.floor(h*6);
+    const p=v*(1-s),q=v*(1-f*s),t=v*(1-(1-f)*s); const T=[[v,t,p],[q,v,p],[p,v,t],[p,q,v],[t,p,v],[v,p,q]][i];
+    return [T[0]*255,T[1]*255,T[2]*255]; }
+  _rgb2hsv(r,g,b){ r/=255;g/=255;b/=255; const mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn; let h=0;
+    if(d>1e-6){ if(mx===r)h=((g-b)/d)%6; else if(mx===g)h=(b-r)/d+2; else h=(r-g)/d+4; h/=6; if(h<0)h+=1; }
+    return [h, mx>1e-6?d/mx:0, mx]; }
+
+  _hairCanvas(E,color){ const key=this.state.model+'|'+this.state.ed.hairShape+'|'+color;
+    const c=this._hairc||(this._hairc={}); if(c.key===key) return c.cv;
+    const bd=this._data(E.base), md=this._data(E.mask), ld=this._data(E.hairLuma);
+    const ramp=(this.gen().hairRamps||{})[color]; if(!bd||!md||!ld||!ramp) return null;
+    const W=bd.width,H=bd.height, b=bd.data,m=md.data,l=ld.data;
+    const out=document.createElement('canvas'); out.width=W; out.height=H;
+    const octx=out.getContext('2d'); const od=octx.createImageData(W,H), o=od.data;
+    for(let i=0;i<b.length;i+=4){ const hairA=m[i]/255; if(hairA<0.3){ o[i+3]=0; continue; }
+      const vn=l[i]/255, v=this._ramp(vn,ramp.v), sa=Math.min(1,Math.max(0,this._ramp(vn,ramp.s)));
+      const rgb=this._hsv2rgb(ramp.hue,sa,v); o[i]=rgb[0];o[i+1]=rgb[1];o[i+2]=rgb[2]; o[i+3]=hairA*(b[i+3]/255)*255; }
+    octx.putImageData(od,0,0); c.key=key; c.cv=out; return out; }
+  _lipsCanvas(E,hex){ const key=this.state.model+'|'+this.state.ed.hairShape+'|'+hex;
+    const c=this._lipc||(this._lipc={}); if(c.key===key) return c.cv;
+    const bd=this._data(E.base), md=this._data(E.mask); if(!bd||!md) return null;
+    const W=bd.width,H=bd.height, b=bd.data,m=md.data;
+    const [tr,tg,tb]=this._hex(hex), thsv=this._rgb2hsv(tr,tg,tb);
+    const ss=[],vs=[]; for(let i=0;i<b.length;i+=4){ if(m[i+1]/255>0.35 && b[i+3]>120){ const hv=this._rgb2hsv(b[i],b[i+1],b[i+2]); ss.push(hv[1]); vs.push(hv[2]); } }
+    const med=a=>{ if(!a.length) return 0; a.sort((x,y)=>x-y); return a[a.length>>1]; };
+    const ms=med(ss), mv=med(vs)||1e-4;
+    const out=document.createElement('canvas'); out.width=W; out.height=H;
+    const octx=out.getContext('2d'); const od=octx.createImageData(W,H), o=od.data;
+    for(let i=0;i<b.length;i+=4){ const lipA=m[i+1]/255; if(lipA<0.35){ o[i+3]=0; continue; }
+      const hv=this._rgb2hsv(b[i],b[i+1],b[i+2]);
+      const s2=Math.min(1,Math.max(0,hv[1]+(thsv[1]-ms))), v2=Math.min(1,Math.max(0,hv[2]*(thsv[2]/mv)));
+      const rgb=this._hsv2rgb(thsv[0],s2,v2); o[i]=rgb[0];o[i+1]=rgb[1];o[i+2]=rgb[2]; o[i+3]=lipA*(b[i+3]/255)*255; }
+    octx.putImageData(od,0,0); c.key=key; c.cv=out; return out; }
+  _eyesCanvas(E){ const key=this.state.model+'|'+this.state.ed.hairShape;
+    const c=this._eyesc||(this._eyesc={}); if(c.key===key) return c.cv;
+    const bd=this._data(E.base), md=this._data(E.mask); if(!bd||!md) return null;
+    const W=bd.width,H=bd.height, b=bd.data,m=md.data;
+    const out=document.createElement('canvas'); out.width=W; out.height=H;
+    const octx=out.getContext('2d'); const od=octx.createImageData(W,H), o=od.data;
+    for(let i=0;i<b.length;i+=4){ const eb=m[i+2]/255; if(eb<0.12){ o[i+3]=0; continue; }
+      o[i]=b[i];o[i+1]=b[i+1];o[i+2]=b[i+2]; o[i+3]=eb*(b[i+3]/255)*255; }
+    octx.putImageData(od,0,0); c.key=key; c.cv=out; return out; }
+
+  _hairCutout(E){ const key='hcut|'+this.state.model+'|'+this.state.ed.hairShape;
+    const c=this._hcutc||(this._hcutc={}); if(c.key===key) return c.cv;
+    const bd=this._data(E.base), md=this._data(E.mask); if(!bd||!md) return null;
+    const W=bd.width,H=bd.height, b=bd.data,m=md.data;
+    const out=document.createElement('canvas'); out.width=W; out.height=H;
+    const octx=out.getContext('2d'); const od=octx.createImageData(W,H), o=od.data;
+    for(let i=0;i<b.length;i+=4){ const ha=m[i]/255; if(ha<0.12){ o[i+3]=0; continue; }
+      o[i]=b[i];o[i+1]=b[i+1];o[i+2]=b[i+2]; o[i+3]=ha*(b[i+3]/255)*255; }
+    octx.putImageData(od,0,0); c.key=key; c.cv=out; return out; }
+  _shirtCanvas(E,hex){ const key='shirt|'+this.state.model+'|'+this.state.ed.hairShape+'|'+hex;
+    const c=this._shirtc||(this._shirtc={}); if(c.key===key) return c.cv;
+    const bd=this._data(E.base), sd=this._data(E.shirtMask); if(!bd||!sd) return null;
+    const W=bd.width,H=bd.height, b=bd.data,s=sd.data; const [tr,tg,tb]=this._hex(hex);
+    const out=document.createElement('canvas'); out.width=W; out.height=H;
+    const octx=out.getContext('2d'); const od=octx.createImageData(W,H), o=od.data;
+    for(let i=0;i<b.length;i+=4){ if(s[i]/255<0.5||b[i+3]<20){ o[i+3]=0; continue; }
+      const L=(0.299*b[i]+0.587*b[i+1]+0.114*b[i+2])/255;   // tint × luminance → keeps folds + black outline
+      o[i]=tr*L;o[i+1]=tg*L;o[i+2]=tb*L; o[i+3]=b[i+3]; }
+    octx.putImageData(od,0,0); c.key=key; c.cv=out; return out; }
+  // Deterministic pick of 3 pool spots, seeded by ed.spotSeed → stable within a play,
+  // varies between plays (freshEd re-seeds). Pure: safe to call every repaint.
+  _pickSpots(pool){ let seed=Math.floor(((this.state.ed&&this.state.ed.spotSeed)||0.371)*2147483647)||1;
+    const rnd=()=>{ seed=(seed*48271)%2147483647; return seed/2147483647; };
+    const idx=pool.map((_,i)=>i);
+    for(let i=idx.length-1;i>0;i--){ const j=(rnd()*(i+1))|0; const t=idx[i]; idx[i]=idx[j]; idx[j]=t; }
+    const shapes=['star','heart'];   // random patch shape per chosen spot, stable within a play
+    return idx.slice(0,3).map(i=>({x:pool[i].x, y:pool[i].y, shape:shapes[(rnd()*2)|0]})); }
+  _spots(E){ const fr=this.gen().frame||{w:512,h:576}; const W=fr.w,H=fr.h; const f=E.face;
+    const lx=f.eyeL.x*W,ly=f.eyeL.y*H,lw=f.eyeL.w*W,lh=f.eyeL.h*H, rx=f.eyeR.x*W,ry=f.eyeR.y*H,rw=f.eyeR.w*W,rh=f.eyeR.h*H, cxm=(lx+rx)/2,cym=(ly+ry)/2, r=lw*0.4;
+    const pool=((this.gen().models||{})[this.state.model]||{}).spotPool;
+    if(pool&&pool.length>=3) return this._pickSpots(pool).map(p=>({x:p.x*W,y:p.y*H,r,shape:p.shape}));
+    return [ {x:cxm+lw*0.7,y:cym-lh*2.2,r,shape:'star'}, {x:lx-lw*0.5,y:ly+lh*2.7,r,shape:'heart'}, {x:rx+rw*0.45,y:ry+lh*3.4,r,shape:'star'} ]; }
+  _spotPct(E){ const fr=this.gen().frame||{w:512,h:576}; return this._spots(E).map(s=>({l:s.x/fr.w*100,t:s.y/fr.h*100})); }
+  _lipLinerCanvas(E,hex){ const key='ll|'+this.state.model+'|'+this.state.ed.hairShape+'|'+hex;
+    const c=this._llc||(this._llc={}); if(c.key===key) return c.cv;
+    const md=this._data(E.mask), bd=this._data(E.base); if(!md||!bd) return null;
+    const W=md.width,H=md.height, m=md.data, b=bd.data;
+    const [r,g,bl]=this._hex(hex); const dr=(r*0.5)|0,dg=(g*0.5)|0,db=(bl*0.5)|0;
+    const out=document.createElement('canvas'); out.width=W; out.height=H;
+    const octx=out.getContext('2d'); const od=octx.createImageData(W,H), o=od.data;
+    const G=i=>m[i*4+1]/255;
+    for(let y=1;y<H-1;y++) for(let x=1;x<W-1;x++){ const i=y*W+x; if(G(i)>0.4 && (G(i-1)<0.25||G(i+1)<0.25||G(i-W)<0.25||G(i+W)<0.25)){
+      const j=i*4; o[j]=dr;o[j+1]=dg;o[j+2]=db; o[j+3]=(b[j+3]/255)*235; } }
+    octx.putImageData(od,0,0); c.key=key; c.cv=out; return out; }
+  // Recolour a brow sprite to the hair hue (tint × luminance): keeps the ink's darkest core dark
+  // and the softer fill hair-toned, so a black m4 brow reads as the hair colour without going flat.
+  _browTint(src,hex){ const rec=this._img(src); if(!rec.ok) return null;
+    const key=src+'|'+hex; const c=this._browtc||(this._browtc={}); if(c[key]) return c[key];
+    const im=rec.img, W=im.naturalWidth||im.width, H=im.naturalHeight||im.height;
+    const cn=document.createElement('canvas'); cn.width=W; cn.height=H; const cx=cn.getContext('2d');
+    cx.drawImage(im,0,0,W,H); let id; try{ id=cx.getImageData(0,0,W,H); }catch(e){ return null; }
+    const d=id.data, [tr,tg,tb]=this._hex(hex);
+    for(let i=0;i<d.length;i+=4){ if(d[i+3]<8) continue;
+      const L=(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2])/255, k=0.42+0.58*L;
+      d[i]=tr*k; d[i+1]=tg*k; d[i+2]=tb*k; }
+    cx.putImageData(id,0,0); c[key]=cn; return cn; }
+
+  _blob(ctx,cx,cy,rx,ry,rot,hex,alpha,blend,soft){ if(alpha<=0.003||rx<=0||ry<=0) return;
+    const [r,g,b]=this._hex(hex); const rgba=a=>'rgba('+r+','+g+','+b+','+a+')';
+    ctx.save(); ctx.globalCompositeOperation=blend; ctx.globalAlpha=Math.min(1,alpha);
+    ctx.translate(cx,cy); if(rot) ctx.rotate(rot); ctx.scale(rx,ry);
+    const gr=ctx.createRadialGradient(0,0,0,0,0,1);
+    if(soft){ gr.addColorStop(0,rgba(0.62)); gr.addColorStop(0.4,rgba(0.34)); gr.addColorStop(0.75,rgba(0.1)); gr.addColorStop(1,rgba(0)); }
+    else { gr.addColorStop(0,rgba(1)); gr.addColorStop(0.6,rgba(0.5)); gr.addColorStop(1,rgba(0)); }
+    ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(0,0,1,0,6.2832); ctx.fill(); ctx.restore(); }
+
+  paintAvatar(){ if(this.state.theme!=='social'||this.base()!=='person') return;
+    const cv=document.getElementById('gtm-canvas'); if(!cv) return;
+    const E=this.genEntry(); if(!E) return;
+    const baseImg=this._img(E.base); if(!baseImg.ok) return;   // onload → repaint
+    const W=cv.width,H=cv.height, ctx=cv.getContext('2d'); ctx.clearRect(0,0,W,H);
+    // salon backdrop now fills the WHOLE stage panel (see stageStyle background-image),
+    // not just this box — so the canvas stays transparent behind the model and her
+    // margins reveal the salon, with the model floating in front across the panel.
+    ctx.drawImage(baseImg.img,0,0,W,H);
+    const ed=this.state.ed, cov=k=>ed.cov[k]||0, col=k=>ed.col[k], gl=k=>ed.gl[k];
+    const f=E.face, lx=f.eyeL.x*W,ly=f.eyeL.y*H,lw=f.eyeL.w*W,lh=f.eyeL.h*H,
+      rx=f.eyeR.x*W,ry=f.eyeR.y*H,rw=f.eyeR.w*W,rh=f.eyeR.h*H, cxm=(lx+rx)/2,cym=(ly+ry)/2;
+    const eyes=[[lx,ly,lw,lh,-1],[rx,ry,rw,rh,1]];
+    const spots=this._spots(E);
+    (ed.pimples||[]).forEach((st,i)=>{ const sp=spots[i]; if(!sp) return;
+      if(st===0){ this._blob(ctx,sp.x,sp.y,sp.r,sp.r,0,'#d06a54',0.72,'source-over'); this._blob(ctx,sp.x-sp.r*0.22,sp.y-sp.r*0.22,sp.r*0.4,sp.r*0.4,0,'#f0b6a4',0.55,'source-over'); }
+      else if(st===1){ const meta=(this.gen().stickers||{})[sp.shape]; if(meta){ const rec=this._img(meta.src); if(rec.ok){ const ph=sp.r*3.0, pw=ph*(meta.aspect||1); ctx.drawImage(rec.img, sp.x-pw/2, sp.y-ph/2, pw, ph); } } } });
+    if(cov('wash')<1) this._blob(ctx,cxm,cym+lh*0.85,lw*2.35,lh*3.85,0,'#786654',0.24,'multiply');
+    if(cov('moist')>0) this._blob(ctx,cxm,cym-lh*0.4,lw*2.1,lh*2.6,0,'#fff6e0',cov('moist')*0.4,'screen');
+    // shirt colour — recolour the base render's OWN tee in place (tint × luminance,
+    // preserves the native black outline + fit); no foreign overlay, no reframe.
+    const SHIRT_TINT={gown:'#2f8f8a',dress:'#d6608a',casual:'#5477b0',sparkle:'#c48fd0'};
+    if(ed.outfit){ const st=SHIRT_TINT[ed.outfit]; if(st){ const scv=this._shirtCanvas(E,st); if(scv) ctx.drawImage(scv,0,0,W,H); } }
+    const hc=col('hair');
+    if(hc && hc!==E.native){ const hcv=this._hairCanvas(E,hc); if(hcv) ctx.drawImage(hcv,0,0,W,H); }
+    if(cov('contour')>0) for(const e of eyes) this._blob(ctx,e[0]+e[4]*e[2]*0.72,e[1]+e[3]*1.62,e[2]*1.05,e[3]*0.38,-e[4]*0.92,'#a37f66',cov('contour')*0.27,'multiply',true);
+    if(cov('hl')>0){ for(const e of eyes) this._blob(ctx,e[0]+e[4]*e[2]*0.6,e[1]+e[3]*1.22,e[2]*0.75,e[3]*0.6,0,'#fff6d8',cov('hl')*0.5,'screen'); this._blob(ctx,cxm,cym+lh*1.0,lw*0.35,lh*1.4,0,'#fff6d8',cov('hl')*0.4,'screen'); }
+    if(cov('blush')>0){ const bc=col('blush')||'#f28ba0'; for(const e of eyes) this._blob(ctx,e[0],e[1]+e[3]*1.85,e[2]*0.95,e[3]*0.9,0,bc,cov('blush')*0.5,'multiply'); }
+    const ecv=this._eyesCanvas(E); if(ecv) ctx.drawImage(ecv,0,0,W,H);   // base eyes+brows; brows kept, eyes replaced below
+    // ===== EYES — the base render's eyes are skin-filled at build time, so drop in the state
+    // sprites in makeup order: eyeshadow on the lid first (shows behind the lashes), then the
+    // eyeball, then lashes (mascara→glam), then the winged liner on top. All sprites share one
+    // iris-centered frame (cx=cy=0.5) so states stack with no double-edge. natural/glam mirror
+    // per socket; eyeliner ships a real L/R pair (wing is directional → no mirror).
+    // Per-model size + inward nudge (dx pulls the eye toward centre; m4 was too far apart). =====
+    const EYECFG=({m1:{s:1.78,dx:0},m2:{s:1.72,dx:0},m3:{s:1.85,dx:0.22},m4:{s:1.62,dx:0.15}})[this.state.model]||{s:1.68,dx:0};
+    const ex=(e)=>e[0]-e[4]*EYECFG.dx*e[2];        // shifted eye-centre x (toward face centre)
+    const eyeSet=this.gen().eyes||{};
+    if(eyeSet.natural){
+      const mascara=cov('mascara')>=1, liner=cov('liner')>=1;
+      const drawSprite=(meta,e,mirror)=>{ if(!meta) return; const im=this._img(meta.src); if(!im||!im.ok) return;
+        const [x,y,w,h,o]=e, dw=EYECFG.s*(2*w), dh=dw/meta.aspect;
+        ctx.save(); ctx.translate(ex(e),y); if(mirror&&o<0) ctx.scale(-1,1);
+        ctx.drawImage(im.img,-meta.cx*dw,-meta.cy*dh,dw,dh); ctx.restore(); };
+      if(cov('shadow')>0){ const sc=col('shadow')||'#a06cc9', sa=cov('shadow');   // eyeshadow on the lid, behind the lashes
+        for(const e of eyes){ const [x,y,w,h,o]=e, X=ex(e);
+          this._blob(ctx, X+o*w*0.28, y-h*0.44, w*1.08, h*0.82, o*0.40, sc, sa*0.72,'source-over',true);
+          this._blob(ctx, X+o*w*1.05, y-h*0.66, w*0.66, h*0.40, o*0.90, sc, sa*0.80,'source-over',true); } }
+      for(const e of eyes){ const o=e[4];
+        if(mascara&&eyeSet.glam) drawSprite(eyeSet.glam,e,true);         // eyeball + lashes
+        else if(!liner) drawSprite(eyeSet.natural,e,true);              // plain eyeball (liner sprite carries its own)
+        if(liner) drawSprite(o>0?eyeSet.eyelinerR:eyeSet.eyelinerL,e,false); }  // winged liner on top (real L/R)
+    }
+    // colored contacts — recolor the iris over the sprite eye (iris disc + pupil + catchlight)
+    const cc=col('contacts');
+    if(cc){ for(const e of eyes){ const [x,y,w,h,o]=e, X=ex(e), ir=Math.min(w,h)*0.58;
+      ctx.save();
+      const gi=ctx.createRadialGradient(X,y,ir*0.15,X,y,ir);
+      gi.addColorStop(0,cc); gi.addColorStop(0.62,cc); gi.addColorStop(1,this.shade(cc));
+      ctx.fillStyle=gi; ctx.beginPath(); ctx.arc(X,y,ir,0,6.2832); ctx.fill();
+      ctx.fillStyle='#140f12'; ctx.beginPath(); ctx.arc(X,y,ir*0.46,0,6.2832); ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.beginPath(); ctx.arc(X-ir*0.28,y-ir*0.30,ir*0.17,0,6.2832); ctx.fill();
+      ctx.restore(); } }
+    // ===== BROWS — the base render's baked brows are skin-filled at build time, so drop in the
+    // state sprite: default bushy → "Shape brows" ✂️ cleaned → "Brow pencil" ✏️ shaped (pencil
+    // wins). Real L/R pair (no mirror; brows are directional). Centre-anchored above the eye per
+    // per-model BROWCFG {wf: width×eye-width, dx: lateral nudge, dy: height above eye centre}. =====
+    const browSet=(this.gen().brows||{})[this.state.model];
+    if(browSet){
+      const bt=browSet[cov('pencil')>=1?'shaped':(cov('brows')>=1?'cleaned':'bushy')]||browSet.bushy;
+      const BROWCFG=({m1:{wf:1.3,dx:0,dy:1.9},m2:{wf:1.3,dx:0,dy:1.65},m3:{wf:1.3,dx:0,dy:1.75},m4:{wf:1.3,dx:0,dy:1.5}})[this.state.model]||{wf:1.3,dx:0,dy:1.75};
+      // brows default-MATCH the hair colour (and follow a recolour). tint × luminance keeps the
+      // ink's own shading + outline while shifting hue. HAIRHEX mirrors the hair-colour swatches.
+      const HAIRHEX={brunette:'#5b4636',blonde:'#e0b064',copper:'#c8712c',berry:'#a24a8f',flame:'#e5533b',heroblue:'#2a6fdb',silver:'#c7cdd6'};
+      const browHex=HAIRHEX[col('hair')||E.native]||'#5b4636';
+      if(bt) for(const e of eyes){ const [x,y,w,h,o]=e, meta=bt[o>0?'R':'L']; if(!meta) continue;
+        const tc=this._browTint(meta.src,browHex); if(!tc) continue;
+        const bw=BROWCFG.wf*(2*w), bh=bw/meta.aspect, bx=x+o*BROWCFG.dx*w, by=y-BROWCFG.dy*h;
+        ctx.drawImage(tc, bx-bw/2, by-bh/2, bw, bh); }
+    }
+    // eyeliner + mascara are sprite states now (drawn with the eyes above), not procedural.
+    if(cov('lips')>0){ const lcv=this._lipsCanvas(E,col('lips')||'#d64b6a'); if(lcv){ ctx.save(); ctx.globalAlpha=Math.min(1,cov('lips')); ctx.drawImage(lcv,0,0,W,H); ctx.restore(); } }
+    if(cov('lipliner')>=1){ const llv=this._lipLinerCanvas(E,col('lipliner')||'#b23a56'); if(llv) ctx.drawImage(llv,0,0,W,H); }
+    // earrings — design sprite at each lobe; per-model lobe anchors + size (user-calibrated)
+    const ek=gl('ear'); if(ek){ const er=(this.gen().earrings||{})[ek]; if(er){ const ei=this._img(er.src); if(ei.ok){
+      const EA=({m1:{lx:0.235,rx:0.765,y:1.55},m2:{lx:0.20,rx:0.80,y:1.35},m3:{lx:0.235,rx:0.765,y:1.72},m4:{lx:0.225,rx:0.775,y:1.35}})[this.state.model]||{lx:0.185,rx:0.815,y:1.35};
+      const eh=lh*1.15*0.9, ew=eh*er.aspect, ely=cym+lh*EA.y;                       // −10% size
+      for(const elx of [W*EA.lx, W*EA.rx]) ctx.drawImage(ei.img, elx-ew/2, ely, ew, eh); } } }
+  }
+  buildArtLayers(base){ const ed=this.state.ed; const out=[]; const cov=k=>ed.cov[k]||0; const col=k=>ed.col[k]; const gl=k=>ed.gl[k];
+    const add=(slot,key,active,opacity)=>{ if(!active) return; const src=this.lsrc(base,slot,key); if(!src) return; out.push({ src, z:this.lz(base,slot), op:(opacity!=null?opacity:1) }); };
+    const placed=(src,z,an,sz)=>{ if(!src||!an) return; out.push({ src, z, placed:true, l:an.l, t:an.t, s:sz||12 }); };
+    // procedural soft cosmetics (dull/glow/shadow/blush) — rendered as blended
+    // gradient divs over the photo base at per-model face anchors, not PNGs.
+    const proc=(type,z,active,opacity,color)=>{ if(!active) return; const op=Math.min(1,opacity!=null?opacity:1);
+      if(type==='shadow'){ out.push({proc:'shadow',z,op,color,at:'eyeL'}); out.push({proc:'shadow',z,op,color,at:'eyeR'}); }
+      else if(type==='blush'){ out.push({proc:'blush',z,op,color,at:'cheekL'}); out.push({proc:'blush',z,op,color,at:'cheekR'}); }
+      else out.push({proc:type,z,op,color:color||''}); };
+    const anchors=((this.art().meta||{}).spotAnchors||{})[base]||[];
+    if(base==='person'){
+      add('cape', col('cape'), !!(ed.gl.cape||ed.col.cape), .95);
+      add('outfit', ed.outfit, !!ed.outfit);
+      add('emblem', gl('emblem'), !!gl('emblem'));
+      proc('dull', 4, cov('wash')<1, 1);
+      add('wash', null, cov('wash')>=1);
+      proc('glow', 6, cov('moist')>0, cov('moist'));
+      add('hair', col('hair'), !!col('hair'));
+      if(cov('brows')<1) out.push({ src:this.flawSrc('person','browsBushy'), z:19, op:1 });
+      add('brows', null, cov('brows')>=1);
+      add('pencil', null, cov('pencil')>=1);
+      proc('shadow', 30, cov('shadow')>0, cov('shadow'), col('shadow'));
+      add('liner', null, cov('liner')>=1);
+      add('mascara', null, cov('mascara')>=1);
+      add('mask', col('mask'), cov('mask')>0, Math.min(1,cov('mask')));
+      add('contour', null, cov('contour')>0, Math.min(1,cov('contour')));
+      add('hl', null, cov('hl')>0, Math.min(1,cov('hl')));
+      proc('blush', 37, cov('blush')>0, cov('blush'), col('blush'));
+      add('lipliner', null, cov('lipliner')>=1);
+      add('lips', col('lips'), cov('lips')>0, Math.min(1,cov('lips')));
+      add('ear', gl('ear'), !!gl('ear'));
+      add('paint', gl('paint'), !!gl('paint'));
+      (ed.pimples||[]).forEach((p,i)=>{ if(p===0) placed(this.flawSrc('person','spot'),18,anchors[i],12); });
+    } else if(base==='pet'){
+      add('outfit', ed.outfit, !!ed.outfit);
+      add('collar', col('collar'), !!(ed.col.collar||ed.gl.collar));
+      if(cov('wash')<1) out.push({ src:this.flawSrc('pet','matted'), z:4, op:1 });
+      add('wash', null, cov('wash')>=1);
+      add('moist', null, cov('moist')>0, Math.min(1,cov('moist')));
+      add('hair', col('hair'), !!col('hair'));
+      add('blush', null, cov('blush')>0, Math.min(1,cov('blush')));
+      add('shades', gl('shades'), !!gl('shades'));
+      add('gem', gl('gem'), !!gl('gem'));
+      add('bow', gl('bow'), !!gl('bow'));
+      add('hat', gl('hat'), !!gl('hat'));
+      if(cov('wash')<1)(ed.dirt||[]).forEach((p,i)=>{ if(p) placed(this.flawSrc('pet','dirt'),18,anchors[i],14); });
+    }
+    const sorted=out.sort((a,b)=>a.z-b.z);
+    return {
+      imgs: sorted.filter(o=>o.src).map(o=> o.placed
+        ? ({ src:o.src, style:'position:absolute;top:'+o.t+'%;left:'+o.l+'%;width:'+o.s+'%;height:'+o.s+'%;object-fit:contain;pointer-events:none;z-index:'+o.z })
+        : ({ src:o.src, style:'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:'+o.z+';opacity:'+(o.op!=null?o.op:1) }) ),
+      procs: sorted.filter(o=>o.proc).map(o=> ({ style:this.procStyle(o) })),
+    };
+  }
+  procStyle(o){ const F=((this.art().meta||{}).face||{})['person']||{}; const hw=F.faceHalfW||22; const op=(o.op!=null?o.op:1);
+    const B='position:absolute;transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;';
+    if(o.proc==='dull'){ const cy=((F.faceTop||6)+(F.faceBot||62))/2, h=((F.faceBot||62)-(F.faceTop||6))*1.12;
+      return B+'left:'+(F.faceCx||50)+'%;top:'+cy+'%;width:'+(hw*2.3)+'%;height:'+h+'%;background:radial-gradient(closest-side,rgba(120,102,84,.5),rgba(120,102,84,.22) 58%,transparent 80%);mix-blend-mode:multiply;opacity:'+op+';z-index:4'; }
+    if(o.proc==='glow'){ return 'position:absolute;pointer-events:none;left:'+((F.faceCx||50)-hw)+'%;top:'+((F.eyeY||36)-hw*0.7)+'%;width:'+(hw*2)+'%;height:'+(hw*2.4)+'%;background:radial-gradient(circle at 50% 24%,rgba(255,251,240,.5),transparent 28%),radial-gradient(circle at 27% 57%,rgba(255,251,240,.42),transparent 20%),radial-gradient(circle at 73% 57%,rgba(255,251,240,.42),transparent 20%),radial-gradient(circle at 50% 70%,rgba(255,251,240,.36),transparent 16%);mix-blend-mode:screen;opacity:'+(op*0.85)+';z-index:6'; }
+    const a=F[o.at]||{l:50,t:40};
+    if(o.proc==='shadow') return B+'left:'+a.l+'%;top:'+(a.t-hw*0.24)+'%;width:'+(hw*0.66)+'%;height:'+(hw*0.32)+'%;background:radial-gradient(closest-side,'+(o.color||'#a06cc9')+',transparent 74%);mix-blend-mode:multiply;opacity:'+(op*0.9)+';z-index:30';
+    if(o.proc==='blush') return B+'left:'+a.l+'%;top:'+a.t+'%;width:'+(hw*0.66)+'%;height:'+(hw*0.5)+'%;background:radial-gradient(closest-side,'+(o.color||'#f28ba0')+',transparent 70%);mix-blend-mode:multiply;opacity:'+(op*0.85)+';z-index:37';
+    return B; }
+  renderVals(){ const s=this.state; const cfg=this.cfg(); const base=this.base();
+    const isMine=s.phase==='mine',isReady=s.phase==='ready',isTheirs=s.phase==='theirs',isGiveback=s.phase==='giveback',isAsk=s.phase==='ask',isDone=s.phase==='done',isIntro=s.phase==='intro';
+    const whoseMe=isMine||isReady; const whose=isDone?'done':(whoseMe?'me':'them');
+    const V=this.buildV(); const SAGE='#6a7659',BLUE='#3b82f6';
+
+    let instruction='';
+    if(isReady) instruction='My turn is ready — tap Go!';
+    else if(isMine){ if(s.countMode==='timed') instruction='My turn — glam as much as I can!'; else if(s.countMode==='hidden') instruction='My turn — add some things!'; else { const left=Math.max(0,this.effGoal()-s.actionsThisTurn); instruction=left>0?('My turn — do '+left+' more!'):'All set — now I hand it over!'; } }
+    else if(isTheirs) instruction='Their turn — I wait 🕐';
+    else if(isGiveback) instruction='Their turn is done';
+    else if(isAsk) instruction="It's really my turn now…";
+
+    const pips=(goal,filled,color)=>{ const a=[]; for(let i=0;i<goal;i++) a.push(React.createElement('span',{key:i,style:{width:'15px',height:'15px',borderRadius:'50%',background:i<filled?color:'#fff',border:'2px solid '+(i<filled?color:'#cfd4c4'),display:'inline-block'}})); return a; };
+    let turnMeter=React.createElement('span',{});
+    if(isMine&&s.countMode==='timed') turnMeter=React.createElement('span',{style:{fontFamily:'var(--font-mono)',fontSize:'22px',fontWeight:800,color:SAGE}},this.fmt(s.myLeft));
+    else if(isMine&&s.countMode==='shown') turnMeter=React.createElement('div',{},[React.createElement('div',{key:'l',style:{fontSize:'9px',fontWeight:800,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--text-muted)',marginBottom:'4px'}},'Actions left'),React.createElement('div',{key:'p',style:{display:'flex',gap:'5px',justifyContent:'flex-end'}},pips(this.effGoal(),s.actionsThisTurn,SAGE))]);
+    else if(isTheirs&&s.partnerTimed) turnMeter=React.createElement('span',{style:{fontFamily:'var(--font-mono)',fontSize:'20px',fontWeight:800,color:BLUE}},this.fmt(s.partnerLeft));
+    else if(isTheirs) turnMeter=React.createElement('div',{},[React.createElement('div',{key:'l',style:{fontSize:'9px',fontWeight:800,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--text-muted)',marginBottom:'4px'}},'Their actions'),React.createElement('div',{key:'p',style:{display:'flex',gap:'5px',justifyContent:'flex-end'}},pips(s.partnerGoal,s.actionsThisTurn,BLUE))]);
+    else if(s.bonus>0&&whoseMe) turnMeter=React.createElement('span',{style:{fontSize:'12px',fontWeight:800,color:SAGE}},'+'+s.bonus+' bonus 🎉');
+
+    let phaseMsg=React.createElement('span',{});
+    if(isReady) phaseMsg=React.createElement('span',{style:{fontSize:'13px',color:'var(--text-muted)'}},'Nice waiting! Tap Go to start.');
+    else if(isTheirs) phaseMsg=React.createElement('span',{style:{fontSize:'13px',fontWeight:700,color:BLUE}},'They take the same-size turn — I wait.');
+    else if(isGiveback) phaseMsg=React.createElement('span',{style:{fontSize:'13px',fontWeight:700,color:'var(--slate-700)'}},'They finished their turn.');
+    else if(isAsk) phaseMsg=React.createElement('span',{style:{fontSize:'13px',fontWeight:700,color:'var(--amber-700)'}},'Their turn ran long — time to ask for my turn.');
+    else if(isMine) phaseMsg=React.createElement('span',{style:{fontSize:'13px',color:'var(--text-muted)'}},s.armed?'Now do it on the face →':'Pick a step to start.');
+
+    const cueTexts={full:"I say: \u201CIt's my turn now, please.\u201D",short:"\u201CMy turn, please.\u201D",icon:'🖐️ ➡️',none:''};
+    const cueText=s.cueVisible?(cueTexts[s.cueLevel]||''):' ';
+    const cueStyle='display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;font-weight:800;font-size:14px;'+(s.cueVisible?'background:var(--amber-100);border:1.5px solid var(--amber-300);color:var(--amber-700);animation:gtm-cue 2s var(--ease-standard) infinite':'background:var(--slate-100);border:1.5px dashed var(--slate-300);color:var(--slate-400)');
+
+    const canAct=isMine||isTheirs;
+    // Shipped button icons live in the generated manifest. Color icons render as-is;
+    // neutral bases (blush/eyeshadow/lipstick/shirt/contacts) get tinted per shade so a
+    // new color costs no new art; hairstyle reuses one comb+shears icon with a number.
+    const GICONS=(this.gen().icons)||{}, GEAR=(this.gen().earrings)||{};
+    const ICON_KEY={ wash:'wash',moist:'moist',patch:'treat',conceal:'conceal',brows:'brows',
+      contour:'contour',hl:'highlight',liner:'eyeliner',mascara:'mascara',lipliner:'lipliner',pencil:'browpencil',
+      sh_buzz:'hairstyle',sh_tousled:'hairstyle',sh_long:'hairstyle',sh_bob:'hairstyle',sh_spiky:'hairstyle',sh_crop:'hairstyle',sh_pixie:'hairstyle' };
+    const ICON_TINT={ bl1:'blush',bl2:'blush',es1:'eyeshadow',es2:'eyeshadow',lp1:'lipstick',lp2:'lipstick',lp3:'lipstick',
+      of1:'shirt',of2:'shirt',of3:'shirt',of4:'shirt',ct1:'contacts',ct2:'contacts',ct3:'contacts',ct4:'contacts' };
+    const HAIR_NUM={ sh_buzz:1,sh_tousled:2,sh_long:3,sh_bob:4,sh_spiky:5,sh_crop:6,sh_pixie:7 };
+    const iconUrlOf=(b)=> b ? (typeof b==='string'?b:b.src) : '';
+    const palette=cfg.cats.map(grp=>({ label:grp.label, icon:grp.icon, options:grp.options.filter(opt=>!this._optLocked(opt)).map(opt=>{ const armed=s.armed&&s.armed.id===opt.id;
+      // "active/used": this option's effect is the current config (so the user sees
+      // what's applied) — covers both an action just taken and a live selection.
+      const slot=opt.slot, ed=s.ed; let active=false;
+      if(opt.mech==='choose'){ active = slot==='outfit'?ed.outfit===opt.value : slot==='hairShape'?ed.hairShape===opt.value : ed.gl[slot]===(opt.glyph||'x'); }
+      else if(opt.apply==='recolor'){ active = ed.col[slot]===(opt.value!=null?opt.value:opt.color); }
+      else if(opt.apply==='place'){ active = ed.gl[slot]===(opt.value!=null?opt.value:opt.glyph); }
+      else if(opt.mech==='patch'){ active = !!ed.pimples && ed.pimples.every(v=>v>=1); }
+      else if(opt.mech==='conceal'){ active = !!ed.pimples && ed.pimples.every(v=>v===2); }
+      else { const covd=(ed.cov[slot]||0)>0; active = covd && (opt.color&&(slot==='blush'||slot==='lips'||slot==='shadow') ? ed.col[slot]===opt.color : true); }
+
+      // resolve the button face: color icon as-is · neutral base tinted per shade ·
+      // earring sprite · gradient color swatch · emoji glyph fallback.
+      const num=HAIR_NUM[opt.id];
+      let iconUrl='';
+      if(ICON_KEY[opt.id]) iconUrl=iconUrlOf(GICONS[ICON_KEY[opt.id]]);
+      else if(ICON_TINT[opt.id]&&opt.color){ const src=iconUrlOf(GICONS[ICON_TINT[opt.id]]); if(src) iconUrl=this._tintIcon(src,opt.color)||''; }
+      else if(slot==='ear'&&opt.value){ iconUrl=iconUrlOf(GEAR[opt.value]); }
+
+      let glyph='', swatch;
+      if(iconUrl){ swatch='width:46px;height:46px;background-image:url("'+iconUrl+'");background-size:contain;background-repeat:no-repeat;background-position:center;display:flex;align-items:center;justify-content:center;flex-shrink:0';
+        if(num){ glyph=String(num); swatch+=';font-size:19px;font-weight:900;color:#3a2a1c;text-shadow:0 1px 2px #fff,0 -1px 2px #fff,0 0 4px #fff'; } }
+      else if(opt.color){ swatch='width:42px;height:42px;border-radius:50%;background:'+this._swatchGrad(opt.color)+';box-shadow:0 0 0 '+(active?'2.5px var(--sage-600)':'1.5px var(--slate-300)')+',inset 0 2px 4px rgba(255,255,255,.35),inset 0 -3px 6px rgba(0,0,0,.20);flex-shrink:0'; }
+      else { swatch='width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0'; glyph=opt.glyph||''; }
+
+      const locked=this._optLocked(opt);
+      const bg=locked?'var(--slate-50)':armed?'var(--sage-50)':active?'var(--sage-100)':'#fff', bd=locked?'var(--slate-200)':(armed||active)?'var(--sage-500)':'var(--slate-200)';
+      const lbl = num!=null ? '' : (locked?'🔒 ':(active&&!armed?'✓ ':''))+opt.label;
+      return { label:lbl, glyph, swatchStyle:swatch, handler:locked?(()=>{}):(()=>this.arm(opt)),
+        btnStyle:'display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:5px;padding:9px 7px 7px;width:82px;border-radius:13px;cursor:'+(locked?'not-allowed':'pointer')+';font-family:inherit;opacity:'+(locked?'.45':'1')+';background:'+bg+';border:1.5px solid '+bd+';box-shadow:'+(armed?'0 0 0 3px rgba(106,118,89,.18)':active?'var(--shadow-sm)':'none') }; }) })).filter(grp=>grp.options.length);
+
+    // stage tracker — 4 phase chips (done ✓ / current / future); person only
+    let stageChips=[];
+    if(base==='person'){
+      const chipS=(st)=> st==='done' ? 'display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:800;background:var(--sage-100);border:1px solid var(--sage-500);color:var(--sage-700)'
+        : st==='cur' ? 'display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:800;background:var(--sage-600);border:1px solid var(--sage-600);color:#fff;box-shadow:0 0 0 3px rgba(106,118,89,.18)'
+        : 'display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#fff;border:1px dashed var(--slate-300);color:var(--slate-400)';
+      if(s.staged==='free'){ stageChips=[{label:'🎮 Free play — all steps open', style:chipS('cur')}]; }
+      else { const PH=this._phaseState();
+        stageChips=[['skin','🧼 Skincare'],['makeup','💄 Makeup'],['hair','💇 Hair'],['acc','💎 Accessories']].map(([k,lbl])=>{
+          const isDone = k==='skin'?PH.skin : k==='makeup'?PH.makeup : k==='hair'?PH.hair : false;
+          return { label:(isDone?'✓ ':'')+lbl, style:chipS(isDone?'done':(PH.cur===k?'cur':'future')) }; }); }
+    }
+
+    // target overlay
+    let target={ drag:false, tap:false, pop:false, style:'display:none', label:'', labelStyle:'', pimples:[] };
+    const t=s.armed;
+    if(t&&canAct){ const lab='font-size:11px;font-weight:800;color:var(--sage-700);background:#fff;border-radius:6px;padding:2px 8px;white-space:nowrap;box-shadow:var(--shadow-sm)';
+      if(t.mech==='patch'||t.mech==='conceal'){ const ge=this.genEntry(); const positions=(base==='person'&&ge)?this._spotPct(ge):[{l:41,t:28},{l:31,t:47},{l:48,t:56}];
+        const ring=(clr,bg)=>'position:absolute;transform:translate(-50%,-50%);width:12%;height:12%;border-radius:50%;border:2.5px solid '+clr+';background:'+bg+';cursor:pointer;z-index:60;animation:gtm-pim 1.2s var(--ease-standard) infinite'; const pim=[]; let lockMsg='';
+        if(t.mech==='patch'){ s.ed.pimples.forEach((st,i)=>{ if(st===0&&positions[i]) pim.push({ onClick:()=>this.patchOne(i), style:'top:'+positions[i].t+'%;left:'+positions[i].l+'%;'+ring('var(--red-500)','rgba(220,38,38,.12)') }); }); }
+        else { const allTreated=s.ed.pimples.every(v=>v>=1); if(allTreated){ s.ed.pimples.forEach((st,i)=>{ if(st===1&&positions[i]) pim.push({ onClick:()=>this.concealOne(i), style:'top:'+positions[i].t+'%;left:'+positions[i].l+'%;'+ring('var(--sage-600)','rgba(106,118,89,.16)') }); }); } else lockMsg='🔒 Patch all the spots first'; }
+        const lockStyle='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:11px;font-weight:800;color:var(--sage-700);background:#fff;border-radius:8px;padding:4px 10px;box-shadow:var(--shadow-sm);z-index:61;white-space:nowrap';
+        target={ drag:false,tap:false,pop:true, pimples:pim, style:'', label:lockMsg, labelStyle: lockMsg?lockStyle:'display:none' };
+      } else { const z=(ZONES[base]||{})[t.zone]; if(z){ const box='position:absolute;top:'+z.t+'%;left:'+z.l+'%;width:'+z.w+'%;height:'+z.h+'%;border:2.5px dashed '+SAGE+';border-radius:12px;background:rgba(106,118,89,.10);display:flex;align-items:center;justify-content:center;cursor:'+(t.mech==='paint'?'grab':'pointer')+';z-index:60;animation:gtm-target 1.4s var(--ease-standard) infinite;padding:0';
+        const covPct=Math.round((s.ed.cov[t.slot]||0)*100);
+        const lbl=t.mech==='paint'?(covPct>0?('Keep painting… '+covPct+'%'):z.label):z.label;
+        if(t.mech==='paint') target={ drag:true,tap:false,pop:false, style:box, label:lbl, labelStyle:lab, onDown:e=>this.pDown(e), onMove:e=>this.pMove(e), onUp:()=>this.pUp() };
+        else target={ drag:false,tap:true,pop:false, style:box, label:z.label, labelStyle:lab, onTap:()=>this.tapApply() };
+      } }
+    }
+
+    let stars=''; for(let i=0;i<s.tokenGoal;i++) stars+=i<s.tokens?'⭐':'☆';
+
+    const runwayTiles=[]; const mk=(who,st)=>{ const me=who==='me'; const now=st==='now';
+      const bg=now?(me?SAGE:BLUE):(st==='done'?(me?'var(--sage-50)':'var(--blue-50)'):'#fff'); const bd=st==='future'?'1.5px dashed var(--slate-300)':('1.5px solid '+(me?'var(--sage-500)':'var(--blue-500)')); const op=st==='done'?'.6':(st==='future'?'.7':'1'); const ring=now?';box-shadow:0 0 0 4px '+(me?'rgba(106,118,89,.2)':'rgba(59,130,246,.2)'):'';
+      return { glyph:me?'🦸':'🧑‍⚕️', glyphSize:now?'22px':'16px', badge:now?'NOW':(st==='done'?'✓':''), badgeColor:now?'color:#fff':(me?'color:var(--sage-700)':'color:var(--blue-700)'), style:'flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:'+(now?'9px 12px':'6px 8px')+';border-radius:11px;min-width:'+(now?'54px':'42px')+';background:'+bg+';border:'+bd+';opacity:'+op+ring }; };
+    for(let i=0;i<s.turnsTaken;i++) runwayTiles.push(mk(i%2===0?'me':'them','done'));
+    if(!isDone){ runwayTiles.push(mk(whose,'now')); runwayTiles.push(mk(whose==='me'?'them':'me','next')); runwayTiles.push(mk(whose,'future')); }
+    runwayTiles.push({ glyph:'⭐', glyphSize:'17px', badge:s.tokens+'/'+s.tokenGoal, badgeColor:'color:var(--amber-700)', style:'flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 9px;border-radius:11px;min-width:44px;background:var(--amber-50);border:1.5px solid var(--amber-300)' });
+
+    const stBase='width:128px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:6px;padding:11px 8px;border-radius:14px;';
+    const chip=c=>'display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:700;'+c;
+
+    // salon backdrop fills the whole stage panel when person art is live; else fall back to the scene bg.
+    // when live, the model is bottom-aligned so she sits at the vanity (not floating centred).
+    const personArtLive=base==='person'&&s.theme==='social'&&this.hasPersonArt();
+    const stageBg=(personArtLive&&(this.gen().backdrop||{}).src)||this.sceneArt().bg;
+    // tools/palette column matches the salon panel height so both align, and the palette fills it
+    const toolsColStyle='width:300px;display:flex;flex-direction:column;min-height:0'+(personArtLive?';max-height:670px':'');
+
+    return {
+      clock:this.fmt(s.elapsed), minGlyph:s.settingsOpen?'▾':'▸', settingsStyle:s.settingsOpen?'':'display:none',
+      theme:s.theme, turnMap:s.turnMap, countMode:s.countMode, actionGoal:String(s.actionGoal),
+      partnerTurn:s.partnerTurn, giveBack:s.giveBack, cueLevel:s.cueLevel, tokenGoal:String(s.tokenGoal), extraTime:s.extraTime,
+      staged:s.staged, onStaged:this.onSel('staged'),
+      myTurnUnit:s.countMode==='timed'?'(auto '+(30+s.bonus*5)+'s)':'actions',
+      onTheme:e=>this.setState({theme:e.target.value,ed:this.freshEd(THEMES[e.target.value].flaws)}),
+      onMap:this.onSel('turnMap'), onCount:this.onSel('countMode'), onActionGoal:this.onSel('actionGoal',true),
+      onPartnerTurn:this.onSel('partnerTurn'), onGiveBack:this.onSel('giveBack'), onCueLevel:this.onSel('cueLevel'), onTokenGoal:this.onSel('tokenGoal',true),
+      onExtra:e=>this.setState({extraTime:e.target.checked}),
+      onPlay:()=>this.play(), onGo:()=>this.go(), onHandoff:()=>this.handoff(), onGiveBack2:()=>this.giveBack(), onConfirmAsk:()=>this.confirmAsk(),
+      onMethod:()=>this.setState(x=>({methodOpen:!x.methodOpen})), onMinimize:()=>this.setState(x=>({settingsOpen:!x.settingsOpen})), onFinishSR:()=>this.finishSR(), onReplay:()=>this.replay(),
+      isIntro,isReady,isMine,isTheirs,isGiveback,isAsk,isDone, showGame:isReady||isMine||isTheirs||isGiveback||isAsk,
+      mapBanner:s.turnMap==='banner', mapVanity:s.turnMap==='vanity', mapRunway:s.turnMap==='runway',
+      personShow:base==='person', isPet:base==='pet', V, palette, target, runwayTiles, stageChips,
+      stageStyle:'flex:1;min-width:300px;position:relative;display:flex;align-items:'+(personArtLive?'flex-end':'center')+';justify-content:center;background:var(--surface-card);border:1px solid var(--border-default);border-radius:16px;padding:12px;overflow:hidden'+(personArtLive?';max-height:670px':'')+(stageBg?';background-image:url("'+stageBg+'");background-size:cover;background-position:center':''),
+      toolsColStyle,
+      artModels:this.artModelList(), artModelPicker:base==='person'&&this.artModelList().length>1,
+      personArt:base==='person'&&s.theme==='social'&&this.hasPersonArt(), personProcedural:base!=='person'||!(s.theme==='social'&&this.hasPersonArt()),
+      petArt:base==='pet'&&!!this.artBaseSrc('pet'), petProcedural:base!=='pet'||!this.artBaseSrc('pet'),
+      petArtBase:this.artBaseSrc('pet'), petArtLayers:(base==='pet'&&this.artBaseSrc('pet'))?this.buildArtLayers('pet').imgs:[],
+      sceneFrame:this.sceneArt().frame||'',
+      whoseGlyph:whose==='me'?'🦸':'🧑‍⚕️', turnLabel:whose==='me'?'MY TURN':'THEIR TURN', turnLabelColor:'color:'+(whose==='me'?'var(--sage-700)':'var(--blue-700)'),
+      bannerStyle:'display:flex;align-items:center;gap:14px;padding:12px 18px;border-radius:14px;background:'+(whose==='me'?'var(--sage-50)':'var(--blue-50)')+';border-left:6px solid '+(whose==='me'?SAGE:BLUE),
+      bannerAvatarStyle:whose==='me'?'background:var(--sage-100);border:2px solid var(--sage-500)':'background:var(--blue-100);border:2px solid var(--blue-500)',
+      instruction, turnMeter, phaseMsg, cueText, cueStyle,
+      handoffStyle:'background:'+SAGE+';color:#fff;border:none;padding:12px 24px;border-radius:999px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md)'+((isMine&&s.countMode!=='timed'&&s.actionsThisTurn>=this.effGoal())?';animation:gtm-cue 1.6s var(--ease-standard) infinite':''),
+      tokenStars:stars, tokenText:s.tokens+' / '+s.tokenGoal,
+      paletteHint:s.armed?'✋ Now do it on the face →':'Pick a step to put on',
+      introEmoji:cfg.intro.emoji, introTitle:cfg.intro.title, introText:cfg.intro.text,
+      outcomeEmoji:cfg.outcome.emoji, outcomeTitle:cfg.outcome.title, outcomeText:cfg.outcome.text,
+      methodOpen:s.methodOpen, statLine:s.turnsTaken+' turns handed over · '+s.indAsks+' independent asks · '+s.promptedAsks+' prompted asks',
+      stationMeStyle:stBase+(whose==='me'?'background:var(--sage-50);border:2px solid var(--sage-500);box-shadow:0 0 0 4px rgba(106,118,89,.16)':'background:#fff;border:1.5px dashed var(--slate-300);opacity:.7'),
+      stationThemStyle:stBase+(whose==='them'?'background:var(--blue-50);border:2px solid var(--blue-500);box-shadow:0 0 0 4px rgba(59,130,246,.16)':'background:#fff;border:1.5px dashed var(--slate-300);opacity:.7'),
+      stationMeLabel:whose==='me'?'MY TURN':'waiting', stationMeLabelColor:'color:'+(whose==='me'?'var(--sage-700)':'var(--text-muted)'),
+      stationThemLabel:whose==='them'?'THEIR TURN':'waiting', stationThemLabelColor:'color:'+(whose==='them'?'var(--blue-700)':'var(--text-muted)'),
+      stationMeRing:whose==='me'?'border:2px solid var(--sage-500)':'border:2px solid var(--slate-300)',
+      stationThemRing:whose==='them'?'border:2px solid var(--blue-500)':'border:2px solid var(--slate-300)',
+      meBrushStyle:chip(whose==='me'?'background:#fff;border:1.5px solid var(--sage-500);color:var(--sage-700)':'background:var(--slate-100);border:1px solid var(--slate-200);color:var(--slate-400)'),
+      themBrushStyle:chip(whose==='them'?'background:#fff;border:1.5px solid var(--blue-500);color:var(--blue-700)':'background:var(--slate-100);border:1px solid var(--slate-200);color:var(--slate-400)'),
+    };
+  }
+}
+</script>
+
+<!-- Admin gear → GM hub. _worker.js rewrites the `const ADMIN_SECRET_HASH = "…"`
+     line per request (regex needs the `const` form — matches every other game). -->
+<script>
+  const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
+  window.ADMIN_SECRET_HASH = ADMIN_SECRET_HASH;
+  window.ADMIN_GEAR_PAGE = '../GM/';
+</script>
+<script src="../admin-gear.js"></script>
+</body>
+</html>
