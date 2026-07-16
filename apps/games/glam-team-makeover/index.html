@@ -16,7 +16,7 @@
   @keyframes gtm-target { 0%,100%{ box-shadow:0 0 0 3px rgba(106,118,89,.30);} 50%{ box-shadow:0 0 0 8px rgba(106,118,89,.12);} }
   @keyframes gtm-pim { 0%,100%{ box-shadow:0 0 0 0 rgba(220,38,38,.35);} 50%{ box-shadow:0 0 0 6px rgba(220,38,38,.12);} }
   .gtm-scroll::-webkit-scrollbar{ width:8px;height:8px; } .gtm-scroll::-webkit-scrollbar-thumb{ background:var(--slate-300); border-radius:8px; }
-  .gtm-tool{ touch-action:none; }
+  .gtm-tool{ touch-action:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
   @media (prefers-reduced-motion: reduce){ *{ animation:none !important; } }
 </style>
 
@@ -223,6 +223,8 @@
               <sc-if value="{{ target.tap }}" hint-placeholder-val="{{ false }}"><div onClick="{{ target.onTap }}" style="{{ target.style }}"><span style="{{ target.labelStyle }}">{{ target.label }}</span></div></sc-if>
             </div>
           </sc-if>
+          <!-- vanity ledge — masks the paper-doll's hard bottom cut edge; person art only -->
+          <sc-if value="{{ footerBar }}" hint-placeholder-val="{{ false }}"><div style="{{ footerBarStyle }}"></div></sc-if>
         </div>
 
         <!-- PALETTE -->
@@ -429,6 +431,17 @@ const ZONES = {
   },
 };
 
+// The social paper-doll canvas registers features differently from the procedural SVG
+// that ZONES is tuned for (eyes lock at frame 50%,44%; lips sit lower, brows higher,
+// earrings hang at the lobe). These overrides realign the drag/tap hitboxes to the
+// rendered art — applied only when the person art is live; the hero theme (SVG) keeps ZONES.
+const PERSON_ART_ZONES = {
+  brows:{t:32,l:28,w:44,h:7,label:'Tap the brows'},
+  lips:{t:61,l:38,w:24,h:10,label:'Drag over the lips'},
+  ears:{t:48,l:8,w:84,h:14,label:'Tap to add earrings'},
+  cheeks:{t:51,l:22,w:56,h:12,label:'Drag over the cheeks'},
+};
+
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -496,7 +509,8 @@ class Component extends DCLogic {
     const makeup=this._skinMakeupDone(); const hair=this._hairDone();
     const cur = !skin?'skin' : !makeup?'makeup' : !hair?'hair' : 'acc';
     return { cur, skin, makeup, hair }; }
-  arm(opt){ if(this._optLocked(opt)) return; if(opt.mech==='choose'){ this.applyChoose(opt); return; } this.setState({armed:opt}); }
+  arm(opt){ if(this._optLocked(opt)) return; if(this._capBlocks(this.state,this._optKey(opt))) return;   // cap: no new actions this turn
+    if(opt.mech==='choose'){ this.applyChoose(opt); return; } this.setState({armed:opt}); }
   bumpAction(){ this.setState(s=>({actionsThisTurn:s.actionsThisTurn+1}), ()=>this.afterAction()); }
   afterAction(){ const s=this.state; if(s.phase==='theirs' && !s.partnerTimed && s.actionsThisTurn>=s.partnerGoal){ setTimeout(()=>this.partnerDone(),500); } }
   // Per-turn action economy (user-locked): an action is spent the FIRST time in a turn a
@@ -505,14 +519,31 @@ class Component extends DCLogic {
   // colour change costs 1; further same-article recolours or restyles in the SAME turn are
   // free; and it all resets next turn (chargedThisTurn cleared in go/handoff). `ed.done` is
   // still set for gating/✓, decoupled from the charge.
-  _chargeKey(s,key){ const c=s.chargedThisTurn||{}; if(c[key]) return {inc:0,charged:c};
-    const n=Object.assign({},c); n[key]=1; return {inc:1,charged:n}; }
+  _turnCap(s){ return s.phase==='theirs' ? s.partnerGoal : (s.actionGoal + s.bonus); }
+  // Hard per-turn cap: once the prescribed number of CHARGED actions is spent, a NEW charge is
+  // refused (re-touching an already-charged article stays free). Count modes only — timed turns
+  // end by the clock, not the count.
+  _capBlocks(s,key){ if(s.countMode==='timed') return false;
+    if((s.chargedThisTurn||{})[key]) return false;                 // already charged this turn → free
+    const cap=this._turnCap(s); return cap>0 && s.actionsThisTurn>=cap; }
+  // Charge key an option WOULD spend (mirrors the apply paths) — used to dim would-be-new-charge
+  // tools at the cap. patch/conceal spend per tapped spot, so a synthetic never-charged key makes
+  // the tool dim once the cap is hit.
+  _optKey(opt){ if(opt.slot==='outfit') return 'color:outfit';
+    if(opt.slot==='hairShape') return 'style';
+    if(opt.apply==='recolor') return 'color:'+opt.slot;
+    if(opt.mech==='paint') return (opt.color?'color:':'item:')+opt.slot;
+    if(opt.mech==='patch'||opt.mech==='conceal') return '__perTap__';
+    return 'item:'+(opt.slot||opt.id); }
+  _chargeKey(s,key){ const c=s.chargedThisTurn||{}; if(c[key]) return {inc:0,charged:c,blocked:false};
+    if(this._capBlocks(s,key)) return {inc:0,charged:c,blocked:true};
+    const n=Object.assign({},c); n[key]=1; return {inc:1,charged:n,blocked:false}; }
 
   applyChoose(opt){ this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); let key;
       if(opt.slot==='outfit'){ ed.outfit=opt.value; ed.col.garment=opt.color; ed.done.outfit=true; key='color:outfit'; }
       else if(opt.slot==='hairShape'){ ed.hairShape=opt.value; ed.done.hairShape=true; key='style'; }
       else { ed.gl[opt.slot]=opt.glyph||'x'; ed.col[opt.slot]=opt.color; ed.done[opt.slot]=true; key='item:'+opt.slot; }
-      const {inc,charged}=this._chargeKey(s,key);
+      const {inc,charged,blocked}=this._chargeKey(s,key); if(blocked) return {};
       return { ed, armed:null, actionsThisTurn: s.actionsThisTurn+inc, chargedThisTurn:charged }; }, ()=>this.afterAction()); }
 
   tapApply(){ const t=this.state.armed; if(!t) return; this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); const slot=t.slot; let key;
@@ -520,19 +551,21 @@ class Component extends DCLogic {
       else if(t.apply==='place'){ ed.gl[slot]=(t.value!=null?t.value:t.glyph); if(t.color) ed.col[slot]=t.color; key='item:'+slot; }
       else { ed.cov[slot]=1; if(t.color) ed.col[slot]=t.color; key='item:'+slot; }
       ed.done[slot]=true;
-      const {inc,charged}=this._chargeKey(s,key);
+      const {inc,charged,blocked}=this._chargeKey(s,key); if(blocked) return {};
       return { ed, armed:null, actionsThisTurn: s.actionsThisTurn+inc, chargedThisTurn:charged }; }, ()=>this.afterAction()); }
 
   // Treat/patch step: tap a zit (state 0) → patched (1). Stay armed while zits remain.
   patchOne(i){ this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); if(ed.pimples[i]!==0) return {}; ed.pimples[i]=1;
-      ed.done['patch'+i]=true; const {inc,charged}=this._chargeKey(s,'item:patch'+i);
+      ed.done['patch'+i]=true; const {inc,charged,blocked}=this._chargeKey(s,'item:patch'+i); if(blocked) return {};
       const anyZit=ed.pimples.some(v=>v===0); return { ed, armed: anyZit? s.armed : null, actionsThisTurn:s.actionsThisTurn+inc, chargedThisTurn:charged }; }, ()=>this.afterAction()); }
   // Conceal step (unlocks once ALL spots patched): tap a patch (state 1) → clear (2).
   concealOne(i){ this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); if(ed.pimples[i]!==1) return {}; ed.pimples[i]=2;
-      ed.done['conceal'+i]=true; const {inc,charged}=this._chargeKey(s,'item:conceal'+i);
+      ed.done['conceal'+i]=true; const {inc,charged,blocked}=this._chargeKey(s,'item:conceal'+i); if(blocked) return {};
       const anyPatched=ed.pimples.some(v=>v===1); return { ed, armed: anyPatched? s.armed : null, actionsThisTurn:s.actionsThisTurn+inc, chargedThisTurn:charged }; }, ()=>this.afterAction()); }
 
-  paintStep(){ const t=this.state.armed; if(!t||t.mech!=='paint') return; const slot=t.slot; let completed=false;
+  paintStep(){ const t=this.state.armed; if(!t||t.mech!=='paint') return; const slot=t.slot;
+    if(this._capBlocks(this.state,(t.color?'color:':'item:')+slot)) return;   // cap: don't start a new charged paint
+    let completed=false;
     this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); const cur=ed.cov[slot]||0; const nx=Math.min(1,cur+0.11); ed.cov[slot]=nx; if(t.color) ed.col[slot]=t.color;
       let inc=0, charged=s.chargedThisTurn||{};
       if(nx>=1){ ed.done[slot]=true; completed=true; const r=this._chargeKey(s,(t.color?'color:':'item:')+slot); inc=r.inc; charged=r.charged; }
@@ -618,6 +651,9 @@ class Component extends DCLogic {
   genEntry(){ const m=(this.gen().models||{})[this.state.model]; if(!m) return null;
     return (m.styles||{})[this.state.ed.hairShape] || (m.styles||{}).base || null; }
   hasPersonArt(){ return !!this.genEntry(); }
+  // person paper-doll canvas is live (social theme + art present) → use art-aligned hitboxes
+  _personArtLive(){ return this.base()==='person'&&this.state.theme==='social'&&this.hasPersonArt(); }
+  _targetZone(base,name){ if(base==='person'&&this._personArtLive()){ const o=PERSON_ART_ZONES[name]; if(o) return o; } return (ZONES[base]||{})[name]; }
   setHairShape(st){ this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); ed.hairShape=st; return {ed}; }); }
 
   _img(src){ const c=this._imgc||(this._imgc={}); if(c[src]) return c[src];
@@ -805,10 +841,10 @@ class Component extends DCLogic {
         const [x,y,w,h,o]=e, dw=EYECFG.s*(2*w), dh=dw/meta.aspect;
         ctx.save(); ctx.translate(ex(e),y); if(mirror&&o<0) ctx.scale(-1,1);
         ctx.drawImage(im.img,-meta.cx*dw,-meta.cy*dh,dw,dh); ctx.restore(); };
-      if(cov('shadow')>0){ const sc=col('shadow')||'#a06cc9', sa=cov('shadow');   // eyeshadow on the lid, behind the lashes
+      if(cov('shadow')>0){ const sc=col('shadow')||'#a06cc9', scDark=this.shade(this.shade(sc)), sa=cov('shadow');   // eyeshadow on the lid, behind the lashes — richer/deeper finish
         for(const e of eyes){ const [x,y,w,h,o]=e, X=ex(e);
-          this._blob(ctx, X+o*w*0.28, y-h*0.44, w*1.08, h*0.82, o*0.40, sc, sa*0.72,'source-over',true);
-          this._blob(ctx, X+o*w*1.05, y-h*0.66, w*0.66, h*0.40, o*0.90, sc, sa*0.80,'source-over',true); } }
+          this._blob(ctx, X+o*w*0.28, y-h*0.44, w*1.10, h*0.84, o*0.40, sc,     Math.min(1,sa*0.92),'source-over',true);   // lid wash (deeper)
+          this._blob(ctx, X+o*w*1.02, y-h*0.64, w*0.68, h*0.44, o*0.90, scDark, Math.min(1,sa),'source-over',true); } }    // darker outer-corner crease for depth
       for(const e of eyes){ const o=e[4];
         if(mascara&&eyeSet.glam) drawSprite(eyeSet.glam,e,true);         // eyeball + lashes
         else if(!liner) drawSprite(eyeSet.natural,e,true);              // plain eyeball (liner sprite carries its own)
@@ -983,10 +1019,14 @@ class Component extends DCLogic {
       else { swatch='width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0'; glyph=opt.glyph||''; }
 
       const locked=this._optLocked(opt);
-      const bg=locked?'var(--slate-50)':armed?'var(--sage-50)':active?'var(--sage-100)':'#fff', bd=locked?'var(--slate-200)':(armed||active)?'var(--sage-500)':'var(--slate-200)';
+      // dim tools that would spend a NEW action past the turn cap (shown mode only — 'hidden'
+      // keeps the block silent so it stays a clean probe of independent relinquishing).
+      const capDim=s.countMode==='shown' && this._capBlocks(s,this._optKey(opt));
+      const off=locked||capDim;
+      const bg=off?'var(--slate-50)':armed?'var(--sage-50)':active?'var(--sage-100)':'#fff', bd=off?'var(--slate-200)':(armed||active)?'var(--sage-500)':'var(--slate-200)';
       const lbl = num!=null ? '' : (locked?'🔒 ':(active&&!armed?'✓ ':''))+opt.label;
       return { label:lbl, glyph, swatchStyle:swatch, handler:locked?(()=>{}):(()=>this.arm(opt)),
-        btnStyle:'display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:5px;padding:9px 7px 7px;width:82px;border-radius:13px;cursor:'+(locked?'not-allowed':'pointer')+';font-family:inherit;opacity:'+(locked?'.45':'1')+';background:'+bg+';border:1.5px solid '+bd+';box-shadow:'+(armed?'0 0 0 3px rgba(106,118,89,.18)':active?'var(--shadow-sm)':'none') }; }) })).filter(grp=>grp.options.length);
+        btnStyle:'display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:5px;padding:9px 7px 7px;width:82px;border-radius:13px;cursor:'+(off?'not-allowed':'pointer')+';font-family:inherit;opacity:'+(off?'.45':'1')+';background:'+bg+';border:1.5px solid '+bd+';box-shadow:'+(armed?'0 0 0 3px rgba(106,118,89,.18)':active?'var(--shadow-sm)':'none') }; }) })).filter(grp=>grp.options.length);
 
     // stage tracker — 4 phase chips (done ✓ / current / future); person only
     let stageChips=[];
@@ -1011,7 +1051,7 @@ class Component extends DCLogic {
         else { const allTreated=s.ed.pimples.every(v=>v>=1); if(allTreated){ s.ed.pimples.forEach((st,i)=>{ if(st===1&&positions[i]) pim.push({ onClick:()=>this.concealOne(i), style:'top:'+positions[i].t+'%;left:'+positions[i].l+'%;'+ring('var(--sage-600)','rgba(106,118,89,.16)') }); }); } else lockMsg='🔒 Patch all the spots first'; }
         const lockStyle='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:11px;font-weight:800;color:var(--sage-700);background:#fff;border-radius:8px;padding:4px 10px;box-shadow:var(--shadow-sm);z-index:61;white-space:nowrap';
         target={ drag:false,tap:false,pop:true, pimples:pim, style:'', label:lockMsg, labelStyle: lockMsg?lockStyle:'display:none' };
-      } else { const z=(ZONES[base]||{})[t.zone]; if(z){ const box='position:absolute;top:'+z.t+'%;left:'+z.l+'%;width:'+z.w+'%;height:'+z.h+'%;border:2.5px dashed '+SAGE+';border-radius:12px;background:rgba(106,118,89,.10);display:flex;align-items:center;justify-content:center;cursor:'+(t.mech==='paint'?'grab':'pointer')+';z-index:60;animation:gtm-target 1.4s var(--ease-standard) infinite;padding:0';
+      } else { const z=this._targetZone(base,t.zone); if(z){ const box='position:absolute;top:'+z.t+'%;left:'+z.l+'%;width:'+z.w+'%;height:'+z.h+'%;border:2.5px dashed '+SAGE+';border-radius:12px;background:rgba(106,118,89,.10);display:flex;align-items:center;justify-content:center;cursor:'+(t.mech==='paint'?'grab':'pointer')+';z-index:60;animation:gtm-target 1.4s var(--ease-standard) infinite;padding:0';
         const covPct=Math.round((s.ed.cov[t.slot]||0)*100);
         const lbl=t.mech==='paint'?(covPct>0?('Keep painting… '+covPct+'%'):z.label):z.label;
         if(t.mech==='paint') target={ drag:true,tap:false,pop:false, style:box, label:lbl, labelStyle:lab, onDown:e=>this.pDown(e), onMove:e=>this.pMove(e), onUp:()=>this.pUp() };
@@ -1055,6 +1095,10 @@ class Component extends DCLogic {
       personShow:base==='person', isPet:base==='pet', V, palette, target, runwayTiles, stageChips,
       stageStyle:'flex:1;min-width:300px;position:relative;display:flex;align-items:'+(personArtLive?'flex-end':'center')+';justify-content:center;background:var(--surface-card);border:1px solid var(--border-default);border-radius:16px;padding:12px;overflow:hidden'+(personArtLive?';max-height:670px':'')+(stageBg?';background-image:url("'+stageBg+'");background-size:cover;background-position:center':''),
       toolsColStyle,
+      footerBar: personArtLive,
+      // warm wood vanity ledge across the stage floor: transparent above → a bright front-lip
+      // catch → opaque counter body, so the model's straight bottom cut disappears behind it.
+      footerBarStyle:'position:absolute;left:0;right:0;bottom:0;height:16%;z-index:4;pointer-events:none;background:linear-gradient(to bottom,rgba(210,190,156,0) 0%,rgba(210,190,156,0) 20%,rgba(255,250,240,.72) 24%,#d3bd93 31%,#c1a676 100%);box-shadow:0 -8px 16px -8px rgba(96,74,48,.34)',
       artModels:this.artModelList(), artModelPicker:base==='person'&&this.artModelList().length>1,
       personArt:base==='person'&&s.theme==='social'&&this.hasPersonArt(), personProcedural:base!=='person'||!(s.theme==='social'&&this.hasPersonArt()),
       petArt:base==='pet'&&!!this.artBaseSrc('pet'), petProcedural:base!=='pet'||!this.artBaseSrc('pet'),
