@@ -433,7 +433,7 @@ class Component extends DCLogic {
   constructor(props) {
     super(props);
     this.state = {
-      phase:'intro', theme:'social', turnMap:'banner', model:'m2',   // m1 gated off (see artGated)
+      phase:'intro', theme:'social', turnMap:'banner', model:'m2',   // default model (all four selectable)
       countMode:'shown', actionGoal:3, partnerTurn:'match', staged:'on',
       giveBack:'forgets', cueLevel:'short', tokenGoal:5, extraTime:true,
       tokens:0, actionsThisTurn:0, chargedThisTurn:{}, bonus:0,
@@ -594,10 +594,10 @@ class Component extends DCLogic {
   shade(hex){ try{ const n=parseInt(hex.slice(1),16); let r=Math.max(0,(n>>16)-28),g=Math.max(0,((n>>8)&255)-28),b=Math.max(0,(n&255)-28); return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1); }catch(e){ return hex; } }
 
   art(){ return (typeof window!=='undefined' && window.NooutcoArt) || {}; }
-  // NOTE: M1 is gated OFF pending an eye-art redo — her replacement sprite eyes read worse than
-  // the other models. Her art is still generated, so re-enabling is just deleting her from here
-  // (and re-check EYECFG in paintAvatar). Keep the default model off m1 too (see initial state).
-  artGated(){ return {m1:true}; }
+  // All four models are selectable. M1 was previously gated for undersized sprite eyes; fixed
+  // by her own EYECFG {s:2.05,dx:0.08} in paintAvatar (eyes now fill her sockets). Re-gate a
+  // model by adding its id here if its art ever regresses.
+  artGated(){ return {}; }
   setArtModel(id){ if(this.artGated()[id] || !((this.gen().models||{})[id])) return; this.setState({model:id}); }
   artModelList(){ const M=(this.gen().models)||{}, G=this.artGated(); const act=this.state.model;
     return Object.keys(M).filter(id=>!G[id]).map(id=>({
@@ -796,7 +796,7 @@ class Component extends DCLogic {
     // iris-centered frame (cx=cy=0.5) so states stack with no double-edge. natural/glam mirror
     // per socket; eyeliner ships a real L/R pair (wing is directional → no mirror).
     // Per-model size + inward nudge (dx pulls the eye toward centre; m4 was too far apart). =====
-    const EYECFG=({m1:{s:1.78,dx:0},m2:{s:1.72,dx:0},m3:{s:1.85,dx:0.22},m4:{s:1.62,dx:0.15}})[this.state.model]||{s:1.68,dx:0};
+    const EYECFG=({m1:{s:2.05,dx:0.08},m2:{s:1.72,dx:0},m3:{s:1.85,dx:0.22},m4:{s:1.62,dx:0.15}})[this.state.model]||{s:1.68,dx:0};
     const ex=(e)=>e[0]-e[4]*EYECFG.dx*e[2];        // shifted eye-centre x (toward face centre)
     const eyeSet=this.gen().eyes||{};
     if(eyeSet.natural){
