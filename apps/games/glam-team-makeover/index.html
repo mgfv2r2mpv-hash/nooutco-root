@@ -82,6 +82,16 @@
         <div style="font-size:56px;line-height:1">{{ introEmoji }}</div>
         <h2 style="font-size:24px;font-weight:800;color:var(--text-primary);margin:10px 0 8px;letter-spacing:-.01em">{{ introTitle }}</h2>
         <p style="font-size:15px;line-height:1.55;color:var(--text-body);max-width:520px;margin:0 auto 18px">{{ introText }}</p>
+        <sc-if value="{{ introIsDialog }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:10px;max-width:520px;margin:0 auto 20px">
+            <sc-for list="{{ introDialog }}" as="ln" hint-placeholder-count="2">
+              <div style="{{ ln.rowStyle }}">
+                <div style="{{ ln.avatarStyle }}">{{ ln.glyph }}</div>
+                <div style="{{ ln.bubbleStyle }}"><div style="font-size:11px;font-weight:800;letter-spacing:.02em;margin-bottom:1px;{{ ln.nameColor }}">{{ ln.who }}</div><div style="font-size:14px;line-height:1.5;color:var(--text-body)">{{ ln.line }}</div></div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
         <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:22px">
           <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted)">The routine</span>
           <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:var(--sage-50);border:1px solid var(--sage-200);border-radius:999px;font-size:12px;font-weight:700;color:var(--sage-700)">🧼 Skincare</span>
@@ -123,13 +133,6 @@
         <!-- STAGE -->
         <div style="{{ stageStyle }}">
           <span style="position:absolute;top:12px;left:14px;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint);z-index:3">Our makeover</span>
-          <sc-if value="{{ artModelPicker }}" hint-placeholder-val="{{ false }}">
-            <div style="position:absolute;top:8px;right:12px;display:flex;gap:6px;z-index:6">
-              <sc-for list="{{ artModels }}" as="am" hint-placeholder-count="0">
-                <button onClick="{{ am.pick }}" style="{{ am.style }}">{{ am.label }}</button>
-              </sc-for>
-            </div>
-          </sc-if>
           <sc-if value="{{ sceneFrame }}" hint-placeholder-val="{{ false }}"><img src="{{ sceneFrame }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:2"></sc-if>
 
           <sc-if value="{{ personShow }}" hint-placeholder-val="{{ true }}">
@@ -406,6 +409,131 @@ const THEMES = {
   },
 };
 
+// ── Recombinant pre/post story engine (social/person theme) ────────────────────
+// Each playthrough draws ONE scenario from independent fragment pools and threads it
+// through BOTH the pre-story (a dialog between the client getting ready and the
+// technician who rallies the glam team) and the post-story (a short narrative — a
+// social moment resolved with calm communication, credited to the glam team's
+// turn-taking teamwork). Modest pools multiply into hundreds of thousands of unique
+// pre+post pairings, redrawn every playthrough (initial mount + "Play again").
+const GLAM_NAMES = ["Ava","Mia","Zoe","Lily","Emma","Nora","Ruby","Ivy","Isla","Maya","Ella","Chloe","Aria","Layla","Sofia","Hazel","Nina","Willa","Rosa","Talia","Priya","Amara","Leila","Yara","Naomi","Daniela","Keira","Fatima","Grace","Camila","Sadie","June","Elena","Anaya","Bella","Freya","Wren","Sana","Malia","Thea"];
+const GLAM_STORY = {
+  // event.have fits "I have ___ today"; event.at fits "At ___, she felt ready."
+  events:[
+    {emoji:"🎂", have:"a birthday party", at:"the party"},
+    {emoji:"🏫", have:"my first day at a new school", at:"her new school"},
+    {emoji:"📸", have:"picture day at school", at:"picture day"},
+    {emoji:"💃", have:"a dance recital", at:"the recital"},
+    {emoji:"⚽", have:"a big game with my team", at:"the game"},
+    {emoji:"🎭", have:"the school play", at:"the school play"},
+    {emoji:"👋", have:"a playdate with someone new", at:"the playdate"},
+    {emoji:"🎉", have:"a family party", at:"the family party"},
+    {emoji:"🍎", have:"a visit to a new classroom", at:"the new classroom"},
+    {emoji:"🏊", have:"a swim meet", at:"the swim meet"},
+    {emoji:"🎤", have:"show-and-tell", at:"show-and-tell"},
+    {emoji:"🧁", have:"a bake sale with my class", at:"the bake sale"},
+    {emoji:"🏕️", have:"my first day of camp", at:"camp"},
+    {emoji:"🎨", have:"an art show", at:"the art show"},
+    {emoji:"🤝", have:"a meet-up with a new friend", at:"the meet-up"},
+    {emoji:"🎏", have:"a neighborhood block party", at:"the block party"},
+    {emoji:"📚", have:"story time at the library", at:"the library"},
+    {emoji:"🎈", have:"a friend's birthday party", at:"her friend's party"},
+  ],
+  whens:["today","this afternoon","in a little while","really soon","later today"],
+  // worry: no trailing period; questions keep "?". Rendered as "... {when}. {Worry}"
+  worries:[
+    "I'm nervous everyone will be looking at me",
+    "I don't really know what to say to new people",
+    "what if I don't know anyone there?",
+    "my tummy feels all fluttery about it",
+    "what if someone wants to play with the same thing as me?",
+    "I'm worried I'll feel too shy",
+    "what if it doesn't go the way I hoped?",
+    "I'm scared I'll feel left out",
+    "what if I have to wait a really long time for my turn?",
+    "I feel a little wobbly about meeting so many people",
+    "what if someone doesn't want to share?",
+    "I'm not sure I'll feel brave enough",
+  ],
+  asks:[
+    "Can the glam team help me get ready?",
+    "Will you help me get ready so I feel my best?",
+    "Can we take turns and get me ready together?",
+    "Could the glam team help me feel ready to go?",
+  ],
+  tech:[
+    "Of course! The whole glam team is right here. We'll take turns — skincare, hair, makeup, and an outfit — and get you feeling your best.",
+    "You bet. One turn at a time, together — and if anything comes up out there, remember we can always talk it out calmly.",
+    "Don't worry, we've got you. We'll cooperate and take turns, and you'll walk in feeling ready.",
+    "Absolutely. The glam team works best together — we'll share the turns and have you glowing in no time.",
+    "For sure! We'll help each other, take turns, and get you ready. A calm voice goes a long way, too.",
+    "Of course we will. Team glam, taking turns — you are going to feel wonderful.",
+  ],
+  // lead: a short scene-setter shown above the dialog. {name} threaded.
+  leads:[
+    "Before the big day, {name} checks in with the glam team.",
+    "{name} has something big coming up — time to get ready together.",
+    "First things first: {name} and the glam team get ready.",
+    "The glam team gathers to help {name} get ready.",
+  ],
+  preTitles:["Getting ready together","A big day ahead","The glam team is on it","Time to get ready","A little help from the glam team"],
+  readys:["ready","calm and confident","proud and prepared","brave","happy and calm"],
+  // resolution: a full sentence; {name} threaded. Event-agnostic calm-communication beat.
+  resolutions:[
+    "When two kids wanted the same spot, {name} used a calm voice and they took turns.",
+    "Someone bumped into her by accident, and instead of getting upset she talked it out kindly.",
+    "She and a new friend both wanted to go first, so they made a plan and shared.",
+    "When there was a little mix-up, {name} asked nicely and waited for her turn.",
+    "A kid nearby looked left out, so {name} walked over and invited them to join in.",
+    "There was a disagreement about the rules, so everyone listened and found a fair way.",
+    "When she started to feel nervous, {name} took a deep breath and used her calm words.",
+    "Two friends began to argue, and {name} helped them take turns talking until it was sorted out.",
+    "Someone wanted the toy she was holding, so she counted down and happily passed it over.",
+    "When the plan changed at the last minute, {name} stayed calm and went with the flow.",
+  ],
+  feelings:[
+    "Everyone had such a good time.",
+    "It turned out even better than she hoped.",
+    "She even made a brand-new friend.",
+    "She felt proud of how she handled it.",
+    "The whole day felt easy and fun.",
+    "She couldn't stop smiling the whole way home.",
+  ],
+  credits:[
+    "And it was all thanks to the glam team — taking turns and working together — that helped {name} look and feel her very best.",
+    "Best of all, the glam team's teamwork and cooperation had helped {name} feel ready to shine.",
+    "None of it would have happened without the glam team sharing every turn to help {name} look and feel amazing.",
+    "The glam team had taken turns and cooperated, and that teamwork helped {name} feel like her very best self.",
+  ],
+  postTitles:["What a team!","Teamwork wins the day","She felt her best","A day to remember","Glam team for the win!","Ready, set, shine!"],
+  postEmojis:["✨","🌟","💖","🎉","😊","💫"],
+};
+function _gPick(a){ return a[Math.floor(Math.random()*a.length)]; }
+function _gCap(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : s; }
+function _gFill(s,name){ return s.split("{name}").join(name); }
+// Assemble one coherent {pre, post} story. Pre is a two-line dialog (client + technician);
+// post is a short resolution narrative. The same event/name thread through both halves.
+function buildGlamStory(){
+  const name=_gPick(GLAM_NAMES);
+  const ev=_gPick(GLAM_STORY.events);
+  const when=_gPick(GLAM_STORY.whens);
+  const worry=_gPick(GLAM_STORY.worries);
+  const worrySent=_gCap(worry)+(worry.trim().slice(-1)==="?"?"":".");
+  const clientLine="I have "+ev.have+" "+when+". "+worrySent+" "+_gPick(GLAM_STORY.asks);
+  const postText="At "+ev.at+", "+name+" felt "+_gPick(GLAM_STORY.readys)+". "
+    +_gFill(_gPick(GLAM_STORY.resolutions),name)+" "+_gPick(GLAM_STORY.feelings)+" "
+    +_gFill(_gPick(GLAM_STORY.credits),name);
+  return {
+    name,
+    pre:{ emoji:ev.emoji, title:_gPick(GLAM_STORY.preTitles), text:_gFill(_gPick(GLAM_STORY.leads),name),
+      dialog:[
+        { who:name, glyph:"💁", side:"client", line:clientLine },
+        { who:"Technician", glyph:"🧑‍⚕️", side:"tech", line:_gPick(GLAM_STORY.tech) },
+      ] },
+    post:{ emoji:_gPick(GLAM_STORY.postEmojis), title:_gPick(GLAM_STORY.postTitles), text:postText },
+  };
+}
+
 const ZONES = {
   person: {
     face:{t:27,l:24,w:52,h:42,label:'Drag all over the face'},
@@ -446,7 +574,7 @@ class Component extends DCLogic {
   constructor(props) {
     super(props);
     this.state = {
-      phase:'intro', theme:'social', turnMap:'banner', model:'m2',   // default model (all four selectable)
+      phase:'intro', theme:'social', turnMap:'banner', model:this._pickRandomModel(), story:buildGlamStory(),   // model + story randomized each playthrough
       countMode:'shown', actionGoal:3, partnerTurn:'match', staged:'on',
       giveBack:'forgets', cueLevel:'short', tokenGoal:5, extraTime:true,
       tokens:0, actionsThisTurn:0, chargedThisTurn:{}, bonus:0,
@@ -585,7 +713,7 @@ class Component extends DCLogic {
   giveBack(){ this.setState({phase:'ready'}); }
   confirmAsk(){ clearTimeout(this._cueTO); const independent=!this.state.cueVisible; this.setState(s=>({phase:'ready',cueVisible:false,indAsks:s.indAsks+(independent?1:0),promptedAsks:s.promptedAsks+(independent?0:1)})); }
   finishSR(){ if(window.NooutcoReward) window.NooutcoReward.openSR({minutes:5,title:'SR Timer'}); }
-  replay(){ this.stopTick(); clearTimeout(this._cueTO); this.setState({phase:'intro',tokens:0,ed:this.freshEd(this.cfg().flaws),armed:null,bonus:0,settingsOpen:true}); }
+  replay(){ this.stopTick(); clearTimeout(this._cueTO); this.setState({phase:'intro',tokens:0,model:this._pickRandomModel(),story:buildGlamStory(),ed:this.freshEd(this.cfg().flaws),armed:null,bonus:0,settingsOpen:true}); }
 
   fmt(sec){ return Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0'); }
 
@@ -631,11 +759,17 @@ class Component extends DCLogic {
   // by her own EYECFG {s:2.05,dx:0.08} in paintAvatar (eyes now fill her sockets). Re-gate a
   // model by adding its id here if its art ever regresses.
   artGated(){ return {}; }
-  setArtModel(id){ if(this.artGated()[id] || !((this.gen().models||{})[id])) return; this.setState({model:id}); }
-  artModelList(){ const M=(this.gen().models)||{}, G=this.artGated(); const act=this.state.model;
-    return Object.keys(M).filter(id=>!G[id]).map(id=>({
-      label:id.toUpperCase(), pick:()=>this.setArtModel(id),
-      style:'padding:5px 11px;border-radius:999px;font-size:11px;font-weight:800;font-family:inherit;cursor:pointer;border:1px solid '+(id===act?'var(--sage-500)':'var(--border-default)')+';background:'+(id===act?'var(--sage-500)':'var(--surface-card)')+';color:'+(id===act?'#fff':'var(--text-muted)') })); }
+  _modelIds(){ const M=(this.gen().models)||{}, G=this.artGated(); const ids=Object.keys(M).filter(id=>!G[id]); return ids.length?ids:["m1","m2","m3","m4"].filter(id=>!G[id]); }
+  // one of the four models, chosen at random per playthrough (set in initial state + replay);
+  // there is no in-game picker, so the model stays locked for the whole playthrough.
+  _pickRandomModel(){ const ids=this._modelIds(); return ids[Math.floor(Math.random()*ids.length)]||"m2"; }
+  // map a pre-story dialog line to a styled row for the intro card (client vs technician accent).
+  _dlgRow(d){ const tech=d.side==="tech"; const a50=tech?"var(--sage-50)":"var(--blue-50)", a700=tech?"var(--sage-700)":"var(--blue-700)";
+    return { glyph:d.glyph, who:d.who, line:d.line,
+      rowStyle:"display:flex;gap:10px;align-items:flex-start",
+      avatarStyle:"width:34px;height:34px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:19px;background:"+a50+";border:1px solid var(--border-default)",
+      bubbleStyle:"flex:1;min-width:0;background:"+a50+";border:1px solid var(--border-default);border-radius:3px 12px 12px 12px;padding:7px 12px;text-align:left",
+      nameColor:"color:"+a700 }; }
   artBaseSrc(base){ const b=(this.art().bases||{})[base]; return (b&&b.src)||''; }
   lz(base,slot){ const L=((this.art().layers||{})[base]||{})[slot]; return (L&&L.z)||0; }
   lsrc(base,slot,key){ const L=((this.art().layers||{})[base]||{})[slot]; if(!L) return ''; return key!=null ? ((L.variants&&L.variants[key])||'') : (L.src||''); }
@@ -1075,6 +1209,7 @@ class Component extends DCLogic {
     // when live, the model is bottom-aligned so she sits at the vanity (not floating centred).
     const personArtLive=base==='person'&&s.theme==='social'&&this.hasPersonArt();
     const stageBg=(personArtLive&&(this.gen().backdrop||{}).src)||this.sceneArt().bg;
+    const st=(s.theme==='social'&&s.story)?s.story:null;   // recombinant pre/post story for this playthrough
     // tools/palette column matches the salon panel height so both align, and the palette fills it
     const toolsColStyle='width:300px;display:flex;flex-direction:column;min-height:0'+(personArtLive?';max-height:670px':'');
 
@@ -1098,8 +1233,8 @@ class Component extends DCLogic {
       footerBar: personArtLive,
       // warm wood vanity ledge across the stage floor: transparent above → a bright front-lip
       // catch → opaque counter body, so the model's straight bottom cut disappears behind it.
-      footerBarStyle:'position:absolute;left:0;right:0;bottom:0;height:16%;z-index:4;pointer-events:none;background:linear-gradient(to bottom,rgba(210,190,156,0) 0%,rgba(210,190,156,0) 20%,rgba(255,250,240,.72) 24%,#d3bd93 31%,#c1a676 100%);box-shadow:0 -8px 16px -8px rgba(96,74,48,.34)',
-      artModels:this.artModelList(), artModelPicker:base==='person'&&this.artModelList().length>1,
+      footerBarStyle:'position:absolute;left:0;right:0;bottom:0;height:4%;z-index:4;pointer-events:none;background:linear-gradient(to bottom,rgba(210,190,156,0) 0%,rgba(210,190,156,0) 20%,rgba(255,250,240,.72) 24%,#d3bd93 31%,#c1a676 100%);box-shadow:0 -8px 16px -8px rgba(96,74,48,.34)',
+      // (model picker removed — the model is random per playthrough and locked at start)
       personArt:base==='person'&&s.theme==='social'&&this.hasPersonArt(), personProcedural:base!=='person'||!(s.theme==='social'&&this.hasPersonArt()),
       petArt:base==='pet'&&!!this.artBaseSrc('pet'), petProcedural:base!=='pet'||!this.artBaseSrc('pet'),
       petArtBase:this.artBaseSrc('pet'), petArtLayers:(base==='pet'&&this.artBaseSrc('pet'))?this.buildArtLayers('pet').imgs:[],
@@ -1111,8 +1246,9 @@ class Component extends DCLogic {
       handoffStyle:'background:'+SAGE+';color:#fff;border:none;padding:12px 24px;border-radius:999px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md)'+((isMine&&s.countMode!=='timed'&&s.actionsThisTurn>=this.effGoal())?';animation:gtm-cue 1.6s var(--ease-standard) infinite':''),
       tokenStars:stars, tokenText:s.tokens+' / '+s.tokenGoal,
       paletteHint:s.armed?'✋ Now do it on the face →':'Pick a step to put on',
-      introEmoji:cfg.intro.emoji, introTitle:cfg.intro.title, introText:cfg.intro.text,
-      outcomeEmoji:cfg.outcome.emoji, outcomeTitle:cfg.outcome.title, outcomeText:cfg.outcome.text,
+      introEmoji: st?st.pre.emoji:cfg.intro.emoji, introTitle: st?st.pre.title:cfg.intro.title, introText: st?st.pre.text:cfg.intro.text,
+      introIsDialog: !!(st&&st.pre.dialog&&st.pre.dialog.length), introDialog: st?st.pre.dialog.map(d=>this._dlgRow(d)):[],
+      outcomeEmoji: st?st.post.emoji:cfg.outcome.emoji, outcomeTitle: st?st.post.title:cfg.outcome.title, outcomeText: st?st.post.text:cfg.outcome.text,
       methodOpen:s.methodOpen, statLine:s.turnsTaken+' turns handed over · '+s.indAsks+' independent asks · '+s.promptedAsks+' prompted asks',
       stationMeStyle:stBase+(whose==='me'?'background:var(--sage-50);border:2px solid var(--sage-500);box-shadow:0 0 0 4px rgba(106,118,89,.16)':'background:#fff;border:1.5px dashed var(--slate-300);opacity:.7'),
       stationThemStyle:stBase+(whose==='them'?'background:var(--blue-50);border:2px solid var(--blue-500);box-shadow:0 0 0 4px rgba(59,130,246,.16)':'background:#fff;border:1.5px dashed var(--slate-300);opacity:.7'),
