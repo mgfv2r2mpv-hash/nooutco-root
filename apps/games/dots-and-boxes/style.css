@@ -1,0 +1,227 @@
+/* ── Dots & Boxes ──────────────────────────────────────────────────────
+   Game-specific styling. Shared header / settings-bar chrome comes from
+   game-chrome.css (via ../tailwind.css); colors use design tokens only.
+   ----------------------------------------------------------------------- */
+
+/* ── Buttons not provided by the shared chrome ─────────────────────────── */
+.btn-secondary {
+  background: var(--surface-card);
+  color: var(--brand-accent);
+  border: 1.5px solid var(--border-strong);
+  padding: 8px 18px;
+  border-radius: var(--radius-lg);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard),
+              border-color var(--duration-fast) var(--ease-standard),
+              transform var(--duration-fast) var(--ease-standard);
+}
+.btn-secondary:hover  { background: var(--surface-sunken); border-color: var(--sage-500); }
+.btn-secondary:active { transform: scale(0.97); }
+.btn-secondary:disabled { opacity: 0.45; cursor: default; }
+.btn-secondary:disabled:hover { background: var(--surface-card); border-color: var(--border-strong); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px dashed var(--border-strong);
+  padding: 7px 12px;
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard),
+              color var(--duration-fast) var(--ease-standard);
+}
+.btn-ghost:hover { background: var(--surface-sunken); color: var(--text-body); }
+
+/* ── Pre-start blurb ───────────────────────────────────────────────────── */
+.game-intro {
+  max-width: 720px;
+  margin: 16px auto 6px;
+  padding: 16px 20px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  color: var(--text-body);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+}
+.game-intro h2 { font-size: var(--text-lg); font-weight: var(--weight-bold); margin-bottom: 8px; color: var(--text-primary); }
+.game-intro p { margin-bottom: 8px; }
+.game-intro ul { margin: 6px 0 6px 20px; }
+.game-intro li { margin-bottom: 4px; }
+.game-intro .tip { margin-top: 8px; color: var(--text-muted); font-size: var(--text-base); }
+.tip-p1 { color: var(--blue-500);   font-weight: var(--weight-bold); }
+.tip-p2 { color: var(--orange-600); font-weight: var(--weight-bold); }
+
+/* ── Game area layout ──────────────────────────────────────────────────── */
+#game-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 24px;
+}
+
+.area-label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ── Turn indicator ────────────────────────────────────────────────────── */
+#turn-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 20px;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-heavy);
+  color: var(--turn-color, var(--text-primary));
+  background: var(--surface-card);
+  border: 2px solid var(--turn-color, var(--border-default));
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Scoreboard ────────────────────────────────────────────────────────── */
+#scoreboard {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+.player-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px 6px 6px;
+  background: var(--surface-card);
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--duration-fast) var(--ease-standard),
+              box-shadow var(--duration-fast) var(--ease-standard),
+              border-color var(--duration-fast) var(--ease-standard);
+}
+.player-chip.is-turn {
+  border-color: var(--pc);
+  box-shadow: 0 0 0 3px var(--pc), var(--shadow-sm);                                   /* fallback */
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pc) 30%, transparent), var(--shadow-sm);
+  transform: translateY(-1px);
+}
+.pc-badge {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--pc);
+  color: #fff;
+  font-weight: var(--weight-heavy);
+  font-size: var(--text-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.pc-name  { font-weight: var(--weight-semibold); color: var(--text-body); font-size: var(--text-md); }
+.pc-score { font-weight: var(--weight-heavy); font-size: var(--text-lg); color: var(--pc); min-width: 18px; text-align: center; }
+
+/* ── Board ─────────────────────────────────────────────────────────────── */
+.db-board-wrap {
+  width: min(96vw, 560px);
+  max-height: 66vh;
+  aspect-ratio: var(--board-aspect, 1);
+  margin: 2px auto 4px;
+  display: flex;
+}
+#db-board {
+  width: 100%;
+  height: 100%;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.db-dot { fill: var(--slate-700); pointer-events: none; }
+
+.db-box { fill: transparent; transition: fill var(--duration-slow) var(--ease-standard), fill-opacity var(--duration-slow) var(--ease-standard); }
+
+.db-num {
+  font-family: var(--font-sans);
+  font-size: 54px;
+  font-weight: var(--weight-heavy);
+  pointer-events: none;
+  user-select: none;
+}
+
+.db-edge {
+  stroke: var(--slate-300);
+  stroke-width: 4;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  transition: stroke var(--duration-fast) var(--ease-standard);
+}
+.db-edge.owned { stroke-width: 6; }
+
+.db-ghost {
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-dasharray: 3 12;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.db-hit {
+  fill: transparent;
+  cursor: pointer;
+}
+.db-hit.filled { pointer-events: none; cursor: default; }
+
+/* ── Controls ──────────────────────────────────────────────────────────── */
+#db-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ── Completion card ───────────────────────────────────────────────────── */
+#done-card {
+  width: min(460px, 100%);
+  margin: 6px auto 0;
+  background: var(--surface-card);
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-2xl);
+  padding: 24px 26px;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+  animation: done-in var(--duration-slow) var(--ease-standard);
+}
+@keyframes done-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+#done-card .done-emoji { font-size: 3rem; line-height: 1; }
+#done-card h2 { font-size: var(--text-2xl); color: var(--text-primary); margin: 8px 0 6px; }
+#done-card .done-scores { color: var(--text-body); font-size: var(--text-lg); font-weight: var(--weight-semibold); margin-bottom: 16px; }
+#done-card .btn-primary { display: block; margin: 0 auto; }
+
+@media (prefers-reduced-motion: reduce) {
+  #done-card { animation: none; }
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────── */
+@media (max-width: 680px) {
+  #game-area { padding: 10px 10px 20px; gap: 8px; }
+  #turn-indicator { font-size: var(--text-lg); }
+  .db-board-wrap { max-height: 60vh; }
+  .db-num { font-size: 48px; }
+}
