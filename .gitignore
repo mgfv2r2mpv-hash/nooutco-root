@@ -5,3 +5,6 @@ node_modules/
 # Phase 3 design references (reference-only, originals live in the DEV folder zips)
 /design_handoff_unified_nav/
 /design_handoff_admin_redesign/
+
+# Deferred-work "memory" notes (OOS = out of scope) — kept local, never committed
+OOS.md
