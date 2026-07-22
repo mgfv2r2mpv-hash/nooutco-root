@@ -5,3 +5,22 @@ node_modules/
 # Phase 3 design references (reference-only, originals live in the DEV folder zips)
 /design_handoff_unified_nav/
 /design_handoff_admin_redesign/
+
+# Secrets and credentials. This repository is PUBLIC by design — a public tools
+# suite — so anything here is world-readable the moment it is pushed, and a
+# leaked credential cannot be un-published. None of these were ignored before,
+# and SECRETS.md sat untracked one `git add -A` away from being committed.
+SECRETS.md
+scripts/set-admin-secret.sh
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+*.pem
+*.p12
+*.key
+credentials.json
+
+# Local agent and editor state — machine-specific, not source.
+.claude/
