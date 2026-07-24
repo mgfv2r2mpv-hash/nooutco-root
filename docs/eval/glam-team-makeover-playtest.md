@@ -1,16 +1,14 @@
 # Glam Team Makeover — playtest evaluation
 
 **Build under test:** `apps/games/glam-team-makeover/index.html` (unmodified — see *Method*)
-**Served from:** `npx wrangler pages dev .` in `apps/games`, at `http://localhost:8788/glam-team-makeover/`
+**Served from:** `apps/games` at `http://localhost:8788/glam-team-makeover/` — `npx wrangler pages dev .` for playthroughs 1–2, `python3 -m http.server 8788` for playthroughs 3–5 (the game is a static file; see §10 for the one difference this made)
 **Driven with:** Playwright (Chromium), scripted playthroughs in a scratch directory that is **not** committed
 **Date of run:** 2026-07-24
 
-> **Status — this report is being built up across passes.**
-> Playthroughs **1 and 2** are complete and written up below. Playthroughs **3, 4 and 5**
-> are specified but **have not been run yet**; their sections say so explicitly and they
-> are listed in *Not tested*. Every finding in the tables below was reproduced in a
-> browser. Nothing here is inferred from reading code alone — code references are given
-> only to locate a behaviour that was first observed.
+> **Status — complete.** All five playthroughs were played in a browser and are written up
+> below, each from both the client's and the BT's perspective. Every finding in the tables
+> below was reproduced in a browser. Nothing here is inferred from reading code alone — code
+> references are given only to locate a behaviour that was first observed on screen.
 
 **Screenshot paths** in this report point at `.gnhf/runs/objective-produce-an-e923a7/shots/`,
 which is a local, git-excluded run artifact directory. The screenshots are evidence for the
@@ -28,45 +26,82 @@ person who ran the playtest; they are not committed with this report.
    a bonus, and `turnsTaken + 1`. The end-of-session stat line therefore cannot answer the one
    question the BT needs answered.
 
-2. **The "give it back" prompt never fades and is never recorded.** Once the action goal is met,
+2. **The one cue level a BT would use to probe independence silently manufactures perfect
+   data.** With give-back = *They "forget" → I ask* and Ask cue = **None (probe)**, the cue timer
+   is never started at all, so `cueVisible` can never become true and `confirmAsk()` scores
+   `independent = !cueVisible` as **true, always**. I sat in the ask phase for **37 seconds
+   without asking** and then tapped "✓ I asked!": scored **independent**. On the next turn I
+   tapped it instantly: also **independent**. Final stat line
+   *"3 turns handed over · 2 independent asks · 0 prompted asks"* — a perfect score for a
+   session in which the learner never once responded on their own.
+   (`pt4a-03-ask-phase-cue-none.png`, `pt4a-04-ask-phase-16s-later.png`)
+
+3. **"They forget → I ask" is unreachable whenever the partner turn is counted.** The ask phase
+   is only entered from `partnerDone()`, which in a counted partner turn only fires once
+   `partnerGoal` newly-charged actions have been spent. I set Their turn = *3 actions*, give-back
+   = *They "forget" → I ask*, handed over, and then genuinely did nothing — the partner
+   "forgot", which is exactly the condition the program is named after. After 25 seconds the
+   phase was still `theirs`, there was no "✓ I asked!" button anywhere on screen (`count = 0`),
+   and the only controls were palette tools, the model chips and ⓘ Method. **The program that
+   teaches "they forget, so you ask" can only run if the partner does not forget.**
+   (`pt4c-B-02-stuck-25s.png`)
+
+4. **Illegal actions are silently swallowed — and in *Count hidden* mode there is no feedback of
+   any kind.** At the per-turn cap in *Count shown* mode at least the would-be-new-charge tools
+   dim. In **hidden** mode nothing dims: I measured **0 of 43** palette buttons at reduced
+   opacity at the cap, then tapped five different tools in a row. Every one armed nothing, applied
+   nothing, changed no counter and produced no message. (`pt3-03-t1-at-cap-hidden.png`,
+   `pt3-04-t1-over-cap-refused.png`)
+
+5. **While the app waits for the ask, the banner still says THEIR TURN and the palette is live
+   but inert.** In the ask phase the big turn banner reads **"THEIR TURN"** in blue while the
+   headline directly beneath it reads **"It's really my turn now…"**. All 43 palette buttons stay
+   at full opacity; tapping one *does* arm it (`armed: "wash"`) and flips the palette hint to
+   **"✋ NOW DO IT ON THE FACE →"** — but no target is ever drawn on the face and no action can be
+   taken. The child is told to do a thing that cannot be done, under a label that says it is not
+   their turn. (`pt4b-03-ask-tool-armed-no-target.png`)
+
+6. **The "give it back" prompt never fades and is never recorded.** Once the action goal is met,
    the "Done — their turn ▸" button starts a CSS pulse (`animation: gtm-cue`) and pulses forever.
    That is a permanent visual prompt on the target response. The four-level cue fader
    (full → short → icon → none) that the settings expose is wired to a *different* response —
    the ask-for-it-back step — not to relinquishing.
 
-3. **Illegal actions are silently swallowed.** At the per-turn cap, tapping a target does
-   nothing at all: no refusal message, no flag, no datum, no prompt to pass. I tapped a live,
-   pulsing blemish target **eight** times past the cap and the app's internal counters did not
-   move and nothing appeared on screen. (Evidence: `pt1-05-t1-at-cap.png`, `pt1-06-t1-overcap.png`.)
+7. **On a phone the pass prompt is off the bottom of the page.** The "Done — their turn ▸"
+   button's absolute top is **1316 px** in a 1391 px document with a 667 px viewport. Scrolled to
+   the top it is 1316 px below the fold; it is only in view at maximum scroll. Acting on the doll
+   scrolls the page *away* from it — after two actions the pulsing button sat 1243 px below the
+   viewport top. The one cue for the taught response is unreachable without scrolling.
+   (`probe-phone-atcap-scrollpos.png`)
 
-4. **Nothing distinguishes who is touching the screen.** During the partner's turn the whole
+8. **Nothing distinguishes who is touching the screen.** During the partner's turn the whole
    palette stays live and *uncapped by the learner's own goal*. The learner can spend the
-   partner's entire turn — and in playthrough 1 that is exactly what happened: the learner's
-   taps ended the partner's turn for them.
+   partner's entire turn — and in playthroughs 1 and 3 that is exactly what happened: the
+   learner's taps ended the partner's turn for them.
 
-5. **A counted partner turn has no exit control.** There is no button of any kind during the
-   partner's turn. The only way out is to perform exactly `partnerGoal` *newly-charged* actions.
-   I sat idle for 8 s in phase `theirs`: nothing changed, and the only interactive things on
-   screen were the palette tools and the ⓘ Method button. (`pt1-12-theirs-idle-8s.png`)
+9. **A session can be "won" with the routine barely started.** In playthrough 5 (staged routine,
+   8 ⭐ goal) turns 5–8 spent every allowed action re-applying steps that were already ✓ done.
+   Each re-application charged a full action against the cap and earned a full star, while the
+   number of completed slots on the doll stayed frozen at four — of which only two (wash,
+   moisturise) count toward the eleven gated skin-and-makeup steps. The session ended on
+   **8/8 ⭐ and "Ta-da — what a team! … the whole look came together just in time"** with no
+   makeup, no hair, no outfit and no accessories on the doll. (`pt5-09-final.png`)
 
-6. **The "Actions left" meter counts the wrong way.** The pips fill as actions are *spent*.
-   Three filled dots under the label "ACTIONS LEFT" means **zero** left.
-   (`pt1-02-t1-mine-start.png` = 0 spent, 3 empty · `pt1-05-t1-at-cap.png` = 3 spent, 3 filled.)
+10. **The *Turn runway* map removes the whose-turn statement entirely.** Measured in the same
+    phase against the Banner map: Banner renders "MY TURN" / "THEIR TURN" plus a plain-language
+    instruction ("My turn — add some things!", "Their turn — I wait 🕐"). Runway renders neither —
+    only a strip of avatar emoji with a small "NOW" caption under the active one.
+    (`probe-turnmap-runway-mine.png` vs `probe-turnmap-banner-mine.png`)
 
-7. **The turn meter only exists in one of the three turn maps.** Both the countdown clock and
-   the action pips are rendered only by the *Banner* map. Choose *Vanity stations* or
-   *Turn runway* and there is no countdown and no action counter anywhere on screen. In
-   playthrough 2 (Timed + Vanity) the turn simply ended with no warning of any kind.
+11. **A counted partner turn has no exit control.** There is no button of any kind during the
+    partner's turn. The only way out is to perform exactly `partnerGoal` *newly-charged* actions.
+    I sat idle for 8 s in playthrough 1 and 25 s in playthrough 4c: nothing changed.
 
-8. **The whole "Shirt color" category is invisible.** The shirt is painted into a band that is
-   100 % covered by the vanity-ledge overlay. Measured: applied shirt pixels occupy page-Y
-   729.6–800.9; the ledge spans 706.6–813.5. An action is spent, a ✓ appears on the button, and
-   the doll does not change. (`effect-final-look.png`)
+12. **The "Actions left" meter counts the wrong way.** The pips fill as actions are *spent*.
+    Three filled dots under the label "ACTIONS LEFT" means **zero** left.
 
-9. **Small-phone layout breaks.** At 375 × 667 the document overflows horizontally by 88 px and
-   the doll scrolls off-screen.
-
-10. **Five SVG console errors on every single load.** Harmless-looking but not a clean console.
+13. **The whole "Shirt color" category is invisible**, the small-phone layout overflows by 88 px,
+    and every load emits five SVG console errors. See the findings table.
 
 ---
 
@@ -230,33 +265,320 @@ Final stat line: **3 turns handed over · 0 independent asks · 0 prompted asks*
 
 ---
 
-## 4. Playthrough 3 — hidden count, asymmetric turns, free play *(NOT YET RUN)*
+## 4. Playthrough 3 — hidden count, asymmetric turns, free play, on a phone
 
-Planned configuration: Turn runway map · Free play routine · My turn **Count hidden**, goal 2 ·
-Their turn **4 actions** (asymmetric) · Give-back "They hand it back" · Ask cue **Icon only** ·
-Goal 3 ⭐ · Earn more time **off** · model **M3** · phone viewport 375 × 667.
+### Configuration
 
-**This playthrough has not been run.** Nothing is reported for it. See *Not tested*.
+| Setting | Value |
+|---|---|
+| Theme | 🎉 Social event |
+| Routine | **Free play** |
+| Turn map | **Turn runway** |
+| My turn | **Count hidden** · 2 actions |
+| Their turn | **4 actions** (asymmetric — twice mine) |
+| Give-back | They hand it back |
+| Ask cue | Icon only |
+| Goal | 3 ⭐ |
+| Earn more time | **off** |
+| Model | **M3** |
+| Viewport | **375 × 667 (small phone)** |
 
-## 5. Playthrough 4 — "They forget → I ask" with the cue faded to none *(NOT YET RUN)*
+**Outcome: reached a real ending** — 3 ⭐ (`pt3-09-done-phone.png`). Stat line:
+**3 turns handed over · 0 independent asks · 0 prompted asks**.
 
-Planned configuration: Banner map · Staged · My turn Count shown, goal 1 · Their turn 2 actions ·
-Give-back **They "forget" → I ask** · Ask cue **None (probe)** · Goal 3 ⭐ · model **M4** ·
-tablet landscape 1024 × 768. Intended probes: the 3.5 s cue delay, whether a very late ask is
-still scored independent when the cue level is *none*, and what the learner sees while waiting.
+### What happened
 
-**This playthrough has not been run.** Nothing is reported for it. See *Not tested*.
+Free play opens the whole palette at once: 43 tools across seven categories, all at full opacity
+from turn 1. The staged reveal of playthrough 1 is gone entirely.
 
-## 6. Playthrough 5 — non-default theme and model *(NOT YET RUN)*
+**The cap is enforced with no feedback whatsoever.** I spent the two allowed actions (Wash,
+Moisturize) and then measured the palette: **0 of 43 buttons dimmed** — every single one still at
+`opacity: 1`. I then tapped five *different* tools in sequence — Treat spots, Conceal, Shape
+brows, Contour, Blush rose. For every one of them: `actionsThisTurn` stayed at 2, `ed.cov`,
+`ed.col` and `ed.done` were byte-identical before and after, and `armed` stayed `null` — the tool
+did not even arm. No message, no shake, no colour change, nothing.
+(`pt3-03-t1-at-cap-hidden.png`, `pt3-04-t1-over-cap-refused.png`.) This is strictly worse than
+*Count shown*, where at least the blocked tools dim to 45 %.
 
-Planned configuration: a non-default theme plus a non-default model.
+I then sat at the cap for **8 seconds without passing**. Nothing escalated: no reminder, no
+message, no second prompt. The only change from reaching the goal is the pulse on the pass button
+— which at that moment sat 862 px below the top of a 667 px viewport, i.e. not visible.
 
-**This playthrough has not been run.** One blocking fact was, however, established in-browser
-during setup for playthroughs 1 and 2 and is reported as F-19: **the Theme dropdown contains
-exactly one option, `social` / "🎉 Social event".** The pet-show and hero themes exist in the
-build's theme table but cannot be selected from the UI, so the "non-default theme" half of this
-playthrough has no reachable configuration. The model half (M1–M4) is selectable and was
-exercised — see *Paper-doll fidelity*.
+**The runway map drops the whose-turn wording.** Measured against the Banner map in the identical
+phase, with everything else equal:
+
+| | Banner | Turn runway |
+|---|---|---|
+| my turn | "🦸 **MY TURN**" + "My turn — add some things!" | "Turns" + 🦸 / **NOW** / 🧑‍⚕️ / 🦸 strip |
+| their turn | "🧑‍⚕️ **THEIR TURN**" + "Their turn — I wait 🕐" + "Their actions" pips | "Turns" + 🦸 / ✓ / 🧑‍⚕️ / **NOW** / … strip |
+
+The runway does convey the sequence — a row of upcoming turns with a "NOW" marker and a ✓ on the
+completed one — but it renders **no "MY TURN"/"THEIR TURN" label and no instruction sentence at
+all**. Combined with *Count hidden* (which suppresses the pips), the child in this configuration
+has no words on screen telling them whose turn it is or how much of it is left. The bottom action
+bar's phase message ("They take the same-size turn — I wait.") does survive on both maps.
+
+The asymmetric turn worked exactly as configured: `partnerGoal` went to 4 while my goal stayed 2.
+I then played the partner's whole four-action turn myself, as the child, and it ended their turn.
+
+On turn 2 I passed **immediately with zero actions spent**: token awarded (1 → 2), `turnsTaken`
+incremented, session advanced — identical to a played-out turn.
+
+### Client (player 1)
+
+* **There is no answer to "whose turn is it?" in words.** The runway strip is emoji-based and its
+  only turn signal is a small "NOW" caption under the active avatar. For a learner who is being
+  taught turn-taking, this is the weakest of the three maps and it is not flagged as such anywhere
+  in setup.
+* **Hidden count plus a silent cap is a dead end with no exit sign.** The child does not know how
+  many actions they have, is not told when they run out, sees no dimming, and every tap after the
+  cap does nothing. Five consecutive dead taps is exactly the pattern that produces escape
+  behaviour in session.
+* **The pass button is off the bottom of the page.** It sat 862 px below the viewport top at the
+  cap in this run, and a separate deterministic measurement (§9) puts its absolute top at 1316 px
+  in a 1391 px document with a 667 px viewport — reachable only at the very bottom of the scroll
+  range, and acting on the doll scrolls the page away from it. The child would have to scroll a
+  long way to find the one control that ends their turn.
+* The phone layout also overflows sideways by 88 px, so the setup bar and stage can be swiped
+  horizontally out of position.
+
+### BT (player 2)
+
+* **Count hidden removes the BT's ability to see the contingency too.** Standing over the child,
+  the BT cannot see how many actions are left either — there is no discreet indicator anywhere.
+  The BT has to count taps in their head while also delivering the program.
+* **The asymmetric setting is honoured but unlabelled.** Nothing on screen says "their turn is 4
+  and yours is 2" during play; on the runway map there is not even a pip row to infer it from.
+* **Zero data again.** Five refused over-cap taps, one turn passed with nothing done, four learner
+  actions taken on the partner's turn — none of it recorded. Stat line 3 / 0 / 0.
+* **Do not run this on a phone.** The pass button is unreachable without scrolling and the
+  document overflows.
+
+## 5. Playthrough 4 — "They forget → I ask", across every cue level
+
+This is the only give-back mode in which `indAsks` / `promptedAsks` can move, so it was run as
+four browser sessions: **4a** with the cue faded to *None (probe)*, **4b** across *Full* → *Short*
+to find the cue boundary, **4c-A** at *Icon only* including a never-ask trial, and **4c-B** with a
+counted partner turn.
+
+### Configuration
+
+| Setting | 4a | 4b | 4c-A | 4c-B |
+|---|---|---|---|---|
+| Turn map | Banner | Banner | Banner | Banner |
+| Routine | Free play | Free play | Free play | Free play |
+| My turn | Count shown · 2 | Count shown · 2 | Count shown · 2 | Count shown · 2 |
+| Their turn | **Timed 20s** | Timed 20s | Timed 20s | **3 actions (counted)** |
+| Give-back | **They "forget" → I ask** | same | same | same |
+| Ask cue | **None (probe)** | **Full → Short** | **Icon only** | Short |
+| Goal | 3 ⭐ | 5 ⭐ | 3 ⭐ | 3 ⭐ |
+| Earn more time | off | off | off | off |
+| Model | M4 | M4 | M4 | M4 |
+| Viewport | 1024 × 768 (tablet landscape) | same | same | same |
+
+**Outcomes:** 4a and 4b both reached a real ending. **4c-B reached a real dead end** and is the
+most important result in this report.
+
+### What happened
+
+**The 3.5 s boundary is real and it is the entire measure.** `partnerDone()` enters phase `ask`
+with `cueVisible: false` and starts a 3.5 s timer; `confirmAsk()` scores
+`independent = !cueVisible`. Reproduced at six latency/cue-level combinations:
+
+| Cue level | Ask latency | `cueVisible` at the moment of asking | Scored |
+|---|---|---|---|
+| Full | ~4.2 s | true | **prompted** |
+| Full | < 1 s | false | **independent** |
+| Short | ~4.2 s | true | **prompted** |
+| Icon | **~33 s** | true | **prompted** |
+| **None** | **~37 s** | **false — the timer is never started** | **independent** |
+| **None** | < 1 s | false | **independent** |
+
+The 33-second ask and the 3.6-second ask score identically. There is no latency recorded anywhere,
+so a learner who takes half a minute every single time and one who responds in a second produce
+the same two numbers.
+
+**Cue level *None (probe)* inverts the measure.** `partnerDone()` only arms the cue timer when
+`cueLevel !== 'none'`. With the probe level selected, `cueVisible` is structurally pinned to false
+— I sampled it every 2 s for 16 s in the ask phase and it never changed — so **every** ask, at any
+latency, is filed as independent. A BT running a probe to check whether the learner still needs
+the cue will read *"2 independent asks · 0 prompted asks"* off a session in which the learner sat
+silent for 37 seconds.
+
+**Nothing escalates while the app waits.** In 4c-A I sat in the ask phase for 29 s with the icon
+cue up, sampling every 5 s: the chip text stayed `🖐️ ➡️`, its animation stayed `gtm-cue`, the
+button count stayed 13, the phase stayed `ask`. There is one cue, delivered once, and then the
+session waits forever. (`pt4c-A-02-never-asked-29s.png`)
+
+**The ask screen contradicts itself.** Throughout the ask phase (`pt4b-03-ask-tool-armed-no-target.png`):
+
+* the turn banner reads **"THEIR TURN"** in blue with the clinician avatar, because
+  `whoseMe = isMine || isReady` and the ask phase is neither;
+* the headline directly beneath reads **"It's really my turn now…"**;
+* the bottom bar reads **"Their turn ran long — time to ask for my turn."** — even though in this
+  configuration the partner's turn ended exactly on its 20 s clock and did not run long;
+* all **43 palette buttons are at full opacity**; tapping *Wash* set `armed: "wash"` and changed
+  the palette hint to **"✋ NOW DO IT ON THE FACE →"**, while `targets` on the doll stayed at **0**.
+  Nothing can be done and nothing says so.
+* the cue chip before the cue fires is a **30 × 22 px empty dashed grey box**; when the cue fires
+  it becomes a 248 × 43 px amber chip, shifting the row.
+
+**4c-B — the dead end.** Their turn = *3 actions*, give-back = *They "forget" → I ask*. I handed
+over and then had the partner do what the setting is named for: forget. Nothing was touched.
+Sampled every 5 s for 25 s — phase stayed `theirs`, `actionsThisTurn` stayed 0, and the visible
+buttons were exactly `ⓘ Method | M1 | M2 | M3 | M4 | 1 | 2 | 3 | 4 | 5 | 6 | 7`. **The "✓ I asked!"
+button does not exist in this phase** (queried: 0 matches). The only escape is for someone to
+spend the partner's three actions — I then did, and the ask phase appeared immediately. So the
+ask-for-it-back program is reachable **only** when the partner completes their turn properly,
+which is the opposite of the scenario the setting describes.
+
+### Client (player 1)
+
+* **The turn label says the wrong thing at the exact moment it matters most.** The child is being
+  taught to notice "it is my turn again and they have not given it back" — and the biggest element
+  on the screen at that moment says **THEIR TURN**.
+* **A live palette that refuses everything.** 43 bright buttons, a tool that visibly arms, and a
+  hint that says to do it on the face, with nothing on the face to touch. This is the same silent
+  refusal as the over-cap case, in a phase where the child has *nothing else to do* while waiting.
+* **With cue = None the child is given nothing at all** — an empty dashed placeholder box next to
+  a "✓ I asked!" button — and can wait indefinitely with no consequence.
+* When the cue does fire it is clear and well-graded: the full sentence
+  *I say: "It's my turn now, please."*, the short *"My turn, please."*, and the icon `🖐️ ➡️`,
+  all in an amber pulsing chip. The fading ladder itself is good.
+* In 4c-B the child is left in front of a frozen screen with no legal action at all.
+
+### BT (player 2)
+
+* **The probe level produces false-positive independence.** This is the most damaging finding for
+  the BT: the setting whose purpose is to test whether the prompt can be removed is the one that
+  guarantees the data will say yes.
+* **"Independent" here means "the BT tapped the button within 3.5 s"**, not "the learner responded
+  independently". `confirmAsk()` is a button on the shared screen with nothing tying it to who
+  spoke; the BT must tap it, and the score is decided by their reaction time as much as the
+  child's.
+* **No latency, no per-trial record.** Two session totals. The BT cannot see which trials were
+  independent, in what order, or how long each took — so they cannot see a fading trend, which is
+  the whole point of the measure.
+* **The give-back setting is a trap when paired with a counted partner turn.** A BT who selects
+  *They "forget" → I ask* with Their turn = 2/3/4 actions has built a session that can never reach
+  the response they are teaching, and nothing warns them.
+* **Positive:** the ask cue level *can* be changed mid-session. Opening the header ▸ toggle
+  mid-play and switching *Full* → *Short* took effect on the next ask phase with no state loss,
+  which is exactly what within-session fading needs. (`pt4b-05-settings-open-mid-session.png`)
+* **The "ran long" message is wrong** in the timed configuration and will mislead anyone reading
+  the screen for what happened.
+
+## 6. Playthrough 5 — the theme axis is unreachable; a staged 8 ⭐ run instead
+
+### The blocked half, stated plainly
+
+The objective calls for a run on a non-default theme. **There is no reachable non-default theme.**
+Read directly off the live dropdown at the start of this run:
+
+```
+THEME OPTIONS :: ["social:🎉 Social event"]
+```
+
+Exactly one `<option>`. The build's theme table defines `social`, `pet` and `hero`, and the render
+path has a whole `base === 'pet'` branch, but neither is selectable from the UI. This half of the
+playthrough has no configuration to run and was not simulated. See F-19.
+
+All four models were played end to end across this evaluation (M2 in PT1 and here, M1 in PT2,
+M3 in PT3, M4 in PT4), so the model half is covered.
+
+### Configuration
+
+| Setting | Value |
+|---|---|
+| Theme | 🎉 Social event *(forced — the only option)* |
+| Routine | **Staged (in order)** |
+| Turn map | Vanity stations |
+| My turn | Count shown · **1 action** (the minimum) |
+| Their turn | **2 actions** |
+| Give-back | They hand it back |
+| Ask cue | Full sentence |
+| Goal | **8 ⭐** (the maximum) |
+| Earn more time | **on** |
+| Model | M2 |
+| Viewport | 768 × 1024 (tablet portrait) |
+
+**Outcome: reached a real ending** — 8/8 ⭐ in 8 turns, 1 min 07 s. Stat line:
+**8 turns handed over · 0 independent asks · 0 prompted asks**.
+
+### What happened
+
+**The "Earn more time" bonus quadrupled the configured turn size.** The BT set 1 action per turn —
+the lowest response requirement the app offers, the setting you would choose for a learner who
+cannot yet tolerate a long turn. Measured per turn:
+
+| Turn | `bonus` | Effective cap | Setup bar still reads |
+|---|---|---|---|
+| 1 | 0 | **1** | 1 |
+| 2 | 1 | **2** | 1 |
+| 3 | 2 | **3** | 1 |
+| 4–8 | 3 (capped) | **4** | 1 |
+
+By the fourth turn the learner is required to do four things before they may hand over, on a
+setting that says one. The only surface for this is the pip row and the "do N more!" sentence;
+the setup bar never changes, and in the Vanity-stations map used here there are no pips at all.
+
+**A star is awarded for re-doing work.** From turn 5 on, every action I took was on a tool already
+marked ✓ (`✓ Wash`, `✓ Moisturize`, `✓ Shape brows`, `✓ Brow pencil`). Each re-application charged
+a full action against the cap — `actionsThisTurn` went 0 → 1 → 2 → 3 → 4 exactly as if new work
+were being done — while the count of completed routine slots stayed frozen at **4**. Four turns and
+sixteen actions produced no change to the doll and four more stars.
+
+To be exact about what this does and does not show: two un-done skincare steps (*Treat spots*,
+*Conceal*) were on the palette and available the whole time; my driver skipped them because their
+per-tap mechanic is awkward to script. So this is **not** a claim that the app forces the
+degenerate pattern — it is a demonstration that the app fully rewards it. A child who keeps tapping
+the first, largest, leftmost button (*Wash*) gets exactly the same stars, the same "do 4 more!"
+progression and the same ending as a child who works through the routine.
+
+**The session ended on a claim that was not true.** 8/8 ⭐ and *"Ta-da — what a team! Everyone took
+turns and the whole look came together just in time."* on a doll that had been washed,
+moisturised, brow-shaped and brow-pencilled. Of the eleven gated skin-and-makeup steps
+(`_stepDone(1..11)`, `index.html:487`) exactly **two** were done — wash and moisturise; brow shape
+and brow pencil are explicitly untracked by the gate. No makeup, no hair, no outfit, no
+accessories. (`pt5-09-final.png`)
+
+**The done screen does not show the work.** The celebration card replaces the entire stage: no
+doll, no "Our makeover" panel, nothing. The child's finished look is gone at the exact moment they
+are being reinforced for it. (`pt5-09-final.png`)
+
+**Staged gating behaved as in playthrough 1**, and the partner's actions advance it: turn 1 opened
+with three tools (Wash / Shape brows / Brow pencil) and the *partner's* Moisturize on their turn 1
+unlocked Treat spots and Conceal for the learner's turn 2. Tablet portrait had zero overflow
+throughout (768/768, 1024/1024).
+
+### Client (player 1)
+
+* **The turn gets longer without warning.** Set to one action, the child is asked for two on turn
+  2, three on turn 3 and four on turn 4. There is nothing on screen that explains why, and on the
+  Vanity map there is not even a pip row to see it coming. For a learner placed at 1 action
+  precisely because longer turns are hard, this is an unannounced escalation.
+* **Repeating a finished step is rewarded identically to doing the next one.** Nothing on the
+  screen distinguishes "you already did this" from "this is worth doing" beyond a small ✓ on the
+  button — the button is not dimmed, not moved, not deprioritised, and it still costs and still
+  counts.
+* **The celebration hides the doll.** The one thing the child worked on for eight turns is not on
+  the screen that celebrates it.
+* Whose turn it is was legible throughout on the Vanity map ("MY TURN"/"THEIR TURN" plus the two
+  station cards), consistent with playthrough 2.
+
+### BT (player 2)
+
+* **The configured response requirement is not what runs.** "Earn more time" is on by default and
+  in count modes it silently multiplies the action goal — ×4 here. A BT reading the setup bar
+  mid-session sees "1" and is watching a four-action turn.
+* **Nothing distinguishes productive turns from filler.** Eight identical "turn handed over"
+  events; four of them advanced the routine and four re-did completed steps. The stat line cannot
+  tell them apart, and there is no per-turn record.
+* **8 ⭐ is a long session with no mid-session read-out.** The only data surface is the ⓘ Method
+  modal at the end.
+* **The outcome text over-claims.** It asserts the look came together; a BT showing this screen to
+  a parent or writing a session note off it would be reporting something that did not happen.
+* Setup at 8 ⭐ / 1 action / staged took seconds; the setup bar is genuinely fast to drive.
 
 ---
 
@@ -269,41 +591,72 @@ itself as independent or prompted.
 
 | Target behaviour | Observed behaviour | Verdict |
 |---|---|---|
-| An out-of-turn / over-cap attempt is **detected and flagged** as a datum | Nothing is recorded anywhere. I made 8 refused taps in playthrough 1; every counter was byte-identical before and after | **Absent** |
+| An out-of-turn / over-cap attempt is **detected and flagged** as a datum | Nothing is recorded anywhere. 8 refused taps in playthrough 1, 5 in playthrough 3, 1 per turn in playthrough 5; every counter byte-identical before and after | **Absent** |
 | The attempt is **refused** | Refused, yes — but only in count modes. In *Timed* mode there is no cap at all (playthrough 2: 5 actions on a goal of 3) | **Partial** |
-| The learner is **prompted to pass** | No prompt is emitted on a refused attempt. The banner does change to "All set — now I hand it over!" when the goal is met, and the handoff button starts pulsing — but that happens on reaching the goal, not on over-reaching, and it is the same in every session forever | **Absent** |
+| The learner is **prompted to pass** | No prompt is emitted on a refused attempt. The banner does change to "All set — now I hand it over!" when the goal is met, and the handoff button starts pulsing — but that happens on reaching the goal, not on over-reaching, it is the same in every session forever, and on a phone it is 1316 px below the fold | **Absent** |
 | Passing unprompted is scored **INDEPENDENT** | Not scored. `handoff()` increments `turnsTaken` and nothing else | **Absent** |
 | Passing only after a prompt is scored **PROMPTED** | Not scored | **Absent** |
 | The pass prompt **fades** across sessions | The pulse on "Done — their turn ▸" is unconditional and permanent whenever the goal is met | **Absent** |
 
-### 7.2 The fading machinery exists, but on the wrong response
+### 7.2 The fading machinery exists, but on the wrong response — and it can be inverted
 
 `indAsks` / `promptedAsks` are the only prompt-fading measure in the build, and they score the
-**ask-for-it-back** step, not the relinquish step. Two consequences I confirmed by playing:
+**ask-for-it-back** step, not the relinquish step. Four consequences confirmed by playing:
 
 * With give-back set to **"They hand it back"** — the setting most likely to be used early in
-  teaching — the ask phase never runs, so both counters are structurally frozen at 0. Both
-  completed sessions ended with *"3 turns handed over · 0 independent asks · 0 prompted asks."*
+  teaching — the ask phase never runs, so both counters are structurally frozen at 0. Playthroughs
+  1, 2, 3 and 5 all ended with *"N turns handed over · 0 independent asks · 0 prompted asks."*
+* With give-back set to **They "forget" → I ask** *and* a **counted** partner turn, the ask phase
+  is unreachable: `partnerDone()` (`index.html:583`) only runs from `afterAction()` once
+  `partnerGoal` charged actions are spent. A partner who actually forgets leaves the app in phase
+  `theirs` indefinitely — 25 s sampled, no change, no ask control on screen (playthrough 4c-B).
+* With cue level **None (probe)**, `partnerDone()` never arms the cue timer, so `cueVisible` is
+  permanently false and `confirmAsk()`'s `independent = !cueVisible` is permanently **true**.
+  Every ask is scored independent regardless of latency; a 37 s silent wait and an instant tap are
+  indistinguishable (playthrough 4a). The probe condition cannot fail.
+* Where the measure does work (cue = full / short / icon), it is a **binary at 3.5 s with no
+  latency stored**: an ask at 3.6 s and an ask at 33 s are both simply "prompted".
 * The pass step, which is the response the pulsing button prompts, has no counterpart counters
   at all.
+
+### 7.2b Who presses "✓ I asked!"
+
+`confirmAsk()` is an ordinary button on the shared screen. Nothing binds it to a verbal response,
+to the learner rather than the BT, or to any observed behaviour. In practice the BT taps it, so
+"independent" records **the BT's reaction time inside a 3.5 s window**, not the learner's
+independence. There is also no way to record an ask that happens *too early* — during phase
+`theirs` the button does not exist (verified: 0 matches in the DOM), so an interrupting ask, which
+is a clinically meaningful error, cannot be captured at all.
 
 ### 7.3 Who is touching the screen is not modelled
 
 During the partner's turn the palette is fully live, every tool is bright, and there is no
 per-actor gate. In playthrough 1 the learner patched a blemish on the partner's turn and it
 applied; two further learner actions ended the partner's turn. In playthrough 2 the learner took
-four actions on the partner's 20 s clock. The app cannot tell — and does not ask — whether the
-device changed hands.
+four actions on the partner's 20 s clock. In playthrough 3 the learner spent the partner's entire
+asymmetric four-action turn. The app cannot tell — and does not ask — whether the device changed
+hands.
+
+The same gap appears in phase `ask`: all 43 palette buttons stay at full opacity and a tool will
+arm, but no target renders and no action applies. So the wait-and-ask step is "protected" by the
+same silent no-op used everywhere else, rather than by a visible boundary.
 
 ### 7.4 Data the BT needs and cannot get
 
 None of the following is available anywhere in the UI, the Method panel, or any export:
 
 * count of **refused / over-cap attempts** per turn and per session (the core "detect and flag" datum);
-* count of **touches during the partner's turn**;
+* count of **touches during the partner's turn**, and of touches during the ask phase;
 * **independent vs prompted relinquishes** — the prompt-fading measure for the taught response;
 * **latency to pass** after the goal is met (i.e. how long the pulse ran before the child passed);
+* **latency to ask** — the ask *is* scored, but only as a binary side-effect of a 3.5 s timer, so
+  a 3.6 s response and a 33 s response are recorded identically;
+* whether an ask was **too early** (during the partner's turn) — unrecordable, no control exists;
 * whether a turn was passed **early with actions unspent**, versus played out;
+* whether a turn's actions **advanced the routine** or re-did already-completed steps (playthrough
+  5: four consecutive turns of pure repetition scored the same as four productive turns);
+* the **effective** action cap in force, once "Earn more time" has inflated it — the setup bar keeps
+  showing the configured number;
 * any per-turn breakdown at all — the stat line is three session totals and is only reachable
   through the ⓘ Method modal, which is labelled "Clinician reference — not shown to the learner"
   and is buried behind a header button.
@@ -355,12 +708,25 @@ model. No broken images anywhere, on any model (`document.images` all decoded).
 | 1280 × 900 (desktop) | 2 rows | 0 px | yes | yes (y 825–873) | 82 × 82 px |
 | 768 × 1024 (tablet portrait) | 3 rows | 0 px | yes | yes (y 949–997) | 82 × 82 px |
 | 1024 × 768 (tablet landscape) | 2 rows | 0 px | yes | yes (y 693–741) | 82 × 82 px |
-| **375 × 667 (small phone)** | **7 rows** | **88 px** | **no** — stage scrolled to y −241 | yes, but ⓘ Method is off-screen at y −415 | 82 × 82 px |
+| **375 × 667 (small phone)** | **7 rows** | **88 px** | **no** — stage scrolled to y −241 | **no** — absolute top 1316 px in a 667 px viewport | 82 × 82 px |
 
 Touch targets are comfortable for a child everywhere (82 × 82 px, well above the 44 px guideline).
 The two tablet orientations — the stated in-session form factor — are sound. The small-phone
 layout is not usable: the setup bar alone consumes 7 rows, the document overflows sideways by
 88 px, and the doll is pushed out of the viewport.
+
+**The phone measurement of the pass button, made without any driver-induced scrolling**
+(`probe-runway.mjs`, `probe-phone-atcap-scrollpos.png`):
+
+| Moment | `scrollY` | Button top, viewport-relative | In view | Pulsing |
+|---|---|---|---|---|
+| start of my turn, page at max scroll | 724 | 592 | yes | no |
+| after two actions on the doll | 73 | **1243** | **no** | yes |
+| forced to the top of the page, still at the cap | 0 | **1316** | **no** | yes |
+
+The document is 1391 px tall and the viewport 667 px, so the button is only ever reachable at the
+very bottom of the scroll range — and interacting with the doll moves the page away from it. The
+button is pulsing the whole time, where nobody can see it.
 
 ## 10. Console and network
 
@@ -376,9 +742,26 @@ Error: <path> attribute d: Expected moveto path command ('M' or 'm'), "{{ V.garm
 ```
 
 These are the browser parsing the raw `{{ }}` placeholders in the inline SVG before the
-design-canvas runtime substitutes them. **Zero page exceptions** (`pageerror`), **zero failed
-requests**, and **zero HTTP ≥ 400** were recorded across every run in this evaluation. No crash,
-freeze or blank screen was seen at any point.
+design-canvas runtime substitutes them. **Zero page exceptions** (`pageerror`) in any run. No
+crash, freeze or blank screen was seen at any point.
+
+**Correction to the network claim in the first pass of this report.** Playthroughs 1–2 were served
+by `wrangler pages dev` and recorded zero requests at HTTP ≥ 400. Playthroughs 3–5 were served by
+`python3 -m http.server` from `apps/games` (a plain static server — the game is a static file), and
+every load there records **three HTTP 404s**, all for `{{ }}` placeholders that reached the network
+layer un-substituted:
+
+```
+HTTP 404 /glam-team-makeover/%7B%7B%20sceneFrame%20%7D%7D
+HTTP 404 /glam-team-makeover/%7B%7B%20petArtBase%20%7D%7D
+HTTP 404 /glam-team-makeover/%7B%7B%20ly.src%20%7D%7D
+```
+
+Same root cause as the five SVG errors: the raw template markup is parsed by the browser before
+the runtime substitutes it, and three of those placeholders sit in `src` attributes, so the browser
+issues real requests for them. Whether they surface as 404s depends on the server's handling of
+unknown paths, which is why the first pass did not see them. They are three wasted requests per
+load on any server, and on a static host they are three 404s in the log.
 
 ---
 
@@ -410,41 +793,68 @@ session is damaged · **minor** = friction · **polish** = cosmetic.
 | F-19 | minor | workflow | Theme select, `index.html:56` | Open the setup bar. The Theme dropdown has exactly one `<option>`: `social`. The pet-show and hero themes in the build's theme table are unreachable from the UI | BT — a documented configuration axis that cannot be used |
 | F-20 | minor | crash-adjacent | inline SVG placeholders, `index.html:149-151,163` | Load the page with the console open. Five `<path> attribute d` errors on every load, in every configuration, from unsubstituted `{{ V.*Path }}` values. No page exception, no failed request | BT — a permanently noisy console hides any real error |
 | F-21 | polish | UX | paint target label, `index.html:1056` | Complete a paint step, then re-arm the same tool. The target reads "Keep painting… 100 %" | Client — mildly confusing |
+| F-22 | blocking | clinical | Ask cue = "None (probe)", `index.html:584` | Give-back = They "forget" → I ask, Their turn = Timed 20s, Ask cue = None. Hand over, let the 20 s run out, sit in the ask phase 37 s without doing anything, then tap "✓ I asked!" → `indAsks` +1. Next turn tap it in under 1 s → `indAsks` +1. Stat line "2 independent asks · 0 prompted asks". `cueVisible` sampled every 2 s for 16 s: never true, because the cue timer is only armed when `cueLevel !== 'none'` | BT — the probe condition can only ever report independence; client — no cue and no consequence for never responding |
+| F-23 | blocking | bad state | `partnerDone()` `index.html:583` + `afterAction()` `:515` | Give-back = They "forget" → I ask, Their turn = **3 actions**. Hand over, then touch nothing. Sampled at 5/10/15/20/25 s: phase stays `theirs`, `actionsThisTurn` 0, no "✓ I asked!" button in the DOM (0 matches), visible controls are only `ⓘ Method`, M1–M4 and the 7 hairstyle digits. Spending the partner's 3 actions is the only exit and does then reach phase `ask` | Both — the configuration that names the "forget" scenario deadlocks on the forget; BT builds a session that cannot reach the taught response |
+| F-24 | major | UX | turn banner in phase `ask`, `index.html:955` | Reach the ask phase in any give-back = forgets config. The banner reads "🧑‍⚕️ THEIR TURN" (because `whoseMe` is true only for phases `mine` and `ready`, and `ask` is neither) while the headline beneath reads "It's really my turn now…" | Client — the largest turn signal on screen contradicts the instruction at the moment the response is required |
+| F-25 | major | bad state | palette during phase `ask`, `canAct` `index.html:984` | In the ask phase, measure the palette: 43 of 43 buttons at `opacity: 1`. Click "Wash": `armed` becomes `"wash"` and the palette hint changes to "✋ NOW DO IT ON THE FACE →", but `document.querySelectorAll('div[style*="gtm-target"]')` = 0 and `actionsThisTurn` does not move | Client — told to act, given nothing to act on, refused silently; BT — the touches are not recorded either |
+| F-26 | major | UX | cap feedback in `hidden` mode, `capDim` `index.html:1024` | Count hidden, goal 2. Spend 2 actions. Measure the palette: **0 of 43** buttons dimmed. Tap five different tools in sequence (Treat spots, Conceal, Shape brows, Contour, Blush rose): `actionsThisTurn` stays 2, `ed.cov`/`ed.col`/`ed.done` unchanged, `armed` stays null, nothing on screen changes | Both — hidden mode removes the only remaining cap feedback; BT cannot see the boundary either |
+| F-27 | major | compat | "Done — their turn ▸", 375 × 667 | Load at 375 × 667, start a turn, do two actions on the doll. Button absolute top = 1316 px, document height 1391 px, viewport 667 px. Scrolled to the top the button is 1316 px below the fold; after acting on the doll (`scrollY` 73) it is 1243 px below. It pulses the whole time | Both — the pass cue, the whole point of the program, is off-screen on a phone |
+| F-28 | major | UX | Turn runway map, `index.html:101-120` | Set Turn map = Turn runway. In phase `mine` and phase `theirs`, dump visible text: no "MY TURN"/"THEIR TURN" label and no instruction sentence render at all — only "Turns", an avatar strip with a "NOW" caption, and the token count. The same config on Banner renders both | Client — no words for whose turn it is; worst of the three maps for the taught skill |
+| F-29 | major | workflow | charge keys vs. `ed.done`, `index.html:530,:546` | Staged, goal 1, extra time on, 8 ⭐. From turn 5 on, spend every action re-applying tools already marked ✓. Each charges a full action (`actionsThisTurn` 0→4) and each turn awards a star, while the completed-slot count stays at 4. Session ends 8/8 ⭐ with 2 of the 11 gated skin/makeup steps done and no hair, outfit or accessories | Client — repetition reinforced identically to progress; BT — turns that advanced nothing are indistinguishable in the data |
+| F-30 | major | UX | outcome card, `index.html` THEMES `social.outcome` | Finish any session without completing the routine. The card reads "Ta-da — what a team! Everyone took turns and **the whole look came together just in time**" regardless of what is actually on the doll | BT — a screen that over-claims and would be wrong in a session note; client — praise not contingent on the work |
+| F-31 | minor | UX | done screen, `showGame` `index.html:1093` | Reach the goal. The celebration card replaces the entire stage: no doll, no "Our makeover" panel. The finished look is not visible on the screen that celebrates it | Client — the product of eight turns disappears at the moment of reinforcement |
+| F-32 | minor | clinical | `confirmAsk()` `index.html:586` | Ask at ~3.6 s and at ~33 s with cue = icon: both recorded as one `promptedAsks`. No latency is stored anywhere, and no per-trial record exists — only two session totals | BT — cannot see a fading trend, which is the purpose of the measure |
+| F-33 | minor | clinical | phase `theirs` controls | During the partner's turn, query for an ask control: 0 matches. An ask made before the partner finishes — a clinically meaningful error — cannot be recorded | BT — the error side of the response class is invisible |
+| F-34 | minor | UX | ask-phase message, `index.html:977` | Set Their turn = Timed 20s, give-back = forgets. Let the clock expire exactly on time. The bottom bar reads "Their turn ran long — time to ask for my turn." although the turn ended precisely on schedule | Both — the on-screen account of what happened is wrong |
+| F-35 | minor | UX | cue chip placeholder, `index.html:982` | Enter the ask phase. Before 3.5 s the chip is a 30 × 22 px empty dashed grey box; at 3.5 s it becomes a 248 × 43 px amber chip (full-sentence level), shifting the row. At cue level "None" the empty box is shown permanently | Client — a meaningless placeholder plus a layout jump at the cue |
+| F-36 | minor | workflow | "Earn more time" in count modes, `index.html:481,:578` | Set My turn = Count shown, **1 action**, Earn more time on. Measured caps: turn 1 = 1, turn 2 = 2, turn 3 = 3, turns 4–8 = 4 (bonus caps at 3). The setup bar still reads "1" throughout | BT — the response requirement quadruples without the setting changing; client — an unannounced escalation on the lowest setting |
+| F-37 | minor | crash-adjacent | `{{ }}` in `src` attributes, `index.html` scene/pet/layer images | Load the page from a plain static server (`python3 -m http.server`) with the network panel open. Three HTTP 404s per load for `%7B%7B%20sceneFrame%20%7D%7D`, `%7B%7B%20petArtBase%20%7D%7D`, `%7B%7B%20ly.src%20%7D%7D`. Under `wrangler pages dev` these did not surface as ≥ 400 | BT — wasted requests every load and 404 noise in any static host's log |
 
 ---
 
 ## 12. Not tested
 
-Stated as gaps rather than guessed at.
+Stated as gaps rather than guessed at. All five playthroughs were run; what follows is what
+remains untested *within* and *around* them.
 
-**Playthroughs not yet run**
+**Blocked, not skipped**
 
-* **Playthrough 3** — hidden count, asymmetric turns (my 2 / their 4), free-play routine, runway
-  map, icon cue, model M3, phone viewport. Not run.
-* **Playthrough 4** — the `They "forget" → I ask` give-back path with the ask cue faded to
-  **None (probe)**. **This is the single biggest gap in this report**: it is the only
-  configuration in which `indAsks` / `promptedAsks` can move at all, and the only way to observe
-  the 3.5 s cue delay, the four cue levels, and whether a very late ask is still scored as
-  independent when the cue level is `none`. Not run.
-* **Playthrough 5** — non-default theme and model. Not run. The theme half is blocked by F-19.
+* **The pet-show and hero themes.** The Theme dropdown ships exactly one option (`social`),
+  verified live in playthrough 5. Both themes exist in the build's theme table and `buildV()` has
+  a whole `base === 'pet'` render branch, none of which can be reached from the UI. The
+  "non-default theme" half of playthrough 5 has no configuration to run, so nothing is reported
+  about it. See F-19.
+
+**Settings not exercised**
+
+* **Their turn = "Timed 30s"** — the 20 s timed partner turn was used in playthroughs 2 and 4;
+  the 30 s option was never selected. **Their turn = "2 actions"** was used (playthrough 5) and
+  **"4 actions"** (playthrough 3); **"3 actions"** only in the dead-end probe 4c-B, not to an
+  ending.
+* **Token goal 5 ⭐** was used only in playthrough 4b, which ended on the goal but whose turns
+  were scripted around the ask phase rather than played for content.
+* **My turn action goals 4 and 5.** Goals of 1, 2 and 3 were played; 4 and 5 were not.
+* **Count hidden combined with the Banner map** — hidden mode was only played on the runway map,
+  so I did not confirm what the Banner map shows when the pips are suppressed.
 
 **Behaviours not exercised**
 
-* The `giveback`/`ask` phases beyond the "They hand it back" branch — never entered.
-* The **Turn runway** map — never rendered in a live session.
-* **Count hidden** mode, and whether the cap is silently enforced there (`capDim` is applied only
-  in `shown` mode).
 * The **⭐ Finish & SR** button on the done screen, and `window.NooutcoReward.celebrate` /
-  `openSR` — not clicked.
+  `openSR` — not clicked in any run.
 * **↺ Play again** and whether it correctly resets counters mid-device-session.
-* Whether opening the setup bar mid-session (the header ▾/▸ toggle) exposes the **▶ Play** button,
-  and whether pressing it silently destroys the running session's tokens/turn/ask counters. The
-  button is in the DOM during play but hidden; I did not reveal and press it.
-* Changing any setting **mid-session** (e.g. raising the token goal on turn 2) and whether it
-  applies live or corrupts state.
-* Token goals **5 ⭐ and 8 ⭐** — both completed runs used 3 ⭐.
-* **Their turn = 2 / 3 / 4 actions** (asymmetric) and **Timed 30s**.
-* The pet-show and hero themes and their procedural-SVG render path — unreachable from the UI.
+* Whether opening the setup bar mid-session exposes the **▶ Play** button and whether pressing it
+  silently destroys the running session's tokens/turn/ask counters. The setup bar *was* opened
+  mid-session in playthrough 4b (to fade the cue, which worked cleanly), but the Play button was
+  not pressed.
+* Changing **structural** settings mid-session — token goal, action goal, give-back mode, partner
+  turn type — and whether they apply live or corrupt state. Only the **ask cue level** was changed
+  mid-session, and only that one is reported as safe.
+* Whether a **"forgets" give-back with a counted partner turn** has any escape other than spending
+  the partner's actions — e.g. a page reload preserving state, or a timeout longer than the 25 s I
+  sampled. I sampled 25 s and stopped.
+* Whether the **over-cap refusal is reported to any analytics or storage layer** off-screen. I
+  observed only the DOM and the component's own state; I did not inspect `localStorage`, network
+  writes, or the games worker.
 * Real **touch** input, multi-touch, and pointer-cancel on the drag/paint tools. All input in this
   evaluation was synthetic mouse input from Chromium.
 * **Firefox and WebKit.** Only Chromium was used. The repo's Playwright config defines Firefox and
@@ -452,15 +862,21 @@ Stated as gaps rather than guessed at.
 * **Screen readers, keyboard-only navigation and reduced-motion.** Not assessed. Note in passing
   that the pulsing cue animations have no reduced-motion guard, but this was not verified against
   a `prefers-reduced-motion` media setting.
-* **Offline / deployed behaviour.** Everything was run against a local `wrangler pages dev` server.
-* **Long sessions.** The longest run was three turns; no soak test for timer drift, memory growth
-  or canvas cache growth.
+* **Offline / deployed behaviour.** Everything was run against a local server.
+* **Long sessions.** The longest run was eight turns over ~1 minute of wall clock; no soak test for
+  timer drift, memory growth or canvas cache growth.
+* **Art fidelity in playthroughs 3–5 was not re-measured.** The paper-doll findings in §8 come from
+  the dedicated per-model sweep; playthroughs 3–5 were driven for turn-taking behaviour and their
+  screenshots were not pixel-diffed.
 
 ---
 
 ## Method
 
-Served with `npx wrangler pages dev . --port 8788` from `apps/games` after `npm install`.
+Served from `apps/games` at port 8788 — `npx wrangler pages dev .` for playthroughs 1–2 and
+`python3 -m http.server 8788` for playthroughs 3–5. The game is a single self-contained static
+file, so both serve identical bytes; the only observed difference is how unknown paths are handled,
+which is why the three `{{ }}` image 404s in §10 appear under one server and not the other.
 Driven with Playwright Chromium from throwaway scripts under
 `.gnhf/runs/objective-produce-an-e923a7/scratch/` (git-excluded, not committed). Console messages,
 page exceptions, failed requests and HTTP ≥ 400 responses were captured for every run. Internal
