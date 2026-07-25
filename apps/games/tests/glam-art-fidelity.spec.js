@@ -560,6 +560,100 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
                  some level, which is exactly the patchiness of the retired
                  eyeshadow pair. Smoothing first (5×5 box) stops single-pixel
                  noise from splitting a blob on its own. */
+  /* ── THIRD PASS A1 · the lash geometry, taken from the ART ──────────────────
+     The maintainer's report was "white pixels in the eyelashes", so the test has
+     to know where a lash IS before it can say anything about its colour. Two
+     tempting definitions are both wrong:
+
+       · "pixels the mascara sprite darkens" quietly excludes the white ones,
+         which are the entire defect. That mistake was made during this pass and
+         the numbers it produced looked mild.
+       · "pixels the mascara sprite changes, minus an elliptical eyeball" leaks
+         the sclera's sharp corner tips into the mask — an ellipse is a poor fit
+         for an almond aperture — and those tips are pure white, so the mask
+         manufactures 42–60 defective pixels per model that are not on a lash.
+
+     So the geometry comes from the SPRITE FILE instead — `glam.png` as it ships,
+     read straight off the decoded image. A sprite pixel is lash ink when it is
+     opaque and dark; a canvas pixel joins the mask when at least `cover` of what
+     the art puts under it is that ink, mapped through `_irisBox`, the same
+     destination rect the compositor blits into, so the mask tracks the art at
+     every model's eye size instead of restating a transform that can drift.
+
+     The one thing "opaque and dark" would wrongly catch is the IRIS and pupil,
+     so the iris comes out — as a CIRCLE, off `_irisBox`'s own cx/cy/r, which is
+     the same circle `_contactCanvas` clips a coloured contact to. A circle is
+     right here and an ellipse was wrong for the aperture: the iris really is
+     round, the aperture really is an almond. The sclera, the waterline and the
+     catchlights need no exclusion at all — they are pale, and pale is not ink.
+
+     Nothing in this mask comes from the renderer's own A1 machinery, on purpose:
+     it has to be computable against the PRE-CHANGE file too, or "this test fails
+     before the fix" cannot be demonstrated.
+
+     `cover` is 0.75, and that is a real choice: below about that a canvas pixel
+     is a BLEND of lash and lid (the 340 px sprite is drawn at ~135 px, so one
+     canvas pixel spans ~2.5 sprite pixels), and its luminance is then partly the
+     lid's. The report carries the 0.50 / 0.60 / 0.75 numbers side by side so the
+     shape of that choice is visible rather than asserted. */
+  const LASHCORE = `
+    const spritePixels = (src) => { const rec = L._img(src); if (!rec || !rec.ok) return null;
+      const im = rec.img, W = im.naturalWidth||im.width, H = im.naturalHeight||im.height;
+      const c = document.createElement('canvas'); c.width=W; c.height=H;
+      const x = c.getContext('2d'); x.drawImage(im,0,0,W,H);
+      return { W, H, data: x.getImageData(0,0,W,H).data }; };
+    const lashCore = (cover) => {
+      const W = cv.width, H = cv.height;
+      const meta = (L.gen().eyes||{}).glam;
+      const mt = meta && spritePixels(meta.src);
+      if (!mt) return null;
+      const sl = (q)=>{ const i=q*4; return 0.2126*mt.data[i]+0.7152*mt.data[i+1]+0.0722*mt.data[i+2]; };
+      const ink = new Uint8Array(mt.W*mt.H);
+      for (let q=0;q<mt.W*mt.H;q++) if (mt.data[q*4+3]>=200 && sl(q)<=90) ink[q]=1;
+      const f = L.genEntry().face;
+      const tuples = [[f.eyeL.x*W,f.eyeL.y*H,f.eyeL.w*W,f.eyeL.h*H,-1],
+                      [f.eyeR.x*W,f.eyeR.y*H,f.eyeR.w*W,f.eyeR.h*H,1]];
+      const mask = new Uint8Array(W*H);
+      for (const e of tuples) {
+        const b = L._irisBox(e); if (!b) continue;
+        const o = e[4];
+        const x0=Math.max(0,Math.floor(b.dx)), x1=Math.min(W,Math.ceil(b.dx+b.dw));
+        const y0=Math.max(0,Math.floor(b.dy)), y1=Math.min(H,Math.ceil(b.dy+b.dh));
+        for (let y=y0;y<y1;y++) for (let x=x0;x<x1;x++){
+          if (Math.hypot(x+0.5-b.cx, y+0.5-b.cy) <= b.r*1.10) continue;   // the iris
+          // the sprite is blitted mirrored on the o<0 socket, so invert x there
+          let fa=(x-b.dx)/b.dw, fb=(x+1-b.dx)/b.dw;
+          if (o<0){ const t=1-fb; fb=1-fa; fa=t; }
+          const sa=Math.floor(fa*mt.W), sb=Math.ceil(fb*mt.W);
+          const ta=Math.floor((y-b.dy)/b.dh*mt.H), tb=Math.ceil((y+1-b.dy)/b.dh*mt.H);
+          let hit=0, tot=0;
+          for (let sy=ta; sy<tb; sy++) for (let sx=sa; sx<sb; sx++){
+            if (sx<0||sy<0||sx>=mt.W||sy>=mt.H) continue;
+            tot++; if (ink[sy*mt.W+sx]) hit++; }
+          if (tot && hit/tot>=cover) mask[y*W+x]=1; } }
+      return mask;
+    };
+    const lum = (d,i) => 0.2126*d[i] + 0.7152*d[i+1] + 0.0722*d[i+2];
+    /* Bare vs a finished frame over one mask. Both directions are reported:
+       \`white\`/\`maxAbs\`/\`worstUp\` are the defect, \`inkShare\`/\`drop\`/\`px\` are the
+       guard against passing by rendering no lash at all. */
+    const scoreLash = (mask, bare, done) => {
+      const W = cv.width, H = cv.height;
+      let px=0, white=0, maxAbs=0, worstUp=-999, ink=0, sumB=0, sumD=0, wx=0, wy=0;
+      for (let y=0;y<H;y++) for (let x=0;x<W;x++){
+        if (!mask[y*W+x]) continue;
+        const i=(y*W+x)*4, lb=lum(bare.data,i), ld=lum(done.data,i);
+        px++; sumB+=lb; sumD+=ld;
+        if (ld>maxAbs) maxAbs=ld;
+        if (ld>=190) white++;
+        if (ld-lb>worstUp){ worstUp=ld-lb; wx=x; wy=y; }
+        if (lb-ld>=20) ink++; }
+      return { px, white, maxAbs:+maxAbs.toFixed(1), worstUp:+worstUp.toFixed(1),
+               worstAt:wx+','+wy, inkShare:+(ink/px).toFixed(3),
+               meanBare:+(sumB/px).toFixed(1), meanDone:+(sumD/px).toFixed(1),
+               drop:+((sumB-sumD)/px).toFixed(1) };
+    };
+  `;
   const FOOT = `
     const foot = (a, b, side) => {
       const W = cv.width, H = cv.height;
@@ -1052,6 +1146,191 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
     expect(Math.max(...shares) - Math.min(...shares),
       `the client is framed differently at each width: ${shares.join(' / ')}`).toBeLessThan(0.02);
 
+    expect(errors, `console errors: ${errors.join(' | ')}`).toEqual([]);
+  });
+
+  /* ── THIRD PASS A1 — the completed look and the eyelashes ───────────────────
+     The maintainer, on the second pass: "do a full run and ensure the completed
+     looks are not overdone. special attention to white pixels in the eyelashes."
+
+     Every screenshot either prior pass produced was mid-appointment, so the
+     state being described had never been rendered under measurement. It is now:
+     `COMPLETED` is every tool in the catalogue, which is the face a child ends
+     an appointment looking at.
+
+     Two causes were found and fixed, both in `_eyeArt` (see `LASH_MATTE`):
+       1. `glam.png` draws every lash twice — a dark stroke and a flat-white one
+          laid along it. 1848 fully opaque white pixels out in the lash fans.
+       2. the winged liner sprite carries a whole eye AND an opaque lid, and is
+          drawn over the mascara sprite, so its sclera, its anti-aliased rim and
+          its lid each repainted lash roots the liner art does not itself draw.
+     The prompt's leading hypothesis — that U1/U2's `screen`-blended kidney-bean
+     highlight had reached the lash line — is refuted: removing `hl` from the
+     completed look moves none of these numbers at all. The bean is untouched.
+
+     HAIR SHAPE is deliberately left at the model's own. `hair-blonde` puts a
+     fringe across m3's eye which lands on 153 lash-core pixels at up to +100 L,
+     and a fringe over a lash is hair, not paint — measuring it here would put
+     the hairstyle under a test that says "eyelashes". Hair COLOUR is applied. */
+  const COMPLETED = `(ed) => {
+    ed.cov.wash=1; ed.cov.moist=1; ed.pimples=(ed.pimples||[]).map(()=>2);
+    ed.cov.brows=1; ed.cov.pencil=1; ed.cov.contour=1;
+    ed.cov.blush=1; ed.col.blush='#f28ba0';
+    ed.cov.hl=1;
+    ed.cov.shadow=1; ed.col.shadow='#a06cc9';
+    ed.cov.liner=1; ed.cov.mascara=1; ed.col.contacts='#4a90d9';
+    ed.cov.lipliner=1; ed.col.lipliner='#b23a56';
+    ed.cov.lips=1; ed.col.lips='#d64b6a';
+    ed.col.hair='berry'; ed.gl.ear='ring';
+    ed.outfit='dress'; ed.col.garment='#d6608a';
+  }`;
+
+  test('A1 · a completed look puts no white pixel on a lash, on every roster model', async ({ page }) => {
+    test.setTimeout(180000);
+    const errors = await stage(page);
+
+    const rows = await logic(page, `return (async () => {
+      ${HELPERS}
+      ${LASHCORE}
+      const out = [];
+      for (const m of window.GlamStory.MODELS) {
+        await setModel(m);
+        /* freshEd seeds the three blemishes off Math.random(), so two frames
+           taken from two resets have them in DIFFERENT places — and a spot that
+           moved reads as a tool brightening pixels it never touched. Pinning the
+           seed swung this measurement between 10 and 203 "defective" pixels.
+           0.371 is the layout _pickSpots itself falls back to. */
+        /* Mascara first: the glam sprite has to have DECODED before _eyeMatte
+           can matte it, and on a bare face the compositor has never asked for
+           it. This frame is also the guard on cause 1, which lives in the sprite
+           rather than in anything layered over it. */
+        await setEd((ed) => { ed.spotSeed = 0.371; ed.cov.mascara = 1; });
+        const masc = await settle();
+        const masks = { c50: lashCore(0.50), c60: lashCore(0.60), c75: lashCore(0.75) };
+        if (!masks.c75) { out.push({ model:m, err:'no lash matte' }); continue; }
+        await setEd((ed) => { ed.cov.mascara = 0; });
+        const bare = await settle();
+        await setEd(${COMPLETED});
+        const done = await settle();
+        out.push({ model:m,
+          c50: scoreLash(masks.c50, bare, done),
+          c60: scoreLash(masks.c60, bare, done),
+          c75: scoreLash(masks.c75, bare, done),
+          mascaraOnly: scoreLash(masks.c75, bare, masc) });
+      }
+      return out;
+    })();`);
+
+    const roster = await page.evaluate(() => window.GlamStory.MODELS);
+    expect(rows.length).toBe(roster.length);
+    for (const r of rows) {
+      expect(r.err, `${r.model}: ${r.err}`).toBeUndefined();
+      const at = `${r.model} lash cores (${r.c75.px}px)`;
+      const s = r.c75;
+
+      /* ── UPPER: the defect, in the maintainer's own terms ── */
+      // "white pixels in the eyelashes", stated absolutely. Before this pass the
+      // same geometry carried 74/38/50 of them, peaking at 254 L — the sprite's
+      // own baked highlight, at full opacity, on a lash.
+      expect(s.white, `${at}: ${s.white} lash pixels are white (≥190 L); brightest ${s.maxAbs} L`)
+        .toBe(0);
+      // …and a bound below "white" so a lash cannot creep back up to just under
+      // it. Shipped: 124–129 L.
+      expect(s.maxAbs, `${at}: the brightest lash pixel is ${s.maxAbs} L`).toBeLessThan(150);
+      /* …and relative to the bare face, which is what the objective asks for.
+         Positive at all is expected on a handful: the BARE face wears the plain
+         eye sprite, whose own lashes fall where the glam sprite draws liner ink,
+         so ink-over-ink can read as a small lift. Shipped worst: +33 to +43. */
+      expect(s.worstUp, `${at}: a lash pixel at (${s.worstAt}) is +${s.worstUp} L over the bare face`)
+        .toBeLessThan(60);
+
+      /* ── LOWER: a lash that renders as nothing must not pass ── */
+      // the geometry itself has to still exist (shipped 1685–2256 px)…
+      expect(s.px, `${at}: the lash geometry has collapsed to ${s.px}px`).toBeGreaterThan(1200);
+      // …the pixels have to actually darken (shipped 89.0–90.3 %)…
+      expect(s.inkShare, `${at}: only ${(s.inkShare * 100).toFixed(1)}% of the lash renders as ink`)
+        .toBeGreaterThan(0.80);
+      // …and by a real amount, not a shade (shipped −79 to −94 L).
+      expect(s.drop, `${at}: the lash is only ${s.drop} L darker than bare skin`).toBeGreaterThan(60);
+
+      /* ── the sprite on its own, so cause 1 cannot come back under cover of a
+            tool that happens to darken it again ── */
+      expect(r.mascaraOnly.white,
+        `${r.model}: the mascara sprite alone puts ${r.mascaraOnly.white} white pixels on its own lashes`)
+        .toBe(0);
+      expect(r.mascaraOnly.maxAbs,
+        `${r.model}: the mascara sprite's brightest lash pixel is ${r.mascaraOnly.maxAbs} L`)
+        .toBeLessThan(150);
+    }
+    expect(errors, `console errors: ${errors.join(' | ')}`).toEqual([]);
+  });
+
+  /* The two cuts have to be discriminating rather than a bleach, or A1 above
+     passes by erasing the eye. `natural.png` is the plain eyeball a child sees
+     before any makeup — an accepted surface — and the 'lash' rule must not
+     touch it. The liner's 'ink' cut must still carry the wing. */
+  test('A1 · the eye cuts are discriminating — the plain eye and the wing survive', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = await stage(page);
+
+    const out = await logic(page, `return (async () => {
+      ${HELPERS}
+      // both sprites have to be decoded before _eyeArt can matte them
+      await setEd((ed) => { ed.cov.mascara = 1; ed.cov.liner = 1; });
+      await settle();
+      const res = {};
+      const raw = (src) => { const rec = L._img(src); if (!rec.ok) return null;
+        const im = rec.img, W = im.naturalWidth||im.width, H = im.naturalHeight||im.height;
+        const c = document.createElement('canvas'); c.width=W; c.height=H;
+        const x = c.getContext('2d'); x.drawImage(im,0,0,W,H);
+        return x.getImageData(0,0,W,H).data; };
+      for (const [key, cut] of [['natural','lash'],['eyelinerL','ink'],['eyelinerR','ink'],['glam','lash']]) {
+        const meta = (L.gen().eyes||{})[key]; if (!meta) continue;
+        const cv2 = L._eyeArt(meta.src, cut); const src = raw(meta.src);
+        const mt = L._eyeMatte(meta.src);
+        if (!cv2 || !src || !mt) { res[key] = { err:'not decoded' }; continue; }
+        const d = cv2.getContext('2d').getImageData(0,0,cv2.width,cv2.height).data;
+        let cleared=0, darkKept=0, brightOpaque=0, paleOutsideEye=0;
+        for (let i=0;i<d.length;i+=4){
+          if (src[i+3] > 0 && d[i+3] === 0) cleared++;
+          if (d[i+3] < 8) continue;
+          const l = 0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2];
+          if (l <= 110 && d[i+3] >= 200) darkKept++;
+          if (l >= 140 && d[i+3] >= 200) brightOpaque++;
+          // the baked lash highlight: flat white, opaque, out in the fan
+          if (d[i+3] >= 200 && !mt.eye[i/4] && Math.min(d[i],d[i+1],d[i+2]) >= 170) paleOutsideEye++; }
+        res[key] = { cut, cleared, darkKept, brightOpaque, paleOutsideEye };
+      }
+      return res;
+    })();`);
+
+    // The plain eyeball is byte-for-byte what the maintainer accepted: the rule
+    // finds ZERO pixels in it, which is the proof it is discriminating.
+    expect(out.natural, 'natural.png was not decoded').toBeDefined();
+    expect(out.natural.cleared, `the 'lash' cut clears ${out.natural.cleared} pixels of the plain eye`)
+      .toBe(0);
+
+    /* CAUSE 1, pinned at the source. The lash-core geometry in the test above is
+       "opaque and dark in the art", so the baked highlight — which is neither —
+       is only visible to it where the downscale smears one into the other. This
+       is the direct guard: after the cut there is no flat-white opaque pixel
+       left anywhere in glam.png outside the eye. 1848 of them shipped before. */
+    expect(out.glam, 'glam.png was not decoded').toBeDefined();
+    expect(out.glam.paleOutsideEye,
+      `glam.png still has ${out.glam.paleOutsideEye} opaque white pixels out in the lash fans`)
+      .toBe(0);
+    expect(out.glam.cleared, `the 'lash' cut found only ${out.glam.cleared} pixels in glam.png`)
+      .toBeGreaterThan(1500);
+    for (const side of ['eyelinerL', 'eyelinerR']) {
+      const r = out[side];
+      expect(r, `${side} was not decoded`).toBeDefined();
+      // the wing still has its ink (shipped ~3.5k opaque dark pixels each)…
+      expect(r.darkKept, `${side}: the 'ink' cut left only ${r.darkKept} opaque dark pixels — the wing is gone`)
+        .toBeGreaterThan(2500);
+      // …and none of the lid it used to lay over the glam sprite's lashes.
+      expect(r.brightOpaque, `${side}: the 'ink' cut still passes ${r.brightOpaque} opaque pixels at ≥140 L`)
+        .toBe(0);
+    }
     expect(errors, `console errors: ${errors.join(' | ')}`).toEqual([]);
   });
 });

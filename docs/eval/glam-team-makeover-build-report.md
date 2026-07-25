@@ -2706,12 +2706,174 @@ an eyeball exclusion derived from the sprite rather than from an ellipse.
   `tests/_probe-glam-tune3-liner.mjs` (the liner-over-lash question and its ×14
   loupe) and `tests/_shots-glam-tune3-look.mjs` (the shots).
 
+### V5 · The residual named in V3, resolved — and a third cause behind it
+
+V3 closed by naming 42–60 pure-white pixels per model that survived the first
+fix, and said they were the glam sprite's own **sclera leaking past the
+elliptical eyeball cut-out at the eye's sharp corners** rather than paint on a
+lash. That is now settled, and it was two separate things wearing one number.
+
+**The measurement was wrong, and fixing it removed most of the residual.**
+Replacing the ellipse with an exclusion derived from `_eyeMatte`'s own eye mark —
+each canvas pixel mapped back through `_irisBox`, the rect the compositor blits
+into — drops the white count from 60/43/42 to **2/0/0** while removing only 3–5 %
+of the mask's area (3835→3627, 2911→2811, 3188→3043 px). The sclera diagnosis
+was right: those pixels were never on a lash.
+
+**What was left was real, and it was the liner's LID.** With the mask honest, one
+tool still lifted lash pixels: the eyeliner, by **+110 / +85 / +89 L** on 44–53
+pixels per model. Every other tool in the catalogue moved the lash cores by less
+than 26 L, and the highlight — the prompt's leading suspect — by nothing at all.
+
+The `'ink'` cut introduced in V3 kept "everything that is not flat white", where
+white meant *min channel ≥ 170*. The liner sprite's own **opaque lid** is skin at
+140–180 L: not white by that test, and drawn straight over every glam lash the
+liner art does not itself draw. 131 and 195 such pixels per sprite survived the
+cut. A lid repainting a black lash is a bright pixel on a lash however it is
+spelled, so the cut now fades by **luminance** on a ramp — full alpha at or below
+`inkLo` 110, gone at or above `inkHi` 170 — which subsumes the old white test
+(all channels ≥ 170 ⇒ luminance ≥ 170) and takes the lid with it. A ramp rather
+than a cliff so the wing keeps its own anti-aliased edge.
+
+| liner's lift on the lash cores | m2 | m3 | m4 |
+| --- | --- | --- | --- |
+| worst — before this slice | +110.3 | +84.9 | +88.8 |
+| worst — after | **+50.7** | **+62.9** | **+72.8** |
+| pixels lifted > 25 L — before | 53 | 47 | 44 |
+| pixels lifted > 25 L — after | **27** | **32** | **29** |
+| mean lift over the whole lash mask (`_probe-…-liner`) | +14.4 → **+11.9** | +14.6 → **+12.3** | +14.9 → **+12.7** |
+
+**Where this stops, and why.** What remains is the liner's *dark* ink sitting on
+a lash — wing ink at 52–104 L over lash ink at ~35. That is eyeliner doing its
+job on the lash line, and tightening `inkHi` further would start erasing the wing
+the maintainer accepted. `after-<model>-liner-loupe.png` is regenerated against
+the shipped renderer so the wing can be checked by eye.
+
+**One thing this slice deliberately does not measure.** `hair-blonde` puts a
+fringe across m3's eye which lands on 153 lash-core pixels at up to +100 L. A
+fringe over a lash is hair, not paint, so the pinned spec leaves hair SHAPE at
+each model's own and applies hair COLOUR like any other tool. The completed-look
+*shots* still carry `hair-blonde`, because that is a look a child can build.
+
+### V6 · The pinned bound — where a lash IS, before what colour it is
+
+The bound is now a test: two cases in `tests/glam-art-fidelity.spec.js`
+(`A1 · a completed look puts no white pixel on a lash…` and
+`A1 · the eye cuts are discriminating…`). `window.GlamTT` and
+`tests/glam-tt-scoring.spec.js` are untouched by both.
+
+Naming the geometry was most of the work, because two obvious definitions are
+both wrong and V3 used one of each in turn:
+
+- *"pixels the mascara sprite darkens"* silently excludes the white ones, which
+  are the entire defect.
+- *"pixels the mascara sprite changes, minus an elliptical eyeball"* leaks the
+  sclera's corner tips in, and manufactures 42–60 defective pixels that are not
+  on a lash — the V3 residual.
+
+So the geometry is taken from **`glam.png` itself**: a sprite pixel is lash ink
+when it is opaque and dark, and a canvas pixel joins the mask when at least
+`cover` of what the art puts under it is that ink, mapped through `_irisBox`. The
+only thing "opaque and dark" wrongly catches is the iris and pupil, and those
+come out as a **circle** off `_irisBox`'s own `cx/cy/r` — the same circle
+`_contactCanvas` clips a contact to. A circle is right here and an ellipse was
+wrong for the aperture: the iris really is round, an eye opening really is an
+almond. The sclera, waterline and catchlights need no exclusion — they are pale,
+and pale is not ink.
+
+Nothing in the mask comes from the renderer's own A1 machinery, on purpose: it
+has to be computable against `2f45dfda` too, or "this fails before the fix"
+cannot be shown.
+
+**`cover` is a judgement, so here is the whole curve rather than the one number
+that passes.** Below about 0.75 a canvas pixel is a *blend* of lash and lid — the
+340 px sprite is drawn at ~135 px, so one canvas pixel spans ~2.5 sprite pixels —
+and its luminance is then partly the lid's. The spec asserts at 0.75.
+`tests/_probe-glam-tune3-core.mjs` prints all three.
+
+| cover | white ≥ 190 L (before → after) | brightest lash pixel | worst over bare |
+| --- | --- | --- | --- |
+| **m2** 0.50 | 22 → **0** | 253 → **188.4** | +184.2 → **+65.4** |
+| 0.60 | 11 → **0** | 251.4 → **188.4** | +184.2 → **+52.3** |
+| **0.75** | **10 → 0** | **251.4 → 129.2** | **+184.2 → +33.0** |
+| **m3** 0.50 | 17 → **0** | 250.5 → **168.8** | +189.5 → **+75.4** |
+| 0.60 | 12 → **0** | 250.5 → **159.8** | +189.5 → **+35.4** |
+| **0.75** | **11 → 0** | **250.5 → 129.0** | **+189.5 → +35.4** |
+| **m4** 0.50 | 17 → **0** | 252.5 → **167.1** | +185.9 → **+62.7** |
+| 0.60 | 11 → **0** | 252.5 → **158.1** | +185.9 → **+60.7** |
+| **0.75** | **10 → 0** | **252.5 → 124.0** | **+185.9 → +43.2** |
+
+"before" is `2f45dfda`'s `index.html`, served from the same directory through the
+same hash-verified server, measured by the same probe.
+
+**The bound has both sides**, so a lash that renders as nothing cannot pass.
+Shipped values in brackets:
+
+| | bound | m2 | m3 | m4 |
+| --- | --- | --- | --- | --- |
+| white pixels (≥ 190 L) | `= 0` | 0 | 0 | 0 |
+| brightest lash pixel | `< 150 L` | 129.2 | 129.0 | 124.0 |
+| worst pixel over the bare face | `< +60 L` | +33.0 | +35.4 | +43.2 |
+| lash geometry survives | `> 1200 px` | 2194 | 1645 | 1854 |
+| share rendering as ink | `> 80 %` | 90.7 | 89.4 | 89.2 |
+| mean darker than bare skin | `> 60 L` | 94.6 | 80.1 | 79.9 |
+
+A pixel *can* legitimately come out over the bare face, which is why that bound
+is +60 rather than near zero: the bare face wears the plain eye sprite, whose own
+lashes fall where the glam sprite draws liner ink, so ink-over-ink reads as a
+small lift with nothing wrong.
+
+Three further invariants are pinned so a later change cannot pass by bleaching
+the eye or by re-introducing cause 1 under cover of a tool that darkens it again:
+
+- the `'lash'` rule clears **zero** pixels of `natural.png`, the plain eyeball
+  the maintainer already accepted;
+- after the cut, `glam.png` carries **zero** opaque flat-white pixels outside the
+  eye (1848 shipped before), which is cause 1 pinned at the source — the
+  lash-core mask is "opaque and dark", so the baked highlight is otherwise only
+  visible to it where the downscale smears one into the other;
+- each liner sprite keeps **> 2500** opaque dark pixels (the wing) and **zero**
+  opaque pixels at ≥ 140 L (the lid).
+
+**Both cases fail against `2f45dfda`,** run through the same server with that
+file swapped in, verbatim:
+
+```
+Error: m2 lash cores (2194px): 10 lash pixels are white (≥190 L); brightest 251.4 L
+  expect(received).toBe(expected)  Expected: 0  Received: 10
+
+Error: page.evaluate: TypeError: L._eyeArt is not a function
+```
+
+The second reads as a structural failure because it is: the cuts it audits do not
+exist before this pass.
+
+### V7 · Verification for this slice
+
+- **393 Playwright tests green**, three browsers, against a server hash-verified
+  as serving this worktree (`shasum` of the file and of `curl`'s bytes matched
+  before and after every run; `lsof` showed only this run's `python3
+  http.server` on 8788). 387 before, +2 cases × 3 browsers.
+- `window.GlamTT` **byte-identical**: the engine block hashes
+  `9e478c27d3106d003c2c148bef919b7508263246` on both `2f45dfda` and HEAD, and
+  every hunk in this pass's `index.html` diff starts at line 1632 or later.
+  `git diff 2f45dfda -- apps/games/tests/glam-tt-scoring.spec.js` is empty.
+- **Real-browser playthrough** (`tests/_play-glam-tune2.mjs`): title → texting
+  intro → salon → real-pointer drag on the highlight target → turns → outro. No
+  console errors, no page errors, no failed local requests.
+- **Shots regenerated against the shipped renderer** —
+  `after-<model>-completed.png`, `after-<model>-eye.png` and
+  `after-<model>-liner-loupe.png` for m2/m3/m4. The `before-*` half still comes
+  from `2f45dfda` and is unchanged.
+- One new instrument, not a spec: `tests/_probe-glam-tune3-core.mjs`, which
+  prints the V6 table at all three coverage thresholds and runs against either
+  file because its mask uses nothing from the renderer's A1 machinery.
+
 ### V · Still to do in this pass
 
-- **The pinned lash spec.** The bound is not yet a test. It needs the tighter
-  eyeball exclusion described in V3 before it can be two-sided without baking the
-  leakage into the pass mark.
 - **Finding A2's tuning.** The completed look is measured and photographed but
-  not retuned; the two taste calls above are stated rather than made.
+  not retuned; the two taste calls in V2 — the eyeshadow's reach past the outer
+  socket, and the brow pencil's flat dark plum — are stated rather than made, so
+  the maintainer can rule on them against the shots.
 - **Finding B in its entirety.** The turn indicator is still a full-width card
   above the stage; the stage's sandy bottom band is still dead space.

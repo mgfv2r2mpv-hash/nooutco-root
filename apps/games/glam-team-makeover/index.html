@@ -1654,8 +1654,19 @@ const IRISCFG = { cx:0.5, cy:0.4574, r:0.1471, top:0.3617, cl:[0.44,-0.16,0.22] 
    highlight dark instead would thicken every lash, which is the opposite of what
    Finding A asks for. `seed`/`pale` are fractions of the sprite frame and of the
    8-bit channel; the ellipse centre is IRISCFG's, so there is one source of
-   truth for where the iris is. */
-const LASH_MATTE = { pale:170, alpha:128, seedRx:0.30, seedRy:0.11, irisPad:1.05 };
+   truth for where the iris is.
+
+   `inkLo`/`inkHi` are the second half of the same defect, on the OTHER sprite.
+   The winged liner carries a whole eye, so when mascara is already showing only
+   its INK should go on — and "ink" cannot be "everything that is not flat white".
+   The liner's own LID is opaque skin at luminance 140–180: not white by the
+   min-channel test, but laid over a black lash it repaints it, which is a bright
+   pixel on a lash however it is spelled. So the ink cut now fades by LUMINANCE —
+   full alpha at or below `inkLo`, gone at or above `inkHi` — which subsumes the
+   white test (all channels ≥ 170 ⇒ luminance ≥ 170) and takes the lid with it.
+   A ramp rather than a cliff so the wing keeps its own anti-aliased edge. */
+const LASH_MATTE = { pale:170, alpha:128, seedRx:0.30, seedRy:0.11, irisPad:1.05,
+                     inkLo:110, inkHi:170 };
 
 /* ══ SECOND PASS U2 — the cheekbone highlight's PATH ══
    The highlight used to be one tilted ellipse per cheek. An ellipse has a
@@ -2717,13 +2728,20 @@ class Component extends DCLogic {
     const d=id.data;
     for(let q=0;q<W*H;q++){ const i=q*4;
       const white=Math.min(d[i],d[i+1],d[i+2])>=M.pale;
-      /* 'ink' drops every white pixel at ANY alpha, not only the eye's. Two
-         reasons, both measured: the liner art carries a pale waterline stroke
-         that is an island of its own, and the sclera's ANTI-ALIASED rim is
-         near-white at alpha 8–127 — laid over a black lash that rim alone lifted
-         it by up to +113 luminance. Only the alpha is dropped, so a dark pixel
-         with a soft edge (the wing) keeps its own feathering. */
-      if(cut==='ink'){ if(eye[q]||(d[i+3]>0&&white)) d[i+3]=0; }
+      /* 'ink' keeps only what is DARK, at any alpha — not merely "not flat
+         white". Three things had to go, all measured: the sclera itself; its
+         ANTI-ALIASED rim, near-white at alpha 8–127, which laid over a black
+         lash lifted it by up to +113 L on its own; and the sprite's opaque LID,
+         skin at 140–180 L, which the min-channel white test let through and
+         which repainted every glam lash the liner art does not itself draw
+         (+85 to +110 L on 44–53 lash-core pixels per model). Only the alpha
+         moves, and it moves on a RAMP, so the wing keeps its own feathering
+         instead of gaining a cut edge. */
+      if(cut==='ink'){
+        if(eye[q]) d[i+3]=0;
+        else if(d[i+3]>0){ const L=0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2];
+          if(L>=M.inkHi) d[i+3]=0;
+          else if(L>M.inkLo) d[i+3]=Math.round(d[i+3]*(M.inkHi-L)/(M.inkHi-M.inkLo)); } }
       else if(!eye[q] && d[i+3]>=M.alpha && white) d[i+3]=0; }
     cx.putImageData(id,0,0); return (c[key]=cn); }
 
