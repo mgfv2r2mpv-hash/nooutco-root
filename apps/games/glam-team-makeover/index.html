@@ -1228,7 +1228,7 @@ window.GlamStory = (function () {
              cart: a gold top rail, a warm cream body, and station names set as
              small tracked caps with a hairline running out to the edge. -->
         <div style="{{ toolsColStyle }}">
-          <div class="gtm-scroll" style="flex:1;min-height:0;overflow-y:auto;background:linear-gradient(180deg,#fffaf3 0%,#fdf2f7 100%);border:1px solid #e9d5e0;border-radius:16px;padding:13px;box-shadow:inset 0 3px 0 rgba(217,171,106,.55),var(--shadow-sm)">
+          <div id="gtm-trolley" class="gtm-scroll" style="flex:1;min-height:0;overflow-y:auto;background:linear-gradient(180deg,#fffaf3 0%,#fdf2f7 100%);border:1px solid #e9d5e0;border-radius:16px;padding:13px;box-shadow:inset 0 3px 0 rgba(217,171,106,.55),var(--shadow-sm)">
             <div style="display:flex;align-items:center;gap:7px;padding-bottom:8px;border-bottom:1px solid rgba(217,171,106,.40)">
               <span style="font-size:14px">🛒</span>
               <span style="font-size:11.5px;font-weight:900;letter-spacing:.2em;text-transform:uppercase;color:var(--gtm-plum)">Styling trolley</span>
@@ -1238,12 +1238,17 @@ window.GlamStory = (function () {
               <span style="font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:#7c5a72">{{ paletteHint }}</span>
             </div>
             <div style="display:flex;gap:4px;margin:8px 0 2px;flex-wrap:wrap"><sc-for list="{{ stageChips }}" as="ch" hint-placeholder-count="4"><span style="{{ ch.style }}">{{ ch.label }}</span></sc-for></div>
+            <!-- Vertical flow (tuning fix 3): a shelf with work left is open and
+                 sorted to the top; a settled shelf folds to its header and waits
+                 to be asked back. Spent one-shot tools are not rendered at all. -->
             <sc-for list="{{ palette }}" as="grp" hint-placeholder-count="4">
-              <div style="margin-top:12px">
-                <div style="font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--gtm-plum);margin-bottom:7px;display:flex;align-items:center;gap:6px">{{ grp.icon }} {{ grp.label }}<span style="flex:1;height:1px;background:linear-gradient(90deg,rgba(217,171,106,.75),rgba(217,171,106,0))"></span></div>
-                <div style="display:flex;gap:7px;flex-wrap:wrap">
-                  <sc-for list="{{ grp.options }}" as="opt" hint-placeholder-count="3"><button onClick="{{ opt.handler }}" title="{{ opt.title }}" style="{{ opt.btnStyle }}"><span style="{{ opt.swatchStyle }}">{{ opt.glyph }}</span><span style="font-size:10px;font-weight:700;color:var(--slate-600);text-align:center;line-height:1.15;max-width:78px;min-height:13px">{{ opt.label }}</span></button></sc-for>
-                </div>
+              <div data-shelf="{{ grp.label }}" style="{{ grp.wrapStyle }}">
+                <button onClick="{{ grp.onToggle }}" aria-expanded="{{ grp.expanded }}" style="{{ grp.headStyle }}"><span>{{ grp.icon }}</span><span style="{{ grp.titleStyle }}">{{ grp.label }}</span><span style="{{ grp.rule }}"></span><span style="{{ grp.markStyle }}">{{ grp.mark }}</span></button>
+                <sc-if value="{{ grp.open }}" hint-placeholder-val="{{ true }}">
+                  <div style="{{ grp.optsStyle }}">
+                    <sc-for list="{{ grp.options }}" as="opt" hint-placeholder-count="3"><button onClick="{{ opt.handler }}" title="{{ opt.title }}" style="{{ opt.btnStyle }}"><span style="{{ opt.swatchStyle }}">{{ opt.glyph }}</span><span style="font-size:10px;font-weight:700;color:var(--slate-600);text-align:center;line-height:1.15;max-width:78px;min-height:13px">{{ opt.label }}</span></button></sc-for>
+                  </div>
+                </sc-if>
               </div>
             </sc-for>
           </div>
@@ -1626,6 +1631,10 @@ class Component extends DCLogic {
       settingsOpen:false, methodOpen:false,
       elapsed:0,
       sel, story:this.storyIntro(sel), thread:null, threadStep:0, threadDots:false,
+      /* Trolley shelves the child has re-opened (or folded) by hand, keyed by
+         shelf label. Tri-state: absent = follow the routine's own default (open
+         while the shelf still has work, folded once it is settled). */
+      openGrp:{},
       // engine mirror — the Trial is the source of truth; these exist only to render
       engTurn:0, ttActions:0, ttBudget:0, capToast:'', eToast:'', ePickerOpen:false,
       report:null,
@@ -1659,7 +1668,12 @@ class Component extends DCLogic {
        flip a boundary pass between `independent` and `prompted@…`. */
     this._ttIv=setInterval(()=>this.tickTrial(),250);
     this.paintAvatar(); }
-  componentDidUpdate(){ this.paintAvatar(); this.paintReveal(); this._scrollThread(); }
+  componentDidUpdate(){ this.paintAvatar(); this.paintReveal(); this._scrollThread(); this._scrollTrolley(); }
+  /* The trolley flows top-down, so whenever the set of open shelves changes —
+     a step finishes, the next one opens — the cart returns to the top rather
+     than leaving the child's next options scrolled off below the fold. */
+  _scrollTrolley(){ const k=this._trolleyKey; if(k==null || k===this._trolleyKeyShown) return;
+    this._trolleyKeyShown=k; const el=document.getElementById('gtm-trolley'); if(el) el.scrollTop=0; }
   /* Keep the phone pinned to the newest message, the way a messages app does.
      Only bites once the thread is taller than the screen (390 px, five
      messages); a no-op on every other surface, where the node does not exist. */
@@ -1785,7 +1799,7 @@ class Component extends DCLogic {
     this._trial=new window.GlamTT.Trial(this.ttOpts()); this._charged={};
     this._shotBefore=null; this._shotAfter=null; this._shotOpen=true;
     this.setState({ phase:'ready', sel, model:sel.model, story:this.storyIntro(sel), report:null,
-      ed:this.freshEd(this.cfg().flaws), armed:null, chargedThisTurn:{}, capToast:'', eToast:'', mirror:null,
+      ed:this.freshEd(this.cfg().flaws), armed:null, chargedThisTurn:{}, openGrp:{}, capToast:'', eToast:'', mirror:null,
       settingsOpen:false, engTurn:0, revealReady:false });
     this.syncTT(); }
   go(){ const tr=this._trial; if(!tr) return; tr.go();
@@ -1813,6 +1827,45 @@ class Component extends DCLogic {
     if(opt.ph==='hair') return !this._skinMakeupDone();
     if(opt.ph==='acc') return !(this._skinMakeupDone() && this._hairDone());
     return false; }   // untracked tools (brow shape, brow pencil) stay free
+
+  /* ── TROLLEY FLOW (tuning fix 3) ────────────────────────────────────────────
+     The cart is a working surface, not a catalogue. Three derived reads drive
+     it — none of them stored, so there is no second copy of "what is done":
+
+       · _optFamily / _familySizes — how many tools in this theme share a slot,
+         i.e. how many shades of the same article the child can switch between.
+       · _optSpent — the step this tool performs is taken AND it has no sibling
+         shade, so tapping it again cannot change the client. Wash, Moisturize,
+         Conceal, Contour, Highlight, the liners: they leave the cart for good.
+       · _grpSettled — every tool still on this shelf has had its step taken, so
+         the shelf folds to its header until someone asks for it back.
+
+     Unsettled shelves sort above settled ones, which is what keeps the step the
+     child is actually on at the top of the scroller.
+
+     All of it is the STAGED routine's behaviour. Free play means "all steps
+     open" (its own chip says so) and stays the flat catalogue it has always
+     been — a BT reaching for any station out of order needs every station
+     reachable, and nothing there is out of sequence to move on from. */
+  _optFamily(opt){ return opt.slot || opt.id; }
+  _familySizes(){ const th=this.state.theme; if(this._famTheme===th) return this._fam;
+    const m={}; this.cfg().cats.forEach(g=>g.options.forEach(o=>{ const k=this._optFamily(o); m[k]=(m[k]||0)+1; }));
+    this._famTheme=th; this._fam=m; return m; }
+  /* Has this tool's step been taken? Staged tools answer through the TA gate so
+     every shade of one article settles together (all six blushes are "step 5");
+     untracked and off-routine tools fall back to their own `done` flag. */
+  _optWorkDone(opt){ const ed=this.state.ed;
+    if(opt.step) return this._stepDone(opt.step);
+    if(opt.mech==='patch') return (ed.pimples||[]).every(v=>v>=1);
+    if(opt.mech==='conceal') return (ed.pimples||[]).every(v=>v===2);
+    return !!ed.done[opt.slot||opt.id]; }
+  _optSpent(opt){ return this.state.staged!=='free' && this._optWorkDone(opt) && (this._familySizes()[this._optFamily(opt)]||0)<=1; }
+  _grpSettled(live){ return this.state.staged!=='free' && live.length>0 && live.every(o=>this._optWorkDone(o)); }
+  /* `wasOpen` is what the child can SEE right now (the render already resolved
+     default-vs-override), so the header always does the opposite of what is on
+     screen — never the opposite of a stored value they never set. */
+  toggleGrp(label,wasOpen){ this.setState(s=>{ const next=Object.assign({},s.openGrp||{});
+    next[label]=!wasOpen; return {openGrp:next}; }); }
   _phaseState(){ // {cur:'skin'|'makeup'|'hair'|'acc', done:{skin,makeup,hair}}
     const skin=this._stepDone(1)&&this._stepDone(2)&&this._stepDone(3);
     const makeup=this._skinMakeupDone(); const hair=this._hairDone();
@@ -2030,7 +2083,7 @@ class Component extends DCLogic {
     const sel=this.drawChar(this.state.charLock);
     this.setState({phase:'title',sel,model:sel.model,story:this.storyIntro(sel),report:null,
       thread:null,threadStep:0,threadDots:false,revealReady:false,mirror:null,
-      ed:this.freshEd(this.cfg().flaws),armed:null,chargedThisTurn:{},capToast:'',eToast:'',
+      ed:this.freshEd(this.cfg().flaws),armed:null,chargedThisTurn:{},openGrp:{},capToast:'',eToast:'',
       engTurn:0,ttActions:0,ttBudget:0,cueVisible:false,settingsOpen:false}); }
 
   fmt(sec){ return Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0'); }
@@ -2685,7 +2738,10 @@ class Component extends DCLogic {
     const tintBaseOf=(id)=>{ const hit=ICON_TINT_PREFIX.find(([p])=>id.length>p.length&&id.slice(0,p.length)===p&&/^\d+$/.test(id.slice(p.length))); return hit?hit[1]:''; };
     const HAIR_NUM={ sh_buzz:1,sh_tousled:2,sh_long:3,sh_bob:4,sh_spiky:5,sh_crop:6,sh_pixie:7 };
     const iconUrlOf=(b)=> b ? (typeof b==='string'?b:b.src) : '';
-    const palette=cfg.cats.map(grp=>({ label:grp.label, icon:grp.icon, options:grp.options.filter(opt=>!this._optLocked(opt)).map(opt=>{ const armed=s.armed&&s.armed.id===opt.id;
+    const openGrp=s.openGrp||{};
+    const shelves=cfg.cats.map(grp=>{ const live=grp.options.filter(opt=>!this._optLocked(opt));
+      return { grp, live, settled:this._grpSettled(live) }; });
+    const palette=shelves.map(({grp,live,settled})=>({ label:grp.label, icon:grp.icon, settled, options:live.filter(opt=>!this._optSpent(opt)).map(opt=>{ const armed=s.armed&&s.armed.id===opt.id;
       // "active/used": this option's effect is the current config (so the user sees
       // what's applied) — covers both an action just taken and a live selection.
       const slot=opt.slot, ed=s.ed; let active=false;
@@ -2730,6 +2786,36 @@ class Component extends DCLogic {
       // tooltip — and anything addressing the tool by name — is stable across states.
       return { label:lbl, title:opt.label, glyph, swatchStyle:swatch, handler:locked?(()=>{}):(()=>this.arm(opt)),
         btnStyle:'display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:5px;padding:9px 7px 7px;width:82px;border-radius:13px;cursor:'+(off?'not-allowed':'pointer')+';font-family:inherit;opacity:'+(off?'.45':'1')+';background:'+bg+';border:1.5px solid '+bd+';box-shadow:'+(armed?'0 0 0 3px rgba(106,118,89,.18)':active?'var(--shadow-sm)':'none')+pop }; }) })).filter(grp=>grp.options.length);
+
+    /* Vertical flow: shelves with work left first (so the step the child is on
+       opens at the top of the scroller), settled shelves folded underneath.
+       A settled shelf keeps a slim header — one tap brings its shades back. */
+    const openOf=(g)=> openGrp[g.label]!=null ? !!openGrp[g.label] : !g.settled;
+    const flowed=[...palette.filter(g=>!g.settled), ...palette.filter(g=>g.settled)]
+      .map(g=>Object.assign({},g,{ open:openOf(g) }));
+    // Never leave the working area empty: if every shelf is folded, the first
+    // one comes back open so there is always something to reach for.
+    if(flowed.length && !flowed.some(g=>g.open)) flowed[0].open=true;
+    /* A settled shelf is dressed as a closed drawer of the cart — its own soft
+       panel, a sage ✓ and a chevron — so it reads as "still here, tap to open"
+       rather than as a heading whose contents went missing. An open shelf keeps
+       the hairline heading the trolley has always had. */
+    const HEAD='display:flex;align-items:center;gap:6px;width:100%;text-align:left;background:none;border:none;font-family:inherit;cursor:pointer;font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--gtm-plum)';
+    flowed.forEach(g=>{ const open=g.open, drawer=g.settled&&!open;
+      g.expanded=open?'true':'false';
+      g.onToggle=(()=>this.toggleGrp(g.label,open));
+      g.wrapStyle=drawer
+        ? 'margin-top:7px;padding:5px 9px;border-radius:10px;background:rgba(255,255,255,.62);border:1px solid rgba(217,171,106,.34)'
+        : 'margin-top:'+(g.settled?'10px':'12px');
+      g.headStyle=HEAD+';padding:'+(drawer?'1px 0':'0');
+      g.titleStyle='color:'+(g.settled?'#8d7386':'var(--gtm-plum)');
+      g.rule='flex:1;height:1px;background:linear-gradient(90deg,rgba(217,171,106,'+(g.settled?'.38':'.75')+'),rgba(217,171,106,0))';
+      g.mark=(g.settled?'✓ ':'')+(open?'▾':'▸');
+      g.markStyle='font-size:11px;font-weight:800;letter-spacing:.06em;color:'+(g.settled?'var(--sage-700)':'#c3a878');
+      g.optsStyle='display:flex;gap:7px;flex-wrap:wrap;margin-top:7px'; });
+    // Pin the cart back to the top when the set of open shelves changes, so a
+    // finished step never leaves the next one scrolled off below the fold.
+    this._trolleyKey=flowed.filter(g=>g.open).map(g=>g.label).join('|');
 
     // stage tracker — 4 phase chips (done ✓ / current / future); person only
     let stageChips=[];
@@ -2838,7 +2924,7 @@ class Component extends DCLogic {
         ? 'background:var(--sage-100);border:1px solid var(--sage-200);border-radius:18px 18px 6px 18px'
         : 'background:#fff;border:1px solid var(--border-default);border-radius:18px 18px 18px 6px'),
       mapBanner:s.turnMap==='banner', mapVanity:s.turnMap==='vanity', mapRunway:s.turnMap==='runway',
-      personShow:base==='person', isPet:base==='pet', V, palette, target, runwayTiles, stageChips,
+      personShow:base==='person', isPet:base==='pet', V, palette:flowed, target, runwayTiles, stageChips,
       /* The stage panel is framed as the vanity ALCOVE when the art compositor is
          live — a plum rim, a floor vignette and an outer drop shadow that sits it
          in the room. No gold ring: the backdrop's own mirror is already gold, and

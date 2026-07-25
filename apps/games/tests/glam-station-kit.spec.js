@@ -136,16 +136,18 @@ test.describe('Glam Team Makeover — station kit (refresh)', () => {
   test('every station stocks its shades on the real palette, not just in the data', async ({ page }) => {
     const errors = await stage(page);
 
-    // Rendered buttons, grouped by the station heading they sit under. Walked up
-    // from each tool button (button → its row → the heading before it) rather than
-    // matched on the heading's style, which the browser re-serialises.
+    /* Rendered buttons, grouped by the shelf they sit on. The tuning pass turned
+       each shelf heading into a fold/unfold <button>, so the old walk (button →
+       its row → the heading element before it, sliced out of `textContent`) no
+       longer names a station; every shelf now carries its own `data-shelf`, which
+       is both stable across that markup and self-filtering — a tool button
+       anywhere else on the page has no shelf ancestor. */
     const stocked = await page.evaluate(() => {
       const out = {};
       for (const btn of document.querySelectorAll('button[title]')) {
-        const row = btn.parentElement;
-        const head = row && row.previousElementSibling;
-        if (!head || !/^\s*\S+\s+\S/.test(head.textContent || '')) continue;
-        const label = head.textContent.replace(/^\s*\S+\s*/, '').trim();
+        const shelf = btn.closest('[data-shelf]');
+        if (!shelf) continue;
+        const label = shelf.getAttribute('data-shelf');
         (out[label] = out[label] || []).push(btn.getAttribute('title'));
       }
       return out;
@@ -295,6 +297,154 @@ test.describe('Glam Team Makeover — station kit (refresh)', () => {
     await page.getByTitle(shared[0].label, { exact: true }).click();
     await expect(page.getByRole('button', { name: new RegExp(`✓ ${shared[0].label}$`) })).toBeVisible();
     await expect(page.getByRole('button', { name: new RegExp(`✓ ${shared[1].label}$`) })).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+});
+
+/* ── TUNING fix 3 — the trolley as a working surface ─────────────────────────
+   The maintainer's report: the cart accumulates. Steps that can never be taken
+   again (Wash, Moisturize) stay on the shelf forever, shades the child has long
+   since moved past stay fully expanded, and the option they actually need next
+   ends up scrolled below a wall of dead buttons.
+
+   The staged routine now flows: a shelf whose every step is taken folds to its
+   header, one-shot tools that are already on the client are not rendered at all,
+   and unsettled shelves sort above settled ones so the next step opens at the
+   top of the cart. Free play is deliberately exempt — "all steps open" is what
+   that routine IS, and a BT reaching for an out-of-order station needs every
+   station reachable. That exemption is pinned by the last test here so it stays
+   a decision rather than an oversight. */
+
+/** The shelves as the child sees them, in DOM order. */
+const shelves = (page) => page.evaluate(() => [...document.querySelectorAll('[data-shelf]')].map((box) => ({
+  label: box.getAttribute('data-shelf'),
+  open: box.querySelector('button[aria-expanded]').getAttribute('aria-expanded') === 'true',
+  tools: [...box.querySelectorAll('button[title]')].map((b) => b.getAttribute('title')),
+})));
+
+/** Arm a paint tool and drag it to full coverage — the real pointer path, since
+    what is under test is what the child's own drag leaves behind on the cart. */
+async function paintTool(page, name) {
+  await page.getByTitle(name, { exact: true }).first().click();
+  const zone = page.locator('div[style*="gtm-target"]').first();
+  await expect(zone).toBeVisible();
+  const box = await zone.boundingBox();
+  await page.mouse.move(box.x + 10, box.y + box.height / 2);
+  await page.mouse.down();
+  for (let i = 1; i <= 14; i++) {
+    await page.mouse.move(box.x + 10 + (i * (box.width - 20)) / 14, box.y + box.height / 2);
+  }
+  await page.mouse.up();
+}
+
+/** Fast-forward the client's state to a mid-appointment point: skincare done and
+    all of makeup except the lips. Written straight to `ed` because what is under
+    test is the CART's response to a state, not the route that reached it — the
+    steps themselves are driven for real in the first test below. */
+const throughMakeup = `
+  return new Promise((r) => L.setState((s) => {
+    const ed = JSON.parse(JSON.stringify(s.ed));
+    ed.pimples = [2, 2, 2];
+    for (const k of ['wash','moist','contour','blush','hl','shadow','liner','mascara']) ed.done[k] = true;
+    ed.cov.blush = 1; ed.col.blush = '#f28ba0';
+    ed.cov.shadow = 1; ed.col.shadow = '#a06cc9';
+    return { ed };
+  }, r));`;
+
+test.describe('Glam Team Makeover — the trolley flows (tuning fix 3)', () => {
+  test('a step that cannot be taken twice leaves the cart once it is taken', async ({ page }) => {
+    const errors = await stage(page, { routine: 'on' });
+    await page.getByRole('button', { name: /Go —/ }).click();
+
+    // Opening cart: Wash is the first step of the TA and the only tool on the
+    // skincare shelf that is reachable yet.
+    expect((await shelves(page)).find((s) => s.label === 'Skincare').tools).toEqual(['Wash']);
+
+    await paintTool(page, 'Wash');
+    const afterWash = (await shelves(page)).find((s) => s.label === 'Skincare');
+    expect(afterWash.tools, 'a washed face cannot be washed again — Wash is spent').not.toContain('Wash');
+    expect(afterWash.tools, 'and the next step of the TA is what is offered instead').toContain('Moisturize');
+    await expect(page.getByTitle('Wash', { exact: true })).toHaveCount(0);
+
+    await paintTool(page, 'Moisturize');
+    const afterMoist = (await shelves(page)).find((s) => s.label === 'Skincare');
+    expect(afterMoist.tools).not.toContain('Moisturize');
+    expect(afterMoist.tools, 'the spot steps are what is left of skincare').toEqual(['Treat spots', 'Conceal']);
+    expect(errors).toEqual([]);
+  });
+
+  test('a shelf the child has moved on from folds to a header, and unfolds on a tap', async ({ page }) => {
+    const errors = await stage(page, { routine: 'on' });
+    await page.getByRole('button', { name: /Go —/ }).click();
+    await logic(page, throughMakeup);
+
+    const folded = await shelves(page);
+    const byLabel = Object.fromEntries(folded.map((s) => [s.label, s]));
+
+    // Settled shelves are folded — and folded means GONE from the surface, not
+    // merely dimmed: the shades are not in the DOM to be tapped by accident.
+    for (const label of ['Cheeks & glow', 'Eyes']) {
+      expect(byLabel[label], `${label} should still have a header`).toBeTruthy();
+      expect(byLabel[label].open, `${label} is settled, so it folds`).toBe(false);
+      expect(byLabel[label].tools).toEqual([]);
+    }
+    await expect(page.getByTitle('Shadow violet', { exact: true })).toHaveCount(0);
+
+    // A shelf with work left stays open, and the one-shot tools that ARE spent
+    // (eyeliner, mascara) never come back with it.
+    expect(byLabel['Lips'].open).toBe(true);
+
+    await page.locator('[data-shelf="Eyes"] button[aria-expanded]').click();
+    const opened = (await shelves(page)).find((s) => s.label === 'Eyes');
+    expect(opened.open, 'the header is a re-expander, not a tombstone').toBe(true);
+    expect(opened.tools, 'the shades the child can still switch between come back')
+      .toEqual(['Shadow violet', 'Shadow bronze', 'Shadow rose gold', 'Shadow ocean', 'Shadow moss', 'Shadow midnight']);
+    expect(opened.tools, 'the spent one-shot tools do not').not.toContain('Eyeliner');
+
+    // …and it folds again on a second tap, so the child owns the state.
+    await page.locator('[data-shelf="Eyes"] button[aria-expanded]').click();
+    expect((await shelves(page)).find((s) => s.label === 'Eyes').open).toBe(false);
+    expect(errors).toEqual([]);
+  });
+
+  test('the cart flows top-down — what is still to do sits above what is done', async ({ page }) => {
+    const errors = await stage(page, { routine: 'on' });
+    await page.getByRole('button', { name: /Go —/ }).click();
+    await logic(page, throughMakeup);
+
+    const order = await shelves(page);
+    expect(order.length, 'the cart should be holding both kinds of shelf').toBeGreaterThan(2);
+
+    // No settled shelf may sit above an unsettled one: once a settled shelf is
+    // seen, everything after it is settled too.
+    const settled = order.map((s) => s.tools.length === 0 || !s.open);
+    const firstSettled = settled.indexOf(true);
+    expect(firstSettled, 'something should have settled by mid-appointment').toBeGreaterThan(-1);
+    expect(settled.slice(firstSettled).every(Boolean),
+      `unsettled shelf below a settled one: ${order.map((s) => s.label).join(' → ')}`).toBe(true);
+
+    // The top of the cart is always something the child can act on.
+    expect(order[0].open).toBe(true);
+    expect(order[0].tools.length).toBeGreaterThan(0);
+
+    /* And the cart is pinned back to its top, so the shelf that just opened is
+       not below the fold of a scroller the last step left scrolled down. */
+    expect(await page.evaluate(() => document.getElementById('gtm-trolley').scrollTop)).toBe(0);
+    expect(errors).toEqual([]);
+  });
+
+  test('free play keeps the flat catalogue its own chip promises', async ({ page }) => {
+    const errors = await stage(page, { routine: 'free' });
+    await page.getByRole('button', { name: /Go —/ }).click();
+
+    await paintTool(page, 'Wash');
+    await expect(page.getByTitle('Wash', { exact: true }),
+      'free play is "all steps open" — nothing is out of sequence to move on from').toHaveCount(1);
+
+    await logic(page, throughMakeup);
+    const after = (await shelves(page)).find((s) => s.label === 'Eyes');
+    expect(after.open, 'and no shelf folds itself in free play').toBe(true);
+    expect(after.tools).toContain('Eyeliner');
     expect(errors).toEqual([]);
   });
 });

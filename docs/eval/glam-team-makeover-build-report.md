@@ -1235,7 +1235,7 @@ clinical spine is not in scope and is not touched.
 |---|---|---|
 | 1 | Model selection — remove the child-facing picker, random only, BT lock in Session setup | **done** (T1) |
 | 2 | Texting intro — phone mockup, slower, two-sided typing indicators | **done** (T2) |
-| 3 | Styling trolley — vertical progressive flow, non-repeatables removed, moved-on steps collapsed | *not started* |
+| 3 | Styling trolley — vertical progressive flow, non-repeatables removed, moved-on steps collapsed | **done** (T3) |
 | 4 | Face art — lip liner, eye clip, eyeshadow gradient, blush, highlights | *not started* |
 | 5 | Action effect — lens flare way down | **done** (T5) |
 
@@ -1427,6 +1427,98 @@ exists" was already true before the fix — what was wrong was that it never sto
 so the assertion has to be about the **proportion of the run the dots are down**,
 not about their presence.
 
+### T3. The trolley is a working surface, not a catalogue
+
+**What the maintainer saw.** The right-hand menu only ever grows. Steps that can
+never be taken again — Wash, Moisturize — sit on the shelf for the rest of the
+appointment with a ✓ on them. Shades the child chose ten steps ago stay fully
+expanded, six or seven buttons wide. By mid-appointment the option they actually
+need next is somewhere below the fold of a scroller full of dead buttons.
+
+**Three reads, all derived.** Nothing new is stored about "what is done" — the
+`ed.done` / coverage state the staged TA gate already owns answers all three:
+
+| read | question | answer |
+|---|---|---|
+| `_familySizes()` | how many tools share this slot? | a per-theme count, memoised on `state.theme` |
+| `_optSpent(opt)` | can tapping this again change the client? | its step is taken **and** it has no sibling shade → no |
+| `_grpSettled(live)` | has every tool left on this shelf had its step taken? | `live.every(_optWorkDone)` |
+
+`_optWorkDone` routes staged tools through `_stepDone(opt.step)` rather than their
+own `done` flag, which is what makes all six blushes settle **together** — they are
+one step (step 5), not six. Untracked tools (the brow bar) and the off-routine
+themes fall back to `ed.done[slot||id]`.
+
+**What each read buys.**
+
+- **Spent → not rendered.** Wash, Moisturize, Treat spots, Conceal, Contour,
+  Highlight, Eyeliner, Mascara, Lip liner, Shape brows, Brow pencil are each the
+  only tool on their slot, so once their step is taken they leave the cart
+  entirely. Skincare and the Brow bar therefore *empty out* and their shelves
+  disappear (`.filter(grp => grp.options.length)` already existed).
+- **Settled → folded.** Cheeks & glow, Eyes, Lips, Hair style, Hair color,
+  Earrings, Shirt color, Colored contacts all hold a family of shades, so they
+  never go spent — they fold to a slim drawer with a sage ✓ and a chevron, and a
+  tap brings the shades back. Folded means **gone from the DOM**, not dimmed: a
+  folded shade cannot be tapped by accident, and it is out of the a11y tree.
+- **Unsettled sorts above settled.** `[...notSettled, ...settled]` — so the step
+  the child is on is always the first thing in the cart, and `#gtm-trolley` is
+  pinned back to `scrollTop = 0` whenever the set of open shelves changes.
+
+**The open state is tri-state, on purpose.** `state.openGrp[label]` is `undefined`
+until the child touches a header; the render resolves `undefined` to "open while
+there is work, folded once settled". The header always does the opposite of what is
+**on screen** (`toggleGrp(label, wasOpen)`), never the opposite of a value the
+child never set. A guard keeps the working area from ever being empty: if every
+shelf ends up folded, the first one comes back open.
+
+**Free play is deliberately exempt.** `staged === 'free'` short-circuits all three
+reads and the cart stays the flat catalogue it has always been. That is what the
+routine *is* — its own chip says "all steps open" — and a BT reaching for an
+out-of-order station needs every station reachable. The last test in the new
+describe block pins the exemption so it stays a decision rather than an oversight.
+
+**Before / after** (`docs/eval/shots/glam-tune/`, desktop / tablet / phone):
+
+| moment | before | after |
+|---|---|---|
+| the cart as the appointment opens | `trolley-open-before-*.png` | `trolley-open-after-*.png` |
+| a few steps in — skincare taken, most of makeup taken | `trolley-mid-before-*.png` | `trolley-mid-after-*.png` |
+| a settled shelf asked back open | `trolley-reopen-before-*.png` | `trolley-reopen-after-*.png` |
+
+At `trolley-mid-*-desktop.png` the difference is the whole complaint: **before**,
+seven ✓-ed dead buttons across Skincare (Wash, Moisturize, Treat spots, Conceal)
+and Cheeks & glow (Contour, Blush rose, …) with the next step scrolled off the
+bottom; **after**, Brow bar and Lips open at the top with three live tools between
+them, and Cheeks & glow and Eyes folded to two drawer headers underneath.
+`trolley-reopen-after-desktop.png` is the same state with Eyes tapped back open —
+its six shadow shades return, ✓ on the one that is on the client, and the spent
+Eyeliner and Mascara do not come back with them.
+
+**A side effect worth naming: the client's portrait is now a steadier size.** The
+stage panel and the trolley are the two children of one `align-items:stretch` row
+with no definite height, so the taller of the two has always set the row. Before
+this change that meant the panel *grew* from 574 px to 662 px as stations unlocked
+and then shrank again; now the cart stays short and the portrait holds ~574 px
+across the appointment. Not what the fix was for, but it is the direction you want.
+
+**Tests** — `tests/glam-station-kit.spec.js`, new describe block, 4 × 3 browsers:
+
+| test | what would have to break for it to fail |
+|---|---|
+| a step that cannot be taken twice leaves the cart once it is taken | a real drag over the face completes Wash; Wash must be gone from the DOM and Moisturize offered in its place, then the same for Moisturize |
+| a shelf the child has moved on from folds to a header, and unfolds on a tap | settled shelves report `aria-expanded="false"` **and hold zero tool buttons**; a tap returns exactly the six shadow shades and not the spent Eyeliner; a second tap folds it again |
+| the cart flows top-down — what is still to do sits above what is done | once the first settled shelf is seen, everything below it is settled too; the top shelf is open and non-empty; `#gtm-trolley.scrollTop === 0` |
+| free play keeps the flat catalogue its own chip promises | Wash survives its own application, and no shelf folds itself |
+
+One existing test was **intentionally adjusted**: `every station stocks its shades
+on the real palette` used to name a station by walking *button → its row → the
+element before it* and slicing the leading glyph off `textContent`. Shelf headings
+are now `<button aria-expanded>`s whose text ends in `✓ ▸`, so that walk no longer
+names a station. Each shelf now carries `data-shelf="<label>"` and the test reads
+`btn.closest('[data-shelf]')` — stable across the markup, and self-filtering, since
+a tool button anywhere else on the page has no shelf ancestor.
+
 ### T5. The action flare, way down
 
 **What the maintainer saw.** Every action washed the stage out. This is the R5
@@ -1525,21 +1617,70 @@ that makes this fix regression-proof.
   the `after` pass at 1280×860, 834×1112 and 390×844.
 - `git status` shows changes only under `apps/games/` and `docs/`.
 
+### T · Verification (slice T3)
+
+- **Full suite: 366 passed** across chromium / firefox / webkit — 354 after T2 plus
+  4 new tests × 3 browsers. Clean full run, no retries, 2.3 min.
+- **A pre-existing environmental flake was identified along the way, and it is not
+  this change.** Two of five full runs failed exactly one test each, on a *different*
+  spec every time (`glam-station-kit`, `glam-tt-game`, `glam-art-fidelity`,
+  `glam-outro-reveal`) and always on firefox. The captured error is always the same
+  shape: `Cross-Origin Request Blocked … fonts.gstatic.com … Status code: (null)` /
+  `downloadable font: download failed`. `apps/games/tailwind.css` `@import`s
+  Atkinson Hyperlegible from Google Fonts, firefox reports a failed webfont download
+  as a **console error**, and every glam spec asserts `expect(errors).toEqual([])` —
+  so under 15-way parallelism a CDN connection reset fails whichever spec happens to
+  be booting. The URL itself answers 200 in ~0.1 s from the same machine, and
+  `--repeat-each=4` on the affected file passes 36/36. Left alone: the fix is either
+  self-hosting the font (`apps/games/tailwind.css`, outside this pass's file scope)
+  or teaching the specs' console watchers to ignore `fonts.g*.com`, which would be a
+  change to a guard this pass is supposed to be respecting, not relaxing.
+- **`window.GlamTT` byte-identical** — the whole
+  `window.GlamTT = (function …})();` block, 25 486 bytes, hashes
+  `7cc668082a84d1bec6145b99a31c240b00726645ada5a69a491d23e58cf20de4` (sha-256) at
+  both `HEAD` and the working tree. `git diff --exit-code tests/glam-tt-scoring.spec.js`
+  is empty. Every diff hunk in `index.html` starts at line 1231 or later — the
+  engine region is not merely equal, it was never touched.
+- **Played the child's route** — Start → the texting thread → Open the salon →
+  Go → a real pointer drag over the face — at 1280×900: Wash completes, leaves the
+  cart, and Moisturize takes its place, then the run carries through six turns to
+  the outro's two-axis close and the photo booth. **Console clean** — zero console
+  errors and zero page errors across the whole route.
+- **Console clean at all three widths** — `tests/_shots-glam-tune-trolley.mjs`
+  exits non-zero on any console or page error and exited clean on both the `before`
+  and the `after` pass at 1280×860, 834×1112 and 390×844.
+- No child-facing string was added or changed by this slice: the shelf headers
+  render the station labels the trolley has always shown (`Skincare`, `Eyes`,
+  `Lips`, …) plus a ✓ and a chevron. No numbers, no PHI, no claim about the client.
+- `git status` shows changes only under `apps/games/` and `docs/`.
+
 ### T · Deferred / still to do in this pass
 
-- **Fixes 3 and 4 are not started** — the trolley's vertical progressive flow, and
-  the five face-art fixes (lip liner artifacts, eye-colour clipping past the iris
-  and waterline, patchy eyeshadow gradient, over-circular blush, oversized
-  highlights). Each needs its own before/after pair under `shots/glam-tune/`.
+- **Fix 4 is not started** — the five face-art fixes (lip liner artifacts, eye-colour
+  clipping past the iris and waterline, patchy eyeshadow gradient, over-circular
+  blush, oversized highlights). Each needs its own before/after pair under
+  `shots/glam-tune/`.
+- **The folded shelves have no motion.** Folding and unfolding is an instant
+  mount/unmount. A height transition is not compositor-friendly and a
+  `transform: scaleY` on a variable-height shade grid distorts the buttons, so it
+  was left alone rather than done badly. A cross-fade on `opacity` would be the
+  honest version if it turns out to be wanted.
+- **Free play is exempt from the flow** (see T3). If the maintainer wants the
+  progressive cart there too, the reads are already written — only the
+  `staged !== 'free'` guard in `_optSpent` / `_grpSettled` would come out, plus the
+  ~20 free-play assertions in `glam-tt-game.spec.js` that re-tap Eyeliner and
+  Mascara across turns to spend actions would need re-routing onto shade families.
 - **The phone mockup is a fixed portrait device at every width.** At 390 px it is
   a phone drawn inside a phone, 20 px from each edge. It reads fine and it is the
   honest presentation of "somebody's handset", but a landscape-tablet layout that
   put the device beside a salon-counter still life would use the space better. Out
   of scope here.
 - **The phone stage still crops the client's head** at 390 px once the page is
-  scrolled to the trolley (visible in `surface-no-model-chips-after-phone.png`).
-  Pre-existing, not introduced here, and out of scope for T1/T5 — worth folding
-  into fix 3, since that slice is already re-laying-out the working area.
+  scrolled to the trolley (visible in `surface-no-model-chips-after-phone.png` and
+  `trolley-mid-after-phone.png`). Pre-existing, not introduced here. T3 shortened
+  the cart, which reduces how far a 390 px page has to scroll, but the stage panel
+  is still taller than the fold — a real fix means a sticky/condensed stage on
+  narrow viewports, which is a layout change rather than a tuning one.
 - **The BT Character lock's `<option>` labels are `Lock: model 2 / 3 / 4`.** They
   are BT-facing so they carry no congruence risk, but they name an art asset rather
   than a client. Harmless; a nicer label would be a separate change.
