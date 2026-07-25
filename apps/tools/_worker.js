@@ -148,36 +148,54 @@ export default {
   },
 };
 
+// Repeats of an identical tool+message are counted rather than emailed. The
+// first mails immediately; after that only these thresholds do, each carrying
+// the running count. A single email cannot report a count that has not happened
+// yet, so frequency arrives by escalation instead of by delaying the first
+// alert — which matters because the clinician is told to make contact if it
+// happens again, and the plain dedupe would have discarded exactly that repeat.
+const ERROR_ESCALATE_AT = [5, 25, 100];
+
 // Email an operational error to the admin, so failures are seen even if no user
-// reports them. Bounded against flooding by (a) a per-message dedupe (one email per
-// identical tool+message per hour) and (b) a global hourly budget. Never throws.
-async function notifyError(env, tool, message, meta) {
+// reports them. Bounded against flooding by (a) a per-message occurrence counter
+// that only mails at the escalation thresholds and (b) a global hourly budget.
+// Never throws.
+async function notifyError(env, tool, message, meta, diagnostics) {
   try {
     if (!env.RESEND_API_KEY) return;
     const msg = (message || "").toString().slice(0, 2000);
     if (!msg) return;
 
+    let occurrence = 1;
     if (env.SUGGEST_DUPES) {
-      // Per-message dedupe.
+      // Per-message occurrence count, on a one-hour sliding window.
       const dedupeKey = "errmail:" + (await sha256Hex((tool || "") + "|" + msg));
-      if (await env.SUGGEST_DUPES.get(dedupeKey)) return;
+      occurrence = parseInt((await env.SUGGEST_DUPES.get(dedupeKey)) || "0", 10) + 1;
+      await env.SUGGEST_DUPES.put(dedupeKey, String(occurrence), { expirationTtl: 3600 });
+      if (occurrence > 1 && !ERROR_ESCALATE_AT.includes(occurrence)) return;
+
       // Global hourly budget so a flood of distinct messages can't email-bomb.
       const hour = new Date().toISOString().slice(0, 13); // YYYY-MM-DDTHH
       const budgetKey = "errmail:budget:" + hour;
       const used = parseInt((await env.SUGGEST_DUPES.get(budgetKey)) || "0", 10);
       if (used >= 30) return;
-      await env.SUGGEST_DUPES.put(dedupeKey, "1", { expirationTtl: 3600 });
       await env.SUGGEST_DUPES.put(budgetKey, String(used + 1), { expirationTtl: 3600 });
     }
 
     const toEmail = env.SUGGEST_TO_EMAIL || "feedback@nooutco.me";
+    const diagLines = diagnostics
+      ? Object.keys(diagnostics).map((k) => `  ${k}: ${diagnostics[k]}`)
+      : [];
     const text = [
       `Tool: ${tool || "(unknown)"}`,
       `Time: ${new Date().toISOString()}`,
+      occurrence > 1 ? `Occurrences: ${occurrence} in the past hour` : `Occurrences: 1 (first this hour)`,
       meta ? `Context: ${meta}` : null,
       ``,
       `Error:`,
       msg,
+      diagLines.length ? `\nDiagnostics (structural only — no note content):` : null,
+      ...diagLines,
     ].filter((l) => l !== null).join("\n");
     await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -185,7 +203,7 @@ async function notifyError(env, tool, message, meta) {
       body: JSON.stringify({
         from: "No Outcome ABA <noreply@nooutco.me>",
         to: [toEmail],
-        subject: `[Error] ${tool || "notes"} — ${msg.slice(0, 60)}`,
+        subject: `[Error${occurrence > 1 ? ` ×${occurrence}` : ""}] ${tool || "notes"} — ${msg.slice(0, 60)}`,
         text,
       }),
     });
@@ -208,11 +226,38 @@ async function handleErrorReport(request, env) {
   try { body = await request.json(); }
   catch { return jsonRes(400, { error: "Invalid request." }); }
 
-  const { message, tool } = body;
+  const { message, tool, diagnostics } = body;
   if (!message) return jsonRes(400, { error: "Missing message." });
 
-  await notifyError(env, tool || "notes", message, authed ? "client (authenticated)" : "client (unauthenticated)");
+  await notifyError(
+    env,
+    tool || "notes",
+    message,
+    authed ? "client (authenticated)" : "client (unauthenticated)",
+    sanitizeDiagnostics(diagnostics)
+  );
   return jsonRes(200, { ok: true });
+}
+
+// PRIVACY: the diagnostics bag comes from the browser and is echoed into an
+// email, so it is whitelisted rather than trusted — known keys only, scalars
+// only, each capped. Every permitted key is structural (stop reason, lengths,
+// parser position); none can carry note content.
+const DIAGNOSTIC_KEYS = [
+  "stage", "status", "model", "stopReason",
+  "rawChars", "sliceChars", "outputTokens", "braceMatch", "parseError",
+];
+
+function sanitizeDiagnostics(d) {
+  if (!d || typeof d !== "object" || Array.isArray(d)) return null;
+  const out = {};
+  for (const k of DIAGNOSTIC_KEYS) {
+    const v = d[k];
+    if (v === null || v === undefined || v === "") continue;
+    if (typeof v === "object") continue;
+    out[k] = String(v).slice(0, 200);
+  }
+  return Object.keys(out).length ? out : null;
 }
 
 // User-initiated error report from the floating ⚠️ button on tool pages.

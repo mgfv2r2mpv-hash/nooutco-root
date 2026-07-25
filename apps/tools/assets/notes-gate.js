@@ -53,10 +53,63 @@
     var timer = setTimeout(function () { ctrl.abort(); }, ms);
     return fetch(url, Object.assign({}, opts, { signal: ctrl.signal }))
       .catch(function (e) {
-        if (e && e.name === "AbortError") throw new Error(timeoutMsg);
+        if (e && e.name === "AbortError") throw userError(timeoutMsg);
+        // Network-level failure (offline, DNS, blocked). The raw message is
+        // "Failed to fetch", which tells a clinician nothing — but the situation
+        // is one they can act on, so it stays visible rather than being masked.
+        if (e instanceof TypeError) throw userError("Couldn't reach the server. Check your connection and try again.");
         throw e;
       })
       .finally(function () { clearTimeout(timer); });
+  }
+
+  /* ──────────────────── Error classification ──────────────────── */
+
+  // Two classes of failure, deliberately separated.
+  //
+  // A *user-facing* error is one a clinician can act on — log in again, retry,
+  // ask for access. Its message is written for them, so it is shown verbatim to
+  // everyone.
+  //
+  // An *internal* error is a defect. Its message is engineering detail, so
+  // non-admins see GENERIC_ERROR while the real message plus structural
+  // diagnostics are filed as an internal ticket instead. Before this split a raw
+  // JSON.parse SyntaxError was rendered straight into the note tool's error line,
+  // and nothing was recorded about why it threw.
+  var GENERIC_ERROR = "Something went wrong. Please try again — if it happens again, contact your administrator.";
+
+  function userError(message) {
+    var e = new Error(message);
+    e.userFacing = true;
+    return e;
+  }
+
+  // `diagnostics` is structural only — stop reason, lengths, parser position.
+  // Never note content: model output is clinical prose even after scrubbing.
+  function internalError(message, diagnostics) {
+    var e = new Error(message);
+    e.userFacing = false;
+    e.diagnostics = diagnostics || null;
+    return e;
+  }
+
+  // Compact one-line rendering of a diagnostics bag, shared by the admin's
+  // on-screen message and the internal ticket.
+  function diagnosticLine(d) {
+    return Object.keys(d)
+      .filter(function (k) { return d[k] !== null && d[k] !== undefined && d[k] !== ""; })
+      .map(function (k) { return k + "=" + d[k]; })
+      .join(" · ");
+  }
+
+  // What the UI renders for a caught error. Anything not explicitly marked
+  // user-facing is treated as internal — an unrecognized throw fails closed to
+  // the generic message rather than leaking whatever it happened to say.
+  function displayError(e) {
+    if (e && e.userFacing) return e.message || GENERIC_ERROR;
+    if (!isAdmin()) return GENERIC_ERROR;
+    var msg = (e && e.message) || GENERIC_ERROR;
+    return e && e.diagnostics ? msg + " [" + diagnosticLine(e.diagnostics) + "]" : msg;
   }
 
   /* ───────────────────────── Auth ───────────────────────── */
@@ -121,10 +174,18 @@
       return JSON.parse(atob(tok.split(".")[0].replace(/-/g, "+").replace(/_/g, "/")));
     } catch (e) { return null; }
   }
+  // Drives whether a raw error message is shown on screen. The token is signed
+  // and the server re-checks every call, so a forged "admin" payload reveals
+  // engineering detail to whoever forged it and nothing more.
+  function isAdmin() {
+    var p = tokenPayload();
+    if (!p || (p.exp && p.exp * 1000 < Date.now())) return false;
+    return p.role === "admin";
+  }
   function canUseTool(toolId) {
     var p = tokenPayload();
     if (!p || (p.exp && p.exp * 1000 < Date.now())) return false;
-    if (p.role === "admin") return true;
+    if (isAdmin()) return true;
     return Array.isArray(p.tools) && p.tools.indexOf(toolId) !== -1;
   }
 
@@ -150,10 +211,10 @@
         var data;
         try { data = JSON.parse(raw); }
         catch (e) {
-          throw new Error("The login service is unreachable (a security check blocked the request). Please retry, or contact the administrator if it persists.");
+          throw userError("The login service is unreachable (a security check blocked the request). Please retry, or contact the administrator if it persists.");
         }
         if (!res.ok || !data.token) {
-          throw new Error(data && data.error ? data.error : "Login failed.");
+          throw userError(data && data.error ? data.error : "Login failed.");
         }
         setToken(data.token);
         syncNonPii();
@@ -315,18 +376,51 @@
   }
 
   function parseNoteResponse(res) {
-    if (res.status === 401) { setToken(""); throw new Error("Session expired — please log in again."); }
+    if (res.status === 401) { setToken(""); throw userError("Session expired — please log in again."); }
     if (res.status === 403) {
       return res.json().then(function (data) {
-        throw new Error((data && data.error) || "Your access doesn't include this tool.");
+        throw userError((data && data.error) || "Your access doesn't include this tool.");
       });
     }
     return res.json().then(function (data) {
-      if (!res.ok) throw new Error("API error " + res.status + ": " + (data && data.error ? data.error : res.statusText));
+      if (!res.ok) {
+        throw internalError(
+          "API error " + res.status + ": " + (data && data.error ? data.error : res.statusText),
+          { stage: "http", status: res.status }
+        );
+      }
       var raw = (data.content || []).map(function (b) { return b.text || ""; }).join("");
+      // Structural only, never note content. This is enough to tell the two
+      // failure modes apart: a response truncated at the token cap
+      // (stopReason=max_tokens, sliceChars near the limit) versus one the model
+      // simply malformed, where parseError names the offending position.
+      var diag = {
+        stage: "parse",
+        model: data.model || null,
+        stopReason: data.stop_reason || null,
+        rawChars: raw.length,
+        outputTokens: (data.usage && data.usage.output_tokens) || null,
+      };
+      // Greedy first-{ to last-} slice: tolerant of a stray preamble, but it also
+      // means a brace anywhere in the model's prose can start the slice off the
+      // JSON entirely. Recorded so a bad slice is distinguishable from bad JSON.
       var match = raw.match(/\{[\s\S]*\}/);
-      if (!match) throw new Error("No JSON found in response. Try again.");
-      return { parsed: JSON.parse(match[0]), rawText: raw, usage: data.usage || null };
+      if (!match) {
+        diag.braceMatch = false;
+        throw internalError("No JSON object found in the model response.", diag);
+      }
+      diag.sliceChars = match[0].length;
+      try {
+        return { parsed: JSON.parse(match[0]), rawText: raw, usage: data.usage || null };
+      } catch (err) {
+        diag.parseError = (err && err.message) || "unknown";
+        throw internalError(
+          data.stop_reason === "max_tokens"
+            ? "Model output hit the token cap mid-JSON — raise maxTokens for this tool."
+            : "Model returned malformed JSON.",
+          diag
+        );
+      }
     });
   }
 
@@ -697,8 +791,12 @@
     logout: logout,
     token: getToken,
     apiUrl: apiUrl,
+    isAdmin: isAdmin,
     generateNote: generateNote,
     generateConversation: generateConversation,
+    // Error rendering — callers pass the caught error, never e.message, so the
+    // user-facing/internal split is applied in one place.
+    displayError: displayError,
     // Certified-non-PII store — localStorage cache + KV server backing.
     nonPii: { load: loadNonPii, saveTerm: saveNonPiiTerm, clear: clearNonPii, sync: syncNonPii },
     // PII candidate capture — reports bare scrubbed words to the admin review queue.
