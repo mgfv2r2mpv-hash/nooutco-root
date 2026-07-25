@@ -1685,6 +1685,10 @@ const EYECFG  = { m2:{s:1.72,dx:0}, m3:{s:1.85,dx:0.22}, m4:{s:1.62,dx:0.15} };
 const EYECFG_D = {s:1.68,dx:0};
 const BROWCFG = { m2:{wf:1.3,dx:0,dy:1.65}, m3:{wf:1.3,dx:0,dy:1.75}, m4:{wf:1.3,dx:0,dy:1.5} };
 const BROWCFG_D = {wf:1.3,dx:0,dy:1.75};
+/* A2. How dark the brow tint is allowed to go, as a fraction of the hair swatch:
+   `floor` is what a pure-black sprite pixel becomes, `span` how much the sprite's
+   own shading is worth on top. See `_browTint` for why the floor moved. */
+const BROW_TINT = { floor:0.60, span:0.55 };
 const EARCFG  = { m2:{lx:0.20,rx:0.80,y:1.35}, m3:{lx:0.235,rx:0.765,y:1.72}, m4:{lx:0.225,rx:0.775,y:1.35} };
 const EARCFG_D = {lx:0.185,rx:0.815,y:1.35};
 /* T4b. Where the IRIS actually is inside the eye sprite frame, so a coloured
@@ -2819,8 +2823,22 @@ class Component extends DCLogic {
       else if(!eye[q] && d[i+3]>=M.alpha && white) d[i+3]=0; }
     cx.putImageData(id,0,0); return (c[key]=cn); }
 
-  // Recolour a brow sprite to the hair hue (tint × luminance): keeps the ink's darkest core dark
-  // and the softer fill hair-toned, so a black m4 brow reads as the hair colour without going flat.
+  /* Recolour a brow sprite to the hair hue (tint × luminance): keeps the ink's darkest core dark
+     and the softer fill hair-toned, so a black m4 brow reads as the hair colour without going flat.
+
+     A2. `k` used to floor at 0.42, and on a sprite whose fill is ONE solid colour
+     — which m4's shaped brow is — the floor is then the whole brow. Measured on
+     the completed look with berry hair, 67 % of m4's pencilled brow came out at
+     exactly 0.42 × berry (42.2 luminance) against hair at 104: not a brow a shade
+     deeper than the hair, a near-black plum bar drawn over the face. That is the
+     "flat dark plum" of V2 and it is the heaviest thing on the finished client.
+
+     The floor moves to 0.60 and the span stays 0.55, clamped — so the darkest ink
+     lifts 43 % while a sprite that HAS its own shading keeps every bit of it
+     (0.42+0.58L and 0.60+0.55L only diverge below L≈0.5, which is ink). A brow
+     that reads deeper than the hair is the point; one that reads as ink is not.
+     Where the level sits inside "deeper than the hair" is a judgement — see the
+     report's X2, and the a2before/a2after loupes it cites. */
   _browTint(src,hex){ const rec=this._img(src); if(!rec.ok) return null;
     const key=src+'|'+hex; const c=this._browtc||(this._browtc={}); if(c[key]) return c[key];
     const im=rec.img, W=im.naturalWidth||im.width, H=im.naturalHeight||im.height;
@@ -2828,7 +2846,7 @@ class Component extends DCLogic {
     cx.drawImage(im,0,0,W,H); let id; try{ id=cx.getImageData(0,0,W,H); }catch(e){ return null; }
     const d=id.data, [tr,tg,tb]=this._hex(hex);
     for(let i=0;i<d.length;i+=4){ if(d[i+3]<8) continue;
-      const L=(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2])/255, k=0.42+0.58*L;
+      const L=(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2])/255, k=Math.min(1, BROW_TINT.floor + BROW_TINT.span*L);
       d[i]=tr*k; d[i+1]=tg*k; d[i+2]=tb*k; }
     cx.putImageData(id,0,0); c[key]=cn; return cn; }
 

@@ -1333,4 +1333,126 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
     }
     expect(errors, `console errors: ${errors.join(' | ')}`).toEqual([]);
   });
+
+  /* ── THIRD PASS A2 — the completed look must not be overdone ────────────────
+     index.html states the intent itself: brows "default-MATCH the hair colour
+     (and follow a recolour)". `_browTint` implements that as tint × luminance
+     with a FLOOR — what a pure-black sprite pixel becomes. At 0.42 the floor was
+     most of the brow on a sprite whose fill is one solid colour, which m4's
+     shaped brow is: 67 % of m4's pencilled brow rendered at exactly 0.42 × berry
+     (42.2 luminance) with the hair it matches at 104. That is a near-black plum
+     bar drawn on the face, and on the completed look it is the heaviest thing
+     there — the "flat dark plum" of the report's V2.
+
+     This case is deliberately two-sided. Lightening a brow until it disappears
+     would satisfy any upper bound on its own, so the brow also has to stay
+     deeper than the hair and keep its contrast against the skin around it.
+
+     Everything here is measured off the completed look through the renderer's
+     own `_artZones().brows` — the brow sprite's own drawn box — and the mask is
+     the pixels the PENCIL MOVES rather than a luminance threshold. A threshold
+     mask would shrink the moment the ink is lightened, which is exactly the
+     change being graded; the footprint is dominated by the cleaned→shaped SHAPE
+     change and holds still (2826→2807, 1805→1994, 3203→3169 px). */
+  test('A2 · the pencilled brow reads as the hair it matches, not as ink', async ({ page }) => {
+    test.setTimeout(180000);
+    const errors = await stage(page);
+
+    const rows = await logic(page, `return (async () => {
+      ${HELPERS}
+      const lum = (d,i) => 0.2126*d[i] + 0.7152*d[i+1] + 0.0722*d[i+2];
+      const pctile = (idx, img, p) => { if(!idx.length) return 0;
+        const v = idx.map(i => lum(img.data,i)).sort((a,b)=>a-b);
+        return +v[Math.min(v.length-1, Math.floor(p*v.length))].toFixed(1); };
+      const W = cv.width, H = cv.height;
+      const out = [];
+      for (const m of window.GlamStory.MODELS) {
+        await setModel(m);
+        /* Pin the blemish layout for every frame in the comparison — freshEd
+           seeds it off Math.random() and a spot that moved reads as paint. */
+        await setEd((ed) => { ed.spotSeed = 0.371; });
+        /* The model's NATIVE hair shape. hair-blonde drops a fringe over m3's
+           brow, and hair over a brow is hair, not pencil. Hair COLOUR is set,
+           because "matches the hair" is the claim under test. */
+        await setEd(${COMPLETED});
+        const withP = await settle();
+        await setEd((ed) => { ed.cov.pencil = 0; ed.cov.brows = 0; });
+        const bushy = await settle();
+        await setEd((ed) => { ed.cov.pencil = 1; ed.cov.brows = 1; });
+
+        const bz = L._artZones().brows;
+        const x0=Math.max(0,Math.round(bz.l/100*W)), x1=Math.min(W,Math.round((bz.l+bz.w)/100*W)),
+              y0=Math.max(0,Math.round(bz.t/100*H)), y1=Math.min(H,Math.round((bz.t+bz.h)/100*H));
+        /* Which pixels are the brow, in two steps that each rule out one
+           impostor.
+             · anything the BROW TOOLS move between the untouched bushy brow and
+               the pencilled one is brow, and hair is not — hair is identical in
+               both frames, so a temple strand inside the box drops out. (The
+               pencil alone is not enough: on m3 the shaped and cleaned sprites
+               nearly coincide and only 435 px move.)
+             · of those, the INK is the dark part. Skin the pencil UNCOVERED is
+               in the first set too, and skin inside a mask called "ink" is what
+               would make a lightened brow measure darker than it is.
+           The dark cut is taken against the skin around it rather than as a
+           fixed number, and it has ~100 L of headroom (the assertion below pins
+           the ink 30+ L under the skin, shipped 77–112), so it does not move
+           when the ink is lightened by 17. */
+        const skinRef0 = (() => { const v=[];
+          for(let y=y0;y<y1;y++) for(let x=x0;x<x1;x++){ const i=(y*W+x)*4;
+            if(withP.data[i+3] >= 200) v.push(lum(withP.data,i)); }
+          v.sort((a,b)=>a-b); return v.length ? v[Math.floor(0.60*v.length)] : 0; })();
+        const ink=[], box=[];
+        for(let y=y0;y<y1;y++) for(let x=x0;x<x1;x++){ const i=(y*W+x)*4;
+          if(withP.data[i+3] < 200) continue;
+          box.push(i);
+          const moved = Math.abs(withP.data[i]-bushy.data[i]) + Math.abs(withP.data[i+1]-bushy.data[i+1])
+                      + Math.abs(withP.data[i+2]-bushy.data[i+2]);
+          if(moved > 12 && lum(withP.data,i) <= skinRef0 - 40) ink.push(i); }
+
+        /* The hair proper: pixels the hair-colour tool moves, taken OUTSIDE the
+           brow band so the brows it also tints cannot be compared to themselves. */
+        await setEd((ed) => { ed.col.hair = null; });
+        const native = await settle();
+        await setEd((ed) => { ed.col.hair = 'berry'; });
+        const berry = await settle();
+        const hair=[];
+        for(let y=0;y<H;y++){ if(y>=y0 && y<=y1) continue;
+          for(let x=0;x<W;x++){ const i=(y*W+x)*4;
+            if(berry.data[i+3] < 200) continue;
+            const d = Math.abs(berry.data[i]-native.data[i]) + Math.abs(berry.data[i+1]-native.data[i+1])
+                    + Math.abs(berry.data[i+2]-native.data[i+2]);
+            if(d > 12) hair.push(i); } }
+
+        out.push({ model:m, inkPx:ink.length, hairPx:hair.length,
+          inkFloor: pctile(ink, withP, 0.05), inkMid: pctile(ink, withP, 0.50),
+          hairMid: pctile(hair, withP, 0.50), skinMid: pctile(box, withP, 0.60) });
+      }
+      return out;
+    })();`);
+
+    const roster = await page.evaluate(() => window.GlamStory.MODELS);
+    expect(rows.length).toBe(roster.length);
+    for (const r of rows) {
+      const at = `${r.model} brow ink (${r.inkPx}px)`;
+      expect(r.inkPx, `${at}: the pencil moved almost nothing — the mask is wrong`).toBeGreaterThan(800);
+      expect(r.hairPx, `${r.model}: only ${r.hairPx} hair pixels found`).toBeGreaterThan(5000);
+
+      /* ── UPPER: the defect. How dark the darkest ink is ALLOWED to be, as a
+            fraction of the hair it matches. Shipped 0.60 / 0.61 / 0.57; against
+            both 2f45dfda and the pre-A2 build, 0.46 / 0.45 / 0.41 — every model
+            failed, m4 hardest, and the mask moved by under 3 % between them. ── */
+      const ratio = r.inkFloor / r.hairMid;
+      expect(ratio, `${at}: the darkest ink is ${r.inkFloor} L against hair at ${r.hairMid} L (${ratio.toFixed(2)}× — a bar of ink, not a brow a shade deeper than the hair)`)
+        .toBeGreaterThan(0.53);
+
+      /* ── LOWER: a brow lightened until it stops being a brow must not pass ── */
+      // it still has to read DEEPER than the hair (shipped 0.58–0.79×)…
+      expect(r.inkMid / r.hairMid, `${at}: the brow's mid tone ${r.inkMid} L is not deeper than the hair's ${r.hairMid} L`)
+        .toBeLessThan(0.92);
+      // …and still stand off the skin it is drawn on (shipped 64–76 L below it).
+      expect(r.skinMid - r.inkMid, `${at}: the brow is only ${(r.skinMid - r.inkMid).toFixed(1)} L below the skin around it`)
+        .toBeGreaterThan(30);
+    }
+    expect(errors, `console errors: ${errors.join(' | ')}`).toEqual([]);
+  });
 });

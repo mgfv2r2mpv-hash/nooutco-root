@@ -31,18 +31,18 @@
         {
           "key": "brows",
           "label": "Shape brows",
-          "pct": 6.96,
-          "meanChanged": 15.4,
-          "meanFace": 1.09,
-          "maxDE": 41.5
+          "pct": 6.7,
+          "meanChanged": 16.93,
+          "meanFace": 1.15,
+          "maxDE": 53.3
         },
         {
           "key": "pencil",
           "label": "Brow pencil",
           "pct": 5.71,
-          "meanChanged": 21.95,
-          "meanFace": 1.29,
-          "maxDE": 41.5
+          "meanChanged": 22.95,
+          "meanFace": 1.34,
+          "maxDE": 53.3
         },
         {
           "key": "contour",
@@ -120,9 +120,9 @@
           "key": "hair",
           "label": "Hair colour",
           "pct": 16.68,
-          "meanChanged": 52.31,
-          "meanFace": 8.72,
-          "maxDE": 63.4
+          "meanChanged": 57.14,
+          "meanFace": 9.53,
+          "maxDE": 69.8
         },
         {
           "key": "ear",
@@ -142,23 +142,29 @@
         }
       ],
       "full": {
-        "pct": 75.98,
-        "meanChanged": 23.42,
-        "meanFace": 18.07,
+        "pct": 75.95,
+        "meanChanged": 24.15,
+        "meanFace": 18.61,
         "maxDE": 95.2
       },
       "lash": {
         "px": 3835,
-        "over": 260,
-        "overPct": 6.78,
-        "worstOver": 87.4,
+        "over": 259,
+        "overPct": 6.75,
+        "worstOver": 87.8,
         "maxAbs": 254,
-        "white": 60,
-        "whitePct": 1.56,
-        "darkPct": 83.02,
+        "white": 65,
+        "whitePct": 1.69,
+        "darkPct": 83.18,
         "meanBare": 141,
-        "meanDone": 68.9,
+        "meanDone": 68.8,
         "hottest": [
+          {
+            "x": 337,
+            "y": 269,
+            "bare": 144.6,
+            "done": 232.4
+          },
           {
             "x": 201,
             "y": 265,
@@ -214,22 +220,16 @@
             "done": 146.1
           },
           {
+            "x": 343,
+            "y": 267,
+            "bare": 102.1,
+            "done": 175.6
+          },
+          {
             "x": 307,
             "y": 262,
             "bare": 34.4,
             "done": 107.6
-          },
-          {
-            "x": 286,
-            "y": 268,
-            "bare": 104.9,
-            "done": 178
-          },
-          {
-            "x": 322,
-            "y": 270,
-            "bare": 147.1,
-            "done": 220.1
           }
         ]
       }
@@ -249,8 +249,8 @@
         {
           "key": "moist",
           "label": "Moisturize",
-          "pct": 26.98,
-          "meanChanged": 9.84,
+          "pct": 26.97,
+          "meanChanged": 9.85,
           "meanFace": 2.7,
           "maxDE": 20.3
         },
@@ -265,18 +265,18 @@
         {
           "key": "brows",
           "label": "Shape brows",
-          "pct": 5.22,
-          "meanChanged": 19.44,
-          "meanFace": 1.04,
-          "maxDE": 36.7
+          "pct": 5.05,
+          "meanChanged": 20.65,
+          "meanFace": 1.07,
+          "maxDE": 36.2
         },
         {
           "key": "pencil",
           "label": "Brow pencil",
-          "pct": 6.17,
-          "meanChanged": 18.54,
-          "meanFace": 1.15,
-          "maxDE": 36.7
+          "pct": 5.17,
+          "meanChanged": 22.44,
+          "meanFace": 1.18,
+          "maxDE": 36
         },
         {
           "key": "contour",
@@ -354,9 +354,9 @@
           "key": "hair",
           "label": "Hair colour",
           "pct": 5.76,
-          "meanChanged": 46.49,
-          "meanFace": 2.68,
-          "maxDE": 51.4
+          "meanChanged": 57.12,
+          "meanFace": 3.29,
+          "maxDE": 62.5
         },
         {
           "key": "ear",
@@ -376,22 +376,22 @@
         }
       ],
       "full": {
-        "pct": 74.33,
-        "meanChanged": 18.88,
-        "meanFace": 14.28,
+        "pct": 74.31,
+        "meanChanged": 19.41,
+        "meanFace": 14.67,
         "maxDE": 94.9
       },
       "lash": {
         "px": 2884,
-        "over": 332,
-        "overPct": 11.51,
+        "over": 330,
+        "overPct": 11.44,
         "worstOver": 187.6,
         "maxAbs": 255,
-        "white": 43,
-        "whitePct": 1.49,
-        "darkPct": 75.45,
+        "white": 44,
+        "whitePct": 1.53,
+        "darkPct": 75.49,
         "meanBare": 128.7,
-        "meanDone": 71.1,
+        "meanDone": 70.9,
         "hottest": [
           {
             "x": 201,
@@ -499,18 +499,18 @@
         {
           "key": "brows",
           "label": "Shape brows",
-          "pct": 3.55,
-          "meanChanged": 17.22,
-          "meanFace": 0.63,
-          "maxDE": 34.7
+          "pct": 3.24,
+          "meanChanged": 16.92,
+          "meanFace": 0.58,
+          "maxDE": 39.8
         },
         {
           "key": "pencil",
           "label": "Brow pencil",
-          "pct": 5.65,
-          "meanChanged": 14.27,
-          "meanFace": 0.81,
-          "maxDE": 35
+          "pct": 5.6,
+          "meanChanged": 13.04,
+          "meanFace": 0.74,
+          "maxDE": 40
         },
         {
           "key": "contour",
@@ -587,10 +587,10 @@
         {
           "key": "hair",
           "label": "Hair colour",
-          "pct": 21.2,
-          "meanChanged": 47.7,
-          "meanFace": 10.11,
-          "maxDE": 60.4
+          "pct": 21.21,
+          "meanChanged": 50.61,
+          "meanFace": 10.74,
+          "maxDE": 62.1
         },
         {
           "key": "ear",
@@ -610,28 +610,28 @@
         }
       ],
       "full": {
-        "pct": 81.46,
-        "meanChanged": 22.78,
-        "meanFace": 18.77,
+        "pct": 81.45,
+        "meanChanged": 23.32,
+        "meanFace": 19.2,
         "maxDE": 95.2
       },
       "lash": {
         "px": 3188,
         "over": 242,
         "overPct": 7.59,
-        "worstOver": 103.3,
+        "worstOver": 105.5,
         "maxAbs": 254.2,
         "white": 42,
         "whitePct": 1.32,
-        "darkPct": 82.12,
+        "darkPct": 82.25,
         "meanBare": 128.4,
-        "meanDone": 65.7,
+        "meanDone": 65.5,
         "hottest": [
           {
             "x": 169,
             "y": 263,
             "bare": 50.3,
-            "done": 153.6
+            "done": 155.8
           },
           {
             "x": 317,
@@ -656,6 +656,12 @@
             "y": 264,
             "bare": 179,
             "done": 254.2
+          },
+          {
+            "x": 330,
+            "y": 268,
+            "bare": 166.1,
+            "done": 240.4
           },
           {
             "x": 282,
@@ -692,12 +698,6 @@
             "y": 268,
             "bare": 38.9,
             "done": 109.4
-          },
-          {
-            "x": 201,
-            "y": 267,
-            "bare": 36.5,
-            "done": 106.6
           }
         ]
       }

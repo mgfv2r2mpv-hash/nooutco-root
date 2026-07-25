@@ -127,6 +127,21 @@ for (const m of MODELS) {
     const TOOLS = ${TOOLS};
     await setModel(${JSON.stringify(m)});
 
+    /* WARM-UP, and it is load-bearing. Several tools draw a SPRITE the
+       compositor has never asked for on a bare face — the earring, the outfit,
+       the liner — and _img kicks the fetch off and repaints on load. settle
+       waits for the canvas to stop CHANGING, and a canvas that has not started
+       drawing the sprite yet is perfectly stable, so it returns before the
+       sprite lands and the tool measures as though it painted nothing. Run the
+       whole catalogue once first, so every sprite is decoded and cached before
+       any number is taken. Without this the same probe reports Earrings and
+       Shirt at 0.00 ΔE and contour/highlight/lip-liner at a fifth of their real
+       value — reproducibly, which is what made it look like a renderer change
+       rather than an instrument fault. */
+    await setEd((ed)=>{ for(const t of TOOLS) t.mut(ed); });
+    await settle();
+    await reset();
+
     const bare = await settle();
 
     // FACE denominator — the compositor's own face zone, restricted to pixels the

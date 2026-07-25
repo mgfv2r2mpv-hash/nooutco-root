@@ -2553,6 +2553,15 @@ pixels run to run.
 
 ### V2 · What each tool does to the face — the measurement table
 
+> **Superseded — see X4.** The same probe, byte-identical, run later in this pass
+> against `2f45dfda` *itself* does not reproduce this table: contour, highlight
+> and lip liner come out at roughly a fifth of the values below, and earrings and
+> shirt at zero, which is the correct answer for a face-zone measurement because
+> neither paints inside the face box. The conclusions that survive are the ones
+> about hair colour and skincare, and they survive more strongly. The corrected
+> table is in **X4**; the numbers below are kept as the record of what was
+> published.
+
 Per tool, applied **alone** from the bare face, over the compositor's own `face`
 zone restricted to pixels the base render drew (m2 64 833 px, m3 45 256 px,
 m4 64 434 px). `%face` is the share of those pixels the tool moves by more than
@@ -3102,9 +3111,288 @@ Called out so the maintainer can overrule any of them against the shots:
 
 ### W · Still to do
 
-- **Finding A2's tuning** (unchanged from *V · Still to do*): the two taste calls
-  in V2 — the eyeshadow's reach past the outer socket and the brow pencil's flat
-  dark plum — are stated rather than made. The completed-look shots and the
-  measurement table are in place for the maintainer to rule on them.
+- ~~**Finding A2's tuning.**~~ Landed in the next slice — see **X** below.
+- The tall-panel and webfont items from *U · Still to do* are still open and
+  still out of this pass's scope.
+
+---
+
+## Third pass · Finding A2 — the completed look, tuned
+
+Same base (`2f45dfda`), same pass, third and last slice. V2 measured the
+completed look and left two things *stated* rather than judged, because both had
+been called taste:
+
+> the eyeshadow reads as a wide violet band carrying past the outer socket onto
+> the temple, and the brow pencil takes the brow to a flat dark plum that reads
+> heavier than the hair it is supposed to match
+
+This slice puts both under measurement first. One survives it and one does not.
+Every number and every screenshot below was taken through a server whose served
+bytes were `shasum`-verified against this worktree's `index.html` immediately
+before the run.
+
+### X1 · Neither call is pure taste — each has a stated intent to measure against
+
+The instrument is `tests/_probe-glam-tune3-a2.mjs`, new in this slice and not a
+spec. It pins the blemish seed (0.371) like every probe in this pass, and it
+keeps each model's **native hair shape**: `hair-blonde` drops a fringe over m3's
+brow, and hair over a brow is hair, not pencil — the same confound that cost
+iteration 2 a set of lash numbers.
+
+**Eyeshadow — where the eye IS, before what colour it is.** The eye sprite's own
+drawn box comes from the renderer's `_irisBox().dw`. A wash pixel at `u > 0.5`
+outward is past the drawn socket *by construction*, whatever anyone thinks of the
+colour. Separately: does the wash actually reach the brow? Measured against the
+brow **ink**, not the brow ZONE — the zone is the sprite's bounding box and
+carries a lot of transparent margin, so "shadow pixels inside the brow zone"
+would measure the box rather than the art. (That mistake was made first: by the
+zone, 52–78 % of the wash looked like it was in the brow band. By the ink there
+is clear skin between them.)
+
+| model | wash px | outward reach, max | px past the drawn eye box | rise, max | clear skin, brow ink → wash |
+| --- | --- | --- | --- | --- | --- |
+| m2 | 4 307 | **0.40** dw (box edge 0.50) | **0** (0.00 %) | 0.59 dh | +0.013 dh |
+| m3 | 2 739 | **0.37** dw | **0** (0.00 %) | 0.55 dh | +0.030 dh |
+| m4 | 4 865 | **0.42** dw | **0** (0.00 %) | 0.67 dh | −0.057 dh |
+
+**V2's eyeshadow call is refuted.** The wash stops 0.08–0.13 dw short of the
+drawn eye's own outer edge on every model and puts *no* pixel past it, so it is
+not on the temple; and on m2/m3 there is clear skin between it and the brow ink.
+On m4 the two graze by 0.057 dh — 5.7 % of an eye-box height, at the outer tail —
+which the ×7 loupe (`a2after-m4-eye.png`) shows as a touch, not an overlap. The
+eyeshadow is **left exactly as the maintainer accepted it in the second pass**.
+What V2 read as "carrying onto the temple" in a 512 px whole-face shot is the
+wash rising over the lid toward the brow bone, which is where eyeshadow goes.
+
+**The brow call is confirmed, and the cause is one number.** `index.html` states
+the intent itself — brows "default-MATCH the hair colour (and follow a
+recolour)" — and `_browTint` implements it as tint × luminance with a FLOOR: what
+a pure-black sprite pixel becomes. The floor was **0.42**. On a sprite whose fill
+is one solid colour, the floor is then the whole brow, and m4's shaped brow is
+exactly that sprite:
+
+| model | darkest ink (lum) | share of the brow AT that floor | brow L\* | hair L\* | brow is … below the hair |
+| --- | --- | --- | --- | --- | --- |
+| m2 | 53.9 | 7.1 % | 40.7 | 45.4 | 4.7 L\* |
+| m3 | 51.3 | 12.4 % | 40.9 | 46.8 | 5.9 L\* |
+| m4 | **42.2** | **67.1 %** | 23.4 | 45.7 | **22.3 L\*** |
+
+42.2 luminance is `0.42 × berry` to a decimal place. Two thirds of m4's pencilled
+brow is that one value, against hair at 104 — not a brow a shade deeper than the
+hair, a near-black plum bar drawn across the face. That is V2's "flat dark plum",
+now countable, and on the completed look it is the heaviest thing on the client.
+
+### X2 · The fix — the tint floor, and only the tint floor
+
+```
+const BROW_TINT = { floor:0.60, span:0.55 };      // was k = 0.42 + 0.58·L
+k = min(1, BROW_TINT.floor + BROW_TINT.span·L)
+```
+
+The floor moves 0.42 → **0.60**: the darkest ink lifts 43 %. The span stays wide
+(0.58 → 0.55, clamped), so a sprite that *has* its own shading keeps all of it —
+the two curves only diverge below L ≈ 0.5, which is ink. Nothing else about the
+brow changes: same sprites, same anchors, same widths, same `HAIR_SWATCH`.
+
+| model | darkest ink | share at the floor | brow L\* | below the hair |
+| --- | --- | --- | --- | --- |
+| m2 | 53.9 → **70.2** | 7.1 → 7.3 % | 40.7 → 45.9 | 4.7 → −0.5 L\* |
+| m3 | 51.3 → **68.6** | 12.4 → 11.2 % | 40.9 → 44.1 | 5.9 → 2.7 L\* |
+| m4 | 42.2 → **59.5** | 67.1 → 68.3 % | 23.4 → 31.1 | 22.3 → **14.6** L\* |
+
+The share-at-the-floor figure barely moves, and it should not: the m4 sprite is
+still a solid fill, and no recolour can put shading into art that has none. What
+changes is *where* that flat value sits — 42.2 → 59.5 — which is the whole
+complaint. Shots: `a2before-<model>-completed.png` / `a2after-<model>-completed.png`
+and the ×7 eye loupes `a2before-<model>-eye.png` / `a2after-<model>-eye.png`.
+`after-<model>-*.png` were regenerated so the "after" half of the record is
+always the shipped renderer.
+
+### X3 · The pinned test, and what it says before the fix
+
+`tests/glam-art-fidelity.spec.js` gains **A2 · the pencilled brow reads as the
+hair it matches, not as ink** — one case × three browsers, +3 on the suite.
+
+Which pixels are the brow is the whole test, so the mask rules out one impostor
+at a time. Anything the **brow tools** move between the untouched bushy brow and
+the pencilled one is brow, and hair is not — hair is identical in both frames, so
+a temple strand inside the box drops out. Of those, the **ink** is the dark part,
+cut against the skin around it rather than at a fixed number, because skin the
+pencil *uncovered* is in the first set too and skin inside a mask called "ink"
+makes a lightened brow measure darker than it is. (The pencil footprint alone is
+not enough: on m3 the shaped and cleaned sprites nearly coincide and only 435 px
+move.) The mask moves by under 3 % across the change — 1833→1803, 1110→1081,
+2869→2842 px — which is printed so it can be checked rather than assumed.
+
+Two-sided, because lightening a brow until it disappears would satisfy any upper
+bound on its own:
+
+| bound | shipped | at `2f45dfda` **and** at the pre-A2 build |
+| --- | --- | --- |
+| darkest ink ÷ hair mid-tone **> 0.53** | 0.60 / 0.61 / 0.57 | **0.46 / 0.45 / 0.41** |
+| brow mid ÷ hair mid **< 0.92** (still deeper than the hair) | 0.79 / 0.69 / 0.58 | 0.64 / 0.53 / 0.41 |
+| brow mid **> 30 L below the skin** it is drawn on | 64.7 / 64.3 / 76.2 | 80.5 / 81.3 / 93.6 |
+
+Run against a copy of each pre-change file served from the same directory
+(`shasum` on the served bytes `326d925c…` and `e49e5abb…` respectively), the case
+fails on both, identically, first at m2:
+
+```
+Error: m2 brow ink (1833px): the darkest ink is 49.1 L against hair at 107 L
+       (0.46× — a bar of ink, not a brow a shade deeper than the hair)
+```
+
+### X4 · The completed-look table, re-measured — and V2's table withdrawn
+
+V2's per-tool table **does not reproduce**, and not because of anything this
+pass changed. `tests/_probe-glam-tune3-look.mjs` is byte-identical to the file
+iteration 1 committed (`git log --follow` shows one commit); run today against
+`2f45dfda` **itself**, through a hash-verified server, it produces today's
+numbers, not V2's — contour 0.11 where V2 printed 0.57, highlight 0.12 for 0.35,
+lip liner 0.15 for 0.71, and earrings and shirt at 0.00 for 2.5 %/0.47 and
+3.1 %/0.55. Two consecutive runs today agree to the last digit on every row, so
+this is not noise.
+
+Two things are established about it:
+
+- **0.00 is the correct value for earrings and shirt.** Both tools do paint —
+  2 242 px and 6 241 px on m2 — but every one of those pixels is *outside* the
+  face zone the table measures over: the earring bbox is x 82–429 against a face
+  box of x 155–357, and the shirt is at y 454–575 against a face box ending at
+  y 447. A face-zone measurement should report zero for them, and V2's non-zero
+  rows were wrong.
+- **The cause of the inflation is not identified.** A decode race was the obvious
+  candidate — several tools draw a sprite the compositor has never requested on a
+  bare face, and `settle` waits for the canvas to stop *changing*, which a canvas
+  that has not started drawing yet trivially satisfies. The probe now runs the
+  whole catalogue once per model before taking any number, so every sprite is
+  decoded and cached first. **It changed nothing**: the numbers are identical with
+  and without the warm-up. The warm-up is kept because it removes a real class of
+  fault, but it is not the explanation. The leading remaining hypothesis is that
+  iteration 1's per-tool `reset()` was not landing before the next frame was
+  measured, leaving the previous tool's paint in the frame — which would inflate
+  every row and put earring/shirt pixels in a face-zone count. That is a
+  hypothesis, not a finding.
+
+The corrected table. Per tool, applied **alone** from the bare face, over the
+compositor's own `face` zone restricted to pixels the base render drew (m2
+64 833 px, m3 45 256 px, m4 64 434 px). `%face` is the share of those pixels the
+tool moves by more than ΔE76 2; `ΔE(face)` is the mean over the whole face — the
+"how much of the face does this tool own" number.
+
+| tool | m2 %face / ΔE(face) | m3 %face / ΔE(face) | m4 %face / ΔE(face) |
+| --- | --- | --- | --- |
+| Wash | 33.3 / 1.71 | 37.1 / 1.72 | 38.1 / 1.74 |
+| Moisturize | 23.0 / 2.32 | 27.0 / 2.70 | 28.0 / 2.89 |
+| Treat + conceal | 1.6 / 0.28 | 1.4 / 0.24 | 1.7 / 0.29 |
+| Shape brows | 6.7 / 1.15 | 5.1 / 1.07 | 3.2 / 0.58 |
+| Brow pencil | 5.7 / 1.34 | 5.2 / 1.18 | 5.6 / 0.74 |
+| Contour | 2.3 / 0.11 | 0.8 / 0.04 | 2.1 / 0.12 |
+| Blush | 7.1 / 0.50 | 5.6 / 0.40 | 7.1 / 0.50 |
+| Highlight | 1.7 / 0.12 | 1.1 / 0.08 | 1.8 / 0.13 |
+| Eyeshadow | 4.8 / 0.86 | 4.0 / 0.63 | 6.2 / 1.19 |
+| Eyeliner | 5.6 / 1.16 | 5.7 / 1.06 | 5.4 / 1.15 |
+| Mascara | 8.9 / 2.15 | 9.1 / 1.76 | 8.7 / 1.90 |
+| Contacts | 2.9 / 0.95 | 3.2 / 1.06 | 2.5 / 0.82 |
+| Lip liner | 0.5 / 0.15 | 0.7 / 0.20 | 0.5 / 0.14 |
+| Lipstick | 4.2 / 1.54 | 4.3 / 1.76 | 3.7 / 1.44 |
+| **Hair colour** | **16.7 / 9.53** | 5.8 / 3.29 | **21.2 / 10.74** |
+| Earrings | 0.0 / 0.00 | 0.0 / 0.00 | 0.0 / 0.00 |
+| Shirt | 0.0 / 0.00 | 0.0 / 0.00 | 0.0 / 0.00 |
+| **COMPLETED** | **76.0 / 18.61** | **74.3 / 14.67** | **81.5 / 19.20** |
+
+What it says, on the corrected numbers:
+
+- **Hair colour still dominates by a factor of four to eight**, and it is still
+  not makeup — the `face` zone includes the hair that frames it. On the corrected
+  table the gap is *wider* than V2 claimed, not narrower.
+- **Of the makeup proper, mascara (1.8–2.2) leads**, then lipstick (1.4–1.8), the
+  brow pair, and eyeliner (1.1–1.2). Contour, highlight and lip liner are all
+  under 0.2 — a fifth of what V2 reported, and the soft-cosmetic tuning of the
+  first two passes is lighter than that table made it look.
+- **Skincare touches the most pixels at the lowest per-pixel distance** — a
+  whole-face tone change, which is what it should be. Unchanged conclusion.
+
+**An honest wrinkle in the aggregate.** After the brow fix the COMPLETED row goes
+*up* slightly — 18.07 → 18.61, 14.28 → 14.67, 18.77 → 19.20 — and the two brow
+rows go up on m2/m3 (pencil 1.29 → 1.34 and 1.15 → 1.18) while falling on m4
+(0.81 → 0.74). That is not the brow getting heavier. `ΔE(face)` measures distance
+from the **bare face**, and the bare face wears a bushy brow that the same tint
+floor lifts; on a berry recolour the lighter pencilled brow ends up *further* from
+the bare face's own brow than the near-black one was. Distance-from-bare is the
+right metric for "how much of the face does this tool touch" and the wrong one
+for "how heavy does it read" — which is why the brow-versus-hair table in X1/X2 is
+the one that grades this fix.
+
+### X5 · Judged rather than measured
+
+Called out so the maintainer can overrule any of them against the a2before /
+a2after pairs:
+
+- **0.60 is a judgement.** That the floor at 0.42 was wrong is measured — two
+  thirds of a brow at one near-black value, 22 L\* below the hair it is declared
+  to match. *Where* inside "deeper than the hair, lighter than ink" it should
+  land is taste. 0.60 was chosen to leave m4's brow clearly deeper than its hair
+  (0.57× the hair's mid-tone) while lifting it off near-black. 0.66 would read
+  softer still; 0.52 would keep more of the old weight. The pinned bound accepts
+  anything from 0.53 upward that stays deeper than the hair, so the maintainer
+  can move it without the test standing in the way.
+- **The eyeshadow was left alone.** The measurement says it is inside the drawn
+  socket, so the accepted second-pass version ships unchanged. If the maintainer
+  still reads it as too wide in `a2after-<model>-eye.png`, that is a taste
+  overrule of a measurement, which is legitimate — the wash's reach is one number
+  (`w*1.16`, centred `+0.34w` outward) and is easy to pull in.
+- **Nothing else was brought down.** Mascara and lipstick lead the makeup on the
+  corrected table, but a glam makeover whose mascara and lipstick do not lead is
+  not the brief, and neither dominates the way the brow did — no tool other than
+  hair colour is near the "measurably dominating" bar. Contour, highlight, blush
+  and lip liner are all at or under 0.5 ΔE(face) and were left alone.
+- **The bare face's bushy brow lightened too.** The floor is one constant for
+  every brow state, so the pre-shaping brow the child is meant to notice is 43 %
+  lighter at its darkest as well. It still reads clearly against skin (the pinned
+  bound holds it 30 L under, shipped 64–76), and a state-dependent floor was
+  rejected as a way of making the *unfinished* brow heavier than the finished one.
+- **The non-art fallback doll is untouched.** `browColor` in the DOM/SVG props
+  (`#3a2a1c` with the pencil, `#6b533f` without) does not follow the hair and was
+  out of scope; the canvas is what the maintainer's screenshots show.
+
+### X6 · Verification for this slice
+
+- **402 Playwright tests green, 402/402 in one full run**, three browsers,
+  against a server hash-verified as serving this worktree (`shasum` of the file
+  and of `curl`'s bytes both `00997dc68a7fb428200affcfdfcf7509e0a0a6c9`). 399
+  before, +1 case × 3 browsers. An earlier full run in this slice lost two
+  firefox specs — `glam-turn-band` and `glam-open-flow` — both on the known
+  Atkinson-Hyperlegible webfont console error (`CORS request did not succeed` on
+  `fonts.gstatic.com`) asserted by `expect(errors).toEqual([])`; re-run in
+  isolation they were 17/17 green on firefox, and the next full run was clean.
+  The flake is documented in *U · Still to do*.
+- `window.GlamTT` **byte-identical**, re-measured for this slice rather than
+  quoted from W5. Sliced by content — from the `<script>` that opens the block
+  containing `window.GlamTT = (function ()` through its `</script>`, because the
+  line numbers moved between builds — it is `b69b441841808b65e622f1b313ed20b433b41dfa`,
+  23 521 bytes, on `2f45dfda`, on the pre-A2 build and on the shipped file alike.
+  `git diff 2f45dfda -- apps/games/tests/glam-tt-scoring.spec.js` is empty.
+- **A whole trial played out in a real browser** — `tests/_play-glam-tune3.mjs`:
+  title → texting intro → salon → 39 steps, 18 tools taken by real pointer input
+  → every turn to the end (6 of 6) → outro. The rail was on screen at ready, my
+  turn and their turn. No console errors, no page errors, no failed local
+  requests.
+- **Child-facing text untouched.** This slice changes one rendering constant and
+  adds no copy. The only digits the playthrough finds on the outro are the BT's
+  session clock and "Trial finished · 6 of 6 turns", both pre-existing staff
+  surfaces. `tests/glam-tt-story.spec.js` is green and untouched.
+- **The staff strip and the print view are untouched** — no diff hunk goes near
+  the controls row or `printReport`.
+- New instruments, neither a spec: `tests/_probe-glam-tune3-a2.mjs` (the reach and
+  brow-versus-hair tables above, runnable against either file), and the warm-up
+  added to `tests/_probe-glam-tune3-look.mjs`.
+
+### X · Still to do
+
+- **The V2 measurement discrepancy has a hypothesis, not a cause.** X4 records
+  what is established and what is not. Anyone re-opening it should start by
+  instrumenting `reset()` in the per-tool loop rather than re-running the probe.
 - The tall-panel and webfont items from *U · Still to do* are still open and
   still out of this pass's scope.
