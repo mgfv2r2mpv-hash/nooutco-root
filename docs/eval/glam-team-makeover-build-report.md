@@ -1234,7 +1234,7 @@ clinical spine is not in scope and is not touched.
 | # | Fix | Status |
 |---|---|---|
 | 1 | Model selection — remove the child-facing picker, random only, BT lock in Session setup | **done** (T1) |
-| 2 | Texting intro — phone mockup, slower, two-sided typing indicators | *not started* |
+| 2 | Texting intro — phone mockup, slower, two-sided typing indicators | **done** (T2) |
 | 3 | Styling trolley — vertical progressive flow, non-repeatables removed, moved-on steps collapsed | *not started* |
 | 4 | Face art — lip liner, eye clip, eyeshadow gradient, blush, highlights | *not started* |
 | 5 | Action effect — lens flare way down | **done** (T5) |
@@ -1299,6 +1299,133 @@ made. The cost is one page load per roster model, which is why its budget stays 
 The absence-of-setter assertion is deliberate. A picker deleted from the template
 but left on the component is one `sc-for` away from returning, so the test pins the
 *capability*, not just the pixels.
+
+### T2. The texting intro is a handset now, and it is paced to be read
+
+**What the maintainer saw.** Three complaints about one screen: the pretext arrived
+as "message bubbles floating on a plain square card"; the messages went by too fast
+to read; and the typing dots were a permanent fixture rather than something that
+announced a message.
+
+#### T2a — the card became a device
+
+The old panel was a `min(430px,100%)` rounded rectangle: a contact header, a
+270 px-min message well, a footer. Everything that says *phone* was missing, so it
+read as a chat widget on a page.
+
+What is on screen now, outside-in:
+
+| Layer | What it is |
+|---|---|
+| `.gtm-phone` | the bezel — a 46 px-radius brushed-metal gradient with an inner hairline, a long drop shadow, and two nubs on the edges (volume rocker, side button) |
+| `.gtm-screen` | the screen, inset with its own 36 px radius and `overflow:hidden` so the app is clipped by the glass |
+| `.gtm-statusbar` | plum status bar: carrier word, a **dynamic island**, and signal / wifi / battery |
+| the thread | contact header → wallpaper → bubbles → composer bar |
+| `.gtm-home` | the home indicator |
+
+**The status bar cannot carry a clock, and that decided how it is built.** §8
+forbids any digit on a child-facing surface, and a real status bar's first element
+is `9:41`. So the time slot carries a word (`Glam`) and **every icon is drawn in
+CSS, not set as text**: the signal is four `<i>` bars on ascending heights, the
+battery is a bordered pill with a fill and an `::after` terminal, and the wifi is
+the *top halves of two concentric rings* — a 14 px and a 7 px circle whose centres
+sit on the bottom edge of a 9 px `overflow:hidden` box, so the container crops each
+one into an arch. Cheaper and crisper than an SVG, and it adds no glyph font.
+
+Two smaller moves came with it. The message well now has a **wallpaper** (a soft
+rose radial under the header) instead of flat `#fbf6f9`, because a phone screen
+with a two-message thread on it is mostly empty and flat white made that read as a
+loading state. And the thread opens with the **`TODAY` separator** every messages
+app puts at the top of a conversation — it rides the bottom-anchored stack, so it
+sits directly above the first bubble rather than stranding at the top of the glass.
+
+Sizing is `width:min(352px,100%)`, `height:min(72vh,640px)`, `min-height:392px`.
+`vh` rather than a percentage on purpose: the section is a flex child of a
+`min-height:100vh` column, so a percentage height has no definite basis to resolve
+against, and the phone would collapse to its content. Measured 352 × 619 at
+1280×860 and 350 × 607 at 390×844 — a 1.7:1 device in both cases, with no
+horizontal overflow at any of the three widths.
+
+#### T2b — the pacing, and why the dots had to be split from the schedule
+
+The old reveal was one `setInterval` at **900 ms flat**, and `threadTyping` was
+derived as *"are there messages left"* — which is why the dots never went out:
+they were a progress bar for the whole thread, not a signal about the next message.
+
+The reveal is now a self-scheduling chain, one message at a time:
+
+```
+dots up (THREAD_TYPE_MS = 680 ms)  →  message lands, dots down
+                                   →  read dwell  →  dots up for the next side …
+
+THREAD_READ_MS(text) = min(2400, 820 + 24 × text.length)
+```
+
+The dwell scales with the length of the message that **just landed**, so a long
+message is never shoved off by the next one. Measured end to end: **~11.0 s** for
+the five-message booking, against **4.5 s** before — a 2.4× slowdown, ~2.2 s per
+message. The `Skip ahead` control is unchanged and reachable throughout.
+
+The load-bearing bit is that *"a side is typing right now"* had to stop being a
+derived value and become its own state (`threadDots`), separate from *"there are
+messages still to come"* (`threadRunning`). They used to be the same boolean. If
+they had stayed the same boolean, either the dots sit up through the read dwell
+(the complaint) or `Skip ahead` blinks out with them (a worse bug).
+
+The dots also now wear **the skin of the bubble they precede** — white with a
+left-hand tail for the client, sage with a right-hand tail for the glam team —
+rather than a neutral white pill on both sides. That is what makes "both sides"
+legible at a glance rather than only from which margin the pill is on.
+
+**Congruence is unchanged.** No new child-facing sentence was written: every string
+in the thread still comes from `GlamStory.thread()` and is swept by the same AC-10
+guard. The three words the chrome adds — `Glam`, `TODAY`, `New messages` — are
+chrome, carry no claim about the client and no digit.
+
+**Evidence.**
+
+| | Before | After |
+|---|---|---|
+| the client typing | `shots/glam-tune/texting-intro-before-{desktop,tablet,phone}.png` | `texting-intro-after-…` |
+| the glam team typing | `texting-typing-team-before-…` | `texting-typing-team-after-…` |
+| booked | `texting-booked-before-…` | `texting-booked-after-…` |
+
+Captured by `tests/_shots-glam-tune-thread.mjs`. The `before` page is
+`git show HEAD:…/index.html` dropped into the **same directory** so `../tailwind.css`,
+`vendor/` and `assets/` resolve identically and the pair differs only in the thing
+under test. `Math.random` is seeded in an init script, because the client, the name
+and the scenario are all drawn at random (D-F) — without that the two passes
+photograph two different conversations. Both passes show *Frankie · dance recital*.
+
+#### T2c — the one thing the device frame broke
+
+Bottom-anchoring the thread with `justify-content:flex-end` was fine on the old
+270 px-min card, which was never full. Inside a fixed-height screen it is not: five
+messages overflow a handset at 390 px, and `flex-end` clips the overflow off the
+**top** of a scroller where it cannot be scrolled back to. The first bubble was
+gone for good.
+
+Fixed the standard way — `margin-top:auto` on the first child instead, which
+bottom-anchors a short thread exactly the same and collapses to `0` the moment the
+content overflows, so it scrolls normally — plus a two-line `_scrollThread()` on
+`componentDidUpdate` that pins the scroller to the newest message. Which is, in
+passing, the behaviour the fix was asking for anyway: a real messages app follows
+the conversation down.
+
+**Tests.** Four added to `tests/glam-open-flow.spec.js`, one budget adjusted:
+
+| Test | What would break it |
+|---|---|
+| *TUNING 2 · the intro is a phone mockup — bezel, status bar, island, home bar* | the bezel/screen nesting, any of the three drawn status glyphs, the island or the home bar going missing; a digit appearing in the status bar; the frame going wider than it is tall; horizontal overflow |
+| *TUNING 2 · a brief typing indicator announces BOTH sides, then blinks out* | dots that only ever appear on one margin, **or** dots that never go down (the sampler requires the dots to be absent for >35 % of the run), **or** `Skip ahead` disappearing while the dots are down |
+| *TUNING 2 · at phone size the full thread stays scrollable and pinned to the newest message* | a return to `justify-content:flex-end` (the separator and the first bubble stop being reachable at `scrollTop = 0`), or the scroller drifting off the newest message |
+| *TUNING 2 · the thread is paced to be read, not fired off* | any message-to-message gap back under 1400 ms (the old build was 900 ms flat), or the whole booking running past 20 s |
+| *Start plays the pretext…* (budget only) | poll ceiling 15 s → 30 s: the thread now takes ~11 s and the old ceiling sat close enough to flake |
+
+The middle test is the one that pins the actual complaint. "A typing indicator
+exists" was already true before the fix — what was wrong was that it never stopped,
+so the assertion has to be about the **proportion of the run the dots are down**,
+not about their presence.
 
 ### T5. The action flare, way down
 
@@ -1376,14 +1503,39 @@ that makes this fix regression-proof.
   now that it is the only picker left.
 - `git status` shows changes only under `apps/games/` and `docs/`.
 
+### T · Verification (slice T2)
+
+- **Full suite: 354 passed** across chromium / firefox / webkit — 342 after T1/T5
+  plus 4 new tests × 3 browsers. Clean full run, no retries, 2.6 min.
+- **`window.GlamTT` byte-identical** — the whole `window.GlamTT = (function …})();`
+  block, 538 lines, hashes the same at `HEAD` and after the change.
+  `git diff --exit-code tests/glam-tt-scoring.spec.js` is empty, and so is
+  `git diff --exit-code tests/glam-tt-story.spec.js`. `window.GlamStory` is
+  byte-identical too — T2 rewrote how the thread is *presented*, not a word of what
+  it says.
+- **Played start → the thread at its real pace with no Skip → salon → two tool
+  applications** at 1280×860: booked at 10.9 s, the dots crossed sides
+  (`flex-start` → `flex-end`) and went on and off 9 times over the run, `Skip ahead`
+  was on screen at every one of the ~110 samples, the phone measured 352 × 619 with
+  no horizontal overflow, no digit anywhere on the intro screen, and the salon
+  opened onto `MY TURN` with `Wash` and `Shape brows` landing normally.
+  **Console clean** — zero console errors and zero page errors across the route.
+- **Console clean at all three widths** — `tests/_shots-glam-tune-thread.mjs` exits
+  non-zero on any console or page error and exited clean on both the `before` and
+  the `after` pass at 1280×860, 834×1112 and 390×844.
+- `git status` shows changes only under `apps/games/` and `docs/`.
+
 ### T · Deferred / still to do in this pass
 
-- **Fixes 2, 3 and 4 are not started** — the phone-mockup texting intro with
-  two-sided typing indicators, the trolley's vertical progressive flow, and the
-  five face-art fixes (lip liner artifacts, eye-colour clipping past the iris and
-  waterline, patchy eyeshadow gradient, over-circular blush, oversized
-  highlights). Each needs its own before/after pair under
-  `shots/glam-tune/`.
+- **Fixes 3 and 4 are not started** — the trolley's vertical progressive flow, and
+  the five face-art fixes (lip liner artifacts, eye-colour clipping past the iris
+  and waterline, patchy eyeshadow gradient, over-circular blush, oversized
+  highlights). Each needs its own before/after pair under `shots/glam-tune/`.
+- **The phone mockup is a fixed portrait device at every width.** At 390 px it is
+  a phone drawn inside a phone, 20 px from each edge. It reads fine and it is the
+  honest presentation of "somebody's handset", but a landscape-tablet layout that
+  put the device beside a salon-counter still life would use the space better. Out
+  of scope here.
 - **The phone stage still crops the client's head** at 390 px once the page is
   scrolled to the trolley (visible in `surface-no-model-chips-after-phone.png`).
   Pre-existing, not introduced here, and out of scope for T1/T5 — worth folding

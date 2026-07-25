@@ -85,7 +85,10 @@ test.describe('opening flow — title → texts → salon', () => {
     expect(total).toBeGreaterThanOrEqual(4);
 
     // Both sides of the conversation: the client asks, the glam team answers.
-    await expect.poll(() => logic(page, 'return L.state.threadStep;'), { timeout: 15000 }).toBe(total);
+    // 30 s, not 15: TUNING fix 2 slowed the thread to a readable pace (a typing
+    // burst plus a length-scaled read dwell per message, ~12 s all in), and the
+    // old ceiling sat close enough to that to flake.
+    await expect.poll(() => logic(page, 'return L.state.threadStep;'), { timeout: 30000 }).toBe(total);
     await expect(page.getByText(/The glam team just picked up/)).toBeVisible();
     await expect(page.getByText(/You are booked/)).toBeVisible();
     await expect(page.locator('.gtm-dot'), 'nobody is still typing once it is booked').toHaveCount(0);
@@ -109,6 +112,128 @@ test.describe('opening flow — title → texts → salon', () => {
     expect(st.step).toBe(st.total);
     await expect(page.getByRole('button', { name: 'Skip ahead' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Open the salon/ })).toBeVisible();
+  });
+
+  /* ── TUNING fix 2 — the intro is a handset, paced to be read ──────────────
+     Maintainer report: "bubbles floating on a plain square card", too fast to
+     read, and the dots sat up permanently instead of announcing a message.  */
+
+  test('TUNING 2 · the intro is a phone mockup — bezel, status bar, island, home bar', async ({ page }) => {
+    const errors = await boot(page);
+    await page.getByRole('button', { name: /^Start/ }).click();
+    await expect(page.getByText('Booking the glam team')).toBeVisible();
+
+    // The device chrome, not a card: a bezel with a screen inset in it…
+    await expect(page.locator('.gtm-phone')).toBeVisible();
+    await expect(page.locator('.gtm-phone > .gtm-screen')).toBeVisible();
+    // …a status bar with an island and drawn signal / wifi / battery glyphs…
+    await expect(page.locator('.gtm-screen > .gtm-statusbar')).toBeVisible();
+    await expect(page.locator('.gtm-statusbar .gtm-island')).toBeVisible();
+    for (const glyph of ['.gtm-sig', '.gtm-wifi', '.gtm-batt']) {
+      await expect(page.locator(`.gtm-statusbar ${glyph}`)).toBeVisible();
+    }
+    // …and a home indicator under the app.
+    await expect(page.locator('.gtm-screen > .gtm-home')).toBeVisible();
+
+    // The thread lives INSIDE the screen — the phone is the frame, not decoration.
+    expect(await page.locator('.gtm-screen .gtm-scroll').count()).toBe(1);
+
+    // §8 holds on the new chrome: a real clock would print digits, so the
+    // status bar draws everything except the carrier word.
+    expect(await page.locator('.gtm-statusbar').innerText()).not.toMatch(/\d/);
+
+    // The bezel is a phone shape, and it does not push the page sideways.
+    const box = await page.locator('.gtm-phone').boundingBox();
+    expect(box.height / box.width, 'a handset is taller than it is wide').toBeGreaterThan(1.2);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+    expect(errors, `console/page errors: ${errors.join(' | ')}`).toEqual([]);
+  });
+
+  test('TUNING 2 · a brief typing indicator announces BOTH sides, then blinks out', async ({ page }) => {
+    await boot(page);
+    await page.getByRole('button', { name: /^Start/ }).click();
+    await expect(page.getByText('Booking the glam team')).toBeVisible();
+
+    /* Sample the thread while it plays: which side the dots sat on, whether
+       they ever went away between messages, and when each message landed. */
+    const samples = [];
+    const t0 = Date.now();
+    for (;;) {
+      samples.push({
+        t: Date.now() - t0,
+        ...(await page.evaluate(() => {
+          const row = [...document.querySelectorAll('.gtm-scroll > div')].find((r) => r.querySelector('.gtm-dot'));
+          return {
+            side: row ? getComputedStyle(row).justifyContent : '',
+            skip: [...document.querySelectorAll('button')].some((b) => /Skip ahead/.test(b.textContent)),
+            done: /Appointment booked/.test(document.body.innerText),
+          };
+        })),
+      });
+      if (samples[samples.length - 1].done || Date.now() - t0 > 40000) break;
+      await page.waitForTimeout(90);
+    }
+
+    const sides = new Set(samples.map((s) => s.side).filter(Boolean));
+    expect([...sides].sort(), 'the client types on the left AND the glam team types on the right')
+      .toEqual(['flex-end', 'flex-start']);
+
+    // BRIEF: the dots are an announcement, not furniture — they are down for a
+    // real stretch of the run while the message that just landed is read.
+    const running = samples.filter((s) => !s.done);
+    const quiet = running.filter((s) => !s.side).length;
+    expect(quiet / running.length, 'the dots must blink out between messages').toBeGreaterThan(0.35);
+
+    // …and "Skip ahead" stays reachable the whole time, dots or no dots.
+    for (const s of running) expect(s.skip).toBe(true);
+  });
+
+  test('TUNING 2 · at phone size the full thread stays scrollable and pinned to the newest message', async ({ page }) => {
+    await boot(page);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await bookAppointment(page);
+
+    const box = await page.evaluate(() => {
+      const el = document.getElementById('gtm-thread');
+      return { scrollH: el.scrollHeight, clientH: el.clientHeight, top: el.scrollTop };
+    });
+    // Five messages do not fit a handset — which is the case that matters.
+    expect(box.scrollH, 'the full thread should overflow the screen at 390 px').toBeGreaterThan(box.clientH);
+    // Pinned to the bottom, the way a messages app is.
+    expect(box.scrollH - (box.top + box.clientH), 'the newest message must be in view').toBeLessThanOrEqual(2);
+    // …and the top is REACHABLE. `justify-content:flex-end` bottom-anchors just
+    // as well but clips the overflow off the top of a scroller for good.
+    await page.evaluate(() => { document.getElementById('gtm-thread').scrollTop = 0; });
+    await expect(page.getByText('Today', { exact: true })).toBeInViewport();
+    await expect(page.getByText(/^Hi glam team!/)).toBeInViewport();
+  });
+
+  test('TUNING 2 · the thread is paced to be read, not fired off', async ({ page }) => {
+    await boot(page);
+    await page.getByRole('button', { name: /^Start/ }).click();
+
+    // When each message landed, sampled off the component's own reveal counter.
+    const landed = [];
+    const t0 = Date.now();
+    let step = 0;
+    let total = 0;
+    for (;;) {
+      const s = await logic(page, 'return {step:L.state.threadStep, total:(L.state.thread&&L.state.thread.messages.length)||0};');
+      total = s.total;
+      while (step < s.step) { landed.push(Date.now() - t0); step++; }
+      if (total && step >= total) break;
+      expect(Date.now() - t0, 'the thread should finish well inside 30 s').toBeLessThan(30000);
+      await page.waitForTimeout(80);
+    }
+
+    const gaps = landed.slice(1).map((t, i) => t - landed[i]);
+    // The old build fired one bubble every 900 ms flat. Every gap now carries a
+    // typing burst AND a read dwell, so none of them may be that quick again.
+    expect(Math.min(...gaps), `message gaps: ${gaps.join(', ')}`).toBeGreaterThan(1400);
+    // …but the whole booking still has to be over in a sitting.
+    expect(landed[landed.length - 1]).toBeLessThan(20000);
+    expect(landed.length).toBe(total);
   });
 
   test('the client who texts in is the client who sits down at the vanity', async ({ page }) => {

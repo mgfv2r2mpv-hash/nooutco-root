@@ -56,6 +56,42 @@
   @keyframes gtm-applied-a { 0%{ transform:scale(1);} 32%{ transform:scale(1.09);} 62%{ transform:scale(.985);} 100%{ transform:scale(1);} }
   @keyframes gtm-applied-b { 0%{ transform:scale(1);} 32%{ transform:scale(1.09);} 62%{ transform:scale(.985);} 100%{ transform:scale(1);} }
 
+  /* ── THE HANDSET (TUNING fix 2) ───────────────────────────────────────────
+     The pretext arrives on a PHONE, not on a floating card: a device bezel with
+     side buttons, a status bar, a dynamic island and a home indicator, so the
+     booking reads as somebody's handset on the salon counter.
+     Every status glyph is DRAWN (bars, arcs, a battery) rather than set as
+     text, because §8 forbids any digit on the child's screen and a real clock
+     would print four of them. */
+  .gtm-phone{ position:relative; width:min(352px,100%); height:min(72vh,640px); min-height:392px;
+    padding:11px 10px 12px; border-radius:46px; display:flex;
+    background:linear-gradient(152deg,#4c4152 0%,#1b1320 34%,#241a29 68%,#4c4152 100%);
+    box-shadow:0 34px 64px -26px rgba(56,22,50,.72), 0 3px 10px rgba(40,16,36,.28), inset 0 0 0 1.5px rgba(255,255,255,.11); }
+  /* volume rocker + side button — the two nubs that make a rounded rectangle
+     read as a handset rather than as a rounded rectangle. */
+  .gtm-phone::before,.gtm-phone::after{ content:''; position:absolute; width:3px; border-radius:3px; background:linear-gradient(180deg,#5f5165,#2b2130); }
+  .gtm-phone::before{ left:-2.5px; top:112px; height:56px; }
+  .gtm-phone::after{ right:-2.5px; top:132px; height:76px; }
+  .gtm-screen{ flex:1; min-width:0; display:flex; flex-direction:column; border-radius:36px; overflow:hidden; background:#fbf6f9; }
+  .gtm-statusbar{ position:relative; display:flex; align-items:center; padding:7px 19px 5px; background:var(--gtm-plum); color:#f0dcea; flex-shrink:0; }
+  .gtm-island{ position:absolute; left:50%; top:4px; transform:translateX(-50%); width:80px; height:20px; border-radius:999px; background:#0b070d; box-shadow:inset 0 0 0 1px rgba(255,255,255,.07); }
+  .gtm-status-icons{ margin-left:auto; display:flex; align-items:flex-end; gap:5px; }
+  .gtm-sig{ display:flex; align-items:flex-end; gap:1.6px; }
+  .gtm-sig i{ width:2.2px; border-radius:1px; background:currentColor; }
+  .gtm-sig i:nth-child(1){ height:3px } .gtm-sig i:nth-child(2){ height:5px }
+  .gtm-sig i:nth-child(3){ height:7px } .gtm-sig i:nth-child(4){ height:9px }
+  /* wifi = the top halves of two concentric rings; the container crops the
+     bottom half off, which is cheaper and crisper than an SVG arc. */
+  .gtm-wifi{ position:relative; width:14px; height:9px; overflow:hidden; }
+  .gtm-wifi i{ position:absolute; left:50%; transform:translateX(-50%); border:1.4px solid currentColor; border-radius:50%; }
+  .gtm-wifi i:nth-child(1){ width:14px; height:14px; bottom:-7px; }
+  .gtm-wifi i:nth-child(2){ width:7px; height:7px; bottom:-3.5px; }
+  .gtm-batt{ position:relative; width:19px; height:9.5px; border:1.2px solid currentColor; border-radius:3px; padding:1.3px; }
+  .gtm-batt i{ display:block; height:100%; width:72%; border-radius:1.5px; background:currentColor; }
+  .gtm-batt::after{ content:''; position:absolute; right:-3px; top:50%; transform:translateY(-50%); width:1.8px; height:4px; border-radius:0 2px 2px 0; background:currentColor; opacity:.7; }
+  .gtm-home{ flex-shrink:0; display:flex; justify-content:center; padding:7px 0 8px; }
+  .gtm-home i{ width:112px; height:4.5px; border-radius:999px; background:rgba(38,24,43,.32); }
+
   @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
   /* Phone (spec §3.9 device order: desktop first-class → tablet → iPhone). The
      header is a single nowrap row sized for desktop and was pushing ~73px of
@@ -65,6 +101,8 @@
     header{ flex-wrap:wrap; row-gap:6px; }
     header > div{ min-width:0 !important; }
     header > div > span{ white-space:normal !important; }
+    .gtm-phone{ border-radius:40px; padding:9px 8px 10px; }
+    .gtm-screen{ border-radius:32px; }
   }
 </style>
 
@@ -1042,37 +1080,68 @@ window.GlamStory = (function () {
        (AC-10): the event, the stakes and the booking only — no claim about the
        client's own hair or skin, and no numbers. -->
   <sc-if value="{{ isIntro }}" hint-placeholder-val="{{ true }}">
-    <section style="flex:1;display:flex;justify-content:center;align-items:flex-start;padding:22px 20px;background:linear-gradient(180deg,#f4ecf1 0%,var(--surface-page) 55%)">
-      <div style="width:min(430px,100%);border-radius:28px;box-shadow:var(--shadow-md),0 26px 50px -28px rgba(60,30,55,.55);overflow:hidden;display:flex;flex-direction:column;border:1px solid var(--border-default);animation:gtm-pop .4s var(--ease-standard)">
-        <div style="display:flex;align-items:center;gap:10px;padding:13px 16px;background:linear-gradient(180deg,#3a2442,#26182b);color:#fff">
-          <div style="width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.24);flex-shrink:0">{{ threadEmoji }}</div>
-          <div style="text-align:left;min-width:0">
-            <div style="font-size:15px;font-weight:800;letter-spacing:-.01em">{{ threadName }}</div>
-            <div style="font-size:11px;color:#dcc4d6">Booking the glam team</div>
+    <section style="flex:1;display:flex;justify-content:center;align-items:center;padding:18px 20px;background:linear-gradient(180deg,#f4ecf1 0%,var(--surface-page) 55%)">
+      <!-- The handset itself. The bezel, the island and the home bar are pure
+           chrome; the app inside it is the thread. -->
+      <div class="gtm-phone" style="animation:gtm-pop .4s var(--ease-standard)">
+        <div class="gtm-screen">
+          <!-- Status bar. No clock: §8 forbids digits on the child's screen, so
+               the carrier slot carries a word and the rest is drawn. -->
+          <div class="gtm-statusbar">
+            <div class="gtm-island"></div>
+            <span style="font-size:11px;font-weight:800;letter-spacing:.04em">Glam</span>
+            <span class="gtm-status-icons">
+              <span class="gtm-sig"><i></i><i></i><i></i><i></i></span>
+              <span class="gtm-wifi"><i></i><i></i></span>
+              <span class="gtm-batt"><i></i></span>
+            </span>
           </div>
-          <span style="margin-left:auto;font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#f4d6b4;flex-shrink:0">New messages</span>
-        </div>
 
-        <!-- justify-content:flex-end — a thread grows UP from the composer, so
-             the bubbles hug the bottom of the panel instead of stranding the
-             conversation at the top of a tall empty box. -->
-        <div class="gtm-scroll" style="padding:16px 14px 8px;display:flex;flex-direction:column;justify-content:flex-end;gap:9px;min-height:270px;background:#fbf6f9">
-          <sc-for list="{{ threadMsgs }}" as="m" hint-placeholder-count="3">
-            <div style="{{ m.rowStyle }}"><div style="{{ m.bubbleStyle }}">{{ m.text }}</div></div>
-          </sc-for>
-          <sc-if value="{{ threadTyping }}" hint-placeholder-val="{{ true }}">
-            <div style="{{ typingRowStyle }}"><div style="display:inline-flex;align-items:center;gap:5px;padding:12px 15px;border-radius:19px;background:#fff;border:1px solid var(--border-default);box-shadow:var(--shadow-sm)"><span class="gtm-dot"></span><span class="gtm-dot"></span><span class="gtm-dot"></span></div></div>
-          </sc-if>
-        </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 14px 11px;background:linear-gradient(180deg,#3a2442,#26182b);color:#fff;flex-shrink:0">
+            <div style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:19px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.24);flex-shrink:0">{{ threadEmoji }}</div>
+            <div style="text-align:left;min-width:0">
+              <div style="font-size:15px;font-weight:800;letter-spacing:-.01em">{{ threadName }}</div>
+              <div style="font-size:11px;color:#dcc4d6">Booking the glam team</div>
+            </div>
+            <span style="margin-left:auto;font-size:9px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:#f4d6b4;flex-shrink:0;text-align:right">New<br>messages</span>
+          </div>
 
-        <div style="padding:12px 16px 17px;background:#fbf6f9;border-top:1px solid var(--border-default);display:flex;flex-direction:column;align-items:center;gap:11px">
-          <sc-if value="{{ threadTyping }}" hint-placeholder-val="{{ true }}">
-            <button onClick="{{ onThreadSkip }}" style="background:none;border:none;color:var(--slate-500);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;text-decoration:underline">Skip ahead</button>
-          </sc-if>
-          <sc-if value="{{ threadDone }}" hint-placeholder-val="{{ false }}">
-            <div style="display:inline-flex;align-items:center;gap:7px;padding:6px 14px;background:var(--sage-50);border:1px solid var(--sage-200);border-radius:999px;font-size:12px;font-weight:800;color:var(--sage-700);animation:gtm-pop .3s var(--ease-standard)">✅ {{ threadBooked }}</div>
-            <button onClick="{{ onOpenSalon }}" style="width:100%;background:var(--brand-primary);color:#fff;border:none;padding:14px 24px;border-radius:14px;font-size:17px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md);animation:gtm-pop .34s var(--ease-standard)">Open the salon ▸</button>
-          </sc-if>
+          <!-- justify-content:flex-end — a thread grows UP from the composer, so
+               the bubbles hug the bottom of the screen instead of stranding the
+               conversation at the top of a tall empty box. -->
+          <!-- `margin-top:auto` on the first child, NOT `justify-content:flex-end`:
+               both bottom-anchor a short thread, but flex-end clips the overflow
+               off the TOP of a scroller and makes it unreachable, which is what a
+               full five-message thread does at 390 px. The auto margin collapses
+               to 0 the moment the content overflows, so it scrolls normally —
+               and `_scrollThread()` keeps it pinned to the newest message. -->
+          <div id="gtm-thread" class="gtm-scroll" style="flex:1;min-height:0;overflow-y:auto;padding:14px 12px 8px;display:flex;flex-direction:column;gap:9px;background:radial-gradient(125% 58% at 50% 0%,rgba(238,209,231,.46) 0%,rgba(238,209,231,0) 64%),#fbf6f9">
+            <!-- the separator every messages app opens a conversation with; it
+                 rides the bottom-anchored stack, so it sits directly above the
+                 first bubble instead of stranding at the top of the screen. -->
+            <div style="margin-top:auto;text-align:center;padding:1px 0 3px"><span style="display:inline-block;padding:3px 11px;border-radius:999px;background:rgba(58,36,66,.07);font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--slate-500)">Today</span></div>
+            <sc-for list="{{ threadMsgs }}" as="m" hint-placeholder-count="3">
+              <div style="{{ m.rowStyle }}"><div style="{{ m.bubbleStyle }}">{{ m.text }}</div></div>
+            </sc-for>
+            <!-- The dots are BRIEF and two-sided: they appear on the side the
+                 next message is coming from, just long enough to read as
+                 somebody typing, then that message lands and the thread sits
+                 still while it is read (THREAD_TYPE_MS / THREAD_READ_MS). -->
+            <sc-if value="{{ threadTyping }}" hint-placeholder-val="{{ true }}">
+              <div style="{{ typingRowStyle }}"><div style="{{ typingBubbleStyle }}"><span class="gtm-dot"></span><span class="gtm-dot"></span><span class="gtm-dot"></span></div></div>
+            </sc-if>
+          </div>
+
+          <div style="padding:10px 14px 8px;background:#fbf6f9;border-top:1px solid var(--border-default);display:flex;flex-direction:column;align-items:center;gap:9px;flex-shrink:0">
+            <sc-if value="{{ threadRunning }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ onThreadSkip }}" style="background:none;border:none;color:var(--slate-500);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;text-decoration:underline">Skip ahead</button>
+            </sc-if>
+            <sc-if value="{{ threadDone }}" hint-placeholder-val="{{ false }}">
+              <div style="display:inline-flex;align-items:center;gap:7px;padding:6px 14px;background:var(--sage-50);border:1px solid var(--sage-200);border-radius:999px;font-size:12px;font-weight:800;color:var(--sage-700);animation:gtm-pop .3s var(--ease-standard)">✅ {{ threadBooked }}</div>
+              <button onClick="{{ onOpenSalon }}" style="width:100%;background:var(--brand-primary);color:#fff;border:none;padding:13px 22px;border-radius:14px;font-size:17px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md);animation:gtm-pop .34s var(--ease-standard)">Open the salon ▸</button>
+            </sc-if>
+          </div>
+          <div class="gtm-home"><i></i></div>
         </div>
       </div>
     </section>
@@ -1525,10 +1594,15 @@ const ZONE_NOUN = { face:'the face', brows:'the brows', eyes:'the eyes', cheeks:
    per-turn budget from this and the BT's turn count (D-D / AC-7). */
 const REQUIRED_ACTIONS = 19;
 
-/* How long each bubble of the texting intro waits before it lands. Slow enough
-   to read as a conversation arriving, short enough that the whole booking is
-   over in a few seconds; "Skip ahead" jumps to the end at any point. */
-const THREAD_BEAT_MS = 900;
+/* How the texting intro is paced (TUNING fix 2). Every message is preceded by a
+   BRIEF typing burst on the side it is coming from, and once it lands the thread
+   sits still while it is read — the dwell scales with the length of what just
+   arrived, so a long message is never shoved off the screen by the next one.
+   The old build ran one bubble every 900 ms with the dots up continuously,
+   which read as a machine gun rather than as a conversation.
+   "Skip ahead" jumps to the end at any point. */
+const THREAD_TYPE_MS = 680;
+const THREAD_READ_MS = t => Math.min(2400, 820 + 24 * String(t || '').length);
 
 class Component extends DCLogic {
   constructor(props) {
@@ -1551,7 +1625,7 @@ class Component extends DCLogic {
       partnerLeft:0, partnerTimed:false, cueVisible:false,
       settingsOpen:false, methodOpen:false,
       elapsed:0,
-      sel, story:this.storyIntro(sel), thread:null, threadStep:0,
+      sel, story:this.storyIntro(sel), thread:null, threadStep:0, threadDots:false,
       // engine mirror — the Trial is the source of truth; these exist only to render
       engTurn:0, ttActions:0, ttBudget:0, capToast:'', eToast:'', ePickerOpen:false,
       report:null,
@@ -1565,7 +1639,7 @@ class Component extends DCLogic {
       mirror:null,
     };
     this._trial=null; this._charged={}; this._ttIv=null; this._clockIv=null; this._paint=false;
-    this._toastTO=null; this._eToastTO=null; this._threadIv=null; this._mirrorTO=null; this._mirrorN=0;
+    this._toastTO=null; this._eToastTO=null; this._threadTO=null; this._mirrorTO=null; this._mirrorN=0;
     this._shotBefore=null; this._shotAfter=null; this._shotOpen=false;
   }
   drawChar(lock){
@@ -1585,9 +1659,13 @@ class Component extends DCLogic {
        flip a boundary pass between `independent` and `prompted@…`. */
     this._ttIv=setInterval(()=>this.tickTrial(),250);
     this.paintAvatar(); }
-  componentDidUpdate(){ this.paintAvatar(); this.paintReveal(); }
+  componentDidUpdate(){ this.paintAvatar(); this.paintReveal(); this._scrollThread(); }
+  /* Keep the phone pinned to the newest message, the way a messages app does.
+     Only bites once the thread is taller than the screen (390 px, five
+     messages); a no-op on every other surface, where the node does not exist. */
+  _scrollThread(){ const el=document.getElementById('gtm-thread'); if(el) el.scrollTop=el.scrollHeight; }
   componentWillUnmount(){ clearInterval(this._ttIv); clearInterval(this._clockIv);
-    clearInterval(this._threadIv);
+    this.stopThread();
     clearTimeout(this._toastTO); clearTimeout(this._eToastTO); clearTimeout(this._mirrorTO); }
 
   cfg(){ return THEMES[this.state.theme]; }
@@ -1674,27 +1752,35 @@ class Component extends DCLogic {
      has pinned the model) and hands the pretext to the texting thread. */
   beginIntro(){ const sel=this.drawChar(this.state.charLock);
     this.setState({ phase:'intro', sel, model:sel.model, story:this.storyIntro(sel),
-      thread:this.storyThread(sel), threadStep:0, settingsOpen:false, report:null });
+      thread:this.storyThread(sel), threadStep:0, threadDots:false, settingsOpen:false, report:null });
     this.playThread(); }
 
-  /* Reveal the bubbles one at a time. The reveal counter lives on the instance,
-     not in state, so the interval never has to read a setState that has not
-     flushed yet. */
-  playThread(){ clearInterval(this._threadIv);
-    const total=(this.state.thread&&this.state.thread.messages.length)||0;
-    if(!total) return;
-    let n=0;
-    this._threadIv=setInterval(()=>{
-      n++; this.setState({threadStep:n});
-      if(n>=total){ clearInterval(this._threadIv); this._threadIv=null; }
-    }, THREAD_BEAT_MS); }
-  threadSkip(){ clearInterval(this._threadIv); this._threadIv=null;
-    this.setState({threadStep:(this.state.thread&&this.state.thread.messages.length)||0}); }
+  /* Reveal the bubbles one at a time, typing → land → read → typing. The step
+     index is carried through the recursion rather than read back out of state,
+     so the chain never has to wait on a setState that has not flushed yet.
+     `threadDots` is the ONLY thing that toggles the indicator, which is what
+     makes it brief: it goes up when a side starts typing and comes straight
+     back down when that side's message lands. */
+  playThread(){ this.stopThread();
+    const msgs=(this.state.thread&&this.state.thread.messages)||[];
+    if(!msgs.length) return;
+    const beat=n=>{
+      this.setState({threadDots:true});
+      this._threadTO=setTimeout(()=>{
+        this.setState({threadStep:n+1, threadDots:false});
+        if(n+1>=msgs.length){ this._threadTO=null; return; }
+        this._threadTO=setTimeout(()=>beat(n+1), THREAD_READ_MS(msgs[n].text));
+      }, THREAD_TYPE_MS);
+    };
+    beat(0); }
+  stopThread(){ clearTimeout(this._threadTO); this._threadTO=null; }
+  threadSkip(){ this.stopThread();
+    this.setState({threadStep:(this.state.thread&&this.state.thread.messages.length)||0, threadDots:false}); }
 
   /* `keepClient` is the salon-opening path: the client who just texted is the
      client who sits down. The BT's ▶ Play starts a trial straight from the setup
      strip and draws a fresh one. */
-  play(opts){ clearInterval(this._threadIv); this._threadIv=null; clearTimeout(this._mirrorTO);
+  play(opts){ this.stopThread(); clearTimeout(this._mirrorTO);
     const sel=(opts&&opts.keepClient&&this.state.sel)||this.drawChar(this.state.charLock);
     this._trial=new window.GlamTT.Trial(this.ttOpts()); this._charged={};
     this._shotBefore=null; this._shotAfter=null; this._shotOpen=true;
@@ -1939,11 +2025,11 @@ class Component extends DCLogic {
   finishSR(){ if(window.NooutcoReward) window.NooutcoReward.openSR({minutes:5,title:'SR Timer'}); }
   /* Play again returns to the front door, so the next run gets the same
      start → a client texts in → salon opening as the first one. */
-  replay(){ this._trial=null; this._charged={}; clearInterval(this._threadIv); this._threadIv=null;
+  replay(){ this._trial=null; this._charged={}; this.stopThread();
     this._shotBefore=null; this._shotAfter=null; this._shotOpen=false; clearTimeout(this._mirrorTO);
     const sel=this.drawChar(this.state.charLock);
     this.setState({phase:'title',sel,model:sel.model,story:this.storyIntro(sel),report:null,
-      thread:null,threadStep:0,revealReady:false,mirror:null,
+      thread:null,threadStep:0,threadDots:false,revealReady:false,mirror:null,
       ed:this.freshEd(this.cfg().flaws),armed:null,chargedThisTurn:{},capToast:'',eToast:'',
       engTurn:0,ttActions:0,ttBudget:0,cueVisible:false,settingsOpen:false}); }
 
@@ -2705,8 +2791,13 @@ class Component extends DCLogic {
         bubbleStyle:'max-width:82%;padding:10px 14px;font-size:14px;line-height:1.45;box-shadow:var(--shadow-sm);'+(team
           ? 'background:linear-gradient(180deg,var(--sage-600),var(--sage-700));color:#fff;border-radius:18px 18px 6px 18px'
           : 'background:#fff;color:var(--text-body);border:1px solid var(--border-default);border-radius:18px 18px 18px 6px') }; });
-    const threadTyping=!!th && s.threadStep < th.messages.length;
-    const nextFrom=threadTyping ? th.messages[s.threadStep].from : 'client';
+    /* `threadRunning` (there are messages still to come) and `threadDots` (a
+       side is typing RIGHT NOW) are separate: the dots blink out during every
+       read dwell, but "Skip ahead" has to stay on screen the whole way. */
+    const threadRunning=!!th && s.threadStep < th.messages.length;
+    const threadDots=threadRunning && !!s.threadDots;
+    const nextFrom=threadRunning ? th.messages[s.threadStep].from : 'client';
+    const typingTeam=nextFrom==='team';
 
     const stBase='width:128px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:6px;padding:11px 8px;border-radius:14px;';
     const chip=c=>'display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:700;'+c;
@@ -2738,9 +2829,14 @@ class Component extends DCLogic {
       onEUndo:()=>this.eUndo(), onEndTrial:()=>this.endTrial(), onPrint:()=>this.printReport(),
       onMethod:()=>this.setState(x=>({methodOpen:!x.methodOpen})), onMinimize:()=>this.setState(x=>({settingsOpen:!x.settingsOpen})), onFinishSR:()=>this.finishSR(), onReplay:()=>this.replay(),
       isTitle,isIntro,isReady,isMine,isTheirs,isGiveback,isAsk,isDone, showGame:isReady||isMine||isTheirs||isGiveback,
-      threadMsgs, threadTyping, threadDone:!!th && !threadTyping,
+      threadMsgs, threadTyping:threadDots, threadRunning, threadDone:!!th && !threadRunning,
       threadName:(th&&th.name)||'', threadEmoji:(th&&th.emoji)||'💬', threadBooked:(th&&th.booked)||'',
-      typingRowStyle:'display:flex;justify-content:'+(nextFrom==='team'?'flex-end':'flex-start'),
+      // the dots wear the same skin as the bubble they precede, so it reads as
+      // that side typing rather than as a third voice in the thread.
+      typingRowStyle:'display:flex;justify-content:'+(typingTeam?'flex-end':'flex-start')+';animation:gtm-bubble .26s var(--ease-standard)',
+      typingBubbleStyle:'display:inline-flex;align-items:center;gap:5px;padding:11px 14px;box-shadow:var(--shadow-sm);'+(typingTeam
+        ? 'background:var(--sage-100);border:1px solid var(--sage-200);border-radius:18px 18px 6px 18px'
+        : 'background:#fff;border:1px solid var(--border-default);border-radius:18px 18px 18px 6px'),
       mapBanner:s.turnMap==='banner', mapVanity:s.turnMap==='vanity', mapRunway:s.turnMap==='runway',
       personShow:base==='person', isPet:base==='pet', V, palette, target, runwayTiles, stageChips,
       /* The stage panel is framed as the vanity ALCOVE when the art compositor is
