@@ -55,8 +55,13 @@ async function boot(page) {
   return errors;
 }
 
-/** Set the BT settings by their accessible names, then start the trial. */
+/** Set the BT settings by their accessible names, then start the trial.
+    The refresh put the child's title screen in front and collapsed the setup
+    strip behind the ⚙, so a BT-driven start opens it first. This is the
+    clinician's route in — it starts the trial directly and skips the child's
+    texting intro, which tests/glam-open-flow.spec.js covers on its own. */
 async function start(page, cfg = {}) {
+  await ensureSetupOpen(page);
   const defaults = { Routine: 'free', Turns: '10', 'Their turn': 'count', Wait: '2' };
   for (const [label, value] of Object.entries({ ...defaults, ...cfg })) {
     await page.getByLabel(label, { exact: true }).selectOption(value);
@@ -82,6 +87,14 @@ async function useTool(page, name) {
 /** Re-open the BT settings strip, which collapses when the trial starts. */
 async function openSettings(page) {
   await page.getByTitle('Show / hide setup').click();
+}
+
+/** Open the setup strip only if it is closed — the ⚙ is a toggle, and the strip
+    now starts collapsed behind the child's title screen. */
+async function ensureSetupOpen(page) {
+  const turns = page.getByLabel('Turns', { exact: true });
+  if (!(await turns.isVisible())) await openSettings(page);
+  await expect(turns).toBeVisible();
 }
 
 /** Give-back = "they forget": wait out the staff-idle onset, then mand. Closes
@@ -273,6 +286,7 @@ test.describe('game surface — the ask-back (D-K)', () => {
 test.describe('game surface — completion, turns and the outro (D-D / D-G)', () => {
   test('AC-7/AC-17 (A5) · the BT sets TURNS and the per-turn budget auto-scales — one fixed cap, no second lever', async ({ page }) => {
     await boot(page);
+    await ensureSetupOpen(page);
     // The action-count dropdowns are gone: a budget the BT could raise mid-trial
     // is the A5 attack (the old `actionGoal + bonus` band).
     await expect(page.getByLabel('Turns', { exact: true })).toBeVisible();
@@ -354,12 +368,19 @@ test.describe('game surface — completion, turns and the outro (D-D / D-G)', ()
 
   test('AC-10 · the on-screen intro is the mad-lib, and asserts no checkable visual attribute of the client', async ({ page }) => {
     await boot(page);
+    // The refresh moved the pretext into the texting intro (Start → the client
+    // texts in), so the mad-lib now reaches the child as message bubbles.
+    await page.getByRole('button', { name: /^Start/ }).click();
+    await page.getByRole('button', { name: 'Skip ahead' }).click();
+    await expect(page.getByRole('button', { name: /Open the salon/ })).toBeVisible();
+
     // The pre-redesign copy said "total bedhead, a couple of surprise spots" —
     // both refutable by looking at the doll (§3.7.1), since every model's hair
     // differs and the spots are procedurally seeded.
     const text = await page.evaluate(() => document.body.innerText);
     expect(text).not.toMatch(/bedhead/i);
-    expect(text).toMatch(/Good thing the glam team takes turns/);
+    expect(text, 'the drawn scenario reaches the child').toMatch(/^Hi glam team!/m);
+    expect(text).toMatch(/We take turns here/);
     const violations = await page.evaluate(() => window.GlamStory.congruenceViolations());
     expect(violations, 'the whole producible string set is congruent').toEqual([]);
 

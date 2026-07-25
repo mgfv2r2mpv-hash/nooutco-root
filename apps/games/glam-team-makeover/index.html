@@ -15,6 +15,12 @@
   @keyframes gtm-pop { 0%{ opacity:0; transform:scale(.85);} 60%{ transform:scale(1.04);} 100%{ opacity:1; transform:scale(1);} }
   @keyframes gtm-target { 0%,100%{ box-shadow:0 0 0 3px rgba(106,118,89,.30);} 50%{ box-shadow:0 0 0 8px rgba(106,118,89,.12);} }
   @keyframes gtm-pim { 0%,100%{ box-shadow:0 0 0 0 rgba(220,38,38,.35);} 50%{ box-shadow:0 0 0 6px rgba(220,38,38,.12);} }
+  /* Texting intro — bubbles land, the typing dots breathe. Transform + opacity
+     only, so the whole thread stays on the compositor. */
+  @keyframes gtm-bubble { 0%{ opacity:0; transform:translateY(10px) scale(.96);} 100%{ opacity:1; transform:none;} }
+  @keyframes gtm-dot { 0%,80%,100%{ opacity:.25; transform:translateY(0);} 40%{ opacity:1; transform:translateY(-3px);} }
+  .gtm-dot{ width:6px;height:6px;border-radius:50%;background:var(--slate-500);display:inline-block;animation:gtm-dot 1.25s var(--ease-standard) infinite }
+  .gtm-dot:nth-child(2){ animation-delay:.16s } .gtm-dot:nth-child(3){ animation-delay:.32s }
   .gtm-scroll::-webkit-scrollbar{ width:8px;height:8px; } .gtm-scroll::-webkit-scrollbar-thumb{ background:var(--slate-300); border-radius:8px; }
   .gtm-tool{ touch-action:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
   @media (prefers-reduced-motion: reduce){ *{ animation:none !important; } }
@@ -659,6 +665,8 @@ window.GlamStory = (function () {
       introTitle: 'Picture day is today!',
       problem: '{name} is not ready yet — there is a whole glam routine to do and no outfit picked.',
       stakes: 'The photographer is almost here!',
+      textOpen: 'Hi glam team! It is school picture day today.',
+      textAsk: 'Could you book me in before the photographer gets here?',
       turnTaking: {
         1: 'Every turn, you took a turn and then handed the brush back. Getting ready for picture day as a real team.',
         2: 'You and the glam partner traded the brush back and forth the whole time.',
@@ -671,6 +679,8 @@ window.GlamStory = (function () {
       introTitle: 'The party starts in a few minutes!',
       problem: '{name} is not party-ready yet — there is lots to do and no outfit yet.',
       stakes: 'The guests are already arriving!',
+      textOpen: 'Hi glam team! My birthday party starts very soon.',
+      textAsk: 'Could you squeeze me in before the party?',
       turnTaking: {
         1: 'Turn after turn, you took a turn and passed it right back. Nobody gets party-ready like a team that shares.',
         2: 'You shared the brush with the glam partner all the way through getting ready for the party.',
@@ -683,6 +693,8 @@ window.GlamStory = (function () {
       introTitle: 'Talent show — {name} is on next!',
       problem: '{name} still needs the full glam routine before going on.',
       stakes: 'On stage next!',
+      textOpen: 'Hi glam team! I am in the talent show tonight.',
+      textAsk: 'Could you book me in before I go on?',
       turnTaking: {
         1: 'Every turn, you took a turn and then gave it back. Backstage teamwork at its very best.',
         2: 'You and the glam partner took turns backstage, right up to showtime.',
@@ -695,6 +707,8 @@ window.GlamStory = (function () {
       introTitle: 'Family photo time!',
       problem: '{name} is not camera-ready yet — the whole routine still has to be done.',
       stakes: 'Grandma is waiting!',
+      textOpen: 'Hi glam team! We are taking a family photo today.',
+      textAsk: 'Could you book me in before we all line up?',
       turnTaking: {
         1: 'Turn for turn, you took a turn and handed it back every single time. That is what a team looks like.',
         2: 'You and the glam partner passed the brush back and forth while everyone got ready.',
@@ -707,6 +721,8 @@ window.GlamStory = (function () {
       introTitle: 'First day at a new school!',
       problem: '{name} wants to feel ready — there is a full routine to do and no outfit yet.',
       stakes: 'The bus comes in a few minutes!',
+      textOpen: 'Hi glam team! It is my first day at a new school.',
+      textAsk: 'Could you book me in before the bus?',
       turnTaking: {
         1: 'Every turn, you took a turn and passed it back. Getting ready for a big day, together.',
         2: 'You took turns with the glam partner all through getting ready for the first day.',
@@ -719,6 +735,8 @@ window.GlamStory = (function () {
       introTitle: 'Dance recital tonight!',
       problem: '{name} is not show-ready yet — there is a glam routine to do.',
       stakes: 'Curtain in minutes!',
+      textOpen: 'Hi glam team! My dance recital is tonight.',
+      textAsk: 'Could you book me in before the curtain?',
       turnTaking: {
         1: 'Turn after turn, you took a turn and gave it right back. A recital-day team through and through.',
         2: 'You and the glam partner traded turns the whole time, getting ready for the recital.',
@@ -727,6 +745,19 @@ window.GlamStory = (function () {
       completion: 'And the whole glam routine was ready before the curtain — {name} shone on stage!',
     },
   ];
+
+  /* The pretext arrives as an INCOMING TEXT THREAD to the glam team's phone: the
+     client texts about the occasion and books an appointment, the team texts
+     back. Same congruence rule as every other child-facing string (§3.7.1) — the
+     client may text about the EVENT, the STAKES and the BOOKING, never about
+     their own hair or skin, and never a number. `allStrings()` below sweeps
+     every producible bubble, so the existing AC-10 guard covers this pool too
+     rather than needing a second, weaker check. */
+  var TEAM_REPLY = [
+    'Hi {name}! The glam team just picked up.',
+    'You are booked — come on in. We take turns here: skincare first, then makeup, then hair, then an outfit.',
+  ];
+  var BOOKED_NOTE = 'Appointment booked — the salon is opening!';
 
   /* §3.7.1 — refutable-claim guard. Bare words are banned only where the word is
      unambiguously an appearance claim; the ambiguous ones (short/long/straight…)
@@ -780,6 +811,26 @@ window.GlamStory = (function () {
     };
   }
 
+  /* The same pretext as `intro()`, shaped as the booking conversation the child
+     actually watches arrive. Ordered oldest-first; `from` is the only thing the
+     screen needs to decide which side of the phone a bubble sits on. */
+  function thread(sel) {
+    var ev = byId(sel.eventId);
+    return {
+      name: sel.name,
+      emoji: ev.emoji,
+      event: ev.label,
+      booked: BOOKED_NOTE,
+      messages: [
+        { from: 'client', text: fill(ev.textOpen, sel.name) },
+        { from: 'client', text: fill(ev.stakes, sel.name) },
+        { from: 'client', text: fill(ev.textAsk, sel.name) },
+        { from: 'team', text: fill(TEAM_REPLY[0], sel.name) },
+        { from: 'team', text: fill(TEAM_REPLY[1], sel.name) },
+      ],
+    };
+  }
+
   /* The two axes. `tier` drives the turn-taking line and NOTHING else; `complete`
      gates the completion beat and NOTHING else. They never read each other. */
   function outro(sel, tier, complete) {
@@ -809,6 +860,11 @@ window.GlamStory = (function () {
         var i = intro(sel);
         out.push({ where: ev.id + '/intro/title', s: i.title });
         out.push({ where: ev.id + '/intro/text', s: i.text });
+        var th = thread(sel);
+        th.messages.forEach(function (m, k) {
+          out.push({ where: ev.id + '/thread/' + k + '/' + m.from, s: m.text });
+        });
+        out.push({ where: ev.id + '/thread/booked', s: th.booked });
         [1, 2, 3].forEach(function (tier) {
           [true, false].forEach(function (complete) {
             var o = outro(sel, tier, complete);
@@ -851,7 +907,7 @@ window.GlamStory = (function () {
 
   return {
     NAMES: NAMES, CHEERS: CHEERS, EVENTS: EVENTS, BANNED: BANNED, MODELS: MODELS,
-    byId: byId, draw: draw, intro: intro, outro: outro,
+    byId: byId, draw: draw, intro: intro, thread: thread, outro: outro,
     allStrings: allStrings,
     congruenceViolations: congruenceViolations,
     tierLinesClaimingCompletion: tierLinesClaimingCompletion,
@@ -917,21 +973,72 @@ window.GlamStory = (function () {
     </div>
   </div>
 
-  <!-- INTRO -->
-  <sc-if value="{{ isIntro }}" hint-placeholder-val="{{ true }}">
-    <section style="flex:1;display:flex;justify-content:center;align-items:flex-start;padding:26px 20px">
-      <div style="width:min(680px,100%);background:var(--surface-card);border:1px solid var(--border-default);border-radius:16px;box-shadow:var(--shadow-md);padding:28px 30px;text-align:center">
-        <div style="font-size:56px;line-height:1">{{ introEmoji }}</div>
-        <h2 style="font-size:24px;font-weight:800;color:var(--text-primary);margin:10px 0 8px;letter-spacing:-.01em">{{ introTitle }}</h2>
-        <p style="font-size:15px;line-height:1.55;color:var(--text-body);max-width:520px;margin:0 auto 18px">{{ introText }}</p>
-        <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:22px">
-          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted)">The routine</span>
-          <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:var(--sage-50);border:1px solid var(--sage-200);border-radius:999px;font-size:12px;font-weight:700;color:var(--sage-700)">🧼 Skincare</span>
-          <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:var(--sage-50);border:1px solid var(--sage-200);border-radius:999px;font-size:12px;font-weight:700;color:var(--sage-700)">💄 Makeup</span>
-          <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:var(--sage-50);border:1px solid var(--sage-200);border-radius:999px;font-size:12px;font-weight:700;color:var(--sage-700)">💇 Hair</span>
-          <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:var(--sage-50);border:1px solid var(--sage-200);border-radius:999px;font-size:12px;font-weight:700;color:var(--sage-700)">💎 Accessories</span>
+  <!-- TITLE — the child's front door. One tap starts a trial on sensible
+       defaults; the BT's clinical setup is reachable but never in front of the
+       child (the ⚙ in the header, and the ghost button below). There is no
+       character dropdown here on purpose: the client is drawn at random on Start
+       (D-F), and a BT who needs consistency pins it in the setup strip. -->
+  <sc-if value="{{ isTitle }}" hint-placeholder-val="{{ false }}">
+    <section style="flex:1;display:flex;justify-content:center;align-items:center;padding:26px 20px;background:radial-gradient(130% 100% at 50% -12%,#4c2c48 0%,#2b1a2e 52%,#180f1f 100%)">
+      <div style="width:min(640px,100%);text-align:center;animation:gtm-pop .45s var(--ease-standard)">
+        <div style="display:inline-flex;align-items:center;gap:9px;padding:6px 17px;border-radius:999px;background:rgba(255,255,255,.09);border:1px solid rgba(255,225,190,.34);font-size:11px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:#f4d6b4">✦ The salon is open ✦</div>
+        <div style="font-size:13px;font-weight:800;letter-spacing:.42em;text-transform:uppercase;color:#eab6c8;margin:24px 0 0;padding-left:.42em">Glam Team</div>
+        <div style="font-size:clamp(46px,9vw,74px);line-height:.96;font-weight:900;letter-spacing:-.025em;color:#ffdcae;background:linear-gradient(180deg,#fffaf3 4%,#ffd8a5 58%,#e59f68 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 10px 26px rgba(0,0,0,.42))">Makeover</div>
+        <p style="font-size:15.5px;line-height:1.6;color:#f3e7f1;max-width:430px;margin:18px auto 24px">A client is on their way to the salon. Take turns with your glam partner and get the whole look ready together.</p>
+        <button onClick="{{ onStart }}" style="background:linear-gradient(180deg,#f6b8a0,#e08a6e);color:#3a1c1c;border:none;padding:16px 46px;border-radius:999px;font-size:20px;font-weight:900;font-family:inherit;cursor:pointer;box-shadow:0 12px 30px -10px rgba(240,150,110,.85),inset 0 1px 0 rgba(255,255,255,.55);letter-spacing:.01em">Start Playing ▸</button>
+        <div style="display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap;margin:26px 0 0">
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.24);border-radius:999px;font-size:12px;font-weight:700;color:#f7ecf6">🧼 Skincare</span>
+          <span style="font-size:11px;color:#a98fa6">→</span>
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.24);border-radius:999px;font-size:12px;font-weight:700;color:#f7ecf6">💄 Makeup</span>
+          <span style="font-size:11px;color:#a98fa6">→</span>
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.24);border-radius:999px;font-size:12px;font-weight:700;color:#f7ecf6">💇 Hair</span>
+          <span style="font-size:11px;color:#a98fa6">→</span>
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.24);border-radius:999px;font-size:12px;font-weight:700;color:#f7ecf6">💎 Accessories</span>
         </div>
-        <button onClick="{{ onPlay }}" style="background:var(--brand-primary);color:#fff;border:none;padding:12px 34px;border-radius:10px;font-size:17px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md)">Start — my turn first ▸</button>
+        <button onClick="{{ onMinimize }}" title="Session setup" style="margin-top:22px;background:none;border:1px solid rgba(255,255,255,.22);color:#dcc6da;font-family:inherit;font-size:12px;font-weight:700;padding:7px 15px;border-radius:999px;cursor:pointer">⚙ Session setup</button>
+      </div>
+    </section>
+  </sc-if>
+
+  <!-- TEXTING INTRO — the pretext arrives as an incoming thread to the glam
+       team's phone: the client texts about the occasion and books the
+       appointment, the team texts back, the salon opens. Every bubble comes from
+       GlamStory.thread() and is swept by the same congruence guard as the outro
+       (AC-10): the event, the stakes and the booking only — no claim about the
+       client's own hair or skin, and no numbers. -->
+  <sc-if value="{{ isIntro }}" hint-placeholder-val="{{ true }}">
+    <section style="flex:1;display:flex;justify-content:center;align-items:flex-start;padding:22px 20px;background:linear-gradient(180deg,#f4ecf1 0%,var(--surface-page) 55%)">
+      <div style="width:min(430px,100%);border-radius:28px;box-shadow:var(--shadow-md),0 26px 50px -28px rgba(60,30,55,.55);overflow:hidden;display:flex;flex-direction:column;border:1px solid var(--border-default);animation:gtm-pop .4s var(--ease-standard)">
+        <div style="display:flex;align-items:center;gap:10px;padding:13px 16px;background:linear-gradient(180deg,#3a2442,#26182b);color:#fff">
+          <div style="width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.24);flex-shrink:0">{{ threadEmoji }}</div>
+          <div style="text-align:left;min-width:0">
+            <div style="font-size:15px;font-weight:800;letter-spacing:-.01em">{{ threadName }}</div>
+            <div style="font-size:11px;color:#dcc4d6">Booking the glam team</div>
+          </div>
+          <span style="margin-left:auto;font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#f4d6b4;flex-shrink:0">New messages</span>
+        </div>
+
+        <!-- justify-content:flex-end — a thread grows UP from the composer, so
+             the bubbles hug the bottom of the panel instead of stranding the
+             conversation at the top of a tall empty box. -->
+        <div class="gtm-scroll" style="padding:16px 14px 8px;display:flex;flex-direction:column;justify-content:flex-end;gap:9px;min-height:270px;background:#fbf6f9">
+          <sc-for list="{{ threadMsgs }}" as="m" hint-placeholder-count="3">
+            <div style="{{ m.rowStyle }}"><div style="{{ m.bubbleStyle }}">{{ m.text }}</div></div>
+          </sc-for>
+          <sc-if value="{{ threadTyping }}" hint-placeholder-val="{{ true }}">
+            <div style="{{ typingRowStyle }}"><div style="display:inline-flex;align-items:center;gap:5px;padding:12px 15px;border-radius:19px;background:#fff;border:1px solid var(--border-default);box-shadow:var(--shadow-sm)"><span class="gtm-dot"></span><span class="gtm-dot"></span><span class="gtm-dot"></span></div></div>
+          </sc-if>
+        </div>
+
+        <div style="padding:12px 16px 17px;background:#fbf6f9;border-top:1px solid var(--border-default);display:flex;flex-direction:column;align-items:center;gap:11px">
+          <sc-if value="{{ threadTyping }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ onThreadSkip }}" style="background:none;border:none;color:var(--slate-500);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;text-decoration:underline">Skip ahead</button>
+          </sc-if>
+          <sc-if value="{{ threadDone }}" hint-placeholder-val="{{ false }}">
+            <div style="display:inline-flex;align-items:center;gap:7px;padding:6px 14px;background:var(--sage-50);border:1px solid var(--sage-200);border-radius:999px;font-size:12px;font-weight:800;color:var(--sage-700);animation:gtm-pop .3s var(--ease-standard)">✅ {{ threadBooked }}</div>
+            <button onClick="{{ onOpenSalon }}" style="width:100%;background:var(--brand-primary);color:#fff;border:none;padding:14px 24px;border-radius:14px;font-size:17px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md);animation:gtm-pop .34s var(--ease-standard)">Open the salon ▸</button>
+          </sc-if>
+        </div>
       </div>
     </section>
   </sc-if>
@@ -1261,6 +1368,11 @@ const ZONE_NOUN = { face:'the face', brows:'the brows', eyes:'the eyes', cheeks:
    per-turn budget from this and the BT's turn count (D-D / AC-7). */
 const REQUIRED_ACTIONS = 19;
 
+/* How long each bubble of the texting intro waits before it lands. Slow enough
+   to read as a conversation arriving, short enough that the whole booking is
+   over in a few seconds; "Skip ahead" jumps to the end at any point. */
+const THREAD_BEAT_MS = 900;
+
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -1269,7 +1381,10 @@ class Component extends DCLogic {
        can pin the model via the character lock; the event and name stay random. */
     const sel = this.drawChar('random');
     this.state = {
-      phase:'intro', theme:'social', turnMap:'banner', model:sel.model,
+      /* `title` → `intro` (the texting thread) → the trial. The child's route in
+         is one tap on Start; the BT's setup strip is collapsed behind the ⚙ so
+         it is reachable without being the first thing on screen. */
+      phase:'title', theme:'social', turnMap:'banner', model:sel.model,
       /* countMode is `shown`|`hidden` only — AC-8: no timer ever bounds the
          LEARNER's own turn. Timing is a partner-turn setting (`partnerTurn`). */
       countMode:'shown', partnerTurn:'count', staged:'on',
@@ -1277,15 +1392,15 @@ class Component extends DCLogic {
       chargedThisTurn:{},
       ed:this.freshEd('person'), armed:null,
       partnerLeft:0, partnerTimed:false, cueVisible:false,
-      settingsOpen:true, methodOpen:false,
+      settingsOpen:false, methodOpen:false,
       elapsed:0,
-      sel, story:this.storyIntro(sel),
+      sel, story:this.storyIntro(sel), thread:null, threadStep:0,
       // engine mirror — the Trial is the source of truth; these exist only to render
       engTurn:0, ttActions:0, ttBudget:0, capToast:'', eToast:'', ePickerOpen:false,
       report:null,
     };
     this._trial=null; this._charged={}; this._ttIv=null; this._clockIv=null; this._paint=false;
-    this._toastTO=null; this._eToastTO=null;
+    this._toastTO=null; this._eToastTO=null; this._threadIv=null;
   }
   drawChar(lock){
     const G=(typeof window!=='undefined')&&window.GlamStory;
@@ -1293,6 +1408,7 @@ class Component extends DCLogic {
     return G.draw(lock&&lock!=='random' ? {model:lock} : {});
   }
   storyIntro(sel){ const G=(typeof window!=='undefined')&&window.GlamStory; return G?G.intro(sel):null; }
+  storyThread(sel){ const G=(typeof window!=='undefined')&&window.GlamStory; return (G&&G.thread)?G.thread(sel):null; }
   freshEd(flaws){ return { cov:{}, col:{}, gl:{}, done:{}, outfit:null, hairShape:'hair-copper',
     pimples:[0,0,0],   // tri-state per spot: 0=zit, 1=patched, 2=clear (person only; rendered when flaws==='person')
     dirt:(flaws==='pet')?[true,true,true]:[false,false,false],
@@ -1305,6 +1421,7 @@ class Component extends DCLogic {
     this.paintAvatar(); }
   componentDidUpdate(){ this.paintAvatar(); }
   componentWillUnmount(){ clearInterval(this._ttIv); clearInterval(this._clockIv);
+    clearInterval(this._threadIv);
     clearTimeout(this._toastTO); clearTimeout(this._eToastTO); }
 
   cfg(){ return THEMES[this.state.theme]; }
@@ -1364,7 +1481,34 @@ class Component extends DCLogic {
   toast(msg){ if(!msg) return; clearTimeout(this._toastTO);
     this.setState({capToast:msg}); this._toastTO=setTimeout(()=>this.setState({capToast:''}),3200); }
 
-  play(){ const sel=this.drawChar(this.state.charLock);
+  /* ── the opening flow: Start → a client texts in → the salon opens ── */
+
+  /* Start draws the client (D-F: model + name + scenario, random unless the BT
+     has pinned the model) and hands the pretext to the texting thread. */
+  beginIntro(){ const sel=this.drawChar(this.state.charLock);
+    this.setState({ phase:'intro', sel, model:sel.model, story:this.storyIntro(sel),
+      thread:this.storyThread(sel), threadStep:0, settingsOpen:false, report:null });
+    this.playThread(); }
+
+  /* Reveal the bubbles one at a time. The reveal counter lives on the instance,
+     not in state, so the interval never has to read a setState that has not
+     flushed yet. */
+  playThread(){ clearInterval(this._threadIv);
+    const total=(this.state.thread&&this.state.thread.messages.length)||0;
+    if(!total) return;
+    let n=0;
+    this._threadIv=setInterval(()=>{
+      n++; this.setState({threadStep:n});
+      if(n>=total){ clearInterval(this._threadIv); this._threadIv=null; }
+    }, THREAD_BEAT_MS); }
+  threadSkip(){ clearInterval(this._threadIv); this._threadIv=null;
+    this.setState({threadStep:(this.state.thread&&this.state.thread.messages.length)||0}); }
+
+  /* `keepClient` is the salon-opening path: the client who just texted is the
+     client who sits down. The BT's ▶ Play starts a trial straight from the setup
+     strip and draws a fresh one. */
+  play(opts){ clearInterval(this._threadIv); this._threadIv=null;
+    const sel=(opts&&opts.keepClient&&this.state.sel)||this.drawChar(this.state.charLock);
     this._trial=new window.GlamTT.Trial(this.ttOpts()); this._charged={};
     this.setState({ phase:'ready', sel, model:sel.model, story:this.storyIntro(sel), report:null,
       ed:this.freshEd(this.cfg().flaws), armed:null, chargedThisTurn:{}, capToast:'', eToast:'',
@@ -1596,11 +1740,14 @@ class Component extends DCLogic {
     window.NooutcoResults.open({ html });
   }
   finishSR(){ if(window.NooutcoReward) window.NooutcoReward.openSR({minutes:5,title:'SR Timer'}); }
-  replay(){ this._trial=null; this._charged={};
+  /* Play again returns to the front door, so the next run gets the same
+     start → a client texts in → salon opening as the first one. */
+  replay(){ this._trial=null; this._charged={}; clearInterval(this._threadIv); this._threadIv=null;
     const sel=this.drawChar(this.state.charLock);
-    this.setState({phase:'intro',sel,model:sel.model,story:this.storyIntro(sel),report:null,
+    this.setState({phase:'title',sel,model:sel.model,story:this.storyIntro(sel),report:null,
+      thread:null,threadStep:0,
       ed:this.freshEd(this.cfg().flaws),armed:null,chargedThisTurn:{},capToast:'',eToast:'',
-      engTurn:0,ttActions:0,ttBudget:0,cueVisible:false,settingsOpen:true}); }
+      engTurn:0,ttActions:0,ttBudget:0,cueVisible:false,settingsOpen:false}); }
 
   fmt(sec){ return Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0'); }
   /* Clinician-facing running summary (the Method sheet). Reads the engine's own
@@ -2147,7 +2294,7 @@ class Component extends DCLogic {
     if(o.proc==='blush') return B+'left:'+a.l+'%;top:'+a.t+'%;width:'+(hw*0.66)+'%;height:'+(hw*0.5)+'%;background:radial-gradient(closest-side,'+(o.color||'#f28ba0')+',transparent 70%);mix-blend-mode:multiply;opacity:'+(op*0.85)+';z-index:37';
     return B; }
   renderVals(){ const s=this.state; const cfg=this.cfg(); const base=this.base();
-    const isMine=s.phase==='mine',isReady=s.phase==='ready',isTheirs=s.phase==='theirs',isGiveback=s.phase==='giveback',isDone=s.phase==='done',isIntro=s.phase==='intro';
+    const isMine=s.phase==='mine',isReady=s.phase==='ready',isTheirs=s.phase==='theirs',isGiveback=s.phase==='giveback',isDone=s.phase==='done',isIntro=s.phase==='intro',isTitle=s.phase==='title';
     /* The mand affordance is live for the WHOLE partner turn in "they forget"
        mode — not behind a separate screen that opens only once the partner has
        spent their allotted actions. That gating was the G1 deadlock: a partner
@@ -2287,6 +2434,20 @@ class Component extends DCLogic {
     if(!isDone){ runwayTiles.push(mk(whose,'now')); runwayTiles.push(mk(whose==='me'?'them':'me','next')); }
     runwayTiles.push({ glyph:'🎬', glyphSize:'17px', badge:(isDone?turnsPlayed:(s.engTurn||1))+'/'+s.turns, badgeColor:'color:var(--amber-700)', style:'flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 9px;border-radius:11px;min-width:44px;background:var(--amber-50);border:1.5px solid var(--amber-300)' });
 
+    /* Texting intro. Only the bubbles that have LANDED are rendered — the reveal
+       is `threadStep`, so a bubble entering is a mount, which is what lets the
+       arrival animation be a plain CSS keyframe on transform/opacity. The typing
+       indicator sits on the side the NEXT message will come from. */
+    const th=s.thread;
+    const threadMsgs=(th?th.messages.slice(0,s.threadStep):[]).map(m=>{ const team=m.from==='team';
+      return { text:m.text,
+        rowStyle:'display:flex;justify-content:'+(team?'flex-end':'flex-start')+';animation:gtm-bubble .34s var(--ease-standard)',
+        bubbleStyle:'max-width:82%;padding:10px 14px;font-size:14px;line-height:1.45;box-shadow:var(--shadow-sm);'+(team
+          ? 'background:linear-gradient(180deg,var(--sage-600),var(--sage-700));color:#fff;border-radius:18px 18px 6px 18px'
+          : 'background:#fff;color:var(--text-body);border:1px solid var(--border-default);border-radius:18px 18px 18px 6px') }; });
+    const threadTyping=!!th && s.threadStep < th.messages.length;
+    const nextFrom=threadTyping ? th.messages[s.threadStep].from : 'client';
+
     const stBase='width:128px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:6px;padding:11px 8px;border-radius:14px;';
     const chip=c=>'display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:700;'+c;
 
@@ -2298,7 +2459,7 @@ class Component extends DCLogic {
     const toolsColStyle='width:300px;display:flex;flex-direction:column;min-height:0'+(personArtLive?';max-height:670px':'');
 
     return {
-      clock:this.fmt(s.elapsed), minGlyph:s.settingsOpen?'▾':'▸', settingsStyle:s.settingsOpen?'':'display:none',
+      clock:this.fmt(s.elapsed), minGlyph:s.settingsOpen?'▾':'⚙', settingsStyle:s.settingsOpen?'':'display:none',
       turnMap:s.turnMap, countMode:s.countMode, turns:String(s.turns), waitSec:String(s.waitSec),
       partnerTurn:s.partnerTurn, giveBack:s.giveBack, cueLevel:s.cueLevel, charLock:s.charLock,
       staged:s.staged, onStaged:this.onSel('staged'),
@@ -2309,12 +2470,17 @@ class Component extends DCLogic {
       onMap:this.onSel('turnMap'), onCount:this.onSel('countMode'), onTurns:this.onSel('turns',true),
       onPartnerTurn:this.onSel('partnerTurn'), onGiveBack:this.onSel('giveBack'), onCueLevel:this.onSel('cueLevel'),
       onWait:this.onSel('waitSec',true), onCharLock:this.onSel('charLock'),
-      onPlay:()=>this.play(), onGo:()=>this.go(), onHandoff:()=>this.handoff(), onGiveBack2:()=>this.giveBack(), onConfirmAsk:()=>this.confirmAsk(),
+      onPlay:()=>this.play(), onStart:()=>this.beginIntro(),
+      onThreadSkip:()=>this.threadSkip(), onOpenSalon:()=>this.play({keepClient:true}),
+      onGo:()=>this.go(), onHandoff:()=>this.handoff(), onGiveBack2:()=>this.giveBack(), onConfirmAsk:()=>this.confirmAsk(),
       onBtPrompt:()=>this.btPrompt(), onEOpen:()=>this.setState(x=>({ePickerOpen:!x.ePickerOpen})),
       onEForce:()=>this.eMark('Took turn by force'), onEInterf:()=>this.eMark('Interfering behavior'), onEOther:()=>this.eMark('Other'),
       onEUndo:()=>this.eUndo(), onEndTrial:()=>this.endTrial(), onPrint:()=>this.printReport(),
       onMethod:()=>this.setState(x=>({methodOpen:!x.methodOpen})), onMinimize:()=>this.setState(x=>({settingsOpen:!x.settingsOpen})), onFinishSR:()=>this.finishSR(), onReplay:()=>this.replay(),
-      isIntro,isReady,isMine,isTheirs,isGiveback,isAsk,isDone, showGame:isReady||isMine||isTheirs||isGiveback,
+      isTitle,isIntro,isReady,isMine,isTheirs,isGiveback,isAsk,isDone, showGame:isReady||isMine||isTheirs||isGiveback,
+      threadMsgs, threadTyping, threadDone:!!th && !threadTyping,
+      threadName:(th&&th.name)||'', threadEmoji:(th&&th.emoji)||'💬', threadBooked:(th&&th.booked)||'',
+      typingRowStyle:'display:flex;justify-content:'+(nextFrom==='team'?'flex-end':'flex-start'),
       mapBanner:s.turnMap==='banner', mapVanity:s.turnMap==='vanity', mapRunway:s.turnMap==='runway',
       personShow:base==='person', isPet:base==='pet', V, palette, target, runwayTiles, stageChips,
       stageStyle:'flex:1;min-width:300px;position:relative;display:flex;align-items:'+(personArtLive?'flex-end':'center')+';justify-content:center;background:var(--surface-card);border:1px solid var(--border-default);border-radius:16px;padding:12px;overflow:hidden'+(personArtLive?';max-height:670px':'')+(stageBg?';background-image:url("'+stageBg+'");background-size:cover;background-position:center':''),
@@ -2351,12 +2517,9 @@ class Component extends DCLogic {
       capToastStyle:'display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:999px;font-size:13.5px;font-weight:700;background:var(--sage-50);border:1.5px solid var(--sage-500);color:var(--sage-700);animation:gtm-pop .25s var(--ease-standard)',
       eToast:s.eToast, showEToast:!!s.eToast, ePickerOpen:s.ePickerOpen,
       paletteHint:s.armed?'✋ Now do it on the face →':'Pick a step to put on',
-      // Mad-lib intro / outro (D-F / D-G / AC-10 / AC-18). Nothing here asserts a
-      // checkable visual attribute of the client, and the completion beat is
-      // present only when the staged look is actually finished.
-      introEmoji:(s.story&&s.story.emoji)||cfg.intro.emoji,
-      introTitle:(s.story&&s.story.title)||cfg.intro.title,
-      introText:(s.story&&s.story.text)||cfg.intro.text,
+      // Mad-lib outro (D-G / AC-18). The completion beat is present only when the
+      // staged look is actually finished; the intro half of the pool now plays as
+      // the texting thread above (its strings are still swept by AC-10).
       outcomeEmoji:(isDone&&s.story&&s.story.emoji)||'🤝',
       outcomeTitle:(isDone&&s.story&&s.story.title)||'What a team!',
       outcomeText:(isDone&&s.story&&s.story.text)||'',

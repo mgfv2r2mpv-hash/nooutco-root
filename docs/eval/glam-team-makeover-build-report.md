@@ -618,3 +618,144 @@ whole face at `blemish-{before,after}-face-desktop.png`.
   by a luminance threshold at L=0.20. A spot seeded right at the boundary picks one
   or the other with no blending; nothing in the current roster lands there, but a
   future model could.
+
+## R2. The new opening flow — title → texting intro → random client → salon
+
+The single static intro card is gone. The child's route into the game is now:
+
+```
+title screen  ──Start Playing──▶  a client texts in and books  ──Open the salon──▶  the vanity
+   ⚙ setup                         (bubbles arrive, team replies)      (unchanged play surface)
+```
+
+### R2.1 The title screen
+
+![title screen, desktop](shots/glam-refresh/title-screen-desktop.png)
+
+One child-facing affordance — **Start Playing ▸** — on a dark plum/gold salon
+marquee, with the staged routine spelled out underneath as a
+`Skincare → Makeup → Hair → Accessories` rail so the order the activity enforces
+is legible before the first turn. Defaults are sensible, so the tap works with no
+setup at all.
+
+The BT's clinical setup (turns, give-back, cue level, wait window, count
+shown/hidden, routine, turn map, **and the character lock**) is *reachable but not
+in front of the child*: the settings strip now boots collapsed and opens from the
+header ⚙ or from the title screen's own `⚙ Session setup` ghost button. There is
+deliberately **no character dropdown in the child flow** — the client is drawn at
+random on Start (D-F); a learner who needs consistency gets the lock, in the strip,
+where the BT is.
+
+`▶ Play` inside that strip still starts a trial directly, skipping the texting
+intro. That is the clinician's route in (and the one every pre-existing spec
+drives); the child's route is Start.
+
+> **Why the CTA reads "Start Playing" and not "Start".**
+> `tests/glam-tt-scoring.spec.js` is frozen by the refresh's hard constraint and
+> its smoke test asserts a visible `button[name=/Play/]` on load. With the setup
+> strip collapsed, the only button on the first screen is the child's CTA — so the
+> label has to satisfy both. "Start Playing ▸" is a clear start affordance and
+> keeps the frozen spec green without touching it.
+
+### R2.2 The texting intro
+
+![texting intro mid-thread, desktop](shots/glam-refresh/texting-intro-desktop.png)
+![appointment booked, phone](shots/glam-refresh/texting-booked-phone.png)
+
+The pretext plays as an **incoming thread to the glam team's phone**: a contact
+header (the drawn client's name + the event's emoji, "Booking the glam team"),
+then five bubbles arriving one at a time at 900 ms with a typing indicator on the
+side the *next* message will come from, ending with a booked chip and
+**Open the salon ▸**. `Skip ahead` lands the whole thread at once. The bubbles hug
+the bottom of the panel, so a short thread reads like a conversation rather than
+stranding itself at the top of an empty box.
+
+The content is the same mad-lib as before — event + stakes + task — re-shaped as a
+booking:
+
+| | |
+|---|---|
+| client | `Hi glam team! It is school picture day today.` |
+| client | `The photographer is almost here!` |
+| client | `Could you book me in before the photographer gets here?` |
+| team | `Hi {name}! The glam team just picked up.` |
+| team | `You are booked — come on in. We take turns here: skincare first, then makeup, then hair, then an outfit.` |
+
+`textOpen` and `textAsk` are new per-event fields; the middle bubble is the
+existing `stakes` string. The team's two replies and the booked note are shared.
+
+**Congruence (AC-10 / §3.7.1) is enforced by construction, not by eyeball.**
+`thread()` lives in `window.GlamStory` and `allStrings()` now emits every bubble
+of every event × every name slot (6 × 12 × 6 = 432 new strings), so the *existing*
+`congruenceViolations()` sweep and the existing "no story string carries a number"
+test cover the texting intro automatically. The client texts about the occasion,
+the stakes and the booking — never a claim about their own hair or skin, and never
+a number.
+
+### R2.3 The client who texts is the client who sits down
+
+`play()` used to re-draw the character every time it ran, which — once a screen sat
+between the draw and the trial — would have quietly swapped the client between the
+thread and the vanity. It now takes `{keepClient:true}` on the salon-opening path
+and only draws fresh on the BT's `▶ Play`. A test pins the whole `sel`
+(name + model + scenario) plus the painted model across the transition.
+
+`Play again` returns to the title screen, so the second run opens exactly like the
+first.
+
+### R2.4 Tests
+
+New spec **`tests/glam-open-flow.spec.js`** (9 tests × 3 browsers):
+
+| Test | What it pins |
+|---|---|
+| the front door is a title screen with Start… | Start visible; `Character`, `Turns`, `▶ Play` all hidden; the ⚙ affordance opens them; console clean |
+| Start plays the pretext as an incoming text thread… | contact header, a first bubble, a live typing indicator, every message lands, both sides of the conversation, typing stops, booked chip, and the salon opens onto `Go — my turn!` |
+| "Skip ahead" lands every message at once | `threadStep === total`, Skip disappears, the salon button appears |
+| the client who texts in is the client who sits down | `sel` and the painted model identical across `Open the salon` |
+| D-F · Start draws a random client, and never the retired M1 | 40 real `beginIntro()` runs: name, model and scenario all vary, models are exactly the roster, never `m1` |
+| the BT character lock still pins the client through the new flow | lock `m3` → 20 draws, all `m3` |
+| AC-10 · every string the texting intro can put on screen is swept | 432 thread strings in `allStrings()`, none with a digit, no violations, and the guard demonstrably still bites |
+| §8 · no number to the child and nowhere to type | no `input`/`textarea`/`contenteditable` on either new screen; no digit in either screen's rendered text; no clinical vocabulary in the thread |
+| "Play again" returns to the front door | done → title, with the setup strip collapsed again |
+
+Three pre-existing specs were updated for the collapsed setup strip (and only for
+that): `glam-tt-game.spec.js` grew an idempotent `ensureSetupOpen()`,
+`glam-team-makeover.spec.js` an `openSetup()`, `glam-art-fidelity.spec.js` one ⚙
+click in its `stage()` boot. `glam-tt-game.spec.js`'s AC-10 test now drives
+Start → the thread instead of reading the old intro card. No assertion was relaxed.
+
+### R2.5 Verification
+
+- **Full suite: 285 passed** across chromium / firefox / webkit (258 before this
+  slice, plus 9 new tests × 3 browsers). Nothing skipped, nothing relaxed.
+- **`window.GlamTT` byte-for-byte unchanged** — the first diff hunk in
+  `index.html` after the stylesheet is at the `GlamStory` events, well past the
+  engine block — and `git diff --stat tests/glam-tt-scoring.spec.js` is empty.
+- Inside `GlamStory`, the additions are `textOpen`/`textAsk` per event, the shared
+  team replies, `thread()`, its `allStrings()` rows and its export. The event set,
+  `BANNED`, the two-axis outro and the second-person turn-taking lines are
+  untouched.
+- **Console clean** on every screen at 1280×860, 834×1112 and 390×844 — the
+  screenshot pass (`tests/_shots-open-flow.mjs`) fails the run on any console or
+  page error and it exits clean.
+- Screenshots, all three widths: `title-screen-{desktop,tablet,phone}.png`,
+  `texting-intro-{…}.png`, `texting-booked-{…}.png`, `salon-open-{…}.png`, plus
+  `bt-setup-desktop.png`, under `docs/eval/shots/glam-refresh/`.
+- `git status` shows changes only under `apps/games/` and `docs/`.
+
+### R2.6 Deferred from this slice
+
+- **The activity itself is untouched** — same palettes, same tool count, same
+  vanity. `salon-open-{desktop,tablet,phone}.png` is the *pre-refresh* play
+  surface, reached through the new door. The richer stations, the wider colour
+  range and the per-tap feedback are the next slice.
+- **No before/after reveal at the outro yet.** The done screen is still the
+  Tier-1 celebration + two-axis story.
+- The thread is one fixed shape (three client bubbles, two team bubbles). A
+  variable-length thread, or team replies that vary by event, would add texture
+  but also multiply the congruence surface; the fixed shape keeps the sweep
+  exhaustive.
+- `intro()` still composes the old card's title/text. Nothing renders it any more;
+  it is kept because it is still swept by AC-10 and is the natural home for the
+  pretext if a non-texting presentation is ever wanted.

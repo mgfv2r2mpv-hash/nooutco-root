@@ -48,23 +48,34 @@ async function waitForPaintedStage(page) {
   }, undefined, { timeout: 15000 });
 }
 
+/** Open the BT setup strip, which the refresh collapsed behind the header ⚙ so
+    the child's title screen is the first thing on the page. Every test below
+    starts the trial the clinician's way (▶ Play), bypassing the texting intro;
+    the child's route in is covered by tests/glam-open-flow.spec.js. */
+async function openSetup(page) {
+  await page.getByTitle('Show / hide setup').click();
+  await expect(page.getByRole('button', { name: /^▶ Play/ })).toBeVisible();
+}
+
 test.describe('Glam Team Makeover', () => {
-  test('intro screen mounts (runtime boots)', async ({ page }) => {
+  test('title screen mounts (runtime boots)', async ({ page }) => {
     const errors = [];
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
     page.on('pageerror', (e) => errors.push(e.message));
 
     await page.goto('/glam-team-makeover/');
-    // header title + the routine chips render once dc-runtime mounts the <x-dc> doc
+    // header title + the child's Start affordance render once dc-runtime mounts <x-dc>
     await expect(page.getByText('Glam Team Makeover').first()).toBeVisible();
     await expect(page.getByText(/take turns, together/)).toBeVisible();
-    await expect(page.getByRole('button', { name: /Play/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Start/ })).toBeVisible();
+    await openSetup(page);
     expect(errors, `console/page errors: ${errors.join(' | ')}`).toEqual([]);
   });
 
   test('every roster model loads its base art and paints a distinct stage', async ({ page }) => {
     await page.goto('/glam-team-makeover/');
-    await page.getByRole('button', { name: /Play/ }).click(); // enter the game screen
+    await openSetup(page);
+    await page.getByRole('button', { name: /^▶ Play/ }).click(); // enter the game screen
     await waitForPaintedStage(page);
 
     // The roster is `GlamStory.MODELS` — the one list the story draw, the BT's
@@ -105,7 +116,7 @@ test.describe('Glam Team Makeover', () => {
   // model picker. One of those left open would still put M1 in front of a child.
   test('M1 is retired — absent from the roster, the random pool and every picker', async ({ page }) => {
     await page.goto('/glam-team-makeover/');
-    await expect(page.getByRole('button', { name: /Play/ })).toBeVisible();
+    await openSetup(page);
 
     const out = await page.evaluate(() => {
       const S = window.GlamStory;
@@ -131,7 +142,7 @@ test.describe('Glam Team Makeover', () => {
     expect(out.lockOptions).toEqual(['random', ...out.roster]);
 
     // …and the on-stage picker offers the roster and nothing else.
-    await page.getByRole('button', { name: /Play/ }).click();
+    await page.getByRole('button', { name: /^▶ Play/ }).click();
     await waitForPaintedStage(page);
     await expect(page.getByRole('button', { name: 'M1', exact: true })).toHaveCount(0);
     for (const m of out.roster) {
@@ -141,7 +152,8 @@ test.describe('Glam Team Makeover', () => {
 
   test('applying a step composites onto the stage', async ({ page }) => {
     await page.goto('/glam-team-makeover/');
-    await page.getByRole('button', { name: /Play/ }).click();
+    await openSetup(page);
+    await page.getByRole('button', { name: /^▶ Play/ }).click();
     await page.getByRole('button', { name: /Go —/ }).click(); // start my turn
     await waitForPaintedStage(page);
     const before = await stageFingerprint(page);

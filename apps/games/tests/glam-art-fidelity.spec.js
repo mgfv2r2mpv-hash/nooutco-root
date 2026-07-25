@@ -35,6 +35,9 @@ async function stage(page) {
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/glam-team-makeover/');
+  // The refresh put the child's title screen in front; the ▶ Play this spec uses
+  // is the BT's direct start, one ⚙ away.
+  await page.getByTitle('Show / hide setup').click();
   await page.getByRole('button', { name: /^▶ Play/ }).click();
   await page.waitForFunction(() => {
     const c = document.getElementById('gtm-canvas');
