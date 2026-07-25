@@ -1629,6 +1629,34 @@ const EARCFG_D = {lx:0.185,rx:0.815,y:1.35};
    r/cl-r are fractions of sprite WIDTH; cy/top of sprite HEIGHT. */
 const IRISCFG = { cx:0.5, cy:0.4574, r:0.1471, top:0.3617, cl:[0.44,-0.16,0.22] };
 
+/* ══ THIRD PASS A1 — the white pixels in the eyelashes ══
+   `assets/art/eyes/glam.png` draws every lash TWICE: a dark stroke and, laid
+   along it, a second stroke of flat white. Inside the aperture that idiom is
+   what makes the sclera and the catchlights; out in the lash fans it is 1848
+   fully opaque pixels of rgba(255,255,255,255) sitting between the lashes. At
+   the size the compositor draws the eye (a 340 px sprite down to ~135 px) those
+   strokes survive as a pale speckle interleaved with the lashes — which is the
+   defect exactly as the maintainer described it. Measured on the completed
+   look, 17–21 % of the lash geometry came out BRIGHTER than the bare face
+   underneath, by up to +161 luminance.
+
+   `_lashClean` drops that highlight and nothing else. What separates a lash
+   highlight from the sclera is not its colour — both are flat white — but what
+   it is JOINED TO: the sclera is one pale region continuous with the pixels over
+   the iris, and every lash highlight is a stroke of its own out in the fan. So
+   the keep-set is flood-filled through pale pixels from a seed ellipse inside
+   the aperture, the iris disc is added (that is where the catchlights are), and
+   only pale pixels the fill never reached are cleared. On `natural.png` — the
+   plain eyeball, an accepted surface — the rule finds ZERO pixels, which is the
+   proof it is discriminating rather than just bleaching.
+
+   Cleared, not darkened: a lash gap should show the lid behind it. Painting the
+   highlight dark instead would thicken every lash, which is the opposite of what
+   Finding A asks for. `seed`/`pale` are fractions of the sprite frame and of the
+   8-bit channel; the ellipse centre is IRISCFG's, so there is one source of
+   truth for where the iris is. */
+const LASH_MATTE = { pale:170, alpha:128, seedRx:0.30, seedRy:0.11, irisPad:1.05 };
+
 /* ══ SECOND PASS U2 — the cheekbone highlight's PATH ══
    The highlight used to be one tilted ellipse per cheek. An ellipse has a
    perfectly straight spine at every rotation and every aspect, and that is what
@@ -2633,6 +2661,72 @@ class Component extends DCLogic {
     cx.fillStyle='rgba(255,255,255,0.9)'; cx.beginPath();
     cx.arc(CX+R*IRISCFG.cl[0],CY+R*IRISCFG.cl[1],R*IRISCFG.cl[2],0,6.2832); cx.fill();
     cx.restore(); c.key=hex; c.cv=cv; return cv; }
+  /* THIRD PASS A1 — split an eye sprite into "the eye" and "everything else".
+     `eye` marks the sprite's own eyeball: the pale region continuous with the
+     pixels over the iris (the sclera, flood-filled from a seed ellipse inside the
+     aperture) plus the iris disc itself, which is where the catchlights are and
+     which the fill cannot reach because they are islands in the iris. Everything
+     the mark misses is lid, lash and liner ink.
+     One pass, cached per source — the compositor asks for it on every repaint. */
+  _eyeMatte(src){ const c=this._eyem||(this._eyem={}); if(c[src]) return c[src];
+    const rec=this._img(src); if(!rec.ok) return null;          // not decoded yet → onload repaints
+    const im=rec.img, W=im.naturalWidth||im.width, H=im.naturalHeight||im.height;
+    const cn=document.createElement('canvas'); cn.width=W; cn.height=H;
+    const cx=cn.getContext('2d'); cx.drawImage(im,0,0,W,H);
+    let id; try{ id=cx.getImageData(0,0,W,H); }catch(e){ return null; }
+    const d=id.data, M=LASH_MATTE;
+    // "pale" is the flat white the art uses for BOTH the sclera and the lash
+    // highlight — min channel, so a tinted sheen still counts.
+    const pale=(q)=>{ const i=q*4; return d[i+3]>=M.alpha && Math.min(d[i],d[i+1],d[i+2])>=M.pale; };
+    const eye=new Uint8Array(W*H), st=[];
+    const ecx=IRISCFG.cx*W, ecy=IRISCFG.cy*H, erx=M.seedRx*W, ery=M.seedRy*H;
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const u=(x-ecx)/erx, v=(y-ecy)/ery;
+      if(u*u+v*v<=1){ const q=y*W+x; if(!eye[q]&&pale(q)){ eye[q]=1; st.push(q); } } }
+    while(st.length){ const q=st.pop(), x=q%W, y=(q-x)/W;
+      if(x>0&&!eye[q-1]&&pale(q-1)){ eye[q-1]=1; st.push(q-1); }
+      if(x<W-1&&!eye[q+1]&&pale(q+1)){ eye[q+1]=1; st.push(q+1); }
+      if(y>0&&!eye[q-W]&&pale(q-W)){ eye[q-W]=1; st.push(q-W); }
+      if(y<H-1&&!eye[q+W]&&pale(q+W)){ eye[q+W]=1; st.push(q+W); } }
+    const ir=IRISCFG.r*W*M.irisPad;
+    for(let y=Math.max(0,Math.floor(ecy-ir));y<Math.min(H,Math.ceil(ecy+ir));y++)
+      for(let x=Math.max(0,Math.floor(ecx-ir));x<Math.min(W,Math.ceil(ecx+ir));x++)
+        if(Math.hypot(x-ecx,y-ecy)<=ir) eye[y*W+x]=1;
+    return (c[src]={ W, H, eye, data:d, canvas:cn });
+  }
+  /* The sprite the compositor actually blits, in one of two cuts (see A1):
+       'lash' — every PALE pixel outside the eye is cleared. That is the baked-in
+                white highlight the art lays along each lash, and nothing else:
+                on `natural.png` the rule matches ZERO pixels, so the plain
+                eyeball the maintainer already accepted is untouched.
+       'ink'  — the eye itself is cleared, leaving only lid, lash and liner ink.
+                Used for the winged liner when mascara is ALREADY showing: the
+                liner sprite carries a whole eye, and drawing that eye on top of
+                the mascara eye repainted the mascara sprite's lash roots with
+                its own sclera — pure white, on lashes, which is the rest of the
+                defect. The two share one iris-centred frame, so dropping the
+                liner's eyeball lands its ink on the mascara eye exactly.
+     Cleared rather than darkened: a lash gap should show the lid behind it, and
+     painting the highlight dark would thicken every lash — the opposite of what
+     Finding A asks for. */
+  _eyeArt(src,cut){ const key=src+'|'+cut, c=this._eyec||(this._eyec={}); if(c[key]!==undefined) return c[key];
+    const m=this._eyeMatte(src); if(!m) return null;
+    const M=LASH_MATTE, { W, H, eye, data } = m;
+    const cn=document.createElement('canvas'); cn.width=W; cn.height=H;
+    const cx=cn.getContext('2d'); const id=cx.createImageData(W,H);
+    id.data.set(data);
+    const d=id.data;
+    for(let q=0;q<W*H;q++){ const i=q*4;
+      const white=Math.min(d[i],d[i+1],d[i+2])>=M.pale;
+      /* 'ink' drops every white pixel at ANY alpha, not only the eye's. Two
+         reasons, both measured: the liner art carries a pale waterline stroke
+         that is an island of its own, and the sclera's ANTI-ALIASED rim is
+         near-white at alpha 8–127 — laid over a black lash that rim alone lifted
+         it by up to +113 luminance. Only the alpha is dropped, so a dark pixel
+         with a soft edge (the wing) keeps its own feathering. */
+      if(cut==='ink'){ if(eye[q]||(d[i+3]>0&&white)) d[i+3]=0; }
+      else if(!eye[q] && d[i+3]>=M.alpha && white) d[i+3]=0; }
+    cx.putImageData(id,0,0); return (c[key]=cn); }
+
   // Recolour a brow sprite to the hair hue (tint × luminance): keeps the ink's darkest core dark
   // and the softer fill hair-toned, so a black m4 brow reads as the hair colour without going flat.
   _browTint(src,hex){ const rec=this._img(src); if(!rec.ok) return null;
@@ -2862,10 +2956,11 @@ class Component extends DCLogic {
     const eyeSet=this.gen().eyes||{};
     if(eyeSet.natural){
       const mascara=cov('mascara')>=1, liner=cov('liner')>=1;
-      const drawSprite=(meta,e,mirror)=>{ if(!meta) return; const im=this._img(meta.src); if(!im||!im.ok) return;
+      const drawSprite=(meta,e,mirror,cut)=>{ if(!meta) return; const im=this._img(meta.src); if(!im||!im.ok) return;
+        const art=this._eyeArt(meta.src,cut||'lash')||im.img;   // A1 — see `_eyeArt`
         const [x,y,w,h,o]=e, dw=EC.s*(2*w), dh=dw/meta.aspect;
         ctx.save(); ctx.translate(ex(e),y); if(mirror&&o<0) ctx.scale(-1,1);
-        ctx.drawImage(im.img,-meta.cx*dw,-meta.cy*dh,dw,dh); ctx.restore(); };
+        ctx.drawImage(art,-meta.cx*dw,-meta.cy*dh,dw,dh); ctx.restore(); };
       // eyeshadow on the lid, behind the lashes. ONE wash, not two: the retired
       // pair (a base-shade lid blob plus a twice-shaded crease rotated across
       // its outer half) met at a lens where the alpha and the hue both jumped,
@@ -2880,7 +2975,10 @@ class Component extends DCLogic {
       for(const e of eyes){ const o=e[4];
         if(mascara&&eyeSet.glam) drawSprite(eyeSet.glam,e,true);         // eyeball + lashes
         else if(!liner) drawSprite(eyeSet.natural,e,true);              // plain eyeball (liner sprite carries its own)
-        if(liner) drawSprite(o>0?eyeSet.eyelinerR:eyeSet.eyelinerL,e,false); }  // winged liner on top (real L/R)
+        // winged liner on top (real L/R). When mascara is already showing, only
+        // the liner's INK goes on — its own eyeball would repaint the mascara
+        // sprite's lash roots with a white sclera (A1).
+        if(liner) drawSprite(o>0?eyeSet.eyelinerR:eyeSet.eyelinerL,e,false,mascara?'ink':'lash'); }
     }
     // colored contacts — recolor the iris over the sprite eye (iris disc + pupil +
     // catchlight). Built ONCE per shade in the sprite's own frame (_contactCanvas)

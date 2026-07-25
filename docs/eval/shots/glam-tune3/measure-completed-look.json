@@ -1,0 +1,706 @@
+{
+  "models": {
+    "m2": {
+      "model": "m2",
+      "facePx": 64833,
+      "tools": [
+        {
+          "key": "wash",
+          "label": "Wash",
+          "pct": 33.27,
+          "meanChanged": 4.57,
+          "meanFace": 1.71,
+          "maxDE": 8.3
+        },
+        {
+          "key": "moist",
+          "label": "Moisturize",
+          "pct": 22.96,
+          "meanChanged": 9.89,
+          "meanFace": 2.32,
+          "maxDE": 22.4
+        },
+        {
+          "key": "spots",
+          "label": "Treat+conceal",
+          "pct": 1.57,
+          "meanChanged": 16.71,
+          "meanFace": 0.28,
+          "maxDE": 43.4
+        },
+        {
+          "key": "brows",
+          "label": "Shape brows",
+          "pct": 6.96,
+          "meanChanged": 15.4,
+          "meanFace": 1.09,
+          "maxDE": 41.5
+        },
+        {
+          "key": "pencil",
+          "label": "Brow pencil",
+          "pct": 5.71,
+          "meanChanged": 21.95,
+          "meanFace": 1.29,
+          "maxDE": 41.5
+        },
+        {
+          "key": "contour",
+          "label": "Contour",
+          "pct": 2.32,
+          "meanChanged": 4.09,
+          "meanFace": 0.11,
+          "maxDE": 7.9
+        },
+        {
+          "key": "blush",
+          "label": "Blush",
+          "pct": 7.09,
+          "meanChanged": 6.59,
+          "meanFace": 0.5,
+          "maxDE": 13.2
+        },
+        {
+          "key": "hl",
+          "label": "Highlight",
+          "pct": 1.65,
+          "meanChanged": 6.81,
+          "meanFace": 0.12,
+          "maxDE": 17.4
+        },
+        {
+          "key": "shadow",
+          "label": "Eyeshadow",
+          "pct": 4.82,
+          "meanChanged": 17.61,
+          "meanFace": 0.86,
+          "maxDE": 46.7
+        },
+        {
+          "key": "liner",
+          "label": "Eyeliner",
+          "pct": 5.61,
+          "meanChanged": 20.36,
+          "meanFace": 1.16,
+          "maxDE": 92.1
+        },
+        {
+          "key": "mascara",
+          "label": "Mascara",
+          "pct": 8.94,
+          "meanChanged": 23.67,
+          "meanFace": 2.15,
+          "maxDE": 63.7
+        },
+        {
+          "key": "contacts",
+          "label": "Contacts",
+          "pct": 2.87,
+          "meanChanged": 32.9,
+          "meanFace": 0.95,
+          "maxDE": 95.2
+        },
+        {
+          "key": "lipliner",
+          "label": "Lip liner",
+          "pct": 0.53,
+          "meanChanged": 28.61,
+          "meanFace": 0.15,
+          "maxDE": 37.8
+        },
+        {
+          "key": "lips",
+          "label": "Lipstick",
+          "pct": 4.19,
+          "meanChanged": 36.78,
+          "meanFace": 1.54,
+          "maxDE": 42.2
+        },
+        {
+          "key": "hair",
+          "label": "Hair colour",
+          "pct": 16.68,
+          "meanChanged": 52.31,
+          "meanFace": 8.72,
+          "maxDE": 63.4
+        },
+        {
+          "key": "ear",
+          "label": "Earrings",
+          "pct": 0,
+          "meanChanged": 0,
+          "meanFace": 0,
+          "maxDE": 0
+        },
+        {
+          "key": "outfit",
+          "label": "Shirt",
+          "pct": 0,
+          "meanChanged": 0,
+          "meanFace": 0,
+          "maxDE": 0
+        }
+      ],
+      "full": {
+        "pct": 75.98,
+        "meanChanged": 23.42,
+        "meanFace": 18.07,
+        "maxDE": 95.2
+      },
+      "lash": {
+        "px": 3835,
+        "over": 260,
+        "overPct": 6.78,
+        "worstOver": 87.4,
+        "maxAbs": 254,
+        "white": 60,
+        "whitePct": 1.56,
+        "darkPct": 83.02,
+        "meanBare": 141,
+        "meanDone": 68.9,
+        "hottest": [
+          {
+            "x": 201,
+            "y": 265,
+            "bare": 19.9,
+            "done": 107.4
+          },
+          {
+            "x": 198,
+            "y": 267,
+            "bare": 21.4,
+            "done": 107.5
+          },
+          {
+            "x": 310,
+            "y": 265,
+            "bare": 23.7,
+            "done": 108.4
+          },
+          {
+            "x": 313,
+            "y": 267,
+            "bare": 23.4,
+            "done": 107.5
+          },
+          {
+            "x": 192,
+            "y": 269,
+            "bare": 28.9,
+            "done": 107.4
+          },
+          {
+            "x": 335,
+            "y": 266,
+            "bare": 171.2,
+            "done": 247.6
+          },
+          {
+            "x": 186,
+            "y": 269,
+            "bare": 31.1,
+            "done": 107.4
+          },
+          {
+            "x": 319,
+            "y": 269,
+            "bare": 31.8,
+            "done": 107.4
+          },
+          {
+            "x": 359,
+            "y": 259,
+            "bare": 71.4,
+            "done": 146.1
+          },
+          {
+            "x": 307,
+            "y": 262,
+            "bare": 34.4,
+            "done": 107.6
+          },
+          {
+            "x": 286,
+            "y": 268,
+            "bare": 104.9,
+            "done": 178
+          },
+          {
+            "x": 322,
+            "y": 270,
+            "bare": 147.1,
+            "done": 220.1
+          }
+        ]
+      }
+    },
+    "m3": {
+      "model": "m3",
+      "facePx": 45256,
+      "tools": [
+        {
+          "key": "wash",
+          "label": "Wash",
+          "pct": 37.12,
+          "meanChanged": 4.14,
+          "meanFace": 1.72,
+          "maxDE": 7.6
+        },
+        {
+          "key": "moist",
+          "label": "Moisturize",
+          "pct": 26.98,
+          "meanChanged": 9.84,
+          "meanFace": 2.7,
+          "maxDE": 20.3
+        },
+        {
+          "key": "spots",
+          "label": "Treat+conceal",
+          "pct": 1.37,
+          "meanChanged": 15.9,
+          "meanFace": 0.24,
+          "maxDE": 40.4
+        },
+        {
+          "key": "brows",
+          "label": "Shape brows",
+          "pct": 5.22,
+          "meanChanged": 19.44,
+          "meanFace": 1.04,
+          "maxDE": 36.7
+        },
+        {
+          "key": "pencil",
+          "label": "Brow pencil",
+          "pct": 6.17,
+          "meanChanged": 18.54,
+          "meanFace": 1.15,
+          "maxDE": 36.7
+        },
+        {
+          "key": "contour",
+          "label": "Contour",
+          "pct": 0.83,
+          "meanChanged": 3.25,
+          "meanFace": 0.04,
+          "maxDE": 5.5
+        },
+        {
+          "key": "blush",
+          "label": "Blush",
+          "pct": 5.59,
+          "meanChanged": 6.73,
+          "meanFace": 0.4,
+          "maxDE": 12.8
+        },
+        {
+          "key": "hl",
+          "label": "Highlight",
+          "pct": 1.09,
+          "meanChanged": 6.48,
+          "meanFace": 0.08,
+          "maxDE": 22.1
+        },
+        {
+          "key": "shadow",
+          "label": "Eyeshadow",
+          "pct": 4.01,
+          "meanChanged": 15.47,
+          "meanFace": 0.63,
+          "maxDE": 43.6
+        },
+        {
+          "key": "liner",
+          "label": "Eyeliner",
+          "pct": 5.68,
+          "meanChanged": 18.19,
+          "meanFace": 1.06,
+          "maxDE": 90.9
+        },
+        {
+          "key": "mascara",
+          "label": "Mascara",
+          "pct": 9.12,
+          "meanChanged": 18.93,
+          "meanFace": 1.76,
+          "maxDE": 59
+        },
+        {
+          "key": "contacts",
+          "label": "Contacts",
+          "pct": 3.2,
+          "meanChanged": 33.01,
+          "meanFace": 1.06,
+          "maxDE": 94.9
+        },
+        {
+          "key": "lipliner",
+          "label": "Lip liner",
+          "pct": 0.68,
+          "meanChanged": 28.93,
+          "meanFace": 0.2,
+          "maxDE": 41.7
+        },
+        {
+          "key": "lips",
+          "label": "Lipstick",
+          "pct": 4.28,
+          "meanChanged": 41.03,
+          "meanFace": 1.76,
+          "maxDE": 45.1
+        },
+        {
+          "key": "hair",
+          "label": "Hair colour",
+          "pct": 5.76,
+          "meanChanged": 46.49,
+          "meanFace": 2.68,
+          "maxDE": 51.4
+        },
+        {
+          "key": "ear",
+          "label": "Earrings",
+          "pct": 0,
+          "meanChanged": 0,
+          "meanFace": 0,
+          "maxDE": 0
+        },
+        {
+          "key": "outfit",
+          "label": "Shirt",
+          "pct": 0,
+          "meanChanged": 0,
+          "meanFace": 0,
+          "maxDE": 0
+        }
+      ],
+      "full": {
+        "pct": 74.33,
+        "meanChanged": 18.88,
+        "meanFace": 14.28,
+        "maxDE": 94.9
+      },
+      "lash": {
+        "px": 2884,
+        "over": 332,
+        "overPct": 11.51,
+        "worstOver": 187.6,
+        "maxAbs": 255,
+        "white": 43,
+        "whitePct": 1.49,
+        "darkPct": 75.45,
+        "meanBare": 128.7,
+        "meanDone": 71.1,
+        "hottest": [
+          {
+            "x": 201,
+            "y": 267,
+            "bare": 64.1,
+            "done": 251.6
+          },
+          {
+            "x": 208,
+            "y": 263,
+            "bare": 64.2,
+            "done": 241.7
+          },
+          {
+            "x": 190,
+            "y": 267,
+            "bare": 77.8,
+            "done": 241.9
+          },
+          {
+            "x": 209,
+            "y": 262,
+            "bare": 83.1,
+            "done": 243.8
+          },
+          {
+            "x": 196,
+            "y": 268,
+            "bare": 100,
+            "done": 248.1
+          },
+          {
+            "x": 204,
+            "y": 266,
+            "bare": 109.9,
+            "done": 254
+          },
+          {
+            "x": 207,
+            "y": 264,
+            "bare": 105.7,
+            "done": 248
+          },
+          {
+            "x": 195,
+            "y": 268,
+            "bare": 110.2,
+            "done": 248.1
+          },
+          {
+            "x": 186,
+            "y": 265,
+            "bare": 37.5,
+            "done": 175.3
+          },
+          {
+            "x": 205,
+            "y": 265,
+            "bare": 23.3,
+            "done": 161.1
+          },
+          {
+            "x": 197,
+            "y": 268,
+            "bare": 121.4,
+            "done": 247.1
+          },
+          {
+            "x": 227,
+            "y": 266,
+            "bare": 69,
+            "done": 167.4
+          }
+        ]
+      }
+    },
+    "m4": {
+      "model": "m4",
+      "facePx": 64434,
+      "tools": [
+        {
+          "key": "wash",
+          "label": "Wash",
+          "pct": 38.07,
+          "meanChanged": 4.08,
+          "meanFace": 1.74,
+          "maxDE": 8.9
+        },
+        {
+          "key": "moist",
+          "label": "Moisturize",
+          "pct": 27.97,
+          "meanChanged": 10.15,
+          "meanFace": 2.89,
+          "maxDE": 33.3
+        },
+        {
+          "key": "spots",
+          "label": "Treat+conceal",
+          "pct": 1.67,
+          "meanChanged": 15.98,
+          "meanFace": 0.29,
+          "maxDE": 41.7
+        },
+        {
+          "key": "brows",
+          "label": "Shape brows",
+          "pct": 3.55,
+          "meanChanged": 17.22,
+          "meanFace": 0.63,
+          "maxDE": 34.7
+        },
+        {
+          "key": "pencil",
+          "label": "Brow pencil",
+          "pct": 5.65,
+          "meanChanged": 14.27,
+          "meanFace": 0.81,
+          "maxDE": 35
+        },
+        {
+          "key": "contour",
+          "label": "Contour",
+          "pct": 2.1,
+          "meanChanged": 4.42,
+          "meanFace": 0.12,
+          "maxDE": 10.9
+        },
+        {
+          "key": "blush",
+          "label": "Blush",
+          "pct": 7.14,
+          "meanChanged": 6.52,
+          "meanFace": 0.5,
+          "maxDE": 12.7
+        },
+        {
+          "key": "hl",
+          "label": "Highlight",
+          "pct": 1.75,
+          "meanChanged": 6.98,
+          "meanFace": 0.13,
+          "maxDE": 18.7
+        },
+        {
+          "key": "shadow",
+          "label": "Eyeshadow",
+          "pct": 6.19,
+          "meanChanged": 18.95,
+          "meanFace": 1.19,
+          "maxDE": 46.6
+        },
+        {
+          "key": "liner",
+          "label": "Eyeliner",
+          "pct": 5.41,
+          "meanChanged": 20.86,
+          "meanFace": 1.15,
+          "maxDE": 89.3
+        },
+        {
+          "key": "mascara",
+          "label": "Mascara",
+          "pct": 8.7,
+          "meanChanged": 21.52,
+          "meanFace": 1.9,
+          "maxDE": 62.3
+        },
+        {
+          "key": "contacts",
+          "label": "Contacts",
+          "pct": 2.46,
+          "meanChanged": 33.18,
+          "meanFace": 0.82,
+          "maxDE": 95.2
+        },
+        {
+          "key": "lipliner",
+          "label": "Lip liner",
+          "pct": 0.5,
+          "meanChanged": 27.59,
+          "meanFace": 0.14,
+          "maxDE": 39
+        },
+        {
+          "key": "lips",
+          "label": "Lipstick",
+          "pct": 3.72,
+          "meanChanged": 38.56,
+          "meanFace": 1.44,
+          "maxDE": 43.2
+        },
+        {
+          "key": "hair",
+          "label": "Hair colour",
+          "pct": 21.2,
+          "meanChanged": 47.7,
+          "meanFace": 10.11,
+          "maxDE": 60.4
+        },
+        {
+          "key": "ear",
+          "label": "Earrings",
+          "pct": 0,
+          "meanChanged": 0,
+          "meanFace": 0,
+          "maxDE": 0
+        },
+        {
+          "key": "outfit",
+          "label": "Shirt",
+          "pct": 0,
+          "meanChanged": 0,
+          "meanFace": 0,
+          "maxDE": 0
+        }
+      ],
+      "full": {
+        "pct": 81.46,
+        "meanChanged": 22.78,
+        "meanFace": 18.77,
+        "maxDE": 95.2
+      },
+      "lash": {
+        "px": 3188,
+        "over": 242,
+        "overPct": 7.59,
+        "worstOver": 103.3,
+        "maxAbs": 254.2,
+        "white": 42,
+        "whitePct": 1.32,
+        "darkPct": 82.12,
+        "meanBare": 128.4,
+        "meanDone": 65.7,
+        "hottest": [
+          {
+            "x": 169,
+            "y": 263,
+            "bare": 50.3,
+            "done": 153.6
+          },
+          {
+            "x": 317,
+            "y": 234,
+            "bare": 136,
+            "done": 216.4
+          },
+          {
+            "x": 283,
+            "y": 267,
+            "bare": 90.9,
+            "done": 169.4
+          },
+          {
+            "x": 183,
+            "y": 265,
+            "bare": 116.1,
+            "done": 194
+          },
+          {
+            "x": 340,
+            "y": 264,
+            "bare": 179,
+            "done": 254.2
+          },
+          {
+            "x": 282,
+            "y": 267,
+            "bare": 95.7,
+            "done": 169.7
+          },
+          {
+            "x": 338,
+            "y": 265,
+            "bare": 154.9,
+            "done": 228.1
+          },
+          {
+            "x": 317,
+            "y": 268,
+            "bare": 36,
+            "done": 108.4
+          },
+          {
+            "x": 333,
+            "y": 267,
+            "bare": 168.8,
+            "done": 240.4
+          },
+          {
+            "x": 309,
+            "y": 267,
+            "bare": 32.5,
+            "done": 103.6
+          },
+          {
+            "x": 316,
+            "y": 268,
+            "bare": 38.9,
+            "done": 109.4
+          },
+          {
+            "x": 201,
+            "y": 267,
+            "bare": 36.5,
+            "done": 106.6
+          }
+        ]
+      }
+    }
+  }
+}

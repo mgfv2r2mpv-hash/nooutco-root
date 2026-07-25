@@ -2500,3 +2500,218 @@ Re-measured on this build with `_probe-glam-face3.mjs`, 3 models × 2 sides:
   scope; excluding font-download errors from the specs' console collectors is in
   scope but touches a dozen spec files. Left alone deliberately rather than let
   it expand this slice.
+
+---
+
+## Third pass
+
+Base commit `2f45dfda`. Driven by two maintainer findings from reviewing the
+second pass:
+
+> (A) "do a full run and ensure the completed looks are not overdone. special
+> attention to white pixels in the eyelashes."
+>
+> (B) "Can we move the turn indicator and # actions left to be in the sandy brown
+> horizontal bar on bottom to use that helpfully and bring it into the design,
+> remove that card's vertical footprint"
+
+This section covers the first slice of that pass: **the completed look is
+photographed and measured for the first time, and the white pixels in the
+eyelashes are traced to their cause and fixed.** Finding A2's tuning and Finding
+B are not in this slice; see "Still to do" at the end.
+
+Every measurement and screenshot below was taken through a server whose served
+bytes were hash-verified against this worktree's `index.html` immediately before
+and after the run.
+
+### V1 · The completed look, photographed
+
+No pass before this one had ever photographed a finished face — every screenshot
+in the evidence set was mid-appointment, which is why a defect the maintainer
+could see was invisible to the record. The "completed look" here is every tool in
+the catalogue applied: wash, moisturize, all three spots treated and concealed,
+brows shaped and pencilled, contour, blush, highlight, eyeshadow, eyeliner,
+mascara, coloured contacts, lip liner, lipstick, hair style and colour, earrings
+and shirt.
+
+Under `docs/eval/shots/glam-tune3/`, per roster model (`m2`, `m3`, `m4`):
+
+| file | what it is |
+| --- | --- |
+| `after-<model>-completed.png` | the finished client, straight off the compositor |
+| `after-<model>-eye.png` | the eye band at ×7 — bare face, completed look, and where the completed look is brighter than bare |
+| `after-<model>-liner-loupe.png` | one eye at ×14 — mascara only, eyeliner only, both, and the pixels the liner brightens |
+| `before-<model>-*.png` | the same three, taken against `2f45dfda`'s renderer through the same server |
+| `measure-completed-look.json` | the raw numbers behind the tables below, as the shipped renderer produces them; the "before" columns come from the same probe run against a copy of `2f45dfda`'s file served from the same directory |
+
+The blemish layout is pinned for every frame. `freshEd` seeds the three spots
+with `Math.random()`, so two frames taken from two resets have them in different
+places — which reads as a tool brightening pixels it never touched. The probes
+pin `spotSeed` to 0.371, the layout `_pickSpots` itself falls back to. Before
+that was noticed, the same measurement swung between 10 and 203 "defective"
+pixels run to run.
+
+### V2 · What each tool does to the face — the measurement table
+
+Per tool, applied **alone** from the bare face, over the compositor's own `face`
+zone restricted to pixels the base render drew (m2 64 833 px, m3 45 256 px,
+m4 64 434 px). `%face` is the share of those pixels the tool moves by more than
+ΔE76 2; `ΔE(changed)` is the mean perceptual distance over just those pixels;
+`ΔE(face)` is the mean over the whole face, which is the "how much of the face
+does this tool own" number.
+
+| tool | m2 %face / ΔE(face) | m3 %face / ΔE(face) | m4 %face / ΔE(face) |
+| --- | --- | --- | --- |
+| Wash | 33.5 / 1.81 | 38.4 / 2.09 | 39.3 / 1.94 |
+| Moisturize | 24.0 / 2.65 | 28.4 / 2.92 | 29.0 / 3.23 |
+| Treat + conceal | 1.5 / 0.26 | 1.4 / 0.24 | 1.9 / 0.32 |
+| Shape brows | 8.7 / 1.41 | 8.5 / 1.60 | 6.2 / 1.07 |
+| Brow pencil | 8.7 / 1.85 | 6.2 / 1.15 | 8.2 / 1.24 |
+| Contour | 4.9 / 0.57 | 2.0 / 0.26 | 4.7 / 0.53 |
+| Blush | 8.0 / 0.72 | 6.9 / 0.71 | 9.1 / 0.85 |
+| Highlight | 2.9 / 0.35 | 2.3 / 0.30 | 3.0 / 0.35 |
+| Eyeshadow | 6.8 / 1.22 | 5.3 / 0.84 | 7.6 / 1.47 |
+| Eyeliner | 9.2 / 1.72 | 7.9 / 1.34 | 9.4 / 1.74 |
+| Mascara | 12.1 / 2.58 | 10.8 / 1.91 | 11.8 / 2.31 |
+| Contacts | 4.6 / 1.26 | 3.2 / 1.05 | 5.1 / 1.25 |
+| Lip liner | 3.5 / 0.71 | 1.5 / 0.33 | 2.8 / 0.52 |
+| Lipstick | 5.9 / 1.87 | 5.5 / 1.97 | 6.2 / 1.87 |
+| **Hair colour** | **20.1 / 9.34** | 7.0 / 2.89 | **23.7 / 10.54** |
+| Earrings | 2.5 / 0.47 | 1.2 / 0.22 | 2.3 / 0.40 |
+| Shirt | 3.1 / 0.55 | 2.0 / 0.34 | 2.5 / 0.44 |
+| **COMPLETED** | **76.0 / 18.07** | **74.3 / 14.28** | **81.5 / 18.77** |
+
+What the table says:
+
+- **Hair colour dominates the face by a factor of three to five.** At ΔE(face)
+  9.3–10.5 it is larger than the next four tools combined, and it is not makeup
+  — the `face` zone includes the hair that frames it. Nothing to fix; it is
+  worth stating so that "the completed look changes 76–82 % of face pixels" is
+  not read as "the makeup does".
+- **Of the makeup proper, mascara (1.9–2.6) and lipstick (1.9–2.0) lead**, then
+  the brow pair (1.1–1.9 each, and they stack), eyeliner (1.3–1.7) and eyeshadow
+  (0.8–1.5). Blush, highlight, contour and lip liner are all under 0.9 — the
+  soft-cosmetic tuning the first two passes did left them genuinely light.
+- Skincare (wash + moisturize) touches the most pixels of anything, at the
+  lowest per-pixel distance: it is a whole-face tone change, which is what it
+  should be.
+
+**Not yet judged.** This slice measured the completed look; it did not tune it.
+Two candidates are visible in `after-<model>-eye.png` and are a matter of taste
+rather than measurement, so they are called out here rather than changed
+silently: the eyeshadow reads as a wide violet band carrying past the outer
+socket onto the temple, and the brow pencil takes the brow to a flat dark plum
+that reads heavier than the hair it is supposed to match. Both are left exactly
+as the maintainer accepted them in the second pass. Overruling either is a
+judgement the maintainer should make against the shots, not one this pass should
+make on its own.
+
+### V3 · Finding A1 — the white pixels in the eyelashes
+
+**The prompt's first hypothesis is refuted.** The suggestion was that U1/U2's
+kidney-bean highlight — a `screen` blend of `#fff6d8` curving toward the outer
+eye socket — had reached the lash line. It has not: removing `hl` from the
+completed look changes the lash measurement by nothing at all, on every model
+and at every stage of this work (`tests/_probe-glam-tune3-lash.mjs`, the
+`completed − hl` row). The U1/U2 bean is untouched by this pass.
+
+**The cause is in the art, and then in the draw order.**
+
+*Cause 1 — `assets/art/eyes/glam.png` draws every lash twice.* A dark stroke,
+and laid along it a second stroke of flat white. Inside the aperture that idiom
+is what makes the sclera and the catchlights. Out in the lash fans it is **1848
+fully opaque pixels of rgba(255,255,255,255)**, 21.7 % of the sprite's
+non-transparent lash-region pixels, sitting between the lashes. The compositor
+draws that 340 px sprite down to about 135 px, so the strokes survive as a pale
+speckle interleaved with the lashes — visible directly in
+`before-<model>-liner-loupe.png`, top panel.
+
+*Cause 2 — the winged liner is a whole eye, drawn on top of the mascara eye.*
+`paintAvatar` draws the glam lash sprite and then draws `eyeliner_l/r` over it,
+and those sprites carry their own eyeball. Its sclera, its pale waterline stroke
+and the anti-aliased rim of both landed on the mascara sprite's lash roots. The
+rim alone — near-white at alpha 8–127 — lifted a black lash by up to **+113
+luminance** on its own.
+
+**The fix.** `LASH_MATTE` + `_eyeMatte` + `_eyeArt` in `index.html`. One pixel
+pass per sprite, cached per source, splitting an eye sprite into "the eye" and
+"everything else": the eye is the pale region continuous with the pixels over the
+iris, flood-filled from a seed ellipse inside the aperture, plus the iris disc
+itself (where the catchlights are — islands the fill cannot reach). Two cuts come
+off that one mark:
+
+- `'lash'` clears every pale pixel **outside** the eye. That is the baked-in
+  highlight and nothing else.
+- `'ink'` clears the eye **and** every pale pixel at any alpha, leaving only lid,
+  lash and liner ink. Used for the winged liner when mascara is already showing.
+  The sprites share one iris-centred frame, so dropping the liner's eyeball lands
+  its ink on the mascara eye exactly.
+
+Cleared rather than darkened, deliberately: a lash gap should show the lid behind
+it, and painting the highlight dark would thicken every lash — the opposite of
+what Finding A asks for.
+
+**The rule is discriminating, not a bleach.** On `natural.png` — the plain
+eyeball, an accepted surface — it matches **zero** pixels, so the eye a child
+sees before any makeup is byte-for-byte what it was. On `eyeliner_l.png` it
+matches 25 in the `'lash'` cut.
+
+**Measured, before and after, on the completed look.** The lash geometry is every
+pixel the mascara sprite *changes* (in either direction), with the eyeball cut
+out — not the pixels it darkens. A mask built from darkening alone quietly
+excludes the white pixels, which are the whole defect; that mistake was made and
+corrected during this work, and it is why the first numbers looked mild.
+
+| completed look, lash geometry | m2 | m3 | m4 |
+| --- | --- | --- | --- |
+| lash pixels ≥ 190 L — **before** | 157 (3.66 %) | 118 (3.66 %) | 143 (3.98 %) |
+| lash pixels ≥ 190 L — **after** | **60 (1.56 %)** | **43 (1.49 %)** | **42 (1.32 %)** |
+| pixels brighter than bare — before | 539 (12.6 %) | 590 (18.3 %) | 598 (16.6 %) |
+| pixels brighter than bare — after | **260 (6.8 %)** | **332 (11.5 %)** | **242 (7.6 %)** |
+| mean lash luminance — before | 87.3 | 88.0 | 85.6 |
+| mean lash luminance — after | **68.9** | **71.1** | **65.7** |
+| share rendering as ink (≥20 L darker than bare) — before | 77.3 % | 68.1 % | 72.5 % |
+| share rendering as ink — after | **83.0 %** | **75.5 %** | **82.1 %** |
+
+White pixels roughly halved on every model, mean lash luminance dropped 18–20 L
+(the lashes now read as ink rather than as speckle), and the share of the
+geometry that actually renders as lash went up on all three — so the improvement
+is not a lash quietly disappearing. Directly against the liner: the mean lift the
+liner sprite puts on lash pixels fell from +16.9/+17.3/+17.8 to +14.4/+14.6/+14.9
+and its worst from +139.5/+161.2/+144.3 to +110.3/+84.9/+100.4.
+
+**The residual, named honestly.** 42–60 pure-white pixels per model remain inside
+the mask. They are not paint on lashes — they are the glam sprite's own **sclera
+leaking past the elliptical eyeball cut-out at the eye's sharp corners**. Three
+pieces of evidence: the count is *identical* for every tool in the ablation
+(83 on m4 whether the extra tool is wash, blush, lipstick or nothing), the value
+is exactly the sclera's own 254.2, and removing the *liner* makes it **worse**
+(42 → 77 on m4) because the liner's dark ink was covering some of it. An ellipse
+is a poor fit for an almond aperture. The pinned spec still to be written needs
+an eyeball exclusion derived from the sprite rather than from an ellipse.
+
+### V4 · Verification for this slice
+
+- Full Playwright suite green — 387 tests, three browsers, against a
+  hash-verified server.
+- `window.GlamTT` and `tests/glam-tt-scoring.spec.js` **unchanged**:
+  `git diff 2f45dfda..HEAD -- apps/games/tests/glam-tt-scoring.spec.js` is empty,
+  and the engine block in `index.html` is untouched by this diff.
+- Real-browser playthrough (`tests/_play-glam-tune2.mjs`): title → texting intro
+  → salon → a real-pointer drag on the highlight target → turns → outro, with no
+  console errors, no page errors and no failed local requests.
+- New instruments, none of them specs:
+  `tests/_probe-glam-tune3-look.mjs` (the completed look and the table),
+  `tests/_probe-glam-tune3-lash.mjs` (attribution by ablation),
+  `tests/_probe-glam-tune3-liner.mjs` (the liner-over-lash question and its ×14
+  loupe) and `tests/_shots-glam-tune3-look.mjs` (the shots).
+
+### V · Still to do in this pass
+
+- **The pinned lash spec.** The bound is not yet a test. It needs the tighter
+  eyeball exclusion described in V3 before it can be two-sided without baking the
+  leakage into the pass mark.
+- **Finding A2's tuning.** The completed look is measured and photographed but
+  not retuned; the two taste calls above are stated rather than made.
+- **Finding B in its entirety.** The turn indicator is still a full-width card
+  above the stage; the stage's sandy bottom band is still dead space.
