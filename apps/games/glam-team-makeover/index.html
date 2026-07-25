@@ -29,7 +29,34 @@
   @keyframes gtm-sparkle { 0%{ opacity:0; transform:scale(.4);} 100%{ opacity:1; transform:scale(1);} }
   .gtm-frame{ animation:gtm-frame .5s var(--ease-standard) both; transform:rotate(var(--tilt)); }
   .gtm-tool{ touch-action:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
-  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; } }
+
+  /* ── SALON DRESSING (refresh R5) ──────────────────────────────────────────
+     One warm vocabulary — plum chrome, gold bezel, rose trolley — carried from
+     the title screen and the phone thread through to the vanity, so the three
+     child-facing surfaces read as one room instead of three components.
+     Deliberately NOT re-tinted: the clinical turn colours (sage = mine,
+     blue = theirs) and the amber cue. Whose turn it is has to stay the loudest
+     thing on the screen (AC-12), so the dressing stays warm-neutral around it. */
+  body{ --gtm-plum:#3a2442; --gtm-plum-deep:#26182b; --gtm-gold:#d9ab6a;
+        --gtm-gold-lit:#f7e3c0; --gtm-cream:#fdf6ec; --gtm-rose:#f6e7f0; }
+  /* The room the vanity stands in: a warm wash that fades to the page colour so
+     the clinical strips at the bottom stay on neutral ground. */
+  .gtm-room{ background:
+      radial-gradient(120% 68% at 50% 0%, rgba(238,209,231,.50) 0%, rgba(238,209,231,0) 62%),
+      linear-gradient(180deg,#fbf2f7 0%, #fdf6ef 44%, var(--surface-page) 100%); }
+  /* CHOICE MIRRORING — the tap's answer. The chip rises out of the mirror with
+     the child's own tool name on it, the button they pressed gives a squeeze,
+     and the mirror warms for as long as the echo is up.
+     The `-a` / `-b` pairs are not a copy-paste slip: a second choice inside the
+     echo window keeps the SAME DOM node, and only a change of `animation-name`
+     restarts a CSS animation. Alternating the name on a counter's parity is what
+     makes the third fast tap animate like the first. */
+  @keyframes gtm-mirror-a { 0%{ opacity:0; transform:translateY(12px) scale(.94);} 20%{ opacity:1; transform:translateY(0) scale(1);} 72%{ opacity:1; transform:translateY(-3px) scale(1);} 100%{ opacity:0; transform:translateY(-18px) scale(.97);} }
+  @keyframes gtm-mirror-b { 0%{ opacity:0; transform:translateY(12px) scale(.94);} 20%{ opacity:1; transform:translateY(0) scale(1);} 72%{ opacity:1; transform:translateY(-3px) scale(1);} 100%{ opacity:0; transform:translateY(-18px) scale(.97);} }
+  @keyframes gtm-applied-a { 0%{ transform:scale(1);} 32%{ transform:scale(1.09);} 62%{ transform:scale(.985);} 100%{ transform:scale(1);} }
+  @keyframes gtm-applied-b { 0%{ transform:scale(1);} 32%{ transform:scale(1.09);} 62%{ transform:scale(.985);} 100%{ transform:scale(1);} }
+
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
   /* Phone (spec §3.9 device order: desktop first-class → tablet → iPhone). The
      header is a single nowrap row sized for desktop and was pushing ~73px of
      horizontal overflow at 390px, which scrolls the whole page sideways. Let it
@@ -932,11 +959,13 @@ window.GlamStory = (function () {
 <div style="min-height:100vh;display:flex;flex-direction:column">
 
   <!-- HEADER -->
-  <header style="display:flex;align-items:center;gap:10px;background:var(--slate-800);color:#fff;padding:9px 15px;flex-shrink:0;border-bottom:2px solid var(--sage-700)">
+  <!-- Salon chrome: the same plum the title marquee and the phone's thread header
+       use, with a gold hairline instead of the generic slate bar. -->
+  <header style="display:flex;align-items:center;gap:10px;background:linear-gradient(180deg,var(--gtm-plum) 0%,var(--gtm-plum-deep) 100%);color:#fff;padding:9px 15px;flex-shrink:0;border-bottom:2px solid rgba(217,171,106,.60)">
     <a href="/" style="display:inline-flex;align-items:center;padding:5px 12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);border-radius:6px;font-size:12px;font-weight:600;color:#fff;text-decoration:none;white-space:nowrap;flex-shrink:0">← Games</a>
     <div style="display:flex;flex-direction:column;line-height:1.15;margin-right:auto;white-space:nowrap;min-width:150px">
       <span style="font-size:15px;font-weight:800;letter-spacing:-.01em;white-space:nowrap">Glam Team Makeover</span>
-      <span style="font-size:10px;font-weight:500;color:var(--slate-400);letter-spacing:.03em;white-space:nowrap">No Outcome ABA · take turns, together</span>
+      <span style="font-size:10px;font-weight:500;color:#dcc6da;letter-spacing:.03em;white-space:nowrap">No Outcome ABA · take turns, together</span>
     </div>
     <button onClick="{{ onMethod }}" style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);color:#fff;font-family:inherit;font-size:11px;font-weight:700;padding:6px 11px;border-radius:6px;cursor:pointer;white-space:nowrap">ⓘ Method</button>
     <span style="font-family:var(--font-mono);font-size:17px;font-weight:700;background:rgba(0,0,0,.32);padding:3px 11px;border-radius:6px;letter-spacing:.05em">{{ clock }}</span>
@@ -1051,7 +1080,7 @@ window.GlamStory = (function () {
 
   <!-- GAME -->
   <sc-if value="{{ showGame }}" hint-placeholder-val="{{ false }}">
-    <main style="flex:1;display:flex;flex-direction:column;padding:12px 16px 16px;gap:11px">
+    <main class="gtm-room" style="flex:1;display:flex;flex-direction:column;padding:12px 16px 16px;gap:11px">
 
       <sc-if value="{{ mapBanner }}" hint-placeholder-val="{{ false }}">
         <div style="{{ bannerStyle }}">
@@ -1079,7 +1108,14 @@ window.GlamStory = (function () {
       <div style="flex:1;display:flex;gap:14px;flex-wrap:wrap;align-items:stretch">
         <!-- STAGE -->
         <div style="{{ stageStyle }}">
-          <span style="position:absolute;top:12px;left:14px;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint);z-index:3">Our makeover</span>
+          <!-- The mirror warms while a choice is being echoed. Always mounted so
+               the opacity TRANSITION has something to run on; a mounted-on-demand
+               node would just snap. Opacity only — stays on the compositor. -->
+          <div style="{{ mirrorGlowStyle }}"></div>
+          <!-- Salon signage, not a caption. This label used to be faint grey set
+               straight on the backdrop art, which is bright enough that it barely
+               read; on a plum plate it is both legible and part of the room. -->
+          <span style="{{ stageSignStyle }}">✦ Our makeover</span>
           <sc-if value="{{ artModelPicker }}" hint-placeholder-val="{{ false }}">
             <div style="position:absolute;top:8px;right:12px;display:flex;gap:6px;z-index:6">
               <sc-for list="{{ artModels }}" as="am" hint-placeholder-count="0">
@@ -1106,16 +1142,36 @@ window.GlamStory = (function () {
 
           <!-- vanity ledge — masks the paper-doll's hard bottom cut edge; person art only -->
           <sc-if value="{{ footerBar }}" hint-placeholder-val="{{ false }}"><div style="{{ footerBarStyle }}"></div></sc-if>
+
+          <!-- CHOICE MIRRORED BACK — the tap's answer, over the ledge. The text is
+               the child's OWN tool name and nothing else: no sentence is composed
+               around it, so the echo can assert nothing about the client that the
+               child could refute (§3.7.1). Rendered pointer-events:none so it can
+               never eat a tap meant for the face. -->
+          <sc-if value="{{ showMirror }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:0;right:0;bottom:34px;display:flex;justify-content:center;z-index:7;pointer-events:none">
+              <div style="{{ mirrorChipStyle }}"><span style="font-size:15px">{{ mirrorGlyph }}</span>{{ mirrorLabel }}</div>
+            </div>
+          </sc-if>
         </div>
 
-        <!-- PALETTE -->
+        <!-- PALETTE — the styling trolley. Same stock, dressed as the salon's
+             cart: a gold top rail, a warm cream body, and station names set as
+             small tracked caps with a hairline running out to the edge. -->
         <div style="{{ toolsColStyle }}">
-          <div class="gtm-scroll" style="flex:1;min-height:0;overflow-y:auto;background:var(--surface-card);border:1px solid var(--border-default);border-radius:16px;padding:13px">
-            <div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)">{{ paletteHint }}</div>
+          <div class="gtm-scroll" style="flex:1;min-height:0;overflow-y:auto;background:linear-gradient(180deg,#fffaf3 0%,#fdf2f7 100%);border:1px solid #e9d5e0;border-radius:16px;padding:13px;box-shadow:inset 0 3px 0 rgba(217,171,106,.55),var(--shadow-sm)">
+            <div style="display:flex;align-items:center;gap:7px;padding-bottom:8px;border-bottom:1px solid rgba(217,171,106,.40)">
+              <span style="font-size:14px">🛒</span>
+              <span style="font-size:11.5px;font-weight:900;letter-spacing:.2em;text-transform:uppercase;color:var(--gtm-plum)">Styling trolley</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:7px;margin-top:9px">
+              <span style="width:7px;height:7px;border-radius:50%;background:var(--gtm-gold);box-shadow:0 0 0 3px rgba(217,171,106,.20);flex-shrink:0"></span>
+              <span style="font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:#7c5a72">{{ paletteHint }}</span>
+            </div>
             <div style="display:flex;gap:4px;margin:8px 0 2px;flex-wrap:wrap"><sc-for list="{{ stageChips }}" as="ch" hint-placeholder-count="4"><span style="{{ ch.style }}">{{ ch.label }}</span></sc-for></div>
             <sc-for list="{{ palette }}" as="grp" hint-placeholder-count="4">
-              <div style="margin-top:10px">
-                <div style="font-size:11px;font-weight:800;color:var(--slate-600);margin-bottom:6px;display:flex;align-items:center;gap:5px">{{ grp.icon }} {{ grp.label }}</div>
+              <div style="margin-top:12px">
+                <div style="font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--gtm-plum);margin-bottom:7px;display:flex;align-items:center;gap:6px">{{ grp.icon }} {{ grp.label }}<span style="flex:1;height:1px;background:linear-gradient(90deg,rgba(217,171,106,.75),rgba(217,171,106,0))"></span></div>
                 <div style="display:flex;gap:7px;flex-wrap:wrap">
                   <sc-for list="{{ grp.options }}" as="opt" hint-placeholder-count="3"><button onClick="{{ opt.handler }}" title="{{ opt.title }}" style="{{ opt.btnStyle }}"><span style="{{ opt.swatchStyle }}">{{ opt.glyph }}</span><span style="font-size:10px;font-weight:700;color:var(--slate-600);text-align:center;line-height:1.15;max-width:78px;min-height:13px">{{ opt.label }}</span></button></sc-for>
                 </div>
@@ -1126,7 +1182,7 @@ window.GlamStory = (function () {
       </div>
 
       <!-- CONTROLS -->
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;padding:10px 16px">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:rgba(255,255,255,.86);border:1px solid #ecdae4;border-radius:12px;padding:10px 16px;box-shadow:var(--shadow-sm)">
         <div style="display:inline-flex;align-items:center;gap:9px;padding:7px 13px;background:#fff;border:1px solid var(--border-default);border-bottom:3px solid var(--sage-500);border-radius:10px"><span style="font-size:17px">🎬</span><span style="font-size:13px;font-weight:800;color:var(--text-muted)">{{ progressText }}</span></div>
         <div style="flex:1;min-width:170px;text-align:center">{{ phaseMsg }}</div>
         <!-- AC-3 — kid-facing over-cap feedback. Sage, not red; a nudge, never a
@@ -1163,10 +1219,14 @@ window.GlamStory = (function () {
 
   <!-- DONE -->
   <sc-if value="{{ isDone }}" hint-placeholder-val="{{ false }}">
-    <section style="flex:1;display:flex;justify-content:center;align-items:flex-start;padding:22px 20px">
-      <div style="width:min(680px,100%);background:var(--surface-card);border:2px solid var(--sage-200);border-radius:18px;box-shadow:var(--shadow-md);padding:24px 28px;text-align:center;animation:gtm-pop .4s var(--ease-standard)">
+    <!-- The outro is a child-facing surface too, so it is dressed in the same
+         salon vocabulary as the title screen, the phone thread and the vanity:
+         warm card, plum type, a gold hairline. The clinical chips below keep
+         their sage. -->
+    <section class="gtm-room" style="flex:1;display:flex;justify-content:center;align-items:flex-start;padding:22px 20px">
+      <div style="width:min(680px,100%);background:linear-gradient(180deg,#fffdf9 0%,#fdf4f8 100%);border:1.5px solid #ead6e2;border-top:4px solid rgba(217,171,106,.75);border-radius:18px;box-shadow:var(--shadow-md),0 26px 50px -34px rgba(60,30,55,.55);padding:24px 28px;text-align:center;animation:gtm-pop .4s var(--ease-standard)">
         <div style="font-size:56px;line-height:1">{{ outcomeEmoji }}</div>
-        <h2 style="font-size:24px;font-weight:800;color:var(--text-primary);margin:8px 0 6px;letter-spacing:-.01em">{{ outcomeTitle }}</h2>
+        <h2 style="font-size:24px;font-weight:800;color:var(--gtm-plum);margin:8px 0 6px;letter-spacing:-.01em">{{ outcomeTitle }}</h2>
         <p style="font-size:15px;line-height:1.5;color:var(--text-body);max-width:500px;margin:0 auto 12px">{{ outcomeText }}</p>
         <!-- AC-16 — an unfinished look says so, plainly, and the story above still
              carries its turn-taking line with no completion claim in it. -->
@@ -1499,9 +1559,13 @@ class Component extends DCLogic {
          themselves are offscreen canvases on the instance, so no image data ever
          rides a re-render. */
       revealReady:false,
+      /* The choice being mirrored back right now: {id,label,glyph,n}. `n` only
+         exists to flip the animation-name parity so a fast second choice
+         re-plays instead of sitting still (see the -a/-b keyframes). */
+      mirror:null,
     };
     this._trial=null; this._charged={}; this._ttIv=null; this._clockIv=null; this._paint=false;
-    this._toastTO=null; this._eToastTO=null; this._threadIv=null;
+    this._toastTO=null; this._eToastTO=null; this._threadIv=null; this._mirrorTO=null; this._mirrorN=0;
     this._shotBefore=null; this._shotAfter=null; this._shotOpen=false;
   }
   drawChar(lock){
@@ -1524,7 +1588,7 @@ class Component extends DCLogic {
   componentDidUpdate(){ this.paintAvatar(); this.paintReveal(); }
   componentWillUnmount(){ clearInterval(this._ttIv); clearInterval(this._clockIv);
     clearInterval(this._threadIv);
-    clearTimeout(this._toastTO); clearTimeout(this._eToastTO); }
+    clearTimeout(this._toastTO); clearTimeout(this._eToastTO); clearTimeout(this._mirrorTO); }
 
   cfg(){ return THEMES[this.state.theme]; }
   base(){ return this.cfg().base; }
@@ -1591,6 +1655,19 @@ class Component extends DCLogic {
   toast(msg){ if(!msg) return; clearTimeout(this._toastTO);
     this.setState({capToast:msg}); this._toastTO=setTimeout(()=>this.setState({capToast:''}),3200); }
 
+  /* "Choices mirrored with care" — the one piece of feedback every apply path
+     shares. It ECHOES, it does not evaluate: the chip carries the child's own
+     tool name (plus a sparkle) and no sentence is composed around it, so a
+     choice can never be told it was a good or a wrong one, and nothing here can
+     make a claim about the client. Purely presentational — no engine call, no
+     charge, no score; it runs after admission, on the paths that actually
+     changed the look. */
+  _mirror(opt){ if(!opt||!opt.label) return; clearTimeout(this._mirrorTO);
+    this._mirrorN=(this._mirrorN+1)%2;
+    this.setState({mirror:{id:opt.id||'',label:opt.label,glyph:opt.mirrorGlyph||'✨',n:this._mirrorN}});
+    this._mirrorTO=setTimeout(()=>this.setState({mirror:null}),1500); }
+  _clearMirror(){ clearTimeout(this._mirrorTO); if(this.state.mirror) this.setState({mirror:null}); }
+
   /* ── the opening flow: Start → a client texts in → the salon opens ── */
 
   /* Start draws the client (D-F: model + name + scenario, random unless the BT
@@ -1617,12 +1694,12 @@ class Component extends DCLogic {
   /* `keepClient` is the salon-opening path: the client who just texted is the
      client who sits down. The BT's ▶ Play starts a trial straight from the setup
      strip and draws a fresh one. */
-  play(opts){ clearInterval(this._threadIv); this._threadIv=null;
+  play(opts){ clearInterval(this._threadIv); this._threadIv=null; clearTimeout(this._mirrorTO);
     const sel=(opts&&opts.keepClient&&this.state.sel)||this.drawChar(this.state.charLock);
     this._trial=new window.GlamTT.Trial(this.ttOpts()); this._charged={};
     this._shotBefore=null; this._shotAfter=null; this._shotOpen=true;
     this.setState({ phase:'ready', sel, model:sel.model, story:this.storyIntro(sel), report:null,
-      ed:this.freshEd(this.cfg().flaws), armed:null, chargedThisTurn:{}, capToast:'', eToast:'',
+      ed:this.freshEd(this.cfg().flaws), armed:null, chargedThisTurn:{}, capToast:'', eToast:'', mirror:null,
       settingsOpen:false, engTurn:0, revealReady:false });
     this.syncTT(); }
   go(){ const tr=this._trial; if(!tr) return; tr.go();
@@ -1727,7 +1804,7 @@ class Component extends DCLogic {
       if(opt.slot==='outfit'){ ed.outfit=opt.value; ed.col.garment=opt.color; ed.done.outfit=true; }
       else if(opt.slot==='hairShape'){ ed.hairShape=opt.value; ed.done.hairShape=true; }
       else { ed.gl[opt.slot]=opt.glyph||'x'; ed.col[opt.slot]=opt.color; ed.done[opt.slot]=true; }
-      return { ed, armed:null, chargedThisTurn:this._chargeKey(s,key).charged }; }, ()=>this.afterAction()); }
+      return { ed, armed:null, chargedThisTurn:this._chargeKey(s,key).charged }; }, ()=>{ this._mirror(opt); this.afterAction(); }); }
 
   tapApply(){ const t=this.state.armed; if(!t) return; this._closeBefore(); const slot=t.slot;
     const key = t.apply==='recolor' ? 'color:'+slot : 'item:'+slot;
@@ -1737,20 +1814,22 @@ class Component extends DCLogic {
       else if(t.apply==='place'){ ed.gl[slot]=(t.value!=null?t.value:t.glyph); if(t.color) ed.col[slot]=t.color; }
       else { ed.cov[slot]=1; if(t.color) ed.col[slot]=t.color; }
       ed.done[slot]=true;
-      return { ed, armed:null, chargedThisTurn:this._chargeKey(s,key).charged }; }, ()=>this.afterAction()); }
+      return { ed, armed:null, chargedThisTurn:this._chargeKey(s,key).charged }; }, ()=>{ this._mirror(t); this.afterAction(); }); }
 
   // Treat/patch step: tap a zit (state 0) → patched (1). Stay armed while zits remain.
   patchOne(i){ if(this.state.ed.pimples[i]!==0) return; this._closeBefore();
     if(!this._admit('item:patch'+i,'treat spot')) return;
     this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); ed.pimples[i]=1; ed.done['patch'+i]=true;
       const anyZit=ed.pimples.some(v=>v===0);
-      return { ed, armed: anyZit? s.armed : null, chargedThisTurn:this._chargeKey(s,'item:patch'+i).charged }; }, ()=>this.afterAction()); }
+      return { ed, armed: anyZit? s.armed : null, chargedThisTurn:this._chargeKey(s,'item:patch'+i).charged }; },
+      ()=>{ this._mirror({id:'patch',label:'Treat spots',mirrorGlyph:'🩹'}); this.afterAction(); }); }
   // Conceal step (unlocks once ALL spots patched): tap a patch (state 1) → clear (2).
   concealOne(i){ if(this.state.ed.pimples[i]!==1) return; this._closeBefore();
     if(!this._admit('item:conceal'+i,'conceal spot')) return;
     this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); ed.pimples[i]=2; ed.done['conceal'+i]=true;
       const anyPatched=ed.pimples.some(v=>v===1);
-      return { ed, armed: anyPatched? s.armed : null, chargedThisTurn:this._chargeKey(s,'item:conceal'+i).charged }; }, ()=>this.afterAction()); }
+      return { ed, armed: anyPatched? s.armed : null, chargedThisTurn:this._chargeKey(s,'item:conceal'+i).charged }; },
+      ()=>{ this._mirror({id:'conceal',label:'Conceal',mirrorGlyph:'✨'}); this.afterAction(); }); }
 
   paintStep(){ const t=this.state.armed; if(!t||t.mech!=='paint') return; this._closeBefore(); const slot=t.slot;
     const key=(t.color?'color:':'item:')+slot;
@@ -1763,13 +1842,19 @@ class Component extends DCLogic {
       let charged=s.chargedThisTurn||{};
       if(n2>=1){ ed.done[slot]=true; completed=true; charged=this._chargeKey(s,key).charged; }
       return { ed, chargedThisTurn:charged }; },
-      ()=>{ if(completed){ this._paint=false; this.setState({armed:null}); this.afterAction(); } }); }
+      /* A paint stroke echoes when the wash COMPLETES, not on every pointer move
+         — the same moment the engine hears about it. Mirroring each partial
+         step would strobe the chip a dozen times across one drag. */
+      ()=>{ if(completed){ this._paint=false; this.setState({armed:null}); this._mirror(t); this.afterAction(); } }); }
   pDown(e){ if(e.currentTarget&&e.currentTarget.setPointerCapture&&e.pointerId!=null){ try{e.currentTarget.setPointerCapture(e.pointerId);}catch(_){} } this._paint=true; this.paintStep(); }
   pMove(e){ if(this._paint || e.buttons===1) this.paintStep(); }
   pUp(){ this._paint=false; }
 
   /* ── turn lifecycle: every transition is the engine's, not the screen's ── */
   handoff(){ const tr=this._trial; if(!tr||tr.ended) return;
+    // the echo belongs to the turn that made the choice — it does not hang over
+    // into the partner's turn.
+    this._clearMirror();
     tr.pass(); this.setState({armed:null}); this.syncTT(); }
   partnerDone(){ if(this.state.giveBack!=='prompted') return; this.setState({phase:'giveback'}); }
   giveBack(){ const tr=this._trial;
@@ -1855,10 +1940,10 @@ class Component extends DCLogic {
   /* Play again returns to the front door, so the next run gets the same
      start → a client texts in → salon opening as the first one. */
   replay(){ this._trial=null; this._charged={}; clearInterval(this._threadIv); this._threadIv=null;
-    this._shotBefore=null; this._shotAfter=null; this._shotOpen=false;
+    this._shotBefore=null; this._shotAfter=null; this._shotOpen=false; clearTimeout(this._mirrorTO);
     const sel=this.drawChar(this.state.charLock);
     this.setState({phase:'title',sel,model:sel.model,story:this.storyIntro(sel),report:null,
-      thread:null,threadStep:0,revealReady:false,
+      thread:null,threadStep:0,revealReady:false,mirror:null,
       ed:this.freshEd(this.cfg().flaws),armed:null,chargedThisTurn:{},capToast:'',eToast:'',
       engTurn:0,ttActions:0,ttBudget:0,cueVisible:false,settingsOpen:false}); }
 
@@ -2556,10 +2641,15 @@ class Component extends DCLogic {
       // Hairstyle buttons used to render their number and NO name at all (eval
       // §3.9: seven unlabelled buttons). Every tool now carries its label.
       const lbl = (locked?'🔒 ':(active&&!armed?'✓ ':''))+opt.label;
+      /* The tap's own answer on the button that was pressed: a single squeeze,
+         transform only. Parity on the echo counter so tapping the SAME tool
+         twice re-plays (a CSS animation only restarts when its NAME changes). */
+      const justApplied=!!s.mirror && s.mirror.id===opt.id;
+      const pop=justApplied?';animation:gtm-applied-'+(s.mirror.n?'b':'a')+' .42s var(--ease-standard)':'';
       // `title` stays the RAW tool name (no ✓ prefix, no lock glyph) so the
       // tooltip — and anything addressing the tool by name — is stable across states.
       return { label:lbl, title:opt.label, glyph, swatchStyle:swatch, handler:locked?(()=>{}):(()=>this.arm(opt)),
-        btnStyle:'display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:5px;padding:9px 7px 7px;width:82px;border-radius:13px;cursor:'+(off?'not-allowed':'pointer')+';font-family:inherit;opacity:'+(off?'.45':'1')+';background:'+bg+';border:1.5px solid '+bd+';box-shadow:'+(armed?'0 0 0 3px rgba(106,118,89,.18)':active?'var(--shadow-sm)':'none') }; }) })).filter(grp=>grp.options.length);
+        btnStyle:'display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:5px;padding:9px 7px 7px;width:82px;border-radius:13px;cursor:'+(off?'not-allowed':'pointer')+';font-family:inherit;opacity:'+(off?'.45':'1')+';background:'+bg+';border:1.5px solid '+bd+';box-shadow:'+(armed?'0 0 0 3px rgba(106,118,89,.18)':active?'var(--shadow-sm)':'none')+pop }; }) })).filter(grp=>grp.options.length);
 
     // stage tracker — 4 phase chips (done ✓ / current / future); person only
     let stageChips=[];
@@ -2659,8 +2749,33 @@ class Component extends DCLogic {
       typingRowStyle:'display:flex;justify-content:'+(nextFrom==='team'?'flex-end':'flex-start'),
       mapBanner:s.turnMap==='banner', mapVanity:s.turnMap==='vanity', mapRunway:s.turnMap==='runway',
       personShow:base==='person', isPet:base==='pet', V, palette, target, runwayTiles, stageChips,
-      stageStyle:'flex:1;min-width:300px;position:relative;display:flex;align-items:'+(personArtLive?'flex-end':'center')+';justify-content:center;background:var(--surface-card);border:1px solid var(--border-default);border-radius:16px;padding:12px;overflow:hidden'+(personArtLive?';max-height:670px':'')+(stageBg?';background-image:url("'+stageBg+'");background-size:cover;background-position:center':''),
+      /* The stage panel is framed as the vanity ALCOVE when the art compositor is
+         live — a plum rim, a floor vignette and an outer drop shadow that sits it
+         in the room. No gold ring: the backdrop's own mirror is already gold, and
+         a second bezel around it just reads as mush. Inset shadows only, so the
+         panel's box model — and every % target zone measured against it — is
+         untouched. */
+      stageStyle:'flex:1;min-width:300px;position:relative;display:flex;align-items:'+(personArtLive?'flex-end':'center')+';justify-content:center;background:var(--surface-card);border:1px solid '+(personArtLive?'rgba(58,36,66,.55)':'var(--border-default)')+';border-radius:16px;padding:12px;overflow:hidden'+(personArtLive?';max-height:670px':'')+(stageBg?';background-image:url("'+stageBg+'");background-size:cover;background-position:center':'')+(personArtLive?';box-shadow:inset 0 0 0 4px rgba(58,36,66,.42),inset 0 -70px 90px -62px rgba(58,36,66,.45),0 16px 36px -22px rgba(72,40,62,.55)':''),
       toolsColStyle,
+      /* SALON DRESSING. The backdrop art is itself a bulb-lit vanity mirror, so
+         the dressing here deliberately does NOT add a second set of bulbs — it
+         frames what the art already gives (bezel, vignette, signage) instead of
+         competing with it. */
+      stageSignStyle:'position:absolute;top:11px;left:12px;z-index:3;padding:4px 11px;border-radius:999px;'
+        +'font-size:9.5px;font-weight:800;letter-spacing:.17em;text-transform:uppercase;'
+        +(personArtLive?'color:var(--gtm-gold-lit);background:rgba(38,24,43,.72);border:1px solid rgba(217,171,106,.55)'
+                       :'color:var(--text-faint)'),
+      mirrorGlowStyle:'position:absolute;inset:0;z-index:5;pointer-events:none;border-radius:16px;'
+        +'background:radial-gradient(72% 52% at 50% 44%,rgba(255,233,196,.60) 0%,rgba(255,233,196,0) 72%);'
+        +'transition:opacity .38s var(--ease-standard);opacity:'+(s.mirror?'1':'0'),
+      showMirror:!!s.mirror,
+      mirrorLabel:(s.mirror&&s.mirror.label)||'',
+      mirrorGlyph:(s.mirror&&s.mirror.glyph)||'✨',
+      mirrorChipStyle:'display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;'
+        +'font-size:13.5px;font-weight:800;letter-spacing:.01em;color:#432a3c;'
+        +'background:linear-gradient(180deg,rgba(255,252,246,.97),rgba(253,240,231,.95));'
+        +'border:1.5px solid rgba(217,171,106,.85);box-shadow:0 10px 22px -12px rgba(72,40,62,.65);'
+        +'white-space:nowrap;animation:gtm-mirror-'+((s.mirror&&s.mirror.n)?'b':'a')+' 1.5s var(--ease-standard) both',
       footerBar: personArtLive,
       /* Warm wood vanity ledge across the stage floor: transparent above → a bright
          front-lip catch → opaque counter body, so the model's straight bottom cut

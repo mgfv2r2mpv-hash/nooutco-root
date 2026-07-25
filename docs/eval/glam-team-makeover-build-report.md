@@ -1055,3 +1055,159 @@ dependency from the whole games suite.
 - **Self-hosting the Atkinson fonts** (R4.5 · 3) is the one fix identified here
   that could not be made, because the `@import` is in shared games CSS rather
   than in this game.
+
+---
+
+## R5. The salon dressing and the choice echo
+
+R4 gave the activity its **depth** — ten stations, sixty-nine tools. This slice is
+the other half of "a richer, more themed makeover activity": **the room those
+stations stand in, and the answer a tap gets back.**
+
+### R5.1 One room, not three components
+
+The child now passes through three surfaces — the title marquee, the phone
+thread, the vanity — and before this slice only the first two spoke the salon's
+language. The third was the shared games chrome: a slate header, white cards, a
+grey caption. The dressing carries **plum · gold · rose** all the way through:
+
+| Surface | Before | Now |
+|---|---|---|
+| Header chrome | flat `--slate-800`, sage rule | plum gradient (the thread header's own), gold hairline |
+| Game surface | page grey | `.gtm-room` — a warm wash that fades back to page grey under the clinical strips |
+| Stage panel | 1 px card border | vanity **alcove**: plum inset rim, floor vignette, outer drop shadow |
+| Stage label | faint grey caption set on bright backdrop art | salon **signage** — gold on a plum plate, legible over the art |
+| Palette column | white card, grey headings | the **styling trolley**: gold top rail, cream→rose body, station names in plum tracked caps with a hairline running out to the edge |
+| Outro card | white card, sage border | warm card, gold top rule, plum title (the booth already had its own gradient) |
+
+**The one thing deliberately NOT re-tinted** is the clinical colour system: sage =
+my turn, blue = their turn, amber = the cue. Whose turn it is has to stay the
+loudest thing on the screen (AC-12), so the dressing stays warm-neutral *around*
+it rather than competing with it.
+
+**And the one piece of dressing that was built and then removed:** a bulb rail
+across the top of the stage. The backdrop art *is* a bulb-lit vanity mirror, so a
+second row of bulbs read as a dotted line fighting the illustration — and the
+gold bezel drawn around it was gold-on-gold mush. Both were cut in favour of
+framing what the art already gives. The screenshot that showed it is the reason
+it is gone.
+
+### R5.2 "Choices mirrored with care" — the mechanic, and its framing
+
+Every apply path (`applyChoose`, `tapApply`, `patchOne`, `concealOne`, and
+`paintStep` **on completion**) now calls one shared `_mirror(opt)`. Three things
+happen together, all on the compositor:
+
+1. a chip rises out of the mirror over the vanity ledge carrying **the child's own
+   tool name**;
+2. the button they pressed gives **one squeeze** (`transform` only);
+3. the mirror **warms** behind it — an opacity-transitioned radial that settles
+   back down when the echo goes.
+
+The novel bit is what the chip is *not allowed to be*. The obvious version of
+"satisfying feedback" is praise — *"Nice pick!"*, *"Ooh, that looks great!"* — and
+that is exactly the move this build refuses everywhere else. A creative choice
+has no right answer (the Toca-Boca framing this refresh is built on), so
+evaluating one is both a lie and a small clinical hazard: it teaches the child
+that the game is scoring their taste, on a surface whose only real measurement is
+turn-taking. And a compliment aimed at the doll is a **refutable claim about the
+client** (§3.7.1 / AC-10) the moment it names anything visible.
+
+So the chip **echoes, it does not evaluate**: a sparkle, then the label, and no
+sentence composed around it. That constraint is the interesting part of the
+design and it is what `glam-salon-theme.spec.js` pins.
+
+`paintStep` echoes on **completion**, not per pointer-move — mirroring each
+partial step would strobe the chip a dozen times across one drag. That is also
+exactly the moment the engine hears about the action, so the echo and the charge
+stay in step.
+
+**Nothing here touches the engine.** `_mirror` runs *after* admission, is pure
+presentation, and holds no state the report reads. `handoff()` clears it, so an
+echo never hangs over into the partner's turn.
+
+### R5.3 The `-a` / `-b` keyframe pairs are load-bearing
+
+`gtm-mirror-a` / `gtm-mirror-b` and `gtm-applied-a` / `gtm-applied-b` are
+byte-identical pairs, which looks like a copy-paste slip worth tidying up. It is
+not. A second choice inside the 1.5 s echo window keeps **the same DOM node**, and
+a CSS animation only restarts when its `animation-name` changes — so with one
+name the third fast tap would sit motionless while the first two animated.
+Alternating the name on a counter's parity is the whole fix, and the spec asserts
+the flip directly so the "simplification" fails loudly.
+
+### R5.4 Tests — `tests/glam-salon-theme.spec.js` (6 × 3 browsers)
+
+| Test | What would break it |
+|---|---|
+| the play surface is dressed as a salon room, not a form | the room wash, trolley, signage plate, alcove framing or plum chrome regressing to shared-games defaults |
+| a choice comes back as the child's own tool name, then clears itself | the echo not firing, or becoming a permanent status line |
+| the echo never composes a sentence around the choice, and never a number | any wrapper text — praise, a verdict, a count — around the label, across five mechanics (`choose`, tap-toggle, tap-recolor, paint, per-spot patch) |
+| a second choice inside the echo window animates like the first | collapsing the `-a`/`-b` parity (R5.3) |
+| the mirror warms while the echo is up and settles once it goes | the glow never lighting, or never going out |
+| every animation this game ships stays on the compositor | any `@keyframes gtm-*` that animates a layout- or paint-bound property |
+
+The last one is a **whole-file** guard, not an R5 guard: it walks every
+`gtm-*` keyframe in the document and fails on any property outside
+`transform` / `opacity` / `box-shadow`. Compositor-friendly motion is a standing
+constraint (§3.9) and a keyframe animating `width` or `top` is invisible in review
+while costing a layout on every frame — on the exact surface a child drags a brush
+across.
+
+**Red/green controls.** Three mechanisms were reverted in place and the suite
+re-run before the tests were accepted: constant `animation-name` → the parity test
+failed; glow pinned to `opacity:0` → the warm-up test failed at
+`0.07 < 3`; the label wrapped as `Nice pick — Bob!` → the echo test failed. All
+three passed again on restore. The glow control also proves the luminance
+assertion is measuring the glow and not the chip: with only the chip drawn, the
+stage's mean luminance moved by **0.07**, against **+8.8** with the glow live.
+
+### R5.5 Verification
+
+- **Full suite: 336 passed** across chromium / firefox / webkit (318 before this
+  slice, plus 6 new tests × 3 browsers), on a clean full run. One earlier full run
+  showed a single `glam-station-kit` failure on Firefox that passed in isolation
+  and did not recur — the parallel-load effect documented in R4.5 · 1.
+- **`window.GlamTT` and `window.GlamStory` byte-for-byte unchanged** — both
+  regions hash identical to `HEAD` (`20097e595422` and `ae7b77e5c912`), and
+  `git status tests/glam-tt-scoring.spec.js` is empty.
+- **Played start → texts → salon → outro** end to end in a real browser: the
+  client texts in, the salon opens on the dressed vanity, each tool lands with its
+  echo, the trial closes on the photo booth, console clean throughout.
+- **Console clean** at 1280×860, 834×1112 and 390×844 —
+  `tests/_shots-salon-theme.mjs` exits non-zero on any console or page error and
+  it exits clean.
+- Screenshots under `docs/eval/shots/glam-refresh/`:
+  `salon-dressed-{desktop,tablet,phone}.png` (the dressed play surface),
+  `salon-echo-{desktop,tablet,phone}.png` (the echo up), plus
+  `salon-echo-closeup.png` and `salon-trolley.png`. The outro shots
+  (`outro-reveal-*.png`) were re-taken so they show the dressed card.
+- `git status` shows changes only under `apps/games/` and `docs/`.
+
+**A capture note worth keeping.** The shots run under **emulated reduced motion**,
+not Playwright's `animations:'disabled'`. The echo's keyframe *ends at opacity 0*
+— it is a moment, not a status line — so snapping every animation to its end state
+photographs the chip as blank. This is the mirror image of the R2 finding (where
+`animations:'allow'` photographed mount-time keyframes as blank): **the right
+capture mode depends on which end of the animation holds the frame you want.**
+
+### R5.6 Deferred from this slice
+
+- **The tool-button faces are unchanged.** The trolley is dressed; the buttons
+  inside it are still the R4 icon-and-label tiles on a white ground. A per-station
+  tint (rose for Lips, gold for Hair) would deepen the theming further, but it
+  competes with the ✓ / armed / cap-dimmed states that already use colour to mean
+  something.
+- **The echo is text-only.** A particle or a ripple at the point of contact on the
+  face would be more tactile still, but it has to be drawn on the compositor canvas
+  `paintAvatar` owns — and that canvas is also what the photo booth photographs, so
+  a decoration drawn into it would end up in the "after" frame.
+- **The turn banner, vanity-station and runway maps keep their clinical palette**
+  by design (R5.1). If the dressing is ever extended to them, whose-turn must stay
+  the highest-contrast element on the screen.
+- **The M2 / M3 / M4 model picker still sits on the child's stage** whenever more
+  than one art model ships. It is a BT/dev affordance in front of the child, and it
+  predates the refresh; moving it behind the ⚙ is a small, separate change.
+- **Reduced motion drops the echo's animation but keeps the chip**, which is
+  correct; it also drops the glow's transition so the warm-up snaps. Both are
+  acceptable, neither was tuned.
