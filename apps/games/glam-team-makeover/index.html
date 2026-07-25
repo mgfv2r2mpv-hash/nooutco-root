@@ -1596,6 +1596,37 @@ const EARCFG_D = {lx:0.185,rx:0.815,y:1.35};
    r/cl-r are fractions of sprite WIDTH; cy/top of sprite HEIGHT. */
 const IRISCFG = { cx:0.5, cy:0.4574, r:0.1471, top:0.3617, cl:[0.44,-0.16,0.22] };
 
+/* ══ SECOND PASS U2 — the cheekbone highlight's PATH ══
+   The highlight used to be one tilted ellipse per cheek. An ellipse has a
+   perfectly straight spine at every rotation and every aspect, and that is what
+   the maintainer was seeing: a lozenge, not a swept highlight. What a cheekbone
+   highlight actually follows is the TURN where the outer eye socket converges
+   with the cheekbone — it starts under the eye on the apple, drops onto the
+   zygomatic ridge, then lifts back out toward the temple. That is a curve, so
+   the shape is stamped along one.
+
+   The path is a quadratic Bézier in eye-landmark units — [out, down] from that
+   eye's own centre, `out` meaning away from the face's midline, so the two
+   cheeks are exact mirrors by construction rather than by a second set of
+   numbers. Its chord's mid-point is (0.58, 1.18): the centre of the single
+   ellipse this replaces, so the accepted T4e footprint stays put and only its
+   silhouette changes. `p1` is pulled below that chord, which is the whole bow.
+
+   `n` stamps ride the path, each an ellipse `rl` long along the tangent and
+   `rc` across it, `rc` tapering from `rcBelly` at the middle to `rcTip` at the
+   ends — a bean, not a sausage. Spacing works out at ~0.3 of `rl`, which is
+   where overlapping raised cosines sum flat: wider and the sweep beads visibly,
+   tighter and it is only more gradient fills for the same picture.
+   `a` is the per-stamp alpha at the belly, and low because ~2.2 of them overlap
+   along the ridge. It falls to `aTip` of that at the two ends, which is the
+   other half of U1: `core` moves the fade inward ACROSS the sweep, and this
+   moves it inward ALONG it. Without the taper a ribbon sits at very nearly its
+   peak down its whole ridge — which is a plateau again, just a bent one.
+   ONE source of truth: `_hlStamps` reads this for the compositor AND for
+   `_artZones`, so the hitbox follows the art (§3.9) instead of restating it. */
+const HL_ARC = { p0:[-0.02,1.40], p1:[0.58,1.58], p2:[1.18,0.94],
+                 n:19, rl:0.26, rcBelly:0.26, rcTip:0.14, a:0.24, aTip:0.12, core:0.40 };
+
 /* Touch padding added on every side of a derived hitbox, in % of the frame. Big
    enough to be a comfortable target and to absorb the gradients' sub-threshold
    fringe; small enough that the box still reads as "here, not anywhere". */
@@ -2198,6 +2229,27 @@ class Component extends DCLogic {
   _rotHalf(rx,ry,th){ const c=Math.cos(th),s=Math.sin(th);
     return { x:Math.sqrt(rx*rx*c*c+ry*ry*s*s), y:Math.sqrt(rx*rx*s*s+ry*ry*c*c) }; }
 
+  /* HL_ARC sampled into stamps, in eye-landmark units and INDEPENDENT of the
+     side: {u,v} is the centre as [out, down] from that eye's centre, {du,dv} the
+     path's tangent there, {rl,rc} the radii along and across it. A caller turns
+     `out` into screen x with the eye's own ±1, which is what makes the two
+     cheeks mirrors. Cached — it is pure arithmetic over module constants, and
+     both `paintAvatar` and `_artZones` want it on every pass. */
+  _hlStamps(){ if(this._hls) return this._hls;
+    const A=HL_ARC, out=[];
+    for(let i=0;i<A.n;i++){ const t=A.n>1?i/(A.n-1):0.5, s=1-t;
+      out.push({
+        u: s*s*A.p0[0] + 2*s*t*A.p1[0] + t*t*A.p2[0],
+        v: s*s*A.p0[1] + 2*s*t*A.p1[1] + t*t*A.p2[1],
+        du: 2*s*(A.p1[0]-A.p0[0]) + 2*t*(A.p2[0]-A.p1[0]),
+        dv: 2*s*(A.p1[1]-A.p0[1]) + 2*t*(A.p2[1]-A.p1[1]),
+        rl: A.rl,
+        // full width at the belly of the bean, tapering to a tip at both ends
+        rc: A.rcTip + (A.rcBelly-A.rcTip)*Math.pow(Math.sin(Math.PI*t),0.6),
+        // …and brightest at the belly, melting out rather than stopping
+        a: A.aTip + (1-A.aTip)*Math.pow(Math.sin(Math.PI*t),1.10) }); }
+    return (this._hls=out); }
+
   _artZones(){ const E=this.genEntry(); if(!E) return null;
     const key=this.state.model+'|'+this.state.ed.hairShape;
     const c=this._zc||(this._zc={}); if(c.key===key&&c.z) return c.z;
@@ -2220,12 +2272,21 @@ class Component extends DCLogic {
     // contour — a rotated blob pair, so the AABB needs the rotation
     { const h=this._rotHalf(1.05*ew,0.38*eh,0.92);
       z.contour = box(cy+1.62*eh-h.y, cy+1.62*eh+h.y, lxp-0.72*ew-h.x, rxp+0.72*ew+h.x, ZONE_NOUN.contour); }
-    // highlight — the cheekbone pair (cy+1.18eh, 0.46ew × 0.34eh, tilted 0.34 rad)
-    // ∪ the nose stripe (cy+0.95eh, 0.20ew × 1.05eh). Both shrank in T4e and the
-    // box shrinks with them, because it is derived from the blobs' own numbers.
-    { const h=this._rotHalf(0.46*ew,0.34*eh,0.34);
-      z.hl = box(Math.min(cy+1.18*eh-h.y, cy-0.10*eh), Math.max(cy+1.18*eh+h.y, cy+2.00*eh),
-                 Math.min(lxp-0.58*ew-h.x, 50-0.20*ew), Math.max(rxp+0.58*ew+h.x, 50+0.20*ew), ZONE_NOUN.hl); }
+    // highlight — the union of every stamp on the cheekbone sweep ∪ the nose
+    // stripe (cy+0.95eh, 0.20ew × 1.05eh). SECOND PASS U2 turned the cheek pair
+    // from one ellipse into a curve of them, and the box follows because it is
+    // rolled up from `_hlStamps` — the compositor's own path — rather than from
+    // a restated rx/ry. The stamps' angles are worked out in PIXELS (ew is % of
+    // the frame's width, eh of its height, and the frame is not square), then
+    // the half-extents come back to %.
+    { const ewp=ew/100*fr.w, ehp=eh/100*fr.h;
+      let T=cy-0.10*eh, B=cy+2.00*eh, L=50-0.20*ew, R=50+0.20*ew;
+      for(const s of this._hlStamps()){
+        const h=this._rotHalf(s.rl*ewp, s.rc*ehp, Math.atan2(s.dv*ehp, s.du*ewp));
+        const dx=h.x/fr.w*100, dy=h.y/fr.h*100, vy=cy+s.v*eh;
+        T=Math.min(T, vy-dy); B=Math.max(B, vy+dy);
+        L=Math.min(L, lxp-s.u*ew-dx); R=Math.max(R, rxp+s.u*ew+dx); }
+      z.hl = box(T,B,L,R, ZONE_NOUN.hl); }
     // eyes — the sprite stack (eyeball, lashes, winged liner) and the lid wash reach
     // well outside the base render's own eye pixels, so this is the sprite envelope.
     z.eyes   = box(cy-1.5*eh, cy+1.25*eh, lxp-2.0*ew, rxp+2.0*ew, ZONE_NOUN.eyes);
@@ -2558,13 +2619,28 @@ class Component extends DCLogic {
          gradient's focus off centre. The rings then bunch toward the focus and
          stretch away from it, which is how the lid gets a deeper OUTER corner
          out of one gradient — the shape still ends exactly on the ellipse, so
-         no extra edge is introduced. */
+         no extra edge is introduced.
+       · `o.core` (optional, SECOND PASS) reshapes WHERE along the radius the
+         fade happens, without moving the rim or dropping the peak: the cosine is
+         sampled at t^core instead of t. The plain ramp is still ~85 % of peak a
+         quarter of the way out — a bright plateau whose own edge then reads as a
+         hard shape, which is what the maintainer saw on the highlight (U1). An
+         exponent below 1 pulls the fade inward: at core 0.55 that same quarter
+         radius is down to ~55 %, and what is left is a long, soft tail over the
+         SAME footprint. Opt-in on purpose. `_wash` is shared with the blush
+         (T4d), the eyeshadow (T4c) and the contour, all three of which the
+         maintainer accepted on the plain ramp; changing it in place would have
+         silently retuned them. Omitting `o.core` leaves the ramp — and the stop
+         count — exactly as they were. */
   _wash(ctx,cx,cy,rx,ry,rot,hex,alpha,blend,o){ if(alpha<=0.003||rx<=0||ry<=0) return;
-    o=o||{}; const b=this._hex(hex), d=o.deep?this._hex(o.deep):b, N=12;
+    o=o||{}; const b=this._hex(hex), d=o.deep?this._hex(o.deep):b;
+    // a reshaped ramp bends fastest near the centre, so it needs finer sampling
+    // there than 12 evenly spaced stops can give it
+    const P=o.core||1, N=o.core?24:12;
     ctx.save(); ctx.globalCompositeOperation=blend||'source-over'; ctx.globalAlpha=Math.min(1,alpha);
     ctx.translate(cx,cy); if(rot) ctx.rotate(rot); ctx.scale(rx,ry);
     const gr=ctx.createRadialGradient(o.fx||0,o.fy||0,0,0,0,1);
-    for(let i=0;i<=N;i++){ const t=i/N, a=0.5+0.5*Math.cos(Math.PI*t), k=Math.pow(1-t,1.5);
+    for(let i=0;i<=N;i++){ const t=i/N, a=0.5+0.5*Math.cos(Math.PI*Math.pow(t,P)), k=Math.pow(1-t,1.5);
       const c=[0,1,2].map(j=>Math.round(b[j]+(d[j]-b[j])*k));
       gr.addColorStop(t,'rgba('+c[0]+','+c[1]+','+c[2]+','+a.toFixed(4)+')'); }
     ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(0,0,1,0,6.2832); ctx.fill(); ctx.restore(); }
@@ -2660,14 +2736,24 @@ class Component extends DCLogic {
     // in the palette (Wash 5.8 %, Blush 1.3 %). Deeper and a shade taller so a spent
     // action shows on the doll; still a soft multiply, so it reads as shading not paint.
     if(cov('contour')>0) for(const e of eyes) this._blob(ctx,e[0]+e[4]*e[2]*0.72,e[1]+e[3]*1.62,e[2]*1.05,e[3]*0.46,-e[4]*0.92,'#8f6a51',cov('contour')*0.42,'multiply',true);
-    // highlight — was a pair of 0.75ew × 0.6eh discs plus a 0.35ew × 1.4eh nose
-    // stripe, all on `_blob`'s hard ramp: big pale plates on the cheekbones
-    // rather than a glow (T4e). Two thirds smaller, angled along the cheekbone,
-    // and on the raised-cosine falloff — the peak stays high enough to read as
-    // light, the footprint stops reading as a shape.
-    if(cov('hl')>0){ const HL='#fff6d8';
-      for(const e of eyes) this._wash(ctx,e[0]+e[4]*e[2]*0.58,e[1]+e[3]*1.18,e[2]*0.46,e[3]*0.34,-e[4]*0.34,HL,cov('hl')*0.40,'screen');
-      this._wash(ctx,cxm,cym+lh*0.95,lw*0.20,lh*1.05,0,HL,cov('hl')*0.30,'screen'); }
+    // highlight — T4e cut it from a pair of pale plates to a glow of the right
+    // SIZE (2.0 → 0.6 eye-areas), and that much the maintainer accepted. What
+    // was still wrong was its shape and where its fade began (SECOND PASS):
+    //   U1 · the plain raised cosine holds ~85 % of peak a quarter of the way
+    //        out, so a bright plateau sat there and the plateau's own edge read
+    //        as a hard rim. `core` (see `_wash`) moves the fade inward to a
+    //        tight core and a long tail without touching the rim or the peak.
+    //   U2 · one ellipse per cheek has a straight spine at any rotation, which
+    //        is a lozenge, not a sweep. The glow is now stamped along HL_ARC —
+    //        a curve tracking the turn of the outer eye socket into the
+    //        cheekbone — mirrored side to side by that path's `out` axis alone.
+    // The nose stripe is untouched: it is a straight bone and reads as one.
+    if(cov('hl')>0){ const HL='#fff6d8', ha=cov('hl')*HL_ARC.a, stamps=this._hlStamps();
+      for(const e of eyes){ const [ex0,ey0,ew0,eh0,o]=e;
+        for(const s of stamps)
+          this._wash(ctx, ex0+o*s.u*ew0, ey0+s.v*eh0, s.rl*ew0, s.rc*eh0,
+            Math.atan2(s.dv*eh0, o*s.du*ew0), HL, ha*s.a, 'screen', { core:HL_ARC.core }); }
+      this._wash(ctx,cxm,cym+lh*0.95,lw*0.20,lh*1.05,0,HL,cov('hl')*0.30,'screen',{ core:HL_ARC.core }); }
     // blush — was 0.95ew × 0.9eh (a circle, since the eye landmarks are near
     // square) on the hard ramp, which ended the colour on a visible disc edge
     // (T4d). Now a wide, low sweep angled up toward the temple, softer at the

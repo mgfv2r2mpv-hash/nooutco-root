@@ -686,6 +686,18 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
     expect(errors).toEqual([]);
   });
 
+  /* SECOND PASS — this test now HEALS the blemishes before it measures, and the
+     bounds below are untouched. `peak` is a delta, and a screen lift is
+     `alpha × (255 − substrate)`: over skin at ~174 that is 81 to play with, over
+     a blemish core at ~126 it is 129. So the same highlight, at the same
+     strength, measures half again as high wherever it happens to cross a spot —
+     and `freshEd` seeds where the spots go off `Math.random`.
+     U2's sweep is longer than the ellipse it replaced and does now reach one on
+     m3's right cheek, which read as peak 59 against a bound of 56. Measured at
+     that pixel the implied alpha is 0.457, and at the sweep's own skin peak
+     0.506 — against 0.59–0.60 for the ellipse this replaced. The highlight got
+     GENTLER, which is the direction this test asks for; what moved was the
+     substrate under it. Healing first measures the tool instead of the spot. */
   test('T4e · the highlight is smaller and gentler — and still reads as light', async ({ page }) => {
     test.setTimeout(120000);
     const errors = await stage(page);
@@ -696,6 +708,7 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
       const out = [];
       for (const m of window.GlamStory.MODELS) {
         await setModel(m);
+        await setEd((ed) => { ed.pimples = (ed.pimples||[]).map(() => 2); });
         const before = await settle();
         await setEd((ed) => { ed.cov.hl = 1; });
         const after = await settle();
@@ -722,5 +735,185 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
         .toBeGreaterThan(26);
     }
     expect(errors).toEqual([]);
+  });
+
+  /* ── U1 / U2 — the highlight's falloff and its silhouette ───────────────────
+     T4e settled how BIG the highlight is and how HARD it hits, and the
+     maintainer accepted both. What came back after it shipped was two things
+     T4e never measured:
+
+       U1 · "the fade-off needs to start closer to center". The raised cosine is
+            still ~85 % of peak a quarter of the way out, so a bright plateau
+            sits inside the shape and the plateau's own edge is what reads as a
+            rim. Neither `area` nor `peak` can see that — a plateau and a glow of
+            the same footprint and the same peak score identically on both.
+       U2 · "the shape should be like two mirrord kidney beans, almost, tracking
+            the 'turn' of the outer convergence of the eye socket and the
+            cheekbone". One ellipse per cheek is a lozenge at every rotation.
+
+     `SWEEP` measures the CHEEK sweep alone — the `hl` tool also lays a stripe
+     down the nose bridge, and the W/2 side split drops half that stripe into
+     each side's footprint, which would bend the spine of anything measured
+     there. A band of ±0.8 eye-widths around the eye midpoint is excluded: wider
+     than the stripe (±0.20 ew), clear of the sweep (inner edge ~1.5 ew out).
+
+       bowR  answers U2. The spine — the delta-weighted mean cross-offset per bin
+             along the footprint's own principal axis — is fitted with a
+             quadratic, and bowR is the arc's mid-point deviation from its chord
+             over that chord. An ellipse has a straight spine at EVERY rotation
+             and EVERY aspect, so no ellipse can score here however it is tilted;
+             only a genuinely curved silhouette can.
+       bowS  is that bow's direction. Mirroring a shape flips the principal axis
+             and leaves the cross-axis alone, so two true mirrors agree on it —
+             which is the assertion that the sweeps are mirrored and not merely
+             both present.
+       core  and r50 answer U1: the share of the footprint at ≥70 % of peak, and
+             sqrt(A50/A10), the equivalent radius of the ≥50 % region over the
+             ≥10 % one. Both read 1.0 for a top hat and fall as the fade moves
+             inward. Blemishes are HEALED first — `freshEd` seeds them off
+             `Math.random`, and screening cream over a near-opaque dark dot lifts
+             it ~3.5× as far as it lifts skin, so an unlucky seed under the sweep
+             moves `peak` by a third and drags every peak-relative ratio with it.
+
+     Measured over 3 models × 2 sides × 3 engines, before and after:
+       bowR  0.0002–0.0022  →  0.1065–0.1144
+       bowS  mixed (noise)  →  −1 on all 18
+       core  0.1746–0.1896  →  0.0788–0.1235
+       r50   0.6162–0.6344  →  0.5021–0.5614
+     Every bound below is two-sided, per T5's lesson: a one-sided "it curves"
+     passes just as well for a hook, and a one-sided "it fades" passes for a
+     shape that has faded away to nothing. */
+  const SWEEP = `
+    const sweep = (a, b, side, cxm, ew) => {
+      const W = cv.width, H = cv.height;
+      const lo = side<0 ? 0 : Math.ceil(cxm + 0.8*ew), hi = side<0 ? Math.floor(cxm - 0.8*ew) : W;
+      const D = new Float64Array(W*H);
+      let n=0, peak=0, x0=1e9, y0=1e9, x1=-1, y1=-1;
+      for (let y=0;y<H;y++) for (let x=Math.max(0,lo);x<Math.min(W,hi);x++){ const i=(y*W+x)*4;
+        const d = Math.max(Math.abs(a.data[i]-b.data[i]), Math.abs(a.data[i+1]-b.data[i+1]),
+                           Math.abs(a.data[i+2]-b.data[i+2]));
+        D[y*W+x]=d; if (d<=2) continue;
+        n++; if (d>peak) peak=d;
+        if (x<x0)x0=x; if (x>x1)x1=x; if (y<y0)y0=y; if (y>y1)y1=y; }
+      if (n < 40) return { n };
+
+      let core=0, a50=0, a10=0;
+      for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++){ const d=D[y*W+x]; if(d<=2) continue;
+        if (d>=peak*0.70) core++; if (d>=peak*0.50) a50++; if (d>=peak*0.10) a10++; }
+
+      let sw=0,sx=0,sy=0;
+      for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++){ const d=D[y*W+x]; if(d<=2) continue;
+        sw+=d; sx+=d*x; sy+=d*y; }
+      const mx=sx/sw, my=sy/sw; let uxx=0,uyy=0,uxy=0;
+      for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++){ const d=D[y*W+x]; if(d<=2) continue;
+        uxx+=d*(x-mx)*(x-mx); uyy+=d*(y-my)*(y-my); uxy+=d*(x-mx)*(y-my); }
+      uxx/=sw; uyy/=sw; uxy/=sw;
+      const th=0.5*Math.atan2(2*uxy, uxx-uyy), ct=Math.cos(th), st=Math.sin(th);
+
+      const NB=24; let u0=1e9, uH=-1e9;
+      for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++){ const d=D[y*W+x]; if(d<=2) continue;
+        const u=(x-mx)*ct+(y-my)*st; if(u<u0)u0=u; if(u>uH)uH=u; }
+      const span=uH-u0; if (!(span>4)) return { n, peak };
+      const U=new Float64Array(NB), V=new Float64Array(NB), Wt=new Float64Array(NB);
+      for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++){ const d=D[y*W+x]; if(d<=2) continue;
+        const u=(x-mx)*ct+(y-my)*st, v=-(x-mx)*st+(y-my)*ct;
+        const bi=Math.min(NB-1, Math.max(0, Math.floor((u-u0)/span*NB)));
+        U[bi]+=d*u; V[bi]+=d*v; Wt[bi]+=d; }
+      /* Drop the two outermost bins at each end: a handful of stray pixels at a
+         tip makes that bin's mean wander, and a quadratic fit is most sensitive
+         exactly there. */
+      const pts=[];
+      for (let i=2;i<NB-2;i++) if (Wt[i] > sw/NB*0.06) pts.push([U[i]/Wt[i], V[i]/Wt[i], Wt[i]]);
+      if (pts.length < 8) return { n, peak };
+
+      let S0=0,S1=0,S2=0,S3=0,S4=0,T0=0,T1=0,T2=0;                 // v = A u² + B u + C
+      for (const [u,v,wt] of pts){ const u2=u*u;
+        S0+=wt; S1+=wt*u; S2+=wt*u2; S3+=wt*u2*u; S4+=wt*u2*u2;
+        T0+=wt*v; T1+=wt*u*v; T2+=wt*u2*v; }
+      const M=[[S4,S3,S2],[S3,S2,S1],[S2,S1,S0]], R=[T2,T1,T0];
+      for (let c=0;c<3;c++){
+        let p=c; for (let r2=c+1;r2<3;r2++) if (Math.abs(M[r2][c])>Math.abs(M[p][c])) p=r2;
+        const tm=M[c]; M[c]=M[p]; M[p]=tm; const tr=R[c]; R[c]=R[p]; R[p]=tr;
+        if (!M[c][c]) return { n, peak };
+        for (let r2=0;r2<3;r2++){ if(r2===c) continue; const k=M[r2][c]/M[c][c];
+          for (let c2=c;c2<3;c2++) M[r2][c2]-=k*M[c][c2]; R[r2]-=k*R[c]; } }
+      const A=R[0]/M[0][0];
+      const L=pts[pts.length-1][0]-pts[0][0], sag=A*(L/2)*(L/2);
+      const f=L2.genEntry().face, ewp=(f.eyeL.w+f.eyeR.w)/2*W, ehp=(f.eyeL.h+f.eyeR.h)/2*H;
+      return { n, peak, len:+L.toFixed(1), area:+(n/(ewp*ehp)).toFixed(3),
+               bowR:+(Math.abs(sag)/L).toFixed(4), bowS: sag===0 ? 0 : (sag>0 ? 1 : -1),
+               core:+(core/n).toFixed(4), r50:+Math.sqrt(a50/Math.max(1,a10)).toFixed(4) };
+    };`;
+
+  test('U1/U2 · the highlight is two mirrored kidney-bean sweeps that fade from their centres', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = await stage(page);
+
+    const rows = await logic(page, `return (async () => {
+      const L2 = L;
+      ${HELPERS}
+      ${SWEEP}
+      /* Blemishes healed on BOTH frames — see the note above. */
+      const heal = () => setEd((ed) => { ed.pimples = (ed.pimples||[]).map(() => 2); });
+      const out = [];
+      for (const m of window.GlamStory.MODELS) {
+        await setModel(m);
+        await heal();
+        const before = await settle();
+        const f = L.genEntry().face;
+        const cxm = (f.eyeL.x+f.eyeR.x)/2*cv.width, ew = (f.eyeL.w+f.eyeR.w)/2*cv.width;
+        await setEd((ed) => { ed.cov.hl = 1; });
+        const after = await settle();
+        for (const side of [-1, 1]) out.push({ model:m, side, ...sweep(before, after, side, cxm, ew) });
+      }
+      return out;
+    })();`);
+
+    const roster = await page.evaluate(() => window.GlamStory.MODELS);
+    expect(rows.length).toBe(roster.length * 2);
+
+    for (const r of rows) {
+      const where = `${r.model}/${r.side < 0 ? 'left' : 'right'} cheekbone`;
+      // A sweep that paints nothing would satisfy every shape bound vacuously.
+      expect(r.n, `${where}: the highlight should paint the cheekbone`).toBeGreaterThan(200);
+
+      // U2 — the silhouette curves. The retired ellipse measured 0.0002–0.0022
+      // on every model, side and engine; no ellipse can do better, at any tilt.
+      expect(r.bowR, `${where}: bowR ${r.bowR} — the sweep's spine is straight, so it is still an ellipse`)
+        .toBeGreaterThan(0.055);
+      // …a bean, not a fish hook.
+      expect(r.bowR, `${where}: bowR ${r.bowR} — the sweep has curled into a hook`)
+        .toBeLessThan(0.20);
+
+      // U1 — the fade starts near the centre. The retired plateau measured
+      // core 0.1746–0.1896 and r50 0.6162–0.6344 across all 18 samples.
+      expect(r.core, `${where}: ${(r.core*100).toFixed(1)}% of the footprint sits at ≥70% of peak — that is the plateau`)
+        .toBeLessThan(0.150);
+      expect(r.r50, `${where}: r50 ${r.r50} — the brightness still holds flat before it falls`)
+        .toBeLessThan(0.590);
+      // …but it is still a highlight, not a wisp: a core that keeps fading all
+      // the way in would pass both of those and light nothing.
+      expect(r.core, `${where}: only ${(r.core*100).toFixed(1)}% of the footprint is near peak — the glow has no centre left`)
+        .toBeGreaterThan(0.030);
+      expect(r.r50, `${where}: r50 ${r.r50} — the highlight has collapsed to a spike`)
+        .toBeGreaterThan(0.400);
+    }
+
+    /* MIRRORED. Every number above is invariant under a mirror — the principal
+       axis flips, the cross-axis does not — so the two cheeks must agree on all
+       of them. This is what separates "both cheeks have a curved sweep" from
+       "the two sweeps are reflections of each other". */
+    for (const m of roster) {
+      const [l, r] = [-1, 1].map((s) => rows.find((x) => x.model === m && x.side === s));
+      expect(l.bowS, `${m}: the two cheekbone sweeps bow in opposite directions — they are not mirrored`)
+        .toBe(r.bowS);
+      expect(Math.abs(l.bowR - r.bowR), `${m}: bowR ${l.bowR} vs ${r.bowR} — the two sweeps curve differently`)
+        .toBeLessThan(0.02);
+      expect(Math.abs(l.area - r.area) / ((l.area + r.area) / 2),
+        `${m}: the two sweeps cover ${l.area} vs ${r.area} eye-areas — they are not the same shape`)
+        .toBeLessThan(0.10);
+    }
+
+    expect(errors, `console errors: ${errors.join(' | ')}`).toEqual([]);
   });
 });

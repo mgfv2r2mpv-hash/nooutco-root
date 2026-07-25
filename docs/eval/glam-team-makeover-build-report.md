@@ -2052,3 +2052,265 @@ un-magnified stage with exactly these three tools on, at 1280 × 860 / 834 × 11
 - **The BT Character lock's `<option>` labels are `Lock: model 2 / 3 / 4`.** They
   are BT-facing so they carry no congruence risk, but they name an art asset rather
   than a client. Harmless; a nicer label would be a separate change.
+
+---
+
+## U. Second tuning pass — the highlight's shape, and the stage's fit
+
+The first pass (§T) went back to the maintainer as six fixes against before/after
+screenshots. Five were accepted outright — the model picker, the texting intro,
+the trolley flow, the lip liner, the eye clip, the eyeshadow, the blush and the
+lens flare are all settled and none of them is touched here. Two findings came
+back, and they are the whole of this pass:
+
+> **A.** "It is good, but the highlight is still looking wrong. the fade-off needs
+> to start closer to center, and the shape should be like two mirrord kidney
+> beans, almost, tracking the 'turn' of the outer convergence of the eye socket
+> and the cheekbone"
+>
+> **B.** "We need the game area cleaned and no crops or clips"
+
+**This slice lands A. B is diagnosed and corrected in the record below, but not
+yet built** — see *U · Still to do*.
+
+Notably, neither finding is about SIZE or STRENGTH. T4e cut the highlight from
+1.97–2.04 eye-areas to 0.59–0.60 and its peak from 58–74 to 45–49, and that much
+the maintainer signed off. What T4e never measured is the two things A is about.
+
+### U1. The fade now starts near the centre
+
+`_wash` draws its alpha as a raised cosine over the radius, `0.5 + 0.5·cos(πt)`.
+That ramp leaves the centre FLAT: a quarter of the way out it is still at ~85 %
+of peak. So inside every wash there is a bright plateau, and the plateau's own
+edge — not the ellipse's rim, which is genuinely soft — is the hard shape the
+maintainer kept seeing.
+
+The fix is a per-call `o.core` exponent: the cosine is sampled at `t^core`
+instead of `t`. At `core` 0.40 that same quarter radius drops to ~38 % of peak.
+The rim does not move and the peak does not drop — only WHERE along the radius
+the fall happens. A reshaped ramp bends fastest near the centre, so it is also
+sampled at 24 stops instead of 12.
+
+`o.core` is **opt-in**, and that is the whole of Hazard A. `_wash` is shared with
+the blush (T4d), the eyeshadow (T4c) and the contour, all three of which the
+maintainer has just accepted on the plain ramp; changing the ramp in place would
+have silently retuned them. Omitting `o.core` leaves both the exponent and the
+stop count exactly as they were — see *U · Hazard A* for the proof that it did.
+
+One reshaped ramp was not enough on its own. A shape swept along a path sits at
+very nearly its peak down its whole ridge by construction — which is a plateau
+again, just a bent one. So the stamps' alpha also tapers along the arc, from full
+at the belly to 12 % at the two tips. `core` moves the fade inward ACROSS the
+sweep; the taper moves it inward ALONG it.
+
+### U2. The silhouette is two mirrored kidney beans
+
+The cheek highlight was one `_wash` per side at `0.46ew × 0.34eh`, rotated
+`0.34 rad`. **An ellipse has a perfectly straight spine at every rotation and
+every aspect ratio** — there is no tilt that would have fixed this. It reads as a
+lozenge because it is one.
+
+What a cheekbone highlight actually follows is the turn where the outer eye
+socket converges with the cheekbone: it starts under the eye on the apple, drops
+onto the zygomatic ridge, then lifts back out toward the temple. That is a curve,
+so the glow is now stamped along one — `HL_ARC`, a quadratic Bézier in
+eye-landmark units of `[out, down]` from that eye's own centre:
+
+```
+p0 [-0.02, 1.40]   inner end, under the eye
+p1 [ 0.58, 1.58]   control, pulled BELOW the chord — this is the bow
+p2 [ 1.18, 0.94]   outer end, lifting toward the temple
+```
+
+The chord's mid-point is `(0.58, 1.18)` — the exact centre of the single ellipse
+this replaces — so T4e's accepted footprint stays put and only the silhouette
+changes. `out` means *away from the face's midline*, so **the two cheeks are
+mirrors by construction**, not by a second set of numbers: the same path is read
+with the eye's own ±1.
+
+19 stamps ride the path, each an ellipse `0.26` long along the tangent and
+tapering from `0.26` across it at the belly to `0.14` at the ends — a bean, not a
+sausage. Spacing works out at ~0.3 of the along-tangent radius, which is where
+overlapping raised cosines sum flat; wider and the sweep beads visibly, tighter
+and it is only more gradient fills for the same picture.
+
+`_hlStamps()` is the single source of truth: the compositor reads it to paint,
+and `_artZones` rolls the same stamps up into the `hl` hitbox. That is the §3.9
+principle — the box the child is told to work in is DERIVED from the art rather
+than restated beside it — and it is why the hitbox followed the shape without
+anyone moving it. See *U · Hazard B*.
+
+### U · Evidence
+
+**Loupes**, ×7 nearest-neighbour, highlight only on bare skin, blemishes healed,
+in `docs/eval/shots/glam-tune2/`:
+
+| | before | after |
+|---|---|---|
+| m2 | `highlight-before-m2.png` | `highlight-after-m2.png` |
+| m3 | `highlight-before-m3.png` | `highlight-after-m3.png` |
+| m4 | `highlight-before-m4.png` | `highlight-after-m4.png` |
+
+Plus the un-magnified stage with shadow + blush + highlight at three widths:
+`glow-{before,after}-{desktop,tablet,phone}.png`.
+
+**Numbers.** `tests/_probe-glam-hl.mjs`, 3 models × 2 sides × 3 engines = 18
+samples per phase:
+
+| | before | after | what it says |
+|---|---|---|---|
+| `bowR` | 0.0002 – 0.0022 | **0.1065 – 0.1144** | sagitta of the footprint's spine over its chord. An ellipse scores ~0 at any tilt; only a curved silhouette can move this. |
+| `bowS` | mixed (noise) | **−1 on all 18** | which way the bow turns. Mirroring flips the principal axis and leaves the cross-axis alone, so true mirrors agree. |
+| `core` | 0.1746 – 0.1896 | **0.0788 – 0.1235** | share of the footprint at ≥70 % of peak — the plateau. |
+| `r50` | 0.6162 – 0.6344 | **0.5021 – 0.5614** | `sqrt(A50/A10)`; 1.0 is a top hat. |
+| `peak` | 45 – 49 | 43 – 49 | unchanged, deliberately: the maintainer accepted this. |
+| `area` | 0.35 – 0.38 ey | 0.39 – 0.47 ey | the accepted footprint, kept. |
+
+One measurement note worth keeping. Blemishes are **healed** before any of this
+is measured. `freshEd` seeds where the spots go off `Math.random`, and a blemish
+core is a near-opaque dark dot — a screen lift is `alpha × (255 − substrate)`, so
+over skin at ~174 there are 81 levels of headroom and over a blemish at ~126
+there are 129. The same highlight at the same strength therefore measures half
+again as high wherever it happens to cross a spot. Left in, it showed up as a
+34-vs-45 left/right split in a shape that is mirror-exact to the pixel.
+
+**A cosine ramp does not need 24 stops to be smooth — it needs them to be
+*accurate*.** With `core` applied the curve does most of its work in the first
+fifth of the radius, and 12 evenly spaced stops straight-line across exactly the
+part the fix is about.
+
+### U · Hazard A — the shared wash is untouched
+
+Re-measuring the blush and the eyeshadow with `_probe-glam-face3.mjs` was the
+obvious check and it is the wrong instrument: `freshEd`'s random `spotSeed` moves
+the blush's measured `ecc` by ±0.03 between two runs of the *same* renderer
+(the pre-change file alone produced 0.492–0.578 across two runs). So the question
+was settled by identity instead — `tests/_probe-glam-wash-parity.mjs` renders the
+same model with the same `ed` down to a pinned `spotSeed` on the pre-change file
+and on this one, and diffs the compositor output byte by byte:
+
+```
+m2/m3/m4 × { shadow, blush, contour, wash+moist, all-but-hl }
+  → differing bytes = 0, worst = 0  on all 15 combinations
+```
+
+**Every non-highlight caller of `_wash` renders pixel-identically.** For the
+record, re-measured on this build with `_probe-glam-face3.mjs`:
+
+- **eyeshadow (T4c)** — `maxC = 1` on every model and both sides, i.e. still one
+  hot spot and never two blobs meeting. `n`, `peak`, `ecc` and `theta` are
+  identical to the pre-change baseline to the last digit on all six.
+- **blush (T4d)** — `ecc` 0.492–0.578, `theta·side < 0` on all six, `peak` 24–27,
+  `maxC = 1`. The pre-change file measured 0.492–0.578 in the same conditions.
+  The T4d spec bound is `0.32 < ecc < 0.80` and the pre-change baseline quoted in
+  §T4d (0.49–0.55) was one draw of a seeded measurement, not a tighter bound.
+
+### U · Hazard B — the hitbox followed the art
+
+`_artZones.hl` is re-derived from `_hlStamps()`: it unions each stamp's rotated
+AABB (worked out in PIXELS, because `ew` is a % of the frame's width and `eh` a %
+of its height, and the frame is not square) with the nose stripe's box.
+
+- **`F-11 · every tool paints inside its own target box` is green on every roster
+  model × all 14 tools × 3 engines.** 36/36 in `glam-art-fidelity.spec.js`.
+- F-11 reads the zone table, though — it proves the box CONTAINS the paint, not
+  that the box can be pressed. So `tests/_play-glam-tune2.mjs` plays the game:
+  Start → texting intro → salon → Go → pick **Highlight** off the trolley →
+  drag across the rendered target with real pointer events.
+  Result: target box **149×55 px**, coverage **0 → 1.000**. Then a few turns,
+  End trial, and the outro's two photo frames mount.
+  No console errors, no page errors, no failed local requests.
+
+### U · One existing test changed, and why
+
+`T4e` now heals the blemishes before it measures. **Its bounds are untouched.**
+
+U2's sweep is longer than the ellipse it replaces and does now reach a blemish on
+m3's right cheek, which read as `peak 59` against a bound of `< 56` —
+deterministically, on all three engines. Measured at that pixel the substrate is
+`rgb(126,75,79)` and the implied alpha is **0.457**; at the sweep's own skin peak
+it is **0.506**. The ellipse this replaces measured **0.59–0.60**.
+
+So the highlight got *gentler* — which is the direction T4e asks for — and what
+moved was the substrate under it. The bound was calibrated on a build whose
+smaller blob happened never to touch a spot. Healing first measures the tool
+instead of the spot, which is what the test is for.
+
+### U · Verification (slice U1 + U2)
+
+- **384 Playwright tests.** Every failure across four full runs was the
+  documented Atkinson-Hyperlegible flake: firefox, `fonts.gstatic.com` CORS
+  reset, and — as the note predicts — a *different spec each run*. Four runs
+  produced four different victims: `F-11`, then the outro reveal, then the
+  station kit, then the opening flow. Each passed in isolation immediately
+  afterwards (18/18, 9/9, 15/15). Reproduces on a clean tree; not introduced
+  here. Best run 383/384; the residual is entirely this flake.
+- 381 → 384 is the one new test × 3 engines.
+- **`window.GlamTT` is byte-identical** (24 710 bytes, diffed against `HEAD`) and
+  `tests/glam-tt-scoring.spec.js` has no diff at all.
+- `tests/glam-tt-story.spec.js` green: two-axis outro, congruence guard, no
+  numbers, second-person turn-taking, fictional-name-only. **No child-facing
+  string was touched in this slice** — the whole diff is canvas geometry, one
+  gradient ramp and one derived hitbox.
+- New test: `U1/U2 · the highlight is two mirrored kidney-bean sweeps that fade
+  from their centres`. Every bound is two-sided, per T5's lesson: a one-sided "it
+  curves" passes just as well for a fish hook, and a one-sided "it fades" passes
+  for a shape that has faded away to nothing.
+- **The new test fails against the pre-change renderer**, run against a copy of
+  `HEAD`'s file served from the same directory. All three of its new assertions
+  fail, on every model and both sides:
+
+  ```
+  m2/left  cheekbone: bowR 0.002 — the sweep's spine is straight, so it is still an ellipse
+                                          Expected: > 0.055     Received: 0.002
+  m2/left  cheekbone: 19.0% of the footprint sits at ≥70% of peak — that is the plateau
+                                          Expected: < 0.15      Received: 0.1902
+  m2/left  cheekbone: r50 0.6302 — the brightness still holds flat before it falls
+                                          Expected: < 0.59      Received: 0.6302
+  … the same three on m2/right, m3/left, m3/right, m4/left, m4/right …
+  m3: the two cheekbone sweeps bow in opposite directions — they are not mirrored
+                                          Expected: 1           Received: -1
+  ```
+
+- New instruments, none of them specs: `tests/_probe-glam-hl.mjs` (shape and
+  falloff, `BROWSER=` selectable), `tests/_probe-glam-wash-parity.mjs` (Hazard A
+  by identity), `tests/_shots-glam-tune2-hl.mjs` (the loupes),
+  `tests/_play-glam-tune2.mjs` (the playthrough).
+
+### U · Correcting the first pass's record on the crop
+
+§T · Deferred said the stage crop was a 390 px problem that only appeared once
+the page was scrolled to the trolley. **That was wrong**, and the maintainer's
+finding B is right. The stage panel paints a fixed composition and crops it
+`cover`-style at EVERY width — it just bites a different part at each size:
+
+- **1280×860, no scrolling involved** (`glow-after-desktop.png`, this pass): the
+  gold mirror ring is cut clean through at the panel's top edge AND its bottom
+  edge. The client's head is fine at this width; it is the room that is sliced.
+- **390×844**: the client's head is sliced at the top by the panel frame and the
+  ring runs off both sides — scrolled or not.
+
+The mechanism is in `stageStyle`: the salon backdrop rides on
+`background-size: cover; background-position: center` inside a panel with
+`overflow: hidden`, and `cover` guarantees a crop on any panel whose aspect ratio
+differs from the art's. The doll sits in a fixed `320×360` box inside that panel,
+so a panel shorter than 360 px + padding clips the head as well. Neither is
+scroll-dependent and neither is phone-specific.
+
+### U · Still to do in this pass
+
+- **Finding B is not built.** The diagnosis above is verified but the fit change
+  is not written. It is a composition change, not a phone tweak: letterboxing or
+  containing the backdrop, or re-composing the art's framing, so that at
+  1280×860, 834×1112 and 390×844 both the client and the mirror are whole. The
+  client must stay large enough to work on comfortably, so "shrink the doll"
+  is not the answer. Device priority desktop → tablet → phone. **`_artZones`
+  derives its boxes from the painted art, so whatever changes the stage's fit
+  must be re-derived and F-11 re-run** — the same hazard this slice cleared for
+  the highlight, and it will bite harder there because it moves every tool's
+  hitbox rather than one.
+- **The Atkinson-Hyperlegible font flake is still live.** Self-hosting the woff2
+  subset would kill it, but `apps/games/tailwind.css` is outside this pass's file
+  scope; excluding font-download errors from the specs' console collectors is in
+  scope but touches a dozen spec files. Left alone deliberately rather than let
+  it expand this slice.
