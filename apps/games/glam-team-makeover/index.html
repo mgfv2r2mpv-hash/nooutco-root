@@ -120,8 +120,67 @@
      `flex:1 1 0%` that is 0, clamped back up by whatever `min-width` transfers,
      and the panel came out 358×300 where Blink and Gecko both said 358×358 —
      and only after a resize ACROSS the wrap, so it read as an intermittent. */
-  .gtm-stage-row{ container-type: inline-size; container-name: gtmrow; }
-  @container gtmrow (width < 614px){ .gtm-stage{ height: var(--gtm-stage-fit, auto); } }
+  .gtm-stage-row{ container-type: inline-size; container-name: gtmrow; --gtm-band: 46px; }
+  .gtm-stage{ position: relative; }
+  /* A WRAPPED row is the phone case, and it is the only one where the page
+     scrolls at all: at 1280×860 and 834×1112 the whole game fits and nothing can
+     move. Once it wraps, the stage sits ABOVE the trolley, and the turn rail
+     inside it is exactly the thing that leaves the screen when a child scrolls
+     down to the last shelf — measured, not assumed: a played trial on the
+     partner's turn (which grows the controls row with the mand cue) reached
+     scrollY 576 and put the rail at y −109.
+
+     So on a wrapped row the panel STICKS. Its containing block is the row, so it
+     travels with the trolley beside it and releases at the row's own end; the
+     rail therefore stays on screen for the whole of the scroll that can hide it,
+     and the child keeps the client's face in view while reaching for a tool.
+     Compositor-friendly by construction — sticky moves the paint, not the
+     layout, and nothing here animates. */
+  @container gtmrow (width < 614px){
+    .gtm-stage{ height: var(--gtm-stage-fit, auto); --gtm-band: 40px;
+      position: sticky; top: 6px; z-index: 2; }
+  }
+
+  /* THIRD PASS · Finding B — the turn indicator IS the vanity counter.
+     It used to be a full-width card ABOVE the stage carrying the avatar, the
+     whose-turn line and the actions-left pips: 81 px of vertical footprint on
+     desktop and tablet, and 135.5 px on a phone where its own contents wrapped,
+     spent on something the child has to look AWAY from the face to read (it is
+     0 now — see the report's W2). Meanwhile the band across the stage's own floor
+     — the counter U3's `contain` fit left over — was dead room painted with the
+     room's own floor.
+
+     They are now one thing. `--gtm-band` is that rail's height and it is spent
+     in three places so the composition is never measured twice:
+       · the panel's bottom padding RESERVES it, so the contained backdrop and
+         the client (both sized off the panel's content box) end above it and no
+         art is buried — the F-10 rule that the ledge must not eat the shirt;
+       · the vanity ledge sits ON it (`bottom:var(--gtm-band)`) instead of at the
+         panel's edge, so the client's hard bottom cut is still masked; and
+       · `--gtm-stage-fit` — the height a WRAPPED panel takes from the art's
+         aspect — adds it, so on phone the art keeps exactly the size it had and
+         the rail is genuinely extra rather than a crop.
+     A narrow row gets a shorter rail and smaller type: the same two-line stack,
+     not a second component. Sizes live here rather than inline because the rail
+     is the one part of the stage that has to answer to the ROW's width. */
+  .gtm-band-token{ width:30px; height:30px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; font-size:17px; background:#fffaf0; }
+  .gtm-band-eyebrow{ font-size:9.5px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; line-height:1.15; }
+  /* One line, clipped rather than wrapped: the rail's height is a layout
+     constant that the art is sized against, so a second line would move the
+     client. The pinned spec asserts the line is never actually clipped. */
+  .gtm-band-line{ font-size:15px; font-weight:800; line-height:1.25; color:#33210f;
+    letter-spacing:-.005em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .gtm-band-meter{ font-size:9px; font-weight:800; letter-spacing:.09em; text-transform:uppercase;
+    color:#4e3a20; line-height:1.1; }
+  .gtm-pip{ width:14px; height:14px; border-radius:50%; border:2px solid; display:inline-block; }
+  @container gtmrow (width < 614px){
+    .gtm-band-token{ width:25px; height:25px; font-size:14px; }
+    .gtm-band-eyebrow{ font-size:8.5px; }
+    .gtm-band-line{ font-size:12.5px; }
+    .gtm-band-meter{ font-size:8px; }
+    .gtm-pip{ width:11px; height:11px; border-width:1.5px; }
+  }
   /* Phone (spec §3.9 device order: desktop first-class → tablet → iPhone). The
      header is a single nowrap row sized for desktop and was pushing ~73px of
      horizontal overflow at 390px, which scrolls the whole page sideways. Let it
@@ -1180,13 +1239,13 @@ window.GlamStory = (function () {
   <sc-if value="{{ showGame }}" hint-placeholder-val="{{ false }}">
     <main class="gtm-room" style="flex:1;display:flex;flex-direction:column;padding:12px 16px 16px;gap:11px">
 
-      <sc-if value="{{ mapBanner }}" hint-placeholder-val="{{ false }}">
-        <div style="{{ bannerStyle }}">
-          <div style="width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:25px;flex-shrink:0;{{ bannerAvatarStyle }}">{{ whoseGlyph }}</div>
-          <div style="min-width:0"><div style="font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;{{ turnLabelColor }}">{{ turnLabel }}</div><div style="font-size:19px;font-weight:800;color:var(--slate-900);letter-spacing:-.01em">{{ instruction }}</div></div>
-          <div style="margin-left:auto;text-align:right">{{ turnMeter }}</div>
-        </div>
-      </sc-if>
+      <!-- THIRD PASS · Finding B — the whose-turn CARD that used to sit here is
+           gone. Its three parts (avatar, whose-turn line, actions-left meter)
+           now ride the stage's own counter rail; see `.gtm-band-*` in the style
+           block and `bandStyle` in renderVals. The `banner` turn map is now
+           exactly "the rail and nothing above the stage"; the vanity and runway
+           maps still add their own block, and still state whose turn in words
+           on their own (AC-12) so neither depends on the rail. -->
       <sc-if value="{{ mapVanity }}" hint-placeholder-val="{{ false }}">
         <div style="display:flex;align-items:stretch;gap:10px">
           <div style="{{ stationMeStyle }}"><span style="font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;{{ stationMeLabelColor }}">{{ stationMeLabel }}</span><div style="width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:23px;background:#fff;{{ stationMeRing }}">🦸</div><div style="font-size:13px;font-weight:800;color:var(--slate-900)">Me</div><div style="{{ meBrushStyle }}">🖌 my brush</div></div>
@@ -1242,8 +1301,23 @@ window.GlamStory = (function () {
             </div>
           </sc-if>
 
-          <!-- vanity ledge — masks the paper-doll's hard bottom cut edge; person art only -->
+          <!-- vanity ledge — masks the paper-doll's hard bottom cut edge; person art only.
+               It now rests ON the turn rail rather than at the panel's edge. -->
           <sc-if value="{{ footerBar }}" hint-placeholder-val="{{ false }}"><div style="{{ footerBarStyle }}"></div></sc-if>
+
+          <!-- TURN RAIL (third pass · Finding B). The counter's front face, and
+               the one place whose-turn and actions-left are stated. It is inside
+               the stage so the child reads it without leaving the face, and it
+               is `pointer-events:none` throughout so it can never eat a tap
+               meant for the client — nothing in it is interactive. -->
+          <div class="gtm-band" style="{{ bandStyle }}">
+            <div class="gtm-band-token" style="{{ bandTokenStyle }}">{{ whoseGlyph }}</div>
+            <div style="min-width:0;flex:1">
+              <div class="gtm-band-eyebrow" style="{{ bandEyebrowStyle }}">{{ turnLabel }}</div>
+              <div class="gtm-band-line">{{ instruction }}</div>
+            </div>
+            <div style="flex-shrink:0;text-align:right">{{ turnMeter }}</div>
+          </div>
 
           <!-- CHOICE MIRRORED BACK — the tap's answer, over the ledge. The text is
                the child's OWN tool name and nothing else: no sentence is composed
@@ -1251,7 +1325,7 @@ window.GlamStory = (function () {
                child could refute (§3.7.1). Rendered pointer-events:none so it can
                never eat a tap meant for the face. -->
           <sc-if value="{{ showMirror }}" hint-placeholder-val="{{ false }}">
-            <div style="position:absolute;left:0;right:0;bottom:34px;display:flex;justify-content:center;z-index:7;pointer-events:none">
+            <div style="position:absolute;left:0;right:0;bottom:calc(var(--gtm-band, 0px) + 34px);display:flex;justify-content:center;z-index:7;pointer-events:none">
               <div style="{{ mirrorChipStyle }}"><span style="font-size:15px">{{ mirrorGlyph }}</span>{{ mirrorLabel }}</div>
             </div>
           </sc-if>
@@ -3105,6 +3179,10 @@ class Component extends DCLogic {
     const isAsk=isTheirs&&s.giveBack==='forgets';
     const whoseMe=isMine||isReady; const whose=isDone?'done':(whoseMe?'me':'them');
     const V=this.buildV(); const SAGE='#6a7659',BLUE='#3b82f6';
+    /* The same two team colours, taken down to rail INK. The rail is sandy
+       (#cdb383 → #a98d5d), where sage-700 and blue-500 both fall under 3:1 —
+       these are the same hues at the luminance the rail needs. */
+    const SAGE_INK='#4b5638',BLUE_INK='#1e3a6e';
     const left=Math.max(0,s.ttBudget-s.ttActions);
 
     let instruction='';
@@ -3114,13 +3192,22 @@ class Component extends DCLogic {
     else if(isTheirs) instruction='Their turn — I wait 🕐';
     else if(isGiveback) instruction='Their turn is done';
 
-    const pips=(goal,filled,color)=>{ const a=[]; for(let i=0;i<goal;i++) a.push(React.createElement('span',{key:i,style:{width:'15px',height:'15px',borderRadius:'50%',background:i<filled?color:'#fff',border:'2px solid '+(i<filled?color:'#cfd4c4'),display:'inline-block'}})); return a; };
+    /* THIRD PASS · Finding B — the meter rides the sandy counter rail now, so
+       its own sizes come off `.gtm-pip` / `.gtm-band-meter` (which answer to the
+       row's width) and only the COLOURS are set here. The unfilled pip is warm
+       white with a brown rim rather than #fff on #cfd4c4: on a sandy rail a cool
+       grey rim disappears, and "how many are left" is the whole point. */
+    const PIP_EMPTY='rgba(255,252,245,.94)',PIP_RIM='rgba(112,88,52,.55)';
+    const pips=(goal,filled,color)=>{ const a=[]; for(let i=0;i<goal;i++) a.push(React.createElement('span',{key:i,className:'gtm-pip',style:{background:i<filled?color:PIP_EMPTY,borderColor:i<filled?color:PIP_RIM}})); return a; };
+    const meter=(label,color)=>React.createElement('div',{},[
+      React.createElement('div',{key:'l',className:'gtm-band-meter',style:{marginBottom:'4px'}},label),
+      React.createElement('div',{key:'p',style:{display:'flex',gap:'5px',justifyContent:'flex-end'}},pips(s.ttBudget,left,color))]);
     let turnMeter=React.createElement('span',{});
     // "Actions left" fills with the actions REMAINING. It used to fill with the
     // actions SPENT while labelled "left", so the meter read backwards (eval §3.9).
-    if(isMine&&s.countMode==='shown') turnMeter=React.createElement('div',{},[React.createElement('div',{key:'l',style:{fontSize:'9px',fontWeight:800,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--text-muted)',marginBottom:'4px'}},'Actions left'),React.createElement('div',{key:'p',style:{display:'flex',gap:'5px',justifyContent:'flex-end'}},pips(s.ttBudget,left,SAGE))]);
-    else if(isTheirs&&s.partnerTimed) turnMeter=React.createElement('span',{style:{fontFamily:'var(--font-mono)',fontSize:'20px',fontWeight:800,color:BLUE}},this.fmt(s.partnerLeft));
-    else if(isTheirs) turnMeter=React.createElement('div',{},[React.createElement('div',{key:'l',style:{fontSize:'9px',fontWeight:800,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--text-muted)',marginBottom:'4px'}},'Their actions left'),React.createElement('div',{key:'p',style:{display:'flex',gap:'5px',justifyContent:'flex-end'}},pips(s.ttBudget,left,BLUE))]);
+    if(isMine&&s.countMode==='shown') turnMeter=meter('Actions left',SAGE_INK);
+    else if(isTheirs&&s.partnerTimed) turnMeter=React.createElement('span',{style:{fontFamily:'var(--font-mono)',fontSize:'20px',fontWeight:800,color:BLUE_INK}},this.fmt(s.partnerLeft));
+    else if(isTheirs) turnMeter=meter('Their actions left',BLUE_INK);
 
     let phaseMsg=React.createElement('span',{});
     if(isReady) phaseMsg=React.createElement('span',{style:{fontSize:'13px',color:'var(--text-muted)'}},'Nice waiting! Tap Go to start.');
@@ -3311,7 +3398,9 @@ class Component extends DCLogic {
     // panel (§U3). Both numbers come off the manifest, not off a restated value.
     const bdAsp=(backdrop&&backdrop.aspect)||1, fr=this.gen().frame||{w:512,h:576};
     // tools/palette column matches the salon panel height so both align, and the palette fills it
-    const toolsColStyle='width:300px;display:flex;flex-direction:column;min-height:0'+(personArtLive?';max-height:670px':'');
+    // …and the trolley matches the panel's new cap so the two columns still end
+    // on the same line once the stage carries its rail (Finding B).
+    const toolsColStyle='width:300px;display:flex;flex-direction:column;min-height:0'+(personArtLive?';max-height:calc(670px + var(--gtm-band, 0px))':'');
 
     return {
       clock:this.fmt(s.elapsed), minGlyph:s.settingsOpen?'▾':'⚙', settingsStyle:s.settingsOpen?'':'display:none',
@@ -3341,7 +3430,10 @@ class Component extends DCLogic {
       typingBubbleStyle:'display:inline-flex;align-items:center;gap:5px;padding:11px 14px;box-shadow:var(--shadow-sm);'+(typingTeam
         ? 'background:var(--sage-100);border:1px solid var(--sage-200);border-radius:18px 18px 6px 18px'
         : 'background:#fff;border:1px solid var(--border-default);border-radius:18px 18px 18px 6px'),
-      mapBanner:s.turnMap==='banner', mapVanity:s.turnMap==='vanity', mapRunway:s.turnMap==='runway',
+      // `banner` no longer renders a block of its own — the rail inside the
+      // stage IS the banner now (Finding B), so only the two maps that add
+      // something above the stage still have a flag.
+      mapVanity:s.turnMap==='vanity', mapRunway:s.turnMap==='runway',
       personShow:base==='person', isPet:base==='pet', V, palette:flowed, target, runwayTiles, stageChips,
       /* The stage panel is framed as the vanity ALCOVE when the art compositor is
          live — a plum rim, a floor vignette and an outer drop shadow that sits it
@@ -3349,14 +3441,22 @@ class Component extends DCLogic {
          a second bezel around it just reads as mush. Inset shadows only, so the
          panel's box model — and every % target zone measured against it — is
          untouched. */
-      stageStyle:'flex:1;min-width:300px;position:relative;display:flex;align-items:'+(personArtLive?'flex-end':'center')+';justify-content:center;background:var(--surface-card);border:1px solid '+(personArtLive?'rgba(58,36,66,.55)':'var(--border-default)')+';border-radius:16px;padding:12px;overflow:hidden'
+      /* THIRD PASS · Finding B — the bottom padding RESERVES the turn rail, so
+         everything measured against the panel's content box (the contained
+         backdrop, `dollBoxStyle`'s `100cqh`, and through it every % hitbox)
+         ends above the rail rather than under it. The panel's own height is
+         unchanged on a stretched row and grows by the rail on a wrapped one
+         (`--gtm-stage-fit` below), so the art is the size it always was. */
+      // NB `position` lives in the `.gtm-stage` rule, not here: a wrapped row
+      // makes the panel sticky, and an inline `position` would out-specify it.
+      stageStyle:'flex:1;min-width:300px;display:flex;align-items:'+(personArtLive?'flex-end':'center')+';justify-content:center;background:var(--surface-card);border:1px solid '+(personArtLive?'rgba(58,36,66,.55)':'var(--border-default)')+';border-radius:16px;padding:12px 12px calc(12px + var(--gtm-band, 0px));overflow:hidden'
         /* SECOND PASS U3 — the panel is a size CONTAINER, so the client can be
            sized off the composition rather than off the panel. The height it
            falls back to on a wrapped row rides on `--gtm-stage-fit` and is
            applied by the `.gtm-stage` container rule above, where the reasoning
            lives; `100cqw` there is the ROW's width, which is the panel's own once
            it is alone on a line. */
-        +(personArtLive?';max-height:670px;container-type:size;--gtm-stage-fit:calc(100cqw / '+bdAsp+')':'')
+        +(personArtLive?';max-height:calc(670px + var(--gtm-band, 0px));container-type:size;--gtm-stage-fit:calc(100cqw / '+bdAsp+' + var(--gtm-band, 0px))':'')
         +(stageBg?(personArtLive?this._roomBg(stageBg):';background-image:url("'+stageBg+'");background-size:cover;background-position:center'):'')
         +(personArtLive?';box-shadow:inset 0 0 0 4px rgba(58,36,66,.42),inset 0 -70px 90px -62px rgba(58,36,66,.45),0 16px 36px -22px rgba(72,40,62,.55)':''),
       /* SECOND PASS U3 — the client is measured off the CONTAINED backdrop, not
@@ -3413,14 +3513,27 @@ class Component extends DCLogic {
          leaving the shirt above it. Fixed px, not %, because the whole point is a
          constant relationship to the canvas's bottom edge, which the stage panel's
          height does not track. */
-      footerBarStyle:'position:absolute;left:0;right:0;bottom:0;height:30px;z-index:4;pointer-events:none;background:linear-gradient(to bottom,rgba(210,190,156,0) 0%,rgba(210,190,156,0) 14%,rgba(255,250,240,.72) 22%,#d3bd93 34%,#c1a676 100%);box-shadow:0 -7px 14px -7px rgba(96,74,48,.40)',
+      /* THIRD PASS · Finding B — the ledge now sits ON the turn rail rather than
+         at the panel's edge, and its last stop hands over to the rail's first
+         (#cdb383) so counter surface → counter front reads as one piece of
+         furniture instead of two stacked bars. Height and behaviour unchanged. */
+      footerBarStyle:'position:absolute;left:0;right:0;bottom:var(--gtm-band, 0px);height:30px;z-index:4;pointer-events:none;background:linear-gradient(to bottom,rgba(210,190,156,0) 0%,rgba(210,190,156,0) 14%,rgba(255,250,240,.72) 22%,#d3bd93 34%,#cdb383 100%);box-shadow:0 -7px 14px -7px rgba(96,74,48,.40)',
+      /* TURN RAIL (Finding B) — the counter's front face. Warm sandy going into
+         its own shadow at the bottom, a lit top edge where it meets the ledge,
+         and a gold hairline: the same vanity vocabulary the trolley and the
+         stage signage already use, so the turn state is dressed as part of the
+         salon rather than as a notification bar parked on it. */
+      bandStyle:'position:absolute;left:0;right:0;bottom:0;height:var(--gtm-band, 46px);z-index:8;pointer-events:none;'
+        +'display:flex;align-items:center;gap:10px;padding:0 14px;'
+        +'background:linear-gradient(180deg,#cdb383 0%,#bda06e 58%,#a98d5d 100%);'
+        +'box-shadow:inset 0 1px 0 rgba(255,247,226,.60),inset 0 2px 0 rgba(217,171,106,.42),0 -9px 16px -12px rgba(96,74,48,.55)',
+      bandTokenStyle:'border:2px solid '+(whose==='me'?SAGE:BLUE)+';box-shadow:0 1px 3px rgba(90,64,36,.40)',
+      bandEyebrowStyle:'color:'+(whose==='me'?SAGE_INK:BLUE_INK),
       personArt:base==='person'&&s.theme==='social'&&this.hasPersonArt(), personProcedural:base!=='person'||!(s.theme==='social'&&this.hasPersonArt()),
       petArt:base==='pet'&&!!this.artBaseSrc('pet'), petProcedural:base!=='pet'||!this.artBaseSrc('pet'),
       petArtBase:this.artBaseSrc('pet'), petArtLayers:(base==='pet'&&this.artBaseSrc('pet'))?this.buildArtLayers('pet').imgs:[],
       sceneFrame:this.sceneArt().frame||'',
       whoseGlyph:whose==='me'?'🦸':'🧑‍⚕️', turnLabel:whose==='me'?'MY TURN':'THEIR TURN', turnLabelColor:'color:'+(whose==='me'?'var(--sage-700)':'var(--blue-700)'),
-      bannerStyle:'display:flex;align-items:center;gap:14px;padding:12px 18px;border-radius:14px;background:'+(whose==='me'?'var(--sage-50)':'var(--blue-50)')+';border-left:6px solid '+(whose==='me'?SAGE:BLUE),
-      bannerAvatarStyle:whose==='me'?'background:var(--sage-100);border:2px solid var(--sage-500)':'background:var(--blue-100);border:2px solid var(--blue-500)',
       instruction, turnMeter, phaseMsg, cueText, cueStyle,
       handoffStyle:'background:'+SAGE+';color:#fff;border:none;padding:12px 24px;border-radius:999px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md)'+((isMine&&left===0)?';animation:gtm-cue 1.6s var(--ease-standard) infinite':''),
       progressText,

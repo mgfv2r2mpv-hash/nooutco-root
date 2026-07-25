@@ -2875,5 +2875,236 @@ exist before this pass.
   not retuned; the two taste calls in V2 — the eyeshadow's reach past the outer
   socket, and the brow pencil's flat dark plum — are stated rather than made, so
   the maintainer can rule on them against the shots.
-- **Finding B in its entirety.** The turn indicator is still a full-width card
-  above the stage; the stage's sandy bottom band is still dead space.
+- ~~**Finding B in its entirety.**~~ Landed in the next slice — see **W** below.
+
+---
+
+## Third pass · Finding B — the turn indicator moves into the counter
+
+Same base (`2f45dfda`), same pass. This slice is the maintainer's second finding
+and nothing else:
+
+> "Can we move the turn indicator and # actions left to be in the sandy brown
+> horizontal bar on bottom to use that helpfully and bring it into the design,
+> remove that card's vertical footprint"
+
+Every measurement and screenshot below was taken through a server whose served
+bytes were `shasum`-verified against this worktree's `index.html` immediately
+before the run.
+
+### W1 · What moved, and what it is now
+
+The card that used to sit above the stage carried three things: the whose-turn
+avatar, the whose-turn line ("MY TURN" / "My turn — I can do 7 more") and the
+actions-left meter with its pip row. All three are now the **turn rail**: a strip
+across the foot of the stage panel, dressed as the front face of the vanity
+counter that U3's `contain` fit had left as dead room painted with the floor.
+
+- **Left** — a warm token ringed in the turn's own colour (sage for the child,
+  blue for the partner) carrying the same glyph the card used.
+- **Centre** — the whose-turn eyebrow over the whose-turn line, the same two-line
+  stack the card had, in rail ink (`#4b5638` / `#1e3a6e` on `#cdb383`, both past
+  4.5:1; sage-700 and blue-500 as the card used them do not clear 3:1 on sand).
+- **Right** — "Actions left" and its pips, the pips now warm-white with a brown
+  rim rather than `#fff` on `#cfd4c4`, which vanishes on sand. The partner's
+  timed countdown lands in the same slot.
+
+The rail is `pointer-events:none` throughout — nothing in it is interactive, and
+the stage below it is where the child taps.
+
+**One number does all the layout.** `--gtm-band` is the rail's height (46 px, 40
+px on a wrapped row) and it is spent in three places so the composition is never
+measured twice:
+
+| where | what it does |
+| --- | --- |
+| the panel's `padding-bottom` | reserves the rail, so the contained backdrop and the client — both sized off the panel's *content* box — end above it and no art is buried |
+| the vanity ledge's `bottom` | the ledge now rests **on** the rail instead of at the panel's edge, so the client's hard bottom cut is still masked (F-10) |
+| `--gtm-stage-fit` | the height a *wrapped* panel takes from the art's aspect now adds the rail, so on phone the composition is exactly the size it was and the rail is genuinely extra |
+
+That last row is why the rail costs the art nothing. Composition height, measured
+through the same probe before and after:
+
+| | panel before → after | the art's own box, before → after |
+| --- | --- | --- |
+| desktop 1280×860 | 581 → **662** | 555 → **590** (+6.3 %) |
+| tablet 834×1112 | 670 → **716** | 644 → **644** (unchanged) |
+| phone 390×844 | 358 → **398** | 332 → **332** (unchanged) |
+
+"the art's own box" is the panel's content-box height — panel minus border and
+padding, and the rail lives in the padding, so this is exactly the room the
+composition gets. Desktop *gains*: the row is `flex:1` in a column that fills the
+viewport, so the footprint the card was spending came back to the stage and the
+rail took 46 px of it.
+
+### W2 · The card's vertical footprint
+
+Measured as the vertical distance from the top of the game area (`main.gtm-room`,
+inside its own padding) to the top of the stage panel — one number for "what sits
+above the stage":
+
+| | before | after |
+| --- | --- | --- |
+| desktop 1280×860 | 81.0 px | **0.0 px** |
+| tablet 834×1112 | 81.0 px | **0.0 px** |
+| phone 390×844 | **135.5 px** | **0.0 px** |
+
+The phone paid the most: at 390 px the card's own contents wrapped, so it was
+half again as tall there as on a desktop. The whole page is shorter for its
+removal — at 390×844 the document went 1177 px → 1081 px, 96 px less to scroll
+past.
+
+The `banner` turn map now renders **nothing** above the stage — the rail is the
+banner. The `vanity` and `runway` maps still add their own block, and each still
+states whose turn it is in words on its own, so AC-12 does not depend on the
+rail in those two. `tests/glam-tt-game.spec.js`'s AC-12 sweep over all three maps
+is unchanged and green.
+
+**Before / after**, at all three device sizes, under `docs/eval/shots/glam-tune3/`:
+
+| file | what it is |
+| --- | --- |
+| `turn-{before,after}-{desktop,tablet,phone}.png` | the whole viewport at the top of the page — where the footprint is read |
+| `turnband-{before,after}-{desktop,tablet,phone}.png` | the stage panel alone, so the rail is read against the composition it belongs to |
+| `turnscroll-{before,after}-phone.png` | 390×844 scrolled to the end of the trolley |
+| `rail-{ready,mine,theirs}.png` | the rail in each phase it has a distinct state for, off a real played trial |
+
+`turnscroll-before-phone.png` is the shot the fix exists for: at the bottom of
+the phone page the pre-change card is gone off the top and there is no statement
+of whose turn it is anywhere on screen.
+
+### W3 · Always visible — including the case that failed
+
+"Whose turn it is is always visible" is an acceptance criterion (AC-12 in
+`docs/glam-team-makeover-redesign-hardened-claims.md`), and a stage-anchored
+indicator is exactly the kind that scrolls away. At 1280×860 and 834×1112 the
+whole game fits and the page does not scroll at all, so only the phone can hide
+anything.
+
+**A first version of this rail did hide.** Scrolled to the trolley from the
+child's own turn it was fine (stage top at y −93, rail at y +230, well inside an
+844 px viewport). But **playing the trial out** at 390×844 found the case the
+static check missed: on the *partner's* turn the controls row grows the mand cue
+and the "✓ I asked!" button, the document gets longer, and at scrollY 576 the
+rail was at **y −109** — off the top of the screen.
+
+The fix is the one the brief allowed for: **on a wrapped row the stage panel is
+`position:sticky`**. Its containing block is the stage row, so it travels with
+the trolley beside it and releases at the row's own end; the rail stays on screen
+for the whole of the scroll that can hide it, and the child keeps the client's
+face in view while reaching for a tool. It is scoped to the same
+`@container gtmrow (width < 614px)` query that already gives a wrapped panel its
+height, so desktop and tablet are untouched, and sticky moves paint rather than
+layout, so nothing here leaves the compositor.
+
+Measured after the fix, phone at maximum scroll:
+
+Viewport-Y of each part at 390×844, scrolled to the end of the trolley
+(the viewport is 0…844, so a negative number is off the top):
+
+| | before | first rail | shipped |
+| --- | --- | --- | --- |
+| stage panel top | −93 | −133 | **+6** |
+| whose-turn label | **−216 (off screen)** | +230 | **+369** |
+| actions-left meter | **−183 (off screen)** | +232 | **+371** |
+| whose-turn line on the PARTNER's turn, scrollY 576 | off screen | **−99 (off screen)** | **on screen** |
+
+### W4 · The pinned tests
+
+`tests/glam-turn-band.spec.js`, two cases × three browsers. Both locate things
+the way the U3 spec does — the panel by the backdrop art it carries, the text by
+its own words — so the same file runs against the pre-change renderer via
+`GLAM_PAGE=…`.
+
+1. **The move and the footprint.** At each of the three device sizes: the
+   whose-turn label, the whose-turn line and the actions-left meter are all
+   geometrically inside the stage panel and all start below 72 % of its height
+   (the bottom band, not over the client's face); the meter still carries one pip
+   per action in the budget; at most 6 px of vertical footprint sits above the
+   stage; and the whose-turn line is not clipped by the rail it now lives in.
+2. **Always visible.** The same three parts are wholly inside the viewport at
+   three scroll positions — top, trolley scrolled to its end, document bottom —
+   at all three device sizes, **on the child's turn and on the partner's turn**.
+   The second phase is in the test because it is the one that failed.
+
+**Both fail against `2f45dfda`,** through the same server with that file swapped
+in, verbatim:
+
+```
+Error: desktop (1280×860): the whose-turn label starts 66.7px ABOVE the stage panel
+  expect(received).toBeGreaterThanOrEqual(expected)  Expected: >= 143.9  Received: 77.8
+
+Error: phone (390×844), my turn scrolled to the trolley (scrollY 143 of 333):
+  the whose-turn label is off screen —
+  {"x":100,"y":-26,"w":51.3,"h":12,"top":-26,"bottom":-14,"right":151.3} in a 390×844 viewport
+  expect(received).toBe(expected)  Expected: true  Received: false
+```
+
+One measuring subtlety worth keeping: the runtime wraps every interpolation in an
+inline `<span>`, and `scrollWidth` on an inline box is 0 in Blink but the content
+width in Gecko. Comparing that against `clientWidth` (0 in both) reported the
+whole sentence as overflow on Firefox and nothing on Chrome. The clip check
+therefore asks the nearest *clipping* ancestor, not the text node.
+
+### W5 · Verification for this slice
+
+- **399 Playwright tests green**, three browsers, against a server hash-verified
+  as serving this worktree (`shasum` of the file and of `curl`'s bytes both
+  `e49e5abb505ad32cc35b3109aafdc106218de2da`). 393 before, +2 cases × 3 browsers.
+  Two earlier full runs during this slice each lost exactly one firefox spec on
+  the known Atkinson-Hyperlegible webfont console error — a different spec each
+  time, and each passed on its own. The flake is documented in *U · Still to do*.
+- `window.GlamTT` **byte-identical**: the `<script>` block that defines it hashes
+  `0d9c7241482de068eaa14c37e72c7105d5fa4bde` (24 767 bytes) on both `2f45dfda`
+  and this slice's `index.html`. `git diff 2f45dfda --
+  apps/games/tests/glam-tt-scoring.spec.js` is empty.
+- **A whole trial played out in a real browser** — `tests/_play-glam-tune3.mjs`,
+  at 1280×860 and again at 390×844: title → texting intro → salon → every turn to
+  the end (6 of 6) → outro, every move a real click or a real pointer stroke on
+  the target the game rendered. It re-reads the rail at every phase change and
+  fails on a phase where any part of it was off screen — which is how W3's
+  partner-turn defect was found. Clean on both sizes: no console errors, no page
+  errors, no failed local requests.
+- **Child-facing text unchanged.** This slice moved the whose-turn line and the
+  meter; it did not rewrite either. No numbers were added to child-facing copy —
+  "I can do 7 more" is the same sentence the card carried, and the two digits the
+  playthrough finds on the outro page are the BT's own session clock and the
+  staff summary line ("Trial finished · 6 of 6 turns"), both pre-existing and
+  both staff surfaces. `tests/glam-tt-story.spec.js` is green and untouched.
+- **The staff strip and the print view are untouched** — (E), Prompt given and
+  End trial are in the same controls row they were, and no diff hunk goes near
+  `printReport`.
+- New instruments, none of them specs: `tests/_shots-glam-tune3-turn.mjs`
+  (before/after shots), `tests/_probe-glam-tune3-turn.mjs` (rail rects at three
+  scroll positions), `tests/_probe-glam-tune3-band.mjs` (how much room the foot
+  of the stage has, and where the shirt starts), `tests/_play-glam-tune3.mjs`
+  (the whole-trial playthrough).
+
+### W6 · Judged rather than measured
+
+Called out so the maintainer can overrule any of them against the shots:
+
+- **The rail's height (46 px / 40 px).** Chosen so the two-line stack the card
+  used fits without wrapping and the pips stay ≥ 11 px. It could be shorter with
+  a single-line stack (eyebrow and line on one row) at some cost in phone width.
+- **A sticky panel on phone.** It is the fix for a measured defect, but *how* it
+  is fixed is a taste call: a phone-specific fixed bar at the foot of the
+  viewport would also keep the rail on screen, and would take the turn state out
+  of the stage. Sticky was chosen because it keeps the rail literally in the
+  sandy band, which is what was asked for, and because keeping the client's face
+  in view while browsing the trolley is a better phone experience on its own
+  merits.
+- **The `banner` map now renders nothing above the stage.** The alternative was
+  to keep a slim strip there. Read as: the rail *is* the banner.
+- **Rail ink instead of the card's sage-700/blue-500.** This one is closer to
+  measurement than taste — the card's colours do not clear 3:1 on sand — but the
+  particular darker hues are a choice.
+
+### W · Still to do
+
+- **Finding A2's tuning** (unchanged from *V · Still to do*): the two taste calls
+  in V2 — the eyeshadow's reach past the outer socket and the brow pencil's flat
+  dark plum — are stated rather than made. The completed-look shots and the
+  measurement table are in place for the maintainer to rule on them.
+- The tall-panel and webfont items from *U · Still to do* are still open and
+  still out of this pass's scope.
