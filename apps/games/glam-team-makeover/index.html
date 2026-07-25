@@ -27,6 +27,815 @@
 <script src="assets/art-generated.js"></script>
 <script src="assets/art-manifest.js"></script>
 
+<!-- ══════════════════════════════════════════════════════════════════════════
+     TURN-TAKING MEASUREMENT ENGINE — window.GlamTT
+
+     The clinical spine of the tool: it decides whether a learner's relinquish
+     (the pass) and their mand for the turn back (the ask-back) were
+     INDEPENDENT or PROMPTED, and it is the append-only event log the per-turn
+     table renders from.
+
+     Authoritative source of the rules below:
+       docs/glam-team-makeover-redesign-hardened-claims.md  (D-A…D-K, AC-1…AC-27)
+       docs/glam-team-makeover-redesign-spec.md             (§3.1–§3.8, §4)
+     Where the spec prose and the hardened claims disagree, the CLAIMS win.
+     Every non-obvious branch below names the AC it exists for, because each one
+     is there to close a specific attack from the 7-round adversarial review —
+     removing it silently reopens a scoring hole (mostly F-22 false mastery).
+
+     Deliberately pure: no DOM, no React, no globals, and the clock is injected
+     (`now`). That is what lets tests/glam-tt-scoring.spec.js drive all 27
+     criteria deterministically instead of racing real timers.
+     ══════════════════════════════════════════════════════════════════════════ -->
+<script>
+window.GlamTT = (function () {
+  'use strict';
+
+  /* Fade ladder (§3.2). The scored label is `prompted@<level>`. At `silent` the
+     prompt is DELIVERED but nothing is shown — delivery is by window-elapse
+     alone. That is the whole of AC-1/AC-24: the probe level a BCBA uses to test
+     whether the prompt can be removed must not be able to manufacture
+     independence (eval finding 2 / F-22). */
+  var LEVELS = ['full', 'gesture', 'silent'];
+
+  var PASS_INDEPENDENT = 'independent';
+  var PASS_STAFF       = 'staff-prompted';   // a person had to intervene
+  var PASS_NONE        = 'no-engagement';    // 0 engaged actions — nothing was taken (AC-20)
+  var ASK_EARLY        = 'early-ask';        // asked before the staff-idle forget onset (AC-25)
+  var NA               = '—';           // em dash: no scored response this turn
+
+  var DEFAULTS = {
+    turns: 6,                 // BT-set HARD bound on total turns (D-D / AC-7)
+    requiredActions: 19,      // charged actions a cooperative run needs to finish the look
+    cueLevel: 'full',
+    waitMs: 3000,             // §4 approved tuning; configurable per learner (§3.2 / L8)
+    giveBack: 'forgets',      // 'forgets' → learner asks back · 'prompted' → staff hands back
+    partnerTimed: false,
+    partnerSecs: 20,
+  };
+
+  function prompted(level) {
+    return 'prompted@' + (LEVELS.indexOf(level) >= 0 ? level : 'full');
+  }
+
+  /* Is this a scored relinquish outcome (i.e. does it feed the tier and the
+     independent-pass count)? `—` turns — a staff turn, or a learner turn the
+     trial ended out from under — are reported but not tiered. */
+  function isScoredPass(code) {
+    return code === PASS_INDEPENDENT || code === PASS_STAFF ||
+           code === PASS_NONE || (typeof code === 'string' && code.indexOf('prompted@') === 0);
+  }
+
+  /* D-D / AC-7 / AC-17 — one fixed per-turn cap per actor, computed ONCE before
+     the trial starts from the BT's turn count, sized so a cooperative run
+     finishes the look inside N turns with the learner taking ~2/3 of the total
+     actions. Nothing inflates it mid-trial: there is no `budget + bonus` band in
+     which the same tap is legal on one turn and a logged violation on another
+     (the A5 attack; the old build's `effGoal = actionGoal + bonus`). */
+  function autoScale(turns, requiredActions) {
+    var n = Math.max(2, turns | 0);
+    var learnerTurns = Math.max(1, Math.floor(n / 2));
+    var staffTurns   = Math.max(1, n - learnerTurns);
+    var learnerBudget = Math.max(1, Math.ceil(requiredActions / learnerTurns));
+    var staffBudget   = Math.max(1, Math.ceil(learnerBudget / 2));   // 2:1 favouring the learner
+    return {
+      turns: n, learnerTurns: learnerTurns, staffTurns: staffTurns,
+      learnerBudget: learnerBudget, staffBudget: staffBudget,
+      learnerShare: (learnerTurns * learnerBudget) /
+                    (learnerTurns * learnerBudget + staffTurns * staffBudget),
+    };
+  }
+
+  /* De-identified auto session id (D-H / AC-9 / §8). Date + a random tag —
+     never anything about the learner. There is no name field in this tool. */
+  function newSessionId(d) {
+    var t = d || new Date();
+    var p = function (v) { return String(v).padStart(2, '0'); };
+    var tag = '';
+    for (var i = 0; i < 4; i++) tag += '0123456789ABCDEFGHJKMNPQRSTVWXYZ'[(Math.random() * 32) | 0];
+    return 'GTM-' + t.getFullYear() + p(t.getMonth() + 1) + p(t.getDate()) + '-' + tag;
+  }
+
+  function Trial(opts) {
+    /* Defaults are merged into a FRESH config; the caller's options object is
+       never mutated, so a host holding one settings object can open trial after
+       trial without it silently accreting engine defaults. */
+    var given = opts || {}, o = {}, k;
+    for (k in DEFAULTS) o[k] = DEFAULTS[k];
+    for (k in given) if (given[k] !== undefined) o[k] = given[k];
+
+    this.now = o.now || function () { return Date.now(); };
+    this.cfg = o;
+    var sc = autoScale(o.turns, o.requiredActions);
+    this.scale = sc;
+    this.turnsConfigured = sc.turns;
+    this.learnerBudget = sc.learnerBudget;
+    this.staffBudget = sc.staffBudget;
+    this.cueLevel = LEVELS.indexOf(o.cueLevel) >= 0 ? o.cueLevel : 'full';
+    this.waitMs = o.waitMs;
+    this.giveBack = o.giveBack;
+
+    this.sessionId = o.sessionId || newSessionId(o.date);
+    this.startedAt = this.now();
+    this.log = [];               // append-only; nothing is ever rewritten or removed
+    this.turns = [];             // closed + current turn records, in order
+    this.turn = null;
+    this.lookComplete = false;
+    this.ended = false;
+    this.endReason = null;
+    this._seq = 0;
+
+    this.emit('trial-start', {
+      turnsConfigured: this.turnsConfigured, learnerBudget: this.learnerBudget,
+      staffBudget: this.staffBudget, cueLevel: this.cueLevel, waitMs: this.waitMs,
+      giveBack: this.giveBack, requiredActions: o.requiredActions,
+    });
+    this._openTurn(1);
+  }
+
+  Trial.prototype.emit = function (type, data) {
+    var e = { seq: ++this._seq, t: this.now(), type: type };
+    e.turn = this.turn ? this.turn.n : 0;
+    e.actor = this.turn ? this.turn.actor : null;
+    if (data) for (var k in data) e[k] = data[k];
+    this.log.push(e);
+    return e;
+  };
+
+  /* Turn order is fixed L,S,L,S…: odd turns are the learner's, even the staff's.
+     Every trial therefore has ≥1 learner turn, so AC-11's Tier-1 predicate can
+     never be vacuously true. */
+  Trial.prototype._openTurn = function (n) {
+    var t = this.now();
+    var learner = (n % 2) === 1;
+    var rec = {
+      n: n, actor: learner ? 'learner' : 'staff',
+      budget: learner ? this.learnerBudget : this.staffBudget,
+      actions: 0, steps: [], overCap: 0, blockedExtra: 0, eEvents: 0,
+      startedAt: t, lastActionAt: t,
+      forfeit: null,          // null | 'overcap' | 'exhaustion' | 'bt'  — TURN-DURABLE
+      cueAt: null, cueLevel: null, cueLive: false,   // cueLive = discardable sub-budget app cue
+      onsetAt: null,          // staff-idle "forget" onset (staff turns, forgets mode)
+      passScore: NA, askScore: NA,
+      waitPrescribedMs: (!learner && this.cfg.partnerTimed) ? this.cfg.partnerSecs * 1000 : null,
+      waitHeldMs: null, closed: false,
+    };
+    this.turn = rec;
+    this.turns.push(rec);
+    this.emit('turn-start', { budget: rec.budget, waitPrescribedMs: rec.waitPrescribedMs });
+    return rec;
+  };
+
+  /* The learner tapped Go. Possession starts here, so the relinquish clock and
+     the turn's elapsed time are measured from this moment, not from the
+     transition into the turn. */
+  Trial.prototype.go = function () {
+    var t = this.turn;
+    if (!t || t.actor !== 'learner') return false;
+    t.startedAt = t.lastActionAt = this.now();
+    this.emit('go');
+    return true;
+  };
+
+  Trial.prototype.actionsLeft = function () {
+    var t = this.turn;
+    return t ? Math.max(0, t.budget - t.actions) : 0;
+  };
+
+  /* Would a NEW charged action be refused right now? The gate reads the single
+     fixed auto-scaled budget and nothing else (AC-17). */
+  Trial.prototype.atCap = function () {
+    var t = this.turn;
+    return !!t && t.actions >= t.budget;
+  };
+
+  /* A visible cue is only ever shown above `silent`. At `silent` the prompt is
+     still delivered (see `cueAt`) — it is just invisible. Anything that reads
+     visibility instead of delivery to decide independence re-creates F-22.
+
+     Every timestamp below is compared with `!= null`, never for truthiness: a
+     prompt delivered at t=0 on an injected clock is a real delivery, and
+     `!!0 === false` would silently hand back the `independent` this engine
+     exists to withhold. */
+  Trial.prototype.promptVisible = function () {
+    var t = this.turn;
+    return !!t && t.cueAt != null && t.cueLevel !== 'silent';
+  };
+  Trial.prototype.promptDelivered = function () {
+    var t = this.turn;
+    return !!t && (t.cueAt != null || t.forfeit === 'bt');
+  };
+
+  /* ── the one place an engaged action is admitted or refused ───────────────
+     Call this ONLY for taps that would spend a new charge; free re-touches of an
+     already-charged article never reach the engine, so the build's first-touch
+     charge economy is preserved.                                             */
+  Trial.prototype.requestAction = function (label) {
+    var t = this.turn;
+    if (!t || this.ended) return { allowed: false };
+
+    if (t.actions >= t.budget) {
+      if (t.actor === 'staff') {
+        /* L2 — the staff's turn collects no learner data; the staff is simply
+           blocked from extra actions. No forfeit, no score effect. */
+        t.blockedExtra++;
+        this.emit('blocked-extra', { label: label || null });
+        return { allowed: false, blocked: true, feedback: 'That turn is finished — hand it over.' };
+      }
+      /* D-B / AC-3 / AC-4 — over-cap on the learner's own turn: refuse, log,
+         set the TURN-DURABLE forfeit flag, and deliver the pass prompt. The
+         flag is set by the over-cap EVENT, decoupled from cue visibility and
+         from whether the window elapsed, so it also holds at `silent` where
+         nothing is shown (the B2 attack). Kid-facing feedback is returned in
+         EVERY count mode — the silent hidden-mode cap was eval defect 2. */
+      t.overCap++;
+      if (t.forfeit !== 'bt') t.forfeit = 'overcap';   // a BT prompt is the stronger floor
+      t.cueLive = false;
+      if (t.cueAt == null) { t.cueAt = this.now(); t.cueLevel = this.cueLevel; }
+      this.emit('over-cap-attempt', { label: label || null, count: t.overCap, level: t.cueLevel });
+      return {
+        allowed: false, overCap: true,
+        feedback: 'That was everything for this turn — time to hand it over!',
+      };
+    }
+
+    t.actions++;
+    t.lastActionAt = this.now();
+    /* A genuine resume clears a DISCARDABLE sub-budget app cue (the L8
+       mid-task-pause case: the learner was thinking, not stalling) and never
+       clears a turn-durable forfeit — no sequence of legal actions launders a
+       BT-prompted or at-exhaustion-prompted turn back to independent (AC-23/E1). */
+    t.cueLive = false;
+    if (label && t.steps.indexOf(label) < 0) t.steps.push(label);
+    this.emit('action', { label: label || null, actions: t.actions, budget: t.budget });
+    return { allowed: true, actions: t.actions, left: this.actionsLeft() };
+  };
+
+  /* §3.2 "prompt delivered" affordance — a real verbal/gestural prompt from the
+     BT, deliverable on ANY turn (sub-budget or at-budget, learner or staff).
+     Sets the turn-durable forfeit: a person had to tell the learner to let go,
+     and a token resume cannot erase that (AC-23). */
+  Trial.prototype.btPrompt = function () {
+    var t = this.turn;
+    if (!t || this.ended) return false;
+    t.forfeit = 'bt';
+    t.cueLive = false;
+    t.btPromptAt = this.now();
+    this.emit('bt-prompt', {});
+    return true;
+  };
+
+  /* In "They forget → I ask" mode the staff IS the BT, deliberately modelling
+     the forget, so the BT can disambiguate a mid-turn pause from a real forget
+     rather than waiting for the idle heuristic (D-K, the staff side of L8). */
+  Trial.prototype.signalForget = function () {
+    var t = this.turn;
+    if (!t || t.actor !== 'staff' || t.onsetAt != null) return false;
+    t.onsetAt = this.now();
+    this.emit('forget-onset', { source: 'bt-signal', staffActions: t.actions });
+    return true;
+  };
+
+  /* ── the clock: every prompt this engine delivers is delivered from here ── */
+  Trial.prototype.tick = function () {
+    if (this.ended || !this.turn) return;
+    var t = this.turn, now = this.now();
+    if (t.actor === 'learner') this._tickLearner(t, now);
+    else this._tickStaff(t, now);
+  };
+
+  Trial.prototype._tickLearner = function (t, now) {
+    /* Possession floor — the relinquish window does not exist until the learner
+       has actually taken a turn (≥1 engaged action). A 0-action turn is scored
+       `no-engagement`, not prompted-into-independence (AC-20). */
+    if (t.actions < 1) return;
+    if (t.cueLive || t.forfeit) return;                 // a prompt already stands this opportunity
+    /* D1 re-anchor: the ladder runs from POSSESSION-TAKEN + a no-relinquish IDLE
+       interval measured from the learner's most recent action — NOT from
+       budget-exhaustion. Exhaustion is merely the case where they cannot resume.
+       Anchoring on exhaustion made every sub-budget pass vacuously independent. */
+    if (now - t.lastActionAt < this.waitMs) return;
+    t.cueAt = now;
+    t.cueLevel = this.cueLevel;
+    if (t.actions >= t.budget) t.forfeit = 'exhaustion';  // turn-durable (AC-23)
+    else t.cueLive = true;                                // discardable by a real resume (L8)
+    this.emit('app-prompt', {
+      level: t.cueLevel, durable: t.forfeit === 'exhaustion',
+      visible: t.cueLevel !== 'silent',
+    });
+  };
+
+  Trial.prototype._tickStaff = function (t, now) {
+    if (this.giveBack !== 'forgets') {
+      if (t.waitPrescribedMs && now - t.startedAt >= t.waitPrescribedMs) this.staffHandBack();
+      return;
+    }
+    if (t.onsetAt == null) {
+      /* G1 / AC-27 — the forget onset fires on STAFF-IDLE: the staff has held
+         possession without acting or handing back for the wait interval. It
+         fires for ANY number of staff actions spent (0…N), so the scenario the
+         mode is named for — the staff genuinely forgets and does 0 of N — opens
+         the ask window instead of deadlocking. It must NEVER be anchored to
+         "allotted staff actions spent": that is the pre-D1 exhaustion anchor,
+         and it never fires on a real forget.
+         A timed staff turn keeps its prescribed length (waiting BY LENGTH is the
+         taught skill there), so its onset is the timer elapsing. */
+      var due = t.waitPrescribedMs
+        ? (now - t.startedAt >= t.waitPrescribedMs)
+        : (now - t.lastActionAt >= this.waitMs);
+      if (due) {
+        t.onsetAt = now;
+        this.emit('forget-onset', { source: 'staff-idle', staffActions: t.actions });
+      }
+      return;
+    }
+    /* After the onset the ask window runs. On elapse the app delivers the
+       prompt — at `silent` nothing is shown but it is delivered all the same, so
+       a silent 37s stall scores `prompted@silent` (AC-24, F-22 on its own site). */
+    if (t.cueAt == null && t.forfeit !== 'bt' && now - t.onsetAt >= this.waitMs) {
+      t.cueAt = now;
+      t.cueLevel = this.cueLevel;
+      this.emit('app-prompt', {
+        level: t.cueLevel, durable: true, visible: t.cueLevel !== 'silent', of: 'ask',
+      });
+    }
+  };
+
+  /* ── scoring ─────────────────────────────────────────────────────────────── */
+
+  Trial.prototype._scorePass = function (t) {
+    if (t.actions === 0) return PASS_NONE;              // AC-20 — nothing was taken to give up
+    if (t.forfeit === 'bt') return PASS_STAFF;          // AC-21 / AC-23 — unlaunderable
+    if (t.forfeit) return prompted(t.cueLevel);         // AC-4 over-cap · AC-23 at-exhaustion
+    if (t.cueLive) return prompted(t.cueLevel);         // AC-1 / AC-21 — live discardable cue
+    return PASS_INDEPENDENT;                            // AC-2 / AC-19
+  };
+
+  Trial.prototype._scoreAsk = function (t) {
+    /* No resume-launder and no discardable-cue path on the ask-back: during the
+       staff's forgotten turn the learner takes no interleaved actions, so ANY
+       delivered prompt forfeits unconditionally (AC-26 — stricter than the pass). */
+    if (t.onsetAt == null) return ASK_EARLY;            // AC-25 — interrupted a live staff turn
+    if (t.forfeit === 'bt') return PASS_STAFF;
+    if (t.cueAt != null) return prompted(t.cueLevel);   // AC-24
+    return PASS_INDEPENDENT;
+  };
+
+  Trial.prototype._closeTurn = function (t) {
+    t.closed = true;
+    t.waitHeldMs = this.now() - t.startedAt;
+    /* N is a HARD bound: the trial never runs past it to force completion
+       (AC-5/AC-7). Otherwise a completed look ends the trial at this boundary —
+       the learner's relinquish is still scored first, so the Tier-1 predicate
+       never goes vacuous. */
+    if (t.n >= this.turnsConfigured) this.endTrial('turns-exhausted');
+    else if (this.lookComplete) this.endTrial('look-complete');
+    else this._openTurn(t.n + 1);
+  };
+
+  /* The learner's relinquish. Available THROUGHOUT their turn — the budget is a
+     cap, not a quota, so an early voluntary pass with actions to spare is
+     reachable and scored (AC-19/B3), never blocked. */
+  Trial.prototype.pass = function () {
+    var t = this.turn;
+    if (!t || t.actor !== 'learner' || this.ended) return null;
+    t.passAt = this.now();
+    t.passScore = this._scorePass(t);
+    this.emit('pass', {
+      score: t.passScore, actionsUsed: t.actions, budget: t.budget,
+      actionsUnspent: t.budget - t.actions, forfeit: t.forfeit,
+    });
+    this._closeTurn(t);
+    return t.passScore;
+  };
+
+  Trial.prototype.staffAction = function (label) { return this.requestAction(label); };
+
+  /* "They hand it back" mode — the staff's turn simply ends. No learner response
+     is measured, so the ask-back column stays `—` (§4). */
+  Trial.prototype.staffHandBack = function () {
+    var t = this.turn;
+    if (!t || t.actor !== 'staff' || this.ended) return false;
+    this.emit('hand-back', {});
+    this._closeTurn(t);
+    return true;
+  };
+
+  /* The learner's mand for the turn back. */
+  Trial.prototype.ask = function () {
+    var t = this.turn;
+    if (!t || t.actor !== 'staff' || this.ended) return null;
+    t.askAt = this.now();
+    t.askScore = this._scoreAsk(t);
+    this.emit('ask', { score: t.askScore, onset: !!t.onsetAt, staffActions: t.actions });
+    this._closeTurn(t);
+    return t.askScore;
+  };
+
+  /* D-C / AC-14 — staff annotator for the violations one shared device cannot
+     see. Logs {timestamp, phase, whose-turn} and a fixed code; never touches
+     gameplay, the doll or any score, and is undoable. No freeform: PHI-safe. */
+  Trial.prototype.mark = function (code) {
+    var t = this.turn;
+    if (!t) return null;
+    t.eEvents++;
+    return this.emit('e-mark', { code: code, phase: t.actor === 'learner' ? 'my-turn' : 'their-turn' });
+  };
+  Trial.prototype.undoMark = function () {
+    for (var i = this.log.length - 1; i >= 0; i--) {
+      var e = this.log[i];
+      if (e.type === 'e-undo') continue;
+      if (e.type !== 'e-mark' || e.voided) continue;
+      e.voided = true;
+      var rec = null;
+      for (var j = 0; j < this.turns.length; j++) if (this.turns[j].n === e.turn) rec = this.turns[j];
+      if (rec && rec.eEvents > 0) rec.eEvents--;
+      return this.emit('e-undo', { of: e.seq, code: e.code });
+    }
+    return null;
+  };
+
+  /* The look is finished. Reported by the host (which owns the task analysis) so
+     the engine never duplicates the TA rules. Latched: re-applying an
+     already-done step cannot un-complete it, and does not itself end the trial
+     (AC-6). */
+  Trial.prototype.setLookComplete = function (v) {
+    if (!v || this.lookComplete) return false;
+    this.lookComplete = true;
+    this.emit('look-complete', {});
+    return true;
+  };
+
+  /* Always terminable (AC-5/AC-16): turns-exhausted, look-complete, or the BT's
+     always-available end-trial control. An open learner turn gets a defined
+     score rather than being dropped — a sub-budget learner who will not pass at
+     all resolves to `staff-prompted`, the same code as at exhaustion, so their
+     own turn cannot deadlock (AC-22). */
+  Trial.prototype.endTrial = function (reason) {
+    if (this.ended) return false;
+    var t = this.turn;
+    if (t && !t.closed) {
+      t.closed = true;
+      t.waitHeldMs = this.now() - t.startedAt;
+      if (t.actor === 'learner' && t.passScore === NA) {
+        t.passScore = t.actions === 0 ? PASS_NONE : PASS_STAFF;
+        this.emit('pass', { score: t.passScore, actionsUsed: t.actions, unpassed: true });
+      }
+    }
+    this.ended = true;
+    this.endReason = reason || 'bt-end';
+    this.turn = null;
+    this.emit('trial-end', { reason: this.endReason, complete: this.lookComplete });
+    return true;
+  };
+
+  /* ── report (D-G / D-H / AC-9 / AC-11) ───────────────────────────────────── */
+
+  Trial.prototype.scoredPasses = function () {
+    var out = [];
+    for (var i = 0; i < this.turns.length; i++) {
+      var t = this.turns[i];
+      if (t.actor === 'learner' && isScoredPass(t.passScore)) out.push(t.passScore);
+    }
+    return out;
+  };
+  Trial.prototype.overCapTotal = function () {
+    var n = 0;
+    for (var i = 0; i < this.turns.length; i++) n += this.turns[i].overCap;
+    return n;
+  };
+
+  /* AC-11 — a pure function of (over-cap attempts, PASS independence) only.
+     `staff-prompted` and `no-engagement` are non-independent, so neither an
+     all-staff-prompted trial (A2) nor a 0-action run (C2) can reach Tier 1.
+     (E) events, the ask-back score and completion never enter this: the tier is
+     orthogonal to completion, which gates a separate outro beat (AC-5/AC-18). */
+  Trial.prototype.tier = function () {
+    var passes = this.scoredPasses();
+    var over = this.overCapTotal();
+    if (!passes.length) return 3;
+    var nonInd = 0;
+    for (var i = 0; i < passes.length; i++) if (passes[i] !== PASS_INDEPENDENT) nonInd++;
+    if (over === 0 && nonInd === 0) return 1;
+    if (over >= 2 || nonInd > passes.length / 2) return 3;
+    return 2;
+  };
+
+  Trial.prototype.report = function () {
+    var self = this;
+    var secs = function (ms) { return ms == null ? null : Math.round(ms / 1000); };
+    var rows = this.turns.map(function (t) {
+      return {
+        turn: t.n,
+        player: t.actor === 'learner' ? 'Learner' : 'Staff',
+        step: t.steps.length ? t.steps.join(', ') : NA,
+        actions: t.actions + '/' + t.budget,
+        withinLimit: t.actor === 'learner' ? (t.overCap === 0 ? 'yes' : 'no') : NA,
+        overCap: t.actor === 'learner' ? t.overCap : (t.blockedExtra ? 'blocked-extra' : 0),
+        pass: t.passScore,
+        wait: t.waitPrescribedMs
+          ? (secs(t.waitHeldMs) + 's / ' + secs(t.waitPrescribedMs) + 's')
+          : (t.waitHeldMs != null ? secs(t.waitHeldMs) + 's' : NA),
+        ask: t.askScore,
+        e: t.eEvents,
+      };
+    });
+    var passes = this.scoredPasses();
+    var independent = passes.filter(function (p) { return p === PASS_INDEPENDENT; }).length;
+    var asks = {};
+    this.turns.forEach(function (t) {
+      if (t.askScore !== NA) asks[t.askScore] = (asks[t.askScore] || 0) + 1;
+    });
+    return {
+      sessionId: this.sessionId,
+      startedAt: this.startedAt,
+      turnsConfigured: this.turnsConfigured,
+      learnerBudget: this.learnerBudget,
+      staffBudget: this.staffBudget,
+      cueLevel: this.cueLevel,
+      waitMs: this.waitMs,
+      complete: this.lookComplete,
+      endReason: this.endReason,
+      rows: rows,
+      totals: {
+        learnerTurns: passes.length,
+        independentPasses: independent,
+        nonIndependentPasses: passes.length - independent,
+        overCap: this.overCapTotal(),
+        eEvents: this.log.filter(function (e) { return e.type === 'e-mark' && !e.voided; }).length,
+        asks: asks,
+      },
+      tier: this.tier(),
+      events: this.log.slice(),
+    };
+  };
+
+  return {
+    Trial: Trial,
+    LEVELS: LEVELS,
+    DEFAULTS: DEFAULTS,
+    PASS_INDEPENDENT: PASS_INDEPENDENT,
+    PASS_STAFF: PASS_STAFF,
+    PASS_NONE: PASS_NONE,
+    ASK_EARLY: ASK_EARLY,
+    NA: NA,
+    prompted: prompted,
+    isScoredPass: isScoredPass,
+    autoScale: autoScale,
+    newSessionId: newSessionId,
+    open: function (o) { return new Trial(o); },
+  };
+})();
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     STORY POOL — window.GlamStory   (spec §5, §3.7, §3.7.1 · D-F/D-G · L7)
+
+     The six approved events, unchanged. What the adversarial review changed is
+     the SHAPE of the outro, not the event set: §5's single fused string per
+     (event, tier) is split into TWO INDEPENDENTLY GATED AXES —
+
+       1. a tier-keyed TURN-TAKING line — teamwork only. It asserts no event
+          success and no completion, at any tier.
+       2. a completion-gated COMPLETION BEAT — the event-success flavour
+          ("day was a hit", "dazzled the crowd"), emitted ONLY when the staged
+          look is actually finished.
+
+     That split is what lets a perfect-turn-taking-but-unfinished run earn its
+     Tier-1 celebration while claiming nothing about the look (AC-18), instead of
+     telling a child who never got made over that "picture day was a hit"
+     (AC-5 / eval F-30). A build that emits §5's fused Tier-1 string on an
+     incomplete look fails AC-18 by construction.
+
+     STORY/VISUAL CONGRUENCE (§3.7.1, hard rule): no string may assert a
+     checkable visual attribute of the client — no hair texture/length/colour, no
+     spot counts, nothing the learner can look at the doll and refute. Every
+     model's default hair differs and the spots are procedurally seeded, so those
+     are refutable claims that break the activity. Text references only the
+     EVENT, the STAKES and the TASK. `congruenceViolations()` below enforces this
+     over the whole producible cross-product rather than by eyeball, and
+     tests/glam-tt-story.spec.js asserts it is empty.
+
+     PENDING MAINTAINER REVIEW (L7) — these strings are the build-time draft the
+     hardened claims route to a human before ship. They are reproduced in
+     docs/eval/glam-team-makeover-build-report.md for that review.
+     ══════════════════════════════════════════════════════════════════════════ -->
+<script>
+window.GlamStory = (function () {
+  'use strict';
+
+  /* Neutral given names only — the character is a fictional client, and this is
+     the one free slot §5 allows. Nothing here is ever a learner's name: the tool
+     has no name field anywhere (§8, AC-9). */
+  var NAMES = ['Ada', 'Bea', 'Cleo', 'Dani', 'Elle', 'Frankie',
+               'Gigi', 'Harper', 'Iris', 'Jules', 'Kit', 'Lux'];
+
+  /* §5's "one flavour word" slot, realised as the outro's opening cheer. */
+  var CHEERS = ['Wow', 'Look at that', 'Yes', 'Amazing', 'What a team'];
+
+  var EVENTS = [
+    {
+      id: 'picture-day', label: 'School picture day', emoji: '📸',
+      introTitle: 'Picture day is today!',
+      problem: '{name} is not ready yet — there is a whole glam routine to do and no outfit picked.',
+      stakes: 'The photographer is almost here!',
+      turnTaking: {
+        1: 'Every turn, {name} took a turn and then handed the brush back. Getting ready for picture day as a real team.',
+        2: '{name} and the glam partner traded the brush back and forth the whole time they were getting ready.',
+        3: 'It takes a lot of turns to get ready for picture day — and {name} had a partner for every one of them.',
+      },
+      completion: 'And the whole routine got finished before the photographer arrived — picture day was a hit!',
+    },
+    {
+      id: 'birthday', label: 'Birthday party', emoji: '🎉',
+      introTitle: 'The party starts in a few minutes!',
+      problem: '{name} is not party-ready yet — there is lots to do and no outfit yet.',
+      stakes: 'The guests are already arriving!',
+      turnTaking: {
+        1: 'Turn after turn, {name} took a turn and passed it right back. Nobody gets party-ready like a team that shares.',
+        2: '{name} shared the brush with the glam partner all the way through getting ready for the party.',
+        3: 'Getting party-ready takes a lot of turns, and {name} had a partner the whole time.',
+      },
+      completion: 'And the whole look was ready the moment the guests walked in — what a party!',
+    },
+    {
+      id: 'talent-show', label: 'Talent show', emoji: '🎤',
+      introTitle: 'Talent show — {name} is on next!',
+      problem: '{name} still needs the full glam routine before going on.',
+      stakes: 'On stage next!',
+      turnTaking: {
+        1: 'Every turn, {name} took a turn and then gave it back. Backstage teamwork at its very best.',
+        2: '{name} and the glam partner took turns backstage, right up to showtime.',
+        3: 'Getting ready backstage takes a lot of turns, and {name} had a glam partner for all of them.',
+      },
+      completion: 'And the whole glam routine was done before the curtain went up — {name} dazzled the crowd!',
+    },
+    {
+      id: 'family-photo', label: 'Family photo', emoji: '🖼️',
+      introTitle: 'Family photo time!',
+      problem: '{name} is not camera-ready yet — the whole routine still has to be done.',
+      stakes: 'Grandma is waiting!',
+      turnTaking: {
+        1: 'Turn for turn, {name} took a turn and handed it back every single time. That is what a team looks like.',
+        2: '{name} and the glam partner passed the brush back and forth while everyone got ready.',
+        3: 'Getting everyone camera-ready takes a lot of turns, and {name} had a partner right there.',
+      },
+      completion: 'And the whole look came together before grandma finished waiting — the framed favorite!',
+    },
+    {
+      id: 'first-day', label: 'First day, new school', emoji: '🎒',
+      introTitle: 'First day at a new school!',
+      problem: '{name} wants to feel ready — there is a full routine to do and no outfit yet.',
+      stakes: 'The bus comes in a few minutes!',
+      turnTaking: {
+        1: 'Every turn, {name} took a turn and passed it back. Getting ready for a big day, together.',
+        2: '{name} took turns with the glam partner all through getting ready for the first day.',
+        3: 'Getting ready for a first day takes a lot of turns, and {name} had a partner for every one.',
+      },
+      completion: 'And the whole routine was finished before the bus came — {name} walked in beaming!',
+    },
+    {
+      id: 'dance-recital', label: 'Dance recital', emoji: '🩰',
+      introTitle: 'Dance recital tonight!',
+      problem: '{name} is not show-ready yet — there is a glam routine to do.',
+      stakes: 'Curtain in minutes!',
+      turnTaking: {
+        1: 'Turn after turn, {name} took a turn and gave it right back. A recital-day team through and through.',
+        2: '{name} and the glam partner traded turns the whole time they got ready for the recital.',
+        3: 'Getting show-ready takes a lot of turns, and {name} had a glam partner through all of them.',
+      },
+      completion: 'And the whole glam routine was ready before the curtain — {name} shone on stage!',
+    },
+  ];
+
+  /* §3.7.1 — refutable-claim guard. Bare words are banned only where the word is
+     unambiguously an appearance claim; the ambiguous ones (short/long/straight…)
+     are banned in their hair-qualified form so ordinary prose ("passed it right
+     back") does not trip. Digits are banned outright: the child's story never
+     carries numbers (§3.7). */
+  var BANNED = [
+    /\bfrizz(y|ed)?\b/i, /\bbedhead\b/i, /\bmatted\b/i, /\btangl(ed|es)\b/i,
+    /\bcurl(y|s)\b/i, /\bwavy\b/i, /\bsleek\b/i, /\bgreasy\b/i,
+    /\bblonde?\b/i, /\bbrunette\b/i, /\bginger\b/i, /\bredhead\b/i, /\bauburn\b/i,
+    /\bpixie\b/i, /\bbuzz(ed|cut)?\b/i, /\bbob\b/i, /\bcropped\b/i,
+    /\bspots?\b/i, /\bzits?\b/i, /\bpimples?\b/i, /\bblemish(es)?\b/i,
+    /\bbreakouts?\b/i, /\bacne\b/i, /\bfreckles?\b/i,
+    /\b(short|long|straight|dark|light|thick|thin)\s+hair\b/i,
+    /\bhair\s+(is|was|looks|looked)\b/i,
+    /\d/,
+  ];
+
+  function byId(id) {
+    for (var i = 0; i < EVENTS.length; i++) if (EVENTS[i].id === id) return EVENTS[i];
+    return EVENTS[0];
+  }
+  function fill(s, name) { return String(s).replace(/\{name\}/g, name); }
+
+  /* The randomly-assigned client: a face model, a name and a scenario (D-F).
+     `lock` lets the BT pin any of the three; `rnd` is injectable so a test or a
+     replay can be deterministic. */
+  function draw(opts) {
+    var o = opts || {};
+    var rnd = o.rnd || Math.random;
+    var pick = function (a) { return a[Math.floor(rnd() * a.length) % a.length]; };
+    return {
+      eventId: o.eventId || pick(EVENTS).id,
+      name: o.name || pick(NAMES),
+      cheer: o.cheer || pick(CHEERS),
+      model: o.model || pick(['m1', 'm2', 'm3', 'm4']),
+    };
+  }
+
+  function intro(sel) {
+    var ev = byId(sel.eventId);
+    return {
+      emoji: ev.emoji,
+      title: fill(ev.introTitle, sel.name),
+      text: fill(ev.problem, sel.name) + ' ' + fill(ev.stakes, sel.name) +
+            ' Good thing the glam team takes turns.',
+      event: ev.label,
+    };
+  }
+
+  /* The two axes. `tier` drives the turn-taking line and NOTHING else; `complete`
+     gates the completion beat and NOTHING else. They never read each other. */
+  function outro(sel, tier, complete) {
+    var ev = byId(sel.eventId);
+    var t = (tier === 1 || tier === 2 || tier === 3) ? tier : 3;
+    var turnTakingLine = fill(ev.turnTaking[t], sel.name);
+    var completionBeat = complete ? fill(ev.completion, sel.name) : '';
+    return {
+      emoji: complete ? '✨' : '🤝',
+      title: sel.cheer + ' — what a team!',
+      turnTakingLine: turnTakingLine,
+      completionBeat: completionBeat,
+      text: completionBeat ? turnTakingLine + ' ' + completionBeat : turnTakingLine,
+      tier: t,
+      complete: !!complete,
+      event: ev.label,
+    };
+  }
+
+  /* Every string this module can put in front of a child, for the congruence
+     sweep: all 6 events × 3 tiers × complete/incomplete × the name slot. */
+  function allStrings() {
+    var out = [];
+    EVENTS.forEach(function (ev) {
+      NAMES.forEach(function (name) {
+        var sel = { eventId: ev.id, name: name, cheer: CHEERS[0] };
+        var i = intro(sel);
+        out.push({ where: ev.id + '/intro/title', s: i.title });
+        out.push({ where: ev.id + '/intro/text', s: i.text });
+        [1, 2, 3].forEach(function (tier) {
+          [true, false].forEach(function (complete) {
+            var o = outro(sel, tier, complete);
+            out.push({ where: ev.id + '/outro/t' + tier + (complete ? '/complete' : '/incomplete'), s: o.text });
+            out.push({ where: ev.id + '/outro/t' + tier + '/turn-taking', s: o.turnTakingLine });
+          });
+        });
+      });
+    });
+    return out;
+  }
+
+  function congruenceViolations() {
+    var bad = [];
+    allStrings().forEach(function (item) {
+      BANNED.forEach(function (re) {
+        if (re.test(item.s)) bad.push({ where: item.where, pattern: String(re), text: item.s });
+      });
+    });
+    return bad;
+  }
+
+  /* AC-18's text half, checkable: no tier's turn-taking line may contain any
+     event-success wording, so the Tier-1 line cannot be the completion claim. */
+  function tierLinesClaimingCompletion() {
+    var CLAIMS = [/came together/i, /was a hit/i, /dazzled/i, /framed favourite/i, /framed favorite/i,
+                  /walked in beaming/i, /shone on stage/i, /what a party/i, /got finished/i,
+                  /\bwas (ready|done|finished)\b/i];
+    var bad = [];
+    EVENTS.forEach(function (ev) {
+      [1, 2, 3].forEach(function (tier) {
+        var line = fill(ev.turnTaking[tier], 'Ada');
+        CLAIMS.forEach(function (re) {
+          if (re.test(line)) bad.push({ where: ev.id + '/t' + tier, pattern: String(re), text: line });
+        });
+      });
+    });
+    return bad;
+  }
+
+  return {
+    NAMES: NAMES, CHEERS: CHEERS, EVENTS: EVENTS, BANNED: BANNED,
+    byId: byId, draw: draw, intro: intro, outro: outro,
+    allStrings: allStrings,
+    congruenceViolations: congruenceViolations,
+    tierLinesClaimingCompletion: tierLinesClaimingCompletion,
+  };
+})();
+</script>
+
 <!-- Vendored React 18 (UMD) + the design-canvas runtime. Scoped to this one game;
      no other game uses a framework. Must load before the runtime auto-boots. -->
 <script src="vendor/react.production.min.js"></script>
@@ -130,61 +939,16 @@
               </sc-for>
             </div>
           </sc-if>
-          <sc-if value="{{ sceneFrame }}" hint-placeholder-val="{{ false }}"><img src="{{ sceneFrame }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:2"></sc-if>
-
+          <!-- NOTE — no `<img src="{{ … }}">` may appear in this template. The
+               browser parses and fetches the raw `{{ }}` placeholder as a URL
+               before the dc-runtime substitutes it, which is where three of the
+               load-time console 404s came from (eval §3.9). The stage art is a
+               single <canvas> compositor (paintAvatar) and the salon backdrop
+               rides on stageStyle's background-image, so nothing here needs an
+               <img> at all. -->
           <sc-if value="{{ personShow }}" hint-placeholder-val="{{ true }}">
             <div style="position:relative;width:320px;height:360px;isolation:isolate">
-              <sc-if value="{{ personArt }}" hint-placeholder-val="{{ false }}">
-                <canvas id="gtm-canvas" width="512" height="576" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1"></canvas>
-              </sc-if>
-              <sc-if value="{{ personProcedural }}" hint-placeholder-val="{{ true }}">
-              <svg viewBox="0 0 260 300" style="width:100%;height:100%">
-                <defs>
-                  <radialGradient id="gtmSkin" cx="47%" cy="37%" r="70%"><stop offset="0%" stop-color="#fbdcbb"></stop><stop offset="60%" stop-color="#f2c398"></stop><stop offset="100%" stop-color="#e3ac82"></stop></radialGradient>
-                  <radialGradient id="gtmGlow" cx="50%" cy="45%" r="60%"><stop offset="0%" stop-color="#fff7e6" stop-opacity=".9"></stop><stop offset="100%" stop-color="#fff7e6" stop-opacity="0"></stop></radialGradient>
-                  <radialGradient id="gtmIris" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#8d6a4a"></stop><stop offset="70%" stop-color="#5b4128"></stop><stop offset="100%" stop-color="#3c2a17"></stop></radialGradient>
-                  <filter id="gtmSft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="4"></feGaussianBlur></filter>
-                  <filter id="gtmSft2" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2"></feGaussianBlur></filter>
-                </defs>
-                <path d="{{ V.capePath }}" fill="{{ V.capeFill }}" opacity="{{ V.capeOp }}"></path>
-                <path d="{{ V.garmentPath }}" fill="{{ V.garmentFill }}"></path>
-                <path d="{{ V.garmentTrim }}" fill="{{ V.garmentTrimFill }}" opacity="{{ V.garmentTrimOp }}"></path>
-                <path d="M116 190 C116 206 113 216 107 223 L153 223 C147 216 144 206 144 190 C138 197 122 197 116 190 Z" fill="#e9b788"></path>
-                <path d="M82 128 C79 88 102 62 130 62 C158 62 181 88 178 128 C176 168 160 202 130 210 C100 202 84 168 82 128 Z" fill="url(#gtmSkin)"></path>
-                <path d="M84 130 C75 127 70 138 76 149 C80 158 90 159 93 151 C88 148 86 140 89 135 Z" fill="#e9b788"></path>
-                <path d="M176 130 C185 127 190 138 184 149 C180 158 170 159 167 151 C172 148 174 140 171 135 Z" fill="#e9b788"></path>
-                <ellipse cx="130" cy="128" rx="49" ry="62" fill="#b7a68f" opacity="{{ V.dullOp }}" filter="url(#gtmSft)"></ellipse>
-                <ellipse cx="104" cy="112" rx="15" ry="12" fill="#caa07d" opacity="{{ V.dullOp }}" filter="url(#gtmSft)"></ellipse>
-                <ellipse cx="152" cy="150" rx="16" ry="12" fill="#b98f74" opacity="{{ V.dullOp }}" filter="url(#gtmSft)"></ellipse>
-                <ellipse cx="130" cy="118" rx="48" ry="55" fill="url(#gtmGlow)" opacity="{{ V.moistOp }}"></ellipse>
-                <path d="M76 166 C66 128 70 50 94 36 C110 26 122 24 130 24 C138 24 150 26 166 36 C190 50 194 128 184 166 C180 136 172 114 158 108 C146 101 140 100 130 100 C120 100 114 101 102 108 C88 114 80 136 76 166 Z" fill="{{ V.hairFill }}"></path>
-                <text x="85" y="149" font-size="12" text-anchor="middle" opacity="{{ V.earOp }}">{{ V.earGlyph }}</text>
-                <text x="175" y="149" font-size="12" text-anchor="middle" opacity="{{ V.earOp }}">{{ V.earGlyph }}</text>
-                <path d="{{ V.contourPath }}" fill="#b07a52" opacity="{{ V.contourOp }}" filter="url(#gtmSft)"></path>
-                <ellipse cx="100" cy="150" rx="15" ry="10" fill="{{ V.blushFill }}" opacity="{{ V.blushOp }}" filter="url(#gtmSft)"></ellipse><ellipse cx="160" cy="150" rx="15" ry="10" fill="{{ V.blushFill }}" opacity="{{ V.blushOp }}" filter="url(#gtmSft)"></ellipse>
-                <ellipse cx="108" cy="134" rx="8" ry="5" fill="#fff6d8" opacity="{{ V.hlOp }}" filter="url(#gtmSft2)"></ellipse><ellipse cx="152" cy="134" rx="8" ry="5" fill="#fff6d8" opacity="{{ V.hlOp }}" filter="url(#gtmSft2)"></ellipse><ellipse cx="130" cy="160" rx="6" ry="3" fill="#fff6d8" opacity="{{ V.hlOp }}" filter="url(#gtmSft2)"></ellipse>
-                <ellipse cx="108" cy="125" rx="14" ry="7" fill="{{ V.shadowFill }}" opacity="{{ V.shadowOp }}" filter="url(#gtmSft)"></ellipse><ellipse cx="152" cy="125" rx="14" ry="7" fill="{{ V.shadowFill }}" opacity="{{ V.shadowOp }}" filter="url(#gtmSft)"></ellipse>
-                <path d="M91 113 C103 105 121 106 132 113 C121 109 105 110 93 117 Z" fill="#6b533f" opacity="{{ V.browBushyOp }}"></path><path d="M128 113 C139 106 157 105 169 113 C167 110 151 109 138 117 Z" fill="#6b533f" opacity="{{ V.browBushyOp }}"></path>
-                <path d="M126 111 C116 106 103 107 95 112 C104 111 117 110 126 114 C128 113 128 112 126 111 Z" fill="{{ V.browColor }}" opacity="{{ V.browShapedOp }}"></path><path d="M134 111 C144 106 157 107 165 112 C156 111 143 110 134 114 C132 113 132 112 134 111 Z" fill="{{ V.browColor }}" opacity="{{ V.browShapedOp }}"></path>
-                <path d="M96 132 C104 125 118 125 125 132 C118 139 104 139 96 132 Z" fill="#fff"></path><path d="M135 132 C142 125 156 125 164 132 C156 139 142 139 135 132 Z" fill="#fff"></path>
-                <circle cx="110" cy="132" r="6.4" fill="url(#gtmIris)"></circle><circle cx="150" cy="132" r="6.4" fill="url(#gtmIris)"></circle>
-                <circle cx="110" cy="132" r="2.9" fill="#241810"></circle><circle cx="150" cy="132" r="2.9" fill="#241810"></circle>
-                <circle cx="112" cy="130" r="1.5" fill="#fff"></circle><circle cx="152" cy="130" r="1.5" fill="#fff"></circle>
-                <path d="M125 131 C118 126 104 126 96 131 M96 131 l-4 -4" stroke="#241810" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="{{ V.linerOp }}"></path><path d="M135 131 C142 126 156 126 164 131 M164 131 l4 -4" stroke="#241810" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="{{ V.linerOp }}"></path>
-                <path d="M96 129 l-3 -4 M101 127 l-2 -4 M159 127 l2 -4 M164 129 l3 -4" stroke="#241810" stroke-width="1.4" stroke-linecap="round" opacity="{{ V.mascaraOp }}"></path>
-                <path d="M130 134 C127 148 123 154 118 157 C123 160 130 159 134 156" stroke="#d9a97e" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path>
-                <circle cx="118" cy="90" r="4.6" fill="#df7059"></circle><circle cx="117" cy="89" r="1.6" fill="#f4b3a6"></circle><g opacity="{{ V.pim0 }}"></g>
-                <circle cx="118" cy="90" r="4.6" fill="#df7059" opacity="{{ V.pim0 }}"></circle><circle cx="99" cy="151" r="4.6" fill="#df7059" opacity="{{ V.pim1 }}"></circle><circle cx="137" cy="185" r="4.6" fill="#df7059" opacity="{{ V.pim2 }}"></circle>
-                <path d="M114 168 C122 162 128 164 130 167 C132 164 138 162 146 168 C138 172 132 171 130 171 C128 171 122 172 114 168 Z" fill="#c9756f"></path>
-                <path d="M114 168 C124 176 136 176 146 168 C138 173 122 173 114 168 Z" fill="{{ V.lipFill }}" opacity="{{ V.lipOp }}"></path>
-                <path d="M114 168 C122 162 128 164 130 167 C132 164 138 162 146 168 C138 172 132 171 130 171 C128 171 122 172 114 168 Z" fill="{{ V.lipFill }}" opacity="{{ V.lipOp }}"></path>
-                <path d="M114 168 C122 163 128 164 130 167 C132 164 138 163 146 168" stroke="{{ V.lipLinerColor }}" stroke-width="1.5" fill="none" opacity="{{ V.lipLinerOp }}"></path>
-                <path d="M120 170 C126 173 134 173 140 170 C134 172 126 172 120 170 Z" fill="#fff" opacity="{{ V.lipOp }}" filter="url(#gtmSft2)"></path>
-                <path d="M92 127 C110 120 150 120 168 127 L168 135 C150 128 110 128 92 135 Z" fill="{{ V.maskFill }}" opacity="{{ V.maskOp }}"></path>
-                <text x="150" y="150" font-size="15" text-anchor="middle" opacity="{{ V.paintOp }}">{{ V.paintGlyph }}</text>
-                <text x="130" y="248" font-size="22" text-anchor="middle" opacity="{{ V.emblemOp }}">{{ V.emblemGlyph }}</text>
-              </svg>
-              </sc-if>
+              <canvas id="gtm-canvas" width="512" height="576" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1"></canvas>
               <!-- overlays -->
               <sc-if value="{{ target.drag }}" hint-placeholder-val="{{ false }}"><div class="gtm-tool" onPointerDown="{{ target.onDown }}" onPointerMove="{{ target.onMove }}" onPointerUp="{{ target.onUp }}" onPointerLeave="{{ target.onUp }}" style="{{ target.style }}"><span style="{{ target.labelStyle }}">{{ target.label }}</span></div></sc-if>
               <sc-if value="{{ target.tap }}" hint-placeholder-val="{{ false }}"><div onClick="{{ target.onTap }}" style="{{ target.style }}"><span style="{{ target.labelStyle }}">{{ target.label }}</span></div></sc-if>
@@ -192,37 +956,6 @@
             </div>
           </sc-if>
 
-          <sc-if value="{{ isPet }}" hint-placeholder-val="{{ false }}">
-            <div style="position:relative;width:320px;height:360px">
-              <sc-if value="{{ petArt }}" hint-placeholder-val="{{ false }}">
-                <img src="{{ petArtBase }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:1">
-                <sc-for list="{{ petArtLayers }}" as="ly" hint-placeholder-count="0"><img src="{{ ly.src }}" style="{{ ly.style }}"></sc-for>
-              </sc-if>
-              <sc-if value="{{ petProcedural }}" hint-placeholder-val="{{ true }}">
-              <svg viewBox="0 0 260 300" style="width:100%;height:100%">
-                <path d="{{ V.garmentPath }}" fill="{{ V.garmentFill }}"></path>
-                <ellipse cx="70" cy="128" rx="24" ry="44" fill="{{ V.furShade }}"></ellipse><ellipse cx="190" cy="128" rx="24" ry="44" fill="{{ V.furShade }}"></ellipse>
-                <ellipse cx="130" cy="140" rx="72" ry="66" fill="{{ V.hairFill }}"></ellipse>
-                <ellipse cx="130" cy="136" rx="68" ry="62" fill="#8a6a4a" opacity="{{ V.dullOp }}"></ellipse>
-                <ellipse cx="130" cy="128" rx="64" ry="56" fill="url(#gtmGlow)" opacity="{{ V.moistOp }}"></ellipse>
-                <ellipse cx="130" cy="166" rx="38" ry="30" fill="#fbeee0"></ellipse>
-                <ellipse cx="130" cy="146" rx="11" ry="9" fill="#4a3626"></ellipse>
-                <path d="M130 155 L130 166 M130 166 Q121 175 114 168 M130 166 Q139 175 146 168" stroke="#7a5b45" stroke-width="2.6" fill="none" stroke-linecap="round"></path>
-                <circle cx="103" cy="128" r="9" fill="#3a2c20"></circle><circle cx="157" cy="128" r="9" fill="#3a2c20"></circle><circle cx="105" cy="125" r="2.6" fill="#fff"></circle><circle cx="159" cy="125" r="2.6" fill="#fff"></circle>
-                <circle cx="96" cy="120" r="5" fill="#6b4a30" opacity="{{ V.dirt0 }}"></circle><circle cx="150" cy="164" r="6" fill="#6b4a30" opacity="{{ V.dirt1 }}"></circle><circle cx="112" cy="176" r="5" fill="#6b4a30" opacity="{{ V.dirt2 }}"></circle>
-                <ellipse cx="100" cy="150" rx="13" ry="8" fill="{{ V.blushFill }}" opacity="{{ V.blushOp }}"></ellipse><ellipse cx="160" cy="150" rx="13" ry="8" fill="{{ V.blushFill }}" opacity="{{ V.blushOp }}"></ellipse>
-                <rect x="92" y="198" width="76" height="17" rx="8" fill="{{ V.collarFill }}" opacity="{{ V.collarOp }}"></rect>
-                <text x="130" y="120" font-size="18" text-anchor="middle" opacity="{{ V.gemOp }}">{{ V.gemGlyph }}</text>
-                <text x="184" y="96" font-size="24" text-anchor="middle" opacity="{{ V.bowOp }}">{{ V.bowGlyph }}</text>
-                <text x="130" y="132" font-size="22" text-anchor="middle" opacity="{{ V.shadesOp }}">{{ V.shadesGlyph }}</text>
-                <text x="130" y="70" font-size="26" text-anchor="middle" opacity="{{ V.hatOp }}">{{ V.hatGlyph }}</text>
-                <text x="130" y="150" font-size="13" text-anchor="middle" opacity="{{ V.noseOp }}">✨</text>
-              </svg>
-              </sc-if>
-              <sc-if value="{{ target.drag }}" hint-placeholder-val="{{ false }}"><div class="gtm-tool" onPointerDown="{{ target.onDown }}" onPointerMove="{{ target.onMove }}" onPointerUp="{{ target.onUp }}" onPointerLeave="{{ target.onUp }}" style="{{ target.style }}"><span style="{{ target.labelStyle }}">{{ target.label }}</span></div></sc-if>
-              <sc-if value="{{ target.tap }}" hint-placeholder-val="{{ false }}"><div onClick="{{ target.onTap }}" style="{{ target.style }}"><span style="{{ target.labelStyle }}">{{ target.label }}</span></div></sc-if>
-            </div>
-          </sc-if>
           <!-- vanity ledge — masks the paper-doll's hard bottom cut edge; person art only -->
           <sc-if value="{{ footerBar }}" hint-placeholder-val="{{ false }}"><div style="{{ footerBarStyle }}"></div></sc-if>
         </div>
