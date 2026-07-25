@@ -1216,16 +1216,31 @@ const ZONES = {
   },
 };
 
-// The social paper-doll canvas registers features differently from the procedural SVG
-// that ZONES is tuned for (eyes lock at frame 50%,44%; lips sit lower, brows higher,
-// earrings hang at the lobe). These overrides realign the drag/tap hitboxes to the
-// rendered art — applied only when the person art is live; the hero theme (SVG) keeps ZONES.
-const PERSON_ART_ZONES = {
-  brows:{t:32,l:28,w:44,h:7,label:'Tap the brows'},
-  lips:{t:61,l:38,w:24,h:10,label:'Drag over the lips'},
-  ears:{t:48,l:8,w:84,h:14,label:'Tap to add earrings'},
-  cheeks:{t:51,l:22,w:56,h:12,label:'Drag over the cheeks'},
-};
+/* ══ Per-model sprite placement — ONE source of truth ══
+   These three tables used to live inside `paintAvatar` as local consts. They are
+   hoisted because the target hitboxes are now DERIVED from them (see
+   `_artZones`): the "do it here" box and the pixels the tool actually changes
+   have to come out of the same numbers, or they drift. `EYECFG.dx` pulls the eye
+   sprite toward the face centre; `BROWCFG` is {wf: width × eye-width, dx: lateral
+   nudge, dy: height above eye centre}; `EARCFG` is the lobe anchor {lx,rx} in
+   frame-width fractions plus {y} in eye-heights below the eye centre. */
+const EYECFG  = { m1:{s:2.05,dx:0.08}, m2:{s:1.72,dx:0}, m3:{s:1.85,dx:0.22}, m4:{s:1.62,dx:0.15} };
+const EYECFG_D = {s:1.68,dx:0};
+const BROWCFG = { m1:{wf:1.3,dx:0,dy:1.9}, m2:{wf:1.3,dx:0,dy:1.65}, m3:{wf:1.3,dx:0,dy:1.75}, m4:{wf:1.3,dx:0,dy:1.5} };
+const BROWCFG_D = {wf:1.3,dx:0,dy:1.75};
+const EARCFG  = { m1:{lx:0.235,rx:0.765,y:1.55}, m2:{lx:0.20,rx:0.80,y:1.35}, m3:{lx:0.235,rx:0.765,y:1.72}, m4:{lx:0.225,rx:0.775,y:1.35} };
+const EARCFG_D = {lx:0.185,rx:0.815,y:1.35};
+
+/* Touch padding added on every side of a derived hitbox, in % of the frame. Big
+   enough to be a comfortable target and to absorb the gradients' sub-threshold
+   fringe; small enough that the box still reads as "here, not anywhere". */
+const ZONE_PAD = 1.6;
+
+/* Labels are chosen by the tool's MECHANIC, not written into the zone: the old
+   table said "Drag across the eyes" on the eyes zone, but Eyeliner, Mascara and
+   Lip liner are single-tap tools that borrow it (eval §8). */
+const ZONE_NOUN = { face:'the face', brows:'the brows', eyes:'the eyes', cheeks:'the cheeks',
+  contour:'the cheek line', hl:'the cheekbones', lips:'the lips', ears:'the ears', hair:'the hair' };
 
 /* Charged actions a cooperative run needs to finish the staged look: the 11 TA
    steps expanded to their charge keys (wash · moisturize · 3 patches · 3
@@ -1647,7 +1662,90 @@ class Component extends DCLogic {
   hasPersonArt(){ return !!this.genEntry(); }
   // person paper-doll canvas is live (social theme + art present) → use art-aligned hitboxes
   _personArtLive(){ return this.base()==='person'&&this.state.theme==='social'&&this.hasPersonArt(); }
-  _targetZone(base,name){ if(base==='person'&&this._personArtLive()){ const o=PERSON_ART_ZONES[name]; if(o) return o; } return (ZONES[base]||{})[name]; }
+
+  /* ══ Derived target hitboxes (eval F-11) ══
+     ZONES is a single fixed percentage table shared by all four models, tuned for
+     the retired procedural SVG. Measured against the canvas compositor it missed
+     the art on 32 of 56 model×tool combinations — the Highlight box was smaller
+     than the highlight, the brow box sat below the brows, the hair box covered the
+     crown of hair that reaches the shoulders.
+
+     These boxes are instead computed per model from the SAME data `paintAvatar`
+     paints from: the eye landmarks in the art manifest, the packed feature masks
+     (R=hair, G=lips, B=eyes+brows) and the hoisted EYECFG/BROWCFG/EARCFG anchor
+     tables. A hitbox therefore cannot drift from its effect — if the art moves,
+     both move. `tests/glam-art-fidelity.spec.js` asserts containment for every
+     model × tool by diffing real pixels. */
+  _maskBBox(src,ch,thr){ const c=this._mbb||(this._mbb={}); const k=src+'|'+ch+'|'+thr;
+    if(c[k]!==undefined) return c[k];
+    const d=this._data(src); if(!d) return null;              // not decoded yet → no cache, retry next paint
+    const W=d.width,H=d.height,px=d.data; let t=1e9,b=-1,l=1e9,r=-1;
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const i=(y*W+x)*4;
+      if(px[i+ch]/255>thr){ if(y<t)t=y; if(y>b)b=y; if(x<l)l=x; if(x>r)r=x; } }
+    const out = b<0 ? null : {t:t/H*100,b:b/H*100,l:l/W*100,r:r/W*100};
+    c[k]=out; return out; }
+
+  /* AABB of an ellipse with radii (rx,ry) rotated by θ — the contour blob is
+     rotated, so an unrotated rx/ry box under-covers it at the outer corner. */
+  _rotHalf(rx,ry,th){ const c=Math.cos(th),s=Math.sin(th);
+    return { x:Math.sqrt(rx*rx*c*c+ry*ry*s*s), y:Math.sqrt(rx*rx*s*s+ry*ry*c*c) }; }
+
+  _artZones(){ const E=this.genEntry(); if(!E) return null;
+    const key=this.state.model+'|'+this.state.ed.hairShape;
+    const c=this._zc||(this._zc={}); if(c.key===key&&c.z) return c.z;
+    const G=this.gen(), f=E.face, m=this.state.model;
+    // landmark units, all in % of the frame
+    const cy=(f.eyeL.y+f.eyeR.y)/2*100, lxp=f.eyeL.x*100, rxp=f.eyeR.x*100;
+    const ew=(f.eyeL.w+f.eyeR.w)/2*100, eh=(f.eyeL.h+f.eyeR.h)/2*100;
+    const fr=G.frame||{w:512,h:576}, hw=fr.h/fr.w;     // px→% conversion when a height drives a width
+    const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+    const box=(t,b,l,r,label)=>{ const T=clamp(t-ZONE_PAD,0,100), B=clamp(b+ZONE_PAD,0,100),
+        L=clamp(l-ZONE_PAD,0,100), R=clamp(r+ZONE_PAD,0,100);
+      return { t:+T.toFixed(2), l:+L.toFixed(2), w:+(R-L).toFixed(2), h:+(B-T).toFixed(2), label }; };
+    const z={};
+    // face — the wash + moisturize blob envelope (cy+0.85eh ± 3.85eh ∪ cy−0.4eh ± 2.6eh)
+    z.face   = box(cy-3.0*eh, cy+4.7*eh, 50-2.35*ew, 50+2.35*ew, ZONE_NOUN.face);
+    // cheeks — the blush blob pair (cy+1.85eh, radii 0.95ew × 0.9eh)
+    z.cheeks = box(cy+0.95*eh, cy+2.75*eh, lxp-0.95*ew, rxp+0.95*ew, ZONE_NOUN.cheeks);
+    // contour — a rotated blob pair, so the AABB needs the rotation
+    { const h=this._rotHalf(1.05*ew,0.38*eh,0.92);
+      z.contour = box(cy+1.62*eh-h.y, cy+1.62*eh+h.y, lxp-0.72*ew-h.x, rxp+0.72*ew+h.x, ZONE_NOUN.contour); }
+    // highlight — eye pair (cy+1.22eh, 0.75ew × 0.6eh) ∪ the centre stripe (cy+1.0eh, 0.35ew × 1.4eh)
+    z.hl     = box(cy-0.4*eh, cy+2.4*eh, lxp-1.35*ew, rxp+1.35*ew, ZONE_NOUN.hl);
+    // eyes — the sprite stack (eyeball, lashes, winged liner) and the lid wash reach
+    // well outside the base render's own eye pixels, so this is the sprite envelope.
+    z.eyes   = box(cy-1.5*eh, cy+1.25*eh, lxp-2.0*ew, rxp+2.0*ew, ZONE_NOUN.eyes);
+    // brows — straight off BROWCFG and the brow sprite's own aspect
+    { const B=BROWCFG[m]||BROWCFG_D, set=(G.brows||{})[m];
+      const asp=((((set||{}).bushy||{}).L)||{}).aspect||2.4;
+      const bw=B.wf*2*ew, bh=bw/asp*hw, by=cy-B.dy*eh;
+      z.brows = box(by-bh/2, by+bh/2, lxp-B.dx*ew-bw/2, rxp+B.dx*ew+bw/2, ZONE_NOUN.brows); }
+    // earrings — straight off EARCFG and the earring sprite's own aspect
+    { const A=EARCFG[m]||EARCFG_D, er=(G.earrings||{}).ring||{aspect:1};
+      const erH=eh*1.15*0.9, erW=erH*(er.aspect||1)*hw, ty=cy+A.y*eh;
+      z.ears = box(ty, ty+erH, A.lx*100-erW/2, A.rx*100+erW/2, ZONE_NOUN.ears); }
+    // lips + hair — the recolour masks themselves, so the box IS the recoloured pixels
+    const lm=this._maskBBox(E.mask,1,0.35), hm=this._maskBBox(E.mask,0,0.3);
+    if(lm) z.lips = box(lm.t,lm.b,lm.l,lm.r, ZONE_NOUN.lips);
+    if(hm) z.hair = box(hm.t,hm.b,hm.l,hm.r, ZONE_NOUN.hair);
+    // the masks decode asynchronously — don't freeze a partial table
+    if(lm&&hm){ c.key=key; c.z=z; }
+    return z; }
+
+  /* The verb belongs to the MECHANIC (paint = drag, everything else = tap), not
+     to the zone: eyeliner/mascara/lip liner are single-tap tools that share the
+     eyes/lips zones with drag tools (eval §8 "target labels mismatch"). */
+  _targetZone(base,name,mech){ let z;
+    if(base==='person'&&this._personArtLive()){ const A=this._artZones(); if(A&&A[name]) z=A[name]; }
+    if(!z) z=(ZONES[base]||{})[name];
+    if(!z) return null;
+    // only zones this map names get a mechanic-derived label; anything else (the
+    // hero theme's `cheek`/`chest`) keeps the label ZONES gave it.
+    const noun=(base==='person'&&this._personArtLive())?ZONE_NOUN[name]:null;
+    if(!noun) return z;
+    const verb = mech==='paint' ? 'Drag over ' : 'Tap ';
+    return Object.assign({}, z, { label: verb+noun });
+  }
   setHairShape(st){ this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); ed.hairShape=st; return {ed}; }); }
 
   _img(src){ const c=this._imgc||(this._imgc={}); if(c[src]) return c[src];
@@ -1752,12 +1850,73 @@ class Component extends DCLogic {
     for(let i=idx.length-1;i>0;i--){ const j=(rnd()*(i+1))|0; const t=idx[i]; idx[i]=idx[j]; idx[j]=t; }
     const shapes=['star','heart'];   // random patch shape per chosen spot, stable within a play
     return idx.slice(0,3).map(i=>({x:pool[i].x, y:pool[i].y, shape:shapes[(rnd()*2)|0]})); }
+  /* The blemish pool is seeded per MODEL but the hair mask is per STYLE, so a pool
+     point that is bare skin under the default bob can sit under the hair of another
+     style — measured on 10 of the 28 model×style combinations, which is the eval's
+     "on M4 one of three lands in the hair". A spot drawn under hair is an
+     unfindable target: the pulsing ring is on top of the hair with nothing beneath it.
+
+     Filtered against the union of EVERY style's hair mask, not just the current
+     one, so a spot never moves when the learner restyles mid-play. Sampled one
+     pixel at a time rather than through `_data`, which would retain seven 1.2 MB
+     ImageData buffers per model for 56 reads. Falls back to the raw pool if fewer
+     than three points survive — the game must always offer three targets. */
+  _skinPool(model){ const c=this._spc||(this._spc={}); if(c[model]) return c[model];
+    const M=(this.gen().models||{})[model]; if(!M) return null;
+    const pool=M.spotPool||[], keys=Object.keys(M.styles||{});
+    if(pool.length<3||!keys.length) return pool;
+    const scratch=this._scr||(this._scr=document.createElement('canvas'));
+    const bad=new Set(); let pending=false;
+    for(const k of keys){ const rec=this._img(M.styles[k].mask);      // also kicks the decodes
+      if(!rec.ok){ pending=true; continue; }
+      const im=rec.img, W=im.naturalWidth||im.width, H=im.naturalHeight||im.height;
+      scratch.width=W; scratch.height=H;
+      const cx=scratch.getContext('2d',{willReadFrequently:true});
+      cx.clearRect(0,0,W,H); cx.drawImage(im,0,0);
+      pool.forEach((p,i)=>{ if(bad.has(i)) return;
+        const x=Math.min(W-1,Math.max(0,Math.round(p.x*W))), y=Math.min(H-1,Math.max(0,Math.round(p.y*H)));
+        let d; try{ d=cx.getImageData(x,y,1,1).data; }catch(e){ pending=true; return; }
+        if(d[0]/255>0.3) bad.add(i); }); }
+    if(pending) return null;                    // don't freeze a partial answer
+    const ok=pool.filter((_,i)=>!bad.has(i));
+    const out=ok.length>=3?ok:pool; c[model]=out; return out; }
+
   _spots(E){ const fr=this.gen().frame||{w:512,h:576}; const W=fr.w,H=fr.h; const f=E.face;
     const lx=f.eyeL.x*W,ly=f.eyeL.y*H,lw=f.eyeL.w*W,lh=f.eyeL.h*H, rx=f.eyeR.x*W,ry=f.eyeR.y*H,rw=f.eyeR.w*W,rh=f.eyeR.h*H, cxm=(lx+rx)/2,cym=(ly+ry)/2, r=lw*0.4;
-    const pool=((this.gen().models||{})[this.state.model]||{}).spotPool;
+    const pool=this._skinPool(this.state.model)||((this.gen().models||{})[this.state.model]||{}).spotPool;
     if(pool&&pool.length>=3) return this._pickSpots(pool).map(p=>({x:p.x*W,y:p.y*H,r,shape:p.shape}));
     return [ {x:cxm+lw*0.7,y:cym-lh*2.2,r,shape:'star'}, {x:lx-lw*0.5,y:ly+lh*2.7,r,shape:'heart'}, {x:rx+rw*0.45,y:ry+lh*3.4,r,shape:'star'} ]; }
   _spotPct(E){ const fr=this.gen().frame||{w:512,h:576}; return this._spots(E).map(s=>({l:s.x/fr.w*100,t:s.y/fr.h*100})); }
+
+  /* ══ Blemish contrast (eval F-16) ══
+     The spot was one fixed colour (#d06a54 @ .72) on every model. Measured against
+     the skin immediately around it, all twelve spots came in at 1.06–1.67 : 1 — the
+     eval flagged m3/m4, but the numbers say the "find the spots" target was
+     low-contrast on ALL FOUR models, m1's worst spot included. Registration was
+     never the problem (the rings do sit on the drawn spots); value was.
+
+     So the ink is picked against the LOCAL skin luminance, sampled from the base
+     render just outside the spot. Skin here spans L≈0.15–0.33, and no single hue
+     clears 3:1 across that range: light skin needs a spot darker than it, dark skin
+     needs one lighter. Both branches stay in the blemish register (deep plum-red /
+     warm inflamed highlight) rather than becoming a sticker. */
+  _relLum(r,g,b){ const f=c=>{ c/=255; return c<=0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055,2.4); };
+    return 0.2126*f(r)+0.7152*f(g)+0.0722*f(b); }
+  _spotInk(E,sp){
+    const DARK={ halo:'#c0485c', core:'#4a1520', rim:'#2b0a12', gloss:'#f6b5a6' };  // for LIGHT skin
+    const LIGHT={ halo:'#ff9f7c', core:'#ffe0cf', rim:'#c07a5f', gloss:'#fff6ee' }; // for DARK skin
+    const d=this._data(E.base); if(!d) return DARK;
+    const W=d.width,H=d.height,px=d.data;
+    // ring-average the skin just outside the spot, so a lash or shadow under the
+    // centre pixel cannot decide the branch on its own
+    let r=0,g=0,b=0,n=0;
+    for(let a=0;a<8;a++){ const th=a*Math.PI/4;
+      const x=Math.round(sp.x+Math.cos(th)*sp.r*2.4), y=Math.round(sp.y+Math.sin(th)*sp.r*2.4);
+      if(x<0||y<0||x>=W||y>=H) continue;
+      const i=(y*W+x)*4; if(px[i+3]<40) continue;
+      r+=px[i]; g+=px[i+1]; b+=px[i+2]; n++; }
+    if(!n) return DARK;
+    return this._relLum(r/n,g/n,b/n) >= 0.20 ? DARK : LIGHT; }
   _lipLinerCanvas(E,hex){ const key='ll|'+this.state.model+'|'+this.state.ed.hairShape+'|'+hex;
     const c=this._llc||(this._llc={}); if(c.key===key) return c.cv;
     const md=this._data(E.mask), bd=this._data(E.base); if(!md||!bd) return null;
@@ -1765,8 +1924,15 @@ class Component extends DCLogic {
     const [r,g,bl]=this._hex(hex); const dr=(r*0.5)|0,dg=(g*0.5)|0,db=(bl*0.5)|0;
     const out=document.createElement('canvas'); out.width=W; out.height=H;
     const octx=out.getContext('2d'); const od=octx.createImageData(W,H), o=od.data;
+    // a 1-px trace of the lip mask changed 0.055–0.086 % of the canvas — the faintest
+    // effect in the game. Testing the 2-px neighbourhood draws a 2-px liner instead,
+    // which is what a liner looks like at this frame size anyway.
     const G=i=>m[i*4+1]/255;
-    for(let y=1;y<H-1;y++) for(let x=1;x<W-1;x++){ const i=y*W+x; if(G(i)>0.4 && (G(i-1)<0.25||G(i+1)<0.25||G(i-W)<0.25||G(i+W)<0.25)){
+    const edge=(i,x,y)=>{ for(let k=1;k<=2;k++){
+        if(x-k<0||x+k>=W||y-k<0||y+k>=H) return true;
+        if(G(i-k)<0.25||G(i+k)<0.25||G(i-k*W)<0.25||G(i+k*W)<0.25) return true; }
+      return false; };
+    for(let y=1;y<H-1;y++) for(let x=1;x<W-1;x++){ const i=y*W+x; if(G(i)>0.4 && edge(i,x,y)){
       const j=i*4; o[j]=dr;o[j+1]=dg;o[j+2]=db; o[j+3]=(b[j+3]/255)*235; } }
     octx.putImageData(od,0,0); c.key=key; c.cv=out; return out; }
   // Recolour a brow sprite to the hair hue (tint × luminance): keeps the ink's darkest core dark
@@ -1806,7 +1972,14 @@ class Component extends DCLogic {
     const eyes=[[lx,ly,lw,lh,-1],[rx,ry,rw,rh,1]];
     const spots=this._spots(E);
     (ed.pimples||[]).forEach((st,i)=>{ const sp=spots[i]; if(!sp) return;
-      if(st===0){ this._blob(ctx,sp.x,sp.y,sp.r,sp.r,0,'#d06a54',0.72,'source-over'); this._blob(ctx,sp.x-sp.r*0.22,sp.y-sp.r*0.22,sp.r*0.4,sp.r*0.4,0,'#f0b6a4',0.55,'source-over'); }
+      if(st===0){ const ink=this._spotInk(E,sp);
+        this._blob(ctx,sp.x,sp.y,sp.r*1.2,sp.r*1.2,0,ink.halo,0.5,'source-over');   // soft inflammation
+        ctx.save();                                                                  // crisp core + rim: the shape reads even where value is close
+        ctx.beginPath(); ctx.arc(sp.x,sp.y,sp.r*0.62,0,6.2832);
+        ctx.fillStyle=ink.core; ctx.fill();
+        ctx.lineWidth=Math.max(1.1,sp.r*0.20); ctx.strokeStyle=ink.rim; ctx.stroke();
+        ctx.restore();
+        this._blob(ctx,sp.x-sp.r*0.26,sp.y-sp.r*0.26,sp.r*0.22,sp.r*0.22,0,ink.gloss,0.55,'source-over'); }
       else if(st===1){ const meta=(this.gen().stickers||{})[sp.shape]; if(meta){ const rec=this._img(meta.src); if(rec.ok){ const ph=sp.r*3.0, pw=ph*(meta.aspect||1); ctx.drawImage(rec.img, sp.x-pw/2, sp.y-ph/2, pw, ph); } } } });
     if(cov('wash')<1) this._blob(ctx,cxm,cym+lh*0.85,lw*2.35,lh*3.85,0,'#786654',0.24,'multiply');
     if(cov('moist')>0) this._blob(ctx,cxm,cym-lh*0.4,lw*2.1,lh*2.6,0,'#fff6e0',cov('moist')*0.4,'screen');
@@ -1816,7 +1989,10 @@ class Component extends DCLogic {
     if(ed.outfit){ const st=SHIRT_TINT[ed.outfit]; if(st){ const scv=this._shirtCanvas(E,st); if(scv) ctx.drawImage(scv,0,0,W,H); } }
     const hc=col('hair');
     if(hc && hc!==E.native){ const hcv=this._hairCanvas(E,hc); if(hcv) ctx.drawImage(hcv,0,0,W,H); }
-    if(cov('contour')>0) for(const e of eyes) this._blob(ctx,e[0]+e[4]*e[2]*0.72,e[1]+e[3]*1.62,e[2]*1.05,e[3]*0.38,-e[4]*0.92,'#a37f66',cov('contour')*0.27,'multiply',true);
+    // contour changed 0.12–0.25 % of the canvas at α .27 — measurably the faintest tool
+    // in the palette (Wash 5.8 %, Blush 1.3 %). Deeper and a shade taller so a spent
+    // action shows on the doll; still a soft multiply, so it reads as shading not paint.
+    if(cov('contour')>0) for(const e of eyes) this._blob(ctx,e[0]+e[4]*e[2]*0.72,e[1]+e[3]*1.62,e[2]*1.05,e[3]*0.46,-e[4]*0.92,'#8f6a51',cov('contour')*0.42,'multiply',true);
     if(cov('hl')>0){ for(const e of eyes) this._blob(ctx,e[0]+e[4]*e[2]*0.6,e[1]+e[3]*1.22,e[2]*0.75,e[3]*0.6,0,'#fff6d8',cov('hl')*0.5,'screen'); this._blob(ctx,cxm,cym+lh*1.0,lw*0.35,lh*1.4,0,'#fff6d8',cov('hl')*0.4,'screen'); }
     if(cov('blush')>0){ const bc=col('blush')||'#f28ba0'; for(const e of eyes) this._blob(ctx,e[0],e[1]+e[3]*1.85,e[2]*0.95,e[3]*0.9,0,bc,cov('blush')*0.5,'multiply'); }
     const ecv=this._eyesCanvas(E); if(ecv) ctx.drawImage(ecv,0,0,W,H);   // base eyes+brows; brows kept, eyes replaced below
@@ -1826,13 +2002,13 @@ class Component extends DCLogic {
     // iris-centered frame (cx=cy=0.5) so states stack with no double-edge. natural/glam mirror
     // per socket; eyeliner ships a real L/R pair (wing is directional → no mirror).
     // Per-model size + inward nudge (dx pulls the eye toward centre; m4 was too far apart). =====
-    const EYECFG=({m1:{s:2.05,dx:0.08},m2:{s:1.72,dx:0},m3:{s:1.85,dx:0.22},m4:{s:1.62,dx:0.15}})[this.state.model]||{s:1.68,dx:0};
-    const ex=(e)=>e[0]-e[4]*EYECFG.dx*e[2];        // shifted eye-centre x (toward face centre)
+    const EC=EYECFG[this.state.model]||EYECFG_D;
+    const ex=(e)=>e[0]-e[4]*EC.dx*e[2];            // shifted eye-centre x (toward face centre)
     const eyeSet=this.gen().eyes||{};
     if(eyeSet.natural){
       const mascara=cov('mascara')>=1, liner=cov('liner')>=1;
       const drawSprite=(meta,e,mirror)=>{ if(!meta) return; const im=this._img(meta.src); if(!im||!im.ok) return;
-        const [x,y,w,h,o]=e, dw=EYECFG.s*(2*w), dh=dw/meta.aspect;
+        const [x,y,w,h,o]=e, dw=EC.s*(2*w), dh=dw/meta.aspect;
         ctx.save(); ctx.translate(ex(e),y); if(mirror&&o<0) ctx.scale(-1,1);
         ctx.drawImage(im.img,-meta.cx*dw,-meta.cy*dh,dw,dh); ctx.restore(); };
       if(cov('shadow')>0){ const sc=col('shadow')||'#a06cc9', scDark=this.shade(this.shade(sc)), sa=cov('shadow');   // eyeshadow on the lid, behind the lashes — richer/deeper finish
@@ -1861,14 +2037,14 @@ class Component extends DCLogic {
     const browSet=(this.gen().brows||{})[this.state.model];
     if(browSet){
       const bt=browSet[cov('pencil')>=1?'shaped':(cov('brows')>=1?'cleaned':'bushy')]||browSet.bushy;
-      const BROWCFG=({m1:{wf:1.3,dx:0,dy:1.9},m2:{wf:1.3,dx:0,dy:1.65},m3:{wf:1.3,dx:0,dy:1.75},m4:{wf:1.3,dx:0,dy:1.5}})[this.state.model]||{wf:1.3,dx:0,dy:1.75};
+      const BC=BROWCFG[this.state.model]||BROWCFG_D;
       // brows default-MATCH the hair colour (and follow a recolour). tint × luminance keeps the
       // ink's own shading + outline while shifting hue. HAIRHEX mirrors the hair-colour swatches.
       const HAIRHEX={brunette:'#5b4636',blonde:'#e0b064',copper:'#c8712c',berry:'#a24a8f',flame:'#e5533b',heroblue:'#2a6fdb',silver:'#c7cdd6'};
       const browHex=HAIRHEX[col('hair')||E.native]||'#5b4636';
       if(bt) for(const e of eyes){ const [x,y,w,h,o]=e, meta=bt[o>0?'R':'L']; if(!meta) continue;
         const tc=this._browTint(meta.src,browHex); if(!tc) continue;
-        const bw=BROWCFG.wf*(2*w), bh=bw/meta.aspect, bx=x+o*BROWCFG.dx*w, by=y-BROWCFG.dy*h;
+        const bw=BC.wf*(2*w), bh=bw/meta.aspect, bx=x+o*BC.dx*w, by=y-BC.dy*h;
         ctx.drawImage(tc, bx-bw/2, by-bh/2, bw, bh); }
     }
     // eyeliner + mascara are sprite states now (drawn with the eyes above), not procedural.
@@ -1876,7 +2052,7 @@ class Component extends DCLogic {
     if(cov('lipliner')>=1){ const llv=this._lipLinerCanvas(E,col('lipliner')||'#b23a56'); if(llv) ctx.drawImage(llv,0,0,W,H); }
     // earrings — design sprite at each lobe; per-model lobe anchors + size (user-calibrated)
     const ek=gl('ear'); if(ek){ const er=(this.gen().earrings||{})[ek]; if(er){ const ei=this._img(er.src); if(ei.ok){
-      const EA=({m1:{lx:0.235,rx:0.765,y:1.55},m2:{lx:0.20,rx:0.80,y:1.35},m3:{lx:0.235,rx:0.765,y:1.72},m4:{lx:0.225,rx:0.775,y:1.35}})[this.state.model]||{lx:0.185,rx:0.815,y:1.35};
+      const EA=EARCFG[this.state.model]||EARCFG_D;
       const eh=lh*1.15*0.9, ew=eh*er.aspect, ely=cym+lh*EA.y;                       // −10% size
       for(const elx of [W*EA.lx, W*EA.rx]) ctx.drawImage(ei.img, elx-ew/2, ely, ew, eh); } } }
   }
@@ -2059,9 +2235,12 @@ class Component extends DCLogic {
         else { const allTreated=s.ed.pimples.every(v=>v>=1); if(allTreated){ s.ed.pimples.forEach((st,i)=>{ if(st===1&&positions[i]) pim.push({ onClick:()=>this.concealOne(i), style:'top:'+positions[i].t+'%;left:'+positions[i].l+'%;'+ring('var(--sage-600)','rgba(106,118,89,.16)') }); }); } else lockMsg='🔒 Patch all the spots first'; }
         const lockStyle='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:11px;font-weight:800;color:var(--sage-700);background:#fff;border-radius:8px;padding:4px 10px;box-shadow:var(--shadow-sm);z-index:61;white-space:nowrap';
         target={ drag:false,tap:false,pop:true, pimples:pim, style:'', label:lockMsg, labelStyle: lockMsg?lockStyle:'display:none' };
-      } else { const z=this._targetZone(base,t.zone); if(z){ const box='position:absolute;top:'+z.t+'%;left:'+z.l+'%;width:'+z.w+'%;height:'+z.h+'%;border:2.5px dashed '+SAGE+';border-radius:12px;background:rgba(106,118,89,.10);display:flex;align-items:center;justify-content:center;cursor:'+(t.mech==='paint'?'grab':'pointer')+';z-index:60;animation:gtm-target 1.4s var(--ease-standard) infinite;padding:0';
+      } else { const z=this._targetZone(base,t.zone,t.mech); if(z){ const box='position:absolute;top:'+z.t+'%;left:'+z.l+'%;width:'+z.w+'%;height:'+z.h+'%;border:2.5px dashed '+SAGE+';border-radius:12px;background:rgba(106,118,89,.10);display:flex;align-items:center;justify-content:center;cursor:'+(t.mech==='paint'?'grab':'pointer')+';z-index:60;animation:gtm-target 1.4s var(--ease-standard) infinite;padding:0';
         const covPct=Math.round((s.ed.cov[t.slot]||0)*100);
-        const lbl=t.mech==='paint'?(covPct>0?('Keep painting… '+covPct+'%'):z.label):z.label;
+        // "Keep painting… 100%" told the child to keep going on a finished step (eval §8).
+        const lbl=t.mech!=='paint' ? z.label
+          : covPct>=100 ? 'All done ✓'
+          : covPct>0 ? ('Keep painting… '+covPct+'%') : z.label;
         if(t.mech==='paint') target={ drag:true,tap:false,pop:false, style:box, label:lbl, labelStyle:lab, onDown:e=>this.pDown(e), onMove:e=>this.pMove(e), onUp:()=>this.pUp() };
         else target={ drag:false,tap:true,pop:false, style:box, label:z.label, labelStyle:lab, onTap:()=>this.tapApply() };
       } }
@@ -2115,9 +2294,19 @@ class Component extends DCLogic {
       stageStyle:'flex:1;min-width:300px;position:relative;display:flex;align-items:'+(personArtLive?'flex-end':'center')+';justify-content:center;background:var(--surface-card);border:1px solid var(--border-default);border-radius:16px;padding:12px;overflow:hidden'+(personArtLive?';max-height:670px':'')+(stageBg?';background-image:url("'+stageBg+'");background-size:cover;background-position:center':''),
       toolsColStyle,
       footerBar: personArtLive,
-      // warm wood vanity ledge across the stage floor: transparent above → a bright front-lip
-      // catch → opaque counter body, so the model's straight bottom cut disappears behind it.
-      footerBarStyle:'position:absolute;left:0;right:0;bottom:0;height:16%;z-index:4;pointer-events:none;background:linear-gradient(to bottom,rgba(210,190,156,0) 0%,rgba(210,190,156,0) 20%,rgba(255,250,240,.72) 24%,#d3bd93 31%,#c1a676 100%);box-shadow:0 -8px 16px -8px rgba(96,74,48,.34)',
+      /* Warm wood vanity ledge across the stage floor: transparent above → a bright
+         front-lip catch → opaque counter body, so the model's straight bottom cut
+         disappears behind it.
+         HEIGHT (eval F-10): this was `16%` of the stage panel — 99 px on desktop,
+         whose opaque body began 24 px down at page-Y 689, while the shirt art paints
+         at 728–752. All four "Shirt color" tools therefore charged an action and
+         changed nothing the child could see. The shirt occupies the bottom 6.6 %
+         (m1) to 21 % (m2) of the frame, so the ledge has to be a counter EDGE, not a
+         counter: 30 px is enough to bury the hard cut at the canvas bottom while
+         leaving the shirt above it. Fixed px, not %, because the whole point is a
+         constant relationship to the canvas's bottom edge, which the stage panel's
+         height does not track. */
+      footerBarStyle:'position:absolute;left:0;right:0;bottom:0;height:30px;z-index:4;pointer-events:none;background:linear-gradient(to bottom,rgba(210,190,156,0) 0%,rgba(210,190,156,0) 14%,rgba(255,250,240,.72) 22%,#d3bd93 34%,#c1a676 100%);box-shadow:0 -7px 14px -7px rgba(96,74,48,.40)',
       artModels:this.artModelList(), artModelPicker:base==='person'&&this.artModelList().length>1,
       personArt:base==='person'&&s.theme==='social'&&this.hasPersonArt(), personProcedural:base!=='person'||!(s.theme==='social'&&this.hasPersonArt()),
       petArt:base==='pet'&&!!this.artBaseSrc('pet'), petProcedural:base!=='pet'||!this.artBaseSrc('pet'),

@@ -1,20 +1,22 @@
 # Glam Team Makeover — Tier 1 build report
 
 **Branch:** `feat/glam-turn-taking-redesign` · **File under change:** `apps/games/glam-team-makeover/index.html`
-**Specs added:** `apps/games/tests/glam-tt-scoring.spec.js`, `apps/games/tests/glam-tt-story.spec.js`, `apps/games/tests/glam-tt-game.spec.js`
+**Specs added:** `apps/games/tests/glam-tt-scoring.spec.js`, `apps/games/tests/glam-tt-story.spec.js`, `apps/games/tests/glam-tt-game.spec.js`, `apps/games/tests/glam-art-fidelity.spec.js`
 **Spec updated:** `apps/games/tests/glam-team-makeover.spec.js`
 **Authority:** `docs/glam-team-makeover-redesign-hardened-claims.md` (AC-1…AC-27) — wins over spec prose.
-**Date:** 2026-07-24 (pass 2)
+**Date:** 2026-07-25 (pass 3)
 
-> **Status: Tier 1 landed and played.** Pass 1 built the measurement spine (`window.GlamTT`)
+> **Status: Tier 1 landed, played, and swept.** Pass 1 built the measurement spine (`window.GlamTT`)
 > and the story pool (`window.GlamStory`) and verified them in isolation; the game's screens
 > still ran the pre-redesign turn loop. **Pass 2 wired the screens to the engine** and added
 > `tests/glam-tt-game.spec.js`, which drives the criteria through real buttons on the real
-> game rather than through the engine's API. Every row in §2 below now names a test that
-> reproduces it; nothing is inferred from reading code. What is still outstanding is listed,
-> unhedged, in §5 — principally the art-fidelity sweep.
+> game rather than through the engine's API. **Pass 3 closed the visual-fidelity sweep (§3.9)** —
+> the item pass 2 listed as the main outstanding one — and added
+> `tests/glam-art-fidelity.spec.js`, which settles it by measuring pixels rather than by
+> eyeballing screenshots. Every row in §2 below names a test that reproduces it; nothing is
+> inferred from reading code. What is still outstanding is listed, unhedged, in §5.
 
-**Test status:** `npx playwright test` → **237 passed** (chromium · firefox · webkit), 0 failed.
+**Test status:** `npx playwright test` → **252 passed** (chromium · firefox · webkit), 0 failed.
 
 ---
 
@@ -316,25 +318,83 @@ mechanical check (`tierLinesClaimingCompletion()`, asserted empty) is what backs
 
 ---
 
+## 4b. The visual-fidelity sweep (§3.9) — pass 3, measured
+
+Spec §3.9 is the one Tier-1 item that cannot be settled by reading code: it is a claim about
+pixels. So it was settled by measuring them. `tests/glam-art-fidelity.spec.js` (5 tests × 3
+browsers) diffs the real compositor's output on the real page; every number below is that
+harness's, before and after.
+
+| §3.9 item | Before (measured) | After (measured) | Test |
+|---|---|---|---|
+| **Sprite layers exactly aligned** | **32 of 56** model×tool combinations painted *outside* their own target box | **0 of 56** | `F-11 · every tool paints inside its own target box…` |
+| **"Shirt color" behind the vanity ledge** (F-10) | m1/m3/m4: **0 %** of the shirt on screen — the ledge's opaque body began at page-Y 689, the shirt paints at 728–752 | 25 %/38 %/46 % of shirt pixels above the ledge line (m2 32 %), on desktop, tablet and phone alike; the ledge still covers the canvas's bottom cut | `F-10 · a shirt colour is visible above the vanity ledge…` |
+| **Blemish contrast** (F-16) | **1.06–1.67 : 1** on all twelve spots | **3.18–6.82 : 1** on all twelve | `F-16 · every blemish clears 3:1 contrast…` |
+| **Misplacement across steps & models** | **10 of 28** model×hairstyle combinations could seed a blemish *under the hair* | **0 of 28** | `F-16b · no seeded blemish lands under the hair…` |
+| **Near-invisible tools** | Contour 0.12–0.25 % of canvas, Lip liner 0.055–0.086 % | Contour 0.43–0.65 %, Lip liner 0.115–0.173 % | measured by the same harness |
+| **Target labels mismatch mechanic** | eyes/lips zones said "Drag across…" for the single-tap Eyeliner, Mascara and Lip liner | verb comes from the tool's mechanic | `target labels name the tool's mechanic…` |
+| **"Keep painting… 100 %"** on a finished step | told the child to keep going | `All done ✓` | same test |
+| Actions-left meter · hairstyle button names · phone overflow · 8 console errors | — | done in passes 1–2 | see §1.3, §5 |
+
+**How the alignment fix works, and why it cannot rot.** `ZONES` was a single fixed percentage
+table shared by all four models, tuned for the procedural SVG the canvas compositor replaced.
+The hitboxes are now *derived per model from the same data `paintAvatar` paints from* — the eye
+landmarks in the art manifest, the packed feature masks (R = hair, G = lips, B = eyes + brows)
+and the `EYECFG`/`BROWCFG`/`EARCFG` anchor tables, which were hoisted out of `paintAvatar` so
+painter and hitbox read one source. A box therefore cannot drift from its effect: if the art
+moves, both move. The spec asserts containment for all 56 combinations, so a future art
+regeneration that shifts a feature fails the build rather than silently mis-registering the
+"do it here" box.
+
+**Three things the measurements corrected in the eval's own account:**
+
+1. The eval reported blemish contrast as a **m3/m4** problem. Measured, **all twelve spots on
+   all four models** came in between 1.06 and 1.67 : 1 — and the single worst reading in the
+   set, 1.06 : 1, was on **m1**, one of the two models the eval did not flag. The fix picks the
+   ink against the local skin luminance sampled from the base render, because no single hue
+   clears 3 : 1 across a skin range of L ≈ 0.15–0.33.
+2. The eval reported "on M4 one of three [blemishes] lands in the hair" as a one-off. It is
+   **systematic**: the pool is seeded per *model*, the hair mask is per *hairstyle*, and 10 of
+   the 28 model×style combinations had at least one pool point under hair.
+3. The eval's F-11 framing was "a single fixed rectangle table cannot fit four
+   differently-proportioned faces". The manifest says the faces are registered *identically*
+   (both eyes at x = 0.37/0.63, y ≈ 0.44 on every model) and it is the eye **size** that varies
+   by up to 22 %. The table's real failure was being tuned for the retired SVG — which is why
+   it missed on all four models at once, not on three out of four.
+
+**Deliberate trade-off, recorded.** The vanity ledge went from `height:16%` of the stage panel
+(99 px on desktop) to a fixed `30px`. It is now a counter *edge* rather than a counter. Fixed
+pixels, not a percentage, because the whole point is a constant relationship to the canvas's
+bottom edge, which the stage panel's height does not track — that is what makes the shirt
+visible at 1440, 820 and 390 px wide alike. If the salon art is ever reframed so the shirt sits
+higher, the ledge can grow again; the spec will say so.
+
+---
+
 ## 5. Not done yet
 
-Tier 1's clinical and gameplay core is landed and played. What remains is the art-fidelity
-sweep and a small amount of cleanup — recorded here rather than quietly dropped.
+Tier 1's clinical and gameplay core is landed and played, and the art-fidelity sweep is closed
+(§4b). What remains is recorded here rather than quietly dropped.
 
-1. **Visual-fidelity sweep (§3.9) — the main outstanding item.** Per spec §7 this is the item to
-   treat as its own pass if it balloons, and it did. **Done in this build:** the 8 load-time
-   console errors (pass 1); the **"Actions left" meter, which filled backwards** — it filled with
-   actions *spent* while labelled "left", and now fills with actions *remaining*; the **seven
-   unlabelled hairstyle buttons**, which rendered a number and no name and now carry their names
-   (Buzz · Tousled · Long bob · Bob · Spiky · Cropped · Pixie); the **phone-width horizontal
-   overflow** (the desktop-sized header pushed ~73 px of sideways scroll at 390 px — now 0 px of
-   overflow at 390/820/1440). **Still outstanding:** sprite-layer alignment across 4 models × all
-   steps, malformed colorations and clipping, "Shirt color" sitting behind the vanity ledge, and
-   blemish ring contrast. None of these affect a score.
+1. **Visual-fidelity sweep (§3.9) — closed in pass 3.** Full before/after measurements are in
+   §4b. **Done across the three passes:** the 8 load-time console errors; the **"Actions left"
+   meter, which filled backwards**; the **seven unlabelled hairstyle buttons** (now Buzz ·
+   Tousled · Long bob · Bob · Spiky · Cropped · Pixie); the **phone-width horizontal overflow**;
+   **sprite-layer alignment** (32 of 56 model×tool combinations painted outside their box → 0);
+   **"Shirt color" behind the vanity ledge**; **blemish contrast** (1.06–1.67 : 1 → 3.18–6.82 : 1);
+   **blemishes seeded under the hair** (10 of 28 model×style combinations → 0); the two
+   near-invisible tools (Contour, Lip liner); the mechanic/label mismatch; and "Keep painting…
+   100 %" on a finished step. None of these affect a score — they affect whether a spent action
+   shows the child a result, and whether the "do it here" box points at the right place.
+   **Still outstanding, deliberately:** the palette's *cap-dim* path still dims a tool the learner
+   has no budget for rather than hiding it. That is left alone on purpose — §3.8's "inaccessible
+   items are hidden" is about the staged task analysis (already hidden, `renderVals` filters
+   locked options), whereas at-cap is a *refusal* the child is meant to see feedback for (D-B /
+   AC-3), and hiding the palette mid-turn would be a bigger disruption than the dim.
 2. **Device sweep** — desktop (1440×900), tablet (820×1180) and iPhone (390×844) all render with
-   zero horizontal overflow and a clean console, and screenshots were taken at each. What has
-   *not* been done is a touch-interaction pass on a real device: the paint tools use pointer
-   capture and only mouse pointers have been exercised.
+   zero horizontal overflow and a clean console, and the shirt-visibility fix was verified at all
+   three. What has *not* been done is a touch-interaction pass on a real device: the paint tools
+   use pointer capture and only mouse pointers have been exercised.
 3. **Dead code left in place, on purpose** — `buildV()`, `buildArtLayers()`, the `pet`/`hero`
    `THEMES` entries and the now-unused `personProcedural`/`petArt*`/`sceneFrame` render-values.
    `THEMES.social` is still read for the palette definition, so the map cannot simply be deleted.
@@ -398,3 +458,21 @@ Three defects that only a real browser surfaces, all now fixed and covered:
 
 None of the three could have been caught by reading the diff; all three came out of driving the
 game and looking at the screen.
+
+## 9. Found by measuring it — pass 3
+
+Screenshots were not enough for the art sweep either; three of these were invisible to the eye
+and only showed up once the compositor's output was diffed numerically. See §4b for the numbers.
+
+1. **The alignment failure was universal, not per-model.** 32 of 56 model×tool combinations
+   painted outside their own target box, and the failing set included every model — because the
+   table was tuned for a renderer that no longer exists, not because four faces differ.
+2. **Blemish contrast was bad on every model**, not just the two dark-skinned ones the eval
+   named; m1's worst spot measured 1.06 : 1, the lowest of all twelve.
+3. **Blemishes under the hair are systematic** — 10 of 28 model×hairstyle combinations, not the
+   single M4 instance the eval caught. Only a sweep over every style surfaces that.
+4. **`_data()` was the wrong tool for the pool filter.** Reading the seven hair masks per model
+   through the existing ImageData cache would have retained ~8 MB per model to answer 56
+   single-pixel questions. The filter samples one pixel at a time off a scratch canvas instead,
+   and freezes its answer per model so a mid-play restyle can never move a spot the learner has
+   already patched.
