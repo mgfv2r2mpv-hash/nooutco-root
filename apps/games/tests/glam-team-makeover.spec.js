@@ -98,13 +98,10 @@ test.describe('Glam Team Makeover', () => {
        the fingerprints have always come out distinct when they arrived. */
     test.setTimeout(120000);
     await page.goto('/glam-team-makeover/');
-    await openSetup(page);
-    await page.getByRole('button', { name: /^▶ Play/ }).click(); // enter the game screen
-    await waitForPaintedStage(page);
 
-    // The roster is `GlamStory.MODELS` — the one list the story draw, the BT's
-    // character lock and the art picker all read. M1 was retired from it in the
-    // refresh, so this sweep follows the roster rather than a hardcoded four.
+    // The roster is `GlamStory.MODELS` — the one list the story draw and the BT's
+    // character lock both read. M1 was retired from it in the refresh, so this
+    // sweep follows the roster rather than a hardcoded four.
     const roster = await page.evaluate(() => window.GlamStory.MODELS);
     expect(roster.length, 'the roster should still offer a choice of clients').toBeGreaterThan(1);
 
@@ -115,49 +112,56 @@ test.describe('Glam Team Makeover', () => {
       expect(res.status(), `${m}/base.png should be served`).toBe(200);
     }
 
-    // …and that selecting each model repaints the stage with that model's art.
-    // A model whose base failed to decode would leave `paintAvatar` bailing early
-    // and the canvas unchanged, so distinct fingerprints prove each one decoded.
-    /* WAIT and JUDGE are separate steps here, deliberately. The earlier form
-       polled for "a fingerprint I have not seen yet", which returns null both
-       while the swap is still decoding AND when the model genuinely painted the
-       same stage as another — so a real duplicate burned the whole timeout and
-       surfaced as "timed out", the least informative failure available. Now the
-       poll waits only for the canvas to CHANGE from the model before it and hold
-       still, and the distinctness claim is a plain assertion on the settled
-       fingerprint that names the collision if it ever happens. */
+    /* …and that each model, once it is the drawn client, paints its own art. A
+       model whose base failed to decode would leave `paintAvatar` bailing early and
+       the canvas blank/unchanged, so distinct fingerprints prove each one decoded.
+
+       ROUTE (TUNING fix 1): this used to click the stage's M2/M3/M4 chips, which no
+       longer exist — the child may not choose a client. The only surface that still
+       picks one is the BT's Character lock, so the sweep now goes the way a BT
+       actually pins a client: fresh load → lock → ▶ Play. That is a full reload per
+       model rather than an in-place swap, which is why the budget above is generous;
+       it also means each model's art set is decoded from cold, which is a stronger
+       claim about "loads its base art" than a warm swap was. */
     const seen = new Map();
-    let prev = (await stageFingerprint(page)).hash;
-    for (const m of roster.map((id) => id.toUpperCase())) {
-      /* The client is drawn at RANDOM, so the model this loop is about to click
-         may already be the one on screen — and clicking the active model repaints
-         nothing. "Wait for the canvas to change" is only the right wait when the
-         click is an actual swap. */
-      const wasActive = (await activeModel(page)).toUpperCase() === m;
-      await page.getByRole('button', { name: m, exact: true }).click();
+    for (const m of roster) {
+      await page.goto('/glam-team-makeover/');
+      await openSetup(page);
+      await page.getByLabel('Character', { exact: true }).selectOption(m);
+      await page.getByRole('button', { name: /^▶ Play/ }).click();
+      await waitForPaintedStage(page);
+      expect(await activeModel(page), 'the lock must pin the painted client').toBe(m);
+
+      /* WAIT and JUDGE are separate steps, deliberately. An earlier form polled for
+         "a fingerprint I have not seen yet", which returns null both while the art
+         is still decoding AND when the model genuinely painted the same stage as
+         another — so a real duplicate burned the whole timeout and surfaced as
+         "timed out", the least informative failure available. The poll waits only
+         for the canvas to stop moving; distinctness is a plain assertion that names
+         the collision if it ever happens. */
       let fp = null;
       await expect
         .poll(async () => {
           const a = await stageFingerprint(page);
           const b = await stageFingerprint(page);
           fp = b;
-          // changed away from the model before it (if it had to), and stopped moving
-          return a && b && a.hash === b.hash && (wasActive || b.hash !== prev) ? b.hash : null;
-        }, { timeout: 20000, message: `${m} should repaint the stage and settle` })
+          return a && b && a.hash === b.hash ? b.hash : null;
+        }, { timeout: 20000, message: `${m} should paint the stage and settle` })
         .not.toBeNull();
       expect(fp.opaque, `${m} should paint a non-blank stage`).toBeGreaterThan(20000);
       expect(seen.get(fp.hash), `${m} painted the same stage as ${seen.get(fp.hash)}`).toBeUndefined();
       seen.set(fp.hash, m);
-      prev = fp.hash;
     }
     expect(seen.size, 'every roster model should render differently').toBe(roster.length);
   });
 
   // Refresh fix 1 — M1 is retired. "Not selectable and not in the random pool"
-  // has to hold on every route into a model: the random draw, the BT's character
-  // lock (both the <option> list and a hand-forced value), and the stage's own
-  // model picker. One of those left open would still put M1 in front of a child.
-  test('M1 is retired — absent from the roster, the random pool and every picker', async ({ page }) => {
+  // has to hold on every route into a model: the random draw and the BT's
+  // character lock (both the <option> list and a hand-forced value). The stage's
+  // own M2/M3/M4 picker was the third route; TUNING fix 1 deleted it outright, so
+  // the assertion at the bottom is now that the child surface offers no model
+  // button AT ALL — not that it offers the roster and nothing else.
+  test('M1 is retired — absent from the roster, the random pool and the character lock', async ({ page }) => {
     await page.goto('/glam-team-makeover/');
     await openSetup(page);
 
@@ -184,12 +188,11 @@ test.describe('Glam Team Makeover', () => {
     expect(out.forcedLock).not.toBe('m1');
     expect(out.lockOptions).toEqual(['random', ...out.roster]);
 
-    // …and the on-stage picker offers the roster and nothing else.
+    // …and the play surface offers no model button at all — not M1, not the roster.
     await page.getByRole('button', { name: /^▶ Play/ }).click();
     await waitForPaintedStage(page);
-    await expect(page.getByRole('button', { name: 'M1', exact: true })).toHaveCount(0);
-    for (const m of out.roster) {
-      await expect(page.getByRole('button', { name: m.toUpperCase(), exact: true })).toHaveCount(1);
+    for (const m of ['m1', ...out.roster]) {
+      await expect(page.getByRole('button', { name: m.toUpperCase(), exact: true })).toHaveCount(0);
     }
   });
 

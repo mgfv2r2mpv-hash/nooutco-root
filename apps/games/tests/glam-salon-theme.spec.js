@@ -167,13 +167,24 @@ test.describe('salon dressing + the choice echo (R5)', () => {
     expect(secondBtn, 'the pressed button re-plays too').not.toBe(firstBtn);
   });
 
-  test('the mirror warms while the echo is up and settles once it goes', async ({ page }) => {
+  /* TUNING fix 5 — the warmth is now BOUNDED as well as present.
+     The glow was a 60%-alpha cream radial centred at 50% 44%, i.e. squarely on the
+     client's face: measured on m3 at desktop it lifted the canvas region's mean
+     luminance by 24.6 of a 133 base — an ~18% wash over the face on every single
+     action, which is what read as a lens flare. Re-anchored to the top edge at
+     20% alpha it lifts the same region by 0.4 and the whole panel by 1.2.
+     So this test now pins BOTH ends: the panel still warms (the echo chip must not
+     float on nothing), and the face must stay essentially untouched. An upper
+     bound is the whole point of the fix — without one, "it warms" passes just as
+     happily at the strength the maintainer rejected. */
+  test('the mirror warms gently behind the echo, without washing out the client', async ({ page }) => {
     await stage(page);
 
-    /* Mean luminance of the whole stage panel. The echo chip is under 1% of that
-       area, so a swing of this size can only come from the glow behind it. */
-    const mean = async () => {
-      const shot = await stagePanel(page).screenshot({ animations: 'disabled' });
+    /* Mean luminance of a region. Over the whole stage panel the echo chip is
+       under 1% of the area, so a swing there can only come from the glow; over the
+       canvas alone it measures what lands on the client herself. */
+    const meanOf = async (loc) => {
+      const shot = await loc.screenshot({ animations: 'disabled' });
       return page.evaluate(async (b64) => {
         const img = new Image();
         img.src = 'data:image/png;base64,' + b64;
@@ -189,16 +200,27 @@ test.describe('salon dressing + the choice echo (R5)', () => {
       }, shot.toString('base64'));
     };
 
-    const before = await mean();
+    const panel = stagePanel(page);
+    const client = page.locator('#gtm-canvas');
+
+    const before = await meanOf(panel);
+    const faceBefore = await meanOf(client);
     await useTool(page, 'Shape brows');
     await expect(chip(page)).toBeVisible();
-    const during = await mean();
+    const during = await meanOf(panel);
+    const faceDuring = await meanOf(client);
     await expect(chip(page)).toHaveCount(0, { timeout: 4000 });
     await page.waitForTimeout(500); // the opacity transition back down
-    const after = await mean();
+    const after = await meanOf(panel);
 
-    expect(during - before, 'the mirror warms behind the echo').toBeGreaterThan(3);
-    expect(Math.abs(after - before), 'and settles back to where it was').toBeLessThan(3);
+    expect(during - before, 'the mirror warms behind the echo').toBeGreaterThan(0.35);
+    expect(during - before, 'but it is a warming, not a flare').toBeLessThan(4);
+    expect(Math.abs(after - before), 'and settles back to where it was').toBeLessThan(1);
+
+    /* The client's own art is what the flare was ruining. Applying a step DOES
+       repaint the canvas (brows land), so this is bounded rather than pinned to
+       zero — the old glow moved it by 24.6, which no tool stroke comes near. */
+    expect(Math.abs(faceDuring - faceBefore), 'the glow must not wash the client out').toBeLessThan(6);
   });
 
   test('every animation this game ships stays on the compositor', async ({ page }) => {

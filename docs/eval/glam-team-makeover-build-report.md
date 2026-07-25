@@ -1144,7 +1144,7 @@ the flip directly so the "simplification" fails loudly.
 | a choice comes back as the child's own tool name, then clears itself | the echo not firing, or becoming a permanent status line |
 | the echo never composes a sentence around the choice, and never a number | any wrapper text — praise, a verdict, a count — around the label, across five mechanics (`choose`, tap-toggle, tap-recolor, paint, per-spot patch) |
 | a second choice inside the echo window animates like the first | collapsing the `-a`/`-b` parity (R5.3) |
-| the mirror warms while the echo is up and settles once it goes | the glow never lighting, or never going out |
+| the mirror warms while the echo is up and settles once it goes | the glow never lighting, or never going out — *superseded by the Tuning pass (T5), which added an upper bound and renamed it "…warms **gently** behind the echo, without washing out the client"* |
 | every animation this game ships stays on the compositor | any `@keyframes gtm-*` that animates a layout- or paint-bound property |
 
 The last one is a **whole-file** guard, not an R5 guard: it walks every
@@ -1161,6 +1161,9 @@ failed; glow pinned to `opacity:0` → the warm-up test failed at
 three passed again on restore. The glow control also proves the luminance
 assertion is measuring the glow and not the chip: with only the chip drawn, the
 stage's mean luminance moved by **0.07**, against **+8.8** with the glow live.
+*(That **+8.8** is the number the maintainer was reacting to when they called the
+effect a lens flare. The Tuning pass — T5 — cuts it to **+1.2**, so the `> 3`
+lower bound quoted above no longer applies; the current bounds are in T5.)*
 
 ### R5.5 Verification
 
@@ -1205,9 +1208,186 @@ capture mode depends on which end of the animation holds the frame you want.**
 - **The turn banner, vanity-station and runway maps keep their clinical palette**
   by design (R5.1). If the dressing is ever extended to them, whose-turn must stay
   the highest-contrast element on the screen.
-- **The M2 / M3 / M4 model picker still sits on the child's stage** whenever more
+- ~~**The M2 / M3 / M4 model picker still sits on the child's stage** whenever more
   than one art model ships. It is a BT/dev affordance in front of the child, and it
-  predates the refresh; moving it behind the ⚙ is a small, separate change.
+  predates the refresh; moving it behind the ⚙ is a small, separate change.~~
+  **Resolved in the Tuning pass (T1)** — deleted outright rather than moved behind
+  the ⚙, because the ⚙ already has the Character lock.
 - **Reduced motion drops the echo's animation but keeps the chip**, which is
   correct; it also drops the glow's transition so the warm-up snaps. Both are
   acceptable, neither was tuned.
+
+---
+
+## T. Tuning pass — maintainer-reported fixes
+
+A batch of issues the maintainer found **while playing**, not while reading: art
+and rendering defects, menu clutter, the pace of the texting intro, and a model
+picker sitting where a child could reach it. Presentation and activity only — the
+clinical spine is not in scope and is not touched.
+
+**Standing invariant for every slice of this pass.** `window.GlamTT` and
+`tests/glam-tt-scoring.spec.js` stay **byte-identical**. The engine region
+(`index.html` lines 100–639) is hashed against `HEAD` on every slice, and
+`git diff --exit-code tests/glam-tt-scoring.spec.js` must be empty.
+
+| # | Fix | Status |
+|---|---|---|
+| 1 | Model selection — remove the child-facing picker, random only, BT lock in Session setup | **done** (T1) |
+| 2 | Texting intro — phone mockup, slower, two-sided typing indicators | *not started* |
+| 3 | Styling trolley — vertical progressive flow, non-repeatables removed, moved-on steps collapsed | *not started* |
+| 4 | Face art — lip liner, eye clip, eyeshadow gradient, blush, highlights | *not started* |
+| 5 | Action effect — lens flare way down | **done** (T5) |
+
+### T1. The model picker is gone; the client is drawn and then fixed
+
+**What the maintainer saw.** Three chips — `M2` `M3` `M4` — parked in the stage's
+top-right corner, on the child's play surface, next to the client's face.
+
+**Why it had to go rather than move.** It is not only clutter. The pretext the
+refresh built is that *a client texted in and booked this appointment*; a chip that
+swaps her face mid-appointment contradicts the story the child was just told, and
+it is a clinical/dev knob placed inside a child-facing surface. Moving it behind
+the ⚙ (the R5.6 plan) turned out to be redundant: the ⚙ **already** carries a
+Character lock with exactly this power and a better affordance —
+`🎲 Random client / Lock: model 2 / 3 / 4`.
+
+**What changed.** Three methods and one template block were deleted, not hidden:
+
+| Removed | Was |
+|---|---|
+| the `<sc-if artModelPicker>` block on the stage | the three chips |
+| `Component#artModelList()` | the chip list + styling |
+| `Component#setArtModel(id)` | the only writer of `state.model` after the draw |
+| `Component#artGated()` | a *second* roster, derived from `GlamStory.MODELS`, that existed only to feed the picker |
+
+The gain is structural, not just cosmetic: **`GlamStory.MODELS` is now the single
+gate** on which faces are reachable. It seeds the random draw *and* it populates
+the BT's Character lock, and there is no longer a second list that could disagree
+with it. M1's retirement is now true by construction rather than by two lists
+agreeing.
+
+Selection behaviour is unchanged and was already correct: `GlamStory.draw()` picks
+uniformly from the roster on `Start`, honouring a BT lock only when that lock names
+a model still on the roster. What the deletion adds is that the draw is now the
+*last* word for the session.
+
+**Evidence.**
+
+| | Before | After |
+|---|---|---|
+| desktop | `shots/glam-tune/surface-no-model-chips-before-desktop.png` | `…-after-desktop.png` |
+| tablet | `…-before-tablet.png` | `…-after-tablet.png` |
+| phone | `…-before-phone.png` | `…-after-phone.png` |
+
+**Tests.** Two added to `tests/glam-open-flow.spec.js`, two adjusted in
+`tests/glam-team-makeover.spec.js`:
+
+| Test | File | What would break it |
+|---|---|---|
+| *TUNING · the child surface offers no model picker, and none is reachable in code* | glam-open-flow | any `<button>` named `/^M\d$/` on the page, **or** `setArtModel` / `artModelList` / `artGated` coming back on the component |
+| *TUNING · the client drawn at Start stays fixed for the whole session* | glam-open-flow | anything writing `state.model` after the draw — checked across a real tool application |
+| *M1 is retired — …the random pool and the character lock* (renamed) | glam-team-makeover | previously asserted the on-stage picker offered the roster; now asserts **no** model button exists, M1 or otherwise |
+| *every roster model loads its base art and paints a distinct stage* (re-routed) | glam-team-makeover | previously swapped models by clicking the chips; now goes fresh load → Character lock → ▶ Play per model |
+
+The second half of that last test is worth calling out: re-routing it through the
+BT lock means each model's art set is now decoded **from cold** rather than warm-
+swapped, which is a stronger claim about "loads its base art" than the chip route
+made. The cost is one page load per roster model, which is why its budget stays at
+120 s.
+
+The absence-of-setter assertion is deliberate. A picker deleted from the template
+but left on the component is one `sc-for` away from returning, so the test pins the
+*capability*, not just the pixels.
+
+### T5. The action flare, way down
+
+**What the maintainer saw.** Every action washed the stage out. This is the R5
+"mirror warms" glow, and it was too strong by a wide margin.
+
+**Why it read as a lens flare.** The glow was a 60 %-alpha cream radial gradient
+centred at `50% 44%` of the stage panel — which is **squarely on the client's
+face**. Measured on m3 at 1280×860, with the same echo firing and the same node
+carrying first the old gradient and then the new one:
+
+| Region | Old glow | New glow |
+|---|---|---|
+| whole stage panel, mean luminance | **+8.37** | **+1.16** |
+| the client's canvas alone | **+24.63** (on a base of 133) | **+0.37** |
+
++24.6 on a 133 base is an ~18 % wash over the client's face, for 0.38 s, on every
+single action. In the before shot the copper hair reads as pale blonde and the blue
+backdrop reads as near-white.
+
+**What changed** — one gradient, still a pure opacity fade on the compositor:
+
+```
+- radial-gradient(72% 52% at 50% 44%, rgba(255,233,196,.60) 0%, rgba(255,233,196,0) 72%)
++ radial-gradient(116% 44% at 50% 0%,  rgba(255,233,196,.20) 0%, rgba(255,233,196,0) 58%)
+```
+
+Two independent moves: the bloom is **re-anchored to the top edge** — where the
+backdrop art's bulb ring actually is, so it reads as the mirror lights warming
+rather than as a flash on the face — and peak alpha drops **60 % → 20 %** with the
+falloff closing at 58 % of the panel, finishing well above the eyes.
+
+**Toned down, not removed.** The echo chip rises *out of* this warmth; with no glow
+behind it the chip reads as a toast notification rather than as the mirror
+answering. The remaining +1.2 is visible when you look for it and invisible when
+you are not.
+
+**Evidence.** `shots/glam-tune/action-flare-{before,after}-{desktop,tablet,phone}.png`
+— stage crops with the echo chip up, captured under emulated reduced motion so the
+opacity transition is settled and the flare is photographed at **full** strength
+(the worst case, which is what the complaint was about).
+
+**Test.** `tests/glam-salon-theme.spec.js` — the R5 warm-up test was **retightened,
+not replaced**, and renamed *"the mirror warms gently behind the echo, without
+washing out the client"*. It now pins both ends:
+
+| Assertion | Bound | Why |
+|---|---|---|
+| panel warms | `> 0.35` | the chip must not float on nothing |
+| panel warmth is bounded | `< 4` | **the point of the fix** — "it warms" passes just as happily at the strength that was rejected |
+| panel settles afterwards | `< 1` | the glow goes out |
+| the client's canvas | `< 6` | the face is what the flare was ruining; bounded rather than zero because applying a step genuinely repaints the brows |
+
+The old test would still pass at the old strength. An upper bound is the only thing
+that makes this fix regression-proof.
+
+### T · Verification (slices T1 + T5)
+
+- **Full suite: 342 passed** across chromium / firefox / webkit — 336 before this
+  pass plus 2 new tests × 3 browsers. Clean full run, no retries.
+- **`window.GlamTT` byte-identical**: `index.html` lines 100–639 hash
+  `cc44b106d25faa4e2c809869200e8a71` at `HEAD` and after the change.
+  `git diff --exit-code tests/glam-tt-scoring.spec.js` is empty.
+- **Played start → texts → salon → four turns → outro** in a real browser at
+  1280×900: the client texts in, the salon opens with **no chips on the stage**,
+  each tool lands with its echo over a glow you have to look for, the trial closes
+  on the photo booth. **Console clean** — no console errors, no page errors, no
+  failed requests, across the whole route.
+- **Console clean at all three widths** — `tests/_shots-glam-tune.mjs` exits
+  non-zero on any console or page error and exits clean at 1280×860, 834×1112 and
+  390×844.
+- Screenshots under `docs/eval/shots/glam-tune/`, `before`/`after` in the filename.
+  The shots script pins the client via the **BT Character lock** so the pair shows
+  the same face — which doubles as a live demonstration that the lock still works
+  now that it is the only picker left.
+- `git status` shows changes only under `apps/games/` and `docs/`.
+
+### T · Deferred / still to do in this pass
+
+- **Fixes 2, 3 and 4 are not started** — the phone-mockup texting intro with
+  two-sided typing indicators, the trolley's vertical progressive flow, and the
+  five face-art fixes (lip liner artifacts, eye-colour clipping past the iris and
+  waterline, patchy eyeshadow gradient, over-circular blush, oversized
+  highlights). Each needs its own before/after pair under
+  `shots/glam-tune/`.
+- **The phone stage still crops the client's head** at 390 px once the page is
+  scrolled to the trolley (visible in `surface-no-model-chips-after-phone.png`).
+  Pre-existing, not introduced here, and out of scope for T1/T5 — worth folding
+  into fix 3, since that slice is already re-laying-out the working area.
+- **The BT Character lock's `<option>` labels are `Lock: model 2 / 3 / 4`.** They
+  are BT-facing so they carry no congruence risk, but they name an art asset rather
+  than a client. Harmless; a nicer label would be a separate change.

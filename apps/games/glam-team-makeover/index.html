@@ -1116,13 +1116,13 @@ window.GlamStory = (function () {
                straight on the backdrop art, which is bright enough that it barely
                read; on a plum plate it is both legible and part of the room. -->
           <span style="{{ stageSignStyle }}">✦ Our makeover</span>
-          <sc-if value="{{ artModelPicker }}" hint-placeholder-val="{{ false }}">
-            <div style="position:absolute;top:8px;right:12px;display:flex;gap:6px;z-index:6">
-              <sc-for list="{{ artModels }}" as="am" hint-placeholder-count="0">
-                <button onClick="{{ am.pick }}" style="{{ am.style }}">{{ am.label }}</button>
-              </sc-for>
-            </div>
-          </sc-if>
+          <!-- TUNING fix 1 — there is deliberately NO model picker here. The chips
+               that used to sit in this corner let the child swap the client's face
+               mid-session, which contradicts the pretext (a client texted in and
+               booked THIS appointment) and hands a child a clinical knob. The
+               client is drawn at random on Start and fixed for the session; the
+               only surface that may still choose one is the BT's Character lock in
+               Session setup. -->
           <!-- NOTE — no `<img src="{{ … }}">` may appear in this template. The
                browser parses and fetches the raw `{{ }}` placeholder as a URL
                before the dc-runtime substitutes it, which is where three of the
@@ -1993,18 +1993,12 @@ class Component extends DCLogic {
   shade(hex){ try{ const n=parseInt(hex.slice(1),16); let r=Math.max(0,(n>>16)-28),g=Math.max(0,((n>>8)&255)-28),b=Math.max(0,(n&255)-28); return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1); }catch(e){ return hex; } }
 
   art(){ return (typeof window!=='undefined' && window.NooutcoArt) || {}; }
-  /* Which generated models are OFF the roster. Derived from GlamStory.MODELS so
-     the story draw, the BT's character lock and this picker can never disagree:
-     anything the generated art bundle ships that the roster does not list is
-     gated here, which is what retires M1 from the picker as well as the pool. */
-  artGated(){ const R=(window.GlamStory&&window.GlamStory.MODELS)||[];
-    const out={}; for(const id of Object.keys((this.gen().models)||{})) if(R.indexOf(id)<0) out[id]=1;
-    return out; }
-  setArtModel(id){ if(this.artGated()[id] || !((this.gen().models||{})[id])) return; this.setState({model:id}); }
-  artModelList(){ const M=(this.gen().models)||{}, G=this.artGated(); const act=this.state.model;
-    return Object.keys(M).filter(id=>!G[id]).map(id=>({
-      label:id.toUpperCase(), pick:()=>this.setArtModel(id),
-      style:'padding:5px 11px;border-radius:999px;font-size:11px;font-weight:800;font-family:inherit;cursor:pointer;border:1px solid '+(id===act?'var(--sage-500)':'var(--border-default)')+';background:'+(id===act?'var(--sage-500)':'var(--surface-card)')+';color:'+(id===act?'#fff':'var(--text-muted)') })); }
+  /* TUNING fix 1 — `artGated` / `setArtModel` / `artModelList` (the on-stage M2/M3/M4
+     chips) are gone. `GlamStory.MODELS` is now the SINGLE gate on which faces are
+     reachable: it seeds the random draw and it populates the BT's Character lock,
+     and nothing else may set `state.model` after the draw. That is what makes the
+     client fixed for the session, and it retires M1 by construction — there is no
+     second list left to disagree with the roster. */
   artBaseSrc(base){ const b=(this.art().bases||{})[base]; return (b&&b.src)||''; }
   lz(base,slot){ const L=((this.art().layers||{})[base]||{})[slot]; return (L&&L.z)||0; }
   lsrc(base,slot,key){ const L=((this.art().layers||{})[base]||{})[slot]; if(!L) return ''; return key!=null ? ((L.variants&&L.variants[key])||'') : (L.src||''); }
@@ -2765,8 +2759,19 @@ class Component extends DCLogic {
         +'font-size:9.5px;font-weight:800;letter-spacing:.17em;text-transform:uppercase;'
         +(personArtLive?'color:var(--gtm-gold-lit);background:rgba(38,24,43,.72);border:1px solid rgba(217,171,106,.55)'
                        :'color:var(--text-faint)'),
+      /* TUNING fix 5 — the action flare, way down.
+         It was a 60 %-alpha cream radial centred at 50 % 44 %, i.e. ON the client's
+         face: every single action blew the face and the backdrop out to near-white
+         for .38 s, which read as a lens flare rather than as "the mirror warmed".
+         Two changes, both keeping this a pure opacity fade on the compositor:
+         (a) the bloom is re-anchored to the TOP edge — where the backdrop art's
+             bulbs actually are — so nothing washes over the face at all, and
+         (b) alpha drops 60 % → 20 %, and the stop closes at 58 % of the panel so
+             the falloff is finished well above the eyes.
+         Kept rather than deleted because the echo chip rises out of this warmth,
+         and a chip with no glow behind it reads as a toast notification. */
       mirrorGlowStyle:'position:absolute;inset:0;z-index:5;pointer-events:none;border-radius:16px;'
-        +'background:radial-gradient(72% 52% at 50% 44%,rgba(255,233,196,.60) 0%,rgba(255,233,196,0) 72%);'
+        +'background:radial-gradient(116% 44% at 50% 0%,rgba(255,233,196,.20) 0%,rgba(255,233,196,0) 58%);'
         +'transition:opacity .38s var(--ease-standard);opacity:'+(s.mirror?'1':'0'),
       showMirror:!!s.mirror,
       mirrorLabel:(s.mirror&&s.mirror.label)||'',
@@ -2790,7 +2795,6 @@ class Component extends DCLogic {
          constant relationship to the canvas's bottom edge, which the stage panel's
          height does not track. */
       footerBarStyle:'position:absolute;left:0;right:0;bottom:0;height:30px;z-index:4;pointer-events:none;background:linear-gradient(to bottom,rgba(210,190,156,0) 0%,rgba(210,190,156,0) 14%,rgba(255,250,240,.72) 22%,#d3bd93 34%,#c1a676 100%);box-shadow:0 -7px 14px -7px rgba(96,74,48,.40)',
-      artModels:this.artModelList(), artModelPicker:base==='person'&&this.artModelList().length>1,
       personArt:base==='person'&&s.theme==='social'&&this.hasPersonArt(), personProcedural:base!=='person'||!(s.theme==='social'&&this.hasPersonArt()),
       petArt:base==='pet'&&!!this.artBaseSrc('pet'), petProcedural:base!=='pet'||!this.artBaseSrc('pet'),
       petArtBase:this.artBaseSrc('pet'), petArtLayers:(base==='pet'&&this.artBaseSrc('pet'))?this.buildArtLayers('pet').imgs:[],

@@ -162,6 +162,49 @@ test.describe('opening flow — title → texts → salon', () => {
     expect(drawn).toEqual(['m3']);
   });
 
+  /* TUNING fix 1 — the child must not see a model picker. The stage used to carry
+     M2/M3/M4 chips in its top-right corner, which let a child swap the client's
+     face mid-appointment: it contradicts the pretext (this client texted in and
+     booked THIS appointment) and it is a clinical knob on a child-facing surface.
+     Random-at-Start + the BT's Character lock are the only two routes left, and
+     both are covered by the two tests above. What is left to pin is the absence. */
+  test('TUNING · the child surface offers no model picker, and none is reachable in code', async ({ page }) => {
+    const errors = await boot(page);
+    await bookAppointment(page);
+    await page.getByRole('button', { name: /Open the salon/ }).click();
+    await expect(page.getByRole('button', { name: /Go —/ })).toBeVisible();
+
+    // No model chip, on the salon surface or anywhere else on the page. The old
+    // chips were <button>s labelled with the bare model id, upper-cased.
+    await expect(page.getByRole('button', { name: /^M\d$/ })).toHaveCount(0);
+
+    /* …and no leftover setter. A picker deleted from the template but left on the
+       component is one `sc-for` away from coming back, so the guarantee is that
+       nothing outside the draw can write `state.model` at all. */
+    const api = await logic(page, `
+      return { setter:typeof L.setArtModel, list:typeof L.artModelList, gate:typeof L.artGated };
+    `);
+    expect(api).toEqual({ setter: 'undefined', list: 'undefined', gate: 'undefined' });
+    expect(errors).toEqual([]);
+  });
+
+  test('TUNING · the client drawn at Start stays fixed for the whole session', async ({ page }) => {
+    await boot(page);
+    await bookAppointment(page);
+    await page.getByRole('button', { name: /Open the salon/ }).click();
+    await page.getByRole('button', { name: /Go —/ }).click();
+
+    const drawn = await logic(page, 'return L.state.sel.model;');
+
+    // Play some of the appointment through the real UI, then re-read the face.
+    await page.getByRole('button', { name: /Shape brows/ }).click();
+    await page.locator('div[style*="gtm-target"]').first().click();
+    await expect(page.locator('[style*="gtm-mirror-"]')).toBeVisible();
+
+    const still = await logic(page, 'return {painted:L.state.model, sel:L.state.sel.model};');
+    expect(still).toEqual({ painted: drawn, sel: drawn });
+  });
+
   test('AC-10 · every string the texting intro can put on screen is swept by the congruence guard', async ({ page }) => {
     await boot(page);
     const out = await page.evaluate(() => {
