@@ -1236,7 +1236,9 @@ clinical spine is not in scope and is not touched.
 | 1 | Model selection — remove the child-facing picker, random only, BT lock in Session setup | **done** (T1) |
 | 2 | Texting intro — phone mockup, slower, two-sided typing indicators | **done** (T2) |
 | 3 | Styling trolley — vertical progressive flow, non-repeatables removed, moved-on steps collapsed | **done** (T3) |
-| 4 | Face art — lip liner, eye clip, eyeshadow gradient, blush, highlights | *not started* |
+| 4a | Face art — lip liner malformed along the lip seam | **done** (T4a) |
+| 4b | Face art — eye colour clips past the iris and the waterline | **done** (T4b) |
+| 4c–4e | Face art — eyeshadow gradient, blush, highlights | *not started* |
 | 5 | Action effect — lens flare way down | **done** (T5) |
 
 ### T1. The model picker is gone; the client is drawn and then fixed
@@ -1574,6 +1576,132 @@ washing out the client"*. It now pins both ends:
 The old test would still pass at the old strength. An upper bound is the only thing
 that makes this fix regression-proof.
 
+### T4a. The lip liner traces the mouth, not the seam inside it
+
+**What the maintainer saw.** Little spots and squares appearing *in the middle of
+the lips*, along the seam where the top and bottom lip meet, bunched toward one
+corner. See `shots/glam-tune/lipliner-before-m4.png` — the seam is a thick lumpy
+band with distinct square blocks in it, next to a clean outer trace.
+
+**Why it happened, and why it was not a brush problem.** `_lipLinerCanvas` inks a
+lip-mask pixel when *any* neighbour within 2 px falls outside the lip
+(`green < 0.25`). That is the right predicate for a silhouette **only if the lip
+region is simply connected**, and it is not: the mask draws the seam between the
+lips as a thin low-green gap. So "is a neighbour outside the lip?" answered **yes**
+in the middle of the mouth, and the brush inked the gap's whole 2-px neighbourhood.
+Measured on the shipped masks, before the fix:
+
+| model | liner px | of those, in the lip **interior** | the interior band |
+|---|---|---|---|
+| m2 | 509 | **38** | y 388–394 |
+| m3 | 339 | **17** | y 371–377 |
+| m4 | 487 | **72** | y 356–365 |
+
+"Interior" here is defined structurally, not by eye: a pixel with lip mask on all
+four sides at 3, 4 *and* 5 px out — i.e. nowhere near the silhouette, so ink there
+is an artifact by construction. Every artifact on every model falls inside a single
+band about 7 px tall — one narrow horizontal strip, which is the seam. (Measured on
+the mask the game renders, `L._data(E.mask)` after `freshEd`, i.e. the default
+`hair-copper` style, not the bare `base/mask.png`.)
+
+**The fix.** A liner traces the OUTER silhouette and nothing else, so the enclosed
+gap has to stop counting as outside. Before tracing, the real outside is flooded in
+from a 3-px ring around the lip bbox through not-lip pixels (4-connected, explicit
+stack, ~5 k pixels in the window rather than the whole 512 × 576 frame); whatever
+the flood cannot reach is enclosed. The edge test then asks "is a neighbour
+**reachable-outside**?" instead of "is a neighbour not-lip?". Everything else —
+both thresholds, the 2-px radius, the half-value ink, the alpha — is unchanged, and
+the whole thing is still cached per model × hairstyle × shade.
+
+| model | interior px after | liner px after |
+|---|---|---|
+| m2 | **0** | 345 |
+| m3 | **0** | 306 |
+| m4 | **0** | 324 |
+
+The total ink drops as well as the interior count, which is correct: the seam gap's
+whole neighbourhood was being inked, not just the pixels inside it.
+
+**Evidence.** `shots/glam-tune/lipliner-{before,after}-{m2,m3,m4}.png`. These are
+**loupes**: the mouth is cropped out of the live `#gtm-canvas` and blitted ×7 with
+`imageSmoothingEnabled = false`, so what is photographed is the pixels the
+compositor actually wrote rather than a resampler's opinion of them. At 1280 the
+whole mouth renders about 40 px across and neither the defect nor the fix is
+legible, which is why the loupe exists.
+
+### T4b. A coloured contact stays inside the iris and under the lid
+
+**What the maintainer saw.** Eye colour extending just past the **edge of the iris**
+and past the **waterline** (the lower lid margin). `shots/glam-tune/eyeclip-before-m4.png`
+shows it plainly: a blue disc sitting *over* the lash line above and *over* the
+lower lashes below, with the sclera tinted on both sides.
+
+**Why it happened.** The contacts pass filled a plain `arc()` of radius
+`min(eyeW, eyeH) · 0.58` centred on the **face anchor**. Every number in it came
+from the anchor table; none came from the art. So it was a guess at where the iris
+is, drawn as a full circle, on top of a sprite whose iris is a circle *cut by the
+upper lid*. Measured against the drawn iris:
+
+| model | retired radius | shipped radius | of the retired disc, outside the iris/lid bound | overrun above the lid | overrun below the iris |
+|---|---|---|---|---|---|
+| m2 | 22.80 px | 19.89 px | **46.0 %** | 12.5 px | 6.1 px |
+| m3 | 18.85 px | 17.69 px | **36.7 %** | 9.7 px | 4.0 px |
+| m4 | 22.54 px | 18.52 px | **50.4 %** | 12.9 px | 7.0 px |
+
+The radius was only 7–22 % too big; the *vertical* story is the one that matches the
+complaint. The retired disc spanned 37.7–45.7 px of eye where the iris occupies
+24.1–27.1 px, reaching ~10–13 px above the lid line and 4–7 px below the iris — and
+the bottom overrun is exactly "past the waterline".
+
+**Where the iris actually is.** Recovered from `assets/art/eyes/natural.png`, the
+sprite the whole state stack shares (`natural` / `glam` / `eyeliner_l` / `eyeliner_r`
+are one eyeball at one `cx = cy = 0.5` frame, per the manifest):
+
+1. classify the sclera — opaque, mean channel > 150;
+2. **row-span-fill** it: on each row, fill from the leftmost to the rightmost sclera
+   pixel. The sclera brackets the iris on both sides of every row of the aperture, so
+   the span-fill *is* the aperture. Rows whose span is thinner than 6 % of the frame
+   are dropped, which discards the stray speculars above and below it;
+3. the iris is the part of the aperture that is not sclera. Its bbox gives the circle:
+   **cx 0.503, r 0.1471 of sprite width; bottom at cy + r**, so `cy = 0.4574` of
+   sprite height;
+4. the aperture's top edge across the iris span is `y = 68` **on every column of it**
+   — flat to the pixel in this art. That is why the clip below is exact rather than an
+   approximation.
+
+Those four numbers ship as `IRISCFG`, alongside `EYECFG` / `BROWCFG` / `EARCFG`,
+which is where this file already keeps calibrated sprite geometry.
+
+**The fix.** `_contactCanvas(hex)` builds the coloured iris **once per shade, in the
+sprite's own frame**: clip to `rect(0, top) ∩ arc(cx, cy, r)`, fill the radial
+gradient, stamp the pupil, stamp a catchlight at the offset the sprite's own
+highlight sits at (`+0.44 r, −0.16 r`, radius `0.22 r`) so the recolour agrees with
+the art instead of fighting it. `_irisBox(e)` converts an eye tuple to the blit
+rect plus that same circle and lid line in canvas px, and the renderer blits the
+cached canvas through it. Living in sprite space is the whole point: the recolour
+scales with the sprite at every model's eye size instead of being re-guessed from
+the face anchor.
+
+**Tests** — `tests/glam-art-fidelity.spec.js`, 2 × 3 browsers:
+
+| test | what would have to break for it to fail |
+|---|---|
+| T4a · the lip liner traces the silhouette, never the seam inside the mouth | on every roster model: **zero** liner px in the structurally-defined lip interior; the liner still draws (> 120 px) and still reaches all four sides of the lip mask's own bbox within the 2 px the trace is wide |
+| T4b · a coloured contact stays inside the iris and under the lid | on every roster model: every pixel the contacts change lies inside some eye's `_irisBox` circle **and** at or below its lid line; the recolour still changes > 400 px; and the shipped radius is **strictly smaller** than the retired `min(w,h)·0.58` |
+
+Two things about how these are written. First, both assert against
+`_lipLinerCanvas` / `_irisBoxes` — the shipped code — rather than a copy of the
+geometry: `_artZones` established that principle here, and a bound the test
+re-derives by hand is a bound that drifts the first time the table moves. Second,
+each carries a **lower** bound as well as its in-bounds one (`ink > 120`,
+`changed > 400`), because "no pixel is out of bounds" is also true of a tool that
+draws nothing.
+
+**Evidence.** `shots/glam-tune/eyeclip-{before,after}-{m2,m3,m4}.png` (loupes, ×7
+nearest-neighbour) and `shots/glam-tune/face-{before,after}-{desktop,tablet,phone}.png`
+(the un-magnified stage with lipstick, liner, shadow, mascara and contacts all on,
+at 1280 × 860 / 834 × 1112 / 390 × 844).
+
 ### T · Verification (slices T1 + T5)
 
 - **Full suite: 342 passed** across chromium / firefox / webkit — 336 before this
@@ -1654,12 +1782,59 @@ that makes this fix regression-proof.
   `Lips`, …) plus a ✓ and a chevron. No numbers, no PHI, no claim about the client.
 - `git status` shows changes only under `apps/games/` and `docs/`.
 
+### T · Verification (slices T4a + T4b)
+
+- **Full suite: 372 passed** across chromium / firefox / webkit — 366 after T3 plus
+  2 new tests × 3 browsers. Clean full run, no retries, 2.3 min.
+- **The `fonts.gstatic.com` flake documented under T3 showed up once and was ruled
+  out.** The first full run of this slice failed exactly one test —
+  `glam-open-flow.spec.js` *"the child surface offers no model picker"*, a **T1**
+  test on **firefox**, nothing this slice touches. `--repeat-each=4` on it passes
+  4/4 in 5.3 s and the next full run was 372/372 green. Same signature as before:
+  one firefox spec, a different one each time, under 15-way parallelism.
+- **`window.GlamTT` byte-identical** — the engine region of `index.html`
+  (lines 119–679, 25 381 bytes) hashes
+  `d1026aaadce8cd6523f83183927972661a0057a5a634536a3c6b9ad51ce7f370` (sha-256) at
+  both `HEAD` and the working tree. `git diff --exit-code tests/glam-tt-scoring.spec.js`
+  is empty. The **earliest diff hunk in `index.html` starts at line 1583** — the
+  engine region is not merely equal, it was never opened.
+- **Played the child's route** — Start → the texting thread → Open the salon → Go →
+  a real pointer drag over the face — at 1280×900: Wash and Moisturize both
+  complete and leave the cart, and the run carries to the outro's `Finish & SR`.
+  Lip liner is step 10 and the contact shades sit in the accessory phase, so
+  **neither of the two tools this slice changed is reachable inside one staged
+  appointment**; both were therefore taken on the BT's own route — free play, every
+  station open — with real pointer taps, and read back off `ed`
+  (`cov.lipliner = 1`, `col.contacts = '#4a90d9'`). **Console clean** — zero console
+  errors and zero page errors across both routes.
+- **Console clean at all three widths** — `tests/_shots-glam-tune-face.mjs` exits
+  non-zero on any console or page error and exited clean on both the `before` and
+  the `after` pass, across the model sweep at 1400×1000 and the stage at 1280×860,
+  834×1112 and 390×844.
+- No child-facing string was added or changed by this slice — it is two renderers
+  and one geometry table. No numbers, no PHI, no claim about the client.
+- `git status` shows changes only under `apps/games/` and `docs/`.
+
 ### T · Deferred / still to do in this pass
 
-- **Fix 4 is not started** — the five face-art fixes (lip liner artifacts, eye-colour
-  clipping past the iris and waterline, patchy eyeshadow gradient, over-circular
-  blush, oversized highlights). Each needs its own before/after pair under
-  `shots/glam-tune/`.
+- **Fix 4 is three-fifths outstanding** — 4a (lip liner) and 4b (eye clip) are done;
+  **4c the patchy eyeshadow gradient, 4d the over-circular blush and 4e the
+  oversized highlights are not started**. Each needs its own before/after pair
+  under `shots/glam-tune/`. The loupe harness in `tests/_shots-glam-tune-face.mjs`
+  is written and takes a region name, so those three can reuse it. All three are
+  `_blob` calls in `paintAvatar`, unlike 4a/4b which were mask/clip precision:
+  · eyeshadow is two overlapping soft blobs (lid wash at `α·0.92` + a rotated
+  outer-corner crease at `α`) whose overlap is what reads as patchy —
+  visible in `shots/glam-tune/eyeclip-after-m4.png`, where the violet has
+  distinct blotches above the lash line;
+  · blush is one un-rotated `0.95 ew × 0.9 eh` blob per cheek at `α·0.5`, i.e.
+  very nearly a circle;
+  · highlight is a `0.75 ew × 0.6 eh` pair at `α·0.5` plus a `0.35 ew × 1.4 eh`
+  centre stripe at `α·0.4`, on `screen`.
+  Note the objective wants the highlight *smaller and subtler but still visibly
+  pleasing* — so, like T5, that one needs an **upper** bound in its test and not
+  only a lower one, or "it glows" will keep passing at the strength that was
+  rejected.
 - **The folded shelves have no motion.** Folding and unfolding is an instant
   mount/unmount. A height transition is not compositor-friendly and a
   `transform: scaleY` on a variable-height shade grid distorts the buttons, so it

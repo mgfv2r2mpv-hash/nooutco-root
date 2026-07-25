@@ -1580,6 +1580,21 @@ const BROWCFG = { m2:{wf:1.3,dx:0,dy:1.65}, m3:{wf:1.3,dx:0,dy:1.75}, m4:{wf:1.3
 const BROWCFG_D = {wf:1.3,dx:0,dy:1.75};
 const EARCFG  = { m2:{lx:0.20,rx:0.80,y:1.35}, m3:{lx:0.235,rx:0.765,y:1.72}, m4:{lx:0.225,rx:0.775,y:1.35} };
 const EARCFG_D = {lx:0.185,rx:0.815,y:1.35};
+/* T4b. Where the IRIS actually is inside the eye sprite frame, so a coloured
+   contact lands on the iris instead of near it. Colored contacts used to fill a
+   disc of `min(eyeW,eyeH)·0.58` centred on the eye anchor — a number picked
+   against the FACE anchor, not against the art — which came out ~1.4× the drawn
+   iris and so bled colour onto the sclera and down over the lower lid margin.
+   These fractions are measured off `assets/art/eyes/natural.png`, the sprite the
+   whole state stack shares (manifest: "all sprites share one iris-centered frame,
+   cx=cy=0.5"): the aperture is recovered by row-span-filling the sclera, the iris
+   is the part of that aperture which is not sclera, and its bbox gives the circle.
+   `top` is the lid line over the iris — flat to the pixel across the whole iris
+   span in this art, which is why a rect ∩ arc clip is exact rather than an
+   approximation. `cl` is the sprite's own catchlight as [dx, dy, r] in radii, so
+   the recolour puts its highlight where the art already had one.
+   r/cl-r are fractions of sprite WIDTH; cy/top of sprite HEIGHT. */
+const IRISCFG = { cx:0.5, cy:0.4574, r:0.1471, top:0.3617, cl:[0.44,-0.16,0.22] };
 
 /* Touch padding added on every side of a derived hitbox, in % of the frame. Big
    enough to be a comfortable target and to absorb the gradients' sub-threshold
@@ -2434,13 +2449,72 @@ class Component extends DCLogic {
     // effect in the game. Testing the 2-px neighbourhood draws a 2-px liner instead,
     // which is what a liner looks like at this frame size anyway.
     const G=i=>m[i*4+1]/255;
+    /* T4a. The lip region of the mask is NOT simply connected: the seam where the
+       top and bottom lip meet is drawn as a thin low-green gap, so "does a
+       neighbour fall outside the lip?" answered YES in the MIDDLE of the mouth and
+       speckled the seam — 38 px on m2, 17 on m3, 72 on m4, each inside a single
+       ~7-px-tall band, which is the artifact the maintainer reported. A liner
+       traces the OUTER silhouette, never the seam, so the enclosed gap has to stop
+       counting as outside. Flood the real outside in from a ring around the lip
+       bbox through not-lip pixels; whatever the flood cannot reach is enclosed. */
+    let x0=W,x1=0,y0=H,y1=0;
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++){ if(G(y*W+x)>0.4){
+      if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; } }
+    if(x1<x0) return null;                                     // no lip in this mask
+    const wx0=Math.max(0,x0-3),wx1=Math.min(W-1,x1+3),wy0=Math.max(0,y0-3),wy1=Math.min(H-1,y1+3);
+    const OUT=new Uint8Array(W*H), st=[];
+    const push=(x,y)=>{ const i=y*W+x; if(OUT[i]||G(i)>=0.25) return; OUT[i]=1; st.push(i); };
+    for(let x=wx0;x<=wx1;x++){ push(x,wy0); push(x,wy1); }
+    for(let y=wy0;y<=wy1;y++){ push(wx0,y); push(wx1,y); }
+    while(st.length){ const i=st.pop(), x=i%W, y=(i-x)/W;
+      if(x>wx0) push(x-1,y); if(x<wx1) push(x+1,y);
+      if(y>wy0) push(x,y-1); if(y<wy1) push(x,y+1); }
     const edge=(i,x,y)=>{ for(let k=1;k<=2;k++){
         if(x-k<0||x+k>=W||y-k<0||y+k>=H) return true;
-        if(G(i-k)<0.25||G(i+k)<0.25||G(i-k*W)<0.25||G(i+k*W)<0.25) return true; }
+        if(OUT[i-k]||OUT[i+k]||OUT[i-k*W]||OUT[i+k*W]) return true; }
       return false; };
     for(let y=1;y<H-1;y++) for(let x=1;x<W-1;x++){ const i=y*W+x; if(G(i)>0.4 && edge(i,x,y)){
       const j=i*4; o[j]=dr;o[j+1]=dg;o[j+2]=db; o[j+3]=(b[j+3]/255)*235; } }
     octx.putImageData(od,0,0); c.key=key; c.cv=out; return out; }
+  /* T4b. Where the contact blit goes, and the iris circle it must stay inside, in
+     canvas px for one eye tuple [x,y,w,h,o]. This is the ONE place that placement
+     is computed — the renderer calls it and so does the fidelity test, on the same
+     principle as `_artZones`: a bound the test re-derives from EYECFG × IRISCFG by
+     hand is a bound that drifts the first time either table moves. */
+  _irisBox(e){ const EC=EYECFG[this.state.model]||EYECFG_D;
+    const meta=(this.gen().eyes||{}).natural; if(!meta) return null;
+    const [x,y,w,h,o]=e, X=x-o*EC.dx*w, dw=EC.s*(2*w), dh=dw/(meta.aspect||1.8085);
+    return { dx:X-0.5*dw, dy:y-0.5*dh, dw, dh,
+      cx:X+(IRISCFG.cx-0.5)*dw, cy:y+(IRISCFG.cy-0.5)*dh,
+      r:IRISCFG.r*dw, top:y+(IRISCFG.top-0.5)*dh }; }
+  /* Both eyes' iris boxes over a W×H canvas, off the current model's face anchors. */
+  _irisBoxes(W,H){ const E=this.genEntry(); if(!E) return null; const f=E.face;
+    return [[f.eyeL.x*W,f.eyeL.y*H,f.eyeL.w*W,f.eyeL.h*H,-1],
+            [f.eyeR.x*W,f.eyeR.y*H,f.eyeR.w*W,f.eyeR.h*H,1]].map(e=>this._irisBox(e)); }
+  /* T4b. One coloured iris, drawn in the eye sprite's OWN frame and cached per
+     shade. Living in sprite space is the whole point: the caller blits it with the
+     same translate/scale it gives the eye sprite, so the disc lands on the drawn
+     iris at every model's eye size instead of being re-guessed from the face
+     anchor. The clip is the iris circle intersected with the lid line — which
+     keeps colour off the sclera above the aperture AND off the lower lid margin,
+     the two overruns the maintainer reported. */
+  _contactCanvas(hex){ const c=this._ctc||(this._ctc={}); if(c.key===hex) return c.cv;
+    const meta=(this.gen().eyes||{}).natural; if(!meta) return null;
+    const rec=this._img(meta.src); if(!rec.ok) return null;      // not decoded yet → onload repaints
+    const im=rec.img, W=im.naturalWidth||im.width, H=im.naturalHeight||im.height;
+    const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+    const cx=cv.getContext('2d');
+    const R=IRISCFG.r*W, CX=IRISCFG.cx*W, CY=IRISCFG.cy*H, TOP=IRISCFG.top*H;
+    cx.save();
+    cx.beginPath(); cx.rect(0,TOP,W,H-TOP); cx.clip();                     // the lid line
+    cx.beginPath(); cx.arc(CX,CY,R,0,6.2832); cx.clip();                   // the iris
+    const gi=cx.createRadialGradient(CX,CY,R*0.15,CX,CY,R);
+    gi.addColorStop(0,hex); gi.addColorStop(0.62,hex); gi.addColorStop(1,this.shade(hex));
+    cx.fillStyle=gi; cx.fillRect(0,0,W,H);
+    cx.fillStyle='#140f12'; cx.beginPath(); cx.arc(CX,CY,R*0.46,0,6.2832); cx.fill();
+    cx.fillStyle='rgba(255,255,255,0.9)'; cx.beginPath();
+    cx.arc(CX+R*IRISCFG.cl[0],CY+R*IRISCFG.cl[1],R*IRISCFG.cl[2],0,6.2832); cx.fill();
+    cx.restore(); c.key=hex; c.cv=cv; return cv; }
   // Recolour a brow sprite to the hair hue (tint × luminance): keeps the ink's darkest core dark
   // and the softer fill hair-toned, so a black m4 brow reads as the hair colour without going flat.
   _browTint(src,hex){ const rec=this._img(src); if(!rec.ok) return null;
@@ -2581,16 +2655,13 @@ class Component extends DCLogic {
         else if(!liner) drawSprite(eyeSet.natural,e,true);              // plain eyeball (liner sprite carries its own)
         if(liner) drawSprite(o>0?eyeSet.eyelinerR:eyeSet.eyelinerL,e,false); }  // winged liner on top (real L/R)
     }
-    // colored contacts — recolor the iris over the sprite eye (iris disc + pupil + catchlight)
+    // colored contacts — recolor the iris over the sprite eye (iris disc + pupil +
+    // catchlight). Built ONCE per shade in the sprite's own frame (_contactCanvas)
+    // and blitted with the sprite's own transform, so the recolour is clipped to
+    // the iris and the lid line no matter which eye state is showing (T4b).
     const cc=col('contacts');
-    if(cc){ for(const e of eyes){ const [x,y,w,h,o]=e, X=ex(e), ir=Math.min(w,h)*0.58;
-      ctx.save();
-      const gi=ctx.createRadialGradient(X,y,ir*0.15,X,y,ir);
-      gi.addColorStop(0,cc); gi.addColorStop(0.62,cc); gi.addColorStop(1,this.shade(cc));
-      ctx.fillStyle=gi; ctx.beginPath(); ctx.arc(X,y,ir,0,6.2832); ctx.fill();
-      ctx.fillStyle='#140f12'; ctx.beginPath(); ctx.arc(X,y,ir*0.46,0,6.2832); ctx.fill();
-      ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.beginPath(); ctx.arc(X-ir*0.28,y-ir*0.30,ir*0.17,0,6.2832); ctx.fill();
-      ctx.restore(); } }
+    if(cc && eyeSet.natural){ const ccv=this._contactCanvas(cc);
+      if(ccv) for(const e of eyes){ const bx=this._irisBox(e); if(bx) ctx.drawImage(ccv,bx.dx,bx.dy,bx.dw,bx.dh); } }
     // ===== BROWS — the base render's baked brows are skin-filled at build time, so drop in the
     // state sprite: default bushy → "Shape brows" ✂️ cleaned → "Brow pencil" ✏️ shaped (pencil
     // wins). Real L/R pair (no mirror; brows are directional). Centre-anchored above the eye per

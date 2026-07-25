@@ -425,4 +425,121 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
     await expect(target).toContainText('All done ✓');
     await expect(target).not.toContainText('Keep painting');
   });
+
+  /* ── TUNING pass, fix 4a ────────────────────────────────────────────────────
+     The maintainer found the lip liner speckled with little squares along the
+     seam where the top and bottom lip meet, bunched toward one corner. The cause
+     was in the mask, not the brush: the lip region is not simply connected — the
+     seam is drawn as a thin low-green gap — so "is a neighbour outside the lip?"
+     answered YES in the middle of the mouth. A liner traces the OUTER silhouette
+     and nothing else, which is what this test states. */
+  test('T4a · the lip liner traces the silhouette, never the seam inside the mouth', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = await stage(page);
+
+    const rows = await logic(page, `return (async () => {
+      const out = [];
+      for (const m of window.GlamStory.MODELS) {
+        await new Promise(r => L.setState({ model:m, ed:L.freshEd('person') }, r));
+        for (let i=0;i<80 && !L._skinPool(m);i++) await new Promise(r => setTimeout(r,100));
+        const E = L.genEntry();
+        const md = L._data(E.mask);
+        const W = md.width, H = md.height, mk = md.data;
+        const G = (i) => mk[i*4+1]/255;
+        /* INTERIOR = lip mask on all four sides at 3..5 px, i.e. nowhere near the
+           silhouette. Any ink there is a seam artifact by construction. */
+        const interior = (i) => { for (let k=3;k<=5;k++){
+            if(!(G(i-k)>0.4)||!(G(i+k)>0.4)||!(G(i-k*W)>0.4)||!(G(i+k*W)>0.4)) return false; }
+          return true; };
+        const cv = L._lipLinerCanvas(E, '#b23a56');
+        const px = cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data;
+        let ink=0, inside=0, x0=W, x1=0, y0=H, y1=0;
+        for (let y=2;y<H-2;y++) for (let x=2;x<W-2;x++){ const i=y*W+x;
+          if (px[i*4+3] <= 8) continue;
+          ink++; if (interior(i)) inside++;
+          if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; }
+        // the lip mask's own bbox, so "did the liner go all the way round?" is
+        // measured against the mouth rather than against a magic number
+        let lx0=W, lx1=0, ly0=H, ly1=0;
+        for (let y=0;y<H;y++) for (let x=0;x<W;x++){ if(G(y*W+x)>0.4){
+          if(x<lx0)lx0=x; if(x>lx1)lx1=x; if(y<ly0)ly0=y; if(y>ly1)ly1=y; } }
+        out.push({ model:m, ink, inside, box:[x0,y0,x1,y1], lip:[lx0,ly0,lx1,ly1] });
+      }
+      return out;
+    })();`);
+
+    const roster = await page.evaluate(() => window.GlamStory.MODELS);
+    expect(rows.length).toBe(roster.length);
+    for (const r of rows) {
+      // A liner that draws nothing would pass the artifact check vacuously.
+      expect(r.ink, `${r.model}: the liner should draw`).toBeGreaterThan(120);
+      expect(r.inside, `${r.model}: ${r.inside} liner px inside the lip interior`).toBe(0);
+      // and it must still ring the whole mouth, within the 2 px the trace is wide
+      const [x0, y0, x1, y1] = r.box, [lx0, ly0, lx1, ly1] = r.lip;
+      expect(x0 - lx0, `${r.model}: liner misses the left corner`).toBeLessThanOrEqual(2);
+      expect(lx1 - x1, `${r.model}: liner misses the right corner`).toBeLessThanOrEqual(2);
+      expect(y0 - ly0, `${r.model}: liner misses the top edge`).toBeLessThanOrEqual(2);
+      expect(ly1 - y1, `${r.model}: liner misses the bottom edge`).toBeLessThanOrEqual(2);
+    }
+    expect(errors).toEqual([]);
+  });
+
+  /* ── TUNING pass, fix 4b ────────────────────────────────────────────────────
+     Colored contacts used to fill a disc sized off the FACE anchor
+     (`min(eyeW,eyeH)·0.58`) rather than off the art, so the colour ran past the
+     iris onto the sclera and down over the lower lid margin. The recolour is now
+     built in the sprite's own frame and clipped to `_irisBox` — the iris circle
+     intersected with the lid line. Note the assertions are taken against
+     `_irisBox` itself, not against a copy of IRISCFG: a bound the test re-derives
+     by hand is a bound that drifts the first time the table moves. */
+  test('T4b · a coloured contact stays inside the iris and under the lid', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = await stage(page);
+
+    const rows = await logic(page, `return (async () => {
+      ${HELPERS}
+      const out = [];
+      for (const m of window.GlamStory.MODELS) {
+        await setModel(m);
+        const before = await settle();
+        await setEd((ed) => { ed.col.contacts = '#4a90d9'; });
+        const after = await settle();
+        const W = cv.width, H = cv.height;
+        const boxes = L._irisBoxes(W, H);
+        const f = L.genEntry().face;
+        const eyes = [[f.eyeL.w*W, f.eyeL.h*H],[f.eyeR.w*W, f.eyeR.h*H]];
+        let changed=0, out1=0, worst=0;
+        for (let y=0;y<H;y++) for (let x=0;x<W;x++){ const i=(y*W+x)*4;
+          const d = Math.abs(after.data[i]-before.data[i]) + Math.abs(after.data[i+1]-before.data[i+1])
+                  + Math.abs(after.data[i+2]-before.data[i+2]);
+          if (d <= 18) continue; changed++;
+          // in bounds = inside SOME eye's iris circle and at or below its lid
+          // line; near is how far outside the nearest bound a stray pixel fell
+          let ok=false, near=1e9;
+          for (const b of boxes){ const dist=Math.hypot(x-b.cx, y-b.cy);
+            if (dist <= b.r+1.5 && y >= b.top-1.5) ok=true;
+            near = Math.min(near, Math.max(dist-b.r, b.top-y)); }
+          if (!ok){ out1++; worst=Math.max(worst,near); } }
+        out.push({ model:m, changed, outOfBound:out1, worst:+worst.toFixed(2),
+          radius: boxes.map((b,k) => ({ shipped:+b.r.toFixed(2), retired:+(Math.min(eyes[k][0],eyes[k][1])*0.58).toFixed(2) })) });
+      }
+      return out;
+    })();`);
+
+    const roster = await page.evaluate(() => window.GlamStory.MODELS);
+    expect(rows.length).toBe(roster.length);
+    for (const r of rows) {
+      // A recolour that draws nothing would pass the bound vacuously.
+      expect(r.changed, `${r.model}: contacts should recolour the iris`).toBeGreaterThan(400);
+      expect(r.outOfBound,
+        `${r.model}: ${r.outOfBound} contact px outside the iris/lid bound (worst ${r.worst} px)`).toBe(0);
+      // An UPPER bound as well as an in-bounds one: the retired face-anchor disc
+      // passed "is it on the eye?" too. It must not come back.
+      for (const q of r.radius) {
+        expect(q.shipped, `${r.model}: iris radius ${q.shipped} is not smaller than the retired ${q.retired}`)
+          .toBeLessThan(q.retired);
+      }
+    }
+    expect(errors).toEqual([]);
+  });
 });
