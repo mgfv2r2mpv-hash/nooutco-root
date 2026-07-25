@@ -1,20 +1,20 @@
 # Glam Team Makeover — Tier 1 build report
 
 **Branch:** `feat/glam-turn-taking-redesign` · **File under change:** `apps/games/glam-team-makeover/index.html`
-**Specs added:** `apps/games/tests/glam-tt-scoring.spec.js`, `apps/games/tests/glam-tt-story.spec.js`
+**Specs added:** `apps/games/tests/glam-tt-scoring.spec.js`, `apps/games/tests/glam-tt-story.spec.js`, `apps/games/tests/glam-tt-game.spec.js`
 **Spec updated:** `apps/games/tests/glam-team-makeover.spec.js`
 **Authority:** `docs/glam-team-makeover-redesign-hardened-claims.md` (AC-1…AC-27) — wins over spec prose.
-**Date:** 2026-07-24
+**Date:** 2026-07-24 (pass 2)
 
-> **Status: PARTIAL — the measurement spine is built and verified; the game surface is not yet wired to it.**
-> This report is written after the first build pass and is honest about the split: the scoring
-> engine and the story pool are implemented and covered by passing Playwright specs, and the
-> load-time console is clean. The game's own screens still run the **pre-redesign** turn loop —
-> so the criteria that depend on the live UI are explicitly marked *pending wiring* below rather
-> than claimed. Nothing in the "verified" column is inferred from reading code; each row names the
-> test that reproduces it.
+> **Status: Tier 1 landed and played.** Pass 1 built the measurement spine (`window.GlamTT`)
+> and the story pool (`window.GlamStory`) and verified them in isolation; the game's screens
+> still ran the pre-redesign turn loop. **Pass 2 wired the screens to the engine** and added
+> `tests/glam-tt-game.spec.js`, which drives the criteria through real buttons on the real
+> game rather than through the engine's API. Every row in §2 below now names a test that
+> reproduces it; nothing is inferred from reading code. What is still outstanding is listed,
+> unhedged, in §5 — principally the art-fidelity sweep.
 
-**Test status:** `npx playwright test` → **186 passed** (chromium · firefox · webkit), 0 failed.
+**Test status:** `npx playwright test` → **237 passed** (chromium · firefox · webkit), 0 failed.
 
 ---
 
@@ -120,48 +120,73 @@ No test was deleted, and the rationale is recorded in the spec file itself.
 
 ## 2. Acceptance criteria — evidence
 
-`✔ verified` = reproduced by a named passing test. `◑ engine only` = the rule is implemented and
-verified in the engine/story layer, but the **live game screens are not yet wired to it**, so the
-criterion is not yet true of the app a BT would open. `✗ not started`.
+`✔` = reproduced by a named passing test. Where a criterion has both an engine rule and a
+screen that must honour it, **both** tests are named: `glam-tt-scoring.spec.js` proves the rule,
+`glam-tt-game.spec.js` proves a BT who opens the game and taps the buttons actually gets it.
 
-| AC | Status | Evidence |
-|---|---|---|
-| AC-1 pass after window → `prompted` at every level incl. silent | ✔ | `AC-1 · a pass after the window elapsed…` (loops full/gesture/silent) |
-| AC-2 `independent` iff pre-prompt, no forfeit | ✔ | `AC-2 · a pass inside the window…` |
-| AC-3 over-cap: refuse + feedback + log + prompt, every count mode | ◑ | `AC-3 · an over-cap tap is refused…` — engine returns feedback unconditionally; **UI toast pending** |
-| AC-4a over-cap forfeits only that turn (fade curve survives) | ✔ | `AC-4a (A3) · over-cap forfeits only THAT turn…` — 5 independent passes survive |
-| AC-4b silent-probe over-cap → `prompted@silent` inside the window | ✔ | `AC-4b (B2) · at silent-probe an over-cap grabber…` |
-| AC-5 completion claim gated; trial always terminable | ◑ | `AC-16 (A4) …`, `a trial is always terminable…`, `AC-5 / AC-18 · the completion beat…`; **done-screen wiring pending** |
-| AC-6 re-applying a done step does not advance completion | ✔ | `AC-6 · re-applying a done step…` |
-| AC-7 turns=N auto-scale, ~2/3 learner share | ✔ | `AC-7 · turns=N auto-scales…`, `AC-7 · a cooperative run completes…` |
-| AC-8 no timer bounds the learner's turn | ◑ | `AC-8 · no timer bounds the learner's own turn`, `a timed partner turn keeps its prescribed length…`; **config still offers "My turn: Timed"** |
-| AC-9 ten-column table + de-identified footer, no name/freeform | ◑ | `AC-9 · the report is a per-turn table…` (column keys + `GTM-YYYYMMDD-XXXX` id + PHI-field sweep); **print view not built** |
-| AC-10 no checkable visual claim in any mad-lib string | ◑ | `AC-10 · no producible string…` (1008 strings) + planted-violation control; **live intro still ships pre-redesign copy** |
-| AC-11 tier = f(over-cap, pass independence) only | ✔ | `AC-11 (A2) · an all-staff-prompted trial is Tier 3`, `…(E) marks never move it`, `…tier boundaries` |
-| AC-12 whose-turn visible in every turn-map style | ✗ | not started |
-| AC-13 theme dropdown absent, pet/hero unreachable | ◑ | pet stage block deleted (§1.3); **dropdown still present** |
-| AC-14 (E) logs, changes nothing, undoable | ◑ | `AC-14 · an (E) mark logs…`; **UI button pending** |
-| AC-15 ask-back reachable on a counted partner turn | ◑ | `AC-15 · the ask-back is reachable…` (all 3 cue levels); **UI pending** |
-| AC-16 all-repetition trial terminates, prints incomplete, no deadlock | ✔ | `AC-16 (A4) · an all-repetition trial…` |
-| AC-17 cap equals auto-scaled budget, never rises | ✔ | `AC-17 (A5) · the enforced cap…` — caps `[3,3,3,3]`, 24 refusals |
-| AC-18 Tier-1 line on an incomplete look, no completion claim | ✔ | `AC-18 (C1) · perfect turn-taking on an INCOMPLETE look…` (tier axis) + `AC-18 · School picture day…` (text axis) |
-| AC-19 early sub-budget pass → `independent`, actions-used recorded | ✔ | `AC-19 (B3) · an early voluntary pass…` (used=1, unspent=2) |
-| AC-20 0-action run → all `no-engagement`, Tier 3 | ✔ | `AC-20 (C2) · a 0-action pass…` |
-| AC-21 sub-budget prompted pass → non-independent | ✔ | `AC-21 (D1) · a sub-budget stall…` (both app and BT paths) |
-| AC-22 sub-budget never-pass → `staff-prompted`, no deadlock | ✔ | `AC-22 (D1 corollary) · a sub-budget learner who never passes…` |
-| AC-23 BT/at-exhaustion prompt turn-durable; resume cannot launder | ✔ | `AC-23 (E1) · a BT prompt is TURN-DURABLE…` — 3 cases incl. the discardable contrast |
-| AC-24 37s silent ask → `prompted@silent` | ✔ | `AC-24 (F1) · a 37s silent ask…` |
-| AC-25 ask before onset → recordable `early-ask` | ✔ | `AC-25 (F-33) · an ask while the staff is still actively taking their turn…` |
-| AC-26 ask-back forfeit durable; ask-back not tiered | ✔ | `AC-26 · a BT real prompt on the ask-back…` (staff-prompted ask, Tier 1 preserved) |
-| **AC-27 (G1 must-test)** | **✔** | see §3 |
+| AC | Status | Engine evidence (`glam-tt-scoring.spec.js`) | Played evidence (`glam-tt-game.spec.js`) |
+|---|---|---|---|
+| AC-1 pass after window → `prompted` at every level incl. silent | ✔ | `AC-1 · a pass after the window elapsed…` | `AC-1 (D1) · a silent-probe stall…` |
+| AC-2 `independent` iff pre-prompt, no forfeit | ✔ | `AC-2 · a pass inside the window…` | `AC-19 (B3) · an early pass…` |
+| AC-3 over-cap: refuse + feedback + log + prompt, every count mode | ✔ | `AC-3 · an over-cap tap is refused…` | `AC-3 (B2) · …GENTLE kid feedback even in count-HIDDEN mode` |
+| AC-4a over-cap forfeits only that turn | ✔ | `AC-4a (A3) · over-cap forfeits only THAT turn…` | — |
+| AC-4b silent-probe over-cap → `prompted@silent` | ✔ | `AC-4b (B2) · at silent-probe an over-cap grabber…` | — |
+| AC-5 completion claim gated; trial always terminable | ✔ | `AC-16 (A4)…`, `a trial is always terminable…` | `AC-5 · a finished look ends the trial…`, `AC-5/AC-16 (A4/C1)…` |
+| AC-6 re-applying a done step does not advance completion | ✔ | `AC-6 · re-applying a done step…` | — |
+| AC-7 turns=N auto-scale, ~2/3 learner share | ✔ | `AC-7 · turns=N auto-scales…` | `AC-7/AC-17 (A5) · the BT sets TURNS…` |
+| AC-8 no timer bounds the learner's turn | ✔ | `AC-8 · no timer bounds the learner's own turn` | `AC-8/AC-12/AC-13 · no timer on the learner turn…` |
+| AC-9 ten-column table + de-identified footer, no name/freeform | ✔ | `AC-9 · the report is a per-turn table…` | `AC-9 (D-H) · the print view renders the ten-column…` |
+| AC-10 no checkable visual claim in any mad-lib string | ✔ | `AC-10 · no producible string…` (story spec, 1008 strings) | `AC-10 · the on-screen intro is the mad-lib…` |
+| AC-11 tier = f(over-cap, pass independence) only | ✔ | `AC-11 (A2)…`, `…(E) marks never move it`, `…tier boundaries` | `AC-20 (C2) · a 0-action pass…` (tier 3) |
+| AC-12 whose-turn visible in every turn-map style | ✔ | — | `AC-8/AC-12/AC-13 · …whose-turn stated in every map style` |
+| AC-13 theme dropdown absent, pet/hero unreachable | ✔ | — | `AC-8/AC-12/AC-13 · …no theme selector` |
+| AC-14 (E) logs, changes nothing, undoable | ✔ | `AC-14 · an (E) mark logs…` | `AC-14 · an (E) mark logs {timestamp, phase, whose-turn}…` |
+| AC-15 ask-back reachable on a counted partner turn | ✔ | `AC-15 · the ask-back is reachable…` | `AC-27 (G1 MUST-TEST)…` |
+| AC-16 all-repetition trial terminates, prints incomplete, no deadlock | ✔ | `AC-16 (A4) · an all-repetition trial…` | `AC-5/AC-16 (A4/C1)…` |
+| AC-17 cap equals auto-scaled budget, never rises | ✔ | `AC-17 (A5) · the enforced cap…` | `AC-7/AC-17 (A5) · …one fixed cap, no second lever` |
+| AC-18 Tier-1 line on an incomplete look, no completion claim | ✔ | `AC-18 (C1)…`, `AC-18 · School picture day…` | `AC-5/AC-16 (A4/C1) · …still scores its turn-taking` |
+| AC-19 early sub-budget pass → `independent`, actions-used recorded | ✔ | `AC-19 (B3) · an early voluntary pass…` | `AC-19 (B3) · an early pass with the budget unspent…` |
+| AC-20 0-action run → all `no-engagement`, Tier 3 | ✔ | `AC-20 (C2) · a 0-action pass…` | `AC-20 (C2) · a 0-action pass scores no-engagement…` |
+| AC-21 sub-budget prompted pass → non-independent | ✔ | `AC-21 (D1) · a sub-budget stall…` | `AC-21/AC-23 · a real BT prompt from the staff strip…` |
+| AC-22 sub-budget never-pass → `staff-prompted`, no deadlock | ✔ | `AC-22 (D1 corollary)…` | — |
+| AC-23 BT/at-exhaustion prompt turn-durable; resume cannot launder | ✔ | `AC-23 (E1) · a BT prompt is TURN-DURABLE…` | `AC-23 (E1) · the over-cap forfeit is TURN-DURABLE…` |
+| AC-24 37s silent ask → `prompted@silent` | ✔ | `AC-24 (F1) · a 37s silent ask…` | `AC-24 (F1/F-22) · a silent ask-back after the window…` |
+| AC-25 ask before onset → recordable `early-ask` | ✔ | `AC-25 (F-33)…` | `AC-25 (F-33) · asking while the partner is still actively taking their turn…` |
+| AC-26 ask-back forfeit durable; ask-back not tiered | ✔ | `AC-26 · a BT real prompt on the ask-back…` | `AC-24 (F1/F-22)…` (asserts the ask lands in `totals.asks`, not the tier) |
+| **AC-27 (G1 must-test)** | **✔** | see §3 | see §3 |
+
+Two further criteria are asserted only where they can be: **console cleanliness** by
+`the whole played trial leaves a clean console` (a full played trial: go → over-cap-free turn →
+pass → forget onset → ask → second turn → end) and by `intro screen mounts (runtime boots)` in
+the pre-existing spec; and **no-PHI** by the played AC-9 test, which asserts the game contains
+**zero** text inputs, textareas or `contenteditable` regions and that the print sheet collects
+nothing.
+
+### What pass 2 wired
+
+| Wired | Where |
+|---|---|
+| `GlamTT.Trial` opened at Play; a 250 ms `tick()` drives every prompt | `play()`, `componentDidMount`, `tickTrial()` |
+| Every charged tap admitted or refused by the engine — free re-touches never reach it | `_admit()` / `_atCapFor()`; the apply paths (`applyChoose`, `tapApply`, `patchOne`, `concealOne`, `paintStep`) |
+| Screens derived from the engine, never from a parallel tally | `syncTT()` — it picks the screen for the engine's current turn and mirrors the counters |
+| Pass / ask / hand-back / BT-prompt / (E) / end-trial | `handoff()`, `confirmAsk()`, `giveBack()`, `btPrompt()`, `eMark()`/`eUndo()`, `endTrial()` |
+| Look completion from the existing task analysis | `_lookDone()` → `setLookComplete()` in `afterAction()` |
+| Over-cap kid feedback | `toast()` → the sage `capToast` pill in the controls bar |
+| Mad-lib intro + two-axis outro on screen | `drawChar()`, `storyIntro()`, `storyOutro()` |
+| Print-to-PDF sheet: story, then the ten-column table, then totals | `printReport()` via `NooutcoResults.open({html})` |
+
+The `250 ms` cadence is deliberate and load-bearing: at the old 1 s clock the wait window
+rounds by up to a second, which is enough to flip a boundary pass between `independent` and
+`prompted@…`. `syncTT` commits only on a real change, so the faster tick does not repaint the
+avatar canvas four times a second.
 
 ### The three motivating defects
 
 | Defect (spec §2) | Status |
 |---|---|
-| 1. Scoring can't be trusted (37s silent ask scored `independent`) | **closed in the engine** on both F-22 sites — pass (AC-1) and ask-back (AC-24). Not yet reachable through the UI. |
-| 2. Violations are invisible (0/43 tools gave feedback at the cap) | **closed in the engine** — the refusal returns kid-facing feedback unconditionally (AC-3). UI toast pending. |
-| 3. You can "win" with a blank doll (win counts handoffs) | **closed in the engine** — completion is the staged look, `tokenGoal` plays no part (AC-5/AC-16). Done-screen wiring pending. |
+| 1. Scoring can't be trusted (37s silent ask scored `independent`) | **closed, and closed as played** — the pass site (`AC-1 (D1)`) and the ask-back site (`AC-24 (F1/F-22)`) both score `prompted@silent` through the UI. The screens no longer decide anything: `cueVisible` is presentation only. |
+| 2. Violations are invisible (0/43 tools gave feedback at the cap) | **closed as played** — `AC-3 (B2)` taps a 5th tool in **count-hidden** mode and asserts the child is told, that the message is not a red error, and that no clinical word (`prompted`/`independent`/`forfeit`/`over-cap`/`violation`) appears anywhere on the child's screen. |
+| 3. You can "win" with a blank doll (win counts handoffs) | **closed as played** — the ⭐ goal is gone; the chip reads `Turn n of N` and completion is `_lookDone()`. `AC-5` ends a trial with `endReason: 'look-complete'`; `AC-5/AC-16` ends one on the turn bound with `complete: false`, prints the marked-incomplete note and still awards the Tier-1 turn-taking line. |
 
 ---
 
@@ -185,6 +210,29 @@ staff does **0 of 3** allotted actions — the scenario the mode is named for.
 | onset source | `staff-idle` — **not** "allotted staff actions spent" |
 | onset `staffActions` | `0` — fired on a genuine 0-of-N forget |
 | a correct ask after the onset | **`independent`** — the mand is scored, **not** mis-filed as `early-ask` |
+
+### Pass 2 — the same must-test, **played through the UI**
+
+`glam-tt-game.spec.js` → *AC-27 (G1 MUST-TEST) · counted partner turn + give-back=forgets +
+0 partner actions → the ask window OPENS and a correct ask scores the mand*
+
+The spec sets **Their turn = Action-counted**, **Give-back = They "forget" → I ask**, takes a
+learner turn, hands over, and then **nobody touches the partner's turn at all**. Reproduced on
+chromium, firefox and webkit:
+
+| Assertion | Observed |
+|---|---|
+| the partner turn is counted and unspent | `{actor:'staff', budget:2, spent:0}` |
+| the ask window opens with no one having acted | `onsetAt != null` within the polled window |
+| the onset's own log record | `{source:'staff-idle', staffActions:0}` |
+| a correct ask after the onset | **`independent`** — the mand, not `early-ask` |
+| play continues | the `Go — my turn!` button is back; **no deadlock** |
+
+The complementary `AC-25 (F-33)` test asks *before* the onset with an 8 s window and gets
+`early-ask`, so the two outcomes are distinguished by the onset and not by luck. The mand
+affordance is now live for the **whole** partner turn — the pre-redesign build put it behind a
+separate `ask` screen that only opened once the partner had spent their allotted actions, which
+is the G1 deadlock in one line of code.
 
 Both wrong outcomes G1 predicted are absent: the window is not unreachable, and the clinically
 correct mand under the contrived MO is not recorded as the error code. The `AC-15` test additionally
@@ -252,7 +300,11 @@ event-success claim, so no event had to be escalated to the maintainer under L7'
 mechanical check (`tierLinesClaimingCompletion()`, asserted empty) is what backs that statement.
 
 **Names:** Ada · Bea · Cleo · Dani · Elle · Frankie · Gigi · Harper · Iris · Jules · Kit · Lux
-**Cheers:** Wow · Look at that · Yes · Amazing · What a team
+**Cheers:** Wow · Look at that · Yes · Amazing · Hooray
+
+> *Changed in pass 2:* the cheer list used to include "What a team", and the outro title is
+> `<cheer> — what a team!`, so one draw in five rendered as **"What a team — what a team!"** on
+> screen. Caught by playing it, not by reading it. `Hooray` replaces it.
 
 **Two review questions for the maintainer:**
 1. The turn-taking lines name the behaviour plainly ("took a turn and then handed the brush back").
@@ -264,53 +316,46 @@ mechanical check (`tierLinesClaimingCompletion()`, asserted empty) is what backs
 
 ---
 
-## 5. Not done yet — Tier 1 remainder
+## 5. Not done yet
 
-The engine and story pool are built and verified; **the game's screens still run the pre-redesign
-turn loop.** Wiring is the next unit of work, and until it lands a BT opening the game still sees the
-old behaviour. Explicitly outstanding:
+Tier 1's clinical and gameplay core is landed and played. What remains is the art-fidelity
+sweep and a small amount of cleanup — recorded here rather than quietly dropped.
 
-1. **Wire the engine into the component's turn lifecycle** — the largest remaining item.
-   `handoff()`, `partnerDone()`, `confirmAsk()`, `arm()`/`_capBlocks()` and `go()` must delegate to
-   `GlamTT.Trial`; the current `indAsks`/`promptedAsks`/`tokenGoal`/`bonus` state retires. Needs a
-   ~250 ms `tick()` interval so prompts are delivered on time.
-2. **Over-cap kid feedback in the UI** (AC-3) — a gentle non-red toast, in hidden mode too.
-3. **BT affordances** — the "real prompt delivered" control (any turn), the (E) button with its fixed
-   3-item picker + undo toast (AC-14), and the always-available end-trial control.
-4. **Completion / turns lever** — replace the `tokenGoal` ⭐ win with turns=N + look-complete
-   (AC-5/AC-7/AC-16), and derive `setLookComplete` from the existing `_stepDone` task analysis.
-5. **Print view** (AC-9, D-H) — per-turn table below the outro story, via the shared
-   `NooutcoResults.open()` pattern in `apps/games/results-report.js` (read, confirmed suitable, not
-   yet wired; `index.html` does not load it yet).
-6. **Mad-lib intro/outro wiring** (AC-10, D-F/D-G) — the live intro still ships the pre-redesign copy
-   *"total bedhead, a couple of surprise spots"*, which **violates §3.7.1**; the new congruent strings
-   are drafted but not yet on screen. This is the one place the current build is actively
-   non-conformant rather than merely un-migrated.
-7. **Config cleanup** — remove the theme dropdown (AC-13), make timed partner-only (AC-8), whose-turn
-   always visible in every map style (AC-12), fade level → the 3-level `full/gesture/silent` ladder
-   the scored enum uses, model dropdown → character lock, wait-window control, extra-time reinforcer
-   as non-cap.
-8. **Visual-fidelity sweep (§3.9)** — remaining items: sprite-layer alignment across 4 models × all
-   steps, malformed colorations/clipping, "Shirt color" category hidden behind the vanity ledge, the
-   **"Actions left" meter filling backwards** (confirmed on screen: it reads 0 filled of 3 while the
-   banner says "do 3 more"), empty hairstyle button labels, blemish contrast. Per spec §7 this is the
-   item to treat as its own pass if it balloons — the clinical core comes first.
-   *Already done in this pass:* the 8 console errors (§1.3).
-9. **Dead code left in place, on purpose** — `buildV()`, `buildArtLayers()`, the `pet`/`hero` `THEMES`
-   entries and the now-unused `personProcedural`/`petArt*`/`sceneFrame` render-values survive the
-   template deletions. Removing them is a mechanical simplification pass, deliberately not mixed into
-   a change whose risk profile is the scoring rules.
-10. **Device sweep** — desktop verified at 1440×900. Tablet and iPhone breakpoints not yet checked
-    (spec §3.9 priority order: desktop → tablet → iPhone).
+1. **Visual-fidelity sweep (§3.9) — the main outstanding item.** Per spec §7 this is the item to
+   treat as its own pass if it balloons, and it did. **Done in this build:** the 8 load-time
+   console errors (pass 1); the **"Actions left" meter, which filled backwards** — it filled with
+   actions *spent* while labelled "left", and now fills with actions *remaining*; the **seven
+   unlabelled hairstyle buttons**, which rendered a number and no name and now carry their names
+   (Buzz · Tousled · Long bob · Bob · Spiky · Cropped · Pixie); the **phone-width horizontal
+   overflow** (the desktop-sized header pushed ~73 px of sideways scroll at 390 px — now 0 px of
+   overflow at 390/820/1440). **Still outstanding:** sprite-layer alignment across 4 models × all
+   steps, malformed colorations and clipping, "Shirt color" sitting behind the vanity ledge, and
+   blemish ring contrast. None of these affect a score.
+2. **Device sweep** — desktop (1440×900), tablet (820×1180) and iPhone (390×844) all render with
+   zero horizontal overflow and a clean console, and screenshots were taken at each. What has
+   *not* been done is a touch-interaction pass on a real device: the paint tools use pointer
+   capture and only mouse pointers have been exercised.
+3. **Dead code left in place, on purpose** — `buildV()`, `buildArtLayers()`, the `pet`/`hero`
+   `THEMES` entries and the now-unused `personProcedural`/`petArt*`/`sceneFrame` render-values.
+   `THEMES.social` is still read for the palette definition, so the map cannot simply be deleted.
+   Removing the rest is a mechanical simplification pass, deliberately not mixed into a change
+   whose risk profile is the scoring rules.
+4. **The extra-time reinforcer is removed, not reworked.** Spec §3.8 asks to keep it as a
+   non-cap reinforcer. It could not stay in its old form: it was `effGoal = actionGoal + bonus`,
+   i.e. a second lever on the cap, which is exactly the A5 attack AC-17 forbids. And its other
+   half — extra *time* — is meaningless now that AC-8 makes the learner's turn always
+   action-counted rather than timed. Rather than invent an unspecified replacement, the control
+   is gone and this is flagged for the maintainer: **if a relinquish reinforcer is wanted, it
+   needs a design that touches neither the cap nor the turn length.**
+5. **L6 stands, unchanged and unclosable in software** — see §6.
 
-### Explicitly out of scope — Tier 2 (do not build in this run)
+### Explicitly out of scope — Tier 2 (not built in this run)
 
-Per spec §6 and the run's own instruction, **coordination mode is not started**: random staff-error
-injection (extra turn / stall), the peripheral coded staff cue, the conditional block-lift for the
-injection, and the staff-marked 3-way catch outcome (D-J / L3). None of it is present, and the Tier-1
-engine has no hooks reserved for it beyond the per-turn record being open to extra fields.
-
----
+Per spec §6 and the run's own instruction, **coordination mode is not started**: random
+staff-error injection (extra turn / stall), the peripheral coded staff cue, the conditional
+block-lift for the injection, and the staff-marked 3-way catch outcome (D-J / L3). None of it is
+present, and the Tier-1 engine has no hooks reserved for it beyond the per-turn record being
+open to extra fields.
 
 ## 6. Accepted limits carried into the build
 
@@ -334,3 +379,22 @@ implementation tested delivered prompts with `!!t.cueAt`. On an injected clock a
 have scored the pass `independent` — a fresh instance of the F-22 falsy-check family, caught by the
 AC-3 assertion. All timestamp reads are now `!= null` comparisons, and the reason is commented at the
 site so it is not "simplified" back.
+
+## 8. Found by playing it — pass 2
+
+Three defects that only a real browser surfaces, all now fixed and covered:
+
+1. **`"What a team — what a team!"`** — see §4. A string-pool value colliding with the template
+   that consumes it; invisible in a unit test of either half.
+2. **Tools became unaddressable once used.** The palette wrote the button's *visible* label
+   (which grows a `✓ ` prefix once a tool's effect is on the doll) into the `title` attribute as
+   well, so a tool's tooltip changed under it and nothing could refer to a tool by a stable name.
+   `title` is now always the raw tool name. This is a real accessibility bug, not just a test
+   inconvenience: the tooltip and the accessible description drifted from the tool's identity.
+3. **The done screen counted turns it never played.** `Trial finished · 9 of 10 turns` on a
+   3-turn trial, because the counter read the (reset-to-zero) live turn index instead of the
+   report. It now reads `report.rows.length`. A completion over-claim of a different kind, and
+   exactly the class of thing the "no completion over-claim" rule exists to prevent.
+
+None of the three could have been caught by reading the diff; all three came out of driving the
+game and looking at the screen.

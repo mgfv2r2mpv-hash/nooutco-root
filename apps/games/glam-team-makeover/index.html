@@ -18,12 +18,23 @@
   .gtm-scroll::-webkit-scrollbar{ width:8px;height:8px; } .gtm-scroll::-webkit-scrollbar-thumb{ background:var(--slate-300); border-radius:8px; }
   .gtm-tool{ touch-action:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
   @media (prefers-reduced-motion: reduce){ *{ animation:none !important; } }
+  /* Phone (spec §3.9 device order: desktop first-class → tablet → iPhone). The
+     header is a single nowrap row sized for desktop and was pushing ~73px of
+     horizontal overflow at 390px, which scrolls the whole page sideways. Let it
+     wrap and let the title shrink; everything else already reflows. */
+  @media (max-width: 480px){
+    header{ flex-wrap:wrap; row-gap:6px; }
+    header > div{ min-width:0 !important; }
+    header > div > span{ white-space:normal !important; }
+  }
 </style>
 
 <!-- Shared reinforcement (SR) screen · this game's art manifest.
      Loaded here (not via the design-canvas helmet) so window.NooutcoReward and
      window.NooutcoArt exist before the runtime boots and first-renders. -->
 <script src="../reward.js"></script>
+<!-- shared print/PDF report surface (window.NooutcoResults) — D-H / AC-9 -->
+<script src="../results-report.js"></script>
 <script src="assets/art-generated.js"></script>
 <script src="assets/art-manifest.js"></script>
 
@@ -631,7 +642,9 @@ window.GlamStory = (function () {
                'Gigi', 'Harper', 'Iris', 'Jules', 'Kit', 'Lux'];
 
   /* §5's "one flavour word" slot, realised as the outro's opening cheer. */
-  var CHEERS = ['Wow', 'Look at that', 'Yes', 'Amazing', 'What a team'];
+  /* The outro title is `<cheer> — what a team!`, so no cheer may itself be
+     "What a team" (it rendered as "What a team — what a team!" on screen). */
+  var CHEERS = ['Wow', 'Look at that', 'Yes', 'Amazing', 'Hooray'];
 
   var EVENTS = [
     {
@@ -861,25 +874,35 @@ window.GlamStory = (function () {
   <!-- SETTINGS -->
   <div style="{{ settingsStyle }}">
     <div style="display:flex;align-items:center;flex-wrap:wrap;gap:11px 15px;background:var(--surface-card);border-bottom:1px solid var(--border-default);padding:9px 16px;box-shadow:var(--shadow-sm)">
-      <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Theme</label>
-        <select value="{{ theme }}" onChange="{{ onTheme }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="social">🎉 Social event</option></select></div>
+      <!-- AC-13 — no theme selector. `social` is the only reachable theme and the
+           pet/hero configurations are unreachable by construction, so a dropdown
+           with one option was pure surface area. -->
+      <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Character</label>
+        <select aria-label="Character" value="{{ charLock }}" onChange="{{ onCharLock }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="random">🎲 Random client</option><option value="m1">Lock: model 1</option><option value="m2">Lock: model 2</option><option value="m3">Lock: model 3</option><option value="m4">Lock: model 4</option></select></div>
       <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Routine</label>
-        <select value="{{ staged }}" onChange="{{ onStaged }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="on">Staged (in order)</option><option value="free">Free play</option></select></div>
+        <select aria-label="Routine" value="{{ staged }}" onChange="{{ onStaged }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="on">Staged (in order)</option><option value="free">Free play</option></select></div>
       <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Turn map</label>
-        <select value="{{ turnMap }}" onChange="{{ onMap }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="banner">Banner</option><option value="vanity">Vanity stations</option><option value="runway">Turn runway</option></select></div>
+        <select aria-label="Turn map" value="{{ turnMap }}" onChange="{{ onMap }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="banner">Banner</option><option value="vanity">Vanity stations</option><option value="runway">Turn runway</option></select></div>
+      <!-- AC-8 — the LEARNER's turn is always action-counted; no timer ever bounds
+           it. Timing is a partner-turn setting only, below. -->
       <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">My turn</label>
-        <select value="{{ countMode }}" onChange="{{ onCount }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="shown">Count shown</option><option value="hidden">Count hidden</option><option value="timed">Timed</option></select>
-        <select value="{{ actionGoal }}" onChange="{{ onActionGoal }}" style="padding:5px 6px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select>
-        <span style="font-size:11px;color:var(--text-muted)">{{ myTurnUnit }}</span></div>
+        <select aria-label="My turn" value="{{ countMode }}" onChange="{{ onCount }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="shown">Count shown</option><option value="hidden">Count hidden</option></select>
+        <span style="font-size:11px;color:var(--text-muted)">{{ budgetHint }}</span></div>
+      <!-- AC-7 — the BT sets TURNS; the per-turn action budget auto-scales from it
+           so a cooperative run can finish the look, split ~2:1 toward the learner. -->
+      <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Turns</label>
+        <select aria-label="Turns" value="{{ turns }}" onChange="{{ onTurns }}" style="padding:5px 6px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="2">2</option><option value="4">4</option><option value="6">6</option><option value="8">8</option><option value="10">10</option></select></div>
       <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Their turn</label>
-        <select value="{{ partnerTurn }}" onChange="{{ onPartnerTurn }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="match">Same as mine (fair)</option><option value="2">2 actions</option><option value="3">3 actions</option><option value="4">4 actions</option><option value="t20">Timed 20s</option><option value="t30">Timed 30s</option></select></div>
+        <select aria-label="Their turn" value="{{ partnerTurn }}" onChange="{{ onPartnerTurn }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="count">Action-counted</option><option value="t15">Timed 15s</option><option value="t20">Timed 20s</option><option value="t30">Timed 30s</option><option value="t45">Timed 45s</option></select></div>
       <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Give-back</label>
-        <select value="{{ giveBack }}" onChange="{{ onGiveBack }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="prompted">They hand it back</option><option value="forgets">They "forget" → I ask</option></select></div>
-      <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Ask cue</label>
-        <select value="{{ cueLevel }}" onChange="{{ onCueLevel }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="full">Full sentence</option><option value="short">Short</option><option value="icon">Icon only</option><option value="none">None (probe)</option></select></div>
-      <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Goal</label>
-        <select value="{{ tokenGoal }}" onChange="{{ onTokenGoal }}" style="padding:5px 6px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="3">3 ⭐</option><option value="5">5 ⭐</option><option value="8">8 ⭐</option></select></div>
-      <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:var(--text-body);cursor:pointer"><input type="checkbox" checked="{{ extraTime }}" onChange="{{ onExtra }}" style="accent-color:var(--brand-primary);cursor:pointer">Earn more time after I hand it back</label>
+        <select aria-label="Give-back" value="{{ giveBack }}" onChange="{{ onGiveBack }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="prompted">They hand it back</option><option value="forgets">They "forget" → I ask</option></select></div>
+      <!-- §3.2 — the fade ladder the SCORED enum uses. `Silent probe` still
+           delivers the prompt (by window-elapse); it just shows nothing, so it
+           cannot manufacture independence. -->
+      <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Cue</label>
+        <select aria-label="Cue" value="{{ cueLevel }}" onChange="{{ onCueLevel }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="full">Full sentence</option><option value="gesture">Gesture / icon</option><option value="silent">Silent probe</option></select></div>
+      <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Wait</label>
+        <select aria-label="Wait" value="{{ waitSec }}" onChange="{{ onWait }}" style="padding:5px 6px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="2">2s</option><option value="3">3s</option><option value="5">5s</option><option value="8">8s</option></select></div>
       <button onClick="{{ onPlay }}" style="margin-left:auto;background:var(--brand-primary);color:#fff;border:none;padding:9px 28px;border-radius:8px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-sm)">▶ Play</button>
     </div>
   </div>
@@ -923,7 +946,9 @@ window.GlamStory = (function () {
       </sc-if>
       <sc-if value="{{ mapRunway }}" hint-placeholder-val="{{ false }}">
         <div class="gtm-scroll" style="display:flex;align-items:center;gap:5px;padding:10px 14px;background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;overflow-x:auto">
-          <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-right:4px;flex-shrink:0">Turns</span>
+          <!-- AC-12 — whose turn it is is stated in words in EVERY turn-map style.
+               The runway used to convey it only through a highlighted tile. -->
+          <span style="display:inline-flex;align-items:center;gap:7px;flex-shrink:0;margin-right:6px"><span style="font-size:20px">{{ whoseGlyph }}</span><span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;{{ turnLabelColor }}">{{ turnLabel }}</span></span>
           <sc-for list="{{ runwayTiles }}" as="tile" hint-placeholder-count="5"><div style="{{ tile.style }}"><span style="font-size:{{ tile.glyphSize }}">{{ tile.glyph }}</span><span style="font-size:9px;font-weight:800;{{ tile.badgeColor }}">{{ tile.badge }}</span></div></sc-for>
         </div>
       </sc-if>
@@ -969,7 +994,7 @@ window.GlamStory = (function () {
               <div style="margin-top:10px">
                 <div style="font-size:11px;font-weight:800;color:var(--slate-600);margin-bottom:6px;display:flex;align-items:center;gap:5px">{{ grp.icon }} {{ grp.label }}</div>
                 <div style="display:flex;gap:7px;flex-wrap:wrap">
-                  <sc-for list="{{ grp.options }}" as="opt" hint-placeholder-count="3"><button onClick="{{ opt.handler }}" title="{{ opt.label }}" style="{{ opt.btnStyle }}"><span style="{{ opt.swatchStyle }}">{{ opt.glyph }}</span><span style="font-size:10px;font-weight:700;color:var(--slate-600);text-align:center;line-height:1.15;max-width:78px;min-height:13px">{{ opt.label }}</span></button></sc-for>
+                  <sc-for list="{{ grp.options }}" as="opt" hint-placeholder-count="3"><button onClick="{{ opt.handler }}" title="{{ opt.title }}" style="{{ opt.btnStyle }}"><span style="{{ opt.swatchStyle }}">{{ opt.glyph }}</span><span style="font-size:10px;font-weight:700;color:var(--slate-600);text-align:center;line-height:1.15;max-width:78px;min-height:13px">{{ opt.label }}</span></button></sc-for>
                 </div>
               </div>
             </sc-for>
@@ -979,12 +1004,36 @@ window.GlamStory = (function () {
 
       <!-- CONTROLS -->
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;padding:10px 16px">
-        <div style="display:inline-flex;align-items:center;gap:9px;padding:7px 13px;background:#fff;border:1px solid var(--border-default);border-bottom:3px solid var(--sage-500);border-radius:10px"><span style="font-size:19px;letter-spacing:1px">{{ tokenStars }}</span><span style="font-size:13px;font-weight:800;color:var(--text-muted)">{{ tokenText }}</span></div>
+        <div style="display:inline-flex;align-items:center;gap:9px;padding:7px 13px;background:#fff;border:1px solid var(--border-default);border-bottom:3px solid var(--sage-500);border-radius:10px"><span style="font-size:17px">🎬</span><span style="font-size:13px;font-weight:800;color:var(--text-muted)">{{ progressText }}</span></div>
         <div style="flex:1;min-width:170px;text-align:center">{{ phaseMsg }}</div>
+        <!-- AC-3 — kid-facing over-cap feedback. Sage, not red; a nudge, never a
+             clinical label, and it appears in count-hidden mode too. -->
+        <sc-if value="{{ showCapToast }}" hint-placeholder-val="{{ false }}"><div style="{{ capToastStyle }}">🖌 {{ capToast }}</div></sc-if>
         <sc-if value="{{ isReady }}" hint-placeholder-val="{{ false }}"><button onClick="{{ onGo }}" style="background:var(--sage-500);color:#fff;border:none;padding:12px 26px;border-radius:999px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md);animation:gtm-pop .3s var(--ease-standard)">▸ Go — my turn!</button></sc-if>
         <sc-if value="{{ isMine }}" hint-placeholder-val="{{ false }}"><button onClick="{{ onHandoff }}" style="{{ handoffStyle }}">Done — their turn ▸</button></sc-if>
         <sc-if value="{{ isGiveback }}" hint-placeholder-val="{{ false }}"><button onClick="{{ onGiveBack2 }}" style="background:var(--sage-500);color:#fff;border:none;padding:12px 24px;border-radius:999px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md);animation:gtm-pop .3s var(--ease-standard)">▸ My turn again</button></sc-if>
         <sc-if value="{{ isAsk }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:10px"><div style="{{ cueStyle }}">{{ cueText }}</div><button onClick="{{ onConfirmAsk }}" style="background:var(--slate-800);color:#fff;border:none;padding:11px 16px;border-radius:9px;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer;white-space:nowrap">✓ I asked!</button></div></sc-if>
+      </div>
+
+      <!-- STAFF STRIP — small, muted, always available, never part of play.
+           Nothing here alters the doll, the budget or any score (D-C / AC-14);
+           the prompt control is the one exception and it only ever makes the
+           record STRICTER (a turn-durable forfeit, AC-23). -->
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--text-muted)">
+        <span style="font-weight:700;letter-spacing:.05em;text-transform:uppercase">Staff</span>
+        <button onClick="{{ onBtPrompt }}" title="I gave a real verbal or gestural prompt this turn" style="background:#fff;border:1px solid var(--slate-300);color:var(--slate-600);font-family:inherit;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;cursor:pointer">Prompt given</button>
+        <button onClick="{{ onEOpen }}" title="Log an event — does not change the game" style="background:#fff;border:1px solid var(--slate-300);color:var(--slate-600);font-family:inherit;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;cursor:pointer">(E)</button>
+        <sc-if value="{{ ePickerOpen }}" hint-placeholder-val="{{ false }}">
+          <span style="display:inline-flex;gap:6px">
+            <button onClick="{{ onEForce }}" style="background:var(--slate-100);border:1px solid var(--slate-300);color:var(--slate-700);font-family:inherit;font-size:11px;font-weight:700;padding:4px 9px;border-radius:6px;cursor:pointer">Took turn by force</button>
+            <button onClick="{{ onEInterf }}" style="background:var(--slate-100);border:1px solid var(--slate-300);color:var(--slate-700);font-family:inherit;font-size:11px;font-weight:700;padding:4px 9px;border-radius:6px;cursor:pointer">Interfering behavior</button>
+            <button onClick="{{ onEOther }}" style="background:var(--slate-100);border:1px solid var(--slate-300);color:var(--slate-700);font-family:inherit;font-size:11px;font-weight:700;padding:4px 9px;border-radius:6px;cursor:pointer">Other</button>
+          </span>
+        </sc-if>
+        <button onClick="{{ onEndTrial }}" title="End the trial now and go to the report" style="background:#fff;border:1px solid var(--slate-300);color:var(--slate-600);font-family:inherit;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;cursor:pointer;margin-left:auto">End trial</button>
+        <sc-if value="{{ showEToast }}" hint-placeholder-val="{{ false }}">
+          <span style="display:inline-flex;align-items:center;gap:8px;padding:3px 10px;border-radius:999px;background:var(--slate-100);border:1px solid var(--slate-300);color:var(--slate-700);font-weight:700">{{ eToast }}<button onClick="{{ onEUndo }}" style="background:none;border:none;color:var(--blue-700);font-family:inherit;font-size:11px;font-weight:800;cursor:pointer;text-decoration:underline">Undo</button></span>
+        </sc-if>
       </div>
     </main>
   </sc-if>
@@ -996,8 +1045,11 @@ window.GlamStory = (function () {
         <div style="font-size:56px;line-height:1">{{ outcomeEmoji }}</div>
         <h2 style="font-size:24px;font-weight:800;color:var(--text-primary);margin:8px 0 6px;letter-spacing:-.01em">{{ outcomeTitle }}</h2>
         <p style="font-size:15px;line-height:1.5;color:var(--text-body);max-width:500px;margin:0 auto 12px">{{ outcomeText }}</p>
-        <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;background:var(--sage-50);border:1px solid var(--sage-200);border-radius:999px;font-size:14px;font-weight:800;color:var(--sage-700);margin-bottom:18px">{{ tokenStars }} <span>{{ tokenText }}</span></div>
-        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button onClick="{{ onFinishSR }}" style="display:inline-flex;align-items:center;gap:8px;background:var(--brand-primary);color:#fff;border:none;padding:12px 24px;border-radius:10px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md)">⭐ Finish &amp; SR</button><button onClick="{{ onReplay }}" style="background:#fff;color:var(--sage-700);border:1.5px solid var(--sage-500);padding:12px 24px;border-radius:10px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer">↺ Play again</button></div>
+        <!-- AC-16 — an unfinished look says so, plainly, and the story above still
+             carries its turn-taking line with no completion claim in it. -->
+        <sc-if value="{{ incompleteNote }}" hint-placeholder-val="{{ false }}"><p style="font-size:12px;font-weight:700;color:var(--text-muted);max-width:480px;margin:0 auto 12px">The look was not finished this time — that is fine. The turn-taking still counts.</p></sc-if>
+        <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;background:var(--sage-50);border:1px solid var(--sage-200);border-radius:999px;font-size:14px;font-weight:800;color:var(--sage-700);margin-bottom:18px">🎬 <span>{{ progressText }}</span></div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button onClick="{{ onFinishSR }}" style="display:inline-flex;align-items:center;gap:8px;background:var(--brand-primary);color:#fff;border:none;padding:12px 24px;border-radius:10px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md)">⭐ Finish &amp; SR</button><button onClick="{{ onPrint }}" style="background:#fff;color:var(--slate-700);border:1.5px solid var(--slate-300);padding:12px 24px;border-radius:10px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer">🖨 Print report</button><button onClick="{{ onReplay }}" style="background:#fff;color:var(--sage-700);border:1.5px solid var(--sage-500);padding:12px 24px;border-radius:10px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer">↺ Play again</button></div>
       </div>
     </section>
   </sc-if>
@@ -1175,46 +1227,124 @@ const PERSON_ART_ZONES = {
   cheeks:{t:51,l:22,w:56,h:12,label:'Drag over the cheeks'},
 };
 
+/* Charged actions a cooperative run needs to finish the staged look: the 11 TA
+   steps expanded to their charge keys (wash · moisturize · 3 patches · 3
+   conceals · contour · blush · highlight · shadow · liner · mascara · lip liner
+   · lips = 16) plus hairstyle, hair colour and the outfit. The engine scales the
+   per-turn budget from this and the BT's turn count (D-D / AC-7). */
+const REQUIRED_ACTIONS = 19;
+
 class Component extends DCLogic {
   constructor(props) {
     super(props);
+    /* The randomly-assigned client (D-F): a generated face model + a name + a
+       scenario, drawn once so the intro screen already tells that story. The BT
+       can pin the model via the character lock; the event and name stay random. */
+    const sel = this.drawChar('random');
     this.state = {
-      phase:'intro', theme:'social', turnMap:'banner', model:'m2',   // default model (all four selectable)
-      countMode:'shown', actionGoal:3, partnerTurn:'match', staged:'on',
-      giveBack:'forgets', cueLevel:'short', tokenGoal:5, extraTime:true,
-      tokens:0, actionsThisTurn:0, chargedThisTurn:{}, bonus:0,
+      phase:'intro', theme:'social', turnMap:'banner', model:sel.model,
+      /* countMode is `shown`|`hidden` only — AC-8: no timer ever bounds the
+         LEARNER's own turn. Timing is a partner-turn setting (`partnerTurn`). */
+      countMode:'shown', partnerTurn:'count', staged:'on',
+      giveBack:'forgets', cueLevel:'full', turns:6, waitSec:3, charLock:'random',
+      chargedThisTurn:{},
       ed:this.freshEd('person'), armed:null,
-      myLeft:0, partnerLeft:0, partnerTimed:false, partnerGoal:3, cueVisible:false,
+      partnerLeft:0, partnerTimed:false, cueVisible:false,
       settingsOpen:true, methodOpen:false,
-      elapsed:0, turnsTaken:0, indAsks:0, promptedAsks:0,
+      elapsed:0,
+      sel, story:this.storyIntro(sel),
+      // engine mirror — the Trial is the source of truth; these exist only to render
+      engTurn:0, ttActions:0, ttBudget:0, capToast:'', eToast:'', ePickerOpen:false,
+      report:null,
     };
-    this._iv=null; this._cueTO=null; this._clockIv=null; this._paint=false;
+    this._trial=null; this._charged={}; this._ttIv=null; this._clockIv=null; this._paint=false;
+    this._toastTO=null; this._eToastTO=null;
   }
+  drawChar(lock){
+    const G=(typeof window!=='undefined')&&window.GlamStory;
+    if(!G) return { model:'m2', name:'Ada', eventId:'picture-day', cheer:'Wow' };
+    return G.draw(lock&&lock!=='random' ? {model:lock} : {});
+  }
+  storyIntro(sel){ const G=(typeof window!=='undefined')&&window.GlamStory; return G?G.intro(sel):null; }
   freshEd(flaws){ return { cov:{}, col:{}, gl:{}, done:{}, outfit:null, hairShape:'hair-copper',
     pimples:[0,0,0],   // tri-state per spot: 0=zit, 1=patched, 2=clear (person only; rendered when flaws==='person')
     dirt:(flaws==='pet')?[true,true,true]:[false,false,false],
     spotSeed:Math.random() }; }
-  componentDidMount(){ this._clockIv=setInterval(()=>this.setState(s=>({elapsed:s.elapsed+1})),1000); this.paintAvatar(); }
+  componentDidMount(){ this._clockIv=setInterval(()=>this.setState(s=>({elapsed:s.elapsed+1})),1000);
+    /* 250 ms, not 1 s: every prompt this build delivers comes out of
+       `Trial.tick()`, and a 1 s cadence would round the wait window enough to
+       flip a boundary pass between `independent` and `prompted@…`. */
+    this._ttIv=setInterval(()=>this.tickTrial(),250);
+    this.paintAvatar(); }
   componentDidUpdate(){ this.paintAvatar(); }
-  componentWillUnmount(){ clearInterval(this._iv); clearInterval(this._clockIv); clearTimeout(this._cueTO); }
+  componentWillUnmount(){ clearInterval(this._ttIv); clearInterval(this._clockIv);
+    clearTimeout(this._toastTO); clearTimeout(this._eToastTO); }
 
   cfg(){ return THEMES[this.state.theme]; }
   base(){ return this.cfg().base; }
   onSel(f,num){ return e=>this.setState({[f]:num?+e.target.value:e.target.value}); }
-  stopTick(){ clearInterval(this._iv); this._iv=null; }
-  startMyTick(){ this.stopTick(); if(this.state.countMode!=='timed') return;
-    this._iv=setInterval(()=>this.setState(s=>{ if(s.myLeft<=1){clearInterval(this._iv);this._iv=null;setTimeout(()=>this.handoff(),0);return{myLeft:0};} return{myLeft:s.myLeft-1}; }),1000); }
-  startPartnerTick(){ this.stopTick();
-    this._iv=setInterval(()=>this.setState(s=>{ if(s.partnerLeft<=1){clearInterval(this._iv);this._iv=null;setTimeout(()=>this.partnerDone(),0);return{partnerLeft:0};} return{partnerLeft:s.partnerLeft-1}; }),1000); }
 
-  partnerSpec(){ const s=this.state; const p=s.partnerTurn;
-    if(p==='match') return s.countMode==='timed' ? {timed:true,secs:30} : {timed:false,count:s.actionGoal};
-    if(p[0]==='t') return {timed:true,secs:+p.slice(1)};
-    return {timed:false,count:+p}; }
-  effGoal(){ return this.state.actionGoal + this.state.bonus; }
+  /* ══ the measurement engine (window.GlamTT) is the source of truth for turns,
+        budgets, prompts and every score. The component owns the doll, the task
+        analysis and the screens; it never re-derives a scoring rule. ══ */
+  partnerSpec(){ const p=this.state.partnerTurn;
+    return p&&p[0]==='t' ? {timed:true,secs:+p.slice(1)} : {timed:false,secs:0}; }
 
-  play(){ this.setState({ phase:'ready', tokens:0, ed:this.freshEd(this.cfg().flaws), armed:null, actionsThisTurn:0, chargedThisTurn:{}, bonus:0, turnsTaken:0, indAsks:0, promptedAsks:0, settingsOpen:false }); }
-  go(){ const myTime=30+this.state.bonus*5; this.setState({phase:'mine',actionsThisTurn:0,chargedThisTurn:{},armed:null,myLeft:myTime}); setTimeout(()=>this.startMyTick(),0); }
+  ttOpts(){ const s=this.state; const spec=this.partnerSpec();
+    return { turns:s.turns, requiredActions:REQUIRED_ACTIONS, cueLevel:s.cueLevel,
+      waitMs:s.waitSec*1000, giveBack:s.giveBack,
+      partnerTimed:spec.timed, partnerSecs:spec.secs }; }
+
+  tickTrial(){ const tr=this._trial; if(!tr||tr.ended) return; tr.tick(); this.syncTT(); }
+
+  /* Reconcile the screens with the engine after ANY engine mutation. The engine
+     decides whose turn it is and when the trial ends; this only picks the screen
+     that turn should be shown on, and mirrors the counters the UI renders. */
+  syncTT(extra){
+    const tr=this._trial; if(!tr) return;
+    const s=this.state; const st=Object.assign({}, extra||{});
+    if(tr.ended){
+      if(s.phase!=='done'){ st.phase='done'; st.engTurn=0; st.armed=null; st.cueVisible=false;
+        st.report=tr.report(); st.story=this.storyOutro(st.report);
+        this._charged={};
+        setTimeout(()=>{ if(window.NooutcoReward) window.NooutcoReward.celebrate(document.body); },60); }
+      this.commit(st); return;
+    }
+    const t=tr.turn;
+    st.ttActions=t.actions; st.ttBudget=t.budget;
+    st.cueVisible=tr.promptVisible();
+    st.partnerTimed=!!t.waitPrescribedMs;
+    if(t.actor==='staff'&&t.waitPrescribedMs) st.partnerLeft=Math.max(0,Math.ceil((t.waitPrescribedMs-(Date.now()-t.startedAt))/1000));
+    if(t.n!==s.engTurn){
+      st.engTurn=t.n; st.armed=null; st.chargedThisTurn={}; this._charged={};
+      /* "They hand it back" keeps its explicit resume beat: the engine has
+         already opened the learner's turn, but the learner turn's clock only
+         starts at Go, so parking on the give-back screen costs no measurement. */
+      st.phase = t.actor==='staff' ? 'theirs'
+        : (s.phase==='theirs' && s.giveBack==='prompted') ? 'giveback' : 'ready';
+    }
+    this.commit(st);
+  }
+  /* The tick runs at 250 ms and would otherwise re-render (and repaint the whole
+     avatar canvas) four times a second on unchanged data. Only commit a real
+     change. */
+  commit(st){ const s=this.state;
+    for(const k in st){ if(st[k]!==s[k]){ this.setState(st); return; } } }
+
+  storyOutro(rep){ const G=window.GlamStory; if(!G) return null;
+    return G.outro(this.state.sel, rep.tier, rep.complete); }
+
+  toast(msg){ if(!msg) return; clearTimeout(this._toastTO);
+    this.setState({capToast:msg}); this._toastTO=setTimeout(()=>this.setState({capToast:''}),3200); }
+
+  play(){ const sel=this.drawChar(this.state.charLock);
+    this._trial=new window.GlamTT.Trial(this.ttOpts()); this._charged={};
+    this.setState({ phase:'ready', sel, model:sel.model, story:this.storyIntro(sel), report:null,
+      ed:this.freshEd(this.cfg().flaws), armed:null, chargedThisTurn:{}, capToast:'', eToast:'',
+      settingsOpen:false, engTurn:0 });
+    this.syncTT(); }
+  go(){ const tr=this._trial; if(!tr) return; tr.go();
+    this.setState({phase:'mine',armed:null}); this.syncTT(); }
 
   // ── TA staging gate (default ON; settings 'staged'==='free' ungates everything) ──
   _stepDone(n){ const ed=this.state.ed; switch(n){
@@ -1242,23 +1372,58 @@ class Component extends DCLogic {
     const makeup=this._skinMakeupDone(); const hair=this._hairDone();
     const cur = !skin?'skin' : !makeup?'makeup' : !hair?'hair' : 'acc';
     return { cur, skin, makeup, hair }; }
-  arm(opt){ if(this._optLocked(opt)) return; if(this._capBlocks(this.state,this._optKey(opt))) return;   // cap: no new actions this turn
+  /* The staged look is finished: the 11-step self-care TA, plus a styled and
+     coloured head of hair, plus an outfit. Accessories are extra. This is the
+     ONLY completion claim in the build (D-D / AC-5) — handing over N times can
+     no longer "win" (eval defect 3). */
+  _lookDone(){ return this._skinMakeupDone() && this._hairDone() && !!this.state.ed.done.outfit; }
+
+  arm(opt){ if(this._optLocked(opt)) return;
+    /* D-B / AC-3 — at the cap a tool does not go quietly dead: refuse, log the
+       violation, set the turn-durable forfeit and TELL THE KID, in every count
+       mode. 0 of 43 tools said anything at the cap in the old build. */
+    const key=this._optKey(opt);
+    if(this._atCapFor(key)){ this._refuse(opt.label); return; }
     if(opt.mech==='choose'){ this.applyChoose(opt); return; } this.setState({armed:opt}); }
-  bumpAction(){ this.setState(s=>({actionsThisTurn:s.actionsThisTurn+1}), ()=>this.afterAction()); }
-  afterAction(){ const s=this.state; if(s.phase==='theirs' && !s.partnerTimed && s.actionsThisTurn>=s.partnerGoal){ setTimeout(()=>this.partnerDone(),500); } }
+
+  /* Would a NEW charge be refused right now? Reads the engine's single fixed
+     auto-scaled budget and nothing else (AC-17) — there is no `budget + bonus`
+     band left in which the same tap is legal on one turn and a violation on the
+     next (the A5 attack). */
+  _atCapFor(key){ return !this._charged[key] && !!this._trial && !this._trial.ended && this._trial.atCap(); }
+  _refuse(label){ const tr=this._trial; if(!tr) return;
+    const r=tr.requestAction(label||'tool'); this.toast(r.feedback); this.syncTT(); }
+
+  /* The one gate an engaged action passes through. Free re-touches of an
+     already-charged article never reach the engine, so the first-touch charge
+     economy is preserved; everything else is admitted or refused by the Trial.
+     `_charged` is an instance mirror, not state, so two pointer events in the
+     same frame cannot both see a stale "not charged yet". */
+  _admit(key,label){
+    if(this._charged[key]) return true;
+    const tr=this._trial; if(!tr||tr.ended){ this._charged[key]=1; return true; }
+    const r=tr.requestAction(label||key);
+    if(!r.allowed){ this.toast(r.feedback); this.syncTT(); return false; }
+    this._charged[key]=1; this.syncTT(); return true;
+  }
+  afterAction(){ const tr=this._trial; if(!tr||tr.ended) return;
+    if(this._lookDone()) tr.setLookComplete(true);
+    const s=this.state;
+    /* "They hand it back", counted: the partner's turn simply ends when their
+       budget is spent. In "they forget" the turn deliberately does NOT end —
+       the learner has to mand for it (D-K). */
+    if(s.phase==='theirs' && s.giveBack==='prompted' && !s.partnerTimed && tr.turn && tr.atCap()){
+      setTimeout(()=>this.partnerDone(),450); }
+    this.syncTT(); }
   // Per-turn action economy (user-locked): an action is spent the FIRST time in a turn a
   // given key is touched — `item:<slot>` (select/place/toggle a thing), `color:<slot>`
   // (recolour an article), or `style` (hairstyle). So selecting an item costs 1; its first
   // colour change costs 1; further same-article recolours or restyles in the SAME turn are
-  // free; and it all resets next turn (chargedThisTurn cleared in go/handoff). `ed.done` is
-  // still set for gating/✓, decoupled from the charge.
-  _turnCap(s){ return s.phase==='theirs' ? s.partnerGoal : (s.actionGoal + s.bonus); }
-  // Hard per-turn cap: once the prescribed number of CHARGED actions is spent, a NEW charge is
-  // refused (re-touching an already-charged article stays free). Count modes only — timed turns
-  // end by the clock, not the count.
-  _capBlocks(s,key){ if(s.countMode==='timed') return false;
-    if((s.chargedThisTurn||{})[key]) return false;                 // already charged this turn → free
-    const cap=this._turnCap(s); return cap>0 && s.actionsThisTurn>=cap; }
+  // free; and it all resets next turn. `ed.done` is still set for gating/✓, decoupled
+  // from the charge.
+  // Cap-dimming read used by the palette; the engine owns the refusal itself.
+  _capBlocks(s,key){ if((s.chargedThisTurn||{})[key]) return false;   // already charged this turn → free
+    return !!this._trial && this._trial.atCap(); }
   // Charge key an option WOULD spend (mirrors the apply paths) — used to dim would-be-new-charge
   // tools at the cap. patch/conceal spend per tapped spot, so a synthetic never-charged key makes
   // the tool dim once the cap is hit.
@@ -1268,59 +1433,155 @@ class Component extends DCLogic {
     if(opt.mech==='paint') return (opt.color?'color:':'item:')+opt.slot;
     if(opt.mech==='patch'||opt.mech==='conceal') return '__perTap__';
     return 'item:'+(opt.slot||opt.id); }
-  _chargeKey(s,key){ const c=s.chargedThisTurn||{}; if(c[key]) return {inc:0,charged:c,blocked:false};
-    if(this._capBlocks(s,key)) return {inc:0,charged:c,blocked:true};
-    const n=Object.assign({},c); n[key]=1; return {inc:1,charged:n,blocked:false}; }
+  // Local bookkeeping only — admission was already decided by `_admit`.
+  _chargeKey(s,key){ const c=s.chargedThisTurn||{}; if(c[key]) return {charged:c};
+    const n=Object.assign({},c); n[key]=1; return {charged:n}; }
 
-  applyChoose(opt){ this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); let key;
-      if(opt.slot==='outfit'){ ed.outfit=opt.value; ed.col.garment=opt.color; ed.done.outfit=true; key='color:outfit'; }
-      else if(opt.slot==='hairShape'){ ed.hairShape=opt.value; ed.done.hairShape=true; key='style'; }
-      else { ed.gl[opt.slot]=opt.glyph||'x'; ed.col[opt.slot]=opt.color; ed.done[opt.slot]=true; key='item:'+opt.slot; }
-      const {inc,charged,blocked}=this._chargeKey(s,key); if(blocked) return {};
-      return { ed, armed:null, actionsThisTurn: s.actionsThisTurn+inc, chargedThisTurn:charged }; }, ()=>this.afterAction()); }
+  applyChoose(opt){
+    const key = opt.slot==='outfit' ? 'color:outfit' : opt.slot==='hairShape' ? 'style' : 'item:'+opt.slot;
+    if(!this._admit(key,opt.label)) return;
+    this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed));
+      if(opt.slot==='outfit'){ ed.outfit=opt.value; ed.col.garment=opt.color; ed.done.outfit=true; }
+      else if(opt.slot==='hairShape'){ ed.hairShape=opt.value; ed.done.hairShape=true; }
+      else { ed.gl[opt.slot]=opt.glyph||'x'; ed.col[opt.slot]=opt.color; ed.done[opt.slot]=true; }
+      return { ed, armed:null, chargedThisTurn:this._chargeKey(s,key).charged }; }, ()=>this.afterAction()); }
 
-  tapApply(){ const t=this.state.armed; if(!t) return; this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); const slot=t.slot; let key;
-      if(t.apply==='recolor'){ ed.col[slot]=(t.value!=null?t.value:t.color); key='color:'+slot; }
-      else if(t.apply==='place'){ ed.gl[slot]=(t.value!=null?t.value:t.glyph); if(t.color) ed.col[slot]=t.color; key='item:'+slot; }
-      else { ed.cov[slot]=1; if(t.color) ed.col[slot]=t.color; key='item:'+slot; }
+  tapApply(){ const t=this.state.armed; if(!t) return; const slot=t.slot;
+    const key = t.apply==='recolor' ? 'color:'+slot : 'item:'+slot;
+    if(!this._admit(key,t.label)) return;
+    this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed));
+      if(t.apply==='recolor'){ ed.col[slot]=(t.value!=null?t.value:t.color); }
+      else if(t.apply==='place'){ ed.gl[slot]=(t.value!=null?t.value:t.glyph); if(t.color) ed.col[slot]=t.color; }
+      else { ed.cov[slot]=1; if(t.color) ed.col[slot]=t.color; }
       ed.done[slot]=true;
-      const {inc,charged,blocked}=this._chargeKey(s,key); if(blocked) return {};
-      return { ed, armed:null, actionsThisTurn: s.actionsThisTurn+inc, chargedThisTurn:charged }; }, ()=>this.afterAction()); }
+      return { ed, armed:null, chargedThisTurn:this._chargeKey(s,key).charged }; }, ()=>this.afterAction()); }
 
   // Treat/patch step: tap a zit (state 0) → patched (1). Stay armed while zits remain.
-  patchOne(i){ this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); if(ed.pimples[i]!==0) return {}; ed.pimples[i]=1;
-      ed.done['patch'+i]=true; const {inc,charged,blocked}=this._chargeKey(s,'item:patch'+i); if(blocked) return {};
-      const anyZit=ed.pimples.some(v=>v===0); return { ed, armed: anyZit? s.armed : null, actionsThisTurn:s.actionsThisTurn+inc, chargedThisTurn:charged }; }, ()=>this.afterAction()); }
+  patchOne(i){ if(this.state.ed.pimples[i]!==0) return;
+    if(!this._admit('item:patch'+i,'treat spot')) return;
+    this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); ed.pimples[i]=1; ed.done['patch'+i]=true;
+      const anyZit=ed.pimples.some(v=>v===0);
+      return { ed, armed: anyZit? s.armed : null, chargedThisTurn:this._chargeKey(s,'item:patch'+i).charged }; }, ()=>this.afterAction()); }
   // Conceal step (unlocks once ALL spots patched): tap a patch (state 1) → clear (2).
-  concealOne(i){ this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); if(ed.pimples[i]!==1) return {}; ed.pimples[i]=2;
-      ed.done['conceal'+i]=true; const {inc,charged,blocked}=this._chargeKey(s,'item:conceal'+i); if(blocked) return {};
-      const anyPatched=ed.pimples.some(v=>v===1); return { ed, armed: anyPatched? s.armed : null, actionsThisTurn:s.actionsThisTurn+inc, chargedThisTurn:charged }; }, ()=>this.afterAction()); }
+  concealOne(i){ if(this.state.ed.pimples[i]!==1) return;
+    if(!this._admit('item:conceal'+i,'conceal spot')) return;
+    this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); ed.pimples[i]=2; ed.done['conceal'+i]=true;
+      const anyPatched=ed.pimples.some(v=>v===1);
+      return { ed, armed: anyPatched? s.armed : null, chargedThisTurn:this._chargeKey(s,'item:conceal'+i).charged }; }, ()=>this.afterAction()); }
 
   paintStep(){ const t=this.state.armed; if(!t||t.mech!=='paint') return; const slot=t.slot;
-    if(this._capBlocks(this.state,(t.color?'color:':'item:')+slot)) return;   // cap: don't start a new charged paint
+    const key=(t.color?'color:':'item:')+slot;
+    // A paint step charges when coverage COMPLETES, so admission is asked for on
+    // the stroke that finishes it, before any state is written.
+    const nx=Math.min(1,(this.state.ed.cov[slot]||0)+0.11);
+    if(nx>=1 && !this._admit(key,t.label)) return;
     let completed=false;
-    this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); const cur=ed.cov[slot]||0; const nx=Math.min(1,cur+0.11); ed.cov[slot]=nx; if(t.color) ed.col[slot]=t.color;
-      let inc=0, charged=s.chargedThisTurn||{};
-      if(nx>=1){ ed.done[slot]=true; completed=true; const r=this._chargeKey(s,(t.color?'color:':'item:')+slot); inc=r.inc; charged=r.charged; }
-      return { ed, actionsThisTurn: s.actionsThisTurn+inc, chargedThisTurn:charged }; },
+    this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); const cur=ed.cov[slot]||0; const n2=Math.min(1,cur+0.11); ed.cov[slot]=n2; if(t.color) ed.col[slot]=t.color;
+      let charged=s.chargedThisTurn||{};
+      if(n2>=1){ ed.done[slot]=true; completed=true; charged=this._chargeKey(s,key).charged; }
+      return { ed, chargedThisTurn:charged }; },
       ()=>{ if(completed){ this._paint=false; this.setState({armed:null}); this.afterAction(); } }); }
   pDown(e){ if(e.currentTarget&&e.currentTarget.setPointerCapture&&e.pointerId!=null){ try{e.currentTarget.setPointerCapture(e.pointerId);}catch(_){} } this._paint=true; this.paintStep(); }
   pMove(e){ if(this._paint || e.buttons===1) this.paintStep(); }
   pUp(){ this._paint=false; }
 
-  handoff(){ this.stopTick(); const s=this.state; let tokens=Math.min(s.tokenGoal,s.tokens+1); let bonus=s.extraTime?Math.min(3,s.bonus+1):s.bonus; const turnsTaken=s.turnsTaken+1;
-    if(tokens>=s.tokenGoal){ this.setState({phase:'done',tokens,turnsTaken}); setTimeout(()=>{ if(window.NooutcoReward) window.NooutcoReward.celebrate(document.body); },60); return; }
-    const spec=this.partnerSpec();
-    this.setState({ phase:'theirs', tokens, bonus, turnsTaken, actionsThisTurn:0, chargedThisTurn:{}, armed:null, partnerTimed:spec.timed, partnerGoal:spec.timed?0:spec.count, partnerLeft:spec.timed?spec.secs:0 });
-    setTimeout(()=>{ if(spec.timed) this.startPartnerTick(); },0); }
-  partnerDone(){ this.stopTick(); if(this.state.giveBack==='prompted'){ this.setState({phase:'giveback'}); return; }
-    this.setState({phase:'ask',cueVisible:false}); clearTimeout(this._cueTO); if(this.state.cueLevel!=='none') this._cueTO=setTimeout(()=>this.setState({cueVisible:true}),3500); }
-  giveBack(){ this.setState({phase:'ready'}); }
-  confirmAsk(){ clearTimeout(this._cueTO); const independent=!this.state.cueVisible; this.setState(s=>({phase:'ready',cueVisible:false,indAsks:s.indAsks+(independent?1:0),promptedAsks:s.promptedAsks+(independent?0:1)})); }
+  /* ── turn lifecycle: every transition is the engine's, not the screen's ── */
+  handoff(){ const tr=this._trial; if(!tr||tr.ended) return;
+    tr.pass(); this.setState({armed:null}); this.syncTT(); }
+  partnerDone(){ if(this.state.giveBack!=='prompted') return; this.setState({phase:'giveback'}); }
+  giveBack(){ const tr=this._trial;
+    if(tr && tr.turn && tr.turn.actor==='staff'){ tr.staffHandBack(); this.syncTT(); }
+    this.setState({phase:'ready'}); }
+  confirmAsk(){ const tr=this._trial; if(!tr||tr.ended) return; tr.ask(); this.syncTT(); }
+  /* §3.2 — the BT delivers a REAL prompt (verbal/gestural), on any turn. Sets the
+     turn-durable forfeit no resume can launder (AC-23/E1). */
+  btPrompt(){ const tr=this._trial; if(!tr||tr.ended) return; tr.btPrompt(); this.syncTT();
+    this.setState({eToast:'Prompt recorded for this turn.'});
+    clearTimeout(this._eToastTO); this._eToastTO=setTimeout(()=>this.setState({eToast:''}),2600); }
+  /* D-C / AC-14 — staff annotator. Fixed 3-item picker, no freeform, logs
+     {timestamp, phase, whose-turn} and changes nothing about play or score. */
+  eMark(code){ const tr=this._trial; if(!tr) return; tr.mark(code);
+    this.setState({ePickerOpen:false,eToast:'Noted: '+code+' · tap Undo to remove'});
+    clearTimeout(this._eToastTO); this._eToastTO=setTimeout(()=>this.setState({eToast:''}),5000); }
+  eUndo(){ const tr=this._trial; if(!tr) return; tr.undoMark();
+    clearTimeout(this._eToastTO); this.setState({eToast:'Removed.'});
+    this._eToastTO=setTimeout(()=>this.setState({eToast:''}),1800); }
+  /* AC-5/AC-16 — always terminable, from any turn, with no completion over-claim. */
+  endTrial(){ const tr=this._trial; if(!tr||tr.ended) return; tr.endTrial('bt-end'); this.syncTT(); }
+  /* D-H / AC-9 — the append-only trial log rendered as the per-turn table, with
+     all ten §4 columns, BELOW the outro story on a print-to-PDF sheet (the same
+     new-tab + pop-up-retry pattern the other No Outcome tools use).
+     De-identified by construction: an auto session id and the date. This tool
+     has no name field and no freeform box anywhere, so there is nothing to leak. */
+  printReport(){
+    const rep=this.state.report; if(!rep||!window.NooutcoResults) return;
+    const story=this.state.story||{};
+    const esc=v=>String(v==null?'':v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const COLS=[['Turn','turn'],['Player','player'],['Step(s) taken','step'],['Actions','actions'],
+      ['Within limit','withinLimit'],['Over-cap','overCap'],['Relinquish (pass)','pass'],
+      ['Wait','wait'],['Ask-back','ask'],['(E)','e']];
+    const head='<tr>'+COLS.map(c=>'<th>'+esc(c[0])+'</th>').join('')+'</tr>';
+    const body=rep.rows.map(r=>'<tr>'+COLS.map(c=>'<td>'+esc(r[c[1]])+'</td>').join('')+'</tr>').join('');
+    const T=rep.totals;
+    const asks=Object.keys(T.asks).map(k=>k+' ×'+T.asks[k]).join(' · ')||'—';
+    const sum=[['Tier (turn-taking)','Tier '+rep.tier],
+      ['Learner turns scored',T.learnerTurns],['Independent passes',T.independentPasses],
+      ['Prompted / staff-prompted passes',T.nonIndependentPasses],['Over-cap attempts',T.overCap],
+      ['Ask-back',asks],['(E) marks',T.eEvents],
+      ['Look finished',rep.complete?'yes':'no — trial ended incomplete'],
+      ['Per-turn budget','learner '+rep.learnerBudget+' · partner '+rep.staffBudget],
+      ['Cue level',rep.cueLevel],['Wait window',(rep.waitMs/1000)+'s'],
+      ['Turns configured',rep.turnsConfigured],['Ended',rep.endReason]]
+      .map(s=>'<div class="s"><span>'+esc(s[0])+'</span><strong>'+esc(s[1])+'</strong></div>').join('');
+    /* AC-16/AC-18 — an incomplete run prints a marked-incomplete banner and the
+       story below still carries only the turn-taking line: no completion beat,
+       no event-success claim anywhere on the sheet. */
+    const incomplete=rep.complete?'':'<p class="warn">Trial ended with the look UNFINISHED — no completion is claimed. Turn-taking below is still scored.</p>';
+    const when=new Date(rep.startedAt);
+    const html='<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'+
+      '<meta name="viewport" content="width=device-width,initial-scale=1">'+
+      '<title>Glam Team Makeover — turn-taking trial</title><style>'+
+      'body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#1f2430;margin:0;padding:28px 30px;background:#fff}'+
+      'h1{font-size:21px;margin:0 0 2px}.kick{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#6a7659}'+
+      '.meta{font-size:12px;color:#6b7280;margin:6px 0 18px}'+
+      '.story{background:#f5f7f1;border-left:5px solid #6a7659;border-radius:0 10px 10px 0;padding:13px 17px;margin:0 0 18px}'+
+      '.story h2{font-size:15px;margin:0 0 5px}.story p{margin:0;font-size:14px;line-height:1.5}'+
+      '.warn{background:#fef6e7;border:1px solid #f0c674;border-radius:8px;padding:9px 13px;font-size:13px;font-weight:700;color:#92400e;margin:0 0 16px}'+
+      'h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin:22px 0 8px}'+
+      'table{border-collapse:collapse;width:100%;font-size:12.5px}'+
+      'th,td{border:1px solid #dfe3d8;padding:6px 8px;text-align:left}'+
+      'th{background:#f5f7f1;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.04em}'+
+      '.sum{display:flex;flex-wrap:wrap;gap:8px 26px;margin-top:16px}'+
+      '.s{font-size:12.5px}.s span{color:#6b7280;margin-right:7px}'+
+      'footer{margin-top:24px;padding-top:11px;border-top:1px solid #e5e7eb;font-size:11px;color:#6b7280}'+
+      '.pr{float:right;background:#6a7659;color:#fff;border:none;padding:8px 15px;border-radius:7px;font-weight:700;cursor:pointer}'+
+      '@media print{.pr{display:none}}</style></head><body>'+
+      '<button class="pr" onclick="window.print()">Print / Save PDF</button>'+
+      '<div class="kick">No Outcome ABA · Glam Team Makeover</div>'+
+      '<h1>Turn-taking trial — task analysis</h1>'+
+      '<p class="meta">Session '+esc(rep.sessionId)+' · '+esc(when.toLocaleString())+'</p>'+
+      incomplete+
+      '<div class="story"><h2>'+esc(story.title||'')+'</h2><p>'+esc(story.text||'')+'</p></div>'+
+      '<h3>Per-turn record</h3><table><thead>'+head+'</thead><tbody>'+body+'</tbody></table>'+
+      '<div class="sum">'+sum+'</div>'+
+      '<footer>De-identified: auto session id and date only. No learner name is collected by this tool. '+
+      'Device-local report — not transmitted.</footer></body></html>';
+    window.NooutcoResults.open({ html });
+  }
   finishSR(){ if(window.NooutcoReward) window.NooutcoReward.openSR({minutes:5,title:'SR Timer'}); }
-  replay(){ this.stopTick(); clearTimeout(this._cueTO); this.setState({phase:'intro',tokens:0,ed:this.freshEd(this.cfg().flaws),armed:null,bonus:0,settingsOpen:true}); }
+  replay(){ this._trial=null; this._charged={};
+    const sel=this.drawChar(this.state.charLock);
+    this.setState({phase:'intro',sel,model:sel.model,story:this.storyIntro(sel),report:null,
+      ed:this.freshEd(this.cfg().flaws),armed:null,chargedThisTurn:{},capToast:'',eToast:'',
+      engTurn:0,ttActions:0,ttBudget:0,cueVisible:false,settingsOpen:true}); }
 
   fmt(sec){ return Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0'); }
+  /* Clinician-facing running summary (the Method sheet). Reads the engine's own
+     totals — never a parallel tally the screens could drift from. */
+  statLine(){ const tr=this._trial; if(!tr) return 'no trial started';
+    const r=tr.report(); const asks=Object.keys(r.totals.asks).map(k=>k+' ×'+r.totals.asks[k]).join(', ')||'—';
+    return r.totals.independentPasses+'/'+r.totals.learnerTurns+' independent passes · '+
+      r.totals.overCap+' over-cap · ask-back: '+asks+' · '+r.totals.eEvents+' (E) · session '+r.sessionId; }
 
   buildV(){ const ed=this.state.ed; const base=this.base(); const th=this.state.theme;
     const cov=k=>ed.cov[k]||0; const col=(k,d)=>ed.col[k]||d; const gl=k=>ed.gl[k]||'';
@@ -1684,33 +1945,43 @@ class Component extends DCLogic {
     if(o.proc==='blush') return B+'left:'+a.l+'%;top:'+a.t+'%;width:'+(hw*0.66)+'%;height:'+(hw*0.5)+'%;background:radial-gradient(closest-side,'+(o.color||'#f28ba0')+',transparent 70%);mix-blend-mode:multiply;opacity:'+(op*0.85)+';z-index:37';
     return B; }
   renderVals(){ const s=this.state; const cfg=this.cfg(); const base=this.base();
-    const isMine=s.phase==='mine',isReady=s.phase==='ready',isTheirs=s.phase==='theirs',isGiveback=s.phase==='giveback',isAsk=s.phase==='ask',isDone=s.phase==='done',isIntro=s.phase==='intro';
+    const isMine=s.phase==='mine',isReady=s.phase==='ready',isTheirs=s.phase==='theirs',isGiveback=s.phase==='giveback',isDone=s.phase==='done',isIntro=s.phase==='intro';
+    /* The mand affordance is live for the WHOLE partner turn in "they forget"
+       mode — not behind a separate screen that opens only once the partner has
+       spent their allotted actions. That gating was the G1 deadlock: a partner
+       who genuinely forgets does 0 of N, so the window would never open (AC-27). */
+    const isAsk=isTheirs&&s.giveBack==='forgets';
     const whoseMe=isMine||isReady; const whose=isDone?'done':(whoseMe?'me':'them');
     const V=this.buildV(); const SAGE='#6a7659',BLUE='#3b82f6';
+    const left=Math.max(0,s.ttBudget-s.ttActions);
 
     let instruction='';
     if(isReady) instruction='My turn is ready — tap Go!';
-    else if(isMine){ if(s.countMode==='timed') instruction='My turn — glam as much as I can!'; else if(s.countMode==='hidden') instruction='My turn — add some things!'; else { const left=Math.max(0,this.effGoal()-s.actionsThisTurn); instruction=left>0?('My turn — do '+left+' more!'):'All set — now I hand it over!'; } }
+    else if(isMine){ instruction = s.countMode==='hidden' ? 'My turn — add some things!'
+      : (left>0 ? ('My turn — I can do '+left+' more') : 'All set — now I hand it over!'); }
     else if(isTheirs) instruction='Their turn — I wait 🕐';
     else if(isGiveback) instruction='Their turn is done';
-    else if(isAsk) instruction="It's really my turn now…";
 
     const pips=(goal,filled,color)=>{ const a=[]; for(let i=0;i<goal;i++) a.push(React.createElement('span',{key:i,style:{width:'15px',height:'15px',borderRadius:'50%',background:i<filled?color:'#fff',border:'2px solid '+(i<filled?color:'#cfd4c4'),display:'inline-block'}})); return a; };
     let turnMeter=React.createElement('span',{});
-    if(isMine&&s.countMode==='timed') turnMeter=React.createElement('span',{style:{fontFamily:'var(--font-mono)',fontSize:'22px',fontWeight:800,color:SAGE}},this.fmt(s.myLeft));
-    else if(isMine&&s.countMode==='shown') turnMeter=React.createElement('div',{},[React.createElement('div',{key:'l',style:{fontSize:'9px',fontWeight:800,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--text-muted)',marginBottom:'4px'}},'Actions left'),React.createElement('div',{key:'p',style:{display:'flex',gap:'5px',justifyContent:'flex-end'}},pips(this.effGoal(),s.actionsThisTurn,SAGE))]);
+    // "Actions left" fills with the actions REMAINING. It used to fill with the
+    // actions SPENT while labelled "left", so the meter read backwards (eval §3.9).
+    if(isMine&&s.countMode==='shown') turnMeter=React.createElement('div',{},[React.createElement('div',{key:'l',style:{fontSize:'9px',fontWeight:800,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--text-muted)',marginBottom:'4px'}},'Actions left'),React.createElement('div',{key:'p',style:{display:'flex',gap:'5px',justifyContent:'flex-end'}},pips(s.ttBudget,left,SAGE))]);
     else if(isTheirs&&s.partnerTimed) turnMeter=React.createElement('span',{style:{fontFamily:'var(--font-mono)',fontSize:'20px',fontWeight:800,color:BLUE}},this.fmt(s.partnerLeft));
-    else if(isTheirs) turnMeter=React.createElement('div',{},[React.createElement('div',{key:'l',style:{fontSize:'9px',fontWeight:800,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--text-muted)',marginBottom:'4px'}},'Their actions'),React.createElement('div',{key:'p',style:{display:'flex',gap:'5px',justifyContent:'flex-end'}},pips(s.partnerGoal,s.actionsThisTurn,BLUE))]);
-    else if(s.bonus>0&&whoseMe) turnMeter=React.createElement('span',{style:{fontSize:'12px',fontWeight:800,color:SAGE}},'+'+s.bonus+' bonus 🎉');
+    else if(isTheirs) turnMeter=React.createElement('div',{},[React.createElement('div',{key:'l',style:{fontSize:'9px',fontWeight:800,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--text-muted)',marginBottom:'4px'}},'Their actions left'),React.createElement('div',{key:'p',style:{display:'flex',gap:'5px',justifyContent:'flex-end'}},pips(s.ttBudget,left,BLUE))]);
 
     let phaseMsg=React.createElement('span',{});
     if(isReady) phaseMsg=React.createElement('span',{style:{fontSize:'13px',color:'var(--text-muted)'}},'Nice waiting! Tap Go to start.');
-    else if(isTheirs) phaseMsg=React.createElement('span',{style:{fontSize:'13px',fontWeight:700,color:BLUE}},'They take the same-size turn — I wait.');
+    else if(isAsk) phaseMsg=React.createElement('span',{style:{fontSize:'13px',fontWeight:700,color:'var(--amber-700)'}},'They take their turn — when it is mine again, I ask.');
+    else if(isTheirs) phaseMsg=React.createElement('span',{style:{fontSize:'13px',fontWeight:700,color:BLUE}},'They take their turn — I wait.');
     else if(isGiveback) phaseMsg=React.createElement('span',{style:{fontSize:'13px',fontWeight:700,color:'var(--slate-700)'}},'They finished their turn.');
-    else if(isAsk) phaseMsg=React.createElement('span',{style:{fontSize:'13px',fontWeight:700,color:'var(--amber-700)'}},'Their turn ran long — time to ask for my turn.');
     else if(isMine) phaseMsg=React.createElement('span',{style:{fontSize:'13px',color:'var(--text-muted)'}},s.armed?'Now do it on the face →':'Pick a step to start.');
 
-    const cueTexts={full:"I say: \u201CIt's my turn now, please.\u201D",short:"\u201CMy turn, please.\u201D",icon:'🖐️ ➡️',none:''};
+    /* The 3-level fade ladder the scored enum uses (§3.2). At `silent` the prompt
+       is still DELIVERED — it just shows nothing. Reading visibility to decide
+       independence is the F-22 bug this whole build exists to kill, so nothing on
+       this screen scores anything: `cueVisible` is presentation only. */
+    const cueTexts={full:"I say: \u201CIt's my turn now, please.\u201D",gesture:'🖐️ ➡️',silent:''};
     const cueText=s.cueVisible?(cueTexts[s.cueLevel]||''):' ';
     const cueStyle='display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;font-weight:800;font-size:14px;'+(s.cueVisible?'background:var(--amber-100);border:1.5px solid var(--amber-300);color:var(--amber-700);animation:gtm-cue 2s var(--ease-standard) infinite':'background:var(--slate-100);border:1.5px dashed var(--slate-300);color:var(--slate-400)');
 
@@ -1757,8 +2028,12 @@ class Component extends DCLogic {
       const capDim=s.countMode==='shown' && this._capBlocks(s,this._optKey(opt));
       const off=locked||capDim;
       const bg=off?'var(--slate-50)':armed?'var(--sage-50)':active?'var(--sage-100)':'#fff', bd=off?'var(--slate-200)':(armed||active)?'var(--sage-500)':'var(--slate-200)';
-      const lbl = num!=null ? '' : (locked?'🔒 ':(active&&!armed?'✓ ':''))+opt.label;
-      return { label:lbl, glyph, swatchStyle:swatch, handler:locked?(()=>{}):(()=>this.arm(opt)),
+      // Hairstyle buttons used to render their number and NO name at all (eval
+      // §3.9: seven unlabelled buttons). Every tool now carries its label.
+      const lbl = (locked?'🔒 ':(active&&!armed?'✓ ':''))+opt.label;
+      // `title` stays the RAW tool name (no ✓ prefix, no lock glyph) so the
+      // tooltip — and anything addressing the tool by name — is stable across states.
+      return { label:lbl, title:opt.label, glyph, swatchStyle:swatch, handler:locked?(()=>{}):(()=>this.arm(opt)),
         btnStyle:'display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:5px;padding:9px 7px 7px;width:82px;border-radius:13px;cursor:'+(off?'not-allowed':'pointer')+';font-family:inherit;opacity:'+(off?'.45':'1')+';background:'+bg+';border:1.5px solid '+bd+';box-shadow:'+(armed?'0 0 0 3px rgba(106,118,89,.18)':active?'var(--shadow-sm)':'none') }; }) })).filter(grp=>grp.options.length);
 
     // stage tracker — 4 phase chips (done ✓ / current / future); person only
@@ -1792,14 +2067,20 @@ class Component extends DCLogic {
       } }
     }
 
-    let stars=''; for(let i=0;i<s.tokenGoal;i++) stars+=i<s.tokens?'⭐':'☆';
+    /* Turn progress replaces the ⭐ handoff counter. Handing over N times is no
+       longer a win condition — the look is (D-D / eval defect 3) — so the chip
+       reports where we are in the BT's fixed turn count, and claims nothing. */
+    const turnsPlayed=(isDone&&s.report)?s.report.rows.length:Math.max(0,(s.engTurn||1)-1);
+    const progressText=isDone?('Trial finished · '+turnsPlayed+' of '+s.turns+' turns')
+      :('Turn '+(s.engTurn||1)+' of '+s.turns);
+    const turnsDone=isDone?turnsPlayed:Math.max(0,(s.engTurn||1)-1);
 
     const runwayTiles=[]; const mk=(who,st)=>{ const me=who==='me'; const now=st==='now';
       const bg=now?(me?SAGE:BLUE):(st==='done'?(me?'var(--sage-50)':'var(--blue-50)'):'#fff'); const bd=st==='future'?'1.5px dashed var(--slate-300)':('1.5px solid '+(me?'var(--sage-500)':'var(--blue-500)')); const op=st==='done'?'.6':(st==='future'?'.7':'1'); const ring=now?';box-shadow:0 0 0 4px '+(me?'rgba(106,118,89,.2)':'rgba(59,130,246,.2)'):'';
       return { glyph:me?'🦸':'🧑‍⚕️', glyphSize:now?'22px':'16px', badge:now?'NOW':(st==='done'?'✓':''), badgeColor:now?'color:#fff':(me?'color:var(--sage-700)':'color:var(--blue-700)'), style:'flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:'+(now?'9px 12px':'6px 8px')+';border-radius:11px;min-width:'+(now?'54px':'42px')+';background:'+bg+';border:'+bd+';opacity:'+op+ring }; };
-    for(let i=0;i<s.turnsTaken;i++) runwayTiles.push(mk(i%2===0?'me':'them','done'));
-    if(!isDone){ runwayTiles.push(mk(whose,'now')); runwayTiles.push(mk(whose==='me'?'them':'me','next')); runwayTiles.push(mk(whose,'future')); }
-    runwayTiles.push({ glyph:'⭐', glyphSize:'17px', badge:s.tokens+'/'+s.tokenGoal, badgeColor:'color:var(--amber-700)', style:'flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 9px;border-radius:11px;min-width:44px;background:var(--amber-50);border:1.5px solid var(--amber-300)' });
+    for(let i=0;i<turnsDone;i++) runwayTiles.push(mk(i%2===0?'me':'them','done'));
+    if(!isDone){ runwayTiles.push(mk(whose,'now')); runwayTiles.push(mk(whose==='me'?'them':'me','next')); }
+    runwayTiles.push({ glyph:'🎬', glyphSize:'17px', badge:(isDone?turnsPlayed:(s.engTurn||1))+'/'+s.turns, badgeColor:'color:var(--amber-700)', style:'flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 9px;border-radius:11px;min-width:44px;background:var(--amber-50);border:1.5px solid var(--amber-300)' });
 
     const stBase='width:128px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:6px;padding:11px 8px;border-radius:14px;';
     const chip=c=>'display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:700;'+c;
@@ -1813,17 +2094,22 @@ class Component extends DCLogic {
 
     return {
       clock:this.fmt(s.elapsed), minGlyph:s.settingsOpen?'▾':'▸', settingsStyle:s.settingsOpen?'':'display:none',
-      theme:s.theme, turnMap:s.turnMap, countMode:s.countMode, actionGoal:String(s.actionGoal),
-      partnerTurn:s.partnerTurn, giveBack:s.giveBack, cueLevel:s.cueLevel, tokenGoal:String(s.tokenGoal), extraTime:s.extraTime,
+      turnMap:s.turnMap, countMode:s.countMode, turns:String(s.turns), waitSec:String(s.waitSec),
+      partnerTurn:s.partnerTurn, giveBack:s.giveBack, cueLevel:s.cueLevel, charLock:s.charLock,
       staged:s.staged, onStaged:this.onSel('staged'),
-      myTurnUnit:s.countMode==='timed'?'(auto '+(30+s.bonus*5)+'s)':'actions',
-      onTheme:e=>this.setState({theme:e.target.value,ed:this.freshEd(THEMES[e.target.value].flaws)}),
-      onMap:this.onSel('turnMap'), onCount:this.onSel('countMode'), onActionGoal:this.onSel('actionGoal',true),
-      onPartnerTurn:this.onSel('partnerTurn'), onGiveBack:this.onSel('giveBack'), onCueLevel:this.onSel('cueLevel'), onTokenGoal:this.onSel('tokenGoal',true),
-      onExtra:e=>this.setState({extraTime:e.target.checked}),
+      // The per-turn budget is DERIVED, never a second lever (AC-17): the BT sets
+      // how many turns; the engine scales the actions so the look can be finished.
+      budgetHint:(()=>{ const sc=window.GlamTT.autoScale(s.turns,REQUIRED_ACTIONS);
+        return 'auto: '+sc.learnerBudget+' actions mine · '+sc.staffBudget+' theirs'; })(),
+      onMap:this.onSel('turnMap'), onCount:this.onSel('countMode'), onTurns:this.onSel('turns',true),
+      onPartnerTurn:this.onSel('partnerTurn'), onGiveBack:this.onSel('giveBack'), onCueLevel:this.onSel('cueLevel'),
+      onWait:this.onSel('waitSec',true), onCharLock:this.onSel('charLock'),
       onPlay:()=>this.play(), onGo:()=>this.go(), onHandoff:()=>this.handoff(), onGiveBack2:()=>this.giveBack(), onConfirmAsk:()=>this.confirmAsk(),
+      onBtPrompt:()=>this.btPrompt(), onEOpen:()=>this.setState(x=>({ePickerOpen:!x.ePickerOpen})),
+      onEForce:()=>this.eMark('Took turn by force'), onEInterf:()=>this.eMark('Interfering behavior'), onEOther:()=>this.eMark('Other'),
+      onEUndo:()=>this.eUndo(), onEndTrial:()=>this.endTrial(), onPrint:()=>this.printReport(),
       onMethod:()=>this.setState(x=>({methodOpen:!x.methodOpen})), onMinimize:()=>this.setState(x=>({settingsOpen:!x.settingsOpen})), onFinishSR:()=>this.finishSR(), onReplay:()=>this.replay(),
-      isIntro,isReady,isMine,isTheirs,isGiveback,isAsk,isDone, showGame:isReady||isMine||isTheirs||isGiveback||isAsk,
+      isIntro,isReady,isMine,isTheirs,isGiveback,isAsk,isDone, showGame:isReady||isMine||isTheirs||isGiveback,
       mapBanner:s.turnMap==='banner', mapVanity:s.turnMap==='vanity', mapRunway:s.turnMap==='runway',
       personShow:base==='person', isPet:base==='pet', V, palette, target, runwayTiles, stageChips,
       stageStyle:'flex:1;min-width:300px;position:relative;display:flex;align-items:'+(personArtLive?'flex-end':'center')+';justify-content:center;background:var(--surface-card);border:1px solid var(--border-default);border-radius:16px;padding:12px;overflow:hidden'+(personArtLive?';max-height:670px':'')+(stageBg?';background-image:url("'+stageBg+'");background-size:cover;background-position:center':''),
@@ -1841,12 +2127,26 @@ class Component extends DCLogic {
       bannerStyle:'display:flex;align-items:center;gap:14px;padding:12px 18px;border-radius:14px;background:'+(whose==='me'?'var(--sage-50)':'var(--blue-50)')+';border-left:6px solid '+(whose==='me'?SAGE:BLUE),
       bannerAvatarStyle:whose==='me'?'background:var(--sage-100);border:2px solid var(--sage-500)':'background:var(--blue-100);border:2px solid var(--blue-500)',
       instruction, turnMeter, phaseMsg, cueText, cueStyle,
-      handoffStyle:'background:'+SAGE+';color:#fff;border:none;padding:12px 24px;border-radius:999px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md)'+((isMine&&s.countMode!=='timed'&&s.actionsThisTurn>=this.effGoal())?';animation:gtm-cue 1.6s var(--ease-standard) infinite':''),
-      tokenStars:stars, tokenText:s.tokens+' / '+s.tokenGoal,
+      handoffStyle:'background:'+SAGE+';color:#fff;border:none;padding:12px 24px;border-radius:999px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md)'+((isMine&&left===0)?';animation:gtm-cue 1.6s var(--ease-standard) infinite':''),
+      progressText,
+      /* AC-3 — over-cap feedback is GENTLE and appears in every count mode, hidden
+         included. Never red, never a clinical label: the child sees a nudge to
+         hand over, the violation goes to the log. */
+      capToast:s.capToast, showCapToast:!!s.capToast,
+      capToastStyle:'display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:999px;font-size:13.5px;font-weight:700;background:var(--sage-50);border:1.5px solid var(--sage-500);color:var(--sage-700);animation:gtm-pop .25s var(--ease-standard)',
+      eToast:s.eToast, showEToast:!!s.eToast, ePickerOpen:s.ePickerOpen,
       paletteHint:s.armed?'✋ Now do it on the face →':'Pick a step to put on',
-      introEmoji:cfg.intro.emoji, introTitle:cfg.intro.title, introText:cfg.intro.text,
-      outcomeEmoji:cfg.outcome.emoji, outcomeTitle:cfg.outcome.title, outcomeText:cfg.outcome.text,
-      methodOpen:s.methodOpen, statLine:s.turnsTaken+' turns handed over · '+s.indAsks+' independent asks · '+s.promptedAsks+' prompted asks',
+      // Mad-lib intro / outro (D-F / D-G / AC-10 / AC-18). Nothing here asserts a
+      // checkable visual attribute of the client, and the completion beat is
+      // present only when the staged look is actually finished.
+      introEmoji:(s.story&&s.story.emoji)||cfg.intro.emoji,
+      introTitle:(s.story&&s.story.title)||cfg.intro.title,
+      introText:(s.story&&s.story.text)||cfg.intro.text,
+      outcomeEmoji:(isDone&&s.story&&s.story.emoji)||'🤝',
+      outcomeTitle:(isDone&&s.story&&s.story.title)||'What a team!',
+      outcomeText:(isDone&&s.story&&s.story.text)||'',
+      incompleteNote:isDone&&s.report&&!s.report.complete,
+      methodOpen:s.methodOpen, statLine:this.statLine(),
       stationMeStyle:stBase+(whose==='me'?'background:var(--sage-50);border:2px solid var(--sage-500);box-shadow:0 0 0 4px rgba(106,118,89,.16)':'background:#fff;border:1.5px dashed var(--slate-300);opacity:.7'),
       stationThemStyle:stBase+(whose==='them'?'background:var(--blue-50);border:2px solid var(--blue-500);box-shadow:0 0 0 4px rgba(59,130,246,.16)':'background:#fff;border:1.5px dashed var(--slate-300);opacity:.7'),
       stationMeLabel:whose==='me'?'MY TURN':'waiting', stationMeLabelColor:'color:'+(whose==='me'?'var(--sage-700)':'var(--text-muted)'),
