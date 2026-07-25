@@ -80,7 +80,16 @@ const HELPERS = `
     for (let i=0;i<80 && same<3;i++){ await frame(); const h=hash(snap()); if(h===last) same++; else { same=0; last=h; } }
     return snap(); };
   const setEd = (fn) => new Promise(r => L.setState(s => { const ed=JSON.parse(JSON.stringify(s.ed)); fn(ed); return {ed}; }, r));
-  const setModel = (m) => new Promise(r => L.setState({ model:m, ed:L.freshEd('person') }, r));
+  /* Switching model also has to wait for that model's hair masks to decode:
+     until they do, \`_skinPool\` returns null and \`_spots\` falls back to the
+     RAW pool, so a measurement taken in that window reads spot positions the
+     compositor has already stopped painting at. (Latent before the refresh —
+     it only surfaced once m1 left the roster and m2 became the first model
+     measured, with no earlier model's cycle to cover the decode.) */
+  const setModel = async (m) => {
+    await new Promise(r => L.setState({ model:m, ed:L.freshEd('person') }, r));
+    for (let i=0;i<80 && !L._skinPool(m);i++) await new Promise(r => setTimeout(r,100));
+  };
   const diff = (a,b) => { const W=cv.width,H=cv.height; let t=1e9,bt=-1,l=1e9,r=-1,n=0;
     for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const i=(y*W+x)*4;
       const d = Math.abs(b.data[i]-a.data[i])+Math.abs(b.data[i+1]-a.data[i+1])
@@ -90,15 +99,15 @@ const HELPERS = `
 `;
 
 test.describe('Glam Team Makeover — paper-doll fidelity', () => {
-  test('F-11 · every tool paints inside its own target box, on all four models', async ({ page }) => {
-    test.setTimeout(180000); // 56 model×tool composites, each diffed pixel by pixel
+  test('F-11 · every tool paints inside its own target box, on every roster model', async ({ page }) => {
+    test.setTimeout(180000); // every roster model × tool composite, diffed pixel by pixel
     const errors = await stage(page);
 
     const rows = await logic(page, `return (async () => {
       ${HELPERS}
       const EFFECTS = ${EFFECTS};
       const out = [];
-      for (const m of ['m1','m2','m3','m4']) {
+      for (const m of window.GlamStory.MODELS) {
         await setModel(m); await settle();
         for (const e of EFFECTS) {
           await new Promise(r => L.setState({ ed: L.freshEd('person') }, r));
@@ -114,7 +123,8 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
       return out;
     })();`);
 
-    expect(rows.length).toBe(56);
+    const roster = await page.evaluate(() => window.GlamStory.MODELS);
+    expect(rows.length).toBe(roster.length * 14);
     for (const r of rows) {
       const where = `${r.model}/${r.key}`;
       // A tool that paints nothing is its own defect — a charged action with no result.
@@ -122,7 +132,7 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
       expect(r.box, `${where} should have a target box`).not.toBeNull();
       // The whole point: the box the child is told to work in must contain the
       // pixels the tool actually changes. The pre-redesign fixed table failed
-      // this on 32 of these 56 combinations.
+      // this on 32 of the 56 combinations it was measured over.
       const p = r.painted, b = r.box;
       expect(p.t, `${where} paints above its box (${p.t.toFixed(1)} < ${b.t})`).toBeGreaterThanOrEqual(b.t - 0.01);
       expect(p.b, `${where} paints below its box (${p.b.toFixed(1)} > ${b.b})`).toBeLessThanOrEqual(b.b + 0.01);
@@ -130,7 +140,7 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
       expect(p.r, `${where} paints right of its box (${p.r.toFixed(1)} > ${b.r})`).toBeLessThanOrEqual(b.r + 0.01);
     }
 
-    // …and the boxes have to track the model, not be one table for all four. The
+    // …and the boxes have to track the model, not be one shared table. The
     // face is registered identically across models, so it is the eye SIZE that
     // differs; a per-model box therefore differs in size between models.
     const faceBoxes = new Set(rows.filter((r) => r.key === 'wash').map((r) => JSON.stringify(r.box)));
@@ -150,7 +160,7 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
         return st.includes('linear-gradient') && st.includes('210, 190, 156'); });
       if (!ledge) return { error: 'vanity ledge not found' };
       const out = { models:{} };
-      for (const m of ['m1','m2','m3','m4']) {
+      for (const m of window.GlamStory.MODELS) {
         await setModel(m); const before = await settle();
         await setEd((ed) => { ed.outfit = 'sparkle'; });
         const after = await settle();
@@ -194,7 +204,7 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
       const lum = (r,g,b) => { const f=c=>{ c/=255; return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4); };
         return 0.2126*f(r)+0.7152*f(g)+0.0722*f(b); };
       const out = {};
-      for (const m of ['m1','m2','m3','m4']) {
+      for (const m of window.GlamStory.MODELS) {
         await setModel(m); await settle();
         const E = L.genEntry(), spots = L._spots(E), fr = L.gen().frame;
         const d = snap();
@@ -211,13 +221,138 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
       return out;
     })();`);
 
-    // Baseline before the fix: 1.06–1.67 : 1 on all twelve spots, across all four
-    // models — the eval flagged m3/m4 but the numbers indicted every model.
+    // Baseline before the fix: 1.06–1.67 : 1 on every spot, across every
+    // model — the eval flagged m3/m4 but the numbers indicted every model.
     for (const [m, ratios] of Object.entries(res)) {
       expect(ratios.length, `${m} should seed three spots`).toBe(3);
       for (const r of ratios) {
         expect(r, `${m}: a blemish at ${r}:1 is not findable`).toBeGreaterThanOrEqual(3);
       }
+    }
+  });
+
+  /* Refresh fix 2 — the blemishes read as gentle, not clinical.
+     F-16 above pins the VALUE and cannot move: at skin L≈0.20 a 3:1 dark target
+     has to sit near L≈0.02, so "softer" could never have meant "paler". It means
+     a softer FORM, and the form is what this measures. The harsh version drew a
+     crisp filled disc, a near-black rim STROKE around it and a specular gloss dot
+     offset up-left — the three cues that made it read as a pustule rather than a
+     bit of skin to take care of. Each leaves its own signature in the radial
+     profile of the paint, and the profile is what the assertions below read:
+
+       harsh, measured  rel [1, 1, 1, .96, .95, 1.0, 1.05, .90, .12, .08, …]
+       soft,  measured  rel [1, .96, .90, .83, .73, .56, .36, .08, .02, .01, …]
+
+       · filled disc → holds full strength, then falls off a cliff in one step
+       · rim stroke  → a ring STRONGER than the ones inside it
+       · gloss       → one sector of a ring far off the rest (radial asymmetry)
+
+     Measured against a blemish-FREE render of the SAME face (pimples set to
+     `clear`, same seed, so the spots stay put), which isolates the paint from
+     whatever the skin underneath was already doing. A raw against-the-skin
+     profile is far too noisy to assert on: the face's own shading swings ±0.09
+     across a single spot, which swamps everything above. */
+  test('refresh · blemishes are soft — the paint decays, with no rim, cliff or gloss', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = await stage(page);
+
+    const res = await logic(page, `return (async () => {
+      ${HELPERS}
+      const lum = (r,g,b) => { const f=c=>{ c/=255; return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4); };
+        return 0.2126*f(r)+0.7152*f(g)+0.0722*f(b); };
+      // dense enough that a hard edge cannot hide between two samples
+      const RADII = []; for (let f=0; f<=1.6001; f+=0.05) RADII.push(+f.toFixed(2));
+      const out = {};
+      for (const m of window.GlamStory.MODELS) {
+        await setModel(m);
+        await setEd((ed) => { ed.pimples = [2,2,2]; });   // 2 = cleared: nothing drawn
+        const clean = await settle();
+        await setEd((ed) => { ed.pimples = [0,0,0]; });
+        const dirty = await settle();
+        const E = L.genEntry(), spots = L._spots(E), fr = L.gen().frame;
+        const at = (d,x,y) => { const i=((y|0)*cv.width+(x|0))*4; return lum(d.data[i],d.data[i+1],d.data[i+2]); };
+        out[m] = spots.map(s => {
+          const cx=s.x/fr.w*cv.width, cy=s.y/fr.h*cv.height, r=s.r/fr.w*cv.width;
+          const ink = L._spotInk(E, s), h = ink.core.slice(1);
+          const inkLum = lum(parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16));
+          /* COVERAGE, not raw luminance delta. A paint of alpha a over skin s
+             lands at s + a·(ink − s), so the raw delta scales with how far the
+             skin under THAT pixel already is from the ink — and the face's own
+             shading moves that by ±10% inside a single spot, which is enough to
+             fake a rim. Dividing it back out leaves the compositor's actual
+             alpha, which is a property of the brush alone. Pixels whose skin is
+             already near the ink are dropped: there the divisor collapses and
+             the coverage is unrecoverable, not merely noisy. */
+          const alpha = (x,y) => { const c=at(clean,x,y), d=inkLum-c;
+            return Math.abs(d) < 0.06 ? null : (at(dirty,x,y)-c)/d; };
+          const rings = RADII.map(f => {
+            const vs=[];
+            if (!f) { const v=alpha(cx,cy); if(v!=null) vs.push(v); }
+            else for (let a=0;a<12;a++){ const th=a*Math.PI/6;
+              const v=alpha(cx+Math.cos(th)*r*f, cy+Math.sin(th)*r*f); if(v!=null) vs.push(v); }
+            if (!vs.length) return null;
+            return { n:vs.length, mean:vs.reduce((p,q)=>p+q,0)/vs.length,
+                     lo:Math.min(...vs), hi:Math.max(...vs) };
+          });
+          return { rings };
+        });
+      }
+      return { out, radii: RADII };
+    })();`);
+
+    expect(errors, `console/page errors: ${errors.join(' | ')}`).toEqual([]);
+
+    const R = res.radii;
+    const atR = (f) => R.findIndex((x) => Math.abs(x - f) < 1e-6);
+    for (const [m, spots] of Object.entries(res.out)) {
+      expect(spots.length, `${m} should seed three spots`).toBe(3);
+      spots.forEach((s, i) => {
+        const where = `${m}/spot${i}`;
+        // coverage per ring, in order. A ring with too few usable samples is
+        // dropped rather than guessed at — an unmeasurable ring is not a defect.
+        const prof = s.rings
+          .map((r, k) => (r && r.n >= (k ? 8 : 1) ? { f: R[k], a: r.mean, lo: r.lo } : null))
+          .filter(Boolean);
+        expect(prof.length, `${where}: too little of the spot is measurable`)
+          .toBeGreaterThan(R.length * 0.7);
+        const peak = Math.max(...prof.map((x) => x.a));
+
+        // painted at all — a target nobody can see is not a target
+        expect(peak, `${where}: the blemish barely paints anything`).toBeGreaterThan(0.5);
+
+        // NO CLIFF — a soft falloff never sheds most of itself in one twentieth of
+        // a radius. The filled disc did exactly that: .90 → .12 in a single step.
+        for (let k = 1; k < prof.length; k++) {
+          const drop = prof[k - 1].a - prof[k].a;
+          expect(drop, `${where}: coverage falls ${(drop * 100).toFixed(0)} points between `
+            + `r×${prof[k - 1].f} and r×${prof[k].f} — that is a hard edge, not a falloff`)
+            .toBeLessThan(0.35);
+        }
+
+        // NO RIM — nothing further out is more covered than everything inside it.
+        // The stroked outline was drawn in a darker ink than the core it ringed,
+        // so it reads as coverage above 1: impossible for a single soft brush.
+        let strongestInside = Infinity;
+        for (const x of prof) {
+          if (x.f < 0.15) { strongestInside = Math.min(strongestInside, x.a); continue; }
+          expect(x.a, `${where}: r×${x.f} (${x.a.toFixed(3)}) is more covered than the paint `
+            + `inside it (${strongestInside.toFixed(3)}) — that is a stroked outline`)
+            .toBeLessThanOrEqual(strongestInside + 0.08);
+          strongestInside = Math.min(strongestInside, Math.max(x.a, 0));
+        }
+
+        // nothing anywhere swings back past the bare skin
+        for (const x of prof) {
+          expect(x.lo, `${where}: negative coverage at r×${x.f} — paint going the wrong way`)
+            .toBeGreaterThan(-0.1);
+        }
+
+        // and it dissolves into the face rather than ending somewhere the eye can
+        // trace: essentially gone by its own radius, entirely gone past it
+        const cov = (f) => (s.rings[atR(f)] || {}).mean;
+        expect(cov(1), `${where}: still ${cov(1).toFixed(3)} covered at r×1.0`).toBeLessThan(0.1);
+        expect(Math.abs(cov(1.5)), `${where}: not faded out by r×1.5`).toBeLessThan(0.05);
+      });
     }
   });
 
@@ -232,7 +367,7 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
       ${HELPERS}
       const wait = async (fn) => { for (let i=0;i<60;i++){ const v=fn(); if(v) return v; await new Promise(r=>setTimeout(r,150)); } return null; };
       const out = [];
-      for (const m of ['m1','m2','m3','m4']) {
+      for (const m of window.GlamStory.MODELS) {
         await setModel(m);
         const pool = await wait(() => L._skinPool(m));
         await settle();
@@ -249,7 +384,9 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
       return out;
     })();`);
 
-    expect(rows.length).toBe(28);
+    // every roster model × every hairstyle it ships (7 apiece)
+    const roster = await page.evaluate(() => window.GlamStory.MODELS);
+    expect(rows.length).toBe(roster.length * 7);
     for (const r of rows) {
       expect(r.spots, `${r.model} should always offer three targets`).toBe(3);
       expect(r.poolSize, `${r.model} should keep enough pool points to seed from`).toBeGreaterThanOrEqual(3);

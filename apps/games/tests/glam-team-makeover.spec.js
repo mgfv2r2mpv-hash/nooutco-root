@@ -62,23 +62,29 @@ test.describe('Glam Team Makeover', () => {
     expect(errors, `console/page errors: ${errors.join(' | ')}`).toEqual([]);
   });
 
-  test('all four models load their base art and each paints a distinct stage', async ({ page }) => {
+  test('every roster model loads its base art and paints a distinct stage', async ({ page }) => {
     await page.goto('/glam-team-makeover/');
     await page.getByRole('button', { name: /Play/ }).click(); // enter the game screen
     await waitForPaintedStage(page);
 
+    // The roster is `GlamStory.MODELS` — the one list the story draw, the BT's
+    // character lock and the art picker all read. M1 was retired from it in the
+    // refresh, so this sweep follows the roster rather than a hardcoded four.
+    const roster = await page.evaluate(() => window.GlamStory.MODELS);
+    expect(roster.length, 'the roster should still offer a choice of clients').toBeGreaterThan(1);
+
     // The compositor loads its source art through `new Image()`, so the sprites
     // never appear in the DOM. Check the files are actually served…
-    for (const m of ['m1', 'm2', 'm3', 'm4']) {
+    for (const m of roster) {
       const res = await page.request.get(`/glam-team-makeover/assets/art/person/${m}/base.png`);
       expect(res.status(), `${m}/base.png should be served`).toBe(200);
     }
 
     // …and that selecting each model repaints the stage with that model's art.
     // A model whose base failed to decode would leave `paintAvatar` bailing early
-    // and the canvas unchanged, so distinct fingerprints prove all four decoded.
+    // and the canvas unchanged, so distinct fingerprints prove each one decoded.
     const seen = new Map();
-    for (const m of ['M1', 'M2', 'M3', 'M4']) {
+    for (const m of roster.map((id) => id.toUpperCase())) {
       await page.getByRole('button', { name: m, exact: true }).click();
       await expect
         .poll(async () => {
@@ -90,7 +96,47 @@ test.describe('Glam Team Makeover', () => {
       expect(fp.opaque, `${m} should paint a non-blank stage`).toBeGreaterThan(20000);
       seen.set(fp.hash, m);
     }
-    expect(seen.size, 'all four models should render differently').toBe(4);
+    expect(seen.size, 'every roster model should render differently').toBe(roster.length);
+  });
+
+  // Refresh fix 1 — M1 is retired. "Not selectable and not in the random pool"
+  // has to hold on every route into a model: the random draw, the BT's character
+  // lock (both the <option> list and a hand-forced value), and the stage's own
+  // model picker. One of those left open would still put M1 in front of a child.
+  test('M1 is retired — absent from the roster, the random pool and every picker', async ({ page }) => {
+    await page.goto('/glam-team-makeover/');
+    await expect(page.getByRole('button', { name: /Play/ })).toBeVisible();
+
+    const out = await page.evaluate(() => {
+      const S = window.GlamStory;
+      // a long deterministic-ish sweep of the pool — 500 draws would surface a
+      // 1-in-4 leak with overwhelming probability
+      const drawn = new Set();
+      for (let i = 0; i < 500; i++) drawn.add(S.draw({}).model);
+      return {
+        roster: S.MODELS,
+        drawn: [...drawn],
+        // a stale/forced lock must fall back to the roster, not seed the retired face
+        forcedLock: S.draw({ model: 'm1' }).model,
+        lockOptions: [...document.querySelectorAll('select[aria-label="Character"] option')]
+          .map((o) => o.value),
+      };
+    });
+
+    expect(out.roster).not.toContain('m1');
+    expect(out.roster.length).toBeGreaterThan(1);
+    expect(out.drawn).not.toContain('m1');
+    expect(out.drawn.sort()).toEqual([...out.roster].sort());   // the pool is exactly the roster
+    expect(out.forcedLock).not.toBe('m1');
+    expect(out.lockOptions).toEqual(['random', ...out.roster]);
+
+    // …and the on-stage picker offers the roster and nothing else.
+    await page.getByRole('button', { name: /Play/ }).click();
+    await waitForPaintedStage(page);
+    await expect(page.getByRole('button', { name: 'M1', exact: true })).toHaveCount(0);
+    for (const m of out.roster) {
+      await expect(page.getByRole('button', { name: m.toUpperCase(), exact: true })).toHaveCount(1);
+    }
   });
 
   test('applying a step composites onto the stage', async ({ page }) => {

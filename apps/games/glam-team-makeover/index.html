@@ -641,6 +641,13 @@ window.GlamStory = (function () {
   var NAMES = ['Ada', 'Bea', 'Cleo', 'Dani', 'Elle', 'Frankie',
                'Gigi', 'Harper', 'Iris', 'Jules', 'Kit', 'Lux'];
 
+  /* The selectable client roster — the ONE source of truth for which face models
+     exist, read by the draw below, by the BT's character lock and by the art
+     model picker. M1 was retired in the refresh: it is neither drawable at random
+     nor lockable, so nothing in the build can seed it. Its generated art still
+     ships in the bundle but is unreachable, and no code path fetches it. */
+  var MODELS = ['m2', 'm3', 'm4'];
+
   /* §5's "one flavour word" slot, realised as the outro's opening cheer. */
   /* The outro title is `<cheer> — what a team!`, so no cheer may itself be
      "What a team" (it rendered as "What a team — what a team!" on screen). */
@@ -751,11 +758,14 @@ window.GlamStory = (function () {
     var o = opts || {};
     var rnd = o.rnd || Math.random;
     var pick = function (a) { return a[Math.floor(rnd() * a.length) % a.length]; };
+    /* A lock is honoured only for a model still on the roster; anything else
+       (a stale `m1` in a saved config, a hand-typed id) falls back to the random
+       draw rather than seeding a retired face. */
     return {
       eventId: o.eventId || pick(EVENTS).id,
       name: o.name || pick(NAMES),
       cheer: o.cheer || pick(CHEERS),
-      model: o.model || pick(['m1', 'm2', 'm3', 'm4']),
+      model: (o.model && MODELS.indexOf(o.model) >= 0) ? o.model : pick(MODELS),
     };
   }
 
@@ -840,7 +850,7 @@ window.GlamStory = (function () {
   }
 
   return {
-    NAMES: NAMES, CHEERS: CHEERS, EVENTS: EVENTS, BANNED: BANNED,
+    NAMES: NAMES, CHEERS: CHEERS, EVENTS: EVENTS, BANNED: BANNED, MODELS: MODELS,
     byId: byId, draw: draw, intro: intro, outro: outro,
     allStrings: allStrings,
     congruenceViolations: congruenceViolations,
@@ -878,7 +888,7 @@ window.GlamStory = (function () {
            pet/hero configurations are unreachable by construction, so a dropdown
            with one option was pure surface area. -->
       <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Character</label>
-        <select aria-label="Character" value="{{ charLock }}" onChange="{{ onCharLock }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="random">🎲 Random client</option><option value="m1">Lock: model 1</option><option value="m2">Lock: model 2</option><option value="m3">Lock: model 3</option><option value="m4">Lock: model 4</option></select></div>
+        <select aria-label="Character" value="{{ charLock }}" onChange="{{ onCharLock }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="random">🎲 Random client</option><option value="m2">Lock: model 2</option><option value="m3">Lock: model 3</option><option value="m4">Lock: model 4</option></select></div>
       <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Routine</label>
         <select aria-label="Routine" value="{{ staged }}" onChange="{{ onStaged }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="on">Staged (in order)</option><option value="free">Free play</option></select></div>
       <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Turn map</label>
@@ -1223,12 +1233,14 @@ const ZONES = {
    have to come out of the same numbers, or they drift. `EYECFG.dx` pulls the eye
    sprite toward the face centre; `BROWCFG` is {wf: width × eye-width, dx: lateral
    nudge, dy: height above eye centre}; `EARCFG` is the lobe anchor {lx,rx} in
-   frame-width fractions plus {y} in eye-heights below the eye centre. */
-const EYECFG  = { m1:{s:2.05,dx:0.08}, m2:{s:1.72,dx:0}, m3:{s:1.85,dx:0.22}, m4:{s:1.62,dx:0.15} };
+   frame-width fractions plus {y} in eye-heights below the eye centre.
+   Only the models on `GlamStory.MODELS` have an entry: m1 was retired in the
+   refresh and every lookup here falls back to the `_D` default anyway. */
+const EYECFG  = { m2:{s:1.72,dx:0}, m3:{s:1.85,dx:0.22}, m4:{s:1.62,dx:0.15} };
 const EYECFG_D = {s:1.68,dx:0};
-const BROWCFG = { m1:{wf:1.3,dx:0,dy:1.9}, m2:{wf:1.3,dx:0,dy:1.65}, m3:{wf:1.3,dx:0,dy:1.75}, m4:{wf:1.3,dx:0,dy:1.5} };
+const BROWCFG = { m2:{wf:1.3,dx:0,dy:1.65}, m3:{wf:1.3,dx:0,dy:1.75}, m4:{wf:1.3,dx:0,dy:1.5} };
 const BROWCFG_D = {wf:1.3,dx:0,dy:1.75};
-const EARCFG  = { m1:{lx:0.235,rx:0.765,y:1.55}, m2:{lx:0.20,rx:0.80,y:1.35}, m3:{lx:0.235,rx:0.765,y:1.72}, m4:{lx:0.225,rx:0.775,y:1.35} };
+const EARCFG  = { m2:{lx:0.20,rx:0.80,y:1.35}, m3:{lx:0.235,rx:0.765,y:1.72}, m4:{lx:0.225,rx:0.775,y:1.35} };
 const EARCFG_D = {lx:0.185,rx:0.815,y:1.35};
 
 /* Touch padding added on every side of a derived hitbox, in % of the frame. Big
@@ -1636,10 +1648,13 @@ class Component extends DCLogic {
   shade(hex){ try{ const n=parseInt(hex.slice(1),16); let r=Math.max(0,(n>>16)-28),g=Math.max(0,((n>>8)&255)-28),b=Math.max(0,(n&255)-28); return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1); }catch(e){ return hex; } }
 
   art(){ return (typeof window!=='undefined' && window.NooutcoArt) || {}; }
-  // All four models are selectable. M1 was previously gated for undersized sprite eyes; fixed
-  // by her own EYECFG {s:2.05,dx:0.08} in paintAvatar (eyes now fill her sockets). Re-gate a
-  // model by adding its id here if its art ever regresses.
-  artGated(){ return {}; }
+  /* Which generated models are OFF the roster. Derived from GlamStory.MODELS so
+     the story draw, the BT's character lock and this picker can never disagree:
+     anything the generated art bundle ships that the roster does not list is
+     gated here, which is what retires M1 from the picker as well as the pool. */
+  artGated(){ const R=(window.GlamStory&&window.GlamStory.MODELS)||[];
+    const out={}; for(const id of Object.keys((this.gen().models)||{})) if(R.indexOf(id)<0) out[id]=1;
+    return out; }
   setArtModel(id){ if(this.artGated()[id] || !((this.gen().models||{})[id])) return; this.setState({model:id}); }
   artModelList(){ const M=(this.gen().models)||{}, G=this.artGated(); const act=this.state.model;
     return Object.keys(M).filter(id=>!G[id]).map(id=>({
@@ -1888,23 +1903,35 @@ class Component extends DCLogic {
     return [ {x:cxm+lw*0.7,y:cym-lh*2.2,r,shape:'star'}, {x:lx-lw*0.5,y:ly+lh*2.7,r,shape:'heart'}, {x:rx+rw*0.45,y:ry+lh*3.4,r,shape:'star'} ]; }
   _spotPct(E){ const fr=this.gen().frame||{w:512,h:576}; return this._spots(E).map(s=>({l:s.x/fr.w*100,t:s.y/fr.h*100})); }
 
-  /* ══ Blemish contrast (eval F-16) ══
+  /* ══ Blemish contrast (eval F-16) and register (refresh) ══
      The spot was one fixed colour (#d06a54 @ .72) on every model. Measured against
      the skin immediately around it, all twelve spots came in at 1.06–1.67 : 1 — the
      eval flagged m3/m4, but the numbers say the "find the spots" target was
-     low-contrast on ALL FOUR models, m1's worst spot included. Registration was
-     never the problem (the rings do sit on the drawn spots); value was.
+     low-contrast on ALL the models. Registration was never the problem (the rings
+     do sit on the drawn spots); value was.
 
      So the ink is picked against the LOCAL skin luminance, sampled from the base
      render just outside the spot. Skin here spans L≈0.15–0.33, and no single hue
      clears 3:1 across that range: light skin needs a spot darker than it, dark skin
-     needs one lighter. Both branches stay in the blemish register (deep plum-red /
-     warm inflamed highlight) rather than becoming a sticker. */
+     needs one lighter.
+
+     The FORM, though, is where the harshness lived, and the refresh softens it.
+     The first fix drew a crisp filled disc with a near-black rim stroke and a
+     specular gloss dot — the visual grammar of a pustule, which is what read as
+     graphic. It is now two soft radial falloffs and nothing else: a wide gentle
+     flush plus a small dot whose only hard value is the single centre pixel.
+     Value could not move (3:1 against skin at L=0.20 pins the dark core near
+     L≈0.02), so the gentling is all edge, footprint and the removal of the two
+     "it's a spot, look closer" cues. `rim` and `gloss` are deliberately gone,
+     and a test holds them gone: it recovers the brush's own coverage profile
+     (measured against a blemish-free render of the same face) and requires it to
+     decay with no cliff and no ring stronger than the paint inside it — which is
+     precisely what a hard disc, a stroked outline or a specular dot would break. */
   _relLum(r,g,b){ const f=c=>{ c/=255; return c<=0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055,2.4); };
     return 0.2126*f(r)+0.7152*f(g)+0.0722*f(b); }
   _spotInk(E,sp){
-    const DARK={ halo:'#c0485c', core:'#4a1520', rim:'#2b0a12', gloss:'#f6b5a6' };  // for LIGHT skin
-    const LIGHT={ halo:'#ff9f7c', core:'#ffe0cf', rim:'#c07a5f', gloss:'#fff6ee' }; // for DARK skin
+    const DARK={ halo:'#c1687a', core:'#4a1520' };   // for LIGHT skin — soft rosy flush + berry centre
+    const LIGHT={ halo:'#ffb499', core:'#ffe0cf' };  // for DARK skin — warm light bloom
     const d=this._data(E.base); if(!d) return DARK;
     const W=d.width,H=d.height,px=d.data;
     // ring-average the skin just outside the spot, so a lash or shadow under the
@@ -1973,13 +2000,12 @@ class Component extends DCLogic {
     const spots=this._spots(E);
     (ed.pimples||[]).forEach((st,i)=>{ const sp=spots[i]; if(!sp) return;
       if(st===0){ const ink=this._spotInk(E,sp);
-        this._blob(ctx,sp.x,sp.y,sp.r*1.2,sp.r*1.2,0,ink.halo,0.5,'source-over');   // soft inflammation
-        ctx.save();                                                                  // crisp core + rim: the shape reads even where value is close
-        ctx.beginPath(); ctx.arc(sp.x,sp.y,sp.r*0.62,0,6.2832);
-        ctx.fillStyle=ink.core; ctx.fill();
-        ctx.lineWidth=Math.max(1.1,sp.r*0.20); ctx.strokeStyle=ink.rim; ctx.stroke();
-        ctx.restore();
-        this._blob(ctx,sp.x-sp.r*0.26,sp.y-sp.r*0.26,sp.r*0.22,sp.r*0.22,0,ink.gloss,0.55,'source-over'); }
+        // wide, very soft flush — a warm "take care of this bit" tint, no edge
+        this._blob(ctx,sp.x,sp.y,sp.r*1.25,sp.r*1.25,0,ink.halo,0.38,'source-over',true);
+        // the dot itself: a full-value centre (F-16's 3:1 lives on this one
+        // pixel) with a gradient edge that dissolves into the flush instead of
+        // stopping at a stroked outline
+        this._blob(ctx,sp.x,sp.y,sp.r*0.72,sp.r*0.72,0,ink.core,1,'source-over'); }
       else if(st===1){ const meta=(this.gen().stickers||{})[sp.shape]; if(meta){ const rec=this._img(meta.src); if(rec.ok){ const ph=sp.r*3.0, pw=ph*(meta.aspect||1); ctx.drawImage(rec.img, sp.x-pw/2, sp.y-ph/2, pw, ph); } } } });
     if(cov('wash')<1) this._blob(ctx,cxm,cym+lh*0.85,lw*2.35,lh*3.85,0,'#786654',0.24,'multiply');
     if(cov('moist')>0) this._blob(ctx,cxm,cym-lh*0.4,lw*2.1,lh*2.6,0,'#fff6e0',cov('moist')*0.4,'screen');

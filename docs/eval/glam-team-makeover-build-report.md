@@ -482,3 +482,139 @@ and only showed up once the compositor's output was diffed numerically. See §4b
    single-pixel questions. The filter samples one pixel at a time off a scratch canvas instead,
    and freezes its answer per model so a mid-play restyle can never move a spot the learner has
    already patched.
+
+---
+
+# Refresh — the broader makeover refresh
+
+A second body of work on top of the Tier-1 build: a richer, more themed makeover
+*activity*, a texting-style opening flow, and two fixes. The clinical layer is
+frozen for all of it — `window.GlamTT` and `tests/glam-tt-scoring.spec.js` are not
+to be touched, and `window.GlamStory`'s guarantees (two-axis outro, congruence,
+second-person turn-taking lines, no PHI, no numbers) have to keep holding.
+
+This section is written incrementally, one landed slice at a time.
+
+## R1. The two fixes — M1 retired, blemishes softened
+
+### R1.1 M1 is retired
+
+The requirement is that M1 is *not selectable and not in the random-client pool*.
+There were four routes into a model and it only takes one left open to put the
+retired face in front of a child, so all four now read one list:
+
+`window.GlamStory.MODELS` (`['m2','m3','m4']`) is the roster and the single source
+of truth. Off it hang —
+
+| Route | Before | Now |
+|---|---|---|
+| Random client draw | `pick(['m1','m2','m3','m4'])` | `pick(MODELS)` |
+| BT character lock (`<select>`) | five options incl. `Lock: model 1` | roster only |
+| A lock value that is *not* on the roster (a stale config, a hand-typed id) | honoured verbatim | falls back to the random draw |
+| On-stage art model picker | `artGated()` returned `{}` — everything the art bundle ships | gates every generated model the roster does not list |
+
+`EYECFG` / `BROWCFG` / `EARCFG` lost their `m1` rows with it; those tables are
+per-model sprite calibration and every lookup already falls through to a `_D`
+default. M1's generated art still ships in `assets/` and is simply unreachable —
+no code path enumerates or fetches it. Deleting the asset files is deferred
+(below), not forgotten.
+
+**Tests.** `glam-team-makeover.spec.js` gained *M1 is retired — absent from the
+roster, the random pool and every picker*, which walks all four routes: 500 draws
+never yield `m1` and collectively cover exactly the roster; a forced `m1` lock
+does not return `m1`; the `<select>` offers `['random', ...roster]`; and the stage
+picker renders a button per roster model and none for M1. The model sweeps in
+`glam-art-fidelity.spec.js` (F-11, F-10, F-16, F-16b) and the distinct-stage test
+now iterate `GlamStory.MODELS` instead of a hardcoded four, and their count
+assertions are derived from it (`roster.length * 14`, `roster.length * 7`) — so
+retiring or adding a model updates the sweeps rather than breaking them.
+`glam-tt-story.spec.js`'s D-F draw test asserts against the roster and adds an
+explicit "`m1` is not drawable".
+
+**One latent test bug fell out of this.** With M1 gone, M2 became the *first*
+model measured after page load, and F-16 immediately failed at 1.01 : 1. The cause
+was never the blemishes: `_skinPool()` returns `null` while a model's seven hair
+masks are still decoding, and `_spots()` then falls back to the *unfiltered* pool —
+so a measurement taken inside that window reads spot positions the compositor has
+already stopped painting at. M1 had been absorbing the decode as the loop's first
+iteration. The spec's shared `setModel` helper now waits for `_skinPool` before
+returning, which is what F-16b was already doing by hand.
+
+### R1.2 The blemishes are softer
+
+The skincare targets read as clinical and a bit gross. What could *not* change is
+the value: F-16 requires 3 : 1 against the surrounding skin, and at skin L≈0.20
+that pins the dark-skin-branch core near L≈0.02. There is no friendlier colour at
+that luminance, so "softer" had to mean softer **form**.
+
+The harsh rendering was three cues stacked: a crisp filled disc, a near-black rim
+**stroke** around it, and a specular gloss dot offset up-left — the visual grammar
+of a pustule. It is now two soft radial falloffs and nothing else:
+
+```
+halo   r×1.25   α 0.38   soft gradient   #c1687a (light skin) / #ffb499 (dark skin)
+dot    r×0.72   α 1.00   radial falloff  #4a1520 (light skin) / #ffe0cf (dark skin)
+```
+
+`rim` and `gloss` are gone from `_spotInk`'s palettes entirely. The only hard value
+left anywhere is the single centre pixel, which is what F-16 measures.
+
+Measured coverage profile of the brush, sampled every 0.05 r out to r×1.6:
+
+| | r×0 | 0.2 | 0.4 | 0.5 | 0.6 | 0.7 | 0.75 | 0.8 | 1.0 |
+|---|---|---|---|---|---|---|---|---|---|
+| harsh | 1.00 | 1.00 | .95 | 1.00 | **1.05** | .90 | **.25** | .12 | .05 |
+| soft | 1.00 | .90 | .73 | .56 | .36 | .08 | .04 | .02 | .01 |
+
+The bold cells are the two defects, visible as numbers: `1.05` is the rim stroke
+reading as *more* than full coverage (it was inked darker than the core it ringed),
+and the `.90 → .25` step is the disc edge.
+
+**Test.** *refresh · blemishes are soft — the paint decays, with no rim, cliff or
+gloss* in `glam-art-fidelity.spec.js`. It renders the same face twice with the same
+seed — once with the spots cleared, once with them present — and divides the
+luminance delta by `(ink − skin)` per pixel to recover the compositor's actual
+alpha. That normalisation matters: the raw delta scales with how far the skin under
+each pixel already is from the ink, and the face's own shading moves that by ±10%
+inside a single spot, which is enough to fake a rim (it did, on Firefox, before the
+normalisation went in). On the recovered profile it then requires: coverage never
+drops more than 0.35 in one 0.05 r step (no cliff / no disc), no ring more covered
+than the paint inside it (no stroke), no negative coverage, and effectively nothing
+left by r×1.0.
+
+Verified red/green rather than asserted: with the harsh rendering pasted back in it
+fails on all three browsers (`coverage falls 65 points between r×0.7 and r×0.75`);
+with the softened rendering it passes on all three.
+
+![blemish, harsh](shots/glam-refresh/blemish-before-zoom-desktop.png)
+![blemish, softened](shots/glam-refresh/blemish-after-zoom-desktop.png)
+
+Before (left) and after (right), same model, same seed, same crop —
+`docs/eval/shots/glam-refresh/blemish-{before,after}-zoom-desktop.png`, with the
+whole face at `blemish-{before,after}-face-desktop.png`.
+
+### R1.3 Verification
+
+- **Full suite: 258 passed** across chromium / firefox / webkit (252 before this
+  slice, plus the two new tests × three browsers). No test was skipped or relaxed.
+- **`window.GlamTT` is byte-for-byte unchanged**, and so is
+  `tests/glam-tt-scoring.spec.js` (`git diff --stat` on it is empty). The only
+  edits inside the `GlamStory` block are the roster constant, the roster-aware
+  lock in `draw()`, and its export — the event pool, the banned-word guard, the
+  two-axis outro and the second-person turn-taking lines are untouched.
+- **Console clean** at 1440×900, 820×1180 and 390×844, checked on load and after
+  entering play: `play-surface-{desktop,tablet,phone}.png`.
+- `git status` shows changes only under `apps/games/` and `docs/`.
+
+### R1.4 Deferred from this slice
+
+- M1's generated art (`assets/art/person/m1/**` and its entries in
+  `art-generated.js`) still ships. It is unreachable, but it is dead weight in the
+  bundle; deleting it is a separate, easily-verified change.
+- The screenshots here cover the *current* play surface only. The start screen,
+  the texting intro and the outro reveal do not exist yet, so the device sweep the
+  refresh calls for is necessarily partial until they land.
+- The blemish palette still has only two branches (light-skin / dark-skin) chosen
+  by a luminance threshold at L=0.20. A spot seeded right at the boundary picks one
+  or the other with no blending; nothing in the current roster lands there, but a
+  future model could.

@@ -155,7 +155,11 @@ test.describe('story pool (D-F / D-G)', () => {
         models: [...new Set(draws.map((d) => d.model))].length,
         locked: S.draw({ rnd, eventId: 'dance-recital', name: 'Kit', model: 'm3' }),
         validEvents: draws.every((d) => !!S.byId(d.eventId)),
-        validModels: draws.every((d) => ['m1', 'm2', 'm3', 'm4'].includes(d.model)),
+        // the roster is the single source of truth for which faces exist; M1 was
+        // retired from it in the refresh, so the pool must follow it, not a
+        // hardcoded list that would keep the retired face alive here
+        validModels: draws.every((d) => S.MODELS.includes(d.model)),
+        roster: S.MODELS,
       };
     });
 
@@ -164,6 +168,7 @@ test.describe('story pool (D-F / D-G)', () => {
     expect(out.models).toBeGreaterThan(1);
     expect(out.validEvents).toBe(true);
     expect(out.validModels).toBe(true);
+    expect(out.roster, 'M1 is retired and must not be drawable').not.toContain('m1');
     // optional BT lock (§3.7 "Model dropdown becomes the character lock")
     expect(out.locked).toMatchObject({ eventId: 'dance-recital', name: 'Kit', model: 'm3' });
   });
