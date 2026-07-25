@@ -154,7 +154,16 @@ TERMINOLOGY (non-negotiable)\n\
     title: "Supervision Note Tool",
     subtitle: "Two focused inputs — clinical observations and staff feedback — drafted into your EHR supervision form's fields, with AI revision help after the first pass.",
     genLabel: "Generate Note",
-    maxTokens: 4500,
+    // The widest output of any tool here: up to 6 goal rows of three prose fields
+    // each, five narratives, follow-ups, and hints — and every revision turn
+    // re-emits the whole object, so the cap has to cover a full note, not a diff.
+    // 4500 sat close enough to a dense session's output that a long note could be
+    // truncated mid-JSON, which surfaced to the clinician as a parse error.
+    // Well under both the non-streaming ceiling (~16k) and the model's own (64k
+    // for Haiku 4.5); the real bound is GEN_TIMEOUT_MS in notes-gate.js, raised
+    // alongside this — a cap the request can't reach before the client aborts
+    // just trades a truncated note for a timed-out one.
+    maxTokens: 8000,
     inputs: [
       {
         id: "btPresent", type: "toggle", label: "BT / RBT Present?",
