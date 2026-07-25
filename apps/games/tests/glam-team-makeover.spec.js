@@ -36,6 +36,22 @@ async function stageFingerprint(page) {
   });
 }
 
+/** Which model the stage is currently showing, read off the component through the
+    React fiber (the walk documented in docs/eval/glam-team-makeover-playtest.md).
+    The client is drawn at random, so this is the only way to know whether a model
+    button is a swap or a no-op. */
+function activeModel(page) {
+  return page.evaluate(() => {
+    let f = null;
+    for (const el of document.querySelectorAll('*')) {
+      const k = Object.keys(el).find((k) => k.startsWith('__reactFiber'));
+      if (k) { f = el[k]; break; }
+    }
+    while (f && !(f.stateNode && f.stateNode.logic)) f = f.return;
+    return f && f.stateNode.logic.state.model;
+  });
+}
+
 /** The compositor paints on image `onload`, so wait for real pixels. */
 async function waitForPaintedStage(page) {
   await page.waitForFunction(() => {
@@ -73,6 +89,14 @@ test.describe('Glam Team Makeover', () => {
   });
 
   test('every roster model loads its base art and paints a distinct stage', async ({ page }) => {
+    /* This sweeps EVERY roster model, and a model swap decodes a whole art set —
+       base, eye/brow sprites and seven hair masks — before the repaint the poll
+       below is waiting for. Under the default 30s test budget the per-model polls
+       could add up past it on a loaded machine, and the run then reported "test
+       timeout" from inside the last model's poll, which reads like a stuck
+       assertion but is just the budget. The assertion itself has never failed:
+       the fingerprints have always come out distinct when they arrived. */
+    test.setTimeout(120000);
     await page.goto('/glam-team-makeover/');
     await openSetup(page);
     await page.getByRole('button', { name: /^▶ Play/ }).click(); // enter the game screen
@@ -94,18 +118,37 @@ test.describe('Glam Team Makeover', () => {
     // …and that selecting each model repaints the stage with that model's art.
     // A model whose base failed to decode would leave `paintAvatar` bailing early
     // and the canvas unchanged, so distinct fingerprints prove each one decoded.
+    /* WAIT and JUDGE are separate steps here, deliberately. The earlier form
+       polled for "a fingerprint I have not seen yet", which returns null both
+       while the swap is still decoding AND when the model genuinely painted the
+       same stage as another — so a real duplicate burned the whole timeout and
+       surfaced as "timed out", the least informative failure available. Now the
+       poll waits only for the canvas to CHANGE from the model before it and hold
+       still, and the distinctness claim is a plain assertion on the settled
+       fingerprint that names the collision if it ever happens. */
     const seen = new Map();
+    let prev = (await stageFingerprint(page)).hash;
     for (const m of roster.map((id) => id.toUpperCase())) {
+      /* The client is drawn at RANDOM, so the model this loop is about to click
+         may already be the one on screen — and clicking the active model repaints
+         nothing. "Wait for the canvas to change" is only the right wait when the
+         click is an actual swap. */
+      const wasActive = (await activeModel(page)).toUpperCase() === m;
       await page.getByRole('button', { name: m, exact: true }).click();
+      let fp = null;
       await expect
         .poll(async () => {
-          const fp = await stageFingerprint(page);
-          return fp && !seen.has(fp.hash) ? fp.hash : null;
-        }, { timeout: 15000, message: `${m} should paint a stage of its own` })
+          const a = await stageFingerprint(page);
+          const b = await stageFingerprint(page);
+          fp = b;
+          // changed away from the model before it (if it had to), and stopped moving
+          return a && b && a.hash === b.hash && (wasActive || b.hash !== prev) ? b.hash : null;
+        }, { timeout: 20000, message: `${m} should repaint the stage and settle` })
         .not.toBeNull();
-      const fp = await stageFingerprint(page);
       expect(fp.opaque, `${m} should paint a non-blank stage`).toBeGreaterThan(20000);
+      expect(seen.get(fp.hash), `${m} painted the same stage as ${seen.get(fp.hash)}`).toBeUndefined();
       seen.set(fp.hash, m);
+      prev = fp.hash;
     }
     expect(seen.size, 'every roster model should render differently').toBe(roster.length);
   });

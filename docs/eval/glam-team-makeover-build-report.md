@@ -882,3 +882,176 @@ across that decode differs from the face the child was looking at.
 - The booth is skipped entirely on a **procedural (non-art) theme**, where there is
   no compositor canvas to photograph. `showReveal` requires both frames, so the
   outro simply renders as it did before rather than showing two empty rectangles.
+
+---
+
+## R4. The station kit — a generous fixed stock per station
+
+The refresh's remaining piece is the ACTIVITY. This slice does the depth half:
+the vanity now carries **ten stations and 69 tools** where it carried seven and
+43, and the deep stations are deep in the way a salon is deep — many shades of
+one article, not many articles.
+
+That distinction is the whole design constraint. `REQUIRED_ACTIONS = 19` scales
+the engine's per-turn budget (D-D / AC-7), so an extra *article* would have
+re-scaled every trial ever run. An extra *shade* of an article the child was
+already going to apply costs nothing: the charge key is `color:<slot>`, so
+Blush plum and Blush rose are the same spend, and swapping between them inside a
+turn is free. Depth here is choice, not work — which is also the Toca-Boca
+reading of it: more ways to be right, no new way to be wrong.
+
+### R4.1 What is stocked now
+
+| Station | Before | Now | How the range was won |
+|---|---|---|---|
+| Skincare 🧼 | 5 | 4 | brow tools moved to their own shelf |
+| Brow bar ✂️ | — | 2 | new shelf: Shape brows + Brow pencil |
+| Cheeks & glow 💄 | (in Makeup) | 8 | blush **2 → 6** shades |
+| Eyes 👁️ | (in Makeup) | 8 | eyeshadow **2 → 6** shades |
+| Lips 💋 | (in Makeup) | 8 | lipstick **3 → 7** shades |
+| Hair style 💇 | 7 | 7 | art-bound (seven shipped masks) |
+| Hair color 🎨 | 7 | 12 | **+5** shades on synthesised recolour ramps |
+| Earrings 💎 | 3 | 3 | art-bound (three shipped sprites) |
+| Shirt color 👕 | 4 | 9 | tint decoupled from the garment cut |
+| Colored contacts 👀 | 4 | 8 | **+4** shades |
+
+The one **Makeup** shelf became **Cheeks & glow / Eyes / Lips**, and the two
+untracked brow tools got their own **Brow bar**. Before this, "Brow pencil" was
+the lone visible member of a shelf headed *Makeup* during the skincare phase,
+which read as a station that had lost its stock. A station is now a shelf of the
+vanity; the staged order still comes only from each tool's own `step`/`ph`.
+
+### R4.2 Two ceilings that were not real ceilings
+
+**Hair colour was capped at seven by data, not by art.** `_hairCanvas` recolours
+the hair masks through a 3-stop `{hue, s[], v[]}` ramp from the generated
+manifest, and the build only shipped seven. Measured across all seven, the ramp
+is not free-form: `hue` and `s` are exactly the swatch's own hue and saturation,
+and the value curve is a fixed proportion of the swatch's value — mid ≈ 0.93·v,
+shadow ≈ 0.55·mid, highlight ≈ 1.015·mid (brunette 0.945/0.465, blonde
+0.960/0.493, berry 0.993/0.621, silver 0.958/0.764). So `rampFromHex()`
+synthesises a ramp from the swatch alone, and the five new shades cost no art.
+The seven shipped ramps still win the lookup, so nothing already on screen moved.
+
+**Shirt colour was capped at four by a lookup.** The tee is recoloured in place
+(tint × luminance, keeping the folds and the black outline), but the tint came
+from `SHIRT_TINT[ed.outfit]` — a table keyed by the garment *cut*. Four cuts, four
+colours, forever. The tint now reads `ed.col.garment`, the shade the child
+actually picked, with the per-cut table left as the fallback for an outfit set
+without a swatch behind it. Two shades may now share a cut, so the ✓ state had to
+start matching on cut **and** shade — matching on the cut alone ticked every
+shade cut the same way.
+
+### R4.3 Tests — `tests/glam-station-kit.spec.js` (5 × 3 browsers)
+
+| Test | What would have to break for it to fail |
+|---|---|
+| every station stocks its shades on the real palette | a shade added to the data but filtered off the palette; a station missing; two tools sharing a name (every spec addresses tools by `title` and takes `.first()`) |
+| every stocked shade paints, and no two shades of one article paint alike | a swatch with no recolour ramp; a tint read off something other than the shade |
+| AC-7 · one article, one charge key | a shade that spends a *new* action, which would re-scale the engine's budget |
+| the staged routine still hides a station until its phase opens | the restructure leaking a later station into turn one, or dimming instead of hiding |
+| two shirt shades cut the same way are told apart on the button | the ✓ state matching on the cut alone |
+
+**Both halves of the pixel test were red before they were green**, and getting
+there took two corrections worth recording:
+
+- *The baseline was noise.* Cutting a fresh `freshEd()` per shade re-seeds
+  `spotSeed` from `Math.random()`, which moves the blemishes — so every canvas
+  came out different no matter what the shade did, and **both** assertions passed
+  vacuously. With a per-shade `freshEd`, reverting the shirt fix still went green.
+  One frozen baseline, deep-copied per shade, fixed it: the control then failed
+  with *"Sunshine paints identically to Rose"* — the two shades that share the
+  `dress` cut.
+- *A fixed pixel floor could not see a missing ramp.* A hair shade with no ramp
+  still repaints the **brows**, which take the same swatch, so it clears any small
+  absolute floor: with a floor of 150 px, deleting the synthesised-ramp fallback
+  went green. Measured on m3, a whole head of hair moves ~42 000 px and brows-only
+  moves ~6 100, so the floor is now a quarter of the *station's own median*
+  (~10 500) — between the two, where no constant is. The control then failed with
+  *"Mint moved 6084px, under a quarter of the station's usual"*.
+
+### R4.4 Verification
+
+- **Full suite: 318 passed** across chromium / firefox / webkit (303 before this
+  slice, plus 5 new tests × 3 browsers) — green on 3 of the last 4 consecutive
+  full runs, with the 4th failing only on the external font fetch described in
+  R4.5. `glam-station-kit.spec.js` was also run at `--repeat-each=3` (45/45) and
+  `glam-team-makeover.spec.js` at `--repeat-each=6` (90/90).
+- **`window.GlamTT` and `window.GlamStory` byte-for-byte unchanged** — both
+  regions hash identical to `HEAD` (`28f93cfc…` and `8d212b3b…`), and
+  `git status tests/glam-tt-scoring.spec.js` is empty.
+- **The staged order still opens exactly as it did**, verified by driving the TA
+  forward a phase at a time and reading the rendered shelves:
+  `skin → Skincare(1) Brow bar(2)` · `makeup → + Cheeks & glow(1)` ·
+  `hair → + Eyes(8) Lips(8) Hair style(7) Hair color(12)` ·
+  `acc → + Earrings(3) Shirt color(9) Colored contacts(8)`. Later stations are
+  **absent**, not dimmed.
+- **Console clean** at 1280×860, 834×1112 and 390×844 —
+  `tests/_shots-station-kit.mjs` exits non-zero on any console or page error and
+  it exits clean.
+- Screenshots under `docs/eval/shots/glam-refresh/`:
+  `station-kit-desktop.png`, `station-kit-tablet.png`, `station-kit-phone.png`,
+  a close crop of the deepest shelves `station-kit-shelves.png`, and the staged
+  first turn `station-kit-staged-turn1.png` as the hidden-not-dimmed record.
+- The five synthesised hair shades were **looked at**, not just measured: Mint,
+  Lilac, Bubblegum, Sunset and Midnight each render as real hair with the mask's
+  own shading and black outline intact, and the brows follow the shade.
+- `git status` shows changes only under `apps/games/` and `docs/`.
+
+### R4.5 Three things the fuller suite shook out
+
+Adding 15 test-runs to a `fullyParallel` three-browser suite turned out to be a
+load test of the suite itself. All three findings below are recorded because none
+of them was a regression in the game, and two of them were latent before this
+slice.
+
+**1 · A spec's cost is a shared resource.** The new pixel test was first written
+with a 40-iteration re-snapshot settle per shade. Every assertion in it passed —
+but the extra CPU starved an unrelated poll and `glam-team-makeover.spec.js`'s
+model sweep began timing out. Running the suite with the new spec *excluded* came
+back 303-green, which is what identified it as load rather than a regression.
+`paintAvatar` runs synchronously inside `componentDidUpdate`, so one frame after
+`setState` resolves the canvas is final: the settle is now one frame plus a short
+safety net, and one `setState` per shade instead of a reset-then-edit pair.
+
+**2 · The model sweep's wait was hiding a real defect.** `glam-team-makeover.spec.js`
+polled for "a fingerprint I have not seen yet", which returns null both while a
+model swap is still decoding *and* when a model genuinely painted the same stage
+as another. Those are different failures with one symptom — "timed out" — which
+is why the first two attempts to fix it (raise the poll, then raise the test
+budget) only moved the message around. Split into *wait for the canvas to change
+and hold still* + *assert the settled fingerprint is new*, it immediately exposed
+what the conflation had been hiding: **the client is drawn at random, so the
+model the loop is about to click may already be the one on screen, and clicking
+the active model repaints nothing.** The wait now asks for a change only when the
+click is an actual swap. 90/90 at `--repeat-each=6` after.
+
+**3 · The fonts come from a CDN, and the suite depends on it.** The remaining
+intermittent failure is Firefox reporting
+`Cross-Origin Request Blocked … fonts.gstatic.com` and failing whichever spec
+asserts a clean console that run. It is not the game: the `@import` for Atkinson
+Hyperlegible lives in the shared `apps/games/tailwind.css`, which every game
+loads and which is **outside this build's file boundary**, so it was left alone.
+Worth flagging beyond this game: it can fail `tests/glam-tt-scoring.spec.js`, the
+one spec this work is forbidden to touch, and no assertion in that spec is at
+fault when it does. Self-hosting the two font families would remove a network
+dependency from the whole games suite.
+
+### R4.6 Deferred from this slice
+
+- **The theming half of the activity refresh is still outstanding.** This slice
+  is depth of stock; the warmer salon dressing, the cohesive palette and type
+  pass, and the per-tap "choices mirrored with care" feedback are the remaining
+  work on the makeover refresh.
+- **Hairstyles stay at seven and earrings at three** — both are bound by shipped
+  art (seven hair masks, three earring sprites), not by a lookup. Adding to either
+  means going back to `avatar-kit`, which is outside this build's file boundary.
+- **No new *articles*.** A lip gloss, a face gem, freckles — each would be a new
+  slot with new compositor work *and* a new charge key, which re-scales the
+  engine's budget. Out of scope for a slice whose contract was "richer, and the
+  engine cannot tell".
+- The **pet and hero themes** were left alone. They are procedural (non-art)
+  routes with their own small palettes and neither is on the child's route in.
+- **Self-hosting the Atkinson fonts** (R4.5 · 3) is the one fix identified here
+  that could not be made, because the `@import` is in shared games CSS rather
+  than in this game.

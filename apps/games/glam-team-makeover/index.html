@@ -1228,32 +1228,83 @@ const OUTFITS = {
   sparkle:{ path:'M84 300 Q90 240 130 232 Q170 240 176 300 Z', trim:'M104 250 l5 10 5-10 5 10 M146 258 l5 10 5-10 5 10' },
 };
 
+/* ── The salon's colour stock ────────────────────────────────────────────────
+   Every hair shade the child can pick, as the swatch the button shows. The first
+   seven are the ones the art build shipped a measured recolour ramp for; the rest
+   are stocked here and get their ramp synthesised below. */
+const HAIR_SWATCH = {
+  brunette:'#5b4636', blonde:'#e0b064', copper:'#c8712c', berry:'#a24a8f',
+  flame:'#e5533b', heroblue:'#2a6fdb', silver:'#c7cdd6',
+  mint:'#5cbfa4', lilac:'#b58ad8', bubblegum:'#ef7fb0', sunset:'#f0a13c', midnight:'#3b4478',
+};
+
+/* `hairRamps` in the generated manifest is a 3-stop {hue, s[], v[]} curve the
+   recolour walks against the hair's own luma. Across all seven shipped ramps the
+   hue and saturation are the swatch's own, and the value curve is a fixed
+   proportion of the swatch's value (mid ≈ .93·v, shadow ≈ .55·mid, highlight ≈
+   1.015·mid — measured: brunette .945/.465, blonde .960/.493, berry .993/.621,
+   silver .958/.764). So a new shade costs no new art, only a swatch. The seven
+   shipped ramps still win the lookup, so nothing already on screen shifts. */
+function rampFromHex(hex){
+  const n=parseInt(hex.slice(1),16), r=(n>>16)/255, g=((n>>8)&255)/255, b=(n&255)/255;
+  const mx=Math.max(r,g,b), mn=Math.min(r,g,b), d=mx-mn;
+  let h=0; if(d>1e-6){ if(mx===r)h=((g-b)/d)%6; else if(mx===g)h=(b-r)/d+2; else h=(r-g)/d+4; h/=6; if(h<0)h+=1; }
+  const s=mx>1e-6?d/mx:0, v=mx*0.93;
+  return { hue:h, s:[s, s*0.96, s*0.965], v:[v*0.55, v, Math.min(1,v*1.015)] };
+}
+const SHIPPED_HAIR = ['brunette','blonde','copper','berry','flame','heroblue','silver'];
+const EXTRA_HAIR_RAMPS = Object.keys(HAIR_SWATCH).reduce((m,k)=>{
+  if(SHIPPED_HAIR.indexOf(k)<0) m[k]=rampFromHex(HAIR_SWATCH[k]); return m; }, {});
+
 const THEMES = {
   social: {
     badge:'🎉', base:'person', flaws:'person',
     intro:{ emoji:'🎉', title:'Party in a flash!', text:'The party starts in a few minutes — and it is total bedhead, a couple of surprise spots, and no outfit yet! Good thing the glam team takes turns: skincare first, then hair, makeup, and an outfit.' },
     outcome:{ emoji:'✨', title:'Ta-da — what a team!', text:'Everyone took turns and the whole look came together just in time. Best night ever — because the team worked together!' },
+    /* The salon's stations. A station is a shelf of the vanity, not a phase —
+       the staged order still comes from each tool's own `step`/`ph`, so a station
+       whose tools are all still locked simply does not appear yet. Depth here is a
+       GENEROUS FIXED stock: more shades of the same article never add an article,
+       so the required-action count (and with it the engine's per-turn budget)
+       is untouched — a turn just has more to choose between. */
     cats:[
       { label:'Skincare', icon:'🧼', options:[
         {id:'wash',label:'Wash',glyph:'🧼',mech:'paint',slot:'wash',zone:'face',step:1},
         {id:'moist',label:'Moisturize',glyph:'🧴',mech:'paint',slot:'moist',zone:'face',step:2},
         {id:'patch',label:'Treat spots',glyph:'🩹',mech:'patch',step:3},
-        {id:'conceal',label:'Conceal',glyph:'✨',mech:'conceal',step:3},
-        {id:'brows',label:'Shape brows',glyph:'✂️',mech:'tap',apply:'toggle',slot:'brows',zone:'brows'} ] },
-      { label:'Makeup', icon:'💄', options:[
+        {id:'conceal',label:'Conceal',glyph:'✨',mech:'conceal',step:3} ] },
+      // Both brow tools are untracked by the TA, so they are open from the first
+      // turn — on their own shelf rather than stranded inside a locked station.
+      { label:'Brow bar', icon:'✂️', options:[
+        {id:'brows',label:'Shape brows',glyph:'✂️',mech:'tap',apply:'toggle',slot:'brows',zone:'brows'},
+        {id:'pencil',label:'Brow pencil',glyph:'✏️',color:'#4a3626',mech:'tap',apply:'toggle',slot:'pencil',zone:'brows'} ] },
+      { label:'Cheeks & glow', icon:'💄', options:[
         {id:'contour',label:'Contour',glyph:'🔻',mech:'paint',slot:'contour',zone:'contour',step:4},
         {id:'bl1',label:'Blush rose',color:'#f28ba0',mech:'paint',slot:'blush',zone:'cheeks',step:5},
         {id:'bl2',label:'Blush peach',color:'#f6a37a',mech:'paint',slot:'blush',zone:'cheeks',step:5},
-        {id:'hl',label:'Highlight',glyph:'✨',mech:'paint',slot:'hl',zone:'hl',step:6},
+        {id:'bl3',label:'Blush coral',color:'#ef7f6d',mech:'paint',slot:'blush',zone:'cheeks',step:5},
+        {id:'bl4',label:'Blush berry',color:'#d4638f',mech:'paint',slot:'blush',zone:'cheeks',step:5},
+        {id:'bl5',label:'Blush mauve',color:'#c48fa8',mech:'paint',slot:'blush',zone:'cheeks',step:5},
+        {id:'bl6',label:'Blush plum',color:'#a75a86',mech:'paint',slot:'blush',zone:'cheeks',step:5},
+        {id:'hl',label:'Highlight',glyph:'✨',mech:'paint',slot:'hl',zone:'hl',step:6} ] },
+      { label:'Eyes', icon:'👁️', options:[
         {id:'es1',label:'Shadow violet',color:'#a06cc9',mech:'paint',slot:'shadow',zone:'eyes',step:7},
         {id:'es2',label:'Shadow bronze',color:'#b5793f',mech:'paint',slot:'shadow',zone:'eyes',step:7},
+        {id:'es3',label:'Shadow rose gold',color:'#d98f79',mech:'paint',slot:'shadow',zone:'eyes',step:7},
+        {id:'es4',label:'Shadow ocean',color:'#3f7fa8',mech:'paint',slot:'shadow',zone:'eyes',step:7},
+        {id:'es5',label:'Shadow moss',color:'#6f8a54',mech:'paint',slot:'shadow',zone:'eyes',step:7},
+        {id:'es6',label:'Shadow midnight',color:'#4a4a7d',mech:'paint',slot:'shadow',zone:'eyes',step:7},
         {id:'liner',label:'Eyeliner',glyph:'〰️',mech:'tap',apply:'toggle',slot:'liner',zone:'eyes',step:8},
-        {id:'mascara',label:'Mascara',glyph:'💫',mech:'tap',apply:'toggle',slot:'mascara',zone:'eyes',step:9},
+        {id:'mascara',label:'Mascara',glyph:'💫',mech:'tap',apply:'toggle',slot:'mascara',zone:'eyes',step:9} ] },
+      { label:'Lips', icon:'💋', options:[
         {id:'lipliner',label:'Lip liner',glyph:'✏️',color:'#b23a56',mech:'tap',apply:'toggle',slot:'lipliner',zone:'lips',step:10},
         {id:'lp1',label:'Lips red',color:'#d64b6a',mech:'paint',slot:'lips',zone:'lips',step:11},
         {id:'lp2',label:'Lips coral',color:'#e07a5f',mech:'paint',slot:'lips',zone:'lips',step:11},
         {id:'lp3',label:'Lips berry',color:'#a83f6b',mech:'paint',slot:'lips',zone:'lips',step:11},
-        {id:'pencil',label:'Brow pencil',glyph:'✏️',color:'#4a3626',mech:'tap',apply:'toggle',slot:'pencil',zone:'brows'} ] },
+        {id:'lp4',label:'Lips rose',color:'#e08fa0',mech:'paint',slot:'lips',zone:'lips',step:11},
+        {id:'lp5',label:'Lips plum',color:'#7e3f63',mech:'paint',slot:'lips',zone:'lips',step:11},
+        {id:'lp6',label:'Lips brick',color:'#b1462f',mech:'paint',slot:'lips',zone:'lips',step:11},
+        {id:'lp7',label:'Lips bubblegum',color:'#ef7aa8',mech:'paint',slot:'lips',zone:'lips',step:11} ] },
       { label:'Hair style', icon:'💇', options:[
         {id:'sh_buzz',label:'Buzz',glyph:'💇',mech:'choose',slot:'hairShape',value:'base',ph:'hair'},
         {id:'sh_tousled',label:'Tousled',glyph:'💇',mech:'choose',slot:'hairShape',value:'hair-berry',ph:'hair'},
@@ -1263,27 +1314,44 @@ const THEMES = {
         {id:'sh_crop',label:'Cropped',glyph:'💇',mech:'choose',slot:'hairShape',value:'hair-heroblue',ph:'hair'},
         {id:'sh_pixie',label:'Pixie',glyph:'💇',mech:'choose',slot:'hairShape',value:'hair-silver',ph:'hair'} ] },
       { label:'Hair color', icon:'🎨', options:[
-        {id:'hc_brunette',label:'Brunette',color:'#5b4636',value:'brunette',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'},
-        {id:'hc_blonde',label:'Blonde',color:'#e0b064',value:'blonde',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'},
-        {id:'hc_copper',label:'Copper',color:'#c8712c',value:'copper',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'},
-        {id:'hc_berry',label:'Berry',color:'#a24a8f',value:'berry',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'},
-        {id:'hc_flame',label:'Flame',color:'#e5533b',value:'flame',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'},
-        {id:'hc_blue',label:'Bold blue',color:'#2a6fdb',value:'heroblue',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'},
-        {id:'hc_silver',label:'Silver',color:'#c7cdd6',value:'silver',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'} ] },
+        {id:'hc_brunette',label:'Brunette',color:HAIR_SWATCH.brunette,value:'brunette',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'},
+        {id:'hc_blonde',label:'Blonde',color:HAIR_SWATCH.blonde,value:'blonde',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'},
+        {id:'hc_copper',label:'Copper',color:HAIR_SWATCH.copper,value:'copper',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'},
+        {id:'hc_berry',label:'Berry',color:HAIR_SWATCH.berry,value:'berry',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'},
+        {id:'hc_flame',label:'Flame',color:HAIR_SWATCH.flame,value:'flame',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'},
+        {id:'hc_blue',label:'Bold blue',color:HAIR_SWATCH.heroblue,value:'heroblue',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'},
+        {id:'hc_silver',label:'Silver',color:HAIR_SWATCH.silver,value:'silver',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'},
+        {id:'hc_mint',label:'Mint',color:HAIR_SWATCH.mint,value:'mint',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'},
+        {id:'hc_lilac',label:'Lilac',color:HAIR_SWATCH.lilac,value:'lilac',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'},
+        {id:'hc_bubblegum',label:'Bubblegum',color:HAIR_SWATCH.bubblegum,value:'bubblegum',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'},
+        {id:'hc_sunset',label:'Sunset',color:HAIR_SWATCH.sunset,value:'sunset',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'},
+        {id:'hc_midnight',label:'Midnight',color:HAIR_SWATCH.midnight,value:'midnight',mech:'tap',apply:'recolor',slot:'hair',zone:'hair',ph:'hair'} ] },
       { label:'Earrings', icon:'💎', options:[
         {id:'ear1',label:'Pearl stud',glyph:'💠',value:'stud',mech:'tap',apply:'place',slot:'ear',zone:'ears',ph:'acc'},
         {id:'ear2',label:'Diamond',glyph:'💍',value:'ring',mech:'tap',apply:'place',slot:'ear',zone:'ears',ph:'acc'},
         {id:'ear3',label:'Sapphire',glyph:'💎',value:'sapphire',mech:'tap',apply:'place',slot:'ear',zone:'ears',ph:'acc'} ] },
+      /* Shirt: `value` picks the cut (and, off the art path, the SVG silhouette);
+         `color` is the tee's own tint. Two shades may share a cut — the tint is
+         no longer read off the cut, so the stock is not capped at four. */
       { label:'Shirt color', icon:'👕', options:[
         {id:'of1',label:'Teal',glyph:'👕',color:'#2f8f8a',mech:'choose',slot:'outfit',value:'gown',ph:'acc'},
         {id:'of2',label:'Rose',glyph:'👕',color:'#d6608a',mech:'choose',slot:'outfit',value:'dress',ph:'acc'},
         {id:'of3',label:'Blue',glyph:'👕',color:'#5477b0',mech:'choose',slot:'outfit',value:'casual',ph:'acc'},
-        {id:'of4',label:'Purple',glyph:'👕',color:'#c48fd0',mech:'choose',slot:'outfit',value:'sparkle',ph:'acc'} ] },
-      { label:'Colored contacts', icon:'👁️', options:[
-        {id:'ct1',label:'Blue',color:'#4a90d9',value:'#4a90d9',mech:'tap',apply:'recolor',slot:'contacts',zone:'eyes',ph:'acc'},
+        {id:'of4',label:'Purple',glyph:'👕',color:'#c48fd0',mech:'choose',slot:'outfit',value:'sparkle',ph:'acc'},
+        {id:'of5',label:'Sunshine',glyph:'👕',color:'#e8b23c',mech:'choose',slot:'outfit',value:'dress',ph:'acc'},
+        {id:'of6',label:'Seafoam',glyph:'👕',color:'#4fae87',mech:'choose',slot:'outfit',value:'casual',ph:'acc'},
+        {id:'of7',label:'Cherry',glyph:'👕',color:'#cf4356',mech:'choose',slot:'outfit',value:'sparkle',ph:'acc'},
+        {id:'of8',label:'Lavender',glyph:'👕',color:'#9b8ad6',mech:'choose',slot:'outfit',value:'gown',ph:'acc'},
+        {id:'of9',label:'Charcoal',glyph:'👕',color:'#4a5160',mech:'choose',slot:'outfit',value:'casual',ph:'acc'} ] },
+      { label:'Colored contacts', icon:'👀', options:[
+        {id:'ct1',label:'Ice blue',color:'#4a90d9',value:'#4a90d9',mech:'tap',apply:'recolor',slot:'contacts',zone:'eyes',ph:'acc'},
         {id:'ct2',label:'Green',color:'#4f9d6c',value:'#4f9d6c',mech:'tap',apply:'recolor',slot:'contacts',zone:'eyes',ph:'acc'},
         {id:'ct3',label:'Hazel',color:'#a9773f',value:'#a9773f',mech:'tap',apply:'recolor',slot:'contacts',zone:'eyes',ph:'acc'},
-        {id:'ct4',label:'Violet',color:'#8a6fc9',value:'#8a6fc9',mech:'tap',apply:'recolor',slot:'contacts',zone:'eyes',ph:'acc'} ] },
+        {id:'ct4',label:'Violet',color:'#8a6fc9',value:'#8a6fc9',mech:'tap',apply:'recolor',slot:'contacts',zone:'eyes',ph:'acc'},
+        {id:'ct5',label:'Amber',color:'#c98a2e',value:'#c98a2e',mech:'tap',apply:'recolor',slot:'contacts',zone:'eyes',ph:'acc'},
+        {id:'ct6',label:'Storm grey',color:'#6b7d8c',value:'#6b7d8c',mech:'tap',apply:'recolor',slot:'contacts',zone:'eyes',ph:'acc'},
+        {id:'ct7',label:'Sea green',color:'#2f9e94',value:'#2f9e94',mech:'tap',apply:'recolor',slot:'contacts',zone:'eyes',ph:'acc'},
+        {id:'ct8',label:'Rose quartz',color:'#c06e8a',value:'#c06e8a',mech:'tap',apply:'recolor',slot:'contacts',zone:'eyes',ph:'acc'} ] },
     ],
   },
   pet: {
@@ -1997,7 +2065,8 @@ class Component extends DCLogic {
   _hairCanvas(E,color){ const key=this.state.model+'|'+this.state.ed.hairShape+'|'+color;
     const c=this._hairc||(this._hairc={}); if(c.key===key) return c.cv;
     const bd=this._data(E.base), md=this._data(E.mask), ld=this._data(E.hairLuma);
-    const ramp=(this.gen().hairRamps||{})[color]; if(!bd||!md||!ld||!ramp) return null;
+    // shipped ramp wins; a stocked-but-unshipped shade falls back to its synthesised one
+    const ramp=(this.gen().hairRamps||{})[color]||EXTRA_HAIR_RAMPS[color]; if(!bd||!md||!ld||!ramp) return null;
     const W=bd.width,H=bd.height, b=bd.data,m=md.data,l=ld.data;
     const out=document.createElement('canvas'); out.width=W; out.height=H;
     const octx=out.getContext('2d'); const od=octx.createImageData(W,H), o=od.data;
@@ -2255,8 +2324,12 @@ class Component extends DCLogic {
     if(cov('moist')>0) this._blob(ctx,cxm,cym-lh*0.4,lw*2.1,lh*2.6,0,'#fff6e0',cov('moist')*0.4,'screen');
     // shirt colour — recolour the base render's OWN tee in place (tint × luminance,
     // preserves the native black outline + fit); no foreign overlay, no reframe.
+    // The tint is the CHOSEN SHADE (`col.garment`), not a lookup off the cut — that
+    // lookup is what used to cap the shirt stock at one colour per silhouette. The
+    // per-cut table stays as the fallback for an outfit set without a shade (the
+    // fidelity sweep sets `ed.outfit` straight, with no swatch behind it).
     const SHIRT_TINT={gown:'#2f8f8a',dress:'#d6608a',casual:'#5477b0',sparkle:'#c48fd0'};
-    if(ed.outfit){ const st=SHIRT_TINT[ed.outfit]; if(st){ const scv=this._shirtCanvas(E,st); if(scv) ctx.drawImage(scv,0,0,W,H); } }
+    if(ed.outfit){ const st=col('garment')||SHIRT_TINT[ed.outfit]; if(st){ const scv=this._shirtCanvas(E,st); if(scv) ctx.drawImage(scv,0,0,W,H); } }
     const hc=col('hair');
     if(hc && hc!==E.native){ const hcv=this._hairCanvas(E,hc); if(hcv) ctx.drawImage(hcv,0,0,W,H); }
     // contour changed 0.12–0.25 % of the canvas at α .27 — measurably the faintest tool
@@ -2309,9 +2382,9 @@ class Component extends DCLogic {
       const bt=browSet[cov('pencil')>=1?'shaped':(cov('brows')>=1?'cleaned':'bushy')]||browSet.bushy;
       const BC=BROWCFG[this.state.model]||BROWCFG_D;
       // brows default-MATCH the hair colour (and follow a recolour). tint × luminance keeps the
-      // ink's own shading + outline while shifting hue. HAIRHEX mirrors the hair-colour swatches.
-      const HAIRHEX={brunette:'#5b4636',blonde:'#e0b064',copper:'#c8712c',berry:'#a24a8f',flame:'#e5533b',heroblue:'#2a6fdb',silver:'#c7cdd6'};
-      const browHex=HAIRHEX[col('hair')||E.native]||'#5b4636';
+      // ink's own shading + outline while shifting hue. HAIR_SWATCH is the same
+      // stock the hair-colour buttons show, so a new shade tints the brows too.
+      const browHex=HAIR_SWATCH[col('hair')||E.native]||'#5b4636';
       if(bt) for(const e of eyes){ const [x,y,w,h,o]=e, meta=bt[o>0?'R':'L']; if(!meta) continue;
         const tc=this._browTint(meta.src,browHex); if(!tc) continue;
         const bw=BC.wf*(2*w), bh=bw/meta.aspect, bx=x+o*BC.dx*w, by=y-BC.dy*h;
@@ -2440,15 +2513,20 @@ class Component extends DCLogic {
     const ICON_KEY={ wash:'wash',moist:'moist',patch:'treat',conceal:'conceal',brows:'brows',
       contour:'contour',hl:'highlight',liner:'eyeliner',mascara:'mascara',lipliner:'lipliner',pencil:'browpencil',
       sh_buzz:'hairstyle',sh_tousled:'hairstyle',sh_long:'hairstyle',sh_bob:'hairstyle',sh_spiky:'hairstyle',sh_crop:'hairstyle',sh_pixie:'hairstyle' };
-    const ICON_TINT={ bl1:'blush',bl2:'blush',es1:'eyeshadow',es2:'eyeshadow',lp1:'lipstick',lp2:'lipstick',lp3:'lipstick',
-      of1:'shirt',of2:'shirt',of3:'shirt',of4:'shirt',ct1:'contacts',ct2:'contacts',ct3:'contacts',ct4:'contacts' };
+    /* A shade's button face is the neutral base icon tinted to that shade, so the
+       stock can grow without new art. Keyed by ID PREFIX rather than a per-shade
+       row, so adding a swatch to the stations above needs no edit here. */
+    const ICON_TINT_PREFIX=[['bl','blush'],['es','eyeshadow'],['lp','lipstick'],['of','shirt'],['ct','contacts']];
+    const tintBaseOf=(id)=>{ const hit=ICON_TINT_PREFIX.find(([p])=>id.length>p.length&&id.slice(0,p.length)===p&&/^\d+$/.test(id.slice(p.length))); return hit?hit[1]:''; };
     const HAIR_NUM={ sh_buzz:1,sh_tousled:2,sh_long:3,sh_bob:4,sh_spiky:5,sh_crop:6,sh_pixie:7 };
     const iconUrlOf=(b)=> b ? (typeof b==='string'?b:b.src) : '';
     const palette=cfg.cats.map(grp=>({ label:grp.label, icon:grp.icon, options:grp.options.filter(opt=>!this._optLocked(opt)).map(opt=>{ const armed=s.armed&&s.armed.id===opt.id;
       // "active/used": this option's effect is the current config (so the user sees
       // what's applied) — covers both an action just taken and a live selection.
       const slot=opt.slot, ed=s.ed; let active=false;
-      if(opt.mech==='choose'){ active = slot==='outfit'?ed.outfit===opt.value : slot==='hairShape'?ed.hairShape===opt.value : ed.gl[slot]===(opt.glyph||'x'); }
+      // Two shirt shades can share a cut, so ✓ is the cut AND the shade — matching
+      // on the cut alone would tick every shade cut the same way.
+      if(opt.mech==='choose'){ active = slot==='outfit'?(ed.outfit===opt.value && (!opt.color || ed.col.garment===opt.color)) : slot==='hairShape'?ed.hairShape===opt.value : ed.gl[slot]===(opt.glyph||'x'); }
       else if(opt.apply==='recolor'){ active = ed.col[slot]===(opt.value!=null?opt.value:opt.color); }
       else if(opt.apply==='place'){ active = ed.gl[slot]===(opt.value!=null?opt.value:opt.glyph); }
       else if(opt.mech==='patch'){ active = !!ed.pimples && ed.pimples.every(v=>v>=1); }
@@ -2460,7 +2538,7 @@ class Component extends DCLogic {
       const num=HAIR_NUM[opt.id];
       let iconUrl='';
       if(ICON_KEY[opt.id]) iconUrl=iconUrlOf(GICONS[ICON_KEY[opt.id]]);
-      else if(ICON_TINT[opt.id]&&opt.color){ const src=iconUrlOf(GICONS[ICON_TINT[opt.id]]); if(src) iconUrl=this._tintIcon(src,opt.color)||''; }
+      else if(opt.color&&tintBaseOf(opt.id)){ const src=iconUrlOf(GICONS[tintBaseOf(opt.id)]); if(src) iconUrl=this._tintIcon(src,opt.color)||''; }
       else if(slot==='ear'&&opt.value){ iconUrl=iconUrlOf(GEAR[opt.value]); }
 
       let glyph='', swatch;
