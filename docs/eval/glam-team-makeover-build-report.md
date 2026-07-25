@@ -249,52 +249,58 @@ there) rather than being short-circuited by the 3s idle heuristic.
 Six approved events **unchanged**; only the outro's text *structure* changes. Each event now carries
 a **tier-keyed turn-taking line** (teamwork only, asserts no event success and no completion, at any
 tier) and a **completion beat** (the event-success flavour, emitted *only* when the staged look is
-finished). `{name}` draws from 12 neutral fictional-client names; the outro opens with a cheer word
-(§5's "one flavour word" slot).
+finished).
+
+**Voice (maintainer correction):** the **turn-taking lines are second-person — "you" — because the
+learner (player 1) is who takes turns**, not the client sprite. The fictional client name (`{name}`,
+drawn from 12 neutral names) is used **only** where the sentence is about the *client's* situation
+(the intro/problem — "{name} is not ready yet") or the *client's* event outcome (the completion beat —
+"{name} dazzled the crowd"). The turn-taking credit addresses the child directly. The outro opens with
+a cheer word (§5's "one flavour word" slot).
 
 Tier 3 lines are worded to be true even of a fully disengaged run — they credit the *shared activity*
 rather than claiming persistence the learner may not have shown.
 
 ### 1 · School picture day 📸
 - **Intro:** "Picture day is today! {name} is not ready yet — there is a whole glam routine to do and no outfit picked. The photographer is almost here! Good thing the glam team takes turns."
-- **Tier 1:** "Every turn, {name} took a turn and then handed the brush back. Getting ready for picture day as a real team."
-- **Tier 2:** "{name} and the glam partner traded the brush back and forth the whole time they were getting ready."
-- **Tier 3:** "It takes a lot of turns to get ready for picture day — and {name} had a partner for every one of them."
+- **Tier 1:** "Every turn, you took a turn and then handed the brush back. Getting ready for picture day as a real team."
+- **Tier 2:** "You and the glam partner traded the brush back and forth the whole time."
+- **Tier 3:** "It takes a lot of turns to get ready for picture day — and you had a partner for every one of them."
 - **Completion beat:** "And the whole routine got finished before the photographer arrived — picture day was a hit!"
 
 ### 2 · Birthday party 🎉
 - **Intro:** "The party starts in a few minutes! {name} is not party-ready yet — there is lots to do and no outfit yet. The guests are already arriving! Good thing the glam team takes turns."
-- **Tier 1:** "Turn after turn, {name} took a turn and passed it right back. Nobody gets party-ready like a team that shares."
-- **Tier 2:** "{name} shared the brush with the glam partner all the way through getting ready for the party."
-- **Tier 3:** "Getting party-ready takes a lot of turns, and {name} had a partner the whole time."
+- **Tier 1:** "Turn after turn, you took a turn and passed it right back. Nobody gets party-ready like a team that shares."
+- **Tier 2:** "You shared the brush with the glam partner all the way through getting ready for the party."
+- **Tier 3:** "Getting party-ready takes a lot of turns, and you had a partner the whole time."
 - **Completion beat:** "And the whole look was ready the moment the guests walked in — what a party!"
 
 ### 3 · Talent show 🎤
 - **Intro:** "Talent show — {name} is on next! {name} still needs the full glam routine before going on. On stage next! Good thing the glam team takes turns."
-- **Tier 1:** "Every turn, {name} took a turn and then gave it back. Backstage teamwork at its very best."
-- **Tier 2:** "{name} and the glam partner took turns backstage, right up to showtime."
-- **Tier 3:** "Getting ready backstage takes a lot of turns, and {name} had a glam partner for all of them."
+- **Tier 1:** "Every turn, you took a turn and then gave it back. Backstage teamwork at its very best."
+- **Tier 2:** "You and the glam partner took turns backstage, right up to showtime."
+- **Tier 3:** "Getting ready backstage takes a lot of turns, and you had a glam partner for all of them."
 - **Completion beat:** "And the whole glam routine was done before the curtain went up — {name} dazzled the crowd!"
 
 ### 4 · Family photo 🖼️
 - **Intro:** "Family photo time! {name} is not camera-ready yet — the whole routine still has to be done. Grandma is waiting! Good thing the glam team takes turns."
-- **Tier 1:** "Turn for turn, {name} took a turn and handed it back every single time. That is what a team looks like."
-- **Tier 2:** "{name} and the glam partner passed the brush back and forth while everyone got ready."
-- **Tier 3:** "Getting everyone camera-ready takes a lot of turns, and {name} had a partner right there."
+- **Tier 1:** "Turn for turn, you took a turn and handed it back every single time. That is what a team looks like."
+- **Tier 2:** "You and the glam partner passed the brush back and forth while everyone got ready."
+- **Tier 3:** "Getting everyone camera-ready takes a lot of turns, and you had a partner right there."
 - **Completion beat:** "And the whole look came together before grandma finished waiting — the framed favorite!"
 
 ### 5 · First day, new school 🎒
 - **Intro:** "First day at a new school! {name} wants to feel ready — there is a full routine to do and no outfit yet. The bus comes in a few minutes! Good thing the glam team takes turns."
-- **Tier 1:** "Every turn, {name} took a turn and passed it back. Getting ready for a big day, together."
-- **Tier 2:** "{name} took turns with the glam partner all through getting ready for the first day."
-- **Tier 3:** "Getting ready for a first day takes a lot of turns, and {name} had a partner for every one."
+- **Tier 1:** "Every turn, you took a turn and passed it back. Getting ready for a big day, together."
+- **Tier 2:** "You took turns with the glam partner all through getting ready for the first day."
+- **Tier 3:** "Getting ready for a first day takes a lot of turns, and you had a partner for every one."
 - **Completion beat:** "And the whole routine was finished before the bus came — {name} walked in beaming!"
 
 ### 6 · Dance recital 🩰
 - **Intro:** "Dance recital tonight! {name} is not show-ready yet — there is a glam routine to do. Curtain in minutes! Good thing the glam team takes turns."
-- **Tier 1:** "Turn after turn, {name} took a turn and gave it right back. A recital-day team through and through."
-- **Tier 2:** "{name} and the glam partner traded turns the whole time they got ready for the recital."
-- **Tier 3:** "Getting show-ready takes a lot of turns, and {name} had a glam partner through all of them."
+- **Tier 1:** "Turn after turn, you took a turn and gave it right back. A recital-day team through and through."
+- **Tier 2:** "You and the glam partner traded turns the whole time, getting ready for the recital."
+- **Tier 3:** "Getting show-ready takes a lot of turns, and you had a glam partner through all of them."
 - **Completion beat:** "And the whole glam routine was ready before the curtain — {name} shone on stage!"
 
 **L7 escalation status: none needed.** Every event expressed a Tier-1 turn-taking line without an
