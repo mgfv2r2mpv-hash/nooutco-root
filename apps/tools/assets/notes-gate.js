@@ -47,7 +47,13 @@
   // intermittently hang; without this the login modal would sit forever on
   // "Logging in…" with neither a close nor an error, forcing a note-losing refresh.
   var LOGIN_TIMEOUT_MS = 20000;
-  var GEN_TIMEOUT_MS = 45000; // generation is a real LLM round-trip — allow longer
+  // Generation is a real LLM round-trip. This bounds the whole request, so it —
+  // not the model's own output ceiling — is what actually limits how long a note
+  // can get: any part of a tool's maxTokens budget the model can't produce
+  // before this fires is unreachable, and the abort still leaves the API call
+  // billed. Raised from 45s alongside sup's larger cap so the budget is real.
+  // It only fires on a stall; a normal generation returns as soon as it's done.
+  var GEN_TIMEOUT_MS = 90000;
   function fetchWithTimeout(url, opts, ms, timeoutMsg) {
     var ctrl = new AbortController();
     var timer = setTimeout(function () { ctrl.abort(); }, ms);
