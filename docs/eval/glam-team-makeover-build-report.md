@@ -2284,31 +2284,217 @@ the page was scrolled to the trolley. **That was wrong**, and the maintainer's
 finding B is right. The stage panel paints a fixed composition and crops it
 `cover`-style at EVERY width — it just bites a different part at each size:
 
-- **1280×860, no scrolling involved** (`glow-after-desktop.png`, this pass): the
-  gold mirror ring is cut clean through at the panel's top edge AND its bottom
-  edge. The client's head is fine at this width; it is the room that is sliced.
-- **390×844**: the client's head is sliced at the top by the panel frame and the
-  ring runs off both sides — scrolled or not.
+- **1280×860, no scrolling involved** (`stage-before-desktop.png`): the gold
+  mirror ring is cut clean through at the panel's top edge AND its bottom edge —
+  175.5 px lost at each. The client is whole at this width; it is the room that
+  is sliced.
+- **834×1112** (`stage-before-tablet.png`): the ring runs 90 px off the panel's
+  left edge and 90 px off its right.
+- **390×844** (`stage-before-phone.png`): the ring runs 13 px off each side, and
+  the client is drawn at **0.94 of the composition** — the room around her is
+  effectively gone. Measured precisely, the panel does *not* clip her: at 390 px
+  the topmost painted row of m4's hair clears the panel's top edge by 25.5 px.
+  What the first pass's phone shots show cut is the VIEWPORT — pressing "Go"
+  scrolls the trolley into view and puts the panel's top at page-Y −121. So the
+  head-off-the-top symptom is a scroll artefact, and the crop under it is not:
+  the composition is cut at this width whether the page has moved or not, and it
+  is cut at the other two widths as well.
 
 The mechanism is in `stageStyle`: the salon backdrop rides on
 `background-size: cover; background-position: center` inside a panel with
 `overflow: hidden`, and `cover` guarantees a crop on any panel whose aspect ratio
 differs from the art's. The doll sits in a fixed `320×360` box inside that panel,
-so a panel shorter than 360 px + padding clips the head as well. Neither is
+so its size relative to the room is whatever the panel happens to be. Neither is
 scroll-dependent and neither is phone-specific.
+
+### U3. The stage fits the composition; the room fills what is left
+
+> "We need the game area cleaned and no crops or clips"
+
+**The route chosen: contain the composition and paint the room around it.** Three
+were available — letterbox it, re-frame the art, or scale the panel to the art —
+and the third is the one that looks like a fix and is not. The panel's shape is
+decided by the flex row it sits in, so making the panel square would either push
+it past the trolley beside it (measured: the panel goes 581 → 670 px at 1280×860
+and the page starts scrolling) or leave a square card next to a taller column
+with 182 px of page showing under it. Containing the art costs nothing in layout
+and leaves a band; the band is the part worth designing, and it is painted as the
+same room continuing rather than as a letterbox bar.
+
+Four things changed, all of them presentation:
+
+1. **`background-size: cover` → `contain`, anchored `center bottom`, with
+   `background-origin: content-box`.** `cover` crops on any panel whose aspect
+   ratio differs from the art's; `contain` cannot. The bottom anchor puts the
+   art's counter on the panel's floor, where the client is standing.
+2. **The room continues past the art** (`_roomBg`). Every colour is read off the
+   art's own edge pixels rather than picked: `#efdfb1` is the wall, which is what
+   the art's left edge is for its whole height and its right edge is for all but
+   the top ~12 %; that corner turns cool (`#a6c1c5`) so a soft corner wash turns
+   with it; the counter's surface is `#ece7da` and its front `#bab8b3`, and its
+   top edge sits at 84.5 % of the composition's height. Backgrounds only, so
+   there is no new element and the panel's box model — which every % target zone
+   is measured against — is untouched.
+3. **The client is measured off the composition, not off the panel**
+   (`STAGE_CLIENT_H = 0.70` of the contained backdrop's height). Under `cover`
+   she was a flat 320×360 px against a composition that rescaled with the panel,
+   so she was 0.39 of the room at 1280×860, 0.54 at 834×1112 and **0.94** at
+   390×844 — three different framings, and the last of them is the crop again by
+   another name. One share is one framing.
+4. **The panel is a size container**, so `min(100cqw, 100cqh)` is available as
+   "the height the contained art actually paints at", and takes a height from the
+   art's own ratio on the one layout where the flex row stops giving it one.
+
+The bounds on `STAGE_CLIENT_H` are two-sided and both are visible: below ~0.7 the
+client reads as standing across the room and her targets shrink with her; above
+~0.9 her head leaves the mirror's aperture (~0.10–0.83 of the art) and she covers
+the counter she is meant to be sitting at.
+
+### U3 · Evidence
+
+`docs/eval/shots/glam-tune2/`, `stage-{before,after}-{desktop,tablet,phone}.png`
+(the panel alone, so the crop is read against the edge that makes it) and
+`page-{before,after}-{desktop,tablet,phone}.png` (the whole viewport, scrolled to
+the top, because the game area is what the child sees).
+
+`tests/_probe-glam-stage.mjs` resolves the painted backdrop rect from the panel's
+own computed `background-size` / `-position` / `-origin` and the art's natural
+size — the same inputs the browser paints from:
+
+| | before | after |
+|---|---|---|
+| **1280×860** | panel 934×581, art 932×932, **cut 175.5 px top and bottom**, client 320×360 = 0.386 of the art | panel 934×581, art **555×555 whole**, client 345×389 = **0.70** |
+| **834×1112** | panel 488×670, art 668×668, **cut 90 px left and right**, client 320×360 = 0.539 | panel 488×670, art **462×462 whole**, client 288×323 = **0.70** |
+| **390×844** | panel 358×386, art 384×384, **cut 13 px left and right**, client 320×360 = 0.938 | panel 358×358, art **332×332 whole**, client 207×232 = **0.70** |
+
+Identical on all three engines (Blink / Gecko / WebKit), and at 700, 646, 645 and
+320 px besides.
+
+**What the client cost, stated plainly.** She is *bigger* at 1280×860 (360 → 389
+px tall) and at 834×1112 she loses 10 % (360 → 323). At 390×844 she loses 36 %
+(360 → 232) — the composition there can be at most 332 px wide because the panel
+is, and 360 px of client only ever fitted by cropping the room to nothing. What
+that costs the child is the drag targets, so it is bounded rather than waved at:
+the smallest zone is 23.8 px on its short axis at 390 px (the ears band, 137×24),
+and every target clears **WCAG 2.2 SC 2.5.8** — the stage shows one target at a
+time, so the spacing clause applies and a wide, shallow box is compliant, but the
+area of the 24×24 minimum is held as a floor whatever the shape. The margin at
+390 px is thin, and it is what stops `STAGE_CLIENT_H` going any lower.
+
+### U3 · Hazard B — every hitbox followed the art, pressed rather than read
+
+`_artZones` is unchanged, and that is the finding rather than an omission: its
+boxes are in **% of the frame**, the overlays are positioned in % of the client's
+box, and the canvas fills that same box, so a fit change rescales the art and the
+hitbox table together by construction. Re-deriving would mean restating.
+
+That is an argument, though, and Hazard B asks for a measurement:
+
+- **`F-11 · every tool paints inside its own target box` is green on every roster
+  model × all 14 tools × 3 engines** — 36/36 in `glam-art-fidelity.spec.js`.
+- F-11 works in canvas coordinates, so a fit that moved the overlay off the art
+  would leave it green and the game unplayable. `tests/_probe-glam-hitbox.mjs`
+  presses the boxes instead: one tool per slot × 3 models × 3 devices, armed
+  through `arm()` (the call the trolley button makes), the overlay's rect read
+  from the DOM, then a real pointer driven inside it — a drag for paint tools, a
+  click for taps.
+
+  ```
+  desktop  45/45 model×tool combinations took a real pointer inside their own target; smallest target side 48px
+  tablet   45/45 …                                                                    smallest target side 29px
+  phone    45/45 …                                                                    smallest target side 24px
+  ```
+
+  Zero overlays hanging off the canvas, zero targets that swallowed a pointer
+  without taking.
+- And the whole game, played: `tests/_play-glam-tune2.mjs` — Start → texting
+  intro → salon → Go → pick **Highlight** off the trolley → drag across the
+  rendered target with real pointer events. Target box **173×72 px** (149×55
+  before U3, i.e. the client grew), coverage **0 → 1.000**, then turns, End
+  trial, and the outro's two photo frames mount. No console errors, no page
+  errors, no failed local requests.
+
+### U3 · Hazard A — re-measured, and untouched by construction
+
+U3 changes CSS. The canvas's backing store is 512×576 whatever the panel does, so
+a fit change cannot move a canvas measurement — and the parity probe says so
+rather than the argument doing it. `tests/_probe-glam-wash-parity.mjs`, this
+build against `HEAD` (which already carries U1/U2):
+
+```
+m2/m3/m4 × { shadow, blush, contour, wash+moist, all-but-hl }
+  → differing bytes = 0, worst = 0  on all 15 combinations
+```
+
+Re-measured on this build with `_probe-glam-face3.mjs`, 3 models × 2 sides:
+
+- **eyeshadow (T4c)** — `maxC = 1` on all six: still one hot spot, never two blobs
+  meeting in a blotch. `peak` 52–66, `ecc` 0.605–0.72, `theta·side > 0` on all
+  six.
+- **blush (T4d)** — `ecc` **0.521–0.578**, `maxC = 1` on all six, `theta·side < 0`
+  on all six, `peak` 24–27. Same window §U reported (0.492–0.578 across runs;
+  `freshEd`'s random `spotSeed` moves this ±0.03 between two runs of the *same*
+  renderer, which is why parity is settled by identity above and not here).
+
+### U3 · Two engine facts this cost a detour, worth writing down
+
+- **`aspect-ratio` on a flex item is not portable here.** WebKit transfers the
+  ratio from the item's flex BASE size rather than its used main size: with
+  `flex:1 1 0%` that is 0, clamped back up by whatever `min-width` transfers, and
+  the panel came out 358×300 where Blink and Gecko both said 358×358 — and only
+  after a resize ACROSS the wrap point, so it read as an intermittent. The height
+  now comes from a container query on the row (`100cqw`, the width the panel is
+  going to have once it is alone on its line), which all three agree on.
+- **`flex-wrap: wrap` makes a row multi-line even at one line**, so
+  `align-content` applies at every width. Setting it to `flex-start` to stop the
+  wrapped phone row splitting its cross size between the two lines also stopped
+  the single desktop line stretching to the trolley — the panel dropped 581 → 375
+  px at 1280×860. The container-query height made it unnecessary.
+
+### U3 · Verification
+
+- **387 Playwright tests, 387 passed** (384 + the one new test × 3 engines), on
+  the first full run and with no re-run needed — the Atkinson-Hyperlegible flake
+  did not fire this time, which is what "a different spec each run, sometimes
+  none" looks like.
+- **`window.GlamTT` is byte-identical** and `tests/glam-tt-scoring.spec.js` has
+  no diff at all — this slice does not touch a line of either.
+- `tests/glam-tt-story.spec.js` green. **No child-facing string was touched**:
+  the whole diff is one background declaration, one derived box height, two
+  class attributes and a container query.
+- New test: `U3 · the stage shows the whole client and the whole mirror at every
+  width`. Every bound two-sided — the crop bounds are sub-pixel on all four
+  edges, and the client's share is bounded above *and* below so "fit the art"
+  cannot be satisfied by shrinking her out of the way.
+- **The new test fails against the pre-change renderer**, run against a copy of
+  `HEAD`'s file served from the same directory. Ten assertions fail:
+
+  ```
+  desktop (1280×860): the salon composition is cut 175.5px past the panel's top edge
+  desktop (1280×860): the salon composition is cut 175.5px past the panel's bottom edge
+  desktop (1280×860): the client is 0.386 of the composition — a postage stamp in the room
+  tablet (834×1112): the salon composition is cut 90px past the panel's left edge
+  tablet (834×1112): the salon composition is cut 90px past the panel's right edge
+  tablet (834×1112): the client is 0.539 of the composition — a postage stamp in the room
+  phone (390×844): the salon composition is cut 13px past the panel's left edge
+  phone (390×844): the salon composition is cut 13px past the panel's right edge
+  phone (390×844): the client is 0.938 of the composition — her head leaves the mirror
+  the client is framed differently at each width: 0.386 / 0.539 / 0.938
+  ```
+
+- New instruments, neither of them specs: `tests/_probe-glam-stage.mjs` (the fit,
+  by geometry) and `tests/_probe-glam-hitbox.mjs` (Hazard B, by real pointer).
+  `tests/_shots-glam-tune2-stage.mjs` takes the before/after shots.
 
 ### U · Still to do in this pass
 
-- **Finding B is not built.** The diagnosis above is verified but the fit change
-  is not written. It is a composition change, not a phone tweak: letterboxing or
-  containing the backdrop, or re-composing the art's framing, so that at
-  1280×860, 834×1112 and 390×844 both the client and the mirror are whole. The
-  client must stay large enough to work on comfortably, so "shrink the doll"
-  is not the answer. Device priority desktop → tablet → phone. **`_artZones`
-  derives its boxes from the painted art, so whatever changes the stage's fit
-  must be re-derived and F-11 re-run** — the same hazard this slice cleared for
-  the highlight, and it will bite harder there because it moves every tool's
-  hitbox rather than one.
+- **A tall panel still shows tall wall.** At 834×1112 the panel is 488×670 and a
+  square composition can only be 462, so 184 px of it is wall above the mirror.
+  Nothing is cropped and it reads as a high room, but the honest description is
+  that the portrait case is filled rather than composed. Re-cutting the backdrop
+  wider — the one route this pass did not take — would let the art fill a
+  landscape panel and a portrait one differently. Out of scope here: it is an art
+  change, not a layout one.
 - **The Atkinson-Hyperlegible font flake is still live.** Self-hosting the woff2
   subset would kill it, but `apps/games/tailwind.css` is outside this pass's file
   scope; excluding font-download errors from the specs' console collectors is in

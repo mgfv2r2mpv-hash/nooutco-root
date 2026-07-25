@@ -916,4 +916,142 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
 
     expect(errors, `console errors: ${errors.join(' | ')}`).toEqual([]);
   });
+
+  /* ── U3 — the stage fits the composition instead of cropping it ─────────────
+     "We need the game area cleaned and no crops or clips".
+
+     The first pass filed this as a 390 px, scroll-dependent problem. It was
+     neither. The stage painted the salon backdrop `background-size: cover`
+     inside `overflow: hidden`, and `cover` crops on any panel whose aspect ratio
+     differs from the art's — which the panel's, decided by the flex row, never
+     was. It bit a different part at each width: at 1280×860 it cut the mirror's
+     gold ring clean through at the panel's top AND bottom edge (176 px each), at
+     834×1112 it ran the ring 91 px off both sides, at 390×844 it did both.
+
+     This measures the painted backdrop RECT — worked out from the panel's own
+     resolved `background-size` / `-position` / `-origin` and the art's natural
+     size, i.e. from the same inputs the browser paints from — against the panel
+     it is painted into. Uncropped means the rect sits inside the panel on all
+     four edges. Screenshots cannot answer this: a ring cut at the panel's edge
+     and a ring that happens to end there look identical in a PNG.
+
+     The other half of the finding is the client. Fitting the art is trivially
+     satisfiable by shrinking her into a postage stamp, so her share of the
+     composition is bounded on BOTH sides: too small and she is unreachable and
+     reads as standing across the room, too large and her head leaves the
+     mirror's aperture — which is the crop again, self-inflicted. And the point
+     of the size is that she can be worked on, so she carries an absolute floor
+     in rendered px as well, and the smallest box the child is asked to hit is
+     held to WCAG 2.2 SC 2.5.8's 24 CSS px at every width — at 390 px wide that
+     is the binding constraint on how small the fit may go. */
+  test('U3 · the stage shows the whole client and the whole mirror at every width', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = await stage(page);
+
+    /* Resolve the painted backdrop rect. The panel is found by the art it
+       carries, so this reads the pre-change renderer (image on the panel,
+       `cover`) and the post-change one (same panel, `contain`) identically. */
+    const GEOM = `
+      const layer = (v, i) => { const p = v.split(','); return (p[i] || p[0]).trim(); };
+      const R = (e) => { const r = e.getBoundingClientRect();
+        return { x:+r.x.toFixed(2), y:+r.y.toFixed(2), w:+r.width.toFixed(2), h:+r.height.toFixed(2) }; };
+      const geom = async () => {
+        const cv = document.getElementById('gtm-canvas');
+        const client = cv.parentElement;
+        let panel = null;
+        for (let e = client.parentElement; e; e = e.parentElement) {
+          const bi = getComputedStyle(e).backgroundImage;
+          if (bi && /url\\(/.test(bi)) { panel = e; break; } }
+        if (!panel) return { error:'no element under the client carries the backdrop' };
+        const cs = getComputedStyle(panel), box = R(panel);
+        const im = new Image(); im.src = cs.backgroundImage.match(/url\\("?([^")]+)"?\\)/)[1];
+        await im.decode();
+        // the positioning area — the padding box, or the content box when asked
+        const side = (p) => ['Top','Right','Bottom','Left'].map((s) => parseFloat(cs[p.replace('%', s)]) || 0);
+        const bd = side('border%Width'), pd = side('padding%');
+        const inset = layer(cs.backgroundOrigin, 0) === 'content-box' ? bd.map((v, i) => v + pd[i]) : bd;
+        const area = { x:box.x + inset[3], y:box.y + inset[0],
+                       w:box.w - inset[1] - inset[3], h:box.h - inset[0] - inset[2] };
+        const size = layer(cs.backgroundSize, 0);
+        const k = size === 'cover' ? Math.max(area.w/im.naturalWidth, area.h/im.naturalHeight)
+                : size === 'contain' ? Math.min(area.w/im.naturalWidth, area.h/im.naturalHeight)
+                : parseFloat(size)/im.naturalWidth;
+        const w = im.naturalWidth*k, h = im.naturalHeight*k;
+        const pos = layer(cs.backgroundPosition, 0).split(' ');
+        const off = (v, free) => /%$/.test(v) ? free*parseFloat(v)/100 : parseFloat(v) || 0;
+        const art = { x:area.x + off(pos[0] || '50%', area.w - w), y:area.y + off(pos[1] || '50%', area.h - h),
+                      w:+w.toFixed(2), h:+h.toFixed(2) };
+        // …and the smallest thing the child is asked to hit, in real CSS px
+        const cr = R(client);
+        let minTarget = 1e9, minArea = 1e9;
+        for (const e of ${EFFECTS}) { const z = L._targetZone('person', e.zone, e.mech);
+          if (!z) continue;
+          const w = z.w/100*cr.w, h = z.h/100*cr.h;
+          minTarget = Math.min(minTarget, w, h); minArea = Math.min(minArea, w*h); }
+        return { panel:box, client:cr, art, size,
+          bleed: { top:+(box.y - art.y).toFixed(2), bottom:+((art.y + art.h) - (box.y + box.h)).toFixed(2),
+                   left:+(box.x - art.x).toFixed(2), right:+((art.x + art.w) - (box.x + box.w)).toFixed(2) },
+          clip: { top:+(box.y - cr.y).toFixed(2), bottom:+((cr.y + cr.h) - (box.y + box.h)).toFixed(2),
+                  left:+(box.x - cr.x).toFixed(2), right:+((cr.x + cr.w) - (box.x + box.w)).toFixed(2) },
+          share:+(cr.h/art.h).toFixed(3), minTarget:+minTarget.toFixed(1), minArea:Math.round(minArea) };
+      };`;
+
+    // Desktop first, then tablet, then iPhone — the spec's §3.9 device order.
+    const DEVICES = [
+      { tag: 'desktop', width: 1280, height: 860 },
+      { tag: 'tablet', width: 834, height: 1112 },
+      { tag: 'phone', width: 390, height: 844 },
+    ];
+    const seen = [];
+    for (const d of DEVICES) {
+      await page.setViewportSize({ width: d.width, height: d.height });
+      const g = await logic(page, `return (async () => {
+        ${GEOM}
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+        return geom();
+      })();`);
+      expect(g.error, `${d.tag}: ${g.error}`).toBeUndefined();
+      seen.push({ ...g, ...d });
+    }
+
+    for (const g of seen) {
+      const at = `${g.tag} (${g.width}×${g.height})`;
+      // Sub-pixel slack only: this is a fit, not an approximation.
+      for (const [edge, over] of Object.entries(g.bleed)) {
+        expect(over, `${at}: the salon composition is cut ${over}px past the panel's ${edge} edge`)
+          .toBeLessThanOrEqual(0.6);
+      }
+      for (const [edge, over] of Object.entries(g.clip)) {
+        expect(over, `${at}: the client is clipped ${over}px by the panel's ${edge} edge`)
+          .toBeLessThanOrEqual(0.6);
+      }
+      // …and the fit is the SAME fit at every width, not three framings of one
+      // room: `cover` gave the client 0.39 of the composition at 1280×860, 0.54
+      // at 834×1112 and 0.93 at 390×844.
+      expect(g.share, `${at}: the client is ${g.share} of the composition — a postage stamp in the room`)
+        .toBeGreaterThan(0.55);
+      expect(g.share, `${at}: the client is ${g.share} of the composition — her head leaves the mirror`)
+        .toBeLessThan(0.82);
+      // The client has to stay big enough to WORK ON — a share bound alone is
+      // satisfied by a composition that has itself shrunk to nothing.
+      expect(g.client.h, `${at}: the client is only ${g.client.h}px tall`).toBeGreaterThan(200);
+      /* …and so does what the child is asked to hit. WCAG 2.2 SC 2.5.8 asks for
+         24×24 CSS px OR an undisturbed 24 px circle, and this stage only ever
+         shows ONE target at a time, so the spacing clause is what applies and a
+         wide-but-shallow box (the ears band is 137×24 at 390 px) is not a
+         failure. The area of that minimum is, though: it is what a target has to
+         beat however it is shaped. The narrowest axis still carries a floor so a
+         600×1 sliver cannot satisfy the area on its own. */
+      expect(g.minArea, `${at}: the smallest target is ${g.minArea}px² (${g.minTarget}px across its short axis)`)
+        .toBeGreaterThanOrEqual(24 * 24);
+      expect(g.minTarget, `${at}: the smallest target is ${g.minTarget}px across its short axis`)
+        .toBeGreaterThanOrEqual(20);
+    }
+    // One framing means one share, not three that each happen to be in range.
+    const shares = seen.map((g) => g.share);
+    expect(Math.max(...shares) - Math.min(...shares),
+      `the client is framed differently at each width: ${shares.join(' / ')}`).toBeLessThan(0.02);
+
+    expect(errors, `console errors: ${errors.join(' | ')}`).toEqual([]);
+  });
 });

@@ -93,6 +93,35 @@
   .gtm-home i{ width:112px; height:4.5px; border-radius:999px; background:rgba(38,24,43,.32); }
 
   @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+
+  /* SECOND PASS U3 — where the stage panel's HEIGHT comes from.
+
+     The stage is a size container (so the client can be measured against the
+     backdrop contained inside it), and a size container may not take its height
+     from its contents. On a row that has not wrapped it does not need to: the
+     flex line stretches it to the styling trolley beside it, which is where its
+     height has always come from — 581 px at 1280×860, 670 px at 834×1112. Once
+     the row wraps the stage is alone on its line with nothing to stretch to, and
+     something has to give it one.
+
+     The condition is the WRAP, not a device, so it is asked of the row rather
+     than of the viewport: the row wraps when it can no longer hold the stage's
+     300 px minimum, the trolley's 300 px and the 14 px gap between them. All
+     three of those numbers are in this file, so the query is exact and does not
+     have to be re-tuned if the page's own padding changes.
+
+     `--gtm-stage-fit` is set inline, and only when the art compositor is live: it
+     carries the manifest's own backdrop aspect, so the panel takes the art's
+     shape and the whole composition fits with nothing left over. Unset — the
+     procedural themes — this is `auto` and nothing changes.
+
+     It is a height and not `aspect-ratio` because WebKit transfers a flex item's
+     aspect ratio from its flex BASE size rather than its used main size: with
+     `flex:1 1 0%` that is 0, clamped back up by whatever `min-width` transfers,
+     and the panel came out 358×300 where Blink and Gecko both said 358×358 —
+     and only after a resize ACROSS the wrap, so it read as an intermittent. */
+  .gtm-stage-row{ container-type: inline-size; container-name: gtmrow; }
+  @container gtmrow (width < 614px){ .gtm-stage{ height: var(--gtm-stage-fit, auto); } }
   /* Phone (spec §3.9 device order: desktop first-class → tablet → iPhone). The
      header is a single nowrap row sized for desktop and was pushing ~73px of
      horizontal overflow at 390px, which scrolls the whole page sideways. Let it
@@ -1174,9 +1203,9 @@ window.GlamStory = (function () {
         </div>
       </sc-if>
 
-      <div style="flex:1;display:flex;gap:14px;flex-wrap:wrap;align-items:stretch">
+      <div class="gtm-stage-row" style="flex:1;display:flex;gap:14px;flex-wrap:wrap;align-items:stretch">
         <!-- STAGE -->
-        <div style="{{ stageStyle }}">
+        <div class="gtm-stage" style="{{ stageStyle }}">
           <!-- The mirror warms while a choice is being echoed. Always mounted so
                the opacity TRANSITION has something to run on; a mounted-on-demand
                node would just snap. Opacity only — stays on the compositor. -->
@@ -1200,7 +1229,11 @@ window.GlamStory = (function () {
                rides on stageStyle's background-image, so nothing here needs an
                <img> at all. -->
           <sc-if value="{{ personShow }}" hint-placeholder-val="{{ true }}">
-            <div style="position:relative;width:320px;height:360px;isolation:isolate">
+            <!-- The client's box. Sized off the CONTAINED backdrop when the art
+                 compositor is live (see dollBoxStyle / §U3) so she keeps one
+                 relationship to the mirror at every width; a fixed 320×360 for the
+                 procedural themes, which paint no backdrop to be measured against. -->
+            <div style="{{ dollBoxStyle }}">
               <canvas id="gtm-canvas" width="512" height="576" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1"></canvas>
               <!-- overlays -->
               <sc-if value="{{ target.drag }}" hint-placeholder-val="{{ false }}"><div class="gtm-tool" onPointerDown="{{ target.onDown }}" onPointerMove="{{ target.onMove }}" onPointerUp="{{ target.onUp }}" onPointerLeave="{{ target.onUp }}" style="{{ target.style }}"><span style="{{ target.labelStyle }}">{{ target.label }}</span></div></sc-if>
@@ -1626,6 +1659,24 @@ const IRISCFG = { cx:0.5, cy:0.4574, r:0.1471, top:0.3617, cl:[0.44,-0.16,0.22] 
    `_artZones`, so the hitbox follows the art (§3.9) instead of restating it. */
 const HL_ARC = { p0:[-0.02,1.40], p1:[0.58,1.58], p2:[1.18,0.94],
                  n:19, rl:0.26, rcBelly:0.26, rcTip:0.14, a:0.24, aTip:0.12, core:0.40 };
+
+/* SECOND PASS U3 — how big the client is drawn, as a share of the CONTAINED
+   backdrop's height (not of the panel's).
+
+   The panel used to paint the backdrop `cover`, so the composition's scale
+   tracked whichever panel edge happened to be longer while the client stayed a
+   flat 320×360 px: the client was 0.39 of the backdrop's height at 1280×860,
+   0.54 at 834×1112 and 0.93 at 390×844 — three different framings of the same
+   room. Anchoring her to the composition instead makes it one framing at every
+   width, and it is what lets the fit change move the art without moving her
+   relative to the mirror she is sitting at.
+
+   The value is bounded on both sides, and at 390px wide the lower bound is the
+   binding one: the drag targets shrink with her, and the smallest of them (the
+   ears band) is 137×24 CSS px there — WCAG 2.2 SC 2.5.8's floor, which this may
+   not go under. Above ~0.9 her head leaves the mirror's aperture (~0.10–0.83 of
+   the art) and she covers the counter she is meant to be sitting at. */
+const STAGE_CLIENT_H = 0.70;
 
 /* Touch padding added on every side of a derived hitbox, in % of the frame. Big
    enough to be a comfortable target and to absorb the gradients' sub-threshold
@@ -2697,6 +2748,44 @@ class Component extends DCLogic {
     });
   }
 
+  /* SECOND PASS U3 — the stage FITS the composition instead of cropping it.
+
+     It used to be `background-size:cover`, which crops on any panel whose aspect
+     ratio differs from the art's — and the panel's ratio is decided by the flex
+     row, so it never matched. At 1280×860 that cut the mirror's gold ring clean
+     through at the panel's top AND bottom edge (175.5 px at each); at 834×1112 it
+     ran the ring 90 px off both sides; at 390×844 it took 13 px off each side and
+     left the client filling 0.94 of what was left, which is the room gone. None
+     of it was scroll-dependent and none of it was phone-specific.
+
+     `contain` shows the whole composition, and anchoring it to `bottom` puts the
+     art's counter on the panel's floor where the client is standing. What is
+     left over — a band at each side once the panel is wider than the art — is
+     painted as the same room continuing, so the fit reads as a wide vanity wall
+     rather than as letterbox bars.
+
+     Every fill is the art's OWN colour, read off its edge pixels rather than
+     picked: the wall is #efdfb1, which is what the art's left edge is for its
+     whole height and its right edge is for all but the top ~12%; that top-right
+     corner turns cool (#a6c1c5), so a soft corner wash turns with it. The
+     counter's surface is #ece7da and its front #bab8b3, and its top edge sits at
+     84.5% of the composition's height. Backgrounds only — no extra element,
+     nothing for the compositor to animate, and the panel's box model (which
+     every % target zone is measured against) is untouched. */
+  _roomBg(src){
+    const COUNTER='linear-gradient(to bottom,rgba(236,231,218,0) 0%,rgba(236,231,218,0) 84.5%,#ece7da 87.5%,#ece7da 93.4%,#bab8b3 95%,#a8a6a1 100%)';
+    const CORNER='radial-gradient(62% 30% at 100% 0%,#a6c1c5 0%,rgba(166,193,197,0) 72%)';
+    // …and the wall is lit from where the bulbs are, so a band of it — the tall
+    // one above the mirror on a portrait panel — reads as a room rather than as
+    // a flat fill. Under the art, so it can never wash the composition.
+    const LIGHT='linear-gradient(to bottom,rgba(255,252,242,.55) 0%,rgba(255,252,242,0) 42%)';
+    return ';background-color:#efdfb1'
+      +';background-image:url("'+src+'"),'+COUNTER+','+LIGHT+','+CORNER
+      +';background-size:contain,auto,auto,auto'
+      +';background-repeat:no-repeat,repeat-x,no-repeat,no-repeat'
+      +';background-position:center bottom,center bottom,center,center'
+      +';background-origin:content-box,content-box,border-box,border-box'; }
+
   paintAvatar(){ if(this.state.theme!=='social'||this.base()!=='person') return;
     const cv=document.getElementById('gtm-canvas'); if(!cv) return;
     const E=this.genEntry(); if(!E) return;
@@ -3100,7 +3189,11 @@ class Component extends DCLogic {
     // salon backdrop fills the whole stage panel when person art is live; else fall back to the scene bg.
     // when live, the model is bottom-aligned so she sits at the vanity (not floating centred).
     const personArtLive=base==='person'&&s.theme==='social'&&this.hasPersonArt();
-    const stageBg=(personArtLive&&(this.gen().backdrop||{}).src)||this.sceneArt().bg;
+    const backdrop=(personArtLive&&this.gen().backdrop)||null;
+    const stageBg=(backdrop&&backdrop.src)||this.sceneArt().bg;
+    // …and the panel is now shaped by the art rather than the art cropped to the
+    // panel (§U3). Both numbers come off the manifest, not off a restated value.
+    const bdAsp=(backdrop&&backdrop.aspect)||1, fr=this.gen().frame||{w:512,h:576};
     // tools/palette column matches the salon panel height so both align, and the palette fills it
     const toolsColStyle='width:300px;display:flex;flex-direction:column;min-height:0'+(personArtLive?';max-height:670px':'');
 
@@ -3140,7 +3233,26 @@ class Component extends DCLogic {
          a second bezel around it just reads as mush. Inset shadows only, so the
          panel's box model — and every % target zone measured against it — is
          untouched. */
-      stageStyle:'flex:1;min-width:300px;position:relative;display:flex;align-items:'+(personArtLive?'flex-end':'center')+';justify-content:center;background:var(--surface-card);border:1px solid '+(personArtLive?'rgba(58,36,66,.55)':'var(--border-default)')+';border-radius:16px;padding:12px;overflow:hidden'+(personArtLive?';max-height:670px':'')+(stageBg?';background-image:url("'+stageBg+'");background-size:cover;background-position:center':'')+(personArtLive?';box-shadow:inset 0 0 0 4px rgba(58,36,66,.42),inset 0 -70px 90px -62px rgba(58,36,66,.45),0 16px 36px -22px rgba(72,40,62,.55)':''),
+      stageStyle:'flex:1;min-width:300px;position:relative;display:flex;align-items:'+(personArtLive?'flex-end':'center')+';justify-content:center;background:var(--surface-card);border:1px solid '+(personArtLive?'rgba(58,36,66,.55)':'var(--border-default)')+';border-radius:16px;padding:12px;overflow:hidden'
+        /* SECOND PASS U3 — the panel is a size CONTAINER, so the client can be
+           sized off the composition rather than off the panel. The height it
+           falls back to on a wrapped row rides on `--gtm-stage-fit` and is
+           applied by the `.gtm-stage` container rule above, where the reasoning
+           lives; `100cqw` there is the ROW's width, which is the panel's own once
+           it is alone on a line. */
+        +(personArtLive?';max-height:670px;container-type:size;--gtm-stage-fit:calc(100cqw / '+bdAsp+')':'')
+        +(stageBg?(personArtLive?this._roomBg(stageBg):';background-image:url("'+stageBg+'");background-size:cover;background-position:center'):'')
+        +(personArtLive?';box-shadow:inset 0 0 0 4px rgba(58,36,66,.42),inset 0 -70px 90px -62px rgba(58,36,66,.45),0 16px 36px -22px rgba(72,40,62,.55)':''),
+      /* SECOND PASS U3 — the client is measured off the CONTAINED backdrop, not
+         off the panel. A contained square backdrop paints at min(cqw/aspect, cqh),
+         so that expression IS the composition's height and `STAGE_CLIENT_H` of it
+         is the client. Everything the child aims at rides inside this box as a %
+         of it (the canvas fills it, `_artZones` is in % of the frame), so the whole
+         hitbox table scales with the art by construction rather than by a second
+         table that would have to be kept in step. */
+      dollBoxStyle: personArtLive
+        ? 'position:relative;isolation:isolate;height:calc(min('+(100/bdAsp)+'cqw,100cqh)*'+STAGE_CLIENT_H+');aspect-ratio:'+fr.w+'/'+fr.h
+        : 'position:relative;width:320px;height:360px;isolation:isolate',
       toolsColStyle,
       /* SALON DRESSING. The backdrop art is itself a bulb-lit vanity mirror, so
          the dressing here deliberately does NOT add a second set of bulbs — it
