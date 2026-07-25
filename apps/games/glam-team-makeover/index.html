@@ -2213,13 +2213,19 @@ class Component extends DCLogic {
     const z={};
     // face — the wash + moisturize blob envelope (cy+0.85eh ± 3.85eh ∪ cy−0.4eh ± 2.6eh)
     z.face   = box(cy-3.0*eh, cy+4.7*eh, 50-2.35*ew, 50+2.35*ew, ZONE_NOUN.face);
-    // cheeks — the blush blob pair (cy+1.85eh, radii 0.95ew × 0.9eh)
-    z.cheeks = box(cy+0.95*eh, cy+2.75*eh, lxp-0.95*ew, rxp+0.95*ew, ZONE_NOUN.cheeks);
+    // cheeks — the blush sweep pair (cy+1.82eh, radii 1.30ew × 0.70eh, tilted up
+    // toward the temple by 0.36 rad), so like contour the AABB needs the rotation
+    { const h=this._rotHalf(1.30*ew,0.70*eh,0.36);
+      z.cheeks = box(cy+1.82*eh-h.y, cy+1.82*eh+h.y, lxp-0.12*ew-h.x, rxp+0.12*ew+h.x, ZONE_NOUN.cheeks); }
     // contour — a rotated blob pair, so the AABB needs the rotation
     { const h=this._rotHalf(1.05*ew,0.38*eh,0.92);
       z.contour = box(cy+1.62*eh-h.y, cy+1.62*eh+h.y, lxp-0.72*ew-h.x, rxp+0.72*ew+h.x, ZONE_NOUN.contour); }
-    // highlight — eye pair (cy+1.22eh, 0.75ew × 0.6eh) ∪ the centre stripe (cy+1.0eh, 0.35ew × 1.4eh)
-    z.hl     = box(cy-0.4*eh, cy+2.4*eh, lxp-1.35*ew, rxp+1.35*ew, ZONE_NOUN.hl);
+    // highlight — the cheekbone pair (cy+1.18eh, 0.46ew × 0.34eh, tilted 0.34 rad)
+    // ∪ the nose stripe (cy+0.95eh, 0.20ew × 1.05eh). Both shrank in T4e and the
+    // box shrinks with them, because it is derived from the blobs' own numbers.
+    { const h=this._rotHalf(0.46*ew,0.34*eh,0.34);
+      z.hl = box(Math.min(cy+1.18*eh-h.y, cy-0.10*eh), Math.max(cy+1.18*eh+h.y, cy+2.00*eh),
+                 Math.min(lxp-0.58*ew-h.x, 50-0.20*ew), Math.max(rxp+0.58*ew+h.x, 50+0.20*ew), ZONE_NOUN.hl); }
     // eyes — the sprite stack (eyeball, lashes, winged liner) and the lid wash reach
     // well outside the base render's own eye pixels, so this is the sprite envelope.
     z.eyes   = box(cy-1.5*eh, cy+1.25*eh, lxp-2.0*ew, rxp+2.0*ew, ZONE_NOUN.eyes);
@@ -2537,6 +2543,32 @@ class Component extends DCLogic {
     else { gr.addColorStop(0,rgba(1)); gr.addColorStop(0.6,rgba(0.5)); gr.addColorStop(1,rgba(0)); }
     ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(0,0,1,0,6.2832); ctx.fill(); ctx.restore(); }
 
+  /* A cosmetic wash: the same ellipse `_blob` fills, but with a falloff and a
+     colour ramp built for makeup rather than for a dot.
+       · Falloff is a raised cosine sampled at 12 stops — 0.5+0.5·cos(πt) — so
+         the alpha leaves the centre flat, arrives at the rim flat, and has no
+         slope break anywhere in between. `_blob`'s three-segment ramp gets
+         STEEPER at the rim (0.5→0 over the last 40 %), which is what draws the
+         hard disc edge the maintainer saw on the blush (T4d).
+       · `o.deep` (optional) is mixed into the colour toward the core, so a wash
+         can carry its own depth INSTEAD of a second, darker blob laid over it.
+         Two overlapping blobs meet at a lens where both the alpha and the hue
+         jump; that overlap was the patchy eyeshadow (T4c).
+       · `o.fx`/`o.fy` (optional, unit space, inside the circle) put the
+         gradient's focus off centre. The rings then bunch toward the focus and
+         stretch away from it, which is how the lid gets a deeper OUTER corner
+         out of one gradient — the shape still ends exactly on the ellipse, so
+         no extra edge is introduced. */
+  _wash(ctx,cx,cy,rx,ry,rot,hex,alpha,blend,o){ if(alpha<=0.003||rx<=0||ry<=0) return;
+    o=o||{}; const b=this._hex(hex), d=o.deep?this._hex(o.deep):b, N=12;
+    ctx.save(); ctx.globalCompositeOperation=blend||'source-over'; ctx.globalAlpha=Math.min(1,alpha);
+    ctx.translate(cx,cy); if(rot) ctx.rotate(rot); ctx.scale(rx,ry);
+    const gr=ctx.createRadialGradient(o.fx||0,o.fy||0,0,0,0,1);
+    for(let i=0;i<=N;i++){ const t=i/N, a=0.5+0.5*Math.cos(Math.PI*t), k=Math.pow(1-t,1.5);
+      const c=[0,1,2].map(j=>Math.round(b[j]+(d[j]-b[j])*k));
+      gr.addColorStop(t,'rgba('+c[0]+','+c[1]+','+c[2]+','+a.toFixed(4)+')'); }
+    ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(0,0,1,0,6.2832); ctx.fill(); ctx.restore(); }
+
   /* ── the outro photo booth ──────────────────────────────────────────────────
      A "before" frame is grabbed off the live compositor while the doll is still
      untouched, an "after" frame the instant the engine ends the trial, and the
@@ -2628,8 +2660,21 @@ class Component extends DCLogic {
     // in the palette (Wash 5.8 %, Blush 1.3 %). Deeper and a shade taller so a spent
     // action shows on the doll; still a soft multiply, so it reads as shading not paint.
     if(cov('contour')>0) for(const e of eyes) this._blob(ctx,e[0]+e[4]*e[2]*0.72,e[1]+e[3]*1.62,e[2]*1.05,e[3]*0.46,-e[4]*0.92,'#8f6a51',cov('contour')*0.42,'multiply',true);
-    if(cov('hl')>0){ for(const e of eyes) this._blob(ctx,e[0]+e[4]*e[2]*0.6,e[1]+e[3]*1.22,e[2]*0.75,e[3]*0.6,0,'#fff6d8',cov('hl')*0.5,'screen'); this._blob(ctx,cxm,cym+lh*1.0,lw*0.35,lh*1.4,0,'#fff6d8',cov('hl')*0.4,'screen'); }
-    if(cov('blush')>0){ const bc=col('blush')||'#f28ba0'; for(const e of eyes) this._blob(ctx,e[0],e[1]+e[3]*1.85,e[2]*0.95,e[3]*0.9,0,bc,cov('blush')*0.5,'multiply'); }
+    // highlight — was a pair of 0.75ew × 0.6eh discs plus a 0.35ew × 1.4eh nose
+    // stripe, all on `_blob`'s hard ramp: big pale plates on the cheekbones
+    // rather than a glow (T4e). Two thirds smaller, angled along the cheekbone,
+    // and on the raised-cosine falloff — the peak stays high enough to read as
+    // light, the footprint stops reading as a shape.
+    if(cov('hl')>0){ const HL='#fff6d8';
+      for(const e of eyes) this._wash(ctx,e[0]+e[4]*e[2]*0.58,e[1]+e[3]*1.18,e[2]*0.46,e[3]*0.34,-e[4]*0.34,HL,cov('hl')*0.40,'screen');
+      this._wash(ctx,cxm,cym+lh*0.95,lw*0.20,lh*1.05,0,HL,cov('hl')*0.30,'screen'); }
+    // blush — was 0.95ew × 0.9eh (a circle, since the eye landmarks are near
+    // square) on the hard ramp, which ended the colour on a visible disc edge
+    // (T4d). Now a wide, low sweep angled up toward the temple, softer at the
+    // rim and lower at the peak, so it blends into the cheek instead of sitting
+    // on it.
+    if(cov('blush')>0){ const bc=col('blush')||'#f28ba0';
+      for(const e of eyes) this._wash(ctx,e[0]+e[4]*e[2]*0.12,e[1]+e[3]*1.82,e[2]*1.30,e[3]*0.70,-e[4]*0.36,bc,cov('blush')*0.44,'multiply'); }
     const ecv=this._eyesCanvas(E); if(ecv) ctx.drawImage(ecv,0,0,W,H);   // base eyes+brows; brows kept, eyes replaced below
     // ===== EYES — the base render's eyes are skin-filled at build time, so drop in the state
     // sprites in makeup order: eyeshadow on the lid first (shows behind the lashes), then the
@@ -2646,10 +2691,17 @@ class Component extends DCLogic {
         const [x,y,w,h,o]=e, dw=EC.s*(2*w), dh=dw/meta.aspect;
         ctx.save(); ctx.translate(ex(e),y); if(mirror&&o<0) ctx.scale(-1,1);
         ctx.drawImage(im.img,-meta.cx*dw,-meta.cy*dh,dw,dh); ctx.restore(); };
-      if(cov('shadow')>0){ const sc=col('shadow')||'#a06cc9', scDark=this.shade(this.shade(sc)), sa=cov('shadow');   // eyeshadow on the lid, behind the lashes — richer/deeper finish
+      // eyeshadow on the lid, behind the lashes. ONE wash, not two: the retired
+      // pair (a base-shade lid blob plus a twice-shaded crease rotated across
+      // its outer half) met at a lens where the alpha and the hue both jumped,
+      // and that overlap is the patchiness the maintainer reported (T4c). The
+      // depth now lives inside the single gradient — deep at an off-centre
+      // focus over the outer lid, the chosen shade by mid-radius, gone at the
+      // rim — so the lid grades evenly with no seam to see.
+      if(cov('shadow')>0){ const sc=col('shadow')||'#a06cc9', scDark=this.shade(this.shade(sc)), sa=cov('shadow');
         for(const e of eyes){ const [x,y,w,h,o]=e, X=ex(e);
-          this._blob(ctx, X+o*w*0.28, y-h*0.44, w*1.10, h*0.84, o*0.40, sc,     Math.min(1,sa*0.92),'source-over',true);   // lid wash (deeper)
-          this._blob(ctx, X+o*w*1.02, y-h*0.64, w*0.68, h*0.44, o*0.90, scDark, Math.min(1,sa),'source-over',true); } }    // darker outer-corner crease for depth
+          this._wash(ctx, X+o*w*0.34, y-h*0.46, w*1.16, h*0.78, o*0.42, sc, Math.min(1,sa*0.70),'source-over',
+            { deep:scDark, fx:o*0.40, fy:-0.16 }); } }
       for(const e of eyes){ const o=e[4];
         if(mascara&&eyeSet.glam) drawSprite(eyeSet.glam,e,true);         // eyeball + lashes
         else if(!liner) drawSprite(eyeSet.natural,e,true);              // plain eyeball (liner sprite carries its own)

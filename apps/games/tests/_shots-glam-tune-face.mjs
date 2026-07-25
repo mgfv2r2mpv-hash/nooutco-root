@@ -1,4 +1,5 @@
-/* Screenshot pass for TUNING fix 4a (lip liner) + 4b (colored-contact clipping).
+/* Screenshot pass for TUNING fix 4a (lip liner), 4b (colored-contact clipping),
+   4c (eyeshadow gradient), 4d (blush) and 4e (highlight).
    Not a spec. Run against a server on :8788:
 
      git show HEAD:apps/games/glam-team-makeover/index.html \
@@ -21,10 +22,14 @@
    resampler's opinion of them.
 
    Per model (the whole roster, because each has its own mask and eye scale):
-     · lipliner-<phase>-<model>.png  — the mouth, liner + lipstick on
-     · eyeclip-<phase>-<model>.png   — the eye pair, contacts + shadow + mascara on
+     · lipliner-<phase>-<model>.png   — the mouth, liner + lipstick on
+     · eyeclip-<phase>-<model>.png    — the eye pair, contacts + shadow + mascara on
+     · eyeshadow-<phase>-<model>.png  — the lids, shadow ONLY (no lashes over it)
+     · blush-<phase>-<model>.png      — one cheek, blush only
+     · highlight-<phase>-<model>.png  — the cheekbones + nose bridge, highlight only
    Plus the un-magnified stage with both tools applied, at three widths:
      · face-<phase>-<device>.png
+     · glow-<phase>-<device>.png      — shadow + blush + highlight, nothing else
 
    `Math.random` is seeded and the client pinned through the ⚙ Character lock, so
    the two passes photograph the same face. */
@@ -70,9 +75,24 @@ const FACE_ON = `
     return { ed };
   }, r));`;
 
-/* Build the loupe. `what` is 'lips' or 'eyes'; the crop comes from geometry both
-   passes share — the lip mask's own bbox for the mouth, the face anchors for the
-   eyes — so the before/after pair frames identical pixels. */
+/* The three procedural-cosmetic tools of 4c/4d/4e, with nothing else on the face:
+   the lid gradient, the blush edge and the highlight footprint are all judged
+   against BARE skin, and a lash sprite or a lip colour over them only makes the
+   pair harder to read. */
+const GLOW_ON = `
+  return new Promise((r) => L.setState((s) => {
+    const ed = JSON.parse(JSON.stringify(s.ed));
+    ed.pimples = (ed.pimples || []).map(() => 2);
+    ed.cov.wash = 1; ed.cov.moist = 1;
+    ed.cov.shadow = 1; ed.col.shadow = '#a06cc9';
+    ed.cov.blush = 1; ed.col.blush = '#f28ba0';
+    ed.cov.hl = 1;
+    return { ed };
+  }, r));`;
+
+/* Build the loupe. `what` names the region; every crop comes from geometry both
+   passes share — the lip mask's own bbox for the mouth, the face anchors for
+   everything else — so the before/after pair frames identical pixels. */
 const LOUPE = (what, zoom) => `
   const cv = document.getElementById('gtm-canvas');
   const W = cv.width, H = cv.height;
@@ -83,9 +103,14 @@ const LOUPE = (what, zoom) => `
   } else {
     const f = L.genEntry().face;
     const l = f.eyeL, r = f.eyeR;
-    const x0 = (l.x - l.w * 1.5) * W, x1 = (r.x + r.w * 1.5) * W;
     const yc = (l.y + r.y) / 2 * H, hh = Math.max(l.h, r.h) * H;
-    box = { x: x0, y: yc - hh * 1.6, w: x1 - x0, h: hh * 3.2 };
+    const span = (a, b, tp, bt) => ({ x: (l.x - l.w * a) * W, y: yc + hh * tp,
+      w: ((r.x + r.w * b) - (l.x - l.w * a)) * W, h: hh * (bt - tp) });
+    box = '${what}' === 'lid'    ? span(1.5, 1.5, -1.9, 0.5)
+        : '${what}' === 'cheek'  ? { x: (r.x - r.w * 1.9) * W, y: yc + hh * 0.5,
+                                     w: r.w * 3.8 * W, h: hh * 2.9 }
+        : '${what}' === 'hl'     ? span(1.7, 1.7, 0.2, 2.7)
+        : span(1.5, 1.5, -1.6, 1.6);
   }
   box = { x: Math.max(0, Math.round(box.x)), y: Math.max(0, Math.round(box.y)),
           w: Math.round(box.w), h: Math.round(box.h) };
@@ -127,14 +152,23 @@ const problems = [];
       await new Promise((r) => L.setState({ model: '${m}', ed: L.freshEd('person') }, r));
       for (let i = 0; i < 80 && !L._skinPool('${m}'); i++) await new Promise((r) => setTimeout(r, 100));
     })();`);
-    await logic(page, FACE_ON);
-    await page.waitForTimeout(500);
-    for (const [what, name] of [['lips', 'lipliner'], ['eyes', 'eyeclip']]) {
-      await logic(page, LOUPE(what, ZOOM));
-      await page.waitForTimeout(120);
-      await page.locator('#gtm-loupe').screenshot({ path: `${OUT}${name}-${PHASE}-${m}.png` });
+    for (const [state, regions] of [
+      [FACE_ON, [['lips', 'lipliner'], ['eyes', 'eyeclip']]],
+      [GLOW_ON, [['lid', 'eyeshadow'], ['cheek', 'blush'], ['hl', 'highlight']]],
+    ]) {
+      await logic(page, `return (async () => {
+        await new Promise((r) => L.setState({ ed: L.freshEd('person') }, r));
+        await new Promise((r) => setTimeout(r, 120));
+      })();`);
+      await logic(page, state);
+      await page.waitForTimeout(500);
+      for (const [what, name] of regions) {
+        await logic(page, LOUPE(what, ZOOM));
+        await page.waitForTimeout(120);
+        await page.locator('#gtm-loupe').screenshot({ path: `${OUT}${name}-${PHASE}-${m}.png` });
+      }
+      await page.evaluate(() => { const e = document.getElementById('gtm-loupe'); if (e) e.remove(); });
     }
-    await page.evaluate(() => { const e = document.getElementById('gtm-loupe'); if (e) e.remove(); });
   }
   await page.close();
 }
@@ -157,6 +191,10 @@ for (const d of DEVICES) {
   await logic(page, FACE_ON);
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${OUT}face-${PHASE}-${d.tag}.png` });
+  await logic(page, `return new Promise((r) => L.setState({ ed: L.freshEd('person') }, r));`);
+  await logic(page, GLOW_ON);
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: `${OUT}glow-${PHASE}-${d.tag}.png` });
   await page.close();
 }
 

@@ -542,4 +542,185 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
     }
     expect(errors).toEqual([]);
   });
+
+  /* ── T4c / T4d / T4e — the three procedural cosmetics ──────────────────────
+     These three tools are not sprites and not mask recolours: each is a filled
+     ellipse with a gradient in it, so "is it malformed?" is a question about the
+     SHAPE OF ITS FOOTPRINT, measured against the same face without the tool.
+     `FOOT` below returns that shape per side of the face:
+       · ecc   — anisotropy of the delta-weighted second-moment tensor. 0 for a
+                 circle, → 1 for a line. This is the "is the blush a disc?"
+                 number, and unlike a bbox ratio it does not depend on where the
+                 ellipse happens to land on the pixel grid.
+       · theta — that tensor's principal angle in degrees, +y down, so a sweep
+                 whose OUTER end lifts toward the temple has theta·side < 0.
+       · maxComp — the most connected components the smoothed footprint splits
+                 into anywhere in a sweep of level sets. One blob can never
+                 exceed 1; two overlapping blobs with different cores separate at
+                 some level, which is exactly the patchiness of the retired
+                 eyeshadow pair. Smoothing first (5×5 box) stops single-pixel
+                 noise from splitting a blob on its own. */
+  const FOOT = `
+    const foot = (a, b, side) => {
+      const W = cv.width, H = cv.height;
+      const D = new Float64Array(W*H);
+      const lo = side<0 ? 0 : W>>1, hi = side<0 ? W>>1 : W;
+      let n=0, peak=0, x0=1e9, y0=1e9, x1=-1, y1=-1;
+      for (let y=0;y<H;y++) for (let x=lo;x<hi;x++){ const i=(y*W+x)*4;
+        const d = Math.max(Math.abs(a.data[i]-b.data[i]), Math.abs(a.data[i+1]-b.data[i+1]),
+                           Math.abs(a.data[i+2]-b.data[i+2]));
+        D[y*W+x]=d; if (d<=2) continue;
+        n++; if (d>peak) peak=d;
+        if (x<x0)x0=x; if (x>x1)x1=x; if (y<y0)y0=y; if (y>y1)y1=y; }
+      if (!n) return { n:0 };
+      let sw=0,sx=0,sy=0;
+      for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++){ const d=D[y*W+x]; if(d<=2) continue;
+        sw+=d; sx+=d*x; sy+=d*y; }
+      const mx=sx/sw, my=sy/sw; let uxx=0,uyy=0,uxy=0;
+      for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++){ const d=D[y*W+x]; if(d<=2) continue;
+        uxx+=d*(x-mx)*(x-mx); uyy+=d*(y-my)*(y-my); uxy+=d*(x-mx)*(y-my); }
+      uxx/=sw; uyy/=sw; uxy/=sw;
+      const theta = 0.5*Math.atan2(2*uxy, uxx-uyy)*180/Math.PI;
+      const ecc = Math.sqrt((uxx-uyy)*(uxx-uyy) + 4*uxy*uxy) / (uxx+uyy);
+      const S = new Float64Array(W*H);
+      for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++){ let s=0,c=0;
+        for (let dy=-2;dy<=2;dy++) for (let dx=-2;dx<=2;dx++){ const yy=y+dy, xx=x+dx;
+          if (yy<0||yy>=H||xx<lo||xx>=hi) continue; s+=D[yy*W+xx]; c++; }
+        S[y*W+x]=s/c; }
+      let spk=0;
+      for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++) if (S[y*W+x]>spk) spk=S[y*W+x];
+      /* A blotch is a REGION, not a pixel: only components worth 2% of the
+         footprint count. Without that floor the eye sprite drawn over the lid
+         pinches the level set apart by a pixel or two at one level on some
+         model × side, which is an occlusion, not a second blob. */
+      const MINPX = Math.max(20, n*0.02);
+      const comps = (lvl) => { const seen=new Set(); let k=0;
+        for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++){ const id=y*W+x;
+          if (S[id]<lvl || seen.has(id)) continue;
+          let sz=0; const st=[id]; seen.add(id);
+          while (st.length){ const p=st.pop(), py=(p/W)|0, px=p%W; sz++;
+            for (let dy=-1;dy<=1;dy++) for (let dx=-1;dx<=1;dx++){ const yy=py+dy, xx=px+dx;
+              if (yy<y0||yy>y1||xx<x0||xx>x1) continue; const q=yy*W+xx;
+              if (seen.has(q)||S[q]<lvl) continue; seen.add(q); st.push(q); } }
+          if (sz>=MINPX) k++; }
+        return k; };
+      let maxComp=0;
+      for (let i=0;i<12;i++) maxComp = Math.max(maxComp, comps(spk*(0.35+i*0.05)));
+      const f = L.genEntry().face;
+      const ew = (f.eyeL.w+f.eyeR.w)/2*W, eh = (f.eyeL.h+f.eyeR.h)/2*H;
+      return { n, peak, maxComp, theta:+theta.toFixed(1), ecc:+ecc.toFixed(3),
+               area:+(n/(ew*eh)).toFixed(2) };
+    };`;
+
+  test('T4c · the eyeshadow is ONE lid gradient — never two blobs meeting in a blotch', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = await stage(page);
+
+    const rows = await logic(page, `return (async () => {
+      ${HELPERS}
+      ${FOOT}
+      const out = [];
+      for (const m of window.GlamStory.MODELS) {
+        await setModel(m);
+        const before = await settle();
+        await setEd((ed) => { ed.cov.shadow = 1; ed.col.shadow = '#a06cc9'; });
+        const after = await settle();
+        for (const side of [-1, 1]) out.push({ model:m, side, ...foot(before, after, side) });
+      }
+      return out;
+    })();`);
+
+    const roster = await page.evaluate(() => window.GlamStory.MODELS);
+    expect(rows.length).toBe(roster.length * 2);
+    for (const r of rows) {
+      const where = `${r.model}/${r.side < 0 ? 'left' : 'right'} lid`;
+      // A wash that paints nothing would satisfy "one hot spot" vacuously.
+      expect(r.n, `${where}: the eyeshadow should paint the lid`).toBeGreaterThan(400);
+      /* The whole fix. The retired pair — a lid blob in the chosen shade plus a
+         twice-shaded crease rotated across its outer half — split into two hot
+         spots on every model and both sides (measured: at 4–8 of these 12
+         levels). One gradient, however deep its core, cannot. */
+      expect(r.maxComp,
+        `${where}: the footprint splits into ${r.maxComp} hot spots at some level — that is the blotch`)
+        .toBe(1);
+    }
+    expect(errors).toEqual([]);
+  });
+
+  test('T4d · the blush is a soft angled sweep, not a disc stamped on the cheek', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = await stage(page);
+
+    const rows = await logic(page, `return (async () => {
+      ${HELPERS}
+      ${FOOT}
+      const out = [];
+      for (const m of window.GlamStory.MODELS) {
+        await setModel(m);
+        const before = await settle();
+        await setEd((ed) => { ed.cov.blush = 1; ed.col.blush = '#f28ba0'; });
+        const after = await settle();
+        for (const side of [-1, 1]) out.push({ model:m, side, ...foot(before, after, side) });
+      }
+      return out;
+    })();`);
+
+    const roster = await page.evaluate(() => window.GlamStory.MODELS);
+    expect(rows.length).toBe(roster.length * 2);
+    for (const r of rows) {
+      const where = `${r.model}/${r.side < 0 ? 'left' : 'right'} cheek`;
+      expect(r.n, `${where}: the blush should paint the cheek`).toBeGreaterThan(500);
+      // The retired blob was 0.95ew × 0.9eh on landmarks that are near square,
+      // and measured ecc 0.009–0.051 — a circle to three decimal places.
+      expect(r.ecc, `${where}: ecc ${r.ecc} — the blush is still a disc`).toBeGreaterThan(0.32);
+      // …but a sweep, not a slash: an upper bound as well.
+      expect(r.ecc, `${where}: ecc ${r.ecc} — the blush has become a stripe`).toBeLessThan(0.80);
+      // Angled up toward the temple, so the OUTER end lifts. theta is measured
+      // with +y down, which makes that sign negative once multiplied by the side.
+      expect(r.theta * r.side, `${where}: theta ${r.theta}° does not lift toward the temple`)
+        .toBeLessThan(-10);
+      // Softer, not louder: the peak must not creep back up.
+      expect(r.peak, `${where}: peak delta ${r.peak} — the blush got stronger, not softer`)
+        .toBeLessThanOrEqual(34);
+    }
+    expect(errors).toEqual([]);
+  });
+
+  test('T4e · the highlight is smaller and gentler — and still reads as light', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = await stage(page);
+
+    const rows = await logic(page, `return (async () => {
+      ${HELPERS}
+      ${FOOT}
+      const out = [];
+      for (const m of window.GlamStory.MODELS) {
+        await setModel(m);
+        const before = await settle();
+        await setEd((ed) => { ed.cov.hl = 1; });
+        const after = await settle();
+        for (const side of [-1, 1]) out.push({ model:m, side, ...foot(before, after, side) });
+      }
+      return out;
+    })();`);
+
+    const roster = await page.evaluate(() => window.GlamStory.MODELS);
+    expect(rows.length).toBe(roster.length * 2);
+    for (const r of rows) {
+      const where = `${r.model}/${r.side < 0 ? 'left' : 'right'} cheekbone`;
+      /* Footprint in units of one eye's area, so the bound is the same number on
+         every model. The retired pair of plates measured 1.97–2.02 eye-areas per
+         side; the shipped glow measures 0.58–0.59. */
+      expect(r.area, `${where}: the highlight covers ${r.area} eye-areas — still a plate`)
+        .toBeLessThan(1.15);
+      // Both bounds matter (T5's lesson): "it glows" passes at the strength that
+      // was rejected unless the test also says how much is too much.
+      expect(r.area, `${where}: the highlight covers only ${r.area} eye-areas — it has lost its impact`)
+        .toBeGreaterThan(0.25);
+      expect(r.peak, `${where}: peak lift ${r.peak} — the highlight is still harsh`).toBeLessThan(56);
+      expect(r.peak, `${where}: peak lift ${r.peak} — the highlight no longer reads as light`)
+        .toBeGreaterThan(26);
+    }
+    expect(errors).toEqual([]);
+  });
 });

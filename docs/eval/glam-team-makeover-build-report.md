@@ -1238,7 +1238,9 @@ clinical spine is not in scope and is not touched.
 | 3 | Styling trolley — vertical progressive flow, non-repeatables removed, moved-on steps collapsed | **done** (T3) |
 | 4a | Face art — lip liner malformed along the lip seam | **done** (T4a) |
 | 4b | Face art — eye colour clips past the iris and the waterline | **done** (T4b) |
-| 4c–4e | Face art — eyeshadow gradient, blush, highlights | *not started* |
+| 4c | Face art — eyeshadow gradient patchy and uneven | **done** (T4c) |
+| 4d | Face art — blush too circular and harsh | **done** (T4d) |
+| 4e | Face art — highlights too large and too harsh | **done** (T4e) |
 | 5 | Action effect — lens flare way down | **done** (T5) |
 
 ### T1. The model picker is gone; the client is drawn and then fixed
@@ -1702,6 +1704,177 @@ nearest-neighbour) and `shots/glam-tune/face-{before,after}-{desktop,tablet,phon
 (the un-magnified stage with lipstick, liner, shadow, mascara and contacts all on,
 at 1280 × 860 / 834 × 1112 / 390 × 844).
 
+### T4c–T4e. The three procedural cosmetics, and the one renderer under them
+
+4a and 4b were precision problems — a mask with a hole in it, a clip that was a
+guess. 4c, 4d and 4e are not: eyeshadow, blush and highlight are each a filled
+ellipse with a gradient in it, and all three complaints ("patchy", "too circular
+and harsh", "too large and too harsh") are complaints about **the gradient**. So
+the slice starts with the gradient.
+
+**`_wash` — a second blob renderer, for makeup rather than for dots.** `_blob`
+stays exactly as it was; every caller that wants a *dot* (the blemish core, its
+halo, the dull-skin wash, the moisturiser, the contour) keeps it. `_wash` differs
+in three ways, one per complaint:
+
+| | `_blob` (kept) | `_wash` (new) |
+|---|---|---|
+| falloff | 3 linear segments, `1 → 0.5 → 0`, and the **last** one is the steepest (−1.25 α per radius) | raised cosine, `0.5 + 0.5·cos(πt)`, 12 stops — flat at the core, **flat at the rim**, no slope break in between |
+| colour | one colour | optional `deep` mixed in toward the core by `(1−t)^1.5`, so a wash carries its own depth |
+| centre | gradient centred on the ellipse | optional focus `(fx, fy)` off centre, so the rings bunch toward it and stretch away — directional depth **inside one gradient** |
+
+The rim behaviour is the whole of 4d: `_blob`'s alpha is still falling at 1.25 α
+per radius when it hits zero, which is a visible edge. The focus is the whole of
+4c: it is how the lid gets a deeper outer corner without a second blob laid over
+the first. And because the focus only moves where the gradient's *rings* are
+dense, the shape still ends exactly on the ellipse — no new edge is introduced.
+
+#### T4c. The eyeshadow is one gradient, not two blobs meeting
+
+**What the maintainer saw.** A patchy, uneven lid.
+`shots/glam-tune/eyeshadow-before-m4.png` shows what "patchy" means here: a broad
+pink wash with a **separate, distinctly more violet blotch** sitting on each outer
+corner, and a visible line where the two meet.
+
+**Why it happened.** The lid was painted twice:
+
+```
+_blob(X + o·w·0.28, y − h·0.44, w·1.10, h·0.84, rot o·0.40, sc,      α·0.92, soft)   // lid wash
+_blob(X + o·w·1.02, y − h·0.64, w·0.68, h·0.44, rot o·0.90, shade²(sc), α,    soft)   // "crease"
+```
+
+Two soft ellipses at different angles overlap in a lens, and inside that lens
+**both the alpha and the hue jump** — the alpha because two source-over fills
+union, the hue because the crease is `shade(shade(sc))`, 56 points darker per
+channel. That lens is the blotch. It is not a brush problem and not a
+mis-measurement; two blobs cannot help but have a boundary.
+
+**The fix.** One `_wash` per eye: the same base shade, the same twice-shaded
+tone as the `deep`, the focus at `(o·0.40, −0.16)` in the ellipse's own space —
+i.e. over the outer half of the lid, lifted toward the crease. The colour now
+grades continuously from deep at the focus to the chosen shade by mid-radius to
+nothing at the rim, and the peak alpha comes down from `α·0.92 ∪ α` to `α·0.70`
+because a single fill no longer has to be lightened to survive being doubled.
+
+Measured (1280 × 720, per side, delta against the same face without the tool):
+
+| model · side | hot spots, before | hot spots, after | footprint px | peak Δ |
+|---|---|---|---|---|
+| m2 L / R | **2** / **2** | 1 / 1 | 2829 → 2155 | 58 → 65 |
+| m3 L / R | **2** / **2** | 1 / 1 | 1889 → 1434 | 46 → 53 |
+| m4 L / R | **2** / **2** | 1 / 1 | 3196 → 2532 | 49 → 52 |
+
+"Hot spots" is the number of connected components the footprint splits into at
+its worst level in a sweep from 0.35 to 0.90 of its peak — see the test note
+below. One caveat on the footprint column here and in the two tables that
+follow: it is a single run, and the blemish seed is random, so a tool that
+happens to paint over a blemish moves a few more pixels. Re-running moves it by
+~3 %. The hot-spot count, the anisotropy, the tilt and the peak do not move. The peak rises slightly because the deepest tone is now reached somewhere
+on the lid rather than only inside the old crease blob; the footprint shrinks
+because the second ellipse's outward reach (to `1.57 w` from the eye centre) is
+gone (now `1.45 w`).
+
+#### T4d. The blush is a sweep, not a disc
+
+**What the maintainer saw.** "Too circular and harsh."
+`shots/glam-tune/blush-before-m4.png` is a hard round disc with a rim you can
+point at.
+
+**Why it happened.** Two reasons, both in one line:
+
+```
+_blob(e.x, e.y + eh·1.85, ew·0.95, eh·0.90, rot 0, bc, α·0.5, 'multiply')   // no `soft`
+```
+
+The radii are `0.95 ew × 0.90 eh` on landmarks that are **near square**
+(m2 39 × 39, m3 32 × 33, m4 39 × 42 px), so the ellipse is a circle: measured
+anisotropy 0.010–0.085, which is a circle to two decimal places. And the call
+does not pass `soft`, so it is on `_blob`'s hard ramp, whose steepest segment is
+the last one — the colour is still falling fast when it stops.
+
+**The fix.** One `_wash` per cheek, `1.30 ew × 0.70 eh`, rotated `0.36 rad` so the
+outer end lifts toward the temple, peak `α·0.44`. Wide and low and angled is what
+a blush is; the raised cosine is what makes the outer edge dissolve instead of
+end.
+
+Measured (1280 × 720, per side):
+
+| model · side | anisotropy (0 = circle) | tilt | footprint px | peak Δ |
+|---|---|---|---|---|
+| m2 L / R | 0.035 / 0.085 → **0.503 / 0.544** | −6.5° / 11.1° → **+22.2° / −20.9°** | 3553 → 2753 | 30 → 27 |
+| m3 L / R | 0.030 / 0.024 → **0.534 / 0.531** | 6.2° / −1.4° → **+21.0° / −20.8°** | 2496 → 1953 | 25 → 25 |
+| m4 L / R | 0.025 / 0.010 → **0.521 / 0.543** | 86.8° / −85.8° → **+20.0° / −21.5°** | 3779 → 2964 | 28 → 25 |
+
+The before tilts are noise — the principal axis of a circle is not defined, which
+is why m4 reports ±86°, and it is the anisotropy column that says so.
+
+#### T4e. The highlight is a glow, not a plate
+
+**What the maintainer saw.** Highlights "too large and too harsh", with the
+explicit caveat that they must not disappear. `shots/glam-tune/highlight-before-m4.png`
+shows two pale plates covering most of both cheeks.
+
+**Why it happened.** `0.75 ew × 0.60 eh` per cheekbone plus a `0.35 ew × 1.4 eh`
+nose stripe, both on `_blob`'s hard ramp, at `α·0.5` / `α·0.4` on `screen`. In
+units of one eye's area that footprint measured **1.99–2.04 eye-areas per side**.
+
+**The fix.** `0.46 ew × 0.34 eh` per cheekbone, tilted `0.34 rad` along the bone,
+at `α·0.40`; the nose stripe down to `0.20 ew × 1.05 eh` at `α·0.30`. Both on
+`_wash`, so the small footprint also has a soft rim rather than a small hard one.
+That is a **65 % smaller ellipse** on the cheekbone and **57 % smaller** on the
+nose, and the raised-cosine tail takes the *visible* footprint down further:
+
+| model · side | footprint (eye-areas) | peak Δ |
+|---|---|---|
+| m2 L / R | 1.99 / 1.99 → **0.60 / 0.60** | 74 / 70 → **45 / 45** |
+| m3 L / R | 2.04 / 1.97 → **0.60 / 0.59** | 60 / 60 → **49 / 49** |
+| m4 L / R | 2.03 / 2.01 → **0.60 / 0.59** | 61 / 61 → **49 / 49** |
+
+A peak lift of 45–49 on an 8-bit channel is not subtle — the glow is still
+plainly there in `shots/glam-tune/highlight-after-m4.png` and in the
+un-magnified `glow-after-desktop.png`. It is a third of the area at three
+quarters of the strength, which is the brief.
+
+**One more thing this slice had to move.** `_artZones` derives the child's target
+hitboxes from the same numbers the blobs are drawn with, so the cheeks box and
+the highlight box are re-derived here from the new radii (both now via
+`_rotHalf`, since both blobs are rotated where neither used to be). That is not
+bookkeeping: `F-11 · every tool paints inside its own target box` diffs real
+pixels on every model × tool and would have failed on the first turn otherwise.
+
+**Tests** — `tests/glam-art-fidelity.spec.js`, 3 × 3 browsers:
+
+| test | what would have to break for it to fail |
+|---|---|
+| T4c · the eyeshadow is ONE lid gradient | on every roster model **and both sides**: the footprint is a single connected hot spot at *every* level from 0.35 to 0.90 of its peak, and it still paints (> 400 px) |
+| T4d · the blush is a soft angled sweep | anisotropy in (0.32, 0.80) — not a disc, not a stripe; the tilt lifts toward the temple by more than 10°, with the sign taken per side; the peak does not creep back above 34; still paints (> 500 px) |
+| T4e · the highlight is smaller and gentler | footprint in (0.25, 1.15) eye-areas and peak lift in (26, 56) — **four** bounds, two of them floors |
+
+Three notes on how these are written. First, the measurements are *shape*
+statistics, not counts: anisotropy comes from the delta-weighted second-moment
+tensor rather than a bbox ratio, because a bbox ratio moves when the ellipse
+lands differently on the pixel grid and a moment tensor does not. Second, the
+"hot spots" count only takes components worth **2 % of the footprint** — without
+that floor the eye sprite drawn over the lid pinches the level set apart by a
+pixel on one model × side, which is an occlusion, not a second blob. Third, 4e
+carries **upper and lower** bounds on both size and strength, which is the T5
+lesson applied: "it glows" passes at the rejected strength unless the test also
+says how much is too much.
+
+All three were run against `HEAD`'s renderer to confirm they are not vacuous:
+T4c fails with *"the footprint splits into 2 hot spots"*, T4d with *"ecc 0.041 —
+the blush is still a disc"*, T4e with *"the highlight covers 1.96 eye-areas —
+still a plate"*.
+
+**Evidence.** `shots/glam-tune/eyeshadow-{before,after}-{m2,m3,m4}.png`,
+`blush-{before,after}-{m2,m3,m4}.png`,
+`highlight-{before,after}-{m2,m3,m4}.png` (loupes, ×7 nearest-neighbour, all three
+tools on bare skin so nothing sits over the gradient), and
+`shots/glam-tune/glow-{before,after}-{desktop,tablet,phone}.png` (the
+un-magnified stage with exactly these three tools on, at 1280 × 860 / 834 × 1112 /
+390 × 844). The numbers in the tables above come from
+`tests/_probe-glam-face3.mjs`, which is the measurement harness, not a spec.
+
 ### T · Verification (slices T1 + T5)
 
 - **Full suite: 342 passed** across chromium / firefox / webkit — 336 before this
@@ -1815,26 +1988,46 @@ at 1280 × 860 / 834 × 1112 / 390 × 844).
   and one geometry table. No numbers, no PHI, no claim about the client.
 - `git status` shows changes only under `apps/games/` and `docs/`.
 
+### T · Verification (slices T4c + T4d + T4e)
+
+- **381 / 381 Playwright tests green** across chromium, firefox and webkit
+  (2.3 min), up from 372 — the 9 new tests are T4c / T4d / T4e × 3 browsers. No
+  existing test was changed by this slice; `F-11 · every tool paints inside its
+  own target box` still passes on every model × tool with the re-derived cheeks
+  and highlight boxes, and `every stocked shade paints, and no two shades of one
+  article paint alike` still separates all six blush shades at the lower peak.
+  Three further full runs each lost **exactly one firefox spec** to the
+  `fonts.gstatic.com` webfont flake documented under T3 — a different spec every
+  time (`T4b`, then `TUNING 2 · the intro is a phone mockup`, then `title screen
+  mounts`), never a chromium or webkit one, each passing 3–4 / 4 on
+  `--repeat-each` in isolation, with the woff2 URL answering 200 in 0.16 s from
+  the same shell. It is the CDN under 15-way parallelism, not this slice.
+- **The three new tests fail against `HEAD`'s renderer** — run with the spec
+  pointed at a copy of the pre-slice file, T4c reports *"the footprint splits into
+  2 hot spots at some level"*, T4d *"ecc 0.041 — the blush is still a disc"* and
+  T4e *"the highlight covers 1.96 eye-areas — still a plate"*. They are pinning
+  the fix, not describing whatever the code happens to do.
+- **`window.GlamTT` byte-identical** — the engine region of `index.html`
+  (lines 119–679, 25 381 bytes) hashes
+  `d1026aaadce8cd6523f83183927972661a0057a5a634536a3c6b9ad51ce7f370` (sha-256) at
+  both `HEAD` and the working tree. `git diff --exit-code tests/glam-tt-scoring.spec.js`
+  is empty. The **earliest diff hunk in `index.html` starts at line 2216** —
+  `_artZones`, far below the engine.
+- **Played the child's route** — Start → the texting thread → Open the salon → Go →
+  a real pointer drag over the face, at 1280×860, 834×1112 and 390×844, with
+  eyeshadow, blush and highlight all applied and the stage photographed
+  (`glow-after-*`). **Console clean**: `tests/_shots-glam-tune-face.mjs` exits
+  non-zero on any console or page error and exited clean on both the `before` and
+  the `after` pass, across the model sweep at 1400×1000 and all three stage widths.
+- Compositor-friendly as before: all three tools are canvas fills inside the
+  existing `paintAvatar` pass. No new element, no new animation, no new asset.
+- No child-facing string was added or changed by this slice — it is one new
+  renderer, three call sites and two hitbox derivations. No numbers, no PHI, no
+  claim about the client.
+- `git status` shows changes only under `apps/games/` and `docs/`.
+
 ### T · Deferred / still to do in this pass
 
-- **Fix 4 is three-fifths outstanding** — 4a (lip liner) and 4b (eye clip) are done;
-  **4c the patchy eyeshadow gradient, 4d the over-circular blush and 4e the
-  oversized highlights are not started**. Each needs its own before/after pair
-  under `shots/glam-tune/`. The loupe harness in `tests/_shots-glam-tune-face.mjs`
-  is written and takes a region name, so those three can reuse it. All three are
-  `_blob` calls in `paintAvatar`, unlike 4a/4b which were mask/clip precision:
-  · eyeshadow is two overlapping soft blobs (lid wash at `α·0.92` + a rotated
-  outer-corner crease at `α`) whose overlap is what reads as patchy —
-  visible in `shots/glam-tune/eyeclip-after-m4.png`, where the violet has
-  distinct blotches above the lash line;
-  · blush is one un-rotated `0.95 ew × 0.9 eh` blob per cheek at `α·0.5`, i.e.
-  very nearly a circle;
-  · highlight is a `0.75 ew × 0.6 eh` pair at `α·0.5` plus a `0.35 ew × 1.4 eh`
-  centre stripe at `α·0.4`, on `screen`.
-  Note the objective wants the highlight *smaller and subtler but still visibly
-  pleasing* — so, like T5, that one needs an **upper** bound in its test and not
-  only a lower one, or "it glows" will keep passing at the strength that was
-  rejected.
 - **The folded shelves have no motion.** Folding and unfolding is an instant
   mount/unmount. A height transition is not compositor-friendly and a
   `transform: scaleY` on a variable-height shade grid distorts the buttons, so it
