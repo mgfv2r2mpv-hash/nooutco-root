@@ -24,13 +24,23 @@ function urlToolParam() {
   return toolById(p) ? p : DEFAULT_TOOL;
 }
 
-function reportError(toolId, message) {
+// File an internal ticket for a defect. Takes the caught error, not its message,
+// so it can both skip the non-defects and carry the diagnostics bag.
+function reportError(toolId, err) {
   const tok = localStorage.getItem("notes_auth_token");
   if (!tok) return;
+  // A user-facing error (expired session, timeout, connection drop) is normal
+  // operation, not something to file. Only internal faults become tickets.
+  if (err && err.userFacing) return;
   fetch(NotesGate.apiUrl("/api/error-report"), {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok },
-    body: JSON.stringify({ message: message || "unknown", tool: toolId, timestamp: new Date().toISOString() }),
+    body: JSON.stringify({
+      message: (err && err.message) || "unknown",
+      diagnostics: (err && err.diagnostics) || null,
+      tool: toolId,
+      timestamp: new Date().toISOString(),
+    }),
   }).catch(() => {});
 }
 
@@ -419,8 +429,8 @@ function App() {
       conversation.push({ role: "assistant", content: r.rawText });
       patchS({ output: tool.normalizeOutput(r.parsed), conversation, lastCallAt: Date.now() });
     } catch (e) {
-      patchS({ error: e.message || "Generation failed. Please try again." });
-      reportError(tool.id, e.message);
+      patchS({ error: NotesGate.displayError(e) });
+      reportError(tool.id, e);
     } finally {
       setLoading(false);
     }
@@ -461,8 +471,8 @@ function App() {
         error: "",
       });
     } catch (e) {
-      patchS({ error: e.message || "Revision failed. Please try again." });
-      reportError(tool.id, e.message);
+      patchS({ error: NotesGate.displayError(e) });
+      reportError(tool.id, e);
     } finally {
       setLoading(false);
     }
