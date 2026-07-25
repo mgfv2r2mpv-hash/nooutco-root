@@ -24,3 +24,7 @@ credentials.json
 
 # Local agent and editor state — machine-specific, not source.
 .claude/
+
+# Scratch: Lavish review surfaces and gnhf run artifacts (never source)
+.lavish/
+.gnhf/
