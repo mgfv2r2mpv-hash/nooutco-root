@@ -751,7 +751,7 @@ Start → the thread instead of reading the old intro card. No assertion was rel
   surface, reached through the new door. The richer stations, the wider colour
   range and the per-tap feedback are the next slice.
 - **No before/after reveal at the outro yet.** The done screen is still the
-  Tier-1 celebration + two-axis story.
+  Tier-1 celebration + two-axis story. *(Landed in R3 below.)*
 - The thread is one fixed shape (three client bubbles, two team bubbles). A
   variable-length thread, or team replies that vary by event, would add texture
   but also multiply the congruence surface; the fixed shape keeps the sweep
@@ -759,3 +759,126 @@ Start → the thread instead of reading the old intro card. No assertion was rel
 - `intro()` still composes the old card's title/text. Nothing renders it any more;
   it is kept because it is still swept by AC-10 and is the natural home for the
   pretext if a non-texting presentation is ever wanted.
+
+---
+
+## R3. The outro before → after reveal (the photo booth)
+
+The celebration screen now opens with the transformation the child actually made:
+two polaroid frames, side by side, the doll as the client arrived and the doll the
+team finished together.
+
+### R3.1 Mechanic adopted — and the novel bit
+
+The mechanic is the makeover genre's oldest payoff: the reveal. What is novel here
+is that **nothing is re-rendered for it**. There is no second doll, no serialised
+"look" replayed into a preview, no separate art path that could drift from the one
+the child was touching. Both frames are grabbed off the *same* `<canvas>` the game
+paints on — `paintAvatar`'s compositor — so the picture is the play surface, at the
+two moments that matter:
+
+| Frame | Grabbed | Why there |
+|---|---|---|
+| **Before** | at `Go`, or at the last repaint before the first edit, whichever is later | no action can be admitted before `Go`, so the doll is untouched by definition |
+| **After** | inside `syncTT()`, the instant `Trial.ended` flips and *before* the state commit | one render later the game surface unmounts and the compositor canvas is gone |
+
+Both are plain offscreen `<canvas>` elements held on the component instance, never
+in state and never as data URLs in markup — a `{{ }}` placeholder inside a `src=`
+or a `url()` is fetched by the parser before the runtime substitutes it, which is
+exactly the load-time 404 the §3.9 sweep removed. `paintReveal()` blits them into
+the two canvases on the done card from `componentDidUpdate`, alongside the avatar
+compositor, so the frames arrive with the card rather than a tick later.
+
+**Congruence (§3.7.1 / AC-10).** The booth's own copy is three strings — *Glam team
+photo booth*, *Before* / *After*, *Look what you two made together.* — none of
+which asserts anything about the client. The only thing it shows of them is the
+picture the child made, which is not a refutable claim: it *is* the evidence. A
+test runs the booth's rendered text back through `GlamStory.BANNED` and asserts no
+digit and no text input, same guarantee as the title screen and the thread.
+
+Motion is `transform` + `opacity` only: the two frames swing in off a tilt,
+staggered by 180 ms, and the sparkle between them settles last. Each frame's
+resting angle rides on a `--tilt` custom property so one keyframe serves both.
+`prefers-reduced-motion` already kills every animation in this file; the resting
+`transform:rotate(var(--tilt))` is declared outside the keyframe, so the frames
+still sit at their angle with motion off.
+
+### R3.2 Two things that had to be got right
+
+**The before frame must not photograph a half-built doll.** The face is assembled
+from sixteen independently-decoding PNGs, and every `onload` repaints. So the
+before frame is *re-grabbed on every repaint* while its window is open, and the
+window only closes once there is a real frame to close it on: `_shot()` returns
+`null` until the base art has decoded, and `_closeBefore()` refuses to close on a
+`null`. If the art is still decoding at `Go`, the window simply stays open and the
+next repaint takes a clean frame.
+
+**A paint stroke is why `Go` is not the only close.** `paintStep()` moves coverage
+on every pointer move and only charges the engine when coverage *completes*, so
+closing the window on the engine's first admitted action would photograph a face
+most of the way through a wash. Every edit entry point — `applyChoose`,
+`tapApply`, `patchOne`, `concealOne`, `paintStep` — calls `_closeBefore()` first as
+the backstop.
+
+**The grab is a 1:1 blit, not a downscale.** The first cut halved the resolution on
+the way into the frame. On WebKit the same compositor content then came out ~9 % of
+pixels apart depending on whether it was photographed inside a click handler or
+outside it — visually identical, but enough to make "is this frame the untouched
+doll?" unanswerable, and it failed the test that asks exactly that, on WebKit only,
+every run. `drawImage` at 1:1 is exact on every engine; the polaroid gets a
+retina-sharp source for free, and the frames are byte-identical across the handler
+boundary.
+
+### R3.3 Tests
+
+New spec **`tests/glam-outro-reveal.spec.js`** (6 tests × 3 browsers):
+
+| Test | What it pins |
+|---|---|
+| the celebration opens with two frames, labelled Before and After | booth header, both labels, both canvases mounted, both carrying real ink (> 10 % of pixels non-transparent — not an empty polaroid); console clean |
+| the two frames are different pictures | four real tool taps across three stations, then > 1 % of pixels differ between the mounted frames — the reveal cannot be the same picture twice |
+| the before frame is the doll exactly as it was before the first edit | hash the live compositor while untouched, edit, assert the live compositor moved, `_shotBefore` did not, and the two mounted canvases are byte-for-byte the pre-edit and post-edit faces |
+| the booth appears on the child's route too | Start → thread → salon → play → outro, and the client who texted is the client in the frames |
+| §8 · no number, nowhere to type | the booth's rendered text carries no digit, hosts no `input`/`textarea`/`contenteditable`, and passes `GlamStory.BANNED` |
+| "Play again" clears the booth | `revealReady` false, both instance frames dropped, the canvases gone from the DOM |
+
+Every test waits on a real settle condition — every image the compositor has
+*asked* for decoded, and `_skinPool()` resolved — rather than a timeout. Without
+the skin-pool wait the blemishes sit at unfiltered coordinates and a frame taken
+across that decode differs from the face the child was looking at.
+
+### R3.4 Verification
+
+- **Full suite: 303 passed** across chromium / firefox / webkit (285 before this
+  slice, plus 6 new tests × 3 browsers). The new spec was also run at
+  `--repeat-each=2` (36/36) to shake out the WebKit non-determinism above.
+- **`window.GlamTT` byte-for-byte unchanged** — the region from `window.GlamTT` to
+  `window.GlamStory` is identical to `HEAD` at 24 710 bytes, and
+  `git diff --stat tests/glam-tt-scoring.spec.js` is empty. `window.GlamStory` was
+  not touched at all in this slice: the booth reads pixels and never asks the
+  engine or the story pool anything.
+- **Console clean** at 1280×860, 834×1112 and 390×844 — the screenshot pass
+  (`tests/_shots-outro-reveal.mjs`) fails the run on any console or page error and
+  it exits clean.
+- Screenshots under `docs/eval/shots/glam-refresh/`:
+  `outro-reveal-desktop.png`, `outro-reveal-tablet.png`, `outro-reveal-phone.png`,
+  plus a close crop of the booth itself, `outro-reveal-booth.png`.
+- The frames are `clamp(84px, 23vw, 138px)` wide with the aspect ratio taken from
+  the compositor, so they stay side by side at 390 px instead of stacking — the
+  first cut wrapped into a column on iPhone and lost the comparison.
+- `git status` shows changes only under `apps/games/` and `docs/`.
+
+### R3.5 Deferred from this slice
+
+- **The activity itself is still untouched** — same palettes, same tool count,
+  same vanity. The richer stations, the wider colour range, the salon theming and
+  the per-tap feedback remain the outstanding slice of the refresh.
+- The booth does not appear in the **print report**. The printed sheet is the
+  clinician's per-turn table under the outro story, and pictures of the doll add
+  nothing to it; if a family-facing print is ever wanted, `_shotAfter.toDataURL()`
+  is the hook.
+- **No save / share of the frames.** Deliberate: there is no per-learner storage in
+  this build and adding an export is the kind of thing that grows a PHI surface.
+- The booth is skipped entirely on a **procedural (non-art) theme**, where there is
+  no compositor canvas to photograph. `showReveal` requires both frames, so the
+  outro simply renders as it did before rather than showing two empty rectangles.

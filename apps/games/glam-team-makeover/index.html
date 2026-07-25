@@ -22,6 +22,12 @@
   .gtm-dot{ width:6px;height:6px;border-radius:50%;background:var(--slate-500);display:inline-block;animation:gtm-dot 1.25s var(--ease-standard) infinite }
   .gtm-dot:nth-child(2){ animation-delay:.16s } .gtm-dot:nth-child(3){ animation-delay:.32s }
   .gtm-scroll::-webkit-scrollbar{ width:8px;height:8px; } .gtm-scroll::-webkit-scrollbar-thumb{ background:var(--slate-300); border-radius:8px; }
+  /* Outro photo booth — the two frames swing in off a tilt, staggered, then the
+     sparkle between them settles. Transform + opacity only. The `--tilt` custom
+     property carries each frame's resting angle so one keyframe serves both. */
+  @keyframes gtm-frame { 0%{ opacity:0; transform:translateY(14px) scale(.9) rotate(0deg);} 70%{ opacity:1; transform:translateY(0) scale(1.03) rotate(var(--tilt));} 100%{ opacity:1; transform:translateY(0) scale(1) rotate(var(--tilt));} }
+  @keyframes gtm-sparkle { 0%{ opacity:0; transform:scale(.4);} 100%{ opacity:1; transform:scale(1);} }
+  .gtm-frame{ animation:gtm-frame .5s var(--ease-standard) both; transform:rotate(var(--tilt)); }
   .gtm-tool{ touch-action:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
   @media (prefers-reduced-motion: reduce){ *{ animation:none !important; } }
   /* Phone (spec §3.9 device order: desktop first-class → tablet → iPhone). The
@@ -1165,6 +1171,29 @@ window.GlamStory = (function () {
         <!-- AC-16 — an unfinished look says so, plainly, and the story above still
              carries its turn-taking line with no completion claim in it. -->
         <sc-if value="{{ incompleteNote }}" hint-placeholder-val="{{ false }}"><p style="font-size:12px;font-weight:700;color:var(--text-muted);max-width:480px;margin:0 auto 12px">The look was not finished this time — that is fine. The turn-taking still counts.</p></sc-if>
+
+        <!-- PHOTO BOOTH — the transformation the child actually made, shot off the
+             live compositor at Go and again the moment the engine closed the
+             trial. It shows the doll, so it asserts nothing about the client that
+             the child could refute (§3.7.1): the picture IS the evidence. -->
+        <sc-if value="{{ showReveal }}" hint-placeholder-val="{{ true }}">
+          <div style="margin:4px 0 18px;padding:16px 14px 14px;border-radius:16px;background:linear-gradient(160deg,#fdf6ec 0%,#f7e9f2 100%);border:1.5px solid var(--sage-200)">
+            <div style="font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--sage-700);margin-bottom:12px">Glam team photo booth</div>
+            <div style="display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap">
+              <div class="gtm-frame" style="--tilt:-3.5deg;background:#fff;padding:8px 8px 6px;border-radius:10px;box-shadow:var(--shadow-md);border:1px solid var(--slate-200)">
+                <div style="border-radius:6px;overflow:hidden;background:linear-gradient(180deg,#efe0cd 0%,#dcc6ad 100%);display:block"><canvas id="gtm-shot-before" width="512" height="576" style="display:block;width:clamp(84px,23vw,138px);height:auto;aspect-ratio:512/576"></canvas></div>
+                <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-top:5px">Before</div>
+              </div>
+              <div style="font-size:22px;animation:gtm-sparkle .45s var(--ease-standard) .3s both">✨</div>
+              <div class="gtm-frame" style="--tilt:3.5deg;animation-delay:.18s;background:#fff;padding:8px 8px 6px;border-radius:10px;box-shadow:var(--shadow-md);border:1px solid var(--sage-200)">
+                <div style="border-radius:6px;overflow:hidden;background:linear-gradient(180deg,#f6e4ee 0%,#e3c9d9 100%);display:block"><canvas id="gtm-shot-after" width="512" height="576" style="display:block;width:clamp(84px,23vw,138px);height:auto;aspect-ratio:512/576"></canvas></div>
+                <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--sage-700);margin-top:5px">After</div>
+              </div>
+            </div>
+            <div style="font-size:12.5px;font-weight:700;color:var(--text-body);margin-top:12px">Look what you two made together.</div>
+          </div>
+        </sc-if>
+
         <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;background:var(--sage-50);border:1px solid var(--sage-200);border-radius:999px;font-size:14px;font-weight:800;color:var(--sage-700);margin-bottom:18px">🎬 <span>{{ progressText }}</span></div>
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button onClick="{{ onFinishSR }}" style="display:inline-flex;align-items:center;gap:8px;background:var(--brand-primary);color:#fff;border:none;padding:12px 24px;border-radius:10px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md)">⭐ Finish &amp; SR</button><button onClick="{{ onPrint }}" style="background:#fff;color:var(--slate-700);border:1.5px solid var(--slate-300);padding:12px 24px;border-radius:10px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer">🖨 Print report</button><button onClick="{{ onReplay }}" style="background:#fff;color:var(--sage-700);border:1.5px solid var(--sage-500);padding:12px 24px;border-radius:10px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer">↺ Play again</button></div>
       </div>
@@ -1398,9 +1427,14 @@ class Component extends DCLogic {
       // engine mirror — the Trial is the source of truth; these exist only to render
       engTurn:0, ttActions:0, ttBudget:0, capToast:'', eToast:'', ePickerOpen:false,
       report:null,
+      /* The outro photo booth (below). Only a flag lives in state; the two frames
+         themselves are offscreen canvases on the instance, so no image data ever
+         rides a re-render. */
+      revealReady:false,
     };
     this._trial=null; this._charged={}; this._ttIv=null; this._clockIv=null; this._paint=false;
     this._toastTO=null; this._eToastTO=null; this._threadIv=null;
+    this._shotBefore=null; this._shotAfter=null; this._shotOpen=false;
   }
   drawChar(lock){
     const G=(typeof window!=='undefined')&&window.GlamStory;
@@ -1419,7 +1453,7 @@ class Component extends DCLogic {
        flip a boundary pass between `independent` and `prompted@…`. */
     this._ttIv=setInterval(()=>this.tickTrial(),250);
     this.paintAvatar(); }
-  componentDidUpdate(){ this.paintAvatar(); }
+  componentDidUpdate(){ this.paintAvatar(); this.paintReveal(); }
   componentWillUnmount(){ clearInterval(this._ttIv); clearInterval(this._clockIv);
     clearInterval(this._threadIv);
     clearTimeout(this._toastTO); clearTimeout(this._eToastTO); }
@@ -1451,6 +1485,14 @@ class Component extends DCLogic {
       if(s.phase!=='done'){ st.phase='done'; st.engTurn=0; st.armed=null; st.cueVisible=false;
         st.report=tr.report(); st.story=this.storyOutro(st.report);
         this._charged={};
+        /* The after frame has to be grabbed HERE: the done card replaces the
+           game surface, so one render later the compositor canvas is gone. If
+           the trial ended before Go ever ran, the still-open before window is
+           closed onto the same untouched face — the booth then shows the look
+           the child arrived with on both sides, which is honest. */
+        this._closeBefore();
+        this._shotAfter=this._shot()||this._shotBefore;
+        st.revealReady=!!(this._shotBefore&&this._shotAfter);
         setTimeout(()=>{ if(window.NooutcoReward) window.NooutcoReward.celebrate(document.body); },60); }
       this.commit(st); return;
     }
@@ -1510,11 +1552,13 @@ class Component extends DCLogic {
   play(opts){ clearInterval(this._threadIv); this._threadIv=null;
     const sel=(opts&&opts.keepClient&&this.state.sel)||this.drawChar(this.state.charLock);
     this._trial=new window.GlamTT.Trial(this.ttOpts()); this._charged={};
+    this._shotBefore=null; this._shotAfter=null; this._shotOpen=true;
     this.setState({ phase:'ready', sel, model:sel.model, story:this.storyIntro(sel), report:null,
       ed:this.freshEd(this.cfg().flaws), armed:null, chargedThisTurn:{}, capToast:'', eToast:'',
-      settingsOpen:false, engTurn:0 });
+      settingsOpen:false, engTurn:0, revealReady:false });
     this.syncTT(); }
   go(){ const tr=this._trial; if(!tr) return; tr.go();
+    this._closeBefore();
     this.setState({phase:'mine',armed:null}); this.syncTT(); }
 
   // ── TA staging gate (default ON; settings 'staged'==='free' ungates everything) ──
@@ -1608,7 +1652,7 @@ class Component extends DCLogic {
   _chargeKey(s,key){ const c=s.chargedThisTurn||{}; if(c[key]) return {charged:c};
     const n=Object.assign({},c); n[key]=1; return {charged:n}; }
 
-  applyChoose(opt){
+  applyChoose(opt){ this._closeBefore();
     const key = opt.slot==='outfit' ? 'color:outfit' : opt.slot==='hairShape' ? 'style' : 'item:'+opt.slot;
     if(!this._admit(key,opt.label)) return;
     this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed));
@@ -1617,7 +1661,7 @@ class Component extends DCLogic {
       else { ed.gl[opt.slot]=opt.glyph||'x'; ed.col[opt.slot]=opt.color; ed.done[opt.slot]=true; }
       return { ed, armed:null, chargedThisTurn:this._chargeKey(s,key).charged }; }, ()=>this.afterAction()); }
 
-  tapApply(){ const t=this.state.armed; if(!t) return; const slot=t.slot;
+  tapApply(){ const t=this.state.armed; if(!t) return; this._closeBefore(); const slot=t.slot;
     const key = t.apply==='recolor' ? 'color:'+slot : 'item:'+slot;
     if(!this._admit(key,t.label)) return;
     this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed));
@@ -1628,19 +1672,19 @@ class Component extends DCLogic {
       return { ed, armed:null, chargedThisTurn:this._chargeKey(s,key).charged }; }, ()=>this.afterAction()); }
 
   // Treat/patch step: tap a zit (state 0) → patched (1). Stay armed while zits remain.
-  patchOne(i){ if(this.state.ed.pimples[i]!==0) return;
+  patchOne(i){ if(this.state.ed.pimples[i]!==0) return; this._closeBefore();
     if(!this._admit('item:patch'+i,'treat spot')) return;
     this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); ed.pimples[i]=1; ed.done['patch'+i]=true;
       const anyZit=ed.pimples.some(v=>v===0);
       return { ed, armed: anyZit? s.armed : null, chargedThisTurn:this._chargeKey(s,'item:patch'+i).charged }; }, ()=>this.afterAction()); }
   // Conceal step (unlocks once ALL spots patched): tap a patch (state 1) → clear (2).
-  concealOne(i){ if(this.state.ed.pimples[i]!==1) return;
+  concealOne(i){ if(this.state.ed.pimples[i]!==1) return; this._closeBefore();
     if(!this._admit('item:conceal'+i,'conceal spot')) return;
     this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); ed.pimples[i]=2; ed.done['conceal'+i]=true;
       const anyPatched=ed.pimples.some(v=>v===1);
       return { ed, armed: anyPatched? s.armed : null, chargedThisTurn:this._chargeKey(s,'item:conceal'+i).charged }; }, ()=>this.afterAction()); }
 
-  paintStep(){ const t=this.state.armed; if(!t||t.mech!=='paint') return; const slot=t.slot;
+  paintStep(){ const t=this.state.armed; if(!t||t.mech!=='paint') return; this._closeBefore(); const slot=t.slot;
     const key=(t.color?'color:':'item:')+slot;
     // A paint step charges when coverage COMPLETES, so admission is asked for on
     // the stroke that finishes it, before any state is written.
@@ -1743,9 +1787,10 @@ class Component extends DCLogic {
   /* Play again returns to the front door, so the next run gets the same
      start → a client texts in → salon opening as the first one. */
   replay(){ this._trial=null; this._charged={}; clearInterval(this._threadIv); this._threadIv=null;
+    this._shotBefore=null; this._shotAfter=null; this._shotOpen=false;
     const sel=this.drawChar(this.state.charLock);
     this.setState({phase:'title',sel,model:sel.model,story:this.storyIntro(sel),report:null,
-      thread:null,threadStep:0,
+      thread:null,threadStep:0,revealReady:false,
       ed:this.freshEd(this.cfg().flaws),armed:null,chargedThisTurn:{},capToast:'',eToast:'',
       engTurn:0,ttActions:0,ttBudget:0,cueVisible:false,settingsOpen:false}); }
 
@@ -2131,6 +2176,58 @@ class Component extends DCLogic {
     else { gr.addColorStop(0,rgba(1)); gr.addColorStop(0.6,rgba(0.5)); gr.addColorStop(1,rgba(0)); }
     ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(0,0,1,0,6.2832); ctx.fill(); ctx.restore(); }
 
+  /* ── the outro photo booth ──────────────────────────────────────────────────
+     A "before" frame is grabbed off the live compositor while the doll is still
+     untouched, an "after" frame the instant the engine ends the trial, and the
+     two are shown side by side on the done card. Both are plain offscreen
+     canvases, never data URLs in markup: a `{{ }}` placeholder inside a src= or
+     url() is fetched by the parser before the runtime substitutes it, which is
+     exactly the load-time 404 the §3.9 sweep removed. They are also instance
+     fields, not state — a re-render never carries pixels.
+     The grab is a 1:1 blit, NOT a downscale. WebKit resamples a scaled
+     `drawImage` differently depending on whether the source canvas is currently
+     GPU-backed, so the same compositor content photographed inside a click
+     handler and outside it came out ~9 % of pixels apart — visually identical,
+     but enough to make "is this frame the untouched doll?" unanswerable. At 1:1
+     the copy is exact on every engine, and the polaroid gets a retina-sharp
+     source for free. */
+  _shot(){
+    if(this.state.theme!=='social'||this.base()!=='person') return null;
+    /* Nothing is worth photographing until the base art has decoded: paintAvatar
+       bails before it draws anything, so the compositor is a transparent
+       rectangle and a frame grabbed here would be an empty polaroid. */
+    const E=this.genEntry(); if(!E) return null;
+    const b=this._img(E.base); if(!b||!b.ok) return null;
+    const cv=document.getElementById('gtm-canvas'); if(!cv||!cv.width) return null;
+    const out=document.createElement('canvas'); out.width=cv.width; out.height=cv.height;
+    out.getContext('2d').drawImage(cv,0,0);
+    return out;
+  }
+  /* The before frame is re-grabbed on every repaint while the window is open, so
+     it can never be the half-decoded first paint (hair masks and eye sprites
+     resolve async, and `_img`'s onload repaints). */
+  _captureBefore(){ if(!this._shotOpen) return; const s=this._shot(); if(s) this._shotBefore=s; }
+  /* Shut the window on the last frame in which the doll is provably untouched.
+     Go is the natural moment — no action can be admitted before it — but the art
+     may still be decoding then, so the close is refused until there is a real
+     frame and every edit entry point calls this first as the backstop. A paint
+     stroke is the reason that backstop exists: `paintStep` moves coverage on
+     every pointer move and only charges the engine when it completes, so waiting
+     for `_admit` would photograph a face most of the way through a wash. */
+  _closeBefore(){ if(!this._shotOpen) return; const s=this._shot(); if(!s) return;
+    this._shotBefore=s; this._shotOpen=false; }
+  /* Paint the two stored frames into the done card's canvases. Runs from
+     componentDidUpdate, like the avatar compositor, so the frames appear with
+     the card rather than a tick later. */
+  paintReveal(){
+    if(this.state.phase!=='done'||!this._shotBefore||!this._shotAfter) return;
+    [['gtm-shot-before',this._shotBefore],['gtm-shot-after',this._shotAfter]].forEach(([id,src])=>{
+      const cv=document.getElementById(id); if(!cv) return;
+      if(cv.width!==src.width||cv.height!==src.height){ cv.width=src.width; cv.height=src.height; }
+      const cx=cv.getContext('2d'); cx.clearRect(0,0,cv.width,cv.height); cx.drawImage(src,0,0);
+    });
+  }
+
   paintAvatar(){ if(this.state.theme!=='social'||this.base()!=='person') return;
     const cv=document.getElementById('gtm-canvas'); if(!cv) return;
     const E=this.genEntry(); if(!E) return;
@@ -2228,6 +2325,7 @@ class Component extends DCLogic {
       const EA=EARCFG[this.state.model]||EARCFG_D;
       const eh=lh*1.15*0.9, ew=eh*er.aspect, ely=cym+lh*EA.y;                       // −10% size
       for(const elx of [W*EA.lx, W*EA.rx]) ctx.drawImage(ei.img, elx-ew/2, ely, ew, eh); } } }
+    this._captureBefore();
   }
   buildArtLayers(base){ const ed=this.state.ed; const out=[]; const cov=k=>ed.cov[k]||0; const col=k=>ed.col[k]; const gl=k=>ed.gl[k];
     const add=(slot,key,active,opacity)=>{ if(!active) return; const src=this.lsrc(base,slot,key); if(!src) return; out.push({ src, z:this.lz(base,slot), op:(opacity!=null?opacity:1) }); };
@@ -2524,6 +2622,10 @@ class Component extends DCLogic {
       outcomeTitle:(isDone&&s.story&&s.story.title)||'What a team!',
       outcomeText:(isDone&&s.story&&s.story.text)||'',
       incompleteNote:isDone&&s.report&&!s.report.complete,
+      /* The booth only mounts when BOTH frames were actually grabbed — a
+         procedural (non-art) theme paints no compositor canvas, and the outro
+         card must not then show two empty rectangles. */
+      showReveal:isDone&&!!s.revealReady,
       methodOpen:s.methodOpen, statLine:this.statLine(),
       stationMeStyle:stBase+(whose==='me'?'background:var(--sage-50);border:2px solid var(--sage-500);box-shadow:0 0 0 4px rgba(106,118,89,.16)':'background:#fff;border:1.5px dashed var(--slate-300);opacity:.7'),
       stationThemStyle:stBase+(whose==='them'?'background:var(--blue-50);border:2px solid var(--blue-500);box-shadow:0 0 0 4px rgba(59,130,246,.16)':'background:#fff;border:1.5px dashed var(--slate-300);opacity:.7'),
