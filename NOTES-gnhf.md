@@ -1170,3 +1170,116 @@ three test titles recorded as the accepted baseline. Zero new failures.
   seeded-old-key test per game to fail against.
 - **Stage 4 item 2** — the ffc admin *write* path (finding 39).
 - **Stage 4 item 3** — the core-vs-extras split, stated for a maintainer.
+
+---
+
+## Stage 6, part 1 — `game-settings.js` exists, and sequences runs on it
+
+`apps/games/game-settings.js` (`window.NooutcoSettings`) is the `sequences`
+round-setup pattern lifted out, and `sequences` itself now runs on it — which is
+the only honest way to land the extraction, because the game it came from is the
+one place the behaviour is already specified by working code.
+
+Four pieces, and deliberately only four:
+
+| piece | what it replaces in sequences |
+|---|---|
+| `defineStore({key, legacyKey, fields})` | `loadRoundStore` / `saveRoundStore` / `saveWorkingRound` / `applyRoundByName` / `saveCurrentRound` |
+| `normalize()` / `defaults()` | `defaultRound()` + `normalizeRound()` + `clampReps` / `clampInt` |
+| `foldLegacy()` | `migrateLegacyIntoStore()` |
+| `holdToUnlock()` | the hold/tap block in `bindRoundEvents()` |
+
+`sequences/game.js` shrank by ~70 lines and its schema is now a declaration
+(`ROUND_FIELDS`) rather than a pair of hand-written functions that had to agree
+with each other. `sequences/index.html` loads `../game-settings.js` between
+`migrate-config.js` and `game.js`.
+
+### 45. The schema had to become data before a second game could reuse it
+
+`defaultRound()` and `normalizeRound()` were two descriptions of the same
+schema, kept in sync by hand — the default lived in one and the clamp in the
+other, and nothing checked that the pair agreed. Nine more games each carrying
+their own divergent pair is exactly the consolidation Stage 6 is supposed to
+end, so the field spec is now one declaration per option
+(`{type, min, max, values, default}`) and both the defaults and the clamping are
+derived from it. The five types (`int`, `bool`, `enum`, `string`, `list`) are
+the five `sequences` actually uses; nothing speculative was added.
+
+Two options resolve at normalize time rather than at declaration time
+(`values` and `default` may be thunks), because `setName` has to be validated
+against the symbol sets that actually loaded and falls back to whichever one the
+game is showing. That is the only dynamic case in the game, and it is the reason
+the spec is a function-friendly object rather than plain JSON.
+
+### 46. "Fell back to the default" and "fell back to the floor" are different
+
+Old `clampInt(n, min, max)` did `parseInt(n, 10) || min`, so a corrupted
+`bankSize` of `0` landed on **2** — the bottom of the range — while
+`clampReps` did `|| 2` and landed on the *default*. The shared normalizer uses
+the field's declared default for an unparseable value and then clamps, so a
+corrupted bank size restores **4**, the programme's default, not the floor.
+
+This is a deliberate behaviour change on a value the stepper cannot produce
+(it clamps 2–8), and it is the honest reading of hard constraint 1: a value
+that cannot be understood restores the default the technician was shown, not
+the extreme of the range. `bankSize`'s default (4) is deliberately not its
+minimum (2) in the spec's scratch schema precisely so the two outcomes are
+distinguishable by a test.
+
+### 47. The lock is enforced by CSS, and that is worth a test
+
+The first draft of the "a live edit persists" test tapped the gear (which opens
+the panel **locked**) and then clicked a stepper — and Playwright reported the
+stepper's own parent intercepting pointer events. That is not a test bug: it is
+`#round-panel[data-editing="false"] .round-step { pointer-events: none }` doing
+its job. The gating is therefore asserted directly — a locked control *refuses*
+the click, and the same control takes the edit after a press-and-hold — rather
+than assumed. Any future game that adopts `holdToUnlock()` without the matching
+`[data-editing="false"]` rule will have a gear that gates nothing, and this is
+the shape of test that catches it.
+
+### 48. `const` hoisting decides where a store can be declared
+
+`defineStore()` is called at game.js's top level, so every constant it reads has
+to be initialised above it. `LEGACY_SETTINGS_KEY` lived ~300 lines below, next
+to the fold that used it, and moving the store above it would have thrown a
+temporal-dead-zone `ReferenceError` that takes the whole game down at parse
+time — not just the settings panel. The key moved up next to `ROUND_KEY`; the
+same will be true for every game that adopts the store.
+
+### Coverage
+
+`tests/game-settings.spec.js` — 20 tests × 3 browsers, in two halves:
+
+- the module's own semantics against a scratch key outside every game's
+  namespace (clamping, default-vs-floor, a stored `false` surviving a
+  `true`-defaulting field, list/enum fallback, a fresh defaults array,
+  `{sets,last,working}` round-trip, `initial()` precedence, a corrupted
+  document degrading rather than throwing, and five `foldLegacy` rules
+  including **the legacy key is never deleted**)
+- `sequences` on the real page: the module loads, an out-of-range stored round
+  is clamped in the panel the technician reads, the gear gates as designed, a
+  round still starts with no page error, and a live edit reaches the store
+
+Mutation-tested six ways, each restored from a byte-compared copy: an
+unparseable int falling back to the minimum (3 tests), a bool always taking its
+default (4, including the sequences fold), `foldLegacy` deleting the legacy key
+(1), the post-hold click no longer swallowed (3), `defaults()` sharing its list
+(1), and `sequences`' `autoPromptEnabled` default harmonised to false (1 — the
+non-negotiable). Deleting the `game-settings.js` script tag fails 19 of 20.
+
+**Suite: 610 passed, 8 failed — all 8 in `glam-team-makeover.spec.js`**, at the
+three test titles recorded as the accepted baseline. Zero new failures.
+`APP_VERSION` 0.18.0 → 0.19.0.
+
+### Still owed for Stage 6
+
+- The other nine games, one at a time, each folding its retired key
+  (`hddSettings`, `ffcgSettings`, `ivgSettings`, `mmSettings`, `mgSettings`,
+  `ppcSettings`, `ngSettings`, `tosSettings`, `noaba.emotionID.v1`) through
+  `foldLegacy()`. Every one of them already has a seeded-old-key round-trip
+  test from Stage 5 to fail against if the fold drops a value, and a live
+  `migrate()` hook to run in.
+- The press-and-hold gating only *gates* where the panel also carries the
+  `[data-editing="false"] { pointer-events: none }` rule (finding 47). Adopting
+  `holdToUnlock()` in a game means adopting that rule with it.
