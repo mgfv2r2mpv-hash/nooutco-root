@@ -2016,7 +2016,7 @@ three test titles recorded as the accepted baseline. Zero new failures; the
 suite grew 801 → 843. `APP_VERSION` 0.19.5 → 0.20.0 (minor: the panels gained
 selectable values).
 
-### Still owed for Stage 7
+### Still owed for Stage 7 (superseded by part 2 below)
 
 - Adopt `emotions`' `.option-toggle` pills and help-text discipline in the
   other games (the re-dress proper).
@@ -2036,3 +2036,150 @@ selectable values).
   so this is Stage 7's only purely additive item.
 - Carried from Stage 6: `ffc`'s two configuration documents (finding 61), and
   the press-and-hold gating still adopted only in `sequences` (finding 47).
+
+---
+
+## Stage 7, part 2 — the prompting procedures reach the other eight games
+
+`sequences` has named its three prompting procedures since Frame 04. The other
+games shipped only the primitives those procedures are *made of* — an
+Auto-Prompt switch and a Prompt Delay switch — so a technician had to already
+know that "auto-prompt on, delay off" IS most-to-least, and that turning the
+delay on turns the same programme into a fixed time delay.
+
+`apps/games/prompting-method.js` (`window.NooutcoPrompting`) is that vocabulary,
+shared, adopted by all eight: **clock, receptive, matching, market, intraverbal,
+patterns, ffc, think-or-say**. `emotions` is not one of them and cannot be —
+it has no Prompt Delay boolean at all, because its `promptDelay` *is* the
+seconds (finding 63), so there is no second primitive for the procedures to
+compose. `sequences` keeps its own copy, with its own stored `prompting` field.
+
+The module self-injects its `<style>` and self-wires from
+`[data-prompting-method]`, the convention `reward.js` and `tooltip-help.js`
+already use. Adoption per game is therefore **one markup line, one `<script>`
+tag, and one `NooutcoPrompting.refresh()` call** placed where the game already
+renders the panel from the configuration in force.
+
+The pills are `.option-toggle` — the same component class `emotions` uses, out
+of the shared `tailwind.css` build — so this also delivers the first slice of
+Stage 7's re-dress item for free, in the place a technician reads first, and
+with no new CSS beyond four layout rules.
+
+### 72. The procedure is derived, never stored — which is why it cannot go stale
+
+`sequences` persists `prompting` as an enum and calls `applyMethodPreset()` only
+from the radio's own handler. That is what keeps a preset from overwriting a
+stored Advanced override — and it is also why sequences keeps displaying
+"Delayed (Fixed Time Delay)" after the technician switches the delay off
+underneath it. The stored method and the primitives disagree, and the primitives
+are what the programme actually runs.
+
+The shared module derives instead:
+
+```
+!autoPrompt              -> least-to-most
+ autoPrompt && !delay    -> most-to-least
+ autoPrompt &&  delay    -> time-delay
+```
+
+That mapping is **total** — every combination of the two switches names exactly
+one procedure — so there is no "custom" state, nothing new to persist, and no
+way for the group and the switches to disagree. The fourth combination
+(auto-prompt off, delay on) is the one worth naming: with no automatic prompt
+there is nothing to delay, so a stale delay flag must resolve to least-to-most
+rather than invent a state the panel cannot show. That is a test on its own,
+because it is the only branch no game reaches through the UI.
+
+Adding no stored option also means this stage adds no migration and no risk to
+the seeded-old-key round-trip that every game already passes.
+
+### 73. A preset that rewrites the delay seconds is a silent redefault
+
+`sequences`' `time-delay` preset sets `promptDelaySecs: ROUND_TIME_DELAY_SECS`
+(3). Copying that would mean a technician running a 7-second delay, who taps
+"Delayed" to confirm the procedure they are already on, silently loses the 7 —
+exactly what hard constraint 1 forbids, arriving through a button that looks
+like a no-op.
+
+The shared preset patches the two switches and nothing else. The seconds are
+their own control and stay where they were put; one test asserts the whole
+preset's key set is `['autoPrompt', 'promptDelay']`, and another seeds 7 s,
+taps Delayed, and asserts both the select and the store still read 7.
+
+### 74. The group drives the game through the game's own change handlers
+
+`select()` writes `.checked` on the two existing checkboxes and dispatches a
+real `change` event on each. Nothing else — the module never touches state,
+never writes storage, and knows no game's schema. Every game already has a
+handler on those two controls that updates its state, re-computes the
+`disabled` rules and saves, so the preset inherits all of it (including
+`think-or-say`'s `editSetting()`, which reads exactly the one control that
+fired and re-renders the panel afterwards).
+
+The mirror of that is the one thing the module cannot infer: the **load** path
+writes `.checked` programmatically, which fires no `change` event. Hence the
+single `refresh()` call per game. Deleting it from `clock` alone fails 2 tests
+and nothing else — the group would sit showing least-to-most over two ticked
+boxes.
+
+### 75. The panels are auto-fill grids, and a naive block lands in one column
+
+`.extra-panel-body` is
+`grid-template-columns: repeat(auto-fill, minmax(220px, 1fr))` in all eight
+games. Dropped in without `grid-column: 1 / -1`, the group became a single
+220px cell: the three procedures stacked vertically, each label wrapped to two
+lines, and the surrounding checkboxes were pushed into a two-row gap beside it.
+Verified by screenshot before and after, on four of the eight panels — the
+tests are all behavioural and every one of them passed in the broken layout.
+
+### Coverage
+
+`tests/prompting-method.spec.js` — 5 tests × 8 games plus 3 module tests, 43 per
+browser, 129 across the three. Per game: the group renders inside the real
+(collapsed) settings panel and is visible after opening it; the selection
+follows the **stored** configuration on load; choosing a procedure drives both
+switches and is persisted; an Advanced override moves the selection; and
+choosing Delayed leaves the technician's seconds alone. Per module: `derive()`
+is total over all four combinations, `presetFor()`/`derive()` are inverses, and
+a preset's key set is exactly the two switches.
+
+Mutation-tested six ways, each restored from a byte-compared copy: `clock`'s
+`refresh()` call removed (2 tests), the module's two primitive `change`
+listeners removed (7 — `think-or-say` survives it, because its own
+`applySettingsToControls()` re-renders and refreshes on every edit), the
+`time-delay` preset given `promptDelaySecs: 3` (9), `select()` stopped
+dispatching `change` (8), `ffc`'s markup line deleted (5), and `derive()`
+reading a stale delay flag as time-delay (1 — the totality test, which is the
+only thing that can see it).
+
+**Suite: 964 passed, 8 failed — all 8 in `glam-team-makeover.spec.js`**, at the
+three test titles recorded as the accepted baseline. Zero new failures; the
+suite grew 843 → 972. `APP_VERSION` 0.20.0 → 0.21.0 (minor: eight panels gained
+a control).
+
+### Still owed for Stage 7
+
+- The rest of the re-dress: the prompting group is `.option-toggle` already, but
+  the eight games' remaining options are still
+  `<label class="checkbox-label">` checkboxes rather than `emotions`' pills.
+  The help-text discipline is the wider gap — five of the eight
+  (`matching`, `market`, `intraverbal`, `ffc`, `think-or-say`) carry no
+  `data-help` at all on their Auto-Prompt and Prompt Delay controls, against
+  `clock` / `receptive` (10 help buttons in the panel each) and `patterns` (7).
+- Collapse the three hand-rolled token boards onto `NooutcoTokens`
+  (`market`, `matching` and `receptive` each carry their own copy of
+  `generateVRSchedule`). Note the storage question this raises: the token
+  options are declared fields of each game's `SETTINGS_FIELDS` today, while
+  `NooutcoTokens` persists to its own `noaba.tokens.<ns>.v1` key — moving them
+  without a fold would drop a technician's token configuration.
+- Add trial-count / session-length and a configurable ITI. No game has either,
+  so this is Stage 7's only purely additive item.
+- Carried from Stage 6: `ffc`'s two configuration documents (finding 61), and
+  the press-and-hold gating still adopted only in `sequences` (finding 47).
+- Optional, for the maintainer rather than this run: `sequences` could adopt
+  the shared `derive()` for its *display* while keeping its stored `prompting`
+  (which `PROMPT_TYPE_BY_METHOD` reads for the trial row). That would fix the
+  stale-display half of finding 72 without removing a stored setting. Stage 8
+  is the natural place, since it has to unify `promptType` across all ten
+  anyway and `sequences` already derives it from the primitives outside a
+  round (`sequences/game.js:484-485`).

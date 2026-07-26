@@ -320,6 +320,9 @@ const SETTINGS_CONTROLS = [
 function applySettingsToControls(cfg) {
   for (const c of SETTINGS_CONTROLS) c.write(el[c.node], cfg[c.option]);
   syncPromptDelayEnabled();
+  // A programmatic write fires no `change` event, so the prompting-method group
+  // has to be told to re-read the two switches it summarises.
+  if (window.NooutcoPrompting) window.NooutcoPrompting.refresh();
 }
 
 function loadSettings() {

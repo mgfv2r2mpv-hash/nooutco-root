@@ -113,6 +113,9 @@
         <input type="checkbox" id="chk-persists">
         Prompt persists
       </label>
+      <!-- Prompting method — three presets over the Auto-Prompt / Prompt Delay
+           switches below. Rendered by ../prompting-method.js. -->
+      <div data-prompting-method></div>
       <label class="checkbox-label">
         <input type="checkbox" id="chk-auto-prompt">
         Auto-Prompt
@@ -363,6 +366,7 @@
   <script src="../../results-report.js"></script>
   <script src="../migrate-config.js"></script>
   <script src="../game-settings.js"></script>
+  <script src="../prompting-method.js"></script>
   <script src="game.js"></script>
   <script>
     // Token board: drive the (previously inert) markup with the shared module,
