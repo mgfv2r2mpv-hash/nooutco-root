@@ -453,23 +453,94 @@ gone" and the maintainer should know.
 Web Crypto has no MD5, so a Worker cannot write a provenance record keyed the
 old way. Dedup behaviour is identical; only the recorded hash changed.
 
+---
+
+## Stage 3, part 2 — `worker.js` is wired
+
+Item 1 of the list below is done. AdminTools now edits the library, not the
+generated manifests: an upload, a label and a removal each write a **source**
+file and re-project every manifest in the same commit, so the next
+`npm run stimuli:build` is a no-op rather than an undo.
+
+`clock` is registered as `HickoryDickoryDockGame` in `KNOWN_GAMES` /
+`GAME_PATHS`. `repoPath` shapes are unchanged — `gh()` still supplies
+`REPO_SUBDIR`, and a test asserts every tree path carries exactly one
+`apps/games/` (and none when the secret is unset).
+
+`atomicManifestSaveCommit`, `atomicManifestRemoveCommit` and
+`atomicManifestDisplayNameCommit` are gone; they only ever served
+IDMatchGame / NameIDGame, which are library games now.
+
+### 18. `/api/admin/batch` is the live path, not the single endpoints
+
+The last commit on `origin/main` is literally `Admin: batch update 1 item(s)`.
+`AdminTools/ImageManager` queues every operation and posts one
+`/api/admin/batch`; the single endpoints exist but are not what a technician
+hits. Wiring only `save-image` / `remove-image` / `save-display-name` would
+have left the real admin path writing `_Resources` paths into a generated file
+— which is exactly the failure Stage 3 exists to close, still fully live.
+
+A batch cannot commit one op at a time (it is one commit by design), so the
+library ops **fold**: one `readLibraryState()`, then `applyUpload` /
+`applyExclusion` / `applyLabel` threaded through `foldLibraryState()` in order,
+and the whole library written once at the end. Two things this made explicit:
+
+- `games` has to be threaded, not re-derived. `liveGames()` reads
+  `folders`/`archived` back from the live manifests, so a second op that
+  re-derived would read the manifests the first op had already superseded and
+  silently drop its topic addition.
+- Tree entries are a **map**, not a list. Uploading `desk-lamp.png` then
+  `desk-lamp.jpg` in one batch adds and then removes the same path; last write
+  wins only if the entries are keyed by path.
+
+The `generated` stamp is the index digest, so it is computed **once** from the
+final index — every intermediate projection carried a stamp that no longer held.
+
+### 19. Clearing a display name needed somewhere to put the old label back
+
+AdminTools has always been able to blank a display name. Post-repoint the
+manifest always carries a `displayNames` entry (the projection writes one per
+served stimulus), so "clear" means *revert to the library's own label* — and a
+Worker cannot re-derive that without redoing the whole merge.
+
+`labels.json` gained a `derived` map: the label an override replaced, captured
+the first time an override lands, restored and deleted on clear. `build.mjs`
+reads only `overrides`, so it costs a rebuild nothing. Rejecting the clear
+instead would have removed a capability the UI still offers.
+
+### 20. Fake the API, not the unit
+
+`tests/lib/fake-github.mjs` is an in-memory Contents + Git-Data API, so
+`tests/stimulus-library-worker.spec.js` (20 × 3 browsers, green) POSTs to
+`worker.fetch()` exactly as AdminTools does and then reads the resulting tree
+back as files. Every test ends by running `buildLibrary()` over what the Worker
+actually committed and asserting it is byte-for-byte identical — the property
+that matters, and one that asserting on `applyUpload()` alone cannot reach.
+
+It also made the retry real: `PATCH git/refs` with `force: false` returns 422
+when the parent is not head, so a test lands someone else's commit mid-flight
+and proves the Worker re-reads instead of clobbering. Mutation-tested — dropping
+the `img/` tree entry, skipping `stimuli.json`, force-pushing, and breaking the
+batch fold each fail 1–7 tests.
+
 ### Still owed for Stage 3
 
-1. **Wire `worker.js`.** Register clock in `KNOWN_GAMES` / `GAME_PATHS`, and
-   route save-image / remove-image / save-display-name through
-   `library.mjs`. `repoPath` keeps its current shape — `REPO_SUBDIR` already
-   supplies `apps/games/` and a second prefix double-applies. The image bytes
-   need committing to **both** `uploads/<cat>/<file>` and the `img/…` path the
-   URL resolves to (one blob, two tree entries), or the published URL 404s
-   until someone runs a rebuild.
+1. ~~Wire `worker.js`.~~ **Done** — see above.
 2. **`AdminTools/ImageManager/index.html`**: add clock to `GAMES`, replace the
    hardcoded two-way manifest-path ternary (~639-641), and replace the
    optimistic DOM append (~1068-1080) with a read-back of the committed
    manifest so a failed upload can no longer look successful.
+   **Now the most urgent item**: its thumbnails are built as
+   `'../../' + gameId + '/' + gameId + '/' + item.path` (~939, ~1731), which
+   concatenates to `../../IDMatchGame/IDMatchGame//shared/stimuli/img/…` for a
+   library URL. Those thumbnails have been broken since the Stage 2 repoint
+   landed; the worker wiring neither caused nor fixed it.
 3. **Restore the manifest-rebuild step** lost in `514debf4`, as a workflow that
    runs `npm run stimuli:build` and commits. With the worker projecting
    in place this is now a consistency net rather than the publish path.
 4. **Archive / restore / purge / rename-topic** still move files inside
    `_Resources` and rewrite the generated manifest directly
    (`atomicTopicRenameCommit`). Untouched so far, and it needs the same
-   treatment as save/remove before the duplicated trees can go.
+   treatment as save/remove before the duplicated trees can go. Archiving is
+   the easy one: `folders` / `archived` already round-trip through the live
+   manifest (finding 13), so it needs no file moves at all.

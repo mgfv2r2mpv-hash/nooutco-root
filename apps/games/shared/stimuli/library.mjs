@@ -331,7 +331,7 @@ export function applyUpload(state, upload) {
     // Pinning the resolved label is what keeps a rebuild from renaming the
     // stimulus: `stimuli.json` is generated, so a label that only lived there
     // would fall back to whatever the uploaded file happened to be called.
-    labels: { ...(state.labels || {}), [id]: label },
+    labels: sortKeys({ ...(state.labels || {}), [id]: label }),
     id,
     url,
     addRepoPaths: [uploadRepoPath(category, filename), keep],
@@ -380,27 +380,50 @@ export function applyExclusion(state, { game, category, id }) {
 }
 
 /**
- * Set a technician's label for a stimulus.
+ * Set — or clear — a technician's label for a stimulus.
  *
  * The label has to be returned as an override map, not just written into the
  * index: `stimuli.json` is generated, so a label that only lived there would
  * be reverted by the next rebuild.
+ *
+ * Clearing is why `derivedLabels` exists. AdminTools has always been able to
+ * blank a display name and get the library's own label back, but a Worker
+ * cannot re-derive that label — it would have to redo the whole merge. So the
+ * label being overridden is captured the first time an override lands, and a
+ * clear puts it back. `build.mjs` reads only `overrides`, so the record costs a
+ * rebuild nothing.
+ *
+ * @param {object} state    as for {@link applyUpload}, plus `derivedLabels`
+ * @param {object} change   `{ id, label }` — a blank `label` clears
  */
 export function applyLabel(state, { id, label }) {
-  let found = false;
-  const stimuli = state.index.stimuli.map((entry) => {
-    if (entry.id !== id) return entry;
-    found = true;
-    return { ...entry, label };
-  });
-  if (!found) throw new Error(`Unknown stimulus: ${id}`);
+  const existing = state.index.stimuli.find((entry) => entry.id === id);
+  if (!existing) throw new Error(`Unknown stimulus: ${id}`);
 
+  const labels = { ...(state.labels || {}) };
+  const derived = { ...(state.derivedLabels || {}) };
+  const trimmed = typeof label === 'string' ? label.trim() : '';
+
+  let resolved;
+  if (trimmed) {
+    if (!(id in derived)) derived[id] = existing.label;
+    labels[id] = trimmed;
+    resolved = trimmed;
+  } else {
+    resolved = id in derived ? derived[id] : existing.label;
+    delete labels[id];
+    delete derived[id];
+  }
+
+  const stimuli = state.index.stimuli.map((entry) => (entry.id === id ? { ...entry, label: resolved } : entry));
   const index = { ...state.index, stimuli };
   return {
     index,
     provenance: state.provenance,
     manifests: reproject(index, state.provenance, state),
-    labels: { ...(state.labels || {}), [id]: label },
+    labels: sortKeys(labels),
+    derivedLabels: sortKeys(derived),
+    label: resolved,
   };
 }
 
