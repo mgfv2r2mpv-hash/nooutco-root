@@ -3396,3 +3396,258 @@ a2after pairs:
   instrumenting `reset()` in the per-tool loop rather than re-running the probe.
 - The tall-panel and webfont items from *U · Still to do* are still open and
   still out of this pass's scope.
+
+---
+
+## Third pass · the maintainer's rulings — the rail becomes one row
+
+W6 and X5 each ended by listing what had been judged rather than measured, so
+the maintainer could overrule it. They reviewed all five. **Four were accepted
+and one was overruled**, and this slice is that one correction and nothing else.
+
+### Y1 · The five rulings
+
+| # | The call, as W6 / X5 offered it | Ruling | What this slice did |
+| --- | --- | --- | --- |
+| 1 | **Brow tint floor `0.60`** (X2) — lifted from `0.34` so a pencilled brow reads as the hair it matches | **Keep as shipped** | Nothing. `BROW_TINT = { floor:0.60, span:0.55 }` is untouched; no diff hunk goes near it |
+| 2 | **The eyeshadow's reach** (X1) — V2's "reaches the brow" claim, refuted by measurement and left alone | **Leave as shipped** | Nothing. The wash reach is untouched |
+| 3 | **The rail's height, 46 px / 40 px** (W6) — chosen so the two-line stack fits and the pips stay ≥ 11 px | **Overruled — make it a single-line stack** | **This slice.** The eyebrow and the whose-turn line are one baseline row; the rail is **34 px / 30 px** |
+| 4 | **A sticky in-stage panel on phone** (W6) — rather than a fixed bar at the foot of the viewport | **Keep as shipped** | Nothing. `.gtm-stage{ position: sticky; top: 6px }` in the `< 614px` container query is untouched |
+| 5 | **The bare face's brow lightening with one constant** (X5) — no state-dependent floor | **Accepted** | Nothing. No state branch was added |
+
+Rulings 1, 2, 4 and 5 are verifiable in the diff by their absence:
+`git diff fed4e2be -- apps/games/glam-team-makeover/index.html` has no `+`/`-`
+line matching `BROW_TINT`, a `position:sticky`, the wash reach, or a brow
+constant.
+
+### Y2 · What the rail is now
+
+Before, the rail's middle child was a **two-line stack** — the `MY TURN` /
+`THEIR TURN` eyebrow above the whose-turn line — and 46 px was what that stack
+plus the 30 px avatar token needed. Now those two share **one baseline row**
+(`.gtm-band-say`, `align-items:baseline`): 9.5 px tracked caps sitting on the
+same baseline as the 15 px line, which costs nothing in height because a
+baseline-aligned row measures the taller item's own ascent + descent.
+
+```
+before   [ token ]  MY TURN                          ACTIONS LEFT     46 px
+                    My turn — I can do 7 more        ● ● ● ● ● ○ ○
+
+after    [token] MY TURN  My turn — I can do 7 more   ACTIONS LEFT     34 px
+                                                      ● ● ● ● ● ○ ○
+```
+
+**What still sets the height is the meter, not the type.** Label-over-pips is
+25.9 px on a wide row and 21.8 px on a narrow one — taller than the 18.8 px /
+15.6 px text row and taller than the token. It stays two rows because putting
+its label *beside* seven pips costs **+79 px of width** against **30.1 px** of
+tablet slack (Y4); inlining it would have fitted on a desktop and nowhere else,
+which is two components pretending to be one. So the rail is a single-line stack
+in the sense the ruling asked for — the eyebrow and the line are on one row —
+and the meter is the floor under how short it can go. `--gtm-band` is
+**34 px** (container ≥ 614 px) and **30 px** (< 614 px), down from 46 / 40.
+
+### Y3 · Height and footprint — measured, next to W2's table
+
+`tests/_probe-glam-tune3-rail1.mjs`, run against a copy of `fed4e2be` and against
+the shipped file, both through the same hash-verified `:8788`:
+
+| | rail | stage panel h | client canvas h | document h |
+| --- | --- | --- | --- | --- |
+| desktop 1280×860 | 46 → **34 px** | 662 → 662 px | 413.0 → **421.4 px** | 860 → 860 (does not scroll) |
+| tablet 834×1112 | 46 → **34 px** | 716 → **704 px** | 323.4 → 323.4 px | 1112 → 1112 (does not scroll) |
+| phone 390×844 | 40 → **30 px** | 398 → **388 px** | 232.4 → 232.4 px | 1081 → **1071 px** |
+
+The 12 px / 10 px goes to three different places depending on the width, which is
+`--gtm-band` being spent in three places by design (W1):
+
+- **Desktop** — the panel's height is fixed by the row, so the reclaimed 12 px
+  goes straight into the panel's content box and the client is drawn **8.4 px
+  taller**. That is the whole point of the ruling: more face.
+- **Tablet** — the client is width-bound there, so the art is unchanged and the
+  panel is simply 12 px shorter.
+- **Phone** — `--gtm-stage-fit` adds the band to the art's own aspect, so the art
+  keeps *exactly* the size it had (232.4 px, unchanged to the tenth) and the
+  panel and the document are each 10 px shorter. 10 px less to scroll past.
+
+**W2's number is undisturbed.** Vertical room above the stage is still **0.0 px**
+at all three widths, before and after.
+
+### Y4 · The 390 width budget — the cost W6 named
+
+W6's own words were that a single-line stack was possible *"at some cost in phone
+width"*, so 390 is where this either works or does not. The rail is 356 px wide
+there. `tests/_probe-glam-tune3-rail2.mjs` walks **every string `renderVals` can
+put in the line** and measures each at the rail's own computed font, so the
+budget is against the worst case rather than against whatever the default trial
+happens to open on. The worst case is a learner turn with the budget spent: the
+line reads `All set — now I hand it over!` (the longest of the seven, 166.5 px)
+while all seven pips are still on screen.
+
+| | desktop | tablet | phone |
+| --- | --- | --- | --- |
+| rail width | 932 | 486 | 356 |
+| side padding (×2) | 28 | 28 | **14** |
+| inner | 904 | 458 | **342** |
+| token | 24 | 24 | **17** |
+| eyebrow `MY TURN` | 48.1 | 48.1 | **38.8** |
+| whose-turn line (longest) | 199.8 | 199.8 | **166.5** |
+| meter block (7 pips) | 128.0 | 128.0 | **95.0** |
+| gaps | 28 | 28 | **17** |
+| **need** | 427.9 | 427.9 | **334.3** |
+| **slack** | 476.1 | **30.1** | **7.7** |
+
+The partner's turn is looser at every width (phone slack 30.6 px): the line is
+shorter and there are four pips, not seven.
+
+**What paid for the 7.7 px, and what did not.** Everything trimmed on the phone
+repeats something the line already says, so the child's own line is untouched:
+
+| | before | after |
+| --- | --- | --- |
+| whose-turn line | 12.5 px | **12.5 px — unchanged** |
+| pip diameter | 11 px | **11 px — unchanged** (W6's stated floor) |
+| avatar token | 25 px | 17 px |
+| eyebrow | 8.5 px, `.1em` | 8 px, `.05em` |
+| rail side padding | 14 px | 7 px |
+| rail gap / pip gap | 10 / 5 px | 6 / 3 px |
+
+On desktop and tablet only the token (30 → 24 px), the eyebrow tracking
+(`.1em` → `.08em`) and the meter label's margin (4 → 2 px) moved; the 15 px line
+and the 14 px pips are as shipped.
+
+**7.7 px is a thin margin and it was checked, not assumed.**
+`tests/_probe-glam-tune3-rail3.mjs` forces each of those strings into the live
+rail in **chromium, firefox and webkit** at all three widths and reads the
+overrun off the box that clips it: **0 px everywhere**, with
+`document.fonts.check('800 15px "Atkinson Hyperlegible"')` reporting the real
+webfont loaded in all three, so these are not fallback-font metrics. The line
+also keeps `text-overflow:ellipsis`, so if a future string does exceed the budget
+it degrades visibly rather than pushing the meter out of the rail — and the meter
+is `flex-shrink:0` while the line is not, which makes the line the part that
+gives first and therefore the part the tests can watch.
+
+### Y5 · Contrast — re-asked, because the band got shorter
+
+Shortening the rail **compresses the sand gradient** (`#cdb383 0% → #bda06e 58%
+→ #a98d5d 100%`) and the single row moves every piece of type to a new position
+in it, so W6's "clears 3:1" could not be inherited.
+`tests/_probe-glam-tune3-rail4.mjs` reads each part's own colour and its vertical
+centre, resolves the painted gradient at exactly that y, and computes WCAG 2.x
+contrast.
+
+**It had stopped clearing.** At `#4b5638` the `MY TURN` eyebrow measured
+**3.15:1** at its centre and **2.90:1** at its foot, and the filled pips —
+which sit lower still — measured **2.98:1**. Sage is now **`#394331`**, chosen
+to clear 3:1 against the band's **darkest** stop, so the claim no longer depends
+on where in the gradient a part happens to land:
+
+| rail type | ink | at its centre | at its foot | vs `#a98d5d`, the darkest stop |
+| --- | --- | --- | --- | --- |
+| whose-turn line | `#33210f` | 6.35:1 | 5.54:1 | **4.88:1** |
+| `THEIR TURN` eyebrow + its pips | `#1e3a6e` | 4.50:1 | 4.13:1 | **3.53:1** |
+| actions-left label | `#4e3a20` | 4.85:1 | 4.60:1 | **3.41:1** |
+| `MY TURN` eyebrow + its pips | `#394331` | 4.19:1 | 3.85:1 | **3.29:1** |
+
+**The lowest number anywhere on the rail is 3.29:1**, and that is against a stop
+no part of the type actually sits on; where the type is, the lowest is 3.53:1.
+Blue was already past the bar and is untouched. This is the only colour in the
+diff, and it is a consequence of the ruling rather than a separate taste call —
+the type moved, so the measurement had to be redone and it came back short.
+
+### Y6 · Verification for this slice
+
+- **405 Playwright tests green** in one full run, three browsers, against a
+  server hash-verified as serving this worktree (`shasum` of the file and of
+  `curl`'s bytes both `06ecd27703faf5cce718a5e3913562af34e710dd`). 402 before,
+  **+1 case × 3 browsers**.
+- **The new case is two-sided.** `glam-turn-band.spec.js` ·
+  *"the rail is one row, shorter than the two-line stack, and truncates neither
+  the line nor the meter"* asserts the eyebrow's height falls ≥ 80 % inside the
+  line's and that it ends before the line begins, that the rail is strictly under
+  46 / 40, and that neither the line nor the actions-left label is clipped, at
+  all three widths. Run against a copy of `fed4e2be` it fails on the first
+  clause:
+
+  > `desktop (1280×860): the whose-turn label (y 685.7–697.7) and the line (y 697.6–715.6) are not on one row` — `Expected: >= 0.8 · Received: 0.008`
+
+  and the height clause fails on the same build by construction — the probe reads
+  the pre-change rail at exactly 46 / 46 / 40 px. Like the rest of this file it
+  locates the rail by the **words on screen** (the lowest common ancestor of the
+  whose-turn label and the actions-left label), never by a class, which is what
+  lets one file run against both renderers.
+- **No existing rail test changed its assertions.** The only edit to the two W4
+  tests is that `DEVICES` now carries `railWas` (46/46/40) for the new case to
+  assert against; W4's own two tests are byte-for-byte the same checks and green.
+- **A whole trial played out in a real browser at both widths** —
+  `tests/_play-glam-tune3.mjs` at 1280×860 and at 390×844: title → texting intro
+  → salon → 39 steps, 18 tools by real pointer input → 6 of 6 turns → outro. The
+  rail read correctly at **ready**, **my turn** and **their turn**, and stayed on
+  screen throughout including at scrollY 227 / 243 on the phone. The harness now
+  also records the **overrun of every wording the rail showed**, so the worst
+  case is produced by playing rather than reconstructed: the trial reached
+  `All set — now I hand it over!` at 390 and measured it at **0 px**, along with
+  every `I can do N more` form from 7 down to 1. No console errors, no page
+  errors, no failed local requests.
+- **`window.GlamTT` byte-identical**, sliced on content (from the `<script>`
+  opening the block that contains `window.GlamTT = (function ()` through its
+  `</script>`) because the line numbers moved again: sha1
+  `b69b441841808b65e622f1b313ed20b433b41dfa`, 23 863 bytes — **the same sha1 W5
+  and X6 recorded**, on `2f45dfda`, on `fed4e2be` and on the shipped file alike.
+  `git diff fed4e2be -- apps/games/tests/glam-tt-scoring.spec.js` is empty.
+- **Staff surfaces and child-facing copy untouched.** No diff hunk goes near the
+  controls row, the (E) / Prompt given / End trial buttons or `printReport`, and
+  the slice adds no string — the rail's words are the same words.
+- **The firefox flake is not this change's.** The first full run lost one firefox
+  spec (`glam-art-fidelity` T4d). Re-running that file alone under firefox three
+  times failed **a different, unrelated test each time** (F-10, then blemish
+  softness) and passed the others, and each failure passed 3/3 in isolation. Run
+  the same file the same way against `fed4e2be`, it fails **2 of 3 runs**, again
+  on different tests (T4c, then blemish softness). The flake is pre-existing and
+  load-related; the documented webfont-console-error mechanism explains the specs
+  that assert `expect(errors).toEqual([])` but not these, so the *cause* of this
+  variant is still unidentified — see *Y · Still to do*.
+- New instruments, none of them specs: `tests/_probe-glam-tune3-rail1.mjs`
+  (footprint), `-rail2.mjs` (the width budget over every string), `-rail3.mjs`
+  (the cross-engine overrun), `-rail4.mjs` (contrast at the position each part
+  actually occupies), and `tests/_shots-glam-tune3-rail.mjs`.
+
+**Shots**, under `docs/eval/shots/glam-tune3/` with a `rail…` prefix so the
+Finding-B `turn…` shots are not overwritten:
+
+| file | what it is |
+| --- | --- |
+| `rail-{before,after}-{desktop,tablet,phone}.png` | the rail cropped to its own box — the before/after heights read against each other and nothing else |
+| `railstage-{before,after}-{desktop,tablet,phone}.png` | the stage panel, so the rail is read in the composition it belongs to |
+| `railtrolley-{before,after}-phone.png` | 390×844 with the trolley scrolled to its end — the AC-12 case the sticky panel exists for, with whose-turn and actions-left still on screen |
+| `railstate-{before,after}-{ready,mine,theirs}.png` | the panel's bottom strip in each of the three states the rail has to read correctly in |
+
+### Y · Judged rather than measured
+
+- **34 px / 30 px specifically.** The floor is the meter's 25.9 / 21.8 px; the
+  rest is 4 px of breathing room above and below it. 32 / 28 would also clear the
+  contents and would look tighter than the vanity vocabulary the rail borrows
+  from.
+- **Keeping the meter as a two-row stack.** *That* it cannot go inline is
+  measured (+79 px against 30.1 px of tablet slack). Choosing to keep it stacked
+  rather than, say, dropping the avatar token to buy the width for an inline
+  meter, is a taste call — the token is the only part of the rail that says
+  whose turn it is without words.
+- **Which parts paid for the phone's 7.7 px.** Trimming the token, the eyebrow
+  and the padding rather than the line is a judgement that the line is what the
+  child reads and the eyebrow repeats it. The alternative — the line at 11.5 px,
+  everything else as shipped — buys about twice the margin and was rejected on
+  legibility.
+- **`#394331` in particular.** That sage clearing 3:1 against the darkest stop is
+  measured; that hue at that luminance is a choice.
+
+### Y · Still to do
+
+- **The firefox load flake has a signature, not a cause.** Different unrelated
+  art-fidelity specs fail on different whole-file runs and pass in isolation, on
+  this build and on `fed4e2be` alike. The documented webfont console error does
+  not explain these particular failures — they are geometry assertions, not
+  `expect(errors).toEqual([])`. Anyone picking it up should instrument
+  `settle()` in that file's helpers before re-running anything.
+- The tall-panel and webfont items from *U · Still to do* are still open and
+  still out of this pass's scope.

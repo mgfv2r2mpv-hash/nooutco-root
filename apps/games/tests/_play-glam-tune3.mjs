@@ -55,11 +55,25 @@ const railState = (page) => page.evaluate(() => {
   const on = (e) => { if (!e) return null; const r = e.getBoundingClientRect();
     return r.width > 4 && r.height > 4 && r.top >= 0 && r.bottom <= window.innerHeight
         && r.left >= 0 && r.right <= window.innerWidth; };
+  /* THIRD PASS · rail correction. The rail is a single ROW now, so "is it on
+     screen" is no longer the only way it can fail the child: at 390 the row has
+     7.7px of measured margin on its worst string, and the state that produces
+     that string — the budget spent, so the line reads "All set — now I hand it
+     over!" while all 7 pips are still up — only exists partway through a played
+     turn. Reading the overrun here means a real trial produces the evidence
+     instead of a separate probe having to reconstruct the moment. */
+  const over = (e) => { if (!e) return null;
+    for (let x = e, i = 0; x && i < 3; x = x.parentElement, i++) {
+      if (getComputedStyle(x).overflowX !== 'visible') return +(x.scrollWidth - x.clientWidth).toFixed(1);
+    }
+    return 0; };
   return {
     label: label ? R(label) : null, labelText: label ? label.textContent.trim() : null, labelOn: on(label),
     line: line ? R(line) : null, lineText: line ? line.textContent.trim() : null, lineOn: on(line),
+    lineOver: over(line),
     meter: meterLabel ? R(meterLabel.parentElement) : null, meterText: meterLabel ? meterLabel.textContent.trim() : null,
     meterOn: meterLabel ? on(meterLabel.parentElement) : null,
+    meterOver: over(meterLabel),
     scrollY: Math.round(window.scrollY),
   };
 });
@@ -96,6 +110,10 @@ await page.waitForFunction(() => {
 console.log('· texting intro ran, salon open, client painted');
 
 const seen = new Map();
+/* Distinct WORDINGS the rail showed, with the worst overrun each was measured
+   at — the phase tag alone would collapse "I can do N more" and "All set…" into
+   one entry and hide the tightest line the trial produced. */
+const lines = new Map();
 const record = async (tag) => {
   const r = await railState(page);
   if (!seen.has(tag)) {
@@ -104,8 +122,13 @@ const record = async (tag) => {
       + `  onscreen: label=${r.labelOn} line=${r.lineOn} meter=${r.meterOn ?? '—'} (scrollY ${r.scrollY})`);
     if (SHOTS) await page.screenshot({ path: `${OUT}rail-${tag}.png` });
   }
+  if (r.lineText) lines.set(r.lineText, Math.max(lines.get(r.lineText) ?? 0, r.lineOver ?? 0));
   for (const [part, ok] of [['whose-turn label', r.labelOn], ['whose-turn line', r.lineOn], ['actions-left meter', r.meterOn]]) {
     if (ok === false) problems.push(`[${tag}] the ${part} was off screen: ${JSON.stringify(r)}`);
+  }
+  /* A rail that fits by cutting the child's line off has not got shorter. */
+  for (const [part, px] of [['whose-turn line', r.lineOver], ['actions-left label', r.meterOver]]) {
+    if (px !== null && px > 1) problems.push(`[${tag}] the ${part} was truncated by ${px}px: "${r.lineText}"`);
   }
 };
 
@@ -191,6 +214,8 @@ for (; step < 240; step++) {
 }
 
 console.log(`· played ${step} steps, ${tools} tools taken by real pointer input`);
+console.log(`· rail wordings this trial, with the overrun each was measured at:`);
+for (const [text, px] of lines) console.log(`    ${px > 1 ? 'CLIP' : '  ok'} ${String(px).padStart(5)}px  "${text}"`);
 const endPhase = await logic(page, 'return L.state.phase;');
 if (endPhase !== 'done') {
   await page.getByRole('button', { name: 'End trial', exact: true }).click();

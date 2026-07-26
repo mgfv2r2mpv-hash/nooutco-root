@@ -31,11 +31,14 @@ import { test, expect } from '@playwright/test';
 
 const PAGE = process.env.GLAM_PAGE || '/glam-team-makeover/';
 
-/** Desktop first, then tablet, then iPhone — the redesign spec's §3.9 order. */
+/** Desktop first, then tablet, then iPhone — the redesign spec's §3.9 order.
+ *  `railWas` is the height the TWO-LINE rail shipped at (index.html `--gtm-band`
+ *  before the maintainer's ruling 3). The single-line rail has to come in under
+ *  it, so the number is carried here rather than restated in each assertion. */
 const DEVICES = [
-  { tag: 'desktop', width: 1280, height: 860 },
-  { tag: 'tablet', width: 834, height: 1112 },
-  { tag: 'phone', width: 390, height: 844 },
+  { tag: 'desktop', width: 1280, height: 860, railWas: 46 },
+  { tag: 'tablet', width: 834, height: 1112, railWas: 46 },
+  { tag: 'phone', width: 390, height: 844, railWas: 40 },
 ];
 
 /** Boot into a live my-turn game screen with the stage painted. */
@@ -137,6 +140,72 @@ function onScreen(r, viewH, viewW) {
   return r && r.w > 4 && r.h > 4 && r.top >= 0 && r.bottom <= viewH && r.x >= 0 && r.right <= viewW;
 }
 
+/**
+ * The rail's own shape, for the maintainer's ruling 3 (the two-line stack
+ * becomes one row). Located exactly the way the rest of this file locates
+ * things — by the words on screen, never by a class name — so it also runs
+ * against the pre-change renderer and reports what IT does.
+ *
+ * The rail itself is found as the lowest common ancestor of the whose-turn
+ * label and the actions-left label. That is the rail in both builds, and it
+ * survives any amount of re-nesting inside it.
+ */
+function railShape(page) {
+  return page.evaluate(async () => {
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const R = (e) => { const r = e.getBoundingClientRect();
+      return { x:+r.x.toFixed(1), y:+r.y.toFixed(1), w:+r.width.toFixed(1), h:+r.height.toFixed(1),
+               top:+r.top.toFixed(1), bottom:+r.bottom.toFixed(1), right:+r.right.toFixed(1) }; };
+    const deepest = (txt) => {
+      const hit = [...document.querySelectorAll('*')].filter((e) =>
+        (e.textContent || '').trim() === txt &&
+        ![...e.children].some((c) => (c.textContent || '').trim() === txt));
+      return hit[0] || null;
+    };
+    /* Overflow is asked of the nearest CLIPPING ancestor within three steps —
+       see the note on `clipOverflow` above; scrollWidth on an inline box
+       disagrees between Blink and Gecko and would report a phantom overrun. */
+    const clipOverflow = (el) => {
+      for (let e = el, i = 0; e && i < 3; e = e.parentElement, i++) {
+        if (getComputedStyle(e).overflowX !== 'visible') return +(e.scrollWidth - e.clientWidth).toFixed(1);
+      }
+      return 0;
+    };
+    const sentence = (e) => { const t = (e.textContent || '').trim();
+      return t.length > 12 && /^(My turn|All set|Their turn)\b/.test(t)
+        && !e.querySelector('select,input,textarea,button,option'); };
+
+    const turn = deepest('MY TURN') || deepest('THEIR TURN');
+    const meterLabel = deepest('Actions left') || deepest('Their actions left');
+    const line = [...document.querySelectorAll('*')]
+      .filter((e) => sentence(e) && ![...e.children].some(sentence))[0];
+    if (!turn) return { error: 'no element states whose turn it is' };
+    if (!meterLabel) return { error: 'no element states the actions left' };
+    if (!line) return { error: 'no element carries the whose-turn line' };
+
+    const chain = (e) => { const c = []; for (; e; e = e.parentElement) c.push(e); return c; };
+    const up = chain(turn), down = new Set(chain(meterLabel));
+    const rail = up.find((e) => down.has(e));
+    if (!rail) return { error: 'the whose-turn label and the actions-left label share no ancestor' };
+
+    return {
+      rail: R(rail), turn: R(turn), line: R(line), meterLabel: R(meterLabel),
+      lineText: (line.textContent || '').trim(),
+      lineClipped: clipOverflow(line),
+      meterClipped: clipOverflow(meterLabel),
+      /* Does the rail as a whole overrun the box it is painted in? A single-line
+         stack that "fits" by pushing its own contents out the side has not. */
+      railClipped: +(rail.scrollWidth - rail.clientWidth).toFixed(1),
+    };
+  });
+}
+
+/** How much of `a`'s height falls inside `b`'s, as a fraction of `a`'s. */
+function sharedRow(a, b) {
+  const overlap = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+  return a.h > 0 ? +(overlap / a.h).toFixed(3) : 0;
+}
+
 test.describe('third pass · Finding B — the turn rail', () => {
   test('B · whose-turn and actions-left sit in the stage\'s bottom band, and the card above the stage is gone', async ({ page }) => {
     test.setTimeout(120000);
@@ -232,6 +301,70 @@ test.describe('third pass · Finding B — the turn rail', () => {
     await expect(page.getByText('THEIR TURN', { exact: true }).first()).toBeVisible();
     await sweep('their turn');
 
+    expect(errors, `console/page errors: ${errors.join(' | ')}`).toEqual([]);
+  });
+
+  /**
+   * THIRD PASS · rail correction. The maintainer overruled W6's 46/40: the rail
+   * is to be a SINGLE-LINE stack — the whose-turn eyebrow and the whose-turn
+   * line on one row — and shorter for it.
+   *
+   * W6 also named the cost, and it is the half of this test that matters: a
+   * single row is wider than a stack, and 390 is where it either works or does
+   * not. A rail that "got shorter" by truncating the child's line, or by
+   * pushing the actions-left meter out of the box, has got worse instead. So
+   * height and no-truncation are asserted together, at all three widths, and
+   * the 390 case is the one with only 7.7px of measured margin behind it.
+   *
+   * Two-sided by construction — against the pre-change build (fed4e2be) the
+   * eyebrow sits ABOVE the line and the rail is exactly 46/40, so both halves
+   * fail. Point it at one with:
+   *
+   *   git show fed4e2be:apps/games/glam-team-makeover/index.html \
+   *     > apps/games/glam-team-makeover/_before-rail.html
+   *   GLAM_PAGE=/glam-team-makeover/_before-rail.html npx playwright test \
+   *     tests/glam-turn-band.spec.js --project=chromium
+   */
+  test('B (rail correction) · the rail is one row, shorter than the two-line stack, and truncates neither the line nor the meter', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = await stage(page);
+
+    for (const d of DEVICES) {
+      await page.setViewportSize({ width: d.width, height: d.height });
+      await page.evaluate(() => window.scrollTo(0, 0));
+      const g = await railShape(page);
+      const at = `${d.tag} (${d.width}×${d.height})`;
+      expect(g.error, `${at}: ${g.error}`).toBeUndefined();
+
+      /* ONE ROW. The eyebrow's height falls inside the line's — they are
+         baseline-aligned siblings on a single row — and they are side by side
+         rather than one under the other. Stacked, the overlap is 0. */
+      expect(sharedRow(g.turn, g.line),
+        `${at}: the whose-turn label (y ${g.turn.top}–${g.turn.bottom}) and the line (y ${g.line.top}–${g.line.bottom}) are not on one row`)
+        .toBeGreaterThanOrEqual(0.8);
+      expect(g.turn.right,
+        `${at}: the whose-turn label ends at x ${g.turn.right} but the line starts at x ${g.line.x} — they are stacked, not side by side`)
+        .toBeLessThanOrEqual(g.line.x + 1);
+
+      /* SHORTER. Strictly under what the two-line rail shipped at — the whole
+         point of the ruling, and the number the art is sized against. */
+      expect(g.rail.h, `${at}: the rail is ${g.rail.h}px — the two-line rail it replaces was ${d.railWas}px`)
+        .toBeLessThan(d.railWas);
+
+      /* AND NOT AT THE LINE'S EXPENSE. Neither the child's line nor the
+         actions-left label may be clipped, and the rail may not overrun its
+         own box to make room. */
+      expect(g.lineClipped, `${at}: "${g.lineText}" is clipped by ${g.lineClipped}px in the one-row rail`)
+        .toBeLessThanOrEqual(1);
+      expect(g.meterClipped, `${at}: the actions-left label is clipped by ${g.meterClipped}px in the one-row rail`)
+        .toBeLessThanOrEqual(1);
+      expect(g.railClipped, `${at}: the rail overruns its own box by ${g.railClipped}px`)
+        .toBeLessThanOrEqual(1);
+      /* …and the line stops before the meter starts, so "not clipped" cannot be
+         satisfied by the two simply overlapping. */
+      expect(g.line.right, `${at}: the whose-turn line runs to x ${g.line.right}, under the actions-left label at x ${g.meterLabel.x}`)
+        .toBeLessThanOrEqual(g.meterLabel.x + 1);
+    }
     expect(errors, `console/page errors: ${errors.join(' | ')}`).toEqual([]);
   });
 });

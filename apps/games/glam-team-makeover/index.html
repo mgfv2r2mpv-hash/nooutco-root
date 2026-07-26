@@ -120,7 +120,7 @@
      `flex:1 1 0%` that is 0, clamped back up by whatever `min-width` transfers,
      and the panel came out 358×300 where Blink and Gecko both said 358×358 —
      and only after a resize ACROSS the wrap, so it read as an intermittent. */
-  .gtm-stage-row{ container-type: inline-size; container-name: gtmrow; --gtm-band: 46px; }
+  .gtm-stage-row{ container-type: inline-size; container-name: gtmrow; --gtm-band: 34px; }
   .gtm-stage{ position: relative; }
   /* A WRAPPED row is the phone case, and it is the only one where the page
      scrolls at all: at 1280×860 and 834×1112 the whole game fits and nothing can
@@ -137,7 +137,7 @@
      Compositor-friendly by construction — sticky moves the paint, not the
      layout, and nothing here animates. */
   @container gtmrow (width < 614px){
-    .gtm-stage{ height: var(--gtm-stage-fit, auto); --gtm-band: 40px;
+    .gtm-stage{ height: var(--gtm-stage-fit, auto); --gtm-band: 30px;
       position: sticky; top: 6px; z-index: 2; }
   }
 
@@ -160,25 +160,49 @@
        · `--gtm-stage-fit` — the height a WRAPPED panel takes from the art's
          aspect — adds it, so on phone the art keeps exactly the size it had and
          the rail is genuinely extra rather than a crop.
-     A narrow row gets a shorter rail and smaller type: the same two-line stack,
-     not a second component. Sizes live here rather than inline because the rail
-     is the one part of the stage that has to answer to the ROW's width. */
-  .gtm-band-token{ width:30px; height:30px; border-radius:50%; flex-shrink:0;
-    display:flex; align-items:center; justify-content:center; font-size:17px; background:#fffaf0; }
-  .gtm-band-eyebrow{ font-size:9.5px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; line-height:1.15; }
+     A narrow row gets a shorter rail and smaller type: the same single-line
+     stack, not a second component. Sizes live here rather than inline because
+     the rail is the one part of the stage that has to answer to the ROW's width.
+
+     THIRD PASS · rail correction (maintainer's ruling 3 on W6). The rail shipped
+     at 46/40 because the eyebrow and the whose-turn line were STACKED. They are
+     one row now — `.gtm-band-say`, baseline-aligned — and the rail is 34/30.
+     What is left setting the height is the METER, not the type: label over pips
+     is 25.9px on a wide row and 21.8px on a narrow one, and it has to stay
+     stacked because inlining its label beside 7 pips costs +79px of width
+     against 30.1px of tablet slack (probe `_probe-glam-tune3-rail2.mjs`).
+     The whole width budget at 390 is in the report; the trims that bought it —
+     token 25→17, eyebrow 8.5→8px, rail padding 14→7px, pip gap 5→3px — are all
+     on parts that repeat what the line already says, so the child's own line
+     keeps its shipped 12.5px. */
+  .gtm-band{ display:flex; align-items:center; gap:10px; padding:0 14px; }
+  /* The collapse. `baseline` and not `center`: the eyebrow is 9.5px caps and the
+     line is 15px, and centring two sizes on one row reads as a typo. Baseline
+     alignment also costs nothing in height — the row measures the taller item's
+     ascent + descent, i.e. exactly the line's own 18.75px. */
+  .gtm-band-say{ flex:1; min-width:0; display:flex; align-items:baseline; gap:8px; }
+  .gtm-band-token{ width:24px; height:24px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; font-size:14px; background:#fffaf0; }
+  .gtm-band-eyebrow{ font-size:9.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+    line-height:1.15; flex-shrink:0; }
   /* One line, clipped rather than wrapped: the rail's height is a layout
      constant that the art is sized against, so a second line would move the
      client. The pinned spec asserts the line is never actually clipped. */
   .gtm-band-line{ font-size:15px; font-weight:800; line-height:1.25; color:#33210f;
-    letter-spacing:-.005em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    letter-spacing:-.005em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    flex:1 1 auto; min-width:0; }
   .gtm-band-meter{ font-size:9px; font-weight:800; letter-spacing:.09em; text-transform:uppercase;
-    color:#4e3a20; line-height:1.1; }
+    color:#4e3a20; line-height:1.1; margin-bottom:2px; }
+  .gtm-band-pips{ display:flex; gap:5px; justify-content:flex-end; }
   .gtm-pip{ width:14px; height:14px; border-radius:50%; border:2px solid; display:inline-block; }
   @container gtmrow (width < 614px){
-    .gtm-band-token{ width:25px; height:25px; font-size:14px; }
-    .gtm-band-eyebrow{ font-size:8.5px; }
+    .gtm-band{ gap:6px; padding:0 7px; }
+    .gtm-band-say{ gap:5px; }
+    .gtm-band-token{ width:17px; height:17px; font-size:10px; }
+    .gtm-band-eyebrow{ font-size:8px; letter-spacing:.05em; }
     .gtm-band-line{ font-size:12.5px; }
     .gtm-band-meter{ font-size:8px; }
+    .gtm-band-pips{ gap:3px; }
     .gtm-pip{ width:11px; height:11px; border-width:1.5px; }
   }
   /* Phone (spec §3.9 device order: desktop first-class → tablet → iPhone). The
@@ -1312,7 +1336,12 @@ window.GlamStory = (function () {
                meant for the client — nothing in it is interactive. -->
           <div class="gtm-band" style="{{ bandStyle }}">
             <div class="gtm-band-token" style="{{ bandTokenStyle }}">{{ whoseGlyph }}</div>
-            <div style="min-width:0;flex:1">
+            <!-- The single-line stack (rail correction): whose-turn LABEL and
+                 whose-turn LINE share one baseline row, so the rail is 34/30
+                 rather than 46/40. The label keeps its own element and its own
+                 exact words — AC-12 is asserted against "MY TURN"/"THEIR TURN"
+                 as a string, and the colour alone is not a statement. -->
+            <div class="gtm-band-say">
               <div class="gtm-band-eyebrow" style="{{ bandEyebrowStyle }}">{{ turnLabel }}</div>
               <div class="gtm-band-line">{{ instruction }}</div>
             </div>
@@ -3199,8 +3228,18 @@ class Component extends DCLogic {
     const V=this.buildV(); const SAGE='#6a7659',BLUE='#3b82f6';
     /* The same two team colours, taken down to rail INK. The rail is sandy
        (#cdb383 → #a98d5d), where sage-700 and blue-500 both fall under 3:1 —
-       these are the same hues at the luminance the rail needs. */
-    const SAGE_INK='#4b5638',BLUE_INK='#1e3a6e';
+       these are the same hues at the luminance the rail needs.
+
+       THIRD PASS · rail correction — sage went #4b5638 → #394331. Shortening the
+       rail COMPRESSES that gradient, and the single row put the MY TURN label
+       and the filled pips further down it than the two-line stack did: measured
+       (`_probe-glam-tune3-rail4.mjs`), #4b5638 landed at 3.15:1 under the label
+       and 2.98:1 under the pips, i.e. it stopped clearing the 3:1 W6 chose it
+       for. The new value clears 3:1 against the band's DARKEST stop (3.29:1),
+       so the claim no longer depends on where in the gradient a part happens to
+       sit — which is what made it fragile in the first place. Blue was already
+       past that bar (3.53:1 on the darkest stop) and is untouched. */
+    const SAGE_INK='#394331',BLUE_INK='#1e3a6e';
     const left=Math.max(0,s.ttBudget-s.ttActions);
 
     let instruction='';
@@ -3217,9 +3256,14 @@ class Component extends DCLogic {
        grey rim disappears, and "how many are left" is the whole point. */
     const PIP_EMPTY='rgba(255,252,245,.94)',PIP_RIM='rgba(112,88,52,.55)';
     const pips=(goal,filled,color)=>{ const a=[]; for(let i=0;i<goal;i++) a.push(React.createElement('span',{key:i,className:'gtm-pip',style:{background:i<filled?color:PIP_EMPTY,borderColor:i<filled?color:PIP_RIM}})); return a; };
+    /* The meter is the one part of the rail that is still two rows, and after
+       the single-line correction it is what SETS the rail's height. Its own
+       spacing therefore belongs with the rail's sizes in the style block (a
+       narrow row needs a tighter pip gap than an inline `5px` could give), not
+       here — only the COLOURS are decided per phase. */
     const meter=(label,color)=>React.createElement('div',{},[
-      React.createElement('div',{key:'l',className:'gtm-band-meter',style:{marginBottom:'4px'}},label),
-      React.createElement('div',{key:'p',style:{display:'flex',gap:'5px',justifyContent:'flex-end'}},pips(s.ttBudget,left,color))]);
+      React.createElement('div',{key:'l',className:'gtm-band-meter'},label),
+      React.createElement('div',{key:'p',className:'gtm-band-pips'},pips(s.ttBudget,left,color))]);
     let turnMeter=React.createElement('span',{});
     // "Actions left" fills with the actions REMAINING. It used to fill with the
     // actions SPENT while labelled "left", so the meter read backwards (eval §3.9).
@@ -3541,8 +3585,11 @@ class Component extends DCLogic {
          and a gold hairline: the same vanity vocabulary the trolley and the
          stage signage already use, so the turn state is dressed as part of the
          salon rather than as a notification bar parked on it. */
-      bandStyle:'position:absolute;left:0;right:0;bottom:0;height:var(--gtm-band, 46px);z-index:8;pointer-events:none;'
-        +'display:flex;align-items:center;gap:10px;padding:0 14px;'
+      /* Layout (flex, gap, padding) lives on `.gtm-band` in the style block, not
+         here: after the single-line correction the gap and the side padding are
+         part of the 390-width budget and have to answer to the container query,
+         which an inline style cannot. */
+      bandStyle:'position:absolute;left:0;right:0;bottom:0;height:var(--gtm-band, 34px);z-index:8;pointer-events:none;'
         +'background:linear-gradient(180deg,#cdb383 0%,#bda06e 58%,#a98d5d 100%);'
         +'box-shadow:inset 0 1px 0 rgba(255,247,226,.60),inset 0 2px 0 rgba(217,171,106,.42),0 -9px 16px -12px rgba(96,74,48,.55)',
       bandTokenStyle:'border:2px solid '+(whose==='me'?SAGE:BLUE)+';box-shadow:0 1px 3px rgba(90,64,36,.40)',
