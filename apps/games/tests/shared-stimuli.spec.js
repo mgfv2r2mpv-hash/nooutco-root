@@ -121,10 +121,19 @@ test('stimuli.json is structurally valid', async ({ request }) => {
       expect(['emoji', 'text'], `"${entry.id}" glyphKind`).toContain(entry.glyphKind);
     }
 
+    // `placeholder` is the glyph SVG the old trees shipped, kept so a stimulus
+    // with no art still has a URL to draw. It only exists where art does not:
+    // publishing both would let a game index the placeholder over the photo.
+    if (entry.placeholder !== undefined) {
+      expect(entry.image, `"${entry.id}" has a placeholder only because it has no art`).toBeNull();
+      expect(entry.placeholder.startsWith(`${library.basePath}placeholder/`),
+        `"${entry.id}" placeholder sits under basePath`).toBe(true);
+    }
+
     // Nothing may render blank in front of a learner.
     expect(
-      entry.image !== null || entry.emoji !== null,
-      `"${entry.id}" has either art or a glyph fallback`,
+      entry.image !== null || entry.placeholder !== undefined,
+      `"${entry.id}" has either art or a glyph fallback to draw`,
     ).toBe(true);
 
     for (const variant of entry.variants || []) {
@@ -231,7 +240,11 @@ test('every file in the duplicated trees is accounted for', async ({ request }) 
   ]);
 
   const libraryFiles = new Set(
-    library.stimuli.flatMap((s) => [...(s.image ? [s.image] : []), ...(s.variants || [])]),
+    library.stimuli.flatMap((s) => [
+      ...(s.image ? [s.image] : []),
+      ...(s.placeholder ? [s.placeholder] : []),
+      ...(s.variants || []),
+    ]),
   );
   const ids = new Set(library.stimuli.map((s) => s.id));
 

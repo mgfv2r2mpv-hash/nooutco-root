@@ -36,6 +36,16 @@ const baseline = JSON.parse(readFileSync(path.join(HERE, 'fixtures/stimulus-base
 const CATEGORY_RE = /^[A-Za-z][\w-]*$/;
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/;
 
+/**
+ * A repointed manifest is generated from the shared library, so its build
+ * stamp is the library's content hash rather than a wall-clock time — the
+ * build has to be reproducible for `npm run stimuli:check` to mean anything.
+ */
+const LIBRARY_STAMP_RE = /^shared-stimuli:[0-9a-f]{12}$/;
+
+/** The only absolute prefix a manifest may publish images under. */
+const LIBRARY_BASE = '/shared/stimuli/';
+
 /** Fetch with a bounded pool so a 500-asset sweep does not open 500 sockets. */
 async function mapWithConcurrency(items, limit, worker) {
   const results = new Array(items.length);
@@ -101,7 +111,10 @@ for (const source of STIMULUS_SOURCES.filter((s) => s.kind === 'manifest')) {
   test(`${source.game}: manifest.json is structurally valid`, async ({ request }) => {
     const manifest = await loadIndex(request, source);
 
-    expect(manifest.generated, 'generated timestamp').toMatch(ISO_DATE_RE);
+    expect(
+      ISO_DATE_RE.test(manifest.generated) || LIBRARY_STAMP_RE.test(manifest.generated),
+      `generated is an ISO timestamp or a library stamp, got "${manifest.generated}"`,
+    ).toBe(true);
     expect(Array.isArray(manifest.folders), 'folders is an array').toBe(true);
     expect(manifest.folders.length, 'folders is non-empty').toBeGreaterThan(0);
     expect(new Set(manifest.folders).size, 'folders has no duplicates').toBe(manifest.folders.length);
@@ -119,7 +132,12 @@ for (const source of STIMULUS_SOURCES.filter((s) => s.kind === 'manifest')) {
       for (const p of paths) {
         expect(typeof p, `${folder} entry is a string`).toBe('string');
         expect(isImagePath(p), `${p} has an image extension`).toBe(true);
-        expect(p.startsWith('/'), `${p} is site-relative, not absolute`).toBe(false);
+        // Either still game-relative, or an explicit shared-library URL. Any
+        // other absolute path would silently escape the game's own asset tree.
+        expect(
+          !p.startsWith('/') || p.startsWith(LIBRARY_BASE),
+          `${p} is game-relative or under ${LIBRARY_BASE}`,
+        ).toBe(true);
         expect(indexed.has(p), `${p} is indexed exactly once`).toBe(false);
         indexed.add(p);
       }
@@ -130,12 +148,26 @@ for (const source of STIMULUS_SOURCES.filter((s) => s.kind === 'manifest')) {
       expect(manifest.folders, `images key "${folder}" is a declared folder`).toContain(folder);
     }
 
-    // A displayName keyed off a path nobody serves is dead config — and after
-    // the shared-library repoint it would be a silently lost label.
+    // A displayName keyed off a path nobody serves is dead config — a label a
+    // technician saved that will never render. A key left over from before the
+    // shared-library repoint is fine only because the games fold it forward
+    // through pathAliases; anything else names nothing.
+    const aliases = manifest.pathAliases || {};
     for (const [key, label] of Object.entries(manifest.displayNames)) {
-      expect(indexed.has(key), `displayName key "${key}" points at an indexed image`).toBe(true);
+      expect(
+        indexed.has(key) || indexed.has(aliases[key]),
+        `displayName key "${key}" reaches an indexed image, directly or via pathAliases`,
+      ).toBe(true);
       expect(typeof label, `displayName for "${key}" is a string`).toBe('string');
       expect(label.trim().length, `displayName for "${key}" is non-empty`).toBeGreaterThan(0);
+    }
+
+    // pathAliases is the migration table the games apply on load: every URL
+    // this game used to serve must still name a picture it serves today, or a
+    // saved target selection loses that stimulus without saying so.
+    for (const [legacy, url] of Object.entries(aliases)) {
+      expect(typeof legacy, 'pathAliases key is a string').toBe('string');
+      expect(indexed.has(url), `pathAliases["${legacy}"] -> "${url}" is indexed`).toBe(true);
     }
   });
 }

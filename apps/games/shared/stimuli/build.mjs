@@ -3,7 +3,7 @@
  * Build the shared stimulus library from the three duplicated `_Resources`
  * trees carried by clock, receptive and matching.
  *
- *   node shared/stimuli/build.mjs           # write stimuli.json, provenance.json, img/
+ *   node shared/stimuli/build.mjs           # write the library AND the three game manifests
  *   node shared/stimuli/build.mjs --check   # rebuild in memory and diff; never writes
  *
  * The three trees hold the SAME item names at different quality, in different
@@ -13,8 +13,12 @@
  * every distinct piece of real art, and records where each file came from so
  * the eventual deletion of the duplicated trees is provably lossless.
  *
- * Nothing here mutates a game. Repointing the games at the library is a
- * separate step; until then this output is purely additive.
+ * It then projects that library back out as one `manifest.json` per game — the
+ * shape the games already consume — so each game keeps its own programme list
+ * while every game reads the same art. The projection is what "repointing"
+ * means here: the games' loading code is unchanged, their image URLs now point
+ * at `/shared/stimuli/`, and `pathAliases` carries the old URLs forward so a
+ * technician's saved target selection survives the move.
  */
 
 import fs from 'node:fs';
@@ -28,9 +32,21 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const GAMES_ROOT = path.resolve(HERE, '../..');
 const LIBRARY_DIR = HERE;
 const IMG_DIR = path.join(LIBRARY_DIR, 'img');
+const PLACEHOLDER_DIR = path.join(LIBRARY_DIR, 'placeholder');
+const OUTPUT_DIRS = [IMG_DIR, PLACEHOLDER_DIR];
 
-/** Site-absolute prefix the games will fetch library art from. */
+/** Site-absolute prefix the games fetch library art from. */
 const SITE_BASE = '/shared/stimuli/';
+
+/**
+ * The manifests as they stood before this script started generating them.
+ * Which files a technician had selected, and the labels they set, are inputs
+ * to the merge — reading the live (generated) manifests back in would make the
+ * ranking self-referential and let the library drift on every rebuild.
+ */
+const SOURCE_MANIFESTS = JSON.parse(
+  fs.readFileSync(path.join(LIBRARY_DIR, 'source-manifests.json'), 'utf8'),
+).games;
 
 /**
  * Source trees, in preference order. `matching` leads because its manifest is
@@ -80,7 +96,7 @@ function collectCandidates() {
     const treeRoot = path.join(GAMES_ROOT, game, '_Resources', '_imgSource');
     if (!fs.existsSync(treeRoot)) continue;
 
-    const manifest = JSON.parse(fs.readFileSync(path.join(GAMES_ROOT, game, 'manifest.json'), 'utf8'));
+    const manifest = SOURCE_MANIFESTS[game];
     const indexed = new Set(Object.values(manifest.images || {}).flat());
     const displayNames = manifest.displayNames || {};
 
@@ -234,7 +250,22 @@ function buildLibrary() {
       });
       if (variants.length) entry.variants = variants;
 
-      if (!entry.image && !entry.emoji) {
+      // A stimulus with no real art still has to render something, and the
+      // games draw an `<img>`. So the emoji lives on as the placeholder SVG
+      // the trees already shipped, kept byte-for-byte: the repoint changes
+      // where a glyph is served from and nothing about how it looks. `emoji`
+      // and `glyphKind` carry the same glyph as data, for a later render that
+      // does not need a file at all.
+      let placeholderSource = null;
+      if (!entry.image && glyphSource) {
+        placeholderSource = glyphSource;
+        const relative = `placeholder/${category}/${libraryFileName(stem, glyphSource.extension, 0)}`;
+        if (files.has(relative)) throw new Error(`library file name collision: ${relative}`);
+        files.set(relative, glyphSource.bytes);
+        entry.placeholder = SITE_BASE + relative;
+      }
+
+      if (!entry.image && !entry.placeholder) {
         warnings.push(`${category}/${stem}: no art and no glyph — would render blank`);
       }
 
@@ -254,6 +285,9 @@ function buildLibrary() {
               ? null
               : `${SITE_BASE}img/${category}/${libraryFileName(stem, art[keptIndex].extension, keptIndex)}`,
         };
+        if (!record.library && placeholderSource && candidate.md5 === placeholderSource.md5) {
+          record.library = entry.placeholder;
+        }
         if (!record.library) {
           record.droppedBecause =
             candidate.dropReason || (candidate.classification === 'art' ? 'unexplained' : 'placeholder-glyph');
@@ -276,47 +310,142 @@ function buildLibrary() {
     stimuli,
   };
 
-  return { index, provenance, files, warnings };
+  return { index, provenance, files, warnings, manifests: buildGameManifests(index, provenance) };
+}
+
+// ── Per-game manifest projection ───────────────────────────────────
+
+/** The single URL a game serves for a stimulus. Real art when there is any. */
+const primaryUrl = (entry) => entry.image || entry.placeholder || null;
+
+/**
+ * Project the library back out as one `manifest.json` per game.
+ *
+ * Only the art is shared. Each game keeps its own programme list, taken from
+ * the folders it shipped: matching's `T_lowercase` / `T_numbers` /
+ * `T_pbs_characters` turning up in receptive's topic dropdown would be a
+ * behaviour change, not a merge.
+ *
+ * Exactly one URL per stimulus, never its `variants`. Indexing both the clock
+ * and the matching photograph of a bear would put two correct answers in one
+ * discrimination array; the alternates stay in the library for a later feature
+ * that knows to rotate rather than to offer them side by side.
+ */
+function buildGameManifests(index, provenance) {
+  const stamp = `shared-stimuli:${crypto.createHash('sha256').update(stableJson(index)).digest('hex').slice(0, 12)}`;
+
+  const byCategory = new Map();
+  for (const entry of index.stimuli) {
+    for (const category of entry.categories) {
+      if (!byCategory.has(category)) byCategory.set(category, []);
+      byCategory.get(category).push(entry);
+    }
+  }
+  const urlById = new Map(index.stimuli.map((entry) => [entry.id, primaryUrl(entry)]));
+
+  const manifests = {};
+  for (const [game, source] of Object.entries(SOURCE_MANIFESTS)) {
+    const folders = source.folders.slice();
+    const images = {};
+    const displayNames = {};
+    const served = new Set();
+
+    for (const folder of folders) {
+      const entries = (byCategory.get(folder) || [])
+        .slice()
+        .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+      images[folder] = entries.map((entry) => primaryUrl(entry));
+      for (const entry of entries) {
+        const url = primaryUrl(entry);
+        served.add(url);
+        // Labels are data, not a title-cased filename: `T_lowercase/a.svg`
+        // must render as "a", and a technician's override must survive.
+        displayNames[url] = entry.label;
+      }
+    }
+
+    // Old URL -> new URL. A saved `targetFilters` entry names a stimulus by
+    // the path it used to be served from; without this the game silently
+    // prunes the technician's whole target selection on first load.
+    const prefix = `/${game}/`;
+    const pathAliases = {};
+    for (const [servedPath, record] of Object.entries(provenance)) {
+      if (!servedPath.startsWith(prefix)) continue;
+      const url = urlById.get(record.stimulus);
+      if (!url || !served.has(url)) continue; // a category this game does not run
+      pathAliases[servedPath.slice(prefix.length)] = url;
+    }
+
+    manifests[game] = {
+      generated: stamp,
+      note:
+        'Generated by shared/stimuli/build.mjs from the shared library — edit that script or the ' +
+        'library, never this file. `pathAliases` maps every URL this game used to serve to the ' +
+        'library URL that replaced it.',
+      library: `${SITE_BASE}stimuli.json`,
+      folders,
+      images,
+      displayNames,
+      pathAliases,
+      archived: Object.fromEntries(
+        Object.entries(source.archived || {}).map(([key, value]) => [pathAliases[key] || key, value]),
+      ),
+    };
+  }
+  return manifests;
 }
 
 // ── Output ─────────────────────────────────────────────────────────
 
 const stableJson = (value) => `${JSON.stringify(value, null, 2)}\n`;
 
-function writeLibrary({ index, provenance, files }) {
-  fs.rmSync(IMG_DIR, { recursive: true, force: true });
-  for (const [relative, bytes] of files) {
+/** Every generated file, as `<path relative to apps/games>` -> serialised text. */
+function generatedDocuments({ index, provenance, manifests }) {
+  const documents = new Map([
+    ['shared/stimuli/stimuli.json', stableJson(index)],
+    ['shared/stimuli/provenance.json', stableJson(provenance)],
+  ]);
+  for (const [game, manifest] of Object.entries(manifests)) {
+    documents.set(`${game}/manifest.json`, stableJson(manifest));
+  }
+  return documents;
+}
+
+function writeLibrary(built) {
+  for (const dir of OUTPUT_DIRS) fs.rmSync(dir, { recursive: true, force: true });
+  for (const [relative, bytes] of built.files) {
     const target = path.join(LIBRARY_DIR, relative);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, bytes);
   }
-  fs.writeFileSync(path.join(LIBRARY_DIR, 'stimuli.json'), stableJson(index));
-  fs.writeFileSync(path.join(LIBRARY_DIR, 'provenance.json'), stableJson(provenance));
+  for (const [relative, text] of generatedDocuments(built)) {
+    fs.writeFileSync(path.join(GAMES_ROOT, relative), text);
+  }
 }
 
-function checkLibrary({ index, provenance, files }) {
+function checkLibrary(built) {
   const problems = [];
 
-  for (const [name, expected] of [['stimuli.json', index], ['provenance.json', provenance]]) {
-    const committed = path.join(LIBRARY_DIR, name);
+  for (const [relative, text] of generatedDocuments(built)) {
+    const committed = path.join(GAMES_ROOT, relative);
     if (!fs.existsSync(committed)) {
-      problems.push(`${name} is missing — run: node shared/stimuli/build.mjs`);
-    } else if (fs.readFileSync(committed, 'utf8') !== stableJson(expected)) {
-      problems.push(`${name} is stale — run: node shared/stimuli/build.mjs`);
+      problems.push(`${relative} is missing — run: npm run stimuli:build`);
+    } else if (fs.readFileSync(committed, 'utf8') !== text) {
+      problems.push(`${relative} is stale — run: npm run stimuli:build`);
     }
   }
 
-  for (const [relative, bytes] of files) {
+  for (const [relative, bytes] of built.files) {
     const target = path.join(LIBRARY_DIR, relative);
     if (!fs.existsSync(target)) problems.push(`missing library file: ${relative}`);
     else if (!fs.readFileSync(target).equals(bytes)) problems.push(`library file differs from source: ${relative}`);
   }
 
-  const onDisk = fs.existsSync(IMG_DIR)
-    ? walk(IMG_DIR).map((f) => toPosix(path.relative(LIBRARY_DIR, f)))
-    : [];
+  const onDisk = OUTPUT_DIRS.filter((dir) => fs.existsSync(dir)).flatMap((dir) =>
+    walk(dir).map((f) => toPosix(path.relative(LIBRARY_DIR, f))),
+  );
   for (const relative of onDisk) {
-    if (!files.has(relative)) problems.push(`unexpected library file: ${relative}`);
+    if (!built.files.has(relative)) problems.push(`unexpected library file: ${relative}`);
   }
 
   return problems;

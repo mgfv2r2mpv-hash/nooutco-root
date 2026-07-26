@@ -33,6 +33,51 @@ function labelFromSrc(src) {
   return name.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
+/**
+ * The stimulus art moved to the shared library at /shared/stimuli/, so a saved
+ * target selection still names its pictures by the URLs this game used to
+ * serve. The manifest ships that old-URL -> new-URL table; without applying it
+ * the selection matches nothing and the technician's chosen targets are
+ * silently dropped on first load.
+ *
+ * Two old paths can land on one stimulus (a photo and the deselected duplicate
+ * in a second format), so the migrated list is de-duplicated.
+ */
+function migrateTargetFilters(manifest) {
+  const aliases = manifest?.pathAliases;
+  if (!aliases) return;
+
+  const migrated = {};
+  let changed = false;
+  for (const [topic, srcs] of Object.entries(state.targetFilters)) {
+    if (!Array.isArray(srcs)) { migrated[topic] = srcs; continue; }
+    const moved = [...new Set(srcs.map(src => aliases[src] ?? src))];
+    if (moved.length !== srcs.length || moved.some((src, i) => src !== srcs[i])) changed = true;
+    migrated[topic] = moved;
+  }
+  if (!changed) return;
+
+  state.targetFilters = migrated;
+  saveSettings();
+}
+
+/**
+ * AdminTools still keys a technician's display-name override by the path it
+ * uploaded to, under the game's own tree. The generated manifest only carries
+ * library URLs, so any legacy key present is an override written since the
+ * last rebuild — newer than the generated label, and it wins. Without this the
+ * label saves cleanly and then never renders.
+ */
+function foldLegacyDisplayNames(manifest) {
+  const { displayNames, pathAliases } = manifest || {};
+  if (!displayNames || !pathAliases) return;
+
+  for (const [legacy, url] of Object.entries(pathAliases)) {
+    const label = displayNames[legacy];
+    if (typeof label === 'string' && label.trim()) displayNames[url] = label;
+  }
+}
+
 // ── State ──────────────────────────────────────────────────────────
 
 const state = {
@@ -276,6 +321,8 @@ async function discoverTopics() {
       const data = await r.json();
       if (Array.isArray(data.folders) && data.folders.length) {
         state.manifest = data;
+        migrateTargetFilters(data);
+        foldLegacyDisplayNames(data);
         dirs = data.folders;
         console.info(`manifest.json loaded (generated ${data.generated})`);
       }
