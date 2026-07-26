@@ -3651,3 +3651,218 @@ Finding-B `turn…` shots are not overwritten:
   `settle()` in that file's helpers before re-running anything.
 - The tall-panel and webfont items from *U · Still to do* are still open and
   still out of this pass's scope.
+
+---
+
+## Turn-exchange pass
+
+Four defects from play plus a turn-exchange sweep. Base for every "before"
+measurement in this section is `95ba6101`, the dev merge that is deployed.
+
+**Status: Finding A closed. B, C, D and the Finding E sweep table are still
+open** — see *§ Still to do* at the end of this section.
+
+### A · A finished tool stayed live, armable, and flickered its own checkmark
+
+Reported from play:
+
+> when I cleansed moisturized and applied 3 acne stickers, then removed 2 (turn
+> over), then P2 saw 1 sticker left. However, they were able to click the treat
+> spots button making the checkmark disappear and reappear. After the spots are
+> covered treat spots is no longer used so it should be completely disabled and
+> remain so or disappear
+
+#### The traced cause — one predicate answering the wrong question
+
+`Treat spots` is declared `{id:'patch', label:'Treat spots', mech:'patch', step:3}`.
+The cart's "has this tool's work been done?" read short-circuits on `opt.step`:
+
+```js
+_optWorkDone(opt){ const ed=this.state.ed;
+  if(opt.step) return this._stepDone(opt.step);
+  if(opt.mech==='patch')   return (ed.pimples||[]).every(v=>v>=1);   // UNREACHABLE
+  if(opt.mech==='conceal') return (ed.pimples||[]).every(v=>v===2);  // UNREACHABLE
+  return !!ed.done[opt.slot||opt.id]; }
+```
+
+Because both option rows declare `step:3`, neither `mech` branch could ever be
+reached — they were dead code. So the cart asked `_stepDone(3)`, which is
+`pimples.every(v=>v===2)`: every spot **concealed**. But `patchOne(i)`
+early-returns unless `pimples[i]===0`. The tool therefore becomes a guaranteed
+no-op the moment every spot is `>=1` — several actions before `_stepDone(3)`
+turns true. In that window it stayed on the trolley, stayed armable, and its
+label
+
+```js
+const lbl = (locked?'🔒 ':(active&&!armed?'✓ ':''))+opt.label;
+```
+
+dropped its own `✓` on arm and restored it on disarm. That is precisely the
+flicker described. Captured as a pixel diff in the shots below: on `95ba6101`
+`deadtool-before-mine.png` reads **`✓ Treat spots`** and `deadflicker-before.png`
+— the same shelf one click later — reads **`Treat spots`**.
+
+#### Dead ≠ spent, and that is why the cart could not already see it
+
+The trolley had one retirement rule, `_optSpent`: *this tool's whole step is over
+and it has no sibling shade, so take it off the cart.* `Treat spots` is the tool
+that separates that from the narrower question nobody was asking — *can this
+tool's own mechanism still change the client?* At all-patched the answer is no,
+while step 3 is emphatically **not** over, because Conceal has still to run.
+
+The fix adds `_optDead(opt)` next to `_optSpent`, carrying the two predicates
+that were already written but unreachable. `_optWorkDone` keeps the step-only
+read (it drives shelf-settling and spent-removal, both of which are correct as
+they stand), and its two dead branches are removed rather than left to mislead.
+
+#### Disabled, not disappear — and why
+
+The maintainer offered either. **Disabled in place** was chosen:
+
+1. **A vanishing patch button lies about the chain.** Removing it would tell the
+   child the spots step is finished while they still have a spot to conceal.
+   `_optSpent` earns its removal by only firing when the whole step *is* over.
+2. **Free play would still be broken.** `_optSpent` is gated on
+   `staged!=='free'`, so in free play the cart never removes a finished tool by
+   design — it is a flat catalogue so a BT can reach any station out of order.
+   A removal-only fix leaves that mode exactly as reported. The second test in
+   `tests/glam-turn-exchange.spec.js` pins this mode specifically.
+3. **The evidence of completed work is worth keeping on screen** in a
+   task-analysis chain. The dead tool keeps its `✓`.
+4. There was **no disabled affordance anywhere in this game** (`grep -c disabled`
+   over the file was `0`), and this class of defect needs one.
+
+The affordance is a real `disabled` DOM attribute, not a look: React drops the
+click handler outright and the browser removes the button from the tab order, so
+a dead action is unreachable by pointer **and** by keyboard. `aria-disabled` is
+set alongside it, and `arm()` guards the same case again for any programmatic
+caller. Visually the tile keeps its sage done-colours and its `✓` but goes
+**dashed-bordered, flat (no shadow) and 0.6 opacity** — finished and inert,
+rather than the grey `not-allowed` face that means *blocked*, which is a
+different message and already spoken for by the locked and at-cap states.
+
+It survives the exchange because `ed.pimples` is client state, not turn state:
+nothing in `handoff()` touches it.
+
+#### Can a dead tool consume a turn action? Yes — and worse than an action
+
+Asked because a child losing an action to a tool that does nothing is worse than
+the flicker. The answer has two halves, both measured on `95ba6101`.
+
+**No, it cannot spend an action.** `requestAction` only reaches `t.actions++` on
+the under-cap path, and an armed-but-dead patch tool renders **zero** spot rings
+(`pimples.forEach` pushes a ring only for `st===0`), so there is nothing to
+click. The action count is safe.
+
+**Yes, it can cost the turn its independence.** `arm()` runs
+`_atCapFor(this._optKey(opt))` before arming, and `_optKey` maps patch/conceal to
+the synthetic `'__perTap__'` — a key `_admit` **never writes**, because it charges
+`item:patch<i>` per spot. So `this._charged['__perTap__']` is permanently falsy
+and `_atCapFor` collapses to `trial.atCap()`. At the cap that routes the dead
+tool into `_refuse` → `requestAction`, which on the learner's own turn does not
+bounce harmlessly:
+
+```js
+t.overCap++;
+if (t.forfeit !== 'bt') t.forfeit = 'overcap';   // TURN-DURABLE
+```
+
+Measured against `95ba6101`, reaching for the dead `Treat spots` at the cap
+(one pointer click plus one programmatic `arm`):
+
+| | `95ba6101` | fixed |
+|---|---|---|
+| `turn.overCap` | **2** | **0** |
+| `turn.forfeit` | **`'overcap'`** | unset |
+| turn scores as independent | **no** | yes |
+
+A tool that could do nothing was able to take the turn's independence away. The
+`_optDead` guard is therefore placed **before** the cap check in `arm()`, so a
+dead tool is refused silently and never reaches the engine at all.
+
+#### Evidence
+
+`apps/games/tests/glam-turn-exchange.spec.js` — three tests, all of which **fail
+against `95ba6101`** and pass on this build:
+
+| test | failure against `95ba6101` |
+|---|---|
+| the reported sequence, across a handoff | `Treat spots is disabled the moment the last spot is patched` — expected `true`, received `false` |
+| Conceal goes the same way, in free play | `patch is dead at all-patched` — expected `true`, received `false` |
+| arming a dead tool at the cap | `no over-cap violation logged` — expected `0`, received **`2`** |
+
+The first drives the maintainer's sequence by **real pointer input** — wash and
+moisturize as drags, three patch taps and two conceal taps on the face's own
+rings — then hands the turn over, asserts the dead tool on the partner's turn,
+clicks it, and asserts the trolley is unchanged, then hands back and asserts
+again. `turns:4` gives the learner a 10-action budget (`REQUIRED_ACTIONS` 19 over
+2 learner turns), which is what lets the whole sequence run on one turn the way
+it was reported.
+
+Shots under `docs/eval/shots/glam-turn-exchange/`, written by
+`tests/_shots-glam-dead-tool.mjs` (Skincare shelf, m4, staged, the reported
+state — all spots patched, two of three concealed):
+
+| file | reads |
+|---|---|
+| `deadtool-before-mine.png` | `95ba6101`, my turn — **`✓ Treat spots`**, live and pressable |
+| `deadflicker-before.png` | `95ba6101`, one click later — **`Treat spots`**, ✓ gone |
+| `deadtool-before-theirs.png` | `95ba6101`, after handoff — byte-identical to `-mine` |
+| `deadtool-after-mine.png` | fixed — `✓ Treat spots`, dashed and flat |
+| `deadflicker-after.png` | fixed, one click later — **byte-identical** to `-mine` |
+| `deadtool-after-theirs.png` | fixed, after handoff — **byte-identical** to `-mine` |
+
+The three `after` files share one SHA (`a2734930…`): clicking the dead tool and
+handing the turn over change **zero pixels** of the shelf. On `95ba6101` the two
+`-mine`/`-theirs` files share a SHA but `deadflicker-before.png` does not — the
+click moved the shelf, which is the defect.
+
+#### Judged rather than measured
+
+- **Dashed border + flat + 0.6 opacity as the disabled face.** That it is
+  distinguishable from the live neighbour is visible in the shots; that this
+  particular treatment is the right one for a child-facing cart is taste. It
+  deliberately does *not* reuse the grey `not-allowed` face, because *finished*
+  and *blocked* are different messages.
+- **Keeping the `✓` on a disabled tool.** Defensible for a task-analysis chain
+  and consistent with the settled-shelf `✓`, but it is a clinical judgement, not
+  a measurement.
+- **Disabled over disappear**, per the reasoning above. `_optSpent`'s existing
+  removal behaviour is untouched, so nothing the third pass accepted moved.
+
+### Verification for this pass
+
+- **Full Playwright suite: 432/432 green** (423 before this pass + 9 new: 3 tests
+  × 3 engines) at `--workers=4`, against a hash-verified server —
+  `shasum` of the worktree file and of `curl http://localhost:8788/…` matched
+  `2569dccc…` before and after the run.
+- At default worker count the run produced 1–3 firefox failures that **all pass
+  in isolation**, on different specs each run (`glam-station-kit`,
+  `glam-art-fidelity`, `glam-open-flow`) — the documented Atkinson Hyperlegible
+  webfont-under-load flake, re-confirmed here and unrelated to this change.
+- **`window.GlamTT` byte-identical** to `95ba6101`, sliced on content
+  (`window.GlamTT = (function ()` → the IIFE close) rather than line numbers:
+  23 502 bytes, SHA `7998d56b…` on both builds.
+- **`tests/glam-tt-scoring.spec.js` byte-identical** — `git diff 95ba6101` over
+  that path is empty.
+- Clean console: every test in the new spec asserts `expect(errors).toEqual([])`,
+  and the screenshot script exits non-zero on any console or page error.
+
+### Still to do in this pass
+
+- **Finding B** — brow-tail/hairline pixel noise. Untouched. The first job is
+  the regression-or-pre-existing question: count stray pixels in that band at
+  `fed4e2be`'s parent and at the shipped build, with `BROW_TINT.floor` staying
+  `0.60` either way.
+- **Finding C** — the target hitbox says `All done ✓` for an unapplied shade,
+  because it reads `cov[slot]` and blush/lips/shadow each share a slot across six
+  shades. The trolley button already tests shade identity and gets it right; the
+  hitbox needs the same test. The one-click shade-switch cost is a design
+  question to put to the maintainer, not to settle quietly.
+- **Finding D** — per-tool cursor stub against issue #40, with a test proving no
+  visual change ships.
+- **Finding E** — the per-tool turn-exchange sweep table. Finding A is one
+  instance of the class; every tool family still needs the four columns (still
+  armable / does arming change anything / does its tick stay stable / can it
+  consume a turn action). The `'__perTap__'`-key hole found above is a strong
+  hint that the per-tap family is where the rest of the class lives.

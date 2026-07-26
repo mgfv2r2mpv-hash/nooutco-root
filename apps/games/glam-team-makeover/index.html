@@ -1382,7 +1382,7 @@ window.GlamStory = (function () {
                 <button onClick="{{ grp.onToggle }}" aria-expanded="{{ grp.expanded }}" style="{{ grp.headStyle }}"><span>{{ grp.icon }}</span><span style="{{ grp.titleStyle }}">{{ grp.label }}</span><span style="{{ grp.rule }}"></span><span style="{{ grp.markStyle }}">{{ grp.mark }}</span></button>
                 <sc-if value="{{ grp.open }}" hint-placeholder-val="{{ true }}">
                   <div style="{{ grp.optsStyle }}">
-                    <sc-for list="{{ grp.options }}" as="opt" hint-placeholder-count="3"><button onClick="{{ opt.handler }}" title="{{ opt.title }}" style="{{ opt.btnStyle }}"><span style="{{ opt.swatchStyle }}">{{ opt.glyph }}</span><span style="font-size:10px;font-weight:700;color:var(--slate-600);text-align:center;line-height:1.15;max-width:78px;min-height:13px">{{ opt.label }}</span></button></sc-for>
+                    <sc-for list="{{ grp.options }}" as="opt" hint-placeholder-count="3"><button onClick="{{ opt.handler }}" title="{{ opt.title }}" disabled="{{ opt.disabled }}" aria-disabled="{{ opt.ariaDisabled }}" style="{{ opt.btnStyle }}"><span style="{{ opt.swatchStyle }}">{{ opt.glyph }}</span><span style="font-size:10px;font-weight:700;color:var(--slate-600);text-align:center;line-height:1.15;max-width:78px;min-height:13px">{{ opt.label }}</span></button></sc-for>
                   </div>
                 </sc-if>
               </div>
@@ -2099,10 +2099,34 @@ class Component extends DCLogic {
      untracked and off-routine tools fall back to their own `done` flag. */
   _optWorkDone(opt){ const ed=this.state.ed;
     if(opt.step) return this._stepDone(opt.step);
-    if(opt.mech==='patch') return (ed.pimples||[]).every(v=>v>=1);
-    if(opt.mech==='conceal') return (ed.pimples||[]).every(v=>v===2);
     return !!ed.done[opt.slot||opt.id]; }
   _optSpent(opt){ return this.state.staged!=='free' && this._optWorkDone(opt) && (this._familySizes()[this._optFamily(opt)]||0)<=1; }
+  /* ── DEAD ≠ SPENT ────────────────────────────────────────────────────────────
+     `_optSpent` asks "is this tool's whole STEP over?" and answers by leaving the
+     cart. `_optDead` asks the narrower question the cart never asked: "can THIS
+     tool's own mechanism still change the client?" `Treat spots` is the tool that
+     separates them. Its mechanism (`patchOne`) early-returns unless a spot is
+     still bare, so once every spot carries a patch the tool is a guaranteed
+     no-op — yet step 3 is NOT over, because Conceal has still to run. Under the
+     step-only read it stayed live, armable, and its ✓ blinked off every time it
+     was armed (`active&&!armed`), which is the flicker the maintainer saw.
+
+     These two predicates were already written — as the two branches under
+     `if(opt.step) return …` in `_optWorkDone`, which both option rows reach past
+     because each declares `step:3`. They are moved here, where they are reached.
+
+     A dead tool is DISABLED IN PLACE rather than removed: it stays on the cart,
+     keeps its ✓, and stops responding. Chosen over "disappear" because (a) a
+     disappearing patch button claims the spots step is finished while the child
+     still has spots to conceal, (b) free play never removes tools by design, so
+     removal would leave that mode exactly as broken, and (c) in a task-analysis
+     chain the evidence of a step the child already completed is worth keeping on
+     screen. `ed.pimples` is client state, not turn state, so this survives a
+     handoff in both directions without a reset. */
+  _optDead(opt){ const ed=this.state.ed;
+    if(opt.mech==='patch') return (ed.pimples||[]).every(v=>v>=1);
+    if(opt.mech==='conceal') return (ed.pimples||[]).every(v=>v===2);
+    return false; }
   _grpSettled(live){ return this.state.staged!=='free' && live.length>0 && live.every(o=>this._optWorkDone(o)); }
   /* `wasOpen` is what the child can SEE right now (the render already resolved
      default-vs-override), so the header always does the opposite of what is on
@@ -2121,6 +2145,12 @@ class Component extends DCLogic {
   _lookDone(){ return this._skinMakeupDone() && this._hairDone() && !!this.state.ed.done.outfit; }
 
   arm(opt){ if(this._optLocked(opt)) return;
+    /* A dead tool is refused BEFORE the cap check, and silently. Reaching the cap
+       check would put it through `_refuse` → `requestAction`, and on the learner's
+       own turn that is not a harmless bounce: it increments `overCap` and sets the
+       turn-durable `forfeit='overcap'` flag (engine ~L451). Arming a tool that can
+       do nothing must never cost the child their independent score. */
+    if(this._optDead(opt)) return;
     /* D-B / AC-3 — at the cap a tool does not go quietly dead: refuse, log the
        violation, set the turn-durable forfeit and TELL THE KID, in every count
        mode. 0 of 43 tools said anything at the cap in the old build. */
@@ -3335,8 +3365,15 @@ class Component extends DCLogic {
       // dim tools that would spend a NEW action past the turn cap (shown mode only — 'hidden'
       // keeps the block silent so it stays a clean probe of independent relinquishing).
       const capDim=s.countMode==='shown' && this._capBlocks(s,this._optKey(opt));
+      /* A dead tool is finished, not blocked, so it does NOT take the grey
+         `off` face — that one means "you cannot do this yet", which is a
+         different message. It keeps its sage done-colours and its ✓ and loses
+         only the affordance: dashed rather than solid, flat rather than raised,
+         no pointer cursor, softened but legible. */
+      const dead=this._optDead(opt);
       const off=locked||capDim;
-      const bg=off?'var(--slate-50)':armed?'var(--sage-50)':active?'var(--sage-100)':'#fff', bd=off?'var(--slate-200)':(armed||active)?'var(--sage-500)':'var(--slate-200)';
+      const bg=dead?'var(--sage-100)':off?'var(--slate-50)':armed?'var(--sage-50)':active?'var(--sage-100)':'#fff',
+            bd=dead?'var(--sage-500)':off?'var(--slate-200)':(armed||active)?'var(--sage-500)':'var(--slate-200)';
       // Hairstyle buttons used to render their number and NO name at all (eval
       // §3.9: seven unlabelled buttons). Every tool now carries its label.
       const lbl = (locked?'🔒 ':(active&&!armed?'✓ ':''))+opt.label;
@@ -3347,8 +3384,13 @@ class Component extends DCLogic {
       const pop=justApplied?';animation:gtm-applied-'+(s.mirror.n?'b':'a')+' .42s var(--ease-standard)':'';
       // `title` stays the RAW tool name (no ✓ prefix, no lock glyph) so the
       // tooltip — and anything addressing the tool by name — is stable across states.
-      return { label:lbl, title:opt.label, glyph, swatchStyle:swatch, handler:locked?(()=>{}):(()=>this.arm(opt)),
-        btnStyle:'display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:5px;padding:9px 7px 7px;width:82px;border-radius:13px;cursor:'+(off?'not-allowed':'pointer')+';font-family:inherit;opacity:'+(off?'.45':'1')+';background:'+bg+';border:1.5px solid '+bd+';box-shadow:'+(armed?'0 0 0 3px rgba(106,118,89,.18)':active?'var(--shadow-sm)':'none')+pop }; }) })).filter(grp=>grp.options.length);
+      /* `disabled` is a real DOM attribute, not a look: React drops the click
+         handler outright and the browser takes the button out of the tab order,
+         so a dead action cannot be reached by pointer OR keyboard. `arm` guards
+         the same case again for any programmatic caller. */
+      return { label:lbl, title:opt.label, glyph, swatchStyle:swatch, disabled:!!dead, ariaDisabled:dead?'true':null,
+        handler:(locked||dead)?(()=>{}):(()=>this.arm(opt)),
+        btnStyle:'display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:5px;padding:9px 7px 7px;width:82px;border-radius:13px;cursor:'+(dead?'default':off?'not-allowed':'pointer')+';font-family:inherit;opacity:'+(dead?'.6':off?'.45':'1')+';background:'+bg+';border:1.5px '+(dead?'dashed ':'solid ')+bd+';box-shadow:'+(dead?'none':armed?'0 0 0 3px rgba(106,118,89,.18)':active?'var(--shadow-sm)':'none')+pop }; }) })).filter(grp=>grp.options.length);
 
     /* Vertical flow: shelves with work left first (so the step the child is on
        opens at the top of the scroller), settled shelves folded underneath.
