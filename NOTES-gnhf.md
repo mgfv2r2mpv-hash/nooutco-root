@@ -523,18 +523,62 @@ and proves the Worker re-reads instead of clobbering. Mutation-tested — droppi
 the `img/` tree entry, skipping `stimuli.json`, force-pushing, and breaking the
 batch fold each fail 1–7 tests.
 
+## Stage 3, part 3 — `AdminTools/ImageManager` renders the library
+
+Items 1 and 2 of the list below are done. `GAMES` is now a table with a
+`folder` per row (`clock` included), so a fetch or a thumbnail goes through the
+folder a game is actually served from rather than the legacy `id/id/…` 301, and
+adding a game is a row rather than a branch.
+
+### 21. The thumbnails were broken, and the fix is one line of URL discipline
+
+`'../../' + gameId + '/' + gameId + '/' + item.path` produced
+`../../IDMatchGame/IDMatchGame//shared/stimuli/img/T_animals/bear.jpg` for
+every library URL — an entire page of broken images, silent because the only
+handler was `img.onerror → opacity .3`. `manifestImageSrc()` now passes a
+site-absolute path through untouched and prefixes only the legacy
+game-relative ones, so both kinds render side by side during the migration.
+
+### 22. A read-back has to come from the response, not from HTTP
+
+The obvious reading of "replace the optimistic append with a read-back" is
+*re-fetch `manifest.json`*. That is wrong here, and quietly so: the deployed
+manifest is still the **pre-commit** build until Pages republishes, so an
+immediate re-fetch would show a *successful* save as missing and invite the
+technician to do it again.
+
+So `/api/admin/batch` now returns `manifests` — the projection it committed,
+keyed by game folder — and the page renders from that. Present only when the
+batch actually re-projected; a client that gets none says "Reload to see it."
+rather than showing a stale grid under a green "Saved!".
+
+This also fixes a class of bug the old append could not have handled: a
+manifest is a *projection*, so one upload can move rows no operation named —
+replacing an emoji placeholder changes that stimulus's URL for all three games,
+and a new topic adds a folder. Only the committed manifest accounts for it.
+
+Consequences worth knowing:
+
+- the new-topic modal posts to `batch` like everything else (it was the one
+  remaining caller of the single `save-image` endpoint), so its folder now
+  comes back in the manifest instead of being invented client-side
+- `remove-image` from the detail panel sends `localPath` as well as
+  `folder`/`filename`, so `resolveStimulusId` can match on the served URL
+- the grid redraw is scoped: same folder set ⇒ redraw the cards only, so the
+  add form stays open for the next upload; a changed folder set ⇒ full rebuild
+
+`tests/admin-image-manager.spec.js` (7 × 3, green) drives the real page with
+only `/api/admin/batch` stubbed; `stimulus-library-worker.spec.js` gained 2 × 3
+asserting the Worker half — that `body.manifests[game]` is byte-identical to
+what landed in the tree, and absent when nothing was committed. Mutation-tested:
+restoring the doubled prefix fails 4, restoring the guessed-path append fails 2,
+dropping `manifests` fails 1, returning the *pre*-commit manifests fails 1, and
+unregistering clock fails 1.
+
 ### Still owed for Stage 3
 
-1. ~~Wire `worker.js`.~~ **Done** — see above.
-2. **`AdminTools/ImageManager/index.html`**: add clock to `GAMES`, replace the
-   hardcoded two-way manifest-path ternary (~639-641), and replace the
-   optimistic DOM append (~1068-1080) with a read-back of the committed
-   manifest so a failed upload can no longer look successful.
-   **Now the most urgent item**: its thumbnails are built as
-   `'../../' + gameId + '/' + gameId + '/' + item.path` (~939, ~1731), which
-   concatenates to `../../IDMatchGame/IDMatchGame//shared/stimuli/img/…` for a
-   library URL. Those thumbnails have been broken since the Stage 2 repoint
-   landed; the worker wiring neither caused nor fixed it.
+1. ~~Wire `worker.js`.~~ **Done** — Stage 3 part 2.
+2. ~~Repoint `AdminTools/ImageManager/index.html`.~~ **Done** — see above.
 3. **Restore the manifest-rebuild step** lost in `514debf4`, as a workflow that
    runs `npm run stimuli:build` and commits. With the worker projecting
    in place this is now a consistency net rather than the publish path.

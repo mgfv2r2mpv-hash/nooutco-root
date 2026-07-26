@@ -459,6 +459,45 @@ test.describe('worker: shared stimulus library', () => {
     expectRebuildIsANoOp(hub);
   });
 
+  // AdminTools renders from a manifest, and the deployed copy stays pre-commit
+  // until Pages republishes — so the batch response has to carry the manifests
+  // it just committed, or the only honest thing a client can do is refuse to
+  // redraw. See `admin-image-manager.spec.js` for the client half.
+  test('the batch response carries the manifests it committed', async () => {
+    const hub = seededRepo();
+    const { body } = await post(hub, '/api/admin/batch', {
+      operations: [
+        { type: 'save-image', ...uploadPayload({ game: 'IDMatchGame', folder: 'T_household_items', filename: 'desk-lamp.png', seed: 'lamp' }) },
+        { type: 'remove-image', game: 'IDMatchGame', folder: 'T_animals', filename: 'cat.jpg' },
+      ],
+    });
+
+    expect(Object.keys(body.manifests).sort()).toEqual([...LIBRARY_GAMES].sort());
+    for (const game of LIBRARY_GAMES) {
+      expect(stableJson(body.manifests[game]), `${game} as returned`)
+        .toBe(hub.read(repo(`${game}/manifest.json`)).toString('utf8'));
+    }
+
+    // And it is the *post*-commit projection, not the state that was read.
+    expect(body.manifests.matching.images.T_household_items)
+      .toContain('/shared/stimuli/img/T_household_items/desk-lamp.png');
+    expect(body.manifests.matching.images.T_animals)
+      .not.toContain('/shared/stimuli/img/T_animals/cat.jpg');
+    expect(body.manifests.receptive.images.T_animals, 'the other games keep the picture')
+      .toContain('/shared/stimuli/img/T_animals/cat.jpg');
+  });
+
+  test('a batch that commits nothing returns no manifests to render', async () => {
+    const hub = seededRepo();
+    const { body } = await post(hub, '/api/admin/batch', {
+      operations: [{ type: 'remove-image', game: 'IDMatchGame', folder: 'T_animals', filename: 'not-a-stimulus.jpg' }],
+    });
+
+    expect(body.results[0].ok).toBe(false);
+    expect(body.manifests, 'nothing committed ⇒ nothing to redraw from').toBeUndefined();
+    expect(hub.commitMessages).toEqual([]);
+  });
+
   test('replaying a batch that already landed does not spend a commit', async () => {
     const hub = seededRepo();
     const operations = [

@@ -1689,9 +1689,12 @@ async function handleAdminBatch(request, env) {
   }
 
   try {
-    const results = await executeBatch(env, operations);
+    const { results, manifests } = await executeBatch(env, operations);
     const anyOk = results.some(r => r && r.ok);
-    return json({ ok: anyOk, results });
+    // `manifests` is present only when this batch actually re-projected them,
+    // so a client can tell "the grid you are showing is stale" from "there was
+    // nothing to change" instead of guessing a path and rendering it anyway.
+    return json(manifests ? { ok: anyOk, results, manifests } : { ok: anyOk, results });
   } catch (err) {
     const m = err.message || 'error';
     // GitHub secondary-rate-limit (403/429), transient upstream (5xx), or a
@@ -1810,6 +1813,11 @@ async function doBatchCommit(env, branch, resolved) {
   const libraryBefore = needLibrary ? await readLibraryState(env) : null;
   let   libraryState  = libraryBefore;
   const libraryTree   = new Map(); // repo path -> blob sha, or null to delete
+  // The manifests as committed, handed back to the caller. AdminTools renders
+  // from a manifest, and re-fetching one over HTTP would read the *deployed*
+  // copy — which is still the pre-commit build for as long as Pages takes to
+  // publish. Returning the projection is the only read-back that is true now.
+  let   committedManifests = null;
 
   const treeEntries = [];
   const results     = new Array(resolved.length).fill(null);
@@ -1960,7 +1968,9 @@ async function doBatchCommit(env, branch, resolved) {
   const ts = new Date().toISOString();
   if (libraryState && libraryState !== libraryBefore) {
     for (const [path, sha] of libraryTree) treeEntries.push({ path, mode: '100644', type: 'blob', sha });
-    for (const [path, text] of changedLibraryDocuments(libraryBefore, await finalLibraryDocuments(libraryState))) {
+    const finalDocuments = await finalLibraryDocuments(libraryState);
+    committedManifests = finalDocuments.manifests;
+    for (const [path, text] of changedLibraryDocuments(libraryBefore, finalDocuments)) {
       const blob = await gh(env, 'POST', 'git/blobs', { content: utf8ToBase64(text), encoding: 'base64' });
       treeEntries.push({ path, mode: '100644', type: 'blob', sha: blob.sha });
     }
@@ -1984,7 +1994,9 @@ async function doBatchCommit(env, branch, resolved) {
     treeEntries.push({ path: 'intraverbal/items.json', mode: '100644', type: 'blob', sha: blob.sha });
   }
 
-  if (!treeEntries.length) return results; // display-name-only batch with no actual changes
+  // Nothing to commit → nothing was committed, so there is no manifest to hand
+  // back either (a display-name-only batch that changed no label lands here).
+  if (!treeEntries.length) return { results, manifests: null };
 
   const successCount = results.filter(r => r && r.ok).length;
   const newTree   = await gh(env, 'POST', 'git/trees', { base_tree: treeSha, tree: treeEntries });
@@ -1998,7 +2010,7 @@ async function doBatchCommit(env, branch, resolved) {
   if (refRes.status === 422) throw new Error('CONFLICT');
   if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
 
-  return results;
+  return { results, manifests: committedManifests };
 }
 
 // ─── Admin: update-facts ─────────────────────────────────────────────────────
