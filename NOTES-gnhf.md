@@ -367,3 +367,109 @@ Separately: `market` derives its captions from the filename (`srcLabel()`) and
 ignores `displayNames`, so it renders "A" for the lowercase-letter programme.
 Pre-existing, unchanged by the repoint, and worth folding into Stage 7's
 re-dress rather than patching in isolation.
+
+---
+
+## Stage 3, part 1 — the contract that lets AdminTools edit a generated file
+
+The Stage 2 handoff above is now answered on the library side. `worker.js` is
+**not yet wired** (that is part 2), but the rules it has to obey exist, are
+shared with the builder, and are pinned by tests.
+
+### 13. Three files, one for each kind of technician state
+
+A generated `<game>/manifest.json` cannot hold anything a technician changes —
+the next `npm run stimuli:build` overwrites it. Everything AdminTools writes now
+has a source file the rebuild reads:
+
+| File | Holds | Written by |
+|---|---|---|
+| `shared/stimuli/uploads/<cat>/<file>` | which art exists | an upload |
+| `shared/stimuli/labels.json` | what a stimulus is called | save-display-name |
+| `shared/stimuli/publishing.json` | which game runs it | a removal |
+
+`folders` and `archived` stay in the manifest and the build now **reads them
+back from the live manifest** rather than from the frozen
+`source-manifests.json`, so a topic a technician adds survives a rebuild. This
+is a narrow, deliberate exception to finding 10: nothing here feeds art
+ranking, which still reads only the frozen snapshot.
+
+### 14. The worker and the builder have to produce the same bytes
+
+`shared/stimuli/library.mjs` is the shared vocabulary — ids, file names, the
+per-game projection, and `applyUpload` / `applyExclusion` / `applyLabel`. It
+holds no node builtins because it is bundled into the Cloudflare Worker as
+well. `tests/stimulus-uploads.spec.js` (12 × 3 browsers, green) asserts the
+property that matters: for a new stimulus, a same-name replacement, a
+different-extension replacement, a photograph replacing another photograph, a
+photograph replacing an emoji placeholder, and a brand-new topic,
+`applyUpload()` returns **byte-for-byte** what `buildLibrary()` produces from
+the whole tree. If those ever diverge, an upload goes live in a state the next
+rebuild silently undoes.
+
+Four ways they nearly diverged, all now closed and mutation-tested:
+
+- **Key order is content.** Both files are compared byte-for-byte by
+  `--check`, so `provenance` is sorted *before* it is projected — its order
+  decides `pathAliases` key order.
+- **Entry field order.** `{...existing, image}` keeps whatever order the file
+  had; `canonicalEntry()` emits one fixed order.
+- **A superseded upload's provenance record.** A rebuild scans disk, so once
+  the old upload file is deleted its record must go too, not flip to
+  `droppedBecause`.
+- **Labels.** A rebuild would re-derive the label from whatever the uploaded
+  file happened to be called, so `applyUpload` pins the resolved label into
+  `labels.json`.
+
+### 15. An upload supersedes; it does not become a variant
+
+If an upload joined the existing art as `--alt1`, every upload would rename
+files, and a Worker that can see one file cannot compute a rename of the whole
+group. So an upload is authoritative for its stimulus and every other art
+candidate is dropped as `superseded-by-upload`. No clinical loss: only one URL
+per stimulus is ever published (finding 9), so the alternates were unpublished
+anyway. Uploads are also exempt from the byte-identical-duplicate rule
+(finding 5) in both directions — an upload never demotes another stimulus and
+is never demoted by one.
+
+Ids are now the grouping key instead of the raw file stem, which also retires
+the Stage 4 `mail-carrier` / `mail_carrier` separator split: both spellings
+name one stimulus. Zero collisions exist in the trees today, so the library
+output is unchanged by the switch.
+
+### 16. Removal has to stop deleting the file — behaviour change, flagged
+
+`atomicManifestRemoveCommit` deletes the image from the repo. That was safe
+when each game carried its own copy; it is not safe now, because the same
+bytes back three games and removing `T_animals/bear.jpg` on matching's behalf
+would pull the picture out of clock and receptive too. `applyExclusion()`
+records the removal in `publishing.json` instead: the art stays, that one
+game stops offering it, nothing another programme runs changes. Nothing is
+lost and the removal is reversible, but it *is* a change from "the file is
+gone" and the maintainer should know.
+
+### 17. `md5` → `sha256` in `provenance.json`
+
+Web Crypto has no MD5, so a Worker cannot write a provenance record keyed the
+old way. Dedup behaviour is identical; only the recorded hash changed.
+
+### Still owed for Stage 3
+
+1. **Wire `worker.js`.** Register clock in `KNOWN_GAMES` / `GAME_PATHS`, and
+   route save-image / remove-image / save-display-name through
+   `library.mjs`. `repoPath` keeps its current shape — `REPO_SUBDIR` already
+   supplies `apps/games/` and a second prefix double-applies. The image bytes
+   need committing to **both** `uploads/<cat>/<file>` and the `img/…` path the
+   URL resolves to (one blob, two tree entries), or the published URL 404s
+   until someone runs a rebuild.
+2. **`AdminTools/ImageManager/index.html`**: add clock to `GAMES`, replace the
+   hardcoded two-way manifest-path ternary (~639-641), and replace the
+   optimistic DOM append (~1068-1080) with a read-back of the committed
+   manifest so a failed upload can no longer look successful.
+3. **Restore the manifest-rebuild step** lost in `514debf4`, as a workflow that
+   runs `npm run stimuli:build` and commits. With the worker projecting
+   in place this is now a consistency net rather than the publish path.
+4. **Archive / restore / purge / rename-topic** still move files inside
+   `_Resources` and rewrite the generated manifest directly
+   (`atomicTopicRenameCommit`). Untouched so far, and it needs the same
+   treatment as save/remove before the duplicated trees can go.

@@ -1,11 +1,12 @@
 {
   "schema": 1,
-  "note": "Shared stimulus library. Generated from the clock, receptive and matching _Resources trees by shared/stimuli/build.mjs — change that script or the source art, never this file.",
+  "note": "Shared stimulus library. Generated from the clock, receptive and matching _Resources trees plus shared/stimuli/uploads/ by shared/stimuli/build.mjs — change that script or the source art, never this file.",
   "sources": [
     "matching",
     "receptive",
     "clock"
   ],
+  "uploads": "uploads/",
   "basePath": "/shared/stimuli/",
   "categories": [
     "T_actions",
