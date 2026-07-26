@@ -35,10 +35,13 @@ import { test, expect } from '@playwright/test';
  * Four things the table cannot assume across ten games, so every row may name
  * its own:
  *   - `boot`: the control each game fills straight after `loadSettings()`,
- *     which is the signal that the store has already been read
+ *     which is the signal that the store has already been read. A row whose
+ *     dropdown ships EMPTY — with no placeholder option to be *not* — names the
+ *     `text` it expects instead of a `notText` to exclude.
  *   - `probe`: the numeric control the generic edit / precedence / clamp
  *     assertions drive. Five games share `#inp-size`; `patterns` has no array
- *     size at all and uses its bank size, `emotions` its prompt delay.
+ *     size at all and uses its bank size, `emotions` and `think-or-say` their
+ *     prompt delay.
  *   - `secondary`: a second, non-numeric option the precedence test uses to
  *     prove the whole config came from the store rather than one field of it.
  *     Eight games have a prompt-style select; `emotions` does not.
@@ -506,6 +509,94 @@ const ADOPTED = [
       ['#sel-prompt-delay', 'value', '3'],
     ],
   },
+  {
+    game: 'think-or-say',
+    url: '/think-or-say/',
+    legacyKey: 'tosSettings',
+    storeKey: 'nooutco.settings.think-or-say',
+    // This game's category dropdown is EMPTY in the HTML, so there is no
+    // placeholder to exclude: populateCategories() builds it in the same
+    // synchronous `init()` that then calls loadSettings(), and the first option
+    // it writes is the signal (see the helper).
+    boot: { selector: '#sel-category option', text: 'All categories' },
+    // No numeric input here either: the prompt delay select is the only
+    // persisted value with a range.
+    probe: {
+      selector: '#sel-prompt-delay',
+      option: 'promptDelaySecs',
+      seeded: 5, edited: 4, ahead: 2, max: 10,
+    },
+    outOfRange: {
+      // Unshowable in three different ways: past the select's ceiling, a
+      // category whose cards no longer exist (which leaves the select blank
+      // AND makes buildDeck match nothing, so the game cannot start), and a
+      // prompt style the select does not offer.
+      seeded: { promptDelaySec: 99, category: 'nonesuch', promptStyle: 'neon' },
+      expected: { promptDelaySecs: 10, category: 'all', promptStyle: 'sparkle' },
+      controls: [
+        ['#sel-prompt-delay', 'value', '10'],
+        ['#sel-category', 'value', 'all'],
+        ['#sel-prompt-style', 'value', 'sparkle'],
+      ],
+    },
+    seeded: {
+      category: 'private',
+      order: 'sequential',
+      represent: false,
+      errorless: true,
+      noErrorAnim: true,
+      autoPrompt: true,
+      promptDelay: true,
+      // The retired spelling: singular, and stored as a STRING.
+      promptDelaySec: '5',
+      promptStyle: 'outline',
+      showReason: false,
+      includeTricky: true,
+    },
+    // What the fold makes of that payload. `promptDelaySec` is renamed forward
+    // onto the `promptDelaySecs` int eight other games declare; every other
+    // option is carried through unchanged, and `tosSettings` keeps its own
+    // spelling and its own string (asserted by the never-dropped test).
+    folded: {
+      category: 'private',
+      order: 'sequential',
+      represent: false,
+      errorless: true,
+      noErrorAnim: true,
+      autoPrompt: true,
+      promptDelay: true,
+      promptDelaySecs: 5,
+      promptStyle: 'outline',
+      showReason: false,
+      includeTricky: true,
+    },
+    controls: [
+      ['#sel-category', 'value', 'private'],
+      ['#sel-order', 'value', 'sequential'],
+      ['#chk-represent-errors', 'checked', false],
+      ['#chk-errorless', 'checked', true],
+      ['#chk-no-error-anim', 'checked', true],
+      ['#chk-auto-prompt', 'checked', true],
+      ['#chk-prompt-delay', 'checked', true],
+      ['#sel-prompt-delay', 'value', '5'],
+      ['#sel-prompt-style', 'value', 'outline'],
+      ['#chk-show-reason', 'checked', false],
+      ['#chk-include-tricky', 'checked', true],
+    ],
+    fresh: [
+      ['#sel-category', 'value', 'all'],
+      ['#sel-order', 'value', 'shuffle'],
+      ['#chk-represent-errors', 'checked', true],
+      ['#chk-errorless', 'checked', false],
+      ['#chk-no-error-anim', 'checked', false],
+      ['#chk-auto-prompt', 'checked', false],
+      ['#chk-prompt-delay', 'checked', false],
+      ['#sel-prompt-delay', 'value', '3'],
+      ['#sel-prompt-style', 'value', 'sparkle'],
+      ['#chk-show-reason', 'checked', true],
+      ['#chk-include-tricky', 'checked', false],
+    ],
+  },
 ];
 
 /**
@@ -539,8 +630,16 @@ async function seed(page, entries) {
  * `patterns` — so a dropdown with real options means the store has been read.
  */
 async function bootedWithSettings(page, boot) {
-  const { selector, notText } = boot || DEFAULT_BOOT;
-  await expect(page.locator(selector).first()).not.toHaveText(notText);
+  const { selector, notText, text } = boot || DEFAULT_BOOT;
+  const locator = page.locator(selector).first();
+  // Nine rows exclude a placeholder option that is in the HTML before boot
+  // ('-- scanning --', '(no categories)'). `think-or-say`'s category select
+  // ships with NO options at all, so there is no placeholder to be *not*: the
+  // equivalent signal is the text of the first option the game builds.
+  // (Both forms wait — a negated locator assertion fails on an element that
+  // never appears rather than passing vacuously; verified, not assumed.)
+  if (text != null) await expect(locator).toHaveText(text);
+  else await expect(locator).not.toHaveText(notText);
 }
 
 async function readStore(page, storeKey) {
@@ -569,6 +668,10 @@ for (const row of ADOPTED) {
   const probe = row.probe || DEFAULT_PROBE;
   const secondary = row.secondary || DEFAULT_SECONDARY;
   const OUT_OF_RANGE = row.outOfRange || outOfRange(probe);
+  // What the store holds after the retired payload folds. Identical to the
+  // seeded payload for every game whose fold is a straight carry-forward;
+  // `think-or-say` renames one option on the way through.
+  const folded = row.folded || seeded;
 
   test(`${game}: loads the shared settings module`, async ({ page }) => {
     const errors = [];
@@ -603,7 +706,7 @@ for (const row of ADOPTED) {
 
     const stored = await readStore(page, storeKey);
     expect(stored && stored.working, `${storeKey} carries a working config`).toBeTruthy();
-    for (const [option, value] of Object.entries(seeded)) {
+    for (const [option, value] of Object.entries(folded)) {
       expect(stored.working[option], `${option} folded`).toEqual(value);
     }
   });
@@ -635,8 +738,8 @@ for (const row of ADOPTED) {
     // Once the game has been configured under the new store, the retired key is
     // stale: re-folding it would silently revert the technician's newer edits.
     await seed(page, [
-      [legacyKey, { ...seeded, [probe.option]: probe.seeded, [secondary.option]: secondary.stale }],
-      [storeKey, { working: { ...seeded, [probe.option]: probe.ahead, [secondary.option]: secondary.ahead } }],
+      [legacyKey, { ...seeded, [secondary.option]: secondary.stale }],
+      [storeKey, { working: { ...folded, [probe.option]: probe.ahead, [secondary.option]: secondary.ahead } }],
     ]);
     await page.goto(url);
     await bootedWithSettings(page, boot);
@@ -712,6 +815,65 @@ test('ffc: a saved Frame 07 session neither blocks nor is read as the trial sett
   const session = await page.evaluate((key) => window.localStorage.getItem(key), 'nooutco.settings.ffc');
   expect(session, 'the session document is byte-for-byte what was seeded')
     .toBe(JSON.stringify(FFC_SESSION));
+});
+
+// ── think-or-say renames one option on the way into the store ──────────────
+
+/**
+ * `tosSettings` is the only retired payload whose fold is not a straight
+ * carry-forward: it spelled the prompt delay `promptDelaySec` (singular) and
+ * stored it as a string, where eight other games declare `promptDelaySecs` as
+ * an int. The rename happens in the fold, so the retired key keeps its own
+ * spelling and its own string forever (the never-dropped row above asserts
+ * that), and nothing downstream has to know two names for one option.
+ */
+const TOS = ADOPTED.find((row) => row.game === 'think-or-say');
+
+test('think-or-say: the retired promptDelaySec string folds onto the shared promptDelaySecs int', async ({ page }) => {
+  await seed(page, [[TOS.legacyKey, TOS.seeded]]);
+  await page.goto(TOS.url);
+  await bootedWithSettings(page, TOS.boot);
+
+  const stored = await readStore(page, TOS.storeKey);
+  expect(stored.working.promptDelaySecs, 'folded forward, as a number').toBe(5);
+  expect('promptDelaySec' in stored.working, 'the retired spelling never reaches the store').toBe(false);
+
+  // A live edit writes the shared spelling as a number too. A select's value is
+  // a string, so this is what fails if the save path stops normalizing on the
+  // way out and starts persisting '4'.
+  await page.evaluate(() => {
+    const select = document.querySelector('#sel-prompt-delay');
+    select.value = '4';
+    select.dispatchEvent(new Event('change'));
+  });
+  await expect
+    .poll(async () => (await readStore(page, TOS.storeKey)).working.promptDelaySecs)
+    .toBe(4);
+});
+
+test('think-or-say: the folded configuration reaches the deck, not just the panel', async ({ page }) => {
+  // This game keeps its configuration in the controls rather than in `state`,
+  // so `buildDeck()` reads `#sel-category` and `#sel-order` directly. That makes
+  // "the fold reached the panel" and "the fold reached the programme" the same
+  // read here — but only if a session can still be started at all, which is the
+  // path `saveSettings()` (now normalizing on the way out) runs first.
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+
+  await seed(page, [['tosSettings', { category: 'kind', order: 'sequential', includeTricky: false }]]);
+  await page.goto(TOS.url);
+  await bootedWithSettings(page, TOS.boot);
+  await expect(page.locator('#sel-category')).toHaveValue('kind');
+
+  await page.locator('#btn-play').click();
+
+  // The first card of the 'kind' category, in the order they are declared —
+  // a card from any other category means the deck was built from something
+  // other than the technician's folded selection.
+  await expect(page.locator('#scenario-situation'))
+    .toHaveText('Your friend gets a new shirt with a dinosaur on it. You love dinosaurs too.');
+  await expect(page.locator('#progress-label')).toHaveText('Card 1 of 12');
+  expect(errors, 'the session started without a page error').toEqual([]);
 });
 
 test('ffc: the retired __auto__ tag sentinel folds to an empty selection', async ({ page }) => {

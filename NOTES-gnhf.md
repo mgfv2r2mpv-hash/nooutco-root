@@ -1777,7 +1777,7 @@ dropping the `__auto__` map (0 → 1 after the test in finding 64 was added).
 three test titles recorded as the accepted baseline. Zero new failures.
 `APP_VERSION` 0.19.3 → 0.19.4.
 
-### Still owed for Stage 6 (updated)
+### Still owed for Stage 6 (superseded by part 6 below)
 
 - One game: `think-or-say` (`tosSettings`). It keeps part of its configuration
   in the DOM rather than in state (`think-or-say/game.js:239-269`, which Stage 7
@@ -1796,3 +1796,133 @@ three test titles recorded as the accepted baseline. Zero new failures.
   documents (`nooutco.settings.ffc` for the Frame 07 session,
   `nooutco.settings.ffc.trial` for the trial settings). Merging them is a UI
   change, not a storage one.
+
+---
+
+## Stage 6, part 6 — `think-or-say` adopts the store (Stage 6 complete)
+
+The tenth and last game. `tosSettings` → `nooutco.settings.think-or-say`, with
+all eleven of its options declared as one `SETTINGS_FIELDS` spec, `loadSettings()`
+= `foldLegacy()` + `initial()` and `saveSettings()` = `saveWorking()`.
+`../game-settings.js` loads between `migrate-config.js` and `game.js`.
+
+**All ten in-scope games are now on the shared store**, each with its retired key
+read once and never deleted:
+
+| game | retired key | store key |
+|---|---|---|
+| `sequences` | `seqSettings` | `nooutco.settings.sequences` |
+| `clock` | `hddSettings` | `nooutco.settings.clock` |
+| `receptive` | `ngSettings` | `nooutco.settings.receptive` |
+| `matching` | `mgSettings` | `nooutco.settings.matching` |
+| `market` | `mmSettings` | `nooutco.settings.market` |
+| `intraverbal` | `ivgSettings` | `nooutco.settings.intraverbal` |
+| `patterns` | `ppcSettings` | `nooutco.settings.patterns` |
+| `ffc` | `ffcgSettings` | `nooutco.settings.ffc.trial` (finding 61) |
+| `emotions` | `noaba.emotionID.v1` | `nooutco.settings.emotions` |
+| `think-or-say` | `tosSettings` | `nooutco.settings.think-or-say` |
+
+### 65. The DOM-as-state blocker was not a blocker for the adoption
+
+The "still owed" note above said this game's field spec could not be written
+from `loadSettings()` alone. That is **wrong as stated**, and the correction is
+worth recording because it is the same shape as the rename refusal in finding 52.
+
+`think-or-say` keeps its configuration in the *controls* rather than in a
+`state` object — `buildDeck()` reads `el.selCategory.value` directly — but every
+one of its eleven options already round-trips through `tosSettings`, so the
+schema was fully observable. What the DOM-as-state actually changes is which
+direction each half of the adoption runs:
+
+- `loadSettings()` writes the normalized config **to the controls** (no `state`
+  assignment in between, unlike the other nine)
+- `saveSettings()` reads **from the controls**, so it wraps the payload in
+  `settingsStore.normalize()` — the select's `value` is a string, and that call
+  is what turns it back into the store's `int` using the *same* declaration the
+  load path clamps with
+
+So the store is adopted in full and the DOM-as-state cleanup stays a Stage 7
+refactor with no settings work left inside it. `tests/settings-store-adoption.spec.js`
+carries the assertion that the two halves agree: the folded category has to
+reach the **deck** (start a session, assert the first card), not just the panel.
+
+### 66. `promptDelaySec` was renamed forward, in the fold
+
+The retired payload's third spelling of the prompt delay — singular, and stored
+as the string `'5'` — is renamed onto the platform-wide `promptDelaySecs` int
+**inside `foldLegacy({map})`**, which is the only place a rename can happen
+without touching the retired key. `tosSettings` keeps `promptDelaySec: '5'`
+forever; the store never sees the old spelling.
+
+That is worth doing rather than typing the old name as an `int`, because the
+rename is what makes the shared field vocabulary actually shared: `promptDelay`
+(bool) + `promptDelaySecs` (int) is now the identical pairing in nine games.
+(`emotions` is the exception and cannot be harmonised — finding 63: it has no
+bool at all and its `promptDelay` *is* the seconds.)
+
+The test that kills a dropped rename asserts both halves: `promptDelaySecs === 5`
+as a **number**, and `'promptDelaySec' in working === false`. A second assertion
+drives a live edit and re-reads the store, which is what fails if the
+`normalize()` in `saveSettings()` is removed and `'4'` starts being persisted.
+
+### 67. `category` is an enum because a stale one leaves the game unstartable
+
+`category` and `order` are declared `enum` over exactly the values their selects
+offer. That matters more here than the usual "a value the control cannot render"
+argument: a stored category naming cards that no longer exist sets
+`el.selCategory.value` to a missing option, which the browser resolves to `''` —
+and `buildDeck()` then filters on `cat !== 'all' && s.cat !== cat`, matches zero
+scenarios and **alerts "No cards match these settings"** instead of starting.
+Clamping to `'all'` is the honest recovery, and it is asserted in the panel.
+
+### 68. A negated Playwright locator assertion does NOT pass on a missing element
+
+`think-or-say`'s category `<select>` ships empty — every other row in the
+adoption table excludes a placeholder option that exists in the HTML before boot
+(`-- scanning --`, `(no categories)`), and there is nothing here to be *not*. I
+added a positive `text` form to the boot helper and documented it as necessary
+because `not.toHaveText` would be "satisfied by an element that does not exist".
+
+**That premise was wrong, and I checked it rather than shipping it.** Pointing
+the boot signal at `#no-such-element-anywhere` fails with
+`Error: element(s) not found` after the timeout — the negated form waits like
+the positive one. The `text` form is still the right choice here (there is no
+placeholder to exclude, and naming the option the game builds is a stronger
+signal), but the comment now says that instead of a false claim about Playwright.
+
+### Coverage
+
+`tests/settings-store-adoption.spec.js` grew from 8 rows to **10** (6 × 10 × 3 =
+180) plus two `think-or-say`-specific tests × 3 (the rename in finding 66, and
+the folded config reaching the deck in finding 65). Rows may now also name a
+`folded` payload — what the store holds after the fold, which differs from the
+seeded retired payload only for the game that renames an option — and a `text`
+boot signal.
+
+`tests/config-migration.spec.js`: the `think-or-say` ordering probe moved onto
+the store key (finding 50), and its `ROUND_TRIPS` row gained `storeKey` +
+`folded`, so the seeded payload is asserted twice — byte-for-byte under
+`tosSettings` **and** folded into `<storeKey>.working` under the new spelling.
+
+Mutation-tested seven ways, each restored from a byte-compared copy: the
+`game-settings.js` script tag deleted (30 tests), `foldLegacy()` skipped (15),
+the `promptDelaySec` rename dropped from the fold map (15), `normalize()`
+removed from the save path (6), `autoPrompt` harmonised to true (3 — the named
+non-negotiable), `category` loosened from an enum to a string (3), and
+`el.selCategory.value` never written on load (9).
+
+**Suite: 793 passed, 8 failed — all 8 in `glam-team-makeover.spec.js`**, at the
+three test titles recorded as the accepted baseline. Zero new failures; the
+suite grew 777 → 801. `APP_VERSION` 0.19.4 → 0.19.5.
+
+### Still owed after Stage 6
+
+- Nothing for Stage 6 itself: all ten games are on the shared store, and every
+  retired key is read-then-folded and never deleted.
+- The press-and-hold gating is still unadopted anywhere but `sequences`, and
+  only *gates* where the panel carries the matching
+  `[data-editing="false"] { pointer-events: none }` rule (finding 47). Adopting
+  it elsewhere is a UI change per game, not a storage one.
+- Stage 7 (unchanged): `think-or-say`'s DOM-as-state (`buildDeck()` and the
+  prompt path read the controls directly), and `ffc`'s two configuration
+  documents from finding 61.
