@@ -5,46 +5,63 @@ Working notes and blockers for the run. Baseline revision: `origin/main` =
 
 ---
 
-## BLOCKER (pre-existing, out-of-scope game): `tests/glam-team-makeover.spec.js`
+## ACCEPTED PRE-EXISTING BASELINE — `tests/glam-team-makeover.spec.js`
 
-**Status:** 8 failures across chromium/firefox/webkit. **Present at `origin/main`
-before any change in this run** — reproduce with `git stash && npm test`.
-Identical under a plain static server and under real `wrangler pages dev`, so
-this is not a server-mode artefact.
+**Not a blocker for this run, and not this run's to fix.** Glam Team Makeover is
+one of the three games this run must never modify, and that exclusion covers its
+spec file as well. These failures are present at `origin/main` before any change
+here (reproduce with `git stash && npm test`), identical under a plain static
+server and under real `wrangler pages dev`. Recorded here as a follow-up for the
+maintainer.
 
-This blocks the run's stop condition (`npm test` passes on all three browsers)
-even though Glam Team Makeover is one of the three games this run must never
-modify.
-
-**The spec is stale, not flaky.** All three failures are the test drifting from
-the shipped app, and every fix lives in `tests/` — `glam-team-makeover/` itself
-must not be touched:
-
-| Test | Why it fails |
-|---|---|
-| `intro screen mounts (runtime boots)` | Asserts zero console errors, but the vendored dc-runtime paints `<path d="{{ V.capePath }}">` before template bindings resolve, so the browser logs `Expected moveto path command`. Timing-dependent, which is why it intermittently passed. |
-| `all four models load their base art` | Expects `assets/art/person/m1/base.png`. `assets/art-generated.js` now serves the combo-base layout at `assets/art/person/m1/base/base.png`. |
-| `applying a step composites a delivered layer` | Waits for a `Brunette` button. The current tool rail exposes `Wash`, `Shape brows`, `Brow pencil` — there is no `Brunette` control. |
-
-**Evidence** (chromium, `--workers=1`, warm server):
+**The run's suite requirement is "no NEW failures versus this baseline."** The
+exact baseline failing set, 8 tests across three browsers:
 
 ```
-Error: console/page errors: Error: <path> attribute d: Expected moveto path command
-  ('M' or 'm'), "{{ V.capePath }}". | ... "{{ V.garmentPath…" | "{{ V.contourPath…"
-Error: element(s) not found - waiting for locator('img[src*="assets/art/person/m1/base.png"]')
-Error: locator.click: Test timeout - waiting for getByRole('button', { name: /Brunette/ })
-3 failed, 1 passed
+[chromium] glam-team-makeover.spec.js:9  › intro screen mounts (runtime boots)
+[chromium] glam-team-makeover.spec.js:22 › all four models load their base art…
+[chromium] glam-team-makeover.spec.js:43 › applying a step composites a delivered layer…
+[firefox]  glam-team-makeover.spec.js:22 › all four models load their base art…
+[firefox]  glam-team-makeover.spec.js:43 › applying a step composites a delivered layer…
+[webkit]   glam-team-makeover.spec.js:9  › intro screen mounts (runtime boots)
+[webkit]   glam-team-makeover.spec.js:22 › all four models load their base art…
+[webkit]   glam-team-makeover.spec.js:43 › applying a step composites a delivered layer…
 ```
 
-Verified by direct probe that the game itself is healthy: after clicking Play the
-page renders `M1 M2 M3 M4`, `Wash`, `Shape brows`, `Brow pencil`,
-`▸ Go — my turn!`, all visible and hit-testable. The app is fine; the assertions
-are out of date.
+(`:9` is timing-dependent and passes on firefox often enough to move the count
+between 7 and 8. Any run whose failing set is a subset of the three test titles
+above is at baseline.)
 
-**Proposed fix (a later iteration, tests-only):** retarget the art assertion at
-`base/base.png`, retarget the tool assertion at a control that exists, and scope
-the console-error assertion to exclude the vendored runtime's pre-binding
-`<path d>` warnings.
+### Corrected evidence
+
+An earlier draft of this file asserted two things that are **wrong as stated**,
+and the corrections change what a fix would have to do:
+
+- `glam-team-makeover/assets/art/person/m1/base.png` **does exist on disk**
+  (157 KB, alongside `m1/base/base.png`). What is true is narrower: the shipped
+  art manifest `assets/art-generated.js` references *only* the nested combo-base
+  layout — `grep -o "person/m1/base[^\"']*"` returns `person/m1/base/base.png`,
+  `…/base/hairluma.png`, `…/base/mask.png`, `…/base/shirtmask.png` and never the
+  flat `m1/base.png`. So the flat file exists but is unreferenced, and the
+  spec's `img[src*="assets/art/person/m1/base.png"]` does not substring-match
+  the `…/base/base.png` the app actually renders.
+- **`Brunette` does appear** in `glam-team-makeover/index.html:335`, as
+  `{id:'hc_brunette',label:'Brunette',…,ph:'hair'}`. It is an option inside the
+  **`Hair color`** tool group, not a top-level rail control. The probe that
+  found only `Wash`, `Shape brows`, `Brow pencil` was reading the first group's
+  options. *Hypothesis, not verified:* the spec never opens the `Hair color`
+  group (and every hair option is gated `ph:'hair'`), so the button is real but
+  out of reach at that point in the flow.
+
+The third failure's mechanism is unchanged and still looks right: the vendored
+dc-runtime paints `<path d="{{ V.capePath }}">` before template bindings
+resolve, so the browser logs `<path> attribute d: Expected moveto path command`
+and the zero-console-errors assertion trips.
+
+**Do not act on any of this from inside this run.** A spec edit built on a
+premise this shaky could mask a real regression in a game that must not be
+touched. Handing it to the maintainer with the corrected evidence is the whole
+deliverable here.
 
 ---
 
@@ -151,3 +168,97 @@ Still owed from Stage 1: the per-game settings round-trip (seed the old
 localStorage key, reload, assert every option survives). That work shares a
 "boot a game with seeded config" helper with the Stage 5/6 migrations, so it
 should land alongside them.
+
+---
+
+## Stage 2 progress — the library exists; the games are not repointed yet
+
+Landed (`shared/stimuli/`, additive — no game reads it yet, so nothing in the
+existing suite changed behaviour):
+
+- `shared/stimuli/build.mjs` — merges the clock / receptive / matching
+  `_Resources` trees into one entry per stimulus. `--check` rebuilds in memory
+  and diffs against what is committed without writing, so a tree that gains art
+  without a rebuild is a test failure rather than a silent no-op.
+- `shared/stimuli/stimuli.json` — **236 stimuli, 126 with real art, across 17
+  categories**, `{id, label, categories[], image, emoji}` plus `glyphKind` and
+  `variants`.
+- `shared/stimuli/img/` — 155 image files, 83 MB on disk and **0 bytes in git**:
+  every copy is byte-identical to a blob the repo already tracks, so
+  `git hash-object shared/stimuli/img/T_household_items/table.jpg` and the
+  `matching/` original both print `81ccd2f7…` and `size-pack` does not move.
+- `shared/stimuli/provenance.json` — all 568 source files mapped to the library
+  file that now carries their bytes, or to an explicit `droppedBecause`. This is
+  the durable proof for the deletion commit, which cannot be re-derived once the
+  trees are gone.
+- `tests/shared-stimuli.spec.js` — 7 tests × 3 browsers, all green.
+
+The Stage 2 success signal, measured in the library:
+
+| Category | clock at baseline | receptive at baseline | library |
+|---|---|---|---|
+| `T_household_items` | 0 real | 0 real | **11 real** (incl. `table.jpg`) |
+| `T_kitchen_items` | 5 real | 5 real | **19 real** (24 files — see finding 1) |
+| `T_prepositions` | 12 real | 9 real | **12 real** |
+| `T_community_helpers` | 0 real | 11 real | **11 real** |
+
+Mutation-tested rather than assumed. Pointing `household-items-table` at a
+placeholder SVG and `animals-bear` at a nonexistent file failed 5 of the 7
+tests, naming both mutations:
+`household-items-table -> /clock/…/bed.svg` under "library images that are
+generated glyph placeholders", plus `stimuli.json is stale`.
+
+### 5. Two stems in `T_prepositions` shipped as byte copies of another stem
+
+`receptive/…/T_prepositions/on.png` is md5-identical to `above.png`
+(`a5520e3f`), and `under.png` to `below.png` (`013a3737`). receptive indexes all
+four, so today it asks a learner about "on" and "above" over **the same
+picture** — and that picture (checked by eye) is a football resting *on* a box,
+which makes it the wrong art for `above` rather than for `on`.
+
+The merge refuses to let two stems in one category resolve to the same bytes:
+first stem alphabetically keeps the file, the other falls through to its
+next-best candidate, which here is the hand-drawn `on.svg` / `under.svg`
+diagram clock already indexes. So the library gives receptive 12 distinct
+preposition stimuli where it had 9, with no duplicate pairs. Both demotions are
+recorded in `provenance.json` as `duplicate-of:T_prepositions/above` / `…/below`
+rather than silently dropped.
+
+Left for the maintainer: whether `above.png` is *itself* mis-filed art. It is
+not this run's call to re-shoot clinical stimuli.
+
+### 6. Deriving labels from filenames broke the lowercase-letter programme
+
+`labelFromSrc()` title-cases the stem, so matching's `T_lowercase/a.svg`
+rendered as **"A"** — the uppercase discrimination, in the programme that exists
+to teach the lowercase one. The library carries labels as data and leaves a
+single character or a bare number alone, so `lowercase-a` is `"a"` and
+`uppercase-a` is `"A"`. Pinned by a test.
+
+### 7. Ids have to be category-qualified
+
+Stems are not unique. `orange` is both `T_colors` and `T_foods` with different
+art, and `a`/`A` collide on a case-insensitive filesystem. Ids are
+`<category-without-T_>-<stem>` — `colors-orange`, `foods-orange`,
+`lowercase-a`, `uppercase-a`. `categories[]` stays an array so Stage 4 can add
+semantic categories to an existing entry without ever moving an id.
+
+### 8. `.svg` in matching's tree does not mean vector
+
+`matching/…/T_animals/bear.svg` is JPEG bytes (Exif header, `OLYMPUS DIGITAL
+CAMERA`) under an `.svg` name, and `bird.svg` is a byte copy of *clock's*
+`bird.jpg`. The classifier reads content and gets these right, but any code that
+branches on extension will not. The merge prefers a correctly-extensioned raster
+over an `.svg` for exactly this reason, and only reaches `.svg` when it is the
+sole candidate — which is how the hand-drawn preposition diagrams survive.
+
+### Still owed for Stage 2
+
+1. Repoint clock, receptive and matching at `/shared/stimuli/stimuli.json`.
+   Each game must keep its own category list — matching's `T_lowercase` /
+   `T_numbers` / `T_pbs_characters` appearing in receptive's topic dropdown
+   would be a behaviour change, not a merge.
+2. Teach the three games to render `emoji` + `glyphKind` when `image` is null
+   (`glyphKind: 'text'` wants a bold sans face, `'emoji'` the emoji stack).
+3. Only then, as its own revertible commit, delete the duplicated trees —
+   checking every key in `provenance.json` first.

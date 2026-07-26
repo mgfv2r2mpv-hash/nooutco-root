@@ -1,0 +1,2404 @@
+{
+  "schema": 1,
+  "note": "Shared stimulus library. Generated from the clock, receptive and matching _Resources trees by shared/stimuli/build.mjs — change that script or the source art, never this file.",
+  "sources": [
+    "matching",
+    "receptive",
+    "clock"
+  ],
+  "basePath": "/shared/stimuli/",
+  "categories": [
+    "T_actions",
+    "T_animals",
+    "T_buildings",
+    "T_colors",
+    "T_community_helpers",
+    "T_emotions",
+    "T_foods",
+    "T_fresh-beats",
+    "T_household_items",
+    "T_kitchen_items",
+    "T_lowercase",
+    "T_numbers",
+    "T_pbs_characters",
+    "T_prepositions",
+    "T_shapes",
+    "T_toys",
+    "T_uppercase"
+  ],
+  "stimuli": [
+    {
+      "id": "actions-clapping",
+      "label": "Clapping",
+      "categories": [
+        "T_actions"
+      ],
+      "image": "/shared/stimuli/img/T_actions/clapping.png",
+      "emoji": null
+    },
+    {
+      "id": "actions-crying",
+      "label": "Crying",
+      "categories": [
+        "T_actions"
+      ],
+      "image": "/shared/stimuli/img/T_actions/crying.jpg",
+      "emoji": null
+    },
+    {
+      "id": "actions-drinking",
+      "label": "Drinking",
+      "categories": [
+        "T_actions"
+      ],
+      "image": "/shared/stimuli/img/T_actions/drinking.png",
+      "emoji": null
+    },
+    {
+      "id": "actions-eating",
+      "label": "Eating",
+      "categories": [
+        "T_actions"
+      ],
+      "image": "/shared/stimuli/img/T_actions/eating.png",
+      "emoji": null
+    },
+    {
+      "id": "actions-hugging",
+      "label": "Hugging",
+      "categories": [
+        "T_actions"
+      ],
+      "image": "/shared/stimuli/img/T_actions/hugging.png",
+      "emoji": null
+    },
+    {
+      "id": "actions-jumping",
+      "label": "Jumping",
+      "categories": [
+        "T_actions"
+      ],
+      "image": "/shared/stimuli/img/T_actions/jumping.jpg",
+      "emoji": null
+    },
+    {
+      "id": "actions-kicking",
+      "label": "Kicking",
+      "categories": [
+        "T_actions"
+      ],
+      "image": "/shared/stimuli/img/T_actions/kicking.jpg",
+      "emoji": null
+    },
+    {
+      "id": "actions-laughing",
+      "label": "Laughing",
+      "categories": [
+        "T_actions"
+      ],
+      "image": "/shared/stimuli/img/T_actions/laughing.jpg",
+      "emoji": null
+    },
+    {
+      "id": "actions-reading",
+      "label": "Reading",
+      "categories": [
+        "T_actions"
+      ],
+      "image": "/shared/stimuli/img/T_actions/reading.png",
+      "emoji": null
+    },
+    {
+      "id": "actions-sleeping",
+      "label": "Sleeping",
+      "categories": [
+        "T_actions"
+      ],
+      "image": "/shared/stimuli/img/T_actions/sleeping.png",
+      "emoji": null
+    },
+    {
+      "id": "actions-swimming",
+      "label": "Swimming",
+      "categories": [
+        "T_actions"
+      ],
+      "image": "/shared/stimuli/img/T_actions/swimming.png",
+      "emoji": null
+    },
+    {
+      "id": "actions-throwing",
+      "label": "Throwing",
+      "categories": [
+        "T_actions"
+      ],
+      "image": "/shared/stimuli/img/T_actions/throwing.jpg",
+      "emoji": null
+    },
+    {
+      "id": "actions-walking",
+      "label": "Walking",
+      "categories": [
+        "T_actions"
+      ],
+      "image": "/shared/stimuli/img/T_actions/walking.png",
+      "emoji": null
+    },
+    {
+      "id": "actions-writing",
+      "label": "Writing",
+      "categories": [
+        "T_actions"
+      ],
+      "image": "/shared/stimuli/img/T_actions/writing.jpg",
+      "emoji": null
+    },
+    {
+      "id": "animals-bear",
+      "label": "Bear",
+      "categories": [
+        "T_animals"
+      ],
+      "image": "/shared/stimuli/img/T_animals/bear.jpg",
+      "emoji": "🐻",
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_animals/bear--alt1.jpg"
+      ]
+    },
+    {
+      "id": "animals-bird",
+      "label": "Bird",
+      "categories": [
+        "T_animals"
+      ],
+      "image": "/shared/stimuli/img/T_animals/bird.jpg",
+      "emoji": "🐦",
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_animals/bird--alt1.jpg"
+      ]
+    },
+    {
+      "id": "animals-butterfly",
+      "label": "Butterfly",
+      "categories": [
+        "T_animals"
+      ],
+      "image": "/shared/stimuli/img/T_animals/butterfly.jpg",
+      "emoji": "🦋",
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_animals/butterfly--alt1.jpg"
+      ]
+    },
+    {
+      "id": "animals-cat",
+      "label": "Cat",
+      "categories": [
+        "T_animals"
+      ],
+      "image": "/shared/stimuli/img/T_animals/cat.jpg",
+      "emoji": "🐈",
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_animals/cat--alt1.jpg"
+      ]
+    },
+    {
+      "id": "animals-dog",
+      "label": "Dog",
+      "categories": [
+        "T_animals"
+      ],
+      "image": "/shared/stimuli/img/T_animals/dog.jpg",
+      "emoji": "🐶",
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_animals/dog--alt1.jpg"
+      ]
+    },
+    {
+      "id": "animals-elephant",
+      "label": "Elephant",
+      "categories": [
+        "T_animals"
+      ],
+      "image": "/shared/stimuli/img/T_animals/elephant.jpg",
+      "emoji": "🐘",
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_animals/elephant--alt1.jpg"
+      ]
+    },
+    {
+      "id": "animals-fish",
+      "label": "Fish",
+      "categories": [
+        "T_animals"
+      ],
+      "image": "/shared/stimuli/img/T_animals/fish.jpg",
+      "emoji": "🐟",
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_animals/fish--alt1.jpg"
+      ]
+    },
+    {
+      "id": "animals-frog",
+      "label": "Frog",
+      "categories": [
+        "T_animals"
+      ],
+      "image": "/shared/stimuli/img/T_animals/frog.jpg",
+      "emoji": "🐸",
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_animals/frog--alt1.jpg"
+      ]
+    },
+    {
+      "id": "animals-lion",
+      "label": "Lion",
+      "categories": [
+        "T_animals"
+      ],
+      "image": "/shared/stimuli/img/T_animals/lion.jpg",
+      "emoji": "🦁",
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_animals/lion--alt1.jpg"
+      ]
+    },
+    {
+      "id": "animals-rabbit",
+      "label": "Rabbit",
+      "categories": [
+        "T_animals"
+      ],
+      "image": "/shared/stimuli/img/T_animals/rabbit.jpg",
+      "emoji": "🐰",
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_animals/rabbit--alt1.jpg"
+      ]
+    },
+    {
+      "id": "buildings-apartment",
+      "label": "Apartment",
+      "categories": [
+        "T_buildings"
+      ],
+      "image": "/shared/stimuli/img/T_buildings/apartment.jpg",
+      "emoji": "🏢",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "buildings-bank",
+      "label": "Bank",
+      "categories": [
+        "T_buildings"
+      ],
+      "image": "/shared/stimuli/img/T_buildings/bank.jpg",
+      "emoji": "🏦",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "buildings-castle",
+      "label": "Castle",
+      "categories": [
+        "T_buildings"
+      ],
+      "image": "/shared/stimuli/img/T_buildings/castle.jpg",
+      "emoji": "🏰",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "buildings-church",
+      "label": "Church",
+      "categories": [
+        "T_buildings"
+      ],
+      "image": "/shared/stimuli/img/T_buildings/church.jpg",
+      "emoji": "⛪",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "buildings-factory",
+      "label": "Factory",
+      "categories": [
+        "T_buildings"
+      ],
+      "image": "/shared/stimuli/img/T_buildings/factory.jpg",
+      "emoji": "🏭",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "buildings-hospital",
+      "label": "Hospital",
+      "categories": [
+        "T_buildings"
+      ],
+      "image": "/shared/stimuli/img/T_buildings/hospital.jpg",
+      "emoji": "🏥",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "buildings-house",
+      "label": "House",
+      "categories": [
+        "T_buildings"
+      ],
+      "image": "/shared/stimuli/img/T_buildings/house.jpg",
+      "emoji": "🏠",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "buildings-library",
+      "label": "Library",
+      "categories": [
+        "T_buildings"
+      ],
+      "image": "/shared/stimuli/img/T_buildings/library.jpg",
+      "emoji": "🏛️",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "buildings-school",
+      "label": "School",
+      "categories": [
+        "T_buildings"
+      ],
+      "image": "/shared/stimuli/img/T_buildings/school.jpg",
+      "emoji": "🏫",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "buildings-store",
+      "label": "Store",
+      "categories": [
+        "T_buildings"
+      ],
+      "image": null,
+      "emoji": "🏪",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "colors-black",
+      "label": "Black",
+      "categories": [
+        "T_colors"
+      ],
+      "image": "/shared/stimuli/img/T_colors/black.svg",
+      "emoji": null
+    },
+    {
+      "id": "colors-blue",
+      "label": "Blue",
+      "categories": [
+        "T_colors"
+      ],
+      "image": "/shared/stimuli/img/T_colors/blue.svg",
+      "emoji": null
+    },
+    {
+      "id": "colors-brown",
+      "label": "Brown",
+      "categories": [
+        "T_colors"
+      ],
+      "image": "/shared/stimuli/img/T_colors/brown.svg",
+      "emoji": null
+    },
+    {
+      "id": "colors-green",
+      "label": "Green",
+      "categories": [
+        "T_colors"
+      ],
+      "image": "/shared/stimuli/img/T_colors/green.svg",
+      "emoji": null
+    },
+    {
+      "id": "colors-orange",
+      "label": "Orange",
+      "categories": [
+        "T_colors"
+      ],
+      "image": "/shared/stimuli/img/T_colors/orange.svg",
+      "emoji": null
+    },
+    {
+      "id": "colors-pink",
+      "label": "Pink",
+      "categories": [
+        "T_colors"
+      ],
+      "image": "/shared/stimuli/img/T_colors/pink.svg",
+      "emoji": null
+    },
+    {
+      "id": "colors-purple",
+      "label": "Purple",
+      "categories": [
+        "T_colors"
+      ],
+      "image": "/shared/stimuli/img/T_colors/purple.svg",
+      "emoji": null
+    },
+    {
+      "id": "colors-red",
+      "label": "Red",
+      "categories": [
+        "T_colors"
+      ],
+      "image": "/shared/stimuli/img/T_colors/red.svg",
+      "emoji": null
+    },
+    {
+      "id": "colors-white",
+      "label": "White",
+      "categories": [
+        "T_colors"
+      ],
+      "image": "/shared/stimuli/img/T_colors/white.svg",
+      "emoji": null
+    },
+    {
+      "id": "colors-yellow",
+      "label": "Yellow",
+      "categories": [
+        "T_colors"
+      ],
+      "image": "/shared/stimuli/img/T_colors/yellow.svg",
+      "emoji": null
+    },
+    {
+      "id": "community-helpers-chef",
+      "label": "Chef",
+      "categories": [
+        "T_community_helpers"
+      ],
+      "image": "/shared/stimuli/img/T_community_helpers/chef.jpg",
+      "emoji": "🧑‍🍳",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "community-helpers-construction",
+      "label": "Construction",
+      "categories": [
+        "T_community_helpers"
+      ],
+      "image": "/shared/stimuli/img/T_community_helpers/construction.jpg",
+      "emoji": "👷",
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_community_helpers/construction--alt1.jpg"
+      ]
+    },
+    {
+      "id": "community-helpers-crossing-guard",
+      "label": "Crossing Guard",
+      "categories": [
+        "T_community_helpers"
+      ],
+      "image": "/shared/stimuli/img/T_community_helpers/crossing-guard.jpg",
+      "emoji": null
+    },
+    {
+      "id": "community-helpers-doctor",
+      "label": "Doctor",
+      "categories": [
+        "T_community_helpers"
+      ],
+      "image": "/shared/stimuli/img/T_community_helpers/doctor.jpg",
+      "emoji": "🧑‍⚕️",
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_community_helpers/doctor--alt1.jpg"
+      ]
+    },
+    {
+      "id": "community-helpers-farmer",
+      "label": "Farmer",
+      "categories": [
+        "T_community_helpers"
+      ],
+      "image": "/shared/stimuli/img/T_community_helpers/farmer.jpg",
+      "emoji": "🧑‍🌾",
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_community_helpers/farmer--alt1.jpg"
+      ]
+    },
+    {
+      "id": "community-helpers-firefighter",
+      "label": "Firefighter",
+      "categories": [
+        "T_community_helpers"
+      ],
+      "image": "/shared/stimuli/img/T_community_helpers/firefighter.jpg",
+      "emoji": "🧑‍🚒",
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_community_helpers/firefighter--alt1.jpg"
+      ]
+    },
+    {
+      "id": "community-helpers-mail-carrier",
+      "label": "Mail Carrier",
+      "categories": [
+        "T_community_helpers"
+      ],
+      "image": "/shared/stimuli/img/T_community_helpers/mail-carrier.jpg",
+      "emoji": "🧑‍✈️",
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_community_helpers/mail-carrier--alt1.jpg"
+      ]
+    },
+    {
+      "id": "community-helpers-nurse",
+      "label": "Nurse",
+      "categories": [
+        "T_community_helpers"
+      ],
+      "image": "/shared/stimuli/img/T_community_helpers/nurse.jpg",
+      "emoji": "👩‍⚕️",
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_community_helpers/nurse--alt1.jpg"
+      ]
+    },
+    {
+      "id": "community-helpers-police",
+      "label": "Police",
+      "categories": [
+        "T_community_helpers"
+      ],
+      "image": "/shared/stimuli/img/T_community_helpers/police.jpg",
+      "emoji": "👮",
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_community_helpers/police--alt1.jpg"
+      ]
+    },
+    {
+      "id": "community-helpers-scientist",
+      "label": "Scientist",
+      "categories": [
+        "T_community_helpers"
+      ],
+      "image": "/shared/stimuli/img/T_community_helpers/scientist.jpg",
+      "emoji": "🧑‍🔬",
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_community_helpers/scientist--alt1.jpg"
+      ]
+    },
+    {
+      "id": "community-helpers-teacher",
+      "label": "Teacher",
+      "categories": [
+        "T_community_helpers"
+      ],
+      "image": "/shared/stimuli/img/T_community_helpers/teacher.jpg",
+      "emoji": "🧑‍🏫",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "emotions-angry",
+      "label": "Angry",
+      "categories": [
+        "T_emotions"
+      ],
+      "image": null,
+      "emoji": "😠",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "emotions-bored",
+      "label": "Bored",
+      "categories": [
+        "T_emotions"
+      ],
+      "image": null,
+      "emoji": "😑",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "emotions-calm",
+      "label": "Calm",
+      "categories": [
+        "T_emotions"
+      ],
+      "image": null,
+      "emoji": "😌",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "emotions-confused",
+      "label": "Confused",
+      "categories": [
+        "T_emotions"
+      ],
+      "image": null,
+      "emoji": "😕",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "emotions-embarrassed",
+      "label": "Embarrassed",
+      "categories": [
+        "T_emotions"
+      ],
+      "image": null,
+      "emoji": "😳",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "emotions-excited",
+      "label": "Excited",
+      "categories": [
+        "T_emotions"
+      ],
+      "image": null,
+      "emoji": "🤩",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "emotions-happy",
+      "label": "Happy",
+      "categories": [
+        "T_emotions"
+      ],
+      "image": null,
+      "emoji": "😊",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "emotions-love",
+      "label": "Love",
+      "categories": [
+        "T_emotions"
+      ],
+      "image": null,
+      "emoji": "🥰",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "emotions-proud",
+      "label": "Proud",
+      "categories": [
+        "T_emotions"
+      ],
+      "image": null,
+      "emoji": "😤",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "emotions-sad",
+      "label": "Sad",
+      "categories": [
+        "T_emotions"
+      ],
+      "image": null,
+      "emoji": "😢",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "emotions-scared",
+      "label": "Scared",
+      "categories": [
+        "T_emotions"
+      ],
+      "image": null,
+      "emoji": "😨",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "emotions-sick",
+      "label": "Sick",
+      "categories": [
+        "T_emotions"
+      ],
+      "image": null,
+      "emoji": "🤢",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "emotions-silly",
+      "label": "Silly",
+      "categories": [
+        "T_emotions"
+      ],
+      "image": null,
+      "emoji": "🤪",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "emotions-surprised",
+      "label": "Surprised",
+      "categories": [
+        "T_emotions"
+      ],
+      "image": null,
+      "emoji": "😲",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "emotions-tired",
+      "label": "Tired",
+      "categories": [
+        "T_emotions"
+      ],
+      "image": null,
+      "emoji": "😴",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "foods-apple",
+      "label": "Apple",
+      "categories": [
+        "T_foods"
+      ],
+      "image": null,
+      "emoji": "🍎",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "foods-banana",
+      "label": "Banana",
+      "categories": [
+        "T_foods"
+      ],
+      "image": null,
+      "emoji": "🍌",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "foods-broccoli",
+      "label": "Broccoli",
+      "categories": [
+        "T_foods"
+      ],
+      "image": null,
+      "emoji": "🥦",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "foods-burger",
+      "label": "Burger",
+      "categories": [
+        "T_foods"
+      ],
+      "image": null,
+      "emoji": "🍔",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "foods-corn",
+      "label": "Corn",
+      "categories": [
+        "T_foods"
+      ],
+      "image": null,
+      "emoji": "🌽",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "foods-donut",
+      "label": "Donut",
+      "categories": [
+        "T_foods"
+      ],
+      "image": null,
+      "emoji": "🍩",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "foods-egg",
+      "label": "Egg",
+      "categories": [
+        "T_foods"
+      ],
+      "image": null,
+      "emoji": "🥚",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "foods-orange",
+      "label": "Orange",
+      "categories": [
+        "T_foods"
+      ],
+      "image": null,
+      "emoji": "🍊",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "foods-pizza",
+      "label": "Pizza",
+      "categories": [
+        "T_foods"
+      ],
+      "image": null,
+      "emoji": "🍕",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "foods-strawberry",
+      "label": "Strawberry",
+      "categories": [
+        "T_foods"
+      ],
+      "image": null,
+      "emoji": "🍓",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "fresh-beats-chimpanzees-too",
+      "label": "Chimpanzees Too",
+      "categories": [
+        "T_fresh-beats"
+      ],
+      "image": "/shared/stimuli/img/T_fresh-beats/chimpanzees-too.jpg",
+      "emoji": null
+    },
+    {
+      "id": "fresh-beats-group-jumping",
+      "label": "Group Jumping",
+      "categories": [
+        "T_fresh-beats"
+      ],
+      "image": "/shared/stimuli/img/T_fresh-beats/group-jumping.jpg",
+      "emoji": null
+    },
+    {
+      "id": "fresh-beats-group-photo",
+      "label": "Group Photo",
+      "categories": [
+        "T_fresh-beats"
+      ],
+      "image": "/shared/stimuli/img/T_fresh-beats/group-photo.jpg",
+      "emoji": null
+    },
+    {
+      "id": "fresh-beats-group-smiling",
+      "label": "Group Smiling",
+      "categories": [
+        "T_fresh-beats"
+      ],
+      "image": "/shared/stimuli/img/T_fresh-beats/group-smiling.jpg",
+      "emoji": null
+    },
+    {
+      "id": "fresh-beats-marina",
+      "label": "Marina",
+      "categories": [
+        "T_fresh-beats"
+      ],
+      "image": "/shared/stimuli/img/T_fresh-beats/marina.jpg",
+      "emoji": null
+    },
+    {
+      "id": "fresh-beats-twist-1",
+      "label": "Group Poster",
+      "categories": [
+        "T_fresh-beats"
+      ],
+      "image": "/shared/stimuli/img/T_fresh-beats/twist-1.webp",
+      "emoji": null
+    },
+    {
+      "id": "household-items-bed",
+      "label": "Bed",
+      "categories": [
+        "T_household_items"
+      ],
+      "image": "/shared/stimuli/img/T_household_items/bed.webp",
+      "emoji": "🛏️",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "household-items-books",
+      "label": "Books",
+      "categories": [
+        "T_household_items"
+      ],
+      "image": "/shared/stimuli/img/T_household_items/books.jpg",
+      "emoji": "📚",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "household-items-broom",
+      "label": "Broom",
+      "categories": [
+        "T_household_items"
+      ],
+      "image": "/shared/stimuli/img/T_household_items/broom.webp",
+      "emoji": "🧹",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "household-items-chair",
+      "label": "Chair",
+      "categories": [
+        "T_household_items"
+      ],
+      "image": "/shared/stimuli/img/T_household_items/chair.webp",
+      "emoji": "🪑",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "household-items-clock",
+      "label": "Clock",
+      "categories": [
+        "T_household_items"
+      ],
+      "image": "/shared/stimuli/img/T_household_items/clock.jpg",
+      "emoji": "🕐",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "household-items-lamp",
+      "label": "Lamp",
+      "categories": [
+        "T_household_items"
+      ],
+      "image": "/shared/stimuli/img/T_household_items/lamp.jpg",
+      "emoji": "💡",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "household-items-mirror",
+      "label": "Mirror",
+      "categories": [
+        "T_household_items"
+      ],
+      "image": "/shared/stimuli/img/T_household_items/mirror.jpg",
+      "emoji": "🪞",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "household-items-mug",
+      "label": "Mug",
+      "categories": [
+        "T_household_items"
+      ],
+      "image": "/shared/stimuli/img/T_household_items/mug.webp",
+      "emoji": "☕",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "household-items-shower",
+      "label": "Shower",
+      "categories": [
+        "T_household_items"
+      ],
+      "image": "/shared/stimuli/img/T_household_items/shower.jpg",
+      "emoji": "🚿",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "household-items-sofa",
+      "label": "Sofa",
+      "categories": [
+        "T_household_items"
+      ],
+      "image": "/shared/stimuli/img/T_household_items/sofa.webp",
+      "emoji": "🛋️",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "household-items-table",
+      "label": "Table",
+      "categories": [
+        "T_household_items"
+      ],
+      "image": "/shared/stimuli/img/T_household_items/table.jpg",
+      "emoji": null
+    },
+    {
+      "id": "kitchen-items-blender",
+      "label": "Blender",
+      "categories": [
+        "T_kitchen_items"
+      ],
+      "image": "/shared/stimuli/img/T_kitchen_items/blender.webp",
+      "emoji": null,
+      "variants": [
+        "/shared/stimuli/img/T_kitchen_items/blender--alt1.svg"
+      ]
+    },
+    {
+      "id": "kitchen-items-bowl",
+      "label": "Bowl",
+      "categories": [
+        "T_kitchen_items"
+      ],
+      "image": "/shared/stimuli/img/T_kitchen_items/bowl.jpg",
+      "emoji": "🥣",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "kitchen-items-chopsticks",
+      "label": "Chopsticks",
+      "categories": [
+        "T_kitchen_items"
+      ],
+      "image": "/shared/stimuli/img/T_kitchen_items/chopsticks.webp",
+      "emoji": "🥢",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "kitchen-items-coffee-mug",
+      "label": "Coffee Mug",
+      "categories": [
+        "T_kitchen_items"
+      ],
+      "image": "/shared/stimuli/img/T_kitchen_items/coffee-mug.webp",
+      "emoji": "☕",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "kitchen-items-cup",
+      "label": "Cup",
+      "categories": [
+        "T_kitchen_items"
+      ],
+      "image": "/shared/stimuli/img/T_kitchen_items/cup.jpg",
+      "emoji": "🥤",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "kitchen-items-fork",
+      "label": "Fork",
+      "categories": [
+        "T_kitchen_items"
+      ],
+      "image": "/shared/stimuli/img/T_kitchen_items/fork.jpg",
+      "emoji": "🍴",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "kitchen-items-frying-pan",
+      "label": "Frying Pan",
+      "categories": [
+        "T_kitchen_items"
+      ],
+      "image": "/shared/stimuli/img/T_kitchen_items/frying-pan.jpg",
+      "emoji": "🍳",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "kitchen-items-kettle",
+      "label": "Kettle",
+      "categories": [
+        "T_kitchen_items"
+      ],
+      "image": "/shared/stimuli/img/T_kitchen_items/kettle.jpg",
+      "emoji": "🫖",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "kitchen-items-knife",
+      "label": "Knife",
+      "categories": [
+        "T_kitchen_items"
+      ],
+      "image": "/shared/stimuli/img/T_kitchen_items/knife.jpg",
+      "emoji": "🔪",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "kitchen-items-microwave",
+      "label": "Microwave",
+      "categories": [
+        "T_kitchen_items"
+      ],
+      "image": "/shared/stimuli/img/T_kitchen_items/microwave.jpg",
+      "emoji": null,
+      "variants": [
+        "/shared/stimuli/img/T_kitchen_items/microwave--alt1.svg"
+      ]
+    },
+    {
+      "id": "kitchen-items-milk-glass",
+      "label": "Milk Glass",
+      "categories": [
+        "T_kitchen_items"
+      ],
+      "image": null,
+      "emoji": "🥛",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "kitchen-items-napkin",
+      "label": "Napkin",
+      "categories": [
+        "T_kitchen_items"
+      ],
+      "image": "/shared/stimuli/img/T_kitchen_items/napkin.jpg",
+      "emoji": null
+    },
+    {
+      "id": "kitchen-items-oven",
+      "label": "Oven",
+      "categories": [
+        "T_kitchen_items"
+      ],
+      "image": "/shared/stimuli/img/T_kitchen_items/oven.webp",
+      "emoji": null,
+      "variants": [
+        "/shared/stimuli/img/T_kitchen_items/oven--alt1.svg"
+      ]
+    },
+    {
+      "id": "kitchen-items-plate",
+      "label": "Plate",
+      "categories": [
+        "T_kitchen_items"
+      ],
+      "image": "/shared/stimuli/img/T_kitchen_items/plate.jpg",
+      "emoji": "🍽️",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "kitchen-items-pot",
+      "label": "Pot",
+      "categories": [
+        "T_kitchen_items"
+      ],
+      "image": "/shared/stimuli/img/T_kitchen_items/pot.jpg",
+      "emoji": "🍲",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "kitchen-items-refrigerator",
+      "label": "Refrigerator",
+      "categories": [
+        "T_kitchen_items"
+      ],
+      "image": "/shared/stimuli/img/T_kitchen_items/refrigerator.webp",
+      "emoji": null,
+      "variants": [
+        "/shared/stimuli/img/T_kitchen_items/refrigerator--alt1.svg"
+      ]
+    },
+    {
+      "id": "kitchen-items-salt",
+      "label": "Salt",
+      "categories": [
+        "T_kitchen_items"
+      ],
+      "image": "/shared/stimuli/img/T_kitchen_items/salt.jpg",
+      "emoji": "🧂",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "kitchen-items-spoon",
+      "label": "Spoon",
+      "categories": [
+        "T_kitchen_items"
+      ],
+      "image": "/shared/stimuli/img/T_kitchen_items/spoon.jpg",
+      "emoji": "🥄",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "kitchen-items-teacup",
+      "label": "Teacup",
+      "categories": [
+        "T_kitchen_items"
+      ],
+      "image": "/shared/stimuli/img/T_kitchen_items/teacup.jpg",
+      "emoji": "🍵",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "kitchen-items-toaster",
+      "label": "Toaster",
+      "categories": [
+        "T_kitchen_items"
+      ],
+      "image": "/shared/stimuli/img/T_kitchen_items/toaster.webp",
+      "emoji": null,
+      "variants": [
+        "/shared/stimuli/img/T_kitchen_items/toaster--alt1.svg"
+      ]
+    },
+    {
+      "id": "kitchen-items-wine-glass",
+      "label": "Wine Glass",
+      "categories": [
+        "T_kitchen_items"
+      ],
+      "image": null,
+      "emoji": "🍷",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "lowercase-a",
+      "label": "a",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "a",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-b",
+      "label": "b",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "b",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-c",
+      "label": "c",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "c",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-d",
+      "label": "d",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "d",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-e",
+      "label": "e",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "e",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-f",
+      "label": "f",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "f",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-g",
+      "label": "g",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "g",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-h",
+      "label": "h",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "h",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-i",
+      "label": "i",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "i",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-j",
+      "label": "j",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "j",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-k",
+      "label": "k",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "k",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-l",
+      "label": "l",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "l",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-m",
+      "label": "m",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "m",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-n",
+      "label": "n",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "n",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-o",
+      "label": "o",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "o",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-p",
+      "label": "p",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "p",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-q",
+      "label": "q",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "q",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-r",
+      "label": "r",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "r",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-s",
+      "label": "s",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "s",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-t",
+      "label": "t",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "t",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-u",
+      "label": "u",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "u",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-v",
+      "label": "v",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "v",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-w",
+      "label": "w",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "w",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-x",
+      "label": "x",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "x",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-y",
+      "label": "y",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "y",
+      "glyphKind": "text"
+    },
+    {
+      "id": "lowercase-z",
+      "label": "z",
+      "categories": [
+        "T_lowercase"
+      ],
+      "image": null,
+      "emoji": "z",
+      "glyphKind": "text"
+    },
+    {
+      "id": "numbers-1",
+      "label": "1",
+      "categories": [
+        "T_numbers"
+      ],
+      "image": null,
+      "emoji": "1",
+      "glyphKind": "text"
+    },
+    {
+      "id": "numbers-10",
+      "label": "10",
+      "categories": [
+        "T_numbers"
+      ],
+      "image": null,
+      "emoji": "10",
+      "glyphKind": "text"
+    },
+    {
+      "id": "numbers-11",
+      "label": "11",
+      "categories": [
+        "T_numbers"
+      ],
+      "image": null,
+      "emoji": "11",
+      "glyphKind": "text"
+    },
+    {
+      "id": "numbers-12",
+      "label": "12",
+      "categories": [
+        "T_numbers"
+      ],
+      "image": null,
+      "emoji": "12",
+      "glyphKind": "text"
+    },
+    {
+      "id": "numbers-13",
+      "label": "13",
+      "categories": [
+        "T_numbers"
+      ],
+      "image": null,
+      "emoji": "13",
+      "glyphKind": "text"
+    },
+    {
+      "id": "numbers-14",
+      "label": "14",
+      "categories": [
+        "T_numbers"
+      ],
+      "image": null,
+      "emoji": "14",
+      "glyphKind": "text"
+    },
+    {
+      "id": "numbers-15",
+      "label": "15",
+      "categories": [
+        "T_numbers"
+      ],
+      "image": null,
+      "emoji": "15",
+      "glyphKind": "text"
+    },
+    {
+      "id": "numbers-16",
+      "label": "16",
+      "categories": [
+        "T_numbers"
+      ],
+      "image": null,
+      "emoji": "16",
+      "glyphKind": "text"
+    },
+    {
+      "id": "numbers-17",
+      "label": "17",
+      "categories": [
+        "T_numbers"
+      ],
+      "image": null,
+      "emoji": "17",
+      "glyphKind": "text"
+    },
+    {
+      "id": "numbers-18",
+      "label": "18",
+      "categories": [
+        "T_numbers"
+      ],
+      "image": null,
+      "emoji": "18",
+      "glyphKind": "text"
+    },
+    {
+      "id": "numbers-19",
+      "label": "19",
+      "categories": [
+        "T_numbers"
+      ],
+      "image": null,
+      "emoji": "19",
+      "glyphKind": "text"
+    },
+    {
+      "id": "numbers-2",
+      "label": "2",
+      "categories": [
+        "T_numbers"
+      ],
+      "image": null,
+      "emoji": "2",
+      "glyphKind": "text"
+    },
+    {
+      "id": "numbers-20",
+      "label": "20",
+      "categories": [
+        "T_numbers"
+      ],
+      "image": null,
+      "emoji": "20",
+      "glyphKind": "text"
+    },
+    {
+      "id": "numbers-3",
+      "label": "3",
+      "categories": [
+        "T_numbers"
+      ],
+      "image": null,
+      "emoji": "3",
+      "glyphKind": "text"
+    },
+    {
+      "id": "numbers-4",
+      "label": "4",
+      "categories": [
+        "T_numbers"
+      ],
+      "image": null,
+      "emoji": "4",
+      "glyphKind": "text"
+    },
+    {
+      "id": "numbers-5",
+      "label": "5",
+      "categories": [
+        "T_numbers"
+      ],
+      "image": null,
+      "emoji": "5",
+      "glyphKind": "text"
+    },
+    {
+      "id": "numbers-6",
+      "label": "6",
+      "categories": [
+        "T_numbers"
+      ],
+      "image": null,
+      "emoji": "6",
+      "glyphKind": "text"
+    },
+    {
+      "id": "numbers-7",
+      "label": "7",
+      "categories": [
+        "T_numbers"
+      ],
+      "image": null,
+      "emoji": "7",
+      "glyphKind": "text"
+    },
+    {
+      "id": "numbers-8",
+      "label": "8",
+      "categories": [
+        "T_numbers"
+      ],
+      "image": null,
+      "emoji": "8",
+      "glyphKind": "text"
+    },
+    {
+      "id": "numbers-9",
+      "label": "9",
+      "categories": [
+        "T_numbers"
+      ],
+      "image": null,
+      "emoji": "9",
+      "glyphKind": "text"
+    },
+    {
+      "id": "pbs-characters-pbs1",
+      "label": "Pbs1",
+      "categories": [
+        "T_pbs_characters"
+      ],
+      "image": "/shared/stimuli/img/T_pbs_characters/pbs1.png",
+      "emoji": null
+    },
+    {
+      "id": "pbs-characters-pbs10",
+      "label": "Pbs10",
+      "categories": [
+        "T_pbs_characters"
+      ],
+      "image": "/shared/stimuli/img/T_pbs_characters/pbs10.png",
+      "emoji": null
+    },
+    {
+      "id": "pbs-characters-pbs11",
+      "label": "Pbs11",
+      "categories": [
+        "T_pbs_characters"
+      ],
+      "image": "/shared/stimuli/img/T_pbs_characters/pbs11.png",
+      "emoji": null
+    },
+    {
+      "id": "pbs-characters-pbs12",
+      "label": "Pbs12",
+      "categories": [
+        "T_pbs_characters"
+      ],
+      "image": "/shared/stimuli/img/T_pbs_characters/pbs12.png",
+      "emoji": null
+    },
+    {
+      "id": "pbs-characters-pbs13",
+      "label": "Pbs13",
+      "categories": [
+        "T_pbs_characters"
+      ],
+      "image": "/shared/stimuli/img/T_pbs_characters/pbs13.png",
+      "emoji": null
+    },
+    {
+      "id": "pbs-characters-pbs14",
+      "label": "Pbs14",
+      "categories": [
+        "T_pbs_characters"
+      ],
+      "image": "/shared/stimuli/img/T_pbs_characters/pbs14.png",
+      "emoji": null
+    },
+    {
+      "id": "pbs-characters-pbs2",
+      "label": "Pbs2",
+      "categories": [
+        "T_pbs_characters"
+      ],
+      "image": "/shared/stimuli/img/T_pbs_characters/pbs2.png",
+      "emoji": null
+    },
+    {
+      "id": "pbs-characters-pbs3",
+      "label": "Pbs3",
+      "categories": [
+        "T_pbs_characters"
+      ],
+      "image": "/shared/stimuli/img/T_pbs_characters/pbs3.png",
+      "emoji": null
+    },
+    {
+      "id": "pbs-characters-pbs4",
+      "label": "Pbs4",
+      "categories": [
+        "T_pbs_characters"
+      ],
+      "image": "/shared/stimuli/img/T_pbs_characters/pbs4.png",
+      "emoji": null
+    },
+    {
+      "id": "pbs-characters-pbs5",
+      "label": "Pbs5",
+      "categories": [
+        "T_pbs_characters"
+      ],
+      "image": "/shared/stimuli/img/T_pbs_characters/pbs5.png",
+      "emoji": null
+    },
+    {
+      "id": "pbs-characters-pbs6",
+      "label": "Pbs6",
+      "categories": [
+        "T_pbs_characters"
+      ],
+      "image": "/shared/stimuli/img/T_pbs_characters/pbs6.png",
+      "emoji": null
+    },
+    {
+      "id": "pbs-characters-pbs7",
+      "label": "Pbs7",
+      "categories": [
+        "T_pbs_characters"
+      ],
+      "image": "/shared/stimuli/img/T_pbs_characters/pbs7.png",
+      "emoji": null
+    },
+    {
+      "id": "pbs-characters-pbs8",
+      "label": "Pbs8",
+      "categories": [
+        "T_pbs_characters"
+      ],
+      "image": "/shared/stimuli/img/T_pbs_characters/pbs8.png",
+      "emoji": null
+    },
+    {
+      "id": "pbs-characters-pbs9",
+      "label": "Pbs9",
+      "categories": [
+        "T_pbs_characters"
+      ],
+      "image": "/shared/stimuli/img/T_pbs_characters/pbs9.png",
+      "emoji": null
+    },
+    {
+      "id": "prepositions-above",
+      "label": "above",
+      "categories": [
+        "T_prepositions"
+      ],
+      "image": "/shared/stimuli/img/T_prepositions/above.png",
+      "emoji": null,
+      "variants": [
+        "/shared/stimuli/img/T_prepositions/above--alt1.svg"
+      ]
+    },
+    {
+      "id": "prepositions-behind",
+      "label": "Behind",
+      "categories": [
+        "T_prepositions"
+      ],
+      "image": "/shared/stimuli/img/T_prepositions/behind.png",
+      "emoji": null,
+      "variants": [
+        "/shared/stimuli/img/T_prepositions/behind--alt1.svg"
+      ]
+    },
+    {
+      "id": "prepositions-below",
+      "label": "Below",
+      "categories": [
+        "T_prepositions"
+      ],
+      "image": "/shared/stimuli/img/T_prepositions/below.png",
+      "emoji": null,
+      "variants": [
+        "/shared/stimuli/img/T_prepositions/below--alt1.svg"
+      ]
+    },
+    {
+      "id": "prepositions-far",
+      "label": "Far",
+      "categories": [
+        "T_prepositions"
+      ],
+      "image": "/shared/stimuli/img/T_prepositions/far.svg",
+      "emoji": null
+    },
+    {
+      "id": "prepositions-in",
+      "label": "In",
+      "categories": [
+        "T_prepositions"
+      ],
+      "image": "/shared/stimuli/img/T_prepositions/in.png",
+      "emoji": null,
+      "variants": [
+        "/shared/stimuli/img/T_prepositions/in--alt1.svg"
+      ]
+    },
+    {
+      "id": "prepositions-in-front-of",
+      "label": "In Front Of",
+      "categories": [
+        "T_prepositions"
+      ],
+      "image": "/shared/stimuli/img/T_prepositions/in-front-of.png",
+      "emoji": null,
+      "variants": [
+        "/shared/stimuli/img/T_prepositions/in-front-of--alt1.svg"
+      ]
+    },
+    {
+      "id": "prepositions-left-of",
+      "label": "Left Of",
+      "categories": [
+        "T_prepositions"
+      ],
+      "image": "/shared/stimuli/img/T_prepositions/left-of.svg",
+      "emoji": null
+    },
+    {
+      "id": "prepositions-near",
+      "label": "Near",
+      "categories": [
+        "T_prepositions"
+      ],
+      "image": "/shared/stimuli/img/T_prepositions/near.svg",
+      "emoji": null
+    },
+    {
+      "id": "prepositions-next-to",
+      "label": "Next To",
+      "categories": [
+        "T_prepositions"
+      ],
+      "image": "/shared/stimuli/img/T_prepositions/next-to.png",
+      "emoji": null,
+      "variants": [
+        "/shared/stimuli/img/T_prepositions/next-to--alt1.svg"
+      ]
+    },
+    {
+      "id": "prepositions-on",
+      "label": "On",
+      "categories": [
+        "T_prepositions"
+      ],
+      "image": "/shared/stimuli/img/T_prepositions/on.svg",
+      "emoji": null
+    },
+    {
+      "id": "prepositions-right-of",
+      "label": "Right Of",
+      "categories": [
+        "T_prepositions"
+      ],
+      "image": "/shared/stimuli/img/T_prepositions/right-of.svg",
+      "emoji": null
+    },
+    {
+      "id": "prepositions-under",
+      "label": "Under",
+      "categories": [
+        "T_prepositions"
+      ],
+      "image": "/shared/stimuli/img/T_prepositions/under.svg",
+      "emoji": null
+    },
+    {
+      "id": "shapes-circle",
+      "label": "Circle",
+      "categories": [
+        "T_shapes"
+      ],
+      "image": "/shared/stimuli/img/T_shapes/circle.svg",
+      "emoji": null
+    },
+    {
+      "id": "shapes-diamond",
+      "label": "Diamond",
+      "categories": [
+        "T_shapes"
+      ],
+      "image": "/shared/stimuli/img/T_shapes/diamond.svg",
+      "emoji": null
+    },
+    {
+      "id": "shapes-heart",
+      "label": "Heart",
+      "categories": [
+        "T_shapes"
+      ],
+      "image": "/shared/stimuli/img/T_shapes/heart.svg",
+      "emoji": null
+    },
+    {
+      "id": "shapes-hexagon",
+      "label": "Hexagon",
+      "categories": [
+        "T_shapes"
+      ],
+      "image": "/shared/stimuli/img/T_shapes/hexagon.svg",
+      "emoji": null
+    },
+    {
+      "id": "shapes-oval",
+      "label": "Oval",
+      "categories": [
+        "T_shapes"
+      ],
+      "image": "/shared/stimuli/img/T_shapes/oval.svg",
+      "emoji": null
+    },
+    {
+      "id": "shapes-pentagon",
+      "label": "Pentagon",
+      "categories": [
+        "T_shapes"
+      ],
+      "image": "/shared/stimuli/img/T_shapes/pentagon.svg",
+      "emoji": null
+    },
+    {
+      "id": "shapes-rectangle",
+      "label": "Rectangle",
+      "categories": [
+        "T_shapes"
+      ],
+      "image": "/shared/stimuli/img/T_shapes/rectangle.svg",
+      "emoji": null
+    },
+    {
+      "id": "shapes-square",
+      "label": "Square",
+      "categories": [
+        "T_shapes"
+      ],
+      "image": "/shared/stimuli/img/T_shapes/square.svg",
+      "emoji": null
+    },
+    {
+      "id": "shapes-star",
+      "label": "Star",
+      "categories": [
+        "T_shapes"
+      ],
+      "image": "/shared/stimuli/img/T_shapes/star.svg",
+      "emoji": null
+    },
+    {
+      "id": "shapes-triangle",
+      "label": "Triangle",
+      "categories": [
+        "T_shapes"
+      ],
+      "image": "/shared/stimuli/img/T_shapes/triangle.svg",
+      "emoji": null
+    },
+    {
+      "id": "toys-balloon",
+      "label": "Balloon",
+      "categories": [
+        "T_toys"
+      ],
+      "image": null,
+      "emoji": "🎈",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "toys-blocks",
+      "label": "Blocks",
+      "categories": [
+        "T_toys"
+      ],
+      "image": null,
+      "emoji": "🧱",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "toys-kite",
+      "label": "Kite",
+      "categories": [
+        "T_toys"
+      ],
+      "image": null,
+      "emoji": "🪁",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "toys-puzzle",
+      "label": "Puzzle",
+      "categories": [
+        "T_toys"
+      ],
+      "image": null,
+      "emoji": "🧩",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "toys-robot",
+      "label": "Robot",
+      "categories": [
+        "T_toys"
+      ],
+      "image": null,
+      "emoji": "🤖",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "toys-soccer-ball",
+      "label": "Soccer Ball",
+      "categories": [
+        "T_toys"
+      ],
+      "image": null,
+      "emoji": "⚽",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "toys-teddy-bear",
+      "label": "Teddy Bear",
+      "categories": [
+        "T_toys"
+      ],
+      "image": null,
+      "emoji": "🧸",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "toys-toy-car",
+      "label": "Toy Car",
+      "categories": [
+        "T_toys"
+      ],
+      "image": null,
+      "emoji": "🚗",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "toys-train",
+      "label": "Train",
+      "categories": [
+        "T_toys"
+      ],
+      "image": null,
+      "emoji": "🚂",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "toys-yoyo",
+      "label": "Yoyo",
+      "categories": [
+        "T_toys"
+      ],
+      "image": null,
+      "emoji": "🪀",
+      "glyphKind": "emoji"
+    },
+    {
+      "id": "uppercase-a",
+      "label": "A",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "A",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-b",
+      "label": "B",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "B",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-c",
+      "label": "C",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "C",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-d",
+      "label": "D",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "D",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-e",
+      "label": "E",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "E",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-f",
+      "label": "F",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "F",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-g",
+      "label": "G",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "G",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-h",
+      "label": "H",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "H",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-i",
+      "label": "I",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "I",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-j",
+      "label": "J",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "J",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-k",
+      "label": "K",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "K",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-l",
+      "label": "L",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "L",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-m",
+      "label": "M",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "M",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-n",
+      "label": "N",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "N",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-o",
+      "label": "O",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "O",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-p",
+      "label": "P",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "P",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-q",
+      "label": "Q",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "Q",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-r",
+      "label": "R",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "R",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-s",
+      "label": "S",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "S",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-t",
+      "label": "T",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "T",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-u",
+      "label": "U",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "U",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-v",
+      "label": "V",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "V",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-w",
+      "label": "W",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "W",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-x",
+      "label": "X",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "X",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-y",
+      "label": "Y",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "Y",
+      "glyphKind": "text"
+    },
+    {
+      "id": "uppercase-z",
+      "label": "Z",
+      "categories": [
+        "T_uppercase"
+      ],
+      "image": null,
+      "emoji": "Z",
+      "glyphKind": "text"
+    }
+  ]
+}

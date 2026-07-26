@@ -1,0 +1,3165 @@
+{
+  "/receptive/_Resources/_imgSource/T_actions/clapping.png": {
+    "stimulus": "actions-clapping",
+    "md5": "f0659f9aa75f721e41a8608bcee29484",
+    "library": "/shared/stimuli/img/T_actions/clapping.png"
+  },
+  "/clock/_Resources/_imgSource/T_actions/clapping.png": {
+    "stimulus": "actions-clapping",
+    "md5": "f0659f9aa75f721e41a8608bcee29484",
+    "library": "/shared/stimuli/img/T_actions/clapping.png"
+  },
+  "/receptive/_Resources/_imgSource/T_actions/crying.jpg": {
+    "stimulus": "actions-crying",
+    "md5": "52d1bd435cd67ec005ea815c2afaf7c6",
+    "library": "/shared/stimuli/img/T_actions/crying.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_actions/crying.jpg": {
+    "stimulus": "actions-crying",
+    "md5": "52d1bd435cd67ec005ea815c2afaf7c6",
+    "library": "/shared/stimuli/img/T_actions/crying.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_actions/drinking.png": {
+    "stimulus": "actions-drinking",
+    "md5": "ddaac401e03ca8e21a0ec1c9f79c5ced",
+    "library": "/shared/stimuli/img/T_actions/drinking.png"
+  },
+  "/clock/_Resources/_imgSource/T_actions/drinking.png": {
+    "stimulus": "actions-drinking",
+    "md5": "ddaac401e03ca8e21a0ec1c9f79c5ced",
+    "library": "/shared/stimuli/img/T_actions/drinking.png"
+  },
+  "/receptive/_Resources/_imgSource/T_actions/eating.png": {
+    "stimulus": "actions-eating",
+    "md5": "e2c65f546753a7260e92c58d31013c9d",
+    "library": "/shared/stimuli/img/T_actions/eating.png"
+  },
+  "/clock/_Resources/_imgSource/T_actions/eating.png": {
+    "stimulus": "actions-eating",
+    "md5": "e2c65f546753a7260e92c58d31013c9d",
+    "library": "/shared/stimuli/img/T_actions/eating.png"
+  },
+  "/receptive/_Resources/_imgSource/T_actions/hugging.png": {
+    "stimulus": "actions-hugging",
+    "md5": "afecb8da1e1ef565289fc0f0f1ab7330",
+    "library": "/shared/stimuli/img/T_actions/hugging.png"
+  },
+  "/clock/_Resources/_imgSource/T_actions/hugging.png": {
+    "stimulus": "actions-hugging",
+    "md5": "afecb8da1e1ef565289fc0f0f1ab7330",
+    "library": "/shared/stimuli/img/T_actions/hugging.png"
+  },
+  "/receptive/_Resources/_imgSource/T_actions/jumping.jpg": {
+    "stimulus": "actions-jumping",
+    "md5": "9cde8c297d0aa8ca39bc413296c58b65",
+    "library": "/shared/stimuli/img/T_actions/jumping.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_actions/jumping.jpg": {
+    "stimulus": "actions-jumping",
+    "md5": "9cde8c297d0aa8ca39bc413296c58b65",
+    "library": "/shared/stimuli/img/T_actions/jumping.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_actions/kicking.jpg": {
+    "stimulus": "actions-kicking",
+    "md5": "aa0fd417cde581421eb56bd462588227",
+    "library": "/shared/stimuli/img/T_actions/kicking.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_actions/kicking.jpg": {
+    "stimulus": "actions-kicking",
+    "md5": "aa0fd417cde581421eb56bd462588227",
+    "library": "/shared/stimuli/img/T_actions/kicking.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_actions/laughing.jpg": {
+    "stimulus": "actions-laughing",
+    "md5": "52baecc030f15298764f27b03b8a9102",
+    "library": "/shared/stimuli/img/T_actions/laughing.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_actions/laughing.jpg": {
+    "stimulus": "actions-laughing",
+    "md5": "52baecc030f15298764f27b03b8a9102",
+    "library": "/shared/stimuli/img/T_actions/laughing.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_actions/reading.png": {
+    "stimulus": "actions-reading",
+    "md5": "f73d348146273222983d9e5486f57143",
+    "library": "/shared/stimuli/img/T_actions/reading.png"
+  },
+  "/clock/_Resources/_imgSource/T_actions/reading.png": {
+    "stimulus": "actions-reading",
+    "md5": "f73d348146273222983d9e5486f57143",
+    "library": "/shared/stimuli/img/T_actions/reading.png"
+  },
+  "/receptive/_Resources/_imgSource/T_actions/sleeping.png": {
+    "stimulus": "actions-sleeping",
+    "md5": "79d6dd9baa2f9b61c3910e4881c8af92",
+    "library": "/shared/stimuli/img/T_actions/sleeping.png"
+  },
+  "/clock/_Resources/_imgSource/T_actions/sleeping.png": {
+    "stimulus": "actions-sleeping",
+    "md5": "79d6dd9baa2f9b61c3910e4881c8af92",
+    "library": "/shared/stimuli/img/T_actions/sleeping.png"
+  },
+  "/receptive/_Resources/_imgSource/T_actions/swimming.png": {
+    "stimulus": "actions-swimming",
+    "md5": "2ad8387c116688cdadb3fe0a452d7aab",
+    "library": "/shared/stimuli/img/T_actions/swimming.png"
+  },
+  "/clock/_Resources/_imgSource/T_actions/swimming.png": {
+    "stimulus": "actions-swimming",
+    "md5": "2ad8387c116688cdadb3fe0a452d7aab",
+    "library": "/shared/stimuli/img/T_actions/swimming.png"
+  },
+  "/receptive/_Resources/_imgSource/T_actions/throwing.jpg": {
+    "stimulus": "actions-throwing",
+    "md5": "1352e8d859f1e956acad11f668f7bac2",
+    "library": "/shared/stimuli/img/T_actions/throwing.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_actions/throwing.jpg": {
+    "stimulus": "actions-throwing",
+    "md5": "1352e8d859f1e956acad11f668f7bac2",
+    "library": "/shared/stimuli/img/T_actions/throwing.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_actions/walking.png": {
+    "stimulus": "actions-walking",
+    "md5": "8918a34220c6d1952dd2e2c22ff024c0",
+    "library": "/shared/stimuli/img/T_actions/walking.png"
+  },
+  "/clock/_Resources/_imgSource/T_actions/walking.png": {
+    "stimulus": "actions-walking",
+    "md5": "8918a34220c6d1952dd2e2c22ff024c0",
+    "library": "/shared/stimuli/img/T_actions/walking.png"
+  },
+  "/receptive/_Resources/_imgSource/T_actions/writing.jpg": {
+    "stimulus": "actions-writing",
+    "md5": "41cec16915128561e42c416ab7db6a31",
+    "library": "/shared/stimuli/img/T_actions/writing.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_actions/writing.jpg": {
+    "stimulus": "actions-writing",
+    "md5": "41cec16915128561e42c416ab7db6a31",
+    "library": "/shared/stimuli/img/T_actions/writing.jpg"
+  },
+  "/matching/_Resources/_imgSource/T_animals/bear.jpg": {
+    "stimulus": "animals-bear",
+    "md5": "3e1ad18759852c5acf2af9c723e47b60",
+    "library": "/shared/stimuli/img/T_animals/bear.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_animals/bear.jpg": {
+    "stimulus": "animals-bear",
+    "md5": "e0efe743b01eb751c45f4715b0213fbf",
+    "library": "/shared/stimuli/img/T_animals/bear--alt1.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_animals/bear.jpg": {
+    "stimulus": "animals-bear",
+    "md5": "e0efe743b01eb751c45f4715b0213fbf",
+    "library": "/shared/stimuli/img/T_animals/bear--alt1.jpg"
+  },
+  "/matching/_Resources/_imgSource/T_animals/bear.svg": {
+    "stimulus": "animals-bear",
+    "md5": "3e1ad18759852c5acf2af9c723e47b60",
+    "library": "/shared/stimuli/img/T_animals/bear.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_animals/bear.svg": {
+    "stimulus": "animals-bear",
+    "md5": "339fbef08d4cb7560d5c346c5963bbfd",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_animals/bear.svg": {
+    "stimulus": "animals-bear",
+    "md5": "339fbef08d4cb7560d5c346c5963bbfd",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_animals/bird.jpg": {
+    "stimulus": "animals-bird",
+    "md5": "8c9fdf12441ce1e5ccef425db5ef020e",
+    "library": "/shared/stimuli/img/T_animals/bird.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_animals/bird.jpg": {
+    "stimulus": "animals-bird",
+    "md5": "917c791c28f0bdf5c46208cd1ceae234",
+    "library": "/shared/stimuli/img/T_animals/bird--alt1.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_animals/bird.jpg": {
+    "stimulus": "animals-bird",
+    "md5": "917c791c28f0bdf5c46208cd1ceae234",
+    "library": "/shared/stimuli/img/T_animals/bird--alt1.jpg"
+  },
+  "/matching/_Resources/_imgSource/T_animals/bird.svg": {
+    "stimulus": "animals-bird",
+    "md5": "917c791c28f0bdf5c46208cd1ceae234",
+    "library": "/shared/stimuli/img/T_animals/bird--alt1.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_animals/bird.svg": {
+    "stimulus": "animals-bird",
+    "md5": "e06c390cf3e887c2b8fe24cb8d8c1bc1",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_animals/bird.svg": {
+    "stimulus": "animals-bird",
+    "md5": "e06c390cf3e887c2b8fe24cb8d8c1bc1",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_animals/butterfly.jpg": {
+    "stimulus": "animals-butterfly",
+    "md5": "5faf9d4bf0382213e1bab697f318c82a",
+    "library": "/shared/stimuli/img/T_animals/butterfly.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_animals/butterfly.jpg": {
+    "stimulus": "animals-butterfly",
+    "md5": "1b3008b24cd55aa0cd3447c238b40ae8",
+    "library": "/shared/stimuli/img/T_animals/butterfly--alt1.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_animals/butterfly.jpg": {
+    "stimulus": "animals-butterfly",
+    "md5": "1b3008b24cd55aa0cd3447c238b40ae8",
+    "library": "/shared/stimuli/img/T_animals/butterfly--alt1.jpg"
+  },
+  "/matching/_Resources/_imgSource/T_animals/butterfly.svg": {
+    "stimulus": "animals-butterfly",
+    "md5": "5faf9d4bf0382213e1bab697f318c82a",
+    "library": "/shared/stimuli/img/T_animals/butterfly.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_animals/butterfly.svg": {
+    "stimulus": "animals-butterfly",
+    "md5": "b4c1c6b04af1b39abea056aa6e4e04d8",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_animals/butterfly.svg": {
+    "stimulus": "animals-butterfly",
+    "md5": "b4c1c6b04af1b39abea056aa6e4e04d8",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_animals/cat.jpg": {
+    "stimulus": "animals-cat",
+    "md5": "bd3621523dfe8fe653ba09ce70948218",
+    "library": "/shared/stimuli/img/T_animals/cat.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_animals/cat.jpg": {
+    "stimulus": "animals-cat",
+    "md5": "9733a7706487641bbdd41f7a9ce66cda",
+    "library": "/shared/stimuli/img/T_animals/cat--alt1.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_animals/cat.jpg": {
+    "stimulus": "animals-cat",
+    "md5": "9733a7706487641bbdd41f7a9ce66cda",
+    "library": "/shared/stimuli/img/T_animals/cat--alt1.jpg"
+  },
+  "/matching/_Resources/_imgSource/T_animals/cat.svg": {
+    "stimulus": "animals-cat",
+    "md5": "5ab6ae7d250e3a80d4dd650597048d4f",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_animals/cat.svg": {
+    "stimulus": "animals-cat",
+    "md5": "5ab6ae7d250e3a80d4dd650597048d4f",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_animals/cat.svg": {
+    "stimulus": "animals-cat",
+    "md5": "5ab6ae7d250e3a80d4dd650597048d4f",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_animals/dog.jpg": {
+    "stimulus": "animals-dog",
+    "md5": "d65a4215e8aad0b9e2eccb2f00fafe2b",
+    "library": "/shared/stimuli/img/T_animals/dog.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_animals/dog.jpg": {
+    "stimulus": "animals-dog",
+    "md5": "0c23146505848f4a552a549d10402456",
+    "library": "/shared/stimuli/img/T_animals/dog--alt1.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_animals/dog.jpg": {
+    "stimulus": "animals-dog",
+    "md5": "0c23146505848f4a552a549d10402456",
+    "library": "/shared/stimuli/img/T_animals/dog--alt1.jpg"
+  },
+  "/matching/_Resources/_imgSource/T_animals/dog.svg": {
+    "stimulus": "animals-dog",
+    "md5": "4d55e9b82d21f490d9af1fe6b7128e01",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_animals/dog.svg": {
+    "stimulus": "animals-dog",
+    "md5": "4d55e9b82d21f490d9af1fe6b7128e01",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_animals/dog.svg": {
+    "stimulus": "animals-dog",
+    "md5": "4d55e9b82d21f490d9af1fe6b7128e01",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_animals/elephant.jpg": {
+    "stimulus": "animals-elephant",
+    "md5": "44557f488eceebb8c8615e0c66ccc3f7",
+    "library": "/shared/stimuli/img/T_animals/elephant.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_animals/elephant.jpg": {
+    "stimulus": "animals-elephant",
+    "md5": "93043fd8fe5e72e5df4c4ad92df64c80",
+    "library": "/shared/stimuli/img/T_animals/elephant--alt1.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_animals/elephant.jpg": {
+    "stimulus": "animals-elephant",
+    "md5": "93043fd8fe5e72e5df4c4ad92df64c80",
+    "library": "/shared/stimuli/img/T_animals/elephant--alt1.jpg"
+  },
+  "/matching/_Resources/_imgSource/T_animals/elephant.svg": {
+    "stimulus": "animals-elephant",
+    "md5": "9e2b32d0697279842b53a0d06875e49b",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_animals/elephant.svg": {
+    "stimulus": "animals-elephant",
+    "md5": "9e2b32d0697279842b53a0d06875e49b",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_animals/elephant.svg": {
+    "stimulus": "animals-elephant",
+    "md5": "9e2b32d0697279842b53a0d06875e49b",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_animals/fish.jpg": {
+    "stimulus": "animals-fish",
+    "md5": "4be35f272f834b0de0e8ce2ffdc1c8e5",
+    "library": "/shared/stimuli/img/T_animals/fish.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_animals/fish.jpg": {
+    "stimulus": "animals-fish",
+    "md5": "e11d6db59db140885eb5200a6d253ce6",
+    "library": "/shared/stimuli/img/T_animals/fish--alt1.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_animals/fish.jpg": {
+    "stimulus": "animals-fish",
+    "md5": "e11d6db59db140885eb5200a6d253ce6",
+    "library": "/shared/stimuli/img/T_animals/fish--alt1.jpg"
+  },
+  "/matching/_Resources/_imgSource/T_animals/fish.svg": {
+    "stimulus": "animals-fish",
+    "md5": "c6a6a2007ea4474de0df831d4b87a01a",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_animals/fish.svg": {
+    "stimulus": "animals-fish",
+    "md5": "c6a6a2007ea4474de0df831d4b87a01a",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_animals/fish.svg": {
+    "stimulus": "animals-fish",
+    "md5": "c6a6a2007ea4474de0df831d4b87a01a",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_animals/frog.jpg": {
+    "stimulus": "animals-frog",
+    "md5": "8be092250dbab6ca27beae3a2dbec89b",
+    "library": "/shared/stimuli/img/T_animals/frog.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_animals/frog.jpg": {
+    "stimulus": "animals-frog",
+    "md5": "172273ce28a044ae6b6e46ee41cd7bf1",
+    "library": "/shared/stimuli/img/T_animals/frog--alt1.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_animals/frog.jpg": {
+    "stimulus": "animals-frog",
+    "md5": "172273ce28a044ae6b6e46ee41cd7bf1",
+    "library": "/shared/stimuli/img/T_animals/frog--alt1.jpg"
+  },
+  "/matching/_Resources/_imgSource/T_animals/frog.svg": {
+    "stimulus": "animals-frog",
+    "md5": "c2b6ef42a02e71d6c9cdc3b7128e8723",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_animals/frog.svg": {
+    "stimulus": "animals-frog",
+    "md5": "c2b6ef42a02e71d6c9cdc3b7128e8723",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_animals/frog.svg": {
+    "stimulus": "animals-frog",
+    "md5": "c2b6ef42a02e71d6c9cdc3b7128e8723",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_animals/lion.jpg": {
+    "stimulus": "animals-lion",
+    "md5": "4fa51f70d66b7e33e6c5888cdb171bf4",
+    "library": "/shared/stimuli/img/T_animals/lion.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_animals/lion.jpg": {
+    "stimulus": "animals-lion",
+    "md5": "ce6042ce500b7d39527c7941826ed589",
+    "library": "/shared/stimuli/img/T_animals/lion--alt1.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_animals/lion.jpg": {
+    "stimulus": "animals-lion",
+    "md5": "ce6042ce500b7d39527c7941826ed589",
+    "library": "/shared/stimuli/img/T_animals/lion--alt1.jpg"
+  },
+  "/matching/_Resources/_imgSource/T_animals/lion.svg": {
+    "stimulus": "animals-lion",
+    "md5": "f15b6beaf78c5096e04fe9d0de56be99",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_animals/lion.svg": {
+    "stimulus": "animals-lion",
+    "md5": "f15b6beaf78c5096e04fe9d0de56be99",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_animals/lion.svg": {
+    "stimulus": "animals-lion",
+    "md5": "f15b6beaf78c5096e04fe9d0de56be99",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_animals/rabbit.jpg": {
+    "stimulus": "animals-rabbit",
+    "md5": "d0d5db71e8fb040afdcf46c379a65abc",
+    "library": "/shared/stimuli/img/T_animals/rabbit.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_animals/rabbit.jpg": {
+    "stimulus": "animals-rabbit",
+    "md5": "91abd2910c78497521a8a4e764c170de",
+    "library": "/shared/stimuli/img/T_animals/rabbit--alt1.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_animals/rabbit.jpg": {
+    "stimulus": "animals-rabbit",
+    "md5": "91abd2910c78497521a8a4e764c170de",
+    "library": "/shared/stimuli/img/T_animals/rabbit--alt1.jpg"
+  },
+  "/matching/_Resources/_imgSource/T_animals/rabbit.svg": {
+    "stimulus": "animals-rabbit",
+    "md5": "9fa7d6fe0ee857e7e6c02ba2aafe9e08",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_animals/rabbit.svg": {
+    "stimulus": "animals-rabbit",
+    "md5": "9fa7d6fe0ee857e7e6c02ba2aafe9e08",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_animals/rabbit.svg": {
+    "stimulus": "animals-rabbit",
+    "md5": "9fa7d6fe0ee857e7e6c02ba2aafe9e08",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_buildings/apartment.jpg": {
+    "stimulus": "buildings-apartment",
+    "md5": "3919234482b9e43531279073548bd12c",
+    "library": "/shared/stimuli/img/T_buildings/apartment.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_buildings/apartment.svg": {
+    "stimulus": "buildings-apartment",
+    "md5": "71630a74bcbbbb2de90982c3e37b25b6",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_buildings/apartment.svg": {
+    "stimulus": "buildings-apartment",
+    "md5": "71630a74bcbbbb2de90982c3e37b25b6",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_buildings/apartment.svg": {
+    "stimulus": "buildings-apartment",
+    "md5": "71630a74bcbbbb2de90982c3e37b25b6",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_buildings/bank.jpg": {
+    "stimulus": "buildings-bank",
+    "md5": "3b8256efffc9888974ace615edde7ac2",
+    "library": "/shared/stimuli/img/T_buildings/bank.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_buildings/bank.svg": {
+    "stimulus": "buildings-bank",
+    "md5": "7f132879412606d2453b2450faa23bcd",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_buildings/bank.svg": {
+    "stimulus": "buildings-bank",
+    "md5": "7f132879412606d2453b2450faa23bcd",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_buildings/bank.svg": {
+    "stimulus": "buildings-bank",
+    "md5": "7f132879412606d2453b2450faa23bcd",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_buildings/castle.jpg": {
+    "stimulus": "buildings-castle",
+    "md5": "1c1d25b361dcc418f4b12627a0b085d2",
+    "library": "/shared/stimuli/img/T_buildings/castle.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_buildings/castle.svg": {
+    "stimulus": "buildings-castle",
+    "md5": "34a8472e955ea3a09bdd936a20326a35",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_buildings/castle.svg": {
+    "stimulus": "buildings-castle",
+    "md5": "34a8472e955ea3a09bdd936a20326a35",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_buildings/castle.svg": {
+    "stimulus": "buildings-castle",
+    "md5": "34a8472e955ea3a09bdd936a20326a35",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_buildings/church.jpg": {
+    "stimulus": "buildings-church",
+    "md5": "c0604fd46c702165d9a751fb1cc21122",
+    "library": "/shared/stimuli/img/T_buildings/church.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_buildings/church.svg": {
+    "stimulus": "buildings-church",
+    "md5": "38e1ef2239f89a7defe170b005010350",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_buildings/church.svg": {
+    "stimulus": "buildings-church",
+    "md5": "38e1ef2239f89a7defe170b005010350",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_buildings/church.svg": {
+    "stimulus": "buildings-church",
+    "md5": "38e1ef2239f89a7defe170b005010350",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_buildings/factory.jpg": {
+    "stimulus": "buildings-factory",
+    "md5": "a322b54dccdd3bfc78d343b97c657cdc",
+    "library": "/shared/stimuli/img/T_buildings/factory.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_buildings/factory.svg": {
+    "stimulus": "buildings-factory",
+    "md5": "1941eed02869a99612dc786472b7335f",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_buildings/factory.svg": {
+    "stimulus": "buildings-factory",
+    "md5": "1941eed02869a99612dc786472b7335f",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_buildings/factory.svg": {
+    "stimulus": "buildings-factory",
+    "md5": "1941eed02869a99612dc786472b7335f",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_buildings/hospital.jpg": {
+    "stimulus": "buildings-hospital",
+    "md5": "acb17b0749c212ab45ffb9078f5a41be",
+    "library": "/shared/stimuli/img/T_buildings/hospital.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_buildings/hospital.svg": {
+    "stimulus": "buildings-hospital",
+    "md5": "efc8ef11203587e1c79f3fb5359ba399",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_buildings/hospital.svg": {
+    "stimulus": "buildings-hospital",
+    "md5": "efc8ef11203587e1c79f3fb5359ba399",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_buildings/hospital.svg": {
+    "stimulus": "buildings-hospital",
+    "md5": "efc8ef11203587e1c79f3fb5359ba399",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_buildings/house.jpg": {
+    "stimulus": "buildings-house",
+    "md5": "f1ef347b8a50ed5418c1e0304d53e3c2",
+    "library": "/shared/stimuli/img/T_buildings/house.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_buildings/house.svg": {
+    "stimulus": "buildings-house",
+    "md5": "c83d6b1d9eccbc52612708bd754a55ce",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_buildings/house.svg": {
+    "stimulus": "buildings-house",
+    "md5": "c83d6b1d9eccbc52612708bd754a55ce",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_buildings/house.svg": {
+    "stimulus": "buildings-house",
+    "md5": "c83d6b1d9eccbc52612708bd754a55ce",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_buildings/library.jpg": {
+    "stimulus": "buildings-library",
+    "md5": "9bdcbda404de0ca17e71a47bb35a1bf2",
+    "library": "/shared/stimuli/img/T_buildings/library.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_buildings/library.svg": {
+    "stimulus": "buildings-library",
+    "md5": "4752e454f62a682c4a4dd259e6f2013a",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_buildings/library.svg": {
+    "stimulus": "buildings-library",
+    "md5": "4752e454f62a682c4a4dd259e6f2013a",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_buildings/library.svg": {
+    "stimulus": "buildings-library",
+    "md5": "4752e454f62a682c4a4dd259e6f2013a",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_buildings/school.jpg": {
+    "stimulus": "buildings-school",
+    "md5": "f231ff0a23c351fb1a28636dbebfc659",
+    "library": "/shared/stimuli/img/T_buildings/school.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_buildings/school.svg": {
+    "stimulus": "buildings-school",
+    "md5": "616102c10f93e6f8a986d498d3ac88fe",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_buildings/school.svg": {
+    "stimulus": "buildings-school",
+    "md5": "616102c10f93e6f8a986d498d3ac88fe",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_buildings/school.svg": {
+    "stimulus": "buildings-school",
+    "md5": "616102c10f93e6f8a986d498d3ac88fe",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_buildings/store.svg": {
+    "stimulus": "buildings-store",
+    "md5": "a8067bf7ca23920646d0634f2ebee83d",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_buildings/store.svg": {
+    "stimulus": "buildings-store",
+    "md5": "a8067bf7ca23920646d0634f2ebee83d",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_colors/black.svg": {
+    "stimulus": "colors-black",
+    "md5": "4704d229201d92b293957484b15a1426",
+    "library": "/shared/stimuli/img/T_colors/black.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_colors/black.svg": {
+    "stimulus": "colors-black",
+    "md5": "4704d229201d92b293957484b15a1426",
+    "library": "/shared/stimuli/img/T_colors/black.svg"
+  },
+  "/clock/_Resources/_imgSource/T_colors/black.svg": {
+    "stimulus": "colors-black",
+    "md5": "4704d229201d92b293957484b15a1426",
+    "library": "/shared/stimuli/img/T_colors/black.svg"
+  },
+  "/matching/_Resources/_imgSource/T_colors/blue.svg": {
+    "stimulus": "colors-blue",
+    "md5": "7fd18ebe6683933f065e2347df02b50f",
+    "library": "/shared/stimuli/img/T_colors/blue.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_colors/blue.svg": {
+    "stimulus": "colors-blue",
+    "md5": "7fd18ebe6683933f065e2347df02b50f",
+    "library": "/shared/stimuli/img/T_colors/blue.svg"
+  },
+  "/clock/_Resources/_imgSource/T_colors/blue.svg": {
+    "stimulus": "colors-blue",
+    "md5": "7fd18ebe6683933f065e2347df02b50f",
+    "library": "/shared/stimuli/img/T_colors/blue.svg"
+  },
+  "/matching/_Resources/_imgSource/T_colors/brown.svg": {
+    "stimulus": "colors-brown",
+    "md5": "b7b4c673c23342793d95a5c3bec496b4",
+    "library": "/shared/stimuli/img/T_colors/brown.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_colors/brown.svg": {
+    "stimulus": "colors-brown",
+    "md5": "b7b4c673c23342793d95a5c3bec496b4",
+    "library": "/shared/stimuli/img/T_colors/brown.svg"
+  },
+  "/clock/_Resources/_imgSource/T_colors/brown.svg": {
+    "stimulus": "colors-brown",
+    "md5": "b7b4c673c23342793d95a5c3bec496b4",
+    "library": "/shared/stimuli/img/T_colors/brown.svg"
+  },
+  "/matching/_Resources/_imgSource/T_colors/green.svg": {
+    "stimulus": "colors-green",
+    "md5": "1910cf1d9438311645083495b6f105ee",
+    "library": "/shared/stimuli/img/T_colors/green.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_colors/green.svg": {
+    "stimulus": "colors-green",
+    "md5": "1910cf1d9438311645083495b6f105ee",
+    "library": "/shared/stimuli/img/T_colors/green.svg"
+  },
+  "/clock/_Resources/_imgSource/T_colors/green.svg": {
+    "stimulus": "colors-green",
+    "md5": "1910cf1d9438311645083495b6f105ee",
+    "library": "/shared/stimuli/img/T_colors/green.svg"
+  },
+  "/matching/_Resources/_imgSource/T_colors/orange.svg": {
+    "stimulus": "colors-orange",
+    "md5": "11c98ee28de2ad44fd482f697d8f3044",
+    "library": "/shared/stimuli/img/T_colors/orange.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_colors/orange.svg": {
+    "stimulus": "colors-orange",
+    "md5": "11c98ee28de2ad44fd482f697d8f3044",
+    "library": "/shared/stimuli/img/T_colors/orange.svg"
+  },
+  "/clock/_Resources/_imgSource/T_colors/orange.svg": {
+    "stimulus": "colors-orange",
+    "md5": "11c98ee28de2ad44fd482f697d8f3044",
+    "library": "/shared/stimuli/img/T_colors/orange.svg"
+  },
+  "/matching/_Resources/_imgSource/T_colors/pink.svg": {
+    "stimulus": "colors-pink",
+    "md5": "97b25379a041884581ebee83c82be340",
+    "library": "/shared/stimuli/img/T_colors/pink.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_colors/pink.svg": {
+    "stimulus": "colors-pink",
+    "md5": "97b25379a041884581ebee83c82be340",
+    "library": "/shared/stimuli/img/T_colors/pink.svg"
+  },
+  "/clock/_Resources/_imgSource/T_colors/pink.svg": {
+    "stimulus": "colors-pink",
+    "md5": "97b25379a041884581ebee83c82be340",
+    "library": "/shared/stimuli/img/T_colors/pink.svg"
+  },
+  "/matching/_Resources/_imgSource/T_colors/purple.svg": {
+    "stimulus": "colors-purple",
+    "md5": "7e3cb337decf8f818dfbb4dd1d730a5e",
+    "library": "/shared/stimuli/img/T_colors/purple.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_colors/purple.svg": {
+    "stimulus": "colors-purple",
+    "md5": "7e3cb337decf8f818dfbb4dd1d730a5e",
+    "library": "/shared/stimuli/img/T_colors/purple.svg"
+  },
+  "/clock/_Resources/_imgSource/T_colors/purple.svg": {
+    "stimulus": "colors-purple",
+    "md5": "7e3cb337decf8f818dfbb4dd1d730a5e",
+    "library": "/shared/stimuli/img/T_colors/purple.svg"
+  },
+  "/matching/_Resources/_imgSource/T_colors/red.svg": {
+    "stimulus": "colors-red",
+    "md5": "5c37f0a218c19ce5aea64418bf5b873d",
+    "library": "/shared/stimuli/img/T_colors/red.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_colors/red.svg": {
+    "stimulus": "colors-red",
+    "md5": "5c37f0a218c19ce5aea64418bf5b873d",
+    "library": "/shared/stimuli/img/T_colors/red.svg"
+  },
+  "/clock/_Resources/_imgSource/T_colors/red.svg": {
+    "stimulus": "colors-red",
+    "md5": "5c37f0a218c19ce5aea64418bf5b873d",
+    "library": "/shared/stimuli/img/T_colors/red.svg"
+  },
+  "/matching/_Resources/_imgSource/T_colors/white.svg": {
+    "stimulus": "colors-white",
+    "md5": "0be61f05c278855d44a9cae28e39ed80",
+    "library": "/shared/stimuli/img/T_colors/white.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_colors/white.svg": {
+    "stimulus": "colors-white",
+    "md5": "0be61f05c278855d44a9cae28e39ed80",
+    "library": "/shared/stimuli/img/T_colors/white.svg"
+  },
+  "/clock/_Resources/_imgSource/T_colors/white.svg": {
+    "stimulus": "colors-white",
+    "md5": "0be61f05c278855d44a9cae28e39ed80",
+    "library": "/shared/stimuli/img/T_colors/white.svg"
+  },
+  "/matching/_Resources/_imgSource/T_colors/yellow.svg": {
+    "stimulus": "colors-yellow",
+    "md5": "42346b0b614b2f6982eafd6e43833428",
+    "library": "/shared/stimuli/img/T_colors/yellow.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_colors/yellow.svg": {
+    "stimulus": "colors-yellow",
+    "md5": "42346b0b614b2f6982eafd6e43833428",
+    "library": "/shared/stimuli/img/T_colors/yellow.svg"
+  },
+  "/clock/_Resources/_imgSource/T_colors/yellow.svg": {
+    "stimulus": "colors-yellow",
+    "md5": "42346b0b614b2f6982eafd6e43833428",
+    "library": "/shared/stimuli/img/T_colors/yellow.svg"
+  },
+  "/matching/_Resources/_imgSource/T_community_helpers/chef.jpg": {
+    "stimulus": "community-helpers-chef",
+    "md5": "9ea3ab837f484508f9214067a61c9ac4",
+    "library": "/shared/stimuli/img/T_community_helpers/chef.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_community_helpers/chef.jpg": {
+    "stimulus": "community-helpers-chef",
+    "md5": "9ea3ab837f484508f9214067a61c9ac4",
+    "library": "/shared/stimuli/img/T_community_helpers/chef.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_community_helpers/chef.svg": {
+    "stimulus": "community-helpers-chef",
+    "md5": "56ed6a240bae2abf751c93714628ef20",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_community_helpers/chef.svg": {
+    "stimulus": "community-helpers-chef",
+    "md5": "56ed6a240bae2abf751c93714628ef20",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_community_helpers/chef.svg": {
+    "stimulus": "community-helpers-chef",
+    "md5": "56ed6a240bae2abf751c93714628ef20",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_community_helpers/construction.jpg": {
+    "stimulus": "community-helpers-construction",
+    "md5": "d8937093e247e990afbc31917d8a779f",
+    "library": "/shared/stimuli/img/T_community_helpers/construction.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_community_helpers/construction.jpg": {
+    "stimulus": "community-helpers-construction",
+    "md5": "eaa7ff9bf7d96a4c5914d3d30cf7372e",
+    "library": "/shared/stimuli/img/T_community_helpers/construction--alt1.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_community_helpers/construction.svg": {
+    "stimulus": "community-helpers-construction",
+    "md5": "e4d88622deadc87eba79911f0967281b",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_community_helpers/construction.svg": {
+    "stimulus": "community-helpers-construction",
+    "md5": "e4d88622deadc87eba79911f0967281b",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_community_helpers/construction.svg": {
+    "stimulus": "community-helpers-construction",
+    "md5": "e4d88622deadc87eba79911f0967281b",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_community_helpers/crossing-guard.jpg": {
+    "stimulus": "community-helpers-crossing-guard",
+    "md5": "86883ed27e6f560bac0d1364a0b7d838",
+    "library": "/shared/stimuli/img/T_community_helpers/crossing-guard.jpg"
+  },
+  "/matching/_Resources/_imgSource/T_community_helpers/doctor.jpg": {
+    "stimulus": "community-helpers-doctor",
+    "md5": "f48e1f48b1b94baf1a1fc57578a8b197",
+    "library": "/shared/stimuli/img/T_community_helpers/doctor.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_community_helpers/doctor.jpg": {
+    "stimulus": "community-helpers-doctor",
+    "md5": "8b2d16955802b31ce609f892e08c51d7",
+    "library": "/shared/stimuli/img/T_community_helpers/doctor--alt1.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_community_helpers/doctor.svg": {
+    "stimulus": "community-helpers-doctor",
+    "md5": "25222df0aa375919a6c430c36bfacafe",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_community_helpers/doctor.svg": {
+    "stimulus": "community-helpers-doctor",
+    "md5": "25222df0aa375919a6c430c36bfacafe",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_community_helpers/doctor.svg": {
+    "stimulus": "community-helpers-doctor",
+    "md5": "25222df0aa375919a6c430c36bfacafe",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_community_helpers/farmer.jpg": {
+    "stimulus": "community-helpers-farmer",
+    "md5": "52aad76c815a91ff2a13cfcb61ede8f1",
+    "library": "/shared/stimuli/img/T_community_helpers/farmer.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_community_helpers/farmer.jpg": {
+    "stimulus": "community-helpers-farmer",
+    "md5": "d2175acc37ba3b30dc012bd1df279ffe",
+    "library": "/shared/stimuli/img/T_community_helpers/farmer--alt1.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_community_helpers/farmer.svg": {
+    "stimulus": "community-helpers-farmer",
+    "md5": "a3a375d278bf87b4da4138b33bfa34fe",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_community_helpers/farmer.svg": {
+    "stimulus": "community-helpers-farmer",
+    "md5": "a3a375d278bf87b4da4138b33bfa34fe",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_community_helpers/farmer.svg": {
+    "stimulus": "community-helpers-farmer",
+    "md5": "a3a375d278bf87b4da4138b33bfa34fe",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_community_helpers/firefighter.jpg": {
+    "stimulus": "community-helpers-firefighter",
+    "md5": "06e22c35b9ff9d8762ceea35082e28ee",
+    "library": "/shared/stimuli/img/T_community_helpers/firefighter.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_community_helpers/firefighter.jpg": {
+    "stimulus": "community-helpers-firefighter",
+    "md5": "d3e792121932b722ec0f5cfb58f19b52",
+    "library": "/shared/stimuli/img/T_community_helpers/firefighter--alt1.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_community_helpers/firefighter.svg": {
+    "stimulus": "community-helpers-firefighter",
+    "md5": "19eb6f820949e6e7d9be6c0859ff350b",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_community_helpers/firefighter.svg": {
+    "stimulus": "community-helpers-firefighter",
+    "md5": "19eb6f820949e6e7d9be6c0859ff350b",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_community_helpers/firefighter.svg": {
+    "stimulus": "community-helpers-firefighter",
+    "md5": "19eb6f820949e6e7d9be6c0859ff350b",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_community_helpers/mail-carrier.jpg": {
+    "stimulus": "community-helpers-mail-carrier",
+    "md5": "9b3cbf558a3c72962b2fe778589eaa6e",
+    "library": "/shared/stimuli/img/T_community_helpers/mail-carrier.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_community_helpers/mail-carrier.jpg": {
+    "stimulus": "community-helpers-mail-carrier",
+    "md5": "c947118e115938e6963cc4d7121dfb1f",
+    "library": "/shared/stimuli/img/T_community_helpers/mail-carrier--alt1.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_community_helpers/mail-carrier.svg": {
+    "stimulus": "community-helpers-mail-carrier",
+    "md5": "98d22312c8a9a9db56dbcede7194c68f",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_community_helpers/mail-carrier.svg": {
+    "stimulus": "community-helpers-mail-carrier",
+    "md5": "98d22312c8a9a9db56dbcede7194c68f",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_community_helpers/mail-carrier.svg": {
+    "stimulus": "community-helpers-mail-carrier",
+    "md5": "98d22312c8a9a9db56dbcede7194c68f",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_community_helpers/nurse.jpg": {
+    "stimulus": "community-helpers-nurse",
+    "md5": "3de88f10f29f4cd5d262523f1257057d",
+    "library": "/shared/stimuli/img/T_community_helpers/nurse.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_community_helpers/nurse.jpg": {
+    "stimulus": "community-helpers-nurse",
+    "md5": "1f41b74ff2f789aeec0f52b864cd8e43",
+    "library": "/shared/stimuli/img/T_community_helpers/nurse--alt1.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_community_helpers/nurse.svg": {
+    "stimulus": "community-helpers-nurse",
+    "md5": "96e30650d7b07e74b80c701480414852",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_community_helpers/nurse.svg": {
+    "stimulus": "community-helpers-nurse",
+    "md5": "96e30650d7b07e74b80c701480414852",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_community_helpers/nurse.svg": {
+    "stimulus": "community-helpers-nurse",
+    "md5": "96e30650d7b07e74b80c701480414852",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_community_helpers/police.jpg": {
+    "stimulus": "community-helpers-police",
+    "md5": "8f74db5d31e09b7e2cb3fc4f6604766f",
+    "library": "/shared/stimuli/img/T_community_helpers/police.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_community_helpers/police.jpg": {
+    "stimulus": "community-helpers-police",
+    "md5": "e90a68a107191e7ff2eddf4cc7e960ec",
+    "library": "/shared/stimuli/img/T_community_helpers/police--alt1.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_community_helpers/police.svg": {
+    "stimulus": "community-helpers-police",
+    "md5": "c69f789edb85a494b8a66a83b34ef46c",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_community_helpers/police.svg": {
+    "stimulus": "community-helpers-police",
+    "md5": "c69f789edb85a494b8a66a83b34ef46c",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_community_helpers/police.svg": {
+    "stimulus": "community-helpers-police",
+    "md5": "c69f789edb85a494b8a66a83b34ef46c",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_community_helpers/scientist.jpg": {
+    "stimulus": "community-helpers-scientist",
+    "md5": "652560e896ac8d3390e3c5ec8c089b1f",
+    "library": "/shared/stimuli/img/T_community_helpers/scientist.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_community_helpers/scientist.jpg": {
+    "stimulus": "community-helpers-scientist",
+    "md5": "4473b0a59f69582d1638c3a55a4345d4",
+    "library": "/shared/stimuli/img/T_community_helpers/scientist--alt1.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_community_helpers/scientist.svg": {
+    "stimulus": "community-helpers-scientist",
+    "md5": "8809db44bb5ff1bad60e565092712c7c",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_community_helpers/scientist.svg": {
+    "stimulus": "community-helpers-scientist",
+    "md5": "8809db44bb5ff1bad60e565092712c7c",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_community_helpers/scientist.svg": {
+    "stimulus": "community-helpers-scientist",
+    "md5": "8809db44bb5ff1bad60e565092712c7c",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_community_helpers/teacher.jpg": {
+    "stimulus": "community-helpers-teacher",
+    "md5": "7902f496609840a401d45b3eab4a15cc",
+    "library": "/shared/stimuli/img/T_community_helpers/teacher.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_community_helpers/teacher.jpg": {
+    "stimulus": "community-helpers-teacher",
+    "md5": "7902f496609840a401d45b3eab4a15cc",
+    "library": "/shared/stimuli/img/T_community_helpers/teacher.jpg"
+  },
+  "/clock/_Resources/_imgSource/T_community_helpers/teacher.svg": {
+    "stimulus": "community-helpers-teacher",
+    "md5": "d469958ce8c65214cf62d5f9c17324a7",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_community_helpers/teacher.svg": {
+    "stimulus": "community-helpers-teacher",
+    "md5": "d469958ce8c65214cf62d5f9c17324a7",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_community_helpers/teacher.svg": {
+    "stimulus": "community-helpers-teacher",
+    "md5": "d469958ce8c65214cf62d5f9c17324a7",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_emotions/angry.svg": {
+    "stimulus": "emotions-angry",
+    "md5": "f8a6d9bf80a897ef54c1a7b30de6e13d",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_emotions/angry.svg": {
+    "stimulus": "emotions-angry",
+    "md5": "f8a6d9bf80a897ef54c1a7b30de6e13d",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_emotions/bored.svg": {
+    "stimulus": "emotions-bored",
+    "md5": "64f619b14ebf3e6c0f87889ab36f9aff",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_emotions/bored.svg": {
+    "stimulus": "emotions-bored",
+    "md5": "64f619b14ebf3e6c0f87889ab36f9aff",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_emotions/calm.svg": {
+    "stimulus": "emotions-calm",
+    "md5": "121a0e878a9268047525227c85f7f2b1",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_emotions/calm.svg": {
+    "stimulus": "emotions-calm",
+    "md5": "121a0e878a9268047525227c85f7f2b1",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_emotions/confused.svg": {
+    "stimulus": "emotions-confused",
+    "md5": "b2a9af578fbec53cd73563609080133d",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_emotions/confused.svg": {
+    "stimulus": "emotions-confused",
+    "md5": "b2a9af578fbec53cd73563609080133d",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_emotions/embarrassed.svg": {
+    "stimulus": "emotions-embarrassed",
+    "md5": "80a41b9187a589dd5a86a05ee4e25683",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_emotions/embarrassed.svg": {
+    "stimulus": "emotions-embarrassed",
+    "md5": "80a41b9187a589dd5a86a05ee4e25683",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_emotions/excited.svg": {
+    "stimulus": "emotions-excited",
+    "md5": "44df4a0f4a3d0cc5560e6b235aead188",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_emotions/excited.svg": {
+    "stimulus": "emotions-excited",
+    "md5": "44df4a0f4a3d0cc5560e6b235aead188",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_emotions/happy.svg": {
+    "stimulus": "emotions-happy",
+    "md5": "71974a7c6e3ab9103d57c83f2cb27410",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_emotions/happy.svg": {
+    "stimulus": "emotions-happy",
+    "md5": "71974a7c6e3ab9103d57c83f2cb27410",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_emotions/love.svg": {
+    "stimulus": "emotions-love",
+    "md5": "d82755652cbc7b9f6ba3cf7242d2683e",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_emotions/love.svg": {
+    "stimulus": "emotions-love",
+    "md5": "d82755652cbc7b9f6ba3cf7242d2683e",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_emotions/proud.svg": {
+    "stimulus": "emotions-proud",
+    "md5": "4ed42cd24c020b327c7e4692fc72c4d0",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_emotions/proud.svg": {
+    "stimulus": "emotions-proud",
+    "md5": "4ed42cd24c020b327c7e4692fc72c4d0",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_emotions/sad.svg": {
+    "stimulus": "emotions-sad",
+    "md5": "f340d30d0db1e62ad8c5eb635bf9e902",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_emotions/sad.svg": {
+    "stimulus": "emotions-sad",
+    "md5": "f340d30d0db1e62ad8c5eb635bf9e902",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_emotions/scared.svg": {
+    "stimulus": "emotions-scared",
+    "md5": "c746b8d04c16b3380cc568538dac6099",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_emotions/scared.svg": {
+    "stimulus": "emotions-scared",
+    "md5": "c746b8d04c16b3380cc568538dac6099",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_emotions/sick.svg": {
+    "stimulus": "emotions-sick",
+    "md5": "7accd10c813f8c3f8d4f342a3f24bef8",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_emotions/sick.svg": {
+    "stimulus": "emotions-sick",
+    "md5": "7accd10c813f8c3f8d4f342a3f24bef8",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_emotions/silly.svg": {
+    "stimulus": "emotions-silly",
+    "md5": "c984b1a5787da95edbb7ecd480e7eb65",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_emotions/silly.svg": {
+    "stimulus": "emotions-silly",
+    "md5": "c984b1a5787da95edbb7ecd480e7eb65",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_emotions/surprised.svg": {
+    "stimulus": "emotions-surprised",
+    "md5": "e815a5e1f579a6a25628fbf98557f1b4",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_emotions/surprised.svg": {
+    "stimulus": "emotions-surprised",
+    "md5": "e815a5e1f579a6a25628fbf98557f1b4",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_emotions/tired.svg": {
+    "stimulus": "emotions-tired",
+    "md5": "caacfd643cbc325805e4055df286f9c6",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_emotions/tired.svg": {
+    "stimulus": "emotions-tired",
+    "md5": "caacfd643cbc325805e4055df286f9c6",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_foods/apple.svg": {
+    "stimulus": "foods-apple",
+    "md5": "343a2820e2bce19d5420167967d3d6e2",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_foods/apple.svg": {
+    "stimulus": "foods-apple",
+    "md5": "343a2820e2bce19d5420167967d3d6e2",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_foods/apple.svg": {
+    "stimulus": "foods-apple",
+    "md5": "343a2820e2bce19d5420167967d3d6e2",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_foods/banana.svg": {
+    "stimulus": "foods-banana",
+    "md5": "b01f5bc3f023299aeb6548ea57ad28bb",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_foods/banana.svg": {
+    "stimulus": "foods-banana",
+    "md5": "b01f5bc3f023299aeb6548ea57ad28bb",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_foods/banana.svg": {
+    "stimulus": "foods-banana",
+    "md5": "b01f5bc3f023299aeb6548ea57ad28bb",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_foods/broccoli.svg": {
+    "stimulus": "foods-broccoli",
+    "md5": "9a5091a89414aca21acaa8e03dea5bd4",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_foods/broccoli.svg": {
+    "stimulus": "foods-broccoli",
+    "md5": "9a5091a89414aca21acaa8e03dea5bd4",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_foods/broccoli.svg": {
+    "stimulus": "foods-broccoli",
+    "md5": "9a5091a89414aca21acaa8e03dea5bd4",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_foods/burger.svg": {
+    "stimulus": "foods-burger",
+    "md5": "f8076fb862e5ea9d9d6851ffc0977bd9",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_foods/burger.svg": {
+    "stimulus": "foods-burger",
+    "md5": "f8076fb862e5ea9d9d6851ffc0977bd9",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_foods/burger.svg": {
+    "stimulus": "foods-burger",
+    "md5": "f8076fb862e5ea9d9d6851ffc0977bd9",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_foods/corn.svg": {
+    "stimulus": "foods-corn",
+    "md5": "1da49befec70d1daaa16a415047c3016",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_foods/corn.svg": {
+    "stimulus": "foods-corn",
+    "md5": "1da49befec70d1daaa16a415047c3016",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_foods/corn.svg": {
+    "stimulus": "foods-corn",
+    "md5": "1da49befec70d1daaa16a415047c3016",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_foods/donut.svg": {
+    "stimulus": "foods-donut",
+    "md5": "6d784060284df58004f6f657250b5b49",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_foods/donut.svg": {
+    "stimulus": "foods-donut",
+    "md5": "6d784060284df58004f6f657250b5b49",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_foods/donut.svg": {
+    "stimulus": "foods-donut",
+    "md5": "6d784060284df58004f6f657250b5b49",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_foods/egg.svg": {
+    "stimulus": "foods-egg",
+    "md5": "dc9e4bd6e9aa0a0076c1839b7c7934fe",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_foods/egg.svg": {
+    "stimulus": "foods-egg",
+    "md5": "dc9e4bd6e9aa0a0076c1839b7c7934fe",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_foods/egg.svg": {
+    "stimulus": "foods-egg",
+    "md5": "dc9e4bd6e9aa0a0076c1839b7c7934fe",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_foods/orange.svg": {
+    "stimulus": "foods-orange",
+    "md5": "179939708354f7ebe83c2d574b776e08",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_foods/orange.svg": {
+    "stimulus": "foods-orange",
+    "md5": "179939708354f7ebe83c2d574b776e08",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_foods/orange.svg": {
+    "stimulus": "foods-orange",
+    "md5": "179939708354f7ebe83c2d574b776e08",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_foods/pizza.svg": {
+    "stimulus": "foods-pizza",
+    "md5": "ceed6d7491c66aca0215f70b2a401b1a",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_foods/pizza.svg": {
+    "stimulus": "foods-pizza",
+    "md5": "ceed6d7491c66aca0215f70b2a401b1a",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_foods/pizza.svg": {
+    "stimulus": "foods-pizza",
+    "md5": "ceed6d7491c66aca0215f70b2a401b1a",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_foods/strawberry.svg": {
+    "stimulus": "foods-strawberry",
+    "md5": "f23e2746f795913765093ebb29e307c1",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_foods/strawberry.svg": {
+    "stimulus": "foods-strawberry",
+    "md5": "f23e2746f795913765093ebb29e307c1",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_foods/strawberry.svg": {
+    "stimulus": "foods-strawberry",
+    "md5": "f23e2746f795913765093ebb29e307c1",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_fresh-beats/chimpanzees-too.jpg": {
+    "stimulus": "fresh-beats-chimpanzees-too",
+    "md5": "790b906bb5e0df14257a0e2185800f99",
+    "library": "/shared/stimuli/img/T_fresh-beats/chimpanzees-too.jpg"
+  },
+  "/matching/_Resources/_imgSource/T_fresh-beats/group-jumping.jpg": {
+    "stimulus": "fresh-beats-group-jumping",
+    "md5": "c9903854a126ed584e5f29beefc81b8a",
+    "library": "/shared/stimuli/img/T_fresh-beats/group-jumping.jpg"
+  },
+  "/matching/_Resources/_imgSource/T_fresh-beats/group-photo.jpg": {
+    "stimulus": "fresh-beats-group-photo",
+    "md5": "439452d686a6a1768db3c4b8bea76ded",
+    "library": "/shared/stimuli/img/T_fresh-beats/group-photo.jpg"
+  },
+  "/matching/_Resources/_imgSource/T_fresh-beats/group-smiling.jpg": {
+    "stimulus": "fresh-beats-group-smiling",
+    "md5": "7cf3d96dfee1953ae55aa5803e70d5bd",
+    "library": "/shared/stimuli/img/T_fresh-beats/group-smiling.jpg"
+  },
+  "/matching/_Resources/_imgSource/T_fresh-beats/marina.jpg": {
+    "stimulus": "fresh-beats-marina",
+    "md5": "d9e3ac815607c176b405cdfe4b76fa66",
+    "library": "/shared/stimuli/img/T_fresh-beats/marina.jpg"
+  },
+  "/matching/_Resources/_imgSource/T_fresh-beats/twist-1.webp": {
+    "stimulus": "fresh-beats-twist-1",
+    "md5": "8980135ab44e4803f8c837d78d4c43d1",
+    "library": "/shared/stimuli/img/T_fresh-beats/twist-1.webp"
+  },
+  "/matching/_Resources/_imgSource/T_household_items/bed.webp": {
+    "stimulus": "household-items-bed",
+    "md5": "13b4af978c466b0daad44f2a4b33c4d3",
+    "library": "/shared/stimuli/img/T_household_items/bed.webp"
+  },
+  "/receptive/_Resources/_imgSource/T_household_items/bed.svg": {
+    "stimulus": "household-items-bed",
+    "md5": "74d12972ab5681abdb24cdd3cc699b8d",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_household_items/bed.svg": {
+    "stimulus": "household-items-bed",
+    "md5": "74d12972ab5681abdb24cdd3cc699b8d",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_household_items/bed.svg": {
+    "stimulus": "household-items-bed",
+    "md5": "74d12972ab5681abdb24cdd3cc699b8d",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_household_items/books.jpg": {
+    "stimulus": "household-items-books",
+    "md5": "953139c1c8d29e885f087a95a1c9a0b6",
+    "library": "/shared/stimuli/img/T_household_items/books.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_household_items/books.svg": {
+    "stimulus": "household-items-books",
+    "md5": "2391a76d5eae77544e2a8b178b16a581",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_household_items/books.svg": {
+    "stimulus": "household-items-books",
+    "md5": "2391a76d5eae77544e2a8b178b16a581",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_household_items/books.svg": {
+    "stimulus": "household-items-books",
+    "md5": "2391a76d5eae77544e2a8b178b16a581",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_household_items/broom.webp": {
+    "stimulus": "household-items-broom",
+    "md5": "7aaf6b32da506f137b18287d9087e909",
+    "library": "/shared/stimuli/img/T_household_items/broom.webp"
+  },
+  "/receptive/_Resources/_imgSource/T_household_items/broom.svg": {
+    "stimulus": "household-items-broom",
+    "md5": "2ea09e93b70ff12689abf5ac84d77305",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_household_items/broom.svg": {
+    "stimulus": "household-items-broom",
+    "md5": "2ea09e93b70ff12689abf5ac84d77305",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_household_items/broom.svg": {
+    "stimulus": "household-items-broom",
+    "md5": "2ea09e93b70ff12689abf5ac84d77305",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_household_items/chair.webp": {
+    "stimulus": "household-items-chair",
+    "md5": "7ec811d7b2ce9e273c8fd77561d9346a",
+    "library": "/shared/stimuli/img/T_household_items/chair.webp"
+  },
+  "/receptive/_Resources/_imgSource/T_household_items/chair.svg": {
+    "stimulus": "household-items-chair",
+    "md5": "d41d2c51fa36993870f8d76ed8e38ab9",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_household_items/chair.svg": {
+    "stimulus": "household-items-chair",
+    "md5": "d41d2c51fa36993870f8d76ed8e38ab9",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_household_items/chair.svg": {
+    "stimulus": "household-items-chair",
+    "md5": "d41d2c51fa36993870f8d76ed8e38ab9",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_household_items/clock.jpg": {
+    "stimulus": "household-items-clock",
+    "md5": "7378e189e265c764725dc2cde72cfba9",
+    "library": "/shared/stimuli/img/T_household_items/clock.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_household_items/clock.svg": {
+    "stimulus": "household-items-clock",
+    "md5": "be829e5ee2d7b8f10d310b44befc52ba",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_household_items/clock.svg": {
+    "stimulus": "household-items-clock",
+    "md5": "be829e5ee2d7b8f10d310b44befc52ba",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_household_items/clock.svg": {
+    "stimulus": "household-items-clock",
+    "md5": "be829e5ee2d7b8f10d310b44befc52ba",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_household_items/lamp.jpg": {
+    "stimulus": "household-items-lamp",
+    "md5": "53bb123a3bbe5ee8d000bd754ae1ae75",
+    "library": "/shared/stimuli/img/T_household_items/lamp.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_household_items/lamp.svg": {
+    "stimulus": "household-items-lamp",
+    "md5": "c2a5e789fde0a4e904963535f2337f38",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_household_items/lamp.svg": {
+    "stimulus": "household-items-lamp",
+    "md5": "c2a5e789fde0a4e904963535f2337f38",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_household_items/lamp.svg": {
+    "stimulus": "household-items-lamp",
+    "md5": "c2a5e789fde0a4e904963535f2337f38",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_household_items/mirror.jpg": {
+    "stimulus": "household-items-mirror",
+    "md5": "da03ab6be4c1b012898f4c6fbd68e3bb",
+    "library": "/shared/stimuli/img/T_household_items/mirror.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_household_items/mirror.svg": {
+    "stimulus": "household-items-mirror",
+    "md5": "cda06e2299c4980027b0b51dda93105e",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_household_items/mirror.svg": {
+    "stimulus": "household-items-mirror",
+    "md5": "cda06e2299c4980027b0b51dda93105e",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_household_items/mirror.svg": {
+    "stimulus": "household-items-mirror",
+    "md5": "cda06e2299c4980027b0b51dda93105e",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_household_items/mug.webp": {
+    "stimulus": "household-items-mug",
+    "md5": "1ea135657c7dbcfe67fc9d493c9db076",
+    "library": "/shared/stimuli/img/T_household_items/mug.webp"
+  },
+  "/receptive/_Resources/_imgSource/T_household_items/mug.svg": {
+    "stimulus": "household-items-mug",
+    "md5": "ba7588b7f6285e3d881c0cb5237556e3",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_household_items/mug.svg": {
+    "stimulus": "household-items-mug",
+    "md5": "ba7588b7f6285e3d881c0cb5237556e3",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_household_items/mug.svg": {
+    "stimulus": "household-items-mug",
+    "md5": "ba7588b7f6285e3d881c0cb5237556e3",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_household_items/shower.jpg": {
+    "stimulus": "household-items-shower",
+    "md5": "ac2016d55a7cc9f3a0891a2056c12b45",
+    "library": "/shared/stimuli/img/T_household_items/shower.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_household_items/shower.svg": {
+    "stimulus": "household-items-shower",
+    "md5": "bd93ce6edc1fd33ea371e26f4ea3d8d6",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_household_items/shower.svg": {
+    "stimulus": "household-items-shower",
+    "md5": "bd93ce6edc1fd33ea371e26f4ea3d8d6",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_household_items/shower.svg": {
+    "stimulus": "household-items-shower",
+    "md5": "bd93ce6edc1fd33ea371e26f4ea3d8d6",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_household_items/sofa.webp": {
+    "stimulus": "household-items-sofa",
+    "md5": "335bf0365c6755fd3c09c64481907a26",
+    "library": "/shared/stimuli/img/T_household_items/sofa.webp"
+  },
+  "/receptive/_Resources/_imgSource/T_household_items/sofa.svg": {
+    "stimulus": "household-items-sofa",
+    "md5": "84e869111a8379ade35df5074e33a6eb",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_household_items/sofa.svg": {
+    "stimulus": "household-items-sofa",
+    "md5": "84e869111a8379ade35df5074e33a6eb",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_household_items/sofa.svg": {
+    "stimulus": "household-items-sofa",
+    "md5": "84e869111a8379ade35df5074e33a6eb",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_household_items/table.jpg": {
+    "stimulus": "household-items-table",
+    "md5": "c19a9b4533859adb077ce2d6467542a9",
+    "library": "/shared/stimuli/img/T_household_items/table.jpg"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/blender.webp": {
+    "stimulus": "kitchen-items-blender",
+    "md5": "eb97d1e2b3ae123cab0441d8d53315e0",
+    "library": "/shared/stimuli/img/T_kitchen_items/blender.webp"
+  },
+  "/receptive/_Resources/_imgSource/T_kitchen_items/blender.svg": {
+    "stimulus": "kitchen-items-blender",
+    "md5": "4b2bf9f4f22ef390b9972acd3bc032a9",
+    "library": "/shared/stimuli/img/T_kitchen_items/blender--alt1.svg"
+  },
+  "/clock/_Resources/_imgSource/T_kitchen_items/blender.svg": {
+    "stimulus": "kitchen-items-blender",
+    "md5": "4b2bf9f4f22ef390b9972acd3bc032a9",
+    "library": "/shared/stimuli/img/T_kitchen_items/blender--alt1.svg"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/blender.svg": {
+    "stimulus": "kitchen-items-blender",
+    "md5": "4b2bf9f4f22ef390b9972acd3bc032a9",
+    "library": "/shared/stimuli/img/T_kitchen_items/blender--alt1.svg"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/bowl.jpg": {
+    "stimulus": "kitchen-items-bowl",
+    "md5": "dc77a65ff576754aa2473433d1a3e24e",
+    "library": "/shared/stimuli/img/T_kitchen_items/bowl.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_kitchen_items/bowl.svg": {
+    "stimulus": "kitchen-items-bowl",
+    "md5": "668ccdb4ccac0cbaeedd0c22f678d58e",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_kitchen_items/bowl.svg": {
+    "stimulus": "kitchen-items-bowl",
+    "md5": "668ccdb4ccac0cbaeedd0c22f678d58e",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/bowl.svg": {
+    "stimulus": "kitchen-items-bowl",
+    "md5": "668ccdb4ccac0cbaeedd0c22f678d58e",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/chopsticks.webp": {
+    "stimulus": "kitchen-items-chopsticks",
+    "md5": "f0802c3f293151e8f7946528c061c140",
+    "library": "/shared/stimuli/img/T_kitchen_items/chopsticks.webp"
+  },
+  "/receptive/_Resources/_imgSource/T_kitchen_items/chopsticks.svg": {
+    "stimulus": "kitchen-items-chopsticks",
+    "md5": "553f04fcc964a3a814bd441e9ea65703",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_kitchen_items/chopsticks.svg": {
+    "stimulus": "kitchen-items-chopsticks",
+    "md5": "553f04fcc964a3a814bd441e9ea65703",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/chopsticks.svg": {
+    "stimulus": "kitchen-items-chopsticks",
+    "md5": "553f04fcc964a3a814bd441e9ea65703",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/coffee-mug.webp": {
+    "stimulus": "kitchen-items-coffee-mug",
+    "md5": "fdd84dcca4ce4665a29eda82404be4de",
+    "library": "/shared/stimuli/img/T_kitchen_items/coffee-mug.webp"
+  },
+  "/receptive/_Resources/_imgSource/T_kitchen_items/coffee-mug.svg": {
+    "stimulus": "kitchen-items-coffee-mug",
+    "md5": "ba7588b7f6285e3d881c0cb5237556e3",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_kitchen_items/coffee-mug.svg": {
+    "stimulus": "kitchen-items-coffee-mug",
+    "md5": "ba7588b7f6285e3d881c0cb5237556e3",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/coffee-mug.svg": {
+    "stimulus": "kitchen-items-coffee-mug",
+    "md5": "ba7588b7f6285e3d881c0cb5237556e3",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/cup.jpg": {
+    "stimulus": "kitchen-items-cup",
+    "md5": "9aecbff06c03009cfa2459dda06aa0ac",
+    "library": "/shared/stimuli/img/T_kitchen_items/cup.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_kitchen_items/cup.svg": {
+    "stimulus": "kitchen-items-cup",
+    "md5": "df802076e4a0bf67454eecff3bc36f1c",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_kitchen_items/cup.svg": {
+    "stimulus": "kitchen-items-cup",
+    "md5": "df802076e4a0bf67454eecff3bc36f1c",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/cup.svg": {
+    "stimulus": "kitchen-items-cup",
+    "md5": "df802076e4a0bf67454eecff3bc36f1c",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/fork.jpg": {
+    "stimulus": "kitchen-items-fork",
+    "md5": "75add1ad2d96ad63ed7a39d155c771e5",
+    "library": "/shared/stimuli/img/T_kitchen_items/fork.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_kitchen_items/fork.svg": {
+    "stimulus": "kitchen-items-fork",
+    "md5": "be8beef4090d3b1a25e84d225daf6d71",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_kitchen_items/fork.svg": {
+    "stimulus": "kitchen-items-fork",
+    "md5": "be8beef4090d3b1a25e84d225daf6d71",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/fork.svg": {
+    "stimulus": "kitchen-items-fork",
+    "md5": "be8beef4090d3b1a25e84d225daf6d71",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/frying-pan.jpg": {
+    "stimulus": "kitchen-items-frying-pan",
+    "md5": "70040678f50074a338d3d54020e4b885",
+    "library": "/shared/stimuli/img/T_kitchen_items/frying-pan.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_kitchen_items/frying-pan.svg": {
+    "stimulus": "kitchen-items-frying-pan",
+    "md5": "19efc05c3ecb9a6b4dea47034c8ad846",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_kitchen_items/frying-pan.svg": {
+    "stimulus": "kitchen-items-frying-pan",
+    "md5": "19efc05c3ecb9a6b4dea47034c8ad846",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/frying-pan.svg": {
+    "stimulus": "kitchen-items-frying-pan",
+    "md5": "19efc05c3ecb9a6b4dea47034c8ad846",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/kettle.jpg": {
+    "stimulus": "kitchen-items-kettle",
+    "md5": "9bb8009d1655916cd410a1b36caaa7f1",
+    "library": "/shared/stimuli/img/T_kitchen_items/kettle.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_kitchen_items/kettle.svg": {
+    "stimulus": "kitchen-items-kettle",
+    "md5": "62bc5f931b1b995e828111b11f0736c5",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_kitchen_items/kettle.svg": {
+    "stimulus": "kitchen-items-kettle",
+    "md5": "62bc5f931b1b995e828111b11f0736c5",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/kettle.svg": {
+    "stimulus": "kitchen-items-kettle",
+    "md5": "62bc5f931b1b995e828111b11f0736c5",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/knife.jpg": {
+    "stimulus": "kitchen-items-knife",
+    "md5": "8ae7fd5636e9af722a965b5a5565a2bd",
+    "library": "/shared/stimuli/img/T_kitchen_items/knife.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_kitchen_items/knife.svg": {
+    "stimulus": "kitchen-items-knife",
+    "md5": "9ba05c3c5b3d3f38401ad0349b1e43da",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_kitchen_items/knife.svg": {
+    "stimulus": "kitchen-items-knife",
+    "md5": "9ba05c3c5b3d3f38401ad0349b1e43da",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/knife.svg": {
+    "stimulus": "kitchen-items-knife",
+    "md5": "9ba05c3c5b3d3f38401ad0349b1e43da",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/microwave.jpg": {
+    "stimulus": "kitchen-items-microwave",
+    "md5": "b6f5ce874aa7202bf7c008c915a6d60c",
+    "library": "/shared/stimuli/img/T_kitchen_items/microwave.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_kitchen_items/microwave.svg": {
+    "stimulus": "kitchen-items-microwave",
+    "md5": "faf90c5c92b6a01440c498fad57f6134",
+    "library": "/shared/stimuli/img/T_kitchen_items/microwave--alt1.svg"
+  },
+  "/clock/_Resources/_imgSource/T_kitchen_items/microwave.svg": {
+    "stimulus": "kitchen-items-microwave",
+    "md5": "faf90c5c92b6a01440c498fad57f6134",
+    "library": "/shared/stimuli/img/T_kitchen_items/microwave--alt1.svg"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/microwave.svg": {
+    "stimulus": "kitchen-items-microwave",
+    "md5": "faf90c5c92b6a01440c498fad57f6134",
+    "library": "/shared/stimuli/img/T_kitchen_items/microwave--alt1.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_kitchen_items/milk-glass.svg": {
+    "stimulus": "kitchen-items-milk-glass",
+    "md5": "06dcb040e73bbda2183fd5c742222ae1",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_kitchen_items/milk-glass.svg": {
+    "stimulus": "kitchen-items-milk-glass",
+    "md5": "06dcb040e73bbda2183fd5c742222ae1",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/napkin.jpg": {
+    "stimulus": "kitchen-items-napkin",
+    "md5": "d228ffa50e26ed4df248f4d61b503b32",
+    "library": "/shared/stimuli/img/T_kitchen_items/napkin.jpg"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/oven.webp": {
+    "stimulus": "kitchen-items-oven",
+    "md5": "148a82603403285af8d0980903e3d961",
+    "library": "/shared/stimuli/img/T_kitchen_items/oven.webp"
+  },
+  "/receptive/_Resources/_imgSource/T_kitchen_items/oven.svg": {
+    "stimulus": "kitchen-items-oven",
+    "md5": "a8081cff4c9def6b06fdd4644aba2bee",
+    "library": "/shared/stimuli/img/T_kitchen_items/oven--alt1.svg"
+  },
+  "/clock/_Resources/_imgSource/T_kitchen_items/oven.svg": {
+    "stimulus": "kitchen-items-oven",
+    "md5": "a8081cff4c9def6b06fdd4644aba2bee",
+    "library": "/shared/stimuli/img/T_kitchen_items/oven--alt1.svg"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/oven.svg": {
+    "stimulus": "kitchen-items-oven",
+    "md5": "a8081cff4c9def6b06fdd4644aba2bee",
+    "library": "/shared/stimuli/img/T_kitchen_items/oven--alt1.svg"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/plate.jpg": {
+    "stimulus": "kitchen-items-plate",
+    "md5": "78b5b65c7948fc070ef412e9a6dc0d9e",
+    "library": "/shared/stimuli/img/T_kitchen_items/plate.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_kitchen_items/plate.svg": {
+    "stimulus": "kitchen-items-plate",
+    "md5": "3eee87e950bcc45e781a3ee472ec0d17",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_kitchen_items/plate.svg": {
+    "stimulus": "kitchen-items-plate",
+    "md5": "3eee87e950bcc45e781a3ee472ec0d17",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/plate.svg": {
+    "stimulus": "kitchen-items-plate",
+    "md5": "3eee87e950bcc45e781a3ee472ec0d17",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/pot.jpg": {
+    "stimulus": "kitchen-items-pot",
+    "md5": "358e18d1859a214f8dd5f5b3d19160e0",
+    "library": "/shared/stimuli/img/T_kitchen_items/pot.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_kitchen_items/pot.svg": {
+    "stimulus": "kitchen-items-pot",
+    "md5": "d22c832cd42dd09bf0dbe658fc836c77",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_kitchen_items/pot.svg": {
+    "stimulus": "kitchen-items-pot",
+    "md5": "d22c832cd42dd09bf0dbe658fc836c77",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/pot.svg": {
+    "stimulus": "kitchen-items-pot",
+    "md5": "d22c832cd42dd09bf0dbe658fc836c77",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/refrigerator.webp": {
+    "stimulus": "kitchen-items-refrigerator",
+    "md5": "4ee20870bc0c051df9288b9960520983",
+    "library": "/shared/stimuli/img/T_kitchen_items/refrigerator.webp"
+  },
+  "/receptive/_Resources/_imgSource/T_kitchen_items/refrigerator.svg": {
+    "stimulus": "kitchen-items-refrigerator",
+    "md5": "3a545d41e7e4e0499d152764c7ce2b1e",
+    "library": "/shared/stimuli/img/T_kitchen_items/refrigerator--alt1.svg"
+  },
+  "/clock/_Resources/_imgSource/T_kitchen_items/refrigerator.svg": {
+    "stimulus": "kitchen-items-refrigerator",
+    "md5": "3a545d41e7e4e0499d152764c7ce2b1e",
+    "library": "/shared/stimuli/img/T_kitchen_items/refrigerator--alt1.svg"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/refrigerator.svg": {
+    "stimulus": "kitchen-items-refrigerator",
+    "md5": "3a545d41e7e4e0499d152764c7ce2b1e",
+    "library": "/shared/stimuli/img/T_kitchen_items/refrigerator--alt1.svg"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/salt.jpg": {
+    "stimulus": "kitchen-items-salt",
+    "md5": "45a3cde5802fd48e39b282e0c31195f2",
+    "library": "/shared/stimuli/img/T_kitchen_items/salt.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_kitchen_items/salt.svg": {
+    "stimulus": "kitchen-items-salt",
+    "md5": "03e7de5cc50eedb95b979e86549c6946",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_kitchen_items/salt.svg": {
+    "stimulus": "kitchen-items-salt",
+    "md5": "03e7de5cc50eedb95b979e86549c6946",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/salt.svg": {
+    "stimulus": "kitchen-items-salt",
+    "md5": "03e7de5cc50eedb95b979e86549c6946",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/spoon.jpg": {
+    "stimulus": "kitchen-items-spoon",
+    "md5": "9b69ad3d74231adc08e099d58617ca5b",
+    "library": "/shared/stimuli/img/T_kitchen_items/spoon.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_kitchen_items/spoon.svg": {
+    "stimulus": "kitchen-items-spoon",
+    "md5": "929e16e2bffaac99999d19ff69e98a59",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_kitchen_items/spoon.svg": {
+    "stimulus": "kitchen-items-spoon",
+    "md5": "929e16e2bffaac99999d19ff69e98a59",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/spoon.svg": {
+    "stimulus": "kitchen-items-spoon",
+    "md5": "929e16e2bffaac99999d19ff69e98a59",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/teacup.jpg": {
+    "stimulus": "kitchen-items-teacup",
+    "md5": "c4ea178eed4fc51b8458d7fb384e8df5",
+    "library": "/shared/stimuli/img/T_kitchen_items/teacup.jpg"
+  },
+  "/receptive/_Resources/_imgSource/T_kitchen_items/teacup.svg": {
+    "stimulus": "kitchen-items-teacup",
+    "md5": "6589a841312677d5ea4906f25a5c26f7",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_kitchen_items/teacup.svg": {
+    "stimulus": "kitchen-items-teacup",
+    "md5": "6589a841312677d5ea4906f25a5c26f7",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/teacup.svg": {
+    "stimulus": "kitchen-items-teacup",
+    "md5": "6589a841312677d5ea4906f25a5c26f7",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/toaster.webp": {
+    "stimulus": "kitchen-items-toaster",
+    "md5": "8b5fa87e8676a536ab3e2f34e17312f5",
+    "library": "/shared/stimuli/img/T_kitchen_items/toaster.webp"
+  },
+  "/receptive/_Resources/_imgSource/T_kitchen_items/toaster.svg": {
+    "stimulus": "kitchen-items-toaster",
+    "md5": "d5e37d3c7be669ce8a54aa3917c5f17f",
+    "library": "/shared/stimuli/img/T_kitchen_items/toaster--alt1.svg"
+  },
+  "/clock/_Resources/_imgSource/T_kitchen_items/toaster.svg": {
+    "stimulus": "kitchen-items-toaster",
+    "md5": "d5e37d3c7be669ce8a54aa3917c5f17f",
+    "library": "/shared/stimuli/img/T_kitchen_items/toaster--alt1.svg"
+  },
+  "/matching/_Resources/_imgSource/T_kitchen_items/toaster.svg": {
+    "stimulus": "kitchen-items-toaster",
+    "md5": "d5e37d3c7be669ce8a54aa3917c5f17f",
+    "library": "/shared/stimuli/img/T_kitchen_items/toaster--alt1.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_kitchen_items/wine-glass.svg": {
+    "stimulus": "kitchen-items-wine-glass",
+    "md5": "5370f75e0342a27fdd2e33c6f6a67d7e",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_kitchen_items/wine-glass.svg": {
+    "stimulus": "kitchen-items-wine-glass",
+    "md5": "5370f75e0342a27fdd2e33c6f6a67d7e",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/a.svg": {
+    "stimulus": "lowercase-a",
+    "md5": "0196b9611814dd6eda7cd22c1bbbc163",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/b.svg": {
+    "stimulus": "lowercase-b",
+    "md5": "d43e255d37d9362e7229871a648e1d7a",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/c.svg": {
+    "stimulus": "lowercase-c",
+    "md5": "b27bc10443decd811bbe671c0d9fefa3",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/d.svg": {
+    "stimulus": "lowercase-d",
+    "md5": "2d69653f3bf82c84066fa5a620d5baf6",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/e.svg": {
+    "stimulus": "lowercase-e",
+    "md5": "9df2b5a622bf0f7ffc75b85be0cfeded",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/f.svg": {
+    "stimulus": "lowercase-f",
+    "md5": "8821aae5e01bbf84c8b8105acf68e34a",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/g.svg": {
+    "stimulus": "lowercase-g",
+    "md5": "9e4589288801ecc95d83efb6322703a9",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/h.svg": {
+    "stimulus": "lowercase-h",
+    "md5": "f810602dd75e340457fa30ba50f200f3",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/i.svg": {
+    "stimulus": "lowercase-i",
+    "md5": "aab24d5730244d1c4ac5415b5983b8ec",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/j.svg": {
+    "stimulus": "lowercase-j",
+    "md5": "f5a88ad096caed399047b192a3f63913",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/k.svg": {
+    "stimulus": "lowercase-k",
+    "md5": "da1b17dec7747aae7df23f7b626ff83d",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/l.svg": {
+    "stimulus": "lowercase-l",
+    "md5": "76738c842778ce8d8d327961c5b9cd68",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/m.svg": {
+    "stimulus": "lowercase-m",
+    "md5": "552a98af5526c2931a07265b51bd30a6",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/n.svg": {
+    "stimulus": "lowercase-n",
+    "md5": "cc2892e82e922400b8f9487192b55e1f",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/o.svg": {
+    "stimulus": "lowercase-o",
+    "md5": "c9ca78b4f031435743b2f6040e232b0b",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/p.svg": {
+    "stimulus": "lowercase-p",
+    "md5": "7ef30ae69b49af9dbbe9eae73c2acd44",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/q.svg": {
+    "stimulus": "lowercase-q",
+    "md5": "dbcec06940d04af3c6be6cbee2a5782a",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/r.svg": {
+    "stimulus": "lowercase-r",
+    "md5": "97e5bff9d93c57b2bcbf88d0de29c850",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/s.svg": {
+    "stimulus": "lowercase-s",
+    "md5": "f00070847db4cb5fe22995a1d2c76300",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/t.svg": {
+    "stimulus": "lowercase-t",
+    "md5": "653df6cf3026db011380458d7efd388a",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/u.svg": {
+    "stimulus": "lowercase-u",
+    "md5": "6a068a53344ac4a29a78d3ef37deac14",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/v.svg": {
+    "stimulus": "lowercase-v",
+    "md5": "a60044b98416ff616f5488caaff8292b",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/w.svg": {
+    "stimulus": "lowercase-w",
+    "md5": "97481bfe012f9c876e706c169f76eedb",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/x.svg": {
+    "stimulus": "lowercase-x",
+    "md5": "96c1845cb1ae8e01a3e9a5b37f01a7d4",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/y.svg": {
+    "stimulus": "lowercase-y",
+    "md5": "b490a3527d5074b06672c7a679899fa1",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_lowercase/z.svg": {
+    "stimulus": "lowercase-z",
+    "md5": "baa6dfeeb9e2dfb8d63b036ab34cf960",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_numbers/1.svg": {
+    "stimulus": "numbers-1",
+    "md5": "9cb08a14c7f26c4a6d93a1cef53634c7",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_numbers/10.svg": {
+    "stimulus": "numbers-10",
+    "md5": "f7dd8dc79d7f8239a09c535c0c8f117d",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_numbers/11.svg": {
+    "stimulus": "numbers-11",
+    "md5": "47b3fa852f9f844bbddce23433fd0951",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_numbers/12.svg": {
+    "stimulus": "numbers-12",
+    "md5": "ae2b49de0c3d39613c82b0a6feea9061",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_numbers/13.svg": {
+    "stimulus": "numbers-13",
+    "md5": "960b82fc3ec5c58d4cc7acf5e2a86933",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_numbers/14.svg": {
+    "stimulus": "numbers-14",
+    "md5": "69d88a8facfa31d90e2130565b5a7b0f",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_numbers/15.svg": {
+    "stimulus": "numbers-15",
+    "md5": "9b699025ae3ae027242154487e4b92d1",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_numbers/16.svg": {
+    "stimulus": "numbers-16",
+    "md5": "e780a259ff7a2cc122d5a798da893684",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_numbers/17.svg": {
+    "stimulus": "numbers-17",
+    "md5": "0eb132557af4decc76dfff4f874709f0",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_numbers/18.svg": {
+    "stimulus": "numbers-18",
+    "md5": "9c6715e87724909136f59aca2a521044",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_numbers/19.svg": {
+    "stimulus": "numbers-19",
+    "md5": "b43cb18f56deab4c73aef1e6abcbce45",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_numbers/2.svg": {
+    "stimulus": "numbers-2",
+    "md5": "9f65459bac4bd0aa79a4478e0c0721da",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_numbers/20.svg": {
+    "stimulus": "numbers-20",
+    "md5": "04a571e6f274cd35736ee717353d163b",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_numbers/3.svg": {
+    "stimulus": "numbers-3",
+    "md5": "f764cb3720c0b574d00505be21310fbc",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_numbers/4.svg": {
+    "stimulus": "numbers-4",
+    "md5": "8d27ad840e0ea3ec43bc4f2550599d76",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_numbers/5.svg": {
+    "stimulus": "numbers-5",
+    "md5": "9432243cc376df597807c1d4a832f8e1",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_numbers/6.svg": {
+    "stimulus": "numbers-6",
+    "md5": "fa7f27539808fbe48b31ab8d82ee2bc7",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_numbers/7.svg": {
+    "stimulus": "numbers-7",
+    "md5": "0cb459febcc3848736574433da8d626f",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_numbers/8.svg": {
+    "stimulus": "numbers-8",
+    "md5": "09b5341d1098c274729f7c33ee9ccb38",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_numbers/9.svg": {
+    "stimulus": "numbers-9",
+    "md5": "e75fd60181b825bfdcafe4170fdc1a3f",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_pbs_characters/pbs1.png": {
+    "stimulus": "pbs-characters-pbs1",
+    "md5": "d0ee79f4cc313c92b1c92d61d7b793f2",
+    "library": "/shared/stimuli/img/T_pbs_characters/pbs1.png"
+  },
+  "/matching/_Resources/_imgSource/T_pbs_characters/pbs10.png": {
+    "stimulus": "pbs-characters-pbs10",
+    "md5": "85ad5d2c0d1123d91d4748cbb1791212",
+    "library": "/shared/stimuli/img/T_pbs_characters/pbs10.png"
+  },
+  "/matching/_Resources/_imgSource/T_pbs_characters/pbs11.png": {
+    "stimulus": "pbs-characters-pbs11",
+    "md5": "311e8413d1bfee62e8184b1bdb27c922",
+    "library": "/shared/stimuli/img/T_pbs_characters/pbs11.png"
+  },
+  "/matching/_Resources/_imgSource/T_pbs_characters/pbs12.png": {
+    "stimulus": "pbs-characters-pbs12",
+    "md5": "0b37981b55934b2ea49937a4129c6c36",
+    "library": "/shared/stimuli/img/T_pbs_characters/pbs12.png"
+  },
+  "/matching/_Resources/_imgSource/T_pbs_characters/pbs13.png": {
+    "stimulus": "pbs-characters-pbs13",
+    "md5": "fe5e7a5fae3dc06bc705b1daecbfbfb9",
+    "library": "/shared/stimuli/img/T_pbs_characters/pbs13.png"
+  },
+  "/matching/_Resources/_imgSource/T_pbs_characters/pbs14.png": {
+    "stimulus": "pbs-characters-pbs14",
+    "md5": "807c6a37235f2dd5676beaee38a5f545",
+    "library": "/shared/stimuli/img/T_pbs_characters/pbs14.png"
+  },
+  "/matching/_Resources/_imgSource/T_pbs_characters/pbs2.png": {
+    "stimulus": "pbs-characters-pbs2",
+    "md5": "1e33bc334f8347a744291a55d1a5aecd",
+    "library": "/shared/stimuli/img/T_pbs_characters/pbs2.png"
+  },
+  "/matching/_Resources/_imgSource/T_pbs_characters/pbs3.png": {
+    "stimulus": "pbs-characters-pbs3",
+    "md5": "acad0000815d1adce420d1dfe53e6cf1",
+    "library": "/shared/stimuli/img/T_pbs_characters/pbs3.png"
+  },
+  "/matching/_Resources/_imgSource/T_pbs_characters/pbs4.png": {
+    "stimulus": "pbs-characters-pbs4",
+    "md5": "ca235df5d47da1e8cfd22d2c653efaf4",
+    "library": "/shared/stimuli/img/T_pbs_characters/pbs4.png"
+  },
+  "/matching/_Resources/_imgSource/T_pbs_characters/pbs5.png": {
+    "stimulus": "pbs-characters-pbs5",
+    "md5": "ebf0eb690e14c7ec43fef3f9a6d8dfd7",
+    "library": "/shared/stimuli/img/T_pbs_characters/pbs5.png"
+  },
+  "/matching/_Resources/_imgSource/T_pbs_characters/pbs6.png": {
+    "stimulus": "pbs-characters-pbs6",
+    "md5": "e0b224ce1f16ed7563cecbbf25c911d1",
+    "library": "/shared/stimuli/img/T_pbs_characters/pbs6.png"
+  },
+  "/matching/_Resources/_imgSource/T_pbs_characters/pbs7.png": {
+    "stimulus": "pbs-characters-pbs7",
+    "md5": "412977d1e741f580a901ab84af7db285",
+    "library": "/shared/stimuli/img/T_pbs_characters/pbs7.png"
+  },
+  "/matching/_Resources/_imgSource/T_pbs_characters/pbs8.png": {
+    "stimulus": "pbs-characters-pbs8",
+    "md5": "a20000cb1516c6760e3ec680058aa6cf",
+    "library": "/shared/stimuli/img/T_pbs_characters/pbs8.png"
+  },
+  "/matching/_Resources/_imgSource/T_pbs_characters/pbs9.png": {
+    "stimulus": "pbs-characters-pbs9",
+    "md5": "d6f1f0f5bf7d5b4fdaea2d20568a97df",
+    "library": "/shared/stimuli/img/T_pbs_characters/pbs9.png"
+  },
+  "/receptive/_Resources/_imgSource/T_prepositions/above.png": {
+    "stimulus": "prepositions-above",
+    "md5": "a5520e3f89cd4845f636cb2f0fa2a1a3",
+    "library": "/shared/stimuli/img/T_prepositions/above.png"
+  },
+  "/clock/_Resources/_imgSource/T_prepositions/above.png": {
+    "stimulus": "prepositions-above",
+    "md5": "a5520e3f89cd4845f636cb2f0fa2a1a3",
+    "library": "/shared/stimuli/img/T_prepositions/above.png"
+  },
+  "/receptive/_Resources/_imgSource/T_prepositions/above.svg": {
+    "stimulus": "prepositions-above",
+    "md5": "18dab1824ed754d5ffffbff4d9ed1576",
+    "library": "/shared/stimuli/img/T_prepositions/above--alt1.svg"
+  },
+  "/clock/_Resources/_imgSource/T_prepositions/above.svg": {
+    "stimulus": "prepositions-above",
+    "md5": "18dab1824ed754d5ffffbff4d9ed1576",
+    "library": "/shared/stimuli/img/T_prepositions/above--alt1.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_prepositions/behind.png": {
+    "stimulus": "prepositions-behind",
+    "md5": "818fe21eb91004eef74891a9088adfe6",
+    "library": "/shared/stimuli/img/T_prepositions/behind.png"
+  },
+  "/clock/_Resources/_imgSource/T_prepositions/behind.png": {
+    "stimulus": "prepositions-behind",
+    "md5": "818fe21eb91004eef74891a9088adfe6",
+    "library": "/shared/stimuli/img/T_prepositions/behind.png"
+  },
+  "/receptive/_Resources/_imgSource/T_prepositions/behind.svg": {
+    "stimulus": "prepositions-behind",
+    "md5": "2fe1fe901bb33f5b320ae09aa0a652c2",
+    "library": "/shared/stimuli/img/T_prepositions/behind--alt1.svg"
+  },
+  "/clock/_Resources/_imgSource/T_prepositions/behind.svg": {
+    "stimulus": "prepositions-behind",
+    "md5": "2fe1fe901bb33f5b320ae09aa0a652c2",
+    "library": "/shared/stimuli/img/T_prepositions/behind--alt1.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_prepositions/below.png": {
+    "stimulus": "prepositions-below",
+    "md5": "013a3737a5f9fe98177d9f259a231513",
+    "library": "/shared/stimuli/img/T_prepositions/below.png"
+  },
+  "/clock/_Resources/_imgSource/T_prepositions/below.svg": {
+    "stimulus": "prepositions-below",
+    "md5": "66272e42d080c2c992fe10bf7416428b",
+    "library": "/shared/stimuli/img/T_prepositions/below--alt1.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_prepositions/below.svg": {
+    "stimulus": "prepositions-below",
+    "md5": "66272e42d080c2c992fe10bf7416428b",
+    "library": "/shared/stimuli/img/T_prepositions/below--alt1.svg"
+  },
+  "/clock/_Resources/_imgSource/T_prepositions/far.svg": {
+    "stimulus": "prepositions-far",
+    "md5": "86acd394d36a2f1dae8184e332ed474a",
+    "library": "/shared/stimuli/img/T_prepositions/far.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_prepositions/in.png": {
+    "stimulus": "prepositions-in",
+    "md5": "3a73dc899d180d772b2331caabe2ee56",
+    "library": "/shared/stimuli/img/T_prepositions/in.png"
+  },
+  "/clock/_Resources/_imgSource/T_prepositions/in.svg": {
+    "stimulus": "prepositions-in",
+    "md5": "f7f46e7683761578551b6cfc3ac61f2a",
+    "library": "/shared/stimuli/img/T_prepositions/in--alt1.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_prepositions/in.svg": {
+    "stimulus": "prepositions-in",
+    "md5": "f7f46e7683761578551b6cfc3ac61f2a",
+    "library": "/shared/stimuli/img/T_prepositions/in--alt1.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_prepositions/in-front-of.png": {
+    "stimulus": "prepositions-in-front-of",
+    "md5": "73191a89a52a945c6718127e8fa7d88e",
+    "library": "/shared/stimuli/img/T_prepositions/in-front-of.png"
+  },
+  "/clock/_Resources/_imgSource/T_prepositions/in-front-of.svg": {
+    "stimulus": "prepositions-in-front-of",
+    "md5": "25bb89d95ec03a51341759484c521197",
+    "library": "/shared/stimuli/img/T_prepositions/in-front-of--alt1.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_prepositions/in-front-of.svg": {
+    "stimulus": "prepositions-in-front-of",
+    "md5": "25bb89d95ec03a51341759484c521197",
+    "library": "/shared/stimuli/img/T_prepositions/in-front-of--alt1.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_prepositions/left-of.svg": {
+    "stimulus": "prepositions-left-of",
+    "md5": "cb0205df44eedda865cf2fca52286759",
+    "library": "/shared/stimuli/img/T_prepositions/left-of.svg"
+  },
+  "/clock/_Resources/_imgSource/T_prepositions/left-of.svg": {
+    "stimulus": "prepositions-left-of",
+    "md5": "cb0205df44eedda865cf2fca52286759",
+    "library": "/shared/stimuli/img/T_prepositions/left-of.svg"
+  },
+  "/clock/_Resources/_imgSource/T_prepositions/near.svg": {
+    "stimulus": "prepositions-near",
+    "md5": "46db58af5af454cfbe4e306e635101c7",
+    "library": "/shared/stimuli/img/T_prepositions/near.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_prepositions/next-to.png": {
+    "stimulus": "prepositions-next-to",
+    "md5": "8183c2d6bb3064cf3639eeb0ee5e434d",
+    "library": "/shared/stimuli/img/T_prepositions/next-to.png"
+  },
+  "/clock/_Resources/_imgSource/T_prepositions/next-to.svg": {
+    "stimulus": "prepositions-next-to",
+    "md5": "831431e0a339a5590cb30d3c8581126e",
+    "library": "/shared/stimuli/img/T_prepositions/next-to--alt1.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_prepositions/next-to.svg": {
+    "stimulus": "prepositions-next-to",
+    "md5": "831431e0a339a5590cb30d3c8581126e",
+    "library": "/shared/stimuli/img/T_prepositions/next-to--alt1.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_prepositions/on.png": {
+    "stimulus": "prepositions-on",
+    "md5": "a5520e3f89cd4845f636cb2f0fa2a1a3",
+    "library": null,
+    "droppedBecause": "duplicate-of:T_prepositions/above"
+  },
+  "/clock/_Resources/_imgSource/T_prepositions/on.svg": {
+    "stimulus": "prepositions-on",
+    "md5": "6d9804aedffdf13c553c94920c71e9ea",
+    "library": "/shared/stimuli/img/T_prepositions/on.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_prepositions/on.svg": {
+    "stimulus": "prepositions-on",
+    "md5": "6d9804aedffdf13c553c94920c71e9ea",
+    "library": "/shared/stimuli/img/T_prepositions/on.svg"
+  },
+  "/clock/_Resources/_imgSource/T_prepositions/right-of.svg": {
+    "stimulus": "prepositions-right-of",
+    "md5": "5242f1dea191da72717fdf4289f54c54",
+    "library": "/shared/stimuli/img/T_prepositions/right-of.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_prepositions/under.png": {
+    "stimulus": "prepositions-under",
+    "md5": "013a3737a5f9fe98177d9f259a231513",
+    "library": null,
+    "droppedBecause": "duplicate-of:T_prepositions/below"
+  },
+  "/clock/_Resources/_imgSource/T_prepositions/under.svg": {
+    "stimulus": "prepositions-under",
+    "md5": "27f0a822b4c9afe910321f05511816fe",
+    "library": "/shared/stimuli/img/T_prepositions/under.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_prepositions/under.svg": {
+    "stimulus": "prepositions-under",
+    "md5": "27f0a822b4c9afe910321f05511816fe",
+    "library": "/shared/stimuli/img/T_prepositions/under.svg"
+  },
+  "/matching/_Resources/_imgSource/T_shapes/circle.svg": {
+    "stimulus": "shapes-circle",
+    "md5": "131d568beef1fc8da1e9be9baca321a8",
+    "library": "/shared/stimuli/img/T_shapes/circle.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_shapes/circle.svg": {
+    "stimulus": "shapes-circle",
+    "md5": "131d568beef1fc8da1e9be9baca321a8",
+    "library": "/shared/stimuli/img/T_shapes/circle.svg"
+  },
+  "/clock/_Resources/_imgSource/T_shapes/circle.svg": {
+    "stimulus": "shapes-circle",
+    "md5": "131d568beef1fc8da1e9be9baca321a8",
+    "library": "/shared/stimuli/img/T_shapes/circle.svg"
+  },
+  "/matching/_Resources/_imgSource/T_shapes/diamond.svg": {
+    "stimulus": "shapes-diamond",
+    "md5": "df67e30e7e65ee8a2ef80214287cd457",
+    "library": "/shared/stimuli/img/T_shapes/diamond.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_shapes/diamond.svg": {
+    "stimulus": "shapes-diamond",
+    "md5": "df67e30e7e65ee8a2ef80214287cd457",
+    "library": "/shared/stimuli/img/T_shapes/diamond.svg"
+  },
+  "/clock/_Resources/_imgSource/T_shapes/diamond.svg": {
+    "stimulus": "shapes-diamond",
+    "md5": "df67e30e7e65ee8a2ef80214287cd457",
+    "library": "/shared/stimuli/img/T_shapes/diamond.svg"
+  },
+  "/matching/_Resources/_imgSource/T_shapes/heart.svg": {
+    "stimulus": "shapes-heart",
+    "md5": "38a8fd16acd5833b4fa5b944dffbb235",
+    "library": "/shared/stimuli/img/T_shapes/heart.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_shapes/heart.svg": {
+    "stimulus": "shapes-heart",
+    "md5": "38a8fd16acd5833b4fa5b944dffbb235",
+    "library": "/shared/stimuli/img/T_shapes/heart.svg"
+  },
+  "/clock/_Resources/_imgSource/T_shapes/heart.svg": {
+    "stimulus": "shapes-heart",
+    "md5": "38a8fd16acd5833b4fa5b944dffbb235",
+    "library": "/shared/stimuli/img/T_shapes/heart.svg"
+  },
+  "/matching/_Resources/_imgSource/T_shapes/hexagon.svg": {
+    "stimulus": "shapes-hexagon",
+    "md5": "628df327db4f44f6bb810e2a8d5cbc24",
+    "library": "/shared/stimuli/img/T_shapes/hexagon.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_shapes/hexagon.svg": {
+    "stimulus": "shapes-hexagon",
+    "md5": "628df327db4f44f6bb810e2a8d5cbc24",
+    "library": "/shared/stimuli/img/T_shapes/hexagon.svg"
+  },
+  "/clock/_Resources/_imgSource/T_shapes/hexagon.svg": {
+    "stimulus": "shapes-hexagon",
+    "md5": "628df327db4f44f6bb810e2a8d5cbc24",
+    "library": "/shared/stimuli/img/T_shapes/hexagon.svg"
+  },
+  "/matching/_Resources/_imgSource/T_shapes/oval.svg": {
+    "stimulus": "shapes-oval",
+    "md5": "73b92e52f78e6d7ee8d9e03e1cf793af",
+    "library": "/shared/stimuli/img/T_shapes/oval.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_shapes/oval.svg": {
+    "stimulus": "shapes-oval",
+    "md5": "73b92e52f78e6d7ee8d9e03e1cf793af",
+    "library": "/shared/stimuli/img/T_shapes/oval.svg"
+  },
+  "/clock/_Resources/_imgSource/T_shapes/oval.svg": {
+    "stimulus": "shapes-oval",
+    "md5": "73b92e52f78e6d7ee8d9e03e1cf793af",
+    "library": "/shared/stimuli/img/T_shapes/oval.svg"
+  },
+  "/matching/_Resources/_imgSource/T_shapes/pentagon.svg": {
+    "stimulus": "shapes-pentagon",
+    "md5": "0bd6c9c28383150bf36b3c37bcc06844",
+    "library": "/shared/stimuli/img/T_shapes/pentagon.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_shapes/pentagon.svg": {
+    "stimulus": "shapes-pentagon",
+    "md5": "0bd6c9c28383150bf36b3c37bcc06844",
+    "library": "/shared/stimuli/img/T_shapes/pentagon.svg"
+  },
+  "/clock/_Resources/_imgSource/T_shapes/pentagon.svg": {
+    "stimulus": "shapes-pentagon",
+    "md5": "0bd6c9c28383150bf36b3c37bcc06844",
+    "library": "/shared/stimuli/img/T_shapes/pentagon.svg"
+  },
+  "/matching/_Resources/_imgSource/T_shapes/rectangle.svg": {
+    "stimulus": "shapes-rectangle",
+    "md5": "8a055aeb4ef3af372aa853022f167350",
+    "library": "/shared/stimuli/img/T_shapes/rectangle.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_shapes/rectangle.svg": {
+    "stimulus": "shapes-rectangle",
+    "md5": "8a055aeb4ef3af372aa853022f167350",
+    "library": "/shared/stimuli/img/T_shapes/rectangle.svg"
+  },
+  "/clock/_Resources/_imgSource/T_shapes/rectangle.svg": {
+    "stimulus": "shapes-rectangle",
+    "md5": "8a055aeb4ef3af372aa853022f167350",
+    "library": "/shared/stimuli/img/T_shapes/rectangle.svg"
+  },
+  "/matching/_Resources/_imgSource/T_shapes/square.svg": {
+    "stimulus": "shapes-square",
+    "md5": "fd74f86378a4459f3292ad4eb7cebfda",
+    "library": "/shared/stimuli/img/T_shapes/square.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_shapes/square.svg": {
+    "stimulus": "shapes-square",
+    "md5": "fd74f86378a4459f3292ad4eb7cebfda",
+    "library": "/shared/stimuli/img/T_shapes/square.svg"
+  },
+  "/clock/_Resources/_imgSource/T_shapes/square.svg": {
+    "stimulus": "shapes-square",
+    "md5": "fd74f86378a4459f3292ad4eb7cebfda",
+    "library": "/shared/stimuli/img/T_shapes/square.svg"
+  },
+  "/matching/_Resources/_imgSource/T_shapes/star.svg": {
+    "stimulus": "shapes-star",
+    "md5": "400e15c9111a7424baeff4b578f38c38",
+    "library": "/shared/stimuli/img/T_shapes/star.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_shapes/star.svg": {
+    "stimulus": "shapes-star",
+    "md5": "400e15c9111a7424baeff4b578f38c38",
+    "library": "/shared/stimuli/img/T_shapes/star.svg"
+  },
+  "/clock/_Resources/_imgSource/T_shapes/star.svg": {
+    "stimulus": "shapes-star",
+    "md5": "400e15c9111a7424baeff4b578f38c38",
+    "library": "/shared/stimuli/img/T_shapes/star.svg"
+  },
+  "/matching/_Resources/_imgSource/T_shapes/triangle.svg": {
+    "stimulus": "shapes-triangle",
+    "md5": "201193db680c0da48706ef63f0fbf59f",
+    "library": "/shared/stimuli/img/T_shapes/triangle.svg"
+  },
+  "/receptive/_Resources/_imgSource/T_shapes/triangle.svg": {
+    "stimulus": "shapes-triangle",
+    "md5": "201193db680c0da48706ef63f0fbf59f",
+    "library": "/shared/stimuli/img/T_shapes/triangle.svg"
+  },
+  "/clock/_Resources/_imgSource/T_shapes/triangle.svg": {
+    "stimulus": "shapes-triangle",
+    "md5": "201193db680c0da48706ef63f0fbf59f",
+    "library": "/shared/stimuli/img/T_shapes/triangle.svg"
+  },
+  "/matching/_Resources/_imgSource/T_toys/balloon.svg": {
+    "stimulus": "toys-balloon",
+    "md5": "5de525fbbc884b56f4e954e438679406",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_toys/balloon.svg": {
+    "stimulus": "toys-balloon",
+    "md5": "5de525fbbc884b56f4e954e438679406",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_toys/balloon.svg": {
+    "stimulus": "toys-balloon",
+    "md5": "5de525fbbc884b56f4e954e438679406",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_toys/blocks.svg": {
+    "stimulus": "toys-blocks",
+    "md5": "10bb30598ed54adbfe48cedca24c401c",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_toys/blocks.svg": {
+    "stimulus": "toys-blocks",
+    "md5": "10bb30598ed54adbfe48cedca24c401c",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_toys/blocks.svg": {
+    "stimulus": "toys-blocks",
+    "md5": "10bb30598ed54adbfe48cedca24c401c",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_toys/kite.svg": {
+    "stimulus": "toys-kite",
+    "md5": "f508af16583c8e6c6a090f6ed45090a4",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_toys/kite.svg": {
+    "stimulus": "toys-kite",
+    "md5": "f508af16583c8e6c6a090f6ed45090a4",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_toys/kite.svg": {
+    "stimulus": "toys-kite",
+    "md5": "f508af16583c8e6c6a090f6ed45090a4",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_toys/puzzle.svg": {
+    "stimulus": "toys-puzzle",
+    "md5": "59bd590c87a475012e07db27ec0b5932",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_toys/puzzle.svg": {
+    "stimulus": "toys-puzzle",
+    "md5": "59bd590c87a475012e07db27ec0b5932",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_toys/puzzle.svg": {
+    "stimulus": "toys-puzzle",
+    "md5": "59bd590c87a475012e07db27ec0b5932",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_toys/robot.svg": {
+    "stimulus": "toys-robot",
+    "md5": "618158c2c58a3a72c7aa67b3cac302bc",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_toys/robot.svg": {
+    "stimulus": "toys-robot",
+    "md5": "618158c2c58a3a72c7aa67b3cac302bc",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_toys/robot.svg": {
+    "stimulus": "toys-robot",
+    "md5": "618158c2c58a3a72c7aa67b3cac302bc",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_toys/soccer-ball.svg": {
+    "stimulus": "toys-soccer-ball",
+    "md5": "14ddfed935e2f8577aeab7470c97897c",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_toys/soccer-ball.svg": {
+    "stimulus": "toys-soccer-ball",
+    "md5": "14ddfed935e2f8577aeab7470c97897c",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_toys/soccer-ball.svg": {
+    "stimulus": "toys-soccer-ball",
+    "md5": "14ddfed935e2f8577aeab7470c97897c",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_toys/teddy-bear.svg": {
+    "stimulus": "toys-teddy-bear",
+    "md5": "c7145ddf6d9001066638906171470fd4",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_toys/teddy-bear.svg": {
+    "stimulus": "toys-teddy-bear",
+    "md5": "c7145ddf6d9001066638906171470fd4",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_toys/teddy-bear.svg": {
+    "stimulus": "toys-teddy-bear",
+    "md5": "c7145ddf6d9001066638906171470fd4",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_toys/toy-car.svg": {
+    "stimulus": "toys-toy-car",
+    "md5": "7a77892ba5c0048af8d44d745085d11a",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_toys/toy-car.svg": {
+    "stimulus": "toys-toy-car",
+    "md5": "7a77892ba5c0048af8d44d745085d11a",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_toys/toy-car.svg": {
+    "stimulus": "toys-toy-car",
+    "md5": "7a77892ba5c0048af8d44d745085d11a",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_toys/train.svg": {
+    "stimulus": "toys-train",
+    "md5": "81fae94953e449459abd04468ab04f6d",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_toys/train.svg": {
+    "stimulus": "toys-train",
+    "md5": "81fae94953e449459abd04468ab04f6d",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_toys/train.svg": {
+    "stimulus": "toys-train",
+    "md5": "81fae94953e449459abd04468ab04f6d",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_toys/yoyo.svg": {
+    "stimulus": "toys-yoyo",
+    "md5": "64cf86ff7b055e3edb11de91f706ed9d",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/receptive/_Resources/_imgSource/T_toys/yoyo.svg": {
+    "stimulus": "toys-yoyo",
+    "md5": "64cf86ff7b055e3edb11de91f706ed9d",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/clock/_Resources/_imgSource/T_toys/yoyo.svg": {
+    "stimulus": "toys-yoyo",
+    "md5": "64cf86ff7b055e3edb11de91f706ed9d",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/A.svg": {
+    "stimulus": "uppercase-a",
+    "md5": "90956de5273b682fd2c71ac70abaad2f",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/B.svg": {
+    "stimulus": "uppercase-b",
+    "md5": "a35adaedcc7a52239f01d78b3aeccd92",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/C.svg": {
+    "stimulus": "uppercase-c",
+    "md5": "8b791737026d8e48bf3dca57158a6721",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/D.svg": {
+    "stimulus": "uppercase-d",
+    "md5": "85933facb1c6f5df206037fab55385ef",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/E.svg": {
+    "stimulus": "uppercase-e",
+    "md5": "117669c3c3261f35d4f10bae9b905275",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/F.svg": {
+    "stimulus": "uppercase-f",
+    "md5": "3281fc4364c09960828707a3eb9b9239",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/G.svg": {
+    "stimulus": "uppercase-g",
+    "md5": "4a4c3c6bb99c8ca622ee9a6ca16ea2f1",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/H.svg": {
+    "stimulus": "uppercase-h",
+    "md5": "4413b26272da3adb79ea93f76a5738c3",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/I.svg": {
+    "stimulus": "uppercase-i",
+    "md5": "20140dfe4eac6cca0d72d0b4843feb88",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/J.svg": {
+    "stimulus": "uppercase-j",
+    "md5": "aeac40e0485ead6f487543eceb958f50",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/K.svg": {
+    "stimulus": "uppercase-k",
+    "md5": "4240b93d512f947f6275edc3e70a04f4",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/L.svg": {
+    "stimulus": "uppercase-l",
+    "md5": "6304acc929468e3c9d00edc8df310aa0",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/M.svg": {
+    "stimulus": "uppercase-m",
+    "md5": "965cf6463c27991097fc9fab0d2b1d9e",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/N.svg": {
+    "stimulus": "uppercase-n",
+    "md5": "c89baf8a0c3e99b1569235ab699ec377",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/O.svg": {
+    "stimulus": "uppercase-o",
+    "md5": "7ca5b96a86b831bc03bb94fc9d50e660",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/P.svg": {
+    "stimulus": "uppercase-p",
+    "md5": "1921d8a13e1252325908cd75f194095b",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/Q.svg": {
+    "stimulus": "uppercase-q",
+    "md5": "4cdcec0a680c19ba52dee7e444336080",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/R.svg": {
+    "stimulus": "uppercase-r",
+    "md5": "04c1d2855a20fffbf9c74a8a54bdcd4b",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/S.svg": {
+    "stimulus": "uppercase-s",
+    "md5": "8cf98d31ec85be239df8ebf2b7cc13a5",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/T.svg": {
+    "stimulus": "uppercase-t",
+    "md5": "9bb31938c2f8893c554b2625d4fe21a4",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/U.svg": {
+    "stimulus": "uppercase-u",
+    "md5": "c69cad4136cf25aa10bf87b3d084421d",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/V.svg": {
+    "stimulus": "uppercase-v",
+    "md5": "566e375a38932b9c976469ab99699f45",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/W.svg": {
+    "stimulus": "uppercase-w",
+    "md5": "be6ecc99fc47979e08a446fd0410bb90",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/X.svg": {
+    "stimulus": "uppercase-x",
+    "md5": "5d4a4c9f973deb1c0b271a46d4183188",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/Y.svg": {
+    "stimulus": "uppercase-y",
+    "md5": "4125f1937f0223eb55544a6659f52f51",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/matching/_Resources/_imgSource/T_uppercase/Z.svg": {
+    "stimulus": "uppercase-z",
+    "md5": "699f321aab12fc6341fc45797f6b75db",
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  }
+}
