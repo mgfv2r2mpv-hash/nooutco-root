@@ -46,6 +46,7 @@ function committedState() {
     manifests: Object.fromEntries(GAMES.map((game) => [game, readJson(`${game}/manifest.json`)])),
     publishing: readJson('shared/stimuli/publishing.json'),
     labels: readJson('shared/stimuli/labels.json').overrides,
+    topicNames: readJson('shared/stimuli/topics.json').names,
   };
 }
 
@@ -69,6 +70,7 @@ function rebuilt(upload, worker) {
     labels: worker.labels,
     liveManifests: worker.manifests,
     publishing: worker.publishing,
+    topicNames: worker.topicNames || readJson('shared/stimuli/topics.json').names,
   });
 }
 
@@ -294,5 +296,30 @@ test.describe('the committed library is what the builder produces', () => {
     const state = committedState();
     const stamp = manifestStamp(sha256(stableJson(state.index)));
     for (const game of GAMES) expect(state.manifests[game].generated).toBe(stamp);
+  });
+});
+
+test.describe('a topic name is source, never read back out of the projection', () => {
+  test('topics.json reaches one game\'s manifest; a name only in the manifest does not survive', () => {
+    const state = committedState();
+    const category = state.manifests.matching.folders[0];
+    const common = { labels: state.labels, publishing: state.publishing, liveManifests: state.manifests };
+
+    const named = buildLibrary({ ...common, topicNames: { matching: { [category]: 'Creature Photos' } } });
+    expect(named.manifests.matching.topicNames).toEqual({ [category]: 'Creature Photos' });
+    for (const game of GAMES.filter((g) => g !== 'matching')) {
+      expect(named.manifests[game].topicNames, `${game} keeps its own name for the topic`).toEqual({});
+    }
+
+    // The trap finding 10 names, in a second place: the build must not read its
+    // own output. `topicNames` lives in the generated manifest, so a build that
+    // carried it forward would make an override impossible to clear — deleting
+    // it from `topics.json` would change nothing at all.
+    const haunted = {
+      ...state.manifests,
+      matching: { ...state.manifests.matching, topicNames: { [category]: 'Ghost Name' } },
+    };
+    const rebuild = buildLibrary({ ...common, liveManifests: haunted, topicNames: {} });
+    expect(rebuild.manifests.matching.topicNames).toEqual({});
   });
 });

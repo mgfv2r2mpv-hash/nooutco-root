@@ -154,6 +154,41 @@ test('clock and receptive now serve real photographs for household and kitchen i
   }
 });
 
+// ── A renamed topic reaches the learner-facing dropdown ────────────────────
+
+/**
+ * A rename is a name, not a move. The manifest carries `topicNames` — the
+ * per-game override AdminTools writes — and the game has to prefer it over the
+ * name it derives from the folder while still selecting by the unchanged key.
+ * A game that took the name as the value would write a topic no manifest has
+ * into the technician's saved settings.
+ */
+for (const { game, url, manifest: manifestUrl } of REPOINTED) {
+  test(`${game}: a renamed topic shows its new name and keeps its key`, async ({ page, request }) => {
+    const manifest = await loadJson(request, manifestUrl);
+    const topic = manifest.folders[0];
+
+    await page.route(`**${manifestUrl}`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ...manifest, topicNames: { [topic]: 'Renamed In Admin' } }),
+      });
+    });
+
+    await page.goto(url);
+    await expect(page.locator('#sel-topic option')).toHaveCount(manifest.folders.length);
+
+    const first = page.locator('#sel-topic option').first();
+    await expect(first).toHaveText('Renamed In Admin');
+    await expect(first, 'the key the images are indexed by never moved').toHaveAttribute('value', topic);
+
+    // Every other topic still shows the name it derives for itself.
+    const second = page.locator('#sel-topic option').nth(1);
+    await expect(second).not.toHaveText('Renamed In Admin');
+  });
+}
+
 // ── A saved target selection survives the move ─────────────────────────────
 
 /**

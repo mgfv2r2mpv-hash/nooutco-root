@@ -363,10 +363,13 @@ function buildTopicDropdown(dirs) {
     el.selTopic.innerHTML = '<option value="">-- No T_* folders found --</option>';
     return;
   }
+  // A technician's rename, per game, comes down in the generated manifest and
+  // outranks the shipped default: the topic key never moves, only its name.
+  const named = (state.manifest && state.manifest.topicNames) || {};
   dirs.forEach(d => {
     const o = document.createElement('option');
     o.value = d;
-    o.textContent = TOPIC_DISPLAY_NAMES[d] ||
+    o.textContent = named[d] || TOPIC_DISPLAY_NAMES[d] ||
       d.slice(2).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     el.selTopic.appendChild(o);
   });

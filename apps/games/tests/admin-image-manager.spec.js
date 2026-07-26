@@ -243,20 +243,49 @@ test.describe('the topic lifecycle in the browser', () => {
     return posted;
   }
 
-  test('rename is not offered for a shared library topic', async ({ page }) => {
+  test('renaming a topic sends a name, not a folder, and relabels the tab', async ({ page }) => {
+    await openManager(page);
+
+    const folder = MANIFESTS.matching.folders[0];
+    const derived = folder.replace(/^T_/, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const tab = page.locator('.folder-tab').first();
+    await expect(tab).toHaveText(derived);
+
+    const posted = await stubTopic(page, 'rename-topic', { ok: true, renamed: folder, folder, name: 'Creature Photos' });
+
+    await page.locator('.btn-rename').click();
+    const input = page.locator('.rename-inline input');
+    // Prefilled with what the topic is CALLED — submitting it unchanged is a
+    // clear, which only works because the admin page and the library derive the
+    // same name.
+    await expect(input).toHaveValue(derived);
+    await input.fill('Creature Photos');
+    await page.locator('.rename-inline .btn-blue').click();
+
+    await expect(page.locator('.folder-tab').first()).toHaveText('Creature Photos');
+    // The key never moves: the folder is still selectable and its cards are the
+    // same ones. A rename that re-keyed would empty the grid.
+    await expect(page.locator('#image-grid .img-card'))
+      .toHaveCount(MANIFESTS.matching.images[folder].length);
+    expect(posted[0]).toEqual({ game: 'IDMatchGame', folder, newName: 'Creature Photos' });
+  });
+
+  test('renaming a topic back to its derived name asks the worker for nothing', async ({ page }) => {
     await openManager(page);
     const stray = await forbidOtherAdminCalls(page);
+    const posted = await stubTopic(page, 'rename-topic', { ok: true });
 
-    // A library topic is one shared category, so renaming it here would rename
-    // it for every game that runs it — the Worker answers 409. Offering the
-    // control anyway would be an invitation into a dead end.
-    const rename = page.locator('.btn-rename');
-    await expect(rename).toBeDisabled();
-    await expect(rename).toHaveAttribute('title', /Archive this topic and upload into a new one/);
+    const derived = MANIFESTS.matching.folders[0]
+      .replace(/^T_/, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
-    await rename.click({ force: true });
+    await page.locator('.btn-rename').click();
+    await page.locator('.rename-inline input').fill(derived);
+    await page.locator('.rename-inline .btn-blue').click();
+
     await expect(page.locator('.rename-inline')).toHaveCount(0);
-    expect(stray, 'no rename-topic call').toEqual([]);
+    await expect(page.locator('.folder-tab').first()).toHaveText(derived);
+    expect(posted, 'no round trip for a no-op rename').toEqual([]);
+    expect(stray, 'no other admin endpoint').toEqual([]);
   });
 
   test('archiving a topic moves it into the Archived tab, and restoring brings it back', async ({ page }) => {
@@ -309,8 +338,9 @@ test.describe('a new topic comes back in the manifest, not from the client', () 
     await page.locator('#nt-url').fill('https://example.invalid/kite.jpg');
     await page.locator('#nt-submit').click();
 
-    // The new topic exists because the committed manifest lists it.
-    await expect(page.locator('.folder-tab.active')).toHaveText('test-topic');
+    // The new topic exists because the committed manifest lists it, under the
+    // same derived name the games show it by.
+    await expect(page.locator('.folder-tab.active')).toHaveText('Test-Topic');
     await expect(page.locator(`#image-grid img[src="${IMAGE}"]`)).toHaveCount(1);
 
     expect(stray, 'admin endpoints other than /batch').toEqual([]);

@@ -265,6 +265,7 @@ function buildLibrary(options = {}) {
 
   const labels = labelsOverride || readJson(path.join(LIBRARY_DIR, 'labels.json'), { overrides: {} }).overrides || {};
   const publishing = options.publishing || readJson(path.join(LIBRARY_DIR, 'publishing.json'), { excluded: {} });
+  const topicNames = options.topicNames || readJson(path.join(LIBRARY_DIR, 'topics.json'), { names: {} }).names || {};
 
   /** category -> stimulus id -> candidates */
   const byCategory = new Map();
@@ -395,7 +396,7 @@ function buildLibrary(options = {}) {
   const sorted = sortKeys(provenance);
 
   const stamp = manifestStamp(sha256(stableJson(index)));
-  const games = liveGames({ manifests: liveManifests || readLiveManifests(), publishing });
+  const games = liveGames({ manifests: liveManifests || readLiveManifests(), publishing, topicNames });
   const manifests = {};
   for (const [game, config] of Object.entries(games)) {
     manifests[game] = projectManifest(index, sorted, { game, ...config, stamp });

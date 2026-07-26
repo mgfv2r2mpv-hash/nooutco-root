@@ -22,8 +22,10 @@
  * POST /api/admin/purge-topic     (admin — permanent hide: _a_T_ → _x_T_)
  *   Body: { game, folder }
  *
- * POST /api/admin/rename-topic    (admin — rename an active T_ folder)
- *   Body: { game, folder, newFolder }
+ * POST /api/admin/rename-topic    (admin — rename a topic)
+ *   Body: { game, folder, newFolder }          legacy games: moves the folder
+ *   Body: { game, folder, newName }            library games: names it, per game;
+ *                                              the category key never moves
  *
  * POST /api/admin/save-display-name (admin — set/clear manifest displayName override)
  *   Body: { game, localPath, displayName }   empty/blank displayName clears it
@@ -59,8 +61,10 @@ import {
   applyLabel,
   applyTopicArchive,
   applyTopicPurge,
+  applyTopicRename,
   applyTopicRestore,
   applyUpload,
+  deriveTopicName,
   publishingFrom,
   sortKeys,
   stableJson,
@@ -670,28 +674,48 @@ async function handleAdminRenameTopic(request, env) {
   try { body = await request.json(); }
   catch { return jsonError('Invalid JSON body', 400); }
 
-  const { game, folder, newFolder } = body;
-  if (!game || !folder || !newFolder) return jsonError('game, folder, and newFolder are required', 400);
+  const { game, folder, newFolder, newName } = body;
+  if (!game || !folder) return jsonError('game and folder are required', 400);
   if (!KNOWN_GAMES.includes(game)) return jsonError('Unknown game: ' + game, 400);
+  if (!/^(_a_)?T_/.test(folder)) return jsonError('folder must start with T_', 400);
+
+  // A library topic is renamed by *name*, not by key. The old path moved the
+  // topic's directory, and the key it moved is the one every stimulus id in the
+  // topic is derived from — renaming `T_colors` to `T_colours` would re-key
+  // `colors-red` to `colours-red` and orphan every saved target selection
+  // naming it, while the directory itself now backs three games and cannot move
+  // on one game's behalf at all. Naming it costs nothing and stays per game.
+  if (isLibraryGame(game)) {
+    const name = typeof newName === 'string' && newName.trim()
+      ? newName.trim()
+      : (newFolder ? deriveTopicName(newFolder) : '');
+    if (!name) return jsonError('newName (or newFolder) is required', 400);
+
+    let renamed;
+    try {
+      renamed = await commitLibraryChange(env, async (state) => {
+        const applied = applyTopicRename(state, { game: gameFolder(game), folder, name });
+        return {
+          name: applied.name,
+          message: `Admin: name topic ${folder} "${applied.name}" for ${gameFolder(game)}`,
+          documents: changedLibraryDocuments(state, await finalLibraryDocuments(foldLibraryState(state, applied))),
+        };
+      });
+    } catch (err) {
+      if (err.message.startsWith('UNKNOWN_TOPIC:')) {
+        return jsonError(`${gameFolder(game)} has no topic ${err.message.slice('UNKNOWN_TOPIC:'.length)}`, 404);
+      }
+      return jsonError('GitHub commit failed: ' + err.message, 502);
+    }
+    // `renamed` echoes the folder BACK, unchanged — the key is stable and a
+    // client that re-keyed its manifest from this response would be wrong.
+    return json({ ok: true, renamed: folder, folder, name: renamed.name });
+  }
+
+  if (!newFolder) return jsonError('newFolder is required', 400);
   if (!/^T_/.test(folder))    return jsonError('folder must start with T_', 400);
   if (!/^T_/.test(newFolder)) return jsonError('newFolder must start with T_', 400);
   if (folder === newFolder)   return jsonError('newFolder must differ from folder', 400);
-
-  // Renaming a shared topic is refused rather than half-done. The old path
-  // moves files inside this game's `_Resources` tree — the very tree the
-  // library is built from — so it would re-key every stimulus in the topic on
-  // the next rebuild and point the generated manifest at URLs that 404 in the
-  // meantime. A topic is also one shared category, so a rename is a rename for
-  // every game that runs it; that is a decision to make deliberately, not a
-  // side effect of one game's admin page. Archive + re-upload is the way round
-  // it until the library carries a rename record of its own.
-  if (isLibraryGame(game)) {
-    return jsonError(
-      `${folder} is a shared library topic — renaming it would rename it for every game that runs ` +
-      'it, and is not wired yet. Archive the topic and upload into a new one instead.',
-      409,
-    );
-  }
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
@@ -967,6 +991,7 @@ const LIBRARY_DOCUMENTS = {
   provenance: `${LIBRARY_ROOT}/provenance.json`,
   publishing: `${LIBRARY_ROOT}/publishing.json`,
   labels:     `${LIBRARY_ROOT}/labels.json`,
+  topics:     `${LIBRARY_ROOT}/topics.json`,
 };
 
 async function ghJsonFile(env, repoPath) {
@@ -982,11 +1007,12 @@ async function sha256Hex(input) {
 
 /** Everything `library.mjs` needs, read straight from the branch. */
 async function readLibraryState(env) {
-  const [index, provenance, publishing, labelsFile, ...manifestList] = await Promise.all([
+  const [index, provenance, publishing, labelsFile, topicsFile, ...manifestList] = await Promise.all([
     ghJsonFile(env, LIBRARY_DOCUMENTS.index),
     ghJsonFile(env, LIBRARY_DOCUMENTS.provenance),
     ghJsonFile(env, LIBRARY_DOCUMENTS.publishing),
     ghJsonFile(env, LIBRARY_DOCUMENTS.labels),
+    ghJsonFile(env, LIBRARY_DOCUMENTS.topics),
     ...LIBRARY_GAMES.map(g => ghJsonFile(env, `${g}/manifest.json`)),
   ]);
   return {
@@ -996,6 +1022,8 @@ async function readLibraryState(env) {
     labelsFile,
     labels: labelsFile.overrides || {},
     derivedLabels: labelsFile.derived || {},
+    topicsFile,
+    topicNames: topicsFile.names || {},
     manifests: Object.fromEntries(LIBRARY_GAMES.map((g, i) => [g, manifestList[i]])),
   };
 }
@@ -1019,6 +1047,9 @@ function changedLibraryDocuments(state, result) {
       derived:   sortKeys(result.derivedLabels || state.derivedLabels),
     });
   }
+  if (result.topicNames) {
+    proposed.set(LIBRARY_DOCUMENTS.topics, { ...state.topicsFile, names: sortKeys(result.topicNames) });
+  }
   for (const [game, manifest] of Object.entries(result.manifests || {})) {
     proposed.set(`${game}/manifest.json`, manifest);
   }
@@ -1028,6 +1059,7 @@ function changedLibraryDocuments(state, result) {
     [LIBRARY_DOCUMENTS.provenance, state.provenance],
     [LIBRARY_DOCUMENTS.publishing, state.publishing],
     [LIBRARY_DOCUMENTS.labels, state.labelsFile],
+    [LIBRARY_DOCUMENTS.topics, state.topicsFile],
     ...Object.entries(state.manifests).map(([game, m]) => [`${game}/manifest.json`, m]),
   ]);
 
@@ -1055,6 +1087,7 @@ function foldLibraryState(state, applied) {
     publishing:    applied.publishing    || state.publishing,
     labels:        applied.labels        || state.labels,
     derivedLabels: applied.derivedLabels || state.derivedLabels,
+    topicNames:    applied.topicNames    || state.topicNames,
   };
 }
 
@@ -1070,6 +1103,7 @@ async function finalLibraryDocuments(state) {
     publishing:    state.games ? publishingFrom(state.games) : state.publishing,
     labels:        state.labels,
     derivedLabels: state.derivedLabels,
+    topicNames:    state.topicNames,
     manifests:     stampManifests(state.manifests, await sha256Hex(stableJson(state.index))),
   };
 }
