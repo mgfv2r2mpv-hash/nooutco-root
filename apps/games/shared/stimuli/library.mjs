@@ -20,6 +20,7 @@
  *   `uploads/<category>/<file>`  the art they added        (which art exists)
  *   `labels.json`                stimulus id -> label      (what it is called)
  *   `publishing.json`            game -> excluded ids      (which game runs it)
+ *   `topics.json`                game -> category -> name  (what the topic is called)
  */
 
 export const SITE_BASE = '/shared/stimuli/';
@@ -91,6 +92,18 @@ export const ARCHIVE_PREFIX = '_a_';
 export const archivedFolderName = (category) => `${ARCHIVE_PREFIX}${category}`;
 export const categoryOfArchivedFolder = (folder) =>
   folder.startsWith(ARCHIVE_PREFIX) ? folder.slice(ARCHIVE_PREFIX.length) : folder;
+
+/**
+ * What a topic is called when nothing overrides it — the prettified folder
+ * name every game and AdminTools has always shown. Shared so that a technician
+ * who renames a topic back to its derived name clears the override instead of
+ * pinning a string that merely looks the same.
+ */
+export const deriveTopicName = (folder) =>
+  categoryOfArchivedFolder(String(folder))
+    .replace(/^T_/, '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 
 /**
  * `archived` reaches us as the manifest wrote it: prefixed folder name -> the
@@ -179,9 +192,9 @@ export function canonicalEntry(entry) {
  *
  * @param {object} index      the library index (`stimuli.json`)
  * @param {object} provenance old served path -> what now carries those bytes
- * @param {object} game       `{ game, folders, archived, excluded }`
+ * @param {object} game       `{ game, folders, archived, excluded, names }`
  */
-export function projectManifest(index, provenance, { game, folders, archived, excluded, stamp }) {
+export function projectManifest(index, provenance, { game, folders, archived, excluded, names, stamp }) {
   const byCategory = new Map();
   for (const entry of index.stimuli) {
     for (const category of entry.categories) {
@@ -229,6 +242,17 @@ export function projectManifest(index, provenance, { game, folders, archived, ex
     pathAliases[servedPath.slice(prefix.length)] = url;
   }
 
+  // A topic's name is per game, exactly as it was when each game carried its
+  // own `_Resources` tree: naming matching's `T_colors` must not rename it in
+  // clock. Keyed by category, so the name survives an archive round trip, and
+  // holding only overrides, so every consumer keeps its derived fallback.
+  const topicNames = {};
+  for (const folder of [...folders, ...archivedNames(archived)]) {
+    const category = categoryOfArchivedFolder(folder);
+    const name = names && names[category];
+    if (name) topicNames[category] = name;
+  }
+
   return {
     generated: stamp,
     note:
@@ -237,6 +261,7 @@ export function projectManifest(index, provenance, { game, folders, archived, ex
       'library URL that replaced it.',
     library: `${SITE_BASE}stimuli.json`,
     folders,
+    topicNames: sortKeys(topicNames),
     images,
     displayNames,
     pathAliases,
@@ -491,6 +516,54 @@ export function applyTopicPurge(state, { game, folder }) {
 }
 
 /**
+ * Name one game's topic — the rename that a shared library can honour.
+ *
+ * The legacy rename moved the topic's directory and, with it, the key every
+ * stimulus id is derived from. Neither half of that survives the library: the
+ * directory now backs three games, and re-keying `T_colors` to `T_colours`
+ * would re-key `colors-red` to `colours-red`, orphaning every saved target
+ * selection naming it. So a rename sets a *name*. The category keeps its
+ * stable key, nothing moves, and the name is per game — matching renaming its
+ * colours topic leaves clock's alone, exactly as it did when each game carried
+ * its own folder.
+ *
+ * A blank name clears the override, and so does one that equals the derived
+ * name, so "rename it back" is a clear rather than a pinned duplicate.
+ *
+ * @param {object} state   as for {@link applyUpload}, plus `topicNames`
+ * @param {object} change  `{ game, folder, name }` — `folder` may be archived
+ */
+export function applyTopicRename(state, { game, folder, name }) {
+  const games = liveGames(state);
+  const target = games[game];
+  if (!target) throw new Error(`Unknown game: ${game}`);
+
+  const category = categoryOfArchivedFolder(folder);
+  const runs = target.folders.includes(category)
+    || archivedNames(target.archived).includes(archivedFolderName(category));
+  if (!runs) throw new Error(`UNKNOWN_TOPIC:${folder}`);
+
+  const derived = deriveTopicName(category);
+  const trimmed = typeof name === 'string' ? name.trim() : '';
+  const current = { ...(target.names || {}) };
+  if (trimmed && trimmed !== derived) current[category] = trimmed;
+  else delete current[category];
+
+  const names = sortKeys(current);
+  const nextGames = { ...games, [game]: { ...target, names } };
+
+  return {
+    index: state.index,
+    provenance: state.provenance,
+    manifests: reproject(state.index, state.provenance, { ...state, games: nextGames }),
+    games: nextGames,
+    topicNames: sortKeys({ ...(state.topicNames || {}), [game]: names }),
+    name: trimmed || derived,
+    changed: stableJson(names) !== stableJson(sortKeys(target.names || {})),
+  };
+}
+
+/**
  * Set — or clear — a technician's label for a stimulus.
  *
  * The label has to be returned as an override map, not just written into the
@@ -549,12 +622,17 @@ export function applyLabel(state, { id, label }) {
 export function liveGames(state) {
   if (state.games) return state.games;
   const excluded = (state.publishing && state.publishing.excluded) || {};
+  const names = state.topicNames || {};
   const games = {};
   for (const [game, manifest] of Object.entries(state.manifests || {})) {
     games[game] = {
       folders: manifest.folders,
       archived: archivedNames(manifest.archived),
       excluded: excluded[game] || {},
+      // Topic names come from `topics.json`, not from the manifest they are
+      // projected into — a name read back out of the projection would be
+      // indistinguishable from a derived one and could never be cleared.
+      names: names[game] || {},
     };
   }
   return games;

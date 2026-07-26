@@ -626,6 +626,11 @@ the archived projection.
 
 ### 25. Rename is refused, not half-done — and it is a real decision
 
+> **Superseded by Stage 3, part 5 below.** Rename is now wired — as a *name*,
+> not a directory move. The analysis here is what led to that shape and is left
+> in place because it is the argument for it.
+
+
 A library topic is one shared category, so renaming `T_colors` in matching's
 admin page is a rename for clock and receptive too. That is a decision for the
 maintainer, not a side effect of one game's page. Worse, the legacy path would
@@ -664,13 +669,95 @@ forward instead of projecting it, keeping a purged topic's exclusions, letting
 archive fall through to the legacy rename, letting rename through, and
 re-enabling the Rename button each fail 1–6 tests.
 
+---
+
+## Stage 3, part 5 — rename lands, and the rebuild step comes back
+
+**Stage 3 is complete.** Both remaining items are done: `rename-topic` is wired
+for the library games, and the manifest-rebuild workflow lost in `514debf4`
+exists again.
+
+### 27. A rename moves the name, never the key
+
+Finding 25 framed rename as "move the directory, for every game at once" and
+refused it. The framing was the problem. Splitting the topic's *key* from its
+*name* makes every objection evaporate:
+
+| | key (`T_colors`) | name ("Colours") |
+|---|---|---|
+| shared across the three games? | yes — it is one category | no — per game |
+| derives stimulus ids? | yes (`colors-red`) | no |
+| names files on disk? | yes (`img/T_colors/`) | no |
+| what a technician wanted to change | no | **yes** |
+
+So a rename writes `shared/stimuli/topics.json` — `game -> category -> name` —
+and `projectManifest` emits it as `topicNames` in each game's manifest. Nothing
+moves, no id is re-keyed, no saved `targetFilters` entry is orphaned, and
+matching renaming its colours topic leaves clock's alone, which is exactly the
+per-game behaviour of the old directory rename it replaces.
+
+Three things fell out of the shape and are worth keeping in mind:
+
+- **Keyed by category, not by folder.** `_a_T_colors` is the same topic as
+  `T_colors`, so a name keyed by the archived folder would be stranded the
+  moment it was archived and lost on restore.
+- **A name equal to the derived name is a clear, not an override.** That only
+  works because `deriveTopicName()` in `library.mjs`, the four games' dropdowns
+  and the ImageManager's folder bar now all title-case identically — which is
+  why the admin folder tabs read "Household Items" rather than
+  "household items". Pinning "Household Items" as an override would look right
+  and behave differently.
+- **The API contract changed for library games.** `{ game, folder, newName }`
+  instead of `{ game, folder, newFolder }`, and the response echoes `renamed:
+  folder` — the key it did *not* move. `newFolder` is still accepted and its
+  name derived from it, so an old client degrades rather than 400s. Legacy
+  games (`famous-person`) keep `atomicTopicRenameCommit` untouched.
+
+### 28. `topicNames` is a projection too — and that is the second self-read trap
+
+Finding 10 caught the build reading its own output for art ranking. `topicNames`
+is the same trap in a new place: it lives in the generated manifest, so a build
+that read it back would produce a name that could never be *cleared* — deleting
+the entry from `topics.json` would change nothing, because the manifest would
+keep feeding it back to itself. `liveGames()` therefore reads `folders` and
+`archived` from the live manifest (they have nowhere else to live) but names
+only from `topics.json`. A mutation that reads them from the manifest passes
+every worker test and is caught only by the rebuild test in
+`stimulus-uploads.spec.js` that plants a "Ghost Name" in a live manifest and
+asserts a rebuild drops it.
+
+### 29. The rebuild workflow is a net, not the publish path
+
+`.github/workflows/rebuild-manifests.yml` runs `npm run stimuli:build` on a push
+to `main`/`dev` that touches the library, and commits only if something moved;
+on a pull request it runs `npm run stimuli:check` instead, because rewriting a
+contributor's branch from CI is a surprise and `--check` already names the file
+and the command. Neither job installs dependencies — `build.mjs` and
+`tests/lib/stimuli.mjs` are pure node.
+
+It cannot loop: a `GITHUB_TOKEN` push does not trigger workflows, the commit is
+`[skip ci]` anyway, and a second run would find nothing to commit. Since
+`worker.js` already re-projects every manifest inside the commit an admin edit
+makes, the interesting cases this catches are a hand-edited source file, a
+change to `build.mjs` itself, and any commit made without the Worker.
+
+### Coverage
+
+`tests/stimulus-library-worker.spec.js` 33 tests (5 new × 3 browsers, the 409
+refusal test replaced), `tests/admin-image-manager.spec.js` 10 (2 new),
+`tests/stimulus-repoint.spec.js` 16 (4 new — one per game reading the dropdown),
+`tests/stimulus-uploads.spec.js` 13 (1 new). Mutation-tested six ways: pinning
+the derived name instead of clearing, naming the topic for every game, keying
+`topicNames` by folder, reading names back out of the manifest, posting
+`newFolder` from the admin page, and using the name as the option `value` —
+each fails 1–3 tests.
+
 ### Still owed for Stage 3
 
 1. ~~Wire `worker.js`.~~ **Done** — Stage 3 part 2.
 2. ~~Repoint `AdminTools/ImageManager/index.html`.~~ **Done** — part 3.
-3. **Restore the manifest-rebuild step** lost in `514debf4`, as a workflow that
-   runs `npm run stimuli:build` and commits. With the worker projecting
-   in place this is now a consistency net rather than the publish path.
+3. ~~Restore the manifest-rebuild step.~~ **Done** — part 5, finding 29.
 4. ~~Archive / restore / purge.~~ **Done** — part 4 above.
-5. **`rename-topic`** — refused rather than wired; finding 25 says what it
-   needs. This is the last thing standing between Stage 3 and complete.
+5. ~~`rename-topic`.~~ **Done** — part 5, finding 27.
+
+Nothing. **Stage 4 (vocabulary) is next.**

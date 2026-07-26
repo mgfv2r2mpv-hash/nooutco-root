@@ -1,0 +1,74 @@
+name: Rebuild stimulus manifests
+
+# Restores the step lost in 514debf4 (which built IDMatchGame/NameIDGame
+# manifests from directory listings) against the shared stimulus library.
+#
+# `worker.js` already re-projects every manifest inside the commit an AdminTools
+# edit makes, so this is a consistency net rather than the publish path: it
+# catches a hand-edited source file, a change to build.mjs, and any commit made
+# without the Worker. A run that finds nothing to do commits nothing.
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'apps/games/shared/stimuli/**'
+      - 'apps/games/clock/manifest.json'
+      - 'apps/games/receptive/manifest.json'
+      - 'apps/games/matching/manifest.json'
+      - 'apps/games/*/_Resources/**'
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - 'apps/games/shared/stimuli/**'
+      - 'apps/games/clock/manifest.json'
+      - 'apps/games/receptive/manifest.json'
+      - 'apps/games/matching/manifest.json'
+      - 'apps/games/*/_Resources/**'
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: apps/games
+
+jobs:
+  # On a PR the library is only checked. Rewriting a contributor's branch from
+  # CI would be a surprise, and `--check` names the file and the command.
+  check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    name: Library is in sync
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check the committed library against its sources
+        run: npm run stimuli:check
+
+  rebuild:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    name: Rebuild and commit
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Rebuild the library and re-project every manifest
+        run: npm run stimuli:build
+
+      - name: Commit anything that moved
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A -- shared/stimuli clock/manifest.json receptive/manifest.json matching/manifest.json
+          if git diff --cached --quiet; then
+            echo "Library already in sync — nothing to commit."
+            exit 0
+          fi
+          git commit -m "chore(games): rebuild stimulus manifests [skip ci]"
+          git push

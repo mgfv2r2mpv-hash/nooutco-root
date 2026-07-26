@@ -748,6 +748,29 @@ function getArchivedFolders() {
   return Array.isArray(a) ? a : Object.keys(a);
 }
 
+/**
+ * What a topic is called for the game being edited.
+ *
+ * `topicNames` is a per-game override the worker writes into `topics.json` and
+ * the build projects back out; the derived name is the fallback every game has
+ * always shown. Keyed by category, so an archived folder is looked up by the
+ * topic it will be again once restored.
+ *
+ * The derived form is title-cased to match `deriveTopicName()` in the library
+ * exactly. That is load-bearing, not cosmetic: submitting the name shown here
+ * unchanged has to CLEAR the override, and it only can if the two agree.
+ */
+function derivedTopicName(folder) {
+  return folder.replace(/^_a_/, '').replace(/^T_/, '').replace(/_/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function topicDisplayName(folder) {
+  const d = gameData[activeGame.id];
+  const names = (d && d.manifest && d.manifest.topicNames) || {};
+  return names[folder.replace(/^_a_/, '')] || derivedTopicName(folder);
+}
+
 function renderFolderBar() {
   const content = document.getElementById('main-content');
 
@@ -769,6 +792,8 @@ function renderFolderBar() {
       btn.textContent = 'All Items';
     } else if (activeGame.type === 'intraverbal') {
       btn.textContent = f.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    } else if (activeGame.type === 'manifest') {
+      btn.textContent = topicDisplayName(f);
     } else {
       btn.textContent = f.replace(/^T_/, '').replace(/_/g, ' ');
     }
@@ -813,16 +838,15 @@ function renderContent() {
   if (activeGame.type === 'manifest' && activeFolder) {
     const bar = document.createElement('div');
     bar.className = 'folder-action-bar';
-    // A library topic is one shared category: renaming it here would rename it
-    // for every game that runs it, and the worker refuses it (409) rather than
-    // half-apply a change that re-keys every stimulus in the topic. Showing the
-    // button live would be an invitation into that dead end.
+    // A library topic is renamed by name, not by key: the category backs three
+    // games and every stimulus id in it is derived from that key, so the name
+    // is what moves and it moves for this game only.
     const renameBtn = document.createElement('button');
     renameBtn.className = 'btn-rename';
     renameBtn.textContent = '✏ Rename';
-    renameBtn.disabled = true;
-    renameBtn.title = 'Shared library topics are named once for every game that runs them. '
-      + 'Archive this topic and upload into a new one instead.';
+    renameBtn.title = `Rename this topic for ${activeGame.label} only. The pictures and every other `
+      + 'game that runs the topic are untouched.';
+    renameBtn.addEventListener('click', () => showRenameInline(bar, renameBtn, activeFolder));
     bar.appendChild(renameBtn);
 
     const archBtn = document.createElement('button');
@@ -1066,7 +1090,8 @@ function renderArchivedView(content) {
     row.style.cssText = 'display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;padding:.6rem 1rem;background:#fff;border-radius:11px;border:1px solid #e9ece2;';
 
     const name = document.createElement('span');
-    name.textContent = folder;
+    name.textContent = topicDisplayName(folder);
+    name.title = folder;
     name.style.cssText = 'flex:1;font-size:.85rem;color:#fbbf24;';
     row.appendChild(name);
 
@@ -1588,11 +1613,11 @@ async function doPurgeTopic(archFolder) {
 
 // ─── Rename Topic ─────────────────────────────────────────────────────────────
 //
-// Parked, not deleted. The only caller was the folder bar's Rename button,
-// which is disabled while topics are shared library categories — a rename is a
-// rename for every game that runs the topic, so it needs a rename record in the
-// library before it can be offered again. This UI is what it will be offered
-// through; `/api/admin/rename-topic` answers 409 until then.
+// A rename sets the topic's NAME for this game. The folder key stays put: the
+// same category backs clock, receptive and matching, and every stimulus id in
+// the topic is derived from that key, so moving it would re-key them all and
+// orphan any saved target selection. Submitting the derived name unchanged
+// clears the override rather than pinning a duplicate of it.
 
 function showRenameInline(bar, renameBtn, folder) {
   if (bar.querySelector('.rename-inline')) return;
@@ -1603,8 +1628,9 @@ function showRenameInline(bar, renameBtn, folder) {
 
   const input = document.createElement('input');
   input.type = 'text';
-  input.value = folder.replace(/^T_/, '');
-  attachSanitize(input, sanitizeSlug);
+  input.value = topicDisplayName(folder);
+  // Free text, not a slug: this is what the topic is CALLED, not where it lives.
+  input.maxLength = 60;
 
   const okBtn = document.createElement('button');
   okBtn.className = 'btn-sm btn-blue';
@@ -1631,20 +1657,22 @@ function showRenameInline(bar, renameBtn, folder) {
 
   okBtn.addEventListener('click', async () => {
     const newName = input.value.trim();
-    if (!newName || newName === folder.replace(/^T_/, '')) { close(); return; }
-    const newFolder = 'T_' + newName;
+    if (!newName || newName === topicDisplayName(folder)) { close(); return; }
     okBtn.disabled = cancelBtn.disabled = true;
     status.textContent = 'Renaming…';
     status.style.color = '#94a3b8';
     try {
-      const res = await adminPost('rename-topic', { game: activeGame.id, folder, newFolder });
+      const res = await adminPost('rename-topic', { game: activeGame.id, folder, newName });
       if (!res) { close(); return; }
       if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        // The only thing that moved is the name, so the only thing to update is
+        // the name — and it is the name the worker committed, not the one typed.
         const m = gameData[activeGame.id].manifest;
-        m.folders = [...m.folders.filter(f => f !== folder), newFolder].sort();
-        m.images[newFolder] = (m.images[folder] || []).map(p => p.replace(`/${folder}/`, `/${newFolder}/`));
-        delete m.images[folder];
-        activeFolder = newFolder;
+        const category = folder.replace(/^_a_/, '');
+        if (!m.topicNames) m.topicNames = {};
+        if (data.name && data.name !== derivedTopicName(category)) m.topicNames[category] = data.name;
+        else delete m.topicNames[category];
         renderFolderBar();
         renderContent();
       } else {

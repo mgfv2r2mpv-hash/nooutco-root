@@ -44,6 +44,7 @@ const LIBRARY_FILES = [
   `${LIBRARY_ROOT}/provenance.json`,
   `${LIBRARY_ROOT}/publishing.json`,
   `${LIBRARY_ROOT}/labels.json`,
+  `${LIBRARY_ROOT}/topics.json`,
   ...LIBRARY_GAMES.map((game) => `${game}/manifest.json`),
 ];
 
@@ -109,6 +110,7 @@ function rebuildFrom(hub) {
     extraUploads,
     labels: hub.readJson(repo(`${LIBRARY_ROOT}/labels.json`)).overrides,
     publishing: hub.readJson(repo(`${LIBRARY_ROOT}/publishing.json`)),
+    topicNames: hub.readJson(repo(`${LIBRARY_ROOT}/topics.json`)).names,
     liveManifests: Object.fromEntries(
       LIBRARY_GAMES.map((game) => [game, hub.readJson(repo(`${game}/manifest.json`))]),
     ),
@@ -650,19 +652,117 @@ test.describe('worker: shared stimulus library', () => {
     expect(hub.commitMessages, 'nothing was committed').toEqual([]);
   });
 
-  test('renaming a shared topic is refused rather than half-applied', async () => {
+  // ── Rename ───────────────────────────────────────────────────────
+  //
+  // A rename moves the topic's NAME, never its key. The key is what every
+  // stimulus id in the topic is derived from and what three games share, so
+  // moving it would re-key `colors-red` to `colours-red` — orphaning every
+  // saved target selection naming it — and could not be done on one game's
+  // behalf anyway. These tests pin both halves: the name lands, and nothing
+  // else does.
+
+  test('renaming a topic names it for one game and moves no files', async () => {
     const hub = seededRepo();
+    const before = Object.fromEntries(
+      LIBRARY_GAMES.map((game) => [game, hub.read(repo(`${game}/manifest.json`)).toString('utf8')]),
+    );
+
     const { status, body } = await post(hub, '/api/admin/rename-topic', {
-      game: 'IDMatchGame', folder: 'T_colors', newFolder: 'T_colours',
+      game: 'IDMatchGame', folder: 'T_colors', newName: 'Colours',
     });
 
-    // The legacy path would move matching's `_Resources/T_colors/` — the tree
-    // the library is BUILT from — re-keying every stimulus in the topic on the
-    // next rebuild and 404ing the generated manifest in the meantime.
-    expect(status).toBe(409);
-    expect(body.error).toMatch(/shared library topic/);
+    expect(status).toBe(200);
+    expect(body.name).toBe('Colours');
+    // The key is echoed back unchanged: a client that re-keyed from this would
+    // be wrong, and the old response shape said the opposite.
+    expect(body.renamed).toBe('T_colors');
+
+    expect(hub.readJson(repo(`${LIBRARY_ROOT}/topics.json`)).names)
+      .toEqual({ matching: { T_colors: 'Colours' } });
+
+    const matching = hub.readJson(repo('matching/manifest.json'));
+    expect(matching.topicNames).toEqual({ T_colors: 'Colours' });
+    expect(matching.folders, 'the key never moves').toContain('T_colors');
+    expect(matching.images.T_colors).toEqual(JSON.parse(before.matching).images.T_colors);
+
+    // Per game, exactly as it was when each game carried its own folder.
+    for (const game of ['clock', 'receptive']) {
+      expect(hub.read(repo(`${game}/manifest.json`)).toString('utf8'), `${game} untouched`)
+        .toBe(before[game]);
+    }
+
+    expect(hub.treeEntryPaths.filter((p) => p.includes('/img/') || p.includes('_Resources'))).toEqual([]);
+
+    const built = expectRebuildIsANoOp(hub);
+    expectEveryPublishedUrlResolves(hub, built);
+  });
+
+  test('renaming a topic back to its derived name clears the override', async () => {
+    const hub = seededRepo();
+    const before = hub.read(repo('matching/manifest.json')).toString('utf8');
+
+    await post(hub, '/api/admin/rename-topic', { game: 'IDMatchGame', folder: 'T_colors', newName: 'Colours' });
+    const cleared = await post(hub, '/api/admin/rename-topic', {
+      game: 'IDMatchGame', folder: 'T_colors', newName: 'Colors',
+    });
+
+    // "Colors" IS the derived name, so this is a clear — not an override that
+    // merely looks identical and would outlive a change to the derivation.
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.name).toBe('Colors');
+    expect(hub.readJson(repo(`${LIBRARY_ROOT}/topics.json`)).names).toEqual({ matching: {} });
+    expect(hub.read(repo('matching/manifest.json')).toString('utf8')).toBe(before);
+
+    expectRebuildIsANoOp(hub);
+  });
+
+  test('a renamed topic keeps its name through archive and restore', async () => {
+    const hub = seededRepo();
+    await post(hub, '/api/admin/rename-topic', { game: 'IDMatchGame', folder: 'T_colors', newName: 'Colours' });
+
+    await post(hub, '/api/admin/archive-topic', { game: 'IDMatchGame', folder: 'T_colors' });
+    // Keyed by category, so the name follows the topic into the archive rather
+    // than being stranded under a `_a_` name the restore would not look up.
+    expect(hub.readJson(repo('matching/manifest.json')).topicNames).toEqual({ T_colors: 'Colours' });
+
+    await post(hub, '/api/admin/restore-topic', { game: 'IDMatchGame', folder: '_a_T_colors' });
+    const restored = hub.readJson(repo('matching/manifest.json'));
+    expect(restored.folders).toContain('T_colors');
+    expect(restored.topicNames).toEqual({ T_colors: 'Colours' });
+
+    expectRebuildIsANoOp(hub);
+  });
+
+  test('an archived topic can be renamed, and a rename of nothing spends no commit', async () => {
+    const hub = seededRepo();
+    await post(hub, '/api/admin/archive-topic', { game: 'IDMatchGame', folder: 'T_colors' });
+    const commits = hub.commitMessages.length;
+
+    const archived = await post(hub, '/api/admin/rename-topic', {
+      game: 'IDMatchGame', folder: '_a_T_colors', newName: 'Retired Colours',
+    });
+    expect(archived.status).toBe(200);
+    expect(hub.readJson(repo(`${LIBRARY_ROOT}/topics.json`)).names.matching).toEqual({ T_colors: 'Retired Colours' });
+
+    const replay = await post(hub, '/api/admin/rename-topic', {
+      game: 'IDMatchGame', folder: '_a_T_colors', newName: 'Retired Colours',
+    });
+    expect(replay.status).toBe(200);
+    expect(hub.commitMessages.length, 'the second rename changed nothing').toBe(commits + 1);
+
+    expectRebuildIsANoOp(hub);
+  });
+
+  test('a topic the game does not run cannot be renamed', async () => {
+    const hub = seededRepo();
+    const { status, body } = await post(hub, '/api/admin/rename-topic', {
+      game: 'HickoryDickoryDockGame', folder: 'T_lowercase', newName: 'Little Letters',
+    });
+
+    expect(status).toBe(404);
+    expect(body.error).toMatch(/clock has no topic T_lowercase/);
     expect(hub.commitMessages).toEqual([]);
-    expect(hub.readJson(repo('matching/manifest.json')).folders).toContain('T_colors');
+    expect(hub.readJson(repo(`${LIBRARY_ROOT}/topics.json`)).names).toEqual({});
   });
 
   test('an unauthenticated admin request changes nothing', async () => {
