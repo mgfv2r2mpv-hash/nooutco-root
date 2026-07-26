@@ -232,6 +232,60 @@ test.describe('a removal renders what the commit produced', () => {
   });
 });
 
+test.describe('the topic lifecycle in the browser', () => {
+  /** Stub one of the dedicated topic endpoints; records what was posted. */
+  async function stubTopic(page, action, response) {
+    const posted = [];
+    await page.route(`**/api/admin/${action}`, async (route) => {
+      posted.push(JSON.parse(route.request().postData() || '{}'));
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(response) });
+    });
+    return posted;
+  }
+
+  test('rename is not offered for a shared library topic', async ({ page }) => {
+    await openManager(page);
+    const stray = await forbidOtherAdminCalls(page);
+
+    // A library topic is one shared category, so renaming it here would rename
+    // it for every game that runs it — the Worker answers 409. Offering the
+    // control anyway would be an invitation into a dead end.
+    const rename = page.locator('.btn-rename');
+    await expect(rename).toBeDisabled();
+    await expect(rename).toHaveAttribute('title', /Archive this topic and upload into a new one/);
+
+    await rename.click({ force: true });
+    await expect(page.locator('.rename-inline')).toHaveCount(0);
+    expect(stray, 'no rename-topic call').toEqual([]);
+  });
+
+  test('archiving a topic moves it into the Archived tab, and restoring brings it back', async ({ page }) => {
+    page.on('dialog', (d) => d.accept());
+    await openManager(page);
+
+    const folder = MANIFESTS.matching.folders[0];
+    const label = folder.replace(/^T_/, '');
+    await expect(page.locator('.folder-tab', { hasText: label })).toHaveCount(1);
+
+    // The redraw is the signal that the response was handled — asserting the
+    // recorded payload first races the interception and fails intermittently.
+    const archived = await stubTopic(page, 'archive-topic', { ok: true, archived: `_a_${folder}` });
+    await page.locator('.btn-archive').click();
+
+    await expect(page.locator('.folder-tab', { hasText: label })).toHaveCount(0);
+    await expect(page.locator('.folder-tab.archived-tab')).toHaveText('📦 Archived (1)');
+    expect(archived[0]).toEqual({ game: 'IDMatchGame', folder });
+
+    const restored = await stubTopic(page, 'restore-topic', { ok: true, restored: folder });
+    await page.locator('.folder-tab.archived-tab').click();
+    await page.locator('.btn-restore').click();
+
+    await expect(page.locator('.folder-tab', { hasText: label })).toHaveCount(1);
+    await expect(page.locator('.folder-tab.archived-tab')).toHaveCount(0);
+    expect(restored[0]).toEqual({ game: 'IDMatchGame', folder: `_a_${folder}` });
+  });
+});
+
 test.describe('a new topic comes back in the manifest, not from the client', () => {
   test('the folder is created through the batch endpoint and read back', async ({ page }) => {
     const FOLDER = 'T_test-topic';
