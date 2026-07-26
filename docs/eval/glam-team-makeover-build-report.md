@@ -3659,7 +3659,7 @@ Finding-B `turn…` shots are not overwritten:
 Four defects from play plus a turn-exchange sweep. Base for every "before"
 measurement in this section is `95ba6101`, the dev merge that is deployed.
 
-**Status: Finding A closed. B, C, D and the Finding E sweep table are still
+**Status: Findings A, C and D closed. B and the Finding E sweep table are still
 open** — see *§ Still to do* at the end of this section.
 
 ### A · A finished tool stayed live, armable, and flickered its own checkmark
@@ -3830,7 +3830,192 @@ click moved the shelf, which is the defect.
 - **Disabled over disappear**, per the reasoning above. `_optSpent`'s existing
   removal behaviour is untouched, so nothing the third pass accepted moved.
 
+### C · The paint hitbox claimed `All done ✓` for a shade that was never applied
+
+Reported from play:
+
+> After setting a color for blush or lips, the user can change the color. However
+> the "done" text reappears in the hitbox when the color is changed and then the
+> user clicks once and it places the color.
+
+#### The traced cause — coverage is per slot, the claim is per shade
+
+Paint coverage is stored per **slot** (`ed.cov.blush`), while six blushes, six
+shadows and seven lipsticks each share **one** slot. The target overlay read that
+slot straight:
+
+```js
+const covPct = Math.round((s.ed.cov[t.slot] || 0) * 100);
+const lbl = t.mech !== 'paint' ? z.label
+  : covPct >= 100 ? 'All done ✓'
+  : covPct > 0 ? ('Keep painting… ' + covPct + '%') : z.label;
+```
+
+So arming a *different* shade of an already-painted slot inherited the first
+shade's coverage wholesale, and the box floating over the child's face announced
+`All done ✓` about a shade that had never touched it.
+
+The trolley button beside it already got this right — it tested shade identity
+for its `✓`:
+
+```js
+active = covd && (opt.color && (slot==='blush'||slot==='lips'||slot==='shadow')
+  ? ed.col[slot] === opt.color : true)
+```
+
+which is why the two surfaces disagreed on screen: `✓ Blush rose` on the cart and
+`All done ✓` over the cheeks, with **Blush plum** armed.
+
+#### The fix — one predicate, written as the rule rather than the catalogue
+
+`_shadeOn(opt)` now answers for both surfaces:
+
+```js
+_shadeOn(opt){ return !(opt.mech==='paint' && opt.color) || this.state.ed.col[opt.slot]===opt.color; }
+```
+
+It is keyed on `mech==='paint' && opt.color` rather than on the trolley's old
+hard-coded `blush|lips|shadow` list, because that list restated the catalogue
+instead of the rule. **Found by the sweep, not reported:** the hero base's two
+face masks (`mk1`/`mk2`, `mech:'paint'`, slot `mask`) are the same shape of tool
+and sat outside it. That base is unreachable by construction today — AC-13 removed
+the theme selector — so it is a **latent** case, not a live one, and it is
+asserted against the predicate directly rather than through a surface that cannot
+be opened. For every single-shade paint slot the two readings agree anyway, since
+`paintStep` writes `ed.col[slot]` on the stroke that paints it.
+
+Re-arming the shade that *is* on still reads `All done ✓`. That is the accepted
+eval §8 fix ("Keep painting… 100%" told the child to keep going on a finished
+step) and this change does not walk it back — it is asserted in the same test.
+
+#### Put to the maintainer, deliberately NOT decided here
+
+Because `cov[slot]` is already `1`, switching shade still completes in a **single
+stroke** — `Math.min(1, 1 + 0.11)` — rather than a fresh drag. Whether a re-tint
+*should* be a cheap one-tap or should cost a full paint again is a design
+question, so the current cost is **pinned by a test** instead of quietly altered.
+The ruling flips one assertion in
+`tests/glam-shade-label.spec.js` ("the shade actually swaps, and the current
+one-stroke cost is what ships").
+
+The action economy is unaffected either way: both shades resolve to the same
+charge key `color:blush`, so the switch is free within the turn and costs one
+action across turns — unchanged from before this fix.
+
+#### Evidence
+
+`apps/games/tests/glam-shade-label.spec.js` — five tests. Four **fail against
+`93dab9be`**:
+
+| test | failure against `93dab9be` |
+|---|---|
+| blush: unpainted shade of a painted slot | `an unapplied shade must not be called done` — received `"All done ✓"` |
+| lips: same | `an unapplied shade must not be called done` — received `"All done ✓"` |
+| shadow: same | `an unapplied shade must not be called done` — received `"All done ✓"` |
+| the predicate reads the shade, not a slot list | `L._shadeOn is not a function` |
+
+The fifth ("the shade actually swaps, and the current one-stroke cost is what
+ships") **passes on both builds by design** — it records behaviour this change
+deliberately leaves alone, so that the maintainer's ruling has something to flip.
+
+Shots under `docs/eval/shots/glam-turn-exchange/`, written by
+`tests/_shots-glam-shade-label.mjs` (m4, free play, blush painted for real by
+pointer drag, then a different shade armed):
+
+| file | the hitbox reads |
+|---|---|
+| `shade-before-painted.png` | `93dab9be`, Blush rose re-armed — `All done ✓` (correct) |
+| `shade-before-switched.png` | `93dab9be`, **Blush plum armed, never applied — `All done ✓`** |
+| `shade-after-painted.png` | fixed, Blush rose re-armed — `All done ✓`, unchanged |
+| `shade-after-switched.png` | fixed, Blush plum armed — **`Drag over the cheeks`** |
+
+The script prints the label it photographed: `before` → `"All done ✓"`,
+`after` → `"Drag over the cheeks"`. In the `after` shot the cart still shows
+`✓ Blush rose` while Blush plum is the armed tile, so the two surfaces now agree.
+
+### D · Per-tool cursor — the seam only, art deferred to issue #40
+
+Reported:
+
+> the drag animation style is boring because the cursor doesn't look different.
+> It would look best if the cursor looked like the tool being used in that step,
+> but we would need small generated art for each required tool so stub in for the
+> cursor replacement but defer that until we have art (make a ticket)
+
+Ticket confirmed open: **issue #40 — "Glam Team Makeover: tool-shaped drag cursors
+(needs art)"**, referenced in a comment at the stub.
+
+What ships is a resolver and an **empty** art table:
+
+```js
+const TOOL_CURSOR_ART = {};                       // id → {url, x, y}, filled by #40
+_toolCursor(opt){ const fb=(opt&&opt.mech==='paint')?'grab':'pointer';
+  const art=opt&&TOOL_CURSOR_ART[opt.id];
+  return art ? ('url("'+art.url+'") '+(art.x|0)+' '+(art.y|0)+', '+fb) : fb; }
+```
+
+One resolver feeds all three surfaces the armed tool puts under the pointer — the
+drag box, the tap box and the spot rings — so #40 has a single place to land. The
+three previously wrote their cursor independently (`t.mech==='paint'?'grab':'pointer'`
+twice, and a hard-coded `cursor:pointer` in `ring()`).
+
+**No visual change ships**, and that is the claim asserted hardest. All 69 options
+in the shipped catalogue are put through the resolver and compared against the
+literal pre-change expression `t.mech === 'paint' ? 'grab' : 'pointer'`; the three
+rendered surfaces are then read back out of the DOM as `grab` / `pointer` /
+`pointer`.
+
+#### A constraint #40 has to honour, measured not assumed
+
+The obvious sprite encoding **does not work in this build**, and the failure is
+silent. Every style here is authored as a *string* and handed to the runtime,
+which converts it with `cssToObj` (`vendor/support.js`):
+
+```js
+for (const decl of css.split(";")) { … }          // no awareness of quoting
+```
+
+A `data:image/png;base64,…` URL is therefore torn in half at the `;` inside its
+own media type, and React receives the invalid fragment `url("data:image/png`.
+Measured on the seam:
+
+| sprite URL | computed cursor |
+|---|---|
+| `data:image/gif;base64,…`, present at first render | **`auto`** — declaration dropped, not even the fallback keyword |
+| `data:image/gif;base64,…`, added on a re-render | the previous value survives — the invalid assignment is ignored |
+| `data:image/svg+xml,%3Csvg…` (no `;`) | `url("data:image/svg+xml,…") 6 27, grab` ✓ |
+
+So #40 must use a same-origin path or a URL-encoded SVG data URI, never
+`;base64,`. Both failure modes are pinned by a test so the ticket cannot walk
+into them, and the note lives in the comment at the stub.
+
+#### Evidence
+
+`apps/games/tests/glam-tool-cursor.spec.js` — four tests. Three **fail against
+`93dab9be`** with `L._cursorArt is not a function` / `L._toolCursor is not a
+function` (the seam does not exist there). The fourth — *"the three rendered
+surfaces show exactly the cursors they showed before"* — **passes on both builds,
+which is the point**: it is the no-visual-change proof, and a stub that made it
+fail would not be a stub.
+
 ### Verification for this pass
+
+- **Full Playwright suite: 459/459 green** (432 at `93dab9be` + 27 new: 9 tests
+  × 3 engines) at `--workers=4`, against a hash-verified server —
+  `shasum` of the worktree file and of `curl http://localhost:8788/…` matched
+  `b25e6847…` for the run. One firefox failure in the batch
+  (`glam-open-flow.spec.js`) is the documented Atkinson Hyperlegible
+  webfont-under-load flake; the file passes **15/15 in isolation**.
+- **`window.GlamTT` byte-identical** to both `95ba6101` and `93dab9be`, sliced on
+  content (`window.GlamTT = (function ()` → the IIFE close) rather than line
+  numbers: 538 lines, SHA `9e478c27…` on all three.
+- **`tests/glam-tt-scoring.spec.js` byte-identical** — SHA `d5eb286c…` at
+  `95ba6101`, at `93dab9be` and now.
+- **`BROW_TINT.floor` is still `0.60`** — untouched by this iteration.
+- Clean console: every test in both new specs asserts `expect(errors).toEqual([])`,
+  and the screenshot script exits non-zero on any console or page error.
+
+#### Earlier in this pass (Finding A, at `93dab9be`)
 
 - **Full Playwright suite: 432/432 green** (423 before this pass + 9 new: 3 tests
   × 3 engines) at `--workers=4`, against a hash-verified server —
@@ -3848,21 +4033,38 @@ click moved the shelf, which is the defect.
 - Clean console: every test in the new spec asserts `expect(errors).toEqual([])`,
   and the screenshot script exits non-zero on any console or page error.
 
+### Judged rather than measured (Findings C and D)
+
+- **`z.label` as the fallback for a switched shade.** With coverage read as 0 for
+  an unapplied shade, the hitbox falls to the zone's own prompt — *Drag over the
+  cheeks*. That it is honest is measured; that "ask for the work again" is the
+  right thing to say to a child who has just picked a new colour is a call.
+- **Writing `_shadeOn` as the rule rather than the catalogue.** Generalising past
+  `blush|lips|shadow` also covers the unreachable hero `mask` family. No shipped
+  surface can reach it, so this is judgement about where a predicate should be
+  drawn, not a defect that was costing anything.
+- **Leaving the one-stroke re-tint cost alone.** Argued above; explicitly the
+  maintainer's to rule on.
+- **`grab`/`pointer` as the cursor fallbacks after art lands.** They are today's
+  values and the stub preserves them exactly. Whether a tool sprite should keep
+  `grab` behind it or switch to something else once #40 delivers is for #40.
+
 ### Still to do in this pass
 
-- **Finding B** — brow-tail/hairline pixel noise. Untouched. The first job is
-  the regression-or-pre-existing question: count stray pixels in that band at
-  `fed4e2be`'s parent and at the shipped build, with `BROW_TINT.floor` staying
-  `0.60` either way.
-- **Finding C** — the target hitbox says `All done ✓` for an unapplied shade,
-  because it reads `cov[slot]` and blush/lips/shadow each share a slot across six
-  shades. The trolley button already tests shade identity and gets it right; the
-  hitbox needs the same test. The one-click shade-switch cost is a design
-  question to put to the maintainer, not to settle quietly.
-- **Finding D** — per-tool cursor stub against issue #40, with a test proving no
-  visual change ships.
+- **Finding B** — brow-tail/hairline pixel noise. Untouched by this iteration.
+  Per the maintainer's correction the trigger is **not** the tint path: the noise
+  is present on a bare face with no brow tool used and no recolour, and their lead
+  is that "the base image has an eyebrow that is removed by code". Reproduce in
+  that state per model, loupe the band before changing anything, and name the
+  cause from evidence. `BROW_TINT.floor` stays `0.60`.
 - **Finding E** — the per-tool turn-exchange sweep table. Finding A is one
   instance of the class; every tool family still needs the four columns (still
   armable / does arming change anything / does its tick stay stable / can it
-  consume a turn action). The `'__perTap__'`-key hole found above is a strong
-  hint that the per-tap family is where the rest of the class lives.
+  consume a turn action), plus completion-across-handoff in both directions and
+  actions-left accounting for per-tap tools. The `'__perTap__'`-key hole found
+  above is a strong hint that the per-tap family is where the rest of the class
+  lives.
+- **A full trial by real pointer input** (title → texts → salon → every turn to
+  completion → outro) is still to be run as the final check for the whole pass;
+  the flow is covered spec-by-spec today (`glam-open-flow`, `glam-outro-reveal`,
+  `glam-tt-game`) but not yet end-to-end in one sitting on this build.

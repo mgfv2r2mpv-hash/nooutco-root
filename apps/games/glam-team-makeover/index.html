@@ -1718,6 +1718,36 @@ const BROWCFG_D = {wf:1.3,dx:0,dy:1.75};
    `floor` is what a pure-black sprite pixel becomes, `span` how much the sprite's
    own shading is worth on top. See `_browTint` for why the floor moved. */
 const BROW_TINT = { floor:0.60, span:0.55 };
+/* ══ Per-tool cursor art — STUB, art deferred to issue #40 ══
+   Reported: "the drag animation style is boring because the cursor doesn't look
+   different. It would look best if the cursor looked like the tool being used."
+   That needs a small generated sprite per tool, which does not exist yet, so
+   what lands here is the SEAM and nothing else.
+
+   The table is deliberately EMPTY. `_toolCursor` therefore returns the keyword
+   fallback for every tool in the catalogue, which is character-for-character what
+   the build rendered before this seam existed — `grab` over a paint target,
+   `pointer` over a tap target and over the spot rings. A stub that changes what
+   the child sees is not a stub, so `tests/glam-tool-cursor.spec.js` asserts the
+   rendered cursor is unchanged for every armable tool.
+
+   To fill it (issue #40): one entry per tool id, `{url, x, y}`, where x/y are the
+   hotspot in CSS px from the sprite's top-left. Order matters in the CSS value —
+   the keyword after the comma is the fallback the UA uses when the sprite cannot
+   be fetched, so it must stay. Browsers cap cursor images at 128×128; a larger
+   sprite makes the whole declaration a no-op.
+
+   THE URL MUST NOT CONTAIN A SEMICOLON, and that rules out the obvious choice.
+   Every style in this build is authored as a STRING and handed to the runtime,
+   which turns it into a React style object with `cssToObj` (vendor/support.js) —
+   `css.split(";")`, with no awareness of quoting. A `data:image/png;base64,…`
+   URI is therefore torn in half at the `;` inside its own media type, and what
+   reaches React is the invalid fragment `url("data:image/png`; the browser drops
+   the declaration and the target renders with NO cursor at all. Measured: the
+   base64 form computes to `auto`, a same-origin path and a URL-encoded
+   `data:image/svg+xml,…` (no `;base64`) both compute to the sprite with the
+   keyword still behind it. Use one of those two. */
+const TOOL_CURSOR_ART = {};
 const EARCFG  = { m2:{lx:0.20,rx:0.80,y:1.35}, m3:{lx:0.235,rx:0.765,y:1.72}, m4:{lx:0.225,rx:0.775,y:1.35} };
 const EARCFG_D = {lx:0.185,rx:0.815,y:1.35};
 /* T4b. Where the IRIS actually is inside the eye sprite frame, so a coloured
@@ -2127,6 +2157,37 @@ class Component extends DCLogic {
     if(opt.mech==='patch') return (ed.pimples||[]).every(v=>v>=1);
     if(opt.mech==='conceal') return (ed.pimples||[]).every(v=>v===2);
     return false; }
+  /* ── ONE SLOT, MANY SHADES ───────────────────────────────────────────────────
+     Six blushes, six shadows and seven lipsticks each share ONE slot, and paint
+     coverage is stored per SLOT (`ed.cov.blush`), never per shade. So
+     `ed.cov[slot]` answers "has this slot been painted?" — it cannot answer "has
+     THIS shade been painted?", which is the question every ✓ and every "All
+     done" is actually claiming. Arming a second shade of an already-painted slot
+     inherits the first shade's coverage wholesale.
+
+     The trolley button already tested shade identity for its ✓; the target
+     overlay read raw coverage and so announced "All done ✓" over a shade that
+     had never touched the face — reported from play. Both now ask this one
+     predicate. It is written on `mech==='paint' && opt.color` rather than on the
+     trolley's old hard-coded `blush|lips|shadow` list because that list is a
+     restatement of the catalogue rather than of the rule — the hero base's two
+     face masks (`mk1`/`mk2`, slot `mask`) are the same shape of tool and sat
+     outside it. That base is unreachable by construction today (AC-13 removed
+     the theme selector), so this is a latent case, not a live one; for every
+     single-shade paint slot the two readings agree anyway, since `paintStep`
+     writes `ed.col[slot]` on the stroke that paints it. */
+  _shadeOn(opt){ return !(opt.mech==='paint' && opt.color) || this.state.ed.col[opt.slot]===opt.color; }
+  /* The cursor the ARMED tool puts over its own target. Issue #40 (per-tool
+     cursor art) fills `TOOL_CURSOR_ART`; until it does, every tool resolves to
+     the keyword this build already used, so nothing about the pointer changes.
+     The keyword stays after the comma even once art lands — it is the fallback
+     the UA falls back to when the sprite cannot be fetched. */
+  _toolCursor(opt){ const fb=(opt&&opt.mech==='paint')?'grab':'pointer';
+    const art=opt&&TOOL_CURSOR_ART[opt.id];
+    return art ? ('url("'+art.url+'") '+(art.x|0)+' '+(art.y|0)+', '+fb) : fb; }
+  /* Reachable from the instance ONLY so the seam above can be exercised without
+     shipping art (issue #40). Nothing in the build ever writes to this table. */
+  _cursorArt(){ return TOOL_CURSOR_ART; }
   _grpSettled(live){ return this.state.staged!=='free' && live.length>0 && live.every(o=>this._optWorkDone(o)); }
   /* `wasOpen` is what the child can SEE right now (the render already resolved
      default-vs-override), so the header always does the opposite of what is on
@@ -3345,7 +3406,7 @@ class Component extends DCLogic {
       else if(opt.apply==='place'){ active = ed.gl[slot]===(opt.value!=null?opt.value:opt.glyph); }
       else if(opt.mech==='patch'){ active = !!ed.pimples && ed.pimples.every(v=>v>=1); }
       else if(opt.mech==='conceal'){ active = !!ed.pimples && ed.pimples.every(v=>v===2); }
-      else { const covd=(ed.cov[slot]||0)>0; active = covd && (opt.color&&(slot==='blush'||slot==='lips'||slot==='shadow') ? ed.col[slot]===opt.color : true); }
+      else { const covd=(ed.cov[slot]||0)>0; active = covd && this._shadeOn(opt); }
 
       // resolve the button face: color icon as-is · neutral base tinted per shade ·
       // earring sprite · gradient color swatch · emoji glyph fallback.
@@ -3439,14 +3500,21 @@ class Component extends DCLogic {
     let target={ drag:false, tap:false, pop:false, style:'display:none', label:'', labelStyle:'', pimples:[] };
     const t=s.armed;
     if(t&&canAct){ const lab='font-size:11px;font-weight:800;color:var(--sage-700);background:#fff;border-radius:6px;padding:2px 8px;white-space:nowrap;box-shadow:var(--shadow-sm)';
+      /* One resolver answers for every surface the armed tool puts under the
+         pointer — the drag box, the tap box and the spot rings — so issue #40
+         has a single place to land. Empty art table ⇒ the keyword this build
+         already rendered. */
+      const cur=this._toolCursor(t);
       if(t.mech==='patch'||t.mech==='conceal'){ const ge=this.genEntry(); const positions=(base==='person'&&ge)?this._spotPct(ge):[{l:41,t:28},{l:31,t:47},{l:48,t:56}];
-        const ring=(clr,bg)=>'position:absolute;transform:translate(-50%,-50%);width:12%;height:12%;border-radius:50%;border:2.5px solid '+clr+';background:'+bg+';cursor:pointer;z-index:60;animation:gtm-pim 1.2s var(--ease-standard) infinite'; const pim=[]; let lockMsg='';
+        const ring=(clr,bg)=>'position:absolute;transform:translate(-50%,-50%);width:12%;height:12%;border-radius:50%;border:2.5px solid '+clr+';background:'+bg+';cursor:'+cur+';z-index:60;animation:gtm-pim 1.2s var(--ease-standard) infinite'; const pim=[]; let lockMsg='';
         if(t.mech==='patch'){ s.ed.pimples.forEach((st,i)=>{ if(st===0&&positions[i]) pim.push({ onClick:()=>this.patchOne(i), style:'top:'+positions[i].t+'%;left:'+positions[i].l+'%;'+ring('var(--red-500)','rgba(220,38,38,.12)') }); }); }
         else { const allTreated=s.ed.pimples.every(v=>v>=1); if(allTreated){ s.ed.pimples.forEach((st,i)=>{ if(st===1&&positions[i]) pim.push({ onClick:()=>this.concealOne(i), style:'top:'+positions[i].t+'%;left:'+positions[i].l+'%;'+ring('var(--sage-600)','rgba(106,118,89,.16)') }); }); } else lockMsg='🔒 Patch all the spots first'; }
         const lockStyle='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:11px;font-weight:800;color:var(--sage-700);background:#fff;border-radius:8px;padding:4px 10px;box-shadow:var(--shadow-sm);z-index:61;white-space:nowrap';
         target={ drag:false,tap:false,pop:true, pimples:pim, style:'', label:lockMsg, labelStyle: lockMsg?lockStyle:'display:none' };
-      } else { const z=this._targetZone(base,t.zone,t.mech); if(z){ const box='position:absolute;top:'+z.t+'%;left:'+z.l+'%;width:'+z.w+'%;height:'+z.h+'%;border:2.5px dashed '+SAGE+';border-radius:12px;background:rgba(106,118,89,.10);display:flex;align-items:center;justify-content:center;cursor:'+(t.mech==='paint'?'grab':'pointer')+';z-index:60;animation:gtm-target 1.4s var(--ease-standard) infinite;padding:0';
-        const covPct=Math.round((s.ed.cov[t.slot]||0)*100);
+      } else { const z=this._targetZone(base,t.zone,t.mech); if(z){ const box='position:absolute;top:'+z.t+'%;left:'+z.l+'%;width:'+z.w+'%;height:'+z.h+'%;border:2.5px dashed '+SAGE+';border-radius:12px;background:rgba(106,118,89,.10);display:flex;align-items:center;justify-content:center;cursor:'+cur+';z-index:60;animation:gtm-target 1.4s var(--ease-standard) infinite;padding:0';
+        /* Coverage the ARMED SHADE can claim — 0 for a shade that has not been
+           painted, however full its slot already is (see `_shadeOn`). */
+        const covPct=Math.round((this._shadeOn(t)?(s.ed.cov[t.slot]||0):0)*100);
         // "Keep painting… 100%" told the child to keep going on a finished step (eval §8).
         const lbl=t.mech!=='paint' ? z.label
           : covPct>=100 ? 'All done ✓'
