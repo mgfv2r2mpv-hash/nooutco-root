@@ -80,6 +80,28 @@ export function libraryFileName(stem, extension, alternateIndex) {
 export const imageUrl = (category, fileName) => `${IMG_URL_PREFIX}${category}/${fileName}`;
 export const placeholderUrl = (category, fileName) => `${PLACEHOLDER_URL_PREFIX}${category}/${fileName}`;
 
+/**
+ * An archived topic keeps its stimuli but leaves the programme, and AdminTools
+ * names it by a prefix rather than by a flag: `T_colors` archived is
+ * `_a_T_colors`. That prefix used to be a real directory — the topic's files
+ * were moved into it — which is exactly what cannot happen now that the same
+ * bytes back three games.
+ */
+export const ARCHIVE_PREFIX = '_a_';
+export const archivedFolderName = (category) => `${ARCHIVE_PREFIX}${category}`;
+export const categoryOfArchivedFolder = (folder) =>
+  folder.startsWith(ARCHIVE_PREFIX) ? folder.slice(ARCHIVE_PREFIX.length) : folder;
+
+/**
+ * `archived` reaches us as the manifest wrote it: prefixed folder name -> the
+ * URLs it held. Only the *names* are technician state — the URL lists are a
+ * projection exactly like `images`, so they are recomputed on every build
+ * rather than carried forward, and an upload into an archived topic shows up
+ * there instead of going stale.
+ */
+export const archivedNames = (archived) =>
+  (Array.isArray(archived) ? archived : Object.keys(archived || {})).slice().sort();
+
 /** Repo path of an upload as committed by AdminTools, keeping its own name. */
 export const uploadRepoPath = (category, filename) =>
   `${LIBRARY_ROOT}/${UPLOADS_SUBDIR}/${category}/${filename}`;
@@ -169,16 +191,22 @@ export function projectManifest(index, provenance, { game, folders, archived, ex
   }
   const urlById = new Map(index.stimuli.map((entry) => [entry.id, primaryUrl(entry)]));
 
+  /** What one folder publishes — the same rule active and archived. */
+  const publishedIn = (folder) => {
+    const category = categoryOfArchivedFolder(folder);
+    const hidden = new Set((excluded && excluded[category]) || []);
+    return (byCategory.get(category) || [])
+      .filter((entry) => !hidden.has(entry.id) && primaryUrl(entry))
+      .slice()
+      .sort(byId);
+  };
+
   const images = {};
   const displayNames = {};
   const served = new Set();
 
   for (const folder of folders) {
-    const hidden = new Set((excluded && excluded[folder]) || []);
-    const entries = (byCategory.get(folder) || [])
-      .filter((entry) => !hidden.has(entry.id) && primaryUrl(entry))
-      .slice()
-      .sort(byId);
+    const entries = publishedIn(folder);
     images[folder] = entries.map((entry) => primaryUrl(entry));
     for (const entry of entries) {
       const url = primaryUrl(entry);
@@ -213,7 +241,7 @@ export function projectManifest(index, provenance, { game, folders, archived, ex
     displayNames,
     pathAliases,
     archived: Object.fromEntries(
-      Object.entries(archived || {}).map(([key, value]) => [pathAliases[key] || key, value]),
+      archivedNames(archived).map((folder) => [folder, publishedIn(folder).map((entry) => primaryUrl(entry))]),
     ),
   };
 }
@@ -342,6 +370,11 @@ export function applyUpload(state, upload) {
 function withCategory(games, game, category) {
   const target = game && games[game];
   if (!target || target.folders.includes(category)) return games;
+  // An archived topic stays archived. The technician took it out of the
+  // programme deliberately, and the upload still reaches it — `archived` is
+  // projected from the same category — so re-adding the folder here would
+  // quietly undo a decision nobody asked to undo.
+  if (archivedNames(target.archived).includes(archivedFolderName(category))) return games;
   return { ...games, [game]: { ...target, folders: [...target.folders, category].sort() } };
 }
 
@@ -377,6 +410,84 @@ export function applyExclusion(state, { game, category, id }) {
     publishing: publishingFrom(nextGames),
     changed: excluded !== target.excluded,
   };
+}
+
+// ── The topic lifecycle: archive / restore / purge ─────────────────
+
+/**
+ * Change one game's topic list, leaving every file where it is.
+ *
+ * Archiving used to be a directory rename — `T_colors/` became `_a_T_colors/`
+ * inside that game's own `_Resources` tree — which was safe only while each
+ * game carried its own copy of the art. It is not safe now: one blob backs
+ * three games, so moving the colours out of matching's way would take them out
+ * of clock and receptive too, and the prefixed directory would not be a
+ * category any manifest could project from.
+ *
+ * So a topic's whole lifecycle is programme state. `folders` and `archived`
+ * live in the generated manifest and are read back from it on every rebuild
+ * (see {@link liveGames}), which is what makes a rename of nothing survive one.
+ *
+ * @param {function} mutate `({folders, archived}) => partial game config`
+ */
+function withTopics(state, game, mutate) {
+  const games = liveGames(state);
+  const target = games[game];
+  if (!target) throw new Error(`Unknown game: ${game}`);
+
+  const next = mutate({ folders: target.folders, archived: archivedNames(target.archived) });
+  const nextGames = { ...games, [game]: { ...target, ...next } };
+
+  return {
+    index: state.index,
+    provenance: state.provenance,
+    manifests: reproject(state.index, state.provenance, { ...state, games: nextGames }),
+    games: nextGames,
+    publishing: publishingFrom(nextGames),
+    changed: true,
+  };
+}
+
+/** Move an active topic out of the programme, keeping it recoverable. */
+export function applyTopicArchive(state, { game, category }) {
+  return withTopics(state, game, ({ folders, archived }) => {
+    if (!folders.includes(category)) throw new Error(`UNKNOWN_TOPIC:${category}`);
+    const folder = archivedFolderName(category);
+    return {
+      folders: folders.filter((f) => f !== category),
+      archived: [...archived.filter((name) => name !== folder), folder].sort(),
+    };
+  });
+}
+
+/** Put an archived topic back. Its images are re-projected, never replayed. */
+export function applyTopicRestore(state, { game, folder }) {
+  return withTopics(state, game, ({ folders, archived }) => {
+    if (!archived.includes(folder)) throw new Error(`UNKNOWN_TOPIC:${folder}`);
+    const category = categoryOfArchivedFolder(folder);
+    return {
+      folders: folders.includes(category) ? folders : [...folders, category].sort(),
+      archived: archived.filter((name) => name !== folder),
+    };
+  });
+}
+
+/**
+ * Drop an archived topic for good — for this game.
+ *
+ * Purging used to delete the pictures (a rename to `_x_`, invisible to every
+ * reader). It cannot, for the same reason removal cannot: the art is shared.
+ * What it does do is take the topic's per-stimulus exclusions with it, because
+ * those name removals from a programme this game no longer runs at all.
+ */
+export function applyTopicPurge(state, { game, folder }) {
+  return withTopics(state, game, ({ folders, archived }) => {
+    if (!archived.includes(folder)) throw new Error(`UNKNOWN_TOPIC:${folder}`);
+    const category = categoryOfArchivedFolder(folder);
+    const excluded = { ...((liveGames(state)[game] || {}).excluded || {}) };
+    delete excluded[category];
+    return { folders, archived: archived.filter((name) => name !== folder), excluded };
+  });
 }
 
 /**
@@ -442,7 +553,7 @@ export function liveGames(state) {
   for (const [game, manifest] of Object.entries(state.manifests || {})) {
     games[game] = {
       folders: manifest.folders,
-      archived: manifest.archived,
+      archived: archivedNames(manifest.archived),
       excluded: excluded[game] || {},
     };
   }

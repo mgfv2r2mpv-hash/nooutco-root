@@ -57,6 +57,9 @@ import {
   LIBRARY_ROOT,
   applyExclusion,
   applyLabel,
+  applyTopicArchive,
+  applyTopicPurge,
+  applyTopicRestore,
   applyUpload,
   publishingFrom,
   sortKeys,
@@ -572,6 +575,10 @@ async function handleAdminArchiveTopic(request, env) {
 
   const archivedFolder = `_a_${folder}`;
 
+  if (isLibraryGame(game)) {
+    return libraryTopicResponse(env, gameFolder(game), 'archive', folder, { archived: archivedFolder });
+  }
+
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       await atomicTopicRenameCommit(env, game, folder, archivedFolder, 'archive');
@@ -601,6 +608,10 @@ async function handleAdminRestoreTopic(request, env) {
   if (!/^_a_T_/.test(folder)) return jsonError('folder must start with _a_T_', 400);
 
   const restoredFolder = folder.replace(/^_a_/, '');
+
+  if (isLibraryGame(game)) {
+    return libraryTopicResponse(env, gameFolder(game), 'restore', folder, { restored: restoredFolder });
+  }
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
@@ -632,6 +643,10 @@ async function handleAdminPurgeTopic(request, env) {
 
   const purgedFolder = folder.replace(/^_a_/, '_x_');
 
+  if (isLibraryGame(game)) {
+    return libraryTopicResponse(env, gameFolder(game), 'purge', folder, { purged: purgedFolder });
+  }
+
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       await atomicTopicRenameCommit(env, game, folder, purgedFolder, 'purge');
@@ -661,6 +676,22 @@ async function handleAdminRenameTopic(request, env) {
   if (!/^T_/.test(folder))    return jsonError('folder must start with T_', 400);
   if (!/^T_/.test(newFolder)) return jsonError('newFolder must start with T_', 400);
   if (folder === newFolder)   return jsonError('newFolder must differ from folder', 400);
+
+  // Renaming a shared topic is refused rather than half-done. The old path
+  // moves files inside this game's `_Resources` tree — the very tree the
+  // library is built from — so it would re-key every stimulus in the topic on
+  // the next rebuild and point the generated manifest at URLs that 404 in the
+  // meantime. A topic is also one shared category, so a rename is a rename for
+  // every game that runs it; that is a decision to make deliberately, not a
+  // side effect of one game's admin page. Archive + re-upload is the way round
+  // it until the library carries a rename record of its own.
+  if (isLibraryGame(game)) {
+    return jsonError(
+      `${folder} is a shared library topic — renaming it would rename it for every game that runs ` +
+      'it, and is not wired yet. Archive the topic and upload into a new one instead.',
+      409,
+    );
+  }
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
@@ -1142,6 +1173,40 @@ async function libraryUploadPlan(state, { game, folder, filename, bytes }) {
     blobs: [{ repoPaths: applied.addRepoPaths, bytes }],
     removeRepoPaths: applied.removeRepoPaths,
   };
+}
+
+/**
+ * Archive / restore / purge a topic for a library game.
+ *
+ * Nothing moves. `_a_T_colors` is a name in one game's programme state, not a
+ * directory — the art behind the topic backs three games, so the directory
+ * rename the legacy path performs would take the pictures out of the other two
+ * and leave the generated manifests pointing at URLs that 404.
+ */
+async function libraryTopicPlan(state, { game, action, folder }) {
+  const applied =
+    action === 'archive' ? applyTopicArchive(state, { game, category: folder })
+    : action === 'restore' ? applyTopicRestore(state, { game, folder })
+    : applyTopicPurge(state, { game, folder });
+
+  return {
+    manifests: applied.manifests,
+    message: `Admin: ${action} topic ${folder} for ${game}`,
+    documents: changedLibraryDocuments(state, await finalLibraryDocuments(foldLibraryState(state, applied))),
+  };
+}
+
+/** The three topic endpoints differ only in their success field. */
+async function libraryTopicResponse(env, game, action, folder, success) {
+  try {
+    await commitLibraryChange(env, (state) => libraryTopicPlan(state, { game, action, folder }));
+  } catch (err) {
+    if (err.message.startsWith('UNKNOWN_TOPIC:')) {
+      return jsonError(`${game} has no topic ${err.message.slice('UNKNOWN_TOPIC:'.length)}`, 404);
+    }
+    return jsonError('GitHub commit failed: ' + err.message, 502);
+  }
+  return json({ ok: true, ...success });
 }
 
 // ─── Atomic commit: topic folder rename (archive / restore / purge) ───────────

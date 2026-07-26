@@ -96,6 +96,7 @@ body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-he
   background: #1e293b; color: #93c5fd; border: 1px solid #334155; cursor: pointer;
 }
 .btn-rename:hover { background: #1e3a5f; }
+.btn-rename:disabled { opacity: 0.45; cursor: not-allowed; background: #1e293b; }
 .rename-inline { display: flex; align-items: center; gap: 0.4rem; }
 .rename-inline input {
   padding: 0.25rem 0.5rem; border-radius: 6px; border: 1px solid #3b82f6;
@@ -352,6 +353,7 @@ body { font-family: var(--font-sans, 'Atkinson Hyperlegible', system-ui, sans-se
 /* folder actions */
 .btn-rename { background: var(--sage-50, #f1f3ec); color: var(--sage-700, #4d5840); border: 1px solid var(--sage-200, #c7cdb6); }
 .btn-rename:hover { background: var(--sage-100, #e2e6d9); }
+.btn-rename:disabled { background: var(--sage-50, #f1f3ec); }
 .rename-inline input { border: 1px solid var(--sage-500, #6a7659); background: #fff; color: var(--sage-900, #2c331f); }
 .btn-archive { background: var(--amber-100, #fef3c7); color: var(--amber-700, #92722a); border: 1px solid #fae3a0; }
 .btn-archive:hover { background: #fce8b8; }
@@ -811,10 +813,16 @@ function renderContent() {
   if (activeGame.type === 'manifest' && activeFolder) {
     const bar = document.createElement('div');
     bar.className = 'folder-action-bar';
+    // A library topic is one shared category: renaming it here would rename it
+    // for every game that runs it, and the worker refuses it (409) rather than
+    // half-apply a change that re-keys every stimulus in the topic. Showing the
+    // button live would be an invitation into that dead end.
     const renameBtn = document.createElement('button');
     renameBtn.className = 'btn-rename';
     renameBtn.textContent = '✏ Rename';
-    renameBtn.addEventListener('click', () => showRenameInline(bar, renameBtn, activeFolder));
+    renameBtn.disabled = true;
+    renameBtn.title = 'Shared library topics are named once for every game that runs them. '
+      + 'Archive this topic and upload into a new one instead.';
     bar.appendChild(renameBtn);
 
     const archBtn = document.createElement('button');
@@ -1579,6 +1587,12 @@ async function doPurgeTopic(archFolder) {
 }
 
 // ─── Rename Topic ─────────────────────────────────────────────────────────────
+//
+// Parked, not deleted. The only caller was the folder bar's Rename button,
+// which is disabled while topics are shared library categories — a rename is a
+// rename for every game that runs the topic, so it needs a rename record in the
+// library before it can be offered again. This UI is what it will be offered
+// through; `/api/admin/rename-topic` answers 409 until then.
 
 function showRenameInline(bar, renameBtn, folder) {
   if (bar.querySelector('.rename-inline')) return;

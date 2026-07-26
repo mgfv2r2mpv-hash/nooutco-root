@@ -139,6 +139,15 @@ GAMES_TEST_PORT=8792 npm test
 Both server modes were re-verified and give the same result, so nothing in the
 current numbers is an artefact of this.
 
+**It came back.** That `python3 -m http.server 8788` was listening again during
+Stage 3 part 4, and this time the symptom was loud rather than silent: every
+`admin-image-manager.spec.js` test failed at `openManager()` because the static
+server does not serve `/AdminTools/ImageManager/` the way `_worker.js` does.
+Both the pre-change tree and the working tree failed identically, which is what
+identified it as environment rather than regression. **Always pass
+`GAMES_TEST_PORT` when running this suite locally** — the default port is not
+trustworthy on this machine.
+
 Still outstanding: `wrangler` appears in neither `package.json` nor
 `package-lock.json`, so `npm ci` does not install it and the webServer depends on
 whatever `npx` resolves from cache or the network. Worth pinning as a
@@ -575,16 +584,93 @@ restoring the doubled prefix fails 4, restoring the guessed-path append fails 2,
 dropping `manifests` fails 1, returning the *pre*-commit manifests fails 1, and
 unregistering clock fails 1.
 
+## Stage 3, part 4 — the topic lifecycle stops moving files
+
+`archive` / `restore` / `purge` for a library game now go through
+`library.mjs` (`applyTopicArchive` / `applyTopicRestore` / `applyTopicPurge`)
+and commit through the same `commitLibraryChange` path as an upload. The legacy
+`atomicTopicRenameCommit` stays for `famous-person`, which still owns its tree.
+
+`rename-topic` is **refused** for a library game — see finding 25.
+
+### 23. `_a_T_colors` was a directory; now it is only a name
+
+Archiving used to be a directory rename inside one game's `_Resources` tree,
+which was safe only while each game carried its own copy of the art. Under the
+library it is safe in neither direction: moving `T_colors/` out of matching's
+way takes the colours out of clock and receptive, and `_a_T_colors` is not a
+category any manifest could project from, so the generated manifest would be
+left listing URLs that 404.
+
+So the whole lifecycle is programme state and nothing else. `folders` and
+`archived` live in the generated manifest and are read back from it on every
+rebuild (finding 13), which is exactly what makes a topic that was archived
+survive one. The tests assert the negative directly: after an archive,
+`hub.treeEntryPaths` contains no `/img/` and no `_Resources` path at all.
+
+### 24. `archived`'s URL lists are a projection, not a record
+
+The old code copied `images[T_colors]` into `archived['_a_T_colors']` and
+rewrote the paths. Carrying the list forward is wrong now for the same reason
+carrying `images` forward would be: it goes stale. `projectManifest` recomputes
+both from the same category through one `publishedIn()` helper, so an upload
+into an archived topic reaches it, a removal is honoured inside it, and a
+restore is byte-for-byte the manifest that existed before the archive —
+`generated` included, because the stamp is a content digest.
+
+That symmetry also exposed a live bug in `applyUpload`: `withCategory()` added
+the uploaded topic to the game's `folders` whenever it was missing, which meant
+an upload into an **archived** topic silently un-archived it. The rule is now
+"an archived topic stays archived" — the upload still lands, it just lands in
+the archived projection.
+
+### 25. Rename is refused, not half-done — and it is a real decision
+
+A library topic is one shared category, so renaming `T_colors` in matching's
+admin page is a rename for clock and receptive too. That is a decision for the
+maintainer, not a side effect of one game's page. Worse, the legacy path would
+move files inside `matching/_Resources/_imgSource/` — the tree the library is
+*built from* — so the next `npm run stimuli:build` would re-key every stimulus
+in the topic (`colors-orange` → `colours-orange`), invalidating every URL and
+every saved `targetFilters` entry, while the generated manifest 404s in the
+meantime.
+
+`/api/admin/rename-topic` therefore answers **409** for clock, receptive and
+matching, and the ImageManager's Rename button is disabled with the reason in
+its `title`. `showRenameInline()` / `doRenameTopic()` are parked, not deleted:
+they are the UI a real rename will be offered through.
+
+**What a real rename needs (for whoever picks it up):** a rename record in a
+*source* file — the rebuild derives categories from source directory names, so
+a rename that lives only in the index is reverted by the next build — plus a
+decision on whether the library files move with it (`img/`, `placeholder/`,
+`uploads/`, and the `library` values in `provenance.json`) or whether the
+category name and the storage directory are allowed to diverge. Archive + a
+fresh topic is the working substitute in the meantime.
+
+### 26. Assert the redraw before the recorded request, not after the click
+
+The browser-side archive test asserted `posted[0]` immediately after the click
+and passed everywhere except one firefox run in four. `page.route` records the
+request on interception, which is not ordered against `click()` returning — but
+the page only redraws after it has *handled the response*, so asserting the DOM
+first and the payload second makes the ordering deterministic. Confirmed with
+`--repeat-each=5` across all three browsers (135/135).
+
+`tests/stimulus-library-worker.spec.js` gained 7 × 3 (29 tests in the file now)
+and `tests/admin-image-manager.spec.js` 2 × 3 (9 in the file). Mutation-tested
+six ways: dropping the archived-stays-archived guard, carrying `archived`
+forward instead of projecting it, keeping a purged topic's exclusions, letting
+archive fall through to the legacy rename, letting rename through, and
+re-enabling the Rename button each fail 1–6 tests.
+
 ### Still owed for Stage 3
 
 1. ~~Wire `worker.js`.~~ **Done** — Stage 3 part 2.
-2. ~~Repoint `AdminTools/ImageManager/index.html`.~~ **Done** — see above.
+2. ~~Repoint `AdminTools/ImageManager/index.html`.~~ **Done** — part 3.
 3. **Restore the manifest-rebuild step** lost in `514debf4`, as a workflow that
    runs `npm run stimuli:build` and commits. With the worker projecting
    in place this is now a consistency net rather than the publish path.
-4. **Archive / restore / purge / rename-topic** still move files inside
-   `_Resources` and rewrite the generated manifest directly
-   (`atomicTopicRenameCommit`). Untouched so far, and it needs the same
-   treatment as save/remove before the duplicated trees can go. Archiving is
-   the easy one: `folders` / `archived` already round-trip through the live
-   manifest (finding 13), so it needs no file moves at all.
+4. ~~Archive / restore / purge.~~ **Done** — part 4 above.
+5. **`rename-topic`** — refused rather than wired; finding 25 says what it
+   needs. This is the last thing standing between Stage 3 and complete.

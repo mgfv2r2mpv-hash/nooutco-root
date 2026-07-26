@@ -513,6 +513,158 @@ test.describe('worker: shared stimulus library', () => {
     expect(hub.commitMessages, 'the replay is a no-op').toHaveLength(1);
   });
 
+  // ── The topic lifecycle ────────────────────────────────────────────
+  //
+  // `archive` / `restore` / `purge` used to be directory renames inside one
+  // game's own `_Resources` tree: `T_colors/` became `_a_T_colors/`, and the
+  // manifest was rewritten to match. Neither half of that survives the repoint
+  // — the pictures back three games now, and the manifest is generated — so
+  // every test here checks both that nothing moved and that a rebuild of the
+  // commit reproduces it exactly.
+
+  test('archiving a topic moves no files and leaves the other games alone', async () => {
+    const hub = seededRepo();
+    const before = hub.readJson(repo('matching/manifest.json'));
+    expect(before.folders).toContain('T_colors');
+
+    const { status, body } = await post(hub, '/api/admin/archive-topic', {
+      game: 'IDMatchGame', folder: 'T_colors',
+    });
+    expect(status).toBe(200);
+    expect(body.archived).toBe('_a_T_colors');
+
+    const after = hub.readJson(repo('matching/manifest.json'));
+    expect(after.folders, 'out of the programme').not.toContain('T_colors');
+    expect(after.images.T_colors, 'and out of the served images').toBeUndefined();
+    expect(Object.keys(after.archived)).toEqual(['_a_T_colors']);
+
+    for (const game of ['clock', 'receptive']) {
+      expect(hub.readJson(repo(`${game}/manifest.json`)).folders, `${game} still runs the topic`)
+        .toContain('T_colors');
+    }
+
+    // The whole point: the art is shared, so an archive is a name change in one
+    // programme and nothing else. No blob is written, moved or deleted.
+    expect(hub.treeEntryPaths.filter((p) => p.includes('/img/') || p.includes('_Resources'))).toEqual([]);
+
+    const built = expectRebuildIsANoOp(hub);
+    expectEveryPublishedUrlResolves(hub, built);
+  });
+
+  test('an archived topic keeps its pictures, projected rather than replayed', async () => {
+    const hub = seededRepo();
+    const served = hub.readJson(repo('matching/manifest.json')).images.T_colors;
+    expect(served.length).toBeGreaterThan(0);
+
+    await post(hub, '/api/admin/archive-topic', { game: 'IDMatchGame', folder: 'T_colors' });
+    expect(hub.readJson(repo('matching/manifest.json')).archived._a_T_colors).toEqual(served);
+
+    // An upload into an archived topic reaches it, because the archived list is
+    // a projection of the category exactly like `images` is.
+    await post(hub, '/api/admin/save-image', uploadPayload({
+      game: 'IDMatchGame', folder: 'T_colors', filename: 'teal.png', seed: 'teal',
+    }));
+    const archived = hub.readJson(repo('matching/manifest.json')).archived._a_T_colors;
+    expect(archived, 'the new picture is in the archived topic').toContain('/shared/stimuli/img/T_colors/teal.png');
+    expect(hub.readJson(repo('matching/manifest.json')).folders, 'and it stays archived').not.toContain('T_colors');
+
+    expectRebuildIsANoOp(hub);
+  });
+
+  test('restoring a topic puts back exactly what it served', async () => {
+    const hub = seededRepo();
+    const before = hub.readJson(repo('matching/manifest.json'));
+
+    await post(hub, '/api/admin/archive-topic', { game: 'IDMatchGame', folder: 'T_colors' });
+    const { status, body } = await post(hub, '/api/admin/restore-topic', {
+      game: 'IDMatchGame', folder: '_a_T_colors',
+    });
+    expect(status).toBe(200);
+    expect(body.restored).toBe('T_colors');
+
+    const after = hub.readJson(repo('matching/manifest.json'));
+    expect(after.folders).toEqual(before.folders);
+    expect(after.images.T_colors).toEqual(before.images.T_colors);
+    expect(after.archived).toEqual({});
+    // A full round trip is a no-op on the committed bytes, `generated` included.
+    expect(stableJson(after)).toBe(stableJson(before));
+
+    expectRebuildIsANoOp(hub);
+  });
+
+  test('purging drops the topic for good and a rebuild does not bring it back', async () => {
+    const hub = seededRepo();
+    await post(hub, '/api/admin/archive-topic', { game: 'IDMatchGame', folder: 'T_colors' });
+    const { status } = await post(hub, '/api/admin/purge-topic', {
+      game: 'IDMatchGame', folder: '_a_T_colors',
+    });
+    expect(status).toBe(200);
+
+    const after = hub.readJson(repo('matching/manifest.json'));
+    expect(after.folders).not.toContain('T_colors');
+    expect(after.archived).toEqual({});
+
+    // The pictures are still in the library — they back clock and receptive.
+    expect(hub.readJson(repo('receptive/manifest.json')).images.T_colors.length).toBeGreaterThan(0);
+    expect(hub.treeEntryPaths.filter((p) => p.includes('/img/'))).toEqual([]);
+
+    const built = expectRebuildIsANoOp(hub);
+    expect(built.manifests.matching.folders, 'the rebuild agrees the topic is gone').not.toContain('T_colors');
+  });
+
+  test('an exclusion survives archive + restore, and a purge takes it with it', async () => {
+    const hub = seededRepo();
+    const url = hub.readJson(repo('matching/manifest.json')).images.T_colors[0];
+    await post(hub, '/api/admin/remove-image', {
+      game: 'IDMatchGame', folder: 'T_colors', filename: url.split('/').pop(), localPath: url,
+    });
+    const excludedId = hub.readJson(repo(`${LIBRARY_ROOT}/publishing.json`)).excluded.matching.T_colors[0];
+    expect(excludedId).toBeTruthy();
+
+    await post(hub, '/api/admin/archive-topic', { game: 'IDMatchGame', folder: 'T_colors' });
+    expect(hub.readJson(repo('matching/manifest.json')).archived._a_T_colors, 'archived respects the removal')
+      .not.toContain(url);
+    await post(hub, '/api/admin/restore-topic', { game: 'IDMatchGame', folder: '_a_T_colors' });
+    expect(hub.readJson(repo(`${LIBRARY_ROOT}/publishing.json`)).excluded.matching.T_colors, 'still removed')
+      .toContain(excludedId);
+    expect(hub.readJson(repo('matching/manifest.json')).images.T_colors).not.toContain(url);
+
+    // Purging the topic retires the removals inside it: they name stimuli this
+    // game no longer offers at all.
+    await post(hub, '/api/admin/archive-topic', { game: 'IDMatchGame', folder: 'T_colors' });
+    await post(hub, '/api/admin/purge-topic', { game: 'IDMatchGame', folder: '_a_T_colors' });
+    expect(hub.readJson(repo(`${LIBRARY_ROOT}/publishing.json`)).excluded.matching.T_colors).toBeUndefined();
+
+    expectRebuildIsANoOp(hub);
+  });
+
+  test('a topic the game does not run is a 404, not a silent no-op', async () => {
+    const hub = seededRepo();
+    const archive = await post(hub, '/api/admin/archive-topic', { game: 'HickoryDickoryDockGame', folder: 'T_lowercase' });
+    expect(archive.status).toBe(404);
+    expect(archive.body.error).toMatch(/clock has no topic T_lowercase/);
+
+    const restore = await post(hub, '/api/admin/restore-topic', { game: 'IDMatchGame', folder: '_a_T_colors' });
+    expect(restore.status).toBe(404);
+
+    expect(hub.commitMessages, 'nothing was committed').toEqual([]);
+  });
+
+  test('renaming a shared topic is refused rather than half-applied', async () => {
+    const hub = seededRepo();
+    const { status, body } = await post(hub, '/api/admin/rename-topic', {
+      game: 'IDMatchGame', folder: 'T_colors', newFolder: 'T_colours',
+    });
+
+    // The legacy path would move matching's `_Resources/T_colors/` — the tree
+    // the library is BUILT from — re-keying every stimulus in the topic on the
+    // next rebuild and 404ing the generated manifest in the meantime.
+    expect(status).toBe(409);
+    expect(body.error).toMatch(/shared library topic/);
+    expect(hub.commitMessages).toEqual([]);
+    expect(hub.readJson(repo('matching/manifest.json')).folders).toContain('T_colors');
+  });
+
   test('an unauthenticated admin request changes nothing', async () => {
     const hub = seededRepo();
     globalThis.fetch = hub.fetch;
