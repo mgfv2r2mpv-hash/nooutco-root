@@ -117,6 +117,9 @@
         Prompt persists
         <button type="button" class="help-btn" data-help="The prompt highlight stays visible for the whole trial instead of fading after a moment.">?</button>
       </label>
+      <!-- Prompting method — three presets over the Auto-Prompt / Prompt Delay
+           switches below. Rendered by ../prompting-method.js. -->
+      <div data-prompting-method></div>
       <label class="checkbox-label">
         <input type="checkbox" id="chk-auto-prompt">
         Auto-Prompt
@@ -285,6 +288,7 @@
   <script src="../../reward.js"></script>
   <script src="../migrate-config.js"></script>
   <script src="../game-settings.js"></script>
+  <script src="../prompting-method.js"></script>
   <script src="game.js"></script>
   <script>NooutcoReward.attachGoalSR({ boardId: 'token-board', buttonId: 'btn-finish-sr', minutes: 5 });</script>
   <script>

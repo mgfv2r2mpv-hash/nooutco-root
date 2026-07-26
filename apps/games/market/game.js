@@ -333,6 +333,10 @@ function loadSettings() {
   el.chkPromptDelay.disabled = !state.autoPromptEnabled;
   el.selPromptDelay.disabled = !state.autoPromptEnabled || !state.promptDelay;
 
+  // The panel was just rendered from state, and a programmatic write fires no
+  // `change` event, so the prompting-method group has to be told to re-read.
+  if (window.NooutcoPrompting) window.NooutcoPrompting.refresh();
+
   updateTokenBoardUIVisibility();
   if (state.tokenBoardEnabled) {
     initializeTokenBoard();

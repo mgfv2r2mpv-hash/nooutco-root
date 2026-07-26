@@ -122,6 +122,9 @@
         Prompt persists
         <button type="button" class="help-btn" data-help="The prompt highlight stays visible for the whole trial instead of fading after a moment.">?</button>
       </label>
+      <!-- Prompting method — three presets over the Auto-Prompt / Prompt Delay
+           switches below. Rendered by ../prompting-method.js. -->
+      <div data-prompting-method></div>
       <label class="checkbox-label">
         <input type="checkbox" id="chk-auto-prompt">
         Auto-Prompt
@@ -242,6 +245,7 @@
   <script src="../../token-board-ui.js" data-namespace="clock"></script>
   <script src="../migrate-config.js"></script>
   <script src="../game-settings.js"></script>
+  <script src="../prompting-method.js"></script>
   <script src="game.js"></script>
   <script>
     const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
