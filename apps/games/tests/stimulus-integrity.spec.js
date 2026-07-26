@@ -173,9 +173,15 @@ for (const source of STIMULUS_SOURCES.filter((s) => s.kind === 'manifest')) {
 }
 
 test('ffc: items.json is structurally valid', async ({ request }) => {
-  const data = await loadIndex(request, STIMULUS_SOURCES.find((s) => s.game === 'ffc'));
+  const source = STIMULUS_SOURCES.find((s) => s.game === 'ffc');
+  const data = await loadIndex(request, source);
+  const library = await loadIndex(request, { ...source, index: source.library });
+  const entries = new Map(library.stimuli.map((entry) => [entry.id, entry]));
 
-  expect(data.generated).toMatch(ISO_DATE_RE);
+  expect(
+    ISO_DATE_RE.test(data.generated) || LIBRARY_STAMP_RE.test(data.generated),
+    `generated is an ISO timestamp or a library stamp, got "${data.generated}"`,
+  ).toBe(true);
   expect(Array.isArray(data.items)).toBe(true);
   expect(data.items.length).toBeGreaterThan(0);
 
@@ -186,14 +192,24 @@ test('ffc: items.json is structurally valid', async ({ request }) => {
     expect(ids.has(item.id), `item id "${item.id}" is unique`).toBe(false);
     ids.add(item.id);
 
-    // Labels are authored data, never derived from the filename.
-    expect(typeof item.label, `item "${item.id}" has a label`).toBe('string');
-    expect(item.label.trim().length, `item "${item.id}" label is non-empty`).toBeGreaterThan(0);
-    expect(isImagePath(item.img), `item "${item.id}" img is an image path`).toBe(true);
+    // The picture and the label are the library's, reached by id. An item that
+    // names a stimulus the library does not carry renders nothing at all.
+    const entry = entries.get(item.id);
+    expect(entry, `item "${item.id}" is a stimulus the library carries`).toBeTruthy();
+    expect(typeof entry.label, `item "${item.id}" has a label`).toBe('string');
+    expect(entry.label.trim().length, `item "${item.id}" label is non-empty`).toBeGreaterThan(0);
+    expect(isImagePath(entry.image || entry.placeholder || ''), `item "${item.id}" resolves to an image`).toBe(true);
 
     for (const key of ['groups', 'features', 'functions', 'classes']) {
       expect(Array.isArray(item[key]), `item "${item.id}" ${key} is an array`).toBe(true);
     }
+  }
+
+  // Every id ffc used to key by has to reach an item it still publishes, or a
+  // technician's saved target selection loses that word without saying so.
+  for (const [legacy, id] of Object.entries(data.idAliases || {})) {
+    expect(typeof legacy, 'idAliases key is a string').toBe('string');
+    expect(ids.has(id), `idAliases["${legacy}"] -> "${id}" is published`).toBe(true);
   }
 });
 
@@ -254,7 +270,8 @@ for (const source of STIMULUS_SOURCES) {
     test.slow(); // several hundred asset fetches per game
 
     const index = source.index ? await loadIndex(request, source) : null;
-    const entries = entriesFor(source, index);
+    const library = source.library ? await loadIndex(request, { ...source, index: source.library }) : null;
+    const entries = entriesFor(source, index, library);
     expect(entries.length, `${source.game} indexes at least one stimulus`).toBeGreaterThan(0);
 
     const rows = await mapWithConcurrency(entries, 12, async (entry) => {

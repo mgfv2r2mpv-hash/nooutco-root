@@ -1,10 +1,13 @@
 {
   "schema": 1,
-  "note": "Shared stimulus library. Generated from the clock, receptive and matching _Resources trees plus shared/stimuli/uploads/ by shared/stimuli/build.mjs — change that script or the source art, never this file.",
+  "note": "Shared stimulus library. Generated from the clock, receptive and matching _Resources trees plus shared/stimuli/uploads/ by shared/stimuli/build.mjs — change that script or the source art, never this file. ffc is an art-only source: it has no manifest to project, and its files join by the ids in shared/stimuli/ffc.json rather than by directory.",
   "sources": [
     "matching",
     "receptive",
     "clock"
+  ],
+  "artOnlySources": [
+    "ffc"
   ],
   "uploads": "uploads/",
   "basePath": "/shared/stimuli/",
@@ -168,7 +171,8 @@
       "emoji": "🐻",
       "glyphKind": "emoji",
       "variants": [
-        "/shared/stimuli/img/T_animals/bear--alt1.jpg"
+        "/shared/stimuli/img/T_animals/bear--alt1.jpg",
+        "/shared/stimuli/img/T_animals/bear--alt2.jpg"
       ]
     },
     {
@@ -181,7 +185,8 @@
       "emoji": "🐦",
       "glyphKind": "emoji",
       "variants": [
-        "/shared/stimuli/img/T_animals/bird--alt1.jpg"
+        "/shared/stimuli/img/T_animals/bird--alt1.jpg",
+        "/shared/stimuli/img/T_animals/bird--alt2.jpg"
       ]
     },
     {
@@ -194,7 +199,8 @@
       "emoji": "🦋",
       "glyphKind": "emoji",
       "variants": [
-        "/shared/stimuli/img/T_animals/butterfly--alt1.jpg"
+        "/shared/stimuli/img/T_animals/butterfly--alt1.jpg",
+        "/shared/stimuli/img/T_animals/butterfly--alt2.jpg"
       ]
     },
     {
@@ -401,6 +407,15 @@
       "placeholder": "/shared/stimuli/placeholder/T_clothing/boots.svg"
     },
     {
+      "id": "clothing-coat",
+      "label": "Coat",
+      "categories": [
+        "T_clothing"
+      ],
+      "image": "/shared/stimuli/img/T_clothing/coat.jpg",
+      "emoji": null
+    },
+    {
       "id": "clothing-dress",
       "label": "Dress",
       "categories": [
@@ -483,10 +498,12 @@
       "categories": [
         "T_clothing"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_clothing/shirt.jpg",
       "emoji": "👕",
       "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_clothing/shirt.svg"
+      "variants": [
+        "/shared/stimuli/img/T_clothing/shirt--alt1.png"
+      ]
     },
     {
       "id": "clothing-shoes",
@@ -623,7 +640,7 @@
     },
     {
       "id": "community-helpers-construction",
-      "label": "Construction",
+      "label": "Construction Worker",
       "categories": [
         "T_community_helpers"
       ],
@@ -711,7 +728,7 @@
     },
     {
       "id": "community-helpers-police",
-      "label": "Police",
+      "label": "Police Officer",
       "categories": [
         "T_community_helpers"
       ],
@@ -916,10 +933,9 @@
       "categories": [
         "T_foods"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_foods/apple.jpg",
       "emoji": "🍎",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_foods/apple.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "foods-banana",
@@ -927,10 +943,9 @@
       "categories": [
         "T_foods"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_foods/banana.jpg",
       "emoji": "🍌",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_foods/banana.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "foods-broccoli",
@@ -1082,7 +1097,10 @@
       ],
       "image": "/shared/stimuli/img/T_household_items/bed.webp",
       "emoji": "🛏️",
-      "glyphKind": "emoji"
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_household_items/bed--alt1.jpg"
+      ]
     },
     {
       "id": "household-items-books",
@@ -1102,7 +1120,10 @@
       ],
       "image": "/shared/stimuli/img/T_household_items/broom.webp",
       "emoji": "🧹",
-      "glyphKind": "emoji"
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_household_items/broom--alt1.webp"
+      ]
     },
     {
       "id": "household-items-chair",
@@ -1112,7 +1133,10 @@
       ],
       "image": "/shared/stimuli/img/T_household_items/chair.webp",
       "emoji": "🪑",
-      "glyphKind": "emoji"
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_household_items/chair--alt1.jpg"
+      ]
     },
     {
       "id": "household-items-clock",
@@ -1122,7 +1146,10 @@
       ],
       "image": "/shared/stimuli/img/T_household_items/clock.jpg",
       "emoji": "🕐",
-      "glyphKind": "emoji"
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_household_items/clock--alt1.png"
+      ]
     },
     {
       "id": "household-items-lamp",
@@ -1132,7 +1159,10 @@
       ],
       "image": "/shared/stimuli/img/T_household_items/lamp.jpg",
       "emoji": "💡",
-      "glyphKind": "emoji"
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_household_items/lamp--alt1.webp"
+      ]
     },
     {
       "id": "household-items-mirror",
@@ -1142,7 +1172,10 @@
       ],
       "image": "/shared/stimuli/img/T_household_items/mirror.jpg",
       "emoji": "🪞",
-      "glyphKind": "emoji"
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_household_items/mirror--alt1.jpg"
+      ]
     },
     {
       "id": "household-items-mug",
@@ -1152,7 +1185,11 @@
       ],
       "image": "/shared/stimuli/img/T_household_items/mug.webp",
       "emoji": "☕",
-      "glyphKind": "emoji"
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_household_items/mug--alt1.jpg",
+        "/shared/stimuli/img/T_household_items/mug--alt2.gif"
+      ]
     },
     {
       "id": "household-items-shower",
@@ -1172,7 +1209,10 @@
       ],
       "image": "/shared/stimuli/img/T_household_items/sofa.webp",
       "emoji": "🛋️",
-      "glyphKind": "emoji"
+      "glyphKind": "emoji",
+      "variants": [
+        "/shared/stimuli/img/T_household_items/sofa--alt1.jpg"
+      ]
     },
     {
       "id": "household-items-table",
@@ -2268,10 +2308,9 @@
       "categories": [
         "T_school"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_school/backpack.jpg",
       "emoji": "🎒",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_school/backpack.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "school-book",
@@ -2307,15 +2346,23 @@
       "placeholder": "/shared/stimuli/placeholder/T_school/crayon.svg"
     },
     {
+      "id": "school-eraser",
+      "label": "Eraser",
+      "categories": [
+        "T_school"
+      ],
+      "image": "/shared/stimuli/img/T_school/eraser.jpg",
+      "emoji": null
+    },
+    {
       "id": "school-notebook",
       "label": "Notebook",
       "categories": [
         "T_school"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_school/notebook.jpg",
       "emoji": "📓",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_school/notebook.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "school-paintbrush",
@@ -2367,10 +2414,12 @@
       "categories": [
         "T_school"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_school/pencil.jpg",
       "emoji": "✏️",
       "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_school/pencil.svg"
+      "variants": [
+        "/shared/stimuli/img/T_school/pencil--alt1.png"
+      ]
     },
     {
       "id": "school-ruler",
@@ -2378,10 +2427,9 @@
       "categories": [
         "T_school"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_school/ruler.jpg",
       "emoji": "📏",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_school/ruler.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "school-scissors",
@@ -2389,10 +2437,9 @@
       "categories": [
         "T_school"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_school/scissors.jpg",
       "emoji": "✂️",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_school/scissors.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "shapes-circle",
@@ -2567,10 +2614,9 @@
       "categories": [
         "T_toys"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_toys/toy-car.jpg",
       "emoji": "🚗",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_toys/toy-car.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "toys-train",
@@ -2908,10 +2954,9 @@
       "categories": [
         "T_vehicles"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_vehicles/bicycle.jpg",
       "emoji": "🚲",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_vehicles/bicycle.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "vehicles-boat",
@@ -2930,10 +2975,9 @@
       "categories": [
         "T_vehicles"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_vehicles/bus.jpg",
       "emoji": "🚌",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_vehicles/bus.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "vehicles-car",
@@ -2941,10 +2985,12 @@
       "categories": [
         "T_vehicles"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_vehicles/car.jpg",
       "emoji": "🚗",
       "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_vehicles/car.svg"
+      "variants": [
+        "/shared/stimuli/img/T_vehicles/car--alt1.webp"
+      ]
     },
     {
       "id": "vehicles-fire-truck",
@@ -2997,7 +3043,7 @@
         "T_vehicles"
       ],
       "image": null,
-      "emoji": "🚆",
+      "emoji": "🚂",
       "glyphKind": "emoji",
       "placeholder": "/shared/stimuli/placeholder/T_vehicles/train.svg"
     },

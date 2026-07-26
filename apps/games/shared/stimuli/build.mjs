@@ -41,10 +41,13 @@ import {
   liveGames,
   manifestStamp,
   placeholderUrl,
+  projectFfcItems,
   projectManifest,
   publishingFrom,
+  slug,
   sortKeys,
   stableJson,
+  stemOf,
   stemOfId,
   stimulusId,
 } from './library.mjs';
@@ -73,8 +76,19 @@ const SOURCE_MANIFESTS = readJson(path.join(LIBRARY_DIR, 'source-manifests.json'
  * two) and it carries the most curated real art — T_household_items and
  * T_kitchen_items are photographs there and emoji placeholders everywhere else.
  */
-const SOURCE_ORDER = [UPLOADS_SUBDIR, 'matching', 'receptive', 'clock'];
-const SOURCE_GAMES = SOURCE_ORDER.filter((s) => s !== UPLOADS_SUBDIR);
+/**
+ * ffc's tree is flat — every file sits in one `items/` directory — so a file
+ * there names a category only through `ffc.json`, which is also the document
+ * saying which shared stimulus the file's metadata describes. ffc joined after
+ * the other three trees had been merged and published, so its art *fills gaps*
+ * and never displaces a picture a game is already serving; see {@link rank}.
+ * It has no manifest of its own, so it is not one of `SOURCE_GAMES`.
+ */
+const FFC_GAME = 'ffc';
+const FFC_ITEMS_SUBPATH = '_Resources/_imgSource/items';
+
+const SOURCE_ORDER = [UPLOADS_SUBDIR, 'matching', 'receptive', 'clock', FFC_GAME];
+const SOURCE_GAMES = SOURCE_ORDER.filter((s) => s !== UPLOADS_SUBDIR && s !== FFC_GAME);
 
 /** Placeholder SVGs drawn with an emoji font, as opposed to a text font. */
 const EMOJI_FONT_RE = /font-family="[^"]*Emoji/i;
@@ -108,16 +122,17 @@ function extractGlyph(body) {
   return { text, kind: EMOJI_FONT_RE.test(body) ? 'emoji' : 'text' };
 }
 
-function describe({ source, servedPath, file, bytes, indexed, label }) {
+function describe({ source, servedPath, file, bytes, indexed, label, join }) {
   const body = needsBodyToClassify(file) ? bytes.toString('utf8') : null;
-  const stem = path.basename(file).replace(/\.[^.]+$/, '');
-  const category = path.basename(path.dirname(file));
+  const stem = join ? join.stem : path.basename(file).replace(/\.[^.]+$/, '');
+  const category = join ? join.category : path.basename(path.dirname(file));
   return {
     source,
     servedPath,
     category,
     stem,
-    id: stimulusId(category, stem),
+    late: Boolean(join && join.late),
+    id: join ? join.id : stimulusId(category, stem),
     extension: path.extname(file).toLowerCase(),
     classification: classify(file, body),
     indexed,
@@ -137,7 +152,7 @@ function describe({ source, servedPath, file, bytes, indexed, label }) {
  *   uploads that exist only in memory. The tests use this to ask "what would a
  *   rebuild produce?" without writing into the working tree.
  */
-function collectCandidates(extraUploads = []) {
+function collectCandidates(extraUploads = [], ffcSource = null) {
   const candidates = [];
 
   for (const game of SOURCE_GAMES) {
@@ -161,6 +176,8 @@ function collectCandidates(extraUploads = []) {
       }));
     }
   }
+
+  for (const candidate of ffcCandidates(ffcSource)) candidates.push(candidate);
 
   const uploaded = fs.existsSync(UPLOADS_DIR)
     ? walk(UPLOADS_DIR).filter(isImagePath).map((file) => ({ file, bytes: fs.readFileSync(file) }))
@@ -186,6 +203,90 @@ function collectCandidates(extraUploads = []) {
     }));
   }
 
+  return candidates;
+}
+
+// ── ffc's tree, joined by id rather than by directory ──────────────
+
+/**
+ * `ffc.json` checked against the two rules that make its items joinable, and
+ * indexed by the file stems each item owns.
+ *
+ * ffc keys its metadata by a bare stem (`pencil`, `mail_carrier`) and files its
+ * art flat, so nothing in the tree says which category a file belongs to and
+ * two spellings of one word look like two words. Both are resolved here, once:
+ * the item names the shared stimulus explicitly, and the stems it owns are its
+ * own slugged `legacyId` plus the stem of the file it points at — which is what
+ * lets `mail-carrier.svg` and the `mail_carrier` metadata meet on
+ * `community-helpers-mail-carrier`.
+ */
+function readFfcSource(source) {
+  const doc = source || readJson(path.join(LIBRARY_DIR, 'ffc.json'), { items: [] });
+  const items = [];
+  const stems = new Map(); // file stem -> item
+  const ids = new Set();
+  const legacy = new Set();
+
+  for (const item of doc.items || []) {
+    for (const field of ['id', 'legacyId', 'category', 'img']) {
+      if (typeof item[field] !== 'string' || !item[field].trim()) {
+        throw new Error(`ffc: "${item.legacyId || item.id || '?'}" is missing ${field}`);
+      }
+    }
+    const stem = stemOfId(item.category, item.id);
+    if (stimulusId(item.category, stem) !== item.id) {
+      throw new Error(`ffc: "${item.id}" is not a stimulus of ${item.category}`);
+    }
+    if (ids.has(item.id)) throw new Error(`ffc: two items name ${item.id}`);
+    if (legacy.has(item.legacyId)) throw new Error(`ffc: "${item.legacyId}" is listed twice`);
+    ids.add(item.id);
+    legacy.add(item.legacyId);
+
+    const resolved = { ...item, stem };
+    items.push(resolved);
+    for (const owned of new Set([slug(item.legacyId), stemOf(item.img)])) {
+      const other = stems.get(owned);
+      if (other && other.id !== item.id) {
+        throw new Error(`ffc: "${owned}" is claimed by both ${other.id} and ${item.id}`);
+      }
+      stems.set(owned, resolved);
+    }
+  }
+
+  return { doc: { ...doc, items }, stems };
+}
+
+/**
+ * Every file in ffc's flat tree, attached to the stimulus its stem names.
+ *
+ * A file no item claims is an error rather than a warning: ffc's art is only
+ * reachable through this join, so an unclaimed file is art that would be
+ * dropped without anything downstream noticing.
+ */
+function ffcCandidates(source) {
+  const root = path.join(GAMES_ROOT, FFC_GAME, FFC_ITEMS_SUBPATH);
+  if (!fs.existsSync(root)) return [];
+
+  const { stems } = readFfcSource(source);
+  const candidates = [];
+  for (const file of walk(root)) {
+    if (!isImagePath(file)) continue;
+    const name = path.basename(file);
+    const item = stems.get(stemOf(name));
+    if (!item) throw new Error(`ffc: ${name} is not claimed by any item in ffc.json`);
+    candidates.push(describe({
+      source: FFC_GAME,
+      servedPath: `/${FFC_GAME}/${FFC_ITEMS_SUBPATH}/${name}`,
+      file,
+      bytes: fs.readFileSync(file),
+      // The one file the item points at is ffc's own choice among its
+      // alternates, which is all `indexed` decides once `late` has ruled the
+      // whole tree out of displacing another game's picture.
+      indexed: name === item.img,
+      label: undefined,
+      join: { id: item.id, category: item.category, stem: item.stem, late: true },
+    }));
+  }
   return candidates;
 }
 
@@ -230,15 +331,19 @@ function readVocabulary(vocabulary) {
 /**
  * Ranking within one stimulus. Lower sorts first.
  *
- * Real art always beats a placeholder glyph. After that a file some manifest
- * actually selected beats one that was deliberately left out, and a raster
- * beats a vector — several `.svg` files in matching's tree are JPEG bytes
- * under the wrong extension, and the hand-drawn preposition diagrams should
- * only be reached when no photograph exists at all.
+ * Real art always beats a placeholder glyph. Then a late-joining tree, which
+ * fills gaps but never displaces a picture a game is already serving — ffc's
+ * photograph of a pencil should reach `T_school`, which has none, without
+ * moving the URL of anything the three merged games publish today. After that a
+ * file some manifest actually selected beats one that was deliberately left
+ * out, and a raster beats a vector — several `.svg` files in matching's tree
+ * are JPEG bytes under the wrong extension, and the hand-drawn preposition
+ * diagrams should only be reached when no photograph exists at all.
  */
 function rank(candidate) {
   return [
     candidate.classification === 'art' ? 0 : 1,
+    candidate.late ? 1 : 0,
     candidate.indexed ? 0 : 1,
     RASTER_EXTENSIONS.has(candidate.extension) ? 0 : 1,
     SOURCE_ORDER.indexOf(candidate.source),
@@ -299,7 +404,8 @@ function selectArt(group, category, claimed) {
 
 function buildLibrary(options = {}) {
   const { extraUploads = [], labels: labelsOverride, liveManifests } = options;
-  const candidates = collectCandidates(extraUploads);
+  const ffc = readFfcSource(options.ffc).doc;
+  const candidates = collectCandidates(extraUploads, options.ffc);
 
   const labels = labelsOverride || readJson(path.join(LIBRARY_DIR, 'labels.json'), { overrides: {} }).overrides || {};
   const publishing = options.publishing || readJson(path.join(LIBRARY_DIR, 'publishing.json'), { excluded: {} });
@@ -463,8 +569,10 @@ function buildLibrary(options = {}) {
     note:
       'Shared stimulus library. Generated from the clock, receptive and matching _Resources trees ' +
       'plus shared/stimuli/uploads/ by shared/stimuli/build.mjs — change that script or the source ' +
-      'art, never this file.',
+      'art, never this file. ffc is an art-only source: it has no manifest to project, and its ' +
+      'files join by the ids in shared/stimuli/ffc.json rather than by directory.',
     sources: SOURCE_GAMES,
+    artOnlySources: [FFC_GAME],
     uploads: `${UPLOADS_SUBDIR}/`,
     basePath: SITE_BASE,
     categories,
@@ -483,7 +591,20 @@ function buildLibrary(options = {}) {
     manifests[game] = projectManifest(index, sorted, { game, ...config, stamp });
   }
 
-  return { index, provenance: sorted, files, warnings, manifests, publishing: publishingFrom(games) };
+  return {
+    index,
+    provenance: sorted,
+    files,
+    warnings,
+    manifests,
+    // Stamped from ffc's own source document, NOT from the library index: the
+    // projection carries no image and no label, so an upload anywhere in the
+    // library leaves it byte-identical. Stamping it with the index digest would
+    // restamp it on every upload and make `ffc/items.json` a file the Worker
+    // had to re-commit to say nothing had changed.
+    ffcItems: projectFfcItems(index, ffc, { stamp: manifestStamp(sha256(stableJson(ffc))) }),
+    publishing: publishingFrom(games),
+  };
 }
 
 /**
@@ -507,11 +628,12 @@ function readLiveManifests() {
 // ── Output ─────────────────────────────────────────────────────────
 
 /** Every generated file, as `<path relative to apps/games>` -> serialised text. */
-function generatedDocuments({ index, provenance, manifests, publishing }) {
+function generatedDocuments({ index, provenance, manifests, publishing, ffcItems }) {
   const documents = new Map([
     ['shared/stimuli/stimuli.json', stableJson(index)],
     ['shared/stimuli/provenance.json', stableJson(provenance)],
     ['shared/stimuli/publishing.json', stableJson(publishing)],
+    [`${FFC_GAME}/items.json`, stableJson(ffcItems)],
   ]);
   for (const [game, manifest] of Object.entries(manifests)) {
     documents.set(`${game}/manifest.json`, stableJson(manifest));
@@ -559,7 +681,7 @@ function checkLibrary(built) {
   return problems;
 }
 
-export { buildLibrary, generatedDocuments };
+export { buildLibrary, compareRank, generatedDocuments };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const built = buildLibrary();

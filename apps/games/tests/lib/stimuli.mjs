@@ -69,11 +69,14 @@ export const STIMULUS_SOURCES = [
   { game: 'receptive', kind: 'manifest', base: '/receptive/', index: '/receptive/manifest.json' },
   { game: 'matching', kind: 'manifest', base: '/matching/', index: '/matching/manifest.json' },
   {
+    // ffc's items name a shared stimulus id and nothing else — no `img`, no
+    // label — so the picture is resolved from the library, exactly as the game
+    // does it. `base` is the site root because a library URL is site-absolute.
     game: 'ffc',
-    kind: 'items',
-    base: '/ffc/',
+    kind: 'library-items',
+    base: '/',
     index: '/ffc/items.json',
-    imgPrefix: '_Resources/_imgSource/items/',
+    library: '/shared/stimuli/stimuli.json',
     category: 'items',
   },
   {
@@ -93,11 +96,25 @@ export const STIMULUS_SOURCES = [
 /**
  * Flatten a loaded index into `{category, path}` rows, where `path` is
  * relative to the source's `base`.
+ *
+ * @param {object} [library] the shared stimulus library, required for a
+ *   `library-items` source: its index names stimuli by id and nothing else, so
+ *   the picture a row points at can only come from the library.
  */
-export function entriesFor(source, index) {
+export function entriesFor(source, index, library) {
   if (source.kind === 'manifest') {
     return (index.folders || []).flatMap((folder) =>
       (index.images?.[folder] || []).map((path) => ({ category: folder, path })));
+  }
+  if (source.kind === 'library-items') {
+    const byId = new Map(((library && library.stimuli) || []).map((entry) => [entry.id, entry]));
+    return (index.items || []).map((item) => {
+      const entry = byId.get(item.id);
+      const url = entry && (entry.image || entry.placeholder);
+      // An unresolvable id is deliberately kept as a row rather than filtered
+      // out: it has to fail as a 404 the sweep reports, not vanish silently.
+      return { category: source.category, path: url ? url.replace(/^\//, '') : `unresolved/${item.id}` };
+    });
   }
   if (source.kind === 'items') {
     return (index.items || [])
