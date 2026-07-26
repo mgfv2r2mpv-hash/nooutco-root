@@ -30,14 +30,9 @@
  * POST /api/admin/save-display-name (admin — set/clear manifest displayName override)
  *   Body: { game, localPath, displayName }   empty/blank displayName clears it
  *
- * POST /api/admin/ffc-save-items  (admin — write the whole ffc/items.json)
- *   Body: { items: <full items.json object> }
- *
- * POST /api/admin/ffc-save-image  (admin — download + store a single FFC item image)
- *   Body: { id, filename, imageUrl }
- *
- * POST /api/admin/ffc-remove-image (admin — delete a single FFC item image file)
- *   Body: { localPath }
+ * POST /api/admin/ffc-save-items   409 — ffc/items.json is generated from
+ * POST /api/admin/ffc-save-image    409   shared/stimuli/ffc.json and the shared
+ * POST /api/admin/ffc-remove-image  409   library; see FFC_WRITE_REFUSED.
  *
  * POST /api/admin/update-facts    (admin — AI-expand FamousPersonGame people to 4 facts)
  *   Body: {}
@@ -92,6 +87,31 @@ function gameFolder(g) { return GAME_PATHS[g] || g; }
  */
 const LIBRARY_GAMES = ['clock', 'receptive', 'matching'];
 const isLibraryGame = (game) => LIBRARY_GAMES.includes(gameFolder(game));
+
+/**
+ * ffc's items and its art are part of the shared library now.
+ *
+ * `ffc/items.json` is a projection of `shared/stimuli/ffc.json`, carrying no
+ * label and no image of its own, and `ffc/_Resources/_imgSource/items/` is one
+ * of the trees the library is merged from — every file there is claimed by an
+ * id in `ffc.json`. So the old FFCGame write endpoints are no longer safe:
+ *
+ *   • an item edit written into `ffc/items.json` is reverted by the next
+ *     `npm run stimuli:build`, silently and without telling anyone
+ *   • an image saved under a name no item claims **stops** that rebuild, which
+ *     takes every game's manifest down with it
+ *
+ * Refused rather than half-applied, the way `rename-topic` was for the manifest
+ * games until it could be wired properly. Wiring these through `library.mjs` —
+ * an upload becomes a library upload under the item's own category, a label
+ * becomes a `labels.json` override — is the next unit of work.
+ */
+const FFC_WRITE_REFUSED =
+  'FFC content now lives in the shared stimulus library. Items and tags are edited in '
+  + 'shared/stimuli/ffc.json, and art is uploaded through the library topic the item belongs to. '
+  + 'The old FFCGame write endpoints are disabled because the next manifest rebuild would revert '
+  + 'them.';
+const refuseFfcWrite = () => jsonError(FFC_WRITE_REFUSED, 409);
 
 export default {
   async fetch(request, env) {
@@ -743,21 +763,10 @@ async function handleAdminSaveDisplayName(request, env) {
   const { game, localPath, displayName, itemId, personName } = body;
   if (!game) return jsonError('game is required', 400);
 
-  if (game === 'FFCGame') {
-    if (!itemId) return jsonError('itemId is required for FFCGame', 400);
-    const trimmed = typeof displayName === 'string' ? displayName.trim() : '';
-    if (!trimmed) return jsonError('displayName cannot be empty for FFCGame', 400);
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        await atomicFFCLabelCommit(env, itemId, trimmed);
-        break;
-      } catch (err) {
-        if (err.message === 'CONFLICT' && attempt < 2) continue;
-        return jsonError('GitHub commit failed: ' + err.message, 502);
-      }
-    }
-    return json({ ok: true });
-  }
+  // An ffc label is a library label now: it belongs in `labels.json`, keyed by
+  // the shared stimulus id, not written into a generated projection that no
+  // longer has a `label` field to write into.
+  if (game === 'FFCGame') return refuseFfcWrite();
 
   if (game === 'FamousPersonGame') {
     if (!personName) return jsonError('personName is required for FamousPersonGame', 400);
@@ -1345,6 +1354,7 @@ async function atomicTopicRenameCommit(env, game, fromFolder, toFolder, action) 
 async function handleFFCSaveItems(request, env) {
   const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
+  return refuseFfcWrite();
 
   let body;
   try { body = await request.json(); }
@@ -1375,6 +1385,7 @@ async function handleFFCSaveItems(request, env) {
 async function handleFFCSaveImage(request, env) {
   const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
+  return refuseFfcWrite();
 
   let body;
   try { body = await request.json(); }
@@ -1415,6 +1426,7 @@ async function handleFFCSaveImage(request, env) {
 async function handleFFCRemoveImage(request, env) {
   const authErr = await requireAdmin(request, env);
   if (authErr) return authErr;
+  return refuseFfcWrite();
 
   let body;
   try { body = await request.json(); }
@@ -1866,17 +1878,15 @@ async function doBatchCommit(env, branch, resolved) {
 
   // Determine which index files are needed
   const LIBRARY_OPS = ['save-image', 'remove-image', 'save-display-name'];
-  let needLibrary = false, needFPG = false, needFFC = false, needIV = false;
+  let needLibrary = false, needFPG = false, needIV = false;
   for (const { op, error } of resolved) {
     if (error) continue;
     const t = op.type;
     if (LIBRARY_OPS.includes(t) && isLibraryGame(op.game)) needLibrary = true;
     if ((t === 'save-image' || t === 'remove-image') && op.game === 'FamousPersonGame') needFPG = true;
-    if (t === 'ffc-save' || t === 'ffc-remove') needFFC = true;
     if (t === 'iv-save'  || t === 'iv-remove')  needIV  = true;
     if (t === 'save-display-name') {
       if (op.game === 'FamousPersonGame') needFPG = true;
-      if (op.game === 'FFCGame')          needFFC = true;
       if (op.game === 'IntraverbalGame')  needIV  = true;
     }
   }
@@ -1886,10 +1896,6 @@ async function doBatchCommit(env, branch, resolved) {
   if (needFPG) {
     fetches['fpg'] = gh(env, 'GET', 'contents/famous-person/index.html')
       .then(f => base64ToUtf8(f.content.replace(/\s/g, '')));
-  }
-  if (needFFC) {
-    fetches['ffc'] = gh(env, 'GET', 'contents/ffc/items.json')
-      .then(f => JSON.parse(base64ToUtf8(f.content.replace(/\s/g, ''))));
   }
   if (needIV) {
     fetches['iv'] = gh(env, 'GET', 'contents/intraverbal/items.json')
@@ -1902,7 +1908,6 @@ async function doBatchCommit(env, branch, resolved) {
 
   let fpgHtml     = reads['fpg'] || null;
   const fpgOrig   = fpgHtml;
-  const ffcItems  = reads['ffc'] || null;
   const ivItems   = reads['iv']  || null;
 
   // Library ops fold through `library.mjs` one after another and the whole
@@ -1920,7 +1925,7 @@ async function doBatchCommit(env, branch, resolved) {
 
   const treeEntries = [];
   const results     = new Array(resolved.length).fill(null);
-  let   ffcModified = false, ivModified = false;
+  let   ivModified = false;
 
   for (const { idx, op, blobSha, ext, sha256, error } of resolved) {
     if (error) { results[idx] = { ok: false, error }; continue; }
@@ -1955,18 +1960,9 @@ async function doBatchCommit(env, branch, resolved) {
       }
 
     } else if (t === 'ffc-save') {
-      const { id, filename } = op;
-      const base         = filename.replace(/\.[^.]+$/, '');
-      const saveFilename = `${base}.${ext}`;
-      const repoPath     = `ffc/_Resources/_imgSource/items/${saveFilename}`;
-      treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: blobSha });
-      if (ffcItems) {
-        const item = (ffcItems.items || []).find(i => i.id === id);
-        if (item) { item.img = saveFilename; }
-        else if (op.newItem) { (ffcItems.items = ffcItems.items || []).push({ ...op.newItem, img: saveFilename }); }
-        ffcModified = true;
-      }
-      results[idx] = { ok: true, filename: saveFilename, localPath: repoPath };
+      // Same refusal as the single endpoint: a file saved into ffc's tree under
+      // a name no `ffc.json` item claims stops the next rebuild outright.
+      results[idx] = { ok: false, error: FFC_WRITE_REFUSED };
 
     } else if (t === 'iv-save') {
       const { id, filename, imageIdx } = op;
@@ -2000,9 +1996,9 @@ async function doBatchCommit(env, branch, resolved) {
         libraryState = foldLibraryState(libraryState, applied);
         results[idx] = { ok: true, id: stimulus, displayName: applied.label };
         continue;
-      } else if (game === 'FFCGame' && ffcItems) {
-        const item = (ffcItems.items || []).find(i => i.id === itemId);
-        if (item) { item.label = trimmed; ffcModified = true; }
+      } else if (game === 'FFCGame') {
+        results[idx] = { ok: false, error: FFC_WRITE_REFUSED };
+        continue;
       } else if (game === 'IntraverbalGame' && ivItems) {
         const item = (ivItems.items || []).find(i => i.id === itemId);
         if (item) { item.label = trimmed; ivModified = true; }
@@ -2042,11 +2038,9 @@ async function doBatchCommit(env, branch, resolved) {
       results[idx] = { ok: true };
 
     } else if (t === 'ffc-remove') {
-      const { id, filename } = op;
-      const repoPath = `ffc/_Resources/_imgSource/items/${filename}`;
-      treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: null });
-      if (ffcItems) { ffcItems.items = (ffcItems.items || []).filter(i => i.id !== id); ffcModified = true; }
-      results[idx] = { ok: true };
+      // The art is shared: deleting `apple.jpg` on ffc's behalf would take the
+      // picture out of clock, receptive and matching too.
+      results[idx] = { ok: false, error: FFC_WRITE_REFUSED };
 
     } else if (t === 'iv-remove') {
       const { id, filename, imageIdx } = op;
@@ -2077,13 +2071,6 @@ async function doBatchCommit(env, branch, resolved) {
   if (fpgHtml && fpgHtml !== fpgOrig) {
     const blob = await gh(env, 'POST', 'git/blobs', { content: utf8ToBase64(fpgHtml), encoding: 'base64' });
     treeEntries.push({ path: 'famous-person/index.html', mode: '100644', type: 'blob', sha: blob.sha });
-  }
-  if (ffcItems && ffcModified) {
-    ffcItems.generated = ts;
-    const blob = await gh(env, 'POST', 'git/blobs', {
-      content: utf8ToBase64(JSON.stringify(ffcItems, null, 2) + '\n'), encoding: 'base64',
-    });
-    treeEntries.push({ path: 'ffc/items.json', mode: '100644', type: 'blob', sha: blob.sha });
   }
   if (ivItems && ivModified) {
     ivItems.generated = ts;

@@ -267,6 +267,13 @@
       "emoji": "🧦"
     },
     {
+      "id": "clothing-coat",
+      "category": "T_clothing",
+      "name": "coat",
+      "label": "Coat",
+      "emoji": null
+    },
+    {
       "id": "clothing-jacket",
       "category": "T_clothing",
       "name": "jacket",
@@ -505,6 +512,13 @@
       "emoji": "📏"
     },
     {
+      "id": "school-eraser",
+      "category": "T_school",
+      "name": "eraser",
+      "label": "Eraser",
+      "emoji": null
+    },
+    {
       "id": "school-notebook",
       "category": "T_school",
       "name": "notebook",
@@ -550,7 +564,7 @@
       "id": "community-helpers-construction",
       "category": "T_community_helpers",
       "name": "construction",
-      "label": "Construction",
+      "label": "Construction Worker",
       "emoji": "👷"
     },
     {
@@ -599,7 +613,7 @@
       "id": "community-helpers-police",
       "category": "T_community_helpers",
       "name": "police",
-      "label": "Police",
+      "label": "Police Officer",
       "emoji": "👮"
     },
     {
@@ -796,7 +810,7 @@
       "category": "T_vehicles",
       "name": "train",
       "label": "Train",
-      "emoji": "🚆"
+      "emoji": "🚂"
     },
     {
       "id": "vehicles-airplane",

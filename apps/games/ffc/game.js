@@ -244,10 +244,11 @@ async function loadItems() {
     const r = await fetch('./items.json');
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const data = await r.json();
-    state.items          = data.items          || [];
     state.vocab          = data.vocab          || { groups:[], features:[], functions:[], classes:[] };
     state.prompts        = data.prompts        || {};
     state.promptDefaults = data.promptDefaults || {};
+    migrateTargetFilters(data.idAliases || {});
+    state.items = await joinLibrary(data);
   } catch (e) {
     console.error('Could not load items.json:', e);
     state.items = [];
@@ -255,6 +256,52 @@ async function loadItems() {
   pruneStaleTargetFilters();
   populateTagDropdown();
   updateTargetsCount();
+}
+
+/**
+ * Attach each item's picture and label from the shared stimulus library.
+ *
+ * `items.json` deliberately carries neither: it holds the feature / function /
+ * class metadata and the shared stimulus id it describes, and everything a
+ * learner sees comes from `stimuli.json`. That is what lets an AdminTools
+ * upload or a renamed label reach this game with nothing here to rebuild — the
+ * id is the join, and it does not move.
+ */
+async function joinLibrary(data) {
+  const r = await fetch(data.library || '/shared/stimuli/stimuli.json');
+  if (!r.ok) throw new Error(`HTTP ${r.status} for ${data.library}`);
+  const library = await r.json();
+  const byId = new Map((library.stimuli || []).map((entry) => [entry.id, entry]));
+
+  const items = [];
+  for (const item of data.items || []) {
+    const entry = byId.get(item.id);
+    // An item the library no longer carries has no picture and no label, so it
+    // is dropped rather than rendered blank — loudly, because it means the two
+    // documents have drifted.
+    if (!entry) { console.error(`ffc: ${item.id} is not in the stimulus library`); continue; }
+    items.push({ ...item, label: entry.label, image: entry.image || entry.placeholder || '' });
+  }
+  return items;
+}
+
+/**
+ * Re-point a saved target selection at the shared stimulus ids.
+ *
+ * ffc used to key its items by a bare stem (`pencil`, `mail_carrier`), which is
+ * what a technician's saved `targetFilters` still names. Dropping those would
+ * silently empty their target selection, so every old id is remapped before
+ * `pruneStaleTargetFilters()` gets to remove anything.
+ */
+function migrateTargetFilters(idAliases) {
+  let changed = false;
+  for (const mode of Object.keys(state.targetFilters)) {
+    const before = state.targetFilters[mode] || [];
+    const after = [...new Set(before.map((id) => idAliases[id] || id))];
+    if (after.join(' ') !== before.join(' ')) changed = true;
+    state.targetFilters[mode] = after;
+  }
+  if (changed) saveSettings();
 }
 
 /**
@@ -699,7 +746,7 @@ function renderTrial() {
     const front = document.createElement('div');
     front.className = 'tile-face tile-front';
     const img = document.createElement('img');
-    img.src = `_Resources/_imgSource/items/${item.img}`;
+    img.src = item.image;
     img.alt = item.label;
     const labelSpan = document.createElement('span');
     labelSpan.className = 'tile-label';
@@ -1314,7 +1361,7 @@ function renderTargetPanel() {
 
       const thumb = document.createElement('img');
       thumb.className = 'target-thumb';
-      thumb.src = `_Resources/_imgSource/items/${it.img}`;
+      thumb.src = it.image;
       thumb.alt = '';
       const thumbLbl = document.createElement('span');
       thumbLbl.className = 'target-thumb-label';
@@ -1587,7 +1634,7 @@ function renderSessionPool() {
 
     const emoji = document.createElement('img');
     emoji.className = 'pool-emoji';
-    emoji.src = `_Resources/_imgSource/items/${it.img}`;
+    emoji.src = it.image;
     emoji.alt = '';
     emoji.addEventListener('error', () => {
       const span = document.createElement('span');
@@ -1651,7 +1698,7 @@ function renderSessionTargets() {
   const emojiBox = document.createElement('div');
   emojiBox.className = 'session-sel-emoji';
   const emoji = document.createElement('img');
-  emoji.src = `_Resources/_imgSource/items/${it.img}`;
+  emoji.src = it.image;
   emoji.alt = '';
   emoji.addEventListener('error', () => { emojiBox.textContent = '🔹'; });
   emojiBox.appendChild(emoji);

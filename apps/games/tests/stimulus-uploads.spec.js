@@ -112,11 +112,20 @@ test.describe('an AdminTools upload survives the next rebuild', () => {
   });
 
   test('re-uploading under the same name replaces the bytes and retires nothing', () => {
-    const upload = { game: 'matching', category: 'T_household_items', filename: 'lamp.jpg', bytes: bytesFor('lamp') };
     const before = committedState();
+    // A stimulus with one art file and no alternates, found rather than named:
+    // an upload supersedes alternates, so a subject that has gained one would
+    // be testing that rule instead of this one.
+    const only = before.index.stimuli.find(
+      (s) => s.categories.includes('T_household_items') && s.image && !s.variants,
+    );
+    expect(only, 'T_household_items has a single-file stimulus').toBeTruthy();
+
+    const filename = only.image.split('/').pop();
+    const upload = { game: 'matching', category: 'T_household_items', filename, bytes: bytesFor(only.id) };
     const worker = applied(upload, before);
 
-    expect(worker.url).toBe(before.index.stimuli.find((s) => s.id === 'household-items-lamp').image);
+    expect(worker.url).toBe(only.image);
     expect(worker.removeRepoPaths).toEqual([]);
     for (const game of GAMES) {
       expect(worker.manifests[game].images.T_household_items)
@@ -197,25 +206,29 @@ test.describe('an AdminTools upload survives the next rebuild', () => {
     // committed index, so it has to retire a placeholder it never generated and
     // keep the curated label — a rebuild reading `vocabulary.json` will.
     const before = committedState();
-    const seeded = before.index.stimuli.find((s) => s.id === 'vehicles-bus');
-    expect(seeded.image, 'the word is seeded ahead of its art').toBeNull();
-    expect(seeded.placeholder).toBe('/shared/stimuli/placeholder/T_vehicles/bus.svg');
+    // Two words still waiting for art, found rather than named: ffc's tree
+    // joining the library gave several of the seeded vehicles a photograph.
+    const waiting = before.index.stimuli.filter((s) => s.categories.includes('T_vehicles') && !s.image);
+    expect(waiting.length, 'T_vehicles still has words seeded ahead of their art').toBeGreaterThan(1);
+    const [seeded, untouched] = waiting;
+    expect(seeded.placeholder, 'a seeded word renders as its glyph').toBeTruthy();
 
-    const upload = { game: 'clock', category: 'T_vehicles', filename: 'bus.jpg', bytes: bytesFor('bus') };
+    const stem = seeded.placeholder.split('/').pop().replace(/\.[^.]+$/, '');
+    const upload = { game: 'clock', category: 'T_vehicles', filename: `${stem}.jpg`, bytes: bytesFor(stem) };
     const worker = applied(upload, before);
 
-    const entry = worker.index.stimuli.find((s) => s.id === 'vehicles-bus');
-    expect(entry.image).toBe('/shared/stimuli/img/T_vehicles/bus.jpg');
+    const entry = worker.index.stimuli.find((s) => s.id === seeded.id);
+    expect(entry.image).toBe(`/shared/stimuli/img/T_vehicles/${stem}.jpg`);
     expect(entry.placeholder).toBeUndefined();
-    expect(entry.label, 'the vocabulary label survives the upload').toBe('Bus');
-    expect(entry.emoji, 'the glyph stays as data').toBe('🚌');
-    expect(worker.removeRepoPaths).toEqual(['shared/stimuli/placeholder/T_vehicles/bus.svg']);
+    expect(entry.label, 'the vocabulary label survives the upload').toBe(seeded.label);
+    expect(entry.emoji, 'the glyph stays as data').toBe(seeded.emoji);
+    expect(worker.removeRepoPaths).toEqual([`shared/stimuli/placeholder/T_vehicles/${stem}.svg`]);
 
     const build = rebuilt(upload, worker);
     expectAgreement(worker, build);
-    expect([...build.files.keys()]).not.toContain('placeholder/T_vehicles/bus.svg');
+    expect([...build.files.keys()]).not.toContain(`placeholder/T_vehicles/${stem}.svg`);
     expect([...build.files.keys()], 'the other seeded words keep their glyphs')
-      .toContain('placeholder/T_vehicles/truck.svg');
+      .toContain(`placeholder/${untouched.placeholder.split('/placeholder/')[1]}`);
   });
 
   test('a brand-new topic joins the uploading game only', () => {

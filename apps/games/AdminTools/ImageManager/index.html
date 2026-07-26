@@ -677,9 +677,20 @@ async function loadGameData(game) {
     const res = await fetch(`../../${game.folder}/manifest.json`);
     gameData[game.id] = { manifest: normalizeManifest(await res.json()) };
   } else if (game.type === 'ffc') {
-    const res = await fetch('../../FFCGame/FFCGame/items.json');
-    const data = await res.json();
-    gameData[game.id] = { ffcData: data };
+    // ffc's items name a shared stimulus and nothing else now — no label, no
+    // filename — so the picture and the name are joined in from the library by
+    // id, exactly as the game does it.
+    const [items, library] = await Promise.all([
+      fetch(`../../${game.folder}/items.json`).then(r => r.json()),
+      fetch('/shared/stimuli/stimuli.json').then(r => r.json()),
+    ]);
+    const byId = new Map((library.stimuli || []).map(entry => [entry.id, entry]));
+    const joined = (items.items || []).flatMap(it => {
+      const entry = byId.get(it.id);
+      if (!entry) return [];
+      return [{ ...it, label: entry.label, image: entry.image || entry.placeholder || '' }];
+    });
+    gameData[game.id] = { ffcData: { ...items, items: joined } };
   } else if (game.type === 'intraverbal') {
     const res = await fetch('../../IntraverbalGame/IntraverbalGame/items.json');
     const data = await res.json();
@@ -1030,7 +1041,7 @@ function buildCard(item) {
 
   if (item.type === 'ffc') {
     const it = item.item;
-    img.src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + it.img;
+    img.src = it.image;
     img.alt = it.label;
     label.textContent = it.label;
     card.addEventListener('click', () => openDetail({ type: 'ffc', item: it }));
@@ -1822,7 +1833,7 @@ function openDetail(ctx) {
 
   if (ctx.type === 'ffc') {
     const it = ctx.item;
-    dpThumb.src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + it.img;
+    dpThumb.src = it.image;
     dpFilename.textContent = it.label;
     dpSub.textContent = 'id: ' + it.id + '  |  groups: ' + (it.groups || []).join(', ');
     dpWikiInput.value = it.label;
@@ -2208,7 +2219,11 @@ function getManifestFilenames(folder) {
 }
 
 function getFFCFilenames() {
-  return (gameData['FFCGame']?.ffcData?.items || []).map(i => i.img);
+  // ffc items no longer carry a filename — the library does. The file name a
+  // duplicate check compares against is the one behind the joined URL.
+  return (gameData['FFCGame']?.ffcData?.items || [])
+    .map(i => (i.image || '').split('/').pop())
+    .filter(Boolean);
 }
 
 function getFPGNames() {

@@ -57,6 +57,34 @@ async function mapWithConcurrency(items, limit, worker) {
   return results;
 }
 
+const LIBRARY = JSON.parse(readFileSync(path.join(GAMES_ROOT, 'shared/stimuli/stimuli.json'), 'utf8'));
+const PROVENANCE = JSON.parse(readFileSync(path.join(GAMES_ROOT, 'shared/stimuli/provenance.json'), 'utf8'));
+
+/**
+ * Placeholder URLs a source tree shipped, as opposed to ones the build drew.
+ * Provenance only ever records source files, so a placeholder that turns up as
+ * a `library` value there is one whose bytes came off disk.
+ */
+const SHIPPED_PLACEHOLDERS = new Set(
+  Object.values(PROVENANCE)
+    .map((record) => record.library)
+    .filter((url) => url && url.startsWith('/shared/stimuli/placeholder/')),
+);
+
+/**
+ * A core word still rendered by a glyph SVG a tree shipped — found rather than
+ * named, because a word gains a photograph the moment one is added for it and a
+ * hard-coded subject silently stops testing what it says it tests.
+ */
+function wordWithShippedGlyph() {
+  const ids = new Set(VOCABULARY.words.map((w) => w.id));
+  const entry = LIBRARY.stimuli.find(
+    (s) => ids.has(s.id) && !s.image && s.placeholder && SHIPPED_PLACEHOLDERS.has(s.placeholder),
+  );
+  expect(entry, 'some core word still renders as a glyph a tree shipped').toBeTruthy();
+  return entry;
+}
+
 /** Rebuild in memory with one word altered, and return the error it raises. */
 function buildWith(mutate) {
   const vocabulary = JSON.parse(JSON.stringify(VOCABULARY));
@@ -267,12 +295,13 @@ test('a seeded word with no emoji fails the build rather than rendering blank', 
 });
 
 test('an emoji that disagrees with the shipped placeholder fails the build', () => {
-  // `foods-apple` has no photograph and its glyph comes from an SVG the trees
-  // shipped, so the vocabulary and that file have to name the same character.
+  // The word has no photograph and its glyph comes from an SVG a tree shipped,
+  // so the vocabulary and that file have to name the same character.
+  const subject = wordWithShippedGlyph();
   const message = buildWith((vocabulary) => {
-    vocabulary.words.find((w) => w.id === 'foods-apple').emoji = '🚀';
+    vocabulary.words.find((w) => w.id === subject.id).emoji = '🚀';
   });
-  expect(message, 'a contradicted glyph is refused').toContain('foods-apple');
+  expect(message, 'a contradicted glyph is refused').toContain(subject.id);
 });
 
 test('the vocabulary label is what the library publishes, not the filename', () => {
@@ -301,7 +330,6 @@ test('a technician override still wins over the vocabulary label', () => {
 
 test('a generated placeholder is shaped like the ones the trees shipped', () => {
   const generated = emojiPlaceholderSvg('🚑');
-  const shipped = readFileSync(path.join(GAMES_ROOT, 'shared/stimuli/placeholder/T_foods/apple.svg'), 'utf8');
 
   // Same box, same emoji font stack, one <text> and no vector geometry — the
   // last of which is what makes the classifier read it as a placeholder rather
@@ -309,5 +337,21 @@ test('a generated placeholder is shaped like the ones the trees shipped', () => 
   expect(generated).toContain('viewBox="0 0 200 200"');
   expect(generated).toContain('Apple Color Emoji');
   expect(classify('x.svg', generated), 'reads as a glyph, not as art').toBe('emoji');
-  expect(generated.replace(/🚑/u, 'X')).toBe(shipped.replace(/🍎/u, 'X'));
+
+  const subject = wordWithShippedGlyph();
+  const shipped = readFileSync(path.join(GAMES_ROOT, subject.placeholder.replace(/^\//, '')), 'utf8');
+  expect(shipped).toContain('viewBox="0 0 200 200"');
+  expect(shipped).toMatch(/font-family="[^"]*Emoji/);
+  expect((shipped.match(/<text/g) || []).length, 'one glyph, no vector geometry').toBe(1);
+  expect(classify(subject.placeholder, shipped), 'the shipped one reads the same way').toBe('emoji');
+
+  // And every placeholder the build drew is exactly this function's output —
+  // stronger than comparing one file, and it cannot rot when a word gains art.
+  const drawn = LIBRARY.stimuli.filter((s) => s.placeholder && !SHIPPED_PLACEHOLDERS.has(s.placeholder));
+  expect(drawn.length, 'the build drew at least one placeholder').toBeGreaterThan(0);
+  const wrong = drawn.filter(
+    (s) => readFileSync(path.join(GAMES_ROOT, s.placeholder.replace(/^\//, '')), 'utf8')
+      !== emojiPlaceholderSvg(s.emoji),
+  );
+  expect(wrong.map((s) => s.id), 'drawn placeholders are byte-for-byte the generated form').toEqual([]);
 });
