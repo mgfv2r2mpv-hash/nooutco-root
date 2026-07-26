@@ -315,10 +315,13 @@ test.describe('Glam Team Makeover — station kit (refresh)', () => {
    station reachable. That exemption is pinned by the last test here so it stays
    a decision rather than an oversight. */
 
-/** The shelves as the child sees them, in DOM order. */
+/** The shelves as the child sees them, in DOM order. A settled shelf that has
+    lost its last tool keeps its header — that is where a finished step goes on
+    reading as finished — but drops `aria-expanded`, because there is nothing
+    behind it to expand. A missing attribute therefore reads as closed. */
 const shelves = (page) => page.evaluate(() => [...document.querySelectorAll('[data-shelf]')].map((box) => ({
   label: box.getAttribute('data-shelf'),
-  open: box.querySelector('button[aria-expanded]').getAttribute('aria-expanded') === 'true',
+  open: box.querySelector('button').getAttribute('aria-expanded') === 'true',
   tools: [...box.querySelectorAll('button[title]')].map((b) => b.getAttribute('title')),
 })));
 

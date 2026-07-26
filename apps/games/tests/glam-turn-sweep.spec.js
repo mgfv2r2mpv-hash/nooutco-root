@@ -290,10 +290,19 @@ test.describe('Glam Team Makeover — a finished tool costs nothing to reach for
 
     /* Read what the CHILD sees — the trolley's own face for one representative
        of each mechanism family — rather than the predicate behind it. `wash`
-       stands for paint, `patch`/`conceal` for the per-spot pair, `mascara` for
-       tap/toggle, `hc_berry` for tap/recolor, `ear1` for tap/place, `sh_bob`
-       for choose. */
-    const REPS = ['Wash', 'Treat spots', 'Conceal', 'Mascara', 'Berry', 'Pearl stud', 'Bob'];
+       stands for paint, `mascara` for tap/toggle, `hc_berry` for tap/recolor,
+       `ear1` for tap/place, `sh_bob` for choose.
+
+       The per-spot pair is read the other way round, as `gonePair` below. By the
+       maintainer's ruling a tool whose own mechanism has gone dead disappears
+       from the cart entirely, and `patch`/`conceal` are the only two that can —
+       so for them "completion survived the exchange" means they are still ABSENT
+       on the far side, not that a ✓ is still painted on a button. Free play is
+       what this test runs in, and free play never settles a shelf, so there is no
+       shelf ✓ to read here either; the staged surface's ✓ record row is asserted
+       in glam-turn-exchange.spec.js. */
+    const REPS = ['Wash', 'Mascara', 'Berry', 'Pearl stud', 'Bob'];
+    const DEAD_PAIR = ['Treat spots', 'Conceal'];
     const read = async () => ({
       ed: await logic(page, `return JSON.stringify(L.state.ed);`),
       /* Just the state the seven representatives own. The whole of `ed` is
@@ -305,7 +314,8 @@ test.describe('Glam Team Makeover — a finished tool costs nothing to reach for
         hairShape:e.hairShape, pimples:e.pimples,
         done:['wash','mascara','hair','ear','hairShape'].map(k=>!!e.done[k]) });`),
       faces: await Promise.all(REPS.map((n) => page.getByTitle(n, { exact: true }).first()
-        .evaluate((el) => ({ label: el.innerText.trim(), disabled: el.disabled === true })))),
+        .evaluate((el) => el.innerText.trim()))),
+      gonePair: await Promise.all(DEAD_PAIR.map((n) => page.getByTitle(n, { exact: true }).count())),
     });
 
     // Give every family its work, derived from the catalogue rather than from
@@ -326,12 +336,14 @@ test.describe('Glam Team Makeover — a finished tool costs nothing to reach for
     // Hairstyle buttons carry their number above the name ("4\n✓ Bob"), so the
     // ✓ is read as present-anywhere rather than as a prefix.
     const mine = await read();
-    expect(mine.faces.filter((f) => !f.label.includes('✓')).map((f) => f.label),
+    expect(mine.faces.filter((f) => !f.includes('✓')),
       'every family reads done on my turn').toEqual([]);
+    expect(mine.gonePair, 'and the dead per-spot pair has left the cart').toEqual([0, 0]);
 
     await page.getByRole('button', { name: /Done — their turn/ }).click();
     const theirs = await read();
     expect(theirs.faces, 'and still reads done on theirs').toEqual(mine.faces);
+    expect(theirs.gonePair, 'and the pair does not come back on the handoff').toEqual([0, 0]);
     expect(theirs.ed, 'the whole client is byte-identical across the handoff').toBe(mine.ed);
 
     // The partner's own turn must not touch any of the seven: Eyeliner, Lip
@@ -343,6 +355,7 @@ test.describe('Glam Team Makeover — a finished tool costs nothing to reach for
 
     const back = await read();
     expect(back.faces, 'and still reads done when it comes back').toEqual(mine.faces);
+    expect(back.gonePair, 'and is still gone when it comes back').toEqual([0, 0]);
     expect(back.reps, 'and nothing the seven own moved on the return leg').toBe(mine.reps);
     expect(await logic(page, `return Object.keys(L._charged).length===0 && Object.keys(L.state.chargedThisTurn||{}).length===0;`),
       'the per-turn charge ledger is cleared at the boundary, both mirrors').toBe(true);

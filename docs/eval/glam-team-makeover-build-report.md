@@ -3664,6 +3664,12 @@ open** — see *§ Still to do* at the end of this section.
 
 ### A · A finished tool stayed live, armable, and flickered its own checkmark
 
+> **Superseded in part.** The diagnosis and `_optDead` below still stand, but the
+> *treatment* — disabling the tool in place — was overruled: "changed to make the
+> tool disappear from the cart entirely". A dead tool now leaves the cart, and
+> its ✓ moved to the shelf header. See "Maintainer rulings on the turn-exchange
+> pass" at the end of this report.
+
 Reported from play:
 
 > when I cleansed moisturized and applied 3 acne stickers, then removed 2 (turn
@@ -4661,10 +4667,10 @@ pointer input has been run end to end on this build.
 Two things are **waiting on a maintainer ruling**, both stated where they arise
 and neither changed silently:
 
-1. **The one-stroke shade switch** (Finding C). Switching to a different shade
-   of an already-full slot still completes in a single stroke, because
-   `cov[slot]` is already 1. Left exactly as it ships and pinned by a test, so
-   ruling either way flips one assertion.
+1. ~~**The one-stroke shade switch** (Finding C).~~ **Ruled on and applied** —
+   see "Maintainer rulings on the turn-exchange pass" below. A switch now costs
+   the same drag the first application did, and the one assertion that pinned
+   the old cost is the one that flipped.
 2. **A no-op reach at the cap is no longer an over-cap violation** (Finding E).
    Decided here on the Finding A precedent — a tool that can do nothing must
    never cost the child their independent score — but it is a clinical call.
@@ -4675,3 +4681,249 @@ Three defects were **named and deliberately not fixed**, each with its reason,
 under "Anything else the sweep turned up": the armed-state ✓ blink, one
 `overCap` logged per pointer move during a drag at the cap, and `apply:'toggle'`
 tools that never toggle off.
+
+---
+
+## Maintainer rulings on the turn-exchange pass
+
+Three rulings, applied here. Nothing else from this pass or the third pass was
+re-opened: `BROW_TINT.floor` stays 0.60, `_browClean` was not touched, and the
+brow-tail residual ships as accepted.
+
+`window.GlamTT` is **byte-identical** across this work — the engine block is
+23 502 bytes, `sha1 4b8335b9c66492901c83bbddb95aca02acb1370d`, on 438d38d8 and
+on HEAD alike — and `tests/glam-tt-scoring.spec.js` has an empty diff.
+
+### Ruling 1a — a shade switch is a fresh drag
+
+> "Yes, redo the drag so the 'reapply' feel is there."
+
+Paint coverage is stored per SLOT (`ed.cov.blush`) while six blushes share that
+one slot, so arming a second shade of a painted slot inherited the first shade's
+wash and `Math.min(1, 1 + 0.11)` finished it on the opening stroke. Measured on
+438d38d8: **the first application of a shade took 10 strokes, a switch took 1.**
+
+The wash now belongs to the shade it was laid in. One new predicate:
+
+```js
+_shadeOnIn(ed,opt){ return !(opt.mech==='paint' && opt.color) || ed.col[opt.slot]===opt.color; }
+_washFrom(ed,opt){ return this._shadeOnIn(ed,opt) ? (ed.cov[opt.slot]||0) : 0; }
+```
+
+`paintStep` builds the next stroke on `_washFrom` instead of on raw `cov[slot]`,
+in both places it reads coverage — the pre-flight admission check and the
+setState updater. `_shadeOn` is unchanged in contract and now delegates to
+`_shadeOnIn`; the updater asks the `ed` it was handed rather than `this.state`,
+which can lag a frame under a fast drag.
+
+Measured after, same probe: **every shade now takes 10 strokes, first or fifth.**
+Colourless paints (Wash, Moisturize, Contour, Highlight) have no shade to
+disagree about, so `_shadeOnIn` is true for them and their coverage accumulates
+exactly as before — pinned by its own test.
+
+`tests/_probe-glam-recolour-cost.mjs`, before → after:
+
+| type | 1st change | 2nd | 3rd |
+|---|---|---|---|
+| shadow | 10 → 10 strokes | 1 → **10** | 1 → **10** |
+| blush | 10 → 10 | 1 → **10** | 1 → **10** |
+| lips | 10 → 10 | 1 → **10** | 1 → **10** |
+| hair | 1 tap (no drag exists) | 1 | 1 |
+| clothes | 1 tap (no drag exists) | 1 | 1 |
+
+Hair and clothes are `tap/recolor` and `choose`. Neither has a drag, so "redo the
+drag" has nothing to ask of them; they are unchanged.
+
+### Ruling 1b — the action economy, measured on all five types
+
+> "Changing color within a turn does not deduct additional actions - only the
+>  first color change of a type per turn (shadow, blush, lips, hair, clothes can
+>  be changed SUBSEQUENT times within a turn without extra action cost."
+
+**Measured against 438d38d8 before anything was changed**, three changes of each
+type inside one turn, on a lifted budget so the cap could not stand in for
+"free":
+
+| type | charge key | actions for 3 changes | verdict |
+|---|---|---|---|
+| shadow | `color:shadow` | 1 + 0 + 0 = **1** | already correct |
+| blush | `color:blush` | 1 + 0 + 0 = **1** | already correct |
+| lips | `color:lips` | 1 + 0 + 0 = **1** | already correct |
+| hair | `color:hair` | 1 + 0 + 0 = **1** | already correct |
+| clothes | `color:outfit` | 1 + 0 + 0 = **1** | already correct |
+
+**All five already behaved as the maintainer specified.** No defect to fix here.
+Every shade of one article resolves to a single per-turn charge key, and `_admit`
+charges a key once per turn, so the 2nd..Nth change is free by construction.
+
+The hazard was that 1a would break it: a fresh drag ends in a completing stroke,
+and a completing stroke is exactly what `paintStep` asks `_admit` about. It
+does not, because the key is already in `_charged` for that turn — the re-drag
+is asked for and answered "already paid". Re-measured after 1a landed: **still
+1 + 0 + 0 for all five.**
+
+Pinned by `tests/glam-colour-change-cost.spec.js`, which drives all five types
+through three changes each by real pointer input inside one turn and asserts
+`[1, 0, 0]` per type. It guards against the trivial way to fake the freebie: if
+the cap had refused a change, `_admit` returns false, no state is written, and
+the action count would not move either — which reads identically to "it was
+free". So every change also asserts the new colour actually **landed** in `ed`.
+
+That file **passes against 438d38d8**, and says so in its own header — 1b was
+already right, so it is a regression fence, not a fix. Its second test is the
+one that matters across the boundary and is asserted here for the first time: a
+genuinely different shade after a handoff still costs its one action
+(`_charged` is cleared at the turn boundary), while a re-touch of the shade
+already on stays free (`_optNoOp`). Finding E is undisturbed.
+
+### Ruling 2 — a dead tool disappears from the cart
+
+> "changed to make the tool disappear from the cart entirely"
+
+The disabled-in-place affordance built for Finding A is gone. A dead tool now
+leaves through `_optSpent`, the door the cart already had — one predicate, one
+removal path, no second mechanism:
+
+```js
+_optSpent(opt){ return this._optDead(opt) ||
+  (this.state.staged!=='free' && this._optWorkDone(opt) && (this._familySizes()[this._optFamily(opt)]||0)<=1); }
+```
+
+Removed with it: the dead button face (sage fill, dashed border, flattened
+shadow, `.6` opacity), the `disabled` and `aria-disabled` props, and both
+attributes from the option button in the template. `arm()` keeps its own
+`_optDead` guard — removal closes the pointer path but not the programmatic one,
+and that guard is what stops a dead tool costing the child their independent
+score at the cap. Asserted directly, since there is no longer a button to click.
+
+**Removal is deliberately NOT gated on the staged routine** the way the rest of
+`_optSpent` is. "This step is over" is a routine's judgement; "this tool cannot
+act" is a fact about the client, and it is just as true in free play. Free play
+still never removes a merely *finished* tool — Wash stays on the shelf there —
+which is exactly what separates dead from spent.
+
+**The 67 free-but-live tools were not touched.** Re-ran the Finding E sweep
+(`tests/_probe-glam-turn-sweep.mjs`) over the whole 69-tool person catalogue with
+each tool's own work already done:
+
+- **67 on the cart, 67 armable**, 0 charging an action, 0 setting a forfeit —
+  the same shape Finding E left them in.
+- **2 off the cart: `patch` and `conceal`**, the only two whose mechanism can
+  refuse outright.
+
+That is asserted in the suite too, not just probed, so removing any of the 67
+later would fail a test that names the number.
+
+### Ruling 3 — the finished step still reads as finished
+
+> "kept — a finished step should still read as finished"
+
+Rulings 2 and 3 do pull against each other: a tool that is gone cannot carry its
+own ✓. **They are reconciled by moving the ✓ up one level, to the shelf.**
+
+`_grpSettled` already folds a shelf to a header with a sage ✓ once every tool on
+it is done. Previously the shelf was dropped outright the moment its last option
+left (`.filter(grp => grp.options.length)`), so on the tools-all-spent path the
+✓ went with them. It now survives:
+
+```js
+.filter(grp => grp.options.length || grp.settled)
+```
+
+An emptied settled shelf renders as a **record, not a drawer**: same soft panel
+and the same sage ✓, but no chevron, `cursor:default`, a real `disabled` on the
+header, and `aria-expanded` dropped entirely — there is nothing behind it to
+open, so it must not offer to. The "if every shelf is folded, re-open the first"
+rescue now skips shelves with no tools, so it can never open an empty drawer.
+
+**What the child sees, stage by stage** (staged routine; captured in
+`docs/eval/shots/glam-rulings/`, written by `tests/_shots-glam-rulings.mjs`):
+
+| stage | the cart | the ✓ | shot |
+|---|---|---|---|
+| spots still bare | `Treat spots` and `Conceal` on the Skincare shelf | none | `cart-spots-before.png` |
+| every spot patched, my turn | `Treat spots` **gone**, `Conceal` standing alone | **none — and correctly so**: the step is not over | `cart-spots-after-mine.png` |
+| the same, after a handoff | still gone; `Conceal` is what the partner inherits | none | `cart-spots-after-theirs.png` |
+| every spot clear | both gone, shelf empty | **`🧼 SKINCARE ✓`** as a folded record row, plus the `✓ 🧼 Skincare` stage chip above it | `shelf-finished.png` |
+
+So the ✓ the dead tool used to carry is not lost — it arrives when the *step* is
+actually finished, on a surface the child is already reading. At the midway
+stage there is deliberately no ✓ anywhere, because half of step 3 is still to
+do; what the child has instead is the bandages now on the face and a shelf that
+has narrowed to the one thing left. That is honest where the old dead-tool ✓ was
+ambiguous — it ticked "patching is done" on a shelf whose step was not.
+
+**Free play has no shelf ✓ to inherit**, because `_grpSettled` is gated on the
+staged routine and free play never settles a shelf. There, the dead tool leaves
+and the finished-step signal is the client itself (clear skin) rather than a ✓.
+That is a consequence of the existing free-play design, not a new choice, and it
+is stated here rather than papered over.
+
+Ruling 1a's own screenshots: `shade-redrag-armed.png` (a second blush armed over
+a painted slot — the hitbox asks "Drag over the cheeks" rather than claiming
+anything), `shade-redrag-mid.png` (`Keep painting… 66%` part-way through the
+fresh drag), `shade-redrag-done.png` (finished, ✓ moved to the shade that is on).
+
+### Verification
+
+- **Full Playwright suite: 498/498 green** — 486 at 438d38d8 plus 4 new tests
+  across 3 browser projects. Run against a hash-verified server: worktree
+  `glam-team-makeover/index.html` and `curl http://localhost:8788/...` both
+  `sha1 1ff141f98f81ff792d05584d8f22a048a4442550`.
+- **Every new or changed assertion was run against 438d38d8** by restoring that
+  revision's `index.html` in place. Five failed, in the direction of the rulings:
+  - `the shade swaps, and it costs a FRESH DRAG — not one stroke` →
+    *"the switch restarts the wash from bare — Expected: < 1, Received: 1"*
+  - `the reported sequence: patched spots take Treat spots off the cart…` →
+    *"gone the moment the last spot is patched — Expected: 0, Received: 1"*
+  - `free play removes a dead tool too…` →
+    *"patch is dead at all-patched, in free play too — Expected: 0, Received: 1"*
+  - `the 67 tools that are FREE but not dead…` →
+    *"exactly two tools can go dead, and exactly two leave"* (received one entry,
+    not `['patch','conceal']`)
+  - `arming a dead tool at the cap…` → *"Expected: 0, Received: 1"* on the
+    absence of the button
+  The 1b file and the colourless-paint guard pass on both revisions, by design
+  and as documented in their headers.
+- **A full trial by real pointer input**, `tests/_play-glam-full-trial.mjs`:
+  title → Start → the client's texts → Open the salon → four turns each played to
+  its cap and handed over → the look finished → the outro. Console clean, exit 0.
+  The spots step spanned the turn-1/turn-2 handoff — the reported scenario —
+  and turn 3 ran shadow, blush and lips. `shots/glam-rulings/fulltrial-outro.png`.
+- **Console clean** in the full trial, both probe scripts and the shots run.
+- Three existing specs needed updating for the ruling, none of them weakened:
+  `glam-station-kit.spec.js`'s `shelves()` helper crashed on the missing
+  `aria-expanded` and now reads a missing attribute as closed;
+  `glam-turn-sweep.spec.js` moved the per-spot pair from a "✓ still on the
+  button" read to a "still absent from the cart" read on all three legs of the
+  exchange; `glam-turn-exchange.spec.js` was rewritten around removal.
+  `glam-turn-exchange.spec.js` also gained a `toMyTurn` helper — the partner →
+  learner exchange takes **two** presses in the shipped give-back mode
+  (`✓ I asked!` → `▸ Go — my turn!`), and the old single click stopped on the
+  ready gate, where nothing puts a target under the pointer.
+
+### Judged rather than measured (the rulings)
+
+- **The re-drag repaints from bare, so the zone visibly empties on the first
+  stroke of a switch.** A cheek at full rose drops to one stroke of plum and
+  washes back up over the drag. That is the same thing the first application
+  does, and it is what "redo the drag so the reapply feel is there" asks for, so
+  it was taken as intended rather than softened with a hold-the-old-shade
+  intermediate. Abandoning a switch part-way leaves the slot part-painted in the
+  new shade; `ed.done[slot]` is untouched, so no step un-completes and no
+  completion claim moves.
+- **A dead tool is removed in free play too.** The ruling did not say which
+  routines it covers. Gating removal on `staged!=='free'` would have left free
+  play with the disabled affordance the maintainer just overruled, and a tool
+  that cannot act is a fact about the client rather than a routine's judgement.
+  Stated here because it is the one place the ruling was extended rather than
+  applied.
+- **The emptied shelf header is `disabled`.** A no-op button that still looked
+  and focused like a control was the smaller lie, but still a lie; a screen
+  reader would announce a disclosure that discloses nothing. It is a record row,
+  so it is inert. The trade is that it leaves the tab order — acceptable, since
+  it was never a destination, only a toggle for content that no longer exists.
+- **`Brow bar` now also survives as a ✓ record row** once both brow tools are
+  used, for the same reason Skincare does — both are all-family-size-1 shelves.
+  Not asked for, but it falls out of the same rule and is the same message, so
+  it was left rather than special-cased to Skincare.

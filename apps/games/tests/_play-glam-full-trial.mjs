@@ -17,6 +17,7 @@ import { chromium } from '@playwright/test';
 import { writeFile, mkdir } from 'node:fs/promises';
 
 const SHOTS = new URL('../../../docs/eval/shots/glam-turn-exchange/', import.meta.url).pathname;
+const RULINGS = new URL('../../../docs/eval/shots/glam-rulings/', import.meta.url).pathname;
 await mkdir(SHOTS, { recursive: true });
 
 const browser = await chromium.launch();
@@ -44,8 +45,11 @@ const view = () => L(`const v=L.renderVals(); const t=T&&T.turn;
        driver picks an UNTICKED one — exactly the read a child makes. Picking
        blind loops forever on the first tool, because re-dragging a finished
        shade is now free and the budget never moves. */
+    /* Everything the palette renders IS live now — a tool whose mechanism has
+       gone dead leaves the cart rather than sitting on it disabled (maintainer
+       ruling), so there is no longer a disabled face to filter out. */
     live:(()=>{ const cat=L.cfg().cats.flatMap(g=>g.options);
-      return v.palette.flatMap(g=>g.options.filter(o=>!o.disabled).map(o=>{
+      return v.palette.flatMap(g=>g.options.map(o=>{
         const c=cat.find(x=>x.label===o.title)||{};
         return { t:o.title, mech:c.mech||'', done:o.label.indexOf('\u2713')>=0 }; })); })() };`);
 /* One tool is taken at most once in the whole trial. Without that the driver
@@ -138,6 +142,8 @@ if (rep) {
 const outro = await page.getByText(/Trial finished|The reveal|Look at that/i).first().isVisible().catch(() => false);
 log('· outro on screen:', outro);
 await page.screenshot({ path: SHOTS + 'fulltrial-outro.png', fullPage: false });
+await mkdir(RULINGS, { recursive: true });
+await page.screenshot({ path: RULINGS + 'fulltrial-outro.png', fullPage: false });
 
 log(errs.length ? '· CONSOLE NOT CLEAN:' : '· console clean', errs.join(' | '));
 await browser.close();

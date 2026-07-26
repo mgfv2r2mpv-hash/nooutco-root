@@ -22,11 +22,12 @@ import { test, expect } from '@playwright/test';
  *
  * These tests fail against 93dab9be.
  *
- * NOT changed here, and deliberately: because `cov[slot]` is already 1, a shade
- * switch still completes in a SINGLE stroke — `Math.min(1, 1 + 0.11)` — rather
- * than a fresh drag. Whether a re-tint should be a cheap one-tap or should cost
- * a full paint again is a design question for the maintainer, so the current
- * cost is pinned below rather than quietly altered.
+ * The open design question this file used to pin — one-tap re-tint, or paint it
+ * again — has since been ruled on: "Yes, redo the drag so the 'reapply' feel is
+ * there." The wash now belongs to the SHADE it was laid in (`_washFrom`), so a
+ * switch starts from bare and costs the same drag the first application did.
+ * The case below asserts that ruling and fails against 438d38d8, where one
+ * stroke finished the job.
  *
  * The GlamTT engine and tests/glam-tt-scoring.spec.js are untouched by this work.
  */
@@ -131,28 +132,62 @@ test.describe('Glam Team Makeover — the hitbox only claims the shade that was 
     });
   }
 
-  test('the shade actually swaps, and the current one-stroke cost is what ships', async ({ page }) => {
-    /* Pinned, not chosen. `cov.blush` is already 1, so `paintStep` completes on
-       the first stroke and the re-tint costs one tap rather than a fresh drag.
-       Recording it here means the maintainer's ruling — cheap re-tint, or paint
-       it again — flips one assertion instead of being discovered in play. */
+  test('the shade swaps, and it costs a FRESH DRAG — not one stroke', async ({ page }) => {
+    /* The maintainer's ruling: "Yes, redo the drag so the 'reapply' feel is
+       there." Against 438d38d8 the single stroke below took `cov.blush` from 1
+       straight back to 1 and disarmed the tool — a re-tint cost one tap. The
+       wash now belongs to the shade it was laid in, so a different shade starts
+       from bare and has to be painted on like any other. */
     const errors = await stage(page);
 
     await paintTool(page, 'Blush rose');
     const rose = await logic(page, 'return L.state.ed.col.blush');
+    expect(await logic(page, 'return L.state.ed.cov.blush')).toBe(1);
 
+    // ── one stroke is no longer enough ──────────────────────────────────────
     await page.getByTitle('Blush plum', { exact: true }).first().click();
     const box = await target(page).boundingBox();
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down();
     await page.mouse.up();
 
+    const partial = await logic(page, 'return L.state.ed.cov.blush');
+    expect(partial, 'the switch restarts the wash from bare').toBeLessThan(1);
+    expect(partial, 'and one stroke lays exactly one stroke of it').toBeGreaterThan(0);
+    expect(await logic(page, 'return L.state.armed'), 'the tool stays armed — there is drag left to give')
+      .not.toBe(null);
+    expect(await target(page).innerText(), 'and the hitbox asks for the rest of it').toContain('Keep painting');
+
+    // ── the full drag finishes it, exactly as the first application did ──────
+    await paintTool(page, 'Blush plum');
     const plum = await logic(page, 'return L.state.ed.col.blush');
-    expect(plum, 'one stroke re-tints the slot').not.toBe(rose);
-    expect(await logic(page, "return L.state.ed.cov.blush")).toBe(1);
+    expect(plum, 'the slot now carries the new shade').not.toBe(rose);
+    expect(await logic(page, 'return L.state.ed.cov.blush')).toBe(1);
     expect(await logic(page, 'return L.state.armed'), 'and disarms, because coverage completed').toBe(null);
     expect(await toolLabel(page, 'Blush plum'), 'the ✓ has moved to the shade that is on').toContain('✓');
     expect(await toolLabel(page, 'Blush rose')).not.toContain('✓');
+
+    expect(errors).toEqual([]);
+  });
+
+  test('a colourless paint tool has no shade to restart for', async ({ page }) => {
+    /* The guard on the ruling. `_washFrom` keys on shade identity, and Wash /
+       Moisturize / Contour / Highlight carry no colour — so `_shadeOnIn` is
+       true for them and their coverage accumulates exactly as it always has.
+       A re-touch of a finished colourless tool must still land in one stroke. */
+    const errors = await stage(page);
+
+    await paintTool(page, 'Wash');
+    expect(await logic(page, 'return L.state.ed.cov.wash')).toBe(1);
+
+    await page.getByTitle('Wash', { exact: true }).first().click();
+    const box = await target(page).boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.up();
+
+    expect(await logic(page, 'return L.state.ed.cov.wash'), 'still fully washed after a re-touch').toBe(1);
+    expect(await logic(page, 'return L.state.armed'), 'and it completed, so it disarmed').toBe(null);
 
     expect(errors).toEqual([]);
   });

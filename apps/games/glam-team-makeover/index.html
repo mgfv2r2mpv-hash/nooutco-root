@@ -1376,13 +1376,15 @@ window.GlamStory = (function () {
             <div style="display:flex;gap:4px;margin:8px 0 2px;flex-wrap:wrap"><sc-for list="{{ stageChips }}" as="ch" hint-placeholder-count="4"><span style="{{ ch.style }}">{{ ch.label }}</span></sc-for></div>
             <!-- Vertical flow (tuning fix 3): a shelf with work left is open and
                  sorted to the top; a settled shelf folds to its header and waits
-                 to be asked back. Spent one-shot tools are not rendered at all. -->
+                 to be asked back. Spent one-shot tools are not rendered at all —
+                 and once a settled shelf has lost its last tool, the header stays
+                 on as the ✓ record of a step that is finished. -->
             <sc-for list="{{ palette }}" as="grp" hint-placeholder-count="4">
               <div data-shelf="{{ grp.label }}" style="{{ grp.wrapStyle }}">
-                <button onClick="{{ grp.onToggle }}" aria-expanded="{{ grp.expanded }}" style="{{ grp.headStyle }}"><span>{{ grp.icon }}</span><span style="{{ grp.titleStyle }}">{{ grp.label }}</span><span style="{{ grp.rule }}"></span><span style="{{ grp.markStyle }}">{{ grp.mark }}</span></button>
+                <button onClick="{{ grp.onToggle }}" disabled="{{ grp.headDisabled }}" aria-expanded="{{ grp.expanded }}" style="{{ grp.headStyle }}"><span>{{ grp.icon }}</span><span style="{{ grp.titleStyle }}">{{ grp.label }}</span><span style="{{ grp.rule }}"></span><span style="{{ grp.markStyle }}">{{ grp.mark }}</span></button>
                 <sc-if value="{{ grp.open }}" hint-placeholder-val="{{ true }}">
                   <div style="{{ grp.optsStyle }}">
-                    <sc-for list="{{ grp.options }}" as="opt" hint-placeholder-count="3"><button onClick="{{ opt.handler }}" title="{{ opt.title }}" disabled="{{ opt.disabled }}" aria-disabled="{{ opt.ariaDisabled }}" style="{{ opt.btnStyle }}"><span style="{{ opt.swatchStyle }}">{{ opt.glyph }}</span><span style="font-size:10px;font-weight:700;color:var(--slate-600);text-align:center;line-height:1.15;max-width:78px;min-height:13px">{{ opt.label }}</span></button></sc-for>
+                    <sc-for list="{{ grp.options }}" as="opt" hint-placeholder-count="3"><button onClick="{{ opt.handler }}" title="{{ opt.title }}" style="{{ opt.btnStyle }}"><span style="{{ opt.swatchStyle }}">{{ opt.glyph }}</span><span style="font-size:10px;font-weight:700;color:var(--slate-600);text-align:center;line-height:1.15;max-width:78px;min-height:13px">{{ opt.label }}</span></button></sc-for>
                   </div>
                 </sc-if>
               </div>
@@ -2133,8 +2135,12 @@ class Component extends DCLogic {
        · _optSpent — the step this tool performs is taken AND it has no sibling
          shade, so tapping it again cannot change the client. Wash, Moisturize,
          Conceal, Contour, Highlight, the liners: they leave the cart for good.
+         A tool whose own mechanism has gone dead (`_optDead`) leaves by the same
+         door, whatever the routine — that is the maintainer's ruling.
        · _grpSettled — every tool still on this shelf has had its step taken, so
-         the shelf folds to its header until someone asks for it back.
+         the shelf folds to its header until someone asks for it back. The header
+         keeps that ✓ even after the last tool has left, which is where a
+         finished step goes on reading as finished once its tools are gone.
 
      Unsettled shelves sort above settled ones, which is what keeps the step the
      child is actually on at the top of the scroller.
@@ -2153,7 +2159,11 @@ class Component extends DCLogic {
   _optWorkDone(opt){ const ed=this.state.ed;
     if(opt.step) return this._stepDone(opt.step);
     return !!ed.done[opt.slot||opt.id]; }
-  _optSpent(opt){ return this.state.staged!=='free' && this._optWorkDone(opt) && (this._familySizes()[this._optFamily(opt)]||0)<=1; }
+  /* The ONE predicate the cart removes on. Two ways in: the tool's whole step is
+     over and it has no sibling shade to switch to (the staged routine's read), or
+     its own mechanism has gone dead and it could not act in any routine. */
+  _optSpent(opt){ return this._optDead(opt) ||
+    (this.state.staged!=='free' && this._optWorkDone(opt) && (this._familySizes()[this._optFamily(opt)]||0)<=1); }
   /* ── DEAD ≠ SPENT ────────────────────────────────────────────────────────────
      `_optSpent` asks "is this tool's whole STEP over?" and answers by leaving the
      cart. `_optDead` asks the narrower question the cart never asked: "can THIS
@@ -2168,14 +2178,25 @@ class Component extends DCLogic {
      `if(opt.step) return …` in `_optWorkDone`, which both option rows reach past
      because each declares `step:3`. They are moved here, where they are reached.
 
-     A dead tool is DISABLED IN PLACE rather than removed: it stays on the cart,
-     keeps its ✓, and stops responding. Chosen over "disappear" because (a) a
-     disappearing patch button claims the spots step is finished while the child
-     still has spots to conceal, (b) free play never removes tools by design, so
-     removal would leave that mode exactly as broken, and (c) in a task-analysis
-     chain the evidence of a step the child already completed is worth keeping on
-     screen. `ed.pimples` is client state, not turn state, so this survives a
-     handoff in both directions without a reset. */
+     A dead tool LEAVES THE CART, by the maintainer's ruling ("changed to make the
+     tool disappear from the cart entirely") — the same door `_optSpent` already
+     opens, not a second mechanism. It was disabled-in-place before; the argument
+     for that was that a vanishing patch button would claim the spots step is
+     over while the child still has spots to conceal. That objection is answered
+     by where the ✓ now lives rather than by keeping the tool: the Skincare shelf
+     does not carry its ✓ until EVERY tool on it is done, so while Conceal is
+     still standing there the shelf plainly reads unfinished. See `_grpSettled`.
+
+     Removal is NOT gated on the staged routine the way `_optSpent` is. "This
+     step is over" is a routine's judgement; "this tool cannot act" is a fact
+     about the client, and it is just as true in free play. `ed.pimples` is client
+     state, not turn state, so this survives a handoff in both directions without
+     a reset.
+
+     DEAD ≠ FREE. The 67 tools the turn-exchange sweep made free (`_optNoOp`)
+     stay exactly where they are: they re-apply, echo on the mirror and keep
+     their target overlay — they simply no longer charge for a write of zero
+     bytes. Only patch and conceal can go dead, and only they leave. */
   _optDead(opt){ const ed=this.state.ed;
     if(opt.mech==='patch') return (ed.pimples||[]).every(v=>v>=1);
     if(opt.mech==='conceal') return (ed.pimples||[]).every(v=>v===2);
@@ -2199,7 +2220,32 @@ class Component extends DCLogic {
      the theme selector), so this is a latent case, not a live one; for every
      single-shade paint slot the two readings agree anyway, since `paintStep`
      writes `ed.col[slot]` on the stroke that paints it. */
-  _shadeOn(opt){ return !(opt.mech==='paint' && opt.color) || this.state.ed.col[opt.slot]===opt.color; }
+  _shadeOn(opt){ return this._shadeOnIn(this.state.ed,opt); }
+  /* Same question asked of a GIVEN `ed` rather than of `this.state`. A setState
+     updater is handed the authoritative `s.ed`, which `this.state.ed` may lag by
+     a frame under a fast drag, so the paint path asks this one. */
+  _shadeOnIn(ed,opt){ return !(opt.mech==='paint' && opt.color) || ed.col[opt.slot]===opt.color; }
+  /* ── A SHADE SWITCH IS A FRESH DRAG (maintainer ruling) ──────────────────────
+     "Yes, redo the drag so the 'reapply' feel is there."
+
+     Coverage is stored per SLOT, so a second shade of a painted slot inherited
+     the first shade's wash and `Math.min(1, 1+0.11)` finished it on the opening
+     stroke — a re-tint cost one tap where the first application cost a full
+     drag. The wash now belongs to the SHADE it was laid in: if the armed shade
+     is not the one on the slot, the next stroke builds from bare, so switching
+     costs exactly the drag the first application did.
+
+     It does NOT re-open the action economy. `paintStep` still asks `_admit` only
+     on the stroke that COMPLETES coverage, and `_admit` charges a key once per
+     turn — so the 2nd..Nth change of a type inside one turn is still free, it
+     just has to be painted. Across a handoff `_charged` is cleared and a
+     genuinely different shade charges its one action (Finding E), now at the end
+     of the re-drag instead of on a single tap.
+
+     Non-paint tools and colourless paints (wash, moisturize, contour, highlight)
+     have no shade to disagree about, so `_shadeOnIn` is true for them and their
+     coverage carries on exactly as before. */
+  _washFrom(ed,opt){ return this._shadeOnIn(ed,opt) ? (ed.cov[opt.slot]||0) : 0; }
   /* ── A RE-TOUCH THAT CANNOT CHANGE ANYTHING IS FREE (turn-exchange sweep) ────
      `_admit`'s own contract is "free re-touches of an already-charged article
      never reach the engine". But `_charged` is wiped at every turn boundary
@@ -2376,11 +2422,11 @@ class Component extends DCLogic {
     const key=(t.color?'color:':'item:')+slot;
     // A paint step charges when coverage COMPLETES, so admission is asked for on
     // the stroke that finishes it, before any state is written.
-    const nx=Math.min(1,(this.state.ed.cov[slot]||0)+0.11);
+    const nx=Math.min(1,this._washFrom(this.state.ed,t)+0.11);
     const free=this._optNoOp(t);
     if(nx>=1 && !free && !this._admit(key,t.label)) return;
     let completed=false;
-    this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); const cur=ed.cov[slot]||0; const n2=Math.min(1,cur+0.11); ed.cov[slot]=n2; if(t.color) ed.col[slot]=t.color;
+    this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); const cur=this._washFrom(ed,t); const n2=Math.min(1,cur+0.11); ed.cov[slot]=n2; if(t.color) ed.col[slot]=t.color;
       let charged=s.chargedThisTurn||{};
       if(n2>=1){ ed.done[slot]=true; completed=true; if(!free) charged=this._chargeKey(s,key).charged; }
       return { ed, chargedThisTurn:charged }; },
@@ -3549,15 +3595,13 @@ class Component extends DCLogic {
       // writes nothing spends nothing (`_optNoOp`), so greying it would be the
       // same kind of lie the shade label was telling.
       const capDim=s.countMode==='shown' && !this._optNoOp(opt) && this._capBlocks(s,this._optKey(opt));
-      /* A dead tool is finished, not blocked, so it does NOT take the grey
-         `off` face — that one means "you cannot do this yet", which is a
-         different message. It keeps its sage done-colours and its ✓ and loses
-         only the affordance: dashed rather than solid, flat rather than raised,
-         no pointer cursor, softened but legible. */
-      const dead=this._optDead(opt);
+      /* No dead face here any more: a tool whose mechanism has gone dead is off
+         the cart entirely (`_optSpent`), so nothing downstream of this filter can
+         see one. `off` is still the "you cannot do this YET" grey — locked by the
+         routine, or dimmed at the turn cap. */
       const off=locked||capDim;
-      const bg=dead?'var(--sage-100)':off?'var(--slate-50)':armed?'var(--sage-50)':active?'var(--sage-100)':'#fff',
-            bd=dead?'var(--sage-500)':off?'var(--slate-200)':(armed||active)?'var(--sage-500)':'var(--slate-200)';
+      const bg=off?'var(--slate-50)':armed?'var(--sage-50)':active?'var(--sage-100)':'#fff',
+            bd=off?'var(--slate-200)':(armed||active)?'var(--sage-500)':'var(--slate-200)';
       // Hairstyle buttons used to render their number and NO name at all (eval
       // §3.9: seven unlabelled buttons). Every tool now carries its label.
       const lbl = (locked?'🔒 ':(active&&!armed?'✓ ':''))+opt.label;
@@ -3568,38 +3612,48 @@ class Component extends DCLogic {
       const pop=justApplied?';animation:gtm-applied-'+(s.mirror.n?'b':'a')+' .42s var(--ease-standard)':'';
       // `title` stays the RAW tool name (no ✓ prefix, no lock glyph) so the
       // tooltip — and anything addressing the tool by name — is stable across states.
-      /* `disabled` is a real DOM attribute, not a look: React drops the click
-         handler outright and the browser takes the button out of the tab order,
-         so a dead action cannot be reached by pointer OR keyboard. `arm` guards
-         the same case again for any programmatic caller. */
-      return { label:lbl, title:opt.label, glyph, swatchStyle:swatch, disabled:!!dead, ariaDisabled:dead?'true':null,
-        handler:(locked||dead)?(()=>{}):(()=>this.arm(opt)),
-        btnStyle:'display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:5px;padding:9px 7px 7px;width:82px;border-radius:13px;cursor:'+(dead?'default':off?'not-allowed':'pointer')+';font-family:inherit;opacity:'+(dead?'.6':off?'.45':'1')+';background:'+bg+';border:1.5px '+(dead?'dashed ':'solid ')+bd+';box-shadow:'+(dead?'none':armed?'0 0 0 3px rgba(106,118,89,.18)':active?'var(--shadow-sm)':'none')+pop }; }) })).filter(grp=>grp.options.length);
+      return { label:lbl, title:opt.label, glyph, swatchStyle:swatch,
+        handler:locked?(()=>{}):(()=>this.arm(opt)),
+        btnStyle:'display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:5px;padding:9px 7px 7px;width:82px;border-radius:13px;cursor:'+(off?'not-allowed':'pointer')+';font-family:inherit;opacity:'+(off?'.45':'1')+';background:'+bg+';border:1.5px solid '+bd+';box-shadow:'+(armed?'0 0 0 3px rgba(106,118,89,.18)':active?'var(--shadow-sm)':'none')+pop }; }) }))
+      /* A settled shelf keeps its header AFTER its last tool has left, which is
+         the whole reconciliation of the two rulings: the tool disappears, the ✓
+         does not. An UNsettled shelf with nothing on it has nothing to say, so it
+         still drops out. */
+      .filter(grp=>grp.options.length || grp.settled);
 
     /* Vertical flow: shelves with work left first (so the step the child is on
        opens at the top of the scroller), settled shelves folded underneath.
        A settled shelf keeps a slim header — one tap brings its shades back. */
-    const openOf=(g)=> openGrp[g.label]!=null ? !!openGrp[g.label] : !g.settled;
+    const openOf=(g)=> g.options.length===0 ? false : openGrp[g.label]!=null ? !!openGrp[g.label] : !g.settled;
     const flowed=[...palette.filter(g=>!g.settled), ...palette.filter(g=>g.settled)]
       .map(g=>Object.assign({},g,{ open:openOf(g) }));
-    // Never leave the working area empty: if every shelf is folded, the first
-    // one comes back open so there is always something to reach for.
-    if(flowed.length && !flowed.some(g=>g.open)) flowed[0].open=true;
+    // Never leave the working area empty: if every shelf is folded, the first one
+    // that still HAS tools comes back open so there is always something to reach
+    // for. A shelf whose tools are all gone has nothing to come back to.
+    const rescue=flowed.find(g=>g.options.length);
+    if(rescue && !flowed.some(g=>g.open)) rescue.open=true;
     /* A settled shelf is dressed as a closed drawer of the cart — its own soft
        panel, a sage ✓ and a chevron — so it reads as "still here, tap to open"
        rather than as a heading whose contents went missing. An open shelf keeps
-       the hairline heading the trolley has always had. */
-    const HEAD='display:flex;align-items:center;gap:6px;width:100%;text-align:left;background:none;border:none;font-family:inherit;cursor:pointer;font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--gtm-plum)';
-    flowed.forEach(g=>{ const open=g.open, drawer=g.settled&&!open;
-      g.expanded=open?'true':'false';
-      g.onToggle=(()=>this.toggleGrp(g.label,open));
+       the hairline heading the trolley has always had.
+
+       A settled shelf with no tools LEFT is the third case, and the one that
+       carries the maintainer's "a finished step should still read as finished":
+       it is a record, not a drawer. Same soft panel and the same sage ✓, but no
+       chevron, no pointer, and a real `disabled` on the header — there is nothing
+       behind it to open, so it must not offer to. */
+    const HEAD='display:flex;align-items:center;gap:6px;width:100%;text-align:left;background:none;border:none;font-family:inherit;font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--gtm-plum)';
+    flowed.forEach(g=>{ const open=g.open, empty=g.options.length===0, drawer=g.settled&&!open;
+      g.expanded=empty?null:open?'true':'false';
+      g.headDisabled=empty;
+      g.onToggle=empty?(()=>{}):(()=>this.toggleGrp(g.label,open));
       g.wrapStyle=drawer
         ? 'margin-top:7px;padding:5px 9px;border-radius:10px;background:rgba(255,255,255,.62);border:1px solid rgba(217,171,106,.34)'
         : 'margin-top:'+(g.settled?'10px':'12px');
-      g.headStyle=HEAD+';padding:'+(drawer?'1px 0':'0');
+      g.headStyle=HEAD+';cursor:'+(empty?'default':'pointer')+';opacity:'+(empty?'.85':'1')+';padding:'+(drawer?'1px 0':'0');
       g.titleStyle='color:'+(g.settled?'#8d7386':'var(--gtm-plum)');
       g.rule='flex:1;height:1px;background:linear-gradient(90deg,rgba(217,171,106,'+(g.settled?'.38':'.75')+'),rgba(217,171,106,0))';
-      g.mark=(g.settled?'✓ ':'')+(open?'▾':'▸');
+      g.mark=(g.settled?'✓':'')+(empty?'':(g.settled?' ':'')+(open?'▾':'▸'));
       g.markStyle='font-size:11px;font-weight:800;letter-spacing:.06em;color:'+(g.settled?'var(--sage-700)':'#c3a878');
       g.optsStyle='display:flex;gap:7px;flex-wrap:wrap;margin-top:7px'; });
     // Pin the cart back to the top when the set of open shelves changes, so a
