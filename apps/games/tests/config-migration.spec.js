@@ -41,11 +41,13 @@ const GAMES = [
   { game: 'emotions',     url: '/emotions/',     settingsKey: 'noaba.emotionID.v1' },
   { game: 'ffc',          url: '/ffc/',          settingsKey: 'ffcgSettings' },
   { game: 'intraverbal',  url: '/intraverbal/',  settingsKey: 'ivgSettings' },
-  // matching persists to mgSettings and market to mmSettings — the pairing is
-  // the opposite of what the folder names suggest, and swapping them here would
-  // make both ordering tests pass against the wrong read.
-  { game: 'market',       url: '/market/',       settingsKey: 'mmSettings' },
-  { game: 'matching',     url: '/matching/',     settingsKey: 'mgSettings' },
+  // matching's retired key was mgSettings and market's mmSettings — the pairing
+  // is the opposite of what the folder names suggest. Both have since adopted
+  // the store, so the key named here is the store's; naming the retired key
+  // would go vacuous from the second load onward, once foldLegacy() returns
+  // before ever touching it.
+  { game: 'market',       url: '/market/',       settingsKey: 'nooutco.settings.market' },
+  { game: 'matching',     url: '/matching/',     settingsKey: 'nooutco.settings.matching' },
   { game: 'patterns',     url: '/patterns/',     settingsKey: 'ppcSettings' },
   { game: 'receptive',    url: '/receptive/',    settingsKey: 'nooutco.settings.receptive' },
   // sequences reads its retired key through migrateLegacyIntoStore().

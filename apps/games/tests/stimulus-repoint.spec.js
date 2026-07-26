@@ -52,13 +52,14 @@ const CORE_TOPICS = JSON.parse(
 const REPOINTED = [
   { game: 'clock', url: '/clock/', manifest: '/clock/manifest.json', source: 'clock', storageKey: 'hddSettings', storeKey: 'nooutco.settings.clock', legacyBase: '' },
   { game: 'receptive', url: '/receptive/', manifest: '/receptive/manifest.json', source: 'receptive', storageKey: 'ngSettings', storeKey: 'nooutco.settings.receptive', legacyBase: '' },
-  { game: 'matching', url: '/matching/', manifest: '/matching/manifest.json', source: 'matching', storageKey: 'mgSettings', legacyBase: '' },
+  { game: 'matching', url: '/matching/', manifest: '/matching/manifest.json', source: 'matching', storageKey: 'mgSettings', storeKey: 'nooutco.settings.matching', legacyBase: '' },
   {
     game: 'market',
     url: '/market/',
     manifest: '/matching/manifest.json',
     source: 'matching',
     storageKey: 'mmSettings',
+    storeKey: 'nooutco.settings.market',
     legacyBase: '../../IDMatchGame/IDMatchGame/',
   },
 ];

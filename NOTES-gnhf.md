@@ -1399,3 +1399,98 @@ three test titles recorded as the accepted baseline. Zero new failures.
 - The press-and-hold gating is still unadopted anywhere but `sequences`, and
   only *gates* where the panel carries the matching
   `[data-editing="false"] { pointer-events: none }` rule (finding 47).
+
+---
+
+## Stage 6, part 3 — `matching` and `market` adopt the store
+
+Four games down, five to go. `matching` (`mgSettings` →
+`nooutco.settings.matching`) and `market` (`mmSettings` →
+`nooutco.settings.market`) now declare their programme parameters as one field
+spec and read/write them through `defineStore()`. Each `loadSettings()` is
+`foldLegacy()` then `initial()`; each `saveSettings()` is `saveWorking()`. Both
+load `../game-settings.js` between `migrate-config.js` and `results-report.js`.
+
+No new field type was needed: both games' `targetFilters` uses the `map` type
+added in part 2, and their token boards reuse `receptive`'s declarations. The
+two genuinely new fields are display ones — `matching`'s `displayMode`
+(`simple` | `visual`) and `market`'s `animTier` (`full` | `light` | `minimal`).
+
+### 53. A persisted setting with no panel control still needs a control assertion
+
+`matching`'s `displayMode` is not in the settings panel at all — it is the
+toolbar Simple/Visual slider, written by `window.__setGameDisplayMode` and read
+back by `window.__syncDisplayToggle`. Finding 51 says a clamp is only honest if
+the technician can see it, and the same argument applies to a fold: asserting
+`stored.working.displayMode === 'visual'` proves the value moved, not that the
+game is *in* visual mode.
+
+`header-chrome.js` publishes that state as `#display-toggle[aria-checked]`, so
+the table gained an `attr:<name>` control kind and the row asserts the toggle
+rather than the store. Deleting `displayMode` from the field spec — the exact
+shape of "a setting was silently removed" that hard constraint 1 forbids —
+fails 3 tests and nothing else; without the toggle assertion it fails none,
+because the store simply stops carrying a key nothing else reads.
+
+### 54. `parseInt(raw, 10) || default` makes a cross-field default unsafe
+
+Both games read `currentTokens` as `s.currentTokens ?? state.startingTokens` —
+a default derived from another field, which the spec supports via a thunk. But
+`normalizeInt` treats a stored `0` as unparseable and takes the default, so a
+thunk default would have converted a legitimate `currentTokens: 0` into
+`startingTokens` — turning "the board is empty" into "the board is pre-loaded".
+
+The declaration is therefore `default: 0`, matching `receptive`. That is safe
+here for a specific reason rather than by preference: `initializeTokenBoard()`
+runs at the bottom of `loadSettings()` and unconditionally assigns
+`state.currentTokens = state.startingTokens` whenever the board is on, so
+neither reading is observable on screen. `currentTokens` is deliberately absent
+from both new `ADOPTED` rows for the same reason — it is live session state, not
+a programme parameter, and seeding it would assert a value the game overwrites.
+
+### 55. The value that proves an enum survived is the one the shortcut cannot reach
+
+`market`'s `animTier` has three values but the toolbar slider only ever writes
+two of them (`visual` → `full`, `simple` → `minimal`). Seeding `full` or
+`minimal` would pass against an enum narrowed to those two; seeding `light` —
+reachable only from `#sel-anim-tier` — is what fails. Narrowing the enum to
+`['full', 'minimal']` fails exactly 3 tests with `light` seeded and zero
+without it.
+
+### Coverage
+
+`tests/settings-store-adoption.spec.js` grew from 2 rows to 4 — the same six
+assertions per game, now 6 × 4 × 3 = 72 tests. `expectControls()` gained the
+`attr:<name>` kind for `#display-toggle`.
+
+`tests/stimulus-repoint.spec.js`: `matching` and `market` gained `storeKey`, so
+their seeded pre-repoint round-trip now reads back from `<storeKey>.working`
+and additionally asserts the retired key comes back byte-for-byte as seeded.
+
+`tests/config-migration.spec.js`: both ordering probes moved off `mgSettings` /
+`mmSettings` and onto the store keys, for the reason finding 50 records — a
+probe on a key only read during a one-time fold goes vacuous from the second
+load onward without ever going red.
+
+Mutation-tested six ways, each restored from a byte-compared copy: `matching`
+skipping `foldLegacy()` (12 tests), `market`'s `autoPromptEnabled` harmonised
+to true (3 — the non-negotiable), `matching`'s store adopting `mgSettings` as
+its own key (18), `matching`'s `displayMode` deleted from the field spec (3),
+`market`'s `animTier` enum narrowed to drop `light` (3), and the
+`game-settings.js` script tag deleted from `market` (21).
+
+**Suite: 691 passed, 8 failed — all 8 in `glam-team-makeover.spec.js`**, at the
+three test titles recorded as the accepted baseline. Zero new failures.
+`APP_VERSION` 0.19.1 → 0.19.2.
+
+### Still owed for Stage 6 (updated)
+
+- Five games: `ffc` (`ffcgSettings`), `intraverbal` (`ivgSettings`), `patterns`
+  (`ppcSettings`), `think-or-say` (`tosSettings`), `emotions`
+  (`noaba.emotionID.v1`). Each is a row in `ADOPTED` plus a field spec.
+- `think-or-say` keeps part of its configuration in the DOM rather than in
+  state (Stage 7 names this explicitly), so its spec cannot be written from
+  `loadSettings()` alone — do that one last, or fix the DOM-as-state first.
+- The press-and-hold gating is still unadopted anywhere but `sequences`, and
+  only *gates* where the panel carries the matching
+  `[data-editing="false"] { pointer-events: none }` rule (finding 47).
