@@ -9,6 +9,9 @@
  *
  * POST /api/admin/remove-image    (admin — remove a single image)
  *   Body: { game, folder, filename, personName? }
+ *   For clock / receptive / matching this records an exclusion rather than
+ *   deleting the file — one blob now backs all three games (see "The shared
+ *   stimulus library" below).
  *
  * POST /api/admin/archive-topic   (admin — soft-delete a T_ folder → _a_T_)
  *   Body: { game, folder }
@@ -50,11 +53,38 @@
  *   games.nooutco.me/api/*  →  this Worker
  */
 
-const KNOWN_GAMES = ['IDMatchGame', 'NameIDGame', 'FamousPersonGame'];
+import {
+  LIBRARY_ROOT,
+  applyExclusion,
+  applyLabel,
+  applyUpload,
+  publishingFrom,
+  sortKeys,
+  stableJson,
+  stampManifests,
+  stemOf,
+  stimulusId,
+} from './shared/stimuli/library.mjs';
+
+const KNOWN_GAMES = ['IDMatchGame', 'NameIDGame', 'FamousPersonGame', 'HickoryDickoryDockGame'];
 
 // Maps game API identifiers to their repo folder names (decoupled after URL shortening)
-const GAME_PATHS = { IDMatchGame: 'matching', NameIDGame: 'receptive' };
+const GAME_PATHS = {
+  IDMatchGame: 'matching',
+  NameIDGame: 'receptive',
+  HickoryDickoryDockGame: 'clock',
+};
 function gameFolder(g) { return GAME_PATHS[g] || g; }
+
+/**
+ * Games whose stimuli come from the shared library rather than from their own
+ * `_Resources/_imgSource` tree. Their `manifest.json` is generated, so an admin
+ * edit has to be written to the library's source files (`uploads/`,
+ * `labels.json`, `publishing.json`) and the manifests re-projected — appending
+ * to the manifest alone would be undone by the next `npm run stimuli:build`.
+ */
+const LIBRARY_GAMES = ['clock', 'receptive', 'matching'];
+const isLibraryGame = (game) => LIBRARY_GAMES.includes(gameFolder(game));
 
 export default {
   async fetch(request, env) {
@@ -348,21 +378,9 @@ async function handleAdminSaveImage(request, env) {
   // Use detected extension so the saved file always matches its content-type.
   const base = filename.replace(/\.[^.]+$/, '');
   const saveFilename = `${base}.${ext}`;
-  const oldFilename  = filename !== saveFilename ? filename : null;
-
-  let repoPath, localPath, oldLocalPath;
-  if (game === 'FamousPersonGame') {
-    repoPath     = `famous-person/_Resources/_imgSource/images/${saveFilename}`;
-    localPath    = `_Resources/_imgSource/images/${saveFilename}`;
-    oldLocalPath = null;
-  } else {
-    repoPath     = `${gameFolder(game)}/_Resources/_imgSource/${folder}/${saveFilename}`;
-    localPath    = `_Resources/_imgSource/${folder}/${saveFilename}`;
-    oldLocalPath = oldFilename ? `_Resources/_imgSource/${folder}/${oldFilename}` : null;
-  }
 
   if (game === 'FamousPersonGame') {
-    const base = saveFilename.replace(/\.[^.]+$/, '');
+    const localPath = `_Resources/_imgSource/images/${saveFilename}`;
     try {
       await putPortraitR2(env, base, imgBytes, ext);
     } catch (err) {
@@ -376,17 +394,24 @@ async function handleAdminSaveImage(request, env) {
     return json({ ok: true, path: localPath, filename: saveFilename });
   }
 
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      await atomicManifestSaveCommit(env, game, folder, saveFilename, repoPath, imgBytes, localPath, oldLocalPath);
-      break;
-    } catch (err) {
-      if (err.message === 'CONFLICT' && attempt < 2) continue;
-      return jsonError('GitHub commit failed: ' + err.message, 502);
-    }
+  if (!isLibraryGame(game)) return jsonError('Unknown game: ' + game, 400);
+  if (!/^T_/.test(folder))  return jsonError('folder must start with T_', 400);
+
+  let change;
+  try {
+    change = await commitLibraryChange(env, (state) => libraryUploadPlan(state, {
+      game: gameFolder(game),
+      folder,
+      filename: saveFilename,
+      bytes: imgBytes,
+    }));
+  } catch (err) {
+    return jsonError('GitHub commit failed: ' + err.message, 502);
   }
 
-  return json({ ok: true, path: localPath, filename: saveFilename });
+  // `path` is the URL the manifest now serves — site-absolute, and the same for
+  // every game that runs this stimulus.
+  return json({ ok: true, path: change.url, url: change.url, id: change.id, filename: saveFilename });
 }
 
 // ─── Admin: remove-image ──────────────────────────────────────────────────────
@@ -399,7 +424,7 @@ async function handleAdminRemoveImage(request, env) {
   try { body = await request.json(); }
   catch { return jsonError('Invalid JSON body', 400); }
 
-  const { game, folder, filename, personName } = body;
+  const { game, folder, filename, localPath, id, personName } = body;
   if (!game || !folder || !filename) {
     return jsonError('game, folder, and filename are required', 400);
   }
@@ -407,35 +432,51 @@ async function handleAdminRemoveImage(request, env) {
     return jsonError('Unknown game: ' + game, 400);
   }
 
-  let repoPath;
   if (game === 'FamousPersonGame') {
-    repoPath = `famous-person/_Resources/_imgSource/images/${filename}`;
-  } else {
-    repoPath = `${gameFolder(game)}/_Resources/_imgSource/${folder}/${filename}`;
-  }
-
-  // Portrait bytes live in R2 — delete the object so a removed portrait stops
-  // serving. Best-effort; the git commit below still removes any legacy static
-  // file and clears the roster img field.
-  if (game === 'FamousPersonGame' && env.IMAGES) {
-    try { await env.IMAGES.delete(fpgR2Key(filename.replace(/\.[^.]+$/, ''))); } catch { /* non-fatal */ }
-  }
-
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      if (game === 'FamousPersonGame') {
-        await atomicFPGRemoveCommit(env, personName, repoPath);
-      } else {
-        await atomicManifestRemoveCommit(env, game, folder, filename, repoPath);
-      }
-      break;
-    } catch (err) {
-      if (err.message === 'CONFLICT' && attempt < 2) continue;
-      return jsonError('GitHub commit failed: ' + err.message, 502);
+    const repoPath = `famous-person/_Resources/_imgSource/images/${filename}`;
+    // Portrait bytes live in R2 — delete the object so a removed portrait stops
+    // serving. Best-effort; the git commit below still removes any legacy static
+    // file and clears the roster img field.
+    if (env.IMAGES) {
+      try { await env.IMAGES.delete(fpgR2Key(filename.replace(/\.[^.]+$/, ''))); } catch { /* non-fatal */ }
     }
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await atomicFPGRemoveCommit(env, personName, repoPath);
+        break;
+      } catch (err) {
+        if (err.message === 'CONFLICT' && attempt < 2) continue;
+        return jsonError('GitHub commit failed: ' + err.message, 502);
+      }
+    }
+    return json({ ok: true });
   }
 
-  return json({ ok: true });
+  if (!isLibraryGame(game)) return jsonError('Unknown game: ' + game, 400);
+  const libraryGame = gameFolder(game);
+
+  let change;
+  try {
+    change = await commitLibraryChange(env, async (state) => {
+      const stimulus = resolveStimulusId(state, libraryGame, { id, localPath, folder, filename });
+      if (!stimulus) throw new Error(`NOT_FOUND:${folder}/${filename}`);
+      const applied = applyExclusion(state, { game: libraryGame, category: folder, id: stimulus });
+      return {
+        id: stimulus,
+        message: `Admin: stop ${libraryGame} offering ${stimulus} (${folder})`,
+        documents: changedLibraryDocuments(state, await finalLibraryDocuments(foldLibraryState(state, applied))),
+      };
+    });
+  } catch (err) {
+    if (err.message.startsWith('NOT_FOUND:')) {
+      return jsonError(`No stimulus in the shared library for ${err.message.slice(10)}`, 404);
+    }
+    return jsonError('GitHub commit failed: ' + err.message, 502);
+  }
+
+  // The art stays in the library — only this game stops offering it. Deleting
+  // the file would pull the same picture out of the other two games.
+  return json({ ok: true, id: change.id, excluded: true });
 }
 
 // ─── Public: serve an image from R2 ──────────────────────────────────────────
@@ -679,66 +720,37 @@ async function handleAdminSaveDisplayName(request, env) {
     return json({ ok: true });
   }
 
-  if (!['IDMatchGame', 'NameIDGame'].includes(game)) {
+  if (!isLibraryGame(game)) {
     return jsonError('Unknown game: ' + game, 400);
   }
-  if (!localPath) return jsonError('localPath is required', 400);
+  if (!localPath && !body.id) return jsonError('localPath is required', 400);
 
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      await atomicManifestDisplayNameCommit(env, game, localPath, displayName);
-      break;
-    } catch (err) {
-      if (err.message === 'CONFLICT' && attempt < 2) continue;
-      return jsonError('GitHub commit failed: ' + err.message, 502);
+  const libraryGame = gameFolder(game);
+  const label = typeof displayName === 'string' ? displayName.trim() : '';
+
+  let change;
+  try {
+    change = await commitLibraryChange(env, async (state) => {
+      const stimulus = resolveStimulusId(state, libraryGame, { id: body.id, localPath, folder: body.folder, filename: body.filename });
+      if (!stimulus) throw new Error(`NOT_FOUND:${localPath || body.id}`);
+      const applied = applyLabel(state, { id: stimulus, label });
+      return {
+        id: stimulus,
+        label: applied.label,
+        message: label
+          ? `Admin: set display name "${label}" for ${stimulus}`
+          : `Admin: clear display name for ${stimulus}`,
+        documents: changedLibraryDocuments(state, await finalLibraryDocuments(foldLibraryState(state, applied))),
+      };
+    });
+  } catch (err) {
+    if (err.message.startsWith('NOT_FOUND:')) {
+      return jsonError(`No stimulus in the shared library for ${err.message.slice(10)}`, 404);
     }
+    return jsonError('GitHub commit failed: ' + err.message, 502);
   }
 
-  return json({ ok: true });
-}
-
-async function atomicManifestDisplayNameCommit(env, game, localPath, displayName) {
-  const refData    = await gh(env, 'GET', `git/ref/heads/${env.GITHUB_BRANCH || 'main'}`);
-  const headSha    = refData.object.sha;
-  const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
-  const treeSha    = commitData.tree.sha;
-
-  const manifestRepoPath = `${gameFolder(game)}/manifest.json`;
-  const manifestFile     = await gh(env, 'GET', `contents/${manifestRepoPath}`);
-  const manifest         = JSON.parse(base64ToUtf8(manifestFile.content.replace(/\s/g, '')));
-
-  if (!manifest.displayNames || typeof manifest.displayNames !== 'object') {
-    manifest.displayNames = {};
-  }
-
-  const trimmed = typeof displayName === 'string' ? displayName.trim() : '';
-  if (trimmed) {
-    manifest.displayNames[localPath] = trimmed;
-  } else {
-    delete manifest.displayNames[localPath];
-  }
-  manifest.generated = new Date().toISOString();
-
-  const manifestBlob = await gh(env, 'POST', 'git/blobs', {
-    content:  utf8ToBase64(JSON.stringify(manifest, null, 2) + '\n'),
-    encoding: 'base64',
-  });
-
-  const newTree   = await gh(env, 'POST', 'git/trees', {
-    base_tree: treeSha,
-    tree: [{ path: manifestRepoPath, mode: '100644', type: 'blob', sha: manifestBlob.sha }],
-  });
-  const newCommit = await gh(env, 'POST', 'git/commits', {
-    message: trimmed
-      ? `Admin: set display name "${trimmed}" for ${localPath}`
-      : `Admin: clear display name for ${localPath}`,
-    tree:    newTree.sha,
-    parents: [headSha],
-  });
-
-  const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${env.GITHUB_BRANCH || 'main'}`, { sha: newCommit.sha, force: false });
-  if (refRes.status === 422) throw new Error('CONFLICT');
-  if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
+  return json({ ok: true, id: change.id, displayName: change.label });
 }
 
 // ─── Atomic commit: FFCGame item label update ────────────────────────────────
@@ -896,105 +908,240 @@ async function atomicFPGRemoveCommit(env, personName, repoPath) {
   if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
 }
 
-// ─── Atomic commit: IDMatchGame/NameIDGame image save ────────────────────────
+// ─── The shared stimulus library ──────────────────────────────────────────────
+//
+// clock, receptive and matching no longer own their art: one merged library
+// under `shared/stimuli/` backs all three, and each `manifest.json` is a
+// projection of it (`shared/stimuli/build.mjs`). A generated file cannot hold
+// anything a technician changes, so an admin edit is written to the library's
+// source files and every manifest is re-projected in the same commit:
+//
+//   an upload   → `shared/stimuli/uploads/<T_folder>/<file>` (+ the img/ path
+//                 its URL resolves to: one blob, two tree entries, or the
+//                 published URL 404s until someone runs a rebuild)
+//   a label     → `shared/stimuli/labels.json`
+//   a removal   → `shared/stimuli/publishing.json` — an exclusion, NOT a file
+//                 delete: the same bytes back three games now, so deleting
+//                 T_animals/bear.jpg for matching would pull the picture out of
+//                 clock and receptive too.
+//
+// `library.mjs` holds the rules and is shared with the builder verbatim;
+// `tests/stimulus-library-worker.spec.js` drives these handlers against an
+// in-memory GitHub and asserts the resulting commit is byte-for-byte what
+// `npm run stimuli:build` would produce from it.
 
-async function atomicManifestSaveCommit(env, game, folder, filename, repoPath, imgBytes, localPath, oldLocalPath) {
-  const refData    = await gh(env, 'GET', `git/ref/heads/${env.GITHUB_BRANCH || 'main'}`);
-  const headSha    = refData.object.sha;
-  const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
-  const treeSha    = commitData.tree.sha;
+/** Library files whose committed text is `stableJson(...)` of parsed JSON. */
+const LIBRARY_DOCUMENTS = {
+  index:      `${LIBRARY_ROOT}/stimuli.json`,
+  provenance: `${LIBRARY_ROOT}/provenance.json`,
+  publishing: `${LIBRARY_ROOT}/publishing.json`,
+  labels:     `${LIBRARY_ROOT}/labels.json`,
+};
 
-  const manifestRepoPath = `${gameFolder(game)}/manifest.json`;
-  const manifestFile     = await gh(env, 'GET', `contents/${manifestRepoPath}`);
-  const manifest         = JSON.parse(base64ToUtf8(manifestFile.content.replace(/\s/g, '')));
-
-  // Add folder if new
-  if (!manifest.folders.includes(folder)) {
-    manifest.folders = [...manifest.folders, folder].sort();
-    manifest.images[folder] = [];
-  }
-  // Remove old entry when extension changed (e.g. bear.svg → bear.jpg)
-  if (oldLocalPath && manifest.images[folder]) {
-    manifest.images[folder] = manifest.images[folder].filter(p => p !== oldLocalPath);
-  }
-  // Add new image path if not already present
-  if (!manifest.images[folder].includes(localPath)) {
-    manifest.images[folder] = [...manifest.images[folder], localPath].sort();
-  }
-  manifest.generated = new Date().toISOString();
-
-  const imgBlob = await gh(env, 'POST', 'git/blobs', {
-    content:  arrayBufferToBase64(imgBytes),
-    encoding: 'base64',
-  });
-  const manifestBlob = await gh(env, 'POST', 'git/blobs', {
-    content:  utf8ToBase64(JSON.stringify(manifest, null, 2) + '\n'),
-    encoding: 'base64',
-  });
-
-  const treeEntries = [
-    { path: repoPath,         mode: '100644', type: 'blob', sha: imgBlob.sha },
-    { path: manifestRepoPath, mode: '100644', type: 'blob', sha: manifestBlob.sha },
-  ];
-
-  const newTree   = await gh(env, 'POST', 'git/trees', { base_tree: treeSha, tree: treeEntries });
-  const newCommit = await gh(env, 'POST', 'git/commits', {
-    message: `Admin: save image ${repoPath}`,
-    tree:    newTree.sha,
-    parents: [headSha],
-  });
-
-  const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${env.GITHUB_BRANCH || 'main'}`, { sha: newCommit.sha, force: false });
-  if (refRes.status === 422) throw new Error('CONFLICT');
-  if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
+async function ghJsonFile(env, repoPath) {
+  const file = await gh(env, 'GET', `contents/${repoPath}`);
+  return JSON.parse(base64ToUtf8(file.content.replace(/\s/g, '')));
 }
 
-// ─── Atomic commit: IDMatchGame/NameIDGame image remove ──────────────────────
+async function sha256Hex(input) {
+  const bytes = typeof input === 'string' ? new TextEncoder().encode(input) : new Uint8Array(input);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
-async function atomicManifestRemoveCommit(env, game, folder, filename, repoPath) {
-  const refData    = await gh(env, 'GET', `git/ref/heads/${env.GITHUB_BRANCH || 'main'}`);
-  const headSha    = refData.object.sha;
-  const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
-  const treeSha    = commitData.tree.sha;
+/** Everything `library.mjs` needs, read straight from the branch. */
+async function readLibraryState(env) {
+  const [index, provenance, publishing, labelsFile, ...manifestList] = await Promise.all([
+    ghJsonFile(env, LIBRARY_DOCUMENTS.index),
+    ghJsonFile(env, LIBRARY_DOCUMENTS.provenance),
+    ghJsonFile(env, LIBRARY_DOCUMENTS.publishing),
+    ghJsonFile(env, LIBRARY_DOCUMENTS.labels),
+    ...LIBRARY_GAMES.map(g => ghJsonFile(env, `${g}/manifest.json`)),
+  ]);
+  return {
+    index,
+    provenance,
+    publishing,
+    labelsFile,
+    labels: labelsFile.overrides || {},
+    derivedLabels: labelsFile.derived || {},
+    manifests: Object.fromEntries(LIBRARY_GAMES.map((g, i) => [g, manifestList[i]])),
+  };
+}
 
-  const manifestRepoPath = `${gameFolder(game)}/manifest.json`;
-  const manifestFile     = await gh(env, 'GET', `contents/${manifestRepoPath}`);
-  const manifest         = JSON.parse(base64ToUtf8(manifestFile.content.replace(/\s/g, '')));
+/**
+ * The committed text of every library file an `apply*` result changes.
+ *
+ * Same set `build.mjs` writes, so an unchanged document drops out here rather
+ * than landing in the commit as a no-op diff — both producers serialise through
+ * `stableJson`, which is what makes the comparison exact.
+ */
+function changedLibraryDocuments(state, result) {
+  const proposed = new Map();
+  if (result.index)      proposed.set(LIBRARY_DOCUMENTS.index, result.index);
+  if (result.provenance) proposed.set(LIBRARY_DOCUMENTS.provenance, result.provenance);
+  if (result.publishing) proposed.set(LIBRARY_DOCUMENTS.publishing, result.publishing);
+  if (result.labels || result.derivedLabels) {
+    proposed.set(LIBRARY_DOCUMENTS.labels, {
+      ...state.labelsFile,
+      overrides: sortKeys(result.labels || state.labels),
+      derived:   sortKeys(result.derivedLabels || state.derivedLabels),
+    });
+  }
+  for (const [game, manifest] of Object.entries(result.manifests || {})) {
+    proposed.set(`${game}/manifest.json`, manifest);
+  }
 
-  if (manifest.images[folder]) {
-    manifest.images[folder] = manifest.images[folder].filter(p => !p.endsWith(`/${filename}`));
-    if (manifest.images[folder].length === 0) {
-      manifest.folders = manifest.folders.filter(f => f !== folder);
-      delete manifest.images[folder];
+  const committed = new Map([
+    [LIBRARY_DOCUMENTS.index, state.index],
+    [LIBRARY_DOCUMENTS.provenance, state.provenance],
+    [LIBRARY_DOCUMENTS.publishing, state.publishing],
+    [LIBRARY_DOCUMENTS.labels, state.labelsFile],
+    ...Object.entries(state.manifests).map(([game, m]) => [`${game}/manifest.json`, m]),
+  ]);
+
+  const changed = new Map();
+  for (const [repoPath, value] of proposed) {
+    const text = stableJson(value);
+    if (text !== stableJson(committed.get(repoPath))) changed.set(repoPath, text);
+  }
+  return changed;
+}
+
+/**
+ * Thread one `apply*` result back into the state the next one reads, so a batch
+ * of admin operations folds through `library.mjs` in order. `games` carries the
+ * programme + exclusion state forward; without it the second op in a batch would
+ * re-derive it from the manifests it has already superseded.
+ */
+function foldLibraryState(state, applied) {
+  return {
+    ...state,
+    index:         applied.index         || state.index,
+    provenance:    applied.provenance    || state.provenance,
+    manifests:     applied.manifests     || state.manifests,
+    games:         applied.games         || state.games,
+    publishing:    applied.publishing    || state.publishing,
+    labels:        applied.labels        || state.labels,
+    derivedLabels: applied.derivedLabels || state.derivedLabels,
+  };
+}
+
+/**
+ * The folded state as a set of documents to commit. `generated` is the index
+ * digest rather than a timestamp, so it is stamped once here from the final
+ * index — every intermediate projection carried a stamp that no longer holds.
+ */
+async function finalLibraryDocuments(state) {
+  return {
+    index:         state.index,
+    provenance:    state.provenance,
+    publishing:    state.games ? publishingFrom(state.games) : state.publishing,
+    labels:        state.labels,
+    derivedLabels: state.derivedLabels,
+    manifests:     stampManifests(state.manifests, await sha256Hex(stableJson(state.index))),
+  };
+}
+
+/**
+ * Read the library, plan a change against it, and commit the whole thing as one
+ * tree. Retried end-to-end: `force: false` rejects the ref update when another
+ * commit landed after the head we read, so the plan is recomputed against the
+ * new head rather than replayed onto a stale one.
+ *
+ * @param {function} plan `(state) => { message, documents, blobs, removeRepoPaths, ...result }`
+ */
+async function commitLibraryChange(env, plan) {
+  const branch = env.GITHUB_BRANCH || 'main';
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const refData    = await gh(env, 'GET', `git/ref/heads/${branch}`);
+    const headSha    = refData.object.sha;
+    const commitData = await gh(env, 'GET', `git/commits/${headSha}`);
+    const treeSha    = commitData.tree.sha;
+
+    const state  = await readLibraryState(env);
+    const change = await plan(state);
+    if (!change.documents.size && !(change.blobs || []).length && !(change.removeRepoPaths || []).length) {
+      return change; // nothing to do — don't spend a commit on it
+    }
+
+    const tree = [];
+    for (const { repoPaths, bytes } of change.blobs || []) {
+      const blob = await gh(env, 'POST', 'git/blobs', { content: arrayBufferToBase64(bytes), encoding: 'base64' });
+      for (const repoPath of repoPaths) tree.push({ path: repoPath, mode: '100644', type: 'blob', sha: blob.sha });
+    }
+    for (const [repoPath, text] of change.documents) {
+      const blob = await gh(env, 'POST', 'git/blobs', { content: utf8ToBase64(text), encoding: 'base64' });
+      tree.push({ path: repoPath, mode: '100644', type: 'blob', sha: blob.sha });
+    }
+    for (const repoPath of change.removeRepoPaths || []) {
+      tree.push({ path: repoPath, mode: '100644', type: 'blob', sha: null });
+    }
+
+    const newTree   = await gh(env, 'POST', 'git/trees', { base_tree: treeSha, tree });
+    const newCommit = await gh(env, 'POST', 'git/commits', {
+      message: change.message,
+      tree:    newTree.sha,
+      parents: [headSha],
+    });
+
+    const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${branch}`, { sha: newCommit.sha, force: false });
+    if (refRes.ok) return change;
+    if (refRes.status === 422 && attempt < 2) continue;
+    throw new Error(refRes.status === 422 ? 'CONFLICT' : `ref update: ${refRes.status}`);
+  }
+  throw new Error('CONFLICT');
+}
+
+/**
+ * Which stimulus an admin request names.
+ *
+ * AdminTools identifies an image by the path the manifest serves it from, and
+ * after the repoint that is a library URL. A legacy `_Resources` path still
+ * resolves through the manifest's own `pathAliases`, and folder + filename is
+ * the last resort because ids are derived from exactly that pair.
+ */
+function resolveStimulusId(state, game, { id, localPath, folder, filename }) {
+  const known = new Set(state.index.stimuli.map(e => e.id));
+  if (id && known.has(id)) return id;
+
+  const byUrl = new Map();
+  for (const entry of state.index.stimuli) {
+    for (const url of [entry.image, entry.placeholder, ...(entry.variants || [])]) {
+      if (url) byUrl.set(url, entry.id);
     }
   }
-  if (manifest.displayNames) {
-    for (const p of Object.keys(manifest.displayNames)) {
-      if (p.endsWith(`/${folder}/${filename}`)) delete manifest.displayNames[p];
-    }
+  if (localPath) {
+    const aliases = (state.manifests[game] && state.manifests[game].pathAliases) || {};
+    const url = byUrl.has(localPath) ? localPath : aliases[localPath];
+    if (url && byUrl.has(url)) return byUrl.get(url);
   }
-  manifest.generated = new Date().toISOString();
+  if (folder && filename) {
+    const derived = stimulusId(folder, stemOf(filename));
+    if (known.has(derived)) return derived;
+  }
+  return null;
+}
 
-  const manifestBlob = await gh(env, 'POST', 'git/blobs', {
-    content:  utf8ToBase64(JSON.stringify(manifest, null, 2) + '\n'),
-    encoding: 'base64',
+async function libraryUploadPlan(state, { game, folder, filename, bytes }) {
+  const applied = applyUpload(state, {
+    game,
+    category: folder,
+    filename,
+    sha256: await sha256Hex(bytes),
   });
-
-  const treeEntries = [
-    { path: repoPath,         mode: '100644', type: 'blob', sha: null },
-    { path: manifestRepoPath, mode: '100644', type: 'blob', sha: manifestBlob.sha },
-  ];
-
-  const newTree   = await gh(env, 'POST', 'git/trees', { base_tree: treeSha, tree: treeEntries });
-  const newCommit = await gh(env, 'POST', 'git/commits', {
-    message: `Admin: remove image ${repoPath}`,
-    tree:    newTree.sha,
-    parents: [headSha],
-  });
-
-  const refRes = await ghRaw(env, 'PATCH', `git/refs/heads/${env.GITHUB_BRANCH || 'main'}`, { sha: newCommit.sha, force: false });
-  if (refRes.status === 422) throw new Error('CONFLICT');
-  if (!refRes.ok) throw new Error(`ref update: ${refRes.status}`);
+  const folded = foldLibraryState(state, applied);
+  return {
+    id: applied.id,
+    url: applied.url,
+    message: `Admin: add ${folder}/${filename} to the shared stimulus library`,
+    documents: changedLibraryDocuments(state, await finalLibraryDocuments(folded)),
+    // One blob, two tree entries: the upload is the source a rebuild rescans,
+    // the img/ path is what the published URL resolves to.
+    blobs: [{ repoPaths: applied.addRepoPaths, bytes }],
+    removeRepoPaths: applied.removeRepoPaths,
+  };
 }
 
 // ─── Atomic commit: topic folder rename (archive / restore / purge) ───────────
@@ -1584,7 +1731,10 @@ async function executeBatch(env, operations) {
           resolved[idx] = { idx, op, blobSha: null, ext, r2Base: base };
         } else {
           const blob = await gh(env, 'POST', 'git/blobs', { content: arrayBufferToBase64(bytes), encoding: 'base64' });
-          resolved[idx] = { idx, op, blobSha: blob.sha, ext };
+          // The library records a content hash per source file, and the bytes are
+          // dropped after this phase — so hash them here, not in the commit phase.
+          const sha256 = op.type === 'save-image' && isLibraryGame(op.game) ? await sha256Hex(bytes) : null;
+          resolved[idx] = { idx, op, blobSha: blob.sha, ext, sha256 };
         }
       } catch (err) {
         resolved[idx] = { idx, op, blobSha: null, ext: null, error: 'Image failed: ' + err.message };
@@ -1613,19 +1763,16 @@ async function doBatchCommit(env, branch, resolved) {
   const treeSha    = commitData.tree.sha;
 
   // Determine which index files are needed
-  const manifestGames = new Set();
-  let needFPG = false, needFFC = false, needIV = false;
+  const LIBRARY_OPS = ['save-image', 'remove-image', 'save-display-name'];
+  let needLibrary = false, needFPG = false, needFFC = false, needIV = false;
   for (const { op, error } of resolved) {
     if (error) continue;
     const t = op.type;
-    if (t === 'save-image' || t === 'remove-image') {
-      if (['IDMatchGame', 'NameIDGame'].includes(op.game)) manifestGames.add(op.game);
-      if (op.game === 'FamousPersonGame') needFPG = true;
-    }
+    if (LIBRARY_OPS.includes(t) && isLibraryGame(op.game)) needLibrary = true;
+    if ((t === 'save-image' || t === 'remove-image') && op.game === 'FamousPersonGame') needFPG = true;
     if (t === 'ffc-save' || t === 'ffc-remove') needFFC = true;
     if (t === 'iv-save'  || t === 'iv-remove')  needIV  = true;
     if (t === 'save-display-name') {
-      if (['IDMatchGame', 'NameIDGame'].includes(op.game)) manifestGames.add(op.game);
       if (op.game === 'FamousPersonGame') needFPG = true;
       if (op.game === 'FFCGame')          needFFC = true;
       if (op.game === 'IntraverbalGame')  needIV  = true;
@@ -1634,10 +1781,6 @@ async function doBatchCommit(env, branch, resolved) {
 
   // Read needed index files in parallel
   const fetches = {};
-  for (const game of manifestGames) {
-    fetches[`m_${game}`] = gh(env, 'GET', `contents/${gameFolder(game)}/manifest.json`)
-      .then(f => JSON.parse(base64ToUtf8(f.content.replace(/\s/g, ''))));
-  }
   if (needFPG) {
     fetches['fpg'] = gh(env, 'GET', 'contents/famous-person/index.html')
       .then(f => base64ToUtf8(f.content.replace(/\s/g, '')));
@@ -1655,19 +1798,24 @@ async function doBatchCommit(env, branch, resolved) {
   const fetchVals = await Promise.all(fetchKeys.map(k => fetches[k]));
   const reads     = Object.fromEntries(fetchKeys.map((k, i) => [k, fetchVals[i]]));
 
-  const manifests = {};
-  for (const game of manifestGames) manifests[game] = reads[`m_${game}`];
   let fpgHtml     = reads['fpg'] || null;
   const fpgOrig   = fpgHtml;
   const ffcItems  = reads['ffc'] || null;
   const ivItems   = reads['iv']  || null;
 
+  // Library ops fold through `library.mjs` one after another and the whole
+  // library is written once at the end. The manifests are a projection, so the
+  // last projection IS the result of applying every op in turn — and one write
+  // per file keeps a batch to one blob each instead of one per operation.
+  const libraryBefore = needLibrary ? await readLibraryState(env) : null;
+  let   libraryState  = libraryBefore;
+  const libraryTree   = new Map(); // repo path -> blob sha, or null to delete
+
   const treeEntries = [];
   const results     = new Array(resolved.length).fill(null);
-  const modifiedManifests = new Set();
   let   ffcModified = false, ivModified = false;
 
-  for (const { idx, op, blobSha, ext, error } of resolved) {
+  for (const { idx, op, blobSha, ext, sha256, error } of resolved) {
     if (error) { results[idx] = { ok: false, error }; continue; }
 
     const t = op.type;
@@ -1684,20 +1832,19 @@ async function doBatchCommit(env, branch, resolved) {
         if (op.personName) fpgHtml = patchImg(fpgHtml, op.personName, localPath);
         else if (op.personMeta) fpgHtml = appendPerson(fpgHtml, localPath, op.personMeta);
         results[idx] = { ok: true, localPath, filename: saveFilename };
+      } else if (isLibraryGame(game) && /^T_/.test(folder || '')) {
+        const saveFilename = `${filename.replace(/\.[^.]+$/, '')}.${ext}`;
+        const applied = applyUpload(libraryState, {
+          game: gameFolder(game), category: folder, filename: saveFilename, sha256,
+        });
+        libraryState = foldLibraryState(libraryState, applied);
+        // Removals first, then adds: a later op re-adding a path an earlier one
+        // superseded has to win, and vice versa.
+        for (const p of applied.removeRepoPaths) libraryTree.set(p, null);
+        for (const p of applied.addRepoPaths)    libraryTree.set(p, blobSha);
+        results[idx] = { ok: true, localPath: applied.url, path: applied.url, url: applied.url, id: applied.id, filename: saveFilename };
       } else {
-        const base         = filename.replace(/\.[^.]+$/, '');
-        const saveFilename = `${base}.${ext}`;
-        const oldFilename  = filename !== saveFilename ? filename : null;
-        const repoPath     = `${gameFolder(game)}/_Resources/_imgSource/${folder}/${saveFilename}`;
-        const localPath    = `_Resources/_imgSource/${folder}/${saveFilename}`;
-        const oldLocalPath = oldFilename ? `_Resources/_imgSource/${folder}/${oldFilename}` : null;
-        treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: blobSha });
-        const m = manifests[game];
-        if (!m.folders.includes(folder)) { m.folders = [...m.folders, folder].sort(); m.images[folder] = []; }
-        if (oldLocalPath && m.images[folder]) m.images[folder] = m.images[folder].filter(p => p !== oldLocalPath);
-        if (!m.images[folder].includes(localPath)) m.images[folder] = [...m.images[folder], localPath].sort();
-        modifiedManifests.add(game);
-        results[idx] = { ok: true, localPath, filename: saveFilename };
+        results[idx] = { ok: false, error: `Cannot save an image for ${game}/${folder}` };
       }
 
     } else if (t === 'ffc-save') {
@@ -1734,11 +1881,18 @@ async function doBatchCommit(env, branch, resolved) {
     } else if (t === 'save-display-name') {
       const { game, localPath: imgPath, displayName, itemId, personName } = op;
       const trimmed = typeof displayName === 'string' ? displayName.trim() : '';
-      if (['IDMatchGame', 'NameIDGame'].includes(game) && manifests[game]) {
-        const m = manifests[game];
-        if (!m.displayNames) m.displayNames = {};
-        if (trimmed) m.displayNames[imgPath] = trimmed; else delete m.displayNames[imgPath];
-        modifiedManifests.add(game);
+      if (isLibraryGame(game)) {
+        const stimulus = resolveStimulusId(libraryState, gameFolder(game), {
+          id: op.id, localPath: imgPath, folder: op.folder, filename: op.filename,
+        });
+        if (!stimulus) {
+          results[idx] = { ok: false, error: `No stimulus in the shared library for ${imgPath || op.id}` };
+          continue;
+        }
+        const applied = applyLabel(libraryState, { id: stimulus, label: trimmed });
+        libraryState = foldLibraryState(libraryState, applied);
+        results[idx] = { ok: true, id: stimulus, displayName: applied.label };
+        continue;
       } else if (game === 'FFCGame' && ffcItems) {
         const item = (ffcItems.items || []).find(i => i.id === itemId);
         if (item) { item.label = trimmed; ffcModified = true; }
@@ -1761,20 +1915,22 @@ async function doBatchCommit(env, branch, resolved) {
         treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: null });
         if (personName && fpgHtml) fpgHtml = patchImg(fpgHtml, personName, '');
         if (env.IMAGES) { try { await env.IMAGES.delete(fpgR2Key(filename.replace(/\.[^.]+$/, ''))); } catch { /* non-fatal */ } }
-      } else if (manifests[game]) {
-        const repoPath = `${gameFolder(game)}/_Resources/_imgSource/${folder}/${filename}`;
-        treeEntries.push({ path: repoPath, mode: '100644', type: 'blob', sha: null });
-        const m = manifests[game];
-        if (m.images[folder]) {
-          m.images[folder] = m.images[folder].filter(p => !p.endsWith(`/${filename}`));
-          if (!m.images[folder].length) { m.folders = m.folders.filter(f => f !== folder); delete m.images[folder]; }
+      } else if (isLibraryGame(game)) {
+        const stimulus = resolveStimulusId(libraryState, gameFolder(game), {
+          id: op.id, localPath: op.localPath, folder, filename,
+        });
+        if (!stimulus) {
+          results[idx] = { ok: false, error: `No stimulus in the shared library for ${folder}/${filename}` };
+          continue;
         }
-        if (m.displayNames) {
-          for (const p of Object.keys(m.displayNames)) {
-            if (p.endsWith(`/${folder}/${filename}`)) delete m.displayNames[p];
-          }
-        }
-        modifiedManifests.add(game);
+        // An exclusion, not a delete: the same bytes back the other two games.
+        const applied = applyExclusion(libraryState, { game: gameFolder(game), category: folder, id: stimulus });
+        libraryState = foldLibraryState(libraryState, applied);
+        results[idx] = { ok: true, id: stimulus, excluded: true };
+        continue;
+      } else {
+        results[idx] = { ok: false, error: `Cannot remove an image for ${game}` };
+        continue;
       }
       results[idx] = { ok: true };
 
@@ -1802,13 +1958,12 @@ async function doBatchCommit(env, branch, resolved) {
 
   // Write back modified index files
   const ts = new Date().toISOString();
-  for (const game of modifiedManifests) {
-    const m = manifests[game];
-    m.generated = ts;
-    const blob = await gh(env, 'POST', 'git/blobs', {
-      content: utf8ToBase64(JSON.stringify(m, null, 2) + '\n'), encoding: 'base64',
-    });
-    treeEntries.push({ path: `${gameFolder(game)}/manifest.json`, mode: '100644', type: 'blob', sha: blob.sha });
+  if (libraryState && libraryState !== libraryBefore) {
+    for (const [path, sha] of libraryTree) treeEntries.push({ path, mode: '100644', type: 'blob', sha });
+    for (const [path, text] of changedLibraryDocuments(libraryBefore, await finalLibraryDocuments(libraryState))) {
+      const blob = await gh(env, 'POST', 'git/blobs', { content: utf8ToBase64(text), encoding: 'base64' });
+      treeEntries.push({ path, mode: '100644', type: 'blob', sha: blob.sha });
+    }
   }
   if (fpgHtml && fpgHtml !== fpgOrig) {
     const blob = await gh(env, 'POST', 'git/blobs', { content: utf8ToBase64(fpgHtml), encoding: 'base64' });

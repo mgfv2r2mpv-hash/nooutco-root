@@ -1,5 +1,6 @@
 {
   "schema": 1,
-  "note": "Technician-set stimulus labels, by stimulus id. Hand-edited or written by AdminTools; NOT generated. shared/stimuli/build.mjs reads this and it wins over both the label frozen in source-manifests.json and the one derived from the filename, so a label set through AdminTools survives a rebuild.",
-  "overrides": {}
+  "note": "Technician-set stimulus labels, by stimulus id. Hand-edited or written by AdminTools; NOT generated. shared/stimuli/build.mjs reads `overrides` and it wins over both the label frozen in source-manifests.json and the one derived from the filename, so a label set through AdminTools survives a rebuild. `derived` records the label each override replaced, so clearing a display name puts the library's own label back without waiting for a rebuild; the build ignores it.",
+  "overrides": {},
+  "derived": {}
 }
