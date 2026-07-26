@@ -1926,3 +1926,113 @@ suite grew 777 → 801. `APP_VERSION` 0.19.4 → 0.19.5.
 - Stage 7 (unchanged): `think-or-say`'s DOM-as-state (`buildDeck()` and the
   prompt path read the controls directly), and `ffc`'s two configuration
   documents from finding 61.
+
+---
+
+## Stage 7, part 1 — `think-or-say` stops reading its programme off the panel
+
+The first of Stage 7's five items (`Fix think-or-say's DOM-as-state`), plus the
+one-line-per-game re-dress that removing it turned up.
+
+`state.cfg` is now the single normalized copy of this game's eleven programme
+parameters, and the controls are a **view** of it: `applySettingsToControls()`
+writes them, and `editSetting()` reads back exactly one — the control whose
+`change` event just fired. Every runtime read moved with it: `buildDeck()`,
+`revealChoices()`, `answerCorrect()`, `answerWrong()`, `doPrompt()`,
+`scheduleAutoPrompt()`, `willRepresent()` and `syncPromptDelayEnabled()` all
+read `state.cfg`, and no line of the game reads a control any more except the
+one binding row that owns it.
+
+### 69. The panel could not show four of the values the store could hold
+
+All ten games declare the prompt delay as `int {min:1, max:10}` while the
+select offered **1 / 2 / 3 / 4 / 5 / 10**. So 6, 7, 8 and 9 seconds were legal
+to store and impossible to display: `select.value = 7` matches no `<option>`,
+the browser resolves `.value` to `''`, and the control renders blank.
+
+That is cosmetic in the nine games that keep their configuration in `state` —
+the panel blanks, the programme still runs the stored delay. In `think-or-say`
+it was not cosmetic, because the panel *was* the configuration:
+
+- `scheduleAutoPrompt()` computed `parseInt('') * 1000` → `NaN`, and
+  `setTimeout(fn, NaN)` fires immediately. A 7-second time delay became an
+  **instant prompt** — the opposite of the prompt-fading procedure the setting
+  exists to run.
+- `saveSettings()` rebuilt the whole config from the panel on every edit, so
+  the next unrelated toggle read that blank select and silently wrote the
+  default 3 over the technician's 7.
+
+The fix is **additive**, per hard constraint 1: the missing `6s`–`9s` options
+were added to all ten selects rather than the declared range narrowed to the
+six values the select happened to offer. Narrowing would have removed
+configurability a technician already has, and 1-second granularity is what a
+progressive time-delay procedure actually wants.
+
+### 70. "Restored form control" is the realistic form of DOM-as-state
+
+The refactor's observable difference is confined to controls that change
+**without a `change` event** — which sounds exotic and is not: browsers restore
+form-control state across a reload and a back-forward navigation. Under the old
+code a checkbox that came back ticked over a stored configuration saying
+otherwise was silently adopted as a programme change, both into the next deck
+and into storage at the next unrelated edit.
+
+Three tests pin it, each seeding the store and then ticking a checkbox with no
+event: the deck is built from the configuration (29 non-tricky cards, not 32),
+an unrelated real edit persists only the option that was edited, and a trial
+runs errorless/reason behaviour off the configuration. `editSetting()` also
+re-renders the panel from the config in force afterwards, so the stray control
+is visibly put back rather than left contradicting the programme.
+
+### 71. Two fixes for one failure mode need one test each
+
+The instant-prompt bug needs *both* halves to be reachable — a value the select
+cannot render AND a runtime that reads the select — so with the options added,
+a mutation that puts `parseInt(el.selPromptDelay.value, 10)` back passes a test
+that merely seeds 7 s. The auto-prompt test therefore does both: it asserts the
+select shows `7` (the re-dress), then sets the select to `1` **without** an
+event and asserts no prompt appears within 2 s (the refactor). One assertion per
+fix, in one flow.
+
+### Coverage
+
+`tests/settings-store-adoption.spec.js` gained a 7th row test — the prompt-delay
+select can show every value the store may hold, for all nine table games
+(`emotions` names its own `delayOption`, since its `promptDelay` *is* the
+seconds — finding 63) — and four `think-or-say` tests: the deck, the unrelated
+edit, a trial's errorless/reason behaviour, and the auto-prompt delay.
+`tests/game-settings.spec.js` carries the same renderability test for
+`sequences`, which is the one game not in that table (and which renders its
+panel on open, not on load).
+
+Mutation-tested eight ways, each restored from a byte-compared copy: the added
+options dropped from `think-or-say` (2 tests) and from `emotions` (1),
+`editSetting()` re-reading the whole panel (1), the post-edit re-render removed
+(1), and `scheduleAutoPrompt` (1), `buildDeck` (1), `errorless` (1) and
+`showReason` (1) each put back on their control.
+
+**Suite: 835 passed, 8 failed — all 8 in `glam-team-makeover.spec.js`**, at the
+three test titles recorded as the accepted baseline. Zero new failures; the
+suite grew 801 → 843. `APP_VERSION` 0.19.5 → 0.20.0 (minor: the panels gained
+selectable values).
+
+### Still owed for Stage 7
+
+- Adopt `emotions`' `.option-toggle` pills and help-text discipline in the
+  other games (the re-dress proper).
+- Propagate `sequences`' three prompting-method radio cards (Most-to-Least /
+  Least-to-Most / Time-Delay as presets over the existing primitives, Advanced
+  overrides intact) to the eight games that expose only the primitives.
+  `sequences/game.js:743-756` is the whole pattern: `METHOD_PRESETS` plus
+  `applyMethodPreset()`, called only from the radio's own handler — never on
+  load, which is what keeps a preset from overwriting a stored override.
+- Collapse the three hand-rolled token boards onto `NooutcoTokens`
+  (`market`, `matching` and `receptive` each carry their own copy of
+  `generateVRSchedule`). Note the storage question this raises: the token
+  options are declared fields of each game's `SETTINGS_FIELDS` today, while
+  `NooutcoTokens` persists to its own `noaba.tokens.<ns>.v1` key — moving them
+  without a fold would drop a technician's token configuration.
+- Add trial-count / session-length and a configurable ITI. No game has either,
+  so this is Stage 7's only purely additive item.
+- Carried from Stage 6: `ffc`'s two configuration documents (finding 61), and
+  the press-and-hold gating still adopted only in `sequences` (finding 47).

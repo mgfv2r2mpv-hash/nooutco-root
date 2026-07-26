@@ -440,6 +440,8 @@ const ADOPTED = [
     url: '/emotions/',
     legacyKey: 'noaba.emotionID.v1',
     storeKey: 'nooutco.settings.emotions',
+    // The one game whose prompt delay is not called `promptDelaySecs`.
+    delayOption: 'promptDelay',
     // Every option here is a pill, a segmented button or a chip rather than a
     // form control, so this row reads `aria-checked`, `data-v` and text.
     boot: { selector: '#targets-count', notText: '0' },
@@ -667,6 +669,10 @@ for (const row of ADOPTED) {
   const boot = row.boot || DEFAULT_BOOT;
   const probe = row.probe || DEFAULT_PROBE;
   const secondary = row.secondary || DEFAULT_SECONDARY;
+  // Nine games spell the prompt delay `promptDelaySecs` (an int, paired with a
+  // `promptDelay` bool). `emotions` has no bool at all and its `promptDelay`
+  // IS the seconds — finding 63, and it cannot be harmonised away.
+  const delayOption = row.delayOption || 'promptDelaySecs';
   const OUT_OF_RANGE = row.outOfRange || outOfRange(probe);
   // What the store holds after the retired payload folds. Identical to the
   // seeded payload for every game whose fold is a straight carry-forward;
@@ -760,6 +766,23 @@ for (const row of ADOPTED) {
     for (const [option, value] of Object.entries(OUT_OF_RANGE.expected)) {
       expect(working[option], `${option} was clamped, not left unshowable`).toEqual(value);
     }
+  });
+
+  // Stage 7. The clamp above only makes a stored value legal; it does not make
+  // it SHOWABLE. All ten games declare the prompt delay as `int {min:1,max:10}`
+  // while the select offered 1/2/3/4/5/10, so 6-9 s were in range and
+  // unrenderable at once: `select.value = 7` matches no option, the browser
+  // resolves it to '', and the panel shows a blank where a programme parameter
+  // should be. The options were added (never removed — hard constraint 1), and
+  // this is what fails if a later tidy-up prunes them back.
+  test(`${game}: the prompt-delay select can show every value the store may hold`, async ({ page }) => {
+    await seed(page, [[storeKey, { working: { [delayOption]: 7 } }]]);
+    await page.goto(url);
+    await bootedWithSettings(page, boot);
+
+    await expect(page.locator('#sel-prompt-delay')).toHaveValue('7');
+    expect((await readStore(page, storeKey)).working[delayOption], 'and it is still 7 in the store')
+      .toBe(7);
   });
 }
 
@@ -874,6 +897,118 @@ test('think-or-say: the folded configuration reaches the deck, not just the pane
     .toHaveText('Your friend gets a new shirt with a dinosaur on it. You love dinosaurs too.');
   await expect(page.locator('#progress-label')).toHaveText('Card 1 of 12');
   expect(errors, 'the session started without a page error').toEqual([]);
+});
+
+// ── think-or-say: the panel is a view of the configuration (Stage 7) ───────
+
+/**
+ * This game used to read its programme parameters straight off the controls —
+ * `buildDeck()` read `#sel-category`, `scheduleAutoPrompt()` read
+ * `#sel-prompt-delay`, and `saveSettings()` rebuilt the whole config from the
+ * panel on every edit. `state.cfg` is now the single normalized copy and the
+ * controls are a view of it.
+ *
+ * The difference is only visible when a control's value changes WITHOUT a
+ * `change` event, which is not the exotic case it sounds like: browsers restore
+ * form-control state across a reload and a back-forward navigation, so a
+ * checkbox can come back ticked over a stored configuration that says
+ * otherwise. Reading the panel in bulk turns that into a programme change no
+ * technician made.
+ */
+/** Exactly what a restored form control looks like: the property moves, no event. */
+async function silentlyTick(page, selector) {
+  await page.evaluate((sel) => { document.querySelector(sel).checked = true; }, selector);
+}
+
+test('think-or-say: a control changed without a change event never reaches the deck', async ({ page }) => {
+  await seed(page, [[TOS.storeKey, { working: { category: 'all', includeTricky: false } }]]);
+  await page.goto(TOS.url);
+  await bootedWithSettings(page, TOS.boot);
+  await expect(page.locator('#chk-include-tricky')).not.toBeChecked();
+
+  await silentlyTick(page, '#chk-include-tricky');
+
+  // 29 of the 32 cards are non-tricky. A deck of 32 means buildDeck() read the
+  // checkbox rather than the configuration in force.
+  await page.locator('#btn-play').click();
+  await expect(page.locator('#progress-label')).toHaveText('Card 1 of 29');
+});
+
+test('think-or-say: an unrelated edit does not adopt a control nobody changed', async ({ page }) => {
+  await seed(page, [[TOS.storeKey, { working: { category: 'all', includeTricky: false } }]]);
+  await page.goto(TOS.url);
+  await bootedWithSettings(page, TOS.boot);
+
+  await silentlyTick(page, '#chk-include-tricky');
+
+  // An unrelated, REAL edit — the path that used to rebuild the whole config
+  // from the panel, quietly adopting every control it found on the way past.
+  await page.evaluate(() => {
+    const box = document.querySelector('#chk-show-reason');
+    box.checked = false;
+    box.dispatchEvent(new Event('change'));
+  });
+
+  const { working } = await readStore(page, TOS.storeKey);
+  expect(working.showReason, 'the edit the technician made is persisted').toBe(false);
+  expect(working.includeTricky, 'the one they did not make is not').toBe(false);
+  // And the panel is re-rendered from the configuration in force, so the
+  // silently-restored control is put back rather than left lying.
+  await expect(page.locator('#chk-include-tricky')).not.toBeChecked();
+});
+
+test('think-or-say: a trial runs on the stored configuration, not on the panel', async ({ page }) => {
+  // The two remaining runtime reads: errorless prompting (which disables the
+  // wrong tile) and the reason card. Both used to come off a checkbox.
+  await seed(page, [[TOS.storeKey, {
+    working: { category: 'kind', order: 'sequential', errorless: false, showReason: true, noErrorAnim: true },
+  }]]);
+  await page.goto(TOS.url);
+  await bootedWithSettings(page, TOS.boot);
+
+  await silentlyTick(page, '#chk-errorless');
+  await page.evaluate(() => { document.querySelector('#chk-show-reason').checked = false; });
+
+  await page.locator('#btn-play').click();
+  await page.locator('#reveal-panel').click();
+
+  // The first 'kind' card in declaration order is a SAY IT, so THINK IT is wrong.
+  await page.locator('#choices .choice[data-answer="think"]').click();
+  await expect(page.locator('#choices .choice[data-answer="think"]'),
+    'errorless is off, so the wrong tile stays available').not.toBeDisabled();
+
+  await page.locator('#choices .choice[data-answer="say"]').click();
+  await expect(page.locator('#scenario-reason'), 'the reason card is still on').toBeVisible();
+});
+
+/**
+ * The delay the learner actually waits comes from the store, not from the
+ * select. Before Stage 7 this read `parseInt(el.selPromptDelay.value, 10)`,
+ * so a stored delay the select could not display resolved to `''` → `NaN` →
+ * `setTimeout(fn, NaN)`, which fires immediately: a 7-second time delay
+ * silently became an instant prompt, defeating the prompt-fading procedure
+ * it exists to run.
+ */
+test('think-or-say: an auto-prompt waits the stored delay, not zero', async ({ page }) => {
+  await seed(page, [[TOS.storeKey, {
+    working: { category: 'kind', order: 'sequential', autoPrompt: true, promptDelay: true, promptDelaySecs: 7 },
+  }]]);
+  await page.goto(TOS.url);
+  await bootedWithSettings(page, TOS.boot);
+  await expect(page.locator('#sel-prompt-delay')).toHaveValue('7');
+
+  // Now put the panel and the configuration in force out of step, the way a
+  // restored form control does, and confirm the programme follows the store.
+  await page.evaluate(() => { document.querySelector('#sel-prompt-delay').value = '1'; });
+
+  await page.locator('#btn-play').click();
+  await page.locator('#reveal-panel').click();
+  await expect(page.locator('#choices')).toBeVisible();
+
+  // Well inside the 7 s delay, and well past the 1 s the panel is showing:
+  // no choice tile may be carrying a prompt yet.
+  await page.waitForTimeout(2000);
+  await expect(page.locator('#choices .prompt-sparkle, #choices .prompt-outline')).toHaveCount(0);
 });
 
 test('ffc: the retired __auto__ tag sentinel folds to an empty selection', async ({ page }) => {
