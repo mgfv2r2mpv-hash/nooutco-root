@@ -274,9 +274,10 @@ test('a pre-join target selection survives a reload', async ({ page }) => {
     targetFilters: { feature: legacy, function: legacy, classWithinGroup: [], classCrossCategory: [] },
   };
 
+  const seededJson = JSON.stringify(seeded);
   await page.addInitScript(
     ([key, value]) => window.localStorage.setItem(key, value),
-    ['ffcgSettings', JSON.stringify(seeded)],
+    ['ffcgSettings', seededJson],
   );
   await page.goto('/ffc/');
   // The tag dropdown is built from the *eligible target* pool, so a filter that
@@ -284,7 +285,14 @@ test('a pre-join target selection survives a reload', async ({ page }) => {
   // means the migration has already had its chance.
   await expect(page.locator('#sel-tag option').first()).not.toHaveText('(no tags available)');
 
-  const saved = JSON.parse(await page.evaluate(() => window.localStorage.getItem('ffcgSettings')));
+  // Read the result out of the shared settings store, not out of `ffcgSettings`.
+  // Since ffc adopted the store, `foldLegacy()` reads the retired key once and
+  // never writes it again — so the retired key still holds the PRE-remap ids,
+  // and the remap `loadItems()` performs lands in the store's working config.
+  const saved = await page.evaluate(
+    (key) => JSON.parse(window.localStorage.getItem(key) || 'null'),
+    'nooutco.settings.ffc.trial',
+  ).then((store) => (store && store.working) || {});
 
   for (const [option, value] of Object.entries(seeded)) {
     if (option === 'targetFilters' || option === 'tag') continue;
@@ -297,4 +305,9 @@ test('a pre-join target selection survives a reload', async ({ page }) => {
     expect([...saved.targetFilters[mode]].sort(), `${mode} targets were remapped, not pruned`)
       .toEqual([...expected].sort());
   }
+
+  // …and the retired key itself is returned exactly as it was seeded, ids and
+  // all: read-then-fold, never drop.
+  const legacyRaw = await page.evaluate(() => window.localStorage.getItem('ffcgSettings'));
+  expect(legacyRaw, 'ffcgSettings is byte-for-byte what was seeded').toBe(seededJson);
 });

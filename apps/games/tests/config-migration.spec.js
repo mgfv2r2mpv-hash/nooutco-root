@@ -38,8 +38,11 @@ const VERSION_KEY = 'nooutco:configVersion';
  */
 const GAMES = [
   { game: 'clock',        url: '/clock/',        settingsKey: 'nooutco.settings.clock' },
-  { game: 'emotions',     url: '/emotions/',     settingsKey: 'noaba.emotionID.v1' },
-  { game: 'ffc',          url: '/ffc/',          settingsKey: 'ffcgSettings' },
+  { game: 'emotions',     url: '/emotions/',     settingsKey: 'nooutco.settings.emotions' },
+  // NOT `nooutco.settings.ffc` — that key holds ffc's Frame 07 session document,
+  // which has the same {sets,last,working} shape and a different schema. The
+  // trial settings took their own key rather than collide with it.
+  { game: 'ffc',          url: '/ffc/',          settingsKey: 'nooutco.settings.ffc.trial' },
   { game: 'intraverbal',  url: '/intraverbal/',  settingsKey: 'nooutco.settings.intraverbal' },
   // matching's retired key was mgSettings and market's mmSettings — the pairing
   // is the opposite of what the folder names suggest. Both have since adopted
@@ -234,6 +237,7 @@ const ROUND_TRIPS = [
     game: 'emotions',
     url: '/emotions/',
     key: 'noaba.emotionID.v1',
+    storeKey: 'nooutco.settings.emotions',
     seeded: {
       set: ['happy', 'sad', 'angry', 'scared', 'tired', 'calm'],
       size: 6,

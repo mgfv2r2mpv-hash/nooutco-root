@@ -32,13 +32,18 @@ import { test, expect } from '@playwright/test';
  * `config-migration.spec.js` against the real `items.json` / `symbols.json`
  * rather than here.
  *
- * Two things the table cannot assume across ten games, so every row may name
+ * Four things the table cannot assume across ten games, so every row may name
  * its own:
- *   - `boot`: the dropdown each game fills straight after `loadSettings()`,
+ *   - `boot`: the control each game fills straight after `loadSettings()`,
  *     which is the signal that the store has already been read
- *   - `probe`: the numeric stepper the generic edit / precedence / clamp
- *     assertions drive. Four games share `#inp-size`; `patterns` has no array
- *     size at all and uses its bank size instead.
+ *   - `probe`: the numeric control the generic edit / precedence / clamp
+ *     assertions drive. Five games share `#inp-size`; `patterns` has no array
+ *     size at all and uses its bank size, `emotions` its prompt delay.
+ *   - `secondary`: a second, non-numeric option the precedence test uses to
+ *     prove the whole config came from the store rather than one field of it.
+ *     Eight games have a prompt-style select; `emotions` does not.
+ *   - `outOfRange`: which stored values are unshowable, which is a property of
+ *     that game's own controls.
  */
 const DEFAULT_BOOT = { selector: '#sel-topic option', notText: '-- scanning --' };
 const DEFAULT_PROBE = {
@@ -48,6 +53,12 @@ const DEFAULT_PROBE = {
   edited: 7,   // what a live edit writes
   ahead: 9,    // what a config already in the store carries
   max: 10,     // what an out-of-range 99 must clamp down to
+};
+const DEFAULT_SECONDARY = {
+  option: 'promptStyle',
+  stale: 'outline',   // what the (by then stale) retired key carries
+  ahead: 'sparkle',   // what the store carries
+  control: ['#sel-prompt-style', 'value', 'sparkle'],
 };
 
 const ADOPTED = [
@@ -376,6 +387,125 @@ const ADOPTED = [
       ['#chk-reduce-motion', 'checked', false],
     ],
   },
+  {
+    game: 'ffc',
+    url: '/ffc/',
+    legacyKey: 'ffcgSettings',
+    // NOT `nooutco.settings.ffc`: that key already holds this game's Frame 07
+    // session document, which has the same {sets,last,working} shape and an
+    // entirely different schema. Sharing it would make foldLegacy() refuse for
+    // any technician who has ever pressed Start Session.
+    storeKey: 'nooutco.settings.ffc.trial',
+    boot: { selector: '#sel-tag option', notText: '(no tags available)' },
+    seeded: {
+      mode: 'function',
+      arraySize: 6,
+      representErrors: false,
+      errorless: true,
+      noErrorAnim: true,
+      promptPersists: true,
+      promptStyle: 'outline',
+      autoPromptEnabled: true,
+      promptDelay: true,
+      promptDelaySecs: 5,
+    },
+    controls: [
+      ['#sel-mode', 'value', 'function'],
+      ['#inp-size', 'value', '6'],
+      ['#chk-represent-errors', 'checked', false],
+      ['#chk-errorless', 'checked', true],
+      ['#chk-no-error-anim', 'checked', true],
+      ['#chk-persists', 'checked', true],
+      ['#sel-prompt-style', 'value', 'outline'],
+      ['#chk-auto-prompt', 'checked', true],
+      ['#chk-prompt-delay', 'checked', true],
+      ['#sel-prompt-delay', 'value', '5'],
+    ],
+    fresh: [
+      ['#sel-mode', 'value', 'feature'],
+      ['#inp-size', 'value', '4'],
+      ['#chk-represent-errors', 'checked', true],
+      ['#chk-errorless', 'checked', false],
+      ['#chk-no-error-anim', 'checked', false],
+      ['#chk-persists', 'checked', false],
+      ['#sel-prompt-style', 'value', 'sparkle'],
+      ['#chk-auto-prompt', 'checked', false],
+    ],
+  },
+  {
+    game: 'emotions',
+    url: '/emotions/',
+    legacyKey: 'noaba.emotionID.v1',
+    storeKey: 'nooutco.settings.emotions',
+    // Every option here is a pill, a segmented button or a chip rather than a
+    // form control, so this row reads `aria-checked`, `data-v` and text.
+    boot: { selector: '#targets-count', notText: '0' },
+    // No array size and no prompt-style select in this game: the prompt delay
+    // is the only numeric control the persisted config drives.
+    probe: {
+      selector: '#sel-prompt-delay',
+      option: 'promptDelay',
+      seeded: 5, edited: 4, ahead: 2, max: 10,
+    },
+    secondary: {
+      option: 'faceMode',
+      stale: 'image',
+      ahead: 'emoji',
+      control: ['#faceMode button.on', 'attr:data-v', 'emoji'],
+    },
+    outOfRange: {
+      seeded: { promptDelay: 99, size: 5, pronoun: '__custom' },
+      expected: { promptDelay: 10, size: 4, pronoun: 'rotate' },
+      controls: [
+        ['#sel-prompt-delay', 'value', '10'],
+        // 5 is not one of the field-size buttons, so leaving it stored renders
+        // the row with NO size selected — which reads as "unset", not as 5.
+        ['#sizes button.on', 'text', '4'],
+        ['#pron button.on', 'attr:data-v', 'rotate'],
+      ],
+    },
+    seeded: {
+      set: ['happy', 'sad', 'angry', 'scared', 'tired', 'calm'],
+      size: 6,
+      sdR: 'Point to {emotion}',
+      sdE: 'What is {pronoun} feeling?',
+      pronoun: 'she',
+      visual: true,
+      faceMode: 'emoji',
+      errorless: true,
+      rePresentErrors: true,
+      noErrorAnim: true,
+      autoPrompt: true,
+      promptDelay: 5,
+    },
+    controls: [
+      ['#targets-count', 'text', '6'],
+      ['#sizes button.on', 'text', '6'],
+      ['#sdRText', 'value', 'Point to {emotion}'],
+      ['#sdEText', 'value', 'What is {pronoun} feeling?'],
+      ['#pron button.on', 'attr:data-v', 'she'],
+      ['#display-toggle', 'attr:aria-checked', 'true'],
+      ['#faceMode button.on', 'attr:data-v', 'emoji'],
+      ['#opt-errorless', 'attr:aria-checked', 'true'],
+      ['#opt-represent', 'attr:aria-checked', 'true'],
+      ['#opt-noerroranim', 'attr:aria-checked', 'true'],
+      ['#opt-autoprompt', 'attr:aria-checked', 'true'],
+      ['#sel-prompt-delay', 'value', '5'],
+    ],
+    fresh: [
+      ['#targets-count', 'text', '4'],
+      ['#sizes button.on', 'text', '4'],
+      ['#sdRText', 'value', 'Touch {emotion}'],
+      ['#pron button.on', 'attr:data-v', 'rotate'],
+      ['#display-toggle', 'attr:aria-checked', 'false'],
+      ['#faceMode button.on', 'attr:data-v', 'image'],
+      ['#opt-errorless', 'attr:aria-checked', 'false'],
+      ['#opt-represent', 'attr:aria-checked', 'false'],
+      ['#opt-noerroranim', 'attr:aria-checked', 'false'],
+      ['#opt-autoprompt', 'attr:aria-checked', 'false'],
+      ['#sel-prompt-delay', 'value', '3'],
+    ],
+  },
 ];
 
 /**
@@ -422,10 +552,12 @@ async function expectControls(page, controls) {
     const locator = page.locator(selector);
     if (kind === 'value') await expect(locator, `${selector} shows ${want}`).toHaveValue(String(want));
     // Not every persisted setting has a form control: `matching`'s displayMode
-    // is the toolbar Simple/Visual slider, whose state is its aria-checked.
+    // is the toolbar Simple/Visual slider, whose state is its aria-checked, and
+    // every one of `emotions`' options is a pill, a segment or a chip.
     else if (kind.startsWith('attr:')) {
       await expect(locator, `${selector} ${kind} is ${want}`).toHaveAttribute(kind.slice(5), String(want));
     }
+    else if (kind === 'text') await expect(locator, `${selector} reads ${want}`).toHaveText(String(want));
     else if (want) await expect(locator, `${selector} is checked`).toBeChecked();
     else await expect(locator, `${selector} is unchecked`).not.toBeChecked();
   }
@@ -435,7 +567,8 @@ for (const row of ADOPTED) {
   const { game, url, legacyKey, storeKey, seeded, controls, fresh } = row;
   const boot = row.boot || DEFAULT_BOOT;
   const probe = row.probe || DEFAULT_PROBE;
-  const OUT_OF_RANGE = outOfRange(probe);
+  const secondary = row.secondary || DEFAULT_SECONDARY;
+  const OUT_OF_RANGE = row.outOfRange || outOfRange(probe);
 
   test(`${game}: loads the shared settings module`, async ({ page }) => {
     const errors = [];
@@ -502,14 +635,14 @@ for (const row of ADOPTED) {
     // Once the game has been configured under the new store, the retired key is
     // stale: re-folding it would silently revert the technician's newer edits.
     await seed(page, [
-      [legacyKey, { ...seeded, [probe.option]: probe.seeded, promptStyle: 'outline' }],
-      [storeKey, { working: { ...seeded, [probe.option]: probe.ahead, promptStyle: 'sparkle' } }],
+      [legacyKey, { ...seeded, [probe.option]: probe.seeded, [secondary.option]: secondary.stale }],
+      [storeKey, { working: { ...seeded, [probe.option]: probe.ahead, [secondary.option]: secondary.ahead } }],
     ]);
     await page.goto(url);
     await bootedWithSettings(page, boot);
 
     await expect(page.locator(probe.selector)).toHaveValue(String(probe.ahead));
-    await expect(page.locator('#sel-prompt-style')).toHaveValue('sparkle');
+    await expectControls(page, [secondary.control]);
     expect((await readStore(page, storeKey)).working[probe.option]).toBe(probe.ahead);
   });
 
@@ -526,3 +659,70 @@ for (const row of ADOPTED) {
     }
   });
 }
+
+// ── ffc keeps two config documents, and they must not collide ──────────────
+
+/**
+ * `nooutco.settings.ffc` was already taken when ffc adopted the store — by ffc.
+ * The Frame 07 session panel persists a curated per-learner session there, in a
+ * `{ sets, last, working }` document with exactly the shared store's SHAPE and
+ * an entirely different schema. That is why the trial settings live under
+ * `nooutco.settings.ffc.trial` instead, and this is the test that fails if a
+ * later tidy-up "corrects" the key to match the other nine games:
+ *
+ *   - `foldLegacy()` returns early once `working` exists, so `ffcgSettings`
+ *     would never fold for a technician who had pressed Start Session once
+ *   - `initial()` would then normalize the session document AS trial settings,
+ *     defaulting every field it does not recognise
+ *
+ * Both failures are silent: the game boots, the panel renders, and the
+ * technician's programme parameters are simply gone.
+ */
+const FFC = ADOPTED.find((row) => row.game === 'ffc');
+
+const FFC_SESSION = {
+  last: 'Room 2',
+  sets: {
+    'Room 2': {
+      items: [], targets: {},
+      includeTypes: ['feature'], arraySize: 3, prompting: 'time-delay',
+    },
+  },
+  working: {
+    items: [], targets: {},
+    includeTypes: ['feature'], arraySize: 3, prompting: 'time-delay',
+  },
+};
+
+test('ffc: a saved Frame 07 session neither blocks nor is read as the trial settings', async ({ page }) => {
+  await seed(page, [
+    ['nooutco.settings.ffc', FFC_SESSION],
+    [FFC.legacyKey, FFC.seeded],
+  ]);
+  await page.goto(FFC.url);
+  await bootedWithSettings(page, FFC.boot);
+
+  // The retired key folded even though a session `working` config exists…
+  await expectControls(page, FFC.controls);
+  const stored = await readStore(page, FFC.storeKey);
+  expect(stored && stored.working, 'the trial settings folded into their own key').toBeTruthy();
+  expect(stored.working.arraySize, 'and carry ffcgSettings\' array size, not the session\'s 3').toBe(6);
+
+  // …and the session document came back untouched.
+  const session = await page.evaluate((key) => window.localStorage.getItem(key), 'nooutco.settings.ffc');
+  expect(session, 'the session document is byte-for-byte what was seeded')
+    .toBe(JSON.stringify(FFC_SESSION));
+});
+
+test('ffc: the retired __auto__ tag sentinel folds to an empty selection', async ({ page }) => {
+  // `__auto__` was an older "pick a tag for me" sentinel that the tag dropdown
+  // now expresses as an empty selection. The old load re-checked it on EVERY
+  // read; the store reads the retired key once, so the rewrite has to happen in
+  // the fold or the sentinel is adopted verbatim as a tag name and persisted.
+  await seed(page, [[FFC.legacyKey, { ...FFC.seeded, tag: '__auto__' }]]);
+  await page.goto(FFC.url);
+  await bootedWithSettings(page, FFC.boot);
+
+  const stored = await readStore(page, FFC.storeKey);
+  expect(stored.working.tag, 'the sentinel never reaches the store as a tag').toBe('');
+});

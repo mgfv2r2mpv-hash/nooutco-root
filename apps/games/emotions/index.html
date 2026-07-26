@@ -354,9 +354,10 @@
 <script src="../../reward.js"></script>
 <script src="../../token-board.js"></script>
 <script src="../migrate-config.js"></script>
+<script src="../game-settings.js"></script>
 <script>
 (function () {
-  // Config migration first: this IIFE reads `noaba.emotionID.v1` at the top of
+  // Config migration first: this IIFE reads its settings store at the top of
   // its body, so a transform that renames or restructures a key has to have run
   // before that read or it would fold a config the page has already adopted.
   if (window.NooutcoConfig) NooutcoConfig.migrate();
@@ -391,18 +392,52 @@
     img.addEventListener('error', () => { container.textContent = e.face; });
     container.replaceChildren(img);
   }
-  const KEY = 'noaba.emotionID.v1';
+  const SETTINGS_KEY = 'nooutco.settings.emotions';
+  const LEGACY_SETTINGS_KEY = 'noaba.emotionID.v1';
   const TRIALS_KEY = 'noaba.emotionID.trials.v1';
 
-  /* ── Config (persisted) ──────────────────────────────────────────── */
-  const defaults = {
-    set:['happy','sad','angry','scared'], size:4,
-    sdR:'Touch {emotion}', sdE:'How does {pronoun} feel?', pronoun:'rotate', visual:false, faceMode:'image',
-    errorless:false, rePresentErrors:false, noErrorAnim:false, autoPrompt:false, promptDelay:3,
+  /* ── Config (shared store) ───────────────────────────────────────── */
+  /**
+   * The programme parameters this game persists, declared once. The shared
+   * store derives BOTH the defaults and the clamping from this one
+   * declaration, so there is no second hand-written description to drift.
+   *
+   * `autoPrompt` defaults to FALSE here — the auto-prompt default is true only
+   * in `sequences`. That difference is clinical; do not harmonise it.
+   *
+   * `size` and `pronoun` are declared as enums rather than as a range and a
+   * free string because their controls are discrete buttons: a value outside
+   * the offered set renders as *no* button highlighted, which reads to a
+   * technician as "this setting is unset" rather than as the value it holds.
+   */
+  const SETTINGS_FIELDS = {
+    set:             { type: 'list', values: () => EMOTIONS.map(e => e.key),
+                       default: ['happy', 'sad', 'angry', 'scared'] },
+    size:            { type: 'enum', values: [2, 3, 4, 6], default: 4 },
+    sdR:             { type: 'string', default: 'Touch {emotion}' },
+    sdE:             { type: 'string', default: 'How does {pronoun} feel?' },
+    pronoun:         { type: 'enum', values: ['he', 'she', 'they', 'rotate'], default: 'rotate' },
+    visual:          { type: 'bool', default: false },
+    faceMode:        { type: 'enum', values: ['image', 'emoji'], default: 'image' },
+    errorless:       { type: 'bool', default: false },
+    rePresentErrors: { type: 'bool', default: false },
+    noErrorAnim:     { type: 'bool', default: false },
+    autoPrompt:      { type: 'bool', default: false },
+    // Seconds, not a flag: this game has no separate promptDelay toggle — the
+    // delay row is shown by `autoPrompt` alone.
+    promptDelay:     { type: 'int', min: 1, max: 10, default: 3 },
   };
-  let cfg = Object.assign({}, defaults);
-  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s) cfg = Object.assign(cfg, s); } catch(e) {}
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch(e) {} }
+
+  const settingsStore = NooutcoSettings.defineStore({
+    key: SETTINGS_KEY,
+    legacyKey: LEGACY_SETTINGS_KEY,
+    fields: SETTINGS_FIELDS,
+  });
+
+  // Read-then-fold, never drop. Runs at most once; the retired key is left intact.
+  settingsStore.foldLegacy();
+  let cfg = settingsStore.initial();
+  function save() { settingsStore.saveWorking(cfg); }
 
   /* ── Trial log (persisted, device-local) ─────────────────────────── */
   let trials = NooutcoResults.load(TRIALS_KEY);

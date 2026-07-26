@@ -1628,7 +1628,7 @@ its declared range (3), and the `game-settings.js` script tag deleted from
 three test titles recorded as the accepted baseline. Zero new failures.
 `APP_VERSION` 0.19.2 → 0.19.3.
 
-### Still owed for Stage 6 (updated)
+### Still owed for Stage 6 (superseded by part 5 below)
 
 - Three games: `ffc` (`ffcgSettings`), `think-or-say` (`tosSettings`),
   `emotions` (`noaba.emotionID.v1`). Each is a row in `ADOPTED` plus a field
@@ -1651,3 +1651,148 @@ three test titles recorded as the accepted baseline. Zero new failures.
 - The press-and-hold gating is still unadopted anywhere but `sequences`, and
   only *gates* where the panel carries the matching
   `[data-editing="false"] { pointer-events: none }` rule (finding 47).
+
+---
+
+## Stage 6, part 5 — `ffc` and `emotions` adopt the store
+
+Eight games down, one to go. `ffc` (`ffcgSettings` →
+**`nooutco.settings.ffc.trial`**, and that name is the finding) and `emotions`
+(`noaba.emotionID.v1` → `nooutco.settings.emotions`) now declare their
+programme parameters as one field spec and read/write them through
+`defineStore()`. Each load is `foldLegacy()` then `initial()`; each save is
+`saveWorking()`. Both load `../game-settings.js` after `migrate-config.js`.
+
+`emotions` is the first adopter with **no `game.js` and no form controls** — all
+816 lines are one IIFE inside `emotions/index.html`, and every option is a pill,
+a segmented button or a chip.
+
+### 61. `nooutco.settings.ffc` was already taken — by `ffc`
+
+The Frame 07 session panel (`ffc/game.js`, "Session setup") persists a curated
+per-learner session to `localStorage['nooutco.settings.ffc']` as
+`{ sets, last, working }` — **exactly the shared store's document shape, with an
+entirely different schema** (`{items, targets, includeTypes, arraySize,
+prompting}` rather than mode / array size / prompting style / target filters).
+
+Pointing the settings store at that key would have done two silent things to any
+technician who had ever pressed Start Session, which is what writes `working`:
+
+- `foldLegacy()` returns early once `working` exists, so `ffcgSettings` would
+  never fold at all — every trial setting they had configured, gone
+- `initial()` would then normalize the *session* document as if it were trial
+  settings, defaulting every field it does not recognise (and silently adopting
+  the session's `arraySize`, the one field name the two schemas share)
+
+Neither shows up as an error. The game boots, the panel renders, and the
+programme parameters are simply the defaults.
+
+So the trial settings took **their own key**, `nooutco.settings.ffc.trial`, and
+the session document was left exactly where it is. Moving the session instead
+does not work: "never drop" means the old key keeps its document, and a
+surviving `working` there is precisely what blocks the fold. Two config
+documents for one game is real duplication worth ending, but merging them is a
+UI change (the session panel owns its own schema), not a storage one — Stage 7
+is where that belongs.
+
+`tests/settings-store-adoption.spec.js` carries the regression test that fails
+if a later tidy-up "corrects" the key to match the other nine games: seed a
+session document *and* `ffcgSettings`, and assert the trial settings still fold
+into their own key while the session document comes back byte-for-byte.
+
+### 62. Discrete buttons are an enum, not a range
+
+`emotions` renders its field size as four buttons (2 / 3 / 4 / 6) and its
+pronoun as four segments, painted with
+`b.classList.toggle('on', +b.dataset.n === cfg.size)`. A value in range but not
+*offered* — a stored `size: 5` — leaves **no button highlighted**, which reads
+to a technician as "this setting is unset" rather than as the value it holds.
+
+So both are declared `enum` over the exact values the control offers rather than
+`int {min:2, max:6}`. Loosening `size` back to a range is a one-line mutation
+that fails exactly one test (the clamp row), because the seeded 5 then survives
+normalization and the panel shows nothing selected.
+
+The same reasoning does *not* apply to `promptDelay`: its select offers
+1/2/3/4/5/10 s, and the platform-wide `int {min:1, max:10}` clamps an
+out-of-range 99 to **10**, which that select can show. Range where the ceiling
+is renderable, enum where it is not.
+
+### 63. `emotions`' `promptDelay` is seconds, where eight games call that a flag
+
+Every other in-scope game splits the two: `promptDelay` is the *boolean* "wait
+before prompting" toggle and `promptDelaySecs` is the number. `emotions` has no
+separate toggle — the delay row is shown by `autoPrompt` alone — so its
+`promptDelay` holds the seconds directly.
+
+That matters because the shared `outOfRange()` helper seeds
+`{promptDelaySecs: 0, promptStyle: 'neon'}` for every row, and `emotions` has
+neither field. Rows can now override `outOfRange` (and `secondary`, the second
+option the precedence test asserts) for exactly this reason. Copying another
+game's field spec into `emotions` would have declared `promptDelay` a bool and
+turned "5 seconds" into `true`.
+
+### 64. The `__auto__` tag fold survived a mutation because nothing tested it
+
+`ffc`'s old `loadSettings()` re-checked `s.tag === '__auto__'` on **every** read
+of the retired key; the store reads it **once**, so the rewrite has to move into
+`foldLegacy({map})` or the sentinel is adopted verbatim as a tag name.
+
+Deleting the map and running the whole adoption + ffc suite passed 65/65 — the
+tag dropdown falls back to `tags[0]` for any unknown tag, so the sentinel is
+invisible on screen. It is only visible in the store's working document, which
+nothing was reading. The test that kills it seeds `tag: '__auto__'` and asserts
+`working.tag === ''`. Worth generalising: a legacy fixup whose effect is
+masked by a downstream fallback needs an assertion on the *stored* value, not
+on the rendered one.
+
+### Coverage
+
+`tests/settings-store-adoption.spec.js` grew from 6 rows to 8 — the same six
+assertions per game (6 × 8 × 3 = 144) — plus two `ffc`-specific tests × 3 for
+the key collision (finding 61) and the `__auto__` fold (finding 64). Rows may
+now also name their own `secondary` (the precedence test's second option) and
+`outOfRange`, and `expectControls()` gained a `text` kind for
+`#sizes button.on`.
+
+`tests/config-migration.spec.js`: the `emotions` and `ffc` ordering probes moved
+onto the store keys (finding 50 — naming a retired key goes vacuous from the
+second load onward), and the `emotions` `ROUND_TRIPS` row gained a `storeKey` so
+the seeded payload is asserted twice: byte-for-byte under
+`noaba.emotionID.v1` **and** folded into `<storeKey>.working`.
+
+`tests/stimulus-ffc.spec.js`'s pre-join round-trip reads the remapped target ids
+out of `nooutco.settings.ffc.trial.working` rather than out of `ffcgSettings`
+(which after adoption holds the *pre*-remap ids, permanently), and gained the
+paired assertion that the retired key returns byte-for-byte as seeded.
+
+Mutation-tested six ways, each restored from a byte-compared copy: `ffc`'s
+settings key collapsed onto `nooutco.settings.ffc` (7 tests), `emotions`'
+`autoPrompt` harmonised to true (1 — the non-negotiable), `ffc` skipping
+`foldLegacy()` (5), `emotions`' `size` loosened from an enum to a range (1),
+the `game-settings.js` script tag deleted from `emotions` (8), and `ffc`
+dropping the `__auto__` map (0 → 1 after the test in finding 64 was added).
+
+**Suite: 769 passed, 8 failed — all 8 in `glam-team-makeover.spec.js`**, at the
+three test titles recorded as the accepted baseline. Zero new failures.
+`APP_VERSION` 0.19.3 → 0.19.4.
+
+### Still owed for Stage 6 (updated)
+
+- One game: `think-or-say` (`tosSettings`). It keeps part of its configuration
+  in the DOM rather than in state (`think-or-say/game.js:239-269`, which Stage 7
+  names explicitly), so its field spec cannot be written from `loadSettings()`
+  alone — fix the DOM-as-state first, or declare only the fields that already
+  round-trip through storage and leave the DOM-held ones to Stage 7.
+- `think-or-say`'s retired payload stores `promptDelaySec` (singular, and as a
+  **string** — see the `ROUND_TRIPS` row in `config-migration.spec.js`), which
+  is a third spelling of the same option. An `int` field normalizes `'5'` to 5
+  correctly, but the seeded round-trip asserts `toEqual('5')` against the
+  retired key and will need the store read to expect the number.
+- The press-and-hold gating is still unadopted anywhere but `sequences`, and
+  only *gates* where the panel carries the matching
+  `[data-editing="false"] { pointer-events: none }` rule (finding 47).
+- Deferred to Stage 7, from finding 61: `ffc` now carries two configuration
+  documents (`nooutco.settings.ffc` for the Frame 07 session,
+  `nooutco.settings.ffc.trial` for the trial settings). Merging them is a UI
+  change, not a storage one.
