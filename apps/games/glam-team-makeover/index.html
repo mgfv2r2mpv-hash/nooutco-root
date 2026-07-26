@@ -2200,6 +2200,41 @@ class Component extends DCLogic {
      single-shade paint slot the two readings agree anyway, since `paintStep`
      writes `ed.col[slot]` on the stroke that paints it. */
   _shadeOn(opt){ return !(opt.mech==='paint' && opt.color) || this.state.ed.col[opt.slot]===opt.color; }
+  /* ── A RE-TOUCH THAT CANNOT CHANGE ANYTHING IS FREE (turn-exchange sweep) ────
+     `_admit`'s own contract is "free re-touches of an already-charged article
+     never reach the engine". But `_charged` is wiped at every turn boundary
+     (`syncTT`, ~L2025), so on the NEXT turn the identical re-touch reads as a
+     first touch. Swept across all 69 person tools with each tool's own work
+     already done: re-running a tool's mechanism leaves `ed` byte-identical for
+     EVERY one of them, yet 67 of 69 spent a turn action for it, and at the cap
+     all 67 logged `overCap` and set the turn-durable `forfeit='overcap'` — the
+     independent score the Finding A guard was built to protect. The two that
+     already passed are patch and conceal, because `_optDead` refuses them
+     before the cap check.
+
+     This predicate is the three apply paths read backwards: would
+     `applyChoose` / `tapApply` / `paintStep` write one byte the client does not
+     already carry? It is deliberately STRICTER than the trolley's `active` ✓ on
+     paint — `active` ticks at any coverage above zero, but a half-painted slot
+     still has a real stroke to give, so only full coverage of the shade that is
+     already on is a no-op. `_optDead` answers for patch and conceal, whose
+     mechanism is per-spot rather than per-option.
+
+     Free means free in both directions: no charge, and no refusal either, so a
+     no-op re-touch at the cap costs neither an action nor the turn's
+     independence. It is NOT dead — it stays armable, keeps its target overlay
+     and its "All done ✓", and still echoes on the mirror. */
+  _optNoOp(opt){ const ed=this.state.ed, slot=opt.slot;
+    if(opt.mech==='patch'||opt.mech==='conceal') return this._optDead(opt);
+    if(opt.mech==='choose'){
+      if(slot==='outfit') return ed.outfit===opt.value && ed.col.garment===opt.color && !!ed.done.outfit;
+      if(slot==='hairShape') return ed.hairShape===opt.value && !!ed.done.hairShape;
+      return ed.gl[slot]===(opt.glyph||'x') && ed.col[slot]===opt.color && !!ed.done[slot]; }
+    if(opt.mech==='paint') return (ed.cov[slot]||0)>=1 && this._shadeOn(opt) && !!ed.done[slot];
+    const val=(opt.value!=null?opt.value:null);
+    if(opt.apply==='recolor') return ed.col[slot]===(val!=null?val:opt.color) && !!ed.done[slot];
+    if(opt.apply==='place') return ed.gl[slot]===(val!=null?val:opt.glyph) && (!opt.color||ed.col[slot]===opt.color) && !!ed.done[slot];
+    return (ed.cov[slot]||0)>=1 && (!opt.color||ed.col[slot]===opt.color) && !!ed.done[slot]; }
   /* The cursor the ARMED tool puts over its own target. Issue #40 (per-tool
      cursor art) fills `TOOL_CURSOR_ART`; until it does, every tool resolves to
      the keyword this build already used, so nothing about the pointer changes.
@@ -2239,7 +2274,10 @@ class Component extends DCLogic {
        violation, set the turn-durable forfeit and TELL THE KID, in every count
        mode. 0 of 43 tools said anything at the cap in the old build. */
     const key=this._optKey(opt);
-    if(this._atCapFor(key)){ this._refuse(opt.label); return; }
+    /* …and a re-touch that provably cannot write anything is not an over-cap
+       violation either (`_optNoOp`). It spends nothing, so there is nothing for
+       the cap to refuse. */
+    if(!this._optNoOp(opt) && this._atCapFor(key)){ this._refuse(opt.label); return; }
     if(opt.mech==='choose'){ this.applyChoose(opt); return; } this.setState({armed:opt}); }
 
   /* Would a NEW charge be refused right now? Reads the engine's single fixed
@@ -2293,24 +2331,31 @@ class Component extends DCLogic {
   _chargeKey(s,key){ const c=s.chargedThisTurn||{}; if(c[key]) return {charged:c};
     const n=Object.assign({},c); n[key]=1; return {charged:n}; }
 
+  /* `free` is read BEFORE the write, because the write is what would make it
+     look like a no-op. A free re-touch also leaves `chargedThisTurn` alone —
+     marking a key charged without spending an action would tell `_capBlocks`
+     the whole family is still affordable at the cap, when a real change on it
+     would still be refused. */
   applyChoose(opt){ this._closeBefore();
     const key = opt.slot==='outfit' ? 'color:outfit' : opt.slot==='hairShape' ? 'style' : 'item:'+opt.slot;
-    if(!this._admit(key,opt.label)) return;
+    const free=this._optNoOp(opt);
+    if(!free && !this._admit(key,opt.label)) return;
     this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed));
       if(opt.slot==='outfit'){ ed.outfit=opt.value; ed.col.garment=opt.color; ed.done.outfit=true; }
       else if(opt.slot==='hairShape'){ ed.hairShape=opt.value; ed.done.hairShape=true; }
       else { ed.gl[opt.slot]=opt.glyph||'x'; ed.col[opt.slot]=opt.color; ed.done[opt.slot]=true; }
-      return { ed, armed:null, chargedThisTurn:this._chargeKey(s,key).charged }; }, ()=>{ this._mirror(opt); this.afterAction(); }); }
+      return { ed, armed:null, chargedThisTurn:free?s.chargedThisTurn:this._chargeKey(s,key).charged }; }, ()=>{ this._mirror(opt); this.afterAction(); }); }
 
   tapApply(){ const t=this.state.armed; if(!t) return; this._closeBefore(); const slot=t.slot;
     const key = t.apply==='recolor' ? 'color:'+slot : 'item:'+slot;
-    if(!this._admit(key,t.label)) return;
+    const free=this._optNoOp(t);
+    if(!free && !this._admit(key,t.label)) return;
     this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed));
       if(t.apply==='recolor'){ ed.col[slot]=(t.value!=null?t.value:t.color); }
       else if(t.apply==='place'){ ed.gl[slot]=(t.value!=null?t.value:t.glyph); if(t.color) ed.col[slot]=t.color; }
       else { ed.cov[slot]=1; if(t.color) ed.col[slot]=t.color; }
       ed.done[slot]=true;
-      return { ed, armed:null, chargedThisTurn:this._chargeKey(s,key).charged }; }, ()=>{ this._mirror(t); this.afterAction(); }); }
+      return { ed, armed:null, chargedThisTurn:free?s.chargedThisTurn:this._chargeKey(s,key).charged }; }, ()=>{ this._mirror(t); this.afterAction(); }); }
 
   // Treat/patch step: tap a zit (state 0) → patched (1). Stay armed while zits remain.
   patchOne(i){ if(this.state.ed.pimples[i]!==0) return; this._closeBefore();
@@ -2332,11 +2377,12 @@ class Component extends DCLogic {
     // A paint step charges when coverage COMPLETES, so admission is asked for on
     // the stroke that finishes it, before any state is written.
     const nx=Math.min(1,(this.state.ed.cov[slot]||0)+0.11);
-    if(nx>=1 && !this._admit(key,t.label)) return;
+    const free=this._optNoOp(t);
+    if(nx>=1 && !free && !this._admit(key,t.label)) return;
     let completed=false;
     this.setState(s=>{ const ed=JSON.parse(JSON.stringify(s.ed)); const cur=ed.cov[slot]||0; const n2=Math.min(1,cur+0.11); ed.cov[slot]=n2; if(t.color) ed.col[slot]=t.color;
       let charged=s.chargedThisTurn||{};
-      if(n2>=1){ ed.done[slot]=true; completed=true; charged=this._chargeKey(s,key).charged; }
+      if(n2>=1){ ed.done[slot]=true; completed=true; if(!free) charged=this._chargeKey(s,key).charged; }
       return { ed, chargedThisTurn:charged }; },
       /* A paint stroke echoes when the wash COMPLETES, not on every pointer move
          — the same moment the engine hears about it. Mirroring each partial
@@ -3499,7 +3545,10 @@ class Component extends DCLogic {
       const locked=this._optLocked(opt);
       // dim tools that would spend a NEW action past the turn cap (shown mode only — 'hidden'
       // keeps the block silent so it stays a clean probe of independent relinquishing).
-      const capDim=s.countMode==='shown' && this._capBlocks(s,this._optKey(opt));
+      // …and never dim a tool the cap cannot actually refuse: a re-touch that
+      // writes nothing spends nothing (`_optNoOp`), so greying it would be the
+      // same kind of lie the shade label was telling.
+      const capDim=s.countMode==='shown' && !this._optNoOp(opt) && this._capBlocks(s,this._optKey(opt));
       /* A dead tool is finished, not blocked, so it does NOT take the grey
          `off` face — that one means "you cannot do this yet", which is a
          different message. It keeps its sage done-colours and its ✓ and loses

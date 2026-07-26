@@ -4197,7 +4197,380 @@ the temple and the hairline, in the reported state. Captured by
 `apps/games/tests/_shots-glam-brow-tail.mjs`, which reports console cleanliness on
 both phases (`console clean` for all six).
 
+### Finding E — the per-tool turn-exchange sweep
+
+> "Take some time to do some turn exchange testing."
+
+Finding A closed one instance of a class. The sweep asked the same four
+questions of **all 69 person tools** and found the class is the catalogue, not
+the tool.
+
+#### What was asked of each tool
+
+With that tool's own work already done, and across a turn boundary drawn exactly
+the way `syncTT` draws it (`_charged = {}`, `chargedThisTurn = {}`, `armed =
+null`):
+
+| column | question |
+|---|---|
+| **on cart** | is it still on the trolley (not `_optSpent`, not `_optLocked`)? |
+| **armable** | can `arm()` still take it? |
+| **re-run changes client** | does running its own mechanism again write one byte of `ed`? |
+| **✓ on arm** | does its checkmark survive being armed, or blink off? |
+| **actions spent** | does the re-run charge a turn action on the NEW turn? |
+| **at cap** | reached for at the action cap, does it log `overCap` / set `forfeit`? |
+
+#### What the sweep found, before the fix
+
+Measured on `93dab9be` by `tests/_probe-glam-turn-sweep.mjs`, console clean:
+
+| mechanism | tools | re-run changes client | actions spent | at the cap |
+|---|---|---|---|---|
+| `paint` | 23 | **no**, all 23 | **1**, all 23 | `overCap 2` · `forfeit 'overcap'` |
+| `tap/recolor` | 20 | **no**, all 20 | **1**, all 20 | `overCap 1` · `forfeit 'overcap'` |
+| `choose` | 16 | **no**, all 16 | **1**, all 16 | `overCap 1` · `forfeit 'overcap'` |
+| `tap/toggle` | 5 | **no**, all 5 | **1**, all 5 | `overCap 1` · `forfeit 'overcap'` |
+| `tap/place` | 3 | **no**, all 3 | **1**, all 3 | `overCap 1` · `forfeit 'overcap'` |
+| `patch` | 1 | no | 0 | clean |
+| `conceal` | 1 | no | 0 | clean |
+
+**67 of 69 spent an action for a write they did not make, and 67 of 69 took the
+turn's independence when they were reached for at the cap.** The two that
+already passed are patch and conceal — `_optDead` refuses them *before* the cap
+check, which is the Finding A guard doing precisely its job.
+
+`paint` logs `overCap 2` rather than 1 because a paint reach is two calls: the
+`arm()` is refused, and then the stroke on the target is refused again.
+
+#### The traced cause — a per-turn mirror standing in for "nothing changed"
+
+`_admit` states its own contract in the comment above it:
+
+> The one gate an engaged action passes through. **Free re-touches of an
+> already-charged article never reach the engine**, so the first-touch charge
+> economy is preserved.
+
+That freedom is enforced through `this._charged`, and `syncTT` wipes `_charged`
+at every turn boundary (~L2025, alongside `armed` and `chargedThisTurn`). Within
+one turn the contract holds. Across the boundary the identical re-touch reads as
+a first touch, because the only evidence that it *was* a re-touch was thrown
+away with the turn.
+
+`_charged` was standing in for a question it cannot answer once the turn ends —
+*would this write anything?* — and the answer to that question does not belong
+to a turn at all. It belongs to the client.
+
+#### The fix — `_optNoOp`, the apply paths read backwards
+
+`_optNoOp(opt)` asks exactly one thing: **would `applyChoose` / `tapApply` /
+`paintStep` write one byte the client does not already carry?** It is written
+per mechanism, mirroring each apply path's own writes, and it delegates to
+`_optDead` for patch and conceal, whose mechanism is per-spot rather than
+per-option.
+
+It is read at four seams:
+
+| seam | before | now |
+|---|---|---|
+| `arm()` cap check | `if(this._atCapFor(key))` → `_refuse` | skipped for a no-op — nothing to refuse |
+| `applyChoose` | `if(!this._admit(…)) return` | skipped for a no-op, and `chargedThisTurn` left alone |
+| `tapApply` | same | same |
+| `paintStep` | same, on the completing stroke | same |
+| trolley `capDim` | `_capBlocks(s, key)` | not dimmed when the cap cannot refuse it |
+
+`chargedThisTurn` is deliberately **not** written for a free re-touch. Marking a
+key charged without spending an action would tell `_capBlocks` the whole family
+is still affordable at the cap, while a real change on that same key would still
+be refused — the dimming would lie in the direction Finding C was about.
+
+**Free is not dead.** Nothing here is disabled. Every one of the 67 stays
+armable, keeps its target overlay and its "All done ✓", still echoes on the
+mirror, and still reads its ✓ on the cart. Only the ledger changed.
+
+#### And the fix does not make the cap optional
+
+The control, measured on the same probe run: reach for a **different** option of
+the same slot — one the client does **not** carry — after the boundary.
+
+| family | from → to | actions spent | at the cap |
+|---|---|---|---|
+| `paint` | Blush rose → Blush peach | **1** | `overCap 12` · `forfeit 'overcap'` |
+| `tap/recolor` | Berry → Mint | **1** | `overCap 1` · `forfeit 'overcap'` |
+| `tap/place` | Pearl stud → Diamond | **1** | `overCap 1` · `forfeit 'overcap'` |
+| `choose` | Bob → Pixie | **1** | `overCap 1` · `forfeit 'overcap'` |
+
+Identical before and after the fix. (`overCap 12` for paint is one refusal per
+pointer move across the target — a drag at the cap logs every stroke. That is
+pre-existing behaviour, unchanged, and is noted rather than fixed.)
+
+#### Completion across the handoff, both directions — measured, already correct
+
+One representative per mechanism family, worked on the learner's own turn, then
+`handoff()` → the partner's whole turn → the learner's mand back:
+
+| family | tool | my turn | their turn | back on mine |
+|---|---|---|---|---|
+| `paint` | Wash | done ✓ | done ✓ | done ✓ |
+| `patch` | Treat spots | done ✓ ·disabled | done ✓ ·disabled | done ✓ ·disabled |
+| `conceal` | Conceal | done ✓ ·disabled | done ✓ ·disabled | done ✓ ·disabled |
+| `tap/toggle` | Mascara | done ✓ | done ✓ | done ✓ |
+| `tap/recolor` | Berry | done ✓ | done ✓ | done ✓ |
+| `tap/place` | Pearl stud | done ✓ | done ✓ | done ✓ |
+| `choose` | Bob | done ✓ | done ✓ | done ✓ |
+
+`ed` is **byte-identical** across the first leg, and nothing the seven own moves
+on the return leg. The already-done-cannot-un-complete invariant holds for the
+per-tap tools, not just the paint tools — because completion is claimed from
+`ed`, which is client state, and the turn boundary touches only `armed`,
+`chargedThisTurn`, `_charged` and `engTurn`. Nothing needed fixing here; it is
+now pinned so the ledger change cannot quietly break it.
+
+#### Actions-left accounting across the boundary
+
+| | learner | staff |
+|---|---|---|
+| budget at `turns: 6` | 7 | 4 |
+| `actions` at the start of a fresh turn | 0 | 0 |
+| `_charged` / `chargedThisTurn` at the boundary | both empty | both empty |
+
+Per-tap tools are the family the boundary was most likely to get wrong — they
+charge `item:<slot>` on the tap itself rather than on a completing stroke — and
+they behave the same as the paint tools: the first *changing* touch of an
+article in a turn costs 1, further ones on that article are free within the
+turn, and after the fix a touch that changes nothing costs nothing in any turn.
+
+#### The per-tool sweep table
+
+One row per tool. `93dab9be` → now.
+
+| shelf | tool | mech | on cart | armable | re-run changes client | ✓ on arm | actions spent `93dab9be` → now | at cap `93dab9be` → now |
+|---|---|---|---|---|---|---|---|---|
+| Skincare | Wash | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
+| Skincare | Moisturize | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
+| Skincare | Treat spots | patch | yes | **no — disabled** | no | held | 0 → 0 | clean → clean |
+| Skincare | Conceal | conceal | yes | **no — disabled** | no | held | 0 → 0 | clean → clean |
+| Brow bar | Shape brows | tap/toggle | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Brow bar | Brow pencil | tap/toggle | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Cheeks & glow | Contour | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
+| Cheeks & glow | Blush rose | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
+| Cheeks & glow | Blush peach | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
+| Cheeks & glow | Blush coral | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
+| Cheeks & glow | Blush berry | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
+| Cheeks & glow | Blush mauve | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
+| Cheeks & glow | Blush plum | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
+| Cheeks & glow | Highlight | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
+| Eyes | Shadow violet | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
+| Eyes | Shadow bronze | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
+| Eyes | Shadow rose gold | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
+| Eyes | Shadow ocean | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
+| Eyes | Shadow moss | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
+| Eyes | Shadow midnight | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
+| Eyes | Eyeliner | tap/toggle | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Eyes | Mascara | tap/toggle | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Lips | Lip liner | tap/toggle | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Lips | Lips red | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
+| Lips | Lips coral | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
+| Lips | Lips berry | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
+| Lips | Lips rose | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
+| Lips | Lips plum | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
+| Lips | Lips brick | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
+| Lips | Lips bubblegum | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
+| Hair style | Buzz | choose | yes | yes | no | held | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Hair style | Tousled | choose | yes | yes | no | held | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Hair style | Long bob | choose | yes | yes | no | held | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Hair style | Bob | choose | yes | yes | no | held | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Hair style | Spiky | choose | yes | yes | no | held | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Hair style | Cropped | choose | yes | yes | no | held | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Hair style | Pixie | choose | yes | yes | no | held | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Hair color | Brunette | tap/recolor | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Hair color | Blonde | tap/recolor | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Hair color | Copper | tap/recolor | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Hair color | Berry | tap/recolor | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Hair color | Flame | tap/recolor | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Hair color | Bold blue | tap/recolor | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Hair color | Silver | tap/recolor | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Hair color | Mint | tap/recolor | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Hair color | Lilac | tap/recolor | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Hair color | Bubblegum | tap/recolor | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Hair color | Sunset | tap/recolor | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Hair color | Midnight | tap/recolor | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Earrings | Pearl stud | tap/place | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Earrings | Diamond | tap/place | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Earrings | Sapphire | tap/place | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Shirt color | Teal | choose | yes | yes | no | held | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Shirt color | Rose | choose | yes | yes | no | held | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Shirt color | Blue | choose | yes | yes | no | held | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Shirt color | Purple | choose | yes | yes | no | held | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Shirt color | Sunshine | choose | yes | yes | no | held | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Shirt color | Seafoam | choose | yes | yes | no | held | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Shirt color | Cherry | choose | yes | yes | no | held | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Shirt color | Lavender | choose | yes | yes | no | held | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Shirt color | Charcoal | choose | yes | yes | no | held | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Colored contacts | Ice blue | tap/recolor | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Colored contacts | Green | tap/recolor | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Colored contacts | Hazel | tap/recolor | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Colored contacts | Violet | tap/recolor | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Colored contacts | Amber | tap/recolor | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Colored contacts | Storm grey | tap/recolor | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Colored contacts | Sea green | tap/recolor | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+| Colored contacts | Rose quartz | tap/recolor | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
+
+#### Anything else the sweep turned up, fixed or not
+
+- **The ✓ blinks off when a live tool is armed** — for **51 of 69**; the other
+  18 hold it (16 `choose` tools plus the two disabled ones), because the trolley
+  label is
+  `(active && !armed ? '✓ ' : '') + opt.label`. **Not fixed, and reported as
+  judgement.** This is the design's own selection feedback: an armed tool takes
+  the sage ring and the raised face instead of the tick, so the ✓ is replaced
+  rather than lost. It only became a *defect* in Finding A because the tool was
+  dead, so the blink was the only thing that happened. `choose` holds its ✓
+  because it applies on the same tap and is never in an armed state at all.
+- **A drag at the cap logs one `overCap` per pointer move**, not one per reach —
+  measured at 12 for a single blush drag. Pre-existing, unchanged by this pass,
+  and it inflates the over-cap *count* (not the forfeit, which is boolean) in
+  the per-turn report. **Named, not fixed** — it is an engine-facing counting
+  question and `window.GlamTT` is byte-frozen for this pass.
+- **Switching shade inside one turn is unlimited and free** — `color:blush` is
+  charged once, so all six blushes can be tried on one action. Already surfaced
+  under Finding C as the maintainer's call; the sweep confirms it is per-slot
+  and turn-scoped, not per-shade.
+- **`tap` tools declared `apply:'toggle'` never toggle off.** `tapApply`'s else
+  branch writes `ed.cov[slot] = 1` unconditionally, so Mascara, Eyeliner, Lip
+  liner, Shape brows and Brow pencil are one-way. **Named, not fixed** — the
+  `apply` value is a misnomer rather than a behaviour bug, and making them
+  actually toggle would be a new interaction, not a repair.
+
+#### Evidence
+
+`apps/games/tests/glam-turn-sweep.spec.js` — four tests. Three fail against
+`93dab9be` and `d4c0c112`:
+
+| test | failure against `93dab9be` |
+|---|---|
+| every tool in the catalogue: work done ⇒ re-running it writes nothing, spends nothing, forfeits nothing | `page.evaluate: TypeError: L._optNoOp is not a function` |
+| across a real exchange, both directions: re-dragging a finished Wash spends none of my new budget | `a re-drag that cannot change the face spends no action` — Expected `0`, Received **`1`** |
+| at the cap on a LATER turn, by real play: a finished tool forfeits nothing — an unfinished one still does | `a finished tool at the cap is not an over-cap violation` — Expected `0`, Received **`1`** |
+
+The fourth — *completion survives the exchange in both directions, for every
+mechanism family* — **passes on all three builds by design**. It is the
+durability pin for what the sweep measured as already correct, so that making
+no-op re-touches free cannot quietly un-complete anything. It is reported as a
+pin rather than reshaped into a failing test.
+
+The turn boundary is load-bearing in the second and third tests, and that is
+stated in the test itself: *within* one turn `_charged` already makes a
+re-touch free, so a same-turn version of either test passes on `93dab9be` too
+and proves nothing. The wash therefore happens on turn 1 and the cap is reached
+on turn 2 — the state a child actually plays.
+
+Test 1 resets the live Trial's per-turn counters between tools, because 69 tools
+on one turn would exhaust the budget after the first handful and every later row
+would read "spent nothing" for the wrong reason. The engine source is untouched;
+tests 2 and 3 drive the cap by real pointer play with no poking at all.
+
+#### Re-running the evidence
+
+```
+node tests/_probe-glam-turn-sweep.mjs          # the 69-row sweep + handoff + control
+node tests/_play-glam-full-trial.mjs           # a whole trial by real pointer input
+GTM_TRACE=1 node tests/_play-glam-full-trial.mjs   # …with a per-beat trace
+```
+
+#### A full trial, by real pointer input
+
+`tests/_play-glam-full-trial.mjs` plays the shipped defaults end to end — title
+→ Start → the client texts in → Open the salon → every turn played to its cap
+and handed over → the look finished → the outro — with every move a mouse event
+on the element the child would touch. It exits non-zero on any console error,
+page error, or if the trial does not reach its outro.
+
+```
+· title screen up
+· Start tapped — the client is texting
+· salon open
+· turn 1 — Go
+· handed over at 7/7
+· asked for the turn back
+· turn 3 — Go
+· handed over at 7/7
+· asked for the turn back
+· phase: done
+· turns played: 4
+    {"turn":1,"player":"Learner","step":"Wash, Moisturize, treat spot, conceal spot","actions":"7/7","withinLimit":"yes","overCap":0,"pass":"independent",…}
+    {"turn":2,"player":"Staff","step":"Shape brows, Brow pencil, conceal spot, Contour","actions":"4/4","withinLimit":"—","overCap":0,"pass":"—",…}
+    {"turn":3,"player":"Learner","step":"Blush rose, Highlight, Shadow violet, Eyeliner, Mascara, Lip liner, Lips red","actions":"7/7","withinLimit":"yes","overCap":0,"pass":"independent",…}
+    {"turn":4,"player":"Staff","step":"Buzz, Brunette, Pearl stud, Teal","actions":"4/4","withinLimit":"—","overCap":0,"pass":"—",…}
+· outro on screen: true
+· console clean
+```
+
+Both learner turns scored **independent**, `overCap 0` throughout, and the outro
+reached its photo booth. `docs/eval/shots/glam-turn-exchange/fulltrial-outro.png`
+is the last frame — before/after, no numbers on any child-facing string, no PHI.
+
+Writing that driver produced the fix's own confirmation by accident. A first
+version picked the first live tool each time and **looped on Blush rose forever
+with the budget frozen at 1/7** — because re-dragging a finished shade is now
+free. On `93dab9be` the same loop would have burned the whole turn and then
+forfeited it. The driver now picks a tool without a ✓, which is the read a child
+makes.
+
+#### Judged rather than measured (Finding E)
+
+- **That a no-op reach at the cap is not an over-cap violation.** That it costs
+  nothing is now true by construction; whether a child tapping a ticked button
+  at the cap *should* count as a failure to relinquish is a clinical call, not a
+  measurement. It is decided here the way Finding A decided it — "arming a tool
+  that can do nothing must never cost the child their independent score" — and
+  it is the maintainer's to overrule. The cost of overruling it is one line:
+  drop the `!this._optNoOp(opt) &&` guard in `arm()` and leave the three apply
+  paths alone.
+- **Losing the at-cap toast for a ticked tool.** A no-op reach no longer routes
+  through `_refuse`, so it no longer says "That was everything for this turn".
+  The feedback that remains is the mirror echo and, for paint, the target's own
+  "All done ✓". Judged sufficient; not measured against a child.
+- **Leaving the armed-state ✓ blink alone.** Argued above.
+- **`_optNoOp` is stricter than the trolley's `active` on paint.** `active` ticks
+  at any coverage above zero; `_optNoOp` requires full coverage of the shade
+  already on, because a half-painted slot still has a real stroke to give. The
+  two are deliberately *not* collapsed into one predicate — `active` is an
+  accepted visual and moving it would change what a partly-painted blush looks
+  like on the cart.
+
 ### Verification for this pass
+
+- **Full Playwright suite: 486/486 green** (474 at `d4c0c112` + 12 new: 4 tests
+  × 3 engines) at `--workers=4`, against a hash-verified server — `shasum` of the
+  worktree file and of `curl http://localhost:8788/…` matched `54fab369…` both
+  before and after the run.
+- Two further full runs on **the same hash** each produced 1–2 firefox failures,
+  on a **different spec every time** (`glam-art-fidelity`, `glam-turn-exchange`,
+  `glam-open-flow`), and every one of them is the documented Atkinson
+  Hyperlegible flake, now quoted rather than inferred:
+
+  > `Cross-Origin Request Blocked: … https://fonts.gstatic.com/s/atkinsonhyperlegible/…woff2. (Reason: CORS request did not succeed). Status code: (null)`
+
+  Firefox reports the failed webfont download as a **console error**, and many
+  specs assert `expect(errors).toEqual([])`, so any spec that happens to boot
+  while the fetch fails goes red. It reproduced at `--workers=1` as well during
+  this session, which places it in the machine's network rather than in parallel
+  load. Unrelated to this change: the failing assertion is always the console
+  sweep, never a behavioural one.
+- **A full trial by real pointer input**, on the shipped defaults: title → Start
+  → the client texts in → Open the salon → 4 turns → outro. Both learner turns
+  scored `independent`, `overCap 0` throughout, console clean. Transcript above.
+- **`window.GlamTT` byte-identical** to `95ba6101`, `93dab9be`, `bb352a53` and
+  `d4c0c112`, sliced on content (`window.GlamTT = (function ()` → the IIFE
+  close) rather than line numbers: 23 502 bytes, SHA `7998d56b…` on all five.
+- **`tests/glam-tt-scoring.spec.js` byte-identical** — SHA `d5eb286c…` at
+  `95ba6101`, `93dab9be`, `bb352a53`, `d4c0c112` and now.
+- **`BROW_TINT.floor` is still `0.60`**, asserted by a test, and untouched by
+  this iteration.
+- **Scope**: `git diff --name-only 95ba6101..HEAD` lists nothing outside
+  `apps/games/` and `docs/`. Nothing pushed.
+
+#### Earlier in this pass (Finding B, at `d4c0c112`)
 
 - **Full Playwright suite: 474/474 green** (459 at `bb352a53` + 15 new: 5 tests
   × 3 engines) at `--workers=4`, against a hash-verified server — `shasum` of the
@@ -4205,11 +4578,8 @@ both phases (`console clean` for all six).
   run. At default worker count the same build produced 3 firefox failures
   (`glam-art-fidelity`, `glam-station-kit` ×2) which **pass 25/25 in isolation** —
   the documented Atkinson Hyperlegible webfont-under-load flake.
-- **`window.GlamTT` byte-identical** to `95ba6101`, `93dab9be` and `bb352a53`,
-  sliced on content rather than line numbers: 24 749 bytes, SHA `e08b2252…` on all
-  four.
-- **`tests/glam-tt-scoring.spec.js` byte-identical** — SHA `d5eb286c…` at
-  `95ba6101`, `93dab9be`, `bb352a53` and now.
+- **`window.GlamTT` byte-identical** to `95ba6101`, `93dab9be` and `bb352a53`.
+- **`tests/glam-tt-scoring.spec.js` byte-identical** — SHA `d5eb286c…`.
 - **`BROW_TINT.floor` is still `0.60`**, and now asserted by a test.
 
 #### Earlier in this pass (Findings C and D, at `bb352a53`)
@@ -4285,14 +4655,23 @@ both phases (`console clean` for all six).
 
 ### Still to do in this pass
 
-- **Finding E** — the per-tool turn-exchange sweep table. Finding A is one
-  instance of the class; every tool family still needs the four columns (still
-  armable / does arming change anything / does its tick stay stable / can it
-  consume a turn action), plus completion-across-handoff in both directions and
-  actions-left accounting for per-tap tools. The `'__perTap__'`-key hole found
-  above is a strong hint that the per-tap family is where the rest of the class
-  lives.
-- **A full trial by real pointer input** (title → texts → salon → every turn to
-  completion → outro) is still to be run as the final check for the whole pass;
-  the flow is covered spec-by-spec today (`glam-open-flow`, `glam-outro-reveal`,
-  `glam-tt-game`) but not yet end-to-end in one sitting on this build.
+Nothing. Findings A, B, C, D and E are closed, and the full trial by real
+pointer input has been run end to end on this build.
+
+Two things are **waiting on a maintainer ruling**, both stated where they arise
+and neither changed silently:
+
+1. **The one-stroke shade switch** (Finding C). Switching to a different shade
+   of an already-full slot still completes in a single stroke, because
+   `cov[slot]` is already 1. Left exactly as it ships and pinned by a test, so
+   ruling either way flips one assertion.
+2. **A no-op reach at the cap is no longer an over-cap violation** (Finding E).
+   Decided here on the Finding A precedent — a tool that can do nothing must
+   never cost the child their independent score — but it is a clinical call.
+   Overruling it is one line: drop the `!this._optNoOp(opt) &&` guard in
+   `arm()` and leave the three apply paths alone.
+
+Three defects were **named and deliberately not fixed**, each with its reason,
+under "Anything else the sweep turned up": the armed-state ✓ blink, one
+`overCap` logged per pointer move during a drag at the cap, and `apply:'toggle'`
+tools that never toggle off.
