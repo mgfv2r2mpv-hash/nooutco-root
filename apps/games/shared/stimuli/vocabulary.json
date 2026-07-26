@@ -1,0 +1,844 @@
+{
+  "schema": 1,
+  "note": "The canonical core vocabulary: the everyday words a learner is taught to name, as data. Hand-maintained source file — shared/stimuli/build.mjs reads it, nothing generates it. A word is {id, category, name, label, emoji}. `id` is the stable identity the whole library keys on and `name` is the file stem any art for it is stored under, so stimulusId(category, name) must equal id. `label` is what a learner-facing game prints: it wins over the label frozen in source-manifests.json and over the one derived from a filename, and loses only to a technician's own override in labels.json. `emoji` is the fallback drawn when no art exists yet — required for a word with no art, and explicitly null for a word that already ships a photograph and has no honest glyph in Unicode.",
+  "core": [
+    "T_household_items",
+    "T_kitchen_items",
+    "T_clothing",
+    "T_foods",
+    "T_hygiene",
+    "T_school",
+    "T_community_helpers",
+    "T_buildings",
+    "T_toys",
+    "T_vehicles"
+  ],
+  "words": [
+    {
+      "id": "household-items-bed",
+      "category": "T_household_items",
+      "name": "bed",
+      "label": "Bed",
+      "emoji": "🛏️"
+    },
+    {
+      "id": "household-items-books",
+      "category": "T_household_items",
+      "name": "books",
+      "label": "Books",
+      "emoji": "📚"
+    },
+    {
+      "id": "household-items-broom",
+      "category": "T_household_items",
+      "name": "broom",
+      "label": "Broom",
+      "emoji": "🧹"
+    },
+    {
+      "id": "household-items-chair",
+      "category": "T_household_items",
+      "name": "chair",
+      "label": "Chair",
+      "emoji": "🪑"
+    },
+    {
+      "id": "household-items-clock",
+      "category": "T_household_items",
+      "name": "clock",
+      "label": "Clock",
+      "emoji": "🕐"
+    },
+    {
+      "id": "household-items-lamp",
+      "category": "T_household_items",
+      "name": "lamp",
+      "label": "Lamp",
+      "emoji": "💡"
+    },
+    {
+      "id": "household-items-mirror",
+      "category": "T_household_items",
+      "name": "mirror",
+      "label": "Mirror",
+      "emoji": "🪞"
+    },
+    {
+      "id": "household-items-mug",
+      "category": "T_household_items",
+      "name": "mug",
+      "label": "Mug",
+      "emoji": "☕"
+    },
+    {
+      "id": "household-items-shower",
+      "category": "T_household_items",
+      "name": "shower",
+      "label": "Shower",
+      "emoji": "🚿"
+    },
+    {
+      "id": "household-items-sofa",
+      "category": "T_household_items",
+      "name": "sofa",
+      "label": "Sofa",
+      "emoji": "🛋️"
+    },
+    {
+      "id": "household-items-table",
+      "category": "T_household_items",
+      "name": "table",
+      "label": "Table",
+      "emoji": "🍽️"
+    },
+    {
+      "id": "kitchen-items-blender",
+      "category": "T_kitchen_items",
+      "name": "blender",
+      "label": "Blender",
+      "emoji": null
+    },
+    {
+      "id": "kitchen-items-bowl",
+      "category": "T_kitchen_items",
+      "name": "bowl",
+      "label": "Bowl",
+      "emoji": "🥣"
+    },
+    {
+      "id": "kitchen-items-chopsticks",
+      "category": "T_kitchen_items",
+      "name": "chopsticks",
+      "label": "Chopsticks",
+      "emoji": "🥢"
+    },
+    {
+      "id": "kitchen-items-coffee-mug",
+      "category": "T_kitchen_items",
+      "name": "coffee-mug",
+      "label": "Coffee Mug",
+      "emoji": "☕"
+    },
+    {
+      "id": "kitchen-items-cup",
+      "category": "T_kitchen_items",
+      "name": "cup",
+      "label": "Cup",
+      "emoji": "🥤"
+    },
+    {
+      "id": "kitchen-items-fork",
+      "category": "T_kitchen_items",
+      "name": "fork",
+      "label": "Fork",
+      "emoji": "🍴"
+    },
+    {
+      "id": "kitchen-items-frying-pan",
+      "category": "T_kitchen_items",
+      "name": "frying-pan",
+      "label": "Frying Pan",
+      "emoji": "🍳"
+    },
+    {
+      "id": "kitchen-items-kettle",
+      "category": "T_kitchen_items",
+      "name": "kettle",
+      "label": "Kettle",
+      "emoji": "🫖"
+    },
+    {
+      "id": "kitchen-items-knife",
+      "category": "T_kitchen_items",
+      "name": "knife",
+      "label": "Knife",
+      "emoji": "🔪"
+    },
+    {
+      "id": "kitchen-items-microwave",
+      "category": "T_kitchen_items",
+      "name": "microwave",
+      "label": "Microwave",
+      "emoji": null
+    },
+    {
+      "id": "kitchen-items-milk-glass",
+      "category": "T_kitchen_items",
+      "name": "milk-glass",
+      "label": "Milk Glass",
+      "emoji": "🥛"
+    },
+    {
+      "id": "kitchen-items-napkin",
+      "category": "T_kitchen_items",
+      "name": "napkin",
+      "label": "Napkin",
+      "emoji": null
+    },
+    {
+      "id": "kitchen-items-oven",
+      "category": "T_kitchen_items",
+      "name": "oven",
+      "label": "Oven",
+      "emoji": null
+    },
+    {
+      "id": "kitchen-items-plate",
+      "category": "T_kitchen_items",
+      "name": "plate",
+      "label": "Plate",
+      "emoji": "🍽️"
+    },
+    {
+      "id": "kitchen-items-pot",
+      "category": "T_kitchen_items",
+      "name": "pot",
+      "label": "Pot",
+      "emoji": "🍲"
+    },
+    {
+      "id": "kitchen-items-refrigerator",
+      "category": "T_kitchen_items",
+      "name": "refrigerator",
+      "label": "Refrigerator",
+      "emoji": null
+    },
+    {
+      "id": "kitchen-items-salt",
+      "category": "T_kitchen_items",
+      "name": "salt",
+      "label": "Salt",
+      "emoji": "🧂"
+    },
+    {
+      "id": "kitchen-items-spoon",
+      "category": "T_kitchen_items",
+      "name": "spoon",
+      "label": "Spoon",
+      "emoji": "🥄"
+    },
+    {
+      "id": "kitchen-items-teacup",
+      "category": "T_kitchen_items",
+      "name": "teacup",
+      "label": "Teacup",
+      "emoji": "🍵"
+    },
+    {
+      "id": "kitchen-items-toaster",
+      "category": "T_kitchen_items",
+      "name": "toaster",
+      "label": "Toaster",
+      "emoji": null
+    },
+    {
+      "id": "kitchen-items-wine-glass",
+      "category": "T_kitchen_items",
+      "name": "wine-glass",
+      "label": "Wine Glass",
+      "emoji": "🍷"
+    },
+    {
+      "id": "clothing-shirt",
+      "category": "T_clothing",
+      "name": "shirt",
+      "label": "Shirt",
+      "emoji": "👕"
+    },
+    {
+      "id": "clothing-pants",
+      "category": "T_clothing",
+      "name": "pants",
+      "label": "Pants",
+      "emoji": "👖"
+    },
+    {
+      "id": "clothing-shoes",
+      "category": "T_clothing",
+      "name": "shoes",
+      "label": "Shoes",
+      "emoji": "👟"
+    },
+    {
+      "id": "clothing-socks",
+      "category": "T_clothing",
+      "name": "socks",
+      "label": "Socks",
+      "emoji": "🧦"
+    },
+    {
+      "id": "clothing-jacket",
+      "category": "T_clothing",
+      "name": "jacket",
+      "label": "Jacket",
+      "emoji": "🧥"
+    },
+    {
+      "id": "clothing-hat",
+      "category": "T_clothing",
+      "name": "hat",
+      "label": "Hat",
+      "emoji": "🧢"
+    },
+    {
+      "id": "clothing-dress",
+      "category": "T_clothing",
+      "name": "dress",
+      "label": "Dress",
+      "emoji": "👗"
+    },
+    {
+      "id": "clothing-shorts",
+      "category": "T_clothing",
+      "name": "shorts",
+      "label": "Shorts",
+      "emoji": "🩳"
+    },
+    {
+      "id": "clothing-gloves",
+      "category": "T_clothing",
+      "name": "gloves",
+      "label": "Gloves",
+      "emoji": "🧤"
+    },
+    {
+      "id": "clothing-scarf",
+      "category": "T_clothing",
+      "name": "scarf",
+      "label": "Scarf",
+      "emoji": "🧣"
+    },
+    {
+      "id": "clothing-boots",
+      "category": "T_clothing",
+      "name": "boots",
+      "label": "Boots",
+      "emoji": "👢"
+    },
+    {
+      "id": "clothing-glasses",
+      "category": "T_clothing",
+      "name": "glasses",
+      "label": "Glasses",
+      "emoji": "👓"
+    },
+    {
+      "id": "foods-apple",
+      "category": "T_foods",
+      "name": "apple",
+      "label": "Apple",
+      "emoji": "🍎"
+    },
+    {
+      "id": "foods-banana",
+      "category": "T_foods",
+      "name": "banana",
+      "label": "Banana",
+      "emoji": "🍌"
+    },
+    {
+      "id": "foods-broccoli",
+      "category": "T_foods",
+      "name": "broccoli",
+      "label": "Broccoli",
+      "emoji": "🥦"
+    },
+    {
+      "id": "foods-burger",
+      "category": "T_foods",
+      "name": "burger",
+      "label": "Burger",
+      "emoji": "🍔"
+    },
+    {
+      "id": "foods-corn",
+      "category": "T_foods",
+      "name": "corn",
+      "label": "Corn",
+      "emoji": "🌽"
+    },
+    {
+      "id": "foods-donut",
+      "category": "T_foods",
+      "name": "donut",
+      "label": "Donut",
+      "emoji": "🍩"
+    },
+    {
+      "id": "foods-egg",
+      "category": "T_foods",
+      "name": "egg",
+      "label": "Egg",
+      "emoji": "🥚"
+    },
+    {
+      "id": "foods-orange",
+      "category": "T_foods",
+      "name": "orange",
+      "label": "Orange",
+      "emoji": "🍊"
+    },
+    {
+      "id": "foods-pizza",
+      "category": "T_foods",
+      "name": "pizza",
+      "label": "Pizza",
+      "emoji": "🍕"
+    },
+    {
+      "id": "foods-strawberry",
+      "category": "T_foods",
+      "name": "strawberry",
+      "label": "Strawberry",
+      "emoji": "🍓"
+    },
+    {
+      "id": "hygiene-toothbrush",
+      "category": "T_hygiene",
+      "name": "toothbrush",
+      "label": "Toothbrush",
+      "emoji": "🪥"
+    },
+    {
+      "id": "hygiene-soap",
+      "category": "T_hygiene",
+      "name": "soap",
+      "label": "Soap",
+      "emoji": "🧼"
+    },
+    {
+      "id": "hygiene-shampoo",
+      "category": "T_hygiene",
+      "name": "shampoo",
+      "label": "Shampoo",
+      "emoji": "🧴"
+    },
+    {
+      "id": "hygiene-sponge",
+      "category": "T_hygiene",
+      "name": "sponge",
+      "label": "Sponge",
+      "emoji": "🧽"
+    },
+    {
+      "id": "hygiene-toilet",
+      "category": "T_hygiene",
+      "name": "toilet",
+      "label": "Toilet",
+      "emoji": "🚽"
+    },
+    {
+      "id": "hygiene-bathtub",
+      "category": "T_hygiene",
+      "name": "bathtub",
+      "label": "Bathtub",
+      "emoji": "🛁"
+    },
+    {
+      "id": "hygiene-toilet-paper",
+      "category": "T_hygiene",
+      "name": "toilet-paper",
+      "label": "Toilet Paper",
+      "emoji": "🧻"
+    },
+    {
+      "id": "hygiene-razor",
+      "category": "T_hygiene",
+      "name": "razor",
+      "label": "Razor",
+      "emoji": "🪒"
+    },
+    {
+      "id": "hygiene-bandage",
+      "category": "T_hygiene",
+      "name": "bandage",
+      "label": "Bandage",
+      "emoji": "🩹"
+    },
+    {
+      "id": "school-backpack",
+      "category": "T_school",
+      "name": "backpack",
+      "label": "Backpack",
+      "emoji": "🎒"
+    },
+    {
+      "id": "school-pencil",
+      "category": "T_school",
+      "name": "pencil",
+      "label": "Pencil",
+      "emoji": "✏️"
+    },
+    {
+      "id": "school-pen",
+      "category": "T_school",
+      "name": "pen",
+      "label": "Pen",
+      "emoji": "🖊️"
+    },
+    {
+      "id": "school-crayon",
+      "category": "T_school",
+      "name": "crayon",
+      "label": "Crayon",
+      "emoji": "🖍️"
+    },
+    {
+      "id": "school-paintbrush",
+      "category": "T_school",
+      "name": "paintbrush",
+      "label": "Paintbrush",
+      "emoji": "🖌️"
+    },
+    {
+      "id": "school-scissors",
+      "category": "T_school",
+      "name": "scissors",
+      "label": "Scissors",
+      "emoji": "✂️"
+    },
+    {
+      "id": "school-ruler",
+      "category": "T_school",
+      "name": "ruler",
+      "label": "Ruler",
+      "emoji": "📏"
+    },
+    {
+      "id": "school-notebook",
+      "category": "T_school",
+      "name": "notebook",
+      "label": "Notebook",
+      "emoji": "📓"
+    },
+    {
+      "id": "school-book",
+      "category": "T_school",
+      "name": "book",
+      "label": "Book",
+      "emoji": "📕"
+    },
+    {
+      "id": "school-paper",
+      "category": "T_school",
+      "name": "paper",
+      "label": "Paper",
+      "emoji": "📄"
+    },
+    {
+      "id": "school-paperclip",
+      "category": "T_school",
+      "name": "paperclip",
+      "label": "Paperclip",
+      "emoji": "📎"
+    },
+    {
+      "id": "school-calculator",
+      "category": "T_school",
+      "name": "calculator",
+      "label": "Calculator",
+      "emoji": "🧮"
+    },
+    {
+      "id": "community-helpers-chef",
+      "category": "T_community_helpers",
+      "name": "chef",
+      "label": "Chef",
+      "emoji": "🧑‍🍳"
+    },
+    {
+      "id": "community-helpers-construction",
+      "category": "T_community_helpers",
+      "name": "construction",
+      "label": "Construction",
+      "emoji": "👷"
+    },
+    {
+      "id": "community-helpers-crossing-guard",
+      "category": "T_community_helpers",
+      "name": "crossing-guard",
+      "label": "Crossing Guard",
+      "emoji": "🚸"
+    },
+    {
+      "id": "community-helpers-doctor",
+      "category": "T_community_helpers",
+      "name": "doctor",
+      "label": "Doctor",
+      "emoji": "🧑‍⚕️"
+    },
+    {
+      "id": "community-helpers-farmer",
+      "category": "T_community_helpers",
+      "name": "farmer",
+      "label": "Farmer",
+      "emoji": "🧑‍🌾"
+    },
+    {
+      "id": "community-helpers-firefighter",
+      "category": "T_community_helpers",
+      "name": "firefighter",
+      "label": "Firefighter",
+      "emoji": "🧑‍🚒"
+    },
+    {
+      "id": "community-helpers-mail-carrier",
+      "category": "T_community_helpers",
+      "name": "mail-carrier",
+      "label": "Mail Carrier",
+      "emoji": "🧑‍✈️"
+    },
+    {
+      "id": "community-helpers-nurse",
+      "category": "T_community_helpers",
+      "name": "nurse",
+      "label": "Nurse",
+      "emoji": "👩‍⚕️"
+    },
+    {
+      "id": "community-helpers-police",
+      "category": "T_community_helpers",
+      "name": "police",
+      "label": "Police",
+      "emoji": "👮"
+    },
+    {
+      "id": "community-helpers-scientist",
+      "category": "T_community_helpers",
+      "name": "scientist",
+      "label": "Scientist",
+      "emoji": "🧑‍🔬"
+    },
+    {
+      "id": "community-helpers-teacher",
+      "category": "T_community_helpers",
+      "name": "teacher",
+      "label": "Teacher",
+      "emoji": "🧑‍🏫"
+    },
+    {
+      "id": "buildings-apartment",
+      "category": "T_buildings",
+      "name": "apartment",
+      "label": "Apartment",
+      "emoji": "🏢"
+    },
+    {
+      "id": "buildings-bank",
+      "category": "T_buildings",
+      "name": "bank",
+      "label": "Bank",
+      "emoji": "🏦"
+    },
+    {
+      "id": "buildings-castle",
+      "category": "T_buildings",
+      "name": "castle",
+      "label": "Castle",
+      "emoji": "🏰"
+    },
+    {
+      "id": "buildings-church",
+      "category": "T_buildings",
+      "name": "church",
+      "label": "Church",
+      "emoji": "⛪"
+    },
+    {
+      "id": "buildings-factory",
+      "category": "T_buildings",
+      "name": "factory",
+      "label": "Factory",
+      "emoji": "🏭"
+    },
+    {
+      "id": "buildings-hospital",
+      "category": "T_buildings",
+      "name": "hospital",
+      "label": "Hospital",
+      "emoji": "🏥"
+    },
+    {
+      "id": "buildings-house",
+      "category": "T_buildings",
+      "name": "house",
+      "label": "House",
+      "emoji": "🏠"
+    },
+    {
+      "id": "buildings-library",
+      "category": "T_buildings",
+      "name": "library",
+      "label": "Library",
+      "emoji": "🏛️"
+    },
+    {
+      "id": "buildings-school",
+      "category": "T_buildings",
+      "name": "school",
+      "label": "School",
+      "emoji": "🏫"
+    },
+    {
+      "id": "buildings-store",
+      "category": "T_buildings",
+      "name": "store",
+      "label": "Store",
+      "emoji": "🏪"
+    },
+    {
+      "id": "toys-balloon",
+      "category": "T_toys",
+      "name": "balloon",
+      "label": "Balloon",
+      "emoji": "🎈"
+    },
+    {
+      "id": "toys-blocks",
+      "category": "T_toys",
+      "name": "blocks",
+      "label": "Blocks",
+      "emoji": "🧱"
+    },
+    {
+      "id": "toys-kite",
+      "category": "T_toys",
+      "name": "kite",
+      "label": "Kite",
+      "emoji": "🪁"
+    },
+    {
+      "id": "toys-puzzle",
+      "category": "T_toys",
+      "name": "puzzle",
+      "label": "Puzzle",
+      "emoji": "🧩"
+    },
+    {
+      "id": "toys-robot",
+      "category": "T_toys",
+      "name": "robot",
+      "label": "Robot",
+      "emoji": "🤖"
+    },
+    {
+      "id": "toys-soccer-ball",
+      "category": "T_toys",
+      "name": "soccer-ball",
+      "label": "Soccer Ball",
+      "emoji": "⚽"
+    },
+    {
+      "id": "toys-teddy-bear",
+      "category": "T_toys",
+      "name": "teddy-bear",
+      "label": "Teddy Bear",
+      "emoji": "🧸"
+    },
+    {
+      "id": "toys-toy-car",
+      "category": "T_toys",
+      "name": "toy-car",
+      "label": "Toy Car",
+      "emoji": "🚗"
+    },
+    {
+      "id": "toys-train",
+      "category": "T_toys",
+      "name": "train",
+      "label": "Train",
+      "emoji": "🚂"
+    },
+    {
+      "id": "toys-yoyo",
+      "category": "T_toys",
+      "name": "yoyo",
+      "label": "Yoyo",
+      "emoji": "🪀"
+    },
+    {
+      "id": "vehicles-car",
+      "category": "T_vehicles",
+      "name": "car",
+      "label": "Car",
+      "emoji": "🚗"
+    },
+    {
+      "id": "vehicles-bus",
+      "category": "T_vehicles",
+      "name": "bus",
+      "label": "Bus",
+      "emoji": "🚌"
+    },
+    {
+      "id": "vehicles-truck",
+      "category": "T_vehicles",
+      "name": "truck",
+      "label": "Truck",
+      "emoji": "🚚"
+    },
+    {
+      "id": "vehicles-bicycle",
+      "category": "T_vehicles",
+      "name": "bicycle",
+      "label": "Bicycle",
+      "emoji": "🚲"
+    },
+    {
+      "id": "vehicles-motorcycle",
+      "category": "T_vehicles",
+      "name": "motorcycle",
+      "label": "Motorcycle",
+      "emoji": "🏍️"
+    },
+    {
+      "id": "vehicles-train",
+      "category": "T_vehicles",
+      "name": "train",
+      "label": "Train",
+      "emoji": "🚆"
+    },
+    {
+      "id": "vehicles-airplane",
+      "category": "T_vehicles",
+      "name": "airplane",
+      "label": "Airplane",
+      "emoji": "✈️"
+    },
+    {
+      "id": "vehicles-boat",
+      "category": "T_vehicles",
+      "name": "boat",
+      "label": "Boat",
+      "emoji": "⛵"
+    },
+    {
+      "id": "vehicles-helicopter",
+      "category": "T_vehicles",
+      "name": "helicopter",
+      "label": "Helicopter",
+      "emoji": "🚁"
+    },
+    {
+      "id": "vehicles-ambulance",
+      "category": "T_vehicles",
+      "name": "ambulance",
+      "label": "Ambulance",
+      "emoji": "🚑"
+    },
+    {
+      "id": "vehicles-fire-truck",
+      "category": "T_vehicles",
+      "name": "fire-truck",
+      "label": "Fire Truck",
+      "emoji": "🚒"
+    },
+    {
+      "id": "vehicles-police-car",
+      "category": "T_vehicles",
+      "name": "police-car",
+      "label": "Police Car",
+      "emoji": "🚓"
+    }
+  ]
+}
