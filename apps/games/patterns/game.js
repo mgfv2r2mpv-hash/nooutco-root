@@ -32,6 +32,14 @@ function shuffle(arr) {
 
 function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
 
+// ── Settings storage keys ──────────────────────────────────────────
+// Stage 6: this game's programme parameters live in the shared store
+// (../game-settings.js) under SETTINGS_KEY. `ppcSettings` is the retired key —
+// read once, folded into the store, and NEVER deleted or rewritten, so a
+// mis-mapped fold is recoverable and a downgrade still finds the old config.
+const SETTINGS_KEY = 'nooutco.settings.patterns';
+const LEGACY_SETTINGS_KEY = 'ppcSettings';
+
 // ── State ──────────────────────────────────────────────────────────
 
 const state = {
@@ -124,23 +132,70 @@ const el = {
 
 // ── Settings persistence ───────────────────────────────────────────
 
+/** The pattern length as the panel would show it, from a raw stored value. */
+function clampPatternLength(raw) { return clamp(parseInt(raw, 10) || 2, 2, 3); }
+
+/**
+ * The programme parameters this game persists, declared once. The shared store
+ * derives BOTH the defaults and the clamping from this one declaration, so
+ * there is no second hand-written description to drift out of sync with it.
+ *
+ * Caps keep the gift box to a clean shape: ≤9 tiles (len 3 × 2 reps + 3 blanks).
+ *
+ * `autoPromptEnabled` defaults to FALSE here — it is true only in `sequences`.
+ * That difference is clinical, not accidental; do not harmonise it.
+ */
+const SETTINGS_FIELDS = {
+  // The symbol set loads asynchronously, well after this normalizes, so the
+  // saved name is carried verbatim; populateSetDropdown() is what falls back
+  // to the first available set when the saved one is no longer published.
+  setName:           { type: 'string', default: '' },
+  patternLength:     { type: 'int',  min: 2, max: 3, default: 2 },
+  shownReps:         { type: 'int',  min: 1, max: 2, default: 2 },
+  // The number of blanks can never exceed the pattern length the technician
+  // chose, so the max is resolved from the same stored document rather than
+  // from a second clamp that could disagree with it.
+  blanksToFill:      { type: 'int',  min: 1, default: 1,
+                       max: (cfg) => clampPatternLength(cfg.patternLength) },
+  // The stepper's own change handler has always clamped to 2–8; declaring it
+  // here is what makes a *stored* out-of-range bankSize agree with the panel.
+  bankSize:          { type: 'int',  min: 2, max: 8, default: 4 },
+  representErrors:   { type: 'bool', default: true },
+  errorless:         { type: 'bool', default: false },
+  noErrorAnim:       { type: 'bool', default: false },
+  promptPersists:    { type: 'bool', default: false },
+  promptStyle:       { type: 'enum', values: ['sparkle', 'outline'], default: 'sparkle' },
+  autoPromptEnabled: { type: 'bool', default: false },
+  promptDelay:       { type: 'bool', default: false },
+  promptDelaySecs:   { type: 'int',  min: 1, max: 10, default: 3 },
+  reduceMotion:      { type: 'bool', default: false },
+};
+
+const settingsStore = window.NooutcoSettings.defineStore({
+  key: SETTINGS_KEY,
+  legacyKey: LEGACY_SETTINGS_KEY,
+  fields: SETTINGS_FIELDS,
+});
+
 function loadSettings() {
-  const s = JSON.parse(localStorage.getItem('ppcSettings') || '{}');
-  // Caps keep the gift box to a clean shape: ≤9 tiles (len 3 × 2 reps + 3 blanks).
-  state.setName           = s.setName           ?? '';
-  state.patternLength     = clamp(s.patternLength ?? 2, 2, 3);
-  state.shownReps         = clamp(s.shownReps     ?? 2, 1, 2);
-  state.blanksToFill      = clamp(s.blanksToFill  ?? 1, 1, state.patternLength);
-  state.bankSize          = s.bankSize          ?? 4;
-  state.representErrors   = s.representErrors   ?? true;
-  state.errorless         = s.errorless         ?? false;
-  state.noErrorAnim       = s.noErrorAnim       ?? false;
-  state.promptPersists    = s.promptPersists    ?? false;
-  state.promptStyle       = s.promptStyle       ?? 'sparkle';
-  state.autoPromptEnabled = s.autoPromptEnabled ?? false;
-  state.promptDelay       = s.promptDelay       ?? false;
-  state.promptDelaySecs   = s.promptDelaySecs   ?? 3;
-  state.reduceMotion      = s.reduceMotion      ?? false;
+  // Read-then-fold, never drop. Runs at most once; `ppcSettings` is left intact.
+  settingsStore.foldLegacy();
+  const s = settingsStore.initial();
+
+  state.setName           = s.setName;
+  state.patternLength     = s.patternLength;
+  state.shownReps         = s.shownReps;
+  state.blanksToFill      = s.blanksToFill;
+  state.bankSize          = s.bankSize;
+  state.representErrors   = s.representErrors;
+  state.errorless         = s.errorless;
+  state.noErrorAnim       = s.noErrorAnim;
+  state.promptPersists    = s.promptPersists;
+  state.promptStyle       = s.promptStyle;
+  state.autoPromptEnabled = s.autoPromptEnabled;
+  state.promptDelay       = s.promptDelay;
+  state.promptDelaySecs   = s.promptDelaySecs;
+  state.reduceMotion      = s.reduceMotion;
 
   el.inpPatternLen.value        = state.patternLength;
   el.inpReps.value              = state.shownReps;
@@ -164,7 +219,7 @@ function loadSettings() {
 }
 
 function saveSettings() {
-  localStorage.setItem('ppcSettings', JSON.stringify({
+  settingsStore.saveWorking({
     setName:           state.setName,
     patternLength:     state.patternLength,
     shownReps:         state.shownReps,
@@ -179,7 +234,7 @@ function saveSettings() {
     promptDelay:       state.promptDelay,
     promptDelaySecs:   state.promptDelaySecs,
     reduceMotion:      state.reduceMotion,
-  }));
+  });
 }
 
 // ── Symbol set loading ─────────────────────────────────────────────

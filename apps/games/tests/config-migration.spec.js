@@ -40,7 +40,7 @@ const GAMES = [
   { game: 'clock',        url: '/clock/',        settingsKey: 'nooutco.settings.clock' },
   { game: 'emotions',     url: '/emotions/',     settingsKey: 'noaba.emotionID.v1' },
   { game: 'ffc',          url: '/ffc/',          settingsKey: 'ffcgSettings' },
-  { game: 'intraverbal',  url: '/intraverbal/',  settingsKey: 'ivgSettings' },
+  { game: 'intraverbal',  url: '/intraverbal/',  settingsKey: 'nooutco.settings.intraverbal' },
   // matching's retired key was mgSettings and market's mmSettings — the pairing
   // is the opposite of what the folder names suggest. Both have since adopted
   // the store, so the key named here is the store's; naming the retired key
@@ -48,7 +48,7 @@ const GAMES = [
   // before ever touching it.
   { game: 'market',       url: '/market/',       settingsKey: 'nooutco.settings.market' },
   { game: 'matching',     url: '/matching/',     settingsKey: 'nooutco.settings.matching' },
-  { game: 'patterns',     url: '/patterns/',     settingsKey: 'ppcSettings' },
+  { game: 'patterns',     url: '/patterns/',     settingsKey: 'nooutco.settings.patterns' },
   { game: 'receptive',    url: '/receptive/',    settingsKey: 'nooutco.settings.receptive' },
   // sequences reads its retired key through migrateLegacyIntoStore().
   { game: 'sequences',    url: '/sequences/',    settingsKey: 'seqSettings' },
@@ -128,6 +128,7 @@ const ROUND_TRIPS = [
     game: 'intraverbal',
     url: '/intraverbal/',
     key: 'ivgSettings',
+    storeKey: 'nooutco.settings.intraverbal',
     seeded: {
       category: 'children_songs',
       arraySize: 6,
@@ -164,6 +165,7 @@ const ROUND_TRIPS = [
     game: 'patterns',
     url: '/patterns/',
     key: 'ppcSettings',
+    storeKey: 'nooutco.settings.patterns',
     seeded: {
       setName: 'Weather',
       patternLength: 3,
@@ -262,7 +264,7 @@ const ROUND_TRIPS = [
   },
 ];
 
-for (const { game, url, key, seeded, controls } of ROUND_TRIPS) {
+for (const { game, url, key, storeKey, seeded, controls } of ROUND_TRIPS) {
   test(`${game}: a seeded ${key} survives a reload with every value intact`, async ({ page }) => {
     await page.addInitScript(
       ([k, v]) => window.localStorage.setItem(k, v),
@@ -287,10 +289,22 @@ for (const { game, url, key, seeded, controls } of ROUND_TRIPS) {
 
     // Nothing was dropped from the stored document either: a game that rewrote
     // the key on boot with a partial payload would show up here even when every
-    // control happened to render the seeded value.
+    // control happened to render the seeded value. For a game that has adopted
+    // the shared store this is also the never-drop assertion — foldLegacy()
+    // reads the retired key and leaves it exactly as it found it.
     const saved = JSON.parse(await page.evaluate((k) => window.localStorage.getItem(k), key));
     for (const [option, value] of Object.entries(seeded)) {
       expect(saved[option], `${option} is still in the stored settings`).toEqual(value);
+    }
+
+    // …and the fold actually landed, rather than the controls happening to
+    // render the seeded values from a read that never reached the store.
+    if (storeKey) {
+      const stored = JSON.parse(await page.evaluate((k) => window.localStorage.getItem(k), storeKey));
+      expect(stored && stored.working, `${storeKey} carries a working config`).toBeTruthy();
+      for (const [option, value] of Object.entries(seeded)) {
+        expect(stored.working[option], `${option} folded into the store`).toEqual(value);
+      }
     }
   });
 }
