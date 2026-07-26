@@ -1494,3 +1494,160 @@ three test titles recorded as the accepted baseline. Zero new failures.
 - The press-and-hold gating is still unadopted anywhere but `sequences`, and
   only *gates* where the panel carries the matching
   `[data-editing="false"] { pointer-events: none }` rule (finding 47).
+
+---
+
+## Stage 6, part 4 — `intraverbal` and `patterns` adopt the store
+
+Six games down, three to go. `intraverbal` (`ivgSettings` →
+`nooutco.settings.intraverbal`) and `patterns` (`ppcSettings` →
+`nooutco.settings.patterns`) now declare their programme parameters as one
+field spec and read/write them through `defineStore()`. Each `loadSettings()`
+is `foldLegacy()` then `initial()`; each `saveSettings()` is `saveWorking()`.
+Both load `../game-settings.js` between `migrate-config.js` and `game.js`.
+
+These are the first two adopters that are **not** library-stimulus games —
+`intraverbal` draws from its own `items.json` and `patterns` from
+`symbols.json` — which is what forced the adoption table to stop assuming a
+shared page shape (finding 56).
+
+### 56. The adoption table assumed two controls that only six games have
+
+`settings-store-adoption.spec.js` was written against four games that all
+happen to share `#sel-topic` (the boot signal) and `#inp-size` (the stepper the
+edit / precedence / clamp assertions drive). Neither is universal:
+`intraverbal` fills `#sel-category`, `patterns` fills `#sel-set`, and
+`patterns` has no array size at all — its nearest equivalent is `#inp-bank`,
+whose ceiling is 8 rather than 10.
+
+Rather than fork the spec, each row may now name its own `boot`
+(`{selector, notText}`) and `probe` (`{selector, option, seeded, edited, ahead,
+max}`), both defaulting to what the six library games use. `OUT_OF_RANGE` went
+from a constant to `outOfRange(probe)` so the "99 clamps to the control's max"
+assertion follows the probe instead of hard-coding 10. The four existing rows
+are byte-for-byte unchanged in behaviour; the generalisation is what let two
+structurally different games join the same six assertions.
+
+### 57. A cross-field `max` must resolve from the *stored* document
+
+`patterns` clamps `blanksToFill` to `state.patternLength`, not to a constant —
+the gift box holds ≤9 tiles, so 3 blanks is legal at pattern length 3 and
+illegal at 2. The field spec expresses that as
+`max: (cfg) => clampPatternLength(cfg.patternLength)`.
+
+The subtlety is *which* `cfg` the thunk receives: `normalizeWith()` passes the
+raw source document, not the partially-normalized output, so the thunk has to
+re-clamp `patternLength` itself rather than trusting the neighbouring field to
+have been normalized first. Hard-coding the max to the declared default of 2
+instead — the shape of the bug where a cross-field constraint quietly collapses
+to its default — fails exactly 3 tests, and only because the seeded row carries
+`blanksToFill: 3` against `patternLength: 3`. Seeding 2 would have passed.
+
+This is the counterpart to finding 54: a cross-field *default* is unsafe for an
+int (`parseInt || default` eats a stored 0), but a cross-field *bound* is fine,
+because bounds are applied after the value has already been parsed.
+
+### 58. `bankSize` was clamped on edit and not on load
+
+`patterns`' bank stepper has always clamped to 2–8 in its `change` handler,
+while `loadSettings()` read `s.bankSize ?? 4` with no clamp at all — so a
+stored 99 survived a reload as 99 and the number input rendered it, while the
+first touch of the stepper snapped it back into range. Declaring
+`min: 2, max: 8` in the field spec makes the load agree with the edit. Per
+finding 51 this is a real behaviour change, and it is an honest one because the
+correction is visible in the control the technician is reading.
+
+### 59. A raw NUL byte in `ffc/game.js` made the file invisible to `grep`
+
+Stage 4 introduced `after.join('\0') !== before.join('\0')` in `ffc`'s alias
+remap, written as a literal NUL rather than an escape. That is legal JavaScript
+and the game works, but `grep`/`ripgrep` classify any file containing a NUL as
+binary and skip it silently — `grep -rn 'ffcgSettings' apps/games` returned
+nothing while the string was on two lines of that file. `git` was unaffected
+(its binary sniff only reads the first 8 KB, and the NULs sit at offset 11832),
+so the diff stayed readable and nothing flagged it.
+
+Rewritten as the escape `'\u0000'`: identical behaviour, and the file is text to every
+tool again. Worth checking for after any edit that writes a separator
+character — the classification is invisible until a search comes back empty.
+
+### 60. `origin/main` has moved 38 commits ahead, all in the excluded games
+
+The run's own exit check is `git diff --stat origin/main..HEAD` showing zero
+changes under `famous-person/`, `red-carpet-convos/`, `glam-team-makeover/` and
+`glam-*.spec.js`. Run literally today it shows **73 files, 9565 deletions** in
+exactly those paths — which reads as "this run deleted the glam suite" and is
+the opposite of what happened.
+
+`origin/main` is now `a459afe4`; the merge base with this branch is
+`7d083751`, 38 commits back. Every one of those 38 is glam / famous-person /
+red-carpet work landed on `main` *after* this branch forked — thirteen
+`glam-*.spec.js` files that have never existed on this branch, plus a
+3500-line rewrite of `glam-team-makeover/index.html` and the retirement of
+`famous-person/_Resources/_imgSource`.
+
+Two-dot `A..B` in `git diff` is not the range operator it is in `git log` — it
+is plain `git diff A B`, so everything `main` gained shows up as something this
+branch removed. The check that answers the question actually being asked is the
+three-dot form:
+
+    git diff --stat origin/main...HEAD -- apps/games/famous-person \
+      apps/games/red-carpet-convos apps/games/glam-team-makeover \
+      'apps/games/tests/glam-*.spec.js' apps/games/tests/red-carpet-convos.spec.js
+
+which is empty, as is the same diff taken against the merge base with the
+working tree included. This branch has introduced zero bytes of change under
+the excluded paths, and the recorded 8-failure glam baseline is the baseline of
+`7d083751`, not of today's `main`. **Whoever merges this will be integrating
+against a `main` whose glam suite has grown from 1 spec file to 14** — the
+merge is expected to be clean (disjoint paths) but the post-merge suite will
+have a different, larger baseline than the one this run measured against.
+
+### Coverage
+
+`tests/settings-store-adoption.spec.js` grew from 4 rows to 6 — the same six
+assertions per game, now 6 × 6 × 3 = 108 tests.
+
+`tests/config-migration.spec.js`: both ordering probes moved off `ivgSettings`
+/ `ppcSettings` and onto the store keys (finding 50), and the two `ROUND_TRIPS`
+rows gained a `storeKey` so the seeded retired payload is now asserted twice —
+returned byte-for-byte under the retired key **and** folded into
+`<storeKey>.working`. `intraverbal`'s `category` and `patterns`' `setName` stay
+asserted here, against the real `items.json` / `symbols.json`, rather than in
+the adoption table.
+
+Mutation-tested six ways, each restored from a byte-compared copy:
+`intraverbal` skipping `foldLegacy()` (12 tests), `patterns`'
+`autoPromptEnabled` harmonised to true (3 — the non-negotiable), `intraverbal`'s
+store adopting `ivgSettings` as its own key (18), `patterns`' `blanksToFill`
+max hard-coded to the default pattern length (3), `patterns`' `bankSize` losing
+its declared range (3), and the `game-settings.js` script tag deleted from
+`intraverbal` (24).
+
+**Suite: 727 passed, 8 failed — all 8 in `glam-team-makeover.spec.js`**, at the
+three test titles recorded as the accepted baseline. Zero new failures.
+`APP_VERSION` 0.19.2 → 0.19.3.
+
+### Still owed for Stage 6 (updated)
+
+- Three games: `ffc` (`ffcgSettings`), `think-or-say` (`tosSettings`),
+  `emotions` (`noaba.emotionID.v1`). Each is a row in `ADOPTED` plus a field
+  spec.
+- `ffc` writes its settings from a second place: `loadItems()` calls
+  `migrateTargetFilters(data.idAliases)`, which re-points a saved target
+  selection at the shared stimulus ids and calls `saveSettings()` when it
+  changed anything. That runs after `loadSettings()`, so the fold happens
+  first — but it means `ffc`'s adoption has two save paths to move, not one,
+  and `tests/stimulus-ffc.spec.js` currently reads the result back out of
+  `ffcgSettings` (which after adoption would still be the *pre-remap* payload,
+  because `foldLegacy()` never rewrites the retired key). That spec has to be
+  re-pointed at `<storeKey>.working` in the same commit as the adoption.
+- `think-or-say` keeps part of its configuration in the DOM rather than in
+  state (Stage 7 names this explicitly), so its spec cannot be written from
+  `loadSettings()` alone — do that one last, or fix the DOM-as-state first.
+- `emotions` has no `game.js`: all 816 lines live in `emotions/index.html`, and
+  its options are `aria-checked` buttons rather than form controls, so its row
+  needs `attr:` control kinds throughout (the kind added in part 3).
+- The press-and-hold gating is still unadopted anywhere but `sequences`, and
+  only *gates* where the panel carries the matching
+  `[data-editing="false"] { pointer-events: none }` rule (finding 47).

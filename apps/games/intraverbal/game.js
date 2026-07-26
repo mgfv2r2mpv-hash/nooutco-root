@@ -24,6 +24,14 @@ function sample(arr, n) {
   return shuffle([...arr]).slice(0, n);
 }
 
+// ── Settings storage keys ──────────────────────────────────────────
+// Stage 6: this game's programme parameters live in the shared store
+// (../game-settings.js) under SETTINGS_KEY. `ivgSettings` is the retired key —
+// read once, folded into the store, and NEVER deleted or rewritten, so a
+// mis-mapped fold is recoverable and a downgrade still finds the old config.
+const SETTINGS_KEY = 'nooutco.settings.intraverbal';
+const LEGACY_SETTINGS_KEY = 'ivgSettings';
+
 // ── State ──────────────────────────────────────────────────────────
 
 const state = {
@@ -166,25 +174,59 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadItems();
 });
 
-// ── Settings (localStorage) ────────────────────────────────────────
+// ── Settings (shared store) ────────────────────────────────────────
+
+/**
+ * The programme parameters this game persists, declared once. The shared store
+ * derives BOTH the defaults and the clamping from this one declaration, so
+ * there is no second hand-written description to drift out of sync with it.
+ *
+ * `autoPromptEnabled` defaults to FALSE here — it is true only in `sequences`.
+ * That difference is clinical, not accidental; do not harmonise it.
+ */
+const SETTINGS_FIELDS = {
+  category:              { type: 'string', default: '' },
+  arraySize:             { type: 'int',  min: 2, max: 10, default: 4 },
+  representErrors:       { type: 'bool', default: true },
+  errorless:             { type: 'bool', default: false },
+  noErrorAnim:           { type: 'bool', default: false },
+  crossCategory:         { type: 'bool', default: false },
+  promptPersists:        { type: 'bool', default: false },
+  promptStyle:           { type: 'enum', values: ['sparkle', 'outline'], default: 'sparkle' },
+  autoPromptEnabled:     { type: 'bool', default: false },
+  promptDelay:           { type: 'bool', default: false },
+  promptDelaySecs:       { type: 'int',  min: 1, max: 10, default: 3 },
+  vocalPromptsEnabled:   { type: 'bool', default: false },
+  vocalResponsesEnabled: { type: 'bool', default: false },
+  // category -> the item ids the technician chose as targets.
+  targetFilters:         { type: 'map',  default: {} },
+};
+
+const settingsStore = window.NooutcoSettings.defineStore({
+  key: SETTINGS_KEY,
+  legacyKey: LEGACY_SETTINGS_KEY,
+  fields: SETTINGS_FIELDS,
+});
 
 function loadSettings() {
-  const s = JSON.parse(localStorage.getItem('ivgSettings') || '{}');
-  state.category          = s.category          ?? '';
-  state.arraySize         = s.arraySize         ?? 4;
-  state.representErrors   = s.representErrors   ?? true;
-  state.errorless         = s.errorless         ?? false;
-  state.noErrorAnim       = s.noErrorAnim       ?? false;
-  state.crossCategory     = s.crossCategory     ?? false;
-  state.promptPersists    = s.promptPersists    ?? false;
-  state.promptStyle       = s.promptStyle       ?? 'sparkle';
-  state.autoPromptEnabled = s.autoPromptEnabled ?? false;
-  state.promptDelay       = s.promptDelay       ?? false;
-  state.promptDelaySecs   = s.promptDelaySecs   ?? 3;
-  state.vocalPromptsEnabled  = s.vocalPromptsEnabled  ?? false;
-  state.vocalResponsesEnabled = s.vocalResponsesEnabled ?? false;
-  state.targetFilters     = (s.targetFilters && typeof s.targetFilters === 'object')
-    ? s.targetFilters : {};
+  // Read-then-fold, never drop. Runs at most once; `ivgSettings` is left intact.
+  settingsStore.foldLegacy();
+  const s = settingsStore.initial();
+
+  state.category          = s.category;
+  state.arraySize         = s.arraySize;
+  state.representErrors   = s.representErrors;
+  state.errorless         = s.errorless;
+  state.noErrorAnim       = s.noErrorAnim;
+  state.crossCategory     = s.crossCategory;
+  state.promptPersists    = s.promptPersists;
+  state.promptStyle       = s.promptStyle;
+  state.autoPromptEnabled = s.autoPromptEnabled;
+  state.promptDelay       = s.promptDelay;
+  state.promptDelaySecs   = s.promptDelaySecs;
+  state.vocalPromptsEnabled   = s.vocalPromptsEnabled;
+  state.vocalResponsesEnabled = s.vocalResponsesEnabled;
+  state.targetFilters     = s.targetFilters;
 
   el.inpSize.value                = state.arraySize;
   el.chkRepresentErrors.checked   = state.representErrors;
@@ -204,7 +246,7 @@ function loadSettings() {
 }
 
 function saveSettings() {
-  localStorage.setItem('ivgSettings', JSON.stringify({
+  settingsStore.saveWorking({
     category:          state.category,
     arraySize:         state.arraySize,
     representErrors:   state.representErrors,
@@ -219,7 +261,7 @@ function saveSettings() {
     vocalPromptsEnabled:  state.vocalPromptsEnabled,
     vocalResponsesEnabled: state.vocalResponsesEnabled,
     targetFilters:     state.targetFilters,
-  }));
+  });
 }
 
 // ── Data loading ───────────────────────────────────────────────────

@@ -299,7 +299,7 @@ function migrateTargetFilters(idAliases) {
   for (const mode of Object.keys(state.targetFilters)) {
     const before = state.targetFilters[mode] || [];
     const after = [...new Set(before.map((id) => idAliases[id] || id))];
-    if (after.join(' ') !== before.join(' ')) changed = true;
+    if (after.join('\u0000') !== before.join('\u0000')) changed = true;
     state.targetFilters[mode] = after;
   }
   if (changed) saveSettings();

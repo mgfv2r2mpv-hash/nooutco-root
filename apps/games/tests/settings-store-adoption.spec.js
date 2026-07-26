@@ -27,8 +27,29 @@ import { test, expect } from '@playwright/test';
  * `topic` and `targetFilters` are deliberately absent: topic selection and
  * target remapping are asserted against the real manifest in
  * `stimulus-repoint.spec.js`, and seeding them here would make this spec
- * depend on which stimuli happen to be published.
+ * depend on which stimuli happen to be published. For the same reason
+ * `intraverbal`'s `category` and `patterns`' `setName` are asserted in
+ * `config-migration.spec.js` against the real `items.json` / `symbols.json`
+ * rather than here.
+ *
+ * Two things the table cannot assume across ten games, so every row may name
+ * its own:
+ *   - `boot`: the dropdown each game fills straight after `loadSettings()`,
+ *     which is the signal that the store has already been read
+ *   - `probe`: the numeric stepper the generic edit / precedence / clamp
+ *     assertions drive. Four games share `#inp-size`; `patterns` has no array
+ *     size at all and uses its bank size instead.
  */
+const DEFAULT_BOOT = { selector: '#sel-topic option', notText: '-- scanning --' };
+const DEFAULT_PROBE = {
+  selector: '#inp-size',
+  option: 'arraySize',
+  seeded: 6,   // what the retired key carries
+  edited: 7,   // what a live edit writes
+  ahead: 9,    // what a config already in the store carries
+  max: 10,     // what an out-of-range 99 must clamp down to
+};
+
 const ADOPTED = [
   {
     game: 'clock',
@@ -257,6 +278,104 @@ const ADOPTED = [
       ['#sel-token-emoji', 'value', 'random'],
     ],
   },
+  {
+    game: 'intraverbal',
+    url: '/intraverbal/',
+    legacyKey: 'ivgSettings',
+    storeKey: 'nooutco.settings.intraverbal',
+    boot: { selector: '#sel-category option', notText: '(no categories)' },
+    seeded: {
+      arraySize: 6,
+      representErrors: false,
+      errorless: true,
+      noErrorAnim: true,
+      crossCategory: true,
+      promptPersists: true,
+      promptStyle: 'outline',
+      autoPromptEnabled: true,
+      promptDelay: true,
+      promptDelaySecs: 5,
+      vocalPromptsEnabled: true,
+      vocalResponsesEnabled: true,
+    },
+    controls: [
+      ['#inp-size', 'value', '6'],
+      ['#chk-represent-errors', 'checked', false],
+      ['#chk-errorless', 'checked', true],
+      ['#chk-no-error-anim', 'checked', true],
+      ['#chk-cross', 'checked', true],
+      ['#chk-persists', 'checked', true],
+      ['#sel-prompt-style', 'value', 'outline'],
+      ['#chk-auto-prompt', 'checked', true],
+      ['#chk-prompt-delay', 'checked', true],
+      ['#sel-prompt-delay', 'value', '5'],
+      ['#chk-vocal-prompts', 'checked', true],
+      ['#chk-vocal-responses', 'checked', true],
+    ],
+    fresh: [
+      ['#inp-size', 'value', '4'],
+      ['#chk-represent-errors', 'checked', true],
+      ['#chk-errorless', 'checked', false],
+      ['#chk-cross', 'checked', false],
+      ['#sel-prompt-style', 'value', 'sparkle'],
+      ['#chk-auto-prompt', 'checked', false],
+      ['#chk-vocal-prompts', 'checked', false],
+      ['#chk-vocal-responses', 'checked', false],
+    ],
+  },
+  {
+    game: 'patterns',
+    url: '/patterns/',
+    legacyKey: 'ppcSettings',
+    storeKey: 'nooutco.settings.patterns',
+    boot: { selector: '#sel-set option', notText: '-- loading --' },
+    // No array size in this game — the bank size is the stepper the generic
+    // assertions drive, and its ceiling is 8 rather than 10.
+    probe: { selector: '#inp-bank', option: 'bankSize', seeded: 6, edited: 7, ahead: 8, max: 8 },
+    seeded: {
+      patternLength: 3,
+      shownReps: 1,
+      // Only meaningful against patternLength 3 — a blanksToFill max resolved
+      // from the *declared* default of 2 instead of the stored 3 clamps it.
+      blanksToFill: 3,
+      bankSize: 6,
+      representErrors: false,
+      errorless: true,
+      noErrorAnim: true,
+      promptPersists: true,
+      promptStyle: 'outline',
+      autoPromptEnabled: true,
+      promptDelay: true,
+      promptDelaySecs: 5,
+      reduceMotion: true,
+    },
+    controls: [
+      ['#inp-pattern-length', 'value', '3'],
+      ['#inp-reps', 'value', '1'],
+      ['#inp-blanks', 'value', '3'],
+      ['#inp-bank', 'value', '6'],
+      ['#chk-represent-errors', 'checked', false],
+      ['#chk-errorless', 'checked', true],
+      ['#chk-no-error-anim', 'checked', true],
+      ['#chk-persists', 'checked', true],
+      ['#sel-prompt-style', 'value', 'outline'],
+      ['#chk-auto-prompt', 'checked', true],
+      ['#chk-prompt-delay', 'checked', true],
+      ['#sel-prompt-delay', 'value', '5'],
+      ['#chk-reduce-motion', 'checked', true],
+    ],
+    fresh: [
+      ['#inp-pattern-length', 'value', '2'],
+      ['#inp-reps', 'value', '2'],
+      ['#inp-blanks', 'value', '1'],
+      ['#inp-bank', 'value', '4'],
+      ['#chk-represent-errors', 'checked', true],
+      ['#chk-errorless', 'checked', false],
+      ['#sel-prompt-style', 'value', 'sparkle'],
+      ['#chk-auto-prompt', 'checked', false],
+      ['#chk-reduce-motion', 'checked', false],
+    ],
+  },
 ];
 
 /**
@@ -264,15 +383,17 @@ const ADOPTED = [
  * control cannot render: 99 is past the input's max, 0 is unparseable-as-truthy
  * and below the minimum, and 'neon' is not an option the select offers.
  */
-const OUT_OF_RANGE = {
-  seeded: { arraySize: 99, promptDelaySecs: 0, promptStyle: 'neon' },
-  expected: { arraySize: 10, promptDelaySecs: 3, promptStyle: 'sparkle' },
-  controls: [
-    ['#inp-size', 'value', '10'],
-    ['#sel-prompt-delay', 'value', '3'],
-    ['#sel-prompt-style', 'value', 'sparkle'],
-  ],
-};
+function outOfRange(probe) {
+  return {
+    seeded: { [probe.option]: 99, promptDelaySecs: 0, promptStyle: 'neon' },
+    expected: { [probe.option]: probe.max, promptDelaySecs: 3, promptStyle: 'sparkle' },
+    controls: [
+      [probe.selector, 'value', String(probe.max)],
+      ['#sel-prompt-delay', 'value', '3'],
+      ['#sel-prompt-style', 'value', 'sparkle'],
+    ],
+  };
+}
 
 /** Seed a localStorage key before any page script runs. */
 async function seed(page, entries) {
@@ -283,11 +404,13 @@ async function seed(page, entries) {
 
 /**
  * Wait for a signal that boot has finished adopting the settings: every game
- * builds its topic dropdown straight after `loadSettings()`, so a dropdown with
- * real options means the store has already been read.
+ * builds a dropdown straight after `loadSettings()` — the stimulus topic for
+ * the six library games, the category for `intraverbal`, the symbol set for
+ * `patterns` — so a dropdown with real options means the store has been read.
  */
-async function bootedWithSettings(page) {
-  await expect(page.locator('#sel-topic option').first()).not.toHaveText('-- scanning --');
+async function bootedWithSettings(page, boot) {
+  const { selector, notText } = boot || DEFAULT_BOOT;
+  await expect(page.locator(selector).first()).not.toHaveText(notText);
 }
 
 async function readStore(page, storeKey) {
@@ -308,7 +431,12 @@ async function expectControls(page, controls) {
   }
 }
 
-for (const { game, url, legacyKey, storeKey, seeded, controls, fresh } of ADOPTED) {
+for (const row of ADOPTED) {
+  const { game, url, legacyKey, storeKey, seeded, controls, fresh } = row;
+  const boot = row.boot || DEFAULT_BOOT;
+  const probe = row.probe || DEFAULT_PROBE;
+  const OUT_OF_RANGE = outOfRange(probe);
+
   test(`${game}: loads the shared settings module`, async ({ page }) => {
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
@@ -317,7 +445,7 @@ for (const { game, url, legacyKey, storeKey, seeded, controls, fresh } of ADOPTE
 
     await expect(page.locator('script[src*="game-settings.js"]')).toHaveCount(1);
     expect(await page.evaluate(() => typeof window.NooutcoSettings), 'the module loaded').toBe('object');
-    await bootedWithSettings(page);
+    await bootedWithSettings(page, boot);
     expect(errors, 'the game booted without a page error').toEqual([]);
   });
 
@@ -326,14 +454,14 @@ for (const { game, url, legacyKey, storeKey, seeded, controls, fresh } of ADOPTE
     // FALSE in all nine games and TRUE only in `sequences`. Moving the schema
     // into a shared module is exactly the change that could harmonise it.
     await page.goto(url);
-    await bootedWithSettings(page);
+    await bootedWithSettings(page, boot);
     await expectControls(page, fresh);
   });
 
   test(`${game}: a retired ${legacyKey} configuration folds into the store`, async ({ page }) => {
     await seed(page, [[legacyKey, seeded]]);
     await page.goto(url);
-    await bootedWithSettings(page);
+    await bootedWithSettings(page, boot);
 
     // The panel the technician reads is the assertion that matters — a fold
     // that landed in storage but never reached the controls is still a fold
@@ -351,20 +479,20 @@ for (const { game, url, legacyKey, storeKey, seeded, controls, fresh } of ADOPTE
     const seededJson = JSON.stringify(seeded);
     await seed(page, [[legacyKey, seeded]]);
     await page.goto(url);
-    await bootedWithSettings(page);
-    await expect(page.locator('#inp-size')).toHaveValue('6');
+    await bootedWithSettings(page, boot);
+    await expect(page.locator(probe.selector)).toHaveValue(String(probe.seeded));
 
     // A real edit through the game's own handler, so this exercises the
     // production save path rather than the store in isolation.
-    await page.evaluate(() => {
-      const input = document.getElementById('inp-size');
-      input.value = '7';
+    await page.evaluate(([selector, value]) => {
+      const input = document.querySelector(selector);
+      input.value = String(value);
       input.dispatchEvent(new Event('change'));
-    });
+    }, [probe.selector, probe.edited]);
 
     await expect
-      .poll(async () => (await readStore(page, storeKey)).working.arraySize)
-      .toBe(7);
+      .poll(async () => (await readStore(page, storeKey)).working[probe.option])
+      .toBe(probe.edited);
 
     const legacy = await page.evaluate((key) => window.localStorage.getItem(key), legacyKey);
     expect(legacy, `${legacyKey} is byte-for-byte what was seeded`).toBe(seededJson);
@@ -374,21 +502,21 @@ for (const { game, url, legacyKey, storeKey, seeded, controls, fresh } of ADOPTE
     // Once the game has been configured under the new store, the retired key is
     // stale: re-folding it would silently revert the technician's newer edits.
     await seed(page, [
-      [legacyKey, { ...seeded, arraySize: 6, promptStyle: 'outline' }],
-      [storeKey, { working: { ...seeded, arraySize: 9, promptStyle: 'sparkle' } }],
+      [legacyKey, { ...seeded, [probe.option]: probe.seeded, promptStyle: 'outline' }],
+      [storeKey, { working: { ...seeded, [probe.option]: probe.ahead, promptStyle: 'sparkle' } }],
     ]);
     await page.goto(url);
-    await bootedWithSettings(page);
+    await bootedWithSettings(page, boot);
 
-    await expect(page.locator('#inp-size')).toHaveValue('9');
+    await expect(page.locator(probe.selector)).toHaveValue(String(probe.ahead));
     await expect(page.locator('#sel-prompt-style')).toHaveValue('sparkle');
-    expect((await readStore(page, storeKey)).working.arraySize).toBe(9);
+    expect((await readStore(page, storeKey)).working[probe.option]).toBe(probe.ahead);
   });
 
   test(`${game}: an out-of-range stored value is clamped into the panel's range`, async ({ page }) => {
     await seed(page, [[legacyKey, { ...seeded, ...OUT_OF_RANGE.seeded }]]);
     await page.goto(url);
-    await bootedWithSettings(page);
+    await bootedWithSettings(page, boot);
 
     await expectControls(page, OUT_OF_RANGE.controls);
 
