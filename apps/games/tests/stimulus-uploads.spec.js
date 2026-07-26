@@ -191,6 +191,33 @@ test.describe('an AdminTools upload survives the next rebuild', () => {
     expect([...build.files.keys()]).not.toContain('placeholder/T_buildings/store.svg');
   });
 
+  test('art for a seeded core word replaces its generated glyph and keeps its label', () => {
+    // A vocabulary word starts life with no file anywhere: the build draws its
+    // glyph from `emoji`. The Worker sees only the uploaded photograph and the
+    // committed index, so it has to retire a placeholder it never generated and
+    // keep the curated label — a rebuild reading `vocabulary.json` will.
+    const before = committedState();
+    const seeded = before.index.stimuli.find((s) => s.id === 'vehicles-bus');
+    expect(seeded.image, 'the word is seeded ahead of its art').toBeNull();
+    expect(seeded.placeholder).toBe('/shared/stimuli/placeholder/T_vehicles/bus.svg');
+
+    const upload = { game: 'clock', category: 'T_vehicles', filename: 'bus.jpg', bytes: bytesFor('bus') };
+    const worker = applied(upload, before);
+
+    const entry = worker.index.stimuli.find((s) => s.id === 'vehicles-bus');
+    expect(entry.image).toBe('/shared/stimuli/img/T_vehicles/bus.jpg');
+    expect(entry.placeholder).toBeUndefined();
+    expect(entry.label, 'the vocabulary label survives the upload').toBe('Bus');
+    expect(entry.emoji, 'the glyph stays as data').toBe('🚌');
+    expect(worker.removeRepoPaths).toEqual(['shared/stimuli/placeholder/T_vehicles/bus.svg']);
+
+    const build = rebuilt(upload, worker);
+    expectAgreement(worker, build);
+    expect([...build.files.keys()]).not.toContain('placeholder/T_vehicles/bus.svg');
+    expect([...build.files.keys()], 'the other seeded words keep their glyphs')
+      .toContain('placeholder/T_vehicles/truck.svg');
+  });
+
   test('a brand-new topic joins the uploading game only', () => {
     const before = committedState();
     const upload = { game: 'matching', category: 'T_gnhf_probe', filename: 'widget.jpg', bytes: bytesFor('widget') };

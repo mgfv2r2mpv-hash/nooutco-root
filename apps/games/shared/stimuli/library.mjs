@@ -82,6 +82,36 @@ export const imageUrl = (category, fileName) => `${IMG_URL_PREFIX}${category}/${
 export const placeholderUrl = (category, fileName) => `${PLACEHOLDER_URL_PREFIX}${category}/${fileName}`;
 
 /**
+ * The stem a word's files are named after, recovered from its id.
+ *
+ * `stimulusId()` is the only thing that turns a stem into an id, and it slugs,
+ * so the inverse is exact for any id it produced — which the vocabulary asserts
+ * word by word rather than assuming.
+ */
+export const stemOfId = (category, id) => String(id).slice(categorySlug(category).length + 1);
+
+const XML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+const escapeXml = (value) => String(value).replace(/[&<>"]/g, (c) => XML_ESCAPES[c]);
+
+/**
+ * The glyph fallback drawn for a word that has no art yet, byte-identical in
+ * shape to the emoji placeholders the three `_Resources` trees already shipped
+ * — same 200×200 box, same baseline, same emoji font stack. Generated rather
+ * than authored so seeding a word costs a line of data and no asset, and kept
+ * here (not in `build.mjs`) because `worker.js` has to be able to recognise the
+ * files it owns.
+ *
+ * `y="125"` with no `dominant-baseline` is deliberate: the shipped placeholders
+ * that use `dominant-baseline` centre differently across webkit and firefox,
+ * and this is the variant every browser lays out the same way.
+ */
+export const emojiPlaceholderSvg = (emoji) =>
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">\n'
+  + `  <text x="100" y="125" text-anchor="middle" font-size="95" font-family="Apple Color Emoji,`
+  + `Segoe UI Emoji,Noto Color Emoji,sans-serif">${escapeXml(emoji)}</text>\n`
+  + '</svg>\n';
+
+/**
  * An archived topic keeps its stimuli but leaves the programme, and AdminTools
  * names it by a prefix rather than by a flag: `T_colors` archived is
  * `_a_T_colors`. That prefix used to be a real directory — the topic's files

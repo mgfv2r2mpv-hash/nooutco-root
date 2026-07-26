@@ -35,6 +35,7 @@ import {
   UPLOADS_SUBDIR,
   UPLOADS_URL_PREFIX,
   deriveLabel,
+  emojiPlaceholderSvg,
   imageUrl,
   libraryFileName,
   liveGames,
@@ -44,6 +45,7 @@ import {
   publishingFrom,
   sortKeys,
   stableJson,
+  stemOfId,
   stimulusId,
 } from './library.mjs';
 
@@ -187,6 +189,42 @@ function collectCandidates(extraUploads = []) {
   return candidates;
 }
 
+// ── The canonical core vocabulary ──────────────────────────────────
+
+/**
+ * `vocabulary.json` indexed by stimulus id, with every word checked against the
+ * one rule that makes it joinable: its id has to be the id the merge would
+ * derive for a file called `<name>` sitting in `<category>`. A word whose id
+ * drifts from its name would seed a second entry beside the art it meant to
+ * label, and nothing downstream would notice.
+ */
+function readVocabulary(vocabulary) {
+  const doc = vocabulary || readJson(path.join(LIBRARY_DIR, 'vocabulary.json'), { words: [] });
+  const words = new Map();
+
+  for (const word of doc.words || []) {
+    for (const field of ['id', 'category', 'name', 'label']) {
+      if (typeof word[field] !== 'string' || !word[field].trim()) {
+        throw new Error(`vocabulary: "${word.id || '?'}" is missing ${field}`);
+      }
+    }
+    if (!('emoji' in word)) throw new Error(`vocabulary: "${word.id}" must declare an emoji, even if null`);
+    if (stimulusId(word.category, word.name) !== word.id) {
+      throw new Error(
+        `vocabulary: "${word.id}" does not match ${word.category}/${word.name} `
+          + `(that names ${stimulusId(word.category, word.name)})`,
+      );
+    }
+    if (stemOfId(word.category, word.id) !== word.name) {
+      throw new Error(`vocabulary: "${word.id}" is not "${word.name}" in ${word.category}`);
+    }
+    if (words.has(word.id)) throw new Error(`vocabulary: "${word.id}" is listed twice`);
+    words.set(word.id, word);
+  }
+
+  return words;
+}
+
 // ── Merge ──────────────────────────────────────────────────────────
 
 /**
@@ -266,6 +304,7 @@ function buildLibrary(options = {}) {
   const labels = labelsOverride || readJson(path.join(LIBRARY_DIR, 'labels.json'), { overrides: {} }).overrides || {};
   const publishing = options.publishing || readJson(path.join(LIBRARY_DIR, 'publishing.json'), { excluded: {} });
   const topicNames = options.topicNames || readJson(path.join(LIBRARY_DIR, 'topics.json'), { names: {} }).names || {};
+  const vocabulary = readVocabulary(options.vocabulary);
 
   /** category -> stimulus id -> candidates */
   const byCategory = new Map();
@@ -274,6 +313,15 @@ function buildLibrary(options = {}) {
     const ids = byCategory.get(candidate.category);
     if (!ids.has(candidate.id)) ids.set(candidate.id, []);
     ids.get(candidate.id).push(candidate);
+  }
+
+  // A core word is a stimulus whether or not a file for it exists yet: seeding
+  // the vocabulary is what puts a word in front of a learner before anyone has
+  // photographed it, and the emoji fallback is what it is drawn as until then.
+  for (const word of vocabulary.values()) {
+    if (!byCategory.has(word.category)) byCategory.set(word.category, new Map());
+    const ids = byCategory.get(word.category);
+    if (!ids.has(word.id)) ids.set(word.id, []);
   }
 
   const categories = [...byCategory.keys()].sort();
@@ -299,18 +347,39 @@ function buildLibrary(options = {}) {
 
       // Every spelling in the group names the same stimulus (`mail-carrier`
       // and `mail_carrier` share an id), so the best-ranked one names the file.
-      const canonicalStem = (art[0] || group[0]).stem;
+      // A core word with no file at all names itself.
+      const word = vocabulary.get(id) || null;
+      const canonicalStem = art[0]?.stem ?? group[0]?.stem ?? word.name;
       const glyphSource = group.find((c) => c.glyph);
       const labelOverride = group.map((c) => c.label).find((l) => typeof l === 'string' && l.trim());
 
+      // Labels: a technician's own override first, then the curated vocabulary,
+      // then whatever a pre-repoint manifest happened to have frozen, then the
+      // filename. The vocabulary sits above the frozen label because a filename
+      // is what the frozen label was usually derived from in the first place.
+      const label = labels[id]
+        || (word ? word.label : null)
+        || (labelOverride ? labelOverride.trim() : deriveLabel(canonicalStem));
+
       const entry = {
         id,
-        label: labels[id] || (labelOverride ? labelOverride.trim() : deriveLabel(canonicalStem)),
+        label,
         categories: [category],
         image: null,
-        emoji: glyphSource ? glyphSource.glyph.text : null,
+        emoji: (word && word.emoji) || (glyphSource ? glyphSource.glyph.text : null),
       };
-      if (glyphSource) entry.glyphKind = glyphSource.glyph.kind;
+      if (word && word.emoji) entry.glyphKind = 'emoji';
+      else if (glyphSource) entry.glyphKind = glyphSource.glyph.kind;
+
+      // The glyph a shipped placeholder actually draws and the glyph the
+      // vocabulary records have to be the same character. They are two
+      // descriptions of one picture, and a learner sees the file.
+      if (word && word.emoji && glyphSource && !art.length && glyphSource.glyph.text !== word.emoji) {
+        throw new Error(
+          `vocabulary: "${id}" says ${word.emoji} but ${glyphSource.servedPath} draws `
+            + `${glyphSource.glyph.text}`,
+        );
+      }
 
       const variants = [];
       art.forEach((candidate, index) => {
@@ -340,9 +409,21 @@ function buildLibrary(options = {}) {
         if (files.has(relative)) throw new Error(`library file name collision: ${relative}`);
         files.set(relative, glyphSource.bytes);
         entry.placeholder = placeholderUrl(category, fileName);
+      } else if (!entry.image && entry.emoji) {
+        // A seeded word has no file anywhere, so its glyph is drawn rather than
+        // copied. Same 200×200 emoji card the trees shipped, so the two kinds
+        // of placeholder are indistinguishable to a game.
+        const fileName = libraryFileName(canonicalStem, '.svg', 0);
+        const relative = `${PLACEHOLDER_SUBDIR}/${category}/${fileName}`;
+        if (files.has(relative)) throw new Error(`library file name collision: ${relative}`);
+        files.set(relative, Buffer.from(emojiPlaceholderSvg(entry.emoji), 'utf8'));
+        entry.placeholder = placeholderUrl(category, fileName);
       }
 
       if (!entry.image && !entry.placeholder) {
+        // A core word is data someone wrote down, so a blank one is a mistake
+        // to fix rather than a gap to report: it has no file to fall back on.
+        if (word) throw new Error(`vocabulary: "${id}" has neither art nor an emoji — it would render blank`);
         warnings.push(`${category}/${id}: no art and no glyph — would render blank`);
       }
 

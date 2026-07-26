@@ -34,6 +34,11 @@ const SOURCE_MANIFESTS = JSON.parse(
   readFileSync(path.join(GAMES_ROOT, 'shared/stimuli/source-manifests.json'), 'utf8'),
 ).games;
 
+/** The canonical core topics a game may carry beyond the ones it shipped. */
+const CORE_TOPICS = JSON.parse(
+  readFileSync(path.join(GAMES_ROOT, 'shared/stimuli/vocabulary.json'), 'utf8'),
+).core;
+
 /**
  * The four games that read one of these manifests, with the localStorage key
  * each persists its settings under and the base it prefixed onto image paths.
@@ -79,8 +84,17 @@ for (const source of ['clock', 'receptive', 'matching']) {
     const manifest = await loadJson(request, `/${source}/manifest.json`);
 
     expect(manifest.library, 'names the library it came from').toBe(`${LIBRARY_BASE}stimuli.json`);
-    expect(manifest.folders, 'keeps the programme list it shipped')
-      .toEqual(SOURCE_MANIFESTS[source].folders);
+
+    // The programme list only ever grows. Every topic the game shipped is still
+    // there, and anything beyond it is a core vocabulary topic clock and
+    // receptive were given deliberately — a folder that is neither is a topic
+    // the projection invented, which would put another game's programme into
+    // this one's dropdown.
+    const dropped = SOURCE_MANIFESTS[source].folders.filter((f) => !manifest.folders.includes(f));
+    expect(dropped, 'topics the game shipped and no longer offers').toEqual([]);
+    const added = manifest.folders.filter((f) => !SOURCE_MANIFESTS[source].folders.includes(f));
+    expect(added.filter((f) => !CORE_TOPICS.includes(f)), 'topics from neither the game nor the core')
+      .toEqual([]);
 
     const published = Object.values(manifest.images).flat();
     const stragglers = published.filter((p) => !p.startsWith(LIBRARY_BASE));
@@ -231,8 +245,7 @@ for (const { game, url, manifest: manifestUrl, source, storageKey, legacyBase } 
     // Every game builds its topic dropdown straight after adopting the
     // manifest, and the migration runs before that — so a fully populated
     // dropdown means the migration has already had its chance.
-    await expect(page.locator('#sel-topic option'))
-      .toHaveCount(SOURCE_MANIFESTS[source].folders.length);
+    await expect(page.locator('#sel-topic option')).toHaveCount(manifest.folders.length);
 
     const saved = JSON.parse(await page.evaluate((key) => window.localStorage.getItem(key), storageKey));
 
