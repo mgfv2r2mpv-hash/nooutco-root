@@ -1718,6 +1718,29 @@ const BROWCFG_D = {wf:1.3,dx:0,dy:1.75};
    `floor` is what a pure-black sprite pixel becomes, `span` how much the sprite's
    own shading is worth on top. See `_browTint` for why the floor moved. */
 const BROW_TINT = { floor:0.60, span:0.55 };
+/* ══ Brow-tail repair (turn-exchange pass, Finding B) ══
+   Reported: "a small amount of pixel noise between outer tail of eyebrows and
+   temple/hairline". The maintainer named the cause and their reading is the one
+   that held up: "the base image has an eyebrow that is removed by code". The
+   removal stops short of the brow's OUTER TAIL, so ink from the original brow
+   survives on the temple skin — on a bare face, with no brow tool taken and no
+   recolour, which is why `BROW_TINT` was never a candidate and is untouched.
+
+   `_browClean` finishes that removal at composite time. The numbers, all as
+   fractions:
+     in/out/tall — the band, in brow-sprite widths inboard/outboard of the tail
+                   and in brow-sprite heights either side of its centre line.
+     hair/key/lips — mask channels a pixel must be UNDER to count as skin. `hair`
+                   is deliberately tight: the hairline and its anti-aliased edge
+                   carry a partial hair value and must never be repainted. `key`
+                   is `_eyesCanvas`'s own cutoff, so the region the build-time
+                   fill DID reach is left exactly as it is.
+     dark/depth  — a pixel is residue below `dark` × the band's own median skin
+                   luminance, and is fully replaced by `depth` × that below it.
+     feather     — the fraction of the band over which alpha ramps to 0 at the
+                   edges, so the repair never introduces an edge of its own. */
+const BROW_CLEAN = { in:0.18, out:0.50, tall:1.10, hair:0.10, key:0.12, lips:0.12,
+                     dark:0.86, depth:0.45, feather:0.16 };
 /* ══ Per-tool cursor art — STUB, art deferred to issue #40 ══
    Reported: "the drag animation style is boring because the cursor doesn't look
    different. It would look best if the cursor looked like the tool being used."
@@ -2687,6 +2710,54 @@ class Component extends DCLogic {
       o[i]=b[i];o[i+1]=b[i+1];o[i+2]=b[i+2]; o[i+3]=eb*(b[i+3]/255)*255; }
     octx.putImageData(od,0,0); c.key=key; c.cv=out; return out; }
 
+  /* Finding B — see BROW_CLEAN. Returns an overlay of the band's own skin tone,
+     alpha only where the base render still carries brow ink outside the region
+     its build-time removal reached. Drawn straight after the base so every
+     cosmetic that follows sits on repaired skin.
+     Cached per model|hairShape: this is a property of the base render, so no
+     tool state and no colour choice can invalidate it. */
+  _browClean(E){ const key='bclean|'+this.state.model+'|'+this.state.ed.hairShape;
+    const c=this._bclc||(this._bclc={}); if(c.key===key) return c.cv;
+    const bd=this._data(E.base), md=this._data(E.mask); if(!bd||!md) return null;
+    const W=bd.width,H=bd.height, b=bd.data,m=md.data;
+    const BC=BROWCFG[this.state.model]||BROWCFG_D, f=E.face;
+    const set=(this.gen().brows||{})[this.state.model]||{};
+    const asp=((set.bushy||{}).L||{}).aspect||2.4;
+    const bands=[];
+    for(const [x,y,w,h,o] of [[f.eyeL.x*W,f.eyeL.y*H,f.eyeL.w*W,f.eyeL.h*H,-1],
+                              [f.eyeR.x*W,f.eyeR.y*H,f.eyeR.w*W,f.eyeR.h*H,1]]){
+      const bw=BC.wf*(2*w), bh=bw/asp, by=y-BC.dy*h, tail=x+o*(BC.dx*w+bw/2);
+      const a=tail-o*BROW_CLEAN.in*bw, z=tail+o*BROW_CLEAN.out*bw;
+      bands.push({ x0:Math.min(a,z), x1:Math.max(a,z), y0:by-BROW_CLEAN.tall*bh, y1:by+BROW_CLEAN.tall*bh }); }
+    const skinAt=i=> m[i]/255<BROW_CLEAN.hair && m[i+1]/255<BROW_CLEAN.lips
+                  && m[i+2]/255<BROW_CLEAN.key && b[i+3]>200;
+    const lumAt=i=>0.299*b[i]+0.587*b[i+1]+0.114*b[i+2];
+    // the tone the removal should have left behind: the median of the band's own
+    // skin, so the repair is the model's colour and not a constant
+    const rs=[],gs=[],bs=[],ls=[];
+    for(const z of bands)
+      for(let y=Math.max(0,Math.floor(z.y0));y<Math.min(H,Math.ceil(z.y1));y++)
+        for(let x=Math.max(0,Math.floor(z.x0));x<Math.min(W,Math.ceil(z.x1));x++){
+          const i=(y*W+x)*4; if(!skinAt(i)) continue;
+          rs.push(b[i]); gs.push(b[i+1]); bs.push(b[i+2]); ls.push(lumAt(i)); }
+    const med=a=>{ if(!a.length) return null; a.sort((p,q)=>p-q); return a[a.length>>1]; };
+    const sr=med(rs.slice()),sg=med(gs.slice()),sb=med(bs.slice()),sl=med(ls.slice());
+    if(sl==null||sl<=0){ c.key=key; c.cv=null; return null; }
+    const cut=sl*BROW_CLEAN.dark, floor=cut*BROW_CLEAN.depth;
+    const out=document.createElement('canvas'); out.width=W; out.height=H;
+    const octx=out.getContext('2d'); const od=octx.createImageData(W,H), o=od.data;
+    let hit=0;
+    for(const z of bands){
+      const fw=Math.max(1,(z.x1-z.x0)*BROW_CLEAN.feather), fh=Math.max(1,(z.y1-z.y0)*BROW_CLEAN.feather);
+      for(let y=Math.max(0,Math.floor(z.y0));y<Math.min(H,Math.ceil(z.y1));y++)
+        for(let x=Math.max(0,Math.floor(z.x0));x<Math.min(W,Math.ceil(z.x1));x++){
+          const i=(y*W+x)*4; if(!skinAt(i)) continue;
+          const L=lumAt(i); if(L>=cut) continue;
+          const depth=Math.min(1,(cut-L)/Math.max(1,cut-floor));
+          const fx=Math.min(1,(x-z.x0)/fw,(z.x1-x)/fw), fy=Math.min(1,(y-z.y0)/fh,(z.y1-y)/fh);
+          const a=depth*Math.max(0,Math.min(fx,fy)); if(a<=0) continue;
+          o[i]=sr; o[i+1]=sg; o[i+2]=sb; o[i+3]=a*255; hit++; } }
+    octx.putImageData(od,0,0); c.key=key; c.cv=hit?out:null; return c.cv; }
   _hairCutout(E){ const key='hcut|'+this.state.model+'|'+this.state.ed.hairShape;
     const c=this._hcutc||(this._hcutc={}); if(c.key===key) return c.cv;
     const bd=this._data(E.base), md=this._data(E.mask); if(!bd||!md) return null;
@@ -3119,6 +3190,9 @@ class Component extends DCLogic {
     // not just this box — so the canvas stays transparent behind the model and her
     // margins reveal the salon, with the model floating in front across the panel.
     ctx.drawImage(baseImg.img,0,0,W,H);
+    // finish the base render's own brow removal at the outer tail before anything
+    // else lands on the face (Finding B — see BROW_CLEAN / `_browClean`)
+    { const bcv=this._browClean(E); if(bcv) ctx.drawImage(bcv,0,0,W,H); }
     const ed=this.state.ed, cov=k=>ed.cov[k]||0, col=k=>ed.col[k], gl=k=>ed.gl[k];
     const f=E.face, lx=f.eyeL.x*W,ly=f.eyeL.y*H,lw=f.eyeL.w*W,lh=f.eyeL.h*H,
       rx=f.eyeR.x*W,ry=f.eyeR.y*H,rw=f.eyeR.w*W,rh=f.eyeR.h*H, cxm=(lx+rx)/2,cym=(ly+ry)/2;

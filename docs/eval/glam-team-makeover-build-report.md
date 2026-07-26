@@ -3998,7 +3998,221 @@ surfaces show exactly the cursors they showed before"* — **passes on both buil
 which is the point**: it is the no-visual-change proof, and a stub that made it
 fail would not be a stub.
 
+### Finding B — the pixel noise at the brow tail
+
+> "There is a small amount of pixel noise between outer tail of eyebows and
+> temple/hairline that should be addressed"
+>
+> "Actually, I mean before the brow color is changed at all. The base image has an
+> eyebrow that is removed by code and that is the likeliest source of aberration"
+
+#### The state it was reproduced in
+
+Exactly the one the maintainer described, per roster model: **bare face, default
+`hair-copper`, routine `free`** (so no tool had to be taken to reach the salon),
+**no brow tool used, no recolour**. One further control: the three spot flaws are
+seeded per play and one of m4's pool positions lands inside the right band, so
+they are cleared before measuring — otherwise the count depends on the draw
+rather than on the render. That single control moved m4 R between two runs of the
+same build by 30 → 53 stray pixels, which is the same size as the whole defect,
+so it is not optional.
+
+#### The tint-floor hypothesis was never the lead, and is refuted by the report itself
+
+An earlier note in this pass proposed the `BROW_TINT.floor` lift (0.42 → 0.60) as
+the leading cause. **The maintainer's own correction refutes it before any
+measurement is needed**: `_browTint` is only reached from the brow *state sprite*
+draw, and the reported face has had no brow tool taken and no recolour, so no
+tinted sprite pixel exists on it. `BROW_TINT` is untouched by this iteration and
+`glam-brow-tail.spec.js` asserts `{ floor:0.60, span:0.55 }` verbatim so a later
+pass cannot walk the accepted A2 ruling back through this one.
+
+#### Two compositor leads, both refuted with numbers
+
+**Lead 1 — the hard `eb<0.12` cutoff in `_eyesCanvas` stair-steps an anti-aliased
+mask edge.** Refuted twice over.
+
+*The mask's blue channel is not meaningfully anti-aliased*, so there is almost
+nothing for a hard threshold to stair-step. Over the whole default render:
+
+| model | non-zero blue px | exactly 255 | 1–30 (killed by the cut) | 31–63 (survives, faint) |
+|---|---|---|---|---|
+| m2 | 12 059 | 11 311 (93.8 %) | 94 | 75 |
+| m3 | 7 552 | 7 044 (93.3 %) | 88 | 60 |
+| m4 | 9 884 | 9 095 (92.0 %) | 127 | 109 |
+
+*And the lift is a visual no-op where nothing intervenes*: `_eyesCanvas` writes
+the **base render's own RGB back over the base render at the same coordinates**,
+so inside the key the composite is the base and outside it the base is untouched.
+The only way it could show is by cancelling a layer drawn between the two — on a
+bare face that is the `#786654` α .24 dull-wash blob, which would leave a step in
+skin tone at the key's boundary. Measured on the composited canvas, walking every
+row through the key's brow lobe and sampling skin 2 px inside against skin 3 px
+outside the outermost key pixel:
+
+| band | rows sampled | inside | outside | step |
+|---|---|---|---|---|
+| m2 L | 27 | 116.1 | 116.1 | **0.0 %** |
+| m2 R | 15 | 116.1 | 116.1 | **0.0 %** |
+| m3 L | 21 | 103.2 | 103.1 | **+0.1 %** |
+| m3 R | 19 | 103.2 | 103.2 | **0.0 %** |
+| m4 L | 7 | 93.0 | 93.0 | **0.0 %** |
+| m4 R | 5 | 136.9 | 141.1 | −3.0 % |
+
+There is no step to see. The one non-zero reading is m4 R at five rows and the
+*wrong sign* (outside is lighter), i.e. the local shading, not a cancelled wash.
+
+**Lead 2 — the state sprite does not fully cover the base brow's outer tail.**
+Half right, and the half that is right is the answer; the half that is wrong
+matters. There is no crisp surviving *brow tail* under the sprite. What is there,
+in the base render, is a **desaturated ghost on the temple skin outboard of where
+the sprite ends** — the fade-out of the removal, not the brow.
+
+#### The cause, named
+
+**The base render's brow removal is bounded, and it stops before the brow does.**
+Inside the mask's eyes+brows key the removal left clean skin; on the temple skin
+immediately outboard of it a warm-dark ghost of the original brow survives, and
+the brow state sprite has tapered away by then and does not hide it. It reads as
+a grey haze hugging the hairline between the brow tail and the temple, which is
+what the report describes.
+
+The reading is the maintainer's and it holds up; what this pass adds is the
+measurement and the boundary. Stated plainly: the *removal is bounded* part is
+measured (the numbers below), and *which* bound (the blue key, a rect zone in the
+art build, or something else in a pipeline this game does not own) is **not**
+established here — the pipeline that produced `base.png` is in `tools/glam-art`,
+outside this pass's scope, and no attempt was made to re-derive it.
+
+#### The fix — `_browClean`, finishing the removal at composite time
+
+`base.png` cannot be regenerated from inside the game, so the removal is completed
+in the compositor. `_browClean(E)` builds a cached overlay of the band's **own
+median skin tone**, with alpha only where the base still carries ink, and
+`paintAvatar` draws it immediately after the base image so every cosmetic that
+follows lands on repaired skin. It is cached per `model|hairShape`, because the
+repair is a property of the base render — no tool state, no colour choice and no
+turn can invalidate it.
+
+`BROW_CLEAN` is the whole tuning surface, and three of its numbers exist to make
+the repair *provably* narrow rather than merely careful:
+
+- `hair: 0.10` — deliberately tight. The hairline and its anti-aliased edge carry
+  a partial hair value, and repainting them would trade one aberration for a
+  worse one. Everything on the hair side of that line is left exactly as it is,
+  which is why this fix **reduces** the noise rather than erasing it.
+- `key: 0.12` — `_eyesCanvas`'s own cutoff, so the region the build-time removal
+  *did* reach is never touched.
+- `feather: 0.16` — alpha ramps to zero over the band's outer sixth, so the repair
+  cannot introduce an edge of its own where it stops.
+
+#### The metric, and the numbers
+
+A **stray-ink pixel** is, on the composited bare face, a pixel inside the
+brow-tail band that (a) the model's own mask calls skin — hair < 0.10, lips < 0.12,
+eyes+brows key < 0.12; (b) is *not* covered by the brow state sprite, whose alpha
+is sampled at the exact rect `paintAvatar` stamps it into; and (c) is darker than
+0.86 × the model's **cheek** skin luminance — a reference taken well below the
+band so no repair inside the band can move the threshold. **`deficit`** is the
+integral of how far under that threshold the band runs, in luminance-pixels.
+
+`deficit` is the headline and `stray` is not, and the reason is worth stating: the
+defect is a *haze*, so lifting it changes how deep the band is far more than how
+wide. Reporting only the pixel count would have made a 36–57 % improvement look
+like a 2 % one.
+
+| band | `93dab9be` | with `_browClean` | change | test cap |
+|---|---|---|---|---|
+| m2 L | 9 205 | 5 840 | **−36.6 %** | 7 500 |
+| m2 R | 8 523 | 5 114 | **−40.0 %** | 6 800 |
+| m3 L | 263 | 115 | **−56.3 %** | 190 |
+| m3 R | 220 | 100 | **−54.5 %** | 160 |
+| m4 L | 288 | 125 | **−56.6 %** | 205 |
+| m4 R | 194 | 110 | **−43.3 %** | 150 |
+
+Caps sit at the midpoint of the two builds so each has roughly equal margin, and
+the same table is asserted on all three engines.
+
+Two honest caveats on the table. **m2's numbers are ~35× m3's and m4's** because
+m2's temple carries a large area of legitimately-shaded skin that the metric
+counts as "under the cheek reference"; the *change* is the signal there, not the
+level. And at ×5 the m3 and m4 shots read as a small warming of the temple rather
+than a dramatic before/after — "a small amount of pixel noise" is what was
+reported, and a small amount is what moved. m2 carries the visible one.
+
+#### Evidence
+
+`apps/games/tests/glam-brow-tail.spec.js` — five tests × 3 engines. **Four fail
+against `93dab9be`**, quoting the measurement:
+
+```
+Error: m2 L stray-ink deficit (band 87,121,70,135, cheek 150)
+Expected: <= 7500
+Received:    9205
+
+Error: m3 L stray-ink deficit (band 105,149,57,93, cheek 138)
+Expected: <= 190
+Received:    263
+
+Error: m4 L stray-ink deficit (band 88,141,69,99, cheek 136)
+Expected: <= 205
+Received:    288
+
+Error: page.evaluate: TypeError: L._browClean is not a function
+```
+
+The fifth — *"the accepted brow tint floor is untouched by this pass"* — **passes
+on both builds by design**: it is the guard on the A2 ruling, not a claim about
+this change.
+
+The fourth test above is the one that keeps the fix narrow. It audits the overlay
+itself and asserts, on every pixel it touches: none outside the brow-tail band,
+none on hair, none inside the eyes+brows key the removal already reached, and
+**none darkened** — the repair may only ever lighten.
+
+#### Re-running the evidence
+
+Every number above comes out of a probe kept beside the spec, each runnable from
+`apps/games` against a hash-verified `:8788`:
+
+| script | produces |
+|---|---|
+| `tests/_probe-glam-brow-mask.mjs` | the blue-channel binarity table (lead 1, refuted) |
+| `tests/_probe-glam-brow-washstep.mjs` | the dull-wash step table (lead 1's second form, refuted) |
+| `tests/_probe-glam-brow-loupe.mjs` | wide loupes incl. the sprite-suppressed frame |
+| `tests/_probe-glam-brow-map.mjs` | the ASCII map of base ink against the mask key |
+| `tests/_probe-glam-brow-wedge.mjs` | base │ mask │ canvas at ×22 over one band |
+| `tests/_probe-glam-browclean.mjs` | `_browClean`'s own overlay and footprint |
+| `tests/_probe-glam-browtail-metric.mjs` | the before/after `deficit` table |
+
+The metric probe takes `PAGE=` so it can be pointed at a copy of the pre-change
+file in the same directory — the trick the earlier passes used, so `../tailwind.css`,
+`vendor/` and `assets/` resolve identically and only the renderer differs.
+
+#### Shots
+
+`docs/eval/shots/glam-turn-exchange/browtail-{before,after}-{m2,m3,m4}.png` — a ×5
+loupe strip per model, left brow band | right brow band, spanning the outer brow,
+the temple and the hairline, in the reported state. Captured by
+`apps/games/tests/_shots-glam-brow-tail.mjs`, which reports console cleanliness on
+both phases (`console clean` for all six).
+
 ### Verification for this pass
+
+- **Full Playwright suite: 474/474 green** (459 at `bb352a53` + 15 new: 5 tests
+  × 3 engines) at `--workers=4`, against a hash-verified server — `shasum` of the
+  worktree file and of `curl http://localhost:8788/…` matched `ac12dff9…` for the
+  run. At default worker count the same build produced 3 firefox failures
+  (`glam-art-fidelity`, `glam-station-kit` ×2) which **pass 25/25 in isolation** —
+  the documented Atkinson Hyperlegible webfont-under-load flake.
+- **`window.GlamTT` byte-identical** to `95ba6101`, `93dab9be` and `bb352a53`,
+  sliced on content rather than line numbers: 24 749 bytes, SHA `e08b2252…` on all
+  four.
+- **`tests/glam-tt-scoring.spec.js` byte-identical** — SHA `d5eb286c…` at
+  `95ba6101`, `93dab9be`, `bb352a53` and now.
+- **`BROW_TINT.floor` is still `0.60`**, and now asserted by a test.
+
+#### Earlier in this pass (Findings C and D, at `bb352a53`)
 
 - **Full Playwright suite: 459/459 green** (432 at `93dab9be` + 27 new: 9 tests
   × 3 engines) at `--workers=4`, against a hash-verified server —
@@ -4033,6 +4247,26 @@ fail would not be a stub.
 - Clean console: every test in the new spec asserts `expect(errors).toEqual([])`,
   and the screenshot script exits non-zero on any console or page error.
 
+### Judged rather than measured (Finding B)
+
+- **What "noise" means.** The metric above is a definition, not a discovery: a
+  pixel darker than 0.86 × cheek skin, on mask-skin, outside the sprite. The
+  threshold and the band's extents (`in .18 / out .50 / tall 1.10` brow-widths)
+  were chosen to bracket what the loupes show and then held fixed across both
+  builds. A different threshold would give different percentages; it would not
+  change the sign.
+- **Reducing rather than erasing.** `hair: 0.10` leaves every pixel on the hair
+  side of the hairline alone, and part of the ghost lies there. That is a
+  deliberate trade — a repainted hairline would be a worse defect than the haze —
+  and it is why the numbers move by 36–57 % and not by 100 %.
+- **Where the bound came from.** That the removal is *bounded and stops short* is
+  measured. *Which* bound produced it lives in `tools/glam-art`, outside this
+  pass's scope, and was not re-derived. If a future art rebuild fixes it at
+  source, `_browClean` will simply find nothing and return `null`.
+- **A flat median tone as the repair colour.** The band's skin is near-flat where
+  the repair lands, so one sampled tone is enough; a gradient-aware inpaint would
+  be more machinery than the defect justifies.
+
 ### Judged rather than measured (Findings C and D)
 
 - **`z.label` as the fallback for a switched shade.** With coverage read as 0 for
@@ -4051,12 +4285,6 @@ fail would not be a stub.
 
 ### Still to do in this pass
 
-- **Finding B** — brow-tail/hairline pixel noise. Untouched by this iteration.
-  Per the maintainer's correction the trigger is **not** the tint path: the noise
-  is present on a bare face with no brow tool used and no recolour, and their lead
-  is that "the base image has an eyebrow that is removed by code". Reproduce in
-  that state per model, loupe the band before changing anything, and name the
-  cause from evidence. `BROW_TINT.floor` stays `0.60`.
 - **Finding E** — the per-tool turn-exchange sweep table. Finding A is one
   instance of the class; every tool family still needs the four columns (still
   armable / does arming change anything / does its tick stay stable / can it
