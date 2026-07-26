@@ -1283,3 +1283,119 @@ three test titles recorded as the accepted baseline. Zero new failures.
 - The press-and-hold gating only *gates* where the panel also carries the
   `[data-editing="false"] { pointer-events: none }` rule (finding 47). Adopting
   `holdToUnlock()` in a game means adopting that rule with it.
+
+---
+
+## Stage 6, part 2 — `clock` and `receptive` adopt the store
+
+Two games down, seven to go. `clock` (`hddSettings` →
+`nooutco.settings.clock`) and `receptive` (`ngSettings` →
+`nooutco.settings.receptive`) now declare their programme parameters as one
+field spec and read/write them through `defineStore()`. Each `loadSettings()`
+is `foldLegacy()` then `initial()`; each `saveSettings()` is `saveWorking()`.
+Both load `../game-settings.js` between `migrate-config.js` and `game.js`.
+
+Note the key pairing, which stays as surprising as finding 43 recorded it:
+`clock` is `hddSettings` but `receptive` is `ngSettings` (it is `NameIDGame`).
+
+### 49. A shared library needs a field type for opaque technician-keyed data
+
+`targetFilters` — `{ topicFolder: [imageUrl, …] }` — is the first setting the
+five original types could not describe, and reaching for `list` would have been
+actively harmful. `list` validates members against an allowed set and **drops**
+what is not in it; `targetFilters`' keys are topic folders and its values are
+stimulus URLs, so both sides are *content*. A topic whose art is temporarily
+unpublished would have come back empty — a silent deletion of the technician's
+target selection, which is precisely the failure `pathAliases` exists to
+prevent (finding 11).
+
+The new `map` type therefore keeps every key and value verbatim and only
+refuses a value that is not a plain object at all. It is deliberately weaker
+than every other type in the module, and the comment says why.
+
+`defaultsFor()` was widened at the same time: it used to clone only a `list`
+default, so a declared `default: {}` would have been shared by reference across
+every `defaults()` call, and one game's live edit would have reached into the
+declaration. Now anything object-shaped is cloned.
+
+### 50. The seeded-old-key tests had to be re-pointed, and that is the point
+
+Two existing specs keyed off the retired names and both would have gone green
+for the wrong reason if left alone:
+
+- `config-migration.spec.js`'s ordering probe watches `get:<settingsKey>`. Left
+  on `hddSettings` it **still passes** — verified by reverting the row and
+  re-running: every test starts from empty storage, so `foldLegacy()` does read
+  the retired key on that one load. That is exactly why it had to move. The
+  assertion would have been quietly vacuous from the second load onward, when
+  `foldLegacy()` returns before touching the retired key and the only settings
+  read left is the store's. The row now names the key the game reads on *every*
+  load, so the probe keeps asserting something.
+- `stimulus-repoint.spec.js` seeded `hddSettings` and read the same key back.
+  Post-adoption the game never writes it, so the read-back had to move to
+  `<storeKey>.working`. The seed stays where it is — seeding the retired key is
+  the whole point of the test — and it gained the assertion that pairs with it:
+  the retired key comes back **byte-for-byte what was seeded**, so the
+  never-drop rule is proven on the live game and not just on the module.
+
+### 51. "Clamped" and "redefaulted" look identical unless the panel is asserted
+
+`hddSettings` was read with `??` — any stored value was adopted verbatim, so an
+`arraySize` of 99 ran 99-tile arrays and a `promptStyle` of `'neon'` left the
+select rendering blank. The store clamps: 99 → 10, `'neon'` → `'sparkle'`,
+`promptDelaySecs: 0` → 3 (the declared default, per finding 46, not the floor).
+
+That is a behaviour change, and hard constraint 1 says no setting may be
+*silently* redefaulted — so the test asserts the **control**, not the stored
+value: `#inp-size` must read `10`. A clamp the technician can see in the panel
+they are looking at is a correction; one that only exists in storage is exactly
+the silent redefault the constraint forbids.
+
+### 52. Moving a schema into a shared module is how a per-game default gets lost
+
+`autoPromptEnabled` is `false` in nine games and `true` only in `sequences`.
+Part 1 tested that for `sequences`; nothing tested the other side, so
+harmonising `clock`'s declaration to `true` would have passed the whole suite.
+Each adopted game now has a fresh-install test asserting its own declared
+defaults, with `#chk-auto-prompt` unchecked as the named non-negotiable. The
+mutation fails 3 tests and nothing else.
+
+### Coverage
+
+`tests/settings-store-adoption.spec.js` — 6 tests × 2 games × 3 browsers, and
+this table is what each remaining game adds a row to: the module loads with no
+page error, a fresh install shows that game's own declared defaults, the
+retired key folds into the store *and into the panel*, the retired key survives
+both the fold and a subsequent live edit byte-for-byte, a config already in the
+store outranks the retired key, and an out-of-range value is clamped into the
+range the control can display.
+
+`tests/game-settings.spec.js` +2 × 3 for the `map` type against the scratch
+store: every key and value kept (including a topic no longer published), the
+stored object copied rather than adopted by reference, a non-object falling
+back, and `defaults()` handing back a fresh map.
+
+Mutation-tested six ways, each restored from a byte-compared copy: `map`
+returning `{}` (9 tests), `clock` skipping `foldLegacy()` (12), the
+`game-settings.js` script tag deleted from `receptive` (27), `clock`'s
+`autoPromptEnabled` harmonised to true (3 — the non-negotiable), `receptive`'s
+`tokenEmoji` enum narrowed to `['random']` (3), and `clock`'s `saveSettings()`
+writing back to `hddSettings` (6).
+
+**Suite: 655 passed, 8 failed — all 8 in `glam-team-makeover.spec.js`**, at the
+three test titles recorded as the accepted baseline. Zero new failures.
+`APP_VERSION` 0.19.0 → 0.19.1.
+
+### Still owed for Stage 6 (updated)
+
+- Seven games: `ffc` (`ffcgSettings`), `intraverbal` (`ivgSettings`), `market`
+  (`mmSettings`), `matching` (`mgSettings`), `patterns` (`ppcSettings`),
+  `think-or-say` (`tosSettings`), `emotions` (`noaba.emotionID.v1`). Each is a
+  row in `ADOPTED` plus a field spec; `matching`/`market` also carry
+  `targetFilters`, so they need the `map` type and nothing new.
+- `think-or-say` keeps part of its configuration in the DOM rather than in
+  state (Stage 7 names this explicitly), so its spec cannot be written from
+  `loadSettings()` alone — do that one last, or fix the DOM-as-state first.
+- The press-and-hold gating is still unadopted anywhere but `sequences`, and
+  only *gates* where the panel carries the matching
+  `[data-editing="false"] { pointer-events: none }` rule (finding 47).

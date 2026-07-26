@@ -28,9 +28,16 @@ import { test, expect } from '@playwright/test';
 
 const VERSION_KEY = 'nooutco:configVersion';
 
-/** Every in-scope game, and the key its settings live under today. */
+/**
+ * Every in-scope game, and the key its settings live under today.
+ *
+ * A game that has adopted the shared store (Stage 6) reads `nooutco.settings.*`
+ * — its retired key is still read, but only by `foldLegacy()` and only until
+ * the fold has run once, so the store key is the read that has to come after
+ * the migration on every load.
+ */
 const GAMES = [
-  { game: 'clock',        url: '/clock/',        settingsKey: 'hddSettings' },
+  { game: 'clock',        url: '/clock/',        settingsKey: 'nooutco.settings.clock' },
   { game: 'emotions',     url: '/emotions/',     settingsKey: 'noaba.emotionID.v1' },
   { game: 'ffc',          url: '/ffc/',          settingsKey: 'ffcgSettings' },
   { game: 'intraverbal',  url: '/intraverbal/',  settingsKey: 'ivgSettings' },
@@ -40,7 +47,7 @@ const GAMES = [
   { game: 'market',       url: '/market/',       settingsKey: 'mmSettings' },
   { game: 'matching',     url: '/matching/',     settingsKey: 'mgSettings' },
   { game: 'patterns',     url: '/patterns/',     settingsKey: 'ppcSettings' },
-  { game: 'receptive',    url: '/receptive/',    settingsKey: 'ngSettings' },
+  { game: 'receptive',    url: '/receptive/',    settingsKey: 'nooutco.settings.receptive' },
   // sequences reads its retired key through migrateLegacyIntoStore().
   { game: 'sequences',    url: '/sequences/',    settingsKey: 'seqSettings' },
   { game: 'think-or-say', url: '/think-or-say/', settingsKey: 'tosSettings' },

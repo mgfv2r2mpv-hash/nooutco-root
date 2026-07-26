@@ -32,6 +32,9 @@
          style: { type: 'enum', values: ['sparkle', 'outline'], default: 'sparkle' },
          sets:  { type: 'list', values: () => Object.keys(TEMPLATES), default: ['AB'] },
          name:  { type: 'string', default: '' },
+         // topic -> the stimulus URLs chosen as targets; keys and values are
+         // both content, so a `map` is kept verbatim rather than validated.
+         targetFilters: { type: 'map', default: {} },
        },
      });
      const cfg = store.initial();          // working ?? last saved set ?? defaults
@@ -88,12 +91,31 @@
     return out;
   }
 
+  /**
+   * An opaque technician-keyed object. `targetFilters` is the live case:
+   * `{ 'T_animals': ['/shared/stimuli/img/T_animals/bear.jpg', …] }`.
+   *
+   * Unlike `list`, BOTH its keys and its values are content rather than schema,
+   * so there is no allowed set to validate against and nothing may be dropped —
+   * a topic whose art is temporarily unavailable must still come back carrying
+   * the targets the technician chose for it. Only a value that is not a plain
+   * object at all (a string, an array, null) falls back to the default.
+   */
+  function normalizeMap(raw, field, cfg) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      var def = resolve(field.default, cfg);
+      return (def && typeof def === 'object') ? clone(def) : {};
+    }
+    return clone(raw);
+  }
+
   var NORMALIZERS = {
     int:    normalizeInt,
     bool:   normalizeBool,
     enum:   normalizeEnum,
     string: normalizeString,
     list:   normalizeList,
+    map:    normalizeMap,
   };
 
   function defaultsFor(fields) {
@@ -101,7 +123,9 @@
     Object.keys(fields).forEach(function (name) {
       var field = fields[name];
       var def = resolve(field.default, {});
-      out[name] = (field.type === 'list' && Array.isArray(def)) ? def.slice() : def;
+      // A declared array/object default is shared by reference across every
+      // call otherwise, so one game's live edit would mutate the declaration.
+      out[name] = (def && typeof def === 'object') ? clone(def) : def;
     });
     return out;
   }

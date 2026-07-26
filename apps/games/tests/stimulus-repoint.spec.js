@@ -43,10 +43,15 @@ const CORE_TOPICS = JSON.parse(
  * The four games that read one of these manifests, with the localStorage key
  * each persists its settings under and the base it prefixed onto image paths.
  * market borrows matching's manifest instead of carrying its own art.
+ *
+ * `storageKey` is where a technician's configuration is *seeded* — the key it
+ * lives under before any Stage 6 adoption. `storeKey`, where present, is the
+ * shared store that game has since adopted: the config is folded into that
+ * document's `working` slot and the seeded key is left untouched.
  */
 const REPOINTED = [
-  { game: 'clock', url: '/clock/', manifest: '/clock/manifest.json', source: 'clock', storageKey: 'hddSettings', legacyBase: '' },
-  { game: 'receptive', url: '/receptive/', manifest: '/receptive/manifest.json', source: 'receptive', storageKey: 'ngSettings', legacyBase: '' },
+  { game: 'clock', url: '/clock/', manifest: '/clock/manifest.json', source: 'clock', storageKey: 'hddSettings', storeKey: 'nooutco.settings.clock', legacyBase: '' },
+  { game: 'receptive', url: '/receptive/', manifest: '/receptive/manifest.json', source: 'receptive', storageKey: 'ngSettings', storeKey: 'nooutco.settings.receptive', legacyBase: '' },
   { game: 'matching', url: '/matching/', manifest: '/matching/manifest.json', source: 'matching', storageKey: 'mgSettings', legacyBase: '' },
   {
     game: 'market',
@@ -212,7 +217,7 @@ for (const { game, url, manifest: manifestUrl } of REPOINTED) {
  * same pictures — a game that pruned them instead comes back with an empty
  * array and no way to tell the technician their programme changed.
  */
-for (const { game, url, manifest: manifestUrl, source, storageKey, legacyBase } of REPOINTED) {
+for (const { game, url, manifest: manifestUrl, source, storageKey, storeKey, legacyBase } of REPOINTED) {
   test(`${game}: a pre-repoint target selection survives a reload`, async ({ page, request }) => {
     const manifest = await loadJson(request, manifestUrl);
     const topic = SOURCE_MANIFESTS[source].folders[0];
@@ -247,7 +252,17 @@ for (const { game, url, manifest: manifestUrl, source, storageKey, legacyBase } 
     // dropdown means the migration has already had its chance.
     await expect(page.locator('#sel-topic option')).toHaveCount(manifest.folders.length);
 
-    const saved = JSON.parse(await page.evaluate((key) => window.localStorage.getItem(key), storageKey));
+    const readKey = storeKey || storageKey;
+    const stored = JSON.parse(await page.evaluate((key) => window.localStorage.getItem(key), readKey));
+    const saved = storeKey ? stored.working : stored;
+    expect(saved, `${readKey} holds the configuration after the load`).toBeTruthy();
+
+    if (storeKey) {
+      // Read-then-fold, NEVER drop: the retired key is left byte-for-byte as it
+      // was, so a fold that mapped a field wrongly is still recoverable.
+      const legacy = await page.evaluate((key) => window.localStorage.getItem(key), storageKey);
+      expect(JSON.parse(legacy), `${storageKey} was not deleted or rewritten`).toEqual(seeded);
+    }
 
     // Nothing the technician set may be dropped or quietly redefaulted.
     for (const [option, value] of Object.entries(seeded)) {
