@@ -50,6 +50,8 @@ async function openModule(page) {
           setName:   { type: 'string', default: '' },
           sound:     { type: 'bool', default: true },
           errorless: { type: 'bool', default: false },
+          // An opaque technician-keyed object, the shape `targetFilters` has.
+          targets:   { type: 'map', default: {} },
         },
       });
     };
@@ -130,6 +132,41 @@ test('normalize drops list members the content no longer has, then falls back', 
     enumFallback: 'sparkle',
     enumKept: 'outline',
   });
+});
+
+test('a map keeps every key and value it was given', async ({ page }) => {
+  await openModule(page);
+  // `targetFilters` is the live case, and its keys and values are BOTH content:
+  // a topic whose art is temporarily unpublished must still come back carrying
+  // the targets the technician chose, so nothing here may be validated away.
+  const out = await page.evaluate(() => {
+    const store = window.__scratchStore();
+    const chosen = { T_animals: ['/a/bear.jpg', '/a/cat.jpg'], T_retired_topic: ['/r/old.png'] };
+    return {
+      kept: store.normalize({ targets: chosen }).targets,
+      // The stored object must not be adopted by reference — a later live edit
+      // to state would otherwise reach back into what was normalized.
+      copied: store.normalize({ targets: chosen }).targets !== chosen,
+      notAnObject: store.normalize({ targets: 'T_animals' }).targets,
+      absent: store.normalize({}).targets,
+    };
+  });
+  expect(out).toEqual({
+    kept: { T_animals: ['/a/bear.jpg', '/a/cat.jpg'], T_retired_topic: ['/r/old.png'] },
+    copied: true,
+    notAnObject: {},
+    absent: {},
+  });
+});
+
+test('defaults() hands back a fresh map each time', async ({ page }) => {
+  await openModule(page);
+  const out = await page.evaluate(() => {
+    const store = window.__scratchStore();
+    store.defaults().targets.T_animals = ['/a/bear.jpg'];
+    return store.defaults().targets;
+  });
+  expect(out).toEqual({});
 });
 
 test('defaults() hands back a fresh list each time', async ({ page }) => {

@@ -78,6 +78,20 @@ function foldLegacyDisplayNames(manifest) {
   }
 }
 
+// ── Settings storage keys ──────────────────────────────────────────
+// Stage 6: this game's programme parameters live in the shared store
+// (../game-settings.js) under SETTINGS_KEY. `ngSettings` is the retired key —
+// read once, folded into the store, and NEVER deleted or rewritten, so a
+// mis-mapped fold is recoverable and a downgrade still finds the old config.
+const SETTINGS_KEY = 'nooutco.settings.receptive';
+const LEGACY_SETTINGS_KEY = 'ngSettings';
+
+// The token glyphs #sel-token-emoji offers, and the pool 'random' draws from —
+// one list, so the stored setting can be validated against exactly what the
+// technician was shown. Declared above the store: constants a field spec reads
+// have to be initialised before `defineStore()` runs.
+const TOKEN_EMOJI = ['⭐', '🔷', '💎', '✨', '🎁', '🏆', '💫', '🌟'];
+
 // ── State ──────────────────────────────────────────────────────────
 
 const state = {
@@ -217,32 +231,81 @@ document.addEventListener('DOMContentLoaded', async () => {
   await discoverTopics();
 });
 
-// ── Settings (localStorage) ────────────────────────────────────────
+// ── Settings (the shared store) ────────────────────────────────────
+
+/**
+ * The programme parameters this game persists, declared once. The shared store
+ * derives BOTH the defaults and the clamping from this one declaration, so
+ * there is no second hand-written description to drift out of sync with it.
+ *
+ * `autoPromptEnabled` defaults to FALSE here — it is true only in `sequences`.
+ * That difference is clinical, not accidental; do not harmonise it.
+ *
+ * `chosenEmoji` and `currentTokens` are token-board *running* state rather than
+ * technician choices, but they have always been persisted alongside the
+ * settings and removing them would reset a board mid-session, so they keep
+ * their place in the schema.
+ */
+const SETTINGS_FIELDS = {
+  topic:                { type: 'string', default: '' },
+  arraySize:            { type: 'int',  min: 1, max: 10, default: 4 },
+  representErrors:      { type: 'bool', default: true },
+  errorless:            { type: 'bool', default: false },
+  noErrorAnim:          { type: 'bool', default: false },
+  crossCategory:        { type: 'bool', default: false },
+  nonTargetDistractors: { type: 'bool', default: true },
+  promptPersists:       { type: 'bool', default: false },
+  promptStyle:          { type: 'enum', values: ['sparkle', 'outline'], default: 'sparkle' },
+  autoPromptEnabled:    { type: 'bool', default: false },
+  promptDelay:          { type: 'bool', default: false },
+  promptDelaySecs:      { type: 'int',  min: 1, max: 10, default: 3 },
+  // topic folder -> the image URLs the technician chose as targets.
+  targetFilters:        { type: 'map',  default: {} },
+  // Token board.
+  tokenBoardEnabled:    { type: 'bool', default: false },
+  scheduleType:         { type: 'enum', values: ['FR', 'VR'], default: 'FR' },
+  scheduleValue:        { type: 'int',  min: 1, max: 100,  default: 1 },
+  startingTokens:       { type: 'int',  min: 0, max: 1000, default: 0 },
+  goalTokens:           { type: 'int',  min: 1, max: 1000, default: 10 },
+  tokenEmoji:           { type: 'enum', values: () => ['random', ...TOKEN_EMOJI], default: 'random' },
+  // Free-form: whichever glyph the 'random' setting landed on for this session.
+  chosenEmoji:          { type: 'string', default: '⭐' },
+  currentTokens:        { type: 'int',  min: 0, max: 1000, default: 0 },
+};
+
+const settingsStore = window.NooutcoSettings.defineStore({
+  key: SETTINGS_KEY,
+  legacyKey: LEGACY_SETTINGS_KEY,
+  fields: SETTINGS_FIELDS,
+});
 
 function loadSettings() {
-  const s = JSON.parse(localStorage.getItem('ngSettings') || '{}');
-  state.topic             = s.topic             ?? '';
-  state.arraySize         = s.arraySize         ?? 4;
-  state.representErrors   = s.representErrors   ?? true;
-  state.errorless         = s.errorless         ?? false;
-  state.noErrorAnim       = s.noErrorAnim       ?? false;
-  state.crossCategory          = s.crossCategory          ?? false;
-  state.nonTargetDistractors   = s.nonTargetDistractors   ?? true;
-  state.promptPersists         = s.promptPersists         ?? false;
-  state.promptStyle       = s.promptStyle       ?? 'sparkle';
-  state.autoPromptEnabled = s.autoPromptEnabled ?? false;
-  state.promptDelay       = s.promptDelay       ?? false;
-  state.promptDelaySecs   = s.promptDelaySecs   ?? 3;
-  state.targetFilters     = (s.targetFilters && typeof s.targetFilters === 'object') ? s.targetFilters : {};
+  // Read-then-fold, never drop. Runs at most once; `ngSettings` is left intact.
+  settingsStore.foldLegacy();
+  const s = settingsStore.initial();
 
-  state.tokenBoardEnabled = s.tokenBoardEnabled ?? false;
-  state.scheduleType      = s.scheduleType      ?? 'FR';
-  state.scheduleValue     = s.scheduleValue     ?? 1;
-  state.startingTokens    = s.startingTokens    ?? 0;
-  state.goalTokens        = s.goalTokens        ?? 10;
-  state.tokenEmoji        = s.tokenEmoji        ?? 'random';
-  state.chosenEmoji       = s.chosenEmoji       ?? '⭐';
-  state.currentTokens     = s.currentTokens     ?? 0;
+  state.topic             = s.topic;
+  state.arraySize         = s.arraySize;
+  state.representErrors   = s.representErrors;
+  state.errorless         = s.errorless;
+  state.noErrorAnim       = s.noErrorAnim;
+  state.crossCategory          = s.crossCategory;
+  state.nonTargetDistractors   = s.nonTargetDistractors;
+  state.promptPersists         = s.promptPersists;
+  state.promptStyle       = s.promptStyle;
+  state.autoPromptEnabled = s.autoPromptEnabled;
+  state.promptDelay       = s.promptDelay;
+  state.promptDelaySecs   = s.promptDelaySecs;
+  state.targetFilters     = s.targetFilters;
+
+  state.tokenBoardEnabled = s.tokenBoardEnabled;
+  state.scheduleType      = s.scheduleType;
+  state.scheduleValue     = s.scheduleValue;
+  state.startingTokens    = s.startingTokens;
+  state.goalTokens        = s.goalTokens;
+  state.tokenEmoji        = s.tokenEmoji;
+  state.chosenEmoji       = s.chosenEmoji;
+  state.currentTokens     = s.currentTokens;
 
   el.inpSize.value              = state.arraySize;
   el.chkRepresentErrors.checked = state.representErrors;
@@ -270,7 +333,7 @@ function loadSettings() {
 }
 
 function saveSettings() {
-  localStorage.setItem('ngSettings', JSON.stringify({
+  settingsStore.saveWorking({
     topic:             state.topic,
     arraySize:         state.arraySize,
     representErrors:   state.representErrors,
@@ -292,7 +355,7 @@ function saveSettings() {
     tokenEmoji:        state.tokenEmoji,
     chosenEmoji:       state.chosenEmoji,
     currentTokens:     state.currentTokens,
-  }));
+  });
 }
 
 // ── Image discovery ────────────────────────────────────────────────
@@ -1271,8 +1334,7 @@ function renderTokenBoard() {
 }
 
 function pickRandomEmoji() {
-  const pool = ['⭐', '🔷', '💎', '✨', '🎁', '🏆', '💫', '🌟'];
-  return pool[Math.floor(Math.random() * pool.length)];
+  return TOKEN_EMOJI[Math.floor(Math.random() * TOKEN_EMOJI.length)];
 }
 
 function updateTokenBoardUIVisibility() {
