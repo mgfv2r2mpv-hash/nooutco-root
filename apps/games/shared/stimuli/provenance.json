@@ -676,14 +676,12 @@
   "/receptive/_Resources/_imgSource/T_buildings/store.svg": {
     "stimulus": "buildings-store",
     "md5": "a8067bf7ca23920646d0634f2ebee83d",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_buildings/store.svg"
   },
   "/clock/_Resources/_imgSource/T_buildings/store.svg": {
     "stimulus": "buildings-store",
     "md5": "a8067bf7ca23920646d0634f2ebee83d",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_buildings/store.svg"
   },
   "/matching/_Resources/_imgSource/T_colors/black.svg": {
     "stimulus": "colors-black",
@@ -1123,362 +1121,302 @@
   "/receptive/_Resources/_imgSource/T_emotions/angry.svg": {
     "stimulus": "emotions-angry",
     "md5": "f8a6d9bf80a897ef54c1a7b30de6e13d",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/angry.svg"
   },
   "/clock/_Resources/_imgSource/T_emotions/angry.svg": {
     "stimulus": "emotions-angry",
     "md5": "f8a6d9bf80a897ef54c1a7b30de6e13d",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/angry.svg"
   },
   "/receptive/_Resources/_imgSource/T_emotions/bored.svg": {
     "stimulus": "emotions-bored",
     "md5": "64f619b14ebf3e6c0f87889ab36f9aff",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/bored.svg"
   },
   "/clock/_Resources/_imgSource/T_emotions/bored.svg": {
     "stimulus": "emotions-bored",
     "md5": "64f619b14ebf3e6c0f87889ab36f9aff",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/bored.svg"
   },
   "/receptive/_Resources/_imgSource/T_emotions/calm.svg": {
     "stimulus": "emotions-calm",
     "md5": "121a0e878a9268047525227c85f7f2b1",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/calm.svg"
   },
   "/clock/_Resources/_imgSource/T_emotions/calm.svg": {
     "stimulus": "emotions-calm",
     "md5": "121a0e878a9268047525227c85f7f2b1",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/calm.svg"
   },
   "/receptive/_Resources/_imgSource/T_emotions/confused.svg": {
     "stimulus": "emotions-confused",
     "md5": "b2a9af578fbec53cd73563609080133d",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/confused.svg"
   },
   "/clock/_Resources/_imgSource/T_emotions/confused.svg": {
     "stimulus": "emotions-confused",
     "md5": "b2a9af578fbec53cd73563609080133d",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/confused.svg"
   },
   "/receptive/_Resources/_imgSource/T_emotions/embarrassed.svg": {
     "stimulus": "emotions-embarrassed",
     "md5": "80a41b9187a589dd5a86a05ee4e25683",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/embarrassed.svg"
   },
   "/clock/_Resources/_imgSource/T_emotions/embarrassed.svg": {
     "stimulus": "emotions-embarrassed",
     "md5": "80a41b9187a589dd5a86a05ee4e25683",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/embarrassed.svg"
   },
   "/receptive/_Resources/_imgSource/T_emotions/excited.svg": {
     "stimulus": "emotions-excited",
     "md5": "44df4a0f4a3d0cc5560e6b235aead188",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/excited.svg"
   },
   "/clock/_Resources/_imgSource/T_emotions/excited.svg": {
     "stimulus": "emotions-excited",
     "md5": "44df4a0f4a3d0cc5560e6b235aead188",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/excited.svg"
   },
   "/receptive/_Resources/_imgSource/T_emotions/happy.svg": {
     "stimulus": "emotions-happy",
     "md5": "71974a7c6e3ab9103d57c83f2cb27410",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/happy.svg"
   },
   "/clock/_Resources/_imgSource/T_emotions/happy.svg": {
     "stimulus": "emotions-happy",
     "md5": "71974a7c6e3ab9103d57c83f2cb27410",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/happy.svg"
   },
   "/receptive/_Resources/_imgSource/T_emotions/love.svg": {
     "stimulus": "emotions-love",
     "md5": "d82755652cbc7b9f6ba3cf7242d2683e",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/love.svg"
   },
   "/clock/_Resources/_imgSource/T_emotions/love.svg": {
     "stimulus": "emotions-love",
     "md5": "d82755652cbc7b9f6ba3cf7242d2683e",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/love.svg"
   },
   "/receptive/_Resources/_imgSource/T_emotions/proud.svg": {
     "stimulus": "emotions-proud",
     "md5": "4ed42cd24c020b327c7e4692fc72c4d0",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/proud.svg"
   },
   "/clock/_Resources/_imgSource/T_emotions/proud.svg": {
     "stimulus": "emotions-proud",
     "md5": "4ed42cd24c020b327c7e4692fc72c4d0",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/proud.svg"
   },
   "/receptive/_Resources/_imgSource/T_emotions/sad.svg": {
     "stimulus": "emotions-sad",
     "md5": "f340d30d0db1e62ad8c5eb635bf9e902",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/sad.svg"
   },
   "/clock/_Resources/_imgSource/T_emotions/sad.svg": {
     "stimulus": "emotions-sad",
     "md5": "f340d30d0db1e62ad8c5eb635bf9e902",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/sad.svg"
   },
   "/receptive/_Resources/_imgSource/T_emotions/scared.svg": {
     "stimulus": "emotions-scared",
     "md5": "c746b8d04c16b3380cc568538dac6099",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/scared.svg"
   },
   "/clock/_Resources/_imgSource/T_emotions/scared.svg": {
     "stimulus": "emotions-scared",
     "md5": "c746b8d04c16b3380cc568538dac6099",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/scared.svg"
   },
   "/receptive/_Resources/_imgSource/T_emotions/sick.svg": {
     "stimulus": "emotions-sick",
     "md5": "7accd10c813f8c3f8d4f342a3f24bef8",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/sick.svg"
   },
   "/clock/_Resources/_imgSource/T_emotions/sick.svg": {
     "stimulus": "emotions-sick",
     "md5": "7accd10c813f8c3f8d4f342a3f24bef8",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/sick.svg"
   },
   "/receptive/_Resources/_imgSource/T_emotions/silly.svg": {
     "stimulus": "emotions-silly",
     "md5": "c984b1a5787da95edbb7ecd480e7eb65",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/silly.svg"
   },
   "/clock/_Resources/_imgSource/T_emotions/silly.svg": {
     "stimulus": "emotions-silly",
     "md5": "c984b1a5787da95edbb7ecd480e7eb65",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/silly.svg"
   },
   "/receptive/_Resources/_imgSource/T_emotions/surprised.svg": {
     "stimulus": "emotions-surprised",
     "md5": "e815a5e1f579a6a25628fbf98557f1b4",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/surprised.svg"
   },
   "/clock/_Resources/_imgSource/T_emotions/surprised.svg": {
     "stimulus": "emotions-surprised",
     "md5": "e815a5e1f579a6a25628fbf98557f1b4",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/surprised.svg"
   },
   "/receptive/_Resources/_imgSource/T_emotions/tired.svg": {
     "stimulus": "emotions-tired",
     "md5": "caacfd643cbc325805e4055df286f9c6",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/tired.svg"
   },
   "/clock/_Resources/_imgSource/T_emotions/tired.svg": {
     "stimulus": "emotions-tired",
     "md5": "caacfd643cbc325805e4055df286f9c6",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_emotions/tired.svg"
   },
   "/matching/_Resources/_imgSource/T_foods/apple.svg": {
     "stimulus": "foods-apple",
     "md5": "343a2820e2bce19d5420167967d3d6e2",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/apple.svg"
   },
   "/receptive/_Resources/_imgSource/T_foods/apple.svg": {
     "stimulus": "foods-apple",
     "md5": "343a2820e2bce19d5420167967d3d6e2",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/apple.svg"
   },
   "/clock/_Resources/_imgSource/T_foods/apple.svg": {
     "stimulus": "foods-apple",
     "md5": "343a2820e2bce19d5420167967d3d6e2",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/apple.svg"
   },
   "/matching/_Resources/_imgSource/T_foods/banana.svg": {
     "stimulus": "foods-banana",
     "md5": "b01f5bc3f023299aeb6548ea57ad28bb",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/banana.svg"
   },
   "/receptive/_Resources/_imgSource/T_foods/banana.svg": {
     "stimulus": "foods-banana",
     "md5": "b01f5bc3f023299aeb6548ea57ad28bb",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/banana.svg"
   },
   "/clock/_Resources/_imgSource/T_foods/banana.svg": {
     "stimulus": "foods-banana",
     "md5": "b01f5bc3f023299aeb6548ea57ad28bb",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/banana.svg"
   },
   "/matching/_Resources/_imgSource/T_foods/broccoli.svg": {
     "stimulus": "foods-broccoli",
     "md5": "9a5091a89414aca21acaa8e03dea5bd4",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/broccoli.svg"
   },
   "/receptive/_Resources/_imgSource/T_foods/broccoli.svg": {
     "stimulus": "foods-broccoli",
     "md5": "9a5091a89414aca21acaa8e03dea5bd4",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/broccoli.svg"
   },
   "/clock/_Resources/_imgSource/T_foods/broccoli.svg": {
     "stimulus": "foods-broccoli",
     "md5": "9a5091a89414aca21acaa8e03dea5bd4",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/broccoli.svg"
   },
   "/matching/_Resources/_imgSource/T_foods/burger.svg": {
     "stimulus": "foods-burger",
     "md5": "f8076fb862e5ea9d9d6851ffc0977bd9",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/burger.svg"
   },
   "/receptive/_Resources/_imgSource/T_foods/burger.svg": {
     "stimulus": "foods-burger",
     "md5": "f8076fb862e5ea9d9d6851ffc0977bd9",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/burger.svg"
   },
   "/clock/_Resources/_imgSource/T_foods/burger.svg": {
     "stimulus": "foods-burger",
     "md5": "f8076fb862e5ea9d9d6851ffc0977bd9",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/burger.svg"
   },
   "/matching/_Resources/_imgSource/T_foods/corn.svg": {
     "stimulus": "foods-corn",
     "md5": "1da49befec70d1daaa16a415047c3016",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/corn.svg"
   },
   "/receptive/_Resources/_imgSource/T_foods/corn.svg": {
     "stimulus": "foods-corn",
     "md5": "1da49befec70d1daaa16a415047c3016",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/corn.svg"
   },
   "/clock/_Resources/_imgSource/T_foods/corn.svg": {
     "stimulus": "foods-corn",
     "md5": "1da49befec70d1daaa16a415047c3016",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/corn.svg"
   },
   "/matching/_Resources/_imgSource/T_foods/donut.svg": {
     "stimulus": "foods-donut",
     "md5": "6d784060284df58004f6f657250b5b49",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/donut.svg"
   },
   "/receptive/_Resources/_imgSource/T_foods/donut.svg": {
     "stimulus": "foods-donut",
     "md5": "6d784060284df58004f6f657250b5b49",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/donut.svg"
   },
   "/clock/_Resources/_imgSource/T_foods/donut.svg": {
     "stimulus": "foods-donut",
     "md5": "6d784060284df58004f6f657250b5b49",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/donut.svg"
   },
   "/matching/_Resources/_imgSource/T_foods/egg.svg": {
     "stimulus": "foods-egg",
     "md5": "dc9e4bd6e9aa0a0076c1839b7c7934fe",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/egg.svg"
   },
   "/receptive/_Resources/_imgSource/T_foods/egg.svg": {
     "stimulus": "foods-egg",
     "md5": "dc9e4bd6e9aa0a0076c1839b7c7934fe",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/egg.svg"
   },
   "/clock/_Resources/_imgSource/T_foods/egg.svg": {
     "stimulus": "foods-egg",
     "md5": "dc9e4bd6e9aa0a0076c1839b7c7934fe",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/egg.svg"
   },
   "/matching/_Resources/_imgSource/T_foods/orange.svg": {
     "stimulus": "foods-orange",
     "md5": "179939708354f7ebe83c2d574b776e08",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/orange.svg"
   },
   "/receptive/_Resources/_imgSource/T_foods/orange.svg": {
     "stimulus": "foods-orange",
     "md5": "179939708354f7ebe83c2d574b776e08",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/orange.svg"
   },
   "/clock/_Resources/_imgSource/T_foods/orange.svg": {
     "stimulus": "foods-orange",
     "md5": "179939708354f7ebe83c2d574b776e08",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/orange.svg"
   },
   "/matching/_Resources/_imgSource/T_foods/pizza.svg": {
     "stimulus": "foods-pizza",
     "md5": "ceed6d7491c66aca0215f70b2a401b1a",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/pizza.svg"
   },
   "/receptive/_Resources/_imgSource/T_foods/pizza.svg": {
     "stimulus": "foods-pizza",
     "md5": "ceed6d7491c66aca0215f70b2a401b1a",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/pizza.svg"
   },
   "/clock/_Resources/_imgSource/T_foods/pizza.svg": {
     "stimulus": "foods-pizza",
     "md5": "ceed6d7491c66aca0215f70b2a401b1a",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/pizza.svg"
   },
   "/matching/_Resources/_imgSource/T_foods/strawberry.svg": {
     "stimulus": "foods-strawberry",
     "md5": "f23e2746f795913765093ebb29e307c1",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/strawberry.svg"
   },
   "/receptive/_Resources/_imgSource/T_foods/strawberry.svg": {
     "stimulus": "foods-strawberry",
     "md5": "f23e2746f795913765093ebb29e307c1",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/strawberry.svg"
   },
   "/clock/_Resources/_imgSource/T_foods/strawberry.svg": {
     "stimulus": "foods-strawberry",
     "md5": "f23e2746f795913765093ebb29e307c1",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_foods/strawberry.svg"
   },
   "/matching/_Resources/_imgSource/T_fresh-beats/chimpanzees-too.jpg": {
     "stimulus": "fresh-beats-chimpanzees-too",
@@ -1972,14 +1910,12 @@
   "/receptive/_Resources/_imgSource/T_kitchen_items/milk-glass.svg": {
     "stimulus": "kitchen-items-milk-glass",
     "md5": "06dcb040e73bbda2183fd5c742222ae1",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_kitchen_items/milk-glass.svg"
   },
   "/clock/_Resources/_imgSource/T_kitchen_items/milk-glass.svg": {
     "stimulus": "kitchen-items-milk-glass",
     "md5": "06dcb040e73bbda2183fd5c742222ae1",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_kitchen_items/milk-glass.svg"
   },
   "/matching/_Resources/_imgSource/T_kitchen_items/napkin.jpg": {
     "stimulus": "kitchen-items-napkin",
@@ -2164,290 +2100,242 @@
   "/receptive/_Resources/_imgSource/T_kitchen_items/wine-glass.svg": {
     "stimulus": "kitchen-items-wine-glass",
     "md5": "5370f75e0342a27fdd2e33c6f6a67d7e",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_kitchen_items/wine-glass.svg"
   },
   "/clock/_Resources/_imgSource/T_kitchen_items/wine-glass.svg": {
     "stimulus": "kitchen-items-wine-glass",
     "md5": "5370f75e0342a27fdd2e33c6f6a67d7e",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_kitchen_items/wine-glass.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/a.svg": {
     "stimulus": "lowercase-a",
     "md5": "0196b9611814dd6eda7cd22c1bbbc163",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/a.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/b.svg": {
     "stimulus": "lowercase-b",
     "md5": "d43e255d37d9362e7229871a648e1d7a",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/b.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/c.svg": {
     "stimulus": "lowercase-c",
     "md5": "b27bc10443decd811bbe671c0d9fefa3",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/c.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/d.svg": {
     "stimulus": "lowercase-d",
     "md5": "2d69653f3bf82c84066fa5a620d5baf6",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/d.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/e.svg": {
     "stimulus": "lowercase-e",
     "md5": "9df2b5a622bf0f7ffc75b85be0cfeded",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/e.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/f.svg": {
     "stimulus": "lowercase-f",
     "md5": "8821aae5e01bbf84c8b8105acf68e34a",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/f.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/g.svg": {
     "stimulus": "lowercase-g",
     "md5": "9e4589288801ecc95d83efb6322703a9",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/g.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/h.svg": {
     "stimulus": "lowercase-h",
     "md5": "f810602dd75e340457fa30ba50f200f3",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/h.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/i.svg": {
     "stimulus": "lowercase-i",
     "md5": "aab24d5730244d1c4ac5415b5983b8ec",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/i.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/j.svg": {
     "stimulus": "lowercase-j",
     "md5": "f5a88ad096caed399047b192a3f63913",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/j.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/k.svg": {
     "stimulus": "lowercase-k",
     "md5": "da1b17dec7747aae7df23f7b626ff83d",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/k.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/l.svg": {
     "stimulus": "lowercase-l",
     "md5": "76738c842778ce8d8d327961c5b9cd68",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/l.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/m.svg": {
     "stimulus": "lowercase-m",
     "md5": "552a98af5526c2931a07265b51bd30a6",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/m.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/n.svg": {
     "stimulus": "lowercase-n",
     "md5": "cc2892e82e922400b8f9487192b55e1f",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/n.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/o.svg": {
     "stimulus": "lowercase-o",
     "md5": "c9ca78b4f031435743b2f6040e232b0b",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/o.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/p.svg": {
     "stimulus": "lowercase-p",
     "md5": "7ef30ae69b49af9dbbe9eae73c2acd44",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/p.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/q.svg": {
     "stimulus": "lowercase-q",
     "md5": "dbcec06940d04af3c6be6cbee2a5782a",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/q.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/r.svg": {
     "stimulus": "lowercase-r",
     "md5": "97e5bff9d93c57b2bcbf88d0de29c850",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/r.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/s.svg": {
     "stimulus": "lowercase-s",
     "md5": "f00070847db4cb5fe22995a1d2c76300",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/s.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/t.svg": {
     "stimulus": "lowercase-t",
     "md5": "653df6cf3026db011380458d7efd388a",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/t.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/u.svg": {
     "stimulus": "lowercase-u",
     "md5": "6a068a53344ac4a29a78d3ef37deac14",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/u.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/v.svg": {
     "stimulus": "lowercase-v",
     "md5": "a60044b98416ff616f5488caaff8292b",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/v.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/w.svg": {
     "stimulus": "lowercase-w",
     "md5": "97481bfe012f9c876e706c169f76eedb",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/w.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/x.svg": {
     "stimulus": "lowercase-x",
     "md5": "96c1845cb1ae8e01a3e9a5b37f01a7d4",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/x.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/y.svg": {
     "stimulus": "lowercase-y",
     "md5": "b490a3527d5074b06672c7a679899fa1",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/y.svg"
   },
   "/matching/_Resources/_imgSource/T_lowercase/z.svg": {
     "stimulus": "lowercase-z",
     "md5": "baa6dfeeb9e2dfb8d63b036ab34cf960",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_lowercase/z.svg"
   },
   "/matching/_Resources/_imgSource/T_numbers/1.svg": {
     "stimulus": "numbers-1",
     "md5": "9cb08a14c7f26c4a6d93a1cef53634c7",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_numbers/1.svg"
   },
   "/matching/_Resources/_imgSource/T_numbers/10.svg": {
     "stimulus": "numbers-10",
     "md5": "f7dd8dc79d7f8239a09c535c0c8f117d",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_numbers/10.svg"
   },
   "/matching/_Resources/_imgSource/T_numbers/11.svg": {
     "stimulus": "numbers-11",
     "md5": "47b3fa852f9f844bbddce23433fd0951",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_numbers/11.svg"
   },
   "/matching/_Resources/_imgSource/T_numbers/12.svg": {
     "stimulus": "numbers-12",
     "md5": "ae2b49de0c3d39613c82b0a6feea9061",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_numbers/12.svg"
   },
   "/matching/_Resources/_imgSource/T_numbers/13.svg": {
     "stimulus": "numbers-13",
     "md5": "960b82fc3ec5c58d4cc7acf5e2a86933",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_numbers/13.svg"
   },
   "/matching/_Resources/_imgSource/T_numbers/14.svg": {
     "stimulus": "numbers-14",
     "md5": "69d88a8facfa31d90e2130565b5a7b0f",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_numbers/14.svg"
   },
   "/matching/_Resources/_imgSource/T_numbers/15.svg": {
     "stimulus": "numbers-15",
     "md5": "9b699025ae3ae027242154487e4b92d1",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_numbers/15.svg"
   },
   "/matching/_Resources/_imgSource/T_numbers/16.svg": {
     "stimulus": "numbers-16",
     "md5": "e780a259ff7a2cc122d5a798da893684",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_numbers/16.svg"
   },
   "/matching/_Resources/_imgSource/T_numbers/17.svg": {
     "stimulus": "numbers-17",
     "md5": "0eb132557af4decc76dfff4f874709f0",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_numbers/17.svg"
   },
   "/matching/_Resources/_imgSource/T_numbers/18.svg": {
     "stimulus": "numbers-18",
     "md5": "9c6715e87724909136f59aca2a521044",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_numbers/18.svg"
   },
   "/matching/_Resources/_imgSource/T_numbers/19.svg": {
     "stimulus": "numbers-19",
     "md5": "b43cb18f56deab4c73aef1e6abcbce45",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_numbers/19.svg"
   },
   "/matching/_Resources/_imgSource/T_numbers/2.svg": {
     "stimulus": "numbers-2",
     "md5": "9f65459bac4bd0aa79a4478e0c0721da",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_numbers/2.svg"
   },
   "/matching/_Resources/_imgSource/T_numbers/20.svg": {
     "stimulus": "numbers-20",
     "md5": "04a571e6f274cd35736ee717353d163b",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_numbers/20.svg"
   },
   "/matching/_Resources/_imgSource/T_numbers/3.svg": {
     "stimulus": "numbers-3",
     "md5": "f764cb3720c0b574d00505be21310fbc",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_numbers/3.svg"
   },
   "/matching/_Resources/_imgSource/T_numbers/4.svg": {
     "stimulus": "numbers-4",
     "md5": "8d27ad840e0ea3ec43bc4f2550599d76",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_numbers/4.svg"
   },
   "/matching/_Resources/_imgSource/T_numbers/5.svg": {
     "stimulus": "numbers-5",
     "md5": "9432243cc376df597807c1d4a832f8e1",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_numbers/5.svg"
   },
   "/matching/_Resources/_imgSource/T_numbers/6.svg": {
     "stimulus": "numbers-6",
     "md5": "fa7f27539808fbe48b31ab8d82ee2bc7",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_numbers/6.svg"
   },
   "/matching/_Resources/_imgSource/T_numbers/7.svg": {
     "stimulus": "numbers-7",
     "md5": "0cb459febcc3848736574433da8d626f",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_numbers/7.svg"
   },
   "/matching/_Resources/_imgSource/T_numbers/8.svg": {
     "stimulus": "numbers-8",
     "md5": "09b5341d1098c274729f7c33ee9ccb38",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_numbers/8.svg"
   },
   "/matching/_Resources/_imgSource/T_numbers/9.svg": {
     "stimulus": "numbers-9",
     "md5": "e75fd60181b825bfdcafe4170fdc1a3f",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_numbers/9.svg"
   },
   "/matching/_Resources/_imgSource/T_pbs_characters/pbs1.png": {
     "stimulus": "pbs-characters-pbs1",
@@ -2829,337 +2717,281 @@
   "/matching/_Resources/_imgSource/T_toys/balloon.svg": {
     "stimulus": "toys-balloon",
     "md5": "5de525fbbc884b56f4e954e438679406",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/balloon.svg"
   },
   "/receptive/_Resources/_imgSource/T_toys/balloon.svg": {
     "stimulus": "toys-balloon",
     "md5": "5de525fbbc884b56f4e954e438679406",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/balloon.svg"
   },
   "/clock/_Resources/_imgSource/T_toys/balloon.svg": {
     "stimulus": "toys-balloon",
     "md5": "5de525fbbc884b56f4e954e438679406",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/balloon.svg"
   },
   "/matching/_Resources/_imgSource/T_toys/blocks.svg": {
     "stimulus": "toys-blocks",
     "md5": "10bb30598ed54adbfe48cedca24c401c",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/blocks.svg"
   },
   "/receptive/_Resources/_imgSource/T_toys/blocks.svg": {
     "stimulus": "toys-blocks",
     "md5": "10bb30598ed54adbfe48cedca24c401c",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/blocks.svg"
   },
   "/clock/_Resources/_imgSource/T_toys/blocks.svg": {
     "stimulus": "toys-blocks",
     "md5": "10bb30598ed54adbfe48cedca24c401c",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/blocks.svg"
   },
   "/matching/_Resources/_imgSource/T_toys/kite.svg": {
     "stimulus": "toys-kite",
     "md5": "f508af16583c8e6c6a090f6ed45090a4",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/kite.svg"
   },
   "/receptive/_Resources/_imgSource/T_toys/kite.svg": {
     "stimulus": "toys-kite",
     "md5": "f508af16583c8e6c6a090f6ed45090a4",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/kite.svg"
   },
   "/clock/_Resources/_imgSource/T_toys/kite.svg": {
     "stimulus": "toys-kite",
     "md5": "f508af16583c8e6c6a090f6ed45090a4",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/kite.svg"
   },
   "/matching/_Resources/_imgSource/T_toys/puzzle.svg": {
     "stimulus": "toys-puzzle",
     "md5": "59bd590c87a475012e07db27ec0b5932",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/puzzle.svg"
   },
   "/receptive/_Resources/_imgSource/T_toys/puzzle.svg": {
     "stimulus": "toys-puzzle",
     "md5": "59bd590c87a475012e07db27ec0b5932",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/puzzle.svg"
   },
   "/clock/_Resources/_imgSource/T_toys/puzzle.svg": {
     "stimulus": "toys-puzzle",
     "md5": "59bd590c87a475012e07db27ec0b5932",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/puzzle.svg"
   },
   "/matching/_Resources/_imgSource/T_toys/robot.svg": {
     "stimulus": "toys-robot",
     "md5": "618158c2c58a3a72c7aa67b3cac302bc",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/robot.svg"
   },
   "/receptive/_Resources/_imgSource/T_toys/robot.svg": {
     "stimulus": "toys-robot",
     "md5": "618158c2c58a3a72c7aa67b3cac302bc",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/robot.svg"
   },
   "/clock/_Resources/_imgSource/T_toys/robot.svg": {
     "stimulus": "toys-robot",
     "md5": "618158c2c58a3a72c7aa67b3cac302bc",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/robot.svg"
   },
   "/matching/_Resources/_imgSource/T_toys/soccer-ball.svg": {
     "stimulus": "toys-soccer-ball",
     "md5": "14ddfed935e2f8577aeab7470c97897c",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/soccer-ball.svg"
   },
   "/receptive/_Resources/_imgSource/T_toys/soccer-ball.svg": {
     "stimulus": "toys-soccer-ball",
     "md5": "14ddfed935e2f8577aeab7470c97897c",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/soccer-ball.svg"
   },
   "/clock/_Resources/_imgSource/T_toys/soccer-ball.svg": {
     "stimulus": "toys-soccer-ball",
     "md5": "14ddfed935e2f8577aeab7470c97897c",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/soccer-ball.svg"
   },
   "/matching/_Resources/_imgSource/T_toys/teddy-bear.svg": {
     "stimulus": "toys-teddy-bear",
     "md5": "c7145ddf6d9001066638906171470fd4",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/teddy-bear.svg"
   },
   "/receptive/_Resources/_imgSource/T_toys/teddy-bear.svg": {
     "stimulus": "toys-teddy-bear",
     "md5": "c7145ddf6d9001066638906171470fd4",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/teddy-bear.svg"
   },
   "/clock/_Resources/_imgSource/T_toys/teddy-bear.svg": {
     "stimulus": "toys-teddy-bear",
     "md5": "c7145ddf6d9001066638906171470fd4",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/teddy-bear.svg"
   },
   "/matching/_Resources/_imgSource/T_toys/toy-car.svg": {
     "stimulus": "toys-toy-car",
     "md5": "7a77892ba5c0048af8d44d745085d11a",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/toy-car.svg"
   },
   "/receptive/_Resources/_imgSource/T_toys/toy-car.svg": {
     "stimulus": "toys-toy-car",
     "md5": "7a77892ba5c0048af8d44d745085d11a",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/toy-car.svg"
   },
   "/clock/_Resources/_imgSource/T_toys/toy-car.svg": {
     "stimulus": "toys-toy-car",
     "md5": "7a77892ba5c0048af8d44d745085d11a",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/toy-car.svg"
   },
   "/matching/_Resources/_imgSource/T_toys/train.svg": {
     "stimulus": "toys-train",
     "md5": "81fae94953e449459abd04468ab04f6d",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/train.svg"
   },
   "/receptive/_Resources/_imgSource/T_toys/train.svg": {
     "stimulus": "toys-train",
     "md5": "81fae94953e449459abd04468ab04f6d",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/train.svg"
   },
   "/clock/_Resources/_imgSource/T_toys/train.svg": {
     "stimulus": "toys-train",
     "md5": "81fae94953e449459abd04468ab04f6d",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/train.svg"
   },
   "/matching/_Resources/_imgSource/T_toys/yoyo.svg": {
     "stimulus": "toys-yoyo",
     "md5": "64cf86ff7b055e3edb11de91f706ed9d",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/yoyo.svg"
   },
   "/receptive/_Resources/_imgSource/T_toys/yoyo.svg": {
     "stimulus": "toys-yoyo",
     "md5": "64cf86ff7b055e3edb11de91f706ed9d",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/yoyo.svg"
   },
   "/clock/_Resources/_imgSource/T_toys/yoyo.svg": {
     "stimulus": "toys-yoyo",
     "md5": "64cf86ff7b055e3edb11de91f706ed9d",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_toys/yoyo.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/A.svg": {
     "stimulus": "uppercase-a",
     "md5": "90956de5273b682fd2c71ac70abaad2f",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/a.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/B.svg": {
     "stimulus": "uppercase-b",
     "md5": "a35adaedcc7a52239f01d78b3aeccd92",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/b.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/C.svg": {
     "stimulus": "uppercase-c",
     "md5": "8b791737026d8e48bf3dca57158a6721",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/c.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/D.svg": {
     "stimulus": "uppercase-d",
     "md5": "85933facb1c6f5df206037fab55385ef",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/d.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/E.svg": {
     "stimulus": "uppercase-e",
     "md5": "117669c3c3261f35d4f10bae9b905275",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/e.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/F.svg": {
     "stimulus": "uppercase-f",
     "md5": "3281fc4364c09960828707a3eb9b9239",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/f.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/G.svg": {
     "stimulus": "uppercase-g",
     "md5": "4a4c3c6bb99c8ca622ee9a6ca16ea2f1",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/g.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/H.svg": {
     "stimulus": "uppercase-h",
     "md5": "4413b26272da3adb79ea93f76a5738c3",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/h.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/I.svg": {
     "stimulus": "uppercase-i",
     "md5": "20140dfe4eac6cca0d72d0b4843feb88",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/i.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/J.svg": {
     "stimulus": "uppercase-j",
     "md5": "aeac40e0485ead6f487543eceb958f50",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/j.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/K.svg": {
     "stimulus": "uppercase-k",
     "md5": "4240b93d512f947f6275edc3e70a04f4",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/k.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/L.svg": {
     "stimulus": "uppercase-l",
     "md5": "6304acc929468e3c9d00edc8df310aa0",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/l.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/M.svg": {
     "stimulus": "uppercase-m",
     "md5": "965cf6463c27991097fc9fab0d2b1d9e",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/m.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/N.svg": {
     "stimulus": "uppercase-n",
     "md5": "c89baf8a0c3e99b1569235ab699ec377",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/n.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/O.svg": {
     "stimulus": "uppercase-o",
     "md5": "7ca5b96a86b831bc03bb94fc9d50e660",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/o.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/P.svg": {
     "stimulus": "uppercase-p",
     "md5": "1921d8a13e1252325908cd75f194095b",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/p.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/Q.svg": {
     "stimulus": "uppercase-q",
     "md5": "4cdcec0a680c19ba52dee7e444336080",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/q.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/R.svg": {
     "stimulus": "uppercase-r",
     "md5": "04c1d2855a20fffbf9c74a8a54bdcd4b",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/r.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/S.svg": {
     "stimulus": "uppercase-s",
     "md5": "8cf98d31ec85be239df8ebf2b7cc13a5",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/s.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/T.svg": {
     "stimulus": "uppercase-t",
     "md5": "9bb31938c2f8893c554b2625d4fe21a4",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/t.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/U.svg": {
     "stimulus": "uppercase-u",
     "md5": "c69cad4136cf25aa10bf87b3d084421d",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/u.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/V.svg": {
     "stimulus": "uppercase-v",
     "md5": "566e375a38932b9c976469ab99699f45",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/v.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/W.svg": {
     "stimulus": "uppercase-w",
     "md5": "be6ecc99fc47979e08a446fd0410bb90",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/w.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/X.svg": {
     "stimulus": "uppercase-x",
     "md5": "5d4a4c9f973deb1c0b271a46d4183188",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/x.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/Y.svg": {
     "stimulus": "uppercase-y",
     "md5": "4125f1937f0223eb55544a6659f52f51",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/y.svg"
   },
   "/matching/_Resources/_imgSource/T_uppercase/Z.svg": {
     "stimulus": "uppercase-z",
     "md5": "699f321aab12fc6341fc45797f6b75db",
-    "library": null,
-    "droppedBecause": "placeholder-glyph"
+    "library": "/shared/stimuli/placeholder/T_uppercase/z.svg"
   }
 }

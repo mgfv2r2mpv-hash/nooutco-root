@@ -252,13 +252,118 @@ branches on extension will not. The merge prefers a correctly-extensioned raster
 over an `.svg` for exactly this reason, and only reaches `.svg` when it is the
 sole candidate — which is how the hand-drawn preposition diagrams survive.
 
+## Stage 2 — the repoint has landed
+
+`build.mjs` no longer just writes the library; it **projects the library back
+out as each game's `manifest.json`**. The games' loading code is unchanged —
+they still `fetch('./manifest.json')` and read `folders` / `images` /
+`displayNames` — but every image URL is now `/shared/stimuli/…`.
+
+| Game | Old | New |
+|---|---|---|
+| `clock` | own `_Resources` tree | library, own 12 folders |
+| `receptive` | own `_Resources` tree | library, own 12 folders |
+| `matching` | own `_Resources` tree | library, own 14 folders |
+| `market` | matching's tree via the legacy 301 | matching's manifest at `/matching/` |
+
+Measured on the served manifests (`tests/stimulus-repoint.spec.js` prints the
+resolved entries as evidence):
+
+```
+clock/T_household_items:      11 real of 11 indexed   (10 indexed before, 0 real)
+clock/T_kitchen_items:        19 real of 21 indexed   (20 indexed before, 5 real)
+receptive/T_household_items:  11 real of 11 indexed   (10 indexed before, 0 real)
+receptive/T_kitchen_items:    19 real of 21 indexed   (20 indexed before, 5 real)
+```
+
+No category in any of the three shrank; nine grew.
+
+### 9. Only the art is shared — the programme lists are not
+
+Each game's `folders` comes from the frozen snapshot of what it shipped.
+Merging the art must not merge the topic dropdowns: matching's `T_lowercase` /
+`T_numbers` / `T_pbs_characters` turning up in receptive would be a behaviour
+change, not a merge.
+
+The projection also indexes **exactly one URL per stimulus, never its
+`variants`**. clock's bear and matching's bear are different photographs of a
+bear; indexing both would put two correct answers in one discrimination array.
+The alternates stay in the library for a later feature that knows to rotate.
+
+### 10. The build must not read its own output
+
+`collectCandidates()` ranks a file partly on whether a technician's manifest
+selected it. Once the build generates those manifests, reading them back makes
+the ranking self-referential — the library would drift on every rebuild. So the
+pre-repoint manifests are frozen in `shared/stimuli/source-manifests.json` and
+that is what the build reads. It is also the reference the repoint tests diff
+against, which is why "no category shrank" is checkable at all.
+
+### 11. Repointing silently destroys a saved target selection unless migrated
+
+`targetFilters` is a per-topic list of image **paths**. Change the paths and
+every game's own prune-stale-filters logic quietly deletes the technician's
+whole selection — and clock/receptive do not even prune, they just stop
+matching, leaving `eligibleSamples()` empty and the game unable to start a
+trial.
+
+Each manifest therefore carries `pathAliases`: every URL that game used to
+serve mapped to the library URL that replaced it (153 / 167 / 248 entries).
+The four games apply it on load and re-save. Mutation-tested: deleting the
+`migrateTargetFilters(data)` call from clock fails
+`clock: a pre-repoint target selection survives a reload` in 2.4s with the
+old paths printed against the expected library URLs.
+
+`market` needs its own strip step — it stored targets under the old relative
+base `../../IDMatchGame/IDMatchGame/`, which is also why its `IMAGE_BASE` is
+now the site-absolute `/matching/` rather than a path that only resolved
+through the legacy 301 (finding 3).
+
+### 12. Placeholders are kept as files, not yet rendered from `emoji`
+
+110 stimuli have no real art. Rather than change three games' render paths in
+the same commit as the repoint, the winning glyph SVG each tree already shipped
+is kept byte-for-byte as `shared/stimuli/placeholder/<category>/<stem>.svg` and
+published as `entry.placeholder`. A stimulus renders exactly as it did before;
+only the URL moved. `emoji` + `glyphKind` still carry the same glyph as data
+for a later native render that needs no file at all.
+
+Those 110 files cost **0 new git objects** — byte-identical to already-tracked
+blobs, same as the 155 in `img/`.
+
 ### Still owed for Stage 2
 
-1. Repoint clock, receptive and matching at `/shared/stimuli/stimuli.json`.
-   Each game must keep its own category list — matching's `T_lowercase` /
-   `T_numbers` / `T_pbs_characters` appearing in receptive's topic dropdown
-   would be a behaviour change, not a merge.
-2. Teach the three games to render `emoji` + `glyphKind` when `image` is null
-   (`glyphKind: 'text'` wants a bold sans face, `'emoji'` the emoji stack).
-3. Only then, as its own revertible commit, delete the duplicated trees —
-   checking every key in `provenance.json` first.
+1. Teach the three games to render `emoji` + `glyphKind` directly, and drop
+   `placeholder/` (`glyphKind: 'text'` wants a bold sans face, `'emoji'` the
+   emoji stack).
+2. Only then, as its own revertible commit, delete the duplicated trees —
+   checking every key in `provenance.json` first. **Blocked on Stage 3**: see
+   below.
+
+---
+
+## HANDOFF INTO STAGE 3 — AdminTools now writes into a generated file
+
+`worker.js` writes an upload's path, and a display-name override, straight into
+`<game>/manifest.json` keyed by `_Resources/_imgSource/<folder>/<file>`
+(`worker.js:359-361`, `706-729`, `907-937`). That file is now **generated**, so:
+
+- An uploaded image still resolves today (the trees are still there) but is
+  wiped by the next `npm run stimuli:build`, and would 404 once the trees go.
+- A display-name override lands on a key nothing indexes. Mitigated for now:
+  clock / receptive / matching call `foldLegacyDisplayNames()` on load, which
+  folds any legacy-keyed label forward onto the library URL it aliases to, and
+  `tests/stimulus-integrity.spec.js` accepts a `displayNames` key that reaches
+  an indexed image *via `pathAliases`* — but still fails on one that reaches
+  nothing.
+
+**Deleting the duplicated trees before Stage 3 lands would break uploads.**
+Stage 3 has to point the worker's `repoPath` at `shared/stimuli/img/` and run
+the rebuild, at which point the fold and the aliases can start being retired.
+(`repoPath` keeps its current shape — `REPO_SUBDIR` already supplies
+`apps/games/`; a second prefix double-applies.)
+
+Separately: `market` derives its captions from the filename (`srcLabel()`) and
+ignores `displayNames`, so it renders "A" for the lowercase-letter programme.
+Pre-existing, unchanged by the repoint, and worth folding into Stage 7's
+re-dress rather than patching in isolation.

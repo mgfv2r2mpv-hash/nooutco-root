@@ -6,8 +6,15 @@
    sequence is the market scene.
    ══════════════════════════════════════════════════════════════════ */
 
-// Images live in the IDMatchGame sibling folder; we re-use that manifest.
-const IMAGE_BASE = '../../IDMatchGame/IDMatchGame/';
+// Borrow the matching game's manifest rather than copying its art. That
+// manifest now points at the shared library, so its image URLs are already
+// site-absolute and only the manifest fetch needs a base. Site-absolute: the
+// old relative form resolved only through the legacy
+// /IDMatchGame/IDMatchGame -> /matching 301 in _worker.js.
+const IMAGE_BASE = '/matching/';
+
+/** The base this game prefixed onto saved target paths before that repoint. */
+const LEGACY_IMAGE_BASE = '../../IDMatchGame/IDMatchGame/';
 
 // ── Utilities ──────────────────────────────────────────────────────
 
@@ -305,6 +312,7 @@ async function discoverTopics() {
       const data = await r.json();
       if (Array.isArray(data.folders) && data.folders.length) {
         state.manifest = data;
+        migrateTargetFilters(data);
         state.topicFolders = data.folders;
         buildTopicDropdown(data.folders);
         const saved = data.folders.includes(state.topic) ? state.topic : data.folders[0];
@@ -340,7 +348,40 @@ function buildTopicDropdown(dirs) {
 }
 
 function withBase(srcs) {
-  return srcs.map(s => IMAGE_BASE + s);
+  return srcs.map(s => (s.startsWith('/') ? s : IMAGE_BASE + s));
+}
+
+/**
+ * The stimulus art moved to the shared library at /shared/stimuli/, so a saved
+ * target selection still names its pictures by the URLs this game used to
+ * serve — matching's tree paths under the old relative base. The borrowed
+ * manifest ships the old-URL -> new-URL table; without applying it
+ * pruneStaleTargetFilter() throws the technician's chosen targets away on
+ * first load.
+ */
+function migrateTargetFilters(manifest) {
+  const aliases = manifest?.pathAliases;
+  if (!aliases) return;
+
+  const unprefixed = (src) => {
+    for (const base of [LEGACY_IMAGE_BASE, IMAGE_BASE]) {
+      if (src.startsWith(base)) return src.slice(base.length);
+    }
+    return src;
+  };
+
+  const migrated = {};
+  let changed = false;
+  for (const [topic, srcs] of Object.entries(state.targetFilters)) {
+    if (!Array.isArray(srcs)) { migrated[topic] = srcs; continue; }
+    const moved = [...new Set(srcs.map(src => aliases[unprefixed(src)] ?? src))];
+    if (moved.length !== srcs.length || moved.some((src, i) => src !== srcs[i])) changed = true;
+    migrated[topic] = moved;
+  }
+  if (!changed) return;
+
+  state.targetFilters = migrated;
+  saveSettings();
 }
 
 async function refreshImages() {
