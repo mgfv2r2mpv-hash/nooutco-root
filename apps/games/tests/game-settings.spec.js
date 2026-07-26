@@ -397,6 +397,24 @@ test('sequences clamps an out-of-range stored round on load', async ({ page }) =
   await expect(val('bankSize'), 'a zero bank size takes the default, not the floor').toHaveText('4');
 });
 
+test('sequences: the prompt-delay select can show every value the store may hold', async ({ page }) => {
+  // Stage 7, and the same property the other nine games assert in
+  // `settings-store-adoption.spec.js`: `promptDelaySecs` is declared
+  // `int {min:1,max:10}` while the select offered 1/2/3/4/5/10, so 6-9 s were
+  // legal to store and impossible to display — `select.value = 7` matches no
+  // option and the browser resolves it to '', blanking the control. The
+  // missing options were added rather than the range narrowed, because a
+  // narrower range would remove configurability a technician already has.
+  await page.addInitScript(
+    ([k, v]) => window.localStorage.setItem(k, v),
+    [SEQ_KEY, JSON.stringify({ working: { promptDelaySecs: 7, patterns: ['AB'] } })],
+  );
+  await page.goto('/sequences/');
+  // This game renders its panel when the panel opens, not on load.
+  await page.locator('#btn-round-toggle').click();
+  await expect(page.locator('#sel-prompt-delay')).toHaveValue('7');
+});
+
 /** A real press-and-hold on the gear: down, wait past the 600ms threshold, up. */
 async function holdGear(page) {
   const box = await page.locator('#btn-round-toggle').boundingBox();
