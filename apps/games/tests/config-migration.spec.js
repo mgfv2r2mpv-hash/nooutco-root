@@ -55,7 +55,7 @@ const GAMES = [
   { game: 'receptive',    url: '/receptive/',    settingsKey: 'nooutco.settings.receptive' },
   // sequences reads its retired key through migrateLegacyIntoStore().
   { game: 'sequences',    url: '/sequences/',    settingsKey: 'seqSettings' },
-  { game: 'think-or-say', url: '/think-or-say/', settingsKey: 'tosSettings' },
+  { game: 'think-or-say', url: '/think-or-say/', settingsKey: 'nooutco.settings.think-or-say' },
 ];
 
 /**
@@ -206,6 +206,24 @@ const ROUND_TRIPS = [
     game: 'think-or-say',
     url: '/think-or-say/',
     key: 'tosSettings',
+    storeKey: 'nooutco.settings.think-or-say',
+    // The only retired payload whose fold is not a straight carry-forward:
+    // `promptDelaySec` (singular, and a string) is renamed onto the
+    // `promptDelaySecs` int the other games declare. `tosSettings` itself keeps
+    // its own spelling — the `saved[option]` loop below is what asserts that.
+    folded: {
+      category: 'private',
+      order: 'sequential',
+      represent: false,
+      errorless: true,
+      noErrorAnim: true,
+      autoPrompt: true,
+      promptDelay: true,
+      promptDelaySecs: 5,
+      promptStyle: 'outline',
+      showReason: false,
+      includeTricky: true,
+    },
     seeded: {
       category: 'private',
       order: 'sequential',
@@ -268,7 +286,7 @@ const ROUND_TRIPS = [
   },
 ];
 
-for (const { game, url, key, storeKey, seeded, controls } of ROUND_TRIPS) {
+for (const { game, url, key, storeKey, seeded, folded, controls } of ROUND_TRIPS) {
   test(`${game}: a seeded ${key} survives a reload with every value intact`, async ({ page }) => {
     await page.addInitScript(
       ([k, v]) => window.localStorage.setItem(k, v),
@@ -306,7 +324,7 @@ for (const { game, url, key, storeKey, seeded, controls } of ROUND_TRIPS) {
     if (storeKey) {
       const stored = JSON.parse(await page.evaluate((k) => window.localStorage.getItem(k), storeKey));
       expect(stored && stored.working, `${storeKey} carries a working config`).toBeTruthy();
-      for (const [option, value] of Object.entries(seeded)) {
+      for (const [option, value] of Object.entries(folded || seeded)) {
         expect(stored.working[option], `${option} folded into the store`).toEqual(value);
       }
     }

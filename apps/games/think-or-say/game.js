@@ -233,39 +233,97 @@ const state = {
 };
 
 // ── Settings persistence ───────────────────────────────────────────────
-const SETTINGS_KEY = 'tosSettings';
+const SETTINGS_KEY = 'nooutco.settings.think-or-say';
+const LEGACY_SETTINGS_KEY = 'tosSettings';
 const RESULTS_KEY  = 'tosResults';
 
+/**
+ * The programme parameters this game persists, declared ONCE (Stage 6).
+ *
+ * `../game-settings.js` derives both the defaults and the clamping from this
+ * single declaration, so there is no second hand-written description of the
+ * schema to drift out of sync with it.
+ *
+ * `category` is an enum rather than a free string because an unoffered value is
+ * worse here than an out-of-range one: a stored category naming a set of cards
+ * that no longer exists leaves the select showing nothing AND makes `buildDeck`
+ * match zero scenarios, so the game cannot start at all. The honest fallback is
+ * the "All categories" the panel can actually show.
+ *
+ * `autoPrompt` defaults to FALSE here — it is true only in `sequences`. That
+ * difference is clinical, not accidental; do not harmonise it.
+ */
+const SETTINGS_FIELDS = {
+  category:        { type: 'enum', values: ['all'].concat(Object.keys(CATEGORIES)), default: 'all' },
+  order:           { type: 'enum', values: ['shuffle', 'sequential'], default: 'shuffle' },
+  represent:       { type: 'bool', default: true },
+  errorless:       { type: 'bool', default: false },
+  noErrorAnim:     { type: 'bool', default: false },
+  autoPrompt:      { type: 'bool', default: false },
+  promptDelay:     { type: 'bool', default: false },
+  // The select offers 1/2/3/4/5/10 s, so its ceiling of 10 is renderable and a
+  // range is honest here (an enum would be too, but the platform-wide spelling
+  // of this field in eight other games is `int {min:1, max:10}`).
+  promptDelaySecs: { type: 'int',  min: 1, max: 10, default: 3 },
+  promptStyle:     { type: 'enum', values: ['sparkle', 'outline'], default: 'sparkle' },
+  showReason:      { type: 'bool', default: true },
+  includeTricky:   { type: 'bool', default: false },
+};
+
+const settingsStore = window.NooutcoSettings.defineStore({
+  key: SETTINGS_KEY,
+  legacyKey: LEGACY_SETTINGS_KEY,
+  fields: SETTINGS_FIELDS,
+});
+
+/**
+ * `tosSettings` spelled the prompt delay `promptDelaySec` — singular, and
+ * stored as a STRING — which is a third spelling of the option eight other
+ * games call `promptDelaySecs`. The fold renames it forward onto the shared
+ * spelling; `tosSettings` itself keeps its own key, its own spelling and its
+ * own string, untouched, because the fold never rewrites the retired key.
+ */
+function foldRetiredSettings(legacy) {
+  const { promptDelaySec, ...rest } = legacy;
+  return promptDelaySec == null ? rest : { ...rest, promptDelaySecs: promptDelaySec };
+}
+
 function loadSettings() {
-  let s = {};
-  try { s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch (e) {}
-  el.selCategory.value      = s.category      ?? 'all';
-  el.selOrder.value         = s.order         ?? 'shuffle';
-  el.chkRepresent.checked   = s.represent     ?? true;
-  el.chkErrorless.checked   = s.errorless     ?? false;
-  el.chkNoErrorAnim.checked = s.noErrorAnim   ?? false;
-  el.chkAutoPrompt.checked  = s.autoPrompt    ?? false;
-  el.chkPromptDelay.checked = s.promptDelay   ?? false;
-  el.selPromptDelay.value   = s.promptDelaySec ?? '3';
-  el.selPromptStyle.value   = s.promptStyle   ?? 'sparkle';
-  el.chkShowReason.checked  = s.showReason    ?? true;
-  el.chkIncludeTricky.checked = s.includeTricky ?? false;
+  // Read-then-fold, never drop. Runs at most once; `tosSettings` is left intact.
+  settingsStore.foldLegacy({ map: foldRetiredSettings });
+  const s = settingsStore.initial();
+
+  el.selCategory.value        = s.category;
+  el.selOrder.value           = s.order;
+  el.chkRepresent.checked     = s.represent;
+  el.chkErrorless.checked     = s.errorless;
+  el.chkNoErrorAnim.checked   = s.noErrorAnim;
+  el.chkAutoPrompt.checked    = s.autoPrompt;
+  el.chkPromptDelay.checked   = s.promptDelay;
+  el.selPromptDelay.value     = s.promptDelaySecs;
+  el.selPromptStyle.value     = s.promptStyle;
+  el.chkShowReason.checked    = s.showReason;
+  el.chkIncludeTricky.checked = s.includeTricky;
   syncPromptDelayEnabled();
 }
 
 function saveSettings() {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify({
-    category:      el.selCategory.value,
-    order:         el.selOrder.value,
-    represent:     el.chkRepresent.checked,
-    errorless:     el.chkErrorless.checked,
-    noErrorAnim:   el.chkNoErrorAnim.checked,
-    autoPrompt:    el.chkAutoPrompt.checked,
-    promptDelay:   el.chkPromptDelay.checked,
-    promptDelaySec:el.selPromptDelay.value,
-    promptStyle:   el.selPromptStyle.value,
-    showReason:    el.chkShowReason.checked,
-    includeTricky: el.chkIncludeTricky.checked,
+  // This game keeps its configuration in the controls rather than in `state`
+  // (Stage 7's DOM-as-state item), so the panel IS the source read here — and
+  // `normalize()` is what turns the select's string back into the store's int,
+  // using the same declaration the load path clamps with.
+  settingsStore.saveWorking(settingsStore.normalize({
+    category:        el.selCategory.value,
+    order:           el.selOrder.value,
+    represent:       el.chkRepresent.checked,
+    errorless:       el.chkErrorless.checked,
+    noErrorAnim:     el.chkNoErrorAnim.checked,
+    autoPrompt:      el.chkAutoPrompt.checked,
+    promptDelay:     el.chkPromptDelay.checked,
+    promptDelaySecs: el.selPromptDelay.value,
+    promptStyle:     el.selPromptStyle.value,
+    showReason:      el.chkShowReason.checked,
+    includeTricky:   el.chkIncludeTricky.checked,
   }));
 }
 
