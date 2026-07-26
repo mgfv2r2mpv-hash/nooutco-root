@@ -16,6 +16,14 @@ const IMAGE_BASE = '/matching/';
 /** The base this game prefixed onto saved target paths before that repoint. */
 const LEGACY_IMAGE_BASE = '../../IDMatchGame/IDMatchGame/';
 
+// ── Settings storage keys ──────────────────────────────────────────
+// Stage 6: this game's programme parameters live in the shared store
+// (../game-settings.js) under SETTINGS_KEY. `mmSettings` is the retired key —
+// read once, folded into the store, and NEVER deleted or rewritten, so a
+// mis-mapped fold is recoverable and a downgrade still finds the old config.
+const SETTINGS_KEY = 'nooutco.settings.market';
+const LEGACY_SETTINGS_KEY = 'mmSettings';
+
 // ── Utilities ──────────────────────────────────────────────────────
 
 function shuffle(arr) {
@@ -212,35 +220,92 @@ window.__setGameDisplayMode = function (mode) {
   saveSettings();
 };
 
-// ── Settings ───────────────────────────────────────────────────────
+// ── Settings (the shared store) ─────────────────────────────────────
+
+/**
+ * The programme parameters this game persists, declared once. The shared store
+ * derives BOTH the defaults and the clamping from this one declaration, so
+ * there is no second hand-written description to drift out of sync with it.
+ *
+ * `autoPromptEnabled` defaults to FALSE here — it is true only in `sequences`.
+ * That difference is clinical, not accidental; do not harmonise it.
+ */
+const SETTINGS_FIELDS = {
+  topic:                { type: 'string', default: '' },
+  arraySize:            { type: 'int',  min: 1, max: 10, default: 4 },
+  // The animation tier select, which the toolbar Simple/Visual slider also
+  // drives (visual -> full, simple -> minimal); 'light' is select-only.
+  animTier:             { type: 'enum', values: ['full', 'light', 'minimal'], default: 'full' },
+  showCaption:          { type: 'bool', default: false },
+  sameCustomerOnRetry:  { type: 'bool', default: true },
+  representErrors:      { type: 'bool', default: true },
+  errorless:            { type: 'bool', default: false },
+  noErrorAnim:          { type: 'bool', default: false },
+  crossCategory:        { type: 'bool', default: false },
+  nonTargetDistractors: { type: 'bool', default: true },
+  promptPersists:       { type: 'bool', default: false },
+  promptStyle:          { type: 'enum', values: ['sparkle', 'outline'], default: 'sparkle' },
+  autoPromptEnabled:    { type: 'bool', default: false },
+  promptDelay:          { type: 'bool', default: false },
+  promptDelaySecs:      { type: 'int',  min: 1, max: 10, default: 3 },
+  // topic folder -> the image URLs the technician chose as targets.
+  targetFilters:        { type: 'map',  default: {} },
+  // Token board.
+  tokenBoardEnabled:    { type: 'bool', default: false },
+  scheduleType:         { type: 'enum', values: ['FR', 'VR'], default: 'FR' },
+  scheduleValue:        { type: 'int',  min: 1, max: 100,  default: 1 },
+  startingTokens:       { type: 'int',  min: 0, max: 1000, default: 0 },
+  goalTokens:           { type: 'int',  min: 1, max: 1000, default: 10 },
+  // Resolved at normalize time so the stored value is validated against
+  // exactly the glyphs the <select> offers (EMOJI_POOL is declared further
+  // down, next to pickRandomEmoji, and a thunk defers reading it until then).
+  tokenEmoji:           { type: 'enum', values: () => ['random', ...EMOJI_POOL], default: 'random' },
+  // Free-form: whichever glyph the 'random' setting landed on for this session.
+  chosenEmoji:          { type: 'string', default: '⭐' },
+  currentTokens:        { type: 'int',  min: 0, max: 1000, default: 0 },
+};
+
+const settingsStore = window.NooutcoSettings.defineStore({
+  key: SETTINGS_KEY,
+  legacyKey: LEGACY_SETTINGS_KEY,
+  fields: SETTINGS_FIELDS,
+});
 
 function loadSettings() {
-  const s = JSON.parse(localStorage.getItem('mmSettings') || '{}');
-  state.topic                = s.topic                ?? '';
-  state.arraySize            = s.arraySize            ?? 4;
-  state.animTier             = s.animTier             ?? 'full';
-  state.showCaption          = s.showCaption          ?? false;
-  state.sameCustomerOnRetry  = s.sameCustomerOnRetry  ?? true;
-  state.representErrors      = s.representErrors      ?? true;
-  state.errorless            = s.errorless            ?? false;
-  state.noErrorAnim          = s.noErrorAnim          ?? false;
-  state.nonTargetDistractors = s.nonTargetDistractors ?? true;
-  state.crossCategory        = s.crossCategory        ?? false;
-  state.promptPersists       = s.promptPersists       ?? false;
-  state.promptStyle          = s.promptStyle          ?? 'sparkle';
-  state.autoPromptEnabled    = s.autoPromptEnabled    ?? false;
-  state.promptDelay          = s.promptDelay          ?? false;
-  state.promptDelaySecs      = s.promptDelaySecs      ?? 3;
-  state.targetFilters        = s.targetFilters        ?? {};
+  // Read-then-fold, never drop. Runs at most once; `mmSettings` is left intact.
+  settingsStore.foldLegacy();
+  const s = settingsStore.initial();
 
-  state.tokenBoardEnabled    = s.tokenBoardEnabled    ?? false;
-  state.scheduleType         = s.scheduleType         ?? 'FR';
-  state.scheduleValue        = s.scheduleValue        ?? 1;
-  state.startingTokens       = s.startingTokens       ?? 0;
-  state.goalTokens           = s.goalTokens           ?? 10;
-  state.tokenEmoji           = s.tokenEmoji           ?? 'random';
-  state.chosenEmoji          = s.chosenEmoji          ?? '⭐';
-  state.currentTokens        = s.currentTokens        ?? state.startingTokens;
+  state.topic                = s.topic;
+  state.arraySize            = s.arraySize;
+  state.animTier             = s.animTier;
+  state.showCaption          = s.showCaption;
+  state.sameCustomerOnRetry  = s.sameCustomerOnRetry;
+  state.representErrors      = s.representErrors;
+  state.errorless            = s.errorless;
+  state.noErrorAnim          = s.noErrorAnim;
+  state.nonTargetDistractors = s.nonTargetDistractors;
+  state.crossCategory        = s.crossCategory;
+  state.promptPersists       = s.promptPersists;
+  state.promptStyle          = s.promptStyle;
+  state.autoPromptEnabled    = s.autoPromptEnabled;
+  state.promptDelay          = s.promptDelay;
+  state.promptDelaySecs      = s.promptDelaySecs;
+  state.targetFilters        = s.targetFilters;
+
+  state.tokenBoardEnabled    = s.tokenBoardEnabled;
+  state.scheduleType         = s.scheduleType;
+  state.scheduleValue        = s.scheduleValue;
+  state.startingTokens       = s.startingTokens;
+  state.goalTokens           = s.goalTokens;
+  state.tokenEmoji           = s.tokenEmoji;
+  state.chosenEmoji          = s.chosenEmoji;
+  // The old read was `s.currentTokens ?? state.startingTokens`. The board's
+  // live count is reset to startingTokens by initializeTokenBoard() at the
+  // bottom of this function whenever the board is on, so the two readings
+  // cannot be told apart on screen — and a declared default of 0 avoids
+  // turning a legitimately stored 0 into startingTokens.
+  state.currentTokens        = s.currentTokens;
 
   el.inpSize.value                   = state.arraySize;
   el.selAnimTier.value               = state.animTier;
@@ -275,7 +340,7 @@ function loadSettings() {
 }
 
 function saveSettings() {
-  localStorage.setItem('mmSettings', JSON.stringify({
+  settingsStore.saveWorking({
     topic:                state.topic,
     arraySize:            state.arraySize,
     animTier:             state.animTier,
@@ -300,7 +365,7 @@ function saveSettings() {
     tokenEmoji:           state.tokenEmoji,
     chosenEmoji:          state.chosenEmoji,
     currentTokens:        state.currentTokens,
-  }));
+  });
 }
 
 // ── Image discovery ────────────────────────────────────────────────
