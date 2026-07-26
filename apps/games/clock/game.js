@@ -195,6 +195,7 @@ const el = {
 // ── Boot ───────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', async () => {
+  if (window.NooutcoConfig) NooutcoConfig.migrate();
   loadSettings();
   bindEvents();
   await discoverTopics();

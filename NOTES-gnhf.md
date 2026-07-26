@@ -1047,10 +1047,126 @@ three test titles recorded as the accepted baseline. Zero new failures.
 ### Still owed for Stage 4
 
 1. ~~ffc joins the core.~~ **Done** — this part.
-2. **The ffc admin path** (finding 39). Refused today; wiring it is the next
-   unit and is the last thing between ffc and parity with the other three games.
+2. **The ffc admin path** (finding 39). Still refused. Its *read* view is now
+   fixed (finding 41 below); the write wiring remains the outstanding unit and
+   is the last thing between ffc and parity with the other three games.
 3. **Per-game extras.** The vocabulary is the shared core only; `T_actions`,
    `T_colors`, `T_shapes`, `T_prepositions`, `T_emotions`, the letter/number
    programmes and matching's `T_pbs_characters` / `T_fresh-beats` still derive
    their labels. That is fine — they are not naming vocabulary — but the split
    should be stated somewhere a maintainer reads.
+
+---
+
+## Stage 5 — `NooutcoConfig.migrate()` is live in all ten games
+
+`CLAUDE.md` has always said "Games call `NooutcoConfig.migrate()` early in
+boot". Two did: `matching` and `market`. The other eight now do as well —
+`clock`, `emotions`, `ffc`, `intraverbal`, `patterns`, `receptive`, `sequences`
+and `think-or-say` each load `../migrate-config.js` before their game script and
+call `if (window.NooutcoConfig) NooutcoConfig.migrate();` as the first statement
+of boot.
+
+**This is deliberately a behavioural no-op today.** `migrate()` with no steps
+only stamps `nooutco:configVersion`. The point is that the hook has to be live
+*before* Stage 6 renames anything, because a migration is the only place a
+renamed key can be folded forward — which is why the objective orders Stage 5
+ahead of Stage 6 and says "NOTHING may be renamed before this lands."
+
+### 41. `AdminTools/FFCGManager` was reading a shape that no longer exists
+
+Stage 4 part 2 joined `AdminTools/ImageManager` to the library and left this
+page — the ffc-specific manager, and the one `ffc/index.html`'s admin gear
+opens — reading the old shape. `ffc/items.json` items carry `{id, groups,
+features, functions, classes}` and nothing else, so `item.label` and `item.img`
+are both `undefined`: every card rendered the literal text "undefined" over
+`…/_Resources/_imgSource/items/undefined`, and so did the Mass Assign grid and
+the detail panel.
+
+Finding 39 said "ImageManager's read view still works", which was true and
+also not the whole picture. Fixed the same way ImageManager was: `initApp()`
+fetches `stimuli.json` alongside `items.json` and joins `label` + `image` by id;
+the three thumbnail sites render `item.image` verbatim; the now-dead `IMG_BASE`
+constant is gone.
+
+The **write** path is untouched and still answers 409 — that is the deliberate
+state from finding 39, not an oversight — and there is now a test pinning that
+the refusal reaches the technician as an error rather than disappearing behind a
+green "Saved!".
+
+### 42. "the migration runs" and "the migration runs first" are two tests
+
+The obvious assertion — `nooutco:configVersion` is stamped after boot — passes
+with the `migrate()` call sitting *after* `loadSettings()`. That placement is
+exactly the bug worth preventing: the game would adopt and re-persist a config
+the migration was supposed to rewrite, and every future migration would silently
+be a no-op for anyone who had already loaded the page once.
+
+The ordering test patches `Storage.prototype.getItem` / `setItem` in an init
+script and records the sequence, then asserts `set:nooutco:configVersion`
+precedes `get:<gameKey>`. Moving `patterns`' call one line down fails that one
+test and nothing else — confirmed by mutation.
+
+`Storage.prototype`, not the `localStorage` instance: assigning
+`localStorage.getItem = fn` goes through Storage's named-property setter in some
+engines, which stores an *entry* called `getItem` and leaves the prototype
+method in place, so the probe would silently record nothing on those browsers.
+
+### 43. `matching` persists to `mgSettings` and `market` to `mmSettings`
+
+The pairing is the opposite of what the folder names suggest (`m`atching`g`? no
+— `matching/game.js:242` reads `mgSettings`, `market/game.js:218` reads
+`mmSettings`). Both ordering tests would still pass with the two swapped,
+because each game does read *a* settings key after migrating; the tests would
+simply be asserting against the wrong read. Called out in the spec's table so a
+future edit does not "fix" it.
+
+### 44. The per-game settings round-trip owed since Stage 1 is now complete
+
+Ten games, all covered, all seeded with every option deliberately off its
+default so a silent redefault fails rather than coincidentally matching:
+
+| game | key | covered by |
+|---|---|---|
+| clock, receptive, matching, market | `hddSettings`, `ngSettings`, `mgSettings`, `mmSettings` | `stimulus-repoint.spec.js` |
+| ffc | `ffcgSettings` | `stimulus-ffc.spec.js` |
+| intraverbal, patterns, think-or-say, emotions | `ivgSettings`, `ppcSettings`, `tosSettings`, `noaba.emotionID.v1` | `config-migration.spec.js` |
+| sequences | `seqSettings` → `nooutco.settings.sequences` | `config-migration.spec.js` |
+
+`sequences` is the one game that already migrates: `migrateLegacyIntoStore()`
+folds the retired `seqSettings` into the `{sets, last, working}` round store —
+read-then-fold, never drop — which is the pattern Stage 6 extracts for the other
+nine. Its `autoPromptEnabled` default of **true** (against the other nine's
+false) now has its own test: seed a legacy payload that omits the key and assert
+the fold reaches for sequences' own default. Harmonising it to `false` fails
+that test and only that test.
+
+### Coverage
+
+`tests/config-migration.spec.js` — 26 tests × 3 browsers: ten games stamp the
+config version during boot, ten games stamp it *before* reading their settings
+key, four seeded round-trips asserted control by control plus a stored-document
+check, and the two sequences fold tests.
+
+`tests/admin-ffcg-manager.spec.js` — 5 tests × 3 browsers: every item renders
+its library label with no `undefined`, every thumbnail src equals the library
+URL verbatim and serves 200, the detail panel matches the card, Mass Assign
+renders library URLs, and a 409 write surfaces as an error.
+
+Mutation-tested six ways, each restored from a byte-compared copy: `migrate()`
+moved after `loadSettings()` in patterns (1 test), a redefaulted
+`promptDelaySecs` in intraverbal (1), the emotions script tag deleted (2),
+sequences' `autoPromptEnabled` default harmonised to false (1), the FFCGManager
+library join removed (4), and a swallowed write refusal (1).
+
+**Suite: 553 passed, 8 failed — all 8 in `glam-team-makeover.spec.js`**, at the
+three test titles recorded as the accepted baseline. Zero new failures.
+`APP_VERSION` 0.17.0 → 0.18.0.
+
+### Still owed
+
+- **Stage 6** — the shared `game-settings.js`, extracted from sequences. Every
+  rename it performs now has a live `migrate()` hook to run in, and a
+  seeded-old-key test per game to fail against.
+- **Stage 4 item 2** — the ffc admin *write* path (finding 39).
+- **Stage 4 item 3** — the core-vs-extras split, stated for a maintainer.

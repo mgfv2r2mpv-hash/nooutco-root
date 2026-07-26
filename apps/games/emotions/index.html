@@ -353,8 +353,14 @@
 <script src="../../results-report.js"></script>
 <script src="../../reward.js"></script>
 <script src="../../token-board.js"></script>
+<script src="../migrate-config.js"></script>
 <script>
 (function () {
+  // Config migration first: this IIFE reads `noaba.emotionID.v1` at the top of
+  // its body, so a transform that renames or restructures a key has to have run
+  // before that read or it would fold a config the page has already adopted.
+  if (window.NooutcoConfig) NooutcoConfig.migrate();
+
   const EMOTIONS = [
     { key:'happy',     label:'Happy',     face:'😀', color:'#f5b301' },
     { key:'sad',       label:'Sad',       face:'😢', color:'#4f86c6' },

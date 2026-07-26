@@ -1012,6 +1012,7 @@ function initRound() {
 // ── Init ───────────────────────────────────────────────────────────
 
 (async function init() {
+  if (window.NooutcoConfig) NooutcoConfig.migrate();
   bindEvents();
   await loadSymbols();
   initRound();

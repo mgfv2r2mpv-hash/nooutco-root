@@ -756,6 +756,7 @@ function printData() {
 // ── Init ───────────────────────────────────────────────────────────
 
 (async function init() {
+  if (window.NooutcoConfig) NooutcoConfig.migrate();
   loadSettings();
   bindEvents();
   await loadSymbols();

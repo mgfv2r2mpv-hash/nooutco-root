@@ -663,6 +663,7 @@ function renderTimer() {
 
 // ── Wiring ─────────────────────────────────────────────────────────────
 function init() {
+  if (window.NooutcoConfig) NooutcoConfig.migrate();
   populateCategories();
   loadSettings();
   loadResults();
