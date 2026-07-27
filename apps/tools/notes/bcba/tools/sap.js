@@ -15,6 +15,68 @@
     other: "",
   };
 
+  /* Response schema — what the model is CONSTRAINED to, not merely asked for.
+   * The prompt below still describes this shape, but the prompt is guidance and
+   * this is enforcement: with it the note is serialised by the API instead of
+   * being typed out as prose, so a missed escape stops being possible rather
+   * than being something the client has to recover from.
+   *
+   * The API constrains output to a subset of JSON Schema — no recursion, no
+   * numeric bounds, no string lengths — and every object must seal itself with
+   * additionalProperties:false. Every property is listed in `required`: an
+   * optional key is one the model may omit, which is the blank-section hole the
+   * shape gate exists to catch. Kept flat and string-valued to stay inside the
+   * subset; structure within a value stays the model's job. */
+  var str = { type: "string" };
+
+  var RESPONSE_SCHEMA = {
+    type: "object",
+    additionalProperties: false,
+    required: ["refinedGoal", "exercise", "generalization", "errorCorrection", "hints"],
+    properties: {
+      refinedGoal: str,
+      exercise: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "purpose", "teachingStrategy", "lessonSetUp", "sd",
+          "correctResponse", "incorrectResponse", "masteryCriteria", "promptHierarchy",
+        ],
+        properties: {
+          purpose: str, teachingStrategy: str, lessonSetUp: str, sd: str,
+          correctResponse: str, incorrectResponse: str, masteryCriteria: str, promptHierarchy: str,
+        },
+      },
+      generalization: {
+        type: "object",
+        additionalProperties: false,
+        required: ["criteria", "maintenance"],
+        properties: { criteria: str, maintenance: str },
+      },
+      errorCorrection: {
+        type: "object",
+        additionalProperties: false,
+        required: ["initial", "maintenance"],
+        properties: { initial: str, maintenance: str },
+      },
+      // An empty array is the "draft stands on its own" case, so hints is
+      // required as a key even though it is routinely empty.
+      hints: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["section", "code", "detail"],
+          properties: {
+            section: { type: "string", enum: SECTION_IDS },
+            code: { type: "string", enum: ["thin_section", "ambiguous_item", "other"] },
+            detail: str,
+          },
+        },
+      },
+    },
+  };
+
   var SYSTEM_PROMPT = [
     "You are a BCBA writing a Service Authorization Plan (SAP) for behavior technicians to implement.",
     "Output concise, operational procedures. Exception: the Purpose field states the clinical indication — what functional skill deficit or behavioral barrier is targeted, and what independence or safety outcome the goal supports. This is required for medical necessity.",
@@ -218,6 +280,7 @@
       { kind: "narrative", heading: "Error Correction", key: "errorCorrection", minHeight: 220 },
     ],
     hintCatalog: HINT_CATALOG,
+    responseSchema: RESPONSE_SCHEMA,
     validate: function (values) {
       if (!(values.goal || "").trim()) return "Please enter a treatment goal.";
       return null;

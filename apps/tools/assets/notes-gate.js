@@ -344,6 +344,7 @@
       model: opts.model || "claude-haiku-4-5-20251001",
       maxTokens: opts.maxTokens || 3000,
       tool: opts.tool,
+      output_config: outputConfigFor(opts.responseSchema),
     }).then(function (r) { return r.parsed; });
   }
 
@@ -359,17 +360,34 @@
       model: opts.model || "claude-haiku-4-5-20251001",
       maxTokens: opts.maxTokens || 3000,
       tool: opts.tool,
+      output_config: outputConfigFor(opts.responseSchema),
     }, opts.expectKeys);
   }
 
+  // Constrains the model's answer to the tool's JSON Schema, so the note is
+  // serialized by the API instead of being hand-typed as prose — which is what
+  // makes the two escaping slips below impossible rather than recoverable.
+  // Absent when a tool declares no schema, so tools can adopt this one at a
+  // time and an un-migrated one keeps today's behaviour.
+  function outputConfigFor(schema) {
+    if (!schema) return null;
+    return { format: { type: "json_schema", schema: schema } };
+  }
+
   function llmPost(body) {
+    // Drop null/undefined fields so an un-migrated tool sends no output_config
+    // key at all, rather than an explicit null the worker has to special-case.
+    var payload = {};
+    Object.keys(body).forEach(function (k) {
+      if (body[k] !== null && body[k] !== undefined) payload[k] = body[k];
+    });
     return fetchWithTimeout(apiUrl("/api/llm-call"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": "Bearer " + getToken(),
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
     }, GEN_TIMEOUT_MS, "Note generation timed out — please retry.");
   }
 
