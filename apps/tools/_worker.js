@@ -426,6 +426,12 @@ async function handleLlmCall(request, env) {
 
     const body = await request.json();
     const { systemPrompt, userPrompt, system, messages, model, maxTokens, tool } = body;
+    // The schema comes from the browser, so it is shape-checked rather than
+    // forwarded verbatim — this is a field we hand to the upstream API.
+    const outputConfig = sanitizeOutputConfig(body.output_config);
+    if (body.output_config && !outputConfig) {
+      return jsonRes(400, { error: "Invalid output_config." });
+    }
     // Two accepted shapes: legacy single-shot {systemPrompt, userPrompt}, or a
     // conversation {system, messages} for the multi-turn revision flow.
     const isConversation = typeof system === "string" && Array.isArray(messages);
@@ -452,10 +458,10 @@ async function handleLlmCall(request, env) {
 
     const llmResponse = isConversation
       ? await callAnthropicConversation(
-          apiKey, system, messages, model || "claude-haiku-4-5-20251001", maxTokens || 3000
+          apiKey, system, messages, model || "claude-haiku-4-5-20251001", maxTokens || 3000, outputConfig
         )
       : await callAnthropicApi(
-          apiKey, systemPrompt, userPrompt, model || "claude-haiku-4-5-20251001", maxTokens || 3000
+          apiKey, systemPrompt, userPrompt, model || "claude-haiku-4-5-20251001", maxTokens || 3000, outputConfig
         );
     return jsonRes(200, llmResponse);
   } catch (error) {
@@ -698,11 +704,31 @@ function validateConversation(system, messages) {
   return null;
 }
 
+// Structured output: constrains the model's answer to a JSON Schema so the note
+// is serialized by the API rather than hand-typed into a string the client then
+// has to parse. Rebuilt from known keys instead of passed through, so a browser
+// cannot smuggle arbitrary fields into the upstream request. Returns null when
+// absent or malformed; the caller treats malformed-but-present as a 400 rather
+// than silently generating an unconstrained note.
+const MAX_SCHEMA_CHARS = 20000;
+
+function sanitizeOutputConfig(cfg) {
+  if (!cfg || typeof cfg !== "object" || Array.isArray(cfg)) return null;
+  const format = cfg.format;
+  if (!format || typeof format !== "object" || Array.isArray(format)) return null;
+  if (format.type !== "json_schema") return null;
+  const schema = format.schema;
+  if (!schema || typeof schema !== "object" || Array.isArray(schema)) return null;
+  // Bounded so an oversized schema fails here rather than at the upstream API.
+  if (JSON.stringify(schema).length > MAX_SCHEMA_CHARS) return null;
+  return { format: { type: "json_schema", schema } };
+}
+
 // Multi-turn call with prompt caching. Two cache_control breakpoints: the system
 // block and the last message's content block. Anthropic's servers keep the
 // computed prefix for 5 minutes (refreshed on each use) and bill cache reads at
 // ~0.1x input price, so replayed conversation history is not recomputed.
-async function callAnthropicConversation(apiKey, system, messages, model, maxTokens) {
+async function callAnthropicConversation(apiKey, system, messages, model, maxTokens, outputConfig) {
   const msgs = messages.map((m, i) =>
     i === messages.length - 1
       ? { role: m.role, content: [{ type: "text", text: m.content, cache_control: { type: "ephemeral" } }] }
@@ -720,6 +746,7 @@ async function callAnthropicConversation(apiKey, system, messages, model, maxTok
       max_tokens: maxTokens,
       system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
       messages: msgs,
+      ...(outputConfig ? { output_config: outputConfig } : {}),
     }),
   });
 
@@ -731,7 +758,7 @@ async function callAnthropicConversation(apiKey, system, messages, model, maxTok
   return await response.json();
 }
 
-async function callAnthropicApi(apiKey, systemPrompt, userPrompt, model, maxTokens) {
+async function callAnthropicApi(apiKey, systemPrompt, userPrompt, model, maxTokens, outputConfig) {
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -744,6 +771,7 @@ async function callAnthropicApi(apiKey, systemPrompt, userPrompt, model, maxToke
       max_tokens: maxTokens,
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
+      ...(outputConfig ? { output_config: outputConfig } : {}),
     }),
   });
 

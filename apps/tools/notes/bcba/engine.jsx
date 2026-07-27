@@ -413,6 +413,10 @@ function App() {
       // contracts for, so they double as the shape the response must satisfy.
       // Derived rather than declared, so the check cannot drift from the UI.
       expectKeys: tool.formSections.map(sectionId),
+      // Constrains the answer to the tool's schema so the API serializes the
+      // note. Tools without one keep the plain-text path and the recovery
+      // ladder beneath it, so this rolls out a tool at a time.
+      responseSchema: tool.responseSchema || null,
     });
     return r; // {parsed, rawText, usage, stopReason}
   };
