@@ -38,5 +38,13 @@ export default defineConfig({
     command: `npx wrangler pages dev . --port ${PORT}`,
     url: BASE_URL,
     reuseExistingServer: !process.env.CI && !process.env.GAMES_TEST_PORT,
+    // wrangler downloads and boots workerd on a cold CI runner; the 60s default
+    // is tight enough that a slow boot looks like a test failure.
+    timeout: 180_000,
+    // Surface workerd's own output. When the server died mid-run the only
+    // evidence was a bare "Connection refused" on every subsequent test —
+    // piping its stderr is what turned that into a diagnosable crash.
+    stdout: 'pipe',
+    stderr: 'pipe',
   },
 });
