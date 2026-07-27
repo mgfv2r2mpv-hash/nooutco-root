@@ -242,7 +242,10 @@ const state = {
 // ── Settings persistence ───────────────────────────────────────────────
 const SETTINGS_KEY = 'nooutco.settings.think-or-say';
 const LEGACY_SETTINGS_KEY = 'tosSettings';
-const RESULTS_KEY  = 'tosResults';
+// Namespaced to match the other nine games. The bare `tosResults` key is
+// retired but never deleted — loadResults() folds it forward on first run.
+const RESULTS_KEY        = 'nooutco.results.think-or-say';
+const LEGACY_RESULTS_KEY = 'tosResults';
 
 /**
  * The programme parameters this game persists, declared ONCE (Stage 6).
@@ -664,7 +667,7 @@ function recordResult() {
   let outcome = 'ok';
   if (state.trialPrompted) outcome = 'prompted';
   else if (state.trialErrors > 0) outcome = 'error';
-  state.results.push({
+  const row = {
     cat: CATEGORIES[sc.cat] || sc.cat,
     scenario: sc.situation,
     answer: sc.answer === 'think' ? 'THINK IT' : 'SAY IT',
@@ -672,15 +675,42 @@ function recordResult() {
     prompted: state.trialPrompted,
     secs,
     outcome,
-  });
-  saveResults();
+  };
+  if (window.NooutcoResults) {
+    NooutcoResults.record(
+      RESULTS_KEY, state.results, row,
+      { autoPrompt: state.cfg.autoPrompt, promptDelay: state.cfg.promptDelay },
+      state.trialPrompted,
+    );
+  } else {
+    state.results.push(row);
+    saveResults();
+  }
 }
 
 function saveResults() {
+  if (window.NooutcoResults) { NooutcoResults.save(RESULTS_KEY, state.results); return; }
   try { localStorage.setItem(RESULTS_KEY, JSON.stringify(state.results)); } catch (e) {}
 }
 
+/**
+ * Load the trial record, folding the retired bare `tosResults` key forward on
+ * first run. Read-then-fold: the old key is left in place rather than deleted,
+ * so a technician who reverts to an older build still has their session.
+ */
 function loadResults() {
+  if (window.NooutcoResults) {
+    state.results = NooutcoResults.load(RESULTS_KEY);
+    if (!state.results.length) {
+      let legacy = [];
+      try { legacy = JSON.parse(localStorage.getItem(LEGACY_RESULTS_KEY) || '[]'); } catch (e) { legacy = []; }
+      if (Array.isArray(legacy) && legacy.length) {
+        state.results = legacy;
+        NooutcoResults.save(RESULTS_KEY, state.results);
+      }
+    }
+    return;
+  }
   try { state.results = JSON.parse(localStorage.getItem(RESULTS_KEY) || '[]'); } catch (e) { state.results = []; }
 }
 

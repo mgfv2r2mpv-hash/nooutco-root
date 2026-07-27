@@ -998,6 +998,15 @@ function onCorrectClick(wrapper, tile) {
       state.promptDelay ? state.promptDelaySecs : 0,
     ].join('|'),
   });
+  // Stage 8: ffc already resolves promptType against the active session, so
+  // stampTrial only adds the timestamp — it never overwrites a set promptType.
+  if (window.NooutcoResults) {
+    NooutcoResults.stampTrial(
+      state.sessionData[state.sessionData.length - 1],
+      { autoPrompt: state.autoPromptEnabled, promptDelay: state.promptDelay },
+      state.prompted || state.autoPrompted,
+    );
+  }
   persistResults();
 
   if (window.__nooutcoTokens) window.__nooutcoTokens.award();

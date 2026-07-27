@@ -49,6 +49,45 @@
     catch (e) { /* non-fatal */ }
   }
 
+  /* ── Uniform trial fields ────────────────────────────────────────────
+     Every game builds its own trial row with its own domain columns, but
+     two fields must mean the same thing everywhere or a session record is
+     not comparable across programmes. Stamping them in one place is what
+     makes that true.
+
+       ts         ISO-8601 instant the trial was scored. Device-local, and
+                  still never transmitted — see the clinical boundary above.
+       promptType 'none' | 'model' | 'gesture' | 'delay' — the prompt
+                  topography, derived from the configured procedure via
+                  NooutcoPrompting so it cannot drift per game.
+
+     Deliberately NOT recorded: which comparison the learner selected.
+     CLAUDE.md §5 forbids logging which response was chosen.                */
+  function stampTrial(row, cfg, prompted) {
+    row = row || {};
+    row.ts = new Date().toISOString();
+    // A game that already derived a promptType keeps it — sequences and ffc
+    // resolve it against an active round/session, which is strictly more
+    // specific than deriving from the live switches. Same vocabulary either
+    // way, so the record stays comparable.
+    if (row.promptType == null) {
+      var P = global.NooutcoPrompting;
+      row.promptType = (P && typeof P.promptTypeFor === 'function')
+        ? P.promptTypeFor(cfg, prompted)
+        : (prompted ? 'model' : 'none');
+    }
+    return row;
+  }
+
+  /* Append a stamped row and persist in one step, so a game can never
+     record a trial it then loses on reload. Returns the row. */
+  function record(key, rows, row, cfg, prompted) {
+    var stamped = stampTrial(row, cfg, prompted);
+    rows.push(stamped);
+    save(key, rows);
+    return stamped;
+  }
+
   /* ── HTML building ───────────────────────────────────────────────── */
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
@@ -206,6 +245,8 @@
     load: load,
     clear: clear,
     open: open,
-    buildHtml: buildHtml
+    buildHtml: buildHtml,
+    stampTrial: stampTrial,
+    record: record
   };
 })(window);

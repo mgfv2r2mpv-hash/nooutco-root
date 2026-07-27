@@ -170,6 +170,7 @@ function bindEvents() {
     if (!state.sessionData.length) { alert('No data to clear.'); return; }
     if (!confirm('Clear all trial data? This cannot be undone.')) return;
     state.sessionData = [];
+    if (window.NooutcoResults) NooutcoResults.clear(RESULTS_KEY);
     state.trialNum    = 0;
     el.resultsBody.innerHTML = '';
   });
@@ -469,7 +470,7 @@ function finishTrial() {
     outcome = 'Correct';
   }
 
-  state.sessionData.push({
+  recordTrial({
     trial:      state.trialNum,
     set:        state.setName,
     pattern:    state.unit.join(''),
@@ -970,10 +971,44 @@ function initRound() {
   renderRoundSetPicker();
 }
 
+// ── Trial record (device-local) ────────────────────────────────────
+// Trial rows used to live only in memory, so a refresh mid-session lost the
+// technician's whole record. They persist here through the shared store, which
+// is device-local and never transmitted (see results-report.js).
+// promptType is already resolved above against the active round, so stampTrial
+// leaves it alone and only adds the timestamp.
+const RESULTS_KEY = 'nooutco.results.sequences';
+
+function promptCfg() {
+  return { autoPrompt: state.autoPromptEnabled, promptDelay: state.promptDelay };
+}
+
+function recordTrial(row) {
+  const prompted = state.prompted || state.autoPrompted;
+  if (window.NooutcoResults) {
+    NooutcoResults.record(RESULTS_KEY, state.sessionData, row, promptCfg(), prompted);
+  } else {
+    state.sessionData.push(row);
+  }
+}
+
+function persistTrials() {
+  if (window.NooutcoResults) NooutcoResults.save(RESULTS_KEY, state.sessionData);
+}
+
+function restoreTrials() {
+  if (!window.NooutcoResults) return;
+  const rows = NooutcoResults.load(RESULTS_KEY);
+  if (!Array.isArray(rows) || !rows.length) return;
+  state.sessionData = rows;
+  state.trialNum = rows.reduce((m, d) => Math.max(m, Number(d.trial) || 0), 0);
+}
+
 // ── Init ───────────────────────────────────────────────────────────
 
 (async function init() {
   if (window.NooutcoConfig) NooutcoConfig.migrate();
+  restoreTrials();
   bindEvents();
   await loadSymbols();
   initRound();
