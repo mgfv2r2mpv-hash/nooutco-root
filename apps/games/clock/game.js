@@ -202,8 +202,44 @@ const el = {
 
 // ── Boot ───────────────────────────────────────────────────────────
 
+
+// ── Trial record (device-local) ────────────────────────────────────
+// Trial rows used to live only in memory, so a refresh mid-session lost the
+// technician's whole record. They persist here through the shared store, which
+// is device-local and never transmitted (see results-report.js).
+const RESULTS_KEY = 'nooutco.results.clock';
+
+function promptCfg() {
+  return { autoPrompt: state.autoPromptEnabled, promptDelay: state.promptDelay };
+}
+
+/** Append a trial, stamp the uniform fields, and persist in one step. */
+function recordTrial(row) {
+  const prompted = state.prompted || state.autoPrompted;
+  if (window.NooutcoResults) {
+    NooutcoResults.record(RESULTS_KEY, state.sessionData, row, promptCfg(), prompted);
+  } else {
+    state.sessionData.push(row);
+  }
+}
+
+/** Re-save after an in-place edit (undo). */
+function persistTrials() {
+  if (window.NooutcoResults) NooutcoResults.save(RESULTS_KEY, state.sessionData);
+}
+
+/** Restore a session interrupted by a reload. Trial numbering resumes. */
+function restoreTrials() {
+  if (!window.NooutcoResults) return;
+  const rows = NooutcoResults.load(RESULTS_KEY);
+  if (!Array.isArray(rows) || !rows.length) return;
+  state.sessionData = rows;
+  state.trialNum = rows.reduce((m, d) => Math.max(m, Number(d.trial) || 0), 0);
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   if (window.NooutcoConfig) NooutcoConfig.migrate();
+  restoreTrials();
   loadSettings();
   bindEvents();
   await discoverTopics();
@@ -509,6 +545,7 @@ function bindEvents() {
     }
     if (!confirm('Clear all trial data? This cannot be undone.')) return;
     state.sessionData = [];
+    if (window.NooutcoResults) NooutcoResults.clear(RESULTS_KEY);
     state.trialNum    = 0;
     el.resultsBody.innerHTML = '';
   });
@@ -1030,7 +1067,7 @@ function recordOutcome() {
     outcome = 'Correct';
   }
 
-  state.sessionData.push({
+  recordTrial({
     trial:     state.trialNum,
     topic:     state.topic.slice(2).replace(/_/g, ' '),
     sample:    state.sampleLabel,

@@ -77,6 +77,29 @@
     return m ? Object.assign({}, m.preset) : null;
   }
 
+  /**
+   * Prompting method → the prompt topography recorded on a trial when a prompt
+   * actually fires. Previously duplicated verbatim in sequences and ffc; it
+   * lives here now so all ten games record the same vocabulary and a change to
+   * the mapping cannot drift between them.
+   */
+  const PROMPT_TYPE_BY_METHOD = {
+    'most-to-least': 'model',
+    'least-to-most': 'gesture',
+    'time-delay':    'delay',
+  };
+
+  /**
+   * The prompt type for one trial. `prompted` is whether a prompt was actually
+   * delivered — by the technician or automatically. An unprompted trial is
+   * 'none' regardless of the configured procedure, because the procedure
+   * describes what *would* happen, not what did.
+   */
+  function promptTypeFor(cfg, prompted) {
+    if (!prompted) return 'none';
+    return PROMPT_TYPE_BY_METHOD[derive(cfg)] || 'model';
+  }
+
   function injectStyle() {
     if (document.getElementById('prompting-method-style')) return;
     const style = document.createElement('style');
@@ -257,8 +280,10 @@
 
   window.NooutcoPrompting = {
     METHODS,
+    PROMPT_TYPE_BY_METHOD,
     derive,
     presetFor,
+    promptTypeFor,
     mount,
     refresh,
     select(id) { for (const g of groups) g.select(id); },

@@ -908,6 +908,15 @@ function onCorrectClick(bucket) {
       state.animTier,
     ].join('|'),
   });
+  // Stage 8: the two fields every game must carry, stamped in one shared place
+  // so a session record is comparable across programmes.
+  if (window.NooutcoResults) {
+    NooutcoResults.stampTrial(
+      state.sessionData[state.sessionData.length - 1],
+      { autoPrompt: state.autoPromptEnabled, promptDelay: state.promptDelay },
+      state.prompted || state.autoPrompted,
+    );
+  }
   persistResults();
 
   // Award tokens on correct response

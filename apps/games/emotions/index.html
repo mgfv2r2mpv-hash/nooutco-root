@@ -459,8 +459,23 @@
     else if (t.result === 'wrong') { s.w++; }
     else { s.p++; if (s.lv[t.result] != null) s.lv[t.result]++; }
   }
+  /**
+   * Emotion ID records the prompt level actually delivered, which is finer
+   * than the shared four-value topography. Map onto the shared vocabulary for
+   * cross-programme comparability; the finer distinction is not lost, it stays
+   * in `result` (and prints via RESULT_LABEL).
+   */
+  const PROMPT_TYPE_BY_RESULT = {
+    correct: 'none', wrong: 'none',
+    gestural: 'gesture', partial: 'gesture', model: 'model',
+  };
   function logTrial(key, result) {
     const rec = { n: trials.length + 1, key, mode, result };
+    rec.promptType = PROMPT_TYPE_BY_RESULT[result] || 'none';
+    // stampTrial adds the timestamp and leaves the promptType set above alone.
+    if (window.NooutcoResults && NooutcoResults.stampTrial) {
+      NooutcoResults.stampTrial(rec, null, rec.promptType !== 'none');
+    }
     trials.push(rec);
     applyToStats(rec);
     NooutcoResults.save(TRIALS_KEY, trials);
