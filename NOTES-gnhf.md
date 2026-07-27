@@ -2183,3 +2183,31 @@ a control).
   is the natural place, since it has to unify `promptType` across all ten
   anyway and `sequences` already derives it from the primitives outside a
   round (`sequences/game.js:484-485`).
+
+---
+
+## FLAGGED for clinical review — the preposition set (landed 2026-07-26)
+
+`T_prepositions` now serves one consistent ball-and-box set of 12, replacing a
+mix of hand-drawn SVG, photographs and emoji placeholders. Source art supplied
+by the maintainer as a single 4x3 sheet; sliced, background-keyed and uploaded
+through `shared/stimuli/uploads/T_prepositions/`.
+
+**Two of the twelve are potentially confusable, and this was shipped knowingly.**
+
+- `in-front-of` is the only image in the set built from **two** boxes plus a
+  ball. It reads as perspective/depth rather than as the relation itself, and it
+  is stylistically inconsistent with the other eleven.
+- `near` shows the ball touching the box at its front-right, which a learner
+  could equally defend as "in front of".
+
+If both appear as comparisons in the same receptive-ID array, either selection
+is arguable and the learner can be scored wrong for a reasonable answer.
+Consider excluding them from each other's distractor pool, or re-drawing
+`in-front-of` as a single box with the ball clearly nearer the viewer.
+
+**`next-to` was retired**, not deleted. Its art remains in the shared library;
+`publishing.json` stops clock and receptive from publishing it. `near` covers
+the same relation, and keeping both would have put two different words on
+near-identical pictures. Reverse by removing the `T_prepositions` entry from
+`excluded` in `publishing.json` and rebuilding.

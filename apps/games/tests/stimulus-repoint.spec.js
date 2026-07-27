@@ -120,6 +120,33 @@ test('no category serves fewer stimuli than it did before the repoint', async ({
   expect(shortfalls, 'categories that shrank in the repoint').toEqual([]);
 });
 
+/**
+ * The library URLs a game no longer publishes *by declaration* — a technician
+ * removed the stimulus from that game in `publishing.json`. The art stays in
+ * the library (the same bytes back three games), so this is a publishing
+ * decision, not a deletion, and it is the only sanctioned reason for a URL a
+ * game used to serve to stop being indexed by it.
+ */
+async function retired(request, game) {
+  const publishing = await loadJson(request, '/shared/stimuli/publishing.json');
+  const provenance = await loadJson(request, '/shared/stimuli/provenance.json');
+
+  const ids = new Set();
+  for (const list of Object.values((publishing.excluded || {})[game] || {})) {
+    for (const id of list || []) ids.add(id);
+  }
+
+  // The game-relative source paths that fed a retired stimulus. These are the
+  // legacy manifest entries that legitimately have no alias any more.
+  const paths = new Set();
+  const prefix = `/${game}/`;
+  for (const [sourcePath, rec] of Object.entries(provenance)) {
+    if (!ids.has(rec.stimulus)) continue;
+    if (sourcePath.startsWith(prefix)) paths.add(sourcePath.slice(prefix.length));
+  }
+  return { ids, paths };
+}
+
 // ── Nothing a game used to serve stops resolving ───────────────────────────
 
 for (const source of ['clock', 'receptive', 'matching']) {
@@ -131,10 +158,17 @@ for (const source of ['clock', 'receptive', 'matching']) {
     const legacy = Object.values(SOURCE_MANIFESTS[source].images).flat();
     expect(legacy.length, 'the frozen snapshot has paths to check').toBeGreaterThan(0);
 
-    const orphaned = legacy.filter((p) => !manifest.pathAliases[p]);
+    // A stimulus a technician deliberately retired in publishing.json stops
+    // being served on purpose, and the build stops emitting an alias for it.
+    // Allow exactly those paths, and no others, so this still fails on art
+    // lost by accident — which is the whole point of the test.
+    const { paths: retiredPaths } = await retired(request, source);
+    const live = legacy.filter((p) => !retiredPaths.has(p));
+
+    const orphaned = live.filter((p) => !manifest.pathAliases[p]);
     expect(orphaned, 'paths with no alias into the library').toEqual([]);
 
-    const unserved = legacy
+    const unserved = live
       .map((p) => manifest.pathAliases[p])
       .filter((url) => !indexed.has(url));
     expect(unserved, 'aliases pointing at something this game does not index').toEqual([]);

@@ -2183,10 +2183,16 @@
         "T_prepositions"
       ],
       "image": "/shared/stimuli/img/T_prepositions/above.png",
-      "emoji": null,
-      "variants": [
-        "/shared/stimuli/img/T_prepositions/above--alt1.svg"
-      ]
+      "emoji": null
+    },
+    {
+      "id": "prepositions-around",
+      "label": "Around",
+      "categories": [
+        "T_prepositions"
+      ],
+      "image": "/shared/stimuli/img/T_prepositions/around.png",
+      "emoji": null
     },
     {
       "id": "prepositions-behind",
@@ -2195,10 +2201,7 @@
         "T_prepositions"
       ],
       "image": "/shared/stimuli/img/T_prepositions/behind.png",
-      "emoji": null,
-      "variants": [
-        "/shared/stimuli/img/T_prepositions/behind--alt1.svg"
-      ]
+      "emoji": null
     },
     {
       "id": "prepositions-below",
@@ -2207,10 +2210,7 @@
         "T_prepositions"
       ],
       "image": "/shared/stimuli/img/T_prepositions/below.png",
-      "emoji": null,
-      "variants": [
-        "/shared/stimuli/img/T_prepositions/below--alt1.svg"
-      ]
+      "emoji": null
     },
     {
       "id": "prepositions-far",
@@ -2218,7 +2218,7 @@
       "categories": [
         "T_prepositions"
       ],
-      "image": "/shared/stimuli/img/T_prepositions/far.svg",
+      "image": "/shared/stimuli/img/T_prepositions/far.png",
       "emoji": null
     },
     {
@@ -2228,10 +2228,7 @@
         "T_prepositions"
       ],
       "image": "/shared/stimuli/img/T_prepositions/in.png",
-      "emoji": null,
-      "variants": [
-        "/shared/stimuli/img/T_prepositions/in--alt1.svg"
-      ]
+      "emoji": null
     },
     {
       "id": "prepositions-in-front-of",
@@ -2240,10 +2237,7 @@
         "T_prepositions"
       ],
       "image": "/shared/stimuli/img/T_prepositions/in-front-of.png",
-      "emoji": null,
-      "variants": [
-        "/shared/stimuli/img/T_prepositions/in-front-of--alt1.svg"
-      ]
+      "emoji": null
     },
     {
       "id": "prepositions-left-of",
@@ -2251,7 +2245,7 @@
       "categories": [
         "T_prepositions"
       ],
-      "image": "/shared/stimuli/img/T_prepositions/left-of.svg",
+      "image": "/shared/stimuli/img/T_prepositions/left-of.png",
       "emoji": null
     },
     {
@@ -2260,7 +2254,7 @@
       "categories": [
         "T_prepositions"
       ],
-      "image": "/shared/stimuli/img/T_prepositions/near.svg",
+      "image": "/shared/stimuli/img/T_prepositions/near.png",
       "emoji": null
     },
     {
@@ -2281,7 +2275,7 @@
       "categories": [
         "T_prepositions"
       ],
-      "image": "/shared/stimuli/img/T_prepositions/on.svg",
+      "image": "/shared/stimuli/img/T_prepositions/on.png",
       "emoji": null
     },
     {
@@ -2290,7 +2284,7 @@
       "categories": [
         "T_prepositions"
       ],
-      "image": "/shared/stimuli/img/T_prepositions/right-of.svg",
+      "image": "/shared/stimuli/img/T_prepositions/right-of.png",
       "emoji": null
     },
     {
@@ -2299,7 +2293,7 @@
       "categories": [
         "T_prepositions"
       ],
-      "image": "/shared/stimuli/img/T_prepositions/under.svg",
+      "image": "/shared/stimuli/img/T_prepositions/under.png",
       "emoji": null
     },
     {

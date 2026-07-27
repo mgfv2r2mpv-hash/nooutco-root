@@ -651,52 +651,62 @@
   "/clock/_Resources/_imgSource/T_prepositions/above.png": {
     "stimulus": "prepositions-above",
     "sha256": "3787677ca8a2ed9280d93e1f5ecbbe751b9c6cccfdc849aca50984c637660ef0",
-    "library": "/shared/stimuli/img/T_prepositions/above.png"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/clock/_Resources/_imgSource/T_prepositions/above.svg": {
     "stimulus": "prepositions-above",
     "sha256": "b1c7e3fa02b3a549a91906a31a1c648ab13045384ac1ce7b9cfb865e62d3e59a",
-    "library": "/shared/stimuli/img/T_prepositions/above--alt1.svg"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/clock/_Resources/_imgSource/T_prepositions/behind.png": {
     "stimulus": "prepositions-behind",
     "sha256": "592128a94c90934f17ba484a04e712c95d857618b0eaa34d11fc69d0b056d322",
-    "library": "/shared/stimuli/img/T_prepositions/behind.png"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/clock/_Resources/_imgSource/T_prepositions/behind.svg": {
     "stimulus": "prepositions-behind",
     "sha256": "0d893764d8e0d6d9158d1b1a8b2f52fcd28afab9f624844c1ce3024162790c3f",
-    "library": "/shared/stimuli/img/T_prepositions/behind--alt1.svg"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/clock/_Resources/_imgSource/T_prepositions/below.svg": {
     "stimulus": "prepositions-below",
     "sha256": "48de2404403c7ba32f63b47e928b1ce0d4812d691b089e5e5e20fd32d1956dcb",
-    "library": "/shared/stimuli/img/T_prepositions/below--alt1.svg"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/clock/_Resources/_imgSource/T_prepositions/far.svg": {
     "stimulus": "prepositions-far",
     "sha256": "5664f71430fcbd6db26f012bdb0ac57843f36c3cbf9d5405f78449127dc33fdb",
-    "library": "/shared/stimuli/img/T_prepositions/far.svg"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/clock/_Resources/_imgSource/T_prepositions/in-front-of.svg": {
     "stimulus": "prepositions-in-front-of",
     "sha256": "b8276f93cd8928f8a554d85fd1456fdbe61beaa3312a2a1ce50ea49896caa471",
-    "library": "/shared/stimuli/img/T_prepositions/in-front-of--alt1.svg"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/clock/_Resources/_imgSource/T_prepositions/in.svg": {
     "stimulus": "prepositions-in",
     "sha256": "870c53e2afe5889b133c1e0dd27be97923daa1c132358bd3ac744577a2090e4d",
-    "library": "/shared/stimuli/img/T_prepositions/in--alt1.svg"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/clock/_Resources/_imgSource/T_prepositions/left-of.svg": {
     "stimulus": "prepositions-left-of",
     "sha256": "b59dc4d3f588a206648bd53b5ad041810b7706e6ac2b1bbe62d1e9934cbd2f5b",
-    "library": "/shared/stimuli/img/T_prepositions/left-of.svg"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/clock/_Resources/_imgSource/T_prepositions/near.svg": {
     "stimulus": "prepositions-near",
     "sha256": "0461f3cd24162d985c730643619c805a2f5dba80e5e8782c11a2fa0d9fb797d9",
-    "library": "/shared/stimuli/img/T_prepositions/near.svg"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/clock/_Resources/_imgSource/T_prepositions/next-to.svg": {
     "stimulus": "prepositions-next-to",
@@ -706,17 +716,20 @@
   "/clock/_Resources/_imgSource/T_prepositions/on.svg": {
     "stimulus": "prepositions-on",
     "sha256": "b807b6ca9df3ae0cb1e0f908bd7b497eba216637be38d76896001a2a39d15d37",
-    "library": "/shared/stimuli/img/T_prepositions/on.svg"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/clock/_Resources/_imgSource/T_prepositions/right-of.svg": {
     "stimulus": "prepositions-right-of",
     "sha256": "35a7108e2e75886b36bb61de00f5a29c3dc897f512c3a0e431169386f12a4eda",
-    "library": "/shared/stimuli/img/T_prepositions/right-of.svg"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/clock/_Resources/_imgSource/T_prepositions/under.svg": {
     "stimulus": "prepositions-under",
     "sha256": "1f5213565ff32f607ea79b395db9b7338d0bf5e54b4cf1feea056c0f86a32c8d",
-    "library": "/shared/stimuli/img/T_prepositions/under.svg"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/clock/_Resources/_imgSource/T_shapes/circle.svg": {
     "stimulus": "shapes-circle",
@@ -3310,57 +3323,68 @@
   "/receptive/_Resources/_imgSource/T_prepositions/above.png": {
     "stimulus": "prepositions-above",
     "sha256": "3787677ca8a2ed9280d93e1f5ecbbe751b9c6cccfdc849aca50984c637660ef0",
-    "library": "/shared/stimuli/img/T_prepositions/above.png"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/receptive/_Resources/_imgSource/T_prepositions/above.svg": {
     "stimulus": "prepositions-above",
     "sha256": "b1c7e3fa02b3a549a91906a31a1c648ab13045384ac1ce7b9cfb865e62d3e59a",
-    "library": "/shared/stimuli/img/T_prepositions/above--alt1.svg"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/receptive/_Resources/_imgSource/T_prepositions/behind.png": {
     "stimulus": "prepositions-behind",
     "sha256": "592128a94c90934f17ba484a04e712c95d857618b0eaa34d11fc69d0b056d322",
-    "library": "/shared/stimuli/img/T_prepositions/behind.png"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/receptive/_Resources/_imgSource/T_prepositions/behind.svg": {
     "stimulus": "prepositions-behind",
     "sha256": "0d893764d8e0d6d9158d1b1a8b2f52fcd28afab9f624844c1ce3024162790c3f",
-    "library": "/shared/stimuli/img/T_prepositions/behind--alt1.svg"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/receptive/_Resources/_imgSource/T_prepositions/below.png": {
     "stimulus": "prepositions-below",
     "sha256": "7ebb49900446349fe43f24643ef56c0ce5924922c472049bd8b8a64a6c2e0be4",
-    "library": "/shared/stimuli/img/T_prepositions/below.png"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/receptive/_Resources/_imgSource/T_prepositions/below.svg": {
     "stimulus": "prepositions-below",
     "sha256": "48de2404403c7ba32f63b47e928b1ce0d4812d691b089e5e5e20fd32d1956dcb",
-    "library": "/shared/stimuli/img/T_prepositions/below--alt1.svg"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/receptive/_Resources/_imgSource/T_prepositions/in-front-of.png": {
     "stimulus": "prepositions-in-front-of",
     "sha256": "c700093ca0d32b7ad0dc02ac0d4cdbb52f1342fc592cb9d8e4a134ff49f17397",
-    "library": "/shared/stimuli/img/T_prepositions/in-front-of.png"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/receptive/_Resources/_imgSource/T_prepositions/in-front-of.svg": {
     "stimulus": "prepositions-in-front-of",
     "sha256": "b8276f93cd8928f8a554d85fd1456fdbe61beaa3312a2a1ce50ea49896caa471",
-    "library": "/shared/stimuli/img/T_prepositions/in-front-of--alt1.svg"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/receptive/_Resources/_imgSource/T_prepositions/in.png": {
     "stimulus": "prepositions-in",
     "sha256": "db8386cdc99dfe278ff7512464aee425d3a62c8288ceb19e0842ad64ed0c0801",
-    "library": "/shared/stimuli/img/T_prepositions/in.png"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/receptive/_Resources/_imgSource/T_prepositions/in.svg": {
     "stimulus": "prepositions-in",
     "sha256": "870c53e2afe5889b133c1e0dd27be97923daa1c132358bd3ac744577a2090e4d",
-    "library": "/shared/stimuli/img/T_prepositions/in--alt1.svg"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/receptive/_Resources/_imgSource/T_prepositions/left-of.svg": {
     "stimulus": "prepositions-left-of",
     "sha256": "b59dc4d3f588a206648bd53b5ad041810b7706e6ac2b1bbe62d1e9934cbd2f5b",
-    "library": "/shared/stimuli/img/T_prepositions/left-of.svg"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/receptive/_Resources/_imgSource/T_prepositions/next-to.png": {
     "stimulus": "prepositions-next-to",
@@ -3376,23 +3400,25 @@
     "stimulus": "prepositions-on",
     "sha256": "3787677ca8a2ed9280d93e1f5ecbbe751b9c6cccfdc849aca50984c637660ef0",
     "library": null,
-    "droppedBecause": "duplicate-of:T_prepositions/prepositions-above"
+    "droppedBecause": "superseded-by-upload"
   },
   "/receptive/_Resources/_imgSource/T_prepositions/on.svg": {
     "stimulus": "prepositions-on",
     "sha256": "b807b6ca9df3ae0cb1e0f908bd7b497eba216637be38d76896001a2a39d15d37",
-    "library": "/shared/stimuli/img/T_prepositions/on.svg"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/receptive/_Resources/_imgSource/T_prepositions/under.png": {
     "stimulus": "prepositions-under",
     "sha256": "7ebb49900446349fe43f24643ef56c0ce5924922c472049bd8b8a64a6c2e0be4",
     "library": null,
-    "droppedBecause": "duplicate-of:T_prepositions/prepositions-below"
+    "droppedBecause": "superseded-by-upload"
   },
   "/receptive/_Resources/_imgSource/T_prepositions/under.svg": {
     "stimulus": "prepositions-under",
     "sha256": "1f5213565ff32f607ea79b395db9b7338d0bf5e54b4cf1feea056c0f86a32c8d",
-    "library": "/shared/stimuli/img/T_prepositions/under.svg"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/receptive/_Resources/_imgSource/T_shapes/circle.svg": {
     "stimulus": "shapes-circle",
@@ -3494,5 +3520,65 @@
     "stimulus": "toys-yoyo",
     "sha256": "6409a610087c7c33d79bcdad001320b242e5dbdeb99ae9d9282ef71dd925ef12",
     "library": "/shared/stimuli/placeholder/T_toys/yoyo.svg"
+  },
+  "/shared/stimuli/uploads/T_prepositions/above.png": {
+    "stimulus": "prepositions-above",
+    "sha256": "03ed6f481bfd7a5ca56ee15bbc5f91ef184a53c19a9d8880f241780ed193a1ee",
+    "library": "/shared/stimuli/img/T_prepositions/above.png"
+  },
+  "/shared/stimuli/uploads/T_prepositions/around.png": {
+    "stimulus": "prepositions-around",
+    "sha256": "ab1113ca2b9f00273961db697b89bd11c1458b6900ff59253328c50e28fd074f",
+    "library": "/shared/stimuli/img/T_prepositions/around.png"
+  },
+  "/shared/stimuli/uploads/T_prepositions/behind.png": {
+    "stimulus": "prepositions-behind",
+    "sha256": "2c89004dd4732ce964ef47b92150cefe62f53b80f0ccf56217985c32a3537ad4",
+    "library": "/shared/stimuli/img/T_prepositions/behind.png"
+  },
+  "/shared/stimuli/uploads/T_prepositions/below.png": {
+    "stimulus": "prepositions-below",
+    "sha256": "d67a78f9622605bee79a572378641122f10da0894d2fd8d2ce8f567a23b675e1",
+    "library": "/shared/stimuli/img/T_prepositions/below.png"
+  },
+  "/shared/stimuli/uploads/T_prepositions/far.png": {
+    "stimulus": "prepositions-far",
+    "sha256": "c4fbef477210fe030f922229bda504814adcdc87006bafa48e60f47efbc94d0c",
+    "library": "/shared/stimuli/img/T_prepositions/far.png"
+  },
+  "/shared/stimuli/uploads/T_prepositions/in-front-of.png": {
+    "stimulus": "prepositions-in-front-of",
+    "sha256": "00fef4febec63e3e62da5b514b8863e6a0ab75c08644650c76a9bb5c8d2b5938",
+    "library": "/shared/stimuli/img/T_prepositions/in-front-of.png"
+  },
+  "/shared/stimuli/uploads/T_prepositions/in.png": {
+    "stimulus": "prepositions-in",
+    "sha256": "13b92a4b4063c478e03f713230af2e96fb7d80a27d042e8ad99ca042d7513165",
+    "library": "/shared/stimuli/img/T_prepositions/in.png"
+  },
+  "/shared/stimuli/uploads/T_prepositions/left-of.png": {
+    "stimulus": "prepositions-left-of",
+    "sha256": "51b64d8dc6a14de0b351de1000a37c127b481303fe0213fa9d9027d578ec171e",
+    "library": "/shared/stimuli/img/T_prepositions/left-of.png"
+  },
+  "/shared/stimuli/uploads/T_prepositions/near.png": {
+    "stimulus": "prepositions-near",
+    "sha256": "984e40b45337cfd4e0ed9a461b60a571266a77f1b5342aac2ebd53bfda8f9162",
+    "library": "/shared/stimuli/img/T_prepositions/near.png"
+  },
+  "/shared/stimuli/uploads/T_prepositions/on.png": {
+    "stimulus": "prepositions-on",
+    "sha256": "53db06b39226e614aab71598397da71dc3388f9e4ea535760fb67bae4f8546c3",
+    "library": "/shared/stimuli/img/T_prepositions/on.png"
+  },
+  "/shared/stimuli/uploads/T_prepositions/right-of.png": {
+    "stimulus": "prepositions-right-of",
+    "sha256": "700cdf977dc6f089683009b8739486814acb28ec4781b4b87ec76f9993f58314",
+    "library": "/shared/stimuli/img/T_prepositions/right-of.png"
+  },
+  "/shared/stimuli/uploads/T_prepositions/under.png": {
+    "stimulus": "prepositions-under",
+    "sha256": "050161ad557c8f2b42ba6218306e45df7a627a0fca0592092dffe1b914e54619",
+    "library": "/shared/stimuli/img/T_prepositions/under.png"
   }
 }
