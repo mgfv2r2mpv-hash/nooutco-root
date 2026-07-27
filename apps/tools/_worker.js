@@ -246,6 +246,13 @@ async function handleErrorReport(request, env) {
 const DIAGNOSTIC_KEYS = [
   "stage", "status", "model", "stopReason",
   "rawChars", "sliceChars", "outputTokens", "braceMatch", "parseError",
+  // Recovery outcome: whether the escape-repair pass salvaged the draft, and
+  // whether a resample was spent. Both are needed to tell a model that is
+  // mis-serializing (repaired/retried, clinician saw nothing) apart from one
+  // that defeated both recoveries.
+  "repaired", "retried",
+  // Which contracted sections the model omitted. Schema key names, not content.
+  "missingKeys",
 ];
 
 function sanitizeDiagnostics(d) {
