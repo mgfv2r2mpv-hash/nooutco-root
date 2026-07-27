@@ -409,8 +409,12 @@ function App() {
       messages,
       tool: tool.id,
       maxTokens: tool.maxTokens || 3000,
+      // The sections this tool renders are exactly the top-level keys its prompt
+      // contracts for, so they double as the shape the response must satisfy.
+      // Derived rather than declared, so the check cannot drift from the UI.
+      expectKeys: tool.formSections.map(sectionId),
     });
-    return r; // {parsed, rawText, usage}
+    return r; // {parsed, rawText, usage, stopReason}
   };
 
   const handleGenerate = async () => {

@@ -338,25 +338,13 @@
   // the de-identified role tokens (CLIENT, CAREGIVER, …) are intentionally kept
   // in the returned draft so it stays retrievable, so we do NOT restore names.
   function generateNote(opts) {
-    var systemPrompt = opts.systemPrompt;
-    var userPrompt = opts.userPrompt;
-
-    return fetchWithTimeout(apiUrl("/api/llm-call"), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + getToken(),
-      },
-      body: JSON.stringify({
-        systemPrompt: systemPrompt,
-        userPrompt: userPrompt,
-        model: opts.model || "claude-haiku-4-5-20251001",
-        maxTokens: opts.maxTokens || 3000,
-        tool: opts.tool,
-      }),
-    }, GEN_TIMEOUT_MS, "Note generation timed out — please retry.").then(function (res) {
-      return parseNoteResponse(res).then(function (r) { return r.parsed; });
-    });
+    return llmCall({
+      systemPrompt: opts.systemPrompt,
+      userPrompt: opts.userPrompt,
+      model: opts.model || "claude-haiku-4-5-20251001",
+      maxTokens: opts.maxTokens || 3000,
+      tool: opts.tool,
+    }).then(function (r) { return r.parsed; });
   }
 
   // Multi-turn variant for the revision flow: sends the whole conversation
@@ -365,20 +353,114 @@
   // recomputed. Resolves {parsed, rawText, usage} — rawText must be appended to
   // the conversation verbatim so the next turn's cache prefix matches.
   function generateConversation(opts) {
+    return llmCall({
+      system: opts.system,
+      messages: opts.messages,
+      model: opts.model || "claude-haiku-4-5-20251001",
+      maxTokens: opts.maxTokens || 3000,
+      tool: opts.tool,
+    }, opts.expectKeys);
+  }
+
+  function llmPost(body) {
     return fetchWithTimeout(apiUrl("/api/llm-call"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": "Bearer " + getToken(),
       },
-      body: JSON.stringify({
-        system: opts.system,
-        messages: opts.messages,
-        model: opts.model || "claude-haiku-4-5-20251001",
-        maxTokens: opts.maxTokens || 3000,
-        tool: opts.tool,
-      }),
-    }, GEN_TIMEOUT_MS, "Note generation timed out — please retry.").then(parseNoteResponse);
+      body: JSON.stringify(body),
+    }, GEN_TIMEOUT_MS, "Note generation timed out — please retry.");
+  }
+
+  // The model hand-serializes the whole draft as JSON, so one missed escape
+  // anywhere in a ~1000-token object used to throw away the clinician's entire
+  // note. repairModelJson (below) recovers the losslessly-fixable slips; this
+  // covers the rest with a single resample. Resampling is the only safe answer
+  // to an unescaped interior quote — a tacting SAP quotes its demands verbatim
+  // ("What is it?"), and repairing that would mean guessing where the string was
+  // meant to end, silently dropping clinical text. Sampling variance is what
+  // makes the second call likely to land; the request is byte-identical, so it
+  // reuses the same server-side prompt-cache prefix.
+  // `expectKeys` are the top-level keys the tool's prompt contracts for. Parsing
+  // proves the bytes are JSON, not that they are the note: the brace slice is a
+  // greedy first-{ to last-}, so a stray brace in model prose can yield a
+  // fragment that parses perfectly and carries none of the note. normalizeOutput
+  // is deliberately tolerant of missing keys, so such a fragment used to render
+  // as a note with silently blank sections. Checking shape here is what makes it
+  // safe to be more forgiving about syntax above.
+  function llmCall(body, expectKeys) {
+    var attempt = function () {
+      return llmPost(body).then(parseNoteResponse).then(function (r) {
+        var missing = missingKeys(r.parsed, expectKeys);
+        if (!missing.length) return r;
+        // Key names are schema, not note content — safe to name in a ticket.
+        throw internalError("Model response is missing required sections.", {
+          stage: "shape",
+          stopReason: r.stopReason,
+          missingKeys: missing.join(","),
+        });
+      });
+    };
+    return attempt().catch(function (e) {
+      if (!isResamplable(e)) throw e;
+      return attempt().catch(function (e2) {
+        if (e2 && e2.diagnostics) e2.diagnostics.retried = true;
+        throw e2;
+      });
+    });
+  }
+
+  // Presence, not substance. A key present but thin is a clinical judgement the
+  // hints system already covers; a key absent means the object is not the note
+  // the prompt asked for. Callers that pass no key list opt out entirely.
+  function missingKeys(parsed, expectKeys) {
+    if (!expectKeys || !expectKeys.length) return [];
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return expectKeys.slice();
+    return expectKeys.filter(function (k) {
+      return !Object.prototype.hasOwnProperty.call(parsed, k);
+    });
+  }
+
+  // Only a defect in what the model produced earns a second call. A max_tokens
+  // truncation is not a slip — the resample hits the same cap, and it is the one
+  // case that can present as either bad syntax or missing keys, so both stages
+  // check it. HTTP/auth/timeout failures are the caller's or the network's
+  // business, not the sampler's.
+  function isResamplable(e) {
+    var d = e && !e.userFacing && e.diagnostics;
+    if (!d || d.stopReason === "max_tokens") return false;
+    return d.stage === "parse" || d.stage === "shape";
+  }
+
+  // A control character is never legal inside a JSON string literal, so finding
+  // one there is unambiguous: the model wrote the character where it owed the
+  // escape. Rewriting it is lossless and — because the scan tracks string state
+  // the same way a parser does — cannot alter text that already parses. Runs
+  // only after a straight parse has failed.
+  var CONTROL_ESCAPE = { "\b": "\\b", "\f": "\\f", "\n": "\\n", "\r": "\\r", "\t": "\\t" };
+
+  function repairModelJson(text) {
+    var out = "", inStr = false, esc = false;
+    for (var i = 0; i < text.length; i++) {
+      var ch = text.charAt(i);
+      if (!inStr) { out += ch; if (ch === '"') inStr = true; continue; }
+      if (esc)         { out += ch; esc = false; continue; }
+      if (ch === "\\") { out += ch; esc = true; continue; }
+      if (ch === '"')  { out += ch; inStr = false; continue; }
+      var code = ch.charCodeAt(0);
+      if (code < 0x20) {
+        out += CONTROL_ESCAPE[ch] || ("\\u" + ("000" + code.toString(16)).slice(-4));
+        continue;
+      }
+      out += ch;
+    }
+    return out;
+  }
+
+  function tryParse(s) {
+    try { return { ok: true, value: JSON.parse(s) }; }
+    catch (err) { return { ok: false, error: (err && err.message) || "unknown" }; }
   }
 
   function parseNoteResponse(res) {
@@ -416,17 +498,32 @@
         throw internalError("No JSON object found in the model response.", diag);
       }
       diag.sliceChars = match[0].length;
-      try {
-        return { parsed: JSON.parse(match[0]), rawText: raw, usage: data.usage || null };
-      } catch (err) {
-        diag.parseError = (err && err.message) || "unknown";
-        throw internalError(
-          data.stop_reason === "max_tokens"
-            ? "Model output hit the token cap mid-JSON — raise maxTokens for this tool."
-            : "Model returned malformed JSON.",
-          diag
-        );
+      var attempt = tryParse(match[0]);
+      if (!attempt.ok) {
+        var repaired = tryParse(repairModelJson(match[0]));
+        // Recorded either way: a draft that only survived repair is still a
+        // model that is mis-serializing, and worth seeing in the ticket stream.
+        if (repaired.ok) { diag.repaired = true; attempt = repaired; }
       }
+      // stopReason rides along so the shape check downstream can tell a model
+      // that dropped sections from one that was cut off at the cap.
+      if (attempt.ok) {
+        return {
+          parsed: attempt.value,
+          rawText: raw,
+          usage: data.usage || null,
+          stopReason: data.stop_reason || null,
+        };
+      }
+      // The first parse's position is the informative one — the repaired text is
+      // not what the model actually emitted.
+      diag.parseError = attempt.error;
+      throw internalError(
+        data.stop_reason === "max_tokens"
+          ? "Model output hit the token cap mid-JSON — raise maxTokens for this tool."
+          : "Model returned malformed JSON.",
+        diag
+      );
     });
   }
 
@@ -825,5 +922,6 @@
     },
     // exposed for testing / advanced use
     _scrub: { detectNames: detectNames, buildNameMap: buildNameMap, applyScrub: applyScrub, restoreDeep: restoreDeep },
+    _json: { repair: repairModelJson },
   };
 })();
