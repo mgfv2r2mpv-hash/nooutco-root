@@ -448,42 +448,50 @@
   "/clock/_Resources/_imgSource/T_foods/broccoli.svg": {
     "stimulus": "foods-broccoli",
     "sha256": "79f36a68deb4aa51871c7cdd82d9b78b0e8a4c90a8325d3b7351f23871fdc990",
-    "library": "/shared/stimuli/placeholder/T_foods/broccoli.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_foods/burger.svg": {
     "stimulus": "foods-burger",
     "sha256": "3fdd9dc5e44e61e0c89e739dcd61e3ee5cfa1a0ef9d5ea5b0b9fb7352d26de56",
-    "library": "/shared/stimuli/placeholder/T_foods/burger.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_foods/corn.svg": {
     "stimulus": "foods-corn",
     "sha256": "65f29a280932f621c4bc3c02736655204d5d63bff92d6183e989715bb2b3af35",
-    "library": "/shared/stimuli/placeholder/T_foods/corn.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_foods/donut.svg": {
     "stimulus": "foods-donut",
     "sha256": "7b7bbc72979f43e4622d8a070f2642dc2e1d498809526242819cd0b59848f455",
-    "library": "/shared/stimuli/placeholder/T_foods/donut.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_foods/egg.svg": {
     "stimulus": "foods-egg",
     "sha256": "8010e0fccae70ff4c00c3335fdfa8572006c62518b684bf7aceed501056d9125",
-    "library": "/shared/stimuli/placeholder/T_foods/egg.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_foods/orange.svg": {
     "stimulus": "foods-orange",
     "sha256": "a114f6fd7a00a64ffc94544340101a9ebba0aadb52b142fed3c84a83f1fa44a9",
-    "library": "/shared/stimuli/placeholder/T_foods/orange.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_foods/pizza.svg": {
     "stimulus": "foods-pizza",
     "sha256": "d86dd028ad037beebff650710add1cd3b4deccb45e8e92e7c788f2794f2a0457",
-    "library": "/shared/stimuli/placeholder/T_foods/pizza.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_foods/strawberry.svg": {
     "stimulus": "foods-strawberry",
     "sha256": "80d86c5d4a44c775a338596535443bdd3cbdf39e9ed9c58940dc9d345a0d3e09",
-    "library": "/shared/stimuli/placeholder/T_foods/strawberry.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_household_items/bed.svg": {
     "stimulus": "household-items-bed",
@@ -794,37 +802,44 @@
   "/clock/_Resources/_imgSource/T_toys/balloon.svg": {
     "stimulus": "toys-balloon",
     "sha256": "003a9afc85f391142120d7c6d422df771515aba025c7ad65c3fd75ad336db941",
-    "library": "/shared/stimuli/placeholder/T_toys/balloon.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_toys/blocks.svg": {
     "stimulus": "toys-blocks",
     "sha256": "54fe46ab11fdb7fcd353529c78ecd80e91870e74a4908875bf56635a6c141887",
-    "library": "/shared/stimuli/placeholder/T_toys/blocks.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_toys/kite.svg": {
     "stimulus": "toys-kite",
     "sha256": "3e2aabaa20a741c1dc72cd031947fc1dfa9c96133f282d9f7fd318504f629cd2",
-    "library": "/shared/stimuli/placeholder/T_toys/kite.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_toys/puzzle.svg": {
     "stimulus": "toys-puzzle",
     "sha256": "8f18ff01406e343572a1fc56316fe8f34929c15e0afdbf50033053ad251e7f73",
-    "library": "/shared/stimuli/placeholder/T_toys/puzzle.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_toys/robot.svg": {
     "stimulus": "toys-robot",
     "sha256": "44eb4b2dfd89e6bedafd2066f38c2af69dcd4f487472777b3eee05f97cfd5702",
-    "library": "/shared/stimuli/placeholder/T_toys/robot.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_toys/soccer-ball.svg": {
     "stimulus": "toys-soccer-ball",
     "sha256": "8c220a8bed5bf853e2fabf5a7a81a94cdc6e87b7285ec2b586072d5414225ac2",
-    "library": "/shared/stimuli/placeholder/T_toys/soccer-ball.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_toys/teddy-bear.svg": {
     "stimulus": "toys-teddy-bear",
     "sha256": "c72333396d4785f30e4e9d03f1b2cf5ba3cd82c4bb8532fa9037e27730734712",
-    "library": "/shared/stimuli/placeholder/T_toys/teddy-bear.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_toys/toy-car.svg": {
     "stimulus": "toys-toy-car",
@@ -835,12 +850,14 @@
   "/clock/_Resources/_imgSource/T_toys/train.svg": {
     "stimulus": "toys-train",
     "sha256": "8a4e7865ee5ea01b7c68688218c7bf9cd320e62ae335232b8bc316c5d6120670",
-    "library": "/shared/stimuli/placeholder/T_toys/train.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_toys/yoyo.svg": {
     "stimulus": "toys-yoyo",
     "sha256": "6409a610087c7c33d79bcdad001320b242e5dbdeb99ae9d9282ef71dd925ef12",
-    "library": "/shared/stimuli/placeholder/T_toys/yoyo.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/ffc/_Resources/_imgSource/items/apartment.svg": {
     "stimulus": "buildings-apartment",
@@ -867,7 +884,8 @@
   "/ffc/_Resources/_imgSource/items/balloon.svg": {
     "stimulus": "toys-balloon",
     "sha256": "003a9afc85f391142120d7c6d422df771515aba025c7ad65c3fd75ad336db941",
-    "library": "/shared/stimuli/placeholder/T_toys/balloon.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/ffc/_Resources/_imgSource/items/banana.jpg": {
     "stimulus": "foods-banana",
@@ -927,7 +945,8 @@
   "/ffc/_Resources/_imgSource/items/blocks.svg": {
     "stimulus": "toys-blocks",
     "sha256": "54fe46ab11fdb7fcd353529c78ecd80e91870e74a4908875bf56635a6c141887",
-    "library": "/shared/stimuli/placeholder/T_toys/blocks.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/ffc/_Resources/_imgSource/items/books.svg": {
     "stimulus": "household-items-books",
@@ -938,7 +957,8 @@
   "/ffc/_Resources/_imgSource/items/broccoli.svg": {
     "stimulus": "foods-broccoli",
     "sha256": "79f36a68deb4aa51871c7cdd82d9b78b0e8a4c90a8325d3b7351f23871fdc990",
-    "library": "/shared/stimuli/placeholder/T_foods/broccoli.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/ffc/_Resources/_imgSource/items/broom.svg": {
     "stimulus": "household-items-broom",
@@ -954,7 +974,8 @@
   "/ffc/_Resources/_imgSource/items/burger.svg": {
     "stimulus": "foods-burger",
     "sha256": "3fdd9dc5e44e61e0c89e739dcd61e3ee5cfa1a0ef9d5ea5b0b9fb7352d26de56",
-    "library": "/shared/stimuli/placeholder/T_foods/burger.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/ffc/_Resources/_imgSource/items/bus.jpg": {
     "stimulus": "vehicles-bus",
@@ -1042,7 +1063,8 @@
   "/ffc/_Resources/_imgSource/items/corn.svg": {
     "stimulus": "foods-corn",
     "sha256": "65f29a280932f621c4bc3c02736655204d5d63bff92d6183e989715bb2b3af35",
-    "library": "/shared/stimuli/placeholder/T_foods/corn.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/ffc/_Resources/_imgSource/items/doctor.svg": {
     "stimulus": "community-helpers-doctor",
@@ -1059,12 +1081,14 @@
   "/ffc/_Resources/_imgSource/items/donut.svg": {
     "stimulus": "foods-donut",
     "sha256": "7b7bbc72979f43e4622d8a070f2642dc2e1d498809526242819cd0b59848f455",
-    "library": "/shared/stimuli/placeholder/T_foods/donut.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/ffc/_Resources/_imgSource/items/egg.svg": {
     "stimulus": "foods-egg",
     "sha256": "8010e0fccae70ff4c00c3335fdfa8572006c62518b684bf7aceed501056d9125",
-    "library": "/shared/stimuli/placeholder/T_foods/egg.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/ffc/_Resources/_imgSource/items/elephant.svg": {
     "stimulus": "animals-elephant",
@@ -1122,7 +1146,8 @@
   "/ffc/_Resources/_imgSource/items/kite.svg": {
     "stimulus": "toys-kite",
     "sha256": "3e2aabaa20a741c1dc72cd031947fc1dfa9c96133f282d9f7fd318504f629cd2",
-    "library": "/shared/stimuli/placeholder/T_toys/kite.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/ffc/_Resources/_imgSource/items/lamp.svg": {
     "stimulus": "household-items-lamp",
@@ -1194,7 +1219,8 @@
   "/ffc/_Resources/_imgSource/items/orange.svg": {
     "stimulus": "foods-orange",
     "sha256": "a114f6fd7a00a64ffc94544340101a9ebba0aadb52b142fed3c84a83f1fa44a9",
-    "library": "/shared/stimuli/placeholder/T_foods/orange.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/ffc/_Resources/_imgSource/items/pencil.jpg": {
     "stimulus": "school-pencil",
@@ -1209,7 +1235,8 @@
   "/ffc/_Resources/_imgSource/items/pizza.svg": {
     "stimulus": "foods-pizza",
     "sha256": "d86dd028ad037beebff650710add1cd3b4deccb45e8e92e7c788f2794f2a0457",
-    "library": "/shared/stimuli/placeholder/T_foods/pizza.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/ffc/_Resources/_imgSource/items/police.svg": {
     "stimulus": "community-helpers-police",
@@ -1220,7 +1247,8 @@
   "/ffc/_Resources/_imgSource/items/puzzle.svg": {
     "stimulus": "toys-puzzle",
     "sha256": "8f18ff01406e343572a1fc56316fe8f34929c15e0afdbf50033053ad251e7f73",
-    "library": "/shared/stimuli/placeholder/T_toys/puzzle.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/ffc/_Resources/_imgSource/items/rabbit.svg": {
     "stimulus": "animals-rabbit",
@@ -1231,7 +1259,8 @@
   "/ffc/_Resources/_imgSource/items/robot.svg": {
     "stimulus": "toys-robot",
     "sha256": "44eb4b2dfd89e6bedafd2066f38c2af69dcd4f487472777b3eee05f97cfd5702",
-    "library": "/shared/stimuli/placeholder/T_toys/robot.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/ffc/_Resources/_imgSource/items/ruler.jpg": {
     "stimulus": "school-ruler",
@@ -1258,12 +1287,14 @@
   "/ffc/_Resources/_imgSource/items/shirt.jpg": {
     "stimulus": "clothing-shirt",
     "sha256": "3fc4f94c4809a3b30ea49315c878a1edfb300b12350a3e00a61cd87581a33a5f",
-    "library": "/shared/stimuli/img/T_clothing/shirt.jpg"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/ffc/_Resources/_imgSource/items/shirt.png": {
     "stimulus": "clothing-shirt",
     "sha256": "b26565b7033d51d572d2cd7c8fef7cf4b861ca27fc1fbbf0b4133fd34a335053",
-    "library": "/shared/stimuli/img/T_clothing/shirt--alt1.png"
+    "library": null,
+    "droppedBecause": "superseded-by-upload"
   },
   "/ffc/_Resources/_imgSource/items/shower.jpg": {
     "stimulus": "household-items-shower",
@@ -1279,7 +1310,8 @@
   "/ffc/_Resources/_imgSource/items/soccer-ball.svg": {
     "stimulus": "toys-soccer-ball",
     "sha256": "8c220a8bed5bf853e2fabf5a7a81a94cdc6e87b7285ec2b586072d5414225ac2",
-    "library": "/shared/stimuli/placeholder/T_toys/soccer-ball.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/ffc/_Resources/_imgSource/items/sofa.jpg": {
     "stimulus": "household-items-sofa",
@@ -1300,7 +1332,8 @@
   "/ffc/_Resources/_imgSource/items/strawberry.svg": {
     "stimulus": "foods-strawberry",
     "sha256": "80d86c5d4a44c775a338596535443bdd3cbdf39e9ed9c58940dc9d345a0d3e09",
-    "library": "/shared/stimuli/placeholder/T_foods/strawberry.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/ffc/_Resources/_imgSource/items/teacher.svg": {
     "stimulus": "community-helpers-teacher",
@@ -1311,7 +1344,8 @@
   "/ffc/_Resources/_imgSource/items/teddy-bear.svg": {
     "stimulus": "toys-teddy-bear",
     "sha256": "c72333396d4785f30e4e9d03f1b2cf5ba3cd82c4bb8532fa9037e27730734712",
-    "library": "/shared/stimuli/placeholder/T_toys/teddy-bear.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/ffc/_Resources/_imgSource/items/toy-car.jpg": {
     "stimulus": "toys-toy-car",
@@ -1332,7 +1366,8 @@
   "/ffc/_Resources/_imgSource/items/yoyo.svg": {
     "stimulus": "toys-yoyo",
     "sha256": "6409a610087c7c33d79bcdad001320b242e5dbdeb99ae9d9282ef71dd925ef12",
-    "library": "/shared/stimuli/placeholder/T_toys/yoyo.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/matching/_Resources/_imgSource/T_animals/bear.jpg": {
     "stimulus": "animals-bear",
@@ -1715,42 +1750,50 @@
   "/matching/_Resources/_imgSource/T_foods/broccoli.svg": {
     "stimulus": "foods-broccoli",
     "sha256": "79f36a68deb4aa51871c7cdd82d9b78b0e8a4c90a8325d3b7351f23871fdc990",
-    "library": "/shared/stimuli/placeholder/T_foods/broccoli.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/matching/_Resources/_imgSource/T_foods/burger.svg": {
     "stimulus": "foods-burger",
     "sha256": "3fdd9dc5e44e61e0c89e739dcd61e3ee5cfa1a0ef9d5ea5b0b9fb7352d26de56",
-    "library": "/shared/stimuli/placeholder/T_foods/burger.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/matching/_Resources/_imgSource/T_foods/corn.svg": {
     "stimulus": "foods-corn",
     "sha256": "65f29a280932f621c4bc3c02736655204d5d63bff92d6183e989715bb2b3af35",
-    "library": "/shared/stimuli/placeholder/T_foods/corn.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/matching/_Resources/_imgSource/T_foods/donut.svg": {
     "stimulus": "foods-donut",
     "sha256": "7b7bbc72979f43e4622d8a070f2642dc2e1d498809526242819cd0b59848f455",
-    "library": "/shared/stimuli/placeholder/T_foods/donut.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/matching/_Resources/_imgSource/T_foods/egg.svg": {
     "stimulus": "foods-egg",
     "sha256": "8010e0fccae70ff4c00c3335fdfa8572006c62518b684bf7aceed501056d9125",
-    "library": "/shared/stimuli/placeholder/T_foods/egg.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/matching/_Resources/_imgSource/T_foods/orange.svg": {
     "stimulus": "foods-orange",
     "sha256": "a114f6fd7a00a64ffc94544340101a9ebba0aadb52b142fed3c84a83f1fa44a9",
-    "library": "/shared/stimuli/placeholder/T_foods/orange.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/matching/_Resources/_imgSource/T_foods/pizza.svg": {
     "stimulus": "foods-pizza",
     "sha256": "d86dd028ad037beebff650710add1cd3b4deccb45e8e92e7c788f2794f2a0457",
-    "library": "/shared/stimuli/placeholder/T_foods/pizza.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/matching/_Resources/_imgSource/T_foods/strawberry.svg": {
     "stimulus": "foods-strawberry",
     "sha256": "80d86c5d4a44c775a338596535443bdd3cbdf39e9ed9c58940dc9d345a0d3e09",
-    "library": "/shared/stimuli/placeholder/T_foods/strawberry.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/matching/_Resources/_imgSource/T_fresh-beats/chimpanzees-too.jpg": {
     "stimulus": "fresh-beats-chimpanzees-too",
@@ -2448,37 +2491,44 @@
   "/matching/_Resources/_imgSource/T_toys/balloon.svg": {
     "stimulus": "toys-balloon",
     "sha256": "003a9afc85f391142120d7c6d422df771515aba025c7ad65c3fd75ad336db941",
-    "library": "/shared/stimuli/placeholder/T_toys/balloon.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/matching/_Resources/_imgSource/T_toys/blocks.svg": {
     "stimulus": "toys-blocks",
     "sha256": "54fe46ab11fdb7fcd353529c78ecd80e91870e74a4908875bf56635a6c141887",
-    "library": "/shared/stimuli/placeholder/T_toys/blocks.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/matching/_Resources/_imgSource/T_toys/kite.svg": {
     "stimulus": "toys-kite",
     "sha256": "3e2aabaa20a741c1dc72cd031947fc1dfa9c96133f282d9f7fd318504f629cd2",
-    "library": "/shared/stimuli/placeholder/T_toys/kite.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/matching/_Resources/_imgSource/T_toys/puzzle.svg": {
     "stimulus": "toys-puzzle",
     "sha256": "8f18ff01406e343572a1fc56316fe8f34929c15e0afdbf50033053ad251e7f73",
-    "library": "/shared/stimuli/placeholder/T_toys/puzzle.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/matching/_Resources/_imgSource/T_toys/robot.svg": {
     "stimulus": "toys-robot",
     "sha256": "44eb4b2dfd89e6bedafd2066f38c2af69dcd4f487472777b3eee05f97cfd5702",
-    "library": "/shared/stimuli/placeholder/T_toys/robot.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/matching/_Resources/_imgSource/T_toys/soccer-ball.svg": {
     "stimulus": "toys-soccer-ball",
     "sha256": "8c220a8bed5bf853e2fabf5a7a81a94cdc6e87b7285ec2b586072d5414225ac2",
-    "library": "/shared/stimuli/placeholder/T_toys/soccer-ball.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/matching/_Resources/_imgSource/T_toys/teddy-bear.svg": {
     "stimulus": "toys-teddy-bear",
     "sha256": "c72333396d4785f30e4e9d03f1b2cf5ba3cd82c4bb8532fa9037e27730734712",
-    "library": "/shared/stimuli/placeholder/T_toys/teddy-bear.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/matching/_Resources/_imgSource/T_toys/toy-car.svg": {
     "stimulus": "toys-toy-car",
@@ -2489,12 +2539,14 @@
   "/matching/_Resources/_imgSource/T_toys/train.svg": {
     "stimulus": "toys-train",
     "sha256": "8a4e7865ee5ea01b7c68688218c7bf9cd320e62ae335232b8bc316c5d6120670",
-    "library": "/shared/stimuli/placeholder/T_toys/train.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/matching/_Resources/_imgSource/T_toys/yoyo.svg": {
     "stimulus": "toys-yoyo",
     "sha256": "6409a610087c7c33d79bcdad001320b242e5dbdeb99ae9d9282ef71dd925ef12",
-    "library": "/shared/stimuli/placeholder/T_toys/yoyo.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/matching/_Resources/_imgSource/T_uppercase/A.svg": {
     "stimulus": "uppercase-a",
@@ -3130,42 +3182,50 @@
   "/receptive/_Resources/_imgSource/T_foods/broccoli.svg": {
     "stimulus": "foods-broccoli",
     "sha256": "79f36a68deb4aa51871c7cdd82d9b78b0e8a4c90a8325d3b7351f23871fdc990",
-    "library": "/shared/stimuli/placeholder/T_foods/broccoli.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_foods/burger.svg": {
     "stimulus": "foods-burger",
     "sha256": "3fdd9dc5e44e61e0c89e739dcd61e3ee5cfa1a0ef9d5ea5b0b9fb7352d26de56",
-    "library": "/shared/stimuli/placeholder/T_foods/burger.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_foods/corn.svg": {
     "stimulus": "foods-corn",
     "sha256": "65f29a280932f621c4bc3c02736655204d5d63bff92d6183e989715bb2b3af35",
-    "library": "/shared/stimuli/placeholder/T_foods/corn.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_foods/donut.svg": {
     "stimulus": "foods-donut",
     "sha256": "7b7bbc72979f43e4622d8a070f2642dc2e1d498809526242819cd0b59848f455",
-    "library": "/shared/stimuli/placeholder/T_foods/donut.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_foods/egg.svg": {
     "stimulus": "foods-egg",
     "sha256": "8010e0fccae70ff4c00c3335fdfa8572006c62518b684bf7aceed501056d9125",
-    "library": "/shared/stimuli/placeholder/T_foods/egg.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_foods/orange.svg": {
     "stimulus": "foods-orange",
     "sha256": "a114f6fd7a00a64ffc94544340101a9ebba0aadb52b142fed3c84a83f1fa44a9",
-    "library": "/shared/stimuli/placeholder/T_foods/orange.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_foods/pizza.svg": {
     "stimulus": "foods-pizza",
     "sha256": "d86dd028ad037beebff650710add1cd3b4deccb45e8e92e7c788f2794f2a0457",
-    "library": "/shared/stimuli/placeholder/T_foods/pizza.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_foods/strawberry.svg": {
     "stimulus": "foods-strawberry",
     "sha256": "80d86c5d4a44c775a338596535443bdd3cbdf39e9ed9c58940dc9d345a0d3e09",
-    "library": "/shared/stimuli/placeholder/T_foods/strawberry.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_household_items/bed.svg": {
     "stimulus": "household-items-bed",
@@ -3493,37 +3553,44 @@
   "/receptive/_Resources/_imgSource/T_toys/balloon.svg": {
     "stimulus": "toys-balloon",
     "sha256": "003a9afc85f391142120d7c6d422df771515aba025c7ad65c3fd75ad336db941",
-    "library": "/shared/stimuli/placeholder/T_toys/balloon.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_toys/blocks.svg": {
     "stimulus": "toys-blocks",
     "sha256": "54fe46ab11fdb7fcd353529c78ecd80e91870e74a4908875bf56635a6c141887",
-    "library": "/shared/stimuli/placeholder/T_toys/blocks.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_toys/kite.svg": {
     "stimulus": "toys-kite",
     "sha256": "3e2aabaa20a741c1dc72cd031947fc1dfa9c96133f282d9f7fd318504f629cd2",
-    "library": "/shared/stimuli/placeholder/T_toys/kite.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_toys/puzzle.svg": {
     "stimulus": "toys-puzzle",
     "sha256": "8f18ff01406e343572a1fc56316fe8f34929c15e0afdbf50033053ad251e7f73",
-    "library": "/shared/stimuli/placeholder/T_toys/puzzle.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_toys/robot.svg": {
     "stimulus": "toys-robot",
     "sha256": "44eb4b2dfd89e6bedafd2066f38c2af69dcd4f487472777b3eee05f97cfd5702",
-    "library": "/shared/stimuli/placeholder/T_toys/robot.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_toys/soccer-ball.svg": {
     "stimulus": "toys-soccer-ball",
     "sha256": "8c220a8bed5bf853e2fabf5a7a81a94cdc6e87b7285ec2b586072d5414225ac2",
-    "library": "/shared/stimuli/placeholder/T_toys/soccer-ball.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_toys/teddy-bear.svg": {
     "stimulus": "toys-teddy-bear",
     "sha256": "c72333396d4785f30e4e9d03f1b2cf5ba3cd82c4bb8532fa9037e27730734712",
-    "library": "/shared/stimuli/placeholder/T_toys/teddy-bear.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_toys/toy-car.svg": {
     "stimulus": "toys-toy-car",
@@ -3534,12 +3601,74 @@
   "/receptive/_Resources/_imgSource/T_toys/train.svg": {
     "stimulus": "toys-train",
     "sha256": "8a4e7865ee5ea01b7c68688218c7bf9cd320e62ae335232b8bc316c5d6120670",
-    "library": "/shared/stimuli/placeholder/T_toys/train.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_toys/yoyo.svg": {
     "stimulus": "toys-yoyo",
     "sha256": "6409a610087c7c33d79bcdad001320b242e5dbdeb99ae9d9282ef71dd925ef12",
-    "library": "/shared/stimuli/placeholder/T_toys/yoyo.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
+  },
+  "/shared/stimuli/uploads/T_clothing/boots.webp": {
+    "stimulus": "clothing-boots",
+    "sha256": "83448b4fffaeff5823c1103e07ce2c20905274dbbc42404323c80cb4f82a396f",
+    "library": "/shared/stimuli/img/T_clothing/boots.webp"
+  },
+  "/shared/stimuli/uploads/T_clothing/dress.webp": {
+    "stimulus": "clothing-dress",
+    "sha256": "069949f1dba627770b40ca63b564edbc97abe4485e604835979ff50a999d8d92",
+    "library": "/shared/stimuli/img/T_clothing/dress.webp"
+  },
+  "/shared/stimuli/uploads/T_clothing/glasses.webp": {
+    "stimulus": "clothing-glasses",
+    "sha256": "c88d929d78b432dc71be9f58551d6fe2ce23de94587e618fdcdf6d4c91aef623",
+    "library": "/shared/stimuli/img/T_clothing/glasses.webp"
+  },
+  "/shared/stimuli/uploads/T_clothing/gloves.webp": {
+    "stimulus": "clothing-gloves",
+    "sha256": "e29f06b9929122d683c0be194a6d3301782d98f879bdcb763c0bbd4b6e22b6e4",
+    "library": "/shared/stimuli/img/T_clothing/gloves.webp"
+  },
+  "/shared/stimuli/uploads/T_clothing/hat.webp": {
+    "stimulus": "clothing-hat",
+    "sha256": "86ff860517f8bbe19650a3f4fe57f8c9d0676d2ac31a16173f96cc5ab38adec2",
+    "library": "/shared/stimuli/img/T_clothing/hat.webp"
+  },
+  "/shared/stimuli/uploads/T_clothing/jacket.webp": {
+    "stimulus": "clothing-jacket",
+    "sha256": "6f924180cc20fb76ccd29f8fd180dbee42b295427b6f169dd7d8855ca33208a3",
+    "library": "/shared/stimuli/img/T_clothing/jacket.webp"
+  },
+  "/shared/stimuli/uploads/T_clothing/pants.webp": {
+    "stimulus": "clothing-pants",
+    "sha256": "be11109f40f800a4d3693b6e7f9a2ae4fb49aa4b0d579bdcf68ec70b2040b12a",
+    "library": "/shared/stimuli/img/T_clothing/pants.webp"
+  },
+  "/shared/stimuli/uploads/T_clothing/scarf.webp": {
+    "stimulus": "clothing-scarf",
+    "sha256": "25d126ab16b3b8d44dd024294a4d8ab3cae01faaa457a8823fbac4adcb04fe9b",
+    "library": "/shared/stimuli/img/T_clothing/scarf.webp"
+  },
+  "/shared/stimuli/uploads/T_clothing/shirt.webp": {
+    "stimulus": "clothing-shirt",
+    "sha256": "4a5afad27616c1fcc81df9cb78aeff6ee315bab7530eb6cb8ebcf822c28fe1a7",
+    "library": "/shared/stimuli/img/T_clothing/shirt.webp"
+  },
+  "/shared/stimuli/uploads/T_clothing/shoes.webp": {
+    "stimulus": "clothing-shoes",
+    "sha256": "322940ed2d2851446f157af96db6082d24b91aeefc85052307ada49cab1f29db",
+    "library": "/shared/stimuli/img/T_clothing/shoes.webp"
+  },
+  "/shared/stimuli/uploads/T_clothing/shorts.webp": {
+    "stimulus": "clothing-shorts",
+    "sha256": "25ff1ef6d88fc7906e0a2e21aed212c323af125ed5e22b907393f4ebaa1e222f",
+    "library": "/shared/stimuli/img/T_clothing/shorts.webp"
+  },
+  "/shared/stimuli/uploads/T_clothing/socks.webp": {
+    "stimulus": "clothing-socks",
+    "sha256": "ce1fdd267a07e99e90ff261d67bd172d545e220eb01e59bfa1a188fc57bc317c",
+    "library": "/shared/stimuli/img/T_clothing/socks.webp"
   },
   "/shared/stimuli/uploads/T_emotions/angry.webp": {
     "stimulus": "emotions-angry",
@@ -3590,6 +3719,46 @@
     "stimulus": "emotions-tired",
     "sha256": "2dc168790738c7e4d82789db366f322499858304f6a802a9ab578e9cad03d166",
     "library": "/shared/stimuli/img/T_emotions/tired.webp"
+  },
+  "/shared/stimuli/uploads/T_foods/broccoli.webp": {
+    "stimulus": "foods-broccoli",
+    "sha256": "d94a347d085d3f058cb24d615fe6e6bd15a3d5929fc605f6f55235d276ee7d53",
+    "library": "/shared/stimuli/img/T_foods/broccoli.webp"
+  },
+  "/shared/stimuli/uploads/T_foods/burger.webp": {
+    "stimulus": "foods-burger",
+    "sha256": "63d1bbb53a93b0e8482d5448dc9f01065190603f5ae5948b9ff0f9b20d23baed",
+    "library": "/shared/stimuli/img/T_foods/burger.webp"
+  },
+  "/shared/stimuli/uploads/T_foods/corn.webp": {
+    "stimulus": "foods-corn",
+    "sha256": "731778820444c09f5e60e0d9d6737843d01107bdfe080f12787a7c482c1c6582",
+    "library": "/shared/stimuli/img/T_foods/corn.webp"
+  },
+  "/shared/stimuli/uploads/T_foods/donut.webp": {
+    "stimulus": "foods-donut",
+    "sha256": "73daa47a99b0b39b03982f0a3c3bb64891cabb39609849f60d1f77eb88cd562b",
+    "library": "/shared/stimuli/img/T_foods/donut.webp"
+  },
+  "/shared/stimuli/uploads/T_foods/egg.webp": {
+    "stimulus": "foods-egg",
+    "sha256": "40cff338508a55665205a299f31a98e9e6fcce043255cc641e3f494701079361",
+    "library": "/shared/stimuli/img/T_foods/egg.webp"
+  },
+  "/shared/stimuli/uploads/T_foods/orange.webp": {
+    "stimulus": "foods-orange",
+    "sha256": "45ff8893e48288fd067f524122b3eabe97299719eb73af6818223705dea230f6",
+    "library": "/shared/stimuli/img/T_foods/orange.webp"
+  },
+  "/shared/stimuli/uploads/T_foods/pizza.webp": {
+    "stimulus": "foods-pizza",
+    "sha256": "f90a00cce7278c5b0b69d388341d48fbeffb8b4059c39f11e82cd4f241d70dce",
+    "library": "/shared/stimuli/img/T_foods/pizza.webp"
+  },
+  "/shared/stimuli/uploads/T_foods/strawberry.webp": {
+    "stimulus": "foods-strawberry",
+    "sha256": "b8be6d23c1965ab2d54f2abebc58705a1183847affffb6756275ad81f9fde318",
+    "library": "/shared/stimuli/img/T_foods/strawberry.webp"
   },
   "/shared/stimuli/uploads/T_prepositions/above.png": {
     "stimulus": "prepositions-above",
@@ -3650,5 +3819,50 @@
     "stimulus": "prepositions-under",
     "sha256": "050161ad557c8f2b42ba6218306e45df7a627a0fca0592092dffe1b914e54619",
     "library": "/shared/stimuli/img/T_prepositions/under.png"
+  },
+  "/shared/stimuli/uploads/T_toys/balloon.webp": {
+    "stimulus": "toys-balloon",
+    "sha256": "7ac8fe967b4e1d6122fc07cce0e9b750fb480fc8c999d7dfdbc1eec3435b7951",
+    "library": "/shared/stimuli/img/T_toys/balloon.webp"
+  },
+  "/shared/stimuli/uploads/T_toys/blocks.webp": {
+    "stimulus": "toys-blocks",
+    "sha256": "112e2fef23aaabd70f3f5b8d237faa50aa427856d56ed945016b050bc93daadb",
+    "library": "/shared/stimuli/img/T_toys/blocks.webp"
+  },
+  "/shared/stimuli/uploads/T_toys/kite.webp": {
+    "stimulus": "toys-kite",
+    "sha256": "a33530ab709d456f73f1181dfa4065e1db40d340c787f6c922dc506c043c8bca",
+    "library": "/shared/stimuli/img/T_toys/kite.webp"
+  },
+  "/shared/stimuli/uploads/T_toys/puzzle.webp": {
+    "stimulus": "toys-puzzle",
+    "sha256": "0c36f5b6509ab5d1ce5768cc6a7dcd865351f1b129aa88d2b238e2b5e4023b9e",
+    "library": "/shared/stimuli/img/T_toys/puzzle.webp"
+  },
+  "/shared/stimuli/uploads/T_toys/robot.webp": {
+    "stimulus": "toys-robot",
+    "sha256": "981d5af1c1886791cf0d97c58fd6b70b28c9cda542468450eff3c312c2c7ff73",
+    "library": "/shared/stimuli/img/T_toys/robot.webp"
+  },
+  "/shared/stimuli/uploads/T_toys/soccer-ball.webp": {
+    "stimulus": "toys-soccer-ball",
+    "sha256": "446d8cb1c7b42efa656c97852d3f9406e6f4a124553d4cde45701513cee281fc",
+    "library": "/shared/stimuli/img/T_toys/soccer-ball.webp"
+  },
+  "/shared/stimuli/uploads/T_toys/teddy-bear.webp": {
+    "stimulus": "toys-teddy-bear",
+    "sha256": "3e002106573045664917892df93b51c4fa0ee4a177e06c6e88a4965e957bff70",
+    "library": "/shared/stimuli/img/T_toys/teddy-bear.webp"
+  },
+  "/shared/stimuli/uploads/T_toys/train.webp": {
+    "stimulus": "toys-train",
+    "sha256": "4bc4a0252c16d90ab239eecbad08462cbc4b9091647befd6a315737bf2408597",
+    "library": "/shared/stimuli/img/T_toys/train.webp"
+  },
+  "/shared/stimuli/uploads/T_toys/yoyo.webp": {
+    "stimulus": "toys-yoyo",
+    "sha256": "fa1b02fd46550463aa2912a3d70f571d97c5c827535f33b8287f4895a3c1f720",
+    "library": "/shared/stimuli/img/T_toys/yoyo.webp"
   }
 }
