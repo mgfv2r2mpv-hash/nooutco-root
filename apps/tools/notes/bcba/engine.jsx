@@ -24,6 +24,26 @@ function urlToolParam() {
   return toolById(p) ? p : DEFAULT_TOOL;
 }
 
+// Diagnostic escape hatch: ?schema=off drops back to the model hand-writing its
+// own JSON — not a new mode, but exactly what shipped before responseSchema. It
+// exists so a constrained and an unconstrained draft can be produced in one
+// deployment, on one login, minutes apart; without it, comparing them means
+// capturing a baseline from another environment BEFORE deploying, which cannot
+// be recovered once missed. Also the fastest way to answer "is the schema doing
+// this?" if a draft ever looks wrong in production.
+//
+// Admin-only so a clinician never lands on it by accident. isAdmin() decodes the
+// session token in the browser without verifying its signature, so this is a UI
+// control and not a security boundary — and does not need to be one, since the
+// only thing the flag can select is the behaviour production already had.
+function schemaDisabled() {
+  if (!window.NotesGate || !NotesGate.isAdmin()) return false;
+  return new URLSearchParams(location.search).get("schema") === "off";
+}
+// Exposed deliberately rather than relying on this file being a classic script,
+// so the tests keep working if it is ever loaded as a module.
+window.schemaDisabled = schemaDisabled;
+
 // File an internal ticket for a defect. Takes the caught error, not its message,
 // so it can both skip the non-defects and carry the diagnostics bag.
 function reportError(toolId, err) {
@@ -416,7 +436,7 @@ function App() {
       // Constrains the answer to the tool's schema so the API serializes the
       // note. Tools without one keep the plain-text path and the recovery
       // ladder beneath it, so this rolls out a tool at a time.
-      responseSchema: tool.responseSchema || null,
+      responseSchema: schemaDisabled() ? null : (tool.responseSchema || null),
     });
     return r; // {parsed, rawText, usage, stopReason}
   };
@@ -761,6 +781,14 @@ function App() {
           <div>
             <h1 style={{ fontSize: 26, fontWeight: 700, color: "#2d3a1f", marginBottom: 4 }}>{tool.title}</h1>
             <p style={{ fontSize: 14, color: "#5a6b4a" }}>{tool.subtitle}</p>
+            {/* Which mode this tab is in has to be readable, not inferred from
+                the URL: the toggle exists to produce two samples for comparison,
+                and a tab that doesn't say invites mislabelling them. */}
+            {schemaDisabled() && (
+              <p style={{ display: "inline-block", marginTop: 8, padding: "3px 11px", borderRadius: 999, border: "1px solid #d4b483", background: "#fdf6e8", color: "#7a5a1a", fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase" }}>
+                Schema off — unconstrained draft
+              </p>
+            )}
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
             <a href="../scrubber.html" target="_blank" style={{ padding: "7px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "#f0f4ec", color: "#374528", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>Scrubber →</a>
