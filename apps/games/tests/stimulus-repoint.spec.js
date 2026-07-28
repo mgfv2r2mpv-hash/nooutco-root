@@ -112,9 +112,14 @@ test('no category serves fewer stimuli than it did before the repoint', async ({
   const shortfalls = [];
   for (const source of ['clock', 'receptive', 'matching']) {
     const manifest = await loadJson(request, `/${source}/manifest.json`);
+    // A stimulus a technician retired in `publishing.json` is meant to stop
+    // being served, so it is not a shortfall — it is the declaration working.
+    // Everything else that shrinks is art the repoint lost.
+    const { paths: retiredPaths } = await retired(request, source);
     for (const [category, before] of Object.entries(SOURCE_MANIFESTS[source].images)) {
+      const expected = before.filter((p) => !retiredPaths.has(p)).length;
       const after = (manifest.images[category] || []).length;
-      if (after < before.length) shortfalls.push(`${source}/${category}: ${before.length} -> ${after}`);
+      if (after < expected) shortfalls.push(`${source}/${category}: ${expected} -> ${after}`);
     }
   }
   expect(shortfalls, 'categories that shrank in the repoint').toEqual([]);

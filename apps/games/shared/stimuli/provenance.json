@@ -351,7 +351,8 @@
   "/clock/_Resources/_imgSource/T_emotions/angry.svg": {
     "stimulus": "emotions-angry",
     "sha256": "62629adc27f75bfb6582034a066985c00d901eb76d19066f30954e64f147431c",
-    "library": "/shared/stimuli/placeholder/T_emotions/angry.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_emotions/bored.svg": {
     "stimulus": "emotions-bored",
@@ -361,7 +362,8 @@
   "/clock/_Resources/_imgSource/T_emotions/calm.svg": {
     "stimulus": "emotions-calm",
     "sha256": "8fbf7cb2b161cfe38e4a58ae0a8b02136c7c1f8c9648eb3a2d004369f4601169",
-    "library": "/shared/stimuli/placeholder/T_emotions/calm.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_emotions/confused.svg": {
     "stimulus": "emotions-confused",
@@ -376,12 +378,14 @@
   "/clock/_Resources/_imgSource/T_emotions/excited.svg": {
     "stimulus": "emotions-excited",
     "sha256": "352fc21e1ceb32c3174589105a6193009fe5f262aee9ca45005f529d9bb42fc6",
-    "library": "/shared/stimuli/placeholder/T_emotions/excited.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_emotions/happy.svg": {
     "stimulus": "emotions-happy",
     "sha256": "9a8eee20e6ee161dea12998b6cd08618aa2602480382c3f1c50bcc7b4782a073",
-    "library": "/shared/stimuli/placeholder/T_emotions/happy.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_emotions/love.svg": {
     "stimulus": "emotions-love",
@@ -396,32 +400,38 @@
   "/clock/_Resources/_imgSource/T_emotions/sad.svg": {
     "stimulus": "emotions-sad",
     "sha256": "d7173a0cd5c7b72df76db5007771b436a4ba2c2495d888a2e30630d26b4b9e03",
-    "library": "/shared/stimuli/placeholder/T_emotions/sad.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_emotions/scared.svg": {
     "stimulus": "emotions-scared",
     "sha256": "171705339d2950664011025529e2a227c946c124ae5d7a19b3d12c93fac18b7d",
-    "library": "/shared/stimuli/placeholder/T_emotions/scared.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_emotions/sick.svg": {
     "stimulus": "emotions-sick",
     "sha256": "111eb9622559f7395af2e35ff60906a9082f69dc819f609f2023f3e2a85017b1",
-    "library": "/shared/stimuli/placeholder/T_emotions/sick.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_emotions/silly.svg": {
     "stimulus": "emotions-silly",
     "sha256": "4bf5284eca2e2e3a780f386b40131ba5df1441e7aa0138fd6936effdedfd335e",
-    "library": "/shared/stimuli/placeholder/T_emotions/silly.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_emotions/surprised.svg": {
     "stimulus": "emotions-surprised",
     "sha256": "30e0c7db674aebdcf31714fe3b13fc336d3e8a28a98f07d30f91cc6e68328fcb",
-    "library": "/shared/stimuli/placeholder/T_emotions/surprised.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_emotions/tired.svg": {
     "stimulus": "emotions-tired",
     "sha256": "f881bc0c9c3c59860b5b1fa0d820fc0d4741dd27929db16acf487b3cabeaa78e",
-    "library": "/shared/stimuli/placeholder/T_emotions/tired.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_foods/apple.svg": {
     "stimulus": "foods-apple",
@@ -3023,7 +3033,8 @@
   "/receptive/_Resources/_imgSource/T_emotions/angry.svg": {
     "stimulus": "emotions-angry",
     "sha256": "62629adc27f75bfb6582034a066985c00d901eb76d19066f30954e64f147431c",
-    "library": "/shared/stimuli/placeholder/T_emotions/angry.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_emotions/bored.svg": {
     "stimulus": "emotions-bored",
@@ -3033,7 +3044,8 @@
   "/receptive/_Resources/_imgSource/T_emotions/calm.svg": {
     "stimulus": "emotions-calm",
     "sha256": "8fbf7cb2b161cfe38e4a58ae0a8b02136c7c1f8c9648eb3a2d004369f4601169",
-    "library": "/shared/stimuli/placeholder/T_emotions/calm.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_emotions/confused.svg": {
     "stimulus": "emotions-confused",
@@ -3048,12 +3060,14 @@
   "/receptive/_Resources/_imgSource/T_emotions/excited.svg": {
     "stimulus": "emotions-excited",
     "sha256": "352fc21e1ceb32c3174589105a6193009fe5f262aee9ca45005f529d9bb42fc6",
-    "library": "/shared/stimuli/placeholder/T_emotions/excited.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_emotions/happy.svg": {
     "stimulus": "emotions-happy",
     "sha256": "9a8eee20e6ee161dea12998b6cd08618aa2602480382c3f1c50bcc7b4782a073",
-    "library": "/shared/stimuli/placeholder/T_emotions/happy.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_emotions/love.svg": {
     "stimulus": "emotions-love",
@@ -3068,32 +3082,38 @@
   "/receptive/_Resources/_imgSource/T_emotions/sad.svg": {
     "stimulus": "emotions-sad",
     "sha256": "d7173a0cd5c7b72df76db5007771b436a4ba2c2495d888a2e30630d26b4b9e03",
-    "library": "/shared/stimuli/placeholder/T_emotions/sad.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_emotions/scared.svg": {
     "stimulus": "emotions-scared",
     "sha256": "171705339d2950664011025529e2a227c946c124ae5d7a19b3d12c93fac18b7d",
-    "library": "/shared/stimuli/placeholder/T_emotions/scared.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_emotions/sick.svg": {
     "stimulus": "emotions-sick",
     "sha256": "111eb9622559f7395af2e35ff60906a9082f69dc819f609f2023f3e2a85017b1",
-    "library": "/shared/stimuli/placeholder/T_emotions/sick.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_emotions/silly.svg": {
     "stimulus": "emotions-silly",
     "sha256": "4bf5284eca2e2e3a780f386b40131ba5df1441e7aa0138fd6936effdedfd335e",
-    "library": "/shared/stimuli/placeholder/T_emotions/silly.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_emotions/surprised.svg": {
     "stimulus": "emotions-surprised",
     "sha256": "30e0c7db674aebdcf31714fe3b13fc336d3e8a28a98f07d30f91cc6e68328fcb",
-    "library": "/shared/stimuli/placeholder/T_emotions/surprised.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_emotions/tired.svg": {
     "stimulus": "emotions-tired",
     "sha256": "f881bc0c9c3c59860b5b1fa0d820fc0d4741dd27929db16acf487b3cabeaa78e",
-    "library": "/shared/stimuli/placeholder/T_emotions/tired.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_foods/apple.svg": {
     "stimulus": "foods-apple",
@@ -3520,6 +3540,56 @@
     "stimulus": "toys-yoyo",
     "sha256": "6409a610087c7c33d79bcdad001320b242e5dbdeb99ae9d9282ef71dd925ef12",
     "library": "/shared/stimuli/placeholder/T_toys/yoyo.svg"
+  },
+  "/shared/stimuli/uploads/T_emotions/angry.webp": {
+    "stimulus": "emotions-angry",
+    "sha256": "f33d472ee7ece733ce2d72f3b95d399d886533070726b510a19c1b46cde44fc3",
+    "library": "/shared/stimuli/img/T_emotions/angry.webp"
+  },
+  "/shared/stimuli/uploads/T_emotions/calm.webp": {
+    "stimulus": "emotions-calm",
+    "sha256": "cea85f580deebeddba280a832dfe0118708e3f385177a69a5e277f12dde7bc4b",
+    "library": "/shared/stimuli/img/T_emotions/calm.webp"
+  },
+  "/shared/stimuli/uploads/T_emotions/excited.webp": {
+    "stimulus": "emotions-excited",
+    "sha256": "2e2b294eb61f02c82efcf2bd537775f3f5fb1d03558d6250326e81eff378b0bc",
+    "library": "/shared/stimuli/img/T_emotions/excited.webp"
+  },
+  "/shared/stimuli/uploads/T_emotions/happy.webp": {
+    "stimulus": "emotions-happy",
+    "sha256": "075c9278046a2ab78df68710a98deb777ffd29c5e50f2856b440eb77a900cfda",
+    "library": "/shared/stimuli/img/T_emotions/happy.webp"
+  },
+  "/shared/stimuli/uploads/T_emotions/sad.webp": {
+    "stimulus": "emotions-sad",
+    "sha256": "3cf01c7e5d111dd9e16b08a95a5e1446f10caf3cc460422c45cf1ae45241896a",
+    "library": "/shared/stimuli/img/T_emotions/sad.webp"
+  },
+  "/shared/stimuli/uploads/T_emotions/scared.webp": {
+    "stimulus": "emotions-scared",
+    "sha256": "c3117035e0cc07584e249b66e3c9b35dda9ec2fe1b6256723288278856a13955",
+    "library": "/shared/stimuli/img/T_emotions/scared.webp"
+  },
+  "/shared/stimuli/uploads/T_emotions/sick.webp": {
+    "stimulus": "emotions-sick",
+    "sha256": "7c62451a4e83a99a3226e1b0f67b3974168ca73dbb22bbe8613d24f827fd86dc",
+    "library": "/shared/stimuli/img/T_emotions/sick.webp"
+  },
+  "/shared/stimuli/uploads/T_emotions/silly.webp": {
+    "stimulus": "emotions-silly",
+    "sha256": "e436a41da93cfc704f29618cdfae8ea9826a3a4d7acaf7a85505a7980d2b0867",
+    "library": "/shared/stimuli/img/T_emotions/silly.webp"
+  },
+  "/shared/stimuli/uploads/T_emotions/surprised.webp": {
+    "stimulus": "emotions-surprised",
+    "sha256": "f21f9a5be0e7d80ff66d7531ebb63b427abcff56bec23563544593b3d9764ed8",
+    "library": "/shared/stimuli/img/T_emotions/surprised.webp"
+  },
+  "/shared/stimuli/uploads/T_emotions/tired.webp": {
+    "stimulus": "emotions-tired",
+    "sha256": "2dc168790738c7e4d82789db366f322499858304f6a802a9ab578e9cad03d166",
+    "library": "/shared/stimuli/img/T_emotions/tired.webp"
   },
   "/shared/stimuli/uploads/T_prepositions/above.png": {
     "stimulus": "prepositions-above",

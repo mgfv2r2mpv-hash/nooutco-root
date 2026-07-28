@@ -768,10 +768,9 @@
       "categories": [
         "T_emotions"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_emotions/angry.webp",
       "emoji": "😠",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_emotions/angry.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "emotions-bored",
@@ -790,10 +789,9 @@
       "categories": [
         "T_emotions"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_emotions/calm.webp",
       "emoji": "😌",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_emotions/calm.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "emotions-confused",
@@ -823,10 +821,9 @@
       "categories": [
         "T_emotions"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_emotions/excited.webp",
       "emoji": "🤩",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_emotions/excited.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "emotions-happy",
@@ -834,10 +831,9 @@
       "categories": [
         "T_emotions"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_emotions/happy.webp",
       "emoji": "😊",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_emotions/happy.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "emotions-love",
@@ -867,10 +863,9 @@
       "categories": [
         "T_emotions"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_emotions/sad.webp",
       "emoji": "😢",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_emotions/sad.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "emotions-scared",
@@ -878,10 +873,9 @@
       "categories": [
         "T_emotions"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_emotions/scared.webp",
       "emoji": "😨",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_emotions/scared.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "emotions-sick",
@@ -889,10 +883,9 @@
       "categories": [
         "T_emotions"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_emotions/sick.webp",
       "emoji": "🤢",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_emotions/sick.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "emotions-silly",
@@ -900,10 +893,9 @@
       "categories": [
         "T_emotions"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_emotions/silly.webp",
       "emoji": "🤪",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_emotions/silly.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "emotions-surprised",
@@ -911,10 +903,9 @@
       "categories": [
         "T_emotions"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_emotions/surprised.webp",
       "emoji": "😲",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_emotions/surprised.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "emotions-tired",
@@ -922,10 +913,9 @@
       "categories": [
         "T_emotions"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_emotions/tired.webp",
       "emoji": "😴",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_emotions/tired.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "foods-apple",
