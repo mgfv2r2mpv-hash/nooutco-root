@@ -1,0 +1,215 @@
+{
+  "note": "Per-category counts of REAL art vs generated emoji placeholders, as indexed by each game. Regenerate with: node tests/tools/snapshot-stimuli.mjs",
+  "games": {
+    "clock": {
+      "T_actions": {
+        "art": 14,
+        "emoji": 0,
+        "total": 14
+      },
+      "T_animals": {
+        "art": 10,
+        "emoji": 0,
+        "total": 10
+      },
+      "T_buildings": {
+        "art": 0,
+        "emoji": 10,
+        "total": 10
+      },
+      "T_colors": {
+        "art": 10,
+        "emoji": 0,
+        "total": 10
+      },
+      "T_community_helpers": {
+        "art": 0,
+        "emoji": 10,
+        "total": 10
+      },
+      "T_emotions": {
+        "art": 0,
+        "emoji": 15,
+        "total": 15
+      },
+      "T_foods": {
+        "art": 0,
+        "emoji": 10,
+        "total": 10
+      },
+      "T_household_items": {
+        "art": 0,
+        "emoji": 10,
+        "total": 10
+      },
+      "T_kitchen_items": {
+        "art": 5,
+        "emoji": 15,
+        "total": 20
+      },
+      "T_prepositions": {
+        "art": 12,
+        "emoji": 0,
+        "total": 12
+      },
+      "T_shapes": {
+        "art": 10,
+        "emoji": 0,
+        "total": 10
+      },
+      "T_toys": {
+        "art": 0,
+        "emoji": 10,
+        "total": 10
+      }
+    },
+    "receptive": {
+      "T_actions": {
+        "art": 14,
+        "emoji": 0,
+        "total": 14
+      },
+      "T_animals": {
+        "art": 10,
+        "emoji": 0,
+        "total": 10
+      },
+      "T_buildings": {
+        "art": 0,
+        "emoji": 10,
+        "total": 10
+      },
+      "T_colors": {
+        "art": 10,
+        "emoji": 0,
+        "total": 10
+      },
+      "T_community_helpers": {
+        "art": 11,
+        "emoji": 0,
+        "total": 11
+      },
+      "T_emotions": {
+        "art": 0,
+        "emoji": 15,
+        "total": 15
+      },
+      "T_foods": {
+        "art": 0,
+        "emoji": 10,
+        "total": 10
+      },
+      "T_household_items": {
+        "art": 0,
+        "emoji": 10,
+        "total": 10
+      },
+      "T_kitchen_items": {
+        "art": 5,
+        "emoji": 15,
+        "total": 20
+      },
+      "T_prepositions": {
+        "art": 9,
+        "emoji": 0,
+        "total": 9
+      },
+      "T_shapes": {
+        "art": 10,
+        "emoji": 0,
+        "total": 10
+      },
+      "T_toys": {
+        "art": 0,
+        "emoji": 10,
+        "total": 10
+      }
+    },
+    "matching": {
+      "T_animals": {
+        "art": 10,
+        "emoji": 0,
+        "total": 10
+      },
+      "T_buildings": {
+        "art": 9,
+        "emoji": 0,
+        "total": 9
+      },
+      "T_colors": {
+        "art": 10,
+        "emoji": 0,
+        "total": 10
+      },
+      "T_community_helpers": {
+        "art": 10,
+        "emoji": 0,
+        "total": 10
+      },
+      "T_foods": {
+        "art": 0,
+        "emoji": 10,
+        "total": 10
+      },
+      "T_fresh-beats": {
+        "art": 6,
+        "emoji": 0,
+        "total": 6
+      },
+      "T_household_items": {
+        "art": 11,
+        "emoji": 0,
+        "total": 11
+      },
+      "T_kitchen_items": {
+        "art": 19,
+        "emoji": 0,
+        "total": 19
+      },
+      "T_lowercase": {
+        "art": 0,
+        "emoji": 26,
+        "total": 26
+      },
+      "T_numbers": {
+        "art": 0,
+        "emoji": 20,
+        "total": 20
+      },
+      "T_pbs_characters": {
+        "art": 14,
+        "emoji": 0,
+        "total": 14
+      },
+      "T_shapes": {
+        "art": 10,
+        "emoji": 0,
+        "total": 10
+      },
+      "T_toys": {
+        "art": 0,
+        "emoji": 10,
+        "total": 10
+      },
+      "T_uppercase": {
+        "art": 0,
+        "emoji": 26,
+        "total": 26
+      }
+    },
+    "ffc": {
+      "items": {
+        "art": 26,
+        "emoji": 45,
+        "total": 71
+      }
+    },
+    "emotions": {
+      "faces": {
+        "art": 13,
+        "emoji": 0,
+        "total": 13
+      }
+    }
+  }
+}

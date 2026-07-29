@@ -96,6 +96,7 @@ body { font-family: system-ui, sans-serif; background: #111; color: #eee; min-he
   background: #1e293b; color: #93c5fd; border: 1px solid #334155; cursor: pointer;
 }
 .btn-rename:hover { background: #1e3a5f; }
+.btn-rename:disabled { opacity: 0.45; cursor: not-allowed; background: #1e293b; }
 .rename-inline { display: flex; align-items: center; gap: 0.4rem; }
 .rename-inline input {
   padding: 0.25rem 0.5rem; border-radius: 6px; border: 1px solid #3b82f6;
@@ -352,6 +353,7 @@ body { font-family: var(--font-sans, 'Atkinson Hyperlegible', system-ui, sans-se
 /* folder actions */
 .btn-rename { background: var(--sage-50, #f1f3ec); color: var(--sage-700, #4d5840); border: 1px solid var(--sage-200, #c7cdb6); }
 .btn-rename:hover { background: var(--sage-100, #e2e6d9); }
+.btn-rename:disabled { background: var(--sage-50, #f1f3ec); }
 .rename-inline input { border: 1px solid var(--sage-500, #6a7659); background: #fff; color: var(--sage-900, #2c331f); }
 .btn-archive { background: var(--amber-100, #fef3c7); color: var(--amber-700, #92722a); border: 1px solid #fae3a0; }
 .btn-archive:hover { background: #fce8b8; }
@@ -527,13 +529,41 @@ body { font-family: var(--font-sans, 'Atkinson Hyperlegible', system-ui, sans-se
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
+// `id` is what the admin API calls the game; `folder` is where it is served
+// from. The two diverged when the games were renamed, and the old `id/id/…`
+// URLs survive only as 301s. The library games (`type: 'manifest'`) fetch and
+// render through `folder`, so adding one is a row rather than a branch; ffc,
+// intraverbal and famous-person still read through the legacy prefixes, which
+// is fine while their `_Resources` trees are still the source of truth.
 const GAMES = [
-  { id: 'IDMatchGame',      label: 'Matching Game',     type: 'manifest' },
-  { id: 'NameIDGame',       label: 'Receptive Words Game', type: 'manifest' },
-  { id: 'FamousPersonGame', label: 'Famous Person Game', type: 'fpg'     },
-  { id: 'FFCGame',          label: 'FFC Game',          type: 'ffc'      },
-  { id: 'IntraverbalGame',  label: 'Intraverbal Game',  type: 'intraverbal' },
+  { id: 'IDMatchGame',      folder: 'matching',      label: 'Matching Game',        type: 'manifest' },
+  { id: 'NameIDGame',       folder: 'receptive',     label: 'Receptive Words Game', type: 'manifest' },
+  { id: 'HickoryDickoryDockGame', folder: 'clock',   label: 'Hickory Dickory Dock', type: 'manifest' },
+  { id: 'FamousPersonGame', folder: 'famous-person', label: 'Famous Person Game',   type: 'fpg'     },
+  { id: 'FFCGame',          folder: 'ffc',           label: 'FFC Game',             type: 'ffc'      },
+  { id: 'IntraverbalGame',  folder: 'intraverbal',   label: 'Intraverbal Game',     type: 'intraverbal' },
 ];
+
+/** The games whose art comes out of the shared stimulus library. */
+const MANIFEST_GAMES = GAMES.filter(g => g.type === 'manifest');
+
+function gameById(id) { return GAMES.find(g => g.id === id) || null; }
+
+/**
+ * Where a manifest path actually lives.
+ *
+ * Post-repoint a manifest serves site-absolute library URLs
+ * (`/shared/stimuli/img/…`) shared by all three games; the legacy per-game
+ * paths (`_Resources/_imgSource/…`) are still relative to the game folder.
+ * Prefixing the first kind produced `../../IDMatchGame/IDMatchGame//shared/…`,
+ * which resolves to nothing at all.
+ */
+function manifestImageSrc(game, imgPath) {
+  if (!imgPath) return '';
+  if (/^(?:[a-z]+:)?\/\//i.test(imgPath)) return imgPath; // absolute URL
+  if (imgPath.startsWith('/')) return imgPath;            // site-absolute library URL
+  return '../../' + game.folder + '/' + imgPath;          // legacy game-relative
+}
 
 const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
 
@@ -632,26 +662,35 @@ async function adminPost(endpoint, body) {
 
 // ─── Data Loading ─────────────────────────────────────────────────────────────
 
+/** `archived` is written as an object by the worker; the UI wants names. */
+function normalizeManifest(m) {
+  const archived = Array.isArray(m.archived) ? m.archived
+    : (m.archived && typeof m.archived === 'object') ? Object.keys(m.archived)
+    : [];
+  return { ...m, archived };
+}
+
 async function loadGameData(game) {
   if (gameData[game.id]) return gameData[game.id];
 
   if (game.type === 'manifest') {
-    const path = game.id === 'IDMatchGame'
-      ? `../../IDMatchGame/IDMatchGame/manifest.json`
-      : `../../NameIDGame/NameIDGame/manifest.json`;
-    const res = await fetch(path);
-    const m = await res.json();
-    // archived is stored as object by worker; normalize to array of names for UI
-    if (m.archived && !Array.isArray(m.archived)) {
-      m.archived = Object.keys(m.archived);
-    } else if (!m.archived) {
-      m.archived = [];
-    }
-    gameData[game.id] = { manifest: m };
+    const res = await fetch(`../../${game.folder}/manifest.json`);
+    gameData[game.id] = { manifest: normalizeManifest(await res.json()) };
   } else if (game.type === 'ffc') {
-    const res = await fetch('../../FFCGame/FFCGame/items.json');
-    const data = await res.json();
-    gameData[game.id] = { ffcData: data };
+    // ffc's items name a shared stimulus and nothing else now — no label, no
+    // filename — so the picture and the name are joined in from the library by
+    // id, exactly as the game does it.
+    const [items, library] = await Promise.all([
+      fetch(`../../${game.folder}/items.json`).then(r => r.json()),
+      fetch('/shared/stimuli/stimuli.json').then(r => r.json()),
+    ]);
+    const byId = new Map((library.stimuli || []).map(entry => [entry.id, entry]));
+    const joined = (items.items || []).flatMap(it => {
+      const entry = byId.get(it.id);
+      if (!entry) return [];
+      return [{ ...it, label: entry.label, image: entry.image || entry.placeholder || '' }];
+    });
+    gameData[game.id] = { ffcData: { ...items, items: joined } };
   } else if (game.type === 'intraverbal') {
     const res = await fetch('../../IntraverbalGame/IntraverbalGame/items.json');
     const data = await res.json();
@@ -720,6 +759,29 @@ function getArchivedFolders() {
   return Array.isArray(a) ? a : Object.keys(a);
 }
 
+/**
+ * What a topic is called for the game being edited.
+ *
+ * `topicNames` is a per-game override the worker writes into `topics.json` and
+ * the build projects back out; the derived name is the fallback every game has
+ * always shown. Keyed by category, so an archived folder is looked up by the
+ * topic it will be again once restored.
+ *
+ * The derived form is title-cased to match `deriveTopicName()` in the library
+ * exactly. That is load-bearing, not cosmetic: submitting the name shown here
+ * unchanged has to CLEAR the override, and it only can if the two agree.
+ */
+function derivedTopicName(folder) {
+  return folder.replace(/^_a_/, '').replace(/^T_/, '').replace(/_/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function topicDisplayName(folder) {
+  const d = gameData[activeGame.id];
+  const names = (d && d.manifest && d.manifest.topicNames) || {};
+  return names[folder.replace(/^_a_/, '')] || derivedTopicName(folder);
+}
+
 function renderFolderBar() {
   const content = document.getElementById('main-content');
 
@@ -741,6 +803,8 @@ function renderFolderBar() {
       btn.textContent = 'All Items';
     } else if (activeGame.type === 'intraverbal') {
       btn.textContent = f.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    } else if (activeGame.type === 'manifest') {
+      btn.textContent = topicDisplayName(f);
     } else {
       btn.textContent = f.replace(/^T_/, '').replace(/_/g, ' ');
     }
@@ -785,9 +849,14 @@ function renderContent() {
   if (activeGame.type === 'manifest' && activeFolder) {
     const bar = document.createElement('div');
     bar.className = 'folder-action-bar';
+    // A library topic is renamed by name, not by key: the category backs three
+    // games and every stimulus id in it is derived from that key, so the name
+    // is what moves and it moves for this game only.
     const renameBtn = document.createElement('button');
     renameBtn.className = 'btn-rename';
     renameBtn.textContent = '✏ Rename';
+    renameBtn.title = `Rename this topic for ${activeGame.label} only. The pictures and every other `
+      + 'game that runs the topic are untouched.';
     renameBtn.addEventListener('click', () => showRenameInline(bar, renameBtn, activeFolder));
     bar.appendChild(renameBtn);
 
@@ -902,6 +971,66 @@ function getImagesForFolder(folder) {
   return paths.map(p => ({ type: 'manifest', path: p, folder }));
 }
 
+function refreshGrid() {
+  const grid = document.getElementById('image-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  getImagesForFolder(activeFolder).forEach(item => grid.appendChild(buildCard(item)));
+}
+
+/**
+ * Adopt the manifests the Worker just committed, and redraw from them.
+ *
+ * The old success path guessed the resulting path
+ * (`_Resources/_imgSource/<folder>/<file>`) and appended a card built from it,
+ * so a card could appear for something the commit never wrote — and, after the
+ * repoint onto the shared library, the guessed path was wrong every time.
+ *
+ * A manifest is a *projection* of the library, so one upload can move more than
+ * the row that caused it: replacing an emoji placeholder changes that
+ * stimulus's URL for all three games, and a new topic adds a folder. Only the
+ * committed manifest knows all of it. Returns false when the response carried
+ * none — the caller then says so rather than showing a stale grid as fresh.
+ */
+function adoptCommittedManifests(manifests) {
+  if (!manifests || typeof manifests !== 'object') return false;
+
+  const wasManifestGame = activeGame.type === 'manifest';
+  const beforeFolders   = wasManifestGame ? getFolders().join(' ') : '';
+  const beforeArchived  = wasManifestGame ? getArchivedFolders().join(' ') : '';
+
+  let adopted = false;
+  MANIFEST_GAMES.forEach(g => {
+    const m = manifests[g.folder];
+    if (!m || typeof m !== 'object' || !Array.isArray(m.folders)) return;
+    gameData[g.id] = { manifest: normalizeManifest(m) };
+    adopted = true;
+  });
+  if (!adopted || !wasManifestGame) return adopted;
+
+  const folders = getFolders();
+  if (folders.join(' ') !== beforeFolders
+      || getArchivedFolders().join(' ') !== beforeArchived
+      || !(folders.includes(activeFolder) || activeFolder === '__archived__')) {
+    renderFolderBar();   // the topic list itself moved — rebuild the whole view
+    renderContent();
+  } else {
+    refreshGrid();       // same folders — keep the add form open, redraw cards
+  }
+  return true;
+}
+
+/**
+ * Success text for a manifest-game operation. A worker that returned no
+ * manifest committed nothing this client can render, so say the grid is stale
+ * rather than letting "Saved!" imply the cards below are current.
+ */
+function adoptAndReport(data, okText) {
+  return adoptCommittedManifests(data && data.manifests)
+    ? okText
+    : okText + ' Reload to see it.';
+}
+
 function buildCard(item) {
   const card = document.createElement('div');
   card.className = 'img-card';
@@ -912,7 +1041,7 @@ function buildCard(item) {
 
   if (item.type === 'ffc') {
     const it = item.item;
-    img.src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + it.img;
+    img.src = it.image;
     img.alt = it.label;
     label.textContent = it.label;
     card.addEventListener('click', () => openDetail({ type: 'ffc', item: it }));
@@ -936,7 +1065,7 @@ function buildCard(item) {
     }
     card.addEventListener('click', () => openDetail({ type: 'fpg', person: p }));
   } else {
-    img.src = '../../' + activeGame.id + '/' + activeGame.id + '/' + item.path;
+    img.src = manifestImageSrc(activeGame, item.path);
     img.alt = item.path;
     const filename = item.path.split('/').pop();
     const displayName = gameData[activeGame.id]?.manifest?.displayNames?.[item.path];
@@ -972,7 +1101,8 @@ function renderArchivedView(content) {
     row.style.cssText = 'display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;padding:.6rem 1rem;background:#fff;border-radius:11px;border:1px solid #e9ece2;';
 
     const name = document.createElement('span');
-    name.textContent = folder;
+    name.textContent = topicDisplayName(folder);
+    name.title = folder;
     name.style.cssText = 'flex:1;font-size:.85rem;color:#fbbf24;';
     row.appendChild(name);
 
@@ -1065,22 +1195,11 @@ function buildAddForm(formType) {
 
       const capturedGameId = activeGame.id, capturedFolder = activeFolder, capturedFilename = filename;
       const op = { type: 'save-image', game: capturedGameId, folder: capturedFolder, filename: capturedFilename, ...imgPayload };
-      const onSuccess = (j) => {
-        const savedFilename = j.filename || capturedFilename;
-        const path = `_Resources/_imgSource/${capturedFolder}/${savedFilename}`;
-        const d = gameData[capturedGameId];
-        if (d?.manifest) {
-          if (!d.manifest.images[capturedFolder]) d.manifest.images[capturedFolder] = [];
-          if (!d.manifest.images[capturedFolder].includes(path)) d.manifest.images[capturedFolder].push(path);
-        }
-        const grid = document.getElementById('image-grid');
-        if (grid && activeGame.id === capturedGameId && activeFolder === capturedFolder) {
-          grid.appendChild(buildCard({ type: 'manifest', path, folder: capturedFolder }));
-        }
-      };
+      // No per-item success handler: the grid is redrawn from the manifests the
+      // batch response carries back, which is the only account of what landed.
 
       if (batchMode) {
-        enqueue({ id: crypto.randomUUID(), label: displayName, opLabel: `Add to ${capturedFolder.replace(/^T_/, '').replace(/_/g, ' ')}`, thumbSrc: file ? URL.createObjectURL(file) : url, op, onSuccess });
+        enqueue({ id: crypto.randomUUID(), label: displayName, opLabel: `Add to ${capturedFolder.replace(/^T_/, '').replace(/_/g, ' ')}`, thumbSrc: file ? URL.createObjectURL(file) : url, op });
         setStatus(status, 'ok', '↑ Queued');
         form.querySelector('[name=display-name]').value = '';
         form.querySelector('[name=url]').value = '';
@@ -1094,7 +1213,7 @@ function buildAddForm(formType) {
         if (!res) { setStatus(status, '', ''); return; }
         const data = await res.json().catch(() => ({}));
         const result = data.results?.[0] || {};
-        if (res.ok && result.ok) { onSuccess(result); setStatus(status, 'ok', 'Saved!'); }
+        if (res.ok && result.ok) setStatus(status, 'ok', adoptAndReport(data, 'Saved!'));
         else setStatus(status, 'err', result.error || data.error || 'Error ' + res.status);
       } catch (err) { setStatus(status, 'err', err.message || 'Network error'); }
     });
@@ -1504,6 +1623,12 @@ async function doPurgeTopic(archFolder) {
 }
 
 // ─── Rename Topic ─────────────────────────────────────────────────────────────
+//
+// A rename sets the topic's NAME for this game. The folder key stays put: the
+// same category backs clock, receptive and matching, and every stimulus id in
+// the topic is derived from that key, so moving it would re-key them all and
+// orphan any saved target selection. Submitting the derived name unchanged
+// clears the override rather than pinning a duplicate of it.
 
 function showRenameInline(bar, renameBtn, folder) {
   if (bar.querySelector('.rename-inline')) return;
@@ -1514,8 +1639,9 @@ function showRenameInline(bar, renameBtn, folder) {
 
   const input = document.createElement('input');
   input.type = 'text';
-  input.value = folder.replace(/^T_/, '');
-  attachSanitize(input, sanitizeSlug);
+  input.value = topicDisplayName(folder);
+  // Free text, not a slug: this is what the topic is CALLED, not where it lives.
+  input.maxLength = 60;
 
   const okBtn = document.createElement('button');
   okBtn.className = 'btn-sm btn-blue';
@@ -1542,20 +1668,22 @@ function showRenameInline(bar, renameBtn, folder) {
 
   okBtn.addEventListener('click', async () => {
     const newName = input.value.trim();
-    if (!newName || newName === folder.replace(/^T_/, '')) { close(); return; }
-    const newFolder = 'T_' + newName;
+    if (!newName || newName === topicDisplayName(folder)) { close(); return; }
     okBtn.disabled = cancelBtn.disabled = true;
     status.textContent = 'Renaming…';
     status.style.color = '#94a3b8';
     try {
-      const res = await adminPost('rename-topic', { game: activeGame.id, folder, newFolder });
+      const res = await adminPost('rename-topic', { game: activeGame.id, folder, newName });
       if (!res) { close(); return; }
       if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        // The only thing that moved is the name, so the only thing to update is
+        // the name — and it is the name the worker committed, not the one typed.
         const m = gameData[activeGame.id].manifest;
-        m.folders = [...m.folders.filter(f => f !== folder), newFolder].sort();
-        m.images[newFolder] = (m.images[folder] || []).map(p => p.replace(`/${folder}/`, `/${newFolder}/`));
-        delete m.images[folder];
-        activeFolder = newFolder;
+        const category = folder.replace(/^_a_/, '');
+        if (!m.topicNames) m.topicNames = {};
+        if (data.name && data.name !== derivedTopicName(category)) m.topicNames[category] = data.name;
+        else delete m.topicNames[category];
         renderFolderBar();
         renderContent();
       } else {
@@ -1625,24 +1753,24 @@ function showNewTopicModal() {
     }
     setStatus(status, '', 'Creating…');
     try {
-      const res = await adminPost('save-image', {
-        game: activeGame.id, folder, filename, ...imgPayload,
-      });
+      // Same endpoint as every other edit, so the new topic arrives back in the
+      // committed manifest rather than being invented client-side.
+      const op = { type: 'save-image', game: activeGame.id, folder, filename, ...imgPayload };
+      const res = await adminPost('batch', { operations: [op] });
       if (!res) { setStatus(status, '', ''); return; }
-      if (res.ok) {
-        const m = gameData[activeGame.id].manifest;
-        if (!m.folders.includes(folder)) m.folders.push(folder);
-        if (!m.images) m.images = {};
-        if (!m.images[folder]) m.images[folder] = [];
-        const path = `_Resources/_imgSource/${folder}/${filename}`;
-        m.images[folder].push(path);
-        activeFolder = folder;
+      const data = await res.json().catch(() => ({}));
+      const result = data.results?.[0] || {};
+      if (res.ok && result.ok) {
+        if (!adoptCommittedManifests(data.manifests)) {
+          setStatus(status, 'ok', 'Created. Reload to see it.');
+          return;
+        }
+        if (getFolders().includes(folder)) activeFolder = folder;
         overlay.remove();
         renderFolderBar();
         renderContent();
       } else {
-        const j = await res.json().catch(() => ({}));
-        setStatus(status, 'err', j.error || 'Error ' + res.status);
+        setStatus(status, 'err', result.error || data.error || 'Error ' + res.status);
       }
     } catch (err) {
       setStatus(status, 'err', err.message || 'Network error');
@@ -1705,7 +1833,7 @@ function openDetail(ctx) {
 
   if (ctx.type === 'ffc') {
     const it = ctx.item;
-    dpThumb.src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + it.img;
+    dpThumb.src = it.image;
     dpFilename.textContent = it.label;
     dpSub.textContent = 'id: ' + it.id + '  |  groups: ' + (it.groups || []).join(', ');
     dpWikiInput.value = it.label;
@@ -1728,7 +1856,7 @@ function openDetail(ctx) {
     dpSub.textContent = [p.years, p.emoji, p.tag].filter(Boolean).join(' · ');
     dpWikiInput.value = p.name;
   } else {
-    dpThumb.src = '../../' + ctx.gameId + '/' + ctx.gameId + '/' + ctx.path;
+    dpThumb.src = manifestImageSrc(gameById(ctx.gameId) || activeGame, ctx.path);
     const filename = ctx.path.split('/').pop();
     dpFilename.textContent = filename;
     dpSub.textContent = ctx.path;
@@ -1804,7 +1932,17 @@ dpSaveBtn.addEventListener('click', async () => {
     const filename = ctx.path.split('/').pop();
     op = { type: 'save-image', game: ctx.gameId, folder: ctx.folder, filename, ...imgPayload };
     label = filename;
-    onSuccess = () => { dpThumb.src = newThumbSrc; };
+    // Show the bytes just uploaded, not the committed URL — that one only
+    // starts serving once Pages redeploys. `path` can differ from what was
+    // asked for (the extension follows the content type), so track it.
+    onSuccess = (j) => {
+      dpThumb.src = newThumbSrc;
+      if (j && j.path) {
+        ctx.path = j.path;
+        dpFilename.textContent = j.path.split('/').pop();
+        dpSub.textContent = j.path;
+      }
+    };
   }
 
   if (batchMode) {
@@ -1826,7 +1964,8 @@ dpSaveBtn.addEventListener('click', async () => {
       onSuccess(result);
       dpUrlInput.value = '';
       dpFileInput.value = '';
-      setStatus(dpSaveStatus, 'ok', 'Saved!');
+      setStatus(dpSaveStatus, 'ok',
+        ctx.type === 'manifest' ? adoptAndReport(data, 'Saved!') : 'Saved!');
     } else {
       setStatus(dpSaveStatus, 'err', result.error || data.error || 'Error ' + res.status);
     }
@@ -1886,16 +2025,10 @@ dpDisplayNameSaveBtn.addEventListener('click', async () => {
 
   let op, label, onSuccess;
   if (ctx.type === 'manifest') {
+    // A label is pinned to the stimulus, not to this game's copy of the path,
+    // so every manifest that runs it is re-projected — the response says how.
     op = { type: 'save-display-name', game: ctx.gameId, localPath: ctx.path, displayName };
     label = ctx.path.split('/').pop();
-    onSuccess = () => {
-      const manifest = gameData[ctx.gameId]?.manifest;
-      if (manifest) {
-        if (!manifest.displayNames) manifest.displayNames = {};
-        if (displayName) manifest.displayNames[ctx.path] = displayName;
-        else delete manifest.displayNames[ctx.path];
-      }
-    };
   } else if (ctx.type === 'ffc') {
     op = { type: 'save-display-name', game: 'FFCGame', itemId: ctx.item.id, displayName };
     label = ctx.item.label;
@@ -1924,8 +2057,10 @@ dpDisplayNameSaveBtn.addEventListener('click', async () => {
     const data = await res.json().catch(() => ({}));
     const result = data.results?.[0] || {};
     if (res.ok && result.ok) {
-      onSuccess(result);
-      setStatus(dpDisplayNameStatus, 'ok', displayName ? 'Saved.' : 'Cleared.');
+      onSuccess?.(result);
+      const done = displayName ? 'Saved.' : 'Cleared.';
+      setStatus(dpDisplayNameStatus, 'ok',
+        ctx.type === 'manifest' ? adoptAndReport(data, done) : done);
     } else {
       setStatus(dpDisplayNameStatus, 'err', result.error || data.error || 'Error ' + res.status);
     }
@@ -1988,14 +2123,10 @@ dpRemoveBtn.addEventListener('click', async () => {
       });
     };
   } else {
-    op = { type: 'remove-image', game: ctx.gameId, folder: ctx.folder, filename: ctx.path.split('/').pop() };
+    // Removal is an exclusion now — the same bytes back the other two games —
+    // so which cards disappear is decided by the re-projection, not here.
+    op = { type: 'remove-image', game: ctx.gameId, folder: ctx.folder, localPath: ctx.path, filename: ctx.path.split('/').pop() };
     label = ctx.path.split('/').pop();
-    onSuccess = () => {
-      document.getElementById('image-grid')?.querySelectorAll('.img-card').forEach(card => {
-        const img = card.querySelector('img');
-        if (img && (img.src === dpThumb.src || img.alt === dpFilename.textContent)) card.remove();
-      });
-    };
   }
 
   if (batchMode) {
@@ -2013,8 +2144,9 @@ dpRemoveBtn.addEventListener('click', async () => {
     const data = await res.json().catch(() => ({}));
     const result = data.results?.[0] || {};
     if (res.ok && result.ok) {
-      onSuccess();
-      setStatus(dpRemoveStatus, 'ok', 'Removed.');
+      onSuccess?.();
+      setStatus(dpRemoveStatus, 'ok',
+        ctx.type === 'manifest' ? adoptAndReport(data, 'Removed.') : 'Removed.');
       setTimeout(closeDetail, 800);
     } else {
       setStatus(dpRemoveStatus, 'err', result.error || data.error || 'Error ' + res.status);
@@ -2087,7 +2219,11 @@ function getManifestFilenames(folder) {
 }
 
 function getFFCFilenames() {
-  return (gameData['FFCGame']?.ffcData?.items || []).map(i => i.img);
+  // ffc items no longer carry a filename — the library does. The file name a
+  // duplicate check compares against is the one behind the joined URL.
+  return (gameData['FFCGame']?.ffcData?.items || [])
+    .map(i => (i.image || '').split('/').pop())
+    .filter(Boolean);
 }
 
 function getFPGNames() {
@@ -2266,6 +2402,10 @@ async function runBatch() {
           if (result.ok) { item.status = 'done'; item.errorMsg = ''; try { item.onSuccess?.(result); } catch (_) {} }
           else { item.status = 'error'; item.errorMsg = result.error || 'Failed'; }
         });
+        // One redraw per chunk, from the manifests the commit produced — a chunk
+        // can move rows no operation in it named (a replaced placeholder, a new
+        // topic), and only the projection accounts for those.
+        try { adoptCommittedManifests(data.manifests); } catch (_) {}
         settled = true;
       } catch (err) {
         lastErr = err.message || 'Network error';

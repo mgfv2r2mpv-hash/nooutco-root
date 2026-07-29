@@ -481,10 +481,28 @@ async function adminPost(endpoint, body) {
 
 // ── Boot ───────────────────────────────────────────────────────────
 
+/**
+ * ffc's items name a shared stimulus and nothing else now — no label, no
+ * filename — so the picture and the name are joined in from the library by id,
+ * exactly as `ffc/game.js` and `AdminTools/ImageManager` do it. Reading
+ * `item.label` / `item.img` straight off `items.json` renders every card as
+ * "undefined" over a broken thumbnail.
+ */
 async function initApp() {
   try {
-    const res = await fetch('../../FFCGame/FFCGame/items.json');
-    ffcData = await res.json();
+    const [items, library] = await Promise.all([
+      fetch('../../ffc/items.json').then(r => r.json()),
+      fetch('/shared/stimuli/stimuli.json').then(r => r.json()),
+    ]);
+    const byId = new Map((library.stimuli || []).map(entry => [entry.id, entry]));
+    ffcData = {
+      ...items,
+      items: (items.items || []).flatMap(it => {
+        const entry = byId.get(it.id);
+        if (!entry) return [];
+        return [{ ...it, label: entry.label, image: entry.image || entry.placeholder || '' }];
+      }),
+    };
   } catch (e) {
     setStatus(document.getElementById('global-status'), 'err', 'Could not load items.json');
     return;
@@ -566,7 +584,7 @@ function renderGrid() {
     card.className = 'img-card';
 
     const img = document.createElement('img');
-    img.src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + item.img;
+    img.src = item.image;
     img.alt = item.label;
     img.onerror = () => { img.style.opacity = '.3'; };
 
@@ -589,7 +607,7 @@ function openDetail(item) {
   detailItem = item;
   document.getElementById('dp-title').textContent = item.label;
   document.getElementById('dp-sub').textContent   = 'id: ' + item.id;
-  document.getElementById('dp-thumb').src = '../../FFCGame/FFCGame/_Resources/_imgSource/items/' + item.img;
+  document.getElementById('dp-thumb').src = item.image;
   document.getElementById('dp-label-input').value = item.label;
   document.getElementById('dp-url-input').value   = '';
   document.getElementById('dp-wiki-input').value  = item.label;
@@ -937,7 +955,6 @@ function bindEvents() {
     { key: 'classes',   label: 'Class',    accent: '#b45309' },
   ];
   const MA_VIEWS = [['all', 'All'], ['tagged', 'Tagged'], ['untagged', 'Untagged']];
-  const IMG_BASE = '../../FFCGame/FFCGame/_Resources/_imgSource/items/';
 
   const overlay = document.getElementById('mass-assign');
   let bucket = 'features', tag = null, view = 'all', search = '';
@@ -1038,7 +1055,7 @@ function bindEvents() {
       cell.className = 'ma-cell' + (isTagged ? ' tagged' : isSugg ? ' suggested' : '');
 
       const img = document.createElement('img');
-      img.src = IMG_BASE + it.img; img.alt = it.label;
+      img.src = it.image; img.alt = it.label;
       img.onerror = () => { img.style.opacity = '.3'; };
 
       const label = document.createElement('div');

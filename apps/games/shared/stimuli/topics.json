@@ -1,0 +1,5 @@
+{
+  "schema": 1,
+  "note": "What a technician renamed a topic to, per game, by category. A topic's key is shared — the same category backs clock, receptive and matching — so a rename sets a name rather than moving a directory: re-keying the category would re-key every stimulus id in it and orphan any saved target selection naming one. Absent means the game shows the derived name (`T_kitchen_items` -> `Kitchen Items`). Written by /api/admin/rename-topic; read by shared/stimuli/build.mjs.",
+  "names": {}
+}

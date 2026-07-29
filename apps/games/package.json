@@ -9,6 +9,8 @@
     "test:ui": "playwright test --ui",
     "test:debug": "playwright test --debug",
     "test:coverage": "playwright test",
+    "stimuli:build": "node shared/stimuli/build.mjs",
+    "stimuli:check": "node shared/stimuli/build.mjs --check",
     "build": "tailwindcss -i tailwind.input.css -o tailwind.css --minify",
     "build:watch": "tailwindcss -i tailwind.input.css -o tailwind.css --watch",
     "build:client": "echo 'No build step needed for static site'",

@@ -389,6 +389,29 @@ body.settings-collapsed #extra-panel { display: none !important; }
   border: 1px solid var(--border-default);
   background: var(--surface-sunken);
 }
+/* Text stand-in for a thumbnail that failed to load. The row builders add it
+   to every row and reveal it only from the <img>'s error handler, so without
+   these rules it sat next to a picture that had loaded fine and every row
+   read its word twice. Sized like `.target-thumb` so a missing picture holds
+   the slot instead of shifting the row. */
+.target-thumb-label { display: none; }
+.target-thumb-label-visible {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  padding: 2px;
+  overflow: hidden;
+  font-size: 0.5625rem;
+  line-height: 1.1;
+  text-align: center;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background: var(--surface-sunken);
+}
 .target-row-label { flex: 1 1 auto; }
 
 /* ── Extra settings panel ──────────────────────────────────────────── */

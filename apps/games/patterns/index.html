@@ -96,6 +96,9 @@
         Prompt persists
         <button type="button" class="help-btn" data-help="When on, the prompt highlight stays until the learner responds rather than fading after 3 seconds.">?</button>
       </label>
+      <!-- Prompting method — three presets over the Auto-Prompt / Prompt Delay
+           switches below. Rendered by ../prompting-method.js. -->
+      <div data-prompting-method></div>
       <label class="checkbox-label">
         <input type="checkbox" id="chk-auto-prompt">
         Auto-Prompt
@@ -118,6 +121,10 @@
           <option value="3" selected>3s</option>
           <option value="4">4s</option>
           <option value="5">5s</option>
+          <option value="6">6s</option>
+          <option value="7">7s</option>
+          <option value="8">8s</option>
+          <option value="9">9s</option>
           <option value="10">10s</option>
         </select>
       </div>
@@ -245,6 +252,10 @@
   <script src="../../token-board.js"></script>
   <script src="../../token-board-ui.js" data-namespace="patterns"></script>
   <script src="skin.js"></script>
+  <script src="../migrate-config.js"></script>
+  <script src="../game-settings.js"></script>
+  <script src="../prompting-method.js"></script>
+  <script src="../results-report.js"></script>
   <script src="game.js"></script>
   <script>
     const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";

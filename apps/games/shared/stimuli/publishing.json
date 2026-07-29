@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "note": "Stimuli a technician removed from a game, by stimulus id. The art stays in the shared library — the same bytes back three games, so deleting it on one game's behalf would pull the picture out of the other two.",
+  "excluded": {
+    "clock": {
+      "T_emotions": [
+        "emotions-bored",
+        "emotions-confused",
+        "emotions-embarrassed",
+        "emotions-love",
+        "emotions-proud"
+      ],
+      "T_prepositions": [
+        "prepositions-next-to"
+      ]
+    },
+    "receptive": {
+      "T_emotions": [
+        "emotions-bored",
+        "emotions-confused",
+        "emotions-embarrassed",
+        "emotions-love",
+        "emotions-proud"
+      ],
+      "T_prepositions": [
+        "prepositions-next-to"
+      ]
+    },
+    "matching": {}
+  }
+}

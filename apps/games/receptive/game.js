@@ -33,6 +33,65 @@ function labelFromSrc(src) {
   return name.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
+/**
+ * The stimulus art moved to the shared library at /shared/stimuli/, so a saved
+ * target selection still names its pictures by the URLs this game used to
+ * serve. The manifest ships that old-URL -> new-URL table; without applying it
+ * the selection matches nothing and the technician's chosen targets are
+ * silently dropped on first load.
+ *
+ * Two old paths can land on one stimulus (a photo and the deselected duplicate
+ * in a second format), so the migrated list is de-duplicated.
+ */
+function migrateTargetFilters(manifest) {
+  const aliases = manifest?.pathAliases;
+  if (!aliases) return;
+
+  const migrated = {};
+  let changed = false;
+  for (const [topic, srcs] of Object.entries(state.targetFilters)) {
+    if (!Array.isArray(srcs)) { migrated[topic] = srcs; continue; }
+    const moved = [...new Set(srcs.map(src => aliases[src] ?? src))];
+    if (moved.length !== srcs.length || moved.some((src, i) => src !== srcs[i])) changed = true;
+    migrated[topic] = moved;
+  }
+  if (!changed) return;
+
+  state.targetFilters = migrated;
+  saveSettings();
+}
+
+/**
+ * AdminTools still keys a technician's display-name override by the path it
+ * uploaded to, under the game's own tree. The generated manifest only carries
+ * library URLs, so any legacy key present is an override written since the
+ * last rebuild — newer than the generated label, and it wins. Without this the
+ * label saves cleanly and then never renders.
+ */
+function foldLegacyDisplayNames(manifest) {
+  const { displayNames, pathAliases } = manifest || {};
+  if (!displayNames || !pathAliases) return;
+
+  for (const [legacy, url] of Object.entries(pathAliases)) {
+    const label = displayNames[legacy];
+    if (typeof label === 'string' && label.trim()) displayNames[url] = label;
+  }
+}
+
+// ── Settings storage keys ──────────────────────────────────────────
+// Stage 6: this game's programme parameters live in the shared store
+// (../game-settings.js) under SETTINGS_KEY. `ngSettings` is the retired key —
+// read once, folded into the store, and NEVER deleted or rewritten, so a
+// mis-mapped fold is recoverable and a downgrade still finds the old config.
+const SETTINGS_KEY = 'nooutco.settings.receptive';
+const LEGACY_SETTINGS_KEY = 'ngSettings';
+
+// The token glyphs #sel-token-emoji offers, and the pool 'random' draws from —
+// one list, so the stored setting can be validated against exactly what the
+// technician was shown. Declared above the store: constants a field spec reads
+// have to be initialised before `defineStore()` runs.
+const TOKEN_EMOJI = ['⭐', '🔷', '💎', '✨', '🎁', '🏆', '💫', '🌟'];
+
 // ── State ──────────────────────────────────────────────────────────
 
 const state = {
@@ -166,37 +225,88 @@ const el = {
 // ── Boot ───────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', async () => {
+  if (window.NooutcoConfig) NooutcoConfig.migrate();
   loadSettings();
+  restoreTrials();
   bindEvents();
   await discoverTopics();
 });
 
-// ── Settings (localStorage) ────────────────────────────────────────
+// ── Settings (the shared store) ────────────────────────────────────
+
+/**
+ * The programme parameters this game persists, declared once. The shared store
+ * derives BOTH the defaults and the clamping from this one declaration, so
+ * there is no second hand-written description to drift out of sync with it.
+ *
+ * `autoPromptEnabled` defaults to FALSE here — it is true only in `sequences`.
+ * That difference is clinical, not accidental; do not harmonise it.
+ *
+ * `chosenEmoji` and `currentTokens` are token-board *running* state rather than
+ * technician choices, but they have always been persisted alongside the
+ * settings and removing them would reset a board mid-session, so they keep
+ * their place in the schema.
+ */
+const SETTINGS_FIELDS = {
+  topic:                { type: 'string', default: '' },
+  arraySize:            { type: 'int',  min: 1, max: 10, default: 4 },
+  representErrors:      { type: 'bool', default: true },
+  errorless:            { type: 'bool', default: false },
+  noErrorAnim:          { type: 'bool', default: false },
+  crossCategory:        { type: 'bool', default: false },
+  nonTargetDistractors: { type: 'bool', default: true },
+  promptPersists:       { type: 'bool', default: false },
+  promptStyle:          { type: 'enum', values: ['sparkle', 'outline'], default: 'sparkle' },
+  autoPromptEnabled:    { type: 'bool', default: false },
+  promptDelay:          { type: 'bool', default: false },
+  promptDelaySecs:      { type: 'int',  min: 1, max: 10, default: 3 },
+  // topic folder -> the image URLs the technician chose as targets.
+  targetFilters:        { type: 'map',  default: {} },
+  // Token board.
+  tokenBoardEnabled:    { type: 'bool', default: false },
+  scheduleType:         { type: 'enum', values: ['FR', 'VR'], default: 'FR' },
+  scheduleValue:        { type: 'int',  min: 1, max: 100,  default: 1 },
+  startingTokens:       { type: 'int',  min: 0, max: 1000, default: 0 },
+  goalTokens:           { type: 'int',  min: 1, max: 1000, default: 10 },
+  tokenEmoji:           { type: 'enum', values: () => ['random', ...TOKEN_EMOJI], default: 'random' },
+  // Free-form: whichever glyph the 'random' setting landed on for this session.
+  chosenEmoji:          { type: 'string', default: '⭐' },
+  currentTokens:        { type: 'int',  min: 0, max: 1000, default: 0 },
+};
+
+const settingsStore = window.NooutcoSettings.defineStore({
+  key: SETTINGS_KEY,
+  legacyKey: LEGACY_SETTINGS_KEY,
+  fields: SETTINGS_FIELDS,
+});
 
 function loadSettings() {
-  const s = JSON.parse(localStorage.getItem('ngSettings') || '{}');
-  state.topic             = s.topic             ?? '';
-  state.arraySize         = s.arraySize         ?? 4;
-  state.representErrors   = s.representErrors   ?? true;
-  state.errorless         = s.errorless         ?? false;
-  state.noErrorAnim       = s.noErrorAnim       ?? false;
-  state.crossCategory          = s.crossCategory          ?? false;
-  state.nonTargetDistractors   = s.nonTargetDistractors   ?? true;
-  state.promptPersists         = s.promptPersists         ?? false;
-  state.promptStyle       = s.promptStyle       ?? 'sparkle';
-  state.autoPromptEnabled = s.autoPromptEnabled ?? false;
-  state.promptDelay       = s.promptDelay       ?? false;
-  state.promptDelaySecs   = s.promptDelaySecs   ?? 3;
-  state.targetFilters     = (s.targetFilters && typeof s.targetFilters === 'object') ? s.targetFilters : {};
+  // Read-then-fold, never drop. Runs at most once; `ngSettings` is left intact.
+  settingsStore.foldLegacy();
+  const s = settingsStore.initial();
 
-  state.tokenBoardEnabled = s.tokenBoardEnabled ?? false;
-  state.scheduleType      = s.scheduleType      ?? 'FR';
-  state.scheduleValue     = s.scheduleValue     ?? 1;
-  state.startingTokens    = s.startingTokens    ?? 0;
-  state.goalTokens        = s.goalTokens        ?? 10;
-  state.tokenEmoji        = s.tokenEmoji        ?? 'random';
-  state.chosenEmoji       = s.chosenEmoji       ?? '⭐';
-  state.currentTokens     = s.currentTokens     ?? 0;
+  state.topic             = s.topic;
+  state.arraySize         = s.arraySize;
+  state.representErrors   = s.representErrors;
+  state.errorless         = s.errorless;
+  state.noErrorAnim       = s.noErrorAnim;
+  state.crossCategory          = s.crossCategory;
+  state.nonTargetDistractors   = s.nonTargetDistractors;
+  state.promptPersists         = s.promptPersists;
+  state.promptStyle       = s.promptStyle;
+  state.autoPromptEnabled = s.autoPromptEnabled;
+  state.promptDelay       = s.promptDelay;
+  state.promptDelaySecs   = s.promptDelaySecs;
+  state.targetFilters     = s.targetFilters;
+
+  state.tokenBoardEnabled = s.tokenBoardEnabled;
+  state.scheduleType      = s.scheduleType;
+  state.scheduleValue     = s.scheduleValue;
+  state.startingTokens    = s.startingTokens;
+  state.goalTokens        = s.goalTokens;
+  state.tokenEmoji        = s.tokenEmoji;
+  state.chosenEmoji       = s.chosenEmoji;
+  state.currentTokens     = s.currentTokens;
 
   el.inpSize.value              = state.arraySize;
   el.chkRepresentErrors.checked = state.representErrors;
@@ -220,11 +330,15 @@ function loadSettings() {
   el.chkPromptDelay.disabled = !state.autoPromptEnabled;
   el.selPromptDelay.disabled = !state.autoPromptEnabled || !state.promptDelay;
 
+  // The panel was just rendered from state, and a programmatic write fires no
+  // `change` event, so the prompting-method group has to be told to re-read.
+  if (window.NooutcoPrompting) window.NooutcoPrompting.refresh();
+
   updateTokenBoardUIVisibility();
 }
 
 function saveSettings() {
-  localStorage.setItem('ngSettings', JSON.stringify({
+  settingsStore.saveWorking({
     topic:             state.topic,
     arraySize:         state.arraySize,
     representErrors:   state.representErrors,
@@ -246,7 +360,7 @@ function saveSettings() {
     tokenEmoji:        state.tokenEmoji,
     chosenEmoji:       state.chosenEmoji,
     currentTokens:     state.currentTokens,
-  }));
+  });
 }
 
 // ── Image discovery ────────────────────────────────────────────────
@@ -276,6 +390,8 @@ async function discoverTopics() {
       const data = await r.json();
       if (Array.isArray(data.folders) && data.folders.length) {
         state.manifest = data;
+        migrateTargetFilters(data);
+        foldLegacyDisplayNames(data);
         dirs = data.folders;
         console.info(`manifest.json loaded (generated ${data.generated})`);
       }
@@ -316,10 +432,13 @@ function buildTopicDropdown(dirs) {
     el.selTopic.innerHTML = '<option value="">-- No T_* folders found --</option>';
     return;
   }
+  // A technician's rename, per game, comes down in the generated manifest and
+  // outranks the shipped default: the topic key never moves, only its name.
+  const named = (state.manifest && state.manifest.topicNames) || {};
   dirs.forEach(d => {
     const o = document.createElement('option');
     o.value = d;
-    o.textContent = TOPIC_DISPLAY_NAMES[d] ||
+    o.textContent = named[d] || TOPIC_DISPLAY_NAMES[d] ||
       d.slice(2).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     el.selTopic.appendChild(o);
   });
@@ -478,7 +597,46 @@ function bindEvents() {
     state.sessionData = [];
     state.trialNum    = 0;
     el.resultsBody.innerHTML = '';
+    if (window.NooutcoResults) NooutcoResults.clear(RESULTS_KEY);
   });
+}
+
+// ── Trial record (device-local) ────────────────────────────────────
+// Trial rows used to live only in memory, so a refresh mid-session lost the
+// technician's whole record. They persist here through the shared store, which
+// is device-local and never transmitted (see results-report.js).
+const RESULTS_KEY = 'nooutco.results.receptive';
+
+function promptCfg() {
+  return { autoPrompt: state.autoPromptEnabled, promptDelay: state.promptDelay };
+}
+
+/** Append a trial, stamp the uniform fields, and persist in one step. */
+function recordTrial(row) {
+  const prompted = state.prompted || state.autoPrompted;
+  if (window.NooutcoResults) {
+    NooutcoResults.record(RESULTS_KEY, state.sessionData, row, promptCfg(), prompted);
+  } else {
+    state.sessionData.push(row);
+  }
+}
+
+/** Re-save after an in-place edit (undo). */
+function persistTrials() {
+  if (window.NooutcoResults) NooutcoResults.save(RESULTS_KEY, state.sessionData);
+}
+
+/**
+ * Restore a session interrupted by a reload, resuming trial numbering from the
+ * highest recorded trial. The results table is rebuilt by printData() on
+ * demand rather than appended per trial, so there is no DOM to replay here.
+ */
+function restoreTrials() {
+  if (!window.NooutcoResults) return;
+  const rows = NooutcoResults.load(RESULTS_KEY);
+  if (!Array.isArray(rows) || !rows.length) return;
+  state.sessionData = rows;
+  state.trialNum = rows.reduce((m, d) => Math.max(m, Number(d.trial) || 0), 0);
 }
 
 // ── Timer ──────────────────────────────────────────────────────────
@@ -818,7 +976,7 @@ function onCorrectClick(wrapper, tile) {
     outcome = 'Correct';
   }
 
-  state.sessionData.push({
+  recordTrial({
     trial:     state.trialNum,
     topic:     state.topic.slice(2).replace(/_/g, ' '),
     sample:    state.sampleLabel,
@@ -965,6 +1123,7 @@ function onRetryClick() {
   if (state.sessionData.length) {
     state.sessionData.pop();
     state.trialNum--;
+    persistTrials();
   }
   removeNextBtn();
   if (state.timerAutoPaused) { state.timerAutoPaused = false; startTimer(); }
@@ -1220,8 +1379,7 @@ function renderTokenBoard() {
 }
 
 function pickRandomEmoji() {
-  const pool = ['⭐', '🔷', '💎', '✨', '🎁', '🏆', '💫', '🌟'];
-  return pool[Math.floor(Math.random() * pool.length)];
+  return TOKEN_EMOJI[Math.floor(Math.random() * TOKEN_EMOJI.length)];
 }
 
 function updateTokenBoardUIVisibility() {

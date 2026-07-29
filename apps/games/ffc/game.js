@@ -157,6 +157,7 @@ const el = {
 // ── Boot ───────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', async () => {
+  if (window.NooutcoConfig) NooutcoConfig.migrate();
   loadSettings();
   bindEvents();
   await loadItems();
@@ -164,27 +165,95 @@ document.addEventListener('DOMContentLoaded', async () => {
   initSession();
 });
 
-// ── Settings (localStorage) ────────────────────────────────────────
+// ── Settings (shared store) ────────────────────────────────────────
+
+/**
+ * NOT `nooutco.settings.ffc` — that key is already taken, by this game.
+ *
+ * The Frame 07 session panel below persists its curated per-learner session
+ * (`{ sets, last, working }` holding items / targets / includeTypes /
+ * arraySize / prompting) to `nooutco.settings.ffc`. That document has the same
+ * SHAPE as the shared store's and a completely different schema, so pointing
+ * the settings store at it would do two silent things to a technician who has
+ * ever pressed Start Session:
+ *
+ *   - `foldLegacy()` refuses once `working` exists, so `ffcgSettings` would
+ *     never fold at all
+ *   - `initial()` would read the session config as if it were trial settings,
+ *     defaulting every field it does not recognise
+ *
+ * Two config documents for one game is itself duplication worth ending, but
+ * merging them is a UI change (the session panel), not a storage one — so the
+ * trial settings take their own key and the session document is left exactly
+ * where it is. See NOTES-gnhf.md finding 61.
+ */
+const SETTINGS_KEY = 'nooutco.settings.ffc.trial';
+const LEGACY_SETTINGS_KEY = 'ffcgSettings';
+
+/** A fresh, fully-keyed filter map — one empty target list per mode. */
+function emptyTargetFilters() {
+  return { feature: [], function: [], classWithinGroup: [], classCrossCategory: [] };
+}
+
+/**
+ * The programme parameters this game persists, declared once. The shared store
+ * derives BOTH the defaults and the clamping from this one declaration, so
+ * there is no second hand-written description to drift out of sync with it.
+ *
+ * `autoPromptEnabled` defaults to FALSE here — it is true only in `sequences`.
+ * That difference is clinical, not accidental; do not harmonise it.
+ */
+const SETTINGS_FIELDS = {
+  mode:              { type: 'enum', values: Object.keys(MODE_CONFIG), default: 'feature' },
+  tag:               { type: 'string', default: '' },
+  arraySize:         { type: 'int',  min: 2, max: 10, default: 4 },
+  representErrors:   { type: 'bool', default: true },
+  errorless:         { type: 'bool', default: false },
+  noErrorAnim:       { type: 'bool', default: false },
+  promptPersists:    { type: 'bool', default: false },
+  promptStyle:       { type: 'enum', values: ['sparkle', 'outline'], default: 'sparkle' },
+  autoPromptEnabled: { type: 'bool', default: false },
+  promptDelay:       { type: 'bool', default: false },
+  promptDelaySecs:   { type: 'int',  min: 1, max: 10, default: 3 },
+  // mode -> the stimulus ids the technician chose as targets.
+  targetFilters:     { type: 'map',  default: emptyTargetFilters() },
+};
+
+const settingsStore = window.NooutcoSettings.defineStore({
+  key: SETTINGS_KEY,
+  legacyKey: LEGACY_SETTINGS_KEY,
+  fields: SETTINGS_FIELDS,
+});
+
+/**
+ * `__auto__` was an earlier sentinel for "pick the tag for me", which the tag
+ * dropdown now expresses as an empty selection. It can only ever appear in the
+ * retired key, so it is folded on the way in rather than re-checked every load.
+ */
+function foldLegacySettings(legacy) {
+  return { ...legacy, tag: legacy.tag === '__auto__' ? '' : legacy.tag };
+}
 
 function loadSettings() {
-  const s = JSON.parse(localStorage.getItem('ffcgSettings') || '{}');
-  // Migrate legacy tag value.
-  const legacyTag = s.tag === '__auto__' ? '' : s.tag;
-  state.mode              = s.mode              ?? 'feature';
-  state.tag               = legacyTag          ?? '';
-  state.arraySize         = s.arraySize         ?? 4;
-  state.representErrors   = s.representErrors   ?? true;
-  state.errorless         = s.errorless         ?? false;
-  state.noErrorAnim       = s.noErrorAnim       ?? false;
-  state.promptPersists    = s.promptPersists    ?? false;
-  state.promptStyle       = s.promptStyle       ?? 'sparkle';
-  state.autoPromptEnabled = s.autoPromptEnabled ?? false;
-  state.promptDelay       = s.promptDelay       ?? false;
-  state.promptDelaySecs   = s.promptDelaySecs   ?? 3;
-  state.targetFilters     = Object.assign(
-    { feature:[], function:[], classWithinGroup:[], classCrossCategory:[] },
-    s.targetFilters || {}
-  );
+  // Read-then-fold, never drop. Runs at most once; `ffcgSettings` is left intact.
+  settingsStore.foldLegacy({ map: foldLegacySettings });
+  const s = settingsStore.initial();
+
+  state.mode              = s.mode;
+  state.tag               = s.tag;
+  state.arraySize         = s.arraySize;
+  state.representErrors   = s.representErrors;
+  state.errorless         = s.errorless;
+  state.noErrorAnim       = s.noErrorAnim;
+  state.promptPersists    = s.promptPersists;
+  state.promptStyle       = s.promptStyle;
+  state.autoPromptEnabled = s.autoPromptEnabled;
+  state.promptDelay       = s.promptDelay;
+  state.promptDelaySecs   = s.promptDelaySecs;
+  // A `map` is kept verbatim, so a saved document from before a mode existed
+  // comes back without that mode's key; backfilled so every mode still has a
+  // list to read and `migrateTargetFilters()` still walks all four.
+  state.targetFilters     = Object.assign(emptyTargetFilters(), s.targetFilters);
 
   el.selMode.value              = state.mode;
   el.inpSize.value              = state.arraySize;
@@ -199,10 +268,14 @@ function loadSettings() {
 
   el.chkPromptDelay.disabled = !state.autoPromptEnabled;
   el.selPromptDelay.disabled = !state.autoPromptEnabled || !state.promptDelay;
+
+  // The panel was just rendered from state, and a programmatic write fires no
+  // `change` event, so the prompting-method group has to be told to re-read.
+  if (window.NooutcoPrompting) window.NooutcoPrompting.refresh();
 }
 
 function saveSettings() {
-  localStorage.setItem('ffcgSettings', JSON.stringify({
+  settingsStore.saveWorking({
     mode:              state.mode,
     tag:               state.tag,
     arraySize:         state.arraySize,
@@ -215,7 +288,7 @@ function saveSettings() {
     promptDelay:       state.promptDelay,
     promptDelaySecs:   state.promptDelaySecs,
     targetFilters:     state.targetFilters,
-  }));
+  });
 }
 
 // ── Durable results persistence (device-local; never transmitted) ──
@@ -244,10 +317,11 @@ async function loadItems() {
     const r = await fetch('./items.json');
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const data = await r.json();
-    state.items          = data.items          || [];
     state.vocab          = data.vocab          || { groups:[], features:[], functions:[], classes:[] };
     state.prompts        = data.prompts        || {};
     state.promptDefaults = data.promptDefaults || {};
+    migrateTargetFilters(data.idAliases || {});
+    state.items = await joinLibrary(data);
   } catch (e) {
     console.error('Could not load items.json:', e);
     state.items = [];
@@ -255,6 +329,52 @@ async function loadItems() {
   pruneStaleTargetFilters();
   populateTagDropdown();
   updateTargetsCount();
+}
+
+/**
+ * Attach each item's picture and label from the shared stimulus library.
+ *
+ * `items.json` deliberately carries neither: it holds the feature / function /
+ * class metadata and the shared stimulus id it describes, and everything a
+ * learner sees comes from `stimuli.json`. That is what lets an AdminTools
+ * upload or a renamed label reach this game with nothing here to rebuild — the
+ * id is the join, and it does not move.
+ */
+async function joinLibrary(data) {
+  const r = await fetch(data.library || '/shared/stimuli/stimuli.json');
+  if (!r.ok) throw new Error(`HTTP ${r.status} for ${data.library}`);
+  const library = await r.json();
+  const byId = new Map((library.stimuli || []).map((entry) => [entry.id, entry]));
+
+  const items = [];
+  for (const item of data.items || []) {
+    const entry = byId.get(item.id);
+    // An item the library no longer carries has no picture and no label, so it
+    // is dropped rather than rendered blank — loudly, because it means the two
+    // documents have drifted.
+    if (!entry) { console.error(`ffc: ${item.id} is not in the stimulus library`); continue; }
+    items.push({ ...item, label: entry.label, image: entry.image || entry.placeholder || '' });
+  }
+  return items;
+}
+
+/**
+ * Re-point a saved target selection at the shared stimulus ids.
+ *
+ * ffc used to key its items by a bare stem (`pencil`, `mail_carrier`), which is
+ * what a technician's saved `targetFilters` still names. Dropping those would
+ * silently empty their target selection, so every old id is remapped before
+ * `pruneStaleTargetFilters()` gets to remove anything.
+ */
+function migrateTargetFilters(idAliases) {
+  let changed = false;
+  for (const mode of Object.keys(state.targetFilters)) {
+    const before = state.targetFilters[mode] || [];
+    const after = [...new Set(before.map((id) => idAliases[id] || id))];
+    if (after.join('\u0000') !== before.join('\u0000')) changed = true;
+    state.targetFilters[mode] = after;
+  }
+  if (changed) saveSettings();
 }
 
 /**
@@ -699,7 +819,7 @@ function renderTrial() {
     const front = document.createElement('div');
     front.className = 'tile-face tile-front';
     const img = document.createElement('img');
-    img.src = `_Resources/_imgSource/items/${item.img}`;
+    img.src = item.image;
     img.alt = item.label;
     const labelSpan = document.createElement('span');
     labelSpan.className = 'tile-label';
@@ -878,6 +998,15 @@ function onCorrectClick(wrapper, tile) {
       state.promptDelay ? state.promptDelaySecs : 0,
     ].join('|'),
   });
+  // Stage 8: ffc already resolves promptType against the active session, so
+  // stampTrial only adds the timestamp — it never overwrites a set promptType.
+  if (window.NooutcoResults) {
+    NooutcoResults.stampTrial(
+      state.sessionData[state.sessionData.length - 1],
+      { autoPrompt: state.autoPromptEnabled, promptDelay: state.promptDelay },
+      state.prompted || state.autoPrompted,
+    );
+  }
   persistResults();
 
   if (window.__nooutcoTokens) window.__nooutcoTokens.award();
@@ -1314,7 +1443,7 @@ function renderTargetPanel() {
 
       const thumb = document.createElement('img');
       thumb.className = 'target-thumb';
-      thumb.src = `_Resources/_imgSource/items/${it.img}`;
+      thumb.src = it.image;
       thumb.alt = '';
       const thumbLbl = document.createElement('span');
       thumbLbl.className = 'target-thumb-label';
@@ -1416,6 +1545,10 @@ function setExtraPanelOpen(open) {
 // A curated stimulus pool + per-item active feature/function/class traits
 // drives a mixed-type trial generator. Config persists per game to
 // localStorage `nooutco.settings.ffc` (pseudonymous set names only — no PHI).
+//
+// This is NOT the shared settings store: it has the same {sets, last, working}
+// shape and an entirely different schema. The trial settings live under
+// `nooutco.settings.ffc.trial` for exactly that reason — see SETTINGS_KEY.
 // ════════════════════════════════════════════════════════════════════
 
 const SESSION_KEY = 'nooutco.settings.ffc';
@@ -1587,7 +1720,7 @@ function renderSessionPool() {
 
     const emoji = document.createElement('img');
     emoji.className = 'pool-emoji';
-    emoji.src = `_Resources/_imgSource/items/${it.img}`;
+    emoji.src = it.image;
     emoji.alt = '';
     emoji.addEventListener('error', () => {
       const span = document.createElement('span');
@@ -1651,7 +1784,7 @@ function renderSessionTargets() {
   const emojiBox = document.createElement('div');
   emojiBox.className = 'session-sel-emoji';
   const emoji = document.createElement('img');
-  emoji.src = `_Resources/_imgSource/items/${it.img}`;
+  emoji.src = it.image;
   emoji.alt = '';
   emoji.addEventListener('error', () => { emojiBox.textContent = '🔹'; });
   emojiBox.appendChild(emoji);

@@ -213,6 +213,13 @@ const choiceEls = () => Array.from(el.choices.querySelectorAll('.choice'));
 
 // ── State ──────────────────────────────────────────────────────────────
 const state = {
+  // The programme parameters in force, normalized. Stage 7's DOM-as-state fix:
+  // every runtime read used to reach into a control (`el.chkErrorless.checked`,
+  // `el.selPromptDelay.value`), which made the *panel* the source of truth. The
+  // controls are now a view of this object — written by
+  // applySettingsToControls(), and read back only for the one control a
+  // technician just changed. Populated by loadSettings() during init().
+  cfg: null,
   deck: [],
   pos: 0,
   current: null,
@@ -233,46 +240,128 @@ const state = {
 };
 
 // ── Settings persistence ───────────────────────────────────────────────
-const SETTINGS_KEY = 'tosSettings';
-const RESULTS_KEY  = 'tosResults';
+const SETTINGS_KEY = 'nooutco.settings.think-or-say';
+const LEGACY_SETTINGS_KEY = 'tosSettings';
+// Namespaced to match the other nine games. The bare `tosResults` key is
+// retired but never deleted — loadResults() folds it forward on first run.
+const RESULTS_KEY        = 'nooutco.results.think-or-say';
+const LEGACY_RESULTS_KEY = 'tosResults';
 
-function loadSettings() {
-  let s = {};
-  try { s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch (e) {}
-  el.selCategory.value      = s.category      ?? 'all';
-  el.selOrder.value         = s.order         ?? 'shuffle';
-  el.chkRepresent.checked   = s.represent     ?? true;
-  el.chkErrorless.checked   = s.errorless     ?? false;
-  el.chkNoErrorAnim.checked = s.noErrorAnim   ?? false;
-  el.chkAutoPrompt.checked  = s.autoPrompt    ?? false;
-  el.chkPromptDelay.checked = s.promptDelay   ?? false;
-  el.selPromptDelay.value   = s.promptDelaySec ?? '3';
-  el.selPromptStyle.value   = s.promptStyle   ?? 'sparkle';
-  el.chkShowReason.checked  = s.showReason    ?? true;
-  el.chkIncludeTricky.checked = s.includeTricky ?? false;
-  syncPromptDelayEnabled();
+/**
+ * The programme parameters this game persists, declared ONCE (Stage 6).
+ *
+ * `../game-settings.js` derives both the defaults and the clamping from this
+ * single declaration, so there is no second hand-written description of the
+ * schema to drift out of sync with it.
+ *
+ * `category` is an enum rather than a free string because an unoffered value is
+ * worse here than an out-of-range one: a stored category naming a set of cards
+ * that no longer exists leaves the select showing nothing AND makes `buildDeck`
+ * match zero scenarios, so the game cannot start at all. The honest fallback is
+ * the "All categories" the panel can actually show.
+ *
+ * `autoPrompt` defaults to FALSE here — it is true only in `sequences`. That
+ * difference is clinical, not accidental; do not harmonise it.
+ */
+const SETTINGS_FIELDS = {
+  category:        { type: 'enum', values: ['all'].concat(Object.keys(CATEGORIES)), default: 'all' },
+  order:           { type: 'enum', values: ['shuffle', 'sequential'], default: 'shuffle' },
+  represent:       { type: 'bool', default: true },
+  errorless:       { type: 'bool', default: false },
+  noErrorAnim:     { type: 'bool', default: false },
+  autoPrompt:      { type: 'bool', default: false },
+  promptDelay:     { type: 'bool', default: false },
+  // The select offers 1/2/3/4/5/10 s, so its ceiling of 10 is renderable and a
+  // range is honest here (an enum would be too, but the platform-wide spelling
+  // of this field in eight other games is `int {min:1, max:10}`).
+  promptDelaySecs: { type: 'int',  min: 1, max: 10, default: 3 },
+  promptStyle:     { type: 'enum', values: ['sparkle', 'outline'], default: 'sparkle' },
+  showReason:      { type: 'bool', default: true },
+  includeTricky:   { type: 'bool', default: false },
+};
+
+const settingsStore = window.NooutcoSettings.defineStore({
+  key: SETTINGS_KEY,
+  legacyKey: LEGACY_SETTINGS_KEY,
+  fields: SETTINGS_FIELDS,
+});
+
+/**
+ * `tosSettings` spelled the prompt delay `promptDelaySec` — singular, and
+ * stored as a STRING — which is a third spelling of the option eight other
+ * games call `promptDelaySecs`. The fold renames it forward onto the shared
+ * spelling; `tosSettings` itself keeps its own key, its own spelling and its
+ * own string, untouched, because the fold never rewrites the retired key.
+ */
+function foldRetiredSettings(legacy) {
+  const { promptDelaySec, ...rest } = legacy;
+  return promptDelaySec == null ? rest : { ...rest, promptDelaySecs: promptDelaySec };
 }
 
+/**
+ * Each panel control, the option it edits, and how its value is read.
+ *
+ * One row per persisted option, so a control can never edit an option the
+ * field spec does not declare (and vice versa — asserted by the settings
+ * store's own normalize()). Reading a control happens here and nowhere else.
+ */
+const SETTINGS_CONTROLS = [
+  { node: 'selCategory',      option: 'category',        read: n => n.value,   write: (n, v) => { n.value = v; } },
+  { node: 'selOrder',         option: 'order',           read: n => n.value,   write: (n, v) => { n.value = v; } },
+  { node: 'chkRepresent',     option: 'represent',       read: n => n.checked, write: (n, v) => { n.checked = v; } },
+  { node: 'chkErrorless',     option: 'errorless',       read: n => n.checked, write: (n, v) => { n.checked = v; } },
+  { node: 'chkNoErrorAnim',   option: 'noErrorAnim',     read: n => n.checked, write: (n, v) => { n.checked = v; } },
+  { node: 'chkAutoPrompt',    option: 'autoPrompt',      read: n => n.checked, write: (n, v) => { n.checked = v; } },
+  { node: 'chkPromptDelay',   option: 'promptDelay',     read: n => n.checked, write: (n, v) => { n.checked = v; } },
+  { node: 'selPromptDelay',   option: 'promptDelaySecs', read: n => n.value,   write: (n, v) => { n.value = v; } },
+  { node: 'selPromptStyle',   option: 'promptStyle',     read: n => n.value,   write: (n, v) => { n.value = v; } },
+  { node: 'chkShowReason',    option: 'showReason',      read: n => n.checked, write: (n, v) => { n.checked = v; } },
+  { node: 'chkIncludeTricky', option: 'includeTricky',   read: n => n.checked, write: (n, v) => { n.checked = v; } },
+];
+
+/** Render the panel from the configuration in force, so the two cannot diverge. */
+function applySettingsToControls(cfg) {
+  for (const c of SETTINGS_CONTROLS) c.write(el[c.node], cfg[c.option]);
+  syncPromptDelayEnabled();
+  // A programmatic write fires no `change` event, so the prompting-method group
+  // has to be told to re-read the two switches it summarises.
+  if (window.NooutcoPrompting) window.NooutcoPrompting.refresh();
+}
+
+function loadSettings() {
+  // Read-then-fold, never drop. Runs at most once; `tosSettings` is left intact.
+  settingsStore.foldLegacy({ map: foldRetiredSettings });
+  state.cfg = settingsStore.initial();
+  applySettingsToControls(state.cfg);
+}
+
+/**
+ * Fold one control's edit into the configuration and persist it.
+ *
+ * Only the control the technician just touched is read — a control whose value
+ * changed without a `change` event (the browser restoring form state across a
+ * reload, most commonly) is not a technician decision and must not silently
+ * become one. `normalize()` re-clamps the whole config using the same
+ * declaration the load path uses, so the select's string becomes the store's
+ * int, and re-rendering the panel afterwards makes any clamp visible rather
+ * than leaving the panel showing a value that is not in force.
+ */
+function editSetting(control) {
+  const raw = Object.assign({}, state.cfg, { [control.option]: control.read(el[control.node]) });
+  state.cfg = settingsStore.normalize(raw);
+  settingsStore.saveWorking(state.cfg);
+  applySettingsToControls(state.cfg);
+}
+
+/** Persist the configuration in force, unchanged. */
 function saveSettings() {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify({
-    category:      el.selCategory.value,
-    order:         el.selOrder.value,
-    represent:     el.chkRepresent.checked,
-    errorless:     el.chkErrorless.checked,
-    noErrorAnim:   el.chkNoErrorAnim.checked,
-    autoPrompt:    el.chkAutoPrompt.checked,
-    promptDelay:   el.chkPromptDelay.checked,
-    promptDelaySec:el.selPromptDelay.value,
-    promptStyle:   el.selPromptStyle.value,
-    showReason:    el.chkShowReason.checked,
-    includeTricky: el.chkIncludeTricky.checked,
-  }));
+  settingsStore.saveWorking(state.cfg);
 }
 
 function syncPromptDelayEnabled() {
-  const on = el.chkAutoPrompt.checked;
+  const on = state.cfg.autoPrompt;
   el.chkPromptDelay.disabled = !on;
-  el.selPromptDelay.disabled = !on || !el.chkPromptDelay.checked;
+  el.selPromptDelay.disabled = !on || !state.cfg.promptDelay;
 }
 
 // ── Category dropdown ──────────────────────────────────────────────────
@@ -296,14 +385,14 @@ function shuffle(arr) {
 
 // ── Build deck ─────────────────────────────────────────────────────────
 function buildDeck() {
-  const cat = el.selCategory.value;
-  const includeTricky = el.chkIncludeTricky.checked;
+  const cat = state.cfg.category;
+  const includeTricky = state.cfg.includeTricky;
   let pool = SCENARIOS.filter(s => {
     if (s.tricky && !includeTricky) return false;
     if (cat !== 'all' && s.cat !== cat) return false;
     return true;
   });
-  if (el.selOrder.value === 'shuffle') pool = shuffle(pool);
+  if (state.cfg.order === 'shuffle') pool = shuffle(pool);
   state.deck = pool;
   state.pos = 0;
   state.represented = new Set();
@@ -403,7 +492,7 @@ function revealChoices() {
   state.trialStart = Date.now();
   resetTimer();
   startTimer();
-  if (el.chkAutoPrompt.checked) scheduleAutoPrompt();
+  if (state.cfg.autoPrompt) scheduleAutoPrompt();
 }
 
 function escapeHtml(str) {
@@ -443,13 +532,13 @@ function answerCorrect(card) {
   card.classList.add('correct');
 
   recordResult();
-  if (el.chkShowReason.checked || state.learnMode) showReason();
+  if (state.cfg.showReason || state.learnMode) showReason();
   showNextButton();
 }
 
 function answerWrong(card) {
   state.trialErrors++;
-  if (!el.chkNoErrorAnim.checked) {
+  if (!state.cfg.noErrorAnim) {
     card.classList.remove('wiggle', 'flash-red');
     void card.offsetWidth;            // restart animation
     card.classList.add('wiggle', 'flash-red');
@@ -459,7 +548,7 @@ function answerWrong(card) {
     }, 520);
   }
   // In errorless mode, disable the wrong choice so only the correct one remains.
-  if (el.chkErrorless.checked) {
+  if (state.cfg.errorless) {
     card.disabled = true;
     card.classList.add('locked', 'dim');
     // Surface the correct answer as a prompt.
@@ -477,7 +566,7 @@ function showReason() {
 // ── Prompt ─────────────────────────────────────────────────────────────
 function doPrompt() {
   if (state.locked || !state.choicesRevealed) return;
-  const style = el.selPromptStyle.value === 'outline' ? 'prompt-outline' : 'prompt-sparkle';
+  const style = state.cfg.promptStyle === 'outline' ? 'prompt-outline' : 'prompt-sparkle';
   clearPromptHighlight();
   const target = choiceEls().find(c => c.dataset.answer === state.current.answer);
   if (target && !target.disabled) target.classList.add(style);
@@ -490,7 +579,12 @@ function clearPromptHighlight() {
 
 function scheduleAutoPrompt() {
   clearPromptTimer();
-  const delay = el.chkPromptDelay.checked ? parseInt(el.selPromptDelay.value, 10) * 1000 : 0;
+  // `promptDelaySecs` is already an int here: the store clamps it on load and
+  // editSetting() re-normalizes the select's string on every edit. Reading the
+  // control instead used to hand `parseInt('')` — NaN, which setTimeout treats
+  // as 0 — to the learner as an instant prompt whenever the stored value was
+  // one the select could not display.
+  const delay = state.cfg.promptDelay ? state.cfg.promptDelaySecs * 1000 : 0;
   state.promptTimer = setTimeout(() => { if (!state.locked) doPrompt(); }, delay);
 }
 
@@ -519,7 +613,7 @@ function removeNextButton() {
 function willRepresent() {
   const sc = state.current;
   const missed = state.trialErrors > 0 || state.trialPrompted;
-  return missed && el.chkRepresent.checked && !state.represented.has(sc.id);
+  return missed && state.cfg.represent && !state.represented.has(sc.id);
 }
 
 function nextTrial() {
@@ -573,7 +667,7 @@ function recordResult() {
   let outcome = 'ok';
   if (state.trialPrompted) outcome = 'prompted';
   else if (state.trialErrors > 0) outcome = 'error';
-  state.results.push({
+  const row = {
     cat: CATEGORIES[sc.cat] || sc.cat,
     scenario: sc.situation,
     answer: sc.answer === 'think' ? 'THINK IT' : 'SAY IT',
@@ -581,15 +675,42 @@ function recordResult() {
     prompted: state.trialPrompted,
     secs,
     outcome,
-  });
-  saveResults();
+  };
+  if (window.NooutcoResults) {
+    NooutcoResults.record(
+      RESULTS_KEY, state.results, row,
+      { autoPrompt: state.cfg.autoPrompt, promptDelay: state.cfg.promptDelay },
+      state.trialPrompted,
+    );
+  } else {
+    state.results.push(row);
+    saveResults();
+  }
 }
 
 function saveResults() {
+  if (window.NooutcoResults) { NooutcoResults.save(RESULTS_KEY, state.results); return; }
   try { localStorage.setItem(RESULTS_KEY, JSON.stringify(state.results)); } catch (e) {}
 }
 
+/**
+ * Load the trial record, folding the retired bare `tosResults` key forward on
+ * first run. Read-then-fold: the old key is left in place rather than deleted,
+ * so a technician who reverts to an older build still has their session.
+ */
 function loadResults() {
+  if (window.NooutcoResults) {
+    state.results = NooutcoResults.load(RESULTS_KEY);
+    if (!state.results.length) {
+      let legacy = [];
+      try { legacy = JSON.parse(localStorage.getItem(LEGACY_RESULTS_KEY) || '[]'); } catch (e) { legacy = []; }
+      if (Array.isArray(legacy) && legacy.length) {
+        state.results = legacy;
+        NooutcoResults.save(RESULTS_KEY, state.results);
+      }
+    }
+    return;
+  }
   try { state.results = JSON.parse(localStorage.getItem(RESULTS_KEY) || '[]'); } catch (e) { state.results = []; }
 }
 
@@ -663,6 +784,7 @@ function renderTimer() {
 
 // ── Wiring ─────────────────────────────────────────────────────────────
 function init() {
+  if (window.NooutcoConfig) NooutcoConfig.migrate();
   populateCategories();
   loadSettings();
   loadResults();
@@ -688,12 +810,11 @@ function init() {
     el.btnExtraToggle.setAttribute('aria-expanded', 'false');
   });
 
-  // Persist settings on change
-  [el.selCategory, el.selOrder, el.chkRepresent, el.chkErrorless, el.chkNoErrorAnim,
-   el.chkAutoPrompt, el.chkPromptDelay, el.selPromptDelay, el.selPromptStyle,
-   el.chkShowReason, el.chkIncludeTricky].forEach(node => {
-    node.addEventListener('change', () => { syncPromptDelayEnabled(); saveSettings(); });
-  });
+  // Persist settings on change — one control at a time, so only the option the
+  // technician actually edited is read back off the panel.
+  for (const control of SETTINGS_CONTROLS) {
+    el[control.node].addEventListener('change', () => editSetting(control));
+  }
 
   // Timer
   el.btnTimerToggle.addEventListener('click', toggleTimer);

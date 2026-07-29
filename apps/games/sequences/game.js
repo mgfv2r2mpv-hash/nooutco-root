@@ -34,6 +34,8 @@ const PATTERN_TEMPLATES = {
 };
 
 const ROUND_KEY = 'nooutco.settings.sequences';
+// The retired settings-bar key. Read and folded forward, never deleted.
+const LEGACY_SETTINGS_KEY = 'seqSettings';
 
 // Prompting method (UI radio) → recorded prompt type when a prompt fires.
 const PROMPT_TYPE_BY_METHOD = {
@@ -168,6 +170,7 @@ function bindEvents() {
     if (!state.sessionData.length) { alert('No data to clear.'); return; }
     if (!confirm('Clear all trial data? This cannot be undone.')) return;
     state.sessionData = [];
+    if (window.NooutcoResults) NooutcoResults.clear(RESULTS_KEY);
     state.trialNum    = 0;
     el.resultsBody.innerHTML = '';
   });
@@ -467,7 +470,7 @@ function finishTrial() {
     outcome = 'Correct';
   }
 
-  state.sessionData.push({
+  recordTrial({
     trial:      state.trialNum,
     set:        state.setName,
     pattern:    state.unit.join(''),
@@ -617,65 +620,59 @@ function printData() {
 // ════════════════════════════════════════════════════════════════════
 
 // The round config is the single source of truth for the whole settings panel:
-// pattern selection + core trial shape + advanced prompt overrides.
-function defaultRound() {
-  return {
-    patterns: ['AB'], reps: 2, setName: '', prompting: 'most-to-least', sound: true,
-    // Core trial shape (pattern LENGTH is intrinsic to the selected templates).
-    blanksToFill: 1, bankSize: 4,
-    // Advanced overrides (formerly the #extra-panel "Options").
-    representErrors: true, errorless: false, noErrorAnim: false,
-    promptPersists: false, promptStyle: 'sparkle',
-    // Prompt behaviour — the method radio presets these; Advanced can override.
-    autoPromptEnabled: true, promptDelay: false, promptDelaySecs: ROUND_TIME_DELAY_SECS,
-  };
-}
-function clampReps(n) { return Math.max(1, Math.min(10, parseInt(n, 10) || 2)); }
-function clampInt(n, min, max) { return Math.max(min, Math.min(max, parseInt(n, 10) || min)); }
+// pattern selection + core trial shape + advanced prompt overrides. The schema
+// below is the declaration the shared store (../game-settings.js) clamps
+// against; `sequences` is the game that pattern was extracted from, so this is
+// the reference shape for the other nine.
+//
+// `autoPromptEnabled` defaults to TRUE here and false in the other nine games.
+// That difference is clinical, not accidental — do not harmonise it.
+const ROUND_FIELDS = {
+  patterns:     { type: 'list', values: () => Object.keys(PATTERN_TEMPLATES), default: ['AB'] },
+  reps:         { type: 'int',  min: 1, max: 10, default: 2 },
+  // The symbol set has to be validated against what actually loaded, so its
+  // allowed values and its fallback are both resolved at normalize time.
+  setName:      { type: 'enum', values: () => symbolSetNames(),
+                  default: () => state.setName || symbolSetNames()[0] || '' },
+  prompting:    { type: 'enum', values: () => Object.keys(PROMPT_TYPE_BY_METHOD), default: 'most-to-least' },
+  sound:        { type: 'bool', default: true },
+  // Core trial shape (pattern LENGTH is intrinsic to the selected templates).
+  blanksToFill: { type: 'int',  min: 1, max: 5, default: 1 },
+  bankSize:     { type: 'int',  min: 2, max: 8, default: 4 },
+  // Advanced overrides (formerly the #extra-panel "Options").
+  representErrors: { type: 'bool', default: true },
+  errorless:       { type: 'bool', default: false },
+  noErrorAnim:     { type: 'bool', default: false },
+  promptPersists:  { type: 'bool', default: false },
+  promptStyle:     { type: 'enum', values: ['sparkle', 'outline'], default: 'sparkle' },
+  // Prompt behaviour — the method radio presets these; Advanced can override.
+  autoPromptEnabled: { type: 'bool', default: true },
+  promptDelay:       { type: 'bool', default: false },
+  promptDelaySecs:   { type: 'int', min: 1, max: 10, default: ROUND_TIME_DELAY_SECS },
+};
 
-// Validation guard — keeps saved sets resilient to content/version changes.
-function normalizeRound(cfg) {
-  const out  = defaultRound();
-  const sets = (state.symbolsData && state.symbolsData.sets) || {};
-  const names = Object.keys(sets);
-  out.patterns = Array.isArray(cfg.patterns) ? cfg.patterns.filter(p => PATTERN_TEMPLATES[p]) : [];
-  if (!out.patterns.length) out.patterns = ['AB'];
-  out.reps      = clampReps(cfg.reps);
-  out.setName   = (cfg.setName && names.includes(cfg.setName)) ? cfg.setName : (state.setName || names[0] || '');
-  out.prompting = PROMPT_TYPE_BY_METHOD[cfg.prompting] ? cfg.prompting : 'most-to-least';
-  out.sound     = cfg.sound !== false;
-  out.blanksToFill    = clampInt(cfg.blanksToFill ?? 1, 1, 5);
-  out.bankSize        = clampInt(cfg.bankSize ?? 4, 2, 8);
-  out.representErrors = cfg.representErrors ?? true;
-  out.errorless       = cfg.errorless ?? false;
-  out.noErrorAnim     = cfg.noErrorAnim ?? false;
-  out.promptPersists  = cfg.promptPersists ?? false;
-  out.promptStyle     = (cfg.promptStyle === 'outline') ? 'outline' : 'sparkle';
-  out.autoPromptEnabled = cfg.autoPromptEnabled ?? true;
-  out.promptDelay       = cfg.promptDelay ?? false;
-  out.promptDelaySecs   = clampInt(cfg.promptDelaySecs ?? ROUND_TIME_DELAY_SECS, 1, 10);
-  return out;
+function symbolSetNames() {
+  return Object.keys((state.symbolsData && state.symbolsData.sets) || {});
 }
 
-// ── Persistence ────────────────────────────────────────────────────
-function loadRoundStore() {
-  try { return JSON.parse(localStorage.getItem(ROUND_KEY) || '{}'); }
-  catch (e) { return {}; }
-}
-function saveRoundStore(store) {
-  try { localStorage.setItem(ROUND_KEY, JSON.stringify(store)); }
-  catch (e) { /* storage full / unavailable — non-fatal */ }
-}
+const roundStore = window.NooutcoSettings.defineStore({
+  key: ROUND_KEY,
+  legacyKey: LEGACY_SETTINGS_KEY,
+  fields: ROUND_FIELDS,
+});
+
+function defaultRound() { return roundStore.defaults(); }
+// The engine re-clamps what it reads out of the round config, so the two
+// clamps the trial loop uses stay available outside the store's normalize().
+function clampInt(n, min, max) { return window.NooutcoSettings.clampInt(n, min, max); }
+function clampReps(n) { return window.NooutcoSettings.clampInt(n, 1, 10, 2); }
+
 // Persist live edits as the working config so a reload restores the panel state.
-function saveWorkingRound() {
-  const store = loadRoundStore();
-  store.working = JSON.parse(JSON.stringify(state.round));
-  saveRoundStore(store);
-}
+function saveWorkingRound() { roundStore.saveWorking(state.round); }
 
 // ── Rendering ──────────────────────────────────────────────────────
 function renderRoundSetPicker(store) {
-  store = store || loadRoundStore();
+  store = store || roundStore.load();
   const sel = el.selRoundSet;
   if (!sel) return;
   const names = Object.keys(store.sets || {});
@@ -775,7 +772,6 @@ function renderRoundPanel() {
 }
 
 // ── Gating (Frame 04 — long-press the gear to edit) ────────────────
-let _roundHoldTimer = null, _roundDidHold = false;
 function setRoundEditing(on) {
   state.roundEditing = on;
   el.roundPanel.dataset.editing = String(on);
@@ -797,26 +793,10 @@ function bindRoundEvents() {
   if (!gear) return;
 
   // Press-and-hold → open unlocked; quick tap → toggle (locked) view.
-  const startHold = () => {
-    _roundDidHold = false;
-    gear.classList.add('is-holding');
-    _roundHoldTimer = setTimeout(() => {
-      _roundDidHold = true;
-      gear.classList.remove('is-holding');
-      openRoundPanel(true);
-    }, 600);
-  };
-  const endHold = () => {
-    gear.classList.remove('is-holding');
-    if (_roundHoldTimer) { clearTimeout(_roundHoldTimer); _roundHoldTimer = null; }
-  };
-  gear.addEventListener('pointerdown', startHold);
-  gear.addEventListener('pointerup', endHold);
-  gear.addEventListener('pointerleave', endHold);
-  gear.addEventListener('pointercancel', endHold);
-  gear.addEventListener('click', () => {
-    if (_roundDidHold) { _roundDidHold = false; return; }   // hold already handled it
-    setRoundPanelOpen(!state.roundPanelOpen);
+  window.NooutcoSettings.holdToUnlock(gear, {
+    holdMs: 600,
+    onHold: () => openRoundPanel(true),
+    onTap:  () => setRoundPanelOpen(!state.roundPanelOpen),
   });
 
   el.btnRoundClose.addEventListener('click', () => setRoundPanelOpen(false));
@@ -900,23 +880,16 @@ function bindRoundEvents() {
 // ── Saved sets ─────────────────────────────────────────────────────
 function applyRoundByName(name) {
   if (!name) return;
-  const store = loadRoundStore();
-  const set = store.sets && store.sets[name];
-  if (!set) return;
-  state.round = normalizeRound(set);
-  store.last = name; saveRoundStore(store);
+  const applied = roundStore.applySet(name);
+  if (!applied) return;
+  state.round = applied;
   renderRoundPanel();
 }
 
 function saveCurrentRound() {
   const name = (prompt('Name this set (pseudonym only — no learner identifiers):', '') || '').trim();
   if (!name) return;
-  const store = loadRoundStore();
-  store.sets = store.sets || {};
-  store.sets[name] = JSON.parse(JSON.stringify(state.round));
-  store.last = name;
-  saveRoundStore(store);
-  renderRoundSetPicker(store);
+  renderRoundSetPicker(roundStore.saveSet(name, state.round));
 }
 
 // ── Start a curated round ──────────────────────────────────────────
@@ -953,9 +926,7 @@ function startRound() {
   }
 
   // Persist as the working/last config so a reload restores it.
-  const store = loadRoundStore();
-  store.working = JSON.parse(JSON.stringify(r));
-  saveRoundStore(store);
+  roundStore.saveWorking(r);
 
   applyRoundToEngine();
   setRoundEditing(false);       // re-lock on start
@@ -970,48 +941,74 @@ function startRound() {
 
 // One-time fold of the retired `seqSettings` store into the round working config,
 // so a user who configured the old settings-bar/Options keeps their choices.
-const LEGACY_SETTINGS_KEY = 'seqSettings';
-function migrateLegacyIntoStore(store) {
-  if (store.working || store._legacyMigrated) return;
-  let legacy = null;
-  try { legacy = JSON.parse(localStorage.getItem(LEGACY_SETTINGS_KEY) || 'null'); }
-  catch (e) { legacy = null; }
-  if (!legacy) return;
-  const base = (store.last && store.sets && store.sets[store.last]) || defaultRound();
-  store.working = normalizeRound({
-    ...base,
-    blanksToFill:      legacy.blanksToFill,
-    bankSize:          legacy.bankSize,
-    representErrors:   legacy.representErrors,
-    errorless:         legacy.errorless,
-    noErrorAnim:       legacy.noErrorAnim,
-    promptPersists:    legacy.promptPersists,
-    promptStyle:       legacy.promptStyle,
-    autoPromptEnabled: legacy.autoPromptEnabled,
-    promptDelay:       legacy.promptDelay,
-    promptDelaySecs:   legacy.promptDelaySecs,
+// Read-then-fold, never drop: `seqSettings` itself is left untouched in storage.
+// The map names every field explicitly — an absent legacy field must land as
+// `undefined` so the schema's default wins over whatever a saved set held.
+function migrateLegacyIntoStore() {
+  return roundStore.foldLegacy({
+    map: (legacy) => ({
+      blanksToFill:      legacy.blanksToFill,
+      bankSize:          legacy.bankSize,
+      representErrors:   legacy.representErrors,
+      errorless:         legacy.errorless,
+      noErrorAnim:       legacy.noErrorAnim,
+      promptPersists:    legacy.promptPersists,
+      promptStyle:       legacy.promptStyle,
+      autoPromptEnabled: legacy.autoPromptEnabled,
+      promptDelay:       legacy.promptDelay,
+      promptDelaySecs:   legacy.promptDelaySecs,
+    }),
   });
-  store._legacyMigrated = true;
-  saveRoundStore(store);
 }
 
 function initRound() {
-  const store = loadRoundStore();
-  migrateLegacyIntoStore(store);
-  const source = store.working
-    || (store.last && store.sets && store.sets[store.last])
-    || defaultRound();
-  state.round = normalizeRound(source);
+  migrateLegacyIntoStore();
+  state.round = roundStore.initial();
   state.roundActive = false;
   state.roundEditing = false;
   state.roundPanelOpen = false;
   bindRoundEvents();
-  renderRoundSetPicker(store);
+  renderRoundSetPicker();
+}
+
+// ── Trial record (device-local) ────────────────────────────────────
+// Trial rows used to live only in memory, so a refresh mid-session lost the
+// technician's whole record. They persist here through the shared store, which
+// is device-local and never transmitted (see results-report.js).
+// promptType is already resolved above against the active round, so stampTrial
+// leaves it alone and only adds the timestamp.
+const RESULTS_KEY = 'nooutco.results.sequences';
+
+function promptCfg() {
+  return { autoPrompt: state.autoPromptEnabled, promptDelay: state.promptDelay };
+}
+
+function recordTrial(row) {
+  const prompted = state.prompted || state.autoPrompted;
+  if (window.NooutcoResults) {
+    NooutcoResults.record(RESULTS_KEY, state.sessionData, row, promptCfg(), prompted);
+  } else {
+    state.sessionData.push(row);
+  }
+}
+
+function persistTrials() {
+  if (window.NooutcoResults) NooutcoResults.save(RESULTS_KEY, state.sessionData);
+}
+
+function restoreTrials() {
+  if (!window.NooutcoResults) return;
+  const rows = NooutcoResults.load(RESULTS_KEY);
+  if (!Array.isArray(rows) || !rows.length) return;
+  state.sessionData = rows;
+  state.trialNum = rows.reduce((m, d) => Math.max(m, Number(d.trial) || 0), 0);
 }
 
 // ── Init ───────────────────────────────────────────────────────────
 
 (async function init() {
+  if (window.NooutcoConfig) NooutcoConfig.migrate();
+  restoreTrials();
   bindEvents();
   await loadSymbols();
   initRound();

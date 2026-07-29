@@ -1,5 +1,14 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Overridable so a run can avoid colliding with whatever already holds 8788.
+// `reuseExistingServer` will happily adopt an unrelated server on the default
+// port — a plain static server answers most asset requests, so the suite can
+// look green while never exercising _worker.js (version injection, the legacy
+// /IDMatchGame → /matching redirects that market's image borrow depends on).
+// Set GAMES_TEST_PORT to force this run's own wrangler instance.
+const PORT = Number(process.env.GAMES_TEST_PORT) || 8788;
+const BASE_URL = `http://localhost:${PORT}`;
+
 export default defineConfig({
   testDir: './tests',
   fullyParallel: true,
@@ -8,7 +17,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:8788',
+    baseURL: BASE_URL,
     trace: 'on-first-retry',
   },
   projects: [
@@ -26,8 +35,16 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npx wrangler pages dev . --port 8788',
-    url: 'http://localhost:8788',
-    reuseExistingServer: !process.env.CI,
+    command: `npx wrangler pages dev . --port ${PORT}`,
+    url: BASE_URL,
+    reuseExistingServer: !process.env.CI && !process.env.GAMES_TEST_PORT,
+    // wrangler downloads and boots workerd on a cold CI runner; the 60s default
+    // is tight enough that a slow boot looks like a test failure.
+    timeout: 180_000,
+    // Surface workerd's own output. When the server died mid-run the only
+    // evidence was a bare "Connection refused" on every subsequent test —
+    // piping its stderr is what turned that into a diagnosable crash.
+    stdout: 'pipe',
+    stderr: 'pipe',
   },
 });

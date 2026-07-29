@@ -18,6 +18,63 @@ function pickRandom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+/**
+ * The stimulus art moved to the shared library at /shared/stimuli/, so a saved
+ * target selection still names its pictures by the URLs this game used to
+ * serve. The manifest ships that old-URL -> new-URL table; without applying it
+ * the selection matches nothing and pruneStaleTargetFilter() throws the
+ * technician's chosen targets away on first load.
+ *
+ * Two old paths can land on one stimulus (a photo and the deselected duplicate
+ * in a second format), so the migrated list is de-duplicated.
+ */
+function migrateTargetFilters(manifest) {
+  const aliases = manifest?.pathAliases;
+  if (!aliases) return;
+
+  const migrated = {};
+  let changed = false;
+  for (const [topic, srcs] of Object.entries(state.targetFilters)) {
+    if (!Array.isArray(srcs)) { migrated[topic] = srcs; continue; }
+    const moved = [...new Set(srcs.map(src => aliases[src] ?? src))];
+    if (moved.length !== srcs.length || moved.some((src, i) => src !== srcs[i])) changed = true;
+    migrated[topic] = moved;
+  }
+  if (!changed) return;
+
+  state.targetFilters = migrated;
+  saveSettings();
+}
+
+/**
+ * AdminTools still keys a technician's display-name override by the path it
+ * uploaded to, under the game's own tree. The generated manifest only carries
+ * library URLs, so any legacy key present is an override written since the
+ * last rebuild — newer than the generated label, and it wins. Without this the
+ * label saves cleanly and then never renders.
+ */
+function foldLegacyDisplayNames(manifest) {
+  const { displayNames, pathAliases } = manifest || {};
+  if (!displayNames || !pathAliases) return;
+
+  for (const [legacy, url] of Object.entries(pathAliases)) {
+    const label = displayNames[legacy];
+    if (typeof label === 'string' && label.trim()) displayNames[url] = label;
+  }
+}
+
+// ── Settings storage keys ──────────────────────────────────────────
+// Stage 6: this game's programme parameters live in the shared store
+// (../game-settings.js) under SETTINGS_KEY. `mgSettings` is the retired key —
+// read once, folded into the store, and NEVER deleted or rewritten, so a
+// mis-mapped fold is recoverable and a downgrade still finds the old config.
+//
+// The pairing is the surprising one recorded in the Stage 5 notes: this game
+// lives in `matching/` but persisted to `mgSettings` (MatchingGame), while
+// `market/` persisted to `mmSettings` (MatchingMarket).
+const SETTINGS_KEY = 'nooutco.settings.matching';
+const LEGACY_SETTINGS_KEY = 'mgSettings';
+
 // ── State ──────────────────────────────────────────────────────────
 
 const state = {
@@ -191,33 +248,87 @@ function pinwheelOff(node) {
   node.classList.add('pinwheel-off');
 }
 
-// ── Settings (localStorage) ────────────────────────────────────────
+// ── Settings (the shared store) ─────────────────────────────────────
+
+/**
+ * The programme parameters this game persists, declared once. The shared store
+ * derives BOTH the defaults and the clamping from this one declaration, so
+ * there is no second hand-written description to drift out of sync with it.
+ *
+ * `autoPromptEnabled` defaults to FALSE here — it is true only in `sequences`.
+ * That difference is clinical, not accidental; do not harmonise it.
+ */
+const SETTINGS_FIELDS = {
+  topic:                { type: 'string', default: '' },
+  arraySize:            { type: 'int',  min: 1, max: 10, default: 4 },
+  // The toolbar Simple/Visual slider, persisted via __setGameDisplayMode.
+  displayMode:          { type: 'enum', values: ['simple', 'visual'], default: 'simple' },
+  representErrors:      { type: 'bool', default: true },
+  errorless:            { type: 'bool', default: false },
+  noErrorAnim:          { type: 'bool', default: false },
+  crossCategory:        { type: 'bool', default: false },
+  nonTargetDistractors: { type: 'bool', default: true },
+  promptPersists:       { type: 'bool', default: false },
+  promptStyle:          { type: 'enum', values: ['sparkle', 'outline'], default: 'sparkle' },
+  autoPromptEnabled:    { type: 'bool', default: false },
+  promptDelay:          { type: 'bool', default: false },
+  promptDelaySecs:      { type: 'int',  min: 1, max: 10, default: 3 },
+  // topic folder -> the image URLs the technician chose as targets.
+  targetFilters:        { type: 'map',  default: {} },
+  // Token board.
+  tokenBoardEnabled:    { type: 'bool', default: false },
+  scheduleType:         { type: 'enum', values: ['FR', 'VR'], default: 'FR' },
+  scheduleValue:        { type: 'int',  min: 1, max: 100,  default: 1 },
+  startingTokens:       { type: 'int',  min: 0, max: 1000, default: 0 },
+  goalTokens:           { type: 'int',  min: 1, max: 1000, default: 10 },
+  // Resolved at normalize time so the stored value is validated against
+  // exactly the glyphs the <select> offers (EMOJI_POOL is declared further
+  // down, next to pickRandomEmoji, and a thunk defers reading it until then).
+  tokenEmoji:           { type: 'enum', values: () => ['random', ...EMOJI_POOL], default: 'random' },
+  // Free-form: whichever glyph the 'random' setting landed on for this session.
+  chosenEmoji:          { type: 'string', default: '⭐' },
+  currentTokens:        { type: 'int',  min: 0, max: 1000, default: 0 },
+};
+
+const settingsStore = window.NooutcoSettings.defineStore({
+  key: SETTINGS_KEY,
+  legacyKey: LEGACY_SETTINGS_KEY,
+  fields: SETTINGS_FIELDS,
+});
 
 function loadSettings() {
-  const s = JSON.parse(localStorage.getItem('mgSettings') || '{}');
-  state.topic             = s.topic             ?? '';
-  state.arraySize         = s.arraySize         ?? 4;
-  state.displayMode       = s.displayMode       ?? 'simple';
-  state.representErrors   = s.representErrors   ?? true;
-  state.errorless         = s.errorless         ?? false;
-  state.noErrorAnim       = s.noErrorAnim       ?? false;
-  state.nonTargetDistractors = s.nonTargetDistractors ?? true;
-  state.crossCategory     = s.crossCategory     ?? false;
-  state.promptPersists    = s.promptPersists    ?? false;
-  state.promptStyle       = s.promptStyle       ?? 'sparkle';
-  state.autoPromptEnabled = s.autoPromptEnabled ?? false;
-  state.promptDelay       = s.promptDelay       ?? false;
-  state.promptDelaySecs   = s.promptDelaySecs   ?? 3;
-  state.targetFilters     = s.targetFilters     ?? {};
+  // Read-then-fold, never drop. Runs at most once; `mgSettings` is left intact.
+  settingsStore.foldLegacy();
+  const s = settingsStore.initial();
 
-  state.tokenBoardEnabled = s.tokenBoardEnabled ?? false;
-  state.scheduleType      = s.scheduleType      ?? 'FR';
-  state.scheduleValue     = s.scheduleValue     ?? 1;
-  state.startingTokens    = s.startingTokens    ?? 0;
-  state.goalTokens        = s.goalTokens        ?? 10;
-  state.tokenEmoji        = s.tokenEmoji        ?? 'random';
-  state.chosenEmoji       = s.chosenEmoji       ?? '⭐';
-  state.currentTokens     = s.currentTokens     ?? state.startingTokens;
+  state.topic             = s.topic;
+  state.arraySize         = s.arraySize;
+  state.displayMode       = s.displayMode;
+  state.representErrors   = s.representErrors;
+  state.errorless         = s.errorless;
+  state.noErrorAnim       = s.noErrorAnim;
+  state.nonTargetDistractors = s.nonTargetDistractors;
+  state.crossCategory     = s.crossCategory;
+  state.promptPersists    = s.promptPersists;
+  state.promptStyle       = s.promptStyle;
+  state.autoPromptEnabled = s.autoPromptEnabled;
+  state.promptDelay       = s.promptDelay;
+  state.promptDelaySecs   = s.promptDelaySecs;
+  state.targetFilters     = s.targetFilters;
+
+  state.tokenBoardEnabled = s.tokenBoardEnabled;
+  state.scheduleType      = s.scheduleType;
+  state.scheduleValue     = s.scheduleValue;
+  state.startingTokens    = s.startingTokens;
+  state.goalTokens        = s.goalTokens;
+  state.tokenEmoji        = s.tokenEmoji;
+  state.chosenEmoji       = s.chosenEmoji;
+  // The old read was `s.currentTokens ?? state.startingTokens`. The board's
+  // live count is reset to startingTokens by initializeTokenBoard() at the
+  // bottom of this function whenever the board is on, so the two readings
+  // cannot be told apart on screen — and a declared default of 0 avoids
+  // turning a legitimately stored 0 into startingTokens.
+  state.currentTokens     = s.currentTokens;
 
   el.inpSize.value              = state.arraySize;
   el.chkRepresentErrors.checked = state.representErrors;
@@ -242,6 +353,10 @@ function loadSettings() {
   el.chkPromptDelay.disabled = !state.autoPromptEnabled;
   el.selPromptDelay.disabled = !state.autoPromptEnabled || !state.promptDelay;
 
+  // The panel was just rendered from state, and a programmatic write fires no
+  // `change` event, so the prompting-method group has to be told to re-read.
+  if (window.NooutcoPrompting) window.NooutcoPrompting.refresh();
+
   updateTokenBoardUIVisibility();
   if (state.tokenBoardEnabled) {
     initializeTokenBoard();
@@ -251,7 +366,7 @@ function loadSettings() {
 }
 
 function saveSettings() {
-  localStorage.setItem('mgSettings', JSON.stringify({
+  settingsStore.saveWorking({
     topic:             state.topic,
     arraySize:         state.arraySize,
     displayMode:       state.displayMode,
@@ -274,7 +389,7 @@ function saveSettings() {
     tokenEmoji:        state.tokenEmoji,
     chosenEmoji:       state.chosenEmoji,
     currentTokens:     state.currentTokens,
-  }));
+  });
 }
 
 // ── Image discovery ────────────────────────────────────────────────
@@ -304,6 +419,8 @@ async function discoverTopics() {
       const data = await r.json();
       if (Array.isArray(data.folders) && data.folders.length) {
         state.manifest = data;
+        migrateTargetFilters(data);
+        foldLegacyDisplayNames(data);
         dirs = data.folders;
         console.info(`manifest.json loaded (generated ${data.generated})`);
       }
@@ -346,10 +463,13 @@ function buildTopicDropdown(dirs) {
     el.selTopic.innerHTML = '<option value="">-- No T_* folders found --</option>';
     return;
   }
+  // A technician's rename, per game, comes down in the generated manifest and
+  // outranks the shipped default: the topic key never moves, only its name.
+  const named = (state.manifest && state.manifest.topicNames) || {};
   dirs.forEach(d => {
     const o = document.createElement('option');
     o.value = d;
-    o.textContent = TOPIC_DISPLAY_NAMES[d] ||
+    o.textContent = named[d] || TOPIC_DISPLAY_NAMES[d] ||
       d.slice(2).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     el.selTopic.appendChild(o);
   });
@@ -858,6 +978,15 @@ function onCorrectClick(wrapper, tile) {
       state.promptDelay ? state.promptDelaySecs : 0,
     ].join('|'),
   });
+  // Stage 8: the two fields every game must carry, stamped in one shared place
+  // so a session record is comparable across programmes.
+  if (window.NooutcoResults) {
+    NooutcoResults.stampTrial(
+      state.sessionData[state.sessionData.length - 1],
+      { autoPrompt: state.autoPromptEnabled, promptDelay: state.promptDelay },
+      state.prompted || state.autoPrompted,
+    );
+  }
   persistResults();
 
   // Award tokens on correct response

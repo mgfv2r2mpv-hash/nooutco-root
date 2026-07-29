@@ -35,7 +35,60 @@ function labelFromSrc(src) {
   return name.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
+/**
+ * The stimulus art moved to the shared library at /shared/stimuli/, so a saved
+ * target selection still names its pictures by the URLs this game used to
+ * serve. The manifest ships that old-URL -> new-URL table; without applying it
+ * the selection matches nothing and the technician's chosen targets are
+ * silently dropped on first load.
+ *
+ * Two old paths can land on one stimulus (a photo and the deselected duplicate
+ * in a second format), so the migrated list is de-duplicated.
+ */
+function migrateTargetFilters(manifest) {
+  const aliases = manifest?.pathAliases;
+  if (!aliases) return;
+
+  const migrated = {};
+  let changed = false;
+  for (const [topic, srcs] of Object.entries(state.targetFilters)) {
+    if (!Array.isArray(srcs)) { migrated[topic] = srcs; continue; }
+    const moved = [...new Set(srcs.map(src => aliases[src] ?? src))];
+    if (moved.length !== srcs.length || moved.some((src, i) => src !== srcs[i])) changed = true;
+    migrated[topic] = moved;
+  }
+  if (!changed) return;
+
+  state.targetFilters = migrated;
+  saveSettings();
+}
+
+/**
+ * AdminTools still keys a technician's display-name override by the path it
+ * uploaded to, under the game's own tree. The generated manifest only carries
+ * library URLs, so any legacy key present is an override written since the
+ * last rebuild — newer than the generated label, and it wins. Without this the
+ * label saves cleanly and then never renders.
+ */
+function foldLegacyDisplayNames(manifest) {
+  const { displayNames, pathAliases } = manifest || {};
+  if (!displayNames || !pathAliases) return;
+
+  for (const [legacy, url] of Object.entries(pathAliases)) {
+    const label = displayNames[legacy];
+    if (typeof label === 'string' && label.trim()) displayNames[url] = label;
+  }
+}
+
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+// ── Settings storage keys ──────────────────────────────────────────
+// Stage 6: this game's programme parameters live in the shared store
+// (../game-settings.js) under SETTINGS_KEY. `hddSettings` is the retired key —
+// read once, folded into the store, and NEVER deleted or rewritten, so a
+// mis-mapped fold is recoverable and a downgrade still finds the old config.
+const SETTINGS_KEY = 'nooutco.settings.clock';
+const LEGACY_SETTINGS_KEY = 'hddSettings';
 
 // ── State ──────────────────────────────────────────────────────────
 
@@ -149,30 +202,102 @@ const el = {
 
 // ── Boot ───────────────────────────────────────────────────────────
 
+
+// ── Trial record (device-local) ────────────────────────────────────
+// Trial rows used to live only in memory, so a refresh mid-session lost the
+// technician's whole record. They persist here through the shared store, which
+// is device-local and never transmitted (see results-report.js).
+const RESULTS_KEY = 'nooutco.results.clock';
+
+function promptCfg() {
+  return { autoPrompt: state.autoPromptEnabled, promptDelay: state.promptDelay };
+}
+
+/** Append a trial, stamp the uniform fields, and persist in one step. */
+function recordTrial(row) {
+  const prompted = state.prompted || state.autoPrompted;
+  if (window.NooutcoResults) {
+    NooutcoResults.record(RESULTS_KEY, state.sessionData, row, promptCfg(), prompted);
+  } else {
+    state.sessionData.push(row);
+  }
+}
+
+/** Re-save after an in-place edit (undo). */
+function persistTrials() {
+  if (window.NooutcoResults) NooutcoResults.save(RESULTS_KEY, state.sessionData);
+}
+
+/** Restore a session interrupted by a reload. Trial numbering resumes. */
+function restoreTrials() {
+  if (!window.NooutcoResults) return;
+  const rows = NooutcoResults.load(RESULTS_KEY);
+  if (!Array.isArray(rows) || !rows.length) return;
+  state.sessionData = rows;
+  state.trialNum = rows.reduce((m, d) => Math.max(m, Number(d.trial) || 0), 0);
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+  if (window.NooutcoConfig) NooutcoConfig.migrate();
+  restoreTrials();
   loadSettings();
   bindEvents();
   await discoverTopics();
 });
 
-// ── Settings (localStorage) ────────────────────────────────────────
+// ── Settings (the shared store) ────────────────────────────────────
+
+/**
+ * The programme parameters this game persists, declared once. The shared store
+ * derives BOTH the defaults and the clamping from this one declaration, so
+ * there is no second hand-written description to drift out of sync with it.
+ *
+ * `autoPromptEnabled` defaults to FALSE here — it is true only in `sequences`.
+ * That difference is clinical, not accidental; do not harmonise it.
+ */
+const SETTINGS_FIELDS = {
+  topic:                { type: 'string', default: '' },
+  arraySize:            { type: 'int',  min: 1, max: 10, default: 4 },
+  animations:           { type: 'bool', default: true },
+  representErrors:      { type: 'bool', default: true },
+  errorless:            { type: 'bool', default: false },
+  noErrorAnim:          { type: 'bool', default: false },
+  crossCategory:        { type: 'bool', default: false },
+  nonTargetDistractors: { type: 'bool', default: true },
+  promptPersists:       { type: 'bool', default: false },
+  promptStyle:          { type: 'enum', values: ['sparkle', 'outline'], default: 'sparkle' },
+  autoPromptEnabled:    { type: 'bool', default: false },
+  promptDelay:          { type: 'bool', default: false },
+  promptDelaySecs:      { type: 'int',  min: 1, max: 10, default: 3 },
+  // topic folder -> the image URLs the technician chose as targets.
+  targetFilters:        { type: 'map',  default: {} },
+};
+
+const settingsStore = window.NooutcoSettings.defineStore({
+  key: SETTINGS_KEY,
+  legacyKey: LEGACY_SETTINGS_KEY,
+  fields: SETTINGS_FIELDS,
+});
 
 function loadSettings() {
-  const s = JSON.parse(localStorage.getItem('hddSettings') || '{}');
-  state.topic             = s.topic             ?? '';
-  state.arraySize         = s.arraySize         ?? 4;
-  state.animations        = s.animations        ?? true;
-  state.representErrors   = s.representErrors   ?? true;
-  state.errorless         = s.errorless         ?? false;
-  state.noErrorAnim       = s.noErrorAnim       ?? false;
-  state.crossCategory          = s.crossCategory          ?? false;
-  state.nonTargetDistractors   = s.nonTargetDistractors   ?? true;
-  state.promptPersists         = s.promptPersists         ?? false;
-  state.promptStyle       = s.promptStyle       ?? 'sparkle';
-  state.autoPromptEnabled = s.autoPromptEnabled ?? false;
-  state.promptDelay       = s.promptDelay       ?? false;
-  state.promptDelaySecs   = s.promptDelaySecs   ?? 3;
-  state.targetFilters     = (s.targetFilters && typeof s.targetFilters === 'object') ? s.targetFilters : {};
+  // Read-then-fold, never drop. Runs at most once; `hddSettings` is left intact.
+  settingsStore.foldLegacy();
+  const s = settingsStore.initial();
+
+  state.topic             = s.topic;
+  state.arraySize         = s.arraySize;
+  state.animations        = s.animations;
+  state.representErrors   = s.representErrors;
+  state.errorless         = s.errorless;
+  state.noErrorAnim       = s.noErrorAnim;
+  state.crossCategory          = s.crossCategory;
+  state.nonTargetDistractors   = s.nonTargetDistractors;
+  state.promptPersists         = s.promptPersists;
+  state.promptStyle       = s.promptStyle;
+  state.autoPromptEnabled = s.autoPromptEnabled;
+  state.promptDelay       = s.promptDelay;
+  state.promptDelaySecs   = s.promptDelaySecs;
+  state.targetFilters     = s.targetFilters;
 
   el.inpSize.value              = state.arraySize;
   el.chkAnimations.checked      = state.animations;
@@ -189,10 +314,14 @@ function loadSettings() {
 
   el.chkPromptDelay.disabled = !state.autoPromptEnabled;
   el.selPromptDelay.disabled = !state.autoPromptEnabled || !state.promptDelay;
+
+  // The panel was just rendered from state, and a programmatic write fires no
+  // `change` event, so the prompting-method group has to be told to re-read.
+  if (window.NooutcoPrompting) window.NooutcoPrompting.refresh();
 }
 
 function saveSettings() {
-  localStorage.setItem('hddSettings', JSON.stringify({
+  settingsStore.saveWorking({
     topic:             state.topic,
     arraySize:         state.arraySize,
     animations:        state.animations,
@@ -207,7 +336,7 @@ function saveSettings() {
     promptDelay:       state.promptDelay,
     promptDelaySecs:   state.promptDelaySecs,
     targetFilters:     state.targetFilters,
-  }));
+  });
 }
 
 // ── Image discovery ────────────────────────────────────────────────
@@ -237,6 +366,8 @@ async function discoverTopics() {
       const data = await r.json();
       if (Array.isArray(data.folders) && data.folders.length) {
         state.manifest = data;
+        migrateTargetFilters(data);
+        foldLegacyDisplayNames(data);
         dirs = data.folders;
         console.info(`manifest.json loaded (generated ${data.generated})`);
       }
@@ -277,10 +408,13 @@ function buildTopicDropdown(dirs) {
     el.selTopic.innerHTML = '<option value="">-- No T_* folders found --</option>';
     return;
   }
+  // A technician's rename, per game, comes down in the generated manifest and
+  // outranks the shipped default: the topic key never moves, only its name.
+  const named = (state.manifest && state.manifest.topicNames) || {};
   dirs.forEach(d => {
     const o = document.createElement('option');
     o.value = d;
-    o.textContent = TOPIC_DISPLAY_NAMES[d] ||
+    o.textContent = named[d] || TOPIC_DISPLAY_NAMES[d] ||
       d.slice(2).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     el.selTopic.appendChild(o);
   });
@@ -411,6 +545,7 @@ function bindEvents() {
     }
     if (!confirm('Clear all trial data? This cannot be undone.')) return;
     state.sessionData = [];
+    if (window.NooutcoResults) NooutcoResults.clear(RESULTS_KEY);
     state.trialNum    = 0;
     el.resultsBody.innerHTML = '';
   });
@@ -932,7 +1067,7 @@ function recordOutcome() {
     outcome = 'Correct';
   }
 
-  state.sessionData.push({
+  recordTrial({
     trial:     state.trialNum,
     topic:     state.topic.slice(2).replace(/_/g, ' '),
     sample:    state.sampleLabel,
