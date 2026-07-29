@@ -1,7 +1,7 @@
 {
   "/clock/_Resources/_imgSource/T_actions/clapping.png": {
     "stimulus": "actions-clapping",
-    "sha256": "700a3fe18090c139935f00ebc31cc5e40a88b8c43951cf48a93efa1110da7512",
+    "sha256": "042735888cdce87a3dec807ddffacd75c8b879e96ccc7b22b7653b8505969efb",
     "library": "/shared/stimuli/img/T_actions/clapping.png"
   },
   "/clock/_Resources/_imgSource/T_actions/crying.jpg": {
@@ -11,17 +11,17 @@
   },
   "/clock/_Resources/_imgSource/T_actions/drinking.png": {
     "stimulus": "actions-drinking",
-    "sha256": "39c7bf1d4b1c3c648e409c89c6a1edd4c51ccf2010205b8bad062f543a8b38ec",
+    "sha256": "a38d1294f3c2ed7b049806b65c49e69b4703f5f2be60eb3a0f81e93e131ce926",
     "library": "/shared/stimuli/img/T_actions/drinking.png"
   },
   "/clock/_Resources/_imgSource/T_actions/eating.png": {
     "stimulus": "actions-eating",
-    "sha256": "0caa82ff1c911a183291a88057c6cd4c19edba8cec241e766abe9f68283d6b2d",
+    "sha256": "477191264704254ac476649c3766da83ec1348ab5bf1add5eb60c20c271b2561",
     "library": "/shared/stimuli/img/T_actions/eating.png"
   },
   "/clock/_Resources/_imgSource/T_actions/hugging.png": {
     "stimulus": "actions-hugging",
-    "sha256": "57d308644433850b75a61c8e7a6d1fc65046338665048705caa824b81f3b7d16",
+    "sha256": "71013084dcd04eb307db47704190916e0618f2ebd3ee9139fd916b3fc7b5498a",
     "library": "/shared/stimuli/img/T_actions/hugging.png"
   },
   "/clock/_Resources/_imgSource/T_actions/jumping.jpg": {
@@ -41,17 +41,17 @@
   },
   "/clock/_Resources/_imgSource/T_actions/reading.png": {
     "stimulus": "actions-reading",
-    "sha256": "de92c8d4f0aa01b831c93a5644f2b2694f1fe1af3ec94c17ae847905698cd6a1",
+    "sha256": "a4afd1aeb432a0a81d06d52ed396c713d6f9226f8f31c703049c51264314b301",
     "library": "/shared/stimuli/img/T_actions/reading.png"
   },
   "/clock/_Resources/_imgSource/T_actions/sleeping.png": {
     "stimulus": "actions-sleeping",
-    "sha256": "62cf41a215c44eb88f04a829177ca09e7219fcbf88ece05c8d9b77ecfcfefdee",
+    "sha256": "82bd97c818d626c3d649633b852ba812f32b6453297aafd68c76b11fd04296e0",
     "library": "/shared/stimuli/img/T_actions/sleeping.png"
   },
   "/clock/_Resources/_imgSource/T_actions/swimming.png": {
     "stimulus": "actions-swimming",
-    "sha256": "acac573be912e6f9a2200972b1ea94f80bc7b72250517ea96dd5b228323e444d",
+    "sha256": "7b244444b0999771073225e274fc7081943b6f5ffed2bf7d47bd5378ea822217",
     "library": "/shared/stimuli/img/T_actions/swimming.png"
   },
   "/clock/_Resources/_imgSource/T_actions/throwing.jpg": {
@@ -61,7 +61,7 @@
   },
   "/clock/_Resources/_imgSource/T_actions/walking.png": {
     "stimulus": "actions-walking",
-    "sha256": "6c596d0b59ddaf0ffb78be6b59ca37ccc4d0fdf11faa659e96c89bbcc569c61e",
+    "sha256": "82d66a4e112fe677a612ce7de0c497a3a63b4a1cb036928dee1f5528aaec0d30",
     "library": "/shared/stimuli/img/T_actions/walking.png"
   },
   "/clock/_Resources/_imgSource/T_actions/writing.jpg": {
@@ -71,7 +71,7 @@
   },
   "/clock/_Resources/_imgSource/T_animals/bear.jpg": {
     "stimulus": "animals-bear",
-    "sha256": "29d5ef20102717546e8370f59fc48d0891cebe52743641ccdeaa4108022f75ea",
+    "sha256": "934b0ec99ad1751cb004c273ff61db5d151e028276a8f2488fe8e1950676aa0b",
     "library": "/shared/stimuli/img/T_animals/bear--alt1.jpg"
   },
   "/clock/_Resources/_imgSource/T_animals/bear.svg": {
@@ -82,7 +82,7 @@
   },
   "/clock/_Resources/_imgSource/T_animals/bird.jpg": {
     "stimulus": "animals-bird",
-    "sha256": "617d7102f2ce4b75eb5d3898f5475a4f014f3801ae5c7319512753b1b6ad38c4",
+    "sha256": "70f1f321fcafd14e27c3ff62f3250277fca43e825da42c37dea6ea80e6c485e6",
     "library": "/shared/stimuli/img/T_animals/bird--alt1.jpg"
   },
   "/clock/_Resources/_imgSource/T_animals/bird.svg": {
@@ -93,7 +93,7 @@
   },
   "/clock/_Resources/_imgSource/T_animals/butterfly.jpg": {
     "stimulus": "animals-butterfly",
-    "sha256": "8e9def9e572e79c885cb8ac2acc0e895bd9922a3f490b3f570e97c36ca2b72ee",
+    "sha256": "76f141fdabc981b4cacbdffdcb5b68f013559f0a5320f16b2680bbf138786b9a",
     "library": "/shared/stimuli/img/T_animals/butterfly--alt1.jpg"
   },
   "/clock/_Resources/_imgSource/T_animals/butterfly.svg": {
@@ -104,7 +104,7 @@
   },
   "/clock/_Resources/_imgSource/T_animals/cat.jpg": {
     "stimulus": "animals-cat",
-    "sha256": "74d09a7c6463a844572c58634a798d4fa1b646aeff8be81a42ab68915e54e049",
+    "sha256": "f71aa4d51dcb33463cdca9e9be843fb17ecf7862a91ccbd026d3d4f5530a8a2e",
     "library": "/shared/stimuli/img/T_animals/cat--alt1.jpg"
   },
   "/clock/_Resources/_imgSource/T_animals/cat.svg": {
@@ -115,7 +115,7 @@
   },
   "/clock/_Resources/_imgSource/T_animals/dog.jpg": {
     "stimulus": "animals-dog",
-    "sha256": "1d14f8d6804a8afeb2c37986ecef20055395412a45ecfd9cc8f19a621f3a41ea",
+    "sha256": "bb0ed432c4a06108e248a6930a0d67f339c30fe8f1411b69028ef980bad36531",
     "library": "/shared/stimuli/img/T_animals/dog--alt1.jpg"
   },
   "/clock/_Resources/_imgSource/T_animals/dog.svg": {
@@ -126,7 +126,7 @@
   },
   "/clock/_Resources/_imgSource/T_animals/elephant.jpg": {
     "stimulus": "animals-elephant",
-    "sha256": "a137477d5cddbba778c0b7e78dfe94702010cd1e95f366e49628fcf19dec7dde",
+    "sha256": "21f1ab5fcba14d199754a5331909bdf7dea2a128c67d095448923954daa260a4",
     "library": "/shared/stimuli/img/T_animals/elephant--alt1.jpg"
   },
   "/clock/_Resources/_imgSource/T_animals/elephant.svg": {
@@ -137,7 +137,7 @@
   },
   "/clock/_Resources/_imgSource/T_animals/fish.jpg": {
     "stimulus": "animals-fish",
-    "sha256": "0c5b3f4e6f45da68885096ba630ea66fcde82d70fad1fb97f19337e8502ccba7",
+    "sha256": "2f12df8bf09ce5050ddf45a5ee6536303c4cc0a7339c0a321bc0f275d5d8fac4",
     "library": "/shared/stimuli/img/T_animals/fish--alt1.jpg"
   },
   "/clock/_Resources/_imgSource/T_animals/fish.svg": {
@@ -868,7 +868,7 @@
   },
   "/ffc/_Resources/_imgSource/items/apple.jpg": {
     "stimulus": "foods-apple",
-    "sha256": "bfbaf6828607d9b94fb54056877497ac32926aa75c09de4abd61bc05ba24e2a7",
+    "sha256": "3aec13201f36898db9a314368ce8dbd8a426d05638026ddbc0af04a5f027d6ed",
     "library": "/shared/stimuli/img/T_foods/apple.jpg"
   },
   "/ffc/_Resources/_imgSource/items/apple.svg": {
@@ -879,7 +879,7 @@
   },
   "/ffc/_Resources/_imgSource/items/backpack.jpg": {
     "stimulus": "school-backpack",
-    "sha256": "5b1c2c83ad2b731258aabd3ede9760651eb8e32e8af5c4bfd57ccc9bafb14ce4",
+    "sha256": "804ab4109b75b59e1051c43322c2e862479c7c6f614d3f9c028d2cc68b6d10e3",
     "library": "/shared/stimuli/img/T_school/backpack.jpg"
   },
   "/ffc/_Resources/_imgSource/items/balloon.svg": {
@@ -890,7 +890,7 @@
   },
   "/ffc/_Resources/_imgSource/items/banana.jpg": {
     "stimulus": "foods-banana",
-    "sha256": "77036e4ae91b7fbce3f16d2c32325a2c28e5ab3f2a9e388b6108c0554f44cde9",
+    "sha256": "8818e043cd338161db3cfe5bc208da05a5a25397d4083d520ced536800187202",
     "library": "/shared/stimuli/img/T_foods/banana.jpg"
   },
   "/ffc/_Resources/_imgSource/items/banana.svg": {
@@ -929,7 +929,7 @@
   },
   "/ffc/_Resources/_imgSource/items/bicycle.jpg": {
     "stimulus": "vehicles-bicycle",
-    "sha256": "b3223d3b5f17177a1d9ddff0d8899f88d3ce1c3d8811b5bfcdf09f583e8e35e3",
+    "sha256": "30966a41bf40f73a6b8bc35aa8666d50deb609b4c0bc8402e59b23ecb8e8aebc",
     "library": "/shared/stimuli/img/T_vehicles/bicycle.jpg"
   },
   "/ffc/_Resources/_imgSource/items/bird.jpg": {
@@ -980,7 +980,7 @@
   },
   "/ffc/_Resources/_imgSource/items/bus.jpg": {
     "stimulus": "vehicles-bus",
-    "sha256": "625deb54b4c3c65654a152db48154bcb414ce3c97a8ea8a5cb96b4fa6d371a9e",
+    "sha256": "e884658f67da207c837b16584f92cb51355a66a848995667526915e5cfbdb869",
     "library": "/shared/stimuli/img/T_vehicles/bus.jpg"
   },
   "/ffc/_Resources/_imgSource/items/butterfly.jpg": {
@@ -1001,7 +1001,7 @@
   },
   "/ffc/_Resources/_imgSource/items/car.webp": {
     "stimulus": "vehicles-car",
-    "sha256": "8755f8818088d25bf7568fb77b5192c258d176448cafa26d3c4b9309edb8db47",
+    "sha256": "6d05a759143635bc65e6ed65fb9e468404ec0b755ad47d1efac00d04ed4be4d7",
     "library": "/shared/stimuli/img/T_vehicles/car--alt1.webp"
   },
   "/ffc/_Resources/_imgSource/items/castle.svg": {
@@ -1018,7 +1018,7 @@
   },
   "/ffc/_Resources/_imgSource/items/chair.jpg": {
     "stimulus": "household-items-chair",
-    "sha256": "31848585f350158e8bb413ccc340280ac032bb569a48cb7501f39f010ec44faf",
+    "sha256": "44d5ff606de7ff3a8fac2d5c13581a773c167cbea4b01a0efdb39322e6b70d2a",
     "library": "/shared/stimuli/img/T_household_items/chair--alt1.jpg"
   },
   "/ffc/_Resources/_imgSource/items/chair.svg": {
@@ -1052,7 +1052,7 @@
   },
   "/ffc/_Resources/_imgSource/items/coat.jpg": {
     "stimulus": "clothing-coat",
-    "sha256": "0ae510fcdd48242562f8acbee45071f8fdea5d37f1f884f34c05dfb13898fb64",
+    "sha256": "141b1d0d378513e7c2fb14f2e6322f3040bb6a14c4344597c23bde537883ee98",
     "library": "/shared/stimuli/img/T_clothing/coat.jpg"
   },
   "/ffc/_Resources/_imgSource/items/construction.svg": {
@@ -1099,7 +1099,7 @@
   },
   "/ffc/_Resources/_imgSource/items/eraser.jpg": {
     "stimulus": "school-eraser",
-    "sha256": "c1607264d8b75412a054c968f9e19a118ff1a893b35fb055df7994893dc52e0e",
+    "sha256": "66e2bc726d75563c5b192239024c8828d9c91222d6c43348e51ecb6093351456",
     "library": "/shared/stimuli/img/T_school/eraser.jpg"
   },
   "/ffc/_Resources/_imgSource/items/factory.svg": {
@@ -1197,7 +1197,7 @@
   },
   "/ffc/_Resources/_imgSource/items/mug.jpg": {
     "stimulus": "household-items-mug",
-    "sha256": "1096533ecc5aaa2982a70ae76d03f934c516f1e4abddf9a08029683010c0ee42",
+    "sha256": "43459c66cebfa89a85ca7bf261dccb98da9b6dcb9976e67ec7601560d890484a",
     "library": "/shared/stimuli/img/T_household_items/mug--alt1.jpg"
   },
   "/ffc/_Resources/_imgSource/items/mug.svg": {
@@ -1282,18 +1282,18 @@
   },
   "/ffc/_Resources/_imgSource/items/scissors.jpg": {
     "stimulus": "school-scissors",
-    "sha256": "d869746a3dad9420ee15b2395021f8c138b096c21470e75fa434477e6bdcb5c1",
+    "sha256": "f58f29217b37c54e6c7423a0917f692cec3271c3b9e6e0a10d4010026fa320f7",
     "library": "/shared/stimuli/img/T_school/scissors.jpg"
   },
   "/ffc/_Resources/_imgSource/items/shirt.jpg": {
     "stimulus": "clothing-shirt",
-    "sha256": "3fc4f94c4809a3b30ea49315c878a1edfb300b12350a3e00a61cd87581a33a5f",
+    "sha256": "a0405ef42090e77ef754f66ad95e45e48940d6b848a6aee79246b88c39a0eae3",
     "library": null,
     "droppedBecause": "superseded-by-upload"
   },
   "/ffc/_Resources/_imgSource/items/shirt.png": {
     "stimulus": "clothing-shirt",
-    "sha256": "b26565b7033d51d572d2cd7c8fef7cf4b861ca27fc1fbbf0b4133fd34a335053",
+    "sha256": "50c53e7503081e2116dc8c7b2dfe1c22af8d5fc6a7b17999d4d1f29b9528578d",
     "library": null,
     "droppedBecause": "superseded-by-upload"
   },
@@ -1316,7 +1316,7 @@
   },
   "/ffc/_Resources/_imgSource/items/sofa.jpg": {
     "stimulus": "household-items-sofa",
-    "sha256": "8f63c60dab46377672d639dc2c618ff7b85dea2a9f714ca2f05b3f103fbc6595",
+    "sha256": "452beaebcec05ce0dbf989fa8acd69a4604a0d5ee4d62211003f41a6498cb9fe",
     "library": "/shared/stimuli/img/T_household_items/sofa--alt1.jpg"
   },
   "/ffc/_Resources/_imgSource/items/sofa.svg": {
@@ -1350,7 +1350,7 @@
   },
   "/ffc/_Resources/_imgSource/items/toy-car.jpg": {
     "stimulus": "toys-toy-car",
-    "sha256": "3761698df73e317457a03b00a5ba9dab03e78c82b40233b9a5fc4ed49bf6c6ca",
+    "sha256": "b197c413a5a74aaab1b6304b03c3fb8031571fb53c0e7da3ebe84021ac3f1b2c",
     "library": "/shared/stimuli/img/T_toys/toy-car.jpg"
   },
   "/ffc/_Resources/_imgSource/items/toy-car.svg": {
@@ -1372,37 +1372,37 @@
   },
   "/matching/_Resources/_imgSource/T_animals/bear.jpg": {
     "stimulus": "animals-bear",
-    "sha256": "f949e70b3a008b62ce07946447e109d1fdd9972d0391c01aa32aae8d058fae6a",
+    "sha256": "77e02ab993d7eb3a400238e366ef51055a3003eb9e60817344ff18c598379fa2",
     "library": "/shared/stimuli/img/T_animals/bear.jpg"
   },
   "/matching/_Resources/_imgSource/T_animals/bear.svg": {
     "stimulus": "animals-bear",
-    "sha256": "f949e70b3a008b62ce07946447e109d1fdd9972d0391c01aa32aae8d058fae6a",
+    "sha256": "77e02ab993d7eb3a400238e366ef51055a3003eb9e60817344ff18c598379fa2",
     "library": "/shared/stimuli/img/T_animals/bear.jpg"
   },
   "/matching/_Resources/_imgSource/T_animals/bird.jpg": {
     "stimulus": "animals-bird",
-    "sha256": "fd120aa0c36772f45486582a5f784969b9aff754aff6fe584610ea77e49ab3b5",
+    "sha256": "70ad83f326cdaeef9936c3abeaf93c8750678d8091f3289ce226cc00191b27a3",
     "library": "/shared/stimuli/img/T_animals/bird.jpg"
   },
   "/matching/_Resources/_imgSource/T_animals/bird.svg": {
     "stimulus": "animals-bird",
-    "sha256": "617d7102f2ce4b75eb5d3898f5475a4f014f3801ae5c7319512753b1b6ad38c4",
+    "sha256": "70f1f321fcafd14e27c3ff62f3250277fca43e825da42c37dea6ea80e6c485e6",
     "library": "/shared/stimuli/img/T_animals/bird--alt1.jpg"
   },
   "/matching/_Resources/_imgSource/T_animals/butterfly.jpg": {
     "stimulus": "animals-butterfly",
-    "sha256": "b16696901f859977c9a0469298325bb15682fcba14b2798708f112aeee612651",
+    "sha256": "d4f640b46c62f4b8af39cd8e312d00f7ef9c18e275b78981cb01de618d5b9c26",
     "library": "/shared/stimuli/img/T_animals/butterfly.jpg"
   },
   "/matching/_Resources/_imgSource/T_animals/butterfly.svg": {
     "stimulus": "animals-butterfly",
-    "sha256": "b16696901f859977c9a0469298325bb15682fcba14b2798708f112aeee612651",
+    "sha256": "d4f640b46c62f4b8af39cd8e312d00f7ef9c18e275b78981cb01de618d5b9c26",
     "library": "/shared/stimuli/img/T_animals/butterfly.jpg"
   },
   "/matching/_Resources/_imgSource/T_animals/cat.jpg": {
     "stimulus": "animals-cat",
-    "sha256": "59ec9bf12a5b63e0913e986b9566b96228c9f8921fda4fb87bf2a7f9acff3dd2",
+    "sha256": "785a9984d5e7d6af88093e3f4132147211eb66af83b5724196f0576680fe44d9",
     "library": "/shared/stimuli/img/T_animals/cat.jpg"
   },
   "/matching/_Resources/_imgSource/T_animals/cat.svg": {
@@ -1413,7 +1413,7 @@
   },
   "/matching/_Resources/_imgSource/T_animals/dog.jpg": {
     "stimulus": "animals-dog",
-    "sha256": "cf610d12950f72a951f199cd63bbfdcfb889b78b0f62465bb057df0c0952daa1",
+    "sha256": "c747335462009af145bd50b2bdce030af49cb0639894d03be575ed8ea28ed876",
     "library": "/shared/stimuli/img/T_animals/dog.jpg"
   },
   "/matching/_Resources/_imgSource/T_animals/dog.svg": {
@@ -1424,7 +1424,7 @@
   },
   "/matching/_Resources/_imgSource/T_animals/elephant.jpg": {
     "stimulus": "animals-elephant",
-    "sha256": "b484cfa5f59ce9aa6fcca0ffb394c705e364d4a4056d1badf22eec62a1eebc06",
+    "sha256": "8bd3408f4d136c67ecadcaed7e1d2abf407d6b44f6ac1e9a35dcb77eaf67aef5",
     "library": "/shared/stimuli/img/T_animals/elephant.jpg"
   },
   "/matching/_Resources/_imgSource/T_animals/elephant.svg": {
@@ -1435,7 +1435,7 @@
   },
   "/matching/_Resources/_imgSource/T_animals/fish.jpg": {
     "stimulus": "animals-fish",
-    "sha256": "5d71eb2c612695277569f0bde681af63fee00e1485331dcfcd4c9a15528b5547",
+    "sha256": "752e272ea152bd4092444eee51b5cd7fdd35af9301fa5d153bec53ec806ccd3d",
     "library": "/shared/stimuli/img/T_animals/fish.jpg"
   },
   "/matching/_Resources/_imgSource/T_animals/fish.svg": {
@@ -1446,7 +1446,7 @@
   },
   "/matching/_Resources/_imgSource/T_animals/frog.jpg": {
     "stimulus": "animals-frog",
-    "sha256": "c774c00cddc3647a737ad548f604c94282ab24b4a99c1ce3043a5e442b0c6c0e",
+    "sha256": "d5c13bef4bdbc4123902488d4332f46bd85f761c4a208ae67485796f923ef5da",
     "library": "/shared/stimuli/img/T_animals/frog.jpg"
   },
   "/matching/_Resources/_imgSource/T_animals/frog.svg": {
@@ -1457,7 +1457,7 @@
   },
   "/matching/_Resources/_imgSource/T_animals/lion.jpg": {
     "stimulus": "animals-lion",
-    "sha256": "f933f6fab720213dcf1626b93f0da8b626a5d0a610596b126334fd54e98a45b5",
+    "sha256": "3967adcdba95515834ba5c13263ff671669b1d5ff5b6acead985e9623872b2c5",
     "library": "/shared/stimuli/img/T_animals/lion.jpg"
   },
   "/matching/_Resources/_imgSource/T_animals/lion.svg": {
@@ -1468,7 +1468,7 @@
   },
   "/matching/_Resources/_imgSource/T_animals/rabbit.jpg": {
     "stimulus": "animals-rabbit",
-    "sha256": "bd89d84285d3d44299706ff9ce6033341266956885ea84dbf0c7f29351c09dfb",
+    "sha256": "437479a31712664d53e0ea7e853e9f3391ddaf45200da8a1a0358c15bccef530",
     "library": "/shared/stimuli/img/T_animals/rabbit.jpg"
   },
   "/matching/_Resources/_imgSource/T_animals/rabbit.svg": {
@@ -1479,7 +1479,7 @@
   },
   "/matching/_Resources/_imgSource/T_buildings/apartment.jpg": {
     "stimulus": "buildings-apartment",
-    "sha256": "af16e12ef2b47b9c1247ab7802e196fa4cda5df5f22d4ef7c90fca5c20ed73ee",
+    "sha256": "b2ea79fbe3b8764182bf81b0d2b28c63dc852aba1d0aa48db0105d5976aab1ea",
     "library": "/shared/stimuli/img/T_buildings/apartment.jpg"
   },
   "/matching/_Resources/_imgSource/T_buildings/apartment.svg": {
@@ -1490,7 +1490,7 @@
   },
   "/matching/_Resources/_imgSource/T_buildings/bank.jpg": {
     "stimulus": "buildings-bank",
-    "sha256": "118188985d7e151b2f5039766db77b43164124bc7443b22eb4a33fd205b88d1a",
+    "sha256": "46514a18c28c4a36955e6ffc0ade6731b3d549dd3fb74897da0d7e24f2850b76",
     "library": "/shared/stimuli/img/T_buildings/bank.jpg"
   },
   "/matching/_Resources/_imgSource/T_buildings/bank.svg": {
@@ -1501,7 +1501,7 @@
   },
   "/matching/_Resources/_imgSource/T_buildings/castle.jpg": {
     "stimulus": "buildings-castle",
-    "sha256": "3db6e6b879265b533a362985e7f630ee4cbc69180200411efc370ff21d03477c",
+    "sha256": "1c42f253e07c8535ded54dce36560accece9717bf69576da163b53548a50759f",
     "library": "/shared/stimuli/img/T_buildings/castle.jpg"
   },
   "/matching/_Resources/_imgSource/T_buildings/castle.svg": {
@@ -1523,7 +1523,7 @@
   },
   "/matching/_Resources/_imgSource/T_buildings/factory.jpg": {
     "stimulus": "buildings-factory",
-    "sha256": "f440044da1f87d87bedcf9941f3eddbde2ae0695077c5308687e98d93504ed16",
+    "sha256": "4690b4c9de84ae92aeb7df33fbe0ba153bfab72f4a5e4c5856b5ab5cad003e71",
     "library": "/shared/stimuli/img/T_buildings/factory.jpg"
   },
   "/matching/_Resources/_imgSource/T_buildings/factory.svg": {
@@ -1545,7 +1545,7 @@
   },
   "/matching/_Resources/_imgSource/T_buildings/house.jpg": {
     "stimulus": "buildings-house",
-    "sha256": "e1edf37dc7a753db8aa9d4e73b6c24c951bc4e18b4e07fe3b387fe2010c7c5ce",
+    "sha256": "663e6b56b7ae381f6ab1fd5e641c3a546db37ab02f16c234ef004830ea6920d0",
     "library": "/shared/stimuli/img/T_buildings/house.jpg"
   },
   "/matching/_Resources/_imgSource/T_buildings/house.svg": {
@@ -1567,7 +1567,7 @@
   },
   "/matching/_Resources/_imgSource/T_buildings/school.jpg": {
     "stimulus": "buildings-school",
-    "sha256": "a3224df071a7a33f6ab4909ee05a47df58fa232112faa41c2f7066955e58385c",
+    "sha256": "2657bcaa8722333c772a95b2c69caffe66ceb145f936e738d737175aa0864148",
     "library": "/shared/stimuli/img/T_buildings/school.jpg"
   },
   "/matching/_Resources/_imgSource/T_buildings/school.svg": {
@@ -1628,7 +1628,7 @@
   },
   "/matching/_Resources/_imgSource/T_community_helpers/chef.jpg": {
     "stimulus": "community-helpers-chef",
-    "sha256": "37b7450ff959ffdef9a07891843ff9d97cccb3a6672c22ff42c360612aeacd03",
+    "sha256": "3de0418751b3695f290d88634df869815bca6954bc524ece1cfa8fce431dee7f",
     "library": "/shared/stimuli/img/T_community_helpers/chef.jpg"
   },
   "/matching/_Resources/_imgSource/T_community_helpers/chef.svg": {
@@ -1639,7 +1639,7 @@
   },
   "/matching/_Resources/_imgSource/T_community_helpers/construction.jpg": {
     "stimulus": "community-helpers-construction",
-    "sha256": "48d3fb450914a91fb5d8194ef9dc42fb2ed571bb4ba73836729cde6637e084fd",
+    "sha256": "e77c0c951f2ad329b4060b37a1acf9d060a25907f1921629d91dccc98d847d76",
     "library": "/shared/stimuli/img/T_community_helpers/construction.jpg"
   },
   "/matching/_Resources/_imgSource/T_community_helpers/construction.svg": {
@@ -1661,7 +1661,7 @@
   },
   "/matching/_Resources/_imgSource/T_community_helpers/farmer.jpg": {
     "stimulus": "community-helpers-farmer",
-    "sha256": "efeff2f482e7f7e68931f9dfee8ea45441d3e1558abf1724ddd91296722fc6f1",
+    "sha256": "5e9115cff8cb03e66c42203994f900bf1821927eed24861453d11a3254cc6e58",
     "library": "/shared/stimuli/img/T_community_helpers/farmer.jpg"
   },
   "/matching/_Resources/_imgSource/T_community_helpers/farmer.svg": {
@@ -1672,7 +1672,7 @@
   },
   "/matching/_Resources/_imgSource/T_community_helpers/firefighter.jpg": {
     "stimulus": "community-helpers-firefighter",
-    "sha256": "7f449edf02b1e6cc5b2a874f825ec39d4746638847b92baae2e673cfb6aa08da",
+    "sha256": "052e1e4ecf0951bd1a7ea269df24dfe9a73e9a5721abfea6412a3cd70529916e",
     "library": "/shared/stimuli/img/T_community_helpers/firefighter.jpg"
   },
   "/matching/_Resources/_imgSource/T_community_helpers/firefighter.svg": {
@@ -1705,7 +1705,7 @@
   },
   "/matching/_Resources/_imgSource/T_community_helpers/police.jpg": {
     "stimulus": "community-helpers-police",
-    "sha256": "1b88b44cb8a1caf2da4ec55dad2bdc2a27c8a729d27e12c0340393a796af14e0",
+    "sha256": "ae06975886eced40c335261e6a7f3013be91d3cf9eb11abd81452f8c129aadab",
     "library": "/shared/stimuli/img/T_community_helpers/police.jpg"
   },
   "/matching/_Resources/_imgSource/T_community_helpers/police.svg": {
@@ -1716,7 +1716,7 @@
   },
   "/matching/_Resources/_imgSource/T_community_helpers/scientist.jpg": {
     "stimulus": "community-helpers-scientist",
-    "sha256": "c73497c306fda7cdbe85d40089ad8be961cc6624f2f0b8a4ae981f61d7ec6286",
+    "sha256": "8d0215753046e1569406a22f6af7e1ee751e3e713733898598e8f7790aa5189b",
     "library": "/shared/stimuli/img/T_community_helpers/scientist.jpg"
   },
   "/matching/_Resources/_imgSource/T_community_helpers/scientist.svg": {
@@ -1727,7 +1727,7 @@
   },
   "/matching/_Resources/_imgSource/T_community_helpers/teacher.jpg": {
     "stimulus": "community-helpers-teacher",
-    "sha256": "4e57af1e2de6270846257d6a8fafa5f0bb40970ad011c166df27867227727c60",
+    "sha256": "9b381def19ee0296b8c6c7e9307ee644978843d91fc13079585a9cfd299f8d9a",
     "library": "/shared/stimuli/img/T_community_helpers/teacher.jpg"
   },
   "/matching/_Resources/_imgSource/T_community_helpers/teacher.svg": {
@@ -2008,7 +2008,7 @@
   },
   "/matching/_Resources/_imgSource/T_kitchen_items/frying-pan.jpg": {
     "stimulus": "kitchen-items-frying-pan",
-    "sha256": "3bc5081ce9a5863ad86993d22fc063120eafc34af9e4615a411166cf5a966872",
+    "sha256": "545ee706942a97cef3e9a16f052da6c8a13d29d7f2c5939cf778520a27b3e2b4",
     "library": "/shared/stimuli/img/T_kitchen_items/frying-pan.jpg"
   },
   "/matching/_Resources/_imgSource/T_kitchen_items/frying-pan.svg": {
@@ -2019,7 +2019,7 @@
   },
   "/matching/_Resources/_imgSource/T_kitchen_items/kettle.jpg": {
     "stimulus": "kitchen-items-kettle",
-    "sha256": "23d514028fcca8e71568447b357c6b9a05b5982a04aea0be374df09c71ff4004",
+    "sha256": "e5ce43a6bdf91573da8e957e9700d5410bc12bba4a31bb72802081a1784c3498",
     "library": "/shared/stimuli/img/T_kitchen_items/kettle.jpg"
   },
   "/matching/_Resources/_imgSource/T_kitchen_items/kettle.svg": {
@@ -2077,7 +2077,7 @@
   },
   "/matching/_Resources/_imgSource/T_kitchen_items/pot.jpg": {
     "stimulus": "kitchen-items-pot",
-    "sha256": "c99dc690527766e0f0c49516fbd2902d187a6056a25ca4f7a1a0e3d51136e7da",
+    "sha256": "bb3ccd0e09e1e5cd71ec38d696bc7c3d1dc6a941035fbd0d52ead6475c8392f1",
     "library": "/shared/stimuli/img/T_kitchen_items/pot.jpg"
   },
   "/matching/_Resources/_imgSource/T_kitchen_items/pot.svg": {
@@ -2681,7 +2681,7 @@
   },
   "/receptive/_Resources/_imgSource/T_actions/clapping.png": {
     "stimulus": "actions-clapping",
-    "sha256": "700a3fe18090c139935f00ebc31cc5e40a88b8c43951cf48a93efa1110da7512",
+    "sha256": "042735888cdce87a3dec807ddffacd75c8b879e96ccc7b22b7653b8505969efb",
     "library": "/shared/stimuli/img/T_actions/clapping.png"
   },
   "/receptive/_Resources/_imgSource/T_actions/crying.jpg": {
@@ -2691,17 +2691,17 @@
   },
   "/receptive/_Resources/_imgSource/T_actions/drinking.png": {
     "stimulus": "actions-drinking",
-    "sha256": "39c7bf1d4b1c3c648e409c89c6a1edd4c51ccf2010205b8bad062f543a8b38ec",
+    "sha256": "a38d1294f3c2ed7b049806b65c49e69b4703f5f2be60eb3a0f81e93e131ce926",
     "library": "/shared/stimuli/img/T_actions/drinking.png"
   },
   "/receptive/_Resources/_imgSource/T_actions/eating.png": {
     "stimulus": "actions-eating",
-    "sha256": "0caa82ff1c911a183291a88057c6cd4c19edba8cec241e766abe9f68283d6b2d",
+    "sha256": "477191264704254ac476649c3766da83ec1348ab5bf1add5eb60c20c271b2561",
     "library": "/shared/stimuli/img/T_actions/eating.png"
   },
   "/receptive/_Resources/_imgSource/T_actions/hugging.png": {
     "stimulus": "actions-hugging",
-    "sha256": "57d308644433850b75a61c8e7a6d1fc65046338665048705caa824b81f3b7d16",
+    "sha256": "71013084dcd04eb307db47704190916e0618f2ebd3ee9139fd916b3fc7b5498a",
     "library": "/shared/stimuli/img/T_actions/hugging.png"
   },
   "/receptive/_Resources/_imgSource/T_actions/jumping.jpg": {
@@ -2721,17 +2721,17 @@
   },
   "/receptive/_Resources/_imgSource/T_actions/reading.png": {
     "stimulus": "actions-reading",
-    "sha256": "de92c8d4f0aa01b831c93a5644f2b2694f1fe1af3ec94c17ae847905698cd6a1",
+    "sha256": "a4afd1aeb432a0a81d06d52ed396c713d6f9226f8f31c703049c51264314b301",
     "library": "/shared/stimuli/img/T_actions/reading.png"
   },
   "/receptive/_Resources/_imgSource/T_actions/sleeping.png": {
     "stimulus": "actions-sleeping",
-    "sha256": "62cf41a215c44eb88f04a829177ca09e7219fcbf88ece05c8d9b77ecfcfefdee",
+    "sha256": "82bd97c818d626c3d649633b852ba812f32b6453297aafd68c76b11fd04296e0",
     "library": "/shared/stimuli/img/T_actions/sleeping.png"
   },
   "/receptive/_Resources/_imgSource/T_actions/swimming.png": {
     "stimulus": "actions-swimming",
-    "sha256": "acac573be912e6f9a2200972b1ea94f80bc7b72250517ea96dd5b228323e444d",
+    "sha256": "7b244444b0999771073225e274fc7081943b6f5ffed2bf7d47bd5378ea822217",
     "library": "/shared/stimuli/img/T_actions/swimming.png"
   },
   "/receptive/_Resources/_imgSource/T_actions/throwing.jpg": {
@@ -2741,7 +2741,7 @@
   },
   "/receptive/_Resources/_imgSource/T_actions/walking.png": {
     "stimulus": "actions-walking",
-    "sha256": "6c596d0b59ddaf0ffb78be6b59ca37ccc4d0fdf11faa659e96c89bbcc569c61e",
+    "sha256": "82d66a4e112fe677a612ce7de0c497a3a63b4a1cb036928dee1f5528aaec0d30",
     "library": "/shared/stimuli/img/T_actions/walking.png"
   },
   "/receptive/_Resources/_imgSource/T_actions/writing.jpg": {
@@ -2751,7 +2751,7 @@
   },
   "/receptive/_Resources/_imgSource/T_animals/bear.jpg": {
     "stimulus": "animals-bear",
-    "sha256": "29d5ef20102717546e8370f59fc48d0891cebe52743641ccdeaa4108022f75ea",
+    "sha256": "934b0ec99ad1751cb004c273ff61db5d151e028276a8f2488fe8e1950676aa0b",
     "library": "/shared/stimuli/img/T_animals/bear--alt1.jpg"
   },
   "/receptive/_Resources/_imgSource/T_animals/bear.svg": {
@@ -2762,7 +2762,7 @@
   },
   "/receptive/_Resources/_imgSource/T_animals/bird.jpg": {
     "stimulus": "animals-bird",
-    "sha256": "617d7102f2ce4b75eb5d3898f5475a4f014f3801ae5c7319512753b1b6ad38c4",
+    "sha256": "70f1f321fcafd14e27c3ff62f3250277fca43e825da42c37dea6ea80e6c485e6",
     "library": "/shared/stimuli/img/T_animals/bird--alt1.jpg"
   },
   "/receptive/_Resources/_imgSource/T_animals/bird.svg": {
@@ -2773,7 +2773,7 @@
   },
   "/receptive/_Resources/_imgSource/T_animals/butterfly.jpg": {
     "stimulus": "animals-butterfly",
-    "sha256": "8e9def9e572e79c885cb8ac2acc0e895bd9922a3f490b3f570e97c36ca2b72ee",
+    "sha256": "76f141fdabc981b4cacbdffdcb5b68f013559f0a5320f16b2680bbf138786b9a",
     "library": "/shared/stimuli/img/T_animals/butterfly--alt1.jpg"
   },
   "/receptive/_Resources/_imgSource/T_animals/butterfly.svg": {
@@ -2784,7 +2784,7 @@
   },
   "/receptive/_Resources/_imgSource/T_animals/cat.jpg": {
     "stimulus": "animals-cat",
-    "sha256": "74d09a7c6463a844572c58634a798d4fa1b646aeff8be81a42ab68915e54e049",
+    "sha256": "f71aa4d51dcb33463cdca9e9be843fb17ecf7862a91ccbd026d3d4f5530a8a2e",
     "library": "/shared/stimuli/img/T_animals/cat--alt1.jpg"
   },
   "/receptive/_Resources/_imgSource/T_animals/cat.svg": {
@@ -2795,7 +2795,7 @@
   },
   "/receptive/_Resources/_imgSource/T_animals/dog.jpg": {
     "stimulus": "animals-dog",
-    "sha256": "1d14f8d6804a8afeb2c37986ecef20055395412a45ecfd9cc8f19a621f3a41ea",
+    "sha256": "bb0ed432c4a06108e248a6930a0d67f339c30fe8f1411b69028ef980bad36531",
     "library": "/shared/stimuli/img/T_animals/dog--alt1.jpg"
   },
   "/receptive/_Resources/_imgSource/T_animals/dog.svg": {
@@ -2806,7 +2806,7 @@
   },
   "/receptive/_Resources/_imgSource/T_animals/elephant.jpg": {
     "stimulus": "animals-elephant",
-    "sha256": "a137477d5cddbba778c0b7e78dfe94702010cd1e95f366e49628fcf19dec7dde",
+    "sha256": "21f1ab5fcba14d199754a5331909bdf7dea2a128c67d095448923954daa260a4",
     "library": "/shared/stimuli/img/T_animals/elephant--alt1.jpg"
   },
   "/receptive/_Resources/_imgSource/T_animals/elephant.svg": {
@@ -2817,7 +2817,7 @@
   },
   "/receptive/_Resources/_imgSource/T_animals/fish.jpg": {
     "stimulus": "animals-fish",
-    "sha256": "0c5b3f4e6f45da68885096ba630ea66fcde82d70fad1fb97f19337e8502ccba7",
+    "sha256": "2f12df8bf09ce5050ddf45a5ee6536303c4cc0a7339c0a321bc0f275d5d8fac4",
     "library": "/shared/stimuli/img/T_animals/fish--alt1.jpg"
   },
   "/receptive/_Resources/_imgSource/T_animals/fish.svg": {
@@ -2970,7 +2970,7 @@
   },
   "/receptive/_Resources/_imgSource/T_community_helpers/chef.jpg": {
     "stimulus": "community-helpers-chef",
-    "sha256": "37b7450ff959ffdef9a07891843ff9d97cccb3a6672c22ff42c360612aeacd03",
+    "sha256": "3de0418751b3695f290d88634df869815bca6954bc524ece1cfa8fce431dee7f",
     "library": "/shared/stimuli/img/T_community_helpers/chef.jpg"
   },
   "/receptive/_Resources/_imgSource/T_community_helpers/chef.svg": {
@@ -3030,7 +3030,7 @@
   },
   "/receptive/_Resources/_imgSource/T_community_helpers/mail-carrier.jpg": {
     "stimulus": "community-helpers-mail-carrier",
-    "sha256": "e2b4ffefbd50f804aa5dcc5bd8606aab647b7c2023956ccfcf69413b5170f20f",
+    "sha256": "b992366f30616f47544666bd2866962775baa48a6f98f3419a81bfb58ca5d826",
     "library": "/shared/stimuli/img/T_community_helpers/mail-carrier--alt1.jpg"
   },
   "/receptive/_Resources/_imgSource/T_community_helpers/mail-carrier.svg": {
@@ -3063,7 +3063,7 @@
   },
   "/receptive/_Resources/_imgSource/T_community_helpers/scientist.jpg": {
     "stimulus": "community-helpers-scientist",
-    "sha256": "bf49640bf733dd005f08cff9c6fa8ea389dc7b9a6b01605758da667635c4e732",
+    "sha256": "c9a056dcb04faaedf9eb733eea5ad91ff4f70d7a006bddb9b70e45af5f3b122d",
     "library": "/shared/stimuli/img/T_community_helpers/scientist--alt1.jpg"
   },
   "/receptive/_Resources/_imgSource/T_community_helpers/scientist.svg": {
@@ -3074,7 +3074,7 @@
   },
   "/receptive/_Resources/_imgSource/T_community_helpers/teacher.jpg": {
     "stimulus": "community-helpers-teacher",
-    "sha256": "4e57af1e2de6270846257d6a8fafa5f0bb40970ad011c166df27867227727c60",
+    "sha256": "9b381def19ee0296b8c6c7e9307ee644978843d91fc13079585a9cfd299f8d9a",
     "library": "/shared/stimuli/img/T_community_helpers/teacher.jpg"
   },
   "/receptive/_Resources/_imgSource/T_community_helpers/teacher.svg": {
