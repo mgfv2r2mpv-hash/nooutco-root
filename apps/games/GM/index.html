@@ -8,7 +8,10 @@
     (function () {
       var t = localStorage.getItem('admin_token') || '';
       if (!/^[0-9a-f]{64}$/.test(t)) {
-        location.replace('https://games.nooutco.me');
+        // Same-site root — an absolute prod URL here bounced dev admins onto the
+        // live site. This runs inline before nav-bar.js, so NoabaSites is not
+        // available yet, but a relative path needs no resolver.
+        location.replace('/');
       }
     })();
   </script>
