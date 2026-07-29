@@ -3662,7 +3662,7 @@
   },
   "/shared/stimuli/uploads/T_clothing/shorts.webp": {
     "stimulus": "clothing-shorts",
-    "sha256": "25ff1ef6d88fc7906e0a2e21aed212c323af125ed5e22b907393f4ebaa1e222f",
+    "sha256": "f264e4202cc81b2f42517eca3073858ffe41376acfbd4cb241e2c280dcfb74db",
     "library": "/shared/stimuli/img/T_clothing/shorts.webp"
   },
   "/shared/stimuli/uploads/T_clothing/socks.webp": {
@@ -3742,7 +3742,7 @@
   },
   "/shared/stimuli/uploads/T_foods/egg.webp": {
     "stimulus": "foods-egg",
-    "sha256": "40cff338508a55665205a299f31a98e9e6fcce043255cc641e3f494701079361",
+    "sha256": "ef3f733f7013577d46ba75de9da1b7a7489944de92fa495ac2dc962714e90218",
     "library": "/shared/stimuli/img/T_foods/egg.webp"
   },
   "/shared/stimuli/uploads/T_foods/orange.webp": {
