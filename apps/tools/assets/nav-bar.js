@@ -4,9 +4,14 @@
    edits). Run `npm run sync:shared` after editing.
 
    A tiny, dependency-free, light-DOM custom element. One global bar dropped onto
-   every page of tools + games + apex. Renders: brand lockup (→ nooutco.me) ·
-   2-segment product switch (Games | Tools, hard-links to sibling domain) ·
+   every page of tools + games + apex. Renders: brand lockup (→ apex) ·
+   2-segment product switch (Games | Tools, links to the sibling domain) ·
    breadcrumb (replaces bespoke back buttons) · one admin gear.
+
+   Also exposes `window.NoabaSites` — the environment-aware link resolver every
+   cross-product link should go through, plus the `data-noaba-site` attribute
+   that rewrites such links in plain app HTML. See "Environment-aware site
+   links" below.
 
    Auth is decoupled: the gear dispatches `noaba:admin-invoke` (the page wires it
    to its own auth flow); the bar reflects authed state from `noaba:auth-state`
@@ -22,21 +27,95 @@
 (function () {
   "use strict";
 
-  var HOME = "https://nooutco.me";
-  var PROD = { games: "https://games.nooutco.me", tools: "https://tools.nooutco.me" };
+  // --- Environment-aware site links ------------------------------------------
+  // Each product is deployed once per environment, so a cross-product link has
+  // to name the sibling *in the environment it was clicked in*. Get this wrong
+  // and a dev validation pass slides onto the live site mid-click, silently,
+  // because the page it lands on looks identical.
+  //
+  //   prod   nooutco.me        games.nooutco.me        tools.nooutco.me
+  //   dev    d.nooutco.me      d-games.nooutco.me      d-tools.nooutco.me
+  //
+  // The .pages.dev rows are the Pages projects sitting behind those custom
+  // domains. Per-deployment previews arrive as <hash>.<project>.pages.dev, which
+  // is why hosts are matched on exact name first and subdomain suffix second.
+  var ENVIRONMENTS = [
+    { id: "prod",      apex: "nooutco.me",                 games: "games.nooutco.me",               tools: "tools.nooutco.me" },
+    { id: "dev",       apex: "d.nooutco.me",               games: "d-games.nooutco.me",             tools: "d-tools.nooutco.me" },
+    { id: "pages",     apex: "nooutco-root.pages.dev",     games: "games-nooutco-me.pages.dev",     tools: "tools-nooutco-me.pages.dev" },
+    { id: "pages-dev", apex: "dev-nooutco-root.pages.dev", games: "dev-games-nooutco-me.pages.dev", tools: "dev-tools-nooutco-me.pages.dev" }
+  ];
+  var PRODUCTS = ["apex", "games", "tools"];
+  var FALLBACK = ENVIRONMENTS[0];
 
-  // Resolve the sibling product URL, dev-aware. If the current host carries a
-  // "tools"/"games" token (tools.nooutco.me, dev-tools-nooutco-me.pages.dev, …),
-  // swap it so dev validation stays on dev. Apex (no token) falls back to prod
-  // product roots. Always overridable via the games-href / tools-href attrs.
+  // The environment `host` belongs to. An exact hostname beats a suffix match,
+  // and a longer slot beats a shorter one, so games.nooutco.me claims the games
+  // slot rather than matching prod apex's own ".nooutco.me" tail.
+  function environmentFor(host) {
+    var best = null, bestScore = -1;
+    for (var i = 0; i < ENVIRONMENTS.length; i++) {
+      for (var p = 0; p < PRODUCTS.length; p++) {
+        var slot = ENVIRONMENTS[i][PRODUCTS[p]];
+        var score = -1;
+        if (host === slot) score = 1000 + slot.length;
+        else if (host.length > slot.length && host.slice(-(slot.length + 1)) === "." + slot) score = slot.length;
+        if (score > bestScore) { bestScore = score; best = ENVIRONMENTS[i]; }
+      }
+    }
+    return best || FALLBACK;
+  }
+
+  // Origin of `product` in whichever environment `host` belongs to. Unrecognised
+  // hosts (localhost, a preview of an unlisted project) fall back to production:
+  // a sibling's local port is unknowable, and production is where these links
+  // already pointed before any of this existed.
+  function resolveSite(product, host) {
+    var env = environmentFor(String(host || ""));
+    return "https://" + (env[product] || FALLBACK[product]);
+  }
+
+  function siteHref(product, path) {
+    return resolveSite(product, location.hostname) + (path || "");
+  }
+
+  // Progressive enhancement for cross-product links authored in app HTML. The
+  // authored href stays a working production URL, so a click that lands before
+  // this runs — or with JS off entirely — still goes somewhere real; only the
+  // origin is swapped, keeping the path, query and hash the author wrote.
+  function applySiteLinks(root, host) {
+    var scope = root || document;
+    var h = host || location.hostname;
+    var nodes = scope.querySelectorAll("a[data-noaba-site]");
+    for (var i = 0; i < nodes.length; i++) {
+      var a = nodes[i];
+      var product = a.getAttribute("data-noaba-site");
+      if (PRODUCTS.indexOf(product) === -1) continue;
+      var origin = resolveSite(product, h);
+      var url;
+      try { url = new URL(a.getAttribute("href") || "/", origin); }
+      catch (e) { continue; }
+      a.href = origin + url.pathname + url.search + url.hash;
+    }
+  }
+
+  window.NoabaSites = {
+    resolve: resolveSite,
+    href: siteHref,
+    applyLinks: applySiteLinks,
+    environments: ENVIRONMENTS
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function () { applySiteLinks(); });
+  } else {
+    applySiteLinks();
+  }
+
+  // Sibling product URL for the switch. Always overridable via the
+  // games-href / tools-href attrs.
   function productHref(target, overrides) {
     if (overrides && overrides[target]) return overrides[target];
-    var host = location.hostname;
-    var other = target === "games" ? "tools" : "games";
-    if (host.indexOf(target) !== -1 || host.indexOf(other) !== -1) {
-      return location.protocol + "//" + host.split(other).join(target);
-    }
-    return PROD[target];
+    return siteHref(target);
   }
 
   function el(tag, cls, text) {
@@ -91,7 +170,7 @@
 
       // Brand → home
       var brand = el("a", "noaba-brand");
-      brand.href = HOME;
+      brand.href = siteHref("apex");
       brand.setAttribute("aria-label", "No Outcome ABA — home");
       var img = el("img");
       img.src = logo;
