@@ -838,10 +838,9 @@
       "categories": [
         "T_emotions"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_emotions/proud.svg",
       "emoji": "😤",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_emotions/proud.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "emotions-sad",

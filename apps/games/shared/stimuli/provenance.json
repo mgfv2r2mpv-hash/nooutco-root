@@ -395,7 +395,8 @@
   "/clock/_Resources/_imgSource/T_emotions/proud.svg": {
     "stimulus": "emotions-proud",
     "sha256": "5f25cf746b49b803c1cf856fe426945186c528a44740a8287c5a5204028a30db",
-    "library": "/shared/stimuli/placeholder/T_emotions/proud.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/clock/_Resources/_imgSource/T_emotions/sad.svg": {
     "stimulus": "emotions-sad",
@@ -3129,7 +3130,8 @@
   "/receptive/_Resources/_imgSource/T_emotions/proud.svg": {
     "stimulus": "emotions-proud",
     "sha256": "5f25cf746b49b803c1cf856fe426945186c528a44740a8287c5a5204028a30db",
-    "library": "/shared/stimuli/placeholder/T_emotions/proud.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/receptive/_Resources/_imgSource/T_emotions/sad.svg": {
     "stimulus": "emotions-sad",
@@ -3689,6 +3691,11 @@
     "stimulus": "emotions-happy",
     "sha256": "075c9278046a2ab78df68710a98deb777ffd29c5e50f2856b440eb77a900cfda",
     "library": "/shared/stimuli/img/T_emotions/happy.webp"
+  },
+  "/shared/stimuli/uploads/T_emotions/proud.svg": {
+    "stimulus": "emotions-proud",
+    "sha256": "99134bed4a765bf7606970c0d7402e4f59deb047b25e9990bdfc2b450bab471a",
+    "library": "/shared/stimuli/img/T_emotions/proud.svg"
   },
   "/shared/stimuli/uploads/T_emotions/sad.webp": {
     "stimulus": "emotions-sad",
