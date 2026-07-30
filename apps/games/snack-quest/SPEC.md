@@ -73,10 +73,23 @@ All three draw stimuli from the **existing topic libraries** — reuse
 `T_toys`, ...) and the same topic + target-picker settings pattern those games already
 have. This is a wrapper around real teaching targets, not a toy with seven fruit.
 
-**Manifest paths are relative to the owning game directory** — an entry reads
-`_Resources/_imgSource/T_animals/bear.jpg`, which from `snack-quest/` resolves as
-`../receptive/_Resources/...` or `../matching/_Resources/...`. Prefix them when loading;
-do not copy the image libraries.
+**Manifest image paths are already root-absolute** — an entry reads
+`/shared/stimuli/img/T_animals/bear.jpg`, in both `receptive/manifest.json` and
+`matching/manifest.json`, so it resolves unchanged from `snack-quest/` and needs no
+prefixing. The manifest *file* is still fetched by relative path
+(`fetch('../receptive/manifest.json')`). Do not copy the image libraries.
+
+Two things about that directory are worth knowing before anyone "fixes" it. It is
+`apps/games/shared/stimuli/img/`, and `apps/games/.assetsignore` lists `shared/` — the
+intent there was to keep the bundled worker source (`shared/helpers.js`,
+`shared/suggest.js`) from being served, and the stimuli were added under the same
+directory later. Despite the entry, production does serve them: a request for
+`/shared/stimuli/img/T_animals/bear.jpg` against games.nooutco.me returns 200. So the
+paths are correct and shipped, not a dev-only accident.
+
+(An earlier revision of this spec claimed these paths were the older
+`_Resources/_imgSource/...` form. They are not, on `dev`; that reading came from a
+checkout sitting on a different branch.)
 
 Reuse `receptive/game.js`'s `labelFromSrc(src)` convention for display names, including
 the `manifest.displayNames[src]` override, and keep its `sampleDeck` behaviour (every
