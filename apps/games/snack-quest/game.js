@@ -958,9 +958,12 @@ async function finishTrial(outcome) {
   }
   const delivering = deliveredThisTrial;
 
+  // An error gains no ground: ground is what a correct answer buys.
+  const mode = delivering ? 'arrive' : outcome === 'Error' ? 'hold' : 'partway';
+
   await sleep(prefersReducedMotion() ? 120 : 420);
   await hideTrialCard();
-  await walk(delivering);
+  await walk(mode);
 
   if (delivering) {
     await collectFood();
@@ -968,6 +971,9 @@ async function finishTrial(outcome) {
     state.foodIndex++;
     spawnFood(false);
     await sleep(prefersReducedMotion() ? 60 : 320);
+  } else if (mode === 'hold') {
+    announce('Let us try the next one.');
+    await sleep(prefersReducedMotion() ? 60 : 220);
   } else {
     announce('He is getting closer.');
     await sleep(prefersReducedMotion() ? 60 : 220);
@@ -977,9 +983,26 @@ async function finishTrial(outcome) {
   beginTrial();
 }
 
-/** Move our friend toward the food. Delivering rounds arrive; every other round
- *  still covers ground, so a learner always sees progress. */
-async function walk(arrive) {
+/** Move our friend toward the food.
+ *
+ *  'arrive'  — a delivering round: he closes the remaining distance.
+ *  'partway' — earned but not delivering: he covers ground toward the snack.
+ *  'hold'    — an error: he waddles on the spot and ends exactly where he began.
+ *
+ *  'hold' exists because ground gained is the reinforcer here. An error that
+ *  still moved him closer would hand over part of what a correct answer buys,
+ *  and across a quest that quietly turns the schedule into "respond at all".
+ *  He still animates, so the round never reads as nothing happening. */
+async function walk(mode) {
+  if (mode === 'hold') {
+    const ms = prefersReducedMotion() ? 200 : 700;
+    el.walker.classList.add('is-walking');
+    await sleep(ms);
+    el.walker.classList.remove('is-walking');
+    return;
+  }
+
+  const arrive = mode === 'arrive';
   const anchorF = foodAnchor();
   const anchorW = walkerAnchor();
   const gapFrac = (anchorF.halfW + anchorW.halfW * 0.75) / layout.w;
