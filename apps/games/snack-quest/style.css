@@ -1,0 +1,659 @@
+/* ════════════════════════════════════════════════════════════════════
+   Snack Quest — storybook picture-book skin over the shared game chrome.
+
+   Direction: warm cream paper, ink-drawn edges, chunky rounded tiles that
+   sit slightly off-grid, and one saturated accent per surface. The scene
+   art is the star; every technician control is small, cool and quiet so the
+   eye lands on the picture.
+
+   Layout that has to agree with the artwork (ground line, sprite anchors)
+   is computed in game.js from the measured alpha bounding boxes — CSS only
+   supplies the transforms it drives.
+   ════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --sq-paper:      #fdf6e8;
+  --sq-paper-deep: #f6e7cd;
+  --sq-ink:        #3a2c1e;
+  --sq-ink-soft:   #7a6650;
+  --sq-berry:      #b8446a;
+  --sq-leaf:       #5d8a4a;
+  --sq-sun:        #e2913a;
+  --sq-sky:        #4b7ea8;
+  --sq-honey:      #f0b13c;
+
+  --sq-card-radius: 22px;
+  --sq-lift: 0 10px 0 -4px rgba(58, 44, 30, 0.10), 0 18px 34px -14px rgba(58, 44, 30, 0.40);
+
+  --sq-walk-ms: 1100ms;
+  --sq-ease-waddle: cubic-bezier(0.32, 0.72, 0.28, 1);
+}
+
+body {
+  background:
+    radial-gradient(1200px 600px at 50% -10%, #fffdf6 0%, transparent 60%),
+    var(--sq-paper);
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ── Header extras ─────────────────────────────────────────────────── */
+.quest-crumbs {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-sm);
+  color: rgba(255, 255, 255, 0.86);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+}
+.crumb-sep { opacity: 0.5; }
+
+.range-hint {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.extra-note {
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--text-muted);
+  background: var(--surface-sunken);
+  border-left: 3px solid var(--sq-leaf);
+  padding: 10px 12px;
+  border-radius: 0 8px 8px 0;
+  margin-bottom: 12px;
+}
+
+/* ── Token board (canonical display, same shape as the other games) ── */
+.token-board-simple {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 7px 16px;
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--border-default);
+  flex-shrink: 0;
+}
+.token-board-simple.goal-reached {
+  background: linear-gradient(135deg, #f6f9ee, #e8f2dc);
+}
+.token-emoji-simple { font-size: 1.35rem; letter-spacing: 2px; line-height: 1; }
+.token-progress-simple {
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--sq-ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Screens ───────────────────────────────────────────────────────── */
+#quest-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.screen {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(16px, 3vh, 34px);
+  padding: clamp(14px, 3vh, 34px) clamp(12px, 3vw, 40px);
+}
+
+/* ── Story copy ────────────────────────────────────────────────────── */
+.story { text-align: center; max-width: 46ch; }
+.story-title {
+  font-size: clamp(1.9rem, 1.1rem + 2.6vw, 3.2rem);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.02em;
+  color: var(--sq-ink);
+  line-height: 1.05;
+}
+.story-line {
+  margin-top: 10px;
+  font-size: clamp(1.05rem, 0.95rem + 0.5vw, 1.35rem);
+  color: var(--sq-ink-soft);
+  line-height: var(--leading-normal);
+}
+.story-sub {
+  margin-top: 6px;
+  font-size: var(--text-md);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  font-weight: var(--weight-bold);
+  color: var(--sq-berry);
+}
+
+/* ── Choice tiles (task + place) ───────────────────────────────────── */
+.choice-grid {
+  display: grid;
+  gap: clamp(14px, 2.2vw, 26px);
+  width: min(100%, 1100px);
+}
+.choice-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.choice-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+.choice-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  min-height: 168px;
+  padding: 0;
+  border: 2px solid rgba(58, 44, 30, 0.14);
+  border-radius: var(--sq-card-radius);
+  background: #fff;
+  box-shadow: var(--sq-lift);
+  cursor: pointer;
+  overflow: hidden;
+  text-align: left;
+  font-family: inherit;
+  color: var(--sq-ink);
+  transition: transform 180ms var(--sq-ease-waddle), box-shadow 180ms var(--sq-ease-waddle),
+              border-color 180ms var(--sq-ease-waddle);
+}
+.choice-tile:hover,
+.choice-tile:focus-visible {
+  transform: translateY(-5px) rotate(-0.5deg);
+  box-shadow: 0 14px 0 -4px rgba(58, 44, 30, 0.12), 0 26px 46px -16px rgba(58, 44, 30, 0.46);
+  border-color: var(--tile-accent, var(--sq-berry));
+}
+.choice-tile:active { transform: translateY(-1px) scale(0.99); }
+
+.choice-tile-art {
+  position: relative;
+  aspect-ratio: 1376 / 768;
+  background: var(--sq-paper-deep);
+  overflow: hidden;
+}
+.choice-tile-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.choice-tile-glyph {
+  display: grid;
+  place-items: center;
+  font-size: clamp(2.6rem, 1.6rem + 3vw, 4.2rem);
+  padding: clamp(18px, 3vh, 34px) 0 4px;
+  line-height: 1;
+}
+
+.choice-tile-body {
+  padding: 12px clamp(12px, 1.6vw, 20px) 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 2px solid var(--tile-accent, var(--sq-berry));
+  background: #fff;
+  flex: 1 1 auto;
+}
+.choice-tile-name {
+  font-size: clamp(1.1rem, 0.95rem + 0.6vw, 1.5rem);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.01em;
+}
+.choice-tile-desc {
+  font-size: var(--text-sm);
+  color: var(--sq-ink-soft);
+  line-height: var(--leading-normal);
+}
+
+.btn-quiet {
+  background: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 150ms var(--ease-standard), color 150ms var(--ease-standard);
+}
+.btn-quiet:hover { background: var(--surface-sunken); color: var(--text-primary); }
+.btn-danger { color: var(--intent-danger); border-color: color-mix(in oklab, var(--intent-danger) 40%, transparent); }
+.btn-big { padding: 14px 34px; font-size: var(--text-lg); min-height: 56px; }
+
+/* ── Quest stage ───────────────────────────────────────────────────── */
+.screen-quest { gap: 10px; justify-content: flex-start; padding-top: clamp(8px, 1.4vh, 16px); }
+#stage-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.stage {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--sq-card-radius);
+  border: 3px solid rgba(58, 44, 30, 0.18);
+  box-shadow: var(--sq-lift);
+  background: var(--sq-paper-deep);
+  /* width/height are set in JS so the sprite maths and the box agree exactly */
+}
+.stage-scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.stage-layer { position: absolute; inset: 0; pointer-events: none; }
+
+/* Our friend — three nested transforms so the walk (x), the waddle
+   (rotate + bob) and the facing flip never fight over one property. */
+.walker {
+  position: absolute;
+  left: 0; top: 0;
+  transform: translate3d(0, 0, 0);
+  transition: transform var(--sq-walk-ms) var(--sq-ease-waddle);
+  will-change: transform;
+}
+.walker-bob { transform-origin: 50% 92%; }
+.walker.is-walking .walker-bob { animation: sq-waddle 380ms ease-in-out infinite; }
+.walker.is-hopping .walker-bob { animation: sq-hop 460ms var(--sq-ease-waddle) 1; }
+.walker-img { display: block; width: 100%; height: auto; }
+
+@keyframes sq-waddle {
+  0%   { transform: rotate(-4.5deg) translateY(0); }
+  25%  { transform: rotate(0deg)    translateY(-3.5%); }
+  50%  { transform: rotate(4.5deg)  translateY(0); }
+  75%  { transform: rotate(0deg)    translateY(-3.5%); }
+  100% { transform: rotate(-4.5deg) translateY(0); }
+}
+@keyframes sq-hop {
+  0%   { transform: translateY(0) scale(1, 1); }
+  30%  { transform: translateY(-13%) scale(0.97, 1.05); }
+  62%  { transform: translateY(0) scale(1.05, 0.94); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+
+/* Food on the ground */
+.food {
+  position: absolute;
+  left: 0; top: 0;
+  --fx: 0px;
+  --fy: 0px;
+  transform: translate3d(var(--fx), var(--fy), 0);
+  transition: transform 420ms var(--sq-ease-waddle), opacity 300ms linear;
+  will-change: transform, opacity;
+}
+.food-img { display: block; width: 100%; height: auto; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.28)); }
+.food.is-appearing { animation: sq-food-in 460ms var(--sq-ease-waddle); }
+.food.is-collected { animation: sq-food-pop 520ms var(--sq-ease-waddle) forwards; }
+
+@keyframes sq-food-in {
+  0%   { opacity: 0; transform: translate3d(var(--fx), calc(var(--fy) - 14px), 0) scale(0.6); }
+  100% { opacity: 1; transform: translate3d(var(--fx), var(--fy), 0) scale(1); }
+}
+@keyframes sq-food-pop {
+  0%   { opacity: 1; }
+  35%  { opacity: 1; transform: translate3d(var(--fx), calc(var(--fy) - 26px), 0) scale(1.22); }
+  100% { opacity: 0; transform: translate3d(var(--fx), calc(var(--fy) - 120px), 0) scale(0.35); }
+}
+
+/* HUD */
+.snack-strip {
+  position: absolute;
+  top: 10px; left: 12px;
+  display: flex;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 253, 246, 0.86);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(3px);
+  min-height: 40px;
+  align-items: center;
+}
+.snack-strip:empty { display: none; }
+.snack-strip img { width: 28px; height: 28px; object-fit: contain; display: block; }
+.snack-strip img.just-landed { animation: sq-land 420ms var(--sq-ease-waddle); }
+@keyframes sq-land {
+  0%   { transform: scale(0.2) translateY(-16px); opacity: 0; }
+  70%  { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+.round-pill {
+  position: absolute;
+  top: 10px; right: 12px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(58, 44, 30, 0.78);
+  color: #fff;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+/* ── Trial card ────────────────────────────────────────────────────── */
+/* A paper sheet that slides up from the ground and hugs its own content, so
+   the top of the scene stays visible while the learner answers and the whole
+   scene is back the moment it leaves. */
+.trial-card {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: clamp(6px, 1.2vh, 14px);
+  background: linear-gradient(to bottom,
+    rgba(58, 44, 30, 0) 0%,
+    rgba(58, 44, 30, 0.10) 26%,
+    rgba(58, 44, 30, 0.34) 62%);
+  pointer-events: auto;
+  transform: translateY(0);
+  opacity: 1;
+  transition: transform 420ms var(--sq-ease-waddle), opacity 300ms linear;
+}
+.trial-card.is-entering { transform: translateY(101%); opacity: 0; }
+.trial-card.is-leaving  { transform: translateY(0); opacity: 0; }
+
+.trial-card-inner {
+  width: min(100%, 980px);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 18px clamp(12px, 2vw, 26px);
+  border-radius: var(--sq-card-radius) var(--sq-card-radius) 14px 14px;
+  background: var(--sq-paper);
+  border: 3px solid rgba(58, 44, 30, 0.16);
+  box-shadow: 0 -6px 40px -8px rgba(0, 0, 0, 0.45);
+  min-height: 0;
+}
+
+.trial-prompt {
+  font-size: clamp(1rem, 0.9rem + 0.5vw, 1.3rem);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--sq-berry);
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.trial-sample {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.trial-sample .sample-word {
+  font-size: var(--sample-sz, 3rem);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.02em;
+  color: var(--sq-ink);
+  line-height: 1.05;
+  text-align: center;
+}
+/* The sample is the SD, not a fourth choice: it gets the accent mat and a
+   downward notch so its relationship to the array below reads at a glance. */
+.trial-sample { position: relative; }
+.trial-sample .sample-pic {
+  width: var(--sample-sz, 150px);
+  height: calc(var(--sample-sz, 150px) * 0.78);
+  min-width: 0;
+  min-height: 0;
+  object-fit: contain;
+  border-radius: 16px;
+  background: #fff;
+  border: 3px solid var(--sq-berry);
+  box-shadow: 0 6px 0 -2px rgba(184, 68, 106, 0.22);
+  padding: 6px;
+  display: block;
+}
+.trial-sample::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -13px;
+  width: 18px;
+  height: 18px;
+  transform: translateX(-50%) rotate(45deg);
+  background: var(--sq-paper);
+  border-right: 3px solid var(--sq-berry);
+  border-bottom: 3px solid var(--sq-berry);
+  border-bottom-right-radius: 4px;
+}
+.trial-sample:has(.sample-word)::after { display: none; }
+
+.trial-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+  gap: clamp(8px, 1.4vw, 16px);
+  place-content: center;
+  flex: 0 1 auto;
+  min-height: 0;
+}
+
+/* Landscape tiles: the stimulus photos are overwhelmingly landscape, so a 4:3
+   frame spends the space on picture instead of on white margin. */
+.pick {
+  --pick-sz: 172px;
+  width: var(--pick-sz);
+  height: calc(var(--pick-sz) * 0.78);
+  min-width: 72px;
+  min-height: 64px;
+  padding: 6px;
+  border: 3px solid rgba(58, 44, 30, 0.16);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 6px 0 -2px rgba(58, 44, 30, 0.10);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: transform 150ms var(--sq-ease-waddle), border-color 150ms var(--ease-standard),
+              box-shadow 150ms var(--ease-standard);
+}
+/* `min-height: auto` on a grid item is the intrinsic height of a replaced
+   element, so without these zeroes a tall photo refuses to shrink and paints
+   straight out through the bottom of its tile and the trial card. */
+.pick img {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+}
+.pick { overflow: hidden; }
+.pick .pick-fallback {
+  display: none;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--sq-ink-soft);
+}
+.pick .pick-fallback.is-visible { display: block; }
+.pick:hover, .pick:focus-visible { transform: translateY(-4px); border-color: var(--sq-leaf); }
+.pick:active { transform: translateY(0) scale(0.97); }
+.pick.is-right { border-color: var(--sq-leaf); box-shadow: 0 0 0 6px rgba(93, 138, 74, 0.24); }
+.pick.is-wrong { animation: sq-nope 420ms ease-in-out; border-color: var(--sq-berry); }
+.pick[disabled] { cursor: default; }
+@keyframes sq-nope {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-7px); }
+  75% { transform: translateX(7px); }
+}
+
+/* Technician scoring row — deliberately below the picture and inset from the
+   edges a learner reaches for, with a calm palette so "Incorrect" never reads
+   as a punisher. */
+.score-row {
+  width: 100%;
+  border-top: 2px dashed rgba(58, 44, 30, 0.18);
+  padding-top: 10px;
+  margin-top: -2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.score-row-note {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--text-faint);
+  font-weight: var(--weight-bold);
+}
+.score-row-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.score-btn {
+  min-width: 148px;
+  min-height: 56px;
+  padding: 10px 22px;
+  border-radius: 14px;
+  border: 2px solid transparent;
+  font-family: inherit;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  transition: transform 140ms var(--sq-ease-waddle), filter 140ms var(--ease-standard);
+}
+.score-btn:hover { transform: translateY(-2px); filter: brightness(1.04); }
+.score-btn:active { transform: translateY(0) scale(0.98); }
+.score-correct   { background: #e6f0dc; border-color: var(--sq-leaf); color: #33512a; }
+.score-prompted  { background: #fdf0d8; border-color: var(--sq-sun);  color: #7a4e12; }
+.score-incorrect { background: #eef1f5; border-color: var(--sq-sky);  color: #2f4d66; }
+
+.btn-abandon { flex-shrink: 0; }
+
+/* ── Done screen ───────────────────────────────────────────────────── */
+.screen-done {
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: center;
+  gap: clamp(16px, 3vw, 44px);
+  overflow: auto;
+}
+.done-art-wrap { display: flex; align-items: center; justify-content: center; min-width: 0; }
+.done-art {
+  position: relative;
+  width: min(38vw, 420px);
+  aspect-ratio: 928 / 1152;
+  border-radius: var(--sq-card-radius);
+  overflow: hidden;
+  border: 3px solid rgba(58, 44, 30, 0.18);
+  box-shadow: var(--sq-lift);
+  background: var(--sq-paper-deep);
+  flex-shrink: 0;
+}
+.done-final { width: 100%; height: 100%; object-fit: cover; display: block; }
+.done-food { position: absolute; inset: 0; pointer-events: none; }
+.done-food img {
+  position: absolute;
+  display: block;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.40));
+  animation: sq-done-food-in 520ms var(--sq-ease-waddle) both;
+}
+@keyframes sq-done-food-in {
+  0%   { opacity: 0; transform: scale(0.5) rotate(-12deg); }
+  100% { opacity: 1; transform: scale(1) rotate(var(--tilt, 0deg)); }
+}
+
+.done-side {
+  flex: 1 1 460px;
+  min-width: 0;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+}
+.done-title {
+  font-size: clamp(1.8rem, 1.2rem + 2vw, 2.8rem);
+  font-weight: var(--weight-bold);
+  color: var(--sq-ink);
+  letter-spacing: -0.02em;
+}
+.done-praise {
+  font-size: clamp(1.05rem, 0.95rem + 0.5vw, 1.3rem);
+  line-height: var(--leading-normal);
+  color: var(--sq-ink-soft);
+}
+.finish-sr-row { display: flex; }
+.done-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+.results-wrap {
+  border-top: 2px solid rgba(58, 44, 30, 0.12);
+  padding-top: 12px;
+  min-height: 0;
+}
+.results-title {
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--text-muted);
+  font-weight: var(--weight-bold);
+  margin-bottom: 8px;
+}
+.results-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: var(--text-sm);
+  color: var(--sq-ink-soft);
+  margin-bottom: 8px;
+}
+.results-summary strong { color: var(--sq-ink); }
+.results-scroll { max-height: 30vh; overflow: auto; border-radius: 10px; border: 1px solid var(--border-default); }
+.results-table { width: 100%; border-collapse: collapse; background: #fff; font-size: var(--text-sm); }
+.results-table th {
+  position: sticky; top: 0;
+  background: var(--surface-sunken);
+  text-align: left;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--text-muted);
+  padding: 7px 10px;
+}
+.results-table td { padding: 6px 10px; border-top: 1px solid var(--border-default); }
+.results-table .outcome-ok       { color: var(--sq-leaf);  font-weight: var(--weight-bold); }
+.results-table .outcome-prompted { color: var(--sq-sun);   font-weight: var(--weight-bold); }
+.results-table .outcome-error    { color: var(--sq-berry); font-weight: var(--weight-bold); }
+
+/* ── Narrow viewports ──────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .choice-grid-3, .choice-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .screen-done { flex-direction: column; align-items: center; }
+  .done-art { width: min(72vw, 320px); }
+  .done-side { flex: 0 0 auto; width: 100%; }
+}
+@media (max-width: 560px) {
+  .choice-grid-3, .choice-grid-4 { grid-template-columns: minmax(0, 1fr); }
+  .choice-tile { min-height: 96px; }
+  .score-btn { min-width: 104px; font-size: var(--text-md); }
+}
+
+/* ── Reduced motion — position changes only, no rotation or bob ────── */
+@media (prefers-reduced-motion: reduce) {
+  .walker { transition-duration: 260ms; }
+  .walker.is-walking .walker-bob,
+  .walker.is-hopping .walker-bob { animation: none; }
+  .food.is-appearing { animation: none; }
+  .food.is-collected { animation: sq-food-fade 240ms linear forwards; }
+  @keyframes sq-food-fade { to { opacity: 0; } }
+  .snack-strip img.just-landed { animation: none; }
+  .trial-card { transition: opacity 160ms linear; }
+  .trial-card.is-entering { transform: none; }
+  .trial-card.is-leaving  { transform: none; }
+  .choice-tile:hover, .choice-tile:focus-visible { transform: none; }
+  .done-food img { animation: none; transform: rotate(var(--tilt, 0deg)); }
+  .pick.is-wrong { animation: none; }
+}

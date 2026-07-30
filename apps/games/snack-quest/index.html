@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="version" content="1.0">
+  <title>Snack Quest</title>
+  <link rel="stylesheet" href="../tailwind.css">
+  <link rel="stylesheet" href="/assets/nav-bar.css">
+  <script src="/assets/nav-bar.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ── Header ──────────────────────────────────────────────────── -->
+  <noaba-bar product="games" crumbs="Snack Quest" crumb-hrefs="/" no-admin></noaba-bar>
+
+  <header id="app-header" title="Tap the bar to show / hide settings">
+    <a href="../" id="btn-back" class="btn-back" title="Back to Games"><span class="back-label">← Games</span></a>
+    <div class="app-title">
+      <span class="app-title-text">Snack Quest</span>
+      <span class="app-title-sub">No Outcome ABA · v<span id="app-version-label">0.1.0</span></span>
+    </div>
+    <div id="quest-crumbs" class="quest-crumbs" hidden>
+      <span id="crumb-task" class="crumb"></span>
+      <span class="crumb-sep">·</span>
+      <span id="crumb-place" class="crumb"></span>
+    </div>
+    <button type="button" id="btn-minimize" class="btn-minimize" aria-expanded="true" aria-controls="settings-bar" title="Show / hide settings">▾</button>
+  </header>
+
+  <!-- ── Settings bar ─────────────────────────────────────────────── -->
+  <div id="settings-bar">
+    <div class="setting-group">
+      <label for="sel-topic">Topic<button type="button" class="help-btn" data-help="Choose the image category the trials draw from. Shared with the other games.">?</button></label>
+      <select id="sel-topic">
+        <option value="">-- scanning --</option>
+      </select>
+    </div>
+
+    <div class="setting-group">
+      <label for="inp-size">Array Size<button type="button" class="help-btn" data-help="How many pictures appear in the choice array for Matching and Receptive (2–4). Expressive is always a field of one.">?</button></label>
+      <input type="number" id="inp-size" min="2" max="4" value="3">
+    </div>
+
+    <div class="setting-group setting-targets">
+      <button type="button" id="btn-targets-toggle" class="btn-targets" aria-expanded="false">
+        Targets <span id="targets-count" class="targets-count">0 of 0</span>
+        <button type="button" class="help-btn" data-help="Choose which pictures from the topic can be the target (correct answer).">?</button>
+      </button>
+    </div>
+
+    <div class="setting-group setting-extra">
+      <button type="button" id="btn-extra-toggle" class="btn-extra" aria-expanded="false">
+        ⚙ Settings
+        <button type="button" class="help-btn" data-help="Open the quest and token-board options.">?</button>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Target picker panel ──────────────────────────────────────── -->
+  <section id="target-panel" hidden>
+    <div class="target-panel-header">
+      <span class="target-panel-title">Targets for <span id="target-panel-topic-label"></span></span>
+      <div class="target-panel-actions">
+        <button type="button" id="btn-targets-all">Select all</button>
+        <button type="button" id="btn-targets-none">Deselect all</button>
+        <button type="button" id="btn-targets-close" title="Close" class="btn-targets-close">×</button>
+      </div>
+    </div>
+    <div id="target-panel-body" class="target-panel-body"></div>
+  </section>
+
+  <!-- ── Extra settings panel ─────────────────────────────────────── -->
+  <section id="extra-panel" hidden>
+    <div class="extra-panel-header">
+      <span class="extra-panel-title">Options</span>
+      <button type="button" id="btn-extra-close" class="btn-extra-close" title="Close">×</button>
+    </div>
+    <div class="extra-panel-body">
+      <p class="extra-note">
+        Only an <strong>independent correct</strong> response advances the reinforcement
+        ratio. A <strong>prompted</strong> response is recorded as prompted and still moves
+        our friend along, but it does not count toward the next snack. An
+        <strong>incorrect</strong> response moves him too — he never stands still.
+      </p>
+
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-speak" checked>
+        Speak the word (Receptive)
+        <button type="button" class="help-btn" data-help="On a Receptive trial the target word is shown and spoken aloud. Turn this off for a quiet room.">?</button>
+      </label>
+
+      <!-- Token Board Settings -->
+      <div class="token-board-settings-divider">
+        <label class="checkbox-label">
+          <input type="checkbox" id="chk-token-board">
+          Token Board
+          <button type="button" class="help-btn" data-help="The quest runs on the token board: Goal Tokens is how many snacks our friend collects, and the FR/VR schedule decides which rounds he actually reaches one.">?</button>
+        </label>
+      </div>
+
+      <div id="token-settings" style="display: none; margin-top: 12px; padding-left: 24px;">
+        <div class="extra-row">
+          <label for="sel-schedule-type">Schedule</label>
+          <select id="sel-schedule-type">
+            <option value="FR">Fixed Ratio (FR)</option>
+            <option value="VR">Variable Ratio (VR)</option>
+          </select>
+          <input type="number" id="inp-schedule-value" min="1" max="5" value="1" style="width: 50px;">
+          <span id="schedule-range-hint" class="range-hint">FR 1–5 · VR 2–5</span>
+        </div>
+        <div class="extra-row">
+          <label for="inp-starting-tokens">Starting Tokens</label>
+          <input type="number" id="inp-starting-tokens" min="0" max="9" value="0">
+        </div>
+        <div class="extra-row">
+          <label for="inp-goal-tokens">Goal Tokens</label>
+          <input type="number" id="inp-goal-tokens" min="1" max="10" value="5">
+          <span class="range-hint">= snacks to collect</span>
+        </div>
+        <div class="extra-row">
+          <label for="sel-token-emoji">Token Emoji</label>
+          <select id="sel-token-emoji">
+            <option value="random">Random (each session)</option>
+            <option value="⭐">⭐ Star</option>
+            <option value="🔷">🔷 Diamond</option>
+            <option value="💎">💎 Gem</option>
+            <option value="✨">✨ Sparkle</option>
+            <option value="🎁">🎁 Gift</option>
+            <option value="🏆">🏆 Trophy</option>
+            <option value="💫">💫 Dizzy</option>
+            <option value="🌟">🌟 Glowing Star</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Token board (canonical contract) ─────────────────────────── -->
+  <div id="token-board" hidden class="token-board-simple" aria-label="Token progress tracker">
+    <div id="token-emoji-display" class="token-emoji-simple"></div>
+    <div id="token-progress-text" class="token-progress-simple">0 / 5</div>
+  </div>
+
+  <!-- ── Live region for round / token announcements ──────────────── -->
+  <p id="quest-live" class="sr-only" aria-live="polite" aria-atomic="true"></p>
+
+  <main id="quest-main">
+
+    <!-- ── 1. TASK ────────────────────────────────────────────────── -->
+    <section id="screen-task" class="screen" aria-labelledby="task-heading">
+      <div class="story">
+        <h1 id="task-heading" class="story-title">Snack Quest</h1>
+        <p class="story-line">Our friend is hungry. Let's help him find a snack to share.</p>
+        <p class="story-sub">First — what will we practise?</p>
+      </div>
+      <div class="choice-grid choice-grid-3" id="task-tiles" role="group" aria-label="Choose a task"></div>
+    </section>
+
+    <!-- ── 2. PLACE ───────────────────────────────────────────────── -->
+    <section id="screen-place" class="screen" hidden aria-labelledby="place-heading">
+      <div class="story">
+        <h1 id="place-heading" class="story-title">Where should he have it?</h1>
+        <p class="story-line">Pick the place for our friend's snack.</p>
+      </div>
+      <div class="choice-grid choice-grid-4" id="place-tiles" role="group" aria-label="Choose a place"></div>
+      <button type="button" id="btn-back-to-task" class="btn-quiet">← Change task</button>
+    </section>
+
+    <!-- ── 3. QUEST ───────────────────────────────────────────────── -->
+    <section id="screen-quest" class="screen screen-quest" hidden aria-label="Quest">
+      <div id="stage-wrap">
+        <div id="stage" class="stage">
+          <img id="stage-scene" class="stage-scene" alt="" decoding="async">
+          <div id="stage-layer" class="stage-layer">
+            <div id="food" class="food" hidden>
+              <img id="food-img" class="food-img" alt="" decoding="async">
+            </div>
+            <div id="walker" class="walker">
+              <div class="walker-bob">
+                <img id="walker-img" class="walker-img" src="assets/friend/friend.webp"
+                     alt="Our friend" decoding="async">
+              </div>
+            </div>
+          </div>
+
+          <!-- HUD: collected snacks, ride along the top of the scene -->
+          <div id="snack-strip" class="snack-strip" aria-label="Snacks collected"></div>
+          <div id="round-pill" class="round-pill"></div>
+
+          <!-- Trial card slides up over the scene -->
+          <div id="trial-card" class="trial-card" hidden>
+            <div class="trial-card-inner">
+              <div id="trial-prompt" class="trial-prompt"></div>
+              <div id="trial-sample" class="trial-sample" hidden></div>
+              <div id="trial-grid" class="trial-grid"></div>
+              <div id="score-row" class="score-row" hidden>
+                <div class="score-row-note">Technician — score the vocal response</div>
+                <div class="score-row-btns">
+                  <button type="button" class="score-btn score-correct"  data-score="correct">Correct</button>
+                  <button type="button" class="score-btn score-prompted" data-score="prompted">Prompted</button>
+                  <button type="button" class="score-btn score-incorrect" data-score="incorrect">Incorrect</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button type="button" id="btn-abandon" class="btn-quiet btn-abandon">← End quest</button>
+    </section>
+
+    <!-- ── 4. DONE ────────────────────────────────────────────────── -->
+    <section id="screen-done" class="screen screen-done" hidden aria-labelledby="done-heading">
+      <div class="done-art-wrap">
+        <div id="done-art" class="done-art">
+          <img id="done-final" class="done-final" alt="Our friend, snack time" decoding="async">
+          <div id="done-food" class="done-food"></div>
+        </div>
+      </div>
+      <div class="done-side">
+        <h1 id="done-heading" class="done-title">Snack time!</h1>
+        <p id="done-praise" class="done-praise"></p>
+        <div class="finish-sr-row">
+          <button type="button" id="btn-finish-sr" class="finish-sr-btn" hidden>⭐ Finish &amp; SR</button>
+        </div>
+        <div class="done-actions">
+          <button type="button" id="btn-play-again" class="btn-primary btn-big">Play again</button>
+          <button type="button" id="btn-open-report" class="btn-quiet">Open printable report</button>
+          <button type="button" id="btn-clear-data" class="btn-quiet btn-danger">Clear data</button>
+        </div>
+        <div class="results-wrap">
+          <h2 class="results-title">Session results</h2>
+          <div id="results-summary" class="results-summary"></div>
+          <div class="results-scroll">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>#</th><th>Task</th><th>Place</th><th>Topic</th>
+                  <th>Target</th><th>Array</th><th>Time (s)</th><th>Outcome</th>
+                </tr>
+              </thead>
+              <tbody id="results-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="../../tooltip-help.js"></script>
+  <script src="../header-chrome.js"></script>
+  <script src="../../reward.js"></script>
+  <script src="../migrate-config.js"></script>
+  <script src="../game-settings.js"></script>
+  <script src="../results-report.js"></script>
+  <script src="../token-board.js"></script>
+  <script src="game.js"></script>
+  <script>NooutcoReward.attachGoalSR({ boardId: 'token-board', buttonId: 'btn-finish-sr', minutes: 5 });</script>
+  <script>
+    const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
+    window.ADMIN_SECRET_HASH = ADMIN_SECRET_HASH;
+    window.ADMIN_GEAR_PAGE = '../../AdminTools/ImageManager/';
+  </script>
+  <script src="../../admin-gear.js"></script>
+</body>
+</html>
