@@ -1002,7 +1002,11 @@ async function walk(arrive) {
   if (distFrac > 0.005) state.facing = targetX > state.friendX ? 1 : -1;
   state.friendX = targetX;
 
-  const ms = prefersReducedMotion() ? 240 : clamp(distFrac * 2600, 420, 1500);
+  // The floor is two full waddle cycles (sq-waddle is 380ms), not one. A short
+  // partway step used to clamp to ~420ms, which cut the waddle off mid-stride
+  // and read as a twitch rather than a walk — the learner is meant to enjoy
+  // watching him go, so a small step still gets time to look like walking.
+  const ms = prefersReducedMotion() ? 240 : clamp(distFrac * 2600, 760, 1500);
   el.walker.style.setProperty('--sq-walk-ms', ms + 'ms');
   el.walker.classList.add('is-walking');
   placeWalker(true);

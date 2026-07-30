@@ -82,9 +82,18 @@ async function run(browser, vp, errors) {
   await page.waitForFunction(() => document.getElementById('trial-card').hidden);
   await sleep(350);
   await shot('04-walking');
-  await waitIdle(page);
-  await sleep(400);
+  // Shoot the settled partway pose the instant the walk ends. The clear window
+  // is only the ~220ms between `is-walking` clearing and the next trial's card
+  // mounting, and a fixed sleep cannot hit it: the walk duration is set per
+  // round from the distance covered, not from the --sq-walk-ms default. Waiting
+  // for idle instead lets the card cover the very thing this shot exists to show.
+  await page.waitForFunction(
+    () => !document.querySelector('.walker').classList.contains('is-walking'),
+    null,
+    { timeout: 8000 },
+  );
   await shot('05-partway');
+  await waitIdle(page);
 
   // Round 2 — delivering: he arrives and the snack is collected.
   await respondCorrect(page);
