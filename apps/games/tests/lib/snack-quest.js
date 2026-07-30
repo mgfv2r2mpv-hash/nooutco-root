@@ -27,6 +27,7 @@ export async function bootstrap(page, opts = {}) {
     scheduleValue: 1,
     startingTokens: 0,
     goalTokens: 3,
+    promptsEarn: false,
     ...opts,
   };
 
@@ -44,6 +45,7 @@ export async function bootstrap(page, opts = {}) {
           topic: cfg.topic,
           arraySize: cfg.arraySize,
           speak: false,
+          promptsEarn: cfg.promptsEarn,
           targetFilters: {},
           tokensSeeded: true,
         },

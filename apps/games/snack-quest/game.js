@@ -18,6 +18,10 @@
 
 // ── Content ────────────────────────────────────────────────────────
 
+// `prompt` is the SD the staff member delivers, so it is written the way an SD
+// is written: short, positive, and phrased as the action to take rather than as
+// a description of the screen. Receptive takes the target name as an argument
+// because its SD names the item; the other two are fixed.
 const TASKS = [
   {
     id: 'matching',
@@ -25,7 +29,7 @@ const TASKS = [
     desc: 'A picture on top — find the one that matches.',
     glyph: '🧩',
     accent: '#5d8a4a',
-    prompt: 'Find the one that matches',
+    prompt: () => 'Find the Match',
   },
   {
     id: 'receptive',
@@ -33,7 +37,10 @@ const TASKS = [
     desc: 'Hear and see the word — find that picture.',
     glyph: '🔤',
     accent: '#4b7ea8',
-    prompt: 'Find it',
+    // Lower-cased inside the sentence: an SD reads "Find the bear", and a
+    // capitalised noun mid-sentence is exactly the shape the naming scan
+    // hunts for. The sample word above the array still shows its own casing.
+    prompt: (label) => (label ? `Find the ${label.toLowerCase()}` : 'Find it'),
   },
   {
     id: 'expressive',
@@ -41,15 +48,15 @@ const TASKS = [
     desc: 'One picture, no word — the learner says what it is.',
     glyph: '💬',
     accent: '#b8446a',
-    prompt: 'What is it?',
+    prompt: () => 'What is it?',
   },
 ];
 
 const PLACES = [
-  { id: 'playroom',    name: 'Playroom',    desc: 'Cosy rug, toys everywhere.', ground: 0.905, accent: '#b8446a' },
-  { id: 'party',       name: 'Party',       desc: 'Streamers, presents, cake.', ground: 0.925, accent: '#e2913a' },
-  { id: 'sky',         name: 'Sky',         desc: 'Up on the evening clouds.',  ground: 0.800, accent: '#6b5bb0' },
-  { id: 'countryside', name: 'Countryside', desc: 'A big tree and a meadow.',   ground: 0.895, accent: '#5d8a4a' },
+  { id: 'playroom',    name: 'Playroom',    desc: 'Cozy rug, toys everywhere.',              ground: 0.905, accent: '#b8446a' },
+  { id: 'party',       name: 'Party',       desc: 'Food with friends!',                      ground: 0.925, accent: '#e2913a' },
+  { id: 'sky',         name: 'Sky',         desc: 'A magic adventure up in the clouds.',     ground: 0.800, accent: '#6b5bb0' },
+  { id: 'countryside', name: 'Countryside', desc: 'Out in the warm fresh air.',              ground: 0.895, accent: '#5d8a4a' },
 ];
 
 /** Fruit pool; the honey is always appended last and never drawn here. */
@@ -156,6 +163,7 @@ const state = {
   topic: '',
   arraySize: 3,
   speak: true,
+  promptsEarn: false,
   targetFilters: {},
 
   // Discovered stimuli
@@ -213,6 +221,10 @@ const el = {
   selTopic: $('sel-topic'),
   inpSize: $('inp-size'),
   chkSpeak: $('chk-speak'),
+  chkPromptsEarn: $('chk-prompts-earn'),
+  promptRow: $('prompt-row'),
+  btnPrompt: $('btn-prompt'),
+  promptFlag: $('prompt-flag'),
   btnTargetsToggle: $('btn-targets-toggle'),
   targetsCount: $('targets-count'),
   targetPanel: $('target-panel'),
@@ -278,6 +290,9 @@ const SETTINGS_FIELDS = {
   topic:         { type: 'string', default: '' },
   arraySize:     { type: 'int', min: 2, max: 4, default: 3 },
   speak:         { type: 'bool', default: true },
+  // For a learner working at a prompted level: a prompt is still recorded as
+  // Prompted, but it advances the ratio so prompting does not cost the snack.
+  promptsEarn:   { type: 'bool', default: false },
   targetFilters: { type: 'map', default: {} },
   // First-run marker: the token board is this game's quest engine, so it is
   // switched on once, through its own DOM contract, and left under the
@@ -295,11 +310,13 @@ function loadSettings() {
   state.topic = s.topic;
   state.arraySize = s.arraySize;
   state.speak = s.speak;
+  state.promptsEarn = s.promptsEarn;
   state.targetFilters = s.targetFilters;
   state.tokensSeeded = s.tokensSeeded;
 
   el.inpSize.value = state.arraySize;
   el.chkSpeak.checked = state.speak;
+  el.chkPromptsEarn.checked = state.promptsEarn;
 }
 
 function saveSettings() {
@@ -307,6 +324,7 @@ function saveSettings() {
     topic: state.topic,
     arraySize: state.arraySize,
     speak: state.speak,
+    promptsEarn: state.promptsEarn,
     targetFilters: state.targetFilters,
     tokensSeeded: state.tokensSeeded,
   });
@@ -702,7 +720,7 @@ function startQuest(place) {
   state.facing = 1;
 
   if (tokens) tokens.startSession();
-  el.snackStrip.innerHTML = '';
+  renderSnackStrip();
   el.food.hidden = false;
   el.food.classList.remove('is-collected');
   el.walker.classList.remove('is-walking', 'is-hopping');
@@ -824,10 +842,19 @@ async function setHiddenStimulus(img, src, token) {
 
 function renderTrial() {
   const task = state.task;
-  el.trialPrompt.textContent = task.prompt;
+  // Only receptive is handed the target name — its SD is "Find the <thing>".
+  // Expressive must never be given it: the whole mode rests on the word not
+  // reaching the page, and the SD line would be the easiest place to leak it.
+  el.trialPrompt.textContent = task.prompt(task.id === 'receptive' ? state.sampleLabel : '');
   el.trialSample.innerHTML = '';
   el.trialGrid.innerHTML = '';
   el.scoreRow.hidden = task.id !== 'expressive';
+  // Matching and receptive are scored by the learner's tap, so a prompt has to
+  // be declared before they answer rather than judged after. Expressive already
+  // has an explicit Prompted button in its scoring row.
+  el.promptRow.hidden = task.id === 'expressive';
+  el.btnPrompt.disabled = false;
+  el.promptFlag.hidden = true;
   // The scoring buttons are static markup, so the previous trial's disable has
   // to be lifted here; the picture tiles are rebuilt and start enabled.
   el.scoreRow.querySelectorAll('.score-btn').forEach((b) => { b.disabled = false; });
@@ -949,21 +976,32 @@ async function finishTrial(outcome) {
 
   recordTrial(outcome);
 
-  // Only an independent correct response advances the ratio. `award()` decides
-  // whether this round delivers; `onAward` flips the flag when it does.
+  // `award()` decides whether this round delivers; `onAward` flips the flag.
+  // A prompted response advances the ratio only when the technician has said
+  // prompts count for this learner. Either way it stays 'Prompted' in the data:
+  // the setting changes what a prompt costs, never what is recorded about it.
+  const earns = outcome === 'Correct' || (outcome === 'Prompted' && state.promptsEarn);
+
   deliveredThisTrial = false;
-  if (outcome === 'Correct') {
+  if (earns) {
     if (tokens && tokens.isEnabled()) tokens.award();
-    else deliveredThisTrial = true;   // no board: every correct round delivers
+    else deliveredThisTrial = true;   // no board: every earning round delivers
   }
   const delivering = deliveredThisTrial;
 
-  // An error gains no ground: ground is what a correct answer buys.
-  const mode = delivering ? 'arrive' : outcome === 'Error' ? 'hold' : 'partway';
+  // Every non-delivering round still walks — he is never made to stand still —
+  // but only a delivering round may arrive. `walk('partway')` is capped short of
+  // the food, so no run of errors can creep him onto it.
+  const mode = delivering ? 'arrive' : 'partway';
+
+  // An error is likelier to end in a tumble than a merely unreinforced round,
+  // but neither is certain — a guaranteed fall on every error would just be a
+  // slower way of punishing one.
+  const tumbleChance = outcome === 'Error' ? 0.4 : 0.12;
 
   await sleep(prefersReducedMotion() ? 120 : 420);
   await hideTrialCard();
-  await walk(mode);
+  await walk(mode, tumbleChance);
 
   if (delivering) {
     await collectFood();
@@ -971,9 +1009,6 @@ async function finishTrial(outcome) {
     state.foodIndex++;
     spawnFood(false);
     await sleep(prefersReducedMotion() ? 60 : 320);
-  } else if (mode === 'hold') {
-    announce('Let us try the next one.');
-    await sleep(prefersReducedMotion() ? 60 : 220);
   } else {
     announce('He is getting closer.');
     await sleep(prefersReducedMotion() ? 60 : 220);
@@ -983,25 +1018,53 @@ async function finishTrial(outcome) {
   beginTrial();
 }
 
+/** How close a non-delivering round may bring him to the food, as a fraction of
+ *  stage width. Arrival is what a reinforced round buys, so every other round
+ *  stops short of this line however many of them run. */
+const STANDOFF = 0.07;
+
+/** Move him one leg, and wait out the transition. */
+async function moveTo(targetX, tumbling) {
+  const distFrac = Math.abs(targetX - state.friendX);
+  if (distFrac > 0.005) state.facing = targetX > state.friendX ? 1 : -1;
+  state.friendX = targetX;
+
+  // The floor is two full waddle cycles (sq-waddle is 380ms), not one. A short
+  // partway step used to clamp to ~420ms, which cut the waddle off mid-stride
+  // and read as a twitch rather than a walk — the learner is meant to enjoy
+  // watching him go, so a small step still gets time to look like walking.
+  const floor = tumbling ? 380 : 760;
+  const ms = prefersReducedMotion() ? 240 : clamp(distFrac * 2600, floor, 1500);
+  el.walker.style.setProperty('--sq-walk-ms', ms + 'ms');
+  el.walker.classList.add('is-walking');
+  placeWalker(true);
+  await sleep(ms + 40);
+  el.walker.classList.remove('is-walking');
+}
+
+/** A tumble and a get-up, mid-walk. Costs him no ground — he lands where he
+ *  fell — so it reads as effort rather than as a penalty on top of one. */
+async function tumble() {
+  if (prefersReducedMotion()) return;
+  el.walker.classList.add('is-tumbling');
+  await sleep(950);
+  el.walker.classList.remove('is-tumbling');
+  await sleep(80);
+}
+
 /** Move our friend toward the food.
  *
  *  'arrive'  — a delivering round: he closes the remaining distance.
- *  'partway' — earned but not delivering: he covers ground toward the snack.
- *  'hold'    — an error: he waddles on the spot and ends exactly where he began.
+ *  'partway' — every other round: he covers ground but stops short of the food.
  *
- *  'hold' exists because ground gained is the reinforcer here. An error that
- *  still moved him closer would hand over part of what a correct answer buys,
- *  and across a quest that quietly turns the schedule into "respond at all".
- *  He still animates, so the round never reads as nothing happening. */
-async function walk(mode) {
-  if (mode === 'hold') {
-    const ms = prefersReducedMotion() ? 200 : 700;
-    el.walker.classList.add('is-walking');
-    await sleep(ms);
-    el.walker.classList.remove('is-walking');
-    return;
-  }
-
+ *  Only a reinforced round may arrive. A non-delivering round is capped at the
+ *  STANDOFF line, so a run of errors can never creep him onto the snack and
+ *  "he got there" keeps meaning what it says.
+ *
+ *  `tumbleChance` gives a non-delivering round some odds of a fall on the way.
+ *  He still gets where that round was going, so a tumble is character, not an
+ *  extra cost — stillness and lost ground are both off the table as feedback. */
+async function walk(mode, tumbleChance = 0) {
   const arrive = mode === 'arrive';
   const anchorF = foodAnchor();
   const anchorW = walkerAnchor();
@@ -1013,28 +1076,29 @@ async function walk(mode) {
   if (arrive) {
     targetX = arriveX;
   } else {
-    // ~1/n of the remaining distance, n taken from the configured ratio, and
-    // always short of arrival so "he got there" stays meaningful.
+    // ~1/n of the remaining distance, n taken from the configured ratio.
     const n = Math.max(2, tokenCfg().scheduleValue || 2);
     const remaining = arriveX - state.friendX;
-    targetX = state.friendX + remaining / n;
-    if (Math.abs(arriveX - targetX) < 0.04) targetX = state.friendX + remaining * 0.6;
+    const sign = remaining >= 0 ? 1 : -1;
+    const cap = arriveX - sign * STANDOFF;
+    const step = state.friendX + remaining / n;
+    targetX = sign > 0 ? Math.min(step, cap) : Math.max(step, cap);
+    // Already at or past the stand-off: hold rather than sliding backwards.
+    if (sign > 0 && targetX < state.friendX) targetX = state.friendX;
+    if (sign < 0 && targetX > state.friendX) targetX = state.friendX;
   }
 
-  const distFrac = Math.abs(targetX - state.friendX);
-  if (distFrac > 0.005) state.facing = targetX > state.friendX ? 1 : -1;
-  state.friendX = targetX;
+  const falls = !arrive && tumbleChance > 0 && Math.random() < tumbleChance;
+  if (!falls) {
+    await moveTo(targetX, false);
+    return;
+  }
 
-  // The floor is two full waddle cycles (sq-waddle is 380ms), not one. A short
-  // partway step used to clamp to ~420ms, which cut the waddle off mid-stride
-  // and read as a twitch rather than a walk — the learner is meant to enjoy
-  // watching him go, so a small step still gets time to look like walking.
-  const ms = prefersReducedMotion() ? 240 : clamp(distFrac * 2600, 760, 1500);
-  el.walker.style.setProperty('--sq-walk-ms', ms + 'ms');
-  el.walker.classList.add('is-walking');
-  placeWalker(true);
-  await sleep(ms + 40);
-  el.walker.classList.remove('is-walking');
+  // Set off, go down partway, get up, finish the leg.
+  const mid = state.friendX + (targetX - state.friendX) * 0.55;
+  await moveTo(mid, true);
+  await tumble();
+  await moveTo(targetX, true);
 }
 
 async function collectFood() {
@@ -1047,15 +1111,38 @@ async function collectFood() {
   el.food.hidden = true;
 
   state.collected.push(key);
-  const chip = document.createElement('img');
-  chip.src = `assets/food/${key}.webp`;
-  chip.alt = '';
-  chip.width = 28;
-  chip.height = 28;
-  chip.className = 'just-landed';
-  el.snackStrip.appendChild(chip);
+  renderSnackStrip(true);
   announce(key === HONEY ? 'He got the honey!' : 'He got the snack!');
   updateRoundPill();
+}
+
+/**
+ * The snack strip IS the token board. The tokens in this game are the snacks
+ * themselves — he is getting ready for the party, and the quest is done when he
+ * has as many as the goal asks for — so the whole plan is drawn at once: the
+ * snacks already collected, and a waiting slot for each one still to come. A
+ * generic star tally alongside it would be a second, competing count of the
+ * same thing, which is why the shared emoji display is hidden on this game.
+ */
+function renderSnackStrip(landed = false) {
+  const strip = el.snackStrip;
+  strip.innerHTML = '';
+  state.foodPlan.forEach((key, i) => {
+    const got = i < state.collected.length;
+    const slot = document.createElement('span');
+    slot.className = got ? 'snack-slot is-got' : 'snack-slot';
+    if (got) {
+      const img = document.createElement('img');
+      img.src = `assets/food/${state.collected[i]}.webp`;
+      img.alt = '';
+      img.width = 28;
+      img.height = 28;
+      if (landed && i === state.collected.length - 1) img.className = 'just-landed';
+      slot.appendChild(img);
+    }
+    strip.appendChild(slot);
+  });
+  strip.setAttribute('aria-label', `${state.collected.length} of ${state.foodPlan.length} snacks collected`);
 }
 
 // ── Trial records ──────────────────────────────────────────────────
@@ -1311,6 +1398,24 @@ function bindEvents() {
   el.chkSpeak.addEventListener('change', () => {
     state.speak = el.chkSpeak.checked;
     saveSettings();
+  });
+
+  el.chkPromptsEarn.addEventListener('change', () => {
+    state.promptsEarn = el.chkPromptsEarn.checked;
+    saveSettings();
+  });
+
+  // Declaring a prompt marks the trial and shows which picture is correct, so
+  // the learner still completes the trial with help rather than being told the
+  // answer after the fact.
+  el.btnPrompt.addEventListener('click', () => {
+    if (state.busy || !state.questActive || state.trialPrompted) return;
+    state.trialPrompted = true;
+    el.btnPrompt.disabled = true;
+    el.promptFlag.hidden = false;
+    const right = el.trialGrid.querySelector(`.pick[data-index="${state.correctIdx}"]`);
+    if (right) right.classList.add('is-prompted');
+    announce('Prompt given.');
   });
 
   el.btnTargetsToggle.addEventListener('click', () => setTargetPanelOpen(!state.targetPanelOpen));

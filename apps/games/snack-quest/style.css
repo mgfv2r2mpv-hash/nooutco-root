@@ -657,3 +657,218 @@ body {
   .done-food img { animation: none; transform: rotate(var(--tilt, 0deg)); }
   .pick.is-wrong { animation: none; }
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   Round 2 — tumble, staff prompt, and a settings header that earns its
+   vertical space.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── The tumble ────────────────────────────────────────────────────
+   He goes over, lies there a beat, and gets back up. Rotation only, about
+   the same foot-line origin the waddle uses, so he pivots on his feet
+   instead of sinking through the ground. He keeps whatever ground the leg
+   had covered — a fall is character, not a second penalty. */
+@keyframes sq-tumble {
+  0%   { transform: rotate(0deg); }
+  16%  { transform: rotate(-78deg); }
+  22%  { transform: rotate(-72deg); }
+  58%  { transform: rotate(-72deg); }
+  84%  { transform: rotate(6deg); }
+  100% { transform: rotate(0deg); }
+}
+.walker.is-tumbling .walker-bob {
+  animation: sq-tumble 950ms var(--sq-ease-waddle) 1;
+}
+
+/* ── Staff prompt (matching + receptive) ───────────────────────────
+   Sits under the picture row, visually quieter than anything the learner
+   is meant to touch, and out of the sweep of a hand reaching for a tile. */
+.prompt-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(58, 44, 30, 0.22);
+}
+.prompt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border: 1px solid rgba(58, 44, 30, 0.28);
+  border-radius: 999px;
+  background: var(--sq-paper-deep);
+  color: var(--sq-ink-soft);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard),
+              color var(--duration-fast) var(--ease-standard);
+}
+.prompt-btn:hover:not(:disabled) { background: #efdfc2; color: var(--sq-ink); }
+.prompt-btn:disabled { opacity: 0.45; cursor: default; }
+.prompt-flag {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--sq-sun);
+}
+/* A prompted tile is marked distinctly from a scored-correct one, so the
+   highlight reads as "here it is" rather than as "you got it". */
+.pick.is-prompted {
+  border-color: var(--sq-sun);
+  box-shadow: 0 0 0 6px rgba(226, 145, 58, 0.26);
+}
+
+/* ── Target picker: a dropdown, not a full-width bar ───────────────
+   The old panel spanned the page and laid targets out in columns, which on
+   a touch screen meant small hit areas and a lot of travel. This anchors to
+   its own button, gives every item a full-width row, and keeps Select all /
+   Deselect all pinned so a long topic does not mean scrolling back up. */
+.setting-targets { position: relative; }
+.btn-targets-caret { margin-left: 4px; opacity: 0.6; font-size: 0.8em; }
+
+#target-panel {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(92vw, 400px);
+  max-height: min(62vh, 470px);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border: 1px solid rgba(58, 44, 30, 0.24);
+  border-radius: 16px;
+  background: var(--sq-paper);
+  box-shadow: var(--sq-lift);
+  overflow: hidden;
+}
+#target-panel .target-panel-header {
+  margin: 0;
+  padding: 12px 14px 8px;
+  background: var(--sq-paper);
+}
+#target-panel .target-panel-actions {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: 0;
+  padding: 0 14px 10px;
+  background: var(--sq-paper);
+  border-bottom: 1px solid rgba(58, 44, 30, 0.14);
+}
+#target-panel .target-panel-actions button {
+  flex: 1;
+  min-height: 40px;
+  border-radius: 10px;
+}
+#target-panel .target-panel-body {
+  display: block;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 6px;
+  gap: 0;
+}
+#target-panel .target-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;          /* comfortable touch target */
+  padding: 6px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+#target-panel .target-row:hover { background: var(--sq-paper-deep); }
+#target-panel .target-row:active { background: #efdfc2; }
+#target-panel .target-row input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  accent-color: var(--sq-leaf);
+}
+#target-panel .target-thumb {
+  width: 40px; height: 40px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex: none;
+}
+#target-panel .target-row-label { font-size: var(--text-md); }
+
+/* ── Options panel: denser ─────────────────────────────────────────
+   The shared chrome lays this out as auto-fill columns with centred items,
+   which on a wide header left the token block stranded in one narrow column
+   with the rest of the row empty. Full-width blocks span, and the token
+   settings flow in their own columns instead of a single tall stack. */
+#extra-panel { padding: 10px 16px; }
+#extra-panel .extra-panel-body {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+  gap: 4px 20px;
+  align-items: start;
+}
+#extra-panel .extra-note,
+#extra-panel .token-board-settings-divider,
+#extra-panel #token-settings { grid-column: 1 / -1; }
+#extra-panel .extra-note { margin-bottom: 6px; }
+/* `display` is set inline by token-board.js, so this container cannot be made a
+   flex or grid parent. Making the rows inline-flex instead lets them flow and
+   wrap like text inside the block, which packs them against the left edge —
+   fixed columns just moved the dead space rather than removing it. */
+#extra-panel #token-settings {
+  padding-left: 0 !important;
+  margin-top: 4px !important;
+}
+#extra-panel #token-settings .extra-row {
+  display: inline-flex;
+  width: auto;
+  vertical-align: top;
+  margin: 0 26px 8px 0;
+}
+@media (max-width: 720px) {
+  #extra-panel #token-settings .extra-row { margin-right: 16px; }
+  #target-panel { width: min(96vw, 400px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .walker.is-tumbling .walker-bob { animation: none; }
+}
+
+
+/* ── The snacks are the tokens ─────────────────────────────────────
+   The shared board's star tally is hidden here: a second count of the same
+   thing, in a currency this game does not use. What survives is the numeric
+   progress (useful to a technician at a glance) and #snack-strip, which draws
+   the party plan — one slot per snack the goal asks for, filled as he
+   collects them. */
+#token-emoji-display { display: none; }
+.token-progress-suffix {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--text-muted);
+  font-weight: var(--weight-semibold);
+}
+
+.snack-strip { display: flex; gap: 6px; align-items: center; }
+.snack-slot {
+  width: 30px; height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px dashed rgba(58, 44, 30, 0.28);
+  background: rgba(253, 246, 232, 0.42);
+}
+.snack-slot.is-got {
+  border-style: solid;
+  border-color: rgba(58, 44, 30, 0.18);
+  background: rgba(253, 246, 232, 0.9);
+  box-shadow: 0 2px 6px -2px rgba(58, 44, 30, 0.4);
+}
+.snack-slot img { width: 26px; height: 26px; object-fit: contain; }
