@@ -36,16 +36,36 @@
     return EMOJI_POOL[Math.floor(Math.random() * EMOJI_POOL.length)];
   }
 
-  // VR schedule: one reinforcement placed randomly within each chunk of `vrValue`
-  // trials — average rate ~1/vrValue with no gap exceeding ~1.5x the interval.
-  function generateVRSchedule(numTrials, vrValue) {
-    const itemsPerChunk = Math.max(1, Math.ceil(vrValue));
-    const indices = [];
-    for (let i = 0; i < numTrials; i += itemsPerChunk) {
-      const chunkEnd = Math.min(i + itemsPerChunk, numTrials);
-      indices.push(Math.floor(Math.random() * (chunkEnd - i)) + i);
-    }
-    return indices.sort((a, b) => a - b);
+  /**
+   * Variable Ratio: how many more trials until the next reinforcement.
+   *
+   * Gaps are drawn one at a time rather than seeded as a fixed list, because a
+   * session's length is not known in advance and a pre-seeded list cannot steer
+   * itself. Before each draw we work out how many trials from now a delivery
+   * would put the realised ratio exactly on target:
+   *
+   *     ideal = value * (delivered + 1) - trialsCompleted
+   *
+   * then jitter around that inside a hard window. A long gap shrinks `ideal`
+   * and pulls the next delivery in; a short one pushes it out. Individual gaps
+   * still vary — that is what makes it a VR rather than an FR — but the running
+   * average tracks `value` over any number of trials instead of drifting.
+   *
+   * The first gap is capped at `value`, so a learner never waits longer than
+   * the configured ratio for the first token: VR3 delivers on trial 1, 2 or 3,
+   * never later. Subsequent gaps are capped at 2*value - 1, keeping the window
+   * symmetric about the mean and bounding the worst case anyone can sit
+   * through. A VR2 can therefore never run more than 3 trials dry.
+   */
+  function nextVRGap(value, trialsCompleted, delivered) {
+    const n = Math.max(2, Math.round(value) || 2);
+    const lo = 1;
+    const hi = delivered === 0 ? n : 2 * n - 1;
+    const ideal = n * (delivered + 1) - trialsCompleted;
+    const centre = Math.min(hi, Math.max(lo, ideal));
+    const spread = Math.max(1, n - 1);
+    const jitter = (Math.random() * 2 - 1) * spread;
+    return Math.min(hi, Math.max(lo, Math.round(centre + jitter)));
   }
 
   function create(opts) {
@@ -81,8 +101,8 @@
       currentTokens: 0,
       chosenEmoji: '⭐',
       trialsCompleted: 0,
-      vrSchedule: [],
-      vrScheduleTrial: 0,
+      vrNextAt: 0,      // absolute trial number of the next VR delivery
+      vrDelivered: 0,   // VR deliveries this session (uncapped by goalTokens)
       goalFired: false,
     };
 
@@ -121,12 +141,12 @@
 
     function startSession() {
       run.trialsCompleted = 0;
-      run.vrScheduleTrial = 0;
+      run.vrDelivered = 0;
       run.goalFired = false;
       run.chosenEmoji = cfg.tokenEmoji === 'random' ? pickRandomEmoji() : cfg.tokenEmoji;
-      if (cfg.scheduleType === 'VR') {
-        run.vrSchedule = generateVRSchedule(1000, cfg.scheduleValue);
-      }
+      // Draw the opening gap up front so the first token lands within `value`
+      // trials rather than wherever a seeded list happened to put it.
+      run.vrNextAt = nextVRGap(cfg.scheduleValue, 0, 0);
       run.currentTokens = cfg.startingTokens;
       if (el.board) el.board.hidden = !cfg.enabled;
       render();
@@ -136,15 +156,19 @@
       if (cfg.scheduleType === 'FR') {
         return run.trialsCompleted % cfg.scheduleValue === 0;
       }
-      // VR
-      if (run.vrScheduleTrial >= run.vrSchedule.length) {
-        const offset = run.trialsCompleted;
-        run.vrSchedule = generateVRSchedule(1000, cfg.scheduleValue).map((i) => i + offset);
-        run.vrScheduleTrial = 0;
+      // VR. `>=` rather than `===` on purpose: an equality test can only fire on
+      // the exact trial it names, so any drift between the counter and the
+      // schedule strands the pointer and the board silently never pays out
+      // again. That is not hypothetical — it is the bug this replaced, where a
+      // 0-based schedule met a 1-based counter and VR2 delivered nothing at all
+      // in half of all sessions.
+      if (!run.vrNextAt || run.vrNextAt < 1) {
+        run.vrNextAt = run.trialsCompleted + nextVRGap(cfg.scheduleValue, run.trialsCompleted, run.vrDelivered);
       }
-      const award = run.vrSchedule[run.vrScheduleTrial] === run.trialsCompleted;
-      if (award) run.vrScheduleTrial++;
-      return award;
+      if (run.trialsCompleted < run.vrNextAt) return false;
+      run.vrDelivered++;
+      run.vrNextAt = run.trialsCompleted + nextVRGap(cfg.scheduleValue, run.trialsCompleted, run.vrDelivered);
+      return true;
     }
 
     function award() {

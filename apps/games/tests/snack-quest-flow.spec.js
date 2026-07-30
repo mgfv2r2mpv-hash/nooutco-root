@@ -135,7 +135,7 @@ test.describe('Snack Quest — movement is driven by the schedule', () => {
     await expect(page.locator('#btn-finish-sr')).toBeHidden();
   });
 
-  test('an incorrect response gains no ground and never delivers', async ({ page }) => {
+  test('an incorrect response moves him but cannot reach the snack', async ({ page }) => {
     await bootstrap(page, { scheduleValue: 1, goalTokens: 3 });
     await chooseTask(page, 'expressive');
     await choosePlace(page, 'sky');
@@ -145,31 +145,35 @@ test.describe('Snack Quest — movement is driven by the schedule', () => {
     await waitIdle(page);
     const after = await peek(page);
 
+    // He walks — an error is never answered with stillness.
+    expect(Math.abs(after.friendCentreX - before.friendCentreX)).toBeGreaterThan(4);
+    // But arriving is what a reinforced round buys, so he stays clear of it.
     expect(after.collected).toHaveLength(0);
-    // Ground gained is the reinforcer, so an error must not buy any of it. He
-    // waddles on the spot instead, which the position cannot distinguish from
-    // standing still — that is the point.
-    expect(Math.abs(after.friendCentreX - before.friendCentreX)).toBeLessThan(1);
     expect(Math.abs(after.friendCentreX - after.foodCentreX))
-      .toBeCloseTo(Math.abs(before.friendCentreX - before.foodCentreX), 0);
+      .toBeGreaterThan(after.friendHalfW + after.foodHalfW);
   });
 
-  test('errors never accumulate ground across a run of them', async ({ page }) => {
+  test('a long run of errors still cannot walk him onto the snack', async ({ page }) => {
+    test.setTimeout(90_000);   // each round plays a full walk, sometimes a tumble
     await bootstrap(page, { scheduleValue: 1, goalTokens: 3 });
     await chooseTask(page, 'expressive');
     await choosePlace(page, 'sky');
 
-    const before = await peek(page);
-    for (let i = 0; i < 4; i++) {
+    // Each error covers a fraction of what is left, so without a hard stand-off
+    // repeated errors converge onto the food and "he got there" stops meaning
+    // anything. The remaining gap roughly halves per error, so six rounds puts
+    // the uncapped position far inside the food and the cap is what is left
+    // holding him off.
+    for (let i = 0; i < 6; i++) {
       await page.click('.score-btn[data-score="incorrect"]');
       await waitIdle(page);
+      const p = await peek(page);
+      expect(p.collected, `collected after ${i + 1} errors`).toHaveLength(0);
+      expect(
+        Math.abs(p.friendCentreX - p.foodCentreX),
+        `gap after ${i + 1} errors`,
+      ).toBeGreaterThan(p.friendHalfW + p.foodHalfW);
     }
-    const after = await peek(page);
-
-    // Four errors in a row must leave him exactly where he started; a per-error
-    // nudge that looked negligible once would have carried him most of the way.
-    expect(after.collected).toHaveLength(0);
-    expect(Math.abs(after.friendCentreX - before.friendCentreX)).toBeLessThan(1);
   });
 
   test('a prompted response is recorded as prompted and does not advance the ratio', async ({ page }) => {

@@ -44,10 +44,27 @@
     </div>
 
     <div class="setting-group setting-targets">
-      <button type="button" id="btn-targets-toggle" class="btn-targets" aria-expanded="false">
+      <button type="button" id="btn-targets-toggle" class="btn-targets" aria-expanded="false" aria-haspopup="true" aria-controls="target-panel">
         Targets <span id="targets-count" class="targets-count">0 of 0</span>
+        <span class="btn-targets-caret" aria-hidden="true">▾</span>
         <button type="button" class="help-btn" data-help="Choose which pictures from the topic can be the target (correct answer).">?</button>
       </button>
+
+      <!-- Target picker: a dropdown anchored to its own button rather than a
+           full-width bar. Tapping a row anywhere toggles it, and Select all /
+           Deselect all stay pinned while the list scrolls, so a long topic does
+           not mean scrolling back to the top to clear it. -->
+      <section id="target-panel" hidden aria-label="Choose targets">
+        <div class="target-panel-header">
+          <span class="target-panel-title">Targets for <span id="target-panel-topic-label"></span></span>
+          <button type="button" id="btn-targets-close" title="Close" class="btn-targets-close">×</button>
+        </div>
+        <div class="target-panel-actions">
+          <button type="button" id="btn-targets-all">Select all</button>
+          <button type="button" id="btn-targets-none">Deselect all</button>
+        </div>
+        <div id="target-panel-body" class="target-panel-body"></div>
+      </section>
     </div>
 
     <div class="setting-group setting-extra">
@@ -58,19 +75,6 @@
     </div>
   </div>
 
-  <!-- ── Target picker panel ──────────────────────────────────────── -->
-  <section id="target-panel" hidden>
-    <div class="target-panel-header">
-      <span class="target-panel-title">Targets for <span id="target-panel-topic-label"></span></span>
-      <div class="target-panel-actions">
-        <button type="button" id="btn-targets-all">Select all</button>
-        <button type="button" id="btn-targets-none">Deselect all</button>
-        <button type="button" id="btn-targets-close" title="Close" class="btn-targets-close">×</button>
-      </div>
-    </div>
-    <div id="target-panel-body" class="target-panel-body"></div>
-  </section>
-
   <!-- ── Extra settings panel ─────────────────────────────────────── -->
   <section id="extra-panel" hidden>
     <div class="extra-panel-header">
@@ -79,10 +83,9 @@
     </div>
     <div class="extra-panel-body">
       <p class="extra-note">
-        Only an <strong>independent correct</strong> response advances the reinforcement
-        ratio. A <strong>prompted</strong> response is recorded as prompted and still moves
-        our friend along, but it does not count toward the next snack. An
-        <strong>incorrect</strong> response moves him too — he never stands still.
+        Our friend only <strong>reaches</strong> a snack on a round the schedule reinforces.
+        Every other round he still walks — an <strong>incorrect</strong> response moves him,
+        sometimes with a tumble, but never close enough to arrive.
       </p>
 
       <label class="checkbox-label">
@@ -91,12 +94,18 @@
         <button type="button" class="help-btn" data-help="On a Receptive trial the target word is shown and spoken aloud. Turn this off for a quiet room.">?</button>
       </label>
 
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-prompts-earn">
+        Prompted responses earn
+        <button type="button" class="help-btn" data-help="For a learner working at a prompted level. When on, a prompted response advances the reinforcement ratio exactly like an independent one — it is still recorded as Prompted in the data, so the prompt level is tracked without costing the learner the snack. When off, prompts are recorded but do not advance the ratio.">?</button>
+      </label>
+
       <!-- Token Board Settings -->
       <div class="token-board-settings-divider">
         <label class="checkbox-label">
           <input type="checkbox" id="chk-token-board">
-          Token Board
-          <button type="button" class="help-btn" data-help="The quest runs on the token board: Goal Tokens is how many snacks our friend collects, and the FR/VR schedule decides which rounds he actually reaches one.">?</button>
+          Snack Board
+          <button type="button" class="help-btn" data-help="The quest runs on this board, and the tokens are the snacks themselves — he is getting ready for the party. Snacks for the party is how many he collects; the FR/VR schedule decides which rounds he actually reaches one.">?</button>
         </label>
       </div>
 
@@ -111,15 +120,15 @@
           <span id="schedule-range-hint" class="range-hint">FR 1–5 · VR 2–5</span>
         </div>
         <div class="extra-row">
-          <label for="inp-starting-tokens">Starting Tokens</label>
+          <label for="inp-starting-tokens">Start with</label>
           <input type="number" id="inp-starting-tokens" min="0" max="9" value="0">
         </div>
         <div class="extra-row">
-          <label for="inp-goal-tokens">Goal Tokens</label>
+          <label for="inp-goal-tokens">Snacks for the party</label>
           <input type="number" id="inp-goal-tokens" min="1" max="10" value="5">
-          <span class="range-hint">= snacks to collect</span>
+          <span class="range-hint">how many he collects</span>
         </div>
-        <div class="extra-row">
+        <div class="extra-row" hidden>
           <label for="sel-token-emoji">Token Emoji</label>
           <select id="sel-token-emoji">
             <option value="random">Random (each session)</option>
@@ -138,9 +147,14 @@
   </section>
 
   <!-- ── Token board (canonical contract) ─────────────────────────── -->
-  <div id="token-board" hidden class="token-board-simple" aria-label="Token progress tracker">
+  <!-- The emoji tally is hidden: in this game the tokens are the snacks, drawn
+       on the scene by #snack-strip. Both elements stay because token-board.js
+       addresses them by id, and #token-board still carries the goal-reached
+       class that drives the SR timer. -->
+  <div id="token-board" hidden class="token-board-simple" aria-label="Snack progress">
     <div id="token-emoji-display" class="token-emoji-simple"></div>
     <div id="token-progress-text" class="token-progress-simple">0 / 5</div>
+    <span class="token-progress-suffix">snacks for the party</span>
   </div>
 
   <!-- ── Live region for round / token announcements ──────────────── -->
@@ -161,7 +175,7 @@
     <!-- ── 2. PLACE ───────────────────────────────────────────────── -->
     <section id="screen-place" class="screen" hidden aria-labelledby="place-heading">
       <div class="story">
-        <h1 id="place-heading" class="story-title">Where should he have it?</h1>
+        <h1 id="place-heading" class="story-title">Where should we go?</h1>
         <p class="story-line">Pick the place for our friend's snack.</p>
       </div>
       <div class="choice-grid choice-grid-4" id="place-tiles" role="group" aria-label="Choose a place"></div>
@@ -202,6 +216,15 @@
                   <button type="button" class="score-btn score-prompted" data-score="prompted">Prompted</button>
                   <button type="button" class="score-btn score-incorrect" data-score="incorrect">Incorrect</button>
                 </div>
+              </div>
+              <!-- Staff-facing. Matching and receptive are scored by the tap, so
+                   a prompt has to be declared before the learner answers; the
+                   button marks the trial and shows which picture is correct. -->
+              <div id="prompt-row" class="prompt-row" hidden>
+                <button type="button" id="btn-prompt" class="prompt-btn">
+                  <span aria-hidden="true">✋</span> Prompt
+                </button>
+                <span id="prompt-flag" class="prompt-flag" hidden>Prompted</span>
               </div>
             </div>
           </div>
