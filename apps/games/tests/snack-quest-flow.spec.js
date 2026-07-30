@@ -135,7 +135,7 @@ test.describe('Snack Quest — movement is driven by the schedule', () => {
     await expect(page.locator('#btn-finish-sr')).toBeHidden();
   });
 
-  test('an incorrect response still moves him but never delivers', async ({ page }) => {
+  test('an incorrect response gains no ground and never delivers', async ({ page }) => {
     await bootstrap(page, { scheduleValue: 1, goalTokens: 3 });
     await chooseTask(page, 'expressive');
     await choosePlace(page, 'sky');
@@ -146,7 +146,30 @@ test.describe('Snack Quest — movement is driven by the schedule', () => {
     const after = await peek(page);
 
     expect(after.collected).toHaveLength(0);
-    expect(Math.abs(after.friendCentreX - before.friendCentreX)).toBeGreaterThan(4);
+    // Ground gained is the reinforcer, so an error must not buy any of it. He
+    // waddles on the spot instead, which the position cannot distinguish from
+    // standing still — that is the point.
+    expect(Math.abs(after.friendCentreX - before.friendCentreX)).toBeLessThan(1);
+    expect(Math.abs(after.friendCentreX - after.foodCentreX))
+      .toBeCloseTo(Math.abs(before.friendCentreX - before.foodCentreX), 0);
+  });
+
+  test('errors never accumulate ground across a run of them', async ({ page }) => {
+    await bootstrap(page, { scheduleValue: 1, goalTokens: 3 });
+    await chooseTask(page, 'expressive');
+    await choosePlace(page, 'sky');
+
+    const before = await peek(page);
+    for (let i = 0; i < 4; i++) {
+      await page.click('.score-btn[data-score="incorrect"]');
+      await waitIdle(page);
+    }
+    const after = await peek(page);
+
+    // Four errors in a row must leave him exactly where he started; a per-error
+    // nudge that looked negligible once would have carried him most of the way.
+    expect(after.collected).toHaveLength(0);
+    expect(Math.abs(after.friendCentreX - before.friendCentreX)).toBeLessThan(1);
   });
 
   test('a prompted response is recorded as prompted and does not advance the ratio', async ({ page }) => {
