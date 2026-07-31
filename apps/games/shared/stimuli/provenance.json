@@ -1327,7 +1327,8 @@
   "/ffc/_Resources/_imgSource/items/train.svg": {
     "stimulus": "vehicles-train",
     "sha256": "8a4e7865ee5ea01b7c68688218c7bf9cd320e62ae335232b8bc316c5d6120670",
-    "library": "/shared/stimuli/placeholder/T_vehicles/train.svg"
+    "library": null,
+    "droppedBecause": "placeholder-glyph"
   },
   "/ffc/_Resources/_imgSource/items/yoyo.svg": {
     "stimulus": "toys-yoyo",
@@ -3650,5 +3651,50 @@
     "stimulus": "prepositions-under",
     "sha256": "050161ad557c8f2b42ba6218306e45df7a627a0fca0592092dffe1b914e54619",
     "library": "/shared/stimuli/img/T_prepositions/under.png"
+  },
+  "/shared/stimuli/uploads/T_school/calculator.jpg": {
+    "stimulus": "school-calculator",
+    "sha256": "52079ac6675bd5d064b316fcb4ce0666e24ee246b1b84f2c390d385c9f9eb214",
+    "library": "/shared/stimuli/img/T_school/calculator.jpg"
+  },
+  "/shared/stimuli/uploads/T_vehicles/airplane.jpg": {
+    "stimulus": "vehicles-airplane",
+    "sha256": "572db798d9e760f78eb0dd65f805224b4a1023c54bd2d012dd77e9f429ba85a6",
+    "library": "/shared/stimuli/img/T_vehicles/airplane.jpg"
+  },
+  "/shared/stimuli/uploads/T_vehicles/boat.jpg": {
+    "stimulus": "vehicles-boat",
+    "sha256": "bbd3f7212278d2891bfc08266e22945502258183add259c94e33d6b00561a322",
+    "library": "/shared/stimuli/img/T_vehicles/boat.jpg"
+  },
+  "/shared/stimuli/uploads/T_vehicles/fire-truck.jpg": {
+    "stimulus": "vehicles-fire-truck",
+    "sha256": "7445e0252dc6c5e592e5b047af125c78e3046af4d53b8c253d2e2125fe80356c",
+    "library": "/shared/stimuli/img/T_vehicles/fire-truck.jpg"
+  },
+  "/shared/stimuli/uploads/T_vehicles/helicopter.jpg": {
+    "stimulus": "vehicles-helicopter",
+    "sha256": "c1faa033a6de5b3248f5c622c79b3bf6c914656b52ebbeb22ac98d7fe54ef320",
+    "library": "/shared/stimuli/img/T_vehicles/helicopter.jpg"
+  },
+  "/shared/stimuli/uploads/T_vehicles/motorcycle.jpg": {
+    "stimulus": "vehicles-motorcycle",
+    "sha256": "3a5f75eb831063c01975960783af472db13e2c48961464313b33619eef9431b8",
+    "library": "/shared/stimuli/img/T_vehicles/motorcycle.jpg"
+  },
+  "/shared/stimuli/uploads/T_vehicles/police-car.jpg": {
+    "stimulus": "vehicles-police-car",
+    "sha256": "05c47bd5e53247ef0883b0763271276c355a65a6b54f5e94d5f82505ef1de683",
+    "library": "/shared/stimuli/img/T_vehicles/police-car.jpg"
+  },
+  "/shared/stimuli/uploads/T_vehicles/train.png": {
+    "stimulus": "vehicles-train",
+    "sha256": "2a3be7f66568d0c931c0b3d5592b427325b62044c017a32151224e1a2d87835b",
+    "library": "/shared/stimuli/img/T_vehicles/train.png"
+  },
+  "/shared/stimuli/uploads/T_vehicles/truck.jpg": {
+    "stimulus": "vehicles-truck",
+    "sha256": "27f3409bf8d466c81b363cc43630b34ca55eea4f6f4c5f973b6857e42c0b8e10",
+    "library": "/shared/stimuli/img/T_vehicles/truck.jpg"
   }
 }

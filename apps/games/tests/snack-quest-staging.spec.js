@@ -72,6 +72,51 @@ test.describe('Snack Quest — the character is present before the question', ()
     await expect(page.locator('#trial-card')).toBeVisible();
   });
 
+  test('the receptive word is spoken with the array, not over a bare scene', async ({ page }) => {
+    await bootstrap(page);
+
+    // Record every utterance and the moment it was requested, against whether
+    // the trial card was up at that moment.
+    await page.addInitScript(() => {
+      window.__spoken = [];
+      const realSpeak = window.speechSynthesis && window.speechSynthesis.speak;
+      if (!realSpeak) return;
+      window.speechSynthesis.speak = function (u) {
+        const card = document.getElementById('trial-card');
+        window.__spoken.push({
+          text: u && u.text,
+          cardUp: !!card && !card.hidden,
+          picks: document.querySelectorAll('#trial-grid .pick').length,
+        });
+      };
+    });
+    await page.reload();
+    await page.waitForFunction(() => !!window.__sq && window.__sq.peek().screen === 'task');
+
+    // Speech is off in the shared bootstrap; turn it on the way a technician would.
+    await page.click('#btn-extra-toggle');
+    await page.check('#chk-speak');
+    await page.click('#btn-extra-close');
+
+    await chooseTask(page, 'receptive');
+    await page.click('#place-tiles .choice-tile[data-place="playroom"]');
+    await page.waitForFunction(() => window.__sq.peek().screen === 'quest');
+
+    // Nothing may be said while the scene is still settling.
+    await page.waitForTimeout(500);
+    const early = await page.evaluate(() => window.__spoken.slice());
+    expect(early, 'the word is not said before the card carrying it exists').toEqual([]);
+
+    await waitForQuestion(page);
+    await page.waitForFunction(() => window.__spoken.length > 0, null, { timeout: 8000 });
+
+    const spoken = await page.evaluate(() => window.__spoken.slice());
+    expect(spoken.length).toBeGreaterThan(0);
+    expect(spoken[0].cardUp, 'it is spoken with the card up').toBe(true);
+    expect(spoken[0].picks, 'and with pictures to respond to').toBeGreaterThan(0);
+    expect(spoken[0].text, 'and it is the target word').toBe((await peek(page)).targetLabel);
+  });
+
   test('he turns to face the snack while the learner is looking at it', async ({ page }) => {
     await bootstrap(page);
     await chooseTask(page, 'matching');

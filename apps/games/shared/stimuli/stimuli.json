@@ -2313,10 +2313,9 @@
       "categories": [
         "T_school"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_school/calculator.jpg",
       "emoji": "🧮",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_school/calculator.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "school-crayon",
@@ -2916,10 +2915,9 @@
       "categories": [
         "T_vehicles"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_vehicles/airplane.jpg",
       "emoji": "✈️",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_vehicles/airplane.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "vehicles-ambulance",
@@ -2948,10 +2946,9 @@
       "categories": [
         "T_vehicles"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_vehicles/boat.jpg",
       "emoji": "⛵",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_vehicles/boat.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "vehicles-bus",
@@ -2982,10 +2979,9 @@
       "categories": [
         "T_vehicles"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_vehicles/fire-truck.jpg",
       "emoji": "🚒",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_vehicles/fire-truck.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "vehicles-helicopter",
@@ -2993,10 +2989,9 @@
       "categories": [
         "T_vehicles"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_vehicles/helicopter.jpg",
       "emoji": "🚁",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_vehicles/helicopter.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "vehicles-motorcycle",
@@ -3004,10 +2999,9 @@
       "categories": [
         "T_vehicles"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_vehicles/motorcycle.jpg",
       "emoji": "🏍️",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_vehicles/motorcycle.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "vehicles-police-car",
@@ -3015,10 +3009,9 @@
       "categories": [
         "T_vehicles"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_vehicles/police-car.jpg",
       "emoji": "🚓",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_vehicles/police-car.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "vehicles-train",
@@ -3026,10 +3019,9 @@
       "categories": [
         "T_vehicles"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_vehicles/train.png",
       "emoji": "🚂",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_vehicles/train.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "vehicles-truck",
@@ -3037,10 +3029,9 @@
       "categories": [
         "T_vehicles"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_vehicles/truck.jpg",
       "emoji": "🚚",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_vehicles/truck.svg"
+      "glyphKind": "emoji"
     }
   ]
 }

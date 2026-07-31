@@ -198,6 +198,7 @@ const state = {
   questActive: false,
   busy: false,
   awaitingAnswer: false,   // the card is up and a response can be given
+  pendingSpeak: '',        // receptive SD, held until the card carrying it is up
 
   // Sprite positions, as fractions of stage width
   friendX: 0.22,
@@ -826,6 +827,21 @@ async function beginTrial() {
   if (!state.questActive || state.trialToken !== token) return;
   showTrialCard();
   state.awaitingAnswer = true;
+  speakPending();
+}
+
+/**
+ * Say the receptive SD, now that the card carrying it is on screen.
+ *
+ * Held until this point on purpose: the spoken SD and the array have to arrive
+ * together. A word spoken over a bare scene is an SD with nothing to respond to,
+ * and by the time the pictures appear the learner has already heard it and has
+ * nothing left to match it against.
+ */
+function speakPending() {
+  const word = state.pendingSpeak;
+  state.pendingSpeak = '';
+  if (word) speakWord(word);
 }
 
 /**
@@ -922,7 +938,11 @@ function renderTrial() {
     word.className = 'sample-word';
     word.textContent = state.sampleLabel;
     el.trialSample.appendChild(word);
-    if (state.speak) speakWord(state.sampleLabel);
+    // Queued, not spoken. The trial is built before the settle beat, so
+    // speaking here would say the word at a scene the learner is still reading,
+    // with no card and no pictures to attach it to — an SD delivered to an
+    // empty array. It is spoken when the card carrying it is actually up.
+    state.pendingSpeak = state.speak ? state.sampleLabel : '';
   } else if (task.id === 'matching') {
     el.trialSample.hidden = false;
     const pic = document.createElement('img');
