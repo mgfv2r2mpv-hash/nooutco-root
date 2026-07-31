@@ -94,7 +94,7 @@
 
   var TEMPLATES = [
     {
-      id: 'G-selfEsteem', dim: 'selfEsteem', cat: 'work', levels: [1, 2],
+      id: 'G-selfEsteem', dim: 'selfEsteem', cat: 'work', levels: [1, 2, 3],
       sayVerb: 'say', object: 'these words',
       slots: {
         setting: [S.school, S.home, S.playground],
@@ -122,7 +122,7 @@
     },
 
     {
-      id: 'G-privacy', dim: 'privacy', cat: 'private', levels: [1, 2],
+      id: 'G-privacy', dim: 'privacy', cat: 'private', levels: [1, 2, 3],
       slots: { setting: [S.school, S.playground, S.bus] },
       variants: [
         { value: 'private', answer: 'think',
@@ -147,7 +147,7 @@
     },
 
     {
-      id: 'G-changeability', dim: 'changeability', cat: 'looks', levels: [1, 2],
+      id: 'G-changeability', dim: 'changeability', cat: 'looks', levels: [1, 2, 3],
       sayVerb: 'tell', object: 'this news',
       slots: { person: [P.peer, P.sibling], setting: [S.home, S.playground, S.bus] },
       variants: [
@@ -171,7 +171,7 @@
     },
 
     {
-      id: 'G-audience', dim: 'audience', cat: 'other', levels: [1, 2],
+      id: 'G-audience', dim: 'audience', cat: 'other', levels: [1, 2, 3],
       sayVerb: 'tell', object: 'this news',
       slots: { person: [P.peer, P.sibling, P.family], setting: [S.school, S.home, S.shop] },
       variants: [
@@ -195,7 +195,7 @@
     },
 
     {
-      id: 'G-relationship', dim: 'relationship', cat: 'private', levels: [2],
+      id: 'G-relationship', dim: 'relationship', cat: 'private', levels: [2, 3],
       sayVerb: 'tell', object: 'this news',
       slots: { setting: [S.school, S.bus, S.shop] },
       variants: [
@@ -219,7 +219,7 @@
     },
 
     {
-      id: 'G-timing', dim: 'timing', cat: 'other', levels: [1, 2],
+      id: 'G-timing', dim: 'timing', cat: 'other', levels: [1, 2, 3],
       sayVerb: 'ask', object: 'this question',
       slots: { person: [P.teacher, P.family], setting: [S.school, S.home, S.shop] },
       variants: [
@@ -243,7 +243,7 @@
     },
 
     {
-      id: 'G-override', dim: 'override', cat: 'other', levels: [1, 2],
+      id: 'G-override', dim: 'override', cat: 'other', levels: [1, 2, 3],
       sayVerb: 'tell', object: 'this news',
       slots: { person: [P.peer, P.sibling, P.family] },
       variants: [
@@ -268,7 +268,7 @@
     },
 
     {
-      id: 'G-truthNotTest', dim: 'truthNotTest', kind: 'defeater', cat: 'work', levels: [1, 2],
+      id: 'G-truthNotTest', dim: 'truthNotTest', kind: 'defeater', cat: 'work', levels: [1, 2, 3],
       sayVerb: 'say', object: 'these words',
       slots: { person: [P.peer, P.sibling], setting: [S.school, S.home] },
       variants: [
@@ -480,6 +480,29 @@
     return out;
   }
 
+  /**
+   * The same space, built at ONE level — the probe pool for that level.
+   *
+   * A template declares which levels it may be presented at, and every variant
+   * carries its exemplar rationales, so the identical criterial item is a Level 1
+   * discrimination or a Level 3 "tell me why" depending only on the level asked
+   * for. The criterial key is the template's either way: raising the level adds a
+   * response requirement, it does not change what the item is keyed on.
+   */
+  function enumerateFor(level) {
+    var lv = Number(level);
+    var out = [];
+    TEMPLATES.forEach(function (t) {
+      if (t.levels.indexOf(lv) < 0) return;
+      t.variants.forEach(function (v) {
+        drawsFor(t, v).forEach(function (draw, n) {
+          out.push(build(t, v, draw, n, { level: lv }));
+        });
+      });
+    });
+    return out;
+  }
+
   var SPACE = Object.freeze(enumerate());
 
   /* ── Re-presentation ─────────────────────────────────────────────────
@@ -534,6 +557,7 @@
     SPACE: SPACE,
     count: SPACE.length,
     enumerate: enumerate,
+    enumerateFor: enumerateFor,
     represent: represent,
     render: render,
   });

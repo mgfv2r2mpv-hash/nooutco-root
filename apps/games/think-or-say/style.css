@@ -48,6 +48,48 @@
 
 .extra-row label { font-size: 0.82rem; font-weight: 600; color: #4a5568; }
 
+/* ── Probe block ───────────────────────────────────────────────────────
+   Set apart from the teaching options above it, because turning probes on
+   changes what a trial MEASURES rather than how it is taught. */
+.probe-block {
+  margin-top: 12px;
+  padding: 10px 12px 12px;
+  border: 1px dashed var(--accent-soft, #cbd5e0);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.015);
+}
+.probe-head { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
+.probe-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #4a5568;
+}
+.probe-level { display: flex; flex-direction: column; gap: 8px; }
+.probe-tags { flex-wrap: wrap; row-gap: 4px; }
+.probe-tags-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #4a5568;
+  margin-right: 4px;
+}
+.probe-tags .checkbox-label { font-size: 0.8rem; text-transform: capitalize; }
+
+/* Says on screen that supports are withheld, before staff reach for Prompt. */
+.probe-banner {
+  align-self: center;
+  max-width: 44ch;
+  padding: 6px 12px;
+  border: 1px solid #b7791f;
+  border-radius: 999px;
+  background: #fffbeb;
+  color: #7c5a12;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: center;
+}
+
 /* ── Pre-start blurb ───────────────────────────────────────────────── */
 .game-intro {
   max-width: 720px;
@@ -520,6 +562,17 @@
   #results-table td.outcome-ok       { color: #27ae60; }
   #print-summary { font-size: 9.5pt; color: #333; border-top: 1px solid #bbb; padding-top: 8px; }
   #print-summary span { margin-right: 20px; }
+  #print-generalization { margin-top: 16px; }
+  #print-generalization[hidden] { display: none !important; }
+  #print-generalization h3 { font-size: 11.5pt; margin-bottom: 6px; }
+  #generalization-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+  #generalization-table th, #generalization-table td {
+    border: 1px solid #666;
+    padding: 4px 8px;
+    text-align: left;
+    vertical-align: top;
+  }
+  #generalization-table th { background: #e8e8e8; font-weight: bold; }
 }
 
 /* ── Responsive ────────────────────────────────────────────────────── */

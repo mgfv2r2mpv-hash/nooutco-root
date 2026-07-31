@@ -43,6 +43,18 @@
       <p class="setting-note" id="level-blurb"></p>
     </div>
 
+    <!-- Learner slot. Three opaque, unnamed slots, each holding its own saved
+         programme parameters. There is no name field and never will be: the
+         clinical boundary forbids player-identifiable data on the device. -->
+    <div class="setting-group">
+      <label for="sel-learner">Learner<button type="button" class="help-btn" data-help="Three unnamed slots, each remembering its own settings. Switching slots loads that slot's programme parameters. No names are stored — the slot is a letter and nothing else.">?</button></label>
+      <select id="sel-learner">
+        <option value="A">Learner A</option>
+        <option value="B">Learner B</option>
+        <option value="C">Learner C</option>
+      </select>
+    </div>
+
     <div class="setting-group">
       <label for="sel-category">Category<button type="button" class="help-btn" data-help="Limit the cards to one situation category, or use all of them.">?</button></label>
       <select id="sel-category"></select>
@@ -128,6 +140,46 @@
         <input type="checkbox" id="chk-counterbalance" checked>
         Counterbalance Tile Positions
       </label>
+
+      <!-- Generalization probes. OFF by default and configured separately for
+           each level: the block shown is the one for the level in play, and the
+           other two keep their own stored settings. -->
+      <div class="probe-block">
+        <div class="probe-head">
+          <span class="probe-title">Probes — <span id="probe-level-label">Level 1</span></span>
+          <button type="button" class="help-btn" data-help="Generalization probes: untrained items run with the teaching supports withheld, so a correct answer is evidence about the repertoire and not about the prompt. Off unless the Skill Acquisition Plan calls for a generalization phase. Each level is configured on its own.">?</button>
+        </div>
+
+        <div class="probe-level" id="probe-level-1" data-level="1">
+          <label class="checkbox-label"><input type="checkbox" id="chk-probes-1"> Run probes</label>
+          <div class="extra-row"><label for="sel-probe-count-1">Probes per session</label>
+            <select id="sel-probe-count-1" data-probe-count></select></div>
+          <div class="extra-row"><label for="sel-probe-placement-1">Placement</label>
+            <select id="sel-probe-placement-1" data-probe-placement></select></div>
+          <div class="extra-row probe-tags" id="probe-tags-1" data-probe-tags></div>
+          <label class="checkbox-label"><input type="checkbox" id="chk-probe-tokens-1" checked> Tokens on probe trials</label>
+        </div>
+
+        <div class="probe-level" id="probe-level-2" data-level="2" hidden>
+          <label class="checkbox-label"><input type="checkbox" id="chk-probes-2"> Run probes</label>
+          <div class="extra-row"><label for="sel-probe-count-2">Probes per session</label>
+            <select id="sel-probe-count-2" data-probe-count></select></div>
+          <div class="extra-row"><label for="sel-probe-placement-2">Placement</label>
+            <select id="sel-probe-placement-2" data-probe-placement></select></div>
+          <div class="extra-row probe-tags" id="probe-tags-2" data-probe-tags></div>
+          <label class="checkbox-label"><input type="checkbox" id="chk-probe-tokens-2" checked> Tokens on probe trials</label>
+        </div>
+
+        <div class="probe-level" id="probe-level-3" data-level="3" hidden>
+          <label class="checkbox-label"><input type="checkbox" id="chk-probes-3"> Run probes</label>
+          <div class="extra-row"><label for="sel-probe-count-3">Probes per session</label>
+            <select id="sel-probe-count-3" data-probe-count></select></div>
+          <div class="extra-row"><label for="sel-probe-placement-3">Placement</label>
+            <select id="sel-probe-placement-3" data-probe-placement></select></div>
+          <div class="extra-row probe-tags" id="probe-tags-3" data-probe-tags></div>
+          <label class="checkbox-label"><input type="checkbox" id="chk-probe-tokens-3" checked> Tokens on probe trials</label>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -173,6 +225,9 @@
   <main id="game-area" hidden>
 
     <div id="progress-label" class="area-label"></div>
+    <!-- Shown only on a probe trial, so the technician can see that the
+         teaching supports are withheld before they reach for the Prompt. -->
+    <div id="probe-banner" class="probe-banner" hidden></div>
 
     <section id="scenario-section">
       <div id="scenario-card">
@@ -237,11 +292,24 @@
           <th>Prompted</th>
           <th>Time (s)</th>
           <th>Outcome</th>
+          <th>Trial</th>
+          <th>Tags</th>
         </tr>
       </thead>
       <tbody id="results-body"></tbody>
     </table>
     <div id="print-summary"></div>
+    <!-- Trained vs. generalization, and generalization broken out by the EXACT
+         tag set. Rendered only when a session actually contains probe trials. -->
+    <div id="print-generalization" hidden>
+      <h3>Trained and generalization trials</h3>
+      <table id="generalization-table">
+        <thead>
+          <tr><th>Bucket</th><th>Trials</th><th>Independent</th><th>Note</th></tr>
+        </thead>
+        <tbody id="generalization-body"></tbody>
+      </table>
+    </div>
   </div>
 
   <script src="../../tooltip-help.js"></script>
@@ -259,6 +327,7 @@
   <script src="cards-level-3.js"></script>
   <script src="cards.js"></script>
   <script src="exemplar-generator.js"></script>
+  <script src="probes.js"></script>
   <script src="game.js"></script>
   <script>
     const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
