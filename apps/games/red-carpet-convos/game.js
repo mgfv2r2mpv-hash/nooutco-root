@@ -251,16 +251,11 @@
     var host = document.getElementById('rcc-reward-presets');
     if (host) host.innerHTML = rewardPresetsHTML();
   }
-  function chime() {
-    try {
-      var c = new (window.AudioContext || window.webkitAudioContext)();
-      [523, 659, 784].forEach(function (f, i) {
-        var o = c.createOscillator(), g = c.createGain(); o.connect(g); g.connect(c.destination);
-        o.type = 'sine'; o.frequency.value = f; var t = c.currentTime + i * .28;
-        g.gain.setValueAtTime(.3, t); g.gain.exponentialRampToValueAtTime(.001, t + 1); o.start(t); o.stop(t + 1.1);
-      });
-    } catch (_) {}
-  }
+  // Deliberately silent. A third copy of the same three notes lived here, apart
+  // from reward.js and famous-person's — which is why the removal is pinned by a
+  // source scan rather than by silencing one module. No game plays a completion
+  // sound; see the note on NooutcoReward.playChime.
+  function chime() {}
 
   function updateSuggestMsg() {
     var el = document.getElementById('rcc-suggest-msg'); if (!el) return;

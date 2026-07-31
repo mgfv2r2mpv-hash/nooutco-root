@@ -36,35 +36,22 @@
 
   let els = null;
 
-  // ── Audio: ascending 3-note chime (C5, E5, G5) ──────────────────────────────
-  function playChime() {
-    // Host games may mute the chime (e.g. Sequences' Round-setup Sound toggle).
-    if (window.__noabaMuted) return;
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const notes = [523, 659, 784];
-      notes.forEach((freq, i) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.type = 'sine';
-        osc.frequency.value = freq;
-        const t = ctx.currentTime + i * 0.32;
-        gain.gain.setValueAtTime(0.35, t);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 1.1);
-        osc.start(t);
-        osc.stop(t + 1.2);
-        // Release the AudioContext once the final note has finished so we don't
-        // accumulate contexts / keep audio resources alive after the chime.
-        if (i === notes.length - 1) {
-          osc.onended = () => { if (ctx.state !== 'closed') ctx.close().catch(() => {}); };
-        }
-      });
-    } catch (_) {
-      /* AudioContext unavailable — silent fallback */
-    }
-  }
+  /**
+   * Deliberately silent.
+   *
+   * This used to play an ascending three-note chime (C5, E5, G5) on goal and on
+   * SR-timer end. It is gone on the maintainer's instruction: no game plays a
+   * completion chime. A sound that fires on every goal, in a room where sessions
+   * run back to back, stops being a reinforcer and becomes something staff and
+   * learners endure — and an unexpected tone is its own problem for a learner
+   * who is sound-sensitive.
+   *
+   * Kept as an exported no-op rather than deleted so any game still calling
+   * `NooutcoReward.playChime()` goes quiet instead of throwing. Reinstating a
+   * sound means adding it behind an off-by-default per-game setting, not
+   * restoring this.
+   */
+  function playChime() {}
 
   // ── Styles (injected once) ──────────────────────────────────────────────────
   function injectStyles() {
@@ -263,7 +250,6 @@
       state.running = false;
       els.display.textContent = '0:00';
       updateRing();
-      playChime();
       showTimerDone();
       return;
     }
@@ -348,8 +334,8 @@
   }
 
   // ── Public: quick celebratory burst at the moment a goal is hit ──────────────
+  // Visual only — see playChime.
   function celebrate(anchorEl) {
-    playChime();
     if (reduceMotion) return;
     injectStyles();
     const burst = document.createElement('div');
