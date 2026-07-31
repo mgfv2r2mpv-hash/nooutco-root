@@ -19,6 +19,26 @@ const CATEGORIES = {
   other:   'Other Moments',
 };
 
+/**
+ * The three ways a spoken reason is scored at Level 3, declared once.
+ *
+ * Scoring is INDEPENDENT of the exemplar rationales the card carries: the
+ * technician is not picking which exemplar the learner matched, they are
+ * judging what the learner actually said. A correct reason nobody wrote down
+ * is the ideal outcome and scores fully Correct (RESEARCH.md §6, "Level 3").
+ *
+ * Three points, not more: a finer scale asks the technician for a judgement the
+ * Skill Acquisition Plan has not defined, and mid-shift it would not be applied
+ * the same way twice. The free-text note carries anything the three points
+ * cannot, and it is optional because a required note becomes a copied one.
+ */
+const RATIONALE_SCORES = ['correct', 'partial', 'not-yet'];
+const RATIONALE_LABELS = {
+  correct:   'Correct',
+  partial:   'Partly correct',
+  'not-yet': 'Not yet',
+};
+
 // ── The cards ──────────────────────────────────────────────────────────
 // card-model.js owns the framing constants and the instructional universe;
 // cards.js assembles the three level pools and checks their coverage at load.
@@ -84,6 +104,12 @@ const el = {
   revealPanel:     $('reveal-panel'),
   choiceLabel:     $('choice-label'),
   choices:         $('choices'),
+  rationalePanel:    $('rationale-panel'),
+  rationaleReveal:   $('btn-rationale-reveal'),
+  rationaleExamples: $('rationale-examples'),
+  rationaleList:     $('rationale-examples-list'),
+  rationaleScores:   $('rationale-scores'),
+  rationaleNote:     $('rationale-note'),
   timerDisplay:    $('timer-display'),
   btnTimerToggle:  $('btn-timer-toggle'),
   btnTimerReset:   $('btn-timer-reset'),
@@ -124,6 +150,13 @@ const state = {
   learnMode: false,
   trialErrors: 0,
   trialPrompted: false,
+  // Latency, snapshotted the instant the learner answers. At Level 3 the trial
+  // is not recorded until the technician has scored the spoken reason, and the
+  // seconds that scoring takes are the technician's, not the learner's.
+  trialSecs: 0,
+  // The Level 3 rationale score for the trial on screen, '' until scored.
+  rationaleScore: '',
+  recorded: false,         // this trial has been written to the record
   represented: new Set(),  // scenario ids already re-presented
   // Probe lifecycle, per session. A generated item yields its generalization
   // datum ONCE; after that it is a trained target and every later run of it is
@@ -575,7 +608,10 @@ function renderTrial() {
   state.choicesRevealed = false;
   state.trialErrors = 0;
   state.trialPrompted = false;
+  state.trialSecs = 0;
+  state.recorded = false;
   state.probeTrial = !!state.current.isProbe;
+  resetRationale();
 
   const sc = state.current;
   el.progressLabel.textContent = `Card ${state.pos + 1} of ${state.deck.length}`;
@@ -708,6 +744,7 @@ function onChoiceClick(e) {
 
 function answerCorrect(card) {
   state.locked = true;
+  state.trialSecs = Math.max(0, Math.round((Date.now() - state.trialStart) / 1000));
   // Reinforcement on a probe trial is a plan decision, not a side effect of
   // switching probes on, so it has its own switch and it defaults ON.
   if (window.__nooutcoTokens && (!state.probeTrial || probeCfg().tokens)) {
@@ -723,6 +760,12 @@ function answerCorrect(card) {
   });
   card.classList.remove('prompt-sparkle', 'prompt-outline');
   card.classList.add('correct');
+
+  // At Level 3 the tile is only half the trial: the response the programme
+  // targets is the spoken REASON. The trial is therefore neither revealed nor
+  // recorded here — the game asks, the technician scores what was said, and
+  // recordResult() runs on the way to the next card.
+  if (needsRationale(state.current)) { askRationale(state.current); return; }
 
   recordResult();
   if (supportOn('showReason') || state.learnMode) showReason();
@@ -754,6 +797,83 @@ function showReason() {
   el.reason.textContent = state.current.reason;
   el.reason.className = state.current.answer === 'think' ? 'reason-think' : 'reason-say';
   el.reason.hidden = false;
+}
+
+// ── Level 3: the spoken rationale ──────────────────────────────────────
+/**
+ * Level 3 cards, and only Level 3 cards, require a reason.
+ *
+ * Read off the card rather than off the settings panel: a Level 3 probe is
+ * generated, and it is a Level 3 item because its level says so. There is no
+ * switch for this — "the reason is the target" is what Level 3 IS, so making it
+ * optional would make the level mean two different things on two devices.
+ */
+function needsRationale(sc) {
+  return !!sc && sc.level === 3;
+}
+
+function resetRationale() {
+  state.rationaleScore = '';
+  el.rationalePanel.hidden = true;
+  el.rationaleReveal.hidden = true;
+  el.rationaleExamples.hidden = true;
+  el.rationaleList.replaceChildren();
+  el.rationaleNote.value = '';
+  scoreButtons().forEach(b => b.classList.remove('is-picked'));
+}
+
+const scoreButtons = () => Array.from(el.rationaleScores.querySelectorAll('button'));
+
+/**
+ * Ask for the reason.
+ *
+ * The exemplars wait behind a button, even when "Show Reason After" is on. If
+ * they appeared with the ask, the technician would be reading model answers
+ * aloud before the learner had said anything — a prompt, delivered by the
+ * layout. And on a probe trial the reveal is a withheld support, so the button
+ * is not offered at all: `supportOn` is the single accessor that decides.
+ */
+function askRationale(sc) {
+  el.rationalePanel.hidden = false;
+  const hasExamples = Array.isArray(sc.rationales) && sc.rationales.length > 0;
+  el.rationaleReveal.hidden = !(hasExamples && (supportOn('showReason') || state.learnMode));
+}
+
+function revealRationale() {
+  const sc = state.current;
+  if (!sc) return;
+  showReason();
+  el.rationaleList.replaceChildren(...(sc.rationales || []).map(text => {
+    const li = document.createElement('li');
+    li.textContent = text;      // authored content, placed as text, never markup
+    return li;
+  }));
+  el.rationaleExamples.hidden = false;
+  el.rationaleReveal.hidden = true;
+}
+
+/**
+ * Score the reason the learner gave. Independent of the exemplars in every
+ * direction: a score can be given without revealing them, and revealing them
+ * scores nothing.
+ */
+function pickRationale(score) {
+  if (!needsRationale(state.current)) return;
+  state.rationaleScore = score;
+  scoreButtons().forEach(b => b.classList.toggle('is-picked', b.dataset.score === score));
+  showNextButton();
+}
+
+function populateRationaleScores() {
+  el.rationaleScores.replaceChildren(...RATIONALE_SCORES.map(score => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'rationale-score';
+    btn.dataset.score = score;
+    btn.textContent = RATIONALE_LABELS[score];
+    btn.addEventListener('click', () => pickRationale(score));
+    return btn;
+  }));
 }
 
 // ── Prompt ─────────────────────────────────────────────────────────────
@@ -810,6 +930,11 @@ function willRepresent() {
 }
 
 function nextTrial() {
+  // A Level 3 trial is written here rather than on the tile tap, because the
+  // score and the note are not known until now. Every other trial is already
+  // recorded and this is a no-op for it.
+  if (!state.recorded) recordResult();
+
   // Re-present a missed card once, at the end of the deck — with a FRESH
   // SURFACE where the generator carries the card's criterial configuration.
   // Same criterial item, different person, place or thing, so the repeat cannot
@@ -898,7 +1023,6 @@ function classifyTrial(sc) {
 
 function recordResult() {
   const sc = state.current;
-  const secs = Math.max(0, Math.round((Date.now() - state.trialStart) / 1000));
   let outcome = 'ok';
   if (state.trialPrompted) outcome = 'prompted';
   else if (state.trialErrors > 0) outcome = 'error';
@@ -910,12 +1034,19 @@ function recordResult() {
     answer: sc.answer === 'think' ? 'THINK IT' : 'SAY IT',
     errors: state.trialErrors,
     prompted: state.trialPrompted,
-    secs,
+    secs: state.trialSecs,
     outcome,
     trialClass: cls.trialClass,
     probeTags: cls.probeTags,
     probeNote: cls.probeNote,
+    // The Level 3 rationale. Blank at Levels 1 and 2, where no reason is asked
+    // for — a blank column is honest about that, a zero would not be. The note
+    // is the technician's own words and stays on this device, like every other
+    // field here (apps/games/CLAUDE.md §5).
+    rationaleScore: needsRationale(sc) ? state.rationaleScore : '',
+    rationaleNote: needsRationale(sc) ? el.rationaleNote.value.trim() : '',
   };
+  state.recorded = true;
   if (window.NooutcoResults) {
     NooutcoResults.record(
       RESULTS_KEY, state.results, row,
@@ -971,6 +1102,7 @@ function buildPrint() {
       <td class="${outClass}">${outLabel}</td>
       <td>${r.trialClass === 'generalization' ? 'Generalization' : 'Trained'}</td>
       <td>${escapeHtml(r.probeTags || '')}${r.probeNote ? ' (' + escapeHtml(r.probeNote) + ')' : ''}</td>
+      <td>${rationaleCell(r)}</td>
     </tr>`;
   }).join('');
   el.resultsBody.innerHTML = rows;
@@ -985,7 +1117,31 @@ function buildPrint() {
   el.printSummary.innerHTML =
     `<span><strong>Independent:</strong> ${indep}/${total}</span>` +
     `<span><strong>Prompted:</strong> ${prompted}</span>` +
-    `<span><strong>Total errors:</strong> ${errs}</span>`;
+    `<span><strong>Total errors:</strong> ${errs}</span>` +
+    rationaleTally();
+}
+
+/**
+ * What the technician scored the spoken reason as, and their note.
+ *
+ * The note is printed beside the score rather than folded into it: the score is
+ * the datum the plan asked for, the note is context for the BCBA reading it, and
+ * the sheet should not blur which is which.
+ */
+function rationaleCell(r) {
+  if (!r.rationaleScore) return '—';
+  const label = RATIONALE_LABELS[r.rationaleScore] || r.rationaleScore;
+  return escapeHtml(label) + (r.rationaleNote ? ' — ' + escapeHtml(r.rationaleNote) : '');
+}
+
+/** A count of the Level 3 reason scores, shown only once one has been given. */
+function rationaleTally() {
+  const scored = state.results.filter(r => r.rationaleScore);
+  if (!scored.length) return '';
+  const parts = RATIONALE_SCORES
+    .map(s => `${scored.filter(r => r.rationaleScore === s).length} ${RATIONALE_LABELS[s].toLowerCase()}`)
+    .join(' · ');
+  return `<span><strong>Reasons:</strong> ${parts}</span>`;
 }
 
 /**
@@ -1081,6 +1237,7 @@ function init() {
   if (window.NooutcoConfig) NooutcoConfig.migrate();
   populateCategories();
   populateProbeControls();
+  populateRationaleScores();
   loadSettings();
   loadResults();
 
@@ -1090,6 +1247,7 @@ function init() {
   el.btnPrompt.addEventListener('click', doPrompt);
 
   el.revealPanel.addEventListener('click', revealChoices);
+  el.rationaleReveal.addEventListener('click', revealRationale);
   choiceEls().forEach(c => c.addEventListener('click', onChoiceClick));
 
   // Extra panel
@@ -1149,6 +1307,10 @@ window.__thinkOrSay = Object.freeze({
   // The probe subsystem: tagging, selection, placement and the suppression list.
   // Read-only, and no player data — the tag of an item is a property of the item.
   probes: PROBES,
+  // The Level 3 rationale vocabulary, so a spec asserts the three-way score
+  // against the declaration rather than against the buttons rendered from it.
+  rationaleScores: RATIONALE_SCORES.slice(),
+  rationaleLabels: Object.assign({}, RATIONALE_LABELS),
   // The running session, for the specs that have to watch the lifecycle rather
   // than the data model: which deck positions hold probes, and what has already
   // yielded its generalization datum. Copies, never the live structures.

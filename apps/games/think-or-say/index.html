@@ -193,6 +193,7 @@
       <li><strong>Order</strong> — shuffle the cards or step through them in order.</li>
       <li><strong>⚙ Settings</strong> — errorless, re-present errors, prompts, whether to reveal the reason, and whether the tiles swap sides between cards.</li>
       <li><strong>Prompt</strong> — highlights the correct bubble for an assisted response.</li>
+      <li><strong>At Level 3</strong> — after the tile, the card asks <em>“Tell me why.”</em> You score what the learner actually said as <em>Correct</em>, <em>Partly correct</em> or <em>Not yet</em>, and may add a short note. The example reasons are examples, not a scoring key: a good reason that is not listed there is still Correct.</li>
     </ul>
     <p class="tip">Yellow = THINK IT &nbsp;•&nbsp; Green = SAY IT. Tap <strong>📖 Learn</strong> for a teaching intro, or <strong>▶ Play</strong> to jump straight in.</p>
   </section>
@@ -256,6 +257,28 @@
           <div class="choice-label">SAY IT</div>
         </button>
       </div>
+
+      <!-- ── Level 3: the reason is the teaching target ────────────────
+           The learner has chosen a tile; now they say WHY. The example
+           reasons wait behind a button so the ask reaches the learner
+           first, and they are EXAMPLES, never a scoring key — the
+           technician scores what the learner actually said. A correct
+           reason nobody wrote down scores fully Correct. The score
+           buttons are rendered from game.js so the three-way vocabulary
+           is declared once. -->
+      <div id="rationale-panel" hidden>
+        <div id="rationale-ask">Tell me why.</div>
+        <button id="btn-rationale-reveal" type="button" hidden>Show example reasons</button>
+        <div id="rationale-examples" hidden>
+          <div id="rationale-examples-label">Example reasons — not a scoring key</div>
+          <ul id="rationale-examples-list"></ul>
+        </div>
+        <div class="area-label" id="rationale-score-label">Score what the learner actually said</div>
+        <div id="rationale-scores"></div>
+        <label id="rationale-note-label" for="rationale-note">Note (optional) &mdash; no names</label>
+        <input id="rationale-note" type="text" maxlength="200" autocomplete="off"
+               placeholder="What they said, in your words">
+      </div>
     </section>
 
   </main>
@@ -294,6 +317,7 @@
           <th>Outcome</th>
           <th>Trial</th>
           <th>Tags</th>
+          <th>Reason (L3)</th>
         </tr>
       </thead>
       <tbody id="results-body"></tbody>

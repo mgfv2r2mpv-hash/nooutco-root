@@ -63,6 +63,14 @@ async function answerTrial(page, i, { prompt = false, errFirst = false } = {}) {
   if (prompt) await page.locator('#btn-prompt').click();
   if (errFirst) await page.locator(`#choices .choice[data-answer="${wrong}"]`).click();
   await page.locator(`#choices .choice[data-answer="${right}"]`).click();
+  // A Level 3 trial is not over at the tile: the reason is the target, and the
+  // trial does not advance until the technician has scored what was said. The
+  // walk scores every one Correct, which is the case that must not be allowed to
+  // change the probe classification — that is decided by supports, not by score.
+  const rationale = page.locator('#rationale-panel');
+  if (await rationale.isVisible()) {
+    await page.locator('#rationale-scores button[data-score="correct"]').click();
+  }
   const next = page.locator('#btn-next');
   if (await next.count()) await next.click();
 }
