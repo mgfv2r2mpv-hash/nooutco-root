@@ -24,6 +24,10 @@ const CATEGORIES = {
 // cards.js assembles the three level pools and checks their coverage at load.
 const MODEL = window.ThinkOrSayModel;
 const CARDS = window.ThinkOrSayCards;
+// exemplar-generator.js renders probe items and fresh surfaces for
+// re-presentations from criterial templates — never from a memory of what has
+// already been shown, because that memory does not survive a cleared store.
+const GEN = window.ThinkOrSayGenerator;
 const LEAD_IN = MODEL.LEAD_IN;
 const SAY_VERBS = MODEL.SAY_VERBS;
 const balancedQuestion = MODEL.balancedQuestion;
@@ -579,11 +583,15 @@ function willRepresent() {
 }
 
 function nextTrial() {
-  // Re-present a missed card once, at the end of the deck.
+  // Re-present a missed card once, at the end of the deck — with a FRESH
+  // SURFACE where the generator carries the card's criterial configuration.
+  // Same criterial item, different person, place or thing, so the repeat cannot
+  // be passed on a memorised surface feature. A card whose configuration no
+  // template holds comes back unchanged rather than becoming a different card.
   const sc = state.current;
   if (willRepresent()) {
     state.represented.add(sc.id);
-    state.deck.push(sc);
+    state.deck.push((GEN && GEN.represent(sc, state.deck.length)) || sc);
   }
   state.pos++;
   if (state.pos >= state.deck.length) {
@@ -808,6 +816,9 @@ window.__thinkOrSay = Object.freeze({
   leadIn: LEAD_IN,
   sayVerbs: SAY_VERBS.slice(),
   balancedQuestion,
+  // The exemplar generator, so the spec can enumerate the whole finite space it
+  // can produce rather than sampling it through the UI.
+  generator: GEN,
 });
 
 if (document.readyState === 'loading') {
