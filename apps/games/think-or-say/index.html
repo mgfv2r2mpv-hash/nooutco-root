@@ -34,6 +34,16 @@
   <div id="settings-bar">
 
     <div class="setting-group">
+      <label for="sel-level">Level<button type="button" class="help-btn" data-help="Choose the teaching pool. Each card belongs to exactly one level: 1 Clear, 2 Nuanced, 3 Explain. Set this from the Skill Acquisition Plan.">?</button></label>
+      <select id="sel-level">
+        <option value="1">1 — Clear</option>
+        <option value="2">2 — Nuanced</option>
+        <option value="3">3 — Explain</option>
+      </select>
+      <p class="setting-note" id="level-blurb"></p>
+    </div>
+
+    <div class="setting-group">
       <label for="sel-category">Category<button type="button" class="help-btn" data-help="Limit the cards to one situation category, or use all of them.">?</button></label>
       <select id="sel-category"></select>
     </div>
@@ -118,10 +128,6 @@
         <input type="checkbox" id="chk-counterbalance" checked>
         Counterbalance Tile Positions
       </label>
-      <label class="checkbox-label">
-        <input type="checkbox" id="chk-include-tricky">
-        Include Tricky / Reasoning Cards
-      </label>
     </div>
   </section>
 
@@ -130,6 +136,7 @@
     <h2>Think or Say? — a thought into a choice</h2>
     <p>Each card shows a situation, then a thought the learner is having, then asks the same balanced question both ways round — for example <em>“Should you THINK these words, or SAY these words?”</em>. The clinician reads the card aloud, then the learner decides: <strong>THINK IT</strong> or <strong>SAY IT</strong>?</p>
     <ul>
+      <li><strong>Level</strong> — the teaching pool. <em>1 Clear</em> for early acquisition, <em>2 Nuanced</em> where the situation decides, <em>3 Explain</em> where the learner gives the reason. A card belongs to exactly one level. Your Skill Acquisition Plan says which.</li>
       <li><strong>Category</strong> — focus on one situation type (looks, smells, kind things…) or use all.</li>
       <li><strong>Order</strong> — shuffle the cards or step through them in order.</li>
       <li><strong>⚙ Settings</strong> — errorless, re-present errors, prompts, whether to reveal the reason, and whether the tiles swap sides between cards.</li>
@@ -222,6 +229,7 @@
       <thead>
         <tr>
           <th>#</th>
+          <th>Level</th>
           <th>Category</th>
           <th>Scenario</th>
           <th>Answer</th>
@@ -245,6 +253,11 @@
   <script src="../game-settings.js"></script>
   <script src="../prompting-method.js"></script>
   <script src="../results-report.js"></script>
+  <script src="card-model.js"></script>
+  <script src="cards-level-1.js"></script>
+  <script src="cards-level-2.js"></script>
+  <script src="cards-level-3.js"></script>
+  <script src="cards.js"></script>
   <script src="game.js"></script>
   <script>
     const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";

@@ -207,10 +207,12 @@ const ROUND_TRIPS = [
     url: '/think-or-say/',
     key: 'tosSettings',
     storeKey: 'nooutco.settings.think-or-say',
-    // The only retired payload whose fold is not a straight carry-forward:
-    // `promptDelaySec` (singular, and a string) is renamed onto the
-    // `promptDelaySecs` int the other games declare. `tosSettings` itself keeps
-    // its own spelling — the `saved[option]` loop below is what asserts that.
+    // The only retired payload whose fold is not a straight carry-forward, and
+    // it now carries two renames. `promptDelaySec` (singular, and a string) is
+    // renamed onto the `promptDelaySecs` int the other games declare;
+    // `includeTricky` is superseded by the Level selector and folds onto Level
+    // 2, the nuanced pool its tricky cards became. `tosSettings` itself keeps
+    // both of its own spellings — the `saved[option]` loop below asserts that.
     folded: {
       category: 'private',
       order: 'sequential',
@@ -222,7 +224,7 @@ const ROUND_TRIPS = [
       promptDelaySecs: 5,
       promptStyle: 'outline',
       showReason: false,
-      includeTricky: true,
+      level: 2,
     },
     seeded: {
       category: 'private',
@@ -238,6 +240,7 @@ const ROUND_TRIPS = [
       includeTricky: true,
     },
     controls: [
+      ['includeTricky', '#sel-level', 'value', '2'],
       ['category', '#sel-category', 'value', 'private'],
       ['order', '#sel-order', 'value', 'sequential'],
       ['represent', '#chk-represent-errors', 'checked', false],
@@ -248,7 +251,6 @@ const ROUND_TRIPS = [
       ['promptDelaySec', '#sel-prompt-delay', 'value', '5'],
       ['promptStyle', '#sel-prompt-style', 'value', 'outline'],
       ['showReason', '#chk-show-reason', 'checked', false],
-      ['includeTricky', '#chk-include-tricky', 'checked', true],
     ],
   },
   {

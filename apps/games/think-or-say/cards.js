@@ -1,0 +1,102 @@
+/* ── Think or Say? — the card registry ─────────────────────────────────
+   Three levels, three separate pools, one card to exactly one level.
+
+   Card selection is driven by the COVERAGE MATRIX in card-model.js, never by a
+   target count: there is no established sufficient-N (Hupp 1986 found five
+   "good" exemplars beat three only slightly, and not significantly — see
+   RESEARCH.md §3.4). Every pool is checked here, at load, for
+     * ≥3 exemplars of every criterial dimension, and
+     * one matched minimum-difference pair per criterial dimension.
+   A pool that misses either throws rather than shipping a hole in the teaching
+   set. The Playwright spec asserts the same properties from the outside, so the
+   check is not merely self-reported.
+
+   No build step — loaded after card-model.js and the three pool files.
+   ----------------------------------------------------------------------- */
+(function (global) {
+  'use strict';
+
+  var model = global.ThinkOrSayModel;
+  if (!model) throw new Error('think-or-say: card-model.js must load before cards.js');
+
+  /** Every criterial dimension needs at least this many exemplars in a pool. */
+  var MIN_EXEMPLARS_PER_DIMENSION = 3;
+
+  var seenIds = Object.create(null);
+
+  function buildLevel(raw) {
+    if (!raw) throw new Error('think-or-say: a level pool file did not load');
+    var cards = raw.cards.map(function (spec) {
+      if (spec.level !== raw.id) {
+        throw new Error('think-or-say card ' + spec.id + ': declares level ' + spec.level +
+          ' but sits in the level ' + raw.id + ' pool');
+      }
+      // Pools are disjoint by id, so a card cannot be taught at two levels and
+      // quietly become two different targets in the same report.
+      if (seenIds[spec.id]) throw new Error('think-or-say: duplicate card id ' + spec.id);
+      seenIds[spec.id] = true;
+      return model.makeCard(spec);
+    });
+
+    var byId = Object.create(null);
+    cards.forEach(function (c) { byId[c.id] = c; });
+
+    var coverage = coverageOf(cards);
+    model.DIMENSION_KEYS.forEach(function (dim) {
+      if (coverage[dim].length < MIN_EXEMPLARS_PER_DIMENSION) {
+        throw new Error('think-or-say level ' + raw.id + ': dimension ' + dim + ' has ' +
+          coverage[dim].length + ' exemplars, needs ' + MIN_EXEMPLARS_PER_DIMENSION);
+      }
+    });
+
+    var pairs = model.definePairs(raw.id, byId, raw.pairs);
+    var covered = pairs.map(function (p) { return p.dim; });
+    model.DIMENSION_KEYS.forEach(function (dim) {
+      if (covered.indexOf(dim) < 0) {
+        throw new Error('think-or-say level ' + raw.id + ': no minimum-difference pair for ' + dim);
+      }
+    });
+
+    return Object.freeze({
+      id: raw.id,
+      name: raw.name,
+      blurb: raw.blurb,
+      cards: Object.freeze(cards),
+      pairs: pairs,
+      coverage: Object.freeze(coverage),
+    });
+  }
+
+  /** Which cards declare each criterial dimension — the coverage matrix, as data. */
+  function coverageOf(cards) {
+    var out = {};
+    model.DIMENSION_KEYS.forEach(function (dim) {
+      out[dim] = Object.freeze(cards
+        .filter(function (c) { return c.features[dim] != null; })
+        .map(function (c) { return c.id; }));
+    });
+    return out;
+  }
+
+  var LEVELS = Object.freeze([
+    buildLevel(global.ThinkOrSayLevel1),
+    buildLevel(global.ThinkOrSayLevel2),
+    buildLevel(global.ThinkOrSayLevel3),
+  ]);
+
+  var ALL = Object.freeze(LEVELS.reduce(function (acc, lv) {
+    return acc.concat(lv.cards);
+  }, []));
+
+  function level(id) {
+    return LEVELS.filter(function (lv) { return lv.id === Number(id); })[0] || LEVELS[0];
+  }
+
+  global.ThinkOrSayCards = Object.freeze({
+    LEVELS: LEVELS,
+    ALL: ALL,
+    level: level,
+    levelIds: Object.freeze(LEVELS.map(function (lv) { return lv.id; })),
+    MIN_EXEMPLARS_PER_DIMENSION: MIN_EXEMPLARS_PER_DIMENSION,
+  });
+})(typeof window !== 'undefined' ? window : globalThis);

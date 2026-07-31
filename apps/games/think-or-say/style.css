@@ -537,3 +537,14 @@
 @media (max-width: 360px) {
   .choice { width: 130px; }
 }
+
+/* The level's own one-line description, sitting beside its selector. Reading it
+   in the bar is how a technician confirms that the pool the plan named is the
+   pool in force before the session starts. */
+.setting-note {
+  margin: 0;
+  max-width: 30ch;
+  font-size: 0.78rem;
+  line-height: 1.3;
+  color: var(--text-muted, #6b7280);
+}

@@ -3,10 +3,13 @@
    THINK IT (keep it inside) or a SAY IT (kind / okay to say out loud).
    Pre-K / Kindergarten social-language target.
    No build step — plain static HTML/CSS/JS.
+
+   The cards themselves live in card-model.js (the instructional universe and
+   the one constructor every card goes through) and cards-level-{1,2,3}.js
+   (three separate pools, one card to exactly one level), assembled and checked
+   by cards.js. A Level selector chooses the pool; this file runs the trials.
    ----------------------------------------------------------------------- */
 
-// ── Scenario set ───────────────────────────────────────────────────────
-// answer: 'think' | 'say'.  tricky cards are held back unless enabled.
 const CATEGORIES = {
   looks:   'How Someone Looks',
   smells:  'Smells',
@@ -16,215 +19,14 @@ const CATEGORIES = {
   other:   'Other Moments',
 };
 
-/* ── Card framing ──────────────────────────────────────────────────────
-   A card used to render `You think: "<thought>"`. That lead-in names one of
-   the two actions and names it in the stem of the THINK IT tile, so a learner
-   tracking only the salient word can answer every card correctly without ever
-   contacting the rule (Song et al. 2021 — see RESEARCH.md, "Card framing").
-
-   A card now presents four parts, in this order:
-     1. the situation
-     2. the fixed lead-in below — it names NEITHER action
-     3. the candidate utterance, in quotes
-     4. a balanced question naming BOTH actions, generated from the card's own
-        verb pair so it cannot be hand-written to name only one.
-
-   Tile LABELS stay THINK IT / SAY IT on every card — the response topography
-   must not change card to card. Only the tile POSITIONS counterbalance.
-
-   The residual stem overlap between "thought" and "THINK IT" is ruled real,
-   irreducible and detectable: a learner under stem control answers THINK to
-   everything, which shows in the report's answer-type split. No further
-   mitigation is built. -------------------------------------------------- */
-
-const LEAD_IN = 'You have a thought:';
-
-/** The spoken action a card asks about. THINK is the other half, always. */
-const SAY_VERBS = ['say', 'ask', 'tell'];
-
-/**
- * The card's balanced question. Both actions are named, in the card's own verb
- * pair, from the card's own object phrase — so the two halves are grammatically
- * identical and neither is the longer or more elaborated option.
- */
-function balancedQuestion(sc) {
-  return `Should you THINK ${sc.object}, or ${sc.sayVerb.toUpperCase()} ${sc.object}?`;
-}
-
-/**
- * Build one card, or refuse to.
- *
- * Every authored card goes through here, so a card that cannot state a balanced
- * question — or that reintroduces the "You think" lead-in in its own prose —
- * does not exist at runtime rather than shipping and being caught in review.
- */
-function makeCard(spec) {
-  const need = ['id', 'cat', 'answer', 'situation', 'utterance', 'sayVerb', 'object', 'reason'];
-  const missing = need.filter(k => !spec[k]);
-  if (missing.length) throw new Error(`think-or-say card ${spec.id}: missing ${missing.join(', ')}`);
-  if (SAY_VERBS.indexOf(spec.sayVerb) < 0) {
-    throw new Error(`think-or-say card ${spec.id}: sayVerb must be one of ${SAY_VERBS.join('/')}`);
-  }
-  // The object phrase carries its own determiner so both halves of the question
-  // stay grammatical whichever verb the card uses.
-  if (!/^(this|these) \S/.test(spec.object)) {
-    throw new Error(`think-or-say card ${spec.id}: object phrase must start "this "/"these "`);
-  }
-  for (const field of ['situation', 'utterance', 'reason']) {
-    if (/you think/i.test(spec[field])) {
-      throw new Error(`think-or-say card ${spec.id}: ${field} says "you think" — it gives the answer away`);
-    }
-  }
-  const question = balancedQuestion(spec);
-  if (!question.includes('THINK') || !question.includes(spec.sayVerb.toUpperCase())) {
-    throw new Error(`think-or-say card ${spec.id}: question names only one action`);
-  }
-  return Object.freeze(Object.assign({}, spec, { leadIn: LEAD_IN, question }));
-}
-
-const SCENARIOS = [
-  // ── How someone looks (THINK IT) ──
-  { id: '1.1', cat: 'looks', answer: 'think',
-    situation: 'You see a kid at school. They have a really big tummy.',
-    utterance: 'They have a big tummy.', sayVerb: 'say', object: 'these words',
-    reason: 'Think it. Talking about how someone’s body looks can hurt their feelings.' },
-  { id: '1.2', cat: 'looks', answer: 'think',
-    situation: 'Your grandma comes to visit. She has some hair missing on her head.',
-    utterance: 'Grandma doesn’t have much hair.', sayVerb: 'say', object: 'these words',
-    reason: 'Think it. Saying it might make Grandma feel sad.' },
-  { id: '1.3', cat: 'looks', answer: 'think',
-    situation: 'A boy in your class has a lot of spots on his face.',
-    utterance: 'He has spots all over.', sayVerb: 'say', object: 'these words',
-    reason: 'Think it. Saying it would embarrass him.' },
-  { id: '1.4', cat: 'looks', answer: 'think',
-    situation: 'Your teacher is wearing pants that look really silly to you.',
-    utterance: 'Those pants look funny.', sayVerb: 'say', object: 'these words',
-    reason: 'Think it. It would make your teacher feel bad.' },
-  { id: '1.5', cat: 'looks', answer: 'think',
-    situation: 'A man on the bus is very, very tall.',
-    utterance: 'He is so tall!', sayVerb: 'say', object: 'these words',
-    reason: 'Think it. Pointing out how someone’s body looks can embarrass them.' },
-  { id: '1.6', cat: 'looks', answer: 'think',
-    situation: 'A classmate is wearing two socks that don’t match.',
-    utterance: 'Their socks don’t match.', sayVerb: 'say', object: 'these words',
-    reason: 'Think it. They might feel embarrassed if you say it out loud.' },
-
-  // ── Smells (THINK IT) ──
-  { id: '2.1', cat: 'smells', answer: 'think',
-    situation: 'You sit next to a classmate at lunch. Their food smells really strong.',
-    utterance: 'That smells weird.', sayVerb: 'say', object: 'these words',
-    reason: 'Think it. It would hurt their feelings about their food.' },
-  { id: '2.2', cat: 'smells', answer: 'think',
-    situation: 'A grown-up bends down to help you and you notice their breath.',
-    utterance: 'Their breath smells bad.', sayVerb: 'say', object: 'these words',
-    reason: 'Think it. Saying it would be embarrassing for them.' },
-
-  // ── Their work & things (THINK IT) ──
-  { id: '3.1', cat: 'work', answer: 'think',
-    situation: 'A friend shows you a drawing they made. The drawing does not look very good to you.',
-    utterance: 'That drawing looks bad.', sayVerb: 'say', object: 'these words',
-    reason: 'Think it. They worked hard — saying it would hurt their feelings.' },
-  { id: '3.2', cat: 'work', answer: 'think',
-    situation: 'A classmate sings a song in circle time. You don’t like the way it sounds.',
-    utterance: 'That sounded really bad.', sayVerb: 'say', object: 'these words',
-    reason: 'Think it. Saying it would make them feel sad and not want to try.' },
-  { id: '3.3', cat: 'work', answer: 'think',
-    situation: 'Your friend shows you their new backpack. You don’t like how it looks.',
-    utterance: 'I don’t like that backpack.', sayVerb: 'say', object: 'these words',
-    reason: 'Think it. They love their backpack — saying it would hurt their feelings.' },
-  { id: '3.4', cat: 'work', answer: 'think',
-    situation: 'A classmate gives the wrong answer in class.',
-    utterance: 'That was wrong.', sayVerb: 'say', object: 'these words',
-    reason: 'Think it. Saying it out loud would embarrass them.' },
-
-  // ── Private things (THINK IT) ──
-  { id: '4.1', cat: 'private', answer: 'think',
-    situation: 'You see a classmate pull up their pants.',
-    utterance: 'I saw their underwear.', sayVerb: 'say', object: 'these words',
-    reason: 'Think it. That is private — saying it would embarrass them.' },
-  { id: '4.2', cat: 'private', answer: 'think',
-    situation: 'A kid at school has a small accident and their pants get wet.',
-    utterance: 'They had an accident.', sayVerb: 'say', object: 'these words',
-    reason: 'Think it. That is private and saying it would feel very embarrassing.' },
-  { id: '4.3', cat: 'private', answer: 'think',
-    situation: 'A classmate is picking their nose when nobody else is watching.',
-    utterance: 'I see them picking their nose.', sayVerb: 'say', object: 'these words',
-    reason: 'Think it. Saying it out loud would embarrass them.' },
-
-  // ── Kind things to say (SAY IT) ──
-  { id: '5.1', cat: 'kind', answer: 'say',
-    situation: 'Your friend gets a new shirt with a dinosaur on it. You love dinosaurs too.',
-    utterance: 'I love that shirt!', sayVerb: 'say', object: 'these words',
-    reason: 'Say it! A kind compliment will make your friend happy.' },
-  { id: '5.2', cat: 'kind', answer: 'say',
-    situation: 'Your teacher reads a really funny story and you laugh.',
-    utterance: 'That story was so funny!', sayVerb: 'say', object: 'these words',
-    reason: 'Say it! Your teacher will feel happy you liked it.' },
-  { id: '5.3', cat: 'kind', answer: 'say',
-    situation: 'A classmate looks sad on the playground.',
-    utterance: 'Are you okay?', sayVerb: 'ask', object: 'this question',
-    reason: 'Say it! Asking “Are you okay?” helps them feel less alone.' },
-  { id: '5.4', cat: 'kind', answer: 'say',
-    situation: 'Your friend helps you pick up your crayons when you drop them.',
-    utterance: 'That was really nice of them.', sayVerb: 'say', object: 'these words',
-    reason: 'Say it! Saying “Thank you!” is kind and makes friends feel good.' },
-  { id: '5.5', cat: 'kind', answer: 'say',
-    situation: 'Your mom makes your favorite dinner.',
-    utterance: 'This tastes SO good!', sayVerb: 'say', object: 'these words',
-    reason: 'Say it! It will make Mom happy to hear it.' },
-  { id: '5.6', cat: 'kind', answer: 'say',
-    situation: 'You don’t understand how to do the worksheet.',
-    utterance: 'Can you help me?', sayVerb: 'ask', object: 'this question',
-    reason: 'Say it! Asking for help is always okay.' },
-  { id: '5.7', cat: 'kind', answer: 'say',
-    situation: 'Your tummy hurts at school.',
-    utterance: 'My tummy doesn’t feel good.', sayVerb: 'tell', object: 'this news',
-    reason: 'Say it! Telling a grown-up when you feel sick is important.' },
-  { id: '5.8', cat: 'kind', answer: 'say',
-    situation: 'Your classmate shares their snack with you.',
-    utterance: 'That was so kind!', sayVerb: 'say', object: 'these words',
-    reason: 'Say it! “That was so nice, thank you!” makes friends feel great.' },
-  { id: '5.9', cat: 'kind', answer: 'say',
-    situation: 'Your friend makes it to the top of the climbing wall.',
-    utterance: 'They did it!', sayVerb: 'say', object: 'these words',
-    reason: 'Say it! Cheering a friend on is kind and fun.' },
-  { id: '5.10', cat: 'kind', answer: 'say',
-    situation: 'It is your friend’s birthday today.',
-    utterance: 'Happy birthday!', sayVerb: 'say', object: 'these words',
-    reason: 'Say it! Wishing a friend happy birthday makes them feel special.' },
-  { id: '5.11', cat: 'kind', answer: 'say',
-    situation: 'Your teacher got a new haircut and you really like it.',
-    utterance: 'I like their haircut!', sayVerb: 'say', object: 'these words',
-    reason: 'Say it! A kind compliment is a nice thing to share.' },
-  { id: '5.12', cat: 'kind', answer: 'say',
-    situation: 'You finished all your work and you feel proud.',
-    utterance: 'I did it!', sayVerb: 'tell', object: 'this news',
-    reason: 'Say it! Sharing happy news about yourself is great.' },
-
-  // ── Other moments ──
-  { id: '6.1', cat: 'other', answer: 'think',
-    situation: 'A baby on the bus is crying very loudly.',
-    utterance: 'That baby is so loud.', sayVerb: 'say', object: 'these words',
-    reason: 'Think it. Saying it might make the baby’s family feel bad.' },
-  { id: '6.2', cat: 'other', answer: 'say',
-    situation: 'A classmate took your turn by accident and you still want your turn.',
-    utterance: 'It’s my turn.', sayVerb: 'say', object: 'these words',
-    reason: 'Say it! You can speak up kindly: “It’s my turn now, please.”' },
-
-  // ── Tricky / reasoning cards (held back unless enabled) ──
-  { id: 'T1', cat: 'looks', tricky: true, answer: 'think',
-    situation: 'Your friend has a new haircut. It looks really strange to you.',
-    utterance: 'That haircut looks weird.', sayVerb: 'say', object: 'these words',
-    reason: 'Think it. Even if it feels true, it would hurt their feelings — and they can’t change it right now.' },
-  { id: 'T2', cat: 'kind', tricky: true, answer: 'say',
-    situation: 'You are sitting beside your close friend. They have a little food stuck in their teeth, and nobody else can hear you.',
-    utterance: 'You have something in your teeth.', sayVerb: 'say', object: 'these words',
-    reason: 'Say it — quietly and kindly, just to them. Shouting it across the lunchroom would be a think it. How and when we say it matters!' },
-  { id: 'T3', cat: 'other', tricky: true, answer: 'say',
-    situation: 'A classmate is about to run into the street where cars are driving.',
-    utterance: 'Stop! Cars are coming!', sayVerb: 'tell', object: 'this news',
-    reason: 'Say it — loudly, and tell a grown-up! When someone might get hurt, it is always right to speak up.' },
-].map(makeCard);
+// ── The cards ──────────────────────────────────────────────────────────
+// card-model.js owns the framing constants and the instructional universe;
+// cards.js assembles the three level pools and checks their coverage at load.
+const MODEL = window.ThinkOrSayModel;
+const CARDS = window.ThinkOrSayCards;
+const LEAD_IN = MODEL.LEAD_IN;
+const SAY_VERBS = MODEL.SAY_VERBS;
+const balancedQuestion = MODEL.balancedQuestion;
 
 // Optional teaching video for Learn mode. Set to an embeddable URL
 // (e.g. 'https://www.youtube.com/embed/VIDEO_ID') to show a player above the
@@ -248,7 +50,8 @@ const el = {
   selPromptStyle:  $('sel-prompt-style'),
   chkShowReason:   $('chk-show-reason'),
   chkCounterbalance: $('chk-counterbalance'),
-  chkIncludeTricky:$('chk-include-tricky'),
+  selLevel:        $('sel-level'),
+  levelBlurb:      $('level-blurb'),
   btnPrompt:       $('btn-prompt'),
   btnLearn:        $('btn-learn'),
   btnPlay:         $('btn-play'),
@@ -332,6 +135,10 @@ const LEGACY_RESULTS_KEY = 'tosResults';
  * difference is clinical, not accidental; do not harmonise it.
  */
 const SETTINGS_FIELDS = {
+  // Which teaching pool is in play. An int rather than an enum because the
+  // select hands back a string and `int` parses it; the range is the levels
+  // that exist, so a stored 4 clamps to 3 rather than emptying the deck.
+  level:           { type: 'int',  min: 1, max: 3, default: 1 },
   category:        { type: 'enum', values: ['all'].concat(Object.keys(CATEGORIES)), default: 'all' },
   order:           { type: 'enum', values: ['shuffle', 'sequential'], default: 'shuffle' },
   represent:       { type: 'bool', default: true },
@@ -350,7 +157,6 @@ const SETTINGS_FIELDS = {
   // specifies a fixed array (early acquisition, or a learner with a scanning
   // target) turns it off.
   counterbalance:  { type: 'bool', default: true },
-  includeTricky:   { type: 'bool', default: false },
 };
 
 const settingsStore = window.NooutcoSettings.defineStore({
@@ -360,15 +166,25 @@ const settingsStore = window.NooutcoSettings.defineStore({
 });
 
 /**
- * `tosSettings` spelled the prompt delay `promptDelaySec` — singular, and
- * stored as a STRING — which is a third spelling of the option eight other
- * games call `promptDelaySecs`. The fold renames it forward onto the shared
- * spelling; `tosSettings` itself keeps its own key, its own spelling and its
- * own string, untouched, because the fold never rewrites the retired key.
+ * Read-then-fold. Two retired options, neither of them deleted anywhere.
+ *
+ * `promptDelaySec` — `tosSettings` spelled the prompt delay singular and stored
+ * it as a STRING, a third spelling of the option eight other games call
+ * `promptDelaySecs`. The fold renames it forward; `tosSettings` itself keeps its
+ * own key, its own spelling and its own string, untouched.
+ *
+ * `includeTricky` — the "Include Tricky / Reasoning Cards" checkbox is
+ * superseded by the Level selector. Its tricky cards were the nuanced,
+ * context-decides ones, so a stored `true` folds forward onto Level 2 and a
+ * stored `false` onto Level 1. A configuration that already names a level keeps
+ * it: the retired option never overrides a live one.
  */
-function foldRetiredSettings(legacy) {
-  const { promptDelaySec, ...rest } = legacy;
-  return promptDelaySec == null ? rest : { ...rest, promptDelaySecs: promptDelaySec };
+function foldRetiredSettings(stored) {
+  const { promptDelaySec, includeTricky, ...rest } = stored;
+  const folded = { ...rest };
+  if (promptDelaySec != null) folded.promptDelaySecs = promptDelaySec;
+  if (folded.level == null && includeTricky != null) folded.level = includeTricky ? 2 : 1;
+  return folded;
 }
 
 /**
@@ -379,6 +195,7 @@ function foldRetiredSettings(legacy) {
  * store's own normalize()). Reading a control happens here and nowhere else.
  */
 const SETTINGS_CONTROLS = [
+  { node: 'selLevel',         option: 'level',           read: n => n.value,   write: (n, v) => { n.value = String(v); } },
   { node: 'selCategory',      option: 'category',        read: n => n.value,   write: (n, v) => { n.value = v; } },
   { node: 'selOrder',         option: 'order',           read: n => n.value,   write: (n, v) => { n.value = v; } },
   { node: 'chkRepresent',     option: 'represent',       read: n => n.checked, write: (n, v) => { n.checked = v; } },
@@ -390,13 +207,13 @@ const SETTINGS_CONTROLS = [
   { node: 'selPromptStyle',   option: 'promptStyle',     read: n => n.value,   write: (n, v) => { n.value = v; } },
   { node: 'chkShowReason',    option: 'showReason',      read: n => n.checked, write: (n, v) => { n.checked = v; } },
   { node: 'chkCounterbalance',option: 'counterbalance',  read: n => n.checked, write: (n, v) => { n.checked = v; } },
-  { node: 'chkIncludeTricky', option: 'includeTricky',   read: n => n.checked, write: (n, v) => { n.checked = v; } },
 ];
 
 /** Render the panel from the configuration in force, so the two cannot diverge. */
 function applySettingsToControls(cfg) {
   for (const c of SETTINGS_CONTROLS) c.write(el[c.node], cfg[c.option]);
   syncPromptDelayEnabled();
+  el.levelBlurb.textContent = CARDS.level(cfg.level).blurb;
   // A programmatic write fires no `change` event, so the prompting-method group
   // has to be told to re-read the two switches it summarises.
   if (window.NooutcoPrompting) window.NooutcoPrompting.refresh();
@@ -405,8 +222,22 @@ function applySettingsToControls(cfg) {
 function loadSettings() {
   // Read-then-fold, never drop. Runs at most once; `tosSettings` is left intact.
   settingsStore.foldLegacy({ map: foldRetiredSettings });
-  state.cfg = settingsStore.initial();
+  state.cfg = settingsStore.normalize(foldRetiredSettings(rawStoredConfig()));
   applySettingsToControls(state.cfg);
+}
+
+/**
+ * The configuration as STORED, before normalize() drops the keys this build no
+ * longer declares. `initial()` normalizes on the way out, which is right for
+ * every live option and wrong for a retired one: a `includeTricky` sitting in
+ * the store would be dropped before the fold could read it, silently sending a
+ * technician who had tricky cards on back to Level 1. Mirrors the store's own
+ * working → last saved set → defaults chain.
+ */
+function rawStoredConfig() {
+  const store = settingsStore.load();
+  const lastSet = store.last && store.sets ? store.sets[store.last] : null;
+  return store.working || lastSet || settingsStore.defaults();
 }
 
 /**
@@ -458,14 +289,22 @@ function shuffle(arr) {
 }
 
 // ── Build deck ─────────────────────────────────────────────────────────
+/**
+ * The deck is the level's own pool, optionally narrowed to one category.
+ *
+ * A card belongs to exactly one level, so the level selector chooses the pool
+ * outright rather than filtering a single flat deck — that is what makes the
+ * coverage guarantees (≥3 exemplars per criterial dimension, one matched
+ * minimum-difference pair per dimension) properties of what the learner
+ * actually sees.
+ *
+ * Under `sequential` the authored array order IS the trial order, and that
+ * order is load-bearing: see positionTiles().
+ */
 function buildDeck() {
   const cat = state.cfg.category;
-  const includeTricky = state.cfg.includeTricky;
-  let pool = SCENARIOS.filter(s => {
-    if (s.tricky && !includeTricky) return false;
-    if (cat !== 'all' && s.cat !== cat) return false;
-    return true;
-  });
+  let pool = CARDS.level(state.cfg.level).cards
+    .filter(s => cat === 'all' || s.cat === cat);
   if (state.cfg.order === 'shuffle') pool = shuffle(pool);
   state.deck = pool;
   state.pos = 0;
@@ -477,7 +316,7 @@ function beginSession(mode) {
   saveSettings();
   buildDeck();
   if (!state.deck.length) {
-    alert('No cards match these settings. Try a different category or enable tricky cards.');
+    alert('No cards match these settings. Try a different category, or another level.');
     return;
   }
   state.results = [];
@@ -593,9 +432,21 @@ function renderThought(sc) {
  *
  * The labels never move — THINK IT is always the brain tile and SAY IT always
  * the mouth tile — so the response topography is constant. Only which side each
- * sits on alternates, strictly, on the trial index: strict alternation is what
- * makes the two positions equally often correct within any run of trials, which
- * random placement does not guarantee over a 32-card deck.
+ * sits on alternates, strictly, on the trial index.
+ *
+ * What that alternation guarantees is narrow, and worth stating exactly: each
+ * POSITION holds each TILE equally often. It says NOTHING about which side is
+ * CORRECT. Which side is correct is the interaction between this alternation
+ * and the pool's own run of answers — and if a pool's answers ever alternate
+ * with the same period as the tiles, the correct tile lands on the same side on
+ * every single trial. That is a perfect position cue: precisely the faulty
+ * stimulus control this rebuild exists to prevent.
+ *
+ * So the property is not asserted here, because it is not a property of this
+ * function: it belongs to the AUTHORED ORDER of each pool. It is measured
+ * instead — think-or-say-levels.spec.js walks every level pool in sequential
+ * order with this setting on, counts how often the correct tile lands on each
+ * side, and fails if either side holds it more than 65% of the time.
  */
 function positionTiles() {
   const tiles = choiceEls();
@@ -779,6 +630,7 @@ function recordResult() {
   if (state.trialPrompted) outcome = 'prompted';
   else if (state.trialErrors > 0) outcome = 'error';
   const row = {
+    level: sc.level,
     cat: CATEGORIES[sc.cat] || sc.cat,
     scenario: sc.situation,
     answer: sc.answer === 'think' ? 'THINK IT' : 'SAY IT',
@@ -832,6 +684,7 @@ function buildPrint() {
                    : r.outcome === 'prompted' ? 'Prompted' : 'Error then correct';
     return `<tr>
       <td>${i + 1}</td>
+      <td>${r.level == null ? '—' : r.level}</td>
       <td>${r.cat}</td>
       <td>${escapeHtml(r.scenario)}</td>
       <td>${r.answer}</td>
@@ -937,15 +790,21 @@ function init() {
 }
 
 /**
- * A read-only view of the authored deck and the framing it is built from.
+ * A read-only view of the three pools, the instructional universe they were
+ * built against, and the framing every card carries.
  *
- * `makeCard` enforces the card invariants at module load; this is how the
- * Playwright specs assert them across the WHOLE card set from the data rather
- * than one card at a time through the UI. Nothing here is player data and
- * nothing here is written back.
+ * `card-model.js` enforces the per-card invariants and `cards.js` the per-pool
+ * ones, both at module load; this is how the Playwright specs assert them
+ * across EVERY pool from the data rather than one card at a time through the
+ * UI. Nothing here is player data and nothing here is written back.
  */
 window.__thinkOrSay = Object.freeze({
-  cards: SCENARIOS,
+  cards: CARDS.ALL,
+  levels: CARDS.LEVELS,
+  level: CARDS.level,
+  minExemplarsPerDimension: CARDS.MIN_EXEMPLARS_PER_DIMENSION,
+  dimensions: MODEL.DIMENSION_KEYS.slice(),
+  canHave: MODEL.CAN_HAVE_KEYS.slice(),
   leadIn: LEAD_IN,
   sayVerbs: SAY_VERBS.slice(),
   balancedQuestion,

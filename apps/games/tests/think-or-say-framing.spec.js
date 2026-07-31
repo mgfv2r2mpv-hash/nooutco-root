@@ -151,8 +151,10 @@ test('the rendered card shows the lead-in and the balanced question, not "You th
 
 /** Walk `n` trials, answering each correctly, and report the tile order seen. */
 async function tileOrderOverTrials(page, n) {
+  // These runs seed `order: sequential` and leave the level at its default, so
+  // the deck IS Level 1's authored pool in its authored order.
   const answers = await page.evaluate(() =>
-    window.__thinkOrSay.cards.filter(c => !c.tricky).map(c => c.answer));
+    window.__thinkOrSay.level(1).cards.map(c => c.answer));
   const seen = [];
   for (let i = 0; i < n; i++) {
     await page.locator('#reveal-panel').click();
