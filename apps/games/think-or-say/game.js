@@ -16,149 +16,215 @@ const CATEGORIES = {
   other:   'Other Moments',
 };
 
+/* ── Card framing ──────────────────────────────────────────────────────
+   A card used to render `You think: "<thought>"`. That lead-in names one of
+   the two actions and names it in the stem of the THINK IT tile, so a learner
+   tracking only the salient word can answer every card correctly without ever
+   contacting the rule (Song et al. 2021 — see RESEARCH.md, "Card framing").
+
+   A card now presents four parts, in this order:
+     1. the situation
+     2. the fixed lead-in below — it names NEITHER action
+     3. the candidate utterance, in quotes
+     4. a balanced question naming BOTH actions, generated from the card's own
+        verb pair so it cannot be hand-written to name only one.
+
+   Tile LABELS stay THINK IT / SAY IT on every card — the response topography
+   must not change card to card. Only the tile POSITIONS counterbalance.
+
+   The residual stem overlap between "thought" and "THINK IT" is ruled real,
+   irreducible and detectable: a learner under stem control answers THINK to
+   everything, which shows in the report's answer-type split. No further
+   mitigation is built. -------------------------------------------------- */
+
+const LEAD_IN = 'You have a thought:';
+
+/** The spoken action a card asks about. THINK is the other half, always. */
+const SAY_VERBS = ['say', 'ask', 'tell'];
+
+/**
+ * The card's balanced question. Both actions are named, in the card's own verb
+ * pair, from the card's own object phrase — so the two halves are grammatically
+ * identical and neither is the longer or more elaborated option.
+ */
+function balancedQuestion(sc) {
+  return `Should you THINK ${sc.object}, or ${sc.sayVerb.toUpperCase()} ${sc.object}?`;
+}
+
+/**
+ * Build one card, or refuse to.
+ *
+ * Every authored card goes through here, so a card that cannot state a balanced
+ * question — or that reintroduces the "You think" lead-in in its own prose —
+ * does not exist at runtime rather than shipping and being caught in review.
+ */
+function makeCard(spec) {
+  const need = ['id', 'cat', 'answer', 'situation', 'utterance', 'sayVerb', 'object', 'reason'];
+  const missing = need.filter(k => !spec[k]);
+  if (missing.length) throw new Error(`think-or-say card ${spec.id}: missing ${missing.join(', ')}`);
+  if (SAY_VERBS.indexOf(spec.sayVerb) < 0) {
+    throw new Error(`think-or-say card ${spec.id}: sayVerb must be one of ${SAY_VERBS.join('/')}`);
+  }
+  // The object phrase carries its own determiner so both halves of the question
+  // stay grammatical whichever verb the card uses.
+  if (!/^(this|these) \S/.test(spec.object)) {
+    throw new Error(`think-or-say card ${spec.id}: object phrase must start "this "/"these "`);
+  }
+  for (const field of ['situation', 'utterance', 'reason']) {
+    if (/you think/i.test(spec[field])) {
+      throw new Error(`think-or-say card ${spec.id}: ${field} says "you think" — it gives the answer away`);
+    }
+  }
+  const question = balancedQuestion(spec);
+  if (!question.includes('THINK') || !question.includes(spec.sayVerb.toUpperCase())) {
+    throw new Error(`think-or-say card ${spec.id}: question names only one action`);
+  }
+  return Object.freeze(Object.assign({}, spec, { leadIn: LEAD_IN, question }));
+}
+
 const SCENARIOS = [
   // ── How someone looks (THINK IT) ──
   { id: '1.1', cat: 'looks', answer: 'think',
     situation: 'You see a kid at school. They have a really big tummy.',
-    thought: 'They have a big tummy.',
+    utterance: 'They have a big tummy.', sayVerb: 'say', object: 'these words',
     reason: 'Think it. Talking about how someone’s body looks can hurt their feelings.' },
   { id: '1.2', cat: 'looks', answer: 'think',
     situation: 'Your grandma comes to visit. She has some hair missing on her head.',
-    thought: 'Grandma doesn’t have much hair.',
+    utterance: 'Grandma doesn’t have much hair.', sayVerb: 'say', object: 'these words',
     reason: 'Think it. Saying it might make Grandma feel sad.' },
   { id: '1.3', cat: 'looks', answer: 'think',
     situation: 'A boy in your class has a lot of spots on his face.',
-    thought: 'He has spots all over.',
+    utterance: 'He has spots all over.', sayVerb: 'say', object: 'these words',
     reason: 'Think it. Saying it would embarrass him.' },
   { id: '1.4', cat: 'looks', answer: 'think',
     situation: 'Your teacher is wearing pants that look really silly to you.',
-    thought: 'Those pants look funny.',
+    utterance: 'Those pants look funny.', sayVerb: 'say', object: 'these words',
     reason: 'Think it. It would make your teacher feel bad.' },
   { id: '1.5', cat: 'looks', answer: 'think',
     situation: 'A man on the bus is very, very tall.',
-    thought: 'He is so tall!',
+    utterance: 'He is so tall!', sayVerb: 'say', object: 'these words',
     reason: 'Think it. Pointing out how someone’s body looks can embarrass them.' },
   { id: '1.6', cat: 'looks', answer: 'think',
     situation: 'A classmate is wearing two socks that don’t match.',
-    thought: 'Their socks don’t match.',
+    utterance: 'Their socks don’t match.', sayVerb: 'say', object: 'these words',
     reason: 'Think it. They might feel embarrassed if you say it out loud.' },
 
   // ── Smells (THINK IT) ──
   { id: '2.1', cat: 'smells', answer: 'think',
     situation: 'You sit next to a classmate at lunch. Their food smells really strong.',
-    thought: 'That smells weird.',
+    utterance: 'That smells weird.', sayVerb: 'say', object: 'these words',
     reason: 'Think it. It would hurt their feelings about their food.' },
   { id: '2.2', cat: 'smells', answer: 'think',
     situation: 'A grown-up bends down to help you and you notice their breath.',
-    thought: 'Their breath smells bad.',
+    utterance: 'Their breath smells bad.', sayVerb: 'say', object: 'these words',
     reason: 'Think it. Saying it would be embarrassing for them.' },
 
   // ── Their work & things (THINK IT) ──
   { id: '3.1', cat: 'work', answer: 'think',
-    situation: 'A friend shows you a drawing they made. You think it doesn’t look very good.',
-    thought: 'That drawing looks bad.',
+    situation: 'A friend shows you a drawing they made. The drawing does not look very good to you.',
+    utterance: 'That drawing looks bad.', sayVerb: 'say', object: 'these words',
     reason: 'Think it. They worked hard — saying it would hurt their feelings.' },
   { id: '3.2', cat: 'work', answer: 'think',
     situation: 'A classmate sings a song in circle time. You don’t like the way it sounds.',
-    thought: 'That sounded really bad.',
+    utterance: 'That sounded really bad.', sayVerb: 'say', object: 'these words',
     reason: 'Think it. Saying it would make them feel sad and not want to try.' },
   { id: '3.3', cat: 'work', answer: 'think',
-    situation: 'Your friend shows you their new backpack. You think it’s ugly.',
-    thought: 'I don’t like that backpack.',
+    situation: 'Your friend shows you their new backpack. You don’t like how it looks.',
+    utterance: 'I don’t like that backpack.', sayVerb: 'say', object: 'these words',
     reason: 'Think it. They love their backpack — saying it would hurt their feelings.' },
   { id: '3.4', cat: 'work', answer: 'think',
     situation: 'A classmate gives the wrong answer in class.',
-    thought: 'That was wrong.',
+    utterance: 'That was wrong.', sayVerb: 'say', object: 'these words',
     reason: 'Think it. Saying it out loud would embarrass them.' },
 
   // ── Private things (THINK IT) ──
   { id: '4.1', cat: 'private', answer: 'think',
     situation: 'You see a classmate pull up their pants.',
-    thought: 'I saw their underwear.',
+    utterance: 'I saw their underwear.', sayVerb: 'say', object: 'these words',
     reason: 'Think it. That is private — saying it would embarrass them.' },
   { id: '4.2', cat: 'private', answer: 'think',
     situation: 'A kid at school has a small accident and their pants get wet.',
-    thought: 'They had an accident.',
+    utterance: 'They had an accident.', sayVerb: 'say', object: 'these words',
     reason: 'Think it. That is private and saying it would feel very embarrassing.' },
   { id: '4.3', cat: 'private', answer: 'think',
-    situation: 'You notice a classmate picking their nose when they think no one is watching.',
-    thought: 'I see them picking their nose.',
+    situation: 'A classmate is picking their nose when nobody else is watching.',
+    utterance: 'I see them picking their nose.', sayVerb: 'say', object: 'these words',
     reason: 'Think it. Saying it out loud would embarrass them.' },
 
   // ── Kind things to say (SAY IT) ──
   { id: '5.1', cat: 'kind', answer: 'say',
     situation: 'Your friend gets a new shirt with a dinosaur on it. You love dinosaurs too.',
-    thought: 'I love that shirt!',
+    utterance: 'I love that shirt!', sayVerb: 'say', object: 'these words',
     reason: 'Say it! A kind compliment will make your friend happy.' },
   { id: '5.2', cat: 'kind', answer: 'say',
     situation: 'Your teacher reads a really funny story and you laugh.',
-    thought: 'That story was so funny!',
+    utterance: 'That story was so funny!', sayVerb: 'say', object: 'these words',
     reason: 'Say it! Your teacher will feel happy you liked it.' },
   { id: '5.3', cat: 'kind', answer: 'say',
     situation: 'A classmate looks sad on the playground.',
-    thought: 'I hope they feel better.',
-    reason: 'Say it! You could say “Are you okay?” — it helps them feel less alone.' },
+    utterance: 'Are you okay?', sayVerb: 'ask', object: 'this question',
+    reason: 'Say it! Asking “Are you okay?” helps them feel less alone.' },
   { id: '5.4', cat: 'kind', answer: 'say',
     situation: 'Your friend helps you pick up your crayons when you drop them.',
-    thought: 'That was really nice of them.',
+    utterance: 'That was really nice of them.', sayVerb: 'say', object: 'these words',
     reason: 'Say it! Saying “Thank you!” is kind and makes friends feel good.' },
   { id: '5.5', cat: 'kind', answer: 'say',
     situation: 'Your mom makes your favorite dinner.',
-    thought: 'This tastes SO good!',
+    utterance: 'This tastes SO good!', sayVerb: 'say', object: 'these words',
     reason: 'Say it! It will make Mom happy to hear it.' },
   { id: '5.6', cat: 'kind', answer: 'say',
     situation: 'You don’t understand how to do the worksheet.',
-    thought: 'I need help.',
+    utterance: 'Can you help me?', sayVerb: 'ask', object: 'this question',
     reason: 'Say it! Asking for help is always okay.' },
   { id: '5.7', cat: 'kind', answer: 'say',
     situation: 'Your tummy hurts at school.',
-    thought: 'My tummy doesn’t feel good.',
+    utterance: 'My tummy doesn’t feel good.', sayVerb: 'tell', object: 'this news',
     reason: 'Say it! Telling a grown-up when you feel sick is important.' },
   { id: '5.8', cat: 'kind', answer: 'say',
     situation: 'Your classmate shares their snack with you.',
-    thought: 'That was so kind!',
+    utterance: 'That was so kind!', sayVerb: 'say', object: 'these words',
     reason: 'Say it! “That was so nice, thank you!” makes friends feel great.' },
   { id: '5.9', cat: 'kind', answer: 'say',
     situation: 'Your friend makes it to the top of the climbing wall.',
-    thought: 'They did it!',
+    utterance: 'They did it!', sayVerb: 'say', object: 'these words',
     reason: 'Say it! Cheering a friend on is kind and fun.' },
   { id: '5.10', cat: 'kind', answer: 'say',
     situation: 'It is your friend’s birthday today.',
-    thought: 'Happy birthday!',
+    utterance: 'Happy birthday!', sayVerb: 'say', object: 'these words',
     reason: 'Say it! Wishing a friend happy birthday makes them feel special.' },
   { id: '5.11', cat: 'kind', answer: 'say',
     situation: 'Your teacher got a new haircut and you really like it.',
-    thought: 'I like their haircut!',
+    utterance: 'I like their haircut!', sayVerb: 'say', object: 'these words',
     reason: 'Say it! A kind compliment is a nice thing to share.' },
   { id: '5.12', cat: 'kind', answer: 'say',
     situation: 'You finished all your work and you feel proud.',
-    thought: 'I did it!',
+    utterance: 'I did it!', sayVerb: 'tell', object: 'this news',
     reason: 'Say it! Sharing happy news about yourself is great.' },
 
   // ── Other moments ──
   { id: '6.1', cat: 'other', answer: 'think',
     situation: 'A baby on the bus is crying very loudly.',
-    thought: 'That baby is so loud.',
+    utterance: 'That baby is so loud.', sayVerb: 'say', object: 'these words',
     reason: 'Think it. Saying it might make the baby’s family feel bad.' },
   { id: '6.2', cat: 'other', answer: 'say',
     situation: 'A classmate took your turn by accident and you still want your turn.',
-    thought: 'It’s my turn.',
-    reason: 'Say it! You can speak up kindly: “I think it’s my turn.”' },
+    utterance: 'It’s my turn.', sayVerb: 'say', object: 'these words',
+    reason: 'Say it! You can speak up kindly: “It’s my turn now, please.”' },
 
   // ── Tricky / reasoning cards (held back unless enabled) ──
   { id: 'T1', cat: 'looks', tricky: true, answer: 'think',
-    situation: 'You think your friend’s new haircut looks really strange.',
-    thought: 'That haircut looks weird.',
+    situation: 'Your friend has a new haircut. It looks really strange to you.',
+    utterance: 'That haircut looks weird.', sayVerb: 'say', object: 'these words',
     reason: 'Think it. Even if it feels true, it would hurt their feelings — and they can’t change it right now.' },
   { id: 'T2', cat: 'kind', tricky: true, answer: 'say',
-    situation: 'You notice your close friend has a little food stuck in their teeth.',
-    thought: 'They have food in their teeth.',
-    reason: 'You can say it — quietly and kindly, just to them: “Hey, you have something in your teeth.” Shouting it in front of everyone would be a think it. How and when we say it matters!' },
+    situation: 'You are sitting beside your close friend. They have a little food stuck in their teeth, and nobody else can hear you.',
+    utterance: 'You have something in your teeth.', sayVerb: 'say', object: 'these words',
+    reason: 'Say it — quietly and kindly, just to them. Shouting it across the lunchroom would be a think it. How and when we say it matters!' },
   { id: 'T3', cat: 'other', tricky: true, answer: 'say',
     situation: 'A classmate is about to run into the street where cars are driving.',
-    thought: 'That’s dangerous!',
+    utterance: 'Stop! Cars are coming!', sayVerb: 'tell', object: 'this news',
     reason: 'Say it — loudly, and tell a grown-up! When someone might get hurt, it is always right to speak up.' },
-];
+].map(makeCard);
 
 // Optional teaching video for Learn mode. Set to an embeddable URL
 // (e.g. 'https://www.youtube.com/embed/VIDEO_ID') to show a player above the
@@ -181,6 +247,7 @@ const el = {
   selPromptDelay:  $('sel-prompt-delay'),
   selPromptStyle:  $('sel-prompt-style'),
   chkShowReason:   $('chk-show-reason'),
+  chkCounterbalance: $('chk-counterbalance'),
   chkIncludeTricky:$('chk-include-tricky'),
   btnPrompt:       $('btn-prompt'),
   btnLearn:        $('btn-learn'),
@@ -196,6 +263,7 @@ const el = {
   scenarioCard:    $('scenario-card'),
   situation:       $('scenario-situation'),
   thought:         $('scenario-thought'),
+  question:        $('scenario-question'),
   reason:          $('scenario-reason'),
   revealPanel:     $('reveal-panel'),
   choiceLabel:     $('choice-label'),
@@ -277,6 +345,11 @@ const SETTINGS_FIELDS = {
   promptDelaySecs: { type: 'int',  min: 1, max: 10, default: 3 },
   promptStyle:     { type: 'enum', values: ['sparkle', 'outline'], default: 'sparkle' },
   showReason:      { type: 'bool', default: true },
+  // Tile POSITIONS alternate between trials so that "the correct one is on the
+  // left" cannot become the discriminative stimulus. Defaults ON; a plan that
+  // specifies a fixed array (early acquisition, or a learner with a scanning
+  // target) turns it off.
+  counterbalance:  { type: 'bool', default: true },
   includeTricky:   { type: 'bool', default: false },
 };
 
@@ -316,6 +389,7 @@ const SETTINGS_CONTROLS = [
   { node: 'selPromptDelay',   option: 'promptDelaySecs', read: n => n.value,   write: (n, v) => { n.value = v; } },
   { node: 'selPromptStyle',   option: 'promptStyle',     read: n => n.value,   write: (n, v) => { n.value = v; } },
   { node: 'chkShowReason',    option: 'showReason',      read: n => n.checked, write: (n, v) => { n.checked = v; } },
+  { node: 'chkCounterbalance',option: 'counterbalance',  read: n => n.checked, write: (n, v) => { n.checked = v; } },
   { node: 'chkIncludeTricky', option: 'includeTricky',   read: n => n.checked, write: (n, v) => { n.checked = v; } },
 ];
 
@@ -461,7 +535,8 @@ function renderTrial() {
   const sc = state.current;
   el.progressLabel.textContent = `Card ${state.pos + 1} of ${state.deck.length}`;
   el.situation.textContent = sc.situation;
-  el.thought.innerHTML = 'You think: <span class="quote">“' + escapeHtml(sc.thought) + '”</span>';
+  renderThought(sc);
+  el.question.textContent = sc.question;
 
   el.reason.hidden = true;
   el.reason.className = '';
@@ -470,6 +545,7 @@ function renderTrial() {
     c.className = 'choice choice-' + c.dataset.answer;
     c.disabled = false;
   });
+  positionTiles();
 
   // Show the scenario to be read first. The choice tiles and the trial timer
   // wait until staff taps the reveal panel.
@@ -493,6 +569,41 @@ function revealChoices() {
   resetTimer();
   startTimer();
   if (state.cfg.autoPrompt) scheduleAutoPrompt();
+}
+
+/**
+ * The lead-in and the candidate utterance.
+ *
+ * Built as nodes rather than as markup: the utterance is authored content that
+ * has already been through `makeCard`, and putting it in the DOM as text means
+ * there is no escaping step that a later card can be written to slip past.
+ */
+function renderThought(sc) {
+  const lead = document.createElement('span');
+  lead.className = 'lead-in';
+  lead.textContent = sc.leadIn;
+  const quote = document.createElement('span');
+  quote.className = 'quote';
+  quote.textContent = '“' + sc.utterance + '”';
+  el.thought.replaceChildren(lead, quote);
+}
+
+/**
+ * Counterbalance the tile POSITIONS between trials.
+ *
+ * The labels never move — THINK IT is always the brain tile and SAY IT always
+ * the mouth tile — so the response topography is constant. Only which side each
+ * sits on alternates, strictly, on the trial index: strict alternation is what
+ * makes the two positions equally often correct within any run of trials, which
+ * random placement does not guarantee over a 32-card deck.
+ */
+function positionTiles() {
+  const tiles = choiceEls();
+  const think = tiles.find(c => c.dataset.answer === 'think');
+  const say   = tiles.find(c => c.dataset.answer === 'say');
+  if (!think || !say) return;
+  const sayFirst = state.cfg.counterbalance && (state.pos % 2 === 1);
+  el.choices.replaceChildren(...(sayFirst ? [say, think] : [think, say]));
 }
 
 function escapeHtml(str) {
@@ -824,6 +935,21 @@ function init() {
   el.btnPrint.addEventListener('click', printData);
   el.btnClearData.addEventListener('click', clearData);
 }
+
+/**
+ * A read-only view of the authored deck and the framing it is built from.
+ *
+ * `makeCard` enforces the card invariants at module load; this is how the
+ * Playwright specs assert them across the WHOLE card set from the data rather
+ * than one card at a time through the UI. Nothing here is player data and
+ * nothing here is written back.
+ */
+window.__thinkOrSay = Object.freeze({
+  cards: SCENARIOS,
+  leadIn: LEAD_IN,
+  sayVerbs: SAY_VERBS.slice(),
+  balancedQuestion,
+});
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);

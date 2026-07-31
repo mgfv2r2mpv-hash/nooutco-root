@@ -115,6 +115,10 @@
         Show Reason After
       </label>
       <label class="checkbox-label">
+        <input type="checkbox" id="chk-counterbalance" checked>
+        Counterbalance Tile Positions
+      </label>
+      <label class="checkbox-label">
         <input type="checkbox" id="chk-include-tricky">
         Include Tricky / Reasoning Cards
       </label>
@@ -124,11 +128,11 @@
   <!-- ── Pre-start blurb ──────────────────────────────────────────── -->
   <section class="game-intro" id="game-intro" aria-label="How this game works">
     <h2>Think or Say? — a thought into a choice</h2>
-    <p>A scenario appears with a thought the learner is having. The clinician reads it aloud, then the learner decides: should that thought stay inside (<strong>THINK IT</strong>) or is it kind and okay to say out loud (<strong>SAY IT</strong>)?</p>
+    <p>Each card shows a situation, then a thought the learner is having, then asks the same balanced question both ways round — for example <em>“Should you THINK these words, or SAY these words?”</em>. The clinician reads the card aloud, then the learner decides: <strong>THINK IT</strong> or <strong>SAY IT</strong>?</p>
     <ul>
       <li><strong>Category</strong> — focus on one situation type (looks, smells, kind things…) or use all.</li>
       <li><strong>Order</strong> — shuffle the cards or step through them in order.</li>
-      <li><strong>⚙ Settings</strong> — errorless, re-present errors, prompts, and whether to reveal the reason.</li>
+      <li><strong>⚙ Settings</strong> — errorless, re-present errors, prompts, whether to reveal the reason, and whether the tiles swap sides between cards.</li>
       <li><strong>Prompt</strong> — highlights the correct bubble for an assisted response.</li>
     </ul>
     <p class="tip">Yellow = THINK IT &nbsp;•&nbsp; Green = SAY IT. Tap <strong>📖 Learn</strong> for a teaching intro, or <strong>▶ Play</strong> to jump straight in.</p>
@@ -167,6 +171,9 @@
       <div id="scenario-card">
         <div id="scenario-situation"></div>
         <div id="scenario-thought"></div>
+        <!-- The balanced question. Generated from the card's own verb pair in
+             game.js, never hand-written, so it always names BOTH actions. -->
+        <div id="scenario-question"></div>
       </div>
       <div id="scenario-reason" hidden></div>
     </section>

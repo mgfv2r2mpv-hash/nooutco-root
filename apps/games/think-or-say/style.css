@@ -221,6 +221,19 @@
   font-size: 1.18rem;
   font-weight: 800;
   line-height: 1.35;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+/* The lead-in names NEITHER action, so it is set back from the utterance
+   rather than competing with it for salience. */
+#scenario-thought .lead-in {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  opacity: 0.82;
 }
 #scenario-thought .quote {
   display: inline-block;
@@ -228,7 +241,16 @@
   border: 1px dashed rgba(255,255,255,0.6);
   border-radius: 10px;
   padding: 4px 12px;
-  margin-top: 4px;
+}
+
+/* The balanced question. Both halves are the same length and the same weight —
+   neither action may be the visually easier one to pick. */
+#scenario-question {
+  font-size: 1.06rem;
+  font-weight: 700;
+  line-height: 1.35;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.28);
 }
 
 #scenario-reason {
@@ -504,6 +526,7 @@
 @media (max-width: 680px) {
   #game-area { padding: 16px 12px 22px; gap: 14px; }
   #scenario-situation, #scenario-thought { font-size: 1.02rem; }
+  #scenario-question { font-size: 0.96rem; }
   #choices { gap: 16px; }
   .choice { width: 150px; min-height: 168px; gap: 12px; padding: 14px 10px; }
   .bubble { width: 96px; height: 78px; }
