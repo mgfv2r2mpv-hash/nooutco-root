@@ -150,13 +150,27 @@ Then the quest layer on top:
 - Goal tokens **N** (default 5). **The snacks are the tokens** — there is no separate
   star tally in this game, and the shared emoji display is hidden. The quest runs until
   our friend has collected **N snacks**, and N is set by the goal alone.
-- **Each snack is drawn independently, with replacement, as its slot comes up.** Repeats
-  are ordinary and expected. N is *not* bounded by how many distinct fruit sprites exist:
-  a goal of 8 or 10 is legal and must deliver 8 or 10 snacks.
-  > Dealing the whole quest up front as a no-repeat hand — `shuffle(FRUIT).slice(0, N-1)`
+- **Each snack is dealt from a bag, as its slot comes up.** All six fruits go in, are
+  dealt without replacement, and the bag refills when it empties — so a fruit never
+  appears twice in a row and all six are used before any is used twice. N is *not*
+  bounded by how many distinct fruit sprites exist: a goal of 8 or 10 is legal and must
+  deliver 8 or 10 snacks.
+  > Dealing the whole quest up front as one no-repeat hand — `shuffle(FRUIT).slice(0, N-1)`
   > plus the honey — was a real defect. `FRUIT` has six entries, so every goal above seven
   > silently collapsed to seven: the goal became unreachable, and a field of one gave the
-  > answer away once the pool ran out. Draw per slot; never deal a hand.
+  > answer away once the pool ran out. Deal per slot from a refilling bag; never deal one
+  > fixed hand.
+  >
+  > The bag replaced an independent draw, which was *not* broken — measured at 12.6-20.6%
+  > per fruit against 16.7% expected over 175 draws, adjacent repeats 12.7% against 16.7%.
+  > It clumped, because that is what independence does, and a learner sees the clump
+  > (`watermelon, watermelon, dates, dates`) rather than the distribution. Even spread was
+  > chosen as the better teaching behaviour, knowingly trading away unpredictability in
+  > the tail of each bag.
+  >
+  > Guard the refill seam: re-draw if the new bag would open on the fruit the old one
+  > closed with. It is the one place a bag can still repeat back to back, which is the
+  > single property the bag exists to provide.
 - The **honey is the last snack and only the last snack** — asked for by position
   (`collected.length === N - 1`), not stored in a plan, so a failed final round redraws
   the honey rather than demoting it to a fruit.

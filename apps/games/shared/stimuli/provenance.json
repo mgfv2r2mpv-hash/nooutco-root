@@ -3682,10 +3682,10 @@
     "sha256": "3a5f75eb831063c01975960783af472db13e2c48961464313b33619eef9431b8",
     "library": "/shared/stimuli/img/T_vehicles/motorcycle.jpg"
   },
-  "/shared/stimuli/uploads/T_vehicles/police-car.jpg": {
+  "/shared/stimuli/uploads/T_vehicles/police-car.png": {
     "stimulus": "vehicles-police-car",
-    "sha256": "05c47bd5e53247ef0883b0763271276c355a65a6b54f5e94d5f82505ef1de683",
-    "library": "/shared/stimuli/img/T_vehicles/police-car.jpg"
+    "sha256": "f7490aec77f2bfdab58284e5979ccdd9d952ab9f1c06de5c94132b46649d47b4",
+    "library": "/shared/stimuli/img/T_vehicles/police-car.png"
   },
   "/shared/stimuli/uploads/T_vehicles/train.png": {
     "stimulus": "vehicles-train",
