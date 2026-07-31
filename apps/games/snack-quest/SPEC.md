@@ -147,11 +147,29 @@ const tokens = NooutcoTokens.create({
 
 Then the quest layer on top:
 
-- Goal tokens **N** (default 5). The quest lays out **N food items**: N-1 fruit drawn from
-  the fruit set, and the **honey always last**.
+- Goal tokens **N** (default 5). **The snacks are the tokens** — there is no separate
+  star tally in this game, and the shared emoji display is hidden. The quest runs until
+  our friend has collected **N snacks**, and N is set by the goal alone.
+- **Each snack is drawn independently, with replacement, as its slot comes up.** Repeats
+  are ordinary and expected. N is *not* bounded by how many distinct fruit sprites exist:
+  a goal of 8 or 10 is legal and must deliver 8 or 10 snacks.
+  > Dealing the whole quest up front as a no-repeat hand — `shuffle(FRUIT).slice(0, N-1)`
+  > plus the honey — was a real defect. `FRUIT` has six entries, so every goal above seven
+  > silently collapsed to seven: the goal became unreachable, and a field of one gave the
+  > answer away once the pool ran out. Draw per slot; never deal a hand.
+- The **honey is the last snack and only the last snack** — asked for by position
+  (`collected.length === N - 1`), not stored in a plan, so a failed final round redraws
+  the honey rather than demoting it to a fruit.
 - **Only one food is on the scene at a time.** When our friend reaches one it's collected
   (flies to the token strip), the next appears at a fresh random spot, and he turns and
   starts toward that one.
+- **A wrong answer costs him that snack.** It tips over and drops out of the scene, and a
+  fresh one is drawn somewhere else. Nothing already collected is ever taken back — the
+  strip never loses a slot — so the cost is the trip, not the progress.
+- The strip shows the snacks **actually acquired**, in order, with a waiting slot for each
+  one still to come and the honey ghosted in the final slot. Under a variable-ratio
+  schedule the snacks arrive on rounds nobody can name in advance, so only what he really
+  got belongs on the board.
 - **Earning = our friend reaching a food item.** On a delivering round he covers the
   remaining distance and arrives. On a non-delivering round **he still moves toward it** —
   roughly 1/n of the way — so progress is always visible and never feels like nothing
@@ -163,6 +181,16 @@ Then the quest layer on top:
 
 ## Motion — this is the part the learner comes back for
 
+- **The scene is staged before the question is asked.** Every round opens with the card
+  down: our friend is on an uncovered stage, the snack drops in and settles, he turns to
+  face it, and only then does the card slide up. The card covers the whole stage, so
+  raising it in the same frame the scene is built means the learner meets the character
+  only after a trial is already over and answers without ever having seen which snack is
+  at stake or where it is. `SETTLE_MS` owns the length of that beat; `awaitingAnswer` on
+  the `__sq` seam reports when the question is actually askable, and drivers must wait on
+  it rather than on `!busy`, which clears while the stage is still settling.
+- Our friend also stands on the **place-choosing screen**. The learner is being asked
+  where to take him, so he has to be on the page while they decide.
 - Between rounds the trial card **slides up and over** the scene, then **fades off** after
   the response so the scene is fully visible for the walk. The learner must actually get
   to watch him move; do not overlap the walk with the next question.
