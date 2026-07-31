@@ -690,3 +690,116 @@
   line-height: 1.3;
   color: var(--text-muted, #6b7280);
 }
+
+/* ── Staff guide screen ────────────────────────────────────────────────
+   The in-game rendering of staff-guide.js. The standalone download carries
+   its own stylesheet (STANDALONE_CSS there) because it has to survive as a
+   file on someone's desktop; this block styles the same markup in the app. */
+#guide-screen {
+  flex: 1;
+  width: min(880px, 100%);
+  margin: 0 auto;
+  padding: 20px 20px 48px;
+}
+.guide-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.guide-actions .btn-primary { margin-left: 0; }
+.guide-actions-foot { margin: 22px 0 0; }
+
+#guide-body {
+  background: #fff;
+  border: 1px solid var(--accent-soft);
+  border-radius: 16px;
+  box-shadow: 0 4px 18px rgba(61, 90, 152, 0.12);
+  padding: 26px 30px 30px;
+  color: #20242c;
+  line-height: 1.6;
+}
+#guide-body .guide-title {
+  font-size: 1.5rem;
+  color: #1a2438;
+  margin: 0 0 6px;
+}
+#guide-body .guide-subtitle {
+  margin: 0 0 26px;
+  color: #55606f;
+}
+#guide-body .guide-section { margin: 0 0 30px; }
+#guide-body .guide-section:last-child { margin-bottom: 0; }
+#guide-body .guide-section h2 {
+  font-size: 1.15rem;
+  color: var(--accent-dark);
+  margin: 0 0 10px;
+  padding-bottom: 5px;
+  border-bottom: 2px solid var(--accent-soft);
+}
+#guide-body .guide-section h3 {
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: #1a2438;
+  margin: 18px 0 5px;
+}
+#guide-body p { margin: 0 0 12px; }
+/* tailwind.css strips list markers platform-wide; the numbered steps here are
+   a sequence and read as prose without them. */
+#guide-body .guide-list { margin: 8px 0 14px; padding-left: 22px; list-style: disc; }
+#guide-body ol.guide-list { list-style: decimal; }
+#guide-body .guide-list li { margin: 5px 0; }
+#guide-body .guide-term { font-weight: 700; color: #1a2438; }
+#guide-body .guide-note {
+  background: var(--think-soft);
+  border-left: 4px solid var(--think);
+  padding: 10px 14px;
+  border-radius: 0 8px 8px 0;
+}
+#guide-body .guide-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 16px;
+  font-size: 0.9rem;
+}
+#guide-body .guide-table th,
+#guide-body .guide-table td {
+  border: 1px solid var(--accent-soft);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+#guide-body .guide-table thead th {
+  background: var(--accent-soft);
+  color: #1a2438;
+}
+#guide-body .guide-rowhead {
+  background: #f6f8fc;
+  font-weight: 700;
+  width: 22%;
+}
+#guide-body .guide-figure { margin: 16px 0; }
+#guide-body .guide-figure img {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--accent-soft);
+  border-radius: 8px;
+  display: block;
+}
+#guide-body .guide-figure figcaption {
+  margin-top: 6px;
+  color: #55606f;
+  font-size: 0.86rem;
+}
+#guide-body .guide-figure-missing {
+  margin-top: 6px;
+  color: #8a5a12;
+  font-size: 0.86rem;
+}
+
+@media (max-width: 640px) {
+  #guide-body { padding: 20px 16px 22px; }
+  #guide-body .guide-table { font-size: 0.82rem; }
+  #guide-body .guide-rowhead { width: auto; }
+}

@@ -52,6 +52,10 @@ const GEN = window.ThinkOrSayGenerator;
 // session — which supports a probe trial withholds, and how each trial is
 // classified once it has been answered.
 const PROBES = window.ThinkOrSayProbes;
+// staff-guide.js is the single source for the technician guide. It renders the
+// in-game Guide screen and the standalone download through the same
+// buildBody(), so this file only decides WHEN to show it and never what it says.
+const GUIDE = window.ThinkOrSayGuide;
 const LEAD_IN = MODEL.LEAD_IN;
 const SAY_VERBS = MODEL.SAY_VERBS;
 const balancedQuestion = MODEL.balancedQuestion;
@@ -88,6 +92,12 @@ const el = {
   btnPrompt:       $('btn-prompt'),
   btnLearn:        $('btn-learn'),
   btnPlay:         $('btn-play'),
+  btnGuide:        $('btn-guide'),
+  btnGuideDownload: $('btn-guide-download'),
+  btnGuideClose:   $('btn-guide-close'),
+  btnGuideCloseFoot: $('btn-guide-close-foot'),
+  guideScreen:     $('guide-screen'),
+  guideBody:       $('guide-body'),
   gameIntro:       $('game-intro'),
   learnScreen:     $('learn-screen'),
   learnVideo:      $('learn-video'),
@@ -148,6 +158,10 @@ const state = {
   locked: false,           // a choice has been answered (awaiting Next)
   choicesRevealed: false,  // staff has tapped to show the choice tiles
   learnMode: false,
+  // What was on screen when the Guide was opened, so closing it puts the
+  // session back exactly as it was rather than dropping the technician on the
+  // intro mid-deck. Null whenever the Guide is closed.
+  guideReturn: null,
   trialErrors: 0,
   trialPrompted: false,
   // Latency, snapshotted the instant the learner answers. At Level 3 the trial
@@ -551,6 +565,11 @@ function withProbes(deck) {
 
 // ── Start ──────────────────────────────────────────────────────────────
 function beginSession(mode) {
+  // The settings bar stays live behind the guide, so Play is reachable from
+  // it. Drop the restore state rather than restoring it — the new session
+  // decides what is on screen, not the screen the guide was opened over.
+  state.guideReturn = null;
+  el.guideScreen.hidden = true;
   saveSettings();
   buildDeck();
   if (!state.deck.length) {
@@ -584,6 +603,72 @@ function showLearnScreen() {
     el.learnVideo.hidden = true;
   }
   el.learnScreen.hidden = false;
+}
+
+// ── Staff guide ────────────────────────────────────────────────────────
+/**
+ * Show the guide over whatever is on screen, and put that back on close.
+ *
+ * The guide is reference material a technician reaches for mid-shift, which
+ * means mid-session as often as not. Opening it therefore suspends the screen
+ * rather than ending the session: nothing is recorded, nothing advances, and
+ * Close restores the intro, the Learn screen or the trial that was showing.
+ */
+function showGuide() {
+  if (!el.guideBody.firstChild) GUIDE.renderInto(el.guideBody);
+  if (!state.guideReturn) {
+    state.guideReturn = {
+      intro:  el.gameIntro.hidden,
+      learn:  el.learnScreen.hidden,
+      game:   el.gameArea.hidden,
+      prompt: el.btnPrompt.hidden,
+    };
+  }
+  el.gameIntro.hidden = true;
+  el.learnScreen.hidden = true;
+  el.gameArea.hidden = true;
+  el.btnPrompt.hidden = true;
+  el.guideScreen.hidden = false;
+  window.scrollTo(0, 0);
+}
+
+function hideGuide() {
+  el.guideScreen.hidden = true;
+  const back = state.guideReturn;
+  state.guideReturn = null;
+  if (!back) { el.gameIntro.hidden = false; return; }
+  el.gameIntro.hidden = back.intro;
+  el.learnScreen.hidden = back.learn;
+  el.gameArea.hidden = back.game;
+  el.btnPrompt.hidden = back.prompt;
+}
+
+/**
+ * Save the guide as a standalone file for an onboarding packet.
+ *
+ * The bytes are built by staff-guide.js from the same SECTIONS the screen
+ * above was rendered from, with the screenshots inlined so the file works off
+ * this site. Device-local: a Blob and an anchor, no network anywhere.
+ */
+async function downloadGuide() {
+  let html;
+  try {
+    html = await GUIDE.renderStandalone();
+  } catch (err) {
+    // Say so. A download button that quietly does nothing sends a technician
+    // to an onboarding packet with no guide in it.
+    alert('The guide could not be prepared for download. It is still readable on this screen.');
+    return;
+  }
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = GUIDE.FILENAME;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
 function enterTrials() {
@@ -1246,6 +1331,12 @@ function init() {
   el.btnLearnStart.addEventListener('click', enterTrials);
   el.btnPrompt.addEventListener('click', doPrompt);
 
+  // Staff guide — the screen, and the same guide as a file.
+  el.btnGuide.addEventListener('click', showGuide);
+  el.btnGuideClose.addEventListener('click', hideGuide);
+  el.btnGuideCloseFoot.addEventListener('click', hideGuide);
+  el.btnGuideDownload.addEventListener('click', downloadGuide);
+
   el.revealPanel.addEventListener('click', revealChoices);
   el.rationaleReveal.addEventListener('click', revealRationale);
   choiceEls().forEach(c => c.addEventListener('click', onChoiceClick));
@@ -1307,6 +1398,10 @@ window.__thinkOrSay = Object.freeze({
   // The probe subsystem: tagging, selection, placement and the suppression list.
   // Read-only, and no player data — the tag of an item is a property of the item.
   probes: PROBES,
+  // The staff guide's single source, so a spec can assert that the in-game
+  // screen and the standalone file both come from it rather than comparing two
+  // renderings and hoping.
+  guide: GUIDE,
   // The Level 3 rationale vocabulary, so a spec asserts the three-way score
   // against the declaration rather than against the buttons rendered from it.
   rationaleScores: RATIONALE_SCORES.slice(),
