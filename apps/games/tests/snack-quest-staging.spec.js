@@ -77,18 +77,34 @@ test.describe('Snack Quest — the character is present before the question', ()
 
     // Record every utterance and the moment it was requested, against whether
     // the trial card was up at that moment.
+    //
+    // The whole `speechSynthesis` object is replaced rather than its `speak`
+    // patched: WebKit does not keep an own property written onto the platform
+    // SpeechSynthesis instance across the document lifecycle, so a patched
+    // method is silently gone by the time the game calls it — the stub reports
+    // nothing while the game speaks perfectly well, which reads as "the SD is
+    // never spoken" and is a lie. Swapping the object leaves nothing to reset,
+    // and it makes the test measure *when* we speak on every engine rather than
+    // whether that engine has a working speech service.
     await page.addInitScript(() => {
       window.__spoken = [];
-      const realSpeak = window.speechSynthesis && window.speechSynthesis.speak;
-      if (!realSpeak) return;
-      window.speechSynthesis.speak = function (u) {
-        const card = document.getElementById('trial-card');
-        window.__spoken.push({
-          text: u && u.text,
-          cardUp: !!card && !card.hidden,
-          picks: document.querySelectorAll('#trial-grid .pick').length,
-        });
+      const fake = {
+        cancel() {},
+        speak(u) {
+          const card = document.getElementById('trial-card');
+          window.__spoken.push({
+            text: u && u.text,
+            cardUp: !!card && !card.hidden,
+            picks: document.querySelectorAll('#trial-grid .pick').length,
+          });
+        },
       };
+      Object.defineProperty(window, 'speechSynthesis', {
+        value: fake, configurable: true, writable: true,
+      });
+      if (typeof window.SpeechSynthesisUtterance !== 'function') {
+        window.SpeechSynthesisUtterance = function (text) { this.text = text; };
+      }
     });
     await page.reload();
     await page.waitForFunction(() => !!window.__sq && window.__sq.peek().screen === 'task');
