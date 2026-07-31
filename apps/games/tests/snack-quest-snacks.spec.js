@@ -54,6 +54,38 @@ test.describe('Snack Quest — the snacks are the tokens', () => {
     expect(new Set(collected).size, 'so some snack has to appear more than once').toBeLessThan(collected.length);
   });
 
+  test('the fruit is dealt from a bag: never twice in a row, and evenly spread', async ({ page }) => {
+    test.setTimeout(180_000);
+    // A bag draw is bought precisely to stop the clumping an independent draw
+    // produces, so both halves of that bargain get asserted: no back-to-back
+    // repeat anywhere (including across a refill, which is the one seam where a
+    // bag can still repeat), and every fruit used before any is used twice.
+    await bootstrap(page, { goalTokens: 10, scheduleType: 'FR', scheduleValue: 1 });
+
+    const runs = [];
+    for (let q = 0; q < 3; q++) {
+      if (q > 0) {
+        await page.click('#btn-play-again');
+        await expect(page.locator('#screen-task')).toBeVisible();
+      }
+      const { collected } = await playQuest(page);
+      runs.push(collected.filter((k) => k !== 'honey'));
+    }
+
+    for (const fruit of runs) {
+      for (let i = 1; i < fruit.length; i++) {
+        expect(fruit[i], `"${fruit[i]}" came straight after itself in ${fruit.join(', ')}`)
+          .not.toBe(fruit[i - 1]);
+      }
+      // Nine fruit from a six-bag is one full bag plus three of the next, so
+      // every fruit must appear, and none more than twice.
+      const counts = {};
+      for (const k of fruit) counts[k] = (counts[k] || 0) + 1;
+      expect(Object.keys(counts).length, `all six fruits appear in ${fruit.join(', ')}`).toBe(6);
+      expect(Math.max(...Object.values(counts)), 'and none is dealt three times').toBeLessThanOrEqual(2);
+    }
+  });
+
   test('the honey is the last snack and only the last snack', async ({ page }) => {
     test.setTimeout(120_000);
     await bootstrap(page, { goalTokens: 8, scheduleType: 'FR', scheduleValue: 1 });
