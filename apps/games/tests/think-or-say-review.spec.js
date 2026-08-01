@@ -729,3 +729,89 @@ test.describe('Level 1 states the rule on screen', () => {
     expect((await page.evaluate(() => window.__thinkOrSay.settings())).cfg.showRule).toBe(false);
   });
 });
+
+/* ══════════════════════════════════════════════════════════════════════
+ * The stated rule has to decide the deck it is stated over.
+ *
+ * A rule shown to an early-acquisition learner is only teaching if applying
+ * it yields the answer the game scores. The first version of this rule did
+ * not: it contradicted three cards outright (L1-05, L1-09, L1-11), was right
+ * on a fourth only if you happened to read top-to-bottom, and was silent on
+ * seven. A learner who correctly applied it was marked wrong.
+ *
+ * So the rule now carries machine-checkable predicates and this walks every
+ * Level 1 card through them. Three separate failures are possible and all
+ * three are caught here:
+ *   CONTRADICTED - the rule fires and disagrees with the scored answer
+ *   BOTH WAYS    - a THINK question and a SAY question fire on one card, which
+ *                  would make the answer depend on reading order; the panel
+ *                  renders the columns grouped by answer, so there IS no order
+ *   UNDECIDED    - nothing fires, and the learner is left with no rule at all
+ *
+ * This is what stops a future card edit from quietly breaking the rule.
+ * ══════════════════════════════════════════════════════════════════════ */
+
+/** Evaluate one `when` clause against a card's criterial features. */
+function matches(when, features) {
+  if (!when) return false;
+  for (const [k, v] of Object.entries(when.is || {})) if (features[k] !== v) return false;
+  for (const [k, v] of Object.entries(when.isNot || {})) if (features[k] === v) return false;
+  return true;
+}
+
+test('the Level 1 rule decides every Level 1 card, and contradicts none', async ({ page }) => {
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await booted(page);
+
+  const lv = await page.evaluate(() => {
+    const level = window.__thinkOrSay.levels.find(l => l.id === 1);
+    return { rule: level.rule, cards: level.cards };
+  });
+
+  expect(lv.rule, 'Level 1 declares a rule').toBeTruthy();
+  expect(lv.rule.always, 'the safety override is stated').toBeTruthy();
+
+  const contradicted = [];
+  const bothWays = [];
+  const undecided = [];
+
+  for (const card of lv.cards) {
+    // Safety outranks the columns, so it is checked first and alone.
+    if (matches(lv.rule.always.when, card.features)) {
+      if (card.answer !== lv.rule.always.answer) {
+        contradicted.push(`${card.id}: override says ${lv.rule.always.answer}, scored ${card.answer}`);
+      }
+      continue;
+    }
+    const hits = lv.rule.branches.filter(b => matches(b.when, card.features));
+    if (!hits.length) { undecided.push(card.id); continue; }
+    const answers = [...new Set(hits.map(h => h.answer))];
+    if (answers.length > 1) {
+      bothWays.push(`${card.id}: ${hits.map(h => `${h.answer} "${h.test}"`).join(' and ')}`);
+      continue;
+    }
+    if (answers[0] !== card.answer) {
+      contradicted.push(`${card.id}: rule says ${answers[0]}, scored ${card.answer}`);
+    }
+  }
+
+  expect(contradicted, 'no card is contradicted by the rule it is taught under').toEqual([]);
+  expect(bothWays, 'no card satisfies a THINK question and a SAY question at once').toEqual([]);
+  expect(undecided, 'no card is left undecided by the rule').toEqual([]);
+});
+
+test('the rule never names the answer to the card on screen', async ({ page }) => {
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await booted(page);
+
+  const rule = await page.evaluate(() =>
+    window.__thinkOrSay.levels.find(l => l.id === 1).rule);
+
+  // Both columns are always populated, so the strip poses questions rather than
+  // delivering a verdict. A column that emptied would answer every card in the
+  // deck by elimination.
+  for (const answer of ['think', 'say']) {
+    expect(rule.branches.filter(b => b.answer === answer).length,
+      `the ${answer} column is never empty`).toBeGreaterThan(0);
+  }
+});

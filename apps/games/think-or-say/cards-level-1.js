@@ -65,13 +65,47 @@
     rule: {
       title: 'The rule at Level 1',
       lead: 'Before you say a thought, ask yourself:',
+
+      /* Safety is not one question among equals, it OUTRANKS every other
+         question - which is what the `override` dimension means, and what
+         L1-13 exists to teach: a classmate stepping toward the road is a SAY
+         IT at the worst possible moment, in front of everybody. Stated above
+         the two columns so it reads as the standing rule it is. */
+      always: {
+        answer: 'say',
+        test: 'Is somebody hurt, or is somebody not safe?',
+        note: 'Then say it - even at a bad moment, even if everybody hears.',
+        when: { is: { override: 'help-or-safety' } },
+      },
+
+      /* The columns are ORDER-INDEPENDENT by construction, because the panel
+         renders them grouped by answer rather than in sequence. No Level 1
+         card may satisfy a THINK question and a SAY question at once - a rule
+         whose correctness depends on which line you happen to read first is
+         not a rule a learner can hold. `when` is what makes that checkable:
+         think-or-say-review.spec.js walks all 35 cards through these
+         predicates and fails if any card is undecided, contradicted, or
+         answered both ways. Edit a card's features and the rule is re-proved
+         against it. */
       branches: [
-        { answer: 'think', test: 'Could it hurt how someone feels?' },
-        { answer: 'think', test: 'Is it private or embarrassing?' },
-        { answer: 'say',   test: 'Is it kind, or a true compliment?' },
-        { answer: 'say',   test: 'Does it help someone, or keep them safe?' },
+        { answer: 'think', test: 'Could it hurt how they feel?',
+          when: { is: { selfEsteem: 'hurts' } } },
+        { answer: 'think', test: 'Would other people hear it?',
+          when: { is: { audience: 'others-hear' }, isNot: { selfEsteem: 'lifts' } } },
+        { answer: 'think', test: 'Is it a private thing about them?',
+          when: { is: { privacy: 'private' }, isNot: { relationship: 'grown-up' } } },
+        { answer: 'think', test: 'Is this the wrong moment?',
+          when: { is: { timing: 'wrong-moment' } } },
+        { answer: 'think', test: 'Is it something they cannot change?',
+          when: { is: { changeability: 'not-fixable' } } },
+        { answer: 'say',   test: 'Is it kind or a true compliment, and not private?',
+          when: { is: { selfEsteem: 'lifts' }, isNot: { privacy: 'private' } } },
+        { answer: 'say',   test: 'Is it your own news, and a good moment to tell your grown-up?',
+          when: { is: { relationship: 'grown-up' }, isNot: { timing: 'wrong-moment' } } },
+        { answer: 'say',   test: 'Can they fix it right now, with only you hearing?',
+          when: { is: { changeability: 'fixable-now', audience: 'just-them' } } },
       ],
-      tip: 'Not sure? It is okay to keep it inside, or to ask a grown-up.',
+      tip: 'Still not sure? Ask your grown-up.',
     },
 
     cards: [

@@ -834,6 +834,24 @@ function renderRulePanel() {
     row.append(tag, list);
     return row;
   });
+
+  // The standing override sits ABOVE the two columns rather than inside one of
+  // them, because it outranks both: safety wins at a bad moment and in front of
+  // everybody. Inside a column it would read as one question among equals, and
+  // the columns would stop being answerable in any order.
+  if (rule.always) {
+    const banner = document.createElement('div');
+    banner.className = 'rule-always';
+    const tag = document.createElement('span');
+    tag.className = 'tag tag-' + rule.always.answer;
+    tag.textContent = ANSWER_LABELS[rule.always.answer];
+    const text = document.createElement('p');
+    text.className = 'rule-always-text';
+    text.textContent = rule.always.test + ' ' + rule.always.note;
+    banner.append(tag, text);
+    rows.unshift(banner);
+  }
+
   el.ruleBody.replaceChildren(...rows);
 }
 

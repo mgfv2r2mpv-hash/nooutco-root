@@ -117,6 +117,23 @@
 .rule-lead { font-size: 0.9rem; font-weight: 600; color: #1a2438; }
 .rule-body { display: flex; flex-direction: column; gap: 6px; }
 .rule-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+/* The standing override reads above the two columns and is weighted to look
+   like the rule that outranks them, not a third column. */
+.rule-always {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 0 8px;
+  margin: 0 0 4px;
+  border-bottom: 1px dashed var(--line, #d9d4c7);
+}
+.rule-always-text {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ink, #20242c);
+}
 .rule-list {
   list-style: none;
   display: flex;

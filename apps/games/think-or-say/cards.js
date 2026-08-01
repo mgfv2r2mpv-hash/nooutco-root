@@ -95,12 +95,57 @@
         throw new Error(where + 'states no ' + answer + ' branch, so it names the answer to every card');
       }
     });
+    // A `when` clause is what makes the rule checkable against the deck it is
+    // stated over, so a malformed one has to fail here rather than quietly
+    // never firing - a branch that never fires reads on screen exactly like one
+    // that works, and would leave cards silently undecided.
+    function whenOf(clause, whose) {
+      if (!clause) throw new Error(where + whose + ' states no `when`, so it cannot be checked');
+      var is = clause.is || {};
+      var isNot = clause.isNot || {};
+      if (!Object.keys(is).length && !Object.keys(isNot).length) {
+        throw new Error(where + whose + ' has an empty `when`, which matches every card');
+      }
+      [is, isNot].forEach(function (set) {
+        Object.keys(set).forEach(function (dim) {
+          if (!model.DIMENSIONS[dim]) {
+            throw new Error(where + whose + ' keys on "' + dim + '", which is not a criterial dimension');
+          }
+          if (model.DIMENSIONS[dim].values.indexOf(set[dim]) < 0) {
+            throw new Error(where + whose + ' wants ' + dim + '="' + set[dim] + '", not a value that dimension takes');
+          }
+        });
+      });
+      return Object.freeze({ is: Object.freeze(is), isNot: Object.freeze(isNot) });
+    }
+
+    // The standing override, if the level declares one. It outranks the
+    // columns, so it is carried separately rather than as a ninth branch.
+    var always = null;
+    if (rule.always) {
+      if (!rule.always.test) throw new Error(where + 'the standing rule states no test');
+      if (rule.always.answer !== 'think' && rule.always.answer !== 'say') {
+        throw new Error(where + 'the standing rule answer must be think or say');
+      }
+      always = Object.freeze({
+        answer: rule.always.answer,
+        test: rule.always.test,
+        note: rule.always.note || '',
+        when: whenOf(rule.always.when, 'the standing rule'),
+      });
+    }
+
     return Object.freeze({
       title: rule.title,
       lead: rule.lead,
       tip: rule.tip || '',
+      always: always,
       branches: Object.freeze(branches.map(function (b) {
-        return Object.freeze({ answer: b.answer, test: b.test });
+        return Object.freeze({
+          answer: b.answer,
+          test: b.test,
+          when: whenOf(b.when, 'branch "' + b.test + '"'),
+        });
       })),
     });
   }
