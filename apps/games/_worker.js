@@ -6,6 +6,13 @@ import { handleSuggest } from "./shared/suggest.js";
 // Single source of truth for the deployed app version. Bump on every deploy that
 // changes CSS/JS so the asset ?v= query changes and clients fetch fresh files.
 // Policy: patch = fixes, minor = features/reskins; major stays 0 for now.
+//
+// Do NOT fetch /assets/<file>?v=<new version> to check whether a deploy landed.
+// _headers serves these immutable for a year, so a request that arrives before
+// the new asset has propagated caches the OLD body under the NEW key - and the
+// edge will not revalidate it. That is how 0.22.2 was burned. Probe with a
+// throwaway query (?probe=…) instead, and only read the real ?v= URL once the
+// throwaway shows the new build.
 const APP_VERSION = "0.27.0";
 
 // Append ?v=APP_VERSION to local (relative) css/js URLs in served HTML, and expose

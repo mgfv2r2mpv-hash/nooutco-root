@@ -401,10 +401,9 @@
       "categories": [
         "T_clothing"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_clothing/boots.webp",
       "emoji": "👢",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_clothing/boots.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "clothing-coat",
@@ -421,10 +420,9 @@
       "categories": [
         "T_clothing"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_clothing/dress.webp",
       "emoji": "👗",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_clothing/dress.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "clothing-glasses",
@@ -432,10 +430,9 @@
       "categories": [
         "T_clothing"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_clothing/glasses.webp",
       "emoji": "👓",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_clothing/glasses.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "clothing-gloves",
@@ -443,10 +440,9 @@
       "categories": [
         "T_clothing"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_clothing/gloves.webp",
       "emoji": "🧤",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_clothing/gloves.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "clothing-hat",
@@ -454,10 +450,9 @@
       "categories": [
         "T_clothing"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_clothing/hat.webp",
       "emoji": "🧢",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_clothing/hat.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "clothing-jacket",
@@ -465,10 +460,9 @@
       "categories": [
         "T_clothing"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_clothing/jacket.webp",
       "emoji": "🧥",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_clothing/jacket.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "clothing-pants",
@@ -476,10 +470,9 @@
       "categories": [
         "T_clothing"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_clothing/pants.webp",
       "emoji": "👖",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_clothing/pants.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "clothing-scarf",
@@ -487,10 +480,9 @@
       "categories": [
         "T_clothing"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_clothing/scarf.webp",
       "emoji": "🧣",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_clothing/scarf.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "clothing-shirt",
@@ -498,12 +490,9 @@
       "categories": [
         "T_clothing"
       ],
-      "image": "/shared/stimuli/img/T_clothing/shirt.jpg",
+      "image": "/shared/stimuli/img/T_clothing/shirt.webp",
       "emoji": "👕",
-      "glyphKind": "emoji",
-      "variants": [
-        "/shared/stimuli/img/T_clothing/shirt--alt1.png"
-      ]
+      "glyphKind": "emoji"
     },
     {
       "id": "clothing-shoes",
@@ -511,10 +500,9 @@
       "categories": [
         "T_clothing"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_clothing/shoes.webp",
       "emoji": "👟",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_clothing/shoes.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "clothing-shorts",
@@ -522,10 +510,9 @@
       "categories": [
         "T_clothing"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_clothing/shorts.webp",
       "emoji": "🩳",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_clothing/shorts.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "clothing-socks",
@@ -533,10 +520,9 @@
       "categories": [
         "T_clothing"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_clothing/socks.webp",
       "emoji": "🧦",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_clothing/socks.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "colors-black",
@@ -852,10 +838,9 @@
       "categories": [
         "T_emotions"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_emotions/proud.svg",
       "emoji": "😤",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_emotions/proud.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "emotions-sad",
@@ -943,10 +928,9 @@
       "categories": [
         "T_foods"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_foods/broccoli.webp",
       "emoji": "🥦",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_foods/broccoli.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "foods-burger",
@@ -954,10 +938,9 @@
       "categories": [
         "T_foods"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_foods/burger.webp",
       "emoji": "🍔",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_foods/burger.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "foods-corn",
@@ -965,10 +948,9 @@
       "categories": [
         "T_foods"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_foods/corn.webp",
       "emoji": "🌽",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_foods/corn.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "foods-donut",
@@ -976,10 +958,9 @@
       "categories": [
         "T_foods"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_foods/donut.webp",
       "emoji": "🍩",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_foods/donut.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "foods-egg",
@@ -987,10 +968,9 @@
       "categories": [
         "T_foods"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_foods/egg.webp",
       "emoji": "🥚",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_foods/egg.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "foods-orange",
@@ -998,10 +978,9 @@
       "categories": [
         "T_foods"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_foods/orange.webp",
       "emoji": "🍊",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_foods/orange.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "foods-pizza",
@@ -1009,10 +988,9 @@
       "categories": [
         "T_foods"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_foods/pizza.webp",
       "emoji": "🍕",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_foods/pizza.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "foods-strawberry",
@@ -1020,10 +998,9 @@
       "categories": [
         "T_foods"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_foods/strawberry.webp",
       "emoji": "🍓",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_foods/strawberry.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "fresh-beats-chimpanzees-too",
@@ -2520,10 +2497,9 @@
       "categories": [
         "T_toys"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_toys/balloon.webp",
       "emoji": "🎈",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_toys/balloon.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "toys-blocks",
@@ -2531,10 +2507,9 @@
       "categories": [
         "T_toys"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_toys/blocks.webp",
       "emoji": "🧱",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_toys/blocks.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "toys-kite",
@@ -2542,10 +2517,9 @@
       "categories": [
         "T_toys"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_toys/kite.webp",
       "emoji": "🪁",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_toys/kite.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "toys-puzzle",
@@ -2553,10 +2527,9 @@
       "categories": [
         "T_toys"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_toys/puzzle.webp",
       "emoji": "🧩",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_toys/puzzle.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "toys-robot",
@@ -2564,10 +2537,9 @@
       "categories": [
         "T_toys"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_toys/robot.webp",
       "emoji": "🤖",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_toys/robot.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "toys-soccer-ball",
@@ -2575,10 +2547,9 @@
       "categories": [
         "T_toys"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_toys/soccer-ball.webp",
       "emoji": "⚽",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_toys/soccer-ball.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "toys-teddy-bear",
@@ -2586,10 +2557,9 @@
       "categories": [
         "T_toys"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_toys/teddy-bear.webp",
       "emoji": "🧸",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_toys/teddy-bear.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "toys-toy-car",
@@ -2607,10 +2577,9 @@
       "categories": [
         "T_toys"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_toys/train.webp",
       "emoji": "🚂",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_toys/train.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "toys-yoyo",
@@ -2618,10 +2587,9 @@
       "categories": [
         "T_toys"
       ],
-      "image": null,
+      "image": "/shared/stimuli/img/T_toys/yoyo.webp",
       "emoji": "🪀",
-      "glyphKind": "emoji",
-      "placeholder": "/shared/stimuli/placeholder/T_toys/yoyo.svg"
+      "glyphKind": "emoji"
     },
     {
       "id": "uppercase-a",
