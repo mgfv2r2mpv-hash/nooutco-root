@@ -42,6 +42,19 @@ Two of its teaching devices are directly relevant:
   or inner coach that runs that check.
   ([Michelle Garcia Winner, MSHA handout, 2018](https://www.michiganspeechhearing.org/docs/PPThandoutPart2-MgWinner.3.23.2018.pdf);
   [Helping Your Child Develop Their Inner Coach](https://brightandquirky.com/helping-your-child-develop-their-inner-coach-with-michelle-garcia-winner-slp/))
+* **The unspoken rule, made explicit.** The approach treats the social rule that
+  everyone else absorbed without being told as the thing to bring to light, rather
+  than as something the learner should infer from how people react to them.
+
+**What that last point costs the build.** Level 1 states its rule on screen, for the
+whole trial, in the same THINK IT / SAY IT vocabulary the tiles use — a support that
+is on by default and can be faded (⚙ Settings → Show the Rule). The rule is declared
+once, in the Level 1 pool's own data, so no card carries a copy. It names BOTH
+branches at once, which is the property that keeps it from answering the card
+underneath it: every card is a THINK IT or a SAY IT, so a strip showing one branch
+alone would be a cue rather than a support, and the spec asserts the rendered text is
+identical on a THINK card and on a SAY card. Levels 2 and 3 state no rule — at Level 2
+the situation decides, and at Level 3 the reason is the response being measured.
 
 Social Thinking maintains its own evidence page
 ([peer-reviewed evidence](https://www.socialthinking.com/evidence/peer-reviewed/developmental-treatment-approach-students-learning-issues)),
@@ -372,6 +385,9 @@ stranger alone.
 4. Coverage: ≥3 exemplars per criterial dimension represented at this level, plus the
    matched minimum-difference pair for each.
 5. Can-have features vary across the pool and none is confounded with the answer.
+6. The rule is STATED on screen throughout the trial, not left to be induced (§1).
+   Level 1 is the only level that states one, and it is the level where a hidden
+   rule would be a hidden target.
 
 ### Level 2 — "Nuanced"
 

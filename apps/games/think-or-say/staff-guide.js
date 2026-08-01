@@ -128,7 +128,7 @@
              'An incorrect tap produces no wiggle and no red flash. The error is still counted in the Errors column.'],
             ['A generalization phase',
              '⚙ Settings → Probes - Level N → Run probes (on), then set Probes per session, Placement and the tags the plan names',
-             'Generated, untrained items are added to the deck for that level. On a probe trial the automatic prompt, errorless, the reason reveal and re-presentation are all withheld, and a banner on screen says so.'],
+             'Generated, untrained items are added to the deck for that level. On a probe trial the automatic prompt, errorless, the reason reveal, re-presentation and the stated rule are all withheld, and a banner on screen says so.'],
             ['No generalization phase',
              '⚙ Settings → Probes - Level N → Run probes (off). This is how it starts, at every level',
              'The deck is the teaching pool only, and every trial is recorded as a trained trial.'],
@@ -268,6 +268,7 @@
         { t: 'ul', items: [
           'A banner reads “Probe - supports off”, followed by the tags the item carries.',
           'The automatic prompt, errorless, the reason reveal and re-presentation are all withheld.',
+          'At Level 1, the stated rule comes off the screen too. A probe run with the rule still up would measure reading it, not holding it.',
           'The Prompt button stays live. Prompting a probe is a clinical call you are entitled to make.',
         ] },
         { t: 'p', text:
@@ -395,6 +396,7 @@
             ['Prompt Delay', 'Holds the automatic prompt back for the number of seconds beside it.'],
             ['Prompt style', 'Draws the prompt as a sparkle or as an outline.'],
             ['Show Reason After', 'Shows the card’s reason line after the answer at Levels 1 and 2, and offers the example reasons at Level 3.'],
+            ['Show the Rule', 'Keeps the level’s stated rule on screen through the trial. Level 1 states its rule; Levels 2 and 3 state none, so the switch does nothing there. Turn it off to fade the support once the rule is held.'],
             ['Counterbalance Tile Positions', 'Swaps which side each tile sits on between cards. The labels do not move.'],
             ['Run probes', 'Adds generated, untrained probe items to this level’s deck.'],
             ['Probes per session', 'How many probe trials the deck contains.'],

@@ -138,6 +138,10 @@
         Show Reason After
       </label>
       <label class="checkbox-label">
+        <input type="checkbox" id="chk-show-rule" checked>
+        Show the Rule
+      </label>
+      <label class="checkbox-label">
         <input type="checkbox" id="chk-counterbalance" checked>
         Counterbalance Tile Positions
       </label>
@@ -245,6 +249,20 @@
     <!-- Shown only on a probe trial, so the technician can see that the
          teaching supports are withheld before they reach for the Prompt. -->
     <div id="probe-banner" class="probe-banner" hidden></div>
+
+    <!-- The rule, on screen for the whole trial at the level that states one.
+         Filled from the level pool's own `rule` (Level 1 declares it; 2 and 3
+         do not), so the text lives in the data once and never on a card. Both
+         branches are always shown together, which is what stops the strip
+         answering the card below it. -->
+    <section id="rule-panel" class="rule-panel" hidden aria-label="The rule for this level">
+      <div class="rule-head">
+        <span class="rule-title" id="rule-title"></span>
+        <span class="rule-lead" id="rule-lead"></span>
+      </div>
+      <div class="rule-body" id="rule-body"></div>
+      <p class="rule-tip" id="rule-tip"></p>
+    </section>
 
     <section id="scenario-section">
       <div id="scenario-card">

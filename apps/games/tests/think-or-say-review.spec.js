@@ -530,3 +530,202 @@ test.describe("the maintainer's rulings on the card decks", () => {
     }
   });
 });
+
+/**
+ * ════════════════════════════════════════════════════════════════════════
+ * His structural ruling: "Level 1 should state the rule (bring the unspoken
+ * rules to light)".
+ *
+ * Level 1 is early acquisition, so the rule it teaches is a VISIBLE support
+ * rather than something to be induced from 35 cards of feedback (RESEARCH.md
+ * §1). Four properties make that true rather than merely present:
+ *
+ *   1. the rule is declared ONCE, in the level pool's data, and never on a card
+ *   2. it is on screen for the whole Level 1 trial, so a technician never
+ *      leaves the card to check it
+ *   3. it renders at Level 1 only - Level 2's answer turns on the situation and
+ *      Level 3's target is the spoken reason, so a rule left up there is wrong
+ *      or is the answer sheet
+ *   4. it cannot give the card away: it names BOTH answers, and it is the same
+ *      text on a THINK card and on a SAY card
+ * ════════════════════════════════════════════════════════════════════════
+ */
+test.describe('Level 1 states the rule on screen', () => {
+  const ruleOf = (page, id) => page.evaluate(l => window.__thinkOrSay.level(l).rule || null, id);
+
+  /** The rule strip as a technician reads it: the tags, the tests, the tip. */
+  const strip = page => page.evaluate(() => {
+    const panel = document.getElementById('rule-panel');
+    return {
+      hidden: panel.hidden,
+      title: document.getElementById('rule-title').textContent,
+      lead: document.getElementById('rule-lead').textContent,
+      tip: document.getElementById('rule-tip').textContent,
+      tags: Array.from(panel.querySelectorAll('.rule-row .tag')).map(t => t.textContent),
+      tests: Array.from(panel.querySelectorAll('.rule-list li')).map(t => t.textContent),
+      text: panel.textContent.replace(/\s+/g, ' ').trim(),
+    };
+  });
+
+  /** Answer the card on screen correctly and move to the next one. */
+  async function answerAndAdvance(page) {
+    const answer = await page.evaluate(() => {
+      const s = window.__thinkOrSay.session();
+      return s.deck[s.results.length].answer;
+    });
+    await page.locator('#reveal-panel').click();
+    await page.locator(`#choices .choice[data-answer="${answer}"]`).click();
+    await page.locator('#btn-next').click();
+  }
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto(URL);
+    await booted(page);
+  });
+
+  test('the rule is declared once in the level data, and no card carries a copy', async ({ page }) => {
+    const rule = await ruleOf(page, 1);
+    expect(rule, 'Level 1 declares the rule it teaches').toBeTruthy();
+    expect(rule.title).toBeTruthy();
+    expect(rule.lead).toBeTruthy();
+
+    // Both answers named, which is what stops the strip answering the card.
+    for (const answer of ['think', 'say']) {
+      expect(rule.branches.filter(b => b.answer === answer).length,
+        `the rule states at least one ${answer} branch`).toBeGreaterThan(0);
+    }
+    for (const branch of rule.branches) expect(branch.test).toBeTruthy();
+
+    // Levels 2 and 3 state none: at Level 2 the situation decides, and at Level
+    // 3 the learner has to supply the reason the rule would hand them.
+    expect(await ruleOf(page, 2), 'Level 2 states no rule').toBeNull();
+    expect(await ruleOf(page, 3), 'Level 3 states no rule').toBeNull();
+
+    // One place in the data. A per-card rule line would be 81 copies to drift.
+    const cards = await allCards(page);
+    expect(cards.filter(c => c.rule != null).map(c => c.id),
+      'no card carries its own copy of the rule').toEqual([]);
+  });
+
+  test('the rule is on screen for the whole Level 1 trial', async ({ page }) => {
+    const rule = await ruleOf(page, 1);
+    await page.locator('#sel-level').selectOption('1');
+    await page.locator('#btn-play').click();
+    await expect(page.locator('#rule-panel')).toBeVisible();
+
+    const shown = await strip(page);
+    expect(shown.title).toBe(rule.title);
+    expect(shown.lead).toBe(rule.lead);
+    expect(shown.tip).toBe(rule.tip);
+    expect(shown.tags, 'the rule speaks in the tile vocabulary').toEqual(['THINK IT', 'SAY IT']);
+    expect(shown.tests.slice().sort(), 'every branch of the rule is rendered')
+      .toEqual(rule.branches.map(b => b.test).sort());
+
+    // Through the whole trial: while the card is being read, once the tiles are
+    // up, and after the answer has been scored. A support the technician has to
+    // leave the trial to see is not on screen.
+    await page.locator('#reveal-panel').click();
+    await expect(page.locator('#choices')).toBeVisible();
+    await expect(page.locator('#rule-panel')).toBeVisible();
+    const answer = await page.evaluate(() => window.__thinkOrSay.session().deck[0].answer);
+    await page.locator(`#choices .choice[data-answer="${answer}"]`).click();
+    await expect(page.locator('#rule-panel')).toBeVisible();
+    await page.locator('#btn-next').click();
+    await expect(page.locator('#rule-panel')).toBeVisible();
+  });
+
+  test('the rule does not render at Level 2 or Level 3', async ({ page }) => {
+    // Attached AND hidden, in that order: a missing element is trivially hidden,
+    // so asserting only the second would pass against a build that has no rule
+    // strip at all and would tell us nothing.
+    await expect(page.locator('#rule-panel')).toBeAttached();
+    for (const level of ['2', '3']) {
+      await page.locator('#sel-level').selectOption(level);
+      await page.locator('#btn-play').click();
+      await expect(page.locator('#progress-label')).toContainText('Card 1 of');
+      await expect(page.locator('#rule-panel'),
+        `level ${level} states no rule, so nothing renders`).toBeHidden();
+      await expect(page.locator('#rule-body')).toBeEmpty();
+    }
+  });
+
+  test('the rule reads the same on a THINK card and on a SAY card', async ({ page }) => {
+    // The strip is a support, not a cue. If its text moved with the answer it
+    // would be the shortest route to faulty stimulus control in the whole game:
+    // a learner would read the strip instead of the card.
+    await page.locator('#sel-level').selectOption('1');
+    await page.locator('#sel-order').selectOption('sequential');
+    await page.locator('#btn-play').click();
+    await expect(page.locator('#rule-panel')).toBeVisible();
+
+    const seen = new Map();
+    for (let i = 0; i < 6; i++) {
+      const answer = await page.evaluate(() => {
+        const s = window.__thinkOrSay.session();
+        return s.deck[s.results.length].answer;
+      });
+      const text = (await strip(page)).text;
+      if (!seen.has(answer)) seen.set(answer, text);
+      expect(text, 'the rule text is the same on every card').toBe(seen.get(answer));
+      await answerAndAdvance(page);
+    }
+    expect(Array.from(seen.keys()).sort(), 'both answers were sampled').toEqual(['say', 'think']);
+    expect(new Set(seen.values()).size, 'THINK cards and SAY cards show identical rule text').toBe(1);
+  });
+
+  test('a probe trial withholds the rule, the way it withholds every other support', async ({ page }) => {
+    // A probe is an untrained item run WITHOUT the teaching supports, so that a
+    // correct answer is evidence about the repertoire (RESEARCH.md §4.2). The
+    // stated rule is the strongest support in the game: left on screen it would
+    // turn a Level 1 probe into a reading test.
+    expect(await page.evaluate(() => window.__thinkOrSay.probes.SUPPRESSED),
+      'the rule is on the suppression list, not special-cased').toContain('showRule');
+
+    await page.addInitScript(cfg => {
+      localStorage.setItem('nooutco.settings.think-or-say', JSON.stringify({ working: cfg }));
+    }, {
+      level: 1, category: 'all', order: 'sequential', counterbalance: false,
+      probes1: true, probeCount1: 2, probePlacement1: 'before',
+    });
+    await page.reload();
+    await booted(page);
+    await page.locator('#btn-play').click();
+
+    const isProbe = await page.evaluate(() =>
+      window.__thinkOrSay.session().deck.map(c => c.isProbe));
+    expect(isProbe[0], 'the deck opens on the probes').toBe(true);
+    await expect(page.locator('#probe-banner')).toBeVisible();
+    await expect(page.locator('#rule-panel'), 'no rule on a probe trial').toBeHidden();
+
+    // And it comes back the moment the deck reaches a teaching trial: the
+    // suppression is a property of the trial, not a setting the probe changed.
+    for (let i = 0; i < isProbe.indexOf(false); i++) await answerAndAdvance(page);
+    await expect(page.locator('#probe-banner')).toBeHidden();
+    await expect(page.locator('#rule-panel'), 'a teaching trial gets it back').toBeVisible();
+  });
+
+  test('Show the Rule fades the support, and defaults to on', async ({ page }) => {
+    const { defaults } = await page.evaluate(() => window.__thinkOrSay.settings());
+    expect(defaults.showRule, 'an early-acquisition learner should not need it switched on')
+      .toBe(true);
+
+    await page.locator('#sel-level').selectOption('1');
+    await page.locator('#btn-play').click();
+    await expect(page.locator('#rule-panel')).toBeVisible();
+
+    // Fading it takes effect on the card already on screen, not on the next one.
+    await page.locator('#btn-extra-toggle').click();
+    await expect(page.locator('#extra-panel')).toBeVisible();
+    await page.locator('#chk-show-rule').uncheck();
+    await expect(page.locator('#rule-panel')).toBeHidden();
+    await page.locator('#btn-extra-close').click();
+
+    await answerAndAdvance(page);
+    await expect(page.locator('#rule-panel'), 'the fade holds across cards').toBeHidden();
+
+    // And it is a persisted option like every other one, so it survives a reload.
+    await page.reload();
+    await booted(page);
+    expect((await page.evaluate(() => window.__thinkOrSay.settings())).cfg.showRule).toBe(false);
+  });
+});

@@ -40,6 +40,40 @@
     id: 1,
     name: 'Clear',
     blurb: 'Early acquisition - the answer is obvious once you hold the rule.',
+
+    /* ── The rule, stated on screen ─────────────────────────────────────
+       The maintainer's structural ruling: "Level 1 should state the rule
+       (bring the unspoken rules to light)". Level 1 is early acquisition, so
+       the rule is VISIBLE rather than discovered - the Social Thinking point
+       in RESEARCH.md §1, that a hidden social rule has to be made explicit
+       before anyone can be expected to follow it.
+
+       Declared HERE, once, and never on a card. A per-card rule line would be
+       35 copies free to drift apart, and a card that states its own rule
+       states its own answer.
+
+       BOTH branches are always on screen together, and that is what keeps the
+       strip from giving the card away: every card is a THINK IT or a SAY IT,
+       so a strip naming only one side would answer every card in the deck.
+       The four tests are the questions, not the verdict - which of them the
+       card in front of the learner meets is still theirs to work out.
+
+       Levels 2 and 3 declare no rule, so nothing renders there. At Level 2 the
+       situation decides and a four-line rule would be wrong as often as right;
+       at Level 3 the learner supplies the reason, and a rule left on screen is
+       the answer sheet. -------------------------------------------------- */
+    rule: {
+      title: 'The rule at Level 1',
+      lead: 'Before you say a thought, ask yourself:',
+      branches: [
+        { answer: 'think', test: 'Could it hurt how someone feels?' },
+        { answer: 'think', test: 'Is it private or embarrassing?' },
+        { answer: 'say',   test: 'Is it kind, or a true compliment?' },
+        { answer: 'say',   test: 'Does it help someone, or keep them safe?' },
+      ],
+      tip: 'Not sure? It is okay to keep it inside, or to ask a grown-up.',
+    },
+
     cards: [
       // ── block 1 ──
       { id: 'L1-01', level: 1, cat: 'work', answer: 'think',

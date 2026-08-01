@@ -10,6 +10,9 @@
    by cards.js. A Level selector chooses the pool; this file runs the trials.
    ----------------------------------------------------------------------- */
 
+/** The two tile labels, in the one spelling the tiles, the report and the rule use. */
+const ANSWER_LABELS = { think: 'THINK IT', say: 'SAY IT' };
+
 const CATEGORIES = {
   looks:   'How Someone Looks',
   smells:  'Smells',
@@ -87,6 +90,12 @@ const el = {
   levelBlurb:      $('level-blurb'),
   probeLevelLabel: $('probe-level-label'),
   probeBanner:     $('probe-banner'),
+  chkShowRule:     $('chk-show-rule'),
+  rulePanel:       $('rule-panel'),
+  ruleTitle:       $('rule-title'),
+  ruleLead:        $('rule-lead'),
+  ruleBody:        $('rule-body'),
+  ruleTip:         $('rule-tip'),
   printGen:        $('print-generalization'),
   genBody:         $('generalization-body'),
   btnPrompt:       $('btn-prompt'),
@@ -230,6 +239,11 @@ const SETTINGS_FIELDS = {
   promptDelaySecs: { type: 'int',  min: 1, max: 10, default: 3 },
   promptStyle:     { type: 'enum', values: ['sparkle', 'outline'], default: 'sparkle' },
   showReason:      { type: 'bool', default: true },
+  // Whether the level's stated rule stays on screen during the trial. Defaults
+  // ON, and only Level 1 declares a rule to state, so the switch is a way to
+  // FADE the support once the rule is held rather than a way to opt into it:
+  // an early-acquisition learner should not have to have it turned on for them.
+  showRule:        { type: 'bool', default: true },
   // Tile POSITIONS alternate between trials so that "the correct one is on the
   // left" cannot become the discriminative stimulus. Defaults ON; a plan that
   // specifies a fixed array (early acquisition, or a learner with a scanning
@@ -316,6 +330,7 @@ const SETTINGS_CONTROLS = [
   { node: 'selPromptDelay',   option: 'promptDelaySecs', read: n => n.value,   write: (n, v) => { n.value = v; } },
   { node: 'selPromptStyle',   option: 'promptStyle',     read: n => n.value,   write: (n, v) => { n.value = v; } },
   { node: 'chkShowReason',    option: 'showReason',      read: n => n.checked, write: (n, v) => { n.checked = v; } },
+  { node: 'chkShowRule',      option: 'showRule',        read: n => n.checked, write: (n, v) => { n.checked = v; } },
   { node: 'chkCounterbalance',option: 'counterbalance',  read: n => n.checked, write: (n, v) => { n.checked = v; } },
 ];
 
@@ -347,6 +362,10 @@ function applySettingsToControls(cfg) {
   for (const c of SETTINGS_CONTROLS) c.write(el[c.node], cfg[c.option]);
   syncPromptDelayEnabled();
   el.levelBlurb.textContent = CARDS.level(cfg.level).blurb;
+  // Switching level or fading the rule takes effect on the card already on
+  // screen, not on the next one — renderRulePanel() shows nothing unless a
+  // trial is showing, so this is a no-op everywhere else.
+  renderRulePanel();
   // Only the level in play has its probe block on screen. The other two keep
   // their own stored settings; nothing is reset by looking away from them.
   for (const L of PROBE_LEVELS) el['probeLevel' + L].hidden = (L !== cfg.level);
@@ -701,6 +720,7 @@ function renderTrial() {
   const sc = state.current;
   el.progressLabel.textContent = `Card ${state.pos + 1} of ${state.deck.length}`;
   renderProbeBanner(sc);
+  renderRulePanel();
   el.situation.textContent = sc.situation;
   renderThought(sc);
   el.question.textContent = sc.question;
@@ -756,6 +776,65 @@ function renderProbeBanner(sc) {
     'Probe - supports off (' + sc.probeTags.join(' + ') + '). ' +
     'Prompting still works, and records this as a trained trial.';
   el.probeBanner.hidden = false;
+}
+
+/** True while a trial card is on screen — finishSession hides the scenario. */
+const trialOnScreen = () => !el.gameArea.hidden && !el.scenarioSection.hidden;
+
+/**
+ * State the rule on screen, for the whole trial, at the level that declares one.
+ *
+ * The maintainer's structural ruling: "Level 1 should state the rule (bring the
+ * unspoken rules to light)". Level 1 is early acquisition, so the rule is a
+ * VISIBLE support rather than something to be induced from feedback over 35
+ * cards. The text is the level pool's own `rule` — one declaration, in the
+ * data, rendered here — so no card carries a copy of it and there is nothing to
+ * drift.
+ *
+ * Both branches render together, always. That is what keeps the strip from
+ * answering the card underneath it: every card is a THINK IT or a SAY IT, and
+ * the strip poses the four questions without saying which one this card meets.
+ *
+ * It is on screen for the whole trial, which is the point — a technician
+ * checking the rule must not have to leave the card to do it. Levels 2 and 3
+ * declare no rule, so nothing renders there whatever the switch says.
+ *
+ * Read through supportOn(), not off the configuration, because it is a SUPPORT:
+ * a probe trial withholds it exactly as it withholds the reason reveal.
+ */
+function renderRulePanel() {
+  const rule = CARDS.level(state.cfg.level).rule;
+  const show = !!rule && supportOn('showRule') && trialOnScreen();
+  el.rulePanel.hidden = !show;
+  if (!show) {
+    el.ruleBody.replaceChildren();
+    return;
+  }
+  el.ruleTitle.textContent = rule.title;
+  el.ruleLead.textContent = rule.lead;
+  el.ruleTip.textContent = rule.tip;
+  el.ruleTip.hidden = !rule.tip;
+
+  // One row per answer, in the tile vocabulary the learner already has: the
+  // amber THINK IT tag and the green SAY IT tag are the same two the choice
+  // tiles carry, so the rule reads in the terms the response is made in.
+  const rows = ['think', 'say'].map(answer => {
+    const row = document.createElement('div');
+    row.className = 'rule-row';
+    const tag = document.createElement('span');
+    tag.className = 'tag tag-' + answer;
+    tag.textContent = ANSWER_LABELS[answer];
+    const list = document.createElement('ul');
+    list.className = 'rule-list';
+    for (const branch of rule.branches.filter(b => b.answer === answer)) {
+      const item = document.createElement('li');
+      item.textContent = branch.test;
+      list.appendChild(item);
+    }
+    row.append(tag, list);
+    return row;
+  });
+  el.ruleBody.replaceChildren(...rows);
 }
 
 /**
@@ -1046,6 +1125,9 @@ function finishSession() {
   el.scenarioSection.hidden = true;
   el.choiceSection.hidden = true;
   el.progressLabel.textContent = '';
+  // No card on screen, so no rule over it: the strip is a support for the
+  // trial, not decoration on the summary.
+  renderRulePanel();
 
   const total = state.results.length;
   const firstTry = state.results.filter(r => r.errors === 0 && !r.prompted).length;
@@ -1116,7 +1198,7 @@ function recordResult() {
     level: sc.level,
     cat: CATEGORIES[sc.cat] || sc.cat,
     scenario: sc.situation,
-    answer: sc.answer === 'think' ? 'THINK IT' : 'SAY IT',
+    answer: ANSWER_LABELS[sc.answer],
     errors: state.trialErrors,
     prompted: state.trialPrompted,
     secs: state.trialSecs,

@@ -45,12 +45,17 @@
   /**
    * The instructional supports a probe trial withholds.
    *
-   * Named by their settings field so suppression is a lookup rather than four
+   * Named by their settings field so suppression is a lookup rather than five
    * scattered conditionals. The Prompt BUTTON is deliberately absent: clinical
    * judgement is never blocked. Using it does not invalidate the trial — it
    * re-classifies it as a trained one, with the reason recorded.
+   *
+   * `showRule` is here for the same reason `showReason` is. Level 1 states its
+   * rule on screen for the whole trial, which is a teaching support and the
+   * strongest one in the game — a probe run with the rule still up would
+   * measure whether the learner can read it, not whether they hold it.
    */
-  var SUPPRESSED = ['autoPrompt', 'errorless', 'showReason', 'represent'];
+  var SUPPRESSED = ['autoPrompt', 'errorless', 'showReason', 'represent', 'showRule'];
 
   function tagIndex(t) { return TAGS.indexOf(t); }
 

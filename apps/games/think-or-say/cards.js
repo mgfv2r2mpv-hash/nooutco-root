@@ -61,9 +61,47 @@
       id: raw.id,
       name: raw.name,
       blurb: raw.blurb,
+      rule: ruleOf(raw),
       cards: Object.freeze(cards),
       pairs: pairs,
       coverage: Object.freeze(coverage),
+    });
+  }
+
+  /**
+   * The rule a level states on screen while its cards are being run, checked
+   * on the way in. Level 1 declares one; Levels 2 and 3 declare none and show
+   * nothing (see the note in cards-level-1.js for why).
+   *
+   * The one property worth enforcing is that a stated rule names BOTH answers.
+   * Every card is a THINK IT or a SAY IT, so a rule strip showing one branch
+   * alone would answer the card underneath it before the learner looked.
+   */
+  function ruleOf(raw) {
+    var rule = raw.rule;
+    if (!rule) return null;
+    var where = 'think-or-say level ' + raw.id + ' rule: ';
+    if (!rule.title || !rule.lead) throw new Error(where + 'needs a title and a lead');
+    var branches = rule.branches || [];
+    branches.forEach(function (b) {
+      if (!b.test) throw new Error(where + 'a branch states no test');
+      if (b.answer !== 'think' && b.answer !== 'say') {
+        throw new Error(where + 'branch answer must be think or say');
+      }
+    });
+    ['think', 'say'].forEach(function (answer) {
+      var named = branches.filter(function (b) { return b.answer === answer; });
+      if (!named.length) {
+        throw new Error(where + 'states no ' + answer + ' branch, so it names the answer to every card');
+      }
+    });
+    return Object.freeze({
+      title: rule.title,
+      lead: rule.lead,
+      tip: rule.tip || '',
+      branches: Object.freeze(branches.map(function (b) {
+        return Object.freeze({ answer: b.answer, test: b.test });
+      })),
     });
   }
 
