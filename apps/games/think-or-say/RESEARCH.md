@@ -326,7 +326,21 @@ Where a genuine label and a pair cannot coexist even after re-pointing — Level
 relationship pair is the standing example, where the SAY half is *telling a grown-up
 you feel sick* and cannot say so in code because its THINK partner would have to
 carry the same override — the label is left off and the reason is recorded at the
-card, not silently dropped.
+card, not silently dropped. Level 2 has two more of these: `selfEsteem: 'hurts'` on
+L2-14, blocked because the defeater pair would force the same sting onto *paint on a
+hand*, and `changeability: 'not-fixable'` on L2-01, blocked because the concert being
+over explains nothing about why its partner's compliment gets said.
+
+A third consequence is visible only once a whole pool has been audited: **self-esteem
+and changeability are correlated in the content, not merely in the labels.** Almost
+every card that answers THINK because the person cannot change the thing *also*
+answers THINK because saying it would hurt — which is exactly why cross-labels were
+missing in the first place. The consequence for pairs is that a `changeability` flip
+holding `selfEsteem` constant needs a SAY half where the words sting and get said
+anyway. Level 2 has one: telling a friend quietly about their teeth, which they can
+put right in a second and nobody else hears. That card (L2-05) therefore anchors
+three of the pool's eight pairs — changeability, audience and privacy — and the four
+cards around it are the pool's richest, at four criterial labels each.
 
 ---
 

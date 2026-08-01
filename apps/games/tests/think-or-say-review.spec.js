@@ -111,7 +111,7 @@ const REWRITTEN = {
  * His label calls, verbatim, as a table of id -> the criterial labels the card
  * has to declare. These are RULINGS: a card may carry more than the table asks
  * for, never less, so each entry is asserted as a subset of the card's declared
- * features. Level 2's calls join this table when Level 2 is audited.
+ * features.
  */
 const REQUIRED_LABELS = {
   'L1-04': { note: 'self-esteem: lifts as well', features: { selfEsteem: 'lifts' } },
@@ -120,6 +120,16 @@ const REQUIRED_LABELS = {
   'L1-21': { note: 'self-esteem: hurts', features: { selfEsteem: 'hurts' } },
   'L1-24': { note: 'is is also not help-or-safety', features: { override: 'none' } },
   'L1-28': { note: 'who: close-friend', features: { relationship: 'close-friend' } },
+  'L2-03': { note: 'and others can hear, and it is not fixable',
+             features: { audience: 'others-hear', changeability: 'not-fixable' } },
+  'L2-04': { note: 'also help-or safety', features: { override: 'help-or-safety' } },
+  'L2-06': { note: 'self-esteeme: hurts', features: { selfEsteem: 'hurts' } },
+  'L2-16': { note: 'also not fixable, and liking is not help or safety',
+             features: { changeability: 'not-fixable', override: 'none' } },
+  'L2-19': { note: 'and not fixable right now', features: { changeability: 'not-fixable' } },
+  'L2-22': { note: 'not fixable, either', features: { changeability: 'not-fixable' } },
+  'L2-24': { note: 'not changeable in that moment', features: { changeability: 'not-fixable' } },
+  'L2-25': { note: 'never met is a stranger', features: { relationship: 'stranger' } },
 };
 
 /**
@@ -143,6 +153,18 @@ const AUDIT_LABELS = {
   'L1-30': { timing: 'right-moment' },
   'L1-32': { relationship: 'close-friend' },
   'L1-33': { selfEsteem: 'lifts' },
+  // Level 2. The same test applied pool by pool: the card's reason names the
+  // dimension, so the card declares it.
+  'L2-03': { selfEsteem: 'hurts' },
+  'L2-05': { privacy: 'not-private', selfEsteem: 'hurts' },
+  'L2-07': { privacy: 'not-private', selfEsteem: 'hurts' },
+  'L2-10': { changeability: 'fixable-now' },
+  'L2-11': { changeability: 'fixable-now' },
+  'L2-17': { selfEsteem: 'hurts' },
+  'L2-20': { changeability: 'fixable-now', selfEsteem: 'hurts' },
+  'L2-25': { changeability: 'not-fixable' },
+  'L2-26': { selfEsteem: 'hurts' },
+  'L2-28': { privacy: 'not-private', audience: 'others-hear' },
 };
 
 test.describe("the maintainer's rulings on the card decks", () => {
@@ -262,6 +284,66 @@ test.describe("the maintainer's rulings on the card decks", () => {
     for (const id of [privacy.a, privacy.b]) {
       expect(byId[id].features.selfEsteem, `${id} declares the lift`).toBe('lifts');
     }
+  });
+
+  test('L2-04 carries the safety label, and the privacy pair moved to carry it', async ({ page }) => {
+    const { level2 } = await page.evaluate(() => {
+      const lv = window.__thinkOrSay.levels.find(l => l.id === 2);
+      return { level2: { cards: lv.cards, pairs: lv.pairs } };
+    });
+    const byId = Object.fromEntries(level2.cards.map(c => [c.id, c]));
+
+    expect(byId['L2-04'].features.override, 'a sticker about to be lost is help')
+      .toBe('help-or-safety');
+    expect(byId['L2-04'].answer, 'a safety card always answers SAY').toBe('say');
+
+    // Level 1's L1-07 collision, repeated exactly: the label costs the card its
+    // pair, because no THINK half can carry the same key at the same value.
+    const held = level2.pairs.filter(p => p.a === 'L2-04' || p.b === 'L2-04');
+    expect(held.map(p => p.dim), 'L2-04 holds no pair but an override one')
+      .toEqual([]);
+
+    // And the pair that replaced it is minimum difference in prose as well as in
+    // features: the same lunch table, the same quiet voice, the same thing they
+    // could put right in a second.
+    const privacy = level2.pairs.find(p => p.dim === 'privacy');
+    const a = byId[privacy.a];
+    const b = byId[privacy.b];
+    expect(a.features.privacy).not.toBe(b.features.privacy);
+    for (const key of ['audience', 'changeability', 'selfEsteem']) {
+      expect(a.features[key], `the privacy pair holds ${key}`).toBe(b.features[key]);
+    }
+  });
+
+  test('the self-esteem label he called for on L2-06 is carried by its whole cluster', async ({ page }) => {
+    const { level2 } = await page.evaluate(() => {
+      const lv = window.__thinkOrSay.levels.find(l => l.id === 2);
+      return { level2: { cards: lv.cards, pairs: lv.pairs } };
+    });
+    const byId = Object.fromEntries(level2.cards.map(c => [c.id, c]));
+
+    // "self-esteeme: hurts" lands on L2-06, and a criterial label cannot land on
+    // one half of a pair. L2-05 anchors three pairs, so the ruling reaches four
+    // cards: the sting is the same words on the same person every time, and what
+    // moves is fixability, audience, or whether it was private to notice at all.
+    for (const id of ['L2-05', 'L2-06', 'L2-07', 'L2-20']) {
+      expect(byId[id].features.selfEsteem, `${id} carries the sting`).toBe('hurts');
+    }
+    const anchored = level2.pairs.filter(p => p.a === 'L2-05' || p.b === 'L2-05');
+    expect(anchored.map(p => p.dim).sort(), 'L2-05 anchors three contrasts')
+      .toEqual(['audience', 'changeability', 'privacy']);
+  });
+
+  test('L2-25 says in its reason why a stranger is another reason to stay quiet', async ({ page }) => {
+    const cards = await allCards(page);
+    const card = cards.find(c => c.id === 'L2-25');
+
+    // "never met is a stranger, so taht is another reason to not ask...". The
+    // relationship was labelled all along; his point is that a card teaches what
+    // its reason says, and the reason never said it.
+    expect(card.features.relationship).toBe('stranger');
+    expect(card.reason, 'the reason names the relationship it is labelled with')
+      .toMatch(/stranger/i);
   });
 
   test('every rejected card now answers the note it was rejected for', async ({ page }) => {

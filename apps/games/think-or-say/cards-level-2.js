@@ -21,50 +21,71 @@
     blurb: 'The situation decides - audience, timing, privacy, what can be changed.',
     cards: [
       // ── block 1 ──
+      // The concert is over on both halves of this pair, so changeability is in
+      // play on L2-01 - but on L2-02 it explains nothing about why a compliment
+      // gets said, and a label that explains nothing is inflation. Left off both,
+      // which is what the pair constraint permits.
       { id: 'L2-01', level: 2, cat: 'work', answer: 'think',
         situation: 'Your friend practised a song for weeks. At the concert they sang some notes wrong, and you heard it.',
         utterance: 'You sang some notes wrong.', sayVerb: 'say', object: 'these words',
         features: { selfEsteem: 'hurts', truthNotTest: 'true' },
         vary: { setting: 'school', person: 'peer', topic: 'work', form: 'statement' },
         reason: 'Think it. It is true, and it would take away all the good they feel about the concert.' },
+      // "and others can hear, and it is not fixable". Both labels needed the
+      // situation to say so: the classroom around them is now written in, and
+      // the spot is a thing no child can put right where they are standing.
       { id: 'L2-03', level: 2, cat: 'private', answer: 'think',
-        situation: 'Your close friend is beside you. They look embarrassed and are holding a hand over a spot on their skirt. You have noticed the spot too.',
+        situation: 'Your close friend is beside you, and the other kids around you would hear anything you say. They look embarrassed and are holding a hand over a spot on their skirt.',
         utterance: 'There is a spot on your skirt.', sayVerb: 'say', object: 'these words',
-        features: { privacy: 'private', relationship: 'close-friend' },
+        features: { privacy: 'private', relationship: 'close-friend', audience: 'others-hear',
+                    changeability: 'not-fixable', selfEsteem: 'hurts' },
         vary: { setting: 'school', person: 'peer', topic: 'belongings', form: 'statement' },
-        reason: 'Think it. They already know, and they are trying to keep it private. Saying it would make them feel worse.' },
+        reason: 'Think it. They already know, and they are trying to keep it private. There is nothing they can do about it here, and the kids around you would all hear - so saying it would only make your close friend feel worse.' },
       { id: 'L2-02', level: 2, cat: 'kind', answer: 'say',
         situation: 'Your friend practised a song for weeks. At the concert they remembered every single word, and you heard it.',
         utterance: 'You remembered every word.', sayVerb: 'say', object: 'these words',
         features: { selfEsteem: 'lifts', truthNotTest: 'true' },
         vary: { setting: 'school', person: 'peer', topic: 'work', form: 'statement' },
         reason: 'Say it! It is true and it is kind - telling them what went well helps them want to try again.' },
+      // "also help-or safety. A lot of these are missing cross labels". The
+      // label is the headline finding, and it costs this card its pair: a card
+      // declaring override: 'help-or-safety' can sit in no pair but the override
+      // one (RESEARCH.md §5.4), so the privacy pair moved to L2-05/L2-20.
       { id: 'L2-04', level: 2, cat: 'other', answer: 'say',
         situation: 'Your close friend is beside you. A sticker has come loose on their bag and is about to fall off. They have not noticed.',
         utterance: 'There is a sticker falling off your bag.', sayVerb: 'say', object: 'these words',
-        features: { privacy: 'not-private', relationship: 'close-friend' },
+        features: { privacy: 'not-private', relationship: 'close-friend', override: 'help-or-safety' },
         vary: { setting: 'school', person: 'peer', topic: 'belongings', form: 'statement' },
-        reason: 'Say it. Nothing here is private, and telling them saves the sticker.' },
+        reason: 'Say it. Nothing about it is private, and your close friend needs the help right now - one more step and the sticker is gone for good.' },
 
       // ── block 2 ──
+      // "self-esteeme: hurts" on the haircut card. The label cannot live on one
+      // half of a pair, so it is carried by all four cards of the L2-05 cluster
+      // below - and it is honest on all four, because the sting is the same
+      // words on the same person every time. What moves is whether they can do
+      // anything about it (L2-06), who can hear it (L2-07), and whether it was
+      // a private thing to have noticed at all (L2-20).
       { id: 'L2-06', level: 2, cat: 'looks', answer: 'think',
         situation: 'You are sitting right beside your friend at lunch. Nobody else can hear you. They got a new haircut yesterday and it looks strange to you.',
         utterance: 'Your haircut looks strange.', sayVerb: 'say', object: 'these words',
-        features: { changeability: 'not-fixable', audience: 'just-them' },
+        features: { changeability: 'not-fixable', audience: 'just-them',
+                    privacy: 'not-private', selfEsteem: 'hurts' },
         vary: { setting: 'school', person: 'peer', topic: 'looks', form: 'statement' },
-        reason: 'Think it. Even said quietly, they cannot change their hair today - so it would only hurt.' },
+        reason: 'Think it. A haircut is not a private thing and nobody else could hear you - but they cannot change their hair today, so it would only hurt.' },
       { id: 'L2-07', level: 2, cat: 'other', answer: 'think',
         situation: 'You are all the way across the lunchroom from your friend, with a lot of people in between. They have a bit of spinach stuck in their teeth.',
         utterance: 'You have something in your teeth!', sayVerb: 'say', object: 'these words',
-        features: { audience: 'others-hear', changeability: 'fixable-now' },
+        features: { audience: 'others-hear', changeability: 'fixable-now',
+                    privacy: 'not-private', selfEsteem: 'hurts' },
         vary: { setting: 'school', person: 'peer', topic: 'body', form: 'exclamation' },
-        reason: 'Think it. They could fix it - but calling it across the room means everyone hears, and that embarrasses them.' },
+        reason: 'Think it. It is not a private thing and they could fix it - but calling it across the room means everyone hears, and that embarrasses them.' },
       { id: 'L2-05', level: 2, cat: 'kind', answer: 'say',
         situation: 'You are sitting right beside your friend at lunch. Nobody else can hear you. They have a bit of spinach stuck in their teeth.',
         utterance: 'You have something in your teeth.', sayVerb: 'say', object: 'these words',
-        features: { changeability: 'fixable-now', audience: 'just-them' },
+        features: { changeability: 'fixable-now', audience: 'just-them',
+                    privacy: 'not-private', selfEsteem: 'hurts' },
         vary: { setting: 'school', person: 'peer', topic: 'body', form: 'statement' },
-        reason: 'Say it - quietly, just to them. They can fix it right now, and nobody else hears.' },
+        reason: 'Say it - quietly, just to them. Nobody enjoys hearing it, but it is not a private thing, they can fix it right now, and nobody else hears - so it helps far more than it stings.' },
       // The relationship pair holds TIMING constant at right-moment, so the pair
       // says what it means: on both cards there is time to talk and the thing is
       // private, and only who the person is decides the answer. On this card the
@@ -87,15 +108,15 @@
       { id: 'L2-10', level: 2, cat: 'other', answer: 'think',
         situation: 'Your friend is in the middle of their turn in the class play. You are right beside them and only they could hear you. Their shirt is on inside out.',
         utterance: 'Your shirt is inside out.', sayVerb: 'say', object: 'these words',
-        features: { timing: 'wrong-moment', audience: 'just-them' },
+        features: { timing: 'wrong-moment', audience: 'just-them', changeability: 'fixable-now' },
         vary: { setting: 'school', person: 'peer', topic: 'belongings', form: 'statement' },
-        reason: 'Think it for now. They are in the middle of their turn - this can wait one minute.' },
+        reason: 'Think it for now. They could turn it around in a second - but they are in the middle of their turn, so this can wait one minute.' },
       { id: 'L2-11', level: 2, cat: 'other', answer: 'say',
         situation: 'Your friend has finished their turn in the class play. You are right beside them and only they can hear you. Their shirt is on inside out.',
         utterance: 'Your shirt is inside out.', sayVerb: 'say', object: 'these words',
-        features: { timing: 'right-moment', audience: 'just-them' },
+        features: { timing: 'right-moment', audience: 'just-them', changeability: 'fixable-now' },
         vary: { setting: 'school', person: 'peer', topic: 'belongings', form: 'statement' },
-        reason: 'Say it - quietly, now that they are finished. This is the right moment.' },
+        reason: 'Say it - quietly, now that they are finished. They can turn it around right away, and this is the right moment.' },
       { id: 'L2-12', level: 2, cat: 'other', answer: 'say',
         situation: 'A classmate once told you privately that they get very bad headaches, and that when a bad one starts they go pale and hold their head. Right now they have gone pale, they are holding their head, and they cannot stand up.',
         utterance: 'My classmate needs help.', sayVerb: 'tell', object: 'this news',
@@ -110,6 +131,12 @@
         features: { override: 'none', privacy: 'private' },
         vary: { setting: 'school', person: 'peer', topic: 'body', form: 'statement' },
         reason: 'Think it. Nobody needs help right now, so their private news stays theirs to tell.' },
+      // The audit found selfEsteem: 'hurts' on L2-14 - its own reason says "so it
+      // only hurts" - and it cannot be declared. The defeater pair holds
+      // truthNotTest constant and flips changeability, so L2-15 would have to
+      // carry the same label, and paint on a hand does not hurt anybody's
+      // self-esteem. The label is left off and recorded here rather than dropped
+      // silently (RESEARCH.md §5.4).
       { id: 'L2-14', level: 2, cat: 'looks', answer: 'think',
         situation: 'Your class lines up by height for a photo. Your classmate ends up right at the short end, and you can see for yourself that they are the shortest in the class.',
         utterance: 'You are the shortest in the class.', sayVerb: 'say', object: 'these words',
@@ -133,15 +160,17 @@
       { id: 'L2-16', level: 2, cat: 'work', answer: 'think',
         situation: 'Your friend shows you their new backpack. You do not like how it looks.',
         utterance: 'I do not like that backpack.', sayVerb: 'say', object: 'these words',
-        features: { selfEsteem: 'hurts', relationship: 'close-friend' },
+        // "also not fixable, and liking is not help or safety."
+        features: { selfEsteem: 'hurts', relationship: 'close-friend',
+                    changeability: 'not-fixable', override: 'none' },
         vary: { setting: 'school', person: 'peer', topic: 'belongings', form: 'statement' },
-        reason: 'Think it. They love their backpack - these words would hurt their feelings.' },
+        reason: 'Think it. They love their backpack, and these words would hurt their feelings. Nobody needs help and nothing is unsafe here - and the backpack they have today is not one they can change.' },
       { id: 'L2-17', level: 2, cat: 'other', answer: 'think',
         situation: 'Your class is in the middle of a quiet test. You have just noticed that your teacher’s tie looks funny to you.',
         utterance: 'Your tie looks funny!', sayVerb: 'say', object: 'these words',
-        features: { timing: 'wrong-moment', audience: 'others-hear' },
+        features: { timing: 'wrong-moment', audience: 'others-hear', selfEsteem: 'hurts' },
         vary: { setting: 'school', person: 'teacher', topic: 'belongings', form: 'exclamation' },
-        reason: 'Think it. Everyone is working quietly, and calling it out would interrupt the whole class.' },
+        reason: 'Think it. Everyone is working quietly, so calling it out would interrupt the whole class - and it would make your teacher feel silly in front of everybody.' },
       { id: 'L2-21', level: 2, cat: 'kind', answer: 'say',
         situation: 'Your teacher got a new haircut and you really like it. You are standing right beside her.',
         utterance: 'I like your haircut!', sayVerb: 'say', object: 'these words',
@@ -151,29 +180,36 @@
       { id: 'L2-28', level: 2, cat: 'other', answer: 'say',
         situation: 'A classmate took your turn by accident. The game has stopped and everyone is waiting.',
         utterance: 'It is my turn now, please.', sayVerb: 'say', object: 'these words',
-        features: { timing: 'right-moment', relationship: 'classmate' },
+        features: { timing: 'right-moment', relationship: 'classmate',
+                    privacy: 'not-private', audience: 'others-hear' },
         vary: { setting: 'playground', person: 'peer', topic: 'work', form: 'statement' },
-        reason: 'Say it. Speaking up kindly about your turn is fair, and this is the right moment.' },
+        reason: 'Say it. Whose turn it is, is not a private thing, and everyone waiting needs to hear it - speaking up kindly about your turn is fair, and this is the right moment.' },
 
       // ── tail ──
       { id: 'L2-19', level: 2, cat: 'smells', answer: 'think',
         situation: 'A grown-up bends down to help you and you notice their breath.',
         utterance: 'Your breath smells.', sayVerb: 'say', object: 'these words',
-        features: { selfEsteem: 'hurts', relationship: 'grown-up' },
+        // "and not fixable right now"
+        features: { selfEsteem: 'hurts', relationship: 'grown-up', changeability: 'not-fixable' },
         vary: { setting: 'school', person: 'teacher', topic: 'smell', form: 'statement' },
-        reason: 'Think it. Saying it would be embarrassing for them.' },
+        reason: 'Think it. Saying it would be embarrassing for them, and there is nothing they can do about their breath right now.' },
+      // The privacy pair, re-pointed off L2-03/L2-04 and onto the L2-05 cluster:
+      // same lunch table, same quiet voice, same thing they could put right in a
+      // second - and only whether it was a private thing to notice decides.
       { id: 'L2-20', level: 2, cat: 'private', answer: 'think',
-        situation: 'A classmate is picking their nose. You are the only one who has seen it.',
+        situation: 'You are sitting right beside your friend at lunch. Nobody else can hear you, and nobody else has seen. They are picking their nose.',
         utterance: 'I saw you picking your nose.', sayVerb: 'say', object: 'these words',
-        features: { privacy: 'private', audience: 'just-them' },
+        features: { privacy: 'private', audience: 'just-them',
+                    changeability: 'fixable-now', selfEsteem: 'hurts' },
         vary: { setting: 'school', person: 'peer', topic: 'body', form: 'statement' },
-        reason: 'Think it. Even said quietly, it would embarrass them - and nobody else saw.' },
+        reason: 'Think it. They could stop in a second and nobody else saw - but this one is private, and saying it out loud would embarrass them.' },
       { id: 'L2-22', level: 2, cat: 'looks', answer: 'think',
         situation: 'Your grandma comes to visit. She has some hair missing on her head.',
         utterance: 'You do not have much hair.', sayVerb: 'say', object: 'these words',
-        features: { selfEsteem: 'hurts', relationship: 'grown-up' },
+        // "not fixable, either"
+        features: { selfEsteem: 'hurts', relationship: 'grown-up', changeability: 'not-fixable' },
         vary: { setting: 'home', person: 'family', topic: 'looks', form: 'statement' },
-        reason: 'Think it. Saying it might make Grandma feel sad.' },
+        reason: 'Think it. Saying it might make Grandma feel sad, and her hair is not something she can change.' },
       { id: 'L2-23', level: 2, cat: 'looks', answer: 'think',
         situation: 'You see a kid at school. They have a really big tummy.',
         utterance: 'You have a big tummy.', sayVerb: 'say', object: 'these words',
@@ -183,19 +219,23 @@
       { id: 'L2-24', level: 2, cat: 'looks', answer: 'think',
         situation: 'Your teacher is wearing pants that look really silly to you.',
         utterance: 'Those pants look funny.', sayVerb: 'say', object: 'these words',
-        features: { selfEsteem: 'hurts', relationship: 'grown-up' },
+        // "not changeable in that moment"
+        features: { selfEsteem: 'hurts', relationship: 'grown-up', changeability: 'not-fixable' },
         vary: { setting: 'school', person: 'teacher', topic: 'belongings', form: 'statement' },
-        reason: 'Think it. It would make your teacher feel bad.' },
+        reason: 'Think it. It would make your teacher feel bad, and she cannot change what she is wearing in the middle of the school day.' },
+      // "never met is a stranger, so taht is another reason to not ask...". The
+      // relationship was already labelled; what was missing is that the REASON
+      // never said it, so the card taught the hurt and not the stranger.
       { id: 'L2-25', level: 2, cat: 'looks', answer: 'think',
         situation: 'A man you have never met is on the bus, and he is very, very tall.',
         utterance: 'You are so tall!', sayVerb: 'say', object: 'these words',
-        features: { selfEsteem: 'hurts', relationship: 'stranger' },
+        features: { selfEsteem: 'hurts', relationship: 'stranger', changeability: 'not-fixable' },
         vary: { setting: 'bus', person: 'stranger', topic: 'looks', form: 'exclamation' },
-        reason: 'Think it. Pointing out how someone’s body looks can embarrass them, especially someone you do not know.' },
+        reason: 'Think it. Pointing out how someone’s body looks can embarrass them, and how tall he is, is not something he can change. You have never met him either, so he is a stranger - that is one more reason to keep it in your head.' },
       { id: 'L2-26', level: 2, cat: 'private', answer: 'think',
         situation: 'A classmate pulls up their pants in the line and you see their underwear. Other kids are all around.',
         utterance: 'I saw your underwear.', sayVerb: 'say', object: 'these words',
-        features: { privacy: 'private', audience: 'others-hear' },
+        features: { privacy: 'private', audience: 'others-hear', selfEsteem: 'hurts' },
         vary: { setting: 'school', person: 'peer', topic: 'body', form: 'statement' },
         reason: 'Think it. That is private - saying it with everyone around would embarrass them.' },
       { id: 'L2-27', level: 2, cat: 'other', answer: 'think',
@@ -207,7 +247,11 @@
     ],
     pairs: [
       { dim: 'selfEsteem',    a: 'L2-01', b: 'L2-02' },
-      { dim: 'privacy',       a: 'L2-03', b: 'L2-04' },
+      // Was L2-03/L2-04. L2-04's help-or-safety label evicted it (§5.4), and
+      // L2-03's three added labels could not be met by any SAY card in the pool
+      // - so the pair moved to the lunch table, where privacy is the only thing
+      // that moves.
+      { dim: 'privacy',       a: 'L2-20', b: 'L2-05' },
       { dim: 'changeability', a: 'L2-05', b: 'L2-06' },
       // The maintainer's worked example: same words, same fixable problem, and
       // only who can hear is different.
