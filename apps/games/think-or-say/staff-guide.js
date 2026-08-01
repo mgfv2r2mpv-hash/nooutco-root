@@ -17,7 +17,7 @@
 (function () {
   'use strict';
 
-  const TITLE = 'Think or Say? — Staff Guide';
+  const TITLE = 'Think or Say? - Staff Guide';
   const SUBTITLE =
     'For behaviour technicians. Which switch in the app corresponds to which ' +
     'part of the Skill Acquisition Plan, and what each one does on screen.';
@@ -57,7 +57,7 @@
             'an item the learner has not been taught, run with the teaching supports withheld, so a ' +
             'correct answer is evidence about the repertoire rather than about the prompt.' },
           { term: 'Level', text:
-            'which pool of cards is in play — 1 Clear, 2 Nuanced, 3 Explain. A card belongs to ' +
+            'which pool of cards is in play - 1 Clear, 2 Nuanced, 3 Explain. A card belongs to ' +
             'exactly one level.' },
           { term: 'Learner slot', text:
             'A, B or C. An unnamed store of settings, and nothing else. There is no name field in ' +
@@ -77,7 +77,7 @@
           'Choose the Learner slot your handover names. The slot loads the settings last saved in it.',
           'Set Level to the level the plan names.',
           'Set Category if the plan names one situation type; otherwise leave it on All categories.',
-          'Set Order — Shuffle, or In order.',
+          'Set Order - Shuffle, or In order.',
           'Open ⚙ Settings and check every switch against the plan, using the table in the next section.',
           'Press ▶ Play. 📖 Learn shows the teaching screen first and then the same trials.',
         ] },
@@ -119,7 +119,7 @@
              'An incorrect tile, when tapped, is disabled and dimmed and the correct tile is highlighted, so the trial cannot end on an error. The tap is still counted in the Errors column.'],
             ['Error correction with re-presentation',
              '⚙ Settings → Re-Present Errors (on)',
-             'A card answered with an error or with a prompt comes back once, at the end of the deck, with a fresh surface — the same criterial item, a different person, place or thing — so the repeat cannot be passed on a remembered detail.'],
+             'A card answered with an error or with a prompt comes back once, at the end of the deck, with a fresh surface - the same criterial item, a different person, place or thing - so the repeat cannot be passed on a remembered detail.'],
             ['No re-presentation',
              '⚙ Settings → Re-Present Errors (off)',
              'Each card runs once. Errors are recorded and the deck moves on.'],
@@ -127,13 +127,13 @@
              '⚙ Settings → No Incorrect Animation (on)',
              'An incorrect tap produces no wiggle and no red flash. The error is still counted in the Errors column.'],
             ['A generalization phase',
-             '⚙ Settings → Probes — Level N → Run probes (on), then set Probes per session, Placement and the tags the plan names',
+             '⚙ Settings → Probes - Level N → Run probes (on), then set Probes per session, Placement and the tags the plan names',
              'Generated, untrained items are added to the deck for that level. On a probe trial the automatic prompt, errorless, the reason reveal and re-presentation are all withheld, and a banner on screen says so.'],
             ['No generalization phase',
-             '⚙ Settings → Probes — Level N → Run probes (off). This is how it starts, at every level',
+             '⚙ Settings → Probes - Level N → Run probes (off). This is how it starts, at every level',
              'The deck is the teaching pool only, and every trial is recorded as a trained trial.'],
             ['Reinforcement withheld on probe trials',
-             '⚙ Settings → Probes — Level N → Tokens on probe trials (off)',
+             '⚙ Settings → Probes - Level N → Tokens on probe trials (off)',
              'A correct answer on a probe trial does not add a token. Teaching trials are unaffected.'],
             ['A reinforcement schedule (FR or VR)',
              '⭐ Token Board → Schedule and the number beside it, then Goal Tokens',
@@ -145,7 +145,7 @@
              '⚙ Settings → Counterbalance Tile Positions (on). This is how it starts',
              'The two tiles swap sides between cards. The labels never move: THINK IT is always the brain tile and SAY IT always the mouth tile.'],
             ['Rationale targets at Level 3',
-             'Level → 3 — Explain',
+             'Level → 3 - Explain',
              'After the learner taps a tile the card asks “Tell me why.” You score what they said as Correct, Partly correct or Not yet, and may add a short note. The trial is not recorded until it is scored.'],
             ['Example rationales withheld',
              '⚙ Settings → Show Reason After (off)',
@@ -193,12 +193,12 @@
         ] },
         { t: 'p', text:
           'Constant time delay holds one value throughout. Progressive time delay increases it on ' +
-          'the schedule the plan sets — the app holds whatever number is in the box, and you change ' +
+          'the schedule the plan sets - the app holds whatever number is in the box, and you change ' +
           'the number when the plan says to.' },
         { t: 'p', text:
           'Whichever procedure is running, the printed report shows only whether a prompt was ' +
-          'delivered. The stored trial also carries which procedure delivered it — gesture for ' +
-          'least to most, model for immediate, delay for a time delay — and your BCBA can read it ' +
+          'delivered. The stored trial also carries which procedure delivered it - gesture for ' +
+          'least to most, model for immediate, delay for a time delay - and your BCBA can read it ' +
           'from the saved data.' },
       ],
     },
@@ -228,8 +228,8 @@
           ] },
         { t: 'p', text:
           'A card is re-presented once per session at most, and never on a probe trial. If the ' +
-          'plan calls for a different error-correction procedure — a re-do straight away, a ' +
-          'transfer trial, a specific number of repetitions — ask your BCBA how they want it run ' +
+          'plan calls for a different error-correction procedure - a re-do straight away, a ' +
+          'transfer trial, a specific number of repetitions - ask your BCBA how they want it run ' +
           'with these materials.' },
       ],
     },
@@ -246,18 +246,18 @@
           'Set Level to the level the phase belongs to. The probe block shown is the one for that level.',
           'Switch on Run probes.',
           'Set Probes per session to the number the plan names.',
-          'Set Placement — Before the teaching trials, Interleaved among them, or After them.',
+          'Set Placement - Before the teaching trials, Interleaved among them, or After them.',
           'Tick the tags the plan names.',
         ] },
         { t: 'h', text: 'What the tags mean' },
         { t: 'ul', items: [
           { term: 'near', text:
-            'every varied detail in the item — the person, the place, the thing, the sentence form — ' +
+            'every varied detail in the item - the person, the place, the thing, the sentence form - ' +
             'is one this level’s teaching pool already pairs with this underlying item.' },
           { term: 'far', text:
             'at least one of those details is one the teaching pool never pairs with it.' },
           { term: 'deictic', text:
-            'the item asks the learner to speak from one person’s side to another’s — an ' +
+            'the item asks the learner to speak from one person’s side to another’s - an ' +
             'I-and-you statement. Every Level 3 item carries this tag.' },
         ] },
         { t: 'p', text:
@@ -266,7 +266,7 @@
           'carried, never by a single tag.' },
         { t: 'h', text: 'During a probe trial' },
         { t: 'ul', items: [
-          'A banner reads “Probe — supports off”, followed by the tags the item carries.',
+          'A banner reads “Probe - supports off”, followed by the tags the item carries.',
           'The automatic prompt, errorless, the reason reveal and re-presentation are all withheld.',
           'The Prompt button stays live. Prompting a probe is a clinical call you are entitled to make.',
         ] },
@@ -307,7 +307,7 @@
         { t: 'h', text: 'What the three points mean' },
         { t: 'ul', items: [
           { term: 'Correct', text:
-            'the reason names the thing that decides this card — who would hear it, whether it can ' +
+            'the reason names the thing that decides this card - who would hear it, whether it can ' +
             'be changed, whether it is private, how the other person would feel.' },
           { term: 'Partly correct', text:
             'the reason is about the right situation but does not name what decides it, or the ' +
@@ -321,7 +321,7 @@
           'Ask your BCBA.' },
         { t: 'h', text: 'Worked examples' },
         { t: 'p', text:
-          'Card L3-07 — you and your friend are in the middle of a crowded assembly, the label on ' +
+          'Card L3-07 - you and your friend are in the middle of a crowded assembly, the label on ' +
           'their sweater is sticking up at the back, and the thought is “Your label is sticking ' +
           'up!”. The answer is THINK IT, and what decides it is who else can hear.' },
         { t: 'table',
@@ -329,10 +329,10 @@
           rows: [
             ['“Everybody in the assembly would hear and they would go red.”', 'Correct',
              'Names who else can hear, which is what decides this card.'],
-            ['“Not here — there are too many people.”', 'Correct',
+            ['“Not here - there are too many people.”', 'Correct',
              'Names the same thing in fewer words. It is not on the example list, and that does not matter.'],
             ['“Because it would be rude.”', 'Partly correct',
-             'About the right situation, but it does not name what decides it — the same words are a SAY IT when the two of them are on their own.'],
+             'About the right situation, but it does not name what decides it - the same words are a SAY IT when the two of them are on their own.'],
             ['“Because you should not say it.”', 'Not yet',
              'The tile choice said back, not a reason.'],
             ['(no answer)', 'Not yet',
@@ -361,7 +361,7 @@
           { term: 'Reason (L3)', text: 'the rationale score, with your note beside it. Blank at Levels 1 and 2, where no reason is asked for.' },
         ] },
         { t: 'p', text:
-          'Below the table is a summary line, and — when the session contained probes — a table ' +
+          'Below the table is a summary line, and - when the session contained probes - a table ' +
           'splitting trained from generalization trials and breaking generalization out by the ' +
           'exact tag combination. Supported probes and re-exposures appear inside the trained ' +
           'bucket, with the reason they are there.' },
@@ -454,7 +454,7 @@
     const li = doc.createElement('li');
     if (typeof item === 'string') { li.textContent = item; return li; }
     li.appendChild(elem(doc, 'strong', 'guide-term', item.term));
-    li.appendChild(doc.createTextNode(' — ' + item.text));
+    li.appendChild(doc.createTextNode(' - ' + item.text));
     return li;
   }
 

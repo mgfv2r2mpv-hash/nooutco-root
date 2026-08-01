@@ -36,9 +36,9 @@
     <div class="setting-group">
       <label for="sel-level">Level<button type="button" class="help-btn" data-help="Choose the teaching pool. Each card belongs to exactly one level: 1 Clear, 2 Nuanced, 3 Explain. Set this from the Skill Acquisition Plan.">?</button></label>
       <select id="sel-level">
-        <option value="1">1 — Clear</option>
-        <option value="2">2 — Nuanced</option>
-        <option value="3">3 — Explain</option>
+        <option value="1">1 - Clear</option>
+        <option value="2">2 - Nuanced</option>
+        <option value="3">3 - Explain</option>
       </select>
       <p class="setting-note" id="level-blurb"></p>
     </div>
@@ -47,7 +47,7 @@
          programme parameters. There is no name field and never will be: the
          clinical boundary forbids player-identifiable data on the device. -->
     <div class="setting-group">
-      <label for="sel-learner">Learner<button type="button" class="help-btn" data-help="Three unnamed slots, each remembering its own settings. Switching slots loads that slot's programme parameters. No names are stored — the slot is a letter and nothing else.">?</button></label>
+      <label for="sel-learner">Learner<button type="button" class="help-btn" data-help="Three unnamed slots, each remembering its own settings. Switching slots loads that slot's programme parameters. No names are stored - the slot is a letter and nothing else.">?</button></label>
       <select id="sel-learner">
         <option value="A">Learner A</option>
         <option value="B">Learner B</option>
@@ -147,7 +147,7 @@
            other two keep their own stored settings. -->
       <div class="probe-block">
         <div class="probe-head">
-          <span class="probe-title">Probes — <span id="probe-level-label">Level 1</span></span>
+          <span class="probe-title">Probes - <span id="probe-level-label">Level 1</span></span>
           <button type="button" class="help-btn" data-help="Generalization probes: untrained items run with the teaching supports withheld, so a correct answer is evidence about the repertoire and not about the prompt. Off unless the Skill Acquisition Plan calls for a generalization phase. Each level is configured on its own.">?</button>
         </div>
 
@@ -186,23 +186,23 @@
 
   <!-- ── Pre-start blurb ──────────────────────────────────────────── -->
   <section class="game-intro" id="game-intro" aria-label="How this game works">
-    <h2>Think or Say? — a thought into a choice</h2>
-    <p>Each card shows a situation, then a thought the learner is having, then asks the same balanced question both ways round — for example <em>“Should you THINK these words, or SAY these words?”</em>. The clinician reads the card aloud, then the learner decides: <strong>THINK IT</strong> or <strong>SAY IT</strong>?</p>
+    <h2>Think or Say? - a thought into a choice</h2>
+    <p>Each card shows a situation, then a thought the learner is having, then asks the same balanced question both ways round - for example <em>“Should you THINK these words, or SAY these words?”</em>. The clinician reads the card aloud, then the learner decides: <strong>THINK IT</strong> or <strong>SAY IT</strong>?</p>
     <ul>
-      <li><strong>Level</strong> — the teaching pool. <em>1 Clear</em> for early acquisition, <em>2 Nuanced</em> where the situation decides, <em>3 Explain</em> where the learner gives the reason. A card belongs to exactly one level. Your Skill Acquisition Plan says which.</li>
-      <li><strong>Category</strong> — focus on one situation type (looks, smells, kind things…) or use all.</li>
-      <li><strong>Order</strong> — shuffle the cards or step through them in order.</li>
-      <li><strong>⚙ Settings</strong> — errorless, re-present errors, prompts, whether to reveal the reason, and whether the tiles swap sides between cards.</li>
-      <li><strong>Prompt</strong> — highlights the correct bubble for an assisted response.</li>
-      <li><strong>At Level 3</strong> — after the tile, the card asks <em>“Tell me why.”</em> You score what the learner actually said as <em>Correct</em>, <em>Partly correct</em> or <em>Not yet</em>, and may add a short note. The example reasons are examples, not a scoring key: a good reason that is not listed there is still Correct.</li>
+      <li><strong>Level</strong> - the teaching pool. <em>1 Clear</em> for early acquisition, <em>2 Nuanced</em> where the situation decides, <em>3 Explain</em> where the learner gives the reason. A card belongs to exactly one level. Your Skill Acquisition Plan says which.</li>
+      <li><strong>Category</strong> - focus on one situation type (looks, smells, kind things…) or use all.</li>
+      <li><strong>Order</strong> - shuffle the cards or step through them in order.</li>
+      <li><strong>⚙ Settings</strong> - errorless, re-present errors, prompts, whether to reveal the reason, and whether the tiles swap sides between cards.</li>
+      <li><strong>Prompt</strong> - highlights the correct bubble for an assisted response.</li>
+      <li><strong>At Level 3</strong> - after the tile, the card asks <em>“Tell me why.”</em> You score what the learner actually said as <em>Correct</em>, <em>Partly correct</em> or <em>Not yet</em>, and may add a short note. The example reasons are examples, not a scoring key: a good reason that is not listed there is still Correct.</li>
     </ul>
-    <p class="tip">Yellow = THINK IT &nbsp;•&nbsp; Green = SAY IT. Tap <strong>📘 Guide</strong> for the staff guide — which setting matches which part of the Skill Acquisition Plan — <strong>📖 Learn</strong> for a teaching intro, or <strong>▶ Play</strong> to jump straight in.</p>
+    <p class="tip">Yellow = THINK IT &nbsp;•&nbsp; Green = SAY IT. Tap <strong>📘 Guide</strong> for the staff guide - which setting matches which part of the Skill Acquisition Plan - <strong>📖 Learn</strong> for a teaching intro, or <strong>▶ Play</strong> to jump straight in.</p>
   </section>
 
   <!-- ── Learn screen (hidden until Learn) ────────────────────────── -->
   <section id="learn-screen" hidden aria-label="How to decide">
     <div class="learn-inner">
-      <h2 id="learn-title">How do I know — Think it or Say it?</h2>
+      <h2 id="learn-title">How do I know - Think it or Say it?</h2>
 
       <!-- Optional video: a player is injected here when a video URL is set in game.js -->
       <div id="learn-video" hidden></div>
@@ -216,7 +216,7 @@
           <li><span class="tag tag-say">SAY IT</span> Is it <strong>kind</strong> or a nice compliment? You can say it!</li>
           <li><span class="tag tag-say">SAY IT</span> Is it <strong>helpful</strong>, or does it keep someone <strong>safe</strong>? Say it!</li>
         </ul>
-        <p class="learn-tip">Not sure? It’s okay to keep it inside — or ask a grown-up.</p>
+        <p class="learn-tip">Not sure? It’s okay to keep it inside - or ask a grown-up.</p>
       </div>
 
       <button id="btn-learn-start" class="btn-primary" type="button">Start practice ▶</button>
@@ -286,7 +286,7 @@
         <div id="rationale-ask">Tell me why.</div>
         <button id="btn-rationale-reveal" type="button" hidden>Show example reasons</button>
         <div id="rationale-examples" hidden>
-          <div id="rationale-examples-label">Example reasons — not a scoring key</div>
+          <div id="rationale-examples-label">Example reasons - not a scoring key</div>
           <ul id="rationale-examples-list"></ul>
         </div>
         <div class="area-label" id="rationale-score-label">Score what the learner actually said</div>

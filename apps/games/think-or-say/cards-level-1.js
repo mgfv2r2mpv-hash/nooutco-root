@@ -24,7 +24,7 @@
   global.ThinkOrSayLevel1 = {
     id: 1,
     name: 'Clear',
-    blurb: 'Early acquisition — the answer is obvious once you hold the rule.',
+    blurb: 'Early acquisition - the answer is obvious once you hold the rule.',
     cards: [
       // ── block 1 ──
       { id: 'L1-01', level: 1, cat: 'work', answer: 'think',
@@ -32,7 +32,7 @@
         utterance: 'That drawing looks bad.', sayVerb: 'say', object: 'these words',
         features: { selfEsteem: 'hurts', relationship: 'close-friend' },
         vary: { setting: 'school', person: 'peer', topic: 'work', form: 'statement' },
-        reason: 'Think it. They worked hard on it — these words would hurt their feelings.' },
+        reason: 'Think it. They worked hard on it - these words would hurt their feelings.' },
       { id: 'L1-02', level: 1, cat: 'kind', answer: 'say',
         situation: 'Your friend shows you a drawing they made. You really like how it looks.',
         utterance: 'That drawing looks great!', sayVerb: 'say', object: 'these words',
@@ -50,7 +50,7 @@
         utterance: 'You wet the bed.', sayVerb: 'say', object: 'these words',
         features: { privacy: 'private', relationship: 'classmate' },
         vary: { setting: 'school', person: 'peer', topic: 'body', form: 'statement' },
-        reason: 'Think it. They told you something private — saying it out loud would embarrass them.' },
+        reason: 'Think it. They told you something private - saying it out loud would embarrass them.' },
 
       // ── block 2 ──
       { id: 'L1-06', level: 1, cat: 'looks', answer: 'think',
@@ -64,13 +64,13 @@
         utterance: 'Your coat is inside out.', sayVerb: 'say', object: 'these words',
         features: { changeability: 'fixable-now', audience: 'just-them' },
         vary: { setting: 'school', person: 'peer', topic: 'belongings', form: 'statement' },
-        reason: 'Say it — quietly, just to them. They can fix it right now, so telling them helps.' },
+        reason: 'Say it - quietly, just to them. They can fix it right now, so telling them helps.' },
       { id: 'L1-07', level: 1, cat: 'other', answer: 'say',
         situation: 'You are sitting right next to your friend. Nobody else can hear you. Their shoelace is undone.',
         utterance: 'Your shoelace is undone.', sayVerb: 'say', object: 'these words',
         features: { audience: 'just-them', changeability: 'fixable-now' },
         vary: { setting: 'school', person: 'peer', topic: 'belongings', form: 'statement' },
-        reason: 'Say it — quietly, just to them. They can tie it right now.' },
+        reason: 'Say it - quietly, just to them. They can tie it right now.' },
       { id: 'L1-08', level: 1, cat: 'other', answer: 'think',
         situation: 'You are all the way across the noisy gym from your friend. Everyone is in between. Their shoelace is undone.',
         utterance: 'Your shoelace is undone!', sayVerb: 'say', object: 'these words',
@@ -102,7 +102,7 @@
         utterance: 'Look at my drawing!', sayVerb: 'say', object: 'these words',
         features: { timing: 'wrong-moment', relationship: 'grown-up' },
         vary: { setting: 'school', person: 'teacher', topic: 'work', form: 'exclamation' },
-        reason: 'Think it for now. She is busy with someone else — you can say it when she is finished.' },
+        reason: 'Think it for now. She is busy with someone else - you can say it when she is finished.' },
 
       // ── block 4 ──
       { id: 'L1-14', level: 1, cat: 'other', answer: 'think',
@@ -116,7 +116,7 @@
         utterance: 'Stop! Cars are coming!', sayVerb: 'tell', object: 'this news',
         features: { override: 'help-or-safety', audience: 'others-hear' },
         vary: { setting: 'playground', person: 'peer', topic: 'body', form: 'exclamation' },
-        reason: 'Say it — loudly, and tell a grown-up! When someone might get hurt, it is always right to speak up.' },
+        reason: 'Say it - loudly, and tell a grown-up! When someone might get hurt, it is always right to speak up.' },
       { id: 'L1-16', level: 1, cat: 'kind', answer: 'say',
         situation: 'You count the stickers on the chart. It is true that your classmate filled a whole row today.',
         utterance: 'You filled a whole row!', sayVerb: 'say', object: 'these words',
@@ -128,7 +128,7 @@
         utterance: 'You have the fewest stickers.', sayVerb: 'say', object: 'these words',
         features: { truthNotTest: 'true', selfEsteem: 'hurts' },
         vary: { setting: 'school', person: 'peer', topic: 'work', form: 'statement' },
-        reason: 'Think it. It is true — but true is not the test. It would still hurt.' },
+        reason: 'Think it. It is true - but true is not the test. It would still hurt.' },
 
       // ── block 5 ──
       { id: 'L1-17', level: 1, cat: 'other', answer: 'think',
@@ -136,7 +136,7 @@
         utterance: 'I got new shoes!', sayVerb: 'tell', object: 'this news',
         features: { timing: 'wrong-moment', relationship: 'close-friend' },
         vary: { setting: 'school', person: 'peer', topic: 'belongings', form: 'exclamation' },
-        reason: 'Think it for now. Everyone is singing — you can tell your friend at snack time.' },
+        reason: 'Think it for now. Everyone is singing - you can tell your friend at snack time.' },
       { id: 'L1-18', level: 1, cat: 'kind', answer: 'say',
         situation: 'You do not understand how to do the worksheet.',
         utterance: 'Can you help me?', sayVerb: 'ask', object: 'this question',

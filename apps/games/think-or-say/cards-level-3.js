@@ -18,7 +18,7 @@
   global.ThinkOrSayLevel3 = {
     id: 3,
     name: 'Explain',
-    blurb: 'The reason is the target — the learner says why, and you score what they said.',
+    blurb: 'The reason is the target - the learner says why, and you score what they said.',
     cards: [
       // ── block 1 ──
       { id: 'L3-01', level: 3, cat: 'work', answer: 'think',
@@ -26,7 +26,7 @@
         utterance: 'You got stuck a lot.', sayVerb: 'say', object: 'these words',
         features: { selfEsteem: 'hurts', relationship: 'classmate' },
         vary: { setting: 'school', person: 'peer', topic: 'work', form: 'statement' },
-        reason: 'Think it. They already know it was hard — saying it would make them feel worse about reading.',
+        reason: 'Think it. They already know it was hard - saying it would make them feel worse about reading.',
         rationales: [
           'If I said it, you would feel bad about your reading.',
           'You already know you got stuck, so telling you does not help you.',
@@ -37,7 +37,7 @@
         utterance: 'You see a feelings doctor.', sayVerb: 'say', object: 'these words',
         features: { privacy: 'private', audience: 'just-them' },
         vary: { setting: 'school', person: 'peer', topic: 'body', form: 'statement' },
-        reason: 'Think it. They told you in private — it is theirs to tell, not yours.',
+        reason: 'Think it. They told you in private - it is theirs to tell, not yours.',
         rationales: [
           'You told me that in private, so it is yours to tell, not mine.',
           'If I said it, you might not trust me with anything again.',
@@ -72,14 +72,14 @@
         reason: 'Think it. There is nothing they can do about their teeth today, so it would only hurt.',
         rationales: [
           'You cannot change your teeth today, so telling you only makes you feel bad.',
-          'It would not help you — it would just hurt you.',
+          'It would not help you - it would just hurt you.',
         ] },
       { id: 'L3-07', level: 3, cat: 'other', answer: 'think',
         situation: 'You and your friend are in the middle of a crowded assembly. The label on their sweater is sticking up at the back.',
         utterance: 'Your label is sticking up!', sayVerb: 'say', object: 'these words',
         features: { audience: 'others-hear', changeability: 'fixable-now' },
         vary: { setting: 'school', person: 'peer', topic: 'belongings', form: 'exclamation' },
-        reason: 'Think it for now. They could fix it — but everyone would hear, so wait until you are on your own.',
+        reason: 'Think it for now. They could fix it - but everyone would hear, so wait until you are on your own.',
         rationales: [
           'Everyone would hear me, and you would feel embarrassed.',
           'I can wait until we are on our own and tell you then.',
@@ -102,7 +102,7 @@
         reason: 'Say it. Asking a close friend gently shows you care, and they can choose what to tell you.',
         rationales: [
           'You are my close friend, so asking gently shows I care about you.',
-          'You can choose to tell me or not — I am only asking, not telling everyone.',
+          'You can choose to tell me or not - I am only asking, not telling everyone.',
         ] },
 
       // ── block 3 ──
@@ -111,7 +111,7 @@
         utterance: 'Are you okay?', sayVerb: 'ask', object: 'this question',
         features: { relationship: 'stranger', privacy: 'private' },
         vary: { setting: 'bus', person: 'stranger', topic: 'body', form: 'question' },
-        reason: 'Think it. You do not know them and they turned away — tell your own grown-up instead.',
+        reason: 'Think it. You do not know them and they turned away - tell your own grown-up instead.',
         rationales: [
           'I do not know you, and you turned away, so you may want to be left alone.',
           'I can tell my grown-up instead of asking you myself.',
@@ -121,7 +121,7 @@
         utterance: 'I went to the lake!', sayVerb: 'tell', object: 'this news',
         features: { timing: 'wrong-moment', relationship: 'grown-up' },
         vary: { setting: 'school', person: 'teacher', topic: 'work', form: 'exclamation' },
-        reason: 'Think it for now. She is helping someone — your news can wait a minute.',
+        reason: 'Think it for now. She is helping someone - your news can wait a minute.',
         rationales: [
           'She is busy helping someone right now, so my news can wait.',
           'If I say it now, she has to stop helping them.',
@@ -141,7 +141,7 @@
         utterance: 'I can smell smoke!', sayVerb: 'tell', object: 'this news',
         features: { override: 'help-or-safety', timing: 'wrong-moment' },
         vary: { setting: 'school', person: 'teacher', topic: 'smell', form: 'exclamation' },
-        reason: 'Say it! She is busy — but somebody could get hurt, and safety always comes first.',
+        reason: 'Say it! She is busy - but somebody could get hurt, and safety always comes first.',
         rationales: [
           'Somebody could get hurt, so this is more important than waiting.',
           'When it is about being safe, I say it straight away even if she is busy.',
@@ -155,35 +155,35 @@
         vary: { setting: 'school', person: 'teacher', topic: 'smell', form: 'exclamation' },
         reason: 'Think it. Nobody is in danger, she is busy, and it would hurt whoever brought that lunch.',
         rationales: [
-          'Nobody is in danger, so I can wait — and it would hurt the person whose lunch it is.',
+          'Nobody is in danger, so I can wait - and it would hurt the person whose lunch it is.',
           'It is not important enough to stop her helping somebody else.',
         ] },
       { id: 'L3-14', level: 3, cat: 'private', answer: 'think',
-        situation: 'It is true — you saw your classmate crying on their own in the bathroom this morning.',
+        situation: 'It is true - you saw your classmate crying on their own in the bathroom this morning.',
         utterance: 'You were crying in the bathroom.', sayVerb: 'say', object: 'these words',
         features: { truthNotTest: 'true', privacy: 'private' },
         vary: { setting: 'school', person: 'peer', topic: 'body', form: 'statement' },
-        reason: 'Think it. It being true does not make it yours to say — they went somewhere private for a reason.',
+        reason: 'Think it. It being true does not make it yours to say - they went somewhere private for a reason.',
         rationales: [
           'It being true does not make it mine to say.',
           'You were on your own for a reason, so saying it would embarrass you.',
         ] },
       { id: 'L3-15', level: 3, cat: 'kind', answer: 'say',
-        situation: 'It is true — you saw your classmate win the running race this morning, in front of everyone.',
+        situation: 'It is true - you saw your classmate win the running race this morning, in front of everyone.',
         utterance: 'You won the race!', sayVerb: 'say', object: 'these words',
         features: { truthNotTest: 'true', privacy: 'not-private' },
         vary: { setting: 'playground', person: 'peer', topic: 'work', form: 'exclamation' },
         reason: 'Say it! It is true and it is not private, so saying it makes them feel good.',
         rationales: [
           'It is true, and everybody already saw it, so it is not a private thing.',
-          'Saying it makes you feel good — true and kind go together here.',
+          'Saying it makes you feel good - true and kind go together here.',
         ] },
       { id: 'L3-17', level: 3, cat: 'other', answer: 'say',
         situation: 'A little kid at the park has climbed up high and cannot get down. No grown-up has noticed yet.',
         utterance: 'That kid needs help!', sayVerb: 'tell', object: 'this news',
         features: { override: 'help-or-safety', audience: 'others-hear' },
         vary: { setting: 'playground', person: 'stranger', topic: 'body', form: 'exclamation' },
-        reason: 'Say it — loudly! Somebody could fall, so getting a grown-up straight away is right.',
+        reason: 'Say it - loudly! Somebody could fall, so getting a grown-up straight away is right.',
         rationales: [
           'Somebody could fall, so I say it straight away and loudly.',
           'Getting a grown-up is the fastest way to help them.',
@@ -195,17 +195,17 @@
         utterance: 'I already have this.', sayVerb: 'say', object: 'these words',
         features: { selfEsteem: 'hurts', relationship: 'close-friend' },
         vary: { setting: 'home', person: 'family', topic: 'belongings', form: 'statement' },
-        reason: 'Think it. They chose it for you — saying it would spoil how good they feel about giving it.',
+        reason: 'Think it. They chose it for you - saying it would spoil how good they feel about giving it.',
         rationales: [
           'You chose it for me, so saying it would spoil how good you feel.',
           'I can say thank you out loud and keep the other part in my head.',
         ] },
       { id: 'L3-18', level: 3, cat: 'work', answer: 'think',
-        situation: 'It is true — you counted, and your classmate got fewer stars than anybody else this week.',
+        situation: 'It is true - you counted, and your classmate got fewer stars than anybody else this week.',
         utterance: 'You got the fewest stars.', sayVerb: 'say', object: 'these words',
         features: { truthNotTest: 'true', selfEsteem: 'hurts' },
         vary: { setting: 'school', person: 'peer', topic: 'work', form: 'statement' },
-        reason: 'Think it. True is not the test — it is true AND it would hurt, so it stays inside.',
+        reason: 'Think it. True is not the test - it is true AND it would hurt, so it stays inside.',
         rationales: [
           'True is not the test. It is true AND it would hurt you.',
           'You already know your own number, so saying it just makes you feel worse.',

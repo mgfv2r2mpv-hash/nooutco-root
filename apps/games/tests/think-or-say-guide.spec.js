@@ -73,7 +73,7 @@ test('the Guide button opens a screen carrying every declared section', async ({
 
   // The title and the audience line, so the file a service prints says what it
   // is and who it is for on its first two lines.
-  await expect(page.locator('#guide-body .guide-title')).toHaveText('Think or Say? — Staff Guide');
+  await expect(page.locator('#guide-body .guide-title')).toHaveText('Think or Say? - Staff Guide');
   expect(text).toContain('For behaviour technicians');
 });
 
@@ -286,7 +286,7 @@ test('the standalone file is a complete, self-contained HTML document', async ({
   expect(html.startsWith('<!DOCTYPE html>')).toBe(true);
   expect(html).toContain('<html lang="en">');
   expect(html).toContain('<meta charset="utf-8">');
-  expect(html).toContain('Think or Say? — Staff Guide');
+  expect(html).toContain('Think or Say? - Staff Guide');
   // Its own stylesheet, because it has to survive as a file on a desktop with
   // no link back to this site.
   expect(html).toMatch(/<style>[\s\S]*guide-table[\s\S]*<\/style>/);

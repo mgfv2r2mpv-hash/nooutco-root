@@ -67,15 +67,15 @@
                      values: ['private', 'not-private'] },
     changeability: { label: 'Can the person change it right now, or not?',
                      values: ['fixable-now', 'not-fixable'] },
-    audience:      { label: 'Who else can hear — audience and volume',
+    audience:      { label: 'Who else can hear - audience and volume',
                      values: ['just-them', 'others-hear'] },
-    relationship:  { label: 'Who is it about — close friend, classmate, stranger, grown-up',
+    relationship:  { label: 'Who is it about - close friend, classmate, stranger, grown-up',
                      values: ['close-friend', 'classmate', 'grown-up', 'stranger'] },
-    timing:        { label: 'When — right now, or later in private',
+    timing:        { label: 'When - right now, or later in private',
                      values: ['right-moment', 'wrong-moment'] },
     override:      { label: 'Does someone need help, or is safety at stake? (always SAY)',
                      values: ['help-or-safety', 'none'] },
-    truthNotTest:  { label: 'Truth is not the test — true but hurtful is still THINK',
+    truthNotTest:  { label: 'Truth is not the test - true but hurtful is still THINK',
                      values: ['true', 'not-sure'] },
   };
 
@@ -122,7 +122,7 @@
     }
     ['situation', 'utterance', 'reason'].forEach(function (field) {
       if (/you think/i.test(spec[field])) {
-        fail(spec.id, field + ' says "you think" — it gives the answer away');
+        fail(spec.id, field + ' says "you think" - it gives the answer away');
       }
     });
 

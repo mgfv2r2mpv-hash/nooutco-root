@@ -462,9 +462,9 @@ function populateCategories() {
  * tag or a placement the module does not offer cannot appear in the panel.
  */
 const TAG_LABELS = {
-  near: 'Near — same territory, new instance',
-  far: 'Far — a person, place or thing this level never pairs with it',
-  deictic: 'Deictic — the learner also has to say why, in I–you terms',
+  near: 'Near - same territory, new instance',
+  far: 'Far - a person, place or thing this level never pairs with it',
+  deictic: 'Deictic - the learner also has to say why, in I–you terms',
 };
 const PLACEMENT_LABELS = { before: 'Before the deck', interleaved: 'Interleaved', after: 'After the deck' };
 
@@ -753,7 +753,7 @@ function renderProbeBanner(sc) {
     return;
   }
   el.probeBanner.textContent =
-    'Probe — supports off (' + sc.probeTags.join(' + ') + '). ' +
+    'Probe - supports off (' + sc.probeTags.join(' + ') + '). ' +
     'Prompting still works, and records this as a trained trial.';
   el.probeBanner.hidden = false;
 }
@@ -848,7 +848,7 @@ function answerCorrect(card) {
 
   // At Level 3 the tile is only half the trial: the response the programme
   // targets is the spoken REASON. The trial is therefore neither revealed nor
-  // recorded here — the game asks, the technician scores what was said, and
+  // recorded here - the game asks, the technician scores what was said, and
   // recordResult() runs on the way to the next card.
   if (needsRationale(state.current)) { askRationale(state.current); return; }
 
@@ -890,7 +890,7 @@ function showReason() {
  *
  * Read off the card rather than off the settings panel: a Level 3 probe is
  * generated, and it is a Level 3 item because its level says so. There is no
- * switch for this — "the reason is the target" is what Level 3 IS, so making it
+ * switch for this - "the reason is the target" is what Level 3 IS, so making it
  * optional would make the level mean two different things on two devices.
  */
 function needsRationale(sc) {
@@ -914,7 +914,7 @@ const scoreButtons = () => Array.from(el.rationaleScores.querySelectorAll('butto
  *
  * The exemplars wait behind a button, even when "Show Reason After" is on. If
  * they appeared with the ask, the technician would be reading model answers
- * aloud before the learner had said anything — a prompt, delivered by the
+ * aloud before the learner had said anything - a prompt, delivered by the
  * layout. And on a probe trial the reveal is a withheld support, so the button
  * is not offered at all: `supportOn` is the single accessor that decides.
  */
@@ -979,8 +979,8 @@ function scheduleAutoPrompt() {
   clearPromptTimer();
   // `promptDelaySecs` is already an int here: the store clamps it on load and
   // editSetting() re-normalizes the select's string on every edit. Reading the
-  // control instead used to hand `parseInt('')` — NaN, which setTimeout treats
-  // as 0 — to the learner as an instant prompt whenever the stored value was
+  // control instead used to hand `parseInt('')` - NaN, which setTimeout treats
+  // as 0 - to the learner as an instant prompt whenever the stored value was
   // one the select could not display.
   const delay = state.cfg.promptDelay ? state.cfg.promptDelaySecs * 1000 : 0;
   state.promptTimer = setTimeout(() => { if (!state.locked) doPrompt(); }, delay);
@@ -1020,7 +1020,7 @@ function nextTrial() {
   // recorded and this is a no-op for it.
   if (!state.recorded) recordResult();
 
-  // Re-present a missed card once, at the end of the deck — with a FRESH
+  // Re-present a missed card once, at the end of the deck - with a FRESH
   // SURFACE where the generator carries the card's criterial configuration.
   // Same criterial item, different person, place or thing, so the repeat cannot
   // be passed on a memorised surface feature. A card whose configuration no
@@ -1073,7 +1073,7 @@ function removeDoneCard() {
 
 // ── Results / data ─────────────────────────────────────────────────────
 /**
- * Trained or generalization — decided once, when the trial is scored.
+ * Trained or generalization - decided once, when the trial is scored.
  *
  * The lifecycle, in full (Deliverable 5, RESEARCH.md §4.2):
  *
@@ -1090,8 +1090,8 @@ function removeDoneCard() {
  * generalization one. Nothing is discarded and nothing goes uncounted.
  *
  * The "seen" set is per SESSION and is never persisted. A stored one would be a
- * lie waiting to happen — clear the store and a trained item silently becomes a
- * generalization datum again — which is the whole reason probes are generated
+ * lie waiting to happen - clear the store and a trained item silently becomes a
+ * generalization datum again - which is the whole reason probes are generated
  * rather than remembered.
  */
 function classifyTrial(sc) {
@@ -1125,7 +1125,7 @@ function recordResult() {
     probeTags: cls.probeTags,
     probeNote: cls.probeNote,
     // The Level 3 rationale. Blank at Levels 1 and 2, where no reason is asked
-    // for — a blank column is honest about that, a zero would not be. The note
+    // for - a blank column is honest about that, a zero would not be. The note
     // is the technician's own words and stays on this device, like every other
     // field here (apps/games/CLAUDE.md §5).
     rationaleScore: needsRationale(sc) ? state.rationaleScore : '',
@@ -1177,7 +1177,7 @@ function buildPrint() {
                    : r.outcome === 'prompted' ? 'Prompted' : 'Error then correct';
     return `<tr>
       <td>${i + 1}</td>
-      <td>${r.level == null ? '—' : r.level}</td>
+      <td>${r.level == null ? '-' : r.level}</td>
       <td>${r.cat}</td>
       <td>${escapeHtml(r.scenario)}</td>
       <td>${r.answer}</td>
@@ -1198,7 +1198,7 @@ function buildPrint() {
   const prompted = state.results.filter(r => r.prompted).length;
   const errs = state.results.reduce((a, r) => a + r.errors, 0);
   const d = new Date();
-  el.printMeta.textContent = `${d.toLocaleDateString()} ${d.toLocaleTimeString()} — ${total} cards`;
+  el.printMeta.textContent = `${d.toLocaleDateString()} ${d.toLocaleTimeString()} - ${total} cards`;
   el.printSummary.innerHTML =
     `<span><strong>Independent:</strong> ${indep}/${total}</span>` +
     `<span><strong>Prompted:</strong> ${prompted}</span>` +
@@ -1214,9 +1214,9 @@ function buildPrint() {
  * the sheet should not blur which is which.
  */
 function rationaleCell(r) {
-  if (!r.rationaleScore) return '—';
+  if (!r.rationaleScore) return '-';
   const label = RATIONALE_LABELS[r.rationaleScore] || r.rationaleScore;
-  return escapeHtml(label) + (r.rationaleNote ? ' — ' + escapeHtml(r.rationaleNote) : '');
+  return escapeHtml(label) + (r.rationaleNote ? ' - ' + escapeHtml(r.rationaleNote) : '');
 }
 
 /** A count of the Level 3 reason scores, shown only once one has been given. */
@@ -1241,7 +1241,7 @@ function rationaleTally() {
  *
  * Supported probes and re-exposures sit in the TRAINED bucket with the reason
  * they are there, so the sheet accounts for every trial that ran. Nothing here
- * interprets anything — it is a count of what happened.
+ * interprets anything - it is a count of what happened.
  */
 function buildGeneralizationSplit() {
   const rows = state.results;
@@ -1263,14 +1263,14 @@ function buildGeneralizationSplit() {
   const keys = [];
   gen.forEach(r => { if (keys.indexOf(r.probeTags) < 0) keys.push(r.probeTags); });
   keys.forEach(k => {
-    out.push(line('Generalization — ' + (k || 'untagged'), gen.filter(r => r.probeTags === k),
+    out.push(line('Generalization - ' + (k || 'untagged'), gen.filter(r => r.probeTags === k),
       'Untrained items, supports withheld'));
   });
 
   const notes = [];
   supported.forEach(r => { if (notes.indexOf(r.probeNote) < 0) notes.push(r.probeNote); });
   notes.forEach(n => {
-    out.push(line('In trained — probe, ' + n, supported.filter(r => r.probeNote === n),
+    out.push(line('In trained - probe, ' + n, supported.filter(r => r.probeNote === n),
       n === 're-exposure' ? 'Already run this session, so not a generalization datum'
                           : 'A support was delivered, so not a generalization datum'));
   });
@@ -1331,7 +1331,7 @@ function init() {
   el.btnLearnStart.addEventListener('click', enterTrials);
   el.btnPrompt.addEventListener('click', doPrompt);
 
-  // Staff guide — the screen, and the same guide as a file.
+  // Staff guide - the screen, and the same guide as a file.
   el.btnGuide.addEventListener('click', showGuide);
   el.btnGuideClose.addEventListener('click', hideGuide);
   el.btnGuideCloseFoot.addEventListener('click', hideGuide);
@@ -1354,14 +1354,14 @@ function init() {
     el.btnExtraToggle.setAttribute('aria-expanded', 'false');
   });
 
-  // Persist settings on change — one control at a time, so only the option the
+  // Persist settings on change - one control at a time, so only the option the
   // technician actually edited is read back off the panel.
   for (const control of SETTINGS_CONTROLS) {
     el[control.node].addEventListener('change', () => editSetting(control));
   }
 
-  // The learner slot is not a persisted OPTION — it names which saved set of
-  // options is in force — so it is wired here rather than in SETTINGS_CONTROLS.
+  // The learner slot is not a persisted OPTION - it names which saved set of
+  // options is in force - so it is wired here rather than in SETTINGS_CONTROLS.
   el.selLearner.addEventListener('change', () => switchLearner(el.selLearner.value));
 
   // Timer
@@ -1396,7 +1396,7 @@ window.__thinkOrSay = Object.freeze({
   // can produce rather than sampling it through the UI.
   generator: GEN,
   // The probe subsystem: tagging, selection, placement and the suppression list.
-  // Read-only, and no player data — the tag of an item is a property of the item.
+  // Read-only, and no player data - the tag of an item is a property of the item.
   probes: PROBES,
   // The staff guide's single source, so a spec can assert that the in-game
   // screen and the standalone file both come from it rather than comparing two

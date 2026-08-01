@@ -154,7 +154,7 @@ test('the optional note is recorded, and stays optional', async ({ page }) => {
   // The note travels beside the score on the sheet, not folded into it.
   const first = await page.locator('#results-body tr').first()
     .evaluate(tr => tr.querySelectorAll('td')[11].textContent);
-  expect(first).toBe('Partly correct — Said it would be mean, not why');
+  expect(first).toBe('Partly correct - Said it would be mean, not why');
 });
 
 test('the report tallies the reason scores', async ({ page }) => {
@@ -328,7 +328,7 @@ test('Levels 1 and 2 leave the reason columns blank rather than filling them in'
     expect(rows.every(r => r.rationaleNote === '')).toBe(true);
     const cells = await page.locator('#results-body tr')
       .evaluateAll(trs => trs.map(tr => tr.querySelectorAll('td')[11].textContent));
-    expect(cells).toEqual(['—', '—', '—']);
+    expect(cells).toEqual(['-', '-', '-']);
     // No tally is printed for a session that was never asked for a reason.
     const summary = await page.locator('#print-summary').textContent();
     expect(summary).not.toContain('Reasons:');
