@@ -3905,12 +3905,12 @@
   },
   "/shared/stimuli/uploads/T_vehicles/police-car.png": {
     "stimulus": "vehicles-police-car",
-    "sha256": "f7490aec77f2bfdab58284e5979ccdd9d952ab9f1c06de5c94132b46649d47b4",
+    "sha256": "10c613903261d7ee14c091487d9c0470a841ce371f0d62e7aa24149515b2adcc",
     "library": "/shared/stimuli/img/T_vehicles/police-car.png"
   },
   "/shared/stimuli/uploads/T_vehicles/train.png": {
     "stimulus": "vehicles-train",
-    "sha256": "2a3be7f66568d0c931c0b3d5592b427325b62044c017a32151224e1a2d87835b",
+    "sha256": "c5214c6cb30959f172fb1bac251b35cec64b969ca3bb033750c495770575b3f5",
     "library": "/shared/stimuli/img/T_vehicles/train.png"
   },
   "/shared/stimuli/uploads/T_vehicles/truck.jpg": {
