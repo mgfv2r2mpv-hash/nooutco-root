@@ -100,6 +100,14 @@ const STAGE_MIN_ASPECT_TALL = 1.15;
 const WALK_MIN = 0.13;
 const WALK_MAX = 0.87;
 
+/**
+ * How long the scene is left alone before the question arrives — long enough to
+ * find him, follow his turn, and see which snack has appeared. The snack's own
+ * drop-in runs inside this window, so shortening it past the drop would put the
+ * card up while the snack was still moving.
+ */
+const SETTLE_MS = 1150;
+
 const PRAISE = {
   matching: [
     'You matched every single one! Our friend has a whole snack to share now — everything is better together.',
@@ -183,12 +191,16 @@ const state = {
   screen: 'task',
   task: null,
   place: null,
-  foodPlan: [],       // ordered food keys for this quest, honey last
-  foodIndex: 0,
-  collected: [],
+  foodTarget: 0,      // how many snacks the party needs — the token goal
+  currentFood: '',    // the snack on the stage right now
+  collected: [],      // the snacks actually acquired, in order
+  fruitBag: [],       // fruits still to be dealt before the bag refills
+  lastFruit: '',      // the fruit the bag last dealt, so a refill cannot repeat it
   roundNum: 0,
   questActive: false,
   busy: false,
+  awaitingAnswer: false,   // the card is up and a response can be given
+  pendingSpeak: '',        // receptive SD, held until the card carrying it is up
 
   // Sprite positions, as fractions of stage width
   friendX: 0.22,
@@ -688,11 +700,44 @@ window.addEventListener('resize', () => { if (state.screen === 'quest') layoutSt
 
 // ── Quest ──────────────────────────────────────────────────────────
 
-function currentFoodKey() { return state.foodPlan[state.foodIndex]; }
+function currentFoodKey() { return state.currentFood; }
 
-function planFood(n) {
-  const fruit = shuffle(FRUIT.slice()).slice(0, Math.max(0, n - 1));
-  return fruit.concat([HONEY]);
+/**
+ * The snack for the slot being worked on now — a bag draw.
+ *
+ * All six fruits go in a bag, are dealt out without replacement, and the bag
+ * refills when it empties. The quest still runs to *any* goal, because its
+ * length is the token target and never the size of the pool — dealing one fixed
+ * hand of `slice(0, n - 1)` was the bug that silently capped an eight-token
+ * quest at seven, leaving the goal unreachable and a field of one giving the
+ * answer away once the pool ran dry.
+ *
+ * Why a bag rather than an independent draw. The independent draw it replaces
+ * was genuinely random, and measured as such: 175 draws came out at 12.6-20.6%
+ * per fruit against 16.7% expected, with adjacent repeats at 12.7% against
+ * 16.7%. It was not broken — it *clumped*, because that is what independence
+ * does, and `watermelon, watermelon, dates, dates` is what a learner sees when
+ * it does. Even spread is the better teaching behaviour, bought at the price of
+ * the last fruits in a bag being predictable.
+ *
+ * The refill re-draws when the new bag would open on the fruit the old one
+ * closed with. That seam is the only place a bag can still repeat back to back,
+ * and not repeating back to back is precisely what the bag is for. With six
+ * fruits a reshuffle always has an alternative, so the loop cannot spin.
+ *
+ * The honey is the last slot and only the last slot. Asking for it by position
+ * rather than storing it in a plan means it survives a snack falling away: a
+ * failed final round redraws the honey, it does not demote it to a fruit.
+ */
+function drawFood() {
+  if (state.collected.length >= state.foodTarget - 1) return HONEY;
+  if (!state.fruitBag.length) {
+    do {
+      state.fruitBag = shuffle(FRUIT.slice());
+    } while (state.lastFruit && state.fruitBag[state.fruitBag.length - 1] === state.lastFruit);
+  }
+  state.lastFruit = state.fruitBag.pop();
+  return state.lastFruit;
 }
 
 function startQuest(place) {
@@ -709,9 +754,13 @@ function startQuest(place) {
   el.crumbPlace.textContent = place.name;
   el.stageScene.src = `assets/scenes/${place.id}.webp`;
 
-  state.foodPlan = planFood(foodCount());
-  state.foodIndex = 0;
+  state.foodTarget = foodCount();
   state.collected = [];
+  // A fresh bag per quest — a new quest should not inherit half a bag, or its
+  // opening fruits would be constrained by a quest the learner already finished.
+  state.fruitBag = [];
+  state.lastFruit = '';
+  state.currentFood = drawFood();
   state.roundNum = 0;
   state.questActive = true;
   state.sampleDeck = [];
@@ -728,7 +777,10 @@ function startQuest(place) {
   showScreen('quest');
   requestAnimationFrame(() => {
     layoutStage();
-    spawnFood(true);
+    // The opening snack drops in like every other one. Placing the first one
+    // silently would make the quest start with the board already arranged,
+    // which is the one moment the learner most needs to watch it being set.
+    spawnFood(false);
     beginTrial();
   });
 }
@@ -760,7 +812,7 @@ function spawnFood(immediate) {
 }
 
 function updateRoundPill() {
-  const total = state.foodPlan.length;
+  const total = state.foodTarget;
   const got = state.collected.length;
   el.roundPill.textContent = `Snack ${Math.min(got + 1, total)} of ${total}`;
 }
@@ -769,13 +821,15 @@ function announce(msg) { el.live.textContent = msg; }
 
 // ── Trials ─────────────────────────────────────────────────────────
 
-function beginTrial() {
+async function beginTrial() {
   if (!state.questActive) return;
   state.roundNum++;
   state.trialErrors = 0;
   state.trialPrompted = false;
   state.trialStart = Date.now();
   state.trialToken++;
+  state.awaitingAnswer = false;
+  const token = state.trialToken;
 
   const next = nextSample();
   if (!next) {
@@ -789,6 +843,50 @@ function beginTrial() {
   buildTrialTiles();
   renderTrial();
   announce(`Round ${state.roundNum}.`);
+
+  // The card covers the scene, so it must not arrive with the scene. The
+  // learner watches him and the snack settle first — that is how they learn
+  // what they are working toward and where it is — and only then is the
+  // question put to them.
+  await settleStage();
+  if (!state.questActive || state.trialToken !== token) return;
+  showTrialCard();
+  state.awaitingAnswer = true;
+  speakPending();
+}
+
+/**
+ * Say the receptive SD, now that the card carrying it is on screen.
+ *
+ * Held until this point on purpose: the spoken SD and the array have to arrive
+ * together. A word spoken over a bare scene is an SD with nothing to respond to,
+ * and by the time the pictures appear the learner has already heard it and has
+ * nothing left to match it against.
+ */
+function speakPending() {
+  const word = state.pendingSpeak;
+  state.pendingSpeak = '';
+  if (word) speakWord(word);
+}
+
+/**
+ * The beat between the scene being ready and the question being asked.
+ *
+ * Without it every round opened with the card already up, so the stage was
+ * only ever visible *after* an answer — the learner never saw the snack they
+ * were about to earn, and the character they are meant to be helping was
+ * behind the tiles the whole time they were deciding.
+ *
+ * He turns to face the snack during the pause, which reads as him noticing it
+ * and gives the beat a reason to exist beyond a delay.
+ */
+async function settleStage() {
+  if (!state.questActive) return;
+  if (Math.abs(state.foodX - state.friendX) > 0.005) {
+    state.facing = state.foodX > state.friendX ? 1 : -1;
+    placeWalker(false);
+  }
+  await sleep(prefersReducedMotion() ? 260 : SETTLE_MS);
 }
 
 function buildTrialTiles() {
@@ -865,7 +963,11 @@ function renderTrial() {
     word.className = 'sample-word';
     word.textContent = state.sampleLabel;
     el.trialSample.appendChild(word);
-    if (state.speak) speakWord(state.sampleLabel);
+    // Queued, not spoken. The trial is built before the settle beat, so
+    // speaking here would say the word at a scene the learner is still reading,
+    // with no card and no pictures to attach it to — an SD delivered to an
+    // empty array. It is spoken when the card carrying it is actually up.
+    state.pendingSpeak = state.speak ? state.sampleLabel : '';
   } else if (task.id === 'matching') {
     el.trialSample.hidden = false;
     const pic = document.createElement('img');
@@ -909,7 +1011,6 @@ function renderTrial() {
   });
 
   layoutTrialCard();
-  showTrialCard();
 }
 
 function speakWord(word) {
@@ -971,6 +1072,7 @@ function onScore(kind) {
 
 async function finishTrial(outcome) {
   state.busy = true;
+  state.awaitingAnswer = false;
   el.trialGrid.querySelectorAll('.pick').forEach((b) => { b.disabled = true; });
   el.scoreRow.querySelectorAll('.score-btn').forEach((b) => { b.disabled = true; });
 
@@ -1005,10 +1107,19 @@ async function finishTrial(outcome) {
 
   if (delivering) {
     await collectFood();
-    if (state.collected.length >= state.foodPlan.length) { finishQuest(); return; }
-    state.foodIndex++;
+    if (state.collected.length >= state.foodTarget) { finishQuest(); return; }
+    state.currentFood = drawFood();
     spawnFood(false);
     await sleep(prefersReducedMotion() ? 60 : 320);
+  } else if (outcome === 'Error') {
+    // A wrong answer costs him this snack: it drops away and a fresh one is
+    // drawn somewhere else. He keeps everything already collected — the strip
+    // never loses a slot — so the cost is the trip, not the progress.
+    await dropFood();
+    state.currentFood = drawFood();
+    spawnFood(false);
+    announce('That one got away. Here comes another.');
+    await sleep(prefersReducedMotion() ? 60 : 260);
   } else {
     announce('He is getting closer.');
     await sleep(prefersReducedMotion() ? 60 : 220);
@@ -1116,21 +1227,39 @@ async function collectFood() {
   updateRoundPill();
 }
 
+/** The snack drops away after a wrong answer. Visible, and quick — the learner
+ *  should see *this* one leave so the next one reads as a fresh chance rather
+ *  than as the same snack teleporting. */
+async function dropFood() {
+  if (el.food.hidden) return;
+  el.food.classList.add('is-dropping');
+  await sleep(prefersReducedMotion() ? 80 : 420);
+  el.food.hidden = true;
+  el.food.classList.remove('is-dropping');
+}
+
 /**
  * The snack strip IS the token board. The tokens in this game are the snacks
  * themselves — he is getting ready for the party, and the quest is done when he
- * has as many as the goal asks for — so the whole plan is drawn at once: the
- * snacks already collected, and a waiting slot for each one still to come. A
- * generic star tally alongside it would be a second, competing count of the
- * same thing, which is why the shared emoji display is hidden on this game.
+ * has as many as the goal asks for — so the strip draws one slot per snack the
+ * party needs: the ones already collected, and a waiting slot for each still to
+ * come. A generic star tally alongside it would be a second, competing count of
+ * the same thing, which is why the shared emoji display is hidden on this game.
+ *
+ * Filled slots show the snack *actually* acquired, which is why they read from
+ * `collected` rather than from any plan — under a variable-ratio schedule the
+ * snacks arrive on trials nobody can name in advance, and only the ones he
+ * really got belong on the board.
  */
 function renderSnackStrip(landed = false) {
   const strip = el.snackStrip;
   strip.innerHTML = '';
-  state.foodPlan.forEach((key, i) => {
+  for (let i = 0; i < state.foodTarget; i++) {
     const got = i < state.collected.length;
+    const isLast = i === state.foodTarget - 1;
     const slot = document.createElement('span');
-    slot.className = got ? 'snack-slot is-got' : 'snack-slot';
+    slot.className = 'snack-slot';
+    if (got) slot.classList.add('is-got');
     if (got) {
       const img = document.createElement('img');
       img.src = `assets/food/${state.collected[i]}.webp`;
@@ -1139,10 +1268,20 @@ function renderSnackStrip(landed = false) {
       img.height = 28;
       if (landed && i === state.collected.length - 1) img.className = 'just-landed';
       slot.appendChild(img);
+    } else if (isLast) {
+      // The honey is always the last snack, so the final slot can show what it
+      // is waiting for. It gives the strip a destination to read toward.
+      slot.classList.add('is-honey-slot');
+      const img = document.createElement('img');
+      img.src = `assets/food/${HONEY}.webp`;
+      img.alt = '';
+      img.width = 28;
+      img.height = 28;
+      slot.appendChild(img);
     }
     strip.appendChild(slot);
-  });
-  strip.setAttribute('aria-label', `${state.collected.length} of ${state.foodPlan.length} snacks collected`);
+  }
+  strip.setAttribute('aria-label', `${state.collected.length} of ${state.foodTarget} snacks collected`);
 }
 
 // ── Trial records ──────────────────────────────────────────────────
@@ -1460,9 +1599,13 @@ window.__sq = {
       targetLabel: state.sampleLabel,
       round: state.roundNum,
       busy: state.busy,
+      // The question is not askable the moment the walk ends any more — the
+      // scene gets a beat to itself first. Drivers must wait on this rather
+      // than on `!busy`, which now clears while the stage is still settling.
+      awaitingAnswer: state.awaitingAnswer,
       foodKey: currentFoodKey() || null,
       collected: state.collected.slice(),
-      foodTotal: state.foodPlan.length,
+      foodTotal: state.foodTarget,
       friendCentreX: state.friendX * layout.w,
       foodCentreX: state.foodX * layout.w,
       friendHalfW: a.halfW,

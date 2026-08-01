@@ -174,9 +174,16 @@
 
     <!-- ── 2. PLACE ───────────────────────────────────────────────── -->
     <section id="screen-place" class="screen" hidden aria-labelledby="place-heading">
-      <div class="story">
-        <h1 id="place-heading" class="story-title">Where should we go?</h1>
-        <p class="story-line">Pick the place for our friend's snack.</p>
+      <!-- Our friend stands here on the choosing screen. The learner is being
+           asked where to take *him*, so he has to be on the page while they
+           decide — not first met once the trials are already running. -->
+      <div class="story story-with-friend">
+        <img class="story-friend" src="assets/friend/friend.webp" alt="Our friend"
+             width="180" height="223" decoding="async">
+        <div class="story-words">
+          <h1 id="place-heading" class="story-title">Where should we go?</h1>
+          <p class="story-line">Pick the place for our friend's snack.</p>
+        </div>
       </div>
       <div class="choice-grid choice-grid-4" id="place-tiles" role="group" aria-label="Choose a place"></div>
       <button type="button" id="btn-back-to-task" class="btn-quiet">← Change task</button>
@@ -210,7 +217,11 @@
               <div id="trial-sample" class="trial-sample" hidden></div>
               <div id="trial-grid" class="trial-grid"></div>
               <div id="score-row" class="score-row" hidden>
-                <div class="score-row-note">Technician — score the vocal response</div>
+                <!-- "verbal", not "vocal": an expressive response is a verbal
+                     operant however it is emitted, so the instruction must not
+                     exclude a learner responding by PECS, an SGD, sign or any
+                     other AAC. Scoring is the same for all of them. -->
+                <div class="score-row-note">Technician — score the verbal response</div>
                 <div class="score-row-btns">
                   <button type="button" class="score-btn score-correct"  data-score="correct">Correct</button>
                   <button type="button" class="score-btn score-prompted" data-score="prompted">Prompted</button>

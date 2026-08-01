@@ -291,12 +291,25 @@ body {
   will-change: transform, opacity;
 }
 .food-img { display: block; width: 100%; height: auto; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.28)); }
-.food.is-appearing { animation: sq-food-in 460ms var(--sq-ease-waddle); }
+.food.is-appearing { animation: sq-food-in 620ms var(--sq-ease-waddle); }
 .food.is-collected { animation: sq-food-pop 520ms var(--sq-ease-waddle) forwards; }
+.food.is-dropping  { animation: sq-food-drop 420ms ease-in forwards; }
 
+/* The snack drops in from above and settles with one small bounce. It used to
+   rise 14px over 460ms, which was too slight and too quick to be noticed — and
+   it has to be noticed, because it is the thing the round is played for. */
 @keyframes sq-food-in {
-  0%   { opacity: 0; transform: translate3d(var(--fx), calc(var(--fy) - 14px), 0) scale(0.6); }
+  0%   { opacity: 0; transform: translate3d(var(--fx), calc(var(--fy) - 58px), 0) scale(0.55); }
+  55%  { opacity: 1; transform: translate3d(var(--fx), var(--fy), 0) scale(1.06); }
+  74%  { transform: translate3d(var(--fx), calc(var(--fy) - 9px), 0) scale(0.98); }
   100% { opacity: 1; transform: translate3d(var(--fx), var(--fy), 0) scale(1); }
+}
+/* A wrong answer: this snack tips over and falls out of the scene. Downward and
+   away, so it reads as lost — deliberately not the collected pop, which lifts. */
+@keyframes sq-food-drop {
+  0%   { opacity: 1; transform: translate3d(var(--fx), var(--fy), 0) rotate(0deg) scale(1); }
+  30%  { transform: translate3d(var(--fx), calc(var(--fy) + 4px), 0) rotate(-16deg) scale(0.98); }
+  100% { opacity: 0; transform: translate3d(var(--fx), calc(var(--fy) + 78px), 0) rotate(24deg) scale(0.8); }
 }
 @keyframes sq-food-pop {
   0%   { opacity: 1; }
@@ -648,7 +661,9 @@ body {
   .walker.is-hopping .walker-bob { animation: none; }
   .food.is-appearing { animation: none; }
   .food.is-collected { animation: sq-food-fade 240ms linear forwards; }
+  .food.is-dropping  { animation: sq-food-fade 200ms linear forwards; }
   @keyframes sq-food-fade { to { opacity: 0; } }
+  .story-friend { animation: none; }
   .snack-strip img.just-landed { animation: none; }
   .trial-card { transition: opacity 160ms linear; }
   .trial-card.is-entering { transform: none; }
@@ -872,3 +887,39 @@ body {
   box-shadow: 0 2px 6px -2px rgba(58, 44, 30, 0.4);
 }
 .snack-slot img { width: 26px; height: 26px; object-fit: contain; }
+
+/* The last slot is always the honey, so it shows what it is holding out for —
+   ghosted, to stay clearly a waiting slot rather than a collected one. */
+.snack-slot.is-honey-slot {
+  border-style: solid;
+  border-color: rgba(226, 145, 58, 0.5);
+  background: rgba(253, 246, 232, 0.55);
+}
+.snack-slot.is-honey-slot img { opacity: 0.34; filter: saturate(0.5); }
+
+/* ── Our friend on the choosing screen ─────────────────────────────── */
+.story-with-friend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(12px, 2.6vw, 28px);
+  max-width: 62ch;
+  text-align: left;
+}
+.story-with-friend .story-words { flex: 0 1 auto; }
+.story-friend {
+  flex: 0 0 auto;
+  width: clamp(96px, 15vw, 168px);
+  height: auto;
+  filter: drop-shadow(0 10px 14px rgba(58, 44, 30, 0.26));
+  animation: sq-friend-idle 3.4s ease-in-out infinite;
+  transform-origin: 50% 92%;
+}
+@keyframes sq-friend-idle {
+  0%, 100% { transform: rotate(-2deg) translateY(0); }
+  50%      { transform: rotate(2deg) translateY(-5px); }
+}
+@media (max-width: 560px) {
+  .story-with-friend { gap: 10px; }
+  .story-friend { width: clamp(74px, 22vw, 104px); }
+}

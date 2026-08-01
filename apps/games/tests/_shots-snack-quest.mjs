@@ -41,12 +41,32 @@ async function seed(page, { scheduleValue = 2, goalTokens = 5 } = {}) {
 
 const peek = (page) => page.evaluate(() => window.__sq.peek());
 
+/** The card no longer arrives with the scene — each round holds the stage for a
+ *  beat first — so a response has to wait for the question to be askable rather
+ *  than for the walk to have ended. */
+async function waitForQuestion(page) {
+  await page.waitForFunction(() => window.__sq.peek().awaitingAnswer, null, { timeout: 25000 });
+}
+
 async function respondCorrect(page) {
+  await waitForQuestion(page);
   if (await page.locator('#score-row').isVisible()) {
     await page.click('.score-btn[data-score="correct"]');
     return;
   }
   const { correctIndex } = await peek(page);
+  await page.click(`#trial-grid .pick[data-index="${correctIndex}"]`);
+}
+
+async function respondError(page) {
+  await waitForQuestion(page);
+  if (await page.locator('#score-row').isVisible()) {
+    await page.click('.score-btn[data-score="incorrect"]');
+    return;
+  }
+  const { correctIndex } = await peek(page);
+  const n = await page.locator('#trial-grid .pick').count();
+  await page.click(`#trial-grid .pick[data-index="${(correctIndex + 1) % n}"]`);
   await page.click(`#trial-grid .pick[data-index="${correctIndex}"]`);
 }
 
@@ -74,7 +94,13 @@ async function run(browser, vp, errors) {
 
   await page.click('#place-tiles .choice-tile[data-place="countryside"]');
   await page.waitForFunction(() => window.__sq.peek().screen === 'quest');
-  await sleep(900);
+  // The settle beat — the whole reason the round is staged. Our friend and the
+  // snack are on an uncovered scene, and the question has not arrived yet. If
+  // this frame shows the card, the staging has regressed.
+  await sleep(560);
+  await shot('03a-settle-beat');
+  await waitForQuestion(page);
+  await sleep(500);
   await shot('03-trial-matching');
 
   // Round 1 — non-delivering under FR2: card leaves, he walks partway.
@@ -144,6 +170,34 @@ async function run(browser, vp, errors) {
   await page.locator('#trial-card').evaluate((n) => { n.hidden = true; });
   await sleep(200);
   await shot('11-party-scene');
+
+  // A goal larger than the fruit pool: eight slots on the board, the honey
+  // waiting in the last one, and the quest running the full eight snacks. Runs
+  // last because it ends on the done screen, where there is nothing to abandon.
+  await seed(page, { scheduleValue: 1, goalTokens: 8 });
+  await page.reload();
+  await page.waitForFunction(() => !!window.__sq);
+  await page.click('#task-tiles .choice-tile[data-task="matching"]');
+  await sleep(300);
+  await page.click('#place-tiles .choice-tile[data-place="countryside"]');
+  await page.waitForFunction(() => window.__sq.peek().screen === 'quest');
+  await waitForQuestion(page);
+  await shot('12-board-of-eight');
+
+  // A wrong answer: the snack he was going for drops out of the scene.
+  await respondError(page);
+  await page.waitForFunction(() => !!document.querySelector('.food.is-dropping'), null, { timeout: 12000 })
+    .catch(() => {});
+  await shot('13-snack-dropping');
+  await waitIdle(page);
+
+  for (let i = 0; i < 14; i++) {
+    if (await page.locator('#screen-done').isVisible()) break;
+    await respondCorrect(page);
+    await waitIdle(page);
+  }
+  await sleep(900);
+  await shot('14-eight-collected');
 
   await ctx.close();
 }

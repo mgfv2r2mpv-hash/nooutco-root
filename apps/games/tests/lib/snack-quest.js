@@ -79,11 +79,33 @@ export async function chooseTask(page, taskId) {
 export async function choosePlace(page, placeId) {
   await page.click(`#place-tiles .choice-tile[data-place="${placeId}"]`);
   await page.waitForFunction(() => window.__sq.peek().screen === 'quest');
+  await waitForQuestion(page);
+}
+
+/**
+ * Wait until the question is actually askable.
+ *
+ * Each round now opens with the stage to itself — our friend and the snack land
+ * and are given a beat to be seen — and only then does the card slide up. `busy`
+ * clears before that beat, so a driver that answered on `!busy` alone would be
+ * clicking at tiles that are not on screen yet.
+ */
+export async function waitForQuestion(page) {
+  // Falls back to "card up and not mid-response" when `awaitingAnswer` is
+  // absent, so a build without the seam still gets driven correctly and fails
+  // on the assertion under test rather than on a missing field.
+  await page.waitForFunction(() => {
+    const p = window.__sq.peek();
+    if (typeof p.awaitingAnswer === 'boolean') return p.awaitingAnswer;
+    const card = document.getElementById('trial-card');
+    return !!card && !card.hidden && !p.busy;
+  }, null, { timeout: 25000 });
   await expect(page.locator('#trial-card')).toBeVisible();
 }
 
 /** Answer the current trial correctly, whichever task is running. */
 export async function respondCorrect(page) {
+  await waitForQuestion(page);
   const scoreVisible = await page.locator('#score-row').isVisible();
   if (scoreVisible) {
     await page.click('.score-btn[data-score="correct"]');
@@ -91,6 +113,27 @@ export async function respondCorrect(page) {
   }
   const idx = (await peek(page)).correctIndex;
   await page.click(`#trial-grid .pick[data-index="${idx}"]`);
+}
+
+/**
+ * Drive a trial to an Error outcome.
+ *
+ * A wrong tap does not end a matching/receptive trial — it flags the tile and
+ * shows the learner which one was right, and the trial ends when they then take
+ * it. So an error is two taps, and a driver that sends only the wrong one
+ * leaves the trial open with nothing having happened.
+ */
+export async function respondError(page) {
+  await waitForQuestion(page);
+  const scoreVisible = await page.locator('#score-row').isVisible();
+  if (scoreVisible) {
+    await page.click('.score-btn[data-score="incorrect"]');
+    return;
+  }
+  const { correctIndex } = await peek(page);
+  const n = await page.locator('#trial-grid .pick').count();
+  await page.click(`#trial-grid .pick[data-index="${(correctIndex + 1) % n}"]`);
+  await page.click(`#trial-grid .pick[data-index="${correctIndex}"]`);
 }
 
 /** Wait until the walk / collect sequence has settled and the game is idle. */
