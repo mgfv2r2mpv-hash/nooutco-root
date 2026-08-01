@@ -298,6 +298,36 @@ identical on every criterial feature except one, with **opposite** answers. Thes
 pairs also seed the probe pool, because a minimum-difference contrast is the sharpest
 available test of whether the defining feature is actually in control.
 
+### 5.4 Cross-labelling, and the pair constraint that bounds it
+
+A card declares **every** criterial dimension that supplies a reason for its answer,
+not only the dimension its pair happens to flip. The test of applicability is the
+card's own reason line: if a technician debriefing the card would name the dimension,
+the card declares it. A dimension a value could merely be *assigned* to — the person
+happens to be a classmate, and nothing about the answer turns on that — is not in
+play, because a label that explains nothing inflates the coverage matrix without
+teaching anything.
+
+Two consequences fall out of §5.3 and are structural rather than editorial:
+
+1. **A cross-label cannot be added to one card alone.** A pair's two halves must
+   declare the same criterial *keys* and differ on exactly one *value*, so a label
+   added to one half must be added to its partner at a value that keeps exactly one
+   dimension differing. Working pair by pair rather than card by card is the only
+   order in which this converges.
+2. **A card declaring `override: 'help-or-safety'` can sit in no pair but the
+   override pair.** Its partner would have to carry the same key; carrying it at
+   `help-or-safety` forces the partner to answer SAY (§5.1, dimension 7), so no THINK
+   half can exist, and carrying it at `none` makes `override` the flipped dimension.
+   A card that earns the safety label therefore leaves whichever other pair it held,
+   and that pair is re-pointed at cards that can hold it.
+
+Where a genuine label and a pair cannot coexist even after re-pointing — Level 1's
+relationship pair is the standing example, where the SAY half is *telling a grown-up
+you feel sick* and cannot say so in code because its THINK partner would have to
+carry the same override — the label is left off and the reason is recorded at the
+card, not silently dropped.
+
 ---
 
 ## 6. Leveling rationale, and the criteria each level's cards must satisfy

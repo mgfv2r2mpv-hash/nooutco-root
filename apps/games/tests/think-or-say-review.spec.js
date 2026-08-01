@@ -107,6 +107,44 @@ const REWRITTEN = {
   },
 };
 
+/**
+ * His label calls, verbatim, as a table of id -> the criterial labels the card
+ * has to declare. These are RULINGS: a card may carry more than the table asks
+ * for, never less, so each entry is asserted as a subset of the card's declared
+ * features. Level 2's calls join this table when Level 2 is audited.
+ */
+const REQUIRED_LABELS = {
+  'L1-04': { note: 'self-esteem: lifts as well', features: { selfEsteem: 'lifts' } },
+  'L1-07': { note: 'Also safety-related (an undone lace is a trip hazard)',
+             features: { override: 'help-or-safety' } },
+  'L1-21': { note: 'self-esteem: hurts', features: { selfEsteem: 'hurts' } },
+  'L1-24': { note: 'is is also not help-or-safety', features: { override: 'none' } },
+  'L1-28': { note: 'who: close-friend', features: { relationship: 'close-friend' } },
+};
+
+/**
+ * The systematic finding behind them — "A lot of these are missing cross
+ * labels". These are the labels the Level 1 audit added because the card's own
+ * REASON names them: a technician debriefing the card would say "it is true and
+ * true is not the test", or "they cannot change their lunch now", so the card
+ * has to declare it. Pinned here so a later edit cannot quietly thin the
+ * coverage matrix back out.
+ */
+const AUDIT_LABELS = {
+  'L1-03': { selfEsteem: 'lifts', privacy: 'private' },
+  'L1-17': { audience: 'others-hear' },
+  'L1-18': { timing: 'right-moment' },
+  'L1-19': { timing: 'right-moment' },
+  'L1-20': { audience: 'others-hear' },
+  'L1-21': { truthNotTest: 'true' },
+  'L1-25': { changeability: 'not-fixable', truthNotTest: 'true' },
+  'L1-27': { truthNotTest: 'true' },
+  'L1-29': { truthNotTest: 'true' },
+  'L1-30': { timing: 'right-moment' },
+  'L1-32': { relationship: 'close-friend' },
+  'L1-33': { selfEsteem: 'lifts' },
+};
+
 test.describe("the maintainer's rulings on the card decks", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(URL);
@@ -125,12 +163,105 @@ test.describe("the maintainer's rulings on the card decks", () => {
     expect(offenders, 'a learner cannot observe what another person thinks').toEqual([]);
   });
 
-  test('no card situation opens with the stock phrase "It is true"', async ({ page }) => {
+  test('no card situation carries the stock phrase "It is true"', async ({ page }) => {
     const cards = await allCards(page);
+    // Not merely as an opening: L1-15 and L1-16 buried the identical device in
+    // their second sentence ("It is true that your classmate has the fewest"),
+    // which is the same card announcing its own criterial feature. The truth has
+    // to be something the learner DID - counted the chart, watched the race.
     const offenders = cards
-      .filter(c => /^\s*it is true\b/i.test(c.situation))
-      .map(c => `${c.id}: "${c.situation.slice(0, 40)}..."`);
+      .filter(c => /\bit is true\b/i.test(c.situation))
+      .map(c => `${c.id}: "${c.situation.slice(0, 60)}..."`);
     expect(offenders, 'the card has to carry the truth in its substance').toEqual([]);
+  });
+
+  test('every card the maintainer relabelled declares the labels he called for', async ({ page }) => {
+    const cards = await allCards(page);
+    const byId = Object.fromEntries(cards.map(c => [c.id, c]));
+
+    for (const [id, want] of Object.entries(REQUIRED_LABELS)) {
+      expect(byId[id], `${id} still exists`).toBeTruthy();
+      for (const [dim, value] of Object.entries(want.features)) {
+        expect(byId[id].features[dim], `${id} ("${want.note}") declares ${dim}=${value}`)
+          .toBe(value);
+      }
+    }
+  });
+
+  test('the cross-labels the audit found are still declared', async ({ page }) => {
+    const cards = await allCards(page);
+    const byId = Object.fromEntries(cards.map(c => [c.id, c]));
+
+    for (const [id, features] of Object.entries(AUDIT_LABELS)) {
+      expect(byId[id], `${id} still exists`).toBeTruthy();
+      for (const [dim, value] of Object.entries(features)) {
+        expect(byId[id].features[dim], `${id} declares ${dim}=${value}`).toBe(value);
+      }
+    }
+  });
+
+  test('a help-or-safety card is only ever half of an override pair', async ({ page }) => {
+    const { levels } = await page.evaluate(() => ({
+      levels: window.__thinkOrSay.levels.map(lv => ({ id: lv.id, cards: lv.cards, pairs: lv.pairs })),
+    }));
+
+    // The collision that moved L1-07 out of the audience pair, stated as an
+    // invariant rather than as a comment. A pair's two halves must declare the
+    // same criterial KEYS, and any card declaring override=help-or-safety must
+    // answer SAY - so a partner carrying that key at that value could not be the
+    // THINK half. The only pair a help-or-safety card can sit in is the one that
+    // flips `override` itself.
+    const wrong = [];
+    for (const level of levels) {
+      const byId = Object.fromEntries(level.cards.map(c => [c.id, c]));
+      for (const pair of level.pairs) {
+        for (const id of [pair.a, pair.b]) {
+          if (byId[id].features.override === 'help-or-safety' && pair.dim !== 'override') {
+            wrong.push(`level ${level.id}: ${id} is in the ${pair.dim} pair`);
+          }
+        }
+      }
+    }
+    expect(wrong, 'help-or-safety can only be contrasted against no-override').toEqual([]);
+  });
+
+  test('L1-07 keeps the safety label, and the audience pair moved to carry it', async ({ page }) => {
+    const { level1 } = await page.evaluate(() => {
+      const lv = window.__thinkOrSay.levels.find(l => l.id === 1);
+      return { level1: { cards: lv.cards, pairs: lv.pairs } };
+    });
+    const byId = Object.fromEntries(level1.cards.map(c => [c.id, c]));
+
+    expect(byId['L1-07'].features.override, 'an undone lace is a trip hazard')
+      .toBe('help-or-safety');
+    expect(byId['L1-07'].answer, 'a safety card always answers SAY').toBe('say');
+
+    const audience = level1.pairs.find(p => p.dim === 'audience');
+    expect([audience.a, audience.b].includes('L1-07'),
+      'L1-07 cannot hold the audience pair once it carries the override').toBe(false);
+    // The pair that replaced it is still minimum difference: same fixability,
+    // and only who can hear moves.
+    const a = byId[audience.a];
+    const b = byId[audience.b];
+    expect(a.features.changeability, 'the audience pair holds changeability')
+      .toBe(b.features.changeability);
+    expect(a.features.audience).not.toBe(b.features.audience);
+  });
+
+  test('the Level 1 privacy pair holds self-esteem constant, and holds it at lifts', async ({ page }) => {
+    const { level1 } = await page.evaluate(() => {
+      const lv = window.__thinkOrSay.levels.find(l => l.id === 1);
+      return { level1: { cards: lv.cards, pairs: lv.pairs } };
+    });
+    const byId = Object.fromEntries(level1.cards.map(c => [c.id, c]));
+    const privacy = level1.pairs.find(p => p.dim === 'privacy');
+
+    // "L1-04 self-esteem: lifts as well" could not be added to one half alone.
+    // Holding it at `lifts` on BOTH halves is what let the label land, and it is
+    // the better card for it: kind words can still be private words.
+    for (const id of [privacy.a, privacy.b]) {
+      expect(byId[id].features.selfEsteem, `${id} declares the lift`).toBe('lifts');
+    }
   });
 
   test('every rejected card now answers the note it was rejected for', async ({ page }) => {
