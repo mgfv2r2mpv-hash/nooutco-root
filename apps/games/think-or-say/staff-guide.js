@@ -321,7 +321,7 @@
           'Ask your BCBA.' },
         { t: 'h', text: 'Worked examples' },
         { t: 'p', text:
-          'Card L3-07 - you and your friend are in the middle of a crowded assembly, the label on ' +
+          'Card L3-07 - you and your close friend are in the middle of a crowded assembly, the label on ' +
           'their sweater is sticking up at the back, and the thought is “Your label is sticking ' +
           'up!”. The answer is THINK IT, and what decides it is who else can hear.' },
         { t: 'table',

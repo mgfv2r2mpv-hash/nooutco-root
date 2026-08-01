@@ -342,6 +342,20 @@ put right in a second and nobody else hears. That card (L2-05) therefore anchors
 three of the pool's eight pairs — changeability, audience and privacy — and the four
 cards around it are the pool's richest, at four criterial labels each.
 
+Level 3 repeats that shape and adds one finding of its own. Its cluster is L3-05,
+which anchors *two* pairs at once (changeability against L3-06, audience against
+L3-07), so all three cards share a single key set and a label had to be honest on
+three cards before it could be declared on any. `selfEsteem` is the label the pool
+loses to the constraint three separate times — on the L3-05 cluster, on the override
+pair (the lunch stings, the smoke does not), and on the defeater pair (crying hurts,
+winning lifts) — and in each case it is left off and recorded at the card. What the
+audit gained instead was the one criterial *value* in §5.1 that no card in any pool
+had ever sampled: `truthNotTest: 'not-sure'`. Red, wet eyes are what a learner can
+actually see; whether the person was crying is exactly what they cannot know, and
+holding *not sure* constant across the relationship pair is what makes the contrast
+say that not knowing is a reason to ask a close friend and a reason to leave a
+stranger alone.
+
 ---
 
 ## 6. Leveling rationale, and the criteria each level's cards must satisfy

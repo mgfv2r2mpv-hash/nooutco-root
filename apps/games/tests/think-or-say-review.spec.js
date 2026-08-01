@@ -165,6 +165,31 @@ const AUDIT_LABELS = {
   'L2-25': { changeability: 'not-fixable' },
   'L2-26': { selfEsteem: 'hurts' },
   'L2-28': { privacy: 'not-private', audience: 'others-hear' },
+  // Level 3, the last pool audited and the one that needed it most: all
+  // eighteen cards went to review declaring exactly two criterial features. The
+  // labels below are the ones each card's own reason was already leaning on -
+  // the reading pair is "true and it hurts" against "true and it lifts", the
+  // lunch-table cluster is three not-private things that turn on fixability and
+  // audience, and the two override cards are heard by the whole class either
+  // way. Only the ADDED labels are listed; the card's original two still stand.
+  'L3-01': { truthNotTest: 'true' },
+  'L3-02': { truthNotTest: 'true' },
+  'L3-03': { relationship: 'close-friend', truthNotTest: 'true' },
+  'L3-04': { relationship: 'close-friend', truthNotTest: 'true' },
+  'L3-05': { relationship: 'close-friend', privacy: 'not-private' },
+  'L3-06': { relationship: 'close-friend', privacy: 'not-private' },
+  'L3-07': { relationship: 'close-friend', privacy: 'not-private' },
+  'L3-08': { truthNotTest: 'not-sure' },
+  'L3-09': { truthNotTest: 'not-sure' },
+  'L3-10': { override: 'none', privacy: 'not-private' },
+  'L3-11': { override: 'none', privacy: 'not-private' },
+  'L3-12': { relationship: 'grown-up', audience: 'others-hear' },
+  'L3-13': { relationship: 'grown-up', audience: 'others-hear' },
+  'L3-14': { relationship: 'classmate' },
+  'L3-15': { relationship: 'classmate' },
+  'L3-16': { truthNotTest: 'true', changeability: 'not-fixable' },
+  'L3-17': { relationship: 'stranger', timing: 'right-moment' },
+  'L3-18': { relationship: 'classmate', changeability: 'not-fixable' },
 };
 
 test.describe("the maintainer's rulings on the card decks", () => {
@@ -220,6 +245,103 @@ test.describe("the maintainer's rulings on the card decks", () => {
         expect(byId[id].features[dim], `${id} declares ${dim}=${value}`).toBe(value);
       }
     }
+  });
+
+  test('no Level 3 card is still carrying the two labels it went to review with', async ({ page }) => {
+    const { level3 } = await page.evaluate(() => {
+      const lv = window.__thinkOrSay.levels.find(l => l.id === 3);
+      return { level3: { cards: lv.cards } };
+    });
+
+    // "A lot of these are missing cross labels" was written on a Level 2 card,
+    // but Level 3 is where it bit hardest: every one of the eighteen declared
+    // exactly two criterial features, on the level whose whole target is the
+    // learner SAYING what decides the card. A card cannot teach a reason it does
+    // not claim.
+    const thin = level3.cards
+      .filter(c => Object.keys(c.features).length < 3)
+      .map(c => `${c.id}: ${Object.keys(c.features).length} labels`);
+    expect(thin, 'the Level 3 audit raised every card off two labels').toEqual([]);
+
+    // And the pool as a whole now claims at least what the other two do. Level 1
+    // averages 2.57 and Level 2 2.93; Level 3 was 2.00 flat.
+    const total = level3.cards.reduce((n, c) => n + Object.keys(c.features).length, 0);
+    expect(total / level3.cards.length,
+      `Level 3 declares ${total} labels across ${level3.cards.length} cards`)
+      .toBeGreaterThan(2.93);
+  });
+
+  test('the Level 3 pairs carry every added label on BOTH halves', async ({ page }) => {
+    const { level3 } = await page.evaluate(() => {
+      const lv = window.__thinkOrSay.levels.find(l => l.id === 3);
+      return { level3: { cards: lv.cards, pairs: lv.pairs } };
+    });
+    const byId = Object.fromEntries(level3.cards.map(c => [c.id, c]));
+
+    // The constraint that makes the audit hard, asserted where it was paid: a
+    // criterial label cannot be added to one card on its own, so each of these
+    // keys had to be honest on the partner too, at a value that keeps exactly
+    // one dimension differing. L3-05 anchors TWO pairs, so its key set is shared
+    // by L3-06 and L3-07 at once.
+    const FORCED = [
+      { dim: 'selfEsteem',    a: 'L3-01', b: 'L3-02', added: { truthNotTest: 'true' } },
+      { dim: 'privacy',       a: 'L3-03', b: 'L3-04',
+        added: { relationship: 'close-friend', truthNotTest: 'true' } },
+      { dim: 'changeability', a: 'L3-05', b: 'L3-06',
+        added: { relationship: 'close-friend', privacy: 'not-private' } },
+      { dim: 'audience',      a: 'L3-05', b: 'L3-07',
+        added: { relationship: 'close-friend', privacy: 'not-private' } },
+      { dim: 'relationship',  a: 'L3-08', b: 'L3-09', added: { truthNotTest: 'not-sure' } },
+      { dim: 'timing',        a: 'L3-10', b: 'L3-11',
+        added: { override: 'none', privacy: 'not-private' } },
+      { dim: 'override',      a: 'L3-12', b: 'L3-13',
+        added: { relationship: 'grown-up', audience: 'others-hear' } },
+      { dim: 'truthNotTest',  a: 'L3-14', b: 'L3-15', added: { relationship: 'classmate' } },
+    ];
+
+    for (const { dim, a, b, added } of FORCED) {
+      const pair = level3.pairs.find(p => p.dim === dim);
+      expect([pair.a, pair.b].sort(), `the Level 3 ${dim} pair is still ${a}/${b}`)
+        .toEqual([a, b].sort());
+
+      for (const [key, value] of Object.entries(added)) {
+        expect(byId[a].features[key], `${a} carries the added ${key}`).toBe(value);
+        expect(byId[b].features[key], `${b} carries it too`).toBe(value);
+      }
+      // Minimum difference survived the additions.
+      expect(Object.keys(byId[a].features).sort(), `${a}/${b} turn on the same dimensions`)
+        .toEqual(Object.keys(byId[b].features).sort());
+      const differing = Object.keys(byId[a].features)
+        .filter(k => byId[a].features[k] !== byId[b].features[k]);
+      expect(differing.length, `${a}/${b} still differ on exactly one feature`).toBe(1);
+      expect(byId[a].answer === byId[b].answer, `${a}/${b} still answer opposite ways`).toBe(false);
+    }
+  });
+
+  test('the audit reached the one criterial value no card had ever sampled', async ({ page }) => {
+    const { cards, dimensions } = await page.evaluate(() => ({
+      cards: window.__thinkOrSay.cards,
+      // The universe itself, not the game's summary of it - the values live on
+      // the model, and this test is about a value the decks never reached.
+      dimensions: Object.fromEntries(Object.entries(window.ThinkOrSayModel.DIMENSIONS)
+        .map(([dim, d]) => [dim, d.values])),
+    }));
+    expect(Object.keys(dimensions).length, 'the model declares eight dimensions').toBe(8);
+
+    // `truthNotTest` declares two values and the decks only ever used one of
+    // them. "Not sure" is the honest label for the pair that turns on red, wet
+    // eyes: what the learner can see is not the same as what happened, and that
+    // is precisely why one half asks and the other leaves it alone.
+    const notSure = cards.filter(c => c.features.truthNotTest === 'not-sure').map(c => c.id);
+    expect(notSure.length, 'not-sure is a declared value, so some card must sample it')
+      .toBeGreaterThan(0);
+
+    // Stated generally so the next unsampled value shows up here too, rather
+    // than only the one this audit happened to find.
+    const sampled = new Set(cards.flatMap(c => Object.values(c.features)));
+    const unused = Object.entries(dimensions)
+      .flatMap(([dim, values]) => values.filter(v => !sampled.has(v)).map(v => `${dim}=${v}`));
+    expect(unused, 'the universe declares a value no card teaches').toEqual([]);
   });
 
   test('a help-or-safety card is only ever half of an override pair', async ({ page }) => {
