@@ -85,8 +85,9 @@
      One per criterial dimension, each a matched minimum-difference pair: the
      two variants hold every criterial feature constant but one, and the answer
      flips with it (Horner, Albin & Ralph 1986). Dimension 8 is the defeater
-     shape — truthNotTest is held CONSTANT at 'true' on both sides and something
-     else flips, which is the demonstration that truth is not the test.
+     shape — truthRank is held CONSTANT at 'true' on both sides and something
+     else flips, which is the demonstration that true ranks BELOW the thing that
+     flipped - kindness, privacy, or whether they can change it.
 
      Feature configurations mirror the authored pools' matched pairs, so a
      teaching card that turns on the same criterial configuration can be
@@ -275,26 +276,26 @@
     },
 
     {
-      id: 'G-truthNotTest', dim: 'truthNotTest', kind: 'defeater', cat: 'work', levels: [1, 2, 3],
+      id: 'G-truthRank', dim: 'truthRank', kind: 'defeater', cat: 'work', levels: [1, 2, 3],
       sayVerb: 'say', object: 'these words',
       slots: { person: [P.peer, P.sibling], setting: [S.school, S.home] },
       variants: [
         { value: 'lifts', answer: 'say',
-          features: { truthNotTest: 'true', selfEsteem: 'lifts' },
+          features: { truthRank: 'true', selfEsteem: 'lifts' },
           fixed: { topic: topic('work', 'the sticker chart', 'the chart'), form: 'exclamation' },
           situation: 'You count the stickers on the chart {at_setting} yourself. {A_person} has filled a whole row today.',
           utterance: 'You filled a whole row!',
-          reason: 'Say it! It is true AND it is kind, so it is a good thing to share.',
+          reason: 'Say it! It is true and it is kind - here true and kind point the same way.',
           rationales: ['It is true, and hearing it would make them feel proud of their work.',
-                       'True and kind together means it is a say-it.'] },
+                       'True and kind point the same way here, so I can say it.'] },
         { value: 'hurts', answer: 'think',
-          features: { truthNotTest: 'true', selfEsteem: 'hurts' },
+          features: { truthRank: 'true', selfEsteem: 'hurts' },
           fixed: { topic: topic('work', 'the sticker chart', 'the chart'), form: 'statement' },
           situation: 'You count the stickers on the chart {at_setting} yourself. {A_person} has the fewest of anyone.',
           utterance: 'You have the fewest stickers.',
-          reason: 'Think it. It is true - but true is not the test. It would still hurt.',
+          reason: 'Think it. It is true, but true is not as important as kind here - it would still hurt.',
           rationales: ['It is true, and it would still make them feel bad about themselves.',
-                       'Something being true does not make it a say-it.'] },
+                       'Kind matters more than true here, so it stays in my head.'] },
       ],
     },
   ];

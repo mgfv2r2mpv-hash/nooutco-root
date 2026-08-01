@@ -34,7 +34,7 @@
     blurb: 'The reason is the target - the learner says why, and you score what they said.',
     cards: [
       // ── block 1 ──
-      // The reading pair gains truthNotTest, held at `true` on both halves: the
+      // The reading pair gains truthRank, held at `true` on both halves: the
       // learner hears both things happen, so the card is "true and it hurts"
       // against "true and it lifts", which is the same shape as L2-01/L2-02.
       // Audience is NOT added: the class hears both, but on the SAY half it
@@ -43,16 +43,16 @@
       { id: 'L3-01', level: 3, cat: 'work', answer: 'think',
         situation: 'A classmate reads out loud in class. You hear for yourself that they get stuck on a lot of the words.',
         utterance: 'You got stuck a lot.', sayVerb: 'say', object: 'these words',
-        features: { selfEsteem: 'hurts', relationship: 'classmate', truthNotTest: 'true' },
+        features: { selfEsteem: 'hurts', relationship: 'classmate', truthRank: 'true' },
         vary: { setting: 'school', person: 'peer', topic: 'work', form: 'statement' },
-        reason: 'Think it. You heard it for yourself, so it is true - and true is not the test. They already know it was hard, and saying it would make them feel worse about reading.',
+        reason: 'Think it. You heard it for yourself, so it is true - but true is not as important as kind. They already know it was hard, and saying it would make them feel worse about reading.',
         rationales: [
-          'It is true, and true is not the test - saying it would still hurt you.',
+          'It is true, but kind matters more than true here - saying it would still hurt you.',
           'If I said it, you would feel bad about your reading.',
           'You already know you got stuck, so telling you does not help you.',
           'I can keep it in my head and still be a good friend to you.',
         ] },
-      // The privacy pair gains relationship and truthNotTest. Both are held
+      // The privacy pair gains relationship and truthRank. Both are held
       // constant: it is the same close friend telling you both things, and the
       // learner knows both are true because they were told them first-hand - so
       // what moves is only whether the thing told was private.
@@ -60,35 +60,35 @@
         situation: 'You and your close friend are on your own. They told you themselves that they see a special doctor to talk about their feelings.',
         utterance: 'You see a feelings doctor.', sayVerb: 'say', object: 'these words',
         features: { privacy: 'private', audience: 'just-them',
-                    relationship: 'close-friend', truthNotTest: 'true' },
+                    relationship: 'close-friend', truthRank: 'true' },
         vary: { setting: 'school', person: 'peer', topic: 'body', form: 'statement' },
-        reason: 'Think it. You know it is true because they told you themselves, and true is not the test - they told you in private, so it is your close friend’s to tell, not yours.',
+        reason: 'Think it. You know it is true because they told you themselves, but true does not outrank private - they told you in private, so it is your close friend’s to tell, not yours.',
         rationales: [
           'You told me that in private, so it is yours to tell, not mine.',
-          'It being true does not change that - true is not the test.',
+          'It being true does not outrank their privacy.',
           'If I said it, you might not trust me with anything again.',
         ] },
       { id: 'L3-02', level: 3, cat: 'kind', answer: 'say',
         situation: 'A classmate reads out loud in class. You hear for yourself that they finish the whole page.',
         utterance: 'You read the whole page!', sayVerb: 'say', object: 'these words',
-        features: { selfEsteem: 'lifts', relationship: 'classmate', truthNotTest: 'true' },
+        features: { selfEsteem: 'lifts', relationship: 'classmate', truthRank: 'true' },
         vary: { setting: 'school', person: 'peer', topic: 'work', form: 'exclamation' },
-        reason: 'Say it! You heard it for yourself, so it is true - and this time the true thing is a kind one. Telling someone what went well makes them feel proud and want to try again.',
+        reason: 'Say it! You heard it for yourself, so it is true - and here the true thing is also the kind one, so they point the same way. Telling someone what went well makes them feel proud and want to try again.',
         rationales: [
           'If I say it, you would feel proud of your reading.',
-          'It is true, and this time saying the true thing helps you.',
+          'It is true, and here true and kind point the same way, so saying it helps you.',
           'Telling you what you did well helps you want to read again.',
         ] },
       { id: 'L3-04', level: 3, cat: 'kind', answer: 'say',
         situation: 'You and your close friend are on your own. They told you themselves, all excited, that they got a new bike.',
         utterance: 'You got a new bike!', sayVerb: 'say', object: 'these words',
         features: { privacy: 'not-private', audience: 'just-them',
-                    relationship: 'close-friend', truthNotTest: 'true' },
+                    relationship: 'close-friend', truthRank: 'true' },
         vary: { setting: 'school', person: 'peer', topic: 'belongings', form: 'exclamation' },
         reason: 'Say it! You know it is true because they told you themselves, and a new bike is not a private thing - it is happy news your close friend was pleased to share, so talking about it is kind.',
         rationales: [
           'You were excited to tell me, so you would like me being interested.',
-          'It is true and it is not private, so saying it does not hurt you.',
+          'It is true and it is not private, so nothing here outranks saying it.',
         ] },
 
       // ── block 2 ──
@@ -139,7 +139,7 @@
           'A label sticking up is not a private thing, and nobody else can hear me.',
           'I would want you to tell me if my label was sticking up.',
         ] },
-      // The relationship pair gains truthNotTest at `not-sure` - the first card
+      // The relationship pair gains truthRank at `not-sure` - the first card
       // in the deck to sample that value, and the honest one here: red eyes are
       // what the learner can actually see, and whether the person was crying is
       // exactly what they do not know. It is held constant, so what moves is
@@ -151,7 +151,7 @@
       { id: 'L3-08', level: 3, cat: 'kind', answer: 'say',
         situation: 'Your close friend is sitting beside you. Their eyes are red and wet, and you are not sure what has happened.',
         utterance: 'Are you okay?', sayVerb: 'ask', object: 'this question',
-        features: { relationship: 'close-friend', privacy: 'private', truthNotTest: 'not-sure' },
+        features: { relationship: 'close-friend', privacy: 'private', truthRank: 'not-sure' },
         vary: { setting: 'school', person: 'peer', topic: 'body', form: 'question' },
         reason: 'Say it. You are not sure what has happened, and asking a close friend gently is how you find out - they can choose what to tell you.',
         rationales: [
@@ -164,7 +164,7 @@
       { id: 'L3-09', level: 3, cat: 'private', answer: 'think',
         situation: 'A person you have never met is sitting near you on the bus. Their eyes are red and wet, and they have turned away from everyone.',
         utterance: 'Are you okay?', sayVerb: 'ask', object: 'this question',
-        features: { relationship: 'stranger', privacy: 'private', truthNotTest: 'not-sure' },
+        features: { relationship: 'stranger', privacy: 'private', truthRank: 'not-sure' },
         vary: { setting: 'bus', person: 'stranger', topic: 'body', form: 'question' },
         reason: 'Think it. You are not sure what has happened, you do not know them, and they turned away - tell your own grown-up instead.',
         rationales: [
@@ -243,17 +243,17 @@
       { id: 'L3-14', level: 3, cat: 'private', answer: 'think',
         situation: 'You walked into the bathroom this morning and saw your classmate crying on their own in there.',
         utterance: 'You were crying in the bathroom.', sayVerb: 'say', object: 'these words',
-        features: { truthNotTest: 'true', privacy: 'private', relationship: 'classmate' },
+        features: { truthRank: 'true', privacy: 'private', relationship: 'classmate' },
         vary: { setting: 'school', person: 'peer', topic: 'body', form: 'statement' },
-        reason: 'Think it. You really did see it, and it being true does not make it yours to say - your classmate went somewhere private for a reason.',
+        reason: 'Think it. You really did see it, but true does not outrank private - your classmate went somewhere private for a reason.',
         rationales: [
-          'It being true does not make it mine to say.',
+          'It being true does not outrank where they went to be alone.',
           'You were on your own for a reason, so saying it would embarrass you.',
         ] },
       { id: 'L3-15', level: 3, cat: 'kind', answer: 'say',
         situation: 'You watched your classmate win the running race this morning, with everybody on the playground cheering them on.',
         utterance: 'You won the race!', sayVerb: 'say', object: 'these words',
-        features: { truthNotTest: 'true', privacy: 'not-private', relationship: 'classmate' },
+        features: { truthRank: 'true', privacy: 'not-private', relationship: 'classmate' },
         vary: { setting: 'playground', person: 'peer', topic: 'work', form: 'exclamation' },
         reason: 'Say it! You really did see it, and your classmate won in front of everybody, so it is not a private thing - saying it makes them feel good.',
         rationales: [
@@ -278,7 +278,7 @@
         ] },
 
       // ── tail ──
-      // The two tail cards hold no pair either. Both gain truthNotTest and
+      // The two tail cards hold no pair either. Both gain truthRank and
       // changeability, and both were already teaching them in prose: the present
       // really is one you already own, the chart really does say what it says,
       // and neither is a thing the other person can put right now.
@@ -286,24 +286,24 @@
         situation: 'Your close friend gives you a present they chose themselves. You can see it is something you already have at home.',
         utterance: 'I already have this.', sayVerb: 'say', object: 'these words',
         features: { selfEsteem: 'hurts', relationship: 'close-friend',
-                    truthNotTest: 'true', changeability: 'not-fixable' },
+                    truthRank: 'true', changeability: 'not-fixable' },
         vary: { setting: 'home', person: 'family', topic: 'belongings', form: 'statement' },
-        reason: 'Think it. You really do already have one, and true is not the test - they chose it for you and cannot change it now, so saying it would only spoil how good they feel about giving it.',
+        reason: 'Think it. You really do already have one, but true is not as important as kind, because nobody is unsafe and they cannot change it now - saying it would only spoil how good they feel about giving it.',
         rationales: [
           'You chose it for me, so saying it would spoil how good you feel.',
-          'It is true that I have one already, and true is not the test.',
+          'It is true that I have one already, but kind matters more than true here.',
           'You cannot change the present now, so telling you would not help.',
           'I can say thank you out loud and keep the other part in my head.',
         ] },
       { id: 'L3-18', level: 3, cat: 'work', answer: 'think',
         situation: 'You counted the stars on the chart, and your classmate has fewer than anybody else this week.',
         utterance: 'You got the fewest stars.', sayVerb: 'say', object: 'these words',
-        features: { truthNotTest: 'true', selfEsteem: 'hurts',
+        features: { truthRank: 'true', selfEsteem: 'hurts',
                     relationship: 'classmate', changeability: 'not-fixable' },
         vary: { setting: 'school', person: 'peer', topic: 'work', form: 'statement' },
-        reason: 'Think it. True is not the test - it is true AND it would hurt, and the week is over, so your classmate cannot change the chart now.',
+        reason: 'Think it. It is true, but true is not as important as kind, because nobody needs help and the week is over - your classmate cannot change the chart now.',
         rationales: [
-          'True is not the test. It is true AND it would hurt you.',
+          'True does not outrank kind here - it is true AND it would hurt you.',
           'The week is over, so there is nothing you can do about your number now.',
           'You already know your own number, so saying it just makes you feel worse.',
         ] },
@@ -316,7 +316,7 @@
       { dim: 'relationship',  a: 'L3-08', b: 'L3-09' },
       { dim: 'timing',        a: 'L3-10', b: 'L3-11' },
       { dim: 'override',      a: 'L3-12', b: 'L3-13' },
-      { dim: 'truthNotTest',  a: 'L3-14', b: 'L3-15', kind: 'defeater' },
+      { dim: 'truthRank',  a: 'L3-14', b: 'L3-15', kind: 'defeater' },
     ],
   };
 })(typeof window !== 'undefined' ? window : globalThis);

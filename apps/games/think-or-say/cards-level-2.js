@@ -28,9 +28,9 @@
       { id: 'L2-01', level: 2, cat: 'work', answer: 'think',
         situation: 'Your friend practised a song for weeks. At the concert they sang some notes wrong, and you heard it.',
         utterance: 'You sang some notes wrong.', sayVerb: 'say', object: 'these words',
-        features: { selfEsteem: 'hurts', truthNotTest: 'true' },
+        features: { selfEsteem: 'hurts', truthRank: 'true' },
         vary: { setting: 'school', person: 'peer', topic: 'work', form: 'statement' },
-        reason: 'Think it. It is true, and it would take away all the good they feel about the concert.' },
+        reason: 'Think it. It is true, but true is not as important as kind - it would take away all the good they feel about the concert.' },
       // "and others can hear, and it is not fixable". Both labels needed the
       // situation to say so: the classroom around them is now written in, and
       // the spot is a thing no child can put right where they are standing.
@@ -44,9 +44,9 @@
       { id: 'L2-02', level: 2, cat: 'kind', answer: 'say',
         situation: 'Your friend practised a song for weeks. At the concert they remembered every single word, and you heard it.',
         utterance: 'You remembered every word.', sayVerb: 'say', object: 'these words',
-        features: { selfEsteem: 'lifts', truthNotTest: 'true' },
+        features: { selfEsteem: 'lifts', truthRank: 'true' },
         vary: { setting: 'school', person: 'peer', topic: 'work', form: 'statement' },
-        reason: 'Say it! It is true and it is kind - telling them what went well helps them want to try again.' },
+        reason: 'Say it! It is true and it is kind - here true and kind point the same way, and telling them what went well helps them want to try again.' },
       // "also help-or safety. A lot of these are missing cross labels". The
       // label is the headline finding, and it costs this card its pair: a card
       // declaring override: 'help-or-safety' can sit in no pair but the override
@@ -133,22 +133,22 @@
         reason: 'Think it. Nobody needs help right now, so their private news stays theirs to tell.' },
       // The audit found selfEsteem: 'hurts' on L2-14 - its own reason says "so it
       // only hurts" - and it cannot be declared. The defeater pair holds
-      // truthNotTest constant and flips changeability, so L2-15 would have to
+      // truthRank constant and flips changeability, so L2-15 would have to
       // carry the same label, and paint on a hand does not hurt anybody's
       // self-esteem. The label is left off and recorded here rather than dropped
       // silently (RESEARCH.md §5.4).
       { id: 'L2-14', level: 2, cat: 'looks', answer: 'think',
         situation: 'Your class lines up by height for a photo. Your classmate ends up right at the short end, and you can see for yourself that they are the shortest in the class.',
         utterance: 'You are the shortest in the class.', sayVerb: 'say', object: 'these words',
-        features: { truthNotTest: 'true', changeability: 'not-fixable' },
+        features: { truthRank: 'true', changeability: 'not-fixable' },
         vary: { setting: 'school', person: 'peer', topic: 'body', form: 'statement' },
-        reason: 'Think it. You can see for yourself that it is true - and true is not the test. There is nothing they can do about how tall they are, so it only hurts.' },
+        reason: 'Think it. You can see for yourself that it is true, but true is not as important as kind, because nobody is unsafe and there is nothing they can do about how tall they are.' },
       { id: 'L2-15', level: 2, cat: 'other', answer: 'say',
         situation: 'Your classmate comes back from the painting table with a big smudge of paint on their hand, and the sink is right beside them.',
         utterance: 'You have paint on your hand.', sayVerb: 'say', object: 'these words',
-        features: { truthNotTest: 'true', changeability: 'fixable-now' },
+        features: { truthRank: 'true', changeability: 'fixable-now' },
         vary: { setting: 'school', person: 'peer', topic: 'body', form: 'statement' },
-        reason: 'Say it. You can see for yourself that it is true - and they can wash it off right now, so telling them helps.' },
+        reason: 'Say it. You can see for yourself that it is true - and here true matters more, because they can wash it off right now.' },
       { id: 'L2-18', level: 2, cat: 'other', answer: 'say',
         situation: 'You see a classmate look all around the room, then take something out of another kid’s bag and put it in their own pocket.',
         utterance: 'I need to tell you something.', sayVerb: 'tell', object: 'this news',
@@ -259,7 +259,7 @@
       { dim: 'relationship',  a: 'L2-08', b: 'L2-09' },
       { dim: 'timing',        a: 'L2-10', b: 'L2-11' },
       { dim: 'override',      a: 'L2-12', b: 'L2-13' },
-      { dim: 'truthNotTest',  a: 'L2-14', b: 'L2-15', kind: 'defeater' },
+      { dim: 'truthRank',  a: 'L2-14', b: 'L2-15', kind: 'defeater' },
     ],
   };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -23,7 +23,7 @@
      * `privacy` means the information itself is private — the body, home life,
        something told quietly. Embarrassment caused by WHO CAN HEAR is coded by
        `audience`, so the two dimensions stay distinct rather than doubling up.
-     * `truthNotTest: 'true'` goes on a card whose whole temptation is that the
+     * `truthRank: 'true'` goes on a card whose whole temptation is that the
        observation is verifiably true. That is the defeater doing its work, and
        it is exactly the case the learner has to survive.
 
@@ -227,15 +227,15 @@
       { id: 'L1-16', level: 1, cat: 'kind', answer: 'say',
         situation: 'You count the stickers on the chart yourself. Your classmate has filled a whole row today.',
         utterance: 'You filled a whole row!', sayVerb: 'say', object: 'these words',
-        features: { truthNotTest: 'true', selfEsteem: 'lifts' },
+        features: { truthRank: 'true', selfEsteem: 'lifts' },
         vary: { setting: 'school', person: 'peer', topic: 'work', form: 'exclamation' },
-        reason: 'Say it! It is true AND it is kind, so it is a good thing to share.' },
+        reason: 'Say it! It is true and it is kind - here true and kind point the same way.' },
       { id: 'L1-15', level: 1, cat: 'work', answer: 'think',
         situation: 'You count the stickers on the chart yourself. Your classmate has the fewest of anyone.',
         utterance: 'You have the fewest stickers.', sayVerb: 'say', object: 'these words',
-        features: { truthNotTest: 'true', selfEsteem: 'hurts' },
+        features: { truthRank: 'true', selfEsteem: 'hurts' },
         vary: { setting: 'school', person: 'peer', topic: 'work', form: 'statement' },
-        reason: 'Think it. It is true - but true is not the test. It would still hurt.' },
+        reason: 'Think it. It is true, but true is not as important as kind here - it would still hurt.' },
 
       // ── block 5 ──
       { id: 'L1-17', level: 1, cat: 'other', answer: 'think',
@@ -259,17 +259,17 @@
       { id: 'L1-20', level: 1, cat: 'work', answer: 'think',
         situation: 'A classmate answers the teacher’s question in front of the whole class, and the answer they give is wrong.',
         utterance: 'That was wrong.', sayVerb: 'say', object: 'these words',
-        features: { truthNotTest: 'true', selfEsteem: 'hurts', audience: 'others-hear' },
+        features: { truthRank: 'true', selfEsteem: 'hurts', audience: 'others-hear' },
         vary: { setting: 'school', person: 'peer', topic: 'work', form: 'statement' },
-        reason: 'Think it. It is true, and saying it out loud would still embarrass them in front of everyone.' },
+        reason: 'Think it. It is true, but true is not as important as kind - and everyone would hear it.' },
 
       // ── block 6 ──
       { id: 'L1-21', level: 1, cat: 'private', answer: 'think',
         situation: 'A kid at school has a small accident and their pants get wet. Other kids are all around.',
         utterance: 'Your pants are wet.', sayVerb: 'say', object: 'these words',
-        features: { privacy: 'private', audience: 'others-hear', selfEsteem: 'hurts', truthNotTest: 'true' },
+        features: { privacy: 'private', audience: 'others-hear', selfEsteem: 'hurts', truthRank: 'true' },
         vary: { setting: 'school', person: 'peer', topic: 'body', form: 'statement' },
-        reason: 'Think it. It is true and you can see it - and true is not the test. That is private, and saying it with everyone around would hurt.' },
+        reason: 'Think it. It is true and you can see it, but true is not as important as kind - it is private, and everyone around would hear.' },
       { id: 'L1-22', level: 1, cat: 'kind', answer: 'say',
         situation: 'Your friend gets a new shirt with a dinosaur on it. You love dinosaurs too.',
         utterance: 'I love that shirt!', sayVerb: 'say', object: 'these words',
@@ -293,9 +293,9 @@
       { id: 'L1-25', level: 1, cat: 'smells', answer: 'think',
         situation: 'You sit next to a classmate at lunch. Their food smells really strong.',
         utterance: 'That smells gross.', sayVerb: 'say', object: 'these words',
-        features: { selfEsteem: 'hurts', relationship: 'classmate', changeability: 'not-fixable', truthNotTest: 'true' },
+        features: { selfEsteem: 'hurts', relationship: 'classmate', changeability: 'not-fixable', truthRank: 'true' },
         vary: { setting: 'school', person: 'peer', topic: 'smell', form: 'statement' },
-        reason: 'Think it. It is true that you can smell it, and true is not the test. They cannot change their lunch now, so these words would only hurt.' },
+        reason: 'Think it. It is true that you can smell it, but true is not as important as kind, because nobody needs help and they cannot change their lunch now.' },
       { id: 'L1-26', level: 1, cat: 'kind', answer: 'say',
         situation: 'Your mom makes your favorite dinner.',
         utterance: 'This tastes SO good!', sayVerb: 'say', object: 'these words',
@@ -311,17 +311,17 @@
       { id: 'L1-27', level: 1, cat: 'looks', answer: 'think',
         situation: 'A boy in your class has a lot of spots on his face.',
         utterance: 'You have spots all over.', sayVerb: 'say', object: 'these words',
-        features: { selfEsteem: 'hurts', changeability: 'not-fixable', truthNotTest: 'true' },
+        features: { selfEsteem: 'hurts', changeability: 'not-fixable', truthRank: 'true' },
         vary: { setting: 'school', person: 'peer', topic: 'looks', form: 'statement' },
-        reason: 'Think it. It is true and true is not the test. He cannot change it, and saying it would embarrass him.' },
+        reason: 'Think it. It is true, but true is not as important as kind, because nobody is unsafe and he cannot change it.' },
 
       // ── block 8 ──
       { id: 'L1-29', level: 1, cat: 'looks', answer: 'think',
         situation: 'A classmate is wearing two socks that do not match.',
         utterance: 'Your socks do not match.', sayVerb: 'say', object: 'these words',
-        features: { selfEsteem: 'hurts', changeability: 'not-fixable', truthNotTest: 'true' },
+        features: { selfEsteem: 'hurts', changeability: 'not-fixable', truthRank: 'true' },
         vary: { setting: 'school', person: 'peer', topic: 'looks', form: 'statement' },
-        reason: 'Think it. It is true and true is not the test. They cannot change their socks at school, so saying it would just embarrass them.' },
+        reason: 'Think it. It is true, but true is not as important as kind, because nobody needs help and they cannot change their socks at school.' },
       { id: 'L1-30', level: 1, cat: 'kind', answer: 'say',
         situation: 'Your teacher finishes reading a really funny story and you laugh.',
         utterance: 'That story was so funny!', sayVerb: 'say', object: 'these words',
@@ -376,7 +376,7 @@
       { dim: 'relationship',  a: 'L1-09', b: 'L1-10' },
       { dim: 'timing',        a: 'L1-11', b: 'L1-12' },
       { dim: 'override',      a: 'L1-13', b: 'L1-14' },
-      { dim: 'truthNotTest',  a: 'L1-15', b: 'L1-16', kind: 'defeater' },
+      { dim: 'truthRank',  a: 'L1-15', b: 'L1-16', kind: 'defeater' },
     ],
   };
 })(typeof window !== 'undefined' ? window : globalThis);

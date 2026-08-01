@@ -146,10 +146,10 @@ const AUDIT_LABELS = {
   'L1-18': { timing: 'right-moment' },
   'L1-19': { timing: 'right-moment' },
   'L1-20': { audience: 'others-hear' },
-  'L1-21': { truthNotTest: 'true' },
-  'L1-25': { changeability: 'not-fixable', truthNotTest: 'true' },
-  'L1-27': { truthNotTest: 'true' },
-  'L1-29': { truthNotTest: 'true' },
+  'L1-21': { truthRank: 'true' },
+  'L1-25': { changeability: 'not-fixable', truthRank: 'true' },
+  'L1-27': { truthRank: 'true' },
+  'L1-29': { truthRank: 'true' },
   'L1-30': { timing: 'right-moment' },
   'L1-32': { relationship: 'close-friend' },
   'L1-33': { selfEsteem: 'lifts' },
@@ -172,22 +172,22 @@ const AUDIT_LABELS = {
   // lunch-table cluster is three not-private things that turn on fixability and
   // audience, and the two override cards are heard by the whole class either
   // way. Only the ADDED labels are listed; the card's original two still stand.
-  'L3-01': { truthNotTest: 'true' },
-  'L3-02': { truthNotTest: 'true' },
-  'L3-03': { relationship: 'close-friend', truthNotTest: 'true' },
-  'L3-04': { relationship: 'close-friend', truthNotTest: 'true' },
+  'L3-01': { truthRank: 'true' },
+  'L3-02': { truthRank: 'true' },
+  'L3-03': { relationship: 'close-friend', truthRank: 'true' },
+  'L3-04': { relationship: 'close-friend', truthRank: 'true' },
   'L3-05': { relationship: 'close-friend', privacy: 'not-private' },
   'L3-06': { relationship: 'close-friend', privacy: 'not-private' },
   'L3-07': { relationship: 'close-friend', privacy: 'not-private' },
-  'L3-08': { truthNotTest: 'not-sure' },
-  'L3-09': { truthNotTest: 'not-sure' },
+  'L3-08': { truthRank: 'not-sure' },
+  'L3-09': { truthRank: 'not-sure' },
   'L3-10': { override: 'none', privacy: 'not-private' },
   'L3-11': { override: 'none', privacy: 'not-private' },
   'L3-12': { relationship: 'grown-up', audience: 'others-hear' },
   'L3-13': { relationship: 'grown-up', audience: 'others-hear' },
   'L3-14': { relationship: 'classmate' },
   'L3-15': { relationship: 'classmate' },
-  'L3-16': { truthNotTest: 'true', changeability: 'not-fixable' },
+  'L3-16': { truthRank: 'true', changeability: 'not-fixable' },
   'L3-17': { relationship: 'stranger', timing: 'right-moment' },
   'L3-18': { relationship: 'classmate', changeability: 'not-fixable' },
 };
@@ -284,19 +284,19 @@ test.describe("the maintainer's rulings on the card decks", () => {
     // one dimension differing. L3-05 anchors TWO pairs, so its key set is shared
     // by L3-06 and L3-07 at once.
     const FORCED = [
-      { dim: 'selfEsteem',    a: 'L3-01', b: 'L3-02', added: { truthNotTest: 'true' } },
+      { dim: 'selfEsteem',    a: 'L3-01', b: 'L3-02', added: { truthRank: 'true' } },
       { dim: 'privacy',       a: 'L3-03', b: 'L3-04',
-        added: { relationship: 'close-friend', truthNotTest: 'true' } },
+        added: { relationship: 'close-friend', truthRank: 'true' } },
       { dim: 'changeability', a: 'L3-05', b: 'L3-06',
         added: { relationship: 'close-friend', privacy: 'not-private' } },
       { dim: 'audience',      a: 'L3-05', b: 'L3-07',
         added: { relationship: 'close-friend', privacy: 'not-private' } },
-      { dim: 'relationship',  a: 'L3-08', b: 'L3-09', added: { truthNotTest: 'not-sure' } },
+      { dim: 'relationship',  a: 'L3-08', b: 'L3-09', added: { truthRank: 'not-sure' } },
       { dim: 'timing',        a: 'L3-10', b: 'L3-11',
         added: { override: 'none', privacy: 'not-private' } },
       { dim: 'override',      a: 'L3-12', b: 'L3-13',
         added: { relationship: 'grown-up', audience: 'others-hear' } },
-      { dim: 'truthNotTest',  a: 'L3-14', b: 'L3-15', added: { relationship: 'classmate' } },
+      { dim: 'truthRank',  a: 'L3-14', b: 'L3-15', added: { relationship: 'classmate' } },
     ];
 
     for (const { dim, a, b, added } of FORCED) {
@@ -328,11 +328,11 @@ test.describe("the maintainer's rulings on the card decks", () => {
     }));
     expect(Object.keys(dimensions).length, 'the model declares eight dimensions').toBe(8);
 
-    // `truthNotTest` declares two values and the decks only ever used one of
+    // `truthRank` declares two values and the decks only ever used one of
     // them. "Not sure" is the honest label for the pair that turns on red, wet
     // eyes: what the learner can see is not the same as what happened, and that
     // is precisely why one half asks and the other leaves it alone.
-    const notSure = cards.filter(c => c.features.truthNotTest === 'not-sure').map(c => c.id);
+    const notSure = cards.filter(c => c.features.truthRank === 'not-sure').map(c => c.id);
     expect(notSure.length, 'not-sure is a declared value, so some card must sample it')
       .toBeGreaterThan(0);
 

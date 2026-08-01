@@ -155,7 +155,7 @@ test.describe('the three pools', () => {
         if (pair.kind === 'defeater') {
           // Dimension 8. Truth is HELD CONSTANT across both cards and something
           // else flips: that is the demonstration that truth is not the test.
-          expect(pair.dim, 'only truthNotTest is a defeater').toBe('truthNotTest');
+          expect(pair.dim, 'only truthRank is a defeater').toBe('truthRank');
           expect(a.features[pair.dim], `${where} holds ${pair.dim}`).toBe(b.features[pair.dim]);
           expect(a.features[pair.dim], `${where} holds it at true`).toBe('true');
           expect(differing[0], `${where} flips something other than ${pair.dim}`).not.toBe(pair.dim);

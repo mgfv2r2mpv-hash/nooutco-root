@@ -13,7 +13,7 @@ import { handleSuggest } from "./shared/suggest.js";
 // edge will not revalidate it. That is how 0.22.2 was burned. Probe with a
 // throwaway query (?probe=…) instead, and only read the real ?v= URL once the
 // throwaway shows the new build.
-const APP_VERSION = "0.29.4";
+const APP_VERSION = "0.29.5";
 
 // Append ?v=APP_VERSION to local (relative) css/js URLs in served HTML, and expose
 // the version to the page as window.APP_VERSION. External/CDN URLs (http(s):, //)

@@ -53,12 +53,26 @@
      PLAY for it and omits the rest: "this card turns on audience and
      changeability" is a claim about the card, and coverage counts those claims.
 
-     Dimension 7 (`override`) dominates every other dimension when it is in
-     play — help or safety is always SAY, and makeCard() refuses a card that
-     says otherwise. Dimension 8 (`truthNotTest`) is a DEFEATER rather than a
-     flip: it exists to strip a rule the learner will otherwise induce ("if it's
-     true, say it"), so its matched pair holds it CONSTANT at `true` across both
-     cards and flips something else. See definePairs(). ------------------- */
+     THE DIMENSIONS ARE ORDERED BY IMPORTANCE, and the cards teach the ordering
+     rather than a categorical rule. Dimension 7 (`override`) outranks every
+     other dimension when it is in play — help or safety is always SAY, and
+     makeCard() refuses a card that says otherwise. Below it, how it would make
+     the person feel outranks whether the thing is true.
+
+     Dimension 8 (`truthRank`) is therefore a DEFEATER rather than a flip: it
+     exists to strip a rule the learner will otherwise induce ("if it's true,
+     say it"), so its matched pair holds it CONSTANT at `true` across both cards
+     and flips something else. See definePairs().
+
+     The reason lines state that ordering as a COMPARISON — "true is not as
+     important as kind, because this is not about safety, and it can't be
+     changed" — not as a categorical test. That is the maintainer's ruling and
+     it is deliberate: a relational frame the learner can apply to a novel card
+     is the target repertoire (RESEARCH.md §4.1), whereas "true is not the test"
+     is a flat rule, states more than the literature supports, and gives a
+     learner nothing to derive when two considerations disagree. Where the
+     truth helps — they can fix it right now — the same comparison runs the
+     other way and the card says so. ------------------------------------- */
 
   var DIMENSIONS = {
     selfEsteem:    { label: 'Would it hurt how the person feels about themselves?',
@@ -75,7 +89,7 @@
                      values: ['right-moment', 'wrong-moment'] },
     override:      { label: 'Does someone need help, or is safety at stake? (always SAY)',
                      values: ['help-or-safety', 'none'] },
-    truthNotTest:  { label: 'Truth is not the test - true but hurtful is still THINK',
+    truthRank:     { label: 'It is true - but how much does true matter next to kind and safe?',
                      values: ['true', 'not-sure'] },
   };
 
@@ -186,7 +200,7 @@
    *   flip     — the two cards differ on exactly the dimension named, and the
    *              answer flips with it. Dimensions 1-7.
    *   defeater — dimension 8. Both cards HOLD the named dimension constant
-   *              (`truthNotTest: 'true'`) and differ on one other criterial
+   *              (`truthRank: 'true'`) and differ on one other criterial
    *              feature. That is the demonstration: truth was identical on both
    *              sides and the answer still moved, so truth is not the test.
    */

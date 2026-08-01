@@ -287,11 +287,23 @@ Stated explicitly, in this document and in code, per §3.1.
 | 5 | `relationship` | Who is it about — close friend, classmate, stranger, grown-up |
 | 6 | `timing` | When — right now, or later in private |
 | 7 | `override` | Does someone need help, or is safety at stake? (always SAY) |
-| 8 | `truthNotTest` | Truth is not the test — true but hurtful is still THINK |
+| 8 | `truthRank` | It is true — but how much does true matter next to kind and safe? |
 
-Dimension 7 is an **override**: when it is in play it dominates every other
-dimension. Dimension 8 is a **defeater**: it exists to strip a rule the learner will
-otherwise induce ("if it's true, say it").
+The dimensions are **ordered by importance**, and the cards teach that ordering
+rather than a categorical rule. Dimension 7 is an **override**: when it is in play
+it outranks every other dimension. Below it, how the person would feel outranks
+whether the thing is true. Dimension 8 is a **defeater**: it exists to strip a rule
+the learner will otherwise induce ("if it's true, say it").
+
+The reason lines state this as a **comparison** — "true is not as important as kind,
+because this is not about safety, and it can't be changed" — rather than as a flat
+test. Two reasons. A comparative relation is derivable to a novel card in a way a
+memorised rule is not (§4.1), which is the whole point of the MET design; and a
+categorical phrasing would claim more than the sources support. The *concept* — a
+true comment can still be a Think It — is standard in Think It / Say It practice and
+in Social Thinking's thought-and-speech-bubble work (§1). The *phrasing* is ours,
+and where the truth helps (they can fix it right now) the comparison runs the other
+way and the card says so.
 
 ### 5.2 Varied ("can-have") features — must genuinely vary
 
@@ -363,7 +375,7 @@ loses to the constraint three separate times — on the L3-05 cluster, on the ov
 pair (the lunch stings, the smoke does not), and on the defeater pair (crying hurts,
 winning lifts) — and in each case it is left off and recorded at the card. What the
 audit gained instead was the one criterial *value* in §5.1 that no card in any pool
-had ever sampled: `truthNotTest: 'not-sure'`. Red, wet eyes are what a learner can
+had ever sampled: `truthRank: 'not-sure'`. Red, wet eyes are what a learner can
 actually see; whether the person was crying is exactly what they cannot know, and
 holding *not sure* constant across the relationship pair is what makes the contrast
 say that not knowing is a reason to ask a close friend and a reason to leave a
