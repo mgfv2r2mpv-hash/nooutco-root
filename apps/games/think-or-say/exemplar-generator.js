@@ -257,13 +257,17 @@
                        'Somebody being in danger is always a say-it, even in front of everyone.'] },
         { value: 'none', answer: 'think',
           features: { override: 'none', audience: 'others-hear' },
-          fixed: { topic: topic('belongings', 'muddy shoes', 'the mud'), form: 'exclamation' },
+          // Not muddy shoes: mud outdoors is exactly what anybody expects to see,
+          // so there is nothing to notice and the card teaches nothing. A hole
+          // they already know about and cannot do anything about is genuinely
+          // unhelpful to call across a room, which is the contrast this needs.
+          fixed: { topic: topic('belongings', 'a hole in a shoe', 'the hole'), form: 'exclamation' },
           slots: { setting: [S.playground, S.school, S.shop] },
-          situation: '{A_person} is right across the {the_setting} from you and everybody there would hear you. {Their} shoes are covered in mud.',
-          utterance: 'Your shoes are muddy!',
-          reason: 'Think it. Nobody is in danger, and shouting it across the room would embarrass them.',
+          situation: '{A_person} is right across the {the_setting} from you and everybody there would hear you. There is a hole in the toe of {their} shoe.',
+          utterance: 'Your shoe has a hole in it!',
+          reason: 'Think it. Nobody is in danger, they already know about it, and shouting it across the room would embarrass them.',
           rationales: ['Nobody is going to get hurt, so there is no reason to shout it.',
-                       'Everybody would look at their shoes, and they would feel embarrassed.'] },
+                       'They already know about it, and everybody would look and they would feel embarrassed.'] },
       ],
     },
 
