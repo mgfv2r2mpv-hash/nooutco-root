@@ -242,13 +242,25 @@
     }).join("");
   }
 
+  // Non-name identifiers — DOB, phone, address, ZIP, email, SSN, MRN. Unlike a
+  // name there is no clinical reason for one of these to be in a session note,
+  // so they are tokenised outright rather than offered for review: removing the
+  // click removes the chance of clicking through. They still appear in the
+  // "removed before this left your device" notice.
+  function identifierMap(freeText) {
+    var s = scrub();
+    return s && s.buildIdentifierMap ? s.buildIdentifierMap(freeText) : [];
+  }
+
   // Resolves { cancelled, map, certified }. With no detected names it resolves
-  // immediately (no modal). Otherwise it opens a confirm-first dialog.
+  // immediately (no modal) — but any identifiers found are still mapped.
+  // Otherwise it opens a confirm-first dialog for the names.
   function review(opts) {
     return new Promise(function (resolve) {
       var freeText = (opts && opts.freeText) || "";
+      var idMap = identifierMap(freeText);
       var names = detect(freeText);
-      if (!names.length) { resolve({ cancelled: false, map: [], certified: [] }); return; }
+      if (!names.length) { resolve({ cancelled: false, map: idMap, certified: [] }); return; }
       if (document.getElementById("notes-scrub-backdrop")) { resolve({ cancelled: true, map: [], certified: [] }); return; }
 
       var defaults = defaultTokens(names, freeText);
@@ -340,11 +352,21 @@
         done = true;
         document.removeEventListener("keydown", escHandler);
         wrap.remove();
+        // Identifiers ride along with whatever the clinician decided about the
+        // names. They go FIRST in the map so a longer literal ("123 Jacob
+        // Street") is replaced before a name nested inside it could break it.
+        if (result && !result.cancelled) {
+          result = { cancelled: false, map: idMap.concat(result.map || []), certified: result.certified || [] };
+        }
         // Report the bare scrubbed words (names only, no context) to the admin PII review
         // queue. NotesGate.pii drops dictionary names and any words it can't transmit safely.
+        // Identifiers are excluded: the point of that queue is to learn name
+        // vocabulary, and a phone number is neither a word nor safe to transmit.
         if (result && !result.cancelled && result.map && result.map.length &&
             window.NotesGate && window.NotesGate.pii) {
-          window.NotesGate.pii.reportScrubbed(result.map.map(function (m) { return m.name; }));
+          window.NotesGate.pii.reportScrubbed(
+            result.map.filter(function (m) { return !m.identifier; }).map(function (m) { return m.name; })
+          );
         }
         resolve(result);
       }

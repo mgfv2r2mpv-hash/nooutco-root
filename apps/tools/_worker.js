@@ -99,6 +99,11 @@ export default {
       return handleScrubReport(request, env);
     }
 
+    // Any authenticated user: content-free audit / usage events.
+    if (url.pathname === "/api/audit" && request.method === "POST") {
+      return handleAudit(request, env);
+    }
+
     // Admin-only: review queue for tech-submitted PII/non-PII candidate terms
     if (url.pathname === "/api/admin/term-queue") {
       return handleTermQueue(request, env);
@@ -1024,6 +1029,69 @@ async function removeTerm(kv, list, term) {
 // Any authenticated user: silently enqueue bare scrubbed words into the PII review queue.
 // The client only sends words NOT already in its FIRST_NAMES dictionary, and never any
 // surrounding text — this is PHI-safe name-vocabulary capture, nothing more.
+/* ── Audit / usage events ──────────────────────────────────────────
+   Content-free by construction, and re-validated HERE rather than trusted from
+   the browser: a modified client must not be able to turn an append-only audit
+   log into a place where note text ends up on a server.
+
+   The allowlist is the control. Event type must match a known name, and every
+   data value is coerced to a number, a boolean, or a short token-shaped string
+   — a sentence cannot survive that, whatever the client sends.
+
+   Stored per technician (`kid` from the session token, which is the login code's
+   identity) so a supervisor can see engagement over time. 400-day TTL: long
+   enough to be a record, bounded so it cannot accumulate forever. */
+
+const AUDIT_TYPES = new Set([
+  "note_generated",
+  "gap_questions",
+  "revision",
+  "note_copied",
+]);
+
+function sanitizeAuditEvent(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  if (typeof raw.type !== "string" || !AUDIT_TYPES.has(raw.type)) return null;
+  const tool = typeof raw.tool === "string" && /^[a-z0-9_-]{1,16}$/.test(raw.tool) ? raw.tool : null;
+  const ts = Number.isFinite(raw.ts) ? Math.round(raw.ts) : Date.now();
+  const data = {};
+  const src = raw.data && typeof raw.data === "object" ? raw.data : {};
+  for (const k of Object.keys(src).slice(0, 12)) {
+    if (!/^[a-z][a-z0-9_]{0,23}$/i.test(k)) continue;
+    const v = src[k];
+    if (typeof v === "number" && Number.isFinite(v)) data[k] = Math.round(v);
+    else if (typeof v === "boolean") data[k] = v;
+    else if (typeof v === "string" && /^[a-z0-9_-]{1,24}$/i.test(v)) data[k] = v;
+    // Anything else — objects, arrays, prose — is dropped, not stringified.
+  }
+  return { type: raw.type, tool, ts, data };
+}
+
+async function handleAudit(request, env) {
+  const secret = (env.ADMIN_SECRET ?? "").trim();
+  const auth = request.headers.get("Authorization") || "";
+  const token = auth.replace(/^Bearer\s+/i, "");
+  const payload = secret ? await readToken(token, secret) : null;
+  if (!payload) return jsonRes(401, { error: "Not logged in." });
+  if (!env.API_PASSWORDS) return jsonRes(503, { error: "Storage not configured." });
+
+  let body;
+  try { body = await request.json(); } catch { return jsonRes(400, { error: "Invalid JSON." }); }
+  const incoming = Array.isArray(body?.events) ? body.events.slice(0, 50) : [];
+  const events = incoming.map(sanitizeAuditEvent).filter(Boolean);
+  if (!events.length) return jsonRes(200, { stored: 0 });
+
+  // The login code IS the technician identity; admin sessions have no kid.
+  const kid = typeof payload.kid === "string" ? payload.kid : "admin";
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  await env.API_PASSWORDS.put(
+    `audit:${kid}:${stamp}`,
+    JSON.stringify({ kid, role: payload.role || null, events }),
+    { expirationTtl: 60 * 60 * 24 * 400 },
+  );
+  return jsonRes(200, { stored: events.length });
+}
+
 async function handleScrubReport(request, env) {
   const secret = (env.ADMIN_SECRET ?? "").trim();
   const auth = request.headers.get("Authorization") || "";

@@ -137,9 +137,33 @@
     backdrop.innerHTML = [
       '<div class="eb-card">',
       '  <h2 class="eb-title" id="eb-modal-title">Report an error</h2>',
+      // A category covers most reports on its own and carries no PHI risk at
+      // all, so it is asked first and the free-text box is framed as optional.
       '  <div class="eb-field">',
-      '    <label class="eb-label" for="eb-msg">What went wrong?</label>',
-      '    <textarea id="eb-msg" class="eb-textarea" placeholder="Describe what happened…" maxlength="2000"></textarea>',
+      '    <label class="eb-label" for="eb-kind">What happened?</label>',
+      '    <select id="eb-kind" class="eb-input">',
+      '      <option value="">Choose the closest…</option>',
+      '      <option value="generate-failed">Generate Note failed or errored</option>',
+      '      <option value="revision-failed">A revision failed or did nothing</option>',
+      '      <option value="wrong-content">The note said something wrong or invented</option>',
+      '      <option value="checkboxes-wrong">The suggested checkboxes were wrong</option>',
+      '      <option value="scrub-missed">The scrubber missed something it should have caught</option>',
+      '      <option value="scrub-overzealous">The scrubber flagged something that was not a name</option>',
+      '      <option value="login">Login or access problem</option>',
+      '      <option value="slow">Too slow, or it hung</option>',
+      '      <option value="display">Something looked wrong on screen</option>',
+      '      <option value="other">Something else</option>',
+      '    </select>',
+      '  </div>',
+      '  <div class="eb-field">',
+      '    <label class="eb-label" for="eb-msg">Anything to add? <span style="font-weight:400;color:#64748b">(optional)</span></label>',
+      '    <textarea id="eb-msg" class="eb-textarea" placeholder="What you were doing when it happened…" maxlength="2000"></textarea>',
+      // This box used to email whatever was typed straight to an inbox, outside
+      // the scrubber — and the likeliest thing to paste into it is the note that
+      // just failed. It now passes the same name/identifier review a note does.
+      '    <p style="margin:6px 0 0;font-size:12px;color:#64748b;line-height:1.45;">',
+      '      Do not paste the note itself. Names and identifiers are removed before this is sent.',
+      '    </p>',
       '  </div>',
       '  <div class="eb-field">',
       '    <label class="eb-label" for="eb-email">Your email <span style="font-weight:400;color:#64748b">(optional, for follow-up)</span></label>',
@@ -155,18 +179,23 @@
 
     document.body.appendChild(backdrop);
 
+    var kindEl   = document.getElementById("eb-kind");
     var msgEl    = document.getElementById("eb-msg");
     var emailEl  = document.getElementById("eb-email");
     var submitEl = document.getElementById("eb-submit");
     var cancelEl = document.getElementById("eb-cancel");
     var statusEl = document.getElementById("eb-status-area");
 
-    msgEl.focus();
+    kindEl.focus();
 
+    // A category alone is a valid report — the free text is genuinely optional
+    // now, which is what lets us tell people not to paste the note in.
     function updateSubmit() {
-      submitEl.disabled = msgEl.value.trim().length < 10;
+      submitEl.disabled = !kindEl.value;
     }
+    kindEl.addEventListener("change", updateSubmit);
     msgEl.addEventListener("input", updateSubmit);
+    updateSubmit();
 
     function closeModal() {
       var el = document.getElementById(BACKDROP_ID);
@@ -187,9 +216,20 @@
     });
 
     submitEl.addEventListener("click", function () {
+      var kind    = kindEl.value;
       var msg     = msgEl.value.trim();
       var replyTo = emailEl.value.trim();
-      if (msg.length < 10) return;
+      if (!kind) return;
+
+      // Run whatever they typed through the same detector a note goes through.
+      // This is the one user-facing text field that reaches an inbox, and the
+      // likeliest thing to be pasted into it is the note that just failed.
+      if (msg && window.NotesGate && window.NotesGate._scrub) {
+        var s = window.NotesGate._scrub;
+        var map = (s.buildIdentifierMap ? s.buildIdentifierMap(msg) : [])
+          .concat(s.buildNameMap ? s.buildNameMap(msg) : []);
+        if (map.length) msg = s.applyScrub(msg, map);
+      }
 
       submitEl.disabled = true;
       cancelEl.disabled = true;
@@ -201,7 +241,8 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: msg,
+          kind:    kind,
+          message: msg || "(no additional detail)",
           tool:    toolName,
           replyTo: replyTo || undefined,
         }),

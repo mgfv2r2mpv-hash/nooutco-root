@@ -69,9 +69,24 @@ function reportError(toolId, err) {
 // The output key a section reads/writes ("progress", "sessionChecks", …).
 const sectionId = (s) => s.key || s.group;
 
+// Sections whose value comes from the model. A "facts" section echoes the
+// clinician's own quick-picks and is never in the response, so including it in
+// the expected-shape check would fail every generation on a key the model was
+// never asked for.
+const isModelSection = (s) => s.kind !== "facts";
+
+// Resolve one row of a "facts" section. Facts mix quick-pick answers the
+// clinician gave (from `values`) with the one field the model does decide
+// (servicePaused, from `output`), so it needs both sides.
+function factRowValue(row, output, values) {
+  const src = row.from === "values" ? values : output;
+  const v = src ? src[row.id] : null;
+  return v == null || v === "" ? "Not specified" : String(v);
+}
+
 // Body text for a section — used by per-section Copy (NO heading; the EHR field
 // already has its own label) and as "current content" context in revision turns.
-function sectionBody(section, output) {
+function sectionBody(section, output, values) {
   const v = output ? output[sectionId(section)] : null;
   if (section.kind === "narrative") return v || "";
   if (section.kind === "single") return v || "None selected";
@@ -84,12 +99,15 @@ function sectionBody(section, output) {
     if (!rows.length) return "None identified";
     return rows.map((r) => section.columns.map((c) => `${c.label}: ${r[c.id] || ""}`).join("\n")).join("\n\n");
   }
+  if (section.kind === "facts") {
+    return (section.rows || []).map((r) => `${r.label}: ${factRowValue(r, output, values)}`).join("\n");
+  }
   return "";
 }
 
 // Copy All keeps headings as separators between EHR fields.
-function sectionBlock(section, output) {
-  return `${section.heading}\n${sectionBody(section, output)}`;
+function sectionBlock(section, output, values) {
+  return `${section.heading}\n${sectionBody(section, output, values)}`;
 }
 
 function valuesEqual(a, b) {
@@ -176,6 +194,133 @@ function InfoTooltip({ text }) {
 function Tip({ text }) {
   return (
     <div style={{ fontSize: 12, color: "#5a7040", background: "#eef4e6", border: "1px solid #c8dba8", borderRadius: 7, padding: "7px 11px", marginBottom: 10, lineHeight: 1.55 }}>{text}</div>
+  );
+}
+
+// Scannable in-flow help for an input: bold term — plain description. Recognition
+// rather than recall, which matters for the BT tool specifically: a newly
+// credentialed technician can name a strategy they used far more reliably than
+// they can produce it from memory into an empty box. Collapsed by default so it
+// doesn't crowd the form for someone who already knows the buckets.
+function HelpList({ intro, items }) {
+  return (
+    <div style={{ background: "#eef4e6", border: "1px solid #c8dba8", borderRadius: 8, padding: "11px 14px", margin: "2px 0 12px", fontSize: 12.5, color: "#41502c", lineHeight: 1.5 }}>
+      {intro ? <p style={{ marginBottom: items && items.length ? 8 : 0 }}>{intro}</p> : null}
+      {items && items.length > 0 && (
+        <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", columnGap: 18, rowGap: 5 }}>
+          {items.map((it, i) => (
+            <li key={i}><strong style={{ color: "#2d3a1f" }}>{it.t}</strong>{it.d ? ` — ${it.d}` : ""}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// A free-text input with its label, optional collapsible examples, hint and box.
+// Module-scope so the examples' open/closed state survives the parent re-render
+// that every keystroke causes — inlining this in App would slam it shut on the
+// first character typed.
+function TextareaField({ field: f, value, onChange }) {
+  const [helpOpen, setHelpOpen] = React.useState(false);
+  // Tie the label to the box. Without this the field has a visible label and no
+  // accessible name, so a screen reader announces an unlabelled text area.
+  const fieldId = "field-" + f.id;
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 6 }}>
+        <label htmlFor={fieldId} style={{ ...subLbl, marginBottom: 0 }}>
+          {f.label}{f.required ? <span style={{ color: "#c0392b" }}> *</span> : null}
+          {(f.tooltip || f.placeholder) ? <InfoTooltip text={f.tooltip || f.placeholder} /> : null}
+        </label>
+        {f.help ? (
+          <button
+            type="button"
+            onClick={() => setHelpOpen((o) => !o)}
+            aria-expanded={helpOpen}
+            style={{
+              flexShrink: 0, padding: "4px 12px", borderRadius: 20, cursor: "pointer",
+              border: helpOpen ? "1.5px solid #374528" : "1.5px solid #c0d4a8",
+              background: helpOpen ? "#374528" : "white",
+              color: helpOpen ? "white" : "#5a7040",
+              fontFamily: "inherit", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
+            }}
+          >
+            {helpOpen ? "Hide examples ▴" : "Examples ▾"}
+          </button>
+        ) : null}
+      </div>
+      {helpOpen && f.help ? <HelpList intro={f.help.intro} items={f.help.items} /> : null}
+      {f.tip ? <Tip text={f.tip} /> : null}
+      {f.hint ? <p style={hintStyle}>{f.hint}</p> : null}
+      <textarea
+        id={fieldId}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={f.placeholder}
+        style={{ ...inputBase, height: f.height || 160, resize: "vertical", lineHeight: 1.6 }}
+      />
+      {f.charCount ? <p style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>{(value || "").length} characters</p> : null}
+    </div>
+  );
+}
+
+/* ── House rules ──────────────────────────────────────────────────────────
+   Documentation standards that hold for every clinician regardless of personal
+   style. They are shown, not hidden, because the point is that staff can see
+   what the tool is holding them to — and because most of them are things the
+   author is responsible for whether or not a tool is involved.
+
+   Rules 2–5 are also written into each tool's system prompt; rule 1 is about
+   what the technician types in, which no prompt can enforce. */
+const ADMIN_STYLE_RULES = [
+  { rule: "Removes PHI and PII from non-secure communications.", authorOnly: true },
+  { rule: "Avoids interpretation and causal attribution, and prefers objective, observable statements." },
+  { rule: "Limits unnecessary ABA jargon." },
+  { rule: "Explains all acronyms on first use — e.g. Augmentative and Alternative Communication (AAC), Functional Communication Training (FCT)." },
+  { rule: "Attributes reinforcement to a behavior and not an individual — e.g. “Functional requests were reinforced during session.”" },
+];
+
+function HouseRules() {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div style={{ marginBottom: 20, borderRadius: 10, border: "1px solid #c0d4a8", background: "#f7fbf3", overflow: "hidden" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        style={{
+          width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: 12, padding: "11px 16px", border: "none", background: "transparent", cursor: "pointer",
+          fontFamily: "inherit", fontSize: 13.5, fontWeight: 700, color: "#374528", textAlign: "left",
+        }}
+      >
+        <span>Documentation standards this tool writes to</span>
+        <span aria-hidden="true" style={{ color: "#7a9460", fontSize: 12 }}>{open ? "▴" : "▾"}</span>
+      </button>
+      {open && (
+        <ul style={{ margin: 0, padding: "0 16px 14px 34px", display: "grid", gap: 6 }}>
+          {ADMIN_STYLE_RULES.map((r, i) => (
+            <li key={i} style={{ fontSize: 12.8, color: "#41502c", lineHeight: 1.55 }}>
+              {r.rule}
+              {r.authorOnly ? <span style={{ color: "#7a9460" }}> (yours to enforce — the tool scrubs what it can, but it only sees what you type)</span> : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// Read-only rows echoing quick-pick answers the model must not infer, so the BT
+// can tick the matching EHR boxes without scrolling back up to the form.
+function FactRows({ rows, output, values }) {
+  return (
+    <div style={{ fontSize: 13.5, color: "#2d3a1f", lineHeight: 1.8 }}>
+      {(rows || []).map((r) => (
+        <div key={r.id}>{r.label}: <strong>{factRowValue(r, output, values)}</strong></div>
+      ))}
+    </div>
   );
 }
 
@@ -319,7 +464,11 @@ function freshSession(tool) {
   const migrated = tool.migrateDraft ? tool.migrateDraft(saved) : saved;
   const values = {};
   tool.inputs.forEach((f) => {
-    if (f.type === "toggle") values[f.id] = migrated[f.id] !== undefined ? migrated[f.id] : null;
+    // defaultValue lets a toggle start on the common answer rather than unset —
+    // BT's place-of-service is "Home" for most sessions, and making every
+    // technician pick it every time is friction for no information gain.
+    const fallback = f.defaultValue !== undefined ? f.defaultValue : null;
+    if (f.type === "toggle") values[f.id] = migrated[f.id] !== undefined && migrated[f.id] !== null ? migrated[f.id] : fallback;
     else values[f.id] = migrated[f.id] || "";
   });
   return {
@@ -330,11 +479,17 @@ function freshSession(tool) {
     scrubNotice: "",
     error: "",
     lastCallAt: 0,
-    proposal: null,        // pending revision preview
-    reviseFor: null,       // section id with an open revise input
-    reviseDraft: "",
-    globalDraft: "",
+    proposal: null,        // pending revision, rendered as an inline diff
     expanded: [],
+
+    // ── Assistant panel ──────────────────────────────────────────────────
+    // What the clinician sees, which is not what the model sees: `conversation`
+    // carries raw JSON both ways, `thread` carries the readable exchange.
+    thread: [],            // [{role, kind, text}]
+    annotation: null,      // {kind:"section"|"span", id, heading, text?}
+    panelDraft: "",
+    questions: null,       // triage questions awaiting an answer, or null
+    pendingValues: null,   // scrubbed values held while triage runs
   };
 }
 
@@ -350,6 +505,7 @@ function App() {
   const [copiedPrompt, setCopiedPrompt] = React.useState(false);
   const [loggedIn, setLoggedIn] = React.useState(() => !!(window.NotesGate && NotesGate.isLoggedIn()));
   const [nowTick, setNowTick] = React.useState(Date.now());
+  const [panelOpen, setPanelOpen] = React.useState(false);
 
   const tool = toolById(activeId) || TOOLS[0];
   const S = sessions[tool.id];
@@ -369,6 +525,13 @@ function App() {
     const iv = setInterval(() => setNowTick(Date.now()), 1000);
     return () => clearInterval(iv);
   }, []);
+
+  // A docked panel insets the page rather than covering it; the class is on
+  // <body> because #root is what gets the padding and the panel is a sibling.
+  React.useEffect(() => {
+    document.body.classList.toggle("revision-open", panelOpen);
+    return () => document.body.classList.remove("revision-open");
+  }, [panelOpen]);
 
   // Persist the active tool's typed inputs on every change (per-tool draft key).
   React.useEffect(() => {
@@ -397,6 +560,15 @@ function App() {
     navigator.clipboard.writeText(text);
     setCopied(id);
     setTimeout(() => setCopied(null), 1800);
+    // Copying is the moment the note leaves for the EHR — the right place to
+    // record how long it was looked at and how much of it was rewritten.
+    if (S.output && S.lastCallAt) {
+      audit("note_copied", {
+        seconds: Math.round((Date.now() - S.lastCallAt) / 1000),
+        edited: manualEditChars(),
+        revisions: S.conversation.filter((m) => m.role === "user").length - 1,
+      });
+    }
   };
 
   /* ── LLM turns ─────────────────────────────────────────────────────── */
@@ -432,7 +604,7 @@ function App() {
       // The sections this tool renders are exactly the top-level keys its prompt
       // contracts for, so they double as the shape the response must satisfy.
       // Derived rather than declared, so the check cannot drift from the UI.
-      expectKeys: tool.formSections.map(sectionId),
+      expectKeys: tool.formSections.filter(isModelSection).map(sectionId),
       // Constrains the answer to the tool's schema so the API serializes the
       // note. Tools without one keep the plain-text path and the recovery
       // ladder beneath it, so this rolls out a tool at a time.
@@ -441,107 +613,297 @@ function App() {
     return r; // {parsed, rawText, usage, stopReason}
   };
 
-  const handleGenerate = async () => {
-    const err = tool.validate(S.values);
-    if (err) { patchS({ error: err }); return; }
-    if (!NotesGate.isLoggedIn()) { NotesGate.openLogin(); return; }
-    patchS({ error: "" });
-    const review = await scrubGate(collectFreeText());
-    if (!review) return;
-    setLoading(true);
-    patchS({ output: null, proposal: null, conversation: [] });
+  const pushThread = (role, kind, text) =>
+    patchS((s) => ({ thread: [...s.thread, { role, kind, text }] }));
+
+  /* ── Usage signal ─────────────────────────────────────────────────────
+     Counts only, never a word of the note. What a supervisor needs to answer
+     is not "what did this technician write" but "is the tool being worked with
+     or pasted past" — and that question is answerable from lengths and counts
+     alone, which is the only reason it is safe to keep a durable record here.
+     Fire-and-forget: a metric must never cost someone their note. */
+
+  const audit = (type, data) => {
     try {
-      const userMsg = tool.buildUserPrompt(scrubValues(review.map));
+      if (window.NotesGate && NotesGate.audit) NotesGate.audit.emit(type, { tool: tool.id, ...data });
+    } catch (e) {}
+  };
+
+  // Characters typed per free-text input — a thinness signal that needs no text.
+  const inputSizes = (values) => {
+    const out = {};
+    tool.inputs.filter((f) => f.type === "textarea").forEach((f) => {
+      out["len_" + f.id.replace(/[^a-z0-9_]/gi, "")] = (values[f.id] || "").trim().length;
+    });
+    return out;
+  };
+
+  // How much of the generated prose the clinician rewrote by hand. Compares the
+  // rendered output against the last model turn, so an accepted revision is not
+  // counted as a manual edit.
+  const manualEditChars = () => {
+    if (!S.output || !S.conversation.length) return 0;
+    let modelOut = null;
+    for (let i = S.conversation.length - 1; i >= 0; i--) {
+      if (S.conversation[i].role === "assistant") {
+        try { modelOut = JSON.parse(S.conversation[i].content.match(/\{[\s\S]*\}/)[0]); } catch (e) {}
+        break;
+      }
+    }
+    if (!modelOut) return 0;
+    let delta = 0;
+    tool.formSections.filter((s) => s.kind === "narrative").forEach((s) => {
+      const id = sectionId(s);
+      const before = String(modelOut[id] || "");
+      const after = String(S.output[id] || "");
+      if (before !== after) delta += Math.abs(after.length - before.length) || after.length;
+    });
+    return delta;
+  };
+
+  /* ── Triage: ask before drafting ──────────────────────────────────────
+     A note is only as good as what went into it, and the commonest failure is
+     not a bad draft but a thin one — a behavior with no count, a program with
+     no prompt level. Asking costs one cheap call and is the only moment the
+     technician still has the session in their head.
+
+     Deliberately NOT a turn in the note conversation. That conversation's
+     prefix is what the 5-minute cache is keyed on, and every revision replays
+     it; splicing a differently-prompted turn into the front would invalidate
+     the prefix and make each revision pay for the whole note again. */
+
+  const TRIAGE_SCHEMA = {
+    type: "object",
+    additionalProperties: false,
+    required: ["sufficient", "questions"],
+    properties: {
+      sufficient: { type: "boolean" },
+      questions: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["field", "question"],
+          properties: { field: { type: "string" }, question: { type: "string" } },
+        },
+      },
+    },
+  };
+
+  const TRIAGE_SYSTEM =
+    "You are reviewing a clinician's raw session notes BEFORE they are turned into a formal note.\n\n" +
+    "Your ONLY job: decide whether anything is too thin to write from, and if so ask at most 3 short, specific questions that would materially improve the finished note.\n\n" +
+    "RULES\n" +
+    "- Ask only about what a payer or supervisor would notice missing: counts or rates for a behavior, the prompt level used, whether a strategy worked, how this session compared to recent ones.\n" +
+    "- Be specific and quote back what they wrote. \"You mentioned elopement — how many times, and what did you do?\" NOT \"Can you add more detail?\"\n" +
+    "- NEVER ask for a name, a date, an address, or any other identifying detail. The notes are deliberately de-identified.\n" +
+    "- Do not ask about something they plainly had nothing to report. A session with no behaviors of concern is a normal session, not a gap.\n" +
+    "- If the notes are adequate, return sufficient=true and an empty array. Fewer questions is better than more; three is a ceiling, not a target.\n" +
+    "- Return ONLY a JSON object: {\"sufficient\": boolean, \"questions\": [{\"field\": \"\", \"question\": \"\"}]}";
+
+  const runTriage = async (scrubbed) => {
+    const body = tool.inputs
+      .filter((f) => f.type === "textarea")
+      .map((f) => `[${f.label}]${f.required ? " (required)" : ""}\n${(scrubbed[f.id] || "").trim() || "(empty)"}`)
+      .join("\n\n");
+    const r = await NotesGate.generateConversation({
+      system: TRIAGE_SYSTEM,
+      messages: [{ role: "user", content: "CLINICIAN'S RAW NOTES:\n\n" + body }],
+      tool: tool.id,
+      maxTokens: 600,
+      expectKeys: ["sufficient", "questions"],
+      responseSchema: TRIAGE_SCHEMA,
+    });
+    const parsed = r.parsed || {};
+    const questions = Array.isArray(parsed.questions) ? parsed.questions : [];
+    return parsed.sufficient ? [] : questions.filter((q) => q && q.question).slice(0, 3);
+  };
+
+  // Draft the note. `extra` is the technician's answers to the triage questions,
+  // already scrubbed; it rides along in the same first user message so the
+  // conversation stays a single linear prefix.
+  const draftNote = async (scrubbedValues, extra) => {
+    setLoading(true);
+    patchS({ output: null, proposal: null, conversation: [], questions: null, pendingValues: null });
+    try {
+      let userMsg = tool.buildUserPrompt(scrubbedValues);
+      if (extra && extra.trim()) {
+        userMsg += "\n\nTHE TECHNICIAN ADDED, ANSWERING FOLLOW-UP QUESTIONS (treat as part of the notes above):\n" + extra.trim();
+      }
       const conversation = [{ role: "user", content: userMsg }];
       const r = await runTurn(conversation);
       conversation.push({ role: "assistant", content: r.rawText });
       patchS({ output: tool.normalizeOutput(r.parsed), conversation, lastCallAt: Date.now() });
+      pushThread("assistant", "status", "Drafted. Click any section — or select a phrase inside one — to revise it.");
+      audit("note_generated", { ...inputSizes(scrubbedValues), answered: extra && extra.trim() ? 1 : 0 });
     } catch (e) {
       patchS({ error: NotesGate.displayError(e) });
+      pushThread("assistant", "status", "That didn't go through. " + NotesGate.displayError(e));
       reportError(tool.id, e);
     } finally {
       setLoading(false);
     }
   };
 
-  // Shared by per-section revisions and the global corrections box. The exchange
-  // is committed to the conversation immediately (so follow-ups keep context and
-  // the cache prefix stays linear); Accept/Discard only controls what lands in
-  // the visible output.
-  // freeText is the raw clinician-typed material to scan; compose(map) builds the
-  // final message with each free-text piece scrubbed individually (scaffolding
-  // like "REVISION REQUEST" never passes through the map).
-  const sendRevision = async (freeText, compose, targetSectionId) => {
-    const review = await scrubGate(freeText);
+  const handleGenerate = async () => {
+    const err = tool.validate(S.values);
+    if (err) { patchS({ error: err }); return; }
+    if (!NotesGate.isLoggedIn()) { NotesGate.openLogin(); return; }
+    patchS({ error: "", thread: [], annotation: null, panelDraft: "" });
+    const review = await scrubGate(collectFreeText());
     if (!review) return;
+    const scrubbed = scrubValues(review.map);
+    setLoading(true);
+    setPanelOpen(true);
+    let questions = [];
+    try {
+      questions = await runTriage(scrubbed);
+    } catch (e) {
+      // Triage is an assist, not a gate. If it fails the note still gets
+      // written — losing a question is a far smaller harm than refusing to
+      // draft for a technician with eight notes left to file.
+      reportError(tool.id, e);
+    }
+    if (questions.length) {
+      setLoading(false);
+      audit("gap_questions", { asked: questions.length });
+      patchS({ questions, pendingValues: scrubbed });
+      return;
+    }
+    audit("gap_questions", { asked: 0 });
+    await draftNote(scrubbed, "");
+  };
+
+  const skipQuestions = () => {
+    audit("gap_questions", { skipped: (S.questions || []).length });
+    pushThread("user", "answer", "(skipped)");
+    draftNote(S.pendingValues || scrubValues([]), "");
+  };
+
+  /* ── Revisions ────────────────────────────────────────────────────────
+     The exchange is committed to the conversation immediately (so follow-ups
+     keep context and the cache prefix stays linear); Accept/Discard only
+     controls what lands in the visible output. */
+
+  const sendRevision = async (instruction) => {
+    const review = await scrubGate(instruction);
+    if (!review) return;
+    const scrubbedInstruction = NotesScrub.applyMap(instruction, review.map);
+    const ann = S.annotation;
+    const section = ann ? tool.formSections.find((s) => sectionId(s) === ann.id) : null;
+
+    // Only the typed instruction is NEW free text — scan/scrub that. The section
+    // body is AI output already present verbatim in the conversation history (or
+    // the clinician's own edit of it), so re-scanning it would flag words in the
+    // generated prose ("Analyst", role tokens) on every single revision.
+    let userMsg;
+    if (section && ann.kind === "span") {
+      userMsg = [
+        `REVISION REQUEST`,
+        `Target section: "${section.heading}" (JSON key: ${ann.id})`,
+        `The clinician highlighted this phrase inside that section:`,
+        `"${ann.text}"`,
+        ``,
+        `Current content of that section as shown to them (may include manual edits):`,
+        sectionBody(section, S.output, S.values),
+        ``,
+        `Instruction: ${scrubbedInstruction}`,
+        ``,
+        `Change the highlighted phrase and only what the instruction requires around it; leave the rest of the section as written. Return the COMPLETE updated JSON object with ALL keys, copying every other section verbatim. Re-evaluate "hints". Never fabricate — if the instruction asks for information not present anywhere in this conversation, leave it out and emit the appropriate hint instead.`,
+      ].join("\n");
+    } else if (section) {
+      userMsg = [
+        `REVISION REQUEST`,
+        `Target section: "${section.heading}" (JSON key: ${ann.id})`,
+        `Current content of that section as shown to the clinician (may include their manual edits):`,
+        sectionBody(section, S.output, S.values),
+        ``,
+        `Instruction: ${scrubbedInstruction}`,
+        ``,
+        `Return the COMPLETE updated JSON object with ALL keys. Copy every section not targeted by the instruction verbatim from the current note. Re-evaluate "hints" for the whole note. Never fabricate — if the instruction asks for information not present anywhere in this conversation, leave it out and emit the appropriate hint instead.`,
+      ].join("\n");
+    } else {
+      userMsg = [
+        `ADDITIONAL DETAILS / CORRECTIONS from the clinician:`,
+        scrubbedInstruction,
+        ``,
+        `Apply these to every affected section. Return the COMPLETE updated JSON object with ALL keys; copy unaffected sections verbatim. Re-evaluate "hints". Never fabricate beyond what is stated.`,
+      ].join("\n");
+    }
+
     setLoading(true);
     try {
-      const userMsg = compose(review.map);
       const conversation = [...S.conversation, { role: "user", content: userMsg }];
       const r = await runTurn(conversation);
       conversation.push({ role: "assistant", content: r.rawText });
       const normalized = tool.normalizeOutput(r.parsed);
+      const targetId = ann ? ann.id : null;
       const changes = [];
-      tool.formSections.forEach((sec) => {
+      tool.formSections.filter(isModelSection).forEach((sec) => {
         const id = sectionId(sec);
-        if (targetSectionId && id !== targetSectionId) return;
+        if (targetId && id !== targetId) return;
         if (!valuesEqual(normalized[id], S.output[id])) {
-          changes.push({ id, heading: sec.heading, kind: sec.kind, columns: sec.columns, value: normalized[id] });
+          changes.push({
+            id, heading: sec.heading, kind: sec.kind, columns: sec.columns,
+            value: normalized[id], prev: S.output[id],
+          });
         }
       });
       patchS({
         conversation,
         lastCallAt: Date.now(),
-        reviseFor: null,
-        reviseDraft: "",
-        globalDraft: targetSectionId ? S.globalDraft : "",
-        proposal: { changes, hints: normalized.hints || [], targetSectionId: targetSectionId || null },
+        annotation: null,
+        proposal: { changes, hints: normalized.hints || [], targetSectionId: targetId, kind: ann ? ann.kind : "global" },
         error: "",
       });
+      audit("revision", { requested: 1, sections: changes.length, kind: ann ? ann.kind : "global" });
+      pushThread(
+        "assistant",
+        "status",
+        changes.length
+          ? (changes.length === 1
+              ? `Updated “${changes[0].heading}” — the change is highlighted in the note.`
+              : `Updated ${changes.length} sections — the changes are highlighted in the note.`)
+          : "No change was needed for that — the note already reflects it, or the detail isn't in your notes."
+      );
     } catch (e) {
       patchS({ error: NotesGate.displayError(e) });
+      pushThread("assistant", "status", "That didn't go through. " + NotesGate.displayError(e));
       reportError(tool.id, e);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleReviseSection = (section) => {
-    const instruction = S.reviseDraft.trim();
-    if (!instruction) return;
-    const id = sectionId(section);
-    // Only the typed instruction is NEW free text — scan/scrub that. The section
-    // body is AI output already present verbatim in the conversation history (or
-    // the clinician's own edit of it), so re-scanning it would flag words in the
-    // generated prose ("Analyst", role tokens) on every single revision.
-    const body = sectionBody(section, S.output);
-    const compose = (map) => [
-      `REVISION REQUEST`,
-      `Target section: "${section.heading}" (JSON key: ${id})`,
-      `Current content of that section as shown to the BCBA (may include their manual edits):`,
-      body,
-      ``,
-      `Instruction: ${NotesScrub.applyMap(instruction, map)}`,
-      ``,
-      `Return the COMPLETE updated JSON object with ALL keys. Copy every section not targeted by the instruction verbatim from the current note. Re-evaluate "hints" for the whole note. Never fabricate — if the instruction asks for information not present anywhere in this conversation, leave it out and emit the appropriate hint instead.`,
-    ].join("\n");
-    sendRevision(instruction, compose, id);
+  // One entry point for the panel's Send button: it either answers the pending
+  // triage questions or asks for a revision, depending on where we are.
+  const handlePanelSend = async () => {
+    const text = S.panelDraft.trim();
+    if (!text || loading) return;
+    patchS({ panelDraft: "" });
+    pushThread("user", "answer", text);
+    if (S.questions && S.questions.length) {
+      const review = await scrubGate(text);
+      if (!review) return;
+      audit("gap_questions", { answered: S.questions.length });
+      await draftNote(S.pendingValues, NotesScrub.applyMap(text, review.map));
+      return;
+    }
+    if (!S.output) {
+      pushThread("assistant", "status", "Generate the note first, then I can revise it.");
+      return;
+    }
+    await sendRevision(text);
   };
 
-  const handleGlobalCorrections = () => {
-    const text = S.globalDraft.trim();
-    if (!text) return;
-    const compose = (map) => [
-      `ADDITIONAL DETAILS / CORRECTIONS from the BCBA:`,
-      NotesScrub.applyMap(text, map),
-      ``,
-      `Apply these to every affected section. Return the COMPLETE updated JSON object with ALL keys; copy unaffected sections verbatim. Re-evaluate "hints". Never fabricate beyond what is stated.`,
-    ].join("\n");
-    sendRevision(text, compose, null);
+  const targetSection = (annotation) => {
+    patchS({ annotation });
+    setPanelOpen(true);
   };
 
   const acceptProposal = () => {
     if (!S.proposal) return;
+    audit("revision", { accepted: 1, sections: S.proposal.changes.length, kind: S.proposal.kind || "section" });
     patchS((s) => {
       const next = { ...s.output };
       s.proposal.changes.forEach((c) => { next[c.id] = c.value; });
@@ -550,12 +912,13 @@ function App() {
     });
   };
 
-  const discardProposal = () => patchS({ proposal: null });
+  const discardProposal = () => {
+    if (S.proposal) audit("revision", { discarded: 1, sections: S.proposal.changes.length, kind: S.proposal.kind || "section" });
+    patchS({ proposal: null });
+  };
 
-  const editProposalChange = (idx, value) =>
-    patchS((s) => ({
-      proposal: { ...s.proposal, changes: s.proposal.changes.map((c, i) => (i === idx ? { ...c, value } : c)) },
-    }));
+  const pendingChangeFor = (id) =>
+    (S.proposal && S.proposal.changes.find((c) => c.id === id)) || null;
 
   const handleGeneratePrompt = async () => {
     const err = tool.validate(S.values);
@@ -569,7 +932,7 @@ function App() {
 
   const handleCopyAll = () => {
     if (!S.output) return;
-    navigator.clipboard.writeText(tool.formSections.map((sec) => sectionBlock(sec, S.output)).join("\n\n"));
+    navigator.clipboard.writeText(tool.formSections.map((sec) => sectionBlock(sec, S.output, S.values)).join("\n\n"));
     setCopied("all");
     setTimeout(() => setCopied(null), 1800);
   };
@@ -579,9 +942,14 @@ function App() {
   // True when the active tool holds anything worth confirming before wiping —
   // typed input, a generated note, or a built prompt. Drives whether Clear shows
   // and whether it double-checks first.
+  // A toggle sitting on its default is not content — it is the state a fresh
+  // page starts in, and counting it would show Clear before anything is typed.
   const hasContent = () =>
-    tool.inputs.some((f) => (f.type === "toggle" ? S.values[f.id] != null : (S.values[f.id] || "").trim() !== "")) ||
-    !!S.output || !!S.promptText;
+    tool.inputs.some((f) =>
+      f.type === "toggle"
+        ? S.values[f.id] != null && S.values[f.id] !== f.defaultValue
+        : (S.values[f.id] || "").trim() !== ""
+    ) || !!S.output || !!S.promptText;
 
   // One-click reset for the next use. Wipes this tool's saved draft, then rebuilds
   // a blank session (freshSession reloads the now-empty draft). Autosave keeps the
@@ -618,17 +986,19 @@ function App() {
       return (
         <div key={f.id} style={{ marginBottom: 20 }}>
           <p style={lbl}>{f.label}</p>
-          <div style={{ display: "flex", gap: 10 }}>
+          {/* wraps because a toggle is not always two options — BT's
+              place-of-service has five and must not overflow on mobile */}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {f.options.map((opt) => (
               <button
                 key={String(opt.value)}
                 onClick={() => setValue(f.id, opt.value)}
                 style={{
-                  padding: "8px 22px", borderRadius: 8,
+                  padding: "8px 18px", borderRadius: 8,
                   border: S.values[f.id] === opt.value ? "2px solid #374528" : "1.5px solid #c0d4a8",
                   background: S.values[f.id] === opt.value ? "#374528" : "white",
                   color: S.values[f.id] === opt.value ? "white" : "#374528",
-                  fontWeight: 600, fontSize: 14, cursor: "pointer",
+                  fontFamily: "inherit", fontWeight: 600, fontSize: 14, cursor: "pointer",
                 }}
               >
                 {opt.label}
@@ -639,20 +1009,47 @@ function App() {
       );
     }
     return (
-      <div key={f.id} style={{ marginBottom: 20 }}>
-        <label style={subLbl}>
-          {f.label}{f.required ? <span style={{ color: "#c0392b" }}> *</span> : null}
-          {(f.tooltip || f.placeholder) ? <InfoTooltip text={f.tooltip || f.placeholder} /> : null}
-        </label>
-        {f.tip ? <Tip text={f.tip} /> : null}
-        {f.hint ? <p style={hintStyle}>{f.hint}</p> : null}
-        <textarea
-          value={S.values[f.id]}
-          onChange={(e) => setValue(f.id, e.target.value)}
-          placeholder={f.placeholder}
-          style={{ ...inputBase, height: f.height || 160, resize: "vertical", lineHeight: 1.6 }}
-        />
-        {f.charCount ? <p style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>{(S.values[f.id] || "").length} characters</p> : null}
+      <TextareaField
+        key={f.id}
+        field={f}
+        value={S.values[f.id]}
+        onChange={(val) => setValue(f.id, val)}
+      />
+    );
+  };
+
+  // A proposed change rendered where it belongs: inside the section it changes,
+  // marked against what is there now. Accept/Discard act on the whole proposal —
+  // a revision can touch more than one section, and applying half of one would
+  // leave the note in a state the model never produced.
+  const renderPendingChange = (change) => {
+    const count = S.proposal.changes.length;
+    return (
+      <div style={{ marginTop: 10 }}>
+        {change.kind === "narrative" ? (
+          <div className="diff-view">
+            {NoteDiff.words(change.prev || "", change.value || "").map((op, i) =>
+              op.type === "same"
+                ? <span key={i}>{op.text}</span>
+                : <span key={i} className={op.type === "ins" ? "diff-ins" : "diff-del"}>{op.text}</span>
+            )}
+          </div>
+        ) : (
+          <div className="diff-view">
+            {change.kind === "table"
+              ? <GoalsTable columns={change.columns} rows={change.value} onChange={() => {}} idPrefix={"prop-" + change.id} />
+              : <Checklist options={tool.groupOptions[change.id]} selected={change.value} single={change.kind === "single"} />}
+          </div>
+        )}
+        <div className="diff-actions">
+          <button type="button" className="diff-accept" onClick={acceptProposal}>
+            {count > 1 ? `Accept all ${count}` : "Accept"}
+          </button>
+          <button type="button" className="diff-discard" onClick={discardProposal}>Discard</button>
+          <p className="diff-note">
+            {count > 1 ? `${count} sections changed — accepting applies them together.` : "Green is added, struck-through is removed."}
+          </p>
+        </div>
       </div>
     );
   };
@@ -660,11 +1057,18 @@ function App() {
   const renderSectionContent = (sec) => {
     const id = sectionId(sec);
     const v = S.output[id];
+    const pending = pendingChangeFor(id);
+    if (pending) return renderPendingChange(pending);
     if (sec.kind === "narrative") {
       const empty = !(v || "").trim();
       return (
         <textarea
           value={v || ""}
+          // Selecting inside one of these is what raises the "Revise this" chip;
+          // the attributes are how the selection handler knows which section it
+          // is in without threading refs through every row.
+          data-section-id={id}
+          data-section-heading={sec.heading}
           onChange={(e) => patchS((s) => ({ output: { ...s.output, [id]: e.target.value } }))}
           placeholder={sec.emptyNote || ""}
           style={{ width: "100%", minHeight: S.expanded.includes(id) ? 140 : (sec.minHeight || 90), padding: 10, borderRadius: 7, border: "1px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", lineHeight: 1.65, resize: "vertical", background: "white", opacity: empty ? 0.75 : 1 }}
@@ -691,71 +1095,17 @@ function App() {
         />
       );
     }
+    if (sec.kind === "facts") {
+      return <FactRows rows={sec.rows} output={S.output} values={S.values} />;
+    }
     return null;
   };
 
-  const renderProposalValue = (c, idx) => {
-    if (c.kind === "narrative") {
-      return (
-        <textarea
-          value={c.value || ""}
-          onChange={(e) => editProposalChange(idx, e.target.value)}
-          style={{ width: "100%", minHeight: 110, padding: 10, borderRadius: 7, border: "1px solid #c8b26a", fontSize: 14, color: "#2d3a1f", lineHeight: 1.65, resize: "vertical", background: "white" }}
-        />
-      );
-    }
-    if (c.kind === "table") {
-      return (
-        <GoalsTable
-          columns={c.columns}
-          rows={c.value}
-          onChange={(rows) => editProposalChange(idx, rows)}
-          idPrefix={`prop-${c.id}`}
-        />
-      );
-    }
-    if (c.kind === "single") {
-      return <Checklist options={tool.groupOptions[c.id]} selected={c.value} single />;
-    }
-    return <Checklist options={tool.groupOptions[c.id]} selected={c.value} />;
-  };
-
-  // The proposal preview renders in-place — inside the revised section, or below
-  // the corrections box for a global edit — so the change appears where the BCBA
-  // is looking, not scrolled off the top. Bring it into view when it arrives.
-  const proposalRef = React.useRef(null);
-  const proposalKey = S.proposal ? (S.proposal.targetSectionId || "global") + ":" + S.lastCallAt : "";
-  React.useEffect(() => {
-    if (!proposalKey || !proposalRef.current) return;
-    const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    proposalRef.current.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
-  }, [proposalKey]); // proposalKey encodes which proposal (section + turn) is showing
-
-  const renderProposalCard = () => (
-    <div ref={proposalRef} style={{ marginTop: 14, borderRadius: 10, border: "2px solid #c8b26a", background: "#fffbef", padding: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, gap: 8, flexWrap: "wrap" }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: "#6d5613" }}>Proposed revision</h3>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={acceptProposal} style={{ padding: "7px 18px", borderRadius: 7, border: "none", background: "#374528", color: "white", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Accept</button>
-          <button onClick={discardProposal} style={{ padding: "7px 14px", borderRadius: 7, border: "1.5px solid #b0a070", background: "white", color: "#6d5613", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Discard</button>
-        </div>
-      </div>
-      <p style={{ fontSize: 12.5, color: "#8a7430", marginBottom: 14, lineHeight: 1.5 }}>
-        Review before it lands in the note — edit the text below, Accept to apply, or Discard to keep the current version. To push back, discard and send another revision.
-      </p>
-      {S.proposal.changes.length === 0 && (
-        <p style={{ fontSize: 13, color: "#8a7430", fontStyle: "italic" }}>The model made no changes for that instruction — the section already reflects it, or the requested detail isn't in the notes (check for a new hint after accepting).</p>
-      )}
-      {S.proposal.changes.map((c, idx) => (
-        <div key={c.id} style={{ marginBottom: 12 }}>
-          <p style={{ fontSize: 12.5, fontWeight: 700, color: "#6d5613", marginBottom: 6 }}>{c.heading}</p>
-          {renderProposalValue(c, idx)}
-        </div>
-      ))}
-    </div>
-  );
-
   /* ── Layout ────────────────────────────────────────────────────────── */
+
+  // Selecting a phrase inside a narrative raises a chip that targets just that
+  // phrase — the same gesture as annotating a document.
+  const { chipEl, clearChip } = useTextSelection((annotation) => targetSection(annotation));
 
   return (
     <React.Fragment>
@@ -763,16 +1113,36 @@ function App() {
       {/* Floating note-freshness countdown — sits above the page, out of the way. */}
       {cacheRemaining !== null && <CacheTimer remaining={cacheRemaining} />}
 
+      {chipEl}
+
+      <RevisionPanel
+        open={panelOpen}
+        onToggle={() => { setPanelOpen((o) => !o); clearChip(); }}
+        thread={S.thread}
+        annotation={S.annotation}
+        onClearAnnotation={() => patchS({ annotation: null })}
+        draft={S.panelDraft}
+        onDraft={(v) => patchS({ panelDraft: v })}
+        onSend={handlePanelSend}
+        loading={loading}
+        questions={S.questions}
+        onSkipQuestions={skipQuestions}
+        unread={S.questions ? S.questions.length : 0}
+      />
+
       <div style={{ maxWidth: 860, margin: "0 auto" }}>
 
-      {/* Ribbon */}
-      <div className="tool-ribbon" role="tablist" aria-label="BCBA note tools">
-        {TOOLS.map((t) => (
-          <button key={t.id} role="tab" aria-selected={t.id === activeId} className={t.id === activeId ? "active" : ""} onClick={() => switchTool(t.id)}>
-            {t.label}
-          </button>
-        ))}
-      </div>
+      {/* Ribbon — only when there is something to switch between. A page that
+          mounts one tool (BT) would otherwise show a single dead tab. */}
+      {TOOLS.length > 1 && (
+        <div className="tool-ribbon" role="tablist" aria-label="Note tools">
+          {TOOLS.map((t) => (
+            <button key={t.id} role="tab" aria-selected={t.id === activeId} className={t.id === activeId ? "active" : ""} onClick={() => switchTool(t.id)}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="tool-panel" key={tool.id}>
 
@@ -800,6 +1170,8 @@ function App() {
           <strong style={{ color: "#7a5a1a" }}>Disclaimer:</strong> Use of these AI-assisted queries is subject to the legal and regulatory constraints of the user's jurisdiction. These tools do not remove the user's responsibility to review all output for accuracy and to maintain compliance with the ethical standards of their credentialing board for professional behavior analysis work.{" "}
           <strong style={{ color: "#7a5a1a" }}>Do not enter any PHI (Protected Health Information) into this tool.</strong> PHI is any detail that could identify a specific client — including names, dates of birth, addresses, phone numbers, ID or insurance numbers, or any other personal identifiers.
         </div>
+
+        <HouseRules />
 
         {/* Inputs */}
         <div style={card}>
@@ -883,15 +1255,19 @@ function App() {
           <div style={{ ...card, marginBottom: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>{tool.outputTitle || "Generated Note"}</h2>
-              <button
-                onClick={handleCopyAll}
-                style={{ padding: "7px 16px", borderRadius: 7, border: "1.5px solid #374528", background: copied === "all" ? "#374528" : "white", color: copied === "all" ? "white" : "#374528", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
-              >
-                {copied === "all" ? "Copied!" : "Copy All"}
-              </button>
+              {/* Copy All is per-tool. Some EHR forms take one field at a time,
+                  where a single combined blob is never what gets pasted. */}
+              {tool.copyAll !== false && (
+                <button
+                  onClick={handleCopyAll}
+                  style={{ padding: "7px 16px", borderRadius: 7, border: "1.5px solid #374528", background: copied === "all" ? "#374528" : "white", color: copied === "all" ? "white" : "#374528", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                >
+                  {copied === "all" ? "Copied!" : "Copy All"}
+                </button>
+              )}
             </div>
             <p style={{ fontSize: 13, color: "#7a9460", marginBottom: 20, lineHeight: 1.55 }}>
-              Checkbox suggestions are inferred from your notes — verify before ticking your form. Narratives are editable; use ✎ Revise on a section (or the corrections box below) for AI help, and the 💡 notes for what might be missing.
+              Checkbox suggestions are inferred from your notes — verify before ticking your form. Narratives are editable. <strong style={{ color: "#5a6b4a" }}>Click a section to revise it, or select a phrase inside one to revise just that</strong> — the assistant panel takes it from there. 💡 notes flag what might be missing.
             </p>
 
             <div className="output-grid">
@@ -900,25 +1276,34 @@ function App() {
                 const isNarrative = sec.kind === "narrative";
                 const isOpen = S.expanded.includes(i);
                 const fullRow = !isNarrative || isOpen;
+                const targeted = S.annotation && S.annotation.id === id;
+                // Facts echo the clinician's own quick-picks — there is nothing
+                // for the model to revise, so they are not a revision target.
+                const revisable = isModelSection(sec) && !S.proposal;
                 return (
-                  <div key={id} className={fullRow ? "full-row" : undefined} style={{ borderRadius: 9, border: "1px solid #ddecd0", background: "#f7fbf3", padding: 16 }}>
+                  <div
+                    key={id}
+                    className={[fullRow ? "full-row" : "", targeted ? "section-targeted" : "", revisable ? "section-clickable" : ""].filter(Boolean).join(" ") || undefined}
+                    onClick={revisable ? (e) => {
+                      // Clicking into the textarea to type, or hitting Copy or
+                      // expand, is not "I want to revise this section".
+                      if (e.target.closest && e.target.closest("textarea, button, input, a")) return;
+                      targetSection({ kind: "section", id, heading: sec.heading });
+                    } : undefined}
+                    style={{ borderRadius: 9, border: "1px solid #ddecd0", background: "#f7fbf3", padding: 16 }}
+                  >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, gap: 8 }}>
                       <span style={{ fontSize: 13, fontWeight: 700, color: "#374528" }}>{sec.heading}</span>
                       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                         {isNarrative && (
-                          <button onClick={() => toggleExpand(i)} title={isOpen ? "Collapse to half width" : "Expand to full row"} style={smallBtn}>
+                          <button onClick={(e) => { e.stopPropagation(); toggleExpand(i); }} title={isOpen ? "Collapse to half width" : "Expand to full row"} style={smallBtn}>
                             {isOpen ? "⤡" : "⤢"}
                           </button>
                         )}
                         <button
-                          onClick={() => patchS((s) => ({ reviseFor: s.reviseFor === id ? null : id, reviseDraft: "" }))}
-                          disabled={loading || !!S.proposal}
-                          title="Ask the AI to revise this section"
-                          style={{ ...smallBtn, opacity: loading || S.proposal ? 0.5 : 1 }}
+                          onClick={(e) => { e.stopPropagation(); handleCopy("sec-" + id, sectionBody(sec, S.output, S.values)); }}
+                          style={smallBtn}
                         >
-                          ✎ Revise
-                        </button>
-                        <button onClick={() => handleCopy("sec-" + id, sectionBody(sec, S.output))} style={smallBtn}>
                           {copied === "sec-" + id ? "Copied!" : "Copy"}
                         </button>
                       </div>
@@ -926,51 +1311,10 @@ function App() {
 
                     {renderSectionContent(sec)}
                     <HintNotes hints={S.output.hints} section={sec} catalog={tool.hintCatalog} />
-
-                    {S.reviseFor === id && (
-                      <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
-                        <input
-                          autoFocus
-                          value={S.reviseDraft}
-                          onChange={(e) => patchS({ reviseDraft: e.target.value })}
-                          onKeyDown={(e) => { if (e.key === "Enter") handleReviseSection(sec); }}
-                          placeholder={'e.g. "expand with the FCT data" or "split the pending change into its own sentence"'}
-                          style={{ ...inputBase, flex: 1, padding: "8px 12px", fontSize: 13 }}
-                        />
-                        <button onClick={() => handleReviseSection(sec)} disabled={loading || !S.reviseDraft.trim()} style={{ padding: "8px 16px", borderRadius: 7, border: "none", background: loading || !S.reviseDraft.trim() ? "#a0b890" : "#374528", color: "white", fontSize: 13, fontWeight: 600, cursor: loading ? "wait" : "pointer" }}>
-                          {loading ? "…" : "Send"}
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Revision preview appears right here, in the section being revised. */}
-                    {S.proposal && S.proposal.targetSectionId === id && renderProposalCard()}
                   </div>
                 );
               })}
             </div>
-
-            {/* Global corrections box */}
-            <div style={{ marginTop: 18, padding: 14, borderRadius: 9, border: "1px dashed #c0d4a8", background: "#fbfdf8" }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: "#374528", marginBottom: 6 }}>Add details / corrections</p>
-              <p style={{ fontSize: 12.5, color: "#7a9460", marginBottom: 8, lineHeight: 1.5 }}>
-                Anything you forgot or want fixed across the note — e.g. "we also ran a preference assessment" or "the IOA was 92%". The AI updates the affected sections and you preview before it lands. No PHI.
-              </p>
-              <div style={{ display: "flex", gap: 8 }}>
-                <textarea
-                  value={S.globalDraft}
-                  onChange={(e) => patchS({ globalDraft: e.target.value })}
-                  placeholder="Additional details or corrections…"
-                  style={{ ...inputBase, flex: 1, height: 60, resize: "vertical", fontSize: 13, lineHeight: 1.5 }}
-                />
-                <button onClick={handleGlobalCorrections} disabled={loading || !!S.proposal || !S.globalDraft.trim()} style={{ padding: "8px 18px", borderRadius: 7, border: "none", background: (loading || S.proposal || !S.globalDraft.trim()) ? "#a0b890" : "#374528", color: "white", fontSize: 13, fontWeight: 600, cursor: loading ? "wait" : "pointer", alignSelf: "flex-start" }}>
-                  {loading ? "…" : "Send"}
-                </button>
-              </div>
-            </div>
-
-            {/* Cross-note revision preview appears by the corrections box that sent it. */}
-            {S.proposal && !S.proposal.targetSectionId && renderProposalCard()}
           </div>
         )}
 
@@ -995,6 +1339,17 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <ErrorBoundary><App /></ErrorBoundary>
-);
+// Drafts are encrypted at rest, so decrypting them is asynchronous — but
+// freshSession() reads them synchronously while building initial React state.
+// Waiting here is what reconciles the two: by first render the plaintext cache
+// is populated, so a reload still restores the clinician's typing.
+const mount = () =>
+  ReactDOM.createRoot(document.getElementById("root")).render(
+    <ErrorBoundary><App /></ErrorBoundary>
+  );
+
+if (window.NotesGate && NotesGate.draft && NotesGate.draft.ready) {
+  NotesGate.draft.ready.then(mount, mount);
+} else {
+  mount();
+}
