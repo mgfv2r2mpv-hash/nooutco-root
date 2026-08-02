@@ -22,7 +22,7 @@ const ALLOWED = new Set([
   // Places
   'Playroom', 'Party', 'Sky', 'Countryside',
   // Story + trial copy
-  'Our', 'Let', 'First', 'Where', 'What', 'Find', 'Pick', 'Hear', 'One',
+  'Our', 'Let', 'First', 'Where', 'What', 'Find', 'Touch', 'Look', 'Pick', 'Hear', 'One',
   'Cozy', 'Food', 'Out', 'Prompt', 'Change', 'End', 'Round', 'Snacks',
   'Technician', 'Help', 'Choice', 'Choose', 'Picture', 'Progress', 'Tracker',
   // Praise pool

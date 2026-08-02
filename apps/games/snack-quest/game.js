@@ -20,8 +20,12 @@
 
 // `prompt` is the SD the staff member delivers, so it is written the way an SD
 // is written: short, positive, and phrased as the action to take rather than as
-// a description of the screen. Receptive takes the target name as an argument
-// because its SD names the item; the other two are fixed.
+// a description of the screen. None of the three writes the item's name: the
+// receptive target is spoken and shown on its own line beneath the SD, so the
+// written line only carries the instruction — and varies it across trials, the
+// way a technician would, instead of repeating one fixed carrier phrase.
+const RECEPTIVE_SDS = ['Find', 'Touch', 'Where is', 'Look for'];
+
 const TASKS = [
   {
     id: 'matching',
@@ -29,7 +33,7 @@ const TASKS = [
     desc: 'A picture on top — find the one that matches.',
     glyph: '🧩',
     accent: '#5d8a4a',
-    prompt: () => 'Find the Match',
+    prompt: () => 'Match',
   },
   {
     id: 'receptive',
@@ -37,10 +41,10 @@ const TASKS = [
     desc: 'Hear and see the word — find that picture.',
     glyph: '🔤',
     accent: '#4b7ea8',
-    // Lower-cased inside the sentence: an SD reads "Find the bear", and a
-    // capitalised noun mid-sentence is exactly the shape the naming scan
-    // hunts for. The sample word above the array still shows its own casing.
-    prompt: (label) => (label ? `Find the ${label.toLowerCase()}` : 'Find it'),
+    // Names no item: the target word is spoken and shown on its own line just
+    // below this SD, so printing it here too read as "Find the sad" over "Sad".
+    // The carrier phrase varies per trial; the word itself lives in that line.
+    prompt: () => pickRandom(RECEPTIVE_SDS),
   },
   {
     id: 'expressive',
@@ -940,10 +944,10 @@ async function setHiddenStimulus(img, src, token) {
 
 function renderTrial() {
   const task = state.task;
-  // Only receptive is handed the target name — its SD is "Find the <thing>".
-  // Expressive must never be given it: the whole mode rests on the word not
-  // reaching the page, and the SD line would be the easiest place to leak it.
-  el.trialPrompt.textContent = task.prompt(task.id === 'receptive' ? state.sampleLabel : '');
+  // The written SD names no target in any mode: receptive shows and speaks its
+  // word on a separate line, and expressive rests on the word never reaching the
+  // page at all. So this line is only ever the instruction.
+  el.trialPrompt.textContent = task.prompt();
   el.trialSample.innerHTML = '';
   el.trialGrid.innerHTML = '';
   el.scoreRow.hidden = task.id !== 'expressive';
