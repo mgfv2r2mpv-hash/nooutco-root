@@ -142,13 +142,13 @@
      BCBA most often has to send a note back for. */
 
   var HINT_CATALOG = {
-    no_behavior_count: "Behavior of concern noted without a count or rate — add how many times it occurred, even if zero",
-    no_rate_comparison: "No comparison to recent sessions — say whether this was higher, lower, or about the same",
-    no_prompt_level: "Teaching described without a prompt level — name the prompt type used and whether it was faded",
-    single_program_only: "Only one program is described — a second (ideally communication/social plus adaptive) makes the note stronger",
-    no_antecedent_impact: "Antecedent strategy named without its effect — say whether it helped",
+    no_behavior_count: "Behavior of concern noted without a count or rate - add how many times it occurred, even if zero",
+    no_rate_comparison: "No comparison to recent sessions - say whether this was higher, lower, or about the same",
+    no_prompt_level: "Teaching described without a prompt level - name the prompt type used and whether it was faded",
+    single_program_only: "Only one program is described - a second (ideally communication/social plus adaptive) makes the note stronger",
+    no_antecedent_impact: "Antecedent strategy named without its effect - say whether it helped",
     thin_clinical_status: "Little detail on how the client presented at the start of session",
-    no_response_described: "Behavior noted without your response — add what you did and whether it worked",
+    no_response_described: "Behavior noted without your response - add what you did and whether it worked",
     other: "",
   };
 
@@ -212,7 +212,7 @@
   /* ── Prompts ──────────────────────────────────────────────────────────── */
 
   var SYSTEM_CORE =
-    "You are an ABA clinical documentation assistant turning a BT's raw session notes into a polished \"Adaptive Behavior Treatment by Protocol\" note. The BT is the author; write third-person clinical prose — \"The behavior technician implemented…\", \"The client demonstrated…\" — for funders/payers and the supervising BCBA.\n\n\
+    "You are an ABA clinical documentation assistant turning a BT's raw session notes into a polished \"Adaptive Behavior Treatment by Protocol\" note. The BT is the author; write third-person clinical prose - \"The behavior technician implemented…\", \"The client demonstrated…\" - for funders/payers and the supervising BCBA.\n\n\
 OUTPUT: (a) third-person clinical narratives for free-text sections, (b) conservative checkbox inferences for the BT to verify.\n\n\
 RULES\n\
 - Report concrete implementation: programs run, prompt types/levels/fading decisions, behavioral occurrences + BT response, antecedent strategies as applied, observable client outcomes.\n\
@@ -222,19 +222,21 @@ CHECKBOX INFERENCE\n\
 - Return ONLY verbatim values from each group's allowed list. Never invent or reword options.\n\
 - Infer conservatively; cross-read the whole note — purpose follows what was done, action items surface from anything mentioned anywhere.\n\n\
 BEHAVIORAL RECHARACTERIZATION\n\
-Translate mentalistic or colloquial language into behavioral observation using only what was reported — never add behaviors or clinical meaning not stated. \"He was cranky\" alone → \"the client presented with apparent negative affect\"; with \"aggression x2\" added → \"the client engaged in aggression on two occasions.\"\n\n\
+Translate mentalistic or colloquial language into behavioral observation using only what was reported - never add behaviors or clinical meaning not stated. \"He was cranky\" alone → \"the client presented with apparent negative affect\"; with \"aggression x2\" added → \"the client engaged in aggression on two occasions.\"\n\n\
 TERMINOLOGY (non-negotiable)\n\
-- Reinforcement is contingent on behavior. Write \"[behavior] was reinforced\" or \"reinforcement was delivered contingent on [behavior]\" — never \"[person] was reinforced.\"\n\
+- Reinforcement is contingent on behavior. Write \"[behavior] was reinforced\" or \"reinforcement was delivered contingent on [behavior]\" - never \"[person] was reinforced.\"\n\
 - Precise verbs: prompted, faded, modeled, shaped, chained, redirected, blocked, delivered/withheld reinforcement, ran a trial, presented the SD.\n\
 - Name prompt types specifically (gestural, partial verbal, full physical, errorless). No loose synonyms (rewarded, encouraged, motivated).\n\
 - Objective, observable language. Report what was seen and done; do not attribute cause or infer intent.\n\n\
 PLAIN LANGUAGE (applies alongside the terminology rules, never against them)\n\
-- Expand every acronym on first use, then abbreviate: \"Functional Communication Training (FCT) was implemented…\" and \"FCT\" thereafter. Same for DTT, NET, AAC, SD, IOA, BST.\n\
-- Keep the clinical term when it carries precision a plain word would lose (a prompt type, a procedure, a schedule of reinforcement). Drop jargon and padding that carries none — write \"used\" not \"utilized\", \"played\" not \"engaged in the activity of\", \"could\" not \"demonstrated the ability to\".\n\
-- One idea per sentence. Prefer a short sentence to a subordinate clause.\n\
-- Vary sentence length and openings across the note. Do not begin consecutive sentences with the same subject or construction.";
+- Expand every acronym on first use, then abbreviate: \"Functional Communication Training (FCT) was implemented...\" and \"FCT\" thereafter. Same for DTT, NET, AAC, SD, IOA, BST.\n\
+- Keep the clinical term when it carries precision a plain word would lose (a prompt type, a procedure, a schedule of reinforcement). Drop jargon and padding that carries none: write \"used\" not \"utilized\", \"played\" not \"engaged in the activity of\", \"could\" not \"demonstrated the ability to\".\n\
+- NAME THE ACTOR AND THE CONDITIONS. Generic actorless procedural prose is the single strongest tell of machine writing, and it is also worse documentation. Write who did what, with whom, under what conditions: \"The behavior technician ran mixed trials while the caregiver delivered the prompts\" rather than \"Targets are taught using mixed trials.\" Every sentence about a procedure should be attributable to someone in the room.\n\
+- Do not compress at the cost of that specificity. Terseness is not the goal; an abstract passive with no actor is worse than a longer sentence that says who and when.\n\
+- Vary sentence length and openings across the note. Do not begin consecutive sentences with the same subject or construction.\n\
+- Use hyphens, never em dashes or en dashes. House convention, and their overuse is itself a machine tell.";
 
-  var HINTS_BLOCK = "\n\nHINTS — return an array of {section, code, detail} objects flagging ONLY missing or ambiguous standard elements (max 4; empty array when the note stands on its own). \"section\" MUST be one of the JSON keys below; \"code\" MUST be from this list; \"detail\" is an optional specifier of 10 words or fewer:\n\
+  var HINTS_BLOCK = "\n\nHINTS - return an array of {section, code, detail} objects flagging ONLY missing or ambiguous standard elements (max 4; empty array when the note stands on its own). \"section\" MUST be one of the JSON keys below; \"code\" MUST be from this list; \"detail\" is an optional specifier of 10 words or fewer:\n\
 - no_behavior_count (behaviorPlanNarrative): a behavior of concern is described with no count, rate, or duration\n\
 - no_rate_comparison (behaviorPlanNarrative): no comparison to recent sessions\n\
 - no_prompt_level (lessonProgressNarrative): teaching described with no prompt type or fading decision\n\
@@ -243,7 +245,7 @@ PLAIN LANGUAGE (applies alongside the terminology rules, never against them)\n\
 - thin_clinical_status (clinicalStatusNarrative): almost nothing about how the client presented on arrival\n\
 - no_response_described (behaviorPlanNarrative): a behavior is named with no BT response\n\
 - other (any section): something else genuinely unclear — put the question in detail\n\
-Hints are advisory nudges, not demands — do not hint when the BT plainly had nothing to report for that element.";
+Hints are advisory nudges, not demands - do not hint when the BT plainly had nothing to report for that element.";
 
   var JSON_FORMAT_BLOCK =
     "\n\nOUTPUT FORMAT\nReturn ONLY a single JSON object. No markdown, no preamble, no commentary. Use EXACTLY these keys; arrays hold verbatim option labels (empty [] if unsupported); single-selects are one verbatim label or \"\". servicePaused is \"Yes\" or \"No\" (default \"No\" unless the notes mention an unexpected pause).\n{\n  \"individualsPresent\": [],\n  \"clinicalStatus\": [],\n  \"clinicalStatusNarrative\": \"\",\n  \"purpose\": [],\n  \"servicePaused\": \"No\",\n  \"abaTechniques\": [],\n  \"lessonProgressNarrative\": \"\",\n  \"antecedentStrategies\": [],\n  \"antecedentNarrative\": \"\",\n  \"consequenceStrategies\": [],\n  \"consequenceEffectiveness\": \"\",\n  \"behaviorPlanNarrative\": \"\",\n  \"clientProgress\": \"\",\n  \"actionItems\": [],\n  \"followUpNarrative\": \"\",\n  \"hints\": []\n}";
@@ -253,7 +255,7 @@ Hints are advisory nudges, not demands — do not hint when the BT plainly had n
 
   function buildUserPrompt(values) {
     return [
-      "FACTUAL SESSION DATA (provided — do not infer, do not include in the JSON):",
+      "FACTUAL SESSION DATA (provided - do not infer, do not include in the JSON):",
       "- Place of service: " + (values.placeOfService || "Not specified"),
       "- Provided via telehealth: " + (values.telehealth || "Not specified"),
       "",
@@ -272,7 +274,7 @@ Hints are advisory nudges, not demands — do not hint when the BT plainly had n
       (values.fBehavior || "").trim() || "(none provided)",
       "",
       "[5] FOLLOW-UP & CONCERNS (BCBA action items, questions, involvement, overall progress):",
-      (values.fFollowUp || "").trim() || "(none provided — default followUpNarrative to: \"Direct staff do not report new questions or concerns for the BCBA.\")",
+      (values.fFollowUp || "").trim() || "(none provided - default followUpNarrative to: \"Direct staff do not report new questions or concerns for the BCBA.\")",
       "",
       "ALLOWED CHECKBOX OPTIONS (return only verbatim values from these lists):",
       "- individualsPresent: " + menu(INDIVIDUALS_PRESENT),
@@ -348,9 +350,9 @@ Hints are advisory nudges, not demands — do not hint when the BT plainly had n
       },
       {
         id: "fSession", type: "textarea", label: "Session Start & Context", height: 120,
-        hint: "Who was there, how the client seemed when you started, and — in a few words — whether you worked on building rapport/pairing, skill goals, or reducing a behavior. We'll suggest the Individuals, Clinical Status, and Purpose checkboxes for you.",
+        hint: "Who was there, how the client seemed when you started, and - in a few words - whether you worked on building rapport/pairing, skill goals, or reducing a behavior. We'll suggest the Individuals, Clinical Status, and Purpose checkboxes for you.",
         help: {
-          intro: "Just jot what you saw — no need to label anything.",
+          intro: "Just jot what you saw - no need to label anything.",
           items: [
             { t: "How they arrived", d: "ready & engaged, tired, hungry/thirsty, distracted, seemed unwell, upset or already having behavior, or a recent medication change" },
             { t: "Focus of session", d: "building rapport / getting them to work with you (pairing), running learning programs, or working on a behavior plan" },
@@ -387,9 +389,9 @@ Hints are advisory nudges, not demands — do not hint when the BT plainly had n
             { t: "Environmental arrangement", d: "set up the space / removed distractions or unsafe items" },
             { t: "Visual schedule", d: "showed what's coming with a picture schedule" },
             { t: "Offered choices", d: "let them pick between options" },
-            { t: "Premack / first-then", d: "said “first this, then that” — most people do this without knowing the name" },
+            { t: "Premack / first-then", d: "said “first this, then that” - most people do this without knowing the name" },
             { t: "Priming / warning", d: "a heads-up or countdown before a transition or before ending something fun" },
-            { t: "Motivation alteration", d: "adjusted things to meet a need — e.g., a break before a hard task, or held back a preferred item so it stayed motivating" },
+            { t: "Motivation alteration", d: "adjusted things to meet a need - e.g., a break before a hard task, or held back a preferred item so it stayed motivating" },
             { t: "Also worth a mention", d: "non-contingent reinforcement, easy wins first (behavior momentum), pre-session pairing, simplified instructions" },
           ],
         },
@@ -413,11 +415,11 @@ Hints are advisory nudges, not demands — do not hint when the BT plainly had n
       },
       {
         id: "fFollowUp", type: "textarea", label: "Follow-Up & Concerns", height: 110,
-        hint: "Anything the BCBA should do or know — scheduling/staffing, a new behavior, billing, materials, involvement. Items mentioned in earlier fields are surfaced here automatically; leave blank if there is nothing new.",
+        hint: "Anything the BCBA should do or know - scheduling/staffing, a new behavior, billing, materials, involvement. Items mentioned in earlier fields are surfaced here automatically; leave blank if there is nothing new.",
         help: {
           intro: "Anything the BCBA should do or know.",
           items: [
-            { t: "Action items", d: "scheduling/staffing, a new behavior, billing, contact staff, materials needed — or nothing new" },
+            { t: "Action items", d: "scheduling/staffing, a new behavior, billing, contact staff, materials needed - or nothing new" },
             { t: "Overall progress", d: "steady, impacted by behavior of concern, or limited" },
             { t: "No need to repeat", d: "things you mentioned above are surfaced here automatically" },
           ],

@@ -24,16 +24,52 @@ log-probabilities, so a genuine perplexity score would mean shipping an open
 model into CI: a ~500MB download and a new dependency, in a repo with no build
 step. The heuristics were chosen instead, deliberately.
 
+## What was measured on the SAP tool — read this before tuning anything
+
+Parallel work on `notes/bcba/tools/sap.js` produced actual numbers against a
+real detector, and they refine the theory below considerably.
+
+- **The checker in practice is QuillBot AI Detector v7.1.0**, run by the
+  clinician as a self-check. Its metric is *proportion of text flagged*, so it
+  degrades smoothly rather than saturating.
+- **A measured control corpus of 7 de-identified human-written plans scored
+  0%, 7%, 10%, 20%** (median ~8.5%), plus 49% for the one plan independently
+  suspected of AI assistance. **Human clinical writing is not 0%.**
+- **The flag is a register problem, not a structure or template problem.** What
+  flags is generic actorless procedural prose ("Targets are taught using mixed
+  trials…"). What does not flag is writing with a named actor and conditions
+  ("Be sure to run this program with the help of the caregiver, who will be
+  delivering the prompts" — from the 0% plan). A fully template-compliant note
+  can score zero, which refutes the idea that the mandated format forces a
+  high score.
+- **Terseness is a cause, not a cure.** Mandating short rationale-free
+  sentences is what produced the flagged sections. The opposite of terse here
+  is not padding — it is specificity about who did what.
+
+**A `<5%` target is therefore stricter than measured human baseline.** Half the
+human corpus scored above it. Worth deciding whether that is the number you
+actually want, or whether "at or below what our own clinicians score" is the
+more meaningful bar.
+
+`SYSTEM_CORE` in `tools/bt.js` was corrected on the strength of this: an earlier
+draft said "prefer a short sentence to a subordinate clause", which pushed
+toward exactly the register that flags. It now requires naming the actor and the
+conditions, and says explicitly not to compress at the cost of that.
+
+Em dashes are also out of the generated prose. They are not house convention
+(the hyphen is), all 7 human plans used zero, and their overuse is itself a
+recognisable machine tell.
+
 ## The tension this sits inside
 
 Detectors score uniformity: even sentence lengths, low word-choice surprise, no
-hedging, no idiosyncrasy. Clinical documentation is *structurally* that. A human
-RBT writing textbook-clean prose scores as machine-written too.
+hedging, no idiosyncrasy. Clinical documentation leans *structurally* that way.
 
-The resolution the tool takes: **hold the clinical vocabulary fixed and vary
-everything around it.** Precise verbs and named prompt types are what a payer
-audits, so they stay non-negotiable. Sentence architecture, information order
-and opener variety are what detectors read, and those are free to move.
+The resolution the tool takes: **hold the clinical vocabulary fixed, name the
+actor, and vary everything else.** Precise verbs and named prompt types are what
+a payer audits, so they stay non-negotiable. Actor specificity, sentence
+architecture, information order and opener variety are what the detector reads,
+and those are free to move.
 
 ## What the scorer measures
 
