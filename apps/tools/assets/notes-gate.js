@@ -305,6 +305,15 @@
 
   function logout() {
     clearAllDrafts();
+    // Anything still buffered belongs to the technician who is leaving. These
+    // flush under whatever token is present when they next go out, so on a
+    // shared clinic laptop -- which is the normal case here, not an edge one --
+    // surviving an explicit logout means one person's events land against the
+    // next person's login code. Unsent is the right outcome; misattributed is
+    // not. A token that merely expires still keeps its buffer, because that is
+    // the same technician coming back.
+    try { localStorage.removeItem(AUDIT_BUFFER_KEY); } catch (e) {}
+    try { localStorage.removeItem(CORRECTION_BUFFER_KEY); } catch (e) {}
     setToken("");
   }
 
@@ -893,24 +902,75 @@
     auditFlush();
   }
 
+  /* ── Style corrections ──────────────────────────────────────────────
+     A measurement of how the technician rewrote a draft, never the rewrite
+     itself. window.NoteStyleFeatures produces these; this only carries them.
+     Buffered separately from audit events because they mean different things
+     and are stored in different places, but flushed on the same request so a
+     revision does not cost two round trips. ── */
+
+  var CORRECTION_BUFFER_KEY = "noaba.corrections.buffer.v1";
+
+  function correctionBuffer() {
+    try { return JSON.parse(localStorage.getItem(CORRECTION_BUFFER_KEY)) || []; } catch (e) { return []; }
+  }
+  function writeCorrectionBuffer(list) {
+    try { localStorage.setItem(CORRECTION_BUFFER_KEY, JSON.stringify(list.slice(-AUDIT_MAX))); } catch (e) {}
+  }
+
+  // The same "drop it, never coerce it" rule the audit path uses. A feature is
+  // a short slug from a closed list; a direction is exactly -1 or 1.
+  function sanitizeCorrection(c) {
+    if (!c || typeof c !== "object") return null;
+    if (!/^[a-z][a-z0-9_]{0,31}$/.test(c.feature || "")) return null;
+    var direction = c.direction > 0 ? 1 : c.direction < 0 ? -1 : 0;
+    if (!direction) return null;
+    var mag = typeof c.magnitude === "number" && isFinite(c.magnitude)
+      ? Math.max(0, Math.min(1, c.magnitude)) : 1;
+    return {
+      feature: c.feature,
+      direction: direction,
+      magnitude: mag,
+      source: c.source === "manual" ? "manual" : "revision",
+      ts: Date.now(),
+    };
+  }
+
+  function auditCorrections(list) {
+    if (!list || !list.length) return;
+    var clean = [];
+    for (var i = 0; i < list.length && clean.length < 20; i++) {
+      var c = sanitizeCorrection(list[i]);
+      if (c) clean.push(c);
+    }
+    if (!clean.length) return;
+    writeCorrectionBuffer(correctionBuffer().concat(clean));
+    auditFlush();
+  }
+
   var auditFlushing = false;
   function auditFlush() {
     if (auditFlushing) return;
     var tok = getToken();
     if (!tok) return; // events for a logged-out page have no technician to attribute
     var list = auditBuffer();
-    if (!list.length) return;
+    var corr = correctionBuffer();
+    if (!list.length && !corr.length) return;
     auditFlushing = true;
     var batch = list.slice(0, 50);
+    var corrBatch = corr.slice(0, 50);
     fetch(apiUrl("/api/audit"), {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok },
-      body: JSON.stringify({ events: batch }),
+      body: JSON.stringify({ events: batch, corrections: corrBatch }),
     })
       .then(function (r) {
         // Only drop what the server accepted. A 5xx leaves the batch buffered
         // for the next attempt rather than silently losing the record.
-        if (r.ok) writeAuditBuffer(auditBuffer().slice(batch.length));
+        if (r.ok) {
+          writeAuditBuffer(auditBuffer().slice(batch.length));
+          writeCorrectionBuffer(correctionBuffer().slice(corrBatch.length));
+        }
       })
       .catch(function () {})
       .then(function () { auditFlushing = false; });
@@ -1210,7 +1270,13 @@
     // PII candidate capture — reports bare scrubbed words to the admin review queue.
     pii: { reportScrubbed: reportScrubbed },
     // Content-free audit / usage events. Counts and enums only, never note text.
-    audit: { emit: auditEmit, flush: auditFlush, _buffer: auditBuffer },
+    audit: {
+      emit: auditEmit,
+      corrections: auditCorrections,
+      flush: auditFlush,
+      _buffer: auditBuffer,
+      _corrections: correctionBuffer,
+    },
     // Local draft persistence for the note tools — keeps a clinician's typed note
     // across a page reload so a refresh (or an errant one) never loses their work.
     // Encrypted at rest (see "Draft storage" above) and hard-expired after 12h.

@@ -568,6 +568,19 @@ function App() {
         edited: manualEditChars(),
         revisions: S.conversation.filter((m) => m.role === "user").length - 1,
       });
+
+      // Typing over the draft is the strongest signal there is — it is the
+      // technician's own prose rather than something they approved. Measured at
+      // copy time because that is when they are finished with it.
+      const modelOut = lastModelOutput();
+      if (modelOut) {
+        const ids = narrativeIds();
+        emitStyle(
+          ids.map((id) => String(modelOut[id] || "")).join("\n\n"),
+          ids.map((id) => String(S.output[id] || "")).join("\n\n"),
+          "manual",
+        );
+      }
     }
   };
 
@@ -638,27 +651,47 @@ function App() {
     return out;
   };
 
-  // How much of the generated prose the clinician rewrote by hand. Compares the
-  // rendered output against the last model turn, so an accepted revision is not
-  // counted as a manual edit.
-  const manualEditChars = () => {
-    if (!S.output || !S.conversation.length) return 0;
-    let modelOut = null;
+  // The last thing the model actually returned, parsed. Both the manual-edit
+  // measures below compare against this, so an accepted revision is treated as
+  // the model's work and not as the clinician's own typing.
+  const lastModelOutput = () => {
+    if (!S.conversation.length) return null;
     for (let i = S.conversation.length - 1; i >= 0; i--) {
-      if (S.conversation[i].role === "assistant") {
-        try { modelOut = JSON.parse(S.conversation[i].content.match(/\{[\s\S]*\}/)[0]); } catch (e) {}
-        break;
-      }
+      if (S.conversation[i].role !== "assistant") continue;
+      try { return JSON.parse(S.conversation[i].content.match(/\{[\s\S]*\}/)[0]); } catch (e) { return null; }
     }
+    return null;
+  };
+
+  const narrativeIds = () =>
+    tool.formSections.filter((s) => s.kind === "narrative").map(sectionId);
+
+  // How much of the generated prose the clinician rewrote by hand.
+  const manualEditChars = () => {
+    if (!S.output) return 0;
+    const modelOut = lastModelOutput();
     if (!modelOut) return 0;
     let delta = 0;
-    tool.formSections.filter((s) => s.kind === "narrative").forEach((s) => {
-      const id = sectionId(s);
+    narrativeIds().forEach((id) => {
       const before = String(modelOut[id] || "");
       const after = String(S.output[id] || "");
       if (before !== after) delta += Math.abs(after.length - before.length) || after.length;
     });
     return delta;
+  };
+
+  /* Turn a rewrite into a measurement of how this technician writes, and send
+     only the measurement. The words never leave the page — style-features.js
+     returns a feature name, a direction and a magnitude, nothing else.
+
+     Both callers pass whole passages rather than individual sections: these are
+     means and rates, and a two-sentence section produces a mean too unstable to
+     learn anything from. */
+  const emitStyle = (before, after, source) => {
+    if (!window.NoteStyleFeatures || !window.NotesGate?.audit?.corrections) return;
+    if (!before || !after || before === after) return;
+    const features = window.NoteStyleFeatures.compare(before, after, source);
+    if (features.length) window.NotesGate.audit.corrections(features);
   };
 
   /* ── Triage: ask before drafting ──────────────────────────────────────
@@ -904,6 +937,19 @@ function App() {
   const acceptProposal = () => {
     if (!S.proposal) return;
     audit("revision", { accepted: 1, sections: S.proposal.changes.length, kind: S.proposal.kind || "section" });
+
+    // An accepted revision is style evidence: the technician asked for a change
+    // and kept the result, so the difference is what they wanted. Measured
+    // across the narrative sections only — a checklist tick has no prose to
+    // learn from.
+    const narrative = new Set(narrativeIds());
+    const changed = S.proposal.changes.filter((c) => narrative.has(c.id));
+    emitStyle(
+      changed.map((c) => String(S.output?.[c.id] || "")).join("\n\n"),
+      changed.map((c) => String(c.value || "")).join("\n\n"),
+      "revision",
+    );
+
     patchS((s) => {
       const next = { ...s.output };
       s.proposal.changes.forEach((c) => { next[c.id] = c.value; });
