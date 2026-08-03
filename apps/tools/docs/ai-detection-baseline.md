@@ -125,9 +125,32 @@ what the live model actually produces.
    Gating before that would be pinning a number nobody has checked against
    anything real.
 
-## Per-technician voice (phase 2)
+## Per-technician voice
 
-The largest remaining lever is the technician style profile: correction-derived,
+The largest lever is the technician style profile: correction-derived,
 content-free rules injected into the system prompt so two technicians' notes
-diverge in rhythm while holding the same clinical vocabulary. That is where the
-scores should move furthest, and it is not built yet.
+diverge in rhythm while holding the same clinical vocabulary.
+
+**Built, but inert until the profile Worker is deployed.** See
+`apps/profile-api/README.md`. The browser measures how a technician rewrote a
+draft (`notes/bcba/style-features.js`), sends a feature name plus a direction,
+and the store turns five consistent observations at 0.7 agreement into a rule.
+The rule text is appended to the system prompt beneath the clinical rules, which
+explicitly outrank it.
+
+Three things about this matter for the numbers above:
+
+1. **It should move burstiness and opener variety most**, because that is what
+   the features measure and what the scorer weights heaviest. Whether it does is
+   an open question until there is live output to run through
+   `style-score.mjs` — nothing here has been measured yet.
+2. **It cannot move the clinical vocabulary**, by construction. The house rules
+   are in the prompt above it and say so. That is the resolution to the
+   tension described earlier, made mechanical.
+3. **Two technicians will diverge**, which is the point, but it also means a
+   single baseline number stops being meaningful once cards exist. Expect to
+   record a range across technicians rather than one figure.
+
+Until a card exists for a technician, the prompt is byte-identical to the one
+that shipped without any of this, so the baseline above remains the right
+reference for a new technician's first notes.
