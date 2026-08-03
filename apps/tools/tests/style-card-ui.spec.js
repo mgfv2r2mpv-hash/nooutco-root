@@ -68,7 +68,10 @@ test.describe('the card the technician sees', () => {
     });
     await withCard(page);
     await page.getByRole('button', { name: /learned to write like you/i }).click();
-    await page.getByRole('checkbox', { name: /Keep sentences short/ }).uncheck();
+    // click() rather than uncheck(): the state settles through a React update
+    // and, on failure, deliberately rolls back — so the assertion belongs after
+    // the click, not inside it.
+    await page.getByRole('checkbox', { name: /Keep sentences short/ }).click();
 
     await expect.poll(() => muted).toMatchObject({ feature: 'sentence_length', muted: true });
     await expect(page.getByRole('checkbox', { name: /Keep sentences short/ })).not.toBeChecked();
@@ -79,10 +82,11 @@ test.describe('the card the technician sees', () => {
       route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"down"}' }));
     await withCard(page);
     await page.getByRole('button', { name: /learned to write like you/i }).click();
-    await page.getByRole('checkbox', { name: /Keep sentences short/ }).uncheck();
+    await page.getByRole('checkbox', { name: /Keep sentences short/ }).click();
 
     await expect(page.getByText(/couldn’t save that just now/i)).toBeVisible();
-    // And the rule must still show as on, because it still is.
+    // The box ends up back ON, because the rule still is. That rollback is why
+    // this cannot use uncheck() — the final state is deliberately unchanged.
     await expect(page.getByRole('checkbox', { name: /Keep sentences short/ })).toBeChecked();
   });
 });
@@ -217,7 +221,7 @@ test.describe('the learned block reaches the prompt, and then holds still', () =
 
     // Switch the rule off while the note is open.
     await page.getByRole('button', { name: /learned to write like you/i }).click();
-    await page.getByRole('checkbox', { name: /Keep sentences short/ }).uncheck();
+    await page.getByRole('checkbox', { name: /Keep sentences short/ }).click();
     await expect(page.getByRole('checkbox', { name: /Keep sentences short/ })).not.toBeChecked();
     // The panel says so, so the technician is not left guessing.
     await expect(page.getByText(/applies to your next note/i)).toBeVisible();

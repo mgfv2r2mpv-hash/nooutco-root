@@ -1,0 +1,45 @@
+name: Profile API Tests
+
+# apps/profile-api decides what a technician's learned style card says, and
+# enforces the claim that the store cannot hold clinical text. Both are things
+# a refactor could quietly break, so they get CI from the day the code lands
+# rather than after the first time it matters.
+#
+# No install step and no matrix: the tests are plain `node --test` over two
+# pure modules with zero dependencies, which is deliberate — this repo has no
+# build step and the profile Worker does not introduce one.
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'apps/profile-api/**'
+      - '.github/workflows/profile-api-test.yml'
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - 'apps/profile-api/**'
+      - '.github/workflows/profile-api-test.yml'
+
+defaults:
+  run:
+    working-directory: apps/profile-api
+
+jobs:
+  unit:
+    name: Profile API Tests (node --test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Run the runner directly rather than `npm ci` first: there is no
+      # lockfile because there are no dependencies, and `npm ci` fails without
+      # one. If a dependency is ever added, this needs a lockfile and an install
+      # step — not a looser command.
+      - name: Run unit tests
+        run: node --test "test/*.test.js"
