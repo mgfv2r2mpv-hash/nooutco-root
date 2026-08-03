@@ -35,11 +35,15 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # 22, not the 20 the other workflows use: `node --test` only learned
+          # to expand a glob pattern itself in 22. On 20 the quoted glob is
+          # passed through literally and the run fails with "Could not find
+          # test/*.test.js" — which is how this was caught.
+          node-version: '22'
 
       # Run the runner directly rather than `npm ci` first: there is no
       # lockfile because there are no dependencies, and `npm ci` fails without
       # one. If a dependency is ever added, this needs a lockfile and an install
-      # step — not a looser command.
+      # step, not a looser command.
       - name: Run unit tests
         run: node --test "test/*.test.js"
