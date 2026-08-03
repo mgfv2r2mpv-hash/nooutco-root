@@ -976,6 +976,39 @@
       .then(function () { auditFlushing = false; });
   }
 
+  /* ─────────────── Learned style card ───────────────
+     The technician's own card: rules derived from their corrections, plus the
+     block that gets folded into the system prompt. Read through the tools
+     worker, never from the profile store directly — the browser has no route
+     to that and must not have one.
+
+     Fails soft on every path. An empty card is a legitimate answer (a new
+     technician has one), and so is an unreachable profile store, so callers
+     cannot tell those apart and do not need to. ── */
+
+  function styleCardGet() {
+    var tok = getToken();
+    if (!tok) return Promise.resolve({ rules: [], block: "", available: false });
+    return fetch(apiUrl("/api/style-card"), { headers: { Authorization: "Bearer " + tok } })
+      .then(function (r) { return r.ok ? r.json() : { rules: [], block: "", available: false }; })
+      .catch(function () { return { rules: [], block: "", available: false }; });
+  }
+
+  // Muting is a deliberate action, so unlike the read this reports failure —
+  // a rule the technician switched off must not keep shaping their notes while
+  // the UI says otherwise.
+  function styleCardMute(feature, muted) {
+    var tok = getToken();
+    if (!tok) return Promise.resolve(false);
+    return fetch(apiUrl("/api/style-card/mute"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok },
+      body: JSON.stringify({ feature: feature, muted: !!muted }),
+    })
+      .then(function (r) { return r.ok; })
+      .catch(function () { return false; });
+  }
+
   /* ─────────────── PII candidate capture (admin review queue) ─────────────── */
 
   // Fire-and-forget: report bare scrubbed words into the admin PII review queue.
@@ -1270,6 +1303,7 @@
     // PII candidate capture — reports bare scrubbed words to the admin review queue.
     pii: { reportScrubbed: reportScrubbed },
     // Content-free audit / usage events. Counts and enums only, never note text.
+    styleCard: { get: styleCardGet, mute: styleCardMute },
     audit: {
       emit: auditEmit,
       corrections: auditCorrections,

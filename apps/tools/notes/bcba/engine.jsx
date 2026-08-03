@@ -312,6 +312,104 @@ function HouseRules() {
   );
 }
 
+/* The technician's own learned voice, shown to them and switchable off.
+ *
+ * Nothing here is hidden, for the same reason the house rules are not: this
+ * changes how their notes read, so they get to see it and disagree with it. A
+ * muted rule keeps its evidence, so if they carry on making that correction it
+ * comes back — which is the honest behaviour, since the alternative is quietly
+ * pretending they never made it.
+ *
+ * Absent for a new technician and absent when the profile store is unreachable.
+ * Both render as nothing at all rather than as an error, because in both cases
+ * the note is written exactly as it was before any of this existed. */
+function StyleCard({ card, onMute, noteOpen }) {
+  const [open, setOpen] = React.useState(false);
+  const [busy, setBusy] = React.useState(null);
+  const [failed, setFailed] = React.useState("");
+
+  const rules = (card && card.rules) || [];
+  if (!card || !card.available || !rules.length) return null;
+
+  const active = rules.filter((r) => !r.muted).length;
+
+  const toggle = async (feature, muted) => {
+    setBusy(feature);
+    setFailed("");
+    const ok = await onMute(feature, muted);
+    if (!ok) setFailed(feature);
+    setBusy(null);
+  };
+
+  return (
+    <div style={{ marginBottom: 20, borderRadius: 10, border: "1px solid #c0d4a8", background: "#fffbef", overflow: "hidden" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        style={{
+          width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: 12, padding: "11px 16px", border: "none", background: "transparent", cursor: "pointer",
+          fontFamily: "inherit", fontSize: 13.5, fontWeight: 700, color: "#374528", textAlign: "left",
+        }}
+      >
+        <span>
+          How this tool has learned to write like you
+          <span style={{ fontWeight: 400, color: "#7a9460" }}>
+            {" "}— {active} {active === 1 ? "habit" : "habits"} picked up from your edits
+          </span>
+        </span>
+        <span aria-hidden="true" style={{ color: "#7a9460", fontSize: 12 }}>{open ? "▴" : "▾"}</span>
+      </button>
+
+      {open && (
+        <div style={{ padding: "0 16px 14px" }}>
+          <p style={{ margin: "0 0 10px", fontSize: 12.5, color: "#5a6b4a", lineHeight: 1.55 }}>
+            These come from the changes you make to drafts — never from anything you typed,
+            which is not stored. Switch one off if it does not sound like you.
+            {noteOpen ? " A change applies to your next note, not the one open now." : ""}
+          </p>
+          <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 8 }}>
+            {rules.map((r) => (
+              <li
+                key={r.feature}
+                style={{
+                  display: "flex", alignItems: "flex-start", gap: 10,
+                  padding: "9px 11px", borderRadius: 8, border: "1px solid #e2e8d8",
+                  background: r.muted ? "#f3f4ef" : "#fff",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  id={`style-${r.feature}`}
+                  checked={!r.muted}
+                  disabled={busy === r.feature}
+                  onChange={(e) => toggle(r.feature, !e.target.checked)}
+                  style={{ marginTop: 3, accentColor: "#5a7040" }}
+                />
+                <label
+                  htmlFor={`style-${r.feature}`}
+                  style={{
+                    fontSize: 12.8, lineHeight: 1.55, cursor: "pointer",
+                    color: r.muted ? "#8a9480" : "#41502c",
+                    textDecoration: r.muted ? "line-through" : "none",
+                  }}
+                >
+                  {r.rule}
+                  <span style={{ display: "block", marginTop: 2, fontSize: 11.5, color: "#7a9460", textDecoration: "none" }}>
+                    seen in {r.evidence} {r.evidence === 1 ? "edit" : "edits"}
+                    {failed === r.feature ? " · couldn’t save that just now — try again" : ""}
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Read-only rows echoing quick-pick answers the model must not infer, so the BT
 // can tick the matching EHR boxes without scrolling back up to the form.
 function FactRows({ rows, output, values }) {
@@ -490,6 +588,13 @@ function freshSession(tool) {
     panelDraft: "",
     questions: null,       // triage questions awaiting an answer, or null
     pendingValues: null,   // scrubbed values held while triage runs
+
+    // ── Learned voice ────────────────────────────────────────────────────
+    // styleCard is the live card, refreshed for display. convStyleBlock is the
+    // snapshot the open conversation was drafted with, and must not track it —
+    // it is part of the cached prompt prefix every revision replays.
+    styleCard: null,       // {rules, block, available} | null while unknown
+    convStyleBlock: "",
   };
 }
 
@@ -540,6 +645,44 @@ function App() {
 
   const patchS = (patch) =>
     setSessions((prev) => ({ ...prev, [tool.id]: { ...prev[tool.id], ...(typeof patch === "function" ? patch(prev[tool.id]) : patch) } }));
+
+  // Load the technician's learned voice once they are logged in — the card is
+  // keyed on the login code, so there is nothing to ask for before that. Not
+  // awaited by anything: an unreachable profile store leaves the card null and
+  // every downstream path treats that as "no learned style", which is the same
+  // prompt this tool used before any of this existed.
+  React.useEffect(() => {
+    if (!loggedIn || !window.NotesGate || !NotesGate.styleCard) return;
+    let live = true;
+    NotesGate.styleCard.get().then((card) => {
+      if (live) patchS({ styleCard: card });
+    });
+    return () => { live = false; };
+  }, [loggedIn, tool.id]);
+
+  /* Optimistic, with a rollback. The checkbox has to answer the click straight
+     away — waiting on a round trip reads as a dead control, and the technician
+     clicks again. On failure it goes back to what it actually is, and the row
+     says so; showing "off" for a rule that is still on would be the one
+     genuinely misleading outcome here.
+
+     Reflected locally rather than refetched: the open note deliberately keeps
+     the block it was drafted with, so a round trip would only redraw the same
+     list. */
+  const muteStyleRule = async (feature, muted) => {
+    const apply = (value) =>
+      patchS((s) => ({
+        styleCard: {
+          ...s.styleCard,
+          rules: (s.styleCard.rules || []).map((r) => (r.feature === feature ? { ...r, muted: value } : r)),
+        },
+      }));
+
+    apply(muted);
+    const ok = await NotesGate.styleCard.mute(feature, muted);
+    if (!ok) apply(!muted);
+    return ok;
+  };
 
   const setValue = (fid, val) => patchS((s) => ({ values: { ...s.values, [fid]: val } }));
 
@@ -608,9 +751,18 @@ function App() {
     return out;
   };
 
-  const runTurn = async (messages) => {
+  /* The learned style block is passed in rather than read from state, and is
+     fixed for the life of a conversation.
+
+     The system prompt is the cached prefix every revision replays. If the block
+     changed between the first draft and a revision -- because the technician
+     muted a rule in the panel while the note was open -- the prefix would no
+     longer match and every subsequent turn would pay full price. So the card is
+     snapshotted when the note is drafted, and a mute takes effect on the next
+     note. The card UI says so. */
+  const runTurn = async (messages, styleBlock) => {
     const r = await NotesGate.generateConversation({
-      system: tool.buildSystem(),
+      system: tool.buildSystem() + (styleBlock ? "\n\n" + styleBlock : ""),
       messages,
       tool: tool.id,
       maxTokens: tool.maxTokens || 3000,
@@ -763,8 +915,14 @@ function App() {
       if (extra && extra.trim()) {
         userMsg += "\n\nTHE TECHNICIAN ADDED, ANSWERING FOLLOW-UP QUESTIONS (treat as part of the notes above):\n" + extra.trim();
       }
+      // Snapshot the technician's learned style for this whole conversation.
+      // Empty for a new technician, and empty when the profile store is
+      // unreachable — both give exactly the prompt that shipped before any of
+      // this existed, which is the intended failure mode.
+      const styleBlock = (S.styleCard && S.styleCard.block) || "";
       const conversation = [{ role: "user", content: userMsg }];
-      const r = await runTurn(conversation);
+      patchS({ convStyleBlock: styleBlock });
+      const r = await runTurn(conversation, styleBlock);
       conversation.push({ role: "assistant", content: r.rawText });
       patchS({ output: tool.normalizeOutput(r.parsed), conversation, lastCallAt: Date.now() });
       pushThread("assistant", "status", "Drafted. Click any section — or select a phrase inside one — to revise it.");
@@ -867,7 +1025,9 @@ function App() {
     setLoading(true);
     try {
       const conversation = [...S.conversation, { role: "user", content: userMsg }];
-      const r = await runTurn(conversation);
+      // The same block the draft was written with, not whatever the card says
+      // now — this replays a cached prefix and must match it byte for byte.
+      const r = await runTurn(conversation, S.convStyleBlock || "");
       conversation.push({ role: "assistant", content: r.rawText });
       const normalized = tool.normalizeOutput(r.parsed);
       const targetId = ann ? ann.id : null;
@@ -1218,6 +1378,7 @@ function App() {
         </div>
 
         <HouseRules />
+        <StyleCard card={S.styleCard} onMute={muteStyleRule} noteOpen={!!S.output} />
 
         {/* Inputs */}
         <div style={card}>
