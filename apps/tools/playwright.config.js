@@ -25,7 +25,13 @@ export default defineConfig({
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
   webServer: {
-    command: 'npx wrangler pages dev . --port 8789',
+    // ADMIN_SECRET is bound to a throwaway value so tests can mint a real signed
+    // session token and exercise authenticated /api/* routes against the actual
+    // worker, instead of only ever mocking them. It is not a credential — it
+    // unlocks nothing beyond this local dev server, which has no API key and no
+    // KV data. Tests that assert unauthenticated behaviour still get 401,
+    // because a missing or forged token fails the HMAC check regardless.
+    command: 'npx wrangler pages dev . --port 8789 --binding ADMIN_SECRET=playwright-local-test-secret',
     url: 'http://localhost:8789',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,

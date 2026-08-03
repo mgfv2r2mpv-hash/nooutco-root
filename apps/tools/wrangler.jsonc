@@ -5,6 +5,21 @@
   // Cloudflare Pages applies bindings declared under env.production / env.preview,
   // NOT top-level — top-level kv_namespaces silently don't bind on Git builds.
   // Account A (kaleb@nooutco.me) namespaces.
+  //
+  // PROFILE SERVICE BINDING — NOT YET ACTIVE, ON PURPOSE.
+  //
+  // _worker.js reaches the technician style store (apps/profile-api) through a
+  // "PROFILE" service binding, and that Worker has no public route, so this
+  // binding is its only ingress. It is deliberately NOT declared yet: a Pages
+  // deploy that binds a service which has not been deployed can fail, and this
+  // project is live. Every call site already treats a missing binding as "no
+  // profile today" and carries on, so the absence costs nothing.
+  //
+  // Add the block below to BOTH production and preview once
+  // `bt-profile-api` is deployed (apps/profile-api/README.md):
+  //
+  //   "services": [{ "binding": "PROFILE", "service": "bt-profile-api" }]
+  //
   "env": {
     "production": {
       "kv_namespaces": [

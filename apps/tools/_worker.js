@@ -104,6 +104,15 @@ export default {
       return handleAudit(request, env);
     }
 
+    // The technician's own learned style card. The browser talks to us, never
+    // to the profile Worker — see profileFetch.
+    if (url.pathname === "/api/style-card" && request.method === "GET") {
+      return handleStyleCard(request, env);
+    }
+    if (url.pathname === "/api/style-card/mute" && request.method === "POST") {
+      return handleStyleCardMute(request, env);
+    }
+
     // Admin-only: review queue for tech-submitted PII/non-PII candidate terms
     if (url.pathname === "/api/admin/term-queue") {
       return handleTermQueue(request, env);
@@ -1073,23 +1082,159 @@ async function handleAudit(request, env) {
   const token = auth.replace(/^Bearer\s+/i, "");
   const payload = secret ? await readToken(token, secret) : null;
   if (!payload) return jsonRes(401, { error: "Not logged in." });
-  if (!env.API_PASSWORDS) return jsonRes(503, { error: "Storage not configured." });
 
   let body;
   try { body = await request.json(); } catch { return jsonRes(400, { error: "Invalid JSON." }); }
   const incoming = Array.isArray(body?.events) ? body.events.slice(0, 50) : [];
   const events = incoming.map(sanitizeAuditEvent).filter(Boolean);
-  if (!events.length) return jsonRes(200, { stored: 0 });
+  const incomingCorr = Array.isArray(body?.corrections) ? body.corrections.slice(0, 50) : [];
+  const corrections = incomingCorr.map(sanitizeCorrection).filter(Boolean);
+  // Same response shape whether or not there was anything to do, so a caller
+  // never has to distinguish "zero accepted" from "key absent".
+  if (!events.length && !corrections.length) {
+    return jsonRes(200, { stored: 0, corrections: 0, profile: "skipped" });
+  }
+
+  // Audit events need KV; corrections do not — they go to the profile store.
+  // Refusing the whole request when KV is unbound would couple style learning
+  // to a dependency it does not have.
+  if (events.length && !env.API_PASSWORDS) {
+    return jsonRes(503, { error: "Storage not configured." });
+  }
 
   // The login code IS the technician identity; admin sessions have no kid.
   const kid = typeof payload.kid === "string" ? payload.kid : "admin";
-  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  await env.API_PASSWORDS.put(
-    `audit:${kid}:${stamp}`,
-    JSON.stringify({ kid, role: payload.role || null, events }),
-    { expirationTtl: 60 * 60 * 24 * 400 },
-  );
-  return jsonRes(200, { stored: events.length });
+
+  // KV stays the durable trail. It is the compliance artifact, it already
+  // works, and it must not start depending on a service that did not exist
+  // yesterday — so it is written first and its success is what we report.
+  if (events.length) {
+    const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    await env.API_PASSWORDS.put(
+      `audit:${kid}:${stamp}`,
+      JSON.stringify({ kid, role: payload.role || null, events }),
+      { expirationTtl: 60 * 60 * 24 * 400 },
+    );
+  }
+
+  // Style learning is an enhancement, so this is best-effort by design: if the
+  // profile app is down or unbound, the technician still gets their note and
+  // the audit record is still safe in KV.
+  const forwarded = await profileFetch(env, "/events", {
+    kid,
+    tool: events[0]?.tool || null,
+    corrections,
+    metrics: events.map((e) => ({ type: e.type, ts: e.ts, data: e.data })),
+  });
+
+  return jsonRes(200, {
+    stored: events.length,
+    corrections: corrections.length,
+    profile: forwarded ? "ok" : "skipped",
+  });
+}
+
+/**
+ * A correction is a measurement of a diff, never the diff itself. The browser
+ * sends a feature name and a direction; the words that changed never leave the
+ * page.
+ *
+ * The authoritative check on which features exist lives in the profile Worker
+ * (src/features.js) — duplicating that list here would mean two copies to keep
+ * in step across two deployables with no shared module. This is the boundary
+ * check: right shape, sane range, nothing that could carry prose.
+ */
+function sanitizeCorrection(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  if (typeof raw.feature !== "string" || !/^[a-z][a-z0-9_]{0,31}$/.test(raw.feature)) return null;
+
+  const direction = raw.direction > 0 ? 1 : raw.direction < 0 ? -1 : 0;
+  if (direction === 0) return null;
+
+  return {
+    feature: raw.feature,
+    direction,
+    source: raw.source === "manual" ? "manual" : "revision",
+    magnitude: Number.isFinite(raw.magnitude) ? Math.max(0, Math.min(1, raw.magnitude)) : 1,
+    ts: Number.isFinite(raw.ts) ? Math.round(raw.ts) : Date.now(),
+  };
+}
+
+/**
+ * Call the profile Worker over its service binding.
+ *
+ * FAILS OPEN, ALWAYS. Every caller treats null as "no profile today" and
+ * carries on: a note still generates, an audit record is still kept. The
+ * binding is absent entirely until the Worker is deployed and bound, so the
+ * unbound case is the normal one during rollout, not an error worth logging
+ * loudly.
+ *
+ * The 1.5s cap matters because two of these sit in front of a clinician waiting
+ * on a note. A slow profile store must never become a slow note.
+ */
+const PROFILE_TIMEOUT_MS = 1500;
+
+async function profileFetch(env, path, body, method = "POST") {
+  if (!env.PROFILE) return null;
+  try {
+    const init = {
+      method,
+      signal: AbortSignal.timeout(PROFILE_TIMEOUT_MS),
+      headers: { "Content-Type": "application/json" },
+    };
+    if (method !== "GET") init.body = JSON.stringify(body || {});
+
+    const res = await env.PROFILE.fetch(`https://profile.internal${path}`, init);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    // Timeouts are expected under load and are not incidents. Never log the
+    // body — it is the one field that could carry something it should not.
+    console.error("profile-api unreachable", path, err && err.name);
+    return null;
+  }
+}
+
+/**
+ * The technician's own card. A session token is scoped to one login code, so a
+ * technician can only ever ask for their own — `kid` comes from the verified
+ * token, never from the query string.
+ */
+async function handleStyleCard(request, env) {
+  const secret = (env.ADMIN_SECRET ?? "").trim();
+  const auth = request.headers.get("Authorization") || "";
+  const payload = secret ? await readToken(auth.replace(/^Bearer\s+/i, ""), secret) : null;
+  if (!payload) return jsonRes(401, { error: "Not logged in." });
+
+  const kid = typeof payload.kid === "string" ? payload.kid : null;
+  if (!kid) return jsonRes(200, { rules: [], block: "", available: false });
+
+  const card = await profileFetch(env, `/style-card?kid=${encodeURIComponent(kid)}`, null, "GET");
+  if (!card) return jsonRes(200, { rules: [], block: "", available: false });
+
+  return jsonRes(200, { rules: card.rules || [], block: card.block || "", available: true });
+}
+
+async function handleStyleCardMute(request, env) {
+  const secret = (env.ADMIN_SECRET ?? "").trim();
+  const auth = request.headers.get("Authorization") || "";
+  const payload = secret ? await readToken(auth.replace(/^Bearer\s+/i, ""), secret) : null;
+  if (!payload) return jsonRes(401, { error: "Not logged in." });
+
+  const kid = typeof payload.kid === "string" ? payload.kid : null;
+  if (!kid) return jsonRes(403, { error: "This session has no technician profile." });
+
+  let body;
+  try { body = await request.json(); } catch { return jsonRes(400, { error: "Invalid JSON." }); }
+  if (typeof body?.feature !== "string") return jsonRes(400, { error: "Missing feature." });
+
+  const ok = await profileFetch(env, "/style-card/mute", {
+    kid,
+    feature: body.feature,
+    muted: body.muted !== false,
+  });
+  if (!ok) return jsonRes(503, { error: "Style profile is unavailable right now." });
+  return jsonRes(200, { ok: true });
 }
 
 async function handleScrubReport(request, env) {
