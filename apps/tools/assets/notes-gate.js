@@ -967,10 +967,22 @@
       .then(function (r) {
         // Only drop what the server accepted. A 5xx leaves the batch buffered
         // for the next attempt rather than silently losing the record.
-        if (r.ok) {
-          writeAuditBuffer(auditBuffer().slice(batch.length));
-          writeCorrectionBuffer(correctionBuffer().slice(corrBatch.length));
-        }
+        if (!r.ok) return;
+        writeAuditBuffer(auditBuffer().slice(batch.length));
+
+        // Corrections are a separate question. The request succeeds even when
+        // the profile store is unreachable or not yet deployed — that is the
+        // fail-open design and it is right for the note — but dropping them on
+        // that basis would discard the evidence while reporting success.
+        // Keeping them means a technician's card starts populated the day the
+        // store goes live, instead of needing five fresh corrections first.
+        // The buffer is a bounded ring, so a store that never arrives costs a
+        // fixed amount of localStorage and nothing else.
+        return r.json().then(function (d) {
+          if (d && d.profile === "ok") {
+            writeCorrectionBuffer(correctionBuffer().slice(corrBatch.length));
+          }
+        });
       })
       .catch(function () {})
       .then(function () { auditFlushing = false; });

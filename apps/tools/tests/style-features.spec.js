@@ -232,6 +232,40 @@ test.describe('the correction buffer behaves like the audit buffer', () => {
     expect(JSON.stringify(buffered)).not.toContain('eloped');
   });
 
+  test('corrections are kept when the profile store did not take them', async ({ page }) => {
+    // The request succeeds even with no profile store — that is the fail-open
+    // design. Dropping the evidence on that basis would discard it while
+    // reporting success, and a technician's card would start empty on the day
+    // the store finally goes live.
+    await page.route('**/api/audit**', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: '{"stored":0,"corrections":1,"profile":"skipped"}' }));
+
+    await page.evaluate(() => {
+      localStorage.setItem('notes_auth_token', 'x.y');
+      localStorage.removeItem('noaba.corrections.buffer.v1');
+      window.NotesGate.audit.corrections([{ feature: 'sentence_length', direction: -1 }]);
+    });
+    await page.waitForTimeout(700);
+
+    const kept = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('noaba.corrections.buffer.v1') || '[]'));
+    expect(kept).toHaveLength(1);
+  });
+
+  test('corrections are dropped once the profile store confirms it took them', async ({ page }) => {
+    await page.route('**/api/audit**', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: '{"stored":0,"corrections":1,"profile":"ok"}' }));
+
+    await page.evaluate(() => {
+      localStorage.setItem('notes_auth_token', 'x.y');
+      localStorage.removeItem('noaba.corrections.buffer.v1');
+      window.NotesGate.audit.corrections([{ feature: 'sentence_length', direction: -1 }]);
+    });
+    await page.waitForFunction(
+      () => JSON.parse(localStorage.getItem('noaba.corrections.buffer.v1') || '[]').length === 0,
+    );
+  });
+
   test('logging out discards buffered corrections rather than misattributing them', async ({ page }) => {
     // On a shared clinic laptop the next person to log in would otherwise
     // receive the previous technician's style evidence.
