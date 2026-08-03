@@ -1,0 +1,22 @@
+# Technician style profile API.
+#
+# INGRESS IS THE SECURITY CONTROL. `workers_dev = false` and the deliberate
+# absence of any [[routes]] block mean this Worker has no public URL at all.
+# The only way to reach it is the PROFILE service binding declared on the tools
+# Pages project. Adding a route here would silently undo that -- don't.
+#
+# Deploy:  npx wrangler deploy --config apps/profile-api/wrangler.toml
+# Migrate: npx wrangler d1 execute bt-profiles --file apps/profile-api/schema.sql --remote
+
+name = "bt-profile-api"
+main = "src/index.js"
+compatibility_date = "2026-04-15"
+
+workers_dev = false
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bt-profiles"
+# Replaced by the real uuid from `wrangler d1 create bt-profiles`. Local dev
+# (`wrangler dev --local`) ignores it and uses an on-disk sqlite file instead.
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
