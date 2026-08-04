@@ -519,6 +519,7 @@ function freshSession(tool) {
     values,
     output: null,
     conversation: [],     // [{role, content}] - replayed each turn; prefix is server-cached
+    promptText: "",
     scrubNotice: "",
     error: "",
     lastCallAt: 0,
@@ -556,6 +557,7 @@ function App() {
   });
   const [loading, setLoading] = React.useState(false);
   const [copied, setCopied] = React.useState(null);
+  const [copiedPrompt, setCopiedPrompt] = React.useState(false);
   const [loggedIn, setLoggedIn] = React.useState(() => !!(window.NotesGate && NotesGate.isLoggedIn()));
   const [nowTick, setNowTick] = React.useState(Date.now());
   const [panelOpen, setPanelOpen] = React.useState(false);
@@ -1292,7 +1294,30 @@ function App() {
   const pendingChangeFor = (id) =>
     (S.proposal && S.proposal.changes.find((c) => c.id === id)) || null;
 
-  /* The "Generate Prompt" path is gone, on his ruling of 2026-08-04.
+  /* THE COPY-PROMPT PATH IS FOR LOGGED-OUT VISITORS ONLY.
+     His refinement of 2026-08-04: "If someone is not logged in, they get a
+     basic-ass prompt from the copy prompt button. if you log in, it is
+     generate-in-place."
+
+     That resolves the fork cleanly, and better than removing it did. A
+     logged-out visitor cannot reach the Worker at all, so a labelled prompt to
+     paste elsewhere is the only value the page can give them - and because they
+     are not authenticated, there was never any question of the voice block
+     reaching them. Nothing leaks, because nothing is composed.
+
+     Signed in, the button is gone and Generate Note is the only route, which is
+     what makes it true that no authenticated output can bypass his voice. */
+  const handleGeneratePrompt = async () => {
+    const err = tool.validate(S.values);
+    if (err) { patchS({ error: err }); return; }
+    patchS({ error: "" });
+    const review = await scrubGate(collectFreeText());
+    if (!review) return;
+    patchS({ promptText: tool.buildLabeledPrompt(scrubValues(review.map)) });
+    setCopiedPrompt(false);
+  };
+
+  /* Superseded note, kept because it explains why the SIGNED-IN half is gone.
      It built a labelled prompt in the browser for pasting into another model,
      and that is exactly why it could never carry his voice: for the pasted text
      to contain the block, the block has to reach a browser, which reverses the
@@ -1329,7 +1354,7 @@ function App() {
       f.type === "toggle"
         ? S.values[f.id] != null && S.values[f.id] !== f.defaultValue
         : (S.values[f.id] || "").trim() !== ""
-    ) || !!S.output;
+    ) || !!S.output || !!S.promptText;
 
   // One-click reset for the next use. Wipes this tool's saved draft, then rebuilds
   // a blank session (freshSession reloads the now-empty draft). Autosave keeps the
@@ -1605,6 +1630,15 @@ function App() {
             >
               {!loggedIn ? "Log in" : (canUse ? (loading ? "Generating…" : (tool.genLabel || "Generate Note")) : "No access for this tool")}
             </button>
+            {!loggedIn && (
+              <button
+                onClick={handleGeneratePrompt}
+                title="Build a prompt you can paste into an AI of your choice. Log in to have the tool write the note for you instead."
+                style={{ padding: "11px 18px", borderRadius: 8, border: "1.5px solid #374528", background: "white", color: "#374528", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+              >
+                Generate Prompt
+              </button>
+            )}
             {hasContent() && (
               <button
                 onClick={handleClear}
@@ -1622,6 +1656,29 @@ function App() {
             )}
           </div>
         </div>
+
+        {/* Generated Prompt - logged out only. */}
+        {!loggedIn && S.promptText && (
+          <div style={card}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+              <div>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>Generated Prompt</h2>
+                {tool.promptIntro ? <p style={{ fontSize: 13, color: "#5a6b4a", marginTop: 3 }}>{tool.promptIntro}</p> : null}
+              </div>
+              <button
+                onClick={() => { navigator.clipboard.writeText(S.promptText); setCopiedPrompt(true); setTimeout(() => setCopiedPrompt(false), 1800); }}
+                style={{ padding: "7px 16px", borderRadius: 7, border: "1.5px solid #374528", background: "white", color: "#374528", fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", marginLeft: 16 }}
+              >
+                {copiedPrompt ? "Copied!" : "Copy"}
+              </button>
+            </div>
+            <textarea
+              readOnly
+              value={S.promptText}
+              style={{ width: "100%", minHeight: 220, padding: 12, borderRadius: 8, border: "1px solid #c0d4a8", fontSize: 13, color: "#2d3a1f", lineHeight: 1.6, resize: "vertical", background: "#f7fbf3", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+            />
+          </div>
+        )}
 
         {/* Output */}
         {S.output && (

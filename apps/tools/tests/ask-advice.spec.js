@@ -189,29 +189,41 @@ test.describe('asking what he would do', () => {
   });
 });
 
-/* The copy-paste path, removed on his ruling of 2026-08-04.
+/* The copy-prompt path: logged-out only.
  *
- * It built a labelled prompt in the browser to paste into another model, and
- * that is precisely why it could never carry his voice: the block would have to
- * reach a browser, reversing the decision that keeps his personal rules off
- * every machine holding a tools login. He chose to generate in place instead.
+ * His refinement of 2026-08-04: "If someone is not logged in, they get a
+ * basic-ass prompt from the copy prompt button. if you log in, it is
+ * generate-in-place."
+ *
+ * That is a better answer than removing it, which is what I did first. A
+ * logged-out visitor cannot reach the Worker at all, so a pasteable prompt is
+ * the only value the page can offer them, and since they are not authenticated
+ * the voice block was never going to reach them either. Signed in, the button is
+ * absent and Generate Note is the only route - which is what makes it true that
+ * no authenticated output can bypass his voice.
  */
-test.describe('the copy-paste path is gone', () => {
-  test('there is no second button producing a prompt to paste elsewhere', async ({ page }) => {
+test.describe('the copy-prompt path', () => {
+  test('a logged-out visitor gets the button', async ({ page }) => {
+    await page.goto('/notes/bt/');
+    await page.evaluate(() => localStorage.removeItem('notes_auth_token'));
+    await page.goto('/notes/bt/');
+    await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+    await expect(page.getByRole('button', { name: 'Generate Prompt' })).toBeVisible();
+  });
+
+  test('a signed-in clinician does not, so every authenticated route goes through the Worker', async ({ page }) => {
+    // THE LOAD-BEARING ONE. If this button reappears while signed in, there is
+    // a way to produce output from the tool that never sees his voice.
     await page.goto('/notes/bt/');
     await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
     await page.goto('/notes/bt/');
     await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
-
     await expect(page.getByRole('button', { name: 'Generate Prompt' })).toHaveCount(0);
     await expect(page.getByText('Generated Prompt')).toHaveCount(0);
-    // The surviving route is the one that goes through the Worker.
     await expect(page.getByRole('button', { name: /Generate Note/i })).toBeVisible();
   });
 
-  test('every generation route now goes through the Worker', async ({ page }) => {
-    // The point of the removal: there is no longer a way to produce output from
-    // this tool that bypasses the server-side composition.
+  test('every signed-in generation carries the tool id the Worker keys the voice on', async ({ page }) => {
     const posted = [];
     await page.route('**/api/llm-call**', async (route) => {
       posted.push(JSON.parse(route.request().postData() || '{}'));
@@ -221,9 +233,6 @@ test.describe('the copy-paste path is gone', () => {
     await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
     await page.goto('/notes/bt/');
     await draftANote(page);
-
-    // Every call carried the tool id, which is what the Worker keys the voice
-    // allowlist on. A client-composed path would have sent nothing at all.
     expect(posted.length).toBeGreaterThan(0);
     for (const body of posted) expect(body.tool).toBe('bt');
   });
