@@ -274,7 +274,11 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       (values.fBehavior || "").trim() || "(none provided)",
       "",
       "[5] FOLLOW-UP & CONCERNS (BCBA action items, questions, involvement, overall progress):",
-      (values.fFollowUp || "").trim() || "(none provided - default followUpNarrative to: \"Direct staff do not report new questions or concerns for the BCBA.\")",
+      // The technician IS the direct staff, so "Direct staff do not report..."
+      // had them writing about themselves in the third person, which is exactly
+      // the actorless register that reads as machine-written. Say it the way the
+      // person filing the note would say it.
+      (values.fFollowUp || "").trim() || "(none provided - default followUpNarrative to: \"No new questions or concerns for the BCBA at this time.\")",
       "",
       "ALLOWED CHECKBOX OPTIONS (return only verbatim values from these lists):",
       "- individualsPresent: " + menu(INDIVIDUALS_PRESENT),
@@ -294,7 +298,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       "- behaviorPlanNarrative: 2-4 sentences, quantitative where reported; state whether behavior increased, decreased, or held steady relative to recent sessions.",
       "- antecedentNarrative: describe the antecedent strategies as applied and their impact.",
       "- clinicalStatusNarrative: 1-2 sentences on mood/behavior at session start.",
-      "- followUpNarrative: brief; use the default sentence above if nothing reported.",
+      "- followUpNarrative: brief; use the default sentence above if nothing reported. Write it as the person filing the note, not about them. The technician IS the direct staff, so never write \"Direct staff report...\" or \"The behavior technician has no concerns\" here - that is the author describing themselves in the third person, which reads as though someone else wrote the note. \"No new questions or concerns for the BCBA at this time\" is the register.",
     ].join("\n");
   }
 

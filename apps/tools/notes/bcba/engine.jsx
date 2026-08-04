@@ -740,6 +740,32 @@ function App() {
   const narrativeIds = () =>
     tool.formSections.filter((s) => s.kind === "narrative").map(sectionId);
 
+  /* How the note is doing, for the collapsed assistant pill.
+   *
+   * Built from the hints the model already returns rather than from a second
+   * call: it has just read the note and said what is thin about it, so asking
+   * again would cost a round trip to learn something we were already told.
+   *
+   * "missing" means a hint names a section that has no prose at all - a payer
+   * reading that note finds a blank where a narrative should be. "thin" means
+   * there are hints but every section has something in it. Deliberately
+   * conservative: a green tick that turns out to be wrong is worse than an amber
+   * one the technician glances at and dismisses. */
+  const noteQuality = () => {
+    if (!S.output) return { level: "idle" };
+
+    const empties = narrativeIds().filter((id) => !String(S.output[id] || "").trim());
+    if (empties.length) {
+      return { level: "missing", reason: `${empties.length} narrative section${empties.length > 1 ? "s are" : " is"} empty` };
+    }
+
+    const hints = Array.isArray(S.output.hints) ? S.output.hints : [];
+    if (hints.length) {
+      return { level: "thin", reason: `${hints.length} spot${hints.length > 1 ? "s" : ""} could use more detail` };
+    }
+    return { level: "good", reason: "Nothing flagged. Review it before you file it." };
+  };
+
   // How much of the generated prose the clinician rewrote by hand.
   const manualEditChars = () => {
     if (!S.output) return 0;
@@ -1260,6 +1286,7 @@ function App() {
         questions={S.questions}
         onSkipQuestions={skipQuestions}
         unread={S.questions ? S.questions.length : 0}
+        quality={noteQuality()}
       />
 
       <div style={{ maxWidth: 860, margin: "0 auto" }}>

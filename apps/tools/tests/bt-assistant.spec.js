@@ -347,21 +347,68 @@ test.describe('annotate + panel revision', () => {
     expect(sent).toContain('highlighted');
   });
 
-  test('the panel docks without covering the note, and collapses to a pill', async ({ page }) => {
+  test('the panel floats over the note instead of reflowing it', async ({ page }) => {
     await page.goto('/notes/bt/');
     await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
 
     await expect(page.locator('.revision-fab')).toBeVisible();
-    await page.locator('.revision-fab').click();
 
+    // The page must be exactly as wide with the panel open as with it shut.
+    // Docking used to inset #root, which cost the note a third of the window
+    // and reflowed it under the reader mid-sentence.
+    const widthBefore = await page.evaluate(() => document.getElementById('root').getBoundingClientRect().width);
+
+    await page.locator('.revision-fab').click();
     await expect(page.locator('.revision-panel')).toBeVisible();
-    // Docked open, the page is inset rather than overlaid - a note hidden
-    // behind the panel is the failure this guards.
+
+    const widthAfter = await page.evaluate(() => document.getElementById('root').getBoundingClientRect().width);
+    expect(widthAfter).toBe(widthBefore);
+
     const inset = await page.evaluate(() => parseInt(getComputedStyle(document.getElementById('root')).paddingRight, 10));
-    expect(inset).toBeGreaterThan(300);
+    expect(inset).toBeLessThan(60);
 
     await page.locator('.revision-panel-close').click();
     await expect(page.locator('.revision-panel')).toHaveCount(0);
     await expect(page.locator('.revision-fab')).toBeVisible();
+  });
+
+  test('tapping off the panel collapses it and keeps what was typed', async ({ page }) => {
+    // The whole point of a panel that floats: getting back to the page must not
+    // cost the technician the instruction they were part-way through writing.
+    await page.goto('/notes/bt/');
+    await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+
+    await page.locator('.revision-fab').click();
+    await page.locator('.revision-input').fill('shorten the behaviour section');
+
+    // Click the page background, not a section: clicking a section means
+    // "revise this" and deliberately keeps the panel open.
+    await page.locator('h1').first().click();
+    await expect(page.locator('.revision-panel')).toHaveCount(0);
+
+    await page.locator('.revision-fab').click();
+    await expect(page.locator('.revision-input')).toHaveValue('shorten the behaviour section');
+  });
+
+  test('the collapsed pill carries the note quality, not just a label', async ({ page }) => {
+    await page.route('**/api/llm-call**', async (route) => {
+      const body = JSON.parse(route.request().postData() || '{}');
+      const isTriage = !!body.systemPrompt || /sufficient/i.test(body.system || '');
+      return route.fulfill(reply(isTriage ? { sufficient: true, questions: [] } : note()));
+    });
+
+    await page.goto('/notes/bt/');
+    await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
+    await page.goto('/notes/bt/');
+
+    // Before a note exists there is nothing to judge.
+    await expect(page.locator('.revision-fab')).toHaveClass(/quality-idle/);
+
+    await fillRequiredAndGenerate(page);
+    await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
+
+    // note() carries no hints and no empty narrative, so this reads as complete.
+    await page.locator('.revision-panel-close').click();
+    await expect(page.locator('.revision-fab')).toHaveClass(/quality-good/);
   });
 });

@@ -108,7 +108,7 @@ function Bubble({ role, children, muted }) {
 
 function RevisionPanel({
   open, onToggle, thread, annotation, onClearAnnotation,
-  draft, onDraft, onSend, loading, questions, onSkipQuestions, unread,
+  draft, onDraft, onSend, loading, questions, onSkipQuestions, unread, quality,
 }) {
   const scrollRef = React.useRef(null);
   const inputRef = React.useRef(null);
@@ -126,43 +126,76 @@ function RevisionPanel({
     if (open && annotation && inputRef.current) inputRef.current.focus();
   }, [open, annotation]);
 
+  /* Tapping off the panel collapses it, so the technician can get back to the
+     page - but the click still reaches whatever it landed on.
+   *
+   * This started as a full-screen backdrop, which was wrong: it swallowed every
+   * click on the note, and clicking a section is the tool's core gesture. So it
+   * listens instead of blocking, and deliberately does NOT collapse when the
+   * click was on a revisable section or the chip, because that click means
+   * "revise this" and the panel is where the instruction gets typed. */
+  React.useEffect(() => {
+    if (!open) return;
+    const onDown = (e) => {
+      const t = e.target;
+      if (!t || !t.closest) return;
+      if (t.closest(".revision-panel, .revision-fab, [data-revise-chip]")) return;
+      if (t.closest(".section-clickable")) return; // that is a revise gesture
+      onToggle();
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [open, onToggle]);
+
   const awaitingQuestions = !!(questions && questions.length);
+
+  // Collapsed, the assistant is a pill carrying the note's quality at a glance:
+  // green when it reads complete, amber when it is thin but usable, red when
+  // something a payer would ask for is missing. Grey before there is a note to
+  // judge. The state is the reason to open it, so it belongs on the button.
+  const q = quality || {};
+  const QUALITY = {
+    good:    { dot: "#4a8a2f", label: "Note looks complete" },
+    thin:    { dot: "#d9932b", label: "Note is usable but thin" },
+    missing: { dot: "#b3261e", label: "Note is missing something important" },
+    idle:    { dot: "#a9b89a", label: "No note yet" },
+  };
+  const qs = QUALITY[q.level] || QUALITY.idle;
 
   if (!open) {
     return (
       <button
         type="button"
-        className="revision-fab"
+        className={"revision-fab quality-" + (q.level || "idle")}
         onClick={onToggle}
-        aria-label="Open the assistant panel"
+        aria-label={"Open the assistant. " + qs.label}
+        title={q.reason || qs.label}
       >
-        <span aria-hidden="true">💬</span>
-        <span>Assistant</span>
+        <span className="revision-fab-check" aria-hidden="true">{q.level === "good" ? "✓" : q.level === "idle" ? "💬" : "!"}</span>
+        <span>Ask Nome</span>
         {unread > 0 && <span className="revision-fab-dot" aria-label={unread + " new"} />}
       </button>
     );
   }
 
   return (
+    <React.Fragment>
     <aside className="revision-panel" aria-label="Assistant">
       <header className="revision-panel-head">
-        <div>
-          <p className="revision-panel-title">Assistant</p>
-          <p className="revision-panel-sub">
-            {awaitingQuestions
-              ? "A couple of questions before I draft"
-              : "Click any section, or select a phrase, to revise it"}
-          </p>
-        </div>
-        <button type="button" onClick={onToggle} aria-label="Collapse the assistant panel" className="revision-panel-close">×</button>
+        <p className="revision-panel-title">
+          <span className={"revision-head-dot quality-" + (q.level || "idle")} aria-hidden="true" />
+          Ask Nome
+        </p>
+        <button type="button" onClick={onToggle} aria-label="Collapse the assistant" className="revision-panel-close">×</button>
       </header>
 
       <div className="revision-panel-body" ref={scrollRef}>
         {thread.length === 0 && !awaitingQuestions && (
-          <Bubble role="assistant" muted>
-            Nothing yet. Fill in your session notes and press Generate Note - I'll ask about
-            anything that looks thin before drafting.
-          </Bubble>
+          <p className="revision-empty">
+            Fill in your session notes and press Generate Note. I'll ask about anything
+            that looks thin before drafting, then you can click any section - or select a
+            phrase inside one - to revise it.
+          </p>
         )}
         {thread.map((m, i) => (
           <Bubble key={i} role={m.role} muted={m.kind === "status"}>{m.text}</Bubble>
@@ -252,6 +285,7 @@ function RevisionPanel({
         </p>
       </form>
     </aside>
+    </React.Fragment>
   );
 }
 

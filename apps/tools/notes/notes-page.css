@@ -145,39 +145,77 @@ body {
    collapses to a floating pill. When docked open, the page content is inset by
    the panel width so the note is never hidden behind it. */
 
+/* A card that floats over the note, not a rail docked beside it.
+   Docking meant the note lost a third of the window whenever the assistant was
+   open, and reflowed under the technician mid-read. This covers a corner
+   instead: the page never moves, tapping outside collapses it, and the pill
+   brings it back exactly as it was. */
 .revision-panel {
   position: fixed;
-  top: 0; right: 0; bottom: 0;
-  width: min(380px, 100vw);
+  right: 18px;
+  bottom: 78px;
+  width: min(400px, calc(100vw - 36px));
+  max-height: min(640px, calc(100dvh - 140px));
   z-index: 70;
   display: flex;
   flex-direction: column;
   background: #f7fbf3;
-  border-left: 1px solid #c0d4a8;
-  box-shadow: -8px 0 26px rgba(45, 58, 31, 0.13);
+  border: 1px solid #c0d4a8;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 18px 44px rgba(45, 58, 31, 0.26);
   font-family: inherit;
 }
 
+/* A slim bar, not a title block. The old header was a heavy dark slab carrying
+   a heading and a sentence of instructions, which is a lot of furniture above a
+   conversation that is usually two lines long. The instruction moved into the
+   empty state, where it is actually needed and disappears once it is not. */
 .revision-panel-head {
-  display: flex; align-items: flex-start; justify-content: space-between; gap: 10;
-  padding: 14px 14px 12px 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 10px 10px 14px;
   background: #374528;
   color: white;
   flex-shrink: 0;
 }
-.revision-panel-title { font-size: 15px; font-weight: 700; margin: 0; }
-.revision-panel-sub { font-size: 11.5px; color: #c7d3b5; margin: 2px 0 0; line-height: 1.4; }
+.revision-panel-title {
+  font-size: 13px; font-weight: 700; margin: 0; letter-spacing: 0.01em;
+  display: inline-flex; align-items: center; gap: 8px;
+}
 .revision-panel-close {
   flex-shrink: 0; border: none; background: transparent; color: #c7d3b5;
-  font-size: 24px; line-height: 1; cursor: pointer; padding: 0 2px; font-family: inherit;
+  font-size: 20px; line-height: 1; cursor: pointer; padding: 0 4px; font-family: inherit;
+  border-radius: 6px;
 }
-.revision-panel-close:hover { color: white; }
+.revision-panel-close:hover { color: white; background: rgba(255,255,255,0.12); }
 
+/* Messages sit at the BOTTOM, growing upward, the way every other chat behaves.
+   Anchoring them to the top left a tall blank column under two short lines,
+   which read as broken rather than as calm. */
 .revision-panel-body {
   flex: 1 1 auto;
   overflow-y: auto;
   padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 0;
   -webkit-overflow-scrolling: touch;
+}
+
+/* The instruction that used to live in the header, shown only while there is
+   nothing else to show. */
+.revision-empty {
+  margin: auto 0 4px;
+  padding: 12px 14px;
+  border: 1px dashed #c7d3b5;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.6);
+  color: #5a6b4a;
+  font-size: 12.5px;
+  line-height: 1.55;
+  text-align: center;
 }
 
 /* Skipping the questions is a legitimate choice, not a failure state, but it is
@@ -233,59 +271,88 @@ body {
 
 /* PHI carries its own definition. A button rather than a title attribute so it
    works by tap on a tablet, where most of these notes are actually written. */
+/* Crimson, and no box. This is the one line on the panel that says "do not do
+   this", so it should read as a warning rather than as another card. #9b1c1c on
+   white is 8.4:1, well clear of WCAG AA at this size. */
 .phi-term {
   border: 0; background: none; padding: 0; cursor: pointer;
-  font: inherit; font-weight: 700; color: #6b7d57;
-  text-decoration: underline dotted; text-underline-offset: 2px;
+  font: inherit; font-weight: 700; color: #9b1c1c;
+  text-decoration: underline; text-underline-offset: 2px;
 }
-.phi-term:hover, .phi-term:focus-visible { color: #374528; }
+.phi-term:hover, .phi-term:focus-visible { color: #7a1414; }
 .phi-tip {
-  display: block; margin-top: 6px; padding: 8px 10px;
-  background: #fffbef; border: 1px solid #e3c26a; border-radius: 7px;
-  color: #6b5a2a; font-size: 11px; line-height: 1.5;
+  display: block; margin-top: 5px;
+  color: #9b1c1c; font-size: 11px; font-weight: 700; line-height: 1.5;
 }
 @media (hover: hover) {
   .revision-foot-note:hover .phi-tip { display: block; }
 }
 
+/* The collapsed assistant. It carries the note's quality, so the reason to open
+   it is on the button itself rather than discovered after opening. */
 .revision-fab {
-  position: fixed; right: 18px; bottom: 18px; z-index: 70;
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 11px 18px; border-radius: 999px; border: none;
+  position: fixed; right: 18px; bottom: 18px; z-index: 71;
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 11px 18px 11px 12px; border-radius: 999px; border: none;
   background: #374528; color: white;
   font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
   box-shadow: 0 6px 20px rgba(45, 58, 31, 0.32);
+  transition: background .16s ease, transform .16s ease;
 }
-.revision-fab:hover { background: #4d5840; }
+.revision-fab:hover { background: #4d5840; transform: translateY(-1px); }
+.revision-fab:focus-visible { outline: 3px solid #9bb27c; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .revision-fab { transition: none; } }
+
+/* The status disc. Colour AND glyph, so it does not rely on colour alone. */
+.revision-fab-check {
+  display: inline-grid; place-items: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  font-size: 13px; font-weight: 700; line-height: 1;
+  background: #a9b89a; color: #2d3a1f;
+}
+.revision-fab.quality-good .revision-fab-check    { background: #6fbf3f; color: #12300a; }
+.revision-fab.quality-thin .revision-fab-check    { background: #f0c14b; color: #4a3708; }
+.revision-fab.quality-missing .revision-fab-check { background: #e0554a; color: #fff; }
+
 .revision-fab-dot {
   width: 9px; height: 9px; border-radius: 50%; background: #f0c14b;
   box-shadow: 0 0 0 2px #374528;
 }
 
+/* Same signal, repeated in the open panel's header bar. */
+.revision-head-dot {
+  width: 9px; height: 9px; border-radius: 50%; background: #a9b89a; flex-shrink: 0;
+}
+.revision-head-dot.quality-good    { background: #6fbf3f; }
+.revision-head-dot.quality-thin    { background: #f0c14b; }
+.revision-head-dot.quality-missing { background: #e0554a; }
+
 /* Inset the page so a docked panel never covers the note. Below this width the
    panel is a sheet over the content instead, so no inset applies. */
+/* No inset any more: the panel floats, so the note keeps the whole window and
+   never reflows underneath the reader.
+
+   The error-report button lives in the same corner as the assistant pill and
+   used to sit on top of it, which is why the pill read as "Assista". They are
+   now stacked deliberately: the pill owns the corner, the error button sits
+   above it, and both shift together when the panel opens. */
+#eb-float-btn { bottom: 74px !important; }
 @media (min-width: 900px) {
-  body.revision-open #root { padding-right: calc(min(380px, 100vw) + 20px); }
-  /* The floating error-report button also lives bottom-right, at a higher
-     z-index than the panel, so an open panel would have it sitting on top of
-     the Send button. Move it clear rather than hide it - reporting a broken
-     revision is exactly when someone needs it. */
-  body.revision-open #eb-float-btn { right: calc(min(380px, 100vw) + 14px); }
+  body.revision-open #eb-float-btn { bottom: calc(min(640px, 100dvh - 140px) + 86px) !important; }
 }
 @media (max-width: 899px) {
-  /* Sheet mode: the panel covers the bottom of the screen, so lift the button
-     above it instead of pushing it sideways. */
-  body.revision-open #eb-float-btn { bottom: calc(min(72dvh, 520px) + 14px); }
+  body.revision-open #eb-float-btn { bottom: calc(min(72dvh, 520px) + 14px) !important; }
 }
 #eb-float-btn { transition: right .18s ease, bottom .18s ease; }
 @media (prefers-reduced-motion: reduce) { #eb-float-btn { transition: none; } }
 @media (max-width: 899px) {
   .revision-panel {
-    top: auto;
-    left: 0;
-    height: min(72dvh, 520px);
+    right: 10px;
+    left: 10px;
+    bottom: 74px;
     width: auto;
-    border-left: none;
+    max-height: min(70dvh, 520px);
+    border-left: 1px solid #c0d4a8;
     border-top: 1px solid #c0d4a8;
     border-radius: 14px 14px 0 0;
     box-shadow: 0 -8px 26px rgba(45, 58, 31, 0.18);
