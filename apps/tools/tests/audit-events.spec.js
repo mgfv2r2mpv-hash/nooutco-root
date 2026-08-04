@@ -37,7 +37,7 @@ test.describe('audit events are content-free', () => {
     expect(evt.type).toBe('note_generated');
     expect(evt.data.len_fLesson).toBe(128);
     expect(evt.data.answered).toBe(true);
-    // The prose keys are gone entirely — not truncated, not stringified.
+    // The prose keys are gone entirely - not truncated, not stringified.
     expect(evt.data).not.toHaveProperty('narrative');
     expect(evt.data).not.toHaveProperty('nested');
     expect(evt.data).not.toHaveProperty('list');
@@ -58,7 +58,7 @@ test.describe('audit events are content-free', () => {
     await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
     await page.evaluate(() => {
       localStorage.removeItem('noaba.audit.buffer.v1');
-      // Not in the allowlist — must never reach the buffer.
+      // Not in the allowlist - must never reach the buffer.
       window.NotesGate.audit.emit('note text', { any: 1 });
       window.NotesGate.audit.emit('../../etc/passwd', { any: 1 });
     });
@@ -92,7 +92,7 @@ test.describe('audit events are content-free', () => {
     expect(body.events[0].data).toMatchObject({ seconds: 42, edited: 15, revisions: 2 });
   });
 
-  test('nothing is sent while logged out — there is no technician to attribute', async ({ page }) => {
+  test('nothing is sent while logged out - there is no technician to attribute', async ({ page }) => {
     let called = false;
     await page.route('**/api/audit**', async (route) => {
       called = true;

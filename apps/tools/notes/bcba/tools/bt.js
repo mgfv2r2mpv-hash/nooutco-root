@@ -1,4 +1,4 @@
-/* BT Direct Service Note tool config — ported from the standalone /notes/bt/
+/* BT Direct Service Note tool config - ported from the standalone /notes/bt/
  * page, which was its own 800-line React app with a duplicate of everything the
  * shared engine already does. Moving it here buys the conversation loop, the
  * 5-minute prompt cache, the scrub gate, hints, structured output and drafts
@@ -78,9 +78,9 @@
   ];
 
   var BCBA_ACTION_ITEMS = [
-    "Contact family – scheduling/staffing",
-    "Contact family – new behavior",
-    "Contact family – billing questions",
+    "Contact family - scheduling/staffing",
+    "Contact family - new behavior",
+    "Contact family - billing questions",
     "Contact staff",
     "Materials needed for programming",
     "None",
@@ -101,7 +101,7 @@
     clientProgress: CLIENT_PROGRESS,
   };
 
-  /* ── Output render config — mirrors the EHR form top-to-bottom ─────────── */
+  /* ── Output render config - mirrors the EHR form top-to-bottom ─────────── */
 
   var FORM_SECTIONS = [
     { kind: "checklist", heading: "Individuals Present",                    group: "individualsPresent" },
@@ -138,7 +138,7 @@
   /* ── Hints ────────────────────────────────────────────────────────────────
      Canonical wording lives HERE, client-side; the model returns only the code
      (plus an optional short specifier). Consistent phrasing, nothing fabricated.
-     The BT tool had no hints at all before — these are the gaps a supervising
+     The BT tool had no hints at all before - these are the gaps a supervising
      BCBA most often has to send a note back for. */
 
   var HINT_CATALOG = {
@@ -220,7 +220,7 @@ RULES\n\
 - ANTI-FABRICATION: Never invent activities, programs, data points, prompt levels, strategies, or outcomes not in the notes. Unsupported sections → minimal honest statement + empty checkboxes.\n\n\
 CHECKBOX INFERENCE\n\
 - Return ONLY verbatim values from each group's allowed list. Never invent or reword options.\n\
-- Infer conservatively; cross-read the whole note — purpose follows what was done, action items surface from anything mentioned anywhere.\n\n\
+- Infer conservatively; cross-read the whole note - purpose follows what was done, action items surface from anything mentioned anywhere.\n\n\
 BEHAVIORAL RECHARACTERIZATION\n\
 Translate mentalistic or colloquial language into behavioral observation using only what was reported - never add behaviors or clinical meaning not stated. \"He was cranky\" alone → \"the client presented with apparent negative affect\"; with \"aggression x2\" added → \"the client engaged in aggression on two occasions.\"\n\n\
 TERMINOLOGY (non-negotiable)\n\
@@ -244,7 +244,7 @@ PLAIN LANGUAGE (applies alongside the terminology rules, never against them)\n\
 - no_antecedent_impact (antecedentNarrative): an antecedent strategy is named with no stated effect\n\
 - thin_clinical_status (clinicalStatusNarrative): almost nothing about how the client presented on arrival\n\
 - no_response_described (behaviorPlanNarrative): a behavior is named with no BT response\n\
-- other (any section): something else genuinely unclear — put the question in detail\n\
+- other (any section): something else genuinely unclear - put the question in detail\n\
 Hints are advisory nudges, not demands - do not hint when the BT plainly had nothing to report for that element.";
 
   var JSON_FORMAT_BLOCK =
@@ -274,7 +274,11 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       (values.fBehavior || "").trim() || "(none provided)",
       "",
       "[5] FOLLOW-UP & CONCERNS (BCBA action items, questions, involvement, overall progress):",
-      (values.fFollowUp || "").trim() || "(none provided - default followUpNarrative to: \"Direct staff do not report new questions or concerns for the BCBA.\")",
+      // The technician IS the direct staff, so "Direct staff do not report..."
+      // had them writing about themselves in the third person, which is exactly
+      // the actorless register that reads as machine-written. Say it the way the
+      // person filing the note would say it.
+      (values.fFollowUp || "").trim() || "(none provided - default followUpNarrative to: \"No new questions or concerns for the BCBA at this time.\")",
       "",
       "ALLOWED CHECKBOX OPTIONS (return only verbatim values from these lists):",
       "- individualsPresent: " + menu(INDIVIDUALS_PRESENT),
@@ -290,11 +294,11 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       "- clientProgress: " + menu(CLIENT_PROGRESS),
       "",
       "NARRATIVE GUIDANCE:",
-      "- lessonProgressNarrative: 4–8 sentences, ideally across two programs (one social/communication, one adaptive/repetitive-behavior-replacement). Qualitative, specific.",
-      "- behaviorPlanNarrative: 2–4 sentences, quantitative where reported; state whether behavior increased, decreased, or held steady relative to recent sessions.",
+      "- lessonProgressNarrative: 4-8 sentences, ideally across two programs (one social/communication, one adaptive/repetitive-behavior-replacement). Qualitative, specific.",
+      "- behaviorPlanNarrative: 2-4 sentences, quantitative where reported; state whether behavior increased, decreased, or held steady relative to recent sessions.",
       "- antecedentNarrative: describe the antecedent strategies as applied and their impact.",
-      "- clinicalStatusNarrative: 1–2 sentences on mood/behavior at session start.",
-      "- followUpNarrative: brief; use the default sentence above if nothing reported.",
+      "- clinicalStatusNarrative: 1-2 sentences on mood/behavior at session start.",
+      "- followUpNarrative: brief; use the default sentence above if nothing reported. Write it as the person filing the note, not about them. The technician IS the direct staff, so never write \"Direct staff report...\" or \"The behavior technician has no concerns\" here - that is the author describing themselves in the third person, which reads as though someone else wrote the note. \"No new questions or concerns for the BCBA at this time\" is the register.",
     ].join("\n");
   }
 

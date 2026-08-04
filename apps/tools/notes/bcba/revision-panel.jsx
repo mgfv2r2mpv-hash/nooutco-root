@@ -3,7 +3,7 @@
  * Replaces the old per-section "✎ Revise" input and the global corrections box.
  * Both worked, but they made revision a form field: you opened a box attached to
  * one section, typed one instruction, and read the answer in a card somewhere
- * else. This is the same loop as a conversation instead — you point at the part
+ * else. This is the same loop as a conversation instead - you point at the part
  * of the note you mean, say what's wrong with it in the panel, and the change
  * lands highlighted in the note itself.
  *
@@ -18,7 +18,7 @@
 
 /* ── Selecting a phrase to revise ─────────────────────────────────────────
    Narrative sections are textareas, so a selection is selectionStart/End rather
-   than a DOM Range — which is the easier half. The chip anchors to the
+   than a DOM Range - which is the easier half. The chip anchors to the
    textarea's own top-right corner instead of the caret: caret coordinates in a
    textarea can't be measured without mirroring the content into a hidden div,
    and the corner is stable, predictable, and never lands under the pointer. */
@@ -36,7 +36,7 @@ function useTextSelection(onSelect) {
       if (!text || text.length < 2) { setChip(null); return; }
       // Clamp to the viewport on BOTH axes. The chip is position:fixed and
       // anchored to the textarea, so a section below the fold would otherwise
-      // put it off-screen — visible to a test, unclickable to a person.
+      // put it off-screen - visible to a test, unclickable to a person.
       const r = el.getBoundingClientRect();
       const CHIP_W = 132, CHIP_H = 40, GUTTER = 8;
       const vw = document.documentElement.clientWidth || window.innerWidth;
@@ -108,10 +108,11 @@ function Bubble({ role, children, muted }) {
 
 function RevisionPanel({
   open, onToggle, thread, annotation, onClearAnnotation,
-  draft, onDraft, onSend, loading, questions, onSkipQuestions, unread,
+  draft, onDraft, onSend, loading, questions, onSkipQuestions, unread, quality,
 }) {
   const scrollRef = React.useRef(null);
   const inputRef = React.useRef(null);
+  const [phiOpen, setPhiOpen] = React.useState(false);
 
   // Keep the newest turn in view as the exchange grows.
   React.useEffect(() => {
@@ -119,49 +120,82 @@ function RevisionPanel({
     scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [open, thread.length, loading, questions]);
 
-  // Pointing at a section is a statement of intent — put the cursor where the
+  // Pointing at a section is a statement of intent - put the cursor where the
   // instruction goes so the next thing typed lands in the right place.
   React.useEffect(() => {
     if (open && annotation && inputRef.current) inputRef.current.focus();
   }, [open, annotation]);
 
+  /* Tapping off the panel collapses it, so the technician can get back to the
+     page - but the click still reaches whatever it landed on.
+   *
+   * This started as a full-screen backdrop, which was wrong: it swallowed every
+   * click on the note, and clicking a section is the tool's core gesture. So it
+   * listens instead of blocking, and deliberately does NOT collapse when the
+   * click was on a revisable section or the chip, because that click means
+   * "revise this" and the panel is where the instruction gets typed. */
+  React.useEffect(() => {
+    if (!open) return;
+    const onDown = (e) => {
+      const t = e.target;
+      if (!t || !t.closest) return;
+      if (t.closest(".revision-panel, .revision-fab, [data-revise-chip]")) return;
+      if (t.closest(".section-clickable")) return; // that is a revise gesture
+      onToggle();
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [open, onToggle]);
+
   const awaitingQuestions = !!(questions && questions.length);
+
+  // Collapsed, the assistant is a pill carrying the note's quality at a glance:
+  // green when it reads complete, amber when it is thin but usable, red when
+  // something a payer would ask for is missing. Grey before there is a note to
+  // judge. The state is the reason to open it, so it belongs on the button.
+  const q = quality || {};
+  const QUALITY = {
+    good:    { dot: "#4a8a2f", label: "Note looks complete" },
+    thin:    { dot: "#d9932b", label: "Note is usable but thin" },
+    missing: { dot: "#b3261e", label: "Note is missing something important" },
+    idle:    { dot: "#a9b89a", label: "No note yet" },
+  };
+  const qs = QUALITY[q.level] || QUALITY.idle;
 
   if (!open) {
     return (
       <button
         type="button"
-        className="revision-fab"
+        className={"revision-fab quality-" + (q.level || "idle")}
         onClick={onToggle}
-        aria-label="Open the assistant panel"
+        aria-label={"Open the assistant. " + qs.label}
+        title={q.reason || qs.label}
       >
-        <span aria-hidden="true">💬</span>
-        <span>Assistant</span>
+        <span className="revision-fab-check" aria-hidden="true">{q.level === "good" ? "✓" : q.level === "idle" ? "💬" : "!"}</span>
+        <span>Ask Nome</span>
         {unread > 0 && <span className="revision-fab-dot" aria-label={unread + " new"} />}
       </button>
     );
   }
 
   return (
+    <React.Fragment>
     <aside className="revision-panel" aria-label="Assistant">
       <header className="revision-panel-head">
-        <div>
-          <p className="revision-panel-title">Assistant</p>
-          <p className="revision-panel-sub">
-            {awaitingQuestions
-              ? "A couple of questions before I draft"
-              : "Click any section, or select a phrase, to revise it"}
-          </p>
-        </div>
-        <button type="button" onClick={onToggle} aria-label="Collapse the assistant panel" className="revision-panel-close">×</button>
+        <p className="revision-panel-title">
+          <span className={"revision-head-dot quality-" + (q.level || "idle")} aria-hidden="true" />
+          Ask Nome
+        </p>
+        <button type="button" onClick={onToggle} aria-label="Collapse the assistant" className="revision-panel-close">×</button>
       </header>
 
       <div className="revision-panel-body" ref={scrollRef}>
         {thread.length === 0 && !awaitingQuestions && (
-          <Bubble role="assistant" muted>
-            Nothing yet. Fill in your session notes and press Generate Note — I'll ask about
-            anything that looks thin before drafting.
-          </Bubble>
+          <p className="revision-empty">
+            Fill in your session notes and press Generate Note. I'll ask about anything
+            that looks thin before drafting, then you can click any section - or select a
+            phrase inside one - to revise it.
+          </p>
         )}
         {thread.map((m, i) => (
           <Bubble key={i} role={m.role} muted={m.kind === "status"}>{m.text}</Bubble>
@@ -177,7 +211,7 @@ function RevisionPanel({
               disabled={loading}
               className="revision-skip"
             >
-              Nothing to add — generate anyway
+              Nothing to add - generate anyway
             </button>
           </div>
         )}
@@ -210,7 +244,7 @@ function RevisionPanel({
             rows={2}
             placeholder={
               awaitingQuestions
-                ? "Answer here — or skip above…"
+                ? "Answer here - or skip above…"
                 : annotation
                   ? "What should change about this?"
                   : "Ask for a change, or add a detail you forgot…"
@@ -225,9 +259,33 @@ function RevisionPanel({
             {loading ? "…" : "Send"}
           </button>
         </div>
-        <p className="revision-foot-note">No PHI. Enter sends, Shift+Enter for a new line.</p>
+        {/* "No PHI" assumes the reader already knows what counts. Spelling it
+            out inline would crowd the footer, so the term itself carries the
+            reminder. Click as well as hover, because on a tablet - which is what
+            a lot of sessions are written on - there is no hover. */}
+        <p className="revision-foot-note">
+          Do not enter{" "}
+          <button
+            type="button"
+            className="phi-term"
+            aria-label="What counts as PHI"
+            onClick={(e) => { e.preventDefault(); setPhiOpen((o) => !o); }}
+            aria-expanded={phiOpen}
+          >
+            PHI
+          </button>
+          . Enter sends, Shift+Enter for a new line.
+          {phiOpen && (
+            <span className="phi-tip" role="note">
+              Protected Health Information: anything that could identify a specific person.
+              Names, dates of birth, addresses, phone numbers, email, record or insurance
+              numbers, or any other personal identifier.
+            </span>
+          )}
+        </p>
       </form>
     </aside>
+    </React.Fragment>
   );
 }
 

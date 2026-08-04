@@ -69,9 +69,22 @@ npm run db:remote
 # 3. Deploy
 npm run deploy
 
-# 4. Bind it on the tools Pages project, under env.production AND env.preview:
-#      "services": [{ "binding": "PROFILE", "service": "bt-profile-api" }]
+# 4. Bind it on the tools Pages project. THIS IS A DASHBOARD STEP, not a repo
+#    change: CI deploys with `pages deploy apps/tools` from the repo root and
+#    never reads apps/tools/wrangler.jsonc, so a "services" entry there deploys
+#    nothing. Workers & Pages -> the project -> Settings -> Bindings -> Add ->
+#    Service binding -> name PROFILE -> service bt-profile-api. Do it for
+#    Production and Preview, then redeploy for it to take effect.
 ```
+
+Verify what is actually bound, rather than trusting the repo file:
+
+```bash
+npx wrangler pages download config dev-tools-nooutco-me
+```
+
+If the output has no `services` entry, the binding is not live and
+`/api/admin/style-insights` will return `available: false`.
 
 ## Local development
 

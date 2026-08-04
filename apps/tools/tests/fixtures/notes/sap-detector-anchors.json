@@ -1,0 +1,137 @@
+{
+  "_comment": [
+    "Calibration anchors for scripts/style-score.mjs, captured 2026-08-03.",
+    "",
+    "Source: seven de-identified human-written SAPs on the company template,",
+    "supplied by the maintainer. Five of them were scored by the clinician on",
+    "QuillBot AI Detector v7.1.0 with a placeholder name substituted, so the",
+    "CLIENT token could not itself read as machine text. Plan 3 is the one the",
+    "maintainer independently suspected of AI assistance; plans 6 and 7 arrived",
+    "later and were never scored.",
+    "",
+    "DELIBERATELY NO CLINICAL TEXT. Only the derived signals live here, so the",
+    "calibration stays reproducible without real clinical work product entering",
+    "git history. The plans themselves are not in this repo and should not be.",
+    "",
+    "recordedScore is what style-score.mjs returned at the commit that added",
+    "this file. sap-detector-calibration.spec.js re-derives it from `metrics`",
+    "using the current weights: if someone retunes them, that mismatch is the",
+    "signal that docs/ai-detection-baseline.md no longer describes the scorer."
+  ],
+  "scorerCommit": "8bfd3c80",
+  "detector": "QuillBot AI Detector v7.1.0",
+  "anchors": [
+    {
+      "plan": 1,
+      "quillbot": 20,
+      "recordedScore": 17,
+      "metrics": {
+        "sentences": 20,
+        "words": 412,
+        "meanLen": 20.6,
+        "burstiness": 0.788804488229049,
+        "typeTokenRatio": 0.4825,
+        "entropy": 0.7929850859679377,
+        "repeatRate": 0.020100502512562814,
+        "openerVariety": 1,
+        "commaRate": 1
+      }
+    },
+    {
+      "plan": 2,
+      "quillbot": 0,
+      "recordedScore": 12,
+      "metrics": {
+        "sentences": 13,
+        "words": 250,
+        "meanLen": 19.23076923076923,
+        "burstiness": 0.5540517424693594,
+        "typeTokenRatio": 0.556,
+        "entropy": 0.7065239207753745,
+        "repeatRate": 0.0040650406504065045,
+        "openerVariety": 1,
+        "commaRate": 0.5384615384615384
+      }
+    },
+    {
+      "plan": 3,
+      "quillbot": 49,
+      "recordedScore": 15,
+      "metrics": {
+        "sentences": 43,
+        "words": 504,
+        "meanLen": 13.621621621621621,
+        "burstiness": 0.602985842261589,
+        "typeTokenRatio": 0.5125,
+        "entropy": 0.7133896593491532,
+        "repeatRate": 0.03563941299790356,
+        "openerVariety": 0.9459459459459459,
+        "commaRate": 0.5581395348837209
+      }
+    },
+    {
+      "plan": 4,
+      "quillbot": 10,
+      "recordedScore": 13,
+      "metrics": {
+        "sentences": 18,
+        "words": 319,
+        "meanLen": 17.72222222222222,
+        "burstiness": 0.7282393888605713,
+        "typeTokenRatio": 0.5203761755485894,
+        "entropy": 0.8146015904935892,
+        "repeatRate": 0.006369426751592357,
+        "openerVariety": 1,
+        "commaRate": 0.6111111111111112
+      }
+    },
+    {
+      "plan": 5,
+      "quillbot": 7,
+      "recordedScore": 20,
+      "metrics": {
+        "sentences": 36,
+        "words": 579,
+        "meanLen": 18.677419354838708,
+        "burstiness": 0.8167220818185605,
+        "typeTokenRatio": 0.45,
+        "entropy": 0.8064441311632582,
+        "repeatRate": 0.04927007299270073,
+        "openerVariety": 0.967741935483871,
+        "commaRate": 0.75
+      }
+    },
+    {
+      "plan": 6,
+      "quillbot": null,
+      "recordedScore": 24,
+      "metrics": {
+        "sentences": 39,
+        "words": 866,
+        "meanLen": 22.205128205128204,
+        "burstiness": 0.7435332518034583,
+        "typeTokenRatio": 0.47,
+        "entropy": 0.7957120831626433,
+        "repeatRate": 0.09864864864864865,
+        "openerVariety": 0.9230769230769231,
+        "commaRate": 1.5384615384615385
+      }
+    },
+    {
+      "plan": 7,
+      "quillbot": null,
+      "recordedScore": 23,
+      "metrics": {
+        "sentences": 19,
+        "words": 438,
+        "meanLen": 23.05263157894737,
+        "burstiness": 0.5908102544497836,
+        "typeTokenRatio": 0.4725,
+        "entropy": 0.7740013450086352,
+        "repeatRate": 0.07196029776674938,
+        "openerVariety": 0.9473684210526315,
+        "commaRate": 1
+      }
+    }
+  ]
+}

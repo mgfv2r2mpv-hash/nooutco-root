@@ -1,4 +1,4 @@
-// Shared helpers (generated copies — canonical source in packages/shared; run
+// Shared helpers (generated copies - canonical source in packages/shared; run
 // `npm run sync:shared`). Bundled into this worker by wrangler at deploy time.
 import { jsonRes, sha256Hex } from "./shared/helpers.js";
 import { handleSuggest } from "./shared/suggest.js";
@@ -28,7 +28,7 @@ export default {
     const url = new URL(request.url);
 
     // Bot Fight Mode (cannot be disabled on this plan) challenges every non-static
-    // request, which breaks fetch()/XHR to /api/* — an XHR can't solve an interactive
+    // request, which breaks fetch()/XHR to /api/* - an XHR can't solve an interactive
     // challenge, so it receives challenge HTML instead of JSON. Cloudflare exempts
     // static file extensions from the challenge, so the client appends a ".js" suffix
     // to API paths (see API_SUFFIX in notes-gate.js). Strip it here so routing is
@@ -37,7 +37,7 @@ export default {
       url.pathname = url.pathname.slice(0, -3);
     }
 
-    // Password login — returns a signed session token that unlocks Generate Note
+    // Password login - returns a signed session token that unlocks Generate Note
     if (url.pathname === "/api/login" && request.method === "POST") {
       return handleLogin(request, env);
     }
@@ -68,7 +68,7 @@ export default {
       return handleSuggest(request, env);
     }
 
-    // Public endpoint — returns learned stopwords/firstNames (generic vocab, not PHI)
+    // Public endpoint - returns learned stopwords/firstNames (generic vocab, not PHI)
     if (url.pathname === "/api/scrub-config" && request.method === "GET") {
       return handleScrubConfig(request, env);
     }
@@ -83,12 +83,12 @@ export default {
       return handleScrubOverrides(request, env);
     }
 
-    // Admin-only: review queue — list pending AI suggestions, approve/reject
+    // Admin-only: review queue - list pending AI suggestions, approve/reject
     if (url.pathname === "/api/admin/scrub-suggestions") {
       return handleScrubSuggestions(request, env);
     }
 
-    // Trigger the learning run — admin token OR CRON_SECRET (for the scheduled GitHub Action)
+    // Trigger the learning run - admin token OR CRON_SECRET (for the scheduled GitHub Action)
     if (url.pathname === "/api/admin/scrub-run" && request.method === "POST") {
       return handleScrubRun(request, env);
     }
@@ -105,7 +105,7 @@ export default {
     }
 
     // The technician's own learned style card. The browser talks to us, never
-    // to the profile Worker — see profileFetch.
+    // to the profile Worker - see profileFetch.
     if (url.pathname === "/api/style-card" && request.method === "GET") {
       return handleStyleCard(request, env);
     }
@@ -114,7 +114,7 @@ export default {
     }
 
     // Admin-only: anonymised, cohort-level view of what the tool has learned
-    // across technicians. Names nobody — see handleInsights in the profile app.
+    // across technicians. Names nobody - see handleInsights in the profile app.
     if (url.pathname === "/api/admin/style-insights" && request.method === "GET") {
       return handleStyleInsights(request, env);
     }
@@ -129,14 +129,14 @@ export default {
       return handleTerms(request, env);
     }
 
-    // Weekly term digest — admin token OR CRON_SECRET (the Friday GitHub Action)
+    // Weekly term digest - admin token OR CRON_SECRET (the Friday GitHub Action)
     if (url.pathname === "/api/admin/term-digest" && request.method === "POST") {
       return handleTermDigest(request, env);
     }
 
     for (const [old, next] of LEGACY_PREFIXES) {
       if (url.pathname === old || url.pathname.startsWith(old + '/')) {
-        // Targets with a query string are exact destinations — don't append the rest.
+        // Targets with a query string are exact destinations - don't append the rest.
         const rest = next.includes('?') ? '' : url.pathname.slice(old.length).replace(/^\//, '');
         return Response.redirect(new URL(next + rest, request.url).href, 301);
       }
@@ -172,7 +172,7 @@ export default {
 // first mails immediately; after that only these thresholds do, each carrying
 // the running count. A single email cannot report a count that has not happened
 // yet, so frequency arrives by escalation instead of by delaying the first
-// alert — which matters because the clinician is told to make contact if it
+// alert - which matters because the clinician is told to make contact if it
 // happens again, and the plain dedupe would have discarded exactly that repeat.
 const ERROR_ESCALATE_AT = [5, 25, 100];
 
@@ -214,7 +214,7 @@ async function notifyError(env, tool, message, meta, diagnostics) {
       ``,
       `Error:`,
       msg,
-      diagLines.length ? `\nDiagnostics (structural only — no note content):` : null,
+      diagLines.length ? `\nDiagnostics (structural only - no note content):` : null,
       ...diagLines,
     ].filter((l) => l !== null).join("\n");
     await fetch("https://api.resend.com/emails", {
@@ -223,7 +223,7 @@ async function notifyError(env, tool, message, meta, diagnostics) {
       body: JSON.stringify({
         from: "No Outcome ABA <noreply@nooutco.me>",
         to: [toEmail],
-        subject: `[Error${occurrence > 1 ? ` ×${occurrence}` : ""}] ${tool || "notes"} — ${msg.slice(0, 60)}`,
+        subject: `[Error${occurrence > 1 ? ` ×${occurrence}` : ""}] ${tool || "notes"} - ${msg.slice(0, 60)}`,
         text,
       }),
     });
@@ -260,7 +260,7 @@ async function handleErrorReport(request, env) {
 }
 
 // PRIVACY: the diagnostics bag comes from the browser and is echoed into an
-// email, so it is whitelisted rather than trusted — known keys only, scalars
+// email, so it is whitelisted rather than trusted - known keys only, scalars
 // only, each capped. Every permitted key is structural (stop reason, lengths,
 // parser position); none can carry note content.
 const DIAGNOSTIC_KEYS = [
@@ -288,7 +288,7 @@ function sanitizeDiagnostics(d) {
 }
 
 // User-initiated error report from the floating ⚠️ button on tool pages.
-// Unlike notifyError(), this is never silently dropped — no hourly budget cap.
+// Unlike notifyError(), this is never silently dropped - no hourly budget cap.
 // Dedup prevents the same report being submitted twice within 24 hours.
 async function handleUserReport(request, env) {
   const MIN_CHARS = 10;
@@ -307,7 +307,7 @@ async function handleUserReport(request, env) {
   if (env.SUGGEST_DUPES) {
     const dedupeKey = "userreport:" + (await sha256Hex((tool || "") + "|" + msg.toLowerCase()));
     if (await env.SUGGEST_DUPES.get(dedupeKey)) {
-      return jsonRes(409, { error: "Already reported — we have this one." });
+      return jsonRes(409, { error: "Already reported - we have this one." });
     }
   }
 
@@ -373,7 +373,7 @@ async function handleLogin(request, env) {
   if (!password) return jsonRes(401, { error: "Incorrect password." });
 
   try {
-    // Turnstile bot check — enforced only when TURNSTILE_SECRET is configured. It runs
+    // Turnstile bot check - enforced only when TURNSTILE_SECRET is configured. It runs
     // before any password comparison so /api/login can be safely exempted from
     // Cloudflare's edge bot challenge (which otherwise blocks the fetch outright).
     const turnstileSecret = (env.TURNSTILE_SECRET ?? "").trim();
@@ -388,13 +388,13 @@ async function handleLogin(request, env) {
 
     const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30;
 
-    // Admin password — full access including the API Passwords admin screen.
+    // Admin password - full access including the API Passwords admin screen.
     if (password === secret) {
       const token = await signToken({ exp, role: "admin" }, secret);
       return jsonRes(200, { token, role: "admin" });
     }
 
-    // Managed access passwords (API_PASSWORDS KV) — scoped to specific tools.
+    // Managed access passwords (API_PASSWORDS KV) - scoped to specific tools.
     if (env.API_PASSWORDS) {
       const rec = await findPassword(env.API_PASSWORDS, password);
       if (rec && rec.active) {
@@ -406,7 +406,7 @@ async function handleLogin(request, env) {
 
     return jsonRes(401, { error: "Incorrect password." });
   } catch (err) {
-    // Unexpected failure (KV, crypto, Turnstile siteverify) — email the admin; a
+    // Unexpected failure (KV, crypto, Turnstile siteverify) - email the admin; a
     // wrong password returns 401 above and is intentionally NOT reported.
     await notifyError(env, "login", err && err.message ? err.message : "Unknown login error.");
     return jsonRes(500, { error: "Login failed due to a server error. Please try again." });
@@ -447,7 +447,7 @@ async function handleLlmCall(request, env) {
     const body = await request.json();
     const { systemPrompt, userPrompt, system, messages, model, maxTokens, tool } = body;
     // The schema comes from the browser, so it is shape-checked rather than
-    // forwarded verbatim — this is a field we hand to the upstream API.
+    // forwarded verbatim - this is a field we hand to the upstream API.
     const outputConfig = sanitizeOutputConfig(body.output_config);
     if (body.output_config && !outputConfig) {
       return jsonRes(400, { error: "Invalid output_config." });
@@ -487,7 +487,7 @@ async function handleLlmCall(request, env) {
   } catch (error) {
     // PRIVACY: never log the request body, systemPrompt, or userPrompt. The client
     // de-identifies (scrubs names to role tokens) before sending, and we keep it that
-    // way — log only the error message, never prompt content.
+    // way - log only the error message, never prompt content.
     const m = error && error.message ? error.message : "unknown";
     console.error("LLM call error:", m);
     await notifyError(env, "llm-call", m);
@@ -548,7 +548,7 @@ async function verifyToken(token, secret) {
    Each managed password is a key `pw:<id>` whose value is unused ("1")
    and whose metadata holds { label, hash, active, createdAt }, where
    hash = sha256(password). list() returns metadata, so login and the
-   admin list are both a single list() call — no per-key reads. ── */
+   admin list are both a single list() call - no per-key reads. ── */
 
 async function findPassword(kv, password) {
   const h = await sha256Hex(password);
@@ -580,7 +580,7 @@ async function getPasswordRecord(kv, id) {
   return { active: !!metadata.active, tools: Array.isArray(metadata.tools) ? metadata.tools : [] };
 }
 
-// Certified-non-PII store — any authenticated user can read/add; admin can delete.
+// Certified-non-PII store - any authenticated user can read/add; admin can delete.
 // Stored as nonpii:v1 in the API_PASSWORDS KV namespace.
 async function handleNonPii(request, env) {
   const secret = (env.ADMIN_SECRET ?? "").trim();
@@ -603,7 +603,7 @@ async function handleNonPii(request, env) {
     try { body = await request.json(); } catch { return jsonRes(400, { error: "Invalid body." }); }
     const term = normalizeTerm(body.term);
     if (!term) return jsonRes(400, { error: "term is required." });
-    // A tech certification no longer commits globally — it lands in a review queue
+    // A tech certification no longer commits globally - it lands in a review queue
     // (handleTermQueue) for the admin to approve. Only an admin add commits live here.
     if (payload.role !== "admin") {
       await enqueueTerms(kv, "nonpii-pending:v1", [term], "tech-cert");
@@ -670,7 +670,7 @@ async function handleAdminPasswords(request, env) {
     const tools = Array.isArray(body.tools) ? body.tools.filter((t) => NOTES_TOOLS.includes(t)) : [];
     if (!password) return jsonRes(400, { error: "A password is required." });
     if (tools.length === 0) return jsonRes(400, { error: "Select at least one tool this password can use." });
-    if (password === secret) return jsonRes(409, { error: "That is the admin password — pick a different one." });
+    if (password === secret) return jsonRes(409, { error: "That is the admin password - pick a different one." });
     if (await findPassword(kv, password)) return jsonRes(409, { error: "That password already exists." });
     const id = crypto.randomUUID();
     const metadata = { label, hash: await sha256Hex(password), active: true, tools, createdAt: new Date().toISOString() };
@@ -714,7 +714,7 @@ const MAX_MESSAGE_CHARS = 60000;
 function validateConversation(system, messages) {
   if (!system.trim()) return "system must be a non-empty string";
   if (!messages.length) return "messages must be a non-empty array";
-  if (messages.length > MAX_CONVERSATION_MESSAGES) return "Conversation too long — start a fresh note.";
+  if (messages.length > MAX_CONVERSATION_MESSAGES) return "Conversation too long - start a fresh note.";
   for (const m of messages) {
     if (!m || (m.role !== "user" && m.role !== "assistant")) return "Each message needs role user|assistant";
     if (typeof m.content !== "string" || !m.content.trim()) return "Each message needs non-empty string content";
@@ -852,7 +852,7 @@ async function callGeminiApi(apiKey, systemPrompt, userPrompt, model, maxTokens)
   return await response.json();
 }
 
-// Returns learned stopwords/firstNames — public, no auth, generic vocabulary only.
+// Returns learned stopwords/firstNames - public, no auth, generic vocabulary only.
 async function handleScrubConfig(request, env) {
   if (!env.API_PASSWORDS) return jsonRes(200, { stopwords: [], firstNames: [] });
   const raw = await env.API_PASSWORDS.get("scrub-overrides:v1");
@@ -979,7 +979,7 @@ function timingSafeEqual(a, b) {
 
 // Normalize a candidate term to a single lowercase word (letters, apostrophe, hyphen),
 // capped at 40 chars. Returns "" if nothing usable remains. Keeps stored terms as bare
-// name-vocabulary — no surrounding context ever survives this.
+// name-vocabulary - no surrounding context ever survives this.
 function normalizeTerm(raw) {
   if (typeof raw !== "string") return "";
   const first = raw.trim().split(/\s+/)[0] || "";
@@ -1043,7 +1043,7 @@ async function removeTerm(kv, list, term) {
 
 // Any authenticated user: silently enqueue bare scrubbed words into the PII review queue.
 // The client only sends words NOT already in its FIRST_NAMES dictionary, and never any
-// surrounding text — this is PHI-safe name-vocabulary capture, nothing more.
+// surrounding text - this is PHI-safe name-vocabulary capture, nothing more.
 /* ── Audit / usage events ──────────────────────────────────────────
    Content-free by construction, and re-validated HERE rather than trusted from
    the browser: a modified client must not be able to turn an append-only audit
@@ -1051,7 +1051,7 @@ async function removeTerm(kv, list, term) {
 
    The allowlist is the control. Event type must match a known name, and every
    data value is coerced to a number, a boolean, or a short token-shaped string
-   — a sentence cannot survive that, whatever the client sends.
+   - a sentence cannot survive that, whatever the client sends.
 
    Stored per technician (`kid` from the session token, which is the login code's
    identity) so a supervisor can see engagement over time. 400-day TTL: long
@@ -1077,7 +1077,7 @@ function sanitizeAuditEvent(raw) {
     if (typeof v === "number" && Number.isFinite(v)) data[k] = Math.round(v);
     else if (typeof v === "boolean") data[k] = v;
     else if (typeof v === "string" && /^[a-z0-9_-]{1,24}$/i.test(v)) data[k] = v;
-    // Anything else — objects, arrays, prose — is dropped, not stringified.
+    // Anything else - objects, arrays, prose - is dropped, not stringified.
   }
   return { type: raw.type, tool, ts, data };
 }
@@ -1101,7 +1101,7 @@ async function handleAudit(request, env) {
     return jsonRes(200, { stored: 0, corrections: 0, profile: "skipped" });
   }
 
-  // Audit events need KV; corrections do not — they go to the profile store.
+  // Audit events need KV; corrections do not - they go to the profile store.
   // Refusing the whole request when KV is unbound would couple style learning
   // to a dependency it does not have.
   if (events.length && !env.API_PASSWORDS) {
@@ -1113,7 +1113,7 @@ async function handleAudit(request, env) {
 
   // KV stays the durable trail. It is the compliance artifact, it already
   // works, and it must not start depending on a service that did not exist
-  // yesterday — so it is written first and its success is what we report.
+  // yesterday - so it is written first and its success is what we report.
   if (events.length) {
     const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     await env.API_PASSWORDS.put(
@@ -1146,7 +1146,7 @@ async function handleAudit(request, env) {
  * page.
  *
  * The authoritative check on which features exist lives in the profile Worker
- * (src/features.js) — duplicating that list here would mean two copies to keep
+ * (src/features.js) - duplicating that list here would mean two copies to keep
  * in step across two deployables with no shared module. This is the boundary
  * check: right shape, sane range, nothing that could carry prose.
  */
@@ -1195,7 +1195,7 @@ async function profileFetch(env, path, body, method = "POST") {
     return await res.json();
   } catch (err) {
     // Timeouts are expected under load and are not incidents. Never log the
-    // body — it is the one field that could carry something it should not.
+    // body - it is the one field that could carry something it should not.
     console.error("profile-api unreachable", path, err && err.name);
     return null;
   }
@@ -1203,7 +1203,7 @@ async function profileFetch(env, path, body, method = "POST") {
 
 /**
  * The technician's own card. A session token is scoped to one login code, so a
- * technician can only ever ask for their own — `kid` comes from the verified
+ * technician can only ever ask for their own - `kid` comes from the verified
  * token, never from the query string.
  */
 async function handleStyleCard(request, env) {
@@ -1348,7 +1348,7 @@ async function handleTerms(request, env) {
   return jsonRes(405, { error: "Method not allowed." });
 }
 
-// Weekly term digest — admin token OR CRON_SECRET (the Friday GitHub Action).
+// Weekly term digest - admin token OR CRON_SECRET (the Friday GitHub Action).
 async function handleTermDigest(request, env) {
   const auth = request.headers.get("Authorization") || "";
   const token = auth.replace(/^Bearer\s+/i, "");
@@ -1362,7 +1362,7 @@ async function handleTermDigest(request, env) {
   return jsonRes(200, { ok: true });
 }
 
-// Email a COUNTS-ONLY summary of term-queue activity. Terms are withheld by design —
+// Email a COUNTS-ONLY summary of term-queue activity. Terms are withheld by design -
 // pending PII candidates may be real names, so only aggregate counts ever leave the worker.
 async function sendTermDigest(env) {
   if (!env.API_PASSWORDS) return;
@@ -1383,9 +1383,9 @@ async function sendTermDigest(env) {
     body: JSON.stringify({
       from: "tools@nooutco.me",
       to: env.SUGGEST_TO_EMAIL,
-      subject: "PHI terms — weekly review digest (" + runDate + ")",
+      subject: "PHI terms - weekly review digest (" + runDate + ")",
       text: [
-        "Weekly term review digest — " + runDate,
+        "Weekly term review digest - " + runDate,
         "",
         "New submissions this week (last 7 days):",
         "  - PII candidates (names techs scrubbed): " + piiNew,
@@ -1395,7 +1395,7 @@ async function sendTermDigest(env) {
         "  - PII queue: " + piiPending.length,
         "  - Non-PII queue: " + nonPiiPending.length,
         "",
-        "Counts only — the terms themselves are withheld from email by design.",
+        "Counts only - the terms themselves are withheld from email by design.",
         "Review and approve/reject at:",
         "https://tools.nooutco.me/admin → PII Terms / Non-PII Terms",
       ].join("\n"),
@@ -1406,7 +1406,7 @@ async function sendTermDigest(env) {
 // Core learning logic: called by scheduled() and handleScrubRun().
 // PROPOSE-ONLY by design. This is a PHI de-identification control with no BAA, so the
 // only safe error direction is over-detection. The run can therefore only ever suggest
-// SUPPRESSING a human-certified false positive (adding a stopword) — never removing a
+// SUPPRESSING a human-certified false positive (adding a stopword) - never removing a
 // name, never weakening detection. Every suggestion is queued for human approval in the
 // admin Algorithm Lab; nothing here mutates the live detection config.
 async function runScrubLearning(env) {
@@ -1440,7 +1440,7 @@ async function runScrubLearning(env) {
     "You review terms flagged by a client-side PHI name-detection algorithm used in ABA clinical notes tools.",
     "Your ONLY job is to decide which human-certified non-PII terms are safe to suppress globally by adding them to a STOPWORDS list (always-skip).",
     "Suggest a term ONLY if it is unmistakably common English or ABA clinical vocabulary that could never be a person's name.",
-    "If a term could plausibly be anyone's first or last name — including uncommon, nickname, or international names like Raphael or Raphy — DO NOT suggest it; leave it flagged.",
+    "If a term could plausibly be anyone's first or last name - including uncommon, nickname, or international names like Raphael or Raphy - DO NOT suggest it; leave it flagged.",
     "You may never remove names or weaken detection; a human reviews every suggestion before it takes effect. When in doubt, suggest nothing.",
   ].join(" ");
 
@@ -1467,7 +1467,7 @@ async function runScrubLearning(env) {
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + env.RESEND_API_KEY },
         body: JSON.stringify({
           from: "tools@nooutco.me", to: env.SUGGEST_TO_EMAIL,
-          subject: "PHI scrub run failed — " + new Date().toISOString().slice(0, 10),
+          subject: "PHI scrub run failed - " + new Date().toISOString().slice(0, 10),
           text: "Nightly scrub learning run failed: " + (e.message || String(e)),
         }),
       }).catch(() => {});
@@ -1515,23 +1515,23 @@ async function runScrubLearning(env) {
   // Clear problem strings queue after processing.
   await kv.put("scrub-learn:v1", JSON.stringify([]));
 
-  // Send a review digest — suggestions are pending, NOT applied.
+  // Send a review digest - suggestions are pending, NOT applied.
   if (env.RESEND_API_KEY && env.SUGGEST_TO_EMAIL) {
     const lines = fresh.length
-      ? fresh.map((s) => "  - " + s.term + " — " + s.reason + " (" + s.confidence + ")")
+      ? fresh.map((s) => "  - " + s.term + " - " + s.reason + " (" + s.confidence + ")")
       : ["  (no new suggestions)"];
     await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + env.RESEND_API_KEY },
       body: JSON.stringify({
         from: "tools@nooutco.me", to: env.SUGGEST_TO_EMAIL,
-        subject: "PHI scrub — " + fresh.length + " suggestion" + (fresh.length === 1 ? "" : "s") + " awaiting review",
+        subject: "PHI scrub - " + fresh.length + " suggestion" + (fresh.length === 1 ? "" : "s") + " awaiting review",
         text: [
-          "PHI scrub review digest — " + runDate,
+          "PHI scrub review digest - " + runDate,
           "",
           result.digest || "",
           "",
-          "These are SUGGESTIONS only — nothing has changed in detection. Approve or reject each at:",
+          "These are SUGGESTIONS only - nothing has changed in detection. Approve or reject each at:",
           "https://tools.nooutco.me/admin → Algorithm Lab",
           "",
           "Proposed stopwords (" + fresh.length + "):",

@@ -18,7 +18,7 @@ const PAGES = [
 
 test.describe('note draft persistence', () => {
   for (const { tool, path } of PAGES) {
-    test(`typed note survives a page reload — ${tool}`, async ({ page }) => {
+    test(`typed note survives a page reload - ${tool}`, async ({ page }) => {
       const NOTE = `Client worked on tacting for 20 minutes; 8/10 correct. [${tool}]`;
 
       await page.goto(path);
@@ -46,11 +46,11 @@ test.describe('note draft persistence', () => {
       await expect(reloaded).toHaveValue(NOTE);
     });
 
-    // A draft is the clinician's own typing, BEFORE the scrub gate — the one
+    // A draft is the clinician's own typing, BEFORE the scrub gate - the one
     // place unredacted PHI legitimately exists in this system. It used to sit in
     // localStorage as readable text until logout, which on a shared clinic
     // laptop meant "until someone else opens devtools".
-    test(`draft is not readable in storage — ${tool}`, async ({ page }) => {
+    test(`draft is not readable in storage - ${tool}`, async ({ page }) => {
       const NOTE = `Jacob eloped 3x and tacted 8/10. [${tool}]`;
 
       await page.goto(path);
@@ -76,7 +76,7 @@ test.describe('note draft persistence', () => {
       expect(rec.ct).toBeTruthy();
       expect(typeof rec.savedAt).toBe('number');
 
-      // The key itself must not be exportable — a dump of IndexedDB has to be
+      // The key itself must not be exportable - a dump of IndexedDB has to be
       // useless, not merely inconvenient.
       const extractable = await page.evaluate(() => new Promise((resolve) => {
         const req = indexedDB.open('noaba-notes', 1);
@@ -116,7 +116,7 @@ test.describe('note draft persistence', () => {
 
     // The stale envelope is dropped on hydrate rather than left to rot. What is
     // in storage afterwards is the fresh empty draft this page just saved, so
-    // assert on its age — a record still carrying the old timestamp would mean
+    // assert on its age - a record still carrying the old timestamp would mean
     // the expiry never ran.
     const savedAt = await page.evaluate(() => {
       const raw = localStorage.getItem('notes_draft_bt');
@@ -134,7 +134,7 @@ test.describe('note draft persistence', () => {
 
     const field = page.locator('textarea').first();
     await field.waitFor();
-    await field.fill('Jacob tacted 8/10 — draft that must not linger.');
+    await field.fill('Jacob tacted 8/10 - draft that must not linger.');
     await page.waitForFunction(() => !!localStorage.getItem('notes_draft_bt'));
 
     // A second tool's draft is present too, to prove logout clears across tools.

@@ -25,7 +25,7 @@ function urlToolParam() {
 }
 
 // Diagnostic escape hatch: ?schema=off drops back to the model hand-writing its
-// own JSON — not a new mode, but exactly what shipped before responseSchema. It
+// own JSON - not a new mode, but exactly what shipped before responseSchema. It
 // exists so a constrained and an unconstrained draft can be produced in one
 // deployment, on one login, minutes apart; without it, comparing them means
 // capturing a baseline from another environment BEFORE deploying, which cannot
@@ -34,7 +34,7 @@ function urlToolParam() {
 //
 // Admin-only so a clinician never lands on it by accident. isAdmin() decodes the
 // session token in the browser without verifying its signature, so this is a UI
-// control and not a security boundary — and does not need to be one, since the
+// control and not a security boundary - and does not need to be one, since the
 // only thing the flag can select is the behaviour production already had.
 function schemaDisabled() {
   if (!window.NotesGate || !NotesGate.isAdmin()) return false;
@@ -84,7 +84,7 @@ function factRowValue(row, output, values) {
   return v == null || v === "" ? "Not specified" : String(v);
 }
 
-// Body text for a section — used by per-section Copy (NO heading; the EHR field
+// Body text for a section - used by per-section Copy (NO heading; the EHR field
 // already has its own label) and as "current content" context in revision turns.
 function sectionBody(section, output, values) {
   const v = output ? output[sectionId(section)] : null;
@@ -137,7 +137,7 @@ function InfoTooltip({ text }) {
     const icon = iconRef.current, bubble = bubbleRef.current;
     if (!icon || !bubble) return;
     const GUTTER = 8;
-    // Clamp to the visible viewport width (clientWidth), not innerWidth — the
+    // Clamp to the visible viewport width (clientWidth), not innerWidth - the
     // latter includes any horizontal overflow and would let the bubble sit
     // past the right edge on mobile.
     const vw = document.documentElement.clientWidth || window.innerWidth;
@@ -150,7 +150,7 @@ function InfoTooltip({ text }) {
     bubble.style.setProperty("--arrow-left", (iconRect.left + iconRect.width / 2 - vpLeft) + "px");
   }, []);
 
-  // Keep the bubble clamped to the viewport at all times — even while hidden —
+  // Keep the bubble clamped to the viewport at all times - even while hidden -
   // so a right-side icon's (position:absolute) bubble never expands the page's
   // horizontal scroll area. Reposition on resize/orientation change and on open.
   React.useLayoutEffect(() => {
@@ -197,7 +197,7 @@ function Tip({ text }) {
   );
 }
 
-// Scannable in-flow help for an input: bold term — plain description. Recognition
+// Scannable in-flow help for an input: bold term - plain description. Recognition
 // rather than recall, which matters for the BT tool specifically: a newly
 // credentialed technician can name a strategy they used far more reliably than
 // they can produce it from memory into an empty box. Collapsed by default so it
@@ -209,7 +209,7 @@ function HelpList({ intro, items }) {
       {items && items.length > 0 && (
         <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", columnGap: 18, rowGap: 5 }}>
           {items.map((it, i) => (
-            <li key={i}><strong style={{ color: "#2d3a1f" }}>{it.t}</strong>{it.d ? ` — ${it.d}` : ""}</li>
+            <li key={i}><strong style={{ color: "#2d3a1f" }}>{it.t}</strong>{it.d ? ` - ${it.d}` : ""}</li>
           ))}
         </ul>
       )}
@@ -219,7 +219,7 @@ function HelpList({ intro, items }) {
 
 // A free-text input with its label, optional collapsible examples, hint and box.
 // Module-scope so the examples' open/closed state survives the parent re-render
-// that every keystroke causes — inlining this in App would slam it shut on the
+// that every keystroke causes - inlining this in App would slam it shut on the
 // first character typed.
 function TextareaField({ field: f, value, onChange }) {
   const [helpOpen, setHelpOpen] = React.useState(false);
@@ -268,17 +268,17 @@ function TextareaField({ field: f, value, onChange }) {
 /* ── House rules ──────────────────────────────────────────────────────────
    Documentation standards that hold for every clinician regardless of personal
    style. They are shown, not hidden, because the point is that staff can see
-   what the tool is holding them to — and because most of them are things the
+   what the tool is holding them to - and because most of them are things the
    author is responsible for whether or not a tool is involved.
 
-   Rules 2–5 are also written into each tool's system prompt; rule 1 is about
+   Rules 2-5 are also written into each tool's system prompt; rule 1 is about
    what the technician types in, which no prompt can enforce. */
 const ADMIN_STYLE_RULES = [
   { rule: "Removes PHI and PII from non-secure communications.", authorOnly: true },
   { rule: "Avoids interpretation and causal attribution, and prefers objective, observable statements." },
   { rule: "Limits unnecessary ABA jargon." },
-  { rule: "Explains all acronyms on first use — e.g. Augmentative and Alternative Communication (AAC), Functional Communication Training (FCT)." },
-  { rule: "Attributes reinforcement to a behavior and not an individual — e.g. “Functional requests were reinforced during session.”" },
+  { rule: "Explains all acronyms on first use - e.g. Augmentative and Alternative Communication (AAC), Functional Communication Training (FCT)." },
+  { rule: "Attributes reinforcement to a behavior and not an individual - e.g. “Functional requests were reinforced during session.”" },
 ];
 
 function HouseRules() {
@@ -303,7 +303,7 @@ function HouseRules() {
           {ADMIN_STYLE_RULES.map((r, i) => (
             <li key={i} style={{ fontSize: 12.8, color: "#41502c", lineHeight: 1.55 }}>
               {r.rule}
-              {r.authorOnly ? <span style={{ color: "#7a9460" }}> (yours to enforce — the tool scrubs what it can, but it only sees what you type)</span> : null}
+              {r.authorOnly ? <span style={{ color: "#7a9460" }}> (yours to enforce - the tool scrubs what it can, but it only sees what you type)</span> : null}
             </li>
           ))}
         </ul>
@@ -339,7 +339,7 @@ function FactRows({ rows, output, values }) {
 // Floating note-freshness countdown. Fixed top-right, out of the way; shows the
 // warm-window remaining (mm:ss) after a note is generated and resets on each turn.
 // Hover (desktop) or tap (mobile) reveals why prompt edits are best made in time.
-// "Nothing happens" at zero — it just rests muted; revisions still work.
+// "Nothing happens" at zero - it just rests muted; revisions still work.
 function CacheTimer({ remaining }) {
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef(null);
@@ -375,8 +375,8 @@ function CacheTimer({ remaining }) {
       </button>
       <span className="cache-timer-bubble" role="tooltip">
         {expired
-          ? "The quick-edit window has passed. Revisions still work — the next one just takes a moment longer while the tool re-reads the note. Edits made soon after generating are the fastest."
-          : "Edits are most useful when made promptly. For about 5 minutes after each generation the tool keeps your note “warm,” so revisions apply fastest — each revision resets the timer."}
+          ? "The quick-edit window has passed. Revisions still work - the next one just takes a moment longer while the tool re-reads the note. Edits made soon after generating are the fastest."
+          : "Edits are most useful when made promptly. For about 5 minutes after each generation the tool keeps your note “warm,” so revisions apply fastest - each revision resets the timer."}
       </span>
     </div>
   );
@@ -384,21 +384,53 @@ function CacheTimer({ remaining }) {
 
 // Read-only checklist mirroring a real-form checkbox group: full option list with
 // AI-suggested options ticked (and bolded). single=true renders radio-style.
+/* A suggested set of EHR ticks.
+ *
+ * `single` sections show ONLY the suggested answer, not the alternatives. The
+ * tool is guessing one value from free text, and listing the two it rejected at
+ * equal weight invites the technician to read them as a menu the tool is
+ * offering rather than as a hypothesis it formed. The line underneath says
+ * plainly that it is a guess and theirs to overrule. Multi-select sections still
+ * show the whole list, because there "not ticked" is itself information they
+ * need to check against the session. */
 function Checklist({ options, selected, single = false }) {
   const sel = single ? (selected ? [selected] : []) : (Array.isArray(selected) ? selected : []);
+
+  if (single) {
+    const answer = sel[0];
+    if (!answer) {
+      return <p style={{ fontSize: 13, color: "#9aab86", fontStyle: "italic", margin: 0 }}>Nothing suggested - choose from your EHR form.</p>;
+    }
+    return (
+      <div>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
+          <span aria-hidden="true" style={{
+            flexShrink: 0, marginTop: 2, width: 16, height: 16, borderRadius: "50%",
+            border: "1.5px solid #374528", background: "#374528", color: "white",
+            fontSize: 11, fontWeight: 700, lineHeight: "14px", textAlign: "center",
+          }}>✓</span>
+          <span style={{ fontSize: 13.5, lineHeight: 1.45, color: "#2d3a1f", fontWeight: 600 }}>{answer}</span>
+        </div>
+        <p style={{ fontSize: 11.5, color: "#8a9678", margin: "7px 0 0", lineHeight: 1.5 }}>
+          Suggested from what you wrote. Use your clinical judgment and pick a different one on your form if it does not match the session.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", columnGap: 20, rowGap: 7 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", columnGap: 14, rowGap: 4 }}>
       {options.map((label) => {
         const on = sel.includes(label);
         return (
-          <div key={label} style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
+          <div key={label} style={{ display: "flex", alignItems: "flex-start", gap: 7 }}>
             <span aria-hidden="true" style={{
-              flexShrink: 0, marginTop: 1, width: 17, height: 17, borderRadius: single ? "50%" : 4,
+              flexShrink: 0, marginTop: 1, width: 15, height: 15, borderRadius: 4,
               border: on ? "1.5px solid #374528" : "1.5px solid #c0d4a8",
               background: on ? "#374528" : "white", color: "white",
-              fontSize: 12, fontWeight: 700, lineHeight: "15px", textAlign: "center",
+              fontSize: 11, fontWeight: 700, lineHeight: "13px", textAlign: "center",
             }}>{on ? "✓" : ""}</span>
-            <span style={{ fontSize: 13.5, lineHeight: 1.45, color: on ? "#2d3a1f" : "#9aab86", fontWeight: on ? 600 : 400 }}>{label}</span>
+            <span style={{ fontSize: 12.5, lineHeight: 1.4, color: on ? "#2d3a1f" : "#9aab86", fontWeight: on ? 600 : 400 }}>{label}</span>
           </div>
         );
       })}
@@ -447,7 +479,7 @@ function GoalsTable({ columns, rows, onChange, onCopyCell, copiedId, idPrefix })
   );
 }
 
-// One-line improvement note under a section — canonical wording from the tool's
+// One-line improvement note under a section - canonical wording from the tool's
 // client-side catalog; the model only picked the code (plus a short specifier).
 function HintNotes({ hints, section, catalog }) {
   const id = sectionId(section);
@@ -457,7 +489,7 @@ function HintNotes({ hints, section, catalog }) {
     <div style={{ marginTop: 8 }}>
       {mine.map((h, i) => {
         const base = h.code === "other" ? "" : catalog[h.code] || "";
-        const text = h.code === "other" ? h.detail : base + (h.detail ? ` — ${h.detail}` : "");
+        const text = h.code === "other" ? h.detail : base + (h.detail ? ` - ${h.detail}` : "");
         if (!text) return null;
         return (
           <p key={i} style={{ fontSize: 12.5, color: "#8a6d1a", background: "#fdf6e0", border: "1px solid #ecd9a0", borderRadius: 7, padding: "6px 10px", marginBottom: 4, lineHeight: 1.5 }}>
@@ -476,7 +508,7 @@ function freshSession(tool) {
   const migrated = tool.migrateDraft ? tool.migrateDraft(saved) : saved;
   const values = {};
   tool.inputs.forEach((f) => {
-    // defaultValue lets a toggle start on the common answer rather than unset —
+    // defaultValue lets a toggle start on the common answer rather than unset -
     // BT's place-of-service is "Home" for most sessions, and making every
     // technician pick it every time is friction for no information gain.
     const fallback = f.defaultValue !== undefined ? f.defaultValue : null;
@@ -486,7 +518,7 @@ function freshSession(tool) {
   return {
     values,
     output: null,
-    conversation: [],     // [{role, content}] — replayed each turn; prefix is server-cached
+    conversation: [],     // [{role, content}] - replayed each turn; prefix is server-cached
     promptText: "",
     scrubNotice: "",
     error: "",
@@ -505,7 +537,7 @@ function freshSession(tool) {
 
     // ── Learned voice ────────────────────────────────────────────────────
     // styleCard is the live card, refreshed for display. convStyleBlock is the
-    // snapshot the open conversation was drafted with, and must not track it —
+    // snapshot the open conversation was drafted with, and must not track it -
     // it is part of the cached prompt prefix every revision replays.
     styleCard: null,       // {rules, block, available} | null while unknown
     convStyleBlock: "",
@@ -560,7 +592,7 @@ function App() {
   const patchS = (patch) =>
     setSessions((prev) => ({ ...prev, [tool.id]: { ...prev[tool.id], ...(typeof patch === "function" ? patch(prev[tool.id]) : patch) } }));
 
-  // Load the technician's learned voice once they are logged in — the card is
+  // Load the technician's learned voice once they are logged in - the card is
   // keyed on the login code, so there is nothing to ask for before that. Not
   // awaited by anything: an unreachable profile store leaves the card null and
   // every downstream path treats that as "no learned style", which is the same
@@ -593,7 +625,7 @@ function App() {
     navigator.clipboard.writeText(text);
     setCopied(id);
     setTimeout(() => setCopied(null), 1800);
-    // Copying is the moment the note leaves for the EHR — the right place to
+    // Copying is the moment the note leaves for the EHR - the right place to
     // record how long it was looked at and how much of it was rewritten.
     if (S.output && S.lastCallAt) {
       audit("note_copied", {
@@ -602,7 +634,7 @@ function App() {
         revisions: S.conversation.filter((m) => m.role === "user").length - 1,
       });
 
-      // Typing over the draft is the strongest signal there is — it is the
+      // Typing over the draft is the strongest signal there is - it is the
       // technician's own prose rather than something they approved. Measured at
       // copy time because that is when they are finished with it.
       const modelOut = lastModelOutput();
@@ -629,7 +661,7 @@ function App() {
     return review;
   };
 
-  // Scrub the typed inputs only, then build prompts from the scrubbed values —
+  // Scrub the typed inputs only, then build prompts from the scrubbed values -
   // applying the map to a fully-composed prompt would also rewrite scaffolding
   // (headers, JSON key references) whenever a replacement collides with a
   // template word.
@@ -674,7 +706,7 @@ function App() {
   /* ── Usage signal ─────────────────────────────────────────────────────
      Counts only, never a word of the note. What a supervisor needs to answer
      is not "what did this technician write" but "is the tool being worked with
-     or pasted past" — and that question is answerable from lengths and counts
+     or pasted past" - and that question is answerable from lengths and counts
      alone, which is the only reason it is safe to keep a durable record here.
      Fire-and-forget: a metric must never cost someone their note. */
 
@@ -684,7 +716,7 @@ function App() {
     } catch (e) {}
   };
 
-  // Characters typed per free-text input — a thinness signal that needs no text.
+  // Characters typed per free-text input - a thinness signal that needs no text.
   const inputSizes = (values) => {
     const out = {};
     tool.inputs.filter((f) => f.type === "textarea").forEach((f) => {
@@ -708,6 +740,32 @@ function App() {
   const narrativeIds = () =>
     tool.formSections.filter((s) => s.kind === "narrative").map(sectionId);
 
+  /* How the note is doing, for the collapsed assistant pill.
+   *
+   * Built from the hints the model already returns rather than from a second
+   * call: it has just read the note and said what is thin about it, so asking
+   * again would cost a round trip to learn something we were already told.
+   *
+   * "missing" means a hint names a section that has no prose at all - a payer
+   * reading that note finds a blank where a narrative should be. "thin" means
+   * there are hints but every section has something in it. Deliberately
+   * conservative: a green tick that turns out to be wrong is worse than an amber
+   * one the technician glances at and dismisses. */
+  const noteQuality = () => {
+    if (!S.output) return { level: "idle" };
+
+    const empties = narrativeIds().filter((id) => !String(S.output[id] || "").trim());
+    if (empties.length) {
+      return { level: "missing", reason: `${empties.length} narrative section${empties.length > 1 ? "s are" : " is"} empty` };
+    }
+
+    const hints = Array.isArray(S.output.hints) ? S.output.hints : [];
+    if (hints.length) {
+      return { level: "thin", reason: `${hints.length} spot${hints.length > 1 ? "s" : ""} could use more detail` };
+    }
+    return { level: "good", reason: "Nothing flagged. Review it before you file it." };
+  };
+
   // How much of the generated prose the clinician rewrote by hand.
   const manualEditChars = () => {
     if (!S.output) return 0;
@@ -723,7 +781,7 @@ function App() {
   };
 
   /* Turn a rewrite into a measurement of how this technician writes, and send
-     only the measurement. The words never leave the page — style-features.js
+     only the measurement. The words never leave the page - style-features.js
      returns a feature name, a direction and a magnitude, nothing else.
 
      Both callers pass whole passages rather than individual sections: these are
@@ -738,7 +796,7 @@ function App() {
 
   /* ── Triage: ask before drafting ──────────────────────────────────────
      A note is only as good as what went into it, and the commonest failure is
-     not a bad draft but a thin one — a behavior with no count, a program with
+     not a bad draft but a thin one - a behavior with no count, a program with
      no prompt level. Asking costs one cheap call and is the only moment the
      technician still has the session in their head.
 
@@ -770,20 +828,24 @@ function App() {
     "Your ONLY job: decide whether anything is too thin to write from, and if so ask at most 3 short, specific questions that would materially improve the finished note.\n\n" +
     "RULES\n" +
     "- Ask only about what a payer or supervisor would notice missing: counts or rates for a behavior, the prompt level used, whether a strategy worked, how this session compared to recent ones.\n" +
-    "- Be specific and quote back what they wrote. \"You mentioned elopement — how many times, and what did you do?\" NOT \"Can you add more detail?\"\n" +
+    "- Be specific and quote back what they wrote. \"You mentioned elopement - how many times, and what did you do?\" NOT \"Can you add more detail?\"\n" +
     "- NEVER ask for a name, a date, an address, or any other identifying detail. The notes are deliberately de-identified.\n" +
     "- Do not ask about something they plainly had nothing to report. A session with no behaviors of concern is a normal session, not a gap.\n" +
     "- If the notes are adequate, return sufficient=true and an empty array. Fewer questions is better than more; three is a ceiling, not a target.\n" +
     "- Return ONLY a JSON object: {\"sufficient\": boolean, \"questions\": [{\"field\": \"\", \"question\": \"\"}]}";
 
+  // The default above is written for session notes. A tool whose input is not a
+  // session (a SAP is a program plan, with no counts and no "this session")
+  // overrides both halves, because asking a plan how many times a behavior
+  // occurred is worse than asking nothing.
   const runTriage = async (scrubbed) => {
     const body = tool.inputs
       .filter((f) => f.type === "textarea")
       .map((f) => `[${f.label}]${f.required ? " (required)" : ""}\n${(scrubbed[f.id] || "").trim() || "(empty)"}`)
       .join("\n\n");
     const r = await NotesGate.generateConversation({
-      system: TRIAGE_SYSTEM,
-      messages: [{ role: "user", content: "CLINICIAN'S RAW NOTES:\n\n" + body }],
+      system: tool.triageSystem || TRIAGE_SYSTEM,
+      messages: [{ role: "user", content: (tool.triageIntro || "CLINICIAN'S RAW NOTES:") + "\n\n" + body }],
       tool: tool.id,
       maxTokens: 600,
       expectKeys: ["sufficient", "questions"],
@@ -807,7 +869,7 @@ function App() {
       }
       // Snapshot the technician's learned style for this whole conversation.
       // Empty for a new technician, and empty when the profile store is
-      // unreachable — both give exactly the prompt that shipped before any of
+      // unreachable - both give exactly the prompt that shipped before any of
       // this existed, which is the intended failure mode.
       const styleBlock = (S.styleCard && S.styleCard.block) || "";
       const conversation = [{ role: "user", content: userMsg }];
@@ -815,7 +877,7 @@ function App() {
       const r = await runTurn(conversation, styleBlock);
       conversation.push({ role: "assistant", content: r.rawText });
       patchS({ output: tool.normalizeOutput(r.parsed), conversation, lastCallAt: Date.now() });
-      pushThread("assistant", "status", "Drafted. Click any section — or select a phrase inside one — to revise it.");
+      pushThread("assistant", "status", "Drafted. Click any section - or select a phrase inside one - to revise it.");
       audit("note_generated", { ...inputSizes(scrubbedValues), answered: extra && extra.trim() ? 1 : 0 });
     } catch (e) {
       patchS({ error: NotesGate.displayError(e) });
@@ -841,7 +903,7 @@ function App() {
       questions = await runTriage(scrubbed);
     } catch (e) {
       // Triage is an assist, not a gate. If it fails the note still gets
-      // written — losing a question is a far smaller harm than refusing to
+      // written - losing a question is a far smaller harm than refusing to
       // draft for a technician with eight notes left to file.
       reportError(tool.id, e);
     }
@@ -873,7 +935,7 @@ function App() {
     const ann = S.annotation;
     const section = ann ? tool.formSections.find((s) => sectionId(s) === ann.id) : null;
 
-    // Only the typed instruction is NEW free text — scan/scrub that. The section
+    // Only the typed instruction is NEW free text - scan/scrub that. The section
     // body is AI output already present verbatim in the conversation history (or
     // the clinician's own edit of it), so re-scanning it would flag words in the
     // generated prose ("Analyst", role tokens) on every single revision.
@@ -890,7 +952,7 @@ function App() {
         ``,
         `Instruction: ${scrubbedInstruction}`,
         ``,
-        `Change the highlighted phrase and only what the instruction requires around it; leave the rest of the section as written. Return the COMPLETE updated JSON object with ALL keys, copying every other section verbatim. Re-evaluate "hints". Never fabricate — if the instruction asks for information not present anywhere in this conversation, leave it out and emit the appropriate hint instead.`,
+        `Change the highlighted phrase and only what the instruction requires around it; leave the rest of the section as written. Return the COMPLETE updated JSON object with ALL keys, copying every other section verbatim. Re-evaluate "hints". Never fabricate - if the instruction asks for information not present anywhere in this conversation, leave it out and emit the appropriate hint instead.`,
       ].join("\n");
     } else if (section) {
       userMsg = [
@@ -901,7 +963,7 @@ function App() {
         ``,
         `Instruction: ${scrubbedInstruction}`,
         ``,
-        `Return the COMPLETE updated JSON object with ALL keys. Copy every section not targeted by the instruction verbatim from the current note. Re-evaluate "hints" for the whole note. Never fabricate — if the instruction asks for information not present anywhere in this conversation, leave it out and emit the appropriate hint instead.`,
+        `Return the COMPLETE updated JSON object with ALL keys. Copy every section not targeted by the instruction verbatim from the current note. Re-evaluate "hints" for the whole note. Never fabricate - if the instruction asks for information not present anywhere in this conversation, leave it out and emit the appropriate hint instead.`,
       ].join("\n");
     } else {
       userMsg = [
@@ -916,7 +978,7 @@ function App() {
     try {
       const conversation = [...S.conversation, { role: "user", content: userMsg }];
       // The same block the draft was written with, not whatever the card says
-      // now — this replays a cached prefix and must match it byte for byte.
+      // now - this replays a cached prefix and must match it byte for byte.
       const r = await runTurn(conversation, S.convStyleBlock || "");
       conversation.push({ role: "assistant", content: r.rawText });
       const normalized = tool.normalizeOutput(r.parsed);
@@ -945,9 +1007,9 @@ function App() {
         "status",
         changes.length
           ? (changes.length === 1
-              ? `Updated “${changes[0].heading}” — the change is highlighted in the note.`
-              : `Updated ${changes.length} sections — the changes are highlighted in the note.`)
-          : "No change was needed for that — the note already reflects it, or the detail isn't in your notes."
+              ? `Updated “${changes[0].heading}” - the change is highlighted in the note.`
+              : `Updated ${changes.length} sections - the changes are highlighted in the note.`)
+          : "No change was needed for that - the note already reflects it, or the detail isn't in your notes."
       );
     } catch (e) {
       patchS({ error: NotesGate.displayError(e) });
@@ -990,7 +1052,7 @@ function App() {
 
     // An accepted revision is style evidence: the technician asked for a change
     // and kept the result, so the difference is what they wanted. Measured
-    // across the narrative sections only — a checklist tick has no prose to
+    // across the narrative sections only - a checklist tick has no prose to
     // learn from.
     const narrative = new Set(narrativeIds());
     const changed = S.proposal.changes.filter((c) => narrative.has(c.id));
@@ -1035,10 +1097,10 @@ function App() {
 
   /* ── Clear / reset ─────────────────────────────────────────────────── */
 
-  // True when the active tool holds anything worth confirming before wiping —
+  // True when the active tool holds anything worth confirming before wiping -
   // typed input, a generated note, or a built prompt. Drives whether Clear shows
   // and whether it double-checks first.
-  // A toggle sitting on its default is not content — it is the state a fresh
+  // A toggle sitting on its default is not content - it is the state a fresh
   // page starts in, and counting it would show Clear before anything is typed.
   const hasContent = () =>
     tool.inputs.some((f) =>
@@ -1063,7 +1125,7 @@ function App() {
 
   // Visible once a note exists, counting down the ~5-minute warm window from the
   // last call. Each generation/revision resets it (lastCallAt updates). At zero it
-  // just rests — revisions still work, they only re-process the conversation once.
+  // just rests - revisions still work, they only re-process the conversation once.
   // Read the live clock here (nowTick above is only the 1s re-render heartbeat) and
   // clamp to the window so a throttled/backgrounded tab can never show over 5:00.
   let cacheRemaining = null;
@@ -1082,7 +1144,7 @@ function App() {
       return (
         <div key={f.id} style={{ marginBottom: 20 }}>
           <p style={lbl}>{f.label}</p>
-          {/* wraps because a toggle is not always two options — BT's
+          {/* wraps because a toggle is not always two options - BT's
               place-of-service has five and must not overflow on mobile */}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {f.options.map((opt) => (
@@ -1115,7 +1177,7 @@ function App() {
   };
 
   // A proposed change rendered where it belongs: inside the section it changes,
-  // marked against what is there now. Accept/Discard act on the whole proposal —
+  // marked against what is there now. Accept/Discard act on the whole proposal -
   // a revision can touch more than one section, and applying half of one would
   // leave the note in a state the model never produced.
   const renderPendingChange = (change) => {
@@ -1143,7 +1205,7 @@ function App() {
           </button>
           <button type="button" className="diff-discard" onClick={discardProposal}>Discard</button>
           <p className="diff-note">
-            {count > 1 ? `${count} sections changed — accepting applies them together.` : "Green is added, struck-through is removed."}
+            {count > 1 ? `${count} sections changed - accepting applies them together.` : "Green is added, struck-through is removed."}
           </p>
         </div>
       </div>
@@ -1167,7 +1229,11 @@ function App() {
           data-section-heading={sec.heading}
           onChange={(e) => patchS((s) => ({ output: { ...s.output, [id]: e.target.value } }))}
           placeholder={sec.emptyNote || ""}
-          style={{ width: "100%", minHeight: S.expanded.includes(id) ? 140 : (sec.minHeight || 90), padding: 10, borderRadius: 7, border: "1px solid #c0d4a8", fontSize: 14, color: "#2d3a1f", lineHeight: 1.65, resize: "vertical", background: "white", opacity: empty ? 0.75 : 1 }}
+          // Sized to the prose rather than to a fixed box: at full width these
+          // no longer need an internal scrollbar to show four sentences, which
+          // is what made them feel like the smallest thing on the page.
+          rows={Math.max(3, Math.ceil((v || "").length / 105) + 1)}
+          style={{ width: "100%", minHeight: sec.minHeight || 84, padding: "11px 12px", borderRadius: 7, border: "1px solid #c0d4a8", fontSize: 14.5, color: "#2d3a1f", lineHeight: 1.7, resize: "vertical", background: "white", opacity: empty ? 0.75 : 1 }}
         />
       );
     }
@@ -1177,7 +1243,7 @@ function App() {
     if (sec.kind === "checklist") {
       return (v && v.length)
         ? <Checklist options={tool.groupOptions[sec.group]} selected={v} />
-        : <p style={{ fontSize: 13, color: "#9aab86", fontStyle: "italic" }}>{sec.emptyNote || "No options suggested — leave blank or review your notes."}</p>;
+        : <p style={{ fontSize: 13, color: "#9aab86", fontStyle: "italic" }}>{sec.emptyNote || "No options suggested - leave blank or review your notes."}</p>;
     }
     if (sec.kind === "table") {
       return (
@@ -1200,13 +1266,13 @@ function App() {
   /* ── Layout ────────────────────────────────────────────────────────── */
 
   // Selecting a phrase inside a narrative raises a chip that targets just that
-  // phrase — the same gesture as annotating a document.
+  // phrase - the same gesture as annotating a document.
   const { chipEl, clearChip } = useTextSelection((annotation) => targetSection(annotation));
 
   return (
     <React.Fragment>
 
-      {/* Floating note-freshness countdown — sits above the page, out of the way. */}
+      {/* Floating note-freshness countdown - sits above the page, out of the way. */}
       {cacheRemaining !== null && <CacheTimer remaining={cacheRemaining} />}
 
       {chipEl}
@@ -1224,11 +1290,12 @@ function App() {
         questions={S.questions}
         onSkipQuestions={skipQuestions}
         unread={S.questions ? S.questions.length : 0}
+        quality={noteQuality()}
       />
 
       <div style={{ maxWidth: 860, margin: "0 auto" }}>
 
-      {/* Ribbon — only when there is something to switch between. A page that
+      {/* Ribbon - only when there is something to switch between. A page that
           mounts one tool (BT) would otherwise show a single dead tab. */}
       {TOOLS.length > 1 && (
         <div className="tool-ribbon" role="tablist" aria-label="Note tools">
@@ -1252,7 +1319,7 @@ function App() {
                 and a tab that doesn't say invites mislabelling them. */}
             {schemaDisabled() && (
               <p style={{ display: "inline-block", marginTop: 8, padding: "3px 11px", borderRadius: 999, border: "1px solid #d4b483", background: "#fdf6e8", color: "#7a5a1a", fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase" }}>
-                Schema off — unconstrained draft
+                Schema off - unconstrained draft
               </p>
             )}
           </div>
@@ -1264,10 +1331,13 @@ function App() {
         {/* Disclaimer */}
         <div style={{ marginBottom: 24, padding: "14px 18px", borderRadius: 10, border: "1.5px solid #d4b483", background: "#fdf6e8", color: "#5a4420", fontSize: 13, lineHeight: 1.55 }}>
           <strong style={{ color: "#7a5a1a" }}>Disclaimer:</strong> Use of these AI-assisted queries is subject to the legal and regulatory constraints of the user's jurisdiction. These tools do not remove the user's responsibility to review all output for accuracy and to maintain compliance with the ethical standards of their credentialing board for professional behavior analysis work.{" "}
-          <strong style={{ color: "#7a5a1a" }}>Do not enter any PHI (Protected Health Information) into this tool.</strong> PHI is any detail that could identify a specific client — including names, dates of birth, addresses, phone numbers, ID or insurance numbers, or any other personal identifiers.
+          <strong style={{ color: "#7a5a1a" }}>Do not enter any PHI (Protected Health Information) into this tool.</strong> PHI is any detail that could identify a specific client - including names, dates of birth, addresses, phone numbers, ID or insurance numbers, or any other personal identifiers.
         </div>
 
-        <HouseRules />
+        {/* The documentation-standards panel used to sit here. Removed: they are
+            global best practice and already enforced in the prompt, so showing
+            them on a clinical surface was chrome the technician had to scroll
+            past on every note. ADMIN_STYLE_RULES still drives the prompt. */}
 
         {/* Inputs */}
         <div style={card}>
@@ -1278,7 +1348,7 @@ function App() {
             <div style={{ margin: "0 0 16px", borderRadius: 10, border: "2px solid #c8962a", overflow: "hidden" }}>
               <div style={{ padding: "8px 14px", background: "#fdf3dc", color: "#5a3d00", fontSize: 12, lineHeight: 1.5 }}>
                 <strong>Removed before this left your device:</strong> {S.scrubNotice}{" "}
-                <span style={{ color: "#7a6020" }}>— substitute back in your EHR.</span>
+                <span style={{ color: "#7a6020" }}>- substitute back in your EHR.</span>
               </div>
               <div style={{ padding: "10px 14px", background: "#fff8ec", color: "#3d2a00", fontSize: 13.5, fontWeight: 600, lineHeight: 1.55 }}>
                 ⚠️ {NotesScrub.SCRUB_GUIDANCE}
@@ -1363,17 +1433,21 @@ function App() {
               )}
             </div>
             <p style={{ fontSize: 13, color: "#7a9460", marginBottom: 20, lineHeight: 1.55 }}>
-              Checkbox suggestions are inferred from your notes — verify before ticking your form. Narratives are editable. <strong style={{ color: "#5a6b4a" }}>Click a section to revise it, or select a phrase inside one to revise just that</strong> — the assistant panel takes it from there. 💡 notes flag what might be missing.
+              Checkbox suggestions are inferred from your notes - verify before ticking your form. Narratives are editable. <strong style={{ color: "#5a6b4a" }}>Click a section to revise it, or select a phrase inside one to revise just that</strong> - the assistant panel takes it from there. 💡 notes flag what might be missing.
             </p>
 
             <div className="output-grid">
               {tool.formSections.map((sec, i) => {
                 const id = sectionId(sec);
                 const isNarrative = sec.kind === "narrative";
-                const isOpen = S.expanded.includes(i);
-                const fullRow = !isNarrative || isOpen;
+                // The prose is what the technician reads, edits and signs their
+                // name to, so it gets the whole width. Everything else is a list
+                // of ticks they glance at on the way to their EHR form, and
+                // pairing those up halves how far they have to scroll to reach
+                // the next narrative.
+                const fullRow = isNarrative;
                 const targeted = S.annotation && S.annotation.id === id;
-                // Facts echo the clinician's own quick-picks — there is nothing
+                // Facts echo the clinician's own quick-picks - there is nothing
                 // for the model to revise, so they are not a revision target.
                 const revisable = isModelSection(sec) && !S.proposal;
                 return (
@@ -1391,11 +1465,8 @@ function App() {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, gap: 8 }}>
                       <span style={{ fontSize: 13, fontWeight: 700, color: "#374528" }}>{sec.heading}</span>
                       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                        {isNarrative && (
-                          <button onClick={(e) => { e.stopPropagation(); toggleExpand(i); }} title={isOpen ? "Collapse to half width" : "Expand to full row"} style={smallBtn}>
-                            {isOpen ? "⤡" : "⤢"}
-                          </button>
-                        )}
+                        {/* The width toggle is gone: narratives are always full
+                            width now, so it had nothing left to toggle. */}
                         <button
                           onClick={(e) => { e.stopPropagation(); handleCopy("sec-" + id, sectionBody(sec, S.output, S.values)); }}
                           style={smallBtn}
@@ -1435,7 +1506,7 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-// Drafts are encrypted at rest, so decrypting them is asynchronous — but
+// Drafts are encrypted at rest, so decrypting them is asynchronous - but
 // freshSession() reads them synchronously while building initial React state.
 // Waiting here is what reconciles the two: by first render the plaintext cache
 // is populated, so a reload still restores the clinician's typing.

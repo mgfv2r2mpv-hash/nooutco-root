@@ -1,5 +1,5 @@
 // Shared Cloudflare Pages worker helpers.
-// CANONICAL SOURCE — edit here, never in apps/<app>/shared/ (those are generated
+// CANONICAL SOURCE - edit here, never in apps/<app>/shared/ (those are generated
 // copies produced by `npm run sync:shared`; a CI drift check fails on hand edits).
 
 export async function sha256Hex(str) {

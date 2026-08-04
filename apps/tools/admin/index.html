@@ -140,7 +140,7 @@
             <thead><tr><th>Label</th><th>Tools</th><th>Status</th><th>Created</th><th></th></tr></thead>
             <tbody id="rows"></tbody>
           </table>
-          <p id="empty" class="muted hidden" style="margin: 14px 4px 0;">No access passwords yet — add one above.</p>
+          <p id="empty" class="muted hidden" style="margin: 14px 4px 0;">No access passwords yet - add one above.</p>
         </div>
       </div>
 
@@ -148,10 +148,10 @@
       <div id="tab-pii" class="tab-panel">
         <div class="card pending-card" id="piiPendingCard" style="display: none;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <h2 style="margin: 0;">Pending review — scrubbed names</h2>
+            <h2 style="margin: 0;">Pending review - scrubbed names</h2>
             <span class="pill on" id="piiPendingCount">0</span>
           </div>
-          <p class="muted" style="margin: 0 0 14px;">Names technicians scrubbed that aren't yet in the detection dictionary. <strong>Approve</strong> to force-detect a name everywhere; <strong>reject</strong> to discard. Only the bare word is stored — never any note text.</p>
+          <p class="muted" style="margin: 0 0 14px;">Names technicians scrubbed that aren't yet in the detection dictionary. <strong>Approve</strong> to force-detect a name everywhere; <strong>reject</strong> to discard. Only the bare word is stored - never any note text.</p>
           <div id="piiPendingRows"></div>
         </div>
 
@@ -173,10 +173,10 @@
       <div id="tab-nonpii" class="tab-panel">
         <div class="card pending-card" id="nonpiiPendingCard" style="display: none;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <h2 style="margin: 0;">Pending review — certified terms</h2>
+            <h2 style="margin: 0;">Pending review - certified terms</h2>
             <span class="pill on" id="nonpiiPendingCount">0</span>
           </div>
-          <p class="muted" style="margin: 0 0 14px;">Terms technicians certified as <em>not</em> being names. <strong>Approve</strong> to exclude a term from detection globally; <strong>reject</strong> to discard. Approving weakens detection — only approve genuine non-names.</p>
+          <p class="muted" style="margin: 0 0 14px;">Terms technicians certified as <em>not</em> being names. <strong>Approve</strong> to exclude a term from detection globally; <strong>reject</strong> to discard. Approving weakens detection - only approve genuine non-names.</p>
           <div id="nonpiiPendingRows"></div>
         </div>
 
@@ -216,7 +216,7 @@
           <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center;">
             <button id="labTest" class="btn-primary">Test string</button>
             <button id="labSubmit" class="btn-ghost">Submit for learning</button>
-            <span id="labOk" class="ok" style="margin: 0;">Submitted — will be reviewed in tonight's run.</span>
+            <span id="labOk" class="ok" style="margin: 0;">Submitted - will be reviewed in tonight's run.</span>
             <span id="labErr" class="err" style="margin: 0;"></span>
           </div>
           <div>
@@ -227,16 +227,16 @@
 
         <div class="card">
           <h2>Algorithm Status</h2>
-          <p class="muted" style="margin: 0 0 14px;">Nightly run: <strong>3am EDT daily</strong> via GitHub Action (Cloudflare Pages can't run cron). The run only <strong>proposes</strong> stopwords from clinician-certified false positives — it never removes names or weakens detection. Every suggestion needs your approval above.</p>
+          <p class="muted" style="margin: 0 0 14px;">Nightly run: <strong>3am EDT daily</strong> via GitHub Action (Cloudflare Pages can't run cron). The run only <strong>proposes</strong> stopwords from clinician-certified false positives - it never removes names or weakens detection. Every suggestion needs your approval above.</p>
           <div class="status-grid" id="labStats">
-            <div class="stat-box"><div class="stat-label">Approved stopwords</div><div class="stat-val" id="statStopwords">—</div></div>
-            <div class="stat-box"><div class="stat-label">Pending suggestions</div><div class="stat-val" id="statPending">—</div></div>
+            <div class="stat-box"><div class="stat-label">Approved stopwords</div><div class="stat-val" id="statStopwords">-</div></div>
+            <div class="stat-box"><div class="stat-label">Pending suggestions</div><div class="stat-val" id="statPending">-</div></div>
           </div>
           <div id="labDigest" class="digest-box" style="display: none;"></div>
           <p class="muted" style="margin: 12px 0 0; font-size: 12px;" id="lastRunLabel"></p>
           <div style="margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap;">
             <button id="labRunNow" class="btn-ghost">Trigger run now</button>
-            <span id="labRunOk" class="ok" style="margin: 0;">Run complete — check your email for the digest.</span>
+            <span id="labRunOk" class="ok" style="margin: 0;">Run complete - check your email for the digest.</span>
             <span id="labRunErr" class="err" style="margin: 0;"></span>
           </div>
         </div>
@@ -336,8 +336,8 @@
         });
       }
 
-      function fmt(iso) { if (!iso) return "—"; try { return new Date(iso).toLocaleDateString(); } catch (e) { return "—"; } }
-      function fmtDateTime(iso) { if (!iso) return "never"; try { return new Date(iso).toLocaleString(); } catch (e) { return "—"; } }
+      function fmt(iso) { if (!iso) return "-"; try { return new Date(iso).toLocaleDateString(); } catch (e) { return "-"; } }
+      function fmtDateTime(iso) { if (!iso) return "never"; try { return new Date(iso).toLocaleString(); } catch (e) { return "-"; } }
       function escapeHtml(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
 
       function renderToolChecks() {
@@ -358,7 +358,7 @@
           var tr = document.createElement("tr");
           var pills = (p.tools && p.tools.length)
             ? '<div class="tool-pills">' + p.tools.map(function (t) { return '<span class="tool-pill">' + escapeHtml(toolLabel(t)) + "</span>"; }).join("") + "</div>"
-            : '<span class="muted">—</span>';
+            : '<span class="muted">-</span>';
           tr.innerHTML =
             "<td>" + (p.label ? escapeHtml(p.label) : '<span class="muted">(no label)</span>') + "</td>" +
             "<td>" + pills + "</td>" +

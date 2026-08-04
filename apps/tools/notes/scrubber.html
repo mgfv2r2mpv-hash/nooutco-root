@@ -133,7 +133,7 @@ textarea.raw-input {
 <div class="header">
   <div style="flex:1;">
     <h1>Clinical Summary Scrubber</h1>
-    <div class="subtitle">PHI scrubbing &amp; ABA clinical prompt builder — client-side only, zero network calls</div>
+    <div class="subtitle">PHI scrubbing &amp; ABA clinical prompt builder - client-side only, zero network calls</div>
   </div>
   <span class="badge">Local · No AI · No Network</span>
 </div>
@@ -166,7 +166,7 @@ textarea.raw-input {
     <div class="panel active" id="panel-input">
       <div class="info-box">
         Paste a session summary below. Names in the sidebar are scrubbed; sections are classified by clinical domain.
-        The output is a structured, anonymized prompt ready for an LLM — no data is sent anywhere from this tool.
+        The output is a structured, anonymized prompt ready for an LLM - no data is sent anywhere from this tool.
       </div>
       <div class="field-group">
         <div class="label">Session Type (optional)</div>
@@ -205,7 +205,7 @@ textarea.raw-input {
     <div class="panel" id="panel-output">
       <div class="info-box">
         Anonymized &amp; clinically filtered. Review flagged items in Step 2 before sharing.
-        Copy into any LLM — no PHI should remain if all names are mapped.
+        Copy into any LLM - no PHI should remain if all names are mapped.
       </div>
       <div class="btn-row">
         <span class="label" style="flex:1;">Generated Prompt</span>
@@ -296,7 +296,7 @@ const EXCLUDED_CAPS = new Set([
   'Opening','Song','Selection','Show','Preparation','Session','Completion',
   'Positive','Closure','Playful','Performance','Game','Based','Learning',
   'Yellow','Landing',
-  // NOTE: do NOT add person names here — they are exactly what detection is for
+  // NOTE: do NOT add person names here - they are exactly what detection is for
 ]);
 
 function findUnknownProperNouns(text, knownNames) {
@@ -305,7 +305,7 @@ function findUnknownProperNouns(text, knownNames) {
   const found = new Set();
 
   // Walk every Title-Case word and check whether the preceding non-space character
-  // is a sentence boundary (.!?\n or start-of-string). Only exclude those —
+  // is a sentence boundary (.!?\n or start-of-string). Only exclude those -
   // everything else is a mid-sentence capitalised word that may be a name.
   const re = /\b([A-Z][a-z]{1,})\b/g;
   let m;
@@ -496,7 +496,7 @@ function generateOutput() {
   let p = '';
   p += `[ANONYMIZED ABA SESSION OBSERVATION]\n`;
   if (sessionType) p += `Session Type: ${sessionType}\n`;
-  p += `PHI Status: Scrubbed — role tokens: [CLIENT] [CAREGIVER] [TECHNICIAN] [BCBA] [TEACHER] [STAFF]\n`;
+  p += `PHI Status: Scrubbed - role tokens: [CLIENT] [CAREGIVER] [TECHNICIAN] [BCBA] [TEACHER] [STAFF]\n`;
   p += `\n`;
 
   for (const key of domainOrder) {

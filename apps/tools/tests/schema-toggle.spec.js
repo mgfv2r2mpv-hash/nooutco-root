@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-// ?schema=off drops SAP back to the model hand-writing its own JSON — which is
+// ?schema=off drops SAP back to the model hand-writing its own JSON - which is
 // not a new mode, it is exactly what production shipped before the schema. It
 // exists so the constrained and unconstrained drafts can be generated in one
 // deployment, minutes apart, on the same login: without it an A/B depends on
@@ -9,7 +9,7 @@ import { test, expect } from '@playwright/test';
 //
 // Admin-only so a clinician can never land on it by accident. That gate is
 // NotesGate.isAdmin(), which decodes the session token in the browser without
-// verifying its signature — a UI control, not a security boundary. It does not
+// verifying its signature - a UI control, not a security boundary. It does not
 // need to be one: the only thing the flag can do is select the behaviour
 // production already had, so a bypass gains nothing.
 
@@ -66,7 +66,7 @@ test.describe('admin ?schema=off toggle', () => {
     expect(body.output_config.format.type).toBe('json_schema');
   });
 
-  test('a non-admin cannot reach it — the flag is ignored', async ({ page }) => {
+  test('a non-admin cannot reach it - the flag is ignored', async ({ page }) => {
     const body = await requestBodyFor(page, { role: 'user', search: '&schema=off' });
 
     expect(body.output_config, 'a clinician was able to turn the schema off').toBeTruthy();

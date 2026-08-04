@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Scrub stress test — nooutco tools</title>
+  <title>Scrub stress test - nooutco tools</title>
   <script src="/assets/notes-gate.js"></script>
   <script src="/assets/notes-scrub.js"></script>
   <!-- Not used by this page's UI. Loaded so the style measurement can be tested
@@ -41,11 +41,11 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>PHI scrubbing — stress test</h1>
+    <h1>PHI scrubbing - stress test</h1>
     <p class="lead">
       Exercises name detection (<code>NotesScrub._detect</code>) and replacement
       (<code>applyScrub</code>) against tricky inputs. Detection is intentionally
-      aggressive — the in-app review step lets a clinician uncheck false positives or
+      aggressive - the in-app review step lets a clinician uncheck false positives or
       certify a term is not PII, so over-detection is safe and under-detection is the
       real risk. Rows marked <span class="gap">KNOWN GAP</span> document a limitation
       (a name that appears <em>only</em> in lowercase is not auto-detected; the review
@@ -111,7 +111,7 @@
         ["D'Angelo ran the drill.", ["D'Angelo"], "match"],
         ["Anne-Marie smiled the whole time.", ["Anne-Marie"], "match"],
         ["John Smith attended the meeting.", ["John Smith"], "match"],
-        ["(Jacob), \"Jacob\", —Jacob, ...Jacob, Jacob.", ["Jacob"], "match"],
+        ["(Jacob), \"Jacob\", -Jacob, ...Jacob, Jacob.", ["Jacob"], "match"],
         ["Jacob's mom helped him.", ["Jacob"], "match"],
         ["Jacob played. jacob smiled. JACOB ran.", ["Jacob"], "match"],
         ["On Monday at the Clinic via Telehealth in the Community.", [], "match"],

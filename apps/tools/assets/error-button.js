@@ -159,7 +159,7 @@
       '    <label class="eb-label" for="eb-msg">Anything to add? <span style="font-weight:400;color:#64748b">(optional)</span></label>',
       '    <textarea id="eb-msg" class="eb-textarea" placeholder="What you were doing when it happened…" maxlength="2000"></textarea>',
       // This box used to email whatever was typed straight to an inbox, outside
-      // the scrubber — and the likeliest thing to paste into it is the note that
+      // the scrubber - and the likeliest thing to paste into it is the note that
       // just failed. It now passes the same name/identifier review a note does.
       '    <p style="margin:6px 0 0;font-size:12px;color:#64748b;line-height:1.45;">',
       '      Do not paste the note itself. Names and identifiers are removed before this is sent.',
@@ -188,7 +188,7 @@
 
     kindEl.focus();
 
-    // A category alone is a valid report — the free text is genuinely optional
+    // A category alone is a valid report - the free text is genuinely optional
     // now, which is what lets us tell people not to paste the note in.
     function updateSubmit() {
       submitEl.disabled = !kindEl.value;
@@ -236,7 +236,7 @@
       submitEl.textContent = "Sending…";
       statusEl.innerHTML = "";
 
-      // Append .js suffix — Bot Fight Mode exempts static extensions on this plan.
+      // Append .js suffix - Bot Fight Mode exempts static extensions on this plan.
       fetch("/api/report-error.js", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -250,7 +250,7 @@
         .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, status: r.status, data: d }; }); })
         .then(function (res) {
           if (res.status === 409) {
-            statusEl.innerHTML = '<div class="eb-status eb-status-dupe">Already reported — we have this one.</div>';
+            statusEl.innerHTML = '<div class="eb-status eb-status-dupe">Already reported - we have this one.</div>';
             submitEl.textContent = "Send Report";
             cancelEl.disabled = false;
             return;
@@ -262,7 +262,7 @@
             cancelEl.disabled = false;
             return;
           }
-          statusEl.innerHTML = '<div class="eb-status eb-status-ok">Thanks — we\'ll look into it.</div>';
+          statusEl.innerHTML = '<div class="eb-status eb-status-ok">Thanks - we\'ll look into it.</div>';
           setTimeout(closeModal, 2500);
         })
         .catch(function () {

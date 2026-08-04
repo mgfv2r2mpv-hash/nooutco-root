@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 // The learned style block reaching the prompt, and staying put once it does.
 //
-// The card is fetched but deliberately NOT rendered on the notes page — that is
+// The card is fetched but deliberately NOT rendered on the notes page - that is
 // a clinical surface and a panel for inspecting how the tool writes distracts
 // from filing a note. Viewing and tuning move to a password-gated profile page
 // next phase. So these test the injection, which is all this page does with it.
@@ -32,7 +32,7 @@ async function withCard(page, card = CARD) {
   await page.evaluate(() => {
     const payload = { role: 'user', kid: 'pw:tech-1', tools: ['bt'], exp: Math.floor(Date.now() / 1000) + 3600 };
     const b64 = btoa(JSON.stringify(payload)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    // The signature is never checked in the browser — only the server verifies
+    // The signature is never checked in the browser - only the server verifies
     // it, and these tests intercept the server.
     localStorage.setItem('notes_auth_token', `${b64}.local-test`);
   });
@@ -151,7 +151,7 @@ test.describe('the learned block reaches the prompt, and then holds still', () =
       }));
 
     // Now revise. The panel is already open after a draft, so this runs
-    // unconditionally — a guarded assertion here could pass without ever
+    // unconditionally - a guarded assertion here could pass without ever
     // exercising the thing the test exists for.
     await expect(page.locator('.revision-panel')).toBeVisible();
     await page.locator('.revision-input').fill('make the behavior section shorter');
@@ -163,15 +163,14 @@ test.describe('the learned block reaches the prompt, and then holds still', () =
     expect(systems[1]).not.toContain('COMPLETELY DIFFERENT BLOCK');
   });
 
-  test('the style card is not rendered on the notes page', async ({ page }) => {
-    // A clinical surface. The technician is here to file a note, not to tune
-    // how the tool writes — that lives on the profile page. The learning still
-    // happens here and the block still reaches the prompt; only the UI moved.
+  test('neither the style card nor the standards panel clutters the notes page', async ({ page }) => {
+    // A clinical surface. The technician is here to file a note, not to tune how
+    // the tool writes or to read documentation standards they are held to
+    // anyway. The learning still happens here and the block still reaches the
+    // prompt; only the panels are gone.
     await withCard(page);
     await expect(page.getByRole('button', { name: /learned to write like you/i })).toHaveCount(0);
     await expect(page.getByText('Keep sentences short.')).toHaveCount(0);
-    // The house rules panel is still there — that one is a documentation
-    // standard, not a personal setting.
-    await expect(page.getByRole('button', { name: /Documentation standards/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Documentation standards/i })).toHaveCount(0);
   });
 });

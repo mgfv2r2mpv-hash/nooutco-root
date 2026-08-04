@@ -1,5 +1,5 @@
-/* No Outcome ABA — unified navigation bar (<noaba-bar>)
-   CANONICAL SOURCE: packages/shared/ui/nav-bar.css — edit here, never in
+/* No Outcome ABA - unified navigation bar (<noaba-bar>)
+   CANONICAL SOURCE: packages/shared/ui/nav-bar.css - edit here, never in
    apps/<app>/assets/nav-bar.css (generated copies; CI drift check fails on hand
    edits). Run `npm run sync:shared` after editing.
 
@@ -8,7 +8,7 @@
    page styles cascade in; all selectors are scoped under `noaba-bar`. */
 
 noaba-bar {
-  /* Bar-local palette — design-reference exacts not all present as global tokens.
+  /* Bar-local palette - design-reference exacts not all present as global tokens.
      Override any of these per page/app by setting them on the element. */
   --noaba-bar-bg:        var(--surface-card, #ffffff);
   --noaba-hairline:      #e7ebe0;
@@ -126,7 +126,7 @@ a.noaba-crumb:hover { text-decoration: underline; }
 
 .noaba-spacer { flex: 1; }
 
-/* ── Admin gear — one affordance ──────────────────────────────────────── */
+/* ── Admin gear - one affordance ──────────────────────────────────────── */
 /* 44px transparent button = tap target; 38px bordered ring = the visual. */
 .noaba-gear {
   display: inline-flex;

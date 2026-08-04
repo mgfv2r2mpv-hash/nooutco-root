@@ -1,19 +1,19 @@
 /*
- * notes-scrub.js — confirm-first PHI/PII review shared by the notes tools.
+ * notes-scrub.js - confirm-first PHI/PII review shared by the notes tools.
  *
  * Compliance model (no BAA / no ZDR): PHI must never reach the API. De-identifying
- * the input *before* anything is sent is the HIPAA control here — the API only ever
+ * the input *before* anything is sent is the HIPAA control here - the API only ever
  * receives role tokens (Client, Caregiver, …). Two gates run before any prompt is
  * built or sent:
  *
- *   1. acknowledge() — a once-per-page-load legal notice the clinician must accept
+ *   1. acknowledge() - a once-per-page-load legal notice the clinician must accept
  *      (submitting PHI to a third-party AI service without a BAA can violate HIPAA
  *      and other laws). Returns false if declined.
- *   2. review()      — every detected name is shown for confirmation. The clinician
+ *   2. review()      - every detected name is shown for confirmation. The clinician
  *      edits the replacement, picks a role, or certifies the term is not PII (which
  *      leaves it untouched). Confirmed names are replaced everywhere.
  *
- * Tokens stay in the output (de-identified AND retrievable — the clinician
+ * Tokens stay in the output (de-identified AND retrievable - the clinician
  * substitutes real names in their own EHR). The name->token map is EPHEMERAL: it
  * lives only for the duration of one action and is never stored or transmitted.
  * persistMap() is an inert hook for future encrypted-at-rest storage if re-insertion
@@ -39,7 +39,7 @@
     { key: "staff", label: "Other staff", token: "Staff" },
   ];
 
-  // What counts as PII/PHI — surfaced in the (?) tooltip on each row and in the
+  // What counts as PII/PHI - surfaced in the (?) tooltip on each row and in the
   // acknowledgment notice. Mirrors the HIPAA Safe-Harbor identifiers in plain words.
   var PII_HELP =
     "PII / PHI is any detail that could identify a person: full or partial names and " +
@@ -62,7 +62,7 @@
   }
 
   // Best-guess default role from words near the name. Drives only the dropdown
-  // default — the clinician confirms or overrides every choice.
+  // default - the clinician confirms or overrides every choice.
   var CUES = [
     { rx: /\b(mom|mother|dad|father|parent|grandma|grandpa|grandmother|grandfather|guardian|caregiver|aunt|uncle|foster)\b/, role: "caregiver" },
     { rx: /\b(bt|rbt|tech|technician|aide|para)\b/, role: "technician" },
@@ -156,7 +156,7 @@
   }
 
   // Inert hook. If re-insertion is ever added, encrypt the map at rest here
-  // (Web Crypto AES-GCM, key derived from a clinician passphrase via PBKDF2) — never
+  // (Web Crypto AES-GCM, key derived from a clinician passphrase via PBKDF2) - never
   // store the map in plaintext, never transmit it. Currently a no-op by design.
   function persistMap(/* map */) { return false; }
 
@@ -186,7 +186,7 @@
         "Do not submit Protected Health Information</h2>" +
         '<p style="font-size:13.5px;color:#3a4326;margin:0 0 12px;line-height:1.6;">' +
         "Do not enter Protected Health Information (PHI) or personally identifiable information " +
-        "(PII) — client names, dates, addresses, or any other identifier — into this tool.</p>" +
+        "(PII) - client names, dates, addresses, or any other identifier - into this tool.</p>" +
         '<p style="font-size:13.5px;color:#3a4326;margin:0 0 12px;line-height:1.6;">' +
         "Submitting PHI to a third-party AI service without a signed Business Associate Agreement " +
         "can violate the Health Insurance Portability and Accountability Act (HIPAA), the HITECH " +
@@ -205,7 +205,7 @@
         '<button id="notes-ack-cancel" type="button" style="padding:10px 16px;border:1.5px solid #c0d4a8;border-radius:8px;' +
         'background:#fff;color:#5a6b4a;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>' +
         '<button id="notes-ack-go" type="button" disabled style="padding:10px 18px;border:none;border-radius:8px;' +
-        'background:#a8b896;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;">I understand — continue</button>' +
+        'background:#a8b896;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;">I understand - continue</button>' +
         "</div></div>";
       document.body.appendChild(wrap);
 
@@ -242,7 +242,7 @@
     }).join("");
   }
 
-  // Non-name identifiers — DOB, phone, address, ZIP, email, SSN, MRN. Unlike a
+  // Non-name identifiers - DOB, phone, address, ZIP, email, SSN, MRN. Unlike a
   // name there is no clinical reason for one of these to be in a session note,
   // so they are tokenised outright rather than offered for review: removing the
   // click removes the chance of clicking through. They still appear in the
@@ -253,7 +253,7 @@
   }
 
   // Resolves { cancelled, map, certified }. With no detected names it resolves
-  // immediately (no modal) — but any identifiers found are still mapped.
+  // immediately (no modal) - but any identifiers found are still mapped.
   // Otherwise it opens a confirm-first dialog for the names.
   function review(opts) {
     return new Promise(function (resolve) {
@@ -300,7 +300,7 @@
         '<h2 id="notes-scrub-title" style="font-size:18px;font-weight:700;color:#2d3a1f;margin:0 0 6px;">Remove names before continuing</h2>' +
         '<p style="font-size:13px;color:#5a6b4a;margin:0 0 4px;line-height:1.5;">' +
         "We found " + names.length + (names.length === 1 ? " name" : " names") +
-        ". Confirm the replacement for each — it is applied before anything leaves your device. " +
+        ". Confirm the replacement for each - it is applied before anything leaves your device. " +
         "All matching spellings (including different capitalization) are replaced.</p>" +
         '<div id="notes-scrub-pii" style="display:none;margin:8px 0;padding:10px 12px;border-radius:8px;' +
         'background:#fdf6e8;border:1.5px solid #d4b483;color:#5a4420;font-size:12px;line-height:1.55;">' + esc(PII_HELP) + "</div>" +
@@ -442,14 +442,14 @@
 
   function _applyComputedStyle(src, dst) {
     var cs = window.getComputedStyle(src);
-    // Font metrics — every property that affects character position.
+    // Font metrics - every property that affects character position.
     ["font", "fontSize", "fontFamily", "fontWeight", "fontStyle",
      "lineHeight", "letterSpacing", "wordSpacing",
      "wordWrap", "overflowWrap", "wordBreak", "tabSize", "textIndent",
      "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
      "boxSizing",
     ].forEach(function (p) { try { dst.style[p] = cs[p]; } catch (e) {} });
-    // Transparent border — same dimensions as the textarea's border so the
+    // Transparent border - same dimensions as the textarea's border so the
     // content area (where text starts) aligns exactly. Without this the hl
     // text is offset left/up by the textarea's border width, causing the mark
     // to appear under the wrong characters (e.g. "Swing" → only "wing" glows).

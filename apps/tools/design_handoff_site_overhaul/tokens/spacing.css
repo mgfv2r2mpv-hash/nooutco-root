@@ -1,5 +1,5 @@
 /* ============================================================================
-   SPACING, RADII, SHADOWS — No Outcome ABA
+   SPACING, RADII, SHADOWS - No Outcome ABA
    A 4px base grid (the app's spacing is built on multiples of 2/4). Radii and
    shadows are catalogued straight from the shipped components.
    ========================================================================== */
@@ -42,7 +42,7 @@
   --shadow-focus: 0 0 0 3px rgba(106, 118, 89, 0.38);/* focus ring (sage) */
 
   /* ---- Motion ------------------------------------------------------------ */
-  /* Calm, never bouncy — the brand is low-arousal and sensory-considerate.
+  /* Calm, never bouncy - the brand is low-arousal and sensory-considerate.
      Transitions are short fades/slides on an ease-out curve; no spring,
      no infinite loops on content. */
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1); /* @kind other */
