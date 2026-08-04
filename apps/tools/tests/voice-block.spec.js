@@ -262,3 +262,37 @@ test.describe('the admin read-back route', () => {
     expect(res.status()).not.toBe(200);
   });
 });
+
+// Obligations: what his field requires, not what he prefers. He drew the line
+// himself, so these tests hold it.
+const OBLIGED = {
+  ...BLOCK,
+  obligations: { 'clinical-narrative': 'RESTRICTIVE-PROCEDURE-RULE' },
+};
+
+test.describe('obligations', () => {
+  test('ship unasked, like a stance and unlike an opinion', () => {
+    const out = composeVoice('SYSTEM', OBLIGED, 'sup');
+    expect(out).toContain('RESTRICTIVE-PROCEDURE-RULE');
+    expect(out).toContain('PROFESSIONAL REQUIREMENTS');
+  });
+
+  test('are never his preference and are never overruled by the input', () => {
+    // The two properties that separate an obligation from an opinion. If either
+    // assertion goes, an ethics-code requirement can leave as a personal view a
+    // reader is invited to weigh, or be silently dropped when the input differs.
+    const out = composeVoice('SYSTEM', OBLIGED, 'sup');
+    expect(out).toMatch(/not preferences/i);
+    expect(out).toMatch(/never present one as a personal view/i);
+    expect(out).toMatch(/the input does not overrule these/i);
+    expect(out).toMatch(/gap in the record/i);
+  });
+
+  test('follow the allowlist, so the BT tool gets none', () => {
+    expect(composeVoice('SYSTEM', OBLIGED, 'bt')).toBe('SYSTEM');
+  });
+
+  test('a block with no obligations composes exactly as before', () => {
+    expect(composeVoice('SYSTEM', BLOCK, 'sup')).not.toContain('PROFESSIONAL REQUIREMENTS');
+  });
+});

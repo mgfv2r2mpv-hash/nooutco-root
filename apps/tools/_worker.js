@@ -931,6 +931,22 @@ const STANCE_HEADER = [
   "override the input or anything above.",
 ].join("\n");
 
+/* An OBLIGATION is what his field requires of him, not what he prefers. He drew
+   the distinction himself: "Even if it didn't [align with my personal ethics], I
+   would defer to the ethics code because to not do so risks my credential and
+   license." Attributing an ethics-code requirement to him personally would
+   understate it, inviting a reader to weigh it against his judgement when it is
+   not negotiable, so these cite the standard and never the clinician. They are
+   also the one category the input does not overrule. */
+const OBLIGATION_HEADER = [
+  "PROFESSIONAL REQUIREMENTS - not preferences, and not negotiable.",
+  "These come from the ethics code that governs this clinician's licence. Cite",
+  "the standard, never the clinician, and never present one as a personal view.",
+  "Unlike everything above, the input does not overrule these: where the input",
+  "falls short of one, say so as a gap in the record rather than writing around",
+  "it. Do not extend one beyond its stated scope.",
+].join("\n");
+
 export function composeVoice(system, block, tool) {
   if (typeof system !== "string" || !block || !tool) return system;
   const register = block.toolRegister && block.toolRegister[tool];
@@ -939,11 +955,16 @@ export function composeVoice(system, block, tool) {
     (p) => typeof p === "string" && p.trim()
   );
   const stance = (block.stances || {})[register];
-  if (!parts.length && !(typeof stance === "string" && stance.trim())) return system;
+  const obligation = (block.obligations || {})[register];
+  const has = (v) => typeof v === "string" && v.trim();
+  if (!parts.length && !has(stance) && !has(obligation)) return system;
   let out = parts.length ? `${system}\n\n${VOICE_HEADER}\n\n${parts.join("\n\n")}` : system;
-  if (typeof stance === "string" && stance.trim()) {
-    out = `${out}\n\n${STANCE_HEADER}\n\n${stance}`;
-  }
+  if (has(stance)) out = `${out}\n\n${STANCE_HEADER}\n\n${stance}`;
+  // Obligations ride here too, and for the same reason as stances: a
+  // professional requirement that only surfaced when a tool asked for advice
+  // would be absent from every document that has to satisfy it. Unlike an
+  // opinion it is never his preference and is never overruled by the input.
+  if (has(obligation)) out = `${out}\n\n${OBLIGATION_HEADER}\n\n${obligation}`;
   return out;
 }
 
