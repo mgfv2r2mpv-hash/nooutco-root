@@ -287,68 +287,48 @@
    *                 person in the loop, so anything of that shape in the output
    *                 was invented or echoed, and either way it does not get kept.
    */
-  var ALLOWED_CAPS = (function () {
-    var list = [
-      // Role tokens the scrub inserts, plus their numbered forms.
-      "Client", "Caregiver", "Sibling", "Peer", "Technician", "BCBA", "Teacher",
-      "Specialist", "Staff", "Parent", "Guardian", "Analyst", "Therapist",
-      // Field vocabulary that is legitimately capitalised.
-      "ABA", "DTT", "NET", "BT", "RBT", "SLP", "OT", "PT", "IEP", "BIP", "FBA",
-      "FA", "ASD", "ADHD", "SD", "MO", "EO", "VB", "PECS", "BST", "SAP", "MAND",
-      "EHR", "PHI", "PII", "HIPAA", "BACB", "SMART",
-      // Calendar words, which carry no identity on their own.
-      "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
-      "January", "February", "March", "April", "May", "June", "July", "August",
-      "September", "October", "November", "December",
-      // Sentence-initial connectives that survive the boundary test.
-      "The", "This", "That", "These", "Those", "There", "Their", "They", "He",
-      "She", "It", "We", "I", "A", "An", "In", "On", "At", "By", "For", "From",
-      "During", "After", "Before", "When", "While", "If", "Because", "However",
-      "Across", "Both", "Each", "Per", "No", "Yes", "Not", "Progress", "Session",
-      "Data", "Goal", "Target", "Prompt", "Reinforcement", "Behavior", "Behaviour",
-    ];
-    var set = {};
-    for (var i = 0; i < list.length; i++) set[list[i].toLowerCase()] = true;
-    return set;
-  })();
-
+  /* WHY THIS IS A POSITIVE TEST AND NOT AN ALLOWLIST.
+   *
+   * The first version flagged any capitalised word that was not sentence-initial
+   * and not on a hand-written list of field vocabulary. Measured against real
+   * supervision prose it refused eight terms in a single paragraph: "Behavioral
+   * Skills Training", "Discrete Trial Training", "Receptive Identification",
+   * "Behavior Intervention Plan". ABA writing is full of capitalised programme
+   * and technique names, so the gate kept almost nothing and said nothing about
+   * why.
+   *
+   * detectNames has the same problem for the same reason - it is a candidate
+   * generator for a modal where a person adjudicates every hit, and on the same
+   * paragraph it returns "Natural Environment" and "Expressive Labeling".
+   *
+   * So this asks the narrower question the situation actually allows. The input
+   * was scrubbed with a person in the loop before it ever reached the model, so
+   * the output can only contain a personal name if the model invented one, and
+   * an invented one will be an ordinary first name rather than a programme
+   * title. FIRST_NAMES already holds that dictionary. A capitalised word counts
+   * only if it IS a known first name.
+   */
   function residualNames(t) {
+    var g = scrub();
+    if (!g || !g.isFirstName) return []; // caller fails shut on a missing gate
     var out = [];
-    var sentences = t.split(/(?<=[.!?:;])\s+|\n+/);
-    // Words that appear somewhere in lower case are ordinary vocabulary that
-    // happens to be capitalised here. "Progress held..." is fine because
-    // "progress" occurs lower case elsewhere; "Marcus responded..." is not.
-    var lower = {};
-    var all = t.match(/[A-Za-z][A-Za-z'’-]*/g) || [];
-    for (var k = 0; k < all.length; k++) {
-      if (/^[a-z]/.test(all[k])) lower[all[k].toLowerCase()] = true;
-    }
-
-    var flag = function (w) {
-      if (!/^[A-Z]/.test(w)) return false;
-      if (/^[A-Z]+$/.test(w) && w.length <= 5) return false; // acronym
-      if (ALLOWED_CAPS[w.toLowerCase()]) return false;
-      return true;
-    };
-
-    for (var s = 0; s < sentences.length; s++) {
-      var toks = sentences[s].match(/[A-Za-z][A-Za-z'’-]*/g) || [];
-      for (var i = 0; i < toks.length; i++) {
-        var w = toks[i];
-        if (!flag(w)) continue;
-        /* SENTENCE-INITIAL IS CHECKED TOO, not exempted. Names start sentences
-           constantly in a note - "Marcus responded well" - and exempting
-           position 0 let exactly that through. Capitalisation there is
-           ambiguous, so the tie is broken by whether the word ever appears in
-           lower case in the same text. Getting this wrong in the cautious
-           direction costs one unkept pair; getting it wrong the other way
-           writes a name to disk. */
-        if (i === 0 && lower[w.toLowerCase()]) continue;
-        if (out.indexOf(w) === -1) out.push(w);
-      }
+    var toks = t.match(/[A-Za-z][A-Za-z'\u2019-]*/g) || [];
+    for (var i = 0; i < toks.length; i++) {
+      var w = toks[i];
+      if (!/^[A-Z]/.test(w)) continue;
+      if (!g.isFirstName(w)) continue;
+      // A role token the scrub itself inserted is not a leak.
+      if (ROLE_TOKENS[w.toLowerCase()]) continue;
+      if (out.indexOf(w) === -1) out.push(w);
     }
     return out;
   }
+
+  var ROLE_TOKENS = (function () {
+    var set = {};
+    for (var i = 0; i < ROLES.length; i++) set[ROLES[i].token.toLowerCase()] = true;
+    return set;
+  })();
 
   function verifyOutput(text) {
     var t = String(text || "");

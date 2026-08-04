@@ -104,6 +104,38 @@ test.describe('voice capture', () => {
     expect(r.nameRefused).toBe('refused-identifier');
   });
 
+  test('real clinical prose survives the gate, including named techniques and programs', async ({ page }) => {
+    // THE ONE THAT NEARLY SANK IT. The first gate flagged any capitalised word
+    // that was not on a hand-written allowlist, and ABA writing is full of
+    // capitalised programme and technique names: it refused eight terms in one
+    // paragraph and kept nothing, silently. detectNames has the same problem for
+    // the same reason - it is a candidate generator for a modal, not a gate.
+    //
+    // The gate now asks whether a capitalised word IS a known first name, which
+    // is the narrower question the situation allows: the input was scrubbed with
+    // a person in the loop, so a name in the output was invented by the model.
+    await load(page, 'admin');
+    const r = await page.evaluate(() => {
+      localStorage.removeItem('voice_pairs_v1');
+      const techniques =
+        'BCBA coached the technician using Behavioral Skills Training, with modeling and rehearsal. ' +
+        'Discrete Trial Training was run in a three item array, and Natural Environment Teaching was ' +
+        'used for the mand targets across the remainder of the session.';
+      const programs =
+        'The client worked on Receptive Identification and Expressive Labeling during the session. ' +
+        'Progress on Tolerating Denial held steady, and the team reviewed the Behavior Intervention ' +
+        'Plan before closing out the visit with the caregiver.';
+      return {
+        techniques: window.NotesScrub.verifyOutput(techniques).clean,
+        programs: window.NotesScrub.verifyOutput(programs).clean,
+        withName: window.NotesScrub.verifyOutput(techniques + ' Marcus responded well.').clean,
+      };
+    });
+    expect(r.techniques, 'named techniques must not read as a person').toBe(true);
+    expect(r.programs, 'named programs must not read as a person').toBe(true);
+    expect(r.withName, 'an invented first name must still be caught').toBe(false);
+  });
+
   test('refuses when the verifier is missing rather than storing unchecked', async ({ page }) => {
     // Failing open here would mean an unverified pair on disk, so it fails shut.
     await load(page, 'admin');
