@@ -108,7 +108,7 @@ function Bubble({ role, children, muted }) {
 
 function RevisionPanel({
   open, onToggle, thread, annotation, onClearAnnotation,
-  draft, onDraft, onSend, onAskAdvice, loading, questions, onSkipQuestions, unread, quality,
+  draft, onDraft, onSend, onAskAdvice, onExportPairs, pairCount, loading, questions, onSkipQuestions, unread, quality,
   loggedIn,
   intro,
 }) {
@@ -320,6 +320,22 @@ function RevisionPanel({
                 : "Ask what the supervising clinician would do next. This answers in the panel and does not change the note."}
             >
               What would you do here?
+            </button>
+          </div>
+        )}
+        {/* Only the owning clinician captures pairs, so only he sees this, and
+            it only appears once there is something to take. Export is his
+            deliberate act: the file lands in Downloads and he moves it into
+            ~/Private/voice-corpus. Nothing here has ever been sent anywhere. */}
+        {!signedOut && pairCount > 0 && (
+          <div className="revision-advice-row">
+            <button
+              type="button"
+              className="revision-advice"
+              onClick={onExportPairs}
+              title="Save the captured before/after pairs to a file. Nothing has left this browser."
+            >
+              Export {pairCount} captured edit{pairCount === 1 ? "" : "s"}
             </button>
           </div>
         )}

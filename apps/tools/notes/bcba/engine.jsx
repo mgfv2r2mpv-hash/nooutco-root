@@ -1155,6 +1155,18 @@ function App() {
     await sendRevision(text);
   };
 
+  /* Only the owner ever captures, so for everyone else this stays 0 and the
+     control never renders. Read from localStorage rather than tracked in React
+     state, because capture happens inside emitStyle and both call sites are
+     already doing enough. */
+  const [pairCount, setPairCount] = React.useState(0);
+  React.useEffect(() => {
+    const read = () => setPairCount(window.VoiceCapture?.stats?.().pending || 0);
+    read();
+    const t = setInterval(read, 4000);
+    return () => clearInterval(t);
+  }, []);
+
   const targetSection = (annotation) => {
     patchS({ annotation });
     setPanelOpen(true);
@@ -1401,6 +1413,14 @@ function App() {
         onDraft={(v) => patchS({ panelDraft: v })}
         onSend={handlePanelSend}
         onAskAdvice={askWhatWouldYouDo}
+        pairCount={pairCount}
+        onExportPairs={() => {
+          const n = window.VoiceCapture?.exportPairs() || 0;
+          if (n) { window.VoiceCapture.clearPairs(); setPairCount(0); }
+          pushThread("assistant", "status", n
+            ? `Exported ${n} captured edit${n === 1 ? "" : "s"}. Move the file into ~/Private/voice-corpus and run import-pairs.mjs.`
+            : "Nothing captured yet.");
+        }}
         loading={loading}
         questions={S.questions}
         onSkipQuestions={skipQuestions}
