@@ -20,3 +20,10 @@ database_name = "bt-profiles"
 # Created 2026-08-03 in ENAM. Local dev (`wrangler dev --local`) ignores this and
 # uses an on-disk sqlite file instead.
 database_id = "e4eb3582-a8a1-4f8c-a072-0ba5580191d6"
+
+# Friday 20:00 America/New_York. Cron is UTC and has no notion of daylight
+# saving, so both candidate hours fire and src/weekly.js decides which one is
+# actually 20:00 in New York. Without this the email would drift by an hour
+# twice a year.
+[triggers]
+crons = ["0 0 * * 6", "0 1 * * 6"]
