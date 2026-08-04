@@ -1400,6 +1400,14 @@
     _scrub: {
       detectNames: detectNames, buildNameMap: buildNameMap,
       detectIdentifiers: detectIdentifiers, buildIdentifierMap: buildIdentifierMap,
+      // A POSITIVE test for a personal first name, for callers that need to gate
+      // storage rather than offer a human a list to review. detectNames is
+      // deliberately over-inclusive because a person adjudicates every hit; used
+      // as a gate it refuses ordinary clinical prose ("Behavioral Skills",
+      // "Receptive Identification") and keeps nothing.
+      isFirstName: function (w) {
+        return !!FIRST_NAMES[String(w || "").toLowerCase().replace(/[^a-z'\-]/g, "")];
+      },
       applyScrub: applyScrub, restoreDeep: restoreDeep,
     },
     _json: { repair: repairModelJson },
