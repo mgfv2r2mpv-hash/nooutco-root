@@ -117,6 +117,8 @@ export default {
     // across technicians. Names nobody - see handleInsights in the profile app.
     if (url.pathname === "/api/admin/style-insights" && request.method === "GET") {
       return handleStyleInsights(request, env);
+    }
+
     // Admin-only: read back the house voice block that is currently live.
     if (url.pathname === "/api/admin/voice-block" && request.method === "GET") {
       return handleVoiceBlockRead(request, env);
