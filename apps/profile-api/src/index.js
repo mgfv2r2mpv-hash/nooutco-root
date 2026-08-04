@@ -63,6 +63,20 @@ export default {
       if (url.pathname === "/insights" && request.method === "GET") {
         return await handleInsights(env);
       }
+      // Supervisor views. Reachable only over the service binding, and the
+      // Pages worker puts an admin-token check in front of every one of them.
+      if (url.pathname === "/roster" && request.method === "GET") {
+        return await handleRoster(env);
+      }
+      if (url.pathname === "/card-detail" && request.method === "GET") {
+        return await handleCardDetail(url, env);
+      }
+      if (url.pathname === "/card-history" && request.method === "GET") {
+        return await handleCardHistory(url, env);
+      }
+      if (url.pathname === "/suppress" && request.method === "POST") {
+        return await handleSuppress(request, env);
+      }
       return json(404, { error: "No such route." });
     } catch (err) {
       // Never echo the caller's payload back -- it is the one thing that could
@@ -134,9 +148,17 @@ async function handleGetCard(url, env) {
   const kid = cleanKid(url.searchParams.get("kid"));
   if (!kid) return json(400, { error: "Missing kid." });
 
+  // A suppressed rule is gone as far as this route is concerned: not in the
+  // list, not in the block, so it cannot reach a prompt. The technician is not
+  // told, by design - the removal is reviewed in supervision, not announced by
+  // the tool.
   const { results } = await env.DB.prepare(
-    `SELECT feature, direction, rule, evidence, confidence, muted, updated_at
-       FROM style_card WHERE kid = ? ORDER BY confidence DESC`,
+    `SELECT c.feature, c.direction, c.rule, c.evidence, c.confidence, c.muted, c.updated_at
+       FROM style_card c
+       LEFT JOIN style_card_suppression s
+         ON s.kid = c.kid AND s.feature = c.feature
+      WHERE c.kid = ? AND s.feature IS NULL
+      ORDER BY c.confidence DESC`,
   )
     .bind(kid)
     .all();
@@ -227,6 +249,171 @@ async function handleInsights(env) {
       mutedBy: r.muted,
     })),
   });
+}
+
+/* ───────────────────── supervisor views ─────────────────────
+ *
+ * The original design deliberately made individual cards invisible to a BCBA,
+ * on the reasoning that a technician who knows their supervisor reads their
+ * card uses the tool differently. The ruling on 2026-08-04 overrode that: the
+ * heuristics about staff have to be visible to track over time, and a rule that
+ * is not in line with company or best practice policy has to be removable.
+ *
+ * What did NOT change is what is stored. These routes read the same
+ * content-free columns as everything else. There is no prose here to read.
+ */
+
+/** Everyone the store knows about, with enough to decide whose card to open. */
+async function handleRoster(env) {
+  const { results } = await env.DB.prepare(
+    `SELECT t.kid,
+            t.first_seen,
+            t.last_seen,
+            t.note_count,
+            (SELECT COUNT(*) FROM style_card c WHERE c.kid = t.kid)              AS rules,
+            (SELECT COUNT(*) FROM style_card c WHERE c.kid = t.kid AND c.muted = 1) AS muted,
+            (SELECT COUNT(*) FROM style_card_suppression s WHERE s.kid = t.kid)  AS removed,
+            (SELECT COUNT(*) FROM correction_event e WHERE e.kid = t.kid)        AS corrections
+       FROM technician t
+      ORDER BY t.last_seen DESC`,
+  ).all();
+
+  return json(200, {
+    technicians: (results || []).map((r) => ({
+      kid: r.kid,
+      firstSeen: r.first_seen,
+      lastSeen: r.last_seen,
+      notes: r.note_count,
+      corrections: r.corrections,
+      rules: r.rules,
+      muted: r.muted,
+      removed: r.removed,
+    })),
+  });
+}
+
+/** One technician's card as a supervisor needs to see it: including the rules
+ *  the technician muted and the ones a supervisor already removed, which the
+ *  technician-facing route hides. */
+async function handleCardDetail(url, env) {
+  const kid = cleanKid(url.searchParams.get("kid"));
+  if (!kid) return json(400, { error: "Missing kid." });
+
+  const [card, suppressed, who] = await Promise.all([
+    env.DB.prepare(
+      `SELECT feature, direction, rule, evidence, confidence, muted, updated_at
+         FROM style_card WHERE kid = ? ORDER BY confidence DESC`,
+    ).bind(kid).all(),
+    env.DB.prepare(
+      `SELECT feature, ts FROM style_card_suppression WHERE kid = ?`,
+    ).bind(kid).all(),
+    env.DB.prepare(
+      `SELECT first_seen, last_seen, note_count FROM technician WHERE kid = ?`,
+    ).bind(kid).first(),
+  ]);
+
+  const removedAt = new Map((suppressed.results || []).map((r) => [r.feature, r.ts]));
+
+  return json(200, {
+    kid,
+    firstSeen: who ? who.first_seen : null,
+    lastSeen: who ? who.last_seen : null,
+    notes: who ? who.note_count : 0,
+    rules: (card.results || []).map((r) => ({
+      feature: r.feature,
+      direction: r.direction,
+      rule: r.rule,
+      evidence: r.evidence,
+      confidence: r.confidence,
+      muted: !!r.muted,
+      removed: removedAt.has(r.feature),
+      removedAt: removedAt.get(r.feature) || null,
+      updatedAt: r.updated_at,
+    })),
+    // A rule can be removed and then fall below the evidence bar, at which
+    // point no style_card row exists to hang it off. Report it anyway, or the
+    // removal looks like it never happened.
+    removedWithoutRule: (suppressed.results || [])
+      .filter((r) => !(card.results || []).some((c) => c.feature === r.feature))
+      .map((r) => ({ feature: r.feature, removedAt: r.ts })),
+  });
+}
+
+/** How the card moved, replayed rather than stored.
+ *
+ * deriveRules is pure and takes the events plus a clock, so the card at any
+ * past moment is just deriveRules(events up to then, then). That keeps one
+ * definition of what a card is: a stored history could drift from the live
+ * derivation and then two answers would both look authoritative. */
+const HISTORY_MAX_POINTS = 24;
+
+async function handleCardHistory(url, env) {
+  const kid = cleanKid(url.searchParams.get("kid"));
+  if (!kid) return json(400, { error: "Missing kid." });
+
+  const asked = Number(url.searchParams.get("points"));
+  const points = Math.max(2, Math.min(HISTORY_MAX_POINTS, Number.isFinite(asked) ? asked : 12));
+
+  const { results } = await env.DB.prepare(
+    `SELECT feature, direction, magnitude, ts FROM correction_event
+      WHERE kid = ? ORDER BY ts ASC`,
+  ).bind(kid).all();
+
+  const events = results || [];
+  if (!events.length) return json(200, { kid, points: [], features: [] });
+
+  const first = events[0].ts;
+  const last = events[events.length - 1].ts;
+  const span = Math.max(1, last - first);
+
+  const series = [];
+  for (let i = 0; i < points; i++) {
+    const at = first + Math.round((span * (i + 1)) / points);
+    const upTo = events.filter((e) => e.ts <= at);
+    const rules = deriveRules(upTo, at);
+    series.push({
+      ts: at,
+      events: upTo.length,
+      rules: rules.map((r) => ({
+        feature: r.feature,
+        direction: r.direction,
+        confidence: r.confidence,
+        evidence: r.evidence,
+      })),
+    });
+  }
+
+  // Which features ever appeared, so a caller can lay out the lines up front.
+  const seen = new Set();
+  for (const p of series) for (const r of p.rules) seen.add(r.feature);
+
+  return json(200, { kid, points: series, features: [...seen] });
+}
+
+/** Remove a rule, or put one back. Deliberately silent: the technician is not
+ *  notified, and nothing in their view says a rule was ever there. */
+async function handleSuppress(request, env) {
+  const body = await readJson(request);
+  const kid = cleanKid(body && body.kid);
+  const feature = cleanSlug(body && body.feature);
+  if (!kid || !feature) return json(400, { error: "Missing kid or feature." });
+  if (!FEATURE_NAMES.includes(feature)) return json(400, { error: "Unknown feature." });
+
+  const removed = body.removed !== false;
+  const now = Number.isFinite(body.now) ? Math.round(body.now) : Date.now();
+
+  if (removed) {
+    await env.DB.prepare(
+      `INSERT INTO style_card_suppression (kid, feature, ts) VALUES (?, ?, ?)
+       ON CONFLICT(kid, feature) DO UPDATE SET ts = excluded.ts`,
+    ).bind(kid, feature, now).run();
+  } else {
+    await env.DB.prepare(
+      `DELETE FROM style_card_suppression WHERE kid = ? AND feature = ?`,
+    ).bind(kid, feature).run();
+  }
+
+  return json(200, { ok: true, kid, feature, removed });
 }
 
 async function rebuildCard(env, kid, now) {

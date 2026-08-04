@@ -108,9 +108,10 @@ function Bubble({ role, children, muted }) {
 
 function RevisionPanel({
   open, onToggle, thread, annotation, onClearAnnotation,
-  draft, onDraft, onSend, loading, questions, onSkipQuestions, unread, quality,
+  draft, onDraft, onSend, onAskAdvice, onExportPairs, pairCount, loading, questions, onSkipQuestions, unread, quality,
   loggedIn,
   intro,
+  routingAsks, onTakeRouted, onLeaveRouted,
 }) {
   const scrollRef = React.useRef(null);
   const inputRef = React.useRef(null);
@@ -237,6 +238,31 @@ function RevisionPanel({
         {thread.map((m, i) => (
           <Bubble key={i} role={m.role} muted={m.kind === "status"}>{m.text}</Bubble>
         ))}
+
+        {/* A revision that reached past the section that was clicked, where the
+            model would not vouch for the routing. Asked here rather than inline
+            in the note, per his ruling, so the whole exchange stays in one
+            scroll. Declining keeps the wording in the conversation rather than
+            deleting it. */}
+        {Array.isArray(routingAsks) && routingAsks.map((ask) => (
+          <div key={ask.id} className="routing-ask">
+            <p className="routing-ask-q">
+              This also belongs in <strong>{ask.heading}</strong>.
+              {ask.why ? " " + ask.why.replace(/\.?$/, ".") : ""}
+            </p>
+            <p className="routing-ask-preview">
+              {Array.isArray(ask.value) ? ask.value.join(", ") : String(ask.value || "")}
+            </p>
+            <div className="routing-ask-actions">
+              <button type="button" className="routing-take" onClick={() => onTakeRouted(ask)}>
+                Put it there
+              </button>
+              <button type="button" className="routing-leave" onClick={() => onLeaveRouted(ask)}>
+                Leave that section
+              </button>
+            </div>
+          </div>
+        ))}
         {awaitingQuestions && (
           <div style={{ margin: "4px 0 10px" }}>
             {questions.map((q, i) => (
@@ -297,6 +323,42 @@ function RevisionPanel({
             {loading ? "…" : "Send"}
           </button>
         </div>}
+        {/* Asking is deliberately its own button rather than something inferred
+            from the wording of a revision. The supervising clinician's stored
+            judgement only reaches a note when someone asks for it, and a guess
+            about intent would put it into notes nobody asked to individualise.
+            It answers into the thread and never edits the note. */}
+        {!signedOut && !awaitingQuestions && onAskAdvice && (
+          <div className="revision-advice-row">
+            <button
+              type="button"
+              className="revision-advice"
+              disabled={loading}
+              onClick={onAskAdvice}
+              title={annotation
+                ? "Ask what the supervising clinician would do about the selected section"
+                : "Ask what the supervising clinician would do next. This answers in the panel and does not change the note."}
+            >
+              What would you do here?
+            </button>
+          </div>
+        )}
+        {/* Only the owning clinician captures pairs, so only he sees this, and
+            it only appears once there is something to take. Export is his
+            deliberate act: the file lands in Downloads and he moves it into
+            ~/Private/voice-corpus. Nothing here has ever been sent anywhere. */}
+        {!signedOut && pairCount > 0 && (
+          <div className="revision-advice-row">
+            <button
+              type="button"
+              className="revision-advice"
+              onClick={onExportPairs}
+              title="Save the captured before/after pairs to a file. Nothing has left this browser."
+            >
+              Export {pairCount} captured edit{pairCount === 1 ? "" : "s"}
+            </button>
+          </div>
+        )}
         {/* "No PHI" assumes the reader already knows what counts. Spelling it
             out inline would crowd the footer, so the term itself carries the
             reminder. Click as well as hover, because on a tablet - which is what

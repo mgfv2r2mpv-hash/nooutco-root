@@ -232,6 +232,46 @@ body {
 .revision-skip:hover:not(:disabled) { background: #f7e6b8; border-color: #c9962a; }
 .revision-skip:disabled { opacity: 0.55; cursor: not-allowed; }
 
+/* A revision that reached past the section that was clicked, held rather than
+   applied. Amber for the same reason the skip button is amber: this is a call
+   the clinician has to make, not a failure and not a warning. */
+.routing-ask {
+  border: 1.5px solid #e3c26a;
+  background: #fffaf0;
+  border-radius: 10px;
+  padding: 11px 13px;
+  margin: 4px 0 10px;
+}
+.routing-ask-q { margin: 0 0 7px; font-size: 12.5px; line-height: 1.5; color: #6d5410; }
+.routing-ask-q strong { color: #5a4408; }
+/* The wording itself, so the choice is made on what it says rather than on the
+   name of a section. Bounded, because a long narrative would push the buttons
+   off the bottom of a panel that is already height-capped. */
+.routing-ask-preview {
+  margin: 0 0 9px;
+  padding: 8px 10px;
+  background: white;
+  border: 1px solid #efe0bd;
+  border-radius: 7px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #4a3708;
+  max-height: 132px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.routing-ask-actions { display: flex; gap: 7px; flex-wrap: wrap; }
+.routing-take, .routing-leave {
+  flex: 1 1 auto;
+  padding: 8px 12px; border-radius: 8px;
+  font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+}
+.routing-take { border: none; background: #374528; color: white; }
+.routing-take:hover { background: #2d3a1f; }
+.routing-leave { border: 1.5px solid #e3c26a; background: transparent; color: #8a3b2c; }
+.routing-leave:hover { background: #fbeec4; }
+
 .revision-panel-foot {
   flex-shrink: 0;
   padding: 10px 14px 12px;
@@ -267,6 +307,20 @@ body {
   font-size: 13px; font-weight: 700; cursor: pointer;
 }
 .revision-send:disabled { background: #a0b890; cursor: not-allowed; }
+
+/* "What would you do here?" - the only control that reaches the supervising
+   clinician's stored judgement, and the only one that answers without touching
+   the note. Deliberately quieter than Send: asking for advice is a side errand,
+   not the main loop, and it should not compete with revising for the eye. */
+.revision-advice-row { margin-top: 8px; }
+.revision-advice {
+  width: 100%; padding: 8px 12px; border-radius: 8px;
+  border: 1px dashed #c3d6ac; background: transparent; color: #4d5840;
+  font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+  text-align: center; transition: background .13s, border-color .13s;
+}
+.revision-advice:hover:not(:disabled) { background: #f2f7ec; border-color: #7a9460; }
+.revision-advice:disabled { color: #a0b890; border-color: #e2ebd8; cursor: not-allowed; }
 
 /* Reporting a problem used to be a second orange circle pinned to the same
    corner as the assistant pill, one on top of the other. It sits in the panel

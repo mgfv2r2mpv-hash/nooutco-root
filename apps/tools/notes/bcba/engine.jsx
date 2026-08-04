@@ -534,6 +534,10 @@ function freshSession(tool) {
     panelDraft: "",
     questions: null,       // triage questions awaiting an answer, or null
     pendingValues: null,   // scrubbed values held while triage runs
+    // Changes a revision made OUTSIDE the section that was clicked, which the
+    // model was not confident belonged there. Held here rather than applied, so
+    // nothing is lost and nothing lands where it was not asked for.
+    routingAsks: null,     // [{id, heading, value, prev, why, ...}] or null
 
     // ── Learned voice ────────────────────────────────────────────────────
     // styleCard is the live card, refreshed for display. convStyleBlock is the
@@ -682,12 +686,16 @@ function App() {
      longer match and every subsequent turn would pay full price. So the card is
      snapshotted when the note is drafted, and a mute takes effect on the next
      note. The card UI says so. */
-  const runTurn = async (messages, styleBlock) => {
+  const runTurn = async (messages, styleBlock, wantOpinions) => {
     const r = await NotesGate.generateConversation({
       system: tool.buildSystem() + (styleBlock ? "\n\n" + styleBlock : ""),
       messages,
       tool: tool.id,
       maxTokens: tool.maxTokens || 3000,
+      // Only ever true when the clinician pressed "What would you do here?".
+      // Drafting and ordinary revision leave it undefined, so the owning
+      // clinician's stored judgement stays out of every note that did not ask.
+      wantOpinions: wantOpinions === true,
       // The sections this tool renders are exactly the top-level keys its prompt
       // contracts for, so they double as the shape the response must satisfy.
       // Derived rather than declared, so the check cannot drift from the UI.
@@ -788,10 +796,28 @@ function App() {
      means and rates, and a two-sentence section produces a mean too unstable to
      learn anything from. */
   const emitStyle = (before, after, source) => {
-    if (!window.NoteStyleFeatures || !window.NotesGate?.audit?.corrections) return;
     if (!before || !after || before === after) return;
-    const features = window.NoteStyleFeatures.compare(before, after, source);
-    if (features.length) window.NotesGate.audit.corrections(features);
+
+    // Two consumers of the same difference, and they take different things.
+    //
+    // The shared style store takes NUMBERS: a feature, a direction, a magnitude,
+    // and never a word. That is what makes it safe to keep for every technician.
+    //
+    // His voice profile takes the PAIR, because a pair holds topic and length
+    // constant so every difference is a decision, and numbers cannot carry that.
+    // It runs only for him, only after both halves pass an identifier check, and
+    // it never leaves his browser. See assets/voice-capture.js.
+    if (window.NoteStyleFeatures && window.NotesGate?.audit?.corrections) {
+      const features = window.NoteStyleFeatures.compare(before, after, source);
+      if (features.length) window.NotesGate.audit.corrections(features);
+    }
+    if (window.VoiceCapture) {
+      window.VoiceCapture.capture(before, after, {
+        tool: tool.id,
+        register: tool.voiceRegister || null,
+        source,
+      });
+    }
   };
 
   /* ── Triage: ask before drafting ──────────────────────────────────────
@@ -958,6 +984,68 @@ function App() {
      keep context and the cache prefix stays linear); Accept/Discard only
      controls what lands in the visible output. */
 
+  /* ── Asking for a recommendation ──────────────────────────────────────
+     The owning clinician's stored calls are gated behind an explicit request,
+     by his ruling: "The tool has to request it - a 'what would you do here'
+     affordance." So this is a separate button rather than something inferred
+     from the wording of a revision instruction. Inference would mean the
+     judgement sometimes appearing in a note nobody asked to individualise,
+     which is the failure the gate exists to prevent.
+
+     It returns advice into the thread and does NOT touch the note. A
+     recommendation is something to read and act on, not a silent edit. */
+  const askWhatWouldYouDo = async () => {
+    if (loading) return;
+    if (!S.output) {
+      pushThread("assistant", "status", "Generate the note first, then I can suggest what to do next.");
+      return;
+    }
+    const ann = S.annotation;
+    const section = ann ? tool.formSections.find((s) => sectionId(s) === ann.id) : null;
+    pushThread("user", "answer", section ? `What would you do here? (${section.heading})` : "What would you do here?");
+
+    const userMsg = [
+      `RECOMMENDATION REQUEST`,
+      section
+        ? `The clinician is asking what to do about "${section.heading}" (JSON key: ${ann.id}).`
+        : `The clinician is asking what to do next for this case.`,
+      section ? `\nCurrent content of that section:\n${sectionBody(section, S.output, S.values)}` : "",
+      ``,
+      `Answer in prose, as advice to the clinician. Do NOT return the note JSON and do not`,
+      `change any section. Ground every suggestion in what is already in this conversation;`,
+      `if the input does not support a recommendation, say what is missing instead of`,
+      `inventing it. Where the stored judgement above conflicts with the input, follow the`,
+      `input and say plainly which entry you set aside and what overruled it.`,
+    ].filter(Boolean).join("\n");
+
+    setLoading(true);
+    try {
+      const conversation = [...S.conversation, { role: "user", content: userMsg }];
+      // No response schema: this turn is advice, not a note, so constraining it
+      // to the note's shape would force it back into sections.
+      // generateProse, not generateConversation: advice is not the note JSON,
+      // and the note path would parse it, fail, and resample the same request.
+      const r = await NotesGate.generateProse({
+        system: tool.buildSystem() + (S.convStyleBlock ? "\n\n" + S.convStyleBlock : ""),
+        messages: conversation,
+        tool: tool.id,
+        maxTokens: 1200,
+        wantOpinions: true,
+      });
+      const advice = (r.text || "").trim();
+      conversation.push({ role: "assistant", content: advice });
+      patchS({ conversation, lastCallAt: Date.now(), annotation: null, error: "" });
+      audit("recommendation", { requested: 1, scoped: section ? 1 : 0 });
+      pushThread("assistant", "answer", advice || "I do not have enough in this note to suggest anything.");
+    } catch (e) {
+      patchS({ error: NotesGate.displayError(e) });
+      pushThread("assistant", "status", "That didn't go through. " + NotesGate.displayError(e));
+      reportError(tool.id, e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const sendRevision = async (instruction) => {
     const review = await scrubGate(instruction);
     if (!review) return;
@@ -993,7 +1081,16 @@ function App() {
         ``,
         `Instruction: ${scrubbedInstruction}`,
         ``,
-        `Return the COMPLETE updated JSON object with ALL keys. Copy every section not targeted by the instruction verbatim from the current note. Re-evaluate "hints" for the whole note. Never fabricate - if the instruction asks for information not present anywhere in this conversation, leave it out and emit the appropriate hint instead.`,
+        `Return the COMPLETE updated JSON object with ALL keys. Re-evaluate "hints" for the whole note. Never fabricate - if the instruction asks for information not present anywhere in this conversation, leave it out and emit the appropriate hint instead.`,
+        ``,
+        // The clinician pointed at one section, but an instruction routinely
+        // belongs partly somewhere else. Silently dropping that half is how a
+        // correction gets lost, so the model changes what it needs to and
+        // declares it.
+        `The clinician pointed at ONE section. If the instruction also requires changing a DIFFERENT section, make that change too and list every such section in "crossSection".`,
+        `Set "confident": true ONLY when the instruction names that section, or names content that appears in that section and nowhere else. Anything you inferred, guessed at, or judged stylistically consistent is "confident": false. A false is not a failure; it asks the clinician, which is the correct outcome when it is genuinely their call.`,
+        `"why" is one short clause the clinician will read, naming what in their instruction sent the change there.`,
+        `Leave "crossSection" empty and copy every other section verbatim when the instruction only concerns the section they pointed at.`,
       ].join("\n");
     } else {
       userMsg = [
@@ -1013,25 +1110,55 @@ function App() {
       conversation.push({ role: "assistant", content: r.rawText });
       const normalized = tool.normalizeOutput(r.parsed);
       const targetId = ann ? ann.id : null;
+
+      /* Cross-section routing.
+       *
+       * This line used to be `if (targetId && id !== targetId) return;`, which
+       * threw away every change the model made outside the section that was
+       * clicked. That is how a correction got lost: you say "and shorten the
+       * lesson narrative too" while pointing at Behavior, the model does it,
+       * and the engine drops it on the floor without telling anyone.
+       *
+       * His ruling, 2026-08-04: apply the part that fits, and for the rest,
+       * act automatically when the model is confident (with an undo) and ask
+       * otherwise. So a confident cross-section change joins the same proposal
+       * as the targeted one - it renders as an inline diff and Discard is the
+       * undo - and an unconfident one becomes a question in the panel.
+       *
+       * A tool whose schema has no crossSection (the four BCBA tools) reports
+       * nothing, so every off-target change asks. That is the safe direction:
+       * silence must never read as confidence.
+       */
+      const routing = new Map(
+        (normalized.crossSection || []).map((c) => [c.section, c]),
+      );
       const changes = [];
+      const asks = [];
       tool.formSections.filter(isModelSection).forEach((sec) => {
         const id = sectionId(sec);
-        if (targetId && id !== targetId) return;
-        if (!valuesEqual(normalized[id], S.output[id])) {
-          changes.push({
-            id, heading: sec.heading, kind: sec.kind, columns: sec.columns,
-            value: normalized[id], prev: S.output[id],
-          });
-        }
+        if (valuesEqual(normalized[id], S.output[id])) return;
+        const change = {
+          id, heading: sec.heading, kind: sec.kind, columns: sec.columns,
+          value: normalized[id], prev: S.output[id],
+        };
+        if (!targetId || id === targetId) { changes.push(change); return; }
+        const route = routing.get(id);
+        if (route && route.confident) changes.push({ ...change, why: route.why });
+        else asks.push({ ...change, why: route ? route.why : "" });
       });
+      const carried = changes.filter((c) => c.id !== targetId);
       patchS({
         conversation,
         lastCallAt: Date.now(),
         annotation: null,
         proposal: { changes, hints: normalized.hints || [], targetSectionId: targetId, kind: ann ? ann.kind : "global" },
+        routingAsks: asks.length ? asks : null,
         error: "",
       });
-      audit("revision", { requested: 1, sections: changes.length, kind: ann ? ann.kind : "global" });
+      audit("revision", {
+        requested: 1, sections: changes.length, kind: ann ? ann.kind : "global",
+        carried: carried.length, asked: asks.length,
+      });
       pushThread(
         "assistant",
         "status",
@@ -1039,8 +1166,22 @@ function App() {
           ? (changes.length === 1
               ? `Updated “${changes[0].heading}” - the change is highlighted in the note.`
               : `Updated ${changes.length} sections - the changes are highlighted in the note.`)
-          : "No change was needed for that - the note already reflects it, or the detail isn't in your notes."
+          : asks.length
+            ? "That reads as belonging to a different section. See below."
+            : "No change was needed for that - the note already reflects it, or the detail isn't in your notes."
       );
+      // Name what was carried past the section they clicked, and why. Applying
+      // it quietly would be the same content-routing problem in reverse: the
+      // note changes somewhere they were not looking.
+      if (carried.length) {
+        pushThread(
+          "assistant",
+          "status",
+          `That also changed ${carried.map((c) => "“" + c.heading + "”").join(" and ")}, because ` +
+            (carried[0].why || "the instruction reached that section") +
+            ". Discard reverts all of it.",
+        );
+      }
     } catch (e) {
       patchS({ error: NotesGate.displayError(e) });
       pushThread("assistant", "status", "That didn't go through. " + NotesGate.displayError(e));
@@ -1071,6 +1212,18 @@ function App() {
     await sendRevision(text);
   };
 
+  /* Only the owner ever captures, so for everyone else this stays 0 and the
+     control never renders. Read from localStorage rather than tracked in React
+     state, because capture happens inside emitStyle and both call sites are
+     already doing enough. */
+  const [pairCount, setPairCount] = React.useState(0);
+  React.useEffect(() => {
+    const read = () => setPairCount(window.VoiceCapture?.stats?.().pending || 0);
+    read();
+    const t = setInterval(read, 4000);
+    return () => clearInterval(t);
+  }, []);
+
   const targetSection = (annotation) => {
     patchS({ annotation });
     setPanelOpen(true);
@@ -1100,6 +1253,39 @@ function App() {
     });
   };
 
+  /* A change the revision made outside the section that was clicked, which the
+     model would not vouch for. Taking it folds it into the same proposal, so it
+     renders as an inline diff and Discard reverts it like anything else.
+
+     Declining does NOT delete it. His ruling: rejected text stays in the
+     conversation so it can be reused, which means the panel is where it lives
+     rather than a variable nobody can reach. */
+  const takeRoutedChange = (ask) => {
+    audit("revision", { routed_accepted: 1 });
+    patchS((s) => ({
+      proposal: s.proposal
+        ? { ...s.proposal, changes: [...s.proposal.changes, ask] }
+        : { changes: [ask], hints: s.output?.hints || [], targetSectionId: null, kind: "routed" },
+      routingAsks: (s.routingAsks || []).filter((a) => a.id !== ask.id).length
+        ? (s.routingAsks || []).filter((a) => a.id !== ask.id)
+        : null,
+    }));
+    pushThread("assistant", "status", `Added to “${ask.heading}”. It is highlighted in the note.`);
+  };
+
+  const leaveRoutedChange = (ask) => {
+    audit("revision", { routed_declined: 1 });
+    patchS((s) => ({
+      routingAsks: (s.routingAsks || []).filter((a) => a.id !== ask.id).length
+        ? (s.routingAsks || []).filter((a) => a.id !== ask.id)
+        : null,
+    }));
+    // The wording itself, kept where it can be read and reused. Dropping it is
+    // the content loss this whole feature exists to stop.
+    const text = Array.isArray(ask.value) ? ask.value.join(", ") : String(ask.value || "");
+    pushThread("assistant", "answer", `Left “${ask.heading}” alone. What it would have said:\n\n${text}`);
+  };
+
   const discardProposal = () => {
     if (S.proposal) audit("revision", { discarded: 1, sections: S.proposal.changes.length, kind: S.proposal.kind || "section" });
     patchS({ proposal: null });
@@ -1108,6 +1294,19 @@ function App() {
   const pendingChangeFor = (id) =>
     (S.proposal && S.proposal.changes.find((c) => c.id === id)) || null;
 
+  /* THE COPY-PROMPT PATH IS FOR LOGGED-OUT VISITORS ONLY.
+     His refinement of 2026-08-04: "If someone is not logged in, they get a
+     basic-ass prompt from the copy prompt button. if you log in, it is
+     generate-in-place."
+
+     That resolves the fork cleanly, and better than removing it did. A
+     logged-out visitor cannot reach the Worker at all, so a labelled prompt to
+     paste elsewhere is the only value the page can give them - and because they
+     are not authenticated, there was never any question of the voice block
+     reaching them. Nothing leaks, because nothing is composed.
+
+     Signed in, the button is gone and Generate Note is the only route, which is
+     what makes it true that no authenticated output can bypass his voice. */
   const handleGeneratePrompt = async () => {
     const err = tool.validate(S.values);
     if (err) { patchS({ error: err }); return; }
@@ -1117,6 +1316,13 @@ function App() {
     patchS({ promptText: tool.buildLabeledPrompt(scrubValues(review.map)) });
     setCopiedPrompt(false);
   };
+
+  /* The signed-in half of this path is gone on the same ruling: Generate Note
+     already produces the note through the Worker with the voice, the stances and
+     the obligations, so a second signed-in button could only produce a worse
+     result. tool.buildLabeledPrompt() keeps a production caller through the
+     logged-out branch above, so it is not dead code and sap-register.spec.js
+     still guards the surface it builds. */
 
   const handleCopyAll = () => {
     if (!S.output) return;
@@ -1316,12 +1522,24 @@ function App() {
         draft={S.panelDraft}
         onDraft={(v) => patchS({ panelDraft: v })}
         onSend={handlePanelSend}
+        onAskAdvice={askWhatWouldYouDo}
+        pairCount={pairCount}
+        onExportPairs={() => {
+          const n = window.VoiceCapture?.exportPairs() || 0;
+          if (n) { window.VoiceCapture.clearPairs(); setPairCount(0); }
+          pushThread("assistant", "status", n
+            ? `Exported ${n} captured edit${n === 1 ? "" : "s"}. Move the file into ~/Private/voice-corpus and run import-pairs.mjs.`
+            : "Nothing captured yet.");
+        }}
         loading={loading}
         questions={S.questions}
         onSkipQuestions={skipQuestions}
         unread={S.questions ? S.questions.length : 0}
         quality={noteQuality()}
         loggedIn={loggedIn}
+        routingAsks={S.routingAsks}
+        onTakeRouted={takeRoutedChange}
+        onLeaveRouted={leaveRoutedChange}
         intro={tool.assistantIntro}
       />
 
@@ -1401,12 +1619,15 @@ function App() {
             >
               {!loggedIn ? "Log in" : (canUse ? (loading ? "Generating…" : (tool.genLabel || "Generate Note")) : "No access for this tool")}
             </button>
-            <button
-              onClick={handleGeneratePrompt}
-              style={{ padding: "11px 18px", borderRadius: 8, border: "1.5px solid #374528", background: "white", color: "#374528", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
-            >
-              Generate Prompt
-            </button>
+            {!loggedIn && (
+              <button
+                onClick={handleGeneratePrompt}
+                title="Build a prompt you can paste into an AI of your choice. Log in to have the tool write the note for you instead."
+                style={{ padding: "11px 18px", borderRadius: 8, border: "1.5px solid #374528", background: "white", color: "#374528", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+              >
+                Generate Prompt
+              </button>
+            )}
             {hasContent() && (
               <button
                 onClick={handleClear}
@@ -1425,8 +1646,8 @@ function App() {
           </div>
         </div>
 
-        {/* Generated Prompt */}
-        {S.promptText && (
+        {/* Generated Prompt - logged out only. */}
+        {!loggedIn && S.promptText && (
           <div style={card}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
               <div>

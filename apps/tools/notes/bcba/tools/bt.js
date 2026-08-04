@@ -206,6 +206,30 @@
           },
         },
       },
+      // Deliberately NOT in `required`. It only means anything on a revision
+      // turn, where the clinician pointed at one section and the instruction
+      // turned out to touch another. On a first draft there is no target to
+      // reach past, so the model leaves it out entirely.
+      //
+      // `confident` is the whole decision: true applies the change straight
+      // away with an undo, false stops and asks in the panel. So the prompt
+      // has to say what earns a true, or it becomes a coin toss with a
+      // confident-sounding name.
+      crossSection: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["section", "confident", "why"],
+          properties: {
+            section: { type: "string", enum: SECTION_IDS },
+            confident: { type: "boolean" },
+            // One short clause, shown to the clinician as the reason. Not a
+            // rationale for the note itself, so it never reaches the EHR.
+            why: { type: "string" },
+          },
+        },
+      },
     },
   };
 
@@ -326,6 +350,23 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
     });
     out.servicePaused = o.servicePaused === "Yes" ? "Yes" : "No";
     out.hints = normalizeHints(o.hints, HINT_CATALOG, SECTION_IDS);
+    // Only present on a revision that reached past the section the clinician
+    // pointed at. Validated against the same closed section list as hints, so a
+    // fabricated section name cannot route a change anywhere.
+    out.crossSection = Array.isArray(o.crossSection)
+      ? o.crossSection
+          .filter(function (c) {
+            return c && typeof c === "object" && SECTION_IDS.indexOf(c.section) !== -1;
+          })
+          .map(function (c) {
+            return {
+              section: c.section,
+              confident: c.confident === true,
+              why: typeof c.why === "string" ? c.why.slice(0, 140) : "",
+            };
+          })
+          .slice(0, 8)
+      : [];
     return out;
   }
 

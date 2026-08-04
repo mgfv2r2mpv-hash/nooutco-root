@@ -512,8 +512,48 @@
       model: opts.model || "claude-haiku-4-5-20251001",
       maxTokens: opts.maxTokens || 3000,
       tool: opts.tool,
+      // The owning clinician's stored judgement is composed in server-side ONLY
+      // when the caller asks for it, which is his ruling: an opinion never fills
+      // a silence in the input. Sent as a literal true or omitted entirely, so a
+      // truthy value cannot open the gate by accident. Every existing call path
+      // leaves it undefined and behaves exactly as it did before.
+      want_opinions: opts.wantOpinions === true ? true : null,
       output_config: outputConfigFor(opts.responseSchema),
     }, opts.expectKeys);
+  }
+
+  /* Prose, not a note. Used by "What would you do here?", which asks for advice
+     to read rather than a note to serialize.
+   *
+   * It cannot go through llmCall, and finding out why is the reason this exists:
+   * llmCall parses every response as the note JSON, and a parse failure is
+   * "resamplable", so a prose answer would be requested twice and then thrown
+   * away as malformed. Advice is the one call whose correct output is not JSON,
+   * so it needs a path that never tries. */
+  function generateProse(opts) {
+    return llmPost({
+      system: opts.system,
+      messages: opts.messages,
+      model: opts.model || "claude-haiku-4-5-20251001",
+      maxTokens: opts.maxTokens || 1200,
+      tool: opts.tool,
+      want_opinions: opts.wantOpinions === true ? true : null,
+    }).then(function (res) {
+      if (res.status === 401) { setToken(""); throw userError("Session expired - please log in again."); }
+      return res.json().then(function (data) {
+        if (!res.ok) {
+          throw internalError(
+            "API error " + res.status + ": " + (data && data.error ? data.error : res.statusText),
+            { stage: "http", status: res.status }
+          );
+        }
+        return {
+          text: (data.content || []).map(function (b) { return b.text || ""; }).join("").trim(),
+          usage: data.usage || null,
+          stopReason: data.stop_reason || null,
+        };
+      });
+    });
   }
 
   // Constrains the model's answer to the tool's JSON Schema, so the note is
@@ -1313,6 +1353,7 @@
     isAdmin: isAdmin,
     generateNote: generateNote,
     generateConversation: generateConversation,
+    generateProse: generateProse,
     // Error rendering - callers pass the caught error, never e.message, so the
     // user-facing/internal split is applied in one place.
     displayError: displayError,

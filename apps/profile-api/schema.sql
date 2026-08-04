@@ -50,6 +50,24 @@ CREATE TABLE IF NOT EXISTS style_card (
   PRIMARY KEY (kid, feature)
 );
 
+-- Rules a supervisor has removed, because they are not in line with company or
+-- best practice policy.
+--
+-- It is a SEPARATE table, not a column on style_card, and that is the whole
+-- point of it. rebuildCard deletes any style_card row whose evidence falls
+-- below the bar, so a flag living there would be wiped by the next rebuild and
+-- the rule would quietly come back. Suppression has to outlive the derived row
+-- it suppresses.
+--
+-- Nothing here is shown to the technician. The removal is a supervision matter,
+-- reviewed in supervision; the tool simply stops applying the rule.
+CREATE TABLE IF NOT EXISTS style_card_suppression (
+  kid      TEXT    NOT NULL,
+  feature  TEXT    NOT NULL,
+  ts       INTEGER NOT NULL,
+  PRIMARY KEY (kid, feature)
+);
+
 -- Engagement metrics. `data` is JSON, but the Pages worker sanitises every
 -- value to a number or boolean before it ever reaches this table.
 CREATE TABLE IF NOT EXISTS usage_metric (
