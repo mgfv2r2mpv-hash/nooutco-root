@@ -6,14 +6,28 @@
   // NOT top-level — top-level kv_namespaces silently don't bind on Git builds.
   // Account A (kaleb@nooutco.me) namespaces.
   //
-  // The PROFILE service binding reaches the technician style store
-  // (apps/profile-api), deployed 2026-08-03. That Worker has `workers_dev =
-  // false` and declares no routes, so this binding is its ONLY ingress — a
-  // technician holding a valid session token has no address to send a forged
-  // request to. Giving it a route would silently undo that.
+  // ⚠ THIS FILE DOES NOT CONFIGURE THE DEPLOYED PROJECT. It is read by
+  // `wrangler pages dev` locally and by nothing else.
   //
-  // Everything behind it fails open: if the binding or the Worker goes away,
-  // notes generate exactly as they did before any of it existed.
+  // CI deploys with `pages deploy apps/tools` FROM THE REPO ROOT and passes no
+  // --config, so wrangler resolves its config from the working directory and
+  // never reads this file. The bindings that are actually live are stored on
+  // the Pages project itself and managed in the Cloudflare dashboard. Adding a
+  // binding here and expecting it to deploy silently does nothing — that cost
+  // a debugging round on the PROFILE binding below.
+  //
+  // To see what is really bound:
+  //   npx wrangler pages download config dev-tools-nooutco-me
+  //
+  // The PROFILE service binding reaches the technician style store
+  // (apps/profile-api). That Worker has `workers_dev = false` and declares no
+  // routes, so the binding is its ONLY ingress — a technician holding a valid
+  // session token has no address to send a forged request to. Giving it a
+  // route would silently undo that.
+  //
+  // Everything behind it fails open: with the binding absent, as it is on the
+  // deployed project until it is added in the dashboard, notes generate exactly
+  // as they did before any of this existed.
   "env": {
     "production": {
       "kv_namespaces": [
