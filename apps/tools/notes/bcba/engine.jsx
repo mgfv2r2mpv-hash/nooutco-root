@@ -1291,6 +1291,7 @@ function App() {
         onSkipQuestions={skipQuestions}
         unread={S.questions ? S.questions.length : 0}
         quality={noteQuality()}
+        loggedIn={loggedIn}
       />
 
       <div style={{ maxWidth: 860, margin: "0 auto" }}>

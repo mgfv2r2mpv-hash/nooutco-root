@@ -1352,8 +1352,9 @@ function sanitizeCorrection(raw) {
  */
 const PROFILE_TIMEOUT_MS = 1500;
 
-async function profileFetch(env, path, body, method = "POST") {
-  if (!env.PROFILE) return null;
+async function profileFetch(env, path, body, method = "POST", diag = null) {
+  const note = (reason) => { if (diag) diag.reason = reason; };
+  if (!env.PROFILE) { note("unbound"); return null; }
   try {
     const init = {
       method,
@@ -1363,11 +1364,13 @@ async function profileFetch(env, path, body, method = "POST") {
     if (method !== "GET") init.body = JSON.stringify(body || {});
 
     const res = await env.PROFILE.fetch(`https://profile.internal${path}`, init);
-    if (!res.ok) return null;
+    if (!res.ok) { note("status_" + res.status); return null; }
+    note("ok");
     return await res.json();
   } catch (err) {
     // Timeouts are expected under load and are not incidents. Never log the
     // body - it is the one field that could carry something it should not.
+    note(String((err && err.name) || "error"));
     console.error("profile-api unreachable", path, err && err.name);
     return null;
   }
@@ -1408,9 +1411,18 @@ async function handleStyleInsights(request, env) {
     return jsonRes(401, { error: "Admin access required." });
   }
 
-  const data = await profileFetch(env, "/insights", null, "GET");
-  if (!data) return jsonRes(200, { available: false, features: [], cohort: { technicians: 0, notes: 0 } });
-  return jsonRes(200, { available: true, ...data });
+  // `available: false` used to mean three different things - no binding, a
+  // Worker that answered with an error, a Worker that never answered - and
+  // collapsing them cost a day of guessing at which one it was. `reason` is a
+  // fixed word from a closed set, carries no data, and is admin-only.
+  const diag = { reason: "unknown" };
+  const data = await profileFetch(env, "/insights", null, "GET", diag);
+  if (!data) {
+    return jsonRes(200, {
+      available: false, reason: diag.reason, features: [], cohort: { technicians: 0, notes: 0 },
+    });
+  }
+  return jsonRes(200, { available: true, reason: "ok", ...data });
 }
 
 async function handleStyleCardMute(request, env) {

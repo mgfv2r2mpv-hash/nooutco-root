@@ -109,6 +109,7 @@ function Bubble({ role, children, muted }) {
 function RevisionPanel({
   open, onToggle, thread, annotation, onClearAnnotation,
   draft, onDraft, onSend, loading, questions, onSkipQuestions, unread, quality,
+  loggedIn,
 }) {
   const scrollRef = React.useRef(null);
   const inputRef = React.useRef(null);
@@ -141,6 +142,9 @@ function RevisionPanel({
       if (!t || !t.closest) return;
       if (t.closest(".revision-panel, .revision-fab, [data-revise-chip]")) return;
       if (t.closest(".section-clickable")) return; // that is a revise gesture
+      // The report modal is opened FROM this panel and covers it. Collapsing
+      // behind it would lose the conversation the report is probably about.
+      if (t.closest("#eb-backdrop")) return;
       onToggle();
     };
     document.addEventListener("pointerdown", onDown);
@@ -148,6 +152,26 @@ function RevisionPanel({
   }, [open, onToggle]);
 
   const awaitingQuestions = !!(questions && questions.length);
+
+  /* The error report used to be a second floating circle sitting on the same
+     corner as this pill. It lives in here now, which fixes the collision and
+     also puts it somewhere reachable while LOGGED OUT - the state you are in
+     when the thing you want to report is that you cannot log in. The panel
+     renders before authentication for exactly that reason. */
+  const openReport = () => {
+    if (window.ErrorReport) window.ErrorReport.open();
+  };
+
+  /* The wordmark, not the word. An img with alt text rather than a CSS
+     background, so the panel header still reads "Ask NoMe" aloud instead of
+     "Ask" followed by silence. The pill carries its own aria-label, which
+     names the note's state and is the more useful thing to announce there. */
+  const nomeMark = <img className="nome-mark" src="/notes/nome-wordmark.png" alt="NoMe" />;
+  const reportButton = (
+    <button type="button" className="revision-report" onClick={openReport}>
+      ⚠ Report a problem
+    </button>
+  );
 
   // Collapsed, the assistant is a pill carrying the note's quality at a glance:
   // green when it reads complete, amber when it is thin but usable, red when
@@ -162,18 +186,26 @@ function RevisionPanel({
   };
   const qs = QUALITY[q.level] || QUALITY.idle;
 
+  // Signed out there is no note to judge, so the disc sits idle and the panel
+  // offers the report instead of a composer. The pill still says Ask NoMe: it
+  // is the same assistant either way, and the label is how a person finds it
+  // when the thing they need to report is that they cannot log in.
+  const signedOut = loggedIn === false;
+
   if (!open) {
     return (
       <button
         type="button"
-        className={"revision-fab quality-" + (q.level || "idle")}
+        className={"revision-fab quality-" + (signedOut ? "idle" : q.level || "idle")}
         onClick={onToggle}
-        aria-label={"Open the assistant. " + qs.label}
-        title={q.reason || qs.label}
+        aria-label={signedOut ? "Ask NoMe. Sign in to use the assistant, or report a problem." : "Open the assistant. " + qs.label}
+        title={signedOut ? "Sign in to use the assistant, or report a problem" : q.reason || qs.label}
       >
-        <span className="revision-fab-check" aria-hidden="true">{q.level === "good" ? "✓" : q.level === "idle" ? "💬" : "!"}</span>
-        <span>Ask Nome</span>
-        {unread > 0 && <span className="revision-fab-dot" aria-label={unread + " new"} />}
+        <span className="revision-fab-check" aria-hidden="true">
+          {signedOut || q.level === "idle" ? "💬" : q.level === "good" ? "✓" : "!"}
+        </span>
+        <span className="revision-fab-label">Ask{nomeMark}</span>
+        {!signedOut && unread > 0 && <span className="revision-fab-dot" aria-label={unread + " new"} />}
       </button>
     );
   }
@@ -183,14 +215,20 @@ function RevisionPanel({
     <aside className="revision-panel" aria-label="Assistant">
       <header className="revision-panel-head">
         <p className="revision-panel-title">
-          <span className={"revision-head-dot quality-" + (q.level || "idle")} aria-hidden="true" />
-          Ask Nome
+          <span className={"revision-head-dot quality-" + (signedOut ? "idle" : q.level || "idle")} aria-hidden="true" />
+          <span className="revision-fab-label">Ask{nomeMark}</span>
         </p>
         <button type="button" onClick={onToggle} aria-label="Collapse the assistant" className="revision-panel-close">×</button>
       </header>
 
       <div className="revision-panel-body" ref={scrollRef}>
-        {thread.length === 0 && !awaitingQuestions && (
+        {signedOut && (
+          <p className="revision-empty">
+            Sign in with your access code to use the assistant. If signing in is the
+            problem, report it below and say what happened.
+          </p>
+        )}
+        {!signedOut && thread.length === 0 && !awaitingQuestions && (
           <p className="revision-empty">
             Fill in your session notes and press Generate Note. I'll ask about anything
             that looks thin before drafting, then you can click any section - or select a
@@ -222,7 +260,8 @@ function RevisionPanel({
         className="revision-panel-foot"
         onSubmit={(e) => { e.preventDefault(); onSend(); }}
       >
-        {annotation && (
+        {signedOut && <div className="revision-report-row revision-report-only">{reportButton}</div>}
+        {!signedOut && annotation && (
           <div className="revision-chip-row">
             <span className="revision-chip">
               <strong>{annotation.kind === "span" ? "Selected" : "Section"}:</strong>{" "}
@@ -233,7 +272,7 @@ function RevisionPanel({
             </span>
           </div>
         )}
-        <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+        {!signedOut && <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
           <textarea
             ref={inputRef}
             value={draft}
@@ -258,12 +297,12 @@ function RevisionPanel({
           >
             {loading ? "…" : "Send"}
           </button>
-        </div>
+        </div>}
         {/* "No PHI" assumes the reader already knows what counts. Spelling it
             out inline would crowd the footer, so the term itself carries the
             reminder. Click as well as hover, because on a tablet - which is what
             a lot of sessions are written on - there is no hover. */}
-        <p className="revision-foot-note">
+        {!signedOut && <p className="revision-foot-note">
           Do not enter{" "}
           <button
             type="button"
@@ -282,7 +321,8 @@ function RevisionPanel({
               numbers, or any other personal identifier.
             </span>
           )}
-        </p>
+        </p>}
+        {!signedOut && <div className="revision-report-row">{reportButton}</div>}
       </form>
     </aside>
     </React.Fragment>

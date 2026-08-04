@@ -7,6 +7,15 @@
   // Avoid double-injection if the script is included twice.
   if (document.getElementById(BTN_ID)) return;
 
+  /* A page can host the report itself instead of taking the floating circle.
+     The notes pages do: their assistant pill already owns the bottom-right
+     corner, and two round buttons stacked on the same 14px of screen is not a
+     choice anyone made. They set window.ERROR_BUTTON_INLINE before this loads
+     and call ErrorReport.open() from inside the assistant panel, which also
+     puts the report somewhere a person can reach while logged OUT - the state
+     you are in when the bug you want to report is the login itself. */
+  var inlineHost = window.ERROR_BUTTON_INLINE === true;
+
   // ── Styles ──────────────────────────────────────────────────────────────────
   var style = document.createElement("style");
   style.textContent = [
@@ -26,7 +35,10 @@
     "  outline: 3px solid rgba(217,119,6,.45); outline-offset: 2px;",
     "}",
     "#" + BACKDROP_ID + " {",
-    "  position: fixed; inset: 0; z-index: 8000;",
+    // Above the login dialog and the scrub review (both 9999-10000). Whatever
+    // is on screen when something goes wrong is exactly what the report is
+    // about, so this must never open underneath it.
+    "  position: fixed; inset: 0; z-index: 10001;",
     "  background: rgba(20,28,14,.55);",
     "  display: flex; align-items: center; justify-content: center;",
     "  padding: 20px;",
@@ -115,12 +127,15 @@
   document.head.appendChild(style);
 
   // ── Floating button ──────────────────────────────────────────────────────────
-  var btn = document.createElement("button");
-  btn.id = BTN_ID;
-  btn.setAttribute("aria-label", "Report an error");
-  btn.title = "Report an error";
-  btn.textContent = "⚠️";
-  document.body.appendChild(btn);
+  var btn = null;
+  if (!inlineHost) {
+    btn = document.createElement("button");
+    btn.id = BTN_ID;
+    btn.setAttribute("aria-label", "Report an error");
+    btn.title = "Report an error";
+    btn.textContent = "⚠️";
+    document.body.appendChild(btn);
+  }
 
   // ── Modal ────────────────────────────────────────────────────────────────────
   function openModal() {
@@ -274,5 +289,9 @@
     });
   }
 
-  btn.addEventListener("click", openModal);
+  if (btn) btn.addEventListener("click", openModal);
+
+  // The modal is the whole point of this file; the circle is just one way in.
+  // Exposing it lets a page put the report where its own layout wants it.
+  window.ErrorReport = { open: openModal, inlineHost: inlineHost };
 })();

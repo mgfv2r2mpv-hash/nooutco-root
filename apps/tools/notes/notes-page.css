@@ -267,6 +267,45 @@ body {
   font-size: 13px; font-weight: 700; cursor: pointer;
 }
 .revision-send:disabled { background: #a0b890; cursor: not-allowed; }
+
+/* Reporting a problem used to be a second orange circle pinned to the same
+   corner as the assistant pill, one on top of the other. It sits in the panel
+   now: quiet under the composer while things are working, and the only control
+   in the footer when nobody is signed in, because a login bug is reported from
+   the login screen or it is not reported at all. */
+.revision-report-row {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #eef3e7;
+  display: flex;
+  justify-content: flex-end;
+}
+.revision-report-row.revision-report-only {
+  margin-top: 0; padding-top: 0; border-top: none;
+  justify-content: stretch;
+}
+.revision-report {
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #8a6d1f;
+  font-family: inherit; font-size: 12px; font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.revision-report:hover { background: #fdf6e0; color: #6d5410; border-color: #e3c26a; }
+.revision-report:focus-visible { outline: 2px solid #d9932b; outline-offset: 2px; }
+.revision-report-only .revision-report {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 13px;
+  background: #fbeec4;
+  border-color: #e3c26a;
+  color: #8a3b2c;
+}
+.revision-report-only .revision-report:hover { background: #f7e6b8; border-color: #c9962a; }
+@media (prefers-reduced-motion: reduce) { .revision-report { transition: none; } }
 .revision-foot-note { margin: 7px 0 0; font-size: 11px; color: #9aab86; line-height: 1.4; position: relative; }
 
 /* PHI carries its own definition. A button rather than a title attribute so it
@@ -313,6 +352,18 @@ body {
 .revision-fab.quality-good .revision-fab-check    { background: #6fbf3f; color: #12300a; }
 .revision-fab.quality-thin .revision-fab-check    { background: #f0c14b; color: #4a3708; }
 .revision-fab.quality-missing .revision-fab-check { background: #e0554a; color: #fff; }
+
+/* "Ask" is a word; NoMe is the mark. Setting the mark's height in em keeps the
+   two locked together at whatever size the pill or the header bar is using, and
+   the -0.06em nudge lands its cap height on the same optical line as the text
+   rather than on the raster's own top edge. */
+.revision-fab-label { display: inline-flex; align-items: center; gap: 5px; }
+.nome-mark {
+  height: 1.05em;
+  width: auto;
+  display: block;
+  margin-top: -0.06em;
+}
 
 .revision-fab-dot {
   width: 9px; height: 9px; border-radius: 50%; background: #f0c14b;
