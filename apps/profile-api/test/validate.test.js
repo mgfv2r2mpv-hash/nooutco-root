@@ -88,6 +88,51 @@ test("an unknown feature is refused, so the closed list stays closed", () => {
   );
 });
 
+test("opener_variety is on the closed list, in both directions", () => {
+  // The browser can measure it; without this it would be measured, sent and
+  // then silently dropped here, and the card would never learn it.
+  const out = sanitizeCorrections(
+    [
+      { feature: "opener_variety", direction: 1, magnitude: 0.6, ts: NOW },
+      { feature: "opener_variety", direction: -1, magnitude: 0.3, ts: NOW, source: "manual" },
+    ],
+    NOW,
+  );
+  assert.equal(out.length, 2);
+  assert.deepEqual(out.map((c) => c.direction), [1, -1]);
+  assert.deepEqual(out.map((c) => c.source), ["revision", "manual"]);
+  assert.deepEqual(Object.keys(out[0]).sort(), [
+    "direction",
+    "feature",
+    "magnitude",
+    "source",
+    "ts",
+  ]);
+});
+
+test("an opener_variety correction cannot carry the opening it measured", () => {
+  const [out] = sanitizeCorrections(
+    [
+      {
+        feature: "opener_variety",
+        direction: 1,
+        magnitude: 0.5,
+        // The shape a leak would take for this particular feature: the openings
+        // themselves are words out of a clinical note.
+        openers: ["The behavior technician", "Jacob then"],
+        first_words: "The behavior technician",
+        distinct: 4,
+      },
+    ],
+    NOW,
+  );
+  const serialised = JSON.stringify(out);
+  assert.ok(!serialised.includes("Jacob"));
+  assert.ok(!serialised.includes("behavior"));
+  assert.ok(!serialised.includes("openers"));
+  assert.ok(!serialised.includes("distinct"));
+});
+
 test("a zero or missing direction is not evidence and is dropped", () => {
   assert.deepEqual(sanitizeCorrections([{ feature: "hedging", direction: 0 }], NOW), []);
   assert.deepEqual(sanitizeCorrections([{ feature: "hedging" }], NOW), []);

@@ -62,6 +62,37 @@
     return text.match(/[A-Za-z][A-Za-z'’-]*/g) || [];
   }
 
+  /* Opener variety: the share of sentence openings that are distinct, keyed on
+   * the first two words. A passage whose every sentence starts "The technician"
+   * sits near zero; one that changes where each sentence enters sits at one.
+   *
+   * Two words rather than one, because "The technician" and "The client" are
+   * genuinely different openings while a one-word key would call them the same.
+   * Two rather than three, because a third word starts tracking the content of
+   * the sentence rather than its construction.
+   *
+   * This is already a proportion, so unlike the other measures it is not divided
+   * by anything afterwards. It rises when repeated openings are rewritten apart,
+   * which is the direction the sign convention has to preserve: a technician who
+   * removes repeated openings has moved this measure UP. */
+  function openerVariety(sentences) {
+    var seen = Object.create(null);
+    var distinct = 0;
+    var counted = 0;
+    for (var i = 0; i < sentences.length; i++) {
+      var key = wordsOf(sentences[i]).slice(0, 2).join(" ").toLowerCase();
+      if (!key) continue; // a fragment of digits or punctuation opens on nothing
+      counted++;
+      if (!seen[key]) {
+        seen[key] = true;
+        distinct++;
+      }
+    }
+    // Nothing to repeat is not evidence of repetition, so the empty case sits at
+    // the neutral end rather than reading as maximum sameness.
+    return counted ? distinct / counted : 1;
+  }
+
   /* Reduce a passage to the measures we compare. Everything is a rate or a mean
    * so that a longer rewrite is not mistaken for a change in style. */
   function measure(text) {
@@ -85,6 +116,7 @@
       contractions: countOf(clean, CONTRACTION) / n,
       clause_density: (commas + countOf(clean, SUBORDINATOR)) / sentences.length,
       quantification: countOf(clean, NUMERAL) / n,
+      opener_variety: openerVariety(sentences),
     };
   }
 
@@ -96,6 +128,7 @@
     "contractions",
     "clause_density",
     "quantification",
+    "opener_variety",
   ];
 
   /* Relative change, guarding the case where the measure started at zero --
