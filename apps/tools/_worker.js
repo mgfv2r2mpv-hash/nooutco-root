@@ -914,6 +914,21 @@ async function getVoiceBlock(env) {
   }
 }
 
+/* STANCES ride here rather than with the opinions, on his ruling of 2026-08-04:
+   "always on, as framing, never as a recommendation." A stance is a commitment
+   about how behaviour works and how a person is described, so gating it behind
+   want_opinions would leave it silent in every document that is not asking for
+   advice, which is every document. It governs description only and is told so
+   explicitly, because the one way this goes wrong is a stance turning into a
+   clinical recommendation nobody asked for. */
+const STANCE_HEADER = [
+  "HOW HE DESCRIBES PEOPLE - framing, not advice.",
+  "These are standing commitments of the clinician who owns this tool. They",
+  "change the words used to describe a person and why they did something. They",
+  "never produce a recommendation, never add or soften a clinical fact, and never",
+  "override the input or anything above.",
+].join("\n");
+
 export function composeVoice(system, block, tool) {
   if (typeof system !== "string" || !block || !tool) return system;
   const register = block.toolRegister && block.toolRegister[tool];
@@ -921,8 +936,13 @@ export function composeVoice(system, block, tool) {
   const parts = [block.core, (block.registers || {})[register]].filter(
     (p) => typeof p === "string" && p.trim()
   );
-  if (!parts.length) return system;
-  return `${system}\n\n${VOICE_HEADER}\n\n${parts.join("\n\n")}`;
+  const stance = (block.stances || {})[register];
+  if (!parts.length && !(typeof stance === "string" && stance.trim())) return system;
+  let out = parts.length ? `${system}\n\n${VOICE_HEADER}\n\n${parts.join("\n\n")}` : system;
+  if (typeof stance === "string" && stance.trim()) {
+    out = `${out}\n\n${STANCE_HEADER}\n\n${stance}`;
+  }
+  return out;
 }
 
 /* ── The opinions block ───────────────────────────────────────────────────────
