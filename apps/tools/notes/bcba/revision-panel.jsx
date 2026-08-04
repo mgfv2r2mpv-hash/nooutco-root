@@ -111,6 +111,7 @@ function RevisionPanel({
   draft, onDraft, onSend, onAskAdvice, onExportPairs, pairCount, loading, questions, onSkipQuestions, unread, quality,
   loggedIn,
   intro,
+  routingAsks, onTakeRouted, onLeaveRouted,
 }) {
   const scrollRef = React.useRef(null);
   const inputRef = React.useRef(null);
@@ -231,17 +232,36 @@ function RevisionPanel({
         )}
         {!signedOut && thread.length === 0 && !awaitingQuestions && (
           <p className="revision-empty">
-            Sign in with your access code to use the assistant. If signing in is the
-            problem, report it below and say what happened.
-          </p>
-        )}
-        {!signedOut && thread.length === 0 && !awaitingQuestions && (
-          <p className="revision-empty">
             {intro || "Fill in the form above and press the generate button. I'll ask about anything that looks thin before drafting, then you can click any section, or select a phrase inside one, to revise it."}
           </p>
         )}
         {thread.map((m, i) => (
           <Bubble key={i} role={m.role} muted={m.kind === "status"}>{m.text}</Bubble>
+        ))}
+
+        {/* A revision that reached past the section that was clicked, where the
+            model would not vouch for the routing. Asked here rather than inline
+            in the note, per his ruling, so the whole exchange stays in one
+            scroll. Declining keeps the wording in the conversation rather than
+            deleting it. */}
+        {Array.isArray(routingAsks) && routingAsks.map((ask) => (
+          <div key={ask.id} className="routing-ask">
+            <p className="routing-ask-q">
+              This also belongs in <strong>{ask.heading}</strong>.
+              {ask.why ? " " + ask.why.replace(/\.?$/, ".") : ""}
+            </p>
+            <p className="routing-ask-preview">
+              {Array.isArray(ask.value) ? ask.value.join(", ") : String(ask.value || "")}
+            </p>
+            <div className="routing-ask-actions">
+              <button type="button" className="routing-take" onClick={() => onTakeRouted(ask)}>
+                Put it there
+              </button>
+              <button type="button" className="routing-leave" onClick={() => onLeaveRouted(ask)}>
+                Leave that section
+              </button>
+            </div>
+          </div>
         ))}
         {awaitingQuestions && (
           <div style={{ margin: "4px 0 10px" }}>

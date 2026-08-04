@@ -534,6 +534,10 @@ function freshSession(tool) {
     panelDraft: "",
     questions: null,       // triage questions awaiting an answer, or null
     pendingValues: null,   // scrubbed values held while triage runs
+    // Changes a revision made OUTSIDE the section that was clicked, which the
+    // model was not confident belonged there. Held here rather than applied, so
+    // nothing is lost and nothing lands where it was not asked for.
+    routingAsks: null,     // [{id, heading, value, prev, why, ...}] or null
 
     // ── Learned voice ────────────────────────────────────────────────────
     // styleCard is the live card, refreshed for display. convStyleBlock is the
@@ -1077,7 +1081,16 @@ function App() {
         ``,
         `Instruction: ${scrubbedInstruction}`,
         ``,
-        `Return the COMPLETE updated JSON object with ALL keys. Copy every section not targeted by the instruction verbatim from the current note. Re-evaluate "hints" for the whole note. Never fabricate - if the instruction asks for information not present anywhere in this conversation, leave it out and emit the appropriate hint instead.`,
+        `Return the COMPLETE updated JSON object with ALL keys. Re-evaluate "hints" for the whole note. Never fabricate - if the instruction asks for information not present anywhere in this conversation, leave it out and emit the appropriate hint instead.`,
+        ``,
+        // The clinician pointed at one section, but an instruction routinely
+        // belongs partly somewhere else. Silently dropping that half is how a
+        // correction gets lost, so the model changes what it needs to and
+        // declares it.
+        `The clinician pointed at ONE section. If the instruction also requires changing a DIFFERENT section, make that change too and list every such section in "crossSection".`,
+        `Set "confident": true ONLY when the instruction names that section, or names content that appears in that section and nowhere else. Anything you inferred, guessed at, or judged stylistically consistent is "confident": false. A false is not a failure; it asks the clinician, which is the correct outcome when it is genuinely their call.`,
+        `"why" is one short clause the clinician will read, naming what in their instruction sent the change there.`,
+        `Leave "crossSection" empty and copy every other section verbatim when the instruction only concerns the section they pointed at.`,
       ].join("\n");
     } else {
       userMsg = [
@@ -1097,25 +1110,55 @@ function App() {
       conversation.push({ role: "assistant", content: r.rawText });
       const normalized = tool.normalizeOutput(r.parsed);
       const targetId = ann ? ann.id : null;
+
+      /* Cross-section routing.
+       *
+       * This line used to be `if (targetId && id !== targetId) return;`, which
+       * threw away every change the model made outside the section that was
+       * clicked. That is how a correction got lost: you say "and shorten the
+       * lesson narrative too" while pointing at Behavior, the model does it,
+       * and the engine drops it on the floor without telling anyone.
+       *
+       * His ruling, 2026-08-04: apply the part that fits, and for the rest,
+       * act automatically when the model is confident (with an undo) and ask
+       * otherwise. So a confident cross-section change joins the same proposal
+       * as the targeted one - it renders as an inline diff and Discard is the
+       * undo - and an unconfident one becomes a question in the panel.
+       *
+       * A tool whose schema has no crossSection (the four BCBA tools) reports
+       * nothing, so every off-target change asks. That is the safe direction:
+       * silence must never read as confidence.
+       */
+      const routing = new Map(
+        (normalized.crossSection || []).map((c) => [c.section, c]),
+      );
       const changes = [];
+      const asks = [];
       tool.formSections.filter(isModelSection).forEach((sec) => {
         const id = sectionId(sec);
-        if (targetId && id !== targetId) return;
-        if (!valuesEqual(normalized[id], S.output[id])) {
-          changes.push({
-            id, heading: sec.heading, kind: sec.kind, columns: sec.columns,
-            value: normalized[id], prev: S.output[id],
-          });
-        }
+        if (valuesEqual(normalized[id], S.output[id])) return;
+        const change = {
+          id, heading: sec.heading, kind: sec.kind, columns: sec.columns,
+          value: normalized[id], prev: S.output[id],
+        };
+        if (!targetId || id === targetId) { changes.push(change); return; }
+        const route = routing.get(id);
+        if (route && route.confident) changes.push({ ...change, why: route.why });
+        else asks.push({ ...change, why: route ? route.why : "" });
       });
+      const carried = changes.filter((c) => c.id !== targetId);
       patchS({
         conversation,
         lastCallAt: Date.now(),
         annotation: null,
         proposal: { changes, hints: normalized.hints || [], targetSectionId: targetId, kind: ann ? ann.kind : "global" },
+        routingAsks: asks.length ? asks : null,
         error: "",
       });
-      audit("revision", { requested: 1, sections: changes.length, kind: ann ? ann.kind : "global" });
+      audit("revision", {
+        requested: 1, sections: changes.length, kind: ann ? ann.kind : "global",
+        carried: carried.length, asked: asks.length,
+      });
       pushThread(
         "assistant",
         "status",
@@ -1123,8 +1166,22 @@ function App() {
           ? (changes.length === 1
               ? `Updated “${changes[0].heading}” - the change is highlighted in the note.`
               : `Updated ${changes.length} sections - the changes are highlighted in the note.`)
-          : "No change was needed for that - the note already reflects it, or the detail isn't in your notes."
+          : asks.length
+            ? "That reads as belonging to a different section. See below."
+            : "No change was needed for that - the note already reflects it, or the detail isn't in your notes."
       );
+      // Name what was carried past the section they clicked, and why. Applying
+      // it quietly would be the same content-routing problem in reverse: the
+      // note changes somewhere they were not looking.
+      if (carried.length) {
+        pushThread(
+          "assistant",
+          "status",
+          `That also changed ${carried.map((c) => "“" + c.heading + "”").join(" and ")}, because ` +
+            (carried[0].why || "the instruction reached that section") +
+            ". Discard reverts all of it.",
+        );
+      }
     } catch (e) {
       patchS({ error: NotesGate.displayError(e) });
       pushThread("assistant", "status", "That didn't go through. " + NotesGate.displayError(e));
@@ -1194,6 +1251,39 @@ function App() {
       next.hints = s.proposal.hints;
       return { output: next, proposal: null };
     });
+  };
+
+  /* A change the revision made outside the section that was clicked, which the
+     model would not vouch for. Taking it folds it into the same proposal, so it
+     renders as an inline diff and Discard reverts it like anything else.
+
+     Declining does NOT delete it. His ruling: rejected text stays in the
+     conversation so it can be reused, which means the panel is where it lives
+     rather than a variable nobody can reach. */
+  const takeRoutedChange = (ask) => {
+    audit("revision", { routed_accepted: 1 });
+    patchS((s) => ({
+      proposal: s.proposal
+        ? { ...s.proposal, changes: [...s.proposal.changes, ask] }
+        : { changes: [ask], hints: s.output?.hints || [], targetSectionId: null, kind: "routed" },
+      routingAsks: (s.routingAsks || []).filter((a) => a.id !== ask.id).length
+        ? (s.routingAsks || []).filter((a) => a.id !== ask.id)
+        : null,
+    }));
+    pushThread("assistant", "status", `Added to “${ask.heading}”. It is highlighted in the note.`);
+  };
+
+  const leaveRoutedChange = (ask) => {
+    audit("revision", { routed_declined: 1 });
+    patchS((s) => ({
+      routingAsks: (s.routingAsks || []).filter((a) => a.id !== ask.id).length
+        ? (s.routingAsks || []).filter((a) => a.id !== ask.id)
+        : null,
+    }));
+    // The wording itself, kept where it can be read and reused. Dropping it is
+    // the content loss this whole feature exists to stop.
+    const text = Array.isArray(ask.value) ? ask.value.join(", ") : String(ask.value || "");
+    pushThread("assistant", "answer", `Left “${ask.heading}” alone. What it would have said:\n\n${text}`);
   };
 
   const discardProposal = () => {
@@ -1427,6 +1517,9 @@ function App() {
         unread={S.questions ? S.questions.length : 0}
         quality={noteQuality()}
         loggedIn={loggedIn}
+        routingAsks={S.routingAsks}
+        onTakeRouted={takeRoutedChange}
+        onLeaveRouted={leaveRoutedChange}
         intro={tool.assistantIntro}
       />
 
