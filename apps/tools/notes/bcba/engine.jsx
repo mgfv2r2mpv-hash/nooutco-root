@@ -996,10 +996,10 @@ function App() {
      recommendation is something to read and act on, not a silent edit. */
   const askWhatWouldYouDo = async () => {
     if (loading) return;
-    if (!S.output) {
-      pushThread("assistant", "status", "Generate the note first, then I can suggest what to do next.");
-      return;
-    }
+    // The button is disabled without a note, so this is unreachable from the UI.
+    // It stays as a guard for a programmatic caller, and says nothing to the
+    // thread: repeating a refusal is what produced four identical lines in it.
+    if (!S.output) return;
     const ann = S.annotation;
     const section = ann ? tool.formSections.find((s) => sectionId(s) === ann.id) : null;
     pushThread("user", "answer", section ? `What would you do here? (${section.heading})` : "What would you do here?");
@@ -1523,6 +1523,7 @@ function App() {
         onDraft={(v) => patchS({ panelDraft: v })}
         onSend={handlePanelSend}
         onAskAdvice={askWhatWouldYouDo}
+        canAsk={!!S.output}
         pairCount={pairCount}
         onExportPairs={() => {
           const n = window.VoiceCapture?.exportPairs() || 0;
