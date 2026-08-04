@@ -913,10 +913,11 @@ const VOICE_COVERAGE = {
   sup: "kv",
   parent: "kv",
   assess: "kv",
-  bt: "BT notes are written for, and signed by, the technician. They already " +
-      "carry that technician's own learned style card, and putting the " +
-      "supervising clinician's voice into a document someone else signs would " +
-      "misattribute it.",
+  // Split on his ruling of 2026-08-04, rather than excluded whole. The stances
+  // and the cited obligations reach BT because how a person is described and
+  // what the ethics code requires belong to the practice; his voice card and his
+  // discretionary calls do not, because the technician signs the note.
+  bt: "kv",
 };
 
 const VOICE_KV_KEY = "voice-block:v1";
@@ -977,15 +978,33 @@ const OBLIGATION_HEADER = [
 
 export { VOICE_COVERAGE };
 
+/* Which layers a tool takes. Absent means all of them, which keeps every
+   existing tool behaving exactly as before.
+
+   BT is the reason this exists. His ruling of 2026-08-04 split it rather than
+   including or excluding it whole: "give bt the stances and obligations but not
+   the voice card or the calls." A BT note is written for and signed by the
+   technician, so his sentence habits and his discretionary calls do not belong
+   in it - but how a person is described, and what the ethics code requires,
+   belong to the practice rather than to whoever holds the pen. BT also draws its
+   obligations from the RBT code rather than the analyst code, which the block
+   handles by giving it its own register. */
+function layersFor(block, tool) {
+  const l = block.toolLayers && block.toolLayers[tool];
+  return Array.isArray(l) ? l : ["core", "register", "stances", "obligations", "opinions"];
+}
+
 export function composeVoice(system, block, tool) {
   if (typeof system !== "string" || !block || !tool) return system;
   const register = block.toolRegister && block.toolRegister[tool];
   if (!register) return system; // allowlist: unlisted tools get nothing
-  const parts = [block.core, (block.registers || {})[register]].filter(
-    (p) => typeof p === "string" && p.trim()
-  );
-  const stance = (block.stances || {})[register];
-  const obligation = (block.obligations || {})[register];
+  const layers = layersFor(block, tool);
+  const parts = [
+    layers.includes("core") ? block.core : null,
+    layers.includes("register") ? (block.registers || {})[register] : null,
+  ].filter((p) => typeof p === "string" && p.trim());
+  const stance = layers.includes("stances") ? (block.stances || {})[register] : null;
+  const obligation = layers.includes("obligations") ? (block.obligations || {})[register] : null;
   const has = (v) => typeof v === "string" && v.trim();
   if (!parts.length && !has(stance) && !has(obligation)) return system;
   let out = parts.length ? `${system}\n\n${VOICE_HEADER}\n\n${parts.join("\n\n")}` : system;
@@ -1044,6 +1063,8 @@ export function composeOpinions(system, block, tool, opts) {
   if (!opts || opts.wantsRecommendation !== true) return system;
   const register = block.toolRegister && block.toolRegister[tool];
   if (!register) return system; // same allowlist as the voice block
+  // A tool can be on the allowlist and still take no opinions: BT does.
+  if (!layersFor(block, tool).includes("opinions")) return system;
   const entries = (block.opinions || {})[register];
   if (typeof entries !== "string" || !entries.trim()) return system;
   return `${system}\n\n${OPINIONS_HEADER}\n\n${entries}`;
