@@ -425,7 +425,13 @@
       submit.disabled = true; // require a verification token before enabling submit
       (function renderTs(tries) {
         if (!window.turnstile || !window.turnstile.render) {
-          if (tries > 0) setTimeout(function () { renderTs(tries - 1); }, 200);
+          if (tries > 0) { setTimeout(function () { renderTs(tries - 1); }, 200); return; }
+          // Out of retries. Saying nothing here leaves a permanently dead Log in
+          // button and no reason for it, which reads as "the tool is broken and
+          // I have done something wrong". Name what failed and what to try.
+          err.textContent = "The verification check could not load. Reload the page, "
+            + "and if it keeps happening report it from the assistant.";
+          err.style.display = "block";
           return;
         }
         try {
