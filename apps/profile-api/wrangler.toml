@@ -17,6 +17,6 @@ workers_dev = false
 [[d1_databases]]
 binding = "DB"
 database_name = "bt-profiles"
-# Replaced by the real uuid from `wrangler d1 create bt-profiles`. Local dev
-# (`wrangler dev --local`) ignores it and uses an on-disk sqlite file instead.
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+# Created 2026-08-03 in ENAM. Local dev (`wrangler dev --local`) ignores this and
+# uses an on-disk sqlite file instead.
+database_id = "e4eb3582-a8a1-4f8c-a072-0ba5580191d6"

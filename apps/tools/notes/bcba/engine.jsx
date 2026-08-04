@@ -312,103 +312,17 @@ function HouseRules() {
   );
 }
 
-/* The technician's own learned voice, shown to them and switchable off.
+/* The learned style card is deliberately NOT rendered on this page.
  *
- * Nothing here is hidden, for the same reason the house rules are not: this
- * changes how their notes read, so they get to see it and disagree with it. A
- * muted rule keeps its evidence, so if they carry on making that correction it
- * comes back — which is the honest behaviour, since the alternative is quietly
- * pretending they never made it.
+ * It is a clinical surface: a technician is on it to file a note, and a panel
+ * inviting them to inspect and tune how the tool writes is a distraction from
+ * that. The learning still happens here -- every revision and manual edit is
+ * measured -- and the card is still fetched, because the block it produces goes
+ * into the prompt. Only the viewing and tuning UI moves.
  *
- * Absent for a new technician and absent when the profile store is unreachable.
- * Both render as nothing at all rather than as an error, because in both cases
- * the note is written exactly as it was before any of this existed. */
-function StyleCard({ card, onMute, noteOpen }) {
-  const [open, setOpen] = React.useState(false);
-  const [busy, setBusy] = React.useState(null);
-  const [failed, setFailed] = React.useState("");
-
-  const rules = (card && card.rules) || [];
-  if (!card || !card.available || !rules.length) return null;
-
-  const active = rules.filter((r) => !r.muted).length;
-
-  const toggle = async (feature, muted) => {
-    setBusy(feature);
-    setFailed("");
-    const ok = await onMute(feature, muted);
-    if (!ok) setFailed(feature);
-    setBusy(null);
-  };
-
-  return (
-    <div style={{ marginBottom: 20, borderRadius: 10, border: "1px solid #c0d4a8", background: "#fffbef", overflow: "hidden" }}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        style={{
-          width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-          gap: 12, padding: "11px 16px", border: "none", background: "transparent", cursor: "pointer",
-          fontFamily: "inherit", fontSize: 13.5, fontWeight: 700, color: "#374528", textAlign: "left",
-        }}
-      >
-        <span>
-          How this tool has learned to write like you
-          <span style={{ fontWeight: 400, color: "#7a9460" }}>
-            {" "}— {active} {active === 1 ? "habit" : "habits"} picked up from your edits
-          </span>
-        </span>
-        <span aria-hidden="true" style={{ color: "#7a9460", fontSize: 12 }}>{open ? "▴" : "▾"}</span>
-      </button>
-
-      {open && (
-        <div style={{ padding: "0 16px 14px" }}>
-          <p style={{ margin: "0 0 10px", fontSize: 12.5, color: "#5a6b4a", lineHeight: 1.55 }}>
-            These come from the changes you make to drafts — never from anything you typed,
-            which is not stored. Switch one off if it does not sound like you.
-            {noteOpen ? " A change applies to your next note, not the one open now." : ""}
-          </p>
-          <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 8 }}>
-            {rules.map((r) => (
-              <li
-                key={r.feature}
-                style={{
-                  display: "flex", alignItems: "flex-start", gap: 10,
-                  padding: "9px 11px", borderRadius: 8, border: "1px solid #e2e8d8",
-                  background: r.muted ? "#f3f4ef" : "#fff",
-                }}
-              >
-                <input
-                  type="checkbox"
-                  id={`style-${r.feature}`}
-                  checked={!r.muted}
-                  disabled={busy === r.feature}
-                  onChange={(e) => toggle(r.feature, !e.target.checked)}
-                  style={{ marginTop: 3, accentColor: "#5a7040" }}
-                />
-                <label
-                  htmlFor={`style-${r.feature}`}
-                  style={{
-                    fontSize: 12.8, lineHeight: 1.55, cursor: "pointer",
-                    color: r.muted ? "#8a9480" : "#41502c",
-                    textDecoration: r.muted ? "line-through" : "none",
-                  }}
-                >
-                  {r.rule}
-                  <span style={{ display: "block", marginTop: 2, fontSize: 11.5, color: "#7a9460", textDecoration: "none" }}>
-                    seen in {r.evidence} {r.evidence === 1 ? "edit" : "edits"}
-                    {failed === r.feature ? " · couldn’t save that just now — try again" : ""}
-                  </span>
-                </label>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-}
+ * That UI belongs on a separate, password-gated profile page, built next phase.
+ * The component written for it is in git at c3fc75be if it is useful there;
+ * NotesGate.styleCard.mute() is already wired and tested for it. */
 
 // Read-only rows echoing quick-pick answers the model must not infer, so the BT
 // can tick the matching EHR boxes without scrolling back up to the form.
@@ -659,30 +573,6 @@ function App() {
     });
     return () => { live = false; };
   }, [loggedIn, tool.id]);
-
-  /* Optimistic, with a rollback. The checkbox has to answer the click straight
-     away — waiting on a round trip reads as a dead control, and the technician
-     clicks again. On failure it goes back to what it actually is, and the row
-     says so; showing "off" for a rule that is still on would be the one
-     genuinely misleading outcome here.
-
-     Reflected locally rather than refetched: the open note deliberately keeps
-     the block it was drafted with, so a round trip would only redraw the same
-     list. */
-  const muteStyleRule = async (feature, muted) => {
-    const apply = (value) =>
-      patchS((s) => ({
-        styleCard: {
-          ...s.styleCard,
-          rules: (s.styleCard.rules || []).map((r) => (r.feature === feature ? { ...r, muted: value } : r)),
-        },
-      }));
-
-    apply(muted);
-    const ok = await NotesGate.styleCard.mute(feature, muted);
-    if (!ok) apply(!muted);
-    return ok;
-  };
 
   const setValue = (fid, val) => patchS((s) => ({ values: { ...s.values, [fid]: val } }));
 
@@ -1378,7 +1268,6 @@ function App() {
         </div>
 
         <HouseRules />
-        <StyleCard card={S.styleCard} onMute={muteStyleRule} noteOpen={!!S.output} />
 
         {/* Inputs */}
         <div style={card}>

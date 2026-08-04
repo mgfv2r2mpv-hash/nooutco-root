@@ -43,6 +43,9 @@ export default {
       if (url.pathname === "/style-card/mute" && request.method === "POST") {
         return await handleMute(request, env);
       }
+      if (url.pathname === "/insights" && request.method === "GET") {
+        return await handleInsights(env);
+      }
       return json(404, { error: "No such route." });
     } catch (err) {
       // Never echo the caller's payload back -- it is the one thing that could
@@ -152,6 +155,61 @@ async function handleMute(request, env) {
     .run();
 
   return json(200, { ok: true });
+}
+
+/**
+ * Aggregate view for steering the tool, deliberately naming nobody.
+ *
+ * The question this answers is "which way are technicians pulling, and should
+ * the base prompt move?" -- if most of them keep shortening sentences, that is
+ * a fact about the house prompt, not about seven individuals.
+ *
+ * NO `kid` IS RETURNED, from any row. That is not decoration: the moment this
+ * can be joined back to a person it stops being an engineering signal and
+ * becomes a performance record, which is a different thing with different
+ * consequences for how technicians use the tool. A feature with only one
+ * technician behind it is withheld too, since "1 technician, direction -1" plus
+ * a roster of one is not anonymous.
+ */
+const MIN_COHORT = 2;
+
+async function handleInsights(env) {
+  const { results } = await env.DB.prepare(
+    `SELECT feature,
+            direction,
+            COUNT(*)              AS technicians,
+            SUM(evidence)         AS evidence,
+            AVG(confidence)       AS confidence,
+            SUM(muted)            AS muted
+       FROM style_card
+      GROUP BY feature, direction
+      ORDER BY technicians DESC, evidence DESC`,
+  ).all();
+
+  const rows = (results || []).filter((r) => r.technicians >= MIN_COHORT);
+
+  const totals = await env.DB.prepare(
+    `SELECT COUNT(*) AS technicians, SUM(note_count) AS notes FROM technician`,
+  ).first();
+
+  return json(200, {
+    cohort: {
+      technicians: (totals && totals.technicians) || 0,
+      notes: (totals && totals.notes) || 0,
+    },
+    // Suppressed rows are reported as a count so the view never silently looks
+    // emptier than the data is.
+    withheldForSmallCohort: (results || []).length - rows.length,
+    minCohort: MIN_COHORT,
+    features: rows.map((r) => ({
+      feature: r.feature,
+      direction: r.direction,
+      technicians: r.technicians,
+      evidence: r.evidence,
+      confidence: Math.round((r.confidence || 0) * 100) / 100,
+      mutedBy: r.muted,
+    })),
+  });
 }
 
 async function rebuildCard(env, kid, now) {

@@ -1,8 +1,15 @@
 import { test, expect } from '@playwright/test';
 
-// The card the technician sees, and the thing that makes it safe to inject:
-// the block is snapshotted per conversation, so muting a rule mid-note cannot
-// change the cached prompt prefix that every revision replays.
+// The learned style block reaching the prompt, and staying put once it does.
+//
+// The card is fetched but deliberately NOT rendered on the notes page — that is
+// a clinical surface and a panel for inspecting how the tool writes distracts
+// from filing a note. Viewing and tuning move to a password-gated profile page
+// next phase. So these test the injection, which is all this page does with it.
+//
+// The block is snapshotted per conversation: the system prompt is the cached
+// prefix every revision replays, so if it could change mid-note every later
+// turn would pay full price.
 
 const CARD = {
   available: true,
@@ -31,92 +38,6 @@ async function withCard(page, card = CARD) {
   });
   await page.reload();
 }
-
-test.describe('the card the technician sees', () => {
-  test('learned habits are shown, with how much evidence each has', async ({ page }) => {
-    await withCard(page);
-    const toggle = page.getByRole('button', { name: /learned to write like you/i });
-    await expect(toggle).toBeVisible();
-    // One of the two rules is muted, so only one counts as active.
-    await expect(toggle).toContainText('1 habit');
-
-    await toggle.click();
-    await expect(page.getByText('Keep sentences short.')).toBeVisible();
-    await expect(page.getByText(/seen in 9 edits/)).toBeVisible();
-  });
-
-  test('it says plainly that nothing they typed is stored', async ({ page }) => {
-    await withCard(page);
-    await page.getByRole('button', { name: /learned to write like you/i }).click();
-    await expect(page.getByText(/never from anything you typed/i)).toBeVisible();
-  });
-
-  test('a muted rule reads as switched off rather than absent', async ({ page }) => {
-    await withCard(page);
-    await page.getByRole('button', { name: /learned to write like you/i }).click();
-    // Muted rules stay visible and unchecked -- a rule that vanished would look
-    // like it was never learned.
-    await expect(page.getByRole('checkbox', { name: /State observations directly/ })).not.toBeChecked();
-    await expect(page.getByRole('checkbox', { name: /Keep sentences short/ })).toBeChecked();
-  });
-
-  test('unchecking a rule sends the mute', async ({ page }) => {
-    let muted = null;
-    await page.route('**/api/style-card/mute.js*', async (route) => {
-      muted = JSON.parse(route.request().postData() || '{}');
-      await route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' });
-    });
-    await withCard(page);
-    await page.getByRole('button', { name: /learned to write like you/i }).click();
-    // click() rather than uncheck(): the state settles through a React update
-    // and, on failure, deliberately rolls back — so the assertion belongs after
-    // the click, not inside it.
-    await page.getByRole('checkbox', { name: /Keep sentences short/ }).click();
-
-    await expect.poll(() => muted).toMatchObject({ feature: 'sentence_length', muted: true });
-    await expect(page.getByRole('checkbox', { name: /Keep sentences short/ })).not.toBeChecked();
-  });
-
-  test('a mute that fails says so instead of silently reverting', async ({ page }) => {
-    await page.route('**/api/style-card/mute.js*', (route) =>
-      route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"down"}' }));
-    await withCard(page);
-    await page.getByRole('button', { name: /learned to write like you/i }).click();
-    await page.getByRole('checkbox', { name: /Keep sentences short/ }).click();
-
-    await expect(page.getByText(/couldn’t save that just now/i)).toBeVisible();
-    // The box ends up back ON, because the rule still is. That rollback is why
-    // this cannot use uncheck() — the final state is deliberately unchanged.
-    await expect(page.getByRole('checkbox', { name: /Keep sentences short/ })).toBeChecked();
-  });
-});
-
-test.describe('the card stays out of the way when there is nothing to show', () => {
-  test('a new technician with no learned habits sees no card', async ({ page }) => {
-    await withCard(page, { available: true, rules: [], block: '' });
-    await expect(page.getByRole('button', { name: /learned to write like you/i })).toHaveCount(0);
-  });
-
-  test('an unreachable profile store sees no card, and no error', async ({ page }) => {
-    await withCard(page, { available: false, rules: [], block: '' });
-    await expect(page.getByRole('button', { name: /learned to write like you/i })).toHaveCount(0);
-    // The house rules panel is unaffected -- the page is fully usable.
-    await expect(page.getByRole('button', { name: /Documentation standards/i })).toBeVisible();
-  });
-
-  test('a logged-out page never asks for a card', async ({ page }) => {
-    let asked = false;
-    await page.route('**/api/style-card.js*', async (route) => {
-      asked = true;
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CARD) });
-    });
-    await page.goto('/notes/bt/');
-    await page.evaluate(() => localStorage.removeItem('notes_auth_token'));
-    await page.reload();
-    await page.waitForTimeout(800);
-    expect(asked).toBe(false);
-  });
-});
 
 // A complete BT note. The engine's shape gate rejects a response missing any
 // key its formSections contract for, so this has to be whole.
@@ -193,13 +114,14 @@ test.describe('the learned block reaches the prompt, and then holds still', () =
     }
   });
 
-  test('muting a rule mid-note does not change the prompt the revision replays', async ({ page }) => {
-    // This is the whole reason the block is snapshotted. If a mute changed the
-    // system prompt of an open conversation, the cached prefix every revision
-    // replays would stop matching and each turn would pay full price.
+  test('a revision replays the exact prompt the draft was written with', async ({ page }) => {
+    // This is the whole reason the block is snapshotted rather than read fresh
+    // each turn. If the card changed under an open conversation -- a mute from
+    // the profile page, a rule re-derived by a correction sent moments ago --
+    // the cached prefix every revision replays would stop matching and each
+    // turn would pay full price. The card is deliberately swapped mid-note here
+    // to prove the open conversation ignores it.
     const systems = [];
-    await page.route('**/api/style-card/mute**', (route) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }));
     await page.route('**/api/llm-call**', async (route) => {
       const body = JSON.parse(route.request().postData() || '{}');
       const isTriage = !!body.systemPrompt || /sufficient/i.test(body.system || '');
@@ -219,12 +141,14 @@ test.describe('the learned block reaches the prompt, and then holds still', () =
     await fillRequiredAndGenerate(page);
     await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
 
-    // Switch the rule off while the note is open.
-    await page.getByRole('button', { name: /learned to write like you/i }).click();
-    await page.getByRole('checkbox', { name: /Keep sentences short/ }).click();
-    await expect(page.getByRole('checkbox', { name: /Keep sentences short/ })).not.toBeChecked();
-    // The panel says so, so the technician is not left guessing.
-    await expect(page.getByText(/applies to your next note/i)).toBeVisible();
+    // Change what the store would serve, while the note is open. Anything that
+    // re-read the card from here on would pick this up.
+    await page.route('**/api/style-card.js*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ available: true, rules: [], block: 'COMPLETELY DIFFERENT BLOCK' }),
+      }));
 
     // Now revise. The panel is already open after a draft, so this runs
     // unconditionally — a guarded assertion here could pass without ever
@@ -236,5 +160,18 @@ test.describe('the learned block reaches the prompt, and then holds still', () =
     await expect.poll(() => systems.length, { timeout: 20000 }).toBe(2);
     expect(systems[1]).toBe(systems[0]);
     expect(systems[1]).toContain('Keep sentences short.');
+    expect(systems[1]).not.toContain('COMPLETELY DIFFERENT BLOCK');
+  });
+
+  test('the style card is not rendered on the notes page', async ({ page }) => {
+    // A clinical surface. The technician is here to file a note, not to tune
+    // how the tool writes — that lives on the profile page. The learning still
+    // happens here and the block still reaches the prompt; only the UI moved.
+    await withCard(page);
+    await expect(page.getByRole('button', { name: /learned to write like you/i })).toHaveCount(0);
+    await expect(page.getByText('Keep sentences short.')).toHaveCount(0);
+    // The house rules panel is still there — that one is a documentation
+    // standard, not a personal setting.
+    await expect(page.getByRole('button', { name: /Documentation standards/i })).toBeVisible();
   });
 });

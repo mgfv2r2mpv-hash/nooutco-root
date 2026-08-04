@@ -113,6 +113,12 @@ export default {
       return handleStyleCardMute(request, env);
     }
 
+    // Admin-only: anonymised, cohort-level view of what the tool has learned
+    // across technicians. Names nobody — see handleInsights in the profile app.
+    if (url.pathname === "/api/admin/style-insights" && request.method === "GET") {
+      return handleStyleInsights(request, env);
+    }
+
     // Admin-only: review queue for tech-submitted PII/non-PII candidate terms
     if (url.pathname === "/api/admin/term-queue") {
       return handleTermQueue(request, env);
@@ -1213,6 +1219,26 @@ async function handleStyleCard(request, env) {
   if (!card) return jsonRes(200, { rules: [], block: "", available: false });
 
   return jsonRes(200, { rules: card.rules || [], block: card.block || "", available: true });
+}
+
+/**
+ * Cohort-level view of what the tool has learned, for deciding whether the
+ * house prompt should move. Admin only, and the profile app returns no `kid`
+ * from any row, so this cannot be turned into a per-technician report even by
+ * an admin. That is the intended limit, not an oversight -- a technician who
+ * knows their supervisor reads their style card uses the tool differently.
+ */
+async function handleStyleInsights(request, env) {
+  const secret = (env.ADMIN_SECRET ?? "").trim();
+  const auth = request.headers.get("Authorization") || "";
+  const payload = secret ? await readToken(auth.replace(/^Bearer\s+/i, ""), secret) : null;
+  if (!payload || payload.role !== "admin") {
+    return jsonRes(401, { error: "Admin access required." });
+  }
+
+  const data = await profileFetch(env, "/insights", null, "GET");
+  if (!data) return jsonRes(200, { available: false, features: [], cohort: { technicians: 0, notes: 0 } });
+  return jsonRes(200, { available: true, ...data });
 }
 
 async function handleStyleCardMute(request, env) {
