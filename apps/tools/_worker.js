@@ -117,6 +117,9 @@ export default {
     // across technicians. Names nobody - see handleInsights in the profile app.
     if (url.pathname === "/api/admin/style-insights" && request.method === "GET") {
       return handleStyleInsights(request, env);
+    // Admin-only: read back the house voice block that is currently live.
+    if (url.pathname === "/api/admin/voice-block" && request.method === "GET") {
+      return handleVoiceBlockRead(request, env);
     }
 
     // Admin-only: review queue for tech-submitted PII/non-PII candidate terms
@@ -476,12 +479,18 @@ async function handleLlmCall(request, env) {
     const apiKey = (env.ANTHROPIC_API_KEY ?? "").trim();
     if (!apiKey) return jsonRes(503, { error: "Server API key is not configured." });
 
+    // Append the house voice, server-side, so the rules never reach a browser.
+    // An unlisted tool, or any failure reading the block, leaves the prompt
+    // exactly as it arrived.
+    const voice = await getVoiceBlock(env);
+    const sys = composeVoice(isConversation ? system : systemPrompt, voice, tool);
+
     const llmResponse = isConversation
       ? await callAnthropicConversation(
-          apiKey, system, messages, model || "claude-haiku-4-5-20251001", maxTokens || 3000, outputConfig
+          apiKey, sys, messages, model || "claude-haiku-4-5-20251001", maxTokens || 3000, outputConfig
         )
       : await callAnthropicApi(
-          apiKey, systemPrompt, userPrompt, model || "claude-haiku-4-5-20251001", maxTokens || 3000, outputConfig
+          apiKey, sys, userPrompt, model || "claude-haiku-4-5-20251001", maxTokens || 3000, outputConfig
         );
     return jsonRes(200, llmResponse);
   } catch (error) {
@@ -853,6 +862,93 @@ async function callGeminiApi(apiKey, systemPrompt, userPrompt, model, maxTokens)
 }
 
 // Returns learned stopwords/firstNames - public, no auth, generic vocabulary only.
+/* ── House voice ───────────────────────────────────────────────────────
+   The owning clinician's own writing style, authored locally and published to
+   the API_PASSWORDS KV as markdown under voice-block:v1.
+
+   WHY IT LIVES IN KV AND NOT IN THIS FILE
+   This repo is public. The voice rules are personal and are derived from his
+   own writing, so keeping them out of source is the point of the exercise.
+   Composing them here rather than in the browser means they are never served
+   to a client either — only the model ever sees them.
+
+   WHAT IT MAY AND MAY NOT DO
+   Style only. It never changes clinical content, never overrides a payer or
+   regulatory requirement, and never licenses inventing a particular that was
+   not supplied. The header below states that to the model, and the block is
+   appended AFTER the tool's own system prompt so the clinical instructions are
+   read first and win any conflict.
+
+   toolRegister IS AN ALLOWLIST. A tool absent from it gets no voice block at
+   all. That is how the BT note tool stays out: those notes are written for the
+   technician who signs them and already carry that technician's own learned
+   style card, and stacking a second voice on them would be wrong.
+
+   FAILS OPEN. Missing key, malformed JSON, unbound KV, or enabled:false all
+   yield exactly the prompt that shipped before any of this existed. */
+const VOICE_KV_KEY = "voice-block:v1";
+
+const VOICE_HEADER = [
+  "HOUSE VOICE — style only.",
+  "This describes how the clinician who owns this tool writes. Match the register.",
+  "It does not change clinical content, does not override a payer or regulatory",
+  "requirement, and never licenses inventing a detail that was not provided.",
+  "Where it conflicts with anything above, what is above wins.",
+].join("\n");
+
+async function getVoiceBlock(env) {
+  if (!env.API_PASSWORDS) return null;
+  try {
+    // cacheTtl bounds how long a republish takes to land. It also keeps the
+    // composed system prompt byte-stable across the turns of one conversation,
+    // which is what the Anthropic prompt cache needs to keep hitting.
+    const raw = await env.API_PASSWORDS.get(VOICE_KV_KEY, { cacheTtl: 300 });
+    if (!raw) return null;
+    const block = JSON.parse(raw);
+    return block && block.enabled === true ? block : null;
+  } catch {
+    return null;
+  }
+}
+
+export function composeVoice(system, block, tool) {
+  if (typeof system !== "string" || !block || !tool) return system;
+  const register = block.toolRegister && block.toolRegister[tool];
+  if (!register) return system; // allowlist: unlisted tools get nothing
+  const parts = [block.core, (block.registers || {})[register]].filter(
+    (p) => typeof p === "string" && p.trim()
+  );
+  if (!parts.length) return system;
+  return `${system}\n\n${VOICE_HEADER}\n\n${parts.join("\n\n")}`;
+}
+
+// Admin-only: read back what is live, so it can be verified without wrangler.
+// Publishing is deliberately NOT an endpoint — it goes through
+// `wrangler kv key put`, so this Worker has no write path to its own voice.
+async function handleVoiceBlockRead(request, env) {
+  const secret = (env.ADMIN_SECRET ?? "").trim();
+  const auth = request.headers.get("Authorization") || "";
+  const payload = secret ? await readToken(auth.replace(/^Bearer\s+/i, ""), secret) : null;
+  if (!payload || payload.role !== "admin") return jsonRes(401, { error: "Admin access required." });
+  if (!env.API_PASSWORDS) return jsonRes(503, { error: "Storage not configured." });
+  const raw = await env.API_PASSWORDS.get(VOICE_KV_KEY);
+  if (!raw) return jsonRes(200, { present: false });
+  try {
+    const block = JSON.parse(raw);
+    return jsonRes(200, {
+      present: true,
+      enabled: block.enabled === true,
+      version: block.version ?? null,
+      updatedAt: block.updatedAt ?? null,
+      registers: Object.keys(block.registers || {}),
+      toolRegister: block.toolRegister || {},
+      coreWords: (block.core || "").split(/\s+/).filter(Boolean).length,
+    });
+  } catch {
+    return jsonRes(500, { present: true, error: "Stored voice block is not valid JSON." });
+  }
+}
+
 async function handleScrubConfig(request, env) {
   if (!env.API_PASSWORDS) return jsonRes(200, { stopwords: [], firstNames: [] });
   const raw = await env.API_PASSWORDS.get("scrub-overrides:v1");
