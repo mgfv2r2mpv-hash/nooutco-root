@@ -6,17 +6,18 @@
   // NOT top-level - top-level kv_namespaces silently don't bind on Git builds.
   // Account A (kaleb@nooutco.me) namespaces.
   //
-  // ⚠ THIS FILE DOES NOT CONFIGURE THE DEPLOYED PROJECT. It is read by
-  // `wrangler pages dev` locally and by nothing else.
+  // ⚠ THIS FILE IS THE SOURCE OF TRUTH FOR THIS PROJECT'S BINDINGS, as of
+  // 2026-08-04. Anything removed from it is removed from the project on the
+  // next deploy.
   //
-  // CI deploys with `pages deploy apps/tools` FROM THE REPO ROOT and passes no
-  // --config, so wrangler resolves its config from the working directory and
-  // never reads this file. The bindings that are actually live are stored on
-  // the Pages project itself and managed in the Cloudflare dashboard. Adding a
-  // binding here and expecting it to deploy silently does nothing - that cost
-  // a debugging round on the PROFILE binding below.
+  // It did not used to be. CI deployed with `pages deploy apps/tools` from the
+  // REPO ROOT, and wrangler resolves its config from the working directory, so
+  // this file was never read - a binding added here deployed nothing at all.
+  // That is exactly how the PROFILE binding below got declared, deployed, and
+  // reported live while not existing. deploy-pages.yml now runs the deploy IN
+  // apps/tools so the two agree.
   //
-  // To see what is really bound:
+  // Never trust this file alone. To see what is really bound:
   //   npx wrangler pages download config dev-tools-nooutco-me
   //
   // The PROFILE service binding reaches the technician style store
@@ -28,6 +29,18 @@
   // Everything behind it fails open: with the binding absent, as it is on the
   // deployed project until it is added in the dashboard, notes generate exactly
   // as they did before any of this existed.
+  // Top-level mirrors env.production deliberately. `wrangler pages download
+  // config` shows the live project carries these at BOTH levels, and once a
+  // deploy opts the project into this file, the file is the source of truth -
+  // anything missing from it is dropped. Matching the live shape exactly is what
+  // makes that safe.
+  "kv_namespaces": [
+    { "binding": "SUGGEST_DUPES", "id": "770ceeccadb94d78b519e628509beed8" },
+    { "binding": "API_PASSWORDS", "id": "cdaf40fa2b814f7d94818b27042b9cf2" }
+  ],
+  "services": [
+    { "binding": "PROFILE", "service": "bt-profile-api" }
+  ],
   "env": {
     "production": {
       "kv_namespaces": [

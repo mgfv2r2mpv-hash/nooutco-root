@@ -66,12 +66,24 @@ jobs:
           else
             echo "project=dev-tools-nooutco-me" >> "$GITHUB_OUTPUT"
           fi
+      # workingDirectory matters and is not cosmetic. Wrangler reads its config
+      # from the working directory, so deploying `apps/tools` from the repo root
+      # silently ignored apps/tools/wrangler.jsonc - which is how the PROFILE
+      # service binding got declared, deployed, and reported live while never
+      # actually existing on the project. Running IN apps/tools makes that file
+      # the source of truth, so bindings live in git rather than the dashboard.
+      #
+      # Consequence worth knowing: that file is now authoritative for this
+      # project's bindings. Anything removed from it is removed on the next
+      # deploy. `npx wrangler pages download config <project>` shows what is
+      # really live.
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/tools
           command: >-
-            pages deploy apps/tools
+            pages deploy .
             --project-name=${{ steps.target.outputs.project }}
             --branch=${{ github.ref_name }}
             --commit-dirty=true
