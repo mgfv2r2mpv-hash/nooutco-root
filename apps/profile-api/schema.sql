@@ -81,3 +81,33 @@ CREATE TABLE IF NOT EXISTS usage_metric (
 
 CREATE INDEX IF NOT EXISTS idx_usage_kid_ts ON usage_metric (kid, ts);
 CREATE INDEX IF NOT EXISTS idx_usage_ts     ON usage_metric (ts);
+
+-- Sentence shape profile, one row per technician per tool.
+--
+-- WHY PER TOOL. Mean sentence length is a property of the document class, not
+-- of the person: the same author writes 20.9 words a sentence in academic prose
+-- and 13.0 in a clinical plan. Storing one mean per technician would learn the
+-- average of two things they never actually write. Their variability, on the
+-- other hand, barely moves across classes, so cv_mean is effectively personal
+-- and mean_len is not.
+--
+-- WHY THE RUNNING SUMS. Mean and standard deviation are recomputed from
+-- sum_cv and sum_cv_sq on every update, so no per note history is kept. Three
+-- accumulators replace an unbounded table, and there is nothing to prune.
+--
+-- WHAT IS STORED IS THREE NUMBERS AGAINST AN OPAQUE LOGIN CODE ID. No text, no
+-- fragment of text, no length in characters. The maintainer's own framing: all
+-- anyone could learn is that some login code writes at a given mean length and
+-- variance.
+CREATE TABLE IF NOT EXISTS shape_profile (
+  kid        TEXT    NOT NULL,
+  tool       TEXT    NOT NULL,
+  n_notes    INTEGER NOT NULL DEFAULT 0,
+  sum_len    REAL    NOT NULL DEFAULT 0,   -- running sum of per note mean sentence length
+  sum_cv     REAL    NOT NULL DEFAULT 0,   -- running sum of per note CV
+  sum_cv_sq  REAL    NOT NULL DEFAULT 0,   -- running sum of CV squared, for the sd
+  updated    INTEGER NOT NULL,
+  PRIMARY KEY (kid, tool)
+);
+
+CREATE INDEX IF NOT EXISTS idx_shape_profile_kid ON shape_profile (kid);
