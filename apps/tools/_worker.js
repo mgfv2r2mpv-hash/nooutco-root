@@ -897,6 +897,28 @@ async function callGeminiApi(apiKey, systemPrompt, userPrompt, model, maxTokens)
 
    FAILS OPEN. Missing key, malformed JSON, unbound KV, or enabled:false all
    yield exactly the prompt that shipped before any of this existed. */
+/* WHICH TOOLS RECEIVE THE HOUSE VOICE, and why the one that does not.
+ *
+ * The mapping itself lives in KV, off in the block, which means a tool added to
+ * NOTES_TOOLS can miss the voice entirely and nothing here would say so. That
+ * already nearly happened: `bt` is excluded on purpose, but nothing in this repo
+ * recorded that it was a decision rather than an oversight.
+ *
+ * So the decision is declared here and pinned by a test. Adding a tool without
+ * an entry fails that test, which forces the question to be answered rather than
+ * defaulted. "kv" means the block's own toolRegister decides the register; a
+ * string means excluded, and the string is the reason. */
+const VOICE_COVERAGE = {
+  sap: "kv",
+  sup: "kv",
+  parent: "kv",
+  assess: "kv",
+  bt: "BT notes are written for, and signed by, the technician. They already " +
+      "carry that technician's own learned style card, and putting the " +
+      "supervising clinician's voice into a document someone else signs would " +
+      "misattribute it.",
+};
+
 const VOICE_KV_KEY = "voice-block:v1";
 
 const VOICE_HEADER = [
@@ -952,6 +974,8 @@ const OBLIGATION_HEADER = [
   "falls short of one, say so as a gap in the record rather than writing around",
   "it. Do not extend one beyond its stated scope.",
 ].join("\n");
+
+export { VOICE_COVERAGE };
 
 export function composeVoice(system, block, tool) {
   if (typeof system !== "string" || !block || !tool) return system;

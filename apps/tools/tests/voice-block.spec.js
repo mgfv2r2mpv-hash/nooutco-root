@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { createHmac } from 'node:crypto';
-import { composeVoice, composeOpinions } from '../_worker.js';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { composeVoice, composeOpinions, VOICE_COVERAGE } from '../_worker.js';
 
 // The house voice block: a personal style card stored as markdown in KV and
 // appended to the system prompt inside the Worker, so the rules never reach a
@@ -294,5 +296,54 @@ test.describe('obligations', () => {
 
   test('a block with no obligations composes exactly as before', () => {
     expect(composeVoice('SYSTEM', BLOCK, 'sup')).not.toContain('PROFESSIONAL REQUIREMENTS');
+  });
+});
+
+/* Voice coverage per tool.
+ *
+ * The tool-to-register mapping lives in KV, not here, so a tool added to
+ * NOTES_TOOLS can miss the voice entirely and nothing in this repo would say so.
+ * That is not hypothetical: `bt` is excluded deliberately, and for a while the
+ * only record of that being a DECISION rather than an oversight was a comment in
+ * a local render script that never ships.
+ *
+ * These tests make the omission loud.
+ */
+test.describe('voice coverage', () => {
+  test('every shipped note tool has an explicit voice decision', async () => {
+    // Playwright runs with apps/tools as cwd (playwright.config.js lives there).
+    // import.meta is unavailable because this package is not ESM.
+    const src = readFileSync(path.join(process.cwd(), '_worker.js'), 'utf8');
+    const shipped = (src.match(/const NOTES_TOOLS = \[(.*?)\]/s)[1] || '')
+      .split(',').map((t) => t.trim().replace(/["']/g, '')).filter(Boolean);
+
+    expect(shipped.length).toBeGreaterThan(0);
+    for (const tool of shipped) {
+      expect(
+        VOICE_COVERAGE[tool],
+        `"${tool}" is shipped but has no entry in VOICE_COVERAGE. Decide whether it ` +
+        `receives the house voice, and say why if it does not.`
+      ).toBeDefined();
+    }
+    // And nothing declared that is not shipped, which would be a stale reason
+    // outliving the tool it was written about.
+    for (const tool of Object.keys(VOICE_COVERAGE)) {
+      expect(shipped, `VOICE_COVERAGE names "${tool}", which is not in NOTES_TOOLS`).toContain(tool);
+    }
+  });
+
+  test('an exclusion carries a reason, not just a false', async () => {
+    for (const [tool, v] of Object.entries(VOICE_COVERAGE)) {
+      if (v === 'kv') continue;
+      expect(typeof v, `"${tool}" is excluded, so it must say why`).toBe('string');
+      expect(v.length, `the reason for excluding "${tool}" is too short to be one`).toBeGreaterThan(40);
+    }
+  });
+
+  test('bt is still excluded, and still for the stated reason', async () => {
+    // If this ever changes, it should change because he decided it, not because
+    // someone tidied a map.
+    expect(VOICE_COVERAGE.bt).not.toBe('kv');
+    expect(VOICE_COVERAGE.bt).toMatch(/signed by, the technician/i);
   });
 });
