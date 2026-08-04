@@ -131,9 +131,10 @@ test.describe('malformed model JSON recovery', () => {
   // Parsing proves the bytes are JSON, not that they are the note. normalizeOutput
   // is tolerant of missing keys by design, so before the shape gate a fragment
   // that parsed cleanly rendered as a note with silently blank sections - no
-  // error, nothing for the clinician to notice. Demonstrated directly:
-  // sap.normalizeOutput({}) returns empty refinedGoal/exercise/generalization and
-  // an errorCorrection containing only the boilerplate maintenance-probe line.
+  // error, nothing for the clinician to notice. sap.normalizeOutput({}) now
+  // returns every section empty, errorCorrection included; it used to return a
+  // populated-looking errorCorrection holding just the boilerplate re-entry line,
+  // which no emptiness check could catch. Both are why the shape gate is here.
   test('resamples a fragment that parses cleanly but is not the note', async ({ page }) => {
     // A stray brace in model prose ahead of the real object: the greedy
     // first-{ to last-} slice starts off the JSON and lands on a valid fragment.
