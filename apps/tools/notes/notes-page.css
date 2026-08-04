@@ -180,13 +180,18 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Skipping the questions is a legitimate choice, not a failure state, but it is
+   also the one the technician should notice they are making. Amber reads as
+   "your call" where the dashed grey outline read as disabled. */
 .revision-skip {
   display: block; width: 100%;
-  padding: 8px 12px; border-radius: 8px;
-  border: 1.5px dashed #c0d4a8; background: white; color: #5a6b4a;
-  font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  padding: 9px 12px; border-radius: 8px;
+  border: 1.5px solid #e3c26a;
+  background: #fbeec4;
+  color: #8a3b2c;
+  font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
 }
-.revision-skip:hover:not(:disabled) { border-color: #374528; color: #374528; }
+.revision-skip:hover:not(:disabled) { background: #f7e6b8; border-color: #c9962a; }
 .revision-skip:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .revision-panel-foot {
@@ -224,7 +229,24 @@ body {
   font-size: 13px; font-weight: 700; cursor: pointer;
 }
 .revision-send:disabled { background: #a0b890; cursor: not-allowed; }
-.revision-foot-note { margin: 7px 0 0; font-size: 11px; color: #9aab86; line-height: 1.4; }
+.revision-foot-note { margin: 7px 0 0; font-size: 11px; color: #9aab86; line-height: 1.4; position: relative; }
+
+/* PHI carries its own definition. A button rather than a title attribute so it
+   works by tap on a tablet, where most of these notes are actually written. */
+.phi-term {
+  border: 0; background: none; padding: 0; cursor: pointer;
+  font: inherit; font-weight: 700; color: #6b7d57;
+  text-decoration: underline dotted; text-underline-offset: 2px;
+}
+.phi-term:hover, .phi-term:focus-visible { color: #374528; }
+.phi-tip {
+  display: block; margin-top: 6px; padding: 8px 10px;
+  background: #fffbef; border: 1px solid #e3c26a; border-radius: 7px;
+  color: #6b5a2a; font-size: 11px; line-height: 1.5;
+}
+@media (hover: hover) {
+  .revision-foot-note:hover .phi-tip { display: block; }
+}
 
 .revision-fab {
   position: fixed; right: 18px; bottom: 18px; z-index: 70;
@@ -246,7 +268,7 @@ body {
   body.revision-open #root { padding-right: calc(min(380px, 100vw) + 20px); }
   /* The floating error-report button also lives bottom-right, at a higher
      z-index than the panel, so an open panel would have it sitting on top of
-     the Send button. Move it clear rather than hide it — reporting a broken
+     the Send button. Move it clear rather than hide it - reporting a broken
      revision is exactly when someone needs it. */
   body.revision-open #eb-float-btn { right: calc(min(380px, 100vw) + 14px); }
 }

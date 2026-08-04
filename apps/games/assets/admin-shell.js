@@ -1,5 +1,5 @@
-/* No Outcome ABA — Game Master admin shell (<noaba-admin-shell>)
-   CANONICAL SOURCE: packages/shared/ui/admin-shell.js — edit here, never in
+/* No Outcome ABA - Game Master admin shell (<noaba-admin-shell>)
+   CANONICAL SOURCE: packages/shared/ui/admin-shell.js - edit here, never in
    apps/games/assets/admin-shell.js (generated copy; CI drift check fails on hand
    edits). Run `npm run sync:shared` after editing. Games-only.
 
@@ -8,7 +8,7 @@
    `window.NoabaShell` with a dirty-state registry and the Frame-05 unsaved-
    changes guard. Pairs with admin-shell.css + tokens.css.
 
-   Usage — wrap the manager's content:
+   Usage - wrap the manager's content:
 
      <body class="ash-page">
        <noaba-bar product="games" crumbs="Game Master/FFC Manager"
@@ -27,7 +27,7 @@
    Dirty state / guard (managers call these):
      NoabaShell.markDirty(id, { emoji, name })   // flag one unsaved item
      NoabaShell.markClean(id) · NoabaShell.clearDirty() · NoabaShell.isDirty()
-     NoabaShell.onSaveAll(fn)   // fn(): Promise — invoked by "Save all & leave"
+     NoabaShell.onSaveAll(fn)   // fn(): Promise - invoked by "Save all & leave"
    The guard fires on rail/exit clicks and beforeunload while anything is dirty. */
 (function () {
   "use strict";
@@ -98,7 +98,7 @@
       if (nav) nav.run();
     });
     save.addEventListener("click", function () {
-      if (!saveAllFn) { // no saver wired — fall back to discard semantics safely
+      if (!saveAllFn) { // no saver wired - fall back to discard semantics safely
         dirty.clear(); var nav0 = pendingNav; closeGuard(); if (nav0) nav0.run(); return;
       }
       save.disabled = true; save.textContent = "Saving…";

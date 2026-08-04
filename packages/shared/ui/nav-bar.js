@@ -1,5 +1,5 @@
-/* No Outcome ABA — unified navigation bar (<noaba-bar>)
-   CANONICAL SOURCE: packages/shared/ui/nav-bar.js — edit here, never in
+/* No Outcome ABA - unified navigation bar (<noaba-bar>)
+   CANONICAL SOURCE: packages/shared/ui/nav-bar.js - edit here, never in
    apps/<app>/assets/nav-bar.js (generated copies; CI drift check fails on hand
    edits). Run `npm run sync:shared` after editing.
 
@@ -8,14 +8,14 @@
    2-segment product switch (Games | Tools, links to the sibling domain) ·
    breadcrumb (replaces bespoke back buttons) · one admin gear.
 
-   Also exposes `window.NoabaSites` — the environment-aware link resolver every
+   Also exposes `window.NoabaSites` - the environment-aware link resolver every
    cross-product link should go through, plus the `data-noaba-site` attribute
    that rewrites such links in plain app HTML. See "Environment-aware site
    links" below.
 
    Auth is decoupled: the gear dispatches `noaba:admin-invoke` (the page wires it
    to its own auth flow); the bar reflects authed state from `noaba:auth-state`
-   events or an optional `window.__noabaAuthProbe()` — it never imports either
+   events or an optional `window.__noabaAuthProbe()` - it never imports either
    auth system. See packages/shared/README.md.
 
      <noaba-bar product="tools|games|apex"
@@ -80,7 +80,7 @@
 
   // Progressive enhancement for cross-product links authored in app HTML. The
   // authored href stays a working production URL, so a click that lands before
-  // this runs — or with JS off entirely — still goes somewhere real; only the
+  // this runs - or with JS off entirely - still goes somewhere real; only the
   // origin is swapped, keeping the path, query and hash the author wrote.
   function applySiteLinks(root, host) {
     var scope = root || document;
@@ -171,7 +171,7 @@
       // Brand → home
       var brand = el("a", "noaba-brand");
       brand.href = siteHref("apex");
-      brand.setAttribute("aria-label", "No Outcome ABA — home");
+      brand.setAttribute("aria-label", "No Outcome ABA - home");
       var img = el("img");
       img.src = logo;
       img.alt = "";
@@ -214,7 +214,7 @@
           .split(",").map(function (s) { return s.trim(); });
         var nav = el("nav", "noaba-crumbs");
         nav.setAttribute("aria-label", "Breadcrumb");
-        // back chevron — only shows on collapsed layout (CSS)
+        // back chevron - only shows on collapsed layout (CSS)
         var chev = el("span", "noaba-back-chevron", "‹");
         chev.setAttribute("aria-hidden", "true");
         nav.appendChild(chev);
@@ -241,7 +241,7 @@
 
       row.appendChild(el("div", "noaba-spacer"));
 
-      // Admin gear — suppressed on pages with no admin concept (`no-admin`).
+      // Admin gear - suppressed on pages with no admin concept (`no-admin`).
       if (this.hasAttribute("no-admin")) {
         this.replaceChildren(row);
         return;

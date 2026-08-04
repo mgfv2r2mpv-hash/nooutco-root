@@ -1,5 +1,5 @@
-/* No Outcome ABA — Game Master admin shell (<noaba-admin-shell>)
-   CANONICAL SOURCE: packages/shared/ui/admin-shell.css — edit here, never in
+/* No Outcome ABA - Game Master admin shell (<noaba-admin-shell>)
+   CANONICAL SOURCE: packages/shared/ui/admin-shell.css - edit here, never in
    apps/games/assets/admin-shell.css (generated copy; CI drift check fails on
    hand edits). Run `npm run sync:shared` after editing. Games-only.
 
@@ -10,8 +10,8 @@
 
 /* Admin-only surfaces the shared token set doesn't carry; sage hues that DO map
    to tokens fall back to the literal design hex when tokens.css is absent.
-   Defined on :root (not the component) so the guard dialog — which the JS appends
-   to document.body, outside <noaba-admin-shell> — still resolves them. */
+   Defined on :root (not the component) so the guard dialog - which the JS appends
+   to document.body, outside <noaba-admin-shell> - still resolves them. */
 :root {
   --ash-backdrop:      #e7ebe0;
   --ash-rail:          #f3f6ee;

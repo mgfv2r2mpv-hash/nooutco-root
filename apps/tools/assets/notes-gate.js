@@ -1,11 +1,11 @@
 /*
- * notes-gate.js — shared client engine for the notes tools.
+ * notes-gate.js - shared client engine for the notes tools.
  *
  * Two responsibilities:
- *   1. Auth gate  — password login that unlocks server-side "Generate Note".
+ *   1. Auth gate  - password login that unlocks server-side "Generate Note".
  *                   Until logged in, the primary button is "Login"; after login
  *                   it becomes "Generate Note". "Generate Prompt" is unaffected.
- *   2. PII scrub  — automatic name detection + tokenization on data SENT OUT to
+ *   2. PII scrub  - automatic name detection + tokenization on data SENT OUT to
  *                   the API, with restoration of the real names in the returned
  *                   text. The LLM never sees client/staff names; the clinician's
  *                   drafted note still reads with the real names.
@@ -19,13 +19,13 @@
   var TOKEN_KEY = "notes_auth_token";
   var EVT = "notes-auth-change";
   // Prefix for locally-saved note drafts (one key per tool). Kept as a constant so
-  // logout can wipe every tool's draft — clinician free-text may contain PHI and
+  // logout can wipe every tool's draft - clinician free-text may contain PHI and
   // must not linger in localStorage past the session on a shared/kiosk machine.
   var DRAFT_PREFIX = "notes_draft_";
 
   // Public Cloudflare Turnstile site key for the login bot check. This is a PUBLIC
   // value and safe to commit. Paste the Site Key from the Turnstile widget created for
-  // tools.nooutco.me. Leave "" to disable Turnstile (login proceeds without it) — the
+  // tools.nooutco.me. Leave "" to disable Turnstile (login proceeds without it) - the
   // worker likewise skips verification unless TURNSTILE_SECRET is set, so both sides
   // must be configured for the check to be enforced.
   var TURNSTILE_SITEKEY = "0x4AAAAAADqSIXik1l5V3Nrd";
@@ -47,8 +47,8 @@
   // intermittently hang; without this the login modal would sit forever on
   // "Logging in…" with neither a close nor an error, forcing a note-losing refresh.
   var LOGIN_TIMEOUT_MS = 20000;
-  // Generation is a real LLM round-trip. This bounds the whole request, so it —
-  // not the model's own output ceiling — is what actually limits how long a note
+  // Generation is a real LLM round-trip. This bounds the whole request, so it -
+  // not the model's own output ceiling - is what actually limits how long a note
   // can get: any part of a tool's maxTokens budget the model can't produce
   // before this fires is unreachable, and the abort still leaves the API call
   // billed. Raised from 45s alongside sup's larger cap so the budget is real.
@@ -61,7 +61,7 @@
       .catch(function (e) {
         if (e && e.name === "AbortError") throw userError(timeoutMsg);
         // Network-level failure (offline, DNS, blocked). The raw message is
-        // "Failed to fetch", which tells a clinician nothing — but the situation
+        // "Failed to fetch", which tells a clinician nothing - but the situation
         // is one they can act on, so it stays visible rather than being masked.
         if (e instanceof TypeError) throw userError("Couldn't reach the server. Check your connection and try again.");
         throw e;
@@ -73,7 +73,7 @@
 
   // Two classes of failure, deliberately separated.
   //
-  // A *user-facing* error is one a clinician can act on — log in again, retry,
+  // A *user-facing* error is one a clinician can act on - log in again, retry,
   // ask for access. Its message is written for them, so it is shown verbatim to
   // everyone.
   //
@@ -82,7 +82,7 @@
   // diagnostics are filed as an internal ticket instead. Before this split a raw
   // JSON.parse SyntaxError was rendered straight into the note tool's error line,
   // and nothing was recorded about why it threw.
-  var GENERIC_ERROR = "Something went wrong. Please try again — if it happens again, contact your administrator.";
+  var GENERIC_ERROR = "Something went wrong. Please try again - if it happens again, contact your administrator.";
 
   function userError(message) {
     var e = new Error(message);
@@ -90,7 +90,7 @@
     return e;
   }
 
-  // `diagnostics` is structural only — stop reason, lengths, parser position.
+  // `diagnostics` is structural only - stop reason, lengths, parser position.
   // Never note content: model output is clinical prose even after scrubbing.
   function internalError(message, diagnostics) {
     var e = new Error(message);
@@ -109,7 +109,7 @@
   }
 
   // What the UI renders for a caught error. Anything not explicitly marked
-  // user-facing is treated as internal — an unrecognized throw fails closed to
+  // user-facing is treated as internal - an unrecognized throw fails closed to
   // the generic message rather than leaking whatever it happened to say.
   function displayError(e) {
     if (e && e.userFacing) return e.message || GENERIC_ERROR;
@@ -155,19 +155,19 @@
 
   /* ─────────────── Draft storage (encrypted at rest) ───────────────
    *
-   * A draft is the clinician's own typing, BEFORE the scrub gate runs — the one
+   * A draft is the clinician's own typing, BEFORE the scrub gate runs - the one
    * place in this system where unredacted PHI legitimately exists. It used to
    * sit in localStorage as plaintext until logout, which on a shared clinic
    * laptop meant "until someone else opens devtools".
    *
    * Now: AES-GCM, with a NON-EXTRACTABLE CryptoKey held in IndexedDB. The key
-   * material cannot be read by script at all — crypto.subtle will use it but
-   * never export it — so a dump of localStorage or of the IndexedDB file yields
+   * material cannot be read by script at all - crypto.subtle will use it but
+   * never export it - so a dump of localStorage or of the IndexedDB file yields
    * ciphertext and a key handle that is useless outside this origin.
    *
    * Be clear about what this is not: script running ON this origin can still
    * call decrypt. This defends against passive inspection, device backups and
-   * drafts outliving the session — not against an attacker already executing in
+   * drafts outliving the session - not against an attacker already executing in
    * the page. The hard TTL below is the other half, and the more important one.
    */
 
@@ -211,7 +211,7 @@
   }
 
   // Reuse the stored key so drafts survive a reload; mint one on first use.
-  // extractable:false is the whole point — do not "fix" it to true.
+  // extractable:false is the whole point - do not "fix" it to true.
   function draftKey() {
     if (draftKeyPromise) return draftKeyPromise;
     draftKeyPromise = (function () {
@@ -356,7 +356,7 @@
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password: password, turnstileToken: turnstileToken || "" }),
-    }, LOGIN_TIMEOUT_MS, "Login is taking too long — please retry.").then(function (res) {
+    }, LOGIN_TIMEOUT_MS, "Login is taking too long - please retry.").then(function (res) {
       // Read as text first: if a Cloudflare edge challenge intercepts the request it
       // returns HTML, not JSON. Surface a clear message instead of a raw JSON-parse error.
       return res.text().then(function (raw) {
@@ -416,7 +416,7 @@
     var submit = document.getElementById("notes-login-submit");
     pw.focus();
 
-    // Cloudflare Turnstile bot check — active only when a site key is configured.
+    // Cloudflare Turnstile bot check - active only when a site key is configured.
     // The script (challenges.cloudflare.com/turnstile/v0/api.js) loads async, so poll
     // briefly for window.turnstile before rendering into the modal container.
     var tsToken = "";
@@ -497,7 +497,7 @@
   // Multi-turn variant for the revision flow: sends the whole conversation
   // ({system, messages}); the worker adds prompt-cache markers so replayed
   // history is served from Anthropic's 5-minute prefix cache instead of being
-  // recomputed. Resolves {parsed, rawText, usage} — rawText must be appended to
+  // recomputed. Resolves {parsed, rawText, usage} - rawText must be appended to
   // the conversation verbatim so the next turn's cache prefix matches.
   function generateConversation(opts) {
     return llmCall({
@@ -511,7 +511,7 @@
   }
 
   // Constrains the model's answer to the tool's JSON Schema, so the note is
-  // serialized by the API instead of being hand-typed as prose — which is what
+  // serialized by the API instead of being hand-typed as prose - which is what
   // makes the two escaping slips below impossible rather than recoverable.
   // Absent when a tool declares no schema, so tools can adopt this one at a
   // time and an un-migrated one keeps today's behaviour.
@@ -534,14 +534,14 @@
         "Authorization": "Bearer " + getToken(),
       },
       body: JSON.stringify(payload),
-    }, GEN_TIMEOUT_MS, "Note generation timed out — please retry.");
+    }, GEN_TIMEOUT_MS, "Note generation timed out - please retry.");
   }
 
   // The model hand-serializes the whole draft as JSON, so one missed escape
   // anywhere in a ~1000-token object used to throw away the clinician's entire
   // note. repairModelJson (below) recovers the losslessly-fixable slips; this
   // covers the rest with a single resample. Resampling is the only safe answer
-  // to an unescaped interior quote — a tacting SAP quotes its demands verbatim
+  // to an unescaped interior quote - a tacting SAP quotes its demands verbatim
   // ("What is it?"), and repairing that would mean guessing where the string was
   // meant to end, silently dropping clinical text. Sampling variance is what
   // makes the second call likely to land; the request is byte-identical, so it
@@ -558,7 +558,7 @@
       return llmPost(body).then(parseNoteResponse).then(function (r) {
         var missing = missingKeys(r.parsed, expectKeys);
         if (!missing.length) return r;
-        // Key names are schema, not note content — safe to name in a ticket.
+        // Key names are schema, not note content - safe to name in a ticket.
         throw internalError("Model response is missing required sections.", {
           stage: "shape",
           stopReason: r.stopReason,
@@ -587,7 +587,7 @@
   }
 
   // Only a defect in what the model produced earns a second call. A max_tokens
-  // truncation is not a slip — the resample hits the same cap, and it is the one
+  // truncation is not a slip - the resample hits the same cap, and it is the one
   // case that can present as either bad syntax or missing keys, so both stages
   // check it. HTTP/auth/timeout failures are the caller's or the network's
   // business, not the sampler's.
@@ -599,8 +599,8 @@
 
   // A control character is never legal inside a JSON string literal, so finding
   // one there is unambiguous: the model wrote the character where it owed the
-  // escape. Rewriting it is lossless and — because the scan tracks string state
-  // the same way a parser does — cannot alter text that already parses. Runs
+  // escape. Rewriting it is lossless and - because the scan tracks string state
+  // the same way a parser does - cannot alter text that already parses. Runs
   // only after a straight parse has failed.
   var CONTROL_ESCAPE = { "\b": "\\b", "\f": "\\f", "\n": "\\n", "\r": "\\r", "\t": "\\t" };
 
@@ -628,7 +628,7 @@
   }
 
   function parseNoteResponse(res) {
-    if (res.status === 401) { setToken(""); throw userError("Session expired — please log in again."); }
+    if (res.status === 401) { setToken(""); throw userError("Session expired - please log in again."); }
     if (res.status === 403) {
       return res.json().then(function (data) {
         throw userError((data && data.error) || "Your access doesn't include this tool.");
@@ -679,12 +679,12 @@
           stopReason: data.stop_reason || null,
         };
       }
-      // The first parse's position is the informative one — the repaired text is
+      // The first parse's position is the informative one - the repaired text is
       // not what the model actually emitted.
       diag.parseError = attempt.error;
       throw internalError(
         data.stop_reason === "max_tokens"
-          ? "Model output hit the token cap mid-JSON — raise maxTokens for this tool."
+          ? "Model output hit the token cap mid-JSON - raise maxTokens for this tool."
           : "Model returned malformed JSON.",
         diag
       );
@@ -859,7 +859,7 @@
   /* ─────────────── Audit / usage events ───────────────
    *
    * Content-free by construction. An event carries counts, durations and a tool
-   * id — never a word of the note. That is what makes it safe to keep a durable
+   * id - never a word of the note. That is what makes it safe to keep a durable
    * record at all given this system stores nothing else.
    *
    * Two jobs, one mechanism: an audit trail of who generated what and when, and
@@ -871,7 +871,7 @@
    * cost a clinician their note, so nothing here is awaited on a hot path.
    */
   var AUDIT_BUFFER_KEY = "noaba.audit.buffer.v1";
-  var AUDIT_MAX = 500; // bounded ring — a long offline stretch must not grow forever
+  var AUDIT_MAX = 500; // bounded ring - a long offline stretch must not grow forever
 
   function auditBuffer() {
     try { return JSON.parse(localStorage.getItem(AUDIT_BUFFER_KEY)) || []; } catch (e) { return []; }
@@ -881,7 +881,7 @@
   }
 
   // Numbers and short enums only. Anything else is dropped here, before it can
-  // reach the buffer — the client-side half of "this cannot carry note text".
+  // reach the buffer - the client-side half of "this cannot carry note text".
   function sanitizeAuditData(data) {
     var out = {};
     if (!data || typeof data !== "object") return out;
@@ -971,8 +971,8 @@
         writeAuditBuffer(auditBuffer().slice(batch.length));
 
         // Corrections are a separate question. The request succeeds even when
-        // the profile store is unreachable or not yet deployed — that is the
-        // fail-open design and it is right for the note — but dropping them on
+        // the profile store is unreachable or not yet deployed - that is the
+        // fail-open design and it is right for the note - but dropping them on
         // that basis would discard the evidence while reporting success.
         // Keeping them means a technician's card starts populated the day the
         // store goes live, instead of needing five fresh corrections first.
@@ -991,7 +991,7 @@
   /* ─────────────── Learned style card ───────────────
      The technician's own card: rules derived from their corrections, plus the
      block that gets folded into the system prompt. Read through the tools
-     worker, never from the profile store directly — the browser has no route
+     worker, never from the profile store directly - the browser has no route
      to that and must not have one.
 
      Fails soft on every path. An empty card is a legitimate answer (a new
@@ -1006,7 +1006,7 @@
       .catch(function () { return { rules: [], block: "", available: false }; });
   }
 
-  // Muting is a deliberate action, so unlike the read this reports failure —
+  // Muting is a deliberate action, so unlike the read this reports failure -
   // a rule the technician switched off must not keep shaping their notes while
   // the UI says otherwise.
   function styleCardMute(feature, muted) {
@@ -1024,7 +1024,7 @@
   /* ─────────────── PII candidate capture (admin review queue) ─────────────── */
 
   // Fire-and-forget: report bare scrubbed words into the admin PII review queue.
-  // PHI-safe by construction — only the lowercase word is sent (no surrounding text,
+  // PHI-safe by construction - only the lowercase word is sent (no surrounding text,
   // no client/session/date linkage), and words already in the FIRST_NAMES dictionary
   // are dropped here so we transmit only the heuristic-only catches worth reviewing.
   function reportScrubbed(terms) {
@@ -1036,7 +1036,7 @@
       var lc = (t || "").toLowerCase().trim();
       if (!lc || seen[lc]) return;
       seen[lc] = true;
-      if (FIRST_NAMES[lc]) return; // already in the dictionary — nothing to learn
+      if (FIRST_NAMES[lc]) return; // already in the dictionary - nothing to learn
       out.push(lc);
     });
     if (!out.length) return;
@@ -1047,12 +1047,12 @@
     }).catch(function () {});
   }
 
-  // Detect candidate person names: runs of 1–2 capitalized words not in the
+  // Detect candidate person names: runs of 1-2 capitalized words not in the
   // stoplist. ALL-CAPS acronyms (CLIENT, BCBA, ABA) are never matched. A trailing
   // possessive (‘s) is stripped so "Jacob’s" maps to "Jacob".
   //
   // Sentence-position heuristic: words at sentence starts are capitalized by grammar,
-  // not necessarily because they are proper nouns. They are downgraded — skipped
+  // not necessarily because they are proper nouns. They are downgraded - skipped
   // unless they also appear capitalized mid-sentence elsewhere, are in FIRST_NAMES,
   // or appear in a high-confidence grammatical context (possessive, role label,
   // preposition). This suppresses false positives from ABA program names like
@@ -1089,7 +1089,7 @@
     [
       // role label immediately followed by a capitalized word: "client Jacob", "mom Sarah"
       new RegExp("\\b(?:client|caregiver|mom|dad|mother|father|guardian|bt|rbt|technician|teacher)\\s+" + SIMPLE_CAP + "\\b", "gi"),
-      // possessive form — separate simple pattern avoids NAME_WORD consuming the ‘s
+      // possessive form - separate simple pattern avoids NAME_WORD consuming the ‘s
       new RegExp("\\b" + SIMPLE_CAP + "[‘’]s\\b", "g"),
       // after common prepositions: "with Jacob", "for Sarah", "beside Mark"
       new RegExp("\\b(?:with|for|beside)\\s+" + SIMPLE_CAP + "\\b", "gi"),
@@ -1137,7 +1137,7 @@
       }
     }
 
-    // Nickname/prefix pass — flag any 3+ char word (any case) that is a strict
+    // Nickname/prefix pass - flag any 3+ char word (any case) that is a strict
     // prefix of a detected name (e.g. "barb" matches "barbara").
     var lowerDetected = out.map(function (n) { return n.toLowerCase(); });
     var pfxRe = /\b([A-Za-z]{3,})\b/g;
@@ -1151,7 +1151,7 @@
       }
     }
 
-    // First-names dictionary pass — flags any word (any case) whose lowercase
+    // First-names dictionary pass - flags any word (any case) whose lowercase
     // form is in the known-names list. Catches "mark", "barbara", etc. even when
     // typed all-lowercase and not caught by the NAME_WORD capitalisation heuristic.
     var dictRe = /\b([A-Za-z]{2,})\b/g;
@@ -1195,7 +1195,7 @@
     { type: "SSN", re: /\b\d{3}-\d{2}-\d{4}\b/g },
     { type: "EMAIL", re: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g },
     // Street address: number + up to three words + a street-type suffix.
-    // No trailing \.? — swallowing the sentence's full stop into the literal
+    // No trailing \.? - swallowing the sentence's full stop into the literal
     // would leave the replacement dangling against the next word.
     { type: "ADDRESS", re: /\b\d{1,6}\s+(?:[A-Za-z][A-Za-z.'-]*\s+){1,3}(?:St|Street|Ave|Avenue|Rd|Road|Dr|Drive|Ln|Lane|Blvd|Boulevard|Ct|Court|Way|Pl|Place|Ter|Terrace|Cir|Circle|Hwy|Highway)\b/gi },
     // Numeric and written dates. Deliberately broad: a session note never needs
@@ -1210,7 +1210,7 @@
     { type: "ZIP", re: /\b[A-Z]{2}\s+\d{5}(?:-\d{4})?\b/g },
   ];
 
-  // Returns [{text, type}] — the literal matched substrings, longest first, with
+  // Returns [{text, type}] - the literal matched substrings, longest first, with
   // any match wholly contained in an earlier (longer) one dropped so nested
   // replacements cannot corrupt each other.
   function detectIdentifiers(text) {
@@ -1254,7 +1254,7 @@
     var result = text;
     map.forEach(function (e) {
       // \b only asserts anything next to a WORD character. Names are words, so
-      // wrapping them was fine; identifier literals are not — "(555) 213-4477"
+      // wrapping them was fine; identifier literals are not - "(555) 213-4477"
       // starts with "(" and "1420 Maple Street." ends with ".", and demanding a
       // boundary there makes the replace silently match nothing. Apply each
       // boundary only on the side that actually has a word character.
@@ -1307,12 +1307,12 @@
     isAdmin: isAdmin,
     generateNote: generateNote,
     generateConversation: generateConversation,
-    // Error rendering — callers pass the caught error, never e.message, so the
+    // Error rendering - callers pass the caught error, never e.message, so the
     // user-facing/internal split is applied in one place.
     displayError: displayError,
-    // Certified-non-PII store — localStorage cache + KV server backing.
+    // Certified-non-PII store - localStorage cache + KV server backing.
     nonPii: { load: loadNonPii, saveTerm: saveNonPiiTerm, clear: clearNonPii, sync: syncNonPii },
-    // PII candidate capture — reports bare scrubbed words to the admin review queue.
+    // PII candidate capture - reports bare scrubbed words to the admin review queue.
     pii: { reportScrubbed: reportScrubbed },
     // Content-free audit / usage events. Counts and enums only, never note text.
     styleCard: { get: styleCardGet, mute: styleCardMute },
@@ -1323,7 +1323,7 @@
       _buffer: auditBuffer,
       _corrections: correctionBuffer,
     },
-    // Local draft persistence for the note tools — keeps a clinician's typed note
+    // Local draft persistence for the note tools - keeps a clinician's typed note
     // across a page reload so a refresh (or an errant one) never loses their work.
     // Encrypted at rest (see "Draft storage" above) and hard-expired after 12h.
     // `ready` resolves once stored drafts are decrypted; the UI awaits it before

@@ -1,4 +1,4 @@
-# Prioritize — ranked voting Worker
+# Prioritize - ranked voting Worker
 
 A tiny Cloudflare Worker that aggregates "rank your top 3" votes for the games
 hub's **Planned** section. Visitors submit a ranked ballot (1st / 2nd / 3rd);
@@ -41,11 +41,11 @@ votes/ranks can be changed freely.
 - `GET /api/votes` → `{ points: { id: number }, counts: { id: { first, second, third } } }`
 - `POST /api/votes` body `{ clientId, ballot: { first, second, third } }` → same shape
 
-`clientId` is an anonymous random id the front-end keeps in `localStorage` — no
+`clientId` is an anonymous random id the front-end keeps in `localStorage` - no
 accounts, no personal data. Feature ids: `vs, ft, te, cb, sc, fd`.
 
 ## Scaling note
 
-`tally()` lists and sums every ballot per request — simple and fine for modest
+`tally()` lists and sums every ballot per request - simple and fine for modest
 traffic. For very high volume, maintain an incremental aggregate (read-modify-
 write a single `totals` key per ballot change) or move to a Durable Object.

@@ -78,7 +78,7 @@ body {
     height: 22pt;
     vertical-align: middle;
   }
-  /* Prob/CV rows are flex divs — pin height so both tables stay in sync */
+  /* Prob/CV rows are flex divs - pin height so both tables stay in sync */
   .print-conditions-grid .condition-tables .flex.items-center.px-3 {
     min-height: 20pt !important;
     max-height: 20pt !important;

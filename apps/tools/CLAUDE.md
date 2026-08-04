@@ -1,15 +1,15 @@
-# tools-nooutco-me — Project Rules
+# tools-nooutco-me - Project Rules
 
 ## Project Overview
 
-ABA clinician tools hosted at **tools.nooutco.me**. Static HTML pages served via Cloudflare Pages with a `_worker.js` Pages Worker handling API routes (LLM proxy, suggest form). No build step — vanilla HTML/JS/CSS.
+ABA clinician tools hosted at **tools.nooutco.me**. Static HTML pages served via Cloudflare Pages with a `_worker.js` Pages Worker handling API routes (LLM proxy, suggest form). No build step - vanilla HTML/JS/CSS.
 
 **Tools:** CPRAnalyzer, NoteDrafter, SessionFlow, SuggestFeature
 
 ## Tech Stack
 
 - **Frontend:** Vanilla HTML/JS/CSS per tool, shared `tokens.css` design tokens
-- **Backend:** Cloudflare Pages Worker (`_worker.js`) — `/api/suggest` (Resend email), `/api/llm-call` (LLM proxy)
+- **Backend:** Cloudflare Pages Worker (`_worker.js`) - `/api/suggest` (Resend email), `/api/llm-call` (LLM proxy)
 - **Storage:** KV namespace `SUGGEST_DUPES` (id: `81921b08db4d47218c9053fdbf01296d`) for suggestion deduplication
 
 ## Worker Secrets (set in Cloudflare dashboard)
@@ -35,7 +35,7 @@ ABA clinician tools hosted at **tools.nooutco.me**. Static HTML pages served via
 
 ## Code Standards
 
-- No build step — keep everything vanilla; no frameworks unless complexity demands it
-- No cleartext secrets — Worker secrets via Cloudflare dashboard only
-- No PHI — tools assist drafting; clinician owns final output
-- No TODOs — implement or leave a scoped note
+- No build step - keep everything vanilla; no frameworks unless complexity demands it
+- No cleartext secrets - Worker secrets via Cloudflare dashboard only
+- No PHI - tools assist drafting; clinician owns final output
+- No TODOs - implement or leave a scoped note

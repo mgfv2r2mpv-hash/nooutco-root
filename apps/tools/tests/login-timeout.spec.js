@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test';
 // NotesGate.login() must not depend on the server ever responding: behind
 // Cloudflare Super Bot Fight Mode + Pages static-asset interception the
 // /api/login request can intermittently stall at the edge. Before the fix the
-// fetch had no timeout, so login() never settled — the modal's submit button
+// fetch had no timeout, so login() never settled - the modal's submit button
 // sat disabled on "Logging in…" with neither a close nor an error, and the only
 // escape was a refresh (which discarded the clinician's typed note).
 //

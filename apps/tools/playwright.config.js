@@ -27,7 +27,7 @@ export default defineConfig({
   webServer: {
     // ADMIN_SECRET is bound to a throwaway value so tests can mint a real signed
     // session token and exercise authenticated /api/* routes against the actual
-    // worker, instead of only ever mocking them. It is not a credential — it
+    // worker, instead of only ever mocking them. It is not a credential - it
     // unlocks nothing beyond this local dev server, which has no API key and no
     // KV data. Tests that assert unauthenticated behaviour still get 401,
     // because a missing or forged token fails the HMAC check regardless.

@@ -4,7 +4,7 @@
 
 Notes drafted by this tool should read as the technician's own writing. Low
 scores on public AI detectors (Grammarly, Scribbr, GPTZero) are the measurable
-proxy for that, not the objective in themselves — the note is the technician's,
+proxy for that, not the objective in themselves - the note is the technician's,
 they review and own it, and the on-page disclaimer stays.
 
 ## The honest limits, stated first
@@ -15,7 +15,7 @@ on any given day, with no notice and no changelog. Anything built against them
 is a moving target.
 
 **`scripts/style-score.mjs` is not a detector.** It is a regression gate. It
-measures the surface property the detectors react to — uniformity — and tells
+measures the surface property the detectors react to - uniformity - and tells
 you whether a prompt change made the prose more uniform than it was before. It
 cannot tell you what Grammarly will say. Only the manual pass below can do that.
 
@@ -24,7 +24,7 @@ log-probabilities, so a genuine perplexity score would mean shipping an open
 model into CI: a ~500MB download and a new dependency, in a repo with no build
 step. The heuristics were chosen instead, deliberately.
 
-## What was measured on the SAP tool — read this before tuning anything
+## What was measured on the SAP tool - read this before tuning anything
 
 Parallel work on `notes/bcba/tools/sap.js` produced actual numbers against a
 real detector, and they refine the theory below considerably.
@@ -39,12 +39,12 @@ real detector, and they refine the theory below considerably.
   flags is generic actorless procedural prose ("Targets are taught using mixed
   trials…"). What does not flag is writing with a named actor and conditions
   ("Be sure to run this program with the help of the caregiver, who will be
-  delivering the prompts" — from the 0% plan). A fully template-compliant note
+  delivering the prompts" - from the 0% plan). A fully template-compliant note
   can score zero, which refutes the idea that the mandated format forces a
   high score.
 - **Terseness is a cause, not a cure.** Mandating short rationale-free
   sentences is what produced the flagged sections. The opposite of terse here
-  is not padding — it is specificity about who did what.
+  is not padding - it is specificity about who did what.
 
 **A `<5%` target is therefore stricter than measured human baseline.** Half the
 human corpus scored above it. Worth deciding whether that is the number you
@@ -103,7 +103,7 @@ cut, one idea per sentence, varied openers).
 | `new-terminology-b.txt` | 11 | 0.50 | 1.00 |
 
 **Read this correctly.** The fixtures are hand-written to represent the two
-prompt styles — they are *not* model output. What the table establishes is that
+prompt styles - they are *not* model output. What the table establishes is that
 the scorer discriminates sharply between formulaic and varied clinical prose,
 and which direction the terminology change pushes. It does **not** establish
 what the live model actually produces.
@@ -118,7 +118,7 @@ what the live model actually produces.
    [Grammarly](https://www.grammarly.com/ai-detector) and
    [Scribbr](https://www.scribbr.co.uk/ai-detector/), record what each reports
    next to its `style-score` total, and add the pairs here. Repeat quarterly, or
-   after any change to a `SYSTEM_CORE` block — that pairing is the only thing
+   after any change to a `SYSTEM_CORE` block - that pairing is the only thing
    that gives the local number meaning.
 3. **Then gate it in CI.** Once live fixtures exist and a threshold is
    justified by the calibration, fail the build when the mean regresses past it.
@@ -143,7 +143,7 @@ Three things about this matter for the numbers above:
 1. **It should move burstiness and opener variety most**, because that is what
    the features measure and what the scorer weights heaviest. Whether it does is
    an open question until there is live output to run through
-   `style-score.mjs` — nothing here has been measured yet.
+   `style-score.mjs` - nothing here has been measured yet.
 2. **It cannot move the clinical vocabulary**, by construction. The house rules
    are in the prompt above it and say so. That is the resolution to the
    tension described earlier, made mechanical.

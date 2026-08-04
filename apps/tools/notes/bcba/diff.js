@@ -5,7 +5,7 @@
  * marks the change in place instead.
  *
  * Hand-rolled because these pages have no build step and no runtime
- * dependencies — adding one for ~70 lines of Myers-adjacent DP would mean
+ * dependencies - adding one for ~70 lines of Myers-adjacent DP would mean
  * introducing a bundler to the only part of the repo that doesn't have one.
  *
  * Exposes window.NoteDiff.words(before, after) -> [{type, text}] where type is
@@ -15,7 +15,7 @@
   "use strict";
 
   // Split into words AND the whitespace between them, so reassembling the
-  // "same" runs reproduces the original text exactly — including paragraph
+  // "same" runs reproduces the original text exactly - including paragraph
   // breaks, which matter in a clinical narrative.
   function tokenize(text) {
     return String(text == null ? "" : text).match(/\s+|[^\s]+/g) || [];
@@ -29,7 +29,7 @@
 
   // Longest common subsequence over the token arrays, bounded by trimming the
   // shared head and tail first. A revision usually edits one clause, so the
-  // trimmed middle is tiny even when the section is long — which keeps the
+  // trimmed middle is tiny even when the section is long - which keeps the
   // O(n*m) table small enough to build without a smarter algorithm.
   function lcsMatrix(a, b) {
     const n = a.length, m = b.length;
@@ -78,7 +78,7 @@
     const ops = [];
     if (head) ops.push({ type: "same", text: a.slice(0, head).join("") });
 
-    // Whole-section rewrite, or one side empty — no useful alignment to show.
+    // Whole-section rewrite, or one side empty - no useful alignment to show.
     if (!midA.length || !midB.length) {
       if (midA.length) ops.push({ type: "del", text: midA.join("") });
       if (midB.length) ops.push({ type: "ins", text: midB.join("") });

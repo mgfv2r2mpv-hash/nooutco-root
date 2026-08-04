@@ -5,7 +5,7 @@ import { createHmac } from 'node:crypto';
 //
 // These hit the real _worker.js through `wrangler pages dev`, not a mock. The
 // dev server is bound a throwaway ADMIN_SECRET (see playwright.config.js) so a
-// genuinely signed session token can be minted here — which is the only way to
+// genuinely signed session token can be minted here - which is the only way to
 // prove the authorisation behaviour rather than assume it.
 //
 // The profile Worker is NOT bound in dev, so every one of these also doubles as

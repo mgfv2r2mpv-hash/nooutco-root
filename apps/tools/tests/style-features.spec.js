@@ -83,7 +83,7 @@ test.describe('direction follows the edit', () => {
       'Data showed gains.', 'The session ended calmly.', 'Reinforcement followed requests.',
       'Trials were mixed.', 'The caregiver observed.', 'No escalation occurred.',
     ].join(' ');
-    // Same pair, reversed — the sign must reverse with it.
+    // Same pair, reversed - the sign must reverse with it.
     const out = await compare(page, short, BASE);
     const sl = out.find((o) => o.feature === 'sentence_length');
     expect(sl).toBeTruthy();
@@ -233,7 +233,7 @@ test.describe('the correction buffer behaves like the audit buffer', () => {
   });
 
   test('corrections are kept when the profile store did not take them', async ({ page }) => {
-    // The request succeeds even with no profile store — that is the fail-open
+    // The request succeeds even with no profile store - that is the fail-open
     // design. Dropping the evidence on that basis would discard it while
     // reporting success, and a technician's card would start empty on the day
     // the store finally goes live.

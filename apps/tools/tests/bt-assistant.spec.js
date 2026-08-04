@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 // The BT tool used to be its own 800-line page with no revision loop. It is now
 // a NOTE_TOOLS entry on the shared engine, which is what buys it the 5-minute
 // prompt cache, the scrub gate and structured output. These tests pin the parts
-// of that move that a refactor could silently undo — and the two behaviours the
+// of that move that a refactor could silently undo - and the two behaviours the
 // move added: the triage questions asked before drafting, and the annotate +
 // panel revision surface.
 //
@@ -32,7 +32,7 @@ function reply(obj) {
   };
 }
 
-// A complete BT note — every key the tool's formSections contract for, because
+// A complete BT note - every key the tool's formSections contract for, because
 // the engine's shape gate rejects a response that is missing any of them.
 function note(overrides = {}) {
   return {
@@ -69,8 +69,8 @@ async function fillRequiredAndGenerate(page) {
 
 // The scrub gate is two modals, both of which must be cleared before anything
 // reaches the API: a once-per-page-load PHI acknowledgement whose Continue
-// button stays disabled until its checkbox is ticked, and — only when the
-// detector finds candidate names — a review step. Driven by id because both are
+// button stays disabled until its checkbox is ticked, and - only when the
+// detector finds candidate names - a review step. Driven by id because both are
 // injected as raw HTML by notes-scrub.js.
 async function acceptScrubGate(page) {
   const ack = page.locator('#notes-ack-go');
@@ -141,7 +141,7 @@ test.describe('BT tool on the shared engine', () => {
     await page.goto('/notes/bt/');
     await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
 
-    // Home is preselected — most sessions are in-home, and making every
+    // Home is preselected - most sessions are in-home, and making every
     // technician pick it every time is friction for no information gain.
     const home = page.getByRole('button', { name: 'Home', exact: true });
     await expect(home).toHaveCSS('background-color', 'rgb(55, 69, 40)');
@@ -163,7 +163,7 @@ test.describe('triage questions before drafting', () => {
       if (posted.length === 1) {
         return route.fulfill(reply({
           sufficient: false,
-          questions: [{ field: 'fBehavior', question: 'You mentioned elopement — how many times?' }],
+          questions: [{ field: 'fBehavior', question: 'You mentioned elopement - how many times?' }],
         }));
       }
       return route.fulfill(reply(note()));
@@ -177,7 +177,7 @@ test.describe('triage questions before drafting', () => {
     // The question lands in the panel, which opens itself.
     await expect(page.locator('.revision-panel')).toBeVisible();
     await expect(page.getByText(/how many times/i)).toBeVisible();
-    // Only triage has run — the note has not been drafted yet.
+    // Only triage has run - the note has not been drafted yet.
     expect(posted).toHaveLength(1);
 
     await page.locator('.revision-input').fill('twice');
@@ -191,7 +191,7 @@ test.describe('triage questions before drafting', () => {
     expect(noteCall.messages).toHaveLength(1);
     expect(noteCall.messages[0].role).toBe('user');
     expect(noteCall.messages[0].content).toContain('twice');
-    // Triage is a separate call with its own system prompt — splicing it into
+    // Triage is a separate call with its own system prompt - splicing it into
     // the note conversation would poison the very cache it exists alongside.
     expect(posted[0].system).not.toBe(noteCall.system);
   });
@@ -214,7 +214,7 @@ test.describe('triage questions before drafting', () => {
     await page.goto('/notes/bt/');
     await fillRequiredAndGenerate(page);
 
-    // The escape hatch has to be present and one click — a tired technician at
+    // The escape hatch has to be present and one click - a tired technician at
     // 7pm with eight notes left must never be trapped behind a question.
     const skip = page.getByRole('button', { name: /Nothing to add/i });
     await expect(skip).toBeVisible();
@@ -268,7 +268,7 @@ test.describe('annotate + panel revision', () => {
       })));
     });
 
-    // Click the section — not a button inside it.
+    // Click the section - not a button inside it.
     await page.getByText('Narrative of Lesson Progress', { exact: true }).click();
     await expect(page.locator('.revision-panel')).toBeVisible();
     await expect(page.locator('.revision-chip')).toContainText('Narrative of Lesson Progress');
@@ -303,7 +303,7 @@ test.describe('annotate + panel revision', () => {
     await expect(page.locator('.diff-view').first()).toBeVisible({ timeout: 15000 });
 
     await page.getByRole('button', { name: /^Discard$/ }).click();
-    // Discard reverts the render only — the original text is still there.
+    // Discard reverts the render only - the original text is still there.
     await expect(field).toHaveValue(/utilized/);
 
     await page.getByText('Narrative of Lesson Progress', { exact: true }).click();
@@ -355,7 +355,7 @@ test.describe('annotate + panel revision', () => {
     await page.locator('.revision-fab').click();
 
     await expect(page.locator('.revision-panel')).toBeVisible();
-    // Docked open, the page is inset rather than overlaid — a note hidden
+    // Docked open, the page is inset rather than overlaid - a note hidden
     // behind the panel is the failure this guards.
     const inset = await page.evaluate(() => parseInt(getComputedStyle(document.getElementById('root')).paddingRight, 10));
     expect(inset).toBeGreaterThan(300);

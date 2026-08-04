@@ -1,10 +1,10 @@
-<!-- handoff-reference group="Games" viewport="860x940" name="Emotion ID — receptive & expressive" subtitle="Receptive field + expressive single-stimulus tact; clinician SD configurable & saved" -->
+<!-- handoff-reference group="Games" viewport="860x940" name="Emotion ID - receptive & expressive" subtitle="Receptive field + expressive single-stimulus tact; clinician SD configurable & saved" -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Emotion ID — No Outcome ABA</title>
+<title>Emotion ID - No Outcome ABA</title>
 <link rel="stylesheet" href="../../../styles.css">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -130,7 +130,7 @@
       </div>
     </div>
     <div class="blk">
-      <span class="lbl">Receptive SD <span style="font-weight:500;color:var(--slate-400)">— listener · use {emotion}</span></span>
+      <span class="lbl">Receptive SD <span style="font-weight:500;color:var(--slate-400)">- listener · use {emotion}</span></span>
       <div class="sdrow">
         <select id="sdRPreset">
           <option value="Touch {emotion}">Touch {emotion}</option>
@@ -143,7 +143,7 @@
       </div>
     </div>
     <div class="blk">
-      <span class="lbl">Expressive SD <span style="font-weight:500;color:var(--slate-400)">— tact · single stimulus</span></span>
+      <span class="lbl">Expressive SD <span style="font-weight:500;color:var(--slate-400)">- tact · single stimulus</span></span>
       <div class="sdrow">
         <select id="sdEPreset">
           <option value="How does {pronoun} feel?">How does {pronoun} feel?</option>
@@ -156,7 +156,7 @@
       </div>
     </div>
     <div class="blk">
-      <span class="lbl">Pronoun <span style="font-weight:500;color:var(--slate-400)">— fills {pronoun} in the expressive SD</span></span>
+      <span class="lbl">Pronoun <span style="font-weight:500;color:var(--slate-400)">- fills {pronoun} in the expressive SD</span></span>
       <div class="seg" id="pron">
         <button data-v="he">He</button><button data-v="she">She</button>
         <button data-v="they">They</button><button data-v="rotate">Rotate</button>
@@ -173,7 +173,7 @@
     </div>
     <div class="tally">
       <span><b id="tCorrect">0</b>/<span id="tTotal">0</span></span>
-      <span class="pct" id="tPct">—</span>
+      <span class="pct" id="tPct">-</span>
       <button class="linkbtn" id="copyBtn">Copy data</button>
       <button class="linkbtn" id="resetBtn">Reset</button>
     </div>
@@ -182,7 +182,7 @@
   <!-- SD banner -->
   <div class="sd">
     <div class="k" id="sdRole">Deliver this SD</div>
-    <div class="txt" id="sdText">—</div>
+    <div class="txt" id="sdText">-</div>
     <div class="hint" id="sdHint"></div>
   </div>
 
@@ -190,7 +190,7 @@
   <div class="stage" id="stage"></div>
   <div class="tokens" id="tokens" aria-hidden="true"></div>
 
-  <p class="foot">Faces shown as emoji for demo; swap in your own photo/illustration set per learner. No client data is stored — only trial counts live in this browser session.</p>
+  <p class="foot">Faces shown as emoji for demo; swap in your own photo/illustration set per learner. No client data is stored - only trial counts live in this browser session.</p>
 </div>
 
 <script>
@@ -230,7 +230,7 @@
   function renderTally() {
     tCorrect.textContent = correct;
     tTotal.textContent = total;
-    tPct.textContent = total ? Math.round(correct/total*100) + '%' : '—';
+    tPct.textContent = total ? Math.round(correct/total*100) + '%' : '-';
   }
 
   // ---- elements ----
@@ -303,7 +303,7 @@
     current.pronoun = cfg.pronoun === 'rotate' ? PRONOUNS[pronounIdx++ % 3] : cfg.pronoun;
     sdRole.textContent = 'Ask the learner';
     sdText.textContent = applyPronoun(cfg.sdE, current.pronoun);
-    sdHint.textContent = 'Single stimulus — score the response and prompt level.';
+    sdHint.textContent = 'Single stimulus - score the response and prompt level.';
     stage.innerHTML =
       '<div class="single">' +
         '<div class="bigface"'+(cfg.visual?' style="background:'+current.target.color+'1f;border-color:'+current.target.color+'66;box-shadow:0 0 0 6px '+current.target.color+'14"':'')+'>'+current.target.face+'</div>' +
@@ -386,7 +386,7 @@
       if (s.w) line += ` · ${s.w} incorrect`;
       return line;
     });
-    const text = `Emotion ID — session summary\nMode focus: mixed\nOverall: ${correct}/${total} (${total?Math.round(correct/total*100):0}%)\n` + rows.join('\n');
+    const text = `Emotion ID - session summary\nMode focus: mixed\nOverall: ${correct}/${total} (${total?Math.round(correct/total*100):0}%)\n` + rows.join('\n');
     try { await navigator.clipboard.writeText(text); const b = document.getElementById('copyBtn'); b.textContent = 'Copied'; setTimeout(()=>b.textContent='Copy data',1200); } catch(e){}
   });
 

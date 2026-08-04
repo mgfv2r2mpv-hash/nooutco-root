@@ -1,5 +1,5 @@
 // Shared "Suggest a feature" handler for the /api/suggest POST endpoint.
-// CANONICAL SOURCE — edit here, never in apps/<app>/shared/ (generated copies).
+// CANONICAL SOURCE - edit here, never in apps/<app>/shared/ (generated copies).
 //
 // Requires env bindings: RESEND_API_KEY (secret), SUGGEST_DUPES (KV, optional dedup),
 // SUGGEST_TO_EMAIL (optional, defaults to feedback@nooutco.me).
@@ -24,7 +24,7 @@ export async function handleSuggest(request, env) {
 
   if (env.SUGGEST_DUPES) {
     const seen = await env.SUGGEST_DUPES.get(key);
-    if (seen) return jsonRes(409, { error: "We already have this suggestion — thank you!" });
+    if (seen) return jsonRes(409, { error: "We already have this suggestion - thank you!" });
   }
 
   if (!env.RESEND_API_KEY) {

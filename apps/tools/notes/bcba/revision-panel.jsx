@@ -3,7 +3,7 @@
  * Replaces the old per-section "✎ Revise" input and the global corrections box.
  * Both worked, but they made revision a form field: you opened a box attached to
  * one section, typed one instruction, and read the answer in a card somewhere
- * else. This is the same loop as a conversation instead — you point at the part
+ * else. This is the same loop as a conversation instead - you point at the part
  * of the note you mean, say what's wrong with it in the panel, and the change
  * lands highlighted in the note itself.
  *
@@ -18,7 +18,7 @@
 
 /* ── Selecting a phrase to revise ─────────────────────────────────────────
    Narrative sections are textareas, so a selection is selectionStart/End rather
-   than a DOM Range — which is the easier half. The chip anchors to the
+   than a DOM Range - which is the easier half. The chip anchors to the
    textarea's own top-right corner instead of the caret: caret coordinates in a
    textarea can't be measured without mirroring the content into a hidden div,
    and the corner is stable, predictable, and never lands under the pointer. */
@@ -36,7 +36,7 @@ function useTextSelection(onSelect) {
       if (!text || text.length < 2) { setChip(null); return; }
       // Clamp to the viewport on BOTH axes. The chip is position:fixed and
       // anchored to the textarea, so a section below the fold would otherwise
-      // put it off-screen — visible to a test, unclickable to a person.
+      // put it off-screen - visible to a test, unclickable to a person.
       const r = el.getBoundingClientRect();
       const CHIP_W = 132, CHIP_H = 40, GUTTER = 8;
       const vw = document.documentElement.clientWidth || window.innerWidth;
@@ -112,6 +112,7 @@ function RevisionPanel({
 }) {
   const scrollRef = React.useRef(null);
   const inputRef = React.useRef(null);
+  const [phiOpen, setPhiOpen] = React.useState(false);
 
   // Keep the newest turn in view as the exchange grows.
   React.useEffect(() => {
@@ -119,7 +120,7 @@ function RevisionPanel({
     scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [open, thread.length, loading, questions]);
 
-  // Pointing at a section is a statement of intent — put the cursor where the
+  // Pointing at a section is a statement of intent - put the cursor where the
   // instruction goes so the next thing typed lands in the right place.
   React.useEffect(() => {
     if (open && annotation && inputRef.current) inputRef.current.focus();
@@ -159,7 +160,7 @@ function RevisionPanel({
       <div className="revision-panel-body" ref={scrollRef}>
         {thread.length === 0 && !awaitingQuestions && (
           <Bubble role="assistant" muted>
-            Nothing yet. Fill in your session notes and press Generate Note — I'll ask about
+            Nothing yet. Fill in your session notes and press Generate Note - I'll ask about
             anything that looks thin before drafting.
           </Bubble>
         )}
@@ -177,7 +178,7 @@ function RevisionPanel({
               disabled={loading}
               className="revision-skip"
             >
-              Nothing to add — generate anyway
+              Nothing to add - generate anyway
             </button>
           </div>
         )}
@@ -210,7 +211,7 @@ function RevisionPanel({
             rows={2}
             placeholder={
               awaitingQuestions
-                ? "Answer here — or skip above…"
+                ? "Answer here - or skip above…"
                 : annotation
                   ? "What should change about this?"
                   : "Ask for a change, or add a detail you forgot…"
@@ -225,7 +226,30 @@ function RevisionPanel({
             {loading ? "…" : "Send"}
           </button>
         </div>
-        <p className="revision-foot-note">No PHI. Enter sends, Shift+Enter for a new line.</p>
+        {/* "No PHI" assumes the reader already knows what counts. Spelling it
+            out inline would crowd the footer, so the term itself carries the
+            reminder. Click as well as hover, because on a tablet - which is what
+            a lot of sessions are written on - there is no hover. */}
+        <p className="revision-foot-note">
+          Do not enter{" "}
+          <button
+            type="button"
+            className="phi-term"
+            aria-label="What counts as PHI"
+            onClick={(e) => { e.preventDefault(); setPhiOpen((o) => !o); }}
+            aria-expanded={phiOpen}
+          >
+            PHI
+          </button>
+          . Enter sends, Shift+Enter for a new line.
+          {phiOpen && (
+            <span className="phi-tip" role="note">
+              Protected Health Information: anything that could identify a specific person.
+              Names, dates of birth, addresses, phone numbers, email, record or insurance
+              numbers, or any other personal identifier.
+            </span>
+          )}
+        </p>
       </form>
     </aside>
   );

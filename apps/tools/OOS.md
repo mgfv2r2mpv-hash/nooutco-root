@@ -1,4 +1,4 @@
-# Out of Scope (OOS) — deferred work
+# Out of Scope (OOS) - deferred work
 
 Items intentionally not part of current work. Pick up later.
 
@@ -16,7 +16,7 @@ When a user certifies a detected name as "not PII" in the review modal, log it t
 - `oos_flag:<timestamp>_<i>_<rand>` → JSON value: `{ id, term, context, tool, flaggedByLabel, flaggedAt }`
 - `oos_excluded` → JSON array of lowercase strings
 
-**Not built because:** user @oos-tagged mid-implementation (2026-06-23). Architecture is fully planned — add when there's enough flag volume to justify the review workflow.
+**Not built because:** user @oos-tagged mid-implementation (2026-06-23). Architecture is fully planned - add when there's enough flag volume to justify the review workflow.
 
 ---
 
@@ -30,10 +30,10 @@ When a user certifies a detected name as "not PII" in the review modal, log it t
 - Action: **Skip** → tick *Super Bot Fight Mode*, *Managed rules*, *Rate limiting*, and "All remaining custom rules".
 - Automated checks then send `-H "x-bypass: <LONG_SECRET>"` and pass; real traffic is unaffected.
 
-**Variant:** scope by path instead — match `starts_with(http.request.uri.path, "/api/")` and Skip, so `/api/*` is never challenged for any non-browser caller (useful for real API clients too).
+**Variant:** scope by path instead - match `starts_with(http.request.uri.path, "/api/")` and Skip, so `/api/*` is never challenged for any non-browser caller (useful for real API clients too).
 
 **Notes:**
 - Use action **Skip**, not "Allow" (Allow doesn't reliably bypass the bot products).
-- Plain **Bot Fight Mode** (Free plan) is global on/off and can't be exempted by a rule — the Skip-rule approach needs *Super* Bot Fight Mode / Managed Challenge, else just toggle Bot Fight Mode off.
+- Plain **Bot Fight Mode** (Free plan) is global on/off and can't be exempted by a rule - the Skip-rule approach needs *Super* Bot Fight Mode / Managed Challenge, else just toggle Bot Fight Mode off.
 - Alternative: IP Access Rule allowlist (Security → WAF → Tools) if the checker has a stable egress IP.
 - Reversible: delete the rule when no longer needed.

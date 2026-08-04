@@ -1,14 +1,14 @@
 import { test, expect } from '@playwright/test';
 
 // The note tools used to ask the model to hand-write its draft as JSON, which
-// made every escape the model's responsibility — see model-json-recovery.spec.js
+// made every escape the model's responsibility - see model-json-recovery.spec.js
 // for the failure that caused. output_config.format moves the note into the
 // layer the API itself serialises: the model emits structured data, Anthropic
 // serialises it, and res.json() hands it back. Both mis-escape modes become
 // impossible by construction rather than recoverable after the fact.
 //
 // Structured outputs is supported on claude-haiku-4-5, which is the model these
-// tools already run, and the response stays a text block — so the conversation
+// tools already run, and the response stays a text block - so the conversation
 // remains {role, content: string} and neither the worker's contract nor the
 // prompt-cache prefix changes.
 
@@ -56,7 +56,7 @@ test.describe('structured output request shape', () => {
     expect(body.output_config).toBeTruthy();
     expect(body.output_config.format.type).toBe('json_schema');
     expect(body.output_config.format.schema).toEqual(MINIMAL_SCHEMA);
-    // The conversation itself must be unchanged — string content, not blocks.
+    // The conversation itself must be unchanged - string content, not blocks.
     expect(typeof body.messages[0].content).toBe('string');
   });
 

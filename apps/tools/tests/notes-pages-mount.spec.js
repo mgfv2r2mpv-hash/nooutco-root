@@ -6,7 +6,7 @@ import { test, expect } from '@playwright/test';
 // panel with a clean console.
 //
 // The BCBA page hosts four tools behind a ribbon; BT is a single-tool page and
-// must NOT show a ribbon — a lone dead tab would be worse than none.
+// must NOT show a ribbon - a lone dead tab would be worse than none.
 
 const PAGES = [
   { tool: 'bt', path: '/notes/bt/index.html', ribbonTabs: 0 },

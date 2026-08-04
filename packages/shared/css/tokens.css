@@ -1,5 +1,5 @@
-/* No Outcome ABA — design tokens (shared)
-   CANONICAL SOURCE: packages/shared/css/tokens.css — edit here, never in
+/* No Outcome ABA - design tokens (shared)
+   CANONICAL SOURCE: packages/shared/css/tokens.css - edit here, never in
    apps/<app>/tokens.css (generated copies; CI drift check fails on hand edits).
    Consolidated from design_handoff_site_overhaul/tokens/*.css */
 
@@ -57,7 +57,7 @@
   --slate-50:  #f9fafb;
   --white:     #ffffff;
 
-  /* ── Sage — primary action & brand accent ─────────────────────────── */
+  /* ── Sage - primary action & brand accent ─────────────────────────── */
   --sage-900: #2c331f;
   --sage-800: #3c4533;
   --sage-700: #4d5840;
@@ -81,14 +81,14 @@
   --violet-100: #ede9fe;
   --violet-50:  #f5f3ff;
 
-  /* ── Green — success / met / completed ───────────────────────────── */
+  /* ── Green - success / met / completed ───────────────────────────── */
   --green-800: #15803d;
   --green-700: #16a34a;
   --green-500: #10b981;
   --green-100: #dcfce7;
   --green-50:  #ecfdf5;
 
-  /* ── Amber / orange — warning / on-pace ──────────────────────────── */
+  /* ── Amber / orange - warning / on-pace ──────────────────────────── */
   --amber-700: #b45309;
   --amber-500: #f59e0b;
   --amber-300: #fcd34d;
