@@ -570,9 +570,13 @@ const ADOPTED = [
       promptDelaySecs: 5,
       promptStyle: 'outline',
       showReason: false,
-      includeTricky: true,
+      // The retired "Include Tricky / Reasoning Cards" switch is superseded by
+      // the Level selector: its tricky cards were the nuanced, context-decides
+      // ones, so a stored `true` folds forward onto Level 2.
+      level: 2,
     },
     controls: [
+      ['#sel-level', 'value', '2'],
       ['#sel-category', 'value', 'private'],
       ['#sel-order', 'value', 'sequential'],
       ['#chk-represent-errors', 'checked', false],
@@ -583,9 +587,9 @@ const ADOPTED = [
       ['#sel-prompt-delay', 'value', '5'],
       ['#sel-prompt-style', 'value', 'outline'],
       ['#chk-show-reason', 'checked', false],
-      ['#chk-include-tricky', 'checked', true],
     ],
     fresh: [
+      ['#sel-level', 'value', '1'],
       ['#sel-category', 'value', 'all'],
       ['#sel-order', 'value', 'shuffle'],
       ['#chk-represent-errors', 'checked', true],
@@ -596,7 +600,6 @@ const ADOPTED = [
       ['#sel-prompt-delay', 'value', '3'],
       ['#sel-prompt-style', 'value', 'sparkle'],
       ['#chk-show-reason', 'checked', true],
-      ['#chk-include-tricky', 'checked', false],
     ],
   },
 ];
@@ -887,6 +890,9 @@ test('think-or-say: the folded configuration reaches the deck, not just the pane
   await page.goto(TOS.url);
   await bootedWithSettings(page, TOS.boot);
   await expect(page.locator('#sel-category')).toHaveValue('kind');
+  // `includeTricky: false` folds forward onto Level 1, so the deck is the
+  // Level 1 pool narrowed to 'kind'.
+  await expect(page.locator('#sel-level')).toHaveValue('1');
 
   await page.locator('#btn-play').click();
 
@@ -894,8 +900,8 @@ test('think-or-say: the folded configuration reaches the deck, not just the pane
   // a card from any other category means the deck was built from something
   // other than the technician's folded selection.
   await expect(page.locator('#scenario-situation'))
-    .toHaveText('Your friend gets a new shirt with a dinosaur on it. You love dinosaurs too.');
-  await expect(page.locator('#progress-label')).toHaveText('Card 1 of 12');
+    .toHaveText('Your friend shows you a drawing they made. You really like how it looks.');
+  await expect(page.locator('#progress-label')).toHaveText('Card 1 of 14');
   expect(errors, 'the session started without a page error').toEqual([]);
 });
 
@@ -920,26 +926,31 @@ async function silentlyTick(page, selector) {
   await page.evaluate((sel) => { document.querySelector(sel).checked = true; }, selector);
 }
 
+/** The same thing for a select: the value moves, no `change` event. */
+async function silentlySelect(page, selector, value) {
+  await page.evaluate(([sel, v]) => { document.querySelector(sel).value = v; }, [selector, value]);
+}
+
 test('think-or-say: a control changed without a change event never reaches the deck', async ({ page }) => {
-  await seed(page, [[TOS.storeKey, { working: { category: 'all', includeTricky: false } }]]);
+  await seed(page, [[TOS.storeKey, { working: { category: 'all', level: 1 } }]]);
   await page.goto(TOS.url);
   await bootedWithSettings(page, TOS.boot);
-  await expect(page.locator('#chk-include-tricky')).not.toBeChecked();
+  await expect(page.locator('#sel-level')).toHaveValue('1');
 
-  await silentlyTick(page, '#chk-include-tricky');
+  await silentlySelect(page, '#sel-level', '3');
 
-  // 29 of the 32 cards are non-tricky. A deck of 32 means buildDeck() read the
-  // checkbox rather than the configuration in force.
+  // Level 1 holds 35 cards and Level 3 holds 18. A deck of 18 means buildDeck()
+  // read the select rather than the configuration in force.
   await page.locator('#btn-play').click();
-  await expect(page.locator('#progress-label')).toHaveText('Card 1 of 29');
+  await expect(page.locator('#progress-label')).toHaveText('Card 1 of 35');
 });
 
 test('think-or-say: an unrelated edit does not adopt a control nobody changed', async ({ page }) => {
-  await seed(page, [[TOS.storeKey, { working: { category: 'all', includeTricky: false } }]]);
+  await seed(page, [[TOS.storeKey, { working: { category: 'all', level: 1 } }]]);
   await page.goto(TOS.url);
   await bootedWithSettings(page, TOS.boot);
 
-  await silentlyTick(page, '#chk-include-tricky');
+  await silentlySelect(page, '#sel-level', '3');
 
   // An unrelated, REAL edit — the path that used to rebuild the whole config
   // from the panel, quietly adopting every control it found on the way past.
@@ -951,10 +962,10 @@ test('think-or-say: an unrelated edit does not adopt a control nobody changed', 
 
   const { working } = await readStore(page, TOS.storeKey);
   expect(working.showReason, 'the edit the technician made is persisted').toBe(false);
-  expect(working.includeTricky, 'the one they did not make is not').toBe(false);
+  expect(working.level, 'the one they did not make is not').toBe(1);
   // And the panel is re-rendered from the configuration in force, so the
   // silently-restored control is put back rather than left lying.
-  await expect(page.locator('#chk-include-tricky')).not.toBeChecked();
+  await expect(page.locator('#sel-level')).toHaveValue('1');
 });
 
 test('think-or-say: a trial runs on the stored configuration, not on the panel', async ({ page }) => {

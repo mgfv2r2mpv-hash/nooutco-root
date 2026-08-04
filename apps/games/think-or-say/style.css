@@ -48,6 +48,111 @@
 
 .extra-row label { font-size: 0.82rem; font-weight: 600; color: #4a5568; }
 
+/* ── Probe block ───────────────────────────────────────────────────────
+   Set apart from the teaching options above it, because turning probes on
+   changes what a trial MEASURES rather than how it is taught. */
+.probe-block {
+  margin-top: 12px;
+  padding: 10px 12px 12px;
+  border: 1px dashed var(--accent-soft, #cbd5e0);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.015);
+}
+.probe-head { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
+.probe-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #4a5568;
+}
+.probe-level { display: flex; flex-direction: column; gap: 8px; }
+.probe-tags { flex-wrap: wrap; row-gap: 4px; }
+.probe-tags-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #4a5568;
+  margin-right: 4px;
+}
+.probe-tags .checkbox-label { font-size: 0.8rem; text-transform: capitalize; }
+
+/* Says on screen that supports are withheld, before staff reach for Prompt. */
+.probe-banner {
+  align-self: center;
+  max-width: 44ch;
+  padding: 6px 12px;
+  border: 1px solid #b7791f;
+  border-radius: 999px;
+  background: #fffbeb;
+  color: #7c5a12;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* States the rule on screen at the level that declares one (Level 1). Quiet
+   enough to sit above the card without competing with it, and readable at arm's
+   length so a technician does not have to leave the trial to check it. */
+.rule-panel {
+  width: min(680px, 100%);
+  padding: 10px 14px 8px;
+  background: #f7f9fc;
+  border: 1px solid var(--accent-soft);
+  border-radius: 12px;
+}
+.rule-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-bottom: 8px;
+}
+.rule-title {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #4a5568;
+}
+.rule-lead { font-size: 0.9rem; font-weight: 600; color: #1a2438; }
+.rule-body { display: flex; flex-direction: column; gap: 6px; }
+.rule-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+/* The standing override reads above the two columns and is weighted to look
+   like the rule that outranks them, not a third column. */
+.rule-always {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 0 8px;
+  margin: 0 0 4px;
+  border-bottom: 1px dashed var(--line, #d9d4c7);
+}
+.rule-always-text {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ink, #20242c);
+}
+.rule-list {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+}
+.rule-list li {
+  font-size: 0.88rem;
+  line-height: 1.3;
+  color: #2d3748;
+  background: #fff;
+  border: 1px solid var(--accent-soft);
+  border-radius: 8px;
+  padding: 4px 9px;
+}
+.rule-tip { margin: 8px 0 0; font-size: 0.8rem; color: #5a6b8a; }
+
 /* ── Pre-start blurb ───────────────────────────────────────────────── */
 .game-intro {
   max-width: 720px;
@@ -221,6 +326,19 @@
   font-size: 1.18rem;
   font-weight: 800;
   line-height: 1.35;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+/* The lead-in names NEITHER action, so it is set back from the utterance
+   rather than competing with it for salience. */
+#scenario-thought .lead-in {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  opacity: 0.82;
 }
 #scenario-thought .quote {
   display: inline-block;
@@ -228,7 +346,16 @@
   border: 1px dashed rgba(255,255,255,0.6);
   border-radius: 10px;
   padding: 4px 12px;
-  margin-top: 4px;
+}
+
+/* The balanced question. Both halves are the same length and the same weight —
+   neither action may be the visually easier one to pick. */
+#scenario-question {
+  font-size: 1.06rem;
+  font-weight: 700;
+  line-height: 1.35;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.28);
 }
 
 #scenario-reason {
@@ -405,6 +532,95 @@
 #btn-next:hover  { background: #25774a; }
 #btn-next:active { transform: scale(0.97); }
 
+/* ── Level 3: the spoken rationale ─────────────────────────────────── */
+#rationale-panel {
+  width: min(560px, 100%);
+  margin: 16px auto 0;
+  padding: 18px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+  border: 2px solid var(--accent-soft);
+  border-radius: 16px;
+  animation: reason-in 0.3s ease;
+}
+#rationale-ask {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+#btn-rationale-reveal {
+  background: #fff;
+  color: var(--accent);
+  border: 2px solid var(--accent-soft);
+  padding: 8px 20px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+#btn-rationale-reveal:hover { background: var(--accent-soft); border-color: var(--accent); }
+
+#rationale-examples {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #f4f7fc;
+  border: 1px solid #d7e0f0;
+}
+#rationale-examples-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #5d6b86;
+  margin-bottom: 6px;
+}
+#rationale-examples-list { margin: 0; padding-left: 20px; }
+#rationale-examples-list li { font-size: 0.95rem; line-height: 1.45; margin-bottom: 4px; }
+#rationale-examples-list li:last-child { margin-bottom: 0; }
+
+#rationale-scores { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.rationale-score {
+  background: #fff;
+  color: var(--text, #2c3444);
+  border: 2px solid #cfd8e8;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 0.98rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.rationale-score:hover  { border-color: var(--accent); background: var(--accent-soft); }
+.rationale-score:active { transform: scale(0.97); }
+.rationale-score.is-picked {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+#rationale-note-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #5d6b86;
+  align-self: flex-start;
+}
+#rationale-note {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #cfd8e8;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+#rationale-note:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
 /* ── Completion card ───────────────────────────────────────────────── */
 #done-card {
   width: min(560px, 100%);
@@ -498,12 +714,24 @@
   #results-table td.outcome-ok       { color: #27ae60; }
   #print-summary { font-size: 9.5pt; color: #333; border-top: 1px solid #bbb; padding-top: 8px; }
   #print-summary span { margin-right: 20px; }
+  #print-generalization { margin-top: 16px; }
+  #print-generalization[hidden] { display: none !important; }
+  #print-generalization h3 { font-size: 11.5pt; margin-bottom: 6px; }
+  #generalization-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+  #generalization-table th, #generalization-table td {
+    border: 1px solid #666;
+    padding: 4px 8px;
+    text-align: left;
+    vertical-align: top;
+  }
+  #generalization-table th { background: #e8e8e8; font-weight: bold; }
 }
 
 /* ── Responsive ────────────────────────────────────────────────────── */
 @media (max-width: 680px) {
   #game-area { padding: 16px 12px 22px; gap: 14px; }
   #scenario-situation, #scenario-thought { font-size: 1.02rem; }
+  #scenario-question { font-size: 0.96rem; }
   #choices { gap: 16px; }
   .choice { width: 150px; min-height: 168px; gap: 12px; padding: 14px 10px; }
   .bubble { width: 96px; height: 78px; }
@@ -513,4 +741,128 @@
 
 @media (max-width: 360px) {
   .choice { width: 130px; }
+}
+
+/* The level's own one-line description, sitting beside its selector. Reading it
+   in the bar is how a technician confirms that the pool the plan named is the
+   pool in force before the session starts. */
+.setting-note {
+  margin: 0;
+  max-width: 30ch;
+  font-size: 0.78rem;
+  line-height: 1.3;
+  color: var(--text-muted, #6b7280);
+}
+
+/* ── Staff guide screen ────────────────────────────────────────────────
+   The in-game rendering of staff-guide.js. The standalone download carries
+   its own stylesheet (STANDALONE_CSS there) because it has to survive as a
+   file on someone's desktop; this block styles the same markup in the app. */
+#guide-screen {
+  flex: 1;
+  width: min(880px, 100%);
+  margin: 0 auto;
+  padding: 20px 20px 48px;
+}
+.guide-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.guide-actions .btn-primary { margin-left: 0; }
+.guide-actions-foot { margin: 22px 0 0; }
+
+#guide-body {
+  background: #fff;
+  border: 1px solid var(--accent-soft);
+  border-radius: 16px;
+  box-shadow: 0 4px 18px rgba(61, 90, 152, 0.12);
+  padding: 26px 30px 30px;
+  color: #20242c;
+  line-height: 1.6;
+}
+#guide-body .guide-title {
+  font-size: 1.5rem;
+  color: #1a2438;
+  margin: 0 0 6px;
+}
+#guide-body .guide-subtitle {
+  margin: 0 0 26px;
+  color: #55606f;
+}
+#guide-body .guide-section { margin: 0 0 30px; }
+#guide-body .guide-section:last-child { margin-bottom: 0; }
+#guide-body .guide-section h2 {
+  font-size: 1.15rem;
+  color: var(--accent-dark);
+  margin: 0 0 10px;
+  padding-bottom: 5px;
+  border-bottom: 2px solid var(--accent-soft);
+}
+#guide-body .guide-section h3 {
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: #1a2438;
+  margin: 18px 0 5px;
+}
+#guide-body p { margin: 0 0 12px; }
+/* tailwind.css strips list markers platform-wide; the numbered steps here are
+   a sequence and read as prose without them. */
+#guide-body .guide-list { margin: 8px 0 14px; padding-left: 22px; list-style: disc; }
+#guide-body ol.guide-list { list-style: decimal; }
+#guide-body .guide-list li { margin: 5px 0; }
+#guide-body .guide-term { font-weight: 700; color: #1a2438; }
+#guide-body .guide-note {
+  background: var(--think-soft);
+  border-left: 4px solid var(--think);
+  padding: 10px 14px;
+  border-radius: 0 8px 8px 0;
+}
+#guide-body .guide-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 16px;
+  font-size: 0.9rem;
+}
+#guide-body .guide-table th,
+#guide-body .guide-table td {
+  border: 1px solid var(--accent-soft);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+#guide-body .guide-table thead th {
+  background: var(--accent-soft);
+  color: #1a2438;
+}
+#guide-body .guide-rowhead {
+  background: #f6f8fc;
+  font-weight: 700;
+  width: 22%;
+}
+#guide-body .guide-figure { margin: 16px 0; }
+#guide-body .guide-figure img {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--accent-soft);
+  border-radius: 8px;
+  display: block;
+}
+#guide-body .guide-figure figcaption {
+  margin-top: 6px;
+  color: #55606f;
+  font-size: 0.86rem;
+}
+#guide-body .guide-figure-missing {
+  margin-top: 6px;
+  color: #8a5a12;
+  font-size: 0.86rem;
+}
+
+@media (max-width: 640px) {
+  #guide-body { padding: 20px 16px 22px; }
+  #guide-body .guide-table { font-size: 0.82rem; }
+  #guide-body .guide-rowhead { width: auto; }
 }
