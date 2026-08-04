@@ -2,23 +2,35 @@
   "name": "tools-nooutco-me",
   "compatibility_date": "2026-04-15",
   "pages_build_output_dir": ".",
-  // Cloudflare Pages applies bindings declared under env.production / env.preview,
-  // NOT top-level - top-level kv_namespaces silently don't bind on Git builds.
-  // Account A (kaleb@nooutco.me) namespaces.
+  // ⚠ THIS FILE DOES NOT CREATE BINDINGS. It documents them. Read the next
+  // paragraph before you trust anything here.
   //
-  // ⚠ THIS FILE IS THE SOURCE OF TRUTH FOR THIS PROJECT'S BINDINGS, as of
-  // 2026-08-04. Anything removed from it is removed from the project on the
-  // next deploy.
+  // An earlier version of this comment claimed the opposite: that the file was
+  // the source of truth and that anything removed from it would be removed on
+  // the next deploy. That was tested on 2026-08-04 and is FALSE. The deploy to
+  // production ran, from inside this directory, with this file declaring the
+  // PROFILE service binding:
   //
-  // It did not used to be. CI deployed with `pages deploy apps/tools` from the
-  // REPO ROOT, and wrangler resolves its config from the working directory, so
-  // this file was never read - a binding added here deployed nothing at all.
-  // That is exactly how the PROFILE binding below got declared, deployed, and
-  // reported live while not existing. deploy-pages.yml now runs the deploy IN
-  // apps/tools so the two agree.
+  //   npx wrangler pages deploy . --project-name=tools-nooutco-me --branch=main
   //
-  // Never trust this file alone. To see what is really bound:
+  // It reported success, uploaded the files and the Worker, and
+  // `wrangler pages download config tools-nooutco-me` afterwards showed the
+  // project still carrying only the two KV namespaces. `pages deploy` ships
+  // assets and the Worker bundle. Project bindings are project settings, and
+  // they are set in the dashboard or through the API, not by this file.
+  //
+  // So: adding a binding here changes NOTHING on its own, and removing one
+  // takes nothing away either. Keep it accurate anyway, because it is the only
+  // written record of what the projects are supposed to have, but verify the
+  // real thing every single time:
+  //
+  //   npx wrangler pages download config tools-nooutco-me
   //   npx wrangler pages download config dev-tools-nooutco-me
+  //
+  // Bindings belong under env.production / env.preview as well as top level.
+  // Pages applies the env-scoped ones; top-level alone silently does not bind
+  // on Git builds. Both levels are kept in step so the record matches whichever
+  // shape the live project reports. Account A (kaleb@nooutco.me) namespaces.
   //
   // The PROFILE service binding reaches the technician style store
   // (apps/profile-api). That Worker has `workers_dev = false` and declares no
@@ -26,14 +38,12 @@
   // session token has no address to send a forged request to. Giving it a
   // route would silently undo that.
   //
-  // Everything behind it fails open: with the binding absent, as it is on the
-  // deployed project until it is added in the dashboard, notes generate exactly
-  // as they did before any of this existed.
-  // Top-level mirrors env.production deliberately. `wrangler pages download
-  // config` shows the live project carries these at BOTH levels, and once a
-  // deploy opts the project into this file, the file is the source of truth -
-  // anything missing from it is dropped. Matching the live shape exactly is what
-  // makes that safe.
+  // STATE ON 2026-08-04: dev-tools-nooutco-me HAS the PROFILE binding.
+  // tools-nooutco-me does NOT. Everything behind it fails open, so production
+  // notes generate exactly as they did before any of this existed, and the
+  // admin Style Profiles tab reports the store unavailable. Adding it to
+  // production is deliberately pending his answer on whether dev and production
+  // should share one profile store, because they would.
   "kv_namespaces": [
     { "binding": "SUGGEST_DUPES", "id": "770ceeccadb94d78b519e628509beed8" },
     { "binding": "API_PASSWORDS", "id": "cdaf40fa2b814f7d94818b27042b9cf2" }

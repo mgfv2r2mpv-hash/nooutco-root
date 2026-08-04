@@ -198,11 +198,24 @@ body {
   padding: 14px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
   gap: 8px;
   min-height: 0;
   -webkit-overflow-scrolling: touch;
 }
+
+/* Messages sit at the bottom via auto margin on the FIRST child, not via
+   justify-content: flex-end on the scroller.
+
+   That distinction is the whole fix. A flex column with justify-content:
+   flex-end and overflow-y: auto puts content that overflows the TOP outside the
+   scrollable range: it is rendered, it is clipped, and no amount of scrolling
+   reaches it. So a long exchange kept growing and the earliest turns became
+   permanently unreadable. His report: "the Ask NoMe history should be
+   scrollable so I can review all my inputs and responses."
+
+   An auto top margin gives the same look while the whole history stays in
+   reach. */
+.revision-panel-body > :first-child { margin-top: auto; }
 
 /* The instruction that used to live in the header, shown only while there is
    nothing else to show. */
