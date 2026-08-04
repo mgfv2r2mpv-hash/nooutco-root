@@ -38,7 +38,7 @@ const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/;
 
 /**
  * A repointed manifest is generated from the shared library, so its build
- * stamp is the library's content hash rather than a wall-clock time — the
+ * stamp is the library's content hash rather than a wall-clock time - the
  * build has to be reproducible for `npm run stimuli:check` to mean anything.
  */
 const LIBRARY_STAMP_RE = /^shared-stimuli:[0-9a-f]{12}$/;
@@ -148,7 +148,7 @@ for (const source of STIMULUS_SOURCES.filter((s) => s.kind === 'manifest')) {
       expect(manifest.folders, `images key "${folder}" is a declared folder`).toContain(folder);
     }
 
-    // A displayName keyed off a path nobody serves is dead config — a label a
+    // A displayName keyed off a path nobody serves is dead config - a label a
     // technician saved that will never render. A key left over from before the
     // shared-library repoint is fine only because the games fold it forward
     // through pathAliases; anything else names nothing.

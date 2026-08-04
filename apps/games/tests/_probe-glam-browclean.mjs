@@ -1,4 +1,4 @@
-/* Finding B — dump `_browClean`'s own overlay, and its chosen skin tone. */
+/* Finding B - dump `_browClean`'s own overlay, and its chosen skin tone. */
 import { chromium } from '@playwright/test';
 import { writeFile, mkdir } from 'node:fs/promises';
 
@@ -24,7 +24,7 @@ for (const m of MODELS) {
   await page.getByLabel('Character', { exact: true }).selectOption(m);
   await page.getByLabel('Routine', { exact: true }).selectOption('free');
   await page.getByRole('button', { name: /^▶ Play/ }).click();
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   await page.waitForFunction(painted, undefined, { timeout: 20000 });
 
   const res = await page.evaluate(() => {

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Glam Team Makeover — the salon's station kit (refresh R4).
+ * Glam Team Makeover - the salon's station kit (refresh R4).
  *
  * The refresh deepens the ACTIVITY: each station carries a generous FIXED stock
  * of shades so a turn has real creative range, in the Toca-Boca spirit where no
@@ -9,11 +9,11 @@ import { test, expect } from '@playwright/test';
  * so "depth" has to be breadth-at-once, and that makes it a property two things
  * must hold for at the same time:
  *
- *   1. the stock is actually THERE and every shade in it actually PAINTS — a
+ *   1. the stock is actually THERE and every shade in it actually PAINTS - a
  *      swatch whose recolour ramp was never shipped, or a tint read off the
  *      garment CUT rather than the chosen shade, renders a button that does
  *      nothing or a shade indistinguishable from its neighbour; and
- *   2. the deeper stock changes NOTHING the measurement engine can see — more
+ *   2. the deeper stock changes NOTHING the measurement engine can see - more
  *      shades of one article is not more articles, so the per-turn action
  *      economy and the staged TA order have to come out bit-identical.
  *
@@ -89,7 +89,7 @@ const HELPERS = `
   /* \`_img\` is LAZY: the shirt mask, the hair luma and the lip mask only enter
      \`_imgc\` the first time a shade asks for them, and \`_shirtCanvas\`/\`_hairCanvas\`
      return null until that decode lands. So the FIRST shade of an article can
-     measure a canvas the article has not been painted on yet — which reads
+     measure a canvas the article has not been painted on yet - which reads
      exactly like a dead swatch. Wait for every requested image to be decoded
      before believing the canvas.
 
@@ -97,7 +97,7 @@ const HELPERS = `
      frame after setState resolves the canvas is final; the stability loop is a
      cheap safety net, not the mechanism. (A settle that re-snapshots dozens of
      times per shade costs enough CPU to starve other specs' polls in the
-     fullyParallel run — that is not hypothetical, it timed out
+     fullyParallel run - that is not hypothetical, it timed out
      glam-team-makeover's model sweep.) */
   const decoded = () => { const c = L._imgc || {}; return Object.keys(c).every(k => c[k].ok); };
   const settle = async () => {
@@ -108,7 +108,7 @@ const HELPERS = `
   /* ONE frozen baseline, not a fresh \`freshEd\` per shade: \`freshEd\` re-seeds
      \`spotSeed\` from Math.random(), so re-cutting it between shades moves the
      blemishes and every canvas comes out different no matter what the shade did.
-     That is enough to make BOTH assertions below pass vacuously — verified: with
+     That is enough to make BOTH assertions below pass vacuously - verified: with
      a per-shade freshEd, reverting the shirt fix (two cuts, one tint) still went
      green. */
   const BASE = JSON.parse(JSON.stringify(L.freshEd('person')));
@@ -122,7 +122,7 @@ const HELPERS = `
 
 /* The stations whose stock is a set of SHADES, with the `ed` write each shade
    makes and the floor the refresh commits to. The floor is a floor, not the
-   count — a later slice may stock more. */
+   count - a later slice may stock more. */
 const SHADE_STATIONS = [
   { station: 'Cheeks & glow', slot: 'blush',    min: 6, write: `(ed,o)=>{ ed.cov.blush=1;  ed.col.blush=o.color; }` },
   { station: 'Eyes',          slot: 'shadow',   min: 6, write: `(ed,o)=>{ ed.cov.shadow=1; ed.col.shadow=o.color; }` },
@@ -132,7 +132,7 @@ const SHADE_STATIONS = [
   { station: 'Shirt color',   slot: 'outfit',   min: 9, write: `(ed,o)=>{ ed.outfit=o.value; ed.col.garment=o.color; }` },
 ];
 
-test.describe('Glam Team Makeover — station kit (refresh)', () => {
+test.describe('Glam Team Makeover - station kit (refresh)', () => {
   test('every station stocks its shades on the real palette, not just in the data', async ({ page }) => {
     const errors = await stage(page);
 
@@ -140,7 +140,7 @@ test.describe('Glam Team Makeover — station kit (refresh)', () => {
        each shelf heading into a fold/unfold <button>, so the old walk (button →
        its row → the heading element before it, sliced out of `textContent`) no
        longer names a station; every shelf now carries its own `data-shelf`, which
-       is both stable across that markup and self-filtering — a tool button
+       is both stable across that markup and self-filtering - a tool button
        anywhere else on the page has no shelf ancestor. */
     const stocked = await page.evaluate(() => {
       const out = {};
@@ -157,7 +157,7 @@ test.describe('Glam Team Makeover — station kit (refresh)', () => {
       expect(stocked[station], `station "${station}" should be on the palette`).toBeTruthy();
       expect(stocked[station].length, `${station} stocks ${stocked[station]?.length} shades`)
         .toBeGreaterThanOrEqual(min);
-      // Every button addressable by a distinct name — the specs, and the child,
+      // Every button addressable by a distinct name - the specs, and the child,
       // tell shades apart by label.
       expect(new Set(stocked[station]).size).toBe(stocked[station].length);
     }
@@ -165,7 +165,7 @@ test.describe('Glam Team Makeover — station kit (refresh)', () => {
     // The skincare TA and the brow bar are still their own shelves.
     expect(Object.keys(stocked)).toEqual(expect.arrayContaining(['Skincare', 'Brow bar', 'Hair style', 'Earrings']));
 
-    // One tool, one name, across the WHOLE palette — every spec here addresses a
+    // One tool, one name, across the WHOLE palette - every spec here addresses a
     // tool by `title` and takes `.first()`, so a repeated name silently reroutes
     // a click to a different station's shade.
     const all = Object.values(stocked).flat();
@@ -193,7 +193,7 @@ test.describe('Glam Team Makeover — station kit (refresh)', () => {
         // Seeding \`seen\` with the untouched doll turns "this shade drew nothing"
         // into a twin collision too, so a dead swatch fails on both counts.
         const seen = {}; seen[sig(bare)] = '(the untouched doll)';
-        // Only the SHADES of this station's article — a shelf also holds tools
+        // Only the SHADES of this station's article - a shelf also holds tools
         // that carry no swatch (Contour, Highlight, the liners).
         const shades = station(st.station).options.filter(o => o.slot === st.slot && o.color);
         for (const opt of shades) {
@@ -211,8 +211,7 @@ test.describe('Glam Team Makeover — station kit (refresh)', () => {
 
     /* The floor is RELATIVE to what this article's other shades move, not an
        absolute pixel count. A hair shade with no recolour ramp still repaints the
-       BROWS (they take the same swatch), which clears any small absolute floor —
-       verified: with a fixed floor of 150, deleting the synthesised-ramp fallback
+       BROWS (they take the same swatch), which clears any small absolute floor - verified: with a fixed floor of 150, deleting the synthesised-ramp fallback
        went green. Measured on m3: a whole head of hair moves ~42,000px and
        brows-only moves ~6,100, so a quarter of the station's median (~10,500)
        sits cleanly between them where no fixed constant does. */
@@ -223,9 +222,9 @@ test.describe('Glam Team Makeover — station kit (refresh)', () => {
     }
 
     for (const r of rows) {
-      if (r.native) continue;   // the client's own hair colour — already on the doll
+      if (r.native) continue;   // the client's own hair colour - already on the doll
       // A shade whose recolour ramp or tint is missing barely moves the doll.
-      expect(r.n, `${r.station} · "${r.label}" moved ${r.n}px, under a quarter of the station's usual — is its ramp/tint wired?`)
+      expect(r.n, `${r.station} · "${r.label}" moved ${r.n}px, under a quarter of the station's usual - is its ramp/tint wired?`)
         .toBeGreaterThan(Math.max(150, floors[r.station]));
       // …and a shade whose tint is read off something other than its own swatch
       // comes out byte-identical to whichever shade shares that something.
@@ -237,7 +236,7 @@ test.describe('Glam Team Makeover — station kit (refresh)', () => {
     expect(errors).toEqual([]);
   });
 
-  test('AC-7 · the deeper stock spends no extra actions — one article, one charge key', async ({ page }) => {
+  test('AC-7 · the deeper stock spends no extra actions - one article, one charge key', async ({ page }) => {
     const errors = await stage(page);
 
     // Every option in the person palette, with the slot it edits and the charge
@@ -263,7 +262,7 @@ test.describe('Glam Team Makeover — station kit (refresh)', () => {
 
   test('the staged routine still hides a station until its phase opens', async ({ page }) => {
     const errors = await stage(page, { routine: 'on' });
-    await page.getByRole('button', { name: /Go —/ }).click();
+    await page.getByRole('button', { name: /Go - / }).click();
 
     // Skincare and the (untracked) brow bar are open on the first turn…
     await expect(page.getByTitle('Wash', { exact: true })).toBeVisible();
@@ -284,7 +283,7 @@ test.describe('Glam Team Makeover — station kit (refresh)', () => {
   test('two shirt shades cut the same way are still told apart on the button', async ({ page }) => {
     const errors = await stage(page);
 
-    // Teal and Lavender share the `gown` cut — before the refresh the tee's tint
+    // Teal and Lavender share the `gown` cut - before the refresh the tee's tint
     // was looked up from the cut, so the two were the same shirt.
     const cuts = await logic(page, `
       const st = L.cfg().cats.find(c => c.label === 'Shirt color');
@@ -301,7 +300,7 @@ test.describe('Glam Team Makeover — station kit (refresh)', () => {
   });
 });
 
-/* ── TUNING fix 3 — the trolley as a working surface ─────────────────────────
+/* ── TUNING fix 3 - the trolley as a working surface ─────────────────────────
    The maintainer's report: the cart accumulates. Steps that can never be taken
    again (Wash, Moisturize) stay on the shelf forever, shades the child has long
    since moved past stay fully expanded, and the option they actually need next
@@ -310,14 +309,14 @@ test.describe('Glam Team Makeover — station kit (refresh)', () => {
    The staged routine now flows: a shelf whose every step is taken folds to its
    header, one-shot tools that are already on the client are not rendered at all,
    and unsettled shelves sort above settled ones so the next step opens at the
-   top of the cart. Free play is deliberately exempt — "all steps open" is what
+   top of the cart. Free play is deliberately exempt - "all steps open" is what
    that routine IS, and a BT reaching for an out-of-order station needs every
    station reachable. That exemption is pinned by the last test here so it stays
    a decision rather than an oversight. */
 
 /** The shelves as the child sees them, in DOM order. A settled shelf that has
-    lost its last tool keeps its header — that is where a finished step goes on
-    reading as finished — but drops `aria-expanded`, because there is nothing
+    lost its last tool keeps its header - that is where a finished step goes on
+    reading as finished - but drops `aria-expanded`, because there is nothing
     behind it to expand. A missing attribute therefore reads as closed. */
 const shelves = (page) => page.evaluate(() => [...document.querySelectorAll('[data-shelf]')].map((box) => ({
   label: box.getAttribute('data-shelf'),
@@ -325,7 +324,7 @@ const shelves = (page) => page.evaluate(() => [...document.querySelectorAll('[da
   tools: [...box.querySelectorAll('button[title]')].map((b) => b.getAttribute('title')),
 })));
 
-/** Arm a paint tool and drag it to full coverage — the real pointer path, since
+/** Arm a paint tool and drag it to full coverage - the real pointer path, since
     what is under test is what the child's own drag leaves behind on the cart. */
 async function paintTool(page, name) {
   await page.getByTitle(name, { exact: true }).first().click();
@@ -342,7 +341,7 @@ async function paintTool(page, name) {
 
 /** Fast-forward the client's state to a mid-appointment point: skincare done and
     all of makeup except the lips. Written straight to `ed` because what is under
-    test is the CART's response to a state, not the route that reached it — the
+    test is the CART's response to a state, not the route that reached it - the
     steps themselves are driven for real in the first test below. */
 const throughMakeup = `
   return new Promise((r) => L.setState((s) => {
@@ -354,10 +353,10 @@ const throughMakeup = `
     return { ed };
   }, r));`;
 
-test.describe('Glam Team Makeover — the trolley flows (tuning fix 3)', () => {
+test.describe('Glam Team Makeover - the trolley flows (tuning fix 3)', () => {
   test('a step that cannot be taken twice leaves the cart once it is taken', async ({ page }) => {
     const errors = await stage(page, { routine: 'on' });
-    await page.getByRole('button', { name: /Go —/ }).click();
+    await page.getByRole('button', { name: /Go - / }).click();
 
     // Opening cart: Wash is the first step of the TA and the only tool on the
     // skincare shelf that is reachable yet.
@@ -365,7 +364,7 @@ test.describe('Glam Team Makeover — the trolley flows (tuning fix 3)', () => {
 
     await paintTool(page, 'Wash');
     const afterWash = (await shelves(page)).find((s) => s.label === 'Skincare');
-    expect(afterWash.tools, 'a washed face cannot be washed again — Wash is spent').not.toContain('Wash');
+    expect(afterWash.tools, 'a washed face cannot be washed again - Wash is spent').not.toContain('Wash');
     expect(afterWash.tools, 'and the next step of the TA is what is offered instead').toContain('Moisturize');
     await expect(page.getByTitle('Wash', { exact: true })).toHaveCount(0);
 
@@ -378,13 +377,13 @@ test.describe('Glam Team Makeover — the trolley flows (tuning fix 3)', () => {
 
   test('a shelf the child has moved on from folds to a header, and unfolds on a tap', async ({ page }) => {
     const errors = await stage(page, { routine: 'on' });
-    await page.getByRole('button', { name: /Go —/ }).click();
+    await page.getByRole('button', { name: /Go - / }).click();
     await logic(page, throughMakeup);
 
     const folded = await shelves(page);
     const byLabel = Object.fromEntries(folded.map((s) => [s.label, s]));
 
-    // Settled shelves are folded — and folded means GONE from the surface, not
+    // Settled shelves are folded - and folded means GONE from the surface, not
     // merely dimmed: the shades are not in the DOM to be tapped by accident.
     for (const label of ['Cheeks & glow', 'Eyes']) {
       expect(byLabel[label], `${label} should still have a header`).toBeTruthy();
@@ -410,9 +409,9 @@ test.describe('Glam Team Makeover — the trolley flows (tuning fix 3)', () => {
     expect(errors).toEqual([]);
   });
 
-  test('the cart flows top-down — what is still to do sits above what is done', async ({ page }) => {
+  test('the cart flows top-down - what is still to do sits above what is done', async ({ page }) => {
     const errors = await stage(page, { routine: 'on' });
-    await page.getByRole('button', { name: /Go —/ }).click();
+    await page.getByRole('button', { name: /Go - / }).click();
     await logic(page, throughMakeup);
 
     const order = await shelves(page);
@@ -438,11 +437,11 @@ test.describe('Glam Team Makeover — the trolley flows (tuning fix 3)', () => {
 
   test('free play keeps the flat catalogue its own chip promises', async ({ page }) => {
     const errors = await stage(page, { routine: 'free' });
-    await page.getByRole('button', { name: /Go —/ }).click();
+    await page.getByRole('button', { name: /Go - / }).click();
 
     await paintTool(page, 'Wash');
     await expect(page.getByTitle('Wash', { exact: true }),
-      'free play is "all steps open" — nothing is out of sequence to move on from').toHaveCount(1);
+      'free play is "all steps open" - nothing is out of sequence to move on from').toHaveCount(1);
 
     await logic(page, throughMakeup);
     const after = (await shelves(page)).find((s) => s.label === 'Eyes');

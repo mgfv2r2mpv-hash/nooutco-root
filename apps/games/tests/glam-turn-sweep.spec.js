@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Glam Team Makeover — Finding E, the per-tool turn-exchange sweep.
+ * Glam Team Makeover - Finding E, the per-tool turn-exchange sweep.
  *
  * Finding A closed one instance of a class: `Treat spots`, with every spot
  * already patched, was still armable, could change nothing, and at the action
@@ -10,27 +10,27 @@ import { test, expect } from '@playwright/test';
  * and found the class is the catalogue, not the tool:
  *
  *   · with a tool's own work done, re-running its mechanism leaves `ed`
- *     byte-identical — for every one of the 69;
+ *     byte-identical - for every one of the 69;
  *   · 67 of 69 still spent a turn action for it on the next turn;
  *   · 67 of 69 logged `overCap` and set the turn-durable `forfeit='overcap'`
  *     when it was reached for at the cap.
  *
- * The two that already passed are patch and conceal — `_optDead` refuses them
+ * The two that already passed are patch and conceal - `_optDead` refuses them
  * before the cap check, which is exactly the Finding A guard.
  *
  * The cause is that `_admit`'s own contract ("free re-touches of an
  * already-charged article never reach the engine") is enforced through
  * `_charged`, which `syncTT` wipes at every turn boundary. Across the boundary
  * the identical re-touch reads as a first touch. `_optNoOp` answers the
- * question `_charged` was standing in for — would this apply path write one
- * byte the client does not already carry? — and a no-op re-touch is now free in
+ * question `_charged` was standing in for - would this apply path write one
+ * byte the client does not already carry? - and a no-op re-touch is now free in
  * both directions: no charge, and no refusal either.
  *
  * Free is NOT dead. Every tool here stays armable, keeps its target overlay and
  * its "All done ✓", and still echoes on the mirror. Only the ledger changed.
  *
- * Tests 1–3 fail against 93dab9be and d4c0c112. Test 4 passes on all three by
- * design — it is the durability pin for completion across the exchange, which
+ * Tests 1-3 fail against 93dab9be and d4c0c112. Test 4 passes on all three by
+ * design - it is the durability pin for completion across the exchange, which
  * the sweep measured as already correct and which this change must not break.
  *
  * The GlamTT engine and tests/glam-tt-scoring.spec.js are untouched by this work.
@@ -72,7 +72,7 @@ async function stage(page, { routine = 'free', turns = '6' } = {}) {
     const keys = Object.keys(c);
     return keys.length > 0 && keys.every((k) => c[k].ok);
   }, undefined, { timeout: 30000 });
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   return errors;
 }
 
@@ -121,12 +121,12 @@ async function spendToCap(page, kit) {
     The shipped default give-back is "they 'forget' → I ask", so the return leg
     is the learner's own mand (`✓ I asked!`) and then Go. */
 async function roundTrip(page, kit) {
-  await page.getByRole('button', { name: /Done — their turn/ }).click();
+  await page.getByRole('button', { name: /Done - their turn/ }).click();
   const theirs = await ledger(page);
   expect(theirs.actor, 'the partner has the turn').toBe('staff');
   await spendToCap(page, kit);
   await page.getByRole('button', { name: /I asked/ }).click();
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   return theirs;
 }
 
@@ -134,7 +134,7 @@ async function roundTrip(page, kit) {
    inside `logic()`. It resets the LIVE Trial's per-turn counters between tools:
    69 tools on one turn would exhaust the budget after the first handful and
    every later row would read "spent nothing" for the wrong reason. The engine
-   source is untouched — this pokes the running Trial only, and test 2 and 3
+   source is untouched - this pokes the running Trial only, and test 2 and 3
    drive the cap by real play with no poking at all. */
 const SWEEP = `
 const tick=()=>new Promise(r=>setTimeout(r,0));
@@ -173,7 +173,7 @@ return (async()=>{
     rows[rows.length-1].forfeit=T.turn.forfeit||null; }
   return rows; })();`;
 
-test.describe('Glam Team Makeover — a finished tool costs nothing to reach for again', () => {
+test.describe('Glam Team Makeover - a finished tool costs nothing to reach for again', () => {
   test('every tool in the catalogue: work done ⇒ re-running it writes nothing, spends nothing, forfeits nothing', async ({ page }) => {
     test.slow();
     const errors = await stage(page);
@@ -231,13 +231,13 @@ test.describe('Glam Team Makeover — a finished tool costs nothing to reach for
     expect(errors).toEqual([]);
   });
 
-  test('at the cap on a LATER turn, by real play: a finished tool forfeits nothing — an unfinished one still does', async ({ page }) => {
+  test('at the cap on a LATER turn, by real play: a finished tool forfeits nothing - an unfinished one still does', async ({ page }) => {
     const errors = await stage(page, { turns: '10' });
 
     /* The boundary is load-bearing. Within ONE turn `_charged` already makes a
        re-touch free, so a same-turn version of this test passes on 93dab9be
        too and proves nothing. The wash therefore happens on turn 1 and the cap
-       is reached on turn 2 — which is the state the sweep found broken, and the
+       is reached on turn 2 - which is the state the sweep found broken, and the
        state a child actually plays. The partner's kit and the learner's turn-2
        kit share no charge key, so neither turn's work makes the other's free. */
     await paintTool(page, 'Wash');
@@ -250,7 +250,7 @@ test.describe('Glam Team Makeover — a finished tool costs nothing to reach for
     expect(capped.overCap, 'and nothing has been refused yet').toBe(0);
     expect(capped.forfeit).toBe(null);
 
-    /* Reach for the FINISHED wash at the cap — one click, because `arm()` is
+    /* Reach for the FINISHED wash at the cap - one click, because `arm()` is
        where the harm lands: that is the call that used to route a tool which
        can do nothing through `_refuse` → `requestAction`. It can do nothing, so
        it must cost nothing. This is the Finding A guarantee, generalised past
@@ -260,14 +260,14 @@ test.describe('Glam Team Makeover — a finished tool costs nothing to reach for
     expect(afterDead.overCap, 'a finished tool at the cap is not an over-cap violation').toBe(0);
     expect(afterDead.forfeit, 'and never costs the child their independent score').toBe(null);
     expect(await logic(page, `return !!(L.state.armed && L.state.armed.id==='wash');`),
-      'and free is not dead — it still arms, and still shows its target').toBe(true);
+      'and free is not dead - it still arms, and still shows its target').toBe(true);
     await paintTool(page, 'Wash');
     expect((await ledger(page)).forfeit, 'dragging it at the cap is free too').toBe(null);
 
     // The control, in the same breath: a tool that WOULD change something is
     // still refused at the cap, still logged, and still forfeits the turn. The
     // fix makes no-ops free; it does not make the cap optional. The refusal
-    // lands at ARM time, so there is no drag to make — Moisturize never gets a
+    // lands at ARM time, so there is no drag to make - Moisturize never gets a
     // target zone at all, which is itself the assertion.
     await page.getByTitle('Moisturize', { exact: true }).first().click();
     expect(await logic(page, `return L.state.armed;`),
@@ -282,21 +282,20 @@ test.describe('Glam Team Makeover — a finished tool costs nothing to reach for
   });
 
   test('completion survives the exchange in both directions, for every mechanism family', async ({ page }) => {
-    // This one PASSES against 93dab9be and d4c0c112 by design — it is the pin
+    // This one PASSES against 93dab9be and d4c0c112 by design - it is the pin
     // for what the sweep measured as already correct (`ed` is client state and
     // `syncTT` never touches it at a turn boundary), so that making no-op
     // re-touches free cannot quietly un-complete anything.
     const errors = await stage(page, { turns: '6' });
 
-    /* Read what the CHILD sees — the trolley's own face for one representative
-       of each mechanism family — rather than the predicate behind it. `wash`
+    /* Read what the CHILD sees - the trolley's own face for one representative
+       of each mechanism family - rather than the predicate behind it. `wash`
        stands for paint, `mascara` for tap/toggle, `hc_berry` for tap/recolor,
        `ear1` for tap/place, `sh_bob` for choose.
 
        The per-spot pair is read the other way round, as `gonePair` below. By the
        maintainer's ruling a tool whose own mechanism has gone dead disappears
-       from the cart entirely, and `patch`/`conceal` are the only two that can —
-       so for them "completion survived the exchange" means they are still ABSENT
+       from the cart entirely, and `patch`/`conceal` are the only two that can - so for them "completion survived the exchange" means they are still ABSENT
        on the far side, not that a ✓ is still painted on a button. Free play is
        what this test runs in, and free play never settles a shelf, so there is no
        shelf ✓ to read here either; the staged surface's ✓ record row is asserted
@@ -306,7 +305,7 @@ test.describe('Glam Team Makeover — a finished tool costs nothing to reach for
     const read = async () => ({
       ed: await logic(page, `return JSON.stringify(L.state.ed);`),
       /* Just the state the seven representatives own. The whole of `ed` is
-         byte-identical only across the FIRST leg — on the way back the partner
+         byte-identical only across the FIRST leg - on the way back the partner
          has legitimately done their own turn's work, so the durability claim
          has to be scoped to the seven, not to the client as a whole. */
       reps: await logic(page, `const e=L.state.ed; return JSON.stringify({
@@ -340,7 +339,7 @@ test.describe('Glam Team Makeover — a finished tool costs nothing to reach for
       'every family reads done on my turn').toEqual([]);
     expect(mine.gonePair, 'and the dead per-spot pair has left the cart').toEqual([0, 0]);
 
-    await page.getByRole('button', { name: /Done — their turn/ }).click();
+    await page.getByRole('button', { name: /Done - their turn/ }).click();
     const theirs = await read();
     expect(theirs.faces, 'and still reads done on theirs').toEqual(mine.faces);
     expect(theirs.gonePair, 'and the pair does not come back on the handoff').toEqual([0, 0]);
@@ -351,7 +350,7 @@ test.describe('Glam Team Makeover — a finished tool costs nothing to reach for
     // a representative above.
     await spendToCap(page, ['Eyeliner', 'Lip liner', 'Shape brows', 'Brow pencil']);
     await page.getByRole('button', { name: /I asked/ }).click();
-    await page.getByRole('button', { name: /Go —/ }).click();
+    await page.getByRole('button', { name: /Go - / }).click();
 
     const back = await read();
     expect(back.faces, 'and still reads done when it comes back').toEqual(mine.faces);

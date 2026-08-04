@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 // Overridable so a run can avoid colliding with whatever already holds 8788.
 // `reuseExistingServer` will happily adopt an unrelated server on the default
-// port — a plain static server answers most asset requests, so the suite can
+// port - a plain static server answers most asset requests, so the suite can
 // look green while never exercising _worker.js (version injection, the legacy
 // /IDMatchGame → /matching redirects that market's image borrow depends on).
 // Set GAMES_TEST_PORT to force this run's own wrangler instance.
@@ -42,8 +42,7 @@ export default defineConfig({
     // is tight enough that a slow boot looks like a test failure.
     timeout: 180_000,
     // Surface workerd's own output. When the server died mid-run the only
-    // evidence was a bare "Connection refused" on every subsequent test —
-    // piping its stderr is what turned that into a diagnosable crash.
+    // evidence was a bare "Connection refused" on every subsequent test - // piping its stderr is what turned that into a diagnosable crash.
     stdout: 'pipe',
     stderr: 'pipe',
   },

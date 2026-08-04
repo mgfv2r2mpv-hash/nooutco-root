@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Glam Team Makeover — paper-doll fidelity, measured rather than eyeballed.
+ * Glam Team Makeover - paper-doll fidelity, measured rather than eyeballed.
  *
  * The redesign spec's §3.9 sweep ("sprite layers exactly aligned; sweep malformed
  * colorations, clipping, misplacement across all steps & models") is the one item
@@ -9,7 +9,7 @@ import { test, expect } from '@playwright/test';
  * assertion here diffs the real compositor's output on the real page.
  *
  * The findings each test descends from are in
- * docs/eval/glam-team-makeover-playtest.md §8 — F-10 (shirt colour drawn entirely
+ * docs/eval/glam-team-makeover-playtest.md §8 - F-10 (shirt colour drawn entirely
  * under the vanity ledge), F-11 (one fixed hitbox table shared by four
  * differently-proportioned faces), F-16 (blemish contrast) and the §8 notes on
  * target labels and "Keep painting… 100%".
@@ -86,8 +86,7 @@ const HELPERS = `
   /* Switching model also has to wait for that model's hair masks to decode:
      until they do, \`_skinPool\` returns null and \`_spots\` falls back to the
      RAW pool, so a measurement taken in that window reads spot positions the
-     compositor has already stopped painting at. (Latent before the refresh —
-     it only surfaced once m1 left the roster and m2 became the first model
+     compositor has already stopped painting at. (Latent before the refresh - it only surfaced once m1 left the roster and m2 became the first model
      measured, with no earlier model's cycle to cover the decode.) */
   const setModel = async (m) => {
     await new Promise(r => L.setState({ model:m, ed:L.freshEd('person') }, r));
@@ -101,7 +100,7 @@ const HELPERS = `
     return n ? { n, pct:n/(W*H)*100, t:t/H*100, b:bt/H*100, l:l/W*100, r:r/W*100 } : null; };
 `;
 
-test.describe('Glam Team Makeover — paper-doll fidelity', () => {
+test.describe('Glam Team Makeover - paper-doll fidelity', () => {
   test('F-11 · every tool paints inside its own target box, on every roster model', async ({ page }) => {
     test.setTimeout(180000); // every roster model × tool composite, diffed pixel by pixel
     const errors = await stage(page);
@@ -130,7 +129,7 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
     expect(rows.length).toBe(roster.length * 14);
     for (const r of rows) {
       const where = `${r.model}/${r.key}`;
-      // A tool that paints nothing is its own defect — a charged action with no result.
+      // A tool that paints nothing is its own defect - a charged action with no result.
       expect(r.painted, `${where} should change pixels at all`).not.toBeNull();
       expect(r.box, `${where} should have a target box`).not.toBeNull();
       // The whole point: the box the child is told to work in must contain the
@@ -189,8 +188,8 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
     expect(res.error).toBeUndefined();
     for (const [m, v] of Object.entries(res.models)) {
       expect(v.total, `${m}: the shirt tool should repaint the tee`).toBeGreaterThan(500);
-      // Before the fix this was 0 on m1/m3/m4 — the ledge's opaque body began at
-      // page-Y 689 and the shirt art paints at 728–752.
+      // Before the fix this was 0 on m1/m3/m4 - the ledge's opaque body began at
+      // page-Y 689 and the shirt art paints at 728-752.
       expect(v.visible, `${m}: shirt pixels should land above the ledge`).toBeGreaterThan(200);
       expect(v.pct, `${m}: only ${v.pct.toFixed(1)}% of the shirt is on screen`).toBeGreaterThan(15);
       // …while the ledge still does its job of burying the doll's hard bottom cut.
@@ -224,8 +223,8 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
       return out;
     })();`);
 
-    // Baseline before the fix: 1.06–1.67 : 1 on every spot, across every
-    // model — the eval flagged m3/m4 but the numbers indicted every model.
+    // Baseline before the fix: 1.06-1.67 : 1 on every spot, across every
+    // model - the eval flagged m3/m4 but the numbers indicted every model.
     for (const [m, ratios] of Object.entries(res)) {
       expect(ratios.length, `${m} should seed three spots`).toBe(3);
       for (const r of ratios) {
@@ -234,12 +233,12 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
     }
   });
 
-  /* Refresh fix 2 — the blemishes read as gentle, not clinical.
+  /* Refresh fix 2 - the blemishes read as gentle, not clinical.
      F-16 above pins the VALUE and cannot move: at skin L≈0.20 a 3:1 dark target
      has to sit near L≈0.02, so "softer" could never have meant "paler". It means
      a softer FORM, and the form is what this measures. The harsh version drew a
      crisp filled disc, a near-black rim STROKE around it and a specular gloss dot
-     offset up-left — the three cues that made it read as a pustule rather than a
+     offset up-left - the three cues that made it read as a pustule rather than a
      bit of skin to take care of. Each leaves its own signature in the radial
      profile of the paint, and the profile is what the assertions below read:
 
@@ -255,7 +254,7 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
      whatever the skin underneath was already doing. A raw against-the-skin
      profile is far too noisy to assert on: the face's own shading swings ±0.09
      across a single spot, which swamps everything above. */
-  test('refresh · blemishes are soft — the paint decays, with no rim, cliff or gloss', async ({ page }) => {
+  test('refresh · blemishes are soft - the paint decays, with no rim, cliff or gloss', async ({ page }) => {
     test.setTimeout(120000);
     const errors = await stage(page);
 
@@ -280,7 +279,7 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
           const inkLum = lum(parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16));
           /* COVERAGE, not raw luminance delta. A paint of alpha a over skin s
              lands at s + a·(ink − s), so the raw delta scales with how far the
-             skin under THAT pixel already is from the ink — and the face's own
+             skin under THAT pixel already is from the ink - and the face's own
              shading moves that by ±10% inside a single spot, which is enough to
              fake a rim. Dividing it back out leaves the compositor's actual
              alpha, which is a property of the brush alone. Pixels whose skin is
@@ -312,7 +311,7 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
       spots.forEach((s, i) => {
         const where = `${m}/spot${i}`;
         // coverage per ring, in order. A ring with too few usable samples is
-        // dropped rather than guessed at — an unmeasurable ring is not a defect.
+        // dropped rather than guessed at - an unmeasurable ring is not a defect.
         const prof = s.rings
           .map((r, k) => (r && r.n >= (k ? 8 : 1) ? { f: R[k], a: r.mean, lo: r.lo } : null))
           .filter(Boolean);
@@ -320,33 +319,33 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
           .toBeGreaterThan(R.length * 0.7);
         const peak = Math.max(...prof.map((x) => x.a));
 
-        // painted at all — a target nobody can see is not a target
+        // painted at all - a target nobody can see is not a target
         expect(peak, `${where}: the blemish barely paints anything`).toBeGreaterThan(0.5);
 
-        // NO CLIFF — a soft falloff never sheds most of itself in one twentieth of
+        // NO CLIFF - a soft falloff never sheds most of itself in one twentieth of
         // a radius. The filled disc did exactly that: .90 → .12 in a single step.
         for (let k = 1; k < prof.length; k++) {
           const drop = prof[k - 1].a - prof[k].a;
           expect(drop, `${where}: coverage falls ${(drop * 100).toFixed(0)} points between `
-            + `r×${prof[k - 1].f} and r×${prof[k].f} — that is a hard edge, not a falloff`)
+            + `r×${prof[k - 1].f} and r×${prof[k].f} - that is a hard edge, not a falloff`)
             .toBeLessThan(0.35);
         }
 
-        // NO RIM — nothing further out is more covered than everything inside it.
+        // NO RIM - nothing further out is more covered than everything inside it.
         // The stroked outline was drawn in a darker ink than the core it ringed,
         // so it reads as coverage above 1: impossible for a single soft brush.
         let strongestInside = Infinity;
         for (const x of prof) {
           if (x.f < 0.15) { strongestInside = Math.min(strongestInside, x.a); continue; }
           expect(x.a, `${where}: r×${x.f} (${x.a.toFixed(3)}) is more covered than the paint `
-            + `inside it (${strongestInside.toFixed(3)}) — that is a stroked outline`)
+            + `inside it (${strongestInside.toFixed(3)}) - that is a stroked outline`)
             .toBeLessThanOrEqual(strongestInside + 0.08);
           strongestInside = Math.min(strongestInside, Math.max(x.a, 0));
         }
 
         // nothing anywhere swings back past the bare skin
         for (const x of prof) {
-          expect(x.lo, `${where}: negative coverage at r×${x.f} — paint going the wrong way`)
+          expect(x.lo, `${where}: negative coverage at r×${x.f} - paint going the wrong way`)
             .toBeGreaterThan(-0.1);
         }
 
@@ -399,7 +398,7 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
 
   test('target labels name the tool\'s mechanic, and a finished step stops nagging', async ({ page }) => {
     await stage(page);
-    await page.getByRole('button', { name: /Go —/ }).click();
+    await page.getByRole('button', { name: /Go - / }).click();
 
     // Eyeliner/mascara/lip liner are single-tap tools that share the eyes and lips
     // zones with drag tools; the old zone-owned label told the child to "Drag
@@ -429,8 +428,8 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
   /* ── TUNING pass, fix 4a ────────────────────────────────────────────────────
      The maintainer found the lip liner speckled with little squares along the
      seam where the top and bottom lip meet, bunched toward one corner. The cause
-     was in the mask, not the brush: the lip region is not simply connected — the
-     seam is drawn as a thin low-green gap — so "is a neighbour outside the lip?"
+     was in the mask, not the brush: the lip region is not simply connected - the
+     seam is drawn as a thin low-green gap - so "is a neighbour outside the lip?"
      answered YES in the middle of the mouth. A liner traces the OUTER silhouette
      and nothing else, which is what this test states. */
   test('T4a · the lip liner traces the silhouette, never the seam inside the mouth', async ({ page }) => {
@@ -488,7 +487,7 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
      Colored contacts used to fill a disc sized off the FACE anchor
      (`min(eyeW,eyeH)·0.58`) rather than off the art, so the colour ran past the
      iris onto the sclera and down over the lower lid margin. The recolour is now
-     built in the sprite's own frame and clipped to `_irisBox` — the iris circle
+     built in the sprite's own frame and clipped to `_irisBox` - the iris circle
      intersected with the lid line. Note the assertions are taken against
      `_irisBox` itself, not against a copy of IRISCFG: a bound the test re-derives
      by hand is a bound that drifts the first time the table moves. */
@@ -543,18 +542,18 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
     expect(errors).toEqual([]);
   });
 
-  /* ── T4c / T4d / T4e — the three procedural cosmetics ──────────────────────
+  /* ── T4c / T4d / T4e - the three procedural cosmetics ──────────────────────
      These three tools are not sprites and not mask recolours: each is a filled
      ellipse with a gradient in it, so "is it malformed?" is a question about the
      SHAPE OF ITS FOOTPRINT, measured against the same face without the tool.
      `FOOT` below returns that shape per side of the face:
-       · ecc   — anisotropy of the delta-weighted second-moment tensor. 0 for a
+       · ecc - anisotropy of the delta-weighted second-moment tensor. 0 for a
                  circle, → 1 for a line. This is the "is the blush a disc?"
                  number, and unlike a bbox ratio it does not depend on where the
                  ellipse happens to land on the pixel grid.
-       · theta — that tensor's principal angle in degrees, +y down, so a sweep
+       · theta - that tensor's principal angle in degrees, +y down, so a sweep
                  whose OUTER end lifts toward the temple has theta·side < 0.
-       · maxComp — the most connected components the smoothed footprint splits
+       · maxComp - the most connected components the smoothed footprint splits
                  into anywhere in a sweep of level sets. One blob can never
                  exceed 1; two overlapping blobs with different cores separate at
                  some level, which is exactly the patchiness of the retired
@@ -569,11 +568,11 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
          which are the entire defect. That mistake was made during this pass and
          the numbers it produced looked mild.
        · "pixels the mascara sprite changes, minus an elliptical eyeball" leaks
-         the sclera's sharp corner tips into the mask — an ellipse is a poor fit
-         for an almond aperture — and those tips are pure white, so the mask
-         manufactures 42–60 defective pixels per model that are not on a lash.
+         the sclera's sharp corner tips into the mask - an ellipse is a poor fit
+         for an almond aperture - and those tips are pure white, so the mask
+         manufactures 42-60 defective pixels per model that are not on a lash.
 
-     So the geometry comes from the SPRITE FILE instead — `glam.png` as it ships,
+     So the geometry comes from the SPRITE FILE instead - `glam.png` as it ships,
      read straight off the decoded image. A sprite pixel is lash ink when it is
      opaque and dark; a canvas pixel joins the mask when at least `cover` of what
      the art puts under it is that ink, mapped through `_irisBox`, the same
@@ -581,11 +580,11 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
      every model's eye size instead of restating a transform that can drift.
 
      The one thing "opaque and dark" would wrongly catch is the IRIS and pupil,
-     so the iris comes out — as a CIRCLE, off `_irisBox`'s own cx/cy/r, which is
+     so the iris comes out - as a CIRCLE, off `_irisBox`'s own cx/cy/r, which is
      the same circle `_contactCanvas` clips a coloured contact to. A circle is
      right here and an ellipse was wrong for the aperture: the iris really is
      round, the aperture really is an almond. The sclera, the waterline and the
-     catchlights need no exclusion at all — they are pale, and pale is not ink.
+     catchlights need no exclusion at all - they are pale, and pale is not ink.
 
      Nothing in this mask comes from the renderer's own A1 machinery, on purpose:
      it has to be computable against the PRE-CHANGE file too, or "this test fails
@@ -706,7 +705,7 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
                area:+(n/(ew*eh)).toFixed(2) };
     };`;
 
-  test('T4c · the eyeshadow is ONE lid gradient — never two blobs meeting in a blotch', async ({ page }) => {
+  test('T4c · the eyeshadow is ONE lid gradient - never two blobs meeting in a blotch', async ({ page }) => {
     test.setTimeout(120000);
     const errors = await stage(page);
 
@@ -730,12 +729,12 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
       const where = `${r.model}/${r.side < 0 ? 'left' : 'right'} lid`;
       // A wash that paints nothing would satisfy "one hot spot" vacuously.
       expect(r.n, `${where}: the eyeshadow should paint the lid`).toBeGreaterThan(400);
-      /* The whole fix. The retired pair — a lid blob in the chosen shade plus a
-         twice-shaded crease rotated across its outer half — split into two hot
-         spots on every model and both sides (measured: at 4–8 of these 12
+      /* The whole fix. The retired pair - a lid blob in the chosen shade plus a
+         twice-shaded crease rotated across its outer half - split into two hot
+         spots on every model and both sides (measured: at 4-8 of these 12
          levels). One gradient, however deep its core, cannot. */
       expect(r.maxComp,
-        `${where}: the footprint splits into ${r.maxComp} hot spots at some level — that is the blotch`)
+        `${where}: the footprint splits into ${r.maxComp} hot spots at some level - that is the blotch`)
         .toBe(1);
     }
     expect(errors).toEqual([]);
@@ -765,34 +764,33 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
       const where = `${r.model}/${r.side < 0 ? 'left' : 'right'} cheek`;
       expect(r.n, `${where}: the blush should paint the cheek`).toBeGreaterThan(500);
       // The retired blob was 0.95ew × 0.9eh on landmarks that are near square,
-      // and measured ecc 0.009–0.051 — a circle to three decimal places.
-      expect(r.ecc, `${where}: ecc ${r.ecc} — the blush is still a disc`).toBeGreaterThan(0.32);
+      // and measured ecc 0.009-0.051 - a circle to three decimal places.
+      expect(r.ecc, `${where}: ecc ${r.ecc} - the blush is still a disc`).toBeGreaterThan(0.32);
       // …but a sweep, not a slash: an upper bound as well.
-      expect(r.ecc, `${where}: ecc ${r.ecc} — the blush has become a stripe`).toBeLessThan(0.80);
+      expect(r.ecc, `${where}: ecc ${r.ecc} - the blush has become a stripe`).toBeLessThan(0.80);
       // Angled up toward the temple, so the OUTER end lifts. theta is measured
       // with +y down, which makes that sign negative once multiplied by the side.
       expect(r.theta * r.side, `${where}: theta ${r.theta}° does not lift toward the temple`)
         .toBeLessThan(-10);
       // Softer, not louder: the peak must not creep back up.
-      expect(r.peak, `${where}: peak delta ${r.peak} — the blush got stronger, not softer`)
+      expect(r.peak, `${where}: peak delta ${r.peak} - the blush got stronger, not softer`)
         .toBeLessThanOrEqual(34);
     }
     expect(errors).toEqual([]);
   });
 
-  /* SECOND PASS — this test now HEALS the blemishes before it measures, and the
+  /* SECOND PASS - this test now HEALS the blemishes before it measures, and the
      bounds below are untouched. `peak` is a delta, and a screen lift is
      `alpha × (255 − substrate)`: over skin at ~174 that is 81 to play with, over
      a blemish core at ~126 it is 129. So the same highlight, at the same
-     strength, measures half again as high wherever it happens to cross a spot —
-     and `freshEd` seeds where the spots go off `Math.random`.
+     strength, measures half again as high wherever it happens to cross a spot - and `freshEd` seeds where the spots go off `Math.random`.
      U2's sweep is longer than the ellipse it replaced and does now reach one on
      m3's right cheek, which read as peak 59 against a bound of 56. Measured at
      that pixel the implied alpha is 0.457, and at the sweep's own skin peak
-     0.506 — against 0.59–0.60 for the ellipse this replaced. The highlight got
+     0.506 - against 0.59-0.60 for the ellipse this replaced. The highlight got
      GENTLER, which is the direction this test asks for; what moved was the
      substrate under it. Healing first measures the tool instead of the spot. */
-  test('T4e · the highlight is smaller and gentler — and still reads as light', async ({ page }) => {
+  test('T4e · the highlight is smaller and gentler - and still reads as light', async ({ page }) => {
     test.setTimeout(120000);
     const errors = await stage(page);
 
@@ -816,22 +814,22 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
     for (const r of rows) {
       const where = `${r.model}/${r.side < 0 ? 'left' : 'right'} cheekbone`;
       /* Footprint in units of one eye's area, so the bound is the same number on
-         every model. The retired pair of plates measured 1.97–2.02 eye-areas per
-         side; the shipped glow measures 0.58–0.59. */
-      expect(r.area, `${where}: the highlight covers ${r.area} eye-areas — still a plate`)
+         every model. The retired pair of plates measured 1.97-2.02 eye-areas per
+         side; the shipped glow measures 0.58-0.59. */
+      expect(r.area, `${where}: the highlight covers ${r.area} eye-areas - still a plate`)
         .toBeLessThan(1.15);
       // Both bounds matter (T5's lesson): "it glows" passes at the strength that
       // was rejected unless the test also says how much is too much.
-      expect(r.area, `${where}: the highlight covers only ${r.area} eye-areas — it has lost its impact`)
+      expect(r.area, `${where}: the highlight covers only ${r.area} eye-areas - it has lost its impact`)
         .toBeGreaterThan(0.25);
-      expect(r.peak, `${where}: peak lift ${r.peak} — the highlight is still harsh`).toBeLessThan(56);
-      expect(r.peak, `${where}: peak lift ${r.peak} — the highlight no longer reads as light`)
+      expect(r.peak, `${where}: peak lift ${r.peak} - the highlight is still harsh`).toBeLessThan(56);
+      expect(r.peak, `${where}: peak lift ${r.peak} - the highlight no longer reads as light`)
         .toBeGreaterThan(26);
     }
     expect(errors).toEqual([]);
   });
 
-  /* ── U1 / U2 — the highlight's falloff and its silhouette ───────────────────
+  /* ── U1 / U2 - the highlight's falloff and its silhouette ───────────────────
      T4e settled how BIG the highlight is and how HARD it hits, and the
      maintainer accepted both. What came back after it shipped was two things
      T4e never measured:
@@ -839,41 +837,40 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
        U1 · "the fade-off needs to start closer to center". The raised cosine is
             still ~85 % of peak a quarter of the way out, so a bright plateau
             sits inside the shape and the plateau's own edge is what reads as a
-            rim. Neither `area` nor `peak` can see that — a plateau and a glow of
+            rim. Neither `area` nor `peak` can see that - a plateau and a glow of
             the same footprint and the same peak score identically on both.
        U2 · "the shape should be like two mirrord kidney beans, almost, tracking
             the 'turn' of the outer convergence of the eye socket and the
             cheekbone". One ellipse per cheek is a lozenge at every rotation.
 
-     `SWEEP` measures the CHEEK sweep alone — the `hl` tool also lays a stripe
+     `SWEEP` measures the CHEEK sweep alone - the `hl` tool also lays a stripe
      down the nose bridge, and the W/2 side split drops half that stripe into
      each side's footprint, which would bend the spine of anything measured
      there. A band of ±0.8 eye-widths around the eye midpoint is excluded: wider
      than the stripe (±0.20 ew), clear of the sweep (inner edge ~1.5 ew out).
 
-       bowR  answers U2. The spine — the delta-weighted mean cross-offset per bin
-             along the footprint's own principal axis — is fitted with a
+       bowR  answers U2. The spine - the delta-weighted mean cross-offset per bin
+             along the footprint's own principal axis - is fitted with a
              quadratic, and bowR is the arc's mid-point deviation from its chord
              over that chord. An ellipse has a straight spine at EVERY rotation
              and EVERY aspect, so no ellipse can score here however it is tilted;
              only a genuinely curved silhouette can.
        bowS  is that bow's direction. Mirroring a shape flips the principal axis
-             and leaves the cross-axis alone, so two true mirrors agree on it —
-             which is the assertion that the sweeps are mirrored and not merely
+             and leaves the cross-axis alone, so two true mirrors agree on it - which is the assertion that the sweeps are mirrored and not merely
              both present.
        core  and r50 answer U1: the share of the footprint at ≥70 % of peak, and
              sqrt(A50/A10), the equivalent radius of the ≥50 % region over the
              ≥10 % one. Both read 1.0 for a top hat and fall as the fade moves
-             inward. Blemishes are HEALED first — `freshEd` seeds them off
+             inward. Blemishes are HEALED first - `freshEd` seeds them off
              `Math.random`, and screening cream over a near-opaque dark dot lifts
              it ~3.5× as far as it lifts skin, so an unlucky seed under the sweep
              moves `peak` by a third and drags every peak-relative ratio with it.
 
      Measured over 3 models × 2 sides × 3 engines, before and after:
-       bowR  0.0002–0.0022  →  0.1065–0.1144
+       bowR  0.0002-0.0022  →  0.1065-0.1144
        bowS  mixed (noise)  →  −1 on all 18
-       core  0.1746–0.1896  →  0.0788–0.1235
-       r50   0.6162–0.6344  →  0.5021–0.5614
+       core  0.1746-0.1896  →  0.0788-0.1235
+       r50   0.6162-0.6344  →  0.5021-0.5614
      Every bound below is two-sided, per T5's lesson: a one-sided "it curves"
      passes just as well for a hook, and a one-sided "it fades" passes for a
      shape that has faded away to nothing. */
@@ -947,7 +944,7 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
       const L2 = L;
       ${HELPERS}
       ${SWEEP}
-      /* Blemishes healed on BOTH frames — see the note above. */
+      /* Blemishes healed on BOTH frames - see the note above. */
       const heal = () => setEd((ed) => { ed.pimples = (ed.pimples||[]).map(() => 2); });
       const out = [];
       for (const m of window.GlamStory.MODELS) {
@@ -971,60 +968,60 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
       // A sweep that paints nothing would satisfy every shape bound vacuously.
       expect(r.n, `${where}: the highlight should paint the cheekbone`).toBeGreaterThan(200);
 
-      // U2 — the silhouette curves. The retired ellipse measured 0.0002–0.0022
+      // U2 - the silhouette curves. The retired ellipse measured 0.0002-0.0022
       // on every model, side and engine; no ellipse can do better, at any tilt.
-      expect(r.bowR, `${where}: bowR ${r.bowR} — the sweep's spine is straight, so it is still an ellipse`)
+      expect(r.bowR, `${where}: bowR ${r.bowR} - the sweep's spine is straight, so it is still an ellipse`)
         .toBeGreaterThan(0.055);
       // …a bean, not a fish hook.
-      expect(r.bowR, `${where}: bowR ${r.bowR} — the sweep has curled into a hook`)
+      expect(r.bowR, `${where}: bowR ${r.bowR} - the sweep has curled into a hook`)
         .toBeLessThan(0.20);
 
-      // U1 — the fade starts near the centre. The retired plateau measured
-      // core 0.1746–0.1896 and r50 0.6162–0.6344 across all 18 samples.
-      expect(r.core, `${where}: ${(r.core*100).toFixed(1)}% of the footprint sits at ≥70% of peak — that is the plateau`)
+      // U1 - the fade starts near the centre. The retired plateau measured
+      // core 0.1746-0.1896 and r50 0.6162-0.6344 across all 18 samples.
+      expect(r.core, `${where}: ${(r.core*100).toFixed(1)}% of the footprint sits at ≥70% of peak - that is the plateau`)
         .toBeLessThan(0.150);
-      expect(r.r50, `${where}: r50 ${r.r50} — the brightness still holds flat before it falls`)
+      expect(r.r50, `${where}: r50 ${r.r50} - the brightness still holds flat before it falls`)
         .toBeLessThan(0.590);
       // …but it is still a highlight, not a wisp: a core that keeps fading all
       // the way in would pass both of those and light nothing.
-      expect(r.core, `${where}: only ${(r.core*100).toFixed(1)}% of the footprint is near peak — the glow has no centre left`)
+      expect(r.core, `${where}: only ${(r.core*100).toFixed(1)}% of the footprint is near peak - the glow has no centre left`)
         .toBeGreaterThan(0.030);
-      expect(r.r50, `${where}: r50 ${r.r50} — the highlight has collapsed to a spike`)
+      expect(r.r50, `${where}: r50 ${r.r50} - the highlight has collapsed to a spike`)
         .toBeGreaterThan(0.400);
     }
 
-    /* MIRRORED. Every number above is invariant under a mirror — the principal
-       axis flips, the cross-axis does not — so the two cheeks must agree on all
+    /* MIRRORED. Every number above is invariant under a mirror - the principal
+       axis flips, the cross-axis does not - so the two cheeks must agree on all
        of them. This is what separates "both cheeks have a curved sweep" from
        "the two sweeps are reflections of each other". */
     for (const m of roster) {
       const [l, r] = [-1, 1].map((s) => rows.find((x) => x.model === m && x.side === s));
-      expect(l.bowS, `${m}: the two cheekbone sweeps bow in opposite directions — they are not mirrored`)
+      expect(l.bowS, `${m}: the two cheekbone sweeps bow in opposite directions - they are not mirrored`)
         .toBe(r.bowS);
-      expect(Math.abs(l.bowR - r.bowR), `${m}: bowR ${l.bowR} vs ${r.bowR} — the two sweeps curve differently`)
+      expect(Math.abs(l.bowR - r.bowR), `${m}: bowR ${l.bowR} vs ${r.bowR} - the two sweeps curve differently`)
         .toBeLessThan(0.02);
       expect(Math.abs(l.area - r.area) / ((l.area + r.area) / 2),
-        `${m}: the two sweeps cover ${l.area} vs ${r.area} eye-areas — they are not the same shape`)
+        `${m}: the two sweeps cover ${l.area} vs ${r.area} eye-areas - they are not the same shape`)
         .toBeLessThan(0.10);
     }
 
     expect(errors, `console errors: ${errors.join(' | ')}`).toEqual([]);
   });
 
-  /* ── U3 — the stage fits the composition instead of cropping it ─────────────
+  /* ── U3 - the stage fits the composition instead of cropping it ─────────────
      "We need the game area cleaned and no crops or clips".
 
      The first pass filed this as a 390 px, scroll-dependent problem. It was
      neither. The stage painted the salon backdrop `background-size: cover`
      inside `overflow: hidden`, and `cover` crops on any panel whose aspect ratio
-     differs from the art's — which the panel's, decided by the flex row, never
+     differs from the art's - which the panel's, decided by the flex row, never
      was. It bit a different part at each width: at 1280×860 it cut the mirror's
      gold ring clean through at the panel's top AND bottom edge (176 px each), at
      834×1112 it ran the ring 91 px off both sides, at 390×844 it did both.
 
-     This measures the painted backdrop RECT — worked out from the panel's own
+     This measures the painted backdrop RECT - worked out from the panel's own
      resolved `background-size` / `-position` / `-origin` and the art's natural
-     size, i.e. from the same inputs the browser paints from — against the panel
+     size, i.e. from the same inputs the browser paints from - against the panel
      it is painted into. Uncropped means the rect sits inside the panel on all
      four edges. Screenshots cannot answer this: a ring cut at the panel's edge
      and a ring that happens to end there look identical in a PNG.
@@ -1033,10 +1030,10 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
      satisfiable by shrinking her into a postage stamp, so her share of the
      composition is bounded on BOTH sides: too small and she is unreachable and
      reads as standing across the room, too large and her head leaves the
-     mirror's aperture — which is the crop again, self-inflicted. And the point
+     mirror's aperture - which is the crop again, self-inflicted. And the point
      of the size is that she can be worked on, so she carries an absolute floor
      in rendered px as well, and the smallest box the child is asked to hit is
-     held to WCAG 2.2 SC 2.5.8's 24 CSS px at every width — at 390 px wide that
+     held to WCAG 2.2 SC 2.5.8's 24 CSS px at every width - at 390 px wide that
      is the binding constraint on how small the fit may go. */
   test('U3 · the stage shows the whole client and the whole mirror at every width', async ({ page }) => {
     test.setTimeout(120000);
@@ -1060,7 +1057,7 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
         const cs = getComputedStyle(panel), box = R(panel);
         const im = new Image(); im.src = cs.backgroundImage.match(/url\\("?([^")]+)"?\\)/)[1];
         await im.decode();
-        // the positioning area — the padding box, or the content box when asked
+        // the positioning area - the padding box, or the content box when asked
         const side = (p) => ['Top','Right','Bottom','Left'].map((s) => parseFloat(cs[p.replace('%', s)]) || 0);
         const bd = side('border%Width'), pd = side('padding%');
         const inset = layer(cs.backgroundOrigin, 0) === 'content-box' ? bd.map((v, i) => v + pd[i]) : bd;
@@ -1090,7 +1087,7 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
           share:+(cr.h/art.h).toFixed(3), minTarget:+minTarget.toFixed(1), minArea:Math.round(minArea) };
       };`;
 
-    // Desktop first, then tablet, then iPhone — the spec's §3.9 device order.
+    // Desktop first, then tablet, then iPhone - the spec's §3.9 device order.
     const DEVICES = [
       { tag: 'desktop', width: 1280, height: 860 },
       { tag: 'tablet', width: 834, height: 1112 },
@@ -1122,11 +1119,11 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
       // …and the fit is the SAME fit at every width, not three framings of one
       // room: `cover` gave the client 0.39 of the composition at 1280×860, 0.54
       // at 834×1112 and 0.93 at 390×844.
-      expect(g.share, `${at}: the client is ${g.share} of the composition — a postage stamp in the room`)
+      expect(g.share, `${at}: the client is ${g.share} of the composition - a postage stamp in the room`)
         .toBeGreaterThan(0.55);
-      expect(g.share, `${at}: the client is ${g.share} of the composition — her head leaves the mirror`)
+      expect(g.share, `${at}: the client is ${g.share} of the composition - her head leaves the mirror`)
         .toBeLessThan(0.82);
-      // The client has to stay big enough to WORK ON — a share bound alone is
+      // The client has to stay big enough to WORK ON - a share bound alone is
       // satisfied by a composition that has itself shrunk to nothing.
       expect(g.client.h, `${at}: the client is only ${g.client.h}px tall`).toBeGreaterThan(200);
       /* …and so does what the child is asked to hit. WCAG 2.2 SC 2.5.8 asks for
@@ -1149,7 +1146,7 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
     expect(errors, `console errors: ${errors.join(' | ')}`).toEqual([]);
   });
 
-  /* ── THIRD PASS A1 — the completed look and the eyelashes ───────────────────
+  /* ── THIRD PASS A1 - the completed look and the eyelashes ───────────────────
      The maintainer, on the second pass: "do a full run and ensure the completed
      looks are not overdone. special attention to white pixels in the eyelashes."
 
@@ -1159,18 +1156,18 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
      an appointment looking at.
 
      Two causes were found and fixed, both in `_eyeArt` (see `LASH_MATTE`):
-       1. `glam.png` draws every lash twice — a dark stroke and a flat-white one
+       1. `glam.png` draws every lash twice - a dark stroke and a flat-white one
           laid along it. 1848 fully opaque white pixels out in the lash fans.
        2. the winged liner sprite carries a whole eye AND an opaque lid, and is
           drawn over the mascara sprite, so its sclera, its anti-aliased rim and
           its lid each repainted lash roots the liner art does not itself draw.
-     The prompt's leading hypothesis — that U1/U2's `screen`-blended kidney-bean
-     highlight had reached the lash line — is refuted: removing `hl` from the
+     The prompt's leading hypothesis - that U1/U2's `screen`-blended kidney-bean
+     highlight had reached the lash line - is refuted: removing `hl` from the
      completed look moves none of these numbers at all. The bean is untouched.
 
      HAIR SHAPE is deliberately left at the model's own. `hair-blonde` puts a
      fringe across m3's eye which lands on 153 lash-core pixels at up to +100 L,
-     and a fringe over a lash is hair, not paint — measuring it here would put
+     and a fringe over a lash is hair, not paint - measuring it here would put
      the hairstyle under a test that says "eyelashes". Hair COLOUR is applied. */
   const COMPLETED = `(ed) => {
     ed.cov.wash=1; ed.cov.moist=1; ed.pimples=(ed.pimples||[]).map(()=>2);
@@ -1196,7 +1193,7 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
       for (const m of window.GlamStory.MODELS) {
         await setModel(m);
         /* freshEd seeds the three blemishes off Math.random(), so two frames
-           taken from two resets have them in DIFFERENT places — and a spot that
+           taken from two resets have them in DIFFERENT places - and a spot that
            moved reads as a tool brightening pixels it never touched. Pinning the
            seed swung this measurement between 10 and 203 "defective" pixels.
            0.371 is the layout _pickSpots itself falls back to. */
@@ -1230,12 +1227,12 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
 
       /* ── UPPER: the defect, in the maintainer's own terms ── */
       // "white pixels in the eyelashes", stated absolutely. Before this pass the
-      // same geometry carried 74/38/50 of them, peaking at 254 L — the sprite's
+      // same geometry carried 74/38/50 of them, peaking at 254 L - the sprite's
       // own baked highlight, at full opacity, on a lash.
       expect(s.white, `${at}: ${s.white} lash pixels are white (≥190 L); brightest ${s.maxAbs} L`)
         .toBe(0);
       // …and a bound below "white" so a lash cannot creep back up to just under
-      // it. Shipped: 124–129 L.
+      // it. Shipped: 124-129 L.
       expect(s.maxAbs, `${at}: the brightest lash pixel is ${s.maxAbs} L`).toBeLessThan(150);
       /* …and relative to the bare face, which is what the objective asks for.
          Positive at all is expected on a handful: the BARE face wears the plain
@@ -1245,9 +1242,9 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
         .toBeLessThan(60);
 
       /* ── LOWER: a lash that renders as nothing must not pass ── */
-      // the geometry itself has to still exist (shipped 1685–2256 px)…
+      // the geometry itself has to still exist (shipped 1685-2256 px)…
       expect(s.px, `${at}: the lash geometry has collapsed to ${s.px}px`).toBeGreaterThan(1200);
-      // …the pixels have to actually darken (shipped 89.0–90.3 %)…
+      // …the pixels have to actually darken (shipped 89.0-90.3 %)…
       expect(s.inkShare, `${at}: only ${(s.inkShare * 100).toFixed(1)}% of the lash renders as ink`)
         .toBeGreaterThan(0.80);
       // …and by a real amount, not a shade (shipped −79 to −94 L).
@@ -1267,9 +1264,9 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
 
   /* The two cuts have to be discriminating rather than a bleach, or A1 above
      passes by erasing the eye. `natural.png` is the plain eyeball a child sees
-     before any makeup — an accepted surface — and the 'lash' rule must not
+     before any makeup - an accepted surface - and the 'lash' rule must not
      touch it. The liner's 'ink' cut must still carry the wing. */
-  test('A1 · the eye cuts are discriminating — the plain eye and the wing survive', async ({ page }) => {
+  test('A1 · the eye cuts are discriminating - the plain eye and the wing survive', async ({ page }) => {
     test.setTimeout(120000);
     const errors = await stage(page);
 
@@ -1311,8 +1308,7 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
       .toBe(0);
 
     /* CAUSE 1, pinned at the source. The lash-core geometry in the test above is
-       "opaque and dark in the art", so the baked highlight — which is neither —
-       is only visible to it where the downscale smears one into the other. This
+       "opaque and dark in the art", so the baked highlight - which is neither - is only visible to it where the downscale smears one into the other. This
        is the direct guard: after the cut there is no flat-white opaque pixel
        left anywhere in glam.png outside the eye. 1848 of them shipped before. */
     expect(out.glam, 'glam.png was not decoded').toBeDefined();
@@ -1325,7 +1321,7 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
       const r = out[side];
       expect(r, `${side} was not decoded`).toBeDefined();
       // the wing still has its ink (shipped ~3.5k opaque dark pixels each)…
-      expect(r.darkKept, `${side}: the 'ink' cut left only ${r.darkKept} opaque dark pixels — the wing is gone`)
+      expect(r.darkKept, `${side}: the 'ink' cut left only ${r.darkKept} opaque dark pixels - the wing is gone`)
         .toBeGreaterThan(2500);
       // …and none of the lid it used to lay over the glam sprite's lashes.
       expect(r.brightOpaque, `${side}: the 'ink' cut still passes ${r.brightOpaque} opaque pixels at ≥140 L`)
@@ -1334,22 +1330,22 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
     expect(errors, `console errors: ${errors.join(' | ')}`).toEqual([]);
   });
 
-  /* ── THIRD PASS A2 — the completed look must not be overdone ────────────────
+  /* ── THIRD PASS A2 - the completed look must not be overdone ────────────────
      index.html states the intent itself: brows "default-MATCH the hair colour
      (and follow a recolour)". `_browTint` implements that as tint × luminance
-     with a FLOOR — what a pure-black sprite pixel becomes. At 0.42 the floor was
+     with a FLOOR - what a pure-black sprite pixel becomes. At 0.42 the floor was
      most of the brow on a sprite whose fill is one solid colour, which m4's
      shaped brow is: 67 % of m4's pencilled brow rendered at exactly 0.42 × berry
      (42.2 luminance) with the hair it matches at 104. That is a near-black plum
      bar drawn on the face, and on the completed look it is the heaviest thing
-     there — the "flat dark plum" of the report's V2.
+     there - the "flat dark plum" of the report's V2.
 
      This case is deliberately two-sided. Lightening a brow until it disappears
      would satisfy any upper bound on its own, so the brow also has to stay
      deeper than the hair and keep its contrast against the skin around it.
 
      Everything here is measured off the completed look through the renderer's
-     own `_artZones().brows` — the brow sprite's own drawn box — and the mask is
+     own `_artZones().brows` - the brow sprite's own drawn box - and the mask is
      the pixels the PENCIL MOVES rather than a luminance threshold. A threshold
      mask would shrink the moment the ink is lightened, which is exactly the
      change being graded; the footprint is dominated by the cleaned→shaped SHAPE
@@ -1368,7 +1364,7 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
       const out = [];
       for (const m of window.GlamStory.MODELS) {
         await setModel(m);
-        /* Pin the blemish layout for every frame in the comparison — freshEd
+        /* Pin the blemish layout for every frame in the comparison - freshEd
            seeds it off Math.random() and a spot that moved reads as paint. */
         await setEd((ed) => { ed.spotSeed = 0.371; });
         /* The model's NATIVE hair shape. hair-blonde drops a fringe over m3's
@@ -1386,7 +1382,7 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
         /* Which pixels are the brow, in two steps that each rule out one
            impostor.
              · anything the BROW TOOLS move between the untouched bushy brow and
-               the pencilled one is brow, and hair is not — hair is identical in
+               the pencilled one is brow, and hair is not - hair is identical in
                both frames, so a temple strand inside the box drops out. (The
                pencil alone is not enough: on m3 the shaped and cleaned sprites
                nearly coincide and only 435 px move.)
@@ -1395,7 +1391,7 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
                would make a lightened brow measure darker than it is.
            The dark cut is taken against the skin around it rather than as a
            fixed number, and it has ~100 L of headroom (the assertion below pins
-           the ink 30+ L under the skin, shipped 77–112), so it does not move
+           the ink 30+ L under the skin, shipped 77-112), so it does not move
            when the ink is lightened by 17. */
         const skinRef0 = (() => { const v=[];
           for(let y=y0;y<y1;y++) for(let x=x0;x<x1;x++){ const i=(y*W+x)*4;
@@ -1434,22 +1430,22 @@ test.describe('Glam Team Makeover — paper-doll fidelity', () => {
     expect(rows.length).toBe(roster.length);
     for (const r of rows) {
       const at = `${r.model} brow ink (${r.inkPx}px)`;
-      expect(r.inkPx, `${at}: the pencil moved almost nothing — the mask is wrong`).toBeGreaterThan(800);
+      expect(r.inkPx, `${at}: the pencil moved almost nothing - the mask is wrong`).toBeGreaterThan(800);
       expect(r.hairPx, `${r.model}: only ${r.hairPx} hair pixels found`).toBeGreaterThan(5000);
 
       /* ── UPPER: the defect. How dark the darkest ink is ALLOWED to be, as a
             fraction of the hair it matches. Shipped 0.60 / 0.61 / 0.57; against
-            both 2f45dfda and the pre-A2 build, 0.46 / 0.45 / 0.41 — every model
+            both 2f45dfda and the pre-A2 build, 0.46 / 0.45 / 0.41 - every model
             failed, m4 hardest, and the mask moved by under 3 % between them. ── */
       const ratio = r.inkFloor / r.hairMid;
-      expect(ratio, `${at}: the darkest ink is ${r.inkFloor} L against hair at ${r.hairMid} L (${ratio.toFixed(2)}× — a bar of ink, not a brow a shade deeper than the hair)`)
+      expect(ratio, `${at}: the darkest ink is ${r.inkFloor} L against hair at ${r.hairMid} L (${ratio.toFixed(2)}× - a bar of ink, not a brow a shade deeper than the hair)`)
         .toBeGreaterThan(0.53);
 
       /* ── LOWER: a brow lightened until it stops being a brow must not pass ── */
-      // it still has to read DEEPER than the hair (shipped 0.58–0.79×)…
+      // it still has to read DEEPER than the hair (shipped 0.58-0.79×)…
       expect(r.inkMid / r.hairMid, `${at}: the brow's mid tone ${r.inkMid} L is not deeper than the hair's ${r.hairMid} L`)
         .toBeLessThan(0.92);
-      // …and still stand off the skin it is drawn on (shipped 64–76 L below it).
+      // …and still stand off the skin it is drawn on (shipped 64-76 L below it).
       expect(r.skinMid - r.inkMid, `${at}: the brow is only ${(r.skinMid - r.inkMid).toFixed(1)} L below the skin around it`)
         .toBeGreaterThan(30);
     }

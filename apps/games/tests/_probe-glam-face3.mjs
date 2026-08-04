@@ -1,6 +1,6 @@
 /* Measurement harness behind TUNING fixes 4c/4d/4e (eyeshadow / blush /
-   highlight). NOT a spec — it prints numbers, it asserts nothing. The tables in
-   docs/eval/glam-team-makeover-build-report.md §T4c–T4e came out of it.
+   highlight). NOT a spec - it prints numbers, it asserts nothing. The tables in
+   docs/eval/glam-team-makeover-build-report.md §T4c - T4e came out of it.
 
    Run against a server on :8788, once per side of the comparison:
 
@@ -16,21 +16,21 @@
 
    The default VIEW=1280x720 matches what `playwright.config.js` gives the specs
    (Desktop Chrome), which is the viewport any number quoted at a test bound has
-   to come from — a bigger canvas reads a few percent differently.
+   to come from - a bigger canvas reads a few percent differently.
 
    Each tool is measured PER SIDE of the face, as the delta against the same
    face without it:
-     n       — pixels moved
-     peak    — largest single-channel delta
-     area    — n in units of one eye's area, so the figure is model-independent
-     theta   — principal angle of the delta-weighted second-moment tensor, +y down
-     ecc     — anisotropy of that tensor: 0 for a circle, → 1 for a line
-     faint   — share of the footprint under 35 % of peak (soft-edge proxy)
-     lmax    — strict local maxima of the smoothed field (plateau-sensitive; use
-               `maxC` instead — a raised-cosine core ties across many pixels)
-     sweep   — components at 12 level sets from 0.35 to 0.90 of peak, counting
+     n - pixels moved
+     peak - largest single-channel delta
+     area - n in units of one eye's area, so the figure is model-independent
+     theta - principal angle of the delta-weighted second-moment tensor, +y down
+     ecc - anisotropy of that tensor: 0 for a circle, → 1 for a line
+     faint - share of the footprint under 35 % of peak (soft-edge proxy)
+     lmax - strict local maxima of the smoothed field (plateau-sensitive; use
+               `maxC` instead - a raised-cosine core ties across many pixels)
+     sweep - components at 12 level sets from 0.35 to 0.90 of peak, counting
                only components worth 2 % of the footprint
-     maxC    — the worst of those. 1 = one blob. 2 = two blobs meeting.
+     maxC - the worst of those. 1 = one blob. 2 = two blobs meeting.
    Options: PAGE, VIEW=WxH, SHOT=<tag> (writes /tmp/glamface/<tag>-<model>-<tool>.png). */
 import { chromium } from '@playwright/test';
 
@@ -51,7 +51,7 @@ const logic = (page, src) => page.evaluate(({ src }) => {
 /* Every state is cut from ONE baseline `ed` per model, never from a second
    `freshEd()`: `spotSeed` is random, so two fresh draws move the blemishes and
    the diff then measures the blemishes rather than the tool. (Found the hard
-   way — it read as a 120-peak "eyeshadow" spanning half the face.) */
+   way - it read as a 120-peak "eyeshadow" spanning half the face.) */
 const SET = (patch) => `
   const p = ${JSON.stringify(patch)};
   return new Promise((r) => L.setState(() => {

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Glam Team Makeover — turn-exchange: a finished tool has to STAY finished.
+ * Glam Team Makeover - turn-exchange: a finished tool has to STAY finished.
  *
  * Reported from play: "when I cleansed moisturized and applied 3 acne stickers,
  * then removed 2 (turn over), then P2 saw 1 sticker left. However, they were
@@ -10,7 +10,7 @@ import { test, expect } from '@playwright/test';
  *
  * The cause is one predicate answering the wrong question. `Treat spots` is
  * declared `{mech:'patch', step:3}`, and `_optWorkDone` short-circuits on
- * `opt.step`, so the cart asked "is step 3 done?" — `pimples.every(v=>v===2)`,
+ * `opt.step`, so the cart asked "is step 3 done?" - `pimples.every(v=>v===2)`,
  * i.e. every spot CONCEALED. But `patchOne(i)` early-returns unless
  * `pimples[i]===0`, so the tool is a guaranteed no-op from the moment every spot
  * is `>=1`, several actions earlier. In that window it stayed on the cart and
@@ -18,7 +18,7 @@ import { test, expect } from '@playwright/test';
  * `(locked?'🔒 ':(active&&!armed?'✓ ':''))+opt.label`, arming it stripped its own
  * ✓ and disarming put it back. That is the flicker, exactly as described.
  *
- * The two correct predicates already existed — as the `mech==='patch'` and
+ * The two correct predicates already existed - as the `mech==='patch'` and
  * `mech==='conceal'` branches BELOW the `opt.step` short-circuit in
  * `_optWorkDone`, which neither option row can reach. They now live in
  * `_optDead`, which asks the narrower question the cart never asked: can THIS
@@ -28,10 +28,10 @@ import { test, expect } from '@playwright/test';
  * The first build of this fix left a dead tool DISABLED IN PLACE. That was
  * overruled: "changed to make the tool disappear from the cart entirely". So a
  * dead tool now leaves through `_optSpent`, the door the cart already had, and
- * in every routine — "this step is over" is the staged routine's judgement, but
+ * in every routine - "this step is over" is the staged routine's judgement, but
  * "this tool cannot act" is a fact about the client.
  *
- * Which takes its ✓ with it, and the second ruling is "kept — a finished step
+ * Which takes its ✓ with it, and the second ruling is "kept - a finished step
  * should still read as finished". The two are reconciled by moving the ✓ up one
  * level: a settled shelf keeps its header, and its sage ✓, AFTER its last tool
  * has left. So the child sees, in order:
@@ -64,7 +64,7 @@ function logic(page, src) {
 
 /** Boot to the play surface. `turns:4` gives the learner a 10-action budget
     (REQUIRED_ACTIONS 19 over 2 learner turns), which is what lets the whole
-    reported sequence — wash, moisturize, three patches, two conceals — run on
+    reported sequence - wash, moisturize, three patches, two conceals - run on
     ONE turn by real pointer input, the way it was reported. */
 async function stage(page, { routine = 'on', turns = '4' } = {}) {
   const errors = [];
@@ -88,7 +88,7 @@ async function stage(page, { routine = 'on', turns = '4' } = {}) {
     const keys = Object.keys(c);
     return keys.length > 0 && keys.every((k) => c[k].ok);
   }, undefined, { timeout: 30000 });
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   return errors;
 }
 
@@ -109,7 +109,7 @@ async function paintTool(page, name) {
 /** The blinking spot rings the patch/conceal tools put on the face. */
 const spots = (page) => page.locator('div[style*="gtm-pim"]');
 
-/** Tap `n` spot rings for real, one at a time — the ring set re-renders after
+/** Tap `n` spot rings for real, one at a time - the ring set re-renders after
     every tap, so each is re-queried rather than held. */
 async function tapSpots(page, tool, n) {
   await page.getByTitle(tool, { exact: true }).first().click();
@@ -121,14 +121,14 @@ async function tapSpots(page, tool, n) {
 
 /** Walk the exchange back to the learner's own turn by pressing whatever the
     screen is actually offering. In the default give-back mode that is TWO
-    presses — the learner mands for the brush ("✓ I asked!"), which lands on the
-    ready gate, and then takes it ("▸ Go — my turn!"). Only `mine` and `theirs`
+    presses - the learner mands for the brush ("✓ I asked!"), which lands on the
+    ready gate, and then takes it ("▸ Go - my turn!"). Only `mine` and `theirs`
     put a target under the pointer, so the intermediate gate has to be walked
     through rather than assumed away. */
 async function toMyTurn(page) {
   for (let i = 0; i < 5; i++) {
     if (await logic(page, 'return L.state.phase') === 'mine') return;
-    await page.getByRole('button', { name: /I asked|Go — my turn|My turn again|Done — their turn/ })
+    await page.getByRole('button', { name: /I asked|Go - my turn|My turn again|Done - their turn/ })
       .first().click();
   }
   expect(await logic(page, 'return L.state.phase'), 'the exchange came back round').toBe('mine');
@@ -153,7 +153,7 @@ function shelf(page, label) {
   });
 }
 
-test.describe('Glam Team Makeover — a finished tool leaves the cart, and the step still reads as finished', () => {
+test.describe('Glam Team Makeover - a finished tool leaves the cart, and the step still reads as finished', () => {
   test('the reported sequence: patched spots take Treat spots off the cart, and a handoff does not bring it back', async ({ page }) => {
     const errors = await stage(page);
 
@@ -165,7 +165,7 @@ test.describe('Glam Team Makeover — a finished tool leaves the cart, and the s
     expect(await logic(page, 'return L.state.ed.pimples')).toEqual([1, 1, 1]);
 
     // Every spot now carries a patch, so `patchOne` can do nothing for any of
-    // them. The tool has to go BEFORE the conceal step is finished — this is the
+    // them. The tool has to go BEFORE the conceal step is finished - this is the
     // window the step-only predicate could not see.
     await expect(tool(page, 'Treat spots'), 'gone the moment the last spot is patched').toHaveCount(0);
     await expect(spots(page), 'and it took its targets off the face with it').toHaveCount(0);
@@ -179,7 +179,7 @@ test.describe('Glam Team Makeover — a finished tool leaves the cart, and the s
     // Conceal 2 of 3, then hand over. This is the state the partner inherits.
     await tapSpots(page, 'Conceal', 2);
     expect(await logic(page, 'return L.state.ed.pimples')).toEqual([2, 2, 1]);
-    await page.getByRole('button', { name: /Done — their turn/ }).click();
+    await page.getByRole('button', { name: /Done - their turn/ }).click();
 
     // ── the partner's turn: one sticker left, and the dead tool stays gone ────
     await expect(tool(page, 'Treat spots'), 'the handoff does not bring it back').toHaveCount(0);
@@ -198,20 +198,20 @@ test.describe('Glam Team Makeover — a finished tool leaves the cart, and the s
 
     const done = await shelf(page, 'Skincare');
     expect(done.tools, 'nothing is left on the shelf').toEqual([]);
-    expect(done.head, 'but the header stays, carrying the ✓ — the step reads as finished').toContain('✓');
-    expect(done.head, 'and it still says which step it was — "🧼 SKINCARE ✓"').toMatch(/skincare/i);
-    expect(done.headDisabled, 'it is a record, not a drawer — there is nothing behind it to open').toBe(true);
+    expect(done.head, 'but the header stays, carrying the ✓ - the step reads as finished').toContain('✓');
+    expect(done.head, 'and it still says which step it was - "🧼 SKINCARE ✓"').toMatch(/skincare/i);
+    expect(done.headDisabled, 'it is a record, not a drawer - there is nothing behind it to open').toBe(true);
     expect(done.expanded, 'so it does not pose as a disclosure control either').toBe(null);
     expect(done.head, 'and offers no chevron').not.toMatch(/[▾▸]/);
 
     expect(errors).toEqual([]);
   });
 
-  test('free play removes a dead tool too — a fact about the client, not a routine\'s judgement', async ({ page }) => {
+  test('free play removes a dead tool too - a fact about the client, not a routine\'s judgement', async ({ page }) => {
     /* This is the case the disabled-in-place build was built around: `_optSpent`
        is gated on `staged!=='free'`, so a removal that inherited that gate would
        leave free play exactly as broken. The dead branch deliberately does NOT
-       inherit it. Free play still never removes a merely FINISHED tool — Wash
+       inherit it. Free play still never removes a merely FINISHED tool - Wash
        stays on the shelf here, which is what separates the two. */
     const errors = await stage(page, { routine: 'free' });
 
@@ -226,7 +226,7 @@ test.describe('Glam Team Makeover — a finished tool leaves the cart, and the s
 
     await tapSpots(page, 'Conceal', 3);
     expect(await logic(page, 'return L.state.ed.pimples')).toEqual([2, 2, 2]);
-    await expect(tool(page, 'Conceal'), 'every spot clear — Conceal leaves as well').toHaveCount(0);
+    await expect(tool(page, 'Conceal'), 'every spot clear - Conceal leaves as well').toHaveCount(0);
 
     // Free play shelves never SETTLE (that is the staged routine's read), so the
     // Skincare shelf keeps its live tools and its open header rather than
@@ -274,7 +274,7 @@ test.describe('Glam Team Makeover — a finished tool leaves the cart, and the s
     /* The worse half of this defect, and the reason `arm()` keeps its own
        `_optDead` guard now that the button is gone. `arm()` runs
        `_atCapFor(_optKey(opt))` before it arms, and `_optKey` maps patch/conceal
-       to the synthetic `'__perTap__'` — a key `_admit` never writes, since it
+       to the synthetic `'__perTap__'` - a key `_admit` never writes, since it
        charges `item:patch<i>` per spot. So `this._charged['__perTap__']` is
        permanently falsy and `_atCapFor` reduces to `trial.atCap()`. At the cap
        that routed a dead tool into `_refuse` → `requestAction`, which on the
@@ -282,7 +282,7 @@ test.describe('Glam Team Makeover — a finished tool leaves the cart, and the s
        sets the TURN-DURABLE `forfeit='overcap'` flag. A tool that can do nothing
        was able to take the turn's independence away.
 
-       Removal closes the pointer path to it, but not the programmatic one — a
+       Removal closes the pointer path to it, but not the programmatic one - a
        keyboard route, a restored session, or any future caller can still reach
        `arm` with a dead option in hand, so the guard is asserted directly. */
     const errors = await stage(page);
@@ -298,7 +298,7 @@ test.describe('Glam Team Makeover — a finished tool leaves the cart, and the s
     expect(await logic(page, 'return T.turn.overCap')).toBe(0);
     expect(await logic(page, 'return T.turn.forfeit')).not.toBe('overcap');
 
-    // There is no button left to press — that is the ruling — so the reach is
+    // There is no button left to press - that is the ruling - so the reach is
     // made the only way it still can be.
     await expect(tool(page, 'Treat spots')).toHaveCount(0);
     await logic(page, `return L.arm(L.cfg().cats.flatMap(g=>g.options).find(o=>o.id==='patch'));`);

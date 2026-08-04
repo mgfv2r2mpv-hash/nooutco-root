@@ -11,11 +11,11 @@
    `../tailwind.css`, `vendor/` and `assets/` resolve identically and only the
    renderer differs.
 
-   Photographed per roster model, in the state the maintainer described — bare
+   Photographed per roster model, in the state the maintainer described - bare
    face, default hair, routine `free` so no tool has been taken, no recolour, and
    the seeded spot flaws cleared so nothing but the render is in frame:
 
-     browtail-<phase>-<model>.png — a x5 loupe strip, left brow band | right brow
+     browtail-<phase>-<model>.png - a x5 loupe strip, left brow band | right brow
                                     band, spanning the outer brow, the temple and
                                     the hairline.
 
@@ -54,7 +54,7 @@ for (const m of MODELS) {
   await page.getByLabel('Character', { exact: true }).selectOption(m);
   await page.getByLabel('Routine', { exact: true }).selectOption('free');
   await page.getByRole('button', { name: /^▶ Play/ }).click();
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   await page.waitForFunction(painted, undefined, { timeout: 20000 });
   await page.evaluate(async () => {
     const host = document.getElementById('gtm-canvas');

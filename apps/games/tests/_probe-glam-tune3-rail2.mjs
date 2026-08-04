@@ -1,4 +1,4 @@
-/* THIRD PASS · rail correction probe 2 — the WORST CASE, not the case that
+/* THIRD PASS · rail correction probe 2 - the WORST CASE, not the case that
    happens to be on screen.  Not a spec.  Run against a hash-verified :8788:
 
      node tests/_probe-glam-tune3-rail2.mjs
@@ -20,12 +20,12 @@ const DEVICES = [
 /* Every literal `instruction` takes in renderVals, plus the two-digit budget
    form a short `turns` setting produces ("I can do 19 more"). */
 const LINES = [
-  'My turn is ready — tap Go!',
-  'My turn — add some things!',
-  'My turn — I can do 7 more',
-  'My turn — I can do 19 more',
-  'All set — now I hand it over!',
-  'Their turn — I wait 🕐',
+  'My turn is ready - tap Go!',
+  'My turn - add some things!',
+  'My turn - I can do 7 more',
+  'My turn - I can do 19 more',
+  'All set - now I hand it over!',
+  'Their turn - I wait 🕐',
   'Their turn is done',
 ];
 const EYEBROWS = ['MY TURN', 'THEIR TURN'];
@@ -48,7 +48,7 @@ for (const d of DEVICES) {
   await page.getByTitle('Show / hide setup').click();
   await page.getByLabel('Character', { exact: true }).selectOption('m4');
   await page.getByRole('button', { name: /^▶ Play/ }).click();
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   await page.waitForFunction(painted, undefined, { timeout: 20000 });
   await page.waitForTimeout(250);
 
@@ -96,7 +96,7 @@ for (const d of DEVICES) {
   const sg = parseFloat(out.sayGap) || 0;         // eyebrow↔line
   const pg = parseFloat(out.pipGap) || 0;
   const w = (rows, t) => rows.find((r) => r[0] === t)[1];
-  /* The two phases that can actually occur, each at ITS OWN worst string — not
+  /* The two phases that can actually occur, each at ITS OWN worst string - not
      the cross-product, which pairs a my-turn line with a their-turn label. */
   const CASES = [
     ['my turn   ', 'MY TURN', Math.max(...out.lines.filter((l) => !/^Their/.test(l[0])).map((l) => l[1])), 'Actions left', 7],

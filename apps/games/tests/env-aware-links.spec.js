@@ -3,8 +3,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 // Every product ships once per environment. A cross-product link that hardcodes
-// a production origin drags a dev validation pass onto the live site mid-click —
-// silently, because the page it lands on looks identical.
+// a production origin drags a dev validation pass onto the live site mid-click - // silently, because the page it lands on looks identical.
 //
 //   prod   nooutco.me      games.nooutco.me      tools.nooutco.me
 //   dev    d.nooutco.me    d-games.nooutco.me    d-tools.nooutco.me
@@ -85,7 +84,7 @@ test.describe('environment-aware site links', () => {
   });
 
   // A sibling's port is unknowable from localhost, and production is where these
-  // links pointed before the resolver existed — so that is the documented floor,
+  // links pointed before the resolver existed - so that is the documented floor,
   // asserted rather than left to chance.
   test('an unrecognised host falls back to production', async ({ page }) => {
     await pageOn(page, 'd.nooutco.me');

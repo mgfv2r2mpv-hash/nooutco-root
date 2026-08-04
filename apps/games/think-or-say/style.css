@@ -348,8 +348,7 @@
   padding: 4px 12px;
 }
 
-/* The balanced question. Both halves are the same length and the same weight —
-   neither action may be the visually easier one to pick. */
+/* The balanced question. Both halves are the same length and the same weight - neither action may be the visually easier one to pick. */
 #scenario-question {
   font-size: 1.06rem;
   font-weight: 700;

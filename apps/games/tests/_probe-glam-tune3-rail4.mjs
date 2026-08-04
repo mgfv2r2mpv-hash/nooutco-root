@@ -1,4 +1,4 @@
-/* THIRD PASS · rail correction probe 4 — contrast, after the rail got shorter.
+/* THIRD PASS · rail correction probe 4 - contrast, after the rail got shorter.
    Not a spec.  Run against a hash-verified :8788:
 
      node tests/_probe-glam-tune3-rail4.mjs
@@ -8,7 +8,7 @@
    rather than inherited.  For each piece of rail type this reads the element's
    own colour and its vertical centre, resolves the band's painted gradient at
    exactly that y (sRGB interpolation between the declared stops, which is what
-   `linear-gradient` does), and prints the WCAG 2.x contrast ratio — plus the
+   `linear-gradient` does), and prints the WCAG 2.x contrast ratio - plus the
    ratio against the band's darkest stop, which is the worst any of it can be. */
 import { chromium } from '@playwright/test';
 
@@ -56,9 +56,9 @@ for (const d of DEVICES) {
     await page.getByTitle('Show / hide setup').click();
     await page.getByLabel('Character', { exact: true }).selectOption('m4');
     await page.getByRole('button', { name: /^▶ Play/ }).click();
-    await page.getByRole('button', { name: /Go —/ }).click();
+    await page.getByRole('button', { name: /Go - / }).click();
     await page.waitForFunction(painted, undefined, { timeout: 20000 });
-    if (phase === 'their') { await page.getByRole('button', { name: /Done — their turn/ }).click(); }
+    if (phase === 'their') { await page.getByRole('button', { name: /Done - their turn/ }).click(); }
     await page.waitForTimeout(350);
 
     const parts = await page.evaluate(() => {
@@ -91,7 +91,7 @@ for (const d of DEVICES) {
     for (const p of [...parts.parts, parts.pip].filter(Boolean)) {
       if (!p.ink.length) continue;
       const bgMid = sand(p.mid), bgBot = sand(p.bot);
-      console.log(`  ${p.what.padEnd(22)} ink ${hex(p.ink)}  sits ${(p.top * 100).toFixed(0)}–${(p.bot * 100).toFixed(0)}% down the band`);
+      console.log(`  ${p.what.padEnd(22)} ink ${hex(p.ink)}  sits ${(p.top * 100).toFixed(0)} - ${(p.bot * 100).toFixed(0)}% down the band`);
       console.log(`     vs sand at its centre  ${hex(bgMid)}  →  ${ratio(p.ink, bgMid)}:1`);
       console.log(`     vs sand at its foot    ${hex(bgBot)}  →  ${ratio(p.ink, bgBot)}:1`);
       console.log(`     vs the band's darkest  #a98d5d  →  ${ratio(p.ink, [0xa9, 0x8d, 0x5d])}:1`);

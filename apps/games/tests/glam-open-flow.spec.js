@@ -1,14 +1,14 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Glam Team Makeover — the opening flow the refresh introduces:
+ * Glam Team Makeover - the opening flow the refresh introduces:
  *
  *   title screen  →  Start  →  a randomly-drawn client texts in and books an
  *   appointment   →  the salon opens onto the vanity.
  *
  * The clinical spine is untouched by all of this: `window.GlamTT` still receives
  * its actions and its completion exactly as before, and the trial only exists
- * once the salon opens. What these tests pin is the WRAPPER — that the child's
+ * once the salon opens. What these tests pin is the WRAPPER - that the child's
  * route in is one tap, that the BT's setup is reachable but not in the child's
  * way, that the pretext really arrives as a message thread, and that every new
  * child-facing string is swept by the same congruence guard as the outro
@@ -50,7 +50,7 @@ async function bookAppointment(page) {
   await expect(page.getByRole('button', { name: /Open the salon/ })).toBeVisible();
 }
 
-test.describe('opening flow — title → texts → salon', () => {
+test.describe('opening flow - title → texts → salon', () => {
   test('the front door is a title screen with Start, and the clinical setup is not in the way', async ({ page }) => {
     const errors = await boot(page);
 
@@ -59,7 +59,7 @@ test.describe('opening flow — title → texts → salon', () => {
     await expect(page.getByRole('button', { name: /^Start/ })).toBeVisible();
 
     // The BT's setup strip is collapsed: no dropdowns, no ▶ Play, and above all
-    // no character dropdown — the client is drawn at random for the child (D-F).
+    // no character dropdown - the client is drawn at random for the child (D-F).
     await expect(page.getByLabel('Character', { exact: true })).toBeHidden();
     await expect(page.getByLabel('Turns', { exact: true })).toBeHidden();
     await expect(page.getByRole('button', { name: /^▶ Play/ })).toBeHidden();
@@ -76,7 +76,7 @@ test.describe('opening flow — title → texts → salon', () => {
     const errors = await boot(page);
     await page.getByRole('button', { name: /^Start/ }).click();
 
-    // A contact header, then bubbles arriving one at a time — a thread, not a card.
+    // A contact header, then bubbles arriving one at a time - a thread, not a card.
     await expect(page.getByText('Booking the glam team')).toBeVisible();
     await expect(page.getByText(/^Hi glam team!/)).toBeVisible();
     await expect(page.locator('.gtm-dot').first(), 'the next message should be typing').toBeVisible();
@@ -96,7 +96,7 @@ test.describe('opening flow — title → texts → salon', () => {
 
     // …and the salon opens onto the real game surface.
     await page.getByRole('button', { name: /Open the salon/ }).click();
-    await expect(page.getByRole('button', { name: /Go —/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Go - / })).toBeVisible();
     await expect(page.getByText(/MY TURN/)).toBeVisible();
 
     expect(errors, `console/page errors: ${errors.join(' | ')}`).toEqual([]);
@@ -114,11 +114,11 @@ test.describe('opening flow — title → texts → salon', () => {
     await expect(page.getByRole('button', { name: /Open the salon/ })).toBeVisible();
   });
 
-  /* ── TUNING fix 2 — the intro is a handset, paced to be read ──────────────
+  /* ── TUNING fix 2 - the intro is a handset, paced to be read ──────────────
      Maintainer report: "bubbles floating on a plain square card", too fast to
      read, and the dots sat up permanently instead of announcing a message.  */
 
-  test('TUNING 2 · the intro is a phone mockup — bezel, status bar, island, home bar', async ({ page }) => {
+  test('TUNING 2 · the intro is a phone mockup - bezel, status bar, island, home bar', async ({ page }) => {
     const errors = await boot(page);
     await page.getByRole('button', { name: /^Start/ }).click();
     await expect(page.getByText('Booking the glam team')).toBeVisible();
@@ -135,7 +135,7 @@ test.describe('opening flow — title → texts → salon', () => {
     // …and a home indicator under the app.
     await expect(page.locator('.gtm-screen > .gtm-home')).toBeVisible();
 
-    // The thread lives INSIDE the screen — the phone is the frame, not decoration.
+    // The thread lives INSIDE the screen - the phone is the frame, not decoration.
     expect(await page.locator('.gtm-screen .gtm-scroll').count()).toBe(1);
 
     // §8 holds on the new chrome: a real clock would print digits, so the
@@ -179,7 +179,7 @@ test.describe('opening flow — title → texts → salon', () => {
     expect([...sides].sort(), 'the client types on the left AND the glam team types on the right')
       .toEqual(['flex-end', 'flex-start']);
 
-    // BRIEF: the dots are an announcement, not furniture — they are down for a
+    // BRIEF: the dots are an announcement, not furniture - they are down for a
     // real stretch of the run while the message that just landed is read.
     const running = samples.filter((s) => !s.done);
     const quiet = running.filter((s) => !s.side).length;
@@ -198,7 +198,7 @@ test.describe('opening flow — title → texts → salon', () => {
       const el = document.getElementById('gtm-thread');
       return { scrollH: el.scrollHeight, clientH: el.clientHeight, top: el.scrollTop };
     });
-    // Five messages do not fit a handset — which is the case that matters.
+    // Five messages do not fit a handset - which is the case that matters.
     expect(box.scrollH, 'the full thread should overflow the screen at 390 px').toBeGreaterThan(box.clientH);
     // Pinned to the bottom, the way a messages app is.
     expect(box.scrollH - (box.top + box.clientH), 'the newest message must be in view').toBeLessThanOrEqual(2);
@@ -245,7 +245,7 @@ test.describe('opening flow — title → texts → salon', () => {
     await expect(page.getByText(before.name, { exact: true })).toBeVisible();
 
     await page.getByRole('button', { name: /Open the salon/ }).click();
-    await expect(page.getByRole('button', { name: /Go —/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Go - / })).toBeVisible();
 
     const after = await logic(page, 'return {name:L.state.sel.name, model:L.state.sel.model, event:L.state.sel.eventId, painted:L.state.model};');
     expect(after, 'opening the salon must not silently re-roll the client').toMatchObject(before);
@@ -287,7 +287,7 @@ test.describe('opening flow — title → texts → salon', () => {
     expect(drawn).toEqual(['m3']);
   });
 
-  /* TUNING fix 1 — the child must not see a model picker. The stage used to carry
+  /* TUNING fix 1 - the child must not see a model picker. The stage used to carry
      M2/M3/M4 chips in its top-right corner, which let a child swap the client's
      face mid-appointment: it contradicts the pretext (this client texted in and
      booked THIS appointment) and it is a clinical knob on a child-facing surface.
@@ -297,7 +297,7 @@ test.describe('opening flow — title → texts → salon', () => {
     const errors = await boot(page);
     await bookAppointment(page);
     await page.getByRole('button', { name: /Open the salon/ }).click();
-    await expect(page.getByRole('button', { name: /Go —/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Go - / })).toBeVisible();
 
     // No model chip, on the salon surface or anywhere else on the page. The old
     // chips were <button>s labelled with the bare model id, upper-cased.
@@ -317,7 +317,7 @@ test.describe('opening flow — title → texts → salon', () => {
     await boot(page);
     await bookAppointment(page);
     await page.getByRole('button', { name: /Open the salon/ }).click();
-    await page.getByRole('button', { name: /Go —/ }).click();
+    await page.getByRole('button', { name: /Go - / }).click();
 
     const drawn = await logic(page, 'return L.state.sel.model;');
 
@@ -371,7 +371,7 @@ test.describe('opening flow — title → texts → salon', () => {
     await boot(page);
     await bookAppointment(page);
     await page.getByRole('button', { name: /Open the salon/ }).click();
-    await expect(page.getByRole('button', { name: /Go —/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Go - / })).toBeVisible();
 
     await logic(page, 'L.endTrial(); return null;');
     await expect(page.getByRole('button', { name: /Play again/ })).toBeVisible();

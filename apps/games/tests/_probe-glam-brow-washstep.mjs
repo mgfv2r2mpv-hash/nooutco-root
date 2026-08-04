@@ -1,9 +1,9 @@
-/* Finding B — the dull-wash step, i.e. lead 1's second form. REFUTED: 0.0 %.
+/* Finding B - the dull-wash step, i.e. lead 1's second form. REFUTED: 0.0 %.
 
    Hypothesis: on a BARE face `cov('wash')<1`, so paintAvatar lays a '#786654'
    multiply blob over the whole face. `_eyesCanvas` is then composited ON TOP and
    re-writes the base render's own pixels wherever the mask's blue channel is
-   >= 0.12 — which CANCELS the dull blob inside that key and nowhere else. The
+   >= 0.12 - which CANCELS the dull blob inside that key and nowhere else. The
    key's brow lobe is a hard-edged shape, so its boundary becomes a visible step
    in skin tone. The brow state sprite hides most of it; the outer tail, where
    the sprite has tapered away but the key has not, is left showing.
@@ -78,7 +78,7 @@ for (const m of MODELS) {
   await page.getByLabel('Character', { exact: true }).selectOption(m);
   await page.getByLabel('Routine', { exact: true }).selectOption('free');
   await page.getByRole('button', { name: /^▶ Play/ }).click();
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   await page.waitForFunction(painted, undefined, { timeout: 20000 });
 
   console.log(m, 'BARE      ', JSON.stringify(await page.evaluate(measure, [m])));

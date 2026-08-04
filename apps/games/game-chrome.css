@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════════════
-   GAME CHROME — shared header, settings bar, and panel styles
+   GAME CHROME - shared header, settings bar, and panel styles
    Consumed by all games via tailwind.css (imported in tailwind.input.css).
    Individual games keep game-specific CSS in their own style.css.
    ════════════════════════════════════════════════════════════════════ */
@@ -58,7 +58,7 @@ body {
   letter-spacing: var(--tracking-wide);
 }
 
-/* Display mode slider — ○ Simple / ◇ Visual */
+/* Display mode slider - ○ Simple / ◇ Visual */
 .display-control { position: relative; display: inline-flex; align-items: center; flex-shrink: 0; }
 .display-toggle {
   position: relative;
@@ -554,7 +554,7 @@ body.settings-collapsed #extra-panel { display: none !important; }
   filter: none; opacity: 1; transform: scale(1.08);
 }
 
-/* Star variant — the hero treatment for the Token Board enable control */
+/* Star variant - the hero treatment for the Token Board enable control */
 .option-toggle--star { font-weight: var(--weight-bold); padding: 8px 16px; }
 .option-toggle--star[aria-checked="true"] {
   background: var(--amber-50, #fffbeb);

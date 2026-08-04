@@ -17,10 +17,10 @@ import { applyUpload, stableJson } from '../shared/stimuli/library.mjs';
  *
  * The join is by id, and it runs both ways:
  *
- *   • ffc's metadata hangs off library ids — `shared/stimuli/ffc.json` is the
+ *   • ffc's metadata hangs off library ids - `shared/stimuli/ffc.json` is the
  *     source, `ffc/items.json` is its projection, and the game resolves each
  *     item's picture and label from `stimuli.json` at run time
- *   • ffc's art becomes library art — its tree is merged as a *late* source, so
+ *   • ffc's art becomes library art - its tree is merged as a *late* source, so
  *     it fills gaps (T_school had no photographs at all) and never displaces a
  *     picture another game is already serving
  *
@@ -129,7 +129,7 @@ test('ffc more than keeps the real art it had, and says which words gained it', 
 test('a late source loses every tie, and still beats a placeholder glyph', () => {
   // Asserted on the rule rather than on today's data: ffc happens not to
   // out-rank anything right now, so a build that dropped `late` produces a
-  // byte-identical library — and every assertion over the committed files
+  // byte-identical library - and every assertion over the committed files
   // passes. The next time ffc names a file another tree also has, it would not.
   const candidate = (over) => ({
     classification: 'art', late: false, indexed: false, extension: '.jpg', source: 'clock',
@@ -143,7 +143,7 @@ test('a late source loses every tie, and still beats a placeholder glyph', () =>
   expect(compareRank(lateButSelected, glyph), 'but a late photograph still fills a gap').toBeLessThan(0);
 });
 
-test('a picture only ffc supplies filled a gap — it never took another game over', () => {
+test('a picture only ffc supplies filled a gap - it never took another game over', () => {
   const recordsByStimulus = new Map();
   for (const [servedPath, record] of Object.entries(PROVENANCE)) {
     if (!recordsByStimulus.has(record.stimulus)) recordsByStimulus.set(record.stimulus, []);
@@ -158,7 +158,7 @@ test('a picture only ffc supplies filled a gap — it never took another game ov
     if (!carrying.length || carrying.some((r) => !r.servedPath.startsWith(FFC_PREFIX))) continue;
 
     // The published picture comes only from ffc. That is legitimate exactly
-    // when no other tree had real art for this stimulus — every one of their
+    // when no other tree had real art for this stimulus - every one of their
     // files must have been dropped as a placeholder glyph, not as losing art.
     const others = records.filter((r) => !r.servedPath.startsWith(FFC_PREFIX));
     const lost = others.filter((r) => r.droppedBecause && r.droppedBecause !== 'placeholder-glyph');
@@ -183,7 +183,7 @@ test('every file in ffc\'s tree is accounted for', () => {
 
 test('no stimulus lost art when ffc joined', () => {
   // The high-water mark for every category the merged games ever had. ffc is a
-  // late source, so this can only ever move up — a drop means the join changed
+  // late source, so this can only ever move up - a drop means the join changed
   // a ranking it was supposed to sit underneath.
   const best = {};
   for (const game of LIBRARY.sources) {
@@ -281,13 +281,13 @@ test('a pre-join target selection survives a reload', async ({ page }) => {
   );
   await page.goto('/ffc/');
   // The tag dropdown is built from the *eligible target* pool, so a filter that
-  // migrated to nothing renders "(no tags available)" — waiting on a real tag
+  // migrated to nothing renders "(no tags available)" - waiting on a real tag
   // means the migration has already had its chance.
   await expect(page.locator('#sel-tag option').first()).not.toHaveText('(no tags available)');
 
   // Read the result out of the shared settings store, not out of `ffcgSettings`.
   // Since ffc adopted the store, `foldLegacy()` reads the retired key once and
-  // never writes it again — so the retired key still holds the PRE-remap ids,
+  // never writes it again - so the retired key still holds the PRE-remap ids,
   // and the remap `loadItems()` performs lands in the store's working config.
   const saved = await page.evaluate(
     (key) => JSON.parse(window.localStorage.getItem(key) || 'null'),

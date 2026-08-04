@@ -1,13 +1,12 @@
 /*
- * build_index.mjs — re-house the Glam Team Makeover design-canvas game into the
+ * build_index.mjs - re-house the Glam Team Makeover design-canvas game into the
  * repo as a faithful, vendored bespoke game.
  *
  * Input : tools/glam-art/staging_game.html  (the raw `Glam Team Makeover.dc.html`
- *         pulled from the Claude Design project — an <x-dc> React/dc-runtime doc)
+ *         pulled from the Claude Design project - an <x-dc> React/dc-runtime doc)
  * Output: apps/games/glam-team-makeover/index.html
  *
- * Source layout (verified): the runtime reads TWO sibling nodes —
- *   <x-dc> …reactive template… </x-dc>
+ * Source layout (verified): the runtime reads TWO sibling nodes - *   <x-dc> …reactive template… </x-dc>
  *   <script type="text/x-dc" data-dc-script data-props="…"> class … extends DCLogic </script>
  * Both are preserved byte-for-byte here; only the outer chrome is swapped:
  *   - drop the design-canvas <helmet> wrapper; hoist its <style> into real <head>
@@ -53,7 +52,7 @@ if (hashCount !== 1) throw new Error(`build_index: expected exactly 1 href="#", 
 payload = payload.replace('href="#"', 'href="/"');
 
 // The social-only art gate is now baked into staging (renderVals personArt reads
-// s.theme==='social' && this.hasPersonArt()) — the Canvas2D compositor rewrite
+// s.theme==='social' && this.hasPersonArt()) - the Canvas2D compositor rewrite
 // made the old string patch obsolete. Hero/pet stay on their procedural SVG.
 
 // M1 scope: ship the makeover (social/person) only. Remove the Pet show +
@@ -62,12 +61,12 @@ payload = payload.replace('href="#"', 'href="/"');
 // default, and the game logic still supports the other themes for M2.
 for (const t of ['pet', 'hero']) {
   const re = new RegExp(`<option value="${t}">[^<]*</option>`);
-  if (!re.test(payload)) throw new Error(`build_index: theme option '${t}' not found — settings markup changed`);
+  if (!re.test(payload)) throw new Error(`build_index: theme option '${t}' not found - settings markup changed`);
   payload = payload.replace(re, '');
 }
 
 // ZONES.person + pop-spot hitboxes are now authored directly in staging for the
-// eye-anchored (Canvas2D) frame — pop positions come from genEntry face anchors
+// eye-anchored (Canvas2D) frame - pop positions come from genEntry face anchors
 // (this._spotPct). The old per-model re-tune + spotAnchors patches are obsolete.
 
 // Post-conditions: both nodes survived.
@@ -105,7 +104,7 @@ ${gameStyle}
 ${payload}
 
 <!-- Admin gear → GM hub. _worker.js rewrites the \`const ADMIN_SECRET_HASH = "…"\`
-     line per request (regex needs the \`const\` form — matches every other game). -->
+     line per request (regex needs the \`const\` form - matches every other game). -->
 <script>
   const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
   window.ADMIN_SECRET_HASH = ADMIN_SECRET_HASH;

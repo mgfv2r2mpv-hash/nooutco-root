@@ -1,4 +1,4 @@
-# Build-time art pipeline working files — not part of the served repo.
+# Build-time art pipeline working files - not part of the served repo.
 # The uncompressed masters live on the user's machine; the committed artifacts
 # are the processed layer PNGs under apps/games/glam-team-makeover/assets/art/.
 

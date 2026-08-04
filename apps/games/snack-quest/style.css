@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════════════
-   Snack Quest — storybook picture-book skin over the shared game chrome.
+   Snack Quest - storybook picture-book skin over the shared game chrome.
 
    Direction: warm cream paper, ink-drawn edges, chunky rounded tiles that
    sit slightly off-grid, and one saturated accent per surface. The scene
@@ -7,7 +7,7 @@
    eye lands on the picture.
 
    Layout that has to agree with the artwork (ground line, sprite anchors)
-   is computed in game.js from the measured alpha bounding boxes — CSS only
+   is computed in game.js from the measured alpha bounding boxes - CSS only
    supplies the transforms it drives.
    ════════════════════════════════════════════════════════════════════ */
 
@@ -252,7 +252,7 @@ body {
 }
 .stage-layer { position: absolute; inset: 0; pointer-events: none; }
 
-/* Our friend — three nested transforms so the walk (x), the waddle
+/* Our friend - three nested transforms so the walk (x), the waddle
    (rotate + bob) and the facing flip never fight over one property. */
 .walker {
   position: absolute;
@@ -296,7 +296,7 @@ body {
 .food.is-dropping  { animation: sq-food-drop 420ms ease-in forwards; }
 
 /* The snack drops in from above and settles with one small bounce. It used to
-   rise 14px over 460ms, which was too slight and too quick to be noticed — and
+   rise 14px over 460ms, which was too slight and too quick to be noticed - and
    it has to be noticed, because it is the thing the round is played for. */
 @keyframes sq-food-in {
   0%   { opacity: 0; transform: translate3d(var(--fx), calc(var(--fy) - 58px), 0) scale(0.55); }
@@ -305,7 +305,7 @@ body {
   100% { opacity: 1; transform: translate3d(var(--fx), var(--fy), 0) scale(1); }
 }
 /* A wrong answer: this snack tips over and falls out of the scene. Downward and
-   away, so it reads as lost — deliberately not the collected pop, which lifts. */
+   away, so it reads as lost - deliberately not the collected pop, which lifts. */
 @keyframes sq-food-drop {
   0%   { opacity: 1; transform: translate3d(var(--fx), var(--fy), 0) rotate(0deg) scale(1); }
   30%  { transform: translate3d(var(--fx), calc(var(--fy) + 4px), 0) rotate(-16deg) scale(0.98); }
@@ -504,7 +504,7 @@ body {
   75% { transform: translateX(7px); }
 }
 
-/* Technician scoring row — deliberately below the picture and inset from the
+/* Technician scoring row - deliberately below the picture and inset from the
    edges a learner reaches for, with a calm palette so "Incorrect" never reads
    as a punisher. */
 .score-row {
@@ -654,7 +654,7 @@ body {
   .score-btn { min-width: 104px; font-size: var(--text-md); }
 }
 
-/* ── Reduced motion — position changes only, no rotation or bob ────── */
+/* ── Reduced motion - position changes only, no rotation or bob ────── */
 @media (prefers-reduced-motion: reduce) {
   .walker { transition-duration: 260ms; }
   .walker.is-walking .walker-bob,
@@ -674,7 +674,7 @@ body {
 }
 
 /* ════════════════════════════════════════════════════════════════════
-   Round 2 — tumble, staff prompt, and a settings header that earns its
+   Round 2 - tumble, staff prompt, and a settings header that earns its
    vertical space.
    ════════════════════════════════════════════════════════════════════ */
 
@@ -682,7 +682,7 @@ body {
    He goes over, lies there a beat, and gets back up. Rotation only, about
    the same foot-line origin the waddle uses, so he pivots on his feet
    instead of sinking through the ground. He keeps whatever ground the leg
-   had covered — a fall is character, not a second penalty. */
+   had covered - a fall is character, not a second penalty. */
 @keyframes sq-tumble {
   0%   { transform: rotate(0deg); }
   16%  { transform: rotate(-78deg); }
@@ -834,8 +834,7 @@ body {
 #extra-panel .extra-note { margin-bottom: 6px; }
 /* `display` is set inline by token-board.js, so this container cannot be made a
    flex or grid parent. Making the rows inline-flex instead lets them flow and
-   wrap like text inside the block, which packs them against the left edge —
-   fixed columns just moved the dead space rather than removing it. */
+   wrap like text inside the block, which packs them against the left edge - fixed columns just moved the dead space rather than removing it. */
 #extra-panel #token-settings {
   padding-left: 0 !important;
   margin-top: 4px !important;
@@ -860,7 +859,7 @@ body {
    The shared board's star tally is hidden here: a second count of the same
    thing, in a currency this game does not use. What survives is the numeric
    progress (useful to a technician at a glance) and #snack-strip, which draws
-   the party plan — one slot per snack the goal asks for, filled as he
+   the party plan - one slot per snack the goal asks for, filled as he
    collects them. */
 #token-emoji-display { display: none; }
 .token-progress-suffix {
@@ -888,8 +887,7 @@ body {
 }
 .snack-slot img { width: 26px; height: 26px; object-fit: contain; }
 
-/* The last slot is always the honey, so it shows what it is holding out for —
-   ghosted, to stay clearly a waiting slot rather than a collected one. */
+/* The last slot is always the honey, so it shows what it is holding out for - ghosted, to stay clearly a waiting slot rather than a collected one. */
 .snack-slot.is-honey-slot {
   border-style: solid;
   border-color: rgba(226, 145, 58, 0.5);

@@ -8,16 +8,16 @@ import { buildLibrary } from '../shared/stimuli/build.mjs';
 import { emojiPlaceholderSvg, stemOfId, stimulusId } from '../shared/stimuli/library.mjs';
 
 /**
- * The canonical core vocabulary — the everyday words a learner is taught to
+ * The canonical core vocabulary - the everyday words a learner is taught to
  * name, held as data in `shared/stimuli/vocabulary.json` rather than inferred
  * from whatever files happen to exist.
  *
  * Three things have to hold for that to be worth anything:
  *
- *   1. a word is joinable — its id is exactly the id the merge derives for a
+ *   1. a word is joinable - its id is exactly the id the merge derives for a
  *      file called `<name>` in `<category>`, so art added later lands on the
  *      word instead of beside it
- *   2. a word renders — art if there is any, otherwise the glyph its `emoji`
+ *   2. a word renders - art if there is any, otherwise the glyph its `emoji`
  *      names, drawn as a real file because the games draw an `<img>`
  *   3. the games the objective names actually offer the core: clock and
  *      receptive publish every word, under the vocabulary's own label
@@ -72,7 +72,7 @@ const SHIPPED_PLACEHOLDERS = new Set(
 );
 
 /**
- * A core word still rendered by a glyph SVG a tree shipped — found rather than
+ * A core word still rendered by a glyph SVG a tree shipped - found rather than
  * named, because a word gains a photograph the moment one is added for it and a
  * hard-coded subject silently stops testing what it says it tests.
  */
@@ -155,7 +155,7 @@ test('every core word is a library stimulus with the vocabulary\'s label', async
     if (!entry.categories.includes(word.category)) {
       problems.push(`${word.id}: library has it in ${entry.categories.join(',')}, not ${word.category}`);
     }
-    // A technician's own override still wins — the vocabulary is the label
+    // A technician's own override still wins - the vocabulary is the label
     // below that, not above it.
     const expected = overrides[word.id] || word.label;
     if (entry.label !== expected) problems.push(`${word.id}: label "${entry.label}" should be "${expected}"`);
@@ -218,7 +218,7 @@ test('every core word renders something in front of a learner', async ({ request
   expect(rows.filter((r) => r.status !== 200).map((r) => `${r.status} ${r.url}`), 'core words that 404').toEqual([]);
 
   // A word with no art must resolve to a glyph placeholder, not to something
-  // the classifier reads as art — that would mean the fallback silently became
+  // the classifier reads as art - that would mean the fallback silently became
   // the stimulus.
   const seeded = rows.filter((r) => !r.hasArt);
   expect(seeded.length, 'the core seeds words ahead of their art').toBeGreaterThan(0);
@@ -331,7 +331,7 @@ test('a technician override still wins over the vocabulary label', () => {
 test('a generated placeholder is shaped like the ones the trees shipped', () => {
   const generated = emojiPlaceholderSvg('🚑');
 
-  // Same box, same emoji font stack, one <text> and no vector geometry — the
+  // Same box, same emoji font stack, one <text> and no vector geometry - the
   // last of which is what makes the classifier read it as a placeholder rather
   // than as art the merge should have preferred.
   expect(generated).toContain('viewBox="0 0 200 200"');
@@ -345,8 +345,7 @@ test('a generated placeholder is shaped like the ones the trees shipped', () => 
   expect((shipped.match(/<text/g) || []).length, 'one glyph, no vector geometry').toBe(1);
   expect(classify(subject.placeholder, shipped), 'the shipped one reads the same way').toBe('emoji');
 
-  // And every placeholder the build drew is exactly this function's output —
-  // stronger than comparing one file, and it cannot rot when a word gains art.
+  // And every placeholder the build drew is exactly this function's output - // stronger than comparing one file, and it cannot rot when a word gains art.
   const drawn = LIBRARY.stimuli.filter((s) => s.placeholder && !SHIPPED_PLACEHOLDERS.has(s.placeholder));
   expect(drawn.length, 'the build drew at least one placeholder').toBeGreaterThan(0);
   const wrong = drawn.filter(

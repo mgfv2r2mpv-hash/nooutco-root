@@ -13,7 +13,7 @@ import { test, expect } from '@playwright/test';
  *
  *   1. No situation may state what another person THINKS or KNOWS. A learner
  *      standing on a playground cannot observe a mind, so a card that hands
- *      them one is asking for an inference it never made available — his note
+ *      them one is asking for an inference it never made available - his note
  *      on L2-18, "how do we know what the classmate thinks?".
  *
  *   2. No situation may open with the stock phrase "It is true". His note on
@@ -133,7 +133,7 @@ const REQUIRED_LABELS = {
 };
 
 /**
- * The systematic finding behind them — "A lot of these are missing cross
+ * The systematic finding behind them - "A lot of these are missing cross
  * labels". These are the labels the Level 1 audit added because the card's own
  * REASON names them: a technician debriefing the card would say "it is true and
  * true is not the test", or "they cannot change their lunch now", so the card

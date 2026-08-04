@@ -1,7 +1,7 @@
 'use strict';
 
 /*
- * NooutcoReward — shared SR (reinforcement) experience.
+ * NooutcoReward - shared SR (reinforcement) experience.
  *
  * Ported from the famous-person game's SR screen so every game can deliver the
  * same reinforcement when a learner earns their goal: a 5:00 countdown ring with
@@ -43,7 +43,7 @@
    * SR-timer end. It is gone on the maintainer's instruction: no game plays a
    * completion chime. A sound that fires on every goal, in a room where sessions
    * run back to back, stops being a reinforcer and becomes something staff and
-   * learners endure — and an unexpected tone is its own problem for a learner
+   * learners endure - and an unexpected tone is its own problem for a learner
    * who is sound-sensitive.
    *
    * Kept as an exported no-op rather than deleted so any game still calling
@@ -334,7 +334,7 @@
   }
 
   // ── Public: quick celebratory burst at the moment a goal is hit ──────────────
-  // Visual only — see playChime.
+  // Visual only - see playChime.
   function celebrate(anchorEl) {
     if (reduceMotion) return;
     injectStyles();

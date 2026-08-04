@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Glam Team Makeover — story pool: congruence rule and the two-axis outro.
+ * Glam Team Makeover - story pool: congruence rule and the two-axis outro.
  *
  * Authority: spec §5 (the six approved events), §3.7 / §3.7.1 (congruence),
  * and hardened claims D-F / D-G / AC-5 / AC-10 / AC-18 / L7.
@@ -16,7 +16,7 @@ import { test, expect } from '@playwright/test';
  * NOTE (iteration scope): this covers the story DATA and its composer. Wiring
  * the composed intro/outro into the game's screens is tracked in
  * docs/eval/glam-team-makeover-build-report.md as still outstanding, so AC-10 is
- * not yet claimed for the live intro screen — which still ships the pre-redesign
+ * not yet claimed for the live intro screen - which still ships the pre-redesign
  * copy.
  */
 
@@ -49,7 +49,7 @@ test.describe('story pool (D-F / D-G)', () => {
 
   test('AC-10 · the congruence guard actually catches a refutable claim', async ({ page }) => {
     await bootStory(page);
-    // Negative control — the offending copy the redesign removes is exactly the
+    // Negative control - the offending copy the redesign removes is exactly the
     // pre-redesign intro ("total bedhead, a couple of surprise spots").
     const caught = await page.evaluate(() => {
       const bad = 'It is total bedhead and there are 3 surprise spots, and no outfit yet!';
@@ -94,7 +94,7 @@ test.describe('story pool (D-F / D-G)', () => {
         expect(r.text).toContain(r.beat);
       } else {
         // AC-18's pin: incomplete OMITS the beat and asserts no completion, but
-        // the tier line still fires at full intensity — including Tier 1.
+        // the tier line still fires at full intensity - including Tier 1.
         expect(r.beat, `${r.id} t${r.tier} incomplete`).toBe('');
         expect(r.text).toBe(r.line);
         expect(r.text).not.toMatch(/came together|was a hit|dazzled|framed favorite|walked in beaming|shone on stage|what a party/i);

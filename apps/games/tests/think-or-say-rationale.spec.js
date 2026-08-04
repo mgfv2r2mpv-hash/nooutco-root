@@ -14,12 +14,12 @@ import { test, expect } from '@playwright/test';
  *
  *   * scoring is INDEPENDENT of the exemplar rationales the card carries. The
  *     technician is not picking which exemplar was matched. A correct reason
- *     nobody wrote down is the ideal outcome and must score fully Correct — so
+ *     nobody wrote down is the ideal outcome and must score fully Correct - so
  *     a score can be given without ever revealing the exemplars, and revealing
  *     them scores nothing.
  *   * the exemplars are a REVEAL, and a reveal is an instructional support. On
  *     a probe trial they are withheld, exactly like the reason reveal is,
- *     while the ask and the scoring still happen — a Level 3 probe is still a
+ *     while the ask and the scoring still happen - a Level 3 probe is still a
  *     Level 3 item.
  *
  * The note is the technician's own words and never leaves the device
@@ -115,7 +115,7 @@ test('the score is exactly three points, rendered from one declaration', async (
 
 test('each of the three scores reaches the trial record and the printed report', async ({ page }) => {
   // A three-card category, played out, so the sheet the technician hands over is
-  // the one the report assertions read — buildPrint runs at session end.
+  // the one the report assertions read - buildPrint runs at session end.
   await seed(page, explaining({ category: 'private' }));
   await page.goto(URL);
   await booted(page);
@@ -277,7 +277,7 @@ test('the reason score does not decide the probe classification', async ({ page 
   await page.locator('#btn-play').click();
 
   // Two probes, scored at opposite ends. The tile was correct and no support was
-  // delivered on either, so both are clean generalization data — what the
+  // delivered on either, so both are clean generalization data - what the
   // technician thought of the REASON is a separate datum and must not
   // reclassify the trial.
   await answerTrial(page, 0, { score: 'correct' });
@@ -297,7 +297,7 @@ test('the latency recorded is the learner\'s, not the technician\'s scoring time
   await page.locator('#btn-play').click();
 
   await chooseTile(page, 0);
-  // The technician takes their time over the score — reading the exemplars,
+  // The technician takes their time over the score - reading the exemplars,
   // typing a note. None of that is the learner's response latency.
   await page.locator('#btn-rationale-reveal').click();
   await page.waitForTimeout(2600);

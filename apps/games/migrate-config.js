@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════════════
-   migrate-config.js — shared config versioning + migration
+   migrate-config.js - shared config versioning + migration
    Device-local only. Never transmits. Never throws (a failed migration
    must never wipe a user's saved configuration).
 
@@ -11,7 +11,7 @@
 
    The shared design tokens already gave each game `?? default` fallbacks, so
    *new* fields are absorbed automatically. Migrations here exist for the harder
-   cases — renamed, removed, or restructured keys — so a version bump never
+   cases - renamed, removed, or restructured keys - so a version bump never
    silently drops or corrupts a saved config.
    ════════════════════════════════════════════════════════════════════ */
 (function (global) {
@@ -27,7 +27,7 @@
 
   function stampVersion(v) {
     try { global.localStorage.setItem(VERSION_KEY, v); }
-    catch (e) { /* storage unavailable — non-fatal */ }
+    catch (e) { /* storage unavailable - non-fatal */ }
   }
 
   /**

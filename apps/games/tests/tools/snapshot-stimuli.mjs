@@ -4,7 +4,7 @@
  *
  * The baseline records how much REAL art each game served, per category, at a
  * known-good tree. tests/stimulus-integrity.spec.js then fails if a later
- * change makes any category serve less real art than the baseline — which is
+ * change makes any category serve less real art than the baseline - which is
  * the specific regression the shared-stimulus-library work risks introducing.
  *
  * Reads from the working tree (not over HTTP) so it can be regenerated from a
@@ -14,8 +14,7 @@
  *   node tests/tools/snapshot-stimuli.mjs --check         # diff without writing
  *
  * Raising a baseline number is legitimate (more art landed). LOWERING one is
- * the thing this file exists to make visible, so it is never automatic —
- * rerun deliberately and explain the drop in the commit message.
+ * the thing this file exists to make visible, so it is never automatic - * rerun deliberately and explain the drop in the commit message.
  */
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -48,7 +47,7 @@ async function classifyRow(source, entry) {
   if (needsBodyToClassify(urlPath)) {
     body = await readFile(diskPath, 'utf8');
   } else {
-    await readFile(diskPath); // presence check — throws if the index points at nothing
+    await readFile(diskPath); // presence check - throws if the index points at nothing
   }
   return { ...entry, urlPath, classification: classify(urlPath, body) };
 }
@@ -86,6 +85,6 @@ if (isMain) {
     await writeFile(BASELINE_PATH, serialized);
     const total = Object.values(next.games).reduce(
       (sum, cats) => sum + Object.values(cats).reduce((s, c) => s + c.art, 0), 0);
-    console.log(`wrote ${path.relative(GAMES_ROOT, BASELINE_PATH)} — ${total} real art files indexed`);
+    console.log(`wrote ${path.relative(GAMES_ROOT, BASELINE_PATH)} - ${total} real art files indexed`);
   }
 }

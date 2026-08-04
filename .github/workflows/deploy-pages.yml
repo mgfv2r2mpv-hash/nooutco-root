@@ -2,7 +2,7 @@ name: Deploy Pages apps
 
 # Deploys apps/tools and apps/games to their existing Cloudflare Pages projects
 # via `wrangler pages deploy` (direct upload). The projects keep their custom
-# domains, KV/service bindings, and secrets — only the delivery method changes
+# domains, KV/service bindings, and secrets - only the delivery method changes
 # from git-auto-deploy to CI upload, because Cloudflare does not allow an existing
 # Pages project to switch its connected repo.
 #

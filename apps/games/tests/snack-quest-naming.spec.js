@@ -6,7 +6,7 @@ import { bootstrap, chooseTask, choosePlace, respondCorrect, waitIdle } from './
  * free use with no commercial intent is fine, a name is not. He is "our friend"
  * / "he" / "him" in every user-visible surface.
  *
- * This is asserted *positively* — no candidate name is written down here, since
+ * This is asserted *positively* - no candidate name is written down here, since
  * that would put one in the repository, which is the thing being prevented.
  * Instead every capitalised word on a learner- or technician-facing surface has
  * to come from the game's own known vocabulary. A stray proper noun fails.
@@ -65,7 +65,7 @@ async function strayProperNouns(page, selector, exclude = []) {
   );
 }
 
-test.describe('Snack Quest — our friend is never named', () => {
+test.describe('Snack Quest - our friend is never named', () => {
   test('the task and place screens name no character', async ({ page }) => {
     await bootstrap(page);
     expect(await strayProperNouns(page, '#screen-task')).toEqual([]);

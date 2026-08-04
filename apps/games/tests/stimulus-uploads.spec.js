@@ -2,14 +2,14 @@
  * The shared library has to stay editable by a technician.
  *
  * `<game>/manifest.json` is generated now, so an AdminTools upload can no
- * longer just append a path to it — the next `npm run stimuli:build` would
+ * longer just append a path to it - the next `npm run stimuli:build` would
  * wipe it. The answer is that an upload is committed as *source*
  * (`shared/stimuli/uploads/`) and published by the same projection the builder
  * uses, so the Worker can apply it in place without a rebuild.
  *
  * That only holds if the two agree. These tests are the proof: for every kind
- * of upload, `applyUpload()` — what `worker.js` runs inside a Cloudflare
- * isolate, seeing one file — must produce byte-for-byte what `buildLibrary()`
+ * of upload, `applyUpload()` - what `worker.js` runs inside a Cloudflare
+ * isolate, seeing one file - must produce byte-for-byte what `buildLibrary()`
  * produces from the whole tree. Anything else means an upload goes live in a
  * state a rebuild silently undoes.
  */
@@ -38,7 +38,7 @@ const GAMES = ['clock', 'receptive', 'matching'];
 const readJson = (relative) => JSON.parse(fs.readFileSync(path.join(GAMES_ROOT, relative), 'utf8'));
 const sha256 = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
 
-/** The library exactly as committed — what the Worker would fetch from GitHub. */
+/** The library exactly as committed - what the Worker would fetch from GitHub. */
 function committedState() {
   return {
     index: readJson('shared/stimuli/stimuli.json'),
@@ -52,8 +52,7 @@ function committedState() {
 
 /**
  * Deterministic bytes that are unique per seed. Content only decides art-vs-
- * placeholder for `.svg`, so any bytes under a raster extension are real art —
- * which is what an uploaded photograph is.
+ * placeholder for `.svg`, so any bytes under a raster extension are real art - * which is what an uploaded photograph is.
  */
 const bytesFor = (seed) => Buffer.from(`gnhf upload probe ${seed} `.repeat(64));
 
@@ -204,9 +203,9 @@ test.describe('an AdminTools upload survives the next rebuild', () => {
     // A vocabulary word starts life with no file anywhere: the build draws its
     // glyph from `emoji`. The Worker sees only the uploaded photograph and the
     // committed index, so it has to retire a placeholder it never generated and
-    // keep the curated label — a rebuild reading `vocabulary.json` will.
+    // keep the curated label - a rebuild reading `vocabulary.json` will.
     const before = committedState();
-    // Two words still waiting for art — and the *topic* is found rather than
+    // Two words still waiting for art - and the *topic* is found rather than
     // named, not just the words. Naming one here made this fixture fail the day
     // T_vehicles got its photographs, which is ordinary work rather than a
     // regression. Group by the category the placeholder actually lives under so
@@ -272,7 +271,7 @@ test.describe('an AdminTools upload survives the next rebuild', () => {
     ]));
     expect(two.manifests.matching.images.T_household_items).toContain(two.url);
     expect(urlsIn(two.manifests.matching)).not.toContain(one.url);
-    // The first upload leaves no trace for a rebuild to disagree about — its
+    // The first upload leaves no trace for a rebuild to disagree about - its
     // file is gone, so its provenance record must be gone too.
     expect(Object.keys(two.provenance)).not.toContain('/shared/stimuli/uploads/T_household_items/stapler.jpg');
     expectAgreement(two, buildLibrary({
@@ -297,7 +296,7 @@ test.describe('the other two kinds of technician state', () => {
     for (const game of ['clock', 'receptive']) {
       expect(result.manifests[game].images.T_household_items).toContain(target.image);
     }
-    // The bytes stay in the library — the same file backs three games, so
+    // The bytes stay in the library - the same file backs three games, so
     // deleting it on matching's behalf would pull the picture out of two
     // programmes nobody touched.
     expect(result.index).toBe(before.index);
@@ -364,7 +363,7 @@ test.describe('a topic name is source, never read back out of the projection', (
 
     // The trap finding 10 names, in a second place: the build must not read its
     // own output. `topicNames` lives in the generated manifest, so a build that
-    // carried it forward would make an override impossible to clear — deleting
+    // carried it forward would make an override impossible to clear - deleting
     // it from `topics.json` would change nothing at all.
     const haunted = {
       ...state.manifests,

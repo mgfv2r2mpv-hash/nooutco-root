@@ -1,4 +1,4 @@
-/* THIRD PASS · Finding A — the COMPLETED look, measured rather than eyeballed.
+/* THIRD PASS · Finding A - the COMPLETED look, measured rather than eyeballed.
  *
  * No prior pass ever photographed the finished face: every screenshot in the
  * evidence set is mid-appointment. This probe drives the real compositor to a
@@ -8,8 +8,8 @@
  *   · and the lash geometry's luminance, bare vs completed, so "white pixels in
  *     the eyelashes" becomes a number instead of an impression.
  *
- * The lash mask is derived from the renderer itself — every pixel the mascara
- * sprite CHANGES, in either direction — rather than from a restated sprite
+ * The lash mask is derived from the renderer itself - every pixel the mascara
+ * sprite CHANGES, in either direction - rather than from a restated sprite
  * transform, so it cannot drift from the art. Taking only the pixels it DARKENS
  * would quietly drop the white ones, which are the defect. The eyeball comes out
  * (an ellipse over `_irisBox`): the sclera is legitimately brighter than the
@@ -70,7 +70,7 @@ const HELPERS = `
     for (let i=0;i<80 && same<3;i++){ await frame(); const h=hash(snap()); if(h===last) same++; else { same=0; last=h; } }
     return snap(); };
   /* freshEd seeds the three blemishes with Math.random(), so two frames taken
-     from two resets have the spots in DIFFERENT places — and a spot that moved
+     from two resets have the spots in DIFFERENT places - and a spot that moved
      reads as a tool brightening pixels it never touched. One fixed seed for
      every frame; 0.371 is the layout _pickSpots itself falls back to. */
   const FRESH = () => Object.assign(L.freshEd('person'), { spotSeed: 0.371 });
@@ -84,7 +84,7 @@ const HELPERS = `
   /* Rec.709 luminance on the sRGB byte, which is what "how bright does this
      pixel look" means for a defect described as WHITE PIXELS. */
   const lum = (d,i) => 0.2126*d[i] + 0.7152*d[i+1] + 0.0722*d[i+2];
-  /* ΔE76 — the perceptual distance the report quotes. sRGB → linear → XYZ (D65)
+  /* ΔE76 - the perceptual distance the report quotes. sRGB → linear → XYZ (D65)
      → Lab, then a euclidean distance in Lab. */
   const f_ = (t) => t > 0.008856 ? Math.cbrt(t) : (7.787*t + 16/116);
   const lab = (r,g,b) => {
@@ -128,15 +128,15 @@ for (const m of MODELS) {
     await setModel(${JSON.stringify(m)});
 
     /* WARM-UP, and it is load-bearing. Several tools draw a SPRITE the
-       compositor has never asked for on a bare face — the earring, the outfit,
-       the liner — and _img kicks the fetch off and repaints on load. settle
+       compositor has never asked for on a bare face - the earring, the outfit,
+       the liner - and _img kicks the fetch off and repaints on load. settle
        waits for the canvas to stop CHANGING, and a canvas that has not started
        drawing the sprite yet is perfectly stable, so it returns before the
        sprite lands and the tool measures as though it painted nothing. Run the
        whole catalogue once first, so every sprite is decoded and cached before
        any number is taken. Without this the same probe reports Earrings and
        Shirt at 0.00 ΔE and contour/highlight/lip-liner at a fifth of their real
-       value — reproducibly, which is what made it look like a renderer change
+       value - reproducibly, which is what made it look like a renderer change
        rather than an instrument fault. */
     await setEd((ed)=>{ for(const t of TOOLS) t.mut(ed); });
     await settle();
@@ -144,7 +144,7 @@ for (const m of MODELS) {
 
     const bare = await settle();
 
-    // FACE denominator — the compositor's own face zone, restricted to pixels the
+    // FACE denominator - the compositor's own face zone, restricted to pixels the
     // base render actually drew. Zones are % of the frame.
     const Z = L._artZones().face;
     const x0=Math.round(Z.l/100*W), x1=Math.round((Z.l+Z.w)/100*W),
@@ -167,12 +167,12 @@ for (const m of MODELS) {
 
     /* ── the mascara-only frame gives us the lash geometry ──
        The geometry is every pixel the mascara sprite CHANGES, in either
-       direction — not only the ones it darkens. A mask built from darkening
+       direction - not only the ones it darkens. A mask built from darkening
        alone quietly excludes the white pixels, which are the whole defect.
        What comes out is the EYEBALL: the sprite's sclera is legitimately far
        brighter than the skin it replaces, and it is not a lash. The aperture is
-       cut with an ellipse in the sprite's own frame, off _irisBox — which
-       carries the drawn sprite's box — so it tracks the art at every model. */
+       cut with an ellipse in the sprite's own frame, off _irisBox - which
+       carries the drawn sprite's box - so it tracks the art at every model. */
     await reset(); await settle(); await setEd((ed)=>{ ed.cov.mascara=1; });
     const masc = await settle();
     const boxes = (L._irisBoxes(W,H) || []).filter(Boolean);

@@ -75,7 +75,7 @@ body {
 
 #app-header .btn-prompt { flex-shrink: 0; }
 
-/* Display mode slider — ○ Simple / ◇ Visual, with a brief ghost banner. */
+/* Display mode slider - ○ Simple / ◇ Visual, with a brief ghost banner. */
 .display-control { position: relative; display: inline-flex; align-items: center; flex-shrink: 0; }
 .display-toggle {
   position: relative;
@@ -133,7 +133,7 @@ body {
   100% { opacity: 0; }
 }
 
-/* Minimize toggle — triangle reflects the collapsed/expanded state. */
+/* Minimize toggle - triangle reflects the collapsed/expanded state. */
 .btn-minimize {
   background: rgba(255,255,255,0.12);
   border: 1px solid rgba(255,255,255,0.28);
@@ -404,8 +404,8 @@ body.settings-collapsed #extra-panel { display: none !important; }
   padding: 4px 4px 0;
 }
 
-/* HTML shelf planks rendered into #shelf-planks at runtime — one per
-   bucket-grid row — so the wooden plank always sits exactly under the
+/* HTML shelf planks rendered into #shelf-planks at runtime - one per
+   bucket-grid row - so the wooden plank always sits exactly under the
    buckets at any array size. Sits in the SAME box as #comp-grid. */
 #shelf-planks {
   position: absolute;
@@ -428,7 +428,7 @@ body.settings-collapsed #extra-panel { display: none !important; }
   transform: translateY(-2px);
 }
 
-/* Shelf item — clean card sitting on a wooden plank edge */
+/* Shelf item - clean card sitting on a wooden plank edge */
 .bucket {
   position: relative;
   display: flex;
@@ -497,7 +497,7 @@ body.settings-collapsed #extra-panel { display: none !important; }
   transform-origin: bottom center;
 }
 
-/* Animation tiers — customer enters from the right facing left,
+/* Animation tiers - customer enters from the right facing left,
    stands facing forward at the shelf, then exits walking right. */
 #customer-layer.tier-full.entering .customer-svg   { animation: customer-walk-in 800ms ease-out both; }
 #customer-layer.tier-full.exiting  .customer-svg   { animation: customer-walk-out 800ms ease-in  both; }

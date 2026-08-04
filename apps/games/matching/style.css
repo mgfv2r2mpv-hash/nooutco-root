@@ -1,12 +1,12 @@
 /* ════════════════════════════════════════════════════════════════════
-   MATCHING GAME — No Outcome ABA visual layer
+   MATCHING GAME - No Outcome ABA visual layer
    Consumes shared design tokens from ../tokens.css (Atkinson Hyperlegible,
    dusty-sage palette, spacing/radii/shadow/motion scales).
    Reskin only: layout mechanics, IDs, and JS-driven class hooks are
    preserved exactly so game.js / fitGrid() behaviour is unchanged.
    ════════════════════════════════════════════════════════════════════ */
 
-/* ── CSS custom properties (layout — read by fitGrid) ──────────────── */
+/* ── CSS custom properties (layout - read by fitGrid) ──────────────── */
 :root {
   --tile-sz:  128px;
   --tile-gap: 12px;
@@ -68,7 +68,7 @@ body {
   letter-spacing: var(--tracking-wide);
 }
 
-/* Display mode slider — ○ Simple / ◇ Visual, with a brief ghost banner. */
+/* Display mode slider - ○ Simple / ◇ Visual, with a brief ghost banner. */
 .display-control { position: relative; display: inline-flex; align-items: center; flex-shrink: 0; }
 .display-toggle {
   position: relative;
@@ -127,7 +127,7 @@ body {
   100% { opacity: 0; }
 }
 
-/* Back — two-tap confirm guards against accidental mid-session exit. */
+/* Back - two-tap confirm guards against accidental mid-session exit. */
 .btn-back.confirm {
   background: var(--brand-fix);
   border-color: var(--orange-700);
@@ -136,7 +136,7 @@ body {
 /* Prompt now lives in the toolbar. */
 #app-header .btn-prompt { flex-shrink: 0; }
 
-/* Minimize toggle — collapses the settings/admin panel to just the toolbar. */
+/* Minimize toggle - collapses the settings/admin panel to just the toolbar. */
 .btn-minimize {
   background: rgba(255,255,255,0.12);
   border: 1px solid rgba(255,255,255,0.28);
@@ -156,7 +156,7 @@ body.settings-collapsed #settings-bar,
 body.settings-collapsed #target-panel,
 body.settings-collapsed #extra-panel { display: none !important; }
 
-/* Toolbar scales down on small screens (fluid — not locked to one device). */
+/* Toolbar scales down on small screens (fluid - not locked to one device). */
 @media (max-width: 680px) {
   .app-title-text { font-size: var(--text-lg); }
   .btn-minimize { width: 28px; height: 28px; font-size: var(--text-md); }
@@ -499,7 +499,7 @@ body.settings-collapsed #extra-panel { display: none !important; }
   text-align: center;
 }
 
-/* Sample card — the discriminative stimulus; deliberately the most salient
+/* Sample card - the discriminative stimulus; deliberately the most salient
    element on screen (larger than the choice tiles, stronger framing). */
 #sample-section { display: flex; flex-direction: column; align-items: center; }
 
@@ -597,7 +597,7 @@ body.settings-collapsed #extra-panel { display: none !important; }
 }
 .tile.tile-disabled { cursor: default; }
 
-/* Back face — neutral default; green only when outcome is Correct */
+/* Back face - neutral default; green only when outcome is Correct */
 .tile-back {
   transform: rotateY(180deg);
   background: linear-gradient(135deg, var(--slate-600), var(--slate-500));
@@ -640,7 +640,7 @@ body.settings-collapsed #extra-panel { display: none !important; }
 }
 .tile-wrapper.flash-red .tile-front { animation: flash-red 0.5s ease; }
 
-/* Visual display mode — correct answer pinwheels the sample + match off-screen
+/* Visual display mode - correct answer pinwheels the sample + match off-screen
    in a random direction. Direction/spin are set per-element via custom props. */
 .pinwheel-off {
   animation: pinwheel-off 0.72s var(--ease-standard) forwards;
@@ -966,7 +966,7 @@ body.settings-collapsed #extra-panel { display: none !important; }
   .setting-group select,
   .setting-group input[type="number"] { font-size: var(--text-sm); padding: 4px 6px; }
 
-  /* Game area — column, anchored to top */
+  /* Game area - column, anchored to top */
   #game-area {
     flex-direction: column;
     align-items: center;

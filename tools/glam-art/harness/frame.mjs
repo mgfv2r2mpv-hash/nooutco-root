@@ -1,12 +1,12 @@
 /*
- * frame.mjs — the bbox → export-frame formula for Glam Team Makeover layers.
+ * frame.mjs - the bbox → export-frame formula for Glam Team Makeover layers.
  *
  * Single source of truth (shared by the Playwright driver and the QA gate) for
  * how a model's shared 520×600 crop frame is derived from the base character
  * bbox (the tight opaque-pixel box returned by stripBg, in source-render space).
  *
  * Reverse-engineered from and verified against the two shipped metas
- * (assets/art/person/m{1,3}/_meta.json) — see frame.test.mjs.
+ * (assets/art/person/m{1,3}/_meta.json) - see frame.test.mjs.
  *
  *   padY   = round(bbox.h × 0.02)      2% vertical breathing room, each side
  *   frameH = bbox.h + 2·padY

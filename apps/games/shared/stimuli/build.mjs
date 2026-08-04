@@ -8,14 +8,14 @@
  *   node shared/stimuli/build.mjs --check   # rebuild in memory and diff; never writes
  *
  * The three trees hold the SAME item names at different quality, in different
- * formats, and with different manifest selections — `T_animals/bear.jpg` is
+ * formats, and with different manifest selections - `T_animals/bear.jpg` is
  * byte-identical between clock and receptive but a completely different photo
  * in matching. This script collapses them onto one entry per stimulus, keeps
  * every distinct piece of real art, and records where each file came from so
  * the eventual deletion of the duplicated trees is provably lossless.
  *
- * It then projects that library back out as one `manifest.json` per game — the
- * shape the games already consume — so each game keeps its own programme list
+ * It then projects that library back out as one `manifest.json` per game - the
+ * shape the games already consume - so each game keeps its own programme list
  * while every game reads the same art. The projection lives in `library.mjs`
  * because `worker.js` has to apply a single upload with the same rules,
  * without being able to run this script.
@@ -63,7 +63,7 @@ const OUTPUT_DIRS = [IMG_DIR, PLACEHOLDER_DIR];
 /**
  * The manifests as they stood before this script started generating them.
  * Which files a technician had selected, and the labels they set, are inputs
- * to the merge — reading the live (generated) manifests back in would make the
+ * to the merge - reading the live (generated) manifests back in would make the
  * ranking self-referential and let the library drift on every rebuild.
  */
 const SOURCE_MANIFESTS = readJson(path.join(LIBRARY_DIR, 'source-manifests.json')).games;
@@ -73,11 +73,11 @@ const SOURCE_MANIFESTS = readJson(path.join(LIBRARY_DIR, 'source-manifests.json'
  * technician put there through AdminTools is an explicit choice, not one of
  * several shipped candidates. `matching` leads the rest because its manifest
  * is the one still being regenerated (2026-07-26 against 2026-05 for the other
- * two) and it carries the most curated real art — T_household_items and
+ * two) and it carries the most curated real art - T_household_items and
  * T_kitchen_items are photographs there and emoji placeholders everywhere else.
  */
 /**
- * ffc's tree is flat — every file sits in one `items/` directory — so a file
+ * ffc's tree is flat - every file sits in one `items/` directory - so a file
  * there names a category only through `ffc.json`, which is also the document
  * saying which shared stimulus the file's metadata describes. ffc joined after
  * the other three trees had been merged and published, so its art *fills gaps*
@@ -216,7 +216,7 @@ function collectCandidates(extraUploads = [], ffcSource = null) {
  * art flat, so nothing in the tree says which category a file belongs to and
  * two spellings of one word look like two words. Both are resolved here, once:
  * the item names the shared stimulus explicitly, and the stems it owns are its
- * own slugged `legacyId` plus the stem of the file it points at — which is what
+ * own slugged `legacyId` plus the stem of the file it points at - which is what
  * lets `mail-carrier.svg` and the `mail_carrier` metadata meet on
  * `community-helpers-mail-carrier`.
  */
@@ -332,11 +332,11 @@ function readVocabulary(vocabulary) {
  * Ranking within one stimulus. Lower sorts first.
  *
  * Real art always beats a placeholder glyph. Then a late-joining tree, which
- * fills gaps but never displaces a picture a game is already serving — ffc's
+ * fills gaps but never displaces a picture a game is already serving - ffc's
  * photograph of a pencil should reach `T_school`, which has none, without
  * moving the URL of anything the three merged games publish today. After that a
  * file some manifest actually selected beats one that was deliberately left
- * out, and a raster beats a vector — several `.svg` files in matching's tree
+ * out, and a raster beats a vector - several `.svg` files in matching's tree
  * are JPEG bytes under the wrong extension, and the hand-drawn preposition
  * diagrams should only be reached when no photograph exists at all.
  */
@@ -368,7 +368,7 @@ function compareRank(a, b) {
  * An upload is authoritative: it supersedes every other art candidate rather
  * than joining them as an unpublished variant. Only one URL per stimulus is
  * ever served, so keeping the old file would buy nothing and would force the
- * rebuild to rename files on each upload — churn `worker.js` cannot mirror,
+ * rebuild to rename files on each upload - churn `worker.js` cannot mirror,
  * and the two have to agree or an upload goes live wrong.
  */
 function selectArt(group, category, claimed) {
@@ -389,7 +389,7 @@ function selectArt(group, category, claimed) {
     if (seen.has(candidate.sha256)) continue;
     // Two stimuli in one category must never resolve to the same bytes:
     // receptive ships `on.png` as a byte copy of `above.png`, so one picture
-    // gets asked about under two names. An explicit upload is exempt — that
+    // gets asked about under two names. An explicit upload is exempt - that
     // duplication is the technician's call, not a shipping accident.
     const owner = claimed.get(candidate.sha256);
     if (owner && owner !== candidate.id && candidate.source !== UPLOADS_SUBDIR) {
@@ -446,7 +446,7 @@ function buildLibrary(options = {}) {
       for (const candidate of group) {
         if (candidate.dropReason && candidate.dropReason.startsWith('duplicate-of:')) {
           warnings.push(
-            `${category}/${id}: skipped ${candidate.servedPath} — byte-identical to ${candidate.dropReason.slice(13)}`,
+            `${category}/${id}: skipped ${candidate.servedPath} - byte-identical to ${candidate.dropReason.slice(13)}`,
           );
         }
       }
@@ -490,8 +490,7 @@ function buildLibrary(options = {}) {
       const variants = [];
       art.forEach((candidate, index) => {
         // Only shipped art claims a hash. An upload must never demote another
-        // stimulus, or `worker.js` — which sees one file, not the whole tree —
-        // would publish something a rebuild then takes away.
+        // stimulus, or `worker.js` - which sees one file, not the whole tree - // would publish something a rebuild then takes away.
         if (candidate.source !== UPLOADS_SUBDIR) claimed.set(candidate.sha256, id);
         const relative = `${IMG_SUBDIR}/${category}/${libraryFileName(canonicalStem, candidate.extension, index)}`;
         if (files.has(relative)) throw new Error(`library file name collision: ${relative}`);
@@ -529,8 +528,8 @@ function buildLibrary(options = {}) {
       if (!entry.image && !entry.placeholder) {
         // A core word is data someone wrote down, so a blank one is a mistake
         // to fix rather than a gap to report: it has no file to fall back on.
-        if (word) throw new Error(`vocabulary: "${id}" has neither art nor an emoji — it would render blank`);
-        warnings.push(`${category}/${id}: no art and no glyph — would render blank`);
+        if (word) throw new Error(`vocabulary: "${id}" has neither art nor an emoji - it would render blank`);
+        warnings.push(`${category}/${id}: no art and no glyph - would render blank`);
       }
 
       stimuli.push(entry);
@@ -568,7 +567,7 @@ function buildLibrary(options = {}) {
     schema: 1,
     note:
       'Shared stimulus library. Generated from the clock, receptive and matching _Resources trees ' +
-      'plus shared/stimuli/uploads/ by shared/stimuli/build.mjs — change that script or the source ' +
+      'plus shared/stimuli/uploads/ by shared/stimuli/build.mjs - change that script or the source ' +
       'art, never this file. ffc is an art-only source: it has no manifest to project, and its ' +
       'files join by the ids in shared/stimuli/ffc.json rather than by directory.',
     sources: SOURCE_GAMES,
@@ -659,9 +658,9 @@ function checkLibrary(built) {
   for (const [relative, text] of generatedDocuments(built)) {
     const committed = path.join(GAMES_ROOT, relative);
     if (!fs.existsSync(committed)) {
-      problems.push(`${relative} is missing — run: npm run stimuli:build`);
+      problems.push(`${relative} is missing - run: npm run stimuli:build`);
     } else if (fs.readFileSync(committed, 'utf8') !== text) {
-      problems.push(`${relative} is stale — run: npm run stimuli:build`);
+      problems.push(`${relative} is stale - run: npm run stimuli:build`);
     }
   }
 

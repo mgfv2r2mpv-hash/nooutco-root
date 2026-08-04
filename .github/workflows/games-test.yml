@@ -2,7 +2,7 @@ name: Games E2E Tests
 
 # The suite grew from ~135 tests to ~485 per browser. Run as one job that was
 # 1455 serial tests against a SINGLE `wrangler pages dev` process for ~50
-# minutes, and workerd did not survive it — it logged
+# minutes, and workerd did not survive it - it logged
 #   kj/async-io-unix.c++:186: disconnected: ::write(...): Connection reset by peer
 # and everything after failed with "Could not connect to localhost: Connection
 # refused". One crashed server surfaced as 405 test failures, which reads like a
@@ -36,7 +36,7 @@ jobs:
     name: E2E (${{ matrix.project }})
     timeout-minutes: 35
     strategy:
-      # One browser failing must not cancel the other two — knowing whether a
+      # One browser failing must not cancel the other two - knowing whether a
       # failure is browser-specific is most of the diagnosis.
       fail-fast: false
       matrix:
@@ -87,6 +87,6 @@ jobs:
         run: |
           echo "shard result: ${{ needs.e2e.result }}"
           [ "${{ needs.e2e.result }}" = "success" ] || {
-            echo "::error::One or more browser shards failed — see the E2E (<browser>) jobs."
+            echo "::error::One or more browser shards failed - see the E2E (<browser>) jobs."
             exit 1
           }

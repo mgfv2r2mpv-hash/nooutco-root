@@ -1,18 +1,18 @@
-/* ── Think or Say? — the probe subsystem ───────────────────────────────
+/* ── Think or Say? - the probe subsystem ───────────────────────────────
    A PROBE is an untrained item presented WITHOUT the instructional supports, so
    that a correct response is evidence about the repertoire rather than about
    the prompt (RESEARCH.md §4.2). Probes are OFF by default and configured per
    level; nothing here runs unless a Skill Acquisition Plan asks for it.
 
    WHAT THIS MODULE OWNS
-     * TAGGING — near / far / deictic, as a SET, computed from the data rather
+     * TAGGING - near / far / deictic, as a SET, computed from the data rather
        than asserted by a label. Marzullo-Kerth et al. found within-category
        generalization for all three children and across-category for only one
        (RESEARCH.md §4.1), so "did it generalize?" is not one question. An item
        can be far AND deictic, and the report groups by the EXACT set.
-     * SELECTION — which items are in play for a level and a tag selection, and
+     * SELECTION - which items are in play for a level and a tag selection, and
        which ones a session's probe block draws.
-     * PLACEMENT — before / interleaved / after the teaching deck.
+     * PLACEMENT - before / interleaved / after the teaching deck.
      * The list of supports a probe trial SUPPRESSES.
 
    WHAT IT DELIBERATELY DOES NOT OWN
@@ -22,7 +22,7 @@
      trained item as a generalization datum. Trial CLASSIFICATION lives in
      game.js against the running session, where it is observable.
 
-   No build step — plain static JS, loaded after cards.js and
+   No build step - plain static JS, loaded after cards.js and
    exemplar-generator.js.
    ----------------------------------------------------------------------- */
 (function (global) {
@@ -47,12 +47,12 @@
    *
    * Named by their settings field so suppression is a lookup rather than five
    * scattered conditionals. The Prompt BUTTON is deliberately absent: clinical
-   * judgement is never blocked. Using it does not invalidate the trial — it
+   * judgement is never blocked. Using it does not invalidate the trial - it
    * re-classifies it as a trained one, with the reason recorded.
    *
    * `showRule` is here for the same reason `showReason` is. Level 1 states its
    * rule on screen for the whole trial, which is a teaching support and the
-   * strongest one in the game — a probe run with the rule still up would
+   * strongest one in the game - a probe run with the rule still up would
    * measure whether the learner can read it, not whether they hold it.
    */
   var SUPPRESSED = ['autoPrompt', 'errorless', 'showReason', 'represent', 'showRule'];
@@ -67,7 +67,7 @@
   /* ── near vs far, measured against what the level actually teaches ───
      For the criterial configuration an item turns on, collect every can-have
      value the level's teaching pool ever pairs with it. An item whose SAMPLED
-     surface stays inside that set is a NEAR probe — same territory, new
+     surface stays inside that set is a NEAR probe - same territory, new
      instance. An item that brings in a person, setting, topic or form the pool
      never pairs with that configuration is a FAR probe.
 
@@ -92,7 +92,7 @@
    * The tag SET for one generated item presented at one level.
    *
    * `deictic` is present exactly at Level 3, where the response required is a
-   * spoken I–YOU rationale and not only the tile choice (RESEARCH.md §4.3). It
+   * spoken I - YOU rationale and not only the tile choice (RESEARCH.md §4.3). It
    * is a different response class, so it is a different question, so it is its
    * own tag rather than a level column.
    */
@@ -133,8 +133,7 @@
    * Subset, not intersection: an item is in play only when EVERY tag it carries
    * was selected. A far+deictic item asks a far question and a deictic one at
    * the same time, and a technician who selected only "far" did not ask for the
-   * deictic one. This is why Level 3's default selection includes deictic —
-   * at Level 3 there is no item without it.
+   * deictic one. This is why Level 3's default selection includes deictic - * at Level 3 there is no item without it.
    */
   function inPlay(level, tagsSelected) {
     var sel = tagsSelected || [];
@@ -147,9 +146,9 @@
    * The in-play items, narrowed to the category being taught where the universe
    * has any there.
    *
-   * Generalization has to be measured PER CATEGORY — Marzullo-Kerth et al. found
+   * Generalization has to be measured PER CATEGORY - Marzullo-Kerth et al. found
    * within-category generalization for all three children and across-category
-   * for only one (RESEARCH.md §4.1) — so a session narrowed to one content area
+   * for only one (RESEARCH.md §4.1) - so a session narrowed to one content area
    * is probed inside that content area. Where the generated universe holds no
    * item in that category at all, probing outside it beats not probing: the
    * fallback is the whole selection, and the item's own category is printed on
@@ -176,7 +175,7 @@
    * instructional universe, and three draws that all happen to turn on `audience`
    * measure one dimension three times (RESEARCH.md §3.1). `seed` rotates which
    * surface each dimension contributes, so two sessions of the same programme do
-   * not run the identical items — without anything being stored.
+   * not run the identical items - without anything being stored.
    */
   function select(level, tagsSelected, count, seed, pool) {
     var items = pool || inPlay(level, tagsSelected);

@@ -1,4 +1,4 @@
-/* diag.mjs — composite base + named layers over an opaque grey card for eyeballing
+/* diag.mjs - composite base + named layers over an opaque grey card for eyeballing
  * a single layer's edge. Usage: node tools/glam-art/diag.mjs m1 contour highlight */
 import fs from 'node:fs/promises';
 import path from 'node:path';

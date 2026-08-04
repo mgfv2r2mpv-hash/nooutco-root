@@ -15,7 +15,7 @@
   --font-family-sans: 'Atkinson Hyperlegible', system-ui, -apple-system, sans-serif;
   --font-family-mono: 'Atkinson Hyperlegible Mono', ui-monospace, SFMono-Regular, monospace;
 
-  /* Sage — brand accent color (Tailwind has no built-in sage) */
+  /* Sage - brand accent color (Tailwind has no built-in sage) */
   --color-sage-50:  #f1f3ec;
   --color-sage-100: #e2e6d9;
   --color-sage-200: #c7cdb6;

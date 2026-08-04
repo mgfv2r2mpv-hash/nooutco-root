@@ -1,16 +1,16 @@
 /*
- * modes.mjs — the per-layer diff modes + the delivered-color output plan for
+ * modes.mjs - the per-layer diff modes + the delivered-color output plan for
  * Milestone 1 (matches exactly what the shipped m1/m3 rigs reference).
  *
  * MODES follows the reference assets/art/_pipeline.js.txt (dmax seed/grow
  * thresholds preserved; zones re-tuned to the measured faces). On top of the
- * reference each feature carries a `prune` spec — geometry cleanup (thin-stroke
+ * reference each feature carries a `prune` spec - geometry cleanup (thin-stroke
  * component pruning) that replaces color heuristics entirely. Washes keep their
  * verified signature gates. See the plan: geometry-based extraction.
  */
 
 // feature helper: zoneE + hysteresis seed/grow on the RAW dmax diff (reference-
-// tuned scale — these captured features faithfully, colors and outlines intact),
+// tuned scale - these captured features faithfully, colors and outlines intact),
 // plus `prune` = the geometry cleanup that replaces all color heuristics:
 // a component must survive `coreR` erosions somewhere (thin-everywhere ghost
 // strokes die) and cover ≥ minArea px. BLOB for solid features; STROKE for
@@ -19,17 +19,17 @@
 //
 // zoneE = [x0, dy0, x1, dy1]: x as bbox fractions; y as offsets from the
 // model's MEASURED eye-line (pipeline detectEyeLine). The probe proved fixed
-// fractions sit 0.10–0.15 above the real anatomy on this bbox convention
+// fractions sit 0.10-0.15 above the real anatomy on this bbox convention
 // (the old "lips" zone missed the lips entirely; "brows" caught the hairline).
 const F = (zoneE, seed, grow, prune) => ({ kind: 'feature', zoneE, seed, grow, prune });
 const BLOB = { coreR: 3, minArea: 60 };
 const STROKE = { coreR: 1, minArea: 30 };
-// liner/mascara/lip-liner are ≤6px strokes — any component with a ≥7px-thick
+// liner/mascara/lip-liner are ≤6px strokes - any component with a ≥7px-thick
 // core is an iris/sclera ghost blob, not the feature (inverse of BLOB).
 const THIN_STROKE = { coreR: 1, minArea: 30, maxCoreR: 3 };
 
 export const MODES = {
-  // NOTE: skin-dull, glow, blush-*, eyeshadow-* are NO LONGER extracted — they
+  // NOTE: skin-dull, glow, blush-*, eyeshadow-* are NO LONGER extracted - they
   // are rendered procedurally in-game (soft color/luminance over skin regions),
   // positioned from per-model `face` anchors. See the plan (procedural pivot).
 
@@ -45,7 +45,7 @@ export const MODES = {
   'mascara':      F([0.12, -0.035, 0.88, 0.028], 38, 14, THIN_STROKE),
   // contour keeps the 'dull' skin-darkening gate (cleared its audit).
   'contour':   { kind: 'feature', zoneE: [0.02, -0.05, 0.98, 0.17], seed: 20, grow: 11, gate: 'dull', prune: BLOB, softAlpha: 55 },
-  // highlight = lighter SKIN sheen — the 'lighten' gate rejects the light ghost
+  // highlight = lighter SKIN sheen - the 'lighten' gate rejects the light ghost
   // rings around eyes/nose that plain dmax kept (proof-sheet evidence).
   'highlight': { kind: 'feature', zoneE: [0.05, -0.045, 0.95, 0.13], seed: 16, grow: 8, gate: 'lighten', prune: BLOB, softAlpha: 50 },
   'lip-liner':  F([0.28, 0.085, 0.72, 0.195], 30, 12, THIN_STROKE),
@@ -61,11 +61,11 @@ export const MODES = {
 // The 22 diffed layer keys, in z-order-ish processing order.
 export const DIFF_KEYS = Object.keys(MODES);
 
-// person:<key><suffix>.png  — the numeric suffix selects the model.
+// person:<key><suffix>.png - the numeric suffix selects the model.
 export const MODEL_SUFFIX = { m1: '', m2: ' 2', m3: ' 3', m4: ' 4' };
 export const MODELS = ['m1', 'm2', 'm3', 'm4'];
 
-// Shirt recolors — the 4 delivered outfit values (handoff step 6).
+// Shirt recolors - the 4 delivered outfit values (handoff step 6).
 const hexRgb = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 export const SHIRT_TINTS = {
   'shirt-gown':    hexRgb('#2f8f8a'),
@@ -74,7 +74,7 @@ export const SHIRT_TINTS = {
   'shirt-sparkle': hexRgb('#c48fd0'),
 };
 
-// Ear composites — demo maps 💠→m3 stud (ear-a), ⭕→m4 stud (ear-b), 💎→m3 stud
+// Ear composites - demo maps 💠→m3 stud (ear-a), ⭕→m4 stud (ear-b), 💎→m3 stud
 // (ear-c). m1/m2 studs are SVG (deferred to M2); m3/m4 studs are PNG.
 export const EAR_DESIGNS = [
   { out: 'ear-a', studModel: 'm3' },
@@ -84,7 +84,7 @@ export const EAR_DESIGNS = [
 
 // Per-model ear anchors {l,r,t} percent of the 520×600 frame. m1/m3 from the
 // shipped rigs; m2/m4 estimated by eye (all models share the same frame recipe)
-// — refined against base.png in the QA pass.
+// - refined against base.png in the QA pass.
 export const EAR_ANCHORS = {
   m1: { l: 22.5, r: 77.5, t: 39.5 },
   m2: { l: 24.0, r: 76.0, t: 39.0 },

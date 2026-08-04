@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
  * AdminTools/FFCGManager against the shared stimulus library.
  *
  * `ffc/items.json` became a projection of `shared/stimuli/ffc.json` and stopped
- * carrying a label or a filename — the game resolves both from the library by
+ * carrying a label or a filename - the game resolves both from the library by
  * id at run time, which is what lets an upload reach ffc without re-committing
  * the document. `AdminTools/ImageManager` was joined to the library in the same
  * commit; this page was not, and it still read `item.label` and built its

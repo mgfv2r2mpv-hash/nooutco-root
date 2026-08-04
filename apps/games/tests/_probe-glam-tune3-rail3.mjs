@@ -1,10 +1,10 @@
-/* THIRD PASS · rail correction probe 3 — the 390 margin, in all three engines.
+/* THIRD PASS · rail correction probe 3 - the 390 margin, in all three engines.
    Not a spec.  Run against a hash-verified :8788:
 
      node tests/_probe-glam-tune3-rail3.mjs
 
    The single-line rail's whole risk is width at 390, and the margin measured in
-   Chromium was 7.7px — small enough that a different text shaper decides it.
+   Chromium was 7.7px - small enough that a different text shaper decides it.
    So this asks each engine the same question directly: force the LONGEST line
    the game can show into the live rail and read how far the text overruns the
    box that clips it.  Anything > 0 is a rail that truncates the child's line. */
@@ -20,11 +20,11 @@ const DEVICES = [
    what the line says when the budget is spent, which is also when all 7 pips
    are on screen. */
 const LINES = [
-  'My turn is ready — tap Go!',
-  'My turn — I can do 7 more',
-  'My turn — I can do 19 more',
-  'My turn — add some things!',
-  'All set — now I hand it over!',
+  'My turn is ready - tap Go!',
+  'My turn - I can do 7 more',
+  'My turn - I can do 19 more',
+  'My turn - add some things!',
+  'All set - now I hand it over!',
 ];
 
 const painted = () => {
@@ -45,7 +45,7 @@ for (const [name, engine] of ENGINES) {
     await page.getByTitle('Show / hide setup').click();
     await page.getByLabel('Character', { exact: true }).selectOption('m4');
     await page.getByRole('button', { name: /^▶ Play/ }).click();
-    await page.getByRole('button', { name: /Go —/ }).click();
+    await page.getByRole('button', { name: /Go - / }).click();
     await page.waitForFunction(painted, undefined, { timeout: 20000 });
     await page.waitForTimeout(250);
 

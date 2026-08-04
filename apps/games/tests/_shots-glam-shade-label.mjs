@@ -13,11 +13,11 @@
 
    Photographed, per phase, over the stage (the hitbox floats on the face):
 
-     · shade-<phase>-painted.png  — Blush rose armed again after painting it.
+     · shade-<phase>-painted.png - Blush rose armed again after painting it.
                                     Reads "All done ✓" in BOTH phases, on purpose:
                                     that is the accepted eval §8 fix and this work
                                     must not walk it back.
-     · shade-<phase>-switched.png — Blush plum armed instead, never applied. This
+     · shade-<phase>-switched.png - Blush plum armed instead, never applied. This
                                     is the reported frame: `before` says
                                     "All done ✓" over a shade that has not touched
                                     the face, `after` asks for the work.
@@ -54,12 +54,12 @@ await page.getByLabel('Character', { exact: true }).selectOption('m4');
 await page.getByLabel('Routine', { exact: true }).selectOption('free');
 await page.getByLabel('Turns', { exact: true }).selectOption('4');
 await page.getByRole('button', { name: /^▶ Play/ }).click();
-await page.getByRole('button', { name: /Go —/ }).click();
+await page.getByRole('button', { name: /Go - / }).click();
 await page.waitForFunction(painted, undefined, { timeout: 20000 });
 
 const target = () => page.locator('div[style*="gtm-target"]').first();
 
-// Paint Blush rose for real — pointer down, drag, up.
+// Paint Blush rose for real - pointer down, drag, up.
 await page.getByTitle('Blush rose', { exact: true }).first().click();
 const box = await target().boundingBox();
 await page.mouse.move(box.x + 10, box.y + box.height / 2);
@@ -70,7 +70,7 @@ for (let i = 1; i <= 14; i++) {
 await page.mouse.up();
 await page.waitForTimeout(300);
 
-/* The stage is the frame the hitbox lives in — cropping to the hitbox alone
+/* The stage is the frame the hitbox lives in - cropping to the hitbox alone
    would lose the face it is making a claim about. */
 const stage = page.locator('#gtm-canvas').locator('xpath=ancestor::*[3]').first();
 const shot = (await stage.count()) ? stage : page.locator('#gtm-canvas');

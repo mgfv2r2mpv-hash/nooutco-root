@@ -1,9 +1,9 @@
-/* THIRD PASS · Finding A1 — the lash bound, on the geometry the pinned spec uses.
+/* THIRD PASS · Finding A1 - the lash bound, on the geometry the pinned spec uses.
  *
  * `glam-art-fidelity.spec.js` asserts the bound; this prints the numbers behind
  * it, at all three coverage thresholds, so the report can show the shape of the
- * 0.75 choice rather than assert it. The mask is a copy of the spec's — read off
- * `glam.png` itself, with the iris circle taken out — deliberately using nothing
+ * 0.75 choice rather than assert it. The mask is a copy of the spec's - read off
+ * `glam.png` itself, with the iris circle taken out - deliberately using nothing
  * from the renderer's own A1 machinery, so this probe produces comparable rows
  * against the PRE-CHANGE file as well as the shipped one.
  *

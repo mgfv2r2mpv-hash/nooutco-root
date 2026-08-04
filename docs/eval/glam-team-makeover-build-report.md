@@ -1,17 +1,16 @@
-# Glam Team Makeover — Tier 1 build report
+# Glam Team Makeover - Tier 1 build report
 
 **Branch:** `feat/glam-turn-taking-redesign` · **File under change:** `apps/games/glam-team-makeover/index.html`
 **Specs added:** `apps/games/tests/glam-tt-scoring.spec.js`, `apps/games/tests/glam-tt-story.spec.js`, `apps/games/tests/glam-tt-game.spec.js`, `apps/games/tests/glam-art-fidelity.spec.js`
 **Spec updated:** `apps/games/tests/glam-team-makeover.spec.js`
-**Authority:** `docs/glam-team-makeover-redesign-hardened-claims.md` (AC-1…AC-27) — wins over spec prose.
+**Authority:** `docs/glam-team-makeover-redesign-hardened-claims.md` (AC-1…AC-27) - wins over spec prose.
 **Date:** 2026-07-25 (pass 3)
 
 > **Status: Tier 1 landed, played, and swept.** Pass 1 built the measurement spine (`window.GlamTT`)
 > and the story pool (`window.GlamStory`) and verified them in isolation; the game's screens
 > still ran the pre-redesign turn loop. **Pass 2 wired the screens to the engine** and added
 > `tests/glam-tt-game.spec.js`, which drives the criteria through real buttons on the real
-> game rather than through the engine's API. **Pass 3 closed the visual-fidelity sweep (§3.9)** —
-> the item pass 2 listed as the main outstanding one — and added
+> game rather than through the engine's API. **Pass 3 closed the visual-fidelity sweep (§3.9)** - > the item pass 2 listed as the main outstanding one - and added
 > `tests/glam-art-fidelity.spec.js`, which settles it by measuring pixels rather than by
 > eyeballing screenshots. Every row in §2 below names a test that reproduces it; nothing is
 > inferred from reading code. What is still outstanding is listed, unhedged, in §5.
@@ -29,7 +28,7 @@ whether the learner's relinquish (the pass) and their mand for the turn back (th
 independent or prompted, and it is the append-only event log the per-turn table renders from.
 
 It is deliberately separable from React and from the DOM. That is what makes all 27 criteria
-testable at exact wait-window boundaries instead of racing real timers — the hardened claims turn on
+testable at exact wait-window boundaries instead of racing real timers - the hardened claims turn on
 distinctions like "pass at t=2s vs t=5s with a 3s window", which cannot be asserted reliably against
 a live 1s interval.
 
@@ -38,19 +37,19 @@ Implemented rules, each traceable to the attack it closes:
 | Rule | Claim | Closes |
 |---|---|---|
 | Possession floor: `independent` needs ≥1 engaged action; a 0-action pass is `no-engagement` | D-A / AC-20 | C2 |
-| Budget is a **cap, not a quota** — pass available throughout the turn, early pass scored | D-A / AC-19 | B3 |
+| Budget is a **cap, not a quota** - pass available throughout the turn, early pass scored | D-A / AC-19 | B3 |
 | Wait-window anchored to **possession-taken + no-relinquish idle**, not budget-exhaustion | D-A / AC-1 | D1 |
-| Independence gated on **any** prompt — app faded cue **or** BT real prompt | D-A / AC-2, AC-21 | D1 |
+| Independence gated on **any** prompt - app faded cue **or** BT real prompt | D-A / AC-2, AC-21 | D1 |
 | Forfeit flag is **turn-durable** for BT-real and at-exhaustion prompts; a resume cannot launder it | D-A / AC-23 | E1 |
 | Only a **sub-budget app cue** is discardable, and only by a genuine resume | D-A / L8 | E1 |
-| At `silent` the prompt is delivered **by window-elapse** — never a free `independent` | AC-1, AC-24 | F-22 |
+| At `silent` the prompt is delivered **by window-elapse** - never a free `independent` | AC-1, AC-24 | F-22 |
 | Over-cap: refuse + log + turn-durable forfeit + deliver prompt + **kid feedback in every mode** | D-B / AC-3, AC-4 | B2 |
 | One **fixed auto-scaled** per-turn cap; nothing inflates it mid-trial | D-B / AC-17 | A5 |
-| Ask-back window anchored to the **staff-idle forget onset** — fires at 0…N staff actions | D-K / AC-27 | **G1** |
+| Ask-back window anchored to the **staff-idle forget onset** - fires at 0…N staff actions | D-K / AC-27 | **G1** |
 | Ask before the onset is a recordable `early-ask`; any delivered prompt forfeits unconditionally | D-K / AC-25, AC-26 | F-33, F1 |
 | Completion = look finished **or** N turns (hard bound); always terminable | D-D / AC-5, AC-16 | A4 |
 | Tier keyed to **pass** independence + over-cap only; `staff-prompted` and `no-engagement` are non-independent | D-G / AC-11 | A2 |
-| (E) marks log `{timestamp, phase, whose-turn}`, change nothing, are undoable via a voiding event | D-C / AC-14 | — |
+| (E) marks log `{timestamp, phase, whose-turn}`, change nothing, are undoable via a voiding event | D-C / AC-14 | - |
 
 **Auto-scaled action budget (D-D / AC-7).** Computed once, before the trial, from the BT's turn count
 and the 19 charged actions a cooperative run needs to finish the look. Turn order is fixed L,S,L,S…,
@@ -67,7 +66,7 @@ turns=10: learner 5× 4 · staff 5× 2 · learner share 66.7%
 All land inside the §4-approved 2:1 learner-favoured split, and `learnerTurns × learnerBudget ≥ 19`
 in every case, so a cooperative run can finish the look inside N turns.
 
-### 1.2 Story pool (`window.GlamStory`) — the two-axis outro, drafted for review
+### 1.2 Story pool (`window.GlamStory`) - the two-axis outro, drafted for review
 
 The six approved §5 events, unchanged. The outro is restructured from §5's single **fused** string
 per (event, tier) into the two independently gated axes the hardening requires (§3.7 / D-G / L7).
@@ -77,7 +76,7 @@ The congruence rule (§3.7.1) is enforced mechanically rather than by eyeball: `
 sweeps **1008** producible strings (6 events × 12 names × 14 string slots) against a banned-pattern
 list, and the spec asserts the result is empty *and* that the guard catches a planted violation.
 
-### 1.3 Clean console — all 8 load-time errors fixed
+### 1.3 Clean console - all 8 load-time errors fixed
 
 The eval's §3.9 item was "clean the 5 SVG console errors"; there were in fact **8** errors on every
 load (5 SVG parse + 3 HTTP 404). All are gone. Root cause of every one of them was the same: raw
@@ -93,7 +92,7 @@ dc-runtime substitutes them.
 Verified: stage canvas paints 197 383 opaque pixels, **0 console errors**, all four models render
 distinctly. A standing note is now in the template that no `<img src="{{ … }}">` may be reintroduced.
 
-### 1.4 Existing spec updated — deliberately, and it was already red
+### 1.4 Existing spec updated - deliberately, and it was already red
 
 **`tests/glam-team-makeover.spec.js` was failing 3 of 4 tests at the branch's base commit**, before
 this work touched anything (confirmed by stashing the change and re-running). This is a correction to
@@ -107,7 +106,7 @@ the run's premise, not a regression:
   analysis (a locked spec decision) hides until skincare and makeup are done.
 - *`intro screen mounts`* tripped on the 8 pre-existing console errors above.
 
-Both art tests were rewritten to keep their original intent against the current architecture — read
+Both art tests were rewritten to keep their original intent against the current architecture - read
 pixels, not element `src`s:
 
 - per-model art: assert each `base.png` is served (HTTP 200) **and** that selecting each model paints
@@ -120,7 +119,7 @@ No test was deleted, and the rationale is recorded in the spec file itself.
 
 ---
 
-## 2. Acceptance criteria — evidence
+## 2. Acceptance criteria - evidence
 
 `✔` = reproduced by a named passing test. Where a criterion has both an engine rule and a
 screen that must honour it, **both** tests are named: `glam-tt-scoring.spec.js` proves the rule,
@@ -131,17 +130,17 @@ screen that must honour it, **both** tests are named: `glam-tt-scoring.spec.js` 
 | AC-1 pass after window → `prompted` at every level incl. silent | ✔ | `AC-1 · a pass after the window elapsed…` | `AC-1 (D1) · a silent-probe stall…` |
 | AC-2 `independent` iff pre-prompt, no forfeit | ✔ | `AC-2 · a pass inside the window…` | `AC-19 (B3) · an early pass…` |
 | AC-3 over-cap: refuse + feedback + log + prompt, every count mode | ✔ | `AC-3 · an over-cap tap is refused…` | `AC-3 (B2) · …GENTLE kid feedback even in count-HIDDEN mode` |
-| AC-4a over-cap forfeits only that turn | ✔ | `AC-4a (A3) · over-cap forfeits only THAT turn…` | — |
-| AC-4b silent-probe over-cap → `prompted@silent` | ✔ | `AC-4b (B2) · at silent-probe an over-cap grabber…` | — |
+| AC-4a over-cap forfeits only that turn | ✔ | `AC-4a (A3) · over-cap forfeits only THAT turn…` | - |
+| AC-4b silent-probe over-cap → `prompted@silent` | ✔ | `AC-4b (B2) · at silent-probe an over-cap grabber…` | - |
 | AC-5 completion claim gated; trial always terminable | ✔ | `AC-16 (A4)…`, `a trial is always terminable…` | `AC-5 · a finished look ends the trial…`, `AC-5/AC-16 (A4/C1)…` |
-| AC-6 re-applying a done step does not advance completion | ✔ | `AC-6 · re-applying a done step…` | — |
+| AC-6 re-applying a done step does not advance completion | ✔ | `AC-6 · re-applying a done step…` | - |
 | AC-7 turns=N auto-scale, ~2/3 learner share | ✔ | `AC-7 · turns=N auto-scales…` | `AC-7/AC-17 (A5) · the BT sets TURNS…` |
 | AC-8 no timer bounds the learner's turn | ✔ | `AC-8 · no timer bounds the learner's own turn` | `AC-8/AC-12/AC-13 · no timer on the learner turn…` |
 | AC-9 ten-column table + de-identified footer, no name/freeform | ✔ | `AC-9 · the report is a per-turn table…` | `AC-9 (D-H) · the print view renders the ten-column…` |
 | AC-10 no checkable visual claim in any mad-lib string | ✔ | `AC-10 · no producible string…` (story spec, 1008 strings) | `AC-10 · the on-screen intro is the mad-lib…` |
 | AC-11 tier = f(over-cap, pass independence) only | ✔ | `AC-11 (A2)…`, `…(E) marks never move it`, `…tier boundaries` | `AC-20 (C2) · a 0-action pass…` (tier 3) |
-| AC-12 whose-turn visible in every turn-map style | ✔ | — | `AC-8/AC-12/AC-13 · …whose-turn stated in every map style` |
-| AC-13 theme dropdown absent, pet/hero unreachable | ✔ | — | `AC-8/AC-12/AC-13 · …no theme selector` |
+| AC-12 whose-turn visible in every turn-map style | ✔ | - | `AC-8/AC-12/AC-13 · …whose-turn stated in every map style` |
+| AC-13 theme dropdown absent, pet/hero unreachable | ✔ | - | `AC-8/AC-12/AC-13 · …no theme selector` |
 | AC-14 (E) logs, changes nothing, undoable | ✔ | `AC-14 · an (E) mark logs…` | `AC-14 · an (E) mark logs {timestamp, phase, whose-turn}…` |
 | AC-15 ask-back reachable on a counted partner turn | ✔ | `AC-15 · the ask-back is reachable…` | `AC-27 (G1 MUST-TEST)…` |
 | AC-16 all-repetition trial terminates, prints incomplete, no deadlock | ✔ | `AC-16 (A4) · an all-repetition trial…` | `AC-5/AC-16 (A4/C1)…` |
@@ -150,7 +149,7 @@ screen that must honour it, **both** tests are named: `glam-tt-scoring.spec.js` 
 | AC-19 early sub-budget pass → `independent`, actions-used recorded | ✔ | `AC-19 (B3) · an early voluntary pass…` | `AC-19 (B3) · an early pass with the budget unspent…` |
 | AC-20 0-action run → all `no-engagement`, Tier 3 | ✔ | `AC-20 (C2) · a 0-action pass…` | `AC-20 (C2) · a 0-action pass scores no-engagement…` |
 | AC-21 sub-budget prompted pass → non-independent | ✔ | `AC-21 (D1) · a sub-budget stall…` | `AC-21/AC-23 · a real BT prompt from the staff strip…` |
-| AC-22 sub-budget never-pass → `staff-prompted`, no deadlock | ✔ | `AC-22 (D1 corollary)…` | — |
+| AC-22 sub-budget never-pass → `staff-prompted`, no deadlock | ✔ | `AC-22 (D1 corollary)…` | - |
 | AC-23 BT/at-exhaustion prompt turn-durable; resume cannot launder | ✔ | `AC-23 (E1) · a BT prompt is TURN-DURABLE…` | `AC-23 (E1) · the over-cap forfeit is TURN-DURABLE…` |
 | AC-24 37s silent ask → `prompted@silent` | ✔ | `AC-24 (F1) · a 37s silent ask…` | `AC-24 (F1/F-22) · a silent ask-back after the window…` |
 | AC-25 ask before onset → recordable `early-ask` | ✔ | `AC-25 (F-33)…` | `AC-25 (F-33) · asking while the partner is still actively taking their turn…` |
@@ -169,8 +168,8 @@ nothing.
 | Wired | Where |
 |---|---|
 | `GlamTT.Trial` opened at Play; a 250 ms `tick()` drives every prompt | `play()`, `componentDidMount`, `tickTrial()` |
-| Every charged tap admitted or refused by the engine — free re-touches never reach it | `_admit()` / `_atCapFor()`; the apply paths (`applyChoose`, `tapApply`, `patchOne`, `concealOne`, `paintStep`) |
-| Screens derived from the engine, never from a parallel tally | `syncTT()` — it picks the screen for the engine's current turn and mirrors the counters |
+| Every charged tap admitted or refused by the engine - free re-touches never reach it | `_admit()` / `_atCapFor()`; the apply paths (`applyChoose`, `tapApply`, `patchOne`, `concealOne`, `paintStep`) |
+| Screens derived from the engine, never from a parallel tally | `syncTT()` - it picks the screen for the engine's current turn and mirrors the counters |
 | Pass / ask / hand-back / BT-prompt / (E) / end-trial | `handoff()`, `confirmAsk()`, `giveBack()`, `btPrompt()`, `eMark()`/`eUndo()`, `endTrial()` |
 | Look completion from the existing task analysis | `_lookDone()` → `setLookComplete()` in `afterAction()` |
 | Over-cap kid feedback | `toast()` → the sage `capToast` pill in the controls bar |
@@ -186,19 +185,19 @@ avatar canvas four times a second.
 
 | Defect (spec §2) | Status |
 |---|---|
-| 1. Scoring can't be trusted (37s silent ask scored `independent`) | **closed, and closed as played** — the pass site (`AC-1 (D1)`) and the ask-back site (`AC-24 (F1/F-22)`) both score `prompted@silent` through the UI. The screens no longer decide anything: `cueVisible` is presentation only. |
-| 2. Violations are invisible (0/43 tools gave feedback at the cap) | **closed as played** — `AC-3 (B2)` taps a 5th tool in **count-hidden** mode and asserts the child is told, that the message is not a red error, and that no clinical word (`prompted`/`independent`/`forfeit`/`over-cap`/`violation`) appears anywhere on the child's screen. |
-| 3. You can "win" with a blank doll (win counts handoffs) | **closed as played** — the ⭐ goal is gone; the chip reads `Turn n of N` and completion is `_lookDone()`. `AC-5` ends a trial with `endReason: 'look-complete'`; `AC-5/AC-16` ends one on the turn bound with `complete: false`, prints the marked-incomplete note and still awards the Tier-1 turn-taking line. |
+| 1. Scoring can't be trusted (37s silent ask scored `independent`) | **closed, and closed as played** - the pass site (`AC-1 (D1)`) and the ask-back site (`AC-24 (F1/F-22)`) both score `prompted@silent` through the UI. The screens no longer decide anything: `cueVisible` is presentation only. |
+| 2. Violations are invisible (0/43 tools gave feedback at the cap) | **closed as played** - `AC-3 (B2)` taps a 5th tool in **count-hidden** mode and asserts the child is told, that the message is not a red error, and that no clinical word (`prompted`/`independent`/`forfeit`/`over-cap`/`violation`) appears anywhere on the child's screen. |
+| 3. You can "win" with a blank doll (win counts handoffs) | **closed as played** - the ⭐ goal is gone; the chip reads `Turn n of N` and completion is `_lookDone()`. `AC-5` ends a trial with `endReason: 'look-complete'`; `AC-5/AC-16` ends one on the turn bound with `complete: false`, prints the marked-incomplete note and still awards the Tier-1 turn-taking line. |
 
 ---
 
-## 3. The G1 must-test — result: **PASS**
+## 3. The G1 must-test - result: **PASS**
 
 This is the one hardened fix the adversarial review never re-probed (it landed on the round cap), and
 the maintainer's sign-off routed its verification here rather than to a fresh adversarial pass.
 
 **Configuration:** give-back = "They forget → I ask", Their turn = **3 actions, counted**, cue = full,
-staff does **0 of 3** allotted actions — the scenario the mode is named for.
+staff does **0 of 3** allotted actions - the scenario the mode is named for.
 
 **Test:** `AC-27 (G1 MUST-TEST) · counted staff turn + give-back=forgets + 0 staff actions → the ask window OPENS and a correct ask scores the mand`
 
@@ -207,13 +206,13 @@ staff does **0 of 3** allotted actions — the scenario the mode is named for.
 | Assertion | Observed |
 |---|---|
 | staff actions spent | `0` (allotted budget `> 0` and unspent) |
-| onset before the idle interval elapses (t=2s, window 3s) | **not fired** — and an ask there scores `early-ask` |
-| onset after the idle interval (t=3.5s) | **fired** — the ask window OPENS, no F-23/F-6 deadlock |
-| onset source | `staff-idle` — **not** "allotted staff actions spent" |
-| onset `staffActions` | `0` — fired on a genuine 0-of-N forget |
-| a correct ask after the onset | **`independent`** — the mand is scored, **not** mis-filed as `early-ask` |
+| onset before the idle interval elapses (t=2s, window 3s) | **not fired** - and an ask there scores `early-ask` |
+| onset after the idle interval (t=3.5s) | **fired** - the ask window OPENS, no F-23/F-6 deadlock |
+| onset source | `staff-idle` - **not** "allotted staff actions spent" |
+| onset `staffActions` | `0` - fired on a genuine 0-of-N forget |
+| a correct ask after the onset | **`independent`** - the mand is scored, **not** mis-filed as `early-ask` |
 
-### Pass 2 — the same must-test, **played through the UI**
+### Pass 2 - the same must-test, **played through the UI**
 
 `glam-tt-game.spec.js` → *AC-27 (G1 MUST-TEST) · counted partner turn + give-back=forgets +
 0 partner actions → the ask window OPENS and a correct ask scores the mand*
@@ -227,12 +226,12 @@ chromium, firefox and webkit:
 | the partner turn is counted and unspent | `{actor:'staff', budget:2, spent:0}` |
 | the ask window opens with no one having acted | `onsetAt != null` within the polled window |
 | the onset's own log record | `{source:'staff-idle', staffActions:0}` |
-| a correct ask after the onset | **`independent`** — the mand, not `early-ask` |
-| play continues | the `Go — my turn!` button is back; **no deadlock** |
+| a correct ask after the onset | **`independent`** - the mand, not `early-ask` |
+| play continues | the `Go - my turn!` button is back; **no deadlock** |
 
 The complementary `AC-25 (F-33)` test asks *before* the onset with an 8 s window and gets
 `early-ask`, so the two outcomes are distinguished by the onset and not by luck. The mand
-affordance is now live for the **whole** partner turn — the pre-redesign build put it behind a
+affordance is now live for the **whole** partner turn - the pre-redesign build put it behind a
 separate `ask` screen that only opened once the partner had spent their allotted actions, which
 is the G1 deadlock in one line of code.
 
@@ -244,64 +243,63 @@ there) rather than being short-circuited by the 3s idle heuristic.
 
 ---
 
-## 4. Drafted two-axis outro strings — **for maintainer review (L7)**
+## 4. Drafted two-axis outro strings - **for maintainer review (L7)**
 
 Six approved events **unchanged**; only the outro's text *structure* changes. Each event now carries
 a **tier-keyed turn-taking line** (teamwork only, asserts no event success and no completion, at any
 tier) and a **completion beat** (the event-success flavour, emitted *only* when the staged look is
 finished).
 
-**Voice (maintainer correction):** the **turn-taking lines are second-person — "you" — because the
+**Voice (maintainer correction):** the **turn-taking lines are second-person - "you" - because the
 learner (player 1) is who takes turns**, not the client sprite. The fictional client name (`{name}`,
 drawn from 12 neutral names) is used **only** where the sentence is about the *client's* situation
-(the intro/problem — "{name} is not ready yet") or the *client's* event outcome (the completion beat —
-"{name} dazzled the crowd"). The turn-taking credit addresses the child directly. The outro opens with
+(the intro/problem - "{name} is not ready yet") or the *client's* event outcome (the completion beat - "{name} dazzled the crowd"). The turn-taking credit addresses the child directly. The outro opens with
 a cheer word (§5's "one flavour word" slot).
 
-Tier 3 lines are worded to be true even of a fully disengaged run — they credit the *shared activity*
+Tier 3 lines are worded to be true even of a fully disengaged run - they credit the *shared activity*
 rather than claiming persistence the learner may not have shown.
 
 ### 1 · School picture day 📸
-- **Intro:** "Picture day is today! {name} is not ready yet — there is a whole glam routine to do and no outfit picked. The photographer is almost here! Good thing the glam team takes turns."
+- **Intro:** "Picture day is today! {name} is not ready yet - there is a whole glam routine to do and no outfit picked. The photographer is almost here! Good thing the glam team takes turns."
 - **Tier 1:** "Every turn, you took a turn and then handed the brush back. Getting ready for picture day as a real team."
 - **Tier 2:** "You and the glam partner traded the brush back and forth the whole time."
-- **Tier 3:** "It takes a lot of turns to get ready for picture day — and you had a partner for every one of them."
-- **Completion beat:** "And the whole routine got finished before the photographer arrived — picture day was a hit!"
+- **Tier 3:** "It takes a lot of turns to get ready for picture day - and you had a partner for every one of them."
+- **Completion beat:** "And the whole routine got finished before the photographer arrived - picture day was a hit!"
 
 ### 2 · Birthday party 🎉
-- **Intro:** "The party starts in a few minutes! {name} is not party-ready yet — there is lots to do and no outfit yet. The guests are already arriving! Good thing the glam team takes turns."
+- **Intro:** "The party starts in a few minutes! {name} is not party-ready yet - there is lots to do and no outfit yet. The guests are already arriving! Good thing the glam team takes turns."
 - **Tier 1:** "Turn after turn, you took a turn and passed it right back. Nobody gets party-ready like a team that shares."
 - **Tier 2:** "You shared the brush with the glam partner all the way through getting ready for the party."
 - **Tier 3:** "Getting party-ready takes a lot of turns, and you had a partner the whole time."
-- **Completion beat:** "And the whole look was ready the moment the guests walked in — what a party!"
+- **Completion beat:** "And the whole look was ready the moment the guests walked in - what a party!"
 
 ### 3 · Talent show 🎤
-- **Intro:** "Talent show — {name} is on next! {name} still needs the full glam routine before going on. On stage next! Good thing the glam team takes turns."
+- **Intro:** "Talent show - {name} is on next! {name} still needs the full glam routine before going on. On stage next! Good thing the glam team takes turns."
 - **Tier 1:** "Every turn, you took a turn and then gave it back. Backstage teamwork at its very best."
 - **Tier 2:** "You and the glam partner took turns backstage, right up to showtime."
 - **Tier 3:** "Getting ready backstage takes a lot of turns, and you had a glam partner for all of them."
-- **Completion beat:** "And the whole glam routine was done before the curtain went up — {name} dazzled the crowd!"
+- **Completion beat:** "And the whole glam routine was done before the curtain went up - {name} dazzled the crowd!"
 
 ### 4 · Family photo 🖼️
-- **Intro:** "Family photo time! {name} is not camera-ready yet — the whole routine still has to be done. Grandma is waiting! Good thing the glam team takes turns."
+- **Intro:** "Family photo time! {name} is not camera-ready yet - the whole routine still has to be done. Grandma is waiting! Good thing the glam team takes turns."
 - **Tier 1:** "Turn for turn, you took a turn and handed it back every single time. That is what a team looks like."
 - **Tier 2:** "You and the glam partner passed the brush back and forth while everyone got ready."
 - **Tier 3:** "Getting everyone camera-ready takes a lot of turns, and you had a partner right there."
-- **Completion beat:** "And the whole look came together before grandma finished waiting — the framed favorite!"
+- **Completion beat:** "And the whole look came together before grandma finished waiting - the framed favorite!"
 
 ### 5 · First day, new school 🎒
-- **Intro:** "First day at a new school! {name} wants to feel ready — there is a full routine to do and no outfit yet. The bus comes in a few minutes! Good thing the glam team takes turns."
+- **Intro:** "First day at a new school! {name} wants to feel ready - there is a full routine to do and no outfit yet. The bus comes in a few minutes! Good thing the glam team takes turns."
 - **Tier 1:** "Every turn, you took a turn and passed it back. Getting ready for a big day, together."
 - **Tier 2:** "You took turns with the glam partner all through getting ready for the first day."
 - **Tier 3:** "Getting ready for a first day takes a lot of turns, and you had a partner for every one."
-- **Completion beat:** "And the whole routine was finished before the bus came — {name} walked in beaming!"
+- **Completion beat:** "And the whole routine was finished before the bus came - {name} walked in beaming!"
 
 ### 6 · Dance recital 🩰
-- **Intro:** "Dance recital tonight! {name} is not show-ready yet — there is a glam routine to do. Curtain in minutes! Good thing the glam team takes turns."
+- **Intro:** "Dance recital tonight! {name} is not show-ready yet - there is a glam routine to do. Curtain in minutes! Good thing the glam team takes turns."
 - **Tier 1:** "Turn after turn, you took a turn and gave it right back. A recital-day team through and through."
 - **Tier 2:** "You and the glam partner traded turns the whole time, getting ready for the recital."
 - **Tier 3:** "Getting show-ready takes a lot of turns, and you had a glam partner through all of them."
-- **Completion beat:** "And the whole glam routine was ready before the curtain — {name} shone on stage!"
+- **Completion beat:** "And the whole glam routine was ready before the curtain - {name} shone on stage!"
 
 **L7 escalation status: none needed.** Every event expressed a Tier-1 turn-taking line without an
 event-success claim, so no event had to be escalated to the maintainer under L7's fallback. The
@@ -311,12 +309,12 @@ mechanical check (`tierLinesClaimingCompletion()`, asserted empty) is what backs
 **Cheers:** Wow · Look at that · Yes · Amazing · Hooray
 
 > *Changed in pass 2:* the cheer list used to include "What a team", and the outro title is
-> `<cheer> — what a team!`, so one draw in five rendered as **"What a team — what a team!"** on
+> `<cheer> - what a team!`, so one draw in five rendered as **"What a team - what a team!"** on
 > screen. Caught by playing it, not by reading it. `Hooray` replaces it.
 
 **Two review questions for the maintainer:**
 1. The turn-taking lines name the behaviour plainly ("took a turn and then handed the brush back").
-   That is intentional — §3.7 says the outro *names the turn-taking* — but it is the line most likely
+   That is intentional - §3.7 says the outro *names the turn-taking* - but it is the line most likely
    to want a register change for a specific learner. Please confirm the tone.
 2. Tier 3's "had a partner for every one of them" is the deliberate encouraging floor. It credits the
    activity, not the learner's performance, so it stays true for a 0-action run. Confirm that is the
@@ -324,7 +322,7 @@ mechanical check (`tierLinesClaimingCompletion()`, asserted empty) is what backs
 
 ---
 
-## 4b. The visual-fidelity sweep (§3.9) — pass 3, measured
+## 4b. The visual-fidelity sweep (§3.9) - pass 3, measured
 
 Spec §3.9 is the one Tier-1 item that cannot be settled by reading code: it is a claim about
 pixels. So it was settled by measuring them. `tests/glam-art-fidelity.spec.js` (5 tests × 3
@@ -334,17 +332,17 @@ harness's, before and after.
 | §3.9 item | Before (measured) | After (measured) | Test |
 |---|---|---|---|
 | **Sprite layers exactly aligned** | **32 of 56** model×tool combinations painted *outside* their own target box | **0 of 56** | `F-11 · every tool paints inside its own target box…` |
-| **"Shirt color" behind the vanity ledge** (F-10) | m1/m3/m4: **0 %** of the shirt on screen — the ledge's opaque body began at page-Y 689, the shirt paints at 728–752 | 25 %/38 %/46 % of shirt pixels above the ledge line (m2 32 %), on desktop, tablet and phone alike; the ledge still covers the canvas's bottom cut | `F-10 · a shirt colour is visible above the vanity ledge…` |
-| **Blemish contrast** (F-16) | **1.06–1.67 : 1** on all twelve spots | **3.18–6.82 : 1** on all twelve | `F-16 · every blemish clears 3:1 contrast…` |
+| **"Shirt color" behind the vanity ledge** (F-10) | m1/m3/m4: **0 %** of the shirt on screen - the ledge's opaque body began at page-Y 689, the shirt paints at 728-752 | 25 %/38 %/46 % of shirt pixels above the ledge line (m2 32 %), on desktop, tablet and phone alike; the ledge still covers the canvas's bottom cut | `F-10 · a shirt colour is visible above the vanity ledge…` |
+| **Blemish contrast** (F-16) | **1.06-1.67 : 1** on all twelve spots | **3.18-6.82 : 1** on all twelve | `F-16 · every blemish clears 3:1 contrast…` |
 | **Misplacement across steps & models** | **10 of 28** model×hairstyle combinations could seed a blemish *under the hair* | **0 of 28** | `F-16b · no seeded blemish lands under the hair…` |
-| **Near-invisible tools** | Contour 0.12–0.25 % of canvas, Lip liner 0.055–0.086 % | Contour 0.43–0.65 %, Lip liner 0.115–0.173 % | measured by the same harness |
+| **Near-invisible tools** | Contour 0.12-0.25 % of canvas, Lip liner 0.055-0.086 % | Contour 0.43-0.65 %, Lip liner 0.115-0.173 % | measured by the same harness |
 | **Target labels mismatch mechanic** | eyes/lips zones said "Drag across…" for the single-tap Eyeliner, Mascara and Lip liner | verb comes from the tool's mechanic | `target labels name the tool's mechanic…` |
 | **"Keep painting… 100 %"** on a finished step | told the child to keep going | `All done ✓` | same test |
-| Actions-left meter · hairstyle button names · phone overflow · 8 console errors | — | done in passes 1–2 | see §1.3, §5 |
+| Actions-left meter · hairstyle button names · phone overflow · 8 console errors | - | done in passes 1-2 | see §1.3, §5 |
 
 **How the alignment fix works, and why it cannot rot.** `ZONES` was a single fixed percentage
 table shared by all four models, tuned for the procedural SVG the canvas compositor replaced.
-The hitboxes are now *derived per model from the same data `paintAvatar` paints from* — the eye
+The hitboxes are now *derived per model from the same data `paintAvatar` paints from* - the eye
 landmarks in the art manifest, the packed feature masks (R = hair, G = lips, B = eyes + brows)
 and the `EYECFG`/`BROWCFG`/`EARCFG` anchor tables, which were hoisted out of `paintAvatar` so
 painter and hitbox read one source. A box therefore cannot drift from its effect: if the art
@@ -355,23 +353,23 @@ regeneration that shifts a feature fails the build rather than silently mis-regi
 **Three things the measurements corrected in the eval's own account:**
 
 1. The eval reported blemish contrast as a **m3/m4** problem. Measured, **all twelve spots on
-   all four models** came in between 1.06 and 1.67 : 1 — and the single worst reading in the
+   all four models** came in between 1.06 and 1.67 : 1 - and the single worst reading in the
    set, 1.06 : 1, was on **m1**, one of the two models the eval did not flag. The fix picks the
    ink against the local skin luminance sampled from the base render, because no single hue
-   clears 3 : 1 across a skin range of L ≈ 0.15–0.33.
+   clears 3 : 1 across a skin range of L ≈ 0.15-0.33.
 2. The eval reported "on M4 one of three [blemishes] lands in the hair" as a one-off. It is
    **systematic**: the pool is seeded per *model*, the hair mask is per *hairstyle*, and 10 of
    the 28 model×style combinations had at least one pool point under hair.
 3. The eval's F-11 framing was "a single fixed rectangle table cannot fit four
    differently-proportioned faces". The manifest says the faces are registered *identically*
    (both eyes at x = 0.37/0.63, y ≈ 0.44 on every model) and it is the eye **size** that varies
-   by up to 22 %. The table's real failure was being tuned for the retired SVG — which is why
+   by up to 22 %. The table's real failure was being tuned for the retired SVG - which is why
    it missed on all four models at once, not on three out of four.
 
 **Deliberate trade-off, recorded.** The vanity ledge went from `height:16%` of the stage panel
 (99 px on desktop) to a fixed `30px`. It is now a counter *edge* rather than a counter. Fixed
 pixels, not a percentage, because the whole point is a constant relationship to the canvas's
-bottom edge, which the stage panel's height does not track — that is what makes the shirt
+bottom edge, which the stage panel's height does not track - that is what makes the shirt
 visible at 1440, 820 and 390 px wide alike. If the salon art is ever reframed so the shirt sits
 higher, the ledge can grow again; the spec will say so.
 
@@ -382,26 +380,26 @@ higher, the ledge can grow again; the spec will say so.
 Tier 1's clinical and gameplay core is landed and played, and the art-fidelity sweep is closed
 (§4b). What remains is recorded here rather than quietly dropped.
 
-1. **Visual-fidelity sweep (§3.9) — closed in pass 3.** Full before/after measurements are in
+1. **Visual-fidelity sweep (§3.9) - closed in pass 3.** Full before/after measurements are in
    §4b. **Done across the three passes:** the 8 load-time console errors; the **"Actions left"
    meter, which filled backwards**; the **seven unlabelled hairstyle buttons** (now Buzz ·
    Tousled · Long bob · Bob · Spiky · Cropped · Pixie); the **phone-width horizontal overflow**;
    **sprite-layer alignment** (32 of 56 model×tool combinations painted outside their box → 0);
-   **"Shirt color" behind the vanity ledge**; **blemish contrast** (1.06–1.67 : 1 → 3.18–6.82 : 1);
+   **"Shirt color" behind the vanity ledge**; **blemish contrast** (1.06-1.67 : 1 → 3.18-6.82 : 1);
    **blemishes seeded under the hair** (10 of 28 model×style combinations → 0); the two
    near-invisible tools (Contour, Lip liner); the mechanic/label mismatch; and "Keep painting…
-   100 %" on a finished step. None of these affect a score — they affect whether a spent action
+   100 %" on a finished step. None of these affect a score - they affect whether a spent action
    shows the child a result, and whether the "do it here" box points at the right place.
    **Still outstanding, deliberately:** the palette's *cap-dim* path still dims a tool the learner
-   has no budget for rather than hiding it. That is left alone on purpose — §3.8's "inaccessible
+   has no budget for rather than hiding it. That is left alone on purpose - §3.8's "inaccessible
    items are hidden" is about the staged task analysis (already hidden, `renderVals` filters
    locked options), whereas at-cap is a *refusal* the child is meant to see feedback for (D-B /
    AC-3), and hiding the palette mid-turn would be a bigger disruption than the dim.
-2. **Device sweep** — desktop (1440×900), tablet (820×1180) and iPhone (390×844) all render with
+2. **Device sweep** - desktop (1440×900), tablet (820×1180) and iPhone (390×844) all render with
    zero horizontal overflow and a clean console, and the shirt-visibility fix was verified at all
    three. What has *not* been done is a touch-interaction pass on a real device: the paint tools
    use pointer capture and only mouse pointers have been exercised.
-3. **Dead code left in place, on purpose** — `buildV()`, `buildArtLayers()`, the `pet`/`hero`
+3. **Dead code left in place, on purpose** - `buildV()`, `buildArtLayers()`, the `pet`/`hero`
    `THEMES` entries and the now-unused `personProcedural`/`petArt*`/`sceneFrame` render-values.
    `THEMES.social` is still read for the palette definition, so the map cannot simply be deleted.
    Removing the rest is a mechanical simplification pass, deliberately not mixed into a change
@@ -409,13 +407,13 @@ Tier 1's clinical and gameplay core is landed and played, and the art-fidelity s
 4. **The extra-time reinforcer is removed, not reworked.** Spec §3.8 asks to keep it as a
    non-cap reinforcer. It could not stay in its old form: it was `effGoal = actionGoal + bonus`,
    i.e. a second lever on the cap, which is exactly the A5 attack AC-17 forbids. And its other
-   half — extra *time* — is meaningless now that AC-8 makes the learner's turn always
+   half - extra *time* - is meaningless now that AC-8 makes the learner's turn always
    action-counted rather than timed. Rather than invent an unspecified replacement, the control
    is gone and this is flagged for the maintainer: **if a relinquish reinforcer is wanted, it
    needs a design that touches neither the cap nor the turn length.**
-5. **L6 stands, unchanged and unclosable in software** — see §6.
+5. **L6 stands, unchanged and unclosable in software** - see §6.
 
-### Explicitly out of scope — Tier 2 (not built in this run)
+### Explicitly out of scope - Tier 2 (not built in this run)
 
 Per spec §6 and the run's own instruction, **coordination mode is not started**: random
 staff-error injection (extra turn / stall), the peripheral coded staff cue, the conditional
@@ -425,16 +423,16 @@ open to extra fields.
 
 ## 6. Accepted limits carried into the build
 
-- **L6 — who-taps on one device (accepted, human ruling).** The app cannot machine-prove the learner
+- **L6 - who-taps on one device (accepted, human ruling).** The app cannot machine-prove the learner
   rather than the BT activated the pass or "✓ I asked!" control. The engine removes the *structural*
   false positive (the old `independent = !cueVisible`) but not this procedural residue; mitigation is
   BT procedural fidelity. Applies to both the pass and the ask-back.
-- **L7 — outro strings.** Drafted here in §4, awaiting maintainer sign-off. No event needed escalation.
-- **L8 — pause-vs-stall / forget-vs-mid-turn timing (tuning).** The engine cannot distinguish a
+- **L7 - outro strings.** Drafted here in §4, awaiting maintainer sign-off. No event needed escalation.
+- **L8 - pause-vs-stall / forget-vs-mid-turn timing (tuning).** The engine cannot distinguish a
   thoughtful learner pause from a relinquish stall, or a staff mid-turn pause from a forget. Bounded
   as designed: the wait window is a config value, `btPrompt()` lets the observer deliver the real
   prompt, `signalForget()` lets the BT disambiguate a forget, and independence is gated on *any*
-  prompt with the durable-forfeit rule — so this affects prompt **timing**, never false independence.
+  prompt with the durable-forfeit rule - so this affects prompt **timing**, never false independence.
   The `AC-23` discardable-contrast test is the deliberate expression of this boundary.
 
 ## 7. One engine bug found and fixed during verification
@@ -442,15 +440,15 @@ open to extra fields.
 Worth recording because it is the exact class of mistake this design is most vulnerable to. The first
 implementation tested delivered prompts with `!!t.cueAt`. On an injected clock a prompt delivered at
 `t=0` is a real delivery, but `!!0 === false`, so the engine reported *no prompt delivered* and would
-have scored the pass `independent` — a fresh instance of the F-22 falsy-check family, caught by the
+have scored the pass `independent` - a fresh instance of the F-22 falsy-check family, caught by the
 AC-3 assertion. All timestamp reads are now `!= null` comparisons, and the reason is commented at the
 site so it is not "simplified" back.
 
-## 8. Found by playing it — pass 2
+## 8. Found by playing it - pass 2
 
 Three defects that only a real browser surfaces, all now fixed and covered:
 
-1. **`"What a team — what a team!"`** — see §4. A string-pool value colliding with the template
+1. **`"What a team - what a team!"`** - see §4. A string-pool value colliding with the template
    that consumes it; invisible in a unit test of either half.
 2. **Tools became unaddressable once used.** The palette wrote the button's *visible* label
    (which grows a `✓ ` prefix once a tool's effect is on the doll) into the `title` attribute as
@@ -465,17 +463,17 @@ Three defects that only a real browser surfaces, all now fixed and covered:
 None of the three could have been caught by reading the diff; all three came out of driving the
 game and looking at the screen.
 
-## 9. Found by measuring it — pass 3
+## 9. Found by measuring it - pass 3
 
 Screenshots were not enough for the art sweep either; three of these were invisible to the eye
 and only showed up once the compositor's output was diffed numerically. See §4b for the numbers.
 
 1. **The alignment failure was universal, not per-model.** 32 of 56 model×tool combinations
-   painted outside their own target box, and the failing set included every model — because the
+   painted outside their own target box, and the failing set included every model - because the
    table was tuned for a renderer that no longer exists, not because four faces differ.
 2. **Blemish contrast was bad on every model**, not just the two dark-skinned ones the eval
    named; m1's worst spot measured 1.06 : 1, the lowest of all twelve.
-3. **Blemishes under the hair are systematic** — 10 of 28 model×hairstyle combinations, not the
+3. **Blemishes under the hair are systematic** - 10 of 28 model×hairstyle combinations, not the
    single M4 instance the eval caught. Only a sweep over every style surfaces that.
 4. **`_data()` was the wrong tool for the pool filter.** Reading the seven hair masks per model
    through the existing ImageData cache would have retained ~8 MB per model to answer 56
@@ -485,17 +483,17 @@ and only showed up once the compositor's output was diffed numerically. See §4b
 
 ---
 
-# Refresh — the broader makeover refresh
+# Refresh - the broader makeover refresh
 
 A second body of work on top of the Tier-1 build: a richer, more themed makeover
 *activity*, a texting-style opening flow, and two fixes. The clinical layer is
-frozen for all of it — `window.GlamTT` and `tests/glam-tt-scoring.spec.js` are not
+frozen for all of it - `window.GlamTT` and `tests/glam-tt-scoring.spec.js` are not
 to be touched, and `window.GlamStory`'s guarantees (two-axis outro, congruence,
 second-person turn-taking lines, no PHI, no numbers) have to keep holding.
 
 This section is written incrementally, one landed slice at a time.
 
-## R1. The two fixes — M1 retired, blemishes softened
+## R1. The two fixes - M1 retired, blemishes softened
 
 ### R1.1 M1 is retired
 
@@ -504,29 +502,26 @@ There were four routes into a model and it only takes one left open to put the
 retired face in front of a child, so all four now read one list:
 
 `window.GlamStory.MODELS` (`['m2','m3','m4']`) is the roster and the single source
-of truth. Off it hang —
-
-| Route | Before | Now |
+of truth. Off it hang - | Route | Before | Now |
 |---|---|---|
 | Random client draw | `pick(['m1','m2','m3','m4'])` | `pick(MODELS)` |
 | BT character lock (`<select>`) | five options incl. `Lock: model 1` | roster only |
 | A lock value that is *not* on the roster (a stale config, a hand-typed id) | honoured verbatim | falls back to the random draw |
-| On-stage art model picker | `artGated()` returned `{}` — everything the art bundle ships | gates every generated model the roster does not list |
+| On-stage art model picker | `artGated()` returned `{}` - everything the art bundle ships | gates every generated model the roster does not list |
 
 `EYECFG` / `BROWCFG` / `EARCFG` lost their `m1` rows with it; those tables are
 per-model sprite calibration and every lookup already falls through to a `_D`
-default. M1's generated art still ships in `assets/` and is simply unreachable —
-no code path enumerates or fetches it. Deleting the asset files is deferred
+default. M1's generated art still ships in `assets/` and is simply unreachable - no code path enumerates or fetches it. Deleting the asset files is deferred
 (below), not forgotten.
 
-**Tests.** `glam-team-makeover.spec.js` gained *M1 is retired — absent from the
+**Tests.** `glam-team-makeover.spec.js` gained *M1 is retired - absent from the
 roster, the random pool and every picker*, which walks all four routes: 500 draws
 never yield `m1` and collectively cover exactly the roster; a forced `m1` lock
 does not return `m1`; the `<select>` offers `['random', ...roster]`; and the stage
 picker renders a button per roster model and none for M1. The model sweeps in
 `glam-art-fidelity.spec.js` (F-11, F-10, F-16, F-16b) and the distinct-stage test
 now iterate `GlamStory.MODELS` instead of a hardcoded four, and their count
-assertions are derived from it (`roster.length * 14`, `roster.length * 7`) — so
+assertions are derived from it (`roster.length * 14`, `roster.length * 7`) - so
 retiring or adding a model updates the sweeps rather than breaking them.
 `glam-tt-story.spec.js`'s D-F draw test asserts against the roster and adds an
 explicit "`m1` is not drawable".
@@ -534,8 +529,7 @@ explicit "`m1` is not drawable".
 **One latent test bug fell out of this.** With M1 gone, M2 became the *first*
 model measured after page load, and F-16 immediately failed at 1.01 : 1. The cause
 was never the blemishes: `_skinPool()` returns `null` while a model's seven hair
-masks are still decoding, and `_spots()` then falls back to the *unfiltered* pool —
-so a measurement taken inside that window reads spot positions the compositor has
+masks are still decoding, and `_spots()` then falls back to the *unfiltered* pool - so a measurement taken inside that window reads spot positions the compositor has
 already stopped painting at. M1 had been absorbing the decode as the loop's first
 iteration. The spec's shared `setModel` helper now waits for `_skinPool` before
 returning, which is what F-16b was already doing by hand.
@@ -548,7 +542,7 @@ that pins the dark-skin-branch core near L≈0.02. There is no friendlier colour
 that luminance, so "softer" had to mean softer **form**.
 
 The harsh rendering was three cues stacked: a crisp filled disc, a near-black rim
-**stroke** around it, and a specular gloss dot offset up-left — the visual grammar
+**stroke** around it, and a specular gloss dot offset up-left - the visual grammar
 of a pustule. It is now two soft radial falloffs and nothing else:
 
 ```
@@ -570,9 +564,9 @@ The bold cells are the two defects, visible as numbers: `1.05` is the rim stroke
 reading as *more* than full coverage (it was inked darker than the core it ringed),
 and the `.90 → .25` step is the disc edge.
 
-**Test.** *refresh · blemishes are soft — the paint decays, with no rim, cliff or
+**Test.** *refresh · blemishes are soft - the paint decays, with no rim, cliff or
 gloss* in `glam-art-fidelity.spec.js`. It renders the same face twice with the same
-seed — once with the spots cleared, once with them present — and divides the
+seed - once with the spots cleared, once with them present - and divides the
 luminance delta by `(ink − skin)` per pixel to recover the compositor's actual
 alpha. That normalisation matters: the raw delta scales with how far the skin under
 each pixel already is from the ink, and the face's own shading moves that by ±10%
@@ -589,8 +583,7 @@ with the softened rendering it passes on all three.
 ![blemish, harsh](shots/glam-refresh/blemish-before-zoom-desktop.png)
 ![blemish, softened](shots/glam-refresh/blemish-after-zoom-desktop.png)
 
-Before (left) and after (right), same model, same seed, same crop —
-`docs/eval/shots/glam-refresh/blemish-{before,after}-zoom-desktop.png`, with the
+Before (left) and after (right), same model, same seed, same crop - `docs/eval/shots/glam-refresh/blemish-{before,after}-zoom-desktop.png`, with the
 whole face at `blemish-{before,after}-face-desktop.png`.
 
 ### R1.3 Verification
@@ -600,7 +593,7 @@ whole face at `blemish-{before,after}-face-desktop.png`.
 - **`window.GlamTT` is byte-for-byte unchanged**, and so is
   `tests/glam-tt-scoring.spec.js` (`git diff --stat` on it is empty). The only
   edits inside the `GlamStory` block are the roster constant, the roster-aware
-  lock in `draw()`, and its export — the event pool, the banned-word guard, the
+  lock in `draw()`, and its export - the event pool, the banned-word guard, the
   two-axis outro and the second-person turn-taking lines are untouched.
 - **Console clean** at 1440×900, 820×1180 and 390×844, checked on load and after
   entering play: `play-surface-{desktop,tablet,phone}.png`.
@@ -619,7 +612,7 @@ whole face at `blemish-{before,after}-face-desktop.png`.
   or the other with no blending; nothing in the current roster lands there, but a
   future model could.
 
-## R2. The new opening flow — title → texting intro → random client → salon
+## R2. The new opening flow - title → texting intro → random client → salon
 
 The single static intro card is gone. The child's route into the game is now:
 
@@ -632,7 +625,7 @@ title screen  ──Start Playing──▶  a client texts in and books  ──O
 
 ![title screen, desktop](shots/glam-refresh/title-screen-desktop.png)
 
-One child-facing affordance — **Start Playing ▸** — on a dark plum/gold salon
+One child-facing affordance - **Start Playing ▸** - on a dark plum/gold salon
 marquee, with the staged routine spelled out underneath as a
 `Skincare → Makeup → Hair → Accessories` rail so the order the activity enforces
 is legible before the first turn. Defaults are sensible, so the tap works with no
@@ -642,7 +635,7 @@ The BT's clinical setup (turns, give-back, cue level, wait window, count
 shown/hidden, routine, turn map, **and the character lock**) is *reachable but not
 in front of the child*: the settings strip now boots collapsed and opens from the
 header ⚙ or from the title screen's own `⚙ Session setup` ghost button. There is
-deliberately **no character dropdown in the child flow** — the client is drawn at
+deliberately **no character dropdown in the child flow** - the client is drawn at
 random on Start (D-F); a learner who needs consistency gets the lock, in the strip,
 where the BT is.
 
@@ -653,7 +646,7 @@ drives); the child's route is Start.
 > **Why the CTA reads "Start Playing" and not "Start".**
 > `tests/glam-tt-scoring.spec.js` is frozen by the refresh's hard constraint and
 > its smoke test asserts a visible `button[name=/Play/]` on load. With the setup
-> strip collapsed, the only button on the first screen is the child's CTA — so the
+> strip collapsed, the only button on the first screen is the child's CTA - so the
 > label has to satisfy both. "Start Playing ▸" is a clear start affordance and
 > keeps the frozen spec green without touching it.
 
@@ -670,7 +663,7 @@ side the *next* message will come from, ending with a booked chip and
 the bottom of the panel, so a short thread reads like a conversation rather than
 stranding itself at the top of an empty box.
 
-The content is the same mad-lib as before — event + stakes + task — re-shaped as a
+The content is the same mad-lib as before - event + stakes + task - re-shaped as a
 booking:
 
 | | |
@@ -679,7 +672,7 @@ booking:
 | client | `The photographer is almost here!` |
 | client | `Could you book me in before the photographer gets here?` |
 | team | `Hi {name}! The glam team just picked up.` |
-| team | `You are booked — come on in. We take turns here: skincare first, then makeup, then hair, then an outfit.` |
+| team | `You are booked - come on in. We take turns here: skincare first, then makeup, then hair, then an outfit.` |
 
 `textOpen` and `textAsk` are new per-event fields; the middle bubble is the
 existing `stakes` string. The team's two replies and the booked note are shared.
@@ -689,13 +682,13 @@ existing `stakes` string. The team's two replies and the booked note are shared.
 of every event × every name slot (6 × 12 × 6 = 432 new strings), so the *existing*
 `congruenceViolations()` sweep and the existing "no story string carries a number"
 test cover the texting intro automatically. The client texts about the occasion,
-the stakes and the booking — never a claim about their own hair or skin, and never
+the stakes and the booking - never a claim about their own hair or skin, and never
 a number.
 
 ### R2.3 The client who texts is the client who sits down
 
-`play()` used to re-draw the character every time it ran, which — once a screen sat
-between the draw and the trial — would have quietly swapped the client between the
+`play()` used to re-draw the character every time it ran, which - once a screen sat
+between the draw and the trial - would have quietly swapped the client between the
 thread and the vanity. It now takes `{keepClient:true}` on the salon-opening path
 and only draws fresh on the BT's `▶ Play`. A test pins the whole `sel`
 (name + model + scenario) plus the painted model across the transition.
@@ -710,7 +703,7 @@ New spec **`tests/glam-open-flow.spec.js`** (9 tests × 3 browsers):
 | Test | What it pins |
 |---|---|
 | the front door is a title screen with Start… | Start visible; `Character`, `Turns`, `▶ Play` all hidden; the ⚙ affordance opens them; console clean |
-| Start plays the pretext as an incoming text thread… | contact header, a first bubble, a live typing indicator, every message lands, both sides of the conversation, typing stops, booked chip, and the salon opens onto `Go — my turn!` |
+| Start plays the pretext as an incoming text thread… | contact header, a first bubble, a live typing indicator, every message lands, both sides of the conversation, typing stops, booked chip, and the salon opens onto `Go - my turn!` |
 | "Skip ahead" lands every message at once | `threadStep === total`, Skip disappears, the salon button appears |
 | the client who texts in is the client who sits down | `sel` and the painted model identical across `Open the salon` |
 | D-F · Start draws a random client, and never the retired M1 | 40 real `beginIntro()` runs: name, model and scenario all vary, models are exactly the roster, never `m1` |
@@ -729,14 +722,14 @@ Start → the thread instead of reading the old intro card. No assertion was rel
 
 - **Full suite: 285 passed** across chromium / firefox / webkit (258 before this
   slice, plus 9 new tests × 3 browsers). Nothing skipped, nothing relaxed.
-- **`window.GlamTT` byte-for-byte unchanged** — the first diff hunk in
+- **`window.GlamTT` byte-for-byte unchanged** - the first diff hunk in
   `index.html` after the stylesheet is at the `GlamStory` events, well past the
-  engine block — and `git diff --stat tests/glam-tt-scoring.spec.js` is empty.
+  engine block - and `git diff --stat tests/glam-tt-scoring.spec.js` is empty.
 - Inside `GlamStory`, the additions are `textOpen`/`textAsk` per event, the shared
   team replies, `thread()`, its `allStrings()` rows and its export. The event set,
   `BANNED`, the two-axis outro and the second-person turn-taking lines are
   untouched.
-- **Console clean** on every screen at 1280×860, 834×1112 and 390×844 — the
+- **Console clean** on every screen at 1280×860, 834×1112 and 390×844 - the
   screenshot pass (`tests/_shots-open-flow.mjs`) fails the run on any console or
   page error and it exits clean.
 - Screenshots, all three widths: `title-screen-{desktop,tablet,phone}.png`,
@@ -746,7 +739,7 @@ Start → the thread instead of reading the old intro card. No assertion was rel
 
 ### R2.6 Deferred from this slice
 
-- **The activity itself is untouched** — same palettes, same tool count, same
+- **The activity itself is untouched** - same palettes, same tool count, same
   vanity. `salon-open-{desktop,tablet,phone}.png` is the *pre-refresh* play
   surface, reached through the new door. The richer stations, the wider colour
   range and the per-tap feedback are the next slice.
@@ -768,13 +761,13 @@ The celebration screen now opens with the transformation the child actually made
 two polaroid frames, side by side, the doll as the client arrived and the doll the
 team finished together.
 
-### R3.1 Mechanic adopted — and the novel bit
+### R3.1 Mechanic adopted - and the novel bit
 
 The mechanic is the makeover genre's oldest payoff: the reveal. What is novel here
 is that **nothing is re-rendered for it**. There is no second doll, no serialised
 "look" replayed into a preview, no separate art path that could drift from the one
 the child was touching. Both frames are grabbed off the *same* `<canvas>` the game
-paints on — `paintAvatar`'s compositor — so the picture is the play surface, at the
+paints on - `paintAvatar`'s compositor - so the picture is the play surface, at the
 two moments that matter:
 
 | Frame | Grabbed | Why there |
@@ -783,14 +776,14 @@ two moments that matter:
 | **After** | inside `syncTT()`, the instant `Trial.ended` flips and *before* the state commit | one render later the game surface unmounts and the compositor canvas is gone |
 
 Both are plain offscreen `<canvas>` elements held on the component instance, never
-in state and never as data URLs in markup — a `{{ }}` placeholder inside a `src=`
+in state and never as data URLs in markup - a `{{ }}` placeholder inside a `src=`
 or a `url()` is fetched by the parser before the runtime substitutes it, which is
 exactly the load-time 404 the §3.9 sweep removed. `paintReveal()` blits them into
 the two canvases on the done card from `componentDidUpdate`, alongside the avatar
 compositor, so the frames arrive with the card rather than a tick later.
 
-**Congruence (§3.7.1 / AC-10).** The booth's own copy is three strings — *Glam team
-photo booth*, *Before* / *After*, *Look what you two made together.* — none of
+**Congruence (§3.7.1 / AC-10).** The booth's own copy is three strings - *Glam team
+photo booth*, *Before* / *After*, *Look what you two made together.* - none of
 which asserts anything about the client. The only thing it shows of them is the
 picture the child made, which is not a refutable claim: it *is* the evidence. A
 test runs the booth's rendered text back through `GlamStory.BANNED` and asserts no
@@ -816,14 +809,14 @@ next repaint takes a clean frame.
 **A paint stroke is why `Go` is not the only close.** `paintStep()` moves coverage
 on every pointer move and only charges the engine when coverage *completes*, so
 closing the window on the engine's first admitted action would photograph a face
-most of the way through a wash. Every edit entry point — `applyChoose`,
-`tapApply`, `patchOne`, `concealOne`, `paintStep` — calls `_closeBefore()` first as
+most of the way through a wash. Every edit entry point - `applyChoose`,
+`tapApply`, `patchOne`, `concealOne`, `paintStep` - calls `_closeBefore()` first as
 the backstop.
 
 **The grab is a 1:1 blit, not a downscale.** The first cut halved the resolution on
 the way into the frame. On WebKit the same compositor content then came out ~9 % of
 pixels apart depending on whether it was photographed inside a click handler or
-outside it — visually identical, but enough to make "is this frame the untouched
+outside it - visually identical, but enough to make "is this frame the untouched
 doll?" unanswerable, and it failed the test that asks exactly that, on WebKit only,
 every run. `drawImage` at 1:1 is exact on every engine; the polaroid gets a
 retina-sharp source for free, and the frames are byte-identical across the handler
@@ -835,15 +828,15 @@ New spec **`tests/glam-outro-reveal.spec.js`** (6 tests × 3 browsers):
 
 | Test | What it pins |
 |---|---|
-| the celebration opens with two frames, labelled Before and After | booth header, both labels, both canvases mounted, both carrying real ink (> 10 % of pixels non-transparent — not an empty polaroid); console clean |
-| the two frames are different pictures | four real tool taps across three stations, then > 1 % of pixels differ between the mounted frames — the reveal cannot be the same picture twice |
+| the celebration opens with two frames, labelled Before and After | booth header, both labels, both canvases mounted, both carrying real ink (> 10 % of pixels non-transparent - not an empty polaroid); console clean |
+| the two frames are different pictures | four real tool taps across three stations, then > 1 % of pixels differ between the mounted frames - the reveal cannot be the same picture twice |
 | the before frame is the doll exactly as it was before the first edit | hash the live compositor while untouched, edit, assert the live compositor moved, `_shotBefore` did not, and the two mounted canvases are byte-for-byte the pre-edit and post-edit faces |
 | the booth appears on the child's route too | Start → thread → salon → play → outro, and the client who texted is the client in the frames |
 | §8 · no number, nowhere to type | the booth's rendered text carries no digit, hosts no `input`/`textarea`/`contenteditable`, and passes `GlamStory.BANNED` |
 | "Play again" clears the booth | `revealReady` false, both instance frames dropped, the canvases gone from the DOM |
 
-Every test waits on a real settle condition — every image the compositor has
-*asked* for decoded, and `_skinPool()` resolved — rather than a timeout. Without
+Every test waits on a real settle condition - every image the compositor has
+*asked* for decoded, and `_skinPool()` resolved - rather than a timeout. Without
 the skin-pool wait the blemishes sit at unfiltered coordinates and a frame taken
 across that decode differs from the face the child was looking at.
 
@@ -852,25 +845,25 @@ across that decode differs from the face the child was looking at.
 - **Full suite: 303 passed** across chromium / firefox / webkit (285 before this
   slice, plus 6 new tests × 3 browsers). The new spec was also run at
   `--repeat-each=2` (36/36) to shake out the WebKit non-determinism above.
-- **`window.GlamTT` byte-for-byte unchanged** — the region from `window.GlamTT` to
+- **`window.GlamTT` byte-for-byte unchanged** - the region from `window.GlamTT` to
   `window.GlamStory` is identical to `HEAD` at 24 710 bytes, and
   `git diff --stat tests/glam-tt-scoring.spec.js` is empty. `window.GlamStory` was
   not touched at all in this slice: the booth reads pixels and never asks the
   engine or the story pool anything.
-- **Console clean** at 1280×860, 834×1112 and 390×844 — the screenshot pass
+- **Console clean** at 1280×860, 834×1112 and 390×844 - the screenshot pass
   (`tests/_shots-outro-reveal.mjs`) fails the run on any console or page error and
   it exits clean.
 - Screenshots under `docs/eval/shots/glam-refresh/`:
   `outro-reveal-desktop.png`, `outro-reveal-tablet.png`, `outro-reveal-phone.png`,
   plus a close crop of the booth itself, `outro-reveal-booth.png`.
 - The frames are `clamp(84px, 23vw, 138px)` wide with the aspect ratio taken from
-  the compositor, so they stay side by side at 390 px instead of stacking — the
+  the compositor, so they stay side by side at 390 px instead of stacking - the
   first cut wrapped into a column on iPhone and lost the comparison.
 - `git status` shows changes only under `apps/games/` and `docs/`.
 
 ### R3.5 Deferred from this slice
 
-- **The activity itself is still untouched** — same palettes, same tool count,
+- **The activity itself is still untouched** - same palettes, same tool count,
   same vanity. The richer stations, the wider colour range, the salon theming and
   the per-tap feedback remain the outstanding slice of the refresh.
 - The booth does not appear in the **print report**. The printed sheet is the
@@ -885,11 +878,11 @@ across that decode differs from the face the child was looking at.
 
 ---
 
-## R4. The station kit — a generous fixed stock per station
+## R4. The station kit - a generous fixed stock per station
 
 The refresh's remaining piece is the ACTIVITY. This slice does the depth half:
 the vanity now carries **ten stations and 69 tools** where it carried seven and
-43, and the deep stations are deep in the way a salon is deep — many shades of
+43, and the deep stations are deep in the way a salon is deep - many shades of
 one article, not many articles.
 
 That distinction is the whole design constraint. `REQUIRED_ACTIONS = 19` scales
@@ -897,7 +890,7 @@ the engine's per-turn budget (D-D / AC-7), so an extra *article* would have
 re-scaled every trial ever run. An extra *shade* of an article the child was
 already going to apply costs nothing: the charge key is `color:<slot>`, so
 Blush plum and Blush rose are the same spend, and swapping between them inside a
-turn is free. Depth here is choice, not work — which is also the Toca-Boca
+turn is free. Depth here is choice, not work - which is also the Toca-Boca
 reading of it: more ways to be right, no new way to be wrong.
 
 ### R4.1 What is stocked now
@@ -905,7 +898,7 @@ reading of it: more ways to be right, no new way to be wrong.
 | Station | Before | Now | How the range was won |
 |---|---|---|---|
 | Skincare 🧼 | 5 | 4 | brow tools moved to their own shelf |
-| Brow bar ✂️ | — | 2 | new shelf: Shape brows + Brow pencil |
+| Brow bar ✂️ | - | 2 | new shelf: Shape brows + Brow pencil |
 | Cheeks & glow 💄 | (in Makeup) | 8 | blush **2 → 6** shades |
 | Eyes 👁️ | (in Makeup) | 8 | eyeshadow **2 → 6** shades |
 | Lips 💋 | (in Makeup) | 8 | lipstick **3 → 7** shades |
@@ -927,7 +920,7 @@ vanity; the staged order still comes only from each tool's own `step`/`ph`.
 the hair masks through a 3-stop `{hue, s[], v[]}` ramp from the generated
 manifest, and the build only shipped seven. Measured across all seven, the ramp
 is not free-form: `hue` and `s` are exactly the swatch's own hue and saturation,
-and the value curve is a fixed proportion of the swatch's value — mid ≈ 0.93·v,
+and the value curve is a fixed proportion of the swatch's value - mid ≈ 0.93·v,
 shadow ≈ 0.55·mid, highlight ≈ 1.015·mid (brunette 0.945/0.465, blonde
 0.960/0.493, berry 0.993/0.621, silver 0.958/0.764). So `rampFromHex()`
 synthesises a ramp from the swatch alone, and the five new shades cost no art.
@@ -935,14 +928,14 @@ The seven shipped ramps still win the lookup, so nothing already on screen moved
 
 **Shirt colour was capped at four by a lookup.** The tee is recoloured in place
 (tint × luminance, keeping the folds and the black outline), but the tint came
-from `SHIRT_TINT[ed.outfit]` — a table keyed by the garment *cut*. Four cuts, four
+from `SHIRT_TINT[ed.outfit]` - a table keyed by the garment *cut*. Four cuts, four
 colours, forever. The tint now reads `ed.col.garment`, the shade the child
 actually picked, with the per-cut table left as the fallback for an outfit set
 without a swatch behind it. Two shades may now share a cut, so the ✓ state had to
-start matching on cut **and** shade — matching on the cut alone ticked every
+start matching on cut **and** shade - matching on the cut alone ticked every
 shade cut the same way.
 
-### R4.3 Tests — `tests/glam-station-kit.spec.js` (5 × 3 browsers)
+### R4.3 Tests - `tests/glam-station-kit.spec.js` (5 × 3 browsers)
 
 | Test | What would have to break for it to fail |
 |---|---|
@@ -956,28 +949,28 @@ shade cut the same way.
 there took two corrections worth recording:
 
 - *The baseline was noise.* Cutting a fresh `freshEd()` per shade re-seeds
-  `spotSeed` from `Math.random()`, which moves the blemishes — so every canvas
+  `spotSeed` from `Math.random()`, which moves the blemishes - so every canvas
   came out different no matter what the shade did, and **both** assertions passed
   vacuously. With a per-shade `freshEd`, reverting the shirt fix still went green.
   One frozen baseline, deep-copied per shade, fixed it: the control then failed
-  with *"Sunshine paints identically to Rose"* — the two shades that share the
+  with *"Sunshine paints identically to Rose"* - the two shades that share the
   `dress` cut.
 - *A fixed pixel floor could not see a missing ramp.* A hair shade with no ramp
   still repaints the **brows**, which take the same swatch, so it clears any small
   absolute floor: with a floor of 150 px, deleting the synthesised-ramp fallback
   went green. Measured on m3, a whole head of hair moves ~42 000 px and brows-only
   moves ~6 100, so the floor is now a quarter of the *station's own median*
-  (~10 500) — between the two, where no constant is. The control then failed with
+  (~10 500) - between the two, where no constant is. The control then failed with
   *"Mint moved 6084px, under a quarter of the station's usual"*.
 
 ### R4.4 Verification
 
 - **Full suite: 318 passed** across chromium / firefox / webkit (303 before this
-  slice, plus 5 new tests × 3 browsers) — green on 3 of the last 4 consecutive
+  slice, plus 5 new tests × 3 browsers) - green on 3 of the last 4 consecutive
   full runs, with the 4th failing only on the external font fetch described in
   R4.5. `glam-station-kit.spec.js` was also run at `--repeat-each=3` (45/45) and
   `glam-team-makeover.spec.js` at `--repeat-each=6` (90/90).
-- **`window.GlamTT` and `window.GlamStory` byte-for-byte unchanged** — both
+- **`window.GlamTT` and `window.GlamStory` byte-for-byte unchanged** - both
   regions hash identical to `HEAD` (`28f93cfc…` and `8d212b3b…`), and
   `git status tests/glam-tt-scoring.spec.js` is empty.
 - **The staged order still opens exactly as it did**, verified by driving the TA
@@ -986,8 +979,7 @@ there took two corrections worth recording:
   `hair → + Eyes(8) Lips(8) Hair style(7) Hair color(12)` ·
   `acc → + Earrings(3) Shirt color(9) Colored contacts(8)`. Later stations are
   **absent**, not dimmed.
-- **Console clean** at 1280×860, 834×1112 and 390×844 —
-  `tests/_shots-station-kit.mjs` exits non-zero on any console or page error and
+- **Console clean** at 1280×860, 834×1112 and 390×844 - `tests/_shots-station-kit.mjs` exits non-zero on any console or page error and
   it exits clean.
 - Screenshots under `docs/eval/shots/glam-refresh/`:
   `station-kit-desktop.png`, `station-kit-tablet.png`, `station-kit-phone.png`,
@@ -1006,8 +998,7 @@ of them was a regression in the game, and two of them were latent before this
 slice.
 
 **1 · A spec's cost is a shared resource.** The new pixel test was first written
-with a 40-iteration re-snapshot settle per shade. Every assertion in it passed —
-but the extra CPU starved an unrelated poll and `glam-team-makeover.spec.js`'s
+with a 40-iteration re-snapshot settle per shade. Every assertion in it passed - but the extra CPU starved an unrelated poll and `glam-team-makeover.spec.js`'s
 model sweep began timing out. Running the suite with the new spec *excluded* came
 back 303-green, which is what identified it as load rather than a regression.
 `paintAvatar` runs synchronously inside `componentDidUpdate`, so one frame after
@@ -1017,7 +1008,7 @@ safety net, and one `setState` per shade instead of a reset-then-edit pair.
 **2 · The model sweep's wait was hiding a real defect.** `glam-team-makeover.spec.js`
 polled for "a fingerprint I have not seen yet", which returns null both while a
 model swap is still decoding *and* when a model genuinely painted the same stage
-as another. Those are different failures with one symptom — "timed out" — which
+as another. Those are different failures with one symptom - "timed out" - which
 is why the first two attempts to fix it (raise the poll, then raise the test
 budget) only moved the message around. Split into *wait for the canvas to change
 and hold still* + *assert the settled fingerprint is new*, it immediately exposed
@@ -1043,10 +1034,10 @@ dependency from the whole games suite.
   is depth of stock; the warmer salon dressing, the cohesive palette and type
   pass, and the per-tap "choices mirrored with care" feedback are the remaining
   work on the makeover refresh.
-- **Hairstyles stay at seven and earrings at three** — both are bound by shipped
+- **Hairstyles stay at seven and earrings at three** - both are bound by shipped
   art (seven hair masks, three earring sprites), not by a lookup. Adding to either
   means going back to `avatar-kit`, which is outside this build's file boundary.
-- **No new *articles*.** A lip gloss, a face gem, freckles — each would be a new
+- **No new *articles*.** A lip gloss, a face gem, freckles - each would be a new
   slot with new compositor work *and* a new charge key, which re-scales the
   engine's budget. Out of scope for a slice whose contract was "richer, and the
   engine cannot tell".
@@ -1060,23 +1051,23 @@ dependency from the whole games suite.
 
 ## R5. The salon dressing and the choice echo
 
-R4 gave the activity its **depth** — ten stations, sixty-nine tools. This slice is
+R4 gave the activity its **depth** - ten stations, sixty-nine tools. This slice is
 the other half of "a richer, more themed makeover activity": **the room those
 stations stand in, and the answer a tap gets back.**
 
 ### R5.1 One room, not three components
 
-The child now passes through three surfaces — the title marquee, the phone
-thread, the vanity — and before this slice only the first two spoke the salon's
+The child now passes through three surfaces - the title marquee, the phone
+thread, the vanity - and before this slice only the first two spoke the salon's
 language. The third was the shared games chrome: a slate header, white cards, a
 grey caption. The dressing carries **plum · gold · rose** all the way through:
 
 | Surface | Before | Now |
 |---|---|---|
 | Header chrome | flat `--slate-800`, sage rule | plum gradient (the thread header's own), gold hairline |
-| Game surface | page grey | `.gtm-room` — a warm wash that fades back to page grey under the clinical strips |
+| Game surface | page grey | `.gtm-room` - a warm wash that fades back to page grey under the clinical strips |
 | Stage panel | 1 px card border | vanity **alcove**: plum inset rim, floor vignette, outer drop shadow |
-| Stage label | faint grey caption set on bright backdrop art | salon **signage** — gold on a plum plate, legible over the art |
+| Stage label | faint grey caption set on bright backdrop art | salon **signage** - gold on a plum plate, legible over the art |
 | Palette column | white card, grey headings | the **styling trolley**: gold top rail, cream→rose body, station names in plum tracked caps with a hairline running out to the edge |
 | Outro card | white card, sage border | warm card, gold top rule, plum title (the booth already had its own gradient) |
 
@@ -1087,12 +1078,12 @@ it rather than competing with it.
 
 **And the one piece of dressing that was built and then removed:** a bulb rail
 across the top of the stage. The backdrop art *is* a bulb-lit vanity mirror, so a
-second row of bulbs read as a dotted line fighting the illustration — and the
+second row of bulbs read as a dotted line fighting the illustration - and the
 gold bezel drawn around it was gold-on-gold mush. Both were cut in favour of
 framing what the art already gives. The screenshot that showed it is the reason
 it is gone.
 
-### R5.2 "Choices mirrored with care" — the mechanic, and its framing
+### R5.2 "Choices mirrored with care" - the mechanic, and its framing
 
 Every apply path (`applyChoose`, `tapApply`, `patchOne`, `concealOne`, and
 `paintStep` **on completion**) now calls one shared `_mirror(opt)`. Three things
@@ -1101,11 +1092,11 @@ happen together, all on the compositor:
 1. a chip rises out of the mirror over the vanity ledge carrying **the child's own
    tool name**;
 2. the button they pressed gives **one squeeze** (`transform` only);
-3. the mirror **warms** behind it — an opacity-transitioned radial that settles
+3. the mirror **warms** behind it - an opacity-transitioned radial that settles
    back down when the echo goes.
 
 The novel bit is what the chip is *not allowed to be*. The obvious version of
-"satisfying feedback" is praise — *"Nice pick!"*, *"Ooh, that looks great!"* — and
+"satisfying feedback" is praise - *"Nice pick!"*, *"Ooh, that looks great!"* - and
 that is exactly the move this build refuses everywhere else. A creative choice
 has no right answer (the Toca-Boca framing this refresh is built on), so
 evaluating one is both a lie and a small clinical hazard: it teaches the child
@@ -1117,7 +1108,7 @@ So the chip **echoes, it does not evaluate**: a sparkle, then the label, and no
 sentence composed around it. That constraint is the interesting part of the
 design and it is what `glam-salon-theme.spec.js` pins.
 
-`paintStep` echoes on **completion**, not per pointer-move — mirroring each
+`paintStep` echoes on **completion**, not per pointer-move - mirroring each
 partial step would strobe the chip a dozen times across one drag. That is also
 exactly the moment the engine hears about the action, so the echo and the charge
 stay in step.
@@ -1131,38 +1122,38 @@ echo never hangs over into the partner's turn.
 `gtm-mirror-a` / `gtm-mirror-b` and `gtm-applied-a` / `gtm-applied-b` are
 byte-identical pairs, which looks like a copy-paste slip worth tidying up. It is
 not. A second choice inside the 1.5 s echo window keeps **the same DOM node**, and
-a CSS animation only restarts when its `animation-name` changes — so with one
+a CSS animation only restarts when its `animation-name` changes - so with one
 name the third fast tap would sit motionless while the first two animated.
 Alternating the name on a counter's parity is the whole fix, and the spec asserts
 the flip directly so the "simplification" fails loudly.
 
-### R5.4 Tests — `tests/glam-salon-theme.spec.js` (6 × 3 browsers)
+### R5.4 Tests - `tests/glam-salon-theme.spec.js` (6 × 3 browsers)
 
 | Test | What would break it |
 |---|---|
 | the play surface is dressed as a salon room, not a form | the room wash, trolley, signage plate, alcove framing or plum chrome regressing to shared-games defaults |
 | a choice comes back as the child's own tool name, then clears itself | the echo not firing, or becoming a permanent status line |
-| the echo never composes a sentence around the choice, and never a number | any wrapper text — praise, a verdict, a count — around the label, across five mechanics (`choose`, tap-toggle, tap-recolor, paint, per-spot patch) |
+| the echo never composes a sentence around the choice, and never a number | any wrapper text - praise, a verdict, a count - around the label, across five mechanics (`choose`, tap-toggle, tap-recolor, paint, per-spot patch) |
 | a second choice inside the echo window animates like the first | collapsing the `-a`/`-b` parity (R5.3) |
-| the mirror warms while the echo is up and settles once it goes | the glow never lighting, or never going out — *superseded by the Tuning pass (T5), which added an upper bound and renamed it "…warms **gently** behind the echo, without washing out the client"* |
+| the mirror warms while the echo is up and settles once it goes | the glow never lighting, or never going out - *superseded by the Tuning pass (T5), which added an upper bound and renamed it "…warms **gently** behind the echo, without washing out the client"* |
 | every animation this game ships stays on the compositor | any `@keyframes gtm-*` that animates a layout- or paint-bound property |
 
 The last one is a **whole-file** guard, not an R5 guard: it walks every
 `gtm-*` keyframe in the document and fails on any property outside
 `transform` / `opacity` / `box-shadow`. Compositor-friendly motion is a standing
 constraint (§3.9) and a keyframe animating `width` or `top` is invisible in review
-while costing a layout on every frame — on the exact surface a child drags a brush
+while costing a layout on every frame - on the exact surface a child drags a brush
 across.
 
 **Red/green controls.** Three mechanisms were reverted in place and the suite
 re-run before the tests were accepted: constant `animation-name` → the parity test
 failed; glow pinned to `opacity:0` → the warm-up test failed at
-`0.07 < 3`; the label wrapped as `Nice pick — Bob!` → the echo test failed. All
+`0.07 < 3`; the label wrapped as `Nice pick - Bob!` → the echo test failed. All
 three passed again on restore. The glow control also proves the luminance
 assertion is measuring the glow and not the chip: with only the chip drawn, the
 stage's mean luminance moved by **0.07**, against **+8.8** with the glow live.
 *(That **+8.8** is the number the maintainer was reacting to when they called the
-effect a lens flare. The Tuning pass — T5 — cuts it to **+1.2**, so the `> 3`
+effect a lens flare. The Tuning pass - T5 - cuts it to **+1.2**, so the `> 3`
 lower bound quoted above no longer applies; the current bounds are in T5.)*
 
 ### R5.5 Verification
@@ -1170,15 +1161,14 @@ lower bound quoted above no longer applies; the current bounds are in T5.)*
 - **Full suite: 336 passed** across chromium / firefox / webkit (318 before this
   slice, plus 6 new tests × 3 browsers), on a clean full run. One earlier full run
   showed a single `glam-station-kit` failure on Firefox that passed in isolation
-  and did not recur — the parallel-load effect documented in R4.5 · 1.
-- **`window.GlamTT` and `window.GlamStory` byte-for-byte unchanged** — both
+  and did not recur - the parallel-load effect documented in R4.5 · 1.
+- **`window.GlamTT` and `window.GlamStory` byte-for-byte unchanged** - both
   regions hash identical to `HEAD` (`20097e595422` and `ae7b77e5c912`), and
   `git status tests/glam-tt-scoring.spec.js` is empty.
 - **Played start → texts → salon → outro** end to end in a real browser: the
   client texts in, the salon opens on the dressed vanity, each tool lands with its
   echo, the trial closes on the photo booth, console clean throughout.
-- **Console clean** at 1280×860, 834×1112 and 390×844 —
-  `tests/_shots-salon-theme.mjs` exits non-zero on any console or page error and
+- **Console clean** at 1280×860, 834×1112 and 390×844 - `tests/_shots-salon-theme.mjs` exits non-zero on any console or page error and
   it exits clean.
 - Screenshots under `docs/eval/shots/glam-refresh/`:
   `salon-dressed-{desktop,tablet,phone}.png` (the dressed play surface),
@@ -1188,8 +1178,7 @@ lower bound quoted above no longer applies; the current bounds are in T5.)*
 - `git status` shows changes only under `apps/games/` and `docs/`.
 
 **A capture note worth keeping.** The shots run under **emulated reduced motion**,
-not Playwright's `animations:'disabled'`. The echo's keyframe *ends at opacity 0*
-— it is a moment, not a status line — so snapping every animation to its end state
+not Playwright's `animations:'disabled'`. The echo's keyframe *ends at opacity 0* - it is a moment, not a status line - so snapping every animation to its end state
 photographs the chip as blank. This is the mirror image of the R2 finding (where
 `animations:'allow'` photographed mount-time keyframes as blank): **the right
 capture mode depends on which end of the animation holds the frame you want.**
@@ -1203,7 +1192,7 @@ capture mode depends on which end of the animation holds the frame you want.**
   something.
 - **The echo is text-only.** A particle or a ripple at the point of contact on the
   face would be more tactile still, but it has to be drawn on the compositor canvas
-  `paintAvatar` owns — and that canvas is also what the photo booth photographs, so
+  `paintAvatar` owns - and that canvas is also what the photo booth photographs, so
   a decoration drawn into it would end up in the "after" frame.
 - **The turn banner, vanity-station and runway maps keep their clinical palette**
   by design (R5.1). If the dressing is ever extended to them, whose-turn must stay
@@ -1211,7 +1200,7 @@ capture mode depends on which end of the animation holds the frame you want.**
 - ~~**The M2 / M3 / M4 model picker still sits on the child's stage** whenever more
   than one art model ships. It is a BT/dev affordance in front of the child, and it
   predates the refresh; moving it behind the ⚙ is a small, separate change.~~
-  **Resolved in the Tuning pass (T1)** — deleted outright rather than moved behind
+  **Resolved in the Tuning pass (T1)** - deleted outright rather than moved behind
   the ⚙, because the ⚙ already has the Character lock.
 - **Reduced motion drops the echo's animation but keeps the chip**, which is
   correct; it also drops the glow's transition so the warm-up snaps. Both are
@@ -1219,33 +1208,33 @@ capture mode depends on which end of the animation holds the frame you want.**
 
 ---
 
-## T. Tuning pass — maintainer-reported fixes
+## T. Tuning pass - maintainer-reported fixes
 
 A batch of issues the maintainer found **while playing**, not while reading: art
 and rendering defects, menu clutter, the pace of the texting intro, and a model
-picker sitting where a child could reach it. Presentation and activity only — the
+picker sitting where a child could reach it. Presentation and activity only - the
 clinical spine is not in scope and is not touched.
 
 **Standing invariant for every slice of this pass.** `window.GlamTT` and
 `tests/glam-tt-scoring.spec.js` stay **byte-identical**. The engine region
-(`index.html` lines 100–639) is hashed against `HEAD` on every slice, and
+(`index.html` lines 100-639) is hashed against `HEAD` on every slice, and
 `git diff --exit-code tests/glam-tt-scoring.spec.js` must be empty.
 
 | # | Fix | Status |
 |---|---|---|
-| 1 | Model selection — remove the child-facing picker, random only, BT lock in Session setup | **done** (T1) |
-| 2 | Texting intro — phone mockup, slower, two-sided typing indicators | **done** (T2) |
-| 3 | Styling trolley — vertical progressive flow, non-repeatables removed, moved-on steps collapsed | **done** (T3) |
-| 4a | Face art — lip liner malformed along the lip seam | **done** (T4a) |
-| 4b | Face art — eye colour clips past the iris and the waterline | **done** (T4b) |
-| 4c | Face art — eyeshadow gradient patchy and uneven | **done** (T4c) |
-| 4d | Face art — blush too circular and harsh | **done** (T4d) |
-| 4e | Face art — highlights too large and too harsh | **done** (T4e) |
-| 5 | Action effect — lens flare way down | **done** (T5) |
+| 1 | Model selection - remove the child-facing picker, random only, BT lock in Session setup | **done** (T1) |
+| 2 | Texting intro - phone mockup, slower, two-sided typing indicators | **done** (T2) |
+| 3 | Styling trolley - vertical progressive flow, non-repeatables removed, moved-on steps collapsed | **done** (T3) |
+| 4a | Face art - lip liner malformed along the lip seam | **done** (T4a) |
+| 4b | Face art - eye colour clips past the iris and the waterline | **done** (T4b) |
+| 4c | Face art - eyeshadow gradient patchy and uneven | **done** (T4c) |
+| 4d | Face art - blush too circular and harsh | **done** (T4d) |
+| 4e | Face art - highlights too large and too harsh | **done** (T4e) |
+| 5 | Action effect - lens flare way down | **done** (T5) |
 
 ### T1. The model picker is gone; the client is drawn and then fixed
 
-**What the maintainer saw.** Three chips — `M2` `M3` `M4` — parked in the stage's
+**What the maintainer saw.** Three chips - `M2` `M3` `M4` - parked in the stage's
 top-right corner, on the child's play surface, next to the client's face.
 
 **Why it had to go rather than move.** It is not only clutter. The pretext the
@@ -1253,8 +1242,7 @@ refresh built is that *a client texted in and booked this appointment*; a chip t
 swaps her face mid-appointment contradicts the story the child was just told, and
 it is a clinical/dev knob placed inside a child-facing surface. Moving it behind
 the ⚙ (the R5.6 plan) turned out to be redundant: the ⚙ **already** carries a
-Character lock with exactly this power and a better affordance —
-`🎲 Random client / Lock: model 2 / 3 / 4`.
+Character lock with exactly this power and a better affordance - `🎲 Random client / Lock: model 2 / 3 / 4`.
 
 **What changed.** Three methods and one template block were deleted, not hidden:
 
@@ -1290,8 +1278,8 @@ a model still on the roster. What the deletion adds is that the draw is now the
 | Test | File | What would break it |
 |---|---|---|
 | *TUNING · the child surface offers no model picker, and none is reachable in code* | glam-open-flow | any `<button>` named `/^M\d$/` on the page, **or** `setArtModel` / `artModelList` / `artGated` coming back on the component |
-| *TUNING · the client drawn at Start stays fixed for the whole session* | glam-open-flow | anything writing `state.model` after the draw — checked across a real tool application |
-| *M1 is retired — …the random pool and the character lock* (renamed) | glam-team-makeover | previously asserted the on-stage picker offered the roster; now asserts **no** model button exists, M1 or otherwise |
+| *TUNING · the client drawn at Start stays fixed for the whole session* | glam-open-flow | anything writing `state.model` after the draw - checked across a real tool application |
+| *M1 is retired - …the random pool and the character lock* (renamed) | glam-team-makeover | previously asserted the on-stage picker offered the roster; now asserts **no** model button exists, M1 or otherwise |
 | *every roster model loads its base art and paints a distinct stage* (re-routed) | glam-team-makeover | previously swapped models by clicking the chips; now goes fresh load → Character lock → ▶ Play per model |
 
 The second half of that last test is worth calling out: re-routing it through the
@@ -1311,7 +1299,7 @@ as "message bubbles floating on a plain square card"; the messages went by too f
 to read; and the typing dots were a permanent fixture rather than something that
 announced a message.
 
-#### T2a — the card became a device
+#### T2a - the card became a device
 
 The old panel was a `min(430px,100%)` rounded rectangle: a contact header, a
 270 px-min message well, a footer. Everything that says *phone* was missing, so it
@@ -1321,7 +1309,7 @@ What is on screen now, outside-in:
 
 | Layer | What it is |
 |---|---|
-| `.gtm-phone` | the bezel — a 46 px-radius brushed-metal gradient with an inner hairline, a long drop shadow, and two nubs on the edges (volume rocker, side button) |
+| `.gtm-phone` | the bezel - a 46 px-radius brushed-metal gradient with an inner hairline, a long drop shadow, and two nubs on the edges (volume rocker, side button) |
 | `.gtm-screen` | the screen, inset with its own 36 px radius and `overflow:hidden` so the app is clipped by the glass |
 | `.gtm-statusbar` | plum status bar: carrier word, a **dynamic island**, and signal / wifi / battery |
 | the thread | contact header → wallpaper → bubbles → composer bar |
@@ -1332,7 +1320,7 @@ forbids any digit on a child-facing surface, and a real status bar's first eleme
 is `9:41`. So the time slot carries a word (`Glam`) and **every icon is drawn in
 CSS, not set as text**: the signal is four `<i>` bars on ascending heights, the
 battery is a bordered pill with a fill and an `::after` terminal, and the wifi is
-the *top halves of two concentric rings* — a 14 px and a 7 px circle whose centres
+the *top halves of two concentric rings* - a 14 px and a 7 px circle whose centres
 sit on the bottom edge of a 9 px `overflow:hidden` box, so the container crops each
 one into an arch. Cheaper and crisper than an SVG, and it adds no glyph font.
 
@@ -1340,20 +1328,20 @@ Two smaller moves came with it. The message well now has a **wallpaper** (a soft
 rose radial under the header) instead of flat `#fbf6f9`, because a phone screen
 with a two-message thread on it is mostly empty and flat white made that read as a
 loading state. And the thread opens with the **`TODAY` separator** every messages
-app puts at the top of a conversation — it rides the bottom-anchored stack, so it
+app puts at the top of a conversation - it rides the bottom-anchored stack, so it
 sits directly above the first bubble rather than stranding at the top of the glass.
 
 Sizing is `width:min(352px,100%)`, `height:min(72vh,640px)`, `min-height:392px`.
 `vh` rather than a percentage on purpose: the section is a flex child of a
 `min-height:100vh` column, so a percentage height has no definite basis to resolve
 against, and the phone would collapse to its content. Measured 352 × 619 at
-1280×860 and 350 × 607 at 390×844 — a 1.7:1 device in both cases, with no
+1280×860 and 350 × 607 at 390×844 - a 1.7:1 device in both cases, with no
 horizontal overflow at any of the three widths.
 
-#### T2b — the pacing, and why the dots had to be split from the schedule
+#### T2b - the pacing, and why the dots had to be split from the schedule
 
 The old reveal was one `setInterval` at **900 ms flat**, and `threadTyping` was
-derived as *"are there messages left"* — which is why the dots never went out:
+derived as *"are there messages left"* - which is why the dots never went out:
 they were a progress bar for the whole thread, not a signal about the next message.
 
 The reveal is now a self-scheduling chain, one message at a time:
@@ -1367,7 +1355,7 @@ THREAD_READ_MS(text) = min(2400, 820 + 24 × text.length)
 
 The dwell scales with the length of the message that **just landed**, so a long
 message is never shoved off by the next one. Measured end to end: **~11.0 s** for
-the five-message booking, against **4.5 s** before — a 2.4× slowdown, ~2.2 s per
+the five-message booking, against **4.5 s** before - a 2.4× slowdown, ~2.2 s per
 message. The `Skip ahead` control is unchanged and reachable throughout.
 
 The load-bearing bit is that *"a side is typing right now"* had to stop being a
@@ -1376,14 +1364,13 @@ messages still to come"* (`threadRunning`). They used to be the same boolean. If
 they had stayed the same boolean, either the dots sit up through the read dwell
 (the complaint) or `Skip ahead` blinks out with them (a worse bug).
 
-The dots also now wear **the skin of the bubble they precede** — white with a
-left-hand tail for the client, sage with a right-hand tail for the glam team —
-rather than a neutral white pill on both sides. That is what makes "both sides"
+The dots also now wear **the skin of the bubble they precede** - white with a
+left-hand tail for the client, sage with a right-hand tail for the glam team - rather than a neutral white pill on both sides. That is what makes "both sides"
 legible at a glance rather than only from which margin the pill is on.
 
 **Congruence is unchanged.** No new child-facing sentence was written: every string
 in the thread still comes from `GlamStory.thread()` and is swept by the same AC-10
-guard. The three words the chrome adds — `Glam`, `TODAY`, `New messages` — are
+guard. The three words the chrome adds - `Glam`, `TODAY`, `New messages` - are
 chrome, carry no claim about the client and no digit.
 
 **Evidence.**
@@ -1398,10 +1385,10 @@ Captured by `tests/_shots-glam-tune-thread.mjs`. The `before` page is
 `git show HEAD:…/index.html` dropped into the **same directory** so `../tailwind.css`,
 `vendor/` and `assets/` resolve identically and the pair differs only in the thing
 under test. `Math.random` is seeded in an init script, because the client, the name
-and the scenario are all drawn at random (D-F) — without that the two passes
+and the scenario are all drawn at random (D-F) - without that the two passes
 photograph two different conversations. Both passes show *Frankie · dance recital*.
 
-#### T2c — the one thing the device frame broke
+#### T2c - the one thing the device frame broke
 
 Bottom-anchoring the thread with `justify-content:flex-end` was fine on the old
 270 px-min card, which was never full. Inside a fixed-height screen it is not: five
@@ -1409,9 +1396,9 @@ messages overflow a handset at 390 px, and `flex-end` clips the overflow off the
 **top** of a scroller where it cannot be scrolled back to. The first bubble was
 gone for good.
 
-Fixed the standard way — `margin-top:auto` on the first child instead, which
+Fixed the standard way - `margin-top:auto` on the first child instead, which
 bottom-anchors a short thread exactly the same and collapses to `0` the moment the
-content overflows, so it scrolls normally — plus a two-line `_scrollThread()` on
+content overflows, so it scrolls normally - plus a two-line `_scrollThread()` on
 `componentDidUpdate` that pins the scroller to the newest message. Which is, in
 passing, the behaviour the fix was asking for anyway: a real messages app follows
 the conversation down.
@@ -1420,26 +1407,26 @@ the conversation down.
 
 | Test | What would break it |
 |---|---|
-| *TUNING 2 · the intro is a phone mockup — bezel, status bar, island, home bar* | the bezel/screen nesting, any of the three drawn status glyphs, the island or the home bar going missing; a digit appearing in the status bar; the frame going wider than it is tall; horizontal overflow |
+| *TUNING 2 · the intro is a phone mockup - bezel, status bar, island, home bar* | the bezel/screen nesting, any of the three drawn status glyphs, the island or the home bar going missing; a digit appearing in the status bar; the frame going wider than it is tall; horizontal overflow |
 | *TUNING 2 · a brief typing indicator announces BOTH sides, then blinks out* | dots that only ever appear on one margin, **or** dots that never go down (the sampler requires the dots to be absent for >35 % of the run), **or** `Skip ahead` disappearing while the dots are down |
 | *TUNING 2 · at phone size the full thread stays scrollable and pinned to the newest message* | a return to `justify-content:flex-end` (the separator and the first bubble stop being reachable at `scrollTop = 0`), or the scroller drifting off the newest message |
 | *TUNING 2 · the thread is paced to be read, not fired off* | any message-to-message gap back under 1400 ms (the old build was 900 ms flat), or the whole booking running past 20 s |
 | *Start plays the pretext…* (budget only) | poll ceiling 15 s → 30 s: the thread now takes ~11 s and the old ceiling sat close enough to flake |
 
 The middle test is the one that pins the actual complaint. "A typing indicator
-exists" was already true before the fix — what was wrong was that it never stopped,
+exists" was already true before the fix - what was wrong was that it never stopped,
 so the assertion has to be about the **proportion of the run the dots are down**,
 not about their presence.
 
 ### T3. The trolley is a working surface, not a catalogue
 
 **What the maintainer saw.** The right-hand menu only ever grows. Steps that can
-never be taken again — Wash, Moisturize — sit on the shelf for the rest of the
+never be taken again - Wash, Moisturize - sit on the shelf for the rest of the
 appointment with a ✓ on them. Shades the child chose ten steps ago stay fully
 expanded, six or seven buttons wide. By mid-appointment the option they actually
 need next is somewhere below the fold of a scroller full of dead buttons.
 
-**Three reads, all derived.** Nothing new is stored about "what is done" — the
+**Three reads, all derived.** Nothing new is stored about "what is done" - the
 `ed.done` / coverage state the staged TA gate already owns answers all three:
 
 | read | question | answer |
@@ -1449,7 +1436,7 @@ need next is somewhere below the fold of a scroller full of dead buttons.
 | `_grpSettled(live)` | has every tool left on this shelf had its step taken? | `live.every(_optWorkDone)` |
 
 `_optWorkDone` routes staged tools through `_stepDone(opt.step)` rather than their
-own `done` flag, which is what makes all six blushes settle **together** — they are
+own `done` flag, which is what makes all six blushes settle **together** - they are
 one step (step 5), not six. Untracked tools (the brow bar) and the off-routine
 themes fall back to `ed.done[slot||id]`.
 
@@ -1462,10 +1449,10 @@ themes fall back to `ed.done[slot||id]`.
   disappear (`.filter(grp => grp.options.length)` already existed).
 - **Settled → folded.** Cheeks & glow, Eyes, Lips, Hair style, Hair color,
   Earrings, Shirt color, Colored contacts all hold a family of shades, so they
-  never go spent — they fold to a slim drawer with a sage ✓ and a chevron, and a
+  never go spent - they fold to a slim drawer with a sage ✓ and a chevron, and a
   tap brings the shades back. Folded means **gone from the DOM**, not dimmed: a
   folded shade cannot be tapped by accident, and it is out of the a11y tree.
-- **Unsettled sorts above settled.** `[...notSettled, ...settled]` — so the step
+- **Unsettled sorts above settled.** `[...notSettled, ...settled]` - so the step
   the child is on is always the first thing in the cart, and `#gtm-trolley` is
   pinned back to `scrollTop = 0` whenever the set of open shelves changes.
 
@@ -1478,7 +1465,7 @@ shelf ends up folded, the first one comes back open.
 
 **Free play is deliberately exempt.** `staged === 'free'` short-circuits all three
 reads and the cart stays the flat catalogue it has always been. That is what the
-routine *is* — its own chip says "all steps open" — and a BT reaching for an
+routine *is* - its own chip says "all steps open" - and a BT reaching for an
 out-of-order station needs every station reachable. The last test in the new
 describe block pins the exemption so it stays a decision rather than an oversight.
 
@@ -1487,7 +1474,7 @@ describe block pins the exemption so it stays a decision rather than an oversigh
 | moment | before | after |
 |---|---|---|
 | the cart as the appointment opens | `trolley-open-before-*.png` | `trolley-open-after-*.png` |
-| a few steps in — skincare taken, most of makeup taken | `trolley-mid-before-*.png` | `trolley-mid-after-*.png` |
+| a few steps in - skincare taken, most of makeup taken | `trolley-mid-before-*.png` | `trolley-mid-after-*.png` |
 | a settled shelf asked back open | `trolley-reopen-before-*.png` | `trolley-reopen-after-*.png` |
 
 At `trolley-mid-*-desktop.png` the difference is the whole complaint: **before**,
@@ -1495,8 +1482,7 @@ seven ✓-ed dead buttons across Skincare (Wash, Moisturize, Treat spots, Concea
 and Cheeks & glow (Contour, Blush rose, …) with the next step scrolled off the
 bottom; **after**, Brow bar and Lips open at the top with three live tools between
 them, and Cheeks & glow and Eyes folded to two drawer headers underneath.
-`trolley-reopen-after-desktop.png` is the same state with Eyes tapped back open —
-its six shadow shades return, ✓ on the one that is on the client, and the spent
+`trolley-reopen-after-desktop.png` is the same state with Eyes tapped back open - its six shadow shades return, ✓ on the one that is on the client, and the spent
 Eyeliner and Mascara do not come back with them.
 
 **A side effect worth naming: the client's portrait is now a steadier size.** The
@@ -1506,13 +1492,13 @@ this change that meant the panel *grew* from 574 px to 662 px as stations unlock
 and then shrank again; now the cart stays short and the portrait holds ~574 px
 across the appointment. Not what the fix was for, but it is the direction you want.
 
-**Tests** — `tests/glam-station-kit.spec.js`, new describe block, 4 × 3 browsers:
+**Tests** - `tests/glam-station-kit.spec.js`, new describe block, 4 × 3 browsers:
 
 | test | what would have to break for it to fail |
 |---|---|
 | a step that cannot be taken twice leaves the cart once it is taken | a real drag over the face completes Wash; Wash must be gone from the DOM and Moisturize offered in its place, then the same for Moisturize |
 | a shelf the child has moved on from folds to a header, and unfolds on a tap | settled shelves report `aria-expanded="false"` **and hold zero tool buttons**; a tap returns exactly the six shadow shades and not the spent Eyeliner; a second tap folds it again |
-| the cart flows top-down — what is still to do sits above what is done | once the first settled shelf is seen, everything below it is settled too; the top shelf is open and non-empty; `#gtm-trolley.scrollTop === 0` |
+| the cart flows top-down - what is still to do sits above what is done | once the first settled shelf is seen, everything below it is settled too; the top shelf is open and non-empty; `#gtm-trolley.scrollTop === 0` |
 | free play keeps the flat catalogue its own chip promises | Wash survives its own application, and no shelf folds itself |
 
 One existing test was **intentionally adjusted**: `every station stocks its shades
@@ -1520,7 +1506,7 @@ on the real palette` used to name a station by walking *button → its row → t
 element before it* and slicing the leading glyph off `textContent`. Shelf headings
 are now `<button aria-expanded>`s whose text ends in `✓ ▸`, so that walk no longer
 names a station. Each shelf now carries `data-shelf="<label>"` and the test reads
-`btn.closest('[data-shelf]')` — stable across the markup, and self-filtering, since
+`btn.closest('[data-shelf]')` - stable across the markup, and self-filtering, since
 a tool button anywhere else on the page has no shelf ancestor.
 
 ### T5. The action flare, way down
@@ -1529,7 +1515,7 @@ a tool button anywhere else on the page has no shelf ancestor.
 "mirror warms" glow, and it was too strong by a wide margin.
 
 **Why it read as a lens flare.** The glow was a 60 %-alpha cream radial gradient
-centred at `50% 44%` of the stage panel — which is **squarely on the client's
+centred at `50% 44%` of the stage panel - which is **squarely on the client's
 face**. Measured on m3 at 1280×860, with the same echo firing and the same node
 carrying first the old gradient and then the new one:
 
@@ -1542,16 +1528,16 @@ carrying first the old gradient and then the new one:
 single action. In the before shot the copper hair reads as pale blonde and the blue
 backdrop reads as near-white.
 
-**What changed** — one gradient, still a pure opacity fade on the compositor:
+**What changed** - one gradient, still a pure opacity fade on the compositor:
 
 ```
 - radial-gradient(72% 52% at 50% 44%, rgba(255,233,196,.60) 0%, rgba(255,233,196,0) 72%)
 + radial-gradient(116% 44% at 50% 0%,  rgba(255,233,196,.20) 0%, rgba(255,233,196,0) 58%)
 ```
 
-Two independent moves: the bloom is **re-anchored to the top edge** — where the
+Two independent moves: the bloom is **re-anchored to the top edge** - where the
 backdrop art's bulb ring actually is, so it reads as the mirror lights warming
-rather than as a flash on the face — and peak alpha drops **60 % → 20 %** with the
+rather than as a flash on the face - and peak alpha drops **60 % → 20 %** with the
 falloff closing at 58 % of the panel, finishing well above the eyes.
 
 **Toned down, not removed.** The echo chip rises *out of* this warmth; with no glow
@@ -1559,19 +1545,18 @@ behind it the chip reads as a toast notification rather than as the mirror
 answering. The remaining +1.2 is visible when you look for it and invisible when
 you are not.
 
-**Evidence.** `shots/glam-tune/action-flare-{before,after}-{desktop,tablet,phone}.png`
-— stage crops with the echo chip up, captured under emulated reduced motion so the
+**Evidence.** `shots/glam-tune/action-flare-{before,after}-{desktop,tablet,phone}.png` - stage crops with the echo chip up, captured under emulated reduced motion so the
 opacity transition is settled and the flare is photographed at **full** strength
 (the worst case, which is what the complaint was about).
 
-**Test.** `tests/glam-salon-theme.spec.js` — the R5 warm-up test was **retightened,
+**Test.** `tests/glam-salon-theme.spec.js` - the R5 warm-up test was **retightened,
 not replaced**, and renamed *"the mirror warms gently behind the echo, without
 washing out the client"*. It now pins both ends:
 
 | Assertion | Bound | Why |
 |---|---|---|
 | panel warms | `> 0.35` | the chip must not float on nothing |
-| panel warmth is bounded | `< 4` | **the point of the fix** — "it warms" passes just as happily at the strength that was rejected |
+| panel warmth is bounded | `< 4` | **the point of the fix** - "it warms" passes just as happily at the strength that was rejected |
 | panel settles afterwards | `< 1` | the glow goes out |
 | the client's canvas | `< 6` | the face is what the flare was ruining; bounded rather than zero because applying a step genuinely repaints the brows |
 
@@ -1582,7 +1567,7 @@ that makes this fix regression-proof.
 
 **What the maintainer saw.** Little spots and squares appearing *in the middle of
 the lips*, along the seam where the top and bottom lip meet, bunched toward one
-corner. See `shots/glam-tune/lipliner-before-m4.png` — the seam is a thick lumpy
+corner. See `shots/glam-tune/lipliner-before-m4.png` - the seam is a thick lumpy
 band with distinct square blocks in it, next to a clean outer trace.
 
 **Why it happened, and why it was not a brush problem.** `_lipLinerCanvas` inks a
@@ -1595,14 +1580,14 @@ Measured on the shipped masks, before the fix:
 
 | model | liner px | of those, in the lip **interior** | the interior band |
 |---|---|---|---|
-| m2 | 509 | **38** | y 388–394 |
-| m3 | 339 | **17** | y 371–377 |
-| m4 | 487 | **72** | y 356–365 |
+| m2 | 509 | **38** | y 388-394 |
+| m3 | 339 | **17** | y 371-377 |
+| m4 | 487 | **72** | y 356-365 |
 
 "Interior" here is defined structurally, not by eye: a pixel with lip mask on all
-four sides at 3, 4 *and* 5 px out — i.e. nowhere near the silhouette, so ink there
+four sides at 3, 4 *and* 5 px out - i.e. nowhere near the silhouette, so ink there
 is an artifact by construction. Every artifact on every model falls inside a single
-band about 7 px tall — one narrow horizontal strip, which is the seam. (Measured on
+band about 7 px tall - one narrow horizontal strip, which is the seam. (Measured on
 the mask the game renders, `L._data(E.mask)` after `freshEd`, i.e. the default
 `hair-copper` style, not the bare `base/mask.png`.)
 
@@ -1611,8 +1596,7 @@ gap has to stop counting as outside. Before tracing, the real outside is flooded
 from a 3-px ring around the lip bbox through not-lip pixels (4-connected, explicit
 stack, ~5 k pixels in the window rather than the whole 512 × 576 frame); whatever
 the flood cannot reach is enclosed. The edge test then asks "is a neighbour
-**reachable-outside**?" instead of "is a neighbour not-lip?". Everything else —
-both thresholds, the 2-px radius, the half-value ink, the alpha — is unchanged, and
+**reachable-outside**?" instead of "is a neighbour not-lip?". Everything else - both thresholds, the 2-px radius, the half-value ink, the alpha - is unchanged, and
 the whole thing is still cached per model × hairstyle × shade.
 
 | model | interior px after | liner px after |
@@ -1650,16 +1634,16 @@ upper lid*. Measured against the drawn iris:
 | m3 | 18.85 px | 17.69 px | **36.7 %** | 9.7 px | 4.0 px |
 | m4 | 22.54 px | 18.52 px | **50.4 %** | 12.9 px | 7.0 px |
 
-The radius was only 7–22 % too big; the *vertical* story is the one that matches the
-complaint. The retired disc spanned 37.7–45.7 px of eye where the iris occupies
-24.1–27.1 px, reaching ~10–13 px above the lid line and 4–7 px below the iris — and
+The radius was only 7-22 % too big; the *vertical* story is the one that matches the
+complaint. The retired disc spanned 37.7-45.7 px of eye where the iris occupies
+24.1-27.1 px, reaching ~10-13 px above the lid line and 4-7 px below the iris - and
 the bottom overrun is exactly "past the waterline".
 
 **Where the iris actually is.** Recovered from `assets/art/eyes/natural.png`, the
 sprite the whole state stack shares (`natural` / `glam` / `eyeliner_l` / `eyeliner_r`
 are one eyeball at one `cx = cy = 0.5` frame, per the manifest):
 
-1. classify the sclera — opaque, mean channel > 150;
+1. classify the sclera - opaque, mean channel > 150;
 2. **row-span-fill** it: on each row, fill from the leftmost to the rightmost sclera
    pixel. The sclera brackets the iris on both sides of every row of the aperture, so
    the span-fill *is* the aperture. Rows whose span is thinner than 6 % of the frame
@@ -1667,8 +1651,7 @@ are one eyeball at one `cx = cy = 0.5` frame, per the manifest):
 3. the iris is the part of the aperture that is not sclera. Its bbox gives the circle:
    **cx 0.503, r 0.1471 of sprite width; bottom at cy + r**, so `cy = 0.4574` of
    sprite height;
-4. the aperture's top edge across the iris span is `y = 68` **on every column of it**
-   — flat to the pixel in this art. That is why the clip below is exact rather than an
+4. the aperture's top edge across the iris span is `y = 68` **on every column of it** - flat to the pixel in this art. That is why the clip below is exact rather than an
    approximation.
 
 Those four numbers ship as `IRISCFG`, alongside `EYECFG` / `BROWCFG` / `EARCFG`,
@@ -1684,7 +1667,7 @@ cached canvas through it. Living in sprite space is the whole point: the recolou
 scales with the sprite at every model's eye size instead of being re-guessed from
 the face anchor.
 
-**Tests** — `tests/glam-art-fidelity.spec.js`, 2 × 3 browsers:
+**Tests** - `tests/glam-art-fidelity.spec.js`, 2 × 3 browsers:
 
 | test | what would have to break for it to fail |
 |---|---|
@@ -1692,7 +1675,7 @@ the face anchor.
 | T4b · a coloured contact stays inside the iris and under the lid | on every roster model: every pixel the contacts change lies inside some eye's `_irisBox` circle **and** at or below its lid line; the recolour still changes > 400 px; and the shipped radius is **strictly smaller** than the retired `min(w,h)·0.58` |
 
 Two things about how these are written. First, both assert against
-`_lipLinerCanvas` / `_irisBoxes` — the shipped code — rather than a copy of the
+`_lipLinerCanvas` / `_irisBoxes` - the shipped code - rather than a copy of the
 geometry: `_artZones` established that principle here, and a bound the test
 re-derives by hand is a bound that drifts the first time the table moves. Second,
 each carries a **lower** bound as well as its in-bounds one (`ink > 120`,
@@ -1704,30 +1687,30 @@ nearest-neighbour) and `shots/glam-tune/face-{before,after}-{desktop,tablet,phon
 (the un-magnified stage with lipstick, liner, shadow, mascara and contacts all on,
 at 1280 × 860 / 834 × 1112 / 390 × 844).
 
-### T4c–T4e. The three procedural cosmetics, and the one renderer under them
+### T4c - T4e. The three procedural cosmetics, and the one renderer under them
 
-4a and 4b were precision problems — a mask with a hole in it, a clip that was a
+4a and 4b were precision problems - a mask with a hole in it, a clip that was a
 guess. 4c, 4d and 4e are not: eyeshadow, blush and highlight are each a filled
 ellipse with a gradient in it, and all three complaints ("patchy", "too circular
 and harsh", "too large and too harsh") are complaints about **the gradient**. So
 the slice starts with the gradient.
 
-**`_wash` — a second blob renderer, for makeup rather than for dots.** `_blob`
+**`_wash` - a second blob renderer, for makeup rather than for dots.** `_blob`
 stays exactly as it was; every caller that wants a *dot* (the blemish core, its
 halo, the dull-skin wash, the moisturiser, the contour) keeps it. `_wash` differs
 in three ways, one per complaint:
 
 | | `_blob` (kept) | `_wash` (new) |
 |---|---|---|
-| falloff | 3 linear segments, `1 → 0.5 → 0`, and the **last** one is the steepest (−1.25 α per radius) | raised cosine, `0.5 + 0.5·cos(πt)`, 12 stops — flat at the core, **flat at the rim**, no slope break in between |
+| falloff | 3 linear segments, `1 → 0.5 → 0`, and the **last** one is the steepest (−1.25 α per radius) | raised cosine, `0.5 + 0.5·cos(πt)`, 12 stops - flat at the core, **flat at the rim**, no slope break in between |
 | colour | one colour | optional `deep` mixed in toward the core by `(1−t)^1.5`, so a wash carries its own depth |
-| centre | gradient centred on the ellipse | optional focus `(fx, fy)` off centre, so the rings bunch toward it and stretch away — directional depth **inside one gradient** |
+| centre | gradient centred on the ellipse | optional focus `(fx, fy)` off centre, so the rings bunch toward it and stretch away - directional depth **inside one gradient** |
 
 The rim behaviour is the whole of 4d: `_blob`'s alpha is still falling at 1.25 α
 per radius when it hits zero, which is a visible edge. The focus is the whole of
 4c: it is how the lid gets a deeper outer corner without a second blob laid over
 the first. And because the focus only moves where the gradient's *rings* are
-dense, the shape still ends exactly on the ellipse — no new edge is introduced.
+dense, the shape still ends exactly on the ellipse - no new edge is introduced.
 
 #### T4c. The eyeshadow is one gradient, not two blobs meeting
 
@@ -1744,14 +1727,13 @@ _blob(X + o·w·1.02, y − h·0.64, w·0.68, h·0.44, rot o·0.90, shade²(sc),
 ```
 
 Two soft ellipses at different angles overlap in a lens, and inside that lens
-**both the alpha and the hue jump** — the alpha because two source-over fills
+**both the alpha and the hue jump** - the alpha because two source-over fills
 union, the hue because the crease is `shade(shade(sc))`, 56 points darker per
 channel. That lens is the blotch. It is not a brush problem and not a
 mis-measurement; two blobs cannot help but have a boundary.
 
 **The fix.** One `_wash` per eye: the same base shade, the same twice-shaded
-tone as the `deep`, the focus at `(o·0.40, −0.16)` in the ellipse's own space —
-i.e. over the outer half of the lid, lifted toward the crease. The colour now
+tone as the `deep`, the focus at `(o·0.40, −0.16)` in the ellipse's own space - i.e. over the outer half of the lid, lifted toward the crease. The colour now
 grades continuously from deep at the focus to the chosen shade by mid-radius to
 nothing at the rim, and the peak alpha comes down from `α·0.92 ∪ α` to `α·0.70`
 because a single fill no longer has to be lightened to survive being doubled.
@@ -1765,7 +1747,7 @@ Measured (1280 × 720, per side, delta against the same face without the tool):
 | m4 L / R | **2** / **2** | 1 / 1 | 3196 → 2532 | 49 → 52 |
 
 "Hot spots" is the number of connected components the footprint splits into at
-its worst level in a sweep from 0.35 to 0.90 of its peak — see the test note
+its worst level in a sweep from 0.35 to 0.90 of its peak - see the test note
 below. One caveat on the footprint column here and in the two tables that
 follow: it is a single run, and the blemish seed is random, so a tool that
 happens to paint over a blemish moves a few more pixels. Re-running moves it by
@@ -1788,9 +1770,9 @@ _blob(e.x, e.y + eh·1.85, ew·0.95, eh·0.90, rot 0, bc, α·0.5, 'multiply')  
 
 The radii are `0.95 ew × 0.90 eh` on landmarks that are **near square**
 (m2 39 × 39, m3 32 × 33, m4 39 × 42 px), so the ellipse is a circle: measured
-anisotropy 0.010–0.085, which is a circle to two decimal places. And the call
+anisotropy 0.010-0.085, which is a circle to two decimal places. And the call
 does not pass `soft`, so it is on `_blob`'s hard ramp, whose steepest segment is
-the last one — the colour is still falling fast when it stops.
+the last one - the colour is still falling fast when it stops.
 
 **The fix.** One `_wash` per cheek, `1.30 ew × 0.70 eh`, rotated `0.36 rad` so the
 outer end lifts toward the temple, peak `α·0.44`. Wide and low and angled is what
@@ -1805,7 +1787,7 @@ Measured (1280 × 720, per side):
 | m3 L / R | 0.030 / 0.024 → **0.534 / 0.531** | 6.2° / −1.4° → **+21.0° / −20.8°** | 2496 → 1953 | 25 → 25 |
 | m4 L / R | 0.025 / 0.010 → **0.521 / 0.543** | 86.8° / −85.8° → **+20.0° / −21.5°** | 3779 → 2964 | 28 → 25 |
 
-The before tilts are noise — the principal axis of a circle is not defined, which
+The before tilts are noise - the principal axis of a circle is not defined, which
 is why m4 reports ±86°, and it is the anisotropy column that says so.
 
 #### T4e. The highlight is a glow, not a plate
@@ -1816,7 +1798,7 @@ shows two pale plates covering most of both cheeks.
 
 **Why it happened.** `0.75 ew × 0.60 eh` per cheekbone plus a `0.35 ew × 1.4 eh`
 nose stripe, both on `_blob`'s hard ramp, at `α·0.5` / `α·0.4` on `screen`. In
-units of one eye's area that footprint measured **1.99–2.04 eye-areas per side**.
+units of one eye's area that footprint measured **1.99-2.04 eye-areas per side**.
 
 **The fix.** `0.46 ew × 0.34 eh` per cheekbone, tilted `0.34 rad` along the bone,
 at `α·0.40`; the nose stripe down to `0.20 ew × 1.05 eh` at `α·0.30`. Both on
@@ -1830,7 +1812,7 @@ nose, and the raised-cosine tail takes the *visible* footprint down further:
 | m3 L / R | 2.04 / 1.97 → **0.60 / 0.59** | 60 / 60 → **49 / 49** |
 | m4 L / R | 2.03 / 2.01 → **0.60 / 0.59** | 61 / 61 → **49 / 49** |
 
-A peak lift of 45–49 on an 8-bit channel is not subtle — the glow is still
+A peak lift of 45-49 on an 8-bit channel is not subtle - the glow is still
 plainly there in `shots/glam-tune/highlight-after-m4.png` and in the
 un-magnified `glow-after-desktop.png`. It is a third of the area at three
 quarters of the strength, which is the brief.
@@ -1842,19 +1824,19 @@ the highlight box are re-derived here from the new radii (both now via
 bookkeeping: `F-11 · every tool paints inside its own target box` diffs real
 pixels on every model × tool and would have failed on the first turn otherwise.
 
-**Tests** — `tests/glam-art-fidelity.spec.js`, 3 × 3 browsers:
+**Tests** - `tests/glam-art-fidelity.spec.js`, 3 × 3 browsers:
 
 | test | what would have to break for it to fail |
 |---|---|
 | T4c · the eyeshadow is ONE lid gradient | on every roster model **and both sides**: the footprint is a single connected hot spot at *every* level from 0.35 to 0.90 of its peak, and it still paints (> 400 px) |
-| T4d · the blush is a soft angled sweep | anisotropy in (0.32, 0.80) — not a disc, not a stripe; the tilt lifts toward the temple by more than 10°, with the sign taken per side; the peak does not creep back above 34; still paints (> 500 px) |
-| T4e · the highlight is smaller and gentler | footprint in (0.25, 1.15) eye-areas and peak lift in (26, 56) — **four** bounds, two of them floors |
+| T4d · the blush is a soft angled sweep | anisotropy in (0.32, 0.80) - not a disc, not a stripe; the tilt lifts toward the temple by more than 10°, with the sign taken per side; the peak does not creep back above 34; still paints (> 500 px) |
+| T4e · the highlight is smaller and gentler | footprint in (0.25, 1.15) eye-areas and peak lift in (26, 56) - **four** bounds, two of them floors |
 
 Three notes on how these are written. First, the measurements are *shape*
 statistics, not counts: anisotropy comes from the delta-weighted second-moment
 tensor rather than a bbox ratio, because a bbox ratio moves when the ellipse
 lands differently on the pixel grid and a moment tensor does not. Second, the
-"hot spots" count only takes components worth **2 % of the footprint** — without
+"hot spots" count only takes components worth **2 % of the footprint** - without
 that floor the eye sprite drawn over the lid pinches the level set apart by a
 pixel on one model × side, which is an occlusion, not a second blob. Third, 4e
 carries **upper and lower** bounds on both size and strength, which is the T5
@@ -1862,9 +1844,7 @@ lesson applied: "it glows" passes at the rejected strength unless the test also
 says how much is too much.
 
 All three were run against `HEAD`'s renderer to confirm they are not vacuous:
-T4c fails with *"the footprint splits into 2 hot spots"*, T4d with *"ecc 0.041 —
-the blush is still a disc"*, T4e with *"the highlight covers 1.96 eye-areas —
-still a plate"*.
+T4c fails with *"the footprint splits into 2 hot spots"*, T4d with *"ecc 0.041 - the blush is still a disc"*, T4e with *"the highlight covers 1.96 eye-areas - still a plate"*.
 
 **Evidence.** `shots/glam-tune/eyeshadow-{before,after}-{m2,m3,m4}.png`,
 `blush-{before,after}-{m2,m3,m4}.png`,
@@ -1877,34 +1857,34 @@ un-magnified stage with exactly these three tools on, at 1280 × 860 / 834 × 11
 
 ### T · Verification (slices T1 + T5)
 
-- **Full suite: 342 passed** across chromium / firefox / webkit — 336 before this
+- **Full suite: 342 passed** across chromium / firefox / webkit - 336 before this
   pass plus 2 new tests × 3 browsers. Clean full run, no retries.
-- **`window.GlamTT` byte-identical**: `index.html` lines 100–639 hash
+- **`window.GlamTT` byte-identical**: `index.html` lines 100-639 hash
   `cc44b106d25faa4e2c809869200e8a71` at `HEAD` and after the change.
   `git diff --exit-code tests/glam-tt-scoring.spec.js` is empty.
 - **Played start → texts → salon → four turns → outro** in a real browser at
   1280×900: the client texts in, the salon opens with **no chips on the stage**,
   each tool lands with its echo over a glow you have to look for, the trial closes
-  on the photo booth. **Console clean** — no console errors, no page errors, no
+  on the photo booth. **Console clean** - no console errors, no page errors, no
   failed requests, across the whole route.
-- **Console clean at all three widths** — `tests/_shots-glam-tune.mjs` exits
+- **Console clean at all three widths** - `tests/_shots-glam-tune.mjs` exits
   non-zero on any console or page error and exits clean at 1280×860, 834×1112 and
   390×844.
 - Screenshots under `docs/eval/shots/glam-tune/`, `before`/`after` in the filename.
   The shots script pins the client via the **BT Character lock** so the pair shows
-  the same face — which doubles as a live demonstration that the lock still works
+  the same face - which doubles as a live demonstration that the lock still works
   now that it is the only picker left.
 - `git status` shows changes only under `apps/games/` and `docs/`.
 
 ### T · Verification (slice T2)
 
-- **Full suite: 354 passed** across chromium / firefox / webkit — 342 after T1/T5
+- **Full suite: 354 passed** across chromium / firefox / webkit - 342 after T1/T5
   plus 4 new tests × 3 browsers. Clean full run, no retries, 2.6 min.
-- **`window.GlamTT` byte-identical** — the whole `window.GlamTT = (function …})();`
+- **`window.GlamTT` byte-identical** - the whole `window.GlamTT = (function …})();`
   block, 538 lines, hashes the same at `HEAD` and after the change.
   `git diff --exit-code tests/glam-tt-scoring.spec.js` is empty, and so is
   `git diff --exit-code tests/glam-tt-story.spec.js`. `window.GlamStory` is
-  byte-identical too — T2 rewrote how the thread is *presented*, not a word of what
+  byte-identical too - T2 rewrote how the thread is *presented*, not a word of what
   it says.
 - **Played start → the thread at its real pace with no Skip → salon → two tool
   applications** at 1280×860: booked at 10.9 s, the dots crossed sides
@@ -1912,15 +1892,15 @@ un-magnified stage with exactly these three tools on, at 1280 × 860 / 834 × 11
   was on screen at every one of the ~110 samples, the phone measured 352 × 619 with
   no horizontal overflow, no digit anywhere on the intro screen, and the salon
   opened onto `MY TURN` with `Wash` and `Shape brows` landing normally.
-  **Console clean** — zero console errors and zero page errors across the route.
-- **Console clean at all three widths** — `tests/_shots-glam-tune-thread.mjs` exits
+  **Console clean** - zero console errors and zero page errors across the route.
+- **Console clean at all three widths** - `tests/_shots-glam-tune-thread.mjs` exits
   non-zero on any console or page error and exited clean on both the `before` and
   the `after` pass at 1280×860, 834×1112 and 390×844.
 - `git status` shows changes only under `apps/games/` and `docs/`.
 
 ### T · Verification (slice T3)
 
-- **Full suite: 366 passed** across chromium / firefox / webkit — 354 after T2 plus
+- **Full suite: 366 passed** across chromium / firefox / webkit - 354 after T2 plus
   4 new tests × 3 browsers. Clean full run, no retries, 2.3 min.
 - **A pre-existing environmental flake was identified along the way, and it is not
   this change.** Two of five full runs failed exactly one test each, on a *different*
@@ -1929,25 +1909,24 @@ un-magnified stage with exactly these three tools on, at 1280 × 860 / 834 × 11
   shape: `Cross-Origin Request Blocked … fonts.gstatic.com … Status code: (null)` /
   `downloadable font: download failed`. `apps/games/tailwind.css` `@import`s
   Atkinson Hyperlegible from Google Fonts, firefox reports a failed webfont download
-  as a **console error**, and every glam spec asserts `expect(errors).toEqual([])` —
-  so under 15-way parallelism a CDN connection reset fails whichever spec happens to
+  as a **console error**, and every glam spec asserts `expect(errors).toEqual([])` - so under 15-way parallelism a CDN connection reset fails whichever spec happens to
   be booting. The URL itself answers 200 in ~0.1 s from the same machine, and
   `--repeat-each=4` on the affected file passes 36/36. Left alone: the fix is either
   self-hosting the font (`apps/games/tailwind.css`, outside this pass's file scope)
   or teaching the specs' console watchers to ignore `fonts.g*.com`, which would be a
   change to a guard this pass is supposed to be respecting, not relaxing.
-- **`window.GlamTT` byte-identical** — the whole
+- **`window.GlamTT` byte-identical** - the whole
   `window.GlamTT = (function …})();` block, 25 486 bytes, hashes
   `7cc668082a84d1bec6145b99a31c240b00726645ada5a69a491d23e58cf20de4` (sha-256) at
   both `HEAD` and the working tree. `git diff --exit-code tests/glam-tt-scoring.spec.js`
-  is empty. Every diff hunk in `index.html` starts at line 1231 or later — the
+  is empty. Every diff hunk in `index.html` starts at line 1231 or later - the
   engine region is not merely equal, it was never touched.
-- **Played the child's route** — Start → the texting thread → Open the salon →
-  Go → a real pointer drag over the face — at 1280×900: Wash completes, leaves the
+- **Played the child's route** - Start → the texting thread → Open the salon →
+  Go → a real pointer drag over the face - at 1280×900: Wash completes, leaves the
   cart, and Moisturize takes its place, then the run carries through six turns to
-  the outro's two-axis close and the photo booth. **Console clean** — zero console
+  the outro's two-axis close and the photo booth. **Console clean** - zero console
   errors and zero page errors across the whole route.
-- **Console clean at all three widths** — `tests/_shots-glam-tune-trolley.mjs`
+- **Console clean at all three widths** - `tests/_shots-glam-tune-trolley.mjs`
   exits non-zero on any console or page error and exited clean on both the `before`
   and the `after` pass at 1280×860, 834×1112 and 390×844.
 - No child-facing string was added or changed by this slice: the shelf headers
@@ -1957,63 +1936,61 @@ un-magnified stage with exactly these three tools on, at 1280 × 860 / 834 × 11
 
 ### T · Verification (slices T4a + T4b)
 
-- **Full suite: 372 passed** across chromium / firefox / webkit — 366 after T3 plus
+- **Full suite: 372 passed** across chromium / firefox / webkit - 366 after T3 plus
   2 new tests × 3 browsers. Clean full run, no retries, 2.3 min.
 - **The `fonts.gstatic.com` flake documented under T3 showed up once and was ruled
-  out.** The first full run of this slice failed exactly one test —
-  `glam-open-flow.spec.js` *"the child surface offers no model picker"*, a **T1**
+  out.** The first full run of this slice failed exactly one test - `glam-open-flow.spec.js` *"the child surface offers no model picker"*, a **T1**
   test on **firefox**, nothing this slice touches. `--repeat-each=4` on it passes
   4/4 in 5.3 s and the next full run was 372/372 green. Same signature as before:
   one firefox spec, a different one each time, under 15-way parallelism.
-- **`window.GlamTT` byte-identical** — the engine region of `index.html`
-  (lines 119–679, 25 381 bytes) hashes
+- **`window.GlamTT` byte-identical** - the engine region of `index.html`
+  (lines 119-679, 25 381 bytes) hashes
   `d1026aaadce8cd6523f83183927972661a0057a5a634536a3c6b9ad51ce7f370` (sha-256) at
   both `HEAD` and the working tree. `git diff --exit-code tests/glam-tt-scoring.spec.js`
-  is empty. The **earliest diff hunk in `index.html` starts at line 1583** — the
+  is empty. The **earliest diff hunk in `index.html` starts at line 1583** - the
   engine region is not merely equal, it was never opened.
-- **Played the child's route** — Start → the texting thread → Open the salon → Go →
-  a real pointer drag over the face — at 1280×900: Wash and Moisturize both
+- **Played the child's route** - Start → the texting thread → Open the salon → Go →
+  a real pointer drag over the face - at 1280×900: Wash and Moisturize both
   complete and leave the cart, and the run carries to the outro's `Finish & SR`.
   Lip liner is step 10 and the contact shades sit in the accessory phase, so
   **neither of the two tools this slice changed is reachable inside one staged
-  appointment**; both were therefore taken on the BT's own route — free play, every
-  station open — with real pointer taps, and read back off `ed`
-  (`cov.lipliner = 1`, `col.contacts = '#4a90d9'`). **Console clean** — zero console
+  appointment**; both were therefore taken on the BT's own route - free play, every
+  station open - with real pointer taps, and read back off `ed`
+  (`cov.lipliner = 1`, `col.contacts = '#4a90d9'`). **Console clean** - zero console
   errors and zero page errors across both routes.
-- **Console clean at all three widths** — `tests/_shots-glam-tune-face.mjs` exits
+- **Console clean at all three widths** - `tests/_shots-glam-tune-face.mjs` exits
   non-zero on any console or page error and exited clean on both the `before` and
   the `after` pass, across the model sweep at 1400×1000 and the stage at 1280×860,
   834×1112 and 390×844.
-- No child-facing string was added or changed by this slice — it is two renderers
+- No child-facing string was added or changed by this slice - it is two renderers
   and one geometry table. No numbers, no PHI, no claim about the client.
 - `git status` shows changes only under `apps/games/` and `docs/`.
 
 ### T · Verification (slices T4c + T4d + T4e)
 
 - **381 / 381 Playwright tests green** across chromium, firefox and webkit
-  (2.3 min), up from 372 — the 9 new tests are T4c / T4d / T4e × 3 browsers. No
+  (2.3 min), up from 372 - the 9 new tests are T4c / T4d / T4e × 3 browsers. No
   existing test was changed by this slice; `F-11 · every tool paints inside its
   own target box` still passes on every model × tool with the re-derived cheeks
   and highlight boxes, and `every stocked shade paints, and no two shades of one
   article paint alike` still separates all six blush shades at the lower peak.
   Three further full runs each lost **exactly one firefox spec** to the
-  `fonts.gstatic.com` webfont flake documented under T3 — a different spec every
+  `fonts.gstatic.com` webfont flake documented under T3 - a different spec every
   time (`T4b`, then `TUNING 2 · the intro is a phone mockup`, then `title screen
-  mounts`), never a chromium or webkit one, each passing 3–4 / 4 on
+  mounts`), never a chromium or webkit one, each passing 3-4 / 4 on
   `--repeat-each` in isolation, with the woff2 URL answering 200 in 0.16 s from
   the same shell. It is the CDN under 15-way parallelism, not this slice.
-- **The three new tests fail against `HEAD`'s renderer** — run with the spec
+- **The three new tests fail against `HEAD`'s renderer** - run with the spec
   pointed at a copy of the pre-slice file, T4c reports *"the footprint splits into
-  2 hot spots at some level"*, T4d *"ecc 0.041 — the blush is still a disc"* and
-  T4e *"the highlight covers 1.96 eye-areas — still a plate"*. They are pinning
+  2 hot spots at some level"*, T4d *"ecc 0.041 - the blush is still a disc"* and
+  T4e *"the highlight covers 1.96 eye-areas - still a plate"*. They are pinning
   the fix, not describing whatever the code happens to do.
-- **`window.GlamTT` byte-identical** — the engine region of `index.html`
-  (lines 119–679, 25 381 bytes) hashes
+- **`window.GlamTT` byte-identical** - the engine region of `index.html`
+  (lines 119-679, 25 381 bytes) hashes
   `d1026aaadce8cd6523f83183927972661a0057a5a634536a3c6b9ad51ce7f370` (sha-256) at
   both `HEAD` and the working tree. `git diff --exit-code tests/glam-tt-scoring.spec.js`
-  is empty. The **earliest diff hunk in `index.html` starts at line 2216** —
-  `_artZones`, far below the engine.
-- **Played the child's route** — Start → the texting thread → Open the salon → Go →
+  is empty. The **earliest diff hunk in `index.html` starts at line 2216** - `_artZones`, far below the engine.
+- **Played the child's route** - Start → the texting thread → Open the salon → Go →
   a real pointer drag over the face, at 1280×860, 834×1112 and 390×844, with
   eyeshadow, blush and highlight all applied and the stage photographed
   (`glow-after-*`). **Console clean**: `tests/_shots-glam-tune-face.mjs` exits
@@ -2021,7 +1998,7 @@ un-magnified stage with exactly these three tools on, at 1280 × 860 / 834 × 11
   the `after` pass, across the model sweep at 1400×1000 and all three stage widths.
 - Compositor-friendly as before: all three tools are canvas fills inside the
   existing `paintAvatar` pass. No new element, no new animation, no new asset.
-- No child-facing string was added or changed by this slice — it is one new
+- No child-facing string was added or changed by this slice - it is one new
   renderer, three call sites and two hitbox derivations. No numbers, no PHI, no
   claim about the client.
 - `git status` shows changes only under `apps/games/` and `docs/`.
@@ -2034,7 +2011,7 @@ un-magnified stage with exactly these three tools on, at 1280 × 860 / 834 × 11
   was left alone rather than done badly. A cross-fade on `opacity` would be the
   honest version if it turns out to be wanted.
 - **Free play is exempt from the flow** (see T3). If the maintainer wants the
-  progressive cart there too, the reads are already written — only the
+  progressive cart there too, the reads are already written - only the
   `staged !== 'free'` guard in `_optSpent` / `_grpSettled` would come out, plus the
   ~20 free-play assertions in `glam-tt-game.spec.js` that re-tap Eyeliner and
   Mascara across turns to spend actions would need re-routing onto shade families.
@@ -2047,7 +2024,7 @@ un-magnified stage with exactly these three tools on, at 1280 × 860 / 834 × 11
   scrolled to the trolley (visible in `surface-no-model-chips-after-phone.png` and
   `trolley-mid-after-phone.png`). Pre-existing, not introduced here. T3 shortened
   the cart, which reduces how far a 390 px page has to scroll, but the stage panel
-  is still taller than the fold — a real fix means a sticky/condensed stage on
+  is still taller than the fold - a real fix means a sticky/condensed stage on
   narrow viewports, which is a layout change rather than a tuning one.
 - **The BT Character lock's `<option>` labels are `Lock: model 2 / 3 / 4`.** They
   are BT-facing so they carry no congruence risk, but they name an art asset rather
@@ -2055,10 +2032,10 @@ un-magnified stage with exactly these three tools on, at 1280 × 860 / 834 × 11
 
 ---
 
-## U. Second tuning pass — the highlight's shape, and the stage's fit
+## U. Second tuning pass - the highlight's shape, and the stage's fit
 
 The first pass (§T) went back to the maintainer as six fixes against before/after
-screenshots. Five were accepted outright — the model picker, the texting intro,
+screenshots. Five were accepted outright - the model picker, the texting intro,
 the trolley flow, the lip liner, the eye clip, the eyeshadow, the blush and the
 lens flare are all settled and none of them is touched here. Two findings came
 back, and they are the whole of this pass:
@@ -2071,10 +2048,10 @@ back, and they are the whole of this pass:
 > **B.** "We need the game area cleaned and no crops or clips"
 
 **This slice lands A. B is diagnosed and corrected in the record below, but not
-yet built** — see *U · Still to do*.
+yet built** - see *U · Still to do*.
 
 Notably, neither finding is about SIZE or STRENGTH. T4e cut the highlight from
-1.97–2.04 eye-areas to 0.59–0.60 and its peak from 58–74 to 45–49, and that much
+1.97-2.04 eye-areas to 0.59-0.60 and its peak from 58-74 to 45-49, and that much
 the maintainer signed off. What T4e never measured is the two things A is about.
 
 ### U1. The fade now starts near the centre
@@ -2082,12 +2059,12 @@ the maintainer signed off. What T4e never measured is the two things A is about.
 `_wash` draws its alpha as a raised cosine over the radius, `0.5 + 0.5·cos(πt)`.
 That ramp leaves the centre FLAT: a quarter of the way out it is still at ~85 %
 of peak. So inside every wash there is a bright plateau, and the plateau's own
-edge — not the ellipse's rim, which is genuinely soft — is the hard shape the
+edge - not the ellipse's rim, which is genuinely soft - is the hard shape the
 maintainer kept seeing.
 
 The fix is a per-call `o.core` exponent: the cosine is sampled at `t^core`
 instead of `t`. At `core` 0.40 that same quarter radius drops to ~38 % of peak.
-The rim does not move and the peak does not drop — only WHERE along the radius
+The rim does not move and the peak does not drop - only WHERE along the radius
 the fall happens. A reshaped ramp bends fastest near the centre, so it is also
 sampled at 24 stops instead of 12.
 
@@ -2095,10 +2072,10 @@ sampled at 24 stops instead of 12.
 the blush (T4d), the eyeshadow (T4c) and the contour, all three of which the
 maintainer has just accepted on the plain ramp; changing the ramp in place would
 have silently retuned them. Omitting `o.core` leaves both the exponent and the
-stop count exactly as they were — see *U · Hazard A* for the proof that it did.
+stop count exactly as they were - see *U · Hazard A* for the proof that it did.
 
 One reshaped ramp was not enough on its own. A shape swept along a path sits at
-very nearly its peak down its whole ridge by construction — which is a plateau
+very nearly its peak down its whole ridge by construction - which is a plateau
 again, just a bent one. So the stamps' alpha also tapers along the arc, from full
 at the belly to 12 % at the two tips. `core` moves the fade inward ACROSS the
 sweep; the taper moves it inward ALONG it.
@@ -2107,37 +2084,37 @@ sweep; the taper moves it inward ALONG it.
 
 The cheek highlight was one `_wash` per side at `0.46ew × 0.34eh`, rotated
 `0.34 rad`. **An ellipse has a perfectly straight spine at every rotation and
-every aspect ratio** — there is no tilt that would have fixed this. It reads as a
+every aspect ratio** - there is no tilt that would have fixed this. It reads as a
 lozenge because it is one.
 
 What a cheekbone highlight actually follows is the turn where the outer eye
 socket converges with the cheekbone: it starts under the eye on the apple, drops
 onto the zygomatic ridge, then lifts back out toward the temple. That is a curve,
-so the glow is now stamped along one — `HL_ARC`, a quadratic Bézier in
+so the glow is now stamped along one - `HL_ARC`, a quadratic Bézier in
 eye-landmark units of `[out, down]` from that eye's own centre:
 
 ```
 p0 [-0.02, 1.40]   inner end, under the eye
-p1 [ 0.58, 1.58]   control, pulled BELOW the chord — this is the bow
+p1 [ 0.58, 1.58]   control, pulled BELOW the chord - this is the bow
 p2 [ 1.18, 0.94]   outer end, lifting toward the temple
 ```
 
-The chord's mid-point is `(0.58, 1.18)` — the exact centre of the single ellipse
-this replaces — so T4e's accepted footprint stays put and only the silhouette
+The chord's mid-point is `(0.58, 1.18)` - the exact centre of the single ellipse
+this replaces - so T4e's accepted footprint stays put and only the silhouette
 changes. `out` means *away from the face's midline*, so **the two cheeks are
 mirrors by construction**, not by a second set of numbers: the same path is read
 with the eye's own ±1.
 
 19 stamps ride the path, each an ellipse `0.26` long along the tangent and
-tapering from `0.26` across it at the belly to `0.14` at the ends — a bean, not a
+tapering from `0.26` across it at the belly to `0.14` at the ends - a bean, not a
 sausage. Spacing works out at ~0.3 of the along-tangent radius, which is where
 overlapping raised cosines sum flat; wider and the sweep beads visibly, tighter
 and it is only more gradient fills for the same picture.
 
 `_hlStamps()` is the single source of truth: the compositor reads it to paint,
 and `_artZones` rolls the same stamps up into the `hl` hitbox. That is the §3.9
-principle — the box the child is told to work in is DERIVED from the art rather
-than restated beside it — and it is why the hitbox followed the shape without
+principle - the box the child is told to work in is DERIVED from the art rather
+than restated beside it - and it is why the hitbox followed the shape without
 anyone moving it. See *U · Hazard B*.
 
 ### U · Evidence
@@ -2159,33 +2136,33 @@ samples per phase:
 
 | | before | after | what it says |
 |---|---|---|---|
-| `bowR` | 0.0002 – 0.0022 | **0.1065 – 0.1144** | sagitta of the footprint's spine over its chord. An ellipse scores ~0 at any tilt; only a curved silhouette can move this. |
+| `bowR` | 0.0002-0.0022 | **0.1065-0.1144** | sagitta of the footprint's spine over its chord. An ellipse scores ~0 at any tilt; only a curved silhouette can move this. |
 | `bowS` | mixed (noise) | **−1 on all 18** | which way the bow turns. Mirroring flips the principal axis and leaves the cross-axis alone, so true mirrors agree. |
-| `core` | 0.1746 – 0.1896 | **0.0788 – 0.1235** | share of the footprint at ≥70 % of peak — the plateau. |
-| `r50` | 0.6162 – 0.6344 | **0.5021 – 0.5614** | `sqrt(A50/A10)`; 1.0 is a top hat. |
-| `peak` | 45 – 49 | 43 – 49 | unchanged, deliberately: the maintainer accepted this. |
-| `area` | 0.35 – 0.38 ey | 0.39 – 0.47 ey | the accepted footprint, kept. |
+| `core` | 0.1746-0.1896 | **0.0788-0.1235** | share of the footprint at ≥70 % of peak - the plateau. |
+| `r50` | 0.6162-0.6344 | **0.5021-0.5614** | `sqrt(A50/A10)`; 1.0 is a top hat. |
+| `peak` | 45-49 | 43-49 | unchanged, deliberately: the maintainer accepted this. |
+| `area` | 0.35-0.38 ey | 0.39-0.47 ey | the accepted footprint, kept. |
 
 One measurement note worth keeping. Blemishes are **healed** before any of this
 is measured. `freshEd` seeds where the spots go off `Math.random`, and a blemish
-core is a near-opaque dark dot — a screen lift is `alpha × (255 − substrate)`, so
+core is a near-opaque dark dot - a screen lift is `alpha × (255 − substrate)`, so
 over skin at ~174 there are 81 levels of headroom and over a blemish at ~126
 there are 129. The same highlight at the same strength therefore measures half
 again as high wherever it happens to cross a spot. Left in, it showed up as a
 34-vs-45 left/right split in a shape that is mirror-exact to the pixel.
 
-**A cosine ramp does not need 24 stops to be smooth — it needs them to be
+**A cosine ramp does not need 24 stops to be smooth - it needs them to be
 *accurate*.** With `core` applied the curve does most of its work in the first
 fifth of the radius, and 12 evenly spaced stops straight-line across exactly the
 part the fix is about.
 
-### U · Hazard A — the shared wash is untouched
+### U · Hazard A - the shared wash is untouched
 
 Re-measuring the blush and the eyeshadow with `_probe-glam-face3.mjs` was the
 obvious check and it is the wrong instrument: `freshEd`'s random `spotSeed` moves
 the blush's measured `ecc` by ±0.03 between two runs of the *same* renderer
-(the pre-change file alone produced 0.492–0.578 across two runs). So the question
-was settled by identity instead — `tests/_probe-glam-wash-parity.mjs` renders the
+(the pre-change file alone produced 0.492-0.578 across two runs). So the question
+was settled by identity instead - `tests/_probe-glam-wash-parity.mjs` renders the
 same model with the same `ed` down to a pinned `spotSeed` on the pre-change file
 and on this one, and diffs the compositor output byte by byte:
 
@@ -2197,15 +2174,15 @@ m2/m3/m4 × { shadow, blush, contour, wash+moist, all-but-hl }
 **Every non-highlight caller of `_wash` renders pixel-identically.** For the
 record, re-measured on this build with `_probe-glam-face3.mjs`:
 
-- **eyeshadow (T4c)** — `maxC = 1` on every model and both sides, i.e. still one
+- **eyeshadow (T4c)** - `maxC = 1` on every model and both sides, i.e. still one
   hot spot and never two blobs meeting. `n`, `peak`, `ecc` and `theta` are
   identical to the pre-change baseline to the last digit on all six.
-- **blush (T4d)** — `ecc` 0.492–0.578, `theta·side < 0` on all six, `peak` 24–27,
-  `maxC = 1`. The pre-change file measured 0.492–0.578 in the same conditions.
+- **blush (T4d)** - `ecc` 0.492-0.578, `theta·side < 0` on all six, `peak` 24-27,
+  `maxC = 1`. The pre-change file measured 0.492-0.578 in the same conditions.
   The T4d spec bound is `0.32 < ecc < 0.80` and the pre-change baseline quoted in
-  §T4d (0.49–0.55) was one draw of a seeded measurement, not a tighter bound.
+  §T4d (0.49-0.55) was one draw of a seeded measurement, not a tighter bound.
 
-### U · Hazard B — the hitbox followed the art
+### U · Hazard B - the hitbox followed the art
 
 `_artZones.hl` is re-derived from `_hlStamps()`: it unions each stamp's rotated
 AABB (worked out in PIXELS, because `ew` is a % of the frame's width and `eh` a %
@@ -2213,7 +2190,7 @@ of its height, and the frame is not square) with the nose stripe's box.
 
 - **`F-11 · every tool paints inside its own target box` is green on every roster
   model × all 14 tools × 3 engines.** 36/36 in `glam-art-fidelity.spec.js`.
-- F-11 reads the zone table, though — it proves the box CONTAINS the paint, not
+- F-11 reads the zone table, though - it proves the box CONTAINS the paint, not
   that the box can be pressed. So `tests/_play-glam-tune2.mjs` plays the game:
   Start → texting intro → salon → Go → pick **Highlight** off the trolley →
   drag across the rendered target with real pointer events.
@@ -2226,12 +2203,11 @@ of its height, and the frame is not square) with the nose stripe's box.
 `T4e` now heals the blemishes before it measures. **Its bounds are untouched.**
 
 U2's sweep is longer than the ellipse it replaces and does now reach a blemish on
-m3's right cheek, which read as `peak 59` against a bound of `< 56` —
-deterministically, on all three engines. Measured at that pixel the substrate is
+m3's right cheek, which read as `peak 59` against a bound of `< 56` - deterministically, on all three engines. Measured at that pixel the substrate is
 `rgb(126,75,79)` and the implied alpha is **0.457**; at the sweep's own skin peak
-it is **0.506**. The ellipse this replaces measured **0.59–0.60**.
+it is **0.506**. The ellipse this replaces measured **0.59-0.60**.
 
-So the highlight got *gentler* — which is the direction T4e asks for — and what
+So the highlight got *gentler* - which is the direction T4e asks for - and what
 moved was the substrate under it. The bound was calibrated on a build whose
 smaller blob happened never to touch a spot. Healing first measures the tool
 instead of the spot, which is what the test is for.
@@ -2240,7 +2216,7 @@ instead of the spot, which is what the test is for.
 
 - **384 Playwright tests.** Every failure across four full runs was the
   documented Atkinson-Hyperlegible flake: firefox, `fonts.gstatic.com` CORS
-  reset, and — as the note predicts — a *different spec each run*. Four runs
+  reset, and - as the note predicts - a *different spec each run*. Four runs
   produced four different victims: `F-11`, then the outro reveal, then the
   station kit, then the opening flow. Each passed in isolation immediately
   afterwards (18/18, 9/9, 15/15). Reproduces on a clean tree; not introduced
@@ -2250,7 +2226,7 @@ instead of the spot, which is what the test is for.
   `tests/glam-tt-scoring.spec.js` has no diff at all.
 - `tests/glam-tt-story.spec.js` green: two-axis outro, congruence guard, no
   numbers, second-person turn-taking, fictional-name-only. **No child-facing
-  string was touched in this slice** — the whole diff is canvas geometry, one
+  string was touched in this slice** - the whole diff is canvas geometry, one
   gradient ramp and one derived hitbox.
 - New test: `U1/U2 · the highlight is two mirrored kidney-bean sweeps that fade
   from their centres`. Every bound is two-sided, per T5's lesson: a one-sided "it
@@ -2261,14 +2237,14 @@ instead of the spot, which is what the test is for.
   fail, on every model and both sides:
 
   ```
-  m2/left  cheekbone: bowR 0.002 — the sweep's spine is straight, so it is still an ellipse
+  m2/left  cheekbone: bowR 0.002 - the sweep's spine is straight, so it is still an ellipse
                                           Expected: > 0.055     Received: 0.002
-  m2/left  cheekbone: 19.0% of the footprint sits at ≥70% of peak — that is the plateau
+  m2/left  cheekbone: 19.0% of the footprint sits at ≥70% of peak - that is the plateau
                                           Expected: < 0.15      Received: 0.1902
-  m2/left  cheekbone: r50 0.6302 — the brightness still holds flat before it falls
+  m2/left  cheekbone: r50 0.6302 - the brightness still holds flat before it falls
                                           Expected: < 0.59      Received: 0.6302
   … the same three on m2/right, m3/left, m3/right, m4/left, m4/right …
-  m3: the two cheekbone sweeps bow in opposite directions — they are not mirrored
+  m3: the two cheekbone sweeps bow in opposite directions - they are not mirrored
                                           Expected: 1           Received: -1
   ```
 
@@ -2282,19 +2258,18 @@ instead of the spot, which is what the test is for.
 §T · Deferred said the stage crop was a 390 px problem that only appeared once
 the page was scrolled to the trolley. **That was wrong**, and the maintainer's
 finding B is right. The stage panel paints a fixed composition and crops it
-`cover`-style at EVERY width — it just bites a different part at each size:
+`cover`-style at EVERY width - it just bites a different part at each size:
 
 - **1280×860, no scrolling involved** (`stage-before-desktop.png`): the gold
-  mirror ring is cut clean through at the panel's top edge AND its bottom edge —
-  175.5 px lost at each. The client is whole at this width; it is the room that
+  mirror ring is cut clean through at the panel's top edge AND its bottom edge - 175.5 px lost at each. The client is whole at this width; it is the room that
   is sliced.
 - **834×1112** (`stage-before-tablet.png`): the ring runs 90 px off the panel's
   left edge and 90 px off its right.
 - **390×844** (`stage-before-phone.png`): the ring runs 13 px off each side, and
-  the client is drawn at **0.94 of the composition** — the room around her is
+  the client is drawn at **0.94 of the composition** - the room around her is
   effectively gone. Measured precisely, the panel does *not* clip her: at 390 px
   the topmost painted row of m4's hair clears the panel's top edge by 25.5 px.
-  What the first pass's phone shots show cut is the VIEWPORT — pressing "Go"
+  What the first pass's phone shots show cut is the VIEWPORT - pressing "Go"
   scrolls the trolley into view and puts the panel's top at page-Y −121. So the
   head-off-the-top symptom is a scroll artefact, and the crop under it is not:
   the composition is cut at this width whether the page has moved or not, and it
@@ -2312,8 +2287,7 @@ scroll-dependent and neither is phone-specific.
 > "We need the game area cleaned and no crops or clips"
 
 **The route chosen: contain the composition and paint the room around it.** Three
-were available — letterbox it, re-frame the art, or scale the panel to the art —
-and the third is the one that looks like a fix and is not. The panel's shape is
+were available - letterbox it, re-frame the art, or scale the panel to the art - and the third is the one that looks like a fix and is not. The panel's shape is
 decided by the flex row it sits in, so making the panel square would either push
 it past the trolley beside it (measured: the panel goes 581 → 670 px at 1280×860
 and the page starts scrolling) or leave a square card next to a taller column
@@ -2333,13 +2307,13 @@ Four things changed, all of them presentation:
    the top ~12 %; that corner turns cool (`#a6c1c5`) so a soft corner wash turns
    with it; the counter's surface is `#ece7da` and its front `#bab8b3`, and its
    top edge sits at 84.5 % of the composition's height. Backgrounds only, so
-   there is no new element and the panel's box model — which every % target zone
-   is measured against — is untouched.
+   there is no new element and the panel's box model - which every % target zone
+   is measured against - is untouched.
 3. **The client is measured off the composition, not off the panel**
    (`STAGE_CLIENT_H = 0.70` of the contained backdrop's height). Under `cover`
    she was a flat 320×360 px against a composition that rescaled with the panel,
    so she was 0.39 of the room at 1280×860, 0.54 at 834×1112 and **0.94** at
-   390×844 — three different framings, and the last of them is the crop again by
+   390×844 - three different framings, and the last of them is the crop again by
    another name. One share is one framing.
 4. **The panel is a size container**, so `min(100cqw, 100cqh)` is available as
    "the height the contained art actually paints at", and takes a height from the
@@ -2347,7 +2321,7 @@ Four things changed, all of them presentation:
 
 The bounds on `STAGE_CLIENT_H` are two-sided and both are visible: below ~0.7 the
 client reads as standing across the room and her targets shrink with her; above
-~0.9 her head leaves the mirror's aperture (~0.10–0.83 of the art) and she covers
+~0.9 her head leaves the mirror's aperture (~0.10-0.83 of the art) and she covers
 the counter she is meant to be sitting at.
 
 ### U3 · Evidence
@@ -2359,7 +2333,7 @@ the top, because the game area is what the child sees).
 
 `tests/_probe-glam-stage.mjs` resolves the painted backdrop rect from the panel's
 own computed `background-size` / `-position` / `-origin` and the art's natural
-size — the same inputs the browser paints from:
+size - the same inputs the browser paints from:
 
 | | before | after |
 |---|---|---|
@@ -2372,16 +2346,16 @@ Identical on all three engines (Blink / Gecko / WebKit), and at 700, 646, 645 an
 
 **What the client cost, stated plainly.** She is *bigger* at 1280×860 (360 → 389
 px tall) and at 834×1112 she loses 10 % (360 → 323). At 390×844 she loses 36 %
-(360 → 232) — the composition there can be at most 332 px wide because the panel
+(360 → 232) - the composition there can be at most 332 px wide because the panel
 is, and 360 px of client only ever fitted by cropping the room to nothing. What
 that costs the child is the drag targets, so it is bounded rather than waved at:
 the smallest zone is 23.8 px on its short axis at 390 px (the ears band, 137×24),
-and every target clears **WCAG 2.2 SC 2.5.8** — the stage shows one target at a
+and every target clears **WCAG 2.2 SC 2.5.8** - the stage shows one target at a
 time, so the spacing clause applies and a wide, shallow box is compliant, but the
 area of the 24×24 minimum is held as a floor whatever the shape. The margin at
 390 px is thin, and it is what stops `STAGE_CLIENT_H` going any lower.
 
-### U3 · Hazard B — every hitbox followed the art, pressed rather than read
+### U3 · Hazard B - every hitbox followed the art, pressed rather than read
 
 `_artZones` is unchanged, and that is the finding rather than an omission: its
 boxes are in **% of the frame**, the overlays are positioned in % of the client's
@@ -2391,12 +2365,12 @@ hitbox table together by construction. Re-deriving would mean restating.
 That is an argument, though, and Hazard B asks for a measurement:
 
 - **`F-11 · every tool paints inside its own target box` is green on every roster
-  model × all 14 tools × 3 engines** — 36/36 in `glam-art-fidelity.spec.js`.
+  model × all 14 tools × 3 engines** - 36/36 in `glam-art-fidelity.spec.js`.
 - F-11 works in canvas coordinates, so a fit that moved the overlay off the art
   would leave it green and the game unplayable. `tests/_probe-glam-hitbox.mjs`
   presses the boxes instead: one tool per slot × 3 models × 3 devices, armed
   through `arm()` (the call the trolley button makes), the overlay's rect read
-  from the DOM, then a real pointer driven inside it — a drag for paint tools, a
+  from the DOM, then a real pointer driven inside it - a drag for paint tools, a
   click for taps.
 
   ```
@@ -2407,17 +2381,17 @@ That is an argument, though, and Hazard B asks for a measurement:
 
   Zero overlays hanging off the canvas, zero targets that swallowed a pointer
   without taking.
-- And the whole game, played: `tests/_play-glam-tune2.mjs` — Start → texting
+- And the whole game, played: `tests/_play-glam-tune2.mjs` - Start → texting
   intro → salon → Go → pick **Highlight** off the trolley → drag across the
   rendered target with real pointer events. Target box **173×72 px** (149×55
   before U3, i.e. the client grew), coverage **0 → 1.000**, then turns, End
   trial, and the outro's two photo frames mount. No console errors, no page
   errors, no failed local requests.
 
-### U3 · Hazard A — re-measured, and untouched by construction
+### U3 · Hazard A - re-measured, and untouched by construction
 
 U3 changes CSS. The canvas's backing store is 512×576 whatever the panel does, so
-a fit change cannot move a canvas measurement — and the parity probe says so
+a fit change cannot move a canvas measurement - and the parity probe says so
 rather than the argument doing it. `tests/_probe-glam-wash-parity.mjs`, this
 build against `HEAD` (which already carries U1/U2):
 
@@ -2428,11 +2402,11 @@ m2/m3/m4 × { shadow, blush, contour, wash+moist, all-but-hl }
 
 Re-measured on this build with `_probe-glam-face3.mjs`, 3 models × 2 sides:
 
-- **eyeshadow (T4c)** — `maxC = 1` on all six: still one hot spot, never two blobs
-  meeting in a blotch. `peak` 52–66, `ecc` 0.605–0.72, `theta·side > 0` on all
+- **eyeshadow (T4c)** - `maxC = 1` on all six: still one hot spot, never two blobs
+  meeting in a blotch. `peak` 52-66, `ecc` 0.605-0.72, `theta·side > 0` on all
   six.
-- **blush (T4d)** — `ecc` **0.521–0.578**, `maxC = 1` on all six, `theta·side < 0`
-  on all six, `peak` 24–27. Same window §U reported (0.492–0.578 across runs;
+- **blush (T4d)** - `ecc` **0.521-0.578**, `maxC = 1` on all six, `theta·side < 0`
+  on all six, `peak` 24-27. Same window §U reported (0.492-0.578 across runs;
   `freshEd`'s random `spotSeed` moves this ±0.03 between two runs of the *same*
   renderer, which is why parity is settled by identity above and not here).
 
@@ -2441,29 +2415,29 @@ Re-measured on this build with `_probe-glam-face3.mjs`, 3 models × 2 sides:
 - **`aspect-ratio` on a flex item is not portable here.** WebKit transfers the
   ratio from the item's flex BASE size rather than its used main size: with
   `flex:1 1 0%` that is 0, clamped back up by whatever `min-width` transfers, and
-  the panel came out 358×300 where Blink and Gecko both said 358×358 — and only
+  the panel came out 358×300 where Blink and Gecko both said 358×358 - and only
   after a resize ACROSS the wrap point, so it read as an intermittent. The height
   now comes from a container query on the row (`100cqw`, the width the panel is
   going to have once it is alone on its line), which all three agree on.
 - **`flex-wrap: wrap` makes a row multi-line even at one line**, so
   `align-content` applies at every width. Setting it to `flex-start` to stop the
   wrapped phone row splitting its cross size between the two lines also stopped
-  the single desktop line stretching to the trolley — the panel dropped 581 → 375
+  the single desktop line stretching to the trolley - the panel dropped 581 → 375
   px at 1280×860. The container-query height made it unnecessary.
 
 ### U3 · Verification
 
 - **387 Playwright tests, 387 passed** (384 + the one new test × 3 engines), on
-  the first full run and with no re-run needed — the Atkinson-Hyperlegible flake
+  the first full run and with no re-run needed - the Atkinson-Hyperlegible flake
   did not fire this time, which is what "a different spec each run, sometimes
   none" looks like.
 - **`window.GlamTT` is byte-identical** and `tests/glam-tt-scoring.spec.js` has
-  no diff at all — this slice does not touch a line of either.
+  no diff at all - this slice does not touch a line of either.
 - `tests/glam-tt-story.spec.js` green. **No child-facing string was touched**:
   the whole diff is one background declaration, one derived box height, two
   class attributes and a container query.
 - New test: `U3 · the stage shows the whole client and the whole mirror at every
-  width`. Every bound two-sided — the crop bounds are sub-pixel on all four
+  width`. Every bound two-sided - the crop bounds are sub-pixel on all four
   edges, and the client's share is bounded above *and* below so "fit the art"
   cannot be satisfied by shrinking her out of the way.
 - **The new test fails against the pre-change renderer**, run against a copy of
@@ -2472,13 +2446,13 @@ Re-measured on this build with `_probe-glam-face3.mjs`, 3 models × 2 sides:
   ```
   desktop (1280×860): the salon composition is cut 175.5px past the panel's top edge
   desktop (1280×860): the salon composition is cut 175.5px past the panel's bottom edge
-  desktop (1280×860): the client is 0.386 of the composition — a postage stamp in the room
+  desktop (1280×860): the client is 0.386 of the composition - a postage stamp in the room
   tablet (834×1112): the salon composition is cut 90px past the panel's left edge
   tablet (834×1112): the salon composition is cut 90px past the panel's right edge
-  tablet (834×1112): the client is 0.539 of the composition — a postage stamp in the room
+  tablet (834×1112): the client is 0.539 of the composition - a postage stamp in the room
   phone (390×844): the salon composition is cut 13px past the panel's left edge
   phone (390×844): the salon composition is cut 13px past the panel's right edge
-  phone (390×844): the client is 0.938 of the composition — her head leaves the mirror
+  phone (390×844): the client is 0.938 of the composition - her head leaves the mirror
   the client is framed differently at each width: 0.386 / 0.539 / 0.938
   ```
 
@@ -2492,7 +2466,7 @@ Re-measured on this build with `_probe-glam-face3.mjs`, 3 models × 2 sides:
   square composition can only be 462, so 184 px of it is wall above the mirror.
   Nothing is cropped and it reads as a high room, but the honest description is
   that the portrait case is filled rather than composed. Re-cutting the backdrop
-  wider — the one route this pass did not take — would let the art fill a
+  wider - the one route this pass did not take - would let the art fill a
   landscape panel and a portrait one differently. Out of scope here: it is an art
   change, not a layout one.
 - **The Atkinson-Hyperlegible font flake is still live.** Self-hosting the woff2
@@ -2526,7 +2500,7 @@ and after the run.
 
 ### V1 · The completed look, photographed
 
-No pass before this one had ever photographed a finished face — every screenshot
+No pass before this one had ever photographed a finished face - every screenshot
 in the evidence set was mid-appointment, which is why a defect the maintainer
 could see was invisible to the record. The "completed look" here is every tool in
 the catalogue applied: wash, moisturize, all three spots treated and concealed,
@@ -2539,21 +2513,21 @@ Under `docs/eval/shots/glam-tune3/`, per roster model (`m2`, `m3`, `m4`):
 | file | what it is |
 | --- | --- |
 | `after-<model>-completed.png` | the finished client, straight off the compositor |
-| `after-<model>-eye.png` | the eye band at ×7 — bare face, completed look, and where the completed look is brighter than bare |
-| `after-<model>-liner-loupe.png` | one eye at ×14 — mascara only, eyeliner only, both, and the pixels the liner brightens |
+| `after-<model>-eye.png` | the eye band at ×7 - bare face, completed look, and where the completed look is brighter than bare |
+| `after-<model>-liner-loupe.png` | one eye at ×14 - mascara only, eyeliner only, both, and the pixels the liner brightens |
 | `before-<model>-*.png` | the same three, taken against `2f45dfda`'s renderer through the same server |
 | `measure-completed-look.json` | the raw numbers behind the tables below, as the shipped renderer produces them; the "before" columns come from the same probe run against a copy of `2f45dfda`'s file served from the same directory |
 
 The blemish layout is pinned for every frame. `freshEd` seeds the three spots
 with `Math.random()`, so two frames taken from two resets have them in different
-places — which reads as a tool brightening pixels it never touched. The probes
+places - which reads as a tool brightening pixels it never touched. The probes
 pin `spotSeed` to 0.371, the layout `_pickSpots` itself falls back to. Before
 that was noticed, the same measurement swung between 10 and 203 "defective"
 pixels run to run.
 
-### V2 · What each tool does to the face — the measurement table
+### V2 · What each tool does to the face - the measurement table
 
-> **Superseded — see X4.** The same probe, byte-identical, run later in this pass
+> **Superseded - see X4.** The same probe, byte-identical, run later in this pass
 > against `2f45dfda` *itself* does not reproduce this table: contour, highlight
 > and lip liner come out at roughly a fifth of the values below, and earrings and
 > shirt at zero, which is the correct answer for a face-zone measurement because
@@ -2593,13 +2567,12 @@ does this tool own" number.
 What the table says:
 
 - **Hair colour dominates the face by a factor of three to five.** At ΔE(face)
-  9.3–10.5 it is larger than the next four tools combined, and it is not makeup
-  — the `face` zone includes the hair that frames it. Nothing to fix; it is
-  worth stating so that "the completed look changes 76–82 % of face pixels" is
+  9.3-10.5 it is larger than the next four tools combined, and it is not makeup - the `face` zone includes the hair that frames it. Nothing to fix; it is
+  worth stating so that "the completed look changes 76-82 % of face pixels" is
   not read as "the makeup does".
-- **Of the makeup proper, mascara (1.9–2.6) and lipstick (1.9–2.0) lead**, then
-  the brow pair (1.1–1.9 each, and they stack), eyeliner (1.3–1.7) and eyeshadow
-  (0.8–1.5). Blush, highlight, contour and lip liner are all under 0.9 — the
+- **Of the makeup proper, mascara (1.9-2.6) and lipstick (1.9-2.0) lead**, then
+  the brow pair (1.1-1.9 each, and they stack), eyeliner (1.3-1.7) and eyeshadow
+  (0.8-1.5). Blush, highlight, contour and lip liner are all under 0.9 - the
   soft-cosmetic tuning the first two passes did left them genuinely light.
 - Skincare (wash + moisturize) touches the most pixels of anything, at the
   lowest per-pixel distance: it is a whole-face tone change, which is what it
@@ -2615,38 +2588,38 @@ as the maintainer accepted them in the second pass. Overruling either is a
 judgement the maintainer should make against the shots, not one this pass should
 make on its own.
 
-### V3 · Finding A1 — the white pixels in the eyelashes
+### V3 · Finding A1 - the white pixels in the eyelashes
 
 **The prompt's first hypothesis is refuted.** The suggestion was that U1/U2's
-kidney-bean highlight — a `screen` blend of `#fff6d8` curving toward the outer
-eye socket — had reached the lash line. It has not: removing `hl` from the
+kidney-bean highlight - a `screen` blend of `#fff6d8` curving toward the outer
+eye socket - had reached the lash line. It has not: removing `hl` from the
 completed look changes the lash measurement by nothing at all, on every model
 and at every stage of this work (`tests/_probe-glam-tune3-lash.mjs`, the
 `completed − hl` row). The U1/U2 bean is untouched by this pass.
 
 **The cause is in the art, and then in the draw order.**
 
-*Cause 1 — `assets/art/eyes/glam.png` draws every lash twice.* A dark stroke,
+*Cause 1 - `assets/art/eyes/glam.png` draws every lash twice.* A dark stroke,
 and laid along it a second stroke of flat white. Inside the aperture that idiom
 is what makes the sclera and the catchlights. Out in the lash fans it is **1848
 fully opaque pixels of rgba(255,255,255,255)**, 21.7 % of the sprite's
 non-transparent lash-region pixels, sitting between the lashes. The compositor
 draws that 340 px sprite down to about 135 px, so the strokes survive as a pale
-speckle interleaved with the lashes — visible directly in
+speckle interleaved with the lashes - visible directly in
 `before-<model>-liner-loupe.png`, top panel.
 
-*Cause 2 — the winged liner is a whole eye, drawn on top of the mascara eye.*
+*Cause 2 - the winged liner is a whole eye, drawn on top of the mascara eye.*
 `paintAvatar` draws the glam lash sprite and then draws `eyeliner_l/r` over it,
 and those sprites carry their own eyeball. Its sclera, its pale waterline stroke
 and the anti-aliased rim of both landed on the mascara sprite's lash roots. The
-rim alone — near-white at alpha 8–127 — lifted a black lash by up to **+113
+rim alone - near-white at alpha 8-127 - lifted a black lash by up to **+113
 luminance** on its own.
 
 **The fix.** `LASH_MATTE` + `_eyeMatte` + `_eyeArt` in `index.html`. One pixel
 pass per sprite, cached per source, splitting an eye sprite into "the eye" and
 "everything else": the eye is the pale region continuous with the pixels over the
 iris, flood-filled from a seed ellipse inside the aperture, plus the iris disc
-itself (where the catchlights are — islands the fill cannot reach). Two cuts come
+itself (where the catchlights are - islands the fill cannot reach). Two cuts come
 off that one mark:
 
 - `'lash'` clears every pale pixel **outside** the eye. That is the baked-in
@@ -2657,40 +2630,40 @@ off that one mark:
   its ink on the mascara eye exactly.
 
 Cleared rather than darkened, deliberately: a lash gap should show the lid behind
-it, and painting the highlight dark would thicken every lash — the opposite of
+it, and painting the highlight dark would thicken every lash - the opposite of
 what Finding A asks for.
 
-**The rule is discriminating, not a bleach.** On `natural.png` — the plain
-eyeball, an accepted surface — it matches **zero** pixels, so the eye a child
+**The rule is discriminating, not a bleach.** On `natural.png` - the plain
+eyeball, an accepted surface - it matches **zero** pixels, so the eye a child
 sees before any makeup is byte-for-byte what it was. On `eyeliner_l.png` it
 matches 25 in the `'lash'` cut.
 
 **Measured, before and after, on the completed look.** The lash geometry is every
 pixel the mascara sprite *changes* (in either direction), with the eyeball cut
-out — not the pixels it darkens. A mask built from darkening alone quietly
+out - not the pixels it darkens. A mask built from darkening alone quietly
 excludes the white pixels, which are the whole defect; that mistake was made and
 corrected during this work, and it is why the first numbers looked mild.
 
 | completed look, lash geometry | m2 | m3 | m4 |
 | --- | --- | --- | --- |
-| lash pixels ≥ 190 L — **before** | 157 (3.66 %) | 118 (3.66 %) | 143 (3.98 %) |
-| lash pixels ≥ 190 L — **after** | **60 (1.56 %)** | **43 (1.49 %)** | **42 (1.32 %)** |
-| pixels brighter than bare — before | 539 (12.6 %) | 590 (18.3 %) | 598 (16.6 %) |
-| pixels brighter than bare — after | **260 (6.8 %)** | **332 (11.5 %)** | **242 (7.6 %)** |
-| mean lash luminance — before | 87.3 | 88.0 | 85.6 |
-| mean lash luminance — after | **68.9** | **71.1** | **65.7** |
-| share rendering as ink (≥20 L darker than bare) — before | 77.3 % | 68.1 % | 72.5 % |
-| share rendering as ink — after | **83.0 %** | **75.5 %** | **82.1 %** |
+| lash pixels ≥ 190 L - **before** | 157 (3.66 %) | 118 (3.66 %) | 143 (3.98 %) |
+| lash pixels ≥ 190 L - **after** | **60 (1.56 %)** | **43 (1.49 %)** | **42 (1.32 %)** |
+| pixels brighter than bare - before | 539 (12.6 %) | 590 (18.3 %) | 598 (16.6 %) |
+| pixels brighter than bare - after | **260 (6.8 %)** | **332 (11.5 %)** | **242 (7.6 %)** |
+| mean lash luminance - before | 87.3 | 88.0 | 85.6 |
+| mean lash luminance - after | **68.9** | **71.1** | **65.7** |
+| share rendering as ink (≥20 L darker than bare) - before | 77.3 % | 68.1 % | 72.5 % |
+| share rendering as ink - after | **83.0 %** | **75.5 %** | **82.1 %** |
 
-White pixels roughly halved on every model, mean lash luminance dropped 18–20 L
+White pixels roughly halved on every model, mean lash luminance dropped 18-20 L
 (the lashes now read as ink rather than as speckle), and the share of the
-geometry that actually renders as lash went up on all three — so the improvement
+geometry that actually renders as lash went up on all three - so the improvement
 is not a lash quietly disappearing. Directly against the liner: the mean lift the
 liner sprite puts on lash pixels fell from +16.9/+17.3/+17.8 to +14.4/+14.6/+14.9
 and its worst from +139.5/+161.2/+144.3 to +110.3/+84.9/+100.4.
 
-**The residual, named honestly.** 42–60 pure-white pixels per model remain inside
-the mask. They are not paint on lashes — they are the glam sprite's own **sclera
+**The residual, named honestly.** 42-60 pure-white pixels per model remain inside
+the mask. They are not paint on lashes - they are the glam sprite's own **sclera
 leaking past the elliptical eyeball cut-out at the eye's sharp corners**. Three
 pieces of evidence: the count is *identical* for every tool in the ablation
 (83 on m4 whether the extra tool is wash, blush, lipstick or nothing), the value
@@ -2701,7 +2674,7 @@ an eyeball exclusion derived from the sprite rather than from an ellipse.
 
 ### V4 · Verification for this slice
 
-- Full Playwright suite green — 387 tests, three browsers, against a
+- Full Playwright suite green - 387 tests, three browsers, against a
   hash-verified server.
 - `window.GlamTT` and `tests/glam-tt-scoring.spec.js` **unchanged**:
   `git diff 2f45dfda..HEAD -- apps/games/tests/glam-tt-scoring.spec.js` is empty,
@@ -2715,45 +2688,44 @@ an eyeball exclusion derived from the sprite rather than from an ellipse.
   `tests/_probe-glam-tune3-liner.mjs` (the liner-over-lash question and its ×14
   loupe) and `tests/_shots-glam-tune3-look.mjs` (the shots).
 
-### V5 · The residual named in V3, resolved — and a third cause behind it
+### V5 · The residual named in V3, resolved - and a third cause behind it
 
-V3 closed by naming 42–60 pure-white pixels per model that survived the first
+V3 closed by naming 42-60 pure-white pixels per model that survived the first
 fix, and said they were the glam sprite's own **sclera leaking past the
 elliptical eyeball cut-out at the eye's sharp corners** rather than paint on a
 lash. That is now settled, and it was two separate things wearing one number.
 
 **The measurement was wrong, and fixing it removed most of the residual.**
-Replacing the ellipse with an exclusion derived from `_eyeMatte`'s own eye mark —
-each canvas pixel mapped back through `_irisBox`, the rect the compositor blits
-into — drops the white count from 60/43/42 to **2/0/0** while removing only 3–5 %
+Replacing the ellipse with an exclusion derived from `_eyeMatte`'s own eye mark - each canvas pixel mapped back through `_irisBox`, the rect the compositor blits
+into - drops the white count from 60/43/42 to **2/0/0** while removing only 3-5 %
 of the mask's area (3835→3627, 2911→2811, 3188→3043 px). The sclera diagnosis
 was right: those pixels were never on a lash.
 
 **What was left was real, and it was the liner's LID.** With the mask honest, one
-tool still lifted lash pixels: the eyeliner, by **+110 / +85 / +89 L** on 44–53
+tool still lifted lash pixels: the eyeliner, by **+110 / +85 / +89 L** on 44-53
 pixels per model. Every other tool in the catalogue moved the lash cores by less
-than 26 L, and the highlight — the prompt's leading suspect — by nothing at all.
+than 26 L, and the highlight - the prompt's leading suspect - by nothing at all.
 
 The `'ink'` cut introduced in V3 kept "everything that is not flat white", where
 white meant *min channel ≥ 170*. The liner sprite's own **opaque lid** is skin at
-140–180 L: not white by that test, and drawn straight over every glam lash the
+140-180 L: not white by that test, and drawn straight over every glam lash the
 liner art does not itself draw. 131 and 195 such pixels per sprite survived the
 cut. A lid repainting a black lash is a bright pixel on a lash however it is
-spelled, so the cut now fades by **luminance** on a ramp — full alpha at or below
-`inkLo` 110, gone at or above `inkHi` 170 — which subsumes the old white test
+spelled, so the cut now fades by **luminance** on a ramp - full alpha at or below
+`inkLo` 110, gone at or above `inkHi` 170 - which subsumes the old white test
 (all channels ≥ 170 ⇒ luminance ≥ 170) and takes the lid with it. A ramp rather
 than a cliff so the wing keeps its own anti-aliased edge.
 
 | liner's lift on the lash cores | m2 | m3 | m4 |
 | --- | --- | --- | --- |
-| worst — before this slice | +110.3 | +84.9 | +88.8 |
-| worst — after | **+50.7** | **+62.9** | **+72.8** |
-| pixels lifted > 25 L — before | 53 | 47 | 44 |
-| pixels lifted > 25 L — after | **27** | **32** | **29** |
+| worst - before this slice | +110.3 | +84.9 | +88.8 |
+| worst - after | **+50.7** | **+62.9** | **+72.8** |
+| pixels lifted > 25 L - before | 53 | 47 | 44 |
+| pixels lifted > 25 L - after | **27** | **32** | **29** |
 | mean lift over the whole lash mask (`_probe-…-liner`) | +14.4 → **+11.9** | +14.6 → **+12.3** | +14.9 → **+12.7** |
 
 **Where this stops, and why.** What remains is the liner's *dark* ink sitting on
-a lash — wing ink at 52–104 L over lash ink at ~35. That is eyeliner doing its
+a lash - wing ink at 52-104 L over lash ink at ~35. That is eyeliner doing its
 job on the lash line, and tightening `inkHi` further would start erasing the wing
 the maintainer accepted. `after-<model>-liner-loupe.png` is regenerated against
 the shipped renderer so the wing can be checked by eye.
@@ -2764,7 +2736,7 @@ fringe over a lash is hair, not paint, so the pinned spec leaves hair SHAPE at
 each model's own and applies hair COLOUR like any other tool. The completed-look
 *shots* still carry `hair-blonde`, because that is a look a child can build.
 
-### V6 · The pinned bound — where a lash IS, before what colour it is
+### V6 · The pinned bound - where a lash IS, before what colour it is
 
 The bound is now a test: two cases in `tests/glam-art-fidelity.spec.js`
 (`A1 · a completed look puts no white pixel on a lash…` and
@@ -2777,17 +2749,17 @@ both wrong and V3 used one of each in turn:
 - *"pixels the mascara sprite darkens"* silently excludes the white ones, which
   are the entire defect.
 - *"pixels the mascara sprite changes, minus an elliptical eyeball"* leaks the
-  sclera's corner tips in, and manufactures 42–60 defective pixels that are not
-  on a lash — the V3 residual.
+  sclera's corner tips in, and manufactures 42-60 defective pixels that are not
+  on a lash - the V3 residual.
 
 So the geometry is taken from **`glam.png` itself**: a sprite pixel is lash ink
 when it is opaque and dark, and a canvas pixel joins the mask when at least
 `cover` of what the art puts under it is that ink, mapped through `_irisBox`. The
 only thing "opaque and dark" wrongly catches is the iris and pupil, and those
-come out as a **circle** off `_irisBox`'s own `cx/cy/r` — the same circle
+come out as a **circle** off `_irisBox`'s own `cx/cy/r` - the same circle
 `_contactCanvas` clips a contact to. A circle is right here and an ellipse was
 wrong for the aperture: the iris really is round, an eye opening really is an
-almond. The sclera, waterline and catchlights need no exclusion — they are pale,
+almond. The sclera, waterline and catchlights need no exclusion - they are pale,
 and pale is not ink.
 
 Nothing in the mask comes from the renderer's own A1 machinery, on purpose: it
@@ -2795,9 +2767,8 @@ has to be computable against `2f45dfda` too, or "this fails before the fix"
 cannot be shown.
 
 **`cover` is a judgement, so here is the whole curve rather than the one number
-that passes.** Below about 0.75 a canvas pixel is a *blend* of lash and lid — the
-340 px sprite is drawn at ~135 px, so one canvas pixel spans ~2.5 sprite pixels —
-and its luminance is then partly the lid's. The spec asserts at 0.75.
+that passes.** Below about 0.75 a canvas pixel is a *blend* of lash and lid - the
+340 px sprite is drawn at ~135 px, so one canvas pixel spans ~2.5 sprite pixels - and its luminance is then partly the lid's. The spec asserts at 0.75.
 `tests/_probe-glam-tune3-core.mjs` prints all three.
 
 | cover | white ≥ 190 L (before → after) | brightest lash pixel | worst over bare |
@@ -2838,7 +2809,7 @@ the eye or by re-introducing cause 1 under cover of a tool that darkens it again
 - the `'lash'` rule clears **zero** pixels of `natural.png`, the plain eyeball
   the maintainer already accepted;
 - after the cut, `glam.png` carries **zero** opaque flat-white pixels outside the
-  eye (1848 shipped before), which is cause 1 pinned at the source — the
+  eye (1848 shipped before), which is cause 1 pinned at the source - the
   lash-core mask is "opaque and dark", so the baked highlight is otherwise only
   visible to it where the downscale smears one into the other;
 - each liner sprite keeps **> 2500** opaque dark pixels (the wing) and **zero**
@@ -2870,8 +2841,7 @@ exist before this pass.
 - **Real-browser playthrough** (`tests/_play-glam-tune2.mjs`): title → texting
   intro → salon → real-pointer drag on the highlight target → turns → outro. No
   console errors, no page errors, no failed local requests.
-- **Shots regenerated against the shipped renderer** —
-  `after-<model>-completed.png`, `after-<model>-eye.png` and
+- **Shots regenerated against the shipped renderer** - `after-<model>-completed.png`, `after-<model>-eye.png` and
   `after-<model>-liner-loupe.png` for m2/m3/m4. The `before-*` half still comes
   from `2f45dfda` and is unchanged.
 - One new instrument, not a spec: `tests/_probe-glam-tune3-core.mjs`, which
@@ -2881,14 +2851,14 @@ exist before this pass.
 ### V · Still to do in this pass
 
 - **Finding A2's tuning.** The completed look is measured and photographed but
-  not retuned; the two taste calls in V2 — the eyeshadow's reach past the outer
-  socket, and the brow pencil's flat dark plum — are stated rather than made, so
+  not retuned; the two taste calls in V2 - the eyeshadow's reach past the outer
+  socket, and the brow pencil's flat dark plum - are stated rather than made, so
   the maintainer can rule on them against the shots.
-- ~~**Finding B in its entirety.**~~ Landed in the next slice — see **W** below.
+- ~~**Finding B in its entirety.**~~ Landed in the next slice - see **W** below.
 
 ---
 
-## Third pass · Finding B — the turn indicator moves into the counter
+## Third pass · Finding B - the turn indicator moves into the counter
 
 Same base (`2f45dfda`), same pass. This slice is the maintainer's second finding
 and nothing else:
@@ -2904,21 +2874,21 @@ before the run.
 ### W1 · What moved, and what it is now
 
 The card that used to sit above the stage carried three things: the whose-turn
-avatar, the whose-turn line ("MY TURN" / "My turn — I can do 7 more") and the
+avatar, the whose-turn line ("MY TURN" / "My turn - I can do 7 more") and the
 actions-left meter with its pip row. All three are now the **turn rail**: a strip
 across the foot of the stage panel, dressed as the front face of the vanity
 counter that U3's `contain` fit had left as dead room painted with the floor.
 
-- **Left** — a warm token ringed in the turn's own colour (sage for the child,
+- **Left** - a warm token ringed in the turn's own colour (sage for the child,
   blue for the partner) carrying the same glyph the card used.
-- **Centre** — the whose-turn eyebrow over the whose-turn line, the same two-line
+- **Centre** - the whose-turn eyebrow over the whose-turn line, the same two-line
   stack the card had, in rail ink (`#4b5638` / `#1e3a6e` on `#cdb383`, both past
   4.5:1; sage-700 and blue-500 as the card used them do not clear 3:1 on sand).
-- **Right** — "Actions left" and its pips, the pips now warm-white with a brown
+- **Right** - "Actions left" and its pips, the pips now warm-white with a brown
   rim rather than `#fff` on `#cfd4c4`, which vanishes on sand. The partner's
   timed countdown lands in the same slot.
 
-The rail is `pointer-events:none` throughout — nothing in it is interactive, and
+The rail is `pointer-events:none` throughout - nothing in it is interactive, and
 the stage below it is where the child taps.
 
 **One number does all the layout.** `--gtm-band` is the rail's height (46 px, 40
@@ -2927,7 +2897,7 @@ measured twice:
 
 | where | what it does |
 | --- | --- |
-| the panel's `padding-bottom` | reserves the rail, so the contained backdrop and the client — both sized off the panel's *content* box — end above it and no art is buried |
+| the panel's `padding-bottom` | reserves the rail, so the contained backdrop and the client - both sized off the panel's *content* box - end above it and no art is buried |
 | the vanity ledge's `bottom` | the ledge now rests **on** the rail instead of at the panel's edge, so the client's hard bottom cut is still masked (F-10) |
 | `--gtm-stage-fit` | the height a *wrapped* panel takes from the art's aspect now adds the rail, so on phone the composition is exactly the size it was and the rail is genuinely extra |
 
@@ -2940,7 +2910,7 @@ through the same probe before and after:
 | tablet 834×1112 | 670 → **716** | 644 → **644** (unchanged) |
 | phone 390×844 | 358 → **398** | 332 → **332** (unchanged) |
 
-"the art's own box" is the panel's content-box height — panel minus border and
+"the art's own box" is the panel's content-box height - panel minus border and
 padding, and the rail lives in the padding, so this is exactly the room the
 composition gets. Desktop *gains*: the row is `flex:1` in a column that fills the
 viewport, so the footprint the card was spending came back to the stage and the
@@ -2949,7 +2919,7 @@ rail took 46 px of it.
 ### W2 · The card's vertical footprint
 
 Measured as the vertical distance from the top of the game area (`main.gtm-room`,
-inside its own padding) to the top of the stage panel — one number for "what sits
+inside its own padding) to the top of the stage panel - one number for "what sits
 above the stage":
 
 | | before | after |
@@ -2960,10 +2930,10 @@ above the stage":
 
 The phone paid the most: at 390 px the card's own contents wrapped, so it was
 half again as tall there as on a desktop. The whole page is shorter for its
-removal — at 390×844 the document went 1177 px → 1081 px, 96 px less to scroll
+removal - at 390×844 the document went 1177 px → 1081 px, 96 px less to scroll
 past.
 
-The `banner` turn map now renders **nothing** above the stage — the rail is the
+The `banner` turn map now renders **nothing** above the stage - the rail is the
 banner. The `vanity` and `runway` maps still add their own block, and each still
 states whose turn it is in words on its own, so AC-12 does not depend on the
 rail in those two. `tests/glam-tt-game.spec.js`'s AC-12 sweep over all three maps
@@ -2973,7 +2943,7 @@ is unchanged and green.
 
 | file | what it is |
 | --- | --- |
-| `turn-{before,after}-{desktop,tablet,phone}.png` | the whole viewport at the top of the page — where the footprint is read |
+| `turn-{before,after}-{desktop,tablet,phone}.png` | the whole viewport at the top of the page - where the footprint is read |
 | `turnband-{before,after}-{desktop,tablet,phone}.png` | the stage panel alone, so the rail is read against the composition it belongs to |
 | `turnscroll-{before,after}-phone.png` | 390×844 scrolled to the end of the trolley |
 | `rail-{ready,mine,theirs}.png` | the rail in each phase it has a distinct state for, off a real played trial |
@@ -2982,7 +2952,7 @@ is unchanged and green.
 the phone page the pre-change card is gone off the top and there is no statement
 of whose turn it is anywhere on screen.
 
-### W3 · Always visible — including the case that failed
+### W3 · Always visible - including the case that failed
 
 "Whose turn it is is always visible" is an acceptance criterion (AC-12 in
 `docs/glam-team-makeover-redesign-hardened-claims.md`), and a stage-anchored
@@ -2995,7 +2965,7 @@ child's own turn it was fine (stage top at y −93, rail at y +230, well inside 
 844 px viewport). But **playing the trial out** at 390×844 found the case the
 static check missed: on the *partner's* turn the controls row grows the mand cue
 and the "✓ I asked!" button, the document gets longer, and at scrollY 576 the
-rail was at **y −109** — off the top of the screen.
+rail was at **y −109** - off the top of the screen.
 
 The fix is the one the brief allowed for: **on a wrapped row the stage panel is
 `position:sticky`**. Its containing block is the stage row, so it travels with
@@ -3021,8 +2991,8 @@ Viewport-Y of each part at 390×844, scrolled to the end of the trolley
 ### W4 · The pinned tests
 
 `tests/glam-turn-band.spec.js`, two cases × three browsers. Both locate things
-the way the U3 spec does — the panel by the backdrop art it carries, the text by
-its own words — so the same file runs against the pre-change renderer via
+the way the U3 spec does - the panel by the backdrop art it carries, the text by
+its own words - so the same file runs against the pre-change renderer via
 `GLAM_PAGE=…`.
 
 1. **The move and the footprint.** At each of the three device sizes: the
@@ -3032,8 +3002,7 @@ its own words — so the same file runs against the pre-change renderer via
    per action in the budget; at most 6 px of vertical footprint sits above the
    stage; and the whose-turn line is not clipped by the rail it now lives in.
 2. **Always visible.** The same three parts are wholly inside the viewport at
-   three scroll positions — top, trolley scrolled to its end, document bottom —
-   at all three device sizes, **on the child's turn and on the partner's turn**.
+   three scroll positions - top, trolley scrolled to its end, document bottom - at all three device sizes, **on the child's turn and on the partner's turn**.
    The second phase is in the test because it is the one that failed.
 
 **Both fail against `2f45dfda`,** through the same server with that file swapped
@@ -3044,8 +3013,7 @@ Error: desktop (1280×860): the whose-turn label starts 66.7px ABOVE the stage p
   expect(received).toBeGreaterThanOrEqual(expected)  Expected: >= 143.9  Received: 77.8
 
 Error: phone (390×844), my turn scrolled to the trolley (scrollY 143 of 333):
-  the whose-turn label is off screen —
-  {"x":100,"y":-26,"w":51.3,"h":12,"top":-26,"bottom":-14,"right":151.3} in a 390×844 viewport
+  the whose-turn label is off screen - {"x":100,"y":-26,"w":51.3,"h":12,"top":-26,"bottom":-14,"right":151.3} in a 390×844 viewport
   expect(received).toBe(expected)  Expected: true  Received: false
 ```
 
@@ -3061,26 +3029,25 @@ therefore asks the nearest *clipping* ancestor, not the text node.
   as serving this worktree (`shasum` of the file and of `curl`'s bytes both
   `e49e5abb505ad32cc35b3109aafdc106218de2da`). 393 before, +2 cases × 3 browsers.
   Two earlier full runs during this slice each lost exactly one firefox spec on
-  the known Atkinson-Hyperlegible webfont console error — a different spec each
+  the known Atkinson-Hyperlegible webfont console error - a different spec each
   time, and each passed on its own. The flake is documented in *U · Still to do*.
 - `window.GlamTT` **byte-identical**: the `<script>` block that defines it hashes
   `0d9c7241482de068eaa14c37e72c7105d5fa4bde` (24 767 bytes) on both `2f45dfda`
   and this slice's `index.html`. `git diff 2f45dfda --
   apps/games/tests/glam-tt-scoring.spec.js` is empty.
-- **A whole trial played out in a real browser** — `tests/_play-glam-tune3.mjs`,
+- **A whole trial played out in a real browser** - `tests/_play-glam-tune3.mjs`,
   at 1280×860 and again at 390×844: title → texting intro → salon → every turn to
   the end (6 of 6) → outro, every move a real click or a real pointer stroke on
   the target the game rendered. It re-reads the rail at every phase change and
-  fails on a phase where any part of it was off screen — which is how W3's
+  fails on a phase where any part of it was off screen - which is how W3's
   partner-turn defect was found. Clean on both sizes: no console errors, no page
   errors, no failed local requests.
 - **Child-facing text unchanged.** This slice moved the whose-turn line and the
-  meter; it did not rewrite either. No numbers were added to child-facing copy —
-  "I can do 7 more" is the same sentence the card carried, and the two digits the
+  meter; it did not rewrite either. No numbers were added to child-facing copy - "I can do 7 more" is the same sentence the card carried, and the two digits the
   playthrough finds on the outro page are the BT's own session clock and the
   staff summary line ("Trial finished · 6 of 6 turns"), both pre-existing and
   both staff surfaces. `tests/glam-tt-story.spec.js` is green and untouched.
-- **The staff strip and the print view are untouched** — (E), Prompt given and
+- **The staff strip and the print view are untouched** - (E), Prompt given and
   End trial are in the same controls row they were, and no diff hunk goes near
   `printReport`.
 - New instruments, none of them specs: `tests/_shots-glam-tune3-turn.mjs`
@@ -3106,18 +3073,18 @@ Called out so the maintainer can overrule any of them against the shots:
 - **The `banner` map now renders nothing above the stage.** The alternative was
   to keep a slim strip there. Read as: the rail *is* the banner.
 - **Rail ink instead of the card's sage-700/blue-500.** This one is closer to
-  measurement than taste — the card's colours do not clear 3:1 on sand — but the
+  measurement than taste - the card's colours do not clear 3:1 on sand - but the
   particular darker hues are a choice.
 
 ### W · Still to do
 
-- ~~**Finding A2's tuning.**~~ Landed in the next slice — see **X** below.
+- ~~**Finding A2's tuning.**~~ Landed in the next slice - see **X** below.
 - The tall-panel and webfont items from *U · Still to do* are still open and
   still out of this pass's scope.
 
 ---
 
-## Third pass · Finding A2 — the completed look, tuned
+## Third pass · Finding A2 - the completed look, tuned
 
 Same base (`2f45dfda`), same pass, third and last slice. V2 measured the
 completed look and left two things *stated* rather than judged, because both had
@@ -3132,22 +3099,22 @@ Every number and every screenshot below was taken through a server whose served
 bytes were `shasum`-verified against this worktree's `index.html` immediately
 before the run.
 
-### X1 · Neither call is pure taste — each has a stated intent to measure against
+### X1 · Neither call is pure taste - each has a stated intent to measure against
 
 The instrument is `tests/_probe-glam-tune3-a2.mjs`, new in this slice and not a
 spec. It pins the blemish seed (0.371) like every probe in this pass, and it
 keeps each model's **native hair shape**: `hair-blonde` drops a fringe over m3's
-brow, and hair over a brow is hair, not pencil — the same confound that cost
+brow, and hair over a brow is hair, not pencil - the same confound that cost
 iteration 2 a set of lash numbers.
 
-**Eyeshadow — where the eye IS, before what colour it is.** The eye sprite's own
+**Eyeshadow - where the eye IS, before what colour it is.** The eye sprite's own
 drawn box comes from the renderer's `_irisBox().dw`. A wash pixel at `u > 0.5`
 outward is past the drawn socket *by construction*, whatever anyone thinks of the
 colour. Separately: does the wash actually reach the brow? Measured against the
-brow **ink**, not the brow ZONE — the zone is the sprite's bounding box and
+brow **ink**, not the brow ZONE - the zone is the sprite's bounding box and
 carries a lot of transparent margin, so "shadow pixels inside the brow zone"
 would measure the box rather than the art. (That mistake was made first: by the
-zone, 52–78 % of the wash looked like it was in the brow band. By the ink there
+zone, 52-78 % of the wash looked like it was in the brow band. By the ink there
 is clear skin between them.)
 
 | model | wash px | outward reach, max | px past the drawn eye box | rise, max | clear skin, brow ink → wash |
@@ -3156,18 +3123,17 @@ is clear skin between them.)
 | m3 | 2 739 | **0.37** dw | **0** (0.00 %) | 0.55 dh | +0.030 dh |
 | m4 | 4 865 | **0.42** dw | **0** (0.00 %) | 0.67 dh | −0.057 dh |
 
-**V2's eyeshadow call is refuted.** The wash stops 0.08–0.13 dw short of the
+**V2's eyeshadow call is refuted.** The wash stops 0.08-0.13 dw short of the
 drawn eye's own outer edge on every model and puts *no* pixel past it, so it is
 not on the temple; and on m2/m3 there is clear skin between it and the brow ink.
-On m4 the two graze by 0.057 dh — 5.7 % of an eye-box height, at the outer tail —
-which the ×7 loupe (`a2after-m4-eye.png`) shows as a touch, not an overlap. The
+On m4 the two graze by 0.057 dh - 5.7 % of an eye-box height, at the outer tail - which the ×7 loupe (`a2after-m4-eye.png`) shows as a touch, not an overlap. The
 eyeshadow is **left exactly as the maintainer accepted it in the second pass**.
 What V2 read as "carrying onto the temple" in a 512 px whole-face shot is the
 wash rising over the lid toward the brow bone, which is where eyeshadow goes.
 
 **The brow call is confirmed, and the cause is one number.** `index.html` states
-the intent itself — brows "default-MATCH the hair colour (and follow a
-recolour)" — and `_browTint` implements it as tint × luminance with a FLOOR: what
+the intent itself - brows "default-MATCH the hair colour (and follow a
+recolour)" - and `_browTint` implements it as tint × luminance with a FLOOR: what
 a pure-black sprite pixel becomes. The floor was **0.42**. On a sprite whose fill
 is one solid colour, the floor is then the whole brow, and m4's shaped brow is
 exactly that sprite:
@@ -3179,11 +3145,11 @@ exactly that sprite:
 | m4 | **42.2** | **67.1 %** | 23.4 | 45.7 | **22.3 L\*** |
 
 42.2 luminance is `0.42 × berry` to a decimal place. Two thirds of m4's pencilled
-brow is that one value, against hair at 104 — not a brow a shade deeper than the
+brow is that one value, against hair at 104 - not a brow a shade deeper than the
 hair, a near-black plum bar drawn across the face. That is V2's "flat dark plum",
 now countable, and on the completed look it is the heaviest thing on the client.
 
-### X2 · The fix — the tint floor, and only the tint floor
+### X2 · The fix - the tint floor, and only the tint floor
 
 ```
 const BROW_TINT = { floor:0.60, span:0.55 };      // was k = 0.42 + 0.58·L
@@ -3191,8 +3157,7 @@ k = min(1, BROW_TINT.floor + BROW_TINT.span·L)
 ```
 
 The floor moves 0.42 → **0.60**: the darkest ink lifts 43 %. The span stays wide
-(0.58 → 0.55, clamped), so a sprite that *has* its own shading keeps all of it —
-the two curves only diverge below L ≈ 0.5, which is ink. Nothing else about the
+(0.58 → 0.55, clamped), so a sprite that *has* its own shading keeps all of it - the two curves only diverge below L ≈ 0.5, which is ink. Nothing else about the
 brow changes: same sprites, same anchors, same widths, same `HAIR_SWATCH`.
 
 | model | darkest ink | share at the floor | brow L\* | below the hair |
@@ -3203,7 +3168,7 @@ brow changes: same sprites, same anchors, same widths, same `HAIR_SWATCH`.
 
 The share-at-the-floor figure barely moves, and it should not: the m4 sprite is
 still a solid fill, and no recolour can put shading into art that has none. What
-changes is *where* that flat value sits — 42.2 → 59.5 — which is the whole
+changes is *where* that flat value sits - 42.2 → 59.5 - which is the whole
 complaint. Shots: `a2before-<model>-completed.png` / `a2after-<model>-completed.png`
 and the ×7 eye loupes `a2before-<model>-eye.png` / `a2after-<model>-eye.png`.
 `after-<model>-*.png` were regenerated so the "after" half of the record is
@@ -3212,18 +3177,18 @@ always the shipped renderer.
 ### X3 · The pinned test, and what it says before the fix
 
 `tests/glam-art-fidelity.spec.js` gains **A2 · the pencilled brow reads as the
-hair it matches, not as ink** — one case × three browsers, +3 on the suite.
+hair it matches, not as ink** - one case × three browsers, +3 on the suite.
 
 Which pixels are the brow is the whole test, so the mask rules out one impostor
 at a time. Anything the **brow tools** move between the untouched bushy brow and
-the pencilled one is brow, and hair is not — hair is identical in both frames, so
+the pencilled one is brow, and hair is not - hair is identical in both frames, so
 a temple strand inside the box drops out. Of those, the **ink** is the dark part,
 cut against the skin around it rather than at a fixed number, because skin the
 pencil *uncovered* is in the first set too and skin inside a mask called "ink"
 makes a lightened brow measure darker than it is. (The pencil footprint alone is
 not enough: on m3 the shaped and cleaned sprites nearly coincide and only 435 px
-move.) The mask moves by under 3 % across the change — 1833→1803, 1110→1081,
-2869→2842 px — which is printed so it can be checked rather than assumed.
+move.) The mask moves by under 3 % across the change - 1833→1803, 1110→1081,
+2869→2842 px - which is printed so it can be checked rather than assumed.
 
 Two-sided, because lightening a brow until it disappears would satisfy any upper
 bound on its own:
@@ -3240,30 +3205,29 @@ fails on both, identically, first at m2:
 
 ```
 Error: m2 brow ink (1833px): the darkest ink is 49.1 L against hair at 107 L
-       (0.46× — a bar of ink, not a brow a shade deeper than the hair)
+       (0.46× - a bar of ink, not a brow a shade deeper than the hair)
 ```
 
-### X4 · The completed-look table, re-measured — and V2's table withdrawn
+### X4 · The completed-look table, re-measured - and V2's table withdrawn
 
 V2's per-tool table **does not reproduce**, and not because of anything this
 pass changed. `tests/_probe-glam-tune3-look.mjs` is byte-identical to the file
 iteration 1 committed (`git log --follow` shows one commit); run today against
 `2f45dfda` **itself**, through a hash-verified server, it produces today's
-numbers, not V2's — contour 0.11 where V2 printed 0.57, highlight 0.12 for 0.35,
+numbers, not V2's - contour 0.11 where V2 printed 0.57, highlight 0.12 for 0.35,
 lip liner 0.15 for 0.71, and earrings and shirt at 0.00 for 2.5 %/0.47 and
 3.1 %/0.55. Two consecutive runs today agree to the last digit on every row, so
 this is not noise.
 
 Two things are established about it:
 
-- **0.00 is the correct value for earrings and shirt.** Both tools do paint —
-  2 242 px and 6 241 px on m2 — but every one of those pixels is *outside* the
-  face zone the table measures over: the earring bbox is x 82–429 against a face
-  box of x 155–357, and the shirt is at y 454–575 against a face box ending at
+- **0.00 is the correct value for earrings and shirt.** Both tools do paint - 2 242 px and 6 241 px on m2 - but every one of those pixels is *outside* the
+  face zone the table measures over: the earring bbox is x 82-429 against a face
+  box of x 155-357, and the shirt is at y 454-575 against a face box ending at
   y 447. A face-zone measurement should report zero for them, and V2's non-zero
   rows were wrong.
 - **The cause of the inflation is not identified.** A decode race was the obvious
-  candidate — several tools draw a sprite the compositor has never requested on a
+  candidate - several tools draw a sprite the compositor has never requested on a
   bare face, and `settle` waits for the canvas to stop *changing*, which a canvas
   that has not started drawing yet trivially satisfies. The probe now runs the
   whole catalogue once per model before taking any number, so every sprite is
@@ -3271,14 +3235,14 @@ Two things are established about it:
   and without the warm-up. The warm-up is kept because it removes a real class of
   fault, but it is not the explanation. The leading remaining hypothesis is that
   iteration 1's per-tool `reset()` was not landing before the next frame was
-  measured, leaving the previous tool's paint in the frame — which would inflate
+  measured, leaving the previous tool's paint in the frame - which would inflate
   every row and put earring/shirt pixels in a face-zone count. That is a
   hypothesis, not a finding.
 
 The corrected table. Per tool, applied **alone** from the bare face, over the
 compositor's own `face` zone restricted to pixels the base render drew (m2
 64 833 px, m3 45 256 px, m4 64 434 px). `%face` is the share of those pixels the
-tool moves by more than ΔE76 2; `ΔE(face)` is the mean over the whole face — the
+tool moves by more than ΔE76 2; `ΔE(face)` is the mean over the whole face - the
 "how much of the face does this tool own" number.
 
 | tool | m2 %face / ΔE(face) | m3 %face / ΔE(face) | m4 %face / ΔE(face) |
@@ -3305,24 +3269,24 @@ tool moves by more than ΔE76 2; `ΔE(face)` is the mean over the whole face —
 What it says, on the corrected numbers:
 
 - **Hair colour still dominates by a factor of four to eight**, and it is still
-  not makeup — the `face` zone includes the hair that frames it. On the corrected
+  not makeup - the `face` zone includes the hair that frames it. On the corrected
   table the gap is *wider* than V2 claimed, not narrower.
-- **Of the makeup proper, mascara (1.8–2.2) leads**, then lipstick (1.4–1.8), the
-  brow pair, and eyeliner (1.1–1.2). Contour, highlight and lip liner are all
-  under 0.2 — a fifth of what V2 reported, and the soft-cosmetic tuning of the
+- **Of the makeup proper, mascara (1.8-2.2) leads**, then lipstick (1.4-1.8), the
+  brow pair, and eyeliner (1.1-1.2). Contour, highlight and lip liner are all
+  under 0.2 - a fifth of what V2 reported, and the soft-cosmetic tuning of the
   first two passes is lighter than that table made it look.
-- **Skincare touches the most pixels at the lowest per-pixel distance** — a
+- **Skincare touches the most pixels at the lowest per-pixel distance** - a
   whole-face tone change, which is what it should be. Unchanged conclusion.
 
 **An honest wrinkle in the aggregate.** After the brow fix the COMPLETED row goes
-*up* slightly — 18.07 → 18.61, 14.28 → 14.67, 18.77 → 19.20 — and the two brow
+*up* slightly - 18.07 → 18.61, 14.28 → 14.67, 18.77 → 19.20 - and the two brow
 rows go up on m2/m3 (pencil 1.29 → 1.34 and 1.15 → 1.18) while falling on m4
 (0.81 → 0.74). That is not the brow getting heavier. `ΔE(face)` measures distance
 from the **bare face**, and the bare face wears a bushy brow that the same tint
 floor lifts; on a berry recolour the lighter pencilled brow ends up *further* from
 the bare face's own brow than the near-black one was. Distance-from-bare is the
 right metric for "how much of the face does this tool touch" and the wrong one
-for "how heavy does it read" — which is why the brow-versus-hair table in X1/X2 is
+for "how heavy does it read" - which is why the brow-versus-hair table in X1/X2 is
 the one that grades this fix.
 
 ### X5 · Judged rather than measured
@@ -3330,7 +3294,7 @@ the one that grades this fix.
 Called out so the maintainer can overrule any of them against the a2before /
 a2after pairs:
 
-- **0.60 is a judgement.** That the floor at 0.42 was wrong is measured — two
+- **0.60 is a judgement.** That the floor at 0.42 was wrong is measured - two
   thirds of a brow at one near-black value, 22 L\* below the hair it is declared
   to match. *Where* inside "deeper than the hair, lighter than ink" it should
   land is taste. 0.60 was chosen to leave m4's brow clearly deeper than its hair
@@ -3341,17 +3305,17 @@ a2after pairs:
 - **The eyeshadow was left alone.** The measurement says it is inside the drawn
   socket, so the accepted second-pass version ships unchanged. If the maintainer
   still reads it as too wide in `a2after-<model>-eye.png`, that is a taste
-  overrule of a measurement, which is legitimate — the wash's reach is one number
+  overrule of a measurement, which is legitimate - the wash's reach is one number
   (`w*1.16`, centred `+0.34w` outward) and is easy to pull in.
 - **Nothing else was brought down.** Mascara and lipstick lead the makeup on the
   corrected table, but a glam makeover whose mascara and lipstick do not lead is
-  not the brief, and neither dominates the way the brow did — no tool other than
+  not the brief, and neither dominates the way the brow did - no tool other than
   hair colour is near the "measurably dominating" bar. Contour, highlight, blush
   and lip liner are all at or under 0.5 ΔE(face) and were left alone.
 - **The bare face's bushy brow lightened too.** The floor is one constant for
   every brow state, so the pre-shaping brow the child is meant to notice is 43 %
   lighter at its darkest as well. It still reads clearly against skin (the pinned
-  bound holds it 30 L under, shipped 64–76), and a state-dependent floor was
+  bound holds it 30 L under, shipped 64-76), and a state-dependent floor was
   rejected as a way of making the *unfinished* brow heavier than the finished one.
 - **The non-art fallback doll is untouched.** `browColor` in the DOM/SVG props
   (`#3a2a1c` with the pencil, `#6b533f` without) does not follow the hair and was
@@ -3363,18 +3327,18 @@ a2after pairs:
   against a server hash-verified as serving this worktree (`shasum` of the file
   and of `curl`'s bytes both `00997dc68a7fb428200affcfdfcf7509e0a0a6c9`). 399
   before, +1 case × 3 browsers. An earlier full run in this slice lost two
-  firefox specs — `glam-turn-band` and `glam-open-flow` — both on the known
+  firefox specs - `glam-turn-band` and `glam-open-flow` - both on the known
   Atkinson-Hyperlegible webfont console error (`CORS request did not succeed` on
   `fonts.gstatic.com`) asserted by `expect(errors).toEqual([])`; re-run in
   isolation they were 17/17 green on firefox, and the next full run was clean.
   The flake is documented in *U · Still to do*.
 - `window.GlamTT` **byte-identical**, re-measured for this slice rather than
-  quoted from W5. Sliced by content — from the `<script>` that opens the block
+  quoted from W5. Sliced by content - from the `<script>` that opens the block
   containing `window.GlamTT = (function ()` through its `</script>`, because the
-  line numbers moved between builds — it is `b69b441841808b65e622f1b313ed20b433b41dfa`,
+  line numbers moved between builds - it is `b69b441841808b65e622f1b313ed20b433b41dfa`,
   23 521 bytes, on `2f45dfda`, on the pre-A2 build and on the shipped file alike.
   `git diff 2f45dfda -- apps/games/tests/glam-tt-scoring.spec.js` is empty.
-- **A whole trial played out in a real browser** — `tests/_play-glam-tune3.mjs`:
+- **A whole trial played out in a real browser** - `tests/_play-glam-tune3.mjs`:
   title → texting intro → salon → 39 steps, 18 tools taken by real pointer input
   → every turn to the end (6 of 6) → outro. The rail was on screen at ready, my
   turn and their turn. No console errors, no page errors, no failed local
@@ -3383,7 +3347,7 @@ a2after pairs:
   adds no copy. The only digits the playthrough finds on the outro are the BT's
   session clock and "Trial finished · 6 of 6 turns", both pre-existing staff
   surfaces. `tests/glam-tt-story.spec.js` is green and untouched.
-- **The staff strip and the print view are untouched** — no diff hunk goes near
+- **The staff strip and the print view are untouched** - no diff hunk goes near
   the controls row or `printReport`.
 - New instruments, neither a spec: `tests/_probe-glam-tune3-a2.mjs` (the reach and
   brow-versus-hair tables above, runnable against either file), and the warm-up
@@ -3399,7 +3363,7 @@ a2after pairs:
 
 ---
 
-## Third pass · the maintainer's rulings — the rail becomes one row
+## Third pass · the maintainer's rulings - the rail becomes one row
 
 W6 and X5 each ended by listing what had been judged rather than measured, so
 the maintainer could overrule it. They reviewed all five. **Four were accepted
@@ -3409,11 +3373,11 @@ and one was overruled**, and this slice is that one correction and nothing else.
 
 | # | The call, as W6 / X5 offered it | Ruling | What this slice did |
 | --- | --- | --- | --- |
-| 1 | **Brow tint floor `0.60`** (X2) — lifted from `0.34` so a pencilled brow reads as the hair it matches | **Keep as shipped** | Nothing. `BROW_TINT = { floor:0.60, span:0.55 }` is untouched; no diff hunk goes near it |
-| 2 | **The eyeshadow's reach** (X1) — V2's "reaches the brow" claim, refuted by measurement and left alone | **Leave as shipped** | Nothing. The wash reach is untouched |
-| 3 | **The rail's height, 46 px / 40 px** (W6) — chosen so the two-line stack fits and the pips stay ≥ 11 px | **Overruled — make it a single-line stack** | **This slice.** The eyebrow and the whose-turn line are one baseline row; the rail is **34 px / 30 px** |
-| 4 | **A sticky in-stage panel on phone** (W6) — rather than a fixed bar at the foot of the viewport | **Keep as shipped** | Nothing. `.gtm-stage{ position: sticky; top: 6px }` in the `< 614px` container query is untouched |
-| 5 | **The bare face's brow lightening with one constant** (X5) — no state-dependent floor | **Accepted** | Nothing. No state branch was added |
+| 1 | **Brow tint floor `0.60`** (X2) - lifted from `0.34` so a pencilled brow reads as the hair it matches | **Keep as shipped** | Nothing. `BROW_TINT = { floor:0.60, span:0.55 }` is untouched; no diff hunk goes near it |
+| 2 | **The eyeshadow's reach** (X1) - V2's "reaches the brow" claim, refuted by measurement and left alone | **Leave as shipped** | Nothing. The wash reach is untouched |
+| 3 | **The rail's height, 46 px / 40 px** (W6) - chosen so the two-line stack fits and the pips stay ≥ 11 px | **Overruled - make it a single-line stack** | **This slice.** The eyebrow and the whose-turn line are one baseline row; the rail is **34 px / 30 px** |
+| 4 | **A sticky in-stage panel on phone** (W6) - rather than a fixed bar at the foot of the viewport | **Keep as shipped** | Nothing. `.gtm-stage{ position: sticky; top: 6px }` in the `< 614px` container query is untouched |
+| 5 | **The bare face's brow lightening with one constant** (X5) - no state-dependent floor | **Accepted** | Nothing. No state branch was added |
 
 Rulings 1, 2, 4 and 5 are verifiable in the diff by their absence:
 `git diff fed4e2be -- apps/games/glam-team-makeover/index.html` has no `+`/`-`
@@ -3422,8 +3386,8 @@ constant.
 
 ### Y2 · What the rail is now
 
-Before, the rail's middle child was a **two-line stack** — the `MY TURN` /
-`THEIR TURN` eyebrow above the whose-turn line — and 46 px was what that stack
+Before, the rail's middle child was a **two-line stack** - the `MY TURN` /
+`THEIR TURN` eyebrow above the whose-turn line - and 46 px was what that stack
 plus the 30 px avatar token needed. Now those two share **one baseline row**
 (`.gtm-band-say`, `align-items:baseline`): 9.5 px tracked caps sitting on the
 same baseline as the 15 px line, which costs nothing in height because a
@@ -3431,23 +3395,22 @@ baseline-aligned row measures the taller item's own ascent + descent.
 
 ```
 before   [ token ]  MY TURN                          ACTIONS LEFT     46 px
-                    My turn — I can do 7 more        ● ● ● ● ● ○ ○
+                    My turn - I can do 7 more        ● ● ● ● ● ○ ○
 
-after    [token] MY TURN  My turn — I can do 7 more   ACTIONS LEFT     34 px
+after    [token] MY TURN  My turn - I can do 7 more   ACTIONS LEFT     34 px
                                                       ● ● ● ● ● ○ ○
 ```
 
 **What still sets the height is the meter, not the type.** Label-over-pips is
-25.9 px on a wide row and 21.8 px on a narrow one — taller than the 18.8 px /
+25.9 px on a wide row and 21.8 px on a narrow one - taller than the 18.8 px /
 15.6 px text row and taller than the token. It stays two rows because putting
 its label *beside* seven pips costs **+79 px of width** against **30.1 px** of
 tablet slack (Y4); inlining it would have fitted on a desktop and nowhere else,
 which is two components pretending to be one. So the rail is a single-line stack
-in the sense the ruling asked for — the eyebrow and the line are on one row —
-and the meter is the floor under how short it can go. `--gtm-band` is
+in the sense the ruling asked for - the eyebrow and the line are on one row - and the meter is the floor under how short it can go. `--gtm-band` is
 **34 px** (container ≥ 614 px) and **30 px** (< 614 px), down from 46 / 40.
 
-### Y3 · Height and footprint — measured, next to W2's table
+### Y3 · Height and footprint - measured, next to W2's table
 
 `tests/_probe-glam-tune3-rail1.mjs`, run against a copy of `fed4e2be` and against
 the shipped file, both through the same hash-verified `:8788`:
@@ -3461,19 +3424,19 @@ the shipped file, both through the same hash-verified `:8788`:
 The 12 px / 10 px goes to three different places depending on the width, which is
 `--gtm-band` being spent in three places by design (W1):
 
-- **Desktop** — the panel's height is fixed by the row, so the reclaimed 12 px
+- **Desktop** - the panel's height is fixed by the row, so the reclaimed 12 px
   goes straight into the panel's content box and the client is drawn **8.4 px
   taller**. That is the whole point of the ruling: more face.
-- **Tablet** — the client is width-bound there, so the art is unchanged and the
+- **Tablet** - the client is width-bound there, so the art is unchanged and the
   panel is simply 12 px shorter.
-- **Phone** — `--gtm-stage-fit` adds the band to the art's own aspect, so the art
+- **Phone** - `--gtm-stage-fit` adds the band to the art's own aspect, so the art
   keeps *exactly* the size it had (232.4 px, unchanged to the tenth) and the
   panel and the document are each 10 px shorter. 10 px less to scroll past.
 
 **W2's number is undisturbed.** Vertical room above the stage is still **0.0 px**
 at all three widths, before and after.
 
-### Y4 · The 390 width budget — the cost W6 named
+### Y4 · The 390 width budget - the cost W6 named
 
 W6's own words were that a single-line stack was possible *"at some cost in phone
 width"*, so 390 is where this either works or does not. The rail is 356 px wide
@@ -3481,7 +3444,7 @@ there. `tests/_probe-glam-tune3-rail2.mjs` walks **every string `renderVals` can
 put in the line** and measures each at the rail's own computed font, so the
 budget is against the worst case rather than against whatever the default trial
 happens to open on. The worst case is a learner turn with the budget spent: the
-line reads `All set — now I hand it over!` (the longest of the seven, 166.5 px)
+line reads `All set - now I hand it over!` (the longest of the seven, 166.5 px)
 while all seven pips are still on screen.
 
 | | desktop | tablet | phone |
@@ -3505,8 +3468,8 @@ repeats something the line already says, so the child's own line is untouched:
 
 | | before | after |
 | --- | --- | --- |
-| whose-turn line | 12.5 px | **12.5 px — unchanged** |
-| pip diameter | 11 px | **11 px — unchanged** (W6's stated floor) |
+| whose-turn line | 12.5 px | **12.5 px - unchanged** |
+| pip diameter | 11 px | **11 px - unchanged** (W6's stated floor) |
 | avatar token | 25 px | 17 px |
 | eyebrow | 8.5 px, `.1em` | 8 px, `.05em` |
 | rail side padding | 14 px | 7 px |
@@ -3523,11 +3486,11 @@ overrun off the box that clips it: **0 px everywhere**, with
 `document.fonts.check('800 15px "Atkinson Hyperlegible"')` reporting the real
 webfont loaded in all three, so these are not fallback-font metrics. The line
 also keeps `text-overflow:ellipsis`, so if a future string does exceed the budget
-it degrades visibly rather than pushing the meter out of the rail — and the meter
+it degrades visibly rather than pushing the meter out of the rail - and the meter
 is `flex-shrink:0` while the line is not, which makes the line the part that
 gives first and therefore the part the tests can watch.
 
-### Y5 · Contrast — re-asked, because the band got shorter
+### Y5 · Contrast - re-asked, because the band got shorter
 
 Shortening the rail **compresses the sand gradient** (`#cdb383 0% → #bda06e 58%
 → #a98d5d 100%`) and the single row moves every piece of type to a new position
@@ -3537,8 +3500,7 @@ centre, resolves the painted gradient at exactly that y, and computes WCAG 2.x
 contrast.
 
 **It had stopped clearing.** At `#4b5638` the `MY TURN` eyebrow measured
-**3.15:1** at its centre and **2.90:1** at its foot, and the filled pips —
-which sit lower still — measured **2.98:1**. Sage is now **`#394331`**, chosen
+**3.15:1** at its centre and **2.90:1** at its foot, and the filled pips - which sit lower still - measured **2.98:1**. Sage is now **`#394331`**, chosen
 to clear 3:1 against the band's **darkest** stop, so the claim no longer depends
 on where in the gradient a part happens to land:
 
@@ -3552,8 +3514,7 @@ on where in the gradient a part happens to land:
 **The lowest number anywhere on the rail is 3.29:1**, and that is against a stop
 no part of the type actually sits on; where the type is, the lowest is 3.53:1.
 Blue was already past the bar and is untouched. This is the only colour in the
-diff, and it is a consequence of the ruling rather than a separate taste call —
-the type moved, so the measurement had to be redone and it came back short.
+diff, and it is a consequence of the ruling rather than a separate taste call - the type moved, so the measurement had to be redone and it came back short.
 
 ### Y6 · Verification for this slice
 
@@ -3569,9 +3530,9 @@ the type moved, so the measurement had to be redone and it came back short.
   all three widths. Run against a copy of `fed4e2be` it fails on the first
   clause:
 
-  > `desktop (1280×860): the whose-turn label (y 685.7–697.7) and the line (y 697.6–715.6) are not on one row` — `Expected: >= 0.8 · Received: 0.008`
+  > `desktop (1280×860): the whose-turn label (y 685.7-697.7) and the line (y 697.6-715.6) are not on one row` - `Expected: >= 0.8 · Received: 0.008`
 
-  and the height clause fails on the same build by construction — the probe reads
+  and the height clause fails on the same build by construction - the probe reads
   the pre-change rail at exactly 46 / 46 / 40 px. Like the rest of this file it
   locates the rail by the **words on screen** (the lowest common ancestor of the
   whose-turn label and the actions-left label), never by a class, which is what
@@ -3579,25 +3540,24 @@ the type moved, so the measurement had to be redone and it came back short.
 - **No existing rail test changed its assertions.** The only edit to the two W4
   tests is that `DEVICES` now carries `railWas` (46/46/40) for the new case to
   assert against; W4's own two tests are byte-for-byte the same checks and green.
-- **A whole trial played out in a real browser at both widths** —
-  `tests/_play-glam-tune3.mjs` at 1280×860 and at 390×844: title → texting intro
+- **A whole trial played out in a real browser at both widths** - `tests/_play-glam-tune3.mjs` at 1280×860 and at 390×844: title → texting intro
   → salon → 39 steps, 18 tools by real pointer input → 6 of 6 turns → outro. The
   rail read correctly at **ready**, **my turn** and **their turn**, and stayed on
   screen throughout including at scrollY 227 / 243 on the phone. The harness now
   also records the **overrun of every wording the rail showed**, so the worst
   case is produced by playing rather than reconstructed: the trial reached
-  `All set — now I hand it over!` at 390 and measured it at **0 px**, along with
+  `All set - now I hand it over!` at 390 and measured it at **0 px**, along with
   every `I can do N more` form from 7 down to 1. No console errors, no page
   errors, no failed local requests.
 - **`window.GlamTT` byte-identical**, sliced on content (from the `<script>`
   opening the block that contains `window.GlamTT = (function ()` through its
   `</script>`) because the line numbers moved again: sha1
-  `b69b441841808b65e622f1b313ed20b433b41dfa`, 23 863 bytes — **the same sha1 W5
+  `b69b441841808b65e622f1b313ed20b433b41dfa`, 23 863 bytes - **the same sha1 W5
   and X6 recorded**, on `2f45dfda`, on `fed4e2be` and on the shipped file alike.
   `git diff fed4e2be -- apps/games/tests/glam-tt-scoring.spec.js` is empty.
 - **Staff surfaces and child-facing copy untouched.** No diff hunk goes near the
   controls row, the (E) / Prompt given / End trial buttons or `printReport`, and
-  the slice adds no string — the rail's words are the same words.
+  the slice adds no string - the rail's words are the same words.
 - **The firefox flake is not this change's.** The first full run lost one firefox
   spec (`glam-art-fidelity` T4d). Re-running that file alone under firefox three
   times failed **a different, unrelated test each time** (F-10, then blemish
@@ -3606,7 +3566,7 @@ the type moved, so the measurement had to be redone and it came back short.
   on different tests (T4c, then blemish softness). The flake is pre-existing and
   load-related; the documented webfont-console-error mechanism explains the specs
   that assert `expect(errors).toEqual([])` but not these, so the *cause* of this
-  variant is still unidentified — see *Y · Still to do*.
+  variant is still unidentified - see *Y · Still to do*.
 - New instruments, none of them specs: `tests/_probe-glam-tune3-rail1.mjs`
   (footprint), `-rail2.mjs` (the width budget over every string), `-rail3.mjs`
   (the cross-engine overrun), `-rail4.mjs` (contrast at the position each part
@@ -3617,9 +3577,9 @@ Finding-B `turn…` shots are not overwritten:
 
 | file | what it is |
 | --- | --- |
-| `rail-{before,after}-{desktop,tablet,phone}.png` | the rail cropped to its own box — the before/after heights read against each other and nothing else |
+| `rail-{before,after}-{desktop,tablet,phone}.png` | the rail cropped to its own box - the before/after heights read against each other and nothing else |
 | `railstage-{before,after}-{desktop,tablet,phone}.png` | the stage panel, so the rail is read in the composition it belongs to |
-| `railtrolley-{before,after}-phone.png` | 390×844 with the trolley scrolled to its end — the AC-12 case the sticky panel exists for, with whose-turn and actions-left still on screen |
+| `railtrolley-{before,after}-phone.png` | 390×844 with the trolley scrolled to its end - the AC-12 case the sticky panel exists for, with whose-turn and actions-left still on screen |
 | `railstate-{before,after}-{ready,mine,theirs}.png` | the panel's bottom strip in each of the three states the rail has to read correctly in |
 
 ### Y · Judged rather than measured
@@ -3631,12 +3591,12 @@ Finding-B `turn…` shots are not overwritten:
 - **Keeping the meter as a two-row stack.** *That* it cannot go inline is
   measured (+79 px against 30.1 px of tablet slack). Choosing to keep it stacked
   rather than, say, dropping the avatar token to buy the width for an inline
-  meter, is a taste call — the token is the only part of the rail that says
+  meter, is a taste call - the token is the only part of the rail that says
   whose turn it is without words.
 - **Which parts paid for the phone's 7.7 px.** Trimming the token, the eyebrow
   and the padding rather than the line is a judgement that the line is what the
-  child reads and the eyebrow repeats it. The alternative — the line at 11.5 px,
-  everything else as shipped — buys about twice the margin and was rejected on
+  child reads and the eyebrow repeats it. The alternative - the line at 11.5 px,
+  everything else as shipped - buys about twice the margin and was rejected on
   legibility.
 - **`#394331` in particular.** That sage clearing 3:1 against the darkest stop is
   measured; that hue at that luminance is a choice.
@@ -3646,7 +3606,7 @@ Finding-B `turn…` shots are not overwritten:
 - **The firefox load flake has a signature, not a cause.** Different unrelated
   art-fidelity specs fail on different whole-file runs and pass in isolation, on
   this build and on `fed4e2be` alike. The documented webfont console error does
-  not explain these particular failures — they are geometry assertions, not
+  not explain these particular failures - they are geometry assertions, not
   `expect(errors).toEqual([])`. Anyone picking it up should instrument
   `settle()` in that file's helpers before re-running anything.
 - The tall-panel and webfont items from *U · Still to do* are still open and
@@ -3660,12 +3620,12 @@ Four defects from play plus a turn-exchange sweep. Base for every "before"
 measurement in this section is `95ba6101`, the dev merge that is deployed.
 
 **Status: Findings A, C and D closed. B and the Finding E sweep table are still
-open** — see *§ Still to do* at the end of this section.
+open** - see *§ Still to do* at the end of this section.
 
 ### A · A finished tool stayed live, armable, and flickered its own checkmark
 
 > **Superseded in part.** The diagnosis and `_optDead` below still stand, but the
-> *treatment* — disabling the tool in place — was overruled: "changed to make the
+> *treatment* - disabling the tool in place - was overruled: "changed to make the
 > tool disappear from the cart entirely". A dead tool now leaves the cart, and
 > its ✓ moved to the shelf header. See "Maintainer rulings on the turn-exchange
 > pass" at the end of this report.
@@ -3678,7 +3638,7 @@ Reported from play:
 > covered treat spots is no longer used so it should be completely disabled and
 > remain so or disappear
 
-#### The traced cause — one predicate answering the wrong question
+#### The traced cause - one predicate answering the wrong question
 
 `Treat spots` is declared `{id:'patch', label:'Treat spots', mech:'patch', step:3}`.
 The cart's "has this tool's work been done?" read short-circuits on `opt.step`:
@@ -3692,10 +3652,10 @@ _optWorkDone(opt){ const ed=this.state.ed;
 ```
 
 Because both option rows declare `step:3`, neither `mech` branch could ever be
-reached — they were dead code. So the cart asked `_stepDone(3)`, which is
+reached - they were dead code. So the cart asked `_stepDone(3)`, which is
 `pimples.every(v=>v===2)`: every spot **concealed**. But `patchOne(i)`
 early-returns unless `pimples[i]===0`. The tool therefore becomes a guaranteed
-no-op the moment every spot is `>=1` — several actions before `_stepDone(3)`
+no-op the moment every spot is `>=1` - several actions before `_stepDone(3)`
 turns true. In that window it stayed on the trolley, stayed armable, and its
 label
 
@@ -3705,14 +3665,13 @@ const lbl = (locked?'🔒 ':(active&&!armed?'✓ ':''))+opt.label;
 
 dropped its own `✓` on arm and restored it on disarm. That is precisely the
 flicker described. Captured as a pixel diff in the shots below: on `95ba6101`
-`deadtool-before-mine.png` reads **`✓ Treat spots`** and `deadflicker-before.png`
-— the same shelf one click later — reads **`Treat spots`**.
+`deadtool-before-mine.png` reads **`✓ Treat spots`** and `deadflicker-before.png` - the same shelf one click later - reads **`Treat spots`**.
 
 #### Dead ≠ spent, and that is why the cart could not already see it
 
 The trolley had one retirement rule, `_optSpent`: *this tool's whole step is over
 and it has no sibling shade, so take it off the cart.* `Treat spots` is the tool
-that separates that from the narrower question nobody was asking — *can this
+that separates that from the narrower question nobody was asking - *can this
 tool's own mechanism still change the client?* At all-patched the answer is no,
 while step 3 is emphatically **not** over, because Conceal has still to run.
 
@@ -3721,7 +3680,7 @@ that were already written but unreachable. `_optWorkDone` keeps the step-only
 read (it drives shelf-settling and spent-removal, both of which are correct as
 they stand), and its two dead branches are removed rather than left to mislead.
 
-#### Disabled, not disappear — and why
+#### Disabled, not disappear - and why
 
 The maintainer offered either. **Disabled in place** was chosen:
 
@@ -3730,7 +3689,7 @@ The maintainer offered either. **Disabled in place** was chosen:
    `_optSpent` earns its removal by only firing when the whole step *is* over.
 2. **Free play would still be broken.** `_optSpent` is gated on
    `staged!=='free'`, so in free play the cart never removes a finished tool by
-   design — it is a flat catalogue so a BT can reach any station out of order.
+   design - it is a flat catalogue so a BT can reach any station out of order.
    A removal-only fix leaves that mode exactly as reported. The second test in
    `tests/glam-turn-exchange.spec.js` pins this mode specifically.
 3. **The evidence of completed work is worth keeping on screen** in a
@@ -3743,14 +3702,14 @@ click handler outright and the browser removes the button from the tab order, so
 a dead action is unreachable by pointer **and** by keyboard. `aria-disabled` is
 set alongside it, and `arm()` guards the same case again for any programmatic
 caller. Visually the tile keeps its sage done-colours and its `✓` but goes
-**dashed-bordered, flat (no shadow) and 0.6 opacity** — finished and inert,
+**dashed-bordered, flat (no shadow) and 0.6 opacity** - finished and inert,
 rather than the grey `not-allowed` face that means *blocked*, which is a
 different message and already spoken for by the locked and at-cap states.
 
 It survives the exchange because `ed.pimples` is client state, not turn state:
 nothing in `handoff()` touches it.
 
-#### Can a dead tool consume a turn action? Yes — and worse than an action
+#### Can a dead tool consume a turn action? Yes - and worse than an action
 
 Asked because a child losing an action to a tool that does nothing is worse than
 the flicker. The answer has two halves, both measured on `95ba6101`.
@@ -3762,7 +3721,7 @@ click. The action count is safe.
 
 **Yes, it can cost the turn its independence.** `arm()` runs
 `_atCapFor(this._optKey(opt))` before arming, and `_optKey` maps patch/conceal to
-the synthetic `'__perTap__'` — a key `_admit` **never writes**, because it charges
+the synthetic `'__perTap__'` - a key `_admit` **never writes**, because it charges
 `item:patch<i>` per spot. So `this._charged['__perTap__']` is permanently falsy
 and `_atCapFor` collapses to `trial.atCap()`. At the cap that routes the dead
 tool into `_refuse` → `requestAction`, which on the learner's own turn does not
@@ -3788,18 +3747,18 @@ dead tool is refused silently and never reaches the engine at all.
 
 #### Evidence
 
-`apps/games/tests/glam-turn-exchange.spec.js` — three tests, all of which **fail
+`apps/games/tests/glam-turn-exchange.spec.js` - three tests, all of which **fail
 against `95ba6101`** and pass on this build:
 
 | test | failure against `95ba6101` |
 |---|---|
-| the reported sequence, across a handoff | `Treat spots is disabled the moment the last spot is patched` — expected `true`, received `false` |
-| Conceal goes the same way, in free play | `patch is dead at all-patched` — expected `true`, received `false` |
-| arming a dead tool at the cap | `no over-cap violation logged` — expected `0`, received **`2`** |
+| the reported sequence, across a handoff | `Treat spots is disabled the moment the last spot is patched` - expected `true`, received `false` |
+| Conceal goes the same way, in free play | `patch is dead at all-patched` - expected `true`, received `false` |
+| arming a dead tool at the cap | `no over-cap violation logged` - expected `0`, received **`2`** |
 
-The first drives the maintainer's sequence by **real pointer input** — wash and
+The first drives the maintainer's sequence by **real pointer input** - wash and
 moisturize as drags, three patch taps and two conceal taps on the face's own
-rings — then hands the turn over, asserts the dead tool on the partner's turn,
+rings - then hands the turn over, asserts the dead tool on the partner's turn,
 clicks it, and asserts the trolley is unchanged, then hands back and asserts
 again. `turns:4` gives the learner a 10-action budget (`REQUIRED_ACTIONS` 19 over
 2 learner turns), which is what lets the whole sequence run on one turn the way
@@ -3807,20 +3766,20 @@ it was reported.
 
 Shots under `docs/eval/shots/glam-turn-exchange/`, written by
 `tests/_shots-glam-dead-tool.mjs` (Skincare shelf, m4, staged, the reported
-state — all spots patched, two of three concealed):
+state - all spots patched, two of three concealed):
 
 | file | reads |
 |---|---|
-| `deadtool-before-mine.png` | `95ba6101`, my turn — **`✓ Treat spots`**, live and pressable |
-| `deadflicker-before.png` | `95ba6101`, one click later — **`Treat spots`**, ✓ gone |
-| `deadtool-before-theirs.png` | `95ba6101`, after handoff — byte-identical to `-mine` |
-| `deadtool-after-mine.png` | fixed — `✓ Treat spots`, dashed and flat |
-| `deadflicker-after.png` | fixed, one click later — **byte-identical** to `-mine` |
-| `deadtool-after-theirs.png` | fixed, after handoff — **byte-identical** to `-mine` |
+| `deadtool-before-mine.png` | `95ba6101`, my turn - **`✓ Treat spots`**, live and pressable |
+| `deadflicker-before.png` | `95ba6101`, one click later - **`Treat spots`**, ✓ gone |
+| `deadtool-before-theirs.png` | `95ba6101`, after handoff - byte-identical to `-mine` |
+| `deadtool-after-mine.png` | fixed - `✓ Treat spots`, dashed and flat |
+| `deadflicker-after.png` | fixed, one click later - **byte-identical** to `-mine` |
+| `deadtool-after-theirs.png` | fixed, after handoff - **byte-identical** to `-mine` |
 
 The three `after` files share one SHA (`a2734930…`): clicking the dead tool and
 handing the turn over change **zero pixels** of the shelf. On `95ba6101` the two
-`-mine`/`-theirs` files share a SHA but `deadflicker-before.png` does not — the
+`-mine`/`-theirs` files share a SHA but `deadflicker-before.png` does not - the
 click moved the shelf, which is the defect.
 
 #### Judged rather than measured
@@ -3844,7 +3803,7 @@ Reported from play:
 > the "done" text reappears in the hitbox when the color is changed and then the
 > user clicks once and it places the color.
 
-#### The traced cause — coverage is per slot, the claim is per shade
+#### The traced cause - coverage is per slot, the claim is per shade
 
 Paint coverage is stored per **slot** (`ed.cov.blush`), while six blushes, six
 shadows and seven lipsticks each share **one** slot. The target overlay read that
@@ -3861,7 +3820,7 @@ So arming a *different* shade of an already-painted slot inherited the first
 shade's coverage wholesale, and the box floating over the child's face announced
 `All done ✓` about a shade that had never touched it.
 
-The trolley button beside it already got this right — it tested shade identity
+The trolley button beside it already got this right - it tested shade identity
 for its `✓`:
 
 ```js
@@ -3872,7 +3831,7 @@ active = covd && (opt.color && (slot==='blush'||slot==='lips'||slot==='shadow')
 which is why the two surfaces disagreed on screen: `✓ Blush rose` on the cart and
 `All done ✓` over the cheeks, with **Blush plum** armed.
 
-#### The fix — one predicate, written as the rule rather than the catalogue
+#### The fix - one predicate, written as the rule rather than the catalogue
 
 `_shadeOn(opt)` now answers for both surfaces:
 
@@ -3884,20 +3843,20 @@ It is keyed on `mech==='paint' && opt.color` rather than on the trolley's old
 hard-coded `blush|lips|shadow` list, because that list restated the catalogue
 instead of the rule. **Found by the sweep, not reported:** the hero base's two
 face masks (`mk1`/`mk2`, `mech:'paint'`, slot `mask`) are the same shape of tool
-and sat outside it. That base is unreachable by construction today — AC-13 removed
-the theme selector — so it is a **latent** case, not a live one, and it is
+and sat outside it. That base is unreachable by construction today - AC-13 removed
+the theme selector - so it is a **latent** case, not a live one, and it is
 asserted against the predicate directly rather than through a surface that cannot
 be opened. For every single-shade paint slot the two readings agree anyway, since
 `paintStep` writes `ed.col[slot]` on the stroke that paints it.
 
 Re-arming the shade that *is* on still reads `All done ✓`. That is the accepted
 eval §8 fix ("Keep painting… 100%" told the child to keep going on a finished
-step) and this change does not walk it back — it is asserted in the same test.
+step) and this change does not walk it back - it is asserted in the same test.
 
 #### Put to the maintainer, deliberately NOT decided here
 
 Because `cov[slot]` is already `1`, switching shade still completes in a **single
-stroke** — `Math.min(1, 1 + 0.11)` — rather than a fresh drag. Whether a re-tint
+stroke** - `Math.min(1, 1 + 0.11)` - rather than a fresh drag. Whether a re-tint
 *should* be a cheap one-tap or should cost a full paint again is a design
 question, so the current cost is **pinned by a test** instead of quietly altered.
 The ruling flips one assertion in
@@ -3906,22 +3865,22 @@ one-stroke cost is what ships").
 
 The action economy is unaffected either way: both shades resolve to the same
 charge key `color:blush`, so the switch is free within the turn and costs one
-action across turns — unchanged from before this fix.
+action across turns - unchanged from before this fix.
 
 #### Evidence
 
-`apps/games/tests/glam-shade-label.spec.js` — five tests. Four **fail against
+`apps/games/tests/glam-shade-label.spec.js` - five tests. Four **fail against
 `93dab9be`**:
 
 | test | failure against `93dab9be` |
 |---|---|
-| blush: unpainted shade of a painted slot | `an unapplied shade must not be called done` — received `"All done ✓"` |
-| lips: same | `an unapplied shade must not be called done` — received `"All done ✓"` |
-| shadow: same | `an unapplied shade must not be called done` — received `"All done ✓"` |
+| blush: unpainted shade of a painted slot | `an unapplied shade must not be called done` - received `"All done ✓"` |
+| lips: same | `an unapplied shade must not be called done` - received `"All done ✓"` |
+| shadow: same | `an unapplied shade must not be called done` - received `"All done ✓"` |
 | the predicate reads the shade, not a slot list | `L._shadeOn is not a function` |
 
 The fifth ("the shade actually swaps, and the current one-stroke cost is what
-ships") **passes on both builds by design** — it records behaviour this change
+ships") **passes on both builds by design** - it records behaviour this change
 deliberately leaves alone, so that the maintainer's ruling has something to flip.
 
 Shots under `docs/eval/shots/glam-turn-exchange/`, written by
@@ -3930,16 +3889,16 @@ pointer drag, then a different shade armed):
 
 | file | the hitbox reads |
 |---|---|
-| `shade-before-painted.png` | `93dab9be`, Blush rose re-armed — `All done ✓` (correct) |
-| `shade-before-switched.png` | `93dab9be`, **Blush plum armed, never applied — `All done ✓`** |
-| `shade-after-painted.png` | fixed, Blush rose re-armed — `All done ✓`, unchanged |
-| `shade-after-switched.png` | fixed, Blush plum armed — **`Drag over the cheeks`** |
+| `shade-before-painted.png` | `93dab9be`, Blush rose re-armed - `All done ✓` (correct) |
+| `shade-before-switched.png` | `93dab9be`, **Blush plum armed, never applied - `All done ✓`** |
+| `shade-after-painted.png` | fixed, Blush rose re-armed - `All done ✓`, unchanged |
+| `shade-after-switched.png` | fixed, Blush plum armed - **`Drag over the cheeks`** |
 
 The script prints the label it photographed: `before` → `"All done ✓"`,
 `after` → `"Drag over the cheeks"`. In the `after` shot the cart still shows
 `✓ Blush rose` while Blush plum is the armed tile, so the two surfaces now agree.
 
-### D · Per-tool cursor — the seam only, art deferred to issue #40
+### D · Per-tool cursor - the seam only, art deferred to issue #40
 
 Reported:
 
@@ -3948,7 +3907,7 @@ Reported:
 > but we would need small generated art for each required tool so stub in for the
 > cursor replacement but defer that until we have art (make a ticket)
 
-Ticket confirmed open: **issue #40 — "Glam Team Makeover: tool-shaped drag cursors
+Ticket confirmed open: **issue #40 - "Glam Team Makeover: tool-shaped drag cursors
 (needs art)"**, referenced in a comment at the stub.
 
 What ships is a resolver and an **empty** art table:
@@ -3960,8 +3919,8 @@ _toolCursor(opt){ const fb=(opt&&opt.mech==='paint')?'grab':'pointer';
   return art ? ('url("'+art.url+'") '+(art.x|0)+' '+(art.y|0)+', '+fb) : fb; }
 ```
 
-One resolver feeds all three surfaces the armed tool puts under the pointer — the
-drag box, the tap box and the spot rings — so #40 has a single place to land. The
+One resolver feeds all three surfaces the armed tool puts under the pointer - the
+drag box, the tap box and the spot rings - so #40 has a single place to land. The
 three previously wrote their cursor independently (`t.mech==='paint'?'grab':'pointer'`
 twice, and a hard-coded `cursor:pointer` in `ring()`).
 
@@ -3987,8 +3946,8 @@ Measured on the seam:
 
 | sprite URL | computed cursor |
 |---|---|
-| `data:image/gif;base64,…`, present at first render | **`auto`** — declaration dropped, not even the fallback keyword |
-| `data:image/gif;base64,…`, added on a re-render | the previous value survives — the invalid assignment is ignored |
+| `data:image/gif;base64,…`, present at first render | **`auto`** - declaration dropped, not even the fallback keyword |
+| `data:image/gif;base64,…`, added on a re-render | the previous value survives - the invalid assignment is ignored |
 | `data:image/svg+xml,%3Csvg…` (no `;`) | `url("data:image/svg+xml,…") 6 27, grab` ✓ |
 
 So #40 must use a same-origin path or a URL-encoded SVG data URI, never
@@ -3997,14 +3956,14 @@ into them, and the note lives in the comment at the stub.
 
 #### Evidence
 
-`apps/games/tests/glam-tool-cursor.spec.js` — four tests. Three **fail against
+`apps/games/tests/glam-tool-cursor.spec.js` - four tests. Three **fail against
 `93dab9be`** with `L._cursorArt is not a function` / `L._toolCursor is not a
-function` (the seam does not exist there). The fourth — *"the three rendered
-surfaces show exactly the cursors they showed before"* — **passes on both builds,
+function` (the seam does not exist there). The fourth - *"the three rendered
+surfaces show exactly the cursors they showed before"* - **passes on both builds,
 which is the point**: it is the no-visual-change proof, and a stub that made it
 fail would not be a stub.
 
-### Finding B — the pixel noise at the brow tail
+### Finding B - the pixel noise at the brow tail
 
 > "There is a small amount of pixel noise between outer tail of eyebows and
 > temple/hairline that should be addressed"
@@ -4018,7 +3977,7 @@ Exactly the one the maintainer described, per roster model: **bare face, default
 `hair-copper`, routine `free`** (so no tool had to be taken to reach the salon),
 **no brow tool used, no recolour**. One further control: the three spot flaws are
 seeded per play and one of m4's pool positions lands inside the right band, so
-they are cleared before measuring — otherwise the count depends on the draw
+they are cleared before measuring - otherwise the count depends on the draw
 rather than on the render. That single control moved m4 R between two runs of the
 same build by 30 → 53 stray pixels, which is the same size as the whole defect,
 so it is not optional.
@@ -4035,13 +3994,13 @@ pass cannot walk the accepted A2 ruling back through this one.
 
 #### Two compositor leads, both refuted with numbers
 
-**Lead 1 — the hard `eb<0.12` cutoff in `_eyesCanvas` stair-steps an anti-aliased
+**Lead 1 - the hard `eb<0.12` cutoff in `_eyesCanvas` stair-steps an anti-aliased
 mask edge.** Refuted twice over.
 
 *The mask's blue channel is not meaningfully anti-aliased*, so there is almost
 nothing for a hard threshold to stair-step. Over the whole default render:
 
-| model | non-zero blue px | exactly 255 | 1–30 (killed by the cut) | 31–63 (survives, faint) |
+| model | non-zero blue px | exactly 255 | 1-30 (killed by the cut) | 31-63 (survives, faint) |
 |---|---|---|---|---|
 | m2 | 12 059 | 11 311 (93.8 %) | 94 | 75 |
 | m3 | 7 552 | 7 044 (93.3 %) | 88 | 60 |
@@ -4050,7 +4009,7 @@ nothing for a hard threshold to stair-step. Over the whole default render:
 *And the lift is a visual no-op where nothing intervenes*: `_eyesCanvas` writes
 the **base render's own RGB back over the base render at the same coordinates**,
 so inside the key the composite is the base and outside it the base is untouched.
-The only way it could show is by cancelling a layer drawn between the two — on a
+The only way it could show is by cancelling a layer drawn between the two - on a
 bare face that is the `#786654` α .24 dull-wash blob, which would leave a step in
 skin tone at the key's boundary. Measured on the composited canvas, walking every
 row through the key's brow lobe and sampling skin 2 px inside against skin 3 px
@@ -4068,11 +4027,11 @@ outside the outermost key pixel:
 There is no step to see. The one non-zero reading is m4 R at five rows and the
 *wrong sign* (outside is lighter), i.e. the local shading, not a cancelled wash.
 
-**Lead 2 — the state sprite does not fully cover the base brow's outer tail.**
+**Lead 2 - the state sprite does not fully cover the base brow's outer tail.**
 Half right, and the half that is right is the answer; the half that is wrong
 matters. There is no crisp surviving *brow tail* under the sprite. What is there,
 in the base render, is a **desaturated ghost on the temple skin outboard of where
-the sprite ends** — the fade-out of the removal, not the brow.
+the sprite ends** - the fade-out of the removal, not the brow.
 
 #### The cause, named
 
@@ -4087,44 +4046,44 @@ The reading is the maintainer's and it holds up; what this pass adds is the
 measurement and the boundary. Stated plainly: the *removal is bounded* part is
 measured (the numbers below), and *which* bound (the blue key, a rect zone in the
 art build, or something else in a pipeline this game does not own) is **not**
-established here — the pipeline that produced `base.png` is in `tools/glam-art`,
+established here - the pipeline that produced `base.png` is in `tools/glam-art`,
 outside this pass's scope, and no attempt was made to re-derive it.
 
-#### The fix — `_browClean`, finishing the removal at composite time
+#### The fix - `_browClean`, finishing the removal at composite time
 
 `base.png` cannot be regenerated from inside the game, so the removal is completed
 in the compositor. `_browClean(E)` builds a cached overlay of the band's **own
 median skin tone**, with alpha only where the base still carries ink, and
 `paintAvatar` draws it immediately after the base image so every cosmetic that
 follows lands on repaired skin. It is cached per `model|hairShape`, because the
-repair is a property of the base render — no tool state, no colour choice and no
+repair is a property of the base render - no tool state, no colour choice and no
 turn can invalidate it.
 
 `BROW_CLEAN` is the whole tuning surface, and three of its numbers exist to make
 the repair *provably* narrow rather than merely careful:
 
-- `hair: 0.10` — deliberately tight. The hairline and its anti-aliased edge carry
+- `hair: 0.10` - deliberately tight. The hairline and its anti-aliased edge carry
   a partial hair value, and repainting them would trade one aberration for a
   worse one. Everything on the hair side of that line is left exactly as it is,
   which is why this fix **reduces** the noise rather than erasing it.
-- `key: 0.12` — `_eyesCanvas`'s own cutoff, so the region the build-time removal
+- `key: 0.12` - `_eyesCanvas`'s own cutoff, so the region the build-time removal
   *did* reach is never touched.
-- `feather: 0.16` — alpha ramps to zero over the band's outer sixth, so the repair
+- `feather: 0.16` - alpha ramps to zero over the band's outer sixth, so the repair
   cannot introduce an edge of its own where it stops.
 
 #### The metric, and the numbers
 
 A **stray-ink pixel** is, on the composited bare face, a pixel inside the
-brow-tail band that (a) the model's own mask calls skin — hair < 0.10, lips < 0.12,
+brow-tail band that (a) the model's own mask calls skin - hair < 0.10, lips < 0.12,
 eyes+brows key < 0.12; (b) is *not* covered by the brow state sprite, whose alpha
 is sampled at the exact rect `paintAvatar` stamps it into; and (c) is darker than
-0.86 × the model's **cheek** skin luminance — a reference taken well below the
+0.86 × the model's **cheek** skin luminance - a reference taken well below the
 band so no repair inside the band can move the threshold. **`deficit`** is the
 integral of how far under that threshold the band runs, in luminance-pixels.
 
 `deficit` is the headline and `stray` is not, and the reason is worth stating: the
 defect is a *haze*, so lifting it changes how deep the band is far more than how
-wide. Reporting only the pixel count would have made a 36–57 % improvement look
+wide. Reporting only the pixel count would have made a 36-57 % improvement look
 like a 2 % one.
 
 | band | `93dab9be` | with `_browClean` | change | test cap |
@@ -4143,12 +4102,12 @@ Two honest caveats on the table. **m2's numbers are ~35× m3's and m4's** becaus
 m2's temple carries a large area of legitimately-shaded skin that the metric
 counts as "under the cheek reference"; the *change* is the signal there, not the
 level. And at ×5 the m3 and m4 shots read as a small warming of the temple rather
-than a dramatic before/after — "a small amount of pixel noise" is what was
+than a dramatic before/after - "a small amount of pixel noise" is what was
 reported, and a small amount is what moved. m2 carries the visible one.
 
 #### Evidence
 
-`apps/games/tests/glam-brow-tail.spec.js` — five tests × 3 engines. **Four fail
+`apps/games/tests/glam-brow-tail.spec.js` - five tests × 3 engines. **Four fail
 against `93dab9be`**, quoting the measurement:
 
 ```
@@ -4167,14 +4126,14 @@ Received:    288
 Error: page.evaluate: TypeError: L._browClean is not a function
 ```
 
-The fifth — *"the accepted brow tint floor is untouched by this pass"* — **passes
+The fifth - *"the accepted brow tint floor is untouched by this pass"* - **passes
 on both builds by design**: it is the guard on the A2 ruling, not a claim about
 this change.
 
 The fourth test above is the one that keeps the fix narrow. It audits the overlay
 itself and asserts, on every pixel it touches: none outside the brow-tail band,
 none on hair, none inside the eyes+brows key the removal already reached, and
-**none darkened** — the repair may only ever lighten.
+**none darkened** - the repair may only ever lighten.
 
 #### Re-running the evidence
 
@@ -4192,18 +4151,18 @@ Every number above comes out of a probe kept beside the spec, each runnable from
 | `tests/_probe-glam-browtail-metric.mjs` | the before/after `deficit` table |
 
 The metric probe takes `PAGE=` so it can be pointed at a copy of the pre-change
-file in the same directory — the trick the earlier passes used, so `../tailwind.css`,
+file in the same directory - the trick the earlier passes used, so `../tailwind.css`,
 `vendor/` and `assets/` resolve identically and only the renderer differs.
 
 #### Shots
 
-`docs/eval/shots/glam-turn-exchange/browtail-{before,after}-{m2,m3,m4}.png` — a ×5
+`docs/eval/shots/glam-turn-exchange/browtail-{before,after}-{m2,m3,m4}.png` - a ×5
 loupe strip per model, left brow band | right brow band, spanning the outer brow,
 the temple and the hairline, in the reported state. Captured by
 `apps/games/tests/_shots-glam-brow-tail.mjs`, which reports console cleanliness on
 both phases (`console clean` for all six).
 
-### Finding E — the per-tool turn-exchange sweep
+### Finding E - the per-tool turn-exchange sweep
 
 > "Take some time to do some turn exchange testing."
 
@@ -4242,13 +4201,13 @@ Measured on `93dab9be` by `tests/_probe-glam-turn-sweep.mjs`, console clean:
 
 **67 of 69 spent an action for a write they did not make, and 67 of 69 took the
 turn's independence when they were reached for at the cap.** The two that
-already passed are patch and conceal — `_optDead` refuses them *before* the cap
+already passed are patch and conceal - `_optDead` refuses them *before* the cap
 check, which is the Finding A guard doing precisely its job.
 
 `paint` logs `overCap 2` rather than 1 because a paint reach is two calls: the
 `arm()` is refused, and then the stroke on the target is refused again.
 
-#### The traced cause — a per-turn mirror standing in for "nothing changed"
+#### The traced cause - a per-turn mirror standing in for "nothing changed"
 
 `_admit` states its own contract in the comment above it:
 
@@ -4262,11 +4221,10 @@ one turn the contract holds. Across the boundary the identical re-touch reads as
 a first touch, because the only evidence that it *was* a re-touch was thrown
 away with the turn.
 
-`_charged` was standing in for a question it cannot answer once the turn ends —
-*would this write anything?* — and the answer to that question does not belong
+`_charged` was standing in for a question it cannot answer once the turn ends - *would this write anything?* - and the answer to that question does not belong
 to a turn at all. It belongs to the client.
 
-#### The fix — `_optNoOp`, the apply paths read backwards
+#### The fix - `_optNoOp`, the apply paths read backwards
 
 `_optNoOp(opt)` asks exactly one thing: **would `applyChoose` / `tapApply` /
 `paintStep` write one byte the client does not already carry?** It is written
@@ -4278,7 +4236,7 @@ It is read at four seams:
 
 | seam | before | now |
 |---|---|---|
-| `arm()` cap check | `if(this._atCapFor(key))` → `_refuse` | skipped for a no-op — nothing to refuse |
+| `arm()` cap check | `if(this._atCapFor(key))` → `_refuse` | skipped for a no-op - nothing to refuse |
 | `applyChoose` | `if(!this._admit(…)) return` | skipped for a no-op, and `chargedThisTurn` left alone |
 | `tapApply` | same | same |
 | `paintStep` | same, on the completing stroke | same |
@@ -4287,7 +4245,7 @@ It is read at four seams:
 `chargedThisTurn` is deliberately **not** written for a free re-touch. Marking a
 key charged without spending an action would tell `_capBlocks` the whole family
 is still affordable at the cap, while a real change on that same key would still
-be refused — the dimming would lie in the direction Finding C was about.
+be refused - the dimming would lie in the direction Finding C was about.
 
 **Free is not dead.** Nothing here is disabled. Every one of the 67 stays
 armable, keeps its target overlay and its "All done ✓", still echoes on the
@@ -4296,7 +4254,7 @@ mirror, and still reads its ✓ on the cart. Only the ledger changed.
 #### And the fix does not make the cap optional
 
 The control, measured on the same probe run: reach for a **different** option of
-the same slot — one the client does **not** carry — after the boundary.
+the same slot - one the client does **not** carry - after the boundary.
 
 | family | from → to | actions spent | at the cap |
 |---|---|---|---|
@@ -4306,10 +4264,10 @@ the same slot — one the client does **not** carry — after the boundary.
 | `choose` | Bob → Pixie | **1** | `overCap 1` · `forfeit 'overcap'` |
 
 Identical before and after the fix. (`overCap 12` for paint is one refusal per
-pointer move across the target — a drag at the cap logs every stroke. That is
+pointer move across the target - a drag at the cap logs every stroke. That is
 pre-existing behaviour, unchanged, and is noted rather than fixed.)
 
-#### Completion across the handoff, both directions — measured, already correct
+#### Completion across the handoff, both directions - measured, already correct
 
 One representative per mechanism family, worked on the learner's own turn, then
 `handoff()` → the partner's whole turn → the learner's mand back:
@@ -4326,7 +4284,7 @@ One representative per mechanism family, worked on the learner's own turn, then
 
 `ed` is **byte-identical** across the first leg, and nothing the seven own moves
 on the return leg. The already-done-cannot-un-complete invariant holds for the
-per-tap tools, not just the paint tools — because completion is claimed from
+per-tap tools, not just the paint tools - because completion is claimed from
 `ed`, which is client state, and the turn boundary touches only `armed`,
 `chargedThisTurn`, `_charged` and `engTurn`. Nothing needed fixing here; it is
 now pinned so the ledger change cannot quietly break it.
@@ -4339,8 +4297,8 @@ now pinned so the ledger change cannot quietly break it.
 | `actions` at the start of a fresh turn | 0 | 0 |
 | `_charged` / `chargedThisTurn` at the boundary | both empty | both empty |
 
-Per-tap tools are the family the boundary was most likely to get wrong — they
-charge `item:<slot>` on the tap itself rather than on a completing stroke — and
+Per-tap tools are the family the boundary was most likely to get wrong - they
+charge `item:<slot>` on the tap itself rather than on a completing stroke - and
 they behave the same as the paint tools: the first *changing* touch of an
 article in a turn costs 1, further ones on that article are free within the
 turn, and after the fix a touch that changes nothing costs nothing in any turn.
@@ -4353,8 +4311,8 @@ One row per tool. `93dab9be` → now.
 |---|---|---|---|---|---|---|---|---|
 | Skincare | Wash | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
 | Skincare | Moisturize | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
-| Skincare | Treat spots | patch | yes | **no — disabled** | no | held | 0 → 0 | clean → clean |
-| Skincare | Conceal | conceal | yes | **no — disabled** | no | held | 0 → 0 | clean → clean |
+| Skincare | Treat spots | patch | yes | **no - disabled** | no | held | 0 → 0 | clean → clean |
+| Skincare | Conceal | conceal | yes | **no - disabled** | no | held | 0 → 0 | clean → clean |
 | Brow bar | Shape brows | tap/toggle | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
 | Brow bar | Brow pencil | tap/toggle | yes | yes | no | blinks | 1 → 0 | `overCap 1` · `forfeit overcap` → clean |
 | Cheeks & glow | Contour | paint | yes | yes | no | blinks | 1 → 0 | `overCap 2` · `forfeit overcap` → clean |
@@ -4423,7 +4381,7 @@ One row per tool. `93dab9be` → now.
 
 #### Anything else the sweep turned up, fixed or not
 
-- **The ✓ blinks off when a live tool is armed** — for **51 of 69**; the other
+- **The ✓ blinks off when a live tool is armed** - for **51 of 69**; the other
   18 hold it (16 `choose` tools plus the two disabled ones), because the trolley
   label is
   `(active && !armed ? '✓ ' : '') + opt.label`. **Not fixed, and reported as
@@ -4432,34 +4390,33 @@ One row per tool. `93dab9be` → now.
   rather than lost. It only became a *defect* in Finding A because the tool was
   dead, so the blink was the only thing that happened. `choose` holds its ✓
   because it applies on the same tap and is never in an armed state at all.
-- **A drag at the cap logs one `overCap` per pointer move**, not one per reach —
-  measured at 12 for a single blush drag. Pre-existing, unchanged by this pass,
+- **A drag at the cap logs one `overCap` per pointer move**, not one per reach - measured at 12 for a single blush drag. Pre-existing, unchanged by this pass,
   and it inflates the over-cap *count* (not the forfeit, which is boolean) in
-  the per-turn report. **Named, not fixed** — it is an engine-facing counting
+  the per-turn report. **Named, not fixed** - it is an engine-facing counting
   question and `window.GlamTT` is byte-frozen for this pass.
-- **Switching shade inside one turn is unlimited and free** — `color:blush` is
+- **Switching shade inside one turn is unlimited and free** - `color:blush` is
   charged once, so all six blushes can be tried on one action. Already surfaced
   under Finding C as the maintainer's call; the sweep confirms it is per-slot
   and turn-scoped, not per-shade.
 - **`tap` tools declared `apply:'toggle'` never toggle off.** `tapApply`'s else
   branch writes `ed.cov[slot] = 1` unconditionally, so Mascara, Eyeliner, Lip
-  liner, Shape brows and Brow pencil are one-way. **Named, not fixed** — the
+  liner, Shape brows and Brow pencil are one-way. **Named, not fixed** - the
   `apply` value is a misnomer rather than a behaviour bug, and making them
   actually toggle would be a new interaction, not a repair.
 
 #### Evidence
 
-`apps/games/tests/glam-turn-sweep.spec.js` — four tests. Three fail against
+`apps/games/tests/glam-turn-sweep.spec.js` - four tests. Three fail against
 `93dab9be` and `d4c0c112`:
 
 | test | failure against `93dab9be` |
 |---|---|
 | every tool in the catalogue: work done ⇒ re-running it writes nothing, spends nothing, forfeits nothing | `page.evaluate: TypeError: L._optNoOp is not a function` |
-| across a real exchange, both directions: re-dragging a finished Wash spends none of my new budget | `a re-drag that cannot change the face spends no action` — Expected `0`, Received **`1`** |
-| at the cap on a LATER turn, by real play: a finished tool forfeits nothing — an unfinished one still does | `a finished tool at the cap is not an over-cap violation` — Expected `0`, Received **`1`** |
+| across a real exchange, both directions: re-dragging a finished Wash spends none of my new budget | `a re-drag that cannot change the face spends no action` - Expected `0`, Received **`1`** |
+| at the cap on a LATER turn, by real play: a finished tool forfeits nothing - an unfinished one still does | `a finished tool at the cap is not an over-cap violation` - Expected `0`, Received **`1`** |
 
-The fourth — *completion survives the exchange in both directions, for every
-mechanism family* — **passes on all three builds by design**. It is the
+The fourth - *completion survives the exchange in both directions, for every
+mechanism family* - **passes on all three builds by design**. It is the
 durability pin for what the sweep measured as already correct, so that making
 no-op re-touches free cannot quietly un-complete anything. It is reported as a
 pin rather than reshaped into a failing test.
@@ -4468,7 +4425,7 @@ The turn boundary is load-bearing in the second and third tests, and that is
 stated in the test itself: *within* one turn `_charged` already makes a
 re-touch free, so a same-turn version of either test passes on `93dab9be` too
 and proves nothing. The wash therefore happens on turn 1 and the cap is reached
-on turn 2 — the state a child actually plays.
+on turn 2 - the state a child actually plays.
 
 Test 1 resets the live Trial's per-turn counters between tools, because 69 tools
 on one turn would exhaust the budget after the first handful and every later row
@@ -4485,39 +4442,39 @@ GTM_TRACE=1 node tests/_play-glam-full-trial.mjs   # …with a per-beat trace
 
 #### A full trial, by real pointer input
 
-`tests/_play-glam-full-trial.mjs` plays the shipped defaults end to end — title
+`tests/_play-glam-full-trial.mjs` plays the shipped defaults end to end - title
 → Start → the client texts in → Open the salon → every turn played to its cap
-and handed over → the look finished → the outro — with every move a mouse event
+and handed over → the look finished → the outro - with every move a mouse event
 on the element the child would touch. It exits non-zero on any console error,
 page error, or if the trial does not reach its outro.
 
 ```
 · title screen up
-· Start tapped — the client is texting
+· Start tapped - the client is texting
 · salon open
-· turn 1 — Go
+· turn 1 - Go
 · handed over at 7/7
 · asked for the turn back
-· turn 3 — Go
+· turn 3 - Go
 · handed over at 7/7
 · asked for the turn back
 · phase: done
 · turns played: 4
     {"turn":1,"player":"Learner","step":"Wash, Moisturize, treat spot, conceal spot","actions":"7/7","withinLimit":"yes","overCap":0,"pass":"independent",…}
-    {"turn":2,"player":"Staff","step":"Shape brows, Brow pencil, conceal spot, Contour","actions":"4/4","withinLimit":"—","overCap":0,"pass":"—",…}
+    {"turn":2,"player":"Staff","step":"Shape brows, Brow pencil, conceal spot, Contour","actions":"4/4","withinLimit":" - ","overCap":0,"pass":" - ",…}
     {"turn":3,"player":"Learner","step":"Blush rose, Highlight, Shadow violet, Eyeliner, Mascara, Lip liner, Lips red","actions":"7/7","withinLimit":"yes","overCap":0,"pass":"independent",…}
-    {"turn":4,"player":"Staff","step":"Buzz, Brunette, Pearl stud, Teal","actions":"4/4","withinLimit":"—","overCap":0,"pass":"—",…}
+    {"turn":4,"player":"Staff","step":"Buzz, Brunette, Pearl stud, Teal","actions":"4/4","withinLimit":" - ","overCap":0,"pass":" - ",…}
 · outro on screen: true
 · console clean
 ```
 
 Both learner turns scored **independent**, `overCap 0` throughout, and the outro
 reached its photo booth. `docs/eval/shots/glam-turn-exchange/fulltrial-outro.png`
-is the last frame — before/after, no numbers on any child-facing string, no PHI.
+is the last frame - before/after, no numbers on any child-facing string, no PHI.
 
 Writing that driver produced the fix's own confirmation by accident. A first
 version picked the first live tool each time and **looped on Blush rose forever
-with the budget frozen at 1/7** — because re-dragging a finished shade is now
+with the budget frozen at 1/7** - because re-dragging a finished shade is now
 free. On `93dab9be` the same loop would have burned the whole turn and then
 forfeited it. The driver now picks a tool without a ✓, which is the read a child
 makes.
@@ -4527,8 +4484,8 @@ makes.
 - **That a no-op reach at the cap is not an over-cap violation.** That it costs
   nothing is now true by construction; whether a child tapping a ticked button
   at the cap *should* count as a failure to relinquish is a clinical call, not a
-  measurement. It is decided here the way Finding A decided it — "arming a tool
-  that can do nothing must never cost the child their independent score" — and
+  measurement. It is decided here the way Finding A decided it - "arming a tool
+  that can do nothing must never cost the child their independent score" - and
   it is the maintainer's to overrule. The cost of overruling it is one line:
   drop the `!this._optNoOp(opt) &&` guard in `arm()` and leave the three apply
   paths alone.
@@ -4540,17 +4497,17 @@ makes.
 - **`_optNoOp` is stricter than the trolley's `active` on paint.** `active` ticks
   at any coverage above zero; `_optNoOp` requires full coverage of the shade
   already on, because a half-painted slot still has a real stroke to give. The
-  two are deliberately *not* collapsed into one predicate — `active` is an
+  two are deliberately *not* collapsed into one predicate - `active` is an
   accepted visual and moving it would change what a partly-painted blush looks
   like on the cart.
 
 ### Verification for this pass
 
 - **Full Playwright suite: 486/486 green** (474 at `d4c0c112` + 12 new: 4 tests
-  × 3 engines) at `--workers=4`, against a hash-verified server — `shasum` of the
+  × 3 engines) at `--workers=4`, against a hash-verified server - `shasum` of the
   worktree file and of `curl http://localhost:8788/…` matched `54fab369…` both
   before and after the run.
-- Two further full runs on **the same hash** each produced 1–2 firefox failures,
+- Two further full runs on **the same hash** each produced 1-2 firefox failures,
   on a **different spec every time** (`glam-art-fidelity`, `glam-turn-exchange`,
   `glam-open-flow`), and every one of them is the documented Atkinson
   Hyperlegible flake, now quoted rather than inferred:
@@ -4569,7 +4526,7 @@ makes.
 - **`window.GlamTT` byte-identical** to `95ba6101`, `93dab9be`, `bb352a53` and
   `d4c0c112`, sliced on content (`window.GlamTT = (function ()` → the IIFE
   close) rather than line numbers: 23 502 bytes, SHA `7998d56b…` on all five.
-- **`tests/glam-tt-scoring.spec.js` byte-identical** — SHA `d5eb286c…` at
+- **`tests/glam-tt-scoring.spec.js` byte-identical** - SHA `d5eb286c…` at
   `95ba6101`, `93dab9be`, `bb352a53`, `d4c0c112` and now.
 - **`BROW_TINT.floor` is still `0.60`**, asserted by a test, and untouched by
   this iteration.
@@ -4579,46 +4536,43 @@ makes.
 #### Earlier in this pass (Finding B, at `d4c0c112`)
 
 - **Full Playwright suite: 474/474 green** (459 at `bb352a53` + 15 new: 5 tests
-  × 3 engines) at `--workers=4`, against a hash-verified server — `shasum` of the
+  × 3 engines) at `--workers=4`, against a hash-verified server - `shasum` of the
   worktree file and of `curl http://localhost:8788/…` matched `ac12dff9…` for the
   run. At default worker count the same build produced 3 firefox failures
-  (`glam-art-fidelity`, `glam-station-kit` ×2) which **pass 25/25 in isolation** —
-  the documented Atkinson Hyperlegible webfont-under-load flake.
+  (`glam-art-fidelity`, `glam-station-kit` ×2) which **pass 25/25 in isolation** - the documented Atkinson Hyperlegible webfont-under-load flake.
 - **`window.GlamTT` byte-identical** to `95ba6101`, `93dab9be` and `bb352a53`.
-- **`tests/glam-tt-scoring.spec.js` byte-identical** — SHA `d5eb286c…`.
+- **`tests/glam-tt-scoring.spec.js` byte-identical** - SHA `d5eb286c…`.
 - **`BROW_TINT.floor` is still `0.60`**, and now asserted by a test.
 
 #### Earlier in this pass (Findings C and D, at `bb352a53`)
 
 - **Full Playwright suite: 459/459 green** (432 at `93dab9be` + 27 new: 9 tests
-  × 3 engines) at `--workers=4`, against a hash-verified server —
-  `shasum` of the worktree file and of `curl http://localhost:8788/…` matched
+  × 3 engines) at `--workers=4`, against a hash-verified server - `shasum` of the worktree file and of `curl http://localhost:8788/…` matched
   `b25e6847…` for the run. One firefox failure in the batch
   (`glam-open-flow.spec.js`) is the documented Atkinson Hyperlegible
   webfont-under-load flake; the file passes **15/15 in isolation**.
 - **`window.GlamTT` byte-identical** to both `95ba6101` and `93dab9be`, sliced on
   content (`window.GlamTT = (function ()` → the IIFE close) rather than line
   numbers: 538 lines, SHA `9e478c27…` on all three.
-- **`tests/glam-tt-scoring.spec.js` byte-identical** — SHA `d5eb286c…` at
+- **`tests/glam-tt-scoring.spec.js` byte-identical** - SHA `d5eb286c…` at
   `95ba6101`, at `93dab9be` and now.
-- **`BROW_TINT.floor` is still `0.60`** — untouched by this iteration.
+- **`BROW_TINT.floor` is still `0.60`** - untouched by this iteration.
 - Clean console: every test in both new specs asserts `expect(errors).toEqual([])`,
   and the screenshot script exits non-zero on any console or page error.
 
 #### Earlier in this pass (Finding A, at `93dab9be`)
 
 - **Full Playwright suite: 432/432 green** (423 before this pass + 9 new: 3 tests
-  × 3 engines) at `--workers=4`, against a hash-verified server —
-  `shasum` of the worktree file and of `curl http://localhost:8788/…` matched
+  × 3 engines) at `--workers=4`, against a hash-verified server - `shasum` of the worktree file and of `curl http://localhost:8788/…` matched
   `2569dccc…` before and after the run.
-- At default worker count the run produced 1–3 firefox failures that **all pass
+- At default worker count the run produced 1-3 firefox failures that **all pass
   in isolation**, on different specs each run (`glam-station-kit`,
-  `glam-art-fidelity`, `glam-open-flow`) — the documented Atkinson Hyperlegible
+  `glam-art-fidelity`, `glam-open-flow`) - the documented Atkinson Hyperlegible
   webfont-under-load flake, re-confirmed here and unrelated to this change.
 - **`window.GlamTT` byte-identical** to `95ba6101`, sliced on content
   (`window.GlamTT = (function ()` → the IIFE close) rather than line numbers:
   23 502 bytes, SHA `7998d56b…` on both builds.
-- **`tests/glam-tt-scoring.spec.js` byte-identical** — `git diff 95ba6101` over
+- **`tests/glam-tt-scoring.spec.js` byte-identical** - `git diff 95ba6101` over
   that path is empty.
 - Clean console: every test in the new spec asserts `expect(errors).toEqual([])`,
   and the screenshot script exits non-zero on any console or page error.
@@ -4633,8 +4587,7 @@ makes.
   change the sign.
 - **Reducing rather than erasing.** `hair: 0.10` leaves every pixel on the hair
   side of the hairline alone, and part of the ghost lies there. That is a
-  deliberate trade — a repainted hairline would be a worse defect than the haze —
-  and it is why the numbers move by 36–57 % and not by 100 %.
+  deliberate trade - a repainted hairline would be a worse defect than the haze - and it is why the numbers move by 36-57 % and not by 100 %.
 - **Where the bound came from.** That the removal is *bounded and stops short* is
   measured. *Which* bound produced it lives in `tools/glam-art`, outside this
   pass's scope, and was not re-derived. If a future art rebuild fixes it at
@@ -4646,7 +4599,7 @@ makes.
 ### Judged rather than measured (Findings C and D)
 
 - **`z.label` as the fallback for a switched shade.** With coverage read as 0 for
-  an unapplied shade, the hitbox falls to the zone's own prompt — *Drag over the
+  an unapplied shade, the hitbox falls to the zone's own prompt - *Drag over the
   cheeks*. That it is honest is measured; that "ask for the work again" is the
   right thing to say to a child who has just picked a new colour is a call.
 - **Writing `_shadeOn` as the rule rather than the catalogue.** Generalising past
@@ -4667,13 +4620,12 @@ pointer input has been run end to end on this build.
 Two things are **waiting on a maintainer ruling**, both stated where they arise
 and neither changed silently:
 
-1. ~~**The one-stroke shade switch** (Finding C).~~ **Ruled on and applied** —
-   see "Maintainer rulings on the turn-exchange pass" below. A switch now costs
+1. ~~**The one-stroke shade switch** (Finding C).~~ **Ruled on and applied** - see "Maintainer rulings on the turn-exchange pass" below. A switch now costs
    the same drag the first application did, and the one assertion that pinned
    the old cost is the one that flipped.
 2. **A no-op reach at the cap is no longer an over-cap violation** (Finding E).
-   Decided here on the Finding A precedent — a tool that can do nothing must
-   never cost the child their independent score — but it is a clinical call.
+   Decided here on the Finding A precedent - a tool that can do nothing must
+   never cost the child their independent score - but it is a clinical call.
    Overruling it is one line: drop the `!this._optNoOp(opt) &&` guard in
    `arm()` and leave the three apply paths alone.
 
@@ -4690,11 +4642,11 @@ Three rulings, applied here. Nothing else from this pass or the third pass was
 re-opened: `BROW_TINT.floor` stays 0.60, `_browClean` was not touched, and the
 brow-tail residual ships as accepted.
 
-`window.GlamTT` is **byte-identical** across this work — the engine block is
+`window.GlamTT` is **byte-identical** across this work - the engine block is
 23 502 bytes, `sha1 4b8335b9c66492901c83bbddb95aca02acb1370d`, on 438d38d8 and
-on HEAD alike — and `tests/glam-tt-scoring.spec.js` has an empty diff.
+on HEAD alike - and `tests/glam-tt-scoring.spec.js` has an empty diff.
 
-### Ruling 1a — a shade switch is a fresh drag
+### Ruling 1a - a shade switch is a fresh drag
 
 > "Yes, redo the drag so the 'reapply' feel is there."
 
@@ -4711,7 +4663,7 @@ _washFrom(ed,opt){ return this._shadeOnIn(ed,opt) ? (ed.cov[opt.slot]||0) : 0; }
 ```
 
 `paintStep` builds the next stroke on `_washFrom` instead of on raw `cov[slot]`,
-in both places it reads coverage — the pre-flight admission check and the
+in both places it reads coverage - the pre-flight admission check and the
 setState updater. `_shadeOn` is unchanged in contract and now delegates to
 `_shadeOnIn`; the updater asks the `ed` it was handed rather than `this.state`,
 which can lag a frame under a fast drag.
@@ -4719,7 +4671,7 @@ which can lag a frame under a fast drag.
 Measured after, same probe: **every shade now takes 10 strokes, first or fifth.**
 Colourless paints (Wash, Moisturize, Contour, Highlight) have no shade to
 disagree about, so `_shadeOnIn` is true for them and their coverage accumulates
-exactly as before — pinned by its own test.
+exactly as before - pinned by its own test.
 
 `tests/_probe-glam-recolour-cost.mjs`, before → after:
 
@@ -4734,7 +4686,7 @@ exactly as before — pinned by its own test.
 Hair and clothes are `tap/recolor` and `choose`. Neither has a drag, so "redo the
 drag" has nothing to ask of them; they are unchanged.
 
-### Ruling 1b — the action economy, measured on all five types
+### Ruling 1b - the action economy, measured on all five types
 
 > "Changing color within a turn does not deduct additional actions - only the
 >  first color change of a type per turn (shadow, blush, lips, hair, clothes can
@@ -4758,7 +4710,7 @@ charges a key once per turn, so the 2nd..Nth change is free by construction.
 
 The hazard was that 1a would break it: a fresh drag ends in a completing stroke,
 and a completing stroke is exactly what `paintStep` asks `_admit` about. It
-does not, because the key is already in `_charged` for that turn — the re-drag
+does not, because the key is already in `_charged` for that turn - the re-drag
 is asked for and answered "already paid". Re-measured after 1a landed: **still
 1 + 0 + 0 for all five.**
 
@@ -4766,22 +4718,22 @@ Pinned by `tests/glam-colour-change-cost.spec.js`, which drives all five types
 through three changes each by real pointer input inside one turn and asserts
 `[1, 0, 0]` per type. It guards against the trivial way to fake the freebie: if
 the cap had refused a change, `_admit` returns false, no state is written, and
-the action count would not move either — which reads identically to "it was
+the action count would not move either - which reads identically to "it was
 free". So every change also asserts the new colour actually **landed** in `ed`.
 
-That file **passes against 438d38d8**, and says so in its own header — 1b was
+That file **passes against 438d38d8**, and says so in its own header - 1b was
 already right, so it is a regression fence, not a fix. Its second test is the
 one that matters across the boundary and is asserted here for the first time: a
 genuinely different shade after a handoff still costs its one action
 (`_charged` is cleared at the turn boundary), while a re-touch of the shade
 already on stays free (`_optNoOp`). Finding E is undisturbed.
 
-### Ruling 2 — a dead tool disappears from the cart
+### Ruling 2 - a dead tool disappears from the cart
 
 > "changed to make the tool disappear from the cart entirely"
 
 The disabled-in-place affordance built for Finding A is gone. A dead tool now
-leaves through `_optSpent`, the door the cart already had — one predicate, one
+leaves through `_optSpent`, the door the cart already had - one predicate, one
 removal path, no second mechanism:
 
 ```js
@@ -4792,31 +4744,29 @@ _optSpent(opt){ return this._optDead(opt) ||
 Removed with it: the dead button face (sage fill, dashed border, flattened
 shadow, `.6` opacity), the `disabled` and `aria-disabled` props, and both
 attributes from the option button in the template. `arm()` keeps its own
-`_optDead` guard — removal closes the pointer path but not the programmatic one,
+`_optDead` guard - removal closes the pointer path but not the programmatic one,
 and that guard is what stops a dead tool costing the child their independent
 score at the cap. Asserted directly, since there is no longer a button to click.
 
 **Removal is deliberately NOT gated on the staged routine** the way the rest of
 `_optSpent` is. "This step is over" is a routine's judgement; "this tool cannot
 act" is a fact about the client, and it is just as true in free play. Free play
-still never removes a merely *finished* tool — Wash stays on the shelf there —
-which is exactly what separates dead from spent.
+still never removes a merely *finished* tool - Wash stays on the shelf there - which is exactly what separates dead from spent.
 
 **The 67 free-but-live tools were not touched.** Re-ran the Finding E sweep
 (`tests/_probe-glam-turn-sweep.mjs`) over the whole 69-tool person catalogue with
 each tool's own work already done:
 
-- **67 on the cart, 67 armable**, 0 charging an action, 0 setting a forfeit —
-  the same shape Finding E left them in.
+- **67 on the cart, 67 armable**, 0 charging an action, 0 setting a forfeit - the same shape Finding E left them in.
 - **2 off the cart: `patch` and `conceal`**, the only two whose mechanism can
   refuse outright.
 
 That is asserted in the suite too, not just probed, so removing any of the 67
 later would fail a test that names the number.
 
-### Ruling 3 — the finished step still reads as finished
+### Ruling 3 - the finished step still reads as finished
 
-> "kept — a finished step should still read as finished"
+> "kept - a finished step should still read as finished"
 
 Rulings 2 and 3 do pull against each other: a tool that is gone cannot carry its
 own ✓. **They are reconciled by moving the ✓ up one level, to the shelf.**
@@ -4832,7 +4782,7 @@ left (`.filter(grp => grp.options.length)`), so on the tools-all-spent path the
 
 An emptied settled shelf renders as a **record, not a drawer**: same soft panel
 and the same sage ✓, but no chevron, `cursor:default`, a real `disabled` on the
-header, and `aria-expanded` dropped entirely — there is nothing behind it to
+header, and `aria-expanded` dropped entirely - there is nothing behind it to
 open, so it must not offer to. The "if every shelf is folded, re-open the first"
 rescue now skips shelves with no tools, so it can never open an empty drawer.
 
@@ -4842,16 +4792,16 @@ rescue now skips shelves with no tools, so it can never open an empty drawer.
 | stage | the cart | the ✓ | shot |
 |---|---|---|---|
 | spots still bare | `Treat spots` and `Conceal` on the Skincare shelf | none | `cart-spots-before.png` |
-| every spot patched, my turn | `Treat spots` **gone**, `Conceal` standing alone | **none — and correctly so**: the step is not over | `cart-spots-after-mine.png` |
+| every spot patched, my turn | `Treat spots` **gone**, `Conceal` standing alone | **none - and correctly so**: the step is not over | `cart-spots-after-mine.png` |
 | the same, after a handoff | still gone; `Conceal` is what the partner inherits | none | `cart-spots-after-theirs.png` |
 | every spot clear | both gone, shelf empty | **`🧼 SKINCARE ✓`** as a folded record row, plus the `✓ 🧼 Skincare` stage chip above it | `shelf-finished.png` |
 
-So the ✓ the dead tool used to carry is not lost — it arrives when the *step* is
+So the ✓ the dead tool used to carry is not lost - it arrives when the *step* is
 actually finished, on a surface the child is already reading. At the midway
 stage there is deliberately no ✓ anywhere, because half of step 3 is still to
 do; what the child has instead is the bandages now on the face and a shelf that
 has narrowed to the one thing left. That is honest where the old dead-tool ✓ was
-ambiguous — it ticked "patching is done" on a shelf whose step was not.
+ambiguous - it ticked "patching is done" on a shelf whose step was not.
 
 **Free play has no shelf ✓ to inherit**, because `_grpSettled` is gated on the
 staged routine and free play never settles a shelf. There, the dead tool leaves
@@ -4860,24 +4810,24 @@ That is a consequence of the existing free-play design, not a new choice, and it
 is stated here rather than papered over.
 
 Ruling 1a's own screenshots: `shade-redrag-armed.png` (a second blush armed over
-a painted slot — the hitbox asks "Drag over the cheeks" rather than claiming
+a painted slot - the hitbox asks "Drag over the cheeks" rather than claiming
 anything), `shade-redrag-mid.png` (`Keep painting… 66%` part-way through the
 fresh drag), `shade-redrag-done.png` (finished, ✓ moved to the shade that is on).
 
 ### Verification
 
-- **Full Playwright suite: 498/498 green** — 486 at 438d38d8 plus 4 new tests
+- **Full Playwright suite: 498/498 green** - 486 at 438d38d8 plus 4 new tests
   across 3 browser projects. Run against a hash-verified server: worktree
   `glam-team-makeover/index.html` and `curl http://localhost:8788/...` both
   `sha1 1ff141f98f81ff792d05584d8f22a048a4442550`.
 - **Every new or changed assertion was run against 438d38d8** by restoring that
   revision's `index.html` in place. Five failed, in the direction of the rulings:
-  - `the shade swaps, and it costs a FRESH DRAG — not one stroke` →
-    *"the switch restarts the wash from bare — Expected: < 1, Received: 1"*
+  - `the shade swaps, and it costs a FRESH DRAG - not one stroke` →
+    *"the switch restarts the wash from bare - Expected: < 1, Received: 1"*
   - `the reported sequence: patched spots take Treat spots off the cart…` →
-    *"gone the moment the last spot is patched — Expected: 0, Received: 1"*
+    *"gone the moment the last spot is patched - Expected: 0, Received: 1"*
   - `free play removes a dead tool too…` →
-    *"patch is dead at all-patched, in free play too — Expected: 0, Received: 1"*
+    *"patch is dead at all-patched, in free play too - Expected: 0, Received: 1"*
   - `the 67 tools that are FREE but not dead…` →
     *"exactly two tools can go dead, and exactly two leave"* (received one entry,
     not `['patch','conceal']`)
@@ -4888,8 +4838,7 @@ fresh drag), `shade-redrag-done.png` (finished, ✓ moved to the shade that is o
 - **A full trial by real pointer input**, `tests/_play-glam-full-trial.mjs`:
   title → Start → the client's texts → Open the salon → four turns each played to
   its cap and handed over → the look finished → the outro. Console clean, exit 0.
-  The spots step spanned the turn-1/turn-2 handoff — the reported scenario —
-  and turn 3 ran shadow, blush and lips. `shots/glam-rulings/fulltrial-outro.png`.
+  The spots step spanned the turn-1/turn-2 handoff - the reported scenario - and turn 3 ran shadow, blush and lips. `shots/glam-rulings/fulltrial-outro.png`.
 - **Console clean** in the full trial, both probe scripts and the shots run.
 - Three existing specs needed updating for the ruling, none of them weakened:
   `glam-station-kit.spec.js`'s `shelves()` helper crashed on the missing
@@ -4897,9 +4846,9 @@ fresh drag), `shade-redrag-done.png` (finished, ✓ moved to the shade that is o
   `glam-turn-sweep.spec.js` moved the per-spot pair from a "✓ still on the
   button" read to a "still absent from the cart" read on all three legs of the
   exchange; `glam-turn-exchange.spec.js` was rewritten around removal.
-  `glam-turn-exchange.spec.js` also gained a `toMyTurn` helper — the partner →
+  `glam-turn-exchange.spec.js` also gained a `toMyTurn` helper - the partner →
   learner exchange takes **two** presses in the shipped give-back mode
-  (`✓ I asked!` → `▸ Go — my turn!`), and the old single click stopped on the
+  (`✓ I asked!` → `▸ Go - my turn!`), and the old single click stopped on the
   ready gate, where nothing puts a target under the pointer.
 
 ### Judged rather than measured (the rulings)
@@ -4921,9 +4870,9 @@ fresh drag), `shade-redrag-done.png` (finished, ✓ moved to the shade that is o
 - **The emptied shelf header is `disabled`.** A no-op button that still looked
   and focused like a control was the smaller lie, but still a lie; a screen
   reader would announce a disclosure that discloses nothing. It is a record row,
-  so it is inert. The trade is that it leaves the tab order — acceptable, since
+  so it is inert. The trade is that it leaves the tab order - acceptable, since
   it was never a destination, only a toggle for content that no longer exists.
 - **`Brow bar` now also survives as a ✓ record row** once both brow tools are
-  used, for the same reason Skincare does — both are all-family-size-1 shelves.
+  used, for the same reason Skincare does - both are all-family-size-1 shelves.
   Not asked for, but it falls out of the same rule and is the same message, so
   it was left rather than special-cased to Skincare.

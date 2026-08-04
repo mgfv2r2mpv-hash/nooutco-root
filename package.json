@@ -2,7 +2,7 @@
   "name": "nooutco-monorepo",
   "private": true,
   "version": "0.0.0",
-  "description": "Monorepo for No Outcome ABA — apex site (apps/apex), tools (apps/tools), and games (apps/games). Each app deploys as its own Cloudflare Pages project with Root directory apps/<app>.",
+  "description": "Monorepo for No Outcome ABA - apex site (apps/apex), tools (apps/tools), and games (apps/games). Each app deploys as its own Cloudflare Pages project with Root directory apps/<app>.",
   "workspaces": [
     "apps/tools/cpr"
   ],

@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Glam Team Makeover — hardened turn-taking scoring criteria.
+ * Glam Team Makeover - hardened turn-taking scoring criteria.
  *
  * Drives `window.GlamTT` (the measurement engine defined in
  * glam-team-makeover/index.html) in the real browser, with an injected clock so
  * every wait-window boundary is exact instead of raced.
  *
- * Authority: docs/glam-team-makeover-redesign-hardened-claims.md — AC-1…AC-27.
+ * Authority: docs/glam-team-makeover-redesign-hardened-claims.md - AC-1…AC-27.
  * Each test names its criterion and, where the criterion exists to close a
  * specific attack from the adversarial review, that attack's id (A2/B2/B3/C1/
  * C2/D1/E1/F1/G1). A green run here is the claim that the seven-round debate's
@@ -32,14 +32,14 @@ async function bootEngine(page) {
 /**
  * Build a trial whose learner budget is exactly `budget`.
  * The budget is auto-scaled from (turns, requiredActions) and is deliberately
- * not settable directly — AC-17 forbids any second lever on the cap — so tests
+ * not settable directly - AC-17 forbids any second lever on the cap - so tests
  * pick the required-action count that lands on the budget they want to probe.
  */
 function trialArgs({ budget = 3, learnerTurns = 3, ...rest } = {}) {
   return { turns: learnerTurns * 2, requiredActions: budget * learnerTurns, ...rest };
 }
 
-test.describe('turn-taking engine — pass scoring (D-A)', () => {
+test.describe('turn-taking engine - pass scoring (D-A)', () => {
   test('AC-1 · a pass after the window elapsed scores prompted at EVERY cue level, silent-probe included', async ({ page }) => {
     await bootEngine(page);
 
@@ -54,7 +54,7 @@ test.describe('turn-taking engine — pass scoring (D-A)', () => {
       }, { level, args: trialArgs({ budget: 3 }) });
 
       // At silent-probe NOTHING was shown, yet the prompt was delivered by
-      // window-elapse — the whole point of AC-1. `!cueVisible` scoring (the old
+      // window-elapse - the whole point of AC-1. `!cueVisible` scoring (the old
       // build, F-22) would have returned `independent` here.
       expect(out.score, `cue=${level}`).toBe(`prompted@${level}`);
     }
@@ -67,7 +67,7 @@ test.describe('turn-taking engine — pass scoring (D-A)', () => {
       const tr = new window.GlamTT.Trial({ ...args, cueLevel: 'full', waitMs: 3000, now: () => clock.t });
       tr.go();
       tr.requestAction('wash');
-      clock.t = 2000; tr.tick();           // still inside the 3s window — no prompt
+      clock.t = 2000; tr.tick();           // still inside the 3s window - no prompt
       return tr.pass();
     }, trialArgs({ budget: 3 }));
     expect(score).toBe('independent');
@@ -79,7 +79,7 @@ test.describe('turn-taking engine — pass scoring (D-A)', () => {
       const clock = { t: 0 };
       const tr = new window.GlamTT.Trial({ ...args, cueLevel: 'full', waitMs: 3000, now: () => clock.t });
       tr.go();
-      tr.requestAction('wash');            // 1 of 3 — the budget is a cap, not a quota
+      tr.requestAction('wash');            // 1 of 3 - the budget is a cap, not a quota
       clock.t = 500;
       const score = tr.pass();
       const ev = tr.log.filter((e) => e.type === 'pass').pop();
@@ -93,7 +93,7 @@ test.describe('turn-taking engine — pass scoring (D-A)', () => {
     expect(out.unspent).toBe(2);
   });
 
-  test('AC-20 (C2) · a 0-action pass is `no-engagement`, never independent — an all-0-action run is Tier 3', async ({ page }) => {
+  test('AC-20 (C2) · a 0-action pass is `no-engagement`, never independent - an all-0-action run is Tier 3', async ({ page }) => {
     await bootEngine(page);
     const out = await page.evaluate((args) => {
       const clock = { t: 0 };
@@ -116,14 +116,14 @@ test.describe('turn-taking engine — pass scoring (D-A)', () => {
   test('AC-21 (D1) · a sub-budget stall scores prompted@level for the app cue, staff-prompted for a BT prompt', async ({ page }) => {
     await bootEngine(page);
 
-    // (a) the app's faded prompt fires on window-elapse — even though the
+    // (a) the app's faded prompt fires on window-elapse - even though the
     //     learner never reached the budget. Anchoring the ladder on
     //     budget-exhaustion (the pre-D1 design) made this vacuously independent.
     const viaApp = await page.evaluate((args) => {
       const clock = { t: 0 };
       const tr = new window.GlamTT.Trial({ ...args, cueLevel: 'full', waitMs: 3000, now: () => clock.t });
       tr.go();
-      tr.requestAction('wash');            // 1 of 3 — sub-budget
+      tr.requestAction('wash');            // 1 of 3 - sub-budget
       clock.t = 4000; tr.tick();
       return { score: tr.pass(), atCap: false };
     }, trialArgs({ budget: 3 }));
@@ -160,7 +160,7 @@ test.describe('turn-taking engine — pass scoring (D-A)', () => {
     expect(out.reason).toBe('bt-end');
   });
 
-  test('AC-23 (E1) · a BT prompt is TURN-DURABLE — a resume cannot launder it back to independent', async ({ page }) => {
+  test('AC-23 (E1) · a BT prompt is TURN-DURABLE - a resume cannot launder it back to independent', async ({ page }) => {
     await bootEngine(page);
 
     // The E1 attack, verbatim: app cue → BT real prompt → one legal resume
@@ -186,7 +186,7 @@ test.describe('turn-taking engine — pass scoring (D-A)', () => {
       const tr = new window.GlamTT.Trial({ ...args, cueLevel: 'full', waitMs: 3000, now: () => clock.t });
       tr.go();
       tr.requestAction('wash');
-      clock.t = 4000; tr.tick();           // premature idle cue — the learner was thinking
+      clock.t = 4000; tr.tick();           // premature idle cue - the learner was thinking
       clock.t = 5000; tr.requestAction('moist');   // genuine resume clears it
       clock.t = 5500;
       return tr.pass();
@@ -209,8 +209,8 @@ test.describe('turn-taking engine — pass scoring (D-A)', () => {
   });
 });
 
-test.describe('turn-taking engine — over-cap (D-B)', () => {
-  test('AC-3 · an over-cap tap is refused with kid-facing feedback, logged, and triggers the prompt — in every count mode', async ({ page }) => {
+test.describe('turn-taking engine - over-cap (D-B)', () => {
+  test('AC-3 · an over-cap tap is refused with kid-facing feedback, logged, and triggers the prompt - in every count mode', async ({ page }) => {
     await bootEngine(page);
     const out = await page.evaluate((args) => {
       const clock = { t: 0 };
@@ -228,7 +228,7 @@ test.describe('turn-taking engine — over-cap (D-B)', () => {
 
     expect(out.allowed).toBe(false);
     expect(out.overCap).toBe(true);
-    // The refusal must SAY something — eval defect 2 was 0/43 tools giving any
+    // The refusal must SAY something - eval defect 2 was 0/43 tools giving any
     // feedback at the cap in hidden-count mode. The engine returns the message
     // unconditionally so no count mode can be silent.
     expect(out.feedback).toBeTruthy();
@@ -238,7 +238,7 @@ test.describe('turn-taking engine — over-cap (D-B)', () => {
     expect(out.promptDelivered).toBe(true);
   });
 
-  test('AC-4a (A3) · over-cap forfeits only THAT turn — the per-turn fade curve survives', async ({ page }) => {
+  test('AC-4a (A3) · over-cap forfeits only THAT turn - the per-turn fade curve survives', async ({ page }) => {
     await bootEngine(page);
     // AC-4's pin is written as a 6-learner-turn trial; turn order here is
     // L,S,L,S… so 12 configured turns give the 6 learner turns it describes.
@@ -274,14 +274,13 @@ test.describe('turn-taking engine — over-cap (D-B)', () => {
       const tr = new window.GlamTT.Trial({ ...args, cueLevel: 'silent', waitMs: 3000, now: () => clock.t });
       tr.go();
       tr.requestAction('a'); tr.requestAction('b'); tr.requestAction('c');
-      clock.t = 1000; tr.requestAction('over');   // over-cap at t=1s — nothing is shown
+      clock.t = 1000; tr.requestAction('over');   // over-cap at t=1s - nothing is shown
       clock.t = 2000; tr.tick();                  // window has NOT elapsed (2s < 3s)
       return tr.pass();
     }, trialArgs({ budget: 3 }));
 
     // Two of the three signals are absent (no visible prompt, window not
-    // elapsed). Only a flag set by the over-cap EVENT itself can catch this —
-    // that is exactly why AC-4 was rewritten off cue-visibility.
+    // elapsed). Only a flag set by the over-cap EVENT itself can catch this - // that is exactly why AC-4 was rewritten off cue-visibility.
     expect(score).toBe('prompted@silent');
   });
 
@@ -302,13 +301,13 @@ test.describe('turn-taking engine — over-cap (D-B)', () => {
       return { caps, budget: tr.learnerBudget, over: tr.overCapTotal() };
     }, trialArgs({ budget: 3, learnerTurns: 4, giveBack: 'prompted' }));
 
-    expect(out.caps).toEqual([3, 3, 3, 3]);            // identical every turn — no bonus band
+    expect(out.caps).toEqual([3, 3, 3, 3]);            // identical every turn - no bonus band
     expect(Math.max(...out.caps)).toBe(out.budget);
     expect(out.over).toBe(4 * 6);                      // 6 refused attempts per turn
   });
 });
 
-test.describe('turn-taking engine — ask-back (D-K)', () => {
+test.describe('turn-taking engine - ask-back (D-K)', () => {
   test('AC-24 (F1) · a 37s silent ask after the forget onset scores prompted@silent, never independent', async ({ page }) => {
     await bootEngine(page);
     const out = await page.evaluate((args) => {
@@ -381,7 +380,7 @@ test.describe('turn-taking engine — ask-back (D-K)', () => {
 
     // The one hardened fix the adversarial review never re-tested (it landed on
     // the round cap). D-K originally anchored the forget onset to "allotted
-    // staff actions spent" — the pre-D1 exhaustion anchor — which never fires
+    // staff actions spent" - the pre-D1 exhaustion anchor - which never fires
     // when the staff GENUINELY forgets and does 0 of N. That reproduced eval
     // finding 3 (deadlock) and mis-filed the clinically correct mand as
     // `early-ask`. The onset must fire on STAFF-IDLE.
@@ -395,7 +394,7 @@ test.describe('turn-taking engine — ask-back (D-K)', () => {
       tr.go(); tr.requestAction('wash'); clock.t = 500; tr.pass();
 
       const staffBudget = tr.turn.budget;
-      const staffActions = tr.turn.actions;         // 0 — the staff forgets entirely
+      const staffActions = tr.turn.actions;         // 0 - the staff forgets entirely
 
       clock.t = 2000; tr.tick();
       const onsetBefore = !!tr.turn.onsetAt;        // idle interval not yet elapsed
@@ -418,7 +417,7 @@ test.describe('turn-taking engine — ask-back (D-K)', () => {
     expect(out.staffActions).toBe(0);
     expect(out.staffBudget).toBeGreaterThan(0);      // allotted actions exist and are unspent
     expect(out.onsetBefore).toBe(false);
-    expect(out.onsetAfter).toBe(true);               // the window OPENS — no F-23/F-6 deadlock
+    expect(out.onsetAfter).toBe(true);               // the window OPENS - no F-23/F-6 deadlock
     expect(out.onsetSource).toBe('staff-idle');      // NOT "allotted staff actions spent"
     expect(out.onsetStaffActions).toBe(0);           // fired on a genuine 0-of-N forget
     expect(out.earlyIfAskedNow).toBe('early-ask');   // before the onset it would have been early…
@@ -450,7 +449,7 @@ test.describe('turn-taking engine — ask-back (D-K)', () => {
       tr.go(); tr.requestAction('wash'); clock.t = 500; tr.pass();
       const start = tr.turn.startedAt;
       clock.t = start + 5000; tr.tick();
-      const at5s = !!tr.turn.onsetAt;                // must still be waiting — 20s prescribed
+      const at5s = !!tr.turn.onsetAt;                // must still be waiting - 20s prescribed
       clock.t = start + 21000; tr.tick();
       const at21s = !!tr.turn.onsetAt;
       return { at5s, at21s, prescribed: tr.turn.waitPrescribedMs };
@@ -481,7 +480,7 @@ test.describe('turn-taking engine — ask-back (D-K)', () => {
   });
 });
 
-test.describe('turn-taking engine — completion, tier and report (D-D / D-G / D-H)', () => {
+test.describe('turn-taking engine - completion, tier and report (D-D / D-G / D-H)', () => {
   test('AC-7 · turns=N auto-scales the budget to finish the look with the learner taking ~2/3 of the actions', async ({ page }) => {
     await bootEngine(page);
     const scales = await page.evaluate(() => {
@@ -558,7 +557,7 @@ test.describe('turn-taking engine — completion, tier and report (D-D / D-G / D
       const completedByActions = tr.lookComplete;
       const endedByActions = tr.ended;
       const first = tr.setLookComplete(true);
-      const second = tr.setLookComplete(true);       // latched — cannot double-fire
+      const second = tr.setLookComplete(true);       // latched - cannot double-fire
       const events = tr.log.filter((e) => e.type === 'look-complete').length;
       return { completedByActions, endedByActions, first, second, events, stillRunning: !tr.ended };
     }, trialArgs({ budget: 3, learnerTurns: 3, giveBack: 'prompted' }));
@@ -776,7 +775,7 @@ test.describe('turn-taking engine — completion, tier and report (D-D / D-G / D
     expect(out.types).toContain('forget-onset');
   });
 
-  test('a trial is always terminable — the BT end control works from any phase', async ({ page }) => {
+  test('a trial is always terminable - the BT end control works from any phase', async ({ page }) => {
     await bootEngine(page);
     const out = await page.evaluate((args) => {
       const phases = ['fresh', 'mid-learner', 'staff-idle', 'post-onset'];

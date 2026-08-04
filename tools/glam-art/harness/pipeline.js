@@ -1,18 +1,18 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   pipeline.js — Glam Team Makeover art pipeline (browser Canvas2D).
+   pipeline.js - Glam Team Makeover art pipeline (browser Canvas2D).
 
    Faithful port of the reference assets/art/_pipeline.js.txt (stripBg, darkMap,
-   alignTo, diffLayer, exportFrame, MODES) — tuned parameters preserved — PLUS
+   alignTo, diffLayer, exportFrame, MODES) - tuned parameters preserved - PLUS
    the three fixes DESIGN_FILE_CLAUDE.md §3 says the reference lacks:
 
-     §3.1 hard post-clip   — feature layers: zero α strictly outside zone+8px
+     §3.1 hard post-clip - feature layers: zero α strictly outside zone+8px
                              after hysteresis, then re-feather (kills feather
                              bleed + lighting-drift blobs).
-     §3.2 wash subtraction — wash layers: subtract the union of the brow/eye/lip
+     §3.2 wash subtraction - wash layers: subtract the union of the brow/eye/lip
                              feature zones (feathered ~6px) so a clean-washed
                              face with an absent upper slot never shows baked
                              brow/lip/eye pixels.
-     §3.3 hair config      — the inner-face rect + thresholds are per-model
+     §3.3 hair config - the inner-face rect + thresholds are per-model
                              tunable (default = the reference m1/m3 values).
 
    Runs in a headless Chromium page driven by run_pipeline.mjs. The frame passed
@@ -114,14 +114,14 @@
     return { canvas: al, best };
   }
 
-  // ── diff: wash / hair / feature — plain dmax + geometry pruning ───────────
+  // ── diff: wash / hair / feature - plain dmax + geometry pruning ───────────
   // Features and hair use the reference's RAW dmax diff (it captures each
   // feature faithfully: full lip color, hair with its black line-art outline,
-  // natural bangs). The ghost problem that diff carries — thin redrawn outlines
-  // of eyes/nose/shirt, misalignment bands — is solved GEOMETRICALLY afterwards
+  // natural bangs). The ghost problem that diff carries - thin redrawn outlines
+  // of eyes/nose/shirt, misalignment bands - is solved GEOMETRICALLY afterwards
   // by pruneComponents(): real features are thick blobs, every ghost is a thin
   // stroke. No color heuristics on features (they broke lips/brows/hair).
-  // Washes keep their verified signature gates (lighten/dull within skin — this
+  // Washes keep their verified signature gates (lighten/dull within skin - this
   // is what kills the checkerboard, covers the neck, and avoids wash ghosts).
   function diffLayer(baseC, bbox, alignedC, mode, eyeE) {
     const W = baseC.width, H = baseC.height;
@@ -129,7 +129,7 @@
     const ax = ctxOf(alignedC);
     const rd = ax.getImageData(0, 0, W, H); const rp = rd.data;
     // Zones anchor to the model's MEASURED eye-line (bbox fraction), not fixed
-    // fractions: the probe showed the reference zones sit 0.10–0.15 above the
+    // fractions: the probe showed the reference zones sit 0.10-0.15 above the
     // real anatomy under this bbox convention (lips zone missed the lips
     // entirely; "brows" zone caught forehead/hairline). zoneE = [x0, dy0, x1,
     // dy1] with dy relative to eyeE.
@@ -139,14 +139,13 @@
     const zx0 = bbox.x + (zone ? zone[0] : 0) * bbox.w, zy0 = bbox.y + (zone ? zone[1] : 0) * bbox.h;
     const zx1 = bbox.x + (zone ? zone[2] : 1) * bbox.w, zy1 = bbox.y + (zone ? zone[3] : 1) * bbox.h;
     // per-pixel signal: raw dmax for hair/features; gated signature for washes
-    // (and contour's 'dull'). Makeup/wash pixels require an opaque base pixel —
-    // they live ON the character (kills backdrop pockets like the m2 checker).
+    // (and contour's 'dull'). Makeup/wash pixels require an opaque base pixel - // they live ON the character (kills backdrop pockets like the m2 checker).
     const sig = new Float32Array(W * H);
     for (let k = 0; k < W * H; k++) {
       const i = k * 4;
       if (rp[i + 3] <= 20) continue;
       if (mode.kind === 'hair') {
-        // white-veto: none of the hair colours is white — near-white ghosts are
+        // white-veto: none of the hair colours is white - near-white ghosts are
         // the tee collar/shoulder redraw, not hair.
         if (rp[i] > 215 && rp[i + 1] > 215 && rp[i + 2] > 215) continue;
         sig[k] = Math.min(255, Math.max(Math.abs(rp[i] - bd[i]), Math.abs(rp[i + 1] - bd[i + 1]), Math.abs(rp[i + 2] - bd[i + 2]), bd[i + 3] < 20 ? 255 : 0));
@@ -164,7 +163,7 @@
       } else {
         if (bd[i + 3] < 20) continue;                 // base must be opaque here
         // white-veto: sclera redraw ghosts are THICK white blobs geometry can't
-        // reject — but no makeup layer ADDS near-white (highlight is gated).
+        // reject - but no makeup layer ADDS near-white (highlight is gated).
         if (!mode.gate && rp[i] > 215 && rp[i + 1] > 215 && rp[i + 2] > 215) continue;
         sig[k] = mode.gate
           ? featureSig(mode.gate, null, bd[i], bd[i + 1], bd[i + 2], rp[i], rp[i + 1], rp[i + 2])
@@ -178,7 +177,7 @@
     } else if (mode.kind === 'hair') {
       // Reference diff with threshold ASYMMETRY: the inner-face rect raises the
       // bar (Δ>inside) instead of excluding pixels, so bangs that differ
-      // strongly from skin still land naturally — no rectangle clipping, no
+      // strongly from skin still land naturally - no rectangle clipping, no
       // color tests, black line-art outline kept. The ghosts this admits (thin
       // face/neck/shirt outlines, temple misalignment bands, checker verticals)
       // are removed after: keep only the LARGEST component (the hair mass) and
@@ -190,7 +189,7 @@
       const fx0 = bbox.x + rect[0] * bbox.w, fx1 = bbox.x + rect[2] * bbox.w;
       const fy0 = bbox.y + rect[1] * bbox.h, fy1 = bbox.y + rect[3] * bbox.h;
       // brow-band carve: where a fringe reaches the brows, the shifted brow
-      // redraw is a THICK dark arc — geometry keeps it and it double-prints
+      // redraw is a THICK dark arc - geometry keeps it and it double-prints
       // brows over the composite. Anatomy wins: no hair pixels in the brow band
       // of the inner face (temple hair outside the rect is unaffected).
       const bbY0 = (eyeE != null) ? bbox.y + (eyeE - 0.085) * bbox.h : -1;
@@ -203,7 +202,7 @@
         const inFace = (x > fx0 && x < fx1 && y > fy0 && y < fy1);
         if (sig[k] > (inFace ? hc.inside : hc.outside)) keep[k] = 1;
       }
-    } else { // feature — zone-clipped hysteresis on the signature
+    } else { // feature - zone-clipped hysteresis on the signature
       const seedT = mode.seed || 30, growT = mode.grow || 12;
       const st = [];
       for (let k = 0; k < W * H; k++) {
@@ -231,18 +230,17 @@
     }
     // ── geometry cleanup (replaces all color heuristics on features) ────────
     if (mode.kind === 'hair') {
-      // Core-reconstruction: erode to thick cores (only the hair mass survives —
-      // every ghost outline/band is thin-everywhere), then re-grow geodesically
+      // Core-reconstruction: erode to thick cores (only the hair mass survives - // every ghost outline/band is thin-everywhere), then re-grow geodesically
       // INSIDE the kept mask so the mass regains its exact edges, outline and
       // strand tips, while attached thin strings (jaw/neck/shirt lines) that run
       // farther than GEO px from any core are cut. Then close small enclosed
-      // holes (brown-on-brown crown gap) — capped so a large region (the face)
+      // holes (brown-on-brown crown gap) - capped so a large region (the face)
       // can never be swallowed like unbounded hole-fill did.
       coreReconstruct(keep, W, H, 4, 14);
       fillHoles(keep, rp, W, H, Math.round(W * H * 0.02));
       pruneComponents(keep, W, H, { minArea: 9000 }); // sweep shoulder-swoosh/string fragments (smallest real hair mass ≈ 20k px)
     } else if (mode.kind === 'wash' && mode.prune) {
-      // Wash masks are DAPPLED (soft speckle) — close them first so real wash
+      // Wash masks are DAPPLED (soft speckle) - close them first so real wash
       // regions turn solid, then reconstruction: ghost RINGS attach to real
       // patches (component-prune can't cut them), so cut everything > geo px
       // from a thick core instead, then sweep crumbs.
@@ -255,7 +253,7 @@
     // zero alpha where not kept
     for (let k = 0; k < W * H; k++) { if (!keep[k]) rp[k * 4 + 3] = 0; }
     // soft layers (contour/highlight/blush/glow): the masters are airbrush
-    // gradients — encode diff strength into alpha so pads fade at their edges
+    // gradients - encode diff strength into alpha so pads fade at their edges
     // instead of printing hard-edged patches.
     if (mode.softAlpha) {
       const s = mode.softAlpha;
@@ -297,7 +295,7 @@
   // included. rectE anchors the rect to the measured eye-line (m1: matches the
   // reference's tuned [0.155..0.42] band at eyeE≈0.375). Ghost cleanup happens
   // later via core-reconstruction + capped hole-fill.
-  // inside=34 (was 60): blonde bangs over light skin diff ~46 — 60 cut a
+  // inside=34 (was 60): blonde bangs over light skin diff ~46 - 60 cut a
   // rectangle out of the fringe; the face-redraw ghosts 60 guarded against are
   // now killed geometrically by coreReconstruct instead.
   const DEFAULT_HAIR = { rectE: [0.25, -0.22, 0.75, 0.045], rect: [0.25, 0.155, 0.75, 0.42], inside: 34, outside: 18 };
@@ -352,7 +350,7 @@
   // Real features are thick blobs; ghosts (redrawn outlines, AA edges,
   // misalignment bands) are thin strokes. A component survives iff it has a
   // "core": a pixel still set after coreR 8-neighbour erosions (i.e. the blob is
-  // ≥ 2·coreR+1 px thick somewhere) — and covers ≥ minArea px. Component edges
+  // ≥ 2·coreR+1 px thick somewhere) - and covers ≥ minArea px. Component edges
   // are untouched (no dilate-back distortion). largestOnly keeps just the
   // biggest component (hair = one connected mass).
   function pruneComponents(keep, W, H, opt) {
@@ -405,7 +403,7 @@
     for (let k = 0; k < W * H; k++) if (keep[k] && drop[label[k]]) keep[k] = 0;
   }
 
-  // Morphological closing: dilate r then erode r — solidifies dappled masks
+  // Morphological closing: dilate r then erode r - solidifies dappled masks
   // (soft wash speckle) without moving true boundaries. 4-neighbour, cheap.
   function closeMask(keep, W, H, r) {
     let cur = Uint8Array.from(keep);
@@ -428,9 +426,8 @@
     for (let k = 0; k < W * H; k++) keep[k] = cur[k];
   }
 
-  // Core-reconstruction (hair): erode coreR times — only regions ≥ 2·coreR+1 px
-  // thick keep a "core" (the hair mass; every ghost outline/band is thinner) —
-  // then re-grow the core geodesically INSIDE the original mask for `geo`
+  // Core-reconstruction (hair): erode coreR times - only regions ≥ 2·coreR+1 px
+  // thick keep a "core" (the hair mass; every ghost outline/band is thinner) - // then re-grow the core geodesically INSIDE the original mask for `geo`
   // rounds. The mass recovers its exact edges/outline/strand tips; attached
   // thin strings (jaw/neck/shirt lines) farther than geo px from a core are cut.
   function coreReconstruct(keep, W, H, coreR, geo) {
@@ -461,7 +458,7 @@
   // Fill enclosed transparent holes inside a kept mass (hair crown where the new
   // hair ≈ base buzz so the diff missed it). Flood the complement from the
   // border; unreached non-kept regions are enclosed → restore from the aligned
-  // render (only where it has content), but ONLY regions ≤ maxArea px — a large
+  // render (only where it has content), but ONLY regions ≤ maxArea px - a large
   // enclosed region (the whole face ringed by hair) must never be swallowed.
   function fillHoles(keep, rp, W, H, maxArea) {
     const seen = new Uint8Array(W * H); const st = [];
@@ -557,7 +554,7 @@
     }
     pruneComponents(keep, W, H, { largestOnly: true });           // the tee mass
     fillHoles(keep, p, W, H, Math.round(W * H * 0.06));           // close fold/shadow holes
-    // recolor the WHOLE mask by luminance — folds keep their shading, black
+    // recolor the WHOLE mask by luminance - folds keep their shading, black
     // outlines stay dark, white body takes the full tint.
     for (let k = 0; k < W * H; k++) {
       const i = k * 4;
@@ -586,7 +583,7 @@
 
   // Eye-line detection (bbox fraction): the row with the most bright sclera
   // pixels in the upper-central face band. Anchors every feature zone to the
-  // model's real anatomy (the fixed reference fractions sat 0.10–0.15 too high
+  // model's real anatomy (the fixed reference fractions sat 0.10-0.15 too high
   // under this bbox convention).
   function detectEyeLine(canvas, bbox) {
     const W = canvas.width, H = canvas.height;
@@ -681,7 +678,7 @@
 
   G.processSpot = async function (dataUrl) {
     const img = await loadImage(dataUrl);
-    // spot ships with true alpha — no diff; content-crop + downscale to 256.
+    // spot ships with true alpha - no diff; content-crop + downscale to 256.
     const c = createCanvas(img.width, img.height); ctxOf(c).drawImage(img, 0, 0);
     return toPng(cropResizeSprite(c, 256, 12));
   };
@@ -697,7 +694,7 @@
 
   G.processEar = async function (studDataUrl, earAnchors, widthFrac) {
     const img = await loadImage(studDataUrl);
-    // Stud PNGs carry a baked background (only `spot` ships true alpha) — strip it
+    // Stud PNGs carry a baked background (only `spot` ships true alpha) - strip it
     // so composeEars crops to the stud itself, not a white matte box.
     const { canvas } = stripBg(img);
     return toPng(composeEars(canvas, earAnchors, widthFrac || 0.045));

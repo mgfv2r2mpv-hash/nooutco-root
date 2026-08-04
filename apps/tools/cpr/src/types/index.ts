@@ -26,7 +26,7 @@ export const ALL_CONDITIONS: ConditionType[] = ['attention', 'escape', 'tangible
 
 // ─── Interval ────────────────────────────────────────────────────────────────
 
-/** All four consequence types recorded every interval — BCBAs don't control consequences. */
+/** All four consequence types recorded every interval - BCBAs don't control consequences. */
 export interface ConsequenceRecord {
   attention: ThreeWay;
   escape:    ThreeWay;
@@ -66,7 +66,7 @@ export interface Session {
   intervalCount: number;
 
   /**
-   * Interview-indicated functions — shown LEFT in the consequence section
+   * Interview-indicated functions - shown LEFT in the consequence section
    * and easier to toggle (positioned for faster data entry).
    */
   indicatedFunctions: ConditionType[];
@@ -102,7 +102,7 @@ export interface Assessment {
   id: string;
   _schemaVersion: 2;
 
-  // Header — shared across all sessions in this assessment
+  // Header - shared across all sessions in this assessment
   clientName:               string;
   observer:                 string;
   setting:                  string;
@@ -118,7 +118,7 @@ export interface Assessment {
   separateSessions: Partial<Record<ConditionType, Session>>;
 
   /**
-   * Synthesized sessions — multiple runs are allowed
+   * Synthesized sessions - multiple runs are allowed
    * (e.g., second run with different items pre-selected).
    */
   synthesizedSessions: Session[];
@@ -146,11 +146,11 @@ export interface ContingencyTable {
   colTotalCPlus:   number;
   colTotalCMinus:  number;
   grandTotal:      number;
-  /** P(Bx | C+) — null when colTotalCPlus = 0 */
+  /** P(Bx | C+) - null when colTotalCPlus = 0 */
   pBxGivenCPlus:  number | null;
-  /** P(Bx | C−) — null when colTotalCMinus = 0 */
+  /** P(Bx | C−) - null when colTotalCMinus = 0 */
   pBxGivenCMinus: number | null;
-  /** CV = P(Bx|C+) − P(Bx|C−) — null when either probability is null */
+  /** CV = P(Bx|C+) − P(Bx|C−) - null when either probability is null */
   cv: number | null;
 }
 

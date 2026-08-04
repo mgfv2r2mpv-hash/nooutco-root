@@ -1,10 +1,10 @@
 const BASELINE_CARDS = [
   { id: 'vs', icon: '📅', label: 'Schedules', title: 'Visual Schedule', desc: 'Drag-to-order first/next routines with check-off.' },
-  { id: 'ft', icon: '➡️', label: 'Antecedent Support', title: 'First–Then Board', desc: 'Pair a demand with a chosen reinforcer, visually.' },
+  { id: 'ft', icon: '➡️', label: 'Antecedent Support', title: 'First - Then Board', desc: 'Pair a demand with a chosen reinforcer, visually.' },
   { id: 'te', icon: '🪙', label: 'Reinforcement', title: 'Token Economy', desc: 'Configurable token boards that travel with the client.' },
-  { id: 'cb', icon: '🗣️', label: 'Communication · AAC', title: 'Communication Board', desc: 'Core-word & requesting visuals — point or tap to communicate; travels with the learner.' },
-  { id: 'sc', icon: '🗂️', label: 'Concept Skills', title: 'Sorting & Categories', desc: 'Drag items into categories — features, function, class.' },
-  { id: 'fd', icon: '✋', label: 'Listener Skills', title: 'Following Directions', desc: '1–3 step receptive directions with built-in prompts.' },
+  { id: 'cb', icon: '🗣️', label: 'Communication · AAC', title: 'Communication Board', desc: 'Core-word & requesting visuals - point or tap to communicate; travels with the learner.' },
+  { id: 'sc', icon: '🗂️', label: 'Concept Skills', title: 'Sorting & Categories', desc: 'Drag items into categories - features, function, class.' },
+  { id: 'fd', icon: '✋', label: 'Listener Skills', title: 'Following Directions', desc: '1-3 step receptive directions with built-in prompts.' },
 ];
 
 export default {
@@ -141,7 +141,7 @@ async function handleFeatureStarter(request, env) {
   const text = await callAnthropic(env.ANTHRO_KEY, {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 600,
-    system: 'You are a technical lead preparing a Claude Code session prompt to implement a new ABA therapy app feature for games.nooutco.me or tools.nooutco.me. Return ONLY the ready-to-use Claude Code prompt — no preamble, no markdown fences.',
+    system: 'You are a technical lead preparing a Claude Code session prompt to implement a new ABA therapy app feature for games.nooutco.me or tools.nooutco.me. Return ONLY the ready-to-use Claude Code prompt - no preamble, no markdown fences.',
     messages: [{
       role: 'user',
       content: `Feature:\n${featureContext}\n\nWrite a Claude Code prompt (under 300 words) that:\n1. States the goal in one sentence\n2. Lists ABA/clinical constraints (no PHI logging, session-safe)\n3. Suggests which existing game files to review for reference\n4. Outlines the approach in 3-5 bullet points\n\nStart directly with: "Implement: [feature name]"`,
@@ -176,7 +176,7 @@ async function handleNewEnhancement(request, env) {
     const cleaned = text.replace(/^```json\s*/m, '').replace(/^```\s*/m, '').replace(/```\s*$/m, '').trim();
     parsed = JSON.parse(cleaned);
   } catch {
-    return jsonRes(502, { error: 'AI returned invalid JSON — try again' });
+    return jsonRes(502, { error: 'AI returned invalid JSON - try again' });
   }
 
   return jsonRes(200, parsed);

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Glam Team Makeover — the salon dressing and the choice echo (refresh R5).
+ * Glam Team Makeover - the salon dressing and the choice echo (refresh R5).
  *
  * R4 gave the activity its DEPTH (ten stations, sixty-nine tools). This slice is
  * the other half of "a richer, more themed makeover activity": the room the
@@ -12,7 +12,7 @@ import { test, expect } from '@playwright/test';
  *
  *   1. THE ECHO IS AN ECHO, NOT A VERDICT. Every apply path now surfaces a chip
  *      carrying the child's own tool name. The moment that chip composes a
- *      SENTENCE around the name it becomes a claim — either about the choice
+ *      SENTENCE around the name it becomes a claim - either about the choice
  *      ("nice pick!", which is exactly the evaluation this build refuses to make
  *      of a creative choice) or about the client (§3.7.1 / AC-10, refutable).
  *      So the chip's text must stay: sparkle + the tool's own label, nothing
@@ -52,19 +52,19 @@ async function stage(page, { routine = 'free' } = {}) {
     const keys = Object.keys(c);
     return keys.length > 0 && keys.every((k) => c[k].ok);
   }, undefined, { timeout: 30000 });
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   return errors;
 }
 
 /** The echo chip, addressed by the animation it is the only user of. */
 const chip = (page) => page.locator('[style*="gtm-mirror-"]');
-/** The stage panel — the canvas's grandparent (canvas → person box → panel). */
+/** The stage panel - the canvas's grandparent (canvas → person box → panel). */
 const stagePanel = (page) => page.locator('#gtm-canvas').locator('xpath=../..');
 
 /** Apply one tool end to end, whatever its mechanic, and leave the echo up.
     The three overlays the stage can arm are told apart by the animation each one
     is styled with: `.gtm-tool` is the paint drag surface, `gtm-pim` the spot
-    rings, `gtm-target` the tap zone. A `choose` tool arms nothing — it lands on
+    rings, `gtm-target` the tap zone. A `choose` tool arms nothing - it lands on
     the button press. */
 async function useTool(page, label) {
   await page.getByTitle(label, { exact: true }).first().click();
@@ -133,7 +133,7 @@ test.describe('salon dressing + the choice echo (R5)', () => {
 
     /* One tool per mechanic that reaches the echo: choose, tap-toggle,
        tap-recolor, paint, and the per-spot patch. If a future change starts
-       wrapping the label ("Great pick — Bob!") this is where it fails. */
+       wrapping the label ("Great pick - Bob!") this is where it fails. */
     const cases = ['Bob', 'Shape brows', 'Copper', 'Wash', 'Treat spots'];
     for (const label of cases) {
       await useTool(page, label);
@@ -167,15 +167,15 @@ test.describe('salon dressing + the choice echo (R5)', () => {
     expect(secondBtn, 'the pressed button re-plays too').not.toBe(firstBtn);
   });
 
-  /* TUNING fix 5 — the warmth is now BOUNDED as well as present.
+  /* TUNING fix 5 - the warmth is now BOUNDED as well as present.
      The glow was a 60%-alpha cream radial centred at 50% 44%, i.e. squarely on the
      client's face: measured on m3 at desktop it lifted the canvas region's mean
-     luminance by 24.6 of a 133 base — an ~18% wash over the face on every single
+     luminance by 24.6 of a 133 base - an ~18% wash over the face on every single
      action, which is what read as a lens flare. Re-anchored to the top edge at
      20% alpha it lifts the same region by 0.4 and the whole panel by 1.2.
      So this test now pins BOTH ends: the panel still warms (the echo chip must not
      float on nothing), and the face must stay essentially untouched. An upper
-     bound is the whole point of the fix — without one, "it warms" passes just as
+     bound is the whole point of the fix - without one, "it warms" passes just as
      happily at the strength the maintainer rejected. */
   test('the mirror warms gently behind the echo, without washing out the client', async ({ page }) => {
     await stage(page);
@@ -219,7 +219,7 @@ test.describe('salon dressing + the choice echo (R5)', () => {
 
     /* The client's own art is what the flare was ruining. Applying a step DOES
        repaint the canvas (brows land), so this is bounded rather than pinned to
-       zero — the old glow moved it by 24.6, which no tool stroke comes near. */
+       zero - the old glow moved it by 24.6, which no tool stroke comes near. */
     expect(Math.abs(faceDuring - faceBefore), 'the glow must not wash the client out').toBeLessThan(6);
   });
 
@@ -228,7 +228,7 @@ test.describe('salon dressing + the choice echo (R5)', () => {
 
     /* Compositor-friendly motion is a standing constraint for this build (§3.9),
        and a keyframe that animates width/top/filter is invisible in review but
-       costs a layout or a paint on every frame — on the exact surface a child is
+       costs a layout or a paint on every frame - on the exact surface a child is
        dragging a brush across. */
     const offenders = await page.evaluate(() => {
       const allowed = new Set(['transform', 'opacity', 'box-shadow', 'animation-timing-function']);

@@ -1,7 +1,7 @@
 'use strict';
 
 /* ══════════════════════════════════════════════════════════════════
-   PATTERN PACK CO. — assembly-line skin
+   PATTERN PACK CO. - assembly-line skin
    ------------------------------------------------------------------
    Pure presentation. The game engine (game.js) calls four hooks:
 
@@ -121,8 +121,7 @@
     if (!ready() || !boxEl || !btnEl) return;
 
     // The slot is hidden (is-landing) only while the item is in flight. This
-    // reveal MUST always run exactly once so a slot can never be left blank —
-    // even if the flight is interrupted, the geometry is unmeasurable, or the
+    // reveal MUST always run exactly once so a slot can never be left blank - // even if the flight is interrupted, the geometry is unmeasurable, or the
     // transition event never fires. Everything funnels through revealSlot().
     let revealed = false;
     const revealSlot = () => {
@@ -136,7 +135,7 @@
     try {
       const from = btnEl.getBoundingClientRect();
       const to   = boxEl.getBoundingClientRect();
-      // Can't measure a flight path — just show the symbol that's already set.
+      // Can't measure a flight path - just show the symbol that's already set.
       if (!from.width || !to.width) { revealSlot(); return; }
 
       const clone = document.createElement('div');
@@ -157,7 +156,7 @@
       const ms    = dur(D.fly);
 
       // The clone lands ON TOP of the slot, then we reveal the (identical)
-      // slot glyph and drop the clone in the same frame — a seamless handoff.
+      // slot glyph and drop the clone in the same frame - a seamless handoff.
       let landed = false;
       const land = () => {
         if (landed) return;
@@ -168,8 +167,7 @@
 
       // Force a reflow so the start position is committed before the
       // transition is switched on. Without this the two style writes can be
-      // coalesced into one paint and the clone teleports instead of flying —
-      // the root cause of the inconsistent / "blank then jump" behaviour.
+      // coalesced into one paint and the clone teleports instead of flying - // the root cause of the inconsistent / "blank then jump" behaviour.
       void clone.offsetWidth;
       clone.style.transition = `transform ${ms}ms ${EASE}`;
       clone.style.transform  = `translate(${dx}px, ${dy}px) scale(${scale})`;
@@ -183,7 +181,7 @@
     }
   }
 
-  // ── Hook: incorrect tap — a small jolt on the line ────────────────
+  // ── Hook: incorrect tap - a small jolt on the line ────────────────
   function onWrong(boxEl, btnEl) {
     if (!ready()) return;
     els.tray.classList.remove('belt-jolt');
@@ -192,7 +190,7 @@
     setTimeout(() => els.tray.classList.remove('belt-jolt'), 420);
   }
 
-  // ── Hook: box finished — bow it, ship it, close lid, light neon ───
+  // ── Hook: box finished - bow it, ship it, close lid, light neon ───
   function onComplete(outcome, cb) {
     const done = () => { if (typeof cb === 'function') cb(); };
     if (!ready()) return done();

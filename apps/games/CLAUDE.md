@@ -1,4 +1,4 @@
-# games-nooutco-me — Project Rules
+# games-nooutco-me - Project Rules
 
 ## Project Overview
 
@@ -9,16 +9,16 @@ ABA therapy game platform hosted at **games.nooutco.me**. Static HTML game files
 ## Tech Stack
 
 - **Frontend:** Vanilla HTML/JS per game (no build step)
-- **Backend:** Cloudflare Worker (`worker.js`) — image management, admin ops, AI fact expansion
+- **Backend:** Cloudflare Worker (`worker.js`) - image management, admin ops, AI fact expansion
 - **Storage:** Cloudflare R2 (images), GitHub repo as source-of-truth for game content files
-- **Admin:** `AdminTools/` — protected by `ADMIN_SECRET`, manages game images and topics
-- **AI:** Anthropic API via `ANTHRO_KEY` — `POST /api/admin/update-facts` expands FamousPersonGame facts
+- **Admin:** `AdminTools/` - protected by `ADMIN_SECRET`, manages game images and topics
+- **AI:** Anthropic API via `ANTHRO_KEY` - `POST /api/admin/update-facts` expands FamousPersonGame facts
 
 ## Worker Secrets (set in Cloudflare dashboard)
 
 | Secret | Purpose |
 |---|---|
-| `GITHUB_TOKEN` | Fine-grained PAT — Contents: Read & Write on repo |
+| `GITHUB_TOKEN` | Fine-grained PAT - Contents: Read & Write on repo |
 | `GITHUB_OWNER` | GitHub username/org |
 | `GITHUB_REPO` | Repository name |
 | `ADMIN_SECRET` | AdminTools password |
@@ -28,7 +28,7 @@ ABA therapy game platform hosted at **games.nooutco.me**. Static HTML game files
 
 ### Worker Changes
 1. `npx tsc --noEmit` (if TypeScript is added)
-2. `npx wrangler dev` — simulate locally before deploying
+2. `npx wrangler dev` - simulate locally before deploying
 3. **Audit:** No game content, image URLs, or player-identifiable data in logs or error responses
 
 ### Game HTML Changes
@@ -38,17 +38,17 @@ ABA therapy game platform hosted at **games.nooutco.me**. Static HTML game files
 
 ## 2. Security & Privacy
 
-- **No PHI in logs:** Game content may reference client-facing stimuli — never log player responses or session data
+- **No PHI in logs:** Game content may reference client-facing stimuli - never log player responses or session data
 - **Admin endpoints gated:** All `/api/admin/*` routes require `ADMIN_SECRET` header check
-- **No cleartext secrets:** Worker secrets via Cloudflare dashboard only — never hardcoded in `worker.js` or committed files
+- **No cleartext secrets:** Worker secrets via Cloudflare dashboard only - never hardcoded in `worker.js` or committed files
 - **CORS:** Only allow origins that need it; do not use `*` for admin routes
-- **V8 Isolates:** Worker is stateless — do not rely on global variable persistence across invocations
+- **V8 Isolates:** Worker is stateless - do not rely on global variable persistence across invocations
 
 ## 3. Code Standards
 
-- **Simplicity first:** Games are vanilla HTML/JS — no framework unless the complexity genuinely demands it
+- **Simplicity first:** Games are vanilla HTML/JS - no framework unless the complexity genuinely demands it
 - **Worker CPU budget:** Stay within 50ms (Bundled) / 10ms (Free) CPU limits
-- **Environment bindings:** Use `wrangler.toml` for R2, KV, and secret bindings — never hardcode
+- **Environment bindings:** Use `wrangler.toml` for R2, KV, and secret bindings - never hardcode
 - **Error handling:** Worker must return structured JSON errors, never raw stack traces
 - **No TODOs:** Either implement or leave a scoped note on what's missing
 
@@ -60,8 +60,7 @@ ABA therapy game platform hosted at **games.nooutco.me**. Static HTML game files
   `window.APP_VERSION` to the page.
 - **`_headers`:** HTML/dynamic routes are `no-cache` (always revalidate); versioned
   CSS/JS are `immutable`. A version bump changes asset URLs, busting cache safely.
-- **Bump policy:** any deploy that changes CSS/JS **must** bump `APP_VERSION` —
-  patch for fixes, minor for features/reskins; major stays `0` for now (start `0.1.0`).
+- **Bump policy:** any deploy that changes CSS/JS **must** bump `APP_VERSION` - patch for fixes, minor for features/reskins; major stays `0` for now (start `0.1.0`).
 - **Config migration:** `migrate-config.js` (`window.NooutcoConfig`) stamps the config
   version and runs ordered, per-key transforms on bump so a saved configuration is
   never silently dropped. Games call `NooutcoConfig.migrate()` early in boot.

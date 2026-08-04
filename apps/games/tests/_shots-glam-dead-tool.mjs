@@ -14,11 +14,11 @@
    The state photographed is the one the maintainer reported: every spot patched,
    two of three concealed, the turn handed over. Per phase:
 
-     · deadtool-<phase>-<turn>.png   — the Skincare shelf of the trolley, on my
+     · deadtool-<phase>-<turn>.png - the Skincare shelf of the trolley, on my
                                        turn and again on the partner's, which is
                                        where `Treat spots` has to read as
                                        finished rather than as still-offered.
-     · deadflicker-<phase>.png       — the same shelf immediately after clicking
+     · deadflicker-<phase>.png - the same shelf immediately after clicking
                                        `Treat spots`. On the pre-change build
                                        this is the frame the ✓ vanished in.
 
@@ -67,7 +67,7 @@ await page.getByLabel('Character', { exact: true }).selectOption('m4');
 await page.getByLabel('Routine', { exact: true }).selectOption('on');
 await page.getByLabel('Turns', { exact: true }).selectOption('4');
 await page.getByRole('button', { name: /^▶ Play/ }).click();
-await page.getByRole('button', { name: /Go —/ }).click();
+await page.getByRole('button', { name: /Go - / }).click();
 await page.waitForFunction(painted, undefined, { timeout: 20000 });
 
 // The reported state: washed, moisturized, all three spots patched, two concealed.
@@ -92,8 +92,8 @@ else {
   await page.waitForTimeout(250);
   await shelf.screenshot({ path: `${OUT}deadflicker-${PHASE}.png` });
 
-  // And the same shelf after the exchange — the state the partner inherits.
-  await page.getByRole('button', { name: /Done — their turn/ }).click();
+  // And the same shelf after the exchange - the state the partner inherits.
+  await page.getByRole('button', { name: /Done - their turn/ }).click();
   await page.waitForTimeout(400);
   await shelf.screenshot({ path: `${OUT}deadtool-${PHASE}-theirs.png` });
 }

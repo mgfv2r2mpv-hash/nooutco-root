@@ -1,35 +1,35 @@
-# tools/glam-art — Glam Team Makeover art pipeline (build-time)
+# tools/glam-art - Glam Team Makeover art pipeline (build-time)
 
 Turns the delivered character renders into the game-ready, pre-registered
 520×600 transparent PNG layers that `apps/games/glam-team-makeover` composites.
-**Not served** — only the processed PNGs under the game's `assets/art/person/`
+**Not served** - only the processed PNGs under the game's `assets/art/person/`
 are committed and shipped. Source of the contract: the Claude Design project
-`ABA turn-taking makeup game` (`DESIGN_FILE_CLAUDE.md` §1–6, `PIPELINE_HANDOFF_CLAUDE.md`).
+`ABA turn-taking makeup game` (`DESIGN_FILE_CLAUDE.md` §1-6, `PIPELINE_HANDOFF_CLAUDE.md`).
 
 ## Layout
 
-- `harness/pipeline.js` — browser Canvas2D pipeline. Faithful port of the design
+- `harness/pipeline.js` - browser Canvas2D pipeline. Faithful port of the design
   project's reference `_pipeline.js.txt` (`stripBg → alignTo → diffLayer →
   exportFrame`, tuned `MODES` preserved) **plus the DESIGN_FILE §3 fixes** the
   reference lacked:
-  - **§3.1 hard post-clip** — feature layers zero α outside `zone+8px` after
+  - **§3.1 hard post-clip** - feature layers zero α outside `zone+8px` after
     hysteresis, then feather (kills feather-bleed / lighting-drift blobs).
-  - **§3.2 wash carve** (`WASH_SUBTRACT_MODE='color'`) — inside the brow/eye/lip
+  - **§3.2 wash carve** (`WASH_SUBTRACT_MODE='color'`) - inside the brow/eye/lip
     rects, drop only *non-skin* pixels (baked recolor spill) while keeping clean
     skin coverage. The naive rect-subtract left a visible band; the color-aware
     carve does not.
-  - **§3.3 hair config** — inner-face rect + thresholds are per-model tunable
+  - **§3.3 hair config** - inner-face rect + thresholds are per-model tunable
     (`HAIR_OVERRIDES`); default = the reference m1/m3 values.
-- `harness/frame.mjs` (+ `.test.mjs`) — the `bbox → 520×600 frame` formula,
+- `harness/frame.mjs` (+ `.test.mjs`) - the `bbox → 520×600 frame` formula,
   reverse-engineered from and unit-tested against the shipped m1/m3 metas.
-- `harness/modes.mjs` — per-layer diff modes, the delivered output plan, shirt
+- `harness/modes.mjs` - per-layer diff modes, the delivered output plan, shirt
   tints, ear designs, per-model anchors.
-- `run_pipeline.mjs` — Playwright driver: masters → in-page pipeline → writes
+- `run_pipeline.mjs` - Playwright driver: masters → in-page pipeline → writes
   `apps/games/glam-team-makeover/assets/art/person/<model>/*.png` + `_meta.json`.
-- `qa.mjs` — DESIGN_FILE §4 QA gate: per-layer zone-containment, wash carve
+- `qa.mjs` - DESIGN_FILE §4 QA gate: per-layer zone-containment, wash carve
   check, and the full-stack `_qa-fullstack.png` composite per model.
-- `diag.mjs` — composite base + named layers over grey for eyeballing one layer.
-- `masters/` — symlink to the uncompressed masters (gitignored, ~117 MB).
+- `diag.mjs` - composite base + named layers over grey for eyeballing one layer.
+- `masters/` - symlink to the uncompressed masters (gitignored, ~117 MB).
 
 ## Run
 

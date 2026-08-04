@@ -1,4 +1,4 @@
-# nooutco-root — Project Rules
+# nooutco-root - Project Rules
 
 ## Project Overview
 
@@ -6,10 +6,10 @@ Root landing page at **nooutco.me**. Links to games and tools. Hosts the communi
 
 ## Tech Stack
 
-- **Frontend:** `index.html` + `admin/index.html` — vanilla HTML/CSS/JS
-- **Backend:** Cloudflare Pages Worker (`_worker.js`) — `/api/cards`, `/api/vote`, `/api/admin/*`
-- **Storage:** KV namespace `VOTE_DATA` (id: `955ceb7270204f4a86d8229b2c7dc2a7`) — vote tallies, card status, custom cards
-- **AI:** Anthropic API via `ANTHRO_KEY` — feature starter prompts and new-enhancement analysis
+- **Frontend:** `index.html` + `admin/index.html` - vanilla HTML/CSS/JS
+- **Backend:** Cloudflare Pages Worker (`_worker.js`) - `/api/cards`, `/api/vote`, `/api/admin/*`
+- **Storage:** KV namespace `VOTE_DATA` (id: `955ceb7270204f4a86d8229b2c7dc2a7`) - vote tallies, card status, custom cards
+- **AI:** Anthropic API via `ANTHRO_KEY` - feature starter prompts and new-enhancement analysis
 - **Hosting:** Cloudflare Pages, deploys directly from `main`
 
 ## Worker Secrets (set in Cloudflare dashboard for `root-nooutco-me`)
@@ -42,7 +42,7 @@ This repo commits directly to `main` (no separate dev branch).
 
 ## Code Standards
 
-- Vanilla HTML/CSS/JS — no framework, no build step
-- No cleartext secrets — Worker secrets via Cloudflare dashboard only
-- No PHI — admin tools generate prompts only; clinician owns final output
+- Vanilla HTML/CSS/JS - no framework, no build step
+- No cleartext secrets - Worker secrets via Cloudflare dashboard only
+- No PHI - admin tools generate prompts only; clinician owns final output
 - Match root visual style (hardcoded colors, no tokens.css)

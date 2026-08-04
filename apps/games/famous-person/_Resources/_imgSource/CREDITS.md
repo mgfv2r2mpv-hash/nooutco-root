@@ -9,7 +9,7 @@ require attribution; this file is that attribution. Public-domain and CC0 entrie
 
 | Person | File | Source (Commons) | Author | License |
 |---|---|---|---|---|
-| Andy Warhol | `andy-warhol.jpg` | [Andy_Warhol_at_the_Jewish_Museum_(by_Bernard_Gotfryd)_–_LOC.jpg](https://commons.wikimedia.org/wiki/File:Andy_Warhol_at_the_Jewish_Museum_(by_Bernard_Gotfryd)_%E2%80%93_LOC.jpg) | Bernard Gotfryd | Public domain |
+| Andy Warhol | `andy-warhol.jpg` | [Andy_Warhol_at_the_Jewish_Museum_(by_Bernard_Gotfryd)_ - _LOC.jpg](https://commons.wikimedia.org/wiki/File:Andy_Warhol_at_the_Jewish_Museum_(by_Bernard_Gotfryd)_%E2%80%93_LOC.jpg) | Bernard Gotfryd | Public domain |
 | Arthur Ashe | `arthur-ashe.jpg` | [Arthur_Ashe_(cropped).jpg](https://commons.wikimedia.org/wiki/File:Arthur_Ashe_(cropped).jpg) | Bogaerts, Rob / Anefo | CC BY-SA 3.0 nl |
 | Ashoka | `ashoka.jpg` | [Statue of Ashoka.jpg](https://commons.wikimedia.org/wiki/File:Statue_of_Ashoka.jpg) | Pur 0 0 | CC0 |
 | Auguste Rodin | `auguste-rodin.jpg` | [Auguste_Rodin_by_George_Charles_Beresford_(NPG_x6573).jpg](https://commons.wikimedia.org/wiki/File:Auguste_Rodin_by_George_Charles_Beresford_(NPG_x6573).jpg) | George Charles Beresford | Public domain |
@@ -26,7 +26,7 @@ require attribution; this file is that attribution. Public-domain and CC0 entrie
 | Edwin Hubble | `edwin-hubble.jpg` | [Studio_portrait_photograph_of_Edwin_Powell_Hubble_(cropped).JPG](https://commons.wikimedia.org/wiki/File:Studio_portrait_photograph_of_Edwin_Powell_Hubble_(cropped).JPG) | Johan Hagemeyer | Public domain |
 | Eleanor Roosevelt | `eleanor-roosevelt.jpg` | [Eleanor_Roosevelt_at_the_United_Nations,_circa_1946-1947_(3x4_cropped).jpg](https://commons.wikimedia.org/wiki/File:Eleanor_Roosevelt_at_the_United_Nations,_circa_1946-1947_(3x4_cropped).jpg) | FDR Presidential Library &amp; Museum | CC BY 2.0 |
 | Emmy Noether | `emmy-noether.jpg` | [Emmy_Noether_(3x4_cropped).jpg](https://commons.wikimedia.org/wiki/File:Emmy_Noether_(3x4_cropped).jpg) | Unknown authorUnknown author Publisher: Mathematical Association of America [3], Brooklyn Museum [4], Agnes Scott College [5], [6] | Public domain |
-| Euclid | `euclid.jpg` | [Italian_-_Euclid_-_Google_Art_Project.jpg](https://commons.wikimedia.org/wiki/File:Italian_-_Euclid_-_Google_Art_Project.jpg) | Jusepe de Ribera (Spanish / Italian, 1591 - 1652) (1591 - 1652) – artist (Spanish / Italian) Details on Google Art Project | Public domain |
+| Euclid | `euclid.jpg` | [Italian_-_Euclid_-_Google_Art_Project.jpg](https://commons.wikimedia.org/wiki/File:Italian_-_Euclid_-_Google_Art_Project.jpg) | Jusepe de Ribera (Spanish / Italian, 1591 - 1652) (1591 - 1652) - artist (Spanish / Italian) Details on Google Art Project | Public domain |
 | Eva Perón | `eva-peron.jpg` | [Evita_color.jpg](https://commons.wikimedia.org/wiki/File:Evita_color.jpg) | Unknown authorUnknown author | Public domain |
 | George Washington Carver | `george-washington-carver.jpg` | [George_Washington_Carver_c1910_-_Restoration.jpg](https://commons.wikimedia.org/wiki/File:George_Washington_Carver_c1910_-_Restoration.jpg) | Adam Cuerden | Public domain |
 | Henri Matisse | `henri-matisse.jpg` | [Henri_Matisse,_1913,_photograph_by_Alvin_Langdon_Coburn.jpg](https://commons.wikimedia.org/wiki/File:Henri_Matisse,_1913,_photograph_by_Alvin_Langdon_Coburn.jpg) | Alvin Langdon Coburn | Public domain |

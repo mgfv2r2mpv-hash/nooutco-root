@@ -4,8 +4,8 @@
      PAGE=/glam-team-makeover/_before-tune2.html node tests/_probe-glam-stage.mjs
      node tests/_probe-glam-stage.mjs
 
-   Reports, per device, the stage panel's content box, the doll box, and — the
-   whole point — the backdrop's PAINTED rect worked out from the panel's own
+   Reports, per device, the stage panel's content box, the doll box, and - the
+   whole point - the backdrop's PAINTED rect worked out from the panel's own
    computed `background-size` / `background-position`, so "is the mirror whole?"
    is answered by geometry rather than by squinting at a screenshot.
 
@@ -80,7 +80,7 @@ for (const d of DEVICES) {
   await page.getByTitle('Show / hide setup').click();
   await page.getByLabel('Character', { exact: true }).selectOption('m4');
   await page.getByRole('button', { name: /^▶ Play/ }).click();
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   await page.waitForFunction(painted, undefined, { timeout: 20000 });
   await page.waitForTimeout(400);
   const m = await page.evaluate(measure);
@@ -90,7 +90,7 @@ for (const d of DEVICES) {
     left: +(st.x - a.x).toFixed(1), right: +((a.x + a.w) - (st.x + st.w)).toFixed(1),
   } : null;
   rows.push({ device: d.tag, stage: `${st.w}×${st.h}`, aspect: +(st.w / st.h).toFixed(3), doll: `${m.doll.w}×${m.doll.h}`,
-    bgSize: m.bgSize, art: a ? `${a.w}×${a.h}` : '—', bleed,
+    bgSize: m.bgSize, art: a ? `${a.w}×${a.h}` : ' - ', bleed,
     clientShare: a ? +(m.doll.h / a.h).toFixed(3) : null,
     fits: m.doll.h <= st.h && m.doll.w <= st.w });
   await page.close();
@@ -100,6 +100,6 @@ for (const r of rows) {
   console.log(`${r.device.padEnd(8)} stage ${r.stage.padEnd(11)} (aspect ${r.aspect})  client ${r.doll.padEnd(13)} bg-size ${String(r.bgSize).padEnd(8)} art ${r.art}  client/art ${r.clientShare}`);
   if (r.bleed) {
     const over = Object.entries(r.bleed).filter(([, v]) => v > 0.5);
-    console.log(`         art bleeds past the panel: ${over.length ? over.map(([k, v]) => `${k} +${v}px`).join(', ') : 'NONE — composition is whole'}`);
+    console.log(`         art bleeds past the panel: ${over.length ? over.map(([k, v]) => `${k} +${v}px`).join(', ') : 'NONE - composition is whole'}`);
   }
 }

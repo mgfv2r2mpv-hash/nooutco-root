@@ -1,7 +1,7 @@
 'use strict';
 
 /*
- * NooutcoTokens — shared FR/VR token board.
+ * NooutcoTokens - shared FR/VR token board.
  *
  * Encapsulates the canonical reinforcement-schedule logic (Fixed Ratio /
  * Variable Ratio) and the token-board DOM contract used by the games, so games
@@ -48,7 +48,7 @@
    *
    * then jitter around that inside a hard window. A long gap shrinks `ideal`
    * and pulls the next delivery in; a short one pushes it out. Individual gaps
-   * still vary — that is what makes it a VR rather than an FR — but the running
+   * still vary - that is what makes it a VR rather than an FR - but the running
    * average tracks `value` over any number of trials instead of drifting.
    *
    * The first gap is capped at `value`, so a learner never waits longer than
@@ -159,7 +159,7 @@
       // VR. `>=` rather than `===` on purpose: an equality test can only fire on
       // the exact trial it names, so any drift between the counter and the
       // schedule strands the pointer and the board silently never pays out
-      // again. That is not hypothetical — it is the bug this replaced, where a
+      // again. That is not hypothetical - it is the bug this replaced, where a
       // 0-based schedule met a 1-based counter and VR2 delivered nothing at all
       // in half of all sessions.
       if (!run.vrNextAt || run.vrNextAt < 1) {

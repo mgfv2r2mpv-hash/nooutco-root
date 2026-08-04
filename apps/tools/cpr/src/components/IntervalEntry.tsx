@@ -1,5 +1,5 @@
 /**
- * IntervalEntry — compact inline row for a single observation interval.
+ * IntervalEntry - compact inline row for a single observation interval.
  *
  * Layout (single-condition):
  *   [#] [Time?]  Bx: Y/N/CS  |  EO: Y/N/CS  |  C+ (condition consequence): Y/N/CS  [✎]
@@ -143,7 +143,7 @@ export function IntervalEntry({ interval, session, onChange, isCurrent }: Props)
             )}
           </>
         ) : (
-          /* Separate: ONE consequence toggle — the condition-matched one only */
+          /* Separate: ONE consequence toggle - the condition-matched one only */
           session.condition && (
             <div className="w-16 shrink-0 flex justify-center">
               <ThreeWayToggle

@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Stage 6 part 1 — the shared settings store, `game-settings.js`.
+ * Stage 6 part 1 - the shared settings store, `game-settings.js`.
  *
  * The module is the `sequences` round-setup pattern lifted out verbatim in
  * behaviour: the `{sets, last, working}` schema, `normalize()` clamping, the
  * press-and-hold-to-unlock gear gating, and the one migration primitive the
- * stage turns on — `foldLegacy()`, read-then-fold, never drop.
+ * stage turns on - `foldLegacy()`, read-then-fold, never drop.
  *
  * Two halves, and both are needed:
  *
@@ -144,7 +144,7 @@ test('a map keeps every key and value it was given', async ({ page }) => {
     const chosen = { T_animals: ['/a/bear.jpg', '/a/cat.jpg'], T_retired_topic: ['/r/old.png'] };
     return {
       kept: store.normalize({ targets: chosen }).targets,
-      // The stored object must not be adopted by reference — a later live edit
+      // The stored object must not be adopted by reference - a later live edit
       // to state would otherwise reach back into what was normalized.
       copied: store.normalize({ targets: chosen }).targets !== chosen,
       notAnObject: store.normalize({ targets: 'T_animals' }).targets,
@@ -172,7 +172,7 @@ test('defaults() hands back a fresh map each time', async ({ page }) => {
 test('defaults() hands back a fresh list each time', async ({ page }) => {
   await openModule(page);
   // A shared array would let one caller's edit reach into the next call's
-  // defaults — the kind of bug that only shows up after a panel reset.
+  // defaults - the kind of bug that only shows up after a panel reset.
   const out = await page.evaluate(() => {
     const store = window.__scratchStore();
     store.defaults().patterns.push('ABC');
@@ -292,7 +292,7 @@ test('an absent legacy field takes the schema default rather than the base value
   await openModule(page);
   // The map names every field explicitly, so a legacy payload missing one
   // lands as `undefined` and the schema default wins. Asserted because the
-  // opposite — the base value survives — is what a spread-the-whole-object
+  // opposite - the base value survives - is what a spread-the-whole-object
   // fold would do, leaving a stale value the panel never showed.
   const out = await page.evaluate((legacyKey) => {
     const store = window.__scratchStore();
@@ -344,8 +344,7 @@ test('a quick tap toggles locked; a press-and-hold unlocks', async ({ page }) =>
     return { afterTap, afterHold: calls.slice(), holdingClass };
   });
   expect(out.afterTap, 'a tap never unlocks').toEqual(['tap']);
-  // The hold fires onHold, and the click it produces on release is swallowed —
-  // otherwise every unlock would immediately toggle the panel shut again.
+  // The hold fires onHold, and the click it produces on release is swallowed - // otherwise every unlock would immediately toggle the panel shut again.
   expect(out.afterHold).toEqual(['tap', 'hold']);
   expect(out.holdingClass, 'the holding class is cleared when the hold fires').toBe(false);
 });
@@ -401,7 +400,7 @@ test('sequences: the prompt-delay select can show every value the store may hold
   // Stage 7, and the same property the other nine games assert in
   // `settings-store-adoption.spec.js`: `promptDelaySecs` is declared
   // `int {min:1,max:10}` while the select offered 1/2/3/4/5/10, so 6-9 s were
-  // legal to store and impossible to display — `select.value = 7` matches no
+  // legal to store and impossible to display - `select.value = 7` matches no
   // option and the browser resolves it to '', blanking the control. The
   // missing options were added rather than the range narrowed, because a
   // narrower range would remove configurability a technician already has.
@@ -457,7 +456,7 @@ test('sequences: the gear unlocks on hold and stays locked on a tap', async ({ p
 
 test('sequences still starts a round on the extracted store', async ({ page }) => {
   // The extraction rewired the config the trial loop reads, so the assertion
-  // that matters is that a round still runs — with no page error along the way.
+  // that matters is that a round still runs - with no page error along the way.
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   await page.goto('/sequences/');

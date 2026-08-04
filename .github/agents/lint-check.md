@@ -4,11 +4,11 @@
 This agent runs static analysis on the ABA Dashboard codebase to catch quality issues, type errors, and potential bugs before they affect clinical practitioners.
 
 ## Your Mission
-1. **TypeScript compilation** — catch type errors
-2. **Code style checks** — catch style violations
-3. **Dead code detection** — find unused code
-4. **Security scanning** — identify OWASP vulnerabilities
-5. **Report findings** — structured output with @claude tags
+1. **TypeScript compilation** - catch type errors
+2. **Code style checks** - catch style violations
+3. **Dead code detection** - find unused code
+4. **Security scanning** - identify OWASP vulnerabilities
+5. **Report findings** - structured output with @claude tags
 
 ## Checks to Run
 - **Type Checking** → `npx tsc --noEmit --pretty false`
@@ -23,10 +23,10 @@ This agent runs static analysis on the ABA Dashboard codebase to catch quality i
 - **Dependency Security** → Known vulnerabilities in packages
 
 ## Critical Checks
-1. **Data Safety** — No plaintext storage of sensitive data
-2. **Auth/Session** — Proper token handling, biometric auth security
-3. **API Validation** — Input validation on all endpoints
-4. **Clinical Accuracy** — Schedule calculation logic is correct
+1. **Data Safety** - No plaintext storage of sensitive data
+2. **Auth/Session** - Proper token handling, biometric auth security
+3. **API Validation** - Input validation on all endpoints
+4. **Clinical Accuracy** - Schedule calculation logic is correct
 
 ## Report Format (Use @claude Tags)
 ```
@@ -80,7 +80,7 @@ This agent runs static analysis on the ABA Dashboard codebase to catch quality i
 ```
 
 ## What TO Do
-- Scan in strict mode — catch subtle issues
+- Scan in strict mode - catch subtle issues
 - Report all security findings immediately
 - Note type-unsafety in clinical calculation code
 - Flag unhandled promise rejections and error cases
@@ -100,6 +100,6 @@ This agent runs static analysis on the ABA Dashboard codebase to catch quality i
 - **Missing error handling** → User data could be lost silently
 
 ## Config Files
-- `tsconfig.json` — TypeScript configuration
-- `.eslintrc.json` (if exists) — ESLint rules
-- `.stylelintrc.json` (if exists) — CSS rules
+- `tsconfig.json` - TypeScript configuration
+- `.eslintrc.json` (if exists) - ESLint rules
+- `.stylelintrc.json` (if exists) - CSS rules

@@ -8,7 +8,7 @@ import { readFile } from 'node:fs/promises';
  * The guide is a TRANSLATION LAYER, not a manual: it says which switch
  * corresponds to which part of the Skill Acquisition Plan and what that switch
  * does on screen. It must not help a behaviour technician decide how to run the
- * programme — that is the BCBA's call via the plan — so this spec holds two
+ * programme - that is the BCBA's call via the plan - so this spec holds two
  * things in place that prose alone will not:
  *
  *   * SAP-FIRST FRAMING. The plan is the programme; where a plan is silent the
@@ -91,7 +91,7 @@ test('the guide opens over a running trial and Close puts that trial back', asyn
   await page.locator('#btn-guide-close').click();
   await expect(page.locator('#guide-screen')).toBeHidden();
   await expect(page.locator('#game-area')).toBeVisible();
-  // The same card, unanswered — reading the guide is not a trial.
+  // The same card, unanswered - reading the guide is not a trial.
   await expect(page.locator('#scenario-situation')).toHaveText(card);
   await expect(page.locator('#choices')).toBeHidden();
   expect(await page.evaluate(() => window.__thinkOrSay.session().results.length)).toBe(0);
@@ -144,7 +144,7 @@ test('there is no "what you are seeing → what to set" table', async ({ page })
   await openGuide(page);
 
   // Every table in the guide is keyed on what the PLAN says, on what a control
-  // IS, or on what was recorded — never on what the technician is observing in
+  // IS, or on what was recorded - never on what the technician is observing in
   // the learner, which is the shape that invites a clinical call.
   const headers = await page.locator('#guide-body .guide-table thead th').allTextContents();
   expect(headers.length).toBeGreaterThan(0);

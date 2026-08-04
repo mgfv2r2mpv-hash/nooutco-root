@@ -385,7 +385,7 @@ body {
 }
 .score-bar.done .score-btn { opacity: .35; pointer-events: none; }
 
-/* Active grid cell — mirrors the score bar so the record stays in sync */
+/* Active grid cell - mirrors the score bar so the record stays in sync */
 .toggle-btn.active-cell {
   border-color: var(--accent, #2563EB);
   box-shadow: 0 0 0 3px var(--light, #DBEAFE);
@@ -700,7 +700,7 @@ body {
   transition: opacity .3s;
 }
 
-/* CSS fallback when image fails — no data URI needed */
+/* CSS fallback when image fails - no data URI needed */
 .photo-fallback {
   width: 100%;
   height: 460px;
@@ -726,7 +726,7 @@ body {
   letter-spacing: 2px;
 }
 
-/* Shown when image fails to load — sits below the photo/fallback */
+/* Shown when image fails to load - sits below the photo/fallback */
 .photo-search {
   padding: 10px 14px 12px;
   background: #1a1a2e;
@@ -873,7 +873,7 @@ body {
   box-shadow: inset 0 0 0 2px #16a34a;
 }
 
-/* OK toggle state — same accent color as ✓, distinguished by text only */
+/* OK toggle state - same accent color as ✓, distinguished by text only */
 .toggle-btn.ok {
   background: var(--accent, #2563EB);
   border-color: var(--accent, #2563EB);
@@ -1015,7 +1015,7 @@ body {
   .start-instructions li { font-size: 14px; line-height: 1.35; }
   .btn-large { padding: 14px 32px; font-size: 18px; }
 
-  /* Session screen — compact card */
+  /* Session screen - compact card */
   .session-wrapper { gap: 10px; max-width: 100%; width: 100%; margin: 0 auto; }
 
   .card { border-radius: 12px; box-shadow: 0 2px 16px rgba(0,0,0,.12); }
@@ -1133,9 +1133,9 @@ body {
       <h1>Famous Person Game</h1>
       <ol class="start-instructions">
         <li>Press <strong>Let's Play</strong> to load a famous person.</li>
-        <li>Follow the conversation guide — talk through the highlighted fact with the client.</li>
+        <li>Follow the conversation guide - talk through the highlighted fact with the client.</li>
         <li>The client makes a <strong>comment</strong> about it, then <strong>volleys</strong> it back with a question. Prompts appear automatically to model each move.</li>
-        <li>Score each move with the big <strong>✓ Got it</strong> / <strong>✗ Missed</strong> buttons — the guide steps to the next move on its own.</li>
+        <li>Score each move with the big <strong>✓ Got it</strong> / <strong>✗ Missed</strong> buttons - the guide steps to the next move on its own.</li>
         <li>Press <strong>New Person</strong> for the next conversation.</li>
       </ol>
       <button id="btn-start" class="btn-primary btn-large">Let's Play</button>
@@ -1167,7 +1167,7 @@ body {
           </div>
         </div>
 
-        <!-- Wikipedia photo search — shown below image when photo fails -->
+        <!-- Wikipedia photo search - shown below image when photo fails -->
         <div id="photo-search" class="photo-search hidden">
           <form id="photo-search-form" class="photo-search-form">
             <input
@@ -1195,7 +1195,7 @@ body {
         </div>
       </div>
 
-      <!-- Conversation guide — walks the pair through one fact at a time -->
+      <!-- Conversation guide - walks the pair through one fact at a time -->
       <div id="convo-panel" class="convo-panel">
         <div class="convo-header">
           <span id="convo-turn-label" class="convo-turn-label">Turn 1 of 4</span>
@@ -1225,7 +1225,7 @@ body {
         <div class="prompt-choices"></div>
       </div>
 
-      <!-- Score bar — the one obvious place to score the current move -->
+      <!-- Score bar - the one obvious place to score the current move -->
       <div id="score-bar" class="score-bar">
         <div id="score-bar-label" class="score-bar-label"></div>
         <div class="score-bar-btns">
@@ -1302,31 +1302,31 @@ body {
         <div id="data-grid">
           <div class="grid-row">
             <div class="grid-label">Comment</div>
-            <button class="toggle-btn" data-turn="0" data-type="comment">—</button>
-            <button class="toggle-btn" data-turn="1" data-type="comment">—</button>
-            <button class="toggle-btn" data-turn="2" data-type="comment">—</button>
-            <button class="toggle-btn" data-turn="3" data-type="comment">—</button>
+            <button class="toggle-btn" data-turn="0" data-type="comment"> - </button>
+            <button class="toggle-btn" data-turn="1" data-type="comment"> - </button>
+            <button class="toggle-btn" data-turn="2" data-type="comment"> - </button>
+            <button class="toggle-btn" data-turn="3" data-type="comment"> - </button>
           </div>
           <div class="grid-row grid-row-error">
             <div class="grid-label grid-label-error">Error</div>
-            <button class="error-btn" data-turn="0" data-type="comment">—</button>
-            <button class="error-btn" data-turn="1" data-type="comment">—</button>
-            <button class="error-btn" data-turn="2" data-type="comment">—</button>
-            <button class="error-btn" data-turn="3" data-type="comment">—</button>
+            <button class="error-btn" data-turn="0" data-type="comment"> - </button>
+            <button class="error-btn" data-turn="1" data-type="comment"> - </button>
+            <button class="error-btn" data-turn="2" data-type="comment"> - </button>
+            <button class="error-btn" data-turn="3" data-type="comment"> - </button>
           </div>
           <div class="grid-row">
             <div class="grid-label">Volley</div>
-            <button class="toggle-btn" data-turn="0" data-type="volley">—</button>
-            <button class="toggle-btn" data-turn="1" data-type="volley">—</button>
-            <button class="toggle-btn" data-turn="2" data-type="volley">—</button>
-            <button class="toggle-btn" data-turn="3" data-type="volley">—</button>
+            <button class="toggle-btn" data-turn="0" data-type="volley"> - </button>
+            <button class="toggle-btn" data-turn="1" data-type="volley"> - </button>
+            <button class="toggle-btn" data-turn="2" data-type="volley"> - </button>
+            <button class="toggle-btn" data-turn="3" data-type="volley"> - </button>
           </div>
           <div class="grid-row grid-row-error">
             <div class="grid-label grid-label-error">Error</div>
-            <button class="error-btn" data-turn="0" data-type="volley">—</button>
-            <button class="error-btn" data-turn="1" data-type="volley">—</button>
-            <button class="error-btn" data-turn="2" data-type="volley">—</button>
-            <button class="error-btn" data-turn="3" data-type="volley">—</button>
+            <button class="error-btn" data-turn="0" data-type="volley"> - </button>
+            <button class="error-btn" data-turn="1" data-type="volley"> - </button>
+            <button class="error-btn" data-turn="2" data-type="volley"> - </button>
+            <button class="error-btn" data-turn="3" data-type="volley"> - </button>
           </div>
         </div>
       </div>
@@ -1390,7 +1390,7 @@ body {
 
 const PEOPLE = [
   {
-    name: 'Albert Einstein', years: '1879–1955', emoji: '🧠', tag: 'Scientist',
+    name: 'Albert Einstein', years: '1879-1955', emoji: '🧠', tag: 'Scientist',
     img: '_Resources/_imgSource/images/albert-einstein.jpg',
     facts: [
       {
@@ -1402,7 +1402,7 @@ const PEOPLE = [
         commentFull: 'Albert changed how we think about space and time.',
         volleyMin: 'Ask about his big ideas…',
         volleyPartial: 'Albert changed how we think about space and time. Have you ever wondered about…',
-        volleyFull: 'His brain must have been busy! I bet he got an award for that — want to guess?',
+        volleyFull: 'His brain must have been busy! I bet he got an award for that - want to guess?',
       },
       {
         text: 'He won a Nobel Prize in 1921 for showing how light works.',
@@ -1424,7 +1424,7 @@ const PEOPLE = [
         commentFull: 'Albert played violin to help him think.',
         volleyMin: 'Ask about his music…',
         volleyPartial: 'Albert used music to help him think. If you could play any instrument…',
-        volleyFull: 'Music while thinking — cool. Do you know where he liked to spend his free time?',
+        volleyFull: 'Music while thinking - cool. Do you know where he liked to spend his free time?',
       },
       {
         text: 'Albert loved nature and spent time sailing on lakes near home.',
@@ -1440,7 +1440,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Marie Curie', years: '1867–1934', emoji: '⚗️', tag: 'Scientist',
+    name: 'Marie Curie', years: '1867-1934', emoji: '⚗️', tag: 'Scientist',
     img: '_Resources/_imgSource/images/marie-curie.jpeg',
     facts: [
       {
@@ -1449,10 +1449,10 @@ const PEOPLE = [
         fragment: 'was the first person to win two Nobel Prizes',
         commentMin: 'She won two prizes…',
         commentPartial: 'I notice that Marie was the first person to…',
-        commentFull: 'Wow — Marie won TWO Nobel Prizes!',
+        commentFull: 'Wow - Marie won TWO Nobel Prizes!',
         volleyMin: 'Ask about her prizes…',
         volleyPartial: 'Marie was the first to win two big prizes. Have you ever wanted to be first at…',
-        volleyFull: 'TWO prizes is huge! I also know what she discovered — want to guess?',
+        volleyFull: 'TWO prizes is huge! I also know what she discovered - want to guess?',
       },
       {
         text: 'She discovered two new materials called polonium and radium.',
@@ -1490,7 +1490,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Martin Luther King Jr.', years: '1929–1968', emoji: '✊', tag: 'Activist',
+    name: 'Martin Luther King Jr.', years: '1929-1968', emoji: '✊', tag: 'Activist',
     img: '_Resources/_imgSource/images/martin-luther-king-jr.jpg',
     facts: [
       {
@@ -1502,7 +1502,7 @@ const PEOPLE = [
         commentFull: 'Martin spoke about his dream for a fair world.',
         volleyMin: 'Ask about his speech…',
         volleyPartial: 'Martin spoke to a huge crowd about his dream. What is a dream you have…',
-        volleyFull: 'That speech was powerful. I bet he won an award too — want to guess?',
+        volleyFull: 'That speech was powerful. I bet he won an award too - want to guess?',
       },
       {
         text: 'He won the Nobel Peace Prize in 1964 when he was only 35 years old.',
@@ -1540,7 +1540,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Amelia Earhart', years: '1897–1937', emoji: '✈️', tag: 'Pioneer',
+    name: 'Amelia Earhart', years: '1897-1937', emoji: '✈️', tag: 'Pioneer',
     img: '_Resources/_imgSource/images/amelia-earhart.jpg',
     facts: [
       {
@@ -1566,7 +1566,7 @@ const PEOPLE = [
         volleyFull: 'Her plane VANISHED?! Want to know how she got into flying?',
       },
       {
-        text: 'She worked many jobs — even truck driver — to save money for flying lessons.',
+        text: 'She worked many jobs - even truck driver - to save money for flying lessons.',
         topic: 'saving for lessons',
         fragment: 'worked many jobs to save up for flying lessons',
         commentMin: 'She saved every penny…',
@@ -1574,7 +1574,7 @@ const PEOPLE = [
         commentFull: 'Amelia worked many jobs to save up for flying lessons.',
         volleyMin: 'Ask about her jobs…',
         volleyPartial: 'Amelia worked hard to reach her dream. Have you ever saved up for…',
-        volleyFull: 'All those jobs to save up! I bet she set records too — know any?',
+        volleyFull: 'All those jobs to save up! I bet she set records too - know any?',
       },
       {
         text: 'Amelia set a women\'s world speed record and wrote books about flying.',
@@ -1590,7 +1590,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Leonardo da Vinci', years: '1452–1519', emoji: '🎨', tag: 'Artist',
+    name: 'Leonardo da Vinci', years: '1452-1519', emoji: '🎨', tag: 'Artist',
     img: '_Resources/_imgSource/images/leonardo-da-vinci.jpeg',
     facts: [
       {
@@ -1640,7 +1640,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Harriet Tubman', years: '1822–1913', emoji: '🗽', tag: 'Activist',
+    name: 'Harriet Tubman', years: '1822-1913', emoji: '🗽', tag: 'Activist',
     img: '_Resources/_imgSource/images/harriet-tubman.jpg',
     facts: [
       {
@@ -1663,7 +1663,7 @@ const PEOPLE = [
         commentFull: 'Harriet was a brave spy in the war.',
         volleyMin: 'Ask about her spy work…',
         volleyPartial: 'Harriet was a brave spy in the war. Have you ever had to do something…',
-        volleyFull: 'A spy in the war?! I bet people had a special name for her — want to guess?',
+        volleyFull: 'A spy in the war?! I bet people had a special name for her - want to guess?',
       },
       {
         text: 'People called her "Moses" because she led so many people to freedom.',
@@ -1674,7 +1674,7 @@ const PEOPLE = [
         commentFull: 'People called her "Moses" because she led many to freedom.',
         volleyMin: 'Ask about her nickname…',
         volleyPartial: 'Harriet had a famous nickname. If you got a nickname for…',
-        volleyFull: '"Moses" — what a name. Do you know what she did once the war ended?',
+        volleyFull: '"Moses" - what a name. Do you know what she did once the war ended?',
       },
       {
         text: 'After the war, Harriet started a home for older people who had been enslaved.',
@@ -1685,12 +1685,12 @@ const PEOPLE = [
         commentFull: 'After the war, Harriet opened a home to help older people.',
         volleyMin: 'Ask about her home…',
         volleyPartial: 'Harriet helped older people after the war. Have you ever helped someone…',
-        volleyFull: 'A home for elders — she never stopped. Who do YOU like to help?',
+        volleyFull: 'A home for elders - she never stopped. Who do YOU like to help?',
       },
     ],
   },
   {
-    name: 'Nikola Tesla', years: '1856–1943', emoji: '⚡', tag: 'Inventor',
+    name: 'Nikola Tesla', years: '1856-1943', emoji: '⚡', tag: 'Inventor',
     img: '_Resources/_imgSource/images/nikola-tesla.jpeg',
     facts: [
       {
@@ -1702,7 +1702,7 @@ const PEOPLE = [
         commentFull: 'Nikola invented the kind of electricity in our homes.',
         volleyMin: 'Ask about his invention…',
         volleyPartial: 'Nikola invented something we still use every day. What is one thing you use…',
-        volleyFull: 'He changed how we live! I also know he had a LOT of inventions — want to guess how many?',
+        volleyFull: 'He changed how we live! I also know he had a LOT of inventions - want to guess how many?',
       },
       {
         text: 'He had over 300 patents and dreamed of sending messages through the air.',
@@ -1740,7 +1740,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Frida Kahlo', years: '1907–1954', emoji: '🌺', tag: 'Artist',
+    name: 'Frida Kahlo', years: '1907-1954', emoji: '🌺', tag: 'Artist',
     img: '_Resources/_imgSource/images/frida-kahlo.jpg',
     facts: [
       {
@@ -1752,7 +1752,7 @@ const PEOPLE = [
         commentFull: 'Frida painted her feelings into her art.',
         volleyMin: 'Ask about her paintings…',
         volleyPartial: 'Frida painted how she felt. If you painted yourself…',
-        volleyFull: 'She painted feelings — cool. Do you know how she learned in the first place?',
+        volleyFull: 'She painted feelings - cool. Do you know how she learned in the first place?',
       },
       {
         text: 'She taught herself to paint while she was healing from a bus crash.',
@@ -1763,7 +1763,7 @@ const PEOPLE = [
         commentFull: 'Frida taught herself to paint while she was healing.',
         volleyMin: 'Ask about how she learned…',
         volleyPartial: 'Frida taught herself a whole new skill. Have you ever taught yourself…',
-        volleyFull: 'In bed?! I also know she did BIG art too — want to guess what?',
+        volleyFull: 'In bed?! I also know she did BIG art too - want to guess what?',
       },
       {
         text: 'She also painted big murals on walls, even though no one had shown her how.',
@@ -1774,7 +1774,7 @@ const PEOPLE = [
         commentFull: 'Frida painted huge murals on walls!',
         volleyMin: 'Ask about her wall art…',
         volleyPartial: 'Frida painted huge pictures on walls. If you painted a wall…',
-        volleyFull: 'Murals on whole walls?! Do you know what she looked like — she\'s pretty famous, right?',
+        volleyFull: 'Murals on whole walls?! Do you know what she looked like - she\'s pretty famous, right?',
       },
       {
         text: 'Frida wore colorful clothes and flowers in her hair, and people still copy her style.',
@@ -1790,7 +1790,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Nelson Mandela', years: '1918–2013', emoji: '🕊️', tag: 'Leader',
+    name: 'Nelson Mandela', years: '1918-2013', emoji: '🕊️', tag: 'Leader',
     img: '_Resources/_imgSource/images/nelson-mandela.jpg',
     facts: [
       {
@@ -1802,7 +1802,7 @@ const PEOPLE = [
         commentFull: 'Nelson never gave up, even after 27 years in jail.',
         volleyMin: 'Ask about prison…',
         volleyPartial: 'Nelson never gave up, even after years in prison. What is something hard you…',
-        volleyFull: '27 YEARS in prison! I bet he got an honor for hanging in — want to guess?',
+        volleyFull: '27 YEARS in prison! I bet he got an honor for hanging in - want to guess?',
       },
       {
         text: 'He won the Nobel Peace Prize in 1993 for helping end unfair laws in his country.',
@@ -1840,7 +1840,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Charles Darwin', years: '1809–1882', emoji: '🦎', tag: 'Scientist',
+    name: 'Charles Darwin', years: '1809-1882', emoji: '🦎', tag: 'Scientist',
     img: '_Resources/_imgSource/images/charles-darwin.jpg',
     facts: [
       {
@@ -1863,7 +1863,7 @@ const PEOPLE = [
         commentFull: 'Charles sailed around the world for five years!',
         volleyMin: 'Ask about his trip…',
         volleyPartial: 'Charles spent five years on a ship. Have you ever taken a long…',
-        volleyFull: 'Five years on a ship?! I\'m surprised he came back OK — did he?',
+        volleyFull: 'Five years on a ship?! I\'m surprised he came back OK - did he?',
       },
       {
         text: 'He had a lot of stomach trouble his whole life but never stopped his science work.',
@@ -1874,7 +1874,7 @@ const PEOPLE = [
         commentFull: 'Charles kept working even when he felt sick.',
         volleyMin: 'Ask about his illness…',
         volleyPartial: 'Charles kept working even when sick. Have you ever kept going…',
-        volleyFull: 'Sick a lot — that\'s tough. Do you know what his life at home was like?',
+        volleyFull: 'Sick a lot - that\'s tough. Do you know what his life at home was like?',
       },
       {
         text: 'Charles loved his family and lived a quiet life in the English countryside.',
@@ -1890,7 +1890,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Isaac Newton', years: '1643–1727', emoji: '🍎', tag: 'Scientist',
+    name: 'Isaac Newton', years: '1643-1727', emoji: '🍎', tag: 'Scientist',
     img: '_Resources/_imgSource/images/isaac-newton.jpg',
     facts: [
       {
@@ -1913,7 +1913,7 @@ const PEOPLE = [
         commentFull: 'Isaac proved white light has every color hidden in it.',
         volleyMin: 'Ask about colors…',
         volleyPartial: 'Isaac proved white light has all the colors. What is your favorite…',
-        volleyFull: 'White light has every color?! I bet he was intense to work with — want to guess?',
+        volleyFull: 'White light has every color?! I bet he was intense to work with - want to guess?',
       },
       {
         text: 'He worked very hard and could spend many days on one tough problem.',
@@ -1940,7 +1940,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Rosa Parks', years: '1913–2005', emoji: '🚌', tag: 'Activist',
+    name: 'Rosa Parks', years: '1913-2005', emoji: '🚌', tag: 'Activist',
     img: '_Resources/_imgSource/images/rosa-parks.jpg',
     facts: [
       {
@@ -1990,11 +1990,11 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Mozart', years: '1756–1791', emoji: '🎹', tag: 'Musician',
+    name: 'Mozart', years: '1756-1791', emoji: '🎹', tag: 'Musician',
     img: '_Resources/_imgSource/images/mozart.jpg',
     facts: [
       {
-        text: 'Mozart wrote over 800 pieces of music — symphonies, operas, and more.',
+        text: 'Mozart wrote over 800 pieces of music - symphonies, operas, and more.',
         topic: '800 songs',
         fragment: 'wrote over 800 pieces of music',
         commentMin: 'He wrote 800 songs…',
@@ -2040,7 +2040,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Mahatma Gandhi', years: '1869–1948', emoji: '🕊️', tag: 'Leader',
+    name: 'Mahatma Gandhi', years: '1869-1948', emoji: '🕊️', tag: 'Leader',
     img: '_Resources/_imgSource/images/mahatma-gandhi.jpg',
     facts: [
       {
@@ -2074,7 +2074,7 @@ const PEOPLE = [
         commentFull: 'Gandhi made his own clothes on a tiny loom!',
         volleyMin: 'Ask about his clothes…',
         volleyPartial: 'Gandhi made his own clothes. Have you ever made…',
-        volleyFull: 'He made his OWN clothes! I also know what he ate — want to guess?',
+        volleyFull: 'He made his OWN clothes! I also know what he ate - want to guess?',
       },
       {
         text: 'Gandhi did not eat meat and lived in a very simple way.',
@@ -2090,7 +2090,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Neil Armstrong', years: '1930–2012', emoji: '🚀', tag: 'Astronaut',
+    name: 'Neil Armstrong', years: '1930-2012', emoji: '🚀', tag: 'Astronaut',
     img: '_Resources/_imgSource/images/neil-armstrong.jpg',
     facts: [
       {
@@ -2102,7 +2102,7 @@ const PEOPLE = [
         commentFull: 'Neil was the first person ever to walk on the Moon!',
         volleyMin: 'Ask about the Moon…',
         volleyPartial: 'Neil was the first one on the Moon. If you could visit…',
-        volleyFull: 'The first one up there! I bet he said something famous — want to guess?',
+        volleyFull: 'The first one up there! I bet he said something famous - want to guess?',
       },
       {
         text: 'He said the famous words: "One small step for man, one giant leap for mankind."',
@@ -2140,7 +2140,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Ada Lovelace', years: '1815–1852', emoji: '💻', tag: 'Mathematician',
+    name: 'Ada Lovelace', years: '1815-1852', emoji: '💻', tag: 'Mathematician',
     img: '_Resources/_imgSource/images/ada-lovelace.jpeg',
     facts: [
       {
@@ -2163,7 +2163,7 @@ const PEOPLE = [
         commentFull: 'Ada helped build a giant math machine.',
         volleyMin: 'Ask about that machine…',
         volleyPartial: 'Ada helped build a math machine. Would you ever want to…',
-        volleyFull: 'A giant math machine! I also know she loved one OTHER thing — want to guess?',
+        volleyFull: 'A giant math machine! I also know she loved one OTHER thing - want to guess?',
       },
       {
         text: 'She loved both math and poetry and called her work "poetical science."',
@@ -2174,7 +2174,7 @@ const PEOPLE = [
         commentFull: 'Ada mixed math and poetry together.',
         volleyMin: 'Ask about her words…',
         volleyPartial: 'Ada mixed math and poems. What two things do you…',
-        volleyFull: 'Math AND poetry — cool mix. Do you know what she thought computers could do one day?',
+        volleyFull: 'Math AND poetry - cool mix. Do you know what she thought computers could do one day?',
       },
       {
         text: 'Ada saw that math machines could one day make music and pictures, not just numbers.',
@@ -2190,7 +2190,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Winston Churchill', years: '1874–1965', emoji: '🎖️', tag: 'Leader',
+    name: 'Winston Churchill', years: '1874-1965', emoji: '🎖️', tag: 'Leader',
     img: '_Resources/_imgSource/images/winston-churchill.jpg',
     facts: [
       {
@@ -2213,7 +2213,7 @@ const PEOPLE = [
         commentFull: 'Winston used his words to keep people hopeful.',
         volleyMin: 'Ask about his speeches…',
         volleyPartial: 'Winston used words to help people. Have you ever cheered up…',
-        volleyFull: 'Powerful speeches! I bet he did other things outside being a leader — know any?',
+        volleyFull: 'Powerful speeches! I bet he did other things outside being a leader - know any?',
       },
       {
         text: 'Winston also wrote many books and even won a big prize for his writing.',
@@ -2240,7 +2240,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Vincent van Gogh', years: '1853–1890', emoji: '🌻', tag: 'Artist',
+    name: 'Vincent van Gogh', years: '1853-1890', emoji: '🌻', tag: 'Artist',
     img: '_Resources/_imgSource/images/vincent-van-gogh.jpg',
     facts: [
       {
@@ -2290,7 +2290,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Abraham Lincoln', years: '1809–1865', emoji: '🎩', tag: 'Leader',
+    name: 'Abraham Lincoln', years: '1809-1865', emoji: '🎩', tag: 'Leader',
     img: '_Resources/_imgSource/images/abraham-lincoln.jpg',
     facts: [
       {
@@ -2313,7 +2313,7 @@ const PEOPLE = [
         commentFull: 'Abraham signed a paper that ended slavery.',
         volleyMin: 'Ask about that paper…',
         volleyPartial: 'Abraham helped free a lot of people. What is something fair you…',
-        volleyFull: 'He ended slavery! I\'m curious what he was like as a kid — want to guess?',
+        volleyFull: 'He ended slavery! I\'m curious what he was like as a kid - want to guess?',
       },
       {
         text: 'Abraham grew up in a log cabin and taught himself most of what he knew.',
@@ -2340,7 +2340,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Cleopatra', years: '69–30 BC', emoji: '👑', tag: 'Ruler',
+    name: 'Cleopatra', years: '69-30 BC', emoji: '👑', tag: 'Ruler',
     img: '_Resources/_imgSource/images/cleopatra.jpg',
     facts: [
       {
@@ -2363,7 +2363,7 @@ const PEOPLE = [
         commentFull: 'Cleopatra could speak many different languages.',
         volleyMin: 'Ask about languages…',
         volleyPartial: 'Cleopatra spoke lots of languages. Do you know any…',
-        volleyFull: 'So many languages! I also know what she did for fun at the palace — want to guess?',
+        volleyFull: 'So many languages! I also know what she did for fun at the palace - want to guess?',
       },
       {
         text: 'Cleopatra loved books and made a big library even bigger.',
@@ -2374,7 +2374,7 @@ const PEOPLE = [
         commentFull: 'Cleopatra made a famous library even bigger.',
         volleyMin: 'Ask about her library…',
         volleyPartial: 'Cleopatra loved books and learning. What is your favorite…',
-        volleyFull: 'A huge library — wow! I wonder what she looked like.',
+        volleyFull: 'A huge library - wow! I wonder what she looked like.',
       },
       {
         text: 'She wore pretty makeup and jewelry that people still copy today.',
@@ -2390,7 +2390,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Galileo Galilei', years: '1564–1642', emoji: '🔭', tag: 'Scientist',
+    name: 'Galileo Galilei', years: '1564-1642', emoji: '🔭', tag: 'Scientist',
     img: '_Resources/_imgSource/images/galileo-galilei.jpg',
     facts: [
       {
@@ -2413,7 +2413,7 @@ const PEOPLE = [
         commentFull: 'Galileo proved Earth goes around the Sun!',
         volleyMin: 'Ask about the Sun…',
         volleyPartial: 'Galileo changed what people thought. Have you ever changed your…',
-        volleyFull: 'Earth moves around the Sun?! I bet people freaked out — know how?',
+        volleyFull: 'Earth moves around the Sun?! I bet people freaked out - know how?',
       },
       {
         text: 'People did not believe him, and he was put on trial for his ideas.',
@@ -2440,7 +2440,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Frederick Douglass', years: '1818–1895', emoji: '✍️', tag: 'Activist',
+    name: 'Frederick Douglass', years: '1818-1895', emoji: '✍️', tag: 'Activist',
     img: '_Resources/_imgSource/images/frederick-douglass.jpg',
     facts: [
       {
@@ -2474,7 +2474,7 @@ const PEOPLE = [
         commentFull: 'Frederick used his voice to fight slavery.',
         volleyMin: 'Ask about his speeches…',
         volleyPartial: 'Frederick used his voice to make change. What is something you would…',
-        volleyFull: 'A great speaker! I bet he wrote his story too — want to guess?',
+        volleyFull: 'A great speaker! I bet he wrote his story too - want to guess?',
       },
       {
         text: 'He wrote books about his life that helped change many minds.',
@@ -2490,7 +2490,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Muhammad Ali', years: '1942–2016', emoji: '🥊', tag: 'Athlete',
+    name: 'Muhammad Ali', years: '1942-2016', emoji: '🥊', tag: 'Athlete',
     img: '_Resources/_imgSource/images/muhammad-ali.jpg',
     facts: [
       {
@@ -2513,7 +2513,7 @@ const PEOPLE = [
         commentFull: 'Muhammad said he could float and sting in the ring.',
         volleyMin: 'Ask about his words…',
         volleyPartial: 'Muhammad came up with cool sayings. Can you make up…',
-        volleyFull: '"Float like a butterfly" — what a line! Want to guess when he started boxing?',
+        volleyFull: '"Float like a butterfly" - what a line! Want to guess when he started boxing?',
       },
       {
         text: 'He won an Olympic gold medal in boxing when he was only 18.',
@@ -2540,7 +2540,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Malala Yousafzai', years: '1997–', emoji: '📚', tag: 'Activist',
+    name: 'Malala Yousafzai', years: '1997 - ', emoji: '📚', tag: 'Activist',
     img: '_Resources/_imgSource/images/malala-yousafzai.jpg',
     facts: [
       {
@@ -2552,7 +2552,7 @@ const PEOPLE = [
         commentFull: 'Malala spoke up so girls could go to school.',
         volleyMin: 'Ask about her wish…',
         volleyPartial: 'Malala wanted all girls to learn. What is something you wish…',
-        volleyFull: 'School for girls — yes! I\'m surprised at how brave she was — know what happened?',
+        volleyFull: 'School for girls - yes! I\'m surprised at how brave she was - know what happened?',
       },
       {
         text: 'She kept speaking up even after she was hurt for what she said.',
@@ -2590,7 +2590,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Oprah Winfrey', years: '1954–', emoji: '🎙️', tag: 'Media',
+    name: 'Oprah Winfrey', years: '1954 - ', emoji: '🎙️', tag: 'Media',
     img: '_Resources/_imgSource/images/oprah-winfrey.jpeg',
     facts: [
       {
@@ -2613,7 +2613,7 @@ const PEOPLE = [
         commentFull: 'Oprah grew up poor and worked her way to the top.',
         volleyMin: 'Ask about her start…',
         volleyPartial: 'Oprah came from very little. What is a goal you would…',
-        volleyFull: 'She came from very little! I also know about her book club — want to guess?',
+        volleyFull: 'She came from very little! I also know about her book club - want to guess?',
       },
       {
         text: 'Oprah started a book club that helped millions of people fall in love with reading.',
@@ -2640,7 +2640,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Steve Jobs', years: '1955–2011', emoji: '🍎', tag: 'Innovator',
+    name: 'Steve Jobs', years: '1955-2011', emoji: '🍎', tag: 'Innovator',
     img: '_Resources/_imgSource/images/steve-jobs.jpg',
     facts: [
       {
@@ -2690,7 +2690,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Barack Obama', years: '1961–', emoji: '🇺🇸', tag: 'Leader',
+    name: 'Barack Obama', years: '1961 - ', emoji: '🇺🇸', tag: 'Leader',
     img: '_Resources/_imgSource/images/barack-obama.jpg',
     facts: [
       {
@@ -2740,7 +2740,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Usain Bolt', years: '1986–', emoji: '⚡', tag: 'Athlete',
+    name: 'Usain Bolt', years: '1986 - ', emoji: '⚡', tag: 'Athlete',
     img: '_Resources/_imgSource/images/usain-bolt.jpg',
     facts: [
       {
@@ -2749,10 +2749,10 @@ const PEOPLE = [
         fragment: 'is the fastest runner ever with 8 Olympic golds',
         commentMin: 'He is the fastest…',
         commentPartial: 'I notice that Usain has won so many…',
-        commentFull: 'Usain is the fastest runner ever — 8 gold medals!',
+        commentFull: 'Usain is the fastest runner ever - 8 gold medals!',
         volleyMin: 'Ask about racing…',
         volleyPartial: 'Usain is the fastest. What is something you are…',
-        volleyFull: 'The fastest ever! I bet he holds world records — want to guess?',
+        volleyFull: 'The fastest ever! I bet he holds world records - want to guess?',
       },
       {
         text: 'He set world records that nobody has beaten yet.',
@@ -2790,7 +2790,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Michael Jordan', years: '1963–', emoji: '🏀', tag: 'Athlete',
+    name: 'Michael Jordan', years: '1963 - ', emoji: '🏀', tag: 'Athlete',
     img: '_Resources/_imgSource/images/600px-Michael_Jordan_in_2014.jpg',
     facts: [
       {
@@ -2810,7 +2810,7 @@ const PEOPLE = [
         fragment: 'was cut from his school team and came back',
         commentMin: 'He was cut as a kid…',
         commentPartial: 'I notice that Michael was cut from his team but…',
-        commentFull: 'Michael was cut from his school team — and worked his way back.',
+        commentFull: 'Michael was cut from his school team - and worked his way back.',
         volleyMin: 'Ask about being cut…',
         volleyPartial: 'Michael did not give up. Have you ever kept trying after…',
         volleyFull: 'Cut from his school team! Want to guess how he got his famous nickname?',
@@ -2824,7 +2824,7 @@ const PEOPLE = [
         commentFull: 'Michael could jump so high they called him "Air Jordan."',
         volleyMin: 'Ask about his jumps…',
         volleyPartial: 'Michael got a nickname for jumping. If you got a…',
-        volleyFull: '"Air Jordan" — perfect! Do you know if he made anything besides plays?',
+        volleyFull: '"Air Jordan" - perfect! Do you know if he made anything besides plays?',
       },
       {
         text: 'He has his own shoe brand that is famous all over the world.',
@@ -2840,7 +2840,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Freddie Mercury', years: '1946–1991', emoji: '🎤', tag: 'Musician',
+    name: 'Freddie Mercury', years: '1946-1991', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/freddie-mercury.jpg',
     facts: [
       {
@@ -2852,7 +2852,7 @@ const PEOPLE = [
         commentFull: 'Freddie was the lead singer of a band called Queen.',
         volleyMin: 'Ask about the band…',
         volleyPartial: 'Freddie sang in a famous band. What is your favorite…',
-        volleyFull: 'Queen — what a band! I\'m curious what made his voice so special.',
+        volleyFull: 'Queen - what a band! I\'m curious what made his voice so special.',
       },
       {
         text: 'He had a huge singing voice and could hit notes most people cannot.',
@@ -2890,7 +2890,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'J.K. Rowling', years: '1965–', emoji: '📖', tag: 'Author',
+    name: 'J.K. Rowling', years: '1965 - ', emoji: '📖', tag: 'Author',
     img: '_Resources/_imgSource/images/j.-k.-rowling.jpg',
     facts: [
       {
@@ -2913,7 +2913,7 @@ const PEOPLE = [
         commentFull: 'She thought up the whole Harry Potter idea on a train!',
         volleyMin: 'Ask about her idea…',
         volleyPartial: 'She got a huge idea on a train. Where do you get…',
-        volleyFull: 'A train ride! I bet publishers loved it right away — did they?',
+        volleyFull: 'A train ride! I bet publishers loved it right away - did they?',
       },
       {
         text: 'Many publishers said no to her book before one said yes.',
@@ -2921,7 +2921,7 @@ const PEOPLE = [
         fragment: 'was told no by many publishers before one said yes',
         commentMin: 'Many said no…',
         commentPartial: 'I notice that she got told no many times before…',
-        commentFull: 'Lots of people said no — but she kept trying until one said yes.',
+        commentFull: 'Lots of people said no - but she kept trying until one said yes.',
         volleyMin: 'Ask about being told no…',
         volleyPartial: 'She did not give up after being told no. Have you ever…',
         volleyFull: 'They told her NO?! Do you know where she wrote the first book?',
@@ -2940,7 +2940,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Stephen Hawking', years: '1942–2018', emoji: '🌌', tag: 'Scientist',
+    name: 'Stephen Hawking', years: '1942-2018', emoji: '🌌', tag: 'Scientist',
     img: '_Resources/_imgSource/images/stephen-hawking.jpg',
     facts: [
       {
@@ -2952,7 +2952,7 @@ const PEOPLE = [
         commentFull: 'Stephen used science to figure out black holes.',
         volleyMin: 'Ask about black holes…',
         volleyPartial: 'Stephen studied black holes in space. What in space do you…',
-        volleyFull: 'Black holes — wild stuff! I wonder what was going on with his body.',
+        volleyFull: 'Black holes - wild stuff! I wonder what was going on with his body.',
       },
       {
         text: 'He had an illness that took away his moving and speaking, but his mind stayed strong.',
@@ -2990,7 +2990,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Cristiano Ronaldo', years: '1985–', emoji: '⚽', tag: 'Athlete',
+    name: 'Cristiano Ronaldo', years: '1985 - ', emoji: '⚽', tag: 'Athlete',
     img: '_Resources/_imgSource/images/cristiano-ronaldo.jpeg',
     facts: [
       {
@@ -3040,7 +3040,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Serena Williams', years: '1981–', emoji: '🎾', tag: 'Athlete',
+    name: 'Serena Williams', years: '1981 - ', emoji: '🎾', tag: 'Athlete',
     img: '_Resources/_imgSource/images/serena-williams.jpeg',
     facts: [
       {
@@ -3090,7 +3090,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Elvis Presley', years: '1935–1977', emoji: '🎸', tag: 'Musician',
+    name: 'Elvis Presley', years: '1935-1977', emoji: '🎸', tag: 'Musician',
     img: '_Resources/_imgSource/images/600px-Elvis_Presley_promoting_Jailhouse_Rock.jpg',
     facts: [
       {
@@ -3102,7 +3102,7 @@ const PEOPLE = [
         commentFull: 'Elvis was a rock and roll star called "the King."',
         volleyMin: 'Ask about his music…',
         volleyPartial: 'Elvis was called the King. What music makes you…',
-        volleyFull: '"The King" — wow! Do you know what he did on stage?',
+        volleyFull: '"The King" - wow! Do you know what he did on stage?',
       },
       {
         text: 'He danced and moved a lot on stage, which was new and exciting.',
@@ -3135,12 +3135,12 @@ const PEOPLE = [
         commentFull: 'Elvis named his big house Graceland.',
         volleyMin: 'Ask about Graceland…',
         volleyPartial: 'Elvis\'s house had a name. If you named your home…',
-        volleyFull: 'His house had a name — Graceland! What would YOU name your home?',
+        volleyFull: 'His house had a name - Graceland! What would YOU name your home?',
       },
     ],
   },
   {
-    name: 'Princess Diana', years: '1961–1997', emoji: '👸', tag: 'Royal',
+    name: 'Princess Diana', years: '1961-1997', emoji: '👸', tag: 'Royal',
     img: '_Resources/_imgSource/images/princess-diana.jpg',
     facts: [
       {
@@ -3152,7 +3152,7 @@ const PEOPLE = [
         commentFull: 'Diana used her fame to help people in need.',
         volleyMin: 'Ask about her work…',
         volleyPartial: 'Diana used her voice to help. What is something you wish…',
-        volleyFull: 'She used her fame to help! I\'m curious if she was ever scared — was she?',
+        volleyFull: 'She used her fame to help! I\'m curious if she was ever scared - was she?',
       },
       {
         text: 'She visited people who were sick when others were too scared to.',
@@ -3190,7 +3190,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Napoleon Bonaparte', years: '1769–1821', emoji: '⚔️', tag: 'Leader',
+    name: 'Napoleon Bonaparte', years: '1769-1821', emoji: '⚔️', tag: 'Leader',
     img: '_Resources/_imgSource/images/napoleon-bonaparte.jpg',
     facts: [
       {
@@ -3213,7 +3213,7 @@ const PEOPLE = [
         commentFull: 'Napoleon was small but really smart and brave!',
         volleyMin: 'Ask about being small…',
         volleyPartial: 'Napoleon did big things even when small. What is something small…',
-        volleyFull: 'Small but bold! I bet he made some big changes — want to guess?',
+        volleyFull: 'Small but bold! I bet he made some big changes - want to guess?',
       },
       {
         text: 'Napoleon made new fair laws that some countries still use today.',
@@ -3240,7 +3240,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Bruce Lee', years: '1940–1973', emoji: '🥋', tag: 'Athlete',
+    name: 'Bruce Lee', years: '1940-1973', emoji: '🥋', tag: 'Athlete',
     img: '_Resources/_imgSource/images/bruce-lee.jpg',
     facts: [
       {
@@ -3274,23 +3274,23 @@ const PEOPLE = [
         commentFull: 'Bruce trained every day and was super strong.',
         volleyMin: 'Ask about his training…',
         volleyPartial: 'Bruce trained nonstop. What is something you train…',
-        volleyFull: 'Nonstop training! I also know one of his wise sayings — want to guess?',
+        volleyFull: 'Nonstop training! I also know one of his wise sayings - want to guess?',
       },
       {
-        text: 'He said "be like water" — meaning be ready to change and flow.',
+        text: 'He said "be like water" - meaning be ready to change and flow.',
         topic: '"be like water"',
-        fragment: 'said "be like water" — change and flow',
+        fragment: 'said "be like water" - change and flow',
         commentMin: 'He said "be like water"…',
         commentPartial: 'I notice that Bruce told people to be like…',
-        commentFull: 'Bruce said: "Be like water" — change and flow.',
+        commentFull: 'Bruce said: "Be like water" - change and flow.',
         volleyMin: 'Ask about his words…',
         volleyPartial: 'Bruce had a wise saying. What is a wise…',
-        volleyFull: '"Be like water" — cool. What is a saying YOU try to live by?',
+        volleyFull: '"Be like water" - cool. What is a saying YOU try to live by?',
       },
     ],
   },
   {
-    name: 'Michelangelo', years: '1475–1564', emoji: '🖼️', tag: 'Artist',
+    name: 'Michelangelo', years: '1475-1564', emoji: '🖼️', tag: 'Artist',
     img: '_Resources/_imgSource/images/michelangelo.jpg',
     facts: [
       {
@@ -3302,7 +3302,7 @@ const PEOPLE = [
         commentFull: 'Michelangelo painted a huge ceiling, lying on his back!',
         volleyMin: 'Ask about the ceiling…',
         volleyPartial: 'Michelangelo painted lying down. Have you ever worked on…',
-        volleyFull: 'A ceiling on his back?! I also know he could SCULPT — want to guess what?',
+        volleyFull: 'A ceiling on his back?! I also know he could SCULPT - want to guess what?',
       },
       {
         text: 'He also made a famous statue of David, all out of one big block of marble.',
@@ -3340,7 +3340,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Coco Chanel', years: '1883–1971', emoji: '👗', tag: 'Designer',
+    name: 'Coco Chanel', years: '1883-1971', emoji: '👗', tag: 'Designer',
     img: '_Resources/_imgSource/images/coco-chanel.jpg',
     facts: [
       {
@@ -3352,7 +3352,7 @@ const PEOPLE = [
         commentFull: 'Coco changed how women dressed.',
         volleyMin: 'Ask about her brand…',
         volleyPartial: 'Coco changed clothes forever. What is something you love…',
-        volleyFull: 'She changed how women dressed! I bet she had a famous dress — want to guess?',
+        volleyFull: 'She changed how women dressed! I bet she had a famous dress - want to guess?',
       },
       {
         text: 'She made the "little black dress" famous.',
@@ -3390,7 +3390,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Joan of Arc', years: '1412–1431', emoji: '⚔️', tag: 'Leader',
+    name: 'Joan of Arc', years: '1412-1431', emoji: '⚔️', tag: 'Leader',
     img: '_Resources/_imgSource/images/joan-of-arc.jpg',
     facts: [
       {
@@ -3413,7 +3413,7 @@ const PEOPLE = [
         commentFull: 'Joan said voices told her how to help her country.',
         volleyMin: 'Ask about the voices…',
         volleyPartial: 'Joan was guided by voices. What is something deep inside…',
-        volleyFull: 'Voices she trusted! I\'m curious what she wore — want to guess?',
+        volleyFull: 'Voices she trusted! I\'m curious what she wore - want to guess?',
       },
       {
         text: 'Joan wore armor like a knight and rode a horse into battle.',
@@ -3440,7 +3440,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Josephine Baker', years: '1906–1975', emoji: '🎭', tag: 'Performer',
+    name: 'Josephine Baker', years: '1906-1975', emoji: '🎭', tag: 'Performer',
     img: '_Resources/_imgSource/images/josephine-baker.jpg',
     facts: [
       {
@@ -3474,7 +3474,7 @@ const PEOPLE = [
         commentFull: 'Josephine adopted 12 kids from different countries!',
         volleyMin: 'Ask about her kids…',
         volleyPartial: 'Josephine had a big mixed family. What makes a family…',
-        volleyFull: '12 kids — wow! I wonder what else she cared about.',
+        volleyFull: '12 kids - wow! I wonder what else she cared about.',
       },
       {
         text: 'Josephine fought against unfair rules for Black people in America.',
@@ -3490,7 +3490,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Malcolm X', years: '1925–1965', emoji: '✊', tag: 'Activist',
+    name: 'Malcolm X', years: '1925-1965', emoji: '✊', tag: 'Activist',
     img: '_Resources/_imgSource/images/600px-Malcolm_X_1963_press_photo.jpg',
     facts: [
       {
@@ -3540,7 +3540,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Audrey Hepburn', years: '1929–1993', emoji: '🎬', tag: 'Actress',
+    name: 'Audrey Hepburn', years: '1929-1993', emoji: '🎬', tag: 'Actress',
     img: '_Resources/_imgSource/images/audrey-hepburn.jpg',
     facts: [
       {
@@ -3590,7 +3590,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Aristotle', years: '384–322 BC', emoji: '📜', tag: 'Philosopher',
+    name: 'Aristotle', years: '384-322 BC', emoji: '📜', tag: 'Philosopher',
     img: '_Resources/_imgSource/images/aristotle.jpeg',
     facts: [
       {
@@ -3613,7 +3613,7 @@ const PEOPLE = [
         commentFull: 'Aristotle was curious about plants, animals, and stars.',
         volleyMin: 'Ask about his studies…',
         volleyPartial: 'Aristotle was curious about everything. What are you most…',
-        volleyFull: 'Everything?! I bet he taught someone famous — want to guess?',
+        volleyFull: 'Everything?! I bet he taught someone famous - want to guess?',
       },
       {
         text: 'He was the teacher of Alexander, who became a famous king.',
@@ -3640,7 +3640,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Simone Biles', years: '1997–', emoji: '🤸', tag: 'Athlete',
+    name: 'Simone Biles', years: '1997 - ', emoji: '🤸', tag: 'Athlete',
     img: '_Resources/_imgSource/images/simone-biles.jpg',
     facts: [
       {
@@ -3690,7 +3690,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Greta Thunberg', years: '2003–', emoji: '🌱', tag: 'Activist',
+    name: 'Greta Thunberg', years: '2003 - ', emoji: '🌱', tag: 'Activist',
     img: '_Resources/_imgSource/images/greta-thunberg.jpg',
     facts: [
       {
@@ -3740,7 +3740,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Lin-Manuel Miranda', years: '1980–', emoji: '🎭', tag: 'Artist',
+    name: 'Lin-Manuel Miranda', years: '1980 - ', emoji: '🎭', tag: 'Artist',
     img: '_Resources/_imgSource/images/lin-manuel-miranda.jpg',
     facts: [
       {
@@ -3763,7 +3763,7 @@ const PEOPLE = [
         commentFull: 'Lin-Manuel can act, sing, and dance in his shows.',
         volleyMin: 'Ask about performing…',
         volleyPartial: 'Lin-Manuel does many things on stage. What can you do…',
-        volleyFull: 'Acts, sings, AND dances! I bet he wrote for movies too — want to guess which?',
+        volleyFull: 'Acts, sings, AND dances! I bet he wrote for movies too - want to guess which?',
       },
       {
         text: 'Lin-Manuel wrote songs for Disney movies like Moana and Encanto.',
@@ -3790,7 +3790,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Misty Copeland', years: '1982–', emoji: '🩰', tag: 'Dancer',
+    name: 'Misty Copeland', years: '1982 - ', emoji: '🩰', tag: 'Dancer',
     img: '_Resources/_imgSource/images/misty-copeland.jpg',
     facts: [
       {
@@ -3810,10 +3810,10 @@ const PEOPLE = [
         fragment: 'started ballet at age 13, very late',
         commentMin: 'She started late…',
         commentPartial: 'I notice that Misty started ballet later than most…',
-        commentFull: 'Misty started ballet at 13 — pretty late for a dancer.',
+        commentFull: 'Misty started ballet at 13 - pretty late for a dancer.',
         volleyMin: 'Ask about starting late…',
         volleyPartial: 'Misty started late and still made it. Have you ever started…',
-        volleyFull: 'At 13 — pretty late! Do you know how much she practices.',
+        volleyFull: 'At 13 - pretty late! Do you know how much she practices.',
       },
       {
         text: 'Misty practices for many hours every single day.',
@@ -3840,7 +3840,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Kendrick Lamar', years: '1987–', emoji: '🎤', tag: 'Musician',
+    name: 'Kendrick Lamar', years: '1987 - ', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/kendrick-lamar.jpg',
     facts: [
       {
@@ -3890,7 +3890,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Harriet Beecher Stowe', years: '1811–1896', emoji: '📝', tag: 'Author',
+    name: 'Harriet Beecher Stowe', years: '1811-1896', emoji: '📝', tag: 'Author',
     img: '_Resources/_imgSource/images/harriet-beecher-stowe.jpg',
     facts: [
       {
@@ -3940,7 +3940,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Socrates', years: '470–399 BC', emoji: '🏛️', tag: 'Philosopher',
+    name: 'Socrates', years: '470-399 BC', emoji: '🏛️', tag: 'Philosopher',
     img: '_Resources/_imgSource/images/socrates.jpg',
     facts: [
       {
@@ -3966,7 +3966,7 @@ const PEOPLE = [
         volleyFull: 'It really did! Do you know if he ever stopped learning.',
       },
       {
-        text: 'He said "I know that I know nothing" — meaning we should keep learning.',
+        text: 'He said "I know that I know nothing" - meaning we should keep learning.',
         topic: 'always learning',
         fragment: 'said "I know that I know nothing"',
         commentMin: 'He said know nothing…',
@@ -3982,7 +3982,7 @@ const PEOPLE = [
         fragment: 'never wrote books, but Plato wrote about him',
         commentMin: 'His student wrote it…',
         commentPartial: 'I notice that Socrates did not write his own…',
-        commentFull: 'Socrates never wrote books — his student Plato did.',
+        commentFull: 'Socrates never wrote books - his student Plato did.',
         volleyMin: 'Ask about Plato…',
         volleyPartial: 'Socrates\' student wrote his ideas down. Who taught…',
         volleyFull: 'His student wrote them! Who is a teacher YOU still remember?',
@@ -3990,7 +3990,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Alexander the Great', years: '356–323 BC', emoji: '⚔️', tag: 'Ruler',
+    name: 'Alexander the Great', years: '356-323 BC', emoji: '⚔️', tag: 'Ruler',
     img: '_Resources/_imgSource/images/alexander-the-great.webp',
     facts: [
       {
@@ -4040,7 +4040,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Julius Caesar', years: '100–44 BC', emoji: '🏛️', tag: 'Ruler',
+    name: 'Julius Caesar', years: '100-44 BC', emoji: '🏛️', tag: 'Ruler',
     img: '_Resources/_imgSource/images/julius-caesar.jpeg',
     facts: [
       {
@@ -4090,7 +4090,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Genghis Khan', years: '1162–1227', emoji: '🐎', tag: 'Ruler',
+    name: 'Genghis Khan', years: '1162-1227', emoji: '🐎', tag: 'Ruler',
     img: '_Resources/_imgSource/images/genghis-khan.jpg',
     facts: [
       {
@@ -4140,11 +4140,11 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Queen Victoria', years: '1819–1901', emoji: '👑', tag: 'Royal',
+    name: 'Queen Victoria', years: '1819-1901', emoji: '👑', tag: 'Royal',
     img: '_Resources/_imgSource/images/queen-victoria.jpeg',
     facts: [
       {
-        text: 'Queen Victoria ruled Britain for over 60 years — one of the longest reigns ever.',
+        text: 'Queen Victoria ruled Britain for over 60 years - one of the longest reigns ever.',
         topic: '60-year reign',
         fragment: 'ruled Britain for over 60 years',
         commentMin: 'She ruled 60+ years…',
@@ -4190,7 +4190,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Plato', years: '428–348 BC', emoji: '📜', tag: 'Philosopher',
+    name: 'Plato', years: '428-348 BC', emoji: '📜', tag: 'Philosopher',
     img: '_Resources/_imgSource/images/600px-Plato_Silanion_Musei_Capitolini_MC1377.jpg',
     facts: [
       {
@@ -4240,7 +4240,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Confucius', years: '551–479 BC', emoji: '☯️', tag: 'Philosopher',
+    name: 'Confucius', years: '551-479 BC', emoji: '☯️', tag: 'Philosopher',
     img: '_Resources/_imgSource/images/confucius.jpg',
     facts: [
       {
@@ -4290,7 +4290,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Archimedes', years: '287–212 BC', emoji: '⚙️', tag: 'Mathematician',
+    name: 'Archimedes', years: '287-212 BC', emoji: '⚙️', tag: 'Mathematician',
     img: '_Resources/_imgSource/images/archimedes.jpg',
     facts: [
       {
@@ -4340,16 +4340,16 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Mansa Musa', years: '1280–1337', emoji: '💰', tag: 'Ruler',
+    name: 'Mansa Musa', years: '1280-1337', emoji: '💰', tag: 'Ruler',
     img: '_Resources/_imgSource/images/mansa-musa.jpg',
     facts: [
       {
-        text: 'Mansa Musa was a king in Africa long ago — maybe the richest person ever.',
+        text: 'Mansa Musa was a king in Africa long ago - maybe the richest person ever.',
         topic: 'super rich king',
         fragment: 'was a king in Africa, maybe the richest ever',
         commentMin: 'He was super rich…',
         commentPartial: 'I notice that Mansa Musa was one of the…',
-        commentFull: 'Mansa Musa was a king in Africa — maybe the richest person ever!',
+        commentFull: 'Mansa Musa was a king in Africa - maybe the richest person ever!',
         volleyMin: 'Ask about his wealth…',
         volleyPartial: 'Mansa Musa had so much. If you had…',
         volleyFull: 'Maybe the richest ever! I wonder if he was generous.',
@@ -4390,7 +4390,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Hatshepsut', years: '1507–1458 BC', emoji: '👑', tag: 'Ruler',
+    name: 'Hatshepsut', years: '1507-1458 BC', emoji: '👑', tag: 'Ruler',
     img: '_Resources/_imgSource/images/hatshepsut.jpg',
     facts: [
       {
@@ -4440,7 +4440,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Wu Zetian', years: '624–705', emoji: '👑', tag: 'Ruler',
+    name: 'Wu Zetian', years: '624-705', emoji: '👑', tag: 'Ruler',
     img: '_Resources/_imgSource/images/wu-zetian.jpeg',
     facts: [
       {
@@ -4485,12 +4485,12 @@ const PEOPLE = [
         commentFull: 'Wu was a smart planner and ruled for many years.',
         volleyMin: 'Ask about her plans…',
         volleyPartial: 'Wu was a great planner. Are you a…',
-        volleyFull: 'For years — a great planner! Are YOU a planner or do you wing it?',
+        volleyFull: 'For years - a great planner! Are YOU a planner or do you wing it?',
       },
     ],
   },
   {
-    name: 'Suleiman the Magnificent', years: '1494–1566', emoji: '⚔️', tag: 'Ruler',
+    name: 'Suleiman the Magnificent', years: '1494-1566', emoji: '⚔️', tag: 'Ruler',
     img: '_Resources/_imgSource/images/suleiman-the-magnificent.jpeg',
     facts: [
       {
@@ -4540,7 +4540,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Saladin', years: '1137–1193', emoji: '⚔️', tag: 'Ruler',
+    name: 'Saladin', years: '1137-1193', emoji: '⚔️', tag: 'Ruler',
     img: '_Resources/_imgSource/images/saladin.jpg',
     facts: [
       {
@@ -4590,7 +4590,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Pachacuti', years: '1418–1471', emoji: '🏔️', tag: 'Ruler',
+    name: 'Pachacuti', years: '1418-1471', emoji: '🏔️', tag: 'Ruler',
     img: '_Resources/_imgSource/images/pachacuti.jpg',
     facts: [
       {
@@ -4640,7 +4640,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Montezuma II', years: '1466–1520', emoji: '🌽', tag: 'Ruler',
+    name: 'Montezuma II', years: '1466-1520', emoji: '🌽', tag: 'Ruler',
     img: '_Resources/_imgSource/images/montezuma-ii.jpg',
     facts: [
       {
@@ -4690,7 +4690,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Akbar', years: '1542–1605', emoji: '👑', tag: 'Ruler',
+    name: 'Akbar', years: '1542-1605', emoji: '👑', tag: 'Ruler',
     img: '_Resources/_imgSource/images/600px-Govardhan._Akbar_With_Lion_and_Calf_ca._1630%2C_Metmuseum_%28cropped%29.jpg',
     facts: [
       {
@@ -4740,7 +4740,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Shaka Zulu', years: '1787–1828', emoji: '⚔️', tag: 'Ruler',
+    name: 'Shaka Zulu', years: '1787-1828', emoji: '⚔️', tag: 'Ruler',
     img: '_Resources/_imgSource/images/shaka-zulu.jpg',
     facts: [
       {
@@ -4790,7 +4790,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Marie Antoinette', years: '1755–1793', emoji: '👑', tag: 'Royal',
+    name: 'Marie Antoinette', years: '1755-1793', emoji: '👑', tag: 'Royal',
     img: '_Resources/_imgSource/images/marie-antoinette.jpg',
     facts: [
       {
@@ -4840,7 +4840,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'George Washington', years: '1732–1799', emoji: '🇺🇸', tag: 'Leader',
+    name: 'George Washington', years: '1732-1799', emoji: '🇺🇸', tag: 'Leader',
     img: '_Resources/_imgSource/images/george-washington.jpg',
     facts: [
       {
@@ -4890,7 +4890,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Benjamin Franklin', years: '1706–1790', emoji: '⚡', tag: 'Inventor',
+    name: 'Benjamin Franklin', years: '1706-1790', emoji: '⚡', tag: 'Inventor',
     img: '_Resources/_imgSource/images/benjamin-franklin.jpeg',
     facts: [
       {
@@ -4940,7 +4940,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Franklin D. Roosevelt', years: '1882–1945', emoji: '🏛️', tag: 'Leader',
+    name: 'Franklin D. Roosevelt', years: '1882-1945', emoji: '🏛️', tag: 'Leader',
     img: '_Resources/_imgSource/images/franklin-d.-roosevelt.jpg',
     facts: [
       {
@@ -4955,7 +4955,7 @@ const PEOPLE = [
         volleyFull: '12 YEARS as president?! I wonder if the times were easy.',
       },
       {
-        text: 'He led the country through hard times — a big crash and a big war.',
+        text: 'He led the country through hard times - a big crash and a big war.',
         topic: 'tough times',
         fragment: 'led the country through tough times',
         commentMin: 'He led tough times…',
@@ -4990,7 +4990,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Theodore Roosevelt', years: '1858–1919', emoji: '🦁', tag: 'Leader',
+    name: 'Theodore Roosevelt', years: '1858-1919', emoji: '🦁', tag: 'Leader',
     img: '_Resources/_imgSource/images/theodore-roosevelt.jpg',
     facts: [
       {
@@ -5040,7 +5040,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Mao Zedong', years: '1893–1976', emoji: '⭐', tag: 'Leader',
+    name: 'Mao Zedong', years: '1893-1976', emoji: '⭐', tag: 'Leader',
     img: '_Resources/_imgSource/images/mao-zedong.jpg',
     facts: [
       {
@@ -5090,7 +5090,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Kamala Harris', years: '1964–', emoji: '🏛️', tag: 'Leader',
+    name: 'Kamala Harris', years: '1964 - ', emoji: '🏛️', tag: 'Leader',
     img: '_Resources/_imgSource/images/600px-Kamala_Harris_Vice_Presidential_Portrait.jpg',
     facts: [
       {
@@ -5140,7 +5140,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Jacinda Ardern', years: '1980–', emoji: '🕊️', tag: 'Leader',
+    name: 'Jacinda Ardern', years: '1980 - ', emoji: '🕊️', tag: 'Leader',
     img: '_Resources/_imgSource/images/jacinda-ardern.jpg',
     facts: [
       {
@@ -5190,7 +5190,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Alexandria Ocasio-Cortez', years: '1989–', emoji: '✊', tag: 'Leader',
+    name: 'Alexandria Ocasio-Cortez', years: '1989 - ', emoji: '✊', tag: 'Leader',
     img: '_Resources/_imgSource/images/alexandria-ocasio-cortez.jpg',
     facts: [
       {
@@ -5240,7 +5240,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Michelle Obama', years: '1964–', emoji: '✨', tag: 'Leader',
+    name: 'Michelle Obama', years: '1964 - ', emoji: '✨', tag: 'Leader',
     img: '_Resources/_imgSource/images/600px-Michelle_Obama_2013_official_portrait.jpg',
     facts: [
       {
@@ -5290,7 +5290,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Sonia Sotomayor', years: '1954–', emoji: '⚖️', tag: 'Leader',
+    name: 'Sonia Sotomayor', years: '1954 - ', emoji: '⚖️', tag: 'Leader',
     img: '_Resources/_imgSource/images/sonia-sotomayor.jpg',
     facts: [
       {
@@ -5340,7 +5340,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Desmond Tutu', years: '1931–2021', emoji: '✝️', tag: 'Activist',
+    name: 'Desmond Tutu', years: '1931-2021', emoji: '✝️', tag: 'Activist',
     img: '_Resources/_imgSource/images/desmond-tutu.jpg',
     facts: [
       {
@@ -5390,7 +5390,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Wangari Maathai', years: '1940–2011', emoji: '🌳', tag: 'Activist',
+    name: 'Wangari Maathai', years: '1940-2011', emoji: '🌳', tag: 'Activist',
     img: '_Resources/_imgSource/images/wangari-maathai.jpg',
     facts: [
       {
@@ -5440,7 +5440,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Rigoberta Menchú', years: '1959–', emoji: '✊', tag: 'Activist',
+    name: 'Rigoberta Menchú', years: '1959 - ', emoji: '✊', tag: 'Activist',
     img: '_Resources/_imgSource/images/rigoberta-menchu.jpg',
     facts: [
       {
@@ -5490,7 +5490,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Ruth Bader Ginsburg', years: '1933–2020', emoji: '⚖️', tag: 'Activist',
+    name: 'Ruth Bader Ginsburg', years: '1933-2020', emoji: '⚖️', tag: 'Activist',
     img: '_Resources/_imgSource/images/ruth-bader-ginsburg.jpg',
     facts: [
       {
@@ -5540,7 +5540,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Sojourner Truth', years: '1797–1883', emoji: '✊', tag: 'Activist',
+    name: 'Sojourner Truth', years: '1797-1883', emoji: '✊', tag: 'Activist',
     img: '_Resources/_imgSource/images/sojourner-truth.jpeg',
     facts: [
       {
@@ -5563,7 +5563,7 @@ const PEOPLE = [
         commentFull: 'Sojourner gave a famous speech: "Ain\'t I a woman?"',
         volleyMin: 'Ask about her speech…',
         volleyPartial: 'Sojourner asked a strong question. What is a question you would…',
-        volleyFull: '"Ain\'t I a woman?" — wow! I wonder if she traveled.',
+        volleyFull: '"Ain\'t I a woman?" - wow! I wonder if she traveled.',
       },
       {
         text: 'Sojourner walked across the country to share her words.',
@@ -5590,7 +5590,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Susan B. Anthony', years: '1820–1906', emoji: '🗳️', tag: 'Activist',
+    name: 'Susan B. Anthony', years: '1820-1906', emoji: '🗳️', tag: 'Activist',
     img: '_Resources/_imgSource/images/susan-b.-anthony.jpg',
     facts: [
       {
@@ -5610,7 +5610,7 @@ const PEOPLE = [
         fragment: 'voted once on purpose and got in trouble',
         commentMin: 'She voted to protest…',
         commentPartial: 'I notice that Susan voted even though she was not…',
-        commentFull: 'Susan voted on purpose to protest — and got in trouble.',
+        commentFull: 'Susan voted on purpose to protest - and got in trouble.',
         volleyMin: 'Ask about that vote…',
         volleyPartial: 'Susan broke a rule to make a point. Have you ever stood up…',
         volleyFull: 'She voted to protest?! Do you know if she gave speeches.',
@@ -5640,7 +5640,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Emmeline Pankhurst', years: '1858–1928', emoji: '✊', tag: 'Activist',
+    name: 'Emmeline Pankhurst', years: '1858-1928', emoji: '✊', tag: 'Activist',
     img: '_Resources/_imgSource/images/emmeline-pankhurst.jpg',
     facts: [
       {
@@ -5690,7 +5690,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Dalai Lama', years: '1935–', emoji: '☮️', tag: 'Leader',
+    name: 'Dalai Lama', years: '1935 - ', emoji: '☮️', tag: 'Leader',
     img: '_Resources/_imgSource/images/dalai-lama.jpg',
     facts: [
       {
@@ -5740,7 +5740,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Mother Teresa', years: '1910–1997', emoji: '✝️', tag: 'Activist',
+    name: 'Mother Teresa', years: '1910-1997', emoji: '✝️', tag: 'Activist',
     img: '_Resources/_imgSource/images/mother-teresa.jpg',
     facts: [
       {
@@ -5790,7 +5790,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Anne Frank', years: '1929–1945', emoji: '📔', tag: 'Author',
+    name: 'Anne Frank', years: '1929-1945', emoji: '📔', tag: 'Author',
     img: '_Resources/_imgSource/images/anne-frank.jpg',
     facts: [
       {
@@ -5813,7 +5813,7 @@ const PEOPLE = [
         commentFull: 'Anne was only 13 when she started her diary.',
         volleyMin: 'Ask about being 13…',
         volleyPartial: 'Anne started writing at 13. What would you write…',
-        volleyFull: 'Only 13! I\'m curious how long she had to hide — want to guess?',
+        volleyFull: 'Only 13! I\'m curious how long she had to hide - want to guess?',
       },
       {
         text: 'Anne hid in a small space called the Secret Annex with her family for two years.',
@@ -5840,7 +5840,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'William Shakespeare', years: '1564–1616', emoji: '🎭', tag: 'Author',
+    name: 'William Shakespeare', years: '1564-1616', emoji: '🎭', tag: 'Author',
     img: '_Resources/_imgSource/images/william-shakespeare.jpg',
     facts: [
       {
@@ -5863,7 +5863,7 @@ const PEOPLE = [
         commentFull: 'William wrote the famous love story Romeo and Juliet.',
         volleyMin: 'Ask about Romeo and Juliet…',
         volleyPartial: 'He wrote a famous love story. What is your favorite…',
-        volleyFull: 'Romeo and Juliet! I bet he made up some words too — want to guess any?',
+        volleyFull: 'Romeo and Juliet! I bet he made up some words too - want to guess any?',
       },
       {
         text: 'William made up lots of new words and sayings we still use.',
@@ -5890,7 +5890,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Charles Dickens', years: '1812–1870', emoji: '📖', tag: 'Author',
+    name: 'Charles Dickens', years: '1812-1870', emoji: '📖', tag: 'Author',
     img: '_Resources/_imgSource/images/charles-dickens.jpg',
     facts: [
       {
@@ -5940,11 +5940,11 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Mark Twain', years: '1835–1910', emoji: '✍️', tag: 'Author',
+    name: 'Mark Twain', years: '1835-1910', emoji: '✍️', tag: 'Author',
     img: '_Resources/_imgSource/images/mark-twain.jpg',
     facts: [
       {
-        text: 'Mark wrote Tom Sawyer and Huckleberry Finn — two books kids have loved for years.',
+        text: 'Mark wrote Tom Sawyer and Huckleberry Finn - two books kids have loved for years.',
         topic: 'Tom Sawyer',
         fragment: 'wrote Tom Sawyer and Huckleberry Finn',
         commentMin: 'He wrote Tom Sawyer…',
@@ -5960,7 +5960,7 @@ const PEOPLE = [
         fragment: 'used a pen name from his river days',
         commentMin: 'Mark Twain was a pen name…',
         commentPartial: 'I notice that Mark Twain was not his real…',
-        commentFull: 'Mark Twain was a pen name — his real name was Sam.',
+        commentFull: 'Mark Twain was a pen name - his real name was Sam.',
         volleyMin: 'Ask about his name…',
         volleyPartial: 'Mark used a fun pen name. If you made up…',
         volleyFull: 'A pen name?! Do you know if he was funny in real life.',
@@ -5990,7 +5990,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Virginia Woolf', years: '1882–1941', emoji: '✍️', tag: 'Author',
+    name: 'Virginia Woolf', years: '1882-1941', emoji: '✍️', tag: 'Author',
     img: '_Resources/_imgSource/images/virginia-woolf.jpg',
     facts: [
       {
@@ -6040,7 +6040,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'George Orwell', years: '1903–1950', emoji: '📖', tag: 'Author',
+    name: 'George Orwell', years: '1903-1950', emoji: '📖', tag: 'Author',
     img: '_Resources/_imgSource/images/george-orwell.jpg',
     facts: [
       {
@@ -6063,7 +6063,7 @@ const PEOPLE = [
         commentFull: 'George wrote 1984 about a future where people are always watched.',
         volleyMin: 'Ask about 1984…',
         volleyPartial: 'George imagined being always watched. Would you want…',
-        volleyFull: '1984 — about always being watched?! Do you know if George Orwell was his real name.',
+        volleyFull: '1984 - about always being watched?! Do you know if George Orwell was his real name.',
       },
       {
         text: 'George Orwell was a pen name; his real name was Eric.',
@@ -6071,7 +6071,7 @@ const PEOPLE = [
         fragment: 'had the real name Eric, not George',
         commentMin: 'His name was Eric…',
         commentPartial: 'I notice that George\'s real name was…',
-        commentFull: 'George Orwell was a pen name — his real name was Eric.',
+        commentFull: 'George Orwell was a pen name - his real name was Eric.',
         volleyMin: 'Ask about his name…',
         volleyPartial: 'George used a pen name. If you picked a name…',
         volleyFull: 'A pen name?! I wonder if he tried regular jobs.',
@@ -6090,7 +6090,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Maya Angelou', years: '1928–2014', emoji: '✍️', tag: 'Author',
+    name: 'Maya Angelou', years: '1928-2014', emoji: '✍️', tag: 'Author',
     img: '_Resources/_imgSource/images/maya-angelou.jpg',
     facts: [
       {
@@ -6110,15 +6110,15 @@ const PEOPLE = [
         fragment: 'wrote I Know Why the Caged Bird Sings',
         commentMin: 'She wrote about a bird…',
         commentPartial: 'I notice that Maya wrote a famous book about a…',
-        commentFull: 'Maya wrote a famous book — I Know Why the Caged Bird Sings.',
+        commentFull: 'Maya wrote a famous book - I Know Why the Caged Bird Sings.',
         volleyMin: 'Ask about that book…',
         volleyPartial: 'Maya\'s book has a great title. What is a name…',
         volleyFull: 'I Know Why the Caged Bird Sings! I wonder if she did other things.',
       },
       {
-        text: 'Maya did all kinds of jobs — dancer, singer, actor, and writer.',
+        text: 'Maya did all kinds of jobs - dancer, singer, actor, and writer.',
         topic: 'many jobs',
-        fragment: 'did many jobs — dancer, singer, actor, writer',
+        fragment: 'did many jobs - dancer, singer, actor, writer',
         commentMin: 'She did many jobs…',
         commentPartial: 'I notice that Maya tried so many different…',
         commentFull: 'Maya was a dancer, singer, actor, AND writer!',
@@ -6140,7 +6140,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Toni Morrison', years: '1931–2019', emoji: '📖', tag: 'Author',
+    name: 'Toni Morrison', years: '1931-2019', emoji: '📖', tag: 'Author',
     img: '_Resources/_imgSource/images/toni-morrison.jpg',
     facts: [
       {
@@ -6182,7 +6182,7 @@ const PEOPLE = [
         fragment: 'wrote Beloved, one of the most famous American books',
         commentMin: 'She wrote Beloved…',
         commentPartial: 'I notice that Toni wrote one of America\'s most famous…',
-        commentFull: 'Toni wrote Beloved — one of America\'s most famous books.',
+        commentFull: 'Toni wrote Beloved - one of America\'s most famous books.',
         volleyMin: 'Ask about Beloved…',
         volleyPartial: 'Toni\'s book Beloved is famous. What is a book you…',
         volleyFull: 'Beloved! What book do YOU think everyone should read?',
@@ -6191,7 +6191,7 @@ const PEOPLE = [
   },
 
   {
-    name: 'Chimamanda Ngozi Adichie', years: '1977–', emoji: '✍️', tag: 'Author',
+    name: 'Chimamanda Ngozi Adichie', years: '1977 - ', emoji: '✍️', tag: 'Author',
     img: '_Resources/_imgSource/images/chimamanda-ngozi-adichie.jpeg',
     facts: [
       {
@@ -6241,7 +6241,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Langston Hughes', years: '1902–1967', emoji: '✍️', tag: 'Author',
+    name: 'Langston Hughes', years: '1902-1967', emoji: '✍️', tag: 'Author',
     img: '_Resources/_imgSource/images/langston-hughes.jpg',
     facts: [
       {
@@ -6291,7 +6291,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Gabriel García Márquez', years: '1927–2014', emoji: '📖', tag: 'Author',
+    name: 'Gabriel García Márquez', years: '1927-2014', emoji: '📖', tag: 'Author',
     img: '_Resources/_imgSource/images/gabriel-garcia-marquez.jpg',
     facts: [
       {
@@ -6341,7 +6341,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Rumi', years: '1207–1273', emoji: '☯️', tag: 'Author',
+    name: 'Rumi', years: '1207-1273', emoji: '☯️', tag: 'Author',
     img: '_Resources/_imgSource/images/rumi.jpg',
     facts: [
       {
@@ -6391,7 +6391,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Murasaki Shikibu', years: '978–1014', emoji: '✍️', tag: 'Author',
+    name: 'Murasaki Shikibu', years: '978-1014', emoji: '✍️', tag: 'Author',
     img: '_Resources/_imgSource/images/murasaki-shikibu.png',
     facts: [
       {
@@ -6441,7 +6441,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Sor Juana Inés de la Cruz', years: '1651–1695', emoji: '✍️', tag: 'Author',
+    name: 'Sor Juana Inés de la Cruz', years: '1651-1695', emoji: '✍️', tag: 'Author',
     img: '_Resources/_imgSource/images/sor-juana-ines-de-la-cruz.jpg',
     facts: [
       {
@@ -6491,7 +6491,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Emily Dickinson', years: '1830–1886', emoji: '✍️', tag: 'Author',
+    name: 'Emily Dickinson', years: '1830-1886', emoji: '✍️', tag: 'Author',
     img: '_Resources/_imgSource/images/emily-dickinson.jpg',
     facts: [
       {
@@ -6536,12 +6536,12 @@ const PEOPLE = [
         commentFull: 'Emily loved flowers and pressed them into a book.',
         volleyMin: 'Ask about flowers…',
         volleyPartial: 'Emily loved flowers. What is your favorite…',
-        volleyFull: 'Flowers — she pressed them in books! What is YOUR favorite flower?',
+        volleyFull: 'Flowers - she pressed them in books! What is YOUR favorite flower?',
       },
     ],
   },
   {
-    name: 'Edgar Allan Poe', years: '1809–1849', emoji: '🐦‍⬛', tag: 'Author',
+    name: 'Edgar Allan Poe', years: '1809-1849', emoji: '🐦‍⬛', tag: 'Author',
     img: '_Resources/_imgSource/images/edgar-allan-poe.jpeg',
     facts: [
       {
@@ -6591,7 +6591,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Mary Shelley', years: '1797–1851', emoji: '📖', tag: 'Author',
+    name: 'Mary Shelley', years: '1797-1851', emoji: '📖', tag: 'Author',
     img: '_Resources/_imgSource/images/mary-shelley.jpeg',
     facts: [
       {
@@ -6641,7 +6641,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Mary Wollstonecraft', years: '1759–1797', emoji: '✍️', tag: 'Author',
+    name: 'Mary Wollstonecraft', years: '1759-1797', emoji: '✍️', tag: 'Author',
     img: '_Resources/_imgSource/images/mary_wollstonecraft.jpg',
     facts: [
       {
@@ -6691,7 +6691,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Thomas Edison', years: '1847–1931', emoji: '💡', tag: 'Inventor',
+    name: 'Thomas Edison', years: '1847-1931', emoji: '💡', tag: 'Inventor',
     img: '_Resources/_imgSource/images/thomas-edison.jpeg',
     facts: [
       {
@@ -6703,7 +6703,7 @@ const PEOPLE = [
         commentFull: 'Thomas invented the lightbulb people kept using over and over.',
         volleyMin: 'Ask about the lightbulb…',
         volleyPartial: 'Thomas invented the lightbulb. What is something you use…',
-        volleyFull: 'The lightbulb! I also know he had a LOT of patents — want to guess how many?',
+        volleyFull: 'The lightbulb! I also know he had a LOT of patents - want to guess how many?',
       },
       {
         text: 'He held over 1,000 patents for things he invented or improved.',
@@ -6717,7 +6717,7 @@ const PEOPLE = [
         volleyFull: 'OVER 1,000 inventions! Do you know if he recorded sound too.',
       },
       {
-        text: 'Thomas also made a machine that could play back sound — the very first phonograph.',
+        text: 'Thomas also made a machine that could play back sound - the very first phonograph.',
         topic: 'first phonograph',
         fragment: 'made the first machine to play back sound',
         commentMin: 'He recorded sound…',
@@ -6741,7 +6741,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Hedy Lamarr', years: '1914–2000', emoji: '📡', tag: 'Inventor',
+    name: 'Hedy Lamarr', years: '1914-2000', emoji: '📡', tag: 'Inventor',
     img: '_Resources/_imgSource/images/hedy-lamarr.jpg',
     facts: [
       {
@@ -6791,7 +6791,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Grace Hopper', years: '1906–1992', emoji: '💻', tag: 'Inventor',
+    name: 'Grace Hopper', years: '1906-1992', emoji: '💻', tag: 'Inventor',
     img: '_Resources/_imgSource/images/grace-hopper.jpeg',
     facts: [
       {
@@ -6822,7 +6822,7 @@ const PEOPLE = [
         fragment: 'found a moth and called it a "bug"',
         commentMin: 'She found a real bug…',
         commentPartial: 'I notice that Grace found a real bug inside a…',
-        commentFull: 'Grace found a moth in a computer — that\'s why we say "bug"!',
+        commentFull: 'Grace found a moth in a computer - that\'s why we say "bug"!',
         volleyMin: 'Ask about the bug…',
         volleyPartial: 'Grace named computer bugs. Have you ever fixed…',
         volleyFull: 'A real moth?! Do you know if she did anything besides coding.',
@@ -6841,7 +6841,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Tim Berners-Lee', years: '1955–', emoji: '🌐', tag: 'Inventor',
+    name: 'Tim Berners-Lee', years: '1955 - ', emoji: '🌐', tag: 'Inventor',
     img: '_Resources/_imgSource/images/tim-berners-lee.jpg',
     facts: [
       {
@@ -6891,7 +6891,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Wright Brothers', years: '1867–1948 / 1871–1948', emoji: '✈️', tag: 'Inventor',
+    name: 'Wright Brothers', years: '1867-1948 / 1871-1948', emoji: '✈️', tag: 'Inventor',
     img: '_Resources/_imgSource/images/wright-brothers.jpg',
     facts: [
       {
@@ -6914,7 +6914,7 @@ const PEOPLE = [
         commentFull: 'Their first flight was only 12 seconds long.',
         volleyMin: 'Ask about the flight…',
         volleyPartial: 'Their first try lasted 12 seconds. What is the longest you have…',
-        volleyFull: '12 SECONDS?! I\'m curious what they did before planes — want to guess?',
+        volleyFull: '12 SECONDS?! I\'m curious what they did before planes - want to guess?',
       },
       {
         text: 'They first ran a bike shop where they fixed and built bicycles.',
@@ -6941,7 +6941,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Alan Turing', years: '1912–1954', emoji: '💻', tag: 'Inventor',
+    name: 'Alan Turing', years: '1912-1954', emoji: '💻', tag: 'Inventor',
     img: '_Resources/_imgSource/images/alan-turing.jpeg',
     facts: [
       {
@@ -6991,7 +6991,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Elon Musk', years: '1971–', emoji: '🚀', tag: 'Innovator',
+    name: 'Elon Musk', years: '1971 - ', emoji: '🚀', tag: 'Innovator',
     img: '_Resources/_imgSource/images/elon-musk.jpeg',
     facts: [
       {
@@ -7003,7 +7003,7 @@ const PEOPLE = [
         commentFull: 'Elon makes rockets and electric cars.',
         volleyMin: 'Ask about his companies…',
         volleyPartial: 'Elon makes rockets and cars. Which would you…',
-        volleyFull: 'Rockets AND electric cars! I\'m surprised by his rockets — want to guess what\'s different?',
+        volleyFull: 'Rockets AND electric cars! I\'m surprised by his rockets - want to guess what\'s different?',
       },
       {
         text: 'His rocket company has sent things into space and brought rockets back to land safely.',
@@ -7036,12 +7036,12 @@ const PEOPLE = [
         commentFull: 'Elon moved from South Africa to the U.S. as a teen.',
         volleyMin: 'Ask about moving…',
         volleyPartial: 'Elon moved far when young. Have you ever moved…',
-        volleyFull: 'South Africa — then moved as a teen. Have YOU ever moved or changed schools?',
+        volleyFull: 'South Africa - then moved as a teen. Have YOU ever moved or changed schools?',
       },
     ],
   },
   {
-    name: 'Bill Gates', years: '1955–', emoji: '💻', tag: 'Innovator',
+    name: 'Bill Gates', years: '1955 - ', emoji: '💻', tag: 'Innovator',
     img: '_Resources/_imgSource/images/bill-gates.jpeg',
     facts: [
       {
@@ -7091,7 +7091,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Mark Zuckerberg', years: '1984–', emoji: '📱', tag: 'Innovator',
+    name: 'Mark Zuckerberg', years: '1984 - ', emoji: '📱', tag: 'Innovator',
     img: '_Resources/_imgSource/images/mark-zuckerberg.jpg',
     facts: [
       {
@@ -7141,7 +7141,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Florence Nightingale', years: '1820–1910', emoji: '🏥', tag: 'Pioneer',
+    name: 'Florence Nightingale', years: '1820-1910', emoji: '🏥', tag: 'Pioneer',
     img: '_Resources/_imgSource/images/florence-nightingale.jpg',
     facts: [
       {
@@ -7164,7 +7164,7 @@ const PEOPLE = [
         commentFull: 'Florence took care of soldiers and made hospitals cleaner.',
         volleyMin: 'Ask about hospitals…',
         volleyPartial: 'Florence made places cleaner. Why is staying clean…',
-        volleyFull: 'Cleaner hospitals! I bet she got a famous nickname — want to guess?',
+        volleyFull: 'Cleaner hospitals! I bet she got a famous nickname - want to guess?',
       },
       {
         text: 'People called her "the Lady with the Lamp" because she checked on patients at night.',
@@ -7191,7 +7191,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Louis Pasteur', years: '1822–1895', emoji: '🔬', tag: 'Scientist',
+    name: 'Louis Pasteur', years: '1822-1895', emoji: '🔬', tag: 'Scientist',
     img: '_Resources/_imgSource/images/louis-pasteur.jpg',
     facts: [
       {
@@ -7203,7 +7203,7 @@ const PEOPLE = [
         commentFull: 'Louis figured out that tiny germs make people sick.',
         volleyMin: 'Ask about germs…',
         volleyPartial: 'Louis figured out germs. What do you do to…',
-        volleyFull: 'He found GERMS! I\'m surprised he made things safer too — want to guess what?',
+        volleyFull: 'He found GERMS! I\'m surprised he made things safer too - want to guess what?',
       },
       {
         text: 'He found a way to make milk safe by heating it up first.',
@@ -7241,7 +7241,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Rosalind Franklin', years: '1920–1958', emoji: '🔬', tag: 'Scientist',
+    name: 'Rosalind Franklin', years: '1920-1958', emoji: '🔬', tag: 'Scientist',
     img: '_Resources/_imgSource/images/rosalind-franklin.jpg',
     facts: [
       {
@@ -7250,7 +7250,7 @@ const PEOPLE = [
         fragment: 'helped find the shape of DNA',
         commentMin: 'She helped find DNA\'s shape…',
         commentPartial: 'I notice that Rosalind helped figure out what DNA looks…',
-        commentFull: 'Rosalind helped find the shape of DNA — the stuff that makes us who we are.',
+        commentFull: 'Rosalind helped find the shape of DNA - the stuff that makes us who we are.',
         volleyMin: 'Ask about DNA…',
         volleyPartial: 'Rosalind helped find DNA\'s shape. What part of your body…',
         volleyFull: 'She helped find DNA! Do you know how she did that.',
@@ -7291,7 +7291,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Katherine Johnson', years: '1918–2020', emoji: '🚀', tag: 'Mathematician',
+    name: 'Katherine Johnson', years: '1918-2020', emoji: '🚀', tag: 'Mathematician',
     img: '_Resources/_imgSource/images/katherine-johnson.jpeg',
     facts: [
       {
@@ -7303,7 +7303,7 @@ const PEOPLE = [
         commentFull: 'Katherine did the math that sent astronauts to space!',
         volleyMin: 'Ask about her math…',
         volleyPartial: 'Katherine\'s math sent people to space. What do you…',
-        volleyFull: 'Math that sent astronauts to SPACE?! I bet astronauts trusted her — want to guess?',
+        volleyFull: 'Math that sent astronauts to SPACE?! I bet astronauts trusted her - want to guess?',
       },
       {
         text: 'She was so good that astronauts asked for her by name to check their numbers.',
@@ -7322,7 +7322,7 @@ const PEOPLE = [
         fragment: 'loved math her whole life',
         commentMin: 'She loved math young…',
         commentPartial: 'I notice that Katherine loved math from when she was…',
-        commentFull: 'Katherine loved math her whole life — even as a little girl.',
+        commentFull: 'Katherine loved math her whole life - even as a little girl.',
         volleyMin: 'Ask about math…',
         volleyPartial: 'Katherine loved math young. What is your favorite…',
         volleyFull: 'As a little girl! Do you know if her story got told.',
@@ -7341,7 +7341,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Chien-Shiung Wu', years: '1912–1997', emoji: '⚛️', tag: 'Scientist',
+    name: 'Chien-Shiung Wu', years: '1912-1997', emoji: '⚛️', tag: 'Scientist',
     img: '_Resources/_imgSource/images/chien-shiung-wu.jpg',
     facts: [
       {
@@ -7391,7 +7391,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Srinivasa Ramanujan', years: '1887–1920', emoji: '🔢', tag: 'Mathematician',
+    name: 'Srinivasa Ramanujan', years: '1887-1920', emoji: '🔢', tag: 'Mathematician',
     img: '_Resources/_imgSource/images/srinivasa_ramanujan.jpg',
     facts: [
       {
@@ -7436,12 +7436,12 @@ const PEOPLE = [
         commentFull: 'He kept writing math ideas even when he was sick.',
         volleyMin: 'Ask about loving math…',
         volleyPartial: 'Srinivasa loved math a ton. What do you love…',
-        volleyFull: 'Always — he loved math! What do YOU love doing even when tired?',
+        volleyFull: 'Always - he loved math! What do YOU love doing even when tired?',
       },
     ],
   },
   {
-    name: 'Neil deGrasse Tyson', years: '1958–', emoji: '🔭', tag: 'Scientist',
+    name: 'Neil deGrasse Tyson', years: '1958 - ', emoji: '🔭', tag: 'Scientist',
     img: '_Resources/_imgSource/images/neil-degrasse-tyson.jpg',
     facts: [
       {
@@ -7491,7 +7491,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Jane Goodall', years: '1934–', emoji: '🦍', tag: 'Scientist',
+    name: 'Jane Goodall', years: '1934 - ', emoji: '🦍', tag: 'Scientist',
     img: '_Resources/_imgSource/images/jane-goodall.jpg',
     facts: [
       {
@@ -7525,7 +7525,7 @@ const PEOPLE = [
         commentFull: 'Jane gave each chimp a name, like David and Flo.',
         volleyMin: 'Ask about naming…',
         volleyPartial: 'Jane named her chimps. Have you ever named…',
-        volleyFull: 'David, Flo — like family! Do you know if she still helps animals.',
+        volleyFull: 'David, Flo - like family! Do you know if she still helps animals.',
       },
       {
         text: 'She travels around the world to help kids care about animals.',
@@ -7541,7 +7541,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Carl Sagan', years: '1934–1996', emoji: '🔭', tag: 'Scientist',
+    name: 'Carl Sagan', years: '1934-1996', emoji: '🔭', tag: 'Scientist',
     img: '_Resources/_imgSource/images/carl-sagan.jpeg',
     facts: [
       {
@@ -7591,7 +7591,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Al-Khwarizmi', years: '780–850', emoji: '➕', tag: 'Mathematician',
+    name: 'Al-Khwarizmi', years: '780-850', emoji: '➕', tag: 'Mathematician',
     img: '_Resources/_imgSource/images/al-khwarizmi.jpeg',
     facts: [
       {
@@ -7641,7 +7641,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Avicenna', years: '980–1037', emoji: '🏥', tag: 'Scientist',
+    name: 'Avicenna', years: '980-1037', emoji: '🏥', tag: 'Scientist',
     img: '_Resources/_imgSource/images/avicenna.jpg',
     facts: [
       {
@@ -7691,7 +7691,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Ibn Battuta', years: '1304–1368', emoji: '🌍', tag: 'Explorer',
+    name: 'Ibn Battuta', years: '1304-1368', emoji: '🌍', tag: 'Explorer',
     img: '_Resources/_imgSource/images/ibn-battuta.jpg',
     facts: [
       {
@@ -7741,7 +7741,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Marco Polo', years: '1254–1324', emoji: '🗺️', tag: 'Explorer',
+    name: 'Marco Polo', years: '1254-1324', emoji: '🗺️', tag: 'Explorer',
     img: '_Resources/_imgSource/images/marco-polo.jpg',
     facts: [
       {
@@ -7767,12 +7767,12 @@ const PEOPLE = [
         volleyFull: 'Just 17?! Do you know if people believed his stories.',
       },
       {
-        text: 'Marco wrote a book about what he saw — and many people did not believe him.',
+        text: 'Marco wrote a book about what he saw - and many people did not believe him.',
         topic: 'his book',
         fragment: 'wrote a book that many people didn\'t believe',
         commentMin: 'He wrote a wild book…',
         commentPartial: 'I notice that Marco\'s stories were so wild people…',
-        commentFull: 'Marco wrote a book about his trip — many didn\'t believe him!',
+        commentFull: 'Marco wrote a book about his trip - many didn\'t believe him!',
         volleyMin: 'Ask about his stories…',
         volleyPartial: 'His stories were unbelievable. What is something you saw that…',
         volleyFull: 'A lot didn\'t! I wonder if he worked for anyone famous.',
@@ -7791,7 +7791,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Ferdinand Magellan', years: '1480–1521', emoji: '🌍', tag: 'Explorer',
+    name: 'Ferdinand Magellan', years: '1480-1521', emoji: '🌍', tag: 'Explorer',
     img: '_Resources/_imgSource/images/ferdinand-magellan.jpg',
     facts: [
       {
@@ -7806,7 +7806,7 @@ const PEOPLE = [
         volleyFull: 'First trip around the world! I wonder if he finished it.',
       },
       {
-        text: 'He never finished the trip — but his ship and crew did.',
+        text: 'He never finished the trip - but his ship and crew did.',
         topic: 'crew finished',
         fragment: 'never finished the trip, but his crew did',
         commentMin: 'His crew finished…',
@@ -7841,7 +7841,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Ernest Shackleton', years: '1874–1922', emoji: '🧊', tag: 'Explorer',
+    name: 'Ernest Shackleton', years: '1874-1922', emoji: '🧊', tag: 'Explorer',
     img: '_Resources/_imgSource/images/ernest-shackleton.jpg',
     facts: [
       {
@@ -7891,7 +7891,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Edmund Hillary', years: '1919–2008', emoji: '🏔️', tag: 'Explorer',
+    name: 'Edmund Hillary', years: '1919-2008', emoji: '🏔️', tag: 'Explorer',
     img: '_Resources/_imgSource/images/edmund-hillary.jpg',
     facts: [
       {
@@ -7941,7 +7941,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Tenzing Norgay', years: '1914–1986', emoji: '🏔️', tag: 'Explorer',
+    name: 'Tenzing Norgay', years: '1914-1986', emoji: '🏔️', tag: 'Explorer',
     img: '_Resources/_imgSource/images/tenzing-norgay.jpg',
     facts: [
       {
@@ -7961,7 +7961,7 @@ const PEOPLE = [
         fragment: 'was a Sherpa who guided climbers up mountains',
         commentMin: 'He was a Sherpa guide…',
         commentPartial: 'I notice that Tenzing was a Sherpa, which is a guide for…',
-        commentFull: 'Tenzing was a Sherpa — a guide for mountain climbers.',
+        commentFull: 'Tenzing was a Sherpa - a guide for mountain climbers.',
         volleyMin: 'Ask about Sherpas…',
         volleyPartial: 'Tenzing helped climbers. Have you ever…',
         volleyFull: 'A Sherpa guide! I wonder if he grew up near Everest.',
@@ -7991,7 +7991,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Jacques Cousteau', years: '1910–1997', emoji: '🤿', tag: 'Explorer',
+    name: 'Jacques Cousteau', years: '1910-1997', emoji: '🤿', tag: 'Explorer',
     img: '_Resources/_imgSource/images/jacques-cousteau.jpg',
     facts: [
       {
@@ -8003,7 +8003,7 @@ const PEOPLE = [
         commentFull: 'Jacques explored the deep ocean and filmed it for everyone.',
         volleyMin: 'Ask about the ocean…',
         volleyPartial: 'Jacques showed people the deep sea. What sea animal do…',
-        volleyFull: 'He filmed the deep ocean! I bet he invented diving gear — want to guess?',
+        volleyFull: 'He filmed the deep ocean! I bet he invented diving gear - want to guess?',
       },
       {
         text: 'He helped invent special gear to breathe underwater.',
@@ -8041,7 +8041,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Yuri Gagarin', years: '1934–1968', emoji: '🚀', tag: 'Astronaut',
+    name: 'Yuri Gagarin', years: '1934-1968', emoji: '🚀', tag: 'Astronaut',
     img: '_Resources/_imgSource/images/yuri-gagarin.jpg',
     facts: [
       {
@@ -8091,7 +8091,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Valentina Tereshkova', years: '1937–', emoji: '🚀', tag: 'Astronaut',
+    name: 'Valentina Tereshkova', years: '1937 - ', emoji: '🚀', tag: 'Astronaut',
     img: '_Resources/_imgSource/images/valentina-tereshkova.jpeg',
     facts: [
       {
@@ -8141,7 +8141,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Sally Ride', years: '1951–2012', emoji: '🚀', tag: 'Astronaut',
+    name: 'Sally Ride', years: '1951-2012', emoji: '🚀', tag: 'Astronaut',
     img: '_Resources/_imgSource/images/sally-ride.jpeg',
     facts: [
       {
@@ -8191,7 +8191,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Mae Jemison', years: '1956–', emoji: '🚀', tag: 'Astronaut',
+    name: 'Mae Jemison', years: '1956 - ', emoji: '🚀', tag: 'Astronaut',
     img: '_Resources/_imgSource/images/mae-jemison.jpg',
     facts: [
       {
@@ -8222,7 +8222,7 @@ const PEOPLE = [
         fragment: 'took a Star Trek pin to space',
         commentMin: 'She brought a Star Trek pin…',
         commentPartial: 'I notice that Mae loved Star Trek so much she…',
-        commentFull: 'Mae took a Star Trek pin to space — she loved the show!',
+        commentFull: 'Mae took a Star Trek pin to space - she loved the show!',
         volleyMin: 'Ask about Star Trek…',
         volleyPartial: 'Mae brought a fun thing to space. What would you…',
         volleyFull: 'A Star Trek pin?! Do you know how many languages she speaks.',
@@ -8241,7 +8241,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Buzz Aldrin', years: '1930–', emoji: '🌕', tag: 'Astronaut',
+    name: 'Buzz Aldrin', years: '1930 - ', emoji: '🌕', tag: 'Astronaut',
     img: '_Resources/_imgSource/images/buzz-aldrin.jpg',
     facts: [
       {
@@ -8253,7 +8253,7 @@ const PEOPLE = [
         commentFull: 'Buzz was the second person to walk on the Moon!',
         volleyMin: 'Ask about the Moon…',
         volleyPartial: 'Buzz walked on the Moon. Would you ever…',
-        volleyFull: 'Second on the Moon! I bet he took photos up there — know what was special?',
+        volleyFull: 'Second on the Moon! I bet he took photos up there - know what was special?',
       },
       {
         text: 'He took the first selfie ever in space.',
@@ -8291,7 +8291,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Karl Marx', years: '1818–1883', emoji: '📜', tag: 'Philosopher',
+    name: 'Karl Marx', years: '1818-1883', emoji: '📜', tag: 'Philosopher',
     img: '_Resources/_imgSource/images/karl-marx.jpg',
     facts: [
       {
@@ -8333,7 +8333,7 @@ const PEOPLE = [
         fragment: 'wrote in libraries and was poor most of his life',
         commentMin: 'He wrote in libraries…',
         commentPartial: 'I notice that Karl wrote most of his work in…',
-        commentFull: 'Karl wrote his books in libraries — he was poor most of his life.',
+        commentFull: 'Karl wrote his books in libraries - he was poor most of his life.',
         volleyMin: 'Ask about libraries…',
         volleyPartial: 'Karl wrote at the library. What do you do…',
         volleyFull: 'In libraries, poor most of his life. What do YOU like to do at the library?',
@@ -8341,7 +8341,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Friedrich Nietzsche', years: '1844–1900', emoji: '📜', tag: 'Philosopher',
+    name: 'Friedrich Nietzsche', years: '1844-1900', emoji: '📜', tag: 'Philosopher',
     img: '_Resources/_imgSource/images/friedrich-nietzsche.jpg',
     facts: [
       {
@@ -8391,7 +8391,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Voltaire', years: '1694–1778', emoji: '✍️', tag: 'Philosopher',
+    name: 'Voltaire', years: '1694-1778', emoji: '✍️', tag: 'Philosopher',
     img: '_Resources/_imgSource/images/voltaire.jpeg',
     facts: [
       {
@@ -8428,7 +8428,7 @@ const PEOPLE = [
         volleyFull: 'Candide! I wonder what he was like every day.',
       },
       {
-        text: 'He drank a LOT of coffee — some say 40 cups a day!',
+        text: 'He drank a LOT of coffee - some say 40 cups a day!',
         topic: '40 cups of coffee',
         fragment: 'drank around 40 cups of coffee a day',
         commentMin: 'He drank lots of coffee…',
@@ -8442,7 +8442,7 @@ const PEOPLE = [
   },
 
   {
-    name: 'Pablo Picasso', years: '1881–1973', emoji: '🎨', tag: 'Artist',
+    name: 'Pablo Picasso', years: '1881-1973', emoji: '🎨', tag: 'Artist',
     img: '_Resources/_imgSource/images/pablo-picasso.jpg',
     facts: [
       {
@@ -8462,10 +8462,10 @@ const PEOPLE = [
         fragment: 'helped invent Cubism where things look like shapes',
         commentMin: 'He invented Cubism…',
         commentPartial: 'I notice that Pablo painted with…',
-        commentFull: 'Pablo helped invent Cubism — where things look like shapes!',
+        commentFull: 'Pablo helped invent Cubism - where things look like shapes!',
         volleyMin: 'Ask about Cubism…',
         volleyPartial: 'Pablo made art with shapes. What shape would you…',
-        volleyFull: 'CUBISM! I bet he was good super young — want to guess?',
+        volleyFull: 'CUBISM! I bet he was good super young - want to guess?',
       },
       {
         text: 'Pablo made over 20,000 art pieces in his life.',
@@ -8476,7 +8476,7 @@ const PEOPLE = [
         commentFull: 'Pablo made over 20,000 art pieces in his life!',
         volleyMin: 'Ask about his art…',
         volleyPartial: 'Pablo made 20,000 pieces. What would you make…',
-        volleyFull: '20,000 pieces?! I\'m curious how young he could draw — want to guess?',
+        volleyFull: '20,000 pieces?! I\'m curious how young he could draw - want to guess?',
       },
       {
         text: 'He could draw amazing pictures by the time he was 8 years old.',
@@ -8492,7 +8492,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Salvador Dalí', years: '1904–1989', emoji: '🎨', tag: 'Artist',
+    name: 'Salvador Dalí', years: '1904-1989', emoji: '🎨', tag: 'Artist',
     img: '_Resources/_imgSource/images/salvador-dali.jpeg',
     facts: [
       {
@@ -8501,7 +8501,7 @@ const PEOPLE = [
         fragment: 'painted dreamlike pictures of melting clocks',
         commentMin: 'He painted melting clocks…',
         commentPartial: 'I notice that Salvador painted dreamlike things like…',
-        commentFull: 'Salvador painted dreamlike scenes — even melting clocks!',
+        commentFull: 'Salvador painted dreamlike scenes - even melting clocks!',
         volleyMin: 'Ask about the clocks…',
         volleyPartial: 'Salvador painted weird dreams. What is a dream you…',
         volleyFull: 'Melting clocks?! I wonder what he looked like.',
@@ -8520,10 +8520,10 @@ const PEOPLE = [
       {
         text: 'Salvador had a pet ocelot, which is a kind of wild cat.',
         topic: 'pet ocelot',
-        fragment: 'had a pet ocelot — a wild cat',
+        fragment: 'had a pet ocelot - a wild cat',
         commentMin: 'He had a wild cat pet…',
         commentPartial: 'I notice that Salvador\'s pet was a wild…',
-        commentFull: 'Salvador had a pet ocelot — a wild cat!',
+        commentFull: 'Salvador had a pet ocelot - a wild cat!',
         volleyMin: 'Ask about his pet…',
         volleyPartial: 'Salvador had a wild pet. What is the most unusual…',
         volleyFull: 'A pet OCELOT?! I wonder what else he painted on.',
@@ -8542,7 +8542,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Georgia O\'Keeffe', years: '1887–1986', emoji: '🌸', tag: 'Artist',
+    name: 'Georgia O\'Keeffe', years: '1887-1986', emoji: '🌸', tag: 'Artist',
     img: '_Resources/_imgSource/images/georgia-okeeffe.jpg',
     facts: [
       {
@@ -8592,7 +8592,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Jean-Michel Basquiat', years: '1960–1988', emoji: '🎨', tag: 'Artist',
+    name: 'Jean-Michel Basquiat', years: '1960-1988', emoji: '🎨', tag: 'Artist',
     img: '_Resources/_imgSource/images/jean-michel-basquiat.jpg',
     facts: [
       {
@@ -8642,7 +8642,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Yayoi Kusama', years: '1929–', emoji: '🟡', tag: 'Artist',
+    name: 'Yayoi Kusama', years: '1929 - ', emoji: '🟡', tag: 'Artist',
     img: '_Resources/_imgSource/images/600px-Yayoi_Kusama_wax_model_at_Louis_Vitton.jpg',
     facts: [
       {
@@ -8654,7 +8654,7 @@ const PEOPLE = [
         commentFull: 'Yayoi covers her art in dots and bright colors!',
         volleyMin: 'Ask about dots…',
         volleyPartial: 'Yayoi loves dots. What pattern…',
-        volleyFull: 'Dots and bright colors! I\'m curious what else she makes — want to guess?',
+        volleyFull: 'Dots and bright colors! I\'m curious what else she makes - want to guess?',
       },
       {
         text: 'She makes rooms full of mirrors and lights that feel like outer space.',
@@ -8692,7 +8692,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Rembrandt', years: '1606–1669', emoji: '🎨', tag: 'Artist',
+    name: 'Rembrandt', years: '1606-1669', emoji: '🎨', tag: 'Artist',
     img: '_Resources/_imgSource/images/rembrandt.jpg',
     facts: [
       {
@@ -8742,7 +8742,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Beethoven', years: '1770–1827', emoji: '🎹', tag: 'Musician',
+    name: 'Beethoven', years: '1770-1827', emoji: '🎹', tag: 'Musician',
     img: '_Resources/_imgSource/images/beethoven.jpg',
     facts: [
       {
@@ -8765,7 +8765,7 @@ const PEOPLE = [
         commentFull: 'Beethoven lost his hearing but kept writing music!',
         volleyMin: 'Ask about his hearing…',
         volleyPartial: 'Beethoven kept writing music deaf. Have you ever kept…',
-        volleyFull: 'He went DEAF and kept writing?! I bet a really famous song came out — want to guess?',
+        volleyFull: 'He went DEAF and kept writing?! I bet a really famous song came out - want to guess?',
       },
       {
         text: 'Beethoven\'s ninth symphony has the famous song "Ode to Joy" in it.',
@@ -8792,7 +8792,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Tchaikovsky', years: '1840–1893', emoji: '🎻', tag: 'Musician',
+    name: 'Tchaikovsky', years: '1840-1893', emoji: '🎻', tag: 'Musician',
     img: '_Resources/_imgSource/images/tchaikovsky.jpg',
     facts: [
       {
@@ -8804,7 +8804,7 @@ const PEOPLE = [
         commentFull: 'Tchaikovsky wrote the music for The Nutcracker!',
         volleyMin: 'Ask about The Nutcracker…',
         volleyPartial: 'He wrote The Nutcracker. Have you seen…',
-        volleyFull: 'The Nutcracker! I bet he wrote other ballets too — want to guess any?',
+        volleyFull: 'The Nutcracker! I bet he wrote other ballets too - want to guess any?',
       },
       {
         text: 'He also wrote the music for Swan Lake and Sleeping Beauty.',
@@ -8837,12 +8837,12 @@ const PEOPLE = [
         commentFull: 'Tchaikovsky was Russian, and his music feels like winter.',
         volleyMin: 'Ask about Russia…',
         volleyPartial: 'His music feels like winter. Do you like…',
-        volleyFull: 'Russia — winters! Do YOU like winter or summer better?',
+        volleyFull: 'Russia - winters! Do YOU like winter or summer better?',
       },
     ],
   },
   {
-    name: 'Louis Armstrong', years: '1901–1971', emoji: '🎺', tag: 'Musician',
+    name: 'Louis Armstrong', years: '1901-1971', emoji: '🎺', tag: 'Musician',
     img: '_Resources/_imgSource/images/louis-armstrong.jpeg',
     facts: [
       {
@@ -8854,7 +8854,7 @@ const PEOPLE = [
         commentFull: 'Louis played the trumpet better than almost anyone!',
         volleyMin: 'Ask about trumpet…',
         volleyPartial: 'Louis played the trumpet. What instrument do…',
-        volleyFull: 'The trumpet king! I also know he sang too — want to guess what his voice was like?',
+        volleyFull: 'The trumpet king! I also know he sang too - want to guess what his voice was like?',
       },
       {
         text: 'He also sang in a deep, rough, fun voice that people loved.',
@@ -8892,7 +8892,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Billie Holiday', years: '1915–1959', emoji: '🎤', tag: 'Musician',
+    name: 'Billie Holiday', years: '1915-1959', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/billie-holiday.jpg',
     facts: [
       {
@@ -8942,7 +8942,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Jimi Hendrix', years: '1942–1970', emoji: '🎸', tag: 'Musician',
+    name: 'Jimi Hendrix', years: '1942-1970', emoji: '🎸', tag: 'Musician',
     img: '_Resources/_imgSource/images/jimi-hendrix.jpg',
     facts: [
       {
@@ -8951,7 +8951,7 @@ const PEOPLE = [
         fragment: 'played guitar like no one else, even with his teeth',
         commentMin: 'He played wild guitar…',
         commentPartial: 'I notice that Jimi could play the guitar in…',
-        commentFull: 'Jimi played guitar like no one else — even using his teeth!',
+        commentFull: 'Jimi played guitar like no one else - even using his teeth!',
         volleyMin: 'Ask about his playing…',
         volleyPartial: 'Jimi played guitar wildly. What instrument…',
         volleyFull: 'Guitar with his TEETH?! I wonder if he played big shows.',
@@ -8992,7 +8992,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'David Bowie', years: '1947–2016', emoji: '🎸', tag: 'Musician',
+    name: 'David Bowie', years: '1947-2016', emoji: '🎸', tag: 'Musician',
     img: '_Resources/_imgSource/images/david-bowie.jpg',
     facts: [
       {
@@ -9029,7 +9029,7 @@ const PEOPLE = [
         volleyFull: 'TWO different eye colors?! Do you know if he acted too.',
       },
       {
-        text: 'He acted in movies too — including one as a goblin king.',
+        text: 'He acted in movies too - including one as a goblin king.',
         topic: 'goblin king',
         fragment: 'acted in movies, even as a goblin king',
         commentMin: 'He played a goblin king…',
@@ -9042,7 +9042,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Whitney Houston', years: '1963–2012', emoji: '🎤', tag: 'Musician',
+    name: 'Whitney Houston', years: '1963-2012', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/whitney-houston.jpg',
     facts: [
       {
@@ -9092,7 +9092,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Bob Marley', years: '1945–1981', emoji: '🎵', tag: 'Musician',
+    name: 'Bob Marley', years: '1945-1981', emoji: '🎵', tag: 'Musician',
     img: '_Resources/_imgSource/images/bob-marley.jpg',
     facts: [
       {
@@ -9112,7 +9112,7 @@ const PEOPLE = [
         fragment: 'sang "One Love" asking everyone to get along',
         commentMin: 'He sang One Love…',
         commentPartial: 'I notice that Bob sang a song called…',
-        commentFull: 'Bob sang "One Love" — asking everyone to get along.',
+        commentFull: 'Bob sang "One Love" - asking everyone to get along.',
         volleyMin: 'Ask about that song…',
         volleyPartial: 'Bob sang One Love. What is something that helps people…',
         volleyFull: '"One Love"! I wonder what else he loved.',
@@ -9142,7 +9142,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Tupac Shakur', years: '1971–1996', emoji: '🎤', tag: 'Musician',
+    name: 'Tupac Shakur', years: '1971-1996', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/tupac-shakur.jpg',
     facts: [
       {
@@ -9192,7 +9192,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Michael Jackson', years: '1958–2009', emoji: '🕺', tag: 'Musician',
+    name: 'Michael Jackson', years: '1958-2009', emoji: '🕺', tag: 'Musician',
     img: '_Resources/_imgSource/images/michael-jackson.jpg',
     facts: [
       {
@@ -9204,7 +9204,7 @@ const PEOPLE = [
         commentFull: 'Michael was called "the King of Pop."',
         volleyMin: 'Ask about his music…',
         volleyPartial: 'Michael was King of Pop. What is your favorite…',
-        volleyFull: '"King of Pop"! I bet he had a famous dance move — want to guess?',
+        volleyFull: '"King of Pop"! I bet he had a famous dance move - want to guess?',
       },
       {
         text: 'He invented a famous dance move called the moonwalk.',
@@ -9212,7 +9212,7 @@ const PEOPLE = [
         fragment: 'invented the moonwalk dance move',
         commentMin: 'He did the moonwalk…',
         commentPartial: 'I notice that Michael invented a dance called…',
-        commentFull: 'Michael invented the moonwalk — like floating backward!',
+        commentFull: 'Michael invented the moonwalk - like floating backward!',
         volleyMin: 'Ask about the moonwalk…',
         volleyPartial: 'Michael invented a move. Can you make up…',
         volleyFull: 'The MOONWALK?! I wonder when he started singing.',
@@ -9237,12 +9237,12 @@ const PEOPLE = [
         commentFull: 'His album Thriller is one of the most popular ever!',
         volleyMin: 'Ask about Thriller…',
         volleyPartial: 'Michael\'s music sold the most. What album do you…',
-        volleyFull: 'Thriller — the most popular ever! What music does almost everyone YOU know love?',
+        volleyFull: 'Thriller - the most popular ever! What music does almost everyone YOU know love?',
       },
     ],
   },
   {
-    name: 'Beyoncé', years: '1981–', emoji: '🎤', tag: 'Performer',
+    name: 'Beyoncé', years: '1981 - ', emoji: '🎤', tag: 'Performer',
     img: '_Resources/_imgSource/images/beyonce.jpg',
     facts: [
       {
@@ -9265,7 +9265,7 @@ const PEOPLE = [
         commentFull: 'Beyoncé started in a group called Destiny\'s Child as a teen.',
         volleyMin: 'Ask about her group…',
         volleyPartial: 'Beyoncé sang in a group first. Have you ever…',
-        volleyFull: 'Destiny\'s Child! I bet she\'s won awards — want to guess how many?',
+        volleyFull: 'Destiny\'s Child! I bet she\'s won awards - want to guess how many?',
       },
       {
         text: 'Beyoncé has won more Grammy awards than any other singer ever.',
@@ -9292,7 +9292,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Rihanna', years: '1988–', emoji: '🎤', tag: 'Performer',
+    name: 'Rihanna', years: '1988 - ', emoji: '🎤', tag: 'Performer',
     img: '_Resources/_imgSource/images/rihanna.png',
     facts: [
       {
@@ -9342,7 +9342,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Taylor Swift', years: '1989–', emoji: '🎤', tag: 'Musician',
+    name: 'Taylor Swift', years: '1989 - ', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/taylor-swift.jpg',
     facts: [
       {
@@ -9365,7 +9365,7 @@ const PEOPLE = [
         commentFull: 'Taylor writes songs about things from her own life.',
         volleyMin: 'Ask about her songs…',
         volleyPartial: 'Taylor writes about her life. What would you…',
-        volleyFull: 'Her own life! I\'m curious if she had to fight to own her songs — did she?',
+        volleyFull: 'Her own life! I\'m curious if she had to fight to own her songs - did she?',
       },
       {
         text: 'Taylor re-recorded her old songs to own them again.',
@@ -9392,7 +9392,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Billie Eilish', years: '2001–', emoji: '🎤', tag: 'Musician',
+    name: 'Billie Eilish', years: '2001 - ', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/billie-eilish.jpg',
     facts: [
       {
@@ -9434,7 +9434,7 @@ const PEOPLE = [
         fragment: 'likes spiders and has had pet ones',
         commentMin: 'She likes spiders…',
         commentPartial: 'I notice that Billie has had unusual pets like…',
-        commentFull: 'Billie likes spiders — she\'s even had pet ones!',
+        commentFull: 'Billie likes spiders - she\'s even had pet ones!',
         volleyMin: 'Ask about her pets…',
         volleyPartial: 'Billie has spider pets. Would you want…',
         volleyFull: 'SPIDERS?! Would YOU want a really unusual pet?',
@@ -9442,7 +9442,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Harry Styles', years: '1994–', emoji: '🎤', tag: 'Musician',
+    name: 'Harry Styles', years: '1994 - ', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/harry-styles.jpg',
     facts: [
       {
@@ -9492,7 +9492,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Olivia Rodrigo', years: '2003–', emoji: '🎤', tag: 'Musician',
+    name: 'Olivia Rodrigo', years: '2003 - ', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/olivia-rodrigo.jpg',
     facts: [
       {
@@ -9534,7 +9534,7 @@ const PEOPLE = [
         fragment: 'wears a lot of purple in her shows',
         commentMin: 'She wears purple…',
         commentPartial: 'I notice that Olivia loves the color…',
-        commentFull: 'Olivia likes to wear purple — you see it in her shows.',
+        commentFull: 'Olivia likes to wear purple - you see it in her shows.',
         volleyMin: 'Ask about purple…',
         volleyPartial: 'Olivia loves purple. What is your favorite…',
         volleyFull: 'PURPLE! What is YOUR favorite color?',
@@ -9542,7 +9542,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Bad Bunny', years: '1994–', emoji: '🎤', tag: 'Musician',
+    name: 'Bad Bunny', years: '1994 - ', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/bad-bunny.jpg',
     facts: [
       {
@@ -9592,7 +9592,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Shakira', years: '1977–', emoji: '🎤', tag: 'Musician',
+    name: 'Shakira', years: '1977 - ', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/shakira.jpg',
     facts: [
       {
@@ -9642,7 +9642,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Dolly Parton', years: '1946–', emoji: '🎸', tag: 'Musician',
+    name: 'Dolly Parton', years: '1946 - ', emoji: '🎸', tag: 'Musician',
     img: '_Resources/_imgSource/images/dolly-parton.jpg',
     facts: [
       {
@@ -9692,7 +9692,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Missy Elliott', years: '1971–', emoji: '🎤', tag: 'Musician',
+    name: 'Missy Elliott', years: '1971 - ', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/missy-elliott.jpg',
     facts: [
       {
@@ -9742,7 +9742,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Jay-Z', years: '1969–', emoji: '🎤', tag: 'Musician',
+    name: 'Jay-Z', years: '1969 - ', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/jay-z.jpg',
     facts: [
       {
@@ -9787,12 +9787,12 @@ const PEOPLE = [
         commentFull: 'Jay-Z helps young people start their own careers.',
         volleyMin: 'Ask about his helping…',
         volleyPartial: 'Jay-Z helps young artists. Have you ever helped…',
-        volleyFull: 'Yes — he helps them start careers! Have YOU helped someone get started?',
+        volleyFull: 'Yes - he helps them start careers! Have YOU helped someone get started?',
       },
     ],
   },
   {
-    name: 'Eminem', years: '1972–', emoji: '🎤', tag: 'Musician',
+    name: 'Eminem', years: '1972 - ', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/eminem.jpg',
     facts: [
       {
@@ -9826,7 +9826,7 @@ const PEOPLE = [
         commentFull: 'Eminem starred in a movie about his life called 8 Mile.',
         volleyMin: 'Ask about the movie…',
         volleyPartial: 'Eminem made a movie about his life. What part of your…',
-        volleyFull: '8 Mile — about his life?! Do you know how he raps.',
+        volleyFull: '8 Mile - about his life?! Do you know how he raps.',
       },
       {
         text: 'He uses lots of rhymes that nobody had thought to put together.',
@@ -9842,7 +9842,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Stormzy', years: '1993–', emoji: '🎤', tag: 'Musician',
+    name: 'Stormzy', years: '1993 - ', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/stormzy.jpg',
     facts: [
       {
@@ -9892,7 +9892,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'BTS', years: '2010–', emoji: '🎤', tag: 'Musician',
+    name: 'BTS', years: '2010 - ', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/bts.jpg',
     facts: [
       {
@@ -9923,10 +9923,10 @@ const PEOPLE = [
         fragment: 'has fans called ARMY all over the world',
         commentMin: 'Fans are called ARMY…',
         commentPartial: 'I notice that BTS\'s fans have a name called…',
-        commentFull: 'BTS fans are called the ARMY — millions all over the world!',
+        commentFull: 'BTS fans are called the ARMY - millions all over the world!',
         volleyMin: 'Ask about ARMY…',
         volleyPartial: 'Their fans have a name. What group are…',
-        volleyFull: 'The ARMY — millions!! I wonder how they move together.',
+        volleyFull: 'The ARMY - millions!! I wonder how they move together.',
       },
       {
         text: 'They practice very hard with super tricky dance moves.',
@@ -9942,7 +9942,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'LeBron James', years: '1984–', emoji: '🏀', tag: 'Athlete',
+    name: 'LeBron James', years: '1984 - ', emoji: '🏀', tag: 'Athlete',
     img: '_Resources/_imgSource/images/lebron-james.jpeg',
     facts: [
       {
@@ -9954,7 +9954,7 @@ const PEOPLE = [
         commentFull: 'LeBron has won four NBA championships!',
         volleyMin: 'Ask about his rings…',
         volleyPartial: 'LeBron won four big titles. What team would…',
-        volleyFull: 'FOUR titles! I bet he\'s scored a TON — want to guess?',
+        volleyFull: 'FOUR titles! I bet he\'s scored a TON - want to guess?',
       },
       {
         text: 'He scored more points in NBA games than anyone else ever.',
@@ -9979,20 +9979,20 @@ const PEOPLE = [
         volleyFull: 'A SCHOOL for kids in his town! Do you know what he\'s like.',
       },
       {
-        text: 'He is super strong and tall — about 6 feet 9 inches.',
+        text: 'He is super strong and tall - about 6 feet 9 inches.',
         topic: '6 feet 9 inches',
-        fragment: 'is super tall — about 6 feet 9 inches',
+        fragment: 'is super tall - about 6 feet 9 inches',
         commentMin: 'He is very tall…',
         commentPartial: 'I notice that LeBron is super…',
-        commentFull: 'LeBron is super tall — about 6 feet 9 inches!',
+        commentFull: 'LeBron is super tall - about 6 feet 9 inches!',
         volleyMin: 'Ask about being tall…',
         volleyPartial: 'LeBron is super tall. Are you…',
-        volleyFull: 'Super tall — 6\'9"! Are YOU tall or short for your age?',
+        volleyFull: 'Super tall - 6\'9"! Are YOU tall or short for your age?',
       },
     ],
   },
   {
-    name: 'Kobe Bryant', years: '1978–2020', emoji: '🏀', tag: 'Athlete',
+    name: 'Kobe Bryant', years: '1978-2020', emoji: '🏀', tag: 'Athlete',
     img: '_Resources/_imgSource/images/kobe-bryant.jpeg',
     facts: [
       {
@@ -10037,12 +10037,12 @@ const PEOPLE = [
         commentFull: 'Kobe spoke Italian from living in Italy as a kid.',
         volleyMin: 'Ask about Italy…',
         volleyPartial: 'Kobe spoke Italian. Where would you love…',
-        volleyFull: 'ITALIAN — he lived there as a kid! Where would YOU live for a year?',
+        volleyFull: 'ITALIAN - he lived there as a kid! Where would YOU live for a year?',
       },
     ],
   },
   {
-    name: 'Nikola Jokić', years: '1995–', emoji: '🏀', tag: 'Athlete',
+    name: 'Nikola Jokić', years: '1995 - ', emoji: '🏀', tag: 'Athlete',
     img: '_Resources/_imgSource/images/nikola-jokic.jpg',
     facts: [
       {
@@ -10092,7 +10092,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Stephen Curry', years: '1988–', emoji: '🏀', tag: 'Athlete',
+    name: 'Stephen Curry', years: '1988 - ', emoji: '🏀', tag: 'Athlete',
     img: '_Resources/_imgSource/images/stephen-curry.jpg',
     facts: [
       {
@@ -10137,12 +10137,12 @@ const PEOPLE = [
         commentFull: 'Stephen is shorter than most NBA stars, but his shots are amazing!',
         volleyMin: 'Ask about being smaller…',
         volleyPartial: 'Stephen is small for hoops. What about you…',
-        volleyFull: 'Shorter than most NBA stars — and it works! What about YOU helps you do something well?',
+        volleyFull: 'Shorter than most NBA stars - and it works! What about YOU helps you do something well?',
       },
     ],
   },
   {
-    name: 'Caitlin Clark', years: '2002–', emoji: '🏀', tag: 'Athlete',
+    name: 'Caitlin Clark', years: '2002 - ', emoji: '🏀', tag: 'Athlete',
     img: '_Resources/_imgSource/images/caitlin-clark.jpg',
     facts: [
       {
@@ -10192,7 +10192,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Lionel Messi', years: '1987–', emoji: '⚽', tag: 'Athlete',
+    name: 'Lionel Messi', years: '1987 - ', emoji: '⚽', tag: 'Athlete',
     img: '_Resources/_imgSource/images/lionel-messi.jpg',
     facts: [
       {
@@ -10204,7 +10204,7 @@ const PEOPLE = [
         commentFull: 'Lionel is one of the greatest soccer players ever!',
         volleyMin: 'Ask about Argentina…',
         volleyPartial: 'Lionel is amazing at soccer. Do you like…',
-        volleyFull: 'One of the greatest! I bet he\'s won the World Cup — want to guess?',
+        volleyFull: 'One of the greatest! I bet he\'s won the World Cup - want to guess?',
       },
       {
         text: 'He won the World Cup with Argentina in 2022.',
@@ -10215,7 +10215,7 @@ const PEOPLE = [
         commentFull: 'Lionel won the World Cup with Argentina!',
         volleyMin: 'Ask about the cup…',
         volleyPartial: 'Lionel won the World Cup. What is something you would love…',
-        volleyFull: 'YES — with Argentina! I wonder if he was always big.',
+        volleyFull: 'YES - with Argentina! I wonder if he was always big.',
       },
       {
         text: 'Lionel grew up in Argentina and was small for his age as a kid.',
@@ -10242,7 +10242,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Diego Maradona', years: '1960–2020', emoji: '⚽', tag: 'Athlete',
+    name: 'Diego Maradona', years: '1960-2020', emoji: '⚽', tag: 'Athlete',
     img: '_Resources/_imgSource/images/diego-maradona.jpg',
     facts: [
       {
@@ -10254,7 +10254,7 @@ const PEOPLE = [
         commentFull: 'Diego was one of the greatest soccer players ever.',
         volleyMin: 'Ask about Argentina…',
         volleyPartial: 'Diego was a soccer great. Have you ever played…',
-        volleyFull: 'One of the greatest! I bet he scored a famous goal — want to guess?',
+        volleyFull: 'One of the greatest! I bet he scored a famous goal - want to guess?',
       },
       {
         text: 'He scored a famous goal where he dribbled past five players.',
@@ -10292,7 +10292,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Pelé', years: '1940–2022', emoji: '⚽', tag: 'Athlete',
+    name: 'Pelé', years: '1940-2022', emoji: '⚽', tag: 'Athlete',
     img: '_Resources/_imgSource/images/pele.jpg',
     facts: [
       {
@@ -10342,7 +10342,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Naomi Osaka', years: '1997–', emoji: '🎾', tag: 'Athlete',
+    name: 'Naomi Osaka', years: '1997 - ', emoji: '🎾', tag: 'Athlete',
     img: '_Resources/_imgSource/images/naomi-osaka.jpeg',
     facts: [
       {
@@ -10392,7 +10392,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Venus Williams', years: '1980–', emoji: '🎾', tag: 'Athlete',
+    name: 'Venus Williams', years: '1980 - ', emoji: '🎾', tag: 'Athlete',
     img: '_Resources/_imgSource/images/venus-williams.jpg',
     facts: [
       {
@@ -10442,7 +10442,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: "Sha'Carri Richardson", years: '2000–', emoji: '🏃', tag: 'Athlete',
+    name: "Sha'Carri Richardson", years: '2000 - ', emoji: '🏃', tag: 'Athlete',
     img: "_Resources/_imgSource/images/sha-carri-richardson.jpg",
     facts: [
       {
@@ -10476,7 +10476,7 @@ const PEOPLE = [
         commentFull: 'Sha\'Carri won the world title for the 100-meter race!',
         volleyMin: 'Ask about that race…',
         volleyPartial: 'Sha\'Carri won a world title. What race would…',
-        volleyFull: 'The 100m! I bet that wasn\'t easy — know if anything tough happened?',
+        volleyFull: 'The 100m! I bet that wasn\'t easy - know if anything tough happened?',
       },
       {
         text: 'She came back strong after a tough time and won again.',
@@ -10492,7 +10492,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Marilyn Monroe', years: '1926–1962', emoji: '⭐', tag: 'Actor',
+    name: 'Marilyn Monroe', years: '1926-1962', emoji: '⭐', tag: 'Actor',
     img: '_Resources/_imgSource/images/600px-Monroecirca1953.jpg',
     facts: [
       {
@@ -10515,7 +10515,7 @@ const PEOPLE = [
         commentFull: 'Marilyn was known for her bright blonde hair and big smile.',
         volleyMin: 'Ask about her look…',
         volleyPartial: 'Marilyn had a famous look. What makes a smile…',
-        volleyFull: 'Blonde hair, big smile! I also know what she did before movies — want to guess?',
+        volleyFull: 'Blonde hair, big smile! I also know what she did before movies - want to guess?',
       },
       {
         text: 'Marilyn worked in a factory before she became a movie star.',
@@ -10542,16 +10542,16 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Charlie Chaplin', years: '1889–1977', emoji: '🎬', tag: 'Actor',
+    name: 'Charlie Chaplin', years: '1889-1977', emoji: '🎬', tag: 'Actor',
     img: '_Resources/_imgSource/images/charlie-chaplin.jpg',
     facts: [
       {
-        text: 'Charlie was a funny actor in silent movies — movies without any talking.',
+        text: 'Charlie was a funny actor in silent movies - movies without any talking.',
         topic: 'silent movies',
         fragment: 'was a funny actor in silent movies',
         commentMin: 'He did silent movies…',
         commentPartial: 'I notice that Charlie\'s movies had no…',
-        commentFull: 'Charlie was a funny actor in silent movies — no talking!',
+        commentFull: 'Charlie was a funny actor in silent movies - no talking!',
         volleyMin: 'Ask about silent movies…',
         volleyPartial: 'Charlie made movies with no talking. Could you tell…',
         volleyFull: 'No talking?! Want to guess what character he played?',
@@ -10562,10 +10562,10 @@ const PEOPLE = [
         fragment: 'played the Tramp with mustache and cane',
         commentMin: 'He played the Tramp…',
         commentPartial: 'I notice that Charlie\'s character was called the…',
-        commentFull: 'Charlie played the Tramp — tiny mustache, big cane.',
+        commentFull: 'Charlie played the Tramp - tiny mustache, big cane.',
         volleyMin: 'Ask about the Tramp…',
         volleyPartial: 'Charlie played the Tramp. If you played a…',
-        volleyFull: 'The Tramp! Tiny mustache, big cane — and I wonder who did the music.',
+        volleyFull: 'The Tramp! Tiny mustache, big cane - and I wonder who did the music.',
       },
       {
         text: 'Charlie wrote the music for his own movies.',
@@ -10592,7 +10592,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Jackie Chan', years: '1954–', emoji: '🥋', tag: 'Actor',
+    name: 'Jackie Chan', years: '1954 - ', emoji: '🥋', tag: 'Actor',
     img: '_Resources/_imgSource/images/jackie-chan.jpg',
     facts: [
       {
@@ -10626,7 +10626,7 @@ const PEOPLE = [
         commentFull: 'Jackie started a tough acting and karate school at only 7!',
         volleyMin: 'Ask about that school…',
         volleyPartial: 'Jackie trained super young. What do you train…',
-        volleyFull: 'A tough school at 7?! I bet that\'s rough on the body — know any stories?',
+        volleyFull: 'A tough school at 7?! I bet that\'s rough on the body - know any stories?',
       },
       {
         text: 'He has broken many bones doing stunts but always keeps making movies.',
@@ -10642,7 +10642,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Viola Davis', years: '1965–', emoji: '🎬', tag: 'Actor',
+    name: 'Viola Davis', years: '1965 - ', emoji: '🎬', tag: 'Actor',
     img: '_Resources/_imgSource/images/viola-davis.jpg',
     facts: [
       {
@@ -10665,7 +10665,7 @@ const PEOPLE = [
         commentFull: 'Viola grew up poor and used acting as her way out.',
         volleyMin: 'Ask about her start…',
         volleyPartial: 'Viola found her way through acting. What helps you…',
-        volleyFull: 'Grew up poor — used acting! Want to guess the roles she plays?',
+        volleyFull: 'Grew up poor - used acting! Want to guess the roles she plays?',
       },
       {
         text: 'Viola often plays brave women who stand up for what is right.',
@@ -10676,7 +10676,7 @@ const PEOPLE = [
         commentFull: 'Viola often plays brave women who stand up for what is right.',
         volleyMin: 'Ask about her roles…',
         volleyPartial: 'Viola plays brave women. Who is a brave…',
-        volleyFull: 'Brave women! I also know she started something — know what?',
+        volleyFull: 'Brave women! I also know she started something - know what?',
       },
       {
         text: 'She also started a company to make movies and shows.',
@@ -10692,7 +10692,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Chadwick Boseman', years: '1976–2020', emoji: '🦸', tag: 'Actor',
+    name: 'Chadwick Boseman', years: '1976-2020', emoji: '🦸', tag: 'Actor',
     img: '_Resources/_imgSource/images/chadwick-boseman.jpg',
     facts: [
       {
@@ -10715,7 +10715,7 @@ const PEOPLE = [
         commentFull: 'Chadwick also played real heroes like Jackie Robinson.',
         volleyMin: 'Ask about those movies…',
         volleyPartial: 'Chadwick played real heroes. Who would you…',
-        volleyFull: 'Jackie Robinson AND James Brown! I bet he kept working when sick — know what he did?',
+        volleyFull: 'Jackie Robinson AND James Brown! I bet he kept working when sick - know what he did?',
       },
       {
         text: 'Chadwick kept acting in movies even when he was sick.',
@@ -10742,7 +10742,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Lupita Nyong\'o', years: '1983–', emoji: '🎬', tag: 'Actor',
+    name: 'Lupita Nyong\'o', years: '1983 - ', emoji: '🎬', tag: 'Actor',
     img: '_Resources/_imgSource/images/lupita-nyongo.jpg',
     facts: [
       {
@@ -10765,7 +10765,7 @@ const PEOPLE = [
         commentFull: 'Lupita is from Kenya and speaks more than one language.',
         volleyMin: 'Ask about Kenya…',
         volleyPartial: 'Lupita speaks many languages. Do you know…',
-        volleyFull: 'Kenya — and more than one language! I also know she wrote something — know what?',
+        volleyFull: 'Kenya - and more than one language! I also know she wrote something - know what?',
       },
       {
         text: 'Lupita wrote a kids\' book about loving the color of your own skin.',
@@ -10792,7 +10792,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Zendaya', years: '2000–', emoji: '🎬', tag: 'Actor',
+    name: 'Zendaya', years: '2000 - ', emoji: '🎬', tag: 'Actor',
     img: '_Resources/_imgSource/images/zendaya.jpg',
     facts: [
       {
@@ -10842,7 +10842,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Emma Watson', years: '1990–', emoji: '🎬', tag: 'Actor',
+    name: 'Emma Watson', years: '1990 - ', emoji: '🎬', tag: 'Actor',
     img: '_Resources/_imgSource/images/emma-watson.jpg',
     facts: [
       {
@@ -10865,7 +10865,7 @@ const PEOPLE = [
         commentFull: 'Emma speaks up so girls get the same chances as boys.',
         volleyMin: 'Ask about her work…',
         volleyPartial: 'Emma speaks for girls. What chance do you wish…',
-        volleyFull: 'Same chances for girls! I also know she loves books — want to guess what she does with them?',
+        volleyFull: 'Same chances for girls! I also know she loves books - want to guess what she does with them?',
       },
       {
         text: 'Emma loves reading and even hides books in cities for people to find.',
@@ -10892,7 +10892,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Keanu Reeves', years: '1964–', emoji: '🎬', tag: 'Actor',
+    name: 'Keanu Reeves', years: '1964 - ', emoji: '🎬', tag: 'Actor',
     img: '_Resources/_imgSource/images/keanu-reeves.jpg',
     facts: [
       {
@@ -10915,7 +10915,7 @@ const PEOPLE = [
         commentFull: 'Keanu played Neo in The Matrix and John Wick.',
         volleyMin: 'Ask about Neo…',
         volleyPartial: 'Keanu plays movie heroes. If you were…',
-        volleyFull: 'Neo AND John Wick! I bet he\'s kind with money too — know what he does?',
+        volleyFull: 'Neo AND John Wick! I bet he\'s kind with money too - know what he does?',
       },
       {
         text: 'Keanu gave lots of his movie money to people in the crew.',
@@ -10942,7 +10942,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Simone de Beauvoir', years: '1908–1986', emoji: '✍️', tag: 'Philosopher',
+    name: 'Simone de Beauvoir', years: '1908-1986', emoji: '✍️', tag: 'Philosopher',
     img: '_Resources/_imgSource/images/simone-de-beauvoir.jpeg',
     facts: [
       {
@@ -10968,7 +10968,7 @@ const PEOPLE = [
         volleyFull: 'The Second Sex! Want to guess one of her bold ideas?',
       },
       {
-        text: 'Simone said that no one is just born a girl or boy — we learn what those things mean.',
+        text: 'Simone said that no one is just born a girl or boy - we learn what those things mean.',
         topic: 'we learn it',
         fragment: 'said we learn what being a girl or boy means',
         commentMin: 'She said we learn it…',
@@ -10992,7 +10992,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Roald Amundsen', years: '1872–1928', emoji: '🧭', tag: 'Explorer',
+    name: 'Roald Amundsen', years: '1872-1928', emoji: '🧭', tag: 'Explorer',
     img: '_Resources/_imgSource/images/roald-amundsen.jpg',
     facts: [
       {
@@ -11026,7 +11026,7 @@ const PEOPLE = [
         commentFull: 'Roald was from Norway, where there is lots of snow.',
         volleyMin: 'Ask about Norway…',
         volleyPartial: 'Roald grew up in the cold. Do you like…',
-        volleyFull: 'Norway — snow everywhere! I also know about the OTHER pole — know what he did?',
+        volleyFull: 'Norway - snow everywhere! I also know about the OTHER pole - know what he did?',
       },
       {
         text: 'He also went on trips to the North Pole at the top of the world.',
@@ -11042,7 +11042,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Megan Rapinoe', years: '1985–', emoji: '⚽', tag: 'Athlete',
+    name: 'Megan Rapinoe', years: '1985 - ', emoji: '⚽', tag: 'Athlete',
     img: '_Resources/_imgSource/images/megan-rapinoe.jpg',
     facts: [
       {
@@ -11065,7 +11065,7 @@ const PEOPLE = [
         commentFull: 'Megan is known for her bright pink or purple hair!',
         volleyMin: 'Ask about her hair…',
         volleyPartial: 'Megan changes her hair color. What color would you…',
-        volleyFull: 'Bright pink or purple hair! I bet she fights for things too — know what?',
+        volleyFull: 'Bright pink or purple hair! I bet she fights for things too - know what?',
       },
       {
         text: 'Megan stood up so women soccer players could be paid the same as men.',
@@ -11092,7 +11092,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Roger Federer', years: '1981–', emoji: '🎾', tag: 'Athlete',
+    name: 'Roger Federer', years: '1981 - ', emoji: '🎾', tag: 'Athlete',
     img: '_Resources/_imgSource/images/roger-federer.jpg',
     facts: [
       {
@@ -11115,7 +11115,7 @@ const PEOPLE = [
         commentFull: 'Roger is known for being calm and smooth on the court.',
         volleyMin: 'Ask about being calm…',
         volleyPartial: 'Roger plays calm. How do you stay…',
-        volleyFull: 'Super calm! I also know he speaks lots of languages — know how many?',
+        volleyFull: 'Super calm! I also know he speaks lots of languages - know how many?',
       },
       {
         text: 'Roger is from Switzerland and speaks four languages.',
@@ -11142,7 +11142,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Dwayne Johnson', years: '1972–', emoji: '💪', tag: 'Actor',
+    name: 'Dwayne Johnson', years: '1972 - ', emoji: '💪', tag: 'Actor',
     img: '_Resources/_imgSource/images/dwayne-johnson.jpg',
     facts: [
       {
@@ -11151,7 +11151,7 @@ const PEOPLE = [
         fragment: 'is a strong actor also called The Rock',
         commentMin: 'He is "The Rock"…',
         commentPartial: 'I notice that Dwayne is also known by the name…',
-        commentFull: 'Dwayne is called "The Rock" — a strong actor and former wrestler!',
+        commentFull: 'Dwayne is called "The Rock" - a strong actor and former wrestler!',
         volleyMin: 'Ask about The Rock…',
         volleyPartial: 'Dwayne has a wrestling nickname. What nickname would…',
         volleyFull: '"The Rock"! Want to know how he stays so strong?',
@@ -11176,7 +11176,7 @@ const PEOPLE = [
         commentFull: 'Dwayne stars in big action movies AND in Moana!',
         volleyMin: 'Ask about Moana…',
         volleyPartial: 'Dwayne is in Moana. What is your favorite Disney…',
-        volleyFull: 'MOANA too?! I also know he played another sport — want to guess?',
+        volleyFull: 'MOANA too?! I also know he played another sport - want to guess?',
       },
       {
         text: 'He used to play college football and dreamed of playing in the NFL.',
@@ -11192,7 +11192,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Meryl Streep', years: '1949–', emoji: '🎬', tag: 'Actor',
+    name: 'Meryl Streep', years: '1949 - ', emoji: '🎬', tag: 'Actor',
     img: '_Resources/_imgSource/images/meryl-streep.jpg',
     facts: [
       {
@@ -11242,7 +11242,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Elton John', years: '1947–', emoji: '🎹', tag: 'Musician',
+    name: 'Elton John', years: '1947 - ', emoji: '🎹', tag: 'Musician',
     img: '_Resources/_imgSource/images/elton-john.jpg',
     facts: [
       {
@@ -11251,7 +11251,7 @@ const PEOPLE = [
         fragment: 'is a singer who plays piano and writes songs',
         commentMin: 'He plays piano…',
         commentPartial: 'I notice that Elton sings and plays the…',
-        commentFull: 'Elton sings and plays piano — and writes catchy songs!',
+        commentFull: 'Elton sings and plays piano - and writes catchy songs!',
         volleyMin: 'Ask about his piano…',
         volleyPartial: 'Elton plays piano. Have you ever tried…',
         volleyFull: 'Piano AND catchy songs! I wonder what he wears.',
@@ -11276,7 +11276,7 @@ const PEOPLE = [
         commentFull: 'Elton wrote "Circle of Life" from The Lion King!',
         volleyMin: 'Ask about Lion King…',
         volleyPartial: 'Elton wrote a Lion King song. What is your favorite…',
-        volleyFull: '"Circle of Life"! I bet he gives back too — know what he\'s helped with?',
+        volleyFull: '"Circle of Life"! I bet he gives back too - know what he\'s helped with?',
       },
       {
         text: 'He has helped raise lots of money to fight a big sickness called HIV.',
@@ -11292,7 +11292,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Nina Simone', years: '1933–2003', emoji: '🎹', tag: 'Musician',
+    name: 'Nina Simone', years: '1933-2003', emoji: '🎹', tag: 'Musician',
     img: '_Resources/_imgSource/images/nina-simone.jpg',
     facts: [
       {
@@ -11326,7 +11326,7 @@ const PEOPLE = [
         commentFull: 'Nina wrote songs about wanting fair treatment for Black people.',
         volleyMin: 'Ask about her songs…',
         volleyPartial: 'Nina sang for change. What fair thing would…',
-        volleyFull: 'Fair treatment! I also know she had a music dream — want to guess?',
+        volleyFull: 'Fair treatment! I also know she had a music dream - want to guess?',
       },
       {
         text: 'She wanted to be a classical pianist when she was younger.',
@@ -11342,7 +11342,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Sabrina Carpenter', years: '2000–', emoji: '🎤', tag: 'Musician',
+    name: 'Sabrina Carpenter', years: '2000 - ', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/sabrina-carpenter.jpeg',
     facts: [
       {
@@ -11392,7 +11392,7 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Immanuel Kant', years: '1724–1804', emoji: '📜', tag: 'Philosopher',
+    name: 'Immanuel Kant', years: '1724-1804', emoji: '📜', tag: 'Philosopher',
     img: '_Resources/_imgSource/images/600px-Immanuel_Kant_-_Gemaelde_1.jpg',
     facts: [
       {
@@ -11415,15 +11415,15 @@ const PEOPLE = [
         commentFull: 'Immanuel said: only do something if you\'d be OK with everyone doing it.',
         volleyMin: 'Ask about his rule…',
         volleyPartial: 'Immanuel had a fair rule. Have you ever…',
-        volleyFull: 'Only do what you\'d want EVERYONE to do! I also know about his daily life — want to guess?',
+        volleyFull: 'Only do what you\'d want EVERYONE to do! I also know about his daily life - want to guess?',
       },
       {
-        text: 'Immanuel took a walk at the same time every day — people set their clocks by him.',
+        text: 'Immanuel took a walk at the same time every day - people set their clocks by him.',
         topic: 'walking on time',
         fragment: 'walked at the same time every day',
         commentMin: 'He walked on time…',
         commentPartial: 'I notice that Immanuel was so on time that…',
-        commentFull: 'Immanuel walked at the exact same time every day — like a clock!',
+        commentFull: 'Immanuel walked at the exact same time every day - like a clock!',
         volleyMin: 'Ask about his walks…',
         volleyPartial: 'Immanuel did the same thing each day. Do you have…',
         volleyFull: 'Walked at the EXACT same time every day?! Did he travel anywhere?',
@@ -11442,272 +11442,272 @@ const PEOPLE = [
     ],
   },
   {
-    name: 'Johann Sebastian Bach', years: '1685–1750', emoji: '🎼', tag: 'Musician',
+    name: 'Johann Sebastian Bach', years: '1685-1750', emoji: '🎼', tag: 'Musician',
     img: '_Resources/_imgSource/images/johann-sebastian-bach.jpg',
     facts: [],
   },
   {
-    name: 'Frédéric Chopin', years: '1810–1849', emoji: '🎹', tag: 'Musician',
+    name: 'Frédéric Chopin', years: '1810-1849', emoji: '🎹', tag: 'Musician',
     img: '_Resources/_imgSource/images/frederic-chopin.jpg',
     facts: [],
   },
   {
-    name: 'Antonio Vivaldi', years: '1678–1741', emoji: '🎻', tag: 'Musician',
+    name: 'Antonio Vivaldi', years: '1678-1741', emoji: '🎻', tag: 'Musician',
     img: '_Resources/_imgSource/images/antonio-vivaldi.jpg',
     facts: [],
   },
   {
-    name: 'Aretha Franklin', years: '1942–2018', emoji: '🎤', tag: 'Musician',
+    name: 'Aretha Franklin', years: '1942-2018', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/aretha-franklin.jpg',
     facts: [],
   },
   {
-    name: 'Ray Charles', years: '1930–2004', emoji: '🎹', tag: 'Musician',
+    name: 'Ray Charles', years: '1930-2004', emoji: '🎹', tag: 'Musician',
     img: '_Resources/_imgSource/images/ray-charles.jpg',
     facts: [],
   },
   {
-    name: 'Stevie Wonder', years: '1950–', emoji: '🎤', tag: 'Musician',
+    name: 'Stevie Wonder', years: '1950 - ', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/stevie-wonder.jpg',
     facts: [],
   },
   {
-    name: 'Ella Fitzgerald', years: '1917–1996', emoji: '🎤', tag: 'Musician',
+    name: 'Ella Fitzgerald', years: '1917-1996', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/ella-fitzgerald.jpg',
     facts: [],
   },
   {
-    name: 'Duke Ellington', years: '1899–1974', emoji: '🎹', tag: 'Musician',
+    name: 'Duke Ellington', years: '1899-1974', emoji: '🎹', tag: 'Musician',
     img: '_Resources/_imgSource/images/duke-ellington.jpg',
     facts: [],
   },
   {
-    name: 'Miles Davis', years: '1926–1991', emoji: '🎺', tag: 'Musician',
+    name: 'Miles Davis', years: '1926-1991', emoji: '🎺', tag: 'Musician',
     img: '_Resources/_imgSource/images/miles-davis.jpg',
     facts: [],
   },
   {
-    name: 'Johnny Cash', years: '1932–2003', emoji: '🎸', tag: 'Musician',
+    name: 'Johnny Cash', years: '1932-2003', emoji: '🎸', tag: 'Musician',
     img: '_Resources/_imgSource/images/johnny-cash.jpg',
     facts: [],
   },
   {
-    name: 'Frank Sinatra', years: '1915–1998', emoji: '🎤', tag: 'Musician',
+    name: 'Frank Sinatra', years: '1915-1998', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/frank-sinatra.jpg',
     facts: [],
   },
   {
-    name: 'Bob Dylan', years: '1941–', emoji: '🎸', tag: 'Musician',
+    name: 'Bob Dylan', years: '1941 - ', emoji: '🎸', tag: 'Musician',
     img: '_Resources/_imgSource/images/bob-dylan.jpg',
     facts: [],
   },
   {
-    name: 'Paul McCartney', years: '1942–', emoji: '🎸', tag: 'Musician',
+    name: 'Paul McCartney', years: '1942 - ', emoji: '🎸', tag: 'Musician',
     img: '_Resources/_imgSource/images/paul-mccartney.jpg',
     facts: [],
   },
   {
-    name: 'John Lennon', years: '1940–1980', emoji: '🎸', tag: 'Musician',
+    name: 'John Lennon', years: '1940-1980', emoji: '🎸', tag: 'Musician',
     img: '_Resources/_imgSource/images/john-lennon.jpg',
     facts: [],
   },
   {
-    name: 'Prince', years: '1958–2016', emoji: '🎸', tag: 'Musician',
+    name: 'Prince', years: '1958-2016', emoji: '🎸', tag: 'Musician',
     img: '_Resources/_imgSource/images/prince.jpg',
     facts: [],
   },
   {
-    name: 'Madonna', years: '1958–', emoji: '🎤', tag: 'Musician',
+    name: 'Madonna', years: '1958 - ', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/madonna.jpg',
     facts: [],
   },
   {
-    name: 'Lady Gaga', years: '1986–', emoji: '🎤', tag: 'Musician',
+    name: 'Lady Gaga', years: '1986 - ', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/lady-gaga.jpg',
     facts: [],
   },
   {
-    name: 'Adele', years: '1988–', emoji: '🎤', tag: 'Musician',
+    name: 'Adele', years: '1988 - ', emoji: '🎤', tag: 'Musician',
     img: '_Resources/_imgSource/images/adele.jpg',
     facts: [],
   },
   {
-    name: 'Leo Tolstoy', years: '1828–1910', emoji: '📖', tag: 'Author',
+    name: 'Leo Tolstoy', years: '1828-1910', emoji: '📖', tag: 'Author',
     img: '_Resources/_imgSource/images/leo-tolstoy.jpg',
     facts: [],
   },
   {
-    name: 'Fyodor Dostoevsky', years: '1821–1881', emoji: '📖', tag: 'Author',
+    name: 'Fyodor Dostoevsky', years: '1821-1881', emoji: '📖', tag: 'Author',
     img: '_Resources/_imgSource/images/fyodor-dostoevsky.jpg',
     facts: [],
   },
   {
-    name: 'Jane Austen', years: '1775–1817', emoji: '📖', tag: 'Author',
+    name: 'Jane Austen', years: '1775-1817', emoji: '📖', tag: 'Author',
     img: '_Resources/_imgSource/images/jane-austen.jpg',
     facts: [],
   },
   {
-    name: 'Oscar Wilde', years: '1854–1900', emoji: '🖋️', tag: 'Author',
+    name: 'Oscar Wilde', years: '1854-1900', emoji: '🖋️', tag: 'Author',
     img: '_Resources/_imgSource/images/oscar-wilde.jpg',
     facts: [],
   },
   {
-    name: 'Ernest Hemingway', years: '1899–1961', emoji: '📖', tag: 'Author',
+    name: 'Ernest Hemingway', years: '1899-1961', emoji: '📖', tag: 'Author',
     img: '_Resources/_imgSource/images/ernest-hemingway.jpg',
     facts: [],
   },
   {
-    name: 'Franz Kafka', years: '1883–1924', emoji: '📖', tag: 'Author',
+    name: 'Franz Kafka', years: '1883-1924', emoji: '📖', tag: 'Author',
     img: '_Resources/_imgSource/images/franz-kafka.jpg',
     facts: [],
   },
   {
-    name: 'Victor Hugo', years: '1802–1885', emoji: '📖', tag: 'Author',
+    name: 'Victor Hugo', years: '1802-1885', emoji: '📖', tag: 'Author',
     img: '_Resources/_imgSource/images/victor-hugo.jpg',
     facts: [],
   },
   {
-    name: 'Dante Alighieri', years: '1265–1321', emoji: '📜', tag: 'Author',
+    name: 'Dante Alighieri', years: '1265-1321', emoji: '📜', tag: 'Author',
     img: '_Resources/_imgSource/images/dante-alighieri.jpg',
     facts: [],
   },
   {
-    name: 'Miguel de Cervantes', years: '1547–1616', emoji: '📖', tag: 'Author',
+    name: 'Miguel de Cervantes', years: '1547-1616', emoji: '📖', tag: 'Author',
     img: '_Resources/_imgSource/images/miguel-de-cervantes.jpg',
     facts: [],
   },
   {
-    name: 'J.R.R. Tolkien', years: '1892–1973', emoji: '🧙', tag: 'Author',
+    name: 'J.R.R. Tolkien', years: '1892-1973', emoji: '🧙', tag: 'Author',
     img: '_Resources/_imgSource/images/j.r.r.-tolkien.jpg',
     facts: [],
   },
   {
-    name: 'Agatha Christie', years: '1890–1976', emoji: '🔎', tag: 'Author',
+    name: 'Agatha Christie', years: '1890-1976', emoji: '🔎', tag: 'Author',
     img: '_Resources/_imgSource/images/agatha-christie.jpg',
     facts: [],
   },
   {
-    name: 'Roald Dahl', years: '1916–1990', emoji: '📚', tag: 'Author',
+    name: 'Roald Dahl', years: '1916-1990', emoji: '📚', tag: 'Author',
     img: '_Resources/_imgSource/images/roald-dahl.jpg',
     facts: [],
   },
   {
-    name: 'Dr. Seuss', years: '1904–1991', emoji: '📚', tag: 'Author',
+    name: 'Dr. Seuss', years: '1904-1991', emoji: '📚', tag: 'Author',
     img: '_Resources/_imgSource/images/dr.-seuss.jpg',
     facts: [],
   },
   {
-    name: 'Hans Christian Andersen', years: '1805–1875', emoji: '📚', tag: 'Author',
+    name: 'Hans Christian Andersen', years: '1805-1875', emoji: '📚', tag: 'Author',
     img: '_Resources/_imgSource/images/hans-christian-andersen.jpg',
     facts: [],
   },
   {
-    name: 'Walt Whitman', years: '1819–1892', emoji: '🖋️', tag: 'Author',
+    name: 'Walt Whitman', years: '1819-1892', emoji: '🖋️', tag: 'Author',
     img: '_Resources/_imgSource/images/walt-whitman.jpg',
     facts: [],
   },
   {
-    name: 'Pablo Neruda', years: '1904–1973', emoji: '🖋️', tag: 'Author',
+    name: 'Pablo Neruda', years: '1904-1973', emoji: '🖋️', tag: 'Author',
     img: '_Resources/_imgSource/images/pablo-neruda.jpg',
     facts: [],
   },
   {
-    name: 'Harper Lee', years: '1926–2016', emoji: '📖', tag: 'Author',
+    name: 'Harper Lee', years: '1926-2016', emoji: '📖', tag: 'Author',
     img: '_Resources/_imgSource/images/harper-lee.jpg',
     facts: [],
   },
   {
-    name: 'James Baldwin', years: '1924–1987', emoji: '🖋️', tag: 'Author',
+    name: 'James Baldwin', years: '1924-1987', emoji: '🖋️', tag: 'Author',
     img: '_Resources/_imgSource/images/james-baldwin.jpg',
     facts: [],
   },
   {
-    name: 'Octavia Butler', years: '1947–2006', emoji: '🚀', tag: 'Author',
+    name: 'Octavia Butler', years: '1947-2006', emoji: '🚀', tag: 'Author',
     img: '_Resources/_imgSource/images/octavia-butler.jpg',
     facts: [],
   },
   {
-    name: 'Stephen King', years: '1947–', emoji: '📖', tag: 'Author',
+    name: 'Stephen King', years: '1947 - ', emoji: '📖', tag: 'Author',
     img: '_Resources/_imgSource/images/stephen-king.jpg',
     facts: [],
   },
   {
-    name: 'Dmitri Mendeleev', years: '1834–1907', emoji: '⚗️', tag: 'Scientist',
+    name: 'Dmitri Mendeleev', years: '1834-1907', emoji: '⚗️', tag: 'Scientist',
     img: '_Resources/_imgSource/images/dmitri-mendeleev.jpg',
     facts: [],
   },
   {
-    name: 'Gregor Mendel', years: '1822–1884', emoji: '🌱', tag: 'Scientist',
+    name: 'Gregor Mendel', years: '1822-1884', emoji: '🌱', tag: 'Scientist',
     img: '_Resources/_imgSource/images/gregor-mendel.jpg',
     facts: [],
   },
   {
-    name: 'Niels Bohr', years: '1885–1962', emoji: '⚛️', tag: 'Scientist',
+    name: 'Niels Bohr', years: '1885-1962', emoji: '⚛️', tag: 'Scientist',
     img: '_Resources/_imgSource/images/niels-bohr.jpg',
     facts: [],
   },
   {
-    name: 'Richard Feynman', years: '1918–1988', emoji: '⚛️', tag: 'Scientist',
+    name: 'Richard Feynman', years: '1918-1988', emoji: '⚛️', tag: 'Scientist',
     img: '_Resources/_imgSource/images/richard-feynman.jpg',
     facts: [],
   },
   {
-    name: 'Max Planck', years: '1858–1947', emoji: '⚛️', tag: 'Scientist',
+    name: 'Max Planck', years: '1858-1947', emoji: '⚛️', tag: 'Scientist',
     img: '_Resources/_imgSource/images/max-planck.jpg',
     facts: [],
   },
   {
-    name: 'Enrico Fermi', years: '1901–1954', emoji: '⚛️', tag: 'Scientist',
+    name: 'Enrico Fermi', years: '1901-1954', emoji: '⚛️', tag: 'Scientist',
     img: '_Resources/_imgSource/images/enrico-fermi.jpg',
     facts: [],
   },
   {
-    name: 'Michael Faraday', years: '1791–1867', emoji: '🧲', tag: 'Scientist',
+    name: 'Michael Faraday', years: '1791-1867', emoji: '🧲', tag: 'Scientist',
     img: '_Resources/_imgSource/images/michael-faraday.jpg',
     facts: [],
   },
   {
-    name: 'Robert Oppenheimer', years: '1904–1967', emoji: '⚛️', tag: 'Scientist',
+    name: 'Robert Oppenheimer', years: '1904-1967', emoji: '⚛️', tag: 'Scientist',
     img: '_Resources/_imgSource/images/robert-oppenheimer.jpg',
     facts: [],
   },
   {
-    name: 'Jonas Salk', years: '1914–1995', emoji: '💉', tag: 'Scientist',
+    name: 'Jonas Salk', years: '1914-1995', emoji: '💉', tag: 'Scientist',
     img: '_Resources/_imgSource/images/jonas-salk.jpg',
     facts: [],
   },
   {
-    name: 'Alexander Fleming', years: '1881–1955', emoji: '🧫', tag: 'Scientist',
+    name: 'Alexander Fleming', years: '1881-1955', emoji: '🧫', tag: 'Scientist',
     img: '_Resources/_imgSource/images/alexander-fleming.jpg',
     facts: [],
   },
   {
-    name: 'Tu Youyou', years: '1930–', emoji: '🌿', tag: 'Scientist',
+    name: 'Tu Youyou', years: '1930 - ', emoji: '🌿', tag: 'Scientist',
     img: '_Resources/_imgSource/images/tu-youyou.jpg',
     facts: [],
   },
   {
-    name: 'Barbara McClintock', years: '1902–1992', emoji: '🌽', tag: 'Scientist',
+    name: 'Barbara McClintock', years: '1902-1992', emoji: '🌽', tag: 'Scientist',
     img: '_Resources/_imgSource/images/barbara-mcclintock.jpg',
     facts: [],
   },
   {
-    name: 'Lise Meitner', years: '1878–1968', emoji: '⚛️', tag: 'Scientist',
+    name: 'Lise Meitner', years: '1878-1968', emoji: '⚛️', tag: 'Scientist',
     img: '_Resources/_imgSource/images/lise-meitner.jpg',
     facts: [],
   },
   {
-    name: 'Emmy Noether', years: '1882–1935', emoji: '➗', tag: 'Mathematician',
+    name: 'Emmy Noether', years: '1882-1935', emoji: '➗', tag: 'Mathematician',
     img: '_Resources/_imgSource/images/emmy-noether.jpg',
     facts: [],
   },
   {
-    name: 'Carl Friedrich Gauss', years: '1777–1855', emoji: '➗', tag: 'Mathematician',
+    name: 'Carl Friedrich Gauss', years: '1777-1855', emoji: '➗', tag: 'Mathematician',
     img: '_Resources/_imgSource/images/carl-friedrich-gauss.jpg',
     facts: [],
   },
   {
-    name: 'Leonhard Euler', years: '1707–1783', emoji: '➗', tag: 'Mathematician',
+    name: 'Leonhard Euler', years: '1707-1783', emoji: '➗', tag: 'Mathematician',
     img: '_Resources/_imgSource/images/leonhard-euler.jpg',
     facts: [],
   },
@@ -11717,227 +11717,227 @@ const PEOPLE = [
     facts: [],
   },
   {
-    name: 'Johannes Kepler', years: '1571–1630', emoji: '🔭', tag: 'Scientist',
+    name: 'Johannes Kepler', years: '1571-1630', emoji: '🔭', tag: 'Scientist',
     img: '_Resources/_imgSource/images/johannes-kepler.jpg',
     facts: [],
   },
   {
-    name: 'Edwin Hubble', years: '1889–1953', emoji: '🔭', tag: 'Scientist',
+    name: 'Edwin Hubble', years: '1889-1953', emoji: '🔭', tag: 'Scientist',
     img: '_Resources/_imgSource/images/edwin-hubble.jpg',
     facts: [],
   },
   {
-    name: 'George Washington Carver', years: '1864–1943', emoji: '🥜', tag: 'Inventor',
+    name: 'George Washington Carver', years: '1864-1943', emoji: '🥜', tag: 'Inventor',
     img: '_Resources/_imgSource/images/george-washington-carver.jpg',
     facts: [],
   },
   {
-    name: 'Norman Borlaug', years: '1914–2009', emoji: '🌾', tag: 'Scientist',
+    name: 'Norman Borlaug', years: '1914-2009', emoji: '🌾', tag: 'Scientist',
     img: '_Resources/_imgSource/images/norman-borlaug.jpg',
     facts: [],
   },
   {
-    name: 'Claude Monet', years: '1840–1926', emoji: '🎨', tag: 'Artist',
+    name: 'Claude Monet', years: '1840-1926', emoji: '🎨', tag: 'Artist',
     img: '_Resources/_imgSource/images/claude-monet.jpg',
     facts: [],
   },
   {
-    name: 'Henri Matisse', years: '1869–1954', emoji: '🎨', tag: 'Artist',
+    name: 'Henri Matisse', years: '1869-1954', emoji: '🎨', tag: 'Artist',
     img: '_Resources/_imgSource/images/henri-matisse.jpg',
     facts: [],
   },
   {
-    name: 'Andy Warhol', years: '1928–1987', emoji: '🎨', tag: 'Artist',
+    name: 'Andy Warhol', years: '1928-1987', emoji: '🎨', tag: 'Artist',
     img: '_Resources/_imgSource/images/andy-warhol.jpg',
     facts: [],
   },
   {
-    name: 'Diego Rivera', years: '1886–1957', emoji: '🎨', tag: 'Artist',
+    name: 'Diego Rivera', years: '1886-1957', emoji: '🎨', tag: 'Artist',
     img: '_Resources/_imgSource/images/diego-rivera.jpg',
     facts: [],
   },
   {
-    name: 'Auguste Rodin', years: '1840–1917', emoji: '🗿', tag: 'Artist',
+    name: 'Auguste Rodin', years: '1840-1917', emoji: '🗿', tag: 'Artist',
     img: '_Resources/_imgSource/images/auguste-rodin.jpg',
     facts: [],
   },
   {
-    name: 'Johannes Vermeer', years: '1632–1675', emoji: '🎨', tag: 'Artist',
+    name: 'Johannes Vermeer', years: '1632-1675', emoji: '🎨', tag: 'Artist',
     img: '_Resources/_imgSource/images/johannes-vermeer.jpg',
     facts: [],
   },
   {
-    name: 'Raphael', years: '1483–1520', emoji: '🎨', tag: 'Artist',
+    name: 'Raphael', years: '1483-1520', emoji: '🎨', tag: 'Artist',
     img: '_Resources/_imgSource/images/raphael.jpg',
     facts: [],
   },
   {
-    name: 'Katsushika Hokusai', years: '1760–1849', emoji: '🌊', tag: 'Artist',
+    name: 'Katsushika Hokusai', years: '1760-1849', emoji: '🌊', tag: 'Artist',
     img: '_Resources/_imgSource/images/katsushika-hokusai.jpg',
     facts: [],
   },
   {
-    name: 'Queen Elizabeth I', years: '1533–1603', emoji: '👑', tag: 'Ruler',
+    name: 'Queen Elizabeth I', years: '1533-1603', emoji: '👑', tag: 'Ruler',
     img: '_Resources/_imgSource/images/queen-elizabeth-i.jpg',
     facts: [],
   },
   {
-    name: 'Queen Elizabeth II', years: '1926–2022', emoji: '👑', tag: 'Royal',
+    name: 'Queen Elizabeth II', years: '1926-2022', emoji: '👑', tag: 'Royal',
     img: '_Resources/_imgSource/images/queen-elizabeth-ii.jpg',
     facts: [],
   },
   {
-    name: 'Catherine the Great', years: '1729–1796', emoji: '👑', tag: 'Ruler',
+    name: 'Catherine the Great', years: '1729-1796', emoji: '👑', tag: 'Ruler',
     img: '_Resources/_imgSource/images/catherine-the-great.jpg',
     facts: [],
   },
   {
-    name: 'Charlemagne', years: '748–814', emoji: '👑', tag: 'Ruler',
+    name: 'Charlemagne', years: '748-814', emoji: '👑', tag: 'Ruler',
     img: '_Resources/_imgSource/images/charlemagne.jpg',
     facts: [],
   },
   {
-    name: 'Tutankhamun', years: '~1341–1323 BCE', emoji: '👑', tag: 'Ruler',
+    name: 'Tutankhamun', years: '~1341-1323 BCE', emoji: '👑', tag: 'Ruler',
     img: '_Resources/_imgSource/images/tutankhamun.jpg',
     facts: [],
   },
   {
-    name: 'Nefertiti', years: '~1370–1330 BCE', emoji: '👑', tag: 'Ruler',
+    name: 'Nefertiti', years: '~1370-1330 BCE', emoji: '👑', tag: 'Ruler',
     img: '_Resources/_imgSource/images/nefertiti.jpg',
     facts: [],
   },
   {
-    name: 'Ashoka', years: '~304–232 BCE', emoji: '👑', tag: 'Ruler',
+    name: 'Ashoka', years: '~304-232 BCE', emoji: '👑', tag: 'Ruler',
     img: '_Resources/_imgSource/images/ashoka.jpg',
     facts: [],
   },
   {
-    name: 'Kublai Khan', years: '1215–1294', emoji: '🏹', tag: 'Ruler',
+    name: 'Kublai Khan', years: '1215-1294', emoji: '🏹', tag: 'Ruler',
     img: '_Resources/_imgSource/images/kublai-khan.jpg',
     facts: [],
   },
   {
-    name: 'Simón Bolívar', years: '1783–1830', emoji: '⚔️', tag: 'Leader',
+    name: 'Simón Bolívar', years: '1783-1830', emoji: '⚔️', tag: 'Leader',
     img: '_Resources/_imgSource/images/simon-bolivar.jpg',
     facts: [],
   },
   {
-    name: 'Sun Yat-sen', years: '1866–1925', emoji: '🇨🇳', tag: 'Leader',
+    name: 'Sun Yat-sen', years: '1866-1925', emoji: '🇨🇳', tag: 'Leader',
     img: '_Resources/_imgSource/images/sun-yat-sen.jpg',
     facts: [],
   },
   {
-    name: 'Mikhail Gorbachev', years: '1931–2022', emoji: '🕊️', tag: 'Leader',
+    name: 'Mikhail Gorbachev', years: '1931-2022', emoji: '🕊️', tag: 'Leader',
     img: '_Resources/_imgSource/images/mikhail-gorbachev.jpg',
     facts: [],
   },
   {
-    name: 'Eva Perón', years: '1919–1952', emoji: '🌹', tag: 'Leader',
+    name: 'Eva Perón', years: '1919-1952', emoji: '🌹', tag: 'Leader',
     img: '_Resources/_imgSource/images/eva-peron.jpg',
     facts: [],
   },
   {
-    name: 'Indira Gandhi', years: '1917–1984', emoji: '🇮🇳', tag: 'Leader',
+    name: 'Indira Gandhi', years: '1917-1984', emoji: '🇮🇳', tag: 'Leader',
     img: '_Resources/_imgSource/images/indira-gandhi.jpg',
     facts: [],
   },
   {
-    name: 'Aung San Suu Kyi', years: '1945–', emoji: '🕊️', tag: 'Activist',
+    name: 'Aung San Suu Kyi', years: '1945 - ', emoji: '🕊️', tag: 'Activist',
     img: '_Resources/_imgSource/images/aung-san-suu-kyi.jpg',
     facts: [],
   },
   {
-    name: 'Kwame Nkrumah', years: '1909–1972', emoji: '🌍', tag: 'Leader',
+    name: 'Kwame Nkrumah', years: '1909-1972', emoji: '🌍', tag: 'Leader',
     img: '_Resources/_imgSource/images/kwame-nkrumah.jpg',
     facts: [],
   },
   {
-    name: 'Cesar Chavez', years: '1927–1993', emoji: '🍇', tag: 'Activist',
+    name: 'Cesar Chavez', years: '1927-1993', emoji: '🍇', tag: 'Activist',
     img: '_Resources/_imgSource/images/cesar-chavez.jpg',
     facts: [],
   },
   {
-    name: 'Dolores Huerta', years: '1930–', emoji: '✊', tag: 'Activist',
+    name: 'Dolores Huerta', years: '1930 - ', emoji: '✊', tag: 'Activist',
     img: '_Resources/_imgSource/images/dolores-huerta.jpg',
     facts: [],
   },
   {
-    name: 'John Lewis', years: '1940–2020', emoji: '✊', tag: 'Activist',
+    name: 'John Lewis', years: '1940-2020', emoji: '✊', tag: 'Activist',
     img: '_Resources/_imgSource/images/john-lewis.jpg',
     facts: [],
   },
   {
-    name: 'W.E.B. Du Bois', years: '1868–1963', emoji: '📚', tag: 'Activist',
+    name: 'W.E.B. Du Bois', years: '1868-1963', emoji: '📚', tag: 'Activist',
     img: '_Resources/_imgSource/images/w.e.b.-du-bois.jpg',
     facts: [],
   },
   {
-    name: 'Ida B. Wells', years: '1862–1931', emoji: '📰', tag: 'Activist',
+    name: 'Ida B. Wells', years: '1862-1931', emoji: '📰', tag: 'Activist',
     img: '_Resources/_imgSource/images/ida-b.-wells.jpg',
     facts: [],
   },
   {
-    name: 'Eleanor Roosevelt', years: '1884–1962', emoji: '🕊️', tag: 'Leader',
+    name: 'Eleanor Roosevelt', years: '1884-1962', emoji: '🕊️', tag: 'Leader',
     img: '_Resources/_imgSource/images/eleanor-roosevelt.jpg',
     facts: [],
   },
   {
-    name: 'John F. Kennedy', years: '1917–1963', emoji: '🇺🇸', tag: 'Leader',
+    name: 'John F. Kennedy', years: '1917-1963', emoji: '🇺🇸', tag: 'Leader',
     img: '_Resources/_imgSource/images/john-f.-kennedy.jpg',
     facts: [],
   },
   {
-    name: 'Thomas Jefferson', years: '1743–1826', emoji: '📜', tag: 'Leader',
+    name: 'Thomas Jefferson', years: '1743-1826', emoji: '📜', tag: 'Leader',
     img: '_Resources/_imgSource/images/thomas-jefferson.jpg',
     facts: [],
   },
   {
-    name: 'Babe Ruth', years: '1895–1948', emoji: '⚾', tag: 'Athlete',
+    name: 'Babe Ruth', years: '1895-1948', emoji: '⚾', tag: 'Athlete',
     img: '_Resources/_imgSource/images/babe-ruth.jpg',
     facts: [],
   },
   {
-    name: 'Jesse Owens', years: '1913–1980', emoji: '🏃', tag: 'Athlete',
+    name: 'Jesse Owens', years: '1913-1980', emoji: '🏃', tag: 'Athlete',
     img: '_Resources/_imgSource/images/jesse-owens.jpg',
     facts: [],
   },
   {
-    name: 'Jackie Robinson', years: '1919–1972', emoji: '⚾', tag: 'Athlete',
+    name: 'Jackie Robinson', years: '1919-1972', emoji: '⚾', tag: 'Athlete',
     img: '_Resources/_imgSource/images/jackie-robinson.jpg',
     facts: [],
   },
   {
-    name: 'Billie Jean King', years: '1943–', emoji: '🎾', tag: 'Athlete',
+    name: 'Billie Jean King', years: '1943 - ', emoji: '🎾', tag: 'Athlete',
     img: '_Resources/_imgSource/images/billie-jean-king.jpg',
     facts: [],
   },
   {
-    name: 'Arthur Ashe', years: '1943–1993', emoji: '🎾', tag: 'Athlete',
+    name: 'Arthur Ashe', years: '1943-1993', emoji: '🎾', tag: 'Athlete',
     img: '_Resources/_imgSource/images/arthur-ashe.jpg',
     facts: [],
   },
   {
-    name: 'Wayne Gretzky', years: '1961–', emoji: '🏒', tag: 'Athlete',
+    name: 'Wayne Gretzky', years: '1961 - ', emoji: '🏒', tag: 'Athlete',
     img: '_Resources/_imgSource/images/wayne-gretzky.jpg',
     facts: [],
   },
   {
-    name: 'Tom Brady', years: '1977–', emoji: '🏈', tag: 'Athlete',
+    name: 'Tom Brady', years: '1977 - ', emoji: '🏈', tag: 'Athlete',
     img: '_Resources/_imgSource/images/tom-brady.jpg',
     facts: [],
   },
   {
-    name: 'Tiger Woods', years: '1975–', emoji: '⛳', tag: 'Athlete',
+    name: 'Tiger Woods', years: '1975 - ', emoji: '⛳', tag: 'Athlete',
     img: '_Resources/_imgSource/images/tiger-woods.jpg',
     facts: [],
   },
   {
-    name: 'Nadia Comăneci', years: '1961–', emoji: '🤸', tag: 'Athlete',
+    name: 'Nadia Comăneci', years: '1961 - ', emoji: '🤸', tag: 'Athlete',
     img: '_Resources/_imgSource/images/nadia-comaneci.jpg',
     facts: [],
   },
   {
-    name: 'Magic Johnson', years: '1959–', emoji: '🏀', tag: 'Athlete',
+    name: 'Magic Johnson', years: '1959 - ', emoji: '🏀', tag: 'Athlete',
     img: '_Resources/_imgSource/images/magic-johnson.jpg',
     facts: [],
   },
@@ -11996,7 +11996,7 @@ function extractFragment(text, firstName, lastName) {
 
 function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
-// Pull a 2–3 word topic tag out of a fact.
+// Pull a 2-3 word topic tag out of a fact.
 function extractTopic(text) {
   const stripped = stripTrailingPeriod(text);
   const m1 = stripped.match(/(?:[A-Z][a-zA-Z]+(?:\s+(?:of|the|and)\s+)?){1,3}/g);
@@ -12042,7 +12042,7 @@ function buildContext(person, fact) {
   return { firstName, lastName, text, fragment, topic, pronoun: pronounFor(person) };
 }
 
-// Defensive templates — used only when an authored slot is missing.
+// Defensive templates - used only when an authored slot is missing.
 const COMMENT_TEMPLATES = {
   min: [
     ctx => firstWords(ctx.text, 3) + '…',
@@ -12054,7 +12054,7 @@ const COMMENT_TEMPLATES = {
   ],
   full: [
     ctx => 'I notice that ' + ctx.firstName + ' ' + ctx.fragment + '.',
-    ctx => 'Wow — ' + ctx.firstName + ' ' + ctx.fragment + '.',
+    ctx => 'Wow - ' + ctx.firstName + ' ' + ctx.fragment + '.',
   ],
 };
 
@@ -12173,7 +12173,7 @@ const state = {
   promptDelayEnabled:     false,
   promptDelaySecs:        3,
   promptShowing:          false,
-  promptShowingLevel:     0,  // 0=none, 1=min, 2=partial, 3=full — tracked so MtL Prompt can jump to Full
+  promptShowingLevel:     0,  // 0=none, 1=min, 2=partial, 3=full - tracked so MtL Prompt can jump to Full
   showChoicesOnFull:      false,  // when true, Full prompts render as 2 tappable choices (if authored)
   karaokeEnabled:         true,   // light up sayable prompt words one at a time to pace reading
   // LtM per-cell escalation levels (0=indep,1=min,2=partial,3=full)
@@ -12184,7 +12184,7 @@ const state = {
   autoPromptShownForCell: [[false, false], [false, false], [false, false], [false, false]],
   cellContexts:           [[null, null], [null, null], [null, null], [null, null]],
   turnFacts:              [null, null, null, null],
-  // Session history — snapshots of completed trials for printing
+  // Session history - snapshots of completed trials for printing
   sessionHistory: [],
   trialSnapshotSaved: false,  // prevents double-saving when returning from SR
   // Timer
@@ -12217,7 +12217,7 @@ function savePrefs() {
       showChoicesOnFull:  state.showChoicesOnFull,
       karaokeEnabled:     state.karaokeEnabled,
     }));
-  } catch (_) { /* storage unavailable (private mode, etc.) — fall back to defaults */ }
+  } catch (_) { /* storage unavailable (private mode, etc.) - fall back to defaults */ }
 }
 
 function loadPrefs() {
@@ -12303,7 +12303,7 @@ function showPhotoSearch() {
   bar.classList.remove('hidden');
   const person = state.currentPerson;
   if (person) {
-    const birthYear = person.years.split(/[–—-]/)[0].trim();
+    const birthYear = person.years.split(/[ -  - -]/)[0].trim();
     $('photo-search-input').value = person.name + ' ' + birthYear;
   }
   $('photo-search-status').textContent = '';
@@ -12362,7 +12362,7 @@ async function handlePhotoSearch(e) {
         if (state.currentPerson) {
           localStorage.setItem('wikiPhoto:' + state.currentPerson.name, photoUrl);
         }
-        // Show confirm button — let staff verify the photo is correct before
+        // Show confirm button - let staff verify the photo is correct before
         // committing it permanently to the repo for all devices
         status.innerHTML = '';
         if (state.currentPerson) {
@@ -12382,11 +12382,11 @@ async function handlePhotoSearch(e) {
                 state.currentPerson.img = data.localPath;
                 status.textContent = 'Saved for everyone!';
               } else {
-                status.textContent = 'Save failed — try again.';
+                status.textContent = 'Save failed - try again.';
               }
               _hideSearchTimer = setTimeout(hidePhotoSearch, 1500);
             }).catch(() => {
-              status.textContent = 'Save failed — check connection.';
+              status.textContent = 'Save failed - check connection.';
               _hideSearchTimer = setTimeout(hidePhotoSearch, 1500);
             });
           };
@@ -12396,18 +12396,18 @@ async function handlePhotoSearch(e) {
         btn.textContent = 'Search';
       };
       testImg.onerror = () => {
-        status.textContent = 'Image didn\'t load — try a different search.';
+        status.textContent = 'Image didn\'t load - try a different search.';
         btn.disabled    = false;
         btn.textContent = 'Search';
       };
       testImg.src = photoUrl;
     } else {
-      status.textContent = 'No photo found — try a different search.';
+      status.textContent = 'No photo found - try a different search.';
       btn.disabled    = false;
       btn.textContent = 'Search';
     }
   } catch (_) {
-    status.textContent = 'Search failed — check your connection.';
+    status.textContent = 'Search failed - check your connection.';
     btn.disabled    = false;
     btn.textContent = 'Search';
   }
@@ -12453,7 +12453,7 @@ function updateToggles() {
     const turn = parseInt(btn.dataset.turn);
     const idx  = btn.dataset.type === 'comment' ? 0 : 1;
     const v    = state.turns[turn][idx];
-    btn.textContent = v === 'check' ? '✓' : v === 'ok' ? 'OK' : '—';
+    btn.textContent = v === 'check' ? '✓' : v === 'ok' ? 'OK' : ' - ';
     btn.classList.toggle('checked', v === 'check');
     btn.classList.toggle('ok',      v === 'ok');
   });
@@ -12461,7 +12461,7 @@ function updateToggles() {
     const turn = parseInt(btn.dataset.turn);
     const idx  = btn.dataset.type === 'comment' ? 0 : 1;
     const v    = state.turns[turn][idx];
-    btn.textContent = v === 'error' ? '✗' : '—';
+    btn.textContent = v === 'error' ? '✗' : ' - ';
     btn.classList.toggle('errored', v === 'error');
   });
 }
@@ -12472,7 +12472,7 @@ function updateToggles() {
 
 const CONVO_MOVES = [
   { icon: '💬', move: 'Client makes a comment',                    factLabel: 'Talk through this fact together' },
-  { icon: '🔁', move: 'Client volleys back — asks you a question', factLabel: 'Keep chatting about this fact'   },
+  { icon: '🔁', move: 'Client volleys back - asks you a question', factLabel: 'Keep chatting about this fact'   },
 ];
 
 function renderConversation() {
@@ -12508,7 +12508,7 @@ function renderConversation() {
     $('convo-turn-label').textContent = 'Conversation complete';
     $('convo-fact-icon').textContent  = '🎉';
     $('convo-fact-label').textContent = 'Nice chat!';
-    $('convo-fact-text').textContent  = 'All four facts covered — Finish & SR, or grab a new person.';
+    $('convo-fact-text').textContent  = 'All four facts covered - Finish & SR, or grab a new person.';
     $('convo-now').classList.add('hidden');
     scoreBar.classList.add('done');
     $('score-bar-label').innerHTML = 'All moves scored <strong>✓</strong>';
@@ -12638,7 +12638,7 @@ function getPromptForCell(turn, typeIdx, level) {
     ? ['', 'commentMin', 'commentPartial', 'commentFull'][level]
     : ['', 'volleyMin',  'volleyPartial',  'volleyFull' ][level];
 
-  // A Min-level volley is an indirect "ask about…" cue — a hint for the
+  // A Min-level volley is an indirect "ask about…" cue - a hint for the
   // clinician to elicit, never a line for the client to read aloud. Everything
   // else (comments, and Partial/Full volleys) is a sayable script.
   const cue = !isComment && level === 1;
@@ -12654,7 +12654,7 @@ function getPromptForCell(turn, typeIdx, level) {
   // 2. Authored slot.
   if (fact[slotKey]) {
     let text = fact[slotKey];
-    if (isClosing && level === 1) text = 'Last question — ' + lowerFirst(text);
+    if (isClosing && level === 1) text = 'Last question - ' + lowerFirst(text);
     return { text, level, cue };
   }
 
@@ -12664,7 +12664,7 @@ function getPromptForCell(turn, typeIdx, level) {
   const set    = isComment ? COMMENT_TEMPLATES : VOLLEY_TEMPLATES;
   const tpl    = set[bucket];
   let text     = tpl[stableIndex(person, turn, typeIdx, tpl.length)](ctx);
-  if (isClosing && level === 1) text = 'Last question — ' + lowerFirst(text);
+  if (isClosing && level === 1) text = 'Last question - ' + lowerFirst(text);
   return { text, level, cue };
 }
 
@@ -12715,7 +12715,7 @@ function displayPrompt(payload) {
       if (txt.startsWith('🎉')) {
         textEl.textContent = txt;
       } else if (payload.cue) {
-        // Indirect "elicit this" hint — never a script to read aloud.
+        // Indirect "elicit this" hint - never a script to read aloud.
         el.classList.add('cue');
         textEl.classList.add('cue-text');
         textEl.innerHTML = '<span class="cue-badge">Cue</span><span class="cue-body">' + escapeHTML(txt) + '</span>';
@@ -12767,7 +12767,7 @@ function renderKaraoke(textEl, txt) {
   const kws = textEl.querySelectorAll('.kw');
   let t = 200;  // small lead-in beat after the pop animation
   kws.forEach((w, i) => {
-    const len = w.textContent.replace(/[.,!?…'"—-]/g, '').length;
+    const len = w.textContent.replace(/[.,!?…'" - -]/g, '').length;
     const dur = Math.min(620, Math.max(150, len * KARAOKE_MS_PER_CHAR + 110));
     karaokeTimers.push(setTimeout(() => {
       if (i > 0) kws[i - 1].classList.remove('cur');
@@ -12833,7 +12833,7 @@ function showPrompt() {
 
   if (state.promptMethod === 'mtl') {
     // Clicking Prompt jumps to Full immediately. Only a Full prompt that is
-    // already on screen toggles off — Min/Partial bumps up to Full, never hides.
+    // already on screen toggles off - Min/Partial bumps up to Full, never hides.
     if (state.promptShowing && state.promptShowingLevel === 3) {
       displayPrompt(null);
     } else {
@@ -13033,7 +13033,7 @@ function resetTimer() {
 // ─── Chime (removed) ──────────────────────────────────────────────────────────
 
 // Deliberately silent. This game carried its OWN copy of the three-note chime,
-// separate from the shared one in reward.js — so silencing only the shared
+// separate from the shared one in reward.js - so silencing only the shared
 // module would have left this game still chiming. No game plays a completion
 // sound; see the note on NooutcoReward.playChime.
 function playChime() {}
@@ -13087,7 +13087,7 @@ function printData() {
   }
 
   function cellLabel(v, ctx) {
-    if (!v) return '—';
+    if (!v) return ' - ';
     const outcome = (v === 'check' || v === 'ok') ? 'Correct' : 'Error';
     let ctxLabel;
     if (v === 'ok' || ctx === 'prompted') ctxLabel = 'Prompted';
@@ -13128,7 +13128,7 @@ function printData() {
   small { color: #666; }
 </style>
 </head><body>
-<h1>Famous Person Game — Session Record</h1>
+<h1>Famous Person Game - Session Record</h1>
 <div class="subtitle">Printed: ${dateStr}</div>
 <table>
   <thead>
@@ -13176,7 +13176,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('btn-prompt').addEventListener('click', showPrompt);
   $('btn-finish').addEventListener('click', goToSR);
 
-  // Score bar — always scores the move the conversation guide is pointing at
+  // Score bar - always scores the move the conversation guide is pointing at
   $('btn-score-correct').addEventListener('click', () => {
     const cell = getContextCell();
     if (cell) markCell(cell.turn, cell.typeIdx, 'correct');
@@ -13279,7 +13279,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Two-choice chip selection — selecting one highlights it and dims the other.
+  // Two-choice chip selection - selecting one highlights it and dims the other.
   // Selecting also stops the auto-fade so the staff can keep using the choice on screen.
   $('prompt-display').addEventListener('click', e => {
     const chip = e.target.closest('.prompt-choice');

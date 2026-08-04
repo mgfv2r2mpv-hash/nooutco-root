@@ -873,7 +873,7 @@ async function callGeminiApi(apiKey, systemPrompt, userPrompt, model, maxTokens)
    This repo is public. The voice rules are personal and are derived from his
    own writing, so keeping them out of source is the point of the exercise.
    Composing them here rather than in the browser means they are never served
-   to a client either — only the model ever sees them.
+   to a client either - only the model ever sees them.
 
    WHAT IT MAY AND MAY NOT DO
    Style only. It never changes clinical content, never overrides a payer or
@@ -892,7 +892,7 @@ async function callGeminiApi(apiKey, systemPrompt, userPrompt, model, maxTokens)
 const VOICE_KV_KEY = "voice-block:v1";
 
 const VOICE_HEADER = [
-  "HOUSE VOICE — style only.",
+  "HOUSE VOICE - style only.",
   "This describes how the clinician who owns this tool writes. Match the register.",
   "It does not change clinical content, does not override a payer or regulatory",
   "requirement, and never licenses inventing a detail that was not provided.",
@@ -967,7 +967,7 @@ export function composeVoice(system, block, tool) {
    framing instruction is a far larger change than a gated recommendation and he
    has not ruled on it. */
 const OPINIONS_HEADER = [
-  "HIS CLINICAL JUDGEMENT — discretionary calls only.",
+  "HIS CLINICAL JUDGEMENT - discretionary calls only.",
   "Each entry below is a choice this clinician tends to make where several options",
   "are defensible. None of it is a finding, and none of it is evidence.",
   "",
@@ -997,7 +997,7 @@ export function composeOpinions(system, block, tool, opts) {
 }
 
 // Admin-only: read back what is live, so it can be verified without wrangler.
-// Publishing is deliberately NOT an endpoint — it goes through
+// Publishing is deliberately NOT an endpoint - it goes through
 // `wrangler kv key put`, so this Worker has no write path to its own voice.
 async function handleVoiceBlockRead(request, env) {
   const secret = (env.ADMIN_SECRET ?? "").trim();

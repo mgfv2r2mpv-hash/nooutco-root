@@ -10,13 +10,13 @@ import { test, expect } from '@playwright/test';
  *
  *   * probes are OFF unless a plan asks for them, and are configured PER LEVEL
  *   * on a probe trial, auto-prompt, errorless, the reason reveal and
- *     re-presentation are all withheld — but the Prompt BUTTON stays live,
+ *     re-presentation are all withheld - but the Prompt BUTTON stays live,
  *     because clinical judgement is never blocked
  *   * a prompt delivered on a probe does not void the trial; it RE-CLASSIFIES it
  *     as a trained one, with the reason recorded
  *   * a generalization datum is written ONCE per item; every later run of that
  *     item is an ordinary trained trial, marked as a re-exposure
- *   * tags are a SET — near / far / deictic combine — and the report groups by
+ *   * tags are a SET - near / far / deictic combine - and the report groups by
  *     the EXACT set, never by individual tag, because a far+deictic result
  *     counted under both would report four trials as eight
  *
@@ -66,7 +66,7 @@ async function answerTrial(page, i, { prompt = false, errFirst = false } = {}) {
   // A Level 3 trial is not over at the tile: the reason is the target, and the
   // trial does not advance until the technician has scored what was said. The
   // walk scores every one Correct, which is the case that must not be allowed to
-  // change the probe classification — that is decided by supports, not by score.
+  // change the probe classification - that is decided by supports, not by score.
   const rationale = page.locator('#rationale-panel');
   if (await rationale.isVisible()) {
     await page.locator('#rationale-scores button[data-score="correct"]').click();
@@ -101,8 +101,8 @@ test('probes are off by default at every level, and each level has its own block
     expect(defaults['probeTokens' + L], `level ${L} tokens on probes`).toBe(true);
     expect(Array.isArray(defaults['probeTags' + L]), `level ${L} tags are a set`).toBe(true);
   }
-  // Level 3 items are all deictic — the response required there is a spoken
-  // rationale — so a Level 3 selection without it would put nothing in play.
+  // Level 3 items are all deictic - the response required there is a spoken
+  // rationale - so a Level 3 selection without it would put nothing in play.
   expect(defaults.probeTags3).toContain('deictic');
   expect(defaults.probeTags1).not.toContain('deictic');
 
@@ -228,7 +228,7 @@ test('a tag selection puts in play only items whose whole set was selected', asy
   expect(new Set(counts.nearOnly)).toEqual(new Set(['near']));
   expect(new Set(counts.farOnly)).toEqual(new Set(['far']));
   // A Level 3 item carries deictic as well, so selecting only near/far selects
-  // nothing at all — the subset rule, as an observable consequence.
+  // nothing at all - the subset rule, as an observable consequence.
   expect(counts.l3WithoutDeictic).toBe(0);
   expect(counts.l3WithDeictic).toBeGreaterThan(0);
   expect(counts.none).toBe(0);
@@ -302,7 +302,7 @@ test('a probe trial withholds the supports and says so on screen', async ({ page
   await expect(page.locator(`#choices .choice[data-answer="${wrong}"]`)).toBeEnabled();
   await expect(page.locator('#choices .choice.prompt-sparkle')).toHaveCount(0);
 
-  // The Prompt BUTTON is live throughout — clinical judgement is never blocked.
+  // The Prompt BUTTON is live throughout - clinical judgement is never blocked.
   await expect(page.locator('#btn-prompt')).toBeEnabled();
 
   await page.locator(`#choices .choice[data-answer="${right}"]`).click();
@@ -371,7 +371,7 @@ test('a clean probe writes one generalization datum; a prompted one is a trained
 
 test('asking for more probes than exist re-runs items, and a re-run is a trained trial', async ({ page }) => {
   // The Level 1 privacy universe holds six generated items; the plan asks for
-  // ten probe trials. The extra four are the same items again — recorded, and
+  // ten probe trials. The extra four are the same items again - recorded, and
   // recorded as trained re-exposures rather than as extra generalization data.
   await seed(page, probing(1, { probeCount1: 10, category: 'private', showReason: false }));
   await page.goto(URL);
