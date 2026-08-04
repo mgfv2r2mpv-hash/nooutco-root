@@ -230,8 +230,16 @@ test.describe('SAP length and actor rules', () => {
     });
 
     for (const [name, text] of Object.entries(prompts)) {
-      expect(text, `${name} prompt should warn against uniform actor-naming`)
-        .toMatch(/NOT do this in every sentence|uniform actor-naming is its own tell/);
+      // The soft warning this used to assert was measured and found to fail. A
+      // real generated SAP named the client in 64% of its sentences against 10
+      // to 23% across the seven human plans, so the guidance is now stated as
+      // ceilings rather than as advice.
+      expect(text, `${name} prompt should cap client mentions rather than merely warn`)
+        .toMatch(/AT MOST half the sentences/);
+      expect(text, `${name} prompt should cap repeated sentence openings`)
+        .toMatch(/No more than TWO sentences in any section may begin with the same first two words/);
+      expect(text, `${name} prompt should tell the model to drop the subject once established`)
+        .toMatch(/must NOT restate the actor/);
       // A rate would have been the obvious move and was explicitly rejected.
       expect(text, `${name} prompt hard-codes an actor-naming rate`)
         .not.toMatch(/one sentence in (four|4)|25% of sentences/i);

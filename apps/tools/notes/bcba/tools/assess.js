@@ -34,7 +34,7 @@
   var SECTION_IDS = ["activities", "reporting", "narrative"];
 
   var HINT_CATALOG = {
-    thin_section: "This section is thin relative to the form's expectations - add specifics if you have them",
+    thin_section: "This section is thin relative to the form's expectations, add specifics if you have them",
     ambiguous_item: "Clarify",
     other: "",
   };
@@ -53,7 +53,7 @@ TERMINOLOGY (non-negotiable)\n\
 - Name instruments specifically (VB-MAPP, AFLS, Vineland-3, MSWO, indirect FA). No generic phrases like \"assessment was conducted.\"\n\
 - Objective, observable language - no value-laden phrasing.";
 
-  // Additive hint instructions - the core prompt above matches the standalone page.
+  // Additive hint instructions, the core prompt above matches the standalone page.
   var HINTS_BLOCK = "\n\nHINTS: also return a \"hints\" array of {section, code, detail} objects flagging ONLY missing or ambiguous standard elements (max 3; empty [] when the note stands on its own). section is one of: " + SECTION_IDS.join(", ") + ". code is one of: thin_section (the narrative lacks the specifics the form expects), ambiguous_item (detail = what needs clarifying, 10 words max), other (detail = the question). Never fabricate to avoid a hint.";
 
   var JSON_FORMAT_BLOCK = "\n\nOUTPUT FORMAT\nReturn ONLY a single JSON object. No markdown, no preamble. Use EXACTLY these keys; arrays hold verbatim option labels (empty [] if unsupported); \"narrative\" is the 5-8 sentence clinical summary.\n{\n  \"activities\": [],\n  \"reporting\": [],\n  \"narrative\": \"\",\n  \"hints\": []\n}";
@@ -62,7 +62,7 @@ TERMINOLOGY (non-negotiable)\n\
 
   function buildUserPrompt(values) {
     return [
-      "Summary notes of activities (primary source - use as the basis of the narrative and the checkbox inference):",
+      "Summary notes of activities (primary source, use as the basis of the narrative and the checkbox inference):",
       (values.summaryNotes || "").trim() || "(none provided)",
       "",
       "ALLOWED CHECKBOX OPTIONS (return only verbatim values from these lists):",
@@ -85,13 +85,13 @@ TERMINOLOGY (non-negotiable)\n\
     id: "assess",
     label: "Assessment",
     title: "Assessment Note Tool",
-    subtitle: "Describe what was done - the tool drafts the clinical summary and suggests which checkboxes to select on your EHR form.",
+    subtitle: "Describe what was done, the tool drafts the clinical summary and suggests which checkboxes to select on your EHR form.",
     assistantIntro: "Describe what was done in the assessment, then press Generate Note. I'll ask about anything that looks thin before drafting, then you can click any section, or select a phrase inside one, to revise it.",
     genLabel: "Generate Note",
     inputs: [
       {
         id: "summaryNotes", type: "textarea", label: "Summary Notes of Activities", required: true, height: 200,
-        hint: "Describe what was done this session - which assessment tools/interviews/observations/analyses you ran, reporting tasks (record review, scoring, treatment-plan work), findings, scores, and follow-up items. Name instruments (e.g. VB-MAPP, Vineland-3). The tool drafts the narrative and suggests which activity and reporting checkboxes to select on your form.",
+        hint: "Describe what was done this session, which assessment tools/interviews/observations/analyses you ran, reporting tasks (record review, scoring, treatment-plan work), findings, scores, and follow-up items. Name instruments (e.g. VB-MAPP, Vineland-3). The tool drafts the narrative and suggests which activity and reporting checkboxes to select on your form.",
         placeholder: "No PHI. Bullets are fine, e.g.:\n- VB-MAPP milestones administered, levels 1-2 complete\n- Caregiver interview re: increase in tantrums over past 2 weeks\n- Observed 4 instances of elopement during 30-min play\n- Scored protocol; began treatment-plan goal development\n- Need to schedule follow-up for preference assessment",
       },
     ],

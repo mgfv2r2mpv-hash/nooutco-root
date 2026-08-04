@@ -35,7 +35,7 @@
     { kind: "narrative", heading: "Summary of Progress and Findings", key: "progress", minHeight: 130 },
     { kind: "narrative", heading: "Summary of Protocol Modifications Made/Needed", key: "programming", minHeight: 100 },
     { kind: "narrative", heading: "Description of Behavior and Support", key: "behavior", minHeight: 90,
-      emptyNote: "(empty - no behaviors of concern documented)" },
+      emptyNote: "(empty, no behaviors of concern documented)" },
     { kind: "narrative", heading: "Feedback Notes", key: "feedback", minHeight: 100 },
     { kind: "single", heading: "BCBA Reviewed All Session Notes for Last Week", group: "reviewedNotes" },
     { kind: "narrative", heading: "Follow-Up Items", key: "followup", minHeight: 80 },
@@ -46,15 +46,15 @@
   // Canonical hint wording lives HERE, client-side; the model returns only the
   // code (+ optional short detail). Consistent phrasing, nothing fabricated.
   var HINT_CATALOG = {
-    no_ioa_result: "IOA mentioned but no result - include the agreement % if it was collected",
-    no_fidelity: "No IOA or procedural fidelity check noted - add one if it was run",
-    no_pf: "No performance feedback or coaching noted - add what feedback was delivered, if any",
-    no_review: "Nothing noted as reviewed (session notes, data sheets, written materials) - add if anything was reviewed",
-    no_pending_items: "No pending items or follow-ups noted - add any if they exist",
-    parent_concerns_unrouted: "Caregiver concerns are mentioned but no follow-up is routed for them - confirm where they land",
+    no_ioa_result: "IOA mentioned but no result, include the agreement % if it was collected",
+    no_fidelity: "No IOA or procedural fidelity check noted, add one if it was run",
+    no_pf: "No performance feedback or coaching noted, add what feedback was delivered, if any",
+    no_review: "Nothing noted as reviewed (session notes, data sheets, written materials), add if anything was reviewed",
+    no_pending_items: "No pending items or follow-ups noted, add any if they exist",
+    parent_concerns_unrouted: "Caregiver concerns are mentioned but no follow-up is routed for them, confirm where they land",
     disposition_unclear: "Clarify whether this change was made in session or is still pending",
-    no_goal_data: "No performance data for this goal - add counts, percentages, or trial results if collected",
-    thin_behavior: "Behavior noted without topography, intensity, or frequency - add specifics for the support description",
+    no_goal_data: "No performance data for this goal, add counts, percentages, or trial results if collected",
+    thin_behavior: "Behavior noted without topography, intensity, or frequency, add specifics for the support description",
     other: "",
   };
 
@@ -95,17 +95,17 @@ TERMINOLOGY (non-negotiable)\n\
 
   var JSON_FORMAT_BLOCK = "\n\nOUTPUT FORMAT\nReturn ONLY a single JSON object. No markdown, no preamble. Use EXACTLY these keys. \"sessionChecks\" holds verbatim option labels (empty [] if none); \"goalsAnalyzed\" is an array of row objects (empty [] if no goals identifiable); \"overallProgress\" and \"reviewedNotes\" are one verbatim allowed value or \"\"; narratives are strings per the section specifications; \"hints\" is the hint array (empty [] if none).\n{\n  \"sessionChecks\": [],\n  \"goalsAnalyzed\": [{ \"goal\": \"\", \"progress\": \"\", \"nextSteps\": \"\" }],\n  \"overallProgress\": \"\",\n  \"progress\": \"\",\n  \"programming\": \"\",\n  \"behavior\": \"\",\n  \"feedback\": \"\",\n  \"reviewedNotes\": \"\",\n  \"followup\": \"\",\n  \"hints\": [{ \"section\": \"\", \"code\": \"\", \"detail\": \"\" }]\n}";
 
-  var LABELED_FORMAT_BLOCK = "\n\nOUTPUT FORMAT\nReturn labeled sections in the exact order below. For \"[tick]\" lines, list ONLY the values that apply, comma-separated and verbatim from the allowed list; if none apply write \"None selected.\" For \"[choose one]\" pick exactly one allowed value (or \"None\"). For GOALS ANALYZED write one block per goal: \"Goal: …\" / \"Progress: …\" / \"Next Steps: …\" on separate lines (or \"None identified\"). For each \"[narrative]\" follow the section specification. Do NOT output hints. No JSON, no preamble, no commentary.\n\nSESSION CHECKS COMPLETED [tick]\nGOALS ANALYZED [table]\nOVERALL CLIENT PROGRESS [choose one]\nSUMMARY OF PROGRESS AND FINDINGS [narrative]\nSUMMARY OF PROTOCOL MODIFICATIONS MADE/NEEDED [narrative]\nDESCRIPTION OF BEHAVIOR AND SUPPORT [narrative - omit if no behaviors of concern]\nFEEDBACK NOTES [narrative]\nBCBA REVIEWED ALL SESSION NOTES FOR LAST WEEK [choose one: Yes | No]\nFOLLOW-UP ITEMS [one per line]";
+  var LABELED_FORMAT_BLOCK = "\n\nOUTPUT FORMAT\nReturn labeled sections in the exact order below. For \"[tick]\" lines, list ONLY the values that apply, comma-separated and verbatim from the allowed list; if none apply write \"None selected.\" For \"[choose one]\" pick exactly one allowed value (or \"None\"). For GOALS ANALYZED write one block per goal: \"Goal: …\" / \"Progress: …\" / \"Next Steps: …\" on separate lines (or \"None identified\"). For each \"[narrative]\" follow the section specification. Do NOT output hints. No JSON, no preamble, no commentary.\n\nSESSION CHECKS COMPLETED [tick]\nGOALS ANALYZED [table]\nOVERALL CLIENT PROGRESS [choose one]\nSUMMARY OF PROGRESS AND FINDINGS [narrative]\nSUMMARY OF PROTOCOL MODIFICATIONS MADE/NEEDED [narrative]\nDESCRIPTION OF BEHAVIOR AND SUPPORT [narrative, omit if no behaviors of concern]\nFEEDBACK NOTES [narrative]\nBCBA REVIEWED ALL SESSION NOTES FOR LAST WEEK [choose one: Yes | No]\nFOLLOW-UP ITEMS [one per line]";
 
   function buildUserPrompt(values) {
     var btPresent = values.btPresent;
     return [
       "BT/RBT present during session: " + (btPresent ? "Yes" : "No"),
       "",
-      "CLINICAL OBSERVATIONS - client skill progress, goal data, behavior observations, protocol changes made or still needed, probe/baseline/generalization findings (primary source - expand faithfully, never fabricate):",
+      "CLINICAL OBSERVATIONS, client skill progress, goal data, behavior observations, protocol changes made or still needed, probe/baseline/generalization findings (primary source, expand faithfully, never fabricate):",
       (values.clinicalNotes || "").trim() || "(none provided)",
       "",
-      "STAFF FEEDBACK, TRAINING & FIDELITY - feedback given to staff, skills trained or modeled, anything reviewed, IOA/procedural fidelity checks and results:",
+      "STAFF FEEDBACK, TRAINING & FIDELITY, feedback given to staff, skills trained or modeled, anything reviewed, IOA/procedural fidelity checks and results:",
       (values.staffNotes || "").trim() || "(none provided)",
       "",
       "ALLOWED VALUES (return only verbatim strings from these lists):",
@@ -152,7 +152,7 @@ TERMINOLOGY (non-negotiable)\n\
     id: "sup",
     label: "Supervision",
     title: "Supervision Note Tool",
-    subtitle: "Two focused inputs - clinical observations and staff feedback - drafted into your EHR supervision form's fields, with AI revision help after the first pass.",
+    subtitle: "Two focused inputs, clinical observations and staff feedback, drafted into your EHR supervision form's fields, with AI revision help after the first pass.",
     assistantIntro: "Enter your clinical observations and staff feedback, then press Generate Note. I'll ask about anything that looks thin before drafting, then you can click any section, or select a phrase inside one, to revise it.",
     genLabel: "Generate Note",
     // The widest output of any tool here: up to 6 goal rows of three prose fields
@@ -170,18 +170,18 @@ TERMINOLOGY (non-negotiable)\n\
         id: "btPresent", type: "toggle", label: "BT / RBT Present?",
         options: [
           { value: true, label: "Yes" },
-          { value: false, label: "No - Behavior Analyst only" },
+          { value: false, label: "No, Behavior Analyst only" },
         ],
       },
       {
         id: "clinicalNotes", type: "textarea", label: "Session Notes / Clinical Observations", required: true, height: 190,
-        hint: "Client skill progress and goal data, behavior observations, protocol changes made or still needed, probe/baseline/generalization findings. Name the goals you analyzed - each becomes a row in the Goals Analyzed table.",
-        placeholder: "No PHI. Bullets are fine, e.g.:\n- 3-step motor imitation: initiating before full SD most of observation, minimal progress - placed on hold, teaching wait-before-responding first\n- FCT \"my turn\" with peers: independent 2 of 4 opportunities, up from 0-1\n- Reviewed data trends; expressive/receptive goals variable since last protocol mod\n- Elopement x2, blocked, no escalation\n- Updated PECS lesson plan to contrive more opportunities (done today)",
+        hint: "Client skill progress and goal data, behavior observations, protocol changes made or still needed, probe/baseline/generalization findings. Name the goals you analyzed, each becomes a row in the Goals Analyzed table.",
+        placeholder: "No PHI. Bullets are fine, e.g.:\n- 3-step motor imitation: initiating before full SD most of observation, minimal progress, placed on hold, teaching wait-before-responding first\n- FCT \"my turn\" with peers: independent 2 of 4 opportunities, up from 0-1\n- Reviewed data trends; expressive/receptive goals variable since last protocol mod\n- Elopement x2, blocked, no escalation\n- Updated PECS lesson plan to contrive more opportunities (done today)",
       },
       {
         id: "staffNotes", type: "textarea", label: "Staff Feedback, Training & Fidelity", height: 150,
         hint: "Feedback given to staff, skills trained or modeled, anything reviewed (last week's notes, data sheets, written materials), IOA or procedural fidelity checks and their results, caregiver concerns raised.",
-        placeholder: "No PHI. e.g.:\n- Observed RBT run teaching strategies; gave feedback on assent-withdrawal signs\n- BST on the new prompting procedure after the change\n- Ran IOA on tact data - 92% agreement\n- Reviewed last week's session notes\n- Parent asked about morning routine - follow up Thursday",
+        placeholder: "No PHI. e.g.:\n- Observed RBT run teaching strategies; gave feedback on assent-withdrawal signs\n- BST on the new prompting procedure after the change\n- Ran IOA on tact data - 92% agreement\n- Reviewed last week's session notes\n- Parent asked about morning routine, follow up Thursday",
       },
     ],
     groupOptions: GROUP_OPTIONS,
