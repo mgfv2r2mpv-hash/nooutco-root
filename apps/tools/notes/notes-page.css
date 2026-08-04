@@ -394,6 +394,66 @@ body {
   .revision-foot-note:hover .phi-tip { display: block; }
 }
 
+
+/* ── Point at anything ───────────────────────────────────────────────────────
+   The mode selector sits beside the collapsed pill rather than inside the
+   panel, because pointing is something you do while the panel is out of the
+   way. The dock keeps the two together so they can never drift apart or stack
+   on each other the way the report button once did. */
+.revision-dock {
+  position: fixed; right: 18px; bottom: 18px; z-index: 71;
+  display: flex; align-items: center; gap: 8px;
+}
+/* The pill is inside the dock now, so it stops positioning itself. */
+.revision-dock .revision-fab { position: static; right: auto; bottom: auto; z-index: auto; }
+
+.revision-head-actions { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
+/* In the panel header the selector is small and sits on the dark bar, so it
+   inverts rather than carrying the floating button's white circle. */
+.revision-panel-head .point-toggle {
+  width: 26px; height: 26px; font-size: 14px;
+  background: transparent; color: #c7d3b5; border-color: rgba(255,255,255,0.28);
+  box-shadow: none;
+}
+.revision-panel-head .point-toggle:hover { background: rgba(255,255,255,0.12); color: white; }
+.revision-panel-head .point-toggle.is-on { background: white; color: #374528; border-color: white; }
+
+.point-toggle {
+  flex-shrink: 0;
+  width: 42px; height: 42px; border-radius: 50%;
+  border: 1.5px solid #c0d4a8; background: white; color: #374528;
+  font-size: 19px; line-height: 1; cursor: pointer; font-family: inherit;
+  box-shadow: 0 6px 20px rgba(45, 58, 31, 0.22);
+  transition: background 0.14s ease, color 0.14s ease, transform 0.14s ease;
+}
+.point-toggle:hover { background: #eef4e6; transform: translateY(-1px); }
+.point-toggle:focus-visible { outline: 3px solid #9bb27c; outline-offset: 2px; }
+.point-toggle.is-on { background: #374528; color: white; border-color: #374528; }
+@media (prefers-reduced-motion: reduce) { .point-toggle { transition: none; } }
+
+/* While pointing, the whole page is a target, so the cursor says so everywhere
+   rather than only over the things that were already clickable. */
+body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
+
+/* Outline rather than background: it has to read on a white card, a sage
+   card, a button and a line of help text without hiding any of them.
+   outline does not affect layout, so nothing shifts as the pointer moves. */
+.point-hover {
+  outline: 2px solid #d9932b !important;
+  outline-offset: 1px;
+  border-radius: 3px;
+  background: rgba(240, 193, 75, 0.14) !important;
+}
+
+/* A pointed-at piece of page furniture is not a section of the note, and the
+   chip should not pretend otherwise. */
+.revision-chip.is-page { background: #fdf6e0; border-color: #e3c26a; color: #6d5410; }
+.revision-chip.is-page strong { color: #5a4408; }
+
+@media (max-width: 640px) {
+  .revision-dock { right: 12px; bottom: 12px; }
+}
+
 /* The collapsed assistant. It carries the note's quality, so the reason to open
    it is on the button itself rather than discovered after opening. */
 .revision-fab {
@@ -523,4 +583,23 @@ body {
 }
 @media (prefers-reduced-motion: reduce) {
   .tool-panel { animation: none; }
+}
+
+/* A compact full-width section: one short band, not a tall card.
+   "BCBA Reviewed All Session Notes for Last Week" is a yes or a no, and it was
+   taking the same vertical space as a paragraph because the heading, the answer
+   and three lines of explanation each got their own row. Where there is width,
+   they sit on one line and the explanation takes what is left. */
+[data-compact="true"] { padding: 11px 14px !important; }
+@media (min-width: 720px) {
+  [data-compact="true"] > div:first-child { margin-bottom: 0 !important; }
+  [data-compact="true"] .compact-body {
+    display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+  }
+  [data-compact="true"] .compact-body > * { margin: 0; }
+  /* The "suggested from what you wrote" line stops being a paragraph under the
+     answer and becomes the tail of the same line. */
+  [data-compact="true"] .compact-body .section-note {
+    flex: 1 1 220px; min-width: 0; font-size: 11.5px;
+  }
 }

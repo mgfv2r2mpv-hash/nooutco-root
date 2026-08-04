@@ -1,0 +1,53 @@
+# Cache rules for tools.nooutco.me
+#
+# WHY THIS FILE EXISTS
+#
+# The note pages are made of several files that MUST move together: the page
+# HTML, notes-gate.js, notes-scrub.js, engine.jsx, revision-panel.jsx and
+# notes-page.css. They were all served with `max-age=14400`, four hours, and
+# cached independently, so after any deploy a browser could hold any mixture of
+# old and new. That is not theoretical. On 2026-08-04 it produced two live
+# failures in one session:
+#
+#   "NotesGate.generateProse is not a function"
+#       a fresh engine.jsx calling a notes-gate.js from before that function
+#       was added. The button did nothing, twice, and said so in the panel.
+#
+#   the cross-section routing card rendering unstyled
+#       fresh JSX against a notes-page.css that predated its rules.
+#
+# Both files were correct on the server. The mixture was the bug, and it would
+# have recurred on every deploy for the following four hours.
+#
+# So anything that has to move in lockstep is `no-cache`. That does NOT mean
+# "download every time": the browser still revalidates with its ETag and gets a
+# 304 with an empty body when nothing changed. The cost is one conditional
+# request per file per load. For a tool a clinician writes a clinical record in,
+# that is the right trade against running two versions of the app at once.
+#
+# The vendored libraries are the exception, and deliberately so: their version
+# is in the filename, so a change to React is a change to the URL. Those can be
+# immutable, which is what makes this cheap overall - the 3MB of Babel is
+# fetched once and never revalidated again.
+
+/vendor/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*.js
+  Cache-Control: no-cache
+
+/assets/*.css
+  Cache-Control: no-cache
+
+/notes/*
+  Cache-Control: no-cache
+
+/admin/*
+  Cache-Control: no-cache
+
+# The shared design tokens sit at the root rather than under /assets, so no
+# pattern above reaches them. A stale tokens.css against fresh markup is the
+# same class of failure as a stale stylesheet, just quieter: colours and
+# spacing drift rather than a control vanishing.
+/tokens.css
+  Cache-Control: no-cache

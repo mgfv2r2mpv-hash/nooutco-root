@@ -401,8 +401,10 @@ function Checklist({ options, selected, single = false }) {
     if (!answer) {
       return <p style={{ fontSize: 13, color: "#9aab86", fontStyle: "italic", margin: 0 }}>Nothing suggested - choose from your EHR form.</p>;
     }
+    // The wrapper and the note carry class names so a compact section can lay
+    // the answer and its caveat on one line instead of stacking them.
     return (
-      <div>
+      <div className="compact-body">
         <div style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
           <span aria-hidden="true" style={{
             flexShrink: 0, marginTop: 2, width: 16, height: 16, borderRadius: "50%",
@@ -411,7 +413,7 @@ function Checklist({ options, selected, single = false }) {
           }}>✓</span>
           <span style={{ fontSize: 13.5, lineHeight: 1.45, color: "#2d3a1f", fontWeight: 600 }}>{answer}</span>
         </div>
-        <p style={{ fontSize: 11.5, color: "#8a9678", margin: "7px 0 0", lineHeight: 1.5 }}>
+        <p className="section-note" style={{ fontSize: 11.5, color: "#8a9678", margin: "7px 0 0", lineHeight: 1.5 }}>
           Suggested from what you wrote. Use your clinical judgment and pick a different one on your form if it does not match the session.
         </p>
       </div>
@@ -1503,6 +1505,112 @@ function App() {
 
   // Selecting a phrase inside a narrative raises a chip that targets just that
   // phrase - the same gesture as annotating a document.
+  /* ── Point at anything ──────────────────────────────────────────────────
+     His note: clicking only worked where a yellow bar already said it would,
+     which is clunky next to Lavish where you can click anything. Point mode is
+     the answer, and the scope is by role, his call: an admin can point at the
+     whole page including labels, help text and buttons, because that is where
+     their feedback about the TOOL comes from. Everyone else points at note
+     content only, so a technician cannot ask NoMe to revise a heading.
+
+     A click inside a section resolves to that section, so pointing lands in the
+     existing revision flow rather than a parallel one. A click anywhere else is
+     about the page, and says so. */
+  const pointScope = (window.NotesGate && NotesGate.isAdmin && NotesGate.isAdmin()) ? "page" : "note";
+  const [pointMode, setPointMode] = React.useState(false);
+
+  // Leaving point mode armed across a logout would let a technician inherit an
+  // admin's whole-page scope.
+  React.useEffect(() => { if (!loggedIn) setPointMode(false); }, [loggedIn]);
+
+  React.useEffect(() => {
+    if (!pointMode) return;
+
+    // Never let the assistant's own furniture become a target: pointing at the
+    // pill to turn pointing off would otherwise capture the pill.
+    const OURS = ".revision-dock, .revision-panel, .point-toggle, [data-revise-chip], #eb-backdrop, #notes-login-backdrop, noaba-bar";
+    const eligible = (el) => {
+      if (!el || !el.closest || el.nodeType !== 1) return false;
+      if (el.closest(OURS)) return false;
+      if (pointScope === "page") return true;
+      return !!el.closest("[data-section-key]");
+    };
+
+    let hovered = null;
+    const clearHover = () => {
+      if (hovered) hovered.classList.remove("point-hover");
+      hovered = null;
+    };
+    const onOver = (e) => {
+      const el = e.target;
+      if (hovered === el) return;
+      clearHover();
+      if (!eligible(el)) return;
+      el.classList.add("point-hover");
+      hovered = el;
+    };
+
+    // Capture phase, and preventDefault: while pointing, a click means "this is
+    // what I am talking about", not "press this button". Without that, pointing
+    // at Generate Note would generate a note.
+    const onClick = (e) => {
+      const el = e.target;
+      // Our own controls keep working: turning pointing off has to be possible
+      // while pointing is on.
+      if (!el || !el.closest || el.closest(OURS)) return;
+
+      // Everything else is swallowed, in scope or not. Out of scope used to
+      // fall through, so a technician who armed pointing and clicked Generate
+      // Note generated a note. Arming a mode and then having a button fire is
+      // the wrong surprise; an out-of-scope click should simply do nothing and
+      // leave pointing armed so they can try again.
+      e.preventDefault();
+      e.stopPropagation();
+      if (!eligible(el)) return;
+
+      clearHover();
+      setPointMode(false);
+
+      const card = el.closest("[data-section-key]");
+      if (card && card.getAttribute("data-revisable") === "true") {
+        targetSection({
+          kind: "section",
+          id: card.getAttribute("data-section-key"),
+          heading: card.getAttribute("data-section-title") || "",
+        });
+        return;
+      }
+
+      // Anything else is feedback about the page. Carry a short, readable
+      // description rather than a selector: it is what the clinician sees, and
+      // it is what makes the message make sense when read back later.
+      const label =
+        (el.getAttribute && (el.getAttribute("aria-label") || el.getAttribute("title") || el.getAttribute("placeholder"))) ||
+        (el.textContent || "").trim().replace(/\s+/g, " ") ||
+        el.tagName.toLowerCase();
+      targetSection({
+        kind: "page",
+        id: "page:" + (el.id || el.className || el.tagName.toLowerCase()),
+        heading: card ? (card.getAttribute("data-section-title") || "") : "",
+        text: label.slice(0, 120),
+      });
+    };
+
+    const onKey = (e) => { if (e.key === "Escape") { clearHover(); setPointMode(false); } };
+
+    document.addEventListener("mouseover", onOver, true);
+    document.addEventListener("click", onClick, true);
+    document.addEventListener("keydown", onKey);
+    document.body.classList.add("is-pointing");
+    return () => {
+      clearHover();
+      document.removeEventListener("mouseover", onOver, true);
+      document.removeEventListener("click", onClick, true);
+      document.removeEventListener("keydown", onKey);
+      document.body.classList.remove("is-pointing");
+    };
+  }, [pointMode, pointScope]);
+
   const { chipEl, clearChip } = useTextSelection((annotation) => targetSection(annotation));
 
   return (
@@ -1538,6 +1646,9 @@ function App() {
         unread={S.questions ? S.questions.length : 0}
         quality={noteQuality()}
         loggedIn={loggedIn}
+        pointMode={pointMode}
+        onPointMode={setPointMode}
+        pointScope={pointScope}
         routingAsks={S.routingAsks}
         onTakeRouted={takeRoutedChange}
         onLeaveRouted={leaveRoutedChange}
@@ -1699,7 +1810,11 @@ function App() {
                 // of ticks they glance at on the way to their EHR form, and
                 // pairing those up halves how far they have to scroll to reach
                 // the next narrative.
-                const fullRow = isNarrative;
+                // Narratives are always full width because prose needs the
+                // room. Anything else can ask for it: a goals table has columns
+                // that do not fit in half a row, and a single yes/no reads
+                // better as one short band than as a tall half-card.
+                const fullRow = isNarrative || sec.fullWidth === true;
                 const targeted = S.annotation && S.annotation.id === id;
                 // Facts echo the clinician's own quick-picks - there is nothing
                 // for the model to revise, so they are not a revision target.
@@ -1707,6 +1822,13 @@ function App() {
                 return (
                   <div
                     key={id}
+                    // Point mode resolves a click on anything inside a section
+                    // back to the section itself, so it needs the id and the
+                    // heading on the card rather than only in this closure.
+                    data-section-key={id}
+                    data-section-title={sec.heading}
+                    data-revisable={revisable ? "true" : "false"}
+                    data-compact={sec.compact === true ? "true" : undefined}
                     className={[fullRow ? "full-row" : "", targeted ? "section-targeted" : "", revisable ? "section-clickable" : ""].filter(Boolean).join(" ") || undefined}
                     onClick={revisable ? (e) => {
                       // Clicking into the textarea to type, or hitting Copy or
