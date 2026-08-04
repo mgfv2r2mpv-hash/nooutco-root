@@ -64,10 +64,10 @@ For programming changes and clinical decisions, fold rationale into the decision
 SECTION SPECIFICATIONS\n\
 - goalsAnalyzed: one row per goal/program actually named or clearly identifiable in the notes (max 6; empty array if none - never pad or invent goals). \"goal\" = the short program name as the BCBA wrote it. \"progress\" = the observed performance for that goal this session, anchored to data when given (e.g. \"On two of four opportunities the client independently requested a turn - an improvement from recent trends of 0-1\"). \"nextSteps\" = the disposition with its rationale folded in (e.g. \"Placed on hold to introduce the prerequisite of waiting before responding; will be re-introduced once mastered\" or \"Continue current teaching strategies and re-assess at the next protocol modification session\").\n\
 - overallProgress: EXACTLY one of the allowed strings, inferred conservatively from the progress data across goals. Mixed or unclear picture → choose the moderate option. Insufficient information → \"\".\n\
-- progress (Summary of Progress and Findings): 6-10 sentences narrating the session arc - what data or trends were reviewed, which goals were focused on and why, what was observed during the session, what was modified in response to those observations, and any probes or assessments run. Anchor claims to the notes.\n\
-- programming (Summary of Protocol Modifications Made/Needed): 2-5 sentences. Explicitly separate modifications MADE this session from modifications still NEEDED/pending.\n\
-- behavior (Description of Behavior and Support): ONLY when behaviors of concern appear in the notes - otherwise return \"\". 3-6 sentences covering topography, intensity, and frequency; the support provided (antecedent/consequence strategies implemented); and next steps for the behavior plan.\n\
-- feedback (Feedback Notes): 3-5 sentences summarizing feedback provided to staff regarding programs, performance, progress, and any error correction procedures. Fold IOA results and procedural fidelity findings into this section. NEVER use the word \"supervision\" anywhere in this section.\n\
+- progress (Summary of Progress and Findings): up to 10 sentences narrating the session arc - what data or trends were reviewed, which goals were focused on and why, what was observed during the session, what was modified in response to those observations, and any probes or assessments run. Anchor claims to the notes.\n\
+- programming (Summary of Protocol Modifications Made/Needed): up to 5 sentences. Explicitly separate modifications MADE this session from modifications still NEEDED/pending.\n\
+- behavior (Description of Behavior and Support): ONLY when behaviors of concern appear in the notes - otherwise return \"\". up to 6 sentences covering topography, intensity, and frequency; the support provided (antecedent/consequence strategies implemented); and next steps for the behavior plan.\n\
+- feedback (Feedback Notes): up to 5 sentences summarizing feedback provided to staff regarding programs, performance, progress, and any error correction procedures. Fold IOA results and procedural fidelity findings into this section. NEVER use the word \"supervision\" anywhere in this section.\n\
 - reviewedNotes: \"Yes\" ONLY if the notes explicitly mention reviewing last week's (or the prior period's) session notes; otherwise \"No\".\n\
 - followup (Follow-Up Items): pending protocol changes not yet completed PLUS any explicit follow-up items from either notes section. One item per line separated by \\n - no bullets, no numbers.\n\
 - sessionChecks: ONLY verbatim values from the allowed list, only when clearly supported (performance feedback delivered, IOA run, last week's notes reviewed, follow-up items raised). Empty array if none.\n\n\
@@ -199,7 +199,7 @@ TERMINOLOGY (non-negotiable)\n\
       }
       return saved;
     },
-    buildSystem: function () { return SYSTEM_CORE + JSON_FORMAT_BLOCK; },
+    buildSystem: function () { return SYSTEM_CORE + (window.NoteRegisterRules ? window.NoteRegisterRules.sessionNote : "") + JSON_FORMAT_BLOCK; },
     buildUserPrompt: buildUserPrompt,
     buildLabeledPrompt: function (values) {
       return SYSTEM_CORE + LABELED_FORMAT_BLOCK + "\n\n---\n\n" + buildUserPrompt(values);

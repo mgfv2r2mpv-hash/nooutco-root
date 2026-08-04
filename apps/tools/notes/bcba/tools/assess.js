@@ -41,7 +41,7 @@
 
   var SYSTEM_CORE = "You are documenting a Behavior Analyst's assessment session. The BCBA is the author documenting their own work. Write in third-person clinical prose: \"The Behavior Analyst administered…\", \"Results indicated….\"\n\n\
 Frame all content for medical necessity. Embed clinical purpose inline - \"[instrument] was administered to identify [deficit or function], [how findings inform planning]\" - not as a separate purpose sentence. Example: \"The VB-MAPP was administered to identify language repertoire gaps informing skill acquisition targets for the upcoming authorization period\" - not \"The VB-MAPP was administered. Purpose: assess language skills.\"\n\n\
-OUTPUT: (a) a 5-8 sentence third-person clinical narrative for the \"Brief Summary of Activities Completed\" field, (b) conservative checkbox inferences for the BCBA to verify.\n\n\
+OUTPUT: (a) a up to 8 sentence third-person clinical narrative for the \"Brief Summary of Activities Completed\" field, (b) conservative checkbox inferences for the BCBA to verify.\n\n\
 RULES\n\
 - Stick strictly to what is reported. Do not embellish or invent instruments, scores, or outcomes.\n\
 - Plain, precise clinical language. Sparse notes → brief honest sentences.\n\
@@ -56,9 +56,9 @@ TERMINOLOGY (non-negotiable)\n\
   // Additive hint instructions, the core prompt above matches the standalone page.
   var HINTS_BLOCK = "\n\nHINTS: also return a \"hints\" array of {section, code, detail} objects flagging ONLY missing or ambiguous standard elements (max 3; empty [] when the note stands on its own). section is one of: " + SECTION_IDS.join(", ") + ". code is one of: thin_section (the narrative lacks the specifics the form expects), ambiguous_item (detail = what needs clarifying, 10 words max), other (detail = the question). Never fabricate to avoid a hint.";
 
-  var JSON_FORMAT_BLOCK = "\n\nOUTPUT FORMAT\nReturn ONLY a single JSON object. No markdown, no preamble. Use EXACTLY these keys; arrays hold verbatim option labels (empty [] if unsupported); \"narrative\" is the 5-8 sentence clinical summary.\n{\n  \"activities\": [],\n  \"reporting\": [],\n  \"narrative\": \"\",\n  \"hints\": []\n}";
+  var JSON_FORMAT_BLOCK = "\n\nOUTPUT FORMAT\nReturn ONLY a single JSON object. No markdown, no preamble. Use EXACTLY these keys; arrays hold verbatim option labels (empty [] if unsupported); \"narrative\" is the up to 8 sentence clinical summary.\n{\n  \"activities\": [],\n  \"reporting\": [],\n  \"narrative\": \"\",\n  \"hints\": []\n}";
 
-  var LABELED_FORMAT_BLOCK = "\n\nOUTPUT FORMAT\nReturn labeled sections in the exact order below. For each \"[tick]\" line, list ONLY the options that apply, comma-separated and verbatim from that section's allowed list; if none apply write \"None selected.\" For \"[narrative]\" write the 5-8 sentence summary. No JSON, no preamble, no commentary.\n\nACTIVITIES PERFORMED [tick]\nASSESSMENT REPORTING TASKS [tick]\nBRIEF SUMMARY OF ACTIVITIES COMPLETED [narrative]";
+  var LABELED_FORMAT_BLOCK = "\n\nOUTPUT FORMAT\nReturn labeled sections in the exact order below. For each \"[tick]\" line, list ONLY the options that apply, comma-separated and verbatim from that section's allowed list; if none apply write \"None selected.\" For \"[narrative]\" write the up to 8 sentence summary. No JSON, no preamble, no commentary.\n\nACTIVITIES PERFORMED [tick]\nASSESSMENT REPORTING TASKS [tick]\nBRIEF SUMMARY OF ACTIVITIES COMPLETED [narrative]";
 
   function buildUserPrompt(values) {
     return [
@@ -102,7 +102,7 @@ TERMINOLOGY (non-negotiable)\n\
       if (!(values.summaryNotes || "").trim()) return "Please enter Summary Notes of Activities.";
       return null;
     },
-    buildSystem: function () { return SYSTEM_CORE + HINTS_BLOCK + JSON_FORMAT_BLOCK; },
+    buildSystem: function () { return SYSTEM_CORE + (window.NoteRegisterRules ? window.NoteRegisterRules.sessionNote : "") + HINTS_BLOCK + JSON_FORMAT_BLOCK; },
     buildUserPrompt: buildUserPrompt,
     buildLabeledPrompt: function (values) {
       return SYSTEM_CORE + LABELED_FORMAT_BLOCK + "\n\n---\n\n" + buildUserPrompt(values);

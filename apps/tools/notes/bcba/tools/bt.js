@@ -240,7 +240,7 @@
 OUTPUT: (a) third-person clinical narratives for free-text sections, (b) conservative checkbox inferences for the BT to verify.\n\n\
 RULES\n\
 - Report concrete implementation: programs run, prompt types/levels/fading decisions, behavioral occurrences + BT response, antecedent strategies as applied, observable client outcomes.\n\
-- Plain, precise clinical language. Expand fragments into complete sentences; sparse sections get a brief honest sentence.\n\
+- Plain, precise clinical language. A fragment in the intake can stay compressed if it already reads clearly; sparse sections get one brief honest sentence and stop there.\n\
 - ANTI-FABRICATION: Never invent activities, programs, data points, prompt levels, strategies, or outcomes not in the notes. Unsupported sections → minimal honest statement + empty checkboxes.\n\n\
 CHECKBOX INFERENCE\n\
 - Return ONLY verbatim values from each group's allowed list. Never invent or reword options.\n\
@@ -318,10 +318,10 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       "- clientProgress: " + menu(CLIENT_PROGRESS),
       "",
       "NARRATIVE GUIDANCE:",
-      "- lessonProgressNarrative: 4-8 sentences, ideally across two programs (one social/communication, one adaptive/repetitive-behavior-replacement). Qualitative, specific.",
-      "- behaviorPlanNarrative: 2-4 sentences, quantitative where reported; state whether behavior increased, decreased, or held steady relative to recent sessions.",
+      "- lessonProgressNarrative: up to 8 sentences, ideally across two programs (one social/communication, one adaptive/repetitive-behavior-replacement). Qualitative, specific.",
+      "- behaviorPlanNarrative: up to 4 sentences, quantitative where reported; state whether behavior increased, decreased, or held steady relative to recent sessions.",
       "- antecedentNarrative: describe the antecedent strategies as applied and their impact.",
-      "- clinicalStatusNarrative: 1-2 sentences on mood/behavior at session start.",
+      "- clinicalStatusNarrative: up to 2 sentences on mood/behavior at session start.",
       "- followUpNarrative: brief; use the default sentence above if nothing reported. Write it as the person filing the note, not about them. The technician IS the direct staff, so never write \"Direct staff report...\" or \"The behavior technician has no concerns\" here, that is the author describing themselves in the third person, which reads as though someone else wrote the note. \"No new questions or concerns for the BCBA at this time\" is the register.",
     ].join("\n");
   }
@@ -498,7 +498,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       return s;
     },
 
-    buildSystem: function () { return SYSTEM_CORE + HINTS_BLOCK + JSON_FORMAT_BLOCK; },
+    buildSystem: function () { return SYSTEM_CORE + (window.NoteRegisterRules ? window.NoteRegisterRules.sessionNote : "") + HINTS_BLOCK + JSON_FORMAT_BLOCK; },
     buildUserPrompt: buildUserPrompt,
     buildLabeledPrompt: function (values) {
       return SYSTEM_CORE + LABELED_FORMAT_BLOCK + "\n\n---\n\n" + buildUserPrompt(values);

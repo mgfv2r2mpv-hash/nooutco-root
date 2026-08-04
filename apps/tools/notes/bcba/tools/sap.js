@@ -363,7 +363,7 @@
       if (!(values.goal || "").trim()) return "Please enter a treatment goal.";
       return null;
     },
-    buildSystem: function () { return SYSTEM_PROMPT + HINTS_BLOCK; },
+    buildSystem: function () { return SYSTEM_PROMPT + (window.NoteRegisterRules ? window.NoteRegisterRules.constructions : "") + HINTS_BLOCK; },
     buildUserPrompt: buildUserPrompt,
     buildLabeledPrompt: buildLabeledPrompt,
     normalizeOutput: normalizeOutput,

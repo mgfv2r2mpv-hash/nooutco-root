@@ -125,7 +125,7 @@ TERMINOLOGY (non-negotiable)\n\
       if (!(values.sessionNotes || "").trim()) return "Please enter your session notes.";
       return null;
     },
-    buildSystem: function () { return SYSTEM_CORE + HINTS_BLOCK + JSON_FORMAT_BLOCK; },
+    buildSystem: function () { return SYSTEM_CORE + (window.NoteRegisterRules ? window.NoteRegisterRules.sessionNote : "") + HINTS_BLOCK + JSON_FORMAT_BLOCK; },
     buildUserPrompt: buildUserPrompt,
     buildLabeledPrompt: function (values) {
       return SYSTEM_CORE + LABELED_FORMAT_BLOCK + "\n\n---\n\n" + buildUserPrompt(values);
