@@ -124,6 +124,12 @@ export default {
       return handleVoiceBlockRead(request, env);
     }
 
+    // Admin-only: the supervisor view of individual technician profiles, and
+    // removing a rule that is not in line with policy. See handleProfileAdmin.
+    if (url.pathname.startsWith("/api/admin/profile/")) {
+      return handleProfileAdmin(request, env, url);
+    }
+
     // Admin-only: review queue for tech-submitted PII/non-PII candidate terms
     if (url.pathname === "/api/admin/term-queue") {
       return handleTermQueue(request, env);
@@ -1444,6 +1450,72 @@ async function handleStyleInsights(request, env) {
     });
   }
   return jsonRes(200, { available: true, reason: "ok", ...data });
+}
+
+/**
+ * Supervisor view of individual technician profiles.
+ *
+ * The first design hid individual cards from BCBAs entirely, reasoning that a
+ * technician who knows their supervisor reads their card uses the tool
+ * differently. That was overruled on 2026-08-04: the heuristics about staff
+ * have to be visible over time, and a rule that is out of line with company or
+ * best practice policy has to be removable. Removal is silent and reviewed in
+ * supervision rather than announced by the tool.
+ *
+ * Four routes behind one admin check, because four copies of the same six lines
+ * is four chances to leave one of them out:
+ *
+ *   GET  /api/admin/profile/roster        everyone the store knows about
+ *   GET  /api/admin/profile/card?kid=     one card, including muted and removed
+ *   GET  /api/admin/profile/history?kid=  how that card moved, replayed
+ *   POST /api/admin/profile/suppress      remove a rule, or put it back
+ *
+ * Still content-free end to end. These read the same numeric columns as
+ * everything else; there is no note text in the store to expose.
+ */
+const PROFILE_ADMIN_ROUTES = {
+  roster:   { path: "/roster",       method: "GET" },
+  card:     { path: "/card-detail",  method: "GET" },
+  history:  { path: "/card-history", method: "GET" },
+  suppress: { path: "/suppress",     method: "POST" },
+};
+
+async function handleProfileAdmin(request, env, url) {
+  const secret = (env.ADMIN_SECRET ?? "").trim();
+  const auth = request.headers.get("Authorization") || "";
+  const payload = secret ? await readToken(auth.replace(/^Bearer\s+/i, ""), secret) : null;
+  if (!payload || payload.role !== "admin") {
+    return jsonRes(401, { error: "Admin access required." });
+  }
+
+  const name = url.pathname.slice("/api/admin/profile/".length);
+  const route = Object.prototype.hasOwnProperty.call(PROFILE_ADMIN_ROUTES, name)
+    ? PROFILE_ADMIN_ROUTES[name]
+    : null;
+  if (!route || route.method !== request.method) {
+    return jsonRes(404, { error: "No such route." });
+  }
+
+  let path = route.path;
+  let body = null;
+  if (route.method === "GET") {
+    // Forward only the parameters these routes take. Passing the query string
+    // through wholesale would let a caller reach for anything the profile app
+    // ever learns to read.
+    const kid = url.searchParams.get("kid");
+    const points = url.searchParams.get("points");
+    const qs = new URLSearchParams();
+    if (kid) qs.set("kid", kid);
+    if (points) qs.set("points", points);
+    if ([...qs].length) path += "?" + qs.toString();
+  } else {
+    try { body = await request.json(); } catch { return jsonRes(400, { error: "Invalid JSON." }); }
+  }
+
+  const diag = { reason: "unknown" };
+  const data = await profileFetch(env, path, body, route.method, diag);
+  if (!data) return jsonRes(503, { error: "Style profile is unavailable right now.", reason: diag.reason });
+  return jsonRes(200, data);
 }
 
 async function handleStyleCardMute(request, env) {

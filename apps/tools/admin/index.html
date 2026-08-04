@@ -113,6 +113,7 @@
         <button class="tab-btn" data-tab="pii">PII Terms</button>
         <button class="tab-btn" data-tab="nonpii">Non-PII Terms</button>
         <button class="tab-btn" data-tab="alglab">Algorithm Lab</button>
+        <button class="tab-btn" data-tab="profiles">Style Profiles</button>
       </nav>
 
       <!-- ── Passwords tab ── -->
@@ -194,6 +195,53 @@
             <tbody id="nonpiiRows"></tbody>
           </table>
           <p id="nonpiiEmpty" class="muted hidden" style="margin: 14px 4px 0;">No certified non-PII terms yet.</p>
+        </div>
+      </div>
+
+      <!-- ── Style Profiles tab ──
+           What the note tool has learned about how each technician writes, and
+           the control to remove a rule that is out of line with company or best
+           practice policy. Removal is silent by design: the technician's card
+           simply stops carrying it, and the conversation happens in supervision
+           rather than being announced by the tool.
+
+           Nothing on this tab is note text. The store holds a feature name, a
+           direction, a count and a confidence, which is the whole reason a
+           durable per-person record is acceptable at all. -->
+      <div id="tab-profiles" class="tab-panel">
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <h2 style="margin: 0;">Technicians</h2>
+            <button class="btn-ghost" id="profRefresh" type="button">Refresh</button>
+          </div>
+          <p class="muted" style="margin: 6px 0 14px;">
+            Heuristics only. A technician is identified by their login-code id, which is not a
+            name and does not resolve to one from here.
+          </p>
+          <div id="profRoster"></div>
+          <p id="profEmpty" class="muted hidden" style="margin: 14px 4px 0;">
+            Nobody has generated a note since the profile store went live, so there is nothing learned yet.
+          </p>
+          <p id="profError" class="muted hidden" style="margin: 14px 4px 0; color: var(--red);"></p>
+        </div>
+
+        <div class="card hidden" id="profDetailCard">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <h2 style="margin: 0;" id="profDetailTitle">Profile</h2>
+            <button class="btn-ghost" id="profBack" type="button">Back to list</button>
+          </div>
+          <p class="muted" style="margin: 6px 0 16px;" id="profDetailMeta"></p>
+
+          <h3 style="font-size: 14px; margin: 0 0 8px;">Current rules</h3>
+          <div id="profRules"></div>
+
+          <h3 style="font-size: 14px; margin: 22px 0 8px;">How it moved</h3>
+          <p class="muted" style="margin: 0 0 10px;">
+            Replayed from the correction record rather than stored, so this is always the same
+            definition of a card that generation uses. Height is confidence; a bar under the line
+            means the rule pushed the other way.
+          </p>
+          <div id="profHistory"></div>
         </div>
       </div>
 
@@ -321,6 +369,9 @@
           document.querySelectorAll(".tab-panel").forEach(function (p) { p.classList.remove("active"); });
           btn.classList.add("active");
           document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+          // Style Profiles reads a separate Worker over a service binding, so
+          // it loads when opened rather than on every admin page load.
+          if (btn.dataset.tab === "profiles") loadRoster();
         });
       });
 
@@ -609,6 +660,185 @@
             err.textContent = ex.message; err.style.display = "inline";
             document.getElementById("labRunNow").textContent = "Trigger run now";
           });
+      });
+
+      /* ── Style Profiles tab ──
+         The learned card per technician, and the control to remove a rule that
+         is out of line with policy.
+
+         Removal is silent. The technician's card simply stops carrying the
+         rule; nothing in their view says one was ever there or that it went.
+         That was the explicit ruling: it is reviewed in supervision, not
+         announced by the tool. */
+      var profState = { roster: [], kid: null };
+
+      function profFmt(ts) {
+        if (!ts) return "never";
+        try { return new Date(ts).toLocaleDateString(); } catch (e) { return "-"; }
+      }
+
+      function loadRoster() {
+        var err = document.getElementById("profError");
+        err.classList.add("hidden");
+        adminFetch("/api/admin/profile/roster")
+          .then(function (d) {
+            profState.roster = d.technicians || [];
+            renderRoster();
+          })
+          .catch(function (ex) {
+            document.getElementById("profRoster").innerHTML = "";
+            document.getElementById("profEmpty").classList.add("hidden");
+            err.textContent = ex.message;
+            err.classList.remove("hidden");
+          });
+      }
+
+      function renderRoster() {
+        var list = profState.roster;
+        document.getElementById("profEmpty").classList.toggle("hidden", list.length > 0);
+        document.getElementById("profRoster").innerHTML = list.length
+          ? '<table><thead><tr><th>Login code</th><th>Notes</th><th>Corrections</th><th>Rules</th><th>Last seen</th><th></th></tr></thead><tbody>'
+            + list.map(function (t) {
+                var flags = [];
+                if (t.muted) flags.push(t.muted + " muted");
+                if (t.removed) flags.push(t.removed + " removed");
+                return "<tr>"
+                  + "<td><code style=\"font-size:12px\">" + escapeHtml(t.kid) + "</code></td>"
+                  + "<td>" + t.notes + "</td>"
+                  + "<td>" + t.corrections + "</td>"
+                  + "<td>" + t.rules + (flags.length ? ' <span class="muted">(' + flags.join(", ") + ")</span>" : "") + "</td>"
+                  + "<td>" + profFmt(t.lastSeen) + "</td>"
+                  + '<td class="row-actions"><button class="btn-ghost" data-prof-open="' + escapeHtml(t.kid) + '">Open</button></td>'
+                  + "</tr>";
+              }).join("")
+            + "</tbody></table>"
+          : "";
+
+        document.querySelectorAll("[data-prof-open]").forEach(function (b) {
+          b.addEventListener("click", function () { openProfile(b.dataset.profOpen); });
+        });
+      }
+
+      function openProfile(kid) {
+        profState.kid = kid;
+        document.getElementById("profDetailCard").classList.remove("hidden");
+        document.getElementById("profDetailTitle").textContent = "Profile · " + kid;
+        document.getElementById("profRules").innerHTML = '<p class="muted">Loading…</p>';
+        document.getElementById("profHistory").innerHTML = "";
+
+        adminFetch("/api/admin/profile/card?kid=" + encodeURIComponent(kid))
+          .then(renderProfileCard)
+          .catch(function (ex) {
+            document.getElementById("profRules").innerHTML =
+              '<p class="muted" style="color:var(--red)">' + escapeHtml(ex.message) + "</p>";
+          });
+
+        adminFetch("/api/admin/profile/history?kid=" + encodeURIComponent(kid) + "&points=12")
+          .then(renderProfileHistory)
+          .catch(function () {
+            document.getElementById("profHistory").innerHTML =
+              '<p class="muted">No correction record to replay yet.</p>';
+          });
+      }
+
+      function renderProfileCard(d) {
+        document.getElementById("profDetailMeta").textContent =
+          d.notes + " notes · first seen " + profFmt(d.firstSeen) + " · last seen " + profFmt(d.lastSeen);
+
+        var rows = (d.rules || []).map(function (r) {
+          var state = r.removed
+            ? '<span class="pill off">removed</span>'
+            : (r.muted ? '<span class="pill off">muted by tech</span>' : '<span class="pill on">active</span>');
+          return "<tr>"
+            + "<td>" + escapeHtml(r.rule) + '<br /><span class="muted">' + escapeHtml(r.feature) + "</span></td>"
+            + "<td>" + r.evidence + "</td>"
+            + "<td>" + Math.round((r.confidence || 0) * 100) + "%</td>"
+            + "<td>" + state + "</td>"
+            + '<td class="row-actions"><button class="' + (r.removed ? "btn-ghost" : "btn-danger")
+              + '" data-prof-suppress="' + escapeHtml(r.feature) + '" data-prof-removed="' + (r.removed ? "1" : "0")
+              + '">' + (r.removed ? "Restore" : "Remove") + "</button></td>"
+            + "</tr>";
+        });
+
+        // A rule can be removed and then fall below the evidence bar, leaving no
+        // derived row. Showing only the derived rows would make the removal look
+        // as though it never happened.
+        (d.removedWithoutRule || []).forEach(function (r) {
+          rows.push("<tr>"
+            + '<td><span class="muted">' + escapeHtml(r.feature)
+            + " (no longer derived)</span></td><td>-</td><td>-</td>"
+            + '<td><span class="pill off">removed</span></td>'
+            + '<td class="row-actions"><button class="btn-ghost" data-prof-suppress="' + escapeHtml(r.feature)
+            + '" data-prof-removed="1">Restore</button></td></tr>');
+        });
+
+        document.getElementById("profRules").innerHTML = rows.length
+          ? '<table><thead><tr><th>Rule</th><th>Evidence</th><th>Confidence</th><th>State</th><th></th></tr></thead><tbody>'
+            + rows.join("") + "</tbody></table>"
+          : '<p class="muted">Nothing learned for this technician yet.</p>';
+
+        document.querySelectorAll("[data-prof-suppress]").forEach(function (b) {
+          b.addEventListener("click", function () {
+            var wasRemoved = b.dataset.profRemoved === "1";
+            b.disabled = true;
+            b.textContent = wasRemoved ? "Restoring…" : "Removing…";
+            adminFetch("/api/admin/profile/suppress", "POST", {
+              kid: profState.kid, feature: b.dataset.profSuppress, removed: !wasRemoved,
+            })
+              .then(function () { openProfile(profState.kid); loadRoster(); })
+              .catch(function (ex) {
+                b.disabled = false;
+                b.textContent = wasRemoved ? "Restore" : "Remove";
+                alert(ex.message);
+              });
+          });
+        });
+      }
+
+      /* A small inline chart rather than a charting library: these pages carry
+         no runtime dependencies, and the shape of one technician's drift over a
+         dozen points does not need one. Height is confidence, and a bar hanging
+         below the midline means the rule pushed the other way. */
+      function renderProfileHistory(d) {
+        var points = d.points || [];
+        var features = d.features || [];
+        if (!points.length || !features.length) {
+          document.getElementById("profHistory").innerHTML =
+            '<p class="muted">No correction record to replay yet.</p>';
+          return;
+        }
+
+        var html = features.map(function (f) {
+          var cells = points.map(function (p) {
+            var r = p.rules.find(function (x) { return x.feature === f; });
+            var conf = r ? Math.max(0.08, r.confidence || 0) : 0;
+            var h = Math.round(conf * 26);
+            var up = !r || r.direction >= 0;
+            return '<span title="' + profFmt(p.ts) + " · " + (r ? Math.round(r.confidence * 100) + "%" : "no rule")
+              + '" style="flex:1;min-width:0;display:flex;align-items:' + (up ? "flex-end" : "flex-start")
+              + ';height:28px;">'
+              + (r
+                  ? '<i style="display:block;width:100%;height:' + h + "px;background:"
+                    + (up ? "#6fbf3f" : "#d9932b") + ';border-radius:2px;"></i>'
+                  : '<i style="display:block;width:100%;height:2px;background:#e2ead4;margin:auto 0;"></i>')
+              + "</span>";
+          }).join("");
+          return '<div style="margin-bottom:12px;">'
+            + '<div class="muted" style="margin-bottom:3px;">' + escapeHtml(f) + "</div>"
+            + '<div style="display:flex;gap:3px;align-items:center;border-bottom:1px dashed #e2ead4;">' + cells + "</div>"
+            + "</div>";
+        }).join("");
+
+        document.getElementById("profHistory").innerHTML = html
+          + '<p class="muted" style="margin-top:4px;">'
+          + profFmt(points[0].ts) + " to " + profFmt(points[points.length - 1].ts)
+          + " · " + points[points.length - 1].events + " corrections in total</p>";
+      }
+
+      document.getElementById("profRefresh").addEventListener("click", loadRoster);
+      document.getElementById("profBack").addEventListener("click", function () {
+        document.getElementById("profDetailCard").classList.add("hidden");
+        profState.kid = null;
       });
 
       renderToolChecks();
