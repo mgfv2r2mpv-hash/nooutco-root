@@ -133,6 +133,23 @@ test.describe('asking what he would do', () => {
     }
   });
 
+  test('the button is disabled until there is a note, and stacks no refusals', async ({ page }) => {
+    // It used to accept the click and answer "generate the note first", so four
+    // clicks put four identical lines in the thread and nothing on the button
+    // ever said why. He hit exactly that on his first real use.
+    await page.goto('/notes/bt/');
+    await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
+    await page.goto('/notes/bt/');
+    await openPanel(page);
+
+    const ask = page.getByRole('button', { name: /What would you do here/i });
+    await expect(ask).toBeVisible();
+    await expect(ask).toBeDisabled();
+    await expect(ask).toHaveAttribute('title', /Generate the note first/i);
+    // Nothing was pushed into the thread by looking at it.
+    await expect(page.getByText('Generate the note first, then I can suggest')).toHaveCount(0);
+  });
+
   test('the button asks, and is the only thing that does', async ({ page }) => {
     const posted = [];
     await page.route('**/api/llm-call**', async (route) => {

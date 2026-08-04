@@ -108,7 +108,7 @@ function Bubble({ role, children, muted }) {
 
 function RevisionPanel({
   open, onToggle, thread, annotation, onClearAnnotation,
-  draft, onDraft, onSend, onAskAdvice, onExportPairs, pairCount, loading, questions, onSkipQuestions, unread, quality,
+  draft, onDraft, onSend, onAskAdvice, canAsk, onExportPairs, pairCount, loading, questions, onSkipQuestions, unread, quality,
   loggedIn,
   intro,
   routingAsks, onTakeRouted, onLeaveRouted,
@@ -333,11 +333,18 @@ function RevisionPanel({
             <button
               type="button"
               className="revision-advice"
-              disabled={loading}
+              /* Disabled until there is a note to advise on. It used to accept
+                 the click and answer "generate the note first", so four clicks
+                 stacked four identical refusals in the thread and nothing on the
+                 button ever said why. A control that cannot do its job should
+                 look like it, not explain itself afterwards. */
+              disabled={loading || !canAsk}
               onClick={onAskAdvice}
-              title={annotation
-                ? "Ask what the supervising clinician would do about the selected section"
-                : "Ask what the supervising clinician would do next. This answers in the panel and does not change the note."}
+              title={!canAsk
+                ? "Generate the note first, then this can suggest what to do next."
+                : annotation
+                  ? "Ask what the supervising clinician would do about the selected section"
+                  : "Ask what the supervising clinician would do next. This answers in the panel and does not change the note."}
             >
               What would you do here?
             </button>
