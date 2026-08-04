@@ -252,6 +252,119 @@
     return s && s.buildIdentifierMap ? s.buildIdentifierMap(freeText) : [];
   }
 
+  /* Verifying MODEL OUTPUT, which is a different job from reviewing input.
+   *
+   * review() asks a person about names it found in what they typed. That is the
+   * right shape for input and the wrong shape for output, for two reasons. The
+   * output was generated from already-scrubbed input, so anything identifying in
+   * it is either a role token the scrub itself inserted, or a leak - a name the
+   * model invented or echoed from somewhere. Neither is something to ask a tired
+   * clinician to adjudicate at 7pm. And a modal that appears after the note is
+   * written trains people to click through it.
+   *
+   * So this does not ask. It reports, and the caller REFUSES TO STORE on a
+   * finding. It exists because a before/after pair is generated clinical prose,
+   * and keeping one is only safe if something has actually checked it first.
+   *
+   * Returns { clean, names, identifiers }. Names are returned as counts and
+   * positions only - the caller is a storage gate and has no business receiving
+   * the identifying strings it is meant to be keeping out.
+   */
+  /* IT DOES NOT USE detect(). That was the first version and it was wrong.
+   *
+   * detect() is a CANDIDATE GENERATOR for the review modal, deliberately
+   * over-inclusive because a person adjudicates every hit. Measured against
+   * ordinary clinical prose it returns "presented", "responded", "prompting",
+   * "modeling". As a storage gate it would refuse essentially every pair, and
+   * the capture loop would look like it was running while keeping nothing.
+   *
+   * What this uses instead:
+   *   IDENTIFIERS   the existing precise patterns - phone, DOB, address, email,
+   *                 SSN, MRN. No clinical reason for one to be here at all.
+   *   RESIDUAL NAME a capitalised word that is not sentence-initial, not one of
+   *                 the role tokens the scrub itself inserts, and not known
+   *                 clinical vocabulary. The input was already scrubbed with a
+   *                 person in the loop, so anything of that shape in the output
+   *                 was invented or echoed, and either way it does not get kept.
+   */
+  var ALLOWED_CAPS = (function () {
+    var list = [
+      // Role tokens the scrub inserts, plus their numbered forms.
+      "Client", "Caregiver", "Sibling", "Peer", "Technician", "BCBA", "Teacher",
+      "Specialist", "Staff", "Parent", "Guardian", "Analyst", "Therapist",
+      // Field vocabulary that is legitimately capitalised.
+      "ABA", "DTT", "NET", "BT", "RBT", "SLP", "OT", "PT", "IEP", "BIP", "FBA",
+      "FA", "ASD", "ADHD", "SD", "MO", "EO", "VB", "PECS", "BST", "SAP", "MAND",
+      "EHR", "PHI", "PII", "HIPAA", "BACB", "SMART",
+      // Calendar words, which carry no identity on their own.
+      "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
+      "January", "February", "March", "April", "May", "June", "July", "August",
+      "September", "October", "November", "December",
+      // Sentence-initial connectives that survive the boundary test.
+      "The", "This", "That", "These", "Those", "There", "Their", "They", "He",
+      "She", "It", "We", "I", "A", "An", "In", "On", "At", "By", "For", "From",
+      "During", "After", "Before", "When", "While", "If", "Because", "However",
+      "Across", "Both", "Each", "Per", "No", "Yes", "Not", "Progress", "Session",
+      "Data", "Goal", "Target", "Prompt", "Reinforcement", "Behavior", "Behaviour",
+    ];
+    var set = {};
+    for (var i = 0; i < list.length; i++) set[list[i].toLowerCase()] = true;
+    return set;
+  })();
+
+  function residualNames(t) {
+    var out = [];
+    var sentences = t.split(/(?<=[.!?:;])\s+|\n+/);
+    // Words that appear somewhere in lower case are ordinary vocabulary that
+    // happens to be capitalised here. "Progress held..." is fine because
+    // "progress" occurs lower case elsewhere; "Marcus responded..." is not.
+    var lower = {};
+    var all = t.match(/[A-Za-z][A-Za-z'’-]*/g) || [];
+    for (var k = 0; k < all.length; k++) {
+      if (/^[a-z]/.test(all[k])) lower[all[k].toLowerCase()] = true;
+    }
+
+    var flag = function (w) {
+      if (!/^[A-Z]/.test(w)) return false;
+      if (/^[A-Z]+$/.test(w) && w.length <= 5) return false; // acronym
+      if (ALLOWED_CAPS[w.toLowerCase()]) return false;
+      return true;
+    };
+
+    for (var s = 0; s < sentences.length; s++) {
+      var toks = sentences[s].match(/[A-Za-z][A-Za-z'’-]*/g) || [];
+      for (var i = 0; i < toks.length; i++) {
+        var w = toks[i];
+        if (!flag(w)) continue;
+        /* SENTENCE-INITIAL IS CHECKED TOO, not exempted. Names start sentences
+           constantly in a note - "Marcus responded well" - and exempting
+           position 0 let exactly that through. Capitalisation there is
+           ambiguous, so the tie is broken by whether the word ever appears in
+           lower case in the same text. Getting this wrong in the cautious
+           direction costs one unkept pair; getting it wrong the other way
+           writes a name to disk. */
+        if (i === 0 && lower[w.toLowerCase()]) continue;
+        if (out.indexOf(w) === -1) out.push(w);
+      }
+    }
+    return out;
+  }
+
+  function verifyOutput(text) {
+    var t = String(text || "");
+    if (!t.trim()) return { clean: true, names: 0, identifiers: 0, kinds: [] };
+    var idMap = identifierMap(t) || [];
+    var names = residualNames(t);
+    return {
+      clean: names.length === 0 && idMap.length === 0,
+      names: names.length,
+      identifiers: idMap.length,
+      // Kinds, never values: enough to tell a DOB leak from a phone leak when
+      // reading a refusal count, and not enough to reconstruct either.
+      kinds: idMap.map(function (m) { return m.kind || m.role || "identifier"; }),
+    };
+  }
+
   // Resolves { cancelled, map, certified }. With no detected names it resolves
   // immediately (no modal) - but any identifiers found are still mapped.
   // Otherwise it opens a confirm-first dialog for the names.
@@ -540,6 +653,7 @@
     SCRUB_GUIDANCE: SCRUB_GUIDANCE,
     acknowledge: acknowledge,
     review: review,
+    verifyOutput: verifyOutput,
     applyMap: applyMap,
     noticeText: noticeText,
     persistMap: persistMap,

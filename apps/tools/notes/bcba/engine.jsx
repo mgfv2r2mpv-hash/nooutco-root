@@ -792,10 +792,28 @@ function App() {
      means and rates, and a two-sentence section produces a mean too unstable to
      learn anything from. */
   const emitStyle = (before, after, source) => {
-    if (!window.NoteStyleFeatures || !window.NotesGate?.audit?.corrections) return;
     if (!before || !after || before === after) return;
-    const features = window.NoteStyleFeatures.compare(before, after, source);
-    if (features.length) window.NotesGate.audit.corrections(features);
+
+    // Two consumers of the same difference, and they take different things.
+    //
+    // The shared style store takes NUMBERS: a feature, a direction, a magnitude,
+    // and never a word. That is what makes it safe to keep for every technician.
+    //
+    // His voice profile takes the PAIR, because a pair holds topic and length
+    // constant so every difference is a decision, and numbers cannot carry that.
+    // It runs only for him, only after both halves pass an identifier check, and
+    // it never leaves his browser. See assets/voice-capture.js.
+    if (window.NoteStyleFeatures && window.NotesGate?.audit?.corrections) {
+      const features = window.NoteStyleFeatures.compare(before, after, source);
+      if (features.length) window.NotesGate.audit.corrections(features);
+    }
+    if (window.VoiceCapture) {
+      window.VoiceCapture.capture(before, after, {
+        tool: tool.id,
+        register: tool.voiceRegister || null,
+        source,
+      });
+    }
   };
 
   /* ── Triage: ask before drafting ──────────────────────────────────────
