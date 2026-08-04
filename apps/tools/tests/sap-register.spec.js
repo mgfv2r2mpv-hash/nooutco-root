@@ -393,3 +393,38 @@ test.describe('SAP em dashes', () => {
     expect(system).toMatch(/[Nn]ever use an em dash/);
   });
 });
+
+test.describe('SAP behavior terminology', () => {
+  /* Measured 2026-08-04 across two corpora. In 251,722 words of the author's
+   * coursework "problem behavior" appears 245 times. Across all seven human
+   * written clinical plans it appears ZERO times, while "behaviors targeted for
+   * reduction" runs about thirty times denser in the plans than in the
+   * coursework once length is accounted for.
+   *
+   * The maintainer's reason: plan language is read by insurers, and a goal that
+   * replaces self-injury has to name what it replaces in terms a payer accepts.
+   * So the term he uses most when writing academically is the one that must
+   * never reach a plan.
+   *
+   * Nothing in the prompt governed this before. The phrase appeared only inside
+   * an input placeholder, as an example rather than an instruction. */
+  test('the prompt forbids the academic term and names the payer-facing one', async ({ page }) => {
+    await sapConfig(page);
+    const prompts = await page.evaluate(() => {
+      const sap = window.NOTE_TOOLS.find((t) => t.id === 'sap');
+      return {
+        system: sap.buildSystem(),
+        labeled: sap.buildLabeledPrompt({ goal: 'g', sapSpecs: '' }),
+      };
+    });
+
+    for (const [name, text] of Object.entries(prompts)) {
+      expect(text, `${name} prompt should name the payer-facing term`)
+        .toMatch(/behaviors targeted for reduction/);
+      expect(text, `${name} prompt should allow the insurer-clarity variant`)
+        .toMatch(/maladaptive behavior/);
+      expect(text, `${name} prompt must forbid the term that appears in zero human plans`)
+        .toMatch(/NEVER write .*problem behavior/);
+    }
+  });
+});

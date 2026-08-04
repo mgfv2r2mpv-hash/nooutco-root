@@ -413,7 +413,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
         help: {
           intro: "Did any of these happen? Name the ones you used.",
           items: [
-            { t: "Differential reinforcement", d: "you reinforced the behavior you want to see (the replacement skill or appropriate behavior) and gave little to no reinforcement to the problem behavior you're trying to reduce" },
+            { t: "Differential reinforcement", d: "you reinforced the behavior you want to see (the replacement skill or appropriate behavior) and gave little to no reinforcement to the behavior targeted for reduction" },
             { t: "Errorless", d: "prompted right away so they didn't make mistakes" },
             { t: "Most-to-Least", d: "started with strong help and faded it" },
             { t: "Least-to-Most", d: "started with little help, added more only if needed" },
