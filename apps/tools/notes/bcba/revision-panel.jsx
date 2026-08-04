@@ -112,6 +112,7 @@ function RevisionPanel({
   loggedIn,
   intro,
   routingAsks, onTakeRouted, onLeaveRouted,
+  pointMode, onPointMode, pointScope,
 }) {
   const scrollRef = React.useRef(null);
   const inputRef = React.useRef(null);
@@ -142,7 +143,7 @@ function RevisionPanel({
     const onDown = (e) => {
       const t = e.target;
       if (!t || !t.closest) return;
-      if (t.closest(".revision-panel, .revision-fab, [data-revise-chip]")) return;
+      if (t.closest(".revision-panel, .revision-dock, .revision-fab, .point-toggle, [data-revise-chip]")) return;
       if (t.closest(".section-clickable")) return; // that is a revise gesture
       // The report modal is opened FROM this panel and covers it. Collapsing
       // behind it would lose the conversation the report is probably about.
@@ -194,21 +195,55 @@ function RevisionPanel({
   // when the thing they need to report is that they cannot log in.
   const signedOut = loggedIn === false;
 
+  /* Point mode.
+   *
+   * Clicking only worked where a yellow bar already said it would, which reads
+   * as clunky next to Lavish where you can click anything. This is the mode
+   * selector he asked for: it sits beside the collapsed pill, and while it is
+   * on, anything you hover is outlined and anything you click becomes the
+   * thing the next message is about.
+   *
+   * Scope is by role, his call: an admin can point at the whole page including
+   * labels, help text and buttons, because that is where their feedback about
+   * the tool comes from. Everyone else points at note content only, so a
+   * technician cannot end up asking NoMe to revise a heading. */
+  const pointToggle = onPointMode ? (
+    <button
+      type="button"
+      className={"point-toggle" + (pointMode ? " is-on" : "")}
+      onClick={() => onPointMode(!pointMode)}
+      aria-pressed={pointMode}
+      aria-label={pointMode ? "Stop pointing at things" : "Point at something on the page"}
+      title={
+        pointMode
+          ? "Pointing. Click anything, or press Escape."
+          : pointScope === "page"
+            ? "Point at anything on the page"
+            : "Point at any part of the note"
+      }
+    >
+      <span aria-hidden="true">◎</span>
+    </button>
+  ) : null;
+
   if (!open) {
     return (
-      <button
-        type="button"
-        className={"revision-fab quality-" + (signedOut ? "idle" : q.level || "idle")}
-        onClick={onToggle}
-        aria-label={signedOut ? "Ask NoMe. Sign in to use the assistant, or report a problem." : "Open the assistant. " + qs.label}
-        title={signedOut ? "Sign in to use the assistant, or report a problem" : q.reason || qs.label}
-      >
-        <span className="revision-fab-check" aria-hidden="true">
-          {signedOut || q.level === "idle" ? "💬" : q.level === "good" ? "✓" : "!"}
-        </span>
-        <span className="revision-fab-label">Ask{nomeMark}</span>
-        {!signedOut && unread > 0 && <span className="revision-fab-dot" aria-label={unread + " new"} />}
-      </button>
+      <div className="revision-dock">
+        {pointToggle}
+        <button
+          type="button"
+          className={"revision-fab quality-" + (signedOut ? "idle" : q.level || "idle")}
+          onClick={onToggle}
+          aria-label={signedOut ? "Ask NoMe. Sign in to use the assistant, or report a problem." : "Open the assistant. " + qs.label}
+          title={signedOut ? "Sign in to use the assistant, or report a problem" : q.reason || qs.label}
+        >
+          <span className="revision-fab-check" aria-hidden="true">
+            {signedOut || q.level === "idle" ? "💬" : q.level === "good" ? "✓" : "!"}
+          </span>
+          <span className="revision-fab-label">Ask{nomeMark}</span>
+          {!signedOut && unread > 0 && <span className="revision-fab-dot" aria-label={unread + " new"} />}
+        </button>
+      </div>
     );
   }
 
@@ -220,7 +255,13 @@ function RevisionPanel({
           <span className={"revision-head-dot quality-" + (signedOut ? "idle" : q.level || "idle")} aria-hidden="true" />
           <span className="revision-fab-label">Ask{nomeMark}</span>
         </p>
-        <button type="button" onClick={onToggle} aria-label="Collapse the assistant" className="revision-panel-close">×</button>
+        <span className="revision-head-actions">
+          {/* The selector lives in both places, as he asked: in the panel and
+              floating beside the pill when collapsed. Pointing at something is
+              just as likely mid-conversation as before one starts. */}
+          {pointToggle}
+          <button type="button" onClick={onToggle} aria-label="Collapse the assistant" className="revision-panel-close">×</button>
+        </span>
       </header>
 
       <div className="revision-panel-body" ref={scrollRef}>
@@ -288,10 +329,16 @@ function RevisionPanel({
         {signedOut && <div className="revision-report-row revision-report-only">{reportButton}</div>}
         {!signedOut && annotation && (
           <div className="revision-chip-row">
-            <span className="revision-chip">
-              <strong>{annotation.kind === "span" ? "Selected" : "Section"}:</strong>{" "}
-              {annotation.kind === "span"
-                ? "“" + (annotation.text.length > 46 ? annotation.text.slice(0, 46) + "…" : annotation.text) + "”"
+            <span className={"revision-chip" + (annotation.kind === "page" ? " is-page" : "")}>
+              <strong>
+                {annotation.kind === "span" ? "Selected"
+                  : annotation.kind === "page" ? "About the page"
+                  : "Section"}:
+              </strong>{" "}
+              {annotation.kind === "span" || annotation.kind === "page"
+                ? "“" + (String(annotation.text || "").length > 46
+                    ? String(annotation.text).slice(0, 46) + "…"
+                    : String(annotation.text || "")) + "”"
                 : annotation.heading}
               <button type="button" onClick={onClearAnnotation} aria-label="Clear the selected target">×</button>
             </span>

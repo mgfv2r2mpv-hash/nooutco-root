@@ -51,6 +51,11 @@ test.describe('the report button and the assistant do not share a corner', () =>
       const hits = [];
       for (const el of document.querySelectorAll('body *')) {
         if (el.closest('.revision-fab')) continue;
+        // The pill's own container is not a collision. .revision-dock holds the
+        // pill and the point-mode selector side by side, so it contains the
+        // pill's box by design; flagging an ancestor would make this permanently
+        // red without anything ever stacking.
+        if (el.contains(pill)) continue;
         const cs = getComputedStyle(el);
         if (cs.position !== 'fixed' || cs.display === 'none' || cs.visibility === 'hidden') continue;
         if (cs.pointerEvents === 'none') continue;

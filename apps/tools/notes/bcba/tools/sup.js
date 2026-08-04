@@ -25,19 +25,23 @@
 
   // Output render config - mirrors the EHR form top-to-bottom.
   var FORM_SECTIONS = [
-    { kind: "checklist", heading: "Session Checks Completed", group: "sessionChecks" },
-    { kind: "table", heading: "Goals Analyzed", key: "goalsAnalyzed", columns: [
+    // His layout, 2026-08-04: Goals Analyzed is the wide one and leads, with
+    // the two short cards side by side underneath it rather than above.
+    { kind: "table", heading: "Goals Analyzed", fullWidth: true, key: "goalsAnalyzed", columns: [
       { id: "goal", label: "Goal" },
       { id: "progress", label: "Progress" },
       { id: "nextSteps", label: "Next Steps" },
     ] },
+    { kind: "checklist", heading: "Session Checks Completed", group: "sessionChecks" },
     { kind: "single", heading: "Overall Client Progress", group: "overallProgress" },
     { kind: "narrative", heading: "Summary of Progress and Findings", key: "progress", minHeight: 130 },
     { kind: "narrative", heading: "Summary of Protocol Modifications Made/Needed", key: "programming", minHeight: 100 },
     { kind: "narrative", heading: "Description of Behavior and Support", key: "behavior", minHeight: 90,
       emptyNote: "(empty, no behaviors of concern documented)" },
     { kind: "narrative", heading: "Feedback Notes", key: "feedback", minHeight: 100 },
-    { kind: "single", heading: "BCBA Reviewed All Session Notes for Last Week", group: "reviewedNotes" },
+    // One yes or no. Full width and on a single band, rather than a tall
+    // half-card carrying three lines of explanation for a two-letter answer.
+    { kind: "single", heading: "BCBA Reviewed All Session Notes for Last Week", group: "reviewedNotes", fullWidth: true, compact: true },
     { kind: "narrative", heading: "Follow-Up Items", key: "followup", minHeight: 80 },
   ];
 
