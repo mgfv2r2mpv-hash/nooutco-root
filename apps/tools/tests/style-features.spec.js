@@ -58,6 +58,7 @@ test.describe('what comes out is only ever a measurement', () => {
     const known = [
       'sentence_length', 'plain_wording', 'actor_naming',
       'hedging', 'contractions', 'clause_density', 'quantification',
+      'opener_variety',
     ];
     const declared = await page.evaluate(() => window.NoteStyleFeatures.FEATURES);
     expect(declared.sort()).toEqual([...known].sort());
@@ -161,6 +162,115 @@ test.describe('direction follows the edit', () => {
     const q = out.find((o) => o.feature === 'quantification');
     expect(q, 'quantification should be observed').toBeTruthy();
     expect(q.direction).toBe(1);
+  });
+});
+
+// The generated note is told to vary its openings by default. What it cannot do
+// on its own is notice that a particular technician keeps undoing that, or keeps
+// pushing it further. These fixtures are the same eight statements written twice:
+// once with every sentence entering on "The technician", once entering somewhere
+// different each time. Only the openings differ in kind, so the sign these
+// produce is the sign the whole feature rests on.
+const SAME_OPENERS = [
+  'The technician implemented functional communication training during the morning session.',
+  'The technician delivered reinforcement after each appropriate request.',
+  'The technician faded the gestural prompt across the remaining trials.',
+  'The technician collected data continuously throughout the session.',
+  'The technician blocked elopement and redirected the client back to the table.',
+  'The technician offered a choice between two preferred activities.',
+  'The technician ended the session with a preferred activity.',
+  'The technician reviewed the program targets with the caregiver.',
+].join(' ');
+
+const VARIED_OPENERS = [
+  'Functional communication training ran during the morning session.',
+  'After each appropriate request, the technician delivered reinforcement.',
+  'Across the remaining trials, the gestural prompt faded to independence.',
+  'Data collection continued throughout the session.',
+  'When the client eloped, the technician blocked and redirected.',
+  'Two preferred activities were offered as a choice.',
+  'A preferred activity closed out the session.',
+  'Program targets were reviewed with the caregiver.',
+].join(' ');
+
+// Thirteen sentences, thirteen distinct openings. Thirteen is not arbitrary:
+// turning exactly one of them into a repeat moves the measure by 1/13, which is
+// 0.077 and sits just under the 0.08 noise floor.
+const THIRTEEN_DISTINCT = [
+  'Functional communication training ran during the morning session.',
+  'After each appropriate request, reinforcement was delivered.',
+  'Across the remaining trials, the gestural prompt faded.',
+  'Data collection continued throughout the session.',
+  'When the client eloped, the technician blocked and redirected.',
+  'Two preferred activities were offered as a choice.',
+  'A preferred activity closed out the session.',
+  'Program targets were reviewed with the caregiver.',
+  'Independent responding held steady across the second block.',
+  'Mand training followed the same schedule as before.',
+  'Brief breaks were provided between the harder programs.',
+  'No aggression occurred at any point in the session.',
+  'The caregiver observed the final ten minutes.',
+];
+
+test.describe('opener variety moves with the openings and nothing else', () => {
+  test('rewriting repeated openings apart reads as more variety', async ({ page }) => {
+    const out = await compare(page, SAME_OPENERS, VARIED_OPENERS);
+    const ov = out.find((o) => o.feature === 'opener_variety');
+    expect(ov, 'opener_variety should be observed').toBeTruthy();
+    // Up, because the share of distinct openings rose from 1 in 8 to 8 in 8.
+    // Inverted, this would teach the technician's card to flatten the openings
+    // of every note they are ever shown afterwards.
+    expect(ov.direction).toBe(1);
+  });
+
+  test('collapsing openings onto one construction reads as less variety', async ({ page }) => {
+    // The same pair, reversed. The sign must reverse with it and nothing else
+    // about the fixture changes, so a sign error cannot hide behind the text.
+    const out = await compare(page, VARIED_OPENERS, SAME_OPENERS);
+    const ov = out.find((o) => o.feature === 'opener_variety');
+    expect(ov, 'opener_variety should be observed').toBeTruthy();
+    expect(ov.direction).toBe(-1);
+  });
+
+  test('a single repeated opening in thirteen stays under the noise floor', async ({ page }) => {
+    const before = THIRTEEN_DISTINCT.join(' ');
+    // One sentence rewritten to open the way an earlier one already did.
+    const oneRepeat = THIRTEEN_DISTINCT.slice(0, 12)
+      .concat(['Data collection notes were shared with the caregiver at the end.'])
+      .join(' ');
+
+    const quiet = await compare(page, before, oneRepeat);
+    expect(quiet.find((o) => o.feature === 'opener_variety')).toBeFalsy();
+
+    // Sanity, so the silence above is the floor doing its job and not the
+    // measure failing to see openings at all: three repeats does fire, and it
+    // fires downward.
+    const threeRepeats = THIRTEEN_DISTINCT.slice(0, 10)
+      .concat([
+        'Data collection paused between the harder programs.',
+        'Data collection showed no aggression at any point in the session.',
+        'Data collection notes were shared with the caregiver at the end.',
+      ])
+      .join(' ');
+    const loud = await compare(page, before, threeRepeats);
+    const ov = loud.find((o) => o.feature === 'opener_variety');
+    expect(ov, 'three repeats should clear the floor').toBeTruthy();
+    expect(ov.direction).toBe(-1);
+  });
+
+  test('an opener observation carries no opening', async ({ page }) => {
+    // The words a sentence starts on are clinical text like any other. The
+    // measure keys on them and must not let one out.
+    const named = SAME_OPENERS.replace(
+      'The technician offered a choice between two preferred activities.',
+      'Jacob chose between two preferred activities.',
+    );
+    const out = await compare(page, named, VARIED_OPENERS);
+    const ov = out.find((o) => o.feature === 'opener_variety');
+    expect(ov).toBeTruthy();
+    expect(Object.keys(ov).sort()).toEqual(['direction', 'feature', 'magnitude', 'source']);
+    expect(JSON.stringify(out)).not.toContain('Jacob');
+    expect(JSON.stringify(out)).not.toContain('technician');
   });
 });
 

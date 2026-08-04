@@ -201,6 +201,38 @@ test("cardRows carries only the columns the schema declares", () => {
   assert.equal(rows[0].updated_at, NOW);
 });
 
+test("opener_variety derives a rule in each direction", () => {
+  const up = deriveRules(many(MIN_EVIDENCE, "opener_variety", 1), NOW);
+  assert.equal(up.length, 1);
+  assert.equal(up[0].direction, 1);
+  assert.equal(up[0].rule, FEATURES.opener_variety["1"]);
+
+  const down = deriveRules(many(MIN_EVIDENCE, "opener_variety", -1), NOW);
+  assert.equal(down.length, 1);
+  assert.equal(down[0].direction, -1);
+  assert.equal(down[0].rule, FEATURES.opener_variety["-1"]);
+
+  assert.notEqual(up[0].rule, down[0].rule);
+});
+
+test("the two opener_variety rules are not swapped", () => {
+  // The browser emits +1 when the technician pushed openings apart. If the two
+  // strings were transposed here, every assertion above would still pass and
+  // the prompt would be told the exact opposite of the person's habit. These
+  // anchors are load-bearing: reword the rules and move the anchor with them.
+  assert.match(FEATURES.opener_variety["1"], /^Vary where each sentence enters\./);
+  assert.match(FEATURES.opener_variety["-1"], /^Do not manufacture a fresh opening\./);
+  assert.doesNotMatch(FEATURES.opener_variety["-1"], /\bvary\b/i);
+});
+
+test("an opener_variety rule reaches the injected block", () => {
+  const block = renderStyleBlock(deriveRules(many(6, "opener_variety", 1), NOW));
+  assert.ok(block.includes(FEATURES.opener_variety["1"]));
+
+  const muted = renderStyleBlock(deriveRules(many(6, "opener_variety", -1), NOW));
+  assert.ok(muted.includes(FEATURES.opener_variety["-1"]));
+});
+
 test("every feature has rule text in both directions", () => {
   // A missing template would silently drop a learned signal on the floor:
   // deriveRules skips a feature whose ruleText() comes back null.

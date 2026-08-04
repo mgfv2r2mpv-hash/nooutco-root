@@ -49,6 +49,11 @@ export const FEATURES = {
     "-1": "Do not manufacture precision. This technician consistently removes counts and percentages that the intake did not supply.",
     "1": "Carry the numbers through. This technician consistently adds the counts, durations and trial totals that the intake supplied.",
   },
+  opener_variety: {
+    label: "Opener variety",
+    "-1": "Do not manufacture a fresh opening. This technician consistently settles reworded sentence openings back onto the plain construction, so leave an opening that already reads naturally rather than recasting it only to avoid an echo.",
+    "1": "Vary where each sentence enters. This technician consistently rewrites sentences that begin the same way as the one before, so change the subject or the construction each sentence opens on.",
+  },
 };
 
 export const FEATURE_NAMES = Object.keys(FEATURES);
