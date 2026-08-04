@@ -97,3 +97,43 @@ npm test             # derivation + validation unit tests
 
 `npm test` is plain `node --test` with no dependencies, matching the repo's
 no-build-step convention.
+
+## Weekly self-audit email
+
+Fires Friday 20:00 America/New_York and emails a summary of the week against the
+prior four. Lives here rather than in the tools Pages worker because Pages
+Functions cannot carry a cron trigger, and because the data being summarised is
+already in this Worker's D1.
+
+**It reads numbers only.** `usage_metric` and `correction_event` contain
+counts, ratios, timestamps and closed-list enums. No note text exists in this
+database, which is what makes emailing a summary acceptable at all.
+
+### What it needs before it will send
+
+Two secrets, neither of which is set yet. Until `RESEND_API_KEY` exists the
+scheduled run still executes and still logs what it would have sent, it just
+does not deliver.
+
+```sh
+npx wrangler secret put RESEND_API_KEY   --config apps/profile-api/wrangler.toml
+npx wrangler secret put AUDIT_TO_EMAIL   --config apps/profile-api/wrangler.toml   # optional, defaults to the maintainer
+```
+
+The from address is `noreply@nooutco.me`, matching the sender the tools worker
+already uses, so no new domain verification is required.
+
+### Daylight saving
+
+Cron is UTC and has no notion of DST, so a single fixed hour would deliver at
+20:00 for half the year and 19:00 for the other half. Both candidate hours fire
+(`0 0 * * 6` and `0 1 * * 6`) and `isSendHour` in `src/weekly.js` decides which
+firing is really 20:00 in New York. The other firing is a no-op costing one
+`Intl` call. `test/weekly.test.js` pins both the summer and winter cases.
+
+### Checking it without waiting for Friday
+
+```sh
+npx wrangler dev --config apps/profile-api/wrangler.toml --test-scheduled
+curl "http://localhost:8787/__scheduled?cron=0+0+*+*+6"
+```

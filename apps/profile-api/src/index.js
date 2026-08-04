@@ -19,12 +19,29 @@
 import { deriveRules, cardRows, renderStyleBlock } from "./derive.js";
 import { FEATURE_NAMES } from "./features.js";
 import { sanitizeCorrections, sanitizeMetrics, cleanKid, cleanSlug } from "./validate.js";
+import { runWeekly, isSendHour } from "./weekly.js";
 
 /** Corrections considered when rebuilding a card. Bounds the query, and a
  *  technician's style two thousand edits ago is not evidence about today. */
 const CORRECTION_WINDOW = 500;
 
 export default {
+  /* Friday 20:00 in America/New_York. The cron fires at both candidate UTC
+     hours because daylight saving moves that target, and isSendHour decides
+     which firing is the real one. A no-op firing costs one Intl call.
+
+     Deliberately best effort: a failed send must not retry into a loop, so it
+     is logged and dropped. The data it summarises stays in D1 either way. */
+  async scheduled(event, env, ctx) {
+    if (!env.DB) return;
+    if (!isSendHour(new Date(event.scheduledTime))) return;
+    ctx.waitUntil(
+      runWeekly(env, event.scheduledTime)
+        .then((r) => console.log("weekly audit", JSON.stringify({ sent: r.sent, notes: r.notes, status: r.status, reason: r.reason })))
+        .catch((e) => console.log("weekly audit failed", String(e && e.message || e))),
+    );
+  },
+
   async fetch(request, env) {
     const url = new URL(request.url);
 
