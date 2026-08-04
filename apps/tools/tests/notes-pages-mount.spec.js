@@ -71,3 +71,28 @@ for (const { tool, path, ribbonTabs } of PAGES) {
     expect(real, `console errors on ${tool}: ${real.join(' | ')}`).toEqual([]);
   });
 }
+
+/* The Scrubber link is gone from the drafters.
+ *
+ * His call of 2026-08-04: "old news. hide it on the drafters." The scrub runs
+ * inside the drafting flow now, so sending someone to a separate page to do it
+ * by hand is a way of working the tool has outgrown. The standalone page stays
+ * reachable by URL for anyone who wants it.
+ */
+test('no drafter offers a Scrubber link', async ({ page }) => {
+  for (const tool of ['sup', 'sap', 'assess', 'parent']) {
+    await page.goto(`/notes/bcba/?tool=${tool}`);
+    await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+    await expect(page.getByRole('link', { name: /Scrubber/i }), `${tool} still links to the scrubber`).toHaveCount(0);
+  }
+  await page.goto('/notes/bt/');
+  await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+  await expect(page.getByRole('link', { name: /Scrubber/i })).toHaveCount(0);
+});
+
+test('the standalone scrubber page is still reachable', async ({ page }) => {
+  // Hidden from the drafters, not deleted.
+  const res = await page.goto('/notes/scrubber.html');
+  expect(res.status()).toBe(200);
+  await expect(page.getByRole('heading', { name: /Clinical Summary Scrubber/i })).toBeVisible();
+});
