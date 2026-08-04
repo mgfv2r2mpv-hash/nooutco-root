@@ -231,6 +231,12 @@ function RevisionPanel({
         )}
         {!signedOut && thread.length === 0 && !awaitingQuestions && (
           <p className="revision-empty">
+            Sign in with your access code to use the assistant. If signing in is the
+            problem, report it below and say what happened.
+          </p>
+        )}
+        {!signedOut && thread.length === 0 && !awaitingQuestions && (
+          <p className="revision-empty">
             {intro || "Fill in the form above and press the generate button. I'll ask about anything that looks thin before drafting, then you can click any section, or select a phrase inside one, to revise it."}
           </p>
         )}
