@@ -5,5 +5,5 @@
     <circle cx="100" cy="100" r="82" fill="none" stroke="#3a4448" stroke-width="11" stroke-linecap="round" stroke-dasharray="446 69" transform="rotate(64 100 100)"></circle>
   </g>
   <text x="100" y="50" font-size="30" font-weight="800" fill="#2b3338" letter-spacing="-0.3">No Outcome <tspan fill="#6a7659">ABA</tspan></text>
-  <text x="101" y="70" font-size="13" font-weight="600" fill="#70787a" letter-spacing="0.4">SAssi — Schedule Assistant</text>
+  <text x="101" y="70" font-size="13" font-weight="600" fill="#70787a" letter-spacing="0.4">SAssi - Schedule Assistant</text>
 </svg>
