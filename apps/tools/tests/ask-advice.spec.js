@@ -188,3 +188,43 @@ test.describe('asking what he would do', () => {
     await expect(page.getByRole('button', { name: /^Accept/ })).toHaveCount(0);
   });
 });
+
+/* The copy-paste path, removed on his ruling of 2026-08-04.
+ *
+ * It built a labelled prompt in the browser to paste into another model, and
+ * that is precisely why it could never carry his voice: the block would have to
+ * reach a browser, reversing the decision that keeps his personal rules off
+ * every machine holding a tools login. He chose to generate in place instead.
+ */
+test.describe('the copy-paste path is gone', () => {
+  test('there is no second button producing a prompt to paste elsewhere', async ({ page }) => {
+    await page.goto('/notes/bt/');
+    await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
+    await page.goto('/notes/bt/');
+    await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+
+    await expect(page.getByRole('button', { name: 'Generate Prompt' })).toHaveCount(0);
+    await expect(page.getByText('Generated Prompt')).toHaveCount(0);
+    // The surviving route is the one that goes through the Worker.
+    await expect(page.getByRole('button', { name: /Generate Note/i })).toBeVisible();
+  });
+
+  test('every generation route now goes through the Worker', async ({ page }) => {
+    // The point of the removal: there is no longer a way to produce output from
+    // this tool that bypasses the server-side composition.
+    const posted = [];
+    await page.route('**/api/llm-call**', async (route) => {
+      posted.push(JSON.parse(route.request().postData() || '{}'));
+      return route.fulfill(reply(posted.length === 1 ? { sufficient: true, questions: [] } : note()));
+    });
+    await page.goto('/notes/bt/');
+    await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
+    await page.goto('/notes/bt/');
+    await draftANote(page);
+
+    // Every call carried the tool id, which is what the Worker keys the voice
+    // allowlist on. A client-composed path would have sent nothing at all.
+    expect(posted.length).toBeGreaterThan(0);
+    for (const body of posted) expect(body.tool).toBe('bt');
+  });
+});
