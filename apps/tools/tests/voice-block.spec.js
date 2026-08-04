@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { createHmac } from 'node:crypto';
-import { composeVoice } from '../_worker.js';
+import { composeVoice, composeOpinions } from '../_worker.js';
 
 // The house voice block: a personal style card stored as markdown in KV and
 // appended to the system prompt inside the Worker, so the rules never reach a
@@ -79,6 +79,84 @@ test.describe('composeVoice', () => {
     expect(out).toMatch(/style only/i);
     expect(out).toMatch(/does not change clinical content/i);
     expect(out).toMatch(/what is above wins/i);
+  });
+});
+
+// The opinions block: his discretionary clinical calls, gated far harder than
+// the voice block because it decides content rather than style. His rulings of
+// 2026-08-04 are encoded as tests so they cannot be quietly relaxed later.
+const OPINIONS = {
+  ...BLOCK,
+  opinions: { 'clinical-narrative': 'GUM-ENTRY', interpersonal: 'EMAIL-OPINION' },
+};
+const ASKED = { wantsRecommendation: true };
+
+test.describe('composeOpinions', () => {
+  test('ruling 2: nothing fires unless the caller explicitly asked', () => {
+    // An opinion never fills a silence in the input. This is the single most
+    // load-bearing assertion in the file: every tool that never adopts the flag
+    // behaves exactly as it did before opinions existed.
+    expect(composeOpinions('SYSTEM', OPINIONS, 'sup', undefined)).toBe('SYSTEM');
+    expect(composeOpinions('SYSTEM', OPINIONS, 'sup', {})).toBe('SYSTEM');
+    expect(composeOpinions('SYSTEM', OPINIONS, 'sup', { wantsRecommendation: false })).toBe('SYSTEM');
+    // Only a literal true opens the gate, so a truthy string from a JSON body
+    // cannot open it by accident.
+    expect(composeOpinions('SYSTEM', OPINIONS, 'sup', { wantsRecommendation: 'yes' })).toBe('SYSTEM');
+  });
+
+  test('appends the entry for the asking tool, after the system prompt', () => {
+    const out = composeOpinions('SYSTEM', OPINIONS, 'sup', ASKED);
+    expect(out.startsWith('SYSTEM')).toBe(true);
+    expect(out).toContain('GUM-ENTRY');
+    expect(out.indexOf('SYSTEM')).toBeLessThan(out.indexOf('HIS CLINICAL JUDGEMENT'));
+  });
+
+  test('picks the register mapped to the tool, not another one', () => {
+    const out = composeOpinions('SYSTEM', OPINIONS, 'parent', ASKED);
+    expect(out).toContain('EMAIL-OPINION');
+    expect(out).not.toContain('GUM-ENTRY');
+  });
+
+  test('the BT tool gets nothing even when it asks', () => {
+    // His judgement is not the technician's to sign. `bt` is absent from the
+    // allowlist, and asking must not be a way around that.
+    expect(composeOpinions('SYSTEM', OPINIONS, 'bt', ASKED)).toBe('SYSTEM');
+  });
+
+  test('a tool with a voice register but no opinions gets nothing', () => {
+    // Unlike the voice block, there is no graceful degradation here: with no
+    // entry for the register there is no judgement to apply, and inventing one
+    // is the whole failure mode this module exists to prevent.
+    const out = composeOpinions('SYSTEM', BLOCK, 'sup', ASKED);
+    expect(out).toBe('SYSTEM');
+    expect(composeOpinions('SYSTEM', { ...OPINIONS, opinions: {} }, 'sup', ASKED)).toBe('SYSTEM');
+    expect(composeOpinions('SYSTEM', { ...OPINIONS, opinions: { 'clinical-narrative': '  ' } }, 'sup', ASKED)).toBe('SYSTEM');
+  });
+
+  test('fails open on a missing block or a non-string system', () => {
+    expect(composeOpinions('SYSTEM', null, 'sup', ASKED)).toBe('SYSTEM');
+    expect(composeOpinions('SYSTEM', OPINIONS, undefined, ASKED)).toBe('SYSTEM');
+    expect(composeOpinions(undefined, OPINIONS, 'sup', ASKED)).toBe(undefined);
+  });
+
+  test('the header carries rulings 1 and 3 and the no-invented-reason rule', () => {
+    // If any of these assertions is ever deleted, a ruling he made has been
+    // dropped from the prompt without anyone noticing.
+    const out = composeOpinions('SYSTEM', OPINIONS, 'sup', ASKED);
+    expect(out).toMatch(/THE INPUT WINS/);            // ruling 3
+    expect(out).toMatch(/state plainly which entry you set/i); // ruling 3, "and he is told"
+    expect(out).toMatch(/NEVER INVENT A REASON/);     // failure mode 1
+    expect(out).toMatch(/SCOPE IS BINDING/);          // failure mode 3
+    expect(out).toMatch(/`preference` must be attributed to him/); // ruling 1
+    expect(out).toMatch(/none of it is a finding/i);  // failure mode 2
+  });
+
+  test('stacks after the voice block without disturbing it', () => {
+    const voiced = composeVoice('SYSTEM', OPINIONS, 'sup');
+    const both = composeOpinions(voiced, OPINIONS, 'sup', ASKED);
+    expect(both).toContain('CORE-RULES');
+    expect(both).toContain('NARRATIVE-DELTA');
+    expect(both.indexOf('HOUSE VOICE')).toBeLessThan(both.indexOf('HIS CLINICAL JUDGEMENT'));
   });
 });
 
