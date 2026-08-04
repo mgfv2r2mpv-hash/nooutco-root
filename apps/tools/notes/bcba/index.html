@@ -16,138 +16,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="/tokens.css">
   <link rel="stylesheet" href="/assets/nav-bar.css">
+  <!-- Shared note-page chrome (info bubbles, cache timer, output grid) — also
+       used by /notes/bt/, so edits land on both pages. -->
+  <link rel="stylesheet" href="../notes-page.css">
   <script src="/assets/nav-bar.js" defer></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: var(--font-sans, 'Atkinson Hyperlegible', 'Segoe UI', Inter, sans-serif);
-      background: #eef1ea;
-      min-height: 100vh;
-      color: #2d3a1f;
-    }
-    /* Bar is full-bleed/sticky; page padding moves to the content wrapper. */
-    #root { padding: 28px 20px; }
-    .info-tip {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      margin-left: 6px;
-      vertical-align: middle;
-    }
-    .info-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      border: 1px solid #c0d4a8;
-      background: #eef4e6;
-      color: #5a7040;
-      font-size: 11px;
-      font-weight: 700;
-      cursor: help;
-      line-height: 1;
-      user-select: none;
-    }
-    .info-icon:focus { outline: 2px solid #5a7040; outline-offset: 1px; }
-    .info-bubble {
-      position: absolute;
-      bottom: calc(100% + 8px);
-      /* Anchor to the icon's left so the wide bubble extends rightward and
-         never runs off the left edge on narrow (mobile) viewports. */
-      left: 0;
-      visibility: hidden;
-      opacity: 0;
-      background: #2d3a1f;
-      color: white;
-      padding: 9px 12px;
-      border-radius: 7px;
-      font-size: 12px;
-      font-weight: 400;
-      line-height: 1.55;
-      width: max-content;
-      max-width: min(280px, calc(100vw - 32px));
-      max-height: 50vh;
-      overflow-y: auto;
-      text-align: left;
-      z-index: 100;
-      pointer-events: none;
-      transition: opacity 0.12s ease;
-      white-space: pre-line;
-      box-shadow: 0 4px 14px rgba(45, 58, 31, 0.18);
-    }
-    .info-bubble::after {
-      content: "";
-      position: absolute;
-      top: 100%;
-      /* Points at the icon. JS sets --arrow-left when the bubble is clamped to
-         the viewport on open; falls back to ~8px for the hover/focus case. */
-      left: var(--arrow-left, 8px);
-      transform: translateX(-50%);
-      border: 6px solid transparent;
-      border-top-color: #2d3a1f;
-    }
-    .info-tip:hover .info-bubble,
-    .info-tip:focus-within .info-bubble,
-    .info-tip.open .info-bubble {
-      visibility: visible;
-      opacity: 1;
-    }
-    .info-tip.open .info-bubble { pointer-events: auto; }
-
-    /* Floating note-freshness countdown — fixed top-right, out of the way, with a
-       hover/tap tooltip explaining why prompt edits are best made while it counts. */
-    .cache-timer { position: fixed; top: 70px; right: 14px; z-index: 60; font-family: inherit; }
-    .cache-timer-pill {
-      display: inline-flex; align-items: center; gap: 7px;
-      padding: 6px 12px 6px 10px; border-radius: 999px;
-      border: 1px solid #c0d4a8; background: rgba(255, 255, 255, 0.92);
-      -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
-      color: #41502c; font-size: 13px; font-weight: 700; font-family: inherit;
-      font-variant-numeric: tabular-nums; letter-spacing: 0.02em; cursor: help;
-      box-shadow: 0 3px 12px rgba(45, 58, 31, 0.16);
-      transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
-    }
-    .cache-timer-pill:focus-visible { outline: 2px solid #5a7040; outline-offset: 2px; }
-    .cache-timer-dot {
-      width: 8px; height: 8px; border-radius: 50%; background: #6f9a3f;
-      box-shadow: 0 0 0 0 rgba(111, 154, 63, 0.5);
-      animation: cacheDotPulse 2.4s ease-out infinite;
-    }
-    .cache-timer.state-low .cache-timer-pill { border-color: #d9b45a; color: #7a5a12; }
-    .cache-timer.state-low .cache-timer-dot { background: #d19a2a; animation-duration: 1.4s; }
-    .cache-timer.state-expired .cache-timer-pill { border-color: #cdd7c0; color: #8a968a; background: rgba(244, 247, 240, 0.92); }
-    .cache-timer.state-expired .cache-timer-dot { background: #b3c0a6; animation: none; box-shadow: none; }
-    @keyframes cacheDotPulse {
-      0%   { box-shadow: 0 0 0 0 rgba(111, 154, 63, 0.45); }
-      70%  { box-shadow: 0 0 0 7px rgba(111, 154, 63, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(111, 154, 63, 0); }
-    }
-    @media (prefers-reduced-motion: reduce) { .cache-timer-dot { animation: none !important; } }
-    .cache-timer-bubble {
-      position: absolute; top: calc(100% + 8px); right: 0;
-      visibility: hidden; opacity: 0;
-      width: max-content; max-width: min(300px, calc(100vw - 28px));
-      background: #2d3a1f; color: white; padding: 10px 13px; border-radius: 8px;
-      font-size: 12.5px; font-weight: 400; line-height: 1.55; text-align: left;
-      z-index: 101; pointer-events: none; transition: opacity 0.12s ease;
-      box-shadow: 0 6px 18px rgba(45, 58, 31, 0.22);
-    }
-    .cache-timer-bubble::after {
-      content: ""; position: absolute; bottom: 100%; right: 14px;
-      border: 6px solid transparent; border-bottom-color: #2d3a1f;
-    }
-    .cache-timer:hover .cache-timer-bubble,
-    .cache-timer.open .cache-timer-bubble { visibility: visible; opacity: 1; }
-    .cache-timer.open .cache-timer-bubble { pointer-events: auto; }
-    @media (max-width: 640px) { .cache-timer { top: 64px; right: 10px; } }
-
-    /* Output sections: responsive 2-up grid; any card can expand to a full row */
-    .output-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
-    .output-grid .full-row { grid-column: 1 / -1; }
-    @media (max-width: 640px) { .output-grid { grid-template-columns: 1fr; } }
-
     /* Tool ribbon — the toggle between the four BCBA note tools */
     .tool-ribbon {
       display: flex;
@@ -181,16 +54,6 @@
       box-shadow: 0 2px 8px rgba(45, 58, 31, 0.25);
     }
     .tool-ribbon button:focus-visible { outline: 2px solid #5a7040; outline-offset: 1px; }
-
-    /* Panel switch animation — content fades/slides as the ribbon toggles */
-    .tool-panel { animation: panelIn 0.22s ease; }
-    @keyframes panelIn {
-      from { opacity: 0; transform: translateY(6px); }
-      to   { opacity: 1; transform: none; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .tool-panel { animation: none; }
-    }
   </style>
 </head>
 <body>
@@ -243,7 +106,13 @@
   <script src="./tools/assess.js"></script>
   <script src="./tools/parent.js"></script>
 
-  <!-- Shared engine (JSX — transpiled in-browser by Babel standalone) -->
+  <!-- Word-level diff for the inline revision view (plain JS). -->
+  <script src="./diff.js"></script>
+  <script src="./style-features.js"></script>
+
+  <!-- Assistant panel, then the engine that mounts it. Order matters: Babel
+       standalone runs these in document order and the engine renders the panel. -->
+  <script type="text/babel" src="./revision-panel.jsx"></script>
   <script type="text/babel" src="./engine.jsx"></script>
 </body>
 </html>

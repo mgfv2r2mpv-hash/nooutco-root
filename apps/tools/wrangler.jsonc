@@ -5,17 +5,32 @@
   // Cloudflare Pages applies bindings declared under env.production / env.preview,
   // NOT top-level — top-level kv_namespaces silently don't bind on Git builds.
   // Account A (kaleb@nooutco.me) namespaces.
+  //
+  // The PROFILE service binding reaches the technician style store
+  // (apps/profile-api), deployed 2026-08-03. That Worker has `workers_dev =
+  // false` and declares no routes, so this binding is its ONLY ingress — a
+  // technician holding a valid session token has no address to send a forged
+  // request to. Giving it a route would silently undo that.
+  //
+  // Everything behind it fails open: if the binding or the Worker goes away,
+  // notes generate exactly as they did before any of it existed.
   "env": {
     "production": {
       "kv_namespaces": [
         { "binding": "SUGGEST_DUPES", "id": "770ceeccadb94d78b519e628509beed8" },
         { "binding": "API_PASSWORDS", "id": "cdaf40fa2b814f7d94818b27042b9cf2" }
+      ],
+      "services": [
+        { "binding": "PROFILE", "service": "bt-profile-api" }
       ]
     },
     "preview": {
       "kv_namespaces": [
         { "binding": "SUGGEST_DUPES", "id": "770ceeccadb94d78b519e628509beed8" },
         { "binding": "API_PASSWORDS", "id": "cdaf40fa2b814f7d94818b27042b9cf2" }
+      ],
+      "services": [
+        { "binding": "PROFILE", "service": "bt-profile-api" }
       ]
     }
   }

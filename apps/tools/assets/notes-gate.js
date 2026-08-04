@@ -153,9 +153,146 @@
     window.dispatchEvent(new Event(EVT));
   }
 
+  /* ─────────────── Draft storage (encrypted at rest) ───────────────
+   *
+   * A draft is the clinician's own typing, BEFORE the scrub gate runs — the one
+   * place in this system where unredacted PHI legitimately exists. It used to
+   * sit in localStorage as plaintext until logout, which on a shared clinic
+   * laptop meant "until someone else opens devtools".
+   *
+   * Now: AES-GCM, with a NON-EXTRACTABLE CryptoKey held in IndexedDB. The key
+   * material cannot be read by script at all — crypto.subtle will use it but
+   * never export it — so a dump of localStorage or of the IndexedDB file yields
+   * ciphertext and a key handle that is useless outside this origin.
+   *
+   * Be clear about what this is not: script running ON this origin can still
+   * call decrypt. This defends against passive inspection, device backups and
+   * drafts outliving the session — not against an attacker already executing in
+   * the page. The hard TTL below is the other half, and the more important one.
+   */
+
+  var DRAFT_TTL_MS = 12 * 60 * 60 * 1000; // hard expiry regardless of logout
+  var KEY_DB = "noaba-notes";
+  var KEY_STORE = "keys";
+  var KEY_ID = "draft-key-v1";
+
+  // In-memory plaintext cache. Reads are synchronous against this so the React
+  // engine keeps its existing synchronous draft.load(); writes go through it
+  // first and encrypt in the background.
+  var draftCache = {};
+  var draftKeyPromise = null;
+
+  function idb() {
+    return new Promise(function (resolve, reject) {
+      var req = indexedDB.open(KEY_DB, 1);
+      req.onupgradeneeded = function () {
+        if (!req.result.objectStoreNames.contains(KEY_STORE)) req.result.createObjectStore(KEY_STORE);
+      };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error); };
+    });
+  }
+
+  function idbGet(db, k) {
+    return new Promise(function (resolve, reject) {
+      var r = db.transaction(KEY_STORE, "readonly").objectStore(KEY_STORE).get(k);
+      r.onsuccess = function () { resolve(r.result); };
+      r.onerror = function () { reject(r.error); };
+    });
+  }
+
+  function idbPut(db, k, v) {
+    return new Promise(function (resolve, reject) {
+      var t = db.transaction(KEY_STORE, "readwrite");
+      t.objectStore(KEY_STORE).put(v, k);
+      t.oncomplete = function () { resolve(); };
+      t.onerror = function () { reject(t.error); };
+    });
+  }
+
+  // Reuse the stored key so drafts survive a reload; mint one on first use.
+  // extractable:false is the whole point — do not "fix" it to true.
+  function draftKey() {
+    if (draftKeyPromise) return draftKeyPromise;
+    draftKeyPromise = (function () {
+      if (!window.indexedDB || !window.crypto || !crypto.subtle) return Promise.resolve(null);
+      return idb().then(function (db) {
+        return idbGet(db, KEY_ID).then(function (existing) {
+          if (existing) return existing;
+          return crypto.subtle
+            .generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"])
+            .then(function (k) { return idbPut(db, KEY_ID, k).then(function () { return k; }); });
+        });
+      }).catch(function () { return null; });
+    })();
+    return draftKeyPromise;
+  }
+
+  function b64(bytes) {
+    var s = "";
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return btoa(s);
+  }
+  function unb64(str) {
+    var bin = atob(str);
+    var out = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
+  function encryptDraft(obj) {
+    return draftKey().then(function (key) {
+      var plain = new TextEncoder().encode(JSON.stringify(obj));
+      // No key (no WebCrypto / private-mode IndexedDB): store nothing rather
+      // than silently falling back to plaintext. Losing a draft is recoverable;
+      // writing unredacted PHI to disk in the clear is not.
+      if (!key) return null;
+      var iv = crypto.getRandomValues(new Uint8Array(12));
+      return crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, plain).then(function (buf) {
+        return JSON.stringify({ v: 1, iv: b64(iv), ct: b64(new Uint8Array(buf)), savedAt: Date.now() });
+      });
+    });
+  }
+
+  function decryptDraft(raw) {
+    var rec;
+    try { rec = JSON.parse(raw); } catch (e) { return Promise.resolve(null); }
+    if (!rec || rec.v !== 1 || !rec.iv || !rec.ct) return Promise.resolve(null);
+    if (!rec.savedAt || Date.now() - rec.savedAt > DRAFT_TTL_MS) return Promise.resolve(null);
+    return draftKey().then(function (key) {
+      if (!key) return null;
+      return crypto.subtle
+        .decrypt({ name: "AES-GCM", iv: unb64(rec.iv) }, key, unb64(rec.ct))
+        .then(function (buf) { return JSON.parse(new TextDecoder().decode(buf)); })
+        .catch(function () { return null; }); // key rotated or record tampered
+    });
+  }
+
+  // Decrypt every stored draft into the cache once, before the UI renders.
+  // Anything expired, corrupt, or written under a key we no longer hold is
+  // dropped from storage here rather than lingering as undecryptable noise.
+  var draftsReady = (function () {
+    var pending = [];
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf(DRAFT_PREFIX) === 0) pending.push(k);
+      }
+    } catch (e) {}
+    return Promise.all(pending.map(function (k) {
+      var id = k.slice(DRAFT_PREFIX.length);
+      var raw = localStorage.getItem(k);
+      return decryptDraft(raw).then(function (obj) {
+        if (obj) draftCache[id] = obj;
+        else { try { localStorage.removeItem(k); } catch (e) {} }
+      });
+    })).then(function () { return true; }).catch(function () { return true; });
+  })();
+
   // Remove every tool's saved draft. Called on logout so pre-scrub clinician
   // free-text (possible PHI) never outlives the session on a shared machine.
   function clearAllDrafts() {
+    draftCache = {};
     try {
       var keys = [];
       for (var i = 0; i < localStorage.length; i++) {
@@ -168,6 +305,15 @@
 
   function logout() {
     clearAllDrafts();
+    // Anything still buffered belongs to the technician who is leaving. These
+    // flush under whatever token is present when they next go out, so on a
+    // shared clinic laptop -- which is the normal case here, not an edge one --
+    // surviving an explicit logout means one person's events land against the
+    // next person's login code. Unsent is the right outcome; misattributed is
+    // not. A token that merely expires still keeps its buffer, because that is
+    // the same technician coming back.
+    try { localStorage.removeItem(AUDIT_BUFFER_KEY); } catch (e) {}
+    try { localStorage.removeItem(CORRECTION_BUFFER_KEY); } catch (e) {}
     setToken("");
   }
 
@@ -710,6 +856,171 @@
     }
   }
 
+  /* ─────────────── Audit / usage events ───────────────
+   *
+   * Content-free by construction. An event carries counts, durations and a tool
+   * id — never a word of the note. That is what makes it safe to keep a durable
+   * record at all given this system stores nothing else.
+   *
+   * Two jobs, one mechanism: an audit trail of who generated what and when, and
+   * the usage signal a supervisor needs to see whether the tool is being engaged
+   * with or pasted past. The server re-validates the shape, so a modified client
+   * cannot turn this into a text channel.
+   *
+   * Buffered locally and flushed opportunistically: a failed POST must never
+   * cost a clinician their note, so nothing here is awaited on a hot path.
+   */
+  var AUDIT_BUFFER_KEY = "noaba.audit.buffer.v1";
+  var AUDIT_MAX = 500; // bounded ring — a long offline stretch must not grow forever
+
+  function auditBuffer() {
+    try { return JSON.parse(localStorage.getItem(AUDIT_BUFFER_KEY)) || []; } catch (e) { return []; }
+  }
+  function writeAuditBuffer(list) {
+    try { localStorage.setItem(AUDIT_BUFFER_KEY, JSON.stringify(list.slice(-AUDIT_MAX))); } catch (e) {}
+  }
+
+  // Numbers and short enums only. Anything else is dropped here, before it can
+  // reach the buffer — the client-side half of "this cannot carry note text".
+  function sanitizeAuditData(data) {
+    var out = {};
+    if (!data || typeof data !== "object") return out;
+    Object.keys(data).slice(0, 12).forEach(function (k) {
+      var v = data[k];
+      if (typeof v === "number" && isFinite(v)) out[k] = Math.round(v);
+      else if (typeof v === "boolean") out[k] = v;
+      else if (typeof v === "string" && /^[a-z0-9_-]{1,24}$/i.test(v)) out[k] = v;
+    });
+    return out;
+  }
+
+  function auditEmit(type, data) {
+    if (!/^[a-z_]{1,32}$/.test(type || "")) return;
+    var list = auditBuffer();
+    list.push({ type: type, tool: (data && data.tool) || null, ts: Date.now(), data: sanitizeAuditData(data) });
+    writeAuditBuffer(list);
+    auditFlush();
+  }
+
+  /* ── Style corrections ──────────────────────────────────────────────
+     A measurement of how the technician rewrote a draft, never the rewrite
+     itself. window.NoteStyleFeatures produces these; this only carries them.
+     Buffered separately from audit events because they mean different things
+     and are stored in different places, but flushed on the same request so a
+     revision does not cost two round trips. ── */
+
+  var CORRECTION_BUFFER_KEY = "noaba.corrections.buffer.v1";
+
+  function correctionBuffer() {
+    try { return JSON.parse(localStorage.getItem(CORRECTION_BUFFER_KEY)) || []; } catch (e) { return []; }
+  }
+  function writeCorrectionBuffer(list) {
+    try { localStorage.setItem(CORRECTION_BUFFER_KEY, JSON.stringify(list.slice(-AUDIT_MAX))); } catch (e) {}
+  }
+
+  // The same "drop it, never coerce it" rule the audit path uses. A feature is
+  // a short slug from a closed list; a direction is exactly -1 or 1.
+  function sanitizeCorrection(c) {
+    if (!c || typeof c !== "object") return null;
+    if (!/^[a-z][a-z0-9_]{0,31}$/.test(c.feature || "")) return null;
+    var direction = c.direction > 0 ? 1 : c.direction < 0 ? -1 : 0;
+    if (!direction) return null;
+    var mag = typeof c.magnitude === "number" && isFinite(c.magnitude)
+      ? Math.max(0, Math.min(1, c.magnitude)) : 1;
+    return {
+      feature: c.feature,
+      direction: direction,
+      magnitude: mag,
+      source: c.source === "manual" ? "manual" : "revision",
+      ts: Date.now(),
+    };
+  }
+
+  function auditCorrections(list) {
+    if (!list || !list.length) return;
+    var clean = [];
+    for (var i = 0; i < list.length && clean.length < 20; i++) {
+      var c = sanitizeCorrection(list[i]);
+      if (c) clean.push(c);
+    }
+    if (!clean.length) return;
+    writeCorrectionBuffer(correctionBuffer().concat(clean));
+    auditFlush();
+  }
+
+  var auditFlushing = false;
+  function auditFlush() {
+    if (auditFlushing) return;
+    var tok = getToken();
+    if (!tok) return; // events for a logged-out page have no technician to attribute
+    var list = auditBuffer();
+    var corr = correctionBuffer();
+    if (!list.length && !corr.length) return;
+    auditFlushing = true;
+    var batch = list.slice(0, 50);
+    var corrBatch = corr.slice(0, 50);
+    fetch(apiUrl("/api/audit"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok },
+      body: JSON.stringify({ events: batch, corrections: corrBatch }),
+    })
+      .then(function (r) {
+        // Only drop what the server accepted. A 5xx leaves the batch buffered
+        // for the next attempt rather than silently losing the record.
+        if (!r.ok) return;
+        writeAuditBuffer(auditBuffer().slice(batch.length));
+
+        // Corrections are a separate question. The request succeeds even when
+        // the profile store is unreachable or not yet deployed — that is the
+        // fail-open design and it is right for the note — but dropping them on
+        // that basis would discard the evidence while reporting success.
+        // Keeping them means a technician's card starts populated the day the
+        // store goes live, instead of needing five fresh corrections first.
+        // The buffer is a bounded ring, so a store that never arrives costs a
+        // fixed amount of localStorage and nothing else.
+        return r.json().then(function (d) {
+          if (d && d.profile === "ok") {
+            writeCorrectionBuffer(correctionBuffer().slice(corrBatch.length));
+          }
+        });
+      })
+      .catch(function () {})
+      .then(function () { auditFlushing = false; });
+  }
+
+  /* ─────────────── Learned style card ───────────────
+     The technician's own card: rules derived from their corrections, plus the
+     block that gets folded into the system prompt. Read through the tools
+     worker, never from the profile store directly — the browser has no route
+     to that and must not have one.
+
+     Fails soft on every path. An empty card is a legitimate answer (a new
+     technician has one), and so is an unreachable profile store, so callers
+     cannot tell those apart and do not need to. ── */
+
+  function styleCardGet() {
+    var tok = getToken();
+    if (!tok) return Promise.resolve({ rules: [], block: "", available: false });
+    return fetch(apiUrl("/api/style-card"), { headers: { Authorization: "Bearer " + tok } })
+      .then(function (r) { return r.ok ? r.json() : { rules: [], block: "", available: false }; })
+      .catch(function () { return { rules: [], block: "", available: false }; });
+  }
+
+  // Muting is a deliberate action, so unlike the read this reports failure —
+  // a rule the technician switched off must not keep shaping their notes while
+  // the UI says otherwise.
+  function styleCardMute(feature, muted) {
+    var tok = getToken();
+    if (!tok) return Promise.resolve(false);
+    return fetch(apiUrl("/api/style-card/mute"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok },
+      body: JSON.stringify({ feature: feature, muted: !!muted }),
+    })
+      .then(function (r) { return r.ok; })
+      .catch(function () { return false; });
+  }
+
   /* ─────────────── PII candidate capture (admin review queue) ─────────────── */
 
   // Fire-and-forget: report bare scrubbed words into the admin PII review queue.
@@ -863,12 +1174,93 @@
     });
   }
 
+  /* ─────────── Non-name identifiers ───────────
+   *
+   * The on-page disclaimer has always named dates of birth, addresses, phone
+   * numbers and ID/insurance numbers as PHI. Detection only ever covered person
+   * names, so the tool was advertising a control it did not have.
+   *
+   * These are handled differently from names, deliberately. A name gets a review
+   * modal because the clinician may want to map it to a role, or certify it as
+   * not a person at all ("Grace" the program). None of that applies to a phone
+   * number: there is no clinical reason for one to be in a session note, so
+   * these are tokenised outright and merely reported afterwards. Removing the
+   * click removes the chance of clicking through.
+   *
+   * Ordered longest-match-first at the call site so a ZIP inside an address is
+   * not replaced before the address that contains it.
+   */
+  var IDENTIFIER_PATTERNS = [
+    // Do SSN before the generic ID rule so it is labelled correctly.
+    { type: "SSN", re: /\b\d{3}-\d{2}-\d{4}\b/g },
+    { type: "EMAIL", re: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g },
+    // Street address: number + up to three words + a street-type suffix.
+    // No trailing \.? — swallowing the sentence's full stop into the literal
+    // would leave the replacement dangling against the next word.
+    { type: "ADDRESS", re: /\b\d{1,6}\s+(?:[A-Za-z][A-Za-z.'-]*\s+){1,3}(?:St|Street|Ave|Avenue|Rd|Road|Dr|Drive|Ln|Lane|Blvd|Boulevard|Ct|Court|Way|Pl|Place|Ter|Terrace|Cir|Circle|Hwy|Highway)\b/gi },
+    // Numeric and written dates. Deliberately broad: a session note never needs
+    // one, and the notice tells the clinician exactly what was taken.
+    { type: "DATE", re: /\b(?:0?[1-9]|1[0-2])[/\-.](?:0?[1-9]|[12]\d|3[01])[/\-.](?:19|20)?\d{2}\b/g },
+    { type: "DATE", re: /\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t)?(?:ember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2}(?:st|nd|rd|th)?,?\s+(?:19|20)\d{2}\b/gi },
+    // Phone, with or without country code / punctuation.
+    { type: "PHONE", re: /(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}\b/g },
+    // Labelled record/member/policy identifiers.
+    { type: "ID", re: /\b(?:MRN|MR#|member(?:\s+ID)?|policy|insurance|subscriber|chart|record)\s*(?:#|no\.?|number|id)?\s*:?\s*[A-Z0-9][A-Z0-9-]{4,}\b/gi },
+    // A bare 5-digit ZIP only when it follows a state abbreviation.
+    { type: "ZIP", re: /\b[A-Z]{2}\s+\d{5}(?:-\d{4})?\b/g },
+  ];
+
+  // Returns [{text, type}] — the literal matched substrings, longest first, with
+  // any match wholly contained in an earlier (longer) one dropped so nested
+  // replacements cannot corrupt each other.
+  function detectIdentifiers(text) {
+    if (!text) return [];
+    var hits = [];
+    IDENTIFIER_PATTERNS.forEach(function (p) {
+      var re = new RegExp(p.re.source, p.re.flags);
+      var m;
+      while ((m = re.exec(text)) !== null) {
+        if (!m[0] || !m[0].trim()) continue;
+        hits.push({ text: m[0].trim(), type: p.type, at: m.index });
+        if (m.index === re.lastIndex) re.lastIndex++; // zero-width guard
+      }
+    });
+    hits.sort(function (a, b) { return b.text.length - a.text.length; });
+    var kept = [];
+    hits.forEach(function (h) {
+      var swallowed = kept.some(function (k) {
+        return k.text !== h.text && k.text.indexOf(h.text) !== -1;
+      });
+      var dupe = kept.some(function (k) { return k.text === h.text; });
+      if (!swallowed && !dupe) kept.push({ text: h.text, type: h.type });
+    });
+    return kept;
+  }
+
+  // Map entries in the same {name, token} shape the name map uses, so they flow
+  // through applyScrub and the "removed before this left your device" notice
+  // without either needing to know there are two kinds.
+  function buildIdentifierMap(text) {
+    var counts = {};
+    return detectIdentifiers(text).map(function (h) {
+      counts[h.type] = (counts[h.type] || 0) + 1;
+      return { name: h.text, token: "[" + h.type + "_" + counts[h.type] + "]", identifier: true };
+    });
+  }
+
   function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 
   function applyScrub(text, map) {
     var result = text;
     map.forEach(function (e) {
-      result = result.replace(new RegExp("\\b" + escapeRe(e.name) + "\\b", "gi"), e.token);
+      // \b only asserts anything next to a WORD character. Names are words, so
+      // wrapping them was fine; identifier literals are not — "(555) 213-4477"
+      // starts with "(" and "1420 Maple Street." ends with ".", and demanding a
+      // boundary there makes the replace silently match nothing. Apply each
+      // boundary only on the side that actually has a word character.
+      var lead = /^\w/.test(e.name) ? "\\b" : "";
+      var tail = /\w$/.test(e.name) ? "\\b" : "";
+      result = result.replace(new RegExp(lead + escapeRe(e.name) + tail, "gi"), e.token);
     });
     return result;
   }
@@ -922,24 +1314,47 @@
     nonPii: { load: loadNonPii, saveTerm: saveNonPiiTerm, clear: clearNonPii, sync: syncNonPii },
     // PII candidate capture — reports bare scrubbed words to the admin review queue.
     pii: { reportScrubbed: reportScrubbed },
+    // Content-free audit / usage events. Counts and enums only, never note text.
+    styleCard: { get: styleCardGet, mute: styleCardMute },
+    audit: {
+      emit: auditEmit,
+      corrections: auditCorrections,
+      flush: auditFlush,
+      _buffer: auditBuffer,
+      _corrections: correctionBuffer,
+    },
     // Local draft persistence for the note tools — keeps a clinician's typed note
     // across a page reload so a refresh (or an errant one) never loses their work.
-    // Stored per tool as a JSON blob; PHI stays only in the clinician's own browser.
+    // Encrypted at rest (see "Draft storage" above) and hard-expired after 12h.
+    // `ready` resolves once stored drafts are decrypted; the UI awaits it before
+    // first render, which is what lets load() stay synchronous.
     draft: {
+      ready: draftsReady,
       load: function (key) {
-        try { return JSON.parse(localStorage.getItem(DRAFT_PREFIX + key) || "null"); }
-        catch (e) { return null; }
+        var v = draftCache[key];
+        return v === undefined ? null : v;
       },
       save: function (key, obj) {
-        try { localStorage.setItem(DRAFT_PREFIX + key, JSON.stringify(obj)); } catch (e) {}
+        // Cache first so a reload during the async write still sees the note,
+        // and so load() right after save() is consistent.
+        draftCache[key] = obj;
+        encryptDraft(obj).then(function (blob) {
+          if (!blob) return;
+          try { localStorage.setItem(DRAFT_PREFIX + key, blob); } catch (e) {}
+        }).catch(function () {});
       },
       clear: function (key) {
+        delete draftCache[key];
         try { localStorage.removeItem(DRAFT_PREFIX + key); } catch (e) {}
       },
       clearAll: clearAllDrafts,
     },
     // exposed for testing / advanced use
-    _scrub: { detectNames: detectNames, buildNameMap: buildNameMap, applyScrub: applyScrub, restoreDeep: restoreDeep },
+    _scrub: {
+      detectNames: detectNames, buildNameMap: buildNameMap,
+      detectIdentifiers: detectIdentifiers, buildIdentifierMap: buildIdentifierMap,
+      applyScrub: applyScrub, restoreDeep: restoreDeep,
+    },
     _json: { repair: repairModelJson },
   };
 })();

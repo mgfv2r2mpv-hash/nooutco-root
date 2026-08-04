@@ -34,6 +34,28 @@
   <div id="settings-bar">
 
     <div class="setting-group">
+      <label for="sel-level">Level<button type="button" class="help-btn" data-help="Choose the teaching pool. Each card belongs to exactly one level: 1 Clear, 2 Nuanced, 3 Explain. Set this from the Skill Acquisition Plan.">?</button></label>
+      <select id="sel-level">
+        <option value="1">1 - Clear</option>
+        <option value="2">2 - Nuanced</option>
+        <option value="3">3 - Explain</option>
+      </select>
+      <p class="setting-note" id="level-blurb"></p>
+    </div>
+
+    <!-- Learner slot. Three opaque, unnamed slots, each holding its own saved
+         programme parameters. There is no name field and never will be: the
+         clinical boundary forbids player-identifiable data on the device. -->
+    <div class="setting-group">
+      <label for="sel-learner">Learner<button type="button" class="help-btn" data-help="Three unnamed slots, each remembering its own settings. Switching slots loads that slot's programme parameters. No names are stored - the slot is a letter and nothing else.">?</button></label>
+      <select id="sel-learner">
+        <option value="A">Learner A</option>
+        <option value="B">Learner B</option>
+        <option value="C">Learner C</option>
+      </select>
+    </div>
+
+    <div class="setting-group">
       <label for="sel-category">Category<button type="button" class="help-btn" data-help="Limit the cards to one situation category, or use all of them.">?</button></label>
       <select id="sel-category"></select>
     </div>
@@ -54,6 +76,7 @@
     </div>
 
     <div class="setting-group setting-modes">
+      <button id="btn-guide" class="btn-secondary" type="button">📘 Guide</button>
       <button id="btn-learn" class="btn-secondary" type="button">📖 Learn</button>
       <button id="btn-play" class="btn-primary" type="button">▶ Play</button>
     </div>
@@ -115,29 +138,75 @@
         Show Reason After
       </label>
       <label class="checkbox-label">
-        <input type="checkbox" id="chk-include-tricky">
-        Include Tricky / Reasoning Cards
+        <input type="checkbox" id="chk-show-rule" checked>
+        Show the Rule
       </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="chk-counterbalance" checked>
+        Counterbalance Tile Positions
+      </label>
+
+      <!-- Generalization probes. OFF by default and configured separately for
+           each level: the block shown is the one for the level in play, and the
+           other two keep their own stored settings. -->
+      <div class="probe-block">
+        <div class="probe-head">
+          <span class="probe-title">Probes - <span id="probe-level-label">Level 1</span></span>
+          <button type="button" class="help-btn" data-help="Generalization probes: untrained items run with the teaching supports withheld, so a correct answer is evidence about the repertoire and not about the prompt. Off unless the Skill Acquisition Plan calls for a generalization phase. Each level is configured on its own.">?</button>
+        </div>
+
+        <div class="probe-level" id="probe-level-1" data-level="1">
+          <label class="checkbox-label"><input type="checkbox" id="chk-probes-1"> Run probes</label>
+          <div class="extra-row"><label for="sel-probe-count-1">Probes per session</label>
+            <select id="sel-probe-count-1" data-probe-count></select></div>
+          <div class="extra-row"><label for="sel-probe-placement-1">Placement</label>
+            <select id="sel-probe-placement-1" data-probe-placement></select></div>
+          <div class="extra-row probe-tags" id="probe-tags-1" data-probe-tags></div>
+          <label class="checkbox-label"><input type="checkbox" id="chk-probe-tokens-1" checked> Tokens on probe trials</label>
+        </div>
+
+        <div class="probe-level" id="probe-level-2" data-level="2" hidden>
+          <label class="checkbox-label"><input type="checkbox" id="chk-probes-2"> Run probes</label>
+          <div class="extra-row"><label for="sel-probe-count-2">Probes per session</label>
+            <select id="sel-probe-count-2" data-probe-count></select></div>
+          <div class="extra-row"><label for="sel-probe-placement-2">Placement</label>
+            <select id="sel-probe-placement-2" data-probe-placement></select></div>
+          <div class="extra-row probe-tags" id="probe-tags-2" data-probe-tags></div>
+          <label class="checkbox-label"><input type="checkbox" id="chk-probe-tokens-2" checked> Tokens on probe trials</label>
+        </div>
+
+        <div class="probe-level" id="probe-level-3" data-level="3" hidden>
+          <label class="checkbox-label"><input type="checkbox" id="chk-probes-3"> Run probes</label>
+          <div class="extra-row"><label for="sel-probe-count-3">Probes per session</label>
+            <select id="sel-probe-count-3" data-probe-count></select></div>
+          <div class="extra-row"><label for="sel-probe-placement-3">Placement</label>
+            <select id="sel-probe-placement-3" data-probe-placement></select></div>
+          <div class="extra-row probe-tags" id="probe-tags-3" data-probe-tags></div>
+          <label class="checkbox-label"><input type="checkbox" id="chk-probe-tokens-3" checked> Tokens on probe trials</label>
+        </div>
+      </div>
     </div>
   </section>
 
   <!-- ── Pre-start blurb ──────────────────────────────────────────── -->
   <section class="game-intro" id="game-intro" aria-label="How this game works">
-    <h2>Think or Say? — a thought into a choice</h2>
-    <p>A scenario appears with a thought the learner is having. The clinician reads it aloud, then the learner decides: should that thought stay inside (<strong>THINK IT</strong>) or is it kind and okay to say out loud (<strong>SAY IT</strong>)?</p>
+    <h2>Think or Say? - a thought into a choice</h2>
+    <p>Each card shows a situation, then a thought the learner is having, then asks the same balanced question both ways round - for example <em>“Should you THINK these words, or SAY these words?”</em>. The clinician reads the card aloud, then the learner decides: <strong>THINK IT</strong> or <strong>SAY IT</strong>?</p>
     <ul>
-      <li><strong>Category</strong> — focus on one situation type (looks, smells, kind things…) or use all.</li>
-      <li><strong>Order</strong> — shuffle the cards or step through them in order.</li>
-      <li><strong>⚙ Settings</strong> — errorless, re-present errors, prompts, and whether to reveal the reason.</li>
-      <li><strong>Prompt</strong> — highlights the correct bubble for an assisted response.</li>
+      <li><strong>Level</strong> - the teaching pool. <em>1 Clear</em> for early acquisition, <em>2 Nuanced</em> where the situation decides, <em>3 Explain</em> where the learner gives the reason. A card belongs to exactly one level. Your Skill Acquisition Plan says which.</li>
+      <li><strong>Category</strong> - focus on one situation type (looks, smells, kind things…) or use all.</li>
+      <li><strong>Order</strong> - shuffle the cards or step through them in order.</li>
+      <li><strong>⚙ Settings</strong> - errorless, re-present errors, prompts, whether to reveal the reason, and whether the tiles swap sides between cards.</li>
+      <li><strong>Prompt</strong> - highlights the correct bubble for an assisted response.</li>
+      <li><strong>At Level 3</strong> - after the tile, the card asks <em>“Tell me why.”</em> You score what the learner actually said as <em>Correct</em>, <em>Partly correct</em> or <em>Not yet</em>, and may add a short note. The example reasons are examples, not a scoring key: a good reason that is not listed there is still Correct.</li>
     </ul>
-    <p class="tip">Yellow = THINK IT &nbsp;•&nbsp; Green = SAY IT. Tap <strong>📖 Learn</strong> for a teaching intro, or <strong>▶ Play</strong> to jump straight in.</p>
+    <p class="tip">Yellow = THINK IT &nbsp;•&nbsp; Green = SAY IT. Tap <strong>📘 Guide</strong> for the staff guide - which setting matches which part of the Skill Acquisition Plan - <strong>📖 Learn</strong> for a teaching intro, or <strong>▶ Play</strong> to jump straight in.</p>
   </section>
 
   <!-- ── Learn screen (hidden until Learn) ────────────────────────── -->
   <section id="learn-screen" hidden aria-label="How to decide">
     <div class="learn-inner">
-      <h2 id="learn-title">How do I know — Think it or Say it?</h2>
+      <h2 id="learn-title">How do I know - Think it or Say it?</h2>
 
       <!-- Optional video: a player is injected here when a video URL is set in game.js -->
       <div id="learn-video" hidden></div>
@@ -151,10 +220,25 @@
           <li><span class="tag tag-say">SAY IT</span> Is it <strong>kind</strong> or a nice compliment? You can say it!</li>
           <li><span class="tag tag-say">SAY IT</span> Is it <strong>helpful</strong>, or does it keep someone <strong>safe</strong>? Say it!</li>
         </ul>
-        <p class="learn-tip">Not sure? It’s okay to keep it inside — or ask a grown-up.</p>
+        <p class="learn-tip">Not sure? It’s okay to keep it inside - or ask a grown-up.</p>
       </div>
 
       <button id="btn-learn-start" class="btn-primary" type="button">Start practice ▶</button>
+    </div>
+  </section>
+
+  <!-- ── Staff guide (hidden until 📘 Guide) ──────────────────────────
+       Rendered from staff-guide.js, which is the ONE source. The same
+       buildBody() fills #guide-body here and fills the standalone file the
+       download button produces, so the screen and the file cannot drift. -->
+  <section id="guide-screen" hidden aria-label="Staff guide">
+    <div class="guide-actions">
+      <button id="btn-guide-download" class="btn-secondary" type="button">⬇ Download this guide</button>
+      <button id="btn-guide-close" class="btn-primary" type="button">Close</button>
+    </div>
+    <div id="guide-body"></div>
+    <div class="guide-actions guide-actions-foot">
+      <button id="btn-guide-close-foot" class="btn-primary" type="button">Close</button>
     </div>
   </section>
 
@@ -162,11 +246,31 @@
   <main id="game-area" hidden>
 
     <div id="progress-label" class="area-label"></div>
+    <!-- Shown only on a probe trial, so the technician can see that the
+         teaching supports are withheld before they reach for the Prompt. -->
+    <div id="probe-banner" class="probe-banner" hidden></div>
+
+    <!-- The rule, on screen for the whole trial at the level that states one.
+         Filled from the level pool's own `rule` (Level 1 declares it; 2 and 3
+         do not), so the text lives in the data once and never on a card. Both
+         branches are always shown together, which is what stops the strip
+         answering the card below it. -->
+    <section id="rule-panel" class="rule-panel" hidden aria-label="The rule for this level">
+      <div class="rule-head">
+        <span class="rule-title" id="rule-title"></span>
+        <span class="rule-lead" id="rule-lead"></span>
+      </div>
+      <div class="rule-body" id="rule-body"></div>
+      <p class="rule-tip" id="rule-tip"></p>
+    </section>
 
     <section id="scenario-section">
       <div id="scenario-card">
         <div id="scenario-situation"></div>
         <div id="scenario-thought"></div>
+        <!-- The balanced question. Generated from the card's own verb pair in
+             game.js, never hand-written, so it always names BOTH actions. -->
+        <div id="scenario-question"></div>
       </div>
       <div id="scenario-reason" hidden></div>
     </section>
@@ -186,6 +290,28 @@
           <div class="bubble bubble-speech"><span class="face">👄</span></div>
           <div class="choice-label">SAY IT</div>
         </button>
+      </div>
+
+      <!-- ── Level 3: the reason is the teaching target ────────────────
+           The learner has chosen a tile; now they say WHY. The example
+           reasons wait behind a button so the ask reaches the learner
+           first, and they are EXAMPLES, never a scoring key — the
+           technician scores what the learner actually said. A correct
+           reason nobody wrote down scores fully Correct. The score
+           buttons are rendered from game.js so the three-way vocabulary
+           is declared once. -->
+      <div id="rationale-panel" hidden>
+        <div id="rationale-ask">Tell me why.</div>
+        <button id="btn-rationale-reveal" type="button" hidden>Show example reasons</button>
+        <div id="rationale-examples" hidden>
+          <div id="rationale-examples-label">Example reasons - not a scoring key</div>
+          <ul id="rationale-examples-list"></ul>
+        </div>
+        <div class="area-label" id="rationale-score-label">Score what the learner actually said</div>
+        <div id="rationale-scores"></div>
+        <label id="rationale-note-label" for="rationale-note">Note (optional) &mdash; no names</label>
+        <input id="rationale-note" type="text" maxlength="200" autocomplete="off"
+               placeholder="What they said, in your words">
       </div>
     </section>
 
@@ -215,6 +341,7 @@
       <thead>
         <tr>
           <th>#</th>
+          <th>Level</th>
           <th>Category</th>
           <th>Scenario</th>
           <th>Answer</th>
@@ -222,11 +349,25 @@
           <th>Prompted</th>
           <th>Time (s)</th>
           <th>Outcome</th>
+          <th>Trial</th>
+          <th>Tags</th>
+          <th>Reason (L3)</th>
         </tr>
       </thead>
       <tbody id="results-body"></tbody>
     </table>
     <div id="print-summary"></div>
+    <!-- Trained vs. generalization, and generalization broken out by the EXACT
+         tag set. Rendered only when a session actually contains probe trials. -->
+    <div id="print-generalization" hidden>
+      <h3>Trained and generalization trials</h3>
+      <table id="generalization-table">
+        <thead>
+          <tr><th>Bucket</th><th>Trials</th><th>Independent</th><th>Note</th></tr>
+        </thead>
+        <tbody id="generalization-body"></tbody>
+      </table>
+    </div>
   </div>
 
   <script src="../../tooltip-help.js"></script>
@@ -238,6 +379,14 @@
   <script src="../game-settings.js"></script>
   <script src="../prompting-method.js"></script>
   <script src="../results-report.js"></script>
+  <script src="card-model.js"></script>
+  <script src="cards-level-1.js"></script>
+  <script src="cards-level-2.js"></script>
+  <script src="cards-level-3.js"></script>
+  <script src="cards.js"></script>
+  <script src="exemplar-generator.js"></script>
+  <script src="probes.js"></script>
+  <script src="staff-guide.js"></script>
   <script src="game.js"></script>
   <script>
     const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
