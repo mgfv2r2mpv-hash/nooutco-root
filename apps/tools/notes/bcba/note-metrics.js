@@ -60,6 +60,27 @@
     return Math.round(x * p) / p;
   }
 
+
+  /* Constructions that a detector reacts to and a length measure cannot see.
+     Derived from a real minimal pair: the same narrative scored 53% and then 0%
+     after the clinician edited it, with sentence count, length, burstiness and
+     opener variety all unchanged. Six things moved and four of them are these. */
+  var EMPTY_ADVERB = /\b(proactively|actively|effectively|appropriately|successfully|systematically|thoroughly|carefully)\b/gi;
+  var PARTICIPIAL_CAUSAL = /\bby (ensuring|providing|allowing|offering|delivering|maintaining|utilizing|promoting)\b/gi;
+  var ABSTRACT_STATE = /\b(motivational state|behavioral response|behavioral presentation|emotional state|engagement level|response pattern|behavioral pattern|activity level)\b/gi;
+  var VAGUE_VERB = /\b(support|supported|supports|facilitate[sd]?|promote[sd]?|enhance[sd]?|address(?:ed|es)?)\b/gi;
+
+  function constructions(text) {
+    var s = String(text || "");
+    var n = function (re) { return (s.match(re) || []).length; };
+    return {
+      emptyAdverbs: n(EMPTY_ADVERB),
+      participialCausals: n(PARTICIPIAL_CAUSAL),
+      abstractStates: n(ABSTRACT_STATE),
+      vagueVerbs: n(VAGUE_VERB),
+    };
+  }
+
   function measure(text) {
     var sents = sentencesOf(text);
     var words = wordsOf(text);
@@ -142,6 +163,16 @@
       clientRate: round(sents.length ? clientSents / sents.length : 0),
       topOpenerRepeat: maxRepeat,
     };
+    var flags = constructions(text);
+    var per100 = function (n) { return round((100 * n) / Math.max(words.length, 1), 2); };
+    m2.emptyAdverbs = flags.emptyAdverbs;
+    m2.participialCausals = flags.participialCausals;
+    m2.abstractStates = flags.abstractStates;
+    m2.vagueVerbs = flags.vagueVerbs;
+    // One number for the weekly report. Counted per 100 words, since the
+    // question is density rather than total.
+    m2.flaggedPer100 = per100(flags.emptyAdverbs + flags.participialCausals
+      + flags.abstractStates + flags.vagueVerbs);
     m2.score = score(m2);
     return m2;
   }
@@ -161,5 +192,5 @@
     return Math.round(parts);
   }
 
-  window.NoteMetrics = { measure: measure, score: score };
+  window.NoteMetrics = { measure: measure, score: score, constructions: constructions };
 })();
