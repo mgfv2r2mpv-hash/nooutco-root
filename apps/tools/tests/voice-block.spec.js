@@ -340,10 +340,65 @@ test.describe('voice coverage', () => {
     }
   });
 
-  test('bt is still excluded, and still for the stated reason', async () => {
-    // If this ever changes, it should change because he decided it, not because
-    // someone tidied a map.
-    expect(VOICE_COVERAGE.bt).not.toBe('kv');
-    expect(VOICE_COVERAGE.bt).toMatch(/signed by, the technician/i);
+  test('bt is on the allowlist but takes only the stances and the obligations', () => {
+    // This test used to assert bt was excluded outright, and it failed the moment
+    // he split it - which is what it was for. The rule it now pins is his:
+    // "give bt the stances and obligations but not the voice card or the calls."
+    expect(VOICE_COVERAGE.bt).toBe('kv');
+    const src = readFileSync(path.join(process.cwd(), '_worker.js'), 'utf8');
+    // The reason for the split lives next to the entry, so a future tidy-up
+    // cannot quietly turn it into a full inclusion.
+    expect(src).toMatch(/the technician signs the note/i);
+  });
+});
+
+/* Per-tool layers, and the BT split.
+ *
+ * His ruling of 2026-08-04 split BT rather than including or excluding it whole:
+ * "give bt the stances and obligations but not the voice card or the calls."
+ * How a person is described and what the ethics code requires belong to the
+ * practice; his sentence habits and his discretionary calls do not, because the
+ * technician signs the note.
+ */
+const SPLIT = {
+  enabled: true,
+  core: 'CORE-RULES',
+  registers: { 'clinical-narrative': 'NARRATIVE-DELTA', 'technician-note': 'TECH-CARD' },
+  stances: { 'clinical-narrative': 'STANCE', 'technician-note': 'STANCE' },
+  obligations: { 'clinical-narrative': 'OBLIGATION', 'technician-note': 'RBT-OBLIGATION' },
+  opinions: { 'clinical-narrative': 'GUM-ENTRY', 'technician-note': 'SHOULD-NOT-REACH-BT' },
+  toolRegister: { sup: 'clinical-narrative', bt: 'technician-note' },
+  toolLayers: { bt: ['stances', 'obligations'] },
+};
+
+test.describe('per-tool layers', () => {
+  test('BT takes the stances and the obligations', () => {
+    const out = composeVoice('SYSTEM', SPLIT, 'bt');
+    expect(out).toContain('STANCE');
+    expect(out).toContain('RBT-OBLIGATION');
+  });
+
+  test('BT takes neither his voice card nor his core', () => {
+    // The technician signs this note. His sentence habits are not theirs.
+    const out = composeVoice('SYSTEM', SPLIT, 'bt');
+    expect(out).not.toContain('CORE-RULES');
+    expect(out).not.toContain('TECH-CARD');
+  });
+
+  test('BT takes no opinions even when the caller asks', () => {
+    // Being on the allowlist is not the same as taking every layer.
+    const out = composeOpinions('SYSTEM', SPLIT, 'bt', { wantsRecommendation: true });
+    expect(out).toBe('SYSTEM');
+    expect(out).not.toContain('SHOULD-NOT-REACH-BT');
+  });
+
+  test('a tool with no declared layers still takes all of them', () => {
+    // Every existing tool must behave exactly as it did before layers existed.
+    const out = composeVoice('SYSTEM', SPLIT, 'sup');
+    expect(out).toContain('CORE-RULES');
+    expect(out).toContain('NARRATIVE-DELTA');
+    expect(out).toContain('STANCE');
+    expect(out).toContain('OBLIGATION');
+    expect(composeOpinions('SYSTEM', SPLIT, 'sup', { wantsRecommendation: true })).toContain('GUM-ENTRY');
   });
 });
