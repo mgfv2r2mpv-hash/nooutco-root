@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "note": "Shared stimulus library. Generated from the clock, receptive and matching _Resources trees plus shared/stimuli/uploads/ by shared/stimuli/build.mjs — change that script or the source art, never this file. ffc is an art-only source: it has no manifest to project, and its files join by the ids in shared/stimuli/ffc.json rather than by directory.",
+  "note": "Shared stimulus library. Generated from the clock, receptive and matching _Resources trees plus shared/stimuli/uploads/ by shared/stimuli/build.mjs - change that script or the source art, never this file. ffc is an art-only source: it has no manifest to project, and its files join by the ids in shared/stimuli/ffc.json rather than by directory.",
   "sources": [
     "matching",
     "receptive",

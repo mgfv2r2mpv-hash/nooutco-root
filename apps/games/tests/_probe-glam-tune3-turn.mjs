@@ -1,4 +1,4 @@
-/* Finding B probe — where does the turn indicator live, and does it survive a
+/* Finding B probe - where does the turn indicator live, and does it survive a
    scroll to the trolley?  Not a spec.  Run against a hash-verified :8788:
 
      PAGE=/glam-team-makeover/ node tests/_probe-glam-tune3-turn.mjs
@@ -44,7 +44,7 @@ for (const d of DEVICES) {
   await page.getByTitle('Show / hide setup').click();
   await page.getByLabel('Character', { exact: true }).selectOption('m4');
   await page.getByRole('button', { name: /^▶ Play/ }).click();
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   await page.waitForFunction(painted, undefined, { timeout: 20000 });
   await page.waitForTimeout(400);
 

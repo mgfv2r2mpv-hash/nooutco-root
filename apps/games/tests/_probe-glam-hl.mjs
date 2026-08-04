@@ -1,8 +1,8 @@
 /* Measurement harness behind SECOND-PASS fix U1/U2 (the highlight's falloff and
-   its silhouette). NOT a spec — it prints numbers, it asserts nothing. The table
+   its silhouette). NOT a spec - it prints numbers, it asserts nothing. The table
    in docs/eval/glam-team-makeover-build-report.md §U1 came out of it.
 
-   `_probe-glam-face3.mjs` answers "how big and how bright?" — the T4e questions.
+   `_probe-glam-face3.mjs` answers "how big and how bright?" - the T4e questions.
    This one answers the two the maintainer asked after T4e shipped:
 
      · is the silhouette CURVED, or is it a straight ellipse?
@@ -18,37 +18,36 @@
 
    Only the CHEEK sweep is measured. The `hl` tool also lays a stripe down the
    nose bridge, and the side split at W/2 cuts that stripe in half and drops half
-   into each side's footprint — which bends the spine of whatever is measured
+   into each side's footprint - which bends the spine of whatever is measured
    there. So a band of ±0.8 eye-widths around the eye midpoint is excluded, which
    is comfortably wider than the stripe (±0.20 ew) and comfortably clear of the
    cheek sweep (whose inner edge sits ~1.5 ew out).
 
    Printed per model × side:
-     n     — pixels moved
-     peak  — largest single-channel delta
-     area  — n in units of one eye's area
-     len   — footprint extent along its own principal axis, px
-     bowR  — SAGITTA RATIO. The spine (delta-weighted mean of the cross-axis per
+     n - pixels moved
+     peak - largest single-channel delta
+     area - n in units of one eye's area
+     len - footprint extent along its own principal axis, px
+     bowR - SAGITTA RATIO. The spine (delta-weighted mean of the cross-axis per
              bin along the principal axis) is fitted with a quadratic; bowR is the
-             arc's mid-point deviation from its chord, over the chord. An ellipse
-             — at ANY rotation, ANY aspect — has a perfectly straight spine, so it
+             arc's mid-point deviation from its chord, over the chord. An ellipse - at ANY rotation, ANY aspect - has a perfectly straight spine, so it
              scores ~0. A kidney bean scores its own curvature.
-     bowS  — the sign of that bow, in the side's own frame (+1 = the ends turn up
+     bowS - the sign of that bow, in the side's own frame (+1 = the ends turn up
              toward the eye, i.e. concave toward the socket). Mirrored sides that
              genuinely mirror agree here; a shape merely translated across does
              not.
-     xr50  — CROSS-AXIS FALLOFF. The footprint's delta is summed into bins of
+     xr50 - CROSS-AXIS FALLOFF. The footprint's delta is summed into bins of
              perpendicular offset over the middle 60 % of its length, giving one
              profile across the shape; xr50 is the width of that profile at half
              its maximum over its width at a tenth. 1.0 is a top hat, and the
-             plain raised cosine — flat over the inner quarter — is about 0.63.
+             plain raised cosine - flat over the inner quarter - is about 0.63.
              Deliberately measured ACROSS and not radially: a swept shape has a
              ridge near peak along its whole length by construction, so any
              whole-footprint measure reads that ridge rather than the fade, and
              would call a smooth sweep a plateau.
-     core  — share of the footprint at or above 70 % of peak (whole-footprint,
+     core - share of the footprint at or above 70 % of peak (whole-footprint,
              kept for continuity with the T4-era numbers).
-     r50   — sqrt(A50/A10): equivalent-radius of the ≥50 %-of-peak region over
+     r50 - sqrt(A50/A10): equivalent-radius of the ≥50 %-of-peak region over
              that of the ≥10 % region. 1.0 = a top hat, 0 = a spike. */
 import { chromium, firefox, webkit } from '@playwright/test';
 
@@ -84,7 +83,7 @@ const SET = (patch) => `
 
 /* A fixed wait is not enough. Hair masks and eye sprites decode asynchronously
    and repaint when they land, so a base frame and a tool frame taken 400 ms
-   apart can differ by a sprite that arrived in between — which lands in the diff
+   apart can differ by a sprite that arrived in between - which lands in the diff
    as a bright patch and moves `peak` by a third on one side of one model. Grab
    only once the compositor has stopped changing. */
 const GRAB = () => new Promise((res) => {
@@ -103,7 +102,7 @@ const GRAB = () => new Promise((res) => {
   requestAnimationFrame(tick);
 });
 
-/* Kept verbatim in glam-art-fidelity.spec.js as `SWEEP` — edit both together. */
+/* Kept verbatim in glam-art-fidelity.spec.js as `SWEEP` - edit both together. */
 export const SWEEP_SRC = `
   /* Shape of the cheek sweep on one half of the face.
      \`cxm\` is the eye midpoint in px, \`ew\` one eye's width in px: everything
@@ -126,7 +125,7 @@ export const SWEEP_SRC = `
     all.sort((p, q) => p - q);
     const p99 = all[Math.floor(all.length * 0.99)];
 
-    /* falloff — how much of the footprint sits in the bright core */
+    /* falloff - how much of the footprint sits in the bright core */
     let core = 0, a50 = 0, a10 = 0;
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
       const d = D[y * w + x]; if (d <= 2) continue;
@@ -186,8 +185,7 @@ export const SWEEP_SRC = `
     const sag = A * (L / 2) * (L / 2);        // arc mid-point minus chord mid-point
 
     /* Cross-axis profile over the middle 60 % of the sweep. Mirroring a shape
-       flips u and leaves v alone, so this profile — and the sagitta with it —
-       is the same number on both cheeks when the two are true mirrors. */
+       flips u and leaves v alone, so this profile - and the sagitta with it - is the same number on both cheeks when the two are true mirrors. */
     const uA = uMin + L * 0.20, uB = uMax - L * 0.20, VB = 81, VS = 0.5;
     const prof = new Float64Array(VB);
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {

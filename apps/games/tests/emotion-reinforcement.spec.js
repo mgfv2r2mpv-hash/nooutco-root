@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 /*
- * Emotion ID — token board + "Finish & SR" reinforcement.
+ * Emotion ID - token board + "Finish & SR" reinforcement.
  * Exercises the shared NooutcoTokens + NooutcoReward modules end to end:
  * star toggle enables the board, reaching the goal pops "Finish & SR", and the
  * button opens the shared SR timer screen (5:00) with a go-back control.

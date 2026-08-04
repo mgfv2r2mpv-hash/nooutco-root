@@ -1,4 +1,4 @@
-/* WishView — the AI "Wish It" composer (violet surface). Goal-driven schedule
+/* WishView - the AI "Wish It" composer (violet surface). Goal-driven schedule
    rework: a structured natural-language request, then proposed solutions. */
 const wsh = window.NoOutcomeABADesignSystem_08ed95;
 
@@ -14,7 +14,7 @@ function WishView() {
         <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: 'var(--text-primary)' }}>Wish It</h2>
       </div>
       <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.5 }}>
-        Describe the outcome you want. The assistant reworks the schedule with conflict-safe moves — you review every change before it lands.
+        Describe the outcome you want. The assistant reworks the schedule with conflict-safe moves - you review every change before it lands.
       </p>
 
       <div style={{ background: 'var(--violet-50)', border: '1px solid var(--violet-200)', borderRadius: 'var(--radius-md)', padding: 12, margin: '12px 0' }}>
@@ -30,7 +30,7 @@ function WishView() {
 
       {sent && (
         <div>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '4px 0 10px' }}>Proposed — 2 options</div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '4px 0 10px' }}>Proposed - 2 options</div>
           {[
             { id: 's1', title: 'Move 2 sessions to Thursday', detail: 'Jordan B. Friday PM cleared · Mia L. supervision preserved', grade: 'met' },
             { id: 's2', title: 'Reassign Friday to Priya N.', detail: 'Jordan B. Friday PM cleared · adds 4h to Priya N.', grade: 'pace' },

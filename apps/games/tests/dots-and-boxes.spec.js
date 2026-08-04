@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-// Smoke + behaviour coverage for Dots & Boxes — a pass-and-play turn-taking
+// Smoke + behaviour coverage for Dots & Boxes - a pass-and-play turn-taking
 // game rendered as an inline SVG board. Proves the board boots clean, the
 // core turn rules hold (pass on no box, go-again on a completed box), the
 // repeatable Backup undo restores state, and the hub card links to it.
@@ -32,7 +32,7 @@ test.describe('Dots & Boxes', () => {
     await expect(page.getByText(/Player 1's turn/)).toBeVisible();
     await expect(page.getByText('0 / 9 boxes')).toBeVisible();
 
-    await page.locator(edge('h', 0, 0)).click();             // one edge — no box
+    await page.locator(edge('h', 0, 0)).click();             // one edge - no box
     await expect(page.getByText(/Player 2's turn/)).toBeVisible();
     await expect(page.getByText('0 / 9 boxes')).toBeVisible();
   });

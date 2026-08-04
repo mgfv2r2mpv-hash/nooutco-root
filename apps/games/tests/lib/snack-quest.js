@@ -6,7 +6,7 @@ import { expect } from '@playwright/test';
  * The quest is deliberately animated, so every helper waits on observable game
  * state (`window.__sq.peek()`) rather than on a timeout. `__sq` is a read-only
  * test seam: it reports positions and the current target, and writes nothing to
- * the page — which is what lets the expressive spec assert the target word is
+ * the page - which is what lets the expressive spec assert the target word is
  * absent from the DOM while still knowing what that word is.
  */
 
@@ -34,7 +34,7 @@ export async function bootstrap(page, opts = {}) {
   await page.addInitScript(
     ({ cfg, SETTINGS_KEY, RESULTS_KEY, TOKENS_KEY }) => {
       // addInitScript runs on every navigation, so the trial store is wiped
-      // only on the first one — otherwise a reload-persistence test would be
+      // only on the first one - otherwise a reload-persistence test would be
       // clearing the very data it is checking survived.
       if (!sessionStorage.getItem('__sq_seeded')) {
         sessionStorage.setItem('__sq_seeded', '1');
@@ -85,8 +85,8 @@ export async function choosePlace(page, placeId) {
 /**
  * Wait until the question is actually askable.
  *
- * Each round now opens with the stage to itself — our friend and the snack land
- * and are given a beat to be seen — and only then does the card slide up. `busy`
+ * Each round now opens with the stage to itself - our friend and the snack land
+ * and are given a beat to be seen - and only then does the card slide up. `busy`
  * clears before that beat, so a driver that answered on `!busy` alone would be
  * clicking at tiles that are not on screen yet.
  */
@@ -118,7 +118,7 @@ export async function respondCorrect(page) {
 /**
  * Drive a trial to an Error outcome.
  *
- * A wrong tap does not end a matching/receptive trial — it flags the tile and
+ * A wrong tap does not end a matching/receptive trial - it flags the tile and
  * shows the learner which one was right, and the trial ends when they then take
  * it. So an error is two taps, and a driver that sends only the wrong one
  * leaves the trial open with nothing having happened.

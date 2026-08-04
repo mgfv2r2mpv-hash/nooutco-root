@@ -1,4 +1,4 @@
-/* ComplianceView — the traffic-light dashboard. Per-client supervision % and
+/* ComplianceView - the traffic-light dashboard. Per-client supervision % and
    per-tech billable hours, each graded met / on-pace / behind. */
 const cmp = window.NoOutcomeABADesignSystem_08ed95;
 
@@ -18,7 +18,7 @@ function ComplianceView({ appts }) {
         {over > 0 && <StatusPill intent="over" dot>{over} over</StatusPill>}
       </div>
 
-      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '4px 0 10px' }}>Per client — supervision %</div>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '4px 0 10px' }}>Per client - supervision %</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10, marginBottom: 22 }}>
         {clientComp.map(c => (
           <Card key={c.name} padding="sm" accent={c.status === 'over' ? 'var(--orange-500)' : c.status === 'met' ? 'var(--green-500)' : c.status === 'pace' ? 'var(--amber-500)' : 'var(--red-500)'}>
@@ -34,7 +34,7 @@ function ComplianceView({ appts }) {
         ))}
       </div>
 
-      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '4px 0 10px' }}>Per technician — billable hours</div>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '4px 0 10px' }}>Per technician - billable hours</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
         {techComp.map(t => (
           <Card key={t.name} padding="sm" accent={t.status === 'met' ? 'var(--green-500)' : t.status === 'pace' ? 'var(--amber-500)' : 'var(--red-500)'}>

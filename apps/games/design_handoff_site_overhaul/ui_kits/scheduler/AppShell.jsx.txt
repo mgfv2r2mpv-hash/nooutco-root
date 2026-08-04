@@ -1,4 +1,4 @@
-/* AppShell — the SAssi frame: dark slate header, emoji nav, and the active
+/* AppShell - the SAssi frame: dark slate header, emoji nav, and the active
    view. Holds the demo's mutable schedule + selection state. */
 const shell = window.NoOutcomeABADesignSystem_08ed95;
 

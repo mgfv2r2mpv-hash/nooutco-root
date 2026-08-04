@@ -1,5 +1,5 @@
 /**
- * chartCanvas — renders CPR bar charts to an HTMLCanvasElement.
+ * chartCanvas - renders CPR bar charts to an HTMLCanvasElement.
  * Used by excelExport to embed PNG chart images in the .xlsx file.
  */
 import type { ConditionAnalysis } from '../types';
@@ -143,6 +143,6 @@ export function drawBarChartToCanvas(opts: BarChartOptions): HTMLCanvasElement {
 }
 
 export function canvasToPngBase64(canvas: HTMLCanvasElement): string {
-  // Strip the "data:image/png;base64," prefix — ExcelJS wants raw base64
+  // Strip the "data:image/png;base64," prefix - ExcelJS wants raw base64
   return canvas.toDataURL('image/png').replace(/^data:image\/png;base64,/, '');
 }

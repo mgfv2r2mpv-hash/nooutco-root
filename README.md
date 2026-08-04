@@ -1,4 +1,4 @@
-# nooutco-root — No Outcome ABA monorepo
+# nooutco-root - No Outcome ABA monorepo
 
 One repository for the three No Outcome ABA web surfaces. Each app deploys as its own
 Cloudflare Pages project pointed at this repo with a per-app **Root directory**.
@@ -22,12 +22,12 @@ Cloudflare Pages project pointed at this repo with a per-app **Root directory**.
 
 ## CI (`.github/workflows`)
 
-- `scrub-cron.yml`, `term-digest-cron.yml` — nightly/weekly POSTs to tools.nooutco.me
+- `scrub-cron.yml`, `term-digest-cron.yml` - nightly/weekly POSTs to tools.nooutco.me
   (need repo secret `CRON_SECRET`).
-- `deploy-worker.yml` — deploys the standalone games worker (needs repo secret
+- `deploy-worker.yml` - deploys the standalone games worker (needs repo secret
   `CLOUDFLARE_API_TOKEN`).
-- `games-test.yml` — Playwright E2E for `apps/games`.
-- `triage.yml` — issue triage.
+- `games-test.yml` - Playwright E2E for `apps/games`.
+- `triage.yml` - issue triage.
 
 ## Local development
 

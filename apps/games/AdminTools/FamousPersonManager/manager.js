@@ -1,6 +1,6 @@
 'use strict';
 /* ══════════════════════════════════════════════════════════════════
-   Famous Person Manager — edits the Red Carpet Convos roster
+   Famous Person Manager - edits the Red Carpet Convos roster
    (apps/games/red-carpet-convos/people.json).
 
    Auth matches the other AdminTools managers: the ADMIN_SECRET_HASH
@@ -15,7 +15,7 @@
 (function () {
   // ── Auth (ported from FFCGManager) ─────────────────────────────────
   // The hash is injected into index.html by _worker.js and exposed as a global
-  // (HTML-only rewrite — it cannot live in this .js file).
+  // (HTML-only rewrite - it cannot live in this .js file).
   const ADMIN_SECRET_HASH = window.ADMIN_SECRET_HASH || "";
   let token = localStorage.getItem('admin_token') || '';
 
@@ -48,7 +48,7 @@
   document.getElementById('admin-unlock-btn').addEventListener('click', adminUnlock);
   adminPwInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') adminUnlock(); });
 
-  function handle401() { token = ''; localStorage.removeItem('admin_token'); setGearAuthed(false); showAdminModal('Session expired — re-enter password.'); }
+  function handle401() { token = ''; localStorage.removeItem('admin_token'); setGearAuthed(false); showAdminModal('Session expired - re-enter password.'); }
 
   async function adminPost(endpoint, body) {
     const ctrl = new AbortController();
@@ -68,7 +68,7 @@
   var root = document.getElementById('fpm');
   var FIELDS = [
     { key: 'text', label: 'Fact', hint: 'read together in Meet', rows: 2, full: true },
-    { key: 'topic', label: 'Topic chip', hint: '2–4 words', rows: 1, full: false },
+    { key: 'topic', label: 'Topic chip', hint: '2-4 words', rows: 1, full: false },
     { key: 'sayShort', label: 'Comment · short', hint: 'the “in a few words” hook', rows: 1, full: false },
     { key: 'say', label: 'Comment · full', hint: 'a plain statement', rows: 2, full: true },
     { key: 'ask', label: 'Question to partner', hint: 'the volley', rows: 2, full: false },
@@ -98,7 +98,7 @@
   function loadSuggestions() {
     adminPost('person-suggestions', { action: 'list' })
       .then(function (res) { if (!res || !res.ok) return; return res.json().then(function (d) { m.suggestions = (d && (d.suggestions || d.items)) || []; refreshSuggestUI(); }); })
-      .catch(function () { /* endpoint may not exist yet — degrade quietly */ });
+      .catch(function () { /* endpoint may not exist yet - degrade quietly */ });
   }
   function refreshSuggestUI() { var b = document.getElementById('fpm-suggest-badge'); if (b) { b.textContent = m.suggestions.length; b.style.background = m.suggestions.length ? 'var(--sage-500)' : 'var(--slate-300)'; } if (m.tab === 'suggestions') render(); }
 
@@ -143,7 +143,7 @@
           if (res.ok && facts && facts.length) {
             var i = m.people.map(function (p) { return p.name; }).indexOf(name);
             if (i >= 0) { m.people[i] = Object.assign({}, m.people[i], { facts: facts.map(function (f) { return Object.assign({}, f); }) }); }
-            recomputeDirty(); flash('AI draft ready — review, then Save', 'ok');
+            recomputeDirty(); flash('AI draft ready - review, then Save', 'ok');
           } else if (res.ok && (d.ok || d.message)) { flash(d.message || 'Draft requested', 'ok'); }
           else flash('Draft failed: ' + (d.error || res.status), 'err');
           render();
@@ -157,7 +157,7 @@
     m.suggestions = m.suggestions.filter(function (s) { return s.name !== name; });
     m.tab = 'prompts'; m.pIdx = i; recomputeDirty();
     adminPost('person-suggestions', { action: 'dismiss', name: name }).catch(function () {});
-    flash('Added as a draft — draft facts, then Save', 'ok'); render();
+    flash('Added as a draft - draft facts, then Save', 'ok'); render();
   }
   function dismissSuggest(name) {
     m.suggestions = m.suggestions.filter(function (s) { return s.name !== name; });
@@ -190,7 +190,7 @@
       var imgTag = img ? '<img src="' + escA(img) + '" alt="" referrerpolicy="no-referrer" data-imgerr style="width:34px;height:34px;border-radius:8px;object-fit:cover;object-position:center 30%;flex:0 0 auto;background:var(--slate-100)" />' : '<span style="width:34px;height:34px;border-radius:8px;flex:0 0 auto;background:var(--slate-100);display:flex;align-items:center;justify-content:center;font-size:16px">' + (p.emoji || '⭐') + '</span>';
       return '<button data-act="selectPerson" data-arg="' + i + '" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px;border:1px solid ' + (active ? 'var(--sage-500)' : 'transparent') + ';background:' + (active ? '#fff' : 'transparent') + ';border-radius:var(--radius-md);cursor:pointer;margin-bottom:2px;box-shadow:' + (active ? 'var(--shadow-sm)' : 'none') + '">' +
         imgTag + '<span style="flex:1;min-width:0;text-align:left"><span style="display:block;font-size:13px;font-weight:800;color:var(--slate-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(p.name) + '</span><span style="display:block;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--slate-400)">' + esc(p.tag) + '</span></span>' +
-        '<span title="' + (done ? 'Live in game' : 'Pending — needs facts') + '" style="width:9px;height:9px;border-radius:999px;flex:0 0 auto;background:' + (done ? 'var(--sage-400)' : 'var(--amber-300)') + '"></span></button>';
+        '<span title="' + (done ? 'Live in game' : 'Pending - needs facts') + '" style="width:9px;height:9px;border-radius:999px;flex:0 0 auto;background:' + (done ? 'var(--sage-400)' : 'var(--amber-300)') + '"></span></button>';
     }).join('');
     return '<div style="flex:0 0 260px;border-right:1px solid var(--sage-200);background:#fbfcf9;display:flex;flex-direction:column;min-height:0">' +
       '<div style="padding:12px 14px;border-bottom:1px solid var(--sage-200)"><input id="fpm-filter" value="' + escA(m.filter) + '" placeholder="Filter people…" style="width:100%;padding:8px 11px;border:1px solid var(--sage-300);border-radius:var(--radius-md);font-size:13px;background:#fff;color:var(--slate-900)" /></div>' +
@@ -202,7 +202,7 @@
     var img = imgSrc(p);
     var head = '<div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">' +
       (img ? '<img src="' + escA(img) + '" alt="" referrerpolicy="no-referrer" data-imgerr style="width:52px;height:52px;border-radius:12px;object-fit:cover;object-position:center 30%;flex:0 0 auto;background:var(--pabg)" />' : '<span style="width:52px;height:52px;border-radius:12px;flex:0 0 auto;background:var(--pabg);display:flex;align-items:center;justify-content:center;font-size:22px">' + (p.emoji || '⭐') + '</span>') +
-      '<div style="flex:1;min-width:0"><div style="font-size:20px;font-weight:800;color:var(--slate-900);line-height:1.1">' + esc(p.name) + '</div><div style="font-size:12px;font-weight:700;color:var(--slate-400)">' + esc(p.tag) + ' · ' + esc(p.years || '—') + '</div></div>' +
+      '<div style="flex:1;min-width:0"><div style="font-size:20px;font-weight:800;color:var(--slate-900);line-height:1.1">' + esc(p.name) + '</div><div style="font-size:12px;font-weight:700;color:var(--slate-400)">' + esc(p.tag) + ' · ' + esc(p.years || ' - ') + '</div></div>' +
       '<button data-act="regen" style="padding:9px 15px;border:1.5px solid var(--violet-200);border-radius:var(--radius-md);background:var(--violet-50);color:var(--violet-600);font-size:12.5px;font-weight:800;cursor:' + (m.regenBusy ? 'default' : 'pointer') + ';opacity:' + (m.regenBusy ? '.6' : '1') + ';flex:0 0 auto">' + (m.regenBusy ? '✨ Drafting…' : ((p.facts || []).length ? '✨ Regenerate with AI' : '✨ Draft with AI')) + '</button></div>';
 
     var bodyHTML;
@@ -276,7 +276,7 @@
       var imgTag = img ? '<img src="' + escA(img) + '" alt="" referrerpolicy="no-referrer" data-imgerr style="width:34px;height:34px;border-radius:8px;object-fit:cover;object-position:center 30%;flex:0 0 auto;background:var(--slate-100)" />' : '<span style="width:34px;height:34px;border-radius:8px;flex:0 0 auto;background:var(--slate-100);display:flex;align-items:center;justify-content:center;font-size:16px">' + (p.emoji || '⭐') + '</span>';
       return '<button data-act="selectPerson" data-arg="' + i + '" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px;border:1px solid ' + (active ? 'var(--sage-500)' : 'transparent') + ';background:' + (active ? '#fff' : 'transparent') + ';border-radius:var(--radius-md);cursor:pointer;margin-bottom:2px;box-shadow:' + (active ? 'var(--shadow-sm)' : 'none') + '">' + imgTag +
         '<span style="flex:1;min-width:0;text-align:left"><span style="display:block;font-size:13px;font-weight:800;color:var(--slate-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(p.name) + '</span><span style="display:block;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--slate-400)">' + esc(p.tag) + '</span></span>' +
-        '<span title="' + (done ? 'Live in game' : 'Pending — needs facts') + '" style="width:9px;height:9px;border-radius:999px;flex:0 0 auto;background:' + (done ? 'var(--sage-400)' : 'var(--amber-300)') + '"></span></button>';
+        '<span title="' + (done ? 'Live in game' : 'Pending - needs facts') + '" style="width:9px;height:9px;border-radius:999px;flex:0 0 auto;background:' + (done ? 'var(--sage-400)' : 'var(--amber-300)') + '"></span></button>';
     }).join('');
     return rows || '<div style="padding:14px;font-size:12.5px;color:var(--slate-400)">No match.</div>';
   }

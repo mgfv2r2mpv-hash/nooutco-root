@@ -1,15 +1,15 @@
-/* Glam Team Makeover — turn-exchange pass, Finding B: the brow-tail pixel noise.
+/* Glam Team Makeover - turn-exchange pass, Finding B: the brow-tail pixel noise.
 
    Reported: "a small amount of pixel noise between outer tail of eyebrows and
    temple/hairline". The maintainer then corrected the diagnosis and their
    correction is the one under test here: "the base image has an eyebrow that is
-   removed by code and that is the likeliest source of aberration" — on a face
+   removed by code and that is the likeliest source of aberration" - on a face
    where NO brow tool has been used and NO recolour has happened, which is why
    `BROW_TINT` is not involved and is not touched. It is asserted unchanged below.
 
    The state under test is exactly the reported one: bare face, default hair,
    routine `free` so no tool has had to be taken to reach the salon, and the spot
-   flaws cleared — one of m4's seeded spot positions lands inside the R band, and
+   flaws cleared - one of m4's seeded spot positions lands inside the R band, and
    leaving it in makes the count depend on the draw rather than on the render. */
 import { test, expect } from '@playwright/test';
 
@@ -23,12 +23,12 @@ const BAND = { in: 0.18, out: 0.50, tall: 1.10, hair: 0.10, key: 0.12, lips: 0.1
 
 /* A stray-ink pixel is, on the composited bare face, a pixel inside the brow-tail
    band that
-     (a) the model's OWN mask calls skin — hair < 0.10, lips < 0.12, eyes+brows
+     (a) the model's OWN mask calls skin - hair < 0.10, lips < 0.12, eyes+brows
          key < 0.12. That excludes hair, the hairline's anti-aliased edge, and
          the region the base render's build-time brow removal did reach;
      (b) is not covered by the brow STATE SPRITE, whose alpha is sampled at the
          exact rect paintAvatar stamps it into; and
-     (c) is darker than 0.86 x the model's CHEEK skin luminance — a reference
+     (c) is darker than 0.86 x the model's CHEEK skin luminance - a reference
          taken well below the band so no repair inside the band can move it.
    `deficit` is the integral of how far under that threshold the band runs, in
    luminance-pixels. It is the headline number: the noise is a haze, so its area
@@ -120,7 +120,7 @@ async function bareFace(page, model) {
   await page.getByLabel('Character', { exact: true }).selectOption(model);
   await page.getByLabel('Routine', { exact: true }).selectOption('free');
   await page.getByRole('button', { name: /^▶ Play/ }).click();
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   await page.waitForFunction(painted, undefined, { timeout: 20000 });
   await page.evaluate(async (src) => {
     const L = new Function('return (' + src + ')')()();

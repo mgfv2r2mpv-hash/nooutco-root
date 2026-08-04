@@ -1,5 +1,5 @@
 /* Screenshot pass for the refresh's new opening surfaces.
-   Not a spec — run with `node tests/_shots-open-flow.mjs` against a server on
+   Not a spec - run with `node tests/_shots-open-flow.mjs` against a server on
    :8788. Drives the real flow (Start → the thread mid-arrival → the booked
    state → the salon) at the three device widths the spec's §3.9 device order
    names, and fails loudly on any console error. */
@@ -38,7 +38,7 @@ for (const d of DEVICES) {
   await page.screenshot({ animations: 'disabled', path: `${OUT}texting-booked-${d.tag}.png` });
 
   await page.getByRole('button', { name: /Open the salon/ }).click();
-  await page.getByRole('button', { name: /Go —/ }).waitFor();
+  await page.getByRole('button', { name: /Go - / }).waitFor();
   await page.waitForFunction(() => {
     const c = document.getElementById('gtm-canvas');
     if (!c) return false;

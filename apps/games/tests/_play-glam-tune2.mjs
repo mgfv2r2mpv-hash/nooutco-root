@@ -2,7 +2,7 @@
    sit behind the SECOND PASS's "played it in a browser" claim.
 
    `F-11` proves the pixels a tool paints land inside the box the child is told
-   to work in. It does NOT prove the box is reachable — it reads the zone table
+   to work in. It does NOT prove the box is reachable - it reads the zone table
    rather than pressing it. U2 moved the highlight's hitbox (it is rolled up from
    `_hlStamps`, so it followed the art), and the way to know a moved hitbox still
    works is to drag on it.
@@ -54,14 +54,14 @@ await page.waitForFunction(() => {
 }, undefined, { timeout: 20000 });
 console.log('· salon open, client painted');
 
-await page.getByRole('button', { name: /Go —/ }).click();
+await page.getByRole('button', { name: /Go - / }).click();
 console.log('· Go');
 
 /* ── the hitbox test. Pick the Highlight off the trolley the way a child does,
    then drag across the target overlay the runtime rendered, with real pointer
    events. Nothing here reaches into the zone table. ── */
 /* The trolley is a staged flow, so Highlight is step 6 and does not appear until
-   1–5 are settled. Those five are marked done directly — they are the SUBJECT of
+   1-5 are settled. Those five are marked done directly - they are the SUBJECT of
    no claim here; what has to be real is the pick and the drag. */
 await logic(page, `return new Promise((r) => L.setState((s) => {
   const ed = JSON.parse(JSON.stringify(s.ed));

@@ -26,8 +26,7 @@ function sample(arr, n) {
 
 // ── Settings storage keys ──────────────────────────────────────────
 // Stage 6: this game's programme parameters live in the shared store
-// (../game-settings.js) under SETTINGS_KEY. `ivgSettings` is the retired key —
-// read once, folded into the store, and NEVER deleted or rewritten, so a
+// (../game-settings.js) under SETTINGS_KEY. `ivgSettings` is the retired key - // read once, folded into the store, and NEVER deleted or rewritten, so a
 // mis-mapped fold is recoverable and a downgrade still finds the old config.
 const SETTINGS_KEY = 'nooutco.settings.intraverbal';
 const LEGACY_SETTINGS_KEY = 'ivgSettings';
@@ -48,7 +47,7 @@ const state = {
   promptDelay:       false,
   promptDelaySecs:   3,
 
-  // Per-category target filters: { [cat]: itemId[] } — empty = no filter
+  // Per-category target filters: { [cat]: itemId[] } - empty = no filter
   targetFilters: {},
 
   // Data
@@ -217,7 +216,7 @@ document.addEventListener('DOMContentLoaded', async () => {
  * derives BOTH the defaults and the clamping from this one declaration, so
  * there is no second hand-written description to drift out of sync with it.
  *
- * `autoPromptEnabled` defaults to FALSE here — it is true only in `sequences`.
+ * `autoPromptEnabled` defaults to FALSE here - it is true only in `sequences`.
  * That difference is clinical, not accidental; do not harmonise it.
  */
 const SETTINGS_FIELDS = {
@@ -514,7 +513,7 @@ function nextPosition() {
   return state.posDeck.pop();
 }
 
-// ── Target deck — cycle without repeats ───────────────────────────
+// ── Target deck - cycle without repeats ───────────────────────────
 
 function nextTarget(cat, pool) {
   if (!pool.length) return null;

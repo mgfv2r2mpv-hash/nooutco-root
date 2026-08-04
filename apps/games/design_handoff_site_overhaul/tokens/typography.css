@@ -1,5 +1,5 @@
 /* ============================================================================
-   TYPOGRAPHY — No Outcome ABA
+   TYPOGRAPHY - No Outcome ABA
    The app is information-dense and mobile/iPad-first, so the working scale runs
    tight (13px body). Display sizes are provided for marketing, decks, and
    foundation cards. Atkinson Hyperlegible is the brand face (see fonts.css).
@@ -22,7 +22,7 @@
   --text-lg:  16px;  /* detail titles, section headings */
   --text-xl:  18px;  /* view headings */
 
-  /* Display sizes — marketing, decks, hero, specimen cards */
+  /* Display sizes - marketing, decks, hero, specimen cards */
   --text-2xl: 22px;
   --text-3xl: 28px;
   --text-4xl: 36px;
@@ -54,7 +54,7 @@
   --font-eyebrow-size: var(--text-2xs);
 }
 
-/* Base element defaults — applied when consumers opt in by using these tokens.
+/* Base element defaults - applied when consumers opt in by using these tokens.
    Kept minimal so the system never fights a host app's reset. */
 :root {
   color: var(--text-body);

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * style-score — a deterministic, dependency-free scorer for the signals AI
+ * style-score - a deterministic, dependency-free scorer for the signals AI
  * detectors actually key on.
  *
  * WHY THIS AND NOT PERPLEXITY. Real perplexity needs token log-probabilities.
  * Anthropic's API does not expose them, so "perplexity in CI" would mean
- * shipping an open model into the test job — a ~500MB download and a new
+ * shipping an open model into the test job - a ~500MB download and a new
  * dependency, in a repo that has no build step at all. These heuristics
  * correlate with what the public detectors report because they measure the same
  * surface property: uniformity.
@@ -14,7 +14,7 @@
  * you what either of them will say. It is a regression gate: it tells you
  * whether a prompt change made the prose more uniform than it was yesterday.
  * The absolute number is only meaningful once calibrated against the real
- * detectors by hand — see docs/ai-detection-baseline.md.
+ * detectors by hand - see docs/ai-detection-baseline.md.
  *
  *   node scripts/style-score.mjs tests/fixtures/notes/*.txt
  *   node scripts/style-score.mjs --json tests/fixtures/notes/*.txt
@@ -60,7 +60,7 @@ function metrics(text) {
   const window = words.slice(0, 400);
   const typeTokenRatio = window.length ? new Set(window).size / window.length : 0;
 
-  // How evenly the function words are spread — normalised entropy.
+  // How evenly the function words are spread - normalised entropy.
   const counts = FUNCTION_WORDS.map((w) => words.filter((x) => x === w).length);
   const total = counts.reduce((a, b) => a + b, 0);
   let entropy = 0;
@@ -73,7 +73,7 @@ function metrics(text) {
     entropy /= Math.log2(FUNCTION_WORDS.length);
   }
 
-  // Repeated 4-grams — the phrase-level tic that survives paraphrasing.
+  // Repeated 4-grams - the phrase-level tic that survives paraphrasing.
   const grams = new Map();
   for (let i = 0; i + 4 <= words.length; i++) {
     const g = words.slice(i, i + 4).join(' ');
@@ -94,7 +94,7 @@ function metrics(text) {
 }
 
 // Weighted into a single 0-100 "machine-uniformity" figure. The weights are a
-// judgement call, not a fitted model — burstiness and opener variety dominate
+// judgement call, not a fitted model - burstiness and opener variety dominate
 // because they are what the public detectors visibly react to.
 function score(m) {
   const clamp = (x) => Math.max(0, Math.min(1, x));

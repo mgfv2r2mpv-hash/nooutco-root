@@ -1,4 +1,4 @@
-// Gear button for game pages — visible only when GM mode is active.
+// Gear button for game pages - visible only when GM mode is active.
 //
 // Pages may optionally set window.ADMIN_GEAR_PAGE to the relative URL of the
 // admin tool relevant to that game. If unset, the gear link goes to the GM page.

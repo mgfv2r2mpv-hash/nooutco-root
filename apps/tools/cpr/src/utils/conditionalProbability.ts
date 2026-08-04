@@ -87,7 +87,7 @@ function analyzeCondition(
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
-/** Analyze a single session — used by ReviewScreen (counts only) and AnalysisView. */
+/** Analyze a single session - used by ReviewScreen (counts only) and AnalysisView. */
 export function analyzeSession(
   session:   Session,
   lag1Ant:   boolean,
@@ -101,7 +101,7 @@ export function analyzeSession(
   return conditions.map(c => analyzeCondition(session.intervals, c, lag1Ant, lag1Cons));
 }
 
-/** Analyze a full assessment — separate conditions and synthesized runs independently. */
+/** Analyze a full assessment - separate conditions and synthesized runs independently. */
 export function analyzeAssessment(
   assessment: Assessment,
   lag1Ant:    boolean,

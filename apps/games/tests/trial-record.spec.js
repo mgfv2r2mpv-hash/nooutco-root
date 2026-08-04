@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Stage 8 — trial records survive a reload, and carry the same two fields in
+ * Stage 8 - trial records survive a reload, and carry the same two fields in
  * every game.
  *
  * Before this, five games held their trial rows in memory only: a refresh
@@ -83,7 +83,7 @@ test.describe('Shared trial-record primitives', () => {
 });
 
 for (const { game, key } of PERSISTED) {
-  test.describe(`${game} — trial rows survive a reload`, () => {
+  test.describe(`${game} - trial rows survive a reload`, () => {
     test('a stored session is restored and trial numbering resumes', async ({ page }) => {
       await page.goto(`/${game}/index.html`);
       await page.waitForLoadState('networkidle');

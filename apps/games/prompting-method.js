@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Prompting method — the three ABA prompting procedures as presets over the
+ * Prompting method - the three ABA prompting procedures as presets over the
  * Auto-Prompt / Prompt Delay primitives every game already exposes.
  *
  * `sequences` has shipped these three cards since Frame 04; the other games
@@ -12,7 +12,7 @@
  *
  *  1. The method is DERIVED from the primitives, never stored. A stored method
  *     goes stale the moment the technician touches Auto-Prompt under the
- *     primitives — sequences keeps showing "Time delay" after the delay is
+ *     primitives - sequences keeps showing "Time delay" after the delay is
  *     switched off. Deriving is total: every combination of the two switches
  *     maps to exactly one procedure, so there is no "custom" state and nothing
  *     new to persist.
@@ -59,7 +59,7 @@
 
   const GROUP_HELP =
     'The prompting procedure this programme runs. Each option sets the ' +
-    'Auto-Prompt and Prompt Delay switches below — change those directly to ' +
+    'Auto-Prompt and Prompt Delay switches below - change those directly to ' +
     'fine-tune it, and this follows.';
 
   /**
@@ -91,7 +91,7 @@
 
   /**
    * The prompt type for one trial. `prompted` is whether a prompt was actually
-   * delivered — by the technician or automatically. An unprompted trial is
+   * delivered - by the technician or automatically. An unprompted trial is
    * 'none' regardless of the configured procedure, because the procedure
    * describes what *would* happen, not what did.
    */
@@ -210,7 +210,7 @@
     /**
      * Apply a preset by driving the two controls the game already listens to,
      * one at a time, with a real `change` event each. The game's own handler
-     * is the only thing that writes state or persists — this never reaches
+     * is the only thing that writes state or persists - this never reaches
      * past the panel.
      */
     function select(id) {
@@ -270,7 +270,7 @@
 
   /**
    * Re-read the controls. Games call this wherever they already push the
-   * configuration into the panel — the load path writes `.checked` directly,
+   * configuration into the panel - the load path writes `.checked` directly,
    * which fires no `change` event for the group to hear.
    */
   function refresh() {

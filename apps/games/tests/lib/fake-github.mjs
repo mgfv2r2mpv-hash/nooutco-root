@@ -2,7 +2,7 @@
  * An in-memory GitHub Contents + Git-Data API, enough of it to run `worker.js`
  * for real.
  *
- * The Worker's admin endpoints are almost entirely GitHub choreography — read
+ * The Worker's admin endpoints are almost entirely GitHub choreography - read
  * the ref, read some files, post blobs, post a tree, fast-forward the branch.
  * Asserting on the pieces separately proves very little; what matters is the
  * commit that comes out the other end. So this fakes the API instead of the
@@ -126,7 +126,7 @@ export class FakeGitHub {
       if (forced) return json({ message: forced.message || 'sabotage' }, forced.status);
       const commit = this.commits.get(body.sha);
       if (!commit) return json({ message: 'commit not found' }, 422);
-      // force:false is a fast-forward check — the parent must still be head.
+      // force:false is a fast-forward check - the parent must still be head.
       if (!body.force && commit.parents[0] !== this.head) {
         return json({ message: 'Update is not a fast forward' }, 422);
       }
@@ -138,7 +138,7 @@ export class FakeGitHub {
   };
 }
 
-/** The admin bearer token for a secret — sha256 hex, as `requireAdmin` expects. */
+/** The admin bearer token for a secret - sha256 hex, as `requireAdmin` expects. */
 export async function adminToken(secret) {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');

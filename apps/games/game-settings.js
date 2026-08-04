@@ -1,24 +1,24 @@
 /* ════════════════════════════════════════════════════════════════════
-   game-settings.js — the shared clinical settings store (Stage 6)
+   game-settings.js - the shared clinical settings store (Stage 6)
 
    Extracted verbatim in behaviour from the `sequences` round-setup pattern
    (sequences/index.html Frame 04, sequences/game.js). Three pieces, and only
    these three, because they are the three every game needs and nothing more:
 
      1. the `{ sets, last, working }` store schema, persisted device-local
-     2. `normalize()` — declarative clamping that keeps a saved config
+     2. `normalize()` - declarative clamping that keeps a saved config
         resilient to content and version changes
-     3. `holdToUnlock()` — press-and-hold-the-gear gating, so a learner
+     3. `holdToUnlock()` - press-and-hold-the-gear gating, so a learner
         tapping the gear cannot change a running programme's parameters
 
    Plus the one migration primitive Stage 6 turns on: `foldLegacy()`, which
    reads a game's retired settings key and folds it into the store as the
-   working config. READ-THEN-FOLD, NEVER DROP — the legacy key is never
+   working config. READ-THEN-FOLD, NEVER DROP - the legacy key is never
    deleted and never overwritten, so a fold that gets the mapping wrong is
    recoverable and a downgrade still finds the old configuration intact.
 
    Clinical note: these are programme parameters, not preferences. No field
-   is ever removed or silently redefaulted here — an out-of-range value is
+   is ever removed or silently redefaulted here - an out-of-range value is
    clamped into range and an absent one takes the field's declared default,
    both of which are visible in the panel the technician is looking at.
 
@@ -96,8 +96,7 @@
    * `{ 'T_animals': ['/shared/stimuli/img/T_animals/bear.jpg', …] }`.
    *
    * Unlike `list`, BOTH its keys and its values are content rather than schema,
-   * so there is no allowed set to validate against and nothing may be dropped —
-   * a topic whose art is temporarily unavailable must still come back carrying
+   * so there is no allowed set to validate against and nothing may be dropped - * a topic whose art is temporarily unavailable must still come back carrying
    * the targets the technician chose for it. Only a value that is not a plain
    * object at all (a string, an array, null) falls back to the default.
    */
@@ -166,7 +165,7 @@
 
     function save(store) {
       try { global.localStorage.setItem(KEY, JSON.stringify(store)); }
-      catch (e) { /* storage full / unavailable — non-fatal */ }
+      catch (e) { /* storage full / unavailable - non-fatal */ }
     }
 
     function defaults() { return defaultsFor(fields); }
@@ -246,7 +245,7 @@
 
     /**
      * The config a game boots with: the working config if there is one, else
-     * the last saved set, else the declared defaults — always normalized.
+     * the last saved set, else the declared defaults - always normalized.
      */
     function initial(fallback) {
       var store = load();
@@ -312,7 +311,7 @@
     gear.addEventListener('pointerleave', endHold);
     gear.addEventListener('pointercancel', endHold);
     gear.addEventListener('click', function () {
-      // The hold already opened it — swallow the click that follows the release.
+      // The hold already opened it - swallow the click that follows the release.
       if (didHold) { didHold = false; return; }
       if (o.onTap) o.onTap();
     });

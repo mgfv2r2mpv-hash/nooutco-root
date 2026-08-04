@@ -447,7 +447,7 @@
   transition-delay: 0.15s;
 }
 
-/* Head — houses the dial */
+/* Head - houses the dial */
 .clock-head {
   position: absolute;
   top: 13%;
@@ -501,7 +501,7 @@
   transform: translate(-50%, -50%);
 }
 
-/* Body — tall case with pendulum */
+/* Body - tall case with pendulum */
 .clock-body {
   position: absolute;
   top: 54%;

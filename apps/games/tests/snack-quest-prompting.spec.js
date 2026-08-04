@@ -6,7 +6,7 @@ import { bootstrap, chooseTask, choosePlace, waitIdle, peek } from './lib/snack-
  * be recorded, and for a learner working at a prompted level it must not cost
  * them the snack. The setting decides the second; the first is never optional.
  */
-test.describe('Snack Quest — prompting', () => {
+test.describe('Snack Quest - prompting', () => {
   test('the Prompt button is offered on the tap-scored tasks, not on expressive', async ({ page }) => {
     await bootstrap(page);
     await chooseTask(page, 'matching');
@@ -64,7 +64,7 @@ test.describe('Snack Quest — prompting', () => {
     await waitIdle(page);
     expect((await peek(page)).collected).toHaveLength(1);
 
-    // Earning must not launder the prompt out of the data — that would trade a
+    // Earning must not launder the prompt out of the data - that would trade a
     // clinical record for a kindness, which is not the trade being made.
     const rows = await page.evaluate(() => JSON.parse(localStorage.getItem('nooutco.results.snackQuest') || '[]'));
     expect(rows[0].outcome).toBe('Prompted');

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { bootstrap, chooseTask, choosePlace, peek, respondCorrect, waitIdle } from './lib/snack-quest.js';
 
-test.describe('Snack Quest — keyboard operation', () => {
+test.describe('Snack Quest - keyboard operation', () => {
   test('the whole flow is reachable from the keyboard', async ({ page }) => {
     await bootstrap(page, { goalTokens: 2 });
 
@@ -53,7 +53,7 @@ test.describe('Snack Quest — keyboard operation', () => {
   });
 });
 
-test.describe('Snack Quest — reduced motion', () => {
+test.describe('Snack Quest - reduced motion', () => {
   test('a quest still plays through with animation suppressed', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await bootstrap(page, { goalTokens: 2, scheduleValue: 2 });
@@ -65,7 +65,7 @@ test.describe('Snack Quest — reduced motion', () => {
     await waitIdle(page);
     const after = await peek(page);
 
-    // Position still changes — reduced motion removes the waddle, not the walk.
+    // Position still changes - reduced motion removes the waddle, not the walk.
     expect(Math.abs(after.friendCentreX - before.friendCentreX)).toBeGreaterThan(4);
     await expect(page.locator('.walker')).not.toHaveClass(/is-walking/);
 

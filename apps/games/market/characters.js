@@ -13,7 +13,7 @@ const HAIR  = ['#1a1a1a', '#3b2417', '#6b4423', '#a76b3a', '#d8a64a', '#e9d7a3',
 const SHIRT = ['#3a8dde', '#e84a4a', '#3aaf6e', '#d97a2c', '#7a4ad6', '#2c8a8a', '#d4498a', '#5a6b78', '#c9b04a', '#1a3a6e'];
 const HAT   = ['#2c3e50', '#c0392b', '#16a085', '#e67e22', '#34495e', '#8e44ad'];
 
-// Mulberry32 PRNG — seed → reproducible random
+// Mulberry32 PRNG - seed → reproducible random
 function makeRng(seed) {
   let s = (seed | 0) || 1;
   return function () {
@@ -29,7 +29,7 @@ function pick(rng, arr) { return arr[Math.floor(rng() * arr.length)]; }
 
 /**
  * Build a customer SVG. Returns an <svg> element.
- * viewBox is 200×360 — head at top, feet at bottom-ish (we cut at the waist
+ * viewBox is 200×360 - head at top, feet at bottom-ish (we cut at the waist
  * actually; feet hidden behind counter when in scene).
  */
 function buildCustomer(seed) {
@@ -59,14 +59,14 @@ function buildCustomer(seed) {
     return e;
   };
 
-  // Neck — drawn BEFORE the body so the shirt covers the bottom of the
+  // Neck - drawn BEFORE the body so the shirt covers the bottom of the
   // neck rectangle and the head connects cleanly into the shoulders.
   // Extended 4px into head territory (y=152) and 8px deeper (height=58)
   // so there is always solid overlap with both the head ellipse and the
   // body path at every render scale, preventing sub-pixel seam gaps.
   svg.appendChild(NS('rect', { x: 86, y: 152, width: 28, height: 58, fill: skin, stroke: '#1a1a1a', 'stroke-width': '2.5' }));
 
-  // Body / shirt — trapezoid
+  // Body / shirt - trapezoid
   const body = NS('path', {
     d: 'M 50 340 L 58 190 Q 100 172 142 190 L 150 340 Z',
     fill: shirt,
@@ -136,7 +136,7 @@ function buildCustomer(seed) {
         }));
         svg.appendChild(NS('circle', { cx: 156, cy: 92, r: 14, fill: hair, stroke: '#1a1a1a', 'stroke-width': '2.5' }));
         break;
-      case 3: // bald — nothing
+      case 3: // bald - nothing
         break;
       case 4: // bun (top)
         svg.appendChild(NS('path', {
@@ -183,7 +183,7 @@ function buildCustomer(seed) {
     fill: 'none', stroke: '#1a1a1a', 'stroke-width': '2', 'stroke-linecap': 'round',
   }));
 
-  // Mouth — neutral smile, class 'mouth' so we can swap on grin
+  // Mouth - neutral smile, class 'mouth' so we can swap on grin
   const mouth = NS('path', {
     class: 'mouth',
     d: 'M 88 148 Q 100 156 112 148',

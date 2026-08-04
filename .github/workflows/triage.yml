@@ -49,11 +49,11 @@ This issue needs categorization. Please provide:
 Once details are added, a GitHub Agent will categorize this issue with the appropriate priority label.
 
 Labels:
-- \`data-safety-critical\` — User data at risk
-- \`user-blocking\` — Feature is broken
-- \`aba-clinical-alignment\` — Affects clinical accuracy
-- \`bug\` — Unexpected behavior
-- \`enhancement\` — Feature request`
+- \`data-safety-critical\` - User data at risk
+- \`user-blocking\` - Feature is broken
+- \`aba-clinical-alignment\` - Affects clinical accuracy
+- \`bug\` - Unexpected behavior
+- \`enhancement\` - Feature request`
                 });
               }
             }

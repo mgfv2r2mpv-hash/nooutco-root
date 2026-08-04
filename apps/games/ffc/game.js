@@ -105,7 +105,7 @@ const state = {
   autoPromptHandle: null,
 
   // Post-answer reveal timeouts (tile flip + Next/Retry overlay). Tracked so a
-  // new trial (Start / Next / Retry) can cancel a pending reveal — otherwise a
+  // new trial (Start / Next / Retry) can cancel a pending reveal - otherwise a
   // deferred showTrialButtons() from the finished trial lands on the fresh one.
   revealHandle:     null,
   btnHandle:        null,
@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ── Settings (shared store) ────────────────────────────────────────
 
 /**
- * NOT `nooutco.settings.ffc` — that key is already taken, by this game.
+ * NOT `nooutco.settings.ffc` - that key is already taken, by this game.
  *
  * The Frame 07 session panel below persists its curated per-learner session
  * (`{ sets, last, working }` holding items / targets / includeTypes /
@@ -183,14 +183,14 @@ document.addEventListener('DOMContentLoaded', async () => {
  *     defaulting every field it does not recognise
  *
  * Two config documents for one game is itself duplication worth ending, but
- * merging them is a UI change (the session panel), not a storage one — so the
+ * merging them is a UI change (the session panel), not a storage one - so the
  * trial settings take their own key and the session document is left exactly
  * where it is. See NOTES-gnhf.md finding 61.
  */
 const SETTINGS_KEY = 'nooutco.settings.ffc.trial';
 const LEGACY_SETTINGS_KEY = 'ffcgSettings';
 
-/** A fresh, fully-keyed filter map — one empty target list per mode. */
+/** A fresh, fully-keyed filter map - one empty target list per mode. */
 function emptyTargetFilters() {
   return { feature: [], function: [], classWithinGroup: [], classCrossCategory: [] };
 }
@@ -200,7 +200,7 @@ function emptyTargetFilters() {
  * derives BOTH the defaults and the clamping from this one declaration, so
  * there is no second hand-written description to drift out of sync with it.
  *
- * `autoPromptEnabled` defaults to FALSE here — it is true only in `sequences`.
+ * `autoPromptEnabled` defaults to FALSE here - it is true only in `sequences`.
  * That difference is clinical, not accidental; do not harmonise it.
  */
 const SETTINGS_FIELDS = {
@@ -293,7 +293,7 @@ function saveSettings() {
 
 // ── Durable results persistence (device-local; never transmitted) ──
 // Trial data is kept across reloads so a closed tab doesn't lose a session.
-// Pseudonymous only — no PHI, never touches admin_token. "Clear data" wipes it.
+// Pseudonymous only - no PHI, never touches admin_token. "Clear data" wipes it.
 
 const RESULTS_KEY = 'nooutco.results.ffc';
 
@@ -337,7 +337,7 @@ async function loadItems() {
  * `items.json` deliberately carries neither: it holds the feature / function /
  * class metadata and the shared stimulus id it describes, and everything a
  * learner sees comes from `stimuli.json`. That is what lets an AdminTools
- * upload or a renamed label reach this game with nothing here to rebuild — the
+ * upload or a renamed label reach this game with nothing here to rebuild - the
  * id is the join, and it does not move.
  */
 async function joinLibrary(data) {
@@ -350,7 +350,7 @@ async function joinLibrary(data) {
   for (const item of data.items || []) {
     const entry = byId.get(item.id);
     // An item the library no longer carries has no picture and no label, so it
-    // is dropped rather than rendered blank — loudly, because it means the two
+    // is dropped rather than rendered blank - loudly, because it means the two
     // documents have drifted.
     if (!entry) { console.error(`ffc: ${item.id} is not in the stimulus library`); continue; }
     items.push({ ...item, label: entry.label, image: entry.image || entry.placeholder || '' });
@@ -393,7 +393,7 @@ function pruneStaleTargetFilters() {
 
 /**
  * Items eligible as targets under the current mode's target filter.
- * An empty filter array means "no filter — use the whole pool".
+ * An empty filter array means "no filter - use the whole pool".
  */
 function eligibleTargetItems(mode = state.mode) {
   const filter = state.targetFilters[mode] || [];
@@ -582,7 +582,7 @@ function nextPosition() {
   return state.posDeck.pop();
 }
 
-// ── Target deck — cycle through target items without repeats ──────
+// ── Target deck - cycle through target items without repeats ──────
 
 function targetDeckKey(mode, tag) {
   return `${mode}|${tag}`;
@@ -795,7 +795,7 @@ function beginTrial(keepTarget = false, isRetry = false) {
       setTimeout(applyPrompt, 80);
     }
   }
-  // isRetry: no auto-prompt — clean fresh presentation.
+  // isRetry: no auto-prompt - clean fresh presentation.
 }
 
 function renderTrial() {
@@ -999,7 +999,7 @@ function onCorrectClick(wrapper, tile) {
     ].join('|'),
   });
   // Stage 8: ffc already resolves promptType against the active session, so
-  // stampTrial only adds the timestamp — it never overwrites a set promptType.
+  // stampTrial only adds the timestamp - it never overwrites a set promptType.
   if (window.NooutcoResults) {
     NooutcoResults.stampTrial(
       state.sessionData[state.sessionData.length - 1],
@@ -1132,7 +1132,7 @@ function onNextClick() {
 }
 
 function onRetryClick() {
-  // Void the completed trial — procedural error, don't count it.
+  // Void the completed trial - procedural error, don't count it.
   if (state.sessionData.length) {
     state.sessionData.pop();
     state.trialNum--;
@@ -1152,7 +1152,7 @@ function printData() {
   }
 
   // Preferred path: branded clinical "FFC session · data sheet" in a new tab
-  // (Frame 08) — a transcription aid, device-local, never transmitted.
+  // (Frame 08) - a transcription aid, device-local, never transmitted.
   if (window.NooutcoResults) {
     NooutcoResults.open({ html: buildFfcDataSheet() });
     return;
@@ -1165,7 +1165,7 @@ function printData() {
 // ── Frame 08 · clinical data sheet ─────────────────────────────────
 // Builds the print-to-PDF trial sheet a technician scans to transcribe into
 // the system of record. Clinical 3-code scoring (+/P/−); error-correction
-// repeats are NOT separate rows — only the original error is recorded.
+// repeats are NOT separate rows - only the original error is recorded.
 
 const SHEET_TYPE = {
   features:  { label: 'Feature',  dot: '#3b82f6' },  // blue
@@ -1179,7 +1179,7 @@ const SHEET_SCORE = {
   Error:    { glyph: '−', cls: 'minus' },
 };
 
-const SHEET_PROMPT_LABEL = { none: '—', model: 'Model', gesture: 'Gesture', delay: 'Delay' };
+const SHEET_PROMPT_LABEL = { none: ' - ', model: 'Model', gesture: 'Gesture', delay: 'Delay' };
 
 function sheetEsc(s) {
   return String(s == null ? '' : s).replace(/[&<>"]/g, c =>
@@ -1201,8 +1201,8 @@ function buildFfcDataSheet() {
     // Prompt type comes from the session prompting taxonomy (Frame 07); fall
     // back to legacy delay/generic for pre-session trial records.
     const prompt = d.promptType
-      ? (SHEET_PROMPT_LABEL[d.promptType] || '—')
-      : (d.prompted ? (d.promptDelaySecs != null ? 'Delay' : 'Prompted') : '—');
+      ? (SHEET_PROMPT_LABEL[d.promptType] || ' - ')
+      : (d.prompted ? (d.promptDelaySecs != null ? 'Delay' : 'Prompted') : ' - ');
     return (
       `<tr>` +
         `<td class="c-n">${i + 1}</td>` +
@@ -1250,7 +1250,7 @@ function buildFfcDataSheet() {
         `<div class="sum"><div class="meta-k">Errors</div><div class="sum-v sum-minus">${errors}</div></div>` +
         `<div class="legend"><strong>+</strong> independent &nbsp; <strong>P</strong> prompted &nbsp; <strong>−</strong> error</div>` +
       `</div>` +
-      `<div class="note"><span>ℹ️</span><div>Error correction is performed in session but is <strong>not logged as a separate trial</strong> — only the error is recorded. Defer to the program's specifications where they differ.</div></div>` +
+      `<div class="note"><span>ℹ️</span><div>Error correction is performed in session but is <strong>not logged as a separate trial</strong> - only the error is recorded. Defer to the program's specifications where they differ.</div></div>` +
       `<div class="genby">Generated by SAssi · No Outcome ABA · for transcription into the client record</div>` +
     `</main></body></html>`
   );
@@ -1541,14 +1541,14 @@ function setExtraPanelOpen(open) {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// Session setup (Frame 07) — gated per-learner session targets.
+// Session setup (Frame 07) - gated per-learner session targets.
 // A curated stimulus pool + per-item active feature/function/class traits
 // drives a mixed-type trial generator. Config persists per game to
-// localStorage `nooutco.settings.ffc` (pseudonymous set names only — no PHI).
+// localStorage `nooutco.settings.ffc` (pseudonymous set names only - no PHI).
 //
 // This is NOT the shared settings store: it has the same {sets, last, working}
 // shape and an entirely different schema. The trial settings live under
-// `nooutco.settings.ffc.trial` for exactly that reason — see SETTINGS_KEY.
+// `nooutco.settings.ffc.trial` for exactly that reason - see SETTINGS_KEY.
 // ════════════════════════════════════════════════════════════════════
 
 const SESSION_KEY = 'nooutco.settings.ffc';
@@ -1619,7 +1619,7 @@ function loadSessionStore() {
 }
 function saveSessionStore(store) {
   try { localStorage.setItem(SESSION_KEY, JSON.stringify(store)); }
-  catch (e) { /* storage full / unavailable — non-fatal */ }
+  catch (e) { /* storage full / unavailable - non-fatal */ }
 }
 
 function defaultSession() {
@@ -1706,7 +1706,7 @@ function renderSessionPool() {
     const empty = document.createElement('div');
     empty.className = 'session-pool-row is-out';
     empty.style.cursor = 'default';
-    empty.textContent = state.sessionAddMode ? 'No stimuli match.' : 'No items yet — tap “＋ Add items”.';
+    empty.textContent = state.sessionAddMode ? 'No stimuli match.' : 'No items yet - tap “＋ Add items”.';
     list.appendChild(empty);
     return;
   }
@@ -1737,7 +1737,7 @@ function renderSessionPool() {
     const sub = document.createElement('div');
     sub.className = 'pool-sub';
     if (state.sessionAddMode) {
-      sub.textContent = inPlay.has(it.id) ? 'In play — tap to remove' : 'Tap to add';
+      sub.textContent = inPlay.has(it.id) ? 'In play - tap to remove' : 'Tap to add';
     } else {
       sub.textContent = `${activeCount(it.id,'feature')} feature · ${activeCount(it.id,'function')} function · ${activeCount(it.id,'class')} class`;
     }
@@ -1852,7 +1852,7 @@ function updateSessionStartCount() {
   sEl['btn-session-start'].style.opacity = runnable ? '' : '0.5';
 }
 
-// ── Gating (Frame 04 — long-press the gear to edit) ────────────────
+// ── Gating (Frame 04 - long-press the gear to edit) ────────────────
 let _holdTimer = null, _didHold = false;
 function setSessionEditing(on) {
   state.sessionEditing = on;
@@ -1957,7 +1957,7 @@ function applySetByName(name) {
 }
 
 function saveCurrentSet() {
-  const name = (prompt('Name this set (pseudonym only — no learner identifiers):', '') || '').trim();
+  const name = (prompt('Name this set (pseudonym only - no learner identifiers):', '') || '').trim();
   if (!name) return;
   const store = loadSessionStore();
   store.sets = store.sets || {};
@@ -1984,7 +1984,7 @@ function buildSessionTrial() {
   const { it, type, traits } = pickRandom(pairs);
   const trait = pickRandom(traits);
   const mode  = TYPE_MAP[type].mode;
-  // Use state.arraySize (engine source of truth — nextPosition()/fitGrid read it);
+  // Use state.arraySize (engine source of truth - nextPosition()/fitGrid read it);
   // startSession() syncs it to session.arraySize before play begins.
   const trial = buildTrialData(mode, trait, state.arraySize, it);   // forcedTarget = it
   if (!trial) return null;

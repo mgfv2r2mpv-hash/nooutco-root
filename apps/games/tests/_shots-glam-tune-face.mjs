@@ -18,18 +18,18 @@
    40 px across, where neither is legible. So every face shot is a LOUPE: the
    region is cropped out of the live `#gtm-canvas` and blitted ×7 with smoothing
    OFF into an overlay canvas, which is what gets photographed. Nearest-neighbour
-   is deliberate — it shows the actual pixels the compositor wrote rather than a
+   is deliberate - it shows the actual pixels the compositor wrote rather than a
    resampler's opinion of them.
 
    Per model (the whole roster, because each has its own mask and eye scale):
-     · lipliner-<phase>-<model>.png   — the mouth, liner + lipstick on
-     · eyeclip-<phase>-<model>.png    — the eye pair, contacts + shadow + mascara on
-     · eyeshadow-<phase>-<model>.png  — the lids, shadow ONLY (no lashes over it)
-     · blush-<phase>-<model>.png      — one cheek, blush only
-     · highlight-<phase>-<model>.png  — the cheekbones + nose bridge, highlight only
+     · lipliner-<phase>-<model>.png - the mouth, liner + lipstick on
+     · eyeclip-<phase>-<model>.png - the eye pair, contacts + shadow + mascara on
+     · eyeshadow-<phase>-<model>.png - the lids, shadow ONLY (no lashes over it)
+     · blush-<phase>-<model>.png - one cheek, blush only
+     · highlight-<phase>-<model>.png - the cheekbones + nose bridge, highlight only
    Plus the un-magnified stage with both tools applied, at three widths:
      · face-<phase>-<device>.png
-     · glow-<phase>-<device>.png      — shadow + blush + highlight, nothing else
+     · glow-<phase>-<device>.png - shadow + blush + highlight, nothing else
 
    `Math.random` is seeded and the client pinned through the ⚙ Character lock, so
    the two passes photograph the same face. */
@@ -91,8 +91,8 @@ const GLOW_ON = `
   }, r));`;
 
 /* Build the loupe. `what` names the region; every crop comes from geometry both
-   passes share — the lip mask's own bbox for the mouth, the face anchors for
-   everything else — so the before/after pair frames identical pixels. */
+   passes share - the lip mask's own bbox for the mouth, the face anchors for
+   everything else - so the before/after pair frames identical pixels. */
 const LOUPE = (what, zoom) => `
   const cv = document.getElementById('gtm-canvas');
   const W = cv.width, H = cv.height;
@@ -187,7 +187,7 @@ for (const d of DEVICES) {
   await page.getByTitle('Show / hide setup').click();
   await page.getByLabel('Character', { exact: true }).selectOption('m4');
   await page.getByRole('button', { name: /^▶ Play/ }).click();
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   await logic(page, FACE_ON);
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${OUT}face-${PHASE}-${d.tag}.png` });

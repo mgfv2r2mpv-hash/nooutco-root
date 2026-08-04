@@ -3,14 +3,14 @@
 /* ══════════════════════════════════════════════════════════════════
    HICKORY DICKORY DOCK  (Receptive ID)
    Sample = a written word label; the comparison pictures fan around a
-   large grandfather clock (left side, floor, right side — never above
+   large grandfather clock (left side, floor, right side - never above
    it). Tap the picture that matches the name: it drops to the floor,
    runs to the clock, climbs it while the minute hand spins, reaches the
    top exactly as the hand strikes 12, the cuckoo pops, then it leaps
    down the far side and scampers off. "Next" sets the trial.
 
    Receptive-ID logic (decks, prompts, error handling, data, print) is
-   identical to the Receptive Words game — only the stage is re-skinned.
+   identical to the Receptive Words game - only the stage is re-skinned.
    ══════════════════════════════════════════════════════════════════ */
 
 // ── Utilities ──────────────────────────────────────────────────────
@@ -67,7 +67,7 @@ function migrateTargetFilters(manifest) {
  * AdminTools still keys a technician's display-name override by the path it
  * uploaded to, under the game's own tree. The generated manifest only carries
  * library URLs, so any legacy key present is an override written since the
- * last rebuild — newer than the generated label, and it wins. Without this the
+ * last rebuild - newer than the generated label, and it wins. Without this the
  * label saves cleanly and then never renders.
  */
 function foldLegacyDisplayNames(manifest) {
@@ -84,8 +84,7 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 // ── Settings storage keys ──────────────────────────────────────────
 // Stage 6: this game's programme parameters live in the shared store
-// (../game-settings.js) under SETTINGS_KEY. `hddSettings` is the retired key —
-// read once, folded into the store, and NEVER deleted or rewritten, so a
+// (../game-settings.js) under SETTINGS_KEY. `hddSettings` is the retired key - // read once, folded into the store, and NEVER deleted or rewritten, so a
 // mis-mapped fold is recoverable and a downgrade still finds the old config.
 const SETTINGS_KEY = 'nooutco.settings.clock';
 const LEGACY_SETTINGS_KEY = 'hddSettings';
@@ -134,7 +133,7 @@ const state = {
   resolving:    false,   // true during the climb / resolve sequence
   introPlaying: false,   // true during the rhyme intro
 
-  // Clock — session only. Starts at 12 so the first correct "strikes one".
+  // Clock - session only. Starts at 12 so the first correct "strikes one".
   clockHour: 12,
 
   geom: null,            // layout geometry (recomputed on render + resize)
@@ -252,7 +251,7 @@ document.addEventListener('DOMContentLoaded', async () => {
  * derives BOTH the defaults and the clamping from this one declaration, so
  * there is no second hand-written description to drift out of sync with it.
  *
- * `autoPromptEnabled` defaults to FALSE here — it is true only in `sequences`.
+ * `autoPromptEnabled` defaults to FALSE here - it is true only in `sequences`.
  * That difference is clinical, not accidental; do not harmonise it.
  */
 const SETTINGS_FIELDS = {
@@ -873,7 +872,7 @@ function renderTrial() {
 
 /**
  * Geometry: a large clock standing on the floor, tiles fanned in a 'U'
- * up the left side, across the floor, and up the right side — never
+ * up the left side, across the floor, and up the right side - never
  * above the clock.
  */
 function layoutStage() {
@@ -1166,7 +1165,7 @@ function playClimb(slot, tile) {
   });
   after(2160, () => advanceHour(true));     // hour ticks over, completes ≈ 2560
 
-  // D: reach the very top — the cuckoo strikes (minute hand now on 12)
+  // D: reach the very top - the cuckoo strikes (minute hand now on 12)
   after(2560, () => {
     wrapper.classList.remove('clinging');
     move(crownX, crownTopY, 440, 'cubic-bezier(.34,1.4,.5,1)');

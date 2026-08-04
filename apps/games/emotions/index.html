@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Emotion ID — No Outcome ABA</title>
+  <title>Emotion ID - No Outcome ABA</title>
   <link rel="stylesheet" href="../tailwind.css">
   <link rel="stylesheet" href="/assets/nav-bar.css">
   <script src="/assets/nav-bar.js" defer></script>
@@ -178,7 +178,7 @@
     <button type="button" id="btn-extra-toggle" class="btn-extra" aria-expanded="false">⚙ Settings</button>
     <div class="tally">
       <span><b id="tCorrect">0</b>/<span id="tTotal">0</span></span>
-      <span class="pct" id="tPct">—</span>
+      <span class="pct" id="tPct"> - </span>
       <button class="linkbtn" id="copyBtn">Copy</button>
       <button class="linkbtn" id="resetBtn">Reset</button>
     </div>
@@ -201,7 +201,7 @@
     </div>
     <div class="extra-panel-body" style="display:block">
       <div class="blk">
-        <span class="lbl">Receptive SD <span style="font-weight:500;color:var(--slate-400)">— listener · use {emotion}</span></span>
+        <span class="lbl">Receptive SD <span style="font-weight:500;color:var(--slate-400)"> - listener · use {emotion}</span></span>
         <div class="sdrow">
           <select id="sdRPreset">
             <option value="Touch {emotion}">Touch {emotion}</option>
@@ -214,7 +214,7 @@
         </div>
       </div>
       <div class="blk">
-        <span class="lbl">Expressive SD <span style="font-weight:500;color:var(--slate-400)">— tact · single stimulus</span></span>
+        <span class="lbl">Expressive SD <span style="font-weight:500;color:var(--slate-400)"> - tact · single stimulus</span></span>
         <div class="sdrow">
           <select id="sdEPreset">
             <option value="How does {pronoun} feel?">How does {pronoun} feel?</option>
@@ -227,7 +227,7 @@
         </div>
       </div>
       <div class="blk">
-        <span class="lbl">Pronoun <span style="font-weight:500;color:var(--slate-400)">— fills {pronoun} in the expressive SD</span></span>
+        <span class="lbl">Pronoun <span style="font-weight:500;color:var(--slate-400)"> - fills {pronoun} in the expressive SD</span></span>
         <div class="seg" id="pron">
           <button data-v="he">He</button>
           <button data-v="she">She</button>
@@ -237,7 +237,7 @@
       </div>
 
       <div class="blk">
-        <span class="lbl">Teaching options <span style="font-weight:500;color:var(--slate-400)">— receptive</span></span>
+        <span class="lbl">Teaching options <span style="font-weight:500;color:var(--slate-400)"> - receptive</span></span>
         <div class="options-row">
           <span class="option-toggle" id="opt-errorless" role="switch" aria-checked="false" tabindex="0">
             <span class="option-toggle-ico" aria-hidden="true">🎯</span> Errorless
@@ -325,7 +325,7 @@
   <!-- SD banner -->
   <div class="sd">
     <div class="k" id="sdRole">Deliver this SD</div>
-    <div class="txt" id="sdText">—</div>
+    <div class="txt" id="sdText"> - </div>
     <div class="hint" id="sdHint"></div>
   </div>
 
@@ -345,7 +345,7 @@
     <button type="button" id="btn-finish-sr" class="finish-sr-btn" hidden>⭐ Finish &amp; SR</button>
   </div>
 
-  <p class="foot">Faces show as cel-shaded picture cards by default; switch to Emoji anytime with the Faces toggle. Trial data is stored only in this browser (never transmitted) — use Print for a report, Reset to clear.</p>
+  <p class="foot">Faces show as cel-shaded picture cards by default; switch to Emoji anytime with the Faces toggle. Trial data is stored only in this browser (never transmitted) - use Print for a report, Reset to clear.</p>
 
 </div><!-- .wrap -->
 
@@ -406,7 +406,7 @@
    * store derives BOTH the defaults and the clamping from this one
    * declaration, so there is no second hand-written description to drift.
    *
-   * `autoPrompt` defaults to FALSE here — the auto-prompt default is true only
+   * `autoPrompt` defaults to FALSE here - the auto-prompt default is true only
    * in `sequences`. That difference is clinical; do not harmonise it.
    *
    * `size` and `pronoun` are declared as enums rather than as a range and a
@@ -427,7 +427,7 @@
     rePresentErrors: { type: 'bool', default: false },
     noErrorAnim:     { type: 'bool', default: false },
     autoPrompt:      { type: 'bool', default: false },
-    // Seconds, not a flag: this game has no separate promptDelay toggle — the
+    // Seconds, not a flag: this game has no separate promptDelay toggle - the
     // delay row is shown by `autoPrompt` alone.
     promptDelay:     { type: 'int', min: 1, max: 10, default: 3 },
   };
@@ -487,7 +487,7 @@
   function renderTally() {
     document.getElementById('tCorrect').textContent = correct;
     document.getElementById('tTotal').textContent = total;
-    document.getElementById('tPct').textContent = total ? Math.round(correct / total * 100) + '%' : '—';
+    document.getElementById('tPct').textContent = total ? Math.round(correct / total * 100) + '%' : ' - ';
   }
 
   /* ── Elements ────────────────────────────────────────────────────── */
@@ -538,7 +538,7 @@
   function renderReceptive() {
     sdRole.textContent = 'Deliver this SD';
     sdText.textContent = cfg.sdR.replace('{emotion}', current.target.label.toLowerCase());
-    sdHint.textContent = cfg.errorless ? 'Errorless — only the target is selectable.' : 'Then let the learner select. Tap is auto-scored.';
+    sdHint.textContent = cfg.errorless ? 'Errorless - only the target is selectable.' : 'Then let the learner select. Tap is auto-scored.';
     const n = current.choices.length;
     const cols = n <= 2 ? 2 : n <= 4 ? 2 : 3;
     stage.innerHTML = '<div class="field" style="grid-template-columns:repeat(' + cols + ',1fr)"></div>';
@@ -586,7 +586,7 @@
     current.pronoun = cfg.pronoun === 'rotate' ? PRONOUNS[pronounIdx++ % 3] : cfg.pronoun;
     sdRole.textContent = 'Ask the learner';
     sdText.textContent = applyPronoun(cfg.sdE, current.pronoun);
-    sdHint.textContent = 'Single stimulus — score the response and prompt level.';
+    sdHint.textContent = 'Single stimulus - score the response and prompt level.';
     const visualStyle = cfg.visual
       ? ' style="background:' + current.target.color + '1f;border-color:' + current.target.color + '66;box-shadow:0 0 0 6px ' + current.target.color + '14"'
       : '';
@@ -811,7 +811,7 @@
       return line;
     });
     const text = [
-      'Emotion ID — session summary',
+      'Emotion ID - session summary',
       'Overall: ' + correct + '/' + total + ' (' + (total ? Math.round(correct / total * 100) : 0) + '%)',
       ...rows
     ].join('\n');
@@ -829,7 +829,7 @@
     if (!trials.length) return;
     const RESULT_LABEL = { correct:'Independent', wrong:'Incorrect', gestural:'Gestural', partial:'Partial', model:'Model' };
     NooutcoResults.open({
-      title: 'Emotion ID — Session Results',
+      title: 'Emotion ID - Session Results',
       meta: 'Printed ' + new Date().toLocaleString() + ' · ' + trials.length + ' trials',
       columns: [
         { label:'#', key:'n' },

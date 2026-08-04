@@ -1,9 +1,9 @@
-/* ── Think or Say? — the card registry ─────────────────────────────────
+/* ── Think or Say? - the card registry ─────────────────────────────────
    Three levels, three separate pools, one card to exactly one level.
 
    Card selection is driven by the COVERAGE MATRIX in card-model.js, never by a
    target count: there is no established sufficient-N (Hupp 1986 found five
-   "good" exemplars beat three only slightly, and not significantly — see
+   "good" exemplars beat three only slightly, and not significantly - see
    RESEARCH.md §3.4). Every pool is checked here, at load, for
      * ≥3 exemplars of every criterial dimension, and
      * one matched minimum-difference pair per criterial dimension.
@@ -11,7 +11,7 @@
    set. The Playwright spec asserts the same properties from the outside, so the
    check is not merely self-reported.
 
-   No build step — loaded after card-model.js and the three pool files.
+   No build step - loaded after card-model.js and the three pool files.
    ----------------------------------------------------------------------- */
 (function (global) {
   'use strict';
@@ -150,7 +150,7 @@
     });
   }
 
-  /** Which cards declare each criterial dimension — the coverage matrix, as data. */
+  /** Which cards declare each criterial dimension - the coverage matrix, as data. */
   function coverageOf(cards) {
     var out = {};
     model.DIMENSION_KEYS.forEach(function (dim) {

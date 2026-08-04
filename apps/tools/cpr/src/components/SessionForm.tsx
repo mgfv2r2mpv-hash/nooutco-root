@@ -27,7 +27,7 @@ export function SessionForm({ assessment, sessionKey, initial, onSave, onCancel 
   const [notes,              setNotes]              = useState(initial?.notes ?? '');
   const [saving,             setSaving]             = useState(false);
 
-  // Condition type and condition are fixed by sessionKey — not editable here
+  // Condition type and condition are fixed by sessionKey - not editable here
   const sessionType = defaultType;
   const condition   = defaultCondition;
 
@@ -51,7 +51,7 @@ export function SessionForm({ assessment, sessionKey, initial, onSave, onCancel 
     const duration = Math.max(1, parseInt(intervalSecs,  10) || 10);
 
     const synthConds   = sessionType === 'synthesized' ? synthConditions : undefined;
-    // Separate sessions have only one consequence — no indicated ordering needed
+    // Separate sessions have only one consequence - no indicated ordering needed
     const savedIndicated = sessionType === 'synthesized' ? indicated : [];
 
     let session: Session;
@@ -151,7 +151,7 @@ export function SessionForm({ assessment, sessionKey, initial, onSave, onCancel 
             </Field>
           </div>
 
-          {/* Interview-indicated functions — synthesized only */}
+          {/* Interview-indicated functions - synthesized only */}
           {sessionType === 'synthesized' && (
             <fieldset className="space-y-2">
               <legend className="text-sm font-medium text-gray-700 dark:text-gray-300">

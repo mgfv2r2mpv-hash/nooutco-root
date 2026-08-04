@@ -23,7 +23,7 @@ function escHtml(s) {
 }
 const escAttr = escHtml;
 
-// ── Round setup (Frame 04 — gated in-game settings + ABA prompting) ──
+// ── Round setup (Frame 04 - gated in-game settings + ABA prompting) ──
 // Pattern templates as position-index arrays; distinct symbols needed =
 // max(index) + 1. AABB/ABB repeat positions within the unit.
 const PATTERN_TEMPLATES = {
@@ -66,8 +66,8 @@ const state = {
   promptDelay:       false,
   promptDelaySecs:   3,
 
-  // Round setup (Frame 04 — gated). Working config + panel/lock flags.
-  round:          null,   // roundConfig — see defaultRound() for the full schema
+  // Round setup (Frame 04 - gated). Working config + panel/lock flags.
+  round:          null,   // roundConfig - see defaultRound() for the full schema
   roundActive:    false,  // a curated round is currently in play
   roundEditing:   false,  // panel unlocked for editing (long-press)
   roundPanelOpen: false,
@@ -106,7 +106,7 @@ const el = {
   timerDisplay:    $('timer-display'),
   btnTimerToggle:  $('btn-timer-toggle'),
   btnTimerReset:   $('btn-timer-reset'),
-  // Advanced overrides — moved from the retired #extra-panel into #round-panel.
+  // Advanced overrides - moved from the retired #extra-panel into #round-panel.
   chkRepresentErrors: $('chk-represent-errors'),
   chkErrorless:    $('chk-errorless'),
   chkNoErrorAnim:  $('chk-no-error-anim'),
@@ -538,7 +538,7 @@ function onNextClick() {
 }
 
 function onRetryClick() {
-  // Void the completed trial — procedural error, don't count it.
+  // Void the completed trial - procedural error, don't count it.
   if (state.sessionData.length) {
     state.sessionData.pop();
     state.trialNum--;
@@ -612,10 +612,10 @@ function printData() {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// Round setup (Frame 04) — gated compact settings + ABA prompting.
+// Round setup (Frame 04) - gated compact settings + ABA prompting.
 // A curated pattern round (which templates, repeats, symbol set, prompting
 // method, sound) that persists per game to localStorage `nooutco.settings.
-// sequences` (pseudonymous set names only — no PHI). The legacy #settings-bar
+// sequences` (pseudonymous set names only - no PHI). The legacy #settings-bar
 // path is untouched and remains the fallback.
 // ════════════════════════════════════════════════════════════════════
 
@@ -626,7 +626,7 @@ function printData() {
 // the reference shape for the other nine.
 //
 // `autoPromptEnabled` defaults to TRUE here and false in the other nine games.
-// That difference is clinical, not accidental — do not harmonise it.
+// That difference is clinical, not accidental - do not harmonise it.
 const ROUND_FIELDS = {
   patterns:     { type: 'list', values: () => Object.keys(PATTERN_TEMPLATES), default: ['AB'] },
   reps:         { type: 'int',  min: 1, max: 10, default: 2 },
@@ -645,7 +645,7 @@ const ROUND_FIELDS = {
   noErrorAnim:     { type: 'bool', default: false },
   promptPersists:  { type: 'bool', default: false },
   promptStyle:     { type: 'enum', values: ['sparkle', 'outline'], default: 'sparkle' },
-  // Prompt behaviour — the method radio presets these; Advanced can override.
+  // Prompt behaviour - the method radio presets these; Advanced can override.
   autoPromptEnabled: { type: 'bool', default: true },
   promptDelay:       { type: 'bool', default: false },
   promptDelaySecs:   { type: 'int', min: 1, max: 10, default: ROUND_TIME_DELAY_SECS },
@@ -726,7 +726,7 @@ function renderRoundSound() {
   el.roundSound.classList.toggle('is-on', state.round.sound);
 }
 
-// Advanced overrides — reflect round config into the moved #extra-panel controls.
+// Advanced overrides - reflect round config into the moved #extra-panel controls.
 function renderRoundAdvanced() {
   const r = state.round;
   el.chkRepresentErrors.checked = r.representErrors;
@@ -771,7 +771,7 @@ function renderRoundPanel() {
   updateRoundStart();
 }
 
-// ── Gating (Frame 04 — long-press the gear to edit) ────────────────
+// ── Gating (Frame 04 - long-press the gear to edit) ────────────────
 function setRoundEditing(on) {
   state.roundEditing = on;
   el.roundPanel.dataset.editing = String(on);
@@ -847,7 +847,7 @@ function bindRoundEvents() {
     saveWorkingRound();
   });
 
-  // Advanced overrides (moved from #extra-panel) — write straight to round config.
+  // Advanced overrides (moved from #extra-panel) - write straight to round config.
   el.chkRepresentErrors.addEventListener('change', () => { state.round.representErrors = el.chkRepresentErrors.checked; saveWorkingRound(); });
   el.chkErrorless.addEventListener('change',       () => { state.round.errorless       = el.chkErrorless.checked;       saveWorkingRound(); });
   el.chkNoErrorAnim.addEventListener('change',     () => { state.round.noErrorAnim     = el.chkNoErrorAnim.checked;     saveWorkingRound(); });
@@ -887,7 +887,7 @@ function applyRoundByName(name) {
 }
 
 function saveCurrentRound() {
-  const name = (prompt('Name this set (pseudonym only — no learner identifiers):', '') || '').trim();
+  const name = (prompt('Name this set (pseudonym only - no learner identifiers):', '') || '').trim();
   if (!name) return;
   renderRoundSetPicker(roundStore.saveSet(name, state.round));
 }
@@ -942,7 +942,7 @@ function startRound() {
 // One-time fold of the retired `seqSettings` store into the round working config,
 // so a user who configured the old settings-bar/Options keeps their choices.
 // Read-then-fold, never drop: `seqSettings` itself is left untouched in storage.
-// The map names every field explicitly — an absent legacy field must land as
+// The map names every field explicitly - an absent legacy field must land as
 // `undefined` so the schema's default wins over whatever a saved set held.
 function migrateLegacyIntoStore() {
   return roundStore.foldLegacy({

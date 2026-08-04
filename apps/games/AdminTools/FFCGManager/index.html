@@ -77,7 +77,7 @@
     #dp-thumb { height: 90px; border-radius: 9px; background: var(--ash-tile, #f4f6ef); display: block; margin-bottom: .75rem; }
     #dp-label-input { padding: .45rem .6rem; border-radius: 8px; border: 1px solid var(--sage-100, #e2e6d9); background: #fff; color: var(--sage-900, #2c331f); font-size: .88rem; width: 240px; font-family: inherit; }
 
-    /* tag chips — neutral outline; active uses each bucket's accent (Frame 03) */
+    /* tag chips - neutral outline; active uses each bucket's accent (Frame 03) */
     .chip { display: inline-flex; align-items: center; gap: .3rem; padding: 5px 11px; border-radius: 999px; border: 1px solid #dfe3d6; background: #fff; color: var(--sage-500, #9aa589); font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s; }
     .chip:hover { border-color: var(--sage-200, #c7cdb6); }
     .chip.active { background: var(--sage-700, #4d5840); border-color: var(--sage-700, #4d5840); color: #fff; }
@@ -211,7 +211,7 @@
     <button class="btn-primary" id="btn-add-item">＋ Add item</button>
   </div>
 
-  <!-- Filter strip (Frame 01: progressive disclosure — pick a bucket, then its tags) -->
+  <!-- Filter strip (Frame 01: progressive disclosure - pick a bucket, then its tags) -->
   <div id="filter-bar">
     <div class="filter-seg" id="filter-seg">
       <button class="seg-btn active" data-bucket="all">All</button>
@@ -454,7 +454,7 @@ function handle401() {
   token = '';
   localStorage.removeItem('admin_token');
   setGearAuthed(false);
-  showAdminModal('Session expired — re-enter password.');
+  showAdminModal('Session expired - re-enter password.');
 }
 
 // ── API ────────────────────────────────────────────────────────────
@@ -482,8 +482,8 @@ async function adminPost(endpoint, body) {
 // ── Boot ───────────────────────────────────────────────────────────
 
 /**
- * ffc's items name a shared stimulus and nothing else now — no label, no
- * filename — so the picture and the name are joined in from the library by id,
+ * ffc's items name a shared stimulus and nothing else now - no label, no
+ * filename - so the picture and the name are joined in from the library by id,
  * exactly as `ffc/game.js` and `AdminTools/ImageManager` do it. Reading
  * `item.label` / `item.img` straight off `items.json` renders every card as
  * "undefined" over a broken thumbnail.
@@ -727,7 +727,7 @@ async function runWikiSearch(query, urlInput, resultsEl) {
 // ── Bind events ───────────────────────────────────────────────────
 
 function bindEvents() {
-  // Segmented bucket selector — picking a bucket resets to its "All" tag view
+  // Segmented bucket selector - picking a bucket resets to its "All" tag view
   document.querySelectorAll('#filter-seg .seg-btn').forEach(btn => {
     btn.addEventListener('click', () => setFilter(btn.dataset.bucket, '__all__'));
   });

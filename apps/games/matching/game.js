@@ -50,7 +50,7 @@ function migrateTargetFilters(manifest) {
  * AdminTools still keys a technician's display-name override by the path it
  * uploaded to, under the game's own tree. The generated manifest only carries
  * library URLs, so any legacy key present is an override written since the
- * last rebuild — newer than the generated label, and it wins. Without this the
+ * last rebuild - newer than the generated label, and it wins. Without this the
  * label saves cleanly and then never renders.
  */
 function foldLegacyDisplayNames(manifest) {
@@ -65,8 +65,7 @@ function foldLegacyDisplayNames(manifest) {
 
 // ── Settings storage keys ──────────────────────────────────────────
 // Stage 6: this game's programme parameters live in the shared store
-// (../game-settings.js) under SETTINGS_KEY. `mgSettings` is the retired key —
-// read once, folded into the store, and NEVER deleted or rewritten, so a
+// (../game-settings.js) under SETTINGS_KEY. `mgSettings` is the retired key - // read once, folded into the store, and NEVER deleted or rewritten, so a
 // mis-mapped fold is recoverable and a downgrade still finds the old config.
 //
 // The pairing is the surprising one recorded in the Stage 5 notes: this game
@@ -106,7 +105,7 @@ const state = {
   topicImages:  [],
   otherImages:  [],
 
-  // Session — persists across topic changes; cleared by Clear Data
+  // Session - persists across topic changes; cleared by Clear Data
   active:      false,
   sessionData: [],
   trialNum:    0,
@@ -232,7 +231,7 @@ function restoreResults() {
 
 // ── Display mode (Simple / Visual) ─────────────────────────────────────
 
-// Bridge for the toolbar toggle — persists the tech's choice.
+// Bridge for the toolbar toggle - persists the tech's choice.
 window.__setGameDisplayMode = function (mode) {
   state.displayMode = (mode === 'visual') ? 'visual' : 'simple';
   saveSettings();
@@ -255,7 +254,7 @@ function pinwheelOff(node) {
  * derives BOTH the defaults and the clamping from this one declaration, so
  * there is no second hand-written description to drift out of sync with it.
  *
- * `autoPromptEnabled` defaults to FALSE here — it is true only in `sequences`.
+ * `autoPromptEnabled` defaults to FALSE here - it is true only in `sequences`.
  * That difference is clinical, not accidental; do not harmonise it.
  */
 const SETTINGS_FIELDS = {
@@ -326,7 +325,7 @@ function loadSettings() {
   // The old read was `s.currentTokens ?? state.startingTokens`. The board's
   // live count is reset to startingTokens by initializeTokenBoard() at the
   // bottom of this function whenever the board is on, so the two readings
-  // cannot be told apart on screen — and a declared default of 0 avoids
+  // cannot be told apart on screen - and a declared default of 0 avoids
   // turning a legitimately stored 0 into startingTokens.
   state.currentTokens     = s.currentTokens;
 
@@ -750,7 +749,7 @@ function beginTrial(keepSample = false, isRetry = false) {
       setTimeout(applyPrompt, 80);
     }
   }
-  // isRetry: no auto-prompt — clean fresh presentation.
+  // isRetry: no auto-prompt - clean fresh presentation.
 }
 
 function buildTrial(keepSample) {
@@ -825,7 +824,7 @@ function renderTrial() {
     img.alt = `Choice ${idx + 1}`;
     front.appendChild(img);
 
-    // Back face — content (text + colour class) set at correct-click time
+    // Back face - content (text + colour class) set at correct-click time
     const back = document.createElement('div');
     back.className = 'tile-face tile-back';
     const okSpan = document.createElement('span');
@@ -935,7 +934,7 @@ function onTileClick(idx) {
 function onCorrectClick(wrapper, tile) {
   disableAllTiles();
   clearPrompt();
-  // Pause timer while the learner waits for Next — only if it was running
+  // Pause timer while the learner waits for Next - only if it was running
   if (state.timerRunning) { pauseTimer(); state.timerAutoPaused = true; }
 
   // Cancel delayed auto-prompt if it hadn't fired yet
@@ -1120,7 +1119,7 @@ function onNextClick() {
 }
 
 function onRetryClick() {
-  // Void the completed trial — procedural error, don't count it.
+  // Void the completed trial - procedural error, don't count it.
   if (state.sessionData.length) {
     state.sessionData.pop();
     state.trialNum--;
@@ -1158,7 +1157,7 @@ function printData() {
     const avgTime = (state.sessionData.reduce((s, d) => s + parseFloat(d.time), 0) / total).toFixed(1);
 
     NooutcoResults.open({
-      title: 'Matching Game — Session Results',
+      title: 'Matching Game - Session Results',
       meta,
       columns: [
         { label: '#',          key: 'trial' },

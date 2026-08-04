@@ -15,14 +15,14 @@
   @keyframes gtm-pop { 0%{ opacity:0; transform:scale(.85);} 60%{ transform:scale(1.04);} 100%{ opacity:1; transform:scale(1);} }
   @keyframes gtm-target { 0%,100%{ box-shadow:0 0 0 3px rgba(106,118,89,.30);} 50%{ box-shadow:0 0 0 8px rgba(106,118,89,.12);} }
   @keyframes gtm-pim { 0%,100%{ box-shadow:0 0 0 0 rgba(220,38,38,.35);} 50%{ box-shadow:0 0 0 6px rgba(220,38,38,.12);} }
-  /* Texting intro — bubbles land, the typing dots breathe. Transform + opacity
+  /* Texting intro - bubbles land, the typing dots breathe. Transform + opacity
      only, so the whole thread stays on the compositor. */
   @keyframes gtm-bubble { 0%{ opacity:0; transform:translateY(10px) scale(.96);} 100%{ opacity:1; transform:none;} }
   @keyframes gtm-dot { 0%,80%,100%{ opacity:.25; transform:translateY(0);} 40%{ opacity:1; transform:translateY(-3px);} }
   .gtm-dot{ width:6px;height:6px;border-radius:50%;background:var(--slate-500);display:inline-block;animation:gtm-dot 1.25s var(--ease-standard) infinite }
   .gtm-dot:nth-child(2){ animation-delay:.16s } .gtm-dot:nth-child(3){ animation-delay:.32s }
   .gtm-scroll::-webkit-scrollbar{ width:8px;height:8px; } .gtm-scroll::-webkit-scrollbar-thumb{ background:var(--slate-300); border-radius:8px; }
-  /* Outro photo booth — the two frames swing in off a tilt, staggered, then the
+  /* Outro photo booth - the two frames swing in off a tilt, staggered, then the
      sparkle between them settles. Transform + opacity only. The `--tilt` custom
      property carries each frame's resting angle so one keyframe serves both. */
   @keyframes gtm-frame { 0%{ opacity:0; transform:translateY(14px) scale(.9) rotate(0deg);} 70%{ opacity:1; transform:translateY(0) scale(1.03) rotate(var(--tilt));} 100%{ opacity:1; transform:translateY(0) scale(1) rotate(var(--tilt));} }
@@ -31,7 +31,7 @@
   .gtm-tool{ touch-action:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
 
   /* ── SALON DRESSING (refresh R5) ──────────────────────────────────────────
-     One warm vocabulary — plum chrome, gold bezel, rose trolley — carried from
+     One warm vocabulary - plum chrome, gold bezel, rose trolley - carried from
      the title screen and the phone thread through to the vanity, so the three
      child-facing surfaces read as one room instead of three components.
      Deliberately NOT re-tinted: the clinical turn colours (sage = mine,
@@ -44,7 +44,7 @@
   .gtm-room{ background:
       radial-gradient(120% 68% at 50% 0%, rgba(238,209,231,.50) 0%, rgba(238,209,231,0) 62%),
       linear-gradient(180deg,#fbf2f7 0%, #fdf6ef 44%, var(--surface-page) 100%); }
-  /* CHOICE MIRRORING — the tap's answer. The chip rises out of the mirror with
+  /* CHOICE MIRRORING - the tap's answer. The chip rises out of the mirror with
      the child's own tool name on it, the button they pressed gives a squeeze,
      and the mirror warms for as long as the echo is up.
      The `-a` / `-b` pairs are not a copy-paste slip: a second choice inside the
@@ -67,7 +67,7 @@
     padding:11px 10px 12px; border-radius:46px; display:flex;
     background:linear-gradient(152deg,#4c4152 0%,#1b1320 34%,#241a29 68%,#4c4152 100%);
     box-shadow:0 34px 64px -26px rgba(56,22,50,.72), 0 3px 10px rgba(40,16,36,.28), inset 0 0 0 1.5px rgba(255,255,255,.11); }
-  /* volume rocker + side button — the two nubs that make a rounded rectangle
+  /* volume rocker + side button - the two nubs that make a rounded rectangle
      read as a handset rather than as a rounded rectangle. */
   .gtm-phone::before,.gtm-phone::after{ content:''; position:absolute; width:3px; border-radius:3px; background:linear-gradient(180deg,#5f5165,#2b2130); }
   .gtm-phone::before{ left:-2.5px; top:112px; height:56px; }
@@ -94,13 +94,13 @@
 
   @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
 
-  /* SECOND PASS U3 — where the stage panel's HEIGHT comes from.
+  /* SECOND PASS U3 - where the stage panel's HEIGHT comes from.
 
      The stage is a size container (so the client can be measured against the
      backdrop contained inside it), and a size container may not take its height
      from its contents. On a row that has not wrapped it does not need to: the
      flex line stretches it to the styling trolley beside it, which is where its
-     height has always come from — 581 px at 1280×860, 670 px at 834×1112. Once
+     height has always come from - 581 px at 1280×860, 670 px at 834×1112. Once
      the row wraps the stage is alone on its line with nothing to stretch to, and
      something has to give it one.
 
@@ -112,21 +112,20 @@
 
      `--gtm-stage-fit` is set inline, and only when the art compositor is live: it
      carries the manifest's own backdrop aspect, so the panel takes the art's
-     shape and the whole composition fits with nothing left over. Unset — the
-     procedural themes — this is `auto` and nothing changes.
+     shape and the whole composition fits with nothing left over. Unset - the
+     procedural themes - this is `auto` and nothing changes.
 
      It is a height and not `aspect-ratio` because WebKit transfers a flex item's
      aspect ratio from its flex BASE size rather than its used main size: with
      `flex:1 1 0%` that is 0, clamped back up by whatever `min-width` transfers,
-     and the panel came out 358×300 where Blink and Gecko both said 358×358 —
-     and only after a resize ACROSS the wrap, so it read as an intermittent. */
+     and the panel came out 358×300 where Blink and Gecko both said 358×358 - and only after a resize ACROSS the wrap, so it read as an intermittent. */
   .gtm-stage-row{ container-type: inline-size; container-name: gtmrow; --gtm-band: 34px; }
   .gtm-stage{ position: relative; }
   /* A WRAPPED row is the phone case, and it is the only one where the page
      scrolls at all: at 1280×860 and 834×1112 the whole game fits and nothing can
      move. Once it wraps, the stage sits ABOVE the trolley, and the turn rail
      inside it is exactly the thing that leaves the screen when a child scrolls
-     down to the last shelf — measured, not assumed: a played trial on the
+     down to the last shelf - measured, not assumed: a played trial on the
      partner's turn (which grows the controls row with the mand cue) reached
      scrollY 576 and put the rail at y −109.
 
@@ -134,31 +133,30 @@
      travels with the trolley beside it and releases at the row's own end; the
      rail therefore stays on screen for the whole of the scroll that can hide it,
      and the child keeps the client's face in view while reaching for a tool.
-     Compositor-friendly by construction — sticky moves the paint, not the
+     Compositor-friendly by construction - sticky moves the paint, not the
      layout, and nothing here animates. */
   @container gtmrow (width < 614px){
     .gtm-stage{ height: var(--gtm-stage-fit, auto); --gtm-band: 30px;
       position: sticky; top: 6px; z-index: 2; }
   }
 
-  /* THIRD PASS · Finding B — the turn indicator IS the vanity counter.
+  /* THIRD PASS · Finding B - the turn indicator IS the vanity counter.
      It used to be a full-width card ABOVE the stage carrying the avatar, the
      whose-turn line and the actions-left pips: 81 px of vertical footprint on
      desktop and tablet, and 135.5 px on a phone where its own contents wrapped,
      spent on something the child has to look AWAY from the face to read (it is
-     0 now — see the report's W2). Meanwhile the band across the stage's own floor
-     — the counter U3's `contain` fit left over — was dead room painted with the
+     0 now - see the report's W2). Meanwhile the band across the stage's own floor - the counter U3's `contain` fit left over - was dead room painted with the
      room's own floor.
 
      They are now one thing. `--gtm-band` is that rail's height and it is spent
      in three places so the composition is never measured twice:
        · the panel's bottom padding RESERVES it, so the contained backdrop and
          the client (both sized off the panel's content box) end above it and no
-         art is buried — the F-10 rule that the ledge must not eat the shirt;
+         art is buried - the F-10 rule that the ledge must not eat the shirt;
        · the vanity ledge sits ON it (`bottom:var(--gtm-band)`) instead of at the
          panel's edge, so the client's hard bottom cut is still masked; and
-       · `--gtm-stage-fit` — the height a WRAPPED panel takes from the art's
-         aspect — adds it, so on phone the art keeps exactly the size it had and
+       · `--gtm-stage-fit` - the height a WRAPPED panel takes from the art's
+         aspect - adds it, so on phone the art keeps exactly the size it had and
          the rail is genuinely extra rather than a crop.
      A narrow row gets a shorter rail and smaller type: the same single-line
      stack, not a second component. Sizes live here rather than inline because
@@ -166,19 +164,18 @@
 
      THIRD PASS · rail correction (maintainer's ruling 3 on W6). The rail shipped
      at 46/40 because the eyebrow and the whose-turn line were STACKED. They are
-     one row now — `.gtm-band-say`, baseline-aligned — and the rail is 34/30.
+     one row now - `.gtm-band-say`, baseline-aligned - and the rail is 34/30.
      What is left setting the height is the METER, not the type: label over pips
      is 25.9px on a wide row and 21.8px on a narrow one, and it has to stay
      stacked because inlining its label beside 7 pips costs +79px of width
      against 30.1px of tablet slack (probe `_probe-glam-tune3-rail2.mjs`).
-     The whole width budget at 390 is in the report; the trims that bought it —
-     token 25→17, eyebrow 8.5→8px, rail padding 14→7px, pip gap 5→3px — are all
+     The whole width budget at 390 is in the report; the trims that bought it - token 25→17, eyebrow 8.5→8px, rail padding 14→7px, pip gap 5→3px - are all
      on parts that repeat what the line already says, so the child's own line
      keeps its shipped 12.5px. */
   .gtm-band{ display:flex; align-items:center; gap:10px; padding:0 14px; }
   /* The collapse. `baseline` and not `center`: the eyebrow is 9.5px caps and the
      line is 15px, and centring two sizes on one row reads as a typo. Baseline
-     alignment also costs nothing in height — the row measures the taller item's
+     alignment also costs nothing in height - the row measures the taller item's
      ascent + descent, i.e. exactly the line's own 18.75px. */
   .gtm-band-say{ flex:1; min-width:0; display:flex; align-items:baseline; gap:8px; }
   .gtm-band-token{ width:24px; height:24px; border-radius:50%; flex-shrink:0;
@@ -222,13 +219,13 @@
      Loaded here (not via the design-canvas helmet) so window.NooutcoReward and
      window.NooutcoArt exist before the runtime boots and first-renders. -->
 <script src="../reward.js"></script>
-<!-- shared print/PDF report surface (window.NooutcoResults) — D-H / AC-9 -->
+<!-- shared print/PDF report surface (window.NooutcoResults) - D-H / AC-9 -->
 <script src="../results-report.js"></script>
 <script src="assets/art-generated.js"></script>
 <script src="assets/art-manifest.js"></script>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
-     TURN-TAKING MEASUREMENT ENGINE — window.GlamTT
+     TURN-TAKING MEASUREMENT ENGINE - window.GlamTT
 
      The clinical spine of the tool: it decides whether a learner's relinquish
      (the pass) and their mand for the turn back (the ask-back) were
@@ -237,11 +234,10 @@
 
      Authoritative source of the rules below:
        docs/glam-team-makeover-redesign-hardened-claims.md  (D-A…D-K, AC-1…AC-27)
-       docs/glam-team-makeover-redesign-spec.md             (§3.1–§3.8, §4)
+       docs/glam-team-makeover-redesign-spec.md             (§3.1 - §3.8, §4)
      Where the spec prose and the hardened claims disagree, the CLAIMS win.
      Every non-obvious branch below names the AC it exists for, because each one
-     is there to close a specific attack from the 7-round adversarial review —
-     removing it silently reopens a scoring hole (mostly F-22 false mastery).
+     is there to close a specific attack from the 7-round adversarial review - removing it silently reopens a scoring hole (mostly F-22 false mastery).
 
      Deliberately pure: no DOM, no React, no globals, and the clock is injected
      (`now`). That is what lets tests/glam-tt-scoring.spec.js drive all 27
@@ -252,7 +248,7 @@ window.GlamTT = (function () {
   'use strict';
 
   /* Fade ladder (§3.2). The scored label is `prompted@<level>`. At `silent` the
-     prompt is DELIVERED but nothing is shown — delivery is by window-elapse
+     prompt is DELIVERED but nothing is shown - delivery is by window-elapse
      alone. That is the whole of AC-1/AC-24: the probe level a BCBA uses to test
      whether the prompt can be removed must not be able to manufacture
      independence (eval finding 2 / F-22). */
@@ -260,9 +256,9 @@ window.GlamTT = (function () {
 
   var PASS_INDEPENDENT = 'independent';
   var PASS_STAFF       = 'staff-prompted';   // a person had to intervene
-  var PASS_NONE        = 'no-engagement';    // 0 engaged actions — nothing was taken (AC-20)
+  var PASS_NONE        = 'no-engagement';    // 0 engaged actions - nothing was taken (AC-20)
   var ASK_EARLY        = 'early-ask';        // asked before the staff-idle forget onset (AC-25)
-  var NA               = '—';           // em dash: no scored response this turn
+  var NA               = ' - ';           // em dash: no scored response this turn
 
   var DEFAULTS = {
     turns: 6,                 // BT-set HARD bound on total turns (D-D / AC-7)
@@ -279,14 +275,14 @@ window.GlamTT = (function () {
   }
 
   /* Is this a scored relinquish outcome (i.e. does it feed the tier and the
-     independent-pass count)? `—` turns — a staff turn, or a learner turn the
-     trial ended out from under — are reported but not tiered. */
+     independent-pass count)? ` - ` turns - a staff turn, or a learner turn the
+     trial ended out from under - are reported but not tiered. */
   function isScoredPass(code) {
     return code === PASS_INDEPENDENT || code === PASS_STAFF ||
            code === PASS_NONE || (typeof code === 'string' && code.indexOf('prompted@') === 0);
   }
 
-  /* D-D / AC-7 / AC-17 — one fixed per-turn cap per actor, computed ONCE before
+  /* D-D / AC-7 / AC-17 - one fixed per-turn cap per actor, computed ONCE before
      the trial starts from the BT's turn count, sized so a cooperative run
      finishes the look inside N turns with the learner taking ~2/3 of the total
      actions. Nothing inflates it mid-trial: there is no `budget + bonus` band in
@@ -306,8 +302,7 @@ window.GlamTT = (function () {
     };
   }
 
-  /* De-identified auto session id (D-H / AC-9 / §8). Date + a random tag —
-     never anything about the learner. There is no name field in this tool. */
+  /* De-identified auto session id (D-H / AC-9 / §8). Date + a random tag - never anything about the learner. There is no name field in this tool. */
   function newSessionId(d) {
     var t = d || new Date();
     var p = function (v) { return String(v).padStart(2, '0'); };
@@ -373,7 +368,7 @@ window.GlamTT = (function () {
       budget: learner ? this.learnerBudget : this.staffBudget,
       actions: 0, steps: [], overCap: 0, blockedExtra: 0, eEvents: 0,
       startedAt: t, lastActionAt: t,
-      forfeit: null,          // null | 'overcap' | 'exhaustion' | 'bt'  — TURN-DURABLE
+      forfeit: null,          // null | 'overcap' | 'exhaustion' | 'bt' - TURN-DURABLE
       cueAt: null, cueLevel: null, cueLive: false,   // cueLive = discardable sub-budget app cue
       onsetAt: null,          // staff-idle "forget" onset (staff turns, forgets mode)
       passScore: NA, askScore: NA,
@@ -410,7 +405,7 @@ window.GlamTT = (function () {
   };
 
   /* A visible cue is only ever shown above `silent`. At `silent` the prompt is
-     still delivered (see `cueAt`) — it is just invisible. Anything that reads
+     still delivered (see `cueAt`) - it is just invisible. Anything that reads
      visibility instead of delivery to decide independence re-creates F-22.
 
      Every timestamp below is compared with `!= null`, never for truthiness: a
@@ -436,18 +431,18 @@ window.GlamTT = (function () {
 
     if (t.actions >= t.budget) {
       if (t.actor === 'staff') {
-        /* L2 — the staff's turn collects no learner data; the staff is simply
+        /* L2 - the staff's turn collects no learner data; the staff is simply
            blocked from extra actions. No forfeit, no score effect. */
         t.blockedExtra++;
         this.emit('blocked-extra', { label: label || null });
-        return { allowed: false, blocked: true, feedback: 'That turn is finished — hand it over.' };
+        return { allowed: false, blocked: true, feedback: 'That turn is finished - hand it over.' };
       }
-      /* D-B / AC-3 / AC-4 — over-cap on the learner's own turn: refuse, log,
+      /* D-B / AC-3 / AC-4 - over-cap on the learner's own turn: refuse, log,
          set the TURN-DURABLE forfeit flag, and deliver the pass prompt. The
          flag is set by the over-cap EVENT, decoupled from cue visibility and
          from whether the window elapsed, so it also holds at `silent` where
          nothing is shown (the B2 attack). Kid-facing feedback is returned in
-         EVERY count mode — the silent hidden-mode cap was eval defect 2. */
+         EVERY count mode - the silent hidden-mode cap was eval defect 2. */
       t.overCap++;
       if (t.forfeit !== 'bt') t.forfeit = 'overcap';   // a BT prompt is the stronger floor
       t.cueLive = false;
@@ -455,7 +450,7 @@ window.GlamTT = (function () {
       this.emit('over-cap-attempt', { label: label || null, count: t.overCap, level: t.cueLevel });
       return {
         allowed: false, overCap: true,
-        feedback: 'That was everything for this turn — time to hand it over!',
+        feedback: 'That was everything for this turn - time to hand it over!',
       };
     }
 
@@ -463,7 +458,7 @@ window.GlamTT = (function () {
     t.lastActionAt = this.now();
     /* A genuine resume clears a DISCARDABLE sub-budget app cue (the L8
        mid-task-pause case: the learner was thinking, not stalling) and never
-       clears a turn-durable forfeit — no sequence of legal actions launders a
+       clears a turn-durable forfeit - no sequence of legal actions launders a
        BT-prompted or at-exhaustion-prompted turn back to independent (AC-23/E1). */
     t.cueLive = false;
     if (label && t.steps.indexOf(label) < 0) t.steps.push(label);
@@ -471,7 +466,7 @@ window.GlamTT = (function () {
     return { allowed: true, actions: t.actions, left: this.actionsLeft() };
   };
 
-  /* §3.2 "prompt delivered" affordance — a real verbal/gestural prompt from the
+  /* §3.2 "prompt delivered" affordance - a real verbal/gestural prompt from the
      BT, deliverable on ANY turn (sub-budget or at-budget, learner or staff).
      Sets the turn-durable forfeit: a person had to tell the learner to let go,
      and a token resume cannot erase that (AC-23). */
@@ -505,13 +500,13 @@ window.GlamTT = (function () {
   };
 
   Trial.prototype._tickLearner = function (t, now) {
-    /* Possession floor — the relinquish window does not exist until the learner
+    /* Possession floor - the relinquish window does not exist until the learner
        has actually taken a turn (≥1 engaged action). A 0-action turn is scored
        `no-engagement`, not prompted-into-independence (AC-20). */
     if (t.actions < 1) return;
     if (t.cueLive || t.forfeit) return;                 // a prompt already stands this opportunity
     /* D1 re-anchor: the ladder runs from POSSESSION-TAKEN + a no-relinquish IDLE
-       interval measured from the learner's most recent action — NOT from
+       interval measured from the learner's most recent action - NOT from
        budget-exhaustion. Exhaustion is merely the case where they cannot resume.
        Anchoring on exhaustion made every sub-budget pass vacuously independent. */
     if (now - t.lastActionAt < this.waitMs) return;
@@ -531,10 +526,10 @@ window.GlamTT = (function () {
       return;
     }
     if (t.onsetAt == null) {
-      /* G1 / AC-27 — the forget onset fires on STAFF-IDLE: the staff has held
+      /* G1 / AC-27 - the forget onset fires on STAFF-IDLE: the staff has held
          possession without acting or handing back for the wait interval. It
          fires for ANY number of staff actions spent (0…N), so the scenario the
-         mode is named for — the staff genuinely forgets and does 0 of N — opens
+         mode is named for - the staff genuinely forgets and does 0 of N - opens
          the ask window instead of deadlocking. It must NEVER be anchored to
          "allotted staff actions spent": that is the pre-D1 exhaustion anchor,
          and it never fires on a real forget.
@@ -550,7 +545,7 @@ window.GlamTT = (function () {
       return;
     }
     /* After the onset the ask window runs. On elapse the app delivers the
-       prompt — at `silent` nothing is shown but it is delivered all the same, so
+       prompt - at `silent` nothing is shown but it is delivered all the same, so
        a silent 37s stall scores `prompted@silent` (AC-24, F-22 on its own site). */
     if (t.cueAt == null && t.forfeit !== 'bt' && now - t.onsetAt >= this.waitMs) {
       t.cueAt = now;
@@ -564,18 +559,18 @@ window.GlamTT = (function () {
   /* ── scoring ─────────────────────────────────────────────────────────────── */
 
   Trial.prototype._scorePass = function (t) {
-    if (t.actions === 0) return PASS_NONE;              // AC-20 — nothing was taken to give up
-    if (t.forfeit === 'bt') return PASS_STAFF;          // AC-21 / AC-23 — unlaunderable
+    if (t.actions === 0) return PASS_NONE;              // AC-20 - nothing was taken to give up
+    if (t.forfeit === 'bt') return PASS_STAFF;          // AC-21 / AC-23 - unlaunderable
     if (t.forfeit) return prompted(t.cueLevel);         // AC-4 over-cap · AC-23 at-exhaustion
-    if (t.cueLive) return prompted(t.cueLevel);         // AC-1 / AC-21 — live discardable cue
+    if (t.cueLive) return prompted(t.cueLevel);         // AC-1 / AC-21 - live discardable cue
     return PASS_INDEPENDENT;                            // AC-2 / AC-19
   };
 
   Trial.prototype._scoreAsk = function (t) {
     /* No resume-launder and no discardable-cue path on the ask-back: during the
        staff's forgotten turn the learner takes no interleaved actions, so ANY
-       delivered prompt forfeits unconditionally (AC-26 — stricter than the pass). */
-    if (t.onsetAt == null) return ASK_EARLY;            // AC-25 — interrupted a live staff turn
+       delivered prompt forfeits unconditionally (AC-26 - stricter than the pass). */
+    if (t.onsetAt == null) return ASK_EARLY;            // AC-25 - interrupted a live staff turn
     if (t.forfeit === 'bt') return PASS_STAFF;
     if (t.cueAt != null) return prompted(t.cueLevel);   // AC-24
     return PASS_INDEPENDENT;
@@ -585,15 +580,14 @@ window.GlamTT = (function () {
     t.closed = true;
     t.waitHeldMs = this.now() - t.startedAt;
     /* N is a HARD bound: the trial never runs past it to force completion
-       (AC-5/AC-7). Otherwise a completed look ends the trial at this boundary —
-       the learner's relinquish is still scored first, so the Tier-1 predicate
+       (AC-5/AC-7). Otherwise a completed look ends the trial at this boundary - the learner's relinquish is still scored first, so the Tier-1 predicate
        never goes vacuous. */
     if (t.n >= this.turnsConfigured) this.endTrial('turns-exhausted');
     else if (this.lookComplete) this.endTrial('look-complete');
     else this._openTurn(t.n + 1);
   };
 
-  /* The learner's relinquish. Available THROUGHOUT their turn — the budget is a
+  /* The learner's relinquish. Available THROUGHOUT their turn - the budget is a
      cap, not a quota, so an early voluntary pass with actions to spare is
      reachable and scored (AC-19/B3), never blocked. */
   Trial.prototype.pass = function () {
@@ -611,8 +605,8 @@ window.GlamTT = (function () {
 
   Trial.prototype.staffAction = function (label) { return this.requestAction(label); };
 
-  /* "They hand it back" mode — the staff's turn simply ends. No learner response
-     is measured, so the ask-back column stays `—` (§4). */
+  /* "They hand it back" mode - the staff's turn simply ends. No learner response
+     is measured, so the ask-back column stays ` - ` (§4). */
   Trial.prototype.staffHandBack = function () {
     var t = this.turn;
     if (!t || t.actor !== 'staff' || this.ended) return false;
@@ -632,7 +626,7 @@ window.GlamTT = (function () {
     return t.askScore;
   };
 
-  /* D-C / AC-14 — staff annotator for the violations one shared device cannot
+  /* D-C / AC-14 - staff annotator for the violations one shared device cannot
      see. Logs {timestamp, phase, whose-turn} and a fixed code; never touches
      gameplay, the doll or any score, and is undoable. No freeform: PHI-safe. */
   Trial.prototype.mark = function (code) {
@@ -668,7 +662,7 @@ window.GlamTT = (function () {
 
   /* Always terminable (AC-5/AC-16): turns-exhausted, look-complete, or the BT's
      always-available end-trial control. An open learner turn gets a defined
-     score rather than being dropped — a sub-budget learner who will not pass at
+     score rather than being dropped - a sub-budget learner who will not pass at
      all resolves to `staff-prompted`, the same code as at exhaustion, so their
      own turn cannot deadlock (AC-22). */
   Trial.prototype.endTrial = function (reason) {
@@ -705,7 +699,7 @@ window.GlamTT = (function () {
     return n;
   };
 
-  /* AC-11 — a pure function of (over-cap attempts, PASS independence) only.
+  /* AC-11 - a pure function of (over-cap attempts, PASS independence) only.
      `staff-prompted` and `no-engagement` are non-independent, so neither an
      all-staff-prompted trial (A2) nor a 0-action run (C2) can reach Tier 1.
      (E) events, the ask-back score and completion never enter this: the tier is
@@ -789,15 +783,13 @@ window.GlamTT = (function () {
 </script>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
-     STORY POOL — window.GlamStory   (spec §5, §3.7, §3.7.1 · D-F/D-G · L7)
+     STORY POOL - window.GlamStory   (spec §5, §3.7, §3.7.1 · D-F/D-G · L7)
 
      The six approved events, unchanged. What the adversarial review changed is
      the SHAPE of the outro, not the event set: §5's single fused string per
-     (event, tier) is split into TWO INDEPENDENTLY GATED AXES —
-
-       1. a tier-keyed TURN-TAKING line — teamwork only. It asserts no event
+     (event, tier) is split into TWO INDEPENDENTLY GATED AXES - 1. a tier-keyed TURN-TAKING line - teamwork only. It asserts no event
           success and no completion, at any tier.
-       2. a completion-gated COMPLETION BEAT — the event-success flavour
+       2. a completion-gated COMPLETION BEAT - the event-success flavour
           ("day was a hit", "dazzled the crowd"), emitted ONLY when the staged
           look is actually finished.
 
@@ -808,7 +800,7 @@ window.GlamTT = (function () {
      incomplete look fails AC-18 by construction.
 
      STORY/VISUAL CONGRUENCE (§3.7.1, hard rule): no string may assert a
-     checkable visual attribute of the client — no hair texture/length/colour, no
+     checkable visual attribute of the client - no hair texture/length/colour, no
      spot counts, nothing the learner can look at the doll and refute. Every
      model's default hair differs and the spots are procedurally seeded, so those
      are refutable claims that break the activity. Text references only the
@@ -816,7 +808,7 @@ window.GlamTT = (function () {
      over the whole producible cross-product rather than by eyeball, and
      tests/glam-tt-story.spec.js asserts it is empty.
 
-     PENDING MAINTAINER REVIEW (L7) — these strings are the build-time draft the
+     PENDING MAINTAINER REVIEW (L7) - these strings are the build-time draft the
      hardened claims route to a human before ship. They are reproduced in
      docs/eval/glam-team-makeover-build-report.md for that review.
      ══════════════════════════════════════════════════════════════════════════ -->
@@ -824,13 +816,13 @@ window.GlamTT = (function () {
 window.GlamStory = (function () {
   'use strict';
 
-  /* Neutral given names only — the character is a fictional client, and this is
+  /* Neutral given names only - the character is a fictional client, and this is
      the one free slot §5 allows. Nothing here is ever a learner's name: the tool
      has no name field anywhere (§8, AC-9). */
   var NAMES = ['Ada', 'Bea', 'Cleo', 'Dani', 'Elle', 'Frankie',
                'Gigi', 'Harper', 'Iris', 'Jules', 'Kit', 'Lux'];
 
-  /* The selectable client roster — the ONE source of truth for which face models
+  /* The selectable client roster - the ONE source of truth for which face models
      exist, read by the draw below, by the BT's character lock and by the art
      model picker. M1 was retired in the refresh: it is neither drawable at random
      nor lockable, so nothing in the build can seed it. Its generated art still
@@ -838,29 +830,29 @@ window.GlamStory = (function () {
   var MODELS = ['m2', 'm3', 'm4'];
 
   /* §5's "one flavour word" slot, realised as the outro's opening cheer. */
-  /* The outro title is `<cheer> — what a team!`, so no cheer may itself be
-     "What a team" (it rendered as "What a team — what a team!" on screen). */
+  /* The outro title is `<cheer> - what a team!`, so no cheer may itself be
+     "What a team" (it rendered as "What a team - what a team!" on screen). */
   var CHEERS = ['Wow', 'Look at that', 'Yes', 'Amazing', 'Hooray'];
 
   var EVENTS = [
     {
       id: 'picture-day', label: 'School picture day', emoji: '📸',
       introTitle: 'Picture day is today!',
-      problem: '{name} is not ready yet — there is a whole glam routine to do and no outfit picked.',
+      problem: '{name} is not ready yet - there is a whole glam routine to do and no outfit picked.',
       stakes: 'The photographer is almost here!',
       textOpen: 'Hi glam team! It is school picture day today.',
       textAsk: 'Could you book me in before the photographer gets here?',
       turnTaking: {
         1: 'Every turn, you took a turn and then handed the brush back. Getting ready for picture day as a real team.',
         2: 'You and the glam partner traded the brush back and forth the whole time.',
-        3: 'It takes a lot of turns to get ready for picture day — and you had a partner for every one of them.',
+        3: 'It takes a lot of turns to get ready for picture day - and you had a partner for every one of them.',
       },
-      completion: 'And the whole routine got finished before the photographer arrived — picture day was a hit!',
+      completion: 'And the whole routine got finished before the photographer arrived - picture day was a hit!',
     },
     {
       id: 'birthday', label: 'Birthday party', emoji: '🎉',
       introTitle: 'The party starts in a few minutes!',
-      problem: '{name} is not party-ready yet — there is lots to do and no outfit yet.',
+      problem: '{name} is not party-ready yet - there is lots to do and no outfit yet.',
       stakes: 'The guests are already arriving!',
       textOpen: 'Hi glam team! My birthday party starts very soon.',
       textAsk: 'Could you squeeze me in before the party?',
@@ -869,11 +861,11 @@ window.GlamStory = (function () {
         2: 'You shared the brush with the glam partner all the way through getting ready for the party.',
         3: 'Getting party-ready takes a lot of turns, and you had a partner the whole time.',
       },
-      completion: 'And the whole look was ready the moment the guests walked in — what a party!',
+      completion: 'And the whole look was ready the moment the guests walked in - what a party!',
     },
     {
       id: 'talent-show', label: 'Talent show', emoji: '🎤',
-      introTitle: 'Talent show — {name} is on next!',
+      introTitle: 'Talent show - {name} is on next!',
       problem: '{name} still needs the full glam routine before going on.',
       stakes: 'On stage next!',
       textOpen: 'Hi glam team! I am in the talent show tonight.',
@@ -883,12 +875,12 @@ window.GlamStory = (function () {
         2: 'You and the glam partner took turns backstage, right up to showtime.',
         3: 'Getting ready backstage takes a lot of turns, and you had a glam partner for all of them.',
       },
-      completion: 'And the whole glam routine was done before the curtain went up — {name} dazzled the crowd!',
+      completion: 'And the whole glam routine was done before the curtain went up - {name} dazzled the crowd!',
     },
     {
       id: 'family-photo', label: 'Family photo', emoji: '🖼️',
       introTitle: 'Family photo time!',
-      problem: '{name} is not camera-ready yet — the whole routine still has to be done.',
+      problem: '{name} is not camera-ready yet - the whole routine still has to be done.',
       stakes: 'Grandma is waiting!',
       textOpen: 'Hi glam team! We are taking a family photo today.',
       textAsk: 'Could you book me in before we all line up?',
@@ -897,12 +889,12 @@ window.GlamStory = (function () {
         2: 'You and the glam partner passed the brush back and forth while everyone got ready.',
         3: 'Getting everyone camera-ready takes a lot of turns, and you had a partner right there.',
       },
-      completion: 'And the whole look came together before grandma finished waiting — the framed favorite!',
+      completion: 'And the whole look came together before grandma finished waiting - the framed favorite!',
     },
     {
       id: 'first-day', label: 'First day, new school', emoji: '🎒',
       introTitle: 'First day at a new school!',
-      problem: '{name} wants to feel ready — there is a full routine to do and no outfit yet.',
+      problem: '{name} wants to feel ready - there is a full routine to do and no outfit yet.',
       stakes: 'The bus comes in a few minutes!',
       textOpen: 'Hi glam team! It is my first day at a new school.',
       textAsk: 'Could you book me in before the bus?',
@@ -911,12 +903,12 @@ window.GlamStory = (function () {
         2: 'You took turns with the glam partner all through getting ready for the first day.',
         3: 'Getting ready for a first day takes a lot of turns, and you had a partner for every one.',
       },
-      completion: 'And the whole routine was finished before the bus came — {name} walked in beaming!',
+      completion: 'And the whole routine was finished before the bus came - {name} walked in beaming!',
     },
     {
       id: 'dance-recital', label: 'Dance recital', emoji: '🩰',
       introTitle: 'Dance recital tonight!',
-      problem: '{name} is not show-ready yet — there is a glam routine to do.',
+      problem: '{name} is not show-ready yet - there is a glam routine to do.',
       stakes: 'Curtain in minutes!',
       textOpen: 'Hi glam team! My dance recital is tonight.',
       textAsk: 'Could you book me in before the curtain?',
@@ -925,24 +917,24 @@ window.GlamStory = (function () {
         2: 'You and the glam partner traded turns the whole time, getting ready for the recital.',
         3: 'Getting show-ready takes a lot of turns, and you had a glam partner through all of them.',
       },
-      completion: 'And the whole glam routine was ready before the curtain — {name} shone on stage!',
+      completion: 'And the whole glam routine was ready before the curtain - {name} shone on stage!',
     },
   ];
 
   /* The pretext arrives as an INCOMING TEXT THREAD to the glam team's phone: the
      client texts about the occasion and books an appointment, the team texts
-     back. Same congruence rule as every other child-facing string (§3.7.1) — the
+     back. Same congruence rule as every other child-facing string (§3.7.1) - the
      client may text about the EVENT, the STAKES and the BOOKING, never about
      their own hair or skin, and never a number. `allStrings()` below sweeps
      every producible bubble, so the existing AC-10 guard covers this pool too
      rather than needing a second, weaker check. */
   var TEAM_REPLY = [
     'Hi {name}! The glam team just picked up.',
-    'You are booked — come on in. We take turns here: skincare first, then makeup, then hair, then an outfit.',
+    'You are booked - come on in. We take turns here: skincare first, then makeup, then hair, then an outfit.',
   ];
-  var BOOKED_NOTE = 'Appointment booked — the salon is opening!';
+  var BOOKED_NOTE = 'Appointment booked - the salon is opening!';
 
-  /* §3.7.1 — refutable-claim guard. Bare words are banned only where the word is
+  /* §3.7.1 - refutable-claim guard. Bare words are banned only where the word is
      unambiguously an appearance claim; the ambiguous ones (short/long/straight…)
      are banned in their hair-qualified form so ordinary prose ("passed it right
      back") does not trip. Digits are banned outright: the child's story never
@@ -1023,7 +1015,7 @@ window.GlamStory = (function () {
     var completionBeat = complete ? fill(ev.completion, sel.name) : '';
     return {
       emoji: complete ? '✨' : '🤝',
-      title: sel.cheer + ' — what a team!',
+      title: sel.cheer + ' - what a team!',
       turnTakingLine: turnTakingLine,
       completionBeat: completionBeat,
       text: completionBeat ? turnTakingLine + ' ' + completionBeat : turnTakingLine,
@@ -1125,7 +1117,7 @@ window.GlamStory = (function () {
   <!-- SETTINGS -->
   <div style="{{ settingsStyle }}">
     <div style="display:flex;align-items:center;flex-wrap:wrap;gap:11px 15px;background:var(--surface-card);border-bottom:1px solid var(--border-default);padding:9px 16px;box-shadow:var(--shadow-sm)">
-      <!-- AC-13 — no theme selector. `social` is the only reachable theme and the
+      <!-- AC-13 - no theme selector. `social` is the only reachable theme and the
            pet/hero configurations are unreachable by construction, so a dropdown
            with one option was pure surface area. -->
       <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Character</label>
@@ -1134,12 +1126,12 @@ window.GlamStory = (function () {
         <select aria-label="Routine" value="{{ staged }}" onChange="{{ onStaged }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="on">Staged (in order)</option><option value="free">Free play</option></select></div>
       <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Turn map</label>
         <select aria-label="Turn map" value="{{ turnMap }}" onChange="{{ onMap }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="banner">Banner</option><option value="vanity">Vanity stations</option><option value="runway">Turn runway</option></select></div>
-      <!-- AC-8 — the LEARNER's turn is always action-counted; no timer ever bounds
+      <!-- AC-8 - the LEARNER's turn is always action-counted; no timer ever bounds
            it. Timing is a partner-turn setting only, below. -->
       <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">My turn</label>
         <select aria-label="My turn" value="{{ countMode }}" onChange="{{ onCount }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="shown">Count shown</option><option value="hidden">Count hidden</option></select>
         <span style="font-size:11px;color:var(--text-muted)">{{ budgetHint }}</span></div>
-      <!-- AC-7 — the BT sets TURNS; the per-turn action budget auto-scales from it
+      <!-- AC-7 - the BT sets TURNS; the per-turn action budget auto-scales from it
            so a cooperative run can finish the look, split ~2:1 toward the learner. -->
       <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Turns</label>
         <select aria-label="Turns" value="{{ turns }}" onChange="{{ onTurns }}" style="padding:5px 6px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="2">2</option><option value="4">4</option><option value="6">6</option><option value="8">8</option><option value="10">10</option></select></div>
@@ -1147,7 +1139,7 @@ window.GlamStory = (function () {
         <select aria-label="Their turn" value="{{ partnerTurn }}" onChange="{{ onPartnerTurn }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="count">Action-counted</option><option value="t15">Timed 15s</option><option value="t20">Timed 20s</option><option value="t30">Timed 30s</option><option value="t45">Timed 45s</option></select></div>
       <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Give-back</label>
         <select aria-label="Give-back" value="{{ giveBack }}" onChange="{{ onGiveBack }}" style="padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:14px;font-family:inherit;background:var(--surface-sunken);color:var(--text-primary)"><option value="prompted">They hand it back</option><option value="forgets">They "forget" → I ask</option></select></div>
-      <!-- §3.2 — the fade ladder the SCORED enum uses. `Silent probe` still
+      <!-- §3.2 - the fade ladder the SCORED enum uses. `Silent probe` still
            delivers the prompt (by window-elapse); it just shows nothing, so it
            cannot manufacture independence. -->
       <div style="display:flex;align-items:center;gap:6px"><label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Cue</label>
@@ -1158,7 +1150,7 @@ window.GlamStory = (function () {
     </div>
   </div>
 
-  <!-- TITLE — the child's front door. One tap starts a trial on sensible
+  <!-- TITLE - the child's front door. One tap starts a trial on sensible
        defaults; the BT's clinical setup is reachable but never in front of the
        child (the ⚙ in the header, and the ghost button below). There is no
        character dropdown here on purpose: the client is drawn at random on Start
@@ -1185,11 +1177,11 @@ window.GlamStory = (function () {
     </section>
   </sc-if>
 
-  <!-- TEXTING INTRO — the pretext arrives as an incoming thread to the glam
+  <!-- TEXTING INTRO - the pretext arrives as an incoming thread to the glam
        team's phone: the client texts about the occasion and books the
        appointment, the team texts back, the salon opens. Every bubble comes from
        GlamStory.thread() and is swept by the same congruence guard as the outro
-       (AC-10): the event, the stakes and the booking only — no claim about the
+       (AC-10): the event, the stakes and the booking only - no claim about the
        client's own hair or skin, and no numbers. -->
   <sc-if value="{{ isIntro }}" hint-placeholder-val="{{ true }}">
     <section style="flex:1;display:flex;justify-content:center;align-items:center;padding:18px 20px;background:linear-gradient(180deg,#f4ecf1 0%,var(--surface-page) 55%)">
@@ -1218,15 +1210,14 @@ window.GlamStory = (function () {
             <span style="margin-left:auto;font-size:9px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:#f4d6b4;flex-shrink:0;text-align:right">New<br>messages</span>
           </div>
 
-          <!-- justify-content:flex-end — a thread grows UP from the composer, so
+          <!-- justify-content:flex-end - a thread grows UP from the composer, so
                the bubbles hug the bottom of the screen instead of stranding the
                conversation at the top of a tall empty box. -->
           <!-- `margin-top:auto` on the first child, NOT `justify-content:flex-end`:
                both bottom-anchor a short thread, but flex-end clips the overflow
                off the TOP of a scroller and makes it unreachable, which is what a
                full five-message thread does at 390 px. The auto margin collapses
-               to 0 the moment the content overflows, so it scrolls normally —
-               and `_scrollThread()` keeps it pinned to the newest message. -->
+               to 0 the moment the content overflows, so it scrolls normally - and `_scrollThread()` keeps it pinned to the newest message. -->
           <div id="gtm-thread" class="gtm-scroll" style="flex:1;min-height:0;overflow-y:auto;padding:14px 12px 8px;display:flex;flex-direction:column;gap:9px;background:radial-gradient(125% 58% at 50% 0%,rgba(238,209,231,.46) 0%,rgba(238,209,231,0) 64%),#fbf6f9">
             <!-- the separator every messages app opens a conversation with; it
                  rides the bottom-anchored stack, so it sits directly above the
@@ -1263,7 +1254,7 @@ window.GlamStory = (function () {
   <sc-if value="{{ showGame }}" hint-placeholder-val="{{ false }}">
     <main class="gtm-room" style="flex:1;display:flex;flex-direction:column;padding:12px 16px 16px;gap:11px">
 
-      <!-- THIRD PASS · Finding B — the whose-turn CARD that used to sit here is
+      <!-- THIRD PASS · Finding B - the whose-turn CARD that used to sit here is
            gone. Its three parts (avatar, whose-turn line, actions-left meter)
            now ride the stage's own counter rail; see `.gtm-band-*` in the style
            block and `bandStyle` in renderVals. The `banner` turn map is now
@@ -1279,7 +1270,7 @@ window.GlamStory = (function () {
       </sc-if>
       <sc-if value="{{ mapRunway }}" hint-placeholder-val="{{ false }}">
         <div class="gtm-scroll" style="display:flex;align-items:center;gap:5px;padding:10px 14px;background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;overflow-x:auto">
-          <!-- AC-12 — whose turn it is is stated in words in EVERY turn-map style.
+          <!-- AC-12 - whose turn it is is stated in words in EVERY turn-map style.
                The runway used to convey it only through a highlighted tile. -->
           <span style="display:inline-flex;align-items:center;gap:7px;flex-shrink:0;margin-right:6px"><span style="font-size:20px">{{ whoseGlyph }}</span><span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;{{ turnLabelColor }}">{{ turnLabel }}</span></span>
           <sc-for list="{{ runwayTiles }}" as="tile" hint-placeholder-count="5"><div style="{{ tile.style }}"><span style="font-size:{{ tile.glyphSize }}">{{ tile.glyph }}</span><span style="font-size:9px;font-weight:800;{{ tile.badgeColor }}">{{ tile.badge }}</span></div></sc-for>
@@ -1291,20 +1282,20 @@ window.GlamStory = (function () {
         <div class="gtm-stage" style="{{ stageStyle }}">
           <!-- The mirror warms while a choice is being echoed. Always mounted so
                the opacity TRANSITION has something to run on; a mounted-on-demand
-               node would just snap. Opacity only — stays on the compositor. -->
+               node would just snap. Opacity only - stays on the compositor. -->
           <div style="{{ mirrorGlowStyle }}"></div>
           <!-- Salon signage, not a caption. This label used to be faint grey set
                straight on the backdrop art, which is bright enough that it barely
                read; on a plum plate it is both legible and part of the room. -->
           <span style="{{ stageSignStyle }}">✦ Our makeover</span>
-          <!-- TUNING fix 1 — there is deliberately NO model picker here. The chips
+          <!-- TUNING fix 1 - there is deliberately NO model picker here. The chips
                that used to sit in this corner let the child swap the client's face
                mid-session, which contradicts the pretext (a client texted in and
                booked THIS appointment) and hands a child a clinical knob. The
                client is drawn at random on Start and fixed for the session; the
                only surface that may still choose one is the BT's Character lock in
                Session setup. -->
-          <!-- NOTE — no `<img src="{{ … }}">` may appear in this template. The
+          <!-- NOTE - no `<img src="{{ … }}">` may appear in this template. The
                browser parses and fetches the raw `{{ }}` placeholder as a URL
                before the dc-runtime substitutes it, which is where three of the
                load-time console 404s came from (eval §3.9). The stage art is a
@@ -1325,7 +1316,7 @@ window.GlamStory = (function () {
             </div>
           </sc-if>
 
-          <!-- vanity ledge — masks the paper-doll's hard bottom cut edge; person art only.
+          <!-- vanity ledge - masks the paper-doll's hard bottom cut edge; person art only.
                It now rests ON the turn rail rather than at the panel's edge. -->
           <sc-if value="{{ footerBar }}" hint-placeholder-val="{{ false }}"><div style="{{ footerBarStyle }}"></div></sc-if>
 
@@ -1333,13 +1324,13 @@ window.GlamStory = (function () {
                the one place whose-turn and actions-left are stated. It is inside
                the stage so the child reads it without leaving the face, and it
                is `pointer-events:none` throughout so it can never eat a tap
-               meant for the client — nothing in it is interactive. -->
+               meant for the client - nothing in it is interactive. -->
           <div class="gtm-band" style="{{ bandStyle }}">
             <div class="gtm-band-token" style="{{ bandTokenStyle }}">{{ whoseGlyph }}</div>
             <!-- The single-line stack (rail correction): whose-turn LABEL and
                  whose-turn LINE share one baseline row, so the rail is 34/30
                  rather than 46/40. The label keeps its own element and its own
-                 exact words — AC-12 is asserted against "MY TURN"/"THEIR TURN"
+                 exact words - AC-12 is asserted against "MY TURN"/"THEIR TURN"
                  as a string, and the colour alone is not a statement. -->
             <div class="gtm-band-say">
               <div class="gtm-band-eyebrow" style="{{ bandEyebrowStyle }}">{{ turnLabel }}</div>
@@ -1348,7 +1339,7 @@ window.GlamStory = (function () {
             <div style="flex-shrink:0;text-align:right">{{ turnMeter }}</div>
           </div>
 
-          <!-- CHOICE MIRRORED BACK — the tap's answer, over the ledge. The text is
+          <!-- CHOICE MIRRORED BACK - the tap's answer, over the ledge. The text is
                the child's OWN tool name and nothing else: no sentence is composed
                around it, so the echo can assert nothing about the client that the
                child could refute (§3.7.1). Rendered pointer-events:none so it can
@@ -1360,7 +1351,7 @@ window.GlamStory = (function () {
           </sc-if>
         </div>
 
-        <!-- PALETTE — the styling trolley. Same stock, dressed as the salon's
+        <!-- PALETTE - the styling trolley. Same stock, dressed as the salon's
              cart: a gold top rail, a warm cream body, and station names set as
              small tracked caps with a hairline running out to the edge. -->
         <div style="{{ toolsColStyle }}">
@@ -1376,8 +1367,7 @@ window.GlamStory = (function () {
             <div style="display:flex;gap:4px;margin:8px 0 2px;flex-wrap:wrap"><sc-for list="{{ stageChips }}" as="ch" hint-placeholder-count="4"><span style="{{ ch.style }}">{{ ch.label }}</span></sc-for></div>
             <!-- Vertical flow (tuning fix 3): a shelf with work left is open and
                  sorted to the top; a settled shelf folds to its header and waits
-                 to be asked back. Spent one-shot tools are not rendered at all —
-                 and once a settled shelf has lost its last tool, the header stays
+                 to be asked back. Spent one-shot tools are not rendered at all - and once a settled shelf has lost its last tool, the header stays
                  on as the ✓ record of a step that is finished. -->
             <sc-for list="{{ palette }}" as="grp" hint-placeholder-count="4">
               <div data-shelf="{{ grp.label }}" style="{{ grp.wrapStyle }}">
@@ -1397,23 +1387,23 @@ window.GlamStory = (function () {
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:rgba(255,255,255,.86);border:1px solid #ecdae4;border-radius:12px;padding:10px 16px;box-shadow:var(--shadow-sm)">
         <div style="display:inline-flex;align-items:center;gap:9px;padding:7px 13px;background:#fff;border:1px solid var(--border-default);border-bottom:3px solid var(--sage-500);border-radius:10px"><span style="font-size:17px">🎬</span><span style="font-size:13px;font-weight:800;color:var(--text-muted)">{{ progressText }}</span></div>
         <div style="flex:1;min-width:170px;text-align:center">{{ phaseMsg }}</div>
-        <!-- AC-3 — kid-facing over-cap feedback. Sage, not red; a nudge, never a
+        <!-- AC-3 - kid-facing over-cap feedback. Sage, not red; a nudge, never a
              clinical label, and it appears in count-hidden mode too. -->
         <sc-if value="{{ showCapToast }}" hint-placeholder-val="{{ false }}"><div style="{{ capToastStyle }}">🖌 {{ capToast }}</div></sc-if>
-        <sc-if value="{{ isReady }}" hint-placeholder-val="{{ false }}"><button onClick="{{ onGo }}" style="background:var(--sage-500);color:#fff;border:none;padding:12px 26px;border-radius:999px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md);animation:gtm-pop .3s var(--ease-standard)">▸ Go — my turn!</button></sc-if>
-        <sc-if value="{{ isMine }}" hint-placeholder-val="{{ false }}"><button onClick="{{ onHandoff }}" style="{{ handoffStyle }}">Done — their turn ▸</button></sc-if>
+        <sc-if value="{{ isReady }}" hint-placeholder-val="{{ false }}"><button onClick="{{ onGo }}" style="background:var(--sage-500);color:#fff;border:none;padding:12px 26px;border-radius:999px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md);animation:gtm-pop .3s var(--ease-standard)">▸ Go - my turn!</button></sc-if>
+        <sc-if value="{{ isMine }}" hint-placeholder-val="{{ false }}"><button onClick="{{ onHandoff }}" style="{{ handoffStyle }}">Done - their turn ▸</button></sc-if>
         <sc-if value="{{ isGiveback }}" hint-placeholder-val="{{ false }}"><button onClick="{{ onGiveBack2 }}" style="background:var(--sage-500);color:#fff;border:none;padding:12px 24px;border-radius:999px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md);animation:gtm-pop .3s var(--ease-standard)">▸ My turn again</button></sc-if>
         <sc-if value="{{ isAsk }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:10px"><div style="{{ cueStyle }}">{{ cueText }}</div><button onClick="{{ onConfirmAsk }}" style="background:var(--slate-800);color:#fff;border:none;padding:11px 16px;border-radius:9px;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer;white-space:nowrap">✓ I asked!</button></div></sc-if>
       </div>
 
-      <!-- STAFF STRIP — small, muted, always available, never part of play.
+      <!-- STAFF STRIP - small, muted, always available, never part of play.
            Nothing here alters the doll, the budget or any score (D-C / AC-14);
            the prompt control is the one exception and it only ever makes the
            record STRICTER (a turn-durable forfeit, AC-23). -->
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--text-muted)">
         <span style="font-weight:700;letter-spacing:.05em;text-transform:uppercase">Staff</span>
         <button onClick="{{ onBtPrompt }}" title="I gave a real verbal or gestural prompt this turn" style="background:#fff;border:1px solid var(--slate-300);color:var(--slate-600);font-family:inherit;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;cursor:pointer">Prompt given</button>
-        <button onClick="{{ onEOpen }}" title="Log an event — does not change the game" style="background:#fff;border:1px solid var(--slate-300);color:var(--slate-600);font-family:inherit;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;cursor:pointer">(E)</button>
+        <button onClick="{{ onEOpen }}" title="Log an event - does not change the game" style="background:#fff;border:1px solid var(--slate-300);color:var(--slate-600);font-family:inherit;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;cursor:pointer">(E)</button>
         <sc-if value="{{ ePickerOpen }}" hint-placeholder-val="{{ false }}">
           <span style="display:inline-flex;gap:6px">
             <button onClick="{{ onEForce }}" style="background:var(--slate-100);border:1px solid var(--slate-300);color:var(--slate-700);font-family:inherit;font-size:11px;font-weight:700;padding:4px 9px;border-radius:6px;cursor:pointer">Took turn by force</button>
@@ -1440,11 +1430,11 @@ window.GlamStory = (function () {
         <div style="font-size:56px;line-height:1">{{ outcomeEmoji }}</div>
         <h2 style="font-size:24px;font-weight:800;color:var(--gtm-plum);margin:8px 0 6px;letter-spacing:-.01em">{{ outcomeTitle }}</h2>
         <p style="font-size:15px;line-height:1.5;color:var(--text-body);max-width:500px;margin:0 auto 12px">{{ outcomeText }}</p>
-        <!-- AC-16 — an unfinished look says so, plainly, and the story above still
+        <!-- AC-16 - an unfinished look says so, plainly, and the story above still
              carries its turn-taking line with no completion claim in it. -->
-        <sc-if value="{{ incompleteNote }}" hint-placeholder-val="{{ false }}"><p style="font-size:12px;font-weight:700;color:var(--text-muted);max-width:480px;margin:0 auto 12px">The look was not finished this time — that is fine. The turn-taking still counts.</p></sc-if>
+        <sc-if value="{{ incompleteNote }}" hint-placeholder-val="{{ false }}"><p style="font-size:12px;font-weight:700;color:var(--text-muted);max-width:480px;margin:0 auto 12px">The look was not finished this time - that is fine. The turn-taking still counts.</p></sc-if>
 
-        <!-- PHOTO BOOTH — the transformation the child actually made, shot off the
+        <!-- PHOTO BOOTH - the transformation the child actually made, shot off the
              live compositor at Go and again the moment the engine closed the
              trial. It shows the doll, so it asserts nothing about the client that
              the child could refute (§3.7.1): the picture IS the evidence. -->
@@ -1477,9 +1467,9 @@ window.GlamStory = (function () {
     <div onClick="{{ onMethod }}" style="position:fixed;inset:0;background:var(--surface-overlay);z-index:100;display:flex;align-items:center;justify-content:center;padding:24px">
       <div style="width:min(600px,100%);max-height:86vh;overflow-y:auto;background:#fff;border-radius:14px;box-shadow:var(--shadow-modal);padding:24px 26px">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px"><h2 style="font-size:18px;font-weight:800;color:var(--text-primary);margin:0">Method &amp; sources</h2><button onClick="{{ onMethod }}" style="background:none;border:none;font-size:22px;line-height:1;color:var(--text-muted);cursor:pointer">✕</button></div>
-        <p style="font-size:11px;color:var(--text-muted);margin:0 0 14px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Clinician reference — not shown to the learner</p>
+        <p style="font-size:11px;color:var(--text-muted);margin:0 0 14px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Clinician reference - not shown to the learner</p>
         <div style="font-size:13.5px;line-height:1.55;color:var(--text-body)">
-          <p style="margin:0 0 12px">Turn-taking taught as a short behavior chain — <b>take a turn → relinquish → wait → ask for it back → resume</b> — inside a motivating shared activity (a collaborative glam makeover). Both players take the <b>same-size</b> turn; the learner earns extra time as a reward for handing over.</p>
+          <p style="margin:0 0 12px">Turn-taking taught as a short behavior chain - <b>take a turn → relinquish → wait → ask for it back → resume</b> - inside a motivating shared activity (a collaborative glam makeover). Both players take the <b>same-size</b> turn; the learner earns extra time as a reward for handing over.</p>
           <div style="border-left:4px solid var(--sage-500);background:var(--sage-50);border-radius:0 8px 8px 0;padding:10px 14px;margin:0 0 10px"><div style="font-weight:800;color:var(--sage-700);font-size:13px;margin-bottom:2px">Relinquish &amp; wait = tolerance for delayed reinforcement</div><div>Handing over is reinforced (a token); "earn more time" fades the delay in reverse. Fisher, Thompson, Hagopian, Bowman &amp; Krug (2000), <i>Behavior Modification</i>.</div></div>
           <div style="border-left:4px solid var(--blue-500);background:var(--blue-50);border-radius:0 8px 8px 0;padding:10px 14px;margin:0 0 10px"><div style="font-weight:800;color:var(--blue-700);font-size:13px;margin-bottom:2px">"They forget" → I ask = contrived MO + interrupted chain</div><div>Withholding the expected turn contrives a motivating operation, evoking the mand under MO control. Sundberg et al. (2002); Hall &amp; Sundberg (1987); Endicott &amp; Higbee (2007).</div></div>
           <div style="border-left:4px solid var(--amber-500);background:var(--amber-50);border-radius:0 8px 8px 0;padding:10px 14px;margin:0 0 10px"><div style="font-weight:800;color:var(--amber-700);font-size:13px;margin-bottom:2px">Fadeable visual cue &gt; vocal prompt</div><div>The ask-cue steps down (full → short → icon → none) so responding transfers to the MO, not the prompt. Sweeney-Kerwin et al. (2007).</div></div>
@@ -1514,7 +1504,7 @@ const HAIR_SWATCH = {
    recolour walks against the hair's own luma. Across all seven shipped ramps the
    hue and saturation are the swatch's own, and the value curve is a fixed
    proportion of the swatch's value (mid ≈ .93·v, shadow ≈ .55·mid, highlight ≈
-   1.015·mid — measured: brunette .945/.465, blonde .960/.493, berry .993/.621,
+   1.015·mid - measured: brunette .945/.465, blonde .960/.493, berry .993/.621,
    silver .958/.764). So a new shade costs no new art, only a swatch. The seven
    shipped ramps still win the lookup, so nothing already on screen shifts. */
 function rampFromHex(hex){
@@ -1531,14 +1521,13 @@ const EXTRA_HAIR_RAMPS = Object.keys(HAIR_SWATCH).reduce((m,k)=>{
 const THEMES = {
   social: {
     badge:'🎉', base:'person', flaws:'person',
-    intro:{ emoji:'🎉', title:'Party in a flash!', text:'The party starts in a few minutes — and it is total bedhead, a couple of surprise spots, and no outfit yet! Good thing the glam team takes turns: skincare first, then hair, makeup, and an outfit.' },
-    outcome:{ emoji:'✨', title:'Ta-da — what a team!', text:'Everyone took turns and the whole look came together just in time. Best night ever — because the team worked together!' },
-    /* The salon's stations. A station is a shelf of the vanity, not a phase —
-       the staged order still comes from each tool's own `step`/`ph`, so a station
+    intro:{ emoji:'🎉', title:'Party in a flash!', text:'The party starts in a few minutes - and it is total bedhead, a couple of surprise spots, and no outfit yet! Good thing the glam team takes turns: skincare first, then hair, makeup, and an outfit.' },
+    outcome:{ emoji:'✨', title:'Ta-da - what a team!', text:'Everyone took turns and the whole look came together just in time. Best night ever - because the team worked together!' },
+    /* The salon's stations. A station is a shelf of the vanity, not a phase - the staged order still comes from each tool's own `step`/`ph`, so a station
        whose tools are all still locked simply does not appear yet. Depth here is a
        GENEROUS FIXED stock: more shades of the same article never add an article,
        so the required-action count (and with it the engine's per-turn budget)
-       is untouched — a turn just has more to choose between. */
+       is untouched - a turn just has more to choose between. */
     cats:[
       { label:'Skincare', icon:'🧼', options:[
         {id:'wash',label:'Wash',glyph:'🧼',mech:'paint',slot:'wash',zone:'face',step:1},
@@ -1546,7 +1535,7 @@ const THEMES = {
         {id:'patch',label:'Treat spots',glyph:'🩹',mech:'patch',step:3},
         {id:'conceal',label:'Conceal',glyph:'✨',mech:'conceal',step:3} ] },
       // Both brow tools are untracked by the TA, so they are open from the first
-      // turn — on their own shelf rather than stranded inside a locked station.
+      // turn - on their own shelf rather than stranded inside a locked station.
       { label:'Brow bar', icon:'✂️', options:[
         {id:'brows',label:'Shape brows',glyph:'✂️',mech:'tap',apply:'toggle',slot:'brows',zone:'brows'},
         {id:'pencil',label:'Brow pencil',glyph:'✏️',color:'#4a3626',mech:'tap',apply:'toggle',slot:'pencil',zone:'brows'} ] },
@@ -1603,7 +1592,7 @@ const THEMES = {
         {id:'ear2',label:'Diamond',glyph:'💍',value:'ring',mech:'tap',apply:'place',slot:'ear',zone:'ears',ph:'acc'},
         {id:'ear3',label:'Sapphire',glyph:'💎',value:'sapphire',mech:'tap',apply:'place',slot:'ear',zone:'ears',ph:'acc'} ] },
       /* Shirt: `value` picks the cut (and, off the art path, the SVG silhouette);
-         `color` is the tee's own tint. Two shades may share a cut — the tint is
+         `color` is the tee's own tint. Two shades may share a cut - the tint is
          no longer read off the cut, so the stock is not capped at four. */
       { label:'Shirt color', icon:'👕', options:[
         {id:'of1',label:'Teal',glyph:'👕',color:'#2f8f8a',mech:'choose',slot:'outfit',value:'gown',ph:'acc'},
@@ -1628,8 +1617,8 @@ const THEMES = {
   },
   pet: {
     badge:'🐾', base:'pet', flaws:'pet',
-    intro:{ emoji:'🐾', title:"It's the big Pet Show!", text:'The pup is on stage next — but came in muddy and a bit matted! Time for a spa, a fresh groom, some sparkle, and a show outfit. The owner and stylists take turns getting the look ready.' },
-    outcome:{ emoji:'🏆', title:'Winners — Cutest Pet & Best Team!', text:'The judges loved every bit of it. The pup took home Cutest Pet AND Best Team — because the owner and stylists took turns and worked together!' },
+    intro:{ emoji:'🐾', title:"It's the big Pet Show!", text:'The pup is on stage next - but came in muddy and a bit matted! Time for a spa, a fresh groom, some sparkle, and a show outfit. The owner and stylists take turns getting the look ready.' },
+    outcome:{ emoji:'🏆', title:'Winners - Cutest Pet & Best Team!', text:'The judges loved every bit of it. The pup took home Cutest Pet AND Best Team - because the owner and stylists took turns and worked together!' },
     cats:[
       { label:'Spa', icon:'🛁', options:[
         {id:'bath',label:'Bath',glyph:'🫧',mech:'paint',slot:'wash',zone:'face'},
@@ -1652,8 +1641,8 @@ const THEMES = {
   },
   hero: {
     badge:'🦸', base:'person', flaws:'none',
-    intro:{ emoji:'🚨', title:'The city needs a hero — in 3 minutes!', text:'Alarms downtown and only minutes to suit up: a power-up glow, heroic hair, a mask, and a cape. The hero squad takes turns getting ready.' },
-    outcome:{ emoji:'💥', title:'Suited up — day saved!', text:'Fully suited and ready, the hero swooped in and saved the day. The whole squad took turns and made it happen — team power!' },
+    intro:{ emoji:'🚨', title:'The city needs a hero - in 3 minutes!', text:'Alarms downtown and only minutes to suit up: a power-up glow, heroic hair, a mask, and a cape. The hero squad takes turns getting ready.' },
+    outcome:{ emoji:'💥', title:'Suited up - day saved!', text:'Fully suited and ready, the hero swooped in and saved the day. The whole squad took turns and made it happen - team power!' },
     cats:[
       { label:'Power-up', icon:'⚡', options:[
         {id:'glow',label:'Energy wash',glyph:'⚡',mech:'paint',slot:'moist',zone:'face'},
@@ -1702,7 +1691,7 @@ const ZONES = {
   },
 };
 
-/* ══ Per-model sprite placement — ONE source of truth ══
+/* ══ Per-model sprite placement - ONE source of truth ══
    These three tables used to live inside `paintAvatar` as local consts. They are
    hoisted because the target hitboxes are now DERIVED from them (see
    `_artZones`): the "do it here" box and the pixels the tool actually changes
@@ -1725,25 +1714,25 @@ const BROW_TINT = { floor:0.60, span:0.55 };
    temple/hairline". The maintainer named the cause and their reading is the one
    that held up: "the base image has an eyebrow that is removed by code". The
    removal stops short of the brow's OUTER TAIL, so ink from the original brow
-   survives on the temple skin — on a bare face, with no brow tool taken and no
+   survives on the temple skin - on a bare face, with no brow tool taken and no
    recolour, which is why `BROW_TINT` was never a candidate and is untouched.
 
    `_browClean` finishes that removal at composite time. The numbers, all as
    fractions:
-     in/out/tall — the band, in brow-sprite widths inboard/outboard of the tail
+     in/out/tall - the band, in brow-sprite widths inboard/outboard of the tail
                    and in brow-sprite heights either side of its centre line.
-     hair/key/lips — mask channels a pixel must be UNDER to count as skin. `hair`
+     hair/key/lips - mask channels a pixel must be UNDER to count as skin. `hair`
                    is deliberately tight: the hairline and its anti-aliased edge
                    carry a partial hair value and must never be repainted. `key`
                    is `_eyesCanvas`'s own cutoff, so the region the build-time
                    fill DID reach is left exactly as it is.
-     dark/depth  — a pixel is residue below `dark` × the band's own median skin
+     dark/depth - a pixel is residue below `dark` × the band's own median skin
                    luminance, and is fully replaced by `depth` × that below it.
-     feather     — the fraction of the band over which alpha ramps to 0 at the
+     feather - the fraction of the band over which alpha ramps to 0 at the
                    edges, so the repair never introduces an edge of its own. */
 const BROW_CLEAN = { in:0.18, out:0.50, tall:1.10, hair:0.10, key:0.12, lips:0.12,
                      dark:0.86, depth:0.45, feather:0.16 };
-/* ══ Per-tool cursor art — STUB, art deferred to issue #40 ══
+/* ══ Per-tool cursor art - STUB, art deferred to issue #40 ══
    Reported: "the drag animation style is boring because the cursor doesn't look
    different. It would look best if the cursor looked like the tool being used."
    That needs a small generated sprite per tool, which does not exist yet, so
@@ -1751,21 +1740,19 @@ const BROW_CLEAN = { in:0.18, out:0.50, tall:1.10, hair:0.10, key:0.12, lips:0.1
 
    The table is deliberately EMPTY. `_toolCursor` therefore returns the keyword
    fallback for every tool in the catalogue, which is character-for-character what
-   the build rendered before this seam existed — `grab` over a paint target,
+   the build rendered before this seam existed - `grab` over a paint target,
    `pointer` over a tap target and over the spot rings. A stub that changes what
    the child sees is not a stub, so `tests/glam-tool-cursor.spec.js` asserts the
    rendered cursor is unchanged for every armable tool.
 
    To fill it (issue #40): one entry per tool id, `{url, x, y}`, where x/y are the
-   hotspot in CSS px from the sprite's top-left. Order matters in the CSS value —
-   the keyword after the comma is the fallback the UA uses when the sprite cannot
+   hotspot in CSS px from the sprite's top-left. Order matters in the CSS value - the keyword after the comma is the fallback the UA uses when the sprite cannot
    be fetched, so it must stay. Browsers cap cursor images at 128×128; a larger
    sprite makes the whole declaration a no-op.
 
    THE URL MUST NOT CONTAIN A SEMICOLON, and that rules out the obvious choice.
    Every style in this build is authored as a STRING and handed to the runtime,
-   which turns it into a React style object with `cssToObj` (vendor/support.js) —
-   `css.split(";")`, with no awareness of quoting. A `data:image/png;base64,…`
+   which turns it into a React style object with `cssToObj` (vendor/support.js) - `css.split(";")`, with no awareness of quoting. A `data:image/png;base64,…`
    URI is therefore torn in half at the `;` inside its own media type, and what
    reaches React is the invalid fragment `url("data:image/png`; the browser drops
    the declaration and the target renders with NO cursor at all. Measured: the
@@ -1777,39 +1764,39 @@ const EARCFG  = { m2:{lx:0.20,rx:0.80,y:1.35}, m3:{lx:0.235,rx:0.765,y:1.72}, m4
 const EARCFG_D = {lx:0.185,rx:0.815,y:1.35};
 /* T4b. Where the IRIS actually is inside the eye sprite frame, so a coloured
    contact lands on the iris instead of near it. Colored contacts used to fill a
-   disc of `min(eyeW,eyeH)·0.58` centred on the eye anchor — a number picked
-   against the FACE anchor, not against the art — which came out ~1.4× the drawn
+   disc of `min(eyeW,eyeH)·0.58` centred on the eye anchor - a number picked
+   against the FACE anchor, not against the art - which came out ~1.4× the drawn
    iris and so bled colour onto the sclera and down over the lower lid margin.
    These fractions are measured off `assets/art/eyes/natural.png`, the sprite the
    whole state stack shares (manifest: "all sprites share one iris-centered frame,
    cx=cy=0.5"): the aperture is recovered by row-span-filling the sclera, the iris
    is the part of that aperture which is not sclera, and its bbox gives the circle.
-   `top` is the lid line over the iris — flat to the pixel across the whole iris
+   `top` is the lid line over the iris - flat to the pixel across the whole iris
    span in this art, which is why a rect ∩ arc clip is exact rather than an
    approximation. `cl` is the sprite's own catchlight as [dx, dy, r] in radii, so
    the recolour puts its highlight where the art already had one.
    r/cl-r are fractions of sprite WIDTH; cy/top of sprite HEIGHT. */
 const IRISCFG = { cx:0.5, cy:0.4574, r:0.1471, top:0.3617, cl:[0.44,-0.16,0.22] };
 
-/* ══ THIRD PASS A1 — the white pixels in the eyelashes ══
+/* ══ THIRD PASS A1 - the white pixels in the eyelashes ══
    `assets/art/eyes/glam.png` draws every lash TWICE: a dark stroke and, laid
    along it, a second stroke of flat white. Inside the aperture that idiom is
    what makes the sclera and the catchlights; out in the lash fans it is 1848
    fully opaque pixels of rgba(255,255,255,255) sitting between the lashes. At
    the size the compositor draws the eye (a 340 px sprite down to ~135 px) those
-   strokes survive as a pale speckle interleaved with the lashes — which is the
+   strokes survive as a pale speckle interleaved with the lashes - which is the
    defect exactly as the maintainer described it. Measured on the completed
-   look, 17–21 % of the lash geometry came out BRIGHTER than the bare face
+   look, 17-21 % of the lash geometry came out BRIGHTER than the bare face
    underneath, by up to +161 luminance.
 
    `_lashClean` drops that highlight and nothing else. What separates a lash
-   highlight from the sclera is not its colour — both are flat white — but what
+   highlight from the sclera is not its colour - both are flat white - but what
    it is JOINED TO: the sclera is one pale region continuous with the pixels over
    the iris, and every lash highlight is a stroke of its own out in the fan. So
    the keep-set is flood-filled through pale pixels from a seed ellipse inside
    the aperture, the iris disc is added (that is where the catchlights are), and
-   only pale pixels the fill never reached are cleared. On `natural.png` — the
-   plain eyeball, an accepted surface — the rule finds ZERO pixels, which is the
+   only pale pixels the fill never reached are cleared. On `natural.png` - the
+   plain eyeball, an accepted surface - the rule finds ZERO pixels, which is the
    proof it is discriminating rather than just bleaching.
 
    Cleared, not darkened: a lash gap should show the lid behind it. Painting the
@@ -1820,26 +1807,25 @@ const IRISCFG = { cx:0.5, cy:0.4574, r:0.1471, top:0.3617, cl:[0.44,-0.16,0.22] 
 
    `inkLo`/`inkHi` are the second half of the same defect, on the OTHER sprite.
    The winged liner carries a whole eye, so when mascara is already showing only
-   its INK should go on — and "ink" cannot be "everything that is not flat white".
-   The liner's own LID is opaque skin at luminance 140–180: not white by the
+   its INK should go on - and "ink" cannot be "everything that is not flat white".
+   The liner's own LID is opaque skin at luminance 140-180: not white by the
    min-channel test, but laid over a black lash it repaints it, which is a bright
-   pixel on a lash however it is spelled. So the ink cut now fades by LUMINANCE —
-   full alpha at or below `inkLo`, gone at or above `inkHi` — which subsumes the
+   pixel on a lash however it is spelled. So the ink cut now fades by LUMINANCE - full alpha at or below `inkLo`, gone at or above `inkHi` - which subsumes the
    white test (all channels ≥ 170 ⇒ luminance ≥ 170) and takes the lid with it.
    A ramp rather than a cliff so the wing keeps its own anti-aliased edge. */
 const LASH_MATTE = { pale:170, alpha:128, seedRx:0.30, seedRy:0.11, irisPad:1.05,
                      inkLo:110, inkHi:170 };
 
-/* ══ SECOND PASS U2 — the cheekbone highlight's PATH ══
+/* ══ SECOND PASS U2 - the cheekbone highlight's PATH ══
    The highlight used to be one tilted ellipse per cheek. An ellipse has a
    perfectly straight spine at every rotation and every aspect, and that is what
    the maintainer was seeing: a lozenge, not a swept highlight. What a cheekbone
    highlight actually follows is the TURN where the outer eye socket converges
-   with the cheekbone — it starts under the eye on the apple, drops onto the
+   with the cheekbone - it starts under the eye on the apple, drops onto the
    zygomatic ridge, then lifts back out toward the temple. That is a curve, so
    the shape is stamped along one.
 
-   The path is a quadratic Bézier in eye-landmark units — [out, down] from that
+   The path is a quadratic Bézier in eye-landmark units - [out, down] from that
    eye's own centre, `out` meaning away from the face's midline, so the two
    cheeks are exact mirrors by construction rather than by a second set of
    numbers. Its chord's mid-point is (0.58, 1.18): the centre of the single
@@ -1848,34 +1834,34 @@ const LASH_MATTE = { pale:170, alpha:128, seedRx:0.30, seedRy:0.11, irisPad:1.05
 
    `n` stamps ride the path, each an ellipse `rl` long along the tangent and
    `rc` across it, `rc` tapering from `rcBelly` at the middle to `rcTip` at the
-   ends — a bean, not a sausage. Spacing works out at ~0.3 of `rl`, which is
+   ends - a bean, not a sausage. Spacing works out at ~0.3 of `rl`, which is
    where overlapping raised cosines sum flat: wider and the sweep beads visibly,
    tighter and it is only more gradient fills for the same picture.
    `a` is the per-stamp alpha at the belly, and low because ~2.2 of them overlap
    along the ridge. It falls to `aTip` of that at the two ends, which is the
    other half of U1: `core` moves the fade inward ACROSS the sweep, and this
    moves it inward ALONG it. Without the taper a ribbon sits at very nearly its
-   peak down its whole ridge — which is a plateau again, just a bent one.
+   peak down its whole ridge - which is a plateau again, just a bent one.
    ONE source of truth: `_hlStamps` reads this for the compositor AND for
    `_artZones`, so the hitbox follows the art (§3.9) instead of restating it. */
 const HL_ARC = { p0:[-0.02,1.40], p1:[0.58,1.58], p2:[1.18,0.94],
                  n:19, rl:0.26, rcBelly:0.26, rcTip:0.14, a:0.24, aTip:0.12, core:0.40 };
 
-/* SECOND PASS U3 — how big the client is drawn, as a share of the CONTAINED
+/* SECOND PASS U3 - how big the client is drawn, as a share of the CONTAINED
    backdrop's height (not of the panel's).
 
    The panel used to paint the backdrop `cover`, so the composition's scale
    tracked whichever panel edge happened to be longer while the client stayed a
    flat 320×360 px: the client was 0.39 of the backdrop's height at 1280×860,
-   0.54 at 834×1112 and 0.93 at 390×844 — three different framings of the same
+   0.54 at 834×1112 and 0.93 at 390×844 - three different framings of the same
    room. Anchoring her to the composition instead makes it one framing at every
    width, and it is what lets the fit change move the art without moving her
    relative to the mirror she is sitting at.
 
    The value is bounded on both sides, and at 390px wide the lower bound is the
    binding one: the drag targets shrink with her, and the smallest of them (the
-   ears band) is 137×24 CSS px there — WCAG 2.2 SC 2.5.8's floor, which this may
-   not go under. Above ~0.9 her head leaves the mirror's aperture (~0.10–0.83 of
+   ears band) is 137×24 CSS px there - WCAG 2.2 SC 2.5.8's floor, which this may
+   not go under. Above ~0.9 her head leaves the mirror's aperture (~0.10-0.83 of
    the art) and she covers the counter she is meant to be sitting at. */
 const STAGE_CLIENT_H = 0.70;
 
@@ -1899,7 +1885,7 @@ const REQUIRED_ACTIONS = 19;
 
 /* How the texting intro is paced (TUNING fix 2). Every message is preceded by a
    BRIEF typing burst on the side it is coming from, and once it lands the thread
-   sits still while it is read — the dwell scales with the length of what just
+   sits still while it is read - the dwell scales with the length of what just
    arrived, so a long message is never shoved off the screen by the next one.
    The old build ran one bubble every 900 ms with the dots up continuously,
    which read as a machine gun rather than as a conversation.
@@ -1919,7 +1905,7 @@ class Component extends DCLogic {
          is one tap on Start; the BT's setup strip is collapsed behind the ⚙ so
          it is reachable without being the first thing on screen. */
       phase:'title', theme:'social', turnMap:'banner', model:sel.model,
-      /* countMode is `shown`|`hidden` only — AC-8: no timer ever bounds the
+      /* countMode is `shown`|`hidden` only - AC-8: no timer ever bounds the
          LEARNER's own turn. Timing is a partner-turn setting (`partnerTurn`). */
       countMode:'shown', partnerTurn:'count', staged:'on',
       giveBack:'forgets', cueLevel:'full', turns:6, waitSec:3, charLock:'random',
@@ -1933,7 +1919,7 @@ class Component extends DCLogic {
          shelf label. Tri-state: absent = follow the routine's own default (open
          while the shelf still has work, folded once it is settled). */
       openGrp:{},
-      // engine mirror — the Trial is the source of truth; these exist only to render
+      // engine mirror - the Trial is the source of truth; these exist only to render
       engTurn:0, ttActions:0, ttBudget:0, capToast:'', eToast:'', ePickerOpen:false,
       report:null,
       /* The outro photo booth (below). Only a flag lives in state; the two frames
@@ -1967,8 +1953,7 @@ class Component extends DCLogic {
     this._ttIv=setInterval(()=>this.tickTrial(),250);
     this.paintAvatar(); }
   componentDidUpdate(){ this.paintAvatar(); this.paintReveal(); this._scrollThread(); this._scrollTrolley(); }
-  /* The trolley flows top-down, so whenever the set of open shelves changes —
-     a step finishes, the next one opens — the cart returns to the top rather
+  /* The trolley flows top-down, so whenever the set of open shelves changes - a step finishes, the next one opens - the cart returns to the top rather
      than leaving the child's next options scrolled off below the fold. */
   _scrollTrolley(){ const k=this._trolleyKey; if(k==null || k===this._trolleyKeyShown) return;
     this._trolleyKeyShown=k; const el=document.getElementById('gtm-trolley'); if(el) el.scrollTop=0; }
@@ -2010,7 +1995,7 @@ class Component extends DCLogic {
         /* The after frame has to be grabbed HERE: the done card replaces the
            game surface, so one render later the compositor canvas is gone. If
            the trial ended before Go ever ran, the still-open before window is
-           closed onto the same untouched face — the booth then shows the look
+           closed onto the same untouched face - the booth then shows the look
            the child arrived with on both sides, which is honest. */
         this._closeBefore();
         this._shotAfter=this._shot()||this._shotBefore;
@@ -2045,11 +2030,11 @@ class Component extends DCLogic {
   toast(msg){ if(!msg) return; clearTimeout(this._toastTO);
     this.setState({capToast:msg}); this._toastTO=setTimeout(()=>this.setState({capToast:''}),3200); }
 
-  /* "Choices mirrored with care" — the one piece of feedback every apply path
+  /* "Choices mirrored with care" - the one piece of feedback every apply path
      shares. It ECHOES, it does not evaluate: the chip carries the child's own
      tool name (plus a sparkle) and no sentence is composed around it, so a
      choice can never be told it was a good or a wrong one, and nothing here can
-     make a claim about the client. Purely presentational — no engine call, no
+     make a claim about the client. Purely presentational - no engine call, no
      charge, no score; it runs after admission, on the paths that actually
      changed the look. */
   _mirror(opt){ if(!opt||!opt.label) return; clearTimeout(this._mirrorTO);
@@ -2128,16 +2113,16 @@ class Component extends DCLogic {
 
   /* ── TROLLEY FLOW (tuning fix 3) ────────────────────────────────────────────
      The cart is a working surface, not a catalogue. Three derived reads drive
-     it — none of them stored, so there is no second copy of "what is done":
+     it - none of them stored, so there is no second copy of "what is done":
 
-       · _optFamily / _familySizes — how many tools in this theme share a slot,
+       · _optFamily / _familySizes - how many tools in this theme share a slot,
          i.e. how many shades of the same article the child can switch between.
-       · _optSpent — the step this tool performs is taken AND it has no sibling
+       · _optSpent - the step this tool performs is taken AND it has no sibling
          shade, so tapping it again cannot change the client. Wash, Moisturize,
          Conceal, Contour, Highlight, the liners: they leave the cart for good.
          A tool whose own mechanism has gone dead (`_optDead`) leaves by the same
-         door, whatever the routine — that is the maintainer's ruling.
-       · _grpSettled — every tool still on this shelf has had its step taken, so
+         door, whatever the routine - that is the maintainer's ruling.
+       · _grpSettled - every tool still on this shelf has had its step taken, so
          the shelf folds to its header until someone asks for it back. The header
          keeps that ✓ even after the last tool has left, which is where a
          finished step goes on reading as finished once its tools are gone.
@@ -2147,7 +2132,7 @@ class Component extends DCLogic {
 
      All of it is the STAGED routine's behaviour. Free play means "all steps
      open" (its own chip says so) and stays the flat catalogue it has always
-     been — a BT reaching for any station out of order needs every station
+     been - a BT reaching for any station out of order needs every station
      reachable, and nothing there is out of sequence to move on from. */
   _optFamily(opt){ return opt.slot || opt.id; }
   _familySizes(){ const th=this.state.theme; if(this._famTheme===th) return this._fam;
@@ -2170,16 +2155,16 @@ class Component extends DCLogic {
      tool's own mechanism still change the client?" `Treat spots` is the tool that
      separates them. Its mechanism (`patchOne`) early-returns unless a spot is
      still bare, so once every spot carries a patch the tool is a guaranteed
-     no-op — yet step 3 is NOT over, because Conceal has still to run. Under the
+     no-op - yet step 3 is NOT over, because Conceal has still to run. Under the
      step-only read it stayed live, armable, and its ✓ blinked off every time it
      was armed (`active&&!armed`), which is the flicker the maintainer saw.
 
-     These two predicates were already written — as the two branches under
+     These two predicates were already written - as the two branches under
      `if(opt.step) return …` in `_optWorkDone`, which both option rows reach past
      because each declares `step:3`. They are moved here, where they are reached.
 
      A dead tool LEAVES THE CART, by the maintainer's ruling ("changed to make the
-     tool disappear from the cart entirely") — the same door `_optSpent` already
+     tool disappear from the cart entirely") - the same door `_optSpent` already
      opens, not a second mechanism. It was disabled-in-place before; the argument
      for that was that a vanishing patch button would claim the spots step is
      over while the child still has spots to conceal. That objection is answered
@@ -2195,7 +2180,7 @@ class Component extends DCLogic {
 
      DEAD ≠ FREE. The 67 tools the turn-exchange sweep made free (`_optNoOp`)
      stay exactly where they are: they re-apply, echo on the mirror and keep
-     their target overlay — they simply no longer charge for a write of zero
+     their target overlay - they simply no longer charge for a write of zero
      bytes. Only patch and conceal can go dead, and only they leave. */
   _optDead(opt){ const ed=this.state.ed;
     if(opt.mech==='patch') return (ed.pimples||[]).every(v=>v>=1);
@@ -2204,17 +2189,17 @@ class Component extends DCLogic {
   /* ── ONE SLOT, MANY SHADES ───────────────────────────────────────────────────
      Six blushes, six shadows and seven lipsticks each share ONE slot, and paint
      coverage is stored per SLOT (`ed.cov.blush`), never per shade. So
-     `ed.cov[slot]` answers "has this slot been painted?" — it cannot answer "has
+     `ed.cov[slot]` answers "has this slot been painted?" - it cannot answer "has
      THIS shade been painted?", which is the question every ✓ and every "All
      done" is actually claiming. Arming a second shade of an already-painted slot
      inherits the first shade's coverage wholesale.
 
      The trolley button already tested shade identity for its ✓; the target
      overlay read raw coverage and so announced "All done ✓" over a shade that
-     had never touched the face — reported from play. Both now ask this one
+     had never touched the face - reported from play. Both now ask this one
      predicate. It is written on `mech==='paint' && opt.color` rather than on the
      trolley's old hard-coded `blush|lips|shadow` list because that list is a
-     restatement of the catalogue rather than of the rule — the hero base's two
+     restatement of the catalogue rather than of the rule - the hero base's two
      face masks (`mk1`/`mk2`, slot `mask`) are the same shape of tool and sat
      outside it. That base is unreachable by construction today (AC-13 removed
      the theme selector), so this is a latent case, not a live one; for every
@@ -2230,14 +2215,14 @@ class Component extends DCLogic {
 
      Coverage is stored per SLOT, so a second shade of a painted slot inherited
      the first shade's wash and `Math.min(1, 1+0.11)` finished it on the opening
-     stroke — a re-tint cost one tap where the first application cost a full
+     stroke - a re-tint cost one tap where the first application cost a full
      drag. The wash now belongs to the SHADE it was laid in: if the armed shade
      is not the one on the slot, the next stroke builds from bare, so switching
      costs exactly the drag the first application did.
 
      It does NOT re-open the action economy. `paintStep` still asks `_admit` only
      on the stroke that COMPLETES coverage, and `_admit` charges a key once per
-     turn — so the 2nd..Nth change of a type inside one turn is still free, it
+     turn - so the 2nd..Nth change of a type inside one turn is still free, it
      just has to be painted. Across a handoff `_charged` is cleared and a
      genuinely different shade charges its one action (Finding E), now at the end
      of the re-drag instead of on a single tap.
@@ -2253,7 +2238,7 @@ class Component extends DCLogic {
      first touch. Swept across all 69 person tools with each tool's own work
      already done: re-running a tool's mechanism leaves `ed` byte-identical for
      EVERY one of them, yet 67 of 69 spent a turn action for it, and at the cap
-     all 67 logged `overCap` and set the turn-durable `forfeit='overcap'` — the
+     all 67 logged `overCap` and set the turn-durable `forfeit='overcap'` - the
      independent score the Finding A guard was built to protect. The two that
      already passed are patch and conceal, because `_optDead` refuses them
      before the cap check.
@@ -2261,14 +2246,14 @@ class Component extends DCLogic {
      This predicate is the three apply paths read backwards: would
      `applyChoose` / `tapApply` / `paintStep` write one byte the client does not
      already carry? It is deliberately STRICTER than the trolley's `active` ✓ on
-     paint — `active` ticks at any coverage above zero, but a half-painted slot
+     paint - `active` ticks at any coverage above zero, but a half-painted slot
      still has a real stroke to give, so only full coverage of the shade that is
      already on is a no-op. `_optDead` answers for patch and conceal, whose
      mechanism is per-spot rather than per-option.
 
      Free means free in both directions: no charge, and no refusal either, so a
      no-op re-touch at the cap costs neither an action nor the turn's
-     independence. It is NOT dead — it stays armable, keeps its target overlay
+     independence. It is NOT dead - it stays armable, keeps its target overlay
      and its "All done ✓", and still echoes on the mirror. */
   _optNoOp(opt){ const ed=this.state.ed, slot=opt.slot;
     if(opt.mech==='patch'||opt.mech==='conceal') return this._optDead(opt);
@@ -2284,7 +2269,7 @@ class Component extends DCLogic {
   /* The cursor the ARMED tool puts over its own target. Issue #40 (per-tool
      cursor art) fills `TOOL_CURSOR_ART`; until it does, every tool resolves to
      the keyword this build already used, so nothing about the pointer changes.
-     The keyword stays after the comma even once art lands — it is the fallback
+     The keyword stays after the comma even once art lands - it is the fallback
      the UA falls back to when the sprite cannot be fetched. */
   _toolCursor(opt){ const fb=(opt&&opt.mech==='paint')?'grab':'pointer';
     const art=opt&&TOOL_CURSOR_ART[opt.id];
@@ -2295,7 +2280,7 @@ class Component extends DCLogic {
   _grpSettled(live){ return this.state.staged!=='free' && live.length>0 && live.every(o=>this._optWorkDone(o)); }
   /* `wasOpen` is what the child can SEE right now (the render already resolved
      default-vs-override), so the header always does the opposite of what is on
-     screen — never the opposite of a stored value they never set. */
+     screen - never the opposite of a stored value they never set. */
   toggleGrp(label,wasOpen){ this.setState(s=>{ const next=Object.assign({},s.openGrp||{});
     next[label]=!wasOpen; return {openGrp:next}; }); }
   _phaseState(){ // {cur:'skin'|'makeup'|'hair'|'acc', done:{skin,makeup,hair}}
@@ -2305,7 +2290,7 @@ class Component extends DCLogic {
     return { cur, skin, makeup, hair }; }
   /* The staged look is finished: the 11-step self-care TA, plus a styled and
      coloured head of hair, plus an outfit. Accessories are extra. This is the
-     ONLY completion claim in the build (D-D / AC-5) — handing over N times can
+     ONLY completion claim in the build (D-D / AC-5) - handing over N times can
      no longer "win" (eval defect 3). */
   _lookDone(){ return this._skinMakeupDone() && this._hairDone() && !!this.state.ed.done.outfit; }
 
@@ -2316,7 +2301,7 @@ class Component extends DCLogic {
        turn-durable `forfeit='overcap'` flag (engine ~L451). Arming a tool that can
        do nothing must never cost the child their independent score. */
     if(this._optDead(opt)) return;
-    /* D-B / AC-3 — at the cap a tool does not go quietly dead: refuse, log the
+    /* D-B / AC-3 - at the cap a tool does not go quietly dead: refuse, log the
        violation, set the turn-durable forfeit and TELL THE KID, in every count
        mode. 0 of 43 tools said anything at the cap in the old build. */
     const key=this._optKey(opt);
@@ -2327,7 +2312,7 @@ class Component extends DCLogic {
     if(opt.mech==='choose'){ this.applyChoose(opt); return; } this.setState({armed:opt}); }
 
   /* Would a NEW charge be refused right now? Reads the engine's single fixed
-     auto-scaled budget and nothing else (AC-17) — there is no `budget + bonus`
+     auto-scaled budget and nothing else (AC-17) - there is no `budget + bonus`
      band left in which the same tap is legal on one turn and a violation on the
      next (the A5 attack). */
   _atCapFor(key){ return !this._charged[key] && !!this._trial && !this._trial.ended && this._trial.atCap(); }
@@ -2350,13 +2335,12 @@ class Component extends DCLogic {
     if(this._lookDone()) tr.setLookComplete(true);
     const s=this.state;
     /* "They hand it back", counted: the partner's turn simply ends when their
-       budget is spent. In "they forget" the turn deliberately does NOT end —
-       the learner has to mand for it (D-K). */
+       budget is spent. In "they forget" the turn deliberately does NOT end - the learner has to mand for it (D-K). */
     if(s.phase==='theirs' && s.giveBack==='prompted' && !s.partnerTimed && tr.turn && tr.atCap()){
       setTimeout(()=>this.partnerDone(),450); }
     this.syncTT(); }
   // Per-turn action economy (user-locked): an action is spent the FIRST time in a turn a
-  // given key is touched — `item:<slot>` (select/place/toggle a thing), `color:<slot>`
+  // given key is touched - `item:<slot>` (select/place/toggle a thing), `color:<slot>`
   // (recolour an article), or `style` (hairstyle). So selecting an item costs 1; its first
   // colour change costs 1; further same-article recolours or restyles in the SAME turn are
   // free; and it all resets next turn. `ed.done` is still set for gating/✓, decoupled
@@ -2364,7 +2348,7 @@ class Component extends DCLogic {
   // Cap-dimming read used by the palette; the engine owns the refusal itself.
   _capBlocks(s,key){ if((s.chargedThisTurn||{})[key]) return false;   // already charged this turn → free
     return !!this._trial && this._trial.atCap(); }
-  // Charge key an option WOULD spend (mirrors the apply paths) — used to dim would-be-new-charge
+  // Charge key an option WOULD spend (mirrors the apply paths) - used to dim would-be-new-charge
   // tools at the cap. patch/conceal spend per tapped spot, so a synthetic never-charged key makes
   // the tool dim once the cap is hit.
   _optKey(opt){ if(opt.slot==='outfit') return 'color:outfit';
@@ -2373,13 +2357,12 @@ class Component extends DCLogic {
     if(opt.mech==='paint') return (opt.color?'color:':'item:')+opt.slot;
     if(opt.mech==='patch'||opt.mech==='conceal') return '__perTap__';
     return 'item:'+(opt.slot||opt.id); }
-  // Local bookkeeping only — admission was already decided by `_admit`.
+  // Local bookkeeping only - admission was already decided by `_admit`.
   _chargeKey(s,key){ const c=s.chargedThisTurn||{}; if(c[key]) return {charged:c};
     const n=Object.assign({},c); n[key]=1; return {charged:n}; }
 
   /* `free` is read BEFORE the write, because the write is what would make it
-     look like a no-op. A free re-touch also leaves `chargedThisTurn` alone —
-     marking a key charged without spending an action would tell `_capBlocks`
+     look like a no-op. A free re-touch also leaves `chargedThisTurn` alone - marking a key charged without spending an action would tell `_capBlocks`
      the whole family is still affordable at the cap, when a real change on it
      would still be refused. */
   applyChoose(opt){ this._closeBefore();
@@ -2430,8 +2413,7 @@ class Component extends DCLogic {
       let charged=s.chargedThisTurn||{};
       if(n2>=1){ ed.done[slot]=true; completed=true; if(!free) charged=this._chargeKey(s,key).charged; }
       return { ed, chargedThisTurn:charged }; },
-      /* A paint stroke echoes when the wash COMPLETES, not on every pointer move
-         — the same moment the engine hears about it. Mirroring each partial
+      /* A paint stroke echoes when the wash COMPLETES, not on every pointer move - the same moment the engine hears about it. Mirroring each partial
          step would strobe the chip a dozen times across one drag. */
       ()=>{ if(completed){ this._paint=false; this.setState({armed:null}); this._mirror(t); this.afterAction(); } }); }
   pDown(e){ if(e.currentTarget&&e.currentTarget.setPointerCapture&&e.pointerId!=null){ try{e.currentTarget.setPointerCapture(e.pointerId);}catch(_){} } this._paint=true; this.paintStep(); }
@@ -2440,7 +2422,7 @@ class Component extends DCLogic {
 
   /* ── turn lifecycle: every transition is the engine's, not the screen's ── */
   handoff(){ const tr=this._trial; if(!tr||tr.ended) return;
-    // the echo belongs to the turn that made the choice — it does not hang over
+    // the echo belongs to the turn that made the choice - it does not hang over
     // into the partner's turn.
     this._clearMirror();
     tr.pass(); this.setState({armed:null}); this.syncTT(); }
@@ -2449,12 +2431,12 @@ class Component extends DCLogic {
     if(tr && tr.turn && tr.turn.actor==='staff'){ tr.staffHandBack(); this.syncTT(); }
     this.setState({phase:'ready'}); }
   confirmAsk(){ const tr=this._trial; if(!tr||tr.ended) return; tr.ask(); this.syncTT(); }
-  /* §3.2 — the BT delivers a REAL prompt (verbal/gestural), on any turn. Sets the
+  /* §3.2 - the BT delivers a REAL prompt (verbal/gestural), on any turn. Sets the
      turn-durable forfeit no resume can launder (AC-23/E1). */
   btPrompt(){ const tr=this._trial; if(!tr||tr.ended) return; tr.btPrompt(); this.syncTT();
     this.setState({eToast:'Prompt recorded for this turn.'});
     clearTimeout(this._eToastTO); this._eToastTO=setTimeout(()=>this.setState({eToast:''}),2600); }
-  /* D-C / AC-14 — staff annotator. Fixed 3-item picker, no freeform, logs
+  /* D-C / AC-14 - staff annotator. Fixed 3-item picker, no freeform, logs
      {timestamp, phase, whose-turn} and changes nothing about play or score. */
   eMark(code){ const tr=this._trial; if(!tr) return; tr.mark(code);
     this.setState({ePickerOpen:false,eToast:'Noted: '+code+' · tap Undo to remove'});
@@ -2462,9 +2444,9 @@ class Component extends DCLogic {
   eUndo(){ const tr=this._trial; if(!tr) return; tr.undoMark();
     clearTimeout(this._eToastTO); this.setState({eToast:'Removed.'});
     this._eToastTO=setTimeout(()=>this.setState({eToast:''}),1800); }
-  /* AC-5/AC-16 — always terminable, from any turn, with no completion over-claim. */
+  /* AC-5/AC-16 - always terminable, from any turn, with no completion over-claim. */
   endTrial(){ const tr=this._trial; if(!tr||tr.ended) return; tr.endTrial('bt-end'); this.syncTT(); }
-  /* D-H / AC-9 — the append-only trial log rendered as the per-turn table, with
+  /* D-H / AC-9 - the append-only trial log rendered as the per-turn table, with
      all ten §4 columns, BELOW the outro story on a print-to-PDF sheet (the same
      new-tab + pop-up-retry pattern the other No Outcome tools use).
      De-identified by construction: an auto session id and the date. This tool
@@ -2479,24 +2461,24 @@ class Component extends DCLogic {
     const head='<tr>'+COLS.map(c=>'<th>'+esc(c[0])+'</th>').join('')+'</tr>';
     const body=rep.rows.map(r=>'<tr>'+COLS.map(c=>'<td>'+esc(r[c[1]])+'</td>').join('')+'</tr>').join('');
     const T=rep.totals;
-    const asks=Object.keys(T.asks).map(k=>k+' ×'+T.asks[k]).join(' · ')||'—';
+    const asks=Object.keys(T.asks).map(k=>k+' ×'+T.asks[k]).join(' · ')||' - ';
     const sum=[['Tier (turn-taking)','Tier '+rep.tier],
       ['Learner turns scored',T.learnerTurns],['Independent passes',T.independentPasses],
       ['Prompted / staff-prompted passes',T.nonIndependentPasses],['Over-cap attempts',T.overCap],
       ['Ask-back',asks],['(E) marks',T.eEvents],
-      ['Look finished',rep.complete?'yes':'no — trial ended incomplete'],
+      ['Look finished',rep.complete?'yes':'no - trial ended incomplete'],
       ['Per-turn budget','learner '+rep.learnerBudget+' · partner '+rep.staffBudget],
       ['Cue level',rep.cueLevel],['Wait window',(rep.waitMs/1000)+'s'],
       ['Turns configured',rep.turnsConfigured],['Ended',rep.endReason]]
       .map(s=>'<div class="s"><span>'+esc(s[0])+'</span><strong>'+esc(s[1])+'</strong></div>').join('');
-    /* AC-16/AC-18 — an incomplete run prints a marked-incomplete banner and the
+    /* AC-16/AC-18 - an incomplete run prints a marked-incomplete banner and the
        story below still carries only the turn-taking line: no completion beat,
        no event-success claim anywhere on the sheet. */
-    const incomplete=rep.complete?'':'<p class="warn">Trial ended with the look UNFINISHED — no completion is claimed. Turn-taking below is still scored.</p>';
+    const incomplete=rep.complete?'':'<p class="warn">Trial ended with the look UNFINISHED - no completion is claimed. Turn-taking below is still scored.</p>';
     const when=new Date(rep.startedAt);
     const html='<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'+
       '<meta name="viewport" content="width=device-width,initial-scale=1">'+
-      '<title>Glam Team Makeover — turn-taking trial</title><style>'+
+      '<title>Glam Team Makeover - turn-taking trial</title><style>'+
       'body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#1f2430;margin:0;padding:28px 30px;background:#fff}'+
       'h1{font-size:21px;margin:0 0 2px}.kick{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#6a7659}'+
       '.meta{font-size:12px;color:#6b7280;margin:6px 0 18px}'+
@@ -2514,14 +2496,14 @@ class Component extends DCLogic {
       '@media print{.pr{display:none}}</style></head><body>'+
       '<button class="pr" onclick="window.print()">Print / Save PDF</button>'+
       '<div class="kick">No Outcome ABA · Glam Team Makeover</div>'+
-      '<h1>Turn-taking trial — task analysis</h1>'+
+      '<h1>Turn-taking trial - task analysis</h1>'+
       '<p class="meta">Session '+esc(rep.sessionId)+' · '+esc(when.toLocaleString())+'</p>'+
       incomplete+
       '<div class="story"><h2>'+esc(story.title||'')+'</h2><p>'+esc(story.text||'')+'</p></div>'+
       '<h3>Per-turn record</h3><table><thead>'+head+'</thead><tbody>'+body+'</tbody></table>'+
       '<div class="sum">'+sum+'</div>'+
       '<footer>De-identified: auto session id and date only. No learner name is collected by this tool. '+
-      'Device-local report — not transmitted.</footer></body></html>';
+      'Device-local report - not transmitted.</footer></body></html>';
     window.NooutcoResults.open({ html });
   }
   finishSR(){ if(window.NooutcoReward) window.NooutcoReward.openSR({minutes:5,title:'SR Timer'}); }
@@ -2537,9 +2519,9 @@ class Component extends DCLogic {
 
   fmt(sec){ return Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0'); }
   /* Clinician-facing running summary (the Method sheet). Reads the engine's own
-     totals — never a parallel tally the screens could drift from. */
+     totals - never a parallel tally the screens could drift from. */
   statLine(){ const tr=this._trial; if(!tr) return 'no trial started';
-    const r=tr.report(); const asks=Object.keys(r.totals.asks).map(k=>k+' ×'+r.totals.asks[k]).join(', ')||'—';
+    const r=tr.report(); const asks=Object.keys(r.totals.asks).map(k=>k+' ×'+r.totals.asks[k]).join(', ')||' - ';
     return r.totals.independentPasses+'/'+r.totals.learnerTurns+' independent passes · '+
       r.totals.overCap+' over-cap · ask-back: '+asks+' · '+r.totals.eEvents+' (E) · session '+r.sessionId; }
 
@@ -2581,11 +2563,11 @@ class Component extends DCLogic {
   shade(hex){ try{ const n=parseInt(hex.slice(1),16); let r=Math.max(0,(n>>16)-28),g=Math.max(0,((n>>8)&255)-28),b=Math.max(0,(n&255)-28); return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1); }catch(e){ return hex; } }
 
   art(){ return (typeof window!=='undefined' && window.NooutcoArt) || {}; }
-  /* TUNING fix 1 — `artGated` / `setArtModel` / `artModelList` (the on-stage M2/M3/M4
+  /* TUNING fix 1 - `artGated` / `setArtModel` / `artModelList` (the on-stage M2/M3/M4
      chips) are gone. `GlamStory.MODELS` is now the SINGLE gate on which faces are
      reachable: it seeds the random draw and it populates the BT's Character lock,
      and nothing else may set `state.model` after the draw. That is what makes the
-     client fixed for the session, and it retires M1 by construction — there is no
+     client fixed for the session, and it retires M1 by construction - there is no
      second list left to disagree with the roster. */
   artBaseSrc(base){ const b=(this.art().bases||{})[base]; return (b&&b.src)||''; }
   lz(base,slot){ const L=((this.art().layers||{})[base]||{})[slot]; return (L&&L.z)||0; }
@@ -2608,14 +2590,14 @@ class Component extends DCLogic {
   /* ══ Derived target hitboxes (eval F-11) ══
      ZONES is a single fixed percentage table shared by all four models, tuned for
      the retired procedural SVG. Measured against the canvas compositor it missed
-     the art on 32 of 56 model×tool combinations — the Highlight box was smaller
+     the art on 32 of 56 model×tool combinations - the Highlight box was smaller
      than the highlight, the brow box sat below the brows, the hair box covered the
      crown of hair that reaches the shoulders.
 
      These boxes are instead computed per model from the SAME data `paintAvatar`
      paints from: the eye landmarks in the art manifest, the packed feature masks
      (R=hair, G=lips, B=eyes+brows) and the hoisted EYECFG/BROWCFG/EARCFG anchor
-     tables. A hitbox therefore cannot drift from its effect — if the art moves,
+     tables. A hitbox therefore cannot drift from its effect - if the art moves,
      both move. `tests/glam-art-fidelity.spec.js` asserts containment for every
      model × tool by diffing real pixels. */
   _maskBBox(src,ch,thr){ const c=this._mbb||(this._mbb={}); const k=src+'|'+ch+'|'+thr;
@@ -2627,7 +2609,7 @@ class Component extends DCLogic {
     const out = b<0 ? null : {t:t/H*100,b:b/H*100,l:l/W*100,r:r/W*100};
     c[k]=out; return out; }
 
-  /* AABB of an ellipse with radii (rx,ry) rotated by θ — the contour blob is
+  /* AABB of an ellipse with radii (rx,ry) rotated by θ - the contour blob is
      rotated, so an unrotated rx/ry box under-covers it at the outer corner. */
   _rotHalf(rx,ry,th){ const c=Math.cos(th),s=Math.sin(th);
     return { x:Math.sqrt(rx*rx*c*c+ry*ry*s*s), y:Math.sqrt(rx*rx*s*s+ry*ry*c*c) }; }
@@ -2636,7 +2618,7 @@ class Component extends DCLogic {
      side: {u,v} is the centre as [out, down] from that eye's centre, {du,dv} the
      path's tangent there, {rl,rc} the radii along and across it. A caller turns
      `out` into screen x with the eye's own ±1, which is what makes the two
-     cheeks mirrors. Cached — it is pure arithmetic over module constants, and
+     cheeks mirrors. Cached - it is pure arithmetic over module constants, and
      both `paintAvatar` and `_artZones` want it on every pass. */
   _hlStamps(){ if(this._hls) return this._hls;
     const A=HL_ARC, out=[];
@@ -2666,19 +2648,19 @@ class Component extends DCLogic {
         L=clamp(l-ZONE_PAD,0,100), R=clamp(r+ZONE_PAD,0,100);
       return { t:+T.toFixed(2), l:+L.toFixed(2), w:+(R-L).toFixed(2), h:+(B-T).toFixed(2), label }; };
     const z={};
-    // face — the wash + moisturize blob envelope (cy+0.85eh ± 3.85eh ∪ cy−0.4eh ± 2.6eh)
+    // face - the wash + moisturize blob envelope (cy+0.85eh ± 3.85eh ∪ cy−0.4eh ± 2.6eh)
     z.face   = box(cy-3.0*eh, cy+4.7*eh, 50-2.35*ew, 50+2.35*ew, ZONE_NOUN.face);
-    // cheeks — the blush sweep pair (cy+1.82eh, radii 1.30ew × 0.70eh, tilted up
+    // cheeks - the blush sweep pair (cy+1.82eh, radii 1.30ew × 0.70eh, tilted up
     // toward the temple by 0.36 rad), so like contour the AABB needs the rotation
     { const h=this._rotHalf(1.30*ew,0.70*eh,0.36);
       z.cheeks = box(cy+1.82*eh-h.y, cy+1.82*eh+h.y, lxp-0.12*ew-h.x, rxp+0.12*ew+h.x, ZONE_NOUN.cheeks); }
-    // contour — a rotated blob pair, so the AABB needs the rotation
+    // contour - a rotated blob pair, so the AABB needs the rotation
     { const h=this._rotHalf(1.05*ew,0.38*eh,0.92);
       z.contour = box(cy+1.62*eh-h.y, cy+1.62*eh+h.y, lxp-0.72*ew-h.x, rxp+0.72*ew+h.x, ZONE_NOUN.contour); }
-    // highlight — the union of every stamp on the cheekbone sweep ∪ the nose
+    // highlight - the union of every stamp on the cheekbone sweep ∪ the nose
     // stripe (cy+0.95eh, 0.20ew × 1.05eh). SECOND PASS U2 turned the cheek pair
     // from one ellipse into a curve of them, and the box follows because it is
-    // rolled up from `_hlStamps` — the compositor's own path — rather than from
+    // rolled up from `_hlStamps` - the compositor's own path - rather than from
     // a restated rx/ry. The stamps' angles are worked out in PIXELS (ew is % of
     // the frame's width, eh of its height, and the frame is not square), then
     // the half-extents come back to %.
@@ -2690,23 +2672,23 @@ class Component extends DCLogic {
         T=Math.min(T, vy-dy); B=Math.max(B, vy+dy);
         L=Math.min(L, lxp-s.u*ew-dx); R=Math.max(R, rxp+s.u*ew+dx); }
       z.hl = box(T,B,L,R, ZONE_NOUN.hl); }
-    // eyes — the sprite stack (eyeball, lashes, winged liner) and the lid wash reach
+    // eyes - the sprite stack (eyeball, lashes, winged liner) and the lid wash reach
     // well outside the base render's own eye pixels, so this is the sprite envelope.
     z.eyes   = box(cy-1.5*eh, cy+1.25*eh, lxp-2.0*ew, rxp+2.0*ew, ZONE_NOUN.eyes);
-    // brows — straight off BROWCFG and the brow sprite's own aspect
+    // brows - straight off BROWCFG and the brow sprite's own aspect
     { const B=BROWCFG[m]||BROWCFG_D, set=(G.brows||{})[m];
       const asp=((((set||{}).bushy||{}).L)||{}).aspect||2.4;
       const bw=B.wf*2*ew, bh=bw/asp*hw, by=cy-B.dy*eh;
       z.brows = box(by-bh/2, by+bh/2, lxp-B.dx*ew-bw/2, rxp+B.dx*ew+bw/2, ZONE_NOUN.brows); }
-    // earrings — straight off EARCFG and the earring sprite's own aspect
+    // earrings - straight off EARCFG and the earring sprite's own aspect
     { const A=EARCFG[m]||EARCFG_D, er=(G.earrings||{}).ring||{aspect:1};
       const erH=eh*1.15*0.9, erW=erH*(er.aspect||1)*hw, ty=cy+A.y*eh;
       z.ears = box(ty, ty+erH, A.lx*100-erW/2, A.rx*100+erW/2, ZONE_NOUN.ears); }
-    // lips + hair — the recolour masks themselves, so the box IS the recoloured pixels
+    // lips + hair - the recolour masks themselves, so the box IS the recoloured pixels
     const lm=this._maskBBox(E.mask,1,0.35), hm=this._maskBBox(E.mask,0,0.3);
     if(lm) z.lips = box(lm.t,lm.b,lm.l,lm.r, ZONE_NOUN.lips);
     if(hm) z.hair = box(hm.t,hm.b,hm.l,hm.r, ZONE_NOUN.hair);
-    // the masks decode asynchronously — don't freeze a partial table
+    // the masks decode asynchronously - don't freeze a partial table
     if(lm&&hm){ c.key=key; c.z=z; }
     return z; }
 
@@ -2747,7 +2729,7 @@ class Component extends DCLogic {
       const lum=Math.pow((0.299*s[i]+0.587*s[i+1]+0.114*s[i+2])/255, 0.72);
       o[i]=Math.min(255,tr*lum); o[i+1]=Math.min(255,tg*lum); o[i+2]=Math.min(255,tb*lum); o[i+3]=a; }
     cx.putImageData(out,0,0);
-    // blob: URL, not data: — the dc-runtime splits inline styles on ";", so a data
+    // blob: URL, not data: - the dc-runtime splits inline styles on ";", so a data
     // URL's ";base64," gets truncated mid-value. blob URLs carry no ";".
     const du=cv.toDataURL('image/png'), bin=atob(du.split(',')[1]), a8=new Uint8Array(bin.length);
     for(let i=0;i<bin.length;i++) a8[i]=bin.charCodeAt(i);
@@ -2802,7 +2784,7 @@ class Component extends DCLogic {
       o[i]=b[i];o[i+1]=b[i+1];o[i+2]=b[i+2]; o[i+3]=eb*(b[i+3]/255)*255; }
     octx.putImageData(od,0,0); c.key=key; c.cv=out; return out; }
 
-  /* Finding B — see BROW_CLEAN. Returns an overlay of the band's own skin tone,
+  /* Finding B - see BROW_CLEAN. Returns an overlay of the band's own skin tone,
      alpha only where the base render still carries brow ink outside the region
      its build-time removal reached. Drawn straight after the base so every
      cosmetic that follows sits on repaired skin.
@@ -2879,7 +2861,7 @@ class Component extends DCLogic {
     return idx.slice(0,3).map(i=>({x:pool[i].x, y:pool[i].y, shape:shapes[(rnd()*2)|0]})); }
   /* The blemish pool is seeded per MODEL but the hair mask is per STYLE, so a pool
      point that is bare skin under the default bob can sit under the hair of another
-     style — measured on 10 of the 28 model×style combinations, which is the eval's
+     style - measured on 10 of the 28 model×style combinations, which is the eval's
      "on M4 one of three lands in the hair". A spot drawn under hair is an
      unfindable target: the pulsing ring is on top of the hair with nothing beneath it.
 
@@ -2887,7 +2869,7 @@ class Component extends DCLogic {
      one, so a spot never moves when the learner restyles mid-play. Sampled one
      pixel at a time rather than through `_data`, which would retain seven 1.2 MB
      ImageData buffers per model for 56 reads. Falls back to the raw pool if fewer
-     than three points survive — the game must always offer three targets. */
+     than three points survive - the game must always offer three targets. */
   _skinPool(model){ const c=this._spc||(this._spc={}); if(c[model]) return c[model];
     const M=(this.gen().models||{})[model]; if(!M) return null;
     const pool=M.spotPool||[], keys=Object.keys(M.styles||{});
@@ -2917,19 +2899,19 @@ class Component extends DCLogic {
 
   /* ══ Blemish contrast (eval F-16) and register (refresh) ══
      The spot was one fixed colour (#d06a54 @ .72) on every model. Measured against
-     the skin immediately around it, all twelve spots came in at 1.06–1.67 : 1 — the
+     the skin immediately around it, all twelve spots came in at 1.06-1.67 : 1 - the
      eval flagged m3/m4, but the numbers say the "find the spots" target was
      low-contrast on ALL the models. Registration was never the problem (the rings
      do sit on the drawn spots); value was.
 
      So the ink is picked against the LOCAL skin luminance, sampled from the base
-     render just outside the spot. Skin here spans L≈0.15–0.33, and no single hue
+     render just outside the spot. Skin here spans L≈0.15-0.33, and no single hue
      clears 3:1 across that range: light skin needs a spot darker than it, dark skin
      needs one lighter.
 
      The FORM, though, is where the harshness lived, and the refresh softens it.
      The first fix drew a crisp filled disc with a near-black rim stroke and a
-     specular gloss dot — the visual grammar of a pustule, which is what read as
+     specular gloss dot - the visual grammar of a pustule, which is what read as
      graphic. It is now two soft radial falloffs and nothing else: a wide gentle
      flush plus a small dot whose only hard value is the single centre pixel.
      Value could not move (3:1 against skin at L=0.20 pins the dark core near
@@ -2937,13 +2919,13 @@ class Component extends DCLogic {
      "it's a spot, look closer" cues. `rim` and `gloss` are deliberately gone,
      and a test holds them gone: it recovers the brush's own coverage profile
      (measured against a blemish-free render of the same face) and requires it to
-     decay with no cliff and no ring stronger than the paint inside it — which is
+     decay with no cliff and no ring stronger than the paint inside it - which is
      precisely what a hard disc, a stroked outline or a specular dot would break. */
   _relLum(r,g,b){ const f=c=>{ c/=255; return c<=0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055,2.4); };
     return 0.2126*f(r)+0.7152*f(g)+0.0722*f(b); }
   _spotInk(E,sp){
-    const DARK={ halo:'#c1687a', core:'#4a1520' };   // for LIGHT skin — soft rosy flush + berry centre
-    const LIGHT={ halo:'#ffb499', core:'#ffe0cf' };  // for DARK skin — warm light bloom
+    const DARK={ halo:'#c1687a', core:'#4a1520' };   // for LIGHT skin - soft rosy flush + berry centre
+    const LIGHT={ halo:'#ffb499', core:'#ffe0cf' };  // for DARK skin - warm light bloom
     const d=this._data(E.base); if(!d) return DARK;
     const W=d.width,H=d.height,px=d.data;
     // ring-average the skin just outside the spot, so a lash or shadow under the
@@ -2963,14 +2945,14 @@ class Component extends DCLogic {
     const [r,g,bl]=this._hex(hex); const dr=(r*0.5)|0,dg=(g*0.5)|0,db=(bl*0.5)|0;
     const out=document.createElement('canvas'); out.width=W; out.height=H;
     const octx=out.getContext('2d'); const od=octx.createImageData(W,H), o=od.data;
-    // a 1-px trace of the lip mask changed 0.055–0.086 % of the canvas — the faintest
+    // a 1-px trace of the lip mask changed 0.055-0.086 % of the canvas - the faintest
     // effect in the game. Testing the 2-px neighbourhood draws a 2-px liner instead,
     // which is what a liner looks like at this frame size anyway.
     const G=i=>m[i*4+1]/255;
     /* T4a. The lip region of the mask is NOT simply connected: the seam where the
        top and bottom lip meet is drawn as a thin low-green gap, so "does a
        neighbour fall outside the lip?" answered YES in the MIDDLE of the mouth and
-       speckled the seam — 38 px on m2, 17 on m3, 72 on m4, each inside a single
+       speckled the seam - 38 px on m2, 17 on m3, 72 on m4, each inside a single
        ~7-px-tall band, which is the artifact the maintainer reported. A liner
        traces the OUTER silhouette, never the seam, so the enclosed gap has to stop
        counting as outside. Flood the real outside in from a ring around the lip
@@ -2996,7 +2978,7 @@ class Component extends DCLogic {
     octx.putImageData(od,0,0); c.key=key; c.cv=out; return out; }
   /* T4b. Where the contact blit goes, and the iris circle it must stay inside, in
      canvas px for one eye tuple [x,y,w,h,o]. This is the ONE place that placement
-     is computed — the renderer calls it and so does the fidelity test, on the same
+     is computed - the renderer calls it and so does the fidelity test, on the same
      principle as `_artZones`: a bound the test re-derives from EYECFG × IRISCFG by
      hand is a bound that drifts the first time either table moves. */
   _irisBox(e){ const EC=EYECFG[this.state.model]||EYECFG_D;
@@ -3013,7 +2995,7 @@ class Component extends DCLogic {
      shade. Living in sprite space is the whole point: the caller blits it with the
      same translate/scale it gives the eye sprite, so the disc lands on the drawn
      iris at every model's eye size instead of being re-guessed from the face
-     anchor. The clip is the iris circle intersected with the lid line — which
+     anchor. The clip is the iris circle intersected with the lid line - which
      keeps colour off the sclera above the aperture AND off the lower lid margin,
      the two overruns the maintainer reported. */
   _contactCanvas(hex){ const c=this._ctc||(this._ctc={}); if(c.key===hex) return c.cv;
@@ -3033,13 +3015,13 @@ class Component extends DCLogic {
     cx.fillStyle='rgba(255,255,255,0.9)'; cx.beginPath();
     cx.arc(CX+R*IRISCFG.cl[0],CY+R*IRISCFG.cl[1],R*IRISCFG.cl[2],0,6.2832); cx.fill();
     cx.restore(); c.key=hex; c.cv=cv; return cv; }
-  /* THIRD PASS A1 — split an eye sprite into "the eye" and "everything else".
+  /* THIRD PASS A1 - split an eye sprite into "the eye" and "everything else".
      `eye` marks the sprite's own eyeball: the pale region continuous with the
      pixels over the iris (the sclera, flood-filled from a seed ellipse inside the
      aperture) plus the iris disc itself, which is where the catchlights are and
      which the fill cannot reach because they are islands in the iris. Everything
      the mark misses is lid, lash and liner ink.
-     One pass, cached per source — the compositor asks for it on every repaint. */
+     One pass, cached per source - the compositor asks for it on every repaint. */
   _eyeMatte(src){ const c=this._eyem||(this._eyem={}); if(c[src]) return c[src];
     const rec=this._img(src); if(!rec.ok) return null;          // not decoded yet → onload repaints
     const im=rec.img, W=im.naturalWidth||im.width, H=im.naturalHeight||im.height;
@@ -3048,7 +3030,7 @@ class Component extends DCLogic {
     let id; try{ id=cx.getImageData(0,0,W,H); }catch(e){ return null; }
     const d=id.data, M=LASH_MATTE;
     // "pale" is the flat white the art uses for BOTH the sclera and the lash
-    // highlight — min channel, so a tinted sheen still counts.
+    // highlight - min channel, so a tinted sheen still counts.
     const pale=(q)=>{ const i=q*4; return d[i+3]>=M.alpha && Math.min(d[i],d[i+1],d[i+2])>=M.pale; };
     const eye=new Uint8Array(W*H), st=[];
     const ecx=IRISCFG.cx*W, ecy=IRISCFG.cy*H, erx=M.seedRx*W, ery=M.seedRy*H;
@@ -3066,19 +3048,19 @@ class Component extends DCLogic {
     return (c[src]={ W, H, eye, data:d, canvas:cn });
   }
   /* The sprite the compositor actually blits, in one of two cuts (see A1):
-       'lash' — every PALE pixel outside the eye is cleared. That is the baked-in
+       'lash' - every PALE pixel outside the eye is cleared. That is the baked-in
                 white highlight the art lays along each lash, and nothing else:
                 on `natural.png` the rule matches ZERO pixels, so the plain
                 eyeball the maintainer already accepted is untouched.
-       'ink'  — the eye itself is cleared, leaving only lid, lash and liner ink.
+       'ink' - the eye itself is cleared, leaving only lid, lash and liner ink.
                 Used for the winged liner when mascara is ALREADY showing: the
                 liner sprite carries a whole eye, and drawing that eye on top of
                 the mascara eye repainted the mascara sprite's lash roots with
-                its own sclera — pure white, on lashes, which is the rest of the
+                its own sclera - pure white, on lashes, which is the rest of the
                 defect. The two share one iris-centred frame, so dropping the
                 liner's eyeball lands its ink on the mascara eye exactly.
      Cleared rather than darkened: a lash gap should show the lid behind it, and
-     painting the highlight dark would thicken every lash — the opposite of what
+     painting the highlight dark would thicken every lash - the opposite of what
      Finding A asks for. */
   _eyeArt(src,cut){ const key=src+'|'+cut, c=this._eyec||(this._eyec={}); if(c[key]!==undefined) return c[key];
     const m=this._eyeMatte(src); if(!m) return null;
@@ -3089,13 +3071,13 @@ class Component extends DCLogic {
     const d=id.data;
     for(let q=0;q<W*H;q++){ const i=q*4;
       const white=Math.min(d[i],d[i+1],d[i+2])>=M.pale;
-      /* 'ink' keeps only what is DARK, at any alpha — not merely "not flat
+      /* 'ink' keeps only what is DARK, at any alpha - not merely "not flat
          white". Three things had to go, all measured: the sclera itself; its
-         ANTI-ALIASED rim, near-white at alpha 8–127, which laid over a black
+         ANTI-ALIASED rim, near-white at alpha 8-127, which laid over a black
          lash lifted it by up to +113 L on its own; and the sprite's opaque LID,
-         skin at 140–180 L, which the min-channel white test let through and
+         skin at 140-180 L, which the min-channel white test let through and
          which repainted every glam lash the liner art does not itself draw
-         (+85 to +110 L on 44–53 lash-core pixels per model). Only the alpha
+         (+85 to +110 L on 44-53 lash-core pixels per model). Only the alpha
          moves, and it moves on a RAMP, so the wing keeps its own feathering
          instead of gaining a cut edge. */
       if(cut==='ink'){
@@ -3109,18 +3091,17 @@ class Component extends DCLogic {
   /* Recolour a brow sprite to the hair hue (tint × luminance): keeps the ink's darkest core dark
      and the softer fill hair-toned, so a black m4 brow reads as the hair colour without going flat.
 
-     A2. `k` used to floor at 0.42, and on a sprite whose fill is ONE solid colour
-     — which m4's shaped brow is — the floor is then the whole brow. Measured on
+     A2. `k` used to floor at 0.42, and on a sprite whose fill is ONE solid colour - which m4's shaped brow is - the floor is then the whole brow. Measured on
      the completed look with berry hair, 67 % of m4's pencilled brow came out at
      exactly 0.42 × berry (42.2 luminance) against hair at 104: not a brow a shade
      deeper than the hair, a near-black plum bar drawn over the face. That is the
      "flat dark plum" of V2 and it is the heaviest thing on the finished client.
 
-     The floor moves to 0.60 and the span stays 0.55, clamped — so the darkest ink
+     The floor moves to 0.60 and the span stays 0.55, clamped - so the darkest ink
      lifts 43 % while a sprite that HAS its own shading keeps every bit of it
      (0.42+0.58L and 0.60+0.55L only diverge below L≈0.5, which is ink). A brow
      that reads deeper than the hair is the point; one that reads as ink is not.
-     Where the level sits inside "deeper than the hair" is a judgement — see the
+     Where the level sits inside "deeper than the hair" is a judgement - see the
      report's X2, and the a2before/a2after loupes it cites. */
   _browTint(src,hex){ const rec=this._img(src); if(!rec.ok) return null;
     const key=src+'|'+hex; const c=this._browtc||(this._browtc={}); if(c[key]) return c[key];
@@ -3144,7 +3125,7 @@ class Component extends DCLogic {
 
   /* A cosmetic wash: the same ellipse `_blob` fills, but with a falloff and a
      colour ramp built for makeup rather than for a dot.
-       · Falloff is a raised cosine sampled at 12 stops — 0.5+0.5·cos(πt) — so
+       · Falloff is a raised cosine sampled at 12 stops - 0.5+0.5·cos(πt) - so
          the alpha leaves the centre flat, arrives at the rim flat, and has no
          slope break anywhere in between. `_blob`'s three-segment ramp gets
          STEEPER at the rim (0.5→0 over the last 40 %), which is what draws the
@@ -3156,20 +3137,20 @@ class Component extends DCLogic {
        · `o.fx`/`o.fy` (optional, unit space, inside the circle) put the
          gradient's focus off centre. The rings then bunch toward the focus and
          stretch away from it, which is how the lid gets a deeper OUTER corner
-         out of one gradient — the shape still ends exactly on the ellipse, so
+         out of one gradient - the shape still ends exactly on the ellipse, so
          no extra edge is introduced.
        · `o.core` (optional, SECOND PASS) reshapes WHERE along the radius the
          fade happens, without moving the rim or dropping the peak: the cosine is
          sampled at t^core instead of t. The plain ramp is still ~85 % of peak a
-         quarter of the way out — a bright plateau whose own edge then reads as a
+         quarter of the way out - a bright plateau whose own edge then reads as a
          hard shape, which is what the maintainer saw on the highlight (U1). An
          exponent below 1 pulls the fade inward: at core 0.55 that same quarter
          radius is down to ~55 %, and what is left is a long, soft tail over the
          SAME footprint. Opt-in on purpose. `_wash` is shared with the blush
          (T4d), the eyeshadow (T4c) and the contour, all three of which the
          maintainer accepted on the plain ramp; changing it in place would have
-         silently retuned them. Omitting `o.core` leaves the ramp — and the stop
-         count — exactly as they were. */
+         silently retuned them. Omitting `o.core` leaves the ramp - and the stop
+         count - exactly as they were. */
   _wash(ctx,cx,cy,rx,ry,rot,hex,alpha,blend,o){ if(alpha<=0.003||rx<=0||ry<=0) return;
     o=o||{}; const b=this._hex(hex), d=o.deep?this._hex(o.deep):b;
     // a reshaped ramp bends fastest near the centre, so it needs finer sampling
@@ -3190,11 +3171,11 @@ class Component extends DCLogic {
      canvases, never data URLs in markup: a `{{ }}` placeholder inside a src= or
      url() is fetched by the parser before the runtime substitutes it, which is
      exactly the load-time 404 the §3.9 sweep removed. They are also instance
-     fields, not state — a re-render never carries pixels.
+     fields, not state - a re-render never carries pixels.
      The grab is a 1:1 blit, NOT a downscale. WebKit resamples a scaled
      `drawImage` differently depending on whether the source canvas is currently
      GPU-backed, so the same compositor content photographed inside a click
-     handler and outside it came out ~9 % of pixels apart — visually identical,
+     handler and outside it came out ~9 % of pixels apart - visually identical,
      but enough to make "is this frame the untouched doll?" unanswerable. At 1:1
      the copy is exact on every engine, and the polaroid gets a retina-sharp
      source for free. */
@@ -3215,7 +3196,7 @@ class Component extends DCLogic {
      resolve async, and `_img`'s onload repaints). */
   _captureBefore(){ if(!this._shotOpen) return; const s=this._shot(); if(s) this._shotBefore=s; }
   /* Shut the window on the last frame in which the doll is provably untouched.
-     Go is the natural moment — no action can be admitted before it — but the art
+     Go is the natural moment - no action can be admitted before it - but the art
      may still be decoding then, so the close is refused until there is a real
      frame and every edit entry point calls this first as the backstop. A paint
      stroke is the reason that backstop exists: `paintStep` moves coverage on
@@ -3235,10 +3216,10 @@ class Component extends DCLogic {
     });
   }
 
-  /* SECOND PASS U3 — the stage FITS the composition instead of cropping it.
+  /* SECOND PASS U3 - the stage FITS the composition instead of cropping it.
 
      It used to be `background-size:cover`, which crops on any panel whose aspect
-     ratio differs from the art's — and the panel's ratio is decided by the flex
+     ratio differs from the art's - and the panel's ratio is decided by the flex
      row, so it never matched. At 1280×860 that cut the mirror's gold ring clean
      through at the panel's top AND bottom edge (175.5 px at each); at 834×1112 it
      ran the ring 90 px off both sides; at 390×844 it took 13 px off each side and
@@ -3247,7 +3228,7 @@ class Component extends DCLogic {
 
      `contain` shows the whole composition, and anchoring it to `bottom` puts the
      art's counter on the panel's floor where the client is standing. What is
-     left over — a band at each side once the panel is wider than the art — is
+     left over - a band at each side once the panel is wider than the art - is
      painted as the same room continuing, so the fit reads as a wide vanity wall
      rather than as letterbox bars.
 
@@ -3256,14 +3237,14 @@ class Component extends DCLogic {
      whole height and its right edge is for all but the top ~12%; that top-right
      corner turns cool (#a6c1c5), so a soft corner wash turns with it. The
      counter's surface is #ece7da and its front #bab8b3, and its top edge sits at
-     84.5% of the composition's height. Backgrounds only — no extra element,
+     84.5% of the composition's height. Backgrounds only - no extra element,
      nothing for the compositor to animate, and the panel's box model (which
      every % target zone is measured against) is untouched. */
   _roomBg(src){
     const COUNTER='linear-gradient(to bottom,rgba(236,231,218,0) 0%,rgba(236,231,218,0) 84.5%,#ece7da 87.5%,#ece7da 93.4%,#bab8b3 95%,#a8a6a1 100%)';
     const CORNER='radial-gradient(62% 30% at 100% 0%,#a6c1c5 0%,rgba(166,193,197,0) 72%)';
-    // …and the wall is lit from where the bulbs are, so a band of it — the tall
-    // one above the mirror on a portrait panel — reads as a room rather than as
+    // …and the wall is lit from where the bulbs are, so a band of it - the tall
+    // one above the mirror on a portrait panel - reads as a room rather than as
     // a flat fill. Under the art, so it can never wash the composition.
     const LIGHT='linear-gradient(to bottom,rgba(255,252,242,.55) 0%,rgba(255,252,242,0) 42%)';
     return ';background-color:#efdfb1'
@@ -3279,11 +3260,11 @@ class Component extends DCLogic {
     const baseImg=this._img(E.base); if(!baseImg.ok) return;   // onload → repaint
     const W=cv.width,H=cv.height, ctx=cv.getContext('2d'); ctx.clearRect(0,0,W,H);
     // salon backdrop now fills the WHOLE stage panel (see stageStyle background-image),
-    // not just this box — so the canvas stays transparent behind the model and her
+    // not just this box - so the canvas stays transparent behind the model and her
     // margins reveal the salon, with the model floating in front across the panel.
     ctx.drawImage(baseImg.img,0,0,W,H);
     // finish the base render's own brow removal at the outer tail before anything
-    // else lands on the face (Finding B — see BROW_CLEAN / `_browClean`)
+    // else lands on the face (Finding B - see BROW_CLEAN / `_browClean`)
     { const bcv=this._browClean(E); if(bcv) ctx.drawImage(bcv,0,0,W,H); }
     const ed=this.state.ed, cov=k=>ed.cov[k]||0, col=k=>ed.col[k], gl=k=>ed.gl[k];
     const f=E.face, lx=f.eyeL.x*W,ly=f.eyeL.y*H,lw=f.eyeL.w*W,lh=f.eyeL.h*H,
@@ -3292,7 +3273,7 @@ class Component extends DCLogic {
     const spots=this._spots(E);
     (ed.pimples||[]).forEach((st,i)=>{ const sp=spots[i]; if(!sp) return;
       if(st===0){ const ink=this._spotInk(E,sp);
-        // wide, very soft flush — a warm "take care of this bit" tint, no edge
+        // wide, very soft flush - a warm "take care of this bit" tint, no edge
         this._blob(ctx,sp.x,sp.y,sp.r*1.25,sp.r*1.25,0,ink.halo,0.38,'source-over',true);
         // the dot itself: a full-value centre (F-16's 3:1 lives on this one
         // pixel) with a gradient edge that dissolves into the flush instead of
@@ -3301,9 +3282,9 @@ class Component extends DCLogic {
       else if(st===1){ const meta=(this.gen().stickers||{})[sp.shape]; if(meta){ const rec=this._img(meta.src); if(rec.ok){ const ph=sp.r*3.0, pw=ph*(meta.aspect||1); ctx.drawImage(rec.img, sp.x-pw/2, sp.y-ph/2, pw, ph); } } } });
     if(cov('wash')<1) this._blob(ctx,cxm,cym+lh*0.85,lw*2.35,lh*3.85,0,'#786654',0.24,'multiply');
     if(cov('moist')>0) this._blob(ctx,cxm,cym-lh*0.4,lw*2.1,lh*2.6,0,'#fff6e0',cov('moist')*0.4,'screen');
-    // shirt colour — recolour the base render's OWN tee in place (tint × luminance,
+    // shirt colour - recolour the base render's OWN tee in place (tint × luminance,
     // preserves the native black outline + fit); no foreign overlay, no reframe.
-    // The tint is the CHOSEN SHADE (`col.garment`), not a lookup off the cut — that
+    // The tint is the CHOSEN SHADE (`col.garment`), not a lookup off the cut - that
     // lookup is what used to cap the shirt stock at one colour per silhouette. The
     // per-cut table stays as the fallback for an outfit set without a shade (the
     // fidelity sweep sets `ed.outfit` straight, with no swatch behind it).
@@ -3311,11 +3292,11 @@ class Component extends DCLogic {
     if(ed.outfit){ const st=col('garment')||SHIRT_TINT[ed.outfit]; if(st){ const scv=this._shirtCanvas(E,st); if(scv) ctx.drawImage(scv,0,0,W,H); } }
     const hc=col('hair');
     if(hc && hc!==E.native){ const hcv=this._hairCanvas(E,hc); if(hcv) ctx.drawImage(hcv,0,0,W,H); }
-    // contour changed 0.12–0.25 % of the canvas at α .27 — measurably the faintest tool
+    // contour changed 0.12-0.25 % of the canvas at α .27 - measurably the faintest tool
     // in the palette (Wash 5.8 %, Blush 1.3 %). Deeper and a shade taller so a spent
     // action shows on the doll; still a soft multiply, so it reads as shading not paint.
     if(cov('contour')>0) for(const e of eyes) this._blob(ctx,e[0]+e[4]*e[2]*0.72,e[1]+e[3]*1.62,e[2]*1.05,e[3]*0.46,-e[4]*0.92,'#8f6a51',cov('contour')*0.42,'multiply',true);
-    // highlight — T4e cut it from a pair of pale plates to a glow of the right
+    // highlight - T4e cut it from a pair of pale plates to a glow of the right
     // SIZE (2.0 → 0.6 eye-areas), and that much the maintainer accepted. What
     // was still wrong was its shape and where its fade began (SECOND PASS):
     //   U1 · the plain raised cosine holds ~85 % of peak a quarter of the way
@@ -3323,9 +3304,8 @@ class Component extends DCLogic {
     //        as a hard rim. `core` (see `_wash`) moves the fade inward to a
     //        tight core and a long tail without touching the rim or the peak.
     //   U2 · one ellipse per cheek has a straight spine at any rotation, which
-    //        is a lozenge, not a sweep. The glow is now stamped along HL_ARC —
-    //        a curve tracking the turn of the outer eye socket into the
-    //        cheekbone — mirrored side to side by that path's `out` axis alone.
+    //        is a lozenge, not a sweep. The glow is now stamped along HL_ARC - //        a curve tracking the turn of the outer eye socket into the
+    //        cheekbone - mirrored side to side by that path's `out` axis alone.
     // The nose stripe is untouched: it is a straight bone and reads as one.
     if(cov('hl')>0){ const HL='#fff6d8', ha=cov('hl')*HL_ARC.a, stamps=this._hlStamps();
       for(const e of eyes){ const [ex0,ey0,ew0,eh0,o]=e;
@@ -3333,7 +3313,7 @@ class Component extends DCLogic {
           this._wash(ctx, ex0+o*s.u*ew0, ey0+s.v*eh0, s.rl*ew0, s.rc*eh0,
             Math.atan2(s.dv*eh0, o*s.du*ew0), HL, ha*s.a, 'screen', { core:HL_ARC.core }); }
       this._wash(ctx,cxm,cym+lh*0.95,lw*0.20,lh*1.05,0,HL,cov('hl')*0.30,'screen',{ core:HL_ARC.core }); }
-    // blush — was 0.95ew × 0.9eh (a circle, since the eye landmarks are near
+    // blush - was 0.95ew × 0.9eh (a circle, since the eye landmarks are near
     // square) on the hard ramp, which ended the colour on a visible disc edge
     // (T4d). Now a wide, low sweep angled up toward the temple, softer at the
     // rim and lower at the peak, so it blends into the cheek instead of sitting
@@ -3341,7 +3321,7 @@ class Component extends DCLogic {
     if(cov('blush')>0){ const bc=col('blush')||'#f28ba0';
       for(const e of eyes) this._wash(ctx,e[0]+e[4]*e[2]*0.12,e[1]+e[3]*1.82,e[2]*1.30,e[3]*0.70,-e[4]*0.36,bc,cov('blush')*0.44,'multiply'); }
     const ecv=this._eyesCanvas(E); if(ecv) ctx.drawImage(ecv,0,0,W,H);   // base eyes+brows; brows kept, eyes replaced below
-    // ===== EYES — the base render's eyes are skin-filled at build time, so drop in the state
+    // ===== EYES - the base render's eyes are skin-filled at build time, so drop in the state
     // sprites in makeup order: eyeshadow on the lid first (shows behind the lashes), then the
     // eyeball, then lashes (mascara→glam), then the winged liner on top. All sprites share one
     // iris-centered frame (cx=cy=0.5) so states stack with no double-edge. natural/glam mirror
@@ -3353,7 +3333,7 @@ class Component extends DCLogic {
     if(eyeSet.natural){
       const mascara=cov('mascara')>=1, liner=cov('liner')>=1;
       const drawSprite=(meta,e,mirror,cut)=>{ if(!meta) return; const im=this._img(meta.src); if(!im||!im.ok) return;
-        const art=this._eyeArt(meta.src,cut||'lash')||im.img;   // A1 — see `_eyeArt`
+        const art=this._eyeArt(meta.src,cut||'lash')||im.img;   // A1 - see `_eyeArt`
         const [x,y,w,h,o]=e, dw=EC.s*(2*w), dh=dw/meta.aspect;
         ctx.save(); ctx.translate(ex(e),y); if(mirror&&o<0) ctx.scale(-1,1);
         ctx.drawImage(art,-meta.cx*dw,-meta.cy*dh,dw,dh); ctx.restore(); };
@@ -3361,9 +3341,9 @@ class Component extends DCLogic {
       // pair (a base-shade lid blob plus a twice-shaded crease rotated across
       // its outer half) met at a lens where the alpha and the hue both jumped,
       // and that overlap is the patchiness the maintainer reported (T4c). The
-      // depth now lives inside the single gradient — deep at an off-centre
+      // depth now lives inside the single gradient - deep at an off-centre
       // focus over the outer lid, the chosen shade by mid-radius, gone at the
-      // rim — so the lid grades evenly with no seam to see.
+      // rim - so the lid grades evenly with no seam to see.
       if(cov('shadow')>0){ const sc=col('shadow')||'#a06cc9', scDark=this.shade(this.shade(sc)), sa=cov('shadow');
         for(const e of eyes){ const [x,y,w,h,o]=e, X=ex(e);
           this._wash(ctx, X+o*w*0.34, y-h*0.46, w*1.16, h*0.78, o*0.42, sc, Math.min(1,sa*0.70),'source-over',
@@ -3372,18 +3352,18 @@ class Component extends DCLogic {
         if(mascara&&eyeSet.glam) drawSprite(eyeSet.glam,e,true);         // eyeball + lashes
         else if(!liner) drawSprite(eyeSet.natural,e,true);              // plain eyeball (liner sprite carries its own)
         // winged liner on top (real L/R). When mascara is already showing, only
-        // the liner's INK goes on — its own eyeball would repaint the mascara
+        // the liner's INK goes on - its own eyeball would repaint the mascara
         // sprite's lash roots with a white sclera (A1).
         if(liner) drawSprite(o>0?eyeSet.eyelinerR:eyeSet.eyelinerL,e,false,mascara?'ink':'lash'); }
     }
-    // colored contacts — recolor the iris over the sprite eye (iris disc + pupil +
+    // colored contacts - recolor the iris over the sprite eye (iris disc + pupil +
     // catchlight). Built ONCE per shade in the sprite's own frame (_contactCanvas)
     // and blitted with the sprite's own transform, so the recolour is clipped to
     // the iris and the lid line no matter which eye state is showing (T4b).
     const cc=col('contacts');
     if(cc && eyeSet.natural){ const ccv=this._contactCanvas(cc);
       if(ccv) for(const e of eyes){ const bx=this._irisBox(e); if(bx) ctx.drawImage(ccv,bx.dx,bx.dy,bx.dw,bx.dh); } }
-    // ===== BROWS — the base render's baked brows are skin-filled at build time, so drop in the
+    // ===== BROWS - the base render's baked brows are skin-filled at build time, so drop in the
     // state sprite: default bushy → "Shape brows" ✂️ cleaned → "Brow pencil" ✏️ shaped (pencil
     // wins). Real L/R pair (no mirror; brows are directional). Centre-anchored above the eye per
     // per-model BROWCFG {wf: width×eye-width, dx: lateral nudge, dy: height above eye centre}. =====
@@ -3403,7 +3383,7 @@ class Component extends DCLogic {
     // eyeliner + mascara are sprite states now (drawn with the eyes above), not procedural.
     if(cov('lips')>0){ const lcv=this._lipsCanvas(E,col('lips')||'#d64b6a'); if(lcv){ ctx.save(); ctx.globalAlpha=Math.min(1,cov('lips')); ctx.drawImage(lcv,0,0,W,H); ctx.restore(); } }
     if(cov('lipliner')>=1){ const llv=this._lipLinerCanvas(E,col('lipliner')||'#b23a56'); if(llv) ctx.drawImage(llv,0,0,W,H); }
-    // earrings — design sprite at each lobe; per-model lobe anchors + size (user-calibrated)
+    // earrings - design sprite at each lobe; per-model lobe anchors + size (user-calibrated)
     const ek=gl('ear'); if(ek){ const er=(this.gen().earrings||{})[ek]; if(er){ const ei=this._img(er.src); if(ei.ok){
       const EA=EARCFG[this.state.model]||EARCFG_D;
       const eh=lh*1.15*0.9, ew=eh*er.aspect, ely=cym+lh*EA.y;                       // −10% size
@@ -3413,7 +3393,7 @@ class Component extends DCLogic {
   buildArtLayers(base){ const ed=this.state.ed; const out=[]; const cov=k=>ed.cov[k]||0; const col=k=>ed.col[k]; const gl=k=>ed.gl[k];
     const add=(slot,key,active,opacity)=>{ if(!active) return; const src=this.lsrc(base,slot,key); if(!src) return; out.push({ src, z:this.lz(base,slot), op:(opacity!=null?opacity:1) }); };
     const placed=(src,z,an,sz)=>{ if(!src||!an) return; out.push({ src, z, placed:true, l:an.l, t:an.t, s:sz||12 }); };
-    // procedural soft cosmetics (dull/glow/shadow/blush) — rendered as blended
+    // procedural soft cosmetics (dull/glow/shadow/blush) - rendered as blended
     // gradient divs over the photo base at per-model face anchors, not PNGs.
     const proc=(type,z,active,opacity,color)=>{ if(!active) return; const op=Math.min(1,opacity!=null?opacity:1);
       if(type==='shadow'){ out.push({proc:'shadow',z,op,color,at:'eyeL'}); out.push({proc:'shadow',z,op,color,at:'eyeR'}); }
@@ -3477,36 +3457,35 @@ class Component extends DCLogic {
   renderVals(){ const s=this.state; const cfg=this.cfg(); const base=this.base();
     const isMine=s.phase==='mine',isReady=s.phase==='ready',isTheirs=s.phase==='theirs',isGiveback=s.phase==='giveback',isDone=s.phase==='done',isIntro=s.phase==='intro',isTitle=s.phase==='title';
     /* The mand affordance is live for the WHOLE partner turn in "they forget"
-       mode — not behind a separate screen that opens only once the partner has
+       mode - not behind a separate screen that opens only once the partner has
        spent their allotted actions. That gating was the G1 deadlock: a partner
        who genuinely forgets does 0 of N, so the window would never open (AC-27). */
     const isAsk=isTheirs&&s.giveBack==='forgets';
     const whoseMe=isMine||isReady; const whose=isDone?'done':(whoseMe?'me':'them');
     const V=this.buildV(); const SAGE='#6a7659',BLUE='#3b82f6';
     /* The same two team colours, taken down to rail INK. The rail is sandy
-       (#cdb383 → #a98d5d), where sage-700 and blue-500 both fall under 3:1 —
-       these are the same hues at the luminance the rail needs.
+       (#cdb383 → #a98d5d), where sage-700 and blue-500 both fall under 3:1 - these are the same hues at the luminance the rail needs.
 
-       THIRD PASS · rail correction — sage went #4b5638 → #394331. Shortening the
+       THIRD PASS · rail correction - sage went #4b5638 → #394331. Shortening the
        rail COMPRESSES that gradient, and the single row put the MY TURN label
        and the filled pips further down it than the two-line stack did: measured
        (`_probe-glam-tune3-rail4.mjs`), #4b5638 landed at 3.15:1 under the label
        and 2.98:1 under the pips, i.e. it stopped clearing the 3:1 W6 chose it
        for. The new value clears 3:1 against the band's DARKEST stop (3.29:1),
        so the claim no longer depends on where in the gradient a part happens to
-       sit — which is what made it fragile in the first place. Blue was already
+       sit - which is what made it fragile in the first place. Blue was already
        past that bar (3.53:1 on the darkest stop) and is untouched. */
     const SAGE_INK='#394331',BLUE_INK='#1e3a6e';
     const left=Math.max(0,s.ttBudget-s.ttActions);
 
     let instruction='';
-    if(isReady) instruction='My turn is ready — tap Go!';
-    else if(isMine){ instruction = s.countMode==='hidden' ? 'My turn — add some things!'
-      : (left>0 ? ('My turn — I can do '+left+' more') : 'All set — now I hand it over!'); }
-    else if(isTheirs) instruction='Their turn — I wait 🕐';
+    if(isReady) instruction='My turn is ready - tap Go!';
+    else if(isMine){ instruction = s.countMode==='hidden' ? 'My turn - add some things!'
+      : (left>0 ? ('My turn - I can do '+left+' more') : 'All set - now I hand it over!'); }
+    else if(isTheirs) instruction='Their turn - I wait 🕐';
     else if(isGiveback) instruction='Their turn is done';
 
-    /* THIRD PASS · Finding B — the meter rides the sandy counter rail now, so
+    /* THIRD PASS · Finding B - the meter rides the sandy counter rail now, so
        its own sizes come off `.gtm-pip` / `.gtm-band-meter` (which answer to the
        row's width) and only the COLOURS are set here. The unfilled pip is warm
        white with a brown rim rather than #fff on #cfd4c4: on a sandy rail a cool
@@ -3517,7 +3496,7 @@ class Component extends DCLogic {
        the single-line correction it is what SETS the rail's height. Its own
        spacing therefore belongs with the rail's sizes in the style block (a
        narrow row needs a tighter pip gap than an inline `5px` could give), not
-       here — only the COLOURS are decided per phase. */
+       here - only the COLOURS are decided per phase. */
     const meter=(label,color)=>React.createElement('div',{},[
       React.createElement('div',{key:'l',className:'gtm-band-meter'},label),
       React.createElement('div',{key:'p',className:'gtm-band-pips'},pips(s.ttBudget,left,color))]);
@@ -3530,13 +3509,13 @@ class Component extends DCLogic {
 
     let phaseMsg=React.createElement('span',{});
     if(isReady) phaseMsg=React.createElement('span',{style:{fontSize:'13px',color:'var(--text-muted)'}},'Nice waiting! Tap Go to start.');
-    else if(isAsk) phaseMsg=React.createElement('span',{style:{fontSize:'13px',fontWeight:700,color:'var(--amber-700)'}},'They take their turn — when it is mine again, I ask.');
-    else if(isTheirs) phaseMsg=React.createElement('span',{style:{fontSize:'13px',fontWeight:700,color:BLUE}},'They take their turn — I wait.');
+    else if(isAsk) phaseMsg=React.createElement('span',{style:{fontSize:'13px',fontWeight:700,color:'var(--amber-700)'}},'They take their turn - when it is mine again, I ask.');
+    else if(isTheirs) phaseMsg=React.createElement('span',{style:{fontSize:'13px',fontWeight:700,color:BLUE}},'They take their turn - I wait.');
     else if(isGiveback) phaseMsg=React.createElement('span',{style:{fontSize:'13px',fontWeight:700,color:'var(--slate-700)'}},'They finished their turn.');
     else if(isMine) phaseMsg=React.createElement('span',{style:{fontSize:'13px',color:'var(--text-muted)'}},s.armed?'Now do it on the face →':'Pick a step to start.');
 
     /* The 3-level fade ladder the scored enum uses (§3.2). At `silent` the prompt
-       is still DELIVERED — it just shows nothing. Reading visibility to decide
+       is still DELIVERED - it just shows nothing. Reading visibility to decide
        independence is the F-22 bug this whole build exists to kill, so nothing on
        this screen scores anything: `cueVisible` is presentation only. */
     const cueTexts={full:"I say: \u201CIt's my turn now, please.\u201D",gesture:'🖐️ ➡️',silent:''};
@@ -3563,9 +3542,9 @@ class Component extends DCLogic {
       return { grp, live, settled:this._grpSettled(live) }; });
     const palette=shelves.map(({grp,live,settled})=>({ label:grp.label, icon:grp.icon, settled, options:live.filter(opt=>!this._optSpent(opt)).map(opt=>{ const armed=s.armed&&s.armed.id===opt.id;
       // "active/used": this option's effect is the current config (so the user sees
-      // what's applied) — covers both an action just taken and a live selection.
+      // what's applied) - covers both an action just taken and a live selection.
       const slot=opt.slot, ed=s.ed; let active=false;
-      // Two shirt shades can share a cut, so ✓ is the cut AND the shade — matching
+      // Two shirt shades can share a cut, so ✓ is the cut AND the shade - matching
       // on the cut alone would tick every shade cut the same way.
       if(opt.mech==='choose'){ active = slot==='outfit'?(ed.outfit===opt.value && (!opt.color || ed.col.garment===opt.color)) : slot==='hairShape'?ed.hairShape===opt.value : ed.gl[slot]===(opt.glyph||'x'); }
       else if(opt.apply==='recolor'){ active = ed.col[slot]===(opt.value!=null?opt.value:opt.color); }
@@ -3589,7 +3568,7 @@ class Component extends DCLogic {
       else { swatch='width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0'; glyph=opt.glyph||''; }
 
       const locked=this._optLocked(opt);
-      // dim tools that would spend a NEW action past the turn cap (shown mode only — 'hidden'
+      // dim tools that would spend a NEW action past the turn cap (shown mode only - 'hidden'
       // keeps the block silent so it stays a clean probe of independent relinquishing).
       // …and never dim a tool the cap cannot actually refuse: a re-touch that
       // writes nothing spends nothing (`_optNoOp`), so greying it would be the
@@ -3597,7 +3576,7 @@ class Component extends DCLogic {
       const capDim=s.countMode==='shown' && !this._optNoOp(opt) && this._capBlocks(s,this._optKey(opt));
       /* No dead face here any more: a tool whose mechanism has gone dead is off
          the cart entirely (`_optSpent`), so nothing downstream of this filter can
-         see one. `off` is still the "you cannot do this YET" grey — locked by the
+         see one. `off` is still the "you cannot do this YET" grey - locked by the
          routine, or dimmed at the turn cap. */
       const off=locked||capDim;
       const bg=off?'var(--slate-50)':armed?'var(--sage-50)':active?'var(--sage-100)':'#fff',
@@ -3611,7 +3590,7 @@ class Component extends DCLogic {
       const justApplied=!!s.mirror && s.mirror.id===opt.id;
       const pop=justApplied?';animation:gtm-applied-'+(s.mirror.n?'b':'a')+' .42s var(--ease-standard)':'';
       // `title` stays the RAW tool name (no ✓ prefix, no lock glyph) so the
-      // tooltip — and anything addressing the tool by name — is stable across states.
+      // tooltip - and anything addressing the tool by name - is stable across states.
       return { label:lbl, title:opt.label, glyph, swatchStyle:swatch,
         handler:locked?(()=>{}):(()=>this.arm(opt)),
         btnStyle:'display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:5px;padding:9px 7px 7px;width:82px;border-radius:13px;cursor:'+(off?'not-allowed':'pointer')+';font-family:inherit;opacity:'+(off?'.45':'1')+';background:'+bg+';border:1.5px solid '+bd+';box-shadow:'+(armed?'0 0 0 3px rgba(106,118,89,.18)':active?'var(--shadow-sm)':'none')+pop }; }) }))
@@ -3623,7 +3602,7 @@ class Component extends DCLogic {
 
     /* Vertical flow: shelves with work left first (so the step the child is on
        opens at the top of the scroller), settled shelves folded underneath.
-       A settled shelf keeps a slim header — one tap brings its shades back. */
+       A settled shelf keeps a slim header - one tap brings its shades back. */
     const openOf=(g)=> g.options.length===0 ? false : openGrp[g.label]!=null ? !!openGrp[g.label] : !g.settled;
     const flowed=[...palette.filter(g=>!g.settled), ...palette.filter(g=>g.settled)]
       .map(g=>Object.assign({},g,{ open:openOf(g) }));
@@ -3632,15 +3611,15 @@ class Component extends DCLogic {
     // for. A shelf whose tools are all gone has nothing to come back to.
     const rescue=flowed.find(g=>g.options.length);
     if(rescue && !flowed.some(g=>g.open)) rescue.open=true;
-    /* A settled shelf is dressed as a closed drawer of the cart — its own soft
-       panel, a sage ✓ and a chevron — so it reads as "still here, tap to open"
+    /* A settled shelf is dressed as a closed drawer of the cart - its own soft
+       panel, a sage ✓ and a chevron - so it reads as "still here, tap to open"
        rather than as a heading whose contents went missing. An open shelf keeps
        the hairline heading the trolley has always had.
 
        A settled shelf with no tools LEFT is the third case, and the one that
        carries the maintainer's "a finished step should still read as finished":
        it is a record, not a drawer. Same soft panel and the same sage ✓, but no
-       chevron, no pointer, and a real `disabled` on the header — there is nothing
+       chevron, no pointer, and a real `disabled` on the header - there is nothing
        behind it to open, so it must not offer to. */
     const HEAD='display:flex;align-items:center;gap:6px;width:100%;text-align:left;background:none;border:none;font-family:inherit;font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--gtm-plum)';
     flowed.forEach(g=>{ const open=g.open, empty=g.options.length===0, drawer=g.settled&&!open;
@@ -3660,13 +3639,13 @@ class Component extends DCLogic {
     // finished step never leaves the next one scrolled off below the fold.
     this._trolleyKey=flowed.filter(g=>g.open).map(g=>g.label).join('|');
 
-    // stage tracker — 4 phase chips (done ✓ / current / future); person only
+    // stage tracker - 4 phase chips (done ✓ / current / future); person only
     let stageChips=[];
     if(base==='person'){
       const chipS=(st)=> st==='done' ? 'display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:800;background:var(--sage-100);border:1px solid var(--sage-500);color:var(--sage-700)'
         : st==='cur' ? 'display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:800;background:var(--sage-600);border:1px solid var(--sage-600);color:#fff;box-shadow:0 0 0 3px rgba(106,118,89,.18)'
         : 'display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#fff;border:1px dashed var(--slate-300);color:var(--slate-400)';
-      if(s.staged==='free'){ stageChips=[{label:'🎮 Free play — all steps open', style:chipS('cur')}]; }
+      if(s.staged==='free'){ stageChips=[{label:'🎮 Free play - all steps open', style:chipS('cur')}]; }
       else { const PH=this._phaseState();
         stageChips=[['skin','🧼 Skincare'],['makeup','💄 Makeup'],['hair','💇 Hair'],['acc','💎 Accessories']].map(([k,lbl])=>{
           const isDone = k==='skin'?PH.skin : k==='makeup'?PH.makeup : k==='hair'?PH.hair : false;
@@ -3678,7 +3657,7 @@ class Component extends DCLogic {
     const t=s.armed;
     if(t&&canAct){ const lab='font-size:11px;font-weight:800;color:var(--sage-700);background:#fff;border-radius:6px;padding:2px 8px;white-space:nowrap;box-shadow:var(--shadow-sm)';
       /* One resolver answers for every surface the armed tool puts under the
-         pointer — the drag box, the tap box and the spot rings — so issue #40
+         pointer - the drag box, the tap box and the spot rings - so issue #40
          has a single place to land. Empty art table ⇒ the keyword this build
          already rendered. */
       const cur=this._toolCursor(t);
@@ -3689,7 +3668,7 @@ class Component extends DCLogic {
         const lockStyle='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:11px;font-weight:800;color:var(--sage-700);background:#fff;border-radius:8px;padding:4px 10px;box-shadow:var(--shadow-sm);z-index:61;white-space:nowrap';
         target={ drag:false,tap:false,pop:true, pimples:pim, style:'', label:lockMsg, labelStyle: lockMsg?lockStyle:'display:none' };
       } else { const z=this._targetZone(base,t.zone,t.mech); if(z){ const box='position:absolute;top:'+z.t+'%;left:'+z.l+'%;width:'+z.w+'%;height:'+z.h+'%;border:2.5px dashed '+SAGE+';border-radius:12px;background:rgba(106,118,89,.10);display:flex;align-items:center;justify-content:center;cursor:'+cur+';z-index:60;animation:gtm-target 1.4s var(--ease-standard) infinite;padding:0';
-        /* Coverage the ARMED SHADE can claim — 0 for a shade that has not been
+        /* Coverage the ARMED SHADE can claim - 0 for a shade that has not been
            painted, however full its slot already is (see `_shadeOn`). */
         const covPct=Math.round((this._shadeOn(t)?(s.ed.cov[t.slot]||0):0)*100);
         // "Keep painting… 100%" told the child to keep going on a finished step (eval §8).
@@ -3702,7 +3681,7 @@ class Component extends DCLogic {
     }
 
     /* Turn progress replaces the ⭐ handoff counter. Handing over N times is no
-       longer a win condition — the look is (D-D / eval defect 3) — so the chip
+       longer a win condition - the look is (D-D / eval defect 3) - so the chip
        reports where we are in the BT's fixed turn count, and claims nothing. */
     const turnsPlayed=(isDone&&s.report)?s.report.rows.length:Math.max(0,(s.engTurn||1)-1);
     const progressText=isDone?('Trial finished · '+turnsPlayed+' of '+s.turns+' turns')
@@ -3716,7 +3695,7 @@ class Component extends DCLogic {
     if(!isDone){ runwayTiles.push(mk(whose,'now')); runwayTiles.push(mk(whose==='me'?'them':'me','next')); }
     runwayTiles.push({ glyph:'🎬', glyphSize:'17px', badge:(isDone?turnsPlayed:(s.engTurn||1))+'/'+s.turns, badgeColor:'color:var(--amber-700)', style:'flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 9px;border-radius:11px;min-width:44px;background:var(--amber-50);border:1.5px solid var(--amber-300)' });
 
-    /* Texting intro. Only the bubbles that have LANDED are rendered — the reveal
+    /* Texting intro. Only the bubbles that have LANDED are rendered - the reveal
        is `threadStep`, so a bubble entering is a mount, which is what lets the
        arrival animation be a plain CSS keyframe on transform/opacity. The typing
        indicator sits on the side the NEXT message will come from. */
@@ -3779,18 +3758,18 @@ class Component extends DCLogic {
       typingBubbleStyle:'display:inline-flex;align-items:center;gap:5px;padding:11px 14px;box-shadow:var(--shadow-sm);'+(typingTeam
         ? 'background:var(--sage-100);border:1px solid var(--sage-200);border-radius:18px 18px 6px 18px'
         : 'background:#fff;border:1px solid var(--border-default);border-radius:18px 18px 18px 6px'),
-      // `banner` no longer renders a block of its own — the rail inside the
+      // `banner` no longer renders a block of its own - the rail inside the
       // stage IS the banner now (Finding B), so only the two maps that add
       // something above the stage still have a flag.
       mapVanity:s.turnMap==='vanity', mapRunway:s.turnMap==='runway',
       personShow:base==='person', isPet:base==='pet', V, palette:flowed, target, runwayTiles, stageChips,
       /* The stage panel is framed as the vanity ALCOVE when the art compositor is
-         live — a plum rim, a floor vignette and an outer drop shadow that sits it
+         live - a plum rim, a floor vignette and an outer drop shadow that sits it
          in the room. No gold ring: the backdrop's own mirror is already gold, and
          a second bezel around it just reads as mush. Inset shadows only, so the
-         panel's box model — and every % target zone measured against it — is
+         panel's box model - and every % target zone measured against it - is
          untouched. */
-      /* THIRD PASS · Finding B — the bottom padding RESERVES the turn rail, so
+      /* THIRD PASS · Finding B - the bottom padding RESERVES the turn rail, so
          everything measured against the panel's content box (the contained
          backdrop, `dollBoxStyle`'s `100cqh`, and through it every % hitbox)
          ends above the rail rather than under it. The panel's own height is
@@ -3799,7 +3778,7 @@ class Component extends DCLogic {
       // NB `position` lives in the `.gtm-stage` rule, not here: a wrapped row
       // makes the panel sticky, and an inline `position` would out-specify it.
       stageStyle:'flex:1;min-width:300px;display:flex;align-items:'+(personArtLive?'flex-end':'center')+';justify-content:center;background:var(--surface-card);border:1px solid '+(personArtLive?'rgba(58,36,66,.55)':'var(--border-default)')+';border-radius:16px;padding:12px 12px calc(12px + var(--gtm-band, 0px));overflow:hidden'
-        /* SECOND PASS U3 — the panel is a size CONTAINER, so the client can be
+        /* SECOND PASS U3 - the panel is a size CONTAINER, so the client can be
            sized off the composition rather than off the panel. The height it
            falls back to on a wrapped row rides on `--gtm-stage-fit` and is
            applied by the `.gtm-stage` container rule above, where the reasoning
@@ -3808,7 +3787,7 @@ class Component extends DCLogic {
         +(personArtLive?';max-height:calc(670px + var(--gtm-band, 0px));container-type:size;--gtm-stage-fit:calc(100cqw / '+bdAsp+' + var(--gtm-band, 0px))':'')
         +(stageBg?(personArtLive?this._roomBg(stageBg):';background-image:url("'+stageBg+'");background-size:cover;background-position:center'):'')
         +(personArtLive?';box-shadow:inset 0 0 0 4px rgba(58,36,66,.42),inset 0 -70px 90px -62px rgba(58,36,66,.45),0 16px 36px -22px rgba(72,40,62,.55)':''),
-      /* SECOND PASS U3 — the client is measured off the CONTAINED backdrop, not
+      /* SECOND PASS U3 - the client is measured off the CONTAINED backdrop, not
          off the panel. A contained square backdrop paints at min(cqw/aspect, cqh),
          so that expression IS the composition's height and `STAGE_CLIENT_H` of it
          is the client. Everything the child aims at rides inside this box as a %
@@ -3820,20 +3799,20 @@ class Component extends DCLogic {
         : 'position:relative;width:320px;height:360px;isolation:isolate',
       toolsColStyle,
       /* SALON DRESSING. The backdrop art is itself a bulb-lit vanity mirror, so
-         the dressing here deliberately does NOT add a second set of bulbs — it
+         the dressing here deliberately does NOT add a second set of bulbs - it
          frames what the art already gives (bezel, vignette, signage) instead of
          competing with it. */
       stageSignStyle:'position:absolute;top:11px;left:12px;z-index:3;padding:4px 11px;border-radius:999px;'
         +'font-size:9.5px;font-weight:800;letter-spacing:.17em;text-transform:uppercase;'
         +(personArtLive?'color:var(--gtm-gold-lit);background:rgba(38,24,43,.72);border:1px solid rgba(217,171,106,.55)'
                        :'color:var(--text-faint)'),
-      /* TUNING fix 5 — the action flare, way down.
+      /* TUNING fix 5 - the action flare, way down.
          It was a 60 %-alpha cream radial centred at 50 % 44 %, i.e. ON the client's
          face: every single action blew the face and the backdrop out to near-white
          for .38 s, which read as a lens flare rather than as "the mirror warmed".
          Two changes, both keeping this a pure opacity fade on the compositor:
-         (a) the bloom is re-anchored to the TOP edge — where the backdrop art's
-             bulbs actually are — so nothing washes over the face at all, and
+         (a) the bloom is re-anchored to the TOP edge - where the backdrop art's
+             bulbs actually are - so nothing washes over the face at all, and
          (b) alpha drops 60 % → 20 %, and the stop closes at 58 % of the panel so
              the falloff is finished well above the eyes.
          Kept rather than deleted because the echo chip rises out of this warmth,
@@ -3853,21 +3832,21 @@ class Component extends DCLogic {
       /* Warm wood vanity ledge across the stage floor: transparent above → a bright
          front-lip catch → opaque counter body, so the model's straight bottom cut
          disappears behind it.
-         HEIGHT (eval F-10): this was `16%` of the stage panel — 99 px on desktop,
+         HEIGHT (eval F-10): this was `16%` of the stage panel - 99 px on desktop,
          whose opaque body began 24 px down at page-Y 689, while the shirt art paints
-         at 728–752. All four "Shirt color" tools therefore charged an action and
+         at 728-752. All four "Shirt color" tools therefore charged an action and
          changed nothing the child could see. The shirt occupies the bottom 6.6 %
          (m1) to 21 % (m2) of the frame, so the ledge has to be a counter EDGE, not a
          counter: 30 px is enough to bury the hard cut at the canvas bottom while
          leaving the shirt above it. Fixed px, not %, because the whole point is a
          constant relationship to the canvas's bottom edge, which the stage panel's
          height does not track. */
-      /* THIRD PASS · Finding B — the ledge now sits ON the turn rail rather than
+      /* THIRD PASS · Finding B - the ledge now sits ON the turn rail rather than
          at the panel's edge, and its last stop hands over to the rail's first
          (#cdb383) so counter surface → counter front reads as one piece of
          furniture instead of two stacked bars. Height and behaviour unchanged. */
       footerBarStyle:'position:absolute;left:0;right:0;bottom:var(--gtm-band, 0px);height:30px;z-index:4;pointer-events:none;background:linear-gradient(to bottom,rgba(210,190,156,0) 0%,rgba(210,190,156,0) 14%,rgba(255,250,240,.72) 22%,#d3bd93 34%,#cdb383 100%);box-shadow:0 -7px 14px -7px rgba(96,74,48,.40)',
-      /* TURN RAIL (Finding B) — the counter's front face. Warm sandy going into
+      /* TURN RAIL (Finding B) - the counter's front face. Warm sandy going into
          its own shadow at the bottom, a lit top edge where it meets the ledge,
          and a gold hairline: the same vanity vocabulary the trolley and the
          stage signage already use, so the turn state is dressed as part of the
@@ -3889,7 +3868,7 @@ class Component extends DCLogic {
       instruction, turnMeter, phaseMsg, cueText, cueStyle,
       handoffStyle:'background:'+SAGE+';color:#fff;border:none;padding:12px 24px;border-radius:999px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:var(--shadow-md)'+((isMine&&left===0)?';animation:gtm-cue 1.6s var(--ease-standard) infinite':''),
       progressText,
-      /* AC-3 — over-cap feedback is GENTLE and appears in every count mode, hidden
+      /* AC-3 - over-cap feedback is GENTLE and appears in every count mode, hidden
          included. Never red, never a clinical label: the child sees a nudge to
          hand over, the violation goes to the log. */
       capToast:s.capToast, showCapToast:!!s.capToast,
@@ -3903,7 +3882,7 @@ class Component extends DCLogic {
       outcomeTitle:(isDone&&s.story&&s.story.title)||'What a team!',
       outcomeText:(isDone&&s.story&&s.story.text)||'',
       incompleteNote:isDone&&s.report&&!s.report.complete,
-      /* The booth only mounts when BOTH frames were actually grabbed — a
+      /* The booth only mounts when BOTH frames were actually grabbed - a
          procedural (non-art) theme paints no compositor canvas, and the outro
          card must not then show two empty rectangles. */
       showReveal:isDone&&!!s.revealReady,
@@ -3922,7 +3901,7 @@ class Component extends DCLogic {
 </script>
 
 <!-- Admin gear → GM hub. _worker.js rewrites the `const ADMIN_SECRET_HASH = "…"`
-     line per request (regex needs the `const` form — matches every other game). -->
+     line per request (regex needs the `const` form - matches every other game). -->
 <script>
   const ADMIN_SECRET_HASH = "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918";
   window.ADMIN_SECRET_HASH = ADMIN_SECRET_HASH;

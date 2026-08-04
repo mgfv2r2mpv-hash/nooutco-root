@@ -1,5 +1,5 @@
 /* ============================================================================
-   COLORS — No Outcome ABA
+   COLORS - No Outcome ABA
    Derived directly from the shipped SAssi scheduling app (inline-style palette,
    Tailwind-family hues). Base ramps first, then semantic aliases. Always
    reference the SEMANTIC tokens in product work; reach for a base ramp only
@@ -7,7 +7,7 @@
    ========================================================================== */
 
 :root {
-  /* ---- Neutrals (slate) — the structural greys of every screen ---------- */
+  /* ---- Neutrals (slate) - the structural greys of every screen ---------- */
   --slate-900: #111827; /* primary text, axis labels, cap markers */
   --slate-800: #1f2937; /* app header / dark chrome */
   --slate-700: #374151; /* body text, default button fill */
@@ -20,27 +20,27 @@
   --slate-50:  #f9fafb; /* page background, sub-panels */
   --white:     #ffffff;
 
-  /* ---- Forest — PRIMARY action & brand accent (soft, grounded green) -----
+  /* ---- Forest - PRIMARY action & brand accent (soft, grounded green) -----
      Chosen over a clinical blue to read calm and human. Deliberately earthier
      and more muted than the EMERALD success greens below, so "primary action"
      never collapses into "completed / met". White text clears 5:1 on -500. */
   --forest-900: #15311f;
-  /* ---- Sage — PRIMARY action & brand accent (dusty, brown-toned green) ---
-     A soft olive/sage with a warm brown undertone — calm and grounded, not a
+  /* ---- Sage - PRIMARY action & brand accent (dusty, brown-toned green) ---
+     A soft olive/sage with a warm brown undertone - calm and grounded, not a
      clinical or grassy green. Deliberately mid-value ("not very dark") yet the
      -500 base still clears AA for white button text (~4.8:1). Distinct from the
      brighter EMERALD success greens, so "primary action" never reads as
      "completed / met". */
   --sage-900: #2c331f;
   --sage-800: #3c4533;
-  --sage-700: #4d5840; /* deep — active nav */
+  --sage-700: #4d5840; /* deep - active nav */
   --sage-600: #5d6a4d; /* PRIMARY hover */
   --sage-500: #6a7659; /* PRIMARY action color */
   --sage-200: #c7cdb6;
   --sage-100: #e2e6d9;
   --sage-50:  #f1f3ec;
 
-  /* ---- Blue — "parent training / blue" appointments & info intent -------- */
+  /* ---- Blue - "parent training / blue" appointments & info intent -------- */
   --blue-900: #1e3a8a;
   --blue-700: #1d4ed8;
   --blue-600: #2563eb;
@@ -49,7 +49,7 @@
   --blue-50:  #eff6ff;
   --indigo-500: #6366f1; /* legacy nav accent (superseded by sage) */
 
-  /* ---- Violet — AI / "Wish" surfaces & direct-service appointments ------ */
+  /* ---- Violet - AI / "Wish" surfaces & direct-service appointments ------ */
   --violet-700: #5b21b6;
   --violet-600: #7c3aed; /* direct service accent, Wish primary */
   --violet-500: #8b5cf6;
@@ -58,7 +58,7 @@
   --violet-100: #ede9fe;
   --violet-50:  #f5f3ff;
 
-  /* ---- Green — success / "met" / supervision / completed ---------------- */
+  /* ---- Green - success / "met" / supervision / completed ---------------- */
   --green-800: #15803d; /* compliance MET text */
   --green-700: #16a34a; /* completed-hours bar fill */
   --green-600: #059669;
@@ -68,7 +68,7 @@
   --green-100: #dcfce7;
   --green-50:  #ecfdf5;
 
-  /* ---- Amber / orange — warning / "on pace" / family cancellation ------- */
+  /* ---- Amber / orange - warning / "on pace" / family cancellation ------- */
   --amber-700: #b45309; /* compliance ON-PACE text */
   --amber-600: #d97706;
   --amber-500: #f59e0b; /* reassessment accent, warning badge */
@@ -81,7 +81,7 @@
   --orange-100:#ffedd5;
   --orange-200:#fed7aa;
 
-  /* ---- Red — danger / "behind" / staff cancellation / errors ------------ */
+  /* ---- Red - danger / "behind" / staff cancellation / errors ------------ */
   --red-800: #991b1b;
   --red-700: #b91c1c; /* compliance BEHIND text, destructive text */
   --red-600: #dc2626; /* staff-cancel bar fill */
@@ -96,9 +96,9 @@
   --gold-700:   #a87d1c;
   --gold-600:   #c79a2e; /* BCBA cancel covered by PTO */
   --taupe-700:  #6f5b44;
-  --taupe-600:  #94785a; /* admin cancel — orange-grey */
+  --taupe-600:  #94785a; /* admin cancel - orange-grey */
 
-  /* ---- Sky — "case planning" appointments ------------------------------- */
+  /* ---- Sky - "case planning" appointments ------------------------------- */
   --sky-500: #0ea5e9;
 
   /* ---- Clinical session phases (from SessionFlow) ----------------------- */
@@ -112,7 +112,7 @@
   --phase-handoff-500: #888780; --phase-handoff-bg: #f1efe8; /* family handoff + note */
 
   /* ======================================================================
-     SEMANTIC ALIASES — reference these in product code.
+     SEMANTIC ALIASES - reference these in product code.
      ====================================================================== */
 
   /* Surfaces */
@@ -143,7 +143,7 @@
   --brand-ai:             var(--violet-600);  /* AI / Wish surfaces */
   --brand-fix:            var(--orange-600);  /* Fix It conflict resolver */
 
-  /* Status — supervision/billable model.
+  /* Status - supervision/billable model.
      Low→high: behind (red) · on-pace (amber) · met (green) · OVER (orange-red).
      "Over" = sustained above the supervision target (>20%/mo) = audit risk;
      escalates the longer it persists across months. */
@@ -153,7 +153,7 @@
   --status-pace-bg:    var(--amber-100);
   --status-behind:     var(--red-700);
   --status-behind-bg:  var(--red-100);
-  --status-over:       var(--orange-700);  /* orange-red — too much, monitor pacing */
+  --status-over:       var(--orange-700);  /* orange-red - too much, monitor pacing */
   --status-over-bg:    var(--orange-100);
 
   /* Feedback intents */
@@ -166,7 +166,7 @@
   --intent-info:       var(--blue-500);
   --intent-info-bg:    var(--blue-50);
 
-  /* Appointment-type accents — domain colour language of the calendar.
+  /* Appointment-type accents - domain colour language of the calendar.
      These are load-bearing: clinicians read session type by colour. */
   --type-direct:          var(--violet-600); /* direct / client session */
   --type-supervision:     var(--green-500);
@@ -179,15 +179,14 @@
   --appt-pending:       var(--slate-400);
   --appt-completed:     var(--green-700);
 
-  /* Cancellation — coded by WHO canceled. Sequential cancels by the same
-     person escalate: step the fill DARKER (and weight heavier) on each repeat
-     — e.g. family ×1 orange-400 → ×2 orange-600 → ×3 orange-800 — so a
+  /* Cancellation - coded by WHO canceled. Sequential cancels by the same
+     person escalate: step the fill DARKER (and weight heavier) on each repeat - e.g. family ×1 orange-400 → ×2 orange-600 → ×3 orange-800 - so a
      pattern of cancellations becomes visually louder, not just countable. */
-  --cancel-admin:   var(--taupe-600);  /* admin / non-clinical — orange-grey */
-  --cancel-family:  var(--orange-500); /* family cancel — orange */
-  --cancel-bt:      var(--red-600);    /* Credentialed BT cancel — red */
-  --cancel-bcba:    var(--maroon-700); /* Supervising Behavior Analyst — maroon */
-  --cancel-pto:     var(--gold-600);   /* BCBA cancel covered by PTO — gold */
+  --cancel-admin:   var(--taupe-600);  /* admin / non-clinical - orange-grey */
+  --cancel-family:  var(--orange-500); /* family cancel - orange */
+  --cancel-bt:      var(--red-600);    /* Credentialed BT cancel - red */
+  --cancel-bcba:    var(--maroon-700); /* Supervising Behavior Analyst - maroon */
+  --cancel-pto:     var(--gold-600);   /* BCBA cancel covered by PTO - gold */
 
   /* Back-compat aliases used by the calendar chips */
   --appt-cancel-family: var(--cancel-family);

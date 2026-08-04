@@ -1,14 +1,14 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Glam Team Makeover — what a colour change costs, by the maintainer's ruling.
+ * Glam Team Makeover - what a colour change costs, by the maintainer's ruling.
  *
  *   "Changing color within a turn does not deduct additional actions - only the
  *    first color change of a type per turn (shadow, blush, lips, hair, clothes
  *    can be changed SUBSEQUENT times within a turn without extra action cost."
  *
  * Two things are asserted, because they pull against each other. The ruling's
- * OTHER half — "redo the drag so the 'reapply' feel is there" — makes a shade
+ * OTHER half - "redo the drag so the 'reapply' feel is there" - makes a shade
  * switch cost a full repaint, and the obvious way to implement that would have
  * re-opened the charge: a fresh drag ends in a completing stroke, and a
  * completing stroke is exactly what `paintStep` asks `_admit` about. It stays
@@ -19,14 +19,14 @@ import { test, expect } from '@playwright/test';
  * Measured on 438d38d8 before the change and again after: three changes cost
  * one action for every one of the five, both times. So this half of the ruling
  * describes behaviour the build already had, and these tests exist to keep it
- * once the re-drag landed — they are a regression fence, not a fix. The
+ * once the re-drag landed - they are a regression fence, not a fix. The
  * across-turn case at the bottom is the one that fails against 438d38d8's
  * predecessor and must not be traded away for the within-turn freebie: a
  * genuinely different shade after a handoff still costs its one action.
  *
  * The freebie is guarded against the trivial way to fake it. If the turn cap had
  * refused a change, `_admit` returns false, no state is written, and the action
- * count would not move either — which reads identically to "it was free". So
+ * count would not move either - which reads identically to "it was free". So
  * every change also asserts that the new colour actually LANDED.
  *
  * The GlamTT engine and tests/glam-tt-scoring.spec.js are untouched by this work.
@@ -72,7 +72,7 @@ async function stage(page, { routine = 'free', turns = '2' } = {}) {
     const keys = Object.keys(c);
     return keys.length > 0 && keys.every((k) => c[k].ok);
   }, undefined, { timeout: 30000 });
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   return errors;
 }
 
@@ -111,8 +111,8 @@ const TYPES = [
     changes: [['Teal', 'gown'], ['Blue', 'casual'], ['Sunshine', 'dress']] },
 ];
 
-test.describe('Glam Team Makeover — the 2nd..Nth colour change of a type is free within the turn', () => {
-  test('all five types, three changes each, one action apiece — and every change lands', async ({ page }) => {
+test.describe('Glam Team Makeover - the 2nd..Nth colour change of a type is free within the turn', () => {
+  test('all five types, three changes each, one action apiece - and every change lands', async ({ page }) => {
     const errors = await stage(page);
     expect(await logic(page, 'return T.turn.budget'), 'the turn has room for all of it')
       .toBeGreaterThanOrEqual(TYPES.length + 2);
@@ -142,12 +142,12 @@ test.describe('Glam Team Makeover — the 2nd..Nth colour change of a type is fr
     expect(errors).toEqual([]);
   });
 
-  test('the freebie is per TURN — a different shade after a handoff still costs its action', async ({ page }) => {
+  test('the freebie is per TURN - a different shade after a handoff still costs its action', async ({ page }) => {
     /* The half of the economy the turn-exchange sweep established, and the one
        the re-drag could most easily have broken: `_charged` is cleared at the
        turn boundary, so the partner's first change of the same article is a
        first change, not a subsequent one. A no-op re-touch of the shade already
-       on stays free across that boundary — that is `_optNoOp`, not this. */
+       on stays free across that boundary - that is `_optNoOp`, not this. */
     const errors = await stage(page, { turns: '4' });
 
     await useTool(page, 'Blush rose');
@@ -159,7 +159,7 @@ test.describe('Glam Team Makeover — the 2nd..Nth colour change of a type is fr
     expect(await logic(page, 'return L.state.ed.col.blush')).toBe('#d4638f');
     expect(await logic(page, 'return T.turn.actions'), 'the second is free, inside this turn').toBe(mine);
 
-    await page.getByRole('button', { name: /Done — their turn/ }).click();
+    await page.getByRole('button', { name: /Done - their turn/ }).click();
     expect(await logic(page, 'return T.turn.actions'), 'a fresh turn starts from zero').toBe(0);
 
     // A genuinely different shade on the new turn is a first change again.

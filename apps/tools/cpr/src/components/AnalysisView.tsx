@@ -78,7 +78,7 @@ export function AnalysisView({ assessment, onBack }: Props) {
                 <p>An EO recorded in interval <em>n</em> <strong>or n−1</strong> counts as present for behavior in interval n. Reduces false negatives when the EO immediately precedes the interval in which behavior occurs.</p>
                 <p className="font-semibold mt-1">Consequence Lag-1:</p>
                 <p>A consequence in interval <em>n</em> <strong>or n+1</strong> counts for behavior in interval n. Accounts for natural delays in consequence delivery (e.g., a therapist provides attention one interval after the behavior).</p>
-                <p className="text-gray-500 dark:text-gray-400 italic mt-1">Recommendation: Keep both ON for standard 6–10s intervals. Consider turning OFF for longer intervals (15s+), where each interval already spans a wider window and the lag correction may over-credit adjacent events. Turn OFF when your protocol requires strict same-interval co-occurrence.</p>
+                <p className="text-gray-500 dark:text-gray-400 italic mt-1">Recommendation: Keep both ON for standard 6-10s intervals. Consider turning OFF for longer intervals (15s+), where each interval already spans a wider window and the lag correction may over-credit adjacent events. Turn OFF when your protocol requires strict same-interval co-occurrence.</p>
               </div>
             } />
           </div>
@@ -194,7 +194,7 @@ export function AnalysisView({ assessment, onBack }: Props) {
         {showRateTable && <BehaviorRateTable assessment={assessment} exportScope={exportScope} />}
       </div>
 
-      {/* ── Behavior rate/frequency table (screen only — print version is inside print header) ── */}
+      {/* ── Behavior rate/frequency table (screen only - print version is inside print header) ── */}
       <div className="no-print">
         <BehaviorRateTable assessment={assessment} exportScope={exportScope} />
       </div>

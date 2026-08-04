@@ -1,4 +1,4 @@
-/* Screenshot pass for TUNING fix 3 — the styling trolley's vertical flow.
+/* Screenshot pass for TUNING fix 3 - the styling trolley's vertical flow.
    Not a spec. Run against a server on :8788:
 
      git show HEAD:apps/games/glam-team-makeover/index.html \
@@ -14,9 +14,9 @@
    Three moments are photographed, each on the STAGED routine (the default, and
    the routine the complaint is about):
 
-     · trolley-open   — the cart as the appointment starts
-     · trolley-mid    — a few steps in: skincare taken, most of makeup taken
-     · trolley-reopen — a settled shelf asked back open
+     · trolley-open - the cart as the appointment starts
+     · trolley-mid - a few steps in: skincare taken, most of makeup taken
+     · trolley-reopen - a settled shelf asked back open
 
    `Math.random` is seeded so both passes draw the same client, and the mid/reopen
    states are written straight to `ed` so the two passes are photographed at
@@ -77,7 +77,7 @@ for (const d of DEVICES) {
   await page.getByTitle('Show / hide setup').click();
   await page.getByLabel('Routine', { exact: true }).selectOption('on');
   await page.getByRole('button', { name: /^▶ Play/ }).click();
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${OUT}trolley-open-${PHASE}-${d.tag}.png` });
 
@@ -86,7 +86,7 @@ for (const d of DEVICES) {
   await page.screenshot({ path: `${OUT}trolley-mid-${PHASE}-${d.tag}.png` });
 
   /* Ask a settled shelf back. Before the tuning pass there is no header to tap,
-     so the shot is simply the same mid state — which is the point of the pair. */
+     so the shot is simply the same mid state - which is the point of the pair. */
   const head = page.locator('[data-shelf="Eyes"] button[aria-expanded]');
   if (await head.count()) {
     await head.click();

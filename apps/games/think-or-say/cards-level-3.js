@@ -1,8 +1,8 @@
-/* ── Think or Say? — Level 3 "Explain" ─────────────────────────────────
+/* ── Think or Say? - Level 3 "Explain" ─────────────────────────────────
    Its own pool, authored so the REASON is the teaching target. After the
    learner taps a tile the game asks for the reason, and on reveal it offers
    2-4 exemplar rationales written in deictic I-YOU terms (PEAK-T; Belisle et
-   al. 2016 — RESEARCH.md §4.3).
+   al. 2016 - RESEARCH.md §4.3).
 
    The exemplars are EXEMPLARS, never a scoring key. The technician scores what
    the learner actually said as Correct / Partly correct / Not yet, plus an
@@ -11,8 +11,7 @@
 
    CROSS-LABELS (the maintainer's headline finding, "A lot of these are missing
    cross labels"). This pool went to review declaring exactly two criterial
-   features on all eighteen cards, against 2.57 at Level 1 and 2.93 at Level 2 —
-   the lowest claim in the deck on the level whose whole target is SAYING what
+   features on all eighteen cards, against 2.57 at Level 1 and 2.93 at Level 2 - the lowest claim in the deck on the level whose whole target is SAYING what
    decides the card. Every card has now been read against all eight dimensions
    and labelled where the situation genuinely turns on one, worked pair by pair
    rather than card by card: L3-01..L3-15 are all paired, and L3-05 anchors two

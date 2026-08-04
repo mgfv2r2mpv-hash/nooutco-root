@@ -1,7 +1,7 @@
 'use strict';
 
 /*
- * token-board-ui.js — drop-in token board for games that don't ship their own.
+ * token-board-ui.js - drop-in token board for games that don't ship their own.
  *
  * Injects the ⭐ star toggle + canonical FR/VR settings into #extra-panel-body,
  * a token-board display + "Finish & SR" button after #game-area, and wires it

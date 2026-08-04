@@ -1,4 +1,4 @@
-/* CalendarView — month grid + context pane, faithful to SAssi's schedule view.
+/* CalendarView - month grid + context pane, faithful to SAssi's schedule view.
    Chips encode session TYPE by accent bar/tint and LIFECYCLE by treatment
    (scheduled = accent bar, completed = green, canceled = red/orange struck). */
 const { StatusPill, MetaChip, Button, IconButton, ProgressMeter, Avatar, Card, SegmentedControl } = window.NoOutcomeABADesignSystem_08ed95;
@@ -55,7 +55,7 @@ function ApptDetail({ a, onClose, onComplete, onCancel, onReopen }) {
         <IconButton icon="✕" label="Close" size="sm" onClick={onClose} />
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
-        <MetaChip icon="🕐" intent="info">Mar {a.day} · {a.start}–{a.end}</MetaChip>
+        <MetaChip icon="🕐" intent="info">Mar {a.day} · {a.start} - {a.end}</MetaChip>
         <MetaChip icon="👤">{a.client}</MetaChip>
         {a.tech && <MetaChip icon="🧑‍⚕️">{a.tech}</MetaChip>}
       </div>
@@ -116,7 +116,7 @@ function CalendarView({ appts, selected, onSelect, onMutate }) {
       <div style={{ flex: '0 0 320px', borderLeft: '1px solid var(--border-default)', display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--white)' }}>
         <div style={{ padding: 14, borderBottom: '1px solid var(--border-default)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>BT week — Jordan B.</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>BT week - Jordan B.</span>
             <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{completed}h / 30h</span>
           </div>
           <div style={{ marginTop: 8 }}>

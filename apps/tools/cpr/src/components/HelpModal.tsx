@@ -1,5 +1,5 @@
 /**
- * HelpModal — tabbed panel with tutorial, conceptual background, and keyboard reference.
+ * HelpModal - tabbed panel with tutorial, conceptual background, and keyboard reference.
  * The "Print Manual" button triggers a print-only stylesheet that shows only modal content
  * + 3 blank Notes pages appended.
  */
@@ -102,7 +102,7 @@ export function HelpModal({ onClose }: Props) {
         {[1, 2, 3].map(n => (
           <div key={n} className="help-modal-notes-page">
             <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem', borderBottom: '2px solid #ccc', paddingBottom: '0.5rem' }}>
-              Notes — Page {n}
+              Notes - Page {n}
             </h2>
           </div>
         ))}
@@ -205,14 +205,14 @@ function ConceptsTab() {
         <p>Rather than starting from a blank hypothesis, this tool supports an <strong>interview-informed</strong> approach (Hanley et al., 2014). Informed by an open-ended functional assessment interview (e.g., IISCA), the assessor identifies the most likely reinforcers <em>before</em> observation begins and flags them as &quot;indicated functions&quot; in the session setup.</p>
         <p>These indicated consequences appear on the <strong>left</strong> side of each interval row, enabling faster scoring during live observation; they are also reflected in the output so reviewers understand the assessor&apos;s a priori hypothesis.</p>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          Reference: Hanley, G. P., Jin, C. S., Vanselow, N. R., &amp; Hanratty, L. A. (2014). Producing meaningful improvements in problem behavior of children with autism via synthesized analyses and treatments. <em>Journal of Applied Behavior Analysis, 47</em>, 16–36.
+          Reference: Hanley, G. P., Jin, C. S., Vanselow, N. R., &amp; Hanratty, L. A. (2014). Producing meaningful improvements in problem behavior of children with autism via synthesized analyses and treatments. <em>Journal of Applied Behavior Analysis, 47</em>, 16-36.
         </p>
       </Section>
 
       <Section title="EO contriving and condition density">
         <p>The <strong>Establishing Operation (EO)</strong> is the motivating condition that temporarily increases the value of a reinforcer and evokes behavior maintained by that reinforcer. Examples: attention deprivation (attention EO), prolonged demands (escape EO), denial of preferred item (tangible EO), unoccupied/alone time (sensory EO).</p>
         <p>In a <em>naturalistic</em> SDA, EOs are not contrived; you record their natural presence or absence. In a <em>semi-structured</em> SDA, the environment may be arranged to alternately produce EO-present and EO-absent epochs, increasing the probability of observing both states within a practical observation period.</p>
-        <p><strong>Block density matters:</strong> If nearly all intervals have the EO present, P(Bx|A−) is based on a very small denominator and the Antecedent CV estimate will be unreliable. Aim for at least 20–25% EO-absent intervals for each condition when possible. The raw cell counts table on the Review screen helps you audit this before analysis.</p>
+        <p><strong>Block density matters:</strong> If nearly all intervals have the EO present, P(Bx|A−) is based on a very small denominator and the Antecedent CV estimate will be unreliable. Aim for at least 20-25% EO-absent intervals for each condition when possible. The raw cell counts table on the Review screen helps you audit this before analysis.</p>
       </Section>
 
       <Section title="Interval length considerations">
@@ -241,7 +241,7 @@ function ConceptsTab() {
         <p>This accounts for natural delays in consequence delivery (e.g., a teacher notices and provides attention one interval after the behavior occurred).</p>
         <p>In the Excel export, Lag-1 is implemented via hidden helper columns that COUNTIFS references, keeping the visible formulas clean. On the analysis screen, you can toggle each independently.</p>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          Based on procedures from: Camp, E. M., Iwata, B. A., Hammond, J. L., &amp; Bloom, S. E. (2009). Antecedent versus consequent events as predictors of problem behavior. <em>Journal of Applied Behavior Analysis, 42</em>, 601–616.
+          Based on procedures from: Camp, E. M., Iwata, B. A., Hammond, J. L., &amp; Bloom, S. E. (2009). Antecedent versus consequent events as predictors of problem behavior. <em>Journal of Applied Behavior Analysis, 42</em>, 601-616.
         </p>
       </Section>
 
@@ -256,7 +256,7 @@ function ConceptsTab() {
         </code>
         <p>Both range from −1 to +1. A positive value indicates that behavior is more likely when the relevant condition is present. Interpretation requires considering raw cell counts (especially denominator sizes), the number of intervals collected, and the overall base rate of behavior; clinical judgment is essential.</p>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          CV procedure from: Vollmer, T. R., Borrero, J. C., Wright, C. S., Van Camp, C., &amp; Lalli, J. S. (2001). Identifying possible contingencies during descriptive analyses of severe behavior disorders. <em>Journal of Applied Behavior Analysis, 34</em>, 269–287.
+          CV procedure from: Vollmer, T. R., Borrero, J. C., Wright, C. S., Van Camp, C., &amp; Lalli, J. S. (2001). Identifying possible contingencies during descriptive analyses of severe behavior disorders. <em>Journal of Applied Behavior Analysis, 34</em>, 269-287.
         </p>
       </Section>
 

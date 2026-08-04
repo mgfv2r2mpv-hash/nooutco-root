@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Glam Team Makeover — the outro photo booth (the refresh's before → after
+ * Glam Team Makeover - the outro photo booth (the refresh's before → after
  * reveal).
  *
  * The celebration screen now opens with two polaroid frames: the doll as the
  * client arrived, and the doll the child and the partner finished together.
- * Both are grabbed off the SAME compositor canvas the game paints — the before
+ * Both are grabbed off the SAME compositor canvas the game paints - the before
  * frame at Go (or at the last repaint before the first edit, whichever is
  * later), the after frame the instant the engine ends the trial and one render
  * before the game surface unmounts.
@@ -14,7 +14,7 @@ import { test, expect } from '@playwright/test';
  * What these tests pin:
  *   · the booth appears at the outro, on the child's route and the BT's;
  *   · the before frame really is the pre-edit doll, byte for byte;
- *   · the after frame really is the finished doll — the frames DIFFER once the
+ *   · the after frame really is the finished doll - the frames DIFFER once the
  *     look has been worked on, so the reveal cannot be the same picture twice;
  *   · the booth adds no number and nothing to type (§8);
  *   · "Play again" clears it, so the next run's booth is that run's.
@@ -57,18 +57,17 @@ async function btStart(page, cfg = {}) {
     await page.getByLabel(label, { exact: true }).selectOption(value);
   }
   await page.getByRole('button', { name: /^▶ Play/ }).click();
-  await expect(page.getByRole('button', { name: /Go —/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Go - / })).toBeVisible();
 }
 
 /** Wait until the compositor's output has actually settled.
  *
- *  The doll is assembled from a dozen independently-decoding PNGs — the base
- *  render, the seven hair masks, the eye and brow sprites — and every `onload`
+ *  The doll is assembled from a dozen independently-decoding PNGs - the base
+ *  render, the seven hair masks, the eye and brow sprites - and every `onload`
  *  repaints. Two things therefore have to be true before a frame is comparable
  *  to a later one: every image the compositor has ASKED for is decoded (the
  *  `_imgc` cache is the request list, and a repaint can add to it, so the poll
- *  re-checks until a pass adds nothing), and `_skinPool()` has resolved —
- *  before it does it returns null and `_spots()` falls back to the UNFILTERED
+ *  re-checks until a pass adds nothing), and `_skinPool()` has resolved - *  before it does it returns null and `_spots()` falls back to the UNFILTERED
  *  pool, putting the blemishes at different coordinates.
  *
  *  Skipping this is what made the before frame and the ready-phase face differ
@@ -83,11 +82,11 @@ async function artSettled(page) {
 }
 
 async function goMyTurn(page) {
-  await page.getByRole('button', { name: /Go —/ }).click();
-  await expect(page.getByRole('button', { name: /Done — their turn/ })).toBeVisible();
+  await page.getByRole('button', { name: /Go - / }).click();
+  await expect(page.getByRole('button', { name: /Done - their turn/ })).toBeVisible();
 }
 
-/** Tap a palette tool and, if it arms a target zone, apply it — one charged action. */
+/** Tap a palette tool and, if it arms a target zone, apply it - one charged action. */
 async function useTool(page, name) {
   await page.getByTitle(name, { exact: true }).first().click();
   const target = page.locator('div[style*="gtm-target"]').first();
@@ -135,7 +134,7 @@ function frameInk(page, id) {
   `);
 }
 
-test.describe('outro — the before → after photo booth', () => {
+test.describe('outro - the before → after photo booth', () => {
   test('the celebration opens with two frames, labelled Before and After', async ({ page }) => {
     const errors = await boot(page);
     await btStart(page, { Turns: '2' });
@@ -157,14 +156,14 @@ test.describe('outro — the before → after photo booth', () => {
     expect(errors, errors.join('\n')).toEqual([]);
   });
 
-  test('the two frames are different pictures — the after frame is the finished look', async ({ page }) => {
+  test('the two frames are different pictures - the after frame is the finished look', async ({ page }) => {
     await boot(page);
     await btStart(page, { Turns: '4' });
     await artSettled(page);
     await goMyTurn(page);
 
     // Four visibly different edits across three stations.
-    await useTool(page, 'Silver');        // hair colour — the largest repaint
+    await useTool(page, 'Silver');        // hair colour - the largest repaint
     await useTool(page, 'Purple');        // shirt colour
     await useTool(page, 'Lips red');
     await useTool(page, 'Shadow violet');
@@ -212,7 +211,7 @@ test.describe('outro — the before → after photo booth', () => {
     await page.getByRole('button', { name: 'Skip ahead' }).click();
     const client = await logic(page, 'return L.state.sel.model;');
     await page.getByRole('button', { name: /Open the salon/ }).click();
-    await expect(page.getByRole('button', { name: /Go —/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Go - / })).toBeVisible();
     await artSettled(page);
     await goMyTurn(page);
     await useTool(page, 'Wash');
@@ -236,7 +235,7 @@ test.describe('outro — the before → after photo booth', () => {
     await expect(booth).toBeVisible();
     expect(await booth.innerText(), 'the booth carries no numbers').not.toMatch(/\d/);
     expect(await booth.locator('input, textarea, [contenteditable="true"]').count()).toBe(0);
-    // AC-10 / §3.7.1 — the booth's own copy makes no checkable claim about the
+    // AC-10 / §3.7.1 - the booth's own copy makes no checkable claim about the
     // client; the only thing it shows of them is the picture the child made.
     const copy = await booth.innerText();
     const violations = await page.evaluate(

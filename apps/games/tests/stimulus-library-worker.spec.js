@@ -1,7 +1,7 @@
 /**
  * AdminTools edits, driven through `worker.js` for real.
  *
- * `tests/stimulus-uploads.spec.js` proves the *rules* agree — that
+ * `tests/stimulus-uploads.spec.js` proves the *rules* agree - that
  * `applyUpload()` returns what `buildLibrary()` would. This file proves the
  * *wiring*: a POST to the Worker's admin endpoints, answered by an in-memory
  * GitHub, has to leave the branch holding exactly the files the next
@@ -77,8 +77,8 @@ const bytesFor = (seed) => Buffer.from(`gnhf worker probe ${seed} `.repeat(64));
 
 /**
  * The mime has to match the requested extension. `save-image` renames the file
- * to whatever the *content type* says — a .jpg posted as image/png is saved as
- * .png — so a mismatched fixture would silently test a different filename than
+ * to whatever the *content type* says - a .jpg posted as image/png is saved as
+ * .png - so a mismatched fixture would silently test a different filename than
  * the one it names.
  */
 const MIME = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp' };
@@ -139,7 +139,7 @@ function expectEveryPublishedUrlResolves(hub, built) {
       const relative = url.replace('/shared/stimuli/', '');
       const committed = hub.read(repo(`${LIBRARY_ROOT}/${relative}`));
       // A library file the Worker did not touch is still on disk in the real
-      // tree — the fake repo only carries the JSON plus whatever was committed.
+      // tree - the fake repo only carries the JSON plus whatever was committed.
       const onDisk = fs.existsSync(path.join(GAMES_ROOT, LIBRARY_ROOT, relative));
       expect(Boolean(committed) || onDisk || built.files.has(relative), `${game} publishes ${url}`).toBe(true);
     }
@@ -395,7 +395,7 @@ test.describe('worker: shared stimulus library', () => {
     expectRebuildIsANoOp(hub);
   });
 
-  // `/api/admin/batch` is the endpoint AdminTools actually posts to — every
+  // `/api/admin/batch` is the endpoint AdminTools actually posts to - every
   // queued operation lands in ONE commit. Folding several library ops through
   // one library state is where an in-place update is easiest to get wrong, so
   // each of these ends by rebuilding what the batch committed.
@@ -462,7 +462,7 @@ test.describe('worker: shared stimulus library', () => {
   });
 
   // AdminTools renders from a manifest, and the deployed copy stays pre-commit
-  // until Pages republishes — so the batch response has to carry the manifests
+  // until Pages republishes - so the batch response has to carry the manifests
   // it just committed, or the only honest thing a client can do is refuse to
   // redraw. See `admin-image-manager.spec.js` for the client half.
   test('the batch response carries the manifests it committed', async () => {
@@ -520,7 +520,7 @@ test.describe('worker: shared stimulus library', () => {
   // `archive` / `restore` / `purge` used to be directory renames inside one
   // game's own `_Resources` tree: `T_colors/` became `_a_T_colors/`, and the
   // manifest was rewritten to match. Neither half of that survives the repoint
-  // — the pictures back three games now, and the manifest is generated — so
+  // - the pictures back three games now, and the manifest is generated - so
   // every test here checks both that nothing moved and that a rebuild of the
   // commit reproduces it exactly.
 
@@ -606,7 +606,7 @@ test.describe('worker: shared stimulus library', () => {
     expect(after.folders).not.toContain('T_colors');
     expect(after.archived).toEqual({});
 
-    // The pictures are still in the library — they back clock and receptive.
+    // The pictures are still in the library - they back clock and receptive.
     expect(hub.readJson(repo('receptive/manifest.json')).images.T_colors.length).toBeGreaterThan(0);
     expect(hub.treeEntryPaths.filter((p) => p.includes('/img/'))).toEqual([]);
 
@@ -656,8 +656,8 @@ test.describe('worker: shared stimulus library', () => {
   //
   // A rename moves the topic's NAME, never its key. The key is what every
   // stimulus id in the topic is derived from and what three games share, so
-  // moving it would re-key `colors-red` to `colours-red` — orphaning every
-  // saved target selection naming it — and could not be done on one game's
+  // moving it would re-key `colors-red` to `colours-red` - orphaning every
+  // saved target selection naming it - and could not be done on one game's
   // behalf anyway. These tests pin both halves: the name lands, and nothing
   // else does.
 
@@ -706,7 +706,7 @@ test.describe('worker: shared stimulus library', () => {
       game: 'IDMatchGame', folder: 'T_colors', newName: 'Colors',
     });
 
-    // "Colors" IS the derived name, so this is a clear — not an override that
+    // "Colors" IS the derived name, so this is a clear - not an override that
     // merely looks identical and would outlive a change to the derivation.
     expect(cleared.status).toBe(200);
     expect(cleared.body.name).toBe('Colors');

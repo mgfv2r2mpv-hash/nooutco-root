@@ -6,8 +6,8 @@ import { test, expect } from '@playwright/test';
  * The schedule shipped broken and the existing token-board spec did not notice,
  * because it only asserted that the settings controls render. The defect: the
  * generated schedule was 0-based while `trialsCompleted` was 1-based, and the
- * two were compared with `===`. When the first generated index was 0 — odds
- * exactly 1/value — the pointer never advanced and the board never paid out
+ * two were compared with `===`. When the first generated index was 0 - odds
+ * exactly 1/value - the pointer never advanced and the board never paid out
  * again for the whole session. At VR2 that was half of all sessions delivering
  * literally nothing.
  *
@@ -84,7 +84,7 @@ test.describe('Shared VR schedule', () => {
     test(`VR${value} converges on its target ratio over a long session`, async ({ page }) => {
       const r = await runSchedule(page, { scheduleValue: value, trials: 400 });
       const realised = r.trials / r.delivered;
-      // Individual gaps vary — that is the point of a VR — but the running
+      // Individual gaps vary - that is the point of a VR - but the running
       // average has to track the configured value or it is not a VR at all.
       expect(realised).toBeGreaterThan(value * 0.85);
       expect(realised).toBeLessThan(value * 1.15);

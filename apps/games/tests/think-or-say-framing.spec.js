@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test';
  * think-or-say: card framing and tile position
  *
  * The card used to render `You think: "<utterance>"`. That lead-in names one
- * of the two actions, and names it in the stem of the THINK IT tile — so a
+ * of the two actions, and names it in the stem of the THINK IT tile - so a
  * learner tracking only the salient word answers every card correctly without
  * contacting the rule the programme is teaching, and the data says he has
  * mastered it. (RESEARCH.md, "Card framing"; Song et al. 2021, JABA.)
@@ -13,7 +13,7 @@ import { test, expect } from '@playwright/test';
  * A card now presents: the situation, a lead-in naming NEITHER action, the
  * candidate utterance, and a question naming BOTH actions in the card's own
  * verb pair. The question is GENERATED from the card's verb pair, so a card
- * whose question names only one action cannot be authored — these tests walk
+ * whose question names only one action cannot be authored - these tests walk
  * the entire card set and assert that from the data, not card by card through
  * the UI.
  *
@@ -33,7 +33,7 @@ async function seed(page, working) {
 }
 
 /**
- * The category select is EMPTY in the HTML — populateCategories() builds it in
+ * The category select is EMPTY in the HTML - populateCategories() builds it in
  * the same synchronous init() that then loads the settings, so its first option
  * appearing is the signal that the stored configuration is in force.
  */
@@ -56,8 +56,8 @@ test.describe('every card, from the data', () => {
 
   /**
    * The defect is a lead-in that names ONE action. The balanced question
-   * unavoidably contains the words "you THINK" — "Should you THINK these
-   * words, or SAY these words?" — and that is not the defect: it names the
+   * unavoidably contains the words "you THINK" - "Should you THINK these
+   * words, or SAY these words?" - and that is not the defect: it names the
    * other action in the same breath, in the same phrase, at the same length.
    * So the prose is held to "never says you think", and the card as a whole is
    * held to "never carries the `You think:` lead-in the base build shipped".

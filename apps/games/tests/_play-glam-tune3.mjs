@@ -1,11 +1,11 @@
-/* A real, whole trial of Glam Team Makeover — title → texting intro → salon →
-   EVERY turn to the end → outro — driven with real pointer input, to sit behind
+/* A real, whole trial of Glam Team Makeover - title → texting intro → salon →
+   EVERY turn to the end → outro - driven with real pointer input, to sit behind
    the third pass's "played it in a browser" claim.
 
    What this adds over `_play-glam-tune2.mjs`: it plays the trial OUT (that one
    short-circuits the turn loop through the component), and at every phase change
-   it re-reads the turn rail — the counter strip Finding B moved the whose-turn
-   line and the actions-left meter into — and records whether both were on screen
+   it re-reads the turn rail - the counter strip Finding B moved the whose-turn
+   line and the actions-left meter into - and records whether both were on screen
    in the viewport at that moment. A rail that is correct on the first frame and
    gone by the partner's turn would pass every static check and still fail the
    child.
@@ -38,7 +38,7 @@ const logic = (page, src) => page.evaluate(({ src }) => {
 
 /* The rail, read the way the pinned spec reads it: the whose-turn label and the
    actions-left meter located by their own words, reported in viewport
-   coordinates. `null` for a part that is not on this phase's rail at all — the
+   coordinates. `null` for a part that is not on this phase's rail at all - the
    meter is deliberately absent on the ready and give-back phases, and that is
    not a failure. */
 const railState = (page) => page.evaluate(() => {
@@ -58,8 +58,8 @@ const railState = (page) => page.evaluate(() => {
   /* THIRD PASS · rail correction. The rail is a single ROW now, so "is it on
      screen" is no longer the only way it can fail the child: at 390 the row has
      7.7px of measured margin on its worst string, and the state that produces
-     that string — the budget spent, so the line reads "All set — now I hand it
-     over!" while all 7 pips are still up — only exists partway through a played
+     that string - the budget spent, so the line reads "All set - now I hand it
+     over!" while all 7 pips are still up - only exists partway through a played
      turn. Reading the overrun here means a real trial produces the evidence
      instead of a separate probe having to reconstruct the moment. */
   const over = (e) => { if (!e) return null;
@@ -111,15 +111,15 @@ console.log('· texting intro ran, salon open, client painted');
 
 const seen = new Map();
 /* Distinct WORDINGS the rail showed, with the worst overrun each was measured
-   at — the phase tag alone would collapse "I can do N more" and "All set…" into
+   at - the phase tag alone would collapse "I can do N more" and "All set…" into
    one entry and hide the tightest line the trial produced. */
 const lines = new Map();
 const record = async (tag) => {
   const r = await railState(page);
   if (!seen.has(tag)) {
     seen.set(tag, r);
-    console.log(`· [${tag}] "${r.labelText}" / "${r.lineText}" / ${r.meterText ?? '—'}`
-      + `  onscreen: label=${r.labelOn} line=${r.lineOn} meter=${r.meterOn ?? '—'} (scrollY ${r.scrollY})`);
+    console.log(`· [${tag}] "${r.labelText}" / "${r.lineText}" / ${r.meterText ?? ' - '}`
+      + `  onscreen: label=${r.labelOn} line=${r.lineOn} meter=${r.meterOn ?? ' - '} (scrollY ${r.scrollY})`);
     if (SHOTS) await page.screenshot({ path: `${OUT}rail-${tag}.png` });
   }
   if (r.lineText) lines.set(r.lineText, Math.max(lines.get(r.lineText) ?? 0, r.lineOver ?? 0));
@@ -137,7 +137,7 @@ const record = async (tag) => {
    than hanging. Tools are taken in trolley order, and a tool that arms a target
    zone is applied by pressing that zone. */
 const CTRL = [
-  [/^▸ Go — my turn!$/, 'ready'],
+  [/^▸ Go - my turn!$/, 'ready'],
   [/^▸ My turn again$/, 'giveback'],
   [/^✓ I asked!$/, 'ask'],
 ];
@@ -157,12 +157,12 @@ for (; step < 240; step++) {
 
   if (phase === 'mine') {
     /* Spend the turn's budget, then hand over with the real button. Handing
-       over on "no tool left" instead would never fire — the trolley always has
-       something — and the trial would stall on turn 1 with the cap toast up. */
+       over on "no tool left" instead would never fire - the trolley always has
+       something - and the trial would stall on turn 1 with the cap toast up. */
     const left = await logic(page, 'return Math.max(0, L.state.ttBudget - L.state.ttActions);');
     /* Skip tools that have already been picked and charged nothing. A `choose`
        tool with no zone (and `Conceal` before every spot is treated) arms and
-       renders no target at all, so re-picking it is an infinite loop — this is
+       renders no target at all, so re-picking it is an infinite loop - this is
        the second stall this script hit, at turn 3. */
     const titles = await page.locator('#gtm-trolley button[title]').evaluateAll(
       (bs) => bs.filter((b) => !/✓/.test(b.textContent || '')).map((b) => b.getAttribute('title')));
@@ -174,7 +174,7 @@ for (; step < 240; step++) {
       await page.waitForTimeout(180);
       /* A `paint` tool renders `.gtm-tool` and wants a real stroke; every other
          mechanic renders the same dashed box and wants a tap. The stroke needs a
-         beat between moves — a burst of coalesced pointermoves paints nothing
+         beat between moves - a burst of coalesced pointermoves paints nothing
          and the action is never charged, which is what stalled the first run of
          this script on turn 1. */
       const drag = page.locator('.gtm-tool').first();
@@ -206,7 +206,7 @@ for (; step < 240; step++) {
       else stuck.add(pick);
       continue;
     }
-    const done = page.getByRole('button', { name: /Done — their turn/ });
+    const done = page.getByRole('button', { name: /Done - their turn/ });
     if (await done.count()) { await done.first().click(); await page.waitForTimeout(220); continue; }
   }
   // the partner's turn runs on its own clock; wait it out rather than poke it

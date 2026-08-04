@@ -1,15 +1,15 @@
 /* Screenshot pass for the TUNING pass (maintainer-reported fixes).
-   Not a spec — run with `PHASE=before node tests/_shots-glam-tune.mjs` (and again
+   Not a spec - run with `PHASE=before node tests/_shots-glam-tune.mjs` (and again
    with `PHASE=after`) against a server on :8788. Writes into
    docs/eval/shots/glam-tune/ with the phase in the filename so the report can
    show a real before → after pair for every fix.
 
-   REDUCED MOTION, deliberately — same reason as _shots-salon-theme.mjs: the echo
+   REDUCED MOTION, deliberately - same reason as _shots-salon-theme.mjs: the echo
    chip's keyframe ENDS at opacity 0, so Playwright's `animations:'disabled'`
    (which snaps to the end state) photographs it blank. Emulating reduced motion
    drops the animation and leaves the resting style, which is the frame worth
    putting in the report. It also settles the mirror-glow's opacity transition
-   instantly, so the flare is photographed at full strength — the worst case,
+   instantly, so the flare is photographed at full strength - the worst case,
    which is exactly what "the flare is too much" is about. */
 import { chromium } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
@@ -52,8 +52,8 @@ async function open(browser, d) {
 
 /* The client is drawn at random, so an un-pinned run would photograph a
    different face on the before pass than on the after pass and the pair would be
-   unreadable. The BT's character lock — the ONE surface that may still choose a
-   model — pins it, which is also a live demonstration that the lock works. */
+   unreadable. The BT's character lock - the ONE surface that may still choose a
+   model - pins it, which is also a live demonstration that the lock works. */
 async function intoSalon(page, model) {
   await page.getByRole('button', { name: /Session setup/ }).click();
   await page.getByLabel('Character', { exact: true }).selectOption(model);
@@ -62,7 +62,7 @@ async function intoSalon(page, model) {
   await page.getByRole('button', { name: /Skip ahead/ }).click();
   await page.getByRole('button', { name: /Open the salon/ }).click();
   await page.waitForFunction(PAINTED, undefined, { timeout: 30000 });
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
 }
 
 /** Arm a tap tool and land it, leaving the echo chip + mirror glow up. */
@@ -83,11 +83,11 @@ for (const d of DEVICES) {
   problems.push(...p);
   await intoSalon(page, 'm3');
 
-  /* FIX 1 — the play surface must show no model picker. Whole-surface shot so the
+  /* FIX 1 - the play surface must show no model picker. Whole-surface shot so the
      top-right corner the chips used to occupy is in frame. */
   await page.screenshot({ animations: 'disabled', path: `${OUT}surface-no-model-chips-${PHASE}-${d.tag}.png` });
 
-  /* FIX 5 — the flare. Photographed on the stage crop at full strength. */
+  /* FIX 5 - the flare. Photographed on the stage crop at full strength. */
   await echo(page, 'Shape brows');
   await stageOf(page).screenshot({ animations: 'disabled', path: `${OUT}action-flare-${PHASE}-${d.tag}.png` });
 

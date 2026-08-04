@@ -1,4 +1,4 @@
-// Shared helpers (generated copies — canonical source in packages/shared; run
+// Shared helpers (generated copies - canonical source in packages/shared; run
 // `npm run sync:shared`). Bundled into this worker by wrangler at deploy time.
 import { jsonRes, sha256Hex } from "./shared/helpers.js";
 import { handleSuggest } from "./shared/suggest.js";
@@ -50,7 +50,7 @@ const LEGACY_PREFIXES = [
 
 // ── Red Carpet Convos: person suggestions (KV-backed) ────────────────
 // Public capture endpoint. Stores ONLY the requested public-figure name,
-// deduped by normalized name with a running count — never learner/session
+// deduped by normalized name with a running count - never learner/session
 // data (device-local clinical-privacy rules apply).
 async function handleSuggestPerson(request, env) {
   let body;
@@ -58,7 +58,7 @@ async function handleSuggestPerson(request, env) {
   const raw = ((body && body.name) || "").trim();
   if (raw.length < 2 || raw.length > 80) return jsonRes(400, { error: "A name is required." });
   const name = raw.replace(/\s+/g, " ");
-  if (!env.PERSON_SUGGESTIONS) return jsonRes(200, { ok: true }); // KV not bound — accept + no-op
+  if (!env.PERSON_SUGGESTIONS) return jsonRes(200, { ok: true }); // KV not bound - accept + no-op
   const key = "sug:" + name.toLowerCase();
   const now = new Date().toISOString();
   let rec = null;

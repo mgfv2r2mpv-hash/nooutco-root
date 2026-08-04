@@ -13,16 +13,16 @@
 
    Per device (1280×860 / 834×1112 / 390×844):
 
-     · turn-<phase>-<device>.png        — the whole viewport at the top of the
+     · turn-<phase>-<device>.png - the whole viewport at the top of the
                                           page, which is where the card's
                                           vertical footprint is read
-     · turnband-<phase>-<device>.png    — the stage panel alone, so the rail is
+     · turnband-<phase>-<device>.png - the stage panel alone, so the rail is
                                           read against the composition it
                                           belongs to
 
    Plus, phone only:
 
-     · turnscroll-<phase>-phone.png     — the viewport scrolled all the way to
+     · turnscroll-<phase>-phone.png - the viewport scrolled all the way to
                                           the bottom of the trolley, which is
                                           where a stage-anchored indicator is
                                           most likely to leave the screen.
@@ -65,7 +65,7 @@ for (const d of DEVICES) {
   await page.getByTitle('Show / hide setup').click();
   await page.getByLabel('Character', { exact: true }).selectOption('m4');
   await page.getByRole('button', { name: /^▶ Play/ }).click();
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   await page.waitForFunction(painted, undefined, { timeout: 20000 });
   if (MID) {
     for (const tool of ['Wash', 'Shape brows', 'Eyeliner', 'Mascara']) {

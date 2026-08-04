@@ -522,7 +522,7 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   Session setup panel (Frame 07 — gated session targets)
+   Session setup panel (Frame 07 - gated session targets)
    Sage clinical palette mirrors design_handoff_admin_redesign Frame 07.
    ══════════════════════════════════════════════════════════════════ */
 .btn-session {
@@ -676,7 +676,7 @@
 .btn-session-save:hover { background: #f4f6ef; }
 .btn-session-reset { background: transparent; color: #8a9678; border: none; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: underline; }
 
-/* Gating — when locked, the editable controls are inert + muted */
+/* Gating - when locked, the editable controls are inert + muted */
 #session-panel[data-editing="false"] .session-pill,
 #session-panel[data-editing="false"] .session-type-pill,
 #session-panel[data-editing="false"] .session-step,

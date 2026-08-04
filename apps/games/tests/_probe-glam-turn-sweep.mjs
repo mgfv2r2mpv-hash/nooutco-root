@@ -1,11 +1,11 @@
-/* Finding E — the per-tool turn-exchange sweep.
+/* Finding E - the per-tool turn-exchange sweep.
  *
  * For EVERY tool in the person catalogue, with that tool's own work already
  * done, answer the four columns:
- *   a  armable   — is it still on the cart and can `arm()` take it?
- *   b  changes   — does re-running its own mechanism change the client at all?
- *   c  tick      — does its ✓ survive being armed, or blink off?
- *   d  charges   — does re-running it spend a turn action on a FRESH turn?
+ *   a  armable - is it still on the cart and can `arm()` take it?
+ *   b  changes - does re-running its own mechanism change the client at all?
+ *   c  tick - does its ✓ survive being armed, or blink off?
+ *   d  charges - does re-running it spend a turn action on a FRESH turn?
  *
  * `d` is measured across a real turn boundary: `_charged` is cleared exactly
  * the way `_advanceTurn` clears it, so a tool that charged on turn 1 is asked
@@ -36,7 +36,7 @@ await page.getByTitle('Show / hide setup').click();
 await page.getByLabel('Routine', { exact: true }).selectOption('free');
 await page.getByLabel('Turns', { exact: true }).selectOption('6');
 await page.getByRole('button', { name: /^▶ Play/ }).click();
-await page.getByRole('button', { name: /Go —/ }).click();
+await page.getByRole('button', { name: /Go - / }).click();
 await page.waitForFunction(painted, undefined, { timeout: 20000 });
 
 const rows = await page.evaluate(async () => {
@@ -48,7 +48,7 @@ const rows = await page.evaluate(async () => {
   const snap = () => JSON.stringify(L.state.ed);
   const base = JSON.parse(snap());
 
-  /* The trolley face for one option, straight out of renderVals — the ✓ prefix
+  /* The trolley face for one option, straight out of renderVals - the ✓ prefix
      is what the maintainer watched blink. */
   const face = (opt) => {
     const v = L.renderVals();
@@ -60,12 +60,12 @@ const rows = await page.evaluate(async () => {
   /* The sweep runs 69 tools through one Trial, so the shared turn would hit the
      cap after the first handful and every later row would read "spent nothing"
      for the wrong reason. Each row therefore starts from a clean turn ledger.
-     The ENGINE is untouched — this pokes the live Trial's counters only, and
+     The ENGINE is untouched - this pokes the live Trial's counters only, and
      only in this probe. */
   const freshTurn = () => { const t = L._trial.turn; t.actions = 0; t.overCap = 0; t.forfeit = null; t.cueAt = null; };
 
   /* Run this tool's own mechanism to completion, once. `redo` re-runs it with
-     the work already done — for paint that must be ONE UNGUARDED stroke, not a
+     the work already done - for paint that must be ONE UNGUARDED stroke, not a
      `while cov<1` loop, or the loop guard hides the very charge being measured. */
   async function work(opt, redo) {
     if (opt.mech === 'choose') { L.arm(opt); await tick(); return; }
@@ -85,7 +85,7 @@ const rows = await page.evaluate(async () => {
     L._charged = {};
     freshTurn();
     await tick();
-    // conceal needs every spot patched first — that is its own precondition,
+    // conceal needs every spot patched first - that is its own precondition,
     // not part of what is being measured.
     if (opt.mech === 'conceal') {
       const p = L.cfg().cats.flatMap((g) => g.options).find((o) => o.mech === 'patch');
@@ -138,7 +138,7 @@ const rows = await page.evaluate(async () => {
   return out;
 });
 
-/* ── Phase 2 — completion across a REAL handoff, both directions ────────────
+/* ── Phase 2 - completion across a REAL handoff, both directions ────────────
    One representative per mechanism family, all worked on the learner's own
    turn, then `handoff()` → partner → back. Completion is claimed from `ed`,
    which `_advanceTurn` never touches; this is the measurement of that. */
@@ -170,7 +170,7 @@ const hand = await page.evaluate(async () => {
   const read = () => {
     const v = L.renderVals();
     const tickOf = (opt) => {
-      for (const g of v.palette || []) for (const o of g.options || []) if (o.title === opt.label) return (o.label.startsWith('✓ ') ? '✓' : '—') + (o.disabled ? '·disabled' : '');
+      for (const g of v.palette || []) for (const o of g.options || []) if (o.title === opt.label) return (o.label.startsWith('✓ ') ? '✓' : ' - ') + (o.disabled ? '·disabled' : '');
       return 'off-cart';
     };
     return REPS.map(([fam, o]) => ({ fam, id: o.id, done: !!L._optWorkDone(o), dead: !!L._optDead(o), tick: tickOf(o) }));
@@ -193,7 +193,7 @@ const hand = await page.evaluate(async () => {
   };
 });
 
-/* ── Phase 3 — the control. Making a no-op free must NOT make a real change
+/* ── Phase 3 - the control. Making a no-op free must NOT make a real change
    free. Same starting point, but the second reach picks a DIFFERENT option of
    the same slot, which the client does not already carry. That one still has
    to spend an action and still has to be refused at the cap. */

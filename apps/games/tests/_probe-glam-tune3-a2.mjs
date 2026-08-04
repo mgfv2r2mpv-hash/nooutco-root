@@ -1,9 +1,9 @@
-/* THIRD PASS · Finding A2 — the two "overdone" calls, turned into numbers.
+/* THIRD PASS · Finding A2 - the two "overdone" calls, turned into numbers.
  *
  * V2 measured every tool's share of the face and left two things stated rather
  * than judged, because both were called taste: the eyeshadow carrying past the
  * outer socket onto the temple, and the brow pencil reading as a flat dark plum
- * heavier than the hair it is supposed to match. Neither is purely taste — each
+ * heavier than the hair it is supposed to match. Neither is purely taste - each
  * has a stated design intent it can be measured against:
  *
  *   · EYESHADOW REACH. The eye sprite's own drawn box (`_irisBox().dw`) is where
@@ -24,7 +24,7 @@
  *     fringe across m3's brow, and hair over a brow is hair, not pencil.
  *
  * The brow ink mask is a FIXED FRACTION (darkest 10 % of the brow zone), not a
- * luminance threshold, so it cannot shrink when the tint is lightened — which is
+ * luminance threshold, so it cannot shrink when the tint is lightened - which is
  * exactly the change this probe exists to grade.
  *
  * Run against a hash-verified server on :8788:
@@ -157,7 +157,7 @@ for (const m of ['m2', 'm3', 'm4']) {
     const bx0=Math.max(0,Math.round(bz.l/100*W)), bx1=Math.min(W,Math.round((bz.l+bz.w)/100*W)),
           by0=Math.max(0,Math.round(browTop)),   by1=Math.min(H,Math.round(browBot));
     /* The pencil FOOTPRINT: every pixel inside the brow sprite's own box that the
-       pencil moves. Not a luminance threshold and not a darkest-decile — either
+       pencil moves. Not a luminance threshold and not a darkest-decile - either
        would move the moment the ink is lightened, which is the change this probe
        exists to grade. The footprint is dominated by the cleaned→shaped SHAPE
        change, so it holds still under a recolour; its pixel count is printed so

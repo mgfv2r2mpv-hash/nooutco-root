@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Game Master — nooutco.me</title>
+  <title>Game Master - nooutco.me</title>
   <script>
     (function () {
       var t = localStorage.getItem('admin_token') || '';
       if (!/^[0-9a-f]{64}$/.test(t)) {
-        // Same-site root — an absolute prod URL here bounced dev admins onto the
+        // Same-site root - an absolute prod URL here bounced dev admins onto the
         // live site. This runs inline before nav-bar.js, so NoabaSites is not
         // available yet, but a relative path needs no resolver.
         location.replace('/');
@@ -285,7 +285,7 @@
         <div style="flex:1;min-width:0">
           <div class="card-label">Famous Person Game</div>
           <div class="card-title">Populate Person Facts</div>
-          <div class="card-desc">Use AI to write a connected 4-fact conversation set for people that don't have facts yet — one reviewable batch per click. Re-click to keep working through the unpopulated roster, then review the new cards for quality. Requires <code style="font-size:11px;background:#f0f4e8;padding:1px 4px;border-radius:4px">ANTHRO_KEY</code> set in the Worker.</div>
+          <div class="card-desc">Use AI to write a connected 4-fact conversation set for people that don't have facts yet - one reviewable batch per click. Re-click to keep working through the unpopulated roster, then review the new cards for quality. Requires <code style="font-size:11px;background:#f0f4e8;padding:1px 4px;border-radius:4px">ANTHRO_KEY</code> set in the Worker.</div>
           <div class="card-action-row">
             <button class="run-btn" id="update-facts-btn">Populate next batch</button>
             <span class="run-status" id="update-facts-status"></span>
@@ -302,7 +302,7 @@
         <div style="flex:1;min-width:0">
           <div class="card-label">Red Carpet Convos</div>
           <div class="card-title">Populate Red Carpet Facts</div>
-          <div class="card-desc">Use AI to draft a connected 4-fact set (new schema) for Red Carpet Convos people that still need facts — one reviewable batch per click, committed to <code style="font-size:11px;background:#f0f4e8;padding:1px 4px;border-radius:4px">people.json</code>. Review each on the Famous Person Manager. Requires <code style="font-size:11px;background:#f0f4e8;padding:1px 4px;border-radius:4px">ANTHRO_KEY</code> set in the Worker.</div>
+          <div class="card-desc">Use AI to draft a connected 4-fact set (new schema) for Red Carpet Convos people that still need facts - one reviewable batch per click, committed to <code style="font-size:11px;background:#f0f4e8;padding:1px 4px;border-radius:4px">people.json</code>. Review each on the Famous Person Manager. Requires <code style="font-size:11px;background:#f0f4e8;padding:1px 4px;border-radius:4px">ANTHRO_KEY</code> set in the Worker.</div>
           <div class="card-action-row">
             <button class="run-btn" id="rcc-facts-btn">Populate next batch</button>
             <span class="run-status" id="rcc-facts-status"></span>
@@ -349,7 +349,7 @@
       const status = document.getElementById('update-facts-status');
       btn.disabled    = true;
       btn.textContent = 'Running…';
-      status.textContent = 'Writing a batch of conversation sets — this may take ~30–60 s…';
+      status.textContent = 'Writing a batch of conversation sets - this may take ~30-60 s…';
       status.className   = 'run-status';
       try {
         // Populate a small, reviewable batch per click. Keeps each run well
@@ -379,7 +379,7 @@
       const status = document.getElementById('rcc-facts-status');
       btn.disabled    = true;
       btn.textContent = 'Running…';
-      status.textContent = 'Drafting a batch of conversation sets — this may take ~30–60 s…';
+      status.textContent = 'Drafting a batch of conversation sets - this may take ~30-60 s…';
       status.className   = 'run-status';
       try {
         const res  = await fetch('/api/admin/rcc-generate-facts', {
@@ -390,7 +390,7 @@
         const data = await res.json();
         if (data.ok) {
           const n = (data.filled || []).length;
-          status.textContent = n ? ('✓ Drafted ' + n + ' — review on the Famous Person Manager') : ('✓ ' + (data.message || 'Nothing to fill'));
+          status.textContent = n ? ('✓ Drafted ' + n + ' - review on the Famous Person Manager') : ('✓ ' + (data.message || 'Nothing to fill'));
         } else {
           status.textContent = '✗ ' + (data.error || 'Unknown error');
           status.className   = 'run-status error';

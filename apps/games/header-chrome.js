@@ -1,4 +1,4 @@
-/* header-chrome.js — shared toolbar behaviour for all games
+/* header-chrome.js - shared toolbar behaviour for all games
    Handles: version label, minimize toggle, two-tap back guard, display-mode toggle. */
 (function () {
   /* Version label */
@@ -25,7 +25,7 @@
     setCollapsed(!document.body.classList.contains('settings-collapsed'));
   });
 
-  /* Two-tap back confirm — prevents accidental exit during a session */
+  /* Two-tap back confirm - prevents accidental exit during a session */
   var back = document.getElementById('btn-back');
   if (back) {
     var armed = false, timer = null, label = back.querySelector('.back-label');

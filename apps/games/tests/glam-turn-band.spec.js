@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Glam Team Makeover — THIRD PASS, Finding B: the turn indicator lives in the
+ * Glam Team Makeover - THIRD PASS, Finding B: the turn indicator lives in the
  * stage's sandy counter rail, and the card it used to live in is gone.
  *
  * The maintainer's words: "Can we move the turn indicator and # actions left to
@@ -9,18 +9,18 @@ import { test, expect } from '@playwright/test';
  * it into the design, remove that card's vertical footprint".
  *
  * Two things have to hold at once and they pull against each other:
- *   · the card's VERTICAL FOOTPRINT is gone — nothing sits between the top of
+ *   · the card's VERTICAL FOOTPRINT is gone - nothing sits between the top of
  *     the game area and the top of the stage panel; and
  *   · whose turn it is is STILL ALWAYS VISIBLE (AC-12 / docs/…hardened-claims.md
- *     — an acceptance criterion, not a preference), together with the
+ * - an acceptance criterion, not a preference), together with the
  *     actions-left meter the over-cap behaviour depends on the child reading.
  * A stage-anchored indicator is exactly the kind that scrolls away on a phone,
  * so the second half is asserted at all three device sizes AND after the page
  * has been scrolled to the bottom of the styling trolley, which is the furthest
  * the child can get from the stage.
  *
- * Everything here is located the way the U3 spec locates things — the panel by
- * the backdrop art it carries, the text by its own words — so the same file runs
+ * Everything here is located the way the U3 spec locates things - the panel by
+ * the backdrop art it carries, the text by its own words - so the same file runs
  * against the pre-change renderer. Point it at one with:
  *
  *   git show 2f45dfda:apps/games/glam-team-makeover/index.html \
@@ -31,7 +31,7 @@ import { test, expect } from '@playwright/test';
 
 const PAGE = process.env.GLAM_PAGE || '/glam-team-makeover/';
 
-/** Desktop first, then tablet, then iPhone — the redesign spec's §3.9 order.
+/** Desktop first, then tablet, then iPhone - the redesign spec's §3.9 order.
  *  `railWas` is the height the TWO-LINE rail shipped at (index.html `--gtm-band`
  *  before the maintainer's ruling 3). The single-line rail has to come in under
  *  it, so the number is carried here rather than restated in each assertion. */
@@ -51,7 +51,7 @@ async function stage(page) {
   await page.getByTitle('Show / hide setup').click();
   await page.getByLabel('Character', { exact: true }).selectOption('m4');
   await page.getByRole('button', { name: /^▶ Play/ }).click();
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   await page.waitForFunction(() => {
     const c = document.getElementById('gtm-canvas');
     if (!c) return false;
@@ -88,7 +88,7 @@ function layout(page) {
        nearest CLIPPING ancestor within three steps, not of the text node
        itself: the runtime wraps every interpolation in an inline <span>, and
        scrollWidth on an inline box is 0 in Blink but the content width in
-       Gecko — comparing that against clientWidth (0 in both) reports the whole
+       Gecko - comparing that against clientWidth (0 in both) reports the whole
        sentence as overflow on Firefox and nothing on Chrome. */
     const clipOverflow = (el) => {
       for (let e = el, i = 0; e && i < 3; e = e.parentElement, i++) {
@@ -103,10 +103,10 @@ function layout(page) {
     if (!turn) return { error: 'no element states whose turn it is' };
     const meterLabel = deepest('Actions left') || deepest('Their actions left');
     if (!meterLabel) return { error: 'no element states the actions left' };
-    /* The whose-turn SENTENCE — the line the child reads, whatever it says now.
+    /* The whose-turn SENTENCE - the line the child reads, whatever it says now.
        Matched as a SENTENCE (>12 chars) rather than a prefix, because the BT's
        own setup strip carries <label>My turn</label> and <label>Their turn</label>
-       and those sit at the top of the page whether or not it is scrolled — and
+       and those sit at the top of the page whether or not it is scrolled - and
        a <label> wrapping its own <select> reads as "My turnCount shownCount
        hidden", which is long enough to look like a sentence. Anything holding a
        form control is setup, not the child's line. */
@@ -125,7 +125,7 @@ function layout(page) {
       lineClipped: line ? clipOverflow(line) : 0,
       pips: [...(meterLabel.parentElement.querySelectorAll('span'))].length,
       // how much vertical room is spent between the top of the game area and
-      // the top of the stage panel — the card's footprint, in one number
+      // the top of the stage panel - the card's footprint, in one number
       aboveStage: main ? +(R(panel).top - (R(main).top + parseFloat(mcs.paddingTop || 0))).toFixed(1) : null,
       trolley: trolley ? R(trolley) : null,
       viewH: window.innerHeight, viewW: window.innerWidth,
@@ -143,7 +143,7 @@ function onScreen(r, viewH, viewW) {
 /**
  * The rail's own shape, for the maintainer's ruling 3 (the two-line stack
  * becomes one row). Located exactly the way the rest of this file locates
- * things — by the words on screen, never by a class name — so it also runs
+ * things - by the words on screen, never by a class name - so it also runs
  * against the pre-change renderer and reports what IT does.
  *
  * The rail itself is found as the lowest common ancestor of the whose-turn
@@ -162,8 +162,7 @@ function railShape(page) {
         ![...e.children].some((c) => (c.textContent || '').trim() === txt));
       return hit[0] || null;
     };
-    /* Overflow is asked of the nearest CLIPPING ancestor within three steps —
-       see the note on `clipOverflow` above; scrollWidth on an inline box
+    /* Overflow is asked of the nearest CLIPPING ancestor within three steps - see the note on `clipOverflow` above; scrollWidth on an inline box
        disagrees between Blink and Gecko and would report a phantom overrun. */
     const clipOverflow = (el) => {
       for (let e = el, i = 0; e && i < 3; e = e.parentElement, i++) {
@@ -206,7 +205,7 @@ function sharedRow(a, b) {
   return a.h > 0 ? +(overlap / a.h).toFixed(3) : 0;
 }
 
-test.describe('third pass · Finding B — the turn rail', () => {
+test.describe('third pass · Finding B - the turn rail', () => {
   test('B · whose-turn and actions-left sit in the stage\'s bottom band, and the card above the stage is gone', async ({ page }) => {
     test.setTimeout(120000);
     const errors = await stage(page);
@@ -219,7 +218,7 @@ test.describe('third pass · Finding B — the turn rail', () => {
       expect(g.error, `${at}: ${g.error}`).toBeUndefined();
 
       /* THE MOVE. Both parts of the indicator are geometrically inside the stage
-         panel — not merely near it — and both are in its BOTTOM band rather than
+         panel - not merely near it - and both are in its BOTTOM band rather than
          floating over the client's face. 0.72 of the panel's height is well
          below the client's chin at every width (the client is 0.70 of a
          bottom-anchored composition). */
@@ -230,7 +229,7 @@ test.describe('third pass · Finding B — the turn rail', () => {
         expect(r.bottom, `${at}: ${what} runs ${(r.bottom - g.panel.bottom).toFixed(1)}px BELOW the stage panel`)
           .toBeLessThanOrEqual(g.panel.bottom + 0.6);
         const band = (r.top - g.panel.top) / g.panel.h;
-        expect(band, `${at}: ${what} sits at ${(band * 100).toFixed(1)}% down the stage — not in the bottom band`)
+        expect(band, `${at}: ${what} sits at ${(band * 100).toFixed(1)}% down the stage - not in the bottom band`)
           .toBeGreaterThan(0.72);
       }
 
@@ -245,7 +244,7 @@ test.describe('third pass · Finding B — the turn rail', () => {
         .toBeLessThanOrEqual(6);
 
       /* …and the line the child reads is never truncated by the rail it now
-         lives in — a rail whose height is a layout constant cannot wrap. */
+         lives in - a rail whose height is a layout constant cannot wrap. */
       expect(g.lineClipped, `${at}: "${g.lineText}" is clipped by ${g.lineClipped}px in the rail`)
         .toBeLessThanOrEqual(1);
     }
@@ -279,7 +278,7 @@ test.describe('third pass · Finding B — the turn rail', () => {
           expect(g.error, `${at} ${where}: ${g.error}`).toBeUndefined();
           for (const [what, r] of [['the whose-turn label', g.turn], ['the whose-turn line', g.line], ['the actions-left meter', g.meter]]) {
             expect(onScreen(r, g.viewH, g.viewW),
-              `${at} ${where} (scrollY ${g.scrollY} of ${g.docH - g.viewH}): ${what} is off screen — ${JSON.stringify(r)} in a ${g.viewW}×${g.viewH} viewport`)
+              `${at} ${where} (scrollY ${g.scrollY} of ${g.docH - g.viewH}): ${what} is off screen - ${JSON.stringify(r)} in a ${g.viewW}×${g.viewH} viewport`)
               .toBe(true);
           }
         }
@@ -291,11 +290,11 @@ test.describe('third pass · Finding B — the turn rail', () => {
     /* …and again on the PARTNER's turn, which is the taller page: the controls
        row grows the mand cue and the "✓ I asked!" button, so the document gets
        longer and the child can scroll further than the my-turn case allows.
-       Playing a trial out at 390×844 is how that gap was found — the rail was at
+       Playing a trial out at 390×844 is how that gap was found - the rail was at
        y −109 at scrollY 576 with only the my-turn scroll range checked. */
     await page.setViewportSize({ width: DEVICES[0].width, height: DEVICES[0].height });
     await page.evaluate(() => window.scrollTo(0, 0));
-    await page.getByRole('button', { name: /Done — their turn/ }).click();
+    await page.getByRole('button', { name: /Done - their turn/ }).click();
     // `exact` matters: a loose getByText also matches the BT strip's hidden
     // <label>Their turn</label>, which is never visible.
     await expect(page.getByText('THEIR TURN', { exact: true }).first()).toBeVisible();
@@ -306,8 +305,8 @@ test.describe('third pass · Finding B — the turn rail', () => {
 
   /**
    * THIRD PASS · rail correction. The maintainer overruled W6's 46/40: the rail
-   * is to be a SINGLE-LINE stack — the whose-turn eyebrow and the whose-turn
-   * line on one row — and shorter for it.
+   * is to be a SINGLE-LINE stack - the whose-turn eyebrow and the whose-turn
+   * line on one row - and shorter for it.
    *
    * W6 also named the cost, and it is the half of this test that matters: a
    * single row is wider than a stack, and 390 is where it either works or does
@@ -316,7 +315,7 @@ test.describe('third pass · Finding B — the turn rail', () => {
    * height and no-truncation are asserted together, at all three widths, and
    * the 390 case is the one with only 7.7px of measured margin behind it.
    *
-   * Two-sided by construction — against the pre-change build (fed4e2be) the
+   * Two-sided by construction - against the pre-change build (fed4e2be) the
    * eyebrow sits ABOVE the line and the rail is exactly 46/40, so both halves
    * fail. Point it at one with:
    *
@@ -336,19 +335,19 @@ test.describe('third pass · Finding B — the turn rail', () => {
       const at = `${d.tag} (${d.width}×${d.height})`;
       expect(g.error, `${at}: ${g.error}`).toBeUndefined();
 
-      /* ONE ROW. The eyebrow's height falls inside the line's — they are
-         baseline-aligned siblings on a single row — and they are side by side
+      /* ONE ROW. The eyebrow's height falls inside the line's - they are
+         baseline-aligned siblings on a single row - and they are side by side
          rather than one under the other. Stacked, the overlap is 0. */
       expect(sharedRow(g.turn, g.line),
-        `${at}: the whose-turn label (y ${g.turn.top}–${g.turn.bottom}) and the line (y ${g.line.top}–${g.line.bottom}) are not on one row`)
+        `${at}: the whose-turn label (y ${g.turn.top} - ${g.turn.bottom}) and the line (y ${g.line.top} - ${g.line.bottom}) are not on one row`)
         .toBeGreaterThanOrEqual(0.8);
       expect(g.turn.right,
-        `${at}: the whose-turn label ends at x ${g.turn.right} but the line starts at x ${g.line.x} — they are stacked, not side by side`)
+        `${at}: the whose-turn label ends at x ${g.turn.right} but the line starts at x ${g.line.x} - they are stacked, not side by side`)
         .toBeLessThanOrEqual(g.line.x + 1);
 
-      /* SHORTER. Strictly under what the two-line rail shipped at — the whole
+      /* SHORTER. Strictly under what the two-line rail shipped at - the whole
          point of the ruling, and the number the art is sized against. */
-      expect(g.rail.h, `${at}: the rail is ${g.rail.h}px — the two-line rail it replaces was ${d.railWas}px`)
+      expect(g.rail.h, `${at}: the rail is ${g.rail.h}px - the two-line rail it replaces was ${d.railWas}px`)
         .toBeLessThan(d.railWas);
 
       /* AND NOT AT THE LINE'S EXPENSE. Neither the child's line nor the

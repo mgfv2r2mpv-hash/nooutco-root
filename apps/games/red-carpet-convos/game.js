@@ -1,6 +1,6 @@
 'use strict';
 /* ══════════════════════════════════════════════════════════════════
-   Red Carpet Convos — game logic (vanilla port of the design prototype).
+   Red Carpet Convos - game logic (vanilla port of the design prototype).
 
    Phase machine: start → explore (Meet) → talk (Talk) → wrap (Reward).
    A "turn" = the learner's Comment (even move) then Volley (odd move),
@@ -21,9 +21,9 @@
   var RING_C = 552.9; // 2πr for r=88
   var INKS = ['#1a1a1a', '#1d4ed8', '#b91c1c'];
   var REFS = [
-    { authors: 'Sarokoff, Taylor & Poulson (2001)', title: 'Teaching conversational skills to children with autism using a script-fading procedure.', where: 'J. Applied Behavior Analysis, 34(3), 289–297.', url: 'https://scholar.google.com/scholar?q=Sarokoff+Taylor+Poulson+2001+script-fading+conversational+skills+autism' },
-    { authors: 'Nuernberger et al. (2013)', title: 'Using behavioral skills training to teach social skills to young adults with an autism spectrum disorder.', where: 'J. Applied Behavior Analysis, 46(1), 325–331.', url: 'https://scholar.google.com/scholar?q=Nuernberger+2013+behavioral+skills+training+social+skills+autism' },
-    { authors: 'Leaf et al. (2012)', title: 'Evaluation of the relative efficacy of a free-standing conversation map program.', where: 'Research in Autism Spectrum Disorders, 6(1), 499–509.', url: 'https://scholar.google.com/scholar?q=Leaf+2012+free-standing+conversation+map+program+autism' }
+    { authors: 'Sarokoff, Taylor & Poulson (2001)', title: 'Teaching conversational skills to children with autism using a script-fading procedure.', where: 'J. Applied Behavior Analysis, 34(3), 289-297.', url: 'https://scholar.google.com/scholar?q=Sarokoff+Taylor+Poulson+2001+script-fading+conversational+skills+autism' },
+    { authors: 'Nuernberger et al. (2013)', title: 'Using behavioral skills training to teach social skills to young adults with an autism spectrum disorder.', where: 'J. Applied Behavior Analysis, 46(1), 325-331.', url: 'https://scholar.google.com/scholar?q=Nuernberger+2013+behavioral+skills+training+social+skills+autism' },
+    { authors: 'Leaf et al. (2012)', title: 'Evaluation of the relative efficacy of a free-standing conversation map program.', where: 'Research in Autism Spectrum Disorders, 6(1), 499-509.', url: 'https://scholar.google.com/scholar?q=Leaf+2012+free-standing+conversation+map+program+autism' }
   ];
   var LAYOUT_DEFS = [
     { k: 'map', icon: '🗺', label: 'Conversation map', desc: 'Follow the route' },
@@ -138,7 +138,7 @@
     for (var j = startFrom; j < words.length; j++) {
       (function (idx) {
         var w = words[idx];
-        var len = w.textContent.replace(/[.,!?…'"—-]/g, '').length;
+        var len = w.textContent.replace(/[.,!?…'" - -]/g, '').length;
         var dur = Math.min(560, Math.max(150, len * 58 + 100));
         _ktimers.push(setTimeout(function () { if (idx > 0) { words[idx - 1].style.color = 'var(--slate-900)'; } w.style.color = 'var(--pa)'; }, t));
         t += dur;
@@ -222,7 +222,7 @@
   function cancelLayout() { setState({ pendingLayout: null }); }
   function home() { clearInterval(_tint); _tint = null; setState({ phase: 'start' }); }
 
-  // ── Reward timer (imperative — never triggers a full re-render) ─────
+  // ── Reward timer (imperative - never triggers a full re-render) ─────
   function tFmt(s) { return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
   function ringOffset() { return ((1 - state.tRem / state.tTotal) * RING_C).toFixed(1); }
   function updateTimerDom() {
@@ -252,7 +252,7 @@
     if (host) host.innerHTML = rewardPresetsHTML();
   }
   // Deliberately silent. A third copy of the same three notes lived here, apart
-  // from reward.js and famous-person's — which is why the removal is pinned by a
+  // from reward.js and famous-person's - which is why the removal is pinned by a
   // source scan rather than by silencing one module. No game plays a completion
   // sound; see the note on NooutcoReward.playChime.
   function chime() {}
@@ -272,9 +272,9 @@
       var ctx = (r.level === 0 && !r.corrected) ? 'Independent' : (LEVELS[r.level] + ' prompt');
       return '<tr><td>' + turn + '</td><td>' + type + '</td><td>' + out + '</td><td>' + ctx + '</td></tr>';
     }).join('');
-    var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Red Carpet Convos — Session Record</title>' +
+    var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Red Carpet Convos - Session Record</title>' +
       '<style>body{font-family:Atkinson Hyperlegible,Arial,sans-serif;font-size:12px;margin:26px;color:#111827}h1{font-size:18px;margin:0 0 2px}.s{color:#6b7280;margin-bottom:16px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #e5e7eb;padding:6px 9px;text-align:left}th{background:#f3f4f6;font-size:11px;text-transform:uppercase;letter-spacing:.05em}</style></head><body>' +
-      '<h1>Red Carpet Convos — Session Record</h1><div class="s">' + escHtml(p.name) + ' · ' + escHtml(p.tag) + ' · Prompting: ' + (state.method === 'mtl' ? 'Most-to-least' : 'Least-to-most') + ' · Printed ' + escHtml(dt) + '</div>' +
+      '<h1>Red Carpet Convos - Session Record</h1><div class="s">' + escHtml(p.name) + ' · ' + escHtml(p.tag) + ' · Prompting: ' + (state.method === 'mtl' ? 'Most-to-least' : 'Least-to-most') + ' · Printed ' + escHtml(dt) + '</div>' +
       '<table><thead><tr><th>Turn</th><th>Move</th><th>Outcome</th><th>Prompt level</th></tr></thead><tbody>' + rows + '</tbody></table></body></html>';
     var w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close(); w.print(); }
   }
@@ -301,7 +301,7 @@
     // Karaoke every render.
     runKaraoke();
     // Search input: keep focus + caret across renders (only the results sublist
-    // updates on keystroke — see bindSearchInput — so this handles panel open).
+    // updates on keystroke - see bindSearchInput - so this handles panel open).
     if (state.phase === 'explore' && state.searchOpen) {
       var inp = document.getElementById('rcc-search-input');
       if (inp) { bindSearchInput(inp); if (document.activeElement !== inp) { inp.focus(); var v = inp.value; inp.value = ''; inp.value = v; } }
@@ -316,7 +316,7 @@
       }
     }
     // Wrap: mark the one-time celebration as played so a later imperative
-    // timer update never has to rebuild (it doesn't — timer is imperative).
+    // timer update never has to rebuild (it doesn't - timer is imperative).
     if (state.phase === 'wrap') _wrapEntered = true;
   }
 
@@ -604,7 +604,7 @@
       lowerHTML = errBar + '<div style="display:flex;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap">' +
         '<div style="display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--sage-200);border-radius:var(--radius-pill);padding:5px 6px 5px 14px"><span style="font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--slate-500)">Support</span>' +
         '<span style="font-size:12.5px;font-weight:800;color:var(--pa);min-width:74px;text-align:center">' + LEVELS[state.support] + '</span>' +
-        '<button data-act="less" title="Less help" style="width:32px;height:32px;border-radius:999px;border:1.5px solid ' + (lessOn ? 'var(--sage-300)' : 'var(--sage-200)') + ';background:#fff;color:' + (lessOn ? 'var(--sage-700)' : 'var(--slate-300)') + ';font-size:17px;font-weight:800;cursor:' + (lessOn ? 'pointer' : 'default') + '">–</button>' +
+        '<button data-act="less" title="Less help" style="width:32px;height:32px;border-radius:999px;border:1.5px solid ' + (lessOn ? 'var(--sage-300)' : 'var(--sage-200)') + ';background:#fff;color:' + (lessOn ? 'var(--sage-700)' : 'var(--slate-300)') + ';font-size:17px;font-weight:800;cursor:' + (lessOn ? 'pointer' : 'default') + '"> - </button>' +
         '<button data-act="more" title="More help" style="width:32px;height:32px;border-radius:999px;border:1.5px solid ' + (moreOn ? 'var(--sage-300)' : 'var(--sage-200)') + ';background:' + (moreOn ? 'var(--sage-50)' : '#fff') + ';color:' + (moreOn ? 'var(--sage-700)' : 'var(--slate-300)') + ';font-size:16px;font-weight:800;cursor:' + (moreOn ? 'pointer' : 'default') + '">＋</button></div>' +
         '<div style="display:flex;gap:10px;margin-left:auto"><button data-act="miss" style="padding:12px 20px;border:1.5px solid var(--red-100);border-radius:var(--radius-md);background:var(--red-100);color:var(--red-700);font-size:15px;font-weight:800;cursor:pointer">Try again</button>' +
         '<button data-act="score" style="padding:12px 24px;border:none;border-radius:var(--radius-md);background:var(--green-700);color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:var(--shadow-sm)">✓ Got it</button></div></div>';
@@ -718,7 +718,7 @@
     toggleImg: function () { setState(function (s) { return { imgFull: !s.imgFull }; }); },
     less: less, more: more, score: score, miss: miss, continueBeat: continueBeat,
     backMove: backMove, finish: finish, home: home,
-    // reward (imperative — do not re-render)
+    // reward (imperative - do not re-render)
     setReward: function (a) { if (state.phase === 'wrap') setReward(+a); else setState({ tTotal: (+a) * 60, tRem: (+a) * 60 }); },
     timerToggle: timerToggle, timerReset: timerReset, print: printData
   };
@@ -736,7 +736,7 @@
   // Delegated image-error fallback
   root.addEventListener('error', function (e) { var el = e.target; if (el && el.hasAttribute && el.hasAttribute('data-imgerr')) imgErr(el); }, true);
 
-  // Search input — update only the results sublist (keeps focus/caret).
+  // Search input - update only the results sublist (keeps focus/caret).
   function bindSearchInput(inp) {
     if (inp._bound) return; inp._bound = true;
     inp.addEventListener('input', function () {

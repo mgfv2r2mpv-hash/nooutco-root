@@ -1,5 +1,4 @@
-/* Screenshot pass for the THIRD-PASS RAIL CORRECTION (maintainer's ruling 3 —
-   the two-line rail becomes a single-line stack). Not a spec. Run against a
+/* Screenshot pass for the THIRD-PASS RAIL CORRECTION (maintainer's ruling 3 - the two-line rail becomes a single-line stack). Not a spec. Run against a
    hash-verified :8788:
 
      git show fed4e2be:apps/games/glam-team-makeover/index.html \
@@ -15,15 +14,15 @@
 
    Per device (1280×860 / 834×1112 / 390×844):
 
-     · rail-<phase>-<device>.png       — the rail alone, cropped to its own box,
+     · rail-<phase>-<device>.png - the rail alone, cropped to its own box,
                                          so the before/after heights are read
                                          against each other and nothing else
-     · railstage-<phase>-<device>.png  — the stage panel, so the rail is read in
+     · railstage-<phase>-<device>.png - the stage panel, so the rail is read in
                                          the composition it belongs to
 
    Plus, phone only:
 
-     · railtrolley-<phase>-phone.png   — the viewport with the trolley scrolled
+     · railtrolley-<phase>-phone.png - the viewport with the trolley scrolled
                                          to its end, which is the AC-12 case the
                                          sticky panel exists for: whose-turn and
                                          actions-left must still be on screen.
@@ -57,7 +56,7 @@ const painted = () => {
 };
 
 /* Tag the rail and the stage panel by what they ARE on screen, not by class, so
-   the same rule finds them in both renderers AND in every state — including
+   the same rule finds them in both renderers AND in every state - including
    `ready`, where nothing has been spent yet so the rail carries no meter to
    pick out. The panel is the ancestor of the client canvas that carries the
    backdrop art; the rail is the first ancestor of the whose-turn label that
@@ -105,7 +104,7 @@ for (const d of DEVICES) {
   page.on('console', (m) => { if (m.type() === 'error') problems.push(`${d.tag}: ${m.text()}`); });
   page.on('pageerror', (e) => problems.push(`${d.tag}: ${e.message}`));
   await boot(page);
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   await page.waitForFunction(painted, undefined, { timeout: 20000 });
   if (MID) {
     for (const tool of ['Wash', 'Shape brows', 'Eyeliner', 'Mascara']) {
@@ -149,8 +148,7 @@ for (const d of DEVICES) {
   page.on('pageerror', (e) => problems.push(`states: ${e.message}`));
   await boot(page);
   await page.waitForTimeout(500);
-  /* The states are shot as the stage panel's bottom STRIP — ledge plus rail —
-     rather than as a tight rail crop. At `ready` nothing has been spent, so the
+  /* The states are shot as the stage panel's bottom STRIP - ledge plus rail - rather than as a tight rail crop. At `ready` nothing has been spent, so the
      rail carries no meter and a crop keyed to its contents finds the wrong box;
      a fixed strip off the panel's foot is the same frame in all three states
      and in both builds, which is what makes them comparable. */
@@ -165,11 +163,11 @@ for (const d of DEVICES) {
     await page.evaluate(untag);
   };
   await shoot('ready');
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   await page.waitForFunction(painted, undefined, { timeout: 20000 });
   await page.waitForTimeout(400);
   await shoot('mine');
-  await page.getByRole('button', { name: /Done — their turn/ }).click();
+  await page.getByRole('button', { name: /Done - their turn/ }).click();
   await page.waitForTimeout(500);
   await shoot('theirs');
   await page.close();

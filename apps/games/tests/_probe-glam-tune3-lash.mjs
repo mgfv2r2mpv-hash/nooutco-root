@@ -1,11 +1,11 @@
-/* THIRD PASS · Finding A1 — WHICH layer puts white pixels on the lashes.
+/* THIRD PASS · Finding A1 - WHICH layer puts white pixels on the lashes.
  *
- * `_probe-glam-tune3-look.mjs` establishes that 6–12 % of the lash geometry is
+ * `_probe-glam-tune3-look.mjs` establishes that 6-12 % of the lash geometry is
  * BRIGHTER on the completed look than on the bare face. This attributes it:
  * every tool is rendered alone-plus-mascara and scored on the same lash mask,
  * and then the completed look is re-rendered with each suspect removed. The
- * layer whose presence creates the over-bright pixels — and whose removal
- * clears them — is the cause.
+ * layer whose presence creates the over-bright pixels - and whose removal
+ * clears them - is the cause.
  *
  * Run against a hash-verified server on :8788:
  *   node tests/_probe-glam-tune3-lash.mjs
@@ -52,7 +52,7 @@ const HELPERS = `
     for (let i=0;i<80 && same<3;i++){ await frame(); const h=hash(snap()); if(h===last) same++; else { same=0; last=h; } }
     return snap(); };
   /* freshEd seeds the three blemishes with Math.random(), so two frames taken
-     from two resets have the spots in DIFFERENT places — and a spot that moved
+     from two resets have the spots in DIFFERENT places - and a spot that moved
      reads as a tool brightening pixels it never touched. One fixed seed for
      every frame; 0.371 is the layout _pickSpots itself falls back to. */
   const FRESH = () => Object.assign(L.freshEd('person'), { spotSeed: 0.371 });
@@ -89,7 +89,7 @@ for (const m of ['m2', 'm3', 'm4']) {
 
     await reset(); await settle(); await setEd((ed)=>{ ed.cov.mascara=1; });
     const masc = await settle();
-    // the lash geometry — every pixel the mascara sprite CHANGES, eyeball cut out
+    // the lash geometry - every pixel the mascara sprite CHANGES, eyeball cut out
     const boxes = (L._irisBoxes(W,H) || []).filter(Boolean);
     const inEye = (x,y) => boxes.some(b => {
       const u=(x-b.cx)/(0.38*b.dw), v=(y-b.cy)/(0.16*b.dh); return u*u+v*v <= 1; });
@@ -99,7 +99,7 @@ for (const m of ['m2', 'm3', 'm4']) {
       if(Math.abs(lum(masc.data,i) - lum(bare.data,i)) <= 12) continue;
       if(!inEye(x,y)) lash.push(i); }
 
-    // scored on WHITENESS, stated absolutely — that is the reported defect
+    // scored on WHITENESS, stated absolutely - that is the reported defect
     const score = (img) => { let white=0, worst=0;
       for(const i of lash){ const l = lum(img.data,i);
         if(l>=190){ white++; if(l>worst) worst=l; } }

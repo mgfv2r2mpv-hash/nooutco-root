@@ -65,7 +65,7 @@ function migrateTargetFilters(manifest) {
  * AdminTools still keys a technician's display-name override by the path it
  * uploaded to, under the game's own tree. The generated manifest only carries
  * library URLs, so any legacy key present is an override written since the
- * last rebuild — newer than the generated label, and it wins. Without this the
+ * last rebuild - newer than the generated label, and it wins. Without this the
  * label saves cleanly and then never renders.
  */
 function foldLegacyDisplayNames(manifest) {
@@ -80,14 +80,12 @@ function foldLegacyDisplayNames(manifest) {
 
 // ── Settings storage keys ──────────────────────────────────────────
 // Stage 6: this game's programme parameters live in the shared store
-// (../game-settings.js) under SETTINGS_KEY. `ngSettings` is the retired key —
-// read once, folded into the store, and NEVER deleted or rewritten, so a
+// (../game-settings.js) under SETTINGS_KEY. `ngSettings` is the retired key - // read once, folded into the store, and NEVER deleted or rewritten, so a
 // mis-mapped fold is recoverable and a downgrade still finds the old config.
 const SETTINGS_KEY = 'nooutco.settings.receptive';
 const LEGACY_SETTINGS_KEY = 'ngSettings';
 
-// The token glyphs #sel-token-emoji offers, and the pool 'random' draws from —
-// one list, so the stored setting can be validated against exactly what the
+// The token glyphs #sel-token-emoji offers, and the pool 'random' draws from - // one list, so the stored setting can be validated against exactly what the
 // technician was shown. Declared above the store: constants a field spec reads
 // have to be initialised before `defineStore()` runs.
 const TOKEN_EMOJI = ['⭐', '🔷', '💎', '✨', '🎁', '🏆', '💫', '🌟'];
@@ -123,7 +121,7 @@ const state = {
   vr_schedule:       [],
   vr_scheduleTrial:  0,
 
-  // Per-topic target filters: { topic: [srcPaths] } — empty array = no filter
+  // Per-topic target filters: { topic: [srcPaths] } - empty array = no filter
   targetFilters: {},
 
   // Discovered folders & images
@@ -135,7 +133,7 @@ const state = {
   // Target panel UI state
   targetPanelOpen: false,
 
-  // Session — persists across topic changes; cleared by Clear Data
+  // Session - persists across topic changes; cleared by Clear Data
   active:      false,
   sessionData: [],
   trialNum:    0,
@@ -154,7 +152,7 @@ const state = {
   // Shuffled position deck
   posDeck: [],
 
-  // Shuffled sample deck — ensures all items shown before any repeats
+  // Shuffled sample deck - ensures all items shown before any repeats
   sampleDeck: [],
 
   // Timer
@@ -239,7 +237,7 @@ document.addEventListener('DOMContentLoaded', async () => {
  * derives BOTH the defaults and the clamping from this one declaration, so
  * there is no second hand-written description to drift out of sync with it.
  *
- * `autoPromptEnabled` defaults to FALSE here — it is true only in `sequences`.
+ * `autoPromptEnabled` defaults to FALSE here - it is true only in `sequences`.
  * That difference is clinical, not accidental; do not harmonise it.
  *
  * `chosenEmoji` and `currentTokens` are token-board *running* state rather than
@@ -679,7 +677,7 @@ function nextPosition() {
   return state.posDeck.pop();
 }
 
-// ── Sample deck — no repeats until all items shown ─────────────────
+// ── Sample deck - no repeats until all items shown ─────────────────
 
 /**
  * Images eligible as samples (targets) for the current topic, after the
@@ -957,7 +955,7 @@ function onTileClick(idx) {
 function onCorrectClick(wrapper, tile) {
   disableAllTiles();
   clearPrompt();
-  // Pause timer while the learner waits for Next — only if it was running
+  // Pause timer while the learner waits for Next - only if it was running
   if (state.timerRunning) { pauseTimer(); state.timerAutoPaused = true; }
 
   clearTimeout(state.autoPromptHandle);
@@ -1305,19 +1303,19 @@ function setExtraPanelOpen(open) {
 
 function initializeTokenBoard() {
   if (!state.tokenBoardEnabled) return;
-  
+
   if (state.tokenEmoji === 'random') {
     state.chosenEmoji = pickRandomEmoji();
   } else {
     state.chosenEmoji = state.tokenEmoji;
   }
-  
+
   state.trialsCompleted = 0;
   state.vr_scheduleTrial = 0;
   if (state.scheduleType === 'VR') {
     state.vr_schedule = generateVRSchedule(1000, state.scheduleValue);
   }
-  
+
   state.currentTokens = state.startingTokens;
   el.tokenBoard.hidden = false;
   renderTokenBoard();
@@ -1326,13 +1324,13 @@ function initializeTokenBoard() {
 function generateVRSchedule(numTrials, vrValue) {
   const itemsPerChunk = Math.ceil(vrValue);
   const reinforcementIndices = [];
-  
+
   for (let i = 0; i < numTrials; i += itemsPerChunk) {
     const chunkEnd = Math.min(i + itemsPerChunk, numTrials);
     const randomPos = Math.floor(Math.random() * (chunkEnd - i)) + i;
     reinforcementIndices.push(randomPos);
   }
-  
+
   return reinforcementIndices.sort((a, b) => a - b);
 }
 
@@ -1350,9 +1348,9 @@ function shouldAwardTokens() {
 
 function awardTokensForTrial() {
   if (!state.tokenBoardEnabled) return;
-  
+
   state.trialsCompleted++;
-  
+
   if (shouldAwardTokens()) {
     if (state.currentTokens < state.goalTokens) {
       state.currentTokens++;
@@ -1361,7 +1359,7 @@ function awardTokensForTrial() {
       }
     }
   }
-  
+
   renderTokenBoard();
   saveSettings();
 }
@@ -1370,7 +1368,7 @@ function renderTokenBoard() {
   const emojiDisplay = state.chosenEmoji.repeat(Math.min(state.currentTokens, 20));
   el.tokenEmojiDisplay.textContent = emojiDisplay;
   el.tokenProgressText.textContent = `${state.currentTokens} / ${state.goalTokens}`;
-  
+
   if (state.currentTokens >= state.goalTokens) {
     el.tokenBoard.classList.add('goal-reached');
   } else {

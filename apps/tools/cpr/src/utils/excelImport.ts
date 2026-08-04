@@ -1,5 +1,5 @@
 /**
- * excelImport — reads a CPR .xlsx file exported by this tool and reconstructs an Assessment.
+ * excelImport - reads a CPR .xlsx file exported by this tool and reconstructs an Assessment.
  *
  * Sheet detection:
  *   "Data - Attention / Escape / Tangible / Sensory"  → separate single-condition sessions
@@ -156,7 +156,7 @@ function parseSheetHeader(ws: ExcelJS.Worksheet): SheetHeader {
     // New format: separate start and end rows
     const st = cellStr(9, 2);
     const et = cellStr(10, 2);
-    startEndTime = [st, et].filter(Boolean).join(' – ');
+    startEndTime = [st, et].filter(Boolean).join(' - ');
   } else {
     // Old format: combined "Start/End Time:" in row 9
     startEndTime = cellStr(9, 2);
@@ -182,7 +182,7 @@ function cellToTw(cell: ExcelJS.Cell): ThreeWay {
 }
 
 function parseSingleConditionIntervals(ws: ExcelJS.Worksheet, condition: ConditionType): Interval[] {
-  // Data starts after header block — find first row where col 1 is a number
+  // Data starts after header block - find first row where col 1 is a number
   const intervals: Interval[] = [];
   ws.eachRow((row, rowNum) => {
     const first = row.getCell(1).value;
@@ -274,14 +274,14 @@ function buildSession(
 }
 
 /**
- * Parse a "HH:MM AM – HH:MM AM" or "HH:MM–HH:MM" string (24h or 12h) and return
+ * Parse a "HH:MM AM - HH:MM AM" or "HH:MM - HH:MM" string (24h or 12h) and return
  * absolute seconds-from-midnight for start and end.  Returns null if the string
  * cannot be reliably parsed.
  */
 function parseStartEndAbsoluteSecs(s: string): { startSec: number; endSec: number } | null {
   if (!s) return null;
   // Split on common separators: en-dash, em-dash, hyphen surrounded by spaces
-  const parts = s.split(/\s*[–—]\s*|\s+-\s+/).map(p => p.trim()).filter(Boolean);
+  const parts = s.split(/\s*[ -  - ]\s*|\s+-\s+/).map(p => p.trim()).filter(Boolean);
   if (parts.length < 2) return null;
 
   function parseSingleTime(t: string): number | null {

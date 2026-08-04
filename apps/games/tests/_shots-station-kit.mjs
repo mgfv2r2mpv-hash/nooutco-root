@@ -1,5 +1,5 @@
 /* Screenshot pass for the refresh's station kit.
-   Not a spec — run with `node tests/_shots-station-kit.mjs` against a server on
+   Not a spec - run with `node tests/_shots-station-kit.mjs` against a server on
    :8788. Photographs the palette with its full stock on show (Routine = free, so
    nothing is phase-gated out of the picture) at the three device widths §3.9
    names, plus a close crop of the deepest shelf and one shot of the STAGED first
@@ -15,7 +15,7 @@ const DEVICES = [
   { tag: 'phone', width: 390, height: 844 },
 ];
 
-/** Every source image decoded AND this model's hair masks resolved — before that
+/** Every source image decoded AND this model's hair masks resolved - before that
     the compositor is still assembling the face. */
 const PAINTED = () => {
   let f = null;
@@ -41,9 +41,9 @@ async function open(browser, d, routine) {
   await page.getByTitle('Show / hide setup').click();
   await page.getByLabel('Routine', { exact: true }).selectOption(routine);
   await page.getByRole('button', { name: /^▶ Play/ }).click();
-  await page.getByRole('button', { name: /Go —/ }).waitFor();
+  await page.getByRole('button', { name: /Go - / }).waitFor();
   await page.waitForFunction(PAINTED, undefined, { timeout: 25000 });
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   return { page, problems };
 }
 
@@ -66,7 +66,7 @@ for (const d of DEVICES) {
   await free.page.close();
 
   // …and the staged first turn, where every later station is absent rather than
-  // greyed out. Desktop only — it is a gating record, not a layout one.
+  // greyed out. Desktop only - it is a gating record, not a layout one.
   if (d.tag === 'desktop') {
     const staged = await open(browser, d, 'on');
     problems.push(...staged.problems);
