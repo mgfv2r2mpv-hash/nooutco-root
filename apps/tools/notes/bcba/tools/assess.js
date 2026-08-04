@@ -86,6 +86,7 @@ TERMINOLOGY (non-negotiable)\n\
     label: "Assessment",
     title: "Assessment Note Tool",
     subtitle: "Describe what was done - the tool drafts the clinical summary and suggests which checkboxes to select on your EHR form.",
+    assistantIntro: "Describe what was done in the assessment, then press Generate Note. I'll ask about anything that looks thin before drafting, then you can click any section, or select a phrase inside one, to revise it.",
     genLabel: "Generate Note",
     inputs: [
       {

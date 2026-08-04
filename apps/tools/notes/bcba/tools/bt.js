@@ -334,6 +334,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
     label: "BT Session",
     title: "BT Direct Service Note Tool",
     subtitle: "Enter your session notes as free text. The tool drafts each clinical narrative and suggests which checkboxes to select on your EHR form.",
+    assistantIntro: "Fill in your session notes and press Generate Note. I'll ask about anything that looks thin before drafting, then you can click any section, or select a phrase inside one, to revise it.",
     genLabel: "Generate Note",
     maxTokens: 4000,
     // The EHR takes these one field at a time, so a single combined blob is

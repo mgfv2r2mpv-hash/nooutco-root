@@ -1292,6 +1292,7 @@ function App() {
         unread={S.questions ? S.questions.length : 0}
         quality={noteQuality()}
         loggedIn={loggedIn}
+        intro={tool.assistantIntro}
       />
 
       <div style={{ maxWidth: 860, margin: "0 auto" }}>

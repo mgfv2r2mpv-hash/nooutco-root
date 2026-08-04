@@ -110,6 +110,7 @@ function RevisionPanel({
   open, onToggle, thread, annotation, onClearAnnotation,
   draft, onDraft, onSend, loading, questions, onSkipQuestions, unread, quality,
   loggedIn,
+  intro,
 }) {
   const scrollRef = React.useRef(null);
   const inputRef = React.useRef(null);
@@ -230,9 +231,7 @@ function RevisionPanel({
         )}
         {!signedOut && thread.length === 0 && !awaitingQuestions && (
           <p className="revision-empty">
-            Fill in your session notes and press Generate Note. I'll ask about anything
-            that looks thin before drafting, then you can click any section - or select a
-            phrase inside one - to revise it.
+            {intro || "Fill in the form above and press the generate button. I'll ask about anything that looks thin before drafting, then you can click any section, or select a phrase inside one, to revise it."}
           </p>
         )}
         {thread.map((m, i) => (
