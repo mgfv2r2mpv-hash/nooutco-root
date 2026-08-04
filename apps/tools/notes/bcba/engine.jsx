@@ -1774,9 +1774,13 @@ function App() {
               </p>
             )}
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <a href="../scrubber.html" target="_blank" style={{ padding: "7px 16px", borderRadius: 8, border: "1.5px solid #c0d4a8", background: "#f0f4ec", color: "#374528", fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>Scrubber →</a>
-          </div>
+          {/* The "Scrubber" link is gone from the drafters, on his call of
+              2026-08-04: "old news. hide it on the drafters." The scrub now runs
+              inside the drafting flow itself, so sending someone to a separate
+              page to do it by hand is an older way of working that the tool has
+              outgrown. notes/scrubber.html still exists and is still reachable
+              by URL for anyone who wants it standalone. Its wrapper goes too, or
+              the header keeps an empty flex column reserving space for nothing. */}
         </div>
 
         {/* Disclaimer */}
