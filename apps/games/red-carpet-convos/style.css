@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════════════════════
-   Red Carpet Convos — a version of the Famous Person Game.
+   Red Carpet Convos - a version of the Famous Person Game.
    Two-phase conversation activity (Meet → Talk) with a faded prompt
    hierarchy, four Talk layouts, and a reward/celebration screen.
 
@@ -8,7 +8,7 @@
    tokens.css variables the whole games surface uses.
    ══════════════════════════════════════════════════════════════════ */
 
-/* Scoped token top-up — the two sage shades the design uses that are not
+/* Scoped token top-up - the two sage shades the design uses that are not
    in the shared tokens.css (which stops at 200/500). Everything else
    (slate / violet / blue / green / amber / orange / red / sky ramps,
    radii, shadows, motion) resolves against ../tailwind.css. */

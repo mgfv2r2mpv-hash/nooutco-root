@@ -1,12 +1,11 @@
 /* Screenshot pass for the refresh's salon dressing + choice echo (R5).
-   Not a spec — run with `node tests/_shots-salon-theme.mjs` against a server on
+   Not a spec - run with `node tests/_shots-salon-theme.mjs` against a server on
    :8788. Photographs the dressed play surface at the three device widths §3.9
    names, plus a crop of the styling trolley and a crop of the echo chip over the
    vanity. Fails loudly on any console error.
 
    REDUCED MOTION, deliberately: the echo chip's keyframe ENDS at opacity 0
-   (it is a moment, not a status line), so Playwright's `animations:'disabled'`
-   — which snaps every animation to its end state — photographs it as blank.
+   (it is a moment, not a status line), so Playwright's `animations:'disabled'` - which snaps every animation to its end state - photographs it as blank.
    Emulating reduced motion drops the animation entirely, leaving the chip at its
    resting style, which is the frame worth putting in the report. */
 import { chromium } from '@playwright/test';
@@ -49,7 +48,7 @@ async function open(browser, d) {
   await page.getByRole('button', { name: /Skip ahead/ }).click();
   await page.getByRole('button', { name: /Open the salon/ }).click();
   await page.waitForFunction(PAINTED, undefined, { timeout: 30000 });
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   return { page, problems };
 }
 

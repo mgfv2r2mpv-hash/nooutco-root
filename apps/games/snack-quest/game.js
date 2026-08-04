@@ -12,7 +12,7 @@
    `walker` everywhere in code.
 
    Schedule maths lives in ../token-board.js and persistence lives in
-   ../results-report.js. Neither is reimplemented here — the delivering
+   ../results-report.js. Neither is reimplemented here - the delivering
    round is whatever `onAward` says it is.
    ══════════════════════════════════════════════════════════════════ */
 
@@ -22,7 +22,7 @@
 // is written: short, positive, and phrased as the action to take rather than as
 // a description of the screen. None of the three writes the item's name: the
 // receptive target is spoken and shown on its own line beneath the SD, so the
-// written line only carries the instruction — and varies it across trials, the
+// written line only carries the instruction - and varies it across trials, the
 // way a technician would, instead of repeating one fixed carrier phrase.
 const RECEPTIVE_SDS = ['Find', 'Touch', 'Where is', 'Look for'];
 
@@ -30,7 +30,7 @@ const TASKS = [
   {
     id: 'matching',
     name: 'Matching',
-    desc: 'A picture on top — find the one that matches.',
+    desc: 'A picture on top - find the one that matches.',
     glyph: '🧩',
     accent: '#5d8a4a',
     prompt: () => 'Match',
@@ -38,7 +38,7 @@ const TASKS = [
   {
     id: 'receptive',
     name: 'Receptive',
-    desc: 'Hear and see the word — find that picture.',
+    desc: 'Hear and see the word - find that picture.',
     glyph: '🔤',
     accent: '#4b7ea8',
     // Names no item: the target word is spoken and shown on its own line just
@@ -49,7 +49,7 @@ const TASKS = [
   {
     id: 'expressive',
     name: 'Expressive',
-    desc: 'One picture, no word — the learner says what it is.',
+    desc: 'One picture, no word - the learner says what it is.',
     glyph: '💬',
     accent: '#b8446a',
     prompt: () => 'What is it?',
@@ -71,7 +71,7 @@ const HONEY = 'honey';
  * Measured alpha bounding boxes, as fractions of the source image. The sprites
  * carry transparent padding, so raw width/height would neither line his feet up
  * with the ground nor make the fruit look consistently sized. Values come from
- * SPEC.md — they are measurements, not guesses, and must not be "tidied".
+ * SPEC.md - they are measurements, not guesses, and must not be "tidied".
  */
 const BOX = {
   friend:     { x0: 0.2381, x1: 0.7683, y0: 0.0894, y1: 0.9271 },
@@ -94,7 +94,7 @@ const FOOD_SIZE_FRAC = 0.115;
 /**
  * Squarest the stage box is allowed to get. The scene art is 1.79:1, and
  * `object-fit: cover` on a *taller* box crops the sides while leaving the
- * vertical mapping — and therefore the ground line — exact. Growing into spare
+ * vertical mapping - and therefore the ground line - exact. Growing into spare
  * height that way beats stranding a letterboxed strip in a tall viewport, but
  * cropping past this starts eating the composition.
  */
@@ -105,7 +105,7 @@ const WALK_MIN = 0.13;
 const WALK_MAX = 0.87;
 
 /**
- * How long the scene is left alone before the question arrives — long enough to
+ * How long the scene is left alone before the question arrives - long enough to
  * find him, follow his turn, and see which snack has appeared. The snack's own
  * drop-in runs inside this window, so shortening it past the drop would put the
  * card up while the snack was still moving.
@@ -114,19 +114,19 @@ const SETTLE_MS = 1150;
 
 const PRAISE = {
   matching: [
-    'You matched every single one! Our friend has a whole snack to share now — everything is better together.',
+    'You matched every single one! Our friend has a whole snack to share now - everything is better together.',
     'Match after match, all the way to the honey. He has plenty to pass around, and that is the best part.',
     'Every picture found its pair, and every snack found our friend. Sharing it makes it taste better.',
   ],
   receptive: [
-    'You found every word he needed! Our friend has a snack to share now — everything is better together.',
+    'You found every word he needed! Our friend has a snack to share now - everything is better together.',
     'You listened, you looked, you found it. He has enough for everyone, which is exactly how he likes it.',
     'Word by word you filled his basket. Now there is something for him and something to share.',
   ],
   expressive: [
-    'You named every one of them! Our friend has a whole snack to share now — everything is better together.',
+    'You named every one of them! Our friend has a whole snack to share now - everything is better together.',
     'You said them all out loud, and he ate every bite you earned. Better still, there is some left to share.',
-    'Your words brought him the whole basket. He is not eating it alone — everything is better together.',
+    'Your words brought him the whole basket. He is not eating it alone - everything is better together.',
   ],
 };
 
@@ -195,7 +195,7 @@ const state = {
   screen: 'task',
   task: null,
   place: null,
-  foodTarget: 0,      // how many snacks the party needs — the token goal
+  foodTarget: 0,      // how many snacks the party needs - the token goal
   currentFood: '',    // the snack on the stage right now
   collected: [],      // the snacks actually acquired, in order
   fruitBag: [],       // fruits still to be dealt before the bag refills
@@ -375,7 +375,7 @@ function initTokens() {
   }
 
   // Constrain the schedule to the clinical range the brief asks for:
-  // FR 1–5, VR 2–5. token-board.js allows 1–100; the game narrows it.
+  // FR 1-5, VR 2-5. token-board.js allows 1-100; the game narrows it.
   const applyScheduleRange = () => {
     const isVR = el.selScheduleType.value === 'VR';
     const min = isVR ? 2 : 1;
@@ -501,7 +501,7 @@ function showScreen(name) {
   const inPlay = inQuest || name === 'done';
   el.crumbs.hidden = !inPlay;
   // The board is the quest's progress meter, so it only belongs on screens
-  // where a quest is running or has just finished — an empty "0 / 5" strip
+  // where a quest is running or has just finished - an empty "0 / 5" strip
   // above the task tiles is noise.
   el.tokenBoard.hidden = !inPlay || !(tokens && tokens.isEnabled());
   document.body.classList.toggle('settings-collapsed', inQuest);
@@ -656,7 +656,7 @@ function placeFood() {
 /**
  * Size the trial card's contents to the stage rather than to the viewport. The
  * card is a bottom sheet that hugs its content, so every pixel not spent on
- * chrome is scene the learner can still see while they answer — and the
+ * chrome is scene the learner can still see while they answer - and the
  * picture, which is the star, takes whatever is left.
  */
 const CARD_CHROME = { pad: 42, prompt: 34, gap: 14, score: 122 };
@@ -707,11 +707,11 @@ window.addEventListener('resize', () => { if (state.screen === 'quest') layoutSt
 function currentFoodKey() { return state.currentFood; }
 
 /**
- * The snack for the slot being worked on now — a bag draw.
+ * The snack for the slot being worked on now - a bag draw.
  *
  * All six fruits go in a bag, are dealt out without replacement, and the bag
  * refills when it empties. The quest still runs to *any* goal, because its
- * length is the token target and never the size of the pool — dealing one fixed
+ * length is the token target and never the size of the pool - dealing one fixed
  * hand of `slice(0, n - 1)` was the bug that silently capped an eight-token
  * quest at seven, leaving the goal unreachable and a field of one giving the
  * answer away once the pool ran dry.
@@ -719,7 +719,7 @@ function currentFoodKey() { return state.currentFood; }
  * Why a bag rather than an independent draw. The independent draw it replaces
  * was genuinely random, and measured as such: 175 draws came out at 12.6-20.6%
  * per fruit against 16.7% expected, with adjacent repeats at 12.7% against
- * 16.7%. It was not broken — it *clumped*, because that is what independence
+ * 16.7%. It was not broken - it *clumped*, because that is what independence
  * does, and `watermelon, watermelon, dates, dates` is what a learner sees when
  * it does. Even spread is the better teaching behaviour, bought at the price of
  * the last fruits in a bag being predictable.
@@ -760,7 +760,7 @@ function startQuest(place) {
 
   state.foodTarget = foodCount();
   state.collected = [];
-  // A fresh bag per quest — a new quest should not inherit half a bag, or its
+  // A fresh bag per quest - a new quest should not inherit half a bag, or its
   // opening fruits would be constrained by a quest the learner already finished.
   state.fruitBag = [];
   state.lastFruit = '';
@@ -849,8 +849,8 @@ async function beginTrial() {
   announce(`Round ${state.roundNum}.`);
 
   // The card covers the scene, so it must not arrive with the scene. The
-  // learner watches him and the snack settle first — that is how they learn
-  // what they are working toward and where it is — and only then is the
+  // learner watches him and the snack settle first - that is how they learn
+  // what they are working toward and where it is - and only then is the
   // question put to them.
   await settleStage();
   if (!state.questActive || state.trialToken !== token) return;
@@ -877,7 +877,7 @@ function speakPending() {
  * The beat between the scene being ready and the question being asked.
  *
  * Without it every round opened with the card already up, so the stage was
- * only ever visible *after* an answer — the learner never saw the snack they
+ * only ever visible *after* an answer - the learner never saw the snack they
  * were about to earn, and the character they are meant to be helping was
  * behind the tiles the whole time they were deciding.
  *
@@ -919,7 +919,7 @@ function releaseHiddenUrl() {
 }
 
 /**
- * Expressive mode must not put the target word into the page at all — the
+ * Expressive mode must not put the target word into the page at all - the
  * learner is meant to *name* the picture, not read it. The filename is part of
  * the word, so the stimulus is served from an object URL and the raw path never
  * reaches an attribute. Falls back to the plain path if the fetch fails; the
@@ -969,7 +969,7 @@ function renderTrial() {
     el.trialSample.appendChild(word);
     // Queued, not spoken. The trial is built before the settle beat, so
     // speaking here would say the word at a scene the learner is still reading,
-    // with no card and no pictures to attach it to — an SD delivered to an
+    // with no card and no pictures to attach it to - an SD delivered to an
     // empty array. It is spoken when the card carrying it is actually up.
     state.pendingSpeak = state.speak ? state.sampleLabel : '';
   } else if (task.id === 'matching') {
@@ -1095,13 +1095,12 @@ async function finishTrial(outcome) {
   }
   const delivering = deliveredThisTrial;
 
-  // Every non-delivering round still walks — he is never made to stand still —
-  // but only a delivering round may arrive. `walk('partway')` is capped short of
+  // Every non-delivering round still walks - he is never made to stand still - // but only a delivering round may arrive. `walk('partway')` is capped short of
   // the food, so no run of errors can creep him onto it.
   const mode = delivering ? 'arrive' : 'partway';
 
   // An error is likelier to end in a tumble than a merely unreinforced round,
-  // but neither is certain — a guaranteed fall on every error would just be a
+  // but neither is certain - a guaranteed fall on every error would just be a
   // slower way of punishing one.
   const tumbleChance = outcome === 'Error' ? 0.4 : 0.12;
 
@@ -1117,8 +1116,8 @@ async function finishTrial(outcome) {
     await sleep(prefersReducedMotion() ? 60 : 320);
   } else if (outcome === 'Error') {
     // A wrong answer costs him this snack: it drops away and a fresh one is
-    // drawn somewhere else. He keeps everything already collected — the strip
-    // never loses a slot — so the cost is the trip, not the progress.
+    // drawn somewhere else. He keeps everything already collected - the strip
+    // never loses a slot - so the cost is the trip, not the progress.
     await dropFood();
     state.currentFood = drawFood();
     spawnFood(false);
@@ -1146,7 +1145,7 @@ async function moveTo(targetX, tumbling) {
 
   // The floor is two full waddle cycles (sq-waddle is 380ms), not one. A short
   // partway step used to clamp to ~420ms, which cut the waddle off mid-stride
-  // and read as a twitch rather than a walk — the learner is meant to enjoy
+  // and read as a twitch rather than a walk - the learner is meant to enjoy
   // watching him go, so a small step still gets time to look like walking.
   const floor = tumbling ? 380 : 760;
   const ms = prefersReducedMotion() ? 240 : clamp(distFrac * 2600, floor, 1500);
@@ -1157,8 +1156,8 @@ async function moveTo(targetX, tumbling) {
   el.walker.classList.remove('is-walking');
 }
 
-/** A tumble and a get-up, mid-walk. Costs him no ground — he lands where he
- *  fell — so it reads as effort rather than as a penalty on top of one. */
+/** A tumble and a get-up, mid-walk. Costs him no ground - he lands where he
+ *  fell - so it reads as effort rather than as a penalty on top of one. */
 async function tumble() {
   if (prefersReducedMotion()) return;
   el.walker.classList.add('is-tumbling');
@@ -1169,8 +1168,8 @@ async function tumble() {
 
 /** Move our friend toward the food.
  *
- *  'arrive'  — a delivering round: he closes the remaining distance.
- *  'partway' — every other round: he covers ground but stops short of the food.
+ *  'arrive' - a delivering round: he closes the remaining distance.
+ *  'partway' - every other round: he covers ground but stops short of the food.
  *
  *  Only a reinforced round may arrive. A non-delivering round is capped at the
  *  STANDOFF line, so a run of errors can never creep him onto the snack and
@@ -1178,7 +1177,7 @@ async function tumble() {
  *
  *  `tumbleChance` gives a non-delivering round some odds of a fall on the way.
  *  He still gets where that round was going, so a tumble is character, not an
- *  extra cost — stillness and lost ground are both off the table as feedback. */
+ *  extra cost - stillness and lost ground are both off the table as feedback. */
 async function walk(mode, tumbleChance = 0) {
   const arrive = mode === 'arrive';
   const anchorF = foodAnchor();
@@ -1231,7 +1230,7 @@ async function collectFood() {
   updateRoundPill();
 }
 
-/** The snack drops away after a wrong answer. Visible, and quick — the learner
+/** The snack drops away after a wrong answer. Visible, and quick - the learner
  *  should see *this* one leave so the next one reads as a fresh chance rather
  *  than as the same snack teleporting. */
 async function dropFood() {
@@ -1244,14 +1243,14 @@ async function dropFood() {
 
 /**
  * The snack strip IS the token board. The tokens in this game are the snacks
- * themselves — he is getting ready for the party, and the quest is done when he
- * has as many as the goal asks for — so the strip draws one slot per snack the
+ * themselves - he is getting ready for the party, and the quest is done when he
+ * has as many as the goal asks for - so the strip draws one slot per snack the
  * party needs: the ones already collected, and a waiting slot for each still to
  * come. A generic star tally alongside it would be a second, competing count of
  * the same thing, which is why the shared emoji display is hidden on this game.
  *
  * Filled slots show the snack *actually* acquired, which is why they read from
- * `collected` rather than from any plan — under a variable-ratio schedule the
+ * `collected` rather than from any plan - under a variable-ratio schedule the
  * snacks arrive on trials nobody can name in advance, and only the ones he
  * really got belong on the board.
  */
@@ -1353,7 +1352,7 @@ function renderDoneFood() {
     const size = 22 / Math.sqrt((b.x1 - b.x0) * (b.y1 - b.y0));
     const t = n === 1 ? 0.5 : i / (n - 1);
     // Spread by the item's own width so the widest sprite still lands inside
-    // the frame — the honey is the largest and always last, i.e. furthest right.
+    // the frame - the honey is the largest and always last, i.e. furthest right.
     const left = 5 + t * Math.max(0, 95 - size - 5);
     const bottom = 4 + (i % 2 === 0 ? 0 : 7);
     img.style.width = size + '%';
@@ -1421,7 +1420,7 @@ function openReport() {
   const now = new Date();
   const count = (o) => state.sessionData.filter((d) => d.outcome === o).length;
   NooutcoResults.open({
-    title: 'Snack Quest — Session Results',
+    title: 'Snack Quest - Session Results',
     meta: `Printed ${now.toLocaleDateString()} at ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
     columns: RESULT_COLUMNS,
     rows: state.sessionData,
@@ -1603,7 +1602,7 @@ window.__sq = {
       targetLabel: state.sampleLabel,
       round: state.roundNum,
       busy: state.busy,
-      // The question is not askable the moment the walk ends any more — the
+      // The question is not askable the moment the walk ends any more - the
       // scene gets a beat to itself first. Drivers must wait on this rather
       // than on `!busy`, which now clears while the stage is still settling.
       awaitingAnswer: state.awaitingAnswer,

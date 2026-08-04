@@ -7,10 +7,10 @@ import { test, expect } from '@playwright/test';
  * The deck used to be one flat 33-card set with a "tricky cards" checkbox. It
  * is now three separate pools, one card to exactly one level, and the cards in
  * each pool are chosen by a COVERAGE MATRIX rather than by a target count:
- * there is no established sufficient-N (Hupp 1986 — RESEARCH.md §3.4), so a
+ * there is no established sufficient-N (Hupp 1986 - RESEARCH.md §3.4), so a
  * count is not a claim anybody can defend. What can be defended is that every
  * criterial dimension is sampled, and that each one carries a matched
- * MINIMUM-DIFFERENCE pair — two cards identical on every criterial feature but
+ * MINIMUM-DIFFERENCE pair - two cards identical on every criterial feature but
  * one, with opposite answers (Horner, Albin & Ralph 1986). The contrast is what
  * teaches the defining feature.
  *
@@ -20,8 +20,7 @@ import { test, expect } from '@playwright/test';
  * which SIDE IS CORRECT: that is the interaction between the alternation and
  * the pool's own run of answers, so a pool whose answers alternate in step with
  * the tiles puts the correct tile on the same side every single trial. That is
- * a property of the AUTHORED ORDER, it is measurable, and it is measured here —
- * per pool, because a balanced total can hide a fully confounded single level.
+ * a property of the AUTHORED ORDER, it is measurable, and it is measured here - * per pool, because a balanced total can hide a fully confounded single level.
  * ════════════════════════════════════════════════════════════════════════
  */
 
@@ -145,7 +144,7 @@ test.describe('the three pools', () => {
         expect(a && b, `${where} names real cards`).toBeTruthy();
         expect(a.answer === b.answer, `${where} has opposite answers`).toBe(false);
 
-        // Identical on every criterial feature except one — that is what makes
+        // Identical on every criterial feature except one - that is what makes
         // it minimum difference rather than merely a contrast.
         expect(Object.keys(a.features).sort(), `${where} turns on the same dimensions`)
           .toEqual(Object.keys(b.features).sort());
@@ -242,7 +241,7 @@ test('no pool puts the correct tile on one side more than 65% of the time', asyn
     const left = sides.filter(s => s === 'left').length;
     const share = left / sides.length;
     report.push(`level ${level.id}: ${left} left / ${sides.length - left} right of ${sides.length}`);
-    // Asserted PER POOL, not over the pools combined — a balanced total can
+    // Asserted PER POOL, not over the pools combined - a balanced total can
     // hide a fully confounded single level.
     expect(share, `level ${level.id} correct-tile-left share (${report[report.length - 1]})`)
       .toBeGreaterThan(1 - WORST_ACCEPTABLE_SHARE);

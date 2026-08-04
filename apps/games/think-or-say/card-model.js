@@ -1,14 +1,14 @@
-/* ── Think or Say? — the card model ────────────────────────────────────
+/* ── Think or Say? - the card model ────────────────────────────────────
    The instructional universe, stated in code (RESEARCH.md §5), and the one
    constructor every authored card goes through.
 
    General case programming (Sprague & Horner 1984; Horner & Albin) asks for the
-   instructional universe to be defined explicitly and then SAMPLED — must-have
+   instructional universe to be defined explicitly and then SAMPLED - must-have
    features define the class and stay constant, can-have features vary so they
    never acquire control. That definition lives here rather than in prose so a
    card that misses it does not exist at runtime.
 
-   No build step — plain static JS, loaded before cards.js.
+   No build step - plain static JS, loaded before cards.js.
    ----------------------------------------------------------------------- */
 (function (global) {
   'use strict';
@@ -17,16 +17,16 @@
      A card used to render `You think: "<thought>"`. That lead-in names one of
      the two actions and names it in the stem of the THINK IT tile, so a learner
      tracking only the salient word can answer every card correctly without ever
-     contacting the rule (Song et al. 2021 — RESEARCH.md, "Card framing").
+     contacting the rule (Song et al. 2021 - RESEARCH.md, "Card framing").
 
      A card presents four parts, in this order:
        1. the situation
-       2. the fixed lead-in below — it names NEITHER action
+       2. the fixed lead-in below - it names NEITHER action
        3. the candidate utterance, in quotes
        4. a balanced question naming BOTH actions, generated from the card's own
           verb pair so it cannot be hand-written to name only one.
 
-     Tile LABELS stay THINK IT / SAY IT on every card — the response topography
+     Tile LABELS stay THINK IT / SAY IT on every card - the response topography
      must not change card to card. Only the tile POSITIONS counterbalance.
 
      The residual stem overlap between "thought" and "THINK IT" is ruled real,
@@ -41,7 +41,7 @@
 
   /**
    * The card's balanced question. Both actions are named, in the card's own verb
-   * pair, from the card's own object phrase — so the two halves are grammatically
+   * pair, from the card's own object phrase - so the two halves are grammatically
    * identical and neither is the longer or more elaborated option.
    */
   function balancedQuestion(sc) {
@@ -55,7 +55,7 @@
 
      THE DIMENSIONS ARE ORDERED BY IMPORTANCE, and the cards teach the ordering
      rather than a categorical rule. Dimension 7 (`override`) outranks every
-     other dimension when it is in play — help or safety is always SAY, and
+     other dimension when it is in play - help or safety is always SAY, and
      makeCard() refuses a card that says otherwise. Below it, how it would make
      the person feel outranks whether the thing is true.
 
@@ -64,14 +64,14 @@
      say it"), so its matched pair holds it CONSTANT at `true` across both cards
      and flips something else. See definePairs().
 
-     The reason lines state that ordering as a COMPARISON — "true is not as
+     The reason lines state that ordering as a COMPARISON - "true is not as
      important as kind, because this is not about safety, and it can't be
-     changed" — not as a categorical test. That is the maintainer's ruling and
+     changed" - not as a categorical test. That is the maintainer's ruling and
      it is deliberate: a relational frame the learner can apply to a novel card
      is the target repertoire (RESEARCH.md §4.1), whereas "true is not the test"
      is a flat rule, states more than the literature supports, and gives a
      learner nothing to derive when two considerations disagree. Where the
-     truth helps — they can fix it right now — the same comparison runs the
+     truth helps - they can fix it right now - the same comparison runs the
      other way and the card says so. ------------------------------------- */
 
   var DIMENSIONS = {
@@ -117,8 +117,8 @@
    * Build one card, or refuse to.
    *
    * Every authored card goes through here, so a card that cannot state a balanced
-   * question — or that reintroduces the "You think" lead-in in its own prose, or
-   * that claims a criterial feature the universe does not declare — does not
+   * question - or that reintroduces the "You think" lead-in in its own prose, or
+   * that claims a criterial feature the universe does not declare - does not
    * exist at runtime rather than shipping and being caught in review.
    */
   function makeCard(spec) {
@@ -193,13 +193,13 @@
   /**
    * The matched minimum-difference pairs for one level, validated on the way in.
    *
-   * Horner, Albin & Ralph (1986) — the contrast is what teaches the defining
+   * Horner, Albin & Ralph (1986) - the contrast is what teaches the defining
    * feature, so a "pair" that differs on two things at once teaches neither.
    * Two shapes, and the difference is the point:
    *
-   *   flip     — the two cards differ on exactly the dimension named, and the
+   *   flip - the two cards differ on exactly the dimension named, and the
    *              answer flips with it. Dimensions 1-7.
-   *   defeater — dimension 8. Both cards HOLD the named dimension constant
+   *   defeater - dimension 8. Both cards HOLD the named dimension constant
    *              (`truthRank: 'true'`) and differ on one other criterial
    *              feature. That is the demonstration: truth was identical on both
    *              sides and the answer still moved, so truth is not the test.

@@ -6,11 +6,11 @@ node_modules/
 /design_handoff_unified_nav/
 /design_handoff_admin_redesign/
 
-# Deferred-work "memory" notes (OOS = out of scope) — kept local, never committed
+# Deferred-work "memory" notes (OOS = out of scope) - kept local, never committed
 OOS.md
 
-# Secrets and credentials. This repository is PUBLIC by design — a public tools
-# suite — so anything here is world-readable the moment it is pushed, and a
+# Secrets and credentials. This repository is PUBLIC by design - a public tools
+# suite - so anything here is world-readable the moment it is pushed, and a
 # leaked credential cannot be un-published. None of these were ignored before,
 # and SECRETS.md sat untracked one `git add -A` away from being committed.
 SECRETS.md
@@ -25,7 +25,7 @@ scripts/set-admin-secret.sh
 *.key
 credentials.json
 
-# Local agent and editor state — machine-specific, not source.
+# Local agent and editor state - machine-specific, not source.
 .claude/
 
 # Scratch: Lavish review surfaces and gnhf run artifacts (never source)

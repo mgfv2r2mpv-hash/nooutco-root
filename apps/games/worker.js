@@ -1,50 +1,50 @@
 /**
- * Cloudflare Worker — save-photo + admin image management endpoints
+ * Cloudflare Worker - save-photo + admin image management endpoints
  *
- * POST /api/save-photo            (existing — used by FamousPersonGame in-game)
+ * POST /api/save-photo            (existing - used by FamousPersonGame in-game)
  *   Body: { personName: string, imageUrl: string }
  *
- * POST /api/admin/save-image      (admin — add or replace any game image)
+ * POST /api/admin/save-image      (admin - add or replace any game image)
  *   Body: { game, folder, filename, imageUrl, personName?, personMeta? }
  *
- * POST /api/admin/remove-image    (admin — remove a single image)
+ * POST /api/admin/remove-image    (admin - remove a single image)
  *   Body: { game, folder, filename, personName? }
  *   For clock / receptive / matching this records an exclusion rather than
- *   deleting the file — one blob now backs all three games (see "The shared
+ *   deleting the file - one blob now backs all three games (see "The shared
  *   stimulus library" below).
  *
- * POST /api/admin/archive-topic   (admin — soft-delete a T_ folder → _a_T_)
+ * POST /api/admin/archive-topic   (admin - soft-delete a T_ folder → _a_T_)
  *   Body: { game, folder }
  *
- * POST /api/admin/restore-topic   (admin — undo archive: _a_T_ → T_)
+ * POST /api/admin/restore-topic   (admin - undo archive: _a_T_ → T_)
  *   Body: { game, folder }
  *
- * POST /api/admin/purge-topic     (admin — permanent hide: _a_T_ → _x_T_)
+ * POST /api/admin/purge-topic     (admin - permanent hide: _a_T_ → _x_T_)
  *   Body: { game, folder }
  *
- * POST /api/admin/rename-topic    (admin — rename a topic)
+ * POST /api/admin/rename-topic    (admin - rename a topic)
  *   Body: { game, folder, newFolder }          legacy games: moves the folder
  *   Body: { game, folder, newName }            library games: names it, per game;
  *                                              the category key never moves
  *
- * POST /api/admin/save-display-name (admin — set/clear manifest displayName override)
+ * POST /api/admin/save-display-name (admin - set/clear manifest displayName override)
  *   Body: { game, localPath, displayName }   empty/blank displayName clears it
  *
- * POST /api/admin/ffc-save-items   409 — ffc/items.json is generated from
+ * POST /api/admin/ffc-save-items   409 - ffc/items.json is generated from
  * POST /api/admin/ffc-save-image    409   shared/stimuli/ffc.json and the shared
  * POST /api/admin/ffc-remove-image  409   library; see FFC_WRITE_REFUSED.
  *
- * POST /api/admin/update-facts    (admin — AI-expand FamousPersonGame people to 4 facts)
+ * POST /api/admin/update-facts    (admin - AI-expand FamousPersonGame people to 4 facts)
  *   Body: {}
  *   Reads famous-person/index.html from GitHub, calls Anthropic API for any person
  *   with fewer than 4 facts, then commits the updated file back to main.
  *
  * Required Worker Secrets (set in Cloudflare dashboard):
- *   GITHUB_TOKEN  — fine-grained PAT, Contents: Read & Write on the repo
- *   GITHUB_OWNER  — GitHub username or org
- *   GITHUB_REPO   — repository name
- *   ADMIN_SECRET  — password used by AdminTools/ImageManager
- *   ANTHRO_KEY    — Anthropic API key (used by /api/admin/update-facts)
+ *   GITHUB_TOKEN - fine-grained PAT, Contents: Read & Write on the repo
+ *   GITHUB_OWNER - GitHub username or org
+ *   GITHUB_REPO - repository name
+ *   ADMIN_SECRET - password used by AdminTools/ImageManager
+ *   ANTHRO_KEY - Anthropic API key (used by /api/admin/update-facts)
  *
  * Route (Cloudflare dashboard → Websites → games.nooutco.me → Worker Routes):
  *   games.nooutco.me/api/*  →  this Worker
@@ -82,7 +82,7 @@ function gameFolder(g) { return GAME_PATHS[g] || g; }
  * Games whose stimuli come from the shared library rather than from their own
  * `_Resources/_imgSource` tree. Their `manifest.json` is generated, so an admin
  * edit has to be written to the library's source files (`uploads/`,
- * `labels.json`, `publishing.json`) and the manifests re-projected — appending
+ * `labels.json`, `publishing.json`) and the manifests re-projected - appending
  * to the manifest alone would be undone by the next `npm run stimuli:build`.
  */
 const LIBRARY_GAMES = ['clock', 'receptive', 'matching'];
@@ -93,7 +93,7 @@ const isLibraryGame = (game) => LIBRARY_GAMES.includes(gameFolder(game));
  *
  * `ffc/items.json` is a projection of `shared/stimuli/ffc.json`, carrying no
  * label and no image of its own, and `ffc/_Resources/_imgSource/items/` is one
- * of the trees the library is merged from — every file there is claimed by an
+ * of the trees the library is merged from - every file there is claimed by an
  * id in `ffc.json`. So the old FFCGame write endpoints are no longer safe:
  *
  *   • an item edit written into `ffc/items.json` is reverted by the next
@@ -102,9 +102,8 @@ const isLibraryGame = (game) => LIBRARY_GAMES.includes(gameFolder(game));
  *     takes every game's manifest down with it
  *
  * Refused rather than half-applied, the way `rename-topic` was for the manifest
- * games until it could be wired properly. Wiring these through `library.mjs` —
- * an upload becomes a library upload under the item's own category, a label
- * becomes a `labels.json` override — is the next unit of work.
+ * games until it could be wired properly. Wiring these through `library.mjs` - * an upload becomes a library upload under the item's own category, a label
+ * becomes a `labels.json` override - is the next unit of work.
  */
 const FFC_WRITE_REFUSED =
   'FFC content now lives in the shared stimulus library. Items and tags are edited in '
@@ -211,7 +210,7 @@ async function handleAdminPing(request, env) {
 // Suggest which FFC stimuli plausibly belong to a single {bucket, tag} label, to
 // drive the Mass Assign "✨ Suggest" pass. Uses Anthropic when ANTHRO_KEY is set;
 // otherwise a deterministic tag-overlap heuristic. The page applies the result as
-// reviewable "suggested" tiles — the actual write still goes through ffc-save-items.
+// reviewable "suggested" tiles - the actual write still goes through ffc-save-items.
 // Returns { suggested:[id…], source:'ai'|'heuristic' }.
 
 const FFC_SUGGEST_MODEL   = 'claude-haiku-4-5';
@@ -272,7 +271,7 @@ async function ffcSuggestViaAI(env, bucket, tag, norm) {
     'You classify children\'s learning stimuli for an ABA "Feature / Function / Class" game. ' +
     'Given a target label and a list of stimuli (each with an id, a human label, and its current tags), ' +
     'return ONLY the stimuli that genuinely belong to the target label. ' +
-    'Reply with a single JSON object and nothing else — no markdown fences, no preamble: ' +
+    'Reply with a single JSON object and nothing else - no markdown fences, no preamble: ' +
     '{"suggested":[<id>,…]} using the exact ids given. ' +
     'Be precise: include an id only when the stimulus clearly fits the label; an empty list is fine.';
   const userPayload = {
@@ -436,7 +435,7 @@ async function handleAdminSaveImage(request, env) {
     return jsonError('GitHub commit failed: ' + err.message, 502);
   }
 
-  // `path` is the URL the manifest now serves — site-absolute, and the same for
+  // `path` is the URL the manifest now serves - site-absolute, and the same for
   // every game that runs this stimulus.
   return json({ ok: true, path: change.url, url: change.url, id: change.id, filename: saveFilename });
 }
@@ -461,7 +460,7 @@ async function handleAdminRemoveImage(request, env) {
 
   if (game === 'FamousPersonGame') {
     const repoPath = `famous-person/_Resources/_imgSource/images/${filename}`;
-    // Portrait bytes live in R2 — delete the object so a removed portrait stops
+    // Portrait bytes live in R2 - delete the object so a removed portrait stops
     // serving. Best-effort; the git commit below still removes any legacy static
     // file and clears the roster img field.
     if (env.IMAGES) {
@@ -501,7 +500,7 @@ async function handleAdminRemoveImage(request, env) {
     return jsonError('GitHub commit failed: ' + err.message, 502);
   }
 
-  // The art stays in the library — only this game stops offering it. Deleting
+  // The art stays in the library - only this game stops offering it. Deleting
   // the file would pull the same picture out of the other two games.
   return json({ ok: true, id: change.id, excluded: true });
 }
@@ -531,7 +530,7 @@ async function handleServeImage(pathname, env) {
 // ─── Admin: migrate existing portraits into R2 ───────────────────────────────
 // One-time backfill: copy the deployed famous-person portraits (repo files) into
 // R2 under fpg/<slug>. Chunked + resumable so a single invocation stays within
-// Cloudflare limits — POST { start, limit }, repeat with the returned nextStart
+// Cloudflare limits - POST { start, limit }, repeat with the returned nextStart
 // until { done:true }. Idempotent (re-running just re-PUTs the same bytes).
 async function handleMigratePortraitsR2(request, env) {
   const authErr = await requireAdmin(request, env);
@@ -701,7 +700,7 @@ async function handleAdminRenameTopic(request, env) {
 
   // A library topic is renamed by *name*, not by key. The old path moved the
   // topic's directory, and the key it moved is the one every stimulus id in the
-  // topic is derived from — renaming `T_colors` to `T_colours` would re-key
+  // topic is derived from - renaming `T_colors` to `T_colours` would re-key
   // `colors-red` to `colours-red` and orphan every saved target selection
   // naming it, while the directory itself now backs three games and cannot move
   // on one game's behalf at all. Naming it costs nothing and stays per game.
@@ -727,7 +726,7 @@ async function handleAdminRenameTopic(request, env) {
       }
       return jsonError('GitHub commit failed: ' + err.message, 502);
     }
-    // `renamed` echoes the folder BACK, unchanged — the key is stable and a
+    // `renamed` echoes the folder BACK, unchanged - the key is stable and a
     // client that re-keyed its manifest from this response would be wrong.
     return json({ ok: true, renamed: folder, folder, name: renamed.name });
   }
@@ -984,7 +983,7 @@ async function atomicFPGRemoveCommit(env, personName, repoPath) {
 //                 its URL resolves to: one blob, two tree entries, or the
 //                 published URL 404s until someone runs a rebuild)
 //   a label     → `shared/stimuli/labels.json`
-//   a removal   → `shared/stimuli/publishing.json` — an exclusion, NOT a file
+//   a removal   → `shared/stimuli/publishing.json` - an exclusion, NOT a file
 //                 delete: the same bytes back three games now, so deleting
 //                 T_animals/bear.jpg for matching would pull the picture out of
 //                 clock and receptive too.
@@ -1041,7 +1040,7 @@ async function readLibraryState(env) {
  * The committed text of every library file an `apply*` result changes.
  *
  * Same set `build.mjs` writes, so an unchanged document drops out here rather
- * than landing in the commit as a no-op diff — both producers serialise through
+ * than landing in the commit as a no-op diff - both producers serialise through
  * `stableJson`, which is what makes the comparison exact.
  */
 function changedLibraryDocuments(state, result) {
@@ -1103,7 +1102,7 @@ function foldLibraryState(state, applied) {
 /**
  * The folded state as a set of documents to commit. `generated` is the index
  * digest rather than a timestamp, so it is stamped once here from the final
- * index — every intermediate projection carried a stamp that no longer holds.
+ * index - every intermediate projection carried a stamp that no longer holds.
  */
 async function finalLibraryDocuments(state) {
   return {
@@ -1137,7 +1136,7 @@ async function commitLibraryChange(env, plan) {
     const state  = await readLibraryState(env);
     const change = await plan(state);
     if (!change.documents.size && !(change.blobs || []).length && !(change.removeRepoPaths || []).length) {
-      return change; // nothing to do — don't spend a commit on it
+      return change; // nothing to do - don't spend a commit on it
     }
 
     const tree = [];
@@ -1222,7 +1221,7 @@ async function libraryUploadPlan(state, { game, folder, filename, bytes }) {
  * Archive / restore / purge a topic for a library game.
  *
  * Nothing moves. `_a_T_colors` is a name in one game's programme state, not a
- * directory — the art behind the topic backs three games, so the directory
+ * directory - the art behind the topic backs three games, so the directory
  * rename the legacy path performs would take the pictures out of the other two
  * and leave the generated manifests pointing at URLs that 404.
  */
@@ -1812,7 +1811,7 @@ async function handleAdminBatch(request, env) {
     // ref conflict that outlived its retries → tell the client to wait & retry,
     // instead of a bodiless-looking 502.
     if (m === 'CONFLICT' || /: (403|429|5\d\d)\b/.test(m)) {
-      return jsonError('GitHub is throttling commits — wait a few seconds and retry. (' + m + ')', 429);
+      return jsonError('GitHub is throttling commits - wait a few seconds and retry. (' + m + ')', 429);
     }
     return jsonError('Batch commit failed: ' + m, 502);
   }
@@ -1837,7 +1836,7 @@ async function executeBatch(env, operations) {
       if (!hasImage) { resolved[idx] = { idx, op, blobSha: null, ext: null }; continue; }
       try {
         const { bytes, ext } = await resolveImage(op.imageUrl, op.imageData, op.imageMime);
-        // Famous-person portraits go straight to R2 — no git blob, no tree entry.
+        // Famous-person portraits go straight to R2 - no git blob, no tree entry.
         // Other games still commit their image bytes as a git blob.
         if (op.type === 'save-image' && op.game === 'FamousPersonGame') {
           const base = (op.filename || '').replace(/\.[^.]+$/, '') || nameToSlug(op.personName || '');
@@ -1846,7 +1845,7 @@ async function executeBatch(env, operations) {
         } else {
           const blob = await gh(env, 'POST', 'git/blobs', { content: arrayBufferToBase64(bytes), encoding: 'base64' });
           // The library records a content hash per source file, and the bytes are
-          // dropped after this phase — so hash them here, not in the commit phase.
+          // dropped after this phase - so hash them here, not in the commit phase.
           const sha256 = op.type === 'save-image' && isLibraryGame(op.game) ? await sha256Hex(bytes) : null;
           resolved[idx] = { idx, op, blobSha: blob.sha, ext, sha256 };
         }
@@ -1912,14 +1911,14 @@ async function doBatchCommit(env, branch, resolved) {
 
   // Library ops fold through `library.mjs` one after another and the whole
   // library is written once at the end. The manifests are a projection, so the
-  // last projection IS the result of applying every op in turn — and one write
+  // last projection IS the result of applying every op in turn - and one write
   // per file keeps a batch to one blob each instead of one per operation.
   const libraryBefore = needLibrary ? await readLibraryState(env) : null;
   let   libraryState  = libraryBefore;
   const libraryTree   = new Map(); // repo path -> blob sha, or null to delete
   // The manifests as committed, handed back to the caller. AdminTools renders
   // from a manifest, and re-fetching one over HTTP would read the *deployed*
-  // copy — which is still the pre-commit build for as long as Pages takes to
+  // copy - which is still the pre-commit build for as long as Pages takes to
   // publish. Returning the projection is the only read-back that is true now.
   let   committedManifests = null;
 
@@ -1938,7 +1937,7 @@ async function doBatchCommit(env, branch, resolved) {
         const base         = filename.replace(/\.[^.]+$/, '');
         const saveFilename = `${base}.${ext}`;
         const localPath    = `_Resources/_imgSource/images/${saveFilename}`;
-        // Portrait bytes were written to R2 in phase 1 — no git blob/tree entry.
+        // Portrait bytes were written to R2 in phase 1 - no git blob/tree entry.
         // Only the roster text is committed, and only if patchImg/appendPerson
         // actually changes it (an existing-portrait replace touches nothing).
         if (op.personName) fpgHtml = patchImg(fpgHtml, op.personName, localPath);
@@ -2125,7 +2124,7 @@ async function handleAdminUpdateFacts(request, env) {
   }
 
   // Options (JSON body, all optional):
-  //   mode  : 'fill' (default) only touches people with < 4 facts — i.e. the
+  //   mode  : 'fill' (default) only touches people with < 4 facts - i.e. the
   //           freshly-added, not-yet-populated roster entries.
   //           'regenerate' rewrites EVERY targeted person from scratch, so
   //           existing facts can be refreshed into the connected style.
@@ -2133,7 +2132,7 @@ async function handleAdminUpdateFacts(request, env) {
   //           populate/regenerate a small, reviewable batch at a time).
   //   limit : optional cap on how many people to process this run.
   let opts = {};
-  try { opts = await request.json(); } catch (_) { /* no body — use defaults */ }
+  try { opts = await request.json(); } catch (_) { /* no body - use defaults */ }
   const mode      = opts.mode === 'regenerate' ? 'regenerate' : 'fill';
   const nameFilter = Array.isArray(opts.names) && opts.names.length
     ? new Set(opts.names) : null;
@@ -2158,7 +2157,7 @@ async function handleAdminUpdateFacts(request, env) {
   if (todo.length === 0) {
     const why = mode === 'regenerate'
       ? 'No matching people to regenerate.'
-      : 'Every person already has 4 facts — nothing to populate.';
+      : 'Every person already has 4 facts - nothing to populate.';
     return json({ ok: true, message: why, updated: 0 });
   }
 
@@ -2296,7 +2295,7 @@ function fpgParsePeople(html) {
     let blockEndRel = closeIdx + 1;
     if (section[blockEndRel] === ',') blockEndRel++; // swallow trailing comma
 
-    // Each fact object carries exactly one `text:` field — count them.
+    // Each fact object carries exactly one `text:` field - count them.
     const inner     = section.slice(openIdx + 1, closeIdx);
     const factCount = (inner.match(/\n {8}text:/g) || []).length;
 
@@ -2321,35 +2320,35 @@ function fpgParsePeople(html) {
 const FPG_SYSTEM_PROMPT =
 `You write material for a "Famous Person" conversation game used by speech-language pathologists in one-on-one therapy with older adults and with adults rebuilding conversation skills (aphasia, cognitive-communication, autism, brain injury). The clinician and client take turns talking ABOUT a famous person. The real goal is conversation practice: making comments, asking follow-up questions, and linking one idea to the next and to the client's own life.
 
-For each person you are given, write EXACTLY 4 facts that together form ONE flowing conversation — NOT four disconnected trivia items. Order and word them so each fact leads naturally into the next, like a good chat unfolding:
-  Fact 1 — what the person is best known for (the hook).
-  Fact 2 — a related achievement or turning point that follows from Fact 1.
-  Fact 3 — a human, warm, or surprising personal detail.
-  Fact 4 — their legacy / why they still matter, ending by turning the talk toward the client.
+For each person you are given, write EXACTLY 4 facts that together form ONE flowing conversation - NOT four disconnected trivia items. Order and word them so each fact leads naturally into the next, like a good chat unfolding:
+  Fact 1 - what the person is best known for (the hook).
+  Fact 2 - a related achievement or turning point that follows from Fact 1.
+  Fact 3 - a human, warm, or surprising personal detail.
+  Fact 4 - their legacy / why they still matter, ending by turning the talk toward the client.
 
-Each fact is a JSON object with these 9 fields. EVERY field is required and must be plain, warm, spoken-style language — short words, one idea at a time, dignified and upbeat, nothing grim or violent. Use the person's FIRST name:
-  text           — the fact, told to the client. ONE simple sentence, about 10–18 words.
-  topic          — a 2–4 word label for the fact (e.g. "the moon landing").
-  fragment       — the heart of the fact as a lowercase fragment with no subject (e.g. "walked on the moon in 1969").
-  commentMin     — a SHORT spoken starter the CLIENT could say to comment on this fact; a few words trailing off with "…" (least help).
-  commentPartial — a fuller spoken comment with a stem for the client to finish, ending with "…".
-  commentFull    — a complete, natural spoken comment the client can copy word-for-word.
-  volleyMin      — an INDIRECT cue telling the CLINICIAN what to elicit; NOT a line to read aloud. Begin with "Ask about" or "Get them to…", trailing off with "…".
-  volleyPartial  — a partial spoken volley: a brief reaction plus a question stem the client finishes (ends with "…"); lean it toward the NEXT fact's topic.
-  volleyFull     — a complete spoken volley the client can copy: react, then ask a question that BRIDGES into the next fact's topic so the chat keeps moving. For Fact 4, instead turn the question to the client's own experience ("What about you…").
+Each fact is a JSON object with these 9 fields. EVERY field is required and must be plain, warm, spoken-style language - short words, one idea at a time, dignified and upbeat, nothing grim or violent. Use the person's FIRST name:
+  text - the fact, told to the client. ONE simple sentence, about 10-18 words.
+  topic - a 2-4 word label for the fact (e.g. "the moon landing").
+  fragment - the heart of the fact as a lowercase fragment with no subject (e.g. "walked on the moon in 1969").
+  commentMin - a SHORT spoken starter the CLIENT could say to comment on this fact; a few words trailing off with "…" (least help).
+  commentPartial - a fuller spoken comment with a stem for the client to finish, ending with "…".
+  commentFull - a complete, natural spoken comment the client can copy word-for-word.
+  volleyMin - an INDIRECT cue telling the CLINICIAN what to elicit; NOT a line to read aloud. Begin with "Ask about" or "Get them to…", trailing off with "…".
+  volleyPartial - a partial spoken volley: a brief reaction plus a question stem the client finishes (ends with "…"); lean it toward the NEXT fact's topic.
+  volleyFull - a complete spoken volley the client can copy: react, then ask a question that BRIDGES into the next fact's topic so the chat keeps moving. For Fact 4, instead turn the question to the client's own experience ("What about you…").
 
 Hard rules:
-  • CONNECT the facts: each volleyFull for facts 1–3 must tee up the topic of the very next fact; Fact 4 closes by asking the client about themselves.
+  • CONNECT the facts: each volleyFull for facts 1-3 must tee up the topic of the very next fact; Fact 4 closes by asking the client about themselves.
   • commentMin/Partial/Full and volleyPartial/Full are spoken BY the client (everyday first-person voice). volleyMin is an instruction to the clinician and is never read aloud.
-  • Be accurate. Keep it positive — no death details, violence, or anything distressing.
+  • Be accurate. Keep it positive - no death details, violence, or anything distressing.
   • Vary how sentences open; don't start every line the same way.
 
-Return ONLY a JSON object — no markdown fences, no preamble. Keys are the person names EXACTLY as given. Each value is an array of exactly 4 fact objects, each with all 9 fields.
+Return ONLY a JSON object - no markdown fences, no preamble. Keys are the person names EXACTLY as given. Each value is an array of exactly 4 fact objects, each with all 9 fields.
 
-Example showing the connected style (Facts 1→2 of a 4-fact set — note how volleyFull on Fact 1 sets up Fact 2's topic). This is illustration only; do NOT reuse this text:
+Example showing the connected style (Facts 1→2 of a 4-fact set - note how volleyFull on Fact 1 sets up Fact 2's topic). This is illustration only; do NOT reuse this text:
 {"Example Person":[
-  {"text":"Amelia was the first woman to fly alone across the Atlantic Ocean.","topic":"flying across the ocean","fragment":"flew alone across the Atlantic Ocean","commentMin":"Amelia was brave…","commentPartial":"Amelia flew all the way across the…","commentFull":"Amelia flew all by herself across the whole ocean.","volleyMin":"Ask how she felt up there…","volleyPartial":"Flying alone sounds scary. I wonder what she did before she was…","volleyFull":"All alone over the ocean — so brave! Did you know she set speed records too? Want to hear?"},
-  {"text":"Amelia set many speed records and won a big flying medal.","topic":"speed records","fragment":"set speed records and won a flying medal","commentMin":"She was fast…","commentPartial":"Amelia won a medal for…","commentFull":"Amelia was so fast she won a special flying medal.","volleyMin":"Ask what she did for fun…","volleyPartial":"A medal! I wonder what she liked to do when she was not…","volleyFull":"A medal-winning pilot! I heard she loved writing poems too — can you picture that?"}
+  {"text":"Amelia was the first woman to fly alone across the Atlantic Ocean.","topic":"flying across the ocean","fragment":"flew alone across the Atlantic Ocean","commentMin":"Amelia was brave…","commentPartial":"Amelia flew all the way across the…","commentFull":"Amelia flew all by herself across the whole ocean.","volleyMin":"Ask how she felt up there…","volleyPartial":"Flying alone sounds scary. I wonder what she did before she was…","volleyFull":"All alone over the ocean - so brave! Did you know she set speed records too? Want to hear?"},
+  {"text":"Amelia set many speed records and won a big flying medal.","topic":"speed records","fragment":"set speed records and won a flying medal","commentMin":"She was fast…","commentPartial":"Amelia won a medal for…","commentFull":"Amelia was so fast she won a special flying medal.","volleyMin":"Ask what she did for fun…","volleyPartial":"A medal! I wonder what she liked to do when she was not…","volleyFull":"A medal-winning pilot! I heard she loved writing poems too - can you picture that?"}
 ]}`;
 
 async function fpgGenerateFacts(env, batch) {
@@ -2432,30 +2431,30 @@ const RCC_FACT_SLOTS = ['text', 'topic', 'say', 'sayShort', 'ask', 'askYou', 'br
 const RCC_SYSTEM_PROMPT =
 `You write material for "Red Carpet Convos," a conversation game used by ABA technicians one-on-one with learners (often children or teens, including autistic learners) practicing reciprocal conversation. Two people chat ABOUT a famous person: the learner makes a COMMENT, then asks a QUESTION back (a "volley"). First they "meet" the person by reading a few facts together, then they talk.
 
-For each person you are given, write EXACTLY 4 facts that together form ONE connected conversation — not four disconnected trivia items:
-  Fact 1 — what the person is best known for (the hook).
-  Fact 2 — a related achievement or moment that follows from Fact 1.
-  Fact 3 — a warm or surprising personal detail.
-  Fact 4 — why they still matter, ending by turning toward the learner.
+For each person you are given, write EXACTLY 4 facts that together form ONE connected conversation - not four disconnected trivia items:
+  Fact 1 - what the person is best known for (the hook).
+  Fact 2 - a related achievement or moment that follows from Fact 1.
+  Fact 3 - a warm or surprising personal detail.
+  Fact 4 - why they still matter, ending by turning toward the learner.
 
-Each fact is a JSON object with these 7 fields. EVERY field is required, in plain, warm, spoken language a 6th grader could read — short words, one idea at a time, positive and kind, nothing grim or violent. Use the person's FIRST name.
-  text     — the fact, read together in the "meet" phase. ONE simple sentence, about 10–18 words.
-  topic    — a 2–4 word lowercase label for the fact (e.g. "the moon landing").
-  say      — a COMMENT the learner can say about this fact: a complete, plain first-person statement (NOT an exclamation, NOT a question).
-  sayShort — the same comment boiled down to a few words; still a complete short version (the "in a few words" hook).
-  ask      — a VOLLEY: a genuine, open question the learner asks their PARTNER about this topic. Do NOT restate the fact first; just ask.
-  askYou   — an alternate volley that turns the question toward the partner's own life or opinion ("Have you ever…", "What would you…").
-  bridge   — a short line the PARTNER says to lead INTO this fact by recalling it from the "meet" phase, e.g. "I liked the part about {this topic}. Remember?". For Fact 1 ONLY, set bridge to an empty string "" (there is no fact before it).
+Each fact is a JSON object with these 7 fields. EVERY field is required, in plain, warm, spoken language a 6th grader could read - short words, one idea at a time, positive and kind, nothing grim or violent. Use the person's FIRST name.
+  text - the fact, read together in the "meet" phase. ONE simple sentence, about 10-18 words.
+  topic - a 2-4 word lowercase label for the fact (e.g. "the moon landing").
+  say - a COMMENT the learner can say about this fact: a complete, plain first-person statement (NOT an exclamation, NOT a question).
+  sayShort - the same comment boiled down to a few words; still a complete short version (the "in a few words" hook).
+  ask - a VOLLEY: a genuine, open question the learner asks their PARTNER about this topic. Do NOT restate the fact first; just ask.
+  askYou - an alternate volley that turns the question toward the partner's own life or opinion ("Have you ever…", "What would you…").
+  bridge - a short line the PARTNER says to lead INTO this fact by recalling it from the "meet" phase, e.g. "I liked the part about {this topic}. Remember?". For Fact 1 ONLY, set bridge to an empty string "" (there is no fact before it).
 
 Hard rules:
   • say and sayShort are statements the learner says; ask and askYou are questions the learner asks the partner. Keep them clearly distinct.
   • bridge is the PARTNER's short recall opener into THIS fact and must refer to this fact's topic. Fact 1's bridge = "".
-  • Be accurate and upbeat — no death details, violence, or anything distressing.
+  • Be accurate and upbeat - no death details, violence, or anything distressing.
   • Vary how sentences open; don't start every line the same way.
 
-Return ONLY a JSON object — no markdown fences, no preamble. Keys are the person names EXACTLY as given. Each value is an array of exactly 4 fact objects, each with all 7 fields.
+Return ONLY a JSON object - no markdown fences, no preamble. Keys are the person names EXACTLY as given. Each value is an array of exactly 4 fact objects, each with all 7 fields.
 
-Example (Facts 1→2 only, illustration — do NOT reuse this text):
+Example (Facts 1→2 only, illustration - do NOT reuse this text):
 {"Example Person":[
   {"text":"Amelia was the first woman to fly a plane alone across the ocean.","topic":"flying across the ocean","say":"Amelia flew all by herself across the whole ocean.","sayShort":"She flew across the ocean alone.","ask":"Have you ever been on a plane?","askYou":"Where would you fly if you could go anywhere?","bridge":""},
   {"text":"She set speed records and won a big medal for flying.","topic":"speed records","say":"Amelia was so fast she won a special flying medal.","sayShort":"She won a flying medal.","ask":"What is something you are really good at?","askYou":"Have you ever won a prize?","bridge":"I liked the part about her speed records. Remember?"}
@@ -2571,7 +2570,7 @@ async function handleRccGenerateFacts(request, env) {
   try { body = await request.json(); }
   catch { return jsonError('Invalid JSON body', 400); }
 
-  // Single-person draft — return facts, do NOT commit (human reviews then Saves).
+  // Single-person draft - return facts, do NOT commit (human reviews then Saves).
   if (body && body.name) {
     let gen;
     try { gen = await rccGenerateFacts(env, [{ name: body.name, years: body.years, tag: body.tag }]); }
@@ -2582,7 +2581,7 @@ async function handleRccGenerateFacts(request, env) {
     return json({ ok: true, facts });
   }
 
-  // Batch fill — draft facts for people that still need them, then commit.
+  // Batch fill - draft facts for people that still need them, then commit.
   const limit = Math.max(1, Math.min(RCC_BATCH_SIZE, Number(body && body.limit) || RCC_BATCH_SIZE));
   let roster;
   try { roster = await rccLoadRoster(env); }
@@ -2655,10 +2654,10 @@ function ghUrl(env, path) {
 
 async function gh(env, method, path, body) {
   // Repo retarget: when REPO_SUBDIR is set (e.g. "apps/games"), the game files
-  // live under that subdirectory of GITHUB_REPO. Prefix the file paths — content
-  // reads and git-tree entry paths — while leaving the repo-wide git-data
+  // live under that subdirectory of GITHUB_REPO. Prefix the file paths - content
+  // reads and git-tree entry paths - while leaving the repo-wide git-data
   // endpoints (git/ref, git/refs, git/blobs, git/trees, git/commits) untouched.
-  // Unset (default) = no prefix, i.e. current behavior — safe to deploy before
+  // Unset (default) = no prefix, i.e. current behavior - safe to deploy before
   // the GITHUB_REPO/REPO_SUBDIR secrets are flipped.
   const sub = (env.REPO_SUBDIR || '').replace(/^\/+|\/+$/g, '');
   if (sub) {
@@ -2735,7 +2734,7 @@ async function downloadImage(url) {
 // Famous-person portraits live in R2 under an extension-agnostic key
 // (`fpg/<slug>`) so a portrait resolves no matter which .jpg/.png the roster
 // happens to reference. The content-type is stored as R2 metadata and replayed
-// on serve. All game/roster image URLs are unchanged — only the backing store is.
+// on serve. All game/roster image URLs are unchanged - only the backing store is.
 
 const EXT_TO_MIME = {
   jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',

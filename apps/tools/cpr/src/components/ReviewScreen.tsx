@@ -1,5 +1,5 @@
 /**
- * ReviewScreen — data quality check ONLY.
+ * ReviewScreen - data quality check ONLY.
  *
  * IMPORTANT: This screen intentionally shows NO analysis values (no probabilities,
  * no CV, no ACV, no charts) to prevent premature conclusions from biasing the
@@ -56,7 +56,7 @@ export function ReviewScreen({ assessment: _assessment, session, onContinue, onG
         </div>
       </div>
 
-      {/* ── Cell count tables (counts only — NO probabilities) ── */}
+      {/* ── Cell count tables (counts only - NO probabilities) ── */}
       <section className="space-y-3">
         <div className="flex items-center gap-2">
           <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
@@ -69,7 +69,7 @@ export function ReviewScreen({ assessment: _assessment, session, onContinue, onG
         ))}
       </section>
 
-      {/* ── Sticky column header — starts here (below cell count tables), freezes at top on scroll ── */}
+      {/* ── Sticky column header - starts here (below cell count tables), freezes at top on scroll ── */}
       <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 rounded-t-lg border border-gray-200 dark:border-gray-700 px-3 py-2 shadow-sm -mb-2">
         <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
           Intervals <span className="text-amber-600 dark:text-amber-400 ml-1 normal-case font-normal">(amber = row with score C)</span>
@@ -178,12 +178,12 @@ function InfoBubble({ content }: { content: React.ReactNode }) {
   );
 }
 
-// ─── Cell count table (counts ONLY — no probabilities) ───────────────────────
+// ─── Cell count table (counts ONLY - no probabilities) ───────────────────────
 
 function CellCountTable({ session, condition }: { session: Session; condition: ConditionType }) {
   const meta = CONDITION_META[condition];
 
-  // Build counts — exclude CS on both axes independently
+  // Build counts - exclude CS on both axes independently
   let bxPlusEOPlus = 0, bxPlusEOMinus = 0, bxMinusEOPlus = 0, bxMinusEOMinus = 0;
   let bxPlusCPlus  = 0, bxPlusCMinus  = 0, bxMinusCPlus  = 0, bxMinusCMinus  = 0;
   let eoCSCount    = 0, cCSCount      = 0, bxCSCount      = 0;
@@ -336,7 +336,7 @@ function ReadOnlyColumnHeader({ session, activeConditions }: { session: Session;
           ))}
         </>
       ) : (
-        /* Separate: ONE consequence column — condition-matched only */
+        /* Separate: ONE consequence column - condition-matched only */
         session.condition && (
           <span className={`w-16 shrink-0 text-center ${condLabelCls(CONDITION_META[session.condition].color)}`}
             title={CONDITION_META[session.condition].cLabel}>
@@ -407,7 +407,7 @@ function ReadOnlyInterval({ interval: iv, activeConditions, highlighted, session
           ))}
         </>
       ) : (
-        /* Separate: ONE consequence — condition-matched */
+        /* Separate: ONE consequence - condition-matched */
         session.condition && (
           <span className="w-16 shrink-0 text-center font-mono text-gray-600 dark:text-gray-300">
             {tw(iv.consequences[session.condition])}

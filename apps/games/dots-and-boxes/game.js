@@ -1,12 +1,12 @@
 /* ── Dots & Boxes ──────────────────────────────────────────────────────
    Pass-and-play turn-taking game. Two players share one device. On a turn a
    player draws one line between two adjacent dots; closing the 4th side of a
-   box claims it (their number, in their color) and grants another turn — a
+   box claims it (their number, in their color) and grants another turn - a
    line that closes no box passes the turn. When every box is claimed the game
    is over. A two-stage input (preview, then confirm) makes each move
    deliberate; a repeatable "Backup" button undoes the last line.
 
-   Vanilla static HTML/CSS/JS — no build step. Board is a single inline SVG
+   Vanilla static HTML/CSS/JS - no build step. Board is a single inline SVG
    built once per game; moves/undo mutate only the touched nodes.
    --------------------------------------------------------------------- */
 'use strict';
@@ -111,8 +111,7 @@ function edgeCoords(orient, r, c) {
     : { x1: x, y1: y, x2: x, y2: y + GAP };
 }
 
-// Tap-zone rectangle straddling an edge (viewBox units). A rect — not a line —
-// guarantees a real bounding box, so taps land reliably on touch and
+// Tap-zone rectangle straddling an edge (viewBox units). A rect - not a line - // guarantees a real bounding box, so taps land reliably on touch and
 // programmatic clicks work in tests. HIT_BAND (40) < GAP (100), so parallel
 // edges never overlap; it scales with the board, so no per-size tuning.
 const HIT_BAND = 40;
@@ -148,7 +147,7 @@ function buildBoard() {
 
   nodes = { vis: {}, hit: {}, boxFill: {}, boxNum: {}, ghost: null };
 
-  // 1. Backdrop — tapping it clears a pending preview.
+  // 1. Backdrop - tapping it clears a pending preview.
   svg.appendChild(svgEl('rect', { x: 0, y: 0, width: W, height: H, class: 'db-backdrop', fill: 'transparent' }));
 
   // 2 + 3. Box fills and centered number labels.
@@ -185,7 +184,7 @@ function buildBoard() {
     for (let c = 0; c <= M.cols; c++)
       svg.appendChild(svgEl('circle', { cx: PAD + c * GAP, cy: PAD + r * GAP, r: 7, class: 'db-dot' }));
 
-  // 7. Transparent hit rectangles on top — the only interactive elements.
+  // 7. Transparent hit rectangles on top - the only interactive elements.
   eachEdge((orient, r, c) => {
     const b = edgeHitRect(orient, r, c);
     const hit = svgEl('rect', { x: b.x, y: b.y, width: b.width, height: b.height, class: 'db-hit', fill: 'transparent', 'data-orient': orient, 'data-r': r, 'data-c': c });
@@ -261,7 +260,7 @@ function onBoardPointerOut(e) {
 
 // ── Place a line, claim boxes, advance turn ────────────────────────────
 function placeLine(orient, r, c, playerIdx) {
-  if (getEdge(orient, r, c) !== -1) return;        // already filled — no-op
+  if (getEdge(orient, r, c) !== -1) return;        // already filled - no-op
   setEdge(orient, r, c, playerIdx);
 
   const color = M.players[playerIdx].color;
@@ -310,7 +309,7 @@ function clearBox(r, c) {
   t.style.fill = '';
 }
 
-// ── Undo — repeatable, one line per press ──────────────────────────────
+// ── Undo - repeatable, one line per press ──────────────────────────────
 function undoOneMove() {
   const mv = M.history.pop();
   if (!mv) return false;

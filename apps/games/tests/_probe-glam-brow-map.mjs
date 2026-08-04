@@ -1,4 +1,4 @@
-/* Finding B — the base render's ink against the mask key, as an ASCII map.
+/* Finding B - the base render's ink against the mask key, as an ASCII map.
 
    Prints, per roster model and side, an ASCII map of the outer brow-tail band in
    the base render's own pixels, one character per pixel:

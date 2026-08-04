@@ -1,4 +1,4 @@
-/* Screenshot pass for TUNING fix 2 — the texting intro.
+/* Screenshot pass for TUNING fix 2 - the texting intro.
    Not a spec. Run against a server on :8788:
 
      git show HEAD:apps/games/glam-team-makeover/index.html \

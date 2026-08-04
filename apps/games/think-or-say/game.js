@@ -2,7 +2,7 @@
    A scenario card presents a thought; the learner decides whether it is a
    THINK IT (keep it inside) or a SAY IT (kind / okay to say out loud).
    Pre-K / Kindergarten social-language target.
-   No build step — plain static HTML/CSS/JS.
+   No build step - plain static HTML/CSS/JS.
 
    The cards themselves live in card-model.js (the instructional universe and
    the one constructor every card goes through) and cards-level-{1,2,3}.js
@@ -48,11 +48,11 @@ const RATIONALE_LABELS = {
 const MODEL = window.ThinkOrSayModel;
 const CARDS = window.ThinkOrSayCards;
 // exemplar-generator.js renders probe items and fresh surfaces for
-// re-presentations from criterial templates — never from a memory of what has
+// re-presentations from criterial templates - never from a memory of what has
 // already been shown, because that memory does not survive a cleared store.
 const GEN = window.ThinkOrSayGenerator;
 // probes.js owns tagging, selection and placement; this file owns the running
-// session — which supports a probe trial withholds, and how each trial is
+// session - which supports a probe trial withholds, and how each trial is
 // classified once it has been answered.
 const PROBES = window.ThinkOrSayProbes;
 // staff-guide.js is the single source for the technician guide. It renders the
@@ -157,7 +157,7 @@ const state = {
   // The programme parameters in force, normalized. Stage 7's DOM-as-state fix:
   // every runtime read used to reach into a control (`el.chkErrorless.checked`,
   // `el.selPromptDelay.value`), which made the *panel* the source of truth. The
-  // controls are now a view of this object — written by
+  // controls are now a view of this object - written by
   // applySettingsToControls(), and read back only for the one control a
   // technician just changed. Populated by loadSettings() during init().
   cfg: null,
@@ -186,7 +186,7 @@ const state = {
   // an ordinary trained trial. Nothing is discarded and nothing is uncounted.
   probeSeen: new Set(),
   probeTrial: false,       // the card on screen is a probe (supports withheld)
-  learner: 'A',            // opaque settings slot — never a name, never an id
+  learner: 'A',            // opaque settings slot - never a name, never an id
   promptTimer: null,
   // timer
   timerSecs: 0,
@@ -201,7 +201,7 @@ const state = {
 const SETTINGS_KEY = 'nooutco.settings.think-or-say';
 const LEGACY_SETTINGS_KEY = 'tosSettings';
 // Namespaced to match the other nine games. The bare `tosResults` key is
-// retired but never deleted — loadResults() folds it forward on first run.
+// retired but never deleted - loadResults() folds it forward on first run.
 const RESULTS_KEY        = 'nooutco.results.think-or-say';
 const LEGACY_RESULTS_KEY = 'tosResults';
 
@@ -218,7 +218,7 @@ const LEGACY_RESULTS_KEY = 'tosResults';
  * match zero scenarios, so the game cannot start at all. The honest fallback is
  * the "All categories" the panel can actually show.
  *
- * `autoPrompt` defaults to FALSE here — it is true only in `sequences`. That
+ * `autoPrompt` defaults to FALSE here - it is true only in `sequences`. That
  * difference is clinical, not accidental; do not harmonise it.
  */
 const SETTINGS_FIELDS = {
@@ -265,7 +265,7 @@ const SETTINGS_FIELDS = {
  *
  * `probeTagsN` is a LIST, not an enum: near / far / deictic combine, and an item
  * can be far AND deictic. Level 3's default carries `deictic` because every
- * Level 3 item has it — the response required there is a spoken rationale — so
+ * Level 3 item has it - the response required there is a spoken rationale - so
  * a Level 3 selection without it puts nothing in play.
  *
  * `probeTokensN` is a technician setting and defaults ON: withholding
@@ -292,12 +292,12 @@ const settingsStore = window.NooutcoSettings.defineStore({
 /**
  * Read-then-fold. Two retired options, neither of them deleted anywhere.
  *
- * `promptDelaySec` — `tosSettings` spelled the prompt delay singular and stored
+ * `promptDelaySec` - `tosSettings` spelled the prompt delay singular and stored
  * it as a STRING, a third spelling of the option eight other games call
  * `promptDelaySecs`. The fold renames it forward; `tosSettings` itself keeps its
  * own key, its own spelling and its own string, untouched.
  *
- * `includeTricky` — the "Include Tricky / Reasoning Cards" checkbox is
+ * `includeTricky` - the "Include Tricky / Reasoning Cards" checkbox is
  * superseded by the Level selector. Its tricky cards were the nuanced,
  * context-decides ones, so a stored `true` folds forward onto Level 2 and a
  * stored `false` onto Level 1. A configuration that already names a level keeps
@@ -315,7 +315,7 @@ function foldRetiredSettings(stored) {
  * Each panel control, the option it edits, and how its value is read.
  *
  * One row per persisted option, so a control can never edit an option the
- * field spec does not declare (and vice versa — asserted by the settings
+ * field spec does not declare (and vice versa - asserted by the settings
  * store's own normalize()). Reading a control happens here and nowhere else.
  */
 const SETTINGS_CONTROLS = [
@@ -335,7 +335,7 @@ const SETTINGS_CONTROLS = [
 ];
 
 /**
- * The probe rows, one per persisted probe option — fifteen of them, five per
+ * The probe rows, one per persisted probe option - fifteen of them, five per
  * level. Generated from the same list the fields are, so a level can never have
  * a field the panel cannot edit or a control the store does not persist.
  *
@@ -363,7 +363,7 @@ function applySettingsToControls(cfg) {
   syncPromptDelayEnabled();
   el.levelBlurb.textContent = CARDS.level(cfg.level).blurb;
   // Switching level or fading the rule takes effect on the card already on
-  // screen, not on the next one — renderRulePanel() shows nothing unless a
+  // screen, not on the next one - renderRulePanel() shows nothing unless a
   // trial is showing, so this is a no-op everywhere else.
   renderRulePanel();
   // Only the level in play has its probe block on screen. The other two keep
@@ -388,7 +388,7 @@ function loadSettings() {
    Three opaque slots, A/B/C, each holding its own saved programme parameters.
    One technician runs the same programme with more than one learner on the same
    device, and the probe configuration is exactly the thing that differs between
-   them — so the settings have to be separable.
+   them - so the settings have to be separable.
 
    The slot is a LETTER. There is no name field, no identifier, and no place to
    put one: apps/games/CLAUDE.md §5 forbids player-identifiable data on the
@@ -410,7 +410,7 @@ function storedLearner() {
 /**
  * Switch slots: bank the configuration on screen under the slot being left,
  * then adopt the incoming slot's saved set. A slot that has never been saved
- * inherits what is on screen — that is its first configuration, not a reset.
+ * inherits what is on screen - that is its first configuration, not a reset.
  */
 function switchLearner(slot) {
   if (LEARNER_SLOTS.indexOf(slot) < 0) return;
@@ -440,7 +440,7 @@ function rawStoredConfig() {
 /**
  * Fold one control's edit into the configuration and persist it.
  *
- * Only the control the technician just touched is read — a control whose value
+ * Only the control the technician just touched is read - a control whose value
  * changed without a `change` event (the browser restoring form state across a
  * reload, most commonly) is not a technician decision and must not silently
  * become one. `normalize()` re-clamps the whole config using the same
@@ -483,7 +483,7 @@ function populateCategories() {
 const TAG_LABELS = {
   near: 'Near - same territory, new instance',
   far: 'Far - a person, place or thing this level never pairs with it',
-  deictic: 'Deictic - the learner also has to say why, in I–you terms',
+  deictic: 'Deictic - the learner also has to say why, in I - you terms',
 };
 const PLACEMENT_LABELS = { before: 'Before the deck', interleaved: 'Interleaved', after: 'After the deck' };
 
@@ -503,7 +503,7 @@ function populateProbeControls() {
   }
 }
 
-/** The probe block in force — the one belonging to the level being taught. */
+/** The probe block in force - the one belonging to the level being taught. */
 function probeCfg() {
   const L = state.cfg.level;
   return {
@@ -544,7 +544,7 @@ function shuffle(arr) {
  * The deck is the level's own pool, optionally narrowed to one category.
  *
  * A card belongs to exactly one level, so the level selector chooses the pool
- * outright rather than filtering a single flat deck — that is what makes the
+ * outright rather than filtering a single flat deck - that is what makes the
  * coverage guarantees (≥3 exemplars per criterial dimension, one matched
  * minimum-difference pair per dimension) properties of what the learner
  * actually sees.
@@ -570,7 +570,7 @@ function buildDeck() {
  * Off by default, so most sessions get the teaching deck back unchanged. When it
  * is on, the items are GENERATED (never drawn from the teaching pool), tagged by
  * probes.js, and placed where the plan says. The seed rotates the surfaces from
- * session to session without anything being stored — see probes.js on why a
+ * session to session without anything being stored - see probes.js on why a
  * remembered "already used" list would be worse than useless.
  */
 function withProbes(deck) {
@@ -585,7 +585,7 @@ function withProbes(deck) {
 // ── Start ──────────────────────────────────────────────────────────────
 function beginSession(mode) {
   // The settings bar stays live behind the guide, so Play is reachable from
-  // it. Drop the restore state rather than restoring it — the new session
+  // it. Drop the restore state rather than restoring it - the new session
   // decides what is on screen, not the screen the guide was opened over.
   state.guideReturn = null;
   el.guideScreen.hidden = true;
@@ -778,7 +778,7 @@ function renderProbeBanner(sc) {
   el.probeBanner.hidden = false;
 }
 
-/** True while a trial card is on screen — finishSession hides the scenario. */
+/** True while a trial card is on screen - finishSession hides the scenario. */
 const trialOnScreen = () => !el.gameArea.hidden && !el.scenarioSection.hidden;
 
 /**
@@ -787,15 +787,15 @@ const trialOnScreen = () => !el.gameArea.hidden && !el.scenarioSection.hidden;
  * The maintainer's structural ruling: "Level 1 should state the rule (bring the
  * unspoken rules to light)". Level 1 is early acquisition, so the rule is a
  * VISIBLE support rather than something to be induced from feedback over 35
- * cards. The text is the level pool's own `rule` — one declaration, in the
- * data, rendered here — so no card carries a copy of it and there is nothing to
+ * cards. The text is the level pool's own `rule` - one declaration, in the
+ * data, rendered here - so no card carries a copy of it and there is nothing to
  * drift.
  *
  * Both branches render together, always. That is what keeps the strip from
  * answering the card underneath it: every card is a THINK IT or a SAY IT, and
  * the strip poses the four questions without saying which one this card meets.
  *
- * It is on screen for the whole trial, which is the point — a technician
+ * It is on screen for the whole trial, which is the point - a technician
  * checking the rule must not have to leave the card to do it. Levels 2 and 3
  * declare no rule, so nothing renders there whatever the switch says.
  *
@@ -875,21 +875,21 @@ function renderThought(sc) {
 /**
  * Counterbalance the tile POSITIONS between trials.
  *
- * The labels never move — THINK IT is always the brain tile and SAY IT always
- * the mouth tile — so the response topography is constant. Only which side each
+ * The labels never move - THINK IT is always the brain tile and SAY IT always
+ * the mouth tile - so the response topography is constant. Only which side each
  * sits on alternates, strictly, on the trial index.
  *
  * What that alternation guarantees is narrow, and worth stating exactly: each
  * POSITION holds each TILE equally often. It says NOTHING about which side is
  * CORRECT. Which side is correct is the interaction between this alternation
- * and the pool's own run of answers — and if a pool's answers ever alternate
+ * and the pool's own run of answers - and if a pool's answers ever alternate
  * with the same period as the tiles, the correct tile lands on the same side on
  * every single trial. That is a perfect position cue: precisely the faulty
  * stimulus control this rebuild exists to prevent.
  *
  * So the property is not asserted here, because it is not a property of this
  * function: it belongs to the AUTHORED ORDER of each pool. It is measured
- * instead — think-or-say-levels.spec.js walks every level pool in sequential
+ * instead - think-or-say-levels.spec.js walks every level pool in sequential
  * order with this setting on, counts how often the correct tile lands on each
  * side, and fails if either side holds it more than 65% of the time.
  */

@@ -1,7 +1,6 @@
 # `shared/stimuli/uploads/`
 
-Stimulus art added through AdminTools, laid out as `<category>/<filename>` —
-for example `T_household_items/table.jpg`.
+Stimulus art added through AdminTools, laid out as `<category>/<filename>` - for example `T_household_items/table.jpg`.
 
 This is a **source** directory, not a generated one. `shared/stimuli/build.mjs`
 ranks it above all three `_Resources` trees and re-emits its files into

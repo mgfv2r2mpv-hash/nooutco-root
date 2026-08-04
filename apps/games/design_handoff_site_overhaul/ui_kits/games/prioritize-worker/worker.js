@@ -1,4 +1,4 @@
-// Cloudflare Worker — "Prioritize" ranked voting for the No Outcome games hub.
+// Cloudflare Worker - "Prioritize" ranked voting for the No Outcome games hub.
 // Each visitor submits a ranked ballot (1st / 2nd / 3rd choice among planned
 // features); the Worker stores it in KV and returns aggregate weighted points.
 // Weights: 1st = 3, 2nd = 2, 3rd = 1. Re-submitting overwrites that visitor's
@@ -36,7 +36,7 @@ export default {
         second: ballot.second || null,
         third: ballot.third || null,
       };
-      // Overwrite this visitor's ballot — changing a vote just replaces it.
+      // Overwrite this visitor's ballot - changing a vote just replaces it.
       await env.VOTES.put('ballot:' + clientId, JSON.stringify(clean));
       return json(await tally(env));
     }

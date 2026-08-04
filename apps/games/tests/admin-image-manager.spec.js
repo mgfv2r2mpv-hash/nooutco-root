@@ -11,11 +11,11 @@ import { fileURLToPath } from 'node:url';
  *
  *   1. every thumbnail was built as `'../../' + gameId + '/' + gameId + '/' +
  *      path`, which for a library URL concatenates to
- *      `../../IDMatchGame/IDMatchGame//shared/stimuli/img/…` — a page of broken
+ *      `../../IDMatchGame/IDMatchGame//shared/stimuli/img/…` - a page of broken
  *      images with no error anywhere
  *   2. a successful save appended a card built from a *guessed* path
  *      (`_Resources/_imgSource/<folder>/<file>`), which the commit no longer
- *      writes — so the technician was shown a card for something that does not
+ *      writes - so the technician was shown a card for something that does not
  *      exist at that address
  *
  * The fix for (2) is to render from the manifests the batch response carries
@@ -124,7 +124,7 @@ test.describe('ImageManager reads the shared stimulus library', () => {
       (imgs) => imgs.map(i => i.getAttribute('src')),
     );
 
-    // Verbatim, in order — the pre-fix code produced
+    // Verbatim, in order - the pre-fix code produced
     // `../../IDMatchGame/IDMatchGame//shared/stimuli/img/T_animals/bear.jpg`.
     expect(srcs).toEqual(MANIFESTS.matching.images[folder]);
 
@@ -255,7 +255,7 @@ test.describe('the topic lifecycle in the browser', () => {
 
     await page.locator('.btn-rename').click();
     const input = page.locator('.rename-inline input');
-    // Prefilled with what the topic is CALLED — submitting it unchanged is a
+    // Prefilled with what the topic is CALLED - submitting it unchanged is a
     // clear, which only works because the admin page and the library derive the
     // same name.
     await expect(input).toHaveValue(derived);
@@ -296,7 +296,7 @@ test.describe('the topic lifecycle in the browser', () => {
     const label = folder.replace(/^T_/, '');
     await expect(page.locator('.folder-tab', { hasText: label })).toHaveCount(1);
 
-    // The redraw is the signal that the response was handled — asserting the
+    // The redraw is the signal that the response was handled - asserting the
     // recorded payload first races the interception and fails intermittently.
     const archived = await stubTopic(page, 'archive-topic', { ok: true, archived: `_a_${folder}` });
     await page.locator('.btn-archive').click();

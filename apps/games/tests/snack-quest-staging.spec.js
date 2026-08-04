@@ -11,10 +11,10 @@ import {
  * the scene was built, so the character and the snack were behind it from the
  * first moment: the learner met our friend only after a trial was already
  * over, and answered without ever having seen which snack was at stake or
- * where it was. These pin the order — scene first, question second.
+ * where it was. These pin the order - scene first, question second.
  */
 
-test.describe('Snack Quest — the character is present before the question', () => {
+test.describe('Snack Quest - the character is present before the question', () => {
   test('our friend is on the choosing screen, while the place is being picked', async ({ page }) => {
     await bootstrap(page);
     await chooseTask(page, 'matching');
@@ -81,7 +81,7 @@ test.describe('Snack Quest — the character is present before the question', ()
     // The whole `speechSynthesis` object is replaced rather than its `speak`
     // patched: WebKit does not keep an own property written onto the platform
     // SpeechSynthesis instance across the document lifecycle, so a patched
-    // method is silently gone by the time the game calls it — the stub reports
+    // method is silently gone by the time the game calls it - the stub reports
     // nothing while the game speaks perfectly well, which reads as "the SD is
     // never spoken" and is a lie. Swapping the object leaves nothing to reset,
     // and it makes the test measure *when* we speak on every engine rather than

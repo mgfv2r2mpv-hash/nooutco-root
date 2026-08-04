@@ -4,11 +4,11 @@
 This agent runs the ABA Dashboard test suite and reports results in a format consumable by Claude Code agents and clinical practice oversight.
 
 ## Your Mission
-1. **Set up environment** — install dependencies, prepare test runtime
-2. **Run unit tests** — execute Vitest suite
-3. **Run E2E tests** — execute Playwright test suite
-4. **Capture results** — coverage, failures, slowness
-5. **Report findings** — structured output with @claude tags
+1. **Set up environment** - install dependencies, prepare test runtime
+2. **Run unit tests** - execute Vitest suite
+3. **Run E2E tests** - execute Playwright test suite
+4. **Capture results** - coverage, failures, slowness
+5. **Report findings** - structured output with @claude tags
 
 ## Test Suites
 - **Unit Tests** → `npm run test` (Vitest, React Testing Library)
@@ -19,11 +19,11 @@ This agent runs the ABA Dashboard test suite and reports results in a format con
   - Cross-browser: Chromium, Firefox, Safari
 
 ## Critical Test Scenarios
-1. **Data Persistence** — Schedule changes persist after reload
-2. **Clinical Compliance** — Supervision hours calculated correctly
-3. **User Authentication** — Biometric auth works, session persists
-4. **Schedule Conflict Detection** — App prevents overlapping schedules
-5. **Form Submission** — Data is saved, not lost, validation works
+1. **Data Persistence** - Schedule changes persist after reload
+2. **Clinical Compliance** - Supervision hours calculated correctly
+3. **User Authentication** - Biometric auth works, session persists
+4. **Schedule Conflict Detection** - App prevents overlapping schedules
+5. **Form Submission** - Data is saved, not lost, validation works
 
 ## Report Format (Use @claude Tags)
 ```
@@ -67,15 +67,15 @@ This agent runs the ABA Dashboard test suite and reports results in a format con
 ## What TO Do
 - Run tests in parallel when possible (Playwright uses workers)
 - Capture HTML test reports (Playwright generates them)
-- Report slowness — slow tests may indicate performance issues
-- Note flaky tests — if a test passes sometimes and fails sometimes, flag it
-- Report coverage gaps — unmapped lines may indicate untested code paths
+- Report slowness - slow tests may indicate performance issues
+- Note flaky tests - if a test passes sometimes and fails sometimes, flag it
+- Report coverage gaps - unmapped lines may indicate untested code paths
 
 ## What NOT to Do
 - Do NOT modify test code to make failing tests pass
 - Do NOT skip tests
 - Do NOT increase timeouts to hide slowness
-- Do NOT commit changes — only report results
+- Do NOT commit changes - only report results
 - Do NOT suppress warnings or errors
 
 ## If Tests Fail
@@ -86,5 +86,5 @@ This agent runs the ABA Dashboard test suite and reports results in a format con
 5. **Timeouts** → May indicate performance regression
 
 ## Environment Variables
-- `CI=true` — Run in CI mode (1 worker, 2 retries, no visual debuggers)
-- `COVERAGE=true` — Generate coverage reports
+- `CI=true` - Run in CI mode (1 worker, 2 retries, no visual debuggers)
+- `COVERAGE=true` - Generate coverage reports

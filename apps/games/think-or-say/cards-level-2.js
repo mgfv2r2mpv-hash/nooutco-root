@@ -1,4 +1,4 @@
-/* ── Think or Say? — Level 2 "Nuanced" ─────────────────────────────────
+/* ── Think or Say? - Level 2 "Nuanced" ─────────────────────────────────
    The answer depends on a feature of the SITUATION, not on the words alone:
    true-but-hurtful observations, private things noticed, comments where
    audience / timing / volume decides, and curious questions that would
@@ -6,7 +6,7 @@
 
    Where the same words flip on context, the card text CARRIES that context. A
    card whose answer depends on information the learner was never given is a
-   broken card, not a hard one — so "you are right beside them, nobody else can
+   broken card, not a hard one - so "you are right beside them, nobody else can
    hear" and "you are across the lunchroom" are written into the situation.
 
    Content rule and ORDER IS DATA: see cards-level-1.js. This pool runs

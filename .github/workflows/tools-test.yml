@@ -2,7 +2,7 @@ name: Tools E2E Tests
 
 # Mirrors games-test.yml. It exists because apps/tools had no CI at all: the
 # suite was written, committed and shipped to production without ever running on
-# a push. That was found while promoting dev to main — three commits' worth of
+# a push. That was found while promoting dev to main - three commits' worth of
 # SAP note-drafter work (structured output, malformed-JSON recovery, the admin
 # ?schema=off toggle) reached production having only ever been run by hand.
 #
@@ -10,7 +10,7 @@ name: Tools E2E Tests
 # its own short-lived `wrangler pages dev` rather than one process that has to
 # survive the whole matrix, and a failure in one engine does not hide the others.
 #
-# Note this suite is CDN-dependent in a way the games one is not — the note
+# Note this suite is CDN-dependent in a way the games one is not - the note
 # pages pull React and Babel from a CDN and compile JSX in the browser, which is
 # why playwright.config.js caps workers at 2 and sets a 90s timeout. A CDN
 # hiccup can therefore fail this workflow without anything being wrong with the
@@ -38,7 +38,7 @@ jobs:
     name: Tools E2E (${{ matrix.project }})
     timeout-minutes: 30
     strategy:
-      # One browser failing must not cancel the other two — knowing whether a
+      # One browser failing must not cancel the other two - knowing whether a
       # failure is browser-specific is most of the diagnosis.
       fail-fast: false
       matrix:
@@ -88,6 +88,6 @@ jobs:
         run: |
           echo "shard result: ${{ needs.e2e.result }}"
           [ "${{ needs.e2e.result }}" = "success" ] || {
-            echo "::error::One or more browser shards failed — see the Tools E2E (<browser>) jobs."
+            echo "::error::One or more browser shards failed - see the Tools E2E (<browser>) jobs."
             exit 1
           }

@@ -1,18 +1,18 @@
 import { test, expect } from '@playwright/test';
 
-// Smoke coverage for Glam Team Makeover — a bespoke turn-taking game that boots a
+// Smoke coverage for Glam Team Makeover - a bespoke turn-taking game that boots a
 // vendored React + design-canvas runtime and composites its paper-doll art.
 // Proves the runtime mounts, all 4 models' art loads and decodes, the model
 // picker repoints, and the hub card links to it.
 //
-// UPDATED (Tier-1 redesign) — two of these tests asserted a layered-`<img>` art
+// UPDATED (Tier-1 redesign) - two of these tests asserted a layered-`<img>` art
 // pipeline that the build had already replaced with a single <canvas> compositor
 // (`paintAvatar`), so they had been failing against the committed game before
 // this branch touched anything: there are no `img[src*="assets/art/person/…"]`
 // elements in the DOM any more, and a third test tripped on load-time console
 // errors that the redesign has since cleaned. The assertions below keep the
-// original intent — every model's art really loads, and applying a step really
-// changes the stage — expressed against the compositor, which means reading
+// original intent - every model's art really loads, and applying a step really
+// changes the stage - expressed against the compositor, which means reading
 // pixels instead of matching element `src`s. The tool-choice change is also
 // deliberate: the staged self-care task analysis (a locked spec decision) hides
 // Hair until skincare and makeup are done, so the step this test applies has to
@@ -89,8 +89,7 @@ test.describe('Glam Team Makeover', () => {
   });
 
   test('every roster model loads its base art and paints a distinct stage', async ({ page }) => {
-    /* This sweeps EVERY roster model, and a model swap decodes a whole art set —
-       base, eye/brow sprites and seven hair masks — before the repaint the poll
+    /* This sweeps EVERY roster model, and a model swap decodes a whole art set - base, eye/brow sprites and seven hair masks - before the repaint the poll
        below is waiting for. Under the default 30s test budget the per-model polls
        could add up past it on a loaded machine, and the run then reported "test
        timeout" from inside the last model's poll, which reads like a stuck
@@ -99,7 +98,7 @@ test.describe('Glam Team Makeover', () => {
     test.setTimeout(120000);
     await page.goto('/glam-team-makeover/');
 
-    // The roster is `GlamStory.MODELS` — the one list the story draw and the BT's
+    // The roster is `GlamStory.MODELS` - the one list the story draw and the BT's
     // character lock both read. M1 was retired from it in the refresh, so this
     // sweep follows the roster rather than a hardcoded four.
     const roster = await page.evaluate(() => window.GlamStory.MODELS);
@@ -117,7 +116,7 @@ test.describe('Glam Team Makeover', () => {
        the canvas blank/unchanged, so distinct fingerprints prove each one decoded.
 
        ROUTE (TUNING fix 1): this used to click the stage's M2/M3/M4 chips, which no
-       longer exist — the child may not choose a client. The only surface that still
+       longer exist - the child may not choose a client. The only surface that still
        picks one is the BT's Character lock, so the sweep now goes the way a BT
        actually pins a client: fresh load → lock → ▶ Play. That is a full reload per
        model rather than an in-place swap, which is why the budget above is generous;
@@ -135,7 +134,7 @@ test.describe('Glam Team Makeover', () => {
       /* WAIT and JUDGE are separate steps, deliberately. An earlier form polled for
          "a fingerprint I have not seen yet", which returns null both while the art
          is still decoding AND when the model genuinely painted the same stage as
-         another — so a real duplicate burned the whole timeout and surfaced as
+         another - so a real duplicate burned the whole timeout and surfaced as
          "timed out", the least informative failure available. The poll waits only
          for the canvas to stop moving; distinctness is a plain assertion that names
          the collision if it ever happens. */
@@ -155,19 +154,19 @@ test.describe('Glam Team Makeover', () => {
     expect(seen.size, 'every roster model should render differently').toBe(roster.length);
   });
 
-  // Refresh fix 1 — M1 is retired. "Not selectable and not in the random pool"
+  // Refresh fix 1 - M1 is retired. "Not selectable and not in the random pool"
   // has to hold on every route into a model: the random draw and the BT's
   // character lock (both the <option> list and a hand-forced value). The stage's
   // own M2/M3/M4 picker was the third route; TUNING fix 1 deleted it outright, so
   // the assertion at the bottom is now that the child surface offers no model
-  // button AT ALL — not that it offers the roster and nothing else.
-  test('M1 is retired — absent from the roster, the random pool and the character lock', async ({ page }) => {
+  // button AT ALL - not that it offers the roster and nothing else.
+  test('M1 is retired - absent from the roster, the random pool and the character lock', async ({ page }) => {
     await page.goto('/glam-team-makeover/');
     await openSetup(page);
 
     const out = await page.evaluate(() => {
       const S = window.GlamStory;
-      // a long deterministic-ish sweep of the pool — 500 draws would surface a
+      // a long deterministic-ish sweep of the pool - 500 draws would surface a
       // 1-in-4 leak with overwhelming probability
       const drawn = new Set();
       for (let i = 0; i < 500; i++) drawn.add(S.draw({}).model);
@@ -188,7 +187,7 @@ test.describe('Glam Team Makeover', () => {
     expect(out.forcedLock).not.toBe('m1');
     expect(out.lockOptions).toEqual(['random', ...out.roster]);
 
-    // …and the play surface offers no model button at all — not M1, not the roster.
+    // …and the play surface offers no model button at all - not M1, not the roster.
     await page.getByRole('button', { name: /^▶ Play/ }).click();
     await waitForPaintedStage(page);
     for (const m of ['m1', ...out.roster]) {
@@ -200,7 +199,7 @@ test.describe('Glam Team Makeover', () => {
     await page.goto('/glam-team-makeover/');
     await openSetup(page);
     await page.getByRole('button', { name: /^▶ Play/ }).click();
-    await page.getByRole('button', { name: /Go —/ }).click(); // start my turn
+    await page.getByRole('button', { name: /Go - / }).click(); // start my turn
     await waitForPaintedStage(page);
     const before = await stageFingerprint(page);
 

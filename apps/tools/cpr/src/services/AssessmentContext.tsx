@@ -2,8 +2,7 @@
  * AssessmentContext
  *
  * Provides the AssessmentService implementation to the component tree.
- * Swap the service in main.tsx when a real backend is available —
- * all components continue to work unchanged.
+ * Swap the service in main.tsx when a real backend is available - * all components continue to work unchanged.
  *
  * Also owns the in-flight list state so components don't each
  * trigger redundant fetches.

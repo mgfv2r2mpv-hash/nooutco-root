@@ -1,5 +1,5 @@
 /*
- * qa.mjs — the DESIGN_FILE §4 QA gate for processed layers.
+ * qa.mjs - the DESIGN_FILE §4 QA gate for processed layers.
  *
  * For each model it:
  *   1. Zone-containment: every feature layer's opaque pixels (α>8) must lie
@@ -48,7 +48,7 @@ async function run() {
 
   const browser = await chromium.launch({ headless: true });
   const report = {};
-  const OUT = path.join(HERE, 'out'); // gitignored — debug composites don't ship to the CDN
+  const OUT = path.join(HERE, 'out'); // gitignored - debug composites don't ship to the CDN
   await fs.mkdir(OUT, { recursive: true });
   try {
   const page = await browser.newPage();

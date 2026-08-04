@@ -1,16 +1,16 @@
 /* Screenshots for the three maintainer rulings, by real pointer input.
  *
- *   cart-spots-before.png       the cart while spots are still bare — Treat
+ *   cart-spots-before.png       the cart while spots are still bare - Treat
  *                               spots is on it
- *   cart-spots-after-mine.png   every spot patched, on my own turn — Treat
+ *   cart-spots-after-mine.png   every spot patched, on my own turn - Treat
  *                               spots is gone, Conceal is still standing and
  *                               the shelf claims no ✓, because the step is not
  *                               over
- *   cart-spots-after-theirs.png the same cart after the handoff — the tool does
+ *   cart-spots-after-theirs.png the same cart after the handoff - the tool does
  *                               not come back
  *   shelf-finished.png          every spot clear: both tools gone and the
  *                               Skincare shelf folded to its ✓ record row
- *   shade-redrag-armed.png      a second blush armed over a painted slot — the
+ *   shade-redrag-armed.png      a second blush armed over a painted slot - the
  *                               hitbox asks for the drag rather than saying
  *                               "All done"
  *   shade-redrag-mid.png        part-way through that fresh drag
@@ -62,7 +62,7 @@ async function open({ routine = 'on', turns = '4' } = {}) {
     for (let i = 3; i < d.length; i += 4) if (d[i] > 8 && ++n > 20000) return true;
     return false;
   }, undefined, { timeout: 30000 });
-  await btn(/Go —/).click();
+  await btn(/Go - /).click();
 }
 
 async function drag(name, strokes = 14) {
@@ -84,7 +84,7 @@ async function tapSpots(name, n) {
   }
 }
 
-// ── Rulings 2 + 3 — the spots step, across a handoff ────────────────────────
+// ── Rulings 2 + 3 - the spots step, across a handoff ────────────────────────
 await open();
 await drag('Wash');
 await drag('Moisturize');
@@ -95,7 +95,7 @@ await tapSpots('Treat spots', 3);
 await cart('cart-spots-after-mine.png');
 console.log('patched · Treat spots:', await tool('Treat spots').count(), '· Conceal:', await tool('Conceal').count());
 
-await btn(/Done — their turn/).click();
+await btn(/Done - their turn/).click();
 await cart('cart-spots-after-theirs.png');
 console.log('theirs  · Treat spots:', await tool('Treat spots').count(), '· Conceal:', await tool('Conceal').count());
 
@@ -104,7 +104,7 @@ await cart('shelf-finished.png');
 console.log('cleared · Skincare header:', JSON.stringify(await page.locator('[data-shelf="Skincare"] button').first().innerText()),
   '· tools left:', await page.locator('[data-shelf="Skincare"] button[title]').count());
 
-// ── Ruling 1a — a shade switch is a fresh drag ──────────────────────────────
+// ── Ruling 1a - a shade switch is a fresh drag ──────────────────────────────
 await open({ routine: 'free' });
 await drag('Blush rose');
 await tool('Blush plum').click();

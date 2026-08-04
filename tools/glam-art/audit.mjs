@@ -1,5 +1,5 @@
 /*
- * audit.mjs — the "pixel-exact except the feature" gate.
+ * audit.mjs - the "pixel-exact except the feature" gate.
  *
  * For every processed layer of every model it measures, against the base:
  *   - outsideOpaque : opaque px where the BASE is transparent (stray content off

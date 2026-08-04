@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════════════
-   results-report.js — durable local trial-data persistence + branded
+   results-report.js - durable local trial-data persistence + branded
    print/PDF report that opens quietly in a new tab.
 
    SECURITY / CLINICAL BOUNDARY (mandatory):
@@ -7,7 +7,7 @@
      is rendered entirely client-side. NOTHING here transmits trial data to
      any worker, API, or endpoint.
    - Raw recorded data only. The report renders exactly the columns/summary
-     the caller passes — no inferred mastery, no derived conclusions.
+     the caller passes - no inferred mastery, no derived conclusions.
    - Persistence protects against trial-data loss if the window/tab closes.
      It is session continuity, not a record store; clearResults() fully wipes.
 
@@ -38,7 +38,7 @@
   /* ── Persistence (device-local) ──────────────────────────────────── */
   function save(key, rows) {
     try { global.localStorage.setItem(key, JSON.stringify(rows || [])); }
-    catch (e) { /* storage full / unavailable — non-fatal */ }
+    catch (e) { /* storage full / unavailable - non-fatal */ }
   }
   function load(key) {
     try { return JSON.parse(global.localStorage.getItem(key) || '[]'); }
@@ -56,8 +56,8 @@
      makes that true.
 
        ts         ISO-8601 instant the trial was scored. Device-local, and
-                  still never transmitted — see the clinical boundary above.
-       promptType 'none' | 'model' | 'gesture' | 'delay' — the prompt
+                  still never transmitted - see the clinical boundary above.
+       promptType 'none' | 'model' | 'gesture' | 'delay' - the prompt
                   topography, derived from the configured procedure via
                   NooutcoPrompting so it cannot drift per game.
 
@@ -66,7 +66,7 @@
   function stampTrial(row, cfg, prompted) {
     row = row || {};
     row.ts = new Date().toISOString();
-    // A game that already derived a promptType keeps it — sequences and ffc
+    // A game that already derived a promptType keeps it - sequences and ffc
     // resolve it against an active round/session, which is strictly more
     // specific than deriving from the live switches. Same vocabulary either
     // way, so the record stays comparable.
@@ -167,7 +167,7 @@
       (report.meta ? '<p class="rpt-meta">' + esc(report.meta) + '</p>' : '') +
       '<table class="rpt-table">' + thead + tbody + '</table>' +
       '<div class="rpt-summary">' + summary + '</div>' +
-      '<footer class="rpt-footer">Device-local report — not transmitted.' +
+      '<footer class="rpt-footer">Device-local report - not transmitted.' +
       (ver ? ' v' + esc(ver) : '') + '</footer></body></html>';
   }
 
@@ -195,7 +195,7 @@
     ].join(';');
 
     var msg = doc.createElement('span');
-    msg.textContent = 'Pop-ups blocked — your results are saved.';
+    msg.textContent = 'Pop-ups blocked - your results are saved.';
 
     var btn = doc.createElement('button');
     btn.type = 'button';
@@ -205,7 +205,7 @@
       'padding:7px 14px', 'border-radius:6px', 'font-weight:700', 'font-family:inherit'
     ].join(';');
     btn.addEventListener('click', function () {
-      // Inside a user gesture — pop-up blockers allow this.
+      // Inside a user gesture - pop-up blockers allow this.
       if (retry()) bar.remove();
     });
 

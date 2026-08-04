@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin — No Outcome</title>
+  <title>Admin - No Outcome</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="/tokens.css">
@@ -145,7 +145,7 @@
 <div id="authGate">
   <div class="auth-gate">
     <h1>Admin</h1>
-    <p class="sub">No Outcome — Development Tools</p>
+    <p class="sub">No Outcome - Development Tools</p>
     <div class="form-row">
       <label class="form-label" for="secretInput">Admin Secret</label>
       <input type="password" id="secretInput" placeholder="Enter admin password" autocomplete="current-password">
@@ -154,7 +154,7 @@
       <button class="btn btn-primary" id="unlockBtn">Unlock</button>
       <a class="btn btn-secondary" href="/">← Back</a>
     </div>
-    <p class="auth-error" id="authError" hidden>Incorrect secret — please try again.</p>
+    <p class="auth-error" id="authError" hidden>Incorrect secret - please try again.</p>
   </div>
 </div>
 
@@ -163,7 +163,7 @@
   <div class="wrap">
     <a class="back-link" href="/">← nooutco.me</a>
     <h1>Admin</h1>
-    <p class="page-sub">No Outcome — Development Tools</p>
+    <p class="page-sub">No Outcome - Development Tools</p>
 
     <!-- Card Management -->
     <div class="section">
@@ -177,7 +177,7 @@
       <div class="form-row">
         <label class="form-label" for="featureSelect">Select feature by vote rank</label>
         <select id="featureSelect">
-          <option value="">— select feature —</option>
+          <option value=""> - select feature - </option>
         </select>
       </div>
       <div class="form-row">
@@ -313,7 +313,7 @@ function renderCardList() {
 function populateFeatureSelect() {
   const sel = document.getElementById('featureSelect');
   const active = allCards.filter(c => c.status === 'active');
-  sel.innerHTML = '<option value="">— select feature —</option>' +
+  sel.innerHTML = '<option value=""> - select feature - </option>' +
     active.map((c, i) => `<option value="${c.id}">#${i + 1} ${esc(c.title)} (${c.score} pts)</option>`).join('');
 }
 

@@ -13,9 +13,9 @@
 
    Per device (1280×860 / 834×1112 / 390×844):
 
-     · stage-<phase>-<device>.png       — the stage panel alone, so the crop is
+     · stage-<phase>-<device>.png - the stage panel alone, so the crop is
                                           read against the panel's own edge
-     · page-<phase>-<device>.png        — the whole viewport, scrolled to the top,
+     · page-<phase>-<device>.png - the whole viewport, scrolled to the top,
                                           because "the game area" is what the child
                                           sees, not a cropped element shot
 
@@ -55,7 +55,7 @@ for (const d of DEVICES) {
   await page.getByTitle('Show / hide setup').click();
   await page.getByLabel('Character', { exact: true }).selectOption('m4');
   await page.getByRole('button', { name: /^▶ Play/ }).click();
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   await page.waitForFunction(painted, undefined, { timeout: 20000 });
   await page.waitForTimeout(700);
   // "Go" scrolls the trolley into view; the crop is not a scroll artefact, so

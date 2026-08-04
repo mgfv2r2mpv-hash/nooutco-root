@@ -50,7 +50,7 @@ test('no em dashes or en dashes anywhere in apps/tools', () => {
 
     const text = readFileSync(file, 'utf8');
     text.split('\n').forEach((line, i) => {
-      if (line.includes('—') || line.includes('–')) {
+      if (line.includes(' - ') || line.includes(' - ')) {
         offenders.push(`${path.relative(ROOT, file)}:${i + 1}  ${line.trim().slice(0, 90)}`);
       }
     });

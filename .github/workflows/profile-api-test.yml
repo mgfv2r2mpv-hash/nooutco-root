@@ -6,7 +6,7 @@ name: Profile API Tests
 # rather than after the first time it matters.
 #
 # No install step and no matrix: the tests are plain `node --test` over two
-# pure modules with zero dependencies, which is deliberate — this repo has no
+# pure modules with zero dependencies, which is deliberate - this repo has no
 # build step and the profile Worker does not introduce one.
 
 on:
@@ -38,7 +38,7 @@ jobs:
           # 22, not the 20 the other workflows use: `node --test` only learned
           # to expand a glob pattern itself in 22. On 20 the quoted glob is
           # passed through literally and the run fails with "Could not find
-          # test/*.test.js" — which is how this was caught.
+          # test/*.test.js" - which is how this was caught.
           node-version: '22'
 
       # Run the runner directly rather than `npm ci` first: there is no

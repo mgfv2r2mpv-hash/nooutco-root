@@ -58,7 +58,7 @@ export function AssessmentForm({ initial = {}, onSave, onCancel }: Props) {
           </div>
           <Field label="Start / End time">
             <input className="input" value={startEnd} onChange={e => setStartEnd(e.target.value)}
-              placeholder="e.g. 9:00 – 9:30 AM" />
+              placeholder="e.g. 9:00-9:30 AM" />
           </Field>
           <Field label="Target behavior name" required>
             <input className="input" value={targetBxName} onChange={e => setTargetBxName(e.target.value)}

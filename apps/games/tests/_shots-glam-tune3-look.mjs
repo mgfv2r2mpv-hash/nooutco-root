@@ -1,4 +1,4 @@
-/* THIRD PASS · the COMPLETED look, photographed — and the eye region loupe'd.
+/* THIRD PASS · the COMPLETED look, photographed - and the eye region loupe'd.
  *
  * Writes, per roster model, into docs/eval/shots/glam-tune3/:
  *   <tag>-<model>-completed.png   the whole finished client off the compositor
@@ -40,7 +40,7 @@ const HELPERS = `
     for (let i=0;i<80 && same<3;i++){ await frame(); const h=hash(snap()); if(h===last) same++; else { same=0; last=h; } }
     return snap(); };
   /* freshEd seeds the three blemishes with Math.random(), so two frames taken
-     from two resets have the spots in DIFFERENT places — and a spot that moved
+     from two resets have the spots in DIFFERENT places - and a spot that moved
      reads as a tool brightening pixels it never touched. One fixed seed for
      every frame; 0.371 is the layout _pickSpots itself falls back to. */
   const FRESH = () => Object.assign(L.freshEd('person'), { spotSeed: 0.371 });
@@ -106,7 +106,7 @@ for (const m of ['m2', 'm3', 'm4']) {
       t.getContext('2d').putImageData(img,-x0,-y0);
       cc.drawImage(t,0,row*bh*Z,bw*Z,bh*Z); };
     blit(bare,0); blit(done,1);
-    // panel 3 — the defect map. Red where the completed look is BRIGHTER than the
+    // panel 3 - the defect map. Red where the completed look is BRIGHTER than the
     // bare face inside the lash geometry; grey elsewhere, so shape stays readable.
     const heat=ctx.createImageData(W,H);
     for(let i=0;i<heat.data.length;i+=4){

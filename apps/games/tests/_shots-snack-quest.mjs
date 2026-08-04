@@ -1,5 +1,5 @@
 /**
- * Playtest driver — runs a full 5-round Snack Quest at two viewports and
+ * Playtest driver - runs a full 5-round Snack Quest at two viewports and
  * screenshots every stage, so the result can be looked at rather than reasoned
  * about. Not a spec; run it by hand against a live server:
  *
@@ -41,8 +41,8 @@ async function seed(page, { scheduleValue = 2, goalTokens = 5 } = {}) {
 
 const peek = (page) => page.evaluate(() => window.__sq.peek());
 
-/** The card no longer arrives with the scene — each round holds the stage for a
- *  beat first — so a response has to wait for the question to be askable rather
+/** The card no longer arrives with the scene - each round holds the stage for a
+ *  beat first - so a response has to wait for the question to be askable rather
  *  than for the walk to have ended. */
 async function waitForQuestion(page) {
   await page.waitForFunction(() => window.__sq.peek().awaitingAnswer, null, { timeout: 25000 });
@@ -94,7 +94,7 @@ async function run(browser, vp, errors) {
 
   await page.click('#place-tiles .choice-tile[data-place="countryside"]');
   await page.waitForFunction(() => window.__sq.peek().screen === 'quest');
-  // The settle beat — the whole reason the round is staged. Our friend and the
+  // The settle beat - the whole reason the round is staged. Our friend and the
   // snack are on an uncovered scene, and the question has not arrived yet. If
   // this frame shows the card, the staging has regressed.
   await sleep(560);
@@ -103,7 +103,7 @@ async function run(browser, vp, errors) {
   await sleep(500);
   await shot('03-trial-matching');
 
-  // Round 1 — non-delivering under FR2: card leaves, he walks partway.
+  // Round 1 - non-delivering under FR2: card leaves, he walks partway.
   await respondCorrect(page);
   await page.waitForFunction(() => document.getElementById('trial-card').hidden);
   await sleep(350);
@@ -121,7 +121,7 @@ async function run(browser, vp, errors) {
   await shot('05-partway');
   await waitIdle(page);
 
-  // Round 2 — delivering: he arrives and the snack is collected.
+  // Round 2 - delivering: he arrives and the snack is collected.
   await respondCorrect(page);
   await waitIdle(page);
   await sleep(400);

@@ -229,7 +229,7 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   Round setup panel (Frame 04 — gated compact settings + ABA prompting)
+   Round setup panel (Frame 04 - gated compact settings + ABA prompting)
    Sage clinical palette mirrors design_handoff_admin_redesign Frame 04.
    ══════════════════════════════════════════════════════════════════ */
 .btn-round {
@@ -337,7 +337,7 @@
 .round-toggle-knob { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 999px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: transform 0.15s; }
 .round-toggle.is-on .round-toggle-knob { transform: translateX(20px); }
 
-/* Advanced overrides — collapsible group holding the former Options controls */
+/* Advanced overrides - collapsible group holding the former Options controls */
 .round-advanced { margin-top: 4px; }
 .round-advanced > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 7px 0; font-size: 12px; font-weight: 700; color: #5d6a4d; }
 .round-advanced > summary::-webkit-details-marker { display: none; }
@@ -357,7 +357,7 @@
 .btn-round-save:hover { background: #f4f6ef; }
 .btn-round-reset { background: transparent; color: #8a9678; border: none; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: underline; }
 
-/* Gating — when locked, editable controls are inert + muted (Start stays live) */
+/* Gating - when locked, editable controls are inert + muted (Start stays live) */
 #round-panel[data-editing="false"] .round-pill,
 #round-panel[data-editing="false"] .round-step,
 #round-panel[data-editing="false"] .round-symbols,

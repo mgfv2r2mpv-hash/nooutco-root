@@ -1,11 +1,11 @@
-/* Finding B probe — how much room is there at the foot of the stage, and what
+/* Finding B probe - how much room is there at the foot of the stage, and what
    of the client art lives in it?  Not a spec.  Run against a hash-verified
    :8788:
 
      PAGE=/glam-team-makeover/ node tests/_probe-glam-tune3-band.mjs
 
    Per device it prints the stage panel's rect, the client canvas's rect inside
-   it, and — read off the canvas's own pixels — the topmost row of the SHIRT
+   it, and - read off the canvas's own pixels - the topmost row of the SHIRT
    (the first opaque row below the neck whose colour is the garment tint), so a
    band height can be chosen against the F-10 rule that the ledge must not bury
    a tool the child just used. */
@@ -37,7 +37,7 @@ for (const d of DEVICES) {
     await page.getByTitle('Show / hide setup').click();
     await page.getByLabel('Character', { exact: true }).selectOption(model);
     await page.getByRole('button', { name: /^▶ Play/ }).click();
-    await page.getByRole('button', { name: /Go —/ }).click();
+    await page.getByRole('button', { name: /Go - / }).click();
     await page.waitForFunction(painted, undefined, { timeout: 20000 });
     await page.waitForTimeout(300);
     const out = await page.evaluate(() => {

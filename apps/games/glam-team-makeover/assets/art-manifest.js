@@ -1,13 +1,12 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   Glam Team Makeover — ART MANIFEST  (window.NooutcoArt)   v0.4 · demo wired
+   Glam Team Makeover - ART MANIFEST  (window.NooutcoArt)   v0.4 · demo wired
    ---------------------------------------------------------------------------
    V1 = PERSON ONLY. m1 + m3 are LIVE (processed in-project by the browser
-   pipeline — see assets/art/_pipeline.js.txt and PIPELINE_HANDOFF_CLAUDE.md).
+   pipeline - see assets/art/_pipeline.js.txt and PIPELINE_HANDOFF_CLAUDE.md).
    m2 + m4 slots are ready and empty (placeholders show until processed).
 
    Blemish flow: heart patch swaps out the spot; concealer removes the patch
-   (no popping). Patch asset + full recolor matrices are Claude-Code work —
-   this demo wires the delivered colors only.
+   (no popping). Patch asset + full recolor matrices are Claude-Code work - this demo wires the delivered colors only.
 
    Game contract (read by Glam Team Makeover.dc.html):
      bases.person.src / .flaws{dull,spot,browsBushy}
@@ -16,7 +15,7 @@
        ear by glyph 💠⭕💎 · outfit by value gown/dress/casual/sparkle
      meta.spotAnchors.person = [{l,t}×3]  (percent)
    The model picker in the game calls setArtModel-style repointing on
-   meta.models[id] — keep every rig complete.
+   meta.models[id] - keep every rig complete.
    ───────────────────────────────────────────────────────────────────────── */
 (function () {
   const PALETTES = {
@@ -32,7 +31,7 @@
 
   // Per-model face anchors (box-% of the 320×360 stage) from the pipeline
   // (tools/glam-art run: detectEyeLine + detectEyeBoxes). Drive the PROCEDURAL
-  // cosmetics — eyeshadow on the eyelids, blush on the cheeks, glow on the
+  // cosmetics - eyeshadow on the eyelids, blush on the cheeks, glow on the
   // forehead/cheekbones, dull over the whole face. See _meta.json per model.
   const FACES = {
     m1: { eyeL: { l: 38.5, t: 36.4 }, eyeR: { l: 61.4, t: 36.5 }, cheekL: { l: 37.4, t: 49.4 }, cheekR: { l: 62.5, t: 49.4 }, faceCx: 50, eyeY: 37.9, faceTop: 6.7, faceBot: 61.5, faceHalfW: 22.1 },
@@ -42,7 +41,7 @@
   };
 
   // dull / glow / shadow(eyeshadow) / blush are rendered procedurally in-game
-  // from `face` anchors — not PNG layers (they extracted too noisily).
+  // from `face` anchors - not PNG layers (they extracted too noisily).
   const rig = (dir, spotAnchors, earAnchors, face) => ({
     base: dir + 'base.png',
     flaws: { spot: dir + 'spot.png', browsBushy: dir + 'brows-bushy.png' },

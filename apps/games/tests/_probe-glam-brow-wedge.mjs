@@ -1,4 +1,4 @@
-/* Finding B — the m4 R wedge, base / mask / canvas at x24, same crop. */
+/* Finding B - the m4 R wedge, base / mask / canvas at x24, same crop. */
 import { chromium } from '@playwright/test';
 import { writeFile, mkdir } from 'node:fs/promises';
 
@@ -24,7 +24,7 @@ await page.getByTitle('Show / hide setup').click();
 await page.getByLabel('Character', { exact: true }).selectOption(MODEL);
 await page.getByLabel('Routine', { exact: true }).selectOption('free');
 await page.getByRole('button', { name: /^▶ Play/ }).click();
-await page.getByRole('button', { name: /Go —/ }).click();
+await page.getByRole('button', { name: /Go - / }).click();
 await page.waitForFunction(painted, undefined, { timeout: 20000 });
 
 const png = await page.evaluate(async ([model, box]) => {

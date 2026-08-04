@@ -5,13 +5,13 @@ import { test, expect } from '@playwright/test';
  * think-or-say: the exemplar generator, enumerated exhaustively
  *
  * Teaching cards are hand-authored and reviewable. Probe items and
- * re-presentations are GENERATED — because probe novelty cannot depend on
+ * re-presentations are GENERATED - because probe novelty cannot depend on
  * remembering what was already used. Storage gets cleared, and one technician
  * runs the same programme with two learners on the same device; any scheme that
  * tracks "probes used" is one wipe away from presenting a trained item as a
  * generalization datum with nothing on screen saying so.
  *
- * The generated space is FINITE, so it is not sampled here — it is enumerated,
+ * The generated space is FINITE, so it is not sampled here - it is enumerated,
  * every template × variant × slot combination, and four things are asserted of
  * every item in it:
  *
@@ -22,7 +22,7 @@ import { test, expect } from '@playwright/test';
  *       template. This is why the allow-lists are per template and never a
  *       global pool: "somebody you have never met" is scenery on an audience
  *       template and IS the answer on a relationship one.
- *   (c) no two items render identically — otherwise the space is smaller than
+ *   (c) no two items render identically - otherwise the space is smaller than
  *       it claims and a "fresh" item can be one already seen.
  *   (d) every rendering is non-empty and grammatical enough to carry its
  *       utterance and both action verbs, with no placeholder left unresolved.
@@ -30,7 +30,7 @@ import { test, expect } from '@playwright/test';
  * Fixed can-have values are deliberately outside (b). G-relationship's
  * `vary.person = 'stranger'` and `features.relationship = 'stranger'` are the
  * same fact in two vocabularies, and the template supplies it rather than
- * drawing it — which is exactly the distinction (b) exists to police, so the
+ * drawing it - which is exactly the distinction (b) exists to police, so the
  * items carry `sampled` to say which values were drawn.
  * ════════════════════════════════════════════════════════════════════════
  */
@@ -68,7 +68,7 @@ async function space(page) {
           value: v.value, answer: v.answer, features: { ...v.features },
         })),
         // How many items this template SHOULD contribute, from the declared
-        // allow-lists alone — the independent count enumerate() is checked against.
+        // allow-lists alone - the independent count enumerate() is checked against.
         sizes: t.variants.map((v) => {
           const keys = ['setting', 'person', 'topic', 'form'];
           return keys.reduce((n, k) => {
@@ -153,8 +153,7 @@ test.describe('the generated space, enumerated', () => {
       expect(Object.keys(it.vary).sort()).toEqual(['form', 'person', 'setting', 'topic']);
     }
 
-    // Template by template: the allow-lists themselves, across BOTH variants —
-    // a value that is safe on the say side and criterial on the think side is
+    // Template by template: the allow-lists themselves, across BOTH variants - // a value that is safe on the say side and criterial on the think side is
     // still a value this template may not draw.
     for (const t of templates) {
       const criterial = new Set(t.variants.flatMap(v => Object.values(v.features)));
@@ -193,12 +192,12 @@ test.describe('the generated space, enumerated', () => {
       expect(it.leadIn, `${it.id} lead-in`).toBe('You have a thought:');
       expect(full, `${it.id} has an unresolved placeholder`).not.toMatch(/[{}]/);
       // The PROSE never says "you think". The balanced question unavoidably
-      // does — "Should you THINK these words, or SAY these words?" — and that
+      // does - "Should you THINK these words, or SAY these words?" - and that
       // is not the defect: it names the other action in the same breath, at the
       // same length. Same rule the authored cards are held to.
       const prose = `${it.situation} ${it.leadIn} ${it.utterance} ${it.reason}`;
       expect(prose, `${it.id} prose gives the answer away`).not.toMatch(/you think/i);
-      // The sentence ends like a sentence — the cheapest grammar check that
+      // The sentence ends like a sentence - the cheapest grammar check that
       // catches a slot value pasted onto a truncated frame.
       expect(it.situation.trim(), `${it.id} situation is punctuated`).toMatch(/[.!?]$/);
     }
@@ -259,7 +258,7 @@ test.describe('re-presentation with a fresh surface', () => {
     const unmatched = await page.evaluate(() => {
       const { cards, generator } = window.__thinkOrSay;
       // A card whose criterial configuration no template declares must yield
-      // null, so the caller re-presents the original — never a different item
+      // null, so the caller re-presents the original - never a different item
       // wearing the same id.
       return cards.filter(c => generator.represent(c, 0) === null).length;
     });
@@ -268,7 +267,7 @@ test.describe('re-presentation with a fresh surface', () => {
 
   test('a missed card returns in the deck with different prose and the same answer', async ({ page }) => {
     // Level 1's "looks" category is three cards, and its first card's criterial
-    // configuration is one the generator carries — so this walks a whole deck
+    // configuration is one the generator carries - so this walks a whole deck
     // plus the re-presentation in four trials.
     await seed(page, {
       level: 1, category: 'looks', order: 'sequential',

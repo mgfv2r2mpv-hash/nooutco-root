@@ -1,16 +1,16 @@
-/* ── Think or Say? — the staff guide ───────────────────────────────────
+/* ── Think or Say? - the staff guide ───────────────────────────────────
    ONE source, rendered TWICE.
 
    The guide ships as a screen inside the game (beside 📖 Learn) and as a
    standalone HTML file a service can put in an onboarding packet. Both are
-   produced by buildBody() from the SECTIONS array below — not merely from the
+   produced by buildBody() from the SECTIONS array below - not merely from the
    same data but through the same code path, so the two cannot drift. The
    standalone renderer builds a detached document, hands it to buildBody(), and
    serializes it; there is no second copy of the prose anywhere.
 
    Audience: behaviour technicians. The Skill Acquisition Plan is the programme
    and this app is the materials. Every entry below says what a setting DOES.
-   None of them says what to prefer — that decision belongs to the BCBA, and
+   None of them says what to prefer - that decision belongs to the BCBA, and
    where a plan is silent the guide says to ask, never to choose.
    ---------------------------------------------------------------------- */
 
@@ -568,7 +568,7 @@
    * An onboarding packet is a file on someone's desktop, not a page on this
    * site, so a relative <img src> in it would resolve to nothing. A fetch that
    * fails leaves a VISIBLE line naming the missing file rather than an empty
-   * box — a screenshot that silently disappears from a printed guide is worse
+   * box - a screenshot that silently disappears from a printed guide is worse
    * than one that says it is absent.
    */
   async function inlineFigures(root, baseHref) {

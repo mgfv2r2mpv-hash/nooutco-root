@@ -22,21 +22,21 @@ const shared = join(root, "packages", "shared");
 
 // { src: relative to packages/shared, dst: relative to apps/<app>, apps: [...] }
 const files = [
-  // Design tokens — served at each app root.
+  // Design tokens - served at each app root.
   { src: "css/tokens.css", dst: "tokens.css", apps: ["tools", "games", "apex"] },
 
-  // Unified nav bar — served client assets, on every product.
+  // Unified nav bar - served client assets, on every product.
   { src: "ui/nav-bar.js", dst: "assets/nav-bar.js", apps: ["tools", "games", "apex"] },
   { src: "ui/nav-bar.css", dst: "assets/nav-bar.css", apps: ["tools", "games", "apex"] },
 
-  // One canonical brand mark — served at each app root (component defaults to /logo-mark.svg).
+  // One canonical brand mark - served at each app root (component defaults to /logo-mark.svg).
   { src: "ui/logo-mark.svg", dst: "logo-mark.svg", apps: ["tools", "games", "apex"] },
 
-  // Games admin shell — served client assets, games only (Game Master managers).
+  // Games admin shell - served client assets, games only (Game Master managers).
   { src: "ui/admin-shell.css", dst: "assets/admin-shell.css", apps: ["games"] },
   { src: "ui/admin-shell.js",  dst: "assets/admin-shell.js",  apps: ["games"] },
 
-  // Worker source — bundled into _worker.js (tools + games only).
+  // Worker source - bundled into _worker.js (tools + games only).
   { src: "worker/helpers.js", dst: "shared/helpers.js", apps: ["tools", "games"] },
   { src: "worker/suggest.js", dst: "shared/suggest.js", apps: ["tools", "games"] },
 ];

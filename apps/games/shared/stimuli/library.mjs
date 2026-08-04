@@ -2,13 +2,13 @@
  * The shared stimulus library's vocabulary, expressed as pure data transforms.
  *
  * Three consumers have to agree on every rule in here:
- *   • `shared/stimuli/build.mjs` — rebuilds the whole library from source
- *   • `worker.js` — applies one AdminTools upload in place, without a rebuild
- *   • `tests/stimulus-uploads.spec.js` — proves those two agree
+ *   • `shared/stimuli/build.mjs` - rebuilds the whole library from source
+ *   • `worker.js` - applies one AdminTools upload in place, without a rebuild
+ *   • `tests/stimulus-uploads.spec.js` - proves those two agree
  *
  * That is why this module holds no node builtins and touches no filesystem: it
  * is bundled into a Cloudflare Worker as well as run under node. It also never
- * mutates its inputs — every `apply*` returns fresh objects, so a caller can
+ * mutates its inputs - every `apply*` returns fresh objects, so a caller can
  * diff old against new before committing anything.
  *
  * ── Why a generated manifest still needs technician state ──────────────────
@@ -51,7 +51,7 @@ export const categorySlug = (category) => slug(String(category).replace(/^T_/, '
  * that collide on a case-insensitive filesystem.
  *
  * Slugging the stem is also what retires the `mail-carrier` / `mail_carrier`
- * separator split — both spellings name one stimulus, so an upload of either
+ * separator split - both spellings name one stimulus, so an upload of either
  * replaces the art for both rather than forking a near-duplicate entry.
  */
 export const stimulusId = (category, stem) => `${categorySlug(category)}-${slug(stem)}`;
@@ -64,7 +64,7 @@ export const extensionOf = (filename) => {
 export const stemOf = (filename) => String(filename).replace(/\.[^.\\/]+$/, '');
 
 /**
- * A single character or a bare number is its own label — title-casing would
+ * A single character or a bare number is its own label - title-casing would
  * render the lowercase-letter programme as uppercase, which is a different
  * discrimination entirely.
  */
@@ -85,7 +85,7 @@ export const placeholderUrl = (category, fileName) => `${PLACEHOLDER_URL_PREFIX}
  * The stem a word's files are named after, recovered from its id.
  *
  * `stimulusId()` is the only thing that turns a stem into an id, and it slugs,
- * so the inverse is exact for any id it produced — which the vocabulary asserts
+ * so the inverse is exact for any id it produced - which the vocabulary asserts
  * word by word rather than assuming.
  */
 export const stemOfId = (category, id) => String(id).slice(categorySlug(category).length + 1);
@@ -96,7 +96,7 @@ const escapeXml = (value) => String(value).replace(/[&<>"]/g, (c) => XML_ESCAPES
 /**
  * The glyph fallback drawn for a word that has no art yet, byte-identical in
  * shape to the emoji placeholders the three `_Resources` trees already shipped
- * — same 200×200 box, same baseline, same emoji font stack. Generated rather
+ * - same 200×200 box, same baseline, same emoji font stack. Generated rather
  * than authored so seeding a word costs a line of data and no asset, and kept
  * here (not in `build.mjs`) because `worker.js` has to be able to recognise the
  * files it owns.
@@ -114,8 +114,8 @@ export const emojiPlaceholderSvg = (emoji) =>
 /**
  * An archived topic keeps its stimuli but leaves the programme, and AdminTools
  * names it by a prefix rather than by a flag: `T_colors` archived is
- * `_a_T_colors`. That prefix used to be a real directory — the topic's files
- * were moved into it — which is exactly what cannot happen now that the same
+ * `_a_T_colors`. That prefix used to be a real directory - the topic's files
+ * were moved into it - which is exactly what cannot happen now that the same
  * bytes back three games.
  */
 export const ARCHIVE_PREFIX = '_a_';
@@ -124,7 +124,7 @@ export const categoryOfArchivedFolder = (folder) =>
   folder.startsWith(ARCHIVE_PREFIX) ? folder.slice(ARCHIVE_PREFIX.length) : folder;
 
 /**
- * What a topic is called when nothing overrides it — the prettified folder
+ * What a topic is called when nothing overrides it - the prettified folder
  * name every game and AdminTools has always shown. Shared so that a technician
  * who renames a topic back to its derived name clears the override instead of
  * pinning a string that merely looks the same.
@@ -137,7 +137,7 @@ export const deriveTopicName = (folder) =>
 
 /**
  * `archived` reaches us as the manifest wrote it: prefixed folder name -> the
- * URLs it held. Only the *names* are technician state — the URL lists are a
+ * URLs it held. Only the *names* are technician state - the URL lists are a
  * projection exactly like `images`, so they are recomputed on every build
  * rather than carried forward, and an upload into an archived topic shows up
  * there instead of going stale.
@@ -211,7 +211,7 @@ export function canonicalEntry(entry) {
  * Project the library back out as one game's `manifest.json`.
  *
  * Only the art is shared. `folders` is the game's own programme list, and
- * `excluded` is what a technician removed from it — matching's `T_lowercase`
+ * `excluded` is what a technician removed from it - matching's `T_lowercase`
  * turning up in receptive's topic dropdown would be a behaviour change, not a
  * merge, and so would a removed stimulus reappearing.
  *
@@ -234,7 +234,7 @@ export function projectManifest(index, provenance, { game, folders, archived, ex
   }
   const urlById = new Map(index.stimuli.map((entry) => [entry.id, primaryUrl(entry)]));
 
-  /** What one folder publishes — the same rule active and archived. */
+  /** What one folder publishes - the same rule active and archived. */
   const publishedIn = (folder) => {
     const category = categoryOfArchivedFolder(folder);
     const hidden = new Set((excluded && excluded[category]) || []);
@@ -286,7 +286,7 @@ export function projectManifest(index, provenance, { game, folders, archived, ex
   return {
     generated: stamp,
     note:
-      'Generated by shared/stimuli/build.mjs from the shared library — edit that script or the ' +
+      'Generated by shared/stimuli/build.mjs from the shared library - edit that script or the ' +
       'library, never this file. `pathAliases` maps every URL this game used to serve to the ' +
       'library URL that replaced it.',
     library: `${SITE_BASE}stimuli.json`,
@@ -307,7 +307,7 @@ export function projectManifest(index, provenance, { game, folders, archived, ex
  * Project `shared/stimuli/ffc.json` back out as `ffc/items.json`.
  *
  * ffc is not a topic game: it has no folder list and no manifest, because its
- * programme *is* its item list — one curated set of words each carrying the
+ * programme *is* its item list - one curated set of words each carrying the
  * feature / function / class metadata the three discrimination modes ask about.
  * So it joins the library by id rather than by category, and this projection
  * carries no `image` and no `label` at all: the game resolves both from
@@ -345,7 +345,7 @@ export function projectFfcItems(index, source, { stamp }) {
   return {
     generated: stamp,
     note:
-      'Generated by shared/stimuli/build.mjs from shared/stimuli/ffc.json — edit that file, never '
+      'Generated by shared/stimuli/build.mjs from shared/stimuli/ffc.json - edit that file, never '
       + 'this one. Labels and images are NOT here: the game resolves both from `library` by id, so '
       + 'an uploaded photograph reaches ffc without this document being rebuilt. `idAliases` maps '
       + 'every bare-stem id ffc used to key by to the shared stimulus id that replaced it.',
@@ -375,7 +375,7 @@ function ownedRepoPaths(entry) {
  * An upload is authoritative: it supersedes every other art candidate for that
  * stimulus rather than joining them as a variant. A technician who uploads a
  * photo of a bear has chosen the bear picture, and only one URL per stimulus
- * is ever published anyway — keeping the old file as an unpublished alternate
+ * is ever published anyway - keeping the old file as an unpublished alternate
  * would mean the rebuild had to rename files on every upload, which is exactly
  * the churn that makes an in-worker update impossible to keep honest.
  *
@@ -383,7 +383,7 @@ function ownedRepoPaths(entry) {
  *   where `manifests` is game -> live manifest.
  * @param {object} upload `{ game, category, filename, sha256, label }`
  * @returns {object} `{ index, provenance, manifests, id, url, addRepoPaths,
- *   removeRepoPaths }` — all fresh objects; nothing in `state` is touched.
+ *   removeRepoPaths }` - all fresh objects; nothing in `state` is touched.
  *   Callers must hash `stableJson(index)` and {@link stampManifests}.
  */
 export function applyUpload(state, upload) {
@@ -423,8 +423,7 @@ export function applyUpload(state, upload) {
 
   const uploadUrl = `${UPLOADS_URL_PREFIX}${category}/${filename}`;
 
-  // Any earlier upload for this same stimulus goes with the file it named —
-  // re-uploading `bear.png` over `bear.jpg` must not leave the old one behind
+  // Any earlier upload for this same stimulus goes with the file it named - // re-uploading `bear.png` over `bear.jpg` must not leave the old one behind
   // for the next rebuild to resurrect as an alternate. Its provenance record
   // goes too, because a rebuild scans what is on disk and would not write one.
   const staleUploads = Object.keys(state.provenance).filter(
@@ -483,8 +482,8 @@ function withCategory(games, game, category) {
   const target = game && games[game];
   if (!target || target.folders.includes(category)) return games;
   // An archived topic stays archived. The technician took it out of the
-  // programme deliberately, and the upload still reaches it — `archived` is
-  // projected from the same category — so re-adding the folder here would
+  // programme deliberately, and the upload still reaches it - `archived` is
+  // projected from the same category - so re-adding the folder here would
   // quietly undo a decision nobody asked to undo.
   if (archivedNames(target.archived).includes(archivedFolderName(category))) return games;
   return { ...games, [game]: { ...target, folders: [...target.folders, category].sort() } };
@@ -496,7 +495,7 @@ function withCategory(games, game, category) {
  * Removal used to delete the file, which was safe when every game carried its
  * own copy of the art. It is not safe now: the same bytes back three games, so
  * deleting them on matching's behalf would pull the picture out of clock and
- * receptive too. So a removal is recorded as an exclusion — the art stays in
+ * receptive too. So a removal is recorded as an exclusion - the art stays in
  * the library, this game stops offering it, and nothing another game runs
  * changes.
  *
@@ -529,8 +528,8 @@ export function applyExclusion(state, { game, category, id }) {
 /**
  * Change one game's topic list, leaving every file where it is.
  *
- * Archiving used to be a directory rename — `T_colors/` became `_a_T_colors/`
- * inside that game's own `_Resources` tree — which was safe only while each
+ * Archiving used to be a directory rename - `T_colors/` became `_a_T_colors/`
+ * inside that game's own `_Resources` tree - which was safe only while each
  * game carried its own copy of the art. It is not safe now: one blob backs
  * three games, so moving the colours out of matching's way would take them out
  * of clock and receptive too, and the prefixed directory would not be a
@@ -585,7 +584,7 @@ export function applyTopicRestore(state, { game, folder }) {
 }
 
 /**
- * Drop an archived topic for good — for this game.
+ * Drop an archived topic for good - for this game.
  *
  * Purging used to delete the pictures (a rename to `_x_`, invisible to every
  * reader). It cannot, for the same reason removal cannot: the art is shared.
@@ -603,14 +602,14 @@ export function applyTopicPurge(state, { game, folder }) {
 }
 
 /**
- * Name one game's topic — the rename that a shared library can honour.
+ * Name one game's topic - the rename that a shared library can honour.
  *
  * The legacy rename moved the topic's directory and, with it, the key every
  * stimulus id is derived from. Neither half of that survives the library: the
  * directory now backs three games, and re-keying `T_colors` to `T_colours`
  * would re-key `colors-red` to `colours-red`, orphaning every saved target
  * selection naming it. So a rename sets a *name*. The category keeps its
- * stable key, nothing moves, and the name is per game — matching renaming its
+ * stable key, nothing moves, and the name is per game - matching renaming its
  * colours topic leaves clock's alone, exactly as it did when each game carried
  * its own folder.
  *
@@ -618,7 +617,7 @@ export function applyTopicPurge(state, { game, folder }) {
  * name, so "rename it back" is a clear rather than a pinned duplicate.
  *
  * @param {object} state   as for {@link applyUpload}, plus `topicNames`
- * @param {object} change  `{ game, folder, name }` — `folder` may be archived
+ * @param {object} change  `{ game, folder, name }` - `folder` may be archived
  */
 export function applyTopicRename(state, { game, folder, name }) {
   const games = liveGames(state);
@@ -651,7 +650,7 @@ export function applyTopicRename(state, { game, folder, name }) {
 }
 
 /**
- * Set — or clear — a technician's label for a stimulus.
+ * Set - or clear - a technician's label for a stimulus.
  *
  * The label has to be returned as an override map, not just written into the
  * index: `stimuli.json` is generated, so a label that only lived there would
@@ -659,13 +658,13 @@ export function applyTopicRename(state, { game, folder, name }) {
  *
  * Clearing is why `derivedLabels` exists. AdminTools has always been able to
  * blank a display name and get the library's own label back, but a Worker
- * cannot re-derive that label — it would have to redo the whole merge. So the
+ * cannot re-derive that label - it would have to redo the whole merge. So the
  * label being overridden is captured the first time an override lands, and a
  * clear puts it back. `build.mjs` reads only `overrides`, so the record costs a
  * rebuild nothing.
  *
  * @param {object} state    as for {@link applyUpload}, plus `derivedLabels`
- * @param {object} change   `{ id, label }` — a blank `label` clears
+ * @param {object} change   `{ id, label }` - a blank `label` clears
  */
 export function applyLabel(state, { id, label }) {
   const existing = state.index.stimuli.find((entry) => entry.id === id);
@@ -701,7 +700,7 @@ export function applyLabel(state, { id, label }) {
 /**
  * `folders`, `archived` and the exclusion list are technician state that only
  * ever lived in the manifest, so the live manifest (plus `publishing.json`) is
- * where they are read from — never the frozen pre-repoint snapshot, which
+ * where they are read from - never the frozen pre-repoint snapshot, which
  * would silently revert a topic a technician added. Art ranking never reads a
  * generated manifest (see build.mjs), so this is not the self-referential read
  * that would let the library drift.
@@ -717,7 +716,7 @@ export function liveGames(state) {
       archived: archivedNames(manifest.archived),
       excluded: excluded[game] || {},
       // Topic names come from `topics.json`, not from the manifest they are
-      // projected into — a name read back out of the projection would be
+      // projected into - a name read back out of the projection would be
       // indistinguishable from a derived one and could never be cleared.
       names: names[game] || {},
     };
@@ -729,7 +728,7 @@ export const publishingFrom = (games) => ({
   schema: 1,
   note:
     'Stimuli a technician removed from a game, by stimulus id. The art stays in the shared ' +
-    'library — the same bytes back three games, so deleting it on one game\'s behalf would pull ' +
+    'library - the same bytes back three games, so deleting it on one game\'s behalf would pull ' +
     'the picture out of the other two.',
   excluded: Object.fromEntries(Object.entries(games).map(([game, v]) => [game, v.excluded || {}])),
 });

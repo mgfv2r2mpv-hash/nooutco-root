@@ -1,11 +1,11 @@
 import { useState } from 'react';
 
 const REFS = [
-  { authors: 'Anderson, C. M., & Long, E. S. (2002).', title: 'Use of a structured descriptive assessment methodology to identify variables affecting problem behavior.', journal: 'Journal of Applied Behavior Analysis, 35', pages: '137–154.', doi: 'https://doi.org/10.1901/jaba.2002.35-137' },
-  { authors: 'Call, N. A., Pabico, R. S., Findley, A. J., & Valentino, A. L. (2024).', title: 'A systematic review of descriptive assessment methodology.', journal: 'Journal of Applied Behavior Analysis, 57', pages: '288–313.', doi: 'https://doi.org/10.1002/jaba.1045' },
-  { authors: 'Camp, E. M., Iwata, B. A., Hammond, J. L., & Bloom, S. E. (2009).', title: 'Antecedent versus consequent events as predictors of problem behavior.', journal: 'Journal of Applied Behavior Analysis, 42', pages: '469–483.', doi: 'https://doi.org/10.1901/jaba.2009.42-469' },
-  { authors: 'Contreras, B. P., Vargo, K. K., & Rooker, G. W. (2023).', title: 'Review of the conditional probability record in applied research.', journal: 'Journal of Applied Behavior Analysis, 56', pages: '758–774.', doi: 'https://doi.org/10.1002/jaba.958' },
-  { authors: 'Vollmer, T. R., Borrero, J. C., Wright, C. S., Van Camp, C., & Lalli, J. S. (2001).', title: 'Identifying possible contingencies during descriptive analyses of severe behavior disorders.', journal: 'Journal of Applied Behavior Analysis, 34', pages: '269–287.', doi: 'https://doi.org/10.1901/jaba.2001.34-269' },
+  { authors: 'Anderson, C. M., & Long, E. S. (2002).', title: 'Use of a structured descriptive assessment methodology to identify variables affecting problem behavior.', journal: 'Journal of Applied Behavior Analysis, 35', pages: '137-154.', doi: 'https://doi.org/10.1901/jaba.2002.35-137' },
+  { authors: 'Call, N. A., Pabico, R. S., Findley, A. J., & Valentino, A. L. (2024).', title: 'A systematic review of descriptive assessment methodology.', journal: 'Journal of Applied Behavior Analysis, 57', pages: '288-313.', doi: 'https://doi.org/10.1002/jaba.1045' },
+  { authors: 'Camp, E. M., Iwata, B. A., Hammond, J. L., & Bloom, S. E. (2009).', title: 'Antecedent versus consequent events as predictors of problem behavior.', journal: 'Journal of Applied Behavior Analysis, 42', pages: '469-483.', doi: 'https://doi.org/10.1901/jaba.2009.42-469' },
+  { authors: 'Contreras, B. P., Vargo, K. K., & Rooker, G. W. (2023).', title: 'Review of the conditional probability record in applied research.', journal: 'Journal of Applied Behavior Analysis, 56', pages: '758-774.', doi: 'https://doi.org/10.1002/jaba.958' },
+  { authors: 'Vollmer, T. R., Borrero, J. C., Wright, C. S., Van Camp, C., & Lalli, J. S. (2001).', title: 'Identifying possible contingencies during descriptive analyses of severe behavior disorders.', journal: 'Journal of Applied Behavior Analysis, 34', pages: '269-287.', doi: 'https://doi.org/10.1901/jaba.2001.34-269' },
 ] as const;
 
 export function AboutCPR() {
@@ -47,7 +47,7 @@ export function AboutCPR() {
               <p className="text-xs">
                 Computes <strong>P(Bx|C+)</strong> (how often behavior occurs when a consequence is observed to
                 naturally follow) versus <strong>P(Bx|C−)</strong> when it is absent. The Contingency Value
-                (CV = P(Bx|C+) − P(Bx|C−)) reflects the strength of the behavior–consequence relationship for each
+                (CV = P(Bx|C+) − P(Bx|C−)) reflects the strength of the behavior - consequence relationship for each
                 functional category (attention, tangible, escape, sensory).
               </p>
             </div>

@@ -5,19 +5,18 @@
 
    U3 changes how the stage FITS, which rescales the client, which moves every
    drag target's rendered rect. `F-11` proves the pixels a tool paints land
-   inside the box the child is told to work in — but it works entirely in canvas
+   inside the box the child is told to work in - but it works entirely in canvas
    coordinates, so a fit that moved the overlay off the art would leave F-11
    green and the game unplayable. This presses the boxes instead.
 
    Per model × tool × device it:
      1. arms the tool and reads the target overlay the runtime rendered, from the
-        DOM — real page geometry, not the zone table;
+        DOM - real page geometry, not the zone table;
      2. checks that rect lies on the client's canvas (a hitbox off the art is the
         failure U3 could have introduced);
-     3. drives a REAL pointer inside it — drag for paint tools, click for taps —
-        and checks the tool actually took.
+     3. drives a REAL pointer inside it - drag for paint tools, click for taps - and checks the tool actually took.
 
-   One tool per SLOT — the trolley stocks a dozen lipstick shades and they are
+   One tool per SLOT - the trolley stocks a dozen lipstick shades and they are
    one article with one target box, which is the thing under test. That is the
    same 14-ish set F-11 measures, pressed instead of read.
 
@@ -65,7 +64,7 @@ for (const d of DEVICES) {
   await page.waitForFunction(() => !!window.GlamTT && !!window.GlamStory);
   await page.getByTitle('Show / hide setup').click();
   await page.getByRole('button', { name: /^▶ Play/ }).click();
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   await page.waitForFunction(painted, undefined, { timeout: 20000 });
 
   const models = await page.evaluate(() => window.GlamStory.MODELS);
@@ -85,7 +84,7 @@ for (const d of DEVICES) {
     for (const t of tools) {
       /* Clear the look and the turn's action ledger before each tool. Without
          the ledger reset `arm()` starts REFUSING once the auto-scaled budget is
-         spent, which is correct game behaviour and useless here — this is about
+         spent, which is correct game behaviour and useless here - this is about
          the geometry of a target that is offered, not about the cap. */
       await logic(page, `return (async () => {
         L.play({ keepClient:true }); await new Promise((r) => setTimeout(r, 60));

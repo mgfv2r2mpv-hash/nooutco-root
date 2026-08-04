@@ -1,7 +1,7 @@
 # bt-profile-api
 
 The technician style profile store. It learns how a given behavior technician
-writes — from the corrections they make to generated notes — and hands the tools
+writes - from the corrections they make to generated notes - and hands the tools
 app a short block of abstract style rules to fold into the system prompt.
 
 ## What it may never hold
@@ -10,7 +10,7 @@ Clinical text. Note prose. Client identifiers. Anything a technician typed.
 
 Every column in `schema.sql` is a number, a timestamp, a login-code id, or a
 value drawn from the closed list in `src/features.js`. The browser measures a
-diff and sends a **feature name plus a direction** — never the words that
+diff and sends a **feature name plus a direction** - never the words that
 changed. `src/validate.js` rebuilds every payload from an allowlist and *drops*
 anything that is not already a number or boolean rather than coercing it, because
 coercion is exactly how a note ends up stored as `[object Object]`.
@@ -23,7 +23,7 @@ Treat "is this column content-free?" as a review gate on any future migration.
 `[[routes]]`. **Ingress is the security control.** The only way to reach this
 Worker is the `PROFILE` service binding on the tools Pages project, so a
 technician holding a valid session token still cannot read or forge another
-technician's profile — there is no address to send the request to.
+technician's profile - there is no address to send the request to.
 
 That is also why this Worker does not verify the session token itself: it has no
 access to `ADMIN_SECRET` and no independent way to. It trusts the caller for
@@ -52,8 +52,7 @@ These are deliberately strict. A wrong rule quietly degrades every note that
 technician writes, and they have no way to tell it is the cause.
 
 A muted rule keeps its evidence, so it can resurface if they keep making that
-correction. If the evidence later flips the *direction*, the mute is cleared —
-the rule has become its own opposite, and the technician never objected to that
+correction. If the evidence later flips the *direction*, the mute is cleared - the rule has become its own opposite, and the technician never objected to that
 one.
 
 ## Setup
@@ -88,7 +87,7 @@ If the output has no `services` entry, the binding is not live and
 
 ## Local development
 
-No account resources needed — miniflare keeps an on-disk sqlite:
+No account resources needed - miniflare keeps an on-disk sqlite:
 
 ```bash
 npm run db:local     # apply schema.sql to the local D1

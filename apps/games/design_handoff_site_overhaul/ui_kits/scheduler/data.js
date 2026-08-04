@@ -1,5 +1,5 @@
 /* Fake schedule data for the SAssi UI kit. Mirrors the shape of the app's
-   ScheduleData (clients, technicians, appointments) at a glance — no real PHI.
+   ScheduleData (clients, technicians, appointments) at a glance - no real PHI.
    Names are clearly fictional. Times are local-ISO-ish strings. */
 (function () {
   const TYPE = {
@@ -36,7 +36,7 @@
     { id: 'a17', day: 25, start: '9:00',  end: '11:30', type: 'direct',      client: 'Sam D.',  tech: 'Devon K.',  status: 'scheduled' },
   ];
 
-  // Compliance snapshot — per client (supervision %) and per tech (hours).
+  // Compliance snapshot - per client (supervision %) and per tech (hours).
   const clientComp = [
     { name: 'Theo R.', pct: 38, target: 20, status: 'over' },
     { name: 'Mia L.',  pct: 14, target: 20, status: 'pace' },

@@ -1,4 +1,4 @@
-/* Finding B — is the eyes+brows mask key anti-aliased at all?
+/* Finding B - is the eyes+brows mask key anti-aliased at all?
 
    Refutes lead 1 (the hard `eb<0.12` cutoff in `_eyesCanvas` stair-stepping an
    anti-aliased edge): the blue channel is ~93 % exactly 255 and its whole 1..63
@@ -14,9 +14,9 @@
    outer brow tail and the temple/hairline, from three separate sources so the
    compositing step responsible can be named rather than guessed:
 
-     base   — the raw base.png alone (what ships in the art)
-     mask   — mask.png's BLUE channel (the eyes+brows lift key)
-     canvas — the composited avatar as the child sees it
+     base - the raw base.png alone (what ships in the art)
+     mask - mask.png's BLUE channel (the eyes+brows lift key)
+     canvas - the composited avatar as the child sees it
 
    Everything is measured in the base image's own pixel space and then mapped
    onto the canvas, so the three are comparable. */

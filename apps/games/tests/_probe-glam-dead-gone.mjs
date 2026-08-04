@@ -1,4 +1,4 @@
-/* Rulings 2 + 3 — what the cart shows at each stage of the spots step.
+/* Rulings 2 + 3 - what the cart shows at each stage of the spots step.
  *
  * Walks the spots step stage by stage and prints, for each: the tools left on
  * the Skincare shelf, its header mark, and whether the shelf is settled and
@@ -7,7 +7,7 @@
  * Runs in the STAGED routine, which is where a shelf can settle and so where
  * ruling 3's ✓ record row appears. That also means later stations are still
  * locked by the task-analysis gate and simply absent from the cart, so this
- * probe says nothing about the 67 free-but-live tools — for those, run
+ * probe says nothing about the 67 free-but-live tools - for those, run
  * `_probe-glam-turn-sweep.mjs`, which sweeps the whole catalogue with every
  * tool unlocked.
  *
@@ -34,7 +34,7 @@ await page.waitForFunction(() => !!window.GlamTT);
 await page.getByTitle('Show / hide setup').click();
 await page.getByLabel('Turns', { exact: true }).selectOption('10');
 await page.getByRole('button', { name: /^▶ Play/ }).click();
-await page.getByRole('button', { name: /Go —/ }).click();
+await page.getByRole('button', { name: /Go - / }).click();
 await page.waitForFunction(painted, undefined, { timeout: 20000 });
 
 const out = await page.evaluate(async () => {
@@ -68,7 +68,7 @@ for (const s of out.stages) {
   const k = s.skincare;
   console.log(`\n${s.name}`);
   console.log(k ? `   Skincare  mark="${k.mark}"  settled=${k.settled}  headerDisabled=${k.disabled}  tools=[${k.tools.join(', ')}]`
-                : '   Skincare  — shelf not rendered at all');
+                : '   Skincare - shelf not rendered at all');
 }
 console.log('\nshelves still rendered (label:tools-left):', out.shelves.join(' | '));
 console.log('console errors:', errs.length ? errs : 'none');

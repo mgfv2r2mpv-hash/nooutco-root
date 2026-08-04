@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { bootstrap, chooseTask, choosePlace, respondCorrect, peek, waitIdle } from './lib/snack-quest.js';
 
-test.describe('Snack Quest — task → place → quest', () => {
+test.describe('Snack Quest - task → place → quest', () => {
   for (const task of ['matching', 'receptive', 'expressive']) {
     test(`${task} reaches a trial`, async ({ page }) => {
       await bootstrap(page);
@@ -41,7 +41,7 @@ test.describe('Snack Quest — task → place → quest', () => {
   });
 });
 
-test.describe('Snack Quest — movement is driven by the schedule', () => {
+test.describe('Snack Quest - movement is driven by the schedule', () => {
   test('FR1 delivers on every correct round', async ({ page }) => {
     await bootstrap(page, { scheduleValue: 1, goalTokens: 3 });
     await chooseTask(page, 'matching');
@@ -60,7 +60,7 @@ test.describe('Snack Quest — movement is driven by the schedule', () => {
     await expect(page.locator('#screen-done')).toBeVisible();
   });
 
-  test('FR3 moves him partway on rounds 1–2 and delivers on round 3', async ({ page }) => {
+  test('FR3 moves him partway on rounds 1-2 and delivers on round 3', async ({ page }) => {
     await bootstrap(page, { scheduleValue: 3, goalTokens: 2 });
     await chooseTask(page, 'matching');
     await choosePlace(page, 'countryside');
@@ -68,7 +68,7 @@ test.describe('Snack Quest — movement is driven by the schedule', () => {
     const start = await peek(page);
     expect(start.collected).toHaveLength(0);
 
-    // Round 1 — no delivery, but he must still have covered ground.
+    // Round 1 - no delivery, but he must still have covered ground.
     await respondCorrect(page);
     await waitIdle(page);
     const r1 = await peek(page);
@@ -76,14 +76,14 @@ test.describe('Snack Quest — movement is driven by the schedule', () => {
     expect(Math.abs(r1.friendCentreX - start.friendCentreX)).toBeGreaterThan(4);
     expect(Math.abs(r1.friendCentreX - r1.foodCentreX)).toBeGreaterThan(r1.friendHalfW + r1.foodHalfW);
 
-    // Round 2 — still no delivery, still moving.
+    // Round 2 - still no delivery, still moving.
     await respondCorrect(page);
     await waitIdle(page);
     const r2 = await peek(page);
     expect(r2.collected).toHaveLength(0);
     expect(Math.abs(r2.friendCentreX - r1.friendCentreX)).toBeGreaterThan(4);
 
-    // Round 3 — the schedule reinforces: he arrives and the food is collected.
+    // Round 3 - the schedule reinforces: he arrives and the food is collected.
     const foodBefore = r2.foodCentreX;
     await respondCorrect(page);
     await waitIdle(page);
@@ -145,7 +145,7 @@ test.describe('Snack Quest — movement is driven by the schedule', () => {
     await waitIdle(page);
     const after = await peek(page);
 
-    // He walks — an error is never answered with stillness.
+    // He walks - an error is never answered with stillness.
     expect(Math.abs(after.friendCentreX - before.friendCentreX)).toBeGreaterThan(4);
     // But arriving is what a reinforced round buys, so he stays clear of it.
     expect(after.collected).toHaveLength(0);
@@ -193,7 +193,7 @@ test.describe('Snack Quest — movement is driven by the schedule', () => {
   });
 });
 
-test.describe('Snack Quest — the final screen', () => {
+test.describe('Snack Quest - the final screen', () => {
   test('shows the chosen place artwork with the collected food in front of it', async ({ page }) => {
     await bootstrap(page, { scheduleValue: 1, goalTokens: 3 });
     await chooseTask(page, 'receptive');
@@ -228,7 +228,7 @@ test.describe('Snack Quest — the final screen', () => {
   });
 });
 
-test.describe('Snack Quest — session results', () => {
+test.describe('Snack Quest - session results', () => {
   test('accumulate across two playthroughs with different tasks', async ({ page }) => {
     await bootstrap(page, { scheduleValue: 1, goalTokens: 2 });
 
@@ -276,7 +276,7 @@ test.describe('Snack Quest — session results', () => {
   });
 });
 
-test.describe('Snack Quest — no console errors', () => {
+test.describe('Snack Quest - no console errors', () => {
   test('a full quest logs nothing to console.error', async ({ page }) => {
     const errors = [];
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });

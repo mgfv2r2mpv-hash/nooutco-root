@@ -1,8 +1,8 @@
-/* THIRD PASS · Finding A1 — is the winged-liner sprite painting over the lashes?
+/* THIRD PASS · Finding A1 - is the winged-liner sprite painting over the lashes?
  *
  * `paintAvatar` draws the glam lash sprite and then draws the eyeliner sprite ON
  * TOP of it, and the code's own note says the liner sprite "carries its own"
- * eyeball. If that sprite is a WHOLE eye — sclera, lid, lash line — then every
+ * eyeball. If that sprite is a WHOLE eye - sclera, lid, lash line - then every
  * opaque pale pixel in it lands on whatever the lash sprite drew underneath.
  *
  * This renders one eye at ×14 in four states so the answer is visible, and
@@ -78,7 +78,7 @@ for (const m of ['m2', 'm3', 'm4']) {
 
     /* The direct question: how many lash pixels does ADDING the liner sprite make
        brighter, measured against the mascara frame rather than against the bare
-       face — so the skincare wash cannot be mistaken for the defect. */
+       face - so the skincare wash cannot be mistaken for the defect. */
     let over=0, worst=0, sum=0;
     for(const i of lash){ const d=lum(both.data,i)-lum(masc.data,i);
       if(d>4){ over++; sum+=d; if(d>worst) worst=d; } }

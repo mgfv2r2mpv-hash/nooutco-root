@@ -47,7 +47,7 @@ export class LocalStorageAssessmentService implements AssessmentService {
     writeStore(store);
   }
 
-  /** Wipe all stored assessments — used by the "Reset all" action. */
+  /** Wipe all stored assessments - used by the "Reset all" action. */
   static clearAll(): void {
     localStorage.removeItem(STORAGE_KEY);
   }

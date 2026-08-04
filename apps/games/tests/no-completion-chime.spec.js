@@ -10,7 +10,7 @@ const GAMES_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '.
  *
  * Removed on the maintainer's instruction. A tone that fires on every goal, in
  * a room where sessions run back to back, stops being a reinforcer and becomes
- * something staff and learners endure — and an unexpected sound is its own
+ * something staff and learners endure - and an unexpected sound is its own
  * problem for a learner who is sound-sensitive.
  *
  * Two tests, because the two ways this comes back are different. The runtime

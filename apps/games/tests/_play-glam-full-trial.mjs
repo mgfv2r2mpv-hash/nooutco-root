@@ -42,10 +42,10 @@ const view = () => L(`const v=L.renderVals(); const t=T&&T.turn;
     turn:t?{n:t.n,actor:t.actor,actions:t.actions,budget:t.budget,overCap:t.overCap,forfeit:t.forfeit||null}:null,
     target:{drag:!!v.target.drag,tap:!!v.target.tap,pop:!!v.target.pop,pims:(v.target.pimples||[]).length},
     /* What the child can reach, and which of those already carry a ✓. The
-       driver picks an UNTICKED one — exactly the read a child makes. Picking
+       driver picks an UNTICKED one - exactly the read a child makes. Picking
        blind loops forever on the first tool, because re-dragging a finished
        shade is now free and the budget never moves. */
-    /* Everything the palette renders IS live now — a tool whose mechanism has
+    /* Everything the palette renders IS live now - a tool whose mechanism has
        gone dead leaves the cart rather than sitting on it disabled (maintainer
        ruling), so there is no longer a disabled face to filter out. */
     live:(()=>{ const cat=L.cfg().cats.flatMap(g=>g.options);
@@ -92,7 +92,7 @@ await page.goto('http://localhost:8788/glam-team-makeover/');
 await page.waitForFunction(() => !!window.GlamTT && !!window.GlamStory);
 log('· title screen up');
 await btn(/^Start/).click();
-log('· Start tapped — the client is texting');
+log('· Start tapped - the client is texting');
 // Let the thread arrive on its own for a while, then use the shipped Skip.
 const salon = btn(/Open the salon/);
 for (let i = 0; i < 30 && !(await salon.isVisible().catch(() => false)); i++) await page.waitForTimeout(500);
@@ -113,14 +113,14 @@ for (let step = 0; step < 600; step++) {
   const v = await view();
   if (process.env.GTM_TRACE) log('  step', step, v.phase, 'armed=' + v.armed, v.turn ? `${v.turn.actions}/${v.turn.budget}` : '-', 'live=' + v.live.length + '/todo=' + v.live.filter((o) => !o.done).length, JSON.stringify(v.target));
   if (v.phase === 'done') break;
-  if (v.phase === 'ready') { await btn(/Go —/).click(); log(`· turn ${v.turn ? v.turn.n : '?'} — Go`); continue; }
+  if (v.phase === 'ready') { await btn(/Go - /).click(); log(`· turn ${v.turn ? v.turn.n : '?'} - Go`); continue; }
   if (v.phase === 'giveback') { await btn(/My turn again/).click(); continue; }
 
   const atCap = v.turn && v.turn.actions >= v.turn.budget;
   if (v.phase === 'theirs') {
     if (atCap) { await btn(/I asked|My turn again/).click(); log('· asked for the turn back'); continue; }
   } else if (v.phase === 'mine' && atCap) {
-    await btn(/Done — their turn/).click(); log(`· handed over at ${v.turn.actions}/${v.turn.budget}`); continue;
+    await btn(/Done - their turn/).click(); log(`· handed over at ${v.turn.actions}/${v.turn.budget}`); continue;
   }
 
   if (v.armed) { const how = await useTarget(v);

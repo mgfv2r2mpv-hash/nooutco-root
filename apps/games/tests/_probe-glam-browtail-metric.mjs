@@ -1,13 +1,13 @@
-/* Finding B — the METRIC, run identically against any build.
+/* Finding B - the METRIC, run identically against any build.
 
    stray-ink pixel := on the composited BARE face (no tool used, no recolour), a
    pixel inside the brow-tail band that
-     (a) the model's own mask calls skin — hair < 0.10, lips < 0.12, eyes+brows
+     (a) the model's own mask calls skin - hair < 0.10, lips < 0.12, eyes+brows
          key < 0.12, which excludes hair, the hairline's anti-aliased edge, and
          the region the base render's build-time brow removal DID reach;
      (b) is not covered by the brow STATE SPRITE (its own alpha, sampled at the
          exact rect paintAvatar draws it into, must be <= 8); and
-     (c) is darker than 0.86 x the model's CHEEK skin luminance — a reference
+     (c) is darker than 0.86 x the model's CHEEK skin luminance - a reference
          taken well away from the band so the repair cannot move the threshold.
 
    From apps/games:
@@ -98,7 +98,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     await page.getByLabel('Character', { exact: true }).selectOption(m);
     await page.getByLabel('Routine', { exact: true }).selectOption('free');
     await page.getByRole('button', { name: /^▶ Play/ }).click();
-    await page.getByRole('button', { name: /Go —/ }).click();
+    await page.getByRole('button', { name: /Go - / }).click();
     await page.waitForFunction(painted, undefined, { timeout: 20000 });
     // the spot flaws are seeded per play and one of m4's pool positions lands
     // inside the R band, so leaving them in makes the count run-dependent

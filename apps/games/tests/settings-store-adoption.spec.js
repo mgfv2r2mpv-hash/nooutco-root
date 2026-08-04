@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Stage 6, part 2 — the games adopt the shared settings store.
+ * Stage 6, part 2 - the games adopt the shared settings store.
  *
  * `sequences` was migrated in part 1 because it is where the pattern came from.
  * Every other game moves the same way and has to prove the same four things,
@@ -9,7 +9,7 @@ import { test, expect } from '@playwright/test';
  *
  *   1. the module is actually loaded (a missing script tag takes the game down
  *      at parse time, so this is the assertion that names the cause)
- *   2. the retired key FOLDS — every option a technician set comes back, in the
+ *   2. the retired key FOLDS - every option a technician set comes back, in the
  *      store AND in the panel they read it from
  *   3. the retired key is NEVER dropped: it survives the fold, and it survives
  *      subsequent edits, byte for byte
@@ -36,7 +36,7 @@ import { test, expect } from '@playwright/test';
  * its own:
  *   - `boot`: the control each game fills straight after `loadSettings()`,
  *     which is the signal that the store has already been read. A row whose
- *     dropdown ships EMPTY — with no placeholder option to be *not* — names the
+ *     dropdown ships EMPTY - with no placeholder option to be *not* - names the
  *     `text` it expects instead of a `notText` to exclude.
  *   - `probe`: the numeric control the generic edit / precedence / clamp
  *     assertions drive. Five games share `#inp-size`; `patterns` has no array
@@ -171,7 +171,7 @@ const ADOPTED = [
     storeKey: 'nooutco.settings.matching',
     seeded: {
       arraySize: 6,
-      // The toolbar Simple/Visual slider — no panel control, so it is asserted
+      // The toolbar Simple/Visual slider - no panel control, so it is asserted
       // through the toggle's own aria-checked, which is what a technician sees.
       displayMode: 'visual',
       representErrors: false,
@@ -233,7 +233,7 @@ const ADOPTED = [
     seeded: {
       arraySize: 6,
       // 'light' is reachable only from the select, never from the toolbar
-      // slider — so it is the value that proves the whole enum survived.
+      // slider - so it is the value that proves the whole enum survived.
       animTier: 'light',
       showCaption: true,
       sameCustomerOnRetry: false,
@@ -343,13 +343,13 @@ const ADOPTED = [
     legacyKey: 'ppcSettings',
     storeKey: 'nooutco.settings.patterns',
     boot: { selector: '#sel-set option', notText: '-- loading --' },
-    // No array size in this game — the bank size is the stepper the generic
+    // No array size in this game - the bank size is the stepper the generic
     // assertions drive, and its ceiling is 8 rather than 10.
     probe: { selector: '#inp-bank', option: 'bankSize', seeded: 6, edited: 7, ahead: 8, max: 8 },
     seeded: {
       patternLength: 3,
       shownReps: 1,
-      // Only meaningful against patternLength 3 — a blanksToFill max resolved
+      // Only meaningful against patternLength 3 - a blanksToFill max resolved
       // from the *declared* default of 2 instead of the stored 3 clamps it.
       blanksToFill: 3,
       bankSize: 6,
@@ -464,7 +464,7 @@ const ADOPTED = [
       controls: [
         ['#sel-prompt-delay', 'value', '10'],
         // 5 is not one of the field-size buttons, so leaving it stored renders
-        // the row with NO size selected — which reads as "unset", not as 5.
+        // the row with NO size selected - which reads as "unset", not as 5.
         ['#sizes button.on', 'text', '4'],
         ['#pron button.on', 'attr:data-v', 'rotate'],
       ],
@@ -630,9 +630,9 @@ async function seed(page, entries) {
 
 /**
  * Wait for a signal that boot has finished adopting the settings: every game
- * builds a dropdown straight after `loadSettings()` — the stimulus topic for
+ * builds a dropdown straight after `loadSettings()` - the stimulus topic for
  * the six library games, the category for `intraverbal`, the symbol set for
- * `patterns` — so a dropdown with real options means the store has been read.
+ * `patterns` - so a dropdown with real options means the store has been read.
  */
 async function bootedWithSettings(page, boot) {
   const { selector, notText, text } = boot || DEFAULT_BOOT;
@@ -641,7 +641,7 @@ async function bootedWithSettings(page, boot) {
   // ('-- scanning --', '(no categories)'). `think-or-say`'s category select
   // ships with NO options at all, so there is no placeholder to be *not*: the
   // equivalent signal is the text of the first option the game builds.
-  // (Both forms wait — a negated locator assertion fails on an element that
+  // (Both forms wait - a negated locator assertion fails on an element that
   // never appears rather than passing vacuously; verified, not assumed.)
   if (text != null) await expect(locator).toHaveText(text);
   else await expect(locator).not.toHaveText(notText);
@@ -674,7 +674,7 @@ for (const row of ADOPTED) {
   const secondary = row.secondary || DEFAULT_SECONDARY;
   // Nine games spell the prompt delay `promptDelaySecs` (an int, paired with a
   // `promptDelay` bool). `emotions` has no bool at all and its `promptDelay`
-  // IS the seconds — finding 63, and it cannot be harmonised away.
+  // IS the seconds - finding 63, and it cannot be harmonised away.
   const delayOption = row.delayOption || 'promptDelaySecs';
   const OUT_OF_RANGE = row.outOfRange || outOfRange(probe);
   // What the store holds after the retired payload folds. Identical to the
@@ -708,7 +708,7 @@ for (const row of ADOPTED) {
     await page.goto(url);
     await bootedWithSettings(page, boot);
 
-    // The panel the technician reads is the assertion that matters — a fold
+    // The panel the technician reads is the assertion that matters - a fold
     // that landed in storage but never reached the controls is still a fold
     // that lost their configuration as far as they can tell.
     await expectControls(page, controls);
@@ -776,7 +776,7 @@ for (const row of ADOPTED) {
   // while the select offered 1/2/3/4/5/10, so 6-9 s were in range and
   // unrenderable at once: `select.value = 7` matches no option, the browser
   // resolves it to '', and the panel shows a blank where a programme parameter
-  // should be. The options were added (never removed — hard constraint 1), and
+  // should be. The options were added (never removed - hard constraint 1), and
   // this is what fails if a later tidy-up prunes them back.
   test(`${game}: the prompt-delay select can show every value the store may hold`, async ({ page }) => {
     await seed(page, [[storeKey, { working: { [delayOption]: 7 } }]]);
@@ -792,7 +792,7 @@ for (const row of ADOPTED) {
 // ── ffc keeps two config documents, and they must not collide ──────────────
 
 /**
- * `nooutco.settings.ffc` was already taken when ffc adopted the store — by ffc.
+ * `nooutco.settings.ffc` was already taken when ffc adopted the store - by ffc.
  * The Frame 07 session panel persists a curated per-learner session there, in a
  * `{ sets, last, working }` document with exactly the shared store's SHAPE and
  * an entirely different schema. That is why the trial settings live under
@@ -881,7 +881,7 @@ test('think-or-say: the folded configuration reaches the deck, not just the pane
   // This game keeps its configuration in the controls rather than in `state`,
   // so `buildDeck()` reads `#sel-category` and `#sel-order` directly. That makes
   // "the fold reached the panel" and "the fold reached the programme" the same
-  // read here — but only if a session can still be started at all, which is the
+  // read here - but only if a session can still be started at all, which is the
   // path `saveSettings()` (now normalizing on the way out) runs first.
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -896,8 +896,7 @@ test('think-or-say: the folded configuration reaches the deck, not just the pane
 
   await page.locator('#btn-play').click();
 
-  // The first card of the 'kind' category, in the order they are declared —
-  // a card from any other category means the deck was built from something
+  // The first card of the 'kind' category, in the order they are declared - // a card from any other category means the deck was built from something
   // other than the technician's folded selection.
   await expect(page.locator('#scenario-situation'))
     .toHaveText('Your friend shows you a drawing they made. You really like how it looks.');
@@ -908,8 +907,7 @@ test('think-or-say: the folded configuration reaches the deck, not just the pane
 // ── think-or-say: the panel is a view of the configuration (Stage 7) ───────
 
 /**
- * This game used to read its programme parameters straight off the controls —
- * `buildDeck()` read `#sel-category`, `scheduleAutoPrompt()` read
+ * This game used to read its programme parameters straight off the controls - * `buildDeck()` read `#sel-category`, `scheduleAutoPrompt()` read
  * `#sel-prompt-delay`, and `saveSettings()` rebuilt the whole config from the
  * panel on every edit. `state.cfg` is now the single normalized copy and the
  * controls are a view of it.
@@ -952,7 +950,7 @@ test('think-or-say: an unrelated edit does not adopt a control nobody changed', 
 
   await silentlySelect(page, '#sel-level', '3');
 
-  // An unrelated, REAL edit — the path that used to rebuild the whole config
+  // An unrelated, REAL edit - the path that used to rebuild the whole config
   // from the panel, quietly adopting every control it found on the way past.
   await page.evaluate(() => {
     const box = document.querySelector('#chk-show-reason');

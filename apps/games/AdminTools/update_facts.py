@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-update_facts.py — Populate / regenerate Famous Person conversation facts.
+update_facts.py - Populate / regenerate Famous Person conversation facts.
 
 Each person in FamousPersonGame/index.html carries up to 4 "facts". A fact is no
-longer a plain string — it is a rich object with nine fields that drive the
+longer a plain string - it is a rich object with nine fields that drive the
 game's scaffolded prompts:
 
     text, topic, fragment,
@@ -61,32 +61,32 @@ SYSTEM_PROMPT = (
     "asking follow-up questions, and linking one idea to the next and to the "
     "client's own life.\n\n"
     "For the person you are given, write EXACTLY 4 facts that together form ONE "
-    "flowing conversation — NOT four disconnected trivia items. Order and word "
+    "flowing conversation - NOT four disconnected trivia items. Order and word "
     "them so each fact leads naturally into the next:\n"
-    "  Fact 1 — what the person is best known for (the hook).\n"
-    "  Fact 2 — a related achievement or turning point that follows from Fact 1.\n"
-    "  Fact 3 — a human, warm, or surprising personal detail.\n"
-    "  Fact 4 — their legacy / why they still matter, ending by turning the talk "
+    "  Fact 1 - what the person is best known for (the hook).\n"
+    "  Fact 2 - a related achievement or turning point that follows from Fact 1.\n"
+    "  Fact 3 - a human, warm, or surprising personal detail.\n"
+    "  Fact 4 - their legacy / why they still matter, ending by turning the talk "
     "toward the client.\n\n"
     "Each fact is a JSON object with these 9 fields. EVERY field is required and "
-    "must be plain, warm, spoken-style language — short words, one idea at a time, "
+    "must be plain, warm, spoken-style language - short words, one idea at a time, "
     "dignified and upbeat, nothing grim or violent. Use the person's FIRST name:\n"
-    "  text           — the fact, told to the client. ONE simple sentence, ~10-18 words.\n"
-    '  topic          — a 2-4 word label for the fact (e.g. "the moon landing").\n'
-    "  fragment       — the heart of the fact as a lowercase fragment with no "
+    "  text - the fact, told to the client. ONE simple sentence, ~10-18 words.\n"
+    '  topic - a 2-4 word label for the fact (e.g. "the moon landing").\n'
+    "  fragment - the heart of the fact as a lowercase fragment with no "
     'subject (e.g. "walked on the moon in 1969").\n'
-    '  commentMin     — a SHORT spoken starter the CLIENT could say; a few words '
+    '  commentMin - a SHORT spoken starter the CLIENT could say; a few words '
     'trailing off with "…" (least help).\n'
-    '  commentPartial — a fuller spoken comment with a stem for the client to '
+    '  commentPartial - a fuller spoken comment with a stem for the client to '
     'finish, ending with "…".\n'
-    "  commentFull    — a complete, natural spoken comment the client can copy "
+    "  commentFull - a complete, natural spoken comment the client can copy "
     "word-for-word.\n"
-    "  volleyMin      — an INDIRECT cue telling the CLINICIAN what to elicit; NOT "
+    "  volleyMin - an INDIRECT cue telling the CLINICIAN what to elicit; NOT "
     'a line to read aloud. Begin with "Ask about" or "Get them to…", trailing off '
     'with "…".\n'
-    "  volleyPartial  — a partial spoken volley: a brief reaction plus a question "
+    "  volleyPartial - a partial spoken volley: a brief reaction plus a question "
     'stem the client finishes (ends with "…"); lean it toward the NEXT fact\'s topic.\n'
-    "  volleyFull     — a complete spoken volley the client can copy: react, then "
+    "  volleyFull - a complete spoken volley the client can copy: react, then "
     "ask a question that BRIDGES into the next fact's topic. For Fact 4, instead "
     'turn the question to the client\'s own experience ("What about you…").\n\n'
     "Hard rules:\n"
@@ -95,7 +95,7 @@ SYSTEM_PROMPT = (
     "  • commentMin/Partial/Full and volleyPartial/Full are spoken BY the client "
     "(everyday first-person voice). volleyMin is an instruction to the clinician "
     "and is never read aloud.\n"
-    "  • Be accurate. Keep it positive — no death details, violence, or anything "
+    "  • Be accurate. Keep it positive - no death details, violence, or anything "
     "distressing.\n"
     "  • Vary how sentences open; don't start every line the same way.\n\n"
     "Return ONLY a JSON array of exactly 4 fact objects, each with all 9 fields. "
@@ -235,7 +235,7 @@ def _validate_facts(parsed) -> list[dict]:
 
 def generate_facts(client: anthropic.Anthropic, name: str, years: str, tag: str) -> list[dict]:
     """Generate a connected 4-fact conversation arc for one person."""
-    descriptor = name + (f" ({years})" if years else "") + (f" — {tag}" if tag else "")
+    descriptor = name + (f" ({years})" if years else "") + (f" - {tag}" if tag else "")
     user_msg = f"Person: {descriptor}\n\nWrite the 4-fact conversation set for this person."
 
     response = client.messages.create(
@@ -325,7 +325,7 @@ def main() -> None:
             save_checkpoint(ckpt)
             print("OK")
         except Exception as exc:                       # noqa: BLE001
-            print(f"FAILED — {exc}")
+            print(f"FAILED - {exc}")
             print("  (Progress saved; re-run to continue.)")
         if i < len(todo) - 1:
             time.sleep(PAUSE)
@@ -345,7 +345,7 @@ def main() -> None:
     new_html = apply_all_updates(html, updates)
 
     if len(new_html) < len(html) * 0.9:
-        print("ERROR: new HTML is suspiciously small — aborting.", file=sys.stderr)
+        print("ERROR: new HTML is suspiciously small - aborting.", file=sys.stderr)
         sys.exit(1)
 
     if dry_run:

@@ -7,7 +7,7 @@ import { bootstrap, chooseTask, choosePlace, peek, waitIdle } from './lib/snack-
  * instead, so this is asserted against the real page content rather than
  * assumed from the markup.
  */
-test.describe('Snack Quest — expressive hides the target word', () => {
+test.describe('Snack Quest - expressive hides the target word', () => {
   test('the target word appears nowhere in the DOM on an expressive trial', async ({ page }) => {
     await bootstrap(page, { goalTokens: 3 });
     await chooseTask(page, 'expressive');
@@ -16,8 +16,7 @@ test.describe('Snack Quest — expressive hides the target word', () => {
     const { targetLabel } = await peek(page);
     expect(targetLabel, 'the game must actually have a target to hide').toBeTruthy();
 
-    // Word-boundary match: the word itself must not be readable anywhere —
-    // not as text, not in an attribute, not in the serialised document.
+    // Word-boundary match: the word itself must not be readable anywhere - // not as text, not in an attribute, not in the serialised document.
     const word = new RegExp(`\\b${targetLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
 
     const html = await page.content();

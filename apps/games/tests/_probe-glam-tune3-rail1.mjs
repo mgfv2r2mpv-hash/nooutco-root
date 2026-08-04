@@ -1,4 +1,4 @@
-/* THIRD PASS · rail correction probe 1 — the footprint numbers, for the report's
+/* THIRD PASS · rail correction probe 1 - the footprint numbers, for the report's
    table next to W2.  Not a spec.  Run against a hash-verified :8788:
 
      PAGE=/glam-team-makeover/_before-rail.html node tests/_probe-glam-tune3-rail1.mjs
@@ -6,7 +6,7 @@
 
    Per device: the rail's own height, the stage panel it is spent out of, how
    much vertical room still sits ABOVE the stage (W2's number, which this
-   correction must not disturb), and the whole document's height — the phone is
+   correction must not disturb), and the whole document's height - the phone is
    the only width that scrolls, so that last one is what a child feels. */
 import { chromium } from '@playwright/test';
 
@@ -34,11 +34,11 @@ for (const d of DEVICES) {
   await page.getByTitle('Show / hide setup').click();
   await page.getByLabel('Character', { exact: true }).selectOption('m4');
   await page.getByRole('button', { name: /^▶ Play/ }).click();
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   await page.waitForFunction(painted, undefined, { timeout: 20000 });
   /* Back to the top before measuring: on a phone the panel is `position:sticky`,
      so "how much sits above the stage" is only the layout number while the page
-     is unscrolled — read mid-scroll it reports the scroll offset instead. */
+     is unscrolled - read mid-scroll it reports the scroll offset instead. */
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.waitForTimeout(300);
 

@@ -8,7 +8,7 @@ import {
  * The snacks ARE the tokens.
  *
  * The quest is over when our friend has as many snacks as the token goal asks
- * for. That number is set by the goal and nothing else — in particular not by
+ * for. That number is set by the goal and nothing else - in particular not by
  * how many different fruit sprites happen to exist.
  *
  * The defect these pin: the plan was dealt as a no-repeat hand out of a
@@ -31,7 +31,7 @@ async function playQuest(page, { task = 'matching', place = 'playroom' } = {}) {
   return { total, collected: (await peek(page)).collected };
 }
 
-test.describe('Snack Quest — the snacks are the tokens', () => {
+test.describe('Snack Quest - the snacks are the tokens', () => {
   for (const goal of [8, 10]) {
     test(`a goal of ${goal} collects ${goal} snacks, not the size of the fruit pool`, async ({ page }) => {
       test.setTimeout(120_000);
@@ -104,7 +104,7 @@ test.describe('Snack Quest — the snacks are the tokens', () => {
     await choosePlace(page, 'playroom');
 
     await expect(page.locator('#snack-strip .snack-slot')).toHaveCount(9);
-    // The token board's generic emoji tally must not run alongside it — in this
+    // The token board's generic emoji tally must not run alongside it - in this
     // game the snacks are the tokens, so a star count would be a second,
     // competing tally of the same thing.
     await expect(page.locator('#token-emoji-display')).toBeHidden();
@@ -124,7 +124,7 @@ test.describe('Snack Quest — the snacks are the tokens', () => {
   });
 });
 
-test.describe('Snack Quest — a wrong answer costs the snack', () => {
+test.describe('Snack Quest - a wrong answer costs the snack', () => {
   test('an error drops the snack and a fresh one is drawn', async ({ page }) => {
     test.setTimeout(60_000);
     await bootstrap(page, { goalTokens: 6, scheduleType: 'FR', scheduleValue: 1 });
@@ -144,7 +144,7 @@ test.describe('Snack Quest — a wrong answer costs the snack', () => {
     expect(moved || after.foodKey !== before.foodKey, 'that snack got away').toBe(true);
   });
 
-  test('errors never shorten the board — the goal still stands', async ({ page }) => {
+  test('errors never shorten the board - the goal still stands', async ({ page }) => {
     test.setTimeout(90_000);
     await bootstrap(page, { goalTokens: 5, scheduleType: 'FR', scheduleValue: 1 });
     await chooseTask(page, 'matching');

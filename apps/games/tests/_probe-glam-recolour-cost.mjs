@@ -1,10 +1,10 @@
-/* Ruling 1b — measure the per-turn cost of changing a colour 2nd..Nth time.
+/* Ruling 1b - measure the per-turn cost of changing a colour 2nd..Nth time.
  *
  * The maintainer names five types: shadow, blush, lips, hair, clothes. For each,
  * inside ONE turn, apply shade A, then B, then C, and report:
- *   key        — the charge key each of the three resolves to (`_optKey`)
- *   actions    — turn actions spent by each of the three changes
- *   strokes    — pointer strokes each change needed to complete
+ *   key - the charge key each of the three resolves to (`_optKey`)
+ *   actions - turn actions spent by each of the three changes
+ *   strokes - pointer strokes each change needed to complete
  *
  * 1b holds for a type when the three changes cost 1 + 0 + 0.
  * 1a holds when the 2nd and 3rd changes need the SAME number of strokes as the
@@ -34,7 +34,7 @@ await page.getByTitle('Show / hide setup').click();
 await page.getByLabel('Routine', { exact: true }).selectOption('free');
 await page.getByLabel('Turns', { exact: true }).selectOption('10');
 await page.getByRole('button', { name: /^▶ Play/ }).click();
-await page.getByRole('button', { name: /Go —/ }).click();
+await page.getByRole('button', { name: /Go - / }).click();
 await page.waitForFunction(painted, undefined, { timeout: 20000 });
 
 const rows = await page.evaluate(async () => {

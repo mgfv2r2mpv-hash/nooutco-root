@@ -1,5 +1,5 @@
 /**
- * AssessmentService — abstract interface for all assessment persistence.
+ * AssessmentService - abstract interface for all assessment persistence.
  *
  * Current implementation: InMemoryAssessmentService (data lives only in
  * React state; an exported Excel file is the durable artifact).

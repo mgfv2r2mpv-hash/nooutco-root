@@ -7,7 +7,7 @@ import path from 'node:path';
 import { classify, isImagePath, needsBodyToClassify } from './lib/stimuli.mjs';
 
 /**
- * The shared stimulus library — one entry per stimulus, merged from the three
+ * The shared stimulus library - one entry per stimulus, merged from the three
  * duplicated `_Resources` trees that clock, receptive and matching each carry.
  *
  * The merge's whole job is to prefer real art over a generated glyph on every
@@ -15,8 +15,7 @@ import { classify, isImagePath, needsBodyToClassify } from './lib/stimuli.mjs';
  *
  *   1. the committed library still matches the source trees (nobody added art
  *      to a game without rebuilding, and nobody hand-edited the output)
- *   2. every image the library publishes resolves AND classifies as real art —
- *      an emoji placeholder reaching `image` means the merge picked wrong
+ *   2. every image the library publishes resolves AND classifies as real art - *      an emoji placeholder reaching `image` means the merge picked wrong
  *   3. no category carries less real art than the best any single game had at
  *      the origin/main baseline
  *   4. every file in the old trees is accounted for, so deleting them later is
@@ -53,7 +52,7 @@ async function loadJson(request, urlPath) {
 
 /**
  * The highest real-art count any single merged game had for a category at
- * baseline. Only the games the library actually merges count — ffc and
+ * baseline. Only the games the library actually merges count - ffc and
  * emotions keep their own art and are not part of this stage.
  */
 function baselineHighWaterMark(sources) {

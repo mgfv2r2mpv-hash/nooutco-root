@@ -1,5 +1,5 @@
 /* Screenshot pass for the refresh's outro photo booth.
-   Not a spec — run with `node tests/_shots-outro-reveal.mjs` against a server on
+   Not a spec - run with `node tests/_shots-outro-reveal.mjs` against a server on
    :8788. Plays a real short trial through the child's route (Start → the thread
    → the salon), works the look with real tool taps so the two frames have
    something to show, ends the trial and photographs the celebration at the three
@@ -47,12 +47,12 @@ for (const d of DEVICES) {
   await page.waitForFunction(() => !!window.GlamTT && !!window.GlamStory);
 
   // The BT's route in, so the routine is ungated and one turn can touch every
-  // station — the booth is what is being photographed, not the staging.
+  // station - the booth is what is being photographed, not the staging.
   await page.getByTitle('Show / hide setup').click();
   await page.getByLabel('Routine', { exact: true }).selectOption('free');
   await page.getByLabel('Turns', { exact: true }).selectOption('4');
   await page.getByRole('button', { name: /^▶ Play/ }).click();
-  await page.getByRole('button', { name: /Go —/ }).waitFor();
+  await page.getByRole('button', { name: /Go - / }).waitFor();
 
   // Wait out every decode: until they land, the compositor is still assembling
   // the face and the before frame would photograph a half-built doll.
@@ -70,7 +70,7 @@ for (const d of DEVICES) {
     return keys.length > 0 && keys.every((k) => c[k].ok);
   }, undefined, { timeout: 25000 });
 
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   for (const t of ['Berry', 'Lips red', 'Shadow violet', 'Rose', 'Sapphire', 'Eyeliner']) {
     await useTool(page, t);
   }

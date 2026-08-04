@@ -151,9 +151,9 @@ export function DataEntry({
                 : 'border-green-500 bg-green-50 dark:bg-green-950/20 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30'}`}
           >
             {timerRunning
-              ? /* Stop icon — filled square */
+              ? /* Stop icon - filled square */
                 <svg viewBox="0 0 12 12" className="w-3 h-3 fill-current"><rect x="2" y="2" width="8" height="8" rx="1"/></svg>
-              : /* Play icon — triangle */
+              : /* Play icon - triangle */
                 <svg viewBox="0 0 12 12" className="w-3 h-3 fill-current"><polygon points="3,2 10,6 3,10"/></svg>
             }
           </button>
@@ -171,7 +171,7 @@ export function DataEntry({
           </span>
         </div>
 
-        {/* Progress bar — blue for scored, gray for CS, empty for unstarted */}
+        {/* Progress bar - blue for scored, gray for CS, empty for unstarted */}
         <div className="mt-2 space-y-1">
           <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500">
             <span>{scored}/{total} scored ({Math.round(validPct)}%){csCount > 0 ? `, ${csCount} excluded` : ''}</span>

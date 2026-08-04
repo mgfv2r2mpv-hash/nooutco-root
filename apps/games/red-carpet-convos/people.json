@@ -1,10 +1,10 @@
 {
-  "_note": "Red Carpet Convos roster. Per person: {name, years, tag, emoji, img, accent, accentBg, converted, facts:[{text, topic, say, sayShort, ask, askYou, bridge}]}. `converted` is the MIGRATION FLAG: true = migrated to the new schema and live in the game; false = a stub pending fact population (kept OUT of the game for now). During migration the game surfaces only converted people. Fade levels (comment/volley Partial/Minimal) are derived at runtime from say/ask. `bridge` is the partner's recall opener INTO this fact (fact 1's bridge is empty). Edited via AdminTools/FamousPersonManager; the rcc-generate-facts populator writes facts + sets converted. Store only public-figure content — never learner/session data.",
+  "_note": "Red Carpet Convos roster. Per person: {name, years, tag, emoji, img, accent, accentBg, converted, facts:[{text, topic, say, sayShort, ask, askYou, bridge}]}. `converted` is the MIGRATION FLAG: true = migrated to the new schema and live in the game; false = a stub pending fact population (kept OUT of the game for now). During migration the game surfaces only converted people. Fade levels (comment/volley Partial/Minimal) are derived at runtime from say/ask. `bridge` is the partner's recall opener INTO this fact (fact 1's bridge is empty). Edited via AdminTools/FamousPersonManager; the rcc-generate-facts populator writes facts + sets converted. Store only public-figure content - never learner/session data.",
   "generated": "2026-07-08T20:46:40.560Z",
   "people": [
     {
       "name": "Lin-Manuel Miranda",
-      "years": "1980–",
+      "years": "1980 - ",
       "tag": "Artist",
       "emoji": "🎭",
       "img": "/famous-person/_Resources/_imgSource/images/lin-manuel-miranda.jpg",
@@ -52,7 +52,7 @@
     },
     {
       "name": "Emma Watson",
-      "years": "1990–",
+      "years": "1990 - ",
       "tag": "Actor",
       "emoji": "🎬",
       "img": "/famous-person/_Resources/_imgSource/images/emma-watson.jpg",
@@ -100,7 +100,7 @@
     },
     {
       "name": "Charles Dickens",
-      "years": "1812–1870",
+      "years": "1812-1870",
       "tag": "Author",
       "emoji": "📖",
       "img": "/famous-person/_Resources/_imgSource/images/charles-dickens.jpg",
@@ -148,7 +148,7 @@
     },
     {
       "name": "Ibn Battuta",
-      "years": "1304–1368",
+      "years": "1304-1368",
       "tag": "Explorer",
       "emoji": "🌍",
       "img": "/famous-person/_Resources/_imgSource/images/ibn-battuta.jpg",
@@ -196,7 +196,7 @@
     },
     {
       "name": "Jean-Michel Basquiat",
-      "years": "1960–1988",
+      "years": "1960-1988",
       "tag": "Artist",
       "emoji": "🎨",
       "img": "/famous-person/_Resources/_imgSource/images/jean-michel-basquiat.jpg",
@@ -244,7 +244,7 @@
     },
     {
       "name": "Serena Williams",
-      "years": "1981–",
+      "years": "1981 - ",
       "tag": "Athlete",
       "emoji": "🎾",
       "img": "/famous-person/_Resources/_imgSource/images/serena-williams.jpeg",
@@ -292,7 +292,7 @@
     },
     {
       "name": "Neil Armstrong",
-      "years": "1930–2012",
+      "years": "1930-2012",
       "tag": "Astronaut",
       "emoji": "🚀",
       "img": "/famous-person/_Resources/_imgSource/images/neil-armstrong.jpg",
@@ -340,7 +340,7 @@
     },
     {
       "name": "Mae Jemison",
-      "years": "1956–",
+      "years": "1956 - ",
       "tag": "Astronaut",
       "emoji": "🌟",
       "img": "/famous-person/_Resources/_imgSource/images/mae-jemison.jpg",
@@ -388,7 +388,7 @@
     },
     {
       "name": "Dolly Parton",
-      "years": "1946–",
+      "years": "1946 - ",
       "tag": "Musician",
       "emoji": "🎸",
       "img": "/famous-person/_Resources/_imgSource/images/dolly-parton.jpg",
@@ -436,7 +436,7 @@
     },
     {
       "name": "Steve Jobs",
-      "years": "1955–2011",
+      "years": "1955-2011",
       "tag": "Inventor",
       "emoji": "💡",
       "img": "/famous-person/_Resources/_imgSource/images/steve-jobs.jpg",
@@ -484,7 +484,7 @@
     },
     {
       "name": "Vincent van Gogh",
-      "years": "1853–1890",
+      "years": "1853-1890",
       "tag": "Artist",
       "emoji": "🎨",
       "img": "/famous-person/_Resources/_imgSource/images/vincent-van-gogh.jpg",
@@ -532,7 +532,7 @@
     },
     {
       "name": "Albert Einstein",
-      "years": "1879–1955",
+      "years": "1879-1955",
       "tag": "Scientist",
       "emoji": "🧠",
       "img": "/famous-person/_Resources/_imgSource/images/albert-einstein.jpg",
@@ -580,7 +580,7 @@
     },
     {
       "name": "Marie Curie",
-      "years": "1867–1934",
+      "years": "1867-1934",
       "tag": "Scientist",
       "emoji": "⚗️",
       "img": "/famous-person/_Resources/_imgSource/images/marie-curie.jpeg",
@@ -628,7 +628,7 @@
     },
     {
       "name": "Martin Luther King Jr.",
-      "years": "1929–1968",
+      "years": "1929-1968",
       "tag": "Activist",
       "emoji": "✊",
       "img": "/famous-person/_Resources/_imgSource/images/martin-luther-king-jr.jpg",
@@ -676,7 +676,7 @@
     },
     {
       "name": "Amelia Earhart",
-      "years": "1897–1937",
+      "years": "1897-1937",
       "tag": "Pioneer",
       "emoji": "✈️",
       "img": "/famous-person/_Resources/_imgSource/images/amelia-earhart.jpg",
@@ -694,7 +694,7 @@
           "bridge": ""
         },
         {
-          "text": "She once set off to fly all the way around the world — a giant adventure.",
+          "text": "She once set off to fly all the way around the world - a giant adventure.",
           "topic": "around the world",
           "say": "Amelia tried to fly all the way around the world.",
           "sayShort": "She flew huge adventures.",
@@ -724,7 +724,7 @@
     },
     {
       "name": "Leonardo da Vinci",
-      "years": "1452–1519",
+      "years": "1452-1519",
       "tag": "Artist",
       "emoji": "🎨",
       "img": "/famous-person/_Resources/_imgSource/images/leonardo-da-vinci.jpeg",
@@ -772,7 +772,7 @@
     },
     {
       "name": "Harriet Tubman",
-      "years": "1822–1913",
+      "years": "1822-1913",
       "tag": "Activist",
       "emoji": "🗽",
       "img": "/famous-person/_Resources/_imgSource/images/harriet-tubman.jpg",
@@ -820,7 +820,7 @@
     },
     {
       "name": "Nikola Tesla",
-      "years": "1856–1943",
+      "years": "1856-1943",
       "tag": "Inventor",
       "emoji": "⚡",
       "img": "/famous-person/_Resources/_imgSource/images/nikola-tesla.jpeg",
@@ -868,7 +868,7 @@
     },
     {
       "name": "Frida Kahlo",
-      "years": "1907–1954",
+      "years": "1907-1954",
       "tag": "Artist",
       "emoji": "🌺",
       "img": "/famous-person/_Resources/_imgSource/images/frida-kahlo.jpg",
@@ -916,7 +916,7 @@
     },
     {
       "name": "Nelson Mandela",
-      "years": "1918–2013",
+      "years": "1918-2013",
       "tag": "Leader",
       "emoji": "🕊️",
       "img": "/famous-person/_Resources/_imgSource/images/nelson-mandela.jpg",
@@ -964,7 +964,7 @@
     },
     {
       "name": "Charles Darwin",
-      "years": "1809–1882",
+      "years": "1809-1882",
       "tag": "Scientist",
       "emoji": "🦎",
       "img": "/famous-person/_Resources/_imgSource/images/charles-darwin.jpg",
@@ -1012,7 +1012,7 @@
     },
     {
       "name": "Isaac Newton",
-      "years": "1643–1727",
+      "years": "1643-1727",
       "tag": "Scientist",
       "emoji": "🍎",
       "img": "/famous-person/_Resources/_imgSource/images/isaac-newton.jpg",
@@ -1060,7 +1060,7 @@
     },
     {
       "name": "Rosa Parks",
-      "years": "1913–2005",
+      "years": "1913-2005",
       "tag": "Activist",
       "emoji": "🚌",
       "img": "/famous-person/_Resources/_imgSource/images/rosa-parks.jpg",
@@ -1108,7 +1108,7 @@
     },
     {
       "name": "Mozart",
-      "years": "1756–1791",
+      "years": "1756-1791",
       "tag": "Musician",
       "emoji": "🎹",
       "img": "/famous-person/_Resources/_imgSource/images/mozart.jpg",
@@ -1117,7 +1117,7 @@
       "converted": true,
       "facts": [
         {
-          "text": "Mozart wrote over 800 pieces of music — symphonies, operas, and more.",
+          "text": "Mozart wrote over 800 pieces of music - symphonies, operas, and more.",
           "topic": "800 songs",
           "say": "Mozart wrote more than eight hundred pieces of music.",
           "sayShort": "He wrote tons of music.",
@@ -1156,7 +1156,7 @@
     },
     {
       "name": "Mahatma Gandhi",
-      "years": "1869–1948",
+      "years": "1869-1948",
       "tag": "Leader",
       "emoji": "🕊️",
       "img": "/famous-person/_Resources/_imgSource/images/mahatma-gandhi.jpg",
@@ -1204,7 +1204,7 @@
     },
     {
       "name": "Ada Lovelace",
-      "years": "1815–1852",
+      "years": "1815-1852",
       "tag": "Mathematician",
       "emoji": "💻",
       "img": "/famous-person/_Resources/_imgSource/images/ada-lovelace.jpeg",
@@ -1252,7 +1252,7 @@
     },
     {
       "name": "Winston Churchill",
-      "years": "1874–1965",
+      "years": "1874-1965",
       "tag": "Leader",
       "emoji": "🎖️",
       "img": "/famous-person/_Resources/_imgSource/images/winston-churchill.jpg",
@@ -1300,7 +1300,7 @@
     },
     {
       "name": "Abraham Lincoln",
-      "years": "1809–1865",
+      "years": "1809-1865",
       "tag": "Leader",
       "emoji": "🎩",
       "img": "/famous-person/_Resources/_imgSource/images/abraham-lincoln.jpg",
@@ -1348,7 +1348,7 @@
     },
     {
       "name": "Cleopatra",
-      "years": "69–30 BC",
+      "years": "69-30 BC",
       "tag": "Ruler",
       "emoji": "👑",
       "img": "/famous-person/_Resources/_imgSource/images/cleopatra.jpg",
@@ -1396,7 +1396,7 @@
     },
     {
       "name": "Galileo Galilei",
-      "years": "1564–1642",
+      "years": "1564-1642",
       "tag": "Scientist",
       "emoji": "🔭",
       "img": "/famous-person/_Resources/_imgSource/images/galileo-galilei.jpg",
@@ -1444,7 +1444,7 @@
     },
     {
       "name": "Frederick Douglass",
-      "years": "1818–1895",
+      "years": "1818-1895",
       "tag": "Activist",
       "emoji": "✍️",
       "img": "/famous-person/_Resources/_imgSource/images/frederick-douglass.jpg",
@@ -1492,7 +1492,7 @@
     },
     {
       "name": "Muhammad Ali",
-      "years": "1942–2016",
+      "years": "1942-2016",
       "tag": "Athlete",
       "emoji": "🥊",
       "img": "/famous-person/_Resources/_imgSource/images/muhammad-ali.jpg",
@@ -1540,7 +1540,7 @@
     },
     {
       "name": "Malala Yousafzai",
-      "years": "1997–",
+      "years": "1997 - ",
       "tag": "Activist",
       "emoji": "📚",
       "img": "/famous-person/_Resources/_imgSource/images/malala-yousafzai.jpg",
@@ -1588,7 +1588,7 @@
     },
     {
       "name": "Oprah Winfrey",
-      "years": "1954–",
+      "years": "1954 - ",
       "tag": "Media",
       "emoji": "🎙️",
       "img": "/famous-person/_Resources/_imgSource/images/oprah-winfrey.jpeg",
@@ -1636,7 +1636,7 @@
     },
     {
       "name": "Barack Obama",
-      "years": "1961–",
+      "years": "1961 - ",
       "tag": "Leader",
       "emoji": "🇺🇸",
       "img": "/famous-person/_Resources/_imgSource/images/barack-obama.jpg",
@@ -1684,7 +1684,7 @@
     },
     {
       "name": "Usain Bolt",
-      "years": "1986–",
+      "years": "1986 - ",
       "tag": "Athlete",
       "emoji": "⚡",
       "img": "/famous-person/_Resources/_imgSource/images/usain-bolt.jpg",
@@ -1732,7 +1732,7 @@
     },
     {
       "name": "Michael Jordan",
-      "years": "1963–",
+      "years": "1963 - ",
       "tag": "Athlete",
       "emoji": "🏀",
       "img": "/famous-person/_Resources/_imgSource/images/600px-Michael_Jordan_in_2014.jpg",
@@ -1780,7 +1780,7 @@
     },
     {
       "name": "Freddie Mercury",
-      "years": "1946–1991",
+      "years": "1946-1991",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/freddie-mercury.jpg",
@@ -1828,7 +1828,7 @@
     },
     {
       "name": "J.K. Rowling",
-      "years": "1965–",
+      "years": "1965 - ",
       "tag": "Author",
       "emoji": "📖",
       "img": "/famous-person/_Resources/_imgSource/images/j.-k.-rowling.jpg",
@@ -1876,7 +1876,7 @@
     },
     {
       "name": "Stephen Hawking",
-      "years": "1942–2018",
+      "years": "1942-2018",
       "tag": "Scientist",
       "emoji": "🌌",
       "img": "/famous-person/_Resources/_imgSource/images/stephen-hawking.jpg",
@@ -1924,7 +1924,7 @@
     },
     {
       "name": "Cristiano Ronaldo",
-      "years": "1985–",
+      "years": "1985 - ",
       "tag": "Athlete",
       "emoji": "⚽",
       "img": "/famous-person/_Resources/_imgSource/images/cristiano-ronaldo.jpeg",
@@ -1972,7 +1972,7 @@
     },
     {
       "name": "Elvis Presley",
-      "years": "1935–1977",
+      "years": "1935-1977",
       "tag": "Musician",
       "emoji": "🎸",
       "img": "/famous-person/_Resources/_imgSource/images/600px-Elvis_Presley_promoting_Jailhouse_Rock.jpg",
@@ -2020,7 +2020,7 @@
     },
     {
       "name": "Princess Diana",
-      "years": "1961–1997",
+      "years": "1961-1997",
       "tag": "Royal",
       "emoji": "👸",
       "img": "/famous-person/_Resources/_imgSource/images/princess-diana.jpg",
@@ -2068,7 +2068,7 @@
     },
     {
       "name": "Napoleon Bonaparte",
-      "years": "1769–1821",
+      "years": "1769-1821",
       "tag": "Leader",
       "emoji": "⚔️",
       "img": "/famous-person/_Resources/_imgSource/images/napoleon-bonaparte.jpg",
@@ -2116,7 +2116,7 @@
     },
     {
       "name": "Bruce Lee",
-      "years": "1940–1973",
+      "years": "1940-1973",
       "tag": "Athlete",
       "emoji": "🥋",
       "img": "/famous-person/_Resources/_imgSource/images/bruce-lee.jpg",
@@ -2152,7 +2152,7 @@
           "bridge": "I liked the part about his amazing strength. Remember?"
         },
         {
-          "text": "He said \"be like water\" — meaning stay ready to change and flow.",
+          "text": "He said \"be like water\" - meaning stay ready to change and flow.",
           "topic": "be like water",
           "say": "Bruce said to \"be like water\" and stay flexible.",
           "sayShort": "He said be like water.",
@@ -2164,7 +2164,7 @@
     },
     {
       "name": "Michelangelo",
-      "years": "1475–1564",
+      "years": "1475-1564",
       "tag": "Artist",
       "emoji": "🖼️",
       "img": "/famous-person/_Resources/_imgSource/images/michelangelo.jpg",
@@ -2212,7 +2212,7 @@
     },
     {
       "name": "Coco Chanel",
-      "years": "1883–1971",
+      "years": "1883-1971",
       "tag": "Designer",
       "emoji": "👗",
       "img": "/famous-person/_Resources/_imgSource/images/coco-chanel.jpg",
@@ -2260,7 +2260,7 @@
     },
     {
       "name": "Joan of Arc",
-      "years": "1412–1431",
+      "years": "1412-1431",
       "tag": "Leader",
       "emoji": "⚔️",
       "img": "/famous-person/_Resources/_imgSource/images/joan-of-arc.jpg",
@@ -2308,7 +2308,7 @@
     },
     {
       "name": "Josephine Baker",
-      "years": "1906–1975",
+      "years": "1906-1975",
       "tag": "Performer",
       "emoji": "🎭",
       "img": "/famous-person/_Resources/_imgSource/images/josephine-baker.jpg",
@@ -2356,7 +2356,7 @@
     },
     {
       "name": "Malcolm X",
-      "years": "1925–1965",
+      "years": "1925-1965",
       "tag": "Activist",
       "emoji": "✊",
       "img": "/famous-person/_Resources/_imgSource/images/600px-Malcolm_X_1963_press_photo.jpg",
@@ -2404,7 +2404,7 @@
     },
     {
       "name": "Audrey Hepburn",
-      "years": "1929–1993",
+      "years": "1929-1993",
       "tag": "Actress",
       "emoji": "🎬",
       "img": "/famous-person/_Resources/_imgSource/images/audrey-hepburn.jpg",
@@ -2452,7 +2452,7 @@
     },
     {
       "name": "Aristotle",
-      "years": "384–322 BC",
+      "years": "384-322 BC",
       "tag": "Philosopher",
       "emoji": "📜",
       "img": "/famous-person/_Resources/_imgSource/images/aristotle.jpeg",
@@ -2500,7 +2500,7 @@
     },
     {
       "name": "Simone Biles",
-      "years": "1997–",
+      "years": "1997 - ",
       "tag": "Athlete",
       "emoji": "🤸",
       "img": "/famous-person/_Resources/_imgSource/images/simone-biles.jpg",
@@ -2548,7 +2548,7 @@
     },
     {
       "name": "Greta Thunberg",
-      "years": "2003–",
+      "years": "2003 - ",
       "tag": "Activist",
       "emoji": "🌱",
       "img": "/famous-person/_Resources/_imgSource/images/greta-thunberg.jpg",
@@ -2596,7 +2596,7 @@
     },
     {
       "name": "Misty Copeland",
-      "years": "1982–",
+      "years": "1982 - ",
       "tag": "Dancer",
       "emoji": "🩰",
       "img": "/famous-person/_Resources/_imgSource/images/misty-copeland.jpg",
@@ -2644,7 +2644,7 @@
     },
     {
       "name": "Kendrick Lamar",
-      "years": "1987–",
+      "years": "1987 - ",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/kendrick-lamar.jpg",
@@ -2692,7 +2692,7 @@
     },
     {
       "name": "Harriet Beecher Stowe",
-      "years": "1811–1896",
+      "years": "1811-1896",
       "tag": "Author",
       "emoji": "📝",
       "img": "/famous-person/_Resources/_imgSource/images/harriet-beecher-stowe.jpg",
@@ -2740,7 +2740,7 @@
     },
     {
       "name": "Socrates",
-      "years": "470–399 BC",
+      "years": "470-399 BC",
       "tag": "Philosopher",
       "emoji": "🏛️",
       "img": "/famous-person/_Resources/_imgSource/images/socrates.jpg",
@@ -2788,7 +2788,7 @@
     },
     {
       "name": "Alexander the Great",
-      "years": "356–323 BC",
+      "years": "356-323 BC",
       "tag": "Ruler",
       "emoji": "⚔️",
       "img": "/famous-person/_Resources/_imgSource/images/alexander-the-great.webp",
@@ -2836,7 +2836,7 @@
     },
     {
       "name": "Julius Caesar",
-      "years": "100–44 BC",
+      "years": "100-44 BC",
       "tag": "Ruler",
       "emoji": "🏛️",
       "img": "/famous-person/_Resources/_imgSource/images/julius-caesar.jpeg",
@@ -2884,7 +2884,7 @@
     },
     {
       "name": "Genghis Khan",
-      "years": "1162–1227",
+      "years": "1162-1227",
       "tag": "Ruler",
       "emoji": "🐎",
       "img": "/famous-person/_Resources/_imgSource/images/genghis-khan.jpg",
@@ -2932,7 +2932,7 @@
     },
     {
       "name": "Queen Victoria",
-      "years": "1819–1901",
+      "years": "1819-1901",
       "tag": "Royal",
       "emoji": "👑",
       "img": "/famous-person/_Resources/_imgSource/images/queen-victoria.jpeg",
@@ -2941,7 +2941,7 @@
       "converted": true,
       "facts": [
         {
-          "text": "Queen Victoria ruled Britain for over sixty years — one of the longest ever.",
+          "text": "Queen Victoria ruled Britain for over sixty years - one of the longest ever.",
           "topic": "a long reign",
           "say": "Queen Victoria ruled for over sixty years.",
           "sayShort": "She ruled a long time.",
@@ -2980,7 +2980,7 @@
     },
     {
       "name": "Plato",
-      "years": "428–348 BC",
+      "years": "428-348 BC",
       "tag": "Philosopher",
       "emoji": "📜",
       "img": "/famous-person/_Resources/_imgSource/images/600px-Plato_Silanion_Musei_Capitolini_MC1377.jpg",
@@ -3028,7 +3028,7 @@
     },
     {
       "name": "Confucius",
-      "years": "551–479 BC",
+      "years": "551-479 BC",
       "tag": "Philosopher",
       "emoji": "☯️",
       "img": "/famous-person/_Resources/_imgSource/images/confucius.jpg",
@@ -3076,7 +3076,7 @@
     },
     {
       "name": "Archimedes",
-      "years": "287–212 BC",
+      "years": "287-212 BC",
       "tag": "Mathematician",
       "emoji": "⚙️",
       "img": "/famous-person/_Resources/_imgSource/images/archimedes.jpg",
@@ -3124,7 +3124,7 @@
     },
     {
       "name": "Mansa Musa",
-      "years": "1280–1337",
+      "years": "1280-1337",
       "tag": "Ruler",
       "emoji": "💰",
       "img": "/famous-person/_Resources/_imgSource/images/mansa-musa.jpg",
@@ -3133,7 +3133,7 @@
       "converted": true,
       "facts": [
         {
-          "text": "Mansa Musa was a king in Africa long ago — maybe the richest person ever.",
+          "text": "Mansa Musa was a king in Africa long ago - maybe the richest person ever.",
           "topic": "a rich king",
           "say": "Mansa Musa may have been the richest person ever.",
           "sayShort": "He was a super-rich king.",
@@ -3172,7 +3172,7 @@
     },
     {
       "name": "Hatshepsut",
-      "years": "1507–1458 BC",
+      "years": "1507-1458 BC",
       "tag": "Ruler",
       "emoji": "👑",
       "img": "/famous-person/_Resources/_imgSource/images/hatshepsut.jpg",
@@ -3220,7 +3220,7 @@
     },
     {
       "name": "Wu Zetian",
-      "years": "624–705",
+      "years": "624-705",
       "tag": "Ruler",
       "emoji": "👑",
       "img": "/famous-person/_Resources/_imgSource/images/wu-zetian.jpeg",
@@ -3268,7 +3268,7 @@
     },
     {
       "name": "Suleiman the Magnificent",
-      "years": "1494–1566",
+      "years": "1494-1566",
       "tag": "Ruler",
       "emoji": "⚔️",
       "img": "/famous-person/_Resources/_imgSource/images/suleiman-the-magnificent.jpeg",
@@ -3316,7 +3316,7 @@
     },
     {
       "name": "Saladin",
-      "years": "1137–1193",
+      "years": "1137-1193",
       "tag": "Ruler",
       "emoji": "⚔️",
       "img": "/famous-person/_Resources/_imgSource/images/saladin.jpg",
@@ -3364,7 +3364,7 @@
     },
     {
       "name": "Pachacuti",
-      "years": "1418–1471",
+      "years": "1418-1471",
       "tag": "Ruler",
       "emoji": "🏔️",
       "img": "/famous-person/_Resources/_imgSource/images/pachacuti.jpg",
@@ -3412,7 +3412,7 @@
     },
     {
       "name": "Montezuma II",
-      "years": "1466–1520",
+      "years": "1466-1520",
       "tag": "Ruler",
       "emoji": "🌽",
       "img": "/famous-person/_Resources/_imgSource/images/montezuma-ii.jpg",
@@ -3460,7 +3460,7 @@
     },
     {
       "name": "Akbar",
-      "years": "1542–1605",
+      "years": "1542-1605",
       "tag": "Ruler",
       "emoji": "👑",
       "img": "/famous-person/_Resources/_imgSource/images/600px-Govardhan._Akbar_With_Lion_and_Calf_ca._1630%2C_Metmuseum_%28cropped%29.jpg",
@@ -3508,7 +3508,7 @@
     },
     {
       "name": "Shaka Zulu",
-      "years": "1787–1828",
+      "years": "1787-1828",
       "tag": "Ruler",
       "emoji": "⚔️",
       "img": "/famous-person/_Resources/_imgSource/images/shaka-zulu.jpg",
@@ -3556,7 +3556,7 @@
     },
     {
       "name": "Marie Antoinette",
-      "years": "1755–1793",
+      "years": "1755-1793",
       "tag": "Royal",
       "emoji": "👑",
       "img": "/famous-person/_Resources/_imgSource/images/marie-antoinette.jpg",
@@ -3604,7 +3604,7 @@
     },
     {
       "name": "George Washington",
-      "years": "1732–1799",
+      "years": "1732-1799",
       "tag": "Leader",
       "emoji": "🇺🇸",
       "img": "/famous-person/_Resources/_imgSource/images/george-washington.jpg",
@@ -3640,7 +3640,7 @@
           "bridge": "I liked the part about him leading the army. Remember?"
         },
         {
-          "text": "He had a famous set of false teeth — but they were not really made of wood!",
+          "text": "He had a famous set of false teeth - but they were not really made of wood!",
           "topic": "his famous teeth",
           "say": "George had famous false teeth (not wooden!).",
           "sayShort": "He had famous teeth.",
@@ -3652,7 +3652,7 @@
     },
     {
       "name": "Benjamin Franklin",
-      "years": "1706–1790",
+      "years": "1706-1790",
       "tag": "Inventor",
       "emoji": "⚡",
       "img": "/famous-person/_Resources/_imgSource/images/benjamin-franklin.jpeg",
@@ -3700,7 +3700,7 @@
     },
     {
       "name": "Franklin D. Roosevelt",
-      "years": "1882–1945",
+      "years": "1882-1945",
       "tag": "Leader",
       "emoji": "🏛️",
       "img": "/famous-person/_Resources/_imgSource/images/franklin-d.-roosevelt.jpg",
@@ -3748,7 +3748,7 @@
     },
     {
       "name": "Theodore Roosevelt",
-      "years": "1858–1919",
+      "years": "1858-1919",
       "tag": "Leader",
       "emoji": "🦁",
       "img": "/famous-person/_Resources/_imgSource/images/theodore-roosevelt.jpg",
@@ -3796,7 +3796,7 @@
     },
     {
       "name": "Mao Zedong",
-      "years": "1893–1976",
+      "years": "1893-1976",
       "tag": "Leader",
       "emoji": "⭐",
       "img": "/famous-person/_Resources/_imgSource/images/mao-zedong.jpg",
@@ -3807,7 +3807,7 @@
     },
     {
       "name": "Kamala Harris",
-      "years": "1964–",
+      "years": "1964 - ",
       "tag": "Leader",
       "emoji": "🏛️",
       "img": "/famous-person/_Resources/_imgSource/images/600px-Kamala_Harris_Vice_Presidential_Portrait.jpg",
@@ -3855,7 +3855,7 @@
     },
     {
       "name": "Jacinda Ardern",
-      "years": "1980–",
+      "years": "1980 - ",
       "tag": "Leader",
       "emoji": "🕊️",
       "img": "/famous-person/_Resources/_imgSource/images/jacinda-ardern.jpg",
@@ -3903,7 +3903,7 @@
     },
     {
       "name": "Alexandria Ocasio-Cortez",
-      "years": "1989–",
+      "years": "1989 - ",
       "tag": "Leader",
       "emoji": "✊",
       "img": "/famous-person/_Resources/_imgSource/images/alexandria-ocasio-cortez.jpg",
@@ -3951,7 +3951,7 @@
     },
     {
       "name": "Michelle Obama",
-      "years": "1964–",
+      "years": "1964 - ",
       "tag": "Leader",
       "emoji": "✨",
       "img": "/famous-person/_Resources/_imgSource/images/600px-Michelle_Obama_2013_official_portrait.jpg",
@@ -3999,7 +3999,7 @@
     },
     {
       "name": "Sonia Sotomayor",
-      "years": "1954–",
+      "years": "1954 - ",
       "tag": "Leader",
       "emoji": "⚖️",
       "img": "/famous-person/_Resources/_imgSource/images/sonia-sotomayor.jpg",
@@ -4047,7 +4047,7 @@
     },
     {
       "name": "Desmond Tutu",
-      "years": "1931–2021",
+      "years": "1931-2021",
       "tag": "Activist",
       "emoji": "✝️",
       "img": "/famous-person/_Resources/_imgSource/images/desmond-tutu.jpg",
@@ -4095,7 +4095,7 @@
     },
     {
       "name": "Wangari Maathai",
-      "years": "1940–2011",
+      "years": "1940-2011",
       "tag": "Activist",
       "emoji": "🌳",
       "img": "/famous-person/_Resources/_imgSource/images/wangari-maathai.jpg",
@@ -4143,7 +4143,7 @@
     },
     {
       "name": "Rigoberta Menchú",
-      "years": "1959–",
+      "years": "1959 - ",
       "tag": "Activist",
       "emoji": "✊",
       "img": "/famous-person/_Resources/_imgSource/images/rigoberta-menchu.jpg",
@@ -4191,7 +4191,7 @@
     },
     {
       "name": "Ruth Bader Ginsburg",
-      "years": "1933–2020",
+      "years": "1933-2020",
       "tag": "Activist",
       "emoji": "⚖️",
       "img": "/famous-person/_Resources/_imgSource/images/ruth-bader-ginsburg.jpg",
@@ -4239,7 +4239,7 @@
     },
     {
       "name": "Sojourner Truth",
-      "years": "1797–1883",
+      "years": "1797-1883",
       "tag": "Activist",
       "emoji": "✊",
       "img": "/famous-person/_Resources/_imgSource/images/sojourner-truth.jpeg",
@@ -4287,7 +4287,7 @@
     },
     {
       "name": "Susan B. Anthony",
-      "years": "1820–1906",
+      "years": "1820-1906",
       "tag": "Activist",
       "emoji": "🗳️",
       "img": "/famous-person/_Resources/_imgSource/images/susan-b.-anthony.jpg",
@@ -4335,7 +4335,7 @@
     },
     {
       "name": "Emmeline Pankhurst",
-      "years": "1858–1928",
+      "years": "1858-1928",
       "tag": "Activist",
       "emoji": "✊",
       "img": "/famous-person/_Resources/_imgSource/images/emmeline-pankhurst.jpg",
@@ -4383,7 +4383,7 @@
     },
     {
       "name": "Dalai Lama",
-      "years": "1935–",
+      "years": "1935 - ",
       "tag": "Leader",
       "emoji": "☮️",
       "img": "/famous-person/_Resources/_imgSource/images/dalai-lama.jpg",
@@ -4431,7 +4431,7 @@
     },
     {
       "name": "Mother Teresa",
-      "years": "1910–1997",
+      "years": "1910-1997",
       "tag": "Activist",
       "emoji": "✝️",
       "img": "/famous-person/_Resources/_imgSource/images/mother-teresa.jpg",
@@ -4479,7 +4479,7 @@
     },
     {
       "name": "Anne Frank",
-      "years": "1929–1945",
+      "years": "1929-1945",
       "tag": "Author",
       "emoji": "📔",
       "img": "/famous-person/_Resources/_imgSource/images/anne-frank.jpg",
@@ -4527,7 +4527,7 @@
     },
     {
       "name": "William Shakespeare",
-      "years": "1564–1616",
+      "years": "1564-1616",
       "tag": "Author",
       "emoji": "🎭",
       "img": "/famous-person/_Resources/_imgSource/images/william-shakespeare.jpg",
@@ -4575,7 +4575,7 @@
     },
     {
       "name": "Mark Twain",
-      "years": "1835–1910",
+      "years": "1835-1910",
       "tag": "Author",
       "emoji": "✍️",
       "img": "/famous-person/_Resources/_imgSource/images/mark-twain.jpg",
@@ -4584,7 +4584,7 @@
       "converted": true,
       "facts": [
         {
-          "text": "Mark wrote Tom Sawyer and Huckleberry Finn — two books kids have loved for years.",
+          "text": "Mark wrote Tom Sawyer and Huckleberry Finn - two books kids have loved for years.",
           "topic": "famous books",
           "say": "Mark wrote fun books kids have loved for years.",
           "sayShort": "He wrote famous kid books.",
@@ -4623,7 +4623,7 @@
     },
     {
       "name": "Virginia Woolf",
-      "years": "1882–1941",
+      "years": "1882-1941",
       "tag": "Author",
       "emoji": "✍️",
       "img": "/famous-person/_Resources/_imgSource/images/virginia-woolf.jpg",
@@ -4671,7 +4671,7 @@
     },
     {
       "name": "George Orwell",
-      "years": "1903–1950",
+      "years": "1903-1950",
       "tag": "Author",
       "emoji": "📖",
       "img": "/famous-person/_Resources/_imgSource/images/george-orwell.jpg",
@@ -4719,7 +4719,7 @@
     },
     {
       "name": "Maya Angelou",
-      "years": "1928–2014",
+      "years": "1928-2014",
       "tag": "Author",
       "emoji": "✍️",
       "img": "/famous-person/_Resources/_imgSource/images/maya-angelou.jpg",
@@ -4746,7 +4746,7 @@
           "bridge": "I liked the part about her poems and hope. Remember?"
         },
         {
-          "text": "Maya did all kinds of jobs — dancer, singer, actor, and writer.",
+          "text": "Maya did all kinds of jobs - dancer, singer, actor, and writer.",
           "topic": "many talents",
           "say": "Maya was a dancer, singer, actor, and writer.",
           "sayShort": "She could do it all.",
@@ -4767,7 +4767,7 @@
     },
     {
       "name": "Toni Morrison",
-      "years": "1931–2019",
+      "years": "1931-2019",
       "tag": "Author",
       "emoji": "📖",
       "img": "/famous-person/_Resources/_imgSource/images/toni-morrison.jpg",
@@ -4815,7 +4815,7 @@
     },
     {
       "name": "Chimamanda Ngozi Adichie",
-      "years": "1977–",
+      "years": "1977 - ",
       "tag": "Author",
       "emoji": "✍️",
       "img": "/famous-person/_Resources/_imgSource/images/chimamanda-ngozi-adichie.jpeg",
@@ -4863,7 +4863,7 @@
     },
     {
       "name": "Langston Hughes",
-      "years": "1902–1967",
+      "years": "1902-1967",
       "tag": "Author",
       "emoji": "✍️",
       "img": "/famous-person/_Resources/_imgSource/images/langston-hughes.jpg",
@@ -4911,7 +4911,7 @@
     },
     {
       "name": "Gabriel García Márquez",
-      "years": "1927–2014",
+      "years": "1927-2014",
       "tag": "Author",
       "emoji": "📖",
       "img": "/famous-person/_Resources/_imgSource/images/gabriel-garcia-marquez.jpg",
@@ -4959,7 +4959,7 @@
     },
     {
       "name": "Rumi",
-      "years": "1207–1273",
+      "years": "1207-1273",
       "tag": "Author",
       "emoji": "☯️",
       "img": "/famous-person/_Resources/_imgSource/images/rumi.jpg",
@@ -5007,7 +5007,7 @@
     },
     {
       "name": "Murasaki Shikibu",
-      "years": "978–1014",
+      "years": "978-1014",
       "tag": "Author",
       "emoji": "✍️",
       "img": "/famous-person/_Resources/_imgSource/images/murasaki-shikibu.png",
@@ -5055,7 +5055,7 @@
     },
     {
       "name": "Sor Juana Inés de la Cruz",
-      "years": "1651–1695",
+      "years": "1651-1695",
       "tag": "Author",
       "emoji": "✍️",
       "img": "/famous-person/_Resources/_imgSource/images/sor-juana-ines-de-la-cruz.jpg",
@@ -5103,7 +5103,7 @@
     },
     {
       "name": "Emily Dickinson",
-      "years": "1830–1886",
+      "years": "1830-1886",
       "tag": "Author",
       "emoji": "✍️",
       "img": "/famous-person/_Resources/_imgSource/images/emily-dickinson.jpg",
@@ -5151,7 +5151,7 @@
     },
     {
       "name": "Edgar Allan Poe",
-      "years": "1809–1849",
+      "years": "1809-1849",
       "tag": "Author",
       "emoji": "🐦‍⬛",
       "img": "/famous-person/_Resources/_imgSource/images/edgar-allan-poe.jpeg",
@@ -5199,7 +5199,7 @@
     },
     {
       "name": "Mary Shelley",
-      "years": "1797–1851",
+      "years": "1797-1851",
       "tag": "Author",
       "emoji": "📖",
       "img": "/famous-person/_Resources/_imgSource/images/mary-shelley.jpeg",
@@ -5247,7 +5247,7 @@
     },
     {
       "name": "Mary Wollstonecraft",
-      "years": "1759–1797",
+      "years": "1759-1797",
       "tag": "Author",
       "emoji": "✍️",
       "img": "/famous-person/_Resources/_imgSource/images/mary_wollstonecraft.jpg",
@@ -5295,7 +5295,7 @@
     },
     {
       "name": "Thomas Edison",
-      "years": "1847–1931",
+      "years": "1847-1931",
       "tag": "Inventor",
       "emoji": "💡",
       "img": "/famous-person/_Resources/_imgSource/images/thomas-edison.jpeg",
@@ -5343,7 +5343,7 @@
     },
     {
       "name": "Hedy Lamarr",
-      "years": "1914–2000",
+      "years": "1914-2000",
       "tag": "Inventor",
       "emoji": "📡",
       "img": "/famous-person/_Resources/_imgSource/images/hedy-lamarr.jpg",
@@ -5391,7 +5391,7 @@
     },
     {
       "name": "Grace Hopper",
-      "years": "1906–1992",
+      "years": "1906-1992",
       "tag": "Inventor",
       "emoji": "💻",
       "img": "/famous-person/_Resources/_imgSource/images/grace-hopper.jpeg",
@@ -5439,7 +5439,7 @@
     },
     {
       "name": "Tim Berners-Lee",
-      "years": "1955–",
+      "years": "1955 - ",
       "tag": "Inventor",
       "emoji": "🌐",
       "img": "/famous-person/_Resources/_imgSource/images/tim-berners-lee.jpg",
@@ -5487,7 +5487,7 @@
     },
     {
       "name": "Wright Brothers",
-      "years": "1867–1948 / 1871–1948",
+      "years": "1867-1948 / 1871-1948",
       "tag": "Inventor",
       "emoji": "✈️",
       "img": "/famous-person/_Resources/_imgSource/images/wright-brothers.jpg",
@@ -5535,7 +5535,7 @@
     },
     {
       "name": "Alan Turing",
-      "years": "1912–1954",
+      "years": "1912-1954",
       "tag": "Inventor",
       "emoji": "💻",
       "img": "/famous-person/_Resources/_imgSource/images/alan-turing.jpeg",
@@ -5583,7 +5583,7 @@
     },
     {
       "name": "Elon Musk",
-      "years": "1971–",
+      "years": "1971 - ",
       "tag": "Innovator",
       "emoji": "🚀",
       "img": "/famous-person/_Resources/_imgSource/images/elon-musk.jpeg",
@@ -5631,7 +5631,7 @@
     },
     {
       "name": "Bill Gates",
-      "years": "1955–",
+      "years": "1955 - ",
       "tag": "Innovator",
       "emoji": "💻",
       "img": "/famous-person/_Resources/_imgSource/images/bill-gates.jpeg",
@@ -5679,7 +5679,7 @@
     },
     {
       "name": "Mark Zuckerberg",
-      "years": "1984–",
+      "years": "1984 - ",
       "tag": "Innovator",
       "emoji": "📱",
       "img": "/famous-person/_Resources/_imgSource/images/mark-zuckerberg.jpg",
@@ -5727,7 +5727,7 @@
     },
     {
       "name": "Florence Nightingale",
-      "years": "1820–1910",
+      "years": "1820-1910",
       "tag": "Pioneer",
       "emoji": "🏥",
       "img": "/famous-person/_Resources/_imgSource/images/florence-nightingale.jpg",
@@ -5775,7 +5775,7 @@
     },
     {
       "name": "Louis Pasteur",
-      "years": "1822–1895",
+      "years": "1822-1895",
       "tag": "Scientist",
       "emoji": "🔬",
       "img": "/famous-person/_Resources/_imgSource/images/louis-pasteur.jpg",
@@ -5823,7 +5823,7 @@
     },
     {
       "name": "Rosalind Franklin",
-      "years": "1920–1958",
+      "years": "1920-1958",
       "tag": "Scientist",
       "emoji": "🔬",
       "img": "/famous-person/_Resources/_imgSource/images/rosalind-franklin.jpg",
@@ -5871,7 +5871,7 @@
     },
     {
       "name": "Katherine Johnson",
-      "years": "1918–2020",
+      "years": "1918-2020",
       "tag": "Mathematician",
       "emoji": "🚀",
       "img": "/famous-person/_Resources/_imgSource/images/katherine-johnson.jpeg",
@@ -5919,7 +5919,7 @@
     },
     {
       "name": "Chien-Shiung Wu",
-      "years": "1912–1997",
+      "years": "1912-1997",
       "tag": "Scientist",
       "emoji": "⚛️",
       "img": "/famous-person/_Resources/_imgSource/images/chien-shiung-wu.jpg",
@@ -5967,7 +5967,7 @@
     },
     {
       "name": "Srinivasa Ramanujan",
-      "years": "1887–1920",
+      "years": "1887-1920",
       "tag": "Mathematician",
       "emoji": "🔢",
       "img": "/famous-person/_Resources/_imgSource/images/srinivasa_ramanujan.jpg",
@@ -6015,7 +6015,7 @@
     },
     {
       "name": "Neil deGrasse Tyson",
-      "years": "1958–",
+      "years": "1958 - ",
       "tag": "Scientist",
       "emoji": "🔭",
       "img": "/famous-person/_Resources/_imgSource/images/neil-degrasse-tyson.jpg",
@@ -6063,7 +6063,7 @@
     },
     {
       "name": "Jane Goodall",
-      "years": "1934–",
+      "years": "1934 - ",
       "tag": "Scientist",
       "emoji": "🦍",
       "img": "/famous-person/_Resources/_imgSource/images/jane-goodall.jpg",
@@ -6111,7 +6111,7 @@
     },
     {
       "name": "Carl Sagan",
-      "years": "1934–1996",
+      "years": "1934-1996",
       "tag": "Scientist",
       "emoji": "🔭",
       "img": "/famous-person/_Resources/_imgSource/images/carl-sagan.jpeg",
@@ -6159,7 +6159,7 @@
     },
     {
       "name": "Al-Khwarizmi",
-      "years": "780–850",
+      "years": "780-850",
       "tag": "Mathematician",
       "emoji": "➕",
       "img": "/famous-person/_Resources/_imgSource/images/al-khwarizmi.jpeg",
@@ -6207,7 +6207,7 @@
     },
     {
       "name": "Avicenna",
-      "years": "980–1037",
+      "years": "980-1037",
       "tag": "Scientist",
       "emoji": "🏥",
       "img": "/famous-person/_Resources/_imgSource/images/avicenna.jpg",
@@ -6255,7 +6255,7 @@
     },
     {
       "name": "Marco Polo",
-      "years": "1254–1324",
+      "years": "1254-1324",
       "tag": "Explorer",
       "emoji": "🗺️",
       "img": "/famous-person/_Resources/_imgSource/images/marco-polo.jpg",
@@ -6282,7 +6282,7 @@
           "bridge": "I liked the part about his trip to China. Remember?"
         },
         {
-          "text": "Marco wrote a book about what he saw — and many people didn't believe him!",
+          "text": "Marco wrote a book about what he saw - and many people didn't believe him!",
           "topic": "his amazing book",
           "say": "Marco wrote a book that amazed people.",
           "sayShort": "He wrote a wild travel book.",
@@ -6303,7 +6303,7 @@
     },
     {
       "name": "Ferdinand Magellan",
-      "years": "1480–1521",
+      "years": "1480-1521",
       "tag": "Explorer",
       "emoji": "🌍",
       "img": "/famous-person/_Resources/_imgSource/images/ferdinand-magellan.jpg",
@@ -6351,7 +6351,7 @@
     },
     {
       "name": "Ernest Shackleton",
-      "years": "1874–1922",
+      "years": "1874-1922",
       "tag": "Explorer",
       "emoji": "🧊",
       "img": "/famous-person/_Resources/_imgSource/images/ernest-shackleton.jpg",
@@ -6399,7 +6399,7 @@
     },
     {
       "name": "Edmund Hillary",
-      "years": "1919–2008",
+      "years": "1919-2008",
       "tag": "Explorer",
       "emoji": "🏔️",
       "img": "/famous-person/_Resources/_imgSource/images/edmund-hillary.jpg",
@@ -6447,7 +6447,7 @@
     },
     {
       "name": "Tenzing Norgay",
-      "years": "1914–1986",
+      "years": "1914-1986",
       "tag": "Explorer",
       "emoji": "🏔️",
       "img": "/famous-person/_Resources/_imgSource/images/tenzing-norgay.jpg",
@@ -6495,7 +6495,7 @@
     },
     {
       "name": "Jacques Cousteau",
-      "years": "1910–1997",
+      "years": "1910-1997",
       "tag": "Explorer",
       "emoji": "🤿",
       "img": "/famous-person/_Resources/_imgSource/images/jacques-cousteau.jpg",
@@ -6543,7 +6543,7 @@
     },
     {
       "name": "Yuri Gagarin",
-      "years": "1934–1968",
+      "years": "1934-1968",
       "tag": "Astronaut",
       "emoji": "🚀",
       "img": "/famous-person/_Resources/_imgSource/images/yuri-gagarin.jpg",
@@ -6591,7 +6591,7 @@
     },
     {
       "name": "Valentina Tereshkova",
-      "years": "1937–",
+      "years": "1937 - ",
       "tag": "Astronaut",
       "emoji": "🚀",
       "img": "/famous-person/_Resources/_imgSource/images/valentina-tereshkova.jpeg",
@@ -6639,7 +6639,7 @@
     },
     {
       "name": "Sally Ride",
-      "years": "1951–2012",
+      "years": "1951-2012",
       "tag": "Astronaut",
       "emoji": "🚀",
       "img": "/famous-person/_Resources/_imgSource/images/sally-ride.jpeg",
@@ -6687,7 +6687,7 @@
     },
     {
       "name": "Buzz Aldrin",
-      "years": "1930–",
+      "years": "1930 - ",
       "tag": "Astronaut",
       "emoji": "🌕",
       "img": "/famous-person/_Resources/_imgSource/images/buzz-aldrin.jpg",
@@ -6735,7 +6735,7 @@
     },
     {
       "name": "Karl Marx",
-      "years": "1818–1883",
+      "years": "1818-1883",
       "tag": "Philosopher",
       "emoji": "📜",
       "img": "/famous-person/_Resources/_imgSource/images/karl-marx.jpg",
@@ -6746,7 +6746,7 @@
     },
     {
       "name": "Friedrich Nietzsche",
-      "years": "1844–1900",
+      "years": "1844-1900",
       "tag": "Philosopher",
       "emoji": "📜",
       "img": "/famous-person/_Resources/_imgSource/images/friedrich-nietzsche.jpg",
@@ -6794,7 +6794,7 @@
     },
     {
       "name": "Voltaire",
-      "years": "1694–1778",
+      "years": "1694-1778",
       "tag": "Philosopher",
       "emoji": "✍️",
       "img": "/famous-person/_Resources/_imgSource/images/voltaire.jpeg",
@@ -6830,7 +6830,7 @@
           "bridge": "I liked the part about him speaking for freedom. Remember?"
         },
         {
-          "text": "He drank a LOT of coffee — some say forty cups a day!",
+          "text": "He drank a LOT of coffee - some say forty cups a day!",
           "topic": "lots of coffee",
           "say": "Voltaire drank tons and tons of coffee.",
           "sayShort": "He loved his coffee.",
@@ -6842,7 +6842,7 @@
     },
     {
       "name": "Pablo Picasso",
-      "years": "1881–1973",
+      "years": "1881-1973",
       "tag": "Artist",
       "emoji": "🎨",
       "img": "/famous-person/_Resources/_imgSource/images/pablo-picasso.jpg",
@@ -6890,7 +6890,7 @@
     },
     {
       "name": "Salvador Dalí",
-      "years": "1904–1989",
+      "years": "1904-1989",
       "tag": "Artist",
       "emoji": "🎨",
       "img": "/famous-person/_Resources/_imgSource/images/salvador-dali.jpeg",
@@ -6938,7 +6938,7 @@
     },
     {
       "name": "Georgia O'Keeffe",
-      "years": "1887–1986",
+      "years": "1887-1986",
       "tag": "Artist",
       "emoji": "🌸",
       "img": "/famous-person/_Resources/_imgSource/images/georgia-okeeffe.jpg",
@@ -6986,7 +6986,7 @@
     },
     {
       "name": "Yayoi Kusama",
-      "years": "1929–",
+      "years": "1929 - ",
       "tag": "Artist",
       "emoji": "🟡",
       "img": "/famous-person/_Resources/_imgSource/images/600px-Yayoi_Kusama_wax_model_at_Louis_Vitton.jpg",
@@ -7034,7 +7034,7 @@
     },
     {
       "name": "Rembrandt",
-      "years": "1606–1669",
+      "years": "1606-1669",
       "tag": "Artist",
       "emoji": "🎨",
       "img": "/famous-person/_Resources/_imgSource/images/rembrandt.jpg",
@@ -7082,7 +7082,7 @@
     },
     {
       "name": "Beethoven",
-      "years": "1770–1827",
+      "years": "1770-1827",
       "tag": "Musician",
       "emoji": "🎹",
       "img": "/famous-person/_Resources/_imgSource/images/beethoven.jpg",
@@ -7130,7 +7130,7 @@
     },
     {
       "name": "Tchaikovsky",
-      "years": "1840–1893",
+      "years": "1840-1893",
       "tag": "Musician",
       "emoji": "🎻",
       "img": "/famous-person/_Resources/_imgSource/images/tchaikovsky.jpg",
@@ -7178,7 +7178,7 @@
     },
     {
       "name": "Louis Armstrong",
-      "years": "1901–1971",
+      "years": "1901-1971",
       "tag": "Musician",
       "emoji": "🎺",
       "img": "/famous-person/_Resources/_imgSource/images/louis-armstrong.jpeg",
@@ -7226,7 +7226,7 @@
     },
     {
       "name": "Billie Holiday",
-      "years": "1915–1959",
+      "years": "1915-1959",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/billie-holiday.jpg",
@@ -7274,7 +7274,7 @@
     },
     {
       "name": "Jimi Hendrix",
-      "years": "1942–1970",
+      "years": "1942-1970",
       "tag": "Musician",
       "emoji": "🎸",
       "img": "/famous-person/_Resources/_imgSource/images/jimi-hendrix.jpg",
@@ -7283,7 +7283,7 @@
       "converted": true,
       "facts": [
         {
-          "text": "Jimi could play the guitar like no one else — even using his teeth!",
+          "text": "Jimi could play the guitar like no one else - even using his teeth!",
           "topic": "amazing guitar",
           "say": "Jimi played guitar in wild, amazing ways.",
           "sayShort": "He was a guitar wizard.",
@@ -7322,7 +7322,7 @@
     },
     {
       "name": "David Bowie",
-      "years": "1947–2016",
+      "years": "1947-2016",
       "tag": "Musician",
       "emoji": "🎸",
       "img": "/famous-person/_Resources/_imgSource/images/david-bowie.jpg",
@@ -7370,7 +7370,7 @@
     },
     {
       "name": "Whitney Houston",
-      "years": "1963–2012",
+      "years": "1963-2012",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/whitney-houston.jpg",
@@ -7418,7 +7418,7 @@
     },
     {
       "name": "Bob Marley",
-      "years": "1945–1981",
+      "years": "1945-1981",
       "tag": "Musician",
       "emoji": "🎵",
       "img": "/famous-person/_Resources/_imgSource/images/bob-marley.jpg",
@@ -7466,7 +7466,7 @@
     },
     {
       "name": "Tupac Shakur",
-      "years": "1971–1996",
+      "years": "1971-1996",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/tupac-shakur.jpg",
@@ -7514,7 +7514,7 @@
     },
     {
       "name": "Michael Jackson",
-      "years": "1958–2009",
+      "years": "1958-2009",
       "tag": "Musician",
       "emoji": "🕺",
       "img": "/famous-person/_Resources/_imgSource/images/michael-jackson.jpg",
@@ -7562,7 +7562,7 @@
     },
     {
       "name": "Beyoncé",
-      "years": "1981–",
+      "years": "1981 - ",
       "tag": "Performer",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/beyonce.jpg",
@@ -7610,7 +7610,7 @@
     },
     {
       "name": "Rihanna",
-      "years": "1988–",
+      "years": "1988 - ",
       "tag": "Performer",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/rihanna.png",
@@ -7658,7 +7658,7 @@
     },
     {
       "name": "Taylor Swift",
-      "years": "1989–",
+      "years": "1989 - ",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/taylor-swift.jpg",
@@ -7706,7 +7706,7 @@
     },
     {
       "name": "Billie Eilish",
-      "years": "2001–",
+      "years": "2001 - ",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/billie-eilish.jpg",
@@ -7754,7 +7754,7 @@
     },
     {
       "name": "Harry Styles",
-      "years": "1994–",
+      "years": "1994 - ",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/harry-styles.jpg",
@@ -7802,7 +7802,7 @@
     },
     {
       "name": "Olivia Rodrigo",
-      "years": "2003–",
+      "years": "2003 - ",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/olivia-rodrigo.jpg",
@@ -7850,7 +7850,7 @@
     },
     {
       "name": "Bad Bunny",
-      "years": "1994–",
+      "years": "1994 - ",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/bad-bunny.jpg",
@@ -7898,7 +7898,7 @@
     },
     {
       "name": "Shakira",
-      "years": "1977–",
+      "years": "1977 - ",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/shakira.jpg",
@@ -7946,7 +7946,7 @@
     },
     {
       "name": "Missy Elliott",
-      "years": "1971–",
+      "years": "1971 - ",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/missy-elliott.jpg",
@@ -7994,7 +7994,7 @@
     },
     {
       "name": "Jay-Z",
-      "years": "1969–",
+      "years": "1969 - ",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/jay-z.jpg",
@@ -8042,7 +8042,7 @@
     },
     {
       "name": "Eminem",
-      "years": "1972–",
+      "years": "1972 - ",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/eminem.jpg",
@@ -8090,7 +8090,7 @@
     },
     {
       "name": "Stormzy",
-      "years": "1993–",
+      "years": "1993 - ",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/stormzy.jpg",
@@ -8138,7 +8138,7 @@
     },
     {
       "name": "BTS",
-      "years": "2010–",
+      "years": "2010 - ",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/bts.jpg",
@@ -8186,7 +8186,7 @@
     },
     {
       "name": "LeBron James",
-      "years": "1984–",
+      "years": "1984 - ",
       "tag": "Athlete",
       "emoji": "🏀",
       "img": "/famous-person/_Resources/_imgSource/images/lebron-james.jpeg",
@@ -8222,7 +8222,7 @@
           "bridge": "I liked the part about his most points. Remember?"
         },
         {
-          "text": "He is super strong and tall — about six feet nine inches.",
+          "text": "He is super strong and tall - about six feet nine inches.",
           "topic": "tall and strong",
           "say": "LeBron is really tall and super strong.",
           "sayShort": "He is big and strong.",
@@ -8234,7 +8234,7 @@
     },
     {
       "name": "Kobe Bryant",
-      "years": "1978–2020",
+      "years": "1978-2020",
       "tag": "Athlete",
       "emoji": "🏀",
       "img": "/famous-person/_Resources/_imgSource/images/kobe-bryant.jpeg",
@@ -8282,7 +8282,7 @@
     },
     {
       "name": "Nikola Jokić",
-      "years": "1995–",
+      "years": "1995 - ",
       "tag": "Athlete",
       "emoji": "🏀",
       "img": "/famous-person/_Resources/_imgSource/images/nikola-jokic.jpg",
@@ -8330,7 +8330,7 @@
     },
     {
       "name": "Stephen Curry",
-      "years": "1988–",
+      "years": "1988 - ",
       "tag": "Athlete",
       "emoji": "🏀",
       "img": "/famous-person/_Resources/_imgSource/images/stephen-curry.jpg",
@@ -8378,7 +8378,7 @@
     },
     {
       "name": "Caitlin Clark",
-      "years": "2002–",
+      "years": "2002 - ",
       "tag": "Athlete",
       "emoji": "🏀",
       "img": "/famous-person/_Resources/_imgSource/images/caitlin-clark.jpg",
@@ -8426,7 +8426,7 @@
     },
     {
       "name": "Lionel Messi",
-      "years": "1987–",
+      "years": "1987 - ",
       "tag": "Athlete",
       "emoji": "⚽",
       "img": "/famous-person/_Resources/_imgSource/images/lionel-messi.jpg",
@@ -8474,7 +8474,7 @@
     },
     {
       "name": "Diego Maradona",
-      "years": "1960–2020",
+      "years": "1960-2020",
       "tag": "Athlete",
       "emoji": "⚽",
       "img": "/famous-person/_Resources/_imgSource/images/diego-maradona.jpg",
@@ -8522,7 +8522,7 @@
     },
     {
       "name": "Pelé",
-      "years": "1940–2022",
+      "years": "1940-2022",
       "tag": "Athlete",
       "emoji": "⚽",
       "img": "/famous-person/_Resources/_imgSource/images/pele.jpg",
@@ -8570,7 +8570,7 @@
     },
     {
       "name": "Naomi Osaka",
-      "years": "1997–",
+      "years": "1997 - ",
       "tag": "Athlete",
       "emoji": "🎾",
       "img": "/famous-person/_Resources/_imgSource/images/naomi-osaka.jpeg",
@@ -8618,7 +8618,7 @@
     },
     {
       "name": "Venus Williams",
-      "years": "1980–",
+      "years": "1980 - ",
       "tag": "Athlete",
       "emoji": "🎾",
       "img": "/famous-person/_Resources/_imgSource/images/venus-williams.jpg",
@@ -8666,7 +8666,7 @@
     },
     {
       "name": "Sha'Carri Richardson",
-      "years": "2000–",
+      "years": "2000 - ",
       "tag": "Athlete",
       "emoji": "🏃",
       "img": "/famous-person/_Resources/_imgSource/images/sha-carri-richardson.jpg",
@@ -8714,7 +8714,7 @@
     },
     {
       "name": "Marilyn Monroe",
-      "years": "1926–1962",
+      "years": "1926-1962",
       "tag": "Actor",
       "emoji": "⭐",
       "img": "/famous-person/_Resources/_imgSource/images/600px-Monroecirca1953.jpg",
@@ -8762,7 +8762,7 @@
     },
     {
       "name": "Charlie Chaplin",
-      "years": "1889–1977",
+      "years": "1889-1977",
       "tag": "Actor",
       "emoji": "🎬",
       "img": "/famous-person/_Resources/_imgSource/images/charlie-chaplin.jpg",
@@ -8771,7 +8771,7 @@
       "converted": true,
       "facts": [
         {
-          "text": "Charlie was a funny actor in silent movies — movies with no talking.",
+          "text": "Charlie was a funny actor in silent movies - movies with no talking.",
           "topic": "silent movies",
           "say": "Charlie made people laugh in silent movies.",
           "sayShort": "He was a silent-movie star.",
@@ -8810,7 +8810,7 @@
     },
     {
       "name": "Jackie Chan",
-      "years": "1954–",
+      "years": "1954 - ",
       "tag": "Actor",
       "emoji": "🥋",
       "img": "/famous-person/_Resources/_imgSource/images/jackie-chan.jpg",
@@ -8858,7 +8858,7 @@
     },
     {
       "name": "Viola Davis",
-      "years": "1965–",
+      "years": "1965 - ",
       "tag": "Actor",
       "emoji": "🎬",
       "img": "/famous-person/_Resources/_imgSource/images/viola-davis.jpg",
@@ -8906,7 +8906,7 @@
     },
     {
       "name": "Chadwick Boseman",
-      "years": "1976–2020",
+      "years": "1976-2020",
       "tag": "Actor",
       "emoji": "🦸",
       "img": "/famous-person/_Resources/_imgSource/images/chadwick-boseman.jpg",
@@ -8954,7 +8954,7 @@
     },
     {
       "name": "Lupita Nyong'o",
-      "years": "1983–",
+      "years": "1983 - ",
       "tag": "Actor",
       "emoji": "🎬",
       "img": "/famous-person/_Resources/_imgSource/images/lupita-nyongo.jpg",
@@ -9002,7 +9002,7 @@
     },
     {
       "name": "Zendaya",
-      "years": "2000–",
+      "years": "2000 - ",
       "tag": "Actor",
       "emoji": "🎬",
       "img": "/famous-person/_Resources/_imgSource/images/zendaya.jpg",
@@ -9050,7 +9050,7 @@
     },
     {
       "name": "Keanu Reeves",
-      "years": "1964–",
+      "years": "1964 - ",
       "tag": "Actor",
       "emoji": "🎬",
       "img": "/famous-person/_Resources/_imgSource/images/keanu-reeves.jpg",
@@ -9098,7 +9098,7 @@
     },
     {
       "name": "Simone de Beauvoir",
-      "years": "1908–1986",
+      "years": "1908-1986",
       "tag": "Philosopher",
       "emoji": "✍️",
       "img": "/famous-person/_Resources/_imgSource/images/simone-de-beauvoir.jpeg",
@@ -9146,7 +9146,7 @@
     },
     {
       "name": "Roald Amundsen",
-      "years": "1872–1928",
+      "years": "1872-1928",
       "tag": "Explorer",
       "emoji": "🧭",
       "img": "/famous-person/_Resources/_imgSource/images/roald-amundsen.jpg",
@@ -9194,7 +9194,7 @@
     },
     {
       "name": "Megan Rapinoe",
-      "years": "1985–",
+      "years": "1985 - ",
       "tag": "Athlete",
       "emoji": "⚽",
       "img": "/famous-person/_Resources/_imgSource/images/megan-rapinoe.jpg",
@@ -9242,7 +9242,7 @@
     },
     {
       "name": "Roger Federer",
-      "years": "1981–",
+      "years": "1981 - ",
       "tag": "Athlete",
       "emoji": "🎾",
       "img": "/famous-person/_Resources/_imgSource/images/roger-federer.jpg",
@@ -9290,7 +9290,7 @@
     },
     {
       "name": "Dwayne Johnson",
-      "years": "1972–",
+      "years": "1972 - ",
       "tag": "Actor",
       "emoji": "💪",
       "img": "/famous-person/_Resources/_imgSource/images/dwayne-johnson.jpg",
@@ -9338,7 +9338,7 @@
     },
     {
       "name": "Meryl Streep",
-      "years": "1949–",
+      "years": "1949 - ",
       "tag": "Actor",
       "emoji": "🎬",
       "img": "/famous-person/_Resources/_imgSource/images/meryl-streep.jpg",
@@ -9386,7 +9386,7 @@
     },
     {
       "name": "Elton John",
-      "years": "1947–",
+      "years": "1947 - ",
       "tag": "Musician",
       "emoji": "🎹",
       "img": "/famous-person/_Resources/_imgSource/images/elton-john.jpg",
@@ -9434,7 +9434,7 @@
     },
     {
       "name": "Nina Simone",
-      "years": "1933–2003",
+      "years": "1933-2003",
       "tag": "Musician",
       "emoji": "🎹",
       "img": "/famous-person/_Resources/_imgSource/images/nina-simone.jpg",
@@ -9482,7 +9482,7 @@
     },
     {
       "name": "Sabrina Carpenter",
-      "years": "2000–",
+      "years": "2000 - ",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/sabrina-carpenter.jpeg",
@@ -9530,7 +9530,7 @@
     },
     {
       "name": "Immanuel Kant",
-      "years": "1724–1804",
+      "years": "1724-1804",
       "tag": "Philosopher",
       "emoji": "📜",
       "img": "/famous-person/_Resources/_imgSource/images/600px-Immanuel_Kant_-_Gemaelde_1.jpg",
@@ -9557,7 +9557,7 @@
           "bridge": "I liked the part about right and wrong. Remember?"
         },
         {
-          "text": "Immanuel took a walk at the same time every day — people set their clocks by him.",
+          "text": "Immanuel took a walk at the same time every day - people set their clocks by him.",
           "topic": "his daily walk",
           "say": "Immanuel walked at the exact same time daily.",
           "sayShort": "He walked like clockwork.",
@@ -9578,7 +9578,7 @@
     },
     {
       "name": "Johann Sebastian Bach",
-      "years": "1685–1750",
+      "years": "1685-1750",
       "tag": "Musician",
       "emoji": "🎼",
       "img": "/famous-person/_Resources/_imgSource/images/johann-sebastian-bach.jpg",
@@ -9626,7 +9626,7 @@
     },
     {
       "name": "Frédéric Chopin",
-      "years": "1810–1849",
+      "years": "1810-1849",
       "tag": "Musician",
       "emoji": "🎹",
       "img": "/famous-person/_Resources/_imgSource/images/frederic-chopin.jpg",
@@ -9674,7 +9674,7 @@
     },
     {
       "name": "Antonio Vivaldi",
-      "years": "1678–1741",
+      "years": "1678-1741",
       "tag": "Musician",
       "emoji": "🎻",
       "img": "/famous-person/_Resources/_imgSource/images/antonio-vivaldi.jpg",
@@ -9722,7 +9722,7 @@
     },
     {
       "name": "Aretha Franklin",
-      "years": "1942–2018",
+      "years": "1942-2018",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/aretha-franklin.jpg",
@@ -9770,7 +9770,7 @@
     },
     {
       "name": "Ray Charles",
-      "years": "1930–2004",
+      "years": "1930-2004",
       "tag": "Musician",
       "emoji": "🎹",
       "img": "/famous-person/_Resources/_imgSource/images/ray-charles.jpg",
@@ -9818,7 +9818,7 @@
     },
     {
       "name": "Stevie Wonder",
-      "years": "1950–",
+      "years": "1950 - ",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/stevie-wonder.jpg",
@@ -9866,7 +9866,7 @@
     },
     {
       "name": "Ella Fitzgerald",
-      "years": "1917–1996",
+      "years": "1917-1996",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/ella-fitzgerald.jpg",
@@ -9914,7 +9914,7 @@
     },
     {
       "name": "Duke Ellington",
-      "years": "1899–1974",
+      "years": "1899-1974",
       "tag": "Musician",
       "emoji": "🎹",
       "img": "/famous-person/_Resources/_imgSource/images/duke-ellington.jpg",
@@ -9962,7 +9962,7 @@
     },
     {
       "name": "Miles Davis",
-      "years": "1926–1991",
+      "years": "1926-1991",
       "tag": "Musician",
       "emoji": "🎺",
       "img": "/famous-person/_Resources/_imgSource/images/miles-davis.jpg",
@@ -10010,7 +10010,7 @@
     },
     {
       "name": "Johnny Cash",
-      "years": "1932–2003",
+      "years": "1932-2003",
       "tag": "Musician",
       "emoji": "🎸",
       "img": "/famous-person/_Resources/_imgSource/images/johnny-cash.jpg",
@@ -10058,7 +10058,7 @@
     },
     {
       "name": "Frank Sinatra",
-      "years": "1915–1998",
+      "years": "1915-1998",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/frank-sinatra.jpg",
@@ -10106,7 +10106,7 @@
     },
     {
       "name": "Bob Dylan",
-      "years": "1941–",
+      "years": "1941 - ",
       "tag": "Musician",
       "emoji": "🎸",
       "img": "/famous-person/_Resources/_imgSource/images/bob-dylan.jpg",
@@ -10154,7 +10154,7 @@
     },
     {
       "name": "Paul McCartney",
-      "years": "1942–",
+      "years": "1942 - ",
       "tag": "Musician",
       "emoji": "🎸",
       "img": "/famous-person/_Resources/_imgSource/images/paul-mccartney.jpg",
@@ -10202,7 +10202,7 @@
     },
     {
       "name": "John Lennon",
-      "years": "1940–1980",
+      "years": "1940-1980",
       "tag": "Musician",
       "emoji": "🎸",
       "img": "/famous-person/_Resources/_imgSource/images/john-lennon.jpg",
@@ -10250,7 +10250,7 @@
     },
     {
       "name": "Prince",
-      "years": "1958–2016",
+      "years": "1958-2016",
       "tag": "Musician",
       "emoji": "🎸",
       "img": "/famous-person/_Resources/_imgSource/images/prince.jpg",
@@ -10298,7 +10298,7 @@
     },
     {
       "name": "Madonna",
-      "years": "1958–",
+      "years": "1958 - ",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/madonna.jpg",
@@ -10346,7 +10346,7 @@
     },
     {
       "name": "Lady Gaga",
-      "years": "1986–",
+      "years": "1986 - ",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/lady-gaga.jpg",
@@ -10394,7 +10394,7 @@
     },
     {
       "name": "Adele",
-      "years": "1988–",
+      "years": "1988 - ",
       "tag": "Musician",
       "emoji": "🎤",
       "img": "/famous-person/_Resources/_imgSource/images/adele.jpg",
@@ -10442,7 +10442,7 @@
     },
     {
       "name": "Leo Tolstoy",
-      "years": "1828–1910",
+      "years": "1828-1910",
       "tag": "Author",
       "emoji": "📖",
       "img": "/famous-person/_Resources/_imgSource/images/leo-tolstoy.jpg",
@@ -10490,7 +10490,7 @@
     },
     {
       "name": "Fyodor Dostoevsky",
-      "years": "1821–1881",
+      "years": "1821-1881",
       "tag": "Author",
       "emoji": "📖",
       "img": "/famous-person/_Resources/_imgSource/images/fyodor-dostoevsky.jpg",
@@ -10538,7 +10538,7 @@
     },
     {
       "name": "Jane Austen",
-      "years": "1775–1817",
+      "years": "1775-1817",
       "tag": "Author",
       "emoji": "📖",
       "img": "/famous-person/_Resources/_imgSource/images/jane-austen.jpg",
@@ -10586,7 +10586,7 @@
     },
     {
       "name": "Oscar Wilde",
-      "years": "1854–1900",
+      "years": "1854-1900",
       "tag": "Author",
       "emoji": "🖋️",
       "img": "/famous-person/_Resources/_imgSource/images/oscar-wilde.jpg",
@@ -10634,7 +10634,7 @@
     },
     {
       "name": "Ernest Hemingway",
-      "years": "1899–1961",
+      "years": "1899-1961",
       "tag": "Author",
       "emoji": "📖",
       "img": "/famous-person/_Resources/_imgSource/images/ernest-hemingway.jpg",
@@ -10682,7 +10682,7 @@
     },
     {
       "name": "Franz Kafka",
-      "years": "1883–1924",
+      "years": "1883-1924",
       "tag": "Author",
       "emoji": "📖",
       "img": "/famous-person/_Resources/_imgSource/images/franz-kafka.jpg",
@@ -10730,7 +10730,7 @@
     },
     {
       "name": "Victor Hugo",
-      "years": "1802–1885",
+      "years": "1802-1885",
       "tag": "Author",
       "emoji": "📖",
       "img": "/famous-person/_Resources/_imgSource/images/victor-hugo.jpg",
@@ -10778,7 +10778,7 @@
     },
     {
       "name": "Dante Alighieri",
-      "years": "1265–1321",
+      "years": "1265-1321",
       "tag": "Author",
       "emoji": "📜",
       "img": "/famous-person/_Resources/_imgSource/images/dante-alighieri.jpg",
@@ -10826,7 +10826,7 @@
     },
     {
       "name": "Miguel de Cervantes",
-      "years": "1547–1616",
+      "years": "1547-1616",
       "tag": "Author",
       "emoji": "📖",
       "img": "/famous-person/_Resources/_imgSource/images/miguel-de-cervantes.jpg",
@@ -10874,7 +10874,7 @@
     },
     {
       "name": "J.R.R. Tolkien",
-      "years": "1892–1973",
+      "years": "1892-1973",
       "tag": "Author",
       "emoji": "🧙",
       "img": "/famous-person/_Resources/_imgSource/images/j.r.r.-tolkien.jpg",
@@ -10922,7 +10922,7 @@
     },
     {
       "name": "Agatha Christie",
-      "years": "1890–1976",
+      "years": "1890-1976",
       "tag": "Author",
       "emoji": "🔎",
       "img": "/famous-person/_Resources/_imgSource/images/agatha-christie.jpg",
@@ -10970,7 +10970,7 @@
     },
     {
       "name": "Roald Dahl",
-      "years": "1916–1990",
+      "years": "1916-1990",
       "tag": "Author",
       "emoji": "📚",
       "img": "/famous-person/_Resources/_imgSource/images/roald-dahl.jpg",
@@ -11018,7 +11018,7 @@
     },
     {
       "name": "Dr. Seuss",
-      "years": "1904–1991",
+      "years": "1904-1991",
       "tag": "Author",
       "emoji": "📚",
       "img": "/famous-person/_Resources/_imgSource/images/dr.-seuss.jpg",
@@ -11066,7 +11066,7 @@
     },
     {
       "name": "Hans Christian Andersen",
-      "years": "1805–1875",
+      "years": "1805-1875",
       "tag": "Author",
       "emoji": "📚",
       "img": "/famous-person/_Resources/_imgSource/images/hans-christian-andersen.jpg",
@@ -11114,7 +11114,7 @@
     },
     {
       "name": "Walt Whitman",
-      "years": "1819–1892",
+      "years": "1819-1892",
       "tag": "Author",
       "emoji": "🖋️",
       "img": "/famous-person/_Resources/_imgSource/images/walt-whitman.jpg",
@@ -11162,7 +11162,7 @@
     },
     {
       "name": "Pablo Neruda",
-      "years": "1904–1973",
+      "years": "1904-1973",
       "tag": "Author",
       "emoji": "🖋️",
       "img": "/famous-person/_Resources/_imgSource/images/pablo-neruda.jpg",
@@ -11210,7 +11210,7 @@
     },
     {
       "name": "Harper Lee",
-      "years": "1926–2016",
+      "years": "1926-2016",
       "tag": "Author",
       "emoji": "📖",
       "img": "/famous-person/_Resources/_imgSource/images/harper-lee.jpg",
@@ -11258,7 +11258,7 @@
     },
     {
       "name": "James Baldwin",
-      "years": "1924–1987",
+      "years": "1924-1987",
       "tag": "Author",
       "emoji": "🖋️",
       "img": "/famous-person/_Resources/_imgSource/images/james-baldwin.jpg",
@@ -11306,7 +11306,7 @@
     },
     {
       "name": "Octavia Butler",
-      "years": "1947–2006",
+      "years": "1947-2006",
       "tag": "Author",
       "emoji": "🚀",
       "img": "/famous-person/_Resources/_imgSource/images/octavia-butler.jpg",
@@ -11354,7 +11354,7 @@
     },
     {
       "name": "Stephen King",
-      "years": "1947–",
+      "years": "1947 - ",
       "tag": "Author",
       "emoji": "📖",
       "img": "/famous-person/_Resources/_imgSource/images/stephen-king.jpg",
@@ -11402,7 +11402,7 @@
     },
     {
       "name": "Dmitri Mendeleev",
-      "years": "1834–1907",
+      "years": "1834-1907",
       "tag": "Scientist",
       "emoji": "⚗️",
       "img": "/famous-person/_Resources/_imgSource/images/dmitri-mendeleev.jpg",
@@ -11450,7 +11450,7 @@
     },
     {
       "name": "Gregor Mendel",
-      "years": "1822–1884",
+      "years": "1822-1884",
       "tag": "Scientist",
       "emoji": "🌱",
       "img": "/famous-person/_Resources/_imgSource/images/gregor-mendel.jpg",
@@ -11498,7 +11498,7 @@
     },
     {
       "name": "Niels Bohr",
-      "years": "1885–1962",
+      "years": "1885-1962",
       "tag": "Scientist",
       "emoji": "⚛️",
       "img": "/famous-person/_Resources/_imgSource/images/niels-bohr.jpg",
@@ -11546,7 +11546,7 @@
     },
     {
       "name": "Richard Feynman",
-      "years": "1918–1988",
+      "years": "1918-1988",
       "tag": "Scientist",
       "emoji": "⚛️",
       "img": "/famous-person/_Resources/_imgSource/images/richard-feynman.jpg",
@@ -11594,7 +11594,7 @@
     },
     {
       "name": "Max Planck",
-      "years": "1858–1947",
+      "years": "1858-1947",
       "tag": "Scientist",
       "emoji": "⚛️",
       "img": "/famous-person/_Resources/_imgSource/images/max-planck.jpg",
@@ -11642,7 +11642,7 @@
     },
     {
       "name": "Enrico Fermi",
-      "years": "1901–1954",
+      "years": "1901-1954",
       "tag": "Scientist",
       "emoji": "⚛️",
       "img": "/famous-person/_Resources/_imgSource/images/enrico-fermi.jpg",
@@ -11690,7 +11690,7 @@
     },
     {
       "name": "Michael Faraday",
-      "years": "1791–1867",
+      "years": "1791-1867",
       "tag": "Scientist",
       "emoji": "🧲",
       "img": "/famous-person/_Resources/_imgSource/images/michael-faraday.jpg",
@@ -11738,7 +11738,7 @@
     },
     {
       "name": "Robert Oppenheimer",
-      "years": "1904–1967",
+      "years": "1904-1967",
       "tag": "Scientist",
       "emoji": "⚛️",
       "img": "/famous-person/_Resources/_imgSource/images/robert-oppenheimer.jpg",
@@ -11749,7 +11749,7 @@
     },
     {
       "name": "Jonas Salk",
-      "years": "1914–1995",
+      "years": "1914-1995",
       "tag": "Scientist",
       "emoji": "💉",
       "img": "/famous-person/_Resources/_imgSource/images/jonas-salk.jpg",
@@ -11797,7 +11797,7 @@
     },
     {
       "name": "Alexander Fleming",
-      "years": "1881–1955",
+      "years": "1881-1955",
       "tag": "Scientist",
       "emoji": "🧫",
       "img": "/famous-person/_Resources/_imgSource/images/alexander-fleming.jpg",
@@ -11845,7 +11845,7 @@
     },
     {
       "name": "Tu Youyou",
-      "years": "1930–",
+      "years": "1930 - ",
       "tag": "Scientist",
       "emoji": "🌿",
       "img": "/famous-person/_Resources/_imgSource/images/tu-youyou.jpg",
@@ -11893,7 +11893,7 @@
     },
     {
       "name": "Barbara McClintock",
-      "years": "1902–1992",
+      "years": "1902-1992",
       "tag": "Scientist",
       "emoji": "🌽",
       "img": "/famous-person/_Resources/_imgSource/images/barbara-mcclintock.jpg",
@@ -11941,7 +11941,7 @@
     },
     {
       "name": "Lise Meitner",
-      "years": "1878–1968",
+      "years": "1878-1968",
       "tag": "Scientist",
       "emoji": "⚛️",
       "img": "/famous-person/_Resources/_imgSource/images/lise-meitner.jpg",
@@ -11989,7 +11989,7 @@
     },
     {
       "name": "Emmy Noether",
-      "years": "1882–1935",
+      "years": "1882-1935",
       "tag": "Mathematician",
       "emoji": "➗",
       "img": "/famous-person/_Resources/_imgSource/images/emmy-noether.jpg",
@@ -12037,7 +12037,7 @@
     },
     {
       "name": "Carl Friedrich Gauss",
-      "years": "1777–1855",
+      "years": "1777-1855",
       "tag": "Mathematician",
       "emoji": "➗",
       "img": "/famous-person/_Resources/_imgSource/images/carl-friedrich-gauss.jpg",
@@ -12085,7 +12085,7 @@
     },
     {
       "name": "Leonhard Euler",
-      "years": "1707–1783",
+      "years": "1707-1783",
       "tag": "Mathematician",
       "emoji": "➗",
       "img": "/famous-person/_Resources/_imgSource/images/leonhard-euler.jpg",
@@ -12181,7 +12181,7 @@
     },
     {
       "name": "Johannes Kepler",
-      "years": "1571–1630",
+      "years": "1571-1630",
       "tag": "Scientist",
       "emoji": "🔭",
       "img": "/famous-person/_Resources/_imgSource/images/johannes-kepler.jpg",
@@ -12229,7 +12229,7 @@
     },
     {
       "name": "Edwin Hubble",
-      "years": "1889–1953",
+      "years": "1889-1953",
       "tag": "Scientist",
       "emoji": "🔭",
       "img": "/famous-person/_Resources/_imgSource/images/edwin-hubble.jpg",
@@ -12277,7 +12277,7 @@
     },
     {
       "name": "George Washington Carver",
-      "years": "1864–1943",
+      "years": "1864-1943",
       "tag": "Inventor",
       "emoji": "🥜",
       "img": "/famous-person/_Resources/_imgSource/images/george-washington-carver.jpg",
@@ -12325,7 +12325,7 @@
     },
     {
       "name": "Norman Borlaug",
-      "years": "1914–2009",
+      "years": "1914-2009",
       "tag": "Scientist",
       "emoji": "🌾",
       "img": "/famous-person/_Resources/_imgSource/images/norman-borlaug.jpg",
@@ -12373,7 +12373,7 @@
     },
     {
       "name": "Claude Monet",
-      "years": "1840–1926",
+      "years": "1840-1926",
       "tag": "Artist",
       "emoji": "🎨",
       "img": "/famous-person/_Resources/_imgSource/images/claude-monet.jpg",
@@ -12421,7 +12421,7 @@
     },
     {
       "name": "Henri Matisse",
-      "years": "1869–1954",
+      "years": "1869-1954",
       "tag": "Artist",
       "emoji": "🎨",
       "img": "/famous-person/_Resources/_imgSource/images/henri-matisse.jpg",
@@ -12469,7 +12469,7 @@
     },
     {
       "name": "Andy Warhol",
-      "years": "1928–1987",
+      "years": "1928-1987",
       "tag": "Artist",
       "emoji": "🎨",
       "img": "/famous-person/_Resources/_imgSource/images/andy-warhol.jpg",
@@ -12478,7 +12478,7 @@
       "converted": true,
       "facts": [
         {
-          "text": "Andy made bright, bold art of everyday things — even soup cans!",
+          "text": "Andy made bright, bold art of everyday things - even soup cans!",
           "topic": "soup can art",
           "say": "Andy painted everyday things like soup cans.",
           "sayShort": "He painted soup cans.",
@@ -12517,7 +12517,7 @@
     },
     {
       "name": "Diego Rivera",
-      "years": "1886–1957",
+      "years": "1886-1957",
       "tag": "Artist",
       "emoji": "🎨",
       "img": "/famous-person/_Resources/_imgSource/images/diego-rivera.jpg",
@@ -12565,7 +12565,7 @@
     },
     {
       "name": "Auguste Rodin",
-      "years": "1840–1917",
+      "years": "1840-1917",
       "tag": "Artist",
       "emoji": "🗿",
       "img": "/famous-person/_Resources/_imgSource/images/auguste-rodin.jpg",
@@ -12613,7 +12613,7 @@
     },
     {
       "name": "Johannes Vermeer",
-      "years": "1632–1675",
+      "years": "1632-1675",
       "tag": "Artist",
       "emoji": "🎨",
       "img": "/famous-person/_Resources/_imgSource/images/johannes-vermeer.jpg",
@@ -12661,7 +12661,7 @@
     },
     {
       "name": "Raphael",
-      "years": "1483–1520",
+      "years": "1483-1520",
       "tag": "Artist",
       "emoji": "🎨",
       "img": "/famous-person/_Resources/_imgSource/images/raphael.jpg",
@@ -12709,7 +12709,7 @@
     },
     {
       "name": "Katsushika Hokusai",
-      "years": "1760–1849",
+      "years": "1760-1849",
       "tag": "Artist",
       "emoji": "🌊",
       "img": "/famous-person/_Resources/_imgSource/images/katsushika-hokusai.jpg",
@@ -12757,7 +12757,7 @@
     },
     {
       "name": "Queen Elizabeth I",
-      "years": "1533–1603",
+      "years": "1533-1603",
       "tag": "Ruler",
       "emoji": "👑",
       "img": "/famous-person/_Resources/_imgSource/images/queen-elizabeth-i.jpg",
@@ -12784,7 +12784,7 @@
           "bridge": "I liked the part about her being a powerful queen. Remember?"
         },
         {
-          "text": "During her rule, plays and music grew — it was Shakespeare's time!",
+          "text": "During her rule, plays and music grew - it was Shakespeare's time!",
           "topic": "a golden time",
           "say": "Elizabeth's time was full of plays and music.",
           "sayShort": "Art grew while she ruled.",
@@ -12805,7 +12805,7 @@
     },
     {
       "name": "Queen Elizabeth II",
-      "years": "1926–2022",
+      "years": "1926-2022",
       "tag": "Royal",
       "emoji": "👑",
       "img": "/famous-person/_Resources/_imgSource/images/queen-elizabeth-ii.jpg",
@@ -12853,7 +12853,7 @@
     },
     {
       "name": "Catherine the Great",
-      "years": "1729–1796",
+      "years": "1729-1796",
       "tag": "Ruler",
       "emoji": "👑",
       "img": "/famous-person/_Resources/_imgSource/images/catherine-the-great.jpg",
@@ -12901,7 +12901,7 @@
     },
     {
       "name": "Charlemagne",
-      "years": "748–814",
+      "years": "748-814",
       "tag": "Ruler",
       "emoji": "👑",
       "img": "/famous-person/_Resources/_imgSource/images/charlemagne.jpg",
@@ -12949,7 +12949,7 @@
     },
     {
       "name": "Tutankhamun",
-      "years": "~1341–1323 BCE",
+      "years": "~1341-1323 BCE",
       "tag": "Ruler",
       "emoji": "👑",
       "img": "/famous-person/_Resources/_imgSource/images/tutankhamun.jpg",
@@ -12958,7 +12958,7 @@
       "converted": true,
       "facts": [
         {
-          "text": "Tutankhamun was a king of ancient Egypt — a boy king called King Tut.",
+          "text": "Tutankhamun was a king of ancient Egypt - a boy king called King Tut.",
           "topic": "a boy king",
           "say": "Tutankhamun was a boy king of Egypt.",
           "sayShort": "He was a boy king.",
@@ -12997,7 +12997,7 @@
     },
     {
       "name": "Nefertiti",
-      "years": "~1370–1330 BCE",
+      "years": "~1370-1330 BCE",
       "tag": "Ruler",
       "emoji": "👑",
       "img": "/famous-person/_Resources/_imgSource/images/nefertiti.jpg",
@@ -13045,7 +13045,7 @@
     },
     {
       "name": "Ashoka",
-      "years": "~304–232 BCE",
+      "years": "~304-232 BCE",
       "tag": "Ruler",
       "emoji": "👑",
       "img": "/famous-person/_Resources/_imgSource/images/ashoka.jpg",
@@ -13093,7 +13093,7 @@
     },
     {
       "name": "Kublai Khan",
-      "years": "1215–1294",
+      "years": "1215-1294",
       "tag": "Ruler",
       "emoji": "🏹",
       "img": "/famous-person/_Resources/_imgSource/images/kublai-khan.jpg",
@@ -13141,7 +13141,7 @@
     },
     {
       "name": "Simón Bolívar",
-      "years": "1783–1830",
+      "years": "1783-1830",
       "tag": "Leader",
       "emoji": "⚔️",
       "img": "/famous-person/_Resources/_imgSource/images/simon-bolivar.jpg",
@@ -13189,7 +13189,7 @@
     },
     {
       "name": "Sun Yat-sen",
-      "years": "1866–1925",
+      "years": "1866-1925",
       "tag": "Leader",
       "emoji": "🇨🇳",
       "img": "/famous-person/_Resources/_imgSource/images/sun-yat-sen.jpg",
@@ -13237,7 +13237,7 @@
     },
     {
       "name": "Mikhail Gorbachev",
-      "years": "1931–2022",
+      "years": "1931-2022",
       "tag": "Leader",
       "emoji": "🕊️",
       "img": "/famous-person/_Resources/_imgSource/images/mikhail-gorbachev.jpg",
@@ -13285,7 +13285,7 @@
     },
     {
       "name": "Eva Perón",
-      "years": "1919–1952",
+      "years": "1919-1952",
       "tag": "Leader",
       "emoji": "🌹",
       "img": "/famous-person/_Resources/_imgSource/images/eva-peron.jpg",
@@ -13333,7 +13333,7 @@
     },
     {
       "name": "Indira Gandhi",
-      "years": "1917–1984",
+      "years": "1917-1984",
       "tag": "Leader",
       "emoji": "🇮🇳",
       "img": "/famous-person/_Resources/_imgSource/images/indira-gandhi.jpg",
@@ -13381,7 +13381,7 @@
     },
     {
       "name": "Aung San Suu Kyi",
-      "years": "1945–",
+      "years": "1945 - ",
       "tag": "Activist",
       "emoji": "🕊️",
       "img": "/famous-person/_Resources/_imgSource/images/aung-san-suu-kyi.jpg",
@@ -13392,7 +13392,7 @@
     },
     {
       "name": "Kwame Nkrumah",
-      "years": "1909–1972",
+      "years": "1909-1972",
       "tag": "Leader",
       "emoji": "🌍",
       "img": "/famous-person/_Resources/_imgSource/images/kwame-nkrumah.jpg",
@@ -13440,7 +13440,7 @@
     },
     {
       "name": "Cesar Chavez",
-      "years": "1927–1993",
+      "years": "1927-1993",
       "tag": "Activist",
       "emoji": "🍇",
       "img": "/famous-person/_Resources/_imgSource/images/cesar-chavez.jpg",
@@ -13469,7 +13469,7 @@
         {
           "text": "His helpers said \"Sí se puede,\" which means \"Yes, we can!\"",
           "topic": "yes we can",
-          "say": "Cesar's group said \"Sí se puede — yes, we can!\"",
+          "say": "Cesar's group said \"Sí se puede - yes, we can!\"",
           "sayShort": "He said \"yes, we can!\"",
           "ask": "What is something you believe you can do?",
           "askYou": "What helps you feel you can do it?",
@@ -13488,7 +13488,7 @@
     },
     {
       "name": "Dolores Huerta",
-      "years": "1930–",
+      "years": "1930 - ",
       "tag": "Activist",
       "emoji": "✊",
       "img": "/famous-person/_Resources/_imgSource/images/dolores-huerta.jpg",
@@ -13506,7 +13506,7 @@
           "bridge": ""
         },
         {
-          "text": "She helped come up with the cheer \"Sí se puede — yes, we can!\"",
+          "text": "She helped come up with the cheer \"Sí se puede - yes, we can!\"",
           "topic": "yes we can",
           "say": "Dolores helped make the cheer \"yes, we can!\"",
           "sayShort": "She made a famous cheer.",
@@ -13536,7 +13536,7 @@
     },
     {
       "name": "John Lewis",
-      "years": "1940–2020",
+      "years": "1940-2020",
       "tag": "Activist",
       "emoji": "✊",
       "img": "/famous-person/_Resources/_imgSource/images/john-lewis.jpg",
@@ -13584,7 +13584,7 @@
     },
     {
       "name": "W.E.B. Du Bois",
-      "years": "1868–1963",
+      "years": "1868-1963",
       "tag": "Activist",
       "emoji": "📚",
       "img": "/famous-person/_Resources/_imgSource/images/w.e.b.-du-bois.jpg",
@@ -13632,7 +13632,7 @@
     },
     {
       "name": "Ida B. Wells",
-      "years": "1862–1931",
+      "years": "1862-1931",
       "tag": "Activist",
       "emoji": "📰",
       "img": "/famous-person/_Resources/_imgSource/images/ida-b.-wells.jpg",
@@ -13680,7 +13680,7 @@
     },
     {
       "name": "Eleanor Roosevelt",
-      "years": "1884–1962",
+      "years": "1884-1962",
       "tag": "Leader",
       "emoji": "🕊️",
       "img": "/famous-person/_Resources/_imgSource/images/eleanor-roosevelt.jpg",
@@ -13728,7 +13728,7 @@
     },
     {
       "name": "John F. Kennedy",
-      "years": "1917–1963",
+      "years": "1917-1963",
       "tag": "Leader",
       "emoji": "🇺🇸",
       "img": "/famous-person/_Resources/_imgSource/images/john-f.-kennedy.jpg",
@@ -13776,7 +13776,7 @@
     },
     {
       "name": "Thomas Jefferson",
-      "years": "1743–1826",
+      "years": "1743-1826",
       "tag": "Leader",
       "emoji": "📜",
       "img": "/famous-person/_Resources/_imgSource/images/thomas-jefferson.jpg",
@@ -13824,7 +13824,7 @@
     },
     {
       "name": "Babe Ruth",
-      "years": "1895–1948",
+      "years": "1895-1948",
       "tag": "Athlete",
       "emoji": "⚾",
       "img": "/famous-person/_Resources/_imgSource/images/babe-ruth.jpg",
@@ -13872,7 +13872,7 @@
     },
     {
       "name": "Jesse Owens",
-      "years": "1913–1980",
+      "years": "1913-1980",
       "tag": "Athlete",
       "emoji": "🏃",
       "img": "/famous-person/_Resources/_imgSource/images/jesse-owens.jpg",
@@ -13920,7 +13920,7 @@
     },
     {
       "name": "Jackie Robinson",
-      "years": "1919–1972",
+      "years": "1919-1972",
       "tag": "Athlete",
       "emoji": "⚾",
       "img": "/famous-person/_Resources/_imgSource/images/jackie-robinson.jpg",
@@ -13968,7 +13968,7 @@
     },
     {
       "name": "Billie Jean King",
-      "years": "1943–",
+      "years": "1943 - ",
       "tag": "Athlete",
       "emoji": "🎾",
       "img": "/famous-person/_Resources/_imgSource/images/billie-jean-king.jpg",
@@ -14016,7 +14016,7 @@
     },
     {
       "name": "Arthur Ashe",
-      "years": "1943–1993",
+      "years": "1943-1993",
       "tag": "Athlete",
       "emoji": "🎾",
       "img": "/famous-person/_Resources/_imgSource/images/arthur-ashe.jpg",
@@ -14064,7 +14064,7 @@
     },
     {
       "name": "Wayne Gretzky",
-      "years": "1961–",
+      "years": "1961 - ",
       "tag": "Athlete",
       "emoji": "🏒",
       "img": "/famous-person/_Resources/_imgSource/images/wayne-gretzky.jpg",
@@ -14112,7 +14112,7 @@
     },
     {
       "name": "Tom Brady",
-      "years": "1977–",
+      "years": "1977 - ",
       "tag": "Athlete",
       "emoji": "🏈",
       "img": "/famous-person/_Resources/_imgSource/images/tom-brady.jpg",
@@ -14160,7 +14160,7 @@
     },
     {
       "name": "Tiger Woods",
-      "years": "1975–",
+      "years": "1975 - ",
       "tag": "Athlete",
       "emoji": "⛳",
       "img": "/famous-person/_Resources/_imgSource/images/tiger-woods.jpg",
@@ -14208,7 +14208,7 @@
     },
     {
       "name": "Nadia Comăneci",
-      "years": "1961–",
+      "years": "1961 - ",
       "tag": "Athlete",
       "emoji": "🤸",
       "img": "/famous-person/_Resources/_imgSource/images/nadia-comaneci.jpg",
@@ -14256,7 +14256,7 @@
     },
     {
       "name": "Magic Johnson",
-      "years": "1959–",
+      "years": "1959 - ",
       "tag": "Athlete",
       "emoji": "🏀",
       "img": "/famous-person/_Resources/_imgSource/images/magic-johnson.jpg",

@@ -53,7 +53,7 @@ test.describe('Injected token board (clock)', () => {
     await page.evaluate(() => { window.__nooutcoTokens.award(); window.__nooutcoTokens.award(); });
     await expect(page.locator('#btn-finish-sr')).toBeVisible();
 
-    // Turn the board back off — the goal-reached state and the button must clear.
+    // Turn the board back off - the goal-reached state and the button must clear.
     await page.click('#chk-token-board-btn');
     await expect(page.locator('#token-board')).toBeHidden();
     await expect(page.locator('#token-board')).not.toHaveClass(/goal-reached/);

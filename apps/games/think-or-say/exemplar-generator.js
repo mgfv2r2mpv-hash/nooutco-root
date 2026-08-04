@@ -1,4 +1,4 @@
-/* ── Think or Say? — the exemplar generator ────────────────────────────
+/* ── Think or Say? - the exemplar generator ────────────────────────────
    Teaching cards are HAND-AUTHORED and reviewable (cards-level-*.js). Probe
    items and re-presentations are GENERATED, from here.
 
@@ -12,11 +12,11 @@
    key from the template that made it.
 
    A TEMPLATE declares:
-     * the criterial DIMENSION it turns on, and the KEY — which criterial
+     * the criterial DIMENSION it turns on, and the KEY - which criterial
        configuration answers SAY and which answers THINK. The key is never
        substituted, so a generated item cannot be mis-keyed by construction.
      * the utterance, per variant.
-     * SURFACE SLOTS — person, setting, topic, form — sampled at render time.
+     * SURFACE SLOTS - person, setting, topic, form - sampled at render time.
      * a PER-TEMPLATE allow-list of slot values. Never a global pool: a value
        that is pure surface on one dimension is criterial on another. "Somebody
        you have never met" is scenery on an audience template and IS THE ANSWER
@@ -25,14 +25,14 @@
        validate() refuses a template that samples a value its own key uses.
 
    The same machinery re-renders a re-presented teaching card with a fresh
-   surface — different person, setting or topic, identical criterial item — so a
+   surface - different person, setting or topic, identical criterial item - so a
    repeat cannot be passed on a memorised surface feature. See represent().
 
    The generated space is finite and is proved exhaustively in
    tests/think-or-say-generator.spec.js, which enumerates every template ×
    variant × slot combination.
 
-   No build step — plain static JS, loaded after card-model.js.
+   No build step - plain static JS, loaded after card-model.js.
    ----------------------------------------------------------------------- */
 (function (global) {
   'use strict';
@@ -43,8 +43,8 @@
   /* ── Slot vocabularies ───────────────────────────────────────────────
      Each value carries the grammar it needs, so a template writes
      "{A_person} is across the {the_setting}" and gets a grammatical sentence
-     whichever value is drawn. PEOPLE are referred to NEUTRALLY — they/them/
-     their throughout — so pronoun agreement cannot drift with the draw and a
+     whichever value is drawn. PEOPLE are referred to NEUTRALLY - they/them/
+     their throughout - so pronoun agreement cannot drift with the draw and a
      learner cannot pick up gender as the feature that decides.
 
      These are value DEFINITIONS. The allow-lists that use them are per
@@ -67,8 +67,8 @@
     shop:       { id: 'shop',       at: 'in the shop',       the: 'shop' },
   };
 
-  /** Topic phrasings are bespoke per template — "work" is a drawing on one card
-      and a maths sheet on another — so they are written inline, not shared. */
+  /** Topic phrasings are bespoke per template - "work" is a drawing on one card
+      and a maths sheet on another - so they are written inline, not shared. */
   function topic(id, a, the) { return { id: id, a: a, the: the }; }
 
   var SAMPLED_SURFACE = ['person', 'setting', 'topic'];
@@ -85,7 +85,7 @@
      One per criterial dimension, each a matched minimum-difference pair: the
      two variants hold every criterial feature constant but one, and the answer
      flips with it (Horner, Albin & Ralph 1986). Dimension 8 is the defeater
-     shape — truthRank is held CONSTANT at 'true' on both sides and something
+     shape - truthRank is held CONSTANT at 'true' on both sides and something
      else flips, which is the demonstration that true ranks BELOW the thing that
      flipped - kindness, privacy, or whether they can change it.
 
@@ -302,8 +302,8 @@
 
   /* ── Rendering ───────────────────────────────────────────────────────
      Slot values carry their own grammar, so substitution is the whole of it.
-     An unresolved placeholder is a template bug, not a cosmetic one — it would
-     print braces to a learner — so render() throws rather than shipping it. */
+     An unresolved placeholder is a template bug, not a cosmetic one - it would
+     print braces to a learner - so render() throws rather than shipping it. */
 
   function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
@@ -397,7 +397,7 @@
           }
         });
         // A sampled slot the prose never mentions cannot make two items read
-        // differently — it would silently inflate the space with duplicates.
+        // differently - it would silently inflate the space with duplicates.
         // Anything with a real choice must show up in the text.
         if (slots[k] && slots[k].length > 1) {
           var named = (PLACEHOLDERS[k] || []).some(function (ph) {
@@ -462,8 +462,7 @@
       dim: t.dim,
       variant: v.value,
       surface: n,
-      // Which can-have features were SAMPLED. The rest were fixed by the key —
-      // G-relationship's "somebody you have never met" is `vary.person` AND
+      // Which can-have features were SAMPLED. The rest were fixed by the key - // G-relationship's "somebody you have never met" is `vary.person` AND
       // `features.relationship`, the same fact in both vocabularies, and it is
       // supplied by the template rather than drawn. Only sampled values are
       // subject to the never-criterial rule, and this is what says which is
@@ -471,7 +470,7 @@
       sampled: sampled,
     };
     // Level 3 teaches the reason, so a re-presented Level 3 card keeps ITS OWN
-    // exemplar rationales — the surface changed, the teaching content did not.
+    // exemplar rationales - the surface changed, the teaching content did not.
     if (level === 3) spec.rationales = (o.rationales && o.rationales.length) ? o.rationales : v.rationales;
     if (o.representedFrom) spec.representedFrom = o.representedFrom;
     return model.makeCard(spec);
@@ -489,7 +488,7 @@
   }
 
   /**
-   * The same space, built at ONE level — the probe pool for that level.
+   * The same space, built at ONE level - the probe pool for that level.
    *
    * A template declares which levels it may be presented at, and every variant
    * carries its exemplar rationales, so the identical criterial item is a Level 1
@@ -517,8 +516,8 @@
      A missed teaching card comes back with a FRESH SURFACE and the identical
      criterial item, so passing the repeat cannot be done on a memorised person
      or place. The match is on the whole criterial configuration plus the
-     answer — a template that only half-matched would change the item, not its
-     surface — and the draw chosen is the one that differs from the card's own
+     answer - a template that only half-matched would change the item, not its
+     surface - and the draw chosen is the one that differs from the card's own
      surface on the most can-have features.
 
      Returns null when no template carries that exact configuration; the caller

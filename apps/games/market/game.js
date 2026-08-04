@@ -1,7 +1,7 @@
 'use strict';
 
 /* ══════════════════════════════════════════════════════════════════
-   MATCHING MARKET — matching game with corner-market theme
+   MATCHING MARKET - matching game with corner-market theme
    Core matching logic ported from IDMatchGame; rendering / payoff
    sequence is the market scene.
    ══════════════════════════════════════════════════════════════════ */
@@ -18,8 +18,7 @@ const LEGACY_IMAGE_BASE = '../../IDMatchGame/IDMatchGame/';
 
 // ── Settings storage keys ──────────────────────────────────────────
 // Stage 6: this game's programme parameters live in the shared store
-// (../game-settings.js) under SETTINGS_KEY. `mmSettings` is the retired key —
-// read once, folded into the store, and NEVER deleted or rewritten, so a
+// (../game-settings.js) under SETTINGS_KEY. `mmSettings` is the retired key - // read once, folded into the store, and NEVER deleted or rewritten, so a
 // mis-mapped fold is recoverable and a downgrade still finds the old config.
 const SETTINGS_KEY = 'nooutco.settings.market';
 const LEGACY_SETTINGS_KEY = 'mmSettings';
@@ -227,7 +226,7 @@ window.__setGameDisplayMode = function (mode) {
  * derives BOTH the defaults and the clamping from this one declaration, so
  * there is no second hand-written description to drift out of sync with it.
  *
- * `autoPromptEnabled` defaults to FALSE here — it is true only in `sequences`.
+ * `autoPromptEnabled` defaults to FALSE here - it is true only in `sequences`.
  * That difference is clinical, not accidental; do not harmonise it.
  */
 const SETTINGS_FIELDS = {
@@ -303,7 +302,7 @@ function loadSettings() {
   // The old read was `s.currentTokens ?? state.startingTokens`. The board's
   // live count is reset to startingTokens by initializeTokenBoard() at the
   // bottom of this function whenever the board is on, so the two readings
-  // cannot be told apart on screen — and a declared default of 0 avoids
+  // cannot be told apart on screen - and a declared default of 0 avoids
   // turning a legitimately stored 0 into startingTokens.
   state.currentTokens        = s.currentTokens;
 
@@ -426,7 +425,7 @@ function withBase(srcs) {
 /**
  * The stimulus art moved to the shared library at /shared/stimuli/, so a saved
  * target selection still names its pictures by the URLs this game used to
- * serve — matching's tree paths under the old relative base. The borrowed
+ * serve - matching's tree paths under the old relative base. The borrowed
  * manifest ships the old-URL -> new-URL table; without applying it
  * pruneStaleTargetFilter() throws the technician's chosen targets away on
  * first load.
@@ -1136,7 +1135,7 @@ function printData() {
       : 'outcome-ok';
 
     NooutcoResults.open({
-      title: 'Matching Market — Session Results',
+      title: 'Matching Market - Session Results',
       meta,
       columns: [
         { label: '#',          key: 'trial' },

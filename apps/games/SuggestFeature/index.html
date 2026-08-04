@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Suggest a feature — No Outcome ABA</title>
+  <title>Suggest a feature - No Outcome ABA</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="../tokens.css">
@@ -137,7 +137,7 @@
 
   <div class="card">
     <h1>Suggest a feature</h1>
-    <p class="lede">Got an idea for a new game, an activity tweak, or something else? Tell me. Nothing is stored here — sent straight to my inbox.</p>
+    <p class="lede">Got an idea for a new game, an activity tweak, or something else? Tell me. Nothing is stored here - sent straight to my inbox.</p>
 
     <div class="field">
       <span class="label">What's it about?</span>
@@ -171,7 +171,7 @@
     </div>
 
     <div class="field">
-      <label class="label" for="email">Your email <span class="opt">(optional — so I can follow up)</span></label>
+      <label class="label" for="email">Your email <span class="opt">(optional - so I can follow up)</span></label>
       <input type="email" id="email" placeholder="you@example.com">
     </div>
 
@@ -186,7 +186,7 @@
     </div>
 
     <p class="note">
-      Sent server-side — no email app needed.
+      Sent server-side - no email app needed.
       Use <strong>Copy instead</strong> to grab the text and paste it manually if you prefer.
     </p>
     <div class="result" id="result" role="alert" aria-live="polite"></div>
@@ -273,11 +273,11 @@
       if (resp.ok) {
         sendBtn.textContent  = "Sent ✓";
         sendBtn.dataset.sent = "1";
-        showResult("ok", "✓ Suggestion received — thank you!");
+        showResult("ok", "✓ Suggestion received - thank you!");
       } else if (resp.status === 409) {
         sendBtn.disabled    = false;
         sendBtn.textContent = "✉️ Send suggestion";
-        showResult("dupe", data.error || "We already have this one — thanks!");
+        showResult("dupe", data.error || "We already have this one - thanks!");
       } else {
         sendBtn.disabled    = false;
         sendBtn.textContent = "✉️ Send suggestion";

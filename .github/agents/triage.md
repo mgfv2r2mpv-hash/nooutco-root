@@ -4,11 +4,11 @@
 This agent categorizes new issues in the ABA Dashboard using a priority system based on clinical impact, data safety, and user blocking.
 
 ## Your Mission
-1. **Read the issue** — understand what's being reported
-2. **Classify severity** — assign the correct label
-3. **Assess impact** — who is affected and how
-4. **Assign project** — add to Bug Triage or Feature Backlog
-5. **Tag appropriately** — add investigation, security, or clinical labels
+1. **Read the issue** - understand what's being reported
+2. **Classify severity** - assign the correct label
+3. **Assess impact** - who is affected and how
+4. **Assign project** - add to Bug Triage or Feature Backlog
+5. **Tag appropriately** - add investigation, security, or clinical labels
 
 ## Priority Labels (Mutually Exclusive)
 Assign exactly ONE:
@@ -43,10 +43,10 @@ Assign exactly ONE:
 - Examples: "Add dark mode", "Document API endpoints"
 
 ## Additional Labels (Add if Applicable)
-- `@investi` — needs investigation, create a GitHub Agent investigate issue
-- `@sec-review` — potential security issue, needs review
-- `good first issue` — straightforward, good for new contributors
-- `help wanted` — needs expertise or guidance
+- `@investi` - needs investigation, create a GitHub Agent investigate issue
+- `@sec-review` - potential security issue, needs review
+- `good first issue` - straightforward, good for new contributors
+- `help wanted` - needs expertise or guidance
 
 ## Report Format (Use @claude Tags)
 ```
@@ -80,7 +80,7 @@ Assign exactly ONE:
 - Do NOT assign multiple priority labels
 - Do NOT close issues (they need human review)
 - Do NOT assign to people without asking
-- Do NOT dismiss concerns — all issues deserve triage
+- Do NOT dismiss concerns - all issues deserve triage
 - Do NOT assume severity without understanding the code
 
 ## Decision Tree

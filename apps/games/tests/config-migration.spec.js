@@ -1,19 +1,19 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Stage 5 — `NooutcoConfig.migrate()` in every in-scope game.
+ * Stage 5 - `NooutcoConfig.migrate()` in every in-scope game.
  *
  * `CLAUDE.md` mandates that every game call `NooutcoConfig.migrate()` early in
  * boot, but only `matching` and `market` did. That hook is the only place a
  * renamed or restructured settings key can be folded forward, so it has to be
- * live *before* anything is renamed — a game that reads `hddSettings` without
+ * live *before* anything is renamed - a game that reads `hddSettings` without
  * having run a migration first would adopt a config the migration was supposed
  * to rewrite, and then persist the adopted version over it.
  *
  * Two properties are asserted per game, and they are different properties:
  *
- *   1. the migration runs at all      — `nooutco:configVersion` is stamped
- *   2. it runs BEFORE the settings read — the ordering probe below
+ *   1. the migration runs at all - `nooutco:configVersion` is stamped
+ *   2. it runs BEFORE the settings read - the ordering probe below
  *
  * (1) alone passes with the call sitting *after* `loadSettings()`, which is the
  * exact mistake that makes a future migration a no-op. (2) is what fails on it.
@@ -32,19 +32,19 @@ const VERSION_KEY = 'nooutco:configVersion';
  * Every in-scope game, and the key its settings live under today.
  *
  * A game that has adopted the shared store (Stage 6) reads `nooutco.settings.*`
- * — its retired key is still read, but only by `foldLegacy()` and only until
+ * - its retired key is still read, but only by `foldLegacy()` and only until
  * the fold has run once, so the store key is the read that has to come after
  * the migration on every load.
  */
 const GAMES = [
   { game: 'clock',        url: '/clock/',        settingsKey: 'nooutco.settings.clock' },
   { game: 'emotions',     url: '/emotions/',     settingsKey: 'nooutco.settings.emotions' },
-  // NOT `nooutco.settings.ffc` — that key holds ffc's Frame 07 session document,
+  // NOT `nooutco.settings.ffc` - that key holds ffc's Frame 07 session document,
   // which has the same {sets,last,working} shape and a different schema. The
   // trial settings took their own key rather than collide with it.
   { game: 'ffc',          url: '/ffc/',          settingsKey: 'nooutco.settings.ffc.trial' },
   { game: 'intraverbal',  url: '/intraverbal/',  settingsKey: 'nooutco.settings.intraverbal' },
-  // matching's retired key was mgSettings and market's mmSettings — the pairing
+  // matching's retired key was mgSettings and market's mmSettings - the pairing
   // is the opposite of what the folder names suggest. Both have since adopted
   // the store, so the key named here is the store's; naming the retired key
   // would go vacuous from the second load onward, once foldLegacy() returns
@@ -64,7 +64,7 @@ const GAMES = [
  * `Storage.prototype` rather than the `localStorage` instance: assigning to
  * `localStorage.getItem` goes through Storage's named-property setter in some
  * engines, which stores an *entry* called "getItem" and leaves the prototype
- * method in place — the patch would silently do nothing on those browsers.
+ * method in place - the patch would silently do nothing on those browsers.
  */
 const ORDER_PROBE = () => {
   const order = [];
@@ -212,7 +212,7 @@ const ROUND_TRIPS = [
     // renamed onto the `promptDelaySecs` int the other games declare;
     // `includeTricky` is superseded by the Level selector and folds onto Level
     // 2, the nuanced pool its tricky cards became. `tosSettings` itself keeps
-    // both of its own spellings — the `saved[option]` loop below asserts that.
+    // both of its own spellings - the `saved[option]` loop below asserts that.
     folded: {
       category: 'private',
       order: 'sequential',
@@ -314,7 +314,7 @@ for (const { game, url, key, storeKey, seeded, folded, controls } of ROUND_TRIPS
     // Nothing was dropped from the stored document either: a game that rewrote
     // the key on boot with a partial payload would show up here even when every
     // control happened to render the seeded value. For a game that has adopted
-    // the shared store this is also the never-drop assertion — foldLegacy()
+    // the shared store this is also the never-drop assertion - foldLegacy()
     // reads the retired key and leaves it exactly as it found it.
     const saved = JSON.parse(await page.evaluate((k) => window.localStorage.getItem(k), key));
     for (const [option, value] of Object.entries(seeded)) {
@@ -341,7 +341,7 @@ for (const { game, url, key, storeKey, seeded, folded, controls } of ROUND_TRIPS
  * that Stage 6 extracts as the shared schema. Asserted here because that fold
  * is the read-then-fold pattern the other nine games are about to adopt, and
  * because `autoPromptEnabled` is the one option whose default legitimately
- * differs between games — true here, false in the other nine — which a
+ * differs between games - true here, false in the other nine - which a
  * consolidation must not harmonise away.
  */
 const SEQ_ROUND_KEY = 'nooutco.settings.sequences';

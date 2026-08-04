@@ -1,5 +1,5 @@
 /**
- * excelExport — produces a functional .xlsx file mirroring the CPR template.
+ * excelExport - produces a functional .xlsx file mirroring the CPR template.
  *
  * Sheet structure:
  *   Data - Attention / Escape / Tangible / Sensory  (one per separate session)
@@ -40,7 +40,7 @@ export async function exportBlankTemplate(): Promise<void> {
     observer:                 'Observer',
     setting:                  'Setting',
     date:                     new Date().toISOString().slice(0, 10),
-    startEndTime:             '9:00 AM – 9:30 AM',
+    startEndTime:             '9:00 AM - 9:30 AM',
     targetBehaviorName:       'Target Behavior Name',
     targetBehaviorDefinition: 'Operational definition of the target behavior',
     separateSessions:         Object.fromEntries(
@@ -155,7 +155,7 @@ function addDataSheet(
   const meta = CONDITION_META[condition];
   const ws   = wb.addWorksheet(`Data - ${meta.label}`);
 
-  writeSheetHeader(ws, assessment, `CPR — ${meta.label} Condition`);
+  writeSheetHeader(ws, assessment, `CPR - ${meta.label} Condition`);
 
   // Session summary row
   const { total: sTotal, scored: sScored, behaviorCount: sBx, csCount: sCS } = sessionProgress(session);
@@ -178,7 +178,7 @@ function addDataSheet(
   ws.addRow(['Consequence = delivered in current interval.']);
   ws.addRow([]);
 
-  // Column headers — row 14
+  // Column headers - row 14
   const headerRow = ws.addRow(['Int #', 'Time\n(opt)', 'Bx Occurred\n(Y/N)',
     `${meta.eoLabel}\n(EO Y/N)`, `${meta.cLabel}\n(C+ Y/N)`, 'Notes']);
   styleHeaderRow(headerRow, condition);
@@ -226,7 +226,7 @@ function addSynthesizedSheet(
 
   const synthConds = session.synthesizedConditions ?? ALL_CONDITIONS;
   const condNames  = synthConds.map(c => CONDITION_META[c].label).join(' + ');
-  writeSheetHeader(ws, assessment, `CPR — Synthesized Condition${suffix ? ` (Run ${runIndex + 1})` : ''}`, 12);
+  writeSheetHeader(ws, assessment, `CPR - Synthesized Condition${suffix ? ` (Run ${runIndex + 1})` : ''}`, 12);
   const { total: sTotal, scored: sScored, behaviorCount: sBx, csCount: sCS } = sessionProgress(session);
   const sesInfoParts = [`Intervals: ${sTotal}`, `Scored: ${sScored}`, `CS: ${sCS}`, `Bx count: ${sBx}`];
   if (session.elapsedSeconds) sesInfoParts.push(`Observed time: ${fmtSecExcel(session.elapsedSeconds)}`);
@@ -238,7 +238,7 @@ function addSynthesizedSheet(
   ws.mergeCells(`A${synthInfoRow.number}:L${synthInfoRow.number}`);
   ws.addRow([]);
 
-  // Multi-condition header — condition-coloured pairs
+  // Multi-condition header - condition-coloured pairs
   const topHeader = ws.addRow([
     '', '', '',
     'ATTENTION', '', 'ESCAPE', '', 'TANGIBLE', '', 'SENSORY', '',
@@ -343,7 +343,7 @@ function addConditionalProbabilitySheet(wb: ExcelJS.Workbook, assessment: Assess
 
   ws.addRow([]);
 
-  // LAG-1 settings (informational — values are pre-computed with both lag-1 flags ON)
+  // LAG-1 settings (informational - values are pre-computed with both lag-1 flags ON)
   const lagHeaderRow = ws.addRow(['LAG-1 SETTINGS (applied during export)', '', '', '',
     '', 'Both antecedent lag-1 and consequence lag-1 are applied. Adjust in the app to re-export.']);
   lagHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -369,13 +369,13 @@ function addConditionalProbabilitySheet(wb: ExcelJS.Workbook, assessment: Assess
 
   ws.addRow([]);
 
-  // Per-condition analysis blocks — separate sessions
+  // Per-condition analysis blocks - separate sessions
   for (const condAnalysis of analysis.separateConditionAnalyses) {
     addConditionBlock(ws, condAnalysis.condition, condAnalysis.consequenceTable, condAnalysis.antecedentTable);
     ws.addRow([]);
   }
 
-  // Per-condition analysis blocks — synthesized runs
+  // Per-condition analysis blocks - synthesized runs
   analysis.synthesizedAnalyses.forEach((runAnalyses, runIdx) => {
     const runLabel = analysis.synthesizedAnalyses.length > 1 ? `SYNTHESIZED RUN ${runIdx + 1}` : 'SYNTHESIZED';
     const runHdr = ws.addRow([runLabel]);
@@ -424,8 +424,8 @@ function addConditionalProbabilitySheet(wb: ExcelJS.Workbook, assessment: Assess
       const bxMin  = r.sec > 0 ? r.bx / (r.sec / 60) : null;
       const row = ws.addRow([
         r.label, r.total, r.scored, r.cs, r.bx,
-        bxRate !== null ? bxRate : '—',
-        ...(hasTimes ? [r.sec > 0 ? fmtSecExcel(r.sec) : '—', bxMin !== null ? bxMin.toFixed(2) : '—'] : []),
+        bxRate !== null ? bxRate : ' - ',
+        ...(hasTimes ? [r.sec > 0 ? fmtSecExcel(r.sec) : ' - ', bxMin !== null ? bxMin.toFixed(2) : ' - '] : []),
       ]);
       if (bxRate !== null) row.getCell(6).numFmt = '0.0%';
     }
@@ -434,8 +434,8 @@ function addConditionalProbabilitySheet(wb: ExcelJS.Workbook, assessment: Assess
     const totBxMin  = totSec > 0 ? totBx / (totSec / 60) : null;
     const totRow = ws.addRow([
       'Total', totTotal, totScored, totCS, totBx,
-      totBxRate !== null ? totBxRate : '—',
-      ...(hasTimes ? [totSec > 0 ? fmtSecExcel(totSec) : '—', totBxMin !== null ? totBxMin.toFixed(2) : '—'] : []),
+      totBxRate !== null ? totBxRate : ' - ',
+      ...(hasTimes ? [totSec > 0 ? fmtSecExcel(totSec) : ' - ', totBxMin !== null ? totBxMin.toFixed(2) : ' - '] : []),
     ]);
     totRow.font = { bold: true };
     totRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9FAFB' } };
@@ -443,7 +443,7 @@ function addConditionalProbabilitySheet(wb: ExcelJS.Workbook, assessment: Assess
   }
 }
 
-// ─── Per-condition analysis block (pre-computed values — no Excel formulas) ───
+// ─── Per-condition analysis block (pre-computed values - no Excel formulas) ───
 
 function addConditionBlock(
   ws:         ExcelJS.Worksheet,
@@ -461,10 +461,10 @@ function addConditionBlock(
   sectionRow.fill = { type: 'pattern', pattern: 'solid', fgColor: condArgb(condition) };
   ws.mergeCells(`A${sectionRow.number}:I${sectionRow.number}`);
 
-  // Sub-headers (cols A–D = Consequence, F–I = Antecedent)
+  // Sub-headers (cols A - D = Consequence, F - I = Antecedent)
   const subRow = ws.addRow([
-    `CONSEQUENCE ANALYSIS — P(Bx | C±)`, '', '', '',
-    '', `ANTECEDENT ANALYSIS — P(Bx | A±)`, '', '', '',
+    `CONSEQUENCE ANALYSIS - P(Bx | C±)`, '', '', '',
+    '', `ANTECEDENT ANALYSIS - P(Bx | A±)`, '', '', '',
   ]);
   subRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
   subRow.fill = { type: 'pattern', pattern: 'solid', fgColor: condArgb(condition) };
@@ -533,7 +533,7 @@ function addGraphInstructionsSheet(wb: ExcelJS.Workbook, _assessment: Assessment
   ws.getColumn(2).width = 80;
 
   // Sheet title
-  const titleRow = ws.addRow(['', 'SDA CPR — Reference & Instructions']);
+  const titleRow = ws.addRow(['', 'SDA CPR - Reference & Instructions']);
   titleRow.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
   titleRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
   titleRow.height = 26;
@@ -545,19 +545,19 @@ function addGraphInstructionsSheet(wb: ExcelJS.Workbook, _assessment: Assessment
   addInstrBody(ws, 'The "Graphs" sheet contains pre-rendered chart images. The steps below produce interactive Excel charts if preferred.');
   ws.addRow([]);
 
-  addInstrHeading(ws, 'STEP 1 — Select data');
+  addInstrHeading(ws, 'STEP 1 - Select data');
   addInstrBody(ws, 'Go to the "Conditional Probability" sheet. Find the analysis table for the condition set you want to chart.');
   addInstrBullet(ws, 'Consequence chart: use the P(Bx|C+) and P(Bx|C−) values.');
   addInstrBullet(ws, 'Antecedent chart: use the P(Bx|A+) and P(Bx|A−) values.');
   ws.addRow([]);
 
-  addInstrHeading(ws, 'STEP 2 — Insert a clustered column chart');
+  addInstrHeading(ws, 'STEP 2 - Insert a clustered column chart');
   addInstrBullet(ws, 'Insert → Charts → Column → Clustered Column (or Bar for horizontal).');
   addInstrBullet(ws, 'One cluster per condition; two bars per cluster (+ and −).');
   ws.addRow([]);
 
-  addInstrHeading(ws, 'STEP 3 — Format');
-  addInstrBullet(ws, 'Y-axis: set minimum 0, maximum 1 (displays as 0%–100%).');
+  addInstrHeading(ws, 'STEP 3 - Format');
+  addInstrBullet(ws, 'Y-axis: set minimum 0, maximum 1 (displays as 0% - 100%).');
   addInstrBullet(ws, 'Add data labels → format as percentage.');
   addInstrBullet(ws, 'Condition colors: Attention = Blue, Escape = Green, Tangible = Orange, Sensory = Purple.');
   ws.addRow([]);
@@ -566,21 +566,21 @@ function addGraphInstructionsSheet(wb: ExcelJS.Workbook, _assessment: Assessment
   // ── SECTION 2: About the SDA CPR Tool ────────────────────────────────────────
   addInstrSectionHead(ws, '2  ABOUT THIS TOOL');
   addInstrBody(ws,
-    'The SDA CPR Tool supports Systematic Descriptive Assessment (SDA) — an observational procedure that quantifies ' +
+    'The SDA CPR Tool supports Systematic Descriptive Assessment (SDA) - an observational procedure that quantifies ' +
     'co-occurrence between behavior and environmental events without experimentally manipulating consequences.');
   ws.addRow([]);
   addInstrBody(ws, 'For each interval the observer records:');
-  addInstrBullet(ws, 'Bx — did the target behavior occur (partial interval)?');
-  addInstrBullet(ws, 'EO — was the relevant motivating operation present (Establishing Operation / antecedent)?');
-  addInstrBullet(ws, 'C+ — was the relevant consequence delivered naturally in this interval?');
+  addInstrBullet(ws, 'Bx - did the target behavior occur (partial interval)?');
+  addInstrBullet(ws, 'EO - was the relevant motivating operation present (Establishing Operation / antecedent)?');
+  addInstrBullet(ws, 'C+ - was the relevant consequence delivered naturally in this interval?');
   addInstrBody(ws, 'All four functions are scored simultaneously in every interval, eliminating observer-selection bias.');
   ws.addRow([]);
 
   addInstrHeading(ws, 'FOUR CONDITIONS');
-  addInstrBullet(ws, 'Attention — EO: attention withheld/absent;  C+: attention delivered.');
-  addInstrBullet(ws, 'Escape — EO: demands/tasks present;  C+: escape/removal granted.');
-  addInstrBullet(ws, 'Tangible — EO: preferred item unavailable;  C+: item provided.');
-  addInstrBullet(ws, 'Sensory — EO: unoccupied / low stimulation;  C+: behavior persists uninterrupted.');
+  addInstrBullet(ws, 'Attention - EO: attention withheld/absent;  C+: attention delivered.');
+  addInstrBullet(ws, 'Escape - EO: demands/tasks present;  C+: escape/removal granted.');
+  addInstrBullet(ws, 'Tangible - EO: preferred item unavailable;  C+: item provided.');
+  addInstrBullet(ws, 'Sensory - EO: unoccupied / low stimulation;  C+: behavior persists uninterrupted.');
   ws.addRow([]);
 
   addInstrHeading(ws, 'SYNTHESIZED CONDITIONS');
@@ -632,7 +632,7 @@ function addGraphInstructionsSheet(wb: ExcelJS.Workbook, _assessment: Assessment
 
   addInstrHeading(ws, 'WHAT THE SIZE SUGGESTS');
   addInstrBody(ws, 'A larger absolute value reflects a stronger pattern in the data. There are no universal cut-offs; context matters.');
-  addInstrBullet(ws, 'Small differences (e.g., 5–10%) may be meaningful with consistent raw counts or may reflect sampling variability with small denominators.');
+  addInstrBullet(ws, 'Small differences (e.g., 5-10%) may be meaningful with consistent raw counts or may reflect sampling variability with small denominators.');
   addInstrBullet(ws, 'Large differences (e.g., 30%+) with adequate denominator sizes generally warrant attention.');
   addInstrBody(ws, 'Always read CV/ACV alongside the raw cell counts. A 50% CV based on 2 intervals carries far less weight than one based on 40.');
   ws.addRow([]);
@@ -705,7 +705,7 @@ function addGraphsSheet(
   ws.getColumn(3).width = 2;   // col C: gap
   ws.getColumn(4).width = 65;  // col D: right chart
 
-  const hdrTitle = ws.addRow(['', `CPR Graphs — ${assessment.clientName}  |  ${assessment.date}`]);
+  const hdrTitle = ws.addRow(['', `CPR Graphs - ${assessment.clientName}  |  ${assessment.date}`]);
   hdrTitle.font = { bold: true, size: 13, color: { argb: 'FF1E3A5F' } };
   hdrTitle.height = 22;
   ws.addRow(['', 'Charts are embedded as images. See "Instructions" sheet for graphing steps and interpretation guidance.'])
@@ -787,7 +787,7 @@ function writeSheetHeader(
 ): void {
   const lastCol = String.fromCharCode(64 + colCount); // 6→F, 12→L
 
-  // Title row — dark navy fill, white bold text
+  // Title row - dark navy fill, white bold text
   const titleRow = ws.addRow([title]);
   titleRow.font = { bold: true, size: 13, color: { argb: 'FFFFFFFF' } };
   titleRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
@@ -797,7 +797,7 @@ function writeSheetHeader(
 
   // Split combined startEndTime
   const rawTime   = assessment.startEndTime || '';
-  const sepMatch  = rawTime.match(/^(.*?)\s*[–—\-]\s*(.*)$/);
+  const sepMatch  = rawTime.match(/^(.*?)\s*[ -  - \-]\s*(.*)$/);
   const startTime = sepMatch ? sepMatch[1].trim() : rawTime;
   const endTime   = sepMatch ? sepMatch[2].trim() : '';
 

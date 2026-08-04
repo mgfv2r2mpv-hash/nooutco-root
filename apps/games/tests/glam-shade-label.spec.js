@@ -1,14 +1,13 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Glam Team Makeover — the paint hitbox must not claim work it has not seen.
+ * Glam Team Makeover - the paint hitbox must not claim work it has not seen.
  *
  * Reported from play: "After setting a color for blush or lips, the user can
  * change the color. However the 'done' text reappears in the hitbox when the
  * color is changed and then the user clicks once and it places the color."
  *
- * Cause, from the source. Paint coverage is stored per SLOT — `ed.cov.blush` —
- * while six blushes, six shadows and seven lipsticks each share ONE slot. The
+ * Cause, from the source. Paint coverage is stored per SLOT - `ed.cov.blush` - * while six blushes, six shadows and seven lipsticks each share ONE slot. The
  * target overlay read that slot straight:
  *
  *     const covPct = Math.round((s.ed.cov[t.slot] || 0) * 100);
@@ -16,14 +15,14 @@ import { test, expect } from '@playwright/test';
  *
  * so arming a DIFFERENT shade of a painted slot inherited the first shade's
  * coverage and the hitbox announced "All done ✓" over a shade that had never
- * touched the face. The trolley button next to it already got this right — it
+ * touched the face. The trolley button next to it already got this right - it
  * tested shade identity (`ed.col[slot] === opt.color`) for its ✓. Both readings
  * now come from one predicate, `_shadeOn`.
  *
  * These tests fail against 93dab9be.
  *
- * The open design question this file used to pin — one-tap re-tint, or paint it
- * again — has since been ruled on: "Yes, redo the drag so the 'reapply' feel is
+ * The open design question this file used to pin - one-tap re-tint, or paint it
+ * again - has since been ruled on: "Yes, redo the drag so the 'reapply' feel is
  * there." The wash now belongs to the SHADE it was laid in (`_washFrom`), so a
  * switch starts from bare and costs the same drag the first application did.
  * The case below asserts that ruling and fails against 438d38d8, where one
@@ -70,7 +69,7 @@ async function stage(page, { routine = 'free', turns = '4' } = {}) {
     const keys = Object.keys(c);
     return keys.length > 0 && keys.every((k) => c[k].ok);
   }, undefined, { timeout: 30000 });
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   return errors;
 }
 
@@ -96,14 +95,14 @@ const toolLabel = (page, name) =>
   page.getByTitle(name, { exact: true }).first().evaluate((el) => el.innerText.trim());
 
 /* Every shade family that shares one paint slot. `first` is painted, `second` is
-   armed afterwards without being painted — the state the hitbox lied about. */
+   armed afterwards without being painted - the state the hitbox lied about. */
 const FAMILIES = [
   { slot: 'blush', first: 'Blush rose', second: 'Blush plum' },
   { slot: 'lips', first: 'Lips red', second: 'Lips plum' },
   { slot: 'shadow', first: 'Shadow violet', second: 'Shadow ocean' },
 ];
 
-test.describe('Glam Team Makeover — the hitbox only claims the shade that was painted', () => {
+test.describe('Glam Team Makeover - the hitbox only claims the shade that was painted', () => {
   for (const fam of FAMILIES) {
     test(`${fam.slot}: arming an unpainted shade of a painted slot does not say "All done"`, async ({ page }) => {
       const errors = await stage(page);
@@ -111,7 +110,7 @@ test.describe('Glam Team Makeover — the hitbox only claims the shade that was 
       await paintTool(page, fam.first);
       expect(await logic(page, `return L.state.ed.cov['${fam.slot}']`), 'the slot is fully painted').toBe(1);
 
-      // Re-arming the SAME shade must still say "All done ✓" — that is the
+      // Re-arming the SAME shade must still say "All done ✓" - that is the
       // accepted eval §8 fix ("Keep painting… 100%" on a finished step) and this
       // change must not walk it back.
       await page.getByTitle(fam.first, { exact: true }).first().click();
@@ -132,10 +131,10 @@ test.describe('Glam Team Makeover — the hitbox only claims the shade that was 
     });
   }
 
-  test('the shade swaps, and it costs a FRESH DRAG — not one stroke', async ({ page }) => {
+  test('the shade swaps, and it costs a FRESH DRAG - not one stroke', async ({ page }) => {
     /* The maintainer's ruling: "Yes, redo the drag so the 'reapply' feel is
        there." Against 438d38d8 the single stroke below took `cov.blush` from 1
-       straight back to 1 and disarmed the tool — a re-tint cost one tap. The
+       straight back to 1 and disarmed the tool - a re-tint cost one tap. The
        wash now belongs to the shade it was laid in, so a different shade starts
        from bare and has to be painted on like any other. */
     const errors = await stage(page);
@@ -154,7 +153,7 @@ test.describe('Glam Team Makeover — the hitbox only claims the shade that was 
     const partial = await logic(page, 'return L.state.ed.cov.blush');
     expect(partial, 'the switch restarts the wash from bare').toBeLessThan(1);
     expect(partial, 'and one stroke lays exactly one stroke of it').toBeGreaterThan(0);
-    expect(await logic(page, 'return L.state.armed'), 'the tool stays armed — there is drag left to give')
+    expect(await logic(page, 'return L.state.armed'), 'the tool stays armed - there is drag left to give')
       .not.toBe(null);
     expect(await target(page).innerText(), 'and the hitbox asks for the rest of it').toContain('Keep painting');
 
@@ -172,7 +171,7 @@ test.describe('Glam Team Makeover — the hitbox only claims the shade that was 
 
   test('a colourless paint tool has no shade to restart for', async ({ page }) => {
     /* The guard on the ruling. `_washFrom` keys on shade identity, and Wash /
-       Moisturize / Contour / Highlight carry no colour — so `_shadeOnIn` is
+       Moisturize / Contour / Highlight carry no colour - so `_shadeOnIn` is
        true for them and their coverage accumulates exactly as it always has.
        A re-touch of a finished colourless tool must still land in one stroke. */
     const errors = await stage(page);
@@ -192,9 +191,9 @@ test.describe('Glam Team Makeover — the hitbox only claims the shade that was 
     expect(errors).toEqual([]);
   });
 
-  test('the predicate reads the shade, not a slot list — including slots no shipped surface reaches', async ({ page }) => {
+  test('the predicate reads the shade, not a slot list - including slots no shipped surface reaches', async ({ page }) => {
     /* Found by the sweep, not reported. `mk1`/`mk2` are `mech:'paint'` with a
-       colour on slot `mask` — the same shape of tool as blush/lips/shadow — and
+       colour on slot `mask` - the same shape of tool as blush/lips/shadow - and
        the trolley's old hard-coded `blush|lips|shadow` list did not cover them.
        That base is unreachable today (AC-13 took the theme selector out), so this
        is latent, not live; it is asserted against the predicate directly rather

@@ -1,5 +1,5 @@
 /*
- * measure_faces.mjs — detect each model's face geometry in the 320×360 game box,
+ * measure_faces.mjs - detect each model's face geometry in the 320×360 game box,
  * so the game's feature ZONES + spot anchors can be driven from a real per-model
  * face box instead of one mis-tuned shared guess.
  *

@@ -1,5 +1,5 @@
 /*
- * run_pipeline.mjs — Playwright driver for the Glam Team Makeover art pipeline.
+ * run_pipeline.mjs - Playwright driver for the Glam Team Makeover art pipeline.
  *
  * Loads the uncompressed masters from disk, runs harness/pipeline.js inside a
  * headless Chromium page (same Canvas2D the reference was tuned in), and writes

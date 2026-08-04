@@ -8,13 +8,13 @@ import { classify, needsBodyToClassify } from './lib/stimuli.mjs';
 /**
  * clock, receptive and matching repointed at the shared stimulus library.
  *
- * Their `manifest.json` is no longer hand-maintained per game — it is projected
+ * Their `manifest.json` is no longer hand-maintained per game - it is projected
  * out of `shared/stimuli/stimuli.json` by the same build that merges the trees.
  * Each game keeps its own programme list; only the art is shared.
  *
  * Two things can go wrong in a repoint, and both are silent:
  *
- *   1. a URL that used to resolve stops resolving — a blank card in front of a
+ *   1. a URL that used to resolve stops resolving - a blank card in front of a
  *      learner mid-trial
  *   2. a technician's saved target selection is keyed by the URLs the game used
  *      to serve, so on first load it matches nothing and every game's own
@@ -44,7 +44,7 @@ const CORE_TOPICS = JSON.parse(
  * each persists its settings under and the base it prefixed onto image paths.
  * market borrows matching's manifest instead of carrying its own art.
  *
- * `storageKey` is where a technician's configuration is *seeded* — the key it
+ * `storageKey` is where a technician's configuration is *seeded* - the key it
  * lives under before any Stage 6 adoption. `storeKey`, where present, is the
  * shared store that game has since adopted: the config is folded into that
  * document's `working` slot and the seeded key is left untouched.
@@ -93,7 +93,7 @@ for (const source of ['clock', 'receptive', 'matching']) {
 
     // The programme list only ever grows. Every topic the game shipped is still
     // there, and anything beyond it is a core vocabulary topic clock and
-    // receptive were given deliberately — a folder that is neither is a topic
+    // receptive were given deliberately - a folder that is neither is a topic
     // the projection invented, which would put another game's programme into
     // this one's dropdown.
     const dropped = SOURCE_MANIFESTS[source].folders.filter((f) => !manifest.folders.includes(f));
@@ -113,7 +113,7 @@ test('no category serves fewer stimuli than it did before the repoint', async ({
   for (const source of ['clock', 'receptive', 'matching']) {
     const manifest = await loadJson(request, `/${source}/manifest.json`);
     // A stimulus a technician retired in `publishing.json` is meant to stop
-    // being served, so it is not a shortfall — it is the declaration working.
+    // being served, so it is not a shortfall - it is the declaration working.
     // Everything else that shrinks is art the repoint lost.
     const { paths: retiredPaths } = await retired(request, source);
     for (const [category, before] of Object.entries(SOURCE_MANIFESTS[source].images)) {
@@ -126,7 +126,7 @@ test('no category serves fewer stimuli than it did before the repoint', async ({
 });
 
 /**
- * The library URLs a game no longer publishes *by declaration* — a technician
+ * The library URLs a game no longer publishes *by declaration* - a technician
  * removed the stimulus from that game in `publishing.json`. The art stays in
  * the library (the same bytes back three games), so this is a publishing
  * decision, not a deletion, and it is the only sanctioned reason for a URL a
@@ -166,7 +166,7 @@ for (const source of ['clock', 'receptive', 'matching']) {
     // A stimulus a technician deliberately retired in publishing.json stops
     // being served on purpose, and the build stops emitting an alias for it.
     // Allow exactly those paths, and no others, so this still fails on art
-    // lost by accident — which is the whole point of the test.
+    // lost by accident - which is the whole point of the test.
     const { paths: retiredPaths } = await retired(request, source);
     const live = legacy.filter((p) => !retiredPaths.has(p));
 
@@ -216,8 +216,8 @@ test('clock and receptive now serve real photographs for household and kitchen i
 // ── A renamed topic reaches the learner-facing dropdown ────────────────────
 
 /**
- * A rename is a name, not a move. The manifest carries `topicNames` — the
- * per-game override AdminTools writes — and the game has to prefer it over the
+ * A rename is a name, not a move. The manifest carries `topicNames` - the
+ * per-game override AdminTools writes - and the game has to prefer it over the
  * name it derives from the folder while still selecting by the unchanged key.
  * A game that took the name as the value would write a topic no manifest has
  * into the technician's saved settings.
@@ -254,7 +254,7 @@ for (const { game, url, manifest: manifestUrl } of REPOINTED) {
  * Seed the settings a technician would have had before the repoint, load the
  * game, and read back what it persisted. Every value must come back, and the
  * target paths must have been rewritten to the library URLs that carry the
- * same pictures — a game that pruned them instead comes back with an empty
+ * same pictures - a game that pruned them instead comes back with an empty
  * array and no way to tell the technician their programme changed.
  */
 for (const { game, url, manifest: manifestUrl, source, storageKey, storeKey, legacyBase } of REPOINTED) {
@@ -288,7 +288,7 @@ for (const { game, url, manifest: manifestUrl, source, storageKey, storeKey, leg
     );
     await page.goto(url);
     // Every game builds its topic dropdown straight after adopting the
-    // manifest, and the migration runs before that — so a fully populated
+    // manifest, and the migration runs before that - so a fully populated
     // dropdown means the migration has already had its chance.
     await expect(page.locator('#sel-topic option')).toHaveCount(manifest.folders.length);
 

@@ -1,4 +1,4 @@
-/* Finding B — WIDE loupe over the whole brow + temple + hairline band,
+/* Finding B - WIDE loupe over the whole brow + temple + hairline band,
    bare face, no brow tool, no recolour, plus a "canvas with the brow state
    sprite suppressed" frame so the base layer and the sprite layer can be told
    apart by eye. That frame is what shows `_eyesCanvas` to be a visual no-op
@@ -34,7 +34,7 @@ for (const m of MODELS) {
   await page.getByLabel('Character', { exact: true }).selectOption(m);
   await page.getByLabel('Routine', { exact: true }).selectOption('free');
   await page.getByRole('button', { name: /^▶ Play/ }).click();
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   await page.waitForFunction(painted, undefined, { timeout: 20000 });
 
   const res = await page.evaluate(async ([model, BC]) => {

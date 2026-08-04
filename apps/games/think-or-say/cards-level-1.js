@@ -1,26 +1,26 @@
-/* ── Think or Say? — Level 1 "Clear" ───────────────────────────────────
+/* ── Think or Say? - Level 1 "Clear" ───────────────────────────────────
    Early acquisition. The answer is obvious to anyone holding the rule: the
    discrimination is available from the utterance itself and no card asks the
    learner to weigh two criterial dimensions against each other.
 
-   THINK side is blatant — angry words, openly rude statements, private things
-   said out loud. SAY side is equally blatant — thanking, asking for help,
+   THINK side is blatant - angry words, openly rude statements, private things
+   said out loud. SAY side is equally blatant - thanking, asking for help,
    telling a grown-up you feel sick, speaking up about danger, a genuine
    compliment.
 
    CONTENT RULE (all three levels): only mild, non-name-calling utterances are
    QUOTED. Anything harsher is described, never printed. No slurs, no profanity,
-   no specific insults — the game must not teach the vocabulary it warns against.
+   no specific insults - the game must not teach the vocabulary it warns against.
 
    CROSS-LABELS. A card declares every criterial dimension that SUPPLIES A
-   REASON for its answer, not just the one its pair flips — the maintainer's
+   REASON for its answer, not just the one its pair flips - the maintainer's
    headline finding was that most cards carried two labels where three or four
    apply. The test of applicability is the reason line: if a technician
    debriefing the card would name the dimension, the card declares it. A
    dimension a value could merely be assigned to ("it happens to be a
    classmate") is NOT in play, because a label that explains nothing inflates
    the coverage matrix without teaching anything. Two working rules follow:
-     * `privacy` means the information itself is private — the body, home life,
+     * `privacy` means the information itself is private - the body, home life,
        something told quietly. Embarrassment caused by WHO CAN HEAR is coded by
        `audience`, so the two dimensions stay distinct rather than doubling up.
      * `truthRank: 'true'` goes on a card whose whole temptation is that the
@@ -31,7 +31,7 @@
    and it is arranged so the answers do not run in step with the tile
    counterbalance (which alternates on the trial index). Blocks of four run
    THINK, SAY, SAY, THINK; the tail runs SAY. Reordering this array can create a
-   perfect position cue — think-or-say-levels.spec.js measures it.
+   perfect position cue - think-or-say-levels.spec.js measures it.
    ----------------------------------------------------------------------- */
 (function (global) {
   'use strict';

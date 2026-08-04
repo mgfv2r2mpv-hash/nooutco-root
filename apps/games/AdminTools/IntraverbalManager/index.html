@@ -334,7 +334,7 @@ function handle401() {
   token = '';
   localStorage.removeItem('admin_token');
   setGearAuthed(false);
-  showAdminModal('Session expired — re-enter password.');
+  showAdminModal('Session expired - re-enter password.');
 }
 
 // ── API ────────────────────────────────────────────────────────────
@@ -770,7 +770,7 @@ function bindEvents() {
     }
   });
 
-  // Add item form — open/close helpers
+  // Add item form - open/close helpers
   function openAddForm() {
     document.getElementById('add-item-form').classList.add('open');
     document.getElementById('btn-add-item').textContent = '✕ Cancel';

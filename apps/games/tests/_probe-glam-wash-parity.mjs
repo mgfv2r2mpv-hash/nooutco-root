@@ -3,8 +3,7 @@
    `_wash` is shared by the eyeshadow (T4c), the blush (T4d), the contour and the
    highlight. The second pass gave it an opt-in `o.core` so the highlight could
    move its fade inward (U1); the other three must be untouched. Re-measuring
-   them with `_probe-glam-face3.mjs` is the wrong instrument for that question —
-   `freshEd` seeds the blemishes off `Math.random`, so two runs of the same
+   them with `_probe-glam-face3.mjs` is the wrong instrument for that question - `freshEd` seeds the blemishes off `Math.random`, so two runs of the same
    renderer differ by a few percent on the blush and the comparison can only ever
    be "close enough".
 
@@ -119,5 +118,5 @@ for (const m of MODELS) {
 await browser.close();
 const problems = [...A.problems, ...B.problems];
 if (problems.length) { console.error('CONSOLE:\n' + problems.join('\n')); process.exit(1); }
-if (bad) { console.error(`\n${bad} case(s) changed — the shared wash regressed.`); process.exit(1); }
+if (bad) { console.error(`\n${bad} case(s) changed - the shared wash regressed.`); process.exit(1); }
 console.log('\nAll cases pixel-identical: the shared _wash is unchanged for every non-highlight caller.');

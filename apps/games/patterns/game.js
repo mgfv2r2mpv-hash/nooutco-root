@@ -34,8 +34,7 @@ function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
 
 // ── Settings storage keys ──────────────────────────────────────────
 // Stage 6: this game's programme parameters live in the shared store
-// (../game-settings.js) under SETTINGS_KEY. `ppcSettings` is the retired key —
-// read once, folded into the store, and NEVER deleted or rewritten, so a
+// (../game-settings.js) under SETTINGS_KEY. `ppcSettings` is the retired key - // read once, folded into the store, and NEVER deleted or rewritten, so a
 // mis-mapped fold is recoverable and a downgrade still finds the old config.
 const SETTINGS_KEY = 'nooutco.settings.patterns';
 const LEGACY_SETTINGS_KEY = 'ppcSettings';
@@ -142,7 +141,7 @@ function clampPatternLength(raw) { return clamp(parseInt(raw, 10) || 2, 2, 3); }
  *
  * Caps keep the gift box to a clean shape: ≤9 tiles (len 3 × 2 reps + 3 blanks).
  *
- * `autoPromptEnabled` defaults to FALSE here — it is true only in `sequences`.
+ * `autoPromptEnabled` defaults to FALSE here - it is true only in `sequences`.
  * That difference is clinical, not accidental; do not harmonise it.
  */
 const SETTINGS_FIELDS = {
@@ -157,7 +156,7 @@ const SETTINGS_FIELDS = {
   // from a second clamp that could disagree with it.
   blanksToFill:      { type: 'int',  min: 1, default: 1,
                        max: (cfg) => clampPatternLength(cfg.patternLength) },
-  // The stepper's own change handler has always clamped to 2–8; declaring it
+  // The stepper's own change handler has always clamped to 2-8; declaring it
   // here is what makes a *stored* out-of-range bankSize agree with the panel.
   bankSize:          { type: 'int',  min: 2, max: 8, default: 4 },
   representErrors:   { type: 'bool', default: true },
@@ -695,7 +694,7 @@ function finishTrial() {
   });
 
   // Bow the box, ship it down the line, close the bulk lid and light the
-  // neon sign — then offer Next / Retry.
+  // neon sign - then offer Next / Retry.
   state.locked = true;
   Skin.onComplete(outcome, () => {
     state.locked = false;
@@ -740,7 +739,7 @@ function onNextClick() {
 }
 
 function onRetryClick() {
-  // Void the completed trial — procedural error, don't count it.
+  // Void the completed trial - procedural error, don't count it.
   if (state.sessionData.length) {
     state.sessionData.pop();
     state.trialNum--;

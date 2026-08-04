@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Stage 7 — `sequences`' three prompting-method cards reach the other games.
+ * Stage 7 - `sequences`' three prompting-method cards reach the other games.
  *
  * `sequences` has shipped Most-to-Least / Time-Delay / Least-to-Most as named
  * procedures since Frame 04. The eight games in this table exposed only the
- * primitives the procedures are made of — an Auto-Prompt switch and a Prompt
- * Delay switch — so a technician had to already know that "auto-prompt on,
+ * primitives the procedures are made of - an Auto-Prompt switch and a Prompt
+ * Delay switch - so a technician had to already know that "auto-prompt on,
  * delay off" IS most-to-least. `../prompting-method.js` is that vocabulary,
  * shared, and it adds no stored option: the selected procedure is DERIVED from
  * the two switches, so nothing new is persisted and the two cannot disagree.
@@ -15,7 +15,7 @@ import { test, expect } from '@playwright/test';
  *
  *   1. the group renders (a missing script tag or markup line leaves the panel
  *      exactly as it was, which no other assertion notices)
- *   2. the selection follows the STORED configuration on load — the load path
+ *   2. the selection follows the STORED configuration on load - the load path
  *      writes `.checked` programmatically, which fires no `change` event, so a
  *      game that never calls `refresh()` shows the wrong procedure
  *   3. choosing a procedure drives the switches through the game's own change
@@ -24,8 +24,7 @@ import { test, expect } from '@playwright/test';
  *      honest rather than making it a fourth source of truth
  *   5. a preset never rewrites the technician's prompt-delay seconds
  *
- * `emotions` is deliberately absent: it has no Prompt Delay boolean at all —
- * its `promptDelay` IS the seconds (finding 63) — so there is no second
+ * `emotions` is deliberately absent: it has no Prompt Delay boolean at all - * its `promptDelay` IS the seconds (finding 63) - so there is no second
  * primitive for the procedures to compose. `sequences` is absent because it
  * already has this UI, with its own stored `prompting` field.
  */
@@ -138,7 +137,7 @@ for (const row of GAMES) {
 
   test(`${game}: choosing a procedure drives the switches and is persisted`, async ({ page }) => {
     // A fresh install is least-to-most everywhere but `sequences`, because
-    // auto-prompt defaults to false — the per-game default hard constraint 2
+    // auto-prompt defaults to false - the per-game default hard constraint 2
     // protects, read through the new vocabulary.
     await page.goto(url);
     await bootedWithSettings(page, boot);
@@ -151,7 +150,7 @@ for (const row of GAMES) {
     await expect(page.locator('#chk-prompt-delay')).toBeChecked();
     await expectSelected(page, 'time-delay');
 
-    // Persisted through the game's own change handlers — the group never
+    // Persisted through the game's own change handlers - the group never
     // writes storage itself.
     await expect.poll(async () => {
       const s = await readStore(page, storeKey);
@@ -179,7 +178,7 @@ for (const row of GAMES) {
   test(`${game}: choosing Time Delay leaves the technician's seconds alone`, async ({ page }) => {
     // `sequences`' own preset resets the delay to 3 s on every click, which
     // silently discards a configured 7 s. The shared preset patches the two
-    // switches and nothing else — hard constraint 1, read as "no setting
+    // switches and nothing else - hard constraint 1, read as "no setting
     // silently redefaulted".
     await seed(page, [[storeKey, { working: { [autoField]: false, promptDelay: false, promptDelaySecs: 7 } }]]);
     await page.goto(url);

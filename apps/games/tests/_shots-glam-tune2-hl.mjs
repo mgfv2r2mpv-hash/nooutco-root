@@ -12,9 +12,9 @@
    renderer differs.
 
    Per model (m2/m3/m4), the cheekbones and nose bridge with the HIGHLIGHT ONLY
-   on bare skin — no blush, no shadow, nothing else to read the shape against:
+   on bare skin - no blush, no shadow, nothing else to read the shape against:
 
-     · highlight-<phase>-<model>.png   — ×7 loupe, nearest-neighbour
+     · highlight-<phase>-<model>.png - ×7 loupe, nearest-neighbour
 
    The crop is wider than the first pass's (1.9 eye-widths outboard, and up to
    0.4 eye-heights above the eye line) because the swept shape reaches further
@@ -27,7 +27,7 @@
 
    Plus the un-magnified stage at three widths, so the fix is also seen in
    context on a whole face:
-     · glow-<phase>-<device>.png       — highlight + blush + shadow */
+     · glow-<phase>-<device>.png - highlight + blush + shadow */
 import { chromium } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 
@@ -140,7 +140,7 @@ for (const d of DEVICES) {
   await page.getByTitle('Show / hide setup').click();
   await page.getByLabel('Character', { exact: true }).selectOption('m4');
   await page.getByRole('button', { name: /^▶ Play/ }).click();
-  await page.getByRole('button', { name: /Go —/ }).click();
+  await page.getByRole('button', { name: /Go - / }).click();
   await page.waitForFunction(painted, undefined, { timeout: 20000 });
   await logic(page, GLOW_ON);
   await page.waitForTimeout(600);

@@ -2,8 +2,8 @@
  * Shared vocabulary for reasoning about stimulus art across the games.
  *
  * Two consumers depend on this module:
- *   • tests/tools/snapshot-stimuli.mjs — regenerates the committed baseline
- *   • tests/stimulus-integrity.spec.js — asserts the served site matches it
+ *   • tests/tools/snapshot-stimuli.mjs - regenerates the committed baseline
+ *   • tests/stimulus-integrity.spec.js - asserts the served site matches it
  *
  * Keeping the classifier in one place is the point: the baseline and the
  * assertion have to agree on what counts as "real art", or the safety net
@@ -17,8 +17,7 @@ const VECTOR_ELEMENT_RE = /<(path|rect|circle|ellipse|polygon|polyline|line|imag
 const TEXT_ELEMENT_RE = /<text\b/g;
 
 /**
- * An emoji placeholder is an SVG whose entire body is a single <text> glyph —
- * a stand-in generated when no real art existed for a stimulus. There are
+ * An emoji placeholder is an SVG whose entire body is a single <text> glyph - * a stand-in generated when no real art existed for a stimulus. There are
  * hundreds of these and they are NOT distinguishable by filename (a real
  * hand-drawn `above.svg` sits in the same folder as a placeholder `bed.svg`),
  * so detection is by content only.
@@ -57,9 +56,9 @@ export function needsBodyToClassify(fileName) {
  * Every stimulus index in the repo, and how to turn it into served URLs.
  *
  * `kind` drives how the index is parsed:
- *   'manifest' — {folders[], images{folder: path[]}, displayNames, archived}
- *   'items'    — flat item list, each with an `img` filename under `imgPrefix`
- *   'fixed'    — a hardcoded key list rendered as `${imgPrefix}${key}${ext}`
+ *   'manifest' - {folders[], images{folder: path[]}, displayNames, archived}
+ *   'items' - flat item list, each with an `img` filename under `imgPrefix`
+ *   'fixed' - a hardcoded key list rendered as `${imgPrefix}${key}${ext}`
  *
  * Paths in an index are resolved relative to `base`, so a game can be
  * repointed at a shared library without this registry changing.
@@ -69,8 +68,8 @@ export const STIMULUS_SOURCES = [
   { game: 'receptive', kind: 'manifest', base: '/receptive/', index: '/receptive/manifest.json' },
   { game: 'matching', kind: 'manifest', base: '/matching/', index: '/matching/manifest.json' },
   {
-    // ffc's items name a shared stimulus id and nothing else — no `img`, no
-    // label — so the picture is resolved from the library, exactly as the game
+    // ffc's items name a shared stimulus id and nothing else - no `img`, no
+    // label - so the picture is resolved from the library, exactly as the game
     // does it. `base` is the site root because a library URL is site-absolute.
     game: 'ffc',
     kind: 'library-items',
