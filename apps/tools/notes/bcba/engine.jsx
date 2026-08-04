@@ -1317,23 +1317,12 @@ function App() {
     setCopiedPrompt(false);
   };
 
-  /* Superseded note, kept because it explains why the SIGNED-IN half is gone.
-     It built a labelled prompt in the browser for pasting into another model,
-     and that is exactly why it could never carry his voice: for the pasted text
-     to contain the block, the block has to reach a browser, which reverses the
-     one decision keeping his personal rules off every machine holding a tools
-     login. Routing it through the Worker would not have helped either, since the
-     Worker would still have to hand the composed prompt back to be copied.
-
-     He chose to generate in place instead. "Generate Note" already does that
-     through the Worker, with the voice, the stances, and the obligations, so
-     what remained was a second button producing a strictly worse result.
-
-     tool.buildLabeledPrompt() is deliberately left in the tool configs: it is
-     still exercised by sap-register.spec.js, which pins three real SAP defects
-     against bfd66b84, and deleting it would delete that coverage. It now has no
-     production caller, so it should go when that spec is next revisited rather
-     than rot quietly. */
+  /* The signed-in half of this path is gone on the same ruling: Generate Note
+     already produces the note through the Worker with the voice, the stances and
+     the obligations, so a second signed-in button could only produce a worse
+     result. tool.buildLabeledPrompt() keeps a production caller through the
+     logged-out branch above, so it is not dead code and sap-register.spec.js
+     still guards the surface it builds. */
 
   const handleCopyAll = () => {
     if (!S.output) return;
