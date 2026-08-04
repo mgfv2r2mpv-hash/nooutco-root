@@ -1462,10 +1462,25 @@ async function handleStyleCard(request, env) {
   const kid = typeof payload.kid === "string" ? payload.kid : null;
   if (!kid) return jsonRes(200, { rules: [], block: "", available: false });
 
-  const card = await profileFetch(env, `/style-card?kid=${encodeURIComponent(kid)}`, null, "GET");
-  if (!card) return jsonRes(200, { rules: [], block: "", available: false });
+  /* tool and seed decide the sentence shape target. The seed must be stable for
+     one note and different across notes: stable so a revision replays the same
+     prompt prefix and stays inside the cache, different so a hundred notes do
+     not all land on one target. The browser supplies it. */
+  const tool = String(new URL(request.url).searchParams.get("tool") || "").slice(0, 24);
+  const seed = String(new URL(request.url).searchParams.get("seed") || "").slice(0, 64);
+  const qs = `/style-card?kid=${encodeURIComponent(kid)}`
+    + (tool ? `&tool=${encodeURIComponent(tool)}` : "")
+    + (seed ? `&seed=${encodeURIComponent(seed)}` : "");
 
-  return jsonRes(200, { rules: card.rules || [], block: card.block || "", available: true });
+  const card = await profileFetch(env, qs, null, "GET");
+  if (!card) return jsonRes(200, { rules: [], block: "", shapeBlock: "", available: false });
+
+  return jsonRes(200, {
+    rules: card.rules || [],
+    block: card.block || "",
+    shapeBlock: card.shapeBlock || "",
+    available: true,
+  });
 }
 
 /**

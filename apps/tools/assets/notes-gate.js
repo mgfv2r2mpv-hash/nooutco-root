@@ -1044,12 +1044,21 @@
      technician has one), and so is an unreachable profile store, so callers
      cannot tell those apart and do not need to. ── */
 
-  function styleCardGet() {
+  /* opts.tool and opts.seed decide the sentence shape target that comes back
+     alongside the card. The seed must be stable for one note and different
+     across notes: stable so a revision replays the same prompt prefix and stays
+     inside the five minute cache, different so a hundred notes do not all land
+     on the same target. Called without them, this behaves exactly as before. */
+  function styleCardGet(opts) {
     var tok = getToken();
-    if (!tok) return Promise.resolve({ rules: [], block: "", available: false });
-    return fetch(apiUrl("/api/style-card"), { headers: { Authorization: "Bearer " + tok } })
-      .then(function (r) { return r.ok ? r.json() : { rules: [], block: "", available: false }; })
-      .catch(function () { return { rules: [], block: "", available: false }; });
+    var empty = { rules: [], block: "", shapeBlock: "", available: false };
+    if (!tok) return Promise.resolve(empty);
+    var qs = "";
+    if (opts && opts.tool) qs += (qs ? "&" : "?") + "tool=" + encodeURIComponent(opts.tool);
+    if (opts && opts.seed) qs += (qs ? "&" : "?") + "seed=" + encodeURIComponent(opts.seed);
+    return fetch(apiUrl("/api/style-card" + qs), { headers: { Authorization: "Bearer " + tok } })
+      .then(function (r) { return r.ok ? r.json() : empty; })
+      .catch(function () { return empty; });
   }
 
   // Muting is a deliberate action, so unlike the read this reports failure -

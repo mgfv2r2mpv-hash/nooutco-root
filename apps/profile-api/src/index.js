@@ -20,6 +20,7 @@ import { deriveRules, cardRows, renderStyleBlock } from "./derive.js";
 import { FEATURE_NAMES } from "./features.js";
 import { sanitizeCorrections, sanitizeMetrics, cleanKid, cleanSlug } from "./validate.js";
 import { runWeekly, isSendHour } from "./weekly.js";
+import { accumulate, targetFor, renderShapeBlock } from "./shape.js";
 
 /** Corrections considered when rebuilding a card. Bounds the query, and a
  *  technician's style two thousand edits ago is not evidence about today. */
@@ -100,6 +101,7 @@ async function handleEvents(request, env) {
 
   const corrections = sanitizeCorrections(body.corrections, now);
   const metrics = sanitizeMetrics(body.metrics, now);
+  let shapeUpdate = null;
 
   const statements = [
     env.DB.prepare(
@@ -129,6 +131,35 @@ async function handleEvents(request, env) {
         env.DB.prepare(`UPDATE technician SET note_count = note_count + 1 WHERE kid = ?`).bind(kid),
       );
     }
+    // The two numbers the shape target is drawn from. burstiness IS the
+    // coefficient of variation of sentence length; the browser reports it under
+    // that name because that is what the scorer has always called it.
+    if (m.type === "note_register"
+        && Number.isFinite(m.data.meanLen) && Number.isFinite(m.data.burstiness)
+        && m.data.meanLen > 0 && m.data.burstiness > 0) {
+      shapeUpdate = { meanLen: m.data.meanLen, cv: m.data.burstiness };
+    }
+  }
+
+  /* Read, fold, write. Not an UPSERT with SQL arithmetic, because the running
+     variance needs the previous sums and D1 has no RETURNING on conflict. Two
+     round trips on a path that already does several is the cheaper trade
+     against getting the accumulator wrong. */
+  if (shapeUpdate) {
+    const prev = await env.DB.prepare(
+      `SELECT n_notes, sum_len, sum_cv, sum_cv_sq FROM shape_profile WHERE kid = ? AND tool = ?`,
+    ).bind(kid, tool).first();
+    const next = accumulate(prev, shapeUpdate.meanLen, shapeUpdate.cv);
+    statements.push(
+      env.DB.prepare(
+        `INSERT INTO shape_profile (kid, tool, n_notes, sum_len, sum_cv, sum_cv_sq, updated)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(kid, tool) DO UPDATE SET
+           n_notes = excluded.n_notes, sum_len = excluded.sum_len,
+           sum_cv = excluded.sum_cv, sum_cv_sq = excluded.sum_cv_sq,
+           updated = excluded.updated`,
+      ).bind(kid, tool, next.n_notes, next.sum_len, next.sum_cv, next.sum_cv_sq, now),
+    );
   }
 
   await env.DB.batch(statements);
@@ -172,9 +203,30 @@ async function handleGetCard(url, env) {
     muted: !!r.muted,
   }));
 
+  /* The shape target rides along with the card, rather than on its own route.
+     It has to be drawn once per note and reach the same prompt, and the card is
+     already fetched at exactly that moment. A second endpoint would be a second
+     chance for the two to disagree about which note they are describing.
+
+     The seed is the caller's, so the same note redraws the same target on a
+     revision and the prompt prefix stays stable for the cache. */
+  const tool = cleanSlug(url.searchParams.get("tool")) || "unknown";
+  const seed = (url.searchParams.get("seed") || "").slice(0, 64) || (kid + ":" + tool);
+  const shapeRow = await env.DB.prepare(
+    `SELECT n_notes, sum_len, sum_cv, sum_cv_sq FROM shape_profile WHERE kid = ? AND tool = ?`,
+  ).bind(kid, tool).first();
+  const target = targetFor(shapeRow, tool, seed);
+
+  /* Kept as two fields rather than one concatenated string. `block` is the
+     learned card and must stay empty when there are no rules, which is what
+     suppression relies on to prove a removed rule left the prompt. The shape
+     target is not a learned rule and applies even to a technician with no card
+     at all, so it travels beside it and the caller composes. */
   return json(200, {
     rules,
     block: renderStyleBlock(rules),
+    shapeBlock: renderShapeBlock(target),
+    shape: target,
     updatedAt: (results || []).reduce((a, r) => Math.max(a, r.updated_at || 0), 0) || null,
   });
 }
