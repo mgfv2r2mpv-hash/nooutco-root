@@ -78,9 +78,9 @@
   ];
 
   var BCBA_ACTION_ITEMS = [
-    "Contact family - scheduling/staffing",
-    "Contact family - new behavior",
-    "Contact family - billing questions",
+    "Contact family, scheduling/staffing",
+    "Contact family, new behavior",
+    "Contact family, billing questions",
     "Contact staff",
     "Materials needed for programming",
     "None",
@@ -142,13 +142,13 @@
      BCBA most often has to send a note back for. */
 
   var HINT_CATALOG = {
-    no_behavior_count: "Behavior of concern noted without a count or rate - add how many times it occurred, even if zero",
-    no_rate_comparison: "No comparison to recent sessions - say whether this was higher, lower, or about the same",
-    no_prompt_level: "Teaching described without a prompt level - name the prompt type used and whether it was faded",
-    single_program_only: "Only one program is described - a second (ideally communication/social plus adaptive) makes the note stronger",
-    no_antecedent_impact: "Antecedent strategy named without its effect - say whether it helped",
+    no_behavior_count: "Behavior of concern noted without a count or rate, add how many times it occurred, even if zero",
+    no_rate_comparison: "No comparison to recent sessions, say whether this was higher, lower, or about the same",
+    no_prompt_level: "Teaching described without a prompt level, name the prompt type used and whether it was faded",
+    single_program_only: "Only one program is described, a second (ideally communication/social plus adaptive) makes the note stronger",
+    no_antecedent_impact: "Antecedent strategy named without its effect, say whether it helped",
     thin_clinical_status: "Little detail on how the client presented at the start of session",
-    no_response_described: "Behavior noted without your response - add what you did and whether it worked",
+    no_response_described: "Behavior noted without your response, add what you did and whether it worked",
     other: "",
   };
 
@@ -255,9 +255,9 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
 
   function buildUserPrompt(values) {
     return [
-      "FACTUAL SESSION DATA (provided - do not infer, do not include in the JSON):",
-      "- Place of service: " + (values.placeOfService || "Not specified"),
-      "- Provided via telehealth: " + (values.telehealth || "Not specified"),
+      "FACTUAL SESSION DATA (provided, do not infer, do not include in the JSON):",
+      "* Place of service: " + (values.placeOfService || "Not specified"),
+      "* Provided via telehealth: " + (values.telehealth || "Not specified"),
       "",
       "BT NOTES BY CLUSTER (raw; expand faithfully, never fabricate):",
       "",
@@ -278,7 +278,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       // had them writing about themselves in the third person, which is exactly
       // the actorless register that reads as machine-written. Say it the way the
       // person filing the note would say it.
-      (values.fFollowUp || "").trim() || "(none provided - default followUpNarrative to: \"No new questions or concerns for the BCBA at this time.\")",
+      (values.fFollowUp || "").trim() || "(none provided, default followUpNarrative to: \"No new questions or concerns for the BCBA at this time.\")",
       "",
       "ALLOWED CHECKBOX OPTIONS (return only verbatim values from these lists):",
       "- individualsPresent: " + menu(INDIVIDUALS_PRESENT),
@@ -298,7 +298,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       "- behaviorPlanNarrative: 2-4 sentences, quantitative where reported; state whether behavior increased, decreased, or held steady relative to recent sessions.",
       "- antecedentNarrative: describe the antecedent strategies as applied and their impact.",
       "- clinicalStatusNarrative: 1-2 sentences on mood/behavior at session start.",
-      "- followUpNarrative: brief; use the default sentence above if nothing reported. Write it as the person filing the note, not about them. The technician IS the direct staff, so never write \"Direct staff report...\" or \"The behavior technician has no concerns\" here - that is the author describing themselves in the third person, which reads as though someone else wrote the note. \"No new questions or concerns for the BCBA at this time\" is the register.",
+      "- followUpNarrative: brief; use the default sentence above if nothing reported. Write it as the person filing the note, not about them. The technician IS the direct staff, so never write \"Direct staff report...\" or \"The behavior technician has no concerns\" here, that is the author describing themselves in the third person, which reads as though someone else wrote the note. \"No new questions or concerns for the BCBA at this time\" is the register.",
     ].join("\n");
   }
 
@@ -334,6 +334,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
     label: "BT Session",
     title: "BT Direct Service Note Tool",
     subtitle: "Enter your session notes as free text. The tool drafts each clinical narrative and suggests which checkboxes to select on your EHR form.",
+    assistantIntro: "Fill in your session notes and press Generate Note. I'll ask about anything that looks thin before drafting, then you can click any section, or select a phrase inside one, to revise it.",
     genLabel: "Generate Note",
     maxTokens: 4000,
     // The EHR takes these one field at a time, so a single combined blob is
@@ -354,9 +355,9 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       },
       {
         id: "fSession", type: "textarea", label: "Session Start & Context", height: 120,
-        hint: "Who was there, how the client seemed when you started, and - in a few words - whether you worked on building rapport/pairing, skill goals, or reducing a behavior. We'll suggest the Individuals, Clinical Status, and Purpose checkboxes for you.",
+        hint: "Who was there, how the client seemed when you started, and, in a few words, whether you worked on building rapport/pairing, skill goals, or reducing a behavior. We'll suggest the Individuals, Clinical Status, and Purpose checkboxes for you.",
         help: {
-          intro: "Just jot what you saw - no need to label anything.",
+          intro: "Just jot what you saw, no need to label anything.",
           items: [
             { t: "How they arrived", d: "ready & engaged, tired, hungry/thirsty, distracted, seemed unwell, upset or already having behavior, or a recent medication change" },
             { t: "Focus of session", d: "building rapport / getting them to work with you (pairing), running learning programs, or working on a behavior plan" },
@@ -395,7 +396,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
             { t: "Offered choices", d: "let them pick between options" },
             { t: "Premack / first-then", d: "said “first this, then that” - most people do this without knowing the name" },
             { t: "Priming / warning", d: "a heads-up or countdown before a transition or before ending something fun" },
-            { t: "Motivation alteration", d: "adjusted things to meet a need - e.g., a break before a hard task, or held back a preferred item so it stayed motivating" },
+            { t: "Motivation alteration", d: "adjusted things to meet a need, e.g., a break before a hard task, or held back a preferred item so it stayed motivating" },
             { t: "Also worth a mention", d: "non-contingent reinforcement, easy wins first (behavior momentum), pre-session pairing, simplified instructions" },
           ],
         },
@@ -419,11 +420,11 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       },
       {
         id: "fFollowUp", type: "textarea", label: "Follow-Up & Concerns", height: 110,
-        hint: "Anything the BCBA should do or know - scheduling/staffing, a new behavior, billing, materials, involvement. Items mentioned in earlier fields are surfaced here automatically; leave blank if there is nothing new.",
+        hint: "Anything the BCBA should do or know, scheduling/staffing, a new behavior, billing, materials, involvement. Items mentioned in earlier fields are surfaced here automatically; leave blank if there is nothing new.",
         help: {
           intro: "Anything the BCBA should do or know.",
           items: [
-            { t: "Action items", d: "scheduling/staffing, a new behavior, billing, contact staff, materials needed - or nothing new" },
+            { t: "Action items", d: "scheduling/staffing, a new behavior, billing, contact staff, materials needed, or nothing new" },
             { t: "Overall progress", d: "steady, impacted by behavior of concern, or limited" },
             { t: "No need to repeat", d: "things you mentioned above are surfaced here automatically" },
           ],

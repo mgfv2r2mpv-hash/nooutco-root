@@ -878,7 +878,37 @@ function App() {
       conversation.push({ role: "assistant", content: r.rawText });
       patchS({ output: tool.normalizeOutput(r.parsed), conversation, lastCallAt: Date.now() });
       pushThread("assistant", "status", "Drafted. Click any section - or select a phrase inside one - to revise it.");
+      // Register signals for the weekly audit. Numbers only, measured on the
+      // draft the clinician is about to read, so a drift toward machine-uniform
+      // prose shows up in the Friday email rather than in a detector months
+      // later. Best effort by design: a measurement failure must never cost
+      // somebody their note.
+      let register = null;
+      try {
+        const body = tool.formSections
+          .map((s) => (s.key ? tool.normalizeOutput(r.parsed)[s.key] : ""))
+          .filter(Boolean).join("\n\n");
+        register = window.NoteMetrics ? window.NoteMetrics.measure(body) : null;
+      } catch (e) { register = null; }
+
       audit("note_generated", { ...inputSizes(scrubbedValues), answered: extra && extra.trim() ? 1 : 0 });
+      // Its own event, not merged into note_generated: the metric sanitiser
+      // caps a payload at 12 numeric keys and silently drops the overflow, so
+      // sharing a budget would quietly lose whichever signals sorted last.
+      if (register) {
+        audit("note_register", {
+          sentences: register.sentences,
+          words: register.words,
+          meanLen: register.meanLen,
+          burstiness: register.burstiness,
+          openerVariety: register.openerVariety,
+          repeatRate: register.repeatRate,
+          actorRate: register.actorRate,
+          clientRate: register.clientRate,
+          topOpener: register.topOpenerRepeat,
+          score: register.score,
+        });
+      }
     } catch (e) {
       patchS({ error: NotesGate.displayError(e) });
       pushThread("assistant", "status", "That didn't go through. " + NotesGate.displayError(e));
@@ -1292,6 +1322,7 @@ function App() {
         unread={S.questions ? S.questions.length : 0}
         quality={noteQuality()}
         loggedIn={loggedIn}
+        intro={tool.assistantIntro}
       />
 
       <div style={{ maxWidth: 860, margin: "0 auto" }}>

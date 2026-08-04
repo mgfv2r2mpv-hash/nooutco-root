@@ -25,7 +25,11 @@ const SKIP_DIRS = new Set([
 // The generated copies under apps/tools/shared are synced from packages/shared;
 // fixing them here would be undone by the next `npm run sync:shared`. They are
 // covered because the canonical source is.
-const SKIP_PATHS = [path.join(ROOT, 'shared')];
+//
+// apps/tools/vendor holds React, ReactDOM and Babel byte-for-byte as published.
+// None of them carries a dash today, but this is a rule about how we write, and
+// "go edit babel.min.js" is not an instruction anyone should ever be handed.
+const SKIP_PATHS = [path.join(ROOT, 'shared'), path.join(ROOT, 'vendor')];
 
 const EXTS = new Set(['.js', '.jsx', '.html', '.css', '.md', '.json', '.jsonc', '.sql', '.yml']);
 

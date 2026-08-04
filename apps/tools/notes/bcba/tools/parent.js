@@ -48,7 +48,7 @@
   var SECTION_IDS = ["individualsPresent", "supportActivities", "caregiverResponse", "progressStatus", "summary", "followup"];
 
   var HINT_CATALOG = {
-    thin_section: "This section is thin relative to the form's expectations - add specifics if you have them",
+    thin_section: "This section is thin relative to the form's expectations, add specifics if you have them",
     ambiguous_item: "Clarify",
     other: "",
   };
@@ -68,16 +68,16 @@ TERMINOLOGY (non-negotiable)\n\
 - Name procedures specifically (partial verbal prompt, errorless teaching, DRO, BST). No loose synonyms (rewarded, encouraged, motivated).\n\
 - Objective, observable language - no value-laden phrasing.";
 
-  // Additive hint instructions - the core prompt above matches the standalone page.
+  // Additive hint instructions, the core prompt above matches the standalone page.
   var HINTS_BLOCK = "\n\nHINTS: also return a \"hints\" array of {section, code, detail} objects flagging ONLY missing or ambiguous standard elements (max 3; empty [] when the note stands on its own). section is one of: " + SECTION_IDS.join(", ") + ". code is one of: thin_section (a narrative lacks the specifics the form expects), ambiguous_item (detail = what needs clarifying, 10 words max), other (detail = the question). Never fabricate to avoid a hint.";
 
-  var JSON_FORMAT_BLOCK = "\n\nOUTPUT FORMAT\nReturn ONLY a single JSON object. No markdown, no preamble. Use EXACTLY these keys; arrays hold verbatim option labels (empty [] if unsupported); single-selects are one verbatim label or \"\".\n{\n  \"individualsPresent\": [],\n  \"supportActivities\": [],\n  \"caregiverResponse\": \"\",\n  \"progressStatus\": \"\",\n  \"summary\": \"\",\n  \"followup\": \"\",\n  \"hints\": []\n}\nWhere \"summary\" is 3-5 clinical sentences covering goal progress and any program modifications made or needed, and \"followup\" is follow-up items for the Behavior Analyst - each item on its own line separated by \\n, no bullets, no numbers, no commas between items.";
+  var JSON_FORMAT_BLOCK = "\n\nOUTPUT FORMAT\nReturn ONLY a single JSON object. No markdown, no preamble. Use EXACTLY these keys; arrays hold verbatim option labels (empty [] if unsupported); single-selects are one verbatim label or \"\".\n{\n  \"individualsPresent\": [],\n  \"supportActivities\": [],\n  \"caregiverResponse\": \"\",\n  \"progressStatus\": \"\",\n  \"summary\": \"\",\n  \"followup\": \"\",\n  \"hints\": []\n}\nWhere \"summary\" is 3-5 clinical sentences covering goal progress and any program modifications made or needed, and \"followup\" is follow-up items for the Behavior Analyst, each item on its own line separated by \\n, no bullets, no numbers, no commas between items.";
 
   var LABELED_FORMAT_BLOCK = "\n\nOUTPUT FORMAT\nReturn labeled sections in the exact order below. For each \"[tick]\" line, list ONLY the options that apply, comma-separated and verbatim from that section's allowed list; if none apply write \"None selected.\" For \"[choose one]\" pick exactly one allowed option (or \"None\"). For \"[narrative]\" write the prose. No JSON, no preamble, no commentary.\n\nINDIVIDUALS PRESENT [tick]\nCAREGIVER RECEIVED THE FOLLOWING SUPPORT [tick]\nCAREGIVER RESPONSE TO TRAINING [choose one]\nPROGRESS STATUS [choose one]\nSUMMARY OF GOAL PROGRESS & MODIFICATIONS [narrative: 3-5 clinical sentences]\nBEHAVIOR ANALYST FOLLOW UP [narrative: one item per line, no bullets/numbers]";
 
   function buildUserPrompt(values) {
     return [
-      "Session notes (primary source - expand faithfully, never fabricate):",
+      "Session notes (primary source, expand faithfully, never fabricate):",
       (values.sessionNotes || "").trim() || "(none provided)",
       "",
       "ALLOWED CHECKBOX OPTIONS (return only verbatim values from these lists):",
@@ -108,7 +108,8 @@ TERMINOLOGY (non-negotiable)\n\
     id: "parent",
     label: "Parent Training",
     title: "Parent Note Tool",
-    subtitle: "Enter your session notes - the tool drafts the clinical note and suggests which checkboxes to select on your EHR form.",
+    subtitle: "Enter your session notes, the tool drafts the clinical note and suggests which checkboxes to select on your EHR form.",
+    assistantIntro: "Enter your session notes and press Generate Note. I'll ask about anything that looks thin before drafting, then you can click any section, or select a phrase inside one, to revise it.",
     genLabel: "Generate Note",
     inputs: [
       {

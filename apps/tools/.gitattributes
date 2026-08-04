@@ -1,2 +1,9 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Vendored libraries are third-party bytes, not our source. vendor/README.md
+# claims they are byte-for-byte what unpkg served, and LF normalization on a
+# checkout elsewhere would quietly make that untrue. Harmless for JavaScript
+# either way, but a file that says what it is should stay what it says.
+vendor/*.js -text
+
