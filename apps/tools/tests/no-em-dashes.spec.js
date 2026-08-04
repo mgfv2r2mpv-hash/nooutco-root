@@ -41,16 +41,20 @@ function walk(dir, out = []) {
   return out;
 }
 
+// Written as escapes, never as literals. A repo-wide sweep replaced the two
+// literal characters that used to sit here with a spaced hyphen, which left this
+// spec testing whether any line contains " - " and failing on every file in the
+// tree. A detector must not be destroyable by the thing it detects.
+const EM_DASH = '\u2014';
+const EN_DASH = '\u2013';
+
 test('no em dashes or en dashes anywhere in apps/tools', () => {
   const offenders = [];
 
   for (const file of walk(ROOT)) {
-    // This spec necessarily contains the characters it forbids.
-    if (file.endsWith('no-em-dashes.spec.js')) continue;
-
     const text = readFileSync(file, 'utf8');
     text.split('\n').forEach((line, i) => {
-      if (line.includes(' - ') || line.includes(' - ')) {
+      if (line.includes(EM_DASH) || line.includes(EN_DASH)) {
         offenders.push(`${path.relative(ROOT, file)}:${i + 1}  ${line.trim().slice(0, 90)}`);
       }
     });
