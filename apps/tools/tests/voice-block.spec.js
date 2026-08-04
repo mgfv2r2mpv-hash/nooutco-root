@@ -160,6 +160,63 @@ test.describe('composeOpinions', () => {
   });
 });
 
+// Stances: his standing commitments about how a person is described. His ruling
+// of 2026-08-04 was "always on, as framing, never as a recommendation", which is
+// why these ride the voice block and are NOT behind the want_opinions gate.
+const STANCED = {
+  ...BLOCK,
+  stances: { 'clinical-narrative': 'RAT-IS-RIGHT', interpersonal: 'EMAIL-STANCE' },
+};
+
+test.describe('stances', () => {
+  test('ship without anyone asking, unlike an opinion', () => {
+    // The whole point of the ruling. A stance gated behind a request would be
+    // silent in every document that is not asking for advice, which is all of them.
+    const out = composeVoice('SYSTEM', STANCED, 'sup');
+    expect(out).toContain('RAT-IS-RIGHT');
+    expect(out).toContain('HOW HE DESCRIBES PEOPLE');
+  });
+
+  test('are declared framing rather than advice', () => {
+    // If this assertion goes, the guard that stops a standing commitment from
+    // turning into an unrequested clinical recommendation went with it.
+    const out = composeVoice('SYSTEM', STANCED, 'sup');
+    expect(out).toMatch(/framing, not advice/i);
+    expect(out).toMatch(/never produce a recommendation/i);
+    expect(out).toMatch(/never .*soften a clinical fact/i);
+  });
+
+  test('follow the same allowlist: the BT tool gets none', () => {
+    expect(composeVoice('SYSTEM', STANCED, 'bt')).toBe('SYSTEM');
+  });
+
+  test('pick the register mapped to the tool', () => {
+    const out = composeVoice('SYSTEM', STANCED, 'parent');
+    expect(out).toContain('EMAIL-STANCE');
+    expect(out).not.toContain('RAT-IS-RIGHT');
+  });
+
+  test('a block with no stances composes exactly as before', () => {
+    expect(composeVoice('SYSTEM', BLOCK, 'sup')).toBe(composeVoice('SYSTEM', BLOCK, 'sup'));
+    expect(composeVoice('SYSTEM', BLOCK, 'sup')).not.toContain('HOW HE DESCRIBES PEOPLE');
+  });
+
+  test('a stance still ships when the register has no voice card', () => {
+    // The two are independent. A missing card must not silently drop a standing
+    // commitment he ruled always-on.
+    const orphan = { ...STANCED, core: '', registers: {} };
+    const out = composeVoice('SYSTEM', orphan, 'sup');
+    expect(out).toContain('RAT-IS-RIGHT');
+  });
+
+  test('order is voice, then stance, then opinions', () => {
+    const both = { ...STANCED, opinions: { 'clinical-narrative': 'GUM-ENTRY' } };
+    const out = composeOpinions(composeVoice('SYSTEM', both, 'sup'), both, 'sup', { wantsRecommendation: true });
+    expect(out.indexOf('HOUSE VOICE')).toBeLessThan(out.indexOf('HOW HE DESCRIBES PEOPLE'));
+    expect(out.indexOf('HOW HE DESCRIBES PEOPLE')).toBeLessThan(out.indexOf('HIS CLINICAL JUDGEMENT'));
+  });
+});
+
 const SECRET = 'playwright-local-test-secret';
 const b64url = (buf) =>
   Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
