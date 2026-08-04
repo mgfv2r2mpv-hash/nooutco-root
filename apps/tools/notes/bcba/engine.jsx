@@ -682,12 +682,16 @@ function App() {
      longer match and every subsequent turn would pay full price. So the card is
      snapshotted when the note is drafted, and a mute takes effect on the next
      note. The card UI says so. */
-  const runTurn = async (messages, styleBlock) => {
+  const runTurn = async (messages, styleBlock, wantOpinions) => {
     const r = await NotesGate.generateConversation({
       system: tool.buildSystem() + (styleBlock ? "\n\n" + styleBlock : ""),
       messages,
       tool: tool.id,
       maxTokens: tool.maxTokens || 3000,
+      // Only ever true when the clinician pressed "What would you do here?".
+      // Drafting and ordinary revision leave it undefined, so the owning
+      // clinician's stored judgement stays out of every note that did not ask.
+      wantOpinions: wantOpinions === true,
       // The sections this tool renders are exactly the top-level keys its prompt
       // contracts for, so they double as the shape the response must satisfy.
       // Derived rather than declared, so the check cannot drift from the UI.
@@ -957,6 +961,68 @@ function App() {
      The exchange is committed to the conversation immediately (so follow-ups
      keep context and the cache prefix stays linear); Accept/Discard only
      controls what lands in the visible output. */
+
+  /* ── Asking for a recommendation ──────────────────────────────────────
+     The owning clinician's stored calls are gated behind an explicit request,
+     by his ruling: "The tool has to request it - a 'what would you do here'
+     affordance." So this is a separate button rather than something inferred
+     from the wording of a revision instruction. Inference would mean the
+     judgement sometimes appearing in a note nobody asked to individualise,
+     which is the failure the gate exists to prevent.
+
+     It returns advice into the thread and does NOT touch the note. A
+     recommendation is something to read and act on, not a silent edit. */
+  const askWhatWouldYouDo = async () => {
+    if (loading) return;
+    if (!S.output) {
+      pushThread("assistant", "status", "Generate the note first, then I can suggest what to do next.");
+      return;
+    }
+    const ann = S.annotation;
+    const section = ann ? tool.formSections.find((s) => sectionId(s) === ann.id) : null;
+    pushThread("user", "answer", section ? `What would you do here? (${section.heading})` : "What would you do here?");
+
+    const userMsg = [
+      `RECOMMENDATION REQUEST`,
+      section
+        ? `The clinician is asking what to do about "${section.heading}" (JSON key: ${ann.id}).`
+        : `The clinician is asking what to do next for this case.`,
+      section ? `\nCurrent content of that section:\n${sectionBody(section, S.output, S.values)}` : "",
+      ``,
+      `Answer in prose, as advice to the clinician. Do NOT return the note JSON and do not`,
+      `change any section. Ground every suggestion in what is already in this conversation;`,
+      `if the input does not support a recommendation, say what is missing instead of`,
+      `inventing it. Where the stored judgement above conflicts with the input, follow the`,
+      `input and say plainly which entry you set aside and what overruled it.`,
+    ].filter(Boolean).join("\n");
+
+    setLoading(true);
+    try {
+      const conversation = [...S.conversation, { role: "user", content: userMsg }];
+      // No response schema: this turn is advice, not a note, so constraining it
+      // to the note's shape would force it back into sections.
+      // generateProse, not generateConversation: advice is not the note JSON,
+      // and the note path would parse it, fail, and resample the same request.
+      const r = await NotesGate.generateProse({
+        system: tool.buildSystem() + (S.convStyleBlock ? "\n\n" + S.convStyleBlock : ""),
+        messages: conversation,
+        tool: tool.id,
+        maxTokens: 1200,
+        wantOpinions: true,
+      });
+      const advice = (r.text || "").trim();
+      conversation.push({ role: "assistant", content: advice });
+      patchS({ conversation, lastCallAt: Date.now(), annotation: null, error: "" });
+      audit("recommendation", { requested: 1, scoped: section ? 1 : 0 });
+      pushThread("assistant", "answer", advice || "I do not have enough in this note to suggest anything.");
+    } catch (e) {
+      patchS({ error: NotesGate.displayError(e) });
+      pushThread("assistant", "status", "That didn't go through. " + NotesGate.displayError(e));
+      reportError(tool.id, e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const sendRevision = async (instruction) => {
     const review = await scrubGate(instruction);
@@ -1316,6 +1382,7 @@ function App() {
         draft={S.panelDraft}
         onDraft={(v) => patchS({ panelDraft: v })}
         onSend={handlePanelSend}
+        onAskAdvice={askWhatWouldYouDo}
         loading={loading}
         questions={S.questions}
         onSkipQuestions={skipQuestions}

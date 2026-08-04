@@ -108,7 +108,7 @@ function Bubble({ role, children, muted }) {
 
 function RevisionPanel({
   open, onToggle, thread, annotation, onClearAnnotation,
-  draft, onDraft, onSend, loading, questions, onSkipQuestions, unread, quality,
+  draft, onDraft, onSend, onAskAdvice, loading, questions, onSkipQuestions, unread, quality,
   loggedIn,
   intro,
 }) {
@@ -297,6 +297,26 @@ function RevisionPanel({
             {loading ? "…" : "Send"}
           </button>
         </div>}
+        {/* Asking is deliberately its own button rather than something inferred
+            from the wording of a revision. The supervising clinician's stored
+            judgement only reaches a note when someone asks for it, and a guess
+            about intent would put it into notes nobody asked to individualise.
+            It answers into the thread and never edits the note. */}
+        {!signedOut && !awaitingQuestions && onAskAdvice && (
+          <div className="revision-advice-row">
+            <button
+              type="button"
+              className="revision-advice"
+              disabled={loading}
+              onClick={onAskAdvice}
+              title={annotation
+                ? "Ask what the supervising clinician would do about the selected section"
+                : "Ask what the supervising clinician would do next. This answers in the panel and does not change the note."}
+            >
+              What would you do here?
+            </button>
+          </div>
+        )}
         {/* "No PHI" assumes the reader already knows what counts. Spelling it
             out inline would crowd the footer, so the term itself carries the
             reminder. Click as well as hover, because on a tablet - which is what

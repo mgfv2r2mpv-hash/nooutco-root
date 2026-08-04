@@ -268,6 +268,20 @@ body {
 }
 .revision-send:disabled { background: #a0b890; cursor: not-allowed; }
 
+/* "What would you do here?" - the only control that reaches the supervising
+   clinician's stored judgement, and the only one that answers without touching
+   the note. Deliberately quieter than Send: asking for advice is a side errand,
+   not the main loop, and it should not compete with revising for the eye. */
+.revision-advice-row { margin-top: 8px; }
+.revision-advice {
+  width: 100%; padding: 8px 12px; border-radius: 8px;
+  border: 1px dashed #c3d6ac; background: transparent; color: #4d5840;
+  font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+  text-align: center; transition: background .13s, border-color .13s;
+}
+.revision-advice:hover:not(:disabled) { background: #f2f7ec; border-color: #7a9460; }
+.revision-advice:disabled { color: #a0b890; border-color: #e2ebd8; cursor: not-allowed; }
+
 /* Reporting a problem used to be a second orange circle pinned to the same
    corner as the assistant pill, one on top of the other. It sits in the panel
    now: quiet under the composer while things are working, and the only control
