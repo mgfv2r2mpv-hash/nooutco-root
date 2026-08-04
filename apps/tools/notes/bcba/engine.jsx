@@ -887,6 +887,64 @@ function App() {
   // Draft the note. `extra` is the technician's answers to the triage questions,
   // already scrubbed; it rides along in the same first user message so the
   // conversation stays a single linear prefix.
+  /* Ask the model to look again at its own draft.
+   *
+   * Deliberately NOT "make it better", which produces more of the same prose
+   * with more adjectives. It names the one measurable failure mode: a draft
+   * whose sentences all come out the same length. That is the strongest
+   * machine signal there is and the thing a first draft reliably gets wrong,
+   * because "vary your sentence length" is a preference with nothing to check
+   * it against, while "your last draft ran at N words a sentence" is a fact.
+   *
+   * Returns null when there is nothing worth a second call, so a note that
+   * already varies costs one API call rather than two.
+   */
+  const REVISE_SPREAD_FLOOR = 0.45;
+  /* Below this there is nothing to judge. A coefficient of variation over four
+     or five short sentences is noise, not a register signal, and spending a
+     second API call to "fix" it would be acting on a number that means nothing.
+     A real note runs 250 words and up; this only filters out the genuinely
+     tiny ones. */
+  const REVISE_MIN_SENTENCES = 8;
+  const REVISE_MIN_WORDS = 120;
+
+  const selfRevise = async (conversation, block, first) => {
+    if (!window.NoteMetrics) return null;
+
+    const prose = tool.formSections
+      .filter((sec) => sec.kind === "narrative" && sec.key)
+      .map((sec) => String(tool.normalizeOutput(first.parsed)[sec.key] || ""))
+      .filter(Boolean)
+      .join("\n\n");
+
+    const m = window.NoteMetrics.measure(prose);
+    // Nothing to measure, too little to judge, or it already mixes: leave it.
+    if (!m) return null;
+    if (m.sentences < REVISE_MIN_SENTENCES || m.words < REVISE_MIN_WORDS) return null;
+    if (m.burstiness >= REVISE_SPREAD_FLOOR) return null;
+
+    const ask = [
+      "Before I read this, look at your own draft again.",
+      "",
+      "Its narrative sentences average " + Math.round(m.meanLen) + " words, and they vary by only " +
+        Math.round(m.burstiness * 100) + "% around that. That is the problem: not the length, the SAMENESS.",
+      "Uniform sentence length is the single strongest signal that prose was machine-written,",
+      "and it is equally true whether every sentence is short or every sentence is long.",
+      "",
+      "Rewrite the narrative sections so the rhythm actually moves. Put a short sentence next to a",
+      "long one. Let a small fact be a short sentence. Join two related observations into one longer",
+      "sentence where they belong together. Change nothing about the clinical content: no new facts,",
+      "no removed facts, no softened findings, and keep every checkbox exactly as it is.",
+      "",
+      "Return the COMPLETE JSON object with ALL keys, as before.",
+    ].join("\n");
+
+    const next = [...conversation, { role: "user", content: ask }];
+    const result = await runTurn(next, block);
+    if (!result || !result.parsed) return null;
+    return { ask, result };
+  };
+
   const draftNote = async (scrubbedValues, extra) => {
     setLoading(true);
     patchS({ output: null, proposal: null, conversation: [], questions: null, pendingValues: null });
@@ -900,10 +958,41 @@ function App() {
       // unreachable - both give exactly the prompt that shipped before any of
       // this existed, which is the intended failure mode.
       const styleBlock = (S.styleCard && S.styleCard.block) || "";
+
+      /* The technician's voice for THIS note, measured from what they just
+         typed. Separate from the style card: that is slow, cross-session and
+         content-free; this is the energy they brought today and is thrown away
+         on reload. Empty string when there is too little to read, which drafts
+         exactly as before. */
+      const voiceBlock = window.IntakeVoice
+        ? window.IntakeVoice.block(
+            tool.inputs.map((f) => String(scrubbedValues[f.id] || "")).join("\n") +
+            (extra && extra.trim() ? "\n" + extra.trim() : ""),
+          )
+        : "";
+
       const conversation = [{ role: "user", content: userMsg }];
-      patchS({ convStyleBlock: styleBlock });
-      const r = await runTurn(conversation, styleBlock);
+      patchS({ convStyleBlock: styleBlock + voiceBlock });
+      let r = await runTurn(conversation, styleBlock + voiceBlock);
       conversation.push({ role: "assistant", content: r.rawText });
+
+      /* One self-revision before the technician ever sees it.
+         Measured on 2026-08-04: rewriting the prompt moved the uniformity score
+         not at all, 26 either way, while two rounds of the technician revising
+         by hand took it to 16. Revision is what works, so the tool does the
+         first one itself rather than shipping a draft that needs it. His words:
+         "It should already be trying for one revision at least."
+         Best effort - a failure here keeps the first draft rather than costing
+         anyone their note. */
+      try {
+        const polished = await selfRevise(conversation, styleBlock + voiceBlock, r);
+        if (polished) {
+          r = polished.result;
+          conversation.push({ role: "user", content: polished.ask });
+          conversation.push({ role: "assistant", content: polished.result.rawText });
+        }
+      } catch (e) { /* keep the first draft */ }
+
       patchS({ output: tool.normalizeOutput(r.parsed), conversation, lastCallAt: Date.now() });
       pushThread("assistant", "status", "Drafted. Click any section - or select a phrase inside one - to revise it.");
       // Register signals for the weekly audit. Numbers only, measured on the
