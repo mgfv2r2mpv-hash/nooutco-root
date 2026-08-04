@@ -834,14 +834,18 @@ function App() {
     "- If the notes are adequate, return sufficient=true and an empty array. Fewer questions is better than more; three is a ceiling, not a target.\n" +
     "- Return ONLY a JSON object: {\"sufficient\": boolean, \"questions\": [{\"field\": \"\", \"question\": \"\"}]}";
 
+  // The default above is written for session notes. A tool whose input is not a
+  // session (a SAP is a program plan, with no counts and no "this session")
+  // overrides both halves, because asking a plan how many times a behavior
+  // occurred is worse than asking nothing.
   const runTriage = async (scrubbed) => {
     const body = tool.inputs
       .filter((f) => f.type === "textarea")
       .map((f) => `[${f.label}]${f.required ? " (required)" : ""}\n${(scrubbed[f.id] || "").trim() || "(empty)"}`)
       .join("\n\n");
     const r = await NotesGate.generateConversation({
-      system: TRIAGE_SYSTEM,
-      messages: [{ role: "user", content: "CLINICIAN'S RAW NOTES:\n\n" + body }],
+      system: tool.triageSystem || TRIAGE_SYSTEM,
+      messages: [{ role: "user", content: (tool.triageIntro || "CLINICIAN'S RAW NOTES:") + "\n\n" + body }],
       tool: tool.id,
       maxTokens: 600,
       expectKeys: ["sufficient", "questions"],

@@ -24,6 +24,7 @@
 
 import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const sentencesOf = (text) =>
   text.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter((s) => s.length > 1);
@@ -45,7 +46,7 @@ function stdev(xs) {
   return Math.sqrt(xs.reduce((a, b) => a + (b - mean) ** 2, 0) / (xs.length - 1));
 }
 
-function metrics(text) {
+export function metrics(text) {
   const sents = sentencesOf(text);
   const words = wordsOf(text);
   const lens = sents.map((s) => wordsOf(s).length).filter((n) => n > 0);
@@ -96,7 +97,7 @@ function metrics(text) {
 // Weighted into a single 0-100 "machine-uniformity" figure. The weights are a
 // judgement call, not a fitted model — burstiness and opener variety dominate
 // because they are what the public detectors visibly react to.
-function score(m) {
+export function score(m) {
   const clamp = (x) => Math.max(0, Math.min(1, x));
   const parts = {
     burstiness: clamp(1 - m.burstiness / 0.6) * 30,
@@ -112,40 +113,46 @@ function score(m) {
   };
 }
 
-const args = process.argv.slice(2);
-const asJson = args.includes('--json');
-const files = args.filter((a) => !a.startsWith('--'));
+// Guarded so the calibration test can import score() and re-derive the recorded
+// totals. Without this, importing the module would run the CLI and exit(2).
+function main() {
+  const args = process.argv.slice(2);
+  const asJson = args.includes('--json');
+  const files = args.filter((a) => !a.startsWith('--'));
 
-if (!files.length) {
-  console.error('usage: node scripts/style-score.mjs [--json] <file...>');
-  process.exit(2);
-}
-
-const rows = files.map((f) => {
-  const text = readFileSync(f, 'utf8');
-  const m = metrics(text);
-  const s = score(m);
-  return { file: basename(f), score: s.total, parts: s.parts, metrics: m };
-});
-
-if (asJson) {
-  console.log(JSON.stringify(rows, null, 2));
-} else {
-  const pad = (s, n) => String(s).padEnd(n);
-  const num = (x, n = 2) => Number(x).toFixed(n).padStart(6);
-  console.log(pad('file', 34), 'score', ' burst', ' opener', '  ttr', ' repeat');
-  console.log('-'.repeat(76));
-  for (const r of rows) {
-    console.log(
-      pad(r.file, 34),
-      String(r.score).padStart(5),
-      num(r.metrics.burstiness),
-      num(r.metrics.openerVariety),
-      num(r.metrics.typeTokenRatio),
-      num(r.metrics.repeatRate),
-    );
+  if (!files.length) {
+    console.error('usage: node scripts/style-score.mjs [--json] <file...>');
+    process.exit(2);
   }
-  const avg = rows.reduce((a, r) => a + r.score, 0) / rows.length;
-  console.log('-'.repeat(76));
-  console.log(pad('MEAN', 34), String(Math.round(avg)).padStart(5));
+
+  const rows = files.map((f) => {
+    const text = readFileSync(f, 'utf8');
+    const m = metrics(text);
+    const s = score(m);
+    return { file: basename(f), score: s.total, parts: s.parts, metrics: m };
+  });
+
+  if (asJson) {
+    console.log(JSON.stringify(rows, null, 2));
+  } else {
+    const pad = (s, n) => String(s).padEnd(n);
+    const num = (x, n = 2) => Number(x).toFixed(n).padStart(6);
+    console.log(pad('file', 34), 'score', ' burst', ' opener', '  ttr', ' repeat');
+    console.log('-'.repeat(76));
+    for (const r of rows) {
+      console.log(
+        pad(r.file, 34),
+        String(r.score).padStart(5),
+        num(r.metrics.burstiness),
+        num(r.metrics.openerVariety),
+        num(r.metrics.typeTokenRatio),
+        num(r.metrics.repeatRate),
+      );
+    }
+    const avg = rows.reduce((a, r) => a + r.score, 0) / rows.length;
+    console.log('-'.repeat(76));
+    console.log(pad('MEAN', 34), String(Math.round(avg)).padStart(5));
+  }
 }
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();

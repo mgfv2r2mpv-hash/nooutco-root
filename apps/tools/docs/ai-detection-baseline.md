@@ -35,13 +35,16 @@ real detector, and they refine the theory below considerably.
 - **A measured control corpus of 7 de-identified human-written plans scored
   0%, 7%, 10%, 20%** (median ~8.5%), plus 49% for the one plan independently
   suspected of AI assistance. **Human clinical writing is not 0%.**
-- **The flag is a register problem, not a structure or template problem.** What
-  flags is generic actorless procedural prose ("Targets are taught using mixed
-  trials…"). What does not flag is writing with a named actor and conditions
-  ("Be sure to run this program with the help of the caregiver, who will be
-  delivering the prompts" - from the 0% plan). A fully template-compliant note
-  can score zero, which refutes the idea that the mandated format forces a
-  high score.
+- **The flag is a register problem, not a structure or template problem.** A
+  fully template-compliant note can score zero, which refutes the idea that the
+  mandated format forces a high score.
+- **Within register, the bare imperative is the part that holds up.** This was
+  first written as "imperatives and abstract passives with no actor". Measured,
+  only the imperative half survives: imperative rate keeps both its sign and its
+  magnitude against the detector, while agentless passive runs the *opposite*
+  way to the theory and the author's own writing uses it at 24%. It is native to
+  the register, not a defect in it. Do not write a prompt rule that chases
+  passives. See the corpus section below.
 - **Terseness is a cause, not a cure.** Mandating short rationale-free
   sentences is what produced the flagged sections. The opposite of terse here
   is not padding - it is specificity about who did what.
@@ -56,9 +59,25 @@ draft said "prefer a short sentence to a subordinate clause", which pushed
 toward exactly the register that flags. It now requires naming the actor and the
 conditions, and says explicitly not to compress at the cost of that.
 
-Em dashes are also out of the generated prose. They are not house convention
-(the hyphen is), all 7 human plans used zero, and their overuse is itself a
-recognisable machine tell.
+Em dashes are also out of the generated prose, but **not** because they are an
+AI tell. An earlier version of this file said they were. That was wrong, and the
+correct mechanism is worth knowing because it kills a tempting bad heuristic.
+
+There is no em dash key. People produce one by typing a double hyphen into
+Microsoft Word, which autocorrects it. So an em dash in a `.docx` is evidence of
+the *editor*, not the author, and says nothing about whether a human or a model
+wrote the text. Outside an Office suite most people never emit one at all. The
+absence across all 7 human plans has the same explanation from the other side:
+those were typed into an EHR field, where nothing autocorrects, so a human types
+a hyphen and it stays a hyphen.
+
+Two consequences. First, **em dash density is not a usable detection signal in
+either direction** for this domain, and anything built on it is measuring which
+word processor was open. Second, the hyphen is house convention for a concrete
+reason rather than a stylistic one: it is what the authoring surface these notes
+land in actually produces, so a hyphen is what a human writing there would have
+typed. That is the argument for the rule, and it is stronger than "the
+maintainer asked."
 
 ## The tension this sits inside
 
@@ -108,27 +127,163 @@ the scorer discriminates sharply between formulaic and varied clinical prose,
 and which direction the terminology change pushes. It does **not** establish
 what the live model actually produces.
 
+## Calibration against a real detector, 2026-08-03
+
+The calibration step this file asked for has now been run for SAP, using the
+seven-plan human corpus and the five plans the clinician scored on QuillBot.
+**The result is negative and it changes the plan below.**
+
+| Plan | QuillBot | style-score | Burstiness | Opener variety | Mean sentence |
+|---|---|---|---|---|---|
+| 1 | 20% | 17 | 0.79 | 1.00 | 20.6 |
+| 2 | 0% | 12 | 0.55 | 1.00 | 19.2 |
+| 3 | 49% | 15 | 0.60 | 0.95 | 13.6 |
+| 4 | 10% | 13 | 0.73 | 1.00 | 17.7 |
+| 5 | 7% | 20 | 0.82 | 0.97 | 18.7 |
+
+**`style-score` does not predict QuillBot on real clinical prose.** Pearson
+r = 0.08 between the total and the detector (Spearman 0.30). QuillBot spans 49
+points across these five; `style-score` spans eight. The plan the detector likes
+least (#3, 49%) sits mid-pack locally at 15, *below* the plan it likes most
+after #2 (#5, 7%, which scores worst locally at 20). Ranking documents by
+`style-score` would have put these two in the wrong order.
+
+Why, concretely: on these seven plans the scorer's two heaviest signals are
+already high. Opener variety runs 0.95-1.00 and burstiness 0.55-0.82, both
+comfortably in the "human" range before anything is tuned. The 11-versus-48
+separation in the table above is real, but it was measured on fixtures
+hand-written to sit at the two extremes, and these plans do not reach the
+formulaic pole.
+
+**An earlier version of this section generalised that into "the signals are
+saturated on real clinical writing, so the scale has nothing left to
+discriminate with." That generalisation is refuted; see the section below.** It
+is true of these seven plans and not of human writing at large, and the
+distinction matters because the false version made the null result sound
+inevitable rather than measured.
+
+No component fared better: the largest single correlation was mean sentence
+length at r = -0.78, and at n = 5 significance needs |r| ≈ 0.88. Nothing here
+clears that bar. Treat the whole table as direction, not measurement.
+
+The one directional hint worth keeping is that the sign on mean sentence length
+is negative: *longer* sentences went with *lower* detector scores. That agrees
+with the register finding above (terseness is a cause, not a cure) and it is the
+opposite of what a "keep it short and clean" instinct would predict.
+
+**This is checked, not just recorded.** The raw signals and the clinician's
+scores live in `tests/fixtures/notes/sap-detector-anchors.json`, and
+`tests/sap-detector-calibration.spec.js` re-derives every total from them using
+the scorer's current weights. Retune `style-score.mjs` and those tests fail,
+which is the only thing stopping this section quietly describing a scorer that
+no longer exists. The plans themselves are deliberately **not** in the repo,
+only the derived numbers, so no clinical work product enters git history.
+
 ## What still has to be done
 
 1. **Capture real output.** Generate ~25 notes through the live tool across a
    range of input styles and technicians, save them under
    `tests/fixtures/notes/live/`, and re-run the scorer. That is the real
    baseline; the table above is only the harness proving itself.
-2. **Calibrate by hand.** Paste five of those live notes into
-   [Grammarly](https://www.grammarly.com/ai-detector) and
-   [Scribbr](https://www.scribbr.co.uk/ai-detector/), record what each reports
-   next to its `style-score` total, and add the pairs here. Repeat quarterly, or
-   after any change to a `SYSTEM_CORE` block - that pairing is the only thing
-   that gives the local number meaning.
-3. **Then gate it in CI.** Once live fixtures exist and a threshold is
-   justified by the calibration, fail the build when the mean regresses past it.
-   Gating before that would be pinning a number nobody has checked against
-   anything real.
+2. **Calibrate by hand.** Paste five of those live notes into whichever detector
+   the clinician actually runs, record what it reports next to its `style-score`
+   total, and add the pairs here. Repeat after any change to a `SYSTEM_CORE`
+   block. That pairing is the only thing that gives the local number meaning.
+   Done once for SAP; see the calibration section above.
+3. **Do not gate `style-score` in CI as a detector proxy.** The 2026-08-03
+   calibration measured r = 0.08 against the real detector, so a threshold on it
+   would fail builds that the detector is fine with and pass ones it is not.
+   Gating it as a *drift* alarm is still defensible, since it does catch prose
+   collapsing toward the formulaic pole, which is what the 11-vs-48 fixture
+   separation shows, but that is a different claim from "our notes will score
+   low," and the file should not be read as supporting the second one.
+4. **Find a signal that does track.** Detector-visible register (named actor,
+   stated conditions) is the property the measured evidence actually implicates,
+   and the current scorer does not measure it at all. Anything that replaces
+   `style-score` as a gate has to beat r = 0.08 against real anchors first.
 
 ## Per-technician voice
 
 The largest lever is the technician style profile: correction-derived,
 content-free rules injected into the system prompt so two technicians' notes
+diverge in rhythm while holding the same clinical vocabulary. That is where the
+scores should move furthest, and it is not built yet.
+
+## The 253k-word author corpus, 2026-08-04
+
+104 graduate ABA coursework documents by the same author, 251,722 words,
+PII-screened and unassisted. Measured with the same tokenizer as everything
+above, deliberately: comparing corpora scored by different tokenizers is how a
+previous round manufactured a false invariant.
+
+### It refutes the saturation claim
+
+|  | opener variety | burstiness | style-score |
+|---|---|---|---|
+| 7 clinical plans | 0.95 - 1.00 | 0.55 - 0.82 | 12 - 24 |
+| 104 coursework docs | **0.62** - 1.00 (median 0.86) | **0.43** - 2.62 (median 0.60) | **8 - 38** |
+
+**73% of the coursework falls at or below opener variety 0.90**, the floor all
+seven plans clear. The scorer spans 30 points across real human writing, not
+eight. So it is *not* true that real prose leaves the scale nothing to
+discriminate with. The scorer has plenty of range; it simply does not spend that
+range in a direction that tracks the detector.
+
+That makes the r = 0.08 result worse for the scorer rather than better. "No
+signal available" would have been an excuse. "Ample signal, uncorrelated with
+the target" is a straightforward failure of the proxy, and it is the accurate
+description.
+
+A format explanation was tested and does not hold up: within the coursework,
+bullet-line share against opener variety is r = 0.002. That test is
+underpowered, though, because the coursework is only 2% bulleted against the
+plans' 34%, so there is almost no variation to correlate against. Why plans sit
+higher than prose is **unresolved**, not explained.
+
+### It supports the actor thesis, with one sharp caveat
+
+Actor density measured as a rate, heuristically (role noun or personal pronoun
+in a sentence's first six words; no POS tagger is available, so this is
+approximate, but the same rule is applied to every corpus).
+
+| plan | QuillBot | names an actor | agentless passive | bare imperative |
+|---|---|---|---|---|
+| 1 | 20% | 10% | 20% | 15% |
+| 2 | 0% | 23% | 23% | 0% |
+| 3 | 49% | **35%** | 3% | 27% |
+| 4 | 10% | 17% | 33% | 22% |
+| 5 | 7% | 14% | 28% | 17% |
+
+Correlation of actor density with the detector:
+
+- **All five plans: r = +0.646.** Wrong sign for the thesis.
+- **Dropping plan 3: r = -0.906.** Right sign, and the strongest correlation
+  found anywhere in this work, against style-score's 0.084.
+
+Plan 3 is the one independently suspected of AI assistance. It is the extreme on
+the detector *and* on all three register measures, and with n = 5 a single
+extreme point sets the correlation. Excluding it is not curve-fitting: a
+document that is not human writing cannot be evidence about what makes human
+writing flag. Among the four genuinely human plans, naming actors goes with
+scoring lower, which is what the register change assumed.
+
+Neither figure is significant. n = 4 needs |r| ~ 0.95. Treat this as the best
+available direction, not as proof.
+
+**The caveat is the useful part. Plan 3 has the HIGHEST actor density of all
+five and still scored 49%.** Naming actors does not by itself defeat a detector,
+because a model writing the text will name actors too. Actor density looks
+necessary and is demonstrably not sufficient, so it should not become the single
+thing the prompt optimises for.
+
+### What this does not license
+
+The coursework is academic prose, not program plans: 2% bare imperatives against
+the plans' 13%. Its value is as evidence about the author's register, not as a
+template for SAP output. Numbers derived from it (actor rate ~27% of sentences,
+mean sentence length ~23 words) are reference points for what his unassisted
+writing looks like, not targets to hard-code into a prompt.
+
 diverge in rhythm while holding the same clinical vocabulary.
 
 **Built, but inert until the profile Worker is deployed.** See
