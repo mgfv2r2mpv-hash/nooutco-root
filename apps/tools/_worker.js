@@ -483,7 +483,10 @@ async function handleLlmCall(request, env) {
     // An unlisted tool, or any failure reading the block, leaves the prompt
     // exactly as it arrived.
     const voice = await getVoiceBlock(env);
-    const sys = composeVoice(isConversation ? system : systemPrompt, voice, tool);
+    let sys = composeVoice(isConversation ? system : systemPrompt, voice, tool);
+    // His clinical judgement, only where the caller explicitly asked for a
+    // recommendation. Ruling 2: an opinion never fills a silence in the input.
+    sys = composeOpinions(sys, voice, tool, { wantsRecommendation: body.want_opinions === true });
 
     const llmResponse = isConversation
       ? await callAnthropicConversation(
@@ -920,6 +923,57 @@ export function composeVoice(system, block, tool) {
   );
   if (!parts.length) return system;
   return `${system}\n\n${VOICE_HEADER}\n\n${parts.join("\n\n")}`;
+}
+
+/* ── The opinions block ───────────────────────────────────────────────────────
+
+   The voice block governs HOW something is written. This governs WHAT he would
+   decide where the data does not decide it, so it is gated far harder.
+
+   His rulings, 2026-08-04:
+     1  MARKED BY STRENGTH. `preference` is flagged in the output as his
+        preference. `default` and `firm` read as ordinary clinical statements.
+     2  FIRES ONLY WHEN ASKED. The caller must set want_opinions. An opinion
+        never fills a silence in the input, and no tool gets it by default.
+     3  THE INPUT WINS, AND HE IS TOLD. On a conflict the document follows the
+        input and the model says which opinion it set aside and why.
+
+   Ruling 2 is why this can carry ruling 3's notice at all: a call that asks for
+   a recommendation is already advisory, so the notice has somewhere to go
+   without touching any tool's JSON schema.
+
+   Only `call` records reach the published block. Stances - his commitments about
+   how behaviour works - are stored locally and excluded, because an always-on
+   framing instruction is a far larger change than a gated recommendation and he
+   has not ruled on it. */
+const OPINIONS_HEADER = [
+  "HIS CLINICAL JUDGEMENT — discretionary calls only.",
+  "Each entry below is a choice this clinician tends to make where several options",
+  "are defensible. None of it is a finding, and none of it is evidence.",
+  "",
+  "1. SCOPE IS BINDING. An entry applies only inside its stated scope. Do not",
+  "   generalise it to a neighbouring population, setting, or behaviour.",
+  "2. NEVER INVENT A REASON. Use the reason quoted in the entry, or give none.",
+  "   Do not supply a clinical rationale the entry does not carry.",
+  "3. THE INPUT WINS. Where the input contradicts an entry, follow the input,",
+  "   leave the entry out of the document, and state plainly which entry you set",
+  "   aside and what in the input overruled it.",
+  "4. MARKING. An entry marked `preference` must be attributed to him in the",
+  "   output as his preference. `default` and `firm` entries need no attribution.",
+  "5. This never overrides the input, a payer or regulatory requirement, or",
+  "   anything above. It never licenses inventing a detail that was not provided.",
+].join("\n");
+
+export function composeOpinions(system, block, tool, opts) {
+  if (typeof system !== "string" || !block || !tool) return system;
+  // Ruling 2: an opinion never fills silence. Absent an explicit request, this
+  // is a no-op, which is also the behaviour for every tool that never adopts it.
+  if (!opts || opts.wantsRecommendation !== true) return system;
+  const register = block.toolRegister && block.toolRegister[tool];
+  if (!register) return system; // same allowlist as the voice block
+  const entries = (block.opinions || {})[register];
+  if (typeof entries !== "string" || !entries.trim()) return system;
+  return `${system}\n\n${OPINIONS_HEADER}\n\n${entries}`;
 }
 
 // Admin-only: read back what is live, so it can be verified without wrangler.
