@@ -318,6 +318,7 @@
     label: "SAP",
     title: "SAP Goals & Planning Tool",
     subtitle: "Enter a treatment goal and SAP specifications - generate a prompt or draft a complete Service Authorization Plan for clinical review.",
+    assistantIntro: "Enter the treatment goal and any SAP specifications, then press Generate SAP. I'll ask about anything that looks thin before drafting, then you can click any section, or select a phrase inside one, to revise it.",
     genLabel: "Generate SAP",
     outputTitle: "Generated SAP Draft",
     promptIntro: "Copy and paste into your AI of choice. It will return a refined SMART goal and complete SAP draft - no preamble, no editorializing.",

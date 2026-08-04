@@ -153,6 +153,7 @@ TERMINOLOGY (non-negotiable)\n\
     label: "Supervision",
     title: "Supervision Note Tool",
     subtitle: "Two focused inputs - clinical observations and staff feedback - drafted into your EHR supervision form's fields, with AI revision help after the first pass.",
+    assistantIntro: "Enter your clinical observations and staff feedback, then press Generate Note. I'll ask about anything that looks thin before drafting, then you can click any section, or select a phrase inside one, to revise it.",
     genLabel: "Generate Note",
     // The widest output of any tool here: up to 6 goal rows of three prose fields
     // each, five narratives, follow-ups, and hints - and every revision turn

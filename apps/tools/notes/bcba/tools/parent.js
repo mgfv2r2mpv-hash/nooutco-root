@@ -109,6 +109,7 @@ TERMINOLOGY (non-negotiable)\n\
     label: "Parent Training",
     title: "Parent Note Tool",
     subtitle: "Enter your session notes - the tool drafts the clinical note and suggests which checkboxes to select on your EHR form.",
+    assistantIntro: "Enter your session notes and press Generate Note. I'll ask about anything that looks thin before drafting, then you can click any section, or select a phrase inside one, to revise it.",
     genLabel: "Generate Note",
     inputs: [
       {
