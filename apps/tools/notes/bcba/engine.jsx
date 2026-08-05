@@ -814,11 +814,21 @@ function App() {
       if (features.length) window.NotesGate.audit.corrections(features);
     }
     if (window.VoiceCapture) {
-      window.VoiceCapture.capture(before, after, {
+      const why = window.VoiceCapture.capture(before, after, {
         tool: tool.id,
         register: tool.voiceRegister || null,
         source,
       });
+      /* WHY THIS IS AUDITED, when the pair itself never leaves the browser.
+         Because otherwise nobody can answer "is capture actually working". It
+         already failed silently once - the gate refused every note naming a
+         clinical technique, kept nothing, and the only way to find out was to
+         ask him to read a button. A refusal reason is a short fixed string from
+         a closed set, in the same counts-only trail as everything else here, so
+         this carries no note content and cannot. */
+      if (window.VoiceCapture.enabled()) {
+        audit("capture", { outcome: why || "kept", pending: window.VoiceCapture.stats().pending });
+      }
     }
   };
 
