@@ -1124,6 +1124,23 @@ function App() {
     await draftNote(scrubbed, "");
   };
 
+  /* How long "generate anyway" stays locked while gap questions are on screen.
+     Per tool, because the reason for the wait is per tool. On bt it is doing
+     something: the audit trail showed ten gap-question rounds and zero
+     revisions ever, so skipping was simply cheaper than reading, and a few
+     seconds changes that price. On the drafters a BCBA runs, the questions are
+     going to someone who already knows what a good note needs, and taxing them
+     for it would be friction with nothing on the other side.
+
+     Zero renders the plain button with no bar, so the tools below are exactly
+     as they were. Turning it on anywhere is one number.
+
+     Next step he named: scale the duration - a nearly-ready note drains fast, a
+     thin one drains slow - which needs a readiness signal this button
+     deliberately does not compute for itself. */
+  const SKIP_COOLDOWN = { bt: 30 };
+  const skipCooldownSeconds = SKIP_COOLDOWN[tool.id] || 0;
+
   const skipQuestions = () => {
     audit("gap_questions", { skipped: (S.questions || []).length, round: S.triageRound || 1 });
     pushThread("user", "answer", "(skipped)");
@@ -2005,6 +2022,7 @@ function App() {
         loading={loading}
         questions={S.questions}
         onSkipQuestions={skipQuestions}
+        skipCooldown={skipCooldownSeconds}
         unread={S.questions ? S.questions.length : 0}
         quality={noteQuality()}
         loggedIn={loggedIn}

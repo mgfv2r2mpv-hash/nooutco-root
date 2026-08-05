@@ -215,19 +215,57 @@ test.describe('triage questions before drafting', () => {
       return route.fulfill(reply(note()));
     });
 
+    await page.clock.install();
     await page.goto('/notes/bt/');
     await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
     await page.goto('/notes/bt/');
     await fillRequiredAndGenerate(page);
 
-    // The escape hatch has to be present and one click - a tired technician at
-    // 7pm with eight notes left must never be trapped behind a question.
+    // The escape hatch has to be present, and it now COSTS A MOMENT. It used to
+    // be one click, and the audit trail is why it is not: two technicians, ten
+    // gap-question rounds, zero revisions ever. Skipping was cheaper than
+    // reading. So the button locks briefly, shows the wait, and then works.
     const skip = page.getByRole('button', { name: /Nothing to add/i });
     await expect(skip).toBeVisible();
+    await expect(skip).toBeDisabled();
+    await expect(skip).toHaveText(/\(\d+s\)/);
+    await expect(page.locator('.skip-cooldown-bar')).toBeVisible();
+
+    // Still a delay and NOT a trap: the tired technician at 7pm gets out, just
+    // a few seconds later than before.
+    await page.clock.runFor(31_000);
+    await expect(skip).toBeEnabled();
+    await expect(page.locator('.skip-cooldown-bar')).toHaveCount(0);
     await skip.click();
 
     await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 15000 });
     expect(posted).toHaveLength(2);
+  });
+
+  test('the cooldown drains rather than sitting still', async ({ page }) => {
+    // Guards the thing that makes the wait tolerable instead of infuriating:
+    // it has to visibly be going somewhere. A frozen disabled button with no
+    // countdown reads as a broken page, and a technician reloads it.
+    await page.route('**/api/llm-call**', (route) => route.fulfill(reply({
+      sufficient: false,
+      questions: [{ field: 'fBehavior', question: 'How many times?' }],
+    })));
+
+    await page.clock.install();
+    await page.goto('/notes/bt/');
+    await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
+    await page.goto('/notes/bt/');
+    await fillRequiredAndGenerate(page);
+
+    const skip = page.getByRole('button', { name: /Nothing to add/i });
+    await expect(skip).toHaveText(/\(30s\)/);
+
+    const width = () => page.locator('.skip-cooldown-bar > span').evaluate((el) => el.style.width);
+    const before = await width();
+    await page.clock.runFor(10_000);
+    await expect(skip).toHaveText(/\(20s\)/);
+    const after = await width();
+    expect(parseFloat(after)).toBeGreaterThan(parseFloat(before));
   });
 
   test('a failed triage call still drafts the note', async ({ page }) => {
