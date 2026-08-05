@@ -129,3 +129,77 @@ test.describe('register rules reach the tools', () => {
     }
   });
 });
+
+test.describe('session record focus', () => {
+  /* The field requirement is observable events, and the maintainer's own
+   * example is why that cannot be applied as an absolute: "he approached staff
+   * and was happy" survives in real notes without anyone operationally defining
+   * happy. Stripping it produces prose no technician wrote, which is its own
+   * tell, and expanding it into "demonstrated positive affect as evidenced by"
+   * is worse on both counts.
+   *
+   * So the rule is an ORDER rather than a ban: opinion, causation and clinical
+   * hypotheses come out first, and a light judgment sitting on something seen
+   * stays. Three tools carried an absolutist "no value-laden phrasing" that
+   * contradicted the second half. */
+  const SESSION_TOOLS = ['sup', 'assess', 'parent'];
+
+  test('the cut order is stated, opinion and causation before anything else', async ({ page }) => {
+    await page.goto('/notes/bcba/index.html?tool=sup');
+    await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+
+    const prompts = await page.evaluate((ids) => {
+      const out = {};
+      for (const id of ids) {
+        const t = window.NOTE_TOOLS.find((x) => x.id === id);
+        out[id] = t ? t.buildSystem() : null;
+      }
+      return out;
+    }, SESSION_TOOLS);
+
+    for (const id of SESSION_TOOLS) {
+      expect(prompts[id], `${id} did not load`).toBeTruthy();
+      expect(prompts[id], `${id} does not say what to cut first`).toMatch(/CUT THESE FIRST/);
+      expect(prompts[id], `${id} should forbid causal claims`).toMatch(/never the cause/);
+      expect(prompts[id], `${id} should keep hypotheses with the BCBA`).toMatch(/Clinical hypotheses/);
+    }
+  });
+
+  test('a light judgment is explicitly kept, not stripped and not expanded', async ({ page }) => {
+    await page.goto('/notes/bcba/index.html?tool=sup');
+    await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+
+    const prompts = await page.evaluate((ids) => {
+      const out = {};
+      for (const id of ids) {
+        const t = window.NOTE_TOOLS.find((x) => x.id === id);
+        out[id] = t ? t.buildSystem() : null;
+      }
+      return out;
+    }, SESSION_TOOLS);
+
+    for (const id of SESSION_TOOLS) {
+      expect(prompts[id], `${id} should keep a light judgment`)
+        .toMatch(/KEEP A LIGHT JUDGMENT/);
+      // The absolutist rule that contradicted it. Three tools carried it.
+      expect(prompts[id], `${id} still bans all value-laden phrasing, which strips "happy"`)
+        .not.toMatch(/observable language - no value-laden phrasing/);
+    }
+  });
+
+  test('none of this reaches the SAP tool, which is not a session record', async ({ page }) => {
+    await page.goto('/notes/bcba/index.html?tool=sap');
+    await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+
+    const system = await page.evaluate(() =>
+      window.NOTE_TOOLS.find((t) => t.id === 'sap').buildSystem());
+
+    // A plan is written before anything is observed, so a rule about what a
+    // record of a session may contain is meaningless there and would only
+    // compete with the plan's own instructions.
+    expect(system).not.toMatch(/CUT THESE FIRST/);
+    expect(system).not.toMatch(/KEEP A LIGHT JUDGMENT/);
+    // Its own rules survive.
+    expect(system).toMatch(/Abstract state nouns/);
+  });
+});
