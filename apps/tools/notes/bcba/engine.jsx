@@ -1165,11 +1165,27 @@ function App() {
         : `The clinician is asking what to do next for this case.`,
       section ? `\nCurrent content of that section:\n${sectionBody(section, S.output, S.values)}` : "",
       ``,
-      `Answer in prose, as advice to the clinician. Do NOT return the note JSON and do not`,
-      `change any section. Ground every suggestion in what is already in this conversation;`,
-      `if the input does not support a recommendation, say what is missing instead of`,
-      `inventing it. Where the stored judgement above conflicts with the input, follow the`,
-      `input and say plainly which entry you set aside and what overruled it.`,
+      `Answer in prose, as advice to a supervising clinician. Do NOT return the note JSON`,
+      `and do not change any section.`,
+      ``,
+      `ANSWER AT THREE LEVELS, and do not stop at the first.`,
+      `1. The immediate thing. What to do about what was asked, concretely.`,
+      `2. What follows from it. What this implies for the plan, for the next session, for`,
+      `   what the technician needs, for what a supervisor or a payer will read. If it`,
+      `   implies nothing beyond itself, say so rather than padding.`,
+      `3. What you would want to know. Name what is missing from the record that would`,
+      `   change your answer, and say how it would change it.`,
+      ``,
+      `A clinician asking this has already thought of the obvious move. The value is in`,
+      `the second and third levels, so treat a one-line answer as a sign you have not`,
+      `finished thinking rather than as brevity.`,
+      ``,
+      `GROUND EVERY CLAIM in what is already in this conversation. Levels 2 and 3 are`,
+      `where fabrication becomes tempting: an implication you cannot trace to something`,
+      `stated is a guess, so mark it as a question rather than asserting it. If the input`,
+      `does not support a recommendation at all, say what is missing instead of inventing`,
+      `one. Where the stored judgement above conflicts with the input, follow the input and`,
+      `say plainly which entry you set aside and what overruled it.`,
     ].filter(Boolean).join("\n");
 
     setLoading(true);
@@ -1183,7 +1199,9 @@ function App() {
         system: tool.buildSystem() + (S.convStyleBlock ? "\n\n" + S.convStyleBlock : ""),
         messages: conversation,
         tool: tool.id,
-        maxTokens: 1200,
+        // Three levels do not fit in the old one-paragraph budget, and a reply
+        // truncated mid-thought reads as exactly the shallowness this fixes.
+        maxTokens: 2000,
         wantOpinions: true,
       });
       const advice = (r.text || "").trim();

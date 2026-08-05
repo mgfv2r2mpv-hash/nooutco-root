@@ -182,6 +182,39 @@ test.describe('asking what he would do', () => {
     expect(posted.filter((b) => b.want_opinions === true)).toHaveLength(1);
   });
 
+  test('the request asks for implications and gaps, not just the immediate answer', async ({ page }) => {
+    // His note on first real use: "it isn't quite thoughtful enough. I make a
+    // statement and it does it small and simple and doesn't consider or ask if
+    // there are larger implications."
+    //
+    // A clinician asking this has already thought of the obvious move, so the
+    // value is in what follows from it and in what is missing. The deepening
+    // also raises the fabrication risk, which is why the same prompt marks an
+    // untraceable implication as a question rather than an assertion.
+    let asked = null;
+    await page.route('**/api/llm-call**', async (route) => {
+      const body = JSON.parse(route.request().postData() || '{}');
+      if (body.want_opinions === true) { asked = body; return route.fulfill(reply('ADVICE')); }
+      return route.fulfill(reply(asked === null && !body.messages ? { sufficient: true, questions: [] } : note()));
+    });
+    await page.goto('/notes/bt/');
+    await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
+    await page.goto('/notes/bt/');
+    await draftANote(page);
+    await openPanel(page);
+    await page.getByRole('button', { name: /What would you do here/i }).click();
+    await page.waitForTimeout(1500);
+
+    const sent = JSON.stringify(asked);
+    expect(asked, 'the ask must reach the API').not.toBeNull();
+    expect(sent).toMatch(/ANSWER AT THREE LEVELS/);
+    expect(sent).toMatch(/What follows from it/);
+    expect(sent).toMatch(/What you would want to know/);
+    expect(sent).toMatch(/already thought of the obvious move/);
+    // The guard that has to travel with the depth.
+    expect(sent).toMatch(/mark it as a question rather than asserting it/);
+  });
+
   test('advice answers in the panel and does not edit the note', async ({ page }) => {
     // A recommendation is something to read and act on. Silently rewriting the
     // note would make his judgement indistinguishable from the record.
