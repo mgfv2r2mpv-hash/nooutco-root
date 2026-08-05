@@ -311,6 +311,16 @@ body {
 .bcba-leave { border: 1.5px solid #c0d4a8; background: transparent; color: #5a6b4a; }
 .bcba-leave:hover { background: #e8efdd; }
 
+/* The ticket offer borrows the BCBA offer's shape but not its colour: one is
+   clinical and goes in the record, the other is product feedback and does not. */
+.ticket-offer { border-color: #c9b8d8; background: #f4f0f8; }
+.ticket-offer .bcba-offer-q { color: #4a3a5c; }
+.ticket-offer .bcba-take { background: #4a3a5c; }
+.ticket-offer .bcba-take:hover { background: #3a2d48; }
+.ticket-offer .bcba-take:disabled { background: #a99bb8; cursor: not-allowed; }
+.ticket-offer .bcba-leave { border-color: #c9b8d8; color: #4a3a5c; }
+.ticket-offer .bcba-leave:hover { background: #ebe3f2; }
+
 .revision-panel-foot {
   flex-shrink: 0;
   padding: 10px 14px 12px;

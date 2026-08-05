@@ -540,6 +540,8 @@ function freshSession(tool) {
     // the third still open. These carry the exchange across rounds so the next
     // pass can ask about what is genuinely still missing.
     bcbaOffer: "",         // a question for the BCBA the tool has offered to add
+    ticketOffer: null,     // {note, target} feedback about the tool, offered as a stub
+    ticketFiling: false,
     triageAnswers: "",     // everything they have answered so far, scrubbed
     triageRound: 0,        // rounds asked; capped so this cannot become an interrogation
     // Changes a revision made OUTSIDE the section that was clicked, which the
@@ -1380,6 +1382,17 @@ function App() {
     if (!text || loading) return;
     patchS({ panelDraft: "" });
     pushThread("user", "answer", text);
+
+    /* Pointed at the page rather than the note, as an admin. That is feedback
+       about the tool, and sending it to the note model would produce a revision
+       nobody asked for. Offer to file it instead. */
+    if (pointScope === "page" && S.annotation && S.annotation.kind === "page") {
+      const target = S.annotation.text || "";
+      patchS({ annotation: null, ticketOffer: { note: text, target } });
+      pushThread("assistant", "status",
+        "That reads as feedback about the tool rather than the note. Want it filed as a stub you can grill later?");
+      return;
+    }
     if (S.questions && S.questions.length) {
       const review = await scrubGate(text);
       if (!review) return;
@@ -1477,6 +1490,35 @@ function App() {
      nearest one ("Contact staff") into a clinical record would be worse than
      leaving it to normal inference. */
   const FOLLOWUP_KEY = "followUpNarrative";
+
+  /* Feedback about the TOOL, filed while he is looking at it.
+     His ask: as an admin, "I hate that the page does this" should become a stub
+     he can grill into a proper dev item later, rather than something he has to
+     remember afterwards. Offered only to an admin, and only when they pointed
+     at page furniture rather than at the note, because that is the gesture that
+     already means "this is about the page". */
+  const fileTicket = async () => {
+    const t = S.ticketOffer;
+    if (!t || S.ticketFiling) return;
+    patchS({ ticketFiling: true });
+    try {
+      const res = await fetch(NotesGate.apiUrl("/api/admin/ticket"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + NotesGate.token() },
+        body: JSON.stringify({ note: t.note, where: location.pathname, target: t.target || "" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      patchS({ ticketOffer: null, ticketFiling: false });
+      pushThread("assistant", "status", res.ok && data.ok
+        ? "Filed as issue #" + data.number + ". It is labelled a stub, so nobody builds it before you have grilled it."
+        : "Could not file it: " + (data.error || "the request failed") + " Nothing was lost, it is still above in this conversation.");
+    } catch (e) {
+      patchS({ ticketFiling: false });
+      pushThread("assistant", "status", "Could not reach the ticket route. Nothing was lost, it is still above in this conversation.");
+    }
+  };
+
+  const dismissTicket = () => patchS({ ticketOffer: null });
 
   const takeBcbaQuestion = () => {
     const q = (S.bcbaOffer || "").trim();
@@ -1891,6 +1933,10 @@ function App() {
         pointMode={pointMode}
         onPointMode={setPointMode}
         pointScope={pointScope}
+        ticketOffer={S.ticketOffer}
+        ticketFiling={S.ticketFiling}
+        onFileTicket={fileTicket}
+        onDismissTicket={dismissTicket}
         bcbaOffer={S.bcbaOffer}
         onTakeBcba={takeBcbaQuestion}
         onDismissBcba={dismissBcbaQuestion}

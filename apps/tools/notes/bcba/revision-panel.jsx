@@ -113,6 +113,7 @@ function RevisionPanel({
   intro,
   routingAsks, onTakeRouted, onLeaveRouted,
   bcbaOffer, onTakeBcba, onDismissBcba,
+  ticketOffer, ticketFiling, onFileTicket, onDismissTicket,
   pointMode, onPointMode, pointScope,
 }) {
   const scrollRef = React.useRef(null);
@@ -280,6 +281,23 @@ function RevisionPanel({
         {thread.map((m, i) => (
           <Bubble key={i} role={m.role} muted={m.kind === "status"}>{m.text}</Bubble>
         ))}
+
+        {/* Feedback about the tool, offered as a ticket stub. Admin only, and
+            only after pointing at page furniture. */}
+        {ticketOffer ? (
+          <div className="bcba-offer ticket-offer">
+            <p className="bcba-offer-q">File this as a stub?</p>
+            <p className="bcba-offer-preview">{ticketOffer.note}</p>
+            <div className="bcba-offer-actions">
+              <button type="button" className="bcba-take" onClick={onFileTicket} disabled={ticketFiling}>
+                {ticketFiling ? "Filing..." : "File it"}
+              </button>
+              <button type="button" className="bcba-leave" onClick={onDismissTicket} disabled={ticketFiling}>
+                Not now
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {/* Something the technician said they were unsure about, offered as a
             question for the BCBA. Offered, never applied: putting words in a
