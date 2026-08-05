@@ -206,6 +206,12 @@
           },
         },
       },
+      // Not required either. A question is not an edit: when the clinician asks
+      // something rather than instructing something, the answer goes here and
+      // every other key comes back untouched. Before this, asking "does this
+      // belong in the BCBA summary?" rewrote the note, which is the tool
+      // answering with the one thing it should never spend on a question.
+      answer: str,
       // Deliberately NOT in `required`. It only means anything on a revision
       // turn, where the clinician pointed at one section and the instruction
       // turned out to touch another. On a first draft there is no target to
@@ -359,6 +365,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
     // Only present on a revision that reached past the section the clinician
     // pointed at. Validated against the same closed section list as hints, so a
     // fabricated section name cannot route a change anywhere.
+    out.answer = typeof o.answer === "string" ? o.answer.slice(0, 1200) : "";
     out.crossSection = Array.isArray(o.crossSection)
       ? o.crossSection
           .filter(function (c) {

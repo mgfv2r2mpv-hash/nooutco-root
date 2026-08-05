@@ -918,6 +918,17 @@ function App() {
   const REVISE_MIN_SENTENCES = 8;
   const REVISE_MIN_WORDS = 120;
 
+  /* The two rules that hold whether or not a section was pointed at.
+   *
+   * Both come from faults he hit on the live tool. He asked whether something
+   * belonged in the BCBA summary and the note was REWRITTEN rather than
+   * answered. And on a move, content left the source section and never arrived
+   * at the destination, so a move silently became a delete. */
+  const REVISION_RULES = [
+    `IF THE MESSAGE IS A QUESTION rather than an instruction to change something, answer it in "answer" and return every other key EXACTLY as it currently stands. Do not edit the note to answer a question. "Should this go in the summary?" is a question. "Move this to the summary" is an instruction.`,
+    `A MOVE HAS TWO HALVES AND YOU MUST DO BOTH. If content should move from one section to another, remove it from the source AND write it into the destination in the same reply, and list the destination in "crossSection". Never take content out of a section without putting it somewhere, unless the clinician explicitly asked for it to be deleted.`,
+  ].join("\n");
+
   const selfRevise = async (conversation, block, first) => {
     if (!window.NoteMetrics) return null;
 
@@ -1206,6 +1217,9 @@ function App() {
         // belongs partly somewhere else. Silently dropping that half is how a
         // correction gets lost, so the model changes what it needs to and
         // declares it.
+        // Both rules apply whether or not a section was pointed at: a question
+        // is just as likely typed into an empty panel as onto a section.
+        REVISION_RULES,
         `The clinician pointed at ONE section. If the instruction also requires changing a DIFFERENT section, make that change too and list every such section in "crossSection".`,
         `Set "confident": true ONLY when the instruction names that section, or names content that appears in that section and nowhere else. Anything you inferred, guessed at, or judged stylistically consistent is "confident": false. A false is not a failure; it asks the clinician, which is the correct outcome when it is genuinely their call.`,
         `"why" is one short clause the clinician will read, naming what in their instruction sent the change there.`,
@@ -1215,6 +1229,8 @@ function App() {
       userMsg = [
         `ADDITIONAL DETAILS / CORRECTIONS from the clinician:`,
         scrubbedInstruction,
+        ``,
+        REVISION_RULES,
         ``,
         `Apply these to every affected section. Return the COMPLETE updated JSON object with ALL keys; copy unaffected sections verbatim. Re-evaluate "hints". Never fabricate beyond what is stated.`,
       ].join("\n");
@@ -1265,6 +1281,21 @@ function App() {
         if (route && route.confident) changes.push({ ...change, why: route.why });
         else asks.push({ ...change, why: route ? route.why : "" });
       });
+      /* A question, answered. No proposal, no diff, nothing touched in the
+         note: the reply goes into the panel where the rest of the conversation
+         lives. Checked before the changes are applied, because a model that
+         answers AND edits should still not edit. */
+      const answer = String(normalized.answer || "").trim();
+      if (answer) {
+        patchS({
+          conversation, lastCallAt: Date.now(), annotation: null,
+          proposal: null, routingAsks: null, error: "",
+        });
+        audit("revision", { answered: 1, kind: ann ? ann.kind : "global" });
+        pushThread("assistant", "answer", answer);
+        return;
+      }
+
       const carried = changes.filter((c) => c.id !== targetId);
       patchS({
         conversation,
