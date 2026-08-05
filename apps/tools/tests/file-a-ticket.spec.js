@@ -9,10 +9,9 @@ import { createHmac } from 'node:crypto';
 // His answer on where it goes: a GitHub issue on nooutco-root, because that is
 // where the work already lives.
 //
-// It needs a credential that does not exist yet. GITHUB_TOKEN must be a
-// fine-grained token with Issues: write, set as a Pages secret. Until then the
-// route says so rather than pretending to have filed anything, which is the
-// behaviour these tests pin.
+// It needs GITHUB_ISSUE_TOKEN: a fine-grained token with Issues: write and
+// nothing else, set as a Pages secret. Until it exists the route says so rather
+// than pretending to have filed anything, which is what these tests pin.
 
 const SECRET = 'playwright-local-test-secret';
 const b64url = (b) => Buffer.from(b).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -46,7 +45,7 @@ test.describe('who may file a ticket', () => {
   });
 });
 
-test.describe('when no GitHub token is configured', () => {
+test.describe('when no issue token is configured', () => {
   test('it says so plainly instead of pretending', async ({ request }) => {
     // An admin who believes they filed a ticket and did not is worse off than
     // one told the wiring is missing.
@@ -57,7 +56,7 @@ test.describe('when no GitHub token is configured', () => {
     expect(res.status()).toBe(503);
     const body = await res.json();
     expect(body.error).toMatch(/nothing was filed/i);
-    expect(body.reason).toBe('no_github_token');
+    expect(body.reason).toBe('no_issue_token');
   });
 });
 
@@ -110,7 +109,7 @@ test.describe('the offer in the panel', () => {
     await pointAtThePage(page, 'admin');
     await page.route('**/api/admin/ticket**', (r) => r.fulfill({
       status: 503, contentType: 'application/json',
-      body: JSON.stringify({ error: 'No GitHub token is configured, so nothing was filed.', reason: 'no_github_token' }),
+      body: JSON.stringify({ error: 'No GitHub token is configured, so nothing was filed.', reason: 'no_issue_token' }),
     }));
     await page.locator('.revision-input').fill('the timer pill overlaps the nav on a phone');
     await page.locator('.revision-send').click();

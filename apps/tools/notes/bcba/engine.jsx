@@ -312,9 +312,9 @@ function HouseRules() {
   );
 }
 
-/* The learned style card is deliberately NOT rendered on this page.
+/* The learned style card lives on the profile page, not here.
  *
- * It is a clinical surface: a technician is on it to file a note, and a panel
+ * This is a clinical surface: a technician is on it to file a note, and a panel
  * inviting them to inspect and tune how the tool writes is a distraction from
  * that. The learning still happens here -- every revision and manual edit is
  * measured -- and the card is still fetched, because the block it produces goes
@@ -846,10 +846,9 @@ function App() {
      no prompt level. Asking costs one cheap call and is the only moment the
      technician still has the session in their head.
 
-     Deliberately NOT a turn in the note conversation. That conversation's
-     prefix is what the 5-minute cache is keyed on, and every revision replays
-     it; splicing a differently-prompted turn into the front would invalidate
-     the prefix and make each revision pay for the whole note again. */
+     Triage is its own call with its own system prompt. The note conversation's
+     prefix is what the 5-minute cache is keyed on and every revision replays
+     it, so that prefix has to stay byte-identical from the first draft on. */
 
   const TRIAGE_SCHEMA = {
     type: "object",
@@ -920,12 +919,11 @@ function App() {
   // conversation stays a single linear prefix.
   /* Ask the model to look again at its own draft.
    *
-   * Deliberately NOT "make it better", which produces more of the same prose
-   * with more adjectives. It names the one measurable failure mode: a draft
-   * whose sentences all come out the same length. That is the strongest
-   * machine signal there is and the thing a first draft reliably gets wrong,
-   * because "vary your sentence length" is a preference with nothing to check
-   * it against, while "your last draft ran at N words a sentence" is a fact.
+   * It names one measurable failure: a draft whose sentences all come out the
+   * same length. That is the strongest machine signal there is, and the ask
+   * quotes the draft's own numbers back, because "your last draft ran at N
+   * words a sentence" is a fact where "vary your sentence length" is a
+   * preference with nothing to check it against.
    *
    * Returns null when there is nothing worth a second call, so a note that
    * already varies costs one API call rather than two.

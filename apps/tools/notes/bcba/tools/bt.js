@@ -218,10 +218,9 @@
       // belong in the BCBA summary?" rewrote the note, which is the tool
       // answering with the one thing it should never spend on a question.
       answer: str,
-      // Deliberately NOT in `required`. It only means anything on a revision
-      // turn, where the clinician pointed at one section and the instruction
-      // turned out to touch another. On a first draft there is no target to
-      // reach past, so the model leaves it out entirely.
+      // Optional. It only means anything on a revision turn, where the
+      // clinician pointed at one section and the instruction turned out to
+      // touch another. A first draft has no target to reach past.
       //
       // `confident` is the whole decision: true applies the change straight
       // away with an undo, false stops and asks in the panel. So the prompt
