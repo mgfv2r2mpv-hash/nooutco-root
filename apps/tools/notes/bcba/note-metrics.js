@@ -187,8 +187,12 @@
       clamp(1 - m.openerVariety) * 25 +
       clamp(1 - m.typeTokenRatio / 0.55) * 20 +
       clamp(m.entropy) * 10 +
-      clamp(m.repeatRate * 8) * 10 +
-      clamp(1 - Math.abs(m.commaRate - 1.1) / 1.1) * 5;
+      clamp(m.repeatRate * 8) * 10;
+    // The comma term is gone here too, and must stay gone: this mirrors
+    // scripts/style-score.mjs deliberately so a number in the Friday email
+    // means the same as one from the command line. It correlated -0.05 with
+    // the real detector and penalised six of seven human plans. commaRate is
+    // still measured and reported, it just no longer scores.
     return Math.round(parts);
   }
 

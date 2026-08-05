@@ -309,3 +309,42 @@ Three things about this matter for the numbers above:
 Until a card exists for a technician, the prompt is byte-identical to the one
 that shipped without any of this, so the baseline above remains the right
 reference for a new technician's first notes.
+
+## The comma term, measured and removed (2026-08-04)
+
+He asked how commas factor in. They did not, and the term was doing harm.
+
+`style-score.mjs` carried an inverted-U penalty peaking at 1.1 commas per
+sentence, worth 5 of the 100 points, on the theory that ~1.1 is where machine
+prose sits. Tested against the seven human plans in
+`tests/fixtures/notes/sap-detector-anchors.json`:
+
+| signal | correlation with QuillBot (n=5 scored) |
+|---|---|
+| opener variety | **-0.73** |
+| mean sentence length | **-0.78** |
+| burstiness | -0.19 |
+| type-token ratio | -0.08 |
+| **comma rate** | **-0.05** |
+
+Two findings, and the second is the one that settles it.
+
+**Comma rate carries no signal.** At -0.05 it is indistinguishable from noise.
+
+**Six of the seven human plans sat inside the band the term called most
+machine-like**, each losing 2 to 5 points for it. A term whose stated purpose is
+to flag machine writing was docking almost every human document in the corpus.
+That is a contradiction regardless of sample size, and it is why the term is
+gone rather than retuned. The 5 points are dropped, not redistributed:
+reweighting on five scored documents would only invent a new number.
+
+Removing it moved the scorer's correlation with QuillBot from **+0.08 to +0.21**.
+Better, still weak, still not a predictor, and still not a CI gate.
+
+**The other thing worth noticing:** mean sentence length correlates -0.78, so
+LONGER sentences went with LOWER detector scores across these plans. That
+points the same way as the register work and directly against the terseness
+instinct. It is n=5 and should be treated as a hint, not a finding, but nothing
+in the corpus supports mandating short sentences.
+
+`commaRate` is still measured and reported. It just no longer scores.

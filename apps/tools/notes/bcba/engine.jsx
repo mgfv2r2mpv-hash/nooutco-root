@@ -536,6 +536,14 @@ function freshSession(tool) {
     panelDraft: "",
     questions: null,       // triage questions awaiting an answer, or null
     pendingValues: null,   // scrubbed values held while triage runs
+    // Answering two of three questions used to send the note to drafting with
+    // the third still open. These carry the exchange across rounds so the next
+    // pass can ask about what is genuinely still missing.
+    bcbaOffer: "",         // a question for the BCBA the tool has offered to add
+    ticketOffer: null,     // {note, target} feedback about the tool, offered as a stub
+    ticketFiling: false,
+    triageAnswers: "",     // everything they have answered so far, scrubbed
+    triageRound: 0,        // rounds asked; capped so this cannot become an interrogation
     // Changes a revision made OUTSIDE the section that was clicked, which the
     // model was not confident belonged there. Held here rather than applied, so
     // nothing is lost and nothing lands where it was not asked for.
@@ -876,11 +884,24 @@ function App() {
   // session (a SAP is a program plan, with no counts and no "this session")
   // overrides both halves, because asking a plan how many times a behavior
   // occurred is worse than asking nothing.
-  const runTriage = async (scrubbed) => {
-    const body = tool.inputs
+  /* Up to three rounds. His note: the model need not give up after one,
+     because a technician often answers two of three and the third only becomes
+     answerable once the first two are on the table. The cap exists so this
+     cannot turn into an interrogation, and the skip button is on screen the
+     whole time. */
+  const MAX_TRIAGE_ROUNDS = 3;
+
+  const runTriage = async (scrubbed, priorAnswers) => {
+    let body = tool.inputs
       .filter((f) => f.type === "textarea")
       .map((f) => `[${f.label}]${f.required ? " (required)" : ""}\n${(scrubbed[f.id] || "").trim() || "(empty)"}`)
       .join("\n\n");
+    if (priorAnswers && priorAnswers.trim()) {
+      body += "\n\n[ALREADY ANSWERED BY THE CLINICIAN]\n" + priorAnswers.trim() +
+        "\n\nTreat everything above as part of their notes. Ask ONLY about what is still genuinely missing. " +
+        "Never re-ask something they have answered, and never rephrase an answered question. " +
+        "If nothing important is still missing, return sufficient: true.";
+    }
     const r = await NotesGate.generateConversation({
       system: tool.triageSystem || TRIAGE_SYSTEM,
       messages: [{ role: "user", content: (tool.triageIntro || "CLINICIAN'S RAW NOTES:") + "\n\n" + body }],
@@ -917,6 +938,18 @@ function App() {
      tiny ones. */
   const REVISE_MIN_SENTENCES = 8;
   const REVISE_MIN_WORDS = 120;
+
+  /* The two rules that hold whether or not a section was pointed at.
+   *
+   * Both come from faults he hit on the live tool. He asked whether something
+   * belonged in the BCBA summary and the note was REWRITTEN rather than
+   * answered. And on a move, content left the source section and never arrived
+   * at the destination, so a move silently became a delete. */
+  const REVISION_RULES = [
+    `IF THE CLINICIAN SAYS THEY ARE UNSURE about something clinical - whether a behaviour counts, whether a program should change, whether something is worth reporting - do not guess and do not decide for them. Put a short question for the supervising BCBA in "bcbaQuestion", phrased the way the technician would ask it. Leave it empty otherwise. This is not for uncertainty about wording or formatting, only about clinical judgement.`,
+    `IF THE MESSAGE IS A QUESTION rather than an instruction to change something, answer it in "answer" and return every other key EXACTLY as it currently stands. Do not edit the note to answer a question. "Should this go in the summary?" is a question. "Move this to the summary" is an instruction.`,
+    `A MOVE HAS TWO HALVES AND YOU MUST DO BOTH. If content should move from one section to another, remove it from the source AND write it into the destination in the same reply, and list the destination in "crossSection". Never take content out of a section without putting it somewhere, unless the clinician explicitly asked for it to be deleted.`,
+  ].join("\n");
 
   const selfRevise = async (conversation, block, first) => {
     if (!window.NoteMetrics) return null;
@@ -1084,8 +1117,8 @@ function App() {
     }
     if (questions.length) {
       setLoading(false);
-      audit("gap_questions", { asked: questions.length });
-      patchS({ questions, pendingValues: scrubbed });
+      audit("gap_questions", { asked: questions.length, round: 1 });
+      patchS({ questions, pendingValues: scrubbed, triageAnswers: "", triageRound: 1 });
       return;
     }
     audit("gap_questions", { asked: 0 });
@@ -1093,9 +1126,13 @@ function App() {
   };
 
   const skipQuestions = () => {
-    audit("gap_questions", { skipped: (S.questions || []).length });
+    audit("gap_questions", { skipped: (S.questions || []).length, round: S.triageRound || 1 });
     pushThread("user", "answer", "(skipped)");
-    draftNote(S.pendingValues || scrubValues([]), "");
+    // Anything they answered in an earlier round still counts. Dropping it
+    // because they skipped the last question would throw away work they did.
+    const answered = S.triageAnswers || "";
+    patchS({ triageAnswers: "", triageRound: 0 });
+    draftNote(S.pendingValues || scrubValues([]), answered);
   };
 
   /* ── Revisions ────────────────────────────────────────────────────────
@@ -1206,6 +1243,9 @@ function App() {
         // belongs partly somewhere else. Silently dropping that half is how a
         // correction gets lost, so the model changes what it needs to and
         // declares it.
+        // Both rules apply whether or not a section was pointed at: a question
+        // is just as likely typed into an empty panel as onto a section.
+        REVISION_RULES,
         `The clinician pointed at ONE section. If the instruction also requires changing a DIFFERENT section, make that change too and list every such section in "crossSection".`,
         `Set "confident": true ONLY when the instruction names that section, or names content that appears in that section and nowhere else. Anything you inferred, guessed at, or judged stylistically consistent is "confident": false. A false is not a failure; it asks the clinician, which is the correct outcome when it is genuinely their call.`,
         `"why" is one short clause the clinician will read, naming what in their instruction sent the change there.`,
@@ -1215,6 +1255,8 @@ function App() {
       userMsg = [
         `ADDITIONAL DETAILS / CORRECTIONS from the clinician:`,
         scrubbedInstruction,
+        ``,
+        REVISION_RULES,
         ``,
         `Apply these to every affected section. Return the COMPLETE updated JSON object with ALL keys; copy unaffected sections verbatim. Re-evaluate "hints". Never fabricate beyond what is stated.`,
       ].join("\n");
@@ -1265,6 +1307,29 @@ function App() {
         if (route && route.confident) changes.push({ ...change, why: route.why });
         else asks.push({ ...change, why: route ? route.why : "" });
       });
+      /* A question, answered. No proposal, no diff, nothing touched in the
+         note: the reply goes into the panel where the rest of the conversation
+         lives. Checked before the changes are applied, because a model that
+         answers AND edits should still not edit. */
+      /* Something they were unsure about, worth putting to the BCBA. Offered,
+         never applied: the technician decides whether it goes in their note.
+         It rides alongside an answer rather than replacing one, because "I do
+         not know either, shall we ask?" is a legitimate reply. */
+      const bcbaQuestion = String(normalized.bcbaQuestion || "").trim();
+
+      const answer = String(normalized.answer || "").trim();
+      if (answer) {
+        patchS({
+          conversation, lastCallAt: Date.now(), annotation: null,
+          proposal: null, routingAsks: null, error: "",
+        });
+        audit("revision", { answered: 1, kind: ann ? ann.kind : "global" });
+        pushThread("assistant", "answer", answer);
+        if (bcbaQuestion) patchS({ bcbaOffer: bcbaQuestion });
+        return;
+      }
+      if (bcbaQuestion) patchS({ bcbaOffer: bcbaQuestion });
+
       const carried = changes.filter((c) => c.id !== targetId);
       patchS({
         conversation,
@@ -1317,11 +1382,47 @@ function App() {
     if (!text || loading) return;
     patchS({ panelDraft: "" });
     pushThread("user", "answer", text);
+
+    /* Pointed at the page rather than the note, as an admin. That is feedback
+       about the tool, and sending it to the note model would produce a revision
+       nobody asked for. Offer to file it instead. */
+    if (pointScope === "page" && S.annotation && S.annotation.kind === "page") {
+      const target = S.annotation.text || "";
+      patchS({ annotation: null, ticketOffer: { note: text, target } });
+      pushThread("assistant", "status",
+        "That reads as feedback about the tool rather than the note. Want it filed as a stub you can grill later?");
+      return;
+    }
     if (S.questions && S.questions.length) {
       const review = await scrubGate(text);
       if (!review) return;
-      audit("gap_questions", { answered: S.questions.length });
-      await draftNote(S.pendingValues, NotesScrub.applyMap(text, review.map));
+      audit("gap_questions", { answered: S.questions.length, round: S.triageRound || 1 });
+
+      const answered = [S.triageAnswers, NotesScrub.applyMap(text, review.map)]
+        .filter((x) => x && x.trim()).join("\n");
+      const round = (S.triageRound || 1) + 1;
+
+      // Ask again only while there is room, and only if something is genuinely
+      // still missing. A round that comes back empty drafts immediately.
+      if (round <= MAX_TRIAGE_ROUNDS) {
+        setLoading(true);
+        let more = [];
+        try {
+          more = await runTriage(S.pendingValues, answered);
+        } catch (e) {
+          // Triage is an assist, not a gate. Losing a follow-up question is a
+          // far smaller harm than refusing to draft.
+          reportError(tool.id, e);
+        }
+        setLoading(false);
+        if (more.length) {
+          audit("gap_questions", { asked: more.length, round });
+          patchS({ questions: more, triageAnswers: answered, triageRound: round });
+          return;
+        }
+      }
+      patchS({ triageAnswers: "", triageRound: 0 });
+      await draftNote(S.pendingValues, answered);
       return;
     }
     if (!S.output) {
@@ -1379,6 +1480,72 @@ function App() {
      Declining does NOT delete it. His ruling: rejected text stays in the
      conversation so it can be reused, which means the panel is where it lives
      rather than a variable nobody can reach. */
+  /* Accepting the offer puts the question in the note, in the section that
+     already exists to carry questions for the BCBA. It goes through the same
+     proposal and Accept/Discard path as any other change, so it is visible and
+     reversible rather than silently appended.
+
+     NOT ticked into Action Items for BCBA: that list is his EHR's closed set
+     and has no option meaning "the technician has a question". Forcing the
+     nearest one ("Contact staff") into a clinical record would be worse than
+     leaving it to normal inference. */
+  const FOLLOWUP_KEY = "followUpNarrative";
+
+  /* Feedback about the TOOL, filed while he is looking at it.
+     His ask: as an admin, "I hate that the page does this" should become a stub
+     he can grill into a proper dev item later, rather than something he has to
+     remember afterwards. Offered only to an admin, and only when they pointed
+     at page furniture rather than at the note, because that is the gesture that
+     already means "this is about the page". */
+  const fileTicket = async () => {
+    const t = S.ticketOffer;
+    if (!t || S.ticketFiling) return;
+    patchS({ ticketFiling: true });
+    try {
+      const res = await fetch(NotesGate.apiUrl("/api/admin/ticket"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + NotesGate.token() },
+        body: JSON.stringify({ note: t.note, where: location.pathname, target: t.target || "" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      patchS({ ticketOffer: null, ticketFiling: false });
+      pushThread("assistant", "status", res.ok && data.ok
+        ? "Filed as issue #" + data.number + ". It is labelled a stub, so nobody builds it before you have grilled it."
+        : "Could not file it: " + (data.error || "the request failed") + " Nothing was lost, it is still above in this conversation.");
+    } catch (e) {
+      patchS({ ticketFiling: false });
+      pushThread("assistant", "status", "Could not reach the ticket route. Nothing was lost, it is still above in this conversation.");
+    }
+  };
+
+  const dismissTicket = () => patchS({ ticketOffer: null });
+
+  const takeBcbaQuestion = () => {
+    const q = (S.bcbaOffer || "").trim();
+    if (!q || !S.output) return;
+    const sec = tool.formSections.find((x) => x.key === FOLLOWUP_KEY);
+    if (!sec) { patchS({ bcbaOffer: "" }); return; }
+
+    const current = String(S.output[FOLLOWUP_KEY] || "").trim();
+    // A default "nothing to report" line is replaced rather than contradicted.
+    const isDefault = /^no new questions or concerns/i.test(current);
+    const next = (!current || isDefault) ? q : current + " " + q;
+
+    audit("revision", { bcba_question_added: 1 });
+    patchS((st) => ({
+      bcbaOffer: "",
+      proposal: st.proposal
+        ? { ...st.proposal, changes: [...st.proposal.changes, { id: FOLLOWUP_KEY, heading: sec.heading, kind: sec.kind, value: next, prev: st.output[FOLLOWUP_KEY] }] }
+        : { changes: [{ id: FOLLOWUP_KEY, heading: sec.heading, kind: sec.kind, value: next, prev: st.output[FOLLOWUP_KEY] }], hints: st.output?.hints || [], targetSectionId: FOLLOWUP_KEY, kind: "bcba" },
+    }));
+    pushThread("assistant", "status", "Added to \u201c" + sec.heading + "\u201d. It is highlighted in the note.");
+  };
+
+  const dismissBcbaQuestion = () => {
+    audit("revision", { bcba_question_declined: 1 });
+    patchS({ bcbaOffer: "" });
+  };
+
   const takeRoutedChange = (ask) => {
     audit("revision", { routed_accepted: 1 });
     patchS((s) => ({
@@ -1766,6 +1933,13 @@ function App() {
         pointMode={pointMode}
         onPointMode={setPointMode}
         pointScope={pointScope}
+        ticketOffer={S.ticketOffer}
+        ticketFiling={S.ticketFiling}
+        onFileTicket={fileTicket}
+        onDismissTicket={dismissTicket}
+        bcbaOffer={S.bcbaOffer}
+        onTakeBcba={takeBcbaQuestion}
+        onDismissBcba={dismissBcbaQuestion}
         routingAsks={S.routingAsks}
         onTakeRouted={takeRoutedChange}
         onLeaveRouted={leaveRoutedChange}

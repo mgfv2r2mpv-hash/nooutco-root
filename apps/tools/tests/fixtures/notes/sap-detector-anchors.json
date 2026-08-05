@@ -16,7 +16,13 @@
     "recordedScore is what style-score.mjs returned at the commit that added",
     "this file. sap-detector-calibration.spec.js re-derives it from `metrics`",
     "using the current weights: if someone retunes them, that mismatch is the",
-    "signal that docs/ai-detection-baseline.md no longer describes the scorer."
+    "signal that docs/ai-detection-baseline.md no longer describes the scorer.",
+    "",
+    "2026-08-04: the comma term was removed from the scorer. It correlated",
+    "-0.05 with QuillBot across the five scored plans and penalised SIX OF",
+    "SEVEN of these human documents, which is the opposite of its purpose.",
+    "recordedScore below is recomputed without it; every plan dropped 2 to 5",
+    "points. Correlation with the detector moved from +0.08 to +0.21."
   ],
   "scorerCommit": "8bfd3c80",
   "detector": "QuillBot AI Detector v7.1.0",
@@ -24,7 +30,7 @@
     {
       "plan": 1,
       "quillbot": 20,
-      "recordedScore": 17,
+      "recordedScore": 12,
       "metrics": {
         "sentences": 20,
         "words": 412,
@@ -40,7 +46,7 @@
     {
       "plan": 2,
       "quillbot": 0,
-      "recordedScore": 12,
+      "recordedScore": 10,
       "metrics": {
         "sentences": 13,
         "words": 250,
@@ -56,7 +62,7 @@
     {
       "plan": 3,
       "quillbot": 49,
-      "recordedScore": 15,
+      "recordedScore": 13,
       "metrics": {
         "sentences": 43,
         "words": 504,
@@ -72,7 +78,7 @@
     {
       "plan": 4,
       "quillbot": 10,
-      "recordedScore": 13,
+      "recordedScore": 10,
       "metrics": {
         "sentences": 18,
         "words": 319,
@@ -88,7 +94,7 @@
     {
       "plan": 5,
       "quillbot": 7,
-      "recordedScore": 20,
+      "recordedScore": 16,
       "metrics": {
         "sentences": 36,
         "words": 579,
@@ -104,7 +110,7 @@
     {
       "plan": 6,
       "quillbot": null,
-      "recordedScore": 24,
+      "recordedScore": 21,
       "metrics": {
         "sentences": 39,
         "words": 866,
@@ -120,7 +126,7 @@
     {
       "plan": 7,
       "quillbot": null,
-      "recordedScore": 23,
+      "recordedScore": 18,
       "metrics": {
         "sentences": 19,
         "words": 438,

@@ -65,7 +65,13 @@ test.describe('SAP detector calibration', () => {
 
     // The documented figure. Loose tolerance: the point is "indistinguishable
     // from no relationship", not the third decimal place.
-    expect(r).toBeCloseTo(0.08, 1);
+    //
+    // Was 0.08. Moved to 0.21 on 2026-08-04 when the comma term was removed
+    // from the scorer: it correlated -0.05 with the detector and penalised six
+    // of these seven human plans, so it was noise pulling in the wrong
+    // direction. Better, and still nowhere near a predictor - which is the
+    // whole reason this stays out of CI.
+    expect(r).toBeCloseTo(0.21, 1);
 
     // The claim that actually matters, stated as a bound rather than a value.
     // If a future scorer clears this, gating becomes arguable again - and that

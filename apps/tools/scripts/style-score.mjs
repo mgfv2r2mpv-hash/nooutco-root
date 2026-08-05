@@ -105,7 +105,18 @@ export function score(m) {
     variety: clamp(1 - m.typeTokenRatio / 0.55) * 20,
     entropy: clamp(m.entropy) * 10,
     repeats: clamp(m.repeatRate * 8) * 10,
-    commas: clamp(1 - Math.abs(m.commaRate - 1.1) / 1.1) * 5,
+    // The comma term is GONE, on his question "I am not sure how commas factor
+    // in". Tested against the seven human plans in the calibration fixture:
+    //   * commaRate correlates -0.05 with the real detector. No signal at all.
+    //   * SIX OF SEVEN human plans sat inside the band this term called most
+    //     machine-like, so it was docking human writing 2 to 5 points each for
+    //     nothing.
+    // Its own comment called the weights "a judgement call, not a fitted
+    // model", and 1.1 commas per sentence had nothing behind it. Removing it
+    // moved the correlation with QuillBot from +0.08 to +0.21: still weak,
+    // still not a detector, but no longer penalising the thing it was meant to
+    // reward. The 5 points are dropped rather than redistributed, because
+    // reweighting on five scored documents would just be a new invented number.
   };
   return {
     total: Math.round(Object.values(parts).reduce((a, b) => a + b, 0)),

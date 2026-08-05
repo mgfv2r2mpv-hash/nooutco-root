@@ -112,6 +112,8 @@ function RevisionPanel({
   loggedIn,
   intro,
   routingAsks, onTakeRouted, onLeaveRouted,
+  bcbaOffer, onTakeBcba, onDismissBcba,
+  ticketOffer, ticketFiling, onFileTicket, onDismissTicket,
   pointMode, onPointMode, pointScope,
 }) {
   const scrollRef = React.useRef(null);
@@ -279,6 +281,40 @@ function RevisionPanel({
         {thread.map((m, i) => (
           <Bubble key={i} role={m.role} muted={m.kind === "status"}>{m.text}</Bubble>
         ))}
+
+        {/* Feedback about the tool, offered as a ticket stub. Admin only, and
+            only after pointing at page furniture. */}
+        {ticketOffer ? (
+          <div className="bcba-offer ticket-offer">
+            <p className="bcba-offer-q">File this as a stub?</p>
+            <p className="bcba-offer-preview">{ticketOffer.note}</p>
+            <div className="bcba-offer-actions">
+              <button type="button" className="bcba-take" onClick={onFileTicket} disabled={ticketFiling}>
+                {ticketFiling ? "Filing..." : "File it"}
+              </button>
+              <button type="button" className="bcba-leave" onClick={onDismissTicket} disabled={ticketFiling}>
+                Not now
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {/* Something the technician said they were unsure about, offered as a
+            question for the BCBA. Offered, never applied: putting words in a
+            clinical record on their behalf is not the tool's call. It goes in
+            the follow-up section, which already exists to carry questions. */}
+        {bcbaOffer ? (
+          <div className="bcba-offer">
+            <p className="bcba-offer-q">
+              That sounds like one for the BCBA. Add this to the note?
+            </p>
+            <p className="bcba-offer-preview">{bcbaOffer}</p>
+            <div className="bcba-offer-actions">
+              <button type="button" className="bcba-take" onClick={onTakeBcba}>Add it to the note</button>
+              <button type="button" className="bcba-leave" onClick={onDismissBcba}>No thanks</button>
+            </div>
+          </div>
+        ) : null}
 
         {/* A revision that reached past the section that was clicked, where the
             model would not vouch for the routing. Asked here rather than inline

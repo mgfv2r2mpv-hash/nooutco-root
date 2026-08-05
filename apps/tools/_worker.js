@@ -124,6 +124,11 @@ export default {
       return handleVoiceBlockRead(request, env);
     }
 
+    // Admin-only: file a ticket stub from inside the site.
+    if (url.pathname === "/api/admin/ticket" && request.method === "POST") {
+      return handleTicket(request, env);
+    }
+
     // Admin-only: the supervisor view of individual technician profiles, and
     // removing a rule that is not in line with policy. See handleProfileAdmin.
     if (url.pathname.startsWith("/api/admin/profile/")) {
@@ -1576,6 +1581,91 @@ async function handleProfileAdmin(request, env, url) {
   const data = await profileFetch(env, path, body, route.method, diag);
   if (!data) return jsonRes(503, { error: "Style profile is unavailable right now.", reason: diag.reason });
   return jsonRes(200, data);
+}
+
+/**
+ * File a ticket stub as a GitHub issue.
+ *
+ * His ask: as an admin, feedback like "I hate that the page does this" should
+ * become something he can grill into a proper dev item later, filed while he is
+ * using the site rather than remembered afterwards. His answer on where: a
+ * GitHub issue on nooutco-root, because that is where the work already lives.
+ *
+ * A STUB, and labelled as one. It is a sentence he typed at the moment he
+ * noticed something, not a specification, and dressing it up as one would make
+ * every issue in the tracker untrustworthy.
+ *
+ * NEEDS A CREDENTIAL THAT DOES NOT EXIST YET. GITHUB_TOKEN must be a
+ * fine-grained token with Issues: write on this repository, set as a Pages
+ * secret. Until it is, this route says so plainly rather than failing silently
+ * or pretending to have filed something.
+ */
+const TICKET_REPO = "mgfv2r2mpv-hash/nooutco-root";
+
+async function handleTicket(request, env) {
+  const secret = (env.ADMIN_SECRET ?? "").trim();
+  const auth = request.headers.get("Authorization") || "";
+  const payload = secret ? await readToken(auth.replace(/^Bearer\s+/i, ""), secret) : null;
+  if (!payload || payload.role !== "admin") {
+    return jsonRes(401, { error: "Admin access required." });
+  }
+
+  let body;
+  try { body = await request.json(); } catch { return jsonRes(400, { error: "Invalid JSON." }); }
+
+  const note = String(body?.note || "").trim();
+  if (note.length < 5) return jsonRes(400, { error: "Nothing to file." });
+
+  const token = (env.GITHUB_TOKEN ?? "").trim();
+  if (!token) {
+    // Named, not swallowed. An admin who thinks they filed a ticket and did
+    // not is worse off than one told the wiring is missing.
+    return jsonRes(503, {
+      error: "No GitHub token is configured, so nothing was filed.",
+      reason: "no_github_token",
+    });
+  }
+
+  // Where they were, and what they pointed at. Both are the difference between
+  // a stub worth reading in a month and "the page is doing a thing".
+  const where = String(body?.where || "").trim().slice(0, 200);
+  const target = String(body?.target || "").trim().slice(0, 200);
+  const title = "Stub: " + note.replace(/\s+/g, " ").slice(0, 72) + (note.length > 72 ? "..." : "");
+
+  const lines = [
+    "Filed from inside the tool, in the moment. This is a STUB, not a spec.",
+    "",
+    "**What he said**",
+    "",
+    "> " + note.replace(/\n/g, "\n> "),
+    "",
+  ];
+  if (where) lines.push("**Where** " + where);
+  if (target) lines.push("**Pointed at** " + target);
+  lines.push("", "Grill this before building it.");
+
+  try {
+    const res = await fetch(`https://api.github.com/repos/${TICKET_REPO}/issues`, {
+      method: "POST",
+      signal: AbortSignal.timeout(6000),
+      headers: {
+        "Authorization": "Bearer " + token,
+        "Accept": "application/vnd.github+json",
+        "Content-Type": "application/json",
+        "User-Agent": "tools-nooutco-me",
+      },
+      body: JSON.stringify({ title, body: lines.join("\n"), labels: ["stub", "from-the-tool"] }),
+    });
+    if (!res.ok) {
+      return jsonRes(502, { error: "GitHub refused it.", reason: "status_" + res.status });
+    }
+    const issue = await res.json();
+    return jsonRes(200, { ok: true, number: issue.number, url: issue.html_url });
+  } catch (err) {
+    // Never log the note itself: it is the one field that could carry anything.
+    console.error("ticket filing failed", err && err.name);
+    return jsonRes(502, { error: "Could not reach GitHub.", reason: String((err && err.name) || "error") });
+  }
 }
 
 async function handleStyleCardMute(request, env) {
