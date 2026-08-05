@@ -9,9 +9,8 @@ import { createHmac } from 'node:crypto';
  * line, because the gate is worth exactly as much as the assertion that no other
  * path opens it.
  *
- * Note the belt and braces: BT is also absent from the Worker's allowlist, so
- * even a request that sets the flag composes nothing for this tool. These tests
- * cover the CLIENT half - which calls send the flag at all.
+ * These tests cover the CLIENT half: which calls send the flag at all, and what
+ * the advice turn asks for. The Worker half is in voice-block.spec.js.
  */
 
 const SECRET = 'playwright-local-test-secret';
@@ -285,5 +284,49 @@ test.describe('the copy-prompt path', () => {
     await draftANote(page);
     expect(posted.length).toBeGreaterThan(0);
     for (const body of posted) expect(body.tool).toBe('bt');
+  });
+});
+
+
+/* His ruling of 2026-08-05 on what the answer should be: "as close to a
+   certified Bx analyst answering as possible, but still I know this is not
+   intended to replace a clinician. but to be the best-available resource when
+   the BCBA is not there to turn to." */
+// The advice request as it actually reaches the API.
+async function adviceRequest(page) {
+  let asked = null;
+  await page.route('**/api/llm-call**', async (route) => {
+    const body = JSON.parse(route.request().postData() || '{}');
+    if (body.want_opinions === true) { asked = body; return route.fulfill(reply('ADVICE')); }
+    return route.fulfill(reply(asked === null && !body.messages ? { sufficient: true, questions: [] } : note()));
+  });
+  await page.goto('/notes/bt/');
+  await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
+  await page.goto('/notes/bt/');
+  await draftANote(page);
+  await openPanel(page);
+  await page.getByRole('button', { name: /What would you do here/i }).click();
+  await page.waitForTimeout(1500);
+  expect(asked, 'the ask must reach the API').not.toBeNull();
+  return JSON.stringify(asked);
+}
+
+test.describe('the advice turn says who is answering and who is asking', () => {
+  test('it answers a technician as the analyst, not a peer clinician', async ({ page }) => {
+    const asked = await adviceRequest(page);
+    expect(asked, 'the asker is a technician on this tool').toMatch(/answering a behavior technician/i);
+    expect(asked, 'a technician is not a supervising clinician').not.toMatch(/advice to a supervising clinician/i);
+  });
+
+  test('it takes a position rather than surveying the field', async ({ page }) => {
+    const asked = await adviceRequest(page);
+    expect(asked).toMatch(/take a position where the record supports one/i);
+    expect(asked).toMatch(/not as a neutral summary of the field/i);
+  });
+
+  test('it stays the best-available resource rather than a replacement', async ({ page }) => {
+    const asked = await adviceRequest(page);
+    expect(asked).toMatch(/does not replace them/i);
+    expect(asked, 'and it can hand the question back').toMatch(/theirs to make/i);
   });
 });

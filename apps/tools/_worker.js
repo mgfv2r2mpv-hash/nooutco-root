@@ -496,10 +496,11 @@ async function handleLlmCall(request, env) {
     // An unlisted tool, or any failure reading the block, leaves the prompt
     // exactly as it arrived.
     const voice = await getVoiceBlock(env);
-    let sys = composeVoice(isConversation ? system : systemPrompt, voice, tool);
+    const advisory = { wantsRecommendation: body.want_opinions === true };
+    let sys = composeVoice(isConversation ? system : systemPrompt, voice, tool, advisory);
     // His clinical judgement, only where the caller explicitly asked for a
     // recommendation. Ruling 2: an opinion never fills a silence in the input.
-    sys = composeOpinions(sys, voice, tool, { wantsRecommendation: body.want_opinions === true });
+    sys = composeOpinions(sys, voice, tool, advisory);
 
     const llmResponse = isConversation
       ? await callAnthropicConversation(
@@ -983,8 +984,9 @@ const OBLIGATION_HEADER = [
 
 export { VOICE_COVERAGE };
 
-/* Which layers a tool takes. Absent means all of them, which keeps every
-   existing tool behaving exactly as before.
+/* Which layers a tool's DOCUMENTS take. Absent means all of them, which keeps
+   every existing tool behaving exactly as before. An advisory call ignores this
+   and takes everything - see layersFor.
 
    BT is the reason this exists. His ruling of 2026-08-04 split it rather than
    including or excluding it whole: "give bt the stances and obligations but not
@@ -994,22 +996,62 @@ export { VOICE_COVERAGE };
    belong to the practice rather than to whoever holds the pen. BT also draws its
    obligations from the RBT code rather than the analyst code, which the block
    handles by giving it its own register. */
-function layersFor(block, tool) {
+function layersFor(block, tool, advisory) {
+  // An advisory call is HIM answering, so it takes the whole stack whatever the
+  // tool's documents take. His ruling of 2026-08-05: "'What would you do here'
+  // should draw on my clinical voice, registers, the system's accumulated domain
+  // knowledge, and my opinions to answer so that it isn't a canned answer but as
+  // close to a certified Bx analyst answering as possible." The split above
+  // governs what goes into a document the technician signs. The answer is read
+  // by the technician and signed by nobody.
+  if (advisory) return ALL_LAYERS;
   const l = block.toolLayers && block.toolLayers[tool];
-  return Array.isArray(l) ? l : ["core", "register", "stances", "obligations", "opinions"];
+  return Array.isArray(l) ? l : ALL_LAYERS;
 }
+const ALL_LAYERS = ["core", "register", "stances", "obligations", "opinions"];
 
-export function composeVoice(system, block, tool) {
+/* The register an advisory call answers in, where it differs from the one the
+   tool writes its documents in.
+
+   BT writes in `technician-note`, a register with no voice card and no calls of
+   his in it - correct for a note the technician signs, and empty for a question
+   they ask him. `toolAdvice` moves the answer onto the register he actually
+   addresses staff in and the one his clinical calls are filed under. */
+function advicePart(block, tool, advisory, part) {
+  if (!advisory || !block.toolAdvice) return null;
+  const a = block.toolAdvice[tool];
+  return a && typeof a[part] === "string" ? a[part] : null;
+}
+const adviceRegister = (block, tool, advisory) => advicePart(block, tool, advisory, "register");
+
+export function composeVoice(system, block, tool, opts) {
   if (typeof system !== "string" || !block || !tool) return system;
   const register = block.toolRegister && block.toolRegister[tool];
   if (!register) return system; // allowlist: unlisted tools get nothing
-  const layers = layersFor(block, tool);
+  const advisory = opts && opts.wantsRecommendation === true;
+  const layers = layersFor(block, tool, advisory);
   const parts = [
     layers.includes("core") ? block.core : null,
-    layers.includes("register") ? (block.registers || {})[register] : null,
+    layers.includes("register") ? (block.registers || {})[adviceRegister(block, tool, advisory) || register] : null,
   ].filter((p) => typeof p === "string" && p.trim());
-  const stance = layers.includes("stances") ? (block.stances || {})[register] : null;
-  const obligation = layers.includes("obligations") ? (block.obligations || {})[register] : null;
+  // Stances and obligations take BOTH registers on an advisory call. The tool's
+  // own carries what binds whoever acts on the answer - a technician asking gets
+  // the RBT code, which is the code they work under - and the advice register
+  // carries how he addresses a person who brought him a question.
+  // Registers overlap heavily - a stance that holds when he documents usually
+  // holds when he teaches - so the two lists are merged card by card rather than
+  // concatenated, or the shared ones arrive twice.
+  const both = (map) => {
+    const own = (map || {})[register];
+    const adv = (map || {})[adviceRegister(block, tool, advisory) || register];
+    if (!adv || adv === own) return own;
+    const seen = new Set();
+    return [own, adv].filter(Boolean).join("\n\n").split(/\n{2,}/)
+      .map((card) => card.trim()).filter((card) => card && !seen.has(card) && seen.add(card))
+      .join("\n\n");
+  };
+  const stance = layers.includes("stances") ? both(block.stances) : null;
+  const obligation = layers.includes("obligations") ? both(block.obligations) : null;
   const has = (v) => typeof v === "string" && v.trim();
   if (!parts.length && !has(stance) && !has(obligation)) return system;
   let out = parts.length ? `${system}\n\n${VOICE_HEADER}\n\n${parts.join("\n\n")}` : system;
@@ -1068,9 +1110,8 @@ export function composeOpinions(system, block, tool, opts) {
   if (!opts || opts.wantsRecommendation !== true) return system;
   const register = block.toolRegister && block.toolRegister[tool];
   if (!register) return system; // same allowlist as the voice block
-  // A tool can be on the allowlist and still take no opinions: BT does.
-  if (!layersFor(block, tool).includes("opinions")) return system;
-  const entries = (block.opinions || {})[register];
+  if (!layersFor(block, tool, true).includes("opinions")) return system;
+  const entries = (block.opinions || {})[advicePart(block, tool, true, "opinions") || register];
   if (typeof entries !== "string" || !entries.trim()) return system;
   return `${system}\n\n${OPINIONS_HEADER}\n\n${entries}`;
 }

@@ -8,11 +8,10 @@ import { test, expect } from '@playwright/test';
 // His answer on what happens next: put it in the note itself, because the note
 // is already the channel to the BCBA and nothing new has to be built or watched.
 //
-// One deviation, flagged: he said tick Action Items for BCBA as well. That list
-// is his EHR's closed set and has no option meaning "the technician has a
-// question" - the nearest is "Contact staff". Forcing that into a clinical
-// record would be worse than leaving the checkbox to normal inference, so this
-// writes the question and does not tick anything.
+// And his ruling of 2026-08-05: "tick the box if you add in feedback for BCBA."
+// The list is his EHR's closed set, so the tick goes to "Contact staff" - a
+// question waiting on the BCBA is an action for the BCBA, and a note that
+// carries one while reading None understates it.
 
 function tokenFor() {
   const p = { role: 'user', kid: 'test-kid', exp: Math.floor(Date.now() / 1000) + 3600, tools: ['bt'] };
@@ -103,6 +102,37 @@ test.describe('it offers to ask the BCBA', () => {
     await expect(page.locator('.diff-view').first()).toBeVisible();
     await page.locator('.diff-accept').first().click();
     await expect(page.locator('textarea[data-section-id="followUpNarrative"]')).toHaveValue(new RegExp('transition refusal'));
+  });
+
+  test('accepting also ticks the action item, so the note does not read None', async ({ page }) => {
+    // "tick the box if you add in feedback for BCBA". A note that carries a
+    // question for the BCBA while its action items read None understates it.
+    await drafted(page, (route) => route.fulfill(reply(note({ bcbaQuestion: Q }))));
+    await page.locator('.revision-input').fill("not sure if that counts");
+    await page.locator('.revision-send').click();
+    await expect(page.locator('.bcba-offer')).toBeVisible({ timeout: 20000 });
+
+    const items = page.locator('[data-section-id="actionItems"]');
+    await expect(items.locator('[data-option="None"]'), 'the draft starts at None').toHaveAttribute('data-on', '1');
+
+    await page.getByRole('button', { name: 'Add it to the note' }).click();
+    await page.locator('.diff-accept').first().click();
+
+    await expect(items.locator('[data-option="Contact staff"]')).toHaveAttribute('data-on', '1');
+    // None and a real action item cannot both be true.
+    await expect(items.locator('[data-option="None"]')).toHaveAttribute('data-on', '0');
+    // And the question itself still landed.
+    await expect(page.locator('textarea[data-section-id="followUpNarrative"]')).toHaveValue(/transition refusal/);
+  });
+
+  test('declining the offer leaves the action items alone', async ({ page }) => {
+    await drafted(page, (route) => route.fulfill(reply(note({ bcbaQuestion: Q }))));
+    await page.locator('.revision-input').fill("not sure");
+    await page.locator('.revision-send').click();
+    await expect(page.locator('.bcba-offer')).toBeVisible({ timeout: 20000 });
+    await page.locator('.bcba-leave').click();
+
+    await expect(page.locator('[data-section-id="actionItems"] [data-option="None"]')).toHaveAttribute('data-on', '1');
   });
 
   test('it replaces the nothing-to-report default rather than contradicting it', async ({ page }) => {

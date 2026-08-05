@@ -393,7 +393,7 @@ function CacheTimer({ remaining }) {
  * plainly that it is a guess and theirs to overrule. Multi-select sections still
  * show the whole list, because there "not ticked" is itself information they
  * need to check against the session. */
-function Checklist({ options, selected, single = false }) {
+function Checklist({ options, selected, single = false, sectionId: sid }) {
   const sel = single ? (selected ? [selected] : []) : (Array.isArray(selected) ? selected : []);
 
   if (single) {
@@ -421,11 +421,12 @@ function Checklist({ options, selected, single = false }) {
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", columnGap: 14, rowGap: 4 }}>
+    <div data-section-id={sid} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", columnGap: 14, rowGap: 4 }}>
       {options.map((label) => {
         const on = sel.includes(label);
         return (
-          <div key={label} style={{ display: "flex", alignItems: "flex-start", gap: 7 }}>
+          <div key={label} data-option={sid ? label : undefined} data-on={sid ? (on ? "1" : "0") : undefined}
+            style={{ display: "flex", alignItems: "flex-start", gap: 7 }}>
             <span aria-hidden="true" style={{
               flexShrink: 0, marginTop: 1, width: 15, height: 15, borderRadius: 4,
               border: on ? "1.5px solid #374528" : "1.5px solid #c0d4a8",
@@ -1156,6 +1157,9 @@ function App() {
     if (!S.output) return;
     const ann = S.annotation;
     const section = ann ? tool.formSections.find((s) => sectionId(s) === ann.id) : null;
+    // Who is on the other side of the answer. A BCBA tool is asking a peer; the
+    // BT tool is a technician asking the analyst who supervises them.
+    const asker = tool.asker || "clinician";
     pushThread("user", "answer", section ? `What would you do here? (${section.heading})` : "What would you do here?");
 
     const userMsg = [
@@ -1165,8 +1169,15 @@ function App() {
         : `The clinician is asking what to do next for this case.`,
       section ? `\nCurrent content of that section:\n${sectionBody(section, S.output, S.values)}` : "",
       ``,
-      `Answer in prose, as advice to a supervising clinician. Do NOT return the note JSON`,
-      `and do not change any section.`,
+      `Answer in prose, as ${asker === "clinician" ? "advice to a supervising clinician" : `a board certified behavior analyst answering a ${asker}`}.`,
+      `Do NOT return the note JSON and do not change any section.`,
+      ``,
+      `WHO IS ANSWERING. The voice, register and stored judgement above belong to one`,
+      `analyst. Answer as that person would,`,
+      `not as a neutral summary of the field: take a position where the record supports one.`,
+      `This is the best resource available when the supervising BCBA is not there to turn`,
+      `to, and it does not replace them.`,
+      `Where the right answer is that this one is theirs to make, say so and say what to ask them.`,
       ``,
       `ANSWER AT THREE LEVELS, and do not stop at the first.`,
       `1. The immediate thing. What to do about what was asked, concretely.`,
@@ -1514,6 +1525,21 @@ function App() {
      nearest one ("Contact staff") into a clinical record would be worse than
      leaving it to normal inference. */
   const FOLLOWUP_KEY = "followUpNarrative";
+  const ACTION_KEY = "actionItems";
+
+  // The checkbox that says a question is waiting. The label is read off the
+  // tool's own option list, so the EHR owns the wording.
+  const bcbaActionTick = (output) => {
+    const sec = (tool.formSections || []).find((x) => sectionId(x) === ACTION_KEY);
+    const label = ((tool.groupOptions || {})[ACTION_KEY] || []).find((o) => /contact staff/i.test(o));
+    if (!sec || !label || !output) return null;
+    const prev = Array.isArray(output[ACTION_KEY]) ? output[ACTION_KEY] : [];
+    if (prev.includes(label)) return null;
+    return {
+      id: ACTION_KEY, heading: sec.heading, kind: sec.kind, prev,
+      value: prev.filter((v) => !/^none$/i.test(String(v))).concat([label]),
+    };
+  };
 
   /* Feedback about the TOOL, filed while he is looking at it.
      His ask: as an admin, "I hate that the page does this" should become a stub
@@ -1555,14 +1581,21 @@ function App() {
     const isDefault = /^no new questions or concerns/i.test(current);
     const next = (!current || isDefault) ? q : current + " " + q;
 
+    const changes = [{ id: FOLLOWUP_KEY, heading: sec.heading, kind: sec.kind, value: next, prev: S.output[FOLLOWUP_KEY] }];
+    // A question for the BCBA is an action item, so the box gets ticked with it.
+    const tick = bcbaActionTick(S.output);
+    if (tick) changes.push(tick);
+
     audit("revision", { bcba_question_added: 1 });
     patchS((st) => ({
       bcbaOffer: "",
       proposal: st.proposal
-        ? { ...st.proposal, changes: [...st.proposal.changes, { id: FOLLOWUP_KEY, heading: sec.heading, kind: sec.kind, value: next, prev: st.output[FOLLOWUP_KEY] }] }
-        : { changes: [{ id: FOLLOWUP_KEY, heading: sec.heading, kind: sec.kind, value: next, prev: st.output[FOLLOWUP_KEY] }], hints: st.output?.hints || [], targetSectionId: FOLLOWUP_KEY, kind: "bcba" },
+        ? { ...st.proposal, changes: [...st.proposal.changes, ...changes] }
+        : { changes, hints: st.output?.hints || [], targetSectionId: FOLLOWUP_KEY, kind: "bcba" },
     }));
-    pushThread("assistant", "status", "Added to \u201c" + sec.heading + "\u201d. It is highlighted in the note.");
+    pushThread("assistant", "status", tick
+      ? "Added to \u201c" + sec.heading + "\u201d and ticked \u201c" + tick.value[tick.value.length - 1] + "\u201d. Both are highlighted in the note."
+      : "Added to \u201c" + sec.heading + "\u201d. It is highlighted in the note.");
   };
 
   const dismissBcbaQuestion = () => {
@@ -1788,7 +1821,7 @@ function App() {
     }
     if (sec.kind === "checklist") {
       return (v && v.length)
-        ? <Checklist options={tool.groupOptions[sec.group]} selected={v} />
+        ? <Checklist options={tool.groupOptions[sec.group]} selected={v} sectionId={id} />
         : <p style={{ fontSize: 13, color: "#9aab86", fontStyle: "italic" }}>{sec.emptyNote || "No options suggested - leave blank or review your notes."}</p>;
     }
     if (sec.kind === "table") {

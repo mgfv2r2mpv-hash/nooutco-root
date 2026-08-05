@@ -366,7 +366,7 @@ const SPLIT = {
   registers: { 'clinical-narrative': 'NARRATIVE-DELTA', 'technician-note': 'TECH-CARD' },
   stances: { 'clinical-narrative': 'STANCE', 'technician-note': 'STANCE' },
   obligations: { 'clinical-narrative': 'OBLIGATION', 'technician-note': 'RBT-OBLIGATION' },
-  opinions: { 'clinical-narrative': 'GUM-ENTRY', 'technician-note': 'SHOULD-NOT-REACH-BT' },
+  opinions: { 'clinical-narrative': 'GUM-ENTRY', 'technician-note': 'BT-CALL-ENTRY' },
   toolRegister: { sup: 'clinical-narrative', bt: 'technician-note' },
   toolLayers: { bt: ['stances', 'obligations'] },
 };
@@ -385,11 +385,18 @@ test.describe('per-tool layers', () => {
     expect(out).not.toContain('TECH-CARD');
   });
 
-  test('BT takes no opinions even when the caller asks', () => {
-    // Being on the allowlist is not the same as taking every layer.
-    const out = composeOpinions('SYSTEM', SPLIT, 'bt', { wantsRecommendation: true });
-    expect(out).toBe('SYSTEM');
-    expect(out).not.toContain('SHOULD-NOT-REACH-BT');
+  test('the BT note takes no opinions: nobody asked, and the technician signs it', () => {
+    expect(composeOpinions('SYSTEM', SPLIT, 'bt', {})).toBe('SYSTEM');
+    expect(composeOpinions('SYSTEM', SPLIT, 'bt', {})).not.toContain('BT-CALL-ENTRY');
+  });
+
+  test('a BT advice call takes them, because the answer is his', () => {
+    // The layer split governs the note. "What would you do here" is not a note.
+    const asked = { wantsRecommendation: true };
+    expect(composeOpinions('SYSTEM', SPLIT, 'bt', asked)).toContain('BT-CALL-ENTRY');
+    const out = composeVoice('SYSTEM', SPLIT, 'bt', asked);
+    expect(out).toContain('CORE-RULES');
+    expect(out).toContain('TECH-CARD');
   });
 
   test('a tool with no declared layers still takes all of them', () => {
@@ -400,5 +407,111 @@ test.describe('per-tool layers', () => {
     expect(out).toContain('STANCE');
     expect(out).toContain('OBLIGATION');
     expect(composeOpinions('SYSTEM', SPLIT, 'sup', { wantsRecommendation: true })).toContain('GUM-ENTRY');
+  });
+});
+
+/* An advisory call is him answering, not a document the technician signs.
+
+   His ruling of 2026-08-05: "'What would you do here' should draw on my clinical
+   voice, registers, the system's accumulated domain knowledge, and my opinions
+   to answer so that it isn't a canned answer but as close to a certified Bx
+   analyst answering as possible."
+
+   The per-tool layer split still governs every document. It stops governing the
+   moment the caller asks for a recommendation, because there is no note for his
+   habits to contaminate - there is only the answer, read by the person who asked. */
+test.describe('an advisory call takes the whole stack', () => {
+  const SPLIT = {
+    enabled: true,
+    core: 'CORE-RULES',
+    registers: { 'clinical-narrative': 'NARRATIVE-DELTA' },
+    stances: { 'clinical-narrative': 'STANCE-TEXT' },
+    obligations: { 'clinical-narrative': 'OBLIGATION-TEXT' },
+    opinions: { 'clinical-narrative': 'OPINION-TEXT' },
+    toolRegister: { bt: 'clinical-narrative' },
+    toolLayers: { bt: ['stances', 'obligations'] },
+  };
+
+  test('the note keeps the split: no voice card, no calls', () => {
+    const out = composeVoice('SYSTEM', SPLIT, 'bt');
+    expect(out).toContain('STANCE-TEXT');
+    expect(out).toContain('OBLIGATION-TEXT');
+    expect(out, 'his sentence habits do not belong in a note the technician signs').not.toContain('CORE-RULES');
+    expect(out).not.toContain('NARRATIVE-DELTA');
+    expect(composeOpinions('SYSTEM', SPLIT, 'bt', {})).toBe('SYSTEM');
+  });
+
+  test('the answer gets the voice card, the register, and the calls', () => {
+    const asked = { wantsRecommendation: true };
+    const out = composeVoice('SYSTEM', SPLIT, 'bt', asked);
+    expect(out, 'his clinical voice').toContain('CORE-RULES');
+    expect(out, 'the register he answers in').toContain('NARRATIVE-DELTA');
+    expect(out).toContain('STANCE-TEXT');
+    expect(out).toContain('OBLIGATION-TEXT');
+    expect(composeOpinions(out, SPLIT, 'bt', asked), 'his opinions').toContain('OPINION-TEXT');
+  });
+
+  test('the allowlist still decides: an unlisted tool gets nothing for asking', () => {
+    const asked = { wantsRecommendation: true };
+    expect(composeVoice('SYSTEM', SPLIT, 'sup', asked)).toBe('SYSTEM');
+    expect(composeOpinions('SYSTEM', SPLIT, 'sup', asked)).toBe('SYSTEM');
+  });
+});
+
+/* The advice register: BT writes in `technician-note`, which holds stances and
+   obligations and nothing else. The answer to a question is not that document,
+   so it moves onto the register he addresses staff in and the one his clinical
+   calls are filed under. */
+test.describe('the advice register', () => {
+  const ADV = {
+    enabled: true,
+    core: 'CORE-RULES',
+    registers: { 'technician-note': '', instructional: 'TEACHING-CARD', 'clinical-narrative': 'DOC-CARD' },
+    stances: { 'technician-note': 'SHARED-STANCE', instructional: 'SHARED-STANCE\n\nTEACHING-STANCE' },
+    obligations: { 'technician-note': 'RBT-CODE', instructional: 'TEACHING-DUTY' },
+    opinions: { 'clinical-narrative': 'HIS-CALLS', instructional: 'WRONG-CALLS' },
+    toolRegister: { bt: 'technician-note' },
+    toolLayers: { bt: ['stances', 'obligations'] },
+    toolAdvice: { bt: { register: 'instructional', opinions: 'clinical-narrative' } },
+  };
+  const asked = { wantsRecommendation: true };
+
+  test('the answer takes the teaching card, not the documentation one', () => {
+    const out = composeVoice('SYSTEM', ADV, 'bt', asked);
+    expect(out).toContain('TEACHING-CARD');
+    expect(out, 'a note card would make the answer read like a note').not.toContain('DOC-CARD');
+  });
+
+  test('the calls come from where his judgement is filed', () => {
+    const out = composeOpinions('SYSTEM', ADV, 'bt', asked);
+    expect(out).toContain('HIS-CALLS');
+    expect(out).not.toContain('WRONG-CALLS');
+  });
+
+  test('both registers bind: the code the asker works under, and how he answers', () => {
+    const out = composeVoice('SYSTEM', ADV, 'bt', asked);
+    expect(out, 'the RBT code binds whoever acts on the answer').toContain('RBT-CODE');
+    expect(out).toContain('TEACHING-DUTY');
+    expect(out).toContain('TEACHING-STANCE');
+  });
+
+  test('a stance the two registers share arrives once, not twice', () => {
+    const out = composeVoice('SYSTEM', ADV, 'bt', asked);
+    expect(out.match(/SHARED-STANCE/g)).toHaveLength(1);
+  });
+
+  test('the note ignores all of it', () => {
+    const out = composeVoice('SYSTEM', ADV, 'bt');
+    expect(out).not.toContain('TEACHING-CARD');
+    expect(out).not.toContain('TEACHING-STANCE');
+    expect(out).not.toContain('TEACHING-DUTY');
+    expect(out).toContain('SHARED-STANCE');
+    expect(out).toContain('RBT-CODE');
+  });
+
+  test('a tool with no advice entry is unaffected, asking or not', () => {
+    const plain = { ...ADV, toolAdvice: {} };
+    expect(composeVoice('SYSTEM', plain, 'bt', asked)).not.toContain('TEACHING-CARD');
+    expect(composeOpinions('SYSTEM', plain, 'bt', asked)).toBe('SYSTEM');
   });
 });

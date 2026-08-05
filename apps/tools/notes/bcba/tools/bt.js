@@ -391,6 +391,9 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
 
   window.NOTE_TOOLS.push({
     id: "bt",
+    // Who "What would you do here?" is answering. Every other tool is a BCBA
+    // asking a peer; this one is the technician asking the analyst above them.
+    asker: "behavior technician",
     label: "BT Session",
     title: "BT Direct Service Note Tool",
     subtitle: "Enter your session notes as free text. The tool drafts each clinical narrative and suggests which checkboxes to select on your EHR form.",
