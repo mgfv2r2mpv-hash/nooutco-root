@@ -180,3 +180,44 @@ test.describe('the assistant is not a target', () => {
     await expect(page.locator('.revision-chip')).toHaveCount(0);
   });
 });
+
+
+/* What the record says it is pointing at.
+ *
+ * Found on the first real use of the ticket path, issue #83: he clicked high in
+ * the tree and the stub recorded "◎💬AskBT Direct Service Note ToolEnter your
+ * session notes as free text. The tool drafts each clinical narrative and sugg"
+ * - the whole page, truncated mid-word, with the assistant's own chrome dragged
+ * in at the front. A stub that cannot say what it is about is not a stub.
+ */
+test.describe('the pointed-at label', () => {
+  const clickOn = (page, selector) => page.evaluate((sel) => {
+    const el = document.querySelector(sel);
+    el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  }, selector);
+
+  test('a container records what it is, not everything inside it', async ({ page }) => {
+    await drafted(page, 'admin');
+    await page.locator('.point-toggle').click();
+    // The element his click landed on, identified from the string the stub
+    // recorded: #root holds the assistant dock, the heading, the form and the
+    // note, and its textContent runs them all together.
+    await clickOn(page, '#root');
+
+    const chip = page.locator('.revision-chip');
+    await expect(chip).toBeVisible();
+    // The region it is, named once. Against the shipped build this read
+    // "5:00Edits are most useful when made promptly. ..." - a form control and
+    // a help line from two different parts of the page, run together.
+    await expect(chip).toContainText('BT Direct Service Note Tool');
+    expect(await chip.innerText(), 'a container label that needs truncating is a page dump')
+      .not.toMatch(/\u2026/);
+  });
+
+  test('an element with its own words still uses them', async ({ page }) => {
+    await drafted(page, 'admin');
+    await page.locator('.point-toggle').click();
+    await page.locator('h1').click();
+    await expect(page.locator('.revision-chip')).toContainText(/Note Tool/i);
+  });
+});

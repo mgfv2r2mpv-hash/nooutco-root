@@ -1925,10 +1925,23 @@ function App() {
       // Anything else is feedback about the page. Carry a short, readable
       // description rather than a selector: it is what the clinician sees, and
       // it is what makes the message make sense when read back later.
+      // A container's textContent is the whole page, which records nothing
+      // useful and drags the assistant's own chrome in with it. Take what the
+      // element itself says: its explicit label, then its own text nodes, then
+      // the first heading or control inside it.
+      const flat = (t) => (t || "").trim().replace(/\s+/g, " ");
+      const ownText = flat(Array.from(el.childNodes)
+        .filter((n) => n.nodeType === 3).map((n) => n.textContent).join(" "));
+      // Headings only. Any control inside a container would do: on a form-heavy
+      // page the first one is arbitrary, and "5:00" says less than nothing.
+      const heading = el.querySelectorAll
+        ? Array.from(el.querySelectorAll("h1, h2, h3")).find((n) => !n.closest(OURS))
+        : null;
       const label =
         (el.getAttribute && (el.getAttribute("aria-label") || el.getAttribute("title") || el.getAttribute("placeholder"))) ||
-        (el.textContent || "").trim().replace(/\s+/g, " ") ||
-        el.tagName.toLowerCase();
+        ownText ||
+        (heading ? flat(heading.textContent) : "") ||
+        (el.tagName.toLowerCase() + (el.id ? "#" + el.id : ""));
       targetSection({
         kind: "page",
         id: "page:" + (el.id || el.className || el.tagName.toLowerCase()),
