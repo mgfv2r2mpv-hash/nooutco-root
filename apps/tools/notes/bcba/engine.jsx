@@ -539,6 +539,7 @@ function freshSession(tool) {
     // Answering two of three questions used to send the note to drafting with
     // the third still open. These carry the exchange across rounds so the next
     // pass can ask about what is genuinely still missing.
+    bcbaOffer: "",         // a question for the BCBA the tool has offered to add
     triageAnswers: "",     // everything they have answered so far, scrubbed
     triageRound: 0,        // rounds asked; capped so this cannot become an interrogation
     // Changes a revision made OUTSIDE the section that was clicked, which the
@@ -943,6 +944,7 @@ function App() {
    * answered. And on a move, content left the source section and never arrived
    * at the destination, so a move silently became a delete. */
   const REVISION_RULES = [
+    `IF THE CLINICIAN SAYS THEY ARE UNSURE about something clinical - whether a behaviour counts, whether a program should change, whether something is worth reporting - do not guess and do not decide for them. Put a short question for the supervising BCBA in "bcbaQuestion", phrased the way the technician would ask it. Leave it empty otherwise. This is not for uncertainty about wording or formatting, only about clinical judgement.`,
     `IF THE MESSAGE IS A QUESTION rather than an instruction to change something, answer it in "answer" and return every other key EXACTLY as it currently stands. Do not edit the note to answer a question. "Should this go in the summary?" is a question. "Move this to the summary" is an instruction.`,
     `A MOVE HAS TWO HALVES AND YOU MUST DO BOTH. If content should move from one section to another, remove it from the source AND write it into the destination in the same reply, and list the destination in "crossSection". Never take content out of a section without putting it somewhere, unless the clinician explicitly asked for it to be deleted.`,
   ].join("\n");
@@ -1307,6 +1309,12 @@ function App() {
          note: the reply goes into the panel where the rest of the conversation
          lives. Checked before the changes are applied, because a model that
          answers AND edits should still not edit. */
+      /* Something they were unsure about, worth putting to the BCBA. Offered,
+         never applied: the technician decides whether it goes in their note.
+         It rides alongside an answer rather than replacing one, because "I do
+         not know either, shall we ask?" is a legitimate reply. */
+      const bcbaQuestion = String(normalized.bcbaQuestion || "").trim();
+
       const answer = String(normalized.answer || "").trim();
       if (answer) {
         patchS({
@@ -1315,8 +1323,10 @@ function App() {
         });
         audit("revision", { answered: 1, kind: ann ? ann.kind : "global" });
         pushThread("assistant", "answer", answer);
+        if (bcbaQuestion) patchS({ bcbaOffer: bcbaQuestion });
         return;
       }
+      if (bcbaQuestion) patchS({ bcbaOffer: bcbaQuestion });
 
       const carried = changes.filter((c) => c.id !== targetId);
       patchS({
@@ -1457,6 +1467,43 @@ function App() {
      Declining does NOT delete it. His ruling: rejected text stays in the
      conversation so it can be reused, which means the panel is where it lives
      rather than a variable nobody can reach. */
+  /* Accepting the offer puts the question in the note, in the section that
+     already exists to carry questions for the BCBA. It goes through the same
+     proposal and Accept/Discard path as any other change, so it is visible and
+     reversible rather than silently appended.
+
+     NOT ticked into Action Items for BCBA: that list is his EHR's closed set
+     and has no option meaning "the technician has a question". Forcing the
+     nearest one ("Contact staff") into a clinical record would be worse than
+     leaving it to normal inference. */
+  const FOLLOWUP_KEY = "followUpNarrative";
+
+  const takeBcbaQuestion = () => {
+    const q = (S.bcbaOffer || "").trim();
+    if (!q || !S.output) return;
+    const sec = tool.formSections.find((x) => x.key === FOLLOWUP_KEY);
+    if (!sec) { patchS({ bcbaOffer: "" }); return; }
+
+    const current = String(S.output[FOLLOWUP_KEY] || "").trim();
+    // A default "nothing to report" line is replaced rather than contradicted.
+    const isDefault = /^no new questions or concerns/i.test(current);
+    const next = (!current || isDefault) ? q : current + " " + q;
+
+    audit("revision", { bcba_question_added: 1 });
+    patchS((st) => ({
+      bcbaOffer: "",
+      proposal: st.proposal
+        ? { ...st.proposal, changes: [...st.proposal.changes, { id: FOLLOWUP_KEY, heading: sec.heading, kind: sec.kind, value: next, prev: st.output[FOLLOWUP_KEY] }] }
+        : { changes: [{ id: FOLLOWUP_KEY, heading: sec.heading, kind: sec.kind, value: next, prev: st.output[FOLLOWUP_KEY] }], hints: st.output?.hints || [], targetSectionId: FOLLOWUP_KEY, kind: "bcba" },
+    }));
+    pushThread("assistant", "status", "Added to \u201c" + sec.heading + "\u201d. It is highlighted in the note.");
+  };
+
+  const dismissBcbaQuestion = () => {
+    audit("revision", { bcba_question_declined: 1 });
+    patchS({ bcbaOffer: "" });
+  };
+
   const takeRoutedChange = (ask) => {
     audit("revision", { routed_accepted: 1 });
     patchS((s) => ({
@@ -1844,6 +1891,9 @@ function App() {
         pointMode={pointMode}
         onPointMode={setPointMode}
         pointScope={pointScope}
+        bcbaOffer={S.bcbaOffer}
+        onTakeBcba={takeBcbaQuestion}
+        onDismissBcba={dismissBcbaQuestion}
         routingAsks={S.routingAsks}
         onTakeRouted={takeRoutedChange}
         onLeaveRouted={leaveRoutedChange}

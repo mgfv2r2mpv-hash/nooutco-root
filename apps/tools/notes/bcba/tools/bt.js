@@ -206,6 +206,12 @@
           },
         },
       },
+      // Also optional. When the technician says they are unsure about something
+      // clinical, the tool offers to put the question to the BCBA rather than
+      // guessing an answer. His ruling: it goes in the note, because the note
+      // is already the channel to the BCBA and nothing new has to be built or
+      // monitored. Phrased as the technician would ask it, not as advice.
+      bcbaQuestion: str,
       // Not required either. A question is not an edit: when the clinician asks
       // something rather than instructing something, the answer goes here and
       // every other key comes back untouched. Before this, asking "does this
@@ -366,6 +372,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
     // pointed at. Validated against the same closed section list as hints, so a
     // fabricated section name cannot route a change anywhere.
     out.answer = typeof o.answer === "string" ? o.answer.slice(0, 1200) : "";
+    out.bcbaQuestion = typeof o.bcbaQuestion === "string" ? o.bcbaQuestion.slice(0, 300) : "";
     out.crossSection = Array.isArray(o.crossSection)
       ? o.crossSection
           .filter(function (c) {

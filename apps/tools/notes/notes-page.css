@@ -285,6 +285,32 @@ body {
 .routing-leave { border: 1.5px solid #e3c26a; background: transparent; color: #8a3b2c; }
 .routing-leave:hover { background: #fbeec4; }
 
+/* The offer to put a question to the BCBA. Sage rather than amber: this is a
+   suggestion worth taking, not a decision the technician has to adjudicate. */
+.bcba-offer {
+  border: 1.5px solid #c0d4a8;
+  background: #f0f5e8;
+  border-radius: 10px;
+  padding: 11px 13px;
+  margin: 4px 0 10px;
+}
+.bcba-offer-q { margin: 0 0 7px; font-size: 12.5px; font-weight: 700; color: #374528; line-height: 1.5; }
+.bcba-offer-preview {
+  margin: 0 0 9px; padding: 8px 10px;
+  background: white; border: 1px solid #ddecd0; border-radius: 7px;
+  font-size: 12.5px; line-height: 1.5; color: #2d3a1f;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.bcba-offer-actions { display: flex; gap: 7px; flex-wrap: wrap; }
+.bcba-take, .bcba-leave {
+  flex: 1 1 auto; padding: 8px 12px; border-radius: 8px;
+  font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+}
+.bcba-take { border: none; background: #374528; color: white; }
+.bcba-take:hover { background: #2d3a1f; }
+.bcba-leave { border: 1.5px solid #c0d4a8; background: transparent; color: #5a6b4a; }
+.bcba-leave:hover { background: #e8efdd; }
+
 .revision-panel-foot {
   flex-shrink: 0;
   padding: 10px 14px 12px;
