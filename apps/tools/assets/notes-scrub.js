@@ -591,9 +591,26 @@
     }
     hl.className = "phi-hl-layer";
 
+    // Moving a node in the DOM blurs it. This runs on a timer that is not
+    // synchronised with anything the clinician is doing, so it can land while
+    // someone is already typing - and then their focus, their caret and the
+    // keystrokes that follow all go to the body instead of the note. Record
+    // where the caret was, move the textarea, and put both back.
+    var hadFocus = document.activeElement === ta;
+    var selStart = ta.selectionStart;
+    var selEnd = ta.selectionEnd;
+    var selDir = ta.selectionDirection;
+
     parent.insertBefore(wrapper, ta);
     wrapper.appendChild(hl);
     wrapper.appendChild(ta);
+
+    if (hadFocus) {
+      // preventScroll because the field was already on screen - refocusing it
+      // must not jolt the page under the clinician mid-sentence.
+      try { ta.focus({ preventScroll: true }); } catch (e) { ta.focus(); }
+      try { ta.setSelectionRange(selStart, selEnd, selDir); } catch (e) {}
+    }
 
     // Clone computed style AFTER inserting so getComputedStyle is accurate.
     _applyComputedStyle(ta, hl);
