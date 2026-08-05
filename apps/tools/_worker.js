@@ -1075,9 +1075,9 @@ export function composeOpinions(system, block, tool, opts) {
   return `${system}\n\n${OPINIONS_HEADER}\n\n${entries}`;
 }
 
-// Admin-only: read back what is live, so it can be verified without wrangler.
-// Publishing is deliberately NOT an endpoint - it goes through
-// `wrangler kv key put`, so this Worker has no write path to its own voice.
+// Admin-only, read-only: check what is live without reaching for wrangler.
+// Publishing goes through `wrangler kv key put`, so this Worker has no write
+// path to its own voice.
 async function handleVoiceBlockRead(request, env) {
   const secret = (env.ADMIN_SECRET ?? "").trim();
   const auth = request.headers.get("Authorization") || "";
@@ -1595,10 +1595,10 @@ async function handleProfileAdmin(request, env, url) {
  * noticed something, not a specification, and dressing it up as one would make
  * every issue in the tracker untrustworthy.
  *
- * NEEDS A CREDENTIAL THAT DOES NOT EXIST YET. GITHUB_TOKEN must be a
- * fine-grained token with Issues: write on this repository, set as a Pages
- * secret. Until it is, this route says so plainly rather than failing silently
- * or pretending to have filed something.
+ * NEEDS A CREDENTIAL. GITHUB_ISSUE_TOKEN must be a fine-grained token with
+ * Issues: write on this repository and nothing else, set as a Pages secret.
+ * Until it is, this route says so plainly rather than failing silently or
+ * pretending to have filed something.
  */
 const TICKET_REPO = "mgfv2r2mpv-hash/nooutco-root";
 
@@ -1616,13 +1616,13 @@ async function handleTicket(request, env) {
   const note = String(body?.note || "").trim();
   if (note.length < 5) return jsonRes(400, { error: "Nothing to file." });
 
-  const token = (env.GITHUB_TOKEN ?? "").trim();
+  const token = (env.GITHUB_ISSUE_TOKEN ?? "").trim();
   if (!token) {
     // Named, not swallowed. An admin who thinks they filed a ticket and did
     // not is worse off than one told the wiring is missing.
     return jsonRes(503, {
       error: "No GitHub token is configured, so nothing was filed.",
-      reason: "no_github_token",
+      reason: "no_issue_token",
     });
   }
 
