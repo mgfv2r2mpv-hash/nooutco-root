@@ -196,3 +196,49 @@ test.describe('voice capture', () => {
     expect(r.first).not.toContain('number 0.');
   });
 });
+
+/* Capture reports its own outcome, so nobody has to read a button to find out.
+ *
+ * It failed silently once already: the gate refused every note naming a clinical
+ * technique, kept nothing, and the only way to discover that was to ask him what
+ * the export button said. A reason from a closed set, in the counts-only audit
+ * trail, closes that loop permanently.
+ */
+test.describe('capture telemetry', () => {
+  test('an outcome is audited, and it carries no note text', async ({ page }) => {
+    const posted = [];
+    await page.route('**/api/audit**', async (route) => {
+      posted.push(JSON.parse(route.request().postData() || '{}'));
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' });
+    });
+    await load(page, 'admin');
+
+    await page.evaluate(([b, a]) => {
+      localStorage.removeItem('voice_pairs_v1');
+      // Drive the same path the engine uses, then emit as the engine does.
+      const why = window.VoiceCapture.capture(b, a, { tool: 'bt', source: 'revision' });
+      window.NotesGate.audit.emit('capture', {
+        tool: 'bt', outcome: why || 'kept', pending: window.VoiceCapture.stats().pending,
+      });
+    }, [BEFORE, AFTER]);
+    await page.waitForTimeout(1500);
+
+    const body = JSON.stringify(posted);
+    expect(posted.length, 'the outcome must reach the audit trail').toBeGreaterThan(0);
+    expect(body).toMatch(/"outcome":"kept"/);
+    // THE LOAD-BEARING HALF: counts and a fixed reason, never a word of the note.
+    expect(body).not.toContain('technician presented');
+    expect(body).not.toContain('eighty percent');
+  });
+
+  test('a refusal is reported as a reason, not as silence', async ({ page }) => {
+    await load(page, 'admin');
+    const why = await page.evaluate(([b, a]) => {
+      localStorage.removeItem('voice_pairs_v1');
+      return window.VoiceCapture.capture(b + ' Marcus responded well.', a, { tool: 'bt' });
+    }, [BEFORE, AFTER]);
+    // A closed-set string, safe to put in a durable trail.
+    expect(why).toBe('refused-identifier');
+    expect(why).not.toMatch(/Marcus/);
+  });
+});

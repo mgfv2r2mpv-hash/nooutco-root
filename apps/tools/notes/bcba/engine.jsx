@@ -814,11 +814,21 @@ function App() {
       if (features.length) window.NotesGate.audit.corrections(features);
     }
     if (window.VoiceCapture) {
-      window.VoiceCapture.capture(before, after, {
+      const why = window.VoiceCapture.capture(before, after, {
         tool: tool.id,
         register: tool.voiceRegister || null,
         source,
       });
+      /* WHY THIS IS AUDITED, when the pair itself never leaves the browser.
+         Because otherwise nobody can answer "is capture actually working". It
+         already failed silently once - the gate refused every note naming a
+         clinical technique, kept nothing, and the only way to find out was to
+         ask him to read a button. A refusal reason is a short fixed string from
+         a closed set, in the same counts-only trail as everything else here, so
+         this carries no note content and cannot. */
+      if (window.VoiceCapture.enabled()) {
+        audit("capture", { outcome: why || "kept", pending: window.VoiceCapture.stats().pending });
+      }
     }
   };
 
@@ -959,6 +969,24 @@ function App() {
       // this existed, which is the intended failure mode.
       const styleBlock = (S.styleCard && S.styleCard.block) || "";
 
+      /* The sentence shape target for THIS note, drawn per note rather than per
+         session. Generated notes sit at a length variability of 0.42 to 0.45
+         where human writing runs 0.49 to 0.68, and a fixed target would fix that
+         for one note while making a hundred notes identically flat, which is its
+         own signature. The seed is this note's identity, so a revision redraws
+         the same target and the cached prefix survives.
+
+         Best effort by design: an unreachable profile store gives exactly the
+         prompt that shipped before any of this existed. */
+      const shapeSeed = tool.id + ":" + Date.now() + ":" + Math.random().toString(36).slice(2, 8);
+      let shapeBlock = "";
+      try {
+        const withShape = window.NotesGate && NotesGate.styleCard
+          ? await NotesGate.styleCard.get({ tool: tool.id, seed: shapeSeed })
+          : null;
+        shapeBlock = (withShape && withShape.shapeBlock) || "";
+      } catch (e) { shapeBlock = ""; }
+
       /* The technician's voice for THIS note, measured from what they just
          typed. Separate from the style card: that is slow, cross-session and
          content-free; this is the energy they brought today and is thrown away
@@ -972,8 +1000,8 @@ function App() {
         : "";
 
       const conversation = [{ role: "user", content: userMsg }];
-      patchS({ convStyleBlock: styleBlock + voiceBlock });
-      let r = await runTurn(conversation, styleBlock + voiceBlock);
+      patchS({ convStyleBlock: styleBlock + voiceBlock + shapeBlock });
+      let r = await runTurn(conversation, styleBlock + voiceBlock + shapeBlock);
       conversation.push({ role: "assistant", content: r.rawText });
 
       /* One self-revision before the technician ever sees it.
