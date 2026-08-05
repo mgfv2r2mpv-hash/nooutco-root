@@ -49,10 +49,36 @@
     "So: any sentence range given below is a CEILING, never a target. Thin input earns a short note, and a short honest note is correct output, not a failure. Do not restate what the form's own checkboxes already record. Do not add a closing sentence that summarises what the preceding sentences already said. If a detail was not given to you, leave the gap rather than smoothing over it, and emit the hint instead.",
   ].join("\n");
 
+
+  /* What a session record is FOR, and what to cut when there is too much.
+     The field requirement is observable events. But real notes are not written
+     by a machine applying that rule perfectly, and the maintainer's example is
+     the useful one: "he approached staff and was happy" survives in real notes
+     without anyone operationally defining happy. Smiling, laughing, or simply
+     approaching unprompted, the reader supplies it.
+
+     So the rule is an ORDER, not a ban. Staff opinion, causal claims and
+     clinical hypotheses come out first, because those are genuinely wrong in a
+     record and a supervisor has to unpick them. A light judgment attached to
+     something that was actually seen stays, because stripping it produces prose
+     no technician wrote. */
+  var SESSION_RECORD = [
+    "",
+    "WHAT THIS RECORD IS FOR. A session note documents observable events. That is a field requirement, not a style preference.",
+    "CUT THESE FIRST, in this order, whenever there is more material than the note needs:",
+    "* Staff opinion about the client, the family, or the program.",
+    "* Claims about WHY a behavior happened. A session note records what occurred and what staff did, never the cause.",
+    "* Clinical hypotheses. Function, motivation and diagnosis belong to the BCBA's analysis, not to a technician's record of a session.",
+    "* Anything a checkbox on the form already records.",
+    "KEEP A LIGHT JUDGMENT WHERE IT SITS ON SOMETHING SEEN. 'He approached staff and was happy' is how these notes are actually written. Do not manufacture an operational definition for a word like that, and do not strip it either. Rewriting it into 'demonstrated positive affect as evidenced by' is worse on both counts: it is not more observable and no technician writes that way.",
+    "The test is whether a word is doing work the observation cannot. 'Happy' beside an approach is shorthand for what was seen. 'Frustrated because the demand was too hard' is a cause, and the second half comes out.",
+  ].join("\n");
+
   window.NoteRegisterRules = {
     constructions: CONSTRUCTIONS,
     tired: TIRED_REGISTER,
     // Everything a session note tool wants, in the order it should be read.
-    sessionNote: CONSTRUCTIONS + "\n" + TIRED_REGISTER,
+    sessionRecord: SESSION_RECORD,
+    sessionNote: CONSTRUCTIONS + "\n" + TIRED_REGISTER + "\n" + SESSION_RECORD,
   };
 })();

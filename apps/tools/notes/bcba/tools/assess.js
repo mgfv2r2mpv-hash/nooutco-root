@@ -51,7 +51,7 @@ TERMINOLOGY (non-negotiable)\n\
 - Reinforcement is contingent on behavior. Never \"[person] was reinforced.\"\n\
 - Precise verbs: administered [instrument], conducted a preference assessment, conducted FBA/FA, ran probes, established baseline, observed, interviewed, scored, identified function.\n\
 - Name instruments specifically (VB-MAPP, AFLS, Vineland-3, MSWO, indirect FA). No generic phrases like \"assessment was conducted.\"\n\
-- Objective, observable language - no value-laden phrasing.";
+- Objective, observable language. Cut staff opinion, causal claims and clinical hypotheses. A light judgment sitting on something actually seen is not value-laden phrasing and stays as written.";
 
   // Additive hint instructions, the core prompt above matches the standalone page.
   var HINTS_BLOCK = "\n\nHINTS: also return a \"hints\" array of {section, code, detail} objects flagging ONLY missing or ambiguous standard elements (max 3; empty [] when the note stands on its own). section is one of: " + SECTION_IDS.join(", ") + ". code is one of: thin_section (the narrative lacks the specifics the form expects), ambiguous_item (detail = what needs clarifying, 10 words max), other (detail = the question). Never fabricate to avoid a hint.";

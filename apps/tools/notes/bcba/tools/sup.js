@@ -95,7 +95,7 @@ TERMINOLOGY (non-negotiable)\n\
 - Reinforcement is contingent on behavior. Never write that a person \"was reinforced.\" Write \"[behavior] was reinforced\" or \"reinforcement was delivered contingent on [behavior].\" For staff: \"performance feedback was delivered,\" \"the BT contacted reinforcement for [specific behavior].\"\n\
 - Precise verbs: prompted, faded, modeled, shaped, chained, redirected, blocked, delivered/withheld reinforcement, presented the SD, provided BST, gave performance feedback, conducted IOA.\n\
 - Name prompt types and procedures specifically. No loose synonyms (rewarded, encouraged, motivated).\n\
-- Objective, observable language - no value-laden phrasing.";
+- Objective, observable language. Cut staff opinion, causal claims and clinical hypotheses. A light judgment sitting on something actually seen is not value-laden phrasing and stays as written.";
 
   var JSON_FORMAT_BLOCK = "\n\nOUTPUT FORMAT\nReturn ONLY a single JSON object. No markdown, no preamble. Use EXACTLY these keys. \"sessionChecks\" holds verbatim option labels (empty [] if none); \"goalsAnalyzed\" is an array of row objects (empty [] if no goals identifiable); \"overallProgress\" and \"reviewedNotes\" are one verbatim allowed value or \"\"; narratives are strings per the section specifications; \"hints\" is the hint array (empty [] if none).\n{\n  \"sessionChecks\": [],\n  \"goalsAnalyzed\": [{ \"goal\": \"\", \"progress\": \"\", \"nextSteps\": \"\" }],\n  \"overallProgress\": \"\",\n  \"progress\": \"\",\n  \"programming\": \"\",\n  \"behavior\": \"\",\n  \"feedback\": \"\",\n  \"reviewedNotes\": \"\",\n  \"followup\": \"\",\n  \"hints\": [{ \"section\": \"\", \"code\": \"\", \"detail\": \"\" }]\n}";
 

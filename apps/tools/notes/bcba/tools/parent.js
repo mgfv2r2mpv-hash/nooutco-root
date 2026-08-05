@@ -66,7 +66,7 @@ TERMINOLOGY (non-negotiable)\n\
 - Reinforcement is contingent on behavior. Never \"[person] was reinforced.\" Write \"[behavior] was reinforced,\" \"reinforcement was delivered contingent on [behavior],\" or for caregivers: \"the caregiver was praised for [specific implementation behavior]\" or \"performance feedback was delivered.\"\n\
 - Precise verbs: prompted, faded, modeled, shaped, chained, redirected, blocked, provided BST, gave performance feedback.\n\
 - Name procedures specifically (partial verbal prompt, errorless teaching, DRO, BST). No loose synonyms (rewarded, encouraged, motivated).\n\
-- Objective, observable language - no value-laden phrasing.";
+- Objective, observable language. Cut staff opinion, causal claims and clinical hypotheses. A light judgment sitting on something actually seen is not value-laden phrasing and stays as written.";
 
   // Additive hint instructions, the core prompt above matches the standalone page.
   var HINTS_BLOCK = "\n\nHINTS: also return a \"hints\" array of {section, code, detail} objects flagging ONLY missing or ambiguous standard elements (max 3; empty [] when the note stands on its own). section is one of: " + SECTION_IDS.join(", ") + ". code is one of: thin_section (a narrative lacks the specifics the form expects), ambiguous_item (detail = what needs clarifying, 10 words max), other (detail = the question). Never fabricate to avoid a hint.";
