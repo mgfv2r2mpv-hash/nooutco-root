@@ -1410,14 +1410,22 @@ function App() {
     patchS({ panelDraft: "" });
     pushThread("user", "answer", text);
 
-    /* Pointed at the page rather than the note, as an admin. That is feedback
-       about the tool, and sending it to the note model would produce a revision
-       nobody asked for. Offer to file it instead. */
-    if (pointScope === "page" && S.annotation && S.annotation.kind === "page") {
-      const target = S.annotation.text || "";
+    /* Feedback about the tool rather than about the note. Sending it to the note
+       model would produce a revision nobody asked for, so it offers to file it.
+
+       Two ways to land here. Pointing at page furniture says it by where you
+       clicked. Saying "stub" says it in words, for the case his ruling names:
+       "when it can't tell if I am giving feedback on the page or the content."
+       The word wins wherever it appears, including on a section he pointed at,
+       because a guess about intent is exactly what the keyword exists to end. */
+    const saysStub = /\bstubs?\b/i.test(text);
+    const pointedAtPage = !!(S.annotation && S.annotation.kind === "page");
+    if (pointScope === "page" && (saysStub || pointedAtPage)) {
+      const target = (S.annotation && (S.annotation.text || S.annotation.heading)) || "";
       patchS({ annotation: null, ticketOffer: { note: text, target } });
-      pushThread("assistant", "status",
-        "That reads as feedback about the tool rather than the note. Want it filed as a stub you can grill later?");
+      pushThread("assistant", "status", pointedAtPage
+        ? "That reads as feedback about the tool rather than the note. Want it filed as a stub you can grill later?"
+        : "You said stub, so I am reading that as feedback about the tool rather than a change to the note. File it?");
       return;
     }
     if (S.questions && S.questions.length) {
