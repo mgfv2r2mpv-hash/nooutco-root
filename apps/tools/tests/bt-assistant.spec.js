@@ -166,6 +166,8 @@ test.describe('triage questions before drafting', () => {
           questions: [{ field: 'fBehavior', question: 'You mentioned elopement - how many times?' }],
         }));
       }
+      // Every later call gets a note. The follow-up triage reads that as
+      // "nothing still missing" and drafts, which is the path under test here.
       return route.fulfill(reply(note()));
     });
 
@@ -184,8 +186,12 @@ test.describe('triage questions before drafting', () => {
     await page.locator('.revision-send').click();
     await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 15000 });
 
-    expect(posted).toHaveLength(2);
-    const noteCall = posted[1];
+    // Answering now re-runs triage with the answer folded in, so there is a
+    // second triage call before the note. That is the point of it: someone
+    // answers two of three and the third only becomes answerable afterwards.
+    // What matters is the note call, which is the last one.
+    expect(posted.length).toBeGreaterThanOrEqual(2);
+    const noteCall = posted[posted.length - 1];
     // The answer rides in the FIRST user message, so the conversation stays one
     // linear prefix and every later revision hits the same cached prefix.
     expect(noteCall.messages).toHaveLength(1);

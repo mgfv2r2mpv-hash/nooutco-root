@@ -536,6 +536,11 @@ function freshSession(tool) {
     panelDraft: "",
     questions: null,       // triage questions awaiting an answer, or null
     pendingValues: null,   // scrubbed values held while triage runs
+    // Answering two of three questions used to send the note to drafting with
+    // the third still open. These carry the exchange across rounds so the next
+    // pass can ask about what is genuinely still missing.
+    triageAnswers: "",     // everything they have answered so far, scrubbed
+    triageRound: 0,        // rounds asked; capped so this cannot become an interrogation
     // Changes a revision made OUTSIDE the section that was clicked, which the
     // model was not confident belonged there. Held here rather than applied, so
     // nothing is lost and nothing lands where it was not asked for.
@@ -876,11 +881,24 @@ function App() {
   // session (a SAP is a program plan, with no counts and no "this session")
   // overrides both halves, because asking a plan how many times a behavior
   // occurred is worse than asking nothing.
-  const runTriage = async (scrubbed) => {
-    const body = tool.inputs
+  /* Up to three rounds. His note: the model need not give up after one,
+     because a technician often answers two of three and the third only becomes
+     answerable once the first two are on the table. The cap exists so this
+     cannot turn into an interrogation, and the skip button is on screen the
+     whole time. */
+  const MAX_TRIAGE_ROUNDS = 3;
+
+  const runTriage = async (scrubbed, priorAnswers) => {
+    let body = tool.inputs
       .filter((f) => f.type === "textarea")
       .map((f) => `[${f.label}]${f.required ? " (required)" : ""}\n${(scrubbed[f.id] || "").trim() || "(empty)"}`)
       .join("\n\n");
+    if (priorAnswers && priorAnswers.trim()) {
+      body += "\n\n[ALREADY ANSWERED BY THE CLINICIAN]\n" + priorAnswers.trim() +
+        "\n\nTreat everything above as part of their notes. Ask ONLY about what is still genuinely missing. " +
+        "Never re-ask something they have answered, and never rephrase an answered question. " +
+        "If nothing important is still missing, return sufficient: true.";
+    }
     const r = await NotesGate.generateConversation({
       system: tool.triageSystem || TRIAGE_SYSTEM,
       messages: [{ role: "user", content: (tool.triageIntro || "CLINICIAN'S RAW NOTES:") + "\n\n" + body }],
@@ -1095,8 +1113,8 @@ function App() {
     }
     if (questions.length) {
       setLoading(false);
-      audit("gap_questions", { asked: questions.length });
-      patchS({ questions, pendingValues: scrubbed });
+      audit("gap_questions", { asked: questions.length, round: 1 });
+      patchS({ questions, pendingValues: scrubbed, triageAnswers: "", triageRound: 1 });
       return;
     }
     audit("gap_questions", { asked: 0 });
@@ -1104,9 +1122,13 @@ function App() {
   };
 
   const skipQuestions = () => {
-    audit("gap_questions", { skipped: (S.questions || []).length });
+    audit("gap_questions", { skipped: (S.questions || []).length, round: S.triageRound || 1 });
     pushThread("user", "answer", "(skipped)");
-    draftNote(S.pendingValues || scrubValues([]), "");
+    // Anything they answered in an earlier round still counts. Dropping it
+    // because they skipped the last question would throw away work they did.
+    const answered = S.triageAnswers || "";
+    patchS({ triageAnswers: "", triageRound: 0 });
+    draftNote(S.pendingValues || scrubValues([]), answered);
   };
 
   /* ── Revisions ────────────────────────────────────────────────────────
@@ -1351,8 +1373,33 @@ function App() {
     if (S.questions && S.questions.length) {
       const review = await scrubGate(text);
       if (!review) return;
-      audit("gap_questions", { answered: S.questions.length });
-      await draftNote(S.pendingValues, NotesScrub.applyMap(text, review.map));
+      audit("gap_questions", { answered: S.questions.length, round: S.triageRound || 1 });
+
+      const answered = [S.triageAnswers, NotesScrub.applyMap(text, review.map)]
+        .filter((x) => x && x.trim()).join("\n");
+      const round = (S.triageRound || 1) + 1;
+
+      // Ask again only while there is room, and only if something is genuinely
+      // still missing. A round that comes back empty drafts immediately.
+      if (round <= MAX_TRIAGE_ROUNDS) {
+        setLoading(true);
+        let more = [];
+        try {
+          more = await runTriage(S.pendingValues, answered);
+        } catch (e) {
+          // Triage is an assist, not a gate. Losing a follow-up question is a
+          // far smaller harm than refusing to draft.
+          reportError(tool.id, e);
+        }
+        setLoading(false);
+        if (more.length) {
+          audit("gap_questions", { asked: more.length, round });
+          patchS({ questions: more, triageAnswers: answered, triageRound: round });
+          return;
+        }
+      }
+      patchS({ triageAnswers: "", triageRound: 0 });
+      await draftNote(S.pendingValues, answered);
       return;
     }
     if (!S.output) {
