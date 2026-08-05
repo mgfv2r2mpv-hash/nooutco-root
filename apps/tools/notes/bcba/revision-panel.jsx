@@ -106,9 +106,68 @@ function Bubble({ role, children, muted }) {
   );
 }
 
+
+/* ── Skipping the gap questions costs a moment ─────────────────────────────
+   His idea, 2026-08-05, after the audit trail showed something worth acting on:
+   two technicians, 22 sessions, ten gap-question rounds, and ZERO revisions ever
+   made. They generate and copy. The questions are the one moment the session is
+   still in their head, and skipping them is currently one frictionless click.
+
+   So the escape stays, and it costs a few seconds. The bar drains, then the
+   button works. This is deliberately a delay and NOT a block: the engine's own
+   comment says a tired technician at 7pm with eight notes left must never be
+   trapped behind a question, and that is still right. A wait they can watch end
+   is not a trap; a wait with no exit would be.
+
+   The duration is passed in rather than fixed here, because his next step is to
+   scale it - the closer the note is to ready, the shorter the drain - and that
+   judgement belongs to whatever can see the note, not to a button. */
+function SkipAfterCooldown({ seconds, onSkip, loading }) {
+  const total = Math.max(0, Number(seconds) || 0);
+  const [left, setLeft] = React.useState(total);
+
+  React.useEffect(() => {
+    setLeft(total);
+    if (!total) return;
+    // Wall-clock, not a tick counter: a backgrounded tab throttles timers, and
+    // counting ticks would make the wait longer for someone who looked away.
+    const started = Date.now();
+    const id = setInterval(() => {
+      const remaining = Math.max(0, total - Math.round((Date.now() - started) / 1000));
+      setLeft(remaining);
+      if (remaining <= 0) clearInterval(id);
+    }, 250);
+    return () => clearInterval(id);
+  }, [total]);
+
+  const ready = left <= 0;
+  const pct = total ? ((total - left) / total) * 100 : 100;
+
+  return (
+    <div className="skip-cooldown">
+      <button
+        type="button"
+        onClick={onSkip}
+        disabled={loading || !ready}
+        className="revision-skip"
+        title={ready
+          ? "Generate without answering these"
+          : "Have a look at the questions first. This unlocks in a moment."}
+      >
+        {ready ? "Nothing to add - generate anyway" : `Nothing to add (${left}s)`}
+      </button>
+      {!ready && (
+        <div className="skip-cooldown-bar" aria-hidden="true">
+          <span style={{ width: pct + "%" }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RevisionPanel({
   open, onToggle, thread, annotation, onClearAnnotation,
-  draft, onDraft, onSend, onAskAdvice, canAsk, onExportPairs, pairCount, loading, questions, onSkipQuestions, unread, quality,
+  draft, onDraft, onSend, onAskAdvice, canAsk, onExportPairs, pairCount, loading, questions, onSkipQuestions, skipCooldown, unread, quality,
   loggedIn,
   intro,
   routingAsks, onTakeRouted, onLeaveRouted,
@@ -345,14 +404,11 @@ function RevisionPanel({
             {questions.map((q, i) => (
               <Bubble key={i} role="assistant">{q.question}</Bubble>
             ))}
-            <button
-              type="button"
-              onClick={onSkipQuestions}
-              disabled={loading}
-              className="revision-skip"
-            >
-              Nothing to add - generate anyway
-            </button>
+            <SkipAfterCooldown
+              seconds={skipCooldown}
+              onSkip={onSkipQuestions}
+              loading={loading}
+            />
           </div>
         )}
         {loading && <Bubble role="assistant" muted>Working…</Bubble>}

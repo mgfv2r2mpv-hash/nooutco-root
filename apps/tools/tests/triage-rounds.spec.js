@@ -177,3 +177,51 @@ test.describe('it asks again when something is still missing', () => {
     await expect(page.locator('.revision-panel-body')).toContainText('twice, in the money program');
   });
 });
+
+// The wait is per tool, and the split is the point.
+//
+// He asked for the skip button to cost a few seconds when the draft is thin,
+// after the audit trail showed ten gap-question rounds against zero revisions
+// ever on bt. That price is aimed at a technician learning what a note needs.
+// The drafters a BCBA runs are the same code path, and charging the clinician
+// who wrote the questions' subject matter would be friction with nothing on the
+// other side. So bt waits and the rest do not.
+test.describe('the skip cooldown is scoped to the tool that needs it', () => {
+  const supToken = () => {
+    const p = { role: 'user', kid: 'test-kid', exp: Math.floor(Date.now() / 1000) + 3600, tools: ['sup'] };
+    return Buffer.from(JSON.stringify(p)).toString('base64')
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') + '.not-a-real-signature';
+  };
+
+  test('a BCBA drafter still skips on the first click', async ({ page }) => {
+    await page.route('**/api/llm-call**', (route) => route.fulfill(reply({
+      sufficient: false,
+      questions: [{ field: 'fNarrative', question: 'How long was the observation?' }],
+    })));
+
+    await page.goto('/notes/bcba/index.html?tool=sup');
+    await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), supToken());
+    await page.goto('/notes/bcba/index.html?tool=sup');
+
+    await page.getByRole('button', { name: 'Yes' }).click();
+    await page.getByRole('textbox', { name: /Session Notes \/ Clinical Observations/i }).fill(
+      'Observed the BT run three DTT programs. Prompt fading was late on two of them.');
+    await page.getByRole('button', { name: 'Generate Note' }).click();
+
+    // Same two-modal scrub gate as the bt flow: a once-per-load acknowledgement,
+    // then a name review only when the detector finds candidates.
+    const ack = page.locator('#notes-ack-go');
+    if (await ack.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await page.locator('#notes-ack-cb').check();
+      await ack.click();
+    }
+    const rev = page.locator('#notes-scrub-go');
+    if (await rev.isVisible({ timeout: 1500 }).catch(() => false)) await rev.click();
+
+    const skip = page.getByRole('button', { name: /Nothing to add/i });
+    await expect(skip).toBeVisible({ timeout: 15000 });
+    await expect(skip).toBeEnabled();
+    await expect(skip).toHaveText(/generate anyway/i);
+    await expect(page.locator('.skip-cooldown-bar')).toHaveCount(0);
+  });
+});

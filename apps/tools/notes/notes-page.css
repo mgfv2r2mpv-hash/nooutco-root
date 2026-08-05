@@ -245,6 +245,25 @@ body {
 .revision-skip:hover:not(:disabled) { background: #f7e6b8; border-color: #c9962a; }
 .revision-skip:disabled { opacity: 0.55; cursor: not-allowed; }
 
+/* The bar under the skip button while it is counting down. This state is
+   deliberately NOT the flat 0.55 "unavailable" look above: the button is
+   working exactly as intended, so it should read as a moment passing rather
+   than as something broken. The drain is a plain width transition so it stays
+   on the compositor and keeps running if the tab is busy generating. */
+.skip-cooldown .revision-skip:disabled { opacity: 1; color: #9a7b3d; background: #fdf6e0; border-color: #ecdca6; }
+.skip-cooldown-bar {
+  height: 3px; margin-top: 5px; border-radius: 2px;
+  background: #f0e3bb; overflow: hidden;
+}
+.skip-cooldown-bar > span {
+  display: block; height: 100%; border-radius: 2px;
+  background: #c9962a;
+  transition: width 260ms linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skip-cooldown-bar > span { transition: none; }
+}
+
 /* A revision that reached past the section that was clicked, held rather than
    applied. Amber for the same reason the skip button is amber: this is a call
    the clinician has to make, not a failure and not a warning. */
