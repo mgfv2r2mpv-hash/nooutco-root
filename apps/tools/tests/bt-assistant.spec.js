@@ -148,7 +148,14 @@ test.describe('BT tool on the shared engine', () => {
     // ...but a default is not content, so Clear must stay hidden.
     await expect(page.getByRole('button', { name: 'Clear' })).toHaveCount(0);
 
-    await page.getByRole('textbox', { name: /Session Start/i }).fill('arrived tired');
+    // Typing is what makes it content. Confirm the text actually landed before
+    // reading anything into Clear: the PHI highlight overlay used to wrap this
+    // textarea mid-fill and swallow the keystrokes, and that showed up here as
+    // a missing Clear button rather than as the empty field it really was.
+    const sessionStart = page.getByRole('textbox', { name: /Session Start/i });
+    await sessionStart.fill('arrived tired');
+    await expect(sessionStart).toHaveValue('arrived tired');
+
     await expect(page.getByRole('button', { name: 'Clear' })).toBeVisible();
   });
 });
