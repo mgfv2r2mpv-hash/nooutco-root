@@ -1485,6 +1485,14 @@ function App() {
      proposal and Accept/Discard path as any other change, so it is visible and
      reversible rather than silently appended.
 
+     IT IS NEVER TRANSMITTED. Not to the maintainer, not by email, not through
+     any route. It becomes text in the note the technician copies into their
+     EHR, and whichever BCBA supervises them reads it there. His correction on
+     2026-08-04: "this goes in the text for them to copy (note output). but is
+     not sent to me in the system. eventually there may be other bcbas' bts
+     using this so it shouldn't come to me at all in that case." Anything that
+     routed this to a person would break the moment a second BCBA exists.
+
      NOT ticked into Action Items for BCBA: that list is his EHR's closed set
      and has no option meaning "the technician has a question". Forcing the
      nearest one ("Contact staff") into a clinical record would be worse than
