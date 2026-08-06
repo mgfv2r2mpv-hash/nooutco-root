@@ -144,7 +144,7 @@ test.describe('session record focus', () => {
    * contradicted the second half. */
   const SESSION_TOOLS = ['sup', 'assess', 'parent'];
 
-  test('the cut order is stated, opinion and causation before anything else', async ({ page }) => {
+  test('removal and flagging are separate lists, not one cut order', async ({ page }) => {
     await page.goto('/notes/bcba/index.html?tool=sup');
     await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
 
@@ -159,9 +159,49 @@ test.describe('session record focus', () => {
 
     for (const id of SESSION_TOOLS) {
       expect(prompts[id], `${id} did not load`).toBeTruthy();
-      expect(prompts[id], `${id} does not say what to cut first`).toMatch(/CUT THESE FIRST/);
-      expect(prompts[id], `${id} should forbid causal claims`).toMatch(/never the cause/);
+      expect(prompts[id], `${id} does not separate removal from flagging`).toMatch(/REMOVE, ALWAYS/);
+      expect(prompts[id], `${id} should flag opinion rather than delete it`).toMatch(/FLAG, DO NOT REMOVE/);
+      expect(prompts[id], `${id} should forbid causal claims`).toMatch(/Claims about WHY a behavior happened/);
       expect(prompts[id], `${id} should keep hypotheses with the BCBA`).toMatch(/Clinical hypotheses/);
+    }
+  });
+
+  /* His correction, and it is sharper than what I had written. A feeling is not
+   * a behavior. What made "happy" acceptable was never that the word is mild,
+   * it is that the observation sits right beside it: he approached, unprompted.
+   * A feeling named with nothing attached is a MISSING OBSERVATION, not a
+   * softer one, and the answer is to ask what told them rather than to delete
+   * the word or invent a definition for it. Three moves, not two. */
+  test('a feeling with nothing attached earns a question rather than deletion', async ({ page }) => {
+    await page.goto('/notes/bcba/index.html?tool=sup');
+    await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+
+    const prompts = await page.evaluate((ids) => {
+      const out = {};
+      for (const id of ids) {
+        const t = window.NOTE_TOOLS.find((x) => x.id === id);
+        out[id] = t ? t.buildSystem() : null;
+      }
+      return out;
+    }, SESSION_TOOLS);
+
+    for (const id of SESSION_TOOLS) {
+      expect(prompts[id], `${id} should state that a feeling is not a behavior`)
+        .toMatch(/A FEELING IS NOT A BEHAVIOR/);
+      expect(prompts[id], `${id} should flag rather than delete`)
+        .toMatch(/FLAG A FEELING THAT HAS NOTHING ATTACHED/);
+      // Stated as a problem plus options, not as a question. He reads these at
+      // the end of a shift and a flat statement is faster to act on.
+      expect(prompts[id], `${id} hint should offer the two ways out`)
+        .toMatch(/Add a description or remove it/);
+      expect(prompts[id], `${id} should not phrase the hint as a question`)
+        .toMatch(/Do not phrase these as a question/);
+      // The two failure modes: answering it itself, or quietly removing the word.
+      expect(prompts[id], `${id} must forbid both wrong answers`)
+        .toMatch(/Never answer it yourself and never quietly drop the word/);
+      // It has to route into the existing hint mechanism, not invent a new one.
+      expect(prompts[id], `${id} should use the hint code the tools already have`)
+        .toMatch(/ambiguous_item hint/);
     }
   });
 
@@ -179,8 +219,8 @@ test.describe('session record focus', () => {
     }, SESSION_TOOLS);
 
     for (const id of SESSION_TOOLS) {
-      expect(prompts[id], `${id} should keep a light judgment`)
-        .toMatch(/KEEP A LIGHT JUDGMENT/);
+      expect(prompts[id], `${id} should keep a feeling that has its observation beside it`)
+        .toMatch(/KEEP A FEELING THAT HAS ITS OBSERVATION BESIDE IT/);
       // The absolutist rule that contradicted it. Three tools carried it.
       expect(prompts[id], `${id} still bans all value-laden phrasing, which strips "happy"`)
         .not.toMatch(/observable language - no value-laden phrasing/);
@@ -197,9 +237,38 @@ test.describe('session record focus', () => {
     // A plan is written before anything is observed, so a rule about what a
     // record of a session may contain is meaningless there and would only
     // compete with the plan's own instructions.
-    expect(system).not.toMatch(/CUT THESE FIRST/);
-    expect(system).not.toMatch(/KEEP A LIGHT JUDGMENT/);
+    expect(system).not.toMatch(/REMOVE, ALWAYS/);
+    expect(system).not.toMatch(/A FEELING IS NOT A BEHAVIOR/);
     // Its own rules survive.
     expect(system).toMatch(/Abstract state nouns/);
+  });
+  test('opinion is a different severity from causation, and the technician can override', async ({ page }) => {
+    /* His correction: opinion and causation are not the same thing. A causal
+     * claim can land as inappropriate to whoever reads the record next and is
+     * not the technician's to make, so it goes without appeal. An opinion is
+     * sometimes fine and they may have a reason for it, so it is flagged with a
+     * short why and left to them. A technician who reads the flag and keeps the
+     * sentence has overridden it, which is the intended outcome. */
+    await page.goto('/notes/bcba/index.html?tool=sup');
+    await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+
+    const system = await page.evaluate(() =>
+      window.NOTE_TOOLS.find((t) => t.id === 'sup').buildSystem());
+
+    // Causation: no appeal, and the reason is stated rather than asserted.
+    expect(system).toMatch(/can land as inappropriate/);
+    expect(system).toMatch(/not the technician's to make/);
+
+    // Opinion: kept, flagged, overridable.
+    expect(system).toMatch(/Staff opinion .* is sometimes fine/);
+    expect(system).toMatch(/has overridden it, which is the correct outcome/);
+
+    // The two must not be collapsed back into one list of things to delete.
+    const removeIdx = system.indexOf('REMOVE, ALWAYS');
+    const flagIdx = system.indexOf('FLAG, DO NOT REMOVE');
+    expect(removeIdx, 'both headings must be present').toBeGreaterThan(-1);
+    expect(flagIdx).toBeGreaterThan(removeIdx);
+    expect(system.slice(removeIdx, flagIdx), 'opinion must not sit under REMOVE')
+      .not.toMatch(/Staff opinion/);
   });
 });
