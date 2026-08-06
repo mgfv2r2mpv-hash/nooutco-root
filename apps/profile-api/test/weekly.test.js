@@ -12,6 +12,7 @@ const reg = (over = {}) => ({
   tool: "sap", type: "note_register", ts: 1,
   data: {
     sentences: 40, words: 800, meanLen: 20, burstiness: 0.7, openerVariety: 0.95,
+    sectionCv: 0.46, sectionStep: 0.30,
     repeatRate: 0.02, actorRate: 0.2, clientRate: 0.18, topOpener: 2, score: 18, ...over,
   },
 });
@@ -49,6 +50,74 @@ test("register measures are always printed next to the human band", () => {
   assert.match(body, /median score/);
   assert.match(body, new RegExp(`human ${HUMAN.score[0]} to ${HUMAN.score[1]}`));
   assert.match(body, /human 0.92 to 1/);
+  assert.match(body, /inside a section/);
+  assert.match(body, /between sections/);
+});
+
+test("the week where burstiness looks fine and every section reads flat is caught", () => {
+  /* THE CASE THIS REPORT WAS MISSING, and the reason the section measures were
+     added before the first Friday send rather than after it.
+
+     burstiness sits at 0.70, comfortably inside its human band of 0.55 to 0.82.
+     It gets there entirely by swinging the average from one section to the
+     next: 0.28 inside a section, well under the human floor of 0.383, and 0.62
+     between them, well over the human ceiling of 0.434. Reporting the mixture
+     alone would call this week healthy. */
+  const flat = [gen(), gen(), reg({ burstiness: 0.70, sectionCv: 0.28, sectionStep: 0.62 })];
+  const body = render(summarise(flat), summarise([]), "2026-08-01");
+
+  assert.match(body, /burstiness\s+0\.70.*ok/, "the mixed number really does look healthy");
+  assert.match(body, /inside a section\s+0\.28.*OUTSIDE HUMAN BAND/);
+  assert.match(body, /between sections\s+0\.62.*OUTSIDE HUMAN BAND/);
+  assert.match(body, /Sections are reading flat inside themselves/);
+});
+
+test("a measure that leaves the band upward reads as worse, not as an improvement", () => {
+  /* The bug this pins was found by reading a rendered email rather than by
+     reasoning: "between sections" went from 0.30, comfortably inside the band,
+     to 0.62, well above its ceiling, and the report called it BETTER, because
+     the number had gone up and up was the declared good direction.
+
+     Every measure here is a band with two bad ends. Direction cannot judge
+     that, and getting it wrong announces the exact failure the measure exists
+     to catch as progress. */
+  const worse = render(
+    summarise([gen(), reg({ sectionStep: 0.62 })]),
+    summarise([gen(), reg({ sectionStep: 0.30 })]),
+    "2026-08-01");
+  assert.match(worse, /between sections\s+0\.62.*OUTSIDE HUMAN BAND\s+\(\+0\.32 vs prior 4wk, worse\)/);
+
+  // And the reverse, so the fix is not simply "always say worse".
+  const better = render(
+    summarise([gen(), reg({ sectionStep: 0.30 })]),
+    summarise([gen(), reg({ sectionStep: 0.62 })]),
+    "2026-08-01");
+  assert.match(better, /between sections\s+0\.30.*ok\s+\(-0\.32 vs prior 4wk, better\)/);
+});
+
+test("two weeks that both sit inside the band are not ranked against each other", () => {
+  // 0.40 and 0.50 are both ordinary human values for variability inside a
+  // section. Calling one an improvement over the other reads as a signal where
+  // there is only noise.
+  const body = render(
+    summarise([gen(), reg({ sectionCv: 0.50 })]),
+    summarise([gen(), reg({ sectionCv: 0.40 })]),
+    "2026-08-01");
+  assert.match(body, /inside a section\s+0\.50.*ok\s+\(\+0\.10 vs prior 4wk, both in band\)/);
+});
+
+test("a week of notes too short to measure sections says so rather than reporting zero", () => {
+  // note-metrics.js omits the two keys when no section had enough sentences.
+  // Averaging a missing measure as zero would print a flat-sections alarm on a
+  // week where nothing was measured at all.
+  const short = [gen(), reg({ sectionCv: undefined, sectionStep: undefined })];
+  const s = summarise(short);
+  assert.equal(s.register.sectionCv, null);
+  assert.equal(s.register.sectionStep, null);
+
+  const body = render(s, summarise([]), "2026-08-01");
+  assert.match(body, /inside a section\s+n\/a/);
+  assert.doesNotMatch(body, /Sections are reading flat/);
 });
 
 test("a note above the human ceiling is called out, not averaged away", () => {

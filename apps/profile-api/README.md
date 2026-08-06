@@ -98,6 +98,30 @@ npm test             # derivation + validation unit tests
 `npm test` is plain `node --test` with no dependencies, matching the repo's
 no-build-step convention.
 
+`test/suppression.live.test.js` applies `schema.sql` **and every file in
+`migrations/`** to the local D1 before it starts, which the section below
+explains. Skipping the migrations is not theoretical: that test began failing
+with an undefined `rules` the moment `shape_profile` grew a column.
+
+## Migrations
+
+`schema.sql` is re-runnable and every statement in it is `CREATE TABLE IF NOT
+EXISTS`, so it can create a table and it can never alter one. Anything that
+changes an existing table is a dated file in `migrations/`, run once:
+
+```bash
+npx wrangler d1 execute bt-profiles --local  --file migrations/<name>.sql
+npx wrangler d1 execute bt-profiles --remote --file migrations/<name>.sql
+```
+
+Write them so a second run **fails on its first statement**. SQLite refuses to
+add a column that already exists, so putting the `ALTER TABLE` lines first makes
+an accidental re-run stop before it reaches anything destructive. That ordering
+is load bearing, not stylistic.
+
+Keep `schema.sql` and the migration in step: a fresh database gets the finished
+shape from `schema.sql` alone and never runs the migration at all.
+
 ## Weekly self-audit email
 
 Fires Friday 20:00 America/New_York and emails a summary of the week against the

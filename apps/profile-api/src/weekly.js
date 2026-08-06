@@ -18,13 +18,26 @@
  * 28" means nothing and "28, human band 12 to 24" means something.
  */
 
-// Measured on seven de-identified human-written plans, 2026-08-02 to 08-04. The
-// point of reference for every register number below.
+/* Measured on seven de-identified human-written plans, 2026-08-02 to 08-04. The
+   point of reference for every register number below. */
 export const HUMAN = {
   score: [12, 24],
   burstiness: [0.55, 0.82],
   openerVariety: [0.92, 1.0],
   clientRate: [0.10, 0.23],
+  /* These two come from a WIDER corpus than the rest: 10th to 90th percentile
+     across 108 documents, 101 coursework and the same 7 plans, 2026-08-06. Seven
+     documents is thin for a band, and unlike the measures above these two have
+     the wider corpus available.
+
+     WHY THEY ARE HERE AT ALL. burstiness is the whole-note figure and it is a
+     mixture of these two: across those 108 documents it correlates 0.448 with
+     variability inside a section and 0.384 with the movement between sections,
+     while those two correlate only 0.096 with EACH OTHER. So burstiness can sit
+     inside its band while every section reads flat. Trending it alone would
+     report that everything is fine in exactly the case worth catching. */
+  sectionCv: [0.383, 0.538],
+  sectionStep: [0.189, 0.434],
 };
 
 const DAY = 86400000;
@@ -73,6 +86,11 @@ export function summarise(rows) {
     register: {
       score: median(pick("score")),
       burstiness: mean(pick("burstiness")),
+      // Absent, not zero, on a note whose sections were too short to measure.
+      // pick already drops anything that is not a number, so a week of short
+      // notes reports n/a rather than a fabricated flatness.
+      sectionCv: mean(pick("sectionCv")),
+      sectionStep: mean(pick("sectionStep")),
       openerVariety: mean(pick("openerVariety")),
       clientRate: mean(pick("clientRate")),
       actorRate: mean(pick("actorRate")),
@@ -90,18 +108,36 @@ export function summarise(rows) {
 
 const f = (v, places = 2) => (v === null || v === undefined ? "n/a" : Number(v).toFixed(places));
 
-function arrow(now, then, goodIsDown) {
+/* How far outside the band a value sits. Zero anywhere inside it.
+ *
+ * WHY THE DIRECTION IS NOT ENOUGH. Every measure here is a BAND with two bad
+ * ends, not a quantity to push one way. "Between sections" caught this: a week
+ * that moved from 0.30, comfortably inside, to 0.62, well above the ceiling,
+ * was reported as an improvement because the number had gone up and up was the
+ * declared good direction. That is the exact failure the measure was added to
+ * catch, announced as progress.
+ *
+ * Distance from the band answers it for every measure at once, and it is what
+ * the flag on the same line already means. */
+const distanceOutside = (v, range) => Math.max(0, range[0] - v, v - range[1]);
+
+function arrow(now, then, range) {
   if (now === null || then === null || then === 0) return "";
   const d = now - then;
   if (Math.abs(d) < 0.005) return "  (flat)";
-  const worse = goodIsDown ? d > 0 : d < 0;
-  return `  (${d > 0 ? "+" : ""}${d.toFixed(2)} vs prior 4wk, ${worse ? "worse" : "better"})`;
+
+  const dn = distanceOutside(now, range);
+  const dt = distanceOutside(then, range);
+  // Both inside the band: the number moved and the quality did not, so say so
+  // rather than crowning a winner between two acceptable weeks.
+  const verdict = dn === dt ? "both in band" : dn > dt ? "worse" : "better";
+  return `  (${d > 0 ? "+" : ""}${d.toFixed(2)} vs prior 4wk, ${verdict})`;
 }
 
-function band(label, value, range, goodIsDown, prior) {
+function band(label, value, range, prior) {
   const inBand = value !== null && value >= range[0] && value <= range[1];
   const flag = value === null ? "" : inBand ? "  ok" : "  OUTSIDE HUMAN BAND";
-  return `  ${label.padEnd(18)} ${f(value)}   human ${range[0]} to ${range[1]}${flag}${arrow(value, prior, goodIsDown)}`;
+  return `  ${label.padEnd(18)} ${f(value)}   human ${range[0]} to ${range[1]}${flag}${arrow(value, prior, range)}`;
 }
 
 /** The plain-text body. Deliberately not HTML: it is read on a phone. */
@@ -126,10 +162,22 @@ export function render(now, prior, weekStartIso) {
   L.push("");
 
   L.push(`REGISTER  (how machine written the prose reads)`);
-  L.push(band("median score", now.register.score, HUMAN.score, true, prior.register.score));
-  L.push(band("burstiness", now.register.burstiness, HUMAN.burstiness, false, prior.register.burstiness));
-  L.push(band("opener variety", now.register.openerVariety, HUMAN.openerVariety, false, prior.register.openerVariety));
-  L.push(band("client rate", now.register.clientRate, HUMAN.clientRate, true, prior.register.clientRate));
+  L.push(band("median score", now.register.score, HUMAN.score, prior.register.score));
+  L.push(band("burstiness", now.register.burstiness, HUMAN.burstiness, prior.register.burstiness));
+  /* Read these two together, and read them BEFORE burstiness above. burstiness
+     is their mixture, so a note can hold it inside the band by swinging the
+     average between sections while every section reads flat. When "inside a
+     section" is low and "between sections" is high, that is what happened. */
+  L.push(band("inside a section", now.register.sectionCv, HUMAN.sectionCv, prior.register.sectionCv));
+  L.push(band("between sections", now.register.sectionStep, HUMAN.sectionStep, prior.register.sectionStep));
+  L.push(band("opener variety", now.register.openerVariety, HUMAN.openerVariety, prior.register.openerVariety));
+  L.push(band("client rate", now.register.clientRate, HUMAN.clientRate, prior.register.clientRate));
+  if (now.register.sectionCv !== null && now.register.sectionCv < HUMAN.sectionCv[0]) {
+    L.push("");
+    L.push(`  Sections are reading flat inside themselves. The whole-note number`);
+    L.push(`  above cannot see this: it is a mixture, and it stays healthy when the`);
+    L.push(`  variety moves out of the sections and in between them instead.`);
+  }
   if (now.register.outsideHumanBand) {
     L.push("");
     L.push(`  ${now.register.outsideHumanBand} of ${now.measured} notes scored above the human ceiling of ${HUMAN.score[1]}.`);
@@ -157,6 +205,8 @@ export function render(now, prior, weekStartIso) {
 
   L.push(`Reference band is seven de-identified human-written plans, measured`);
   L.push(`2026-08-02 to 08-04. Zero is not the target: those plans scored 12 to 24.`);
+  L.push(`The two section measures use a wider corpus, 108 documents measured`);
+  L.push(`2026-08-06, because seven is thin for a band and the wider set existed.`);
   return L.join("\n");
 }
 

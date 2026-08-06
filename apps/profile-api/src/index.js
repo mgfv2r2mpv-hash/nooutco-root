@@ -131,13 +131,21 @@ async function handleEvents(request, env) {
         env.DB.prepare(`UPDATE technician SET note_count = note_count + 1 WHERE kid = ?`).bind(kid),
       );
     }
-    // The two numbers the shape target is drawn from. burstiness IS the
-    // coefficient of variation of sentence length; the browser reports it under
-    // that name because that is what the scorer has always called it.
+    /* The three numbers a shape target is drawn from. Deliberately NOT
+       burstiness, which is the whole-note figure the browser has always
+       reported: it is a mixture of these two and does not identify a shape on
+       its own. A note whose sections are too short to measure sends neither of
+       the section numbers, and then there is nothing to fold in. Folding a zero
+       would enter perfect flatness into their profile as a real observation. */
     if (m.type === "note_register"
-        && Number.isFinite(m.data.meanLen) && Number.isFinite(m.data.burstiness)
-        && m.data.meanLen > 0 && m.data.burstiness > 0) {
-      shapeUpdate = { meanLen: m.data.meanLen, cv: m.data.burstiness };
+        && Number.isFinite(m.data.meanLen) && m.data.meanLen > 0
+        && Number.isFinite(m.data.sectionCv) && m.data.sectionCv > 0
+        && Number.isFinite(m.data.sectionStep) && m.data.sectionStep > 0) {
+      shapeUpdate = {
+        meanLen: m.data.meanLen,
+        withinCv: m.data.sectionCv,
+        stepRel: m.data.sectionStep,
+      };
     }
   }
 
@@ -147,18 +155,22 @@ async function handleEvents(request, env) {
      against getting the accumulator wrong. */
   if (shapeUpdate) {
     const prev = await env.DB.prepare(
-      `SELECT n_notes, sum_len, sum_cv, sum_cv_sq FROM shape_profile WHERE kid = ? AND tool = ?`,
+      `SELECT n_notes, sum_len, sum_cv, sum_cv_sq, sum_step, sum_step_sq
+         FROM shape_profile WHERE kid = ? AND tool = ?`,
     ).bind(kid, tool).first();
-    const next = accumulate(prev, shapeUpdate.meanLen, shapeUpdate.cv);
+    const next = accumulate(prev, shapeUpdate.meanLen, shapeUpdate.withinCv, shapeUpdate.stepRel);
     statements.push(
       env.DB.prepare(
-        `INSERT INTO shape_profile (kid, tool, n_notes, sum_len, sum_cv, sum_cv_sq, updated)
-         VALUES (?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO shape_profile
+           (kid, tool, n_notes, sum_len, sum_cv, sum_cv_sq, sum_step, sum_step_sq, updated)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(kid, tool) DO UPDATE SET
            n_notes = excluded.n_notes, sum_len = excluded.sum_len,
            sum_cv = excluded.sum_cv, sum_cv_sq = excluded.sum_cv_sq,
+           sum_step = excluded.sum_step, sum_step_sq = excluded.sum_step_sq,
            updated = excluded.updated`,
-      ).bind(kid, tool, next.n_notes, next.sum_len, next.sum_cv, next.sum_cv_sq, now),
+      ).bind(kid, tool, next.n_notes, next.sum_len, next.sum_cv, next.sum_cv_sq,
+             next.sum_step, next.sum_step_sq, now),
     );
   }
 
@@ -213,7 +225,8 @@ async function handleGetCard(url, env) {
   const tool = cleanSlug(url.searchParams.get("tool")) || "unknown";
   const seed = (url.searchParams.get("seed") || "").slice(0, 64) || (kid + ":" + tool);
   const shapeRow = await env.DB.prepare(
-    `SELECT n_notes, sum_len, sum_cv, sum_cv_sq FROM shape_profile WHERE kid = ? AND tool = ?`,
+    `SELECT n_notes, sum_len, sum_cv, sum_cv_sq, sum_step, sum_step_sq
+       FROM shape_profile WHERE kid = ? AND tool = ?`,
   ).bind(kid, tool).first();
   const target = targetFor(shapeRow, tool, seed);
 
