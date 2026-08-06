@@ -92,7 +92,9 @@ function Bubble({ role, children, muted }) {
   const mine = role === "user";
   return (
     <div style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start", marginBottom: 8 }}>
-      <div style={{
+      {/* A turn is pointable, so a message can be about what was said here
+          rather than about the note. */}
+      <div data-thread-turn={mine ? "you" : "NoMe"} style={{
         maxWidth: "88%", padding: "8px 11px", borderRadius: 10, fontSize: 13, lineHeight: 1.5,
         background: mine ? "#374528" : (muted ? "transparent" : "white"),
         color: mine ? "white" : (muted ? "#7a9460" : "#2d3a1f"),
@@ -425,9 +427,10 @@ function RevisionPanel({
               <strong>
                 {annotation.kind === "span" ? "Selected"
                   : annotation.kind === "page" ? "About the page"
+                  : annotation.kind === "quote" ? "From " + (annotation.heading || "the conversation")
                   : "Section"}:
               </strong>{" "}
-              {annotation.kind === "span" || annotation.kind === "page"
+              {annotation.kind === "span" || annotation.kind === "page" || annotation.kind === "quote"
                 ? "“" + (String(annotation.text || "").length > 46
                     ? String(annotation.text).slice(0, 46) + "…"
                     : String(annotation.text || "")) + "”"
