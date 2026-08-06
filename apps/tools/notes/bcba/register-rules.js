@@ -52,26 +52,39 @@
 
   /* What a session record is FOR, and what to cut when there is too much.
      The field requirement is observable events. But real notes are not written
-     by a machine applying that rule perfectly, and the maintainer's example is
-     the useful one: "he approached staff and was happy" survives in real notes
-     without anyone operationally defining happy. Smiling, laughing, or simply
-     approaching unprompted, the reader supplies it.
+     by a machine applying that rule perfectly: "he approached staff and was
+     happy" survives in real notes without anyone operationally defining happy.
 
-     So the rule is an ORDER, not a ban. Staff opinion, causal claims and
-     clinical hypotheses come out first, because those are genuinely wrong in a
-     record and a supervisor has to unpick them. A light judgment attached to
-     something that was actually seen stays, because stripping it produces prose
-     no technician wrote. */
+     The maintainer's correction, which is the sharper rule and the one that
+     matters: a feeling is not a behavior. What makes "happy" acceptable is not
+     that it is mild, it is that the observable sits right there beside it. He
+     approached, unprompted, and that is the evidence. A feeling named with no
+     observation attached is not a softer version of the same thing, it is a
+     missing observation, and the answer is to ASK what told them rather than to
+     delete the word or to invent a definition for it.
+
+     Opinion and causation are NOT the same severity, which is the maintainer's
+     later correction. A causal claim can land as inappropriate to whoever reads
+     the record next and is not the technician's to make, so it goes without
+     appeal. An opinion is sometimes fine and they may have a reason, so it is
+     flagged with a short why and left to them. A technician who reads the flag
+     and keeps the sentence has overridden it, and that is the intended
+     outcome. */
   var SESSION_RECORD = [
     "",
-    "WHAT THIS RECORD IS FOR. A session note documents observable events. That is a field requirement, not a style preference.",
-    "CUT THESE FIRST, in this order, whenever there is more material than the note needs:",
-    "* Staff opinion about the client, the family, or the program.",
-    "* Claims about WHY a behavior happened. A session note records what occurred and what staff did, never the cause.",
-    "* Clinical hypotheses. Function, motivation and diagnosis belong to the BCBA's analysis, not to a technician's record of a session.",
+    "WHAT THIS RECORD IS FOR. A session note documents observable events. That is a field requirement, not a style preference, and neutral observation is what the record is for.",
+    "",
+    "REMOVE, ALWAYS. These are not preferences and the technician does not get a say, because they are wrong in a record rather than merely unwanted:",
+    "* Claims about WHY a behavior happened. A causal claim in a session note can land as inappropriate to whoever reads it next, and it is not the technician's to make.",
+    "* Clinical hypotheses. Function, motivation and diagnosis belong to the BCBA's analysis.",
     "* Anything a checkbox on the form already records.",
-    "KEEP A LIGHT JUDGMENT WHERE IT SITS ON SOMETHING SEEN. 'He approached staff and was happy' is how these notes are actually written. Do not manufacture an operational definition for a word like that, and do not strip it either. Rewriting it into 'demonstrated positive affect as evidenced by' is worse on both counts: it is not more observable and no technician writes that way.",
-    "The test is whether a word is doing work the observation cannot. 'Happy' beside an approach is shorthand for what was seen. 'Frustrated because the demand was too hard' is a cause, and the second half comes out.",
+    "",
+    "FLAG, DO NOT REMOVE. Staff opinion about the client, the family or the program is sometimes fine and the technician may have a reason for it. Keep what they wrote, and emit an ambiguous_item hint on that section giving the reason in a few words, for example 'opinion, not observation. Neutral wording is safer here.' Then leave it to them. A technician who reads that and keeps the sentence has overridden it, which is the correct outcome, not a failure.",
+    "",
+    "A FEELING IS NOT A BEHAVIOR, and that decides the next two rules.",
+    "KEEP A FEELING THAT HAS ITS OBSERVATION BESIDE IT. 'He approached staff and was happy' is how these notes are really written, and what makes it acceptable is the approach, not the mildness of the word. Do not manufacture an operational definition, and do not strip it either. 'Demonstrated positive affect as evidenced by' is worse on both counts: no more observable than 'happy', and no technician writes that way.",
+    "FLAG A FEELING THAT HAS NOTHING ATTACHED. If the notes name a feeling and never say what was seen, that is a missing observation rather than a softer one. Keep the word and emit an ambiguous_item hint naming it and offering the two ways out, for example: \"'frustrated' has no observation. Add a description or remove it.\" Never answer it yourself and never quietly drop the word.",
+    "State the problem and the options. Do not phrase these as a question to the technician; they are reading at the end of a shift and a flat statement is faster to act on.",
   ].join("\n");
 
   window.NoteRegisterRules = {
