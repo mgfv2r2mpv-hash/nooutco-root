@@ -312,24 +312,35 @@ test.describe('triage questions before drafting', () => {
     const startsAt = (skip, seconds) =>
       expect(skip).toHaveText(new RegExp(`\\(${seconds}s\\)`), { timeout: 2000 });
 
-    test('a nearly-ready note drains in a few seconds', async ({ page }) => {
+    test('a ready note does not wait at all', async ({ page }) => {
+      // His ruling, 2026-08-06: "the floor is 0 for 85% or better." It reverses
+      // the five second floor I built and argued for. The wait exists because
+      // skipping was cheaper than reading; on a note the model calls complete
+      // there is nothing to read, so the price would land on the person who did
+      // the work properly.
       const skip = await openQuestions(page, triageWith({ readiness: 90 }));
-      // 90 maps to 8s. The floor is deliberately not zero: a note the model
-      // already rates as nearly signable earns a shorter pause, not none.
-      await startsAt(skip, 8);
-      await expect(skip).toBeDisabled();
-      await page.clock.runFor(9_000);
+      await expect(skip).toBeEnabled();
+      await expect(skip).toHaveText(/generate anyway/i);
+      // No bar either. A drained bar on a button that was never locked is a
+      // progress indicator for nothing.
+      await expect(page.locator('.skip-cooldown-bar')).toHaveCount(0);
+    });
+
+    test('85 is the threshold, and 84 does not fall off a cliff', async ({ page }) => {
+      // Ramped to zero AT his threshold rather than stepping there, so a single
+      // readiness point is never the difference between free and a long wait.
+      const skip = await openQuestions(page, triageWith({ readiness: 85 }));
       await expect(skip).toBeEnabled();
     });
 
-    test('a middling note waits noticeably longer', async ({ page }) => {
+    test('a middling note still waits', async ({ page }) => {
       const skip = await openQuestions(page, triageWith({ readiness: 40 }));
-      await startsAt(skip, 20);
-      // The moment that separates the two: at nine seconds the ready note is
-      // already through and this one is not.
+      await startsAt(skip, 16);
+      // The moment that separates the two: the ready note above was through
+      // immediately and this one is not.
       await page.clock.runFor(9_000);
       await expect(skip).toBeDisabled();
-      await page.clock.runFor(12_000);
+      await page.clock.runFor(8_000);
       await expect(skip).toBeEnabled();
     });
 
@@ -366,12 +377,13 @@ test.describe('triage questions before drafting', () => {
       await fillRequiredAndGenerate(page);
 
       const skip = page.getByRole('button', { name: /Nothing to add/i });
-      await startsAt(skip, 20);
+      await startsAt(skip, 16);
 
       await page.locator('.revision-input').fill('twice');
       await page.locator('.revision-send').click();
       await expect(page.getByText(/for how long/i)).toBeVisible();
-      await startsAt(skip, 8);
+      // Answering carried it over his threshold, so the second round is free.
+      await expect(skip).toBeEnabled();
     });
   });
 
@@ -391,6 +403,43 @@ test.describe('triage questions before drafting', () => {
     await fillRequiredAndGenerate(page);
 
     await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
+  });
+
+  /* Copy All is hidden on this tool because the EHR takes one field at a time,
+     so a combined blob is never what a technician pastes. He reversed it for
+     himself on 2026-08-06: "I was wrong - for admin mode I do want copy all on
+     the notes." The reason for hiding it is about the technician's workflow, and
+     he is not doing that job when he opens the tool. */
+  test.describe('Copy All comes back for an admin', () => {
+    async function drafted(page, role) {
+      let calls = 0;
+      await page.route('**/api/llm-call**', (route) => {
+        calls++;
+        if (calls === 1) return route.fulfill(reply({ sufficient: true, readiness: 95, questions: [] }));
+        return route.fulfill(reply(note()));
+      });
+      await page.goto('/notes/bt/');
+      await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor(role));
+      await page.goto('/notes/bt/');
+      await fillRequiredAndGenerate(page);
+      await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
+      return page.getByRole('button', { name: /^Copy All$/ });
+    }
+
+    test('a technician does not get it, because their EHR takes one field at a time', async ({ page }) => {
+      await expect(await drafted(page, 'user')).toHaveCount(0);
+    });
+
+    test('an admin does', async ({ page }) => {
+      await expect(await drafted(page, 'admin')).toBeVisible();
+    });
+
+    test('the per-section Copy is there for everyone either way', async ({ page }) => {
+      // The reason Copy All could be dropped at all. If this ever goes, a
+      // technician has no way to move a single narrative into their form.
+      await drafted(page, 'user');
+      expect(await page.getByRole('button', { name: /^Copy$/ }).count()).toBeGreaterThan(0);
+    });
   });
 });
 

@@ -1162,20 +1162,30 @@ function App() {
      note needs, and that a BCBA already knows. He overruled it: "yeah, it
      should lock my drafters as well." A thin note is thin whoever wrote it.
 
-     The wait now scales with the note, which is the second half of what he
-     asked for: a nearly-ready note drains fast, a thin one drains slow. The
-     floor is not zero, because the pause has to remain a pause - five seconds
-     is a beat, and a note the model already rates as nearly signable has not
-     earned an instant escape, only a shorter one. A missing reading gets the
-     full thirty. */
+     The wait scales with the note: a nearly-ready note drains fast, a thin one
+     drains slow.
+
+     A READY NOTE WAITS NOT AT ALL, which is his ruling of 2026-08-06 and the
+     opposite of what I built. I had set a five second floor, arguing the pause
+     had to stay a pause. He overruled it - "the floor is 0 for 85% or better" -
+     and he is right about who the price is for. The wait exists because the
+     audit trail showed skipping was cheaper than reading. On a note the model
+     says is already complete there is nothing to read, so the price is charged
+     for nothing and lands on the person who did the work properly.
+
+     A missing reading still gets the full thirty. */
   const SKIP_COOLDOWN_MAX_SECONDS = 30;
-  const SKIP_COOLDOWN_MIN_SECONDS = 5;
+  const SKIP_FREE_AT_READINESS = 85;
 
   const skipSecondsFor = (readiness) => {
     if (!Number.isFinite(readiness)) return SKIP_COOLDOWN_MAX_SECONDS;
     const pct = Math.min(100, Math.max(0, readiness));
-    const span = SKIP_COOLDOWN_MAX_SECONDS - SKIP_COOLDOWN_MIN_SECONDS;
-    return Math.round(SKIP_COOLDOWN_MAX_SECONDS - (span * pct) / 100);
+    if (pct >= SKIP_FREE_AT_READINESS) return 0;
+    // Ramped across the range that still waits, so it reaches zero AT his
+    // threshold rather than stepping off a cliff there. 84 is very nearly free,
+    // which is the same thing 85 is, and a one-point difference should not be
+    // the difference between no wait and a long one.
+    return Math.round(SKIP_COOLDOWN_MAX_SECONDS * (1 - pct / SKIP_FREE_AT_READINESS));
   };
 
   const skipQuestions = () => {
@@ -1949,7 +1959,12 @@ function App() {
      A click inside a section resolves to that section, so pointing lands in the
      existing revision flow rather than a parallel one. A click anywhere else is
      about the page, and says so. */
-  const pointScope = (window.NotesGate && NotesGate.isAdmin && NotesGate.isAdmin()) ? "page" : "note";
+  /* Read at render rather than held in state, so a login or a logout moves it
+     on the next paint. `loggedIn` is what forces that paint. Two things read it:
+     the point scope below, and whether Copy All comes back on a tool that hides
+     it. */
+  const isAdmin = !!(window.NotesGate && NotesGate.isAdmin && NotesGate.isAdmin());
+  const pointScope = isAdmin ? "page" : "note";
   const [pointMode, setPointMode] = React.useState(false);
 
   // Leaving point mode armed across a logout would let a technician inherit an
@@ -2266,8 +2281,13 @@ function App() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>{tool.outputTitle || "Generated Note"}</h2>
               {/* Copy All is per-tool. Some EHR forms take one field at a time,
-                  where a single combined blob is never what gets pasted. */}
-              {tool.copyAll !== false && (
+                  where a single combined blob is never what gets pasted.
+
+                  An admin gets it back regardless, his call on 2026-08-06: "I
+                  was wrong - for admin mode I do want copy all on the notes."
+                  The reason it is hidden is about the technician's EHR workflow,
+                  and he is not doing that job when he opens the tool. */}
+              {(tool.copyAll !== false || isAdmin) && (
                 <button
                   onClick={handleCopyAll}
                   style={{ padding: "7px 16px", borderRadius: 7, border: "1.5px solid #374528", background: copied === "all" ? "#374528" : "white", color: copied === "all" ? "white" : "#374528", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
