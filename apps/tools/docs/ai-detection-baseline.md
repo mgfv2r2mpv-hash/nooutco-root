@@ -425,3 +425,52 @@ other, and re-derive rather than re-scale.
 
 `burstiness` is still measured, still scored and still reported. It is simply
 not sufficient on its own, and nothing should be tuned against it alone again.
+
+## The register work was invisible to the audit (2026-08-06)
+
+`note-metrics.js` has counted the four banned constructions since the day the
+bans shipped. The counts never left the browser. They were not in the
+`note_register` audit payload, so they were not in the database, so the Friday
+report could not say whether the change with the strongest evidence behind it
+was still holding. That is now fixed: density plus the four counts separately,
+so a return can be attributed to which construction rather than only noticed.
+
+Measured on the seven plans with `note-metrics.js` itself, so the runtime and
+the reference agree:
+
+| | human plans, p10 / median / p90 | both generated SAPs |
+|---|---|---|
+| flagged per 100 words | 0.00 / 0.17 / 0.40 | **0** |
+| actor named | 0.00 / 0.03 / 0.12 | **0.32 and 0.34** |
+| imperative rate | 0.00 / 0.12 / 0.22 | 0.13 |
+| top opener repeat | 1 / 3 / 3 | 5 and 1 |
+
+**The bans are working.** Both generated notes emit zero of the four
+constructions, below the human median of 0.17 per 100 words. Nothing to fix;
+something to watch for a return.
+
+### Actor naming sits at ten times the human median, and it is an open question
+
+The seven plans name a role in a median of **3%** of sentences. Both generated
+SAPs sit at **32% and 34%**, nearly three times the human 90th percentile.
+
+Do not read that as a settled fault, for two reasons that pull opposite ways.
+The register work pushed actor naming up deliberately, on the finding that the
+flagged sections were the actorless ones, and that finding held against the
+detector. But a SAP goal section is mostly about what the client will do, so a
+low actor rate across whole human plans may be describing which sections
+dominate rather than a preference about naming.
+
+Both can be true at once: naming the actor fixed a real problem and then
+overshot. The band is in `weekly.js` so a few weeks of real notes settle it
+rather than an argument, and the report says in as many words that it is an
+open question rather than a fault.
+
+### `clientRate` on the archived files understates it
+
+Both archived generated SAPs measure a client rate near zero, which is not what
+production will show. The maintainer replaced `[CLIENT]` with a real name before
+pasting them into the detector, and the `CLIENT` pattern matches the placeholder
+and the common nouns, not a proper name. In production the placeholder is still
+in the text at the moment of measurement. Do not compare those two figures
+against the live ones.

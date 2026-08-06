@@ -38,6 +38,25 @@ export const HUMAN = {
      report that everything is fine in exactly the case worth catching. */
   sectionCv: [0.383, 0.538],
   sectionStep: [0.189, 0.434],
+
+  /* THE REGISTER BAND. Measured on the same seven plans, 2026-08-06, with
+     note-metrics.js itself so the runtime and the reference agree.
+     These four exist so the register remediation can be TRENDED rather than
+     assumed. It is the part of this work with the strongest evidence behind it,
+     a real note going 53% to 0% on nothing but word choice, and until now the
+     browser counted it and the counts never left the page.
+
+     actorRate is the one to watch, and it is an open question rather than a
+     settled failure. The seven human plans name a role in a median of 3% of
+     sentences and 12% at the 90th percentile. Both archived generated SAPs sit
+     at 0.32 and 0.34. That could be the register work overshooting, or it could
+     be which sections dominate a plan, since a goal section is mostly about
+     what the client will do. The band is here so a week of real notes answers
+     it instead of an argument. */
+  flaggedPer100: [0, 0.40],
+  actorRate: [0, 0.12],
+  imperativeRate: [0, 0.22],
+  topOpener: [1, 3],
 };
 
 const DAY = 86400000;
@@ -78,6 +97,10 @@ export function summarise(rows) {
   for (const r of generated) byTool[r.tool] = (byTool[r.tool] || 0) + 1;
 
   const sum = (list, key) => list.reduce((a, r) => a + (Number(r.data[key]) || 0), 0);
+  // Same shape as sum, kept separate so a future change to one does not silently
+  // change what a construction total means.
+  const sumOf = (list, key) =>
+    list.reduce((a, r) => a + (typeof r.data[key] === "number" ? r.data[key] : 0), 0);
 
   return {
     notes: generated.length,
@@ -94,8 +117,21 @@ export function summarise(rows) {
       openerVariety: mean(pick("openerVariety")),
       clientRate: mean(pick("clientRate")),
       actorRate: mean(pick("actorRate")),
+      imperativeRate: mean(pick("imperativeRate")),
+      topOpener: mean(pick("topOpener")),
+      flaggedPer100: mean(pick("flaggedPer100")),
       worstScore: pick("score").length ? Math.max(...pick("score")) : null,
       outsideHumanBand: pick("score").filter((s) => s > HUMAN.score[1]).length,
+    },
+    /* Totals rather than averages, and that is the point: the question a
+       construction count answers is "did any note emit one, and which", not
+       "what was the typical density". One note with four vague verbs is a lead;
+       an average of 0.06 across the week hides it. */
+    constructions: {
+      emptyAdverbs: sumOf(reg, "emptyAdverbs"),
+      participialCausals: sumOf(reg, "participialCausals"),
+      abstractStates: sumOf(reg, "abstractStates"),
+      vagueVerbs: sumOf(reg, "vagueVerbs"),
     },
     gapsAsked: sum(gaps, "asked"),
     gapsAnswered: sum(gaps, "answered"),
@@ -122,7 +158,12 @@ const f = (v, places = 2) => (v === null || v === undefined ? "n/a" : Number(v).
 const distanceOutside = (v, range) => Math.max(0, range[0] - v, v - range[1]);
 
 function arrow(now, then, range) {
-  if (now === null || then === null || then === 0) return "";
+  /* A prior of exactly zero used to suppress the arrow entirely. That is wrong
+     for any measure whose GOOD value is zero: the banned constructions sat at 0
+     all last week and came back this week, which is the single most reportable
+     thing the register block can say, and it was the one case the trend went
+     silent on. A null prior still suppresses it, because that means no data. */
+  if (now === null || then === null) return "";
   const d = now - then;
   if (Math.abs(d) < 0.005) return "  (flat)";
 
@@ -161,7 +202,7 @@ export function render(now, prior, weekStartIso) {
   }
   L.push("");
 
-  L.push(`REGISTER  (how machine written the prose reads)`);
+  L.push(`SHAPE  (how the sentences move, and the headline score)`);
   L.push(band("median score", now.register.score, HUMAN.score, prior.register.score));
   L.push(band("burstiness", now.register.burstiness, HUMAN.burstiness, prior.register.burstiness));
   /* Read these two together, and read them BEFORE burstiness above. burstiness
@@ -184,6 +225,40 @@ export function render(now, prior, weekStartIso) {
     L.push(`  Worst single note: ${now.register.worstScore}.`);
     L.push(`  A run of these is the signal that a prompt has drifted. It is what`);
     L.push(`  went unnoticed on the SAP tool until it was scored by hand.`);
+  }
+  L.push("");
+
+  /* WHO DOES WHAT, which is the part with the strongest evidence behind it: a
+     real note went 53% to 0% on word choice alone, with its length, spread and
+     opener variety unchanged. None of it reached this email until now. */
+  L.push(`REGISTER  (who does what, and the constructions that read as machine written)`);
+  L.push(band("actor named", now.register.actorRate, HUMAN.actorRate, prior.register.actorRate));
+  L.push(band("imperative rate", now.register.imperativeRate, HUMAN.imperativeRate, prior.register.imperativeRate));
+  L.push(band("top opener repeat", now.register.topOpener, HUMAN.topOpener, prior.register.topOpener));
+  L.push(band("flagged per 100 wd", now.register.flaggedPer100, HUMAN.flaggedPer100, prior.register.flaggedPer100));
+
+  const c = now.constructions;
+  const fired = Object.entries(c).filter(([, n]) => n > 0);
+  if (fired.length) {
+    L.push("");
+    L.push(`  Which construction fired, across all ${now.measured} measured notes:`);
+    for (const [k, n] of fired.sort((a, b) => b[1] - a[1])) L.push(`    ${k.padEnd(20)} ${n}`);
+    L.push(`  These four are banned in the prompt. Any of them appearing means the`);
+    L.push(`  ban is not reaching the model, so the fix is a prompt change, not a`);
+    L.push(`  tuning change.`);
+  } else if (now.measured) {
+    L.push("");
+    L.push(`  None of the four banned constructions appeared in any note. That is`);
+    L.push(`  the register work holding, and it is the thing to watch for a return.`);
+  }
+
+  if (now.register.actorRate !== null && now.register.actorRate > HUMAN.actorRate[1]) {
+    L.push("");
+    L.push(`  Actor naming is above the human band, and this is an OPEN QUESTION`);
+    L.push(`  rather than a known fault. The register work deliberately pushed it up,`);
+    L.push(`  because the flagged sections were the actorless ones. The seven human`);
+    L.push(`  plans sit at a median of 0.03. Both may be right and the fix may have`);
+    L.push(`  overshot. A few weeks of this number is what decides it.`);
   }
   L.push("");
 

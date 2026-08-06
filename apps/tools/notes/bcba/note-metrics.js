@@ -37,6 +37,25 @@
   // ceiling in the SAP prompt is specifically about this.
   var CLIENT = /\[?CLIENT\]?|\bclient\b|\blearner\b/i;
 
+  /* Verbs that start a bare procedural instruction. Of everything tried against
+     the real detector, imperative rate is the measure that kept both its sign
+     and its magnitude, which is why it is worth carrying even though the
+     detection is this crude. See docs/ai-detection-baseline.md.
+
+     Heuristic, not parsing: no POS tagger exists here, so a sentence counts as
+     imperative when its first word is on this list. It will misfire on "Record
+     keeping was..." and it will miss verbs not listed. What matters is that the
+     same rule ran over the human corpus that produced the band, so the two
+     numbers are comparable even where both are approximate. */
+  var PROC_VERBS = [
+    "provide", "deliver", "present", "prompt", "record", "block", "redirect",
+    "reinforce", "praise", "wait", "allow", "ensure", "use", "give", "place",
+    "remove", "repeat", "contact", "follow", "begin", "start", "stop", "offer",
+    "model", "shuffle", "mark", "score", "collect", "run", "do", "say", "ask",
+    "show", "hold", "take", "move", "set", "reset", "fade", "implement",
+    "conduct", "continue", "return", "review", "note", "avoid", "keep", "let",
+  ];
+
   function sentencesOf(text) {
     return String(text || "")
       .split(/(?<=[.!?])\s+|\n+/)
@@ -213,6 +232,9 @@
 
     var actorSents = sents.filter(function (s) { return ACTOR.test(s); }).length;
     var clientSents = sents.filter(function (s) { return CLIENT.test(s); }).length;
+    var imperativeSents = sents.filter(function (s) {
+      return PROC_VERBS.indexOf(wordsOf(s)[0]) !== -1;
+    }).length;
     var commaRate = sents.length
       ? (String(text).match(/,/g) || []).length / sents.length
       : 0;
@@ -232,6 +254,7 @@
       commaRate: round(commaRate, 2),
       actorRate: round(sents.length ? actorSents / sents.length : 0),
       clientRate: round(sents.length ? clientSents / sents.length : 0),
+      imperativeRate: round(sents.length ? imperativeSents / sents.length : 0),
       topOpenerRepeat: maxRepeat,
     };
     /* Variability INSIDE a section, and how far the average moves BETWEEN them.

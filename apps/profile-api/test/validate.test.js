@@ -193,11 +193,11 @@ test("batches are capped so one request cannot write unbounded rows", () => {
   assert.equal(sanitizeMetrics(metricFlood, NOW).length, 50);
 });
 
-test("a metric carries at most sixteen keys", () => {
+test("a metric carries at most twenty-four keys", () => {
   const data = {};
   for (let i = 0; i < 40; i++) data[`k${i}`] = i;
   const [out] = sanitizeMetrics([{ type: "note_generated", data }], NOW);
-  assert.equal(Object.keys(out.data).length, 16);
+  assert.equal(Object.keys(out.data).length, 24);
 });
 
 test("the largest payload the tools actually send arrives whole, with headroom", () => {
@@ -213,14 +213,17 @@ test("the largest payload the tools actually send arrives whole, with headroom",
     sentences: 41, words: 612, meanLen: 14.9, burstiness: 0.52,
     sectionCv: 0.47, sectionStep: 0.31, sections: 5,
     openerVariety: 1, repeatRate: 0.01, actorRate: 0.44, clientRate: 0.19,
-    topOpener: 2, score: 18,
+    imperativeRate: 0.13, topOpener: 2,
+    flaggedPer100: 0.16, emptyAdverbs: 1, participialCausals: 0,
+    abstractStates: 0, vagueVerbs: 0,
+    score: 18,
   };
   const [out] = sanitizeMetrics([{ type: "note_register", data: register }], NOW);
 
   assert.deepEqual(Object.keys(out.data).sort(), Object.keys(register).sort(),
     "a key was dropped, so a signal is missing from the Friday report");
-  assert.ok(Object.keys(register).length <= 14,
-    `note_register is at ${Object.keys(register).length} keys and the cap is 16; `
+  assert.ok(Object.keys(register).length <= 21,
+    `note_register is at ${Object.keys(register).length} keys and the cap is 24; `
     + "raise the cap before adding more");
 });
 

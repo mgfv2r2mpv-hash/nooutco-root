@@ -150,6 +150,49 @@ test.describe('note metrics in the browser', () => {
       .toBeLessThan(0.6);
   });
 
+  test('the register signals the Friday report trends are all measured', async ({ page }) => {
+    /* The four banned constructions have been counted here since the bans
+     * shipped and never reached the audit payload, so the report could not say
+     * whether the change that took a real note from 53% to 0% was holding.
+     * Imperative rate is measured too: of everything tried against the real
+     * detector it is the one that kept both its sign and its magnitude. */
+    await page.goto('/notes/bcba/index.html?tool=sap');
+    await page.waitForFunction(() => !!window.NoteMetrics);
+
+    const out = await page.evaluate(() => window.NoteMetrics.measure(
+      // Two of the four banned constructions, one imperative opener, one actor.
+      'Deliver the reinforcer within three seconds of an independent response. '
+      + 'The technician altered the motivational state by providing attention on a '
+      + 'fixed schedule. Prompting was most to least across the block. '
+      + 'She recorded every trial rather than a first trial probe. '
+      + 'Generalisation ran in the kitchen with the caregiver present.'));
+
+    expect(out.abstractStates, '"motivational state" is one of the four').toBe(1);
+    expect(out.participialCausals, '"by providing" is another').toBe(1);
+    expect(out.flaggedPer100).toBeGreaterThan(0);
+    // One of five sentences opens on a procedural verb.
+    expect(out.imperativeRate).toBeCloseTo(0.2, 1);
+    expect(out.actorRate).toBeGreaterThan(0);
+  });
+
+  test('a clean note reports zero for the banned constructions rather than omitting them', async ({ page }) => {
+    // Zero is the signal the report needs most: it is what "the ban is holding"
+    // looks like, and a missing key would read as no data instead.
+    await page.goto('/notes/bcba/index.html?tool=sap');
+    await page.waitForFunction(() => !!window.NoteMetrics);
+
+    const out = await page.evaluate(() => window.NoteMetrics.measure(
+      'The client selected the correct bill in eight of twelve trials. '
+      + 'She faded the prompt to a gesture once he began orienting unassisted. '
+      + 'Two errors came near the end of the block. '
+      + 'The session ran in the kitchen with his mother present throughout.'));
+
+    for (const k of ['emptyAdverbs', 'participialCausals', 'abstractStates', 'vagueVerbs']) {
+      expect(out[k], `${k} must be a reported zero, not an absent key`).toBe(0);
+    }
+    expect(out.flaggedPer100).toBe(0);
+  });
+
   test('a note with no measurable section omits the keys rather than sending a zero', async ({ page }) => {
     await page.goto('/notes/bcba/index.html?tool=sap');
     await page.waitForFunction(() => !!window.NoteMetrics);
