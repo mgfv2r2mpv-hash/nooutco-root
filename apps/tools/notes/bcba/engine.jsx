@@ -1151,7 +1151,19 @@ function App() {
           repeatRate: register.repeatRate,
           actorRate: register.actorRate,
           clientRate: register.clientRate,
+          imperativeRate: register.imperativeRate,
           topOpener: register.topOpenerRepeat,
+          /* THE REGISTER REMEDIATION, WHICH USED TO STOP HERE. note-metrics has
+             counted these four constructions since the day the bans shipped and
+             the counts never left the browser, so the Friday report could not
+             say whether the thing that took a real note from 53% to 0% was
+             still holding. Density for the trend, and the four separately so a
+             regression can be attributed rather than only noticed. */
+          flaggedPer100: register.flaggedPer100,
+          emptyAdverbs: register.emptyAdverbs,
+          participialCausals: register.participialCausals,
+          abstractStates: register.abstractStates,
+          vagueVerbs: register.vagueVerbs,
           score: register.score,
         });
       }

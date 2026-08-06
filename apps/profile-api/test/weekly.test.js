@@ -8,12 +8,20 @@ import { summarise, render, isSendHour, HUMAN } from "../src/weekly.js";
  * being reported without the human band that makes it mean anything. Both are
  * pinned. */
 
+/* Every value here sits INSIDE its human band on purpose, so any test that
+   asserts a flag is asserting about the override it passed rather than about
+   the fixture. actorRate moved from 0.2 to 0.05 when that measure gained a band
+   of 0 to 0.12; a default that quietly sits outside a band makes "a healthy
+   week" mean nothing. */
 const reg = (over = {}) => ({
   tool: "sap", type: "note_register", ts: 1,
   data: {
     sentences: 40, words: 800, meanLen: 20, burstiness: 0.7, openerVariety: 0.95,
     sectionCv: 0.46, sectionStep: 0.30,
-    repeatRate: 0.02, actorRate: 0.2, clientRate: 0.18, topOpener: 2, score: 18, ...over,
+    repeatRate: 0.02, actorRate: 0.05, clientRate: 0.18, imperativeRate: 0.12,
+    topOpener: 2, flaggedPer100: 0,
+    emptyAdverbs: 0, participialCausals: 0, abstractStates: 0, vagueVerbs: 0,
+    score: 18, ...over,
   },
 });
 const gen = (tool = "sap") => ({ tool, type: "note_generated", ts: 1, data: { answered: 0 } });
@@ -136,6 +144,50 @@ test("a healthy week reports ok and raises nothing", () => {
   const body = render(s, summarise([]), "2026-08-01");
   assert.doesNotMatch(body, /OUTSIDE HUMAN BAND/);
   assert.doesNotMatch(body, /scored above the human ceiling/);
+  assert.doesNotMatch(body, /Actor naming is above the human band/);
+  assert.match(body, /None of the four banned constructions appeared/);
+});
+
+test("the register remediation is trended, not assumed", () => {
+  /* The four constructions have been counted in the browser since the bans
+     shipped and the counts never left it, so this email could not have told
+     him whether the change that took a real note from 53% to 0% was holding.
+     Density for the trend, and the four separately so a return can be
+     attributed to which one rather than only noticed. */
+  const s = summarise([gen(), reg(), reg({ vagueVerbs: 3, emptyAdverbs: 1, flaggedPer100: 0.5 })]);
+  const body = render(s, summarise([gen(), reg()]), "2026-08-01");
+
+  assert.match(body, /flagged per 100 wd\s+0\.25/);
+  assert.match(body, /Which construction fired/);
+  assert.match(body, /vagueVerbs\s+3/);
+  assert.match(body, /emptyAdverbs\s+1/);
+  // Ordered worst first, so the lead is the first line rather than an alphabet.
+  assert.ok(body.indexOf("vagueVerbs") < body.indexOf("emptyAdverbs"));
+  assert.doesNotMatch(body, /abstractStates/, "a construction that never fired is noise");
+});
+
+test("a construction returning after a clean week is not reported as flat", () => {
+  /* The trend used to go silent whenever the PRIOR value was exactly zero, and
+     zero is the good value for this measure. So the single most reportable
+     thing the register block can say, "these were gone last week and they are
+     back", was the one case with no arrow on it. */
+  const body = render(
+    summarise([gen(), reg({ flaggedPer100: 0.5, vagueVerbs: 3 })]),
+    summarise([gen(), reg({ flaggedPer100: 0 })]),
+    "2026-08-01");
+  assert.match(body, /flagged per 100 wd\s+0\.50.*\(\+0\.50 vs prior 4wk/);
+});
+
+test("actor naming above the band is raised as an open question, not as a fault", () => {
+  /* The register work deliberately pushed actor naming up, because the flagged
+     sections were the actorless ones, and the seven human plans sit at a median
+     of 0.03 while both archived generated SAPs sit above 0.32. Which of those is
+     right is not settled, so the email must not assert that it is. */
+  const body = render(
+    summarise([gen(), reg({ actorRate: 0.33 })]), summarise([]), "2026-08-01");
+  assert.match(body, /actor named\s+0\.33.*OUTSIDE HUMAN BAND/);
+  assert.match(body, /OPEN QUESTION/);
+  assert.match(body, /may have\n\s+overshot/);
 });
 
 test("gap questions mostly skipped is surfaced as a problem", () => {
