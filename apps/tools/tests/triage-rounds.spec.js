@@ -178,22 +178,24 @@ test.describe('it asks again when something is still missing', () => {
   });
 });
 
-// The wait is per tool, and the split is the point.
+// The wait applies to every tool, including his own.
 //
 // He asked for the skip button to cost a few seconds when the draft is thin,
 // after the audit trail showed ten gap-question rounds against zero revisions
-// ever on bt. That price is aimed at a technician learning what a note needs.
-// The drafters a BCBA runs are the same code path, and charging the clinician
-// who wrote the questions' subject matter would be friction with nothing on the
-// other side. So bt waits and the rest do not.
-test.describe('the skip cooldown is scoped to the tool that needs it', () => {
+// ever on bt. I shipped it scoped to bt, reasoning that the price was aimed at
+// a technician still learning what a note needs and that a BCBA already knows.
+// He overruled that: "yeah, it should lock my drafters as well." A thin note is
+// thin whoever wrote it. This test is the guard on his ruling rather than mine,
+// because bt is the tool with the failing signal and the drafters are the ones
+// that would quietly get skipped in a future change.
+test.describe('the skip cooldown covers the BCBA drafters too', () => {
   const supToken = () => {
     const p = { role: 'user', kid: 'test-kid', exp: Math.floor(Date.now() / 1000) + 3600, tools: ['sup'] };
     return Buffer.from(JSON.stringify(p)).toString('base64')
       .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') + '.not-a-real-signature';
   };
 
-  test('a BCBA drafter still skips on the first click', async ({ page }) => {
+  test('a BCBA drafter waits like everyone else', async ({ page }) => {
     await page.route('**/api/llm-call**', (route) => route.fulfill(reply({
       sufficient: false,
       questions: [{ field: 'fNarrative', question: 'How long was the observation?' }],
@@ -220,8 +222,8 @@ test.describe('the skip cooldown is scoped to the tool that needs it', () => {
 
     const skip = page.getByRole('button', { name: /Nothing to add/i });
     await expect(skip).toBeVisible({ timeout: 15000 });
-    await expect(skip).toBeEnabled();
-    await expect(skip).toHaveText(/generate anyway/i);
-    await expect(page.locator('.skip-cooldown-bar')).toHaveCount(0);
+    await expect(skip).toBeDisabled();
+    await expect(skip).toHaveText(/\(\d+s\)/);
+    await expect(page.locator('.skip-cooldown-bar')).toBeVisible();
   });
 });

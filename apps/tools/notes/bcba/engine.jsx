@@ -1125,21 +1125,16 @@ function App() {
   };
 
   /* How long "generate anyway" stays locked while gap questions are on screen.
-     Per tool, because the reason for the wait is per tool. On bt it is doing
-     something: the audit trail showed ten gap-question rounds and zero
-     revisions ever, so skipping was simply cheaper than reading, and a few
-     seconds changes that price. On the drafters a BCBA runs, the questions are
-     going to someone who already knows what a good note needs, and taxing them
-     for it would be friction with nothing on the other side.
-
-     Zero renders the plain button with no bar, so the tools below are exactly
-     as they were. Turning it on anywhere is one number.
+     The same wait on every tool, which is his ruling and not the default I
+     reached for. I had scoped it to bt, reasoning that the price existed
+     because skipping was cheaper than reading for someone still learning what a
+     note needs, and that a BCBA already knows. He overruled it: "yeah, it
+     should lock my drafters as well." A thin note is thin whoever wrote it.
 
      Next step he named: scale the duration - a nearly-ready note drains fast, a
-     thin one drains slow - which needs a readiness signal this button
-     deliberately does not compute for itself. */
-  const SKIP_COOLDOWN = { bt: 30 };
-  const skipCooldownSeconds = SKIP_COOLDOWN[tool.id] || 0;
+     thin one drains slow. That varies by note rather than by tool, which is why
+     this is one number and the button takes it as a prop. */
+  const SKIP_COOLDOWN_SECONDS = 30;
 
   const skipQuestions = () => {
     audit("gap_questions", { skipped: (S.questions || []).length, round: S.triageRound || 1 });
@@ -2022,7 +2017,7 @@ function App() {
         loading={loading}
         questions={S.questions}
         onSkipQuestions={skipQuestions}
-        skipCooldown={skipCooldownSeconds}
+        skipCooldown={SKIP_COOLDOWN_SECONDS}
         unread={S.questions ? S.questions.length : 0}
         quality={noteQuality()}
         loggedIn={loggedIn}
