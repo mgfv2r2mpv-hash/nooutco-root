@@ -348,3 +348,80 @@ instinct. It is n=5 and should be treated as a hint, not a finding, but nothing
 in the corpus supports mandating short sentences.
 
 `commaRate` is still measured and reported. It just no longer scores.
+
+## Burstiness is a mixture, and one number cannot pin a shape (2026-08-06)
+
+The maintainer's design was to learn each technician's sentence rhythm and
+generate against it, and the first build of that aimed at one target: the
+coefficient of variation in sentence length across the whole note. That target
+turned out to be the wrong object, and the corpus says so without ambiguity.
+
+**Split the same measurement in two.** Take a section to be a blank-line block,
+which is not a guess, because the tools build the text they measure by joining
+their own form sections with a blank line. Then measure variability INSIDE a
+section, and separately the step from one section's average sentence length to
+the next. Across 108 documents, 101 coursework and the 7 clinical plans:
+
+| | correlates with whole-note CV |
+|---|---|
+| variability inside a section | 0.448 |
+| step between sections | 0.384 |
+| **the two with each other** | **0.096** |
+
+The whole-note figure is a mixture of two things that are themselves nearly
+unrelated. **21 human documents sit at a whole-note CV of 0.60 give or take
+0.03. Among just those, variability inside a section runs 0.373 to 0.583 and the
+step between sections runs 0.071 to 0.389.** Same target, opposite shapes. A
+model handed that one number is free to pick whichever decomposition is cheapest
+to produce, and there is no reason to expect it to pick the human one.
+
+**What the archived generated notes do NOT show, stated because an earlier
+draft of this section claimed it.** They do not demonstrate within-section
+flatness. Measured through `note-metrics.js` itself, one of the two was saved
+without its blank lines, so it is a single section and cannot answer the
+question; the other measures **0.486** inside its sections and **0.324**
+between them, both squarely human. The argument for two targets is the
+structural one above and it does not need a flat note to hold. Nothing here
+should be re-stated as an empirical finding without a note that carries it.
+
+### The measured constants
+
+Pooled over all 108 documents. Clamps are the 1st and 99th percentile rather
+than the observed minimum and maximum, because a clamp built on min and max is a
+clamp built on one document.
+
+| | mean | sd | p01 | p10 | p90 | p99 |
+|---|---|---|---|---|---|---|
+| inside a section | 0.465 | 0.066 | 0.336 | 0.383 | 0.538 | 0.600 |
+| between sections | 0.309 | 0.120 | 0.104 | 0.189 | 0.434 | 0.584 |
+
+The step is the most portable number in the whole set: coursework lands on 0.296
+and the clinical plans on 0.297, across corpora whose mean sentence lengths are
+20.7 and 12.0 words. Nothing else here transfers like that.
+
+### Measure the corpus the way the browser measures a note
+
+This nearly shipped wrong. The corpus was first measured with a splitter that
+did not treat a line break as a sentence boundary, while `note-metrics.js` does.
+On a bulleted note that single difference decides whether each bullet is its own
+short sentence or gets glued to its neighbour, and it moved one generated SAP's
+within-section figure from **0.362 to 0.486**, which is the distance from
+clearly machine to squarely human. It also produced a diagnosis of the deployed
+model that did not survive re-measurement.
+
+Every constant above was recomputed with the exact tokenizer, word rule and
+section rule in `notes/bcba/note-metrics.js`. If you change one side, change the
+other, and re-derive rather than re-scale.
+
+### What reads them
+
+* `profile-api/src/shape.js` draws two targets off **two separate seeds**. One
+  stream would couple two axes the corpus says are independent.
+* `notes/bcba/engine.jsx` gates its self-revise call on the within-section
+  figure at 0.383, the human 10th percentile. The old gate used the whole-note
+  figure at 0.45 and could not see a note whose sections each read flat.
+* `profile-api/src/weekly.js` prints both halves next to `burstiness`, because
+  a week can hold the mixture inside its band while every section reads flat.
+
+`burstiness` is still measured, still scored and still reported. It is simply
+not sufficient on its own, and nothing should be tuned against it alone again.

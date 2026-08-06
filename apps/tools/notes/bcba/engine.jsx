@@ -957,6 +957,21 @@ function App() {
    * Returns null when there is nothing worth a second call, so a note that
    * already varies costs one API call rather than two.
    */
+  /* The gate is the WITHIN-SECTION figure, because the whole-note one mixes
+     variation inside a section with movement between sections and a note can
+     pass it while every section reads flat.
+
+     WHERE THE NUMBER COMES FROM. It is the human 10th percentile across 108
+     documents, which is the same rule the old whole-note floor followed: fire
+     only on prose in the bottom decile of human-shaped writing. In absolute
+     terms 0.383 is lower than the 0.45 it replaces, but the two measure
+     different quantities and 0.45 sat below the whole-note 10th percentile of
+     0.506, so this is if anything the more willing of the two to fire.
+
+     A false fire costs one extra API call; a miss ships a flat note.
+     REVISE_SPREAD_FLOOR stays as the fallback for a note whose sections are
+     each too short to measure. */
+  const REVISE_WITHIN_FLOOR = 0.383;
   const REVISE_SPREAD_FLOOR = 0.45;
   /* Below this there is nothing to judge. A coefficient of variation over four
      or five short sentences is noise, not a register signal, and spending a
@@ -991,20 +1006,35 @@ function App() {
     // Nothing to measure, too little to judge, or it already mixes: leave it.
     if (!m) return null;
     if (m.sentences < REVISE_MIN_SENTENCES || m.words < REVISE_MIN_WORDS) return null;
-    if (m.burstiness >= REVISE_SPREAD_FLOOR) return null;
 
+    // Judge the sections when they can be judged, and the whole note only when
+    // they cannot. Quoting the figure that was actually tested keeps the ask
+    // honest: "your sections vary by 36%" is checkable, and it is the number
+    // this call was made on.
+    const scoped = m.sectionCv !== null && m.sectionCv !== undefined && m.sections >= 1;
+    const spread = scoped ? m.sectionCv : m.burstiness;
+    if (spread >= (scoped ? REVISE_WITHIN_FLOOR : REVISE_SPREAD_FLOOR)) return null;
+
+    const where = scoped ? "within each section" : "across the note";
     const ask = [
       "Before I read this, look at your own draft again.",
       "",
-      "Its narrative sentences average " + Math.round(m.meanLen) + " words, and they vary by only " +
-        Math.round(m.burstiness * 100) + "% around that. That is the problem: not the length, the SAMENESS.",
+      "Its narrative sentences average " + Math.round(m.meanLen) + " words, and " + where +
+        " they vary by only " + Math.round(spread * 100) +
+        "% around that. That is the problem: not the length, the SAMENESS.",
       "Uniform sentence length is the single strongest signal that prose was machine-written,",
       "and it is equally true whether every sentence is short or every sentence is long.",
       "",
-      "Rewrite the narrative sections so the rhythm actually moves. Put a short sentence next to a",
-      "long one. Let a small fact be a short sentence. Join two related observations into one longer",
-      "sentence where they belong together. Change nothing about the clinical content: no new facts,",
-      "no removed facts, no softened findings, and keep every checkbox exactly as it is.",
+      // These lines are joined with a newline, so a phrase split across two of
+      // them is not the phrase any more. tests/self-revision.spec.js matches
+      // "keep every checkbox" and caught exactly that. Keep each prohibition
+      // whole on its own line.
+      "Fix it INSIDE each section rather than between them. A note where every section reads at",
+      "one flat pace, with all the variety sitting between sections, has the same problem in a",
+      "different place. Put a short sentence next to a long one. Let a small fact be a short",
+      "sentence. Join two related observations into one longer sentence where they belong together.",
+      "Change nothing about the clinical content: no new facts, no removed facts, no softened",
+      "findings, and keep every checkbox exactly as it is.",
       "",
       "Return the COMPLETE JSON object with ALL keys, as before.",
     ].join("\n");
@@ -1030,11 +1060,16 @@ function App() {
       const styleBlock = (S.styleCard && S.styleCard.block) || "";
 
       /* The sentence shape target for THIS note, drawn per note rather than per
-         session. Generated notes sit at a length variability of 0.42 to 0.45
-         where human writing runs 0.49 to 0.68, and a fixed target would fix that
-         for one note while making a hundred notes identically flat, which is its
-         own signature. The seed is this note's identity, so a revision redraws
-         the same target and the cached prefix survives.
+         session. It carries two numbers: how much sentence length should move
+         inside a section, and how far the average should move between sections.
+         Two rather than one because the whole-note figure is their mixture and
+         does not identify a shape; see profile-api/src/shape.js for the corpus
+         that settles it.
+
+         Per note rather than fixed, because a fixed target would fix one note
+         while making a hundred notes identically flat, which is its own
+         signature. The seed is this note's identity, so a revision redraws the
+         same target and the cached prefix survives.
 
          Best effort by design: an unreachable profile store gives exactly the
          prompt that shipped before any of this existed. */
@@ -1106,6 +1141,12 @@ function App() {
           words: register.words,
           meanLen: register.meanLen,
           burstiness: register.burstiness,
+          // The two the shape profile is actually learned from. Sent as their
+          // own keys rather than replacing burstiness, which the score and the
+          // Friday report both still read.
+          sectionCv: register.sectionCv,
+          sectionStep: register.sectionStep,
+          sections: register.sections,
           openerVariety: register.openerVariety,
           repeatRate: register.repeatRate,
           actorRate: register.actorRate,

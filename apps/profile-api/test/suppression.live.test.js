@@ -17,6 +17,7 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, execFileSync } from "node:child_process";
+import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -63,11 +64,32 @@ const corrections = (feature, direction, n, now) =>
     feature, direction, magnitude: 1, source: "revision", ts: now - i * 60_000,
   }));
 
+const d1 = (file) =>
+  execFileSync("npx", ["wrangler", "d1", "execute", "bt-profiles", "--local", "--file", file, "-y"],
+    { cwd: ROOT, stdio: "ignore" });
+
 before(async () => {
   try {
-    execFileSync("npx", ["wrangler", "d1", "execute", "bt-profiles", "--local", "--file", "schema.sql", "-y"],
-      { cwd: ROOT, stdio: "ignore" });
+    d1("schema.sql");
   } catch { return; }
+
+  /* The local D1 is a file on disk that survives between runs, so schema.sql
+     alone leaves it on whatever shape it had the first time it was created:
+     CREATE TABLE IF NOT EXISTS cannot add a column to a table that exists.
+     Skipping this is not theoretical, it is how this file started failing with
+     an undefined `rules` when shape_profile grew two columns.
+
+     Each migration is expected to fail once it has already been applied, which
+     is the designed behaviour rather than a problem to report. */
+  let files = [];
+  // Not readdirSync inline: this hook's contract is that the whole file SKIPS
+  // when the environment cannot support it, and an uncaught throw here would
+  // turn that into every test erroring instead.
+  try { files = readdirSync(join(ROOT, "migrations")).filter((n) => n.endsWith(".sql")).sort(); }
+  catch { files = []; }
+  for (const f of files) {
+    try { d1(join("migrations", f)); } catch { /* already applied */ }
+  }
 
   child = spawn("npx", ["wrangler", "dev", "--local", "--port", String(PORT)],
     { cwd: ROOT, stdio: "ignore" });

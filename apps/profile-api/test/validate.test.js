@@ -193,11 +193,45 @@ test("batches are capped so one request cannot write unbounded rows", () => {
   assert.equal(sanitizeMetrics(metricFlood, NOW).length, 50);
 });
 
-test("a metric carries at most twelve keys", () => {
+test("a metric carries at most sixteen keys", () => {
   const data = {};
   for (let i = 0; i < 40; i++) data[`k${i}`] = i;
   const [out] = sanitizeMetrics([{ type: "note_generated", data }], NOW);
-  assert.equal(Object.keys(out.data).length, 12);
+  assert.equal(Object.keys(out.data).length, 16);
+});
+
+test("the largest payload the tools actually send arrives whole, with headroom", () => {
+  /* The cap drops the overflow SILENTLY, so a payload that grows into it loses
+     whichever keys sort last and nothing anywhere says so. That has already
+     been a live risk once: note_register was at ten keys against a cap of
+     twelve when the two section-scoped shape numbers were added.
+
+     This is the real note_register payload from
+     apps/tools/notes/bcba/engine.jsx. If it ever reaches the cap, raise the cap
+     in the same commit rather than letting a signal disappear. */
+  const register = {
+    sentences: 41, words: 612, meanLen: 14.9, burstiness: 0.52,
+    sectionCv: 0.47, sectionStep: 0.31, sections: 5,
+    openerVariety: 1, repeatRate: 0.01, actorRate: 0.44, clientRate: 0.19,
+    topOpener: 2, score: 18,
+  };
+  const [out] = sanitizeMetrics([{ type: "note_register", data: register }], NOW);
+
+  assert.deepEqual(Object.keys(out.data).sort(), Object.keys(register).sort(),
+    "a key was dropped, so a signal is missing from the Friday report");
+  assert.ok(Object.keys(register).length <= 14,
+    `note_register is at ${Object.keys(register).length} keys and the cap is 16; `
+    + "raise the cap before adding more");
+});
+
+test("a shape number the note could not support is dropped rather than stored as zero", () => {
+  // note-metrics.js omits sectionCv and sectionStep when no section had enough
+  // sentences to measure. A null slipping through instead would be folded into
+  // the technician's running profile as a real observation of perfect flatness.
+  const [out] = sanitizeMetrics(
+    [{ type: "note_register", data: { meanLen: 12, sectionCv: null, sectionStep: undefined, sections: 0 } }],
+    NOW);
+  assert.deepEqual(out.data, { meanLen: 12, sections: 0 });
 });
 
 test("non-array and malformed input is safe", () => {

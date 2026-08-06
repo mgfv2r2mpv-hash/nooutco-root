@@ -14,7 +14,13 @@
 
 import { FEATURE_NAMES } from "./features.js";
 
-const MAX_METRIC_KEYS = 12;
+/* Raised from 12 when note_register grew the two section-scoped shape numbers.
+   The cap bounds one metric row, and the overflow is dropped SILENTLY, so a
+   payload that grows into it loses whichever keys happen to sort last and
+   nothing says so. 16 keeps real headroom over the largest payload the tools
+   send; tests/note-metrics.spec.js pins that gap so it cannot quietly close
+   again. */
+const MAX_METRIC_KEYS = 16;
 const MAX_BATCH = 50;
 const YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
