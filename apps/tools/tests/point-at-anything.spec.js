@@ -221,3 +221,85 @@ test.describe('the pointed-at label', () => {
     await expect(page.locator('.revision-chip')).toContainText(/Note Tool/i);
   });
 });
+
+
+/* Pointing at the assistant itself.
+ *
+ * His ruling of 2026-08-05, answering #83: conversation text becomes pointable,
+ * "also the overall frame itself if there is something in the NoMe popup I want
+ * to report bug about."
+ *
+ * Two different things, so two different outcomes. A turn refers to what was
+ * SAID and leaves the message on its ordinary path, because his words were "to
+ * refer to part of the conversation rather than the form". The panel around it
+ * is the tool, so it goes where tool feedback goes.
+ */
+test.describe('the assistant can be pointed at', () => {
+  test('a turn in the conversation is quoted, not treated as the tool', async ({ page }) => {
+    await drafted(page, 'admin');
+    await page.locator('.revision-fab').click();
+    await page.locator('.point-toggle').click();
+    await page.locator('[data-thread-turn]').first().click();
+
+    const chip = page.locator('.revision-chip');
+    await expect(chip).toBeVisible();
+    await expect(chip).toContainText(/From (you|NoMe)/);
+    // Quoting is not feedback about the tool, so no stub is offered.
+    await expect(page.locator('.ticket-offer')).toHaveCount(0);
+  });
+
+  test('the quote reaches the model as a pointer, not as content to write in', async ({ page }) => {
+    await drafted(page, 'admin');
+    await page.locator('.revision-fab').click();
+    await page.locator('.point-toggle').click();
+    await page.locator('[data-thread-turn]').first().click();
+
+    let asked = null;
+    await page.unroute('**/api/llm-call**');
+    await page.route('**/api/llm-call**', async (route) => {
+      asked = JSON.parse(route.request().postData() || '{}');
+      return route.abort();
+    });
+    await page.locator('.revision-input').fill('do that to the behaviour section too');
+    await page.locator('.revision-send').click();
+    await page.waitForTimeout(1500);
+
+    const sent = JSON.stringify(asked);
+    expect(asked, 'a quoted turn must still send a revision').not.toBeNull();
+    expect(sent).toMatch(/pointed at this, from earlier in this conversation/i);
+    expect(sent, 'a quote is a pointer, not text to paste into the note')
+      .toMatch(/not content to copy into the note/i);
+  });
+
+  test('the panel around the conversation is feedback about the tool', async ({ page }) => {
+    await drafted(page, 'admin');
+    await page.locator('.revision-fab').click();
+    await page.locator('.point-toggle').click();
+    await page.locator('.revision-panel-head').click();
+
+    await expect(page.locator('.revision-chip')).toContainText('About the page');
+    await page.locator('.revision-input').fill('the header wastes a row');
+    await page.locator('.revision-send').click();
+    await expect(page.locator('.ticket-offer')).toBeVisible();
+  });
+
+  test('the toggle stays clickable, so pointing can always be turned off', async ({ page }) => {
+    await drafted(page, 'admin');
+    await page.locator('.point-toggle').click();
+    await expect(page.locator('.point-toggle')).toHaveAttribute('aria-pressed', 'true');
+    // Clicking it while armed must turn the mode off rather than capture it.
+    await page.locator('.point-toggle').click();
+    await expect(page.locator('.point-toggle')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('.revision-chip')).toHaveCount(0);
+  });
+
+  test('a technician still cannot point at the assistant', async ({ page }) => {
+    await drafted(page, 'user');
+    await page.locator('.revision-fab').click();
+    await page.locator('.point-toggle').click();
+    await page.locator('[data-thread-turn]').first().click();
+    // Their scope is note content, which is his standing rule and unchanged.
+    await expect(page.locator('.revision-chip')).toHaveCount(0);
+    await expect(page.locator('.point-toggle')).toHaveAttribute('aria-pressed', 'true');
+  });
+});

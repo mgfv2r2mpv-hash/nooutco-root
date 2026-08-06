@@ -1290,6 +1290,23 @@ function App() {
         `"why" is one short clause the clinician will read, naming what in their instruction sent the change there.`,
         `Leave "crossSection" empty and copy every other section verbatim when the instruction only concerns the section they pointed at.`,
       ].join("\n");
+    } else if (ann && ann.kind === "quote") {
+      // They pointed at something that was SAID rather than at a section. The
+      // quote is context for the instruction, not a target: which sections move
+      // is worked out from the instruction, as it is for any untargeted change.
+      userMsg = [
+        `REVISION REQUEST`,
+        `The clinician pointed at this, from earlier in this conversation:`,
+        `"${ann.text}"`,
+        ``,
+        `Instruction: ${scrubbedInstruction}`,
+        ``,
+        `Read the instruction as being ABOUT that quote. It is a pointer into this conversation, not content to copy into the note and not a section name.`,
+        ``,
+        REVISION_RULES,
+        ``,
+        `Return the COMPLETE updated JSON object with ALL keys; copy unaffected sections verbatim. Re-evaluate "hints". Never fabricate beyond what is stated.`,
+      ].join("\n");
     } else {
       userMsg = [
         `ADDITIONAL DETAILS / CORRECTIONS from the clinician:`,
@@ -1889,7 +1906,13 @@ function App() {
 
     // Never let the assistant's own furniture become a target: pointing at the
     // pill to turn pointing off would otherwise capture the pill.
-    const OURS = ".revision-dock, .revision-panel, .point-toggle, [data-revise-chip], #eb-backdrop, #notes-login-backdrop, noaba-bar";
+    /* Only the toggle. His ruling of 2026-08-05 opened the rest of the assistant
+       up: conversation text so a message can be about what was said, and the
+       panel itself so a bug in it can be reported from inside it. The toggle
+       stays out because turning pointing OFF has to remain possible while
+       pointing is on. Everything else in there is one click, and that click
+       disarms the mode anyway. */
+    const OURS = ".point-toggle, [data-revise-chip], #eb-backdrop, #notes-login-backdrop, noaba-bar";
     const eligible = (el) => {
       if (!el || !el.closest || el.nodeType !== 1) return false;
       if (el.closest(OURS)) return false;
@@ -1942,9 +1965,24 @@ function App() {
         return;
       }
 
-      // Anything else is feedback about the page. Carry a short, readable
-      // description rather than a selector: it is what the clinician sees, and
-      // it is what makes the message make sense when read back later.
+      // A turn in the conversation refers to what was SAID, not to the tool and
+      // not to a section. It carries the quoted words and leaves the message on
+      // its ordinary path, so "do what you said there" still revises the note.
+      const turn = el.closest("[data-thread-turn]");
+      if (turn) {
+        const said = (turn.textContent || "").trim().replace(/\s+/g, " ");
+        targetSection({
+          kind: "quote",
+          id: "quote",
+          heading: turn.getAttribute("data-thread-turn") || "",
+          text: said.slice(0, 300),
+        });
+        return;
+      }
+
+      // Anything else is feedback about the page, the assistant panel included.
+      // Carry a short, readable description rather than a selector: it is what
+      // the clinician sees, and what makes the message make sense read back.
       // A container's textContent is the whole page, which records nothing
       // useful and drags the assistant's own chrome in with it. Take what the
       // element itself says: its explicit label, then its own text nodes, then
