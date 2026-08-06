@@ -536,6 +536,7 @@ function freshSession(tool) {
     annotation: null,      // {kind:"section"|"span", id, heading, text?}
     panelDraft: "",
     questions: null,       // triage questions awaiting an answer, or null
+    readiness: null,       // 0-100 from triage; sets how long the skip stays locked
     pendingValues: null,   // scrubbed values held while triage runs
     // Answering two of three questions used to send the note to drafting with
     // the third still open. These carry the exchange across rounds so the next
@@ -854,9 +855,10 @@ function App() {
   const TRIAGE_SCHEMA = {
     type: "object",
     additionalProperties: false,
-    required: ["sufficient", "questions"],
+    required: ["sufficient", "readiness", "questions"],
     properties: {
       sufficient: { type: "boolean" },
+      readiness: { type: "integer", minimum: 0, maximum: 100 },
       questions: {
         type: "array",
         items: {
@@ -879,6 +881,26 @@ function App() {
     "- Do not ask about something they plainly had nothing to report. A session with no behaviors of concern is a normal session, not a gap.\n" +
     "- If the notes are adequate, return sufficient=true and an empty array. Fewer questions is better than more; three is a ceiling, not a target.\n" +
     "- Return ONLY a JSON object: {\"sufficient\": boolean, \"questions\": [{\"field\": \"\", \"question\": \"\"}]}";
+
+  /* Appended to WHICHEVER triage prompt runs, the default above or a tool's own.
+     It lives apart from both so there is exactly one place to change what counts
+     as ready, which is the reason he chose a model-judged number over counting
+     the questions: "the readiness number determination can be adjusted as
+     needed." Counting questions would have put that judgement in arithmetic,
+     where tuning it means editing code and re-reading tests.
+
+     The number drives how long the skip button stays locked. It never gates
+     anything and it is never shown, so a badly calibrated reading costs a few
+     seconds either way and nothing else. */
+  const TRIAGE_READINESS =
+    "\n\nREADINESS\n" +
+    "Alongside those fields, return `readiness`: an integer from 0 to 100 for how close this input already is to something a clinician could sign, judged BEFORE any of your questions are answered.\n" +
+    "  85-100  Everything a reviewer needs is present. Your questions would sharpen the note rather than rescue it.\n" +
+    "  60-84   One real gap - a behavior with no count, a strategy with no outcome. The note can be written and would be visibly thinner.\n" +
+    "  30-59   Several gaps, or a single one the note rests on. Writing from this means inventing or omitting.\n" +
+    "  0-29    Too thin to write from at all.\n" +
+    "Judge what is on the page, not how well it is written. Terse but complete scores high; fluent but hollow scores low.\n" +
+    "So the object you return is {\"sufficient\": boolean, \"readiness\": integer, \"questions\": [{\"field\": \"\", \"question\": \"\"}]}.";
 
   // The default above is written for session notes. A tool whose input is not a
   // session (a SAP is a program plan, with no counts and no "this session")
@@ -903,7 +925,7 @@ function App() {
         "If nothing important is still missing, return sufficient: true.";
     }
     const r = await NotesGate.generateConversation({
-      system: tool.triageSystem || TRIAGE_SYSTEM,
+      system: (tool.triageSystem || TRIAGE_SYSTEM) + TRIAGE_READINESS,
       messages: [{ role: "user", content: (tool.triageIntro || "CLINICIAN'S RAW NOTES:") + "\n\n" + body }],
       tool: tool.id,
       maxTokens: 600,
@@ -912,7 +934,13 @@ function App() {
     });
     const parsed = r.parsed || {};
     const questions = Array.isArray(parsed.questions) ? parsed.questions : [];
-    return parsed.sufficient ? [] : questions.filter((q) => q && q.question).slice(0, 3);
+    return {
+      questions: parsed.sufficient ? [] : questions.filter((q) => q && q.question).slice(0, 3),
+      // Absent or unparseable stays null rather than becoming a number, so the
+      // wait falls back to the full thirty seconds. A missing reading must not
+      // hand out the shortcut a ready note earns.
+      readiness: Number.isFinite(parsed.readiness) ? parsed.readiness : null,
+    };
   };
 
   // Draft the note. `extra` is the technician's answers to the triage questions,
@@ -989,7 +1017,7 @@ function App() {
 
   const draftNote = async (scrubbedValues, extra) => {
     setLoading(true);
-    patchS({ output: null, proposal: null, conversation: [], questions: null, pendingValues: null });
+    patchS({ output: null, proposal: null, conversation: [], questions: null, readiness: null, pendingValues: null });
     try {
       let userMsg = tool.buildUserPrompt(scrubbedValues);
       if (extra && extra.trim()) {
@@ -1106,8 +1134,11 @@ function App() {
     setLoading(true);
     setPanelOpen(true);
     let questions = [];
+    let readiness = null;
     try {
-      questions = await runTriage(scrubbed);
+      const triage = await runTriage(scrubbed);
+      questions = triage.questions;
+      readiness = triage.readiness;
     } catch (e) {
       // Triage is an assist, not a gate. If it fails the note still gets
       // written - losing a question is a far smaller harm than refusing to
@@ -1116,8 +1147,8 @@ function App() {
     }
     if (questions.length) {
       setLoading(false);
-      audit("gap_questions", { asked: questions.length, round: 1 });
-      patchS({ questions, pendingValues: scrubbed, triageAnswers: "", triageRound: 1 });
+      audit("gap_questions", { asked: questions.length, round: 1, readiness });
+      patchS({ questions, readiness, pendingValues: scrubbed, triageAnswers: "", triageRound: 1 });
       return;
     }
     audit("gap_questions", { asked: 0 });
@@ -1131,13 +1162,31 @@ function App() {
      note needs, and that a BCBA already knows. He overruled it: "yeah, it
      should lock my drafters as well." A thin note is thin whoever wrote it.
 
-     Next step he named: scale the duration - a nearly-ready note drains fast, a
-     thin one drains slow. That varies by note rather than by tool, which is why
-     this is one number and the button takes it as a prop. */
-  const SKIP_COOLDOWN_SECONDS = 30;
+     The wait now scales with the note, which is the second half of what he
+     asked for: a nearly-ready note drains fast, a thin one drains slow. The
+     floor is not zero, because the pause has to remain a pause - five seconds
+     is a beat, and a note the model already rates as nearly signable has not
+     earned an instant escape, only a shorter one. A missing reading gets the
+     full thirty. */
+  const SKIP_COOLDOWN_MAX_SECONDS = 30;
+  const SKIP_COOLDOWN_MIN_SECONDS = 5;
+
+  const skipSecondsFor = (readiness) => {
+    if (!Number.isFinite(readiness)) return SKIP_COOLDOWN_MAX_SECONDS;
+    const pct = Math.min(100, Math.max(0, readiness));
+    const span = SKIP_COOLDOWN_MAX_SECONDS - SKIP_COOLDOWN_MIN_SECONDS;
+    return Math.round(SKIP_COOLDOWN_MAX_SECONDS - (span * pct) / 100);
+  };
 
   const skipQuestions = () => {
-    audit("gap_questions", { skipped: (S.questions || []).length, round: S.triageRound || 1 });
+    audit("gap_questions", {
+      skipped: (S.questions || []).length,
+      round: S.triageRound || 1,
+      // Audited on the skip as well as on the ask, because the only way to find
+      // out whether this number tracks anything real is to see which readings
+      // people walk away from.
+      readiness: S.readiness,
+    });
     pushThread("user", "answer", "(skipped)");
     // Anything they answered in an earlier round still counts. Dropping it
     // because they skipped the last question would throw away work they did.
@@ -1471,8 +1520,11 @@ function App() {
       if (round <= MAX_TRIAGE_ROUNDS) {
         setLoading(true);
         let more = [];
+        let readiness = null;
         try {
-          more = await runTriage(S.pendingValues, answered);
+          const triage = await runTriage(S.pendingValues, answered);
+          more = triage.questions;
+          readiness = triage.readiness;
         } catch (e) {
           // Triage is an assist, not a gate. Losing a follow-up question is a
           // far smaller harm than refusing to draft.
@@ -1480,8 +1532,11 @@ function App() {
         }
         setLoading(false);
         if (more.length) {
-          audit("gap_questions", { asked: more.length, round });
-          patchS({ questions: more, triageAnswers: answered, triageRound: round });
+          audit("gap_questions", { asked: more.length, round, readiness });
+          // Re-read each round rather than carried forward: answering two of
+          // three questions is exactly the case where the note got closer, and
+          // the wait should shorten to match.
+          patchS({ questions: more, readiness, triageAnswers: answered, triageRound: round });
           return;
         }
       }
@@ -2055,7 +2110,7 @@ function App() {
         loading={loading}
         questions={S.questions}
         onSkipQuestions={skipQuestions}
-        skipCooldown={SKIP_COOLDOWN_SECONDS}
+        skipCooldown={skipSecondsFor(S.readiness)}
         unread={S.questions ? S.questions.length : 0}
         quality={noteQuality()}
         loggedIn={loggedIn}

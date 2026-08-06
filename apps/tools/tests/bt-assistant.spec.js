@@ -275,6 +275,106 @@ test.describe('triage questions before drafting', () => {
     expect(parseFloat(after)).toBeGreaterThan(parseFloat(before));
   });
 
+  /* The second half of what he asked for: "the closer the note is to being
+     ready, the shorter the button emptying is." The readiness number is the
+     model's, returned by the same triage call, which is the version he picked
+     over counting questions - "the readiness number determination can be
+     adjusted as needed", meaning it stays a line of prompt rather than becoming
+     arithmetic in the code.
+
+     These pin the mapping in both directions and, more importantly, pin the
+     fallback: a triage reply with no readiness must get the LONGER wait, not
+     the shorter one. */
+  test.describe('the wait scales with how ready the note already is', () => {
+    const triageWith = (extra) => ({
+      sufficient: false,
+      questions: [{ field: 'fBehavior', question: 'How many times?' }],
+      ...extra,
+    });
+
+    async function openQuestions(page, triageBody) {
+      await page.route('**/api/llm-call**', (route) => route.fulfill(reply(triageBody)));
+      await page.clock.install();
+      await page.goto('/notes/bt/');
+      await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
+      await page.goto('/notes/bt/');
+      await fillRequiredAndGenerate(page);
+      return page.getByRole('button', { name: /Nothing to add/i });
+    }
+
+    /* READ THE COUNTDOWN FAST. The clock is installed but not paused, so it
+       ticks in real time - and a toHaveText that FAILS keeps retrying while the
+       number drains. The first version of this file expected 25s from a
+       readiness of 20, and it passed against the build with no readiness at all,
+       because that build's 30 drifted down to 25 inside the five-second retry
+       window. A tight timeout is what makes the read a measurement rather than
+       a race the wrong answer can win. */
+    const startsAt = (skip, seconds) =>
+      expect(skip).toHaveText(new RegExp(`\\(${seconds}s\\)`), { timeout: 2000 });
+
+    test('a nearly-ready note drains in a few seconds', async ({ page }) => {
+      const skip = await openQuestions(page, triageWith({ readiness: 90 }));
+      // 90 maps to 8s. The floor is deliberately not zero: a note the model
+      // already rates as nearly signable earns a shorter pause, not none.
+      await startsAt(skip, 8);
+      await expect(skip).toBeDisabled();
+      await page.clock.runFor(9_000);
+      await expect(skip).toBeEnabled();
+    });
+
+    test('a middling note waits noticeably longer', async ({ page }) => {
+      const skip = await openQuestions(page, triageWith({ readiness: 40 }));
+      await startsAt(skip, 20);
+      // The moment that separates the two: at nine seconds the ready note is
+      // already through and this one is not.
+      await page.clock.runFor(9_000);
+      await expect(skip).toBeDisabled();
+      await page.clock.runFor(12_000);
+      await expect(skip).toBeEnabled();
+    });
+
+    test('a triage reply with no readiness gets the full wait, not the short one', async ({ page }) => {
+      // The fallback has to fail toward the longer wait. A dropped field, a
+      // malformed reply or an older tool must never hand out the shortcut that
+      // a genuinely ready note earns.
+      //
+      // This one is a one-sided guard and cannot be otherwise: the full thirty
+      // is exactly what the build before this change did on every note, so no
+      // assertion here can tell them apart. What it pins is the future - the
+      // day someone makes the fallback the SHORT wait for convenience.
+      const skip = await openQuestions(page, triageWith({}));
+      await startsAt(skip, 30);
+      await page.clock.runFor(29_000);
+      await expect(skip).toBeDisabled();
+    });
+
+    test('answering shortens the next round, because the note got closer', async ({ page }) => {
+      // Readiness is re-read every round rather than carried forward. Answering
+      // two of three questions is exactly the case where the note improved, and
+      // the wait has to move with it or the number is decorative.
+      const posted = [];
+      await page.route('**/api/llm-call**', (route) => {
+        posted.push(JSON.parse(route.request().postData() || '{}'));
+        return route.fulfill(reply(posted.length === 1
+          ? triageWith({ readiness: 40 })
+          : { ...triageWith({ readiness: 90 }), questions: [{ field: 'fBehavior', question: 'For how long?' }] }));
+      });
+      await page.clock.install();
+      await page.goto('/notes/bt/');
+      await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
+      await page.goto('/notes/bt/');
+      await fillRequiredAndGenerate(page);
+
+      const skip = page.getByRole('button', { name: /Nothing to add/i });
+      await startsAt(skip, 20);
+
+      await page.locator('.revision-input').fill('twice');
+      await page.locator('.revision-send').click();
+      await expect(page.getByText(/for how long/i)).toBeVisible();
+      await startsAt(skip, 8);
+    });
+  });
+
   test('a failed triage call still drafts the note', async ({ page }) => {
     // Triage is an assist, not a gate. Losing a question is a far smaller harm
     // than refusing to draft.
