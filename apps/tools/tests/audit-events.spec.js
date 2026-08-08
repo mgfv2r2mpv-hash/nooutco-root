@@ -133,3 +133,83 @@ test.describe('audit events are content-free', () => {
     expect(buffered).toHaveLength(1);
   });
 });
+
+/* A correction has to know which tool it was made in.
+   ------------------------------------------------------------------
+   It did not. The browser stripped the tool off every correction, and the
+   worker labelled the whole batch with `events[0].tool` - the OLDEST entry in
+   an audit buffer that is shared across tools and survives reloads. So a
+   technician who wrote a SAP note and then a supervision note before a flush
+   landed had both sets of corrections filed under SAP, and a flush carrying
+   corrections with no metrics beside them was filed under "unknown".
+
+   This matters beyond tidiness: the store is what a learned style rule is built
+   from, so a mislabelled correction is a rule attributed to the wrong kind of
+   document. */
+test.describe('a correction carries its own tool', () => {
+  test('the tool reaches the buffer, and it is the tool that was passed', async ({ page }) => {
+    await page.goto('/notes/scrub-test.html');
+    await page.waitForFunction(() => !!(window.NotesGate && window.NotesGate.audit));
+
+    const buffered = await page.evaluate(() => {
+      localStorage.removeItem('noaba.corrections.buffer.v1');
+      localStorage.removeItem('notes_auth_token'); // no flush, so the buffer is readable
+      window.NotesGate.audit.corrections([{ feature: 'sentence_length', direction: 1 }], 'sap');
+      return JSON.parse(localStorage.getItem('noaba.corrections.buffer.v1') || '[]');
+    });
+
+    expect(buffered).toHaveLength(1);
+    expect(buffered[0].tool).toBe('sap');
+  });
+
+  test('two tools in one batch each keep their own, rather than sharing the first', async ({ page }) => {
+    await page.goto('/notes/scrub-test.html');
+    await page.waitForFunction(() => !!(window.NotesGate && window.NotesGate.audit));
+
+    const posted = [];
+    await page.route('**/api/audit**', async (route) => {
+      posted.push(JSON.parse(route.request().postData() || '{}'));
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '{"stored":0,"profile":"skipped"}' });
+    });
+
+    await page.evaluate(() => {
+      localStorage.removeItem('notes_auth_token');
+      localStorage.removeItem('noaba.audit.buffer.v1');
+      localStorage.removeItem('noaba.corrections.buffer.v1');
+      // The exact shape of the bug: an audit event from one tool sits in the
+      // buffer first, then corrections are made in a different tool.
+      window.NotesGate.audit.emit('note_generated', { tool: 'sap', len_goal: 40 });
+      window.NotesGate.audit.corrections([{ feature: 'sentence_length', direction: -1 }], 'sup');
+    });
+    await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
+    await page.evaluate(() => window.NotesGate.audit.flush());
+    await page.waitForTimeout(600);
+
+    expect(posted).toHaveLength(1);
+    const [body] = posted;
+    expect(body.events[0].tool).toBe('sap');
+    expect(body.corrections).toHaveLength(1);
+    // The whole point: the correction is a supervision-note correction, and the
+    // SAP event sitting ahead of it in the buffer does not get to relabel it.
+    expect(body.corrections[0].tool).toBe('sup');
+  });
+
+  test('a tool that is not a slug is dropped rather than carried', async ({ page }) => {
+    await page.goto('/notes/scrub-test.html');
+    await page.waitForFunction(() => !!(window.NotesGate && window.NotesGate.audit));
+
+    const buffered = await page.evaluate(() => {
+      localStorage.removeItem('noaba.corrections.buffer.v1');
+      localStorage.removeItem('notes_auth_token');
+      window.NotesGate.audit.corrections(
+        [{ feature: 'sentence_length', direction: 1 }],
+        'Jacob eloped from the clinic',
+      );
+      return JSON.parse(localStorage.getItem('noaba.corrections.buffer.v1') || '[]');
+    });
+
+    expect(buffered).toHaveLength(1);
+    expect(buffered[0].tool).toBeNull();
+    expect(JSON.stringify(buffered)).not.toContain('Jacob');
+  });
+});

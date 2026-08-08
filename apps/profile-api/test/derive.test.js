@@ -186,7 +186,7 @@ test("the injected block is capped, so a prompt cannot grow without bound", () =
 
 test("cardRows carries only the columns the schema declares", () => {
   const rules = deriveRules(many(6, "quantification", 1), NOW);
-  const rows = cardRows("pw:abc-123", rules, NOW);
+  const rows = cardRows("pw:abc-123", "clinical-narrative", rules, NOW);
   assert.equal(rows.length, 1);
   assert.deepEqual(Object.keys(rows[0]).sort(), [
     "confidence",
@@ -194,10 +194,12 @@ test("cardRows carries only the columns the schema declares", () => {
     "evidence",
     "feature",
     "kid",
+    "register",
     "rule",
     "updated_at",
   ]);
   assert.equal(rows[0].kid, "pw:abc-123");
+  assert.equal(rows[0].register, "clinical-narrative");
   assert.equal(rows[0].updated_at, NOW);
 });
 

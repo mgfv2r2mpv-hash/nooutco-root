@@ -1352,9 +1352,16 @@ const AUDIT_TYPES = new Set([
   "gap_questions",
   "revision",
   "note_copied",
+  // note_register was emitted by the engine and missing from here, so every one
+  // was dropped at this line and never reached the store. Two things were
+  // silently starved by that: shape_profile, which is written only from a
+  // note_register, and the Friday self-audit, which reads note_register rows
+  // out of usage_metric to compare the week against the human bands. Both have
+  // been computing over an empty set since they were built.
+  "note_register",
 ]);
 
-function sanitizeAuditEvent(raw) {
+export function sanitizeAuditEvent(raw) {
   if (!raw || typeof raw !== "object") return null;
   if (typeof raw.type !== "string" || !AUDIT_TYPES.has(raw.type)) return null;
   const tool = typeof raw.tool === "string" && /^[a-z0-9_-]{1,16}$/.test(raw.tool) ? raw.tool : null;
@@ -1364,7 +1371,15 @@ function sanitizeAuditEvent(raw) {
   for (const k of Object.keys(src).slice(0, 12)) {
     if (!/^[a-z][a-z0-9_]{0,23}$/i.test(k)) continue;
     const v = src[k];
-    if (typeof v === "number" && Number.isFinite(v)) data[k] = Math.round(v);
+    // FOUR DECIMAL PLACES, NOT WHOLE NUMBERS. Rounding to an integer was fine
+    // while every metric was a character count, and destroyed the register
+    // measures the moment they arrived: burstiness runs 0.55 to 0.82 and opener
+    // variety 0.92 to 1.0, so both collapsed to 0 or 1 and the human reference
+    // bands they are compared against became meaningless. shape_profile also
+    // requires burstiness > 0, so a rounded 0.6 was discarded outright.
+    // Bounding the precision is what the rounding was for, and 4dp still bounds
+    // it: a number cannot carry prose at any precision.
+    if (typeof v === "number" && Number.isFinite(v)) data[k] = Math.round(v * 10000) / 10000;
     else if (typeof v === "boolean") data[k] = v;
     else if (typeof v === "string" && /^[a-z0-9_-]{1,24}$/i.test(v)) data[k] = v;
     // Anything else - objects, arrays, prose - is dropped, not stringified.
@@ -1418,6 +1433,11 @@ async function handleAudit(request, env) {
   // the audit record is still safe in KV.
   const forwarded = await profileFetch(env, "/events", {
     kid,
+    // Batch-level fallback only. Metrics still take it, because a metric is
+    // emitted with its tool attached and the first one in a batch is as good a
+    // label as any for the batch. Corrections do NOT rely on it any more: each
+    // one carries the tool it was made in, and this is what a correction falls
+    // back to when the client did not say.
     tool: events[0]?.tool || null,
     corrections,
     metrics: events.map((e) => ({ type: e.type, ts: e.ts, data: e.data })),
@@ -1453,6 +1473,9 @@ function sanitizeCorrection(raw) {
     source: raw.source === "manual" ? "manual" : "revision",
     magnitude: Number.isFinite(raw.magnitude) ? Math.max(0, Math.min(1, raw.magnitude)) : 1,
     ts: Number.isFinite(raw.ts) ? Math.round(raw.ts) : Date.now(),
+    // The tool the correction was made in. Same slug shape the audit path
+    // enforces, and dropped rather than coerced if it is anything else.
+    tool: typeof raw.tool === "string" && /^[a-z0-9_-]{1,16}$/.test(raw.tool) ? raw.tool : null,
   };
 }
 
@@ -1722,8 +1745,12 @@ async function handleStyleCardMute(request, env) {
   try { body = await request.json(); } catch { return jsonRes(400, { error: "Invalid JSON." }); }
   if (typeof body?.feature !== "string") return jsonRes(400, { error: "Missing feature." });
 
+  // The tool is forwarded because the card is keyed by that tool's register.
+  // Dropping it here would send the mute to a register called "unknown", which
+  // updates no rows and still returns ok.
   const ok = await profileFetch(env, "/style-card/mute", {
     kid,
+    tool: typeof body.tool === "string" && /^[a-z0-9_-]{1,16}$/.test(body.tool) ? body.tool : null,
     feature: body.feature,
     muted: body.muted !== false,
   });

@@ -17,6 +17,7 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, execFileSync } from "node:child_process";
+import { rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -65,6 +66,14 @@ const corrections = (feature, direction, n, now) =>
 
 before(async () => {
   try {
+    /* Wipe the local D1 before applying the schema. schema.sql is all CREATE
+       TABLE IF NOT EXISTS, so an on-disk database left over from an older shape
+       is never brought forward -- which is exactly what happened when the card
+       gained its `register` key: the tables already existed, the new columns
+       silently did not, and the failure surfaced as unrelated SQL errors. The
+       unique-kid-per-run trick below handles row collisions; it cannot handle a
+       stale column list. */
+    rmSync(join(ROOT, ".wrangler", "state", "v3", "d1"), { recursive: true, force: true });
     execFileSync("npx", ["wrangler", "d1", "execute", "bt-profiles", "--local", "--file", "schema.sql", "-y"],
       { cwd: ROOT, stdio: "ignore" });
   } catch { return; }
@@ -89,7 +98,7 @@ test("a removed rule leaves the prompt and does not come back", async (t) => {
     corrections: corrections("sentence_length", -1, 8, now),
   });
 
-  let card = await get(`/style-card?kid=${KID}`);
+  let card = await get(`/style-card?kid=${KID}&tool=bt`);
   assert.ok(
     card.rules.some((r) => r.feature === "sentence_length"),
     "the rule should exist before anyone removes it",
@@ -97,10 +106,10 @@ test("a removed rule leaves the prompt and does not come back", async (t) => {
   assert.match(card.block, /sentence/i, "and it should be in the block that reaches the prompt");
 
   // A supervisor removes it.
-  const removed = await post("/suppress", { kid: KID, feature: "sentence_length", removed: true, now });
+  const removed = await post("/suppress", { tool: "bt", kid: KID, feature: "sentence_length", removed: true, now });
   assert.equal(removed.ok, true);
 
-  card = await get(`/style-card?kid=${KID}`);
+  card = await get(`/style-card?kid=${KID}&tool=bt`);
   assert.equal(
     card.rules.some((r) => r.feature === "sentence_length"), false,
     "a removed rule must not be listed",
@@ -116,7 +125,7 @@ test("a removed rule leaves the prompt and does not come back", async (t) => {
     corrections: corrections("sentence_length", 1, 12, now + 1000),
   });
 
-  card = await get(`/style-card?kid=${KID}`);
+  card = await get(`/style-card?kid=${KID}&tool=bt`);
   assert.equal(
     card.rules.some((r) => r.feature === "sentence_length"), false,
     "a rebuild must not resurrect a rule a supervisor removed",
@@ -140,12 +149,12 @@ test("restoring a rule brings it back when the evidence still supports one", asy
     corrections: corrections("contractions", 1, 9, now),
   });
 
-  await post("/suppress", { kid, feature: "contractions", removed: true, now });
-  let card = await get(`/style-card?kid=${kid}`);
+  await post("/suppress", { tool: "bt", kid, feature: "contractions", removed: true, now });
+  let card = await get(`/style-card?kid=${kid}&tool=bt`);
   assert.equal(card.rules.some((r) => r.feature === "contractions"), false, "removed");
 
-  await post("/suppress", { kid, feature: "contractions", removed: false });
-  card = await get(`/style-card?kid=${kid}`);
+  await post("/suppress", { tool: "bt", kid, feature: "contractions", removed: false });
+  card = await get(`/style-card?kid=${kid}&tool=bt`);
   assert.ok(card.rules.some((r) => r.feature === "contractions"), "and back again");
 });
 
@@ -158,9 +167,9 @@ test("the supervisor view shows what the technician view hides", async (t) => {
     kid, tool: "bt", now,
     corrections: corrections("plain_wording", 1, 8, now),
   });
-  await post("/suppress", { kid, feature: "plain_wording", removed: true, now });
+  await post("/suppress", { tool: "bt", kid, feature: "plain_wording", removed: true, now });
 
-  const tech = await get(`/style-card?kid=${kid}`);
+  const tech = await get(`/style-card?kid=${kid}&tool=bt`);
   assert.equal(tech.rules.length, 0, "the technician sees nothing of the removal");
 
   const sup = await get(`/card-detail?kid=${kid}`);
@@ -214,7 +223,94 @@ test("a technician with no corrections has an empty history rather than an error
 
 test("suppress refuses anything outside the closed feature list", async (t) => {
   if (!live) return t.skip("wrangler dev did not come up");
-  const bad = await post("/suppress", { kid: KID, feature: "not_a_real_feature", removed: true });
+  const bad = await post("/suppress", { tool: "bt", kid: KID, feature: "not_a_real_feature", removed: true });
   assert.equal(bad.ok, undefined);
   assert.match(bad.error, /Unknown feature/);
+});
+
+/* The bleed his question was about, as real SQL.
+   ------------------------------------------------------------------
+   On 2026-08-06 he asked whether a correction made on the SAP tool was being
+   learned into his supervision notes. It was: style_card was keyed (kid,
+   feature), so there was one pool per person across every note type. This is
+   that question as an assertion, run against a real Worker and a real database
+   because the fix is a primary key and a WHERE clause, and neither can be
+   proved by a unit test. */
+test("a correction on SAP does not reach the supervision note", async (t) => {
+  if (!live) return t.skip("wrangler dev did not come up");
+
+  const kid = kidFor("registers");
+  const now = Date.now();
+
+  // Earn a rule the only way a technician can: by correcting SAP output.
+  await post("/events", {
+    kid, tool: "sap", now,
+    corrections: corrections("sentence_length", -1, 9, now),
+  });
+
+  const sap = await get(`/style-card?kid=${kid}&tool=sap`);
+  assert.ok(
+    sap.rules.some((r) => r.feature === "sentence_length"),
+    "the rule must exist where it was actually learned",
+  );
+  assert.match(sap.block, /sentence/i, "and must reach the SAP prompt");
+
+  const sup = await get(`/style-card?kid=${kid}&tool=sup`);
+  assert.equal(
+    sup.rules.some((r) => r.feature === "sentence_length"), false,
+    "and must NOT appear on a supervision note, which is a different document class",
+  );
+  assert.equal(sup.block, "", "nothing learned from SAP may reach the supervision prompt");
+});
+
+test("assess and sup share a pool, because they are the same document class", async (t) => {
+  if (!live) return t.skip("wrangler dev did not come up");
+
+  const kid = kidFor("shared-register");
+  const now = Date.now();
+  await post("/events", {
+    kid, tool: "assess", now,
+    corrections: corrections("contractions", 1, 9, now),
+  });
+
+  // Per tool would have isolated these. Per register is what he chose, and this
+  // is the half of that choice that keeps the evidence usable: 63 of his 66
+  // corrections were sup plus assess.
+  const sup = await get(`/style-card?kid=${kid}&tool=sup`);
+  assert.ok(
+    sup.rules.some((r) => r.feature === "contractions"),
+    "evidence from assess should inform the supervision note",
+  );
+
+  const bt = await get(`/style-card?kid=${kid}&tool=bt`);
+  assert.equal(
+    bt.rules.some((r) => r.feature === "contractions"), false,
+    "but must not leak into the technician note",
+  );
+});
+
+test("muting a rule in one register leaves it alone in another", async (t) => {
+  if (!live) return t.skip("wrangler dev did not come up");
+
+  const kid = kidFor("mute-scope");
+  const now = Date.now();
+  for (const tool of ["sap", "sup"]) {
+    await post("/events", {
+      kid, tool, now,
+      corrections: corrections("plain_wording", 1, 9, now),
+    });
+  }
+
+  await post("/style-card/mute", { kid, tool: "sap", feature: "plain_wording", muted: true });
+
+  const sap = await get(`/style-card?kid=${kid}&tool=sap`);
+  const sup = await get(`/style-card?kid=${kid}&tool=sup`);
+  assert.equal(
+    sap.rules.find((r) => r.feature === "plain_wording").muted, true,
+    "muted where the technician muted it",
+  );
+  assert.equal(
+    sup.rules.find((r) => r.feature === "plain_wording").muted, false,
+    "and untouched in the register they were not looking at",
+  );
 });

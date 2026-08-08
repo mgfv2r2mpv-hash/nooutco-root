@@ -34,6 +34,11 @@ export function sanitizeCorrections(input, now) {
       source: raw.source === "manual" ? "manual" : "revision",
       magnitude: Number.isFinite(raw.magnitude) ? Math.max(0, Math.min(1, raw.magnitude)) : 1,
       ts: Number.isFinite(raw.ts) ? clampTs(raw.ts, now) : now,
+      // Which tool the technician was in when they made this correction. Null
+      // when the caller did not say, and the batch tool is used instead -- see
+      // the note on the INSERT in index.js for why that fallback is a last
+      // resort rather than the normal path.
+      tool: cleanSlug(raw.tool) || null,
     });
   }
   return out;

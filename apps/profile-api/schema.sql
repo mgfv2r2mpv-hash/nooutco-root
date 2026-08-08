@@ -36,10 +36,20 @@ CREATE INDEX IF NOT EXISTS idx_correction_kid_feature
 CREATE INDEX IF NOT EXISTS idx_correction_kid_ts
   ON correction_event (kid, ts);
 
--- The derived card. One row per (technician, feature); rebuilt from
+-- The derived card. One row per (technician, register, feature); rebuilt from
 -- correction_event whenever new evidence lands.
+--
+-- WHY REGISTER IS IN THE KEY. It was (kid, feature) until 2026-08-06, which
+-- meant one pool per person across every note type: a correction made on the
+-- SAP tool shaped the technician's supervision notes too. His ruling was to key
+-- it by document class rather than by tool, for the same reason shape_profile is
+-- per tool -- a writing habit belongs to the class of document, not to the
+-- person. Per tool was the other candidate and was rejected because it
+-- fragments the evidence too finely to ever clear the bar. See src/registers.js
+-- for the map and the numbers behind that choice.
 CREATE TABLE IF NOT EXISTS style_card (
   kid         TEXT    NOT NULL,
+  register    TEXT    NOT NULL,            -- document class, see src/registers.js
   feature     TEXT    NOT NULL,
   direction   INTEGER NOT NULL,
   rule        TEXT    NOT NULL,            -- rendered from a fixed template
@@ -47,7 +57,7 @@ CREATE TABLE IF NOT EXISTS style_card (
   confidence  REAL    NOT NULL,            -- 0..1 agreement among those events
   muted       INTEGER NOT NULL DEFAULT 0,  -- technician switched it off
   updated_at  INTEGER NOT NULL,
-  PRIMARY KEY (kid, feature)
+  PRIMARY KEY (kid, register, feature)
 );
 
 -- Rules a supervisor has removed, because they are not in line with company or
@@ -61,11 +71,15 @@ CREATE TABLE IF NOT EXISTS style_card (
 --
 -- Nothing here is shown to the technician. The removal is a supervision matter,
 -- reviewed in supervision; the tool simply stops applying the rule.
+-- Carries `register` for the same reason style_card does: "prefer contractions"
+-- can be wrong in a clinical instrument and right in a parent training note, so
+-- a removal has to name which one the supervisor was looking at.
 CREATE TABLE IF NOT EXISTS style_card_suppression (
   kid      TEXT    NOT NULL,
+  register TEXT    NOT NULL,
   feature  TEXT    NOT NULL,
   ts       INTEGER NOT NULL,
-  PRIMARY KEY (kid, feature)
+  PRIMARY KEY (kid, register, feature)
 );
 
 -- Engagement metrics. `data` is JSON, but the Pages worker sanitises every

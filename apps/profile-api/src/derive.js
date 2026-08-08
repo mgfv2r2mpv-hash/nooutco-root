@@ -104,9 +104,10 @@ export function renderStyleBlock(rules) {
 }
 
 /** Rows the caller should write back to style_card for this technician. */
-export function cardRows(kid, rules, now) {
+export function cardRows(kid, register, rules, now) {
   return rules.map((r) => ({
     kid,
+    register,
     feature: r.feature,
     direction: r.direction,
     rule: r.rule,

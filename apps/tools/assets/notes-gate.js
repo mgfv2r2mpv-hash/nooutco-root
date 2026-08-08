@@ -40,7 +40,18 @@
   // intercepts clean ".js" GET paths (serving the SPA fallback) until a query string
   // forces the request through to the worker. A per-call cache-buster guarantees the
   // worker is hit and the response is never served stale from cache.
-  function apiUrl(path) { return path + API_SUFFIX + (path.indexOf("?") === -1 ? "?" : "&") + "_=" + Date.now(); }
+  /* The suffix has to land on the PATH, never inside the query string.
+     Concatenating it onto the whole string turned "/api/style-card?tool=bt&seed=x"
+     into "/api/style-card?tool=bt&seed=x.js": the path then carries no ".js" at
+     all, which is the one thing that gets an /api request past Super Bot Fight
+     Mode, and the last parameter's value silently gains a ".js" on the way. Both
+     failures are quiet, which is why this splits the path off first. */
+  function apiUrl(path) {
+    var cut = path.indexOf("?");
+    var base = cut === -1 ? path : path.slice(0, cut);
+    var query = cut === -1 ? "" : path.slice(cut + 1);
+    return base + API_SUFFIX + "?" + (query ? query + "&" : "") + "_=" + Date.now();
+  }
 
   // Reject with a clear, retryable error if a request stalls at the edge. Behind
   // Super Bot Fight Mode + Pages static-asset interception an /api/* request can
@@ -966,27 +977,34 @@
 
   // The same "drop it, never coerce it" rule the audit path uses. A feature is
   // a short slug from a closed list; a direction is exactly -1 or 1.
-  function sanitizeCorrection(c) {
+  function sanitizeCorrection(c, tool) {
     if (!c || typeof c !== "object") return null;
     if (!/^[a-z][a-z0-9_]{0,31}$/.test(c.feature || "")) return null;
     var direction = c.direction > 0 ? 1 : c.direction < 0 ? -1 : 0;
     if (!direction) return null;
     var mag = typeof c.magnitude === "number" && isFinite(c.magnitude)
       ? Math.max(0, Math.min(1, c.magnitude)) : 1;
+    var which = typeof tool === "string" && /^[a-z0-9_-]{1,16}$/.test(tool) ? tool : null;
     return {
       feature: c.feature,
       direction: direction,
       magnitude: mag,
       source: c.source === "manual" ? "manual" : "revision",
+      // WHICH TOOL THIS WAS. Carried on the correction itself rather than left
+      // for the server to guess from the audit buffer: that buffer is shared
+      // across tools and survives reloads, so its first entry is not reliably
+      // the tool the technician is in now. Still a slug from a closed shape,
+      // so it cannot carry anything but a tool id.
+      tool: which,
       ts: Date.now(),
     };
   }
 
-  function auditCorrections(list) {
+  function auditCorrections(list, tool) {
     if (!list || !list.length) return;
     var clean = [];
     for (var i = 0; i < list.length && clean.length < 20; i++) {
-      var c = sanitizeCorrection(list[i]);
+      var c = sanitizeCorrection(list[i], tool);
       if (c) clean.push(c);
     }
     if (!clean.length) return;
@@ -1064,13 +1082,16 @@
   // Muting is a deliberate action, so unlike the read this reports failure -
   // a rule the technician switched off must not keep shaping their notes while
   // the UI says otherwise.
-  function styleCardMute(feature, muted) {
+  // `tool` decides which register's copy of the rule is muted. Without it the
+  // mute lands in a register called "unknown" and silences nothing, while still
+  // reporting success - so it is passed explicitly rather than defaulted.
+  function styleCardMute(feature, muted, tool) {
     var tok = getToken();
     if (!tok) return Promise.resolve(false);
     return fetch(apiUrl("/api/style-card/mute"), {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok },
-      body: JSON.stringify({ feature: feature, muted: !!muted }),
+      body: JSON.stringify({ feature: feature, muted: !!muted, tool: tool || null }),
     })
       .then(function (r) { return r.ok; })
       .catch(function () { return false; });

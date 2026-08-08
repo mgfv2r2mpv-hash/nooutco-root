@@ -38,6 +38,7 @@ test.describe("nothing that looks like prose survives", () => {
       "feature",
       "magnitude",
       "source",
+      "tool",
       "ts",
     ]);
     const serialised = JSON.stringify(out);
@@ -106,6 +107,7 @@ test("opener_variety is on the closed list, in both directions", () => {
     "feature",
     "magnitude",
     "source",
+    "tool",
     "ts",
   ]);
 });
@@ -231,4 +233,47 @@ test("a metric with no valid values still records that the event happened", () =
   const [out] = sanitizeMetrics([{ type: "note_copied", data: { prose: "..." } }], NOW);
   assert.equal(out.type, "note_copied");
   assert.deepEqual(out.data, {});
+});
+
+/* The tool a correction was made in.
+   ------------------------------------------------------------------
+   Before this, the only tool the INSERT had was the BATCH tool, which is
+   whatever happened to be buffered when a flush succeeded. Two tools worked in
+   one flush window meant both sets of corrections were filed under one of them,
+   and a correction flushed with no metrics beside it was filed under "unknown".
+   A learned rule is built from these rows, so a mislabelled row is a rule
+   attributed to the wrong kind of document. */
+test.describe("a correction's tool", () => {
+  test("survives sanitising when it is a slug", () => {
+    const [out] = sanitizeCorrections(
+      [{ feature: "sentence_length", direction: 1, tool: "sup" }],
+      NOW,
+    );
+    assert.equal(out.tool, "sup");
+  });
+
+  test("is null rather than absent when the caller did not say", () => {
+    const [out] = sanitizeCorrections([{ feature: "sentence_length", direction: 1 }], NOW);
+    assert.equal(out.tool, null);
+  });
+
+  test("is dropped, never coerced, when it is prose", () => {
+    const [out] = sanitizeCorrections(
+      [{ feature: "sentence_length", direction: 1, tool: "Jacob eloped from the clinic" }],
+      NOW,
+    );
+    assert.equal(out.tool, null);
+    assert.ok(!JSON.stringify(out).includes("Jacob"));
+  });
+
+  test("each correction in one batch keeps its own", () => {
+    const out = sanitizeCorrections(
+      [
+        { feature: "sentence_length", direction: 1, tool: "sap" },
+        { feature: "sentence_length", direction: -1, tool: "sup" },
+      ],
+      NOW,
+    );
+    assert.deepEqual(out.map((c) => c.tool), ["sap", "sup"]);
+  });
 });

@@ -337,7 +337,11 @@ test.describe('the correction buffer behaves like the audit buffer', () => {
     });
 
     expect(buffered).toHaveLength(1);
-    expect(Object.keys(buffered[0]).sort()).toEqual(['direction', 'feature', 'magnitude', 'source', 'ts']);
+    // `tool` joined this list deliberately: a correction now records which tool
+    // it was made in, because the server used to infer that from the first
+    // entry of a buffer shared across tools. It is a slug or null, so it is as
+    // incapable of carrying prose as the rest of the list.
+    expect(Object.keys(buffered[0]).sort()).toEqual(['direction', 'feature', 'magnitude', 'source', 'tool', 'ts']);
     expect(JSON.stringify(buffered)).not.toContain('Jacob');
     expect(JSON.stringify(buffered)).not.toContain('eloped');
   });

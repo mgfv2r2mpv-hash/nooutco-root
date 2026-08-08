@@ -616,7 +616,11 @@ function App() {
   React.useEffect(() => {
     if (!loggedIn || !window.NotesGate || !NotesGate.styleCard) return;
     let live = true;
-    NotesGate.styleCard.get().then((card) => {
+    // The tool is required, not decorative: the card is keyed by that tool's
+    // register, so omitting it asks for a register called "unknown" and the
+    // display would go quietly blank. The dependency list already re-runs this
+    // on a tool change, which is what makes showing the right card possible.
+    NotesGate.styleCard.get({ tool: tool.id }).then((card) => {
       if (live) patchS({ styleCard: card });
     });
     return () => { live = false; };
@@ -821,7 +825,7 @@ function App() {
     // it never leaves his browser. See assets/voice-capture.js.
     if (window.NoteStyleFeatures && window.NotesGate?.audit?.corrections) {
       const features = window.NoteStyleFeatures.compare(before, after, source);
-      if (features.length) window.NotesGate.audit.corrections(features);
+      if (features.length) window.NotesGate.audit.corrections(features, tool.id);
     }
     if (window.VoiceCapture) {
       const why = window.VoiceCapture.capture(before, after, {
