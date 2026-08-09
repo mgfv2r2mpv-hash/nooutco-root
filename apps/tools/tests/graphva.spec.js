@@ -236,7 +236,7 @@ test.describe('graph visual analysis', () => {
     expect(rev.present).toBe(true);
     expect(rev.immediate).toBe(true);
     expect(rev.cyclicalCaution).toBe(false);
-    expect(res.causalNote).toMatch(/strongest correlational evidence/i);
+    expect(res.causalNote).toMatch(/turned at the phase line/i);
     // It must still refuse to call it causal.
     expect(res.causalNote).toMatch(/does not establish a functional relation/i);
     expect(res.causal.level).toBe('correlation');
@@ -254,7 +254,27 @@ test.describe('graph visual analysis', () => {
     );
     expect(res.primary.trend.reversal.present).toBe(false);
     expect(res.causalNote).toBeNull();
-    expect(res.rationale.join(' ')).toMatch(/trend change rather than a reversal/i);
+    expect(res.rationale.map((l) => l.text).join(' ')).toMatch(/bend in the line rather than a turnaround/i);
+  });
+
+  // The bend branch reads trend only. On the sample record the level rises
+  // while the within-phase slope runs the right way, and saying "behavior
+  // improved" there contradicted the level line two paragraphs above it.
+  test('the bend branch claims nothing about level', async ({ page }) => {
+    const res = await page.evaluate(() =>
+      window.GVA_VERDICT.evaluate(
+        [
+          { name: 'Baseline F', cond: 'base', data: '5,2,0,1,5,5,4,6,12,1,0,1,0,1,5,3,10' },
+          { name: 'Plan 1', cond: 'tx', data: '2,10,9,13,6,2,5,5,7,4' },
+        ],
+        { direction: 'dec' },
+      ),
+    );
+    const text = res.rationale.map((l) => l.text).join(' ');
+    // Level went the wrong way on this record, so no line may say it improved.
+    expect(res.primary.level.therapeutic).toBe(false);
+    expect(text).toMatch(/bend in the line rather than a turnaround/i);
+    expect(text).not.toMatch(/behavior improved/i);
   });
 
   test('a cyclical baseline suspends the reversal claim rather than banking it', async ({ page }) => {
@@ -271,7 +291,14 @@ test.describe('graph visual analysis', () => {
     expect(rev.present).toBe(true);
     expect(rev.cyclicalCaution).toBe(true);
     expect(res.causalNote).toMatch(/unresolved/i);
-    expect(res.rationale.join(' ')).toMatch(/alternation signature/i);
+    // The signature is asserted by its stable name, not by its wording, so the
+    // prose stays free to change without weakening the pin.
+    const kinds = await page.evaluate(
+      () => window.GVA_CYCLES.describe(
+        window.GVA_CYCLES.cyclicality([2, 11, 3, 12, 4, 13, 5, 14]), 'Baseline',
+      ).map((e) => e.kind),
+    );
+    expect(kinds).toContain('alternation');
   });
 
   // Kendall's turning point test. A strict zig-zag maximises turning points at
@@ -395,5 +422,145 @@ test.describe('graph visual analysis', () => {
       Object.keys(localStorage).filter((k) => k.indexOf('notes_draft_') === 0),
     );
     expect(remaining).toEqual([]);
+  });
+
+  /* The two registers.
+   *
+   * His ruling of 2026-08-09: the reading is for an analyst who works in visual
+   * analysis and not in statistics, so the numbers have to be translated rather
+   * than printed. The arithmetic still has to exist for anyone defending the
+   * record, which is what `detail` holds. These two tests are the pin: the
+   * first fails if jargon leaks back up into the reading, the second fails if
+   * translating the reading quietly deletes the model underneath it.
+   */
+  const JARGON = [
+    /\bNAP\b/, /Mann-Whitney/i, /\bp\s*[=<]/, /binomial/i, /Theil-Sen/i, /autocorrelation/i,
+    /log response ratio/i, /standard error/i, /confidence interval/i, /\b95% CI\b/, /lag-\d/i,
+    /null distribution/i, /Type I error/i, /\bSD\b/, /\bd = /, /criterion line/i, /nonoverlap/i,
+  ];
+
+  // Records chosen between them to fire every rationale branch, including the
+  // ones that restate a method's own unavailability reason. The short-phase
+  // cases matter most: their reasons are written in the method's language and
+  // were the branch that leaked "the binomial cannot reach p < .05".
+  const WIDE = [
+    { name: 'Baseline', cond: 'base', data: '4,9,5,11,6,12,8,14,9,15' },
+    { name: 'Plan 1', cond: 'tx', data: '13,9,6,4,3,2,2' },
+  ];
+  const REGISTER_CASES = [
+    ['a full record', WIDE, 'dec'],
+    ['a two-point plan phase', [
+      { name: 'Baseline', cond: 'base', data: '9,10,8,11,9,10' },
+      { name: 'Plan 1', cond: 'tx', data: '3,2' },
+    ], 'dec'],
+    ['a four-point plan phase', [
+      { name: 'Baseline', cond: 'base', data: '9,10,8,11,9,10' },
+      { name: 'Plan 1', cond: 'tx', data: '3,2,4,2' },
+    ], 'dec'],
+    ['an abbreviated baseline', [
+      { name: 'Baseline', cond: 'base', data: '12,14' },
+      { name: 'Plan 1', cond: 'tx', data: '2,1,3' },
+    ], 'dec'],
+    ['an acquisition target', [
+      { name: 'A1', cond: 'base', data: '2,3,1,2,3,2' },
+      { name: 'B1', cond: 'tx', data: '6,7,8,9,10' },
+      { name: 'A2', cond: 'base', data: '4,3,4,3,4' },
+      { name: 'B2', cond: 'tx', data: '9,10,11,12,11' },
+    ], 'inc'],
+  ];
+
+  for (const [label, phases, direction] of REGISTER_CASES) {
+    test(`no reading leaks a statistical term into the clinician register: ${label}`, async ({ page }) => {
+      const texts = await page.evaluate(
+        ([p, d]) => window.GVA_VERDICT.evaluate(p, { direction: d }).rationale.map((l) => l.text),
+        [phases, direction],
+      );
+      expect(texts.length).toBeGreaterThan(2);
+      for (const text of texts) {
+        for (const pattern of JARGON) {
+          expect(text, `"${text}" leaks ${pattern}`).not.toMatch(pattern);
+        }
+      }
+    });
+  }
+
+  test('the arithmetic survives underneath the reading', async ({ page }) => {
+    const lines = await page.evaluate(
+      (phases) => window.GVA_VERDICT.evaluate(phases, { direction: 'dec' }).rationale,
+      WIDE,
+    );
+    const details = lines.map((l) => l.detail).filter(Boolean).join(' ');
+    // Whatever the wording above it, the index and its value stay checkable.
+    expect(details).toMatch(/\bNAP\b/);
+    expect(details).toMatch(/Theil-Sen/);
+    expect(details).toMatch(/Median/);
+  });
+
+  // The sentence he struck on 2026-08-09: the tool does not explain to a BCBA
+  // why their own field withholds a reversal.
+  test('the causal body states the limit without explaining clinical practice', async ({ page }) => {
+    const body = await page.evaluate(
+      () => window.GVA_VERDICT.evaluate(
+        [
+          { name: 'Baseline', cond: 'base', data: '20,22,19,21,20,23' },
+          { name: 'Plan 1', cond: 'tx', data: '3,2,4,3,2,1,2,3' },
+        ],
+        { direction: 'dec' },
+      ).causal.body,
+    );
+    expect(body).toMatch(/cannot demonstrate a functional relation/i);
+    expect(body).not.toMatch(/funder|withh|cascading|treatment decision/i);
+  });
+
+  /* Three defects that only surfaced once the prose was printed and read.
+   * Green assertions coexisted with all of them.
+   */
+
+  // Any short series of noise around a level has a negative lag-1, so the bare
+  // sign called a flat baseline cyclical and suspended a clean claim for nothing.
+  test('an ordinary flat baseline is not called cyclical', async ({ page }) => {
+    const flat = await page.evaluate(() => [
+      window.GVA_CYCLES.cyclicality([20, 22, 19, 21, 20, 23]).cyclical,
+      window.GVA_CYCLES.cyclicality([9, 10, 8, 11, 9, 10]).cyclical,
+      // A genuine period-2 series must still fire, or the guard has just
+      // deleted the signal rather than sharpened it.
+      window.GVA_CYCLES.cyclicality([2, 11, 3, 12, 4, 13, 5, 14]).cyclical,
+    ]);
+    expect(flat).toEqual([false, false, true]);
+  });
+
+  // The refusal said nothing computed on the phase means anything in either
+  // direction, and the paragraph below it narrated a turn drawn through 2 points.
+  test('a hard refusal narrates no trend and banks no attribution', async ({ page }) => {
+    const res = await page.evaluate(() =>
+      window.GVA_VERDICT.evaluate(
+        [
+          { name: 'Baseline', cond: 'base', data: '9,10,8,11,9,10' },
+          { name: 'Plan 1', cond: 'tx', data: '3,2' },
+        ],
+        { direction: 'dec' },
+      ),
+    );
+    expect(res.finding).toBe('In Treatment');
+    expect(res.decision.severity).toBe('hard');
+    expect(res.causalNote).toBeNull();
+    const text = res.rationale.map((l) => l.text).join(' ');
+    expect(text).not.toMatch(/turned at the phase line|bend in the line/i);
+    // The refusal itself, and the level, still print.
+    expect(text).toMatch(/holds 2 sessions/);
+    expect(text).toMatch(/A typical session moved/);
+  });
+
+  test('the arithmetic is off by default and appears when asked for', async ({ page }) => {
+    await expect(page.locator('#verdict .vbody p').first()).toBeVisible();
+    expect(await page.locator('#verdict .vbody p.stat').count()).toBe(0);
+
+    await page.locator('#showStats').check();
+    expect(await page.locator('#verdict .vbody p.stat').count()).toBeGreaterThan(0);
+
+    // The choice rides in the draft, so it survives a reload.
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('#verdict .vfinding'));
+    await expect(page.locator('#showStats')).toBeChecked();
   });
 });
