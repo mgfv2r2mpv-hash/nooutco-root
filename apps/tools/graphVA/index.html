@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Graph visual analysis</title>
+<link rel="icon" href="/logo-mark.svg">
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<script src="/assets/notes-gate.js"></script>
+<script src="/assets/error-button.js" defer></script>
+<!-- Unified shared chrome - tokens before nav-bar.css so its variables resolve. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="/tokens.css">
+<link rel="stylesheet" href="/assets/nav-bar.css">
+<script src="/assets/nav-bar.js" defer></script>
+<style>
+  *{ box-sizing: border-box; }
+  body {
+    margin: 0; background: #eef1ea; color: var(--text-primary);
+    font-family: var(--font-sans); font-size: var(--text-md); line-height: var(--leading-normal);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 24px 20px 80px; }
+
+  header.page { border-bottom: 2px solid var(--slate-900); padding-bottom: 14px; margin-bottom: 22px; }
+  .eyebrow { font-family: var(--font-mono); font-size: var(--text-2xs); letter-spacing: var(--tracking-wide);
+    text-transform: uppercase; color: var(--text-muted); margin: 0 0 6px; }
+  h1 { font-size: var(--text-2xl); font-weight: var(--weight-semibold); margin: 0; letter-spacing: var(--tracking-tight); }
+  .sub { color: var(--text-body); margin: 6px 0 0; max-width: 74ch; font-size: var(--text-base); }
+
+  h2 { font-size: var(--text-sm); font-weight: var(--weight-semibold); margin: 0 0 10px;
+    letter-spacing: var(--tracking-label); text-transform: uppercase;
+    font-family: var(--font-mono); color: var(--text-muted); }
+  section { margin-bottom: 26px; }
+  .card { background: var(--surface-card); border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg); padding: 18px 20px; }
+
+  .bar { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-bottom: 12px; }
+  .field { display: flex; align-items: center; gap: 7px; font-size: var(--text-sm); color: var(--text-body); }
+  select, input, textarea, button {
+    font-family: inherit; font-size: var(--text-sm); color: var(--text-primary);
+    background: var(--surface-card); border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm); padding: 6px 8px;
+  }
+  textarea { font-family: var(--font-mono); font-size: var(--text-sm); width: 100%; resize: vertical; }
+  button { cursor: pointer; }
+  button:hover:not(:disabled) { background: var(--surface-sunken); }
+  button:disabled { cursor: not-allowed; opacity: .55; }
+  :focus-visible { outline: 2px solid var(--border-focus); outline-offset: 1px; }
+  .btn-primary { background: var(--brand-primary); color: var(--brand-primary-text); border-color: var(--brand-primary); }
+  .btn-primary:hover:not(:disabled) { background: var(--brand-primary-hover); }
+
+  .chartbox { background: var(--surface-card); border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg); padding: 12px 10px 4px; }
+  svg#chart { width: 100%; height: auto; display: block; }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: var(--text-xs);
+    color: var(--text-body); padding: 8px 10px 4px; font-family: var(--font-mono); }
+  .key { display: inline-block; width: 20px; height: 0; border-top-width: 2px;
+    border-top-style: solid; vertical-align: middle; margin-right: 6px; }
+
+  /* Verdict */
+  .verdict { border: 1px solid var(--border-default); border-left-width: 4px;
+    background: var(--surface-card); border-radius: 0 var(--radius-lg) var(--radius-lg) 0; padding: 16px 20px; }
+  .verdict.progressing { border-left-color: var(--intent-success); }
+  .verdict.not-progressing { border-left-color: var(--intent-warning); }
+  .verdict.in-treatment { border-left-color: var(--intent-info); }
+  .verdict.none { border-left-color: var(--text-muted); }
+  .vhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 14px; }
+  .vfinding { font-size: var(--text-xl); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-tight); }
+  .vcausal { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: .05em;
+    text-transform: uppercase; padding: 3px 8px; border-radius: var(--radius-pill);
+    background: var(--surface-sunken); color: var(--text-body); }
+  .vcausal.functional { background: var(--intent-success-bg); color: var(--intent-success); }
+  .vcausal.correlation, .vcausal.ineligible { background: var(--intent-warning-bg); color: var(--intent-warning); }
+  .vbody { margin: 10px 0 0; font-size: var(--text-base); color: var(--text-body); }
+  .vbody p { margin: 0 0 8px; }
+  .vbody p:last-child { margin-bottom: 0; }
+  .vcausal-body { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-default);
+    font-size: var(--text-base); color: var(--text-body); }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); gap: 10px; margin-top: 14px; }
+  .tile { background: var(--surface-sunken); border: 1px solid var(--border-default);
+    border-radius: var(--radius-md); padding: 9px 11px; }
+  .tile .lab { font-family: var(--font-mono); font-size: var(--text-2xs); letter-spacing: .06em;
+    text-transform: uppercase; color: var(--text-muted); }
+  .tile .val { font-size: var(--text-xl); font-weight: var(--weight-medium); margin-top: 1px; }
+  .tile .note { font-size: var(--text-xs); color: var(--text-muted); line-height: var(--leading-snug); }
+
+  table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+  th, td { text-align: right; padding: 7px 8px; border-bottom: 1px solid var(--border-default); }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { font-family: var(--font-mono); font-size: var(--text-2xs); letter-spacing: .07em;
+    text-transform: uppercase; color: var(--text-muted); white-space: nowrap; }
+  tbody td { font-family: var(--font-mono); }
+  tbody td:first-child { font-family: var(--font-sans); }
+  tr.tx td { background: var(--blue-50); }
+
+  .phase-row { display: grid; grid-template-columns: 1.5fr .8fr 3fr auto; gap: 10px;
+    align-items: start; padding: 9px 0; border-bottom: 1px solid var(--border-default); }
+  .phase-row input[type=text] { width: 100%; }
+  .phase-row textarea { min-height: 36px; }
+
+  .banner { border-left: 3px solid var(--intent-warning); background: var(--intent-warning-bg);
+    padding: 10px 14px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: var(--text-sm); margin-top: 12px; }
+  .banner.info { border-left-color: var(--intent-info); background: var(--intent-info-bg); }
+  .banner ul { margin: 6px 0 0; padding-left: 18px; }
+
+  details.legacy { margin-top: 12px; }
+  details.legacy summary { cursor: pointer; font-size: var(--text-sm); color: var(--text-body);
+    font-family: var(--font-mono); }
+  .legacy-item { display: grid; grid-template-columns: 90px 70px 1fr; gap: 10px; padding: 8px 0;
+    border-bottom: 1px solid var(--border-default); font-size: var(--text-sm); align-items: baseline; }
+  .legacy-item .n { font-family: var(--font-mono); font-weight: var(--weight-medium); }
+  .legacy-item .why { color: var(--text-muted); font-size: var(--text-xs); }
+
+  /* Import */
+  .drop { border: 1.5px dashed var(--border-strong); border-radius: var(--radius-md);
+    padding: 20px 16px; text-align: center; color: var(--text-body); font-size: var(--text-base);
+    background: var(--surface-sunken); cursor: pointer; }
+  .drop:hover, .drop.over { border-color: var(--border-focus); background: var(--blue-50); }
+  .drop strong { display: block; font-size: var(--text-md); color: var(--text-primary);
+    font-weight: var(--weight-semibold); margin-bottom: 3px; }
+  .gva-redact-canvas { max-width: 100%; border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm); cursor: crosshair; display: block; touch-action: none; }
+  #redactHost { margin-top: 12px; }
+  .redact-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+  .redact-tools .seg { display: inline-flex; border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm); overflow: hidden; }
+  .redact-tools .seg button { border: none; border-radius: 0; }
+  .redact-tools .seg button[aria-pressed=true] { background: var(--brand-primary); color: var(--brand-primary-text); }
+  .status { font-family: var(--font-mono); font-size: var(--text-xs); margin-top: 10px;
+    color: var(--text-muted); min-height: 16px; }
+  .status.err { color: var(--intent-danger); }
+  .status.ok { color: var(--intent-success); }
+  .status.busy { color: var(--text-link); }
+
+  .fineprint { font-size: var(--text-xs); color: var(--text-muted); margin: 10px 0 0; }
+  footer.page { border-top: 1px solid var(--border-default); padding-top: 12px;
+    font-size: var(--text-xs); color: var(--text-muted); }
+  .hidden { display: none !important; }
+
+  @media (max-width: 760px) {
+    .phase-row { grid-template-columns: 1fr; gap: 6px; }
+    .wrap { padding: 18px 12px 60px; }
+    .legacy-item { grid-template-columns: 1fr; gap: 2px; }
+  }
+</style>
+</head>
+<body>
+<noaba-bar product="tools" crumbs="Graph visual analysis" crumb-hrefs="/"></noaba-bar>
+
+<div class="wrap">
+<header class="page">
+  <p class="eyebrow">Single-case design / visual analysis</p>
+  <h1>Graph visual analysis</h1>
+  <p class="sub">Computes level, trend, variability, immediacy, overlap and consistency within and across phases, identifies the design, and returns a preliminary finding with its rationale. The output supports the responsible analyst's visual inspection and does not replace it.</p>
+</header>
+
+<section>
+  <div class="bar">
+    <label class="field">Target direction
+      <select id="direction">
+        <option value="dec" selected>Decrease (reduction target)</option>
+        <option value="inc">Increase (acquisition target)</option>
+      </select>
+    </label>
+    <label class="field">Measure
+      <select id="scale">
+        <option value="count" selected>Count per session</option>
+        <option value="rate">Rate per unit time</option>
+        <option value="percentage">Percentage</option>
+        <option value="duration">Duration</option>
+      </select>
+    </label>
+    <label class="field">Design
+      <select id="design">
+        <option value="auto" selected>Detect from the data</option>
+        <option value="AB">AB</option>
+        <option value="ABA">ABA (withdrawal)</option>
+        <option value="ABAB">ABAB (reversal)</option>
+        <option value="other">Other</option>
+      </select>
+    </label>
+    <label class="field">View
+      <select id="view">
+        <option value="full" selected>Full record</option>
+        <option value="terminal">Terminal condition change</option>
+      </select>
+    </label>
+  </div>
+  <div class="bar">
+    <label class="field"><input type="checkbox" id="showMean" checked> Phase means</label>
+    <label class="field"><input type="checkbox" id="showTrend" checked> Theil-Sen trend</label>
+    <label class="field"><input type="checkbox" id="showCDC" checked> Dual-criteria lines</label>
+    <label class="field"><input type="checkbox" id="showEnvelope"> Stability envelope</label>
+    <label class="field">Envelope width
+      <select id="envWidth">
+        <option value="0.25" selected>25% of median</option>
+        <option value="0.20">20% of median</option>
+        <option value="0.15">15% of median</option>
+      </select>
+    </label>
+  </div>
+  <div class="chartbox">
+    <svg id="chart" viewBox="0 0 1000 470" role="img" aria-labelledby="chartTitle chartDesc">
+      <title id="chartTitle">Phase chart</title>
+      <desc id="chartDesc">Data path by phase.</desc>
+    </svg>
+    <div class="legend" id="legend"></div>
+  </div>
+  <div id="chartNotes"></div>
+</section>
+
+<section>
+  <h2>Preliminary finding</h2>
+  <div id="verdict"></div>
+  <div class="tiles" id="tiles"></div>
+  <details class="legacy" id="legacyBox">
+    <summary>Legacy nonoverlap indices, and why they are not the headline</summary>
+    <div id="legacy"></div>
+  </details>
+</section>
+
+<section>
+  <h2>Phase metrics</h2>
+  <div class="card" style="padding:6px 12px">
+    <table id="metrics">
+      <thead><tr>
+        <th>Phase</th><th>Cond</th><th>n</th><th>Mean</th><th>Median</th><th>Range</th>
+        <th>SD</th><th>MAD</th><th>Theil-Sen</th><th>Stability</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Condition changes</h2>
+  <div class="card" id="transitions"></div>
+</section>
+
+<section>
+  <h2>Read a graph image</h2>
+  <div class="card">
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose a graph image">
+      <strong>Drop a graph screenshot here, or click to choose a file</strong>
+      Reads printed data labels, phase change lines, and legend text. One panel at a time reads most reliably.
+    </div>
+    <input type="file" id="file" accept="image/png,image/jpeg,image/webp" hidden>
+
+    <div id="redactHost"></div>
+    <div class="redact-tools hidden" id="redactTools">
+      <span class="seg">
+        <button type="button" id="modeRedact" aria-pressed="true">Black out</button>
+        <button type="button" id="modeCrop" aria-pressed="false">Crop</button>
+      </span>
+      <button type="button" id="redactUndo">Undo</button>
+      <button type="button" id="redactClear">Clear marks</button>
+      <button type="button" id="redactDrop">Remove image</button>
+      <span class="status" id="redactState" style="margin:0"></span>
+    </div>
+
+    <div class="banner" id="redactNotice">
+      <strong>Anything you black out is destroyed before upload.</strong> Drag over the image to paint an opaque box, or switch to Crop and drag to keep only that region. The tool composes a new bitmap from what is left and sends only that, so the original never leaves this tab.
+    </div>
+
+    <label for="context" style="display:block;font-size:var(--text-sm);color:var(--text-body);margin:14px 0 5px">
+      Context for the reader (optional)</label>
+    <textarea id="context" rows="2" placeholder="For example: read the Target 5 panel only. Percent correct, acquisition target. The vertical lines are staffing changes, not condition changes."></textarea>
+
+    <div class="bar" style="margin-top:12px">
+      <button id="extract" class="btn-primary">Read graph</button>
+      <button id="logout" class="hidden">Log out</button>
+    </div>
+    <div class="status" id="status"></div>
+    <p class="fineprint">The image is sent to the model through this site's server, which holds the API key. No key is entered here and none is stored in your browser. Values land in the editor below, and every metric on this page is computed from that editor rather than by the model.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Phase data</h2>
+  <div class="card">
+    <div id="phases"></div>
+    <div class="bar" style="margin-top:12px">
+      <button id="add">Add phase</button>
+      <button id="reset">Restore the sample record</button>
+      <button id="clear">Clear all</button>
+      <button id="copy" class="btn-primary">Copy metrics as text</button>
+    </div>
+    <p class="fineprint">Enter values separated by commas or spaces, in session order. Keep one unit within a graph. Where session duration varied across phases, enter a rate rather than a count, or level differences will confound behavior change with exposure time.</p>
+  </div>
+</section>
+
+<footer class="page">
+  Trend is Theil-Sen (median of pairwise slopes) unless stated. Overlap is NAP (Parker &amp; Vannest, 2009), the index WWC v5.0 uses for its own screens, with an exact Mann-Whitney p from the full null distribution. Dual-criteria follows Fisher, Kelley &amp; Lomas (2003); the conservative variant shifts both criterion lines 0.25 baseline SD. Phase-count standards and the 0.85 screens are WWC Procedures and Standards Handbook v5.0 (2022), which calls that threshold "relatively arbitrary and novel". Nonoverlap indices supplement visual analysis and do not replace it.
+</footer>
+</div>
+
+<script>
+  // Gear bridge: the shared nav bar owns the control, this page owns the auth.
+  (function () {
+    function authed() { return !!(window.NotesGate && window.NotesGate.isLoggedIn()); }
+    window.__noabaAuthProbe = authed;
+    function emit() {
+      document.dispatchEvent(new CustomEvent("noaba:auth-state", { detail: { authed: authed() } }));
+    }
+    document.addEventListener("noaba:admin-invoke", function () {
+      if (!window.NotesGate) return;
+      if (window.NotesGate.isLoggedIn()) window.NotesGate.logout();
+      else window.NotesGate.openLogin();
+    });
+    if (window.NotesGate && window.NotesGate.subscribe) window.NotesGate.subscribe(emit);
+    emit();
+  })();
+</script>
+<script src="./stats.js"></script>
+<script src="./cycles.js"></script>
+<script src="./design.js"></script>
+<script src="./verdict.js"></script>
+<script src="./chart.js"></script>
+<script src="./redact.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

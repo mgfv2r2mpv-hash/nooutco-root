@@ -4,7 +4,7 @@ import { jsonRes, sha256Hex } from "./shared/helpers.js";
 import { handleSuggest } from "./shared/suggest.js";
 
 // Notes tools that can be scoped to a managed password.
-const NOTES_TOOLS = ["bt", "sup", "parent", "assess", "sap"];
+const NOTES_TOOLS = ["bt", "sup", "parent", "assess", "sap", "graphva"];
 
 // Old URL → new URL prefix mapping (specific paths before their parent prefix).
 // The four BCBA note tools live on one unified page at /notes/bcba/?tool=<id>.
@@ -478,6 +478,14 @@ async function handleLlmCall(request, env) {
       const err = validateConversation(system, messages);
       if (err) return jsonRes(400, { error: err });
     }
+    // Images ride the single-shot path only. Rejecting rather than ignoring
+    // them on the conversation path keeps a caller from believing an image was
+    // read when it was silently dropped.
+    const imageResult = sanitizeImages(body.images);
+    if (!imageResult.ok) return jsonRes(400, { error: imageResult.error });
+    if (isConversation && imageResult.images.length) {
+      return jsonRes(400, { error: "Images are supported on the single-shot path only." });
+    }
 
     // Managed passwords: re-check the KV every call for instant revocation AND
     // per-tool scope enforcement. Admin bypasses scope.
@@ -507,7 +515,8 @@ async function handleLlmCall(request, env) {
           apiKey, sys, messages, model || "claude-haiku-4-5-20251001", maxTokens || 3000, outputConfig
         )
       : await callAnthropicApi(
-          apiKey, sys, userPrompt, model || "claude-haiku-4-5-20251001", maxTokens || 3000, outputConfig
+          apiKey, sys, userPrompt, model || "claude-haiku-4-5-20251001", maxTokens || 3000, outputConfig,
+          imageResult.images
         );
     return jsonRes(200, llmResponse);
   } catch (error) {
@@ -804,7 +813,56 @@ async function callAnthropicConversation(apiKey, system, messages, model, maxTok
   return await response.json();
 }
 
-async function callAnthropicApi(apiKey, systemPrompt, userPrompt, model, maxTokens, outputConfig) {
+// Image blocks for the single-shot path only. Rebuilt from known keys rather
+// than passed through, so a browser cannot smuggle arbitrary fields upstream.
+// `validateConversation` is deliberately untouched: every note tool depends on
+// its string-content guarantee, and widening it to carry images would widen the
+// surface for all of them to serve one tool.
+const MAX_IMAGES = 4;
+const ALLOWED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
+// Base64 characters, not decoded bytes. ~5.6 MB decoded each.
+const MAX_IMAGE_CHARS = 7_500_000;
+const MAX_IMAGE_CHARS_TOTAL = 15_000_000;
+
+function sanitizeImages(raw) {
+  if (raw === undefined || raw === null) return { images: [], ok: true };
+  if (!Array.isArray(raw)) return { ok: false, error: "images must be an array." };
+  if (raw.length > MAX_IMAGES) {
+    return { ok: false, error: `At most ${MAX_IMAGES} images per request.` };
+  }
+  const images = [];
+  let total = 0;
+  for (const item of raw) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      return { ok: false, error: "Each image must be an object." };
+    }
+    const mediaType = item.media_type;
+    const data = item.data;
+    if (!ALLOWED_IMAGE_TYPES.includes(mediaType)) {
+      return { ok: false, error: "Images must be PNG, JPEG, or WebP." };
+    }
+    if (typeof data !== "string" || !data) {
+      return { ok: false, error: "Each image needs base64 data." };
+    }
+    if (data.length > MAX_IMAGE_CHARS) {
+      return { ok: false, error: "An image exceeds the size limit." };
+    }
+    if (!/^[A-Za-z0-9+/=]+$/.test(data)) {
+      return { ok: false, error: "Image data must be base64." };
+    }
+    total += data.length;
+    if (total > MAX_IMAGE_CHARS_TOTAL) {
+      return { ok: false, error: "Combined image size exceeds the limit." };
+    }
+    images.push({ type: "image", source: { type: "base64", media_type: mediaType, data } });
+  }
+  return { images, ok: true };
+}
+
+async function callAnthropicApi(apiKey, systemPrompt, userPrompt, model, maxTokens, outputConfig, images) {
+  const content = images && images.length
+    ? [...images, { type: "text", text: userPrompt }]
+    : userPrompt;
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -816,7 +874,7 @@ async function callAnthropicApi(apiKey, systemPrompt, userPrompt, model, maxToke
       model,
       max_tokens: maxTokens,
       system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
+      messages: [{ role: "user", content }],
       ...(outputConfig ? { output_config: outputConfig } : {}),
     }),
   });
@@ -924,6 +982,15 @@ const VOICE_COVERAGE = {
   // what the ethics code requires belong to the practice; his voice card and his
   // discretionary calls do not, because the technician signs the note.
   bt: "kv",
+  // Excluded, and not by oversight. The only model call this tool makes
+  // transcribes a graph into JSON, where a style card has no prose to act on and
+  // could only push the reader toward describing rather than reading. Every
+  // sentence a clinician sees from this tool is composed in the browser from
+  // computed values, so it is the analyst's own wording that carries the voice.
+  graphva:
+    "Its one model call returns JSON transcribed from a graph image, never prose. " +
+    "The finding and its rationale are composed deterministically in the browser from computed " +
+    "statistics, so there is no generated sentence for a style card to shape.",
 };
 
 const VOICE_KV_KEY = "voice-block:v1";
