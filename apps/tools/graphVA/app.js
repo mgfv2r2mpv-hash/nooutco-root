@@ -32,6 +32,14 @@
   var r1 = function (v) { return S.isNum(v) ? (Math.round(v * 10) / 10).toFixed(1) : "n/a"; };
   var r2 = function (v) { return S.isNum(v) ? (Math.round(v * 100) / 100).toFixed(2) : "n/a"; };
   var pctS = function (v) { return S.isNum(v) ? Math.round(v * 100) + "%" : "n/a"; };
+  // A p-value as odds, short enough for a tile.
+  var oneInShort = function (p) {
+    if (!S.isNum(p) || p <= 0) return "under 1 in 1000";
+    if (p >= 0.5) return "1 in 2";
+    var n = Math.round(1 / p);
+    if (n >= 1000) return "under 1 in 1000";
+    return "1 in " + (n >= 100 ? Math.round(n / 10) * 10 : n);
+  };
 
   var state = { phases: null, editor: null, images: [] };
 
@@ -44,6 +52,7 @@
       phases: state.phases,
       direction: $("direction").value,
       scale: $("scale").value,
+      showStats: $("showStats").checked,
     });
   }
 
@@ -63,6 +72,7 @@
       designOverride: $("design").value === "auto" ? null : $("design").value,
       targetKind: $("direction").value === "inc" ? "acquisition" : "reduction",
       view: $("view").value,
+      showStats: $("showStats").checked,
       showMean: $("showMean").checked,
       showTrend: $("showTrend").checked,
       showCDC: $("showCDC").checked,
@@ -91,7 +101,7 @@
   function renderChartNotes(result, chartInfo) {
     var notes = [];
     if (chartInfo.cramped) {
-      notes.push("Below about 15 pixels per data point, level and trend stop being readable. Switch the view to the terminal condition change for an expanded scale.");
+      notes.push("There are too many sessions on this scale to read level and trend off the chart. Switch the view to the terminal condition change to expand the phases either side of it.");
     }
     // design.js already emits a richer within-condition warning, so adding one
     // here printed the same point twice.
@@ -111,6 +121,9 @@
   function renderVerdict(result) {
     var d = result.structure.design;
     var causalClass = result.causal.level;
+    // The reading is the product. The arithmetic under each line is there for
+    // whoever has to defend the record, and it stays folded away until asked for.
+    var withStats = $("showStats").checked;
     $("verdict").className = "verdict " + findingClass(result.finding);
     $("verdict").innerHTML =
       '<div class="vhead">' +
@@ -120,7 +133,10 @@
           result.rating.demonstrations + "/" + result.rating.required + " demonstrations</span>" +
       "</div>" +
       '<div class="vbody">' +
-        result.rationale.map(function (line) { return "<p>" + esc(line) + "</p>"; }).join("") +
+        result.rationale.map(function (line) {
+          return "<p>" + esc(line.text) + "</p>" +
+            (withStats && line.detail ? '<p class="stat">' + esc(line.detail) + "</p>" : "");
+        }).join("") +
       "</div>" +
       '<div class="vcausal-body">' + esc(result.causal.body) +
         (result.endsInWithdrawal
@@ -134,26 +150,31 @@
     if (!result.primary) { $("tiles").innerHTML = ""; return; }
     var p = result.primary;
     var nap = p.overlap.nap;
+    // Tile labels say what was measured, not what the index is called. The
+    // index names live in the rationale detail and the footer, where anyone
+    // checking the method will look for them.
     var tiles = [
-      ["Level change, median", (p.level.deltaMedian > 0 ? "+" : "") + r1(p.level.deltaMedian),
-        p.level.therapeutic ? "therapeutic direction" : "countertherapeutic direction"],
+      ["Typical session", (p.level.deltaMedian > 0 ? "+" : "") + r1(p.level.deltaMedian),
+        p.level.therapeutic ? "moved the way the plan wants" : "moved the wrong way for this target"],
       // Tied values across phases are ordinary in count data, so the exact test
       // is often unavailable. Falling back to the interval keeps the tile
       // informative instead of only explaining its own silence.
-      ["NAP", r2(nap.value),
+      ["Pairs improved", S.isNum(nap.value) ? Math.round(nap.value * 100) + "%" : "n/a",
         nap.exact && nap.exact.available
-          ? "exact p " + (nap.exact.p < 0.001 ? "<.001" : r2(nap.exact.p))
+          ? "luck would give this in " + oneInShort(nap.exact.p)
           : (nap.ciDegenerate
-            ? "complete separation"
-            : "95% CI " + r2(nap.ciLow) + " to " + r2(nap.ciHigh))],
-      ["Immediacy, 3 vs 3", p.immediacy.available ? (p.immediacy.delta > 0 ? "+" : "") + r1(p.immediacy.delta) : "n/a",
-        p.immediacy.available && p.immediacy.therapeutic ? "immediate change present" : "no immediate change"],
-      ["Dual-criteria", p.cdc.available ? p.cdc.k + "/" + p.cdc.n : "n/a",
-        p.cdc.available ? "need " + p.cdc.critical + " to call an effect" : (p.cdc.reason || "")],
-      ["Intervention trend", S.isNum(p.trend.toSlope) ? (p.trend.toSlope > 0 ? "+" : "") + r2(p.trend.toSlope) : "n/a",
-        p.trend.therapeutic ? "therapeutic direction" : "countertherapeutic or flat"],
-      ["Magnitude", p.lrr.available ? (p.lrr.pctChange > 0 ? "+" : "") + Math.round(p.lrr.pctChange) + "%" : "n/a",
-        p.lrr.available ? "change from baseline" : (p.lrr.reason || "")],
+            ? "no session overlap at all"
+            : "could sit from " + pctS(nap.ciLow) + " to " + pctS(nap.ciHigh))],
+      ["Change at the line", p.immediacy.available ? (p.immediacy.delta > 0 ? "+" : "") + r1(p.immediacy.delta) : "n/a",
+        p.immediacy.available && p.immediacy.therapeutic ? "showed up straight away" : "did not show up straight away"],
+      ["Sessions past both lines", p.cdc.available ? p.cdc.k + "/" + p.cdc.n : "n/a",
+        p.cdc.available ? "takes " + p.cdc.critical + " to call a change" : "phases too short for this check"],
+      ["Trend under the plan", S.isNum(p.trend.toSlope) ? (p.trend.toSlope > 0 ? "+" : "") + r2(p.trend.toSlope) : "n/a",
+        p.trend.therapeutic ? "per session, the way the plan wants" : "per session, wrong way or flat"],
+      ["Against baseline", p.lrr.available ? (p.lrr.pctChange > 0 ? "+" : "") + Math.round(p.lrr.pctChange) + "%" : "n/a",
+        p.lrr.available
+          ? ((p.lrr.pctChange >= 0) === (result.direction === "inc") ? "the way the plan wants" : "the wrong way for this target")
+          : "this measure cannot carry a percentage"],
     ];
     $("tiles").innerHTML = tiles.map(function (t) {
       return '<div class="tile"><div class="lab">' + esc(t[0]) + '</div><div class="val">' +
@@ -166,10 +187,10 @@
     $("legacyBox").classList.remove("hidden");
     var o = result.primary.overlap;
     var rows = [
-      ["PND", pctS(o.pnd), "Depends entirely on the single most extreme baseline point, so one outlier destroys it. Its expected value also shrinks as the baseline lengthens even when nothing else changes. No sampling distribution exists, so it carries no confidence interval."],
-      ["PEM", pctS(o.pem), "Scores full credit for any point past the baseline median regardless of magnitude, so it ceilings almost immediately, and it ignores baseline variability entirely."],
-      ["Tau-U", r2(o.tauU), "Tarlow (2017) showed its baseline-trend control produces unacceptable Type I error. It is not bounded to plus or minus 1 because its feasible range moves with phase length, it has no valid sampling distribution, and it cannot be drawn on the graph."],
-      ["Overlap", pctS(o.inside), "Proportion of intervention points falling inside the baseline range. Descriptive only."],
+      ["PND", pctS(o.pnd), "Rests entirely on the single most extreme baseline session, so one bad day ruins it. It also drifts downward as a baseline gets longer even when nothing about the behavior changes, and there is no way to put a range around it."],
+      ["PEM", pctS(o.pem), "Gives full credit to any session past the baseline midpoint however small the change, so it maxes out almost at once. It takes no account of how spread out baseline was."],
+      ["Tau-U", r2(o.tauU), "Its correction for baseline trend reports effects that are not there (Tarlow, 2017). Its range shifts with phase length, so two records' values are not comparable, and it cannot be drawn on the graph for you to check."],
+      ["Overlap", pctS(o.inside), "How many intervention sessions fall inside the range baseline covered. Descriptive only."],
     ];
     $("legacy").innerHTML = rows.map(function (row) {
       return '<div class="legacy-item"><div>' + esc(row[0]) + '</div><div class="n">' +
@@ -209,14 +230,14 @@
       var nap = a.overlap.nap;
       var bits = [
         "Level " + (a.level.deltaMedian > 0 ? "+" : "") + r1(a.level.deltaMedian),
-        "NAP " + r2(nap.value),
+        "Pairs improved " + pctS(nap.value),
         "Trend " + (S.isNum(a.trend.fromSlope) ? r2(a.trend.fromSlope) : "n/a") + " → " +
           (S.isNum(a.trend.toSlope) ? r2(a.trend.toSlope) : "n/a"),
         a.trend.reversal && a.trend.reversal.present
-          ? "slope reversed at the line" + (a.trend.reversal.immediate ? ", immediate" : ", not immediate") +
-            (a.trend.reversal.cyclicalCaution ? " (cyclical caution)" : "")
-          : (a.trend.signInversion === true ? "slope sign inverted" : null),
-        a.cdc.available ? "CDC " + a.cdc.k + "/" + a.cdc.n + " (need " + a.cdc.critical + ")" : null,
+          ? "turned at the line" + (a.trend.reversal.immediate ? ", straight away" : ", not straight away") +
+            (a.trend.reversal.cyclicalCaution ? " (may be a cycle)" : "")
+          : (a.trend.signInversion === true ? "direction of travel flipped" : null),
+        a.cdc.available ? "Past both lines " + a.cdc.k + "/" + a.cdc.n + " (takes " + a.cdc.critical + ")" : null,
       ].filter(Boolean);
       return '<div class="legacy-item" style="grid-template-columns:1fr">' +
         "<div><strong>" + esc(a.transition.letters) + "</strong> &middot; " +
@@ -229,18 +250,19 @@
 
     var extra = "";
     if (result.reversibility.available) {
-      extra += '<p class="fineprint"><strong>Reversibility (WWC v5.0).</strong> ' +
+      extra += '<p class="fineprint"><strong>Did behavior come back when the plan came off.</strong> ' +
         result.reversibility.phases.map(function (p) {
-          return esc(p.name) + ": NAP " + r2(p.nap) + " against the initial baseline, " +
-            (p.reversed ? "at or below the 0.85 bar, so minimal reversibility was achieved" :
-              "above the 0.85 bar, so reversibility is incomplete and the rating is capped");
+          return esc(p.name) + " " +
+            (p.reversed ? "returned close enough to the first baseline to count"
+              : "did not return to the first baseline, so this demonstration does not count") +
+            " (" + r2(p.nap) + " against the 0.85 bar)";
         }).join("; ") + ".</p>";
     }
     if (result.consistency.available) {
-      extra += '<p class="fineprint"><strong>Consistency across like phases.</strong> ' +
+      extra += '<p class="fineprint"><strong>Do like phases resemble each other.</strong> ' +
         result.consistency.pairs.map(function (p) {
-          return esc(p.label) + " NAP " + r2(p.nap) + (p.consistent ? " (alike)" : " (differs)");
-        }).join("; ") + ". Phases in the same condition should resemble each other, so a value near 0.50 is the desirable result here.</p>";
+          return esc(p.label) + (p.consistent ? " alike" : " differs") + " (" + r2(p.nap) + ")";
+        }).join("; ") + ". Phases in the same condition should look like one another, so a figure near 0.50 is what you want here.</p>";
     }
     $("transitions").innerHTML = html + extra;
   }
@@ -400,7 +422,7 @@
     ["direction", "scale", "design", "view", "envWidth"].forEach(function (id) {
       $(id).addEventListener("change", render);
     });
-    ["showMean", "showTrend", "showCDC", "showEnvelope"].forEach(function (id) {
+    ["showMean", "showTrend", "showCDC", "showEnvelope", "showStats"].forEach(function (id) {
       $(id).addEventListener("change", render);
     });
 
@@ -447,8 +469,12 @@
         var d = V.describePhase(p, result.direction, { stabilityWidth: opts.stabilityWidth });
         return [p.name, p.cond, p.n, r1(d.mean), r1(d.median), r1(d.min), r1(d.max), r1(d.sd), r1(d.mad), r2(d.slope)].join("\t");
       });
-      var text = [head].concat(rows).join("\n") + "\n\n" + result.finding + " - " + result.causal.headline + "\n" +
-        result.rationale.join(" ");
+      // The copy carries whichever register is on screen, so what he pastes is
+      // what he was reading.
+      var body = result.rationale.map(function (line) {
+        return line.text + (opts.showStats && line.detail ? " [" + line.detail + "]" : "");
+      }).join(" ");
+      var text = [head].concat(rows).join("\n") + "\n\n" + result.finding + " - " + result.causal.headline + "\n" + body;
       navigator.clipboard.writeText(text).then(
         function () { $("copy").textContent = "Copied"; setTimeout(function () { $("copy").textContent = "Copy metrics as text"; }, 1600); },
         function () { $("copy").textContent = "Copy blocked by browser"; setTimeout(function () { $("copy").textContent = "Copy metrics as text"; }, 1600); }
@@ -569,6 +595,7 @@
       : JSON.parse(JSON.stringify(SAMPLE));
     if (draft && draft.direction) $("direction").value = draft.direction;
     if (draft && draft.scale) $("scale").value = draft.scale;
+    if (draft && typeof draft.showStats === "boolean") $("showStats").checked = draft.showStats;
 
     bind();
     drawEditor();

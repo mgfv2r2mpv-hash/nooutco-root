@@ -250,7 +250,7 @@
     out += el("text", {
       x: xEnd, y: sc.y(cdc.meanLine) - 6, "text-anchor": "end", "font-size": 10,
       fill: COLOR.cdc, "font-family": "IBM Plex Mono, monospace",
-    }, "CDC " + cdc.k + "/" + cdc.n + " need " + cdc.critical);
+    }, cdc.k + "/" + cdc.n + " past both, takes " + cdc.critical);
 
     return out;
   }
@@ -261,13 +261,13 @@
       ['<span class="key" style="border-top-color:' + COLOR.tx + '"></span>', "Intervention condition"],
     ];
     if (opts.showTrend) {
-      items.push(['<span class="key" style="border-top-color:' + COLOR.muted + ';border-top-style:dashed"></span>', "Theil-Sen trend"]);
+      items.push(['<span class="key" style="border-top-color:' + COLOR.muted + ';border-top-style:dashed"></span>', "Trend, resistant to outliers"]);
     }
     if (opts.showMean) {
       items.push(['<span class="key" style="border-top-color:' + COLOR.muted + ';border-top-style:dotted"></span>', "Phase mean"]);
     }
     if (opts.showCDC && result.primary && result.primary.cdc.available) {
-      items.push(['<span class="key" style="border-top-color:' + COLOR.cdc + ';border-top-style:dashed"></span>', "Dual-criteria lines"]);
+      items.push(['<span class="key" style="border-top-color:' + COLOR.cdc + ';border-top-style:dashed"></span>', "Where baseline sat, and where it was heading"]);
     }
     if (result.structure.withinChanges.length) {
       items.push(['<span class="key" style="border-top-color:' + COLOR.muted + ';border-top-style:dotted"></span>', "Change within a condition"]);
@@ -312,8 +312,8 @@
     svg.innerHTML =
       el("title", { id: "chartTitle" }, "Phase chart") +
       el("desc", { id: "chartDesc" },
-        "Data path by phase with condition change lines, phase means, Theil-Sen trend lines" +
-        (opts.showCDC ? ", and dual-criteria criterion lines" : "") + ".") +
+        "Data path by phase with condition change lines, phase means, and trend lines" +
+        (opts.showCDC ? ", plus two lines carried forward from baseline showing where it sat and where it was heading" : "") + ".") +
       body;
 
     return {
