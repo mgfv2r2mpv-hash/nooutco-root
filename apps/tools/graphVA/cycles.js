@@ -92,8 +92,16 @@
     var r1 = autocorrelation(values, 1);
     var r2 = autocorrelation(values, 2);
 
+    // Any short series of noise around a level produces a negative lag-1, so
+    // the bare sign is not evidence of a cycle. Reading it as one told a flat
+    // baseline of 20,22,19,21,20,23 that it "swings fast enough" to fake a
+    // reversal, which suspended a clean correlational claim for nothing. The
+    // signature now needs the same length floor the turning-point test uses and
+    // a lag-1 that clears Bartlett, on top of the period-2 lag-2 term.
     var alternating =
-      r1.available && r2.available && r1.r < 0 && r2.r > 0.3;
+      r1.available && r2.available &&
+      values.length >= MIN_TURNING_POINTS_N &&
+      r1.r < 0 && r1.significant && r2.r > 0.3;
 
     var available = tp.available || r1.available;
     return {
@@ -109,33 +117,41 @@
     };
   }
 
-  // Plain-language caution lines, composed from whichever signature fired. The
-  // caller decides whether to show them; this only says what is true.
+  // Caution entries, composed from whichever signature fired. Each carries a
+  // stable `kind` so callers and tests can name the signature without matching
+  // on prose, a reading written for an analyst, and the arithmetic behind it.
+  // The caller decides whether to show them; this only says what is true.
   function describe(cyc, phaseName) {
     if (!cyc.available) return [];
+    var r2 = function (v) { return Math.round(v * 100) / 100; };
     var out = [];
     if (cyc.turningPoints.available && cyc.turningPoints.oscillating) {
-      out.push(
-        phaseName + " turns direction " + cyc.turningPoints.count + " times against " +
-        (Math.round(cyc.turningPoints.expected * 10) / 10) + " expected by chance. " +
-        "A series that alternates this fast can show a slope reversal wherever a phase line is drawn, " +
-        "so read the reversal below as provisional."
-      );
+      out.push({
+        kind: "oscillation",
+        text: phaseName + " swings up and down " + cyc.turningPoints.count + " times where about " +
+          (Math.round(cyc.turningPoints.expected * 10) / 10) + " would be ordinary. A behavior that bounces " +
+          "this fast will appear to turn around wherever a phase line happens to be drawn, so treat the turn " +
+          "above as provisional.",
+        detail: "Kendall turning points " + cyc.turningPoints.count + " against " +
+          (Math.round(cyc.turningPoints.expected * 10) / 10) + " expected, z = " + r2(cyc.turningPoints.z) + ".",
+      });
     }
     if (cyc.alternating) {
-      out.push(
-        phaseName + " carries an alternation signature (lag-1 " +
-        (Math.round(cyc.lag1.r * 100) / 100) + ", lag-2 " +
-        (Math.round(cyc.lag2.r * 100) / 100) + "), which is what a cycle looks like in a short series. " +
-        "Where the behavior runs on a weekly or session-order cycle, an apparent reversal may be the cycle rather than the intervention."
-      );
+      out.push({
+        kind: "alternation",
+        text: phaseName + " runs high, then low, then high again in a regular beat. Where a behavior cycles like " +
+          "that, on a weekly pattern or a rotating schedule, an apparent turn can be the cycle arriving rather " +
+          "than the plan working.",
+        detail: "Alternation signature: lag-1 autocorrelation " + r2(cyc.lag1.r) + ", lag-2 " + r2(cyc.lag2.r) + ".",
+      });
     }
     if (cyc.seriallyDependent && !cyc.cyclical) {
-      out.push(
-        phaseName + " shows serial dependence (lag-1 " + (Math.round(cyc.lag1.r * 100) / 100) +
-        "). Crosbie (1987) showed the binomial test underneath the dual-criteria method loses accuracy under serial dependence, " +
-        "which is the reason the conservative variant exists at all."
-      );
+      out.push({
+        kind: "serial-dependence",
+        text: "Each session in " + phaseName + " predicts the next one fairly well, so its sessions are not " +
+          "independent of one another. The two-line check assumes they are, so read its verdict with some slack.",
+        detail: "Lag-1 autocorrelation " + r2(cyc.lag1.r) + "; Crosbie (1987) on binomial accuracy under serial dependence.",
+      });
     }
     return out;
   }

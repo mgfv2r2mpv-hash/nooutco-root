@@ -76,6 +76,10 @@
   .vbody { margin: 10px 0 0; font-size: var(--text-base); color: var(--text-body); }
   .vbody p { margin: 0 0 8px; }
   .vbody p:last-child { margin-bottom: 0; }
+  /* The arithmetic under a reading: present when asked for, never competing
+     with the sentence above it. */
+  .vbody p.stat { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-muted);
+    margin: -5px 0 10px; padding-left: 10px; border-left: 2px solid var(--border-default); }
   .vcausal-body { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-default);
     font-size: var(--text-base); color: var(--text-body); }
 
@@ -155,7 +159,7 @@
 <header class="page">
   <p class="eyebrow">Single-case design / visual analysis</p>
   <h1>Graph visual analysis</h1>
-  <p class="sub">Computes level, trend, variability, immediacy, overlap and consistency within and across phases, identifies the design, and returns a preliminary finding with its rationale. The output supports the responsible analyst's visual inspection and does not replace it.</p>
+  <p class="sub">Reads level, trend, variability, immediacy, overlap and consistency within and across phases, identifies the design, and returns a preliminary finding in plain terms. Switch on <em>Show the arithmetic</em> for the statistic behind each line. The output supports the responsible analyst's visual inspection and does not replace it.</p>
 </header>
 
 <section>
@@ -192,10 +196,11 @@
   </div>
   <div class="bar">
     <label class="field"><input type="checkbox" id="showMean" checked> Phase means</label>
-    <label class="field"><input type="checkbox" id="showTrend" checked> Theil-Sen trend</label>
-    <label class="field"><input type="checkbox" id="showCDC" checked> Dual-criteria lines</label>
-    <label class="field"><input type="checkbox" id="showEnvelope"> Stability envelope</label>
-    <label class="field">Envelope width
+    <label class="field"><input type="checkbox" id="showTrend" checked> Trend lines</label>
+    <label class="field"><input type="checkbox" id="showCDC" checked> Baseline level and heading</label>
+    <label class="field"><input type="checkbox" id="showEnvelope"> Steadiness band</label>
+    <label class="field"><input type="checkbox" id="showStats"> Show the arithmetic</label>
+    <label class="field">Band width
       <select id="envWidth">
         <option value="0.25" selected>25% of median</option>
         <option value="0.20">20% of median</option>
@@ -218,7 +223,7 @@
   <div id="verdict"></div>
   <div class="tiles" id="tiles"></div>
   <details class="legacy" id="legacyBox">
-    <summary>Legacy nonoverlap indices, and why they are not the headline</summary>
+    <summary>Older comparison figures, and why none of them is the headline</summary>
     <div id="legacy"></div>
   </details>
 </section>

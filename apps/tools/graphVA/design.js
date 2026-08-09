@@ -239,9 +239,8 @@
           level: "ineligible",
           headline: "Not eligible as a demonstration",
           body:
-            "The comparison is shown and can be read, and it does not count toward a demonstration of effect: " +
-            (short[0] || "a phase falls below the " + MIN_PHASE_POINTS + "-point minimum") +
-            ". Correlation at best.",
+            "The comparison is drawn and you can read it. It does not count toward a demonstration of effect, " +
+            "because " + (short[0] || "a phase falls below the " + MIN_PHASE_POINTS + "-point minimum") + ".",
         };
       }
       return {
@@ -255,17 +254,12 @@
         level: "correlation",
         headline: "Correlation only",
         body:
-          "Change coincides with intervention onset. History, maturation, and regression to the mean are not ruled out. " +
+          "The change lines up with the start of the plan. " +
           // "A AB design" otherwise, since every design label opens with a vowel sound.
           (/^[AEIOU]/.test(design.letters) ? "An " : "A ") + design.letters +
-          " design cannot demonstrate a functional relation, which by convention requires " +
-          DEMONSTRATIONS_REQUIRED + " demonstrations at " + DEMONSTRATIONS_REQUIRED + " different points in time. " +
-          // Naming this keeps the tool from reading as a scolding. In
-          // funder-paid services the team withholds the reversal on purpose,
-          // and a records reviewer should see that stated rather than infer
-          // sloppiness from a missing phase.
-          "In funder-paid clinical services a team commonly withholds the reversal on purpose, to avoid reverting gains " +
-          "or cascading effects across a plan, so a single phase change is usually a treatment decision rather than a gap in the record.",
+          " design has one condition change, so it can carry correlation and it cannot demonstrate a functional " +
+          "relation, which takes " + DEMONSTRATIONS_REQUIRED + " demonstrations at " + DEMONSTRATIONS_REQUIRED +
+          " different points in time. History, maturation and regression to the mean all stay on the table.",
       };
     }
     if (d < DEMONSTRATIONS_REQUIRED) {
@@ -273,16 +267,16 @@
         level: "partial",
         headline: "Partial replication",
         body:
-          d + " of " + DEMONSTRATIONS_REQUIRED + " demonstrations. The effect has replicated once, " +
-          "which is stronger than a single AB comparison and short of a functional relation.",
+          d + " of " + DEMONSTRATIONS_REQUIRED + " demonstrations. The effect has replicated once, which is " +
+          "stronger than a single condition change and short of a functional relation.",
       };
     }
     return {
       level: "functional",
       headline: "Functional relation supported",
       body:
-        d + " demonstrations at " + d + " different points in time, meeting the three-demonstration convention. " +
-        "Confidence rises further with complete reversibility and with consistency across like phases.",
+        d + " demonstrations at " + d + " different points in time, which meets the three-demonstration " +
+        "convention. A complete return to baseline, and like phases that resemble each other, would firm it further.",
     };
   }
 
@@ -293,8 +287,8 @@
     var out = [];
     if (design.family === "reversal" && targetKind === "acquisition") {
       out.push(
-        "This is a reversal design on a skill-acquisition target. A learned skill is not expected to reverse on withdrawal, " +
-        "so a failure to return to baseline is not evidence against the intervention here. A multiple baseline across cases or settings fits an acquisition target."
+        "This is a reversal design on an acquisition target, so a phase that does not return to baseline is not " +
+        "evidence against the plan here."
       );
     }
     if (design.letters === "B" || design.letters.charAt(0) === "B") {
@@ -303,8 +297,9 @@
     var withinCount = buildWithinChanges(phases).length;
     if (withinCount >= 2) {
       out.push(
-        withinCount + " phase changes fall inside a single condition. Those are drawn as light annotations rather than condition lines, " +
-        "and they are not demonstrations of effect. Where they coincide with a change in who collected the data, differential recording is as parsimonious an account as behavior change."
+        withinCount + " phase changes fall inside a single condition, drawn as light dotted lines. None of them " +
+        "counts as a demonstration of effect. Where one of them is a change in who took the data, a shift at that " +
+        "line may be a recording change rather than a behavior change."
       );
     }
     return out;
