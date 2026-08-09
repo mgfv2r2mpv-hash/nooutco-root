@@ -322,6 +322,7 @@
         { id: "parent", label: "Parent" },
         { id: "assess", label: "Assessment" },
         { id: "sap", label: "SAP Goals" },
+        { id: "graphva", label: "Graph Visual Analysis" },
       ];
       function toolLabel(id) { for (var i = 0; i < TOOLS.length; i++) if (TOOLS[i].id === id) return TOOLS[i].label; return id; }
       function token() { return localStorage.getItem(TOKEN_KEY) || ""; }
@@ -412,13 +413,53 @@
             : '<span class="muted">-</span>';
           tr.innerHTML =
             "<td>" + (p.label ? escapeHtml(p.label) : '<span class="muted">(no label)</span>') + "</td>" +
-            "<td>" + pills + "</td>" +
+            '<td data-cell="tools">' + pills + "</td>" +
             '<td><span class="pill ' + (p.active ? "on" : "off") + '">' + (p.active ? "Active" : "Disabled") + "</span></td>" +
             '<td class="muted">' + fmt(p.createdAt) + "</td>" +
-            '<td><div class="row-actions">' +
+            '<td data-cell="actions"><div class="row-actions">' +
+              '<button class="btn-ghost" data-act="edit">Edit access</button>' +
               '<button class="btn-ghost" data-act="toggle">' + (p.active ? "Deactivate" : "Activate") + "</button>" +
               '<button class="btn-danger" data-act="delete">Delete</button>' +
             "</div></td>";
+          // Granting a newly added tool used to mean deleting and recreating the
+          // password, because the row carried no way to change `tools` even
+          // though the worker's PATCH has always accepted it.
+          tr.querySelector('[data-act=edit]').addEventListener("click", function () {
+            var cell = tr.querySelector('[data-cell=tools]');
+            var actions = tr.querySelector('[data-cell=actions]');
+            var owned = p.tools || [];
+            cell.innerHTML = '<div class="tool-checks">' + TOOLS.map(function (t) {
+              return '<label><input type="checkbox" value="' + escapeHtml(t.id) + '"' +
+                (owned.indexOf(t.id) !== -1 ? " checked" : "") + "> " + escapeHtml(t.label) + "</label>";
+            }).join("") + "</div>";
+            actions.innerHTML = '<div class="row-actions">' +
+              '<button class="btn-ghost" data-act="save">Save</button>' +
+              '<button class="btn-ghost" data-act="cancel">Cancel</button>' +
+            "</div>";
+            actions.querySelector('[data-act=save]').addEventListener("click", function () {
+              var picked = Array.prototype.slice.call(cell.querySelectorAll("input:checked"))
+                .map(function (el) { return el.value; });
+              var err = document.getElementById("addErr");
+              err.style.display = "none";
+              if (!picked.length) {
+                err.textContent = "Select at least one tool, or delete the password instead.";
+                err.style.display = "block";
+                return;
+              }
+              api("PATCH", { id: p.id, tools: picked }).then(function () {
+                // `tools` is frozen into the token at login, so the server will
+                // allow the new tool immediately while the holder's UI keeps the
+                // button disabled until they sign in again.
+                err.textContent = "Access updated. The holder must log out and back in before the change shows in their browser.";
+                err.style.display = "block";
+                load();
+              }).catch(function (ex) {
+                err.textContent = ex.message;
+                err.style.display = "block";
+              });
+            });
+            actions.querySelector('[data-act=cancel]').addEventListener("click", load);
+          });
           tr.querySelector('[data-act=toggle]').addEventListener("click", function () { api("PATCH", { id: p.id, active: !p.active }).then(load).catch(function () {}); });
           tr.querySelector('[data-act=delete]').addEventListener("click", function () {
             if (confirm("Delete this password? Anyone using it will lose access immediately.")) api("DELETE", { id: p.id }).then(load).catch(function () {});
