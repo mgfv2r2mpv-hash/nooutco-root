@@ -251,8 +251,8 @@
 OUTPUT: (a) third-person clinical narratives for free-text sections, (b) conservative checkbox inferences for the BT to verify.\n\n\
 RULES\n\
 - Report concrete implementation: programs run, prompt types/levels/fading decisions, behavioral occurrences + BT response, antecedent strategies as applied, observable client outcomes.\n\
-- Plain, precise clinical language. A fragment in the intake can stay compressed if it already reads clearly; sparse sections get one brief honest sentence and stop there.\n\
-- ANTI-FABRICATION: Never invent activities, programs, data points, prompt levels, strategies, or outcomes not in the notes. Unsupported sections → minimal honest statement + empty checkboxes.\n\n\
+- Plain, precise clinical language. A fragment in the intake can stay compressed if it already reads clearly; sparse sections get one brief sentence about what did happen and stop there.\n\
+- ANTI-FABRICATION: Never invent activities, programs, data points, prompt levels, strategies, or outcomes not in the notes. A section the notes do not support gets an empty narrative and empty checkboxes, not a sentence explaining what was missing.\n\n\
 CHECKBOX INFERENCE\n\
 - Return ONLY verbatim values from each group's allowed list. Never invent or reword options.\n\
 - Infer conservatively; cross-read the whole note - purpose follows what was done, action items surface from anything mentioned anywhere.\n\n\
@@ -292,7 +292,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
     "\n\nOUTPUT FORMAT\nReturn ONLY a single JSON object. No markdown, no preamble, no commentary. Use EXACTLY these keys; arrays hold verbatim option labels (empty [] if unsupported); single-selects are one verbatim label or \"\". servicePaused is \"Yes\" or \"No\" (default \"No\" unless the notes mention an unexpected pause).\n{\n  \"individualsPresent\": [],\n  \"clinicalStatus\": [],\n  \"clinicalStatusNarrative\": \"\",\n  \"purpose\": [],\n  \"servicePaused\": \"No\",\n  \"abaTechniques\": [],\n  \"lessonProgressNarrative\": \"\",\n  \"antecedentStrategies\": [],\n  \"antecedentNarrative\": \"\",\n  \"consequenceStrategies\": [],\n  \"consequenceEffectiveness\": \"\",\n  \"behaviorPlanNarrative\": \"\",\n  \"clientProgress\": \"\",\n  \"actionItems\": [],\n  \"followUpNarrative\": \"\",\n  \"hints\": []\n}";
 
   var LABELED_FORMAT_BLOCK =
-    "\n\nOUTPUT FORMAT\nReturn labeled sections in the exact order below. For each \"[tick]\" line, list ONLY the options that apply, comma-separated and verbatim from that section's allowed list; if none apply write \"None selected.\" For \"[choose one]\" pick exactly one allowed option (or \"None\"). For \"[narrative]\" write the prose. Do NOT output hints. No JSON, no preamble, no commentary.\n\nINDIVIDUALS PRESENT [tick]\nCLINICAL STATUS UPON ARRIVAL [tick]\nFURTHER DETAIL ON CLINICAL STATUS [narrative]\nPURPOSE OF SESSION [tick]\nSERVICE PAUSED DURING SESSION [choose one: Yes / No]\nABA TEACHING TECHNIQUES USED [tick]\nNARRATIVE OF LESSON PROGRESS [narrative]\nANTECEDENT STRATEGIES UTILIZED [tick]\nDESCRIBE ANTECEDENT MODIFICATIONS AND IMPACT [narrative]\nCONSEQUENCE STRATEGIES UTILIZED [tick]\nEFFECTIVENESS OF CONSEQUENCE STRATEGIES [choose one]\nNARRATIVE OF BEHAVIOR SUPPORT PLAN GOALS PROGRESS [narrative]\nCLIENT PROGRESS [choose one]\nACTION ITEMS FOR BCBA [tick]\nSUMMARY OF CONCERNS/QUESTIONS/INVOLVEMENT [narrative]\n\nIf the BT notes for a cluster are empty or nonsense, leave its ticks \"None selected\" and write a brief note prompting the BT to add detail.";
+    "\n\nOUTPUT FORMAT\nReturn labeled sections in the exact order below. For each \"[tick]\" line, list ONLY the options that apply, comma-separated and verbatim from that section's allowed list; if none apply write \"None selected.\" For \"[choose one]\" pick exactly one allowed option (or \"None\"). For \"[narrative]\" write the prose. Do NOT output hints. No JSON, no preamble, no commentary.\n\nINDIVIDUALS PRESENT [tick]\nCLINICAL STATUS UPON ARRIVAL [tick]\nFURTHER DETAIL ON CLINICAL STATUS [narrative]\nPURPOSE OF SESSION [tick]\nSERVICE PAUSED DURING SESSION [choose one: Yes / No]\nABA TEACHING TECHNIQUES USED [tick]\nNARRATIVE OF LESSON PROGRESS [narrative]\nANTECEDENT STRATEGIES UTILIZED [tick]\nDESCRIBE ANTECEDENT MODIFICATIONS AND IMPACT [narrative]\nCONSEQUENCE STRATEGIES UTILIZED [tick]\nEFFECTIVENESS OF CONSEQUENCE STRATEGIES [choose one]\nNARRATIVE OF BEHAVIOR SUPPORT PLAN GOALS PROGRESS [narrative]\nCLIENT PROGRESS [choose one]\nACTION ITEMS FOR BCBA [tick]\nSUMMARY OF CONCERNS/QUESTIONS/INVOLVEMENT [narrative]\n\nIf the BT notes for a cluster are empty or nonsense, leave its ticks \"None selected\" and leave that narrative blank. A blank section tells the technician what is missing; a sentence saying the detail was not reported would follow the note into the record, where it describes the paperwork rather than the session.";
 
   function buildUserPrompt(values) {
     return [
@@ -336,7 +336,14 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       "",
       "NARRATIVE GUIDANCE:",
       "- lessonProgressNarrative: up to 8 sentences, ideally across two programs (one social/communication, one adaptive/repetitive-behavior-replacement). Qualitative, specific.",
-      "- behaviorPlanNarrative: up to 4 sentences, quantitative where reported; state whether behavior increased, decreased, or held steady relative to recent sessions.",
+      // The comparison is CONDITIONAL, and it was not before. "State whether
+      // behavior increased, decreased, or held steady relative to recent
+      // sessions" is a standing order, so a technician who never wrote a
+      // comparison still got a sentence about one: the model obeyed the order
+      // without fabricating by reporting that the comparison was missing. The
+      // gap already has a channel in no_rate_comparison, which reaches the
+      // technician who can answer it. The note gets silence.
+      "- behaviorPlanNarrative: up to 4 sentences, quantitative where reported. Say whether behavior increased, decreased or held steady relative to recent sessions ONLY IF the notes give you that comparison. If they do not, write nothing at all about it, emit the no_rate_comparison hint, and never state that the comparison is missing.",
       "- antecedentNarrative: describe the antecedent strategies as applied and their impact.",
       "- clinicalStatusNarrative: up to 2 sentences on mood/behavior at session start.",
       "- followUpNarrative: brief; use the default sentence above if nothing reported. Write it as the person filing the note, not about them. The technician IS the direct staff, so never write \"Direct staff report...\" or \"The behavior technician has no concerns\" here, that is the author describing themselves in the third person, which reads as though someone else wrote the note. \"No new questions or concerns for the BCBA at this time\" is the register.",
