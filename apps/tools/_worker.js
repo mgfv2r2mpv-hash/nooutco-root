@@ -1414,11 +1414,27 @@ async function removeTerm(kv, list, term) {
    identity) so a supervisor can see engagement over time. 400-day TTL: long
    enough to be a record, bounded so it cannot accumulate forever. */
 
+/* THE ALLOWLIST WAS SILENTLY DROPPING THREE EVENT TYPES THE BROWSER EMITS.
+   Found 2026-08-16 while chasing why a note ran to two and a half times its
+   intake. `note_register` is the register measurement, 16 numbers taken on
+   every draft, and the whole downstream is built for it: weekly.js filters for
+   the type, index.js folds three of its fields into the shape profile, and
+   validate.js raised its own key cap to 24 twice, "as note_register grew", with
+   a test pinning the gap. None of it ever ran, because the event died here.
+   `bt-profiles.shape_profile` held 0 rows on the day this was found, against
+   110 correction events, which is the observable end of that chain.
+   `recommendation` and `capture` were dropped the same way. Unlike
+   VOICE_COVERAGE, which records every exclusion and why, nothing here recorded a
+   decision to exclude any of them, so this was an oversight rather than a
+   ruling. */
 const AUDIT_TYPES = new Set([
   "note_generated",
+  "note_register",
   "gap_questions",
   "revision",
   "note_copied",
+  "recommendation",
+  "capture",
 ]);
 
 function sanitizeAuditEvent(raw) {
@@ -1428,10 +1444,21 @@ function sanitizeAuditEvent(raw) {
   const ts = Number.isFinite(raw.ts) ? Math.round(raw.ts) : Date.now();
   const data = {};
   const src = raw.data && typeof raw.data === "object" ? raw.data : {};
-  for (const k of Object.keys(src).slice(0, 12)) {
+  /* 24, matching MAX_METRIC_KEYS in the profile app rather than sitting under
+     it. note_register sends 16 and the overflow here is dropped silently, so a
+     lower cap in front would throw away whichever keys happened to sort last
+     and say nothing. */
+  for (const k of Object.keys(src).slice(0, 24)) {
     if (!/^[a-z][a-z0-9_]{0,23}$/i.test(k)) continue;
     const v = src[k];
-    if (typeof v === "number" && Number.isFinite(v)) data[k] = Math.round(v);
+    /* NOT Math.round. Rounding to an integer destroyed every fractional metric
+       in this payload, and it did so where it mattered most: index.js folds a
+       note into the shape profile only when sectionCv and sectionStep are both
+       finite AND greater than zero, and both are coefficients well under 1. A
+       0.34 arrived as 0 and the fold was skipped every time. Three decimals is
+       still just a number, so nothing about the safety argument above changes:
+       a sentence cannot survive this any more than it could before. */
+    if (typeof v === "number" && Number.isFinite(v)) data[k] = Math.round(v * 1000) / 1000;
     else if (typeof v === "boolean") data[k] = v;
     else if (typeof v === "string" && /^[a-z0-9_-]{1,24}$/i.test(v)) data[k] = v;
     // Anything else - objects, arrays, prose - is dropped, not stringified.

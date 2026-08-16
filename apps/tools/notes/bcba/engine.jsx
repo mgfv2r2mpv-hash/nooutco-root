@@ -1136,7 +1136,20 @@ function App() {
       // caps a payload at 12 numeric keys and silently drops the overflow, so
       // sharing a budget would quietly lose whichever signals sorted last.
       if (register) {
+        /* HOW FAR THE NOTE RAN PAST ITS SOURCE, as a ratio, numbers only.
+           Two hand measurements on 2026-08-16 landed in opposite directions on
+           the same tool: one intake compressed 498 words to 258, another
+           expanded 264 to 638 and read as padded. Two points settle nothing,
+           which is exactly why this is measured on every note from here rather
+           than argued from those two. Nothing but the ratio and the intake size
+           leaves the page, and neither can be turned back into what anyone
+           wrote. */
+        const intakeWords = tool.inputs
+          .map((f) => String(scrubbedValues[f.id] || ""))
+          .join(" ").split(/\s+/).filter(Boolean).length;
         audit("note_register", {
+          intakeWords,
+          expansion: intakeWords ? Math.round((register.words / intakeWords) * 1000) / 1000 : 0,
           sentences: register.sentences,
           words: register.words,
           meanLen: register.meanLen,
