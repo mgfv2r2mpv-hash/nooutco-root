@@ -698,9 +698,23 @@ function App() {
      longer match and every subsequent turn would pay full price. So the card is
      snapshotted when the note is drafted, and a mute takes effect on the next
      note. The card UI says so. */
+  /* ONE place decides how the system prompt is assembled, because two call paths
+     build one - drafting and "what would you do here" - and they must agree byte
+     for byte. If they disagree, the advice turn misses the prefix cache the note
+     just warmed and pays full price for the whole conversation.
+
+     A tool with serverPrompt set sends only the per-note block. Its own prompt is
+     fetched inside the Worker from a service-bound Worker with no public URL, so
+     it is neither downloadable nor forgeable. Everything else behaves exactly as
+     it did. */
+  const systemFor = (block) =>
+    tool.serverPrompt
+      ? { systemSuffix: block || "" }
+      : { system: tool.buildSystem() + (block ? "\n\n" + block : "") };
+
   const runTurn = async (messages, styleBlock, wantOpinions) => {
     const r = await NotesGate.generateConversation({
-      system: tool.buildSystem() + (styleBlock ? "\n\n" + styleBlock : ""),
+      ...systemFor(styleBlock),
       messages,
       tool: tool.id,
       maxTokens: tool.maxTokens || 3000,
@@ -1344,7 +1358,7 @@ function App() {
       // generateProse, not generateConversation: advice is not the note JSON,
       // and the note path would parse it, fail, and resample the same request.
       const r = await NotesGate.generateProse({
-        system: tool.buildSystem() + (S.convStyleBlock ? "\n\n" + S.convStyleBlock : ""),
+        ...systemFor(S.convStyleBlock),
         messages: conversation,
         tool: tool.id,
         // Three levels do not fit in the old one-paragraph budget, and a reply

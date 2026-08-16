@@ -505,9 +505,20 @@
   // history is served from Anthropic's 5-minute prefix cache instead of being
   // recomputed. Resolves {parsed, rawText, usage} - rawText must be appended to
   // the conversation verbatim so the next turn's cache prefix matches.
+  /* A migrated tool sends systemSuffix instead of system: its prompt is fetched
+     server-side and is not the browser's to supply. The two are mutually
+     exclusive on purpose, and the Worker refuses a request carrying both, so a
+     caller that half-migrates finds out immediately rather than silently getting
+     the old path. */
+  function systemFields(opts) {
+    return typeof opts.systemSuffix === "string"
+      ? { system_suffix: opts.systemSuffix }
+      : { system: opts.system };
+  }
+
   function generateConversation(opts) {
     return llmCall({
-      system: opts.system,
+      ...systemFields(opts),
       messages: opts.messages,
       model: opts.model || "claude-haiku-4-5-20251001",
       maxTokens: opts.maxTokens || 3000,
@@ -532,7 +543,7 @@
    * so it needs a path that never tries. */
   function generateProse(opts) {
     return llmPost({
-      system: opts.system,
+      ...systemFields(opts),
       messages: opts.messages,
       model: opts.model || "claude-haiku-4-5-20251001",
       maxTokens: opts.maxTokens || 1200,

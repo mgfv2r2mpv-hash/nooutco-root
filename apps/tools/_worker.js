@@ -468,14 +468,33 @@ async function handleLlmCall(request, env) {
     if (body.output_config && !outputConfig) {
       return jsonRes(400, { error: "Invalid output_config." });
     }
+
+    // For a migrated tool the system prompt is fetched, never accepted. See
+    // SERVER_PROMPT_TOOLS above for why a stale caller is refused rather than
+    // corrected.
+    let convSystem = system;
+    const wantsServerPrompt = serverPromptRequest(body, tool);
+    if (wantsServerPrompt.serverSide) {
+      if (wantsServerPrompt.error) return jsonRes(400, { error: wantsServerPrompt.error });
+      const base = await promptForTool(env, tool);
+      if (!base) {
+        // Deliberately not a fallback. A note is worth more than a note written
+        // to an unknown prompt, and the clinician is told nothing was sent.
+        await notifyError(env, "prompt-api", "no prompt available for tool " + tool);
+        return jsonRes(503, {
+          error: "The prompt service is unavailable, so this note was not drafted. Nothing was sent to the model.",
+        });
+      }
+      convSystem = composeServerSystem(base, wantsServerPrompt.suffix);
+    }
     // Two accepted shapes: legacy single-shot {systemPrompt, userPrompt}, or a
     // conversation {system, messages} for the multi-turn revision flow.
-    const isConversation = typeof system === "string" && Array.isArray(messages);
+    const isConversation = typeof convSystem === "string" && Array.isArray(messages);
     if (!isConversation && (!systemPrompt || !userPrompt)) {
       return jsonRes(400, { error: "Missing required fields: systemPrompt+userPrompt or system+messages" });
     }
     if (isConversation) {
-      const err = validateConversation(system, messages);
+      const err = validateConversation(convSystem, messages);
       if (err) return jsonRes(400, { error: err });
     }
     // Images ride the single-shot path only. Rejecting rather than ignoring
@@ -505,7 +524,7 @@ async function handleLlmCall(request, env) {
     // exactly as it arrived.
     const voice = await getVoiceBlock(env);
     const advisory = { wantsRecommendation: body.want_opinions === true };
-    let sys = composeVoice(isConversation ? system : systemPrompt, voice, tool, advisory);
+    let sys = composeVoice(isConversation ? convSystem : systemPrompt, voice, tool, advisory);
     // His clinical judgement, only where the caller explicitly asked for a
     // recommendation. Ruling 2: an opinion never fills a silence in the input.
     sys = composeOpinions(sys, voice, tool, advisory);
@@ -1050,6 +1069,109 @@ const OBLIGATION_HEADER = [
 ].join("\n");
 
 export { VOICE_COVERAGE };
+
+/* ── Prompts that live server-side ────────────────────────────────────────────
+
+   Until 2026-08-16 the browser built the whole system prompt and posted it, so
+   every prompt had to be downloadable for the tool to work, and this endpoint
+   took `systemPrompt` straight from the request body. The scope check limited
+   which TOOL a login could claim; nothing checked the prompt, so anyone holding
+   a password could run any prompt they liked on the account's Anthropic key.
+
+   For a tool in this set the system prompt is no longer the browser's to send.
+   It comes from the prompt Worker, which has no public URL at all.
+
+   A request that still carries one is REFUSED rather than quietly ignored.
+   Ignoring it would leave a caller believing their prompt was used, and would
+   leave this hole looking shut while it stayed open for anyone who kept sending
+   the old shape.
+
+   The browser still owns the per-note SUFFIX: the technician's learned style
+   card and the sentence shape measured from what they typed today. Those are
+   measured in the page and differ for every note, so they cannot live here. The
+   suffix is appended exactly where the browser used to append it, which keeps
+   the composed string byte-identical and keeps Anthropic's prefix cache hitting
+   across a revision.
+
+   ROLLOUT IS ONE TOOL AT A TIME, and the browser carries a matching flag. If the
+   two ever disagree the caller gets a loud 400 rather than a silent fallback to
+   a client prompt, which is the correct direction for the disagreement to fail
+   in. */
+/* EXPORTED AS FUNCTIONS, and not because anyone preferred it that way.
+
+   workerd treats every named export of the entry module as a candidate
+   entrypoint and refuses to start on one that is not a function or an
+   ExportedHandler: "Incorrect type for map entry 'MAX_SYSTEM_SUFFIX'". The
+   Worker then fails at BOOT, so every route 500s, not just the new one. Nothing
+   catches it early either - the file parses, lints and type-checks fine, and it
+   was the integration run under `wrangler pages dev` that caught it. So the
+   constants stay module-private and the tests reach them through accessors. */
+const SERVER_PROMPT_TOOLS = new Set(["sup"]);
+
+// The style card, the shape line and the intake-voice sentence together run to a
+// few hundred words. This is a sanity bound on a field that reaches the model,
+// not a business rule.
+const MAX_SYSTEM_SUFFIX = 8000;
+
+export function isServerPromptTool(tool) {
+  return typeof tool === "string" && SERVER_PROMPT_TOOLS.has(tool);
+}
+// Sorted so a test can compare it without caring about insertion order.
+export function serverPromptTools() {
+  return [...SERVER_PROMPT_TOOLS].sort();
+}
+export function maxSystemSuffix() {
+  return MAX_SYSTEM_SUFFIX;
+}
+
+export function serverPromptRequest(body, tool) {
+  if (!isServerPromptTool(tool)) return { serverSide: false };
+  const b = body || {};
+  if (typeof b.system === "string" || typeof b.systemPrompt === "string") {
+    return {
+      serverSide: true,
+      error:
+        "This tool composes its system prompt on the server. Send system_suffix " +
+        "rather than system or systemPrompt.",
+    };
+  }
+  const suffix = typeof b.system_suffix === "string" ? b.system_suffix : "";
+  if (suffix.length > MAX_SYSTEM_SUFFIX) {
+    return { serverSide: true, error: "system_suffix is longer than this tool accepts." };
+  }
+  return { serverSide: true, suffix };
+}
+
+/* Reproduces exactly what the browser used to build: the tool's prompt, then a
+   blank line, then the per-note block. An empty or whitespace-only suffix adds
+   nothing at all, because a trailing blank line would change the cached prefix
+   for every note that has no style card yet. */
+export function composeServerSystem(base, suffix) {
+  if (typeof base !== "string" || !base) return null;
+  return suffix && suffix.trim() ? base + "\n\n" + suffix : base;
+}
+
+/* FAILS CLOSED, and that is the whole difference between this and profileFetch.
+   A missing style card costs a note some polish, so that one fails open. A
+   missing prompt would mean falling back to whatever the client sent, which is
+   the hole this exists to close, so this one refuses. */
+const PROMPT_TIMEOUT_MS = 1500;
+async function promptForTool(env, tool) {
+  if (!env.PROMPTS) return null;
+  try {
+    const res = await env.PROMPTS.fetch(
+      "https://prompts.internal/system?tool=" + encodeURIComponent(tool),
+      { signal: AbortSignal.timeout(PROMPT_TIMEOUT_MS) }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return typeof data.system === "string" && data.system ? data.system : null;
+  } catch (err) {
+    // The tool id is safe to log. Nothing a clinician typed reaches this call.
+    console.error("prompt-api unreachable", tool, err && err.name);
+    return null;
+  }
+}
 
 /* Which layers a tool's DOCUMENTS take. Absent means all of them, which keeps
    every existing tool behaving exactly as before. An advisory call ignores this
