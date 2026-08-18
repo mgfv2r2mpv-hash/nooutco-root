@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { isTriageCall } from './helpers/llm-call.js';
 
 // "I do want the BTs to ask questions of NoMe and it can try to stay within its
 // scope but if they say they're not sure about something then it could be smart
@@ -45,8 +46,7 @@ async function drafted(page, onRevision) {
     const b = JSON.parse(route.request().postData() || '{}');
     const last = (b.messages && b.messages.length) ? String(b.messages[b.messages.length - 1].content || '') : '';
     if (/look at your own draft again/i.test(last)) return route.fulfill(reply(note()));
-    const isTriage = !!b.systemPrompt || /sufficient/i.test(b.system || '');
-    if (isTriage) return route.fulfill(reply({ sufficient: true, questions: [] }));
+    if (isTriageCall(b)) return route.fulfill(reply({ sufficient: true, questions: [] }));
     calls++;
     if (calls === 1) return route.fulfill(reply(note()));
     return onRevision(route, b);

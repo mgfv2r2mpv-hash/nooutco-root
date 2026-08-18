@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { serverPromptRequest, composeServerSystem, isServerPromptTool, serverPromptTools, maxSystemSuffix } from '../_worker.js';
+import { serverPromptRequest, composeServerSystem, isServerPromptTool, serverPromptTools, maxSystemSuffix, promptKeyFor } from '../_worker.js';
 
 /* Accessors rather than exported constants, and the reason is load-bearing:
  * workerd refuses to start on a named export that is not a function, so a
@@ -39,10 +39,27 @@ function adminToken() {
 const auth = () => ({ Authorization: `Bearer ${adminToken()}`, 'Content-Type': 'application/json' });
 
 test.describe('which tools compose server-side', () => {
-  test('sup is migrated and the others are not, yet', () => {
-    expect(serverPromptTools()).toEqual(['sup']);
-    for (const t of ['bt', 'parent', 'assess', 'sap', 'graphva']) {
+  test('sup and bt are migrated and the others are not, yet', () => {
+    expect(serverPromptTools()).toEqual(['bt', 'sup']);
+    for (const t of ['parent', 'assess', 'sap', 'graphva']) {
       expect(isServerPromptTool(t), `${t} has not migrated; it must still send its own prompt`).toBe(false);
+    }
+  });
+
+  test('no migrated tool brings its own triage prompt', () => {
+    // engine.jsx has ONE triage branch, not two: a migrated tool asks for the
+    // shared triage prompt by kind, and everything else builds the default in
+    // the browser. A migrated tool that also defined triageSystem would fall
+    // down the wrong side of that branch and quietly run the shared prompt
+    // instead of its own, so the assumption is asserted rather than trusted.
+    // When one needs an override, publish it in the store and give it a kind.
+    const dir = path.join(process.cwd(), 'notes/bcba/tools');
+    for (const tool of serverPromptTools()) {
+      const src = readFileSync(path.join(dir, `${tool}.js`), 'utf8');
+      expect(
+        /triageSystem\s*:/.test(src),
+        `${tool}.js defines triageSystem but is migrated; its override would be silently ignored`
+      ).toBe(false);
     }
   });
 
@@ -65,7 +82,7 @@ test.describe('which tools compose server-side', () => {
 
 test.describe('serverPromptRequest', () => {
   test('a tool that has not migrated is untouched', () => {
-    expect(serverPromptRequest({ system: 'ANYTHING' }, 'bt')).toEqual({ serverSide: false });
+    expect(serverPromptRequest({ system: 'ANYTHING' }, 'parent')).toEqual({ serverSide: false });
     expect(serverPromptRequest({}, undefined)).toEqual({ serverSide: false });
   });
 
@@ -79,6 +96,29 @@ test.describe('serverPromptRequest', () => {
       expect(r.error).toBeTruthy();
       expect(r.suffix).toBeUndefined();
     }
+  });
+
+  test('a prompt kind names a prompt in the store and carries no text', () => {
+    // Triage is the only kind today. It sends no system, no systemPrompt and no
+    // suffix, because nothing measured in the page belongs in a call that
+    // writes no prose.
+    expect(serverPromptRequest({ prompt_kind: 'triage' }, 'bt'))
+      .toEqual({ serverSide: true, kind: 'triage', suffix: '' });
+    expect(promptKeyFor('bt', 'triage')).toBe('triage');
+    expect(promptKeyFor('bt', undefined)).toBe('bt');
+  });
+
+  test('an unrecognised kind is refused, because it selects a key in a private store', () => {
+    const r = serverPromptRequest({ prompt_kind: 'anything-else' }, 'bt');
+    expect(r.serverSide).toBe(true);
+    expect(r.error).toMatch(/Unknown prompt_kind/);
+  });
+
+  test('a kind carrying a suffix is refused rather than quietly stripped', () => {
+    // Same reasoning as the system field: a caller that believes it sent a
+    // style card must not be told nothing while the model never sees one.
+    const r = serverPromptRequest({ prompt_kind: 'triage', system_suffix: 'STYLE' }, 'bt');
+    expect(r.error).toMatch(/takes no system_suffix/);
   });
 
   test('the per-note suffix is accepted, because the browser measured it', () => {
@@ -154,10 +194,12 @@ test.describe('the live route', () => {
   });
 
   test('a tool that has not migrated still sends its own prompt', async ({ request }) => {
-    // bt must be completely unaffected until its own migration.
+    // parent must be completely unaffected until its own migration. This test
+    // named bt until bt migrated, which is how it should read: the example is
+    // always a tool that has not moved yet, so the test keeps meaning something.
     const res = await request.post('/api/llm-call', {
       headers: auth(),
-      data: { tool: 'bt', system: 'BT PROMPT', messages: [{ role: 'user', content: 'hi' }] },
+      data: { tool: 'parent', system: 'PARENT PROMPT', messages: [{ role: 'user', content: 'hi' }] },
     });
     // No API key in dev, so it gets as far as the upstream call and fails there.
     // The point is that it is NOT a 400 and NOT a 503 about prompts.
