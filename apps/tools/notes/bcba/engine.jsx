@@ -730,6 +730,24 @@ function App() {
       ? { promptKind: "triage" }
       : { system: (tool.triageSystem || TRIAGE_SYSTEM) + TRIAGE_READINESS };
 
+  /* EVERY DRAFT PASSES THROUGH HERE BEFORE ANYONE SEES IT.
+     
+     A note records what was done, never what was not done. That has been in the
+     prompt in three separate places since 2026-08-15 and a note still came back
+     saying "no recent session information was provided for comparison", so the
+     rule is now enforced rather than asked for. absence.js cuts the sentence
+     after the model returns, and what it will not cut it counts.
+
+     It fails OPEN. If absence.js did not load, a note without the strip is worth
+     more than no note, and the counts go out as zero rather than as a lie. */
+  const finalize = (parsed) => {
+    const normalized = tool.normalizeOutput(parsed);
+    return window.NoteAbsence
+      ? window.NoteAbsence.scrubNote(normalized)
+      : { output: normalized, cut: 0, flagged: 0 };
+  };
+  const finalOutput = (parsed) => finalize(parsed).output;
+
   const runTurn = async (messages, styleBlock, wantOpinions) => {
     const r = await NotesGate.generateConversation({
       ...systemFor(styleBlock),
@@ -1005,7 +1023,7 @@ function App() {
 
     const prose = tool.formSections
       .filter((sec) => sec.kind === "narrative" && sec.key)
-      .map((sec) => String(tool.normalizeOutput(first.parsed)[sec.key] || ""))
+      .map((sec) => String(finalOutput(first.parsed)[sec.key] || ""))
       .filter(Boolean)
       .join("\n\n");
 
@@ -1123,7 +1141,8 @@ function App() {
         }
       } catch (e) { /* keep the first draft */ }
 
-      patchS({ output: tool.normalizeOutput(r.parsed), conversation, lastCallAt: Date.now() });
+      const finalDraft = finalize(r.parsed);
+      patchS({ output: finalDraft.output, conversation, lastCallAt: Date.now() });
       pushThread("assistant", "status", "Drafted. Click any section - or select a phrase inside one - to revise it.");
       // Register signals for the weekly audit. Numbers only, measured on the
       // draft the clinician is about to read, so a drift toward machine-uniform
@@ -1133,12 +1152,20 @@ function App() {
       let register = null;
       try {
         const body = tool.formSections
-          .map((s) => (s.key ? tool.normalizeOutput(r.parsed)[s.key] : ""))
+          .map((s) => (s.key ? finalOutput(r.parsed)[s.key] : ""))
           .filter(Boolean).join("\n\n");
         register = window.NoteMetrics ? window.NoteMetrics.measure(body) : null;
       } catch (e) { register = null; }
 
-      audit("note_generated", { ...inputSizes(scrubbedValues), answered: extra && extra.trim() ? 1 : 0 });
+      /* absenceCut and absenceFlagged are how we find out whether the prompt
+         rule is working, which is the question that started this. Counts only:
+         the sentence itself is clinical text and never leaves the page. */
+      audit("note_generated", {
+        ...inputSizes(scrubbedValues),
+        answered: extra && extra.trim() ? 1 : 0,
+        absenceCut: finalDraft.cut,
+        absenceFlagged: finalDraft.flagged,
+      });
       // Its own event, not merged into note_generated: the metric sanitiser
       // caps a payload at 12 numeric keys and silently drops the overflow, so
       // sharing a budget would quietly lose whichever signals sorted last.
@@ -1457,7 +1484,7 @@ function App() {
       // now - this replays a cached prefix and must match it byte for byte.
       const r = await runTurn(conversation, S.convStyleBlock || "");
       conversation.push({ role: "assistant", content: r.rawText });
-      const normalized = tool.normalizeOutput(r.parsed);
+      const normalized = finalOutput(r.parsed);
       const targetId = ann ? ann.id : null;
 
       /* Cross-section routing.
