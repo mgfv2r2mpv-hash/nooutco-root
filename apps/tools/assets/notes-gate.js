@@ -511,6 +511,11 @@
      caller that half-migrates finds out immediately rather than silently getting
      the old path. */
   function systemFields(opts) {
+    // Three shapes, mutually exclusive, and the Worker refuses any request that
+    // mixes them. promptKind names a prompt the store holds that is not the
+    // tool's own - triage is the only one - and it carries no text and no
+    // suffix, because nothing measured in this page belongs in that call.
+    if (typeof opts.promptKind === "string") return { prompt_kind: opts.promptKind };
     return typeof opts.systemSuffix === "string"
       ? { system_suffix: opts.systemSuffix }
       : { system: opts.system };

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { isTriageCall, browserSystem } from './helpers/llm-call.js';
 
 // The learned style block reaching the prompt, and staying put once it does.
 //
@@ -86,7 +87,7 @@ test.describe('the learned block reaches the prompt, and then holds still', () =
     await page.route('**/api/llm-call**', async (route) => {
       const body = JSON.parse(route.request().postData() || '{}');
       // Triage is a separate, cheaper call with its own system prompt.
-      const isTriage = !!body.systemPrompt || /sufficient/i.test(body.system || '');
+      const isTriage = isTriageCall(body);
       (isTriage ? triageCalls : noteCalls).push(body);
       await route.fulfill({
         status: 200,
@@ -104,13 +105,16 @@ test.describe('the learned block reaches the prompt, and then holds still', () =
     await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
 
     expect(noteCalls.length).toBeGreaterThan(0);
-    expect(noteCalls[0].system).toContain('TECHNICIAN VOICE');
-    expect(noteCalls[0].system).toContain('Keep sentences short.');
+    // bt is migrated, so the browser sends only what it measured today and the
+    // Worker prepends the stored prompt. The card is in that measured block.
+    expect(browserSystem(noteCalls[0])).toContain('TECHNICIAN VOICE');
+    expect(browserSystem(noteCalls[0])).toContain('Keep sentences short.');
+    expect(noteCalls[0].system, 'a migrated tool must not send a whole prompt').toBeUndefined();
 
     // Triage must NOT carry the block. It is a different prompt with a
     // different job, and it is not part of the cached note conversation.
     for (const t of triageCalls) {
-      expect(t.system || t.systemPrompt || '').not.toContain('TECHNICIAN VOICE');
+      expect(browserSystem(t) || t.systemPrompt || '').not.toContain('TECHNICIAN VOICE');
     }
   });
 
@@ -124,8 +128,8 @@ test.describe('the learned block reaches the prompt, and then holds still', () =
     const systems = [];
     await page.route('**/api/llm-call**', async (route) => {
       const body = JSON.parse(route.request().postData() || '{}');
-      const isTriage = !!body.systemPrompt || /sufficient/i.test(body.system || '');
-      if (!isTriage) systems.push(body.system);
+      const isTriage = isTriageCall(body);
+      if (!isTriage) systems.push(browserSystem(body));
       await route.fulfill({
         status: 200,
         contentType: 'application/json',

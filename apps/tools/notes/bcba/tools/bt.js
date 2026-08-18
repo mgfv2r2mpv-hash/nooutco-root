@@ -527,6 +527,22 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       return s;
     },
 
+    /* This tool's system prompt is composed inside the Worker, from the prompt
+       store, and is not sent from here.
+
+       buildSystem stays, and for this tool it has to. SYSTEM_CORE is still read
+       by buildLabeledPrompt below, which is the logged-out copy-prompt path, so
+       the clinical rules were always going to reach a browser that asked. What
+       migrating buys is the other half: /api/llm-call no longer accepts a
+       system prompt for bt, so a password holder can no longer run a prompt of
+       their own choosing on the account's Anthropic key.
+
+       The stored copy and this one are held together by verify-parity.mjs in
+       voice-module, which composes THIS file from the deployed site and fails on
+       a difference. So an edit here without a matching extraction there is a
+       drift that CI catches - but only on the next push to that repo, which is
+       the weak link worth knowing about. */
+    serverPrompt: true,
     buildSystem: function () { return SYSTEM_CORE + (window.NoteRegisterRules ? window.NoteRegisterRules.sessionNote : "") + HINTS_BLOCK + JSON_FORMAT_BLOCK; },
     buildUserPrompt: buildUserPrompt,
     buildLabeledPrompt: function (values) {

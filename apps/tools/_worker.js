@@ -476,11 +476,12 @@ async function handleLlmCall(request, env) {
     const wantsServerPrompt = serverPromptRequest(body, tool);
     if (wantsServerPrompt.serverSide) {
       if (wantsServerPrompt.error) return jsonRes(400, { error: wantsServerPrompt.error });
-      const base = await promptForTool(env, tool);
+      const promptKey = promptKeyFor(tool, wantsServerPrompt.kind);
+      const base = await promptForTool(env, promptKey);
       if (!base) {
         // Deliberately not a fallback. A note is worth more than a note written
         // to an unknown prompt, and the clinician is told nothing was sent.
-        await notifyError(env, "prompt-api", "no prompt available for tool " + tool);
+        await notifyError(env, "prompt-api", "no prompt available for key " + promptKey);
         return jsonRes(503, {
           error: "The prompt service is unavailable, so this note was not drafted. Nothing was sent to the model.",
         });
@@ -1106,7 +1107,16 @@ export { VOICE_COVERAGE };
    catches it early either - the file parses, lints and type-checks fine, and it
    was the integration run under `wrangler pages dev` that caught it. So the
    constants stay module-private and the tests reach them through accessors. */
-const SERVER_PROMPT_TOOLS = new Set(["sup"]);
+const SERVER_PROMPT_TOOLS = new Set(["bt", "sup"]);
+
+/* Prompts the store holds that are not a tool's own note prompt.
+
+   Triage runs before the draft - "is anything here too thin to write from" -
+   and it is a call to the model like any other, so a migrated tool must not
+   send its text either. The browser names the kind and the Worker fetches it.
+   Bounded rather than free-form: this value selects a key in a private store,
+   so an unrecognised one is refused rather than passed through. */
+const PROMPT_KINDS = new Set(["triage"]);
 
 // The style card, the shape line and the intake-voice sentence together run to a
 // few hundred words. This is a sanity bound on a field that reaches the model,
@@ -1135,11 +1145,32 @@ export function serverPromptRequest(body, tool) {
         "rather than system or systemPrompt.",
     };
   }
+  const kind = typeof b.prompt_kind === "string" ? b.prompt_kind : "";
+  if (kind) {
+    if (!PROMPT_KINDS.has(kind)) {
+      return { serverSide: true, error: "Unknown prompt_kind." };
+    }
+    // Refused rather than ignored, on the same reasoning as the system field
+    // above: a caller that believes it sent a style card must not be told
+    // nothing while the model never sees one. Triage takes no suffix because
+    // nothing measured in the page belongs in a call that writes no prose.
+    if (typeof b.system_suffix === "string" && b.system_suffix) {
+      return { serverSide: true, error: "This prompt takes no system_suffix." };
+    }
+    return { serverSide: true, kind, suffix: "" };
+  }
   const suffix = typeof b.system_suffix === "string" ? b.system_suffix : "";
   if (suffix.length > MAX_SYSTEM_SUFFIX) {
     return { serverSide: true, error: "system_suffix is longer than this tool accepts." };
   }
   return { serverSide: true, suffix };
+}
+
+// Which key the store is asked for. A kind names a shared prompt; its absence
+// means the tool's own. Exported so a test can state the mapping rather than
+// infer it from a 503.
+export function promptKeyFor(tool, kind) {
+  return kind ? kind : tool;
 }
 
 /* Reproduces exactly what the browser used to build: the tool's prompt, then a
@@ -1156,19 +1187,19 @@ export function composeServerSystem(base, suffix) {
    missing prompt would mean falling back to whatever the client sent, which is
    the hole this exists to close, so this one refuses. */
 const PROMPT_TIMEOUT_MS = 1500;
-async function promptForTool(env, tool) {
+async function promptForTool(env, key) {
   if (!env.PROMPTS) return null;
   try {
     const res = await env.PROMPTS.fetch(
-      "https://prompts.internal/system?tool=" + encodeURIComponent(tool),
+      "https://prompts.internal/system?tool=" + encodeURIComponent(key),
       { signal: AbortSignal.timeout(PROMPT_TIMEOUT_MS) }
     );
     if (!res.ok) return null;
     const data = await res.json();
     return typeof data.system === "string" && data.system ? data.system : null;
   } catch (err) {
-    // The tool id is safe to log. Nothing a clinician typed reaches this call.
-    console.error("prompt-api unreachable", tool, err && err.name);
+    // The key is safe to log. Nothing a clinician typed reaches this call.
+    console.error("prompt-api unreachable", key, err && err.name);
     return null;
   }
 }

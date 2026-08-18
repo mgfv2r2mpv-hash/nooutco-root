@@ -712,6 +712,24 @@ function App() {
       ? { systemSuffix: block || "" }
       : { system: tool.buildSystem() + (block ? "\n\n" + block : "") };
 
+  /* TRIAGE IS A CALL TOO, and the sup migration forgot it. This branch is the
+     fix and triage-server-prompt.spec.js is the pin.
+
+     A migrated tool sends no prompt text on ANY call, so triage asks for its
+     prompt by kind and the Worker fetches the same text from the same store.
+     Before this, triage sent its system prompt unconditionally, the Worker
+     refused it with a 400 because the tool was migrated, and the catch below
+     swallowed it: the note still drafted, and the technician silently lost the
+     gap questions and the readiness reading.
+
+     There is one branch, not two, on purpose. A migrated tool that also defined
+     triageSystem would need its override published, so rather than let this pick
+     a path quietly, server-prompt.spec.js asserts no migrated tool has one. */
+  const triageSystemFor = () =>
+    tool.serverPrompt
+      ? { promptKind: "triage" }
+      : { system: (tool.triageSystem || TRIAGE_SYSTEM) + TRIAGE_READINESS };
+
   const runTurn = async (messages, styleBlock, wantOpinions) => {
     const r = await NotesGate.generateConversation({
       ...systemFor(styleBlock),
@@ -885,36 +903,11 @@ function App() {
     },
   };
 
-  const TRIAGE_SYSTEM =
-    "You are reviewing a clinician's raw session notes BEFORE they are turned into a formal note.\n\n" +
-    "Your ONLY job: decide whether anything is too thin to write from, and if so ask at most 3 short, specific questions that would materially improve the finished note.\n\n" +
-    "RULES\n" +
-    "- Ask only about what a payer or supervisor would notice missing: counts or rates for a behavior, the prompt level used, whether a strategy worked, how this session compared to recent ones.\n" +
-    "- Be specific and quote back what they wrote. \"You mentioned elopement - how many times, and what did you do?\" NOT \"Can you add more detail?\"\n" +
-    "- NEVER ask for a name, a date, an address, or any other identifying detail. The notes are deliberately de-identified.\n" +
-    "- Do not ask about something they plainly had nothing to report. A session with no behaviors of concern is a normal session, not a gap.\n" +
-    "- If the notes are adequate, return sufficient=true and an empty array. Fewer questions is better than more; three is a ceiling, not a target.\n" +
-    "- Return ONLY a JSON object: {\"sufficient\": boolean, \"questions\": [{\"field\": \"\", \"question\": \"\"}]}";
-
-  /* Appended to WHICHEVER triage prompt runs, the default above or a tool's own.
-     It lives apart from both so there is exactly one place to change what counts
-     as ready, which is the reason he chose a model-judged number over counting
-     the questions: "the readiness number determination can be adjusted as
-     needed." Counting questions would have put that judgement in arithmetic,
-     where tuning it means editing code and re-reading tests.
-
-     The number drives how long the skip button stays locked. It never gates
-     anything and it is never shown, so a badly calibrated reading costs a few
-     seconds either way and nothing else. */
-  const TRIAGE_READINESS =
-    "\n\nREADINESS\n" +
-    "Alongside those fields, return `readiness`: an integer from 0 to 100 for how close this input already is to something a clinician could sign, judged BEFORE any of your questions are answered.\n" +
-    "  85-100  Everything a reviewer needs is present. Your questions would sharpen the note rather than rescue it.\n" +
-    "  60-84   One real gap - a behavior with no count, a strategy with no outcome. The note can be written and would be visibly thinner.\n" +
-    "  30-59   Several gaps, or a single one the note rests on. Writing from this means inventing or omitting.\n" +
-    "  0-29    Too thin to write from at all.\n" +
-    "Judge what is on the page, not how well it is written. Terse but complete scores high; fluent but hollow scores low.\n" +
-    "So the object you return is {\"sufficient\": boolean, \"readiness\": integer, \"questions\": [{\"field\": \"\", \"question\": \"\"}]}.";
+  /* Both of these now live in triage-prompt.js, so the prompt store can extract
+     them from a deployed file. Read here rather than defined here, the same way
+     the register rules are. */
+  const TRIAGE_SYSTEM = (window.NoteTriagePrompt || {}).system || "";
+  const TRIAGE_READINESS = (window.NoteTriagePrompt || {}).readiness || "";
 
   // The default above is written for session notes. A tool whose input is not a
   // session (a SAP is a program plan, with no counts and no "this session")
@@ -939,7 +932,7 @@ function App() {
         "If nothing important is still missing, return sufficient: true.";
     }
     const r = await NotesGate.generateConversation({
-      system: (tool.triageSystem || TRIAGE_SYSTEM) + TRIAGE_READINESS,
+      ...triageSystemFor(),
       messages: [{ role: "user", content: (tool.triageIntro || "CLINICIAN'S RAW NOTES:") + "\n\n" + body }],
       tool: tool.id,
       maxTokens: 600,
