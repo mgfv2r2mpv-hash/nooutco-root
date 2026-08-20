@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { serverPromptRequest, serverPromptTools } from '../_worker.js';
+import { serverPromptRequest, serverPromptTools, promptKeyFor } from '../_worker.js';
 
 /* Triage is a call too, and the migration forgot it.
  *
@@ -66,6 +66,10 @@ async function captureFirstCall(page, { path, toolId, fill }) {
   return bodies[0];
 }
 
+const FILL_BCBA = (label, text) => async (page) => {
+  await page.getByRole('textbox', { name: label }).first().fill(text);
+};
+
 const FILL_BT = async (page) => {
   await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array, 8 of 10 gestural');
   await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first then board, two minute warning');
@@ -91,8 +95,22 @@ test.describe('the triage call obeys the same rule the note call does', () => {
   test('no migrated tool sends a system prompt on any call', async ({ page }) => {
     // Written as a roster rather than as one test per tool, so the next
     // migration is covered the moment its id lands in SERVER_PROMPT_TOOLS.
+    // Every migrated tool is driven now. assess, parent and sap share the bcba
+    // page and are selected with ?tool=, which is how the page picks one.
     const PAGES = {
       bt: { path: '/notes/bt/', fill: FILL_BT },
+      assess: {
+        path: '/notes/bcba/index.html?tool=assess',
+        fill: FILL_BCBA(/Summary Notes of Activities/i, 'ran the VB-MAPP milestones, mand level 2, sat for 20 minutes'),
+      },
+      parent: {
+        path: '/notes/bcba/index.html?tool=parent',
+        fill: FILL_BCBA(/Session Notes/i, 'worked on requesting with the picture cards, 6 of 10 independent'),
+      },
+      sap: {
+        path: '/notes/bcba/index.html?tool=sap',
+        fill: FILL_BCBA(/Treatment Goal/i, 'client will request a preferred item using a full sentence, 80% across 3 sessions'),
+      },
     };
     for (const toolId of serverPromptTools()) {
       const spec = PAGES[toolId];
@@ -105,5 +123,35 @@ test.describe('the triage call obeys the same rule the note call does', () => {
       expect(typeof body.system, `${toolId} still builds a system prompt in the browser`).not.toBe('string');
       expect(typeof body.systemPrompt, `${toolId} still builds a systemPrompt in the browser`).not.toBe('string');
     }
+  });
+});
+
+/* SAP TRIAGE ASKS FOR SAP'S PROMPT, and this is the only test that watches the
+   wire rather than the source.
+ *
+ * server-prompt.spec.js proves sap.js declares the key and the Worker knows it.
+ * Neither of those proves the engine actually SENDS it: the ternary in
+ * triageSystemFor could fall back to "triage" and every source-level assertion
+ * would still be green. So this drives a real SAP turn and reads what left the
+ * browser. */
+test.describe('sap triage asks for its own stored prompt', () => {
+  test('the SAP triage call names sap_triage and carries no prompt text', async ({ page }) => {
+    const body = await captureFirstCall(page, {
+      path: '/notes/bcba/index.html?tool=sap',
+      toolId: 'sap',
+      fill: FILL_BCBA(/Treatment Goal/i, 'client will request a preferred item using a full sentence, 80% across 3 sessions'),
+    });
+
+    expect(body.prompt_kind, 'SAP triage fell back to the generic prompt').toBe('sap_triage');
+    expect(typeof body.system, 'a migrated tool must send no prompt text').not.toBe('string');
+    expect(typeof body.systemPrompt).not.toBe('string');
+
+    // And the Worker accepts that exact body, which is the half the browser
+    // cannot tell you. A kind it does not know is refused, the engine's catch
+    // swallows it, and the clinician silently loses the gap questions.
+    const gate = serverPromptRequest(body, 'sap');
+    expect(gate.serverSide).toBe(true);
+    expect(gate.error, 'the Worker refused the body the browser actually sent').toBeUndefined();
+    expect(promptKeyFor('sap', gate.kind), 'the store would be asked for the wrong key').toBe('sap_triage');
   });
 });

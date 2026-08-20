@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { serverPromptRequest, composeServerSystem, isServerPromptTool, serverPromptTools, maxSystemSuffix, promptKeyFor } from '../_worker.js';
+import { serverPromptRequest, composeServerSystem, isServerPromptTool, serverPromptTools, promptKinds, maxSystemSuffix, promptKeyFor } from '../_worker.js';
 
 /* Accessors rather than exported constants, and the reason is load-bearing:
  * workerd refuses to start on a named export that is not a function, so a
@@ -39,28 +39,52 @@ function adminToken() {
 const auth = () => ({ Authorization: `Bearer ${adminToken()}`, 'Content-Type': 'application/json' });
 
 test.describe('which tools compose server-side', () => {
-  test('sup and bt are migrated and the others are not, yet', () => {
-    expect(serverPromptTools()).toEqual(['bt', 'sup']);
-    for (const t of ['parent', 'assess', 'sap', 'graphva']) {
-      expect(isServerPromptTool(t), `${t} has not migrated; it must still send its own prompt`).toBe(false);
-    }
+  test('every note tool is migrated, and graphva is not', () => {
+    // All five as of 2026-08-20. The list is spelled out rather than derived so
+    // that dropping a tool from the Worker's Set is a named failure here and not
+    // a silently reopened hole.
+    expect(serverPromptTools()).toEqual(['assess', 'bt', 'parent', 'sap', 'sup']);
+    // graphVA/app.js posts to /api/llm-call with its own short prompt inline. It
+    // is the one caller left that sends its own, and it is deliberate: this line
+    // is what stops it being migrated by accident rather than on purpose.
+    expect(isServerPromptTool('graphva'), 'graphva has not migrated; it must still send its own prompt').toBe(false);
   });
 
-  test('no migrated tool brings its own triage prompt', () => {
-    // engine.jsx has ONE triage branch, not two: a migrated tool asks for the
-    // shared triage prompt by kind, and everything else builds the default in
-    // the browser. A migrated tool that also defined triageSystem would fall
-    // down the wrong side of that branch and quietly run the shared prompt
-    // instead of its own, so the assumption is asserted rather than trusted.
-    // When one needs an override, publish it in the store and give it a kind.
+  test('a migrated tool with its own triage prompt names the stored copy', () => {
+    // This test used to assert that NO migrated tool had a triageSystem, and it
+    // said in its own comment what to do when one needed an override: publish it
+    // and give it a kind. sap did, on 2026-08-20, so this is now the stronger
+    // form of the same guard.
+    //
+    // engine.jsx still has ONE triage branch. A migrated tool asks for a stored
+    // prompt by kind, and triageKind picks which. A tool that kept its override
+    // and lost the key would fall back to "triage": the call succeeds, the model
+    // answers, and a clinician is asked about behavior counts instead of prompt
+    // hierarchies. Nothing errors. That is what this catches.
     const dir = path.join(process.cwd(), 'notes/bcba/tools');
     for (const tool of serverPromptTools()) {
       const src = readFileSync(path.join(dir, `${tool}.js`), 'utf8');
-      expect(
-        /triageSystem\s*:/.test(src),
-        `${tool}.js defines triageSystem but is migrated; its override would be silently ignored`
-      ).toBe(false);
+      const override = /triageSystem\s*:/.test(src);
+      const kind = src.match(/triageKind:\s*"([a-z_]+)"/);
+      if (!override) {
+        expect(kind, `${tool}.js names a triageKind but has no triage prompt of its own`).toBe(null);
+        continue;
+      }
+      expect(kind, `${tool}.js defines triageSystem but no triageKind, so its override is silently ignored`).not.toBe(null);
+      // The kind has to be one the Worker will actually fetch. An unrecognised
+      // one is refused, and the engine's catch swallows a failed triage, so the
+      // technician would lose the gap questions with nothing shown.
+      expect(promptKinds(), `${tool}.js asks for a prompt kind the Worker does not know`).toContain(kind[1]);
     }
+  });
+
+  test('sap is the tool that has one, and it points at sap_triage', () => {
+    // Stated positively as well as structurally. The loop above would still pass
+    // if sap's override and its key were both deleted.
+    const src = readFileSync(path.join(process.cwd(), 'notes/bcba/tools/sap.js'), 'utf8');
+    expect(/triageSystem\s*:/.test(src)).toBe(true);
+    expect(src).toContain('triageKind: "sap_triage"');
+    expect(promptKinds()).toContain('sap_triage');
   });
 
   test('the browser flag and the Worker set agree', () => {
@@ -82,7 +106,9 @@ test.describe('which tools compose server-side', () => {
 
 test.describe('serverPromptRequest', () => {
   test('a tool that has not migrated is untouched', () => {
-    expect(serverPromptRequest({ system: 'ANYTHING' }, 'parent')).toEqual({ serverSide: false });
+    // graphva, because every note tool has migrated now and this needs an
+    // example that is really left out rather than one that is about to move.
+    expect(serverPromptRequest({ system: 'ANYTHING' }, 'graphva')).toEqual({ serverSide: false });
     expect(serverPromptRequest({}, undefined)).toEqual({ serverSide: false });
   });
 
@@ -194,12 +220,14 @@ test.describe('the live route', () => {
   });
 
   test('a tool that has not migrated still sends its own prompt', async ({ request }) => {
-    // parent must be completely unaffected until its own migration. This test
-    // named bt until bt migrated, which is how it should read: the example is
-    // always a tool that has not moved yet, so the test keeps meaning something.
+    // The example is always a tool that has not moved yet, which is what keeps
+    // this test meaning something. It named bt until bt migrated, then parent
+    // until 2026-08-20, and now graphva - which is a genuine endpoint rather
+    // than a placeholder: graphVA/app.js really does post here with its own
+    // inline system prompt, so this is the path a real caller takes today.
     const res = await request.post('/api/llm-call', {
       headers: auth(),
-      data: { tool: 'parent', system: 'PARENT PROMPT', messages: [{ role: 'user', content: 'hi' }] },
+      data: { tool: 'graphva', system: 'GRAPHVA PROMPT', messages: [{ role: 'user', content: 'hi' }] },
     });
     // No API key in dev, so it gets as far as the upstream call and fails there.
     // The point is that it is NOT a 400 and NOT a 503 about prompts.

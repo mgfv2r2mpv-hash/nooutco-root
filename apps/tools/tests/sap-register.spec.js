@@ -348,11 +348,27 @@ test.describe('SAP gap questions', () => {
     await expect.poll(() => posted.length, { timeout: 20000 }).toBeGreaterThan(0);
 
     const triageCall = posted[0];
-    expect(triageCall.system, 'the engine sent its session-note default for a SAP')
-      .toMatch(/Service Authorization Plan/);
-    expect(triageCall.system).toMatch(/prompt hierarchy/i);
-    expect(triageCall.system, 'the session-note default leaked onto the wire')
-      .not.toMatch(/raw session notes/i);
+
+    /* THE SHAPE CHANGED ON 2026-08-20, THE FAILURE DID NOT.
+     *
+     * This used to read triageCall.system and look for "Service Authorization
+     * Plan" in it, because the browser composed SAP's triage prompt and sent
+     * the text. sap is migrated now, so it sends no prompt text on any call and
+     * names the stored copy instead. The prompt itself is asserted where it now
+     * lives: the test above reads sap.triageSystem directly, and voice-module's
+     * prompts.test.js proves the stored sap_triage copy is that prompt and not
+     * the generic one.
+     *
+     * What is still only checkable here is the wire. The failure this pins has
+     * not changed at all: sap can carry its override, the store can hold it
+     * correctly, and the engine can still send "triage" - in which case the
+     * call succeeds, the model answers, and the clinician is asked about
+     * behavior counts instead of prompt hierarchies. */
+    expect(triageCall.prompt_kind, 'the engine asked for the session-note default for a SAP')
+      .toBe('sap_triage');
+    expect(typeof triageCall.system, 'a migrated tool must send no prompt text')
+      .not.toBe('string');
+    expect(typeof triageCall.systemPrompt).not.toBe('string');
     expect(triageCall.messages[0].content).toMatch(/GOAL AND SPECIFICATIONS/);
   });
 });
