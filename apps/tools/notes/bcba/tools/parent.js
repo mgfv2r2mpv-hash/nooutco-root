@@ -125,6 +125,21 @@ TERMINOLOGY (non-negotiable)\n\
       if (!(values.sessionNotes || "").trim()) return "Please enter your session notes.";
       return null;
     },
+    /* This tool's system prompt is composed inside the Worker, from the prompt
+       store, and is not sent from here.
+
+       buildSystem stays because buildLabeledPrompt below is the logged-out
+       copy-prompt path, and his 2026-08-04 ruling keeps that a logged-out
+       feature. So the clinical rules were always going to reach a browser that
+       asked for them. What migrating buys is the other half: /api/llm-call no
+       longer accepts a system prompt for parent, so a password holder can no longer
+       run a prompt of their own choosing on the account's Anthropic key.
+
+       The stored copy and this one are held together by verify-parity.mjs in
+       voice-module, which composes THIS file from the deployed site and fails
+       on a difference. An edit here without a matching extraction there is a
+       drift CI catches, but only on the next push to that repo. */
+    serverPrompt: true,
     buildSystem: function () { return SYSTEM_CORE + (window.NoteRegisterRules ? window.NoteRegisterRules.sessionNote : "") + HINTS_BLOCK + JSON_FORMAT_BLOCK; },
     buildUserPrompt: buildUserPrompt,
     buildLabeledPrompt: function (values) {

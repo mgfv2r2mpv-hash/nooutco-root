@@ -722,12 +722,20 @@ function App() {
      swallowed it: the note still drafted, and the technician silently lost the
      gap questions and the readiness reading.
 
-     There is one branch, not two, on purpose. A migrated tool that also defined
-     triageSystem would need its override published, so rather than let this pick
-     a path quietly, server-prompt.spec.js asserts no migrated tool has one. */
+     There is still one branch, not two. What changed on 2026-08-20 is which key
+     the migrated side asks for: a tool with a triage prompt of its own names it
+     with triageKind, and everything else gets "triage". sap is the only tool
+     that overrides, and its override is a different prompt rather than a
+     reworded one, so falling back would have asked a clinician about behavior
+     counts instead of prompt hierarchies without erroring anywhere.
+
+     triageKind and triageSystem are two halves of one fact and they are kept
+     together by server-prompt.spec.js, which fails a migrated tool that has the
+     override and not the key. That test is the only thing standing between this
+     ternary and a silently wrong prompt. */
   const triageSystemFor = () =>
     tool.serverPrompt
-      ? { promptKind: "triage" }
+      ? { promptKind: tool.triageKind || "triage" }
       : { system: (tool.triageSystem || TRIAGE_SYSTEM) + TRIAGE_READINESS };
 
   /* EVERY DRAFT PASSES THROUGH HERE BEFORE ANYONE SEES IT.

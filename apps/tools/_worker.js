@@ -1107,7 +1107,10 @@ export { VOICE_COVERAGE };
    catches it early either - the file parses, lints and type-checks fine, and it
    was the integration run under `wrangler pages dev` that caught it. So the
    constants stay module-private and the tests reach them through accessors. */
-const SERVER_PROMPT_TOOLS = new Set(["bt", "sup"]);
+/* All five note tools, as of 2026-08-20. Nothing that posts to /api/llm-call is
+   left off this list except graphva, which sends a short prompt inline from
+   graphVA/app.js and has not migrated. */
+const SERVER_PROMPT_TOOLS = new Set(["assess", "bt", "parent", "sap", "sup"]);
 
 /* Prompts the store holds that are not a tool's own note prompt.
 
@@ -1115,8 +1118,14 @@ const SERVER_PROMPT_TOOLS = new Set(["bt", "sup"]);
    and it is a call to the model like any other, so a migrated tool must not
    send its text either. The browser names the kind and the Worker fetches it.
    Bounded rather than free-form: this value selects a key in a private store,
-   so an unrecognised one is refused rather than passed through. */
-const PROMPT_KINDS = new Set(["triage"]);
+   so an unrecognised one is refused rather than passed through.
+
+   "sap_triage" is the second kind and the reason kinds are a set rather than a
+   boolean. sap triages with a prompt of its own - prompt hierarchies, mastery
+   criteria, maintenance probes - and the generic one asks none of that. A
+   migrated sap that fell back to "triage" would have been served a prompt that
+   works, answers, and asks a clinician the wrong questions. */
+const PROMPT_KINDS = new Set(["sap_triage", "triage"]);
 
 // The style card, the shape line and the intake-voice sentence together run to a
 // few hundred words. This is a sanity bound on a field that reaches the model,
@@ -1129,6 +1138,11 @@ export function isServerPromptTool(tool) {
 // Sorted so a test can compare it without caring about insertion order.
 export function serverPromptTools() {
   return [...SERVER_PROMPT_TOOLS].sort();
+}
+// Same reasoning, and an accessor for the same reason: a named export that is
+// not a function takes the whole Worker down at boot. See the note above.
+export function promptKinds() {
+  return [...PROMPT_KINDS].sort();
 }
 export function maxSystemSuffix() {
   return MAX_SYSTEM_SUFFIX;

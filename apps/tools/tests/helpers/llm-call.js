@@ -13,10 +13,17 @@
  * triage call with a note and the spec times out somewhere unrelated.
  */
 
-// True for every shape triage has ever had, so a spec reads the same before and
-// after its tool migrates.
+/* True for every shape triage has ever had, so a spec reads the same before and
+   after its tool migrates.
+
+   ANY prompt_kind, not the string "triage". This read `prompt_kind === 'triage'`
+   until 2026-08-20, when sap started sending "sap_triage" for its own triage
+   prompt - and that would have failed open in the one direction this helper
+   exists to prevent, treating a sap triage call as a note. Every kind the store
+   holds is a triage prompt today; if that ever stops being true, this needs a
+   set rather than a truthiness check. */
 export const isTriageCall = (body) =>
-  (body && body.prompt_kind === 'triage') ||
+  !!(body && typeof body.prompt_kind === 'string' && body.prompt_kind) ||
   !!(body && body.systemPrompt) ||
   /sufficient/i.test((body && body.system) || '');
 
