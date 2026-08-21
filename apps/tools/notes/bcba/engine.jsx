@@ -484,22 +484,95 @@ function GoalsTable({ columns, rows, onChange, onCopyCell, copiedId, idPrefix })
 
 // One-line improvement note under a section - canonical wording from the tool's
 // client-side catalog; the model only picked the code (plus a short specifier).
+//
+// THE CAP IS THREE, AND IT DESTROYS NOTHING. A section with nine findings used
+// to render nine identical yellow boxes, which reaches a technician at the end
+// of a shift the same way rendering none does: nobody reads to the bottom of
+// that. The top three by the model's own rank are shown and the rest sit behind
+// a disclosure, so the list is short enough to act on and nothing is lost.
+//
+// normalizeHints has already sorted the array by rank, so array order IS rank
+// order here and this deliberately does not re-sort. One place decides the
+// ordering.
+const HINT_CAP = 3;
+
+// kind decides how loudly a hint is drawn. blocks-claim is the only one that
+// changes colour, because a funder rejecting the claim is a different kind of
+// problem from the note reading thin, and a technician skimming should be able
+// to tell those apart without reading either.
+const HINT_TONE = {
+  "blocks-claim": { fg: "#9b1c1c", bg: "#fdf0ef", edge: "#eec4c0", mark: "⚠" },
+  thin: { fg: "#8a6d1a", bg: "#fdf6e0", edge: "#ecd9a0", mark: "💡" },
+  register: { fg: "#4b5563", bg: "#f3f4f6", edge: "#e5e7eb", mark: "✎" },
+};
+
+function hintText(hint, catalog) {
+  if (hint.code === "other") return hint.detail || "";
+  const base = catalog[hint.code] || "";
+  return base + (hint.detail ? ` - ${hint.detail}` : "");
+}
+
+function HintRow({ hint, catalog }) {
+  const text = hintText(hint, catalog);
+  if (!text) return null;
+  const tone = HINT_TONE[hint.kind] || HINT_TONE.thin;
+  return (
+    <p
+      data-hint-kind={hint.kind || "thin"}
+      data-hint-rank={hint.rank === null || hint.rank === undefined ? undefined : String(hint.rank)}
+      style={{ fontSize: 12.5, color: tone.fg, background: tone.bg, border: `1px solid ${tone.edge}`, borderRadius: 7, padding: "6px 10px", marginBottom: 4, lineHeight: 1.5 }}
+    >
+      {tone.mark} {text}
+    </p>
+  );
+}
+
+// Shared by the per-section notes and the whole-note block, so the cap and the
+// disclosure behave identically in both rather than being written twice.
+function HintList({ hints, catalog, testid }) {
+  const [open, setOpen] = React.useState(false);
+  // A hint whose catalog entry is empty renders nothing, so it must not count
+  // against the cap or the disclosure would offer to reveal blank rows.
+  const shown = (hints || []).filter((h) => hintText(h, catalog));
+  if (!shown.length) return null;
+  const top = shown.slice(0, HINT_CAP);
+  const rest = shown.slice(HINT_CAP);
+  return (
+    <div style={{ marginTop: 8 }} data-testid={testid}>
+      {top.map((h, i) => <HintRow key={`t${i}`} hint={h} catalog={catalog} />)}
+      {open && rest.map((h, i) => <HintRow key={`r${i}`} hint={h} catalog={catalog} />)}
+      {rest.length > 0 && (
+        <button
+          type="button"
+          data-testid="hint-disclosure"
+          onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+          style={{ fontSize: 11.5, color: "#5d6a4d", background: "none", border: "none", padding: "2px 2px 0", cursor: "pointer", textDecoration: "underline" }}
+        >
+          {open ? "Show fewer" : `${rest.length} more ${rest.length === 1 ? "note" : "notes"}`}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function HintNotes({ hints, section, catalog }) {
   const id = sectionId(section);
-  const mine = (hints || []).filter((h) => h.section === id);
+  return <HintList hints={(hints || []).filter((h) => h.section === id)} catalog={catalog} testid={`hints-${id}`} />;
+}
+
+// Findings about the note as a whole. These have nowhere to live under a
+// section heading, and filing them under the nearest one puts them somewhere
+// they are not about, so they sit above the grid where the note starts.
+function NoteHints({ hints, catalog }) {
+  const whole = window.NoteToolsUtil ? window.NoteToolsUtil.HINT_WHOLE_NOTE : "note";
+  const mine = (hints || []).filter((h) => h.section === whole);
   if (!mine.length) return null;
   return (
-    <div style={{ marginTop: 8 }}>
-      {mine.map((h, i) => {
-        const base = h.code === "other" ? "" : catalog[h.code] || "";
-        const text = h.code === "other" ? h.detail : base + (h.detail ? ` - ${h.detail}` : "");
-        if (!text) return null;
-        return (
-          <p key={i} style={{ fontSize: 12.5, color: "#8a6d1a", background: "#fdf6e0", border: "1px solid #ecd9a0", borderRadius: 7, padding: "6px 10px", marginBottom: 4, lineHeight: 1.5 }}>
-            💡 {text}
-          </p>
-        );
-      })}
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 11, letterSpacing: ".07em", textTransform: "uppercase", color: "#7a9460", fontWeight: 700, marginBottom: 2 }}>
+        About the whole note
+      </div>
+      <HintList hints={mine} catalog={catalog} testid="hints-note" />
     </div>
   );
 }
@@ -2405,8 +2478,10 @@ function App() {
               )}
             </div>
             <p style={{ fontSize: 13, color: "#7a9460", marginBottom: 20, lineHeight: 1.55 }}>
-              Checkbox suggestions are inferred from your notes - verify before ticking your form. Narratives are editable. <strong style={{ color: "#5a6b4a" }}>Click a section to revise it, or select a phrase inside one to revise just that</strong> - the assistant panel takes it from there. 💡 notes flag what might be missing.
+              Checkbox suggestions are inferred from your notes - verify before ticking your form. Narratives are editable. <strong style={{ color: "#5a6b4a" }}>Click a section to revise it, or select a phrase inside one to revise just that</strong> - the assistant panel takes it from there. 💡 flags what might be missing, ⚠ flags what a funder could reject the claim over.
             </p>
+
+            <NoteHints hints={S.output.hints} catalog={tool.hintCatalog} />
 
             <div className="output-grid">
               {tool.formSections.map((sec, i) => {

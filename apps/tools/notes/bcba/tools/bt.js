@@ -11,6 +11,7 @@
 (function () {
   var menu = window.NoteToolsUtil.menu;
   var normalizeHints = window.NoteToolsUtil.normalizeHints;
+  var hintSchema = window.NoteToolsUtil.hintSchema;
 
   /* ── Canonical option lists ──────────────────────────────────────────────
      These labels are BOTH the menu the model may choose from AND the strings
@@ -193,19 +194,13 @@
       followUpNarrative: str,
       // An empty array is the "note stands on its own" case, so hints is
       // required as a key even though it is routinely empty.
-      hints: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: ["section", "code", "detail"],
-          properties: {
-            section: { type: "string", enum: SECTION_IDS },
-            code: { type: "string", enum: Object.keys(HINT_CATALOG) },
-            detail: str,
-          },
-        },
-      },
+      //
+      // The shape is shared now. rank and kind come with it, and their meaning
+      // travels in the schema's own description fields rather than in the
+      // prompt: this tool's system prompt is composed inside the Worker from the
+      // prompt store, so wording added to HINTS_BLOCK below would never reach
+      // the served call. The schema is sent from the browser for every tool.
+      hints: hintSchema(HINT_CATALOG, SECTION_IDS),
       // Also optional. When the technician says they are unsure about something
       // clinical, the tool offers to put the question to the BCBA rather than
       // guessing an answer. His ruling: it goes in the note, because the note

@@ -4,6 +4,7 @@
  * normalizeOutput flattens each into the editable text block the EHR expects. */
 (function () {
   var normalizeHints = window.NoteToolsUtil.normalizeHints;
+  var hintSchema = window.NoteToolsUtil.hintSchema;
 
   var SMART_TOOLTIP = "SMART goals are: Specific (clearly defines the target behavior and context, what, where, with whom), Measurable (includes quantifiable criteria, e.g. \"4 out of 5 opportunities\" or \"80% accuracy\"), Achievable (realistic within the authorization period given the client's current baseline), Relevant (tied to the client's diagnosis, functional independence, and medical necessity, not academics), and Time-bound (specifies a timeframe, e.g. \"within 1 authorization period\" or \"across 3 consecutive sessions\").";
 
@@ -65,20 +66,10 @@
         properties: { initial: str, maintenance: str, reentryRule: str },
       },
       // An empty array is the "draft stands on its own" case, so hints is
-      // required as a key even though it is routinely empty.
-      hints: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: ["section", "code", "detail"],
-          properties: {
-            section: { type: "string", enum: SECTION_IDS },
-            code: { type: "string", enum: ["thin_section", "ambiguous_item", "other"] },
-            detail: str,
-          },
-        },
-      },
+      // required as a key even though it is routinely empty. Shared shape, so
+      // rank, kind and the whole-note section arrive here without this file
+      // restating them.
+      hints: hintSchema(HINT_CATALOG, SECTION_IDS),
     },
   };
 
