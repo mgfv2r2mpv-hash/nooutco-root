@@ -56,25 +56,7 @@
   </script>
 
   <!-- Shared helpers used by the tool configs (plain JS, loaded before them) -->
-  <script>
-    window.NOTE_TOOLS = [];
-    window.NoteToolsUtil = {
-      // "a" | "b" | "c" menu string for ALLOWED-value lists in prompts.
-      menu: function (arr) { return arr.map(function (x) { return '"' + x + '"'; }).join(" | "); },
-      // Validate the model's hint codes against the tool's catalog and the note's
-      // known section keys; anything unrecognized is dropped (fabrication-proof).
-      normalizeHints: function (raw, catalog, validSections) {
-        if (!Array.isArray(raw)) return [];
-        return raw.filter(function (h) {
-          return h && typeof h.section === "string" && typeof h.code === "string" &&
-            validSections.indexOf(h.section) !== -1 &&
-            Object.prototype.hasOwnProperty.call(catalog, h.code);
-        }).map(function (h) {
-          return { section: h.section, code: h.code, detail: typeof h.detail === "string" ? h.detail.slice(0, 120) : "" };
-        }).slice(0, 8);
-      },
-    };
-  </script>
+  <script src="../bcba/note-tools-util.js"></script>
 
   <!-- One tool on this page. The engine hides its ribbon when only one is
        registered, so /notes/bt/ stays a single-purpose page while sharing every
