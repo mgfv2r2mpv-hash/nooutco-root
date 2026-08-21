@@ -47,6 +47,12 @@ export default {
       return handleLlmCall(request, env);
     }
 
+    // The expert pass: reads a scrubbed intake and returns findings. It never
+    // writes a note, and its response schema is fixed in the Worker.
+    if (url.pathname === "/api/expert-pass" && request.method === "POST") {
+      return handleExpertPass(request, env);
+    }
+
     // Admin-only CRUD for managed access passwords (GET/POST/PATCH/DELETE)
     if (url.pathname === "/api/admin/passwords") {
       return handleAdminPasswords(request, env);
@@ -546,6 +552,280 @@ async function handleLlmCall(request, env) {
     const m = error && error.message ? error.message : "unknown";
     console.error("LLM call error:", m);
     await notifyError(env, "llm-call", m);
+    return jsonRes(500, { error: error.message || "Internal server error" });
+  }
+}
+
+/* ── The expert pass ──────────────────────────────────────────────────────
+ *
+ * WHAT IT IS. One call that reads a scrubbed intake with the ABA glossary and
+ * the mentalism lexicon in front of it, and returns three lists: what the
+ * abbreviations mean, which constructions are mentalistic and what to do with
+ * each, and what the note most needs, ranked.
+ *
+ * WHY IT IS A ROUTE OF ITS OWN RATHER THAN A TOOL ON /api/llm-call. Three
+ * things about it are the Worker's to decide rather than the browser's. The
+ * response schema is fixed here, so the pass cannot be asked for a different
+ * shape by whoever is calling. The house voice and his stored opinions are NOT
+ * composed in, because this call returns findings rather than prose and a voice
+ * card would only teach it to write them prettily. And it is a read: it never
+ * drafts, never revises, and nothing it returns is applied to a note by this
+ * Worker.
+ *
+ * IT RUNS BESIDE THE EXISTING LOOP, NOT INSIDE IT. The browser still drives.
+ * The point of this phase is to find out whether the expert beats the hint
+ * catalog - eight fixed codes per tool, which between them cannot say "you
+ * wrote 'he wanted attention', and that is a function claim" - before any of
+ * the loop is rewritten around it.
+ *
+ * PRIVACY. The intake arrives de-identified, exactly as it does on the drafting
+ * call: the browser scrubs names to role tokens before send. Nothing here logs
+ * it, and the prompt store this fetches from never sees it at all.
+ */
+
+/* The intake is bounded by MAX_MESSAGE_CHARS rather than by a number of its
+   own, because it is the same clinician typing the same session that a
+   conversation message carries. It is read inside the functions below rather
+   than aliased to a const up here: this block sits above that declaration in
+   the file, and a top-level alias would be a ReferenceError at module load,
+   which in a Worker means the whole thing refuses to boot. */
+// Section ids for the enum. A generous ceiling on a list that is really five to
+// twenty, so a malformed caller fails here rather than at the upstream API.
+const MAX_EXPERT_SECTIONS = 40;
+const MAX_SECTION_ID_CHARS = 60;
+// Sits above what a real note produces, and exists only so a runaway response
+// cannot hand the browser a thousand hints. The same reasoning as HINT_CEILING
+// in note-tools-util.js, and deliberately the same number.
+const EXPERT_HINT_CEILING = 24;
+/* THE SAME MODEL THE CATALOG RUNS ON, and that is the whole reason it is
+   pinned here rather than taken from the request. The question this phase asks
+   is whether the KNOWLEDGE beats the catalog. Letting the expert run on a
+   larger model would answer a different question and answer it flatteringly. */
+const EXPERT_MODEL = "claude-haiku-4-5-20251001";
+const EXPERT_MAX_TOKENS = 4000;
+
+export function expertLimits() {
+  return {
+    intakeChars: MAX_MESSAGE_CHARS,
+    sections: MAX_EXPERT_SECTIONS,
+    sectionIdChars: MAX_SECTION_ID_CHARS,
+    hintCeiling: EXPERT_HINT_CEILING,
+    model: EXPERT_MODEL,
+  };
+}
+
+/* A finding about the note as a whole rather than any one section. Same string
+   the browser's hint channel uses, because a technician reading two channels
+   should not meet two names for the same idea. */
+const EXPERT_WHOLE_NOTE = "note";
+
+/* Validate and normalize the request. Pure, and exported, so the shape rules
+   are tested directly rather than inferred from a 400. */
+export function expertPassRequest(body) {
+  const b = body || {};
+  const tool = typeof b.tool === "string" ? b.tool : "";
+  if (!tool) return { error: "Missing tool." };
+
+  const intake = typeof b.intake === "string" ? b.intake : "";
+  if (!intake.trim()) return { error: "Missing intake." };
+  if (intake.length > MAX_MESSAGE_CHARS) {
+    return { error: "The intake is longer than this pass accepts." };
+  }
+
+  // Absent means the tool has no sections and every finding is about the note.
+  const raw = b.sections;
+  if (raw !== undefined && !Array.isArray(raw)) return { error: "sections must be an array." };
+  const list = Array.isArray(raw) ? raw : [];
+  if (list.length > MAX_EXPERT_SECTIONS) return { error: "Too many sections." };
+  const sections = [];
+  for (const s of list) {
+    if (typeof s !== "string" || !s || s.length > MAX_SECTION_ID_CHARS) {
+      return { error: "Each section must be a short string id." };
+    }
+    // Ids, not prose. This value goes into a schema enum that reaches the
+    // upstream API, so it is checked rather than trusted.
+    if (!/^[A-Za-z0-9_-]+$/.test(s)) return { error: "A section id has characters that are not allowed." };
+    // "note" is added by the schema builder. Passing it too would put the same
+    // value in the enum twice.
+    if (s === EXPERT_WHOLE_NOTE) continue;
+    if (sections.indexOf(s) === -1) sections.push(s);
+  }
+  return { tool, intake, sections };
+}
+
+/* The response schema. Built here rather than accepted from the browser, which
+   is the difference between this route and /api/llm-call: the pass has one
+   shape and no caller gets to ask for another.
+
+   The descriptions are thin ON PURPOSE. What each field means is in the expert
+   prompt, which is composed in the store and reaches this call whole, so a
+   second copy here would be a second place to keep in step. Compare the hint
+   schema in note-tools-util.js, where the descriptions carry the meaning
+   because BT's prompt is server-side and the schema is the only channel left. */
+export function expertSchema(sections) {
+  const list = Array.isArray(sections) ? sections : [];
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["terms", "register", "hints"],
+    properties: {
+      terms: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["token", "reading", "status", "why"],
+          properties: {
+            token: { type: "string", description: "The abbreviation as it appears in the intake." },
+            reading: { type: "string", description: "The expansion you are using. Empty when the status is unknown." },
+            status: { type: "string", enum: ["resolved", "ambiguous", "unknown"] },
+            why: { type: "string" },
+          },
+        },
+      },
+      register: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["quote", "action", "why", "move"],
+          properties: {
+            quote: { type: "string", description: "The clinician's own words, verbatim from the intake." },
+            action: { type: "string", enum: ["reframe", "ask", "remove", "keep"] },
+            why: { type: "string" },
+            move: { type: "string", description: "The replacement sentence, or the exact question to ask." },
+          },
+        },
+      },
+      hints: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["section", "rank", "kind", "ask", "why"],
+          properties: {
+            section: { type: "string", enum: list.concat([EXPERT_WHOLE_NOTE]) },
+            rank: { type: "integer" },
+            kind: { type: "string", enum: ["blocks-claim", "thin", "register"] },
+            ask: { type: "string" },
+            why: { type: "string" },
+          },
+        },
+      },
+    },
+  };
+}
+
+/* Order the hints, then cap. The order is the model's own and the cap is a
+   backstop, which is the lesson from the catalog channel: a bare slice on an
+   unordered list throws away whatever happened to arrive last, and calls it a
+   priority. Ties break on emission order so the result is stable whatever the
+   engine's sort does with equal keys. */
+export function orderExpertHints(raw) {
+  if (!Array.isArray(raw)) return { hints: [], dropped: 0 };
+  const ranked = raw
+    .map((h, i) => ({ h, i, rank: typeof h.rank === "number" && isFinite(h.rank) ? h.rank : Number.MAX_SAFE_INTEGER }))
+    .sort((a, b) => a.rank - b.rank || a.i - b.i)
+    .map((x) => x.h);
+  return {
+    hints: ranked.slice(0, EXPERT_HINT_CEILING),
+    // Reported rather than swallowed. A silent truncation reads as "that is
+    // everything it found", which is the one thing it is not.
+    dropped: Math.max(0, ranked.length - EXPERT_HINT_CEILING),
+  };
+}
+
+/* Pull the object out of the API response. Structured output still arrives as
+   a text block, so this is a parse rather than a field read.
+
+   FAILS CLOSED. A truncated or unparseable answer returns null and the caller
+   sends an error, because half an expert pass is indistinguishable from a
+   complete one that found less. */
+export function expertFindings(apiResponse) {
+  const blocks = apiResponse && Array.isArray(apiResponse.content) ? apiResponse.content : [];
+  const text = blocks.map((b) => (b && typeof b.text === "string" ? b.text : "")).join("");
+  if (!text.trim()) return null;
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+  const terms = Array.isArray(parsed.terms) ? parsed.terms : [];
+  const register = Array.isArray(parsed.register) ? parsed.register : [];
+  const ordered = orderExpertHints(parsed.hints);
+  return { terms, register, hints: ordered.hints, hintsDropped: ordered.dropped };
+}
+
+async function handleExpertPass(request, env) {
+  try {
+    const secret = (env.ADMIN_SECRET ?? "").trim();
+    const auth = request.headers.get("Authorization") || "";
+    const token = auth.replace(/^Bearer\s+/i, "");
+    const payload = secret ? await readToken(token, secret) : null;
+    if (!payload) return jsonRes(401, { error: "Not logged in. Please log in to use the expert pass." });
+
+    const body = await request.json();
+    const parsed = expertPassRequest(body);
+    if (parsed.error) return jsonRes(400, { error: parsed.error });
+
+    // Same scope check the drafting call makes, on the same reasoning: a login
+    // scoped to one tool does not get to spend the account's key on another.
+    if (payload.role !== "admin") {
+      const rec = env.API_PASSWORDS ? await getPasswordRecord(env.API_PASSWORDS, payload.kid) : null;
+      if (!rec || !rec.active) return jsonRes(401, { error: "Access revoked. Please log in again." });
+      if (!rec.tools.includes(parsed.tool)) {
+        return jsonRes(403, { error: "Your access doesn't include this tool." });
+      }
+    }
+
+    /* Fetched, never accepted. Fails closed for the same reason the drafting
+       prompt does: a pass run against an unknown prompt returns findings that
+       look exactly like real ones.
+
+       BEFORE the API key check, and in the same order handleLlmCall uses. Both
+       are 503s and either one stops the call, but "the expert is unavailable"
+       names the cause and "the key is not configured" would name a symptom the
+       clinician can do nothing with. */
+    const system = await promptForTool(env, "expert");
+    if (!system) {
+      await notifyError(env, "prompt-api", "no prompt available for key expert");
+      return jsonRes(503, {
+        error: "The expert is unavailable, so nothing was reviewed. Nothing was sent to the model.",
+      });
+    }
+
+    const apiKey = (env.ANTHROPIC_API_KEY ?? "").trim();
+    if (!apiKey) return jsonRes(503, { error: "Server API key is not configured." });
+
+    /* The conversation path rather than the single-shot one, for the cache
+       breakpoint on the system block. This prompt is about seventeen thousand
+       characters of glossary and lexicon and it is identical on every call, so
+       recomputing it per note would be the largest avoidable cost in the
+       feature. */
+    const api = await callAnthropicConversation(
+      apiKey,
+      system,
+      [{ role: "user", content: parsed.intake }],
+      EXPERT_MODEL,
+      EXPERT_MAX_TOKENS,
+      { format: { type: "json_schema", schema: expertSchema(parsed.sections) } }
+    );
+
+    const findings = expertFindings(api);
+    if (!findings) {
+      return jsonRes(502, { error: "The expert returned something this pass could not read. Nothing was applied." });
+    }
+    // usage rides along because "does the expert beat the catalog" is partly a
+    // question about what it costs. It carries no clinical text.
+    return jsonRes(200, { ...findings, usage: api.usage || null, model: EXPERT_MODEL });
+  } catch (error) {
+    // PRIVACY: the intake never reaches a log line here, exactly as on
+    // /api/llm-call. Only the error message.
+    const m = error && error.message ? error.message : "unknown";
+    console.error("Expert pass error:", m);
+    await notifyError(env, "expert-pass", m);
     return jsonRes(500, { error: error.message || "Internal server error" });
   }
 }
