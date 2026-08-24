@@ -53,6 +53,12 @@ export default {
       return handleExpertPass(request, env);
     }
 
+    // The oracle: keep talking to the expert about a pass it already returned.
+    // Admin only, and it never writes a note either.
+    if (url.pathname === "/api/expert-chat" && request.method === "POST") {
+      return handleExpertChat(request, env);
+    }
+
     // Admin-only CRUD for managed access passwords (GET/POST/PATCH/DELETE)
     if (url.pathname === "/api/admin/passwords") {
       return handleAdminPasswords(request, env);
@@ -841,6 +847,228 @@ async function handleExpertPass(request, env) {
     const m = error && error.message ? error.message : "unknown";
     console.error("Expert pass error:", m);
     await notifyError(env, "expert-pass", m);
+    return jsonRes(500, { error: error.message || "Internal server error" });
+  }
+}
+
+/* ── The oracle: a conversation with the expert about a pass it just ran ──
+ *
+ * WHAT IT IS FOR. The pass answers once and stops, which is the right shape for
+ * a note tool and the wrong shape for the person who owns the expert. He asked
+ * for an exchange: why did you rank that first, that hint was wrong and here is
+ * why, what would you have said if the father had given a time. None of that is
+ * a second pass. It is the same reading, questioned.
+ *
+ * WHY THAT IS WORTH A ROUTE. Two of the five bodies of clinical knowledge this
+ * expert is supposed to carry - what a funder rejects a claim over, and what
+ * 85% of complete looks like - were deliberately left unwritten, because they
+ * are his judgment and inventing them would produce confident wrong advice.
+ * They are not written from a blank page either. They are written by arguing
+ * with the expert over real cases until the rule that was missing can be said
+ * out loud. This route is that argument.
+ *
+ * IT IS NOT A SECOND EXPERT. Same stored prompt, same knowledge blocks, same
+ * model. The addendum below tells it that the findings it is being asked about
+ * are its own and that it is now talking to the clinician who wrote the intake.
+ * It returns prose, because the three lists already exist and re-emitting them
+ * would be answering a question nobody asked.
+ *
+ * THE MODEL IS PINNED TO THE PASS'S MODEL, and that is the whole point rather
+ * than an economy. Tuning the expert on a larger model would tune something
+ * that does not run: he would settle a rule that reads beautifully on a model
+ * the note tools never call, and the tools would go on behaving as before.
+ *
+ * ADMIN ONLY, which is stricter than the pass. Two reasons, and the second is
+ * the real one. This route carries free prose rather than a fixed schema, and
+ * it accepts a RULE UNDER TEST from the caller, which is the one place in this
+ * Worker where a browser contributes to a system prompt. See below.
+ *
+ * PRIVACY is unchanged and is the caller's job exactly as on the pass: the
+ * intake arrives de-identified, the bench scrubs every message it sends, and
+ * nothing here logs any of it.
+ */
+
+/* THE RULE UNDER TEST, and why this Worker bends its own rule for it.
+ *
+ * Everywhere else, a prompt is FETCHED and never accepted, because a browser
+ * with a login could otherwise spend the account's key on a prompt nobody
+ * reviewed, and a note drafted against an unknown prompt reads exactly like a
+ * real one. That threat is a role "user" login: a managed access password
+ * scoped to one tool.
+ *
+ * An admin is not that. An admin holds the password that mints admin tokens,
+ * can already read every stored prompt through the store, and owns the account
+ * the key belongs to. Refusing them a draft rule does not close a hole; it just
+ * means the only way to try a rule is to open a pull request in another repo
+ * and wait for it to deploy, which is not a tuning loop, it is a mailing list.
+ *
+ * So the hole is opened exactly this wide and no wider:
+ *   - admin role only, checked before anything else,
+ *   - bounded, and refused rather than truncated,
+ *   - appended AFTER the stored prompt, so it can add and never overwrite,
+ *   - never persisted anywhere, by this route or any other,
+ *   - echoed back in the response, so a rule can never be quietly in force,
+ *   - and it reaches this route only. No drafting call takes one.
+ * A rule that proves out is promoted by writing it into the knowledge blocks in
+ * the prompt store, where it gets a hash and a pull request like everything
+ * else. This is a bench, not a back door.
+ */
+const MAX_ORACLE_TURNS = 40;
+const MAX_ORACLE_KNOWLEDGE_CHARS = 20000;
+const ORACLE_MAX_TOKENS = 2000;
+
+const ORACLE_ADDENDUM = [
+  "You have just read the intake above and returned the findings above. They are yours.",
+  "",
+  "You are now talking to the board-certified behavior analyst who wrote that intake, and who maintains you. Answer them in prose. Do not return JSON, and do not repeat the three lists unless they ask for them.",
+  "",
+  "WHEN THEY TELL YOU A FINDING WAS WRONG, DO NOT SIMPLY AGREE. Agreement teaches nobody anything. Say what in the intake led you to it, in their words, and then say what rule would have stopped you. Write that rule the way an instruction is written - something you could be told to follow - and not as a description of the problem. \"When the intake reports what a caregiver said, read the vagueness as data\" is a rule. \"I should have been more careful about caregiver reports\" is not.",
+  "",
+  "WHEN THEY ARE WRONG, SAY SO. They are calibrating you, and an expert that folds to whoever is talking is worth nothing to them. Say what you read and why, and let them overrule you.",
+  "",
+  "Every rule in your instructions still holds here, including the ones about not explaining their own field back to them and not writing about what a record does not contain.",
+].join("\n");
+
+const ORACLE_DRAFT_HEADER = [
+  "",
+  "",
+  "A RULE UNDER TEST.",
+  "The maintainer is trying the following on you. It is NOT part of your stored instructions and nothing else you do carries it. Follow it for this conversation as though it were, and say plainly wherever it contradicts anything above rather than quietly picking one.",
+  "",
+].join("\n");
+
+/* Validate and normalize an oracle request. Pure and exported, like the pass's
+   validator, so the shape rules are tested directly rather than inferred from a
+   400. MAX_MESSAGE_CHARS is read inside rather than aliased above, for the same
+   reason the pass reads it inside: this block sits above that declaration. */
+export function expertChatRequest(body) {
+  const b = body || {};
+  // The pass's own rules govern the tool, the intake and the sections, so they
+  // are not restated here. A drift between the two would be a bench that can be
+  // talked to about an intake the pass would have refused.
+  const base = expertPassRequest(b);
+  if (base.error) return base;
+
+  const raw = b.messages;
+  if (!Array.isArray(raw) || raw.length === 0) return { error: "Missing messages." };
+  if (raw.length > MAX_ORACLE_TURNS) return { error: "This conversation is too long to continue." };
+  const messages = [];
+  for (const m of raw) {
+    if (!m || typeof m !== "object") return { error: "Each message must be an object." };
+    if (m.role !== "user" && m.role !== "assistant") return { error: "Each message must be from user or assistant." };
+    if (typeof m.content !== "string" || !m.content.trim()) return { error: "Each message must carry text." };
+    if (m.content.length > MAX_MESSAGE_CHARS) return { error: "A message is longer than this route accepts." };
+    messages.push({ role: m.role, content: m.content });
+  }
+  // The exchange is what the human started, so it starts with them. A leading
+  // assistant turn would mean the browser had written the expert's first word.
+  if (messages[0].role !== "user") return { error: "The conversation has to start with a question." };
+  if (messages[messages.length - 1].role !== "user") return { error: "The last message has to be a question." };
+
+  // Refused rather than truncated: half a rule is a different rule.
+  const knowledge = typeof b.knowledge === "string" ? b.knowledge.trim() : "";
+  if (knowledge.length > MAX_ORACLE_KNOWLEDGE_CHARS) return { error: "The rule under test is longer than this route accepts." };
+
+  // The findings are replayed to the model as its own turn, so they are carried
+  // as the text the pass produced rather than re-validated field by field. A
+  // malformed one costs a confused answer in a bench, and validating it here
+  // would be a second copy of the pass's schema to keep in step.
+  const findings = typeof b.findings === "string" ? b.findings : JSON.stringify(b.findings || {});
+  if (findings.length > MAX_MESSAGE_CHARS) return { error: "Those findings are too large to continue from." };
+
+  return { tool: base.tool, intake: base.intake, sections: base.sections, messages, knowledge, findings };
+}
+
+export function oracleLimits() {
+  return {
+    turns: MAX_ORACLE_TURNS,
+    knowledgeChars: MAX_ORACLE_KNOWLEDGE_CHARS,
+    maxTokens: ORACLE_MAX_TOKENS,
+    model: EXPERT_MODEL,
+  };
+}
+
+/* Compose the system prompt for one oracle turn. Exported so the composition
+   order is pinned by a test: the stored prompt first, the addendum second, and
+   the rule under test last, which is what makes a draft rule additive. */
+export function oracleSystem(storedPrompt, knowledge) {
+  const base = String(storedPrompt || "") + "\n\n" + ORACLE_ADDENDUM;
+  const rule = String(knowledge || "").trim();
+  return rule ? base + ORACLE_DRAFT_HEADER + rule : base;
+}
+
+/* The turns the model sees. The intake and the findings are rebuilt HERE from
+   the request's own fields rather than taken as messages, so the browser cannot
+   hand the model a first exchange that never happened. Everything after those
+   two is the real conversation. */
+export function oracleTurns(parsed) {
+  return [
+    { role: "user", content: parsed.intake },
+    { role: "assistant", content: parsed.findings },
+    ...parsed.messages,
+  ];
+}
+
+async function handleExpertChat(request, env) {
+  try {
+    const secret = (env.ADMIN_SECRET ?? "").trim();
+    const auth = request.headers.get("Authorization") || "";
+    const token = auth.replace(/^Bearer\s+/i, "");
+    const payload = secret ? await readToken(token, secret) : null;
+    if (!payload) return jsonRes(401, { error: "Not logged in." });
+    // Before the body is even read. A non-admin has no business posting a rule
+    // under test, so they do not get as far as sending one.
+    if (payload.role !== "admin") return jsonRes(403, { error: "The oracle is admin only." });
+
+    const body = await request.json();
+    const parsed = expertChatRequest(body);
+    if (parsed.error) return jsonRes(400, { error: parsed.error });
+
+    /* Fetched, never accepted, exactly as on the pass. The rule under test is
+       appended to this and cannot replace it: a conversation run against an
+       unknown expert would calibrate nothing, and would look like calibration. */
+    const stored = await promptForTool(env, "expert");
+    if (!stored) {
+      await notifyError(env, "prompt-api", "no prompt available for key expert");
+      return jsonRes(503, { error: "The expert is unavailable. Nothing was sent to the model." });
+    }
+
+    const apiKey = (env.ANTHROPIC_API_KEY ?? "").trim();
+    if (!apiKey) return jsonRes(503, { error: "Server API key is not configured." });
+
+    /* No output_config, which is the difference from the pass. The pass has one
+       shape and no caller gets another; this one has no shape at all, because
+       the answer is an argument. */
+    const api = await callAnthropicConversation(
+      apiKey,
+      oracleSystem(stored, parsed.knowledge),
+      oracleTurns(parsed),
+      EXPERT_MODEL,
+      ORACLE_MAX_TOKENS
+    );
+
+    const reply = ((api && api.content) || [])
+      .filter((b) => b && b.type === "text" && typeof b.text === "string")
+      .map((b) => b.text)
+      .join("")
+      .trim();
+    if (!reply) return jsonRes(502, { error: "The expert returned nothing this bench could read." });
+
+    /* knowledgeInForce is echoed rather than assumed. A rule that is silently
+       in force is the failure mode of the whole draft-rule idea: he would read
+       an answer as the expert's own judgment when it was his own rule handed
+       back to him. The bench shows this beside every reply. */
+    return jsonRes(200, {
+      reply,
+      knowledgeInForce: parsed.knowledge || "",
+      usage: (api && api.usage) || null,
+      model: EXPERT_MODEL,
+    });
+  } catch (error) {
+    // PRIVACY: no message text reaches a log line, exactly as on the pass.
+    const m = error && error.message ? error.message : "unknown";
+    console.error("Expert chat error:", m);
+    await notifyError(env, "expert-chat", m);
     return jsonRes(500, { error: error.message || "Internal server error" });
   }
 }

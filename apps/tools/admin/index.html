@@ -58,6 +58,22 @@
     .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
     .muted { color: var(--muted); font-size: 13px; }
     .hidden { display: none; }
+
+    /* The oracle transcript. Asymmetric on purpose: his turns sit indented and
+       tinted so a long exchange can be skimmed for where he pushed back, which
+       is the part worth rereading. */
+    .ora-turn { border-radius: 10px; padding: 11px 13px; margin-bottom: 10px; font-size: 14px; line-height: 1.55; white-space: pre-wrap; }
+    .ora-turn.you { background: var(--sage-pale, #eef2e6); margin-left: 12%; border: 1px solid var(--sage-light, #cddcb8); }
+    .ora-turn.expert { background: #fff; border: 1px solid var(--sage-light, #cddcb8); margin-right: 12%; }
+    .ora-who { display: block; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; font-weight: 600; }
+    /* A rule that was in force has to be visible on the reply it shaped. An
+       answer read as the expert's own judgment when it was his own rule handed
+       back is the one way this bench can mislead him. */
+    .ora-rule { margin-top: 9px; padding-top: 8px; border-top: 1px dashed var(--sage-light, #cddcb8); font-size: 12px; color: var(--muted); white-space: pre-wrap; }
+    @media (max-width: 700px) {
+      .ora-turn.you { margin-left: 0; }
+      .ora-turn.expert { margin-right: 0; }
+    }
     .add-grid { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
     .add-grid > div { flex: 1; min-width: 150px; }
     h2 { margin: 0 0 14px; font-size: 16px; }
@@ -371,6 +387,29 @@
           <h2>Register</h2>
           <p class="muted" style="margin: 0 0 12px;">Mentalistic and judgmental constructions, each with the move. <strong>Reframe</strong> carries the replacement sentence, <strong>ask</strong> carries the question, <strong>keep</strong> is a construction that would be wrongly cut. Nothing here is applied.</p>
           <div id="exRegister"><span class="muted" style="font-size: 13px;">Nothing run yet.</span></div>
+        </div>
+
+        <div class="card hidden" id="exOracleCard">
+          <h2>Ask it about this reading</h2>
+          <p class="muted" style="margin: 0 0 12px;">The same expert, on the same intake, with the findings above already in front of it. Ask why it ranked something first, tell it a finding was wrong, or ask what it would have said if a detail had been there. It answers in prose and still writes nothing.</p>
+          <p class="muted" style="margin: 0 0 12px;">When you tell it something was wrong it will say what led it there and then write the rule that would have stopped it. <strong>That rule is the point.</strong> Two of the five bodies of knowledge this expert is meant to carry are not written yet, because they are clinical judgment rather than reference, and this is where they get written: argue a case through until the missing rule can be said out loud, then try it below.</p>
+          <div id="exChatLog" style="margin-bottom: 14px;"></div>
+
+          <details id="exRuleWrap" style="margin-bottom: 12px;">
+            <summary style="cursor: pointer; font-weight: 600; font-size: 14px;">A rule under test</summary>
+            <p class="muted" style="margin: 8px 0;">Anything here is added to the expert's instructions <strong>for this conversation only</strong>. It is never saved, no note tool ever sees it, and every reply below says whether it was in force. A rule that proves out gets promoted by writing it into the knowledge blocks in the prompt store, where it gets a hash and a pull request like everything else.</p>
+            <textarea id="exRule" style="min-height: 90px;" placeholder="When the intake reports what a caregiver said, read the vagueness as data rather than as a gap in the writing."></textarea>
+          </details>
+
+          <label for="exAsk">Your question</label>
+          <textarea id="exAsk" style="min-height: 80px;" placeholder="Why did you rank that one first?"></textarea>
+          <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center;">
+            <button id="exSend" class="btn-primary">Ask</button>
+            <button id="exReset" class="btn-secondary" type="button">Start over</button>
+            <span id="exChatBusy" class="muted hidden" style="font-size: 13px;">Thinking...</span>
+            <span id="exChatErr" class="err" style="margin: 0;"></span>
+          </div>
+          <p class="muted" id="exChatUsage" style="margin: 12px 0 0; font-size: 12px;"></p>
         </div>
 
         <div class="card">
@@ -1152,6 +1191,11 @@
           if (r.status === 401) { localStorage.removeItem(TOKEN_KEY); show(); throw new Error("Session expired."); }
           return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ("Error " + r.status)); return d; });
         }).then(function (data) {
+          /* The oracle replays these findings to the model as its own turn, so
+             it keeps the SCRUBBED copy. The model has never seen the real words
+             and handing them back now would undo the whole control. What is
+             drawn on screen is the restored copy, below. */
+          startOracle(tool, scrubbed, data);
           return renderExpert(window.NotesGate._scrub.restoreDeep(data, scrubbed.map));
         }).catch(function (ex) {
           err.textContent = ex.message;
@@ -1180,6 +1224,160 @@
           ". The findings below have your own words put back.";
         el.classList.remove("hidden");
       }
+
+      /* ── The oracle ───────────────────────────────────────────────────
+       *
+       * Keep talking to the expert about a pass it just ran. The route is
+       * /api/expert-chat and it is admin only; everything about privacy here
+       * is the same control the run above performs, extended across turns.
+       *
+       * ONE MAP FOR THE WHOLE CONVERSATION, which is the part that is easy to
+       * get wrong. If each question were scrubbed on its own, a name he types
+       * in turn three could be handed a different token from the one the
+       * intake gave it, and the expert would be answering about two people.
+       * So the run's map is applied first, and only what it does not cover is
+       * scrubbed fresh and folded back in, so later turns keep agreeing.
+       *
+       * The transcript is state and nothing else. It is not saved, it is not
+       * sent anywhere but this route, and reloading the page ends it. */
+      var oracle = null;
+
+      function startOracle(tool, scrubbed, findings) {
+        oracle = {
+          tool: tool.id,
+          sections: expertSections(tool),
+          intake: scrubbed.text,
+          // Stringified once, because this is replayed as a model turn rather
+          // than read as data by anything here.
+          findings: JSON.stringify(findings),
+          map: (scrubbed.map || []).slice(),
+          turns: [],
+        };
+        var card = document.getElementById("exOracleCard");
+        if (card) card.classList.remove("hidden");
+        renderOracle();
+        var usage = document.getElementById("exChatUsage");
+        if (usage) usage.textContent = "";
+      }
+
+      /* Scrub one outgoing message against the conversation's own map first,
+         then against a fresh pass for anything new, and grow the map by what
+         the fresh pass took. Returns the text that leaves the device. */
+      function scrubIntoOracle(text) {
+        var applied = window.NotesGate._scrub.applyScrub(text, oracle.map);
+        var fresh = window.NotesGate.scrubForAgent(applied);
+        if (fresh.map && fresh.map.length) oracle.map = oracle.map.concat(fresh.map);
+        return fresh.text;
+      }
+
+      function renderOracle() {
+        var log = document.getElementById("exChatLog");
+        if (!log) return;
+        if (!oracle || !oracle.turns.length) {
+          log.innerHTML = '<span class="muted" style="font-size: 13px;">Nothing asked yet.</span>';
+          return;
+        }
+        log.innerHTML = oracle.turns.map(function (t) {
+          var rule = t.rule
+            ? '<div class="ora-rule"><strong>Rule under test:</strong> ' + escapeHtml(t.rule) + "</div>"
+            : "";
+          return '<div class="ora-turn ' + (t.role === "user" ? "you" : "expert") + '">' +
+            '<span class="ora-who">' + (t.role === "user" ? "You" : "The expert") + "</span>" +
+            escapeHtml(t.text) + rule + "</div>";
+        }).join("");
+        /* The log is not a scrolling box, and that is deliberate: he is reading
+           clinical argument here, and a letterbox with its own scrollbar is the
+           wrong shape for that. So the page scrolls and the newest turn is
+           brought to him, rather than landing below the fold every time. */
+        var last = log.lastElementChild;
+        if (last && last.scrollIntoView) last.scrollIntoView({ block: "nearest" });
+      }
+
+      function askOracle() {
+        var err = document.getElementById("exChatErr");
+        var busy = document.getElementById("exChatBusy");
+        var box = document.getElementById("exAsk");
+        err.style.display = "none";
+        if (!oracle) { err.textContent = "Run the expert first."; err.style.display = "block"; return; }
+        var question = (box.value || "").trim();
+        if (!question) { err.textContent = "Type a question first."; err.style.display = "block"; return; }
+        var rule = (document.getElementById("exRule").value || "").trim();
+
+        // Drawn from his own words, so he reads what he typed. Only the scrubbed
+        // copy is sent, and only the scrubbed copy is kept for the next turn.
+        oracle.turns.push({ role: "user", text: question, rule: "" });
+        var sent = scrubIntoOracle(question);
+        oracle.turns[oracle.turns.length - 1].sent = sent;
+        box.value = "";
+        renderOracle();
+        busy.classList.remove("hidden");
+
+        var messages = oracle.turns.map(function (t) {
+          return { role: t.role, content: t.sent };
+        });
+
+        fetch("/api/expert-chat", {
+          method: "POST",
+          headers: authHeader(),
+          body: JSON.stringify({
+            tool: oracle.tool,
+            intake: oracle.intake,
+            sections: oracle.sections,
+            findings: oracle.findings,
+            messages: messages,
+            knowledge: rule,
+          }),
+        }).then(function (r) {
+          if (r.status === 401) { localStorage.removeItem(TOKEN_KEY); show(); throw new Error("Session expired."); }
+          return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ("Error " + r.status)); return d; });
+        }).then(function (data) {
+          oracle.turns.push({
+            role: "assistant",
+            // Scrubbed on the wire, his own words on the screen.
+            text: restoreOracleText(data.reply),
+            sent: data.reply,
+            rule: data.knowledgeInForce || "",
+          });
+          renderOracle();
+          var usage = document.getElementById("exChatUsage");
+          if (usage && data.usage) {
+            usage.textContent = "This turn: " + (data.usage.input_tokens || 0) + " in, " +
+              (data.usage.output_tokens || 0) + " out, on " + (data.model || "the pass model") + ".";
+          }
+        }).catch(function (ex) {
+          // The question stays in the transcript on a failure, because deleting
+          // it would leave him retyping something he already said.
+          err.textContent = ex.message;
+          err.style.display = "block";
+        }).finally(function () { busy.classList.add("hidden"); });
+      }
+
+      /* restoreDeep walks objects; a reply is one string, so it is wrapped
+         rather than reimplemented. One place decides how a token maps back. */
+      function restoreOracleText(text) {
+        return window.NotesGate._scrub.restoreDeep({ t: String(text || "") }, oracle.map).t;
+      }
+
+      function resetOracle() {
+        if (!oracle) return;
+        oracle.turns = [];
+        renderOracle();
+        var usage = document.getElementById("exChatUsage");
+        if (usage) usage.textContent = "";
+        document.getElementById("exChatErr").style.display = "none";
+      }
+
+      var exSendBtn = document.getElementById("exSend");
+      if (exSendBtn) exSendBtn.addEventListener("click", askOracle);
+      var exResetBtn = document.getElementById("exReset");
+      if (exResetBtn) exResetBtn.addEventListener("click", resetOracle);
+      var exAskBox = document.getElementById("exAsk");
+      // Enter sends, shift+Enter breaks the line. He is typing questions rather
+      // than paragraphs here, and reaching for the button every time is friction
+      // in the one place this bench is supposed to be fast.
+      if (exAskBox) exAskBox.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askOracle(); }
+      });
 
       var exRunBtn = document.getElementById("exRun");
       if (exRunBtn) exRunBtn.addEventListener("click", runExpert);
