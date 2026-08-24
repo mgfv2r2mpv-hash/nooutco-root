@@ -578,9 +578,24 @@ async function handleLlmCall(request, env) {
  * wrote 'he wanted attention', and that is a function claim" - before any of
  * the loop is rewritten around it.
  *
- * PRIVACY. The intake arrives de-identified, exactly as it does on the drafting
- * call: the browser scrubs names to role tokens before send. Nothing here logs
- * it, and the prompt store this fetches from never sees it at all.
+ * PRIVACY. The intake arrives de-identified: NotesGate.scrubForAgent() replaces
+ * identifiers and names with role tokens in the browser before send, and the
+ * caller restores the real words into the findings on the way back, so they
+ * never make the trip. Nothing here logs the intake, and the prompt store this
+ * fetches from never sees it at all.
+ *
+ * Where that differs from the drafting call, and why. Drafting shows the
+ * clinician every detected name and asks them to map each one, because a
+ * mis-mapped role there is written into a note somebody signs. This route
+ * writes nothing, so it scrubs automatically and reports what it took
+ * afterwards rather than asking first. The role behind an unlabelled name is
+ * "Person" and never "Client": a wrong Client would tell the expert that the
+ * wrong human is the one the programme is about.
+ *
+ * This comment described a control that did not exist until 2026-08-24. The
+ * route was written expecting a scrubbed intake and its only caller sent the
+ * raw textarea. If you are adding a second caller, it scrubs too, or this
+ * comment goes back to being a lie.
  */
 
 /* The intake is bounded by MAX_MESSAGE_CHARS rather than by a number of its
