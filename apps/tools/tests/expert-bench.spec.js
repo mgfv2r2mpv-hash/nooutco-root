@@ -315,18 +315,66 @@ test.describe('the nav still fits after a sixth tab', () => {
     });
   }
 
-  test('the tabs stay on one row at desktop width', async ({ page }) => {
-    // "Expert Pass" measured 712px against a 700px nav and wrapped at every
-    // desktop width. A second row is not a crash, which is exactly why it would
-    // have shipped.
+  /* THE FONT IS FORCED, AND THAT IS THE WHOLE POINT.
+   *
+   * The admin page asks for the system UI stack, so the nav is laid out in a
+   * different typeface on every platform: San Francisco here, DejaVu Sans on the
+   * Linux CI runners, whatever Windows offers. The first version of this test
+   * asserted one row in "whatever font this machine happens to have", passed on
+   * three engines locally, and then failed on firefox and webkit in CI while
+   * chromium passed. Nothing was wrong with the page that day. The test was
+   * measuring something it could not know the value of.
+   *
+   * So it pins the font to a wide one instead. Verdana is a deliberate stand-in
+   * for the widest fallback the page can realistically land on, and it is
+   * present on every platform this suite runs on. Fitting in Verdana means
+   * fitting in San Francisco with room to spare, which makes this a STRONGER
+   * guard than the original and a deterministic one. */
+  const WIDE_STACK = 'Verdana, "DejaVu Sans", Tahoma, sans-serif';
+
+  async function measureNav(page, fontStack) {
+    return page.evaluate((stack) => {
+      if (stack) document.body.style.fontFamily = stack;
+      const nav = document.querySelector('.tab-nav');
+      const btns = [...document.querySelectorAll('.tab-nav .tab-btn')];
+      const gap = parseFloat(getComputedStyle(nav).columnGap) || 0;
+      const navWidth = nav.getBoundingClientRect().width;
+      const tabsWidth = btns.reduce((a, b) => a + b.getBoundingClientRect().width, 0) + gap * (btns.length - 1);
+      return {
+        rows: new Set(btns.map((b) => Math.round(b.getBoundingClientRect().top))).size,
+        navWidth: Math.round(navWidth),
+        tabsWidth: Math.round(tabsWidth),
+        margin: Math.round(navWidth - tabsWidth),
+        font: getComputedStyle(btns[0]).fontFamily.split(',')[0].replace(/["']/g, ''),
+      };
+    }, fontStack);
+  }
+
+  test('the tabs stay on one row at desktop width, in a font wider than this machine has', async ({ page }) => {
     await page.addInitScript(([key, tok]) => localStorage.setItem(key, tok), [TOKEN_KEY, adminToken()]);
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('/admin/');
-    const rows = await page.evaluate(() => {
-      const tops = [...document.querySelectorAll('.tab-nav .tab-btn')].map((b) => Math.round(b.getBoundingClientRect().top));
-      return new Set(tops).size;
-    });
-    expect(rows).toBe(1);
+    await page.evaluate(() => document.fonts.ready);
+
+    const m = await measureNav(page, WIDE_STACK);
+    expect(
+      m.rows,
+      `six tabs wrapped to ${m.rows} rows in ${m.font}: they measure ${m.tabsWidth}px inside a ${m.navWidth}px nav, ${-m.margin}px too wide`
+    ).toBe(1);
+    // A pass with no room left is the failure this test was rewritten to stop
+    // shipping, so it has to be a pass with room in it.
+    expect(m.margin, `the nav fits in ${m.font} by only ${m.margin}px, which is inside the noise between engines`).toBeGreaterThan(20);
+  });
+
+  test('and the fit is comfortable in whatever font this platform actually uses', async ({ page }) => {
+    await page.addInitScript(([key, tok]) => localStorage.setItem(key, tok), [TOKEN_KEY, adminToken()]);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto('/admin/');
+    await page.evaluate(() => document.fonts.ready);
+
+    const m = await measureNav(page, null);
+    expect(m.rows, `six tabs wrapped to ${m.rows} rows in this platform's own ${m.font}`).toBe(1);
+    expect(m.margin, `only ${m.margin}px spare in ${m.font}`).toBeGreaterThan(20);
   });
 
   test('and wrap rather than scroll on a phone', async ({ page }) => {
