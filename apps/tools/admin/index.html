@@ -74,8 +74,16 @@
        screenshot could. A wrapped row loses the single underline across the
        bottom, so the border moves onto the buttons themselves. */
     .tab-nav { display: flex; flex-wrap: wrap; gap: 0 2px; margin-bottom: 22px; border-bottom: 2px solid var(--line); }
-    .tab-btn { background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; padding: 9px 18px; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; border-radius: 0; white-space: nowrap; }
-    @media (max-width: 560px) { .tab-btn { padding: 9px 12px; font-size: 13px; } }
+    /* 9px 12px / 13px at EVERY width, which is what the phone rule used to say on
+       its own. The desktop 18px/14px fit San Francisco with 13px to spare inside
+       a 700px nav, and 13px is not a margin, it is a coincidence. The Linux CI
+       runners have no -apple-system and fall through the stack to DejaVu Sans;
+       measured against Verdana, a comparable wide fallback, the same six labels
+       run to 773.7px and wrap to two rows. Firefox and webkit failed on main for
+       exactly that reason while chromium passed, because chromium measures this
+       nav about 38px narrower than the other two engines do.
+       At 12px/13px the widest font measured leaves 37.4px of margin. */
+    .tab-btn { background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; padding: 9px 12px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; border-radius: 0; white-space: nowrap; }
     .tab-btn.active { color: var(--sage); border-bottom-color: var(--sage); }
     .tab-btn:hover:not(.active) { color: var(--text); }
     .tab-panel { display: none; }
@@ -149,9 +157,10 @@
         <button class="tab-btn" data-tab="pii">PII Terms</button>
         <button class="tab-btn" data-tab="nonpii">Non-PII Terms</button>
         <button class="tab-btn" data-tab="alglab">Algorithm Lab</button>
-        <!-- "Expert", not "Expert Pass". Measured: six labels run to 712px
-             inside a 700px nav with the longer word and wrap to two rows at every
-             desktop width; 677px with the shorter one, which fits on one. -->
+        <!-- "Expert", not "Expert Pass". The longer word added ~35px to a nav
+             that had no room for it. The tab sizing above is what actually buys
+             the headroom now; this label stays short because six tabs is already
+             the most this 700px nav should carry. -->
         <button class="tab-btn" data-tab="expert">Expert</button>
         <button class="tab-btn" data-tab="profiles">Style Profiles</button>
       </nav>
