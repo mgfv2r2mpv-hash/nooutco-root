@@ -1319,6 +1319,103 @@
     });
   }
 
+  /* ─────────── Role tokens, inferred rather than asked for ───────────
+   *
+   * The drafting call gets its role tokens from a human: the review modal shows
+   * every detected name and the clinician maps each one to a role. That is the
+   * right control when the answer becomes a note somebody signs.
+   *
+   * The expert pass has no human in the loop by design, so the role has to be
+   * inferred. It is inferred from the same signal that finds the name in the
+   * first place: a role label sitting immediately before it. "client Jacob"
+   * makes Jacob the Client, "mom Sarah" makes Sarah a Caregiver.
+   *
+   * A name with no label in front of it anywhere becomes "Person", NOT "Client".
+   * Guessing Client would be the one wrong guess with teeth, because it would
+   * tell the expert that a peer or a sibling is the person the programme is
+   * about, and the expert would then rank its questions around the wrong human.
+   * "Person" is less useful and cannot mislead, which is the correct trade on a
+   * path where nothing is written down.
+   */
+  var ROLE_LABELS = {
+    client: "Client", kiddo: "Client", learner: "Client", student: "Client",
+    caregiver: "Caregiver", mom: "Caregiver", dad: "Caregiver", mother: "Caregiver",
+    father: "Caregiver", guardian: "Caregiver", parent: "Caregiver",
+    bt: "Technician", rbt: "Technician", technician: "Technician", tech: "Technician",
+    teacher: "Teacher", sibling: "Sibling", peer: "Peer",
+  };
+
+  // { lowercased name -> canonical role } for every name that has a role label
+  // directly in front of it somewhere in the text. First label wins, so a name
+  // labelled once and bare later still keeps its role.
+  function inferRoles(text) {
+    var found = {};
+    if (!text) return found;
+    var labels = Object.keys(ROLE_LABELS).join("|");
+    var re = new RegExp("\\b(" + labels + ")\\s+([A-Z][a-z]{1,15}(?:[\\-\u2019][A-Za-z]{1,})?)\\b", "gi");
+    var m;
+    while ((m = re.exec(text)) !== null) {
+      var who = m[2].toLowerCase();
+      if (!found[who]) found[who] = ROLE_LABELS[m[1].toLowerCase()];
+    }
+    return found;
+  }
+
+  // Same {name, token} shape as the other two maps so applyScrub and restoreDeep
+  // need to know nothing about where a token came from.
+  function buildRoleMap(text) {
+    var roles = inferRoles(text);
+    var counts = {};
+    return detectNames(text).map(function (name) {
+      var role = roles[name.toLowerCase()] || "Person";
+      counts[role] = (counts[role] || 0) + 1;
+      // First of a role is bare, the rest are numbered from 2: the option the
+      // maintainer picked reads "Client, Caregiver 2, Technician".
+      var token = counts[role] === 1 ? role : role + " " + counts[role];
+      return { name: name, token: token, role: true };
+    });
+  }
+
+  /* The whole scrub, for a caller with nobody to ask.
+   *
+   * Identifiers go first and names second. A phone number or an address can
+   * contain a capitalised word that detectNames would otherwise take for a
+   * person ("1420 Maple Street"), so replacing the longer literal first means
+   * the name pass never sees it.
+   *
+   * Returns the scrubbed text, the map needed to put the real words back, and a
+   * plain summary of what went. The summary is counts and types only: it is
+   * meant for telling a clinician what happened, and it must stay safe to log,
+   * which the map itself is not.
+   */
+  function scrubForAgent(text) {
+    var idMap = buildIdentifierMap(text);
+    var afterIds = applyScrub(text, idMap);
+    var roleMap = buildRoleMap(afterIds);
+    var map = idMap.concat(roleMap);
+    var removed = {};
+    map.forEach(function (e) {
+      var kind = e.role ? "name" : (e.token.match(/^\[([A-Z]+)_/) || [, "other"])[1].toLowerCase();
+      removed[kind] = (removed[kind] || 0) + 1;
+    });
+    return { text: collapseRoleLabels(applyScrub(afterIds, roleMap)), map: map, removed: removed, count: map.length };
+  }
+
+  /* "client Jacob" scrubs to "client Client", which is both ugly and ambiguous:
+   * a reader cannot tell whether the note named one person or two. The label
+   * that told us the role has done its job by the time the token carries it, so
+   * it is absorbed. Only a label sitting directly in front of the token it
+   * produced is removed, so "Client played near Person" keeps every word it
+   * earned. */
+  function collapseRoleLabels(text) {
+    var out = text;
+    Object.keys(ROLE_LABELS).forEach(function (label) {
+      var role = ROLE_LABELS[label];
+      out = out.replace(new RegExp("\\b" + label + "\\s+(" + role + "(?:\\s\\d+)?)\\b", "gi"), "$1");
+    });
+    return out;
+  }
+
   function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 
   function applyScrub(text, map) {
@@ -1434,7 +1531,12 @@
         return !!FIRST_NAMES[String(w || "").toLowerCase().replace(/[^a-z'\-]/g, "")];
       },
       applyScrub: applyScrub, restoreDeep: restoreDeep,
+      inferRoles: inferRoles, buildRoleMap: buildRoleMap,
     },
+    /* The de-identification the expert pass runs, PUBLIC rather than under
+     * _scrub, because it is a supported way to call the model and not a test
+     * hook. scrubForAgent(text) out, restoreDeep(findings, map) back. */
+    scrubForAgent: scrubForAgent,
     _json: { repair: repairModelJson },
   };
 })();

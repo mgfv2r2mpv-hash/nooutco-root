@@ -351,7 +351,8 @@
             </div>
           </div>
           <label for="exIntake">Intake</label>
-          <textarea id="exIntake" style="min-height: 150px;" placeholder="Paste session notes. No names or other PHI - the same rule as every other tool."></textarea>
+          <textarea id="exIntake" style="min-height: 150px;" placeholder="Paste session notes. Names and identifiers are removed automatically before this leaves your device."></textarea>
+          <p class="muted hidden" id="exScrubbed" style="margin: 8px 0 0; font-size: 12px;"></p>
           <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center;">
             <button id="exRun" class="btn-primary">Run the expert</button>
             <span id="exBusy" class="muted hidden" style="font-size: 13px;">Reading...</span>
@@ -1122,17 +1123,62 @@
         if (!tool) { err.textContent = "No tool selected."; err.style.display = "block"; return; }
         if (!intake) { err.textContent = "Paste an intake first."; err.style.display = "block"; return; }
         busy.classList.remove("hidden");
+
+        /* DE-IDENTIFY HERE, BECAUSE THERE IS NOWHERE ELSE.
+         *
+         * The Worker's own comment on this route says the intake arrives
+         * de-identified. Until now this caller sent the raw textarea, so the
+         * route documented a control that nothing performed. This is that
+         * control.
+         *
+         * No confirm-first modal on this path, deliberately: the drafting call
+         * keeps its modal because a mis-mapped role there ends up in a note
+         * somebody signs, and the expert writes nothing at all. What it costs
+         * instead is a slightly odd question, which is worth not making anyone
+         * click through a list to ask for one.
+         *
+         * The map never leaves this function. It goes out scrubbed and comes
+         * back scrubbed, and restoreDeep puts the real words back into what is
+         * shown, so the clinician reads their own note and the model never saw
+         * it. */
+        var scrubbed = window.NotesGate.scrubForAgent(intake);
+        renderScrubNotice(scrubbed);
+
         fetch("/api/expert-pass", {
           method: "POST",
           headers: authHeader(),
-          body: JSON.stringify({ tool: tool.id, intake: intake, sections: expertSections(tool) }),
+          body: JSON.stringify({ tool: tool.id, intake: scrubbed.text, sections: expertSections(tool) }),
         }).then(function (r) {
           if (r.status === 401) { localStorage.removeItem(TOKEN_KEY); show(); throw new Error("Session expired."); }
           return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ("Error " + r.status)); return d; });
-        }).then(renderExpert).catch(function (ex) {
+        }).then(function (data) {
+          return renderExpert(window.NotesGate._scrub.restoreDeep(data, scrubbed.map));
+        }).catch(function (ex) {
           err.textContent = ex.message;
           err.style.display = "block";
         }).finally(function () { busy.classList.add("hidden"); });
+      }
+
+      /* Says what was taken, in counts. It reports AFTER the scrub rather than
+       * asking permission before it, so the clinician always knows what the
+       * model saw without anyone having to approve a list to find out. Counts
+       * and types only, never the words themselves - this line is on screen and
+       * the words are the thing being protected. */
+      function renderScrubNotice(scrubbed) {
+        var el = document.getElementById("exScrubbed");
+        if (!el) return;
+        if (!scrubbed.count) {
+          el.textContent = "Nothing to remove: no names or identifiers were detected in this intake.";
+          el.classList.remove("hidden");
+          return;
+        }
+        var parts = Object.keys(scrubbed.removed).sort().map(function (k) {
+          var n = scrubbed.removed[k];
+          return n + " " + k + (n === 1 ? "" : "s");
+        });
+        el.textContent = "Removed before this left your device: " + parts.join(", ") +
+          ". The findings below have your own words put back.";
+        el.classList.remove("hidden");
       }
 
       var exRunBtn = document.getElementById("exRun");
