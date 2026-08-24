@@ -225,13 +225,27 @@ test.describe('the live route', () => {
   });
 
   test('the drafting route is untouched by any of this', async ({ request }) => {
-    // The pass runs BESIDE the loop. If adding it changed what /api/llm-call
-    // does for a tool that has not opted in, the comparison this phase is for
-    // would be measuring two changes at once.
+    /* The pass runs BESIDE the loop. If adding it changed what /api/llm-call
+       does for a tool that has not opted in, the comparison this phase is for
+       would be measuring two changes at once.
+
+       THE VEHICLE CHANGED AND THE INTENT DID NOT. This sent `system` for parent
+       and asked only that the answer was not a 400. Then parent migrated to the
+       server-side store, where sending `system` IS a 400 and is meant to be, so
+       the test began failing over the single thing it was never about. A
+       migrated tool sends `system_suffix`; what proves the drafting path is
+       still whole is that a well-formed call gets past shape-checking and fails
+       where every drafting call fails in dev - no PROMPTS binding, nothing sent.
+
+       Asserting the 503 rather than merely `not 400` is the stronger claim: it
+       separates "the contract still accepts this request" from "the route
+       stopped existing", and only the first of those is what this test wants. */
     const res = await request.post('/api/llm-call', {
       headers: auth(),
-      data: { tool: 'parent', system: 'PARENT PROMPT', messages: [{ role: 'user', content: 'hi' }] },
+      data: { tool: 'parent', system_suffix: 'PER-NOTE BLOCK', messages: [{ role: 'user', content: 'hi' }] },
     });
-    expect(res.status()).not.toBe(400);
+    expect(res.status(), 'a 400 would mean the expert pass moved the drafting contract').not.toBe(400);
+    expect(res.status()).toBe(503);
+    expect((await res.json()).error).toMatch(/nothing was sent/i);
   });
 });
