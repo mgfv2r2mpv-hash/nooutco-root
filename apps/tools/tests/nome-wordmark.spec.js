@@ -54,8 +54,21 @@ test('the open panel header carries the mark, where it is what gets read aloud',
 
 test('the mark scales with its label rather than sitting at a fixed size', async ({ page }) => {
   await signedIn(page);
+
+  /* Wait for the image to decode before measuring it. An <img> that has not
+   * decoded yet lays out at zero width, and boundingBox() will hand that back
+   * without complaint, so the ratio below comes out 0 and the failure reads as
+   * "the mark lost its proportions" rather than "the mark was not there yet".
+   * Seen on webkit, which decodes later than the other two engines. The sibling
+   * test above already polls naturalWidth for exactly this reason; this one was
+   * measuring on trust. */
+  const decoded = (sel) =>
+    expect.poll(() => page.locator(sel).evaluate((el) => el.naturalWidth)).toBeGreaterThan(0);
+
+  await decoded('.revision-fab img.nome-mark');
   const pill = await page.locator('.revision-fab img.nome-mark').boundingBox();
   await page.locator('.revision-fab').click();
+  await decoded('.revision-panel-head img.nome-mark');
   const header = await page.locator('.revision-panel-head img.nome-mark').boundingBox();
 
   // The pill sets 14px, the header bar 13px. Different sizes prove the em
