@@ -134,6 +134,23 @@ test.describe('how the turn is composed', () => {
     expect(turns.slice(2)).toEqual(parsed.messages);
   });
 
+  test('two questions in a row reach the model as one turn, so the roles still alternate', () => {
+    /* A real sequence rather than a defensive habit. When a turn fails upstream
+       the bench keeps his question in the transcript rather than making him
+       retype it, and no answer ever arrives for it, so his next question
+       follows his last one directly. Nothing is dropped: the two arrive as one
+       message, in order, which is what they were. */
+    const parsed = expertChatRequest(ok({
+      messages: [
+        { role: 'user', content: 'The one that failed.' },
+        { role: 'user', content: 'The one after it.' },
+      ],
+    }));
+    const turns = oracleTurns(parsed);
+    expect(turns.map((t) => t.role)).toEqual(['user', 'assistant', 'user']);
+    expect(turns[2].content).toBe('The one that failed.\n\nThe one after it.');
+  });
+
   test('it runs on the pass model, because tuning a model the tools never call tunes nothing', () => {
     expect(oracleLimits().model).toBe(expertLimits().model);
   });

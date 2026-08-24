@@ -1000,13 +1000,32 @@ export function oracleSystem(storedPrompt, knowledge) {
 /* The turns the model sees. The intake and the findings are rebuilt HERE from
    the request's own fields rather than taken as messages, so the browser cannot
    hand the model a first exchange that never happened. Everything after those
-   two is the real conversation. */
+   two is the real conversation.
+
+   CONSECUTIVE TURNS FROM THE SAME SPEAKER ARE MERGED, and the reason is a real
+   sequence rather than a defensive habit. When a turn fails upstream, the bench
+   deliberately KEEPS his question in the transcript rather than making him
+   retype it, and no answer ever arrives for it. His next question therefore
+   follows his last one directly. Merging them here is what guarantees this
+   route hands the API strictly alternating turns whatever the caller sends,
+   and it loses nothing: the two questions arrive as one message, in order,
+   which is what they were.
+
+   It lives in the Worker rather than in the bench because this is the shape of
+   what reaches the model, and that is the Worker's to guarantee. */
 export function oracleTurns(parsed) {
-  return [
+  const turns = [
     { role: "user", content: parsed.intake },
     { role: "assistant", content: parsed.findings },
     ...parsed.messages,
   ];
+  const out = [];
+  for (const t of turns) {
+    const last = out[out.length - 1];
+    if (last && last.role === t.role) out[out.length - 1] = { role: t.role, content: last.content + "\n\n" + t.content };
+    else out.push({ role: t.role, content: t.content });
+  }
+  return out;
 }
 
 async function handleExpertChat(request, env) {
