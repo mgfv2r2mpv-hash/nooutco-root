@@ -596,7 +596,8 @@ function freshSession(tool) {
     output: null,
     conversation: [],     // [{role, content}] - replayed each turn; prefix is server-cached
     promptText: "",
-    scrubNotice: "",
+    scrubMap: [],         // [{name, token, identifier?}] - what the last scrub took
+    certified: [],        // names the clinician has since marked "not a name"
     error: "",
     lastCallAt: 0,
     proposal: null,        // pending revision, rendered as an inline diff
@@ -741,13 +742,28 @@ function App() {
   /* ── LLM turns ─────────────────────────────────────────────────────── */
 
   // Every free-text send (initial notes, revisions, corrections) passes the same
-  // scrub gate: acknowledge (once per page load) + name review of the new text.
+  // scrub gate. Neither half of it opens a dialog any more, and both still return
+  // promises, which is why this function did not have to change shape when they
+  // stopped asking.
+  //
+  // scrubMap rather than a rendered string, because the notice now needs the
+  // entries themselves: each substituted word is a button that certifies it as
+  // not-PII for next time, which is where the deleted dialog's "not PII" checkbox
+  // went. noticeText() is still exported for callers that only want the sentence.
   const scrubGate = async (freeText) => {
     if (!(await NotesScrub.acknowledge())) return null;
     const review = await NotesScrub.review({ freeText });
     if (review.cancelled) return null;
-    patchS({ scrubNotice: NotesScrub.noticeText(review.map) });
+    patchS({ scrubMap: review.map, certified: [] });
     return review;
+  };
+
+  // One-way, and the banner says so. Certifying stops the NEXT scrub taking the
+  // word; it does not reach back into the draft that was just generated from a
+  // prompt containing the token.
+  const certifyNotPii = (name) => {
+    if (!NotesScrub.notPii(name)) return;
+    patchS({ certified: [...(S.certified || []), name] });
   };
 
   // Scrub the typed inputs only, then build prompts from the scrubbed values -
@@ -2381,11 +2397,47 @@ function App() {
           {tool.inputs.map(renderInput)}
 
           {S.error && <p style={{ color: "#c0392b", fontSize: 13, marginBottom: 12 }}>{S.error}</p>}
-          {S.scrubNotice && (
+          {/* The legal notice, which used to be a modal accepted once per page load
+              and then never read again. It sits here instead, beside the box being
+              typed into, where it is in front of the clinician every time rather
+              than once. Same words, load-bearing ones unabridged. */}
+          <div style={{ margin: "0 0 14px", padding: "10px 14px", borderRadius: 10, border: "1px solid #d9c9a3", background: "#fdfaf2", color: "#5a4420", fontSize: 12, lineHeight: 1.55 }}>
+            {NotesScrub.ACK_NOTICE}
+          </div>
+
+          {S.scrubMap.length > 0 && (
             <div style={{ margin: "0 0 16px", borderRadius: 10, border: "2px solid #c8962a", overflow: "hidden" }}>
               <div style={{ padding: "8px 14px", background: "#fdf3dc", color: "#5a3d00", fontSize: 12, lineHeight: 1.5 }}>
-                <strong>Removed before this left your device:</strong> {S.scrubNotice}{" "}
+                <strong>Removed before this left your device</strong>{" "}
                 <span style={{ color: "#7a6020" }}>- substitute back in your EHR.</span>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 7 }}>
+                  {S.scrubMap.map((m) => {
+                    const done = (S.certified || []).includes(m.name);
+                    return (
+                      <span key={m.name} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#fff", border: "1px solid #e0cb9a", borderRadius: 999, padding: "3px 4px 3px 10px", fontSize: 12 }}>
+                        <span>
+                          <strong>{m.identifier ? m.kind || "identifier" : m.name}</strong> → {m.token}
+                        </span>
+                        {/* Identifiers get no escape. A phone number is never "not a
+                            name" in a way worth remembering, and offering the button
+                            would invite clicking it. */}
+                        {!m.identifier &&
+                          (done ? (
+                            <span style={{ color: "#4a6b3a", fontWeight: 700, padding: "2px 8px" }}>✓ kept next time</span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => certifyNotPii(m.name)}
+                              title={`Stop removing "${m.name}" in future notes. Does not change the draft below.`}
+                              style={{ border: "1px solid #c0d4a8", background: "#f4f7ee", color: "#4a5c38", borderRadius: 999, padding: "2px 9px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+                            >
+                              not a name
+                            </button>
+                          ))}
+                      </span>
+                    );
+                  })}
+                </div>
               </div>
               <div style={{ padding: "10px 14px", background: "#fff8ec", color: "#3d2a00", fontSize: 13.5, fontWeight: 600, lineHeight: 1.55 }}>
                 ⚠️ {NotesScrub.SCRUB_GUIDANCE}
