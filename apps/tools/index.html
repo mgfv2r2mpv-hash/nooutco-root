@@ -353,10 +353,13 @@
   const loggedIn = () => isLive(tokenPayload());
   const isAdmin = () => { const p = tokenPayload(); return isLive(p) && p.role === "admin"; };
 
+  // The bar wants both: `authed` fills the gear, `admin` reveals its admin-area
+  // link. Same token, same role check the modal below already runs.
+  const authState = () => ({ authed: loggedIn(), admin: isAdmin() });
   function updateGearState() {
-    document.dispatchEvent(new CustomEvent("noaba:auth-state", { detail: { authed: loggedIn() } }));
+    document.dispatchEvent(new CustomEvent("noaba:auth-state", { detail: authState() }));
   }
-  window.__noabaAuthProbe = loggedIn;
+  window.__noabaAuthProbe = authState;
   updateGearState();
 
   function closeModal() { modalRoot.innerHTML = ""; }

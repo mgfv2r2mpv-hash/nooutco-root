@@ -126,9 +126,14 @@ a.noaba-crumb:hover { text-decoration: underline; }
 
 .noaba-spacer { flex: 1; }
 
-/* ── Admin gear - one affordance ──────────────────────────────────────── */
+/* ── Admin controls ───────────────────────────────────────────────────── */
+/* Two rings, deliberately identical in geometry so they read as a pair: the
+   🛠️ link to the admin area, then the ⚙ gear for the account. Only the glyph
+   and the fill distinguish them, because they sit side by side and a second
+   shape at this size just looks like a mistake. */
 /* 44px transparent button = tap target; 38px bordered ring = the visual. */
-.noaba-gear {
+.noaba-gear,
+.noaba-admin {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -141,7 +146,12 @@ a.noaba-crumb:hover { text-decoration: underline; }
   padding: 0;
   border-radius: 50%;
 }
-.noaba-gear:focus-visible { outline: none; box-shadow: var(--shadow-focus, 0 0 0 3px rgba(106,118,89,0.38)); }
+.noaba-admin { text-decoration: none; }
+/* .noaba-admin sets display:inline-flex above, which outranks the UA stylesheet
+   rule for [hidden]. Without this the control is visible to everyone. */
+.noaba-admin[hidden] { display: none; }
+.noaba-gear:focus-visible,
+.noaba-admin:focus-visible { outline: none; box-shadow: var(--shadow-focus, 0 0 0 3px rgba(106,118,89,0.38)); }
 .noaba-gear-ring {
   display: inline-flex;
   align-items: center;
@@ -156,7 +166,8 @@ a.noaba-crumb:hover { text-decoration: underline; }
   transition: background-color var(--duration-fast, 150ms) ease,
               border-color var(--duration-fast, 150ms) ease;
 }
-.noaba-gear:hover .noaba-gear-ring { background: #f1f3ec; }
+.noaba-gear:hover .noaba-gear-ring,
+.noaba-admin:hover .noaba-gear-ring { background: #f1f3ec; }
 /* authed = filled */
 .noaba-gear[data-authed="true"] .noaba-gear-ring {
   background: var(--noaba-seg-active-bg);
