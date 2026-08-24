@@ -37,13 +37,26 @@
   <div id="root"></div>
   <!-- Gear ↔ NotesGate bridge. Visual unification only; the gate's auth logic is
        untouched. Gear opens login when logged out, logs out when logged in; the
-       bar reflects login state. -->
+       bar reflects login state.
+
+       It also reports whether this login is an ADMIN, which is what puts the
+       bar's admin-area link on this page. Before that, the only route into the
+       admin area was the tools landing page's own modal, so getting there from
+       a note meant leaving the note first. -->
   <script>
     (function () {
-      function authed() { return !!(window.NotesGate && window.NotesGate.isLoggedIn()); }
-      window.__noabaAuthProbe = authed;
+      function state() {
+        return {
+          authed: !!(window.NotesGate && window.NotesGate.isLoggedIn()),
+          // isAdmin() reads the role out of the same session token the tools landing
+          // page reads. Guarded because an older gate build did not export it, and a
+          // missing admin link is a smaller failure than a page that throws on load.
+          admin: !!(window.NotesGate && window.NotesGate.isAdmin && window.NotesGate.isAdmin())
+        };
+      }
+      window.__noabaAuthProbe = state;
       function emit() {
-        document.dispatchEvent(new CustomEvent("noaba:auth-state", { detail: { authed: authed() } }));
+        document.dispatchEvent(new CustomEvent("noaba:auth-state", { detail: state() }));
       }
       document.addEventListener("noaba:admin-invoke", function () {
         if (!window.NotesGate) return;
