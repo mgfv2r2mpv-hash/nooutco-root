@@ -44,6 +44,64 @@ function schemaDisabled() {
 // so the tests keep working if it is ever loaded as a module.
 window.schemaDisabled = schemaDisabled;
 
+/* ── The expert, beside the draft ─────────────────────────────────────────
+ *
+ * WHAT IT IS. A second reading of the same intake, by a model carrying the ABA
+ * glossary and the mentalism lexicon, running at the same moment as the draft
+ * and answering a question the drafting model is never asked: what does this
+ * note most need, and which of these sentences claims something the clinician
+ * did not observe. /api/expert-pass has existed since 2026-08-24 and the admin
+ * bench was its only caller.
+ *
+ * WHY IT RUNS BESIDE THE LOOP RATHER THAN INSIDE IT. The live hint channel has
+ * eight fixed codes per tool, and between them they cannot say "you wrote 'he
+ * wanted attention', and that is a function claim". Whether the expert actually
+ * beats that catalog is an open question, and the only way to answer it is to
+ * put the two channels on the SAME note and read them together. So nothing is
+ * replaced: the catalog hints render exactly as they did, and the expert's
+ * findings sit beside them, labelled.
+ *
+ * ADMIN ONLY, for now, and that is a scope decision rather than a security one.
+ * isAdmin() decodes the session token in the browser without verifying its
+ * signature, exactly as schemaDisabled() above does, so this is a UI control -
+ * the Worker still checks the token and the tool scope on every call. What the
+ * gate buys is that a technician does not meet an unproven second channel on a
+ * note they are about to sign, while the person calibrating it does.
+ *
+ * ?expert=off turns it off for a clean side-by-side against the catalog alone,
+ * the same escape hatch and the same reasoning as ?schema=off.
+ */
+function expertEnabled() {
+  if (!window.NotesGate || !NotesGate.isAdmin || !NotesGate.isAdmin()) return false;
+  return new URLSearchParams(location.search).get("expert") !== "off";
+}
+window.expertEnabled = expertEnabled;
+
+/* THE SECTION LIST COMES OUT OF THE RESPONSE SCHEMA, and the bench learned that
+   the hard way. The obvious source is formSections, and it is right for exactly
+   one tool: bt derives SECTION_IDS from it, and the others hardcode a list that
+   formSections does not match. A caller reading formSections would send the
+   wrong ids, every finding would come back filed under "note", and the expert
+   would look unable to tell one section from another.
+
+   hintSchema builds the enum as SECTION_IDS.concat(["note"]) for every tool, so
+   the schema is the one place they all agree. Returns null for a tool with no
+   responseSchema, which is how a tool opts out: giving it a schema opts it in.
+
+   Kept byte-identical in intent to expertSections() in admin/index.html. The
+   two are separate files with no module system between them, so the pin is
+   tests/expert-in-notes.spec.js rather than a shared import. */
+function expertSectionIds(tool) {
+  let enumList = null;
+  try {
+    enumList = tool.responseSchema.properties.hints.items.properties.section.enum;
+  } catch (e) { return null; }
+  if (!Array.isArray(enumList)) return null;
+  const whole = window.NoteToolsUtil ? window.NoteToolsUtil.HINT_WHOLE_NOTE : "note";
+  return enumList.filter((id) => id !== whole);
+}
+window.expertSectionIds = expertSectionIds;
+
 // File an internal ticket for a defect. Takes the caught error, not its message,
 // so it can both skip the non-defects and carry the diagnostics bag.
 function reportError(toolId, err) {
@@ -577,6 +635,208 @@ function NoteHints({ hints, catalog }) {
   );
 }
 
+
+/* ── Drawing what the expert found ────────────────────────────────────────
+ *
+ * The expert's hints carry the same three `kind` values the catalog's do, so
+ * they reuse HINT_TONE rather than inventing a second colour language for the
+ * same three ideas. What they do NOT share is where the words come from: a
+ * catalog hint is a code looked up in a fixed list of eight, and an expert hint
+ * is a sentence the model wrote about this note. So the row is drawn
+ * differently on purpose - a left rule and a label - because a technician
+ * reading two channels in one column has to be able to tell which one is
+ * talking without reading either.
+ */
+const EXPERT_LABEL = "expert";
+
+function ExpertRow({ finding, testid }) {
+  const tone = HINT_TONE[finding.kind] || HINT_TONE.thin;
+  const ask = String(finding.ask || "").trim();
+  if (!ask) return null;
+  return (
+    <div
+      data-testid={testid}
+      data-expert-kind={finding.kind || "thin"}
+      data-expert-rank={finding.rank === null || finding.rank === undefined ? undefined : String(finding.rank)}
+      style={{ fontSize: 12.5, color: tone.fg, background: tone.bg, border: `1px solid ${tone.edge}`, borderLeft: `3px solid ${tone.fg}`, borderRadius: 7, padding: "6px 10px", marginBottom: 4, lineHeight: 1.5 }}
+    >
+      <span style={{ fontSize: 10, letterSpacing: ".08em", textTransform: "uppercase", fontWeight: 700, opacity: 0.72, marginRight: 6 }}>
+        {EXPERT_LABEL}
+      </span>
+      {tone.mark} {ask}
+      {finding.why ? <div style={{ opacity: 0.82, marginTop: 3 }}>{finding.why}</div> : null}
+    </div>
+  );
+}
+
+/* The same cap and the same disclosure the catalog channel uses, for the same
+   reason: nobody reads to the bottom of nine identical boxes at the end of a
+   shift. Ranked by the model's own rank, and the Worker has already sorted the
+   array, so array order IS rank order and this deliberately does not re-sort. */
+function ExpertList({ findings, testid }) {
+  const [open, setOpen] = React.useState(false);
+  const shown = (findings || []).filter((f) => String(f.ask || "").trim());
+  if (!shown.length) return null;
+  const top = shown.slice(0, HINT_CAP);
+  const rest = shown.slice(HINT_CAP);
+  return (
+    <div style={{ marginTop: 8 }} data-testid={testid}>
+      {top.map((f, i) => <ExpertRow key={`t${i}`} finding={f} />)}
+      {open && rest.map((f, i) => <ExpertRow key={`r${i}`} finding={f} />)}
+      {rest.length > 0 && (
+        <button
+          type="button"
+          data-testid={`${testid}-disclosure`}
+          onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+          style={{ fontSize: 11.5, color: "#5d6a4d", background: "none", border: "none", padding: "2px 2px 0", cursor: "pointer", textDecoration: "underline" }}
+        >
+          {open ? "Show fewer" : `${rest.length} more from the expert`}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ExpertNotes({ expert, section }) {
+  if (!expert || expert.status !== "done") return null;
+  const id = sectionId(section);
+  return <ExpertList findings={(expert.hints || []).filter((f) => f.section === id)} testid={`expert-${id}`} />;
+}
+
+/* THE REGISTER FINDINGS ARE THE POINT, and they are the thing the catalog has
+   no code for. Each one quotes the clinician's own sentence back and says what
+   it claims that nobody watched happen, then offers the replacement. That is
+   why the quote is drawn rather than summarised: "you wrote X" is checkable
+   where "watch your mentalism" is advice.
+   
+   `keep` findings are drawn too. A sentence the expert looked at and passed is
+   information - it means the reading covered it - and hiding them would make a
+   thorough pass look like a thin one. */
+const REGISTER_ACTION_LABEL = {
+  reframe: "rewrite this",
+  ask: "ask about this",
+  remove: "cut this",
+  keep: "fine as written",
+};
+
+function RegisterFinding({ finding }) {
+  const quote = String(finding.quote || "").trim();
+  if (!quote) return null;
+  const action = finding.action || "ask";
+  const muted = action === "keep";
+  return (
+    <div
+      data-testid="expert-register-row"
+      data-register-action={action}
+      style={{ fontSize: 12.5, border: "1px solid #e5e7eb", borderRadius: 7, padding: "7px 10px", marginBottom: 5, lineHeight: 1.5, background: muted ? "#f9fafb" : "#f3f4f6", color: "#374151", opacity: muted ? 0.78 : 1 }}
+    >
+      <span style={{ fontSize: 10, letterSpacing: ".08em", textTransform: "uppercase", fontWeight: 700, opacity: 0.7, marginRight: 6 }}>
+        {REGISTER_ACTION_LABEL[action] || action}
+      </span>
+      <span style={{ fontStyle: "italic" }}>“{quote}”</span>
+      {finding.why ? <div style={{ marginTop: 3, opacity: 0.85 }}>{finding.why}</div> : null}
+      {finding.move ? <div style={{ marginTop: 3, color: "#374528", fontWeight: 600 }}>{finding.move}</div> : null}
+    </div>
+  );
+}
+
+/* Abbreviations, and what the expert took each one to mean. A resolved reading
+   is a reading aid; an ambiguous or unknown one is a warning, because the whole
+   draft downstream was written on that guess. */
+const TERM_STATUS_LABEL = { resolved: "read as", ambiguous: "ambiguous", unknown: "not recognised" };
+
+function TermFinding({ finding }) {
+  const token = String(finding.token || "").trim();
+  if (!token) return null;
+  const status = finding.status || "unknown";
+  const warn = status !== "resolved";
+  return (
+    <span
+      data-testid="expert-term"
+      data-term-status={status}
+      title={finding.why || ""}
+      style={{ display: "inline-block", fontSize: 12, borderRadius: 6, padding: "3px 8px", marginRight: 6, marginBottom: 5, border: `1px solid ${warn ? "#ecd9a0" : "#ddecd0"}`, background: warn ? "#fdf6e0" : "#f7fbf3", color: warn ? "#8a6d1a" : "#3f5130" }}
+    >
+      <strong>{token}</strong>
+      {finding.reading ? ` ${TERM_STATUS_LABEL[status] || status} ${finding.reading}` : ` - ${TERM_STATUS_LABEL[status] || status}`}
+    </span>
+  );
+}
+
+/* Everything the expert found that is not about one section: the abbreviations
+   it resolved, the sentences it read as claims, and its whole-note asks. It
+   sits above the grid for the same reason NoteHints does - filing a whole-note
+   finding under the nearest heading puts it somewhere it is not about.
+   
+   IT ALSO DRAWS ITS OWN FAILURES, which is the difference between a second
+   opinion and a decoration. A pass that was asked for and did not arrive says
+   so, because an empty panel and a broken call look identical from the outside
+   and only one of them means "nothing to report". */
+function ExpertReading({ expert }) {
+  if (!expert) return null;
+
+  const head = (
+    <div style={{ fontSize: 11, letterSpacing: ".07em", textTransform: "uppercase", color: "#7a9460", fontWeight: 700, marginBottom: 4 }}>
+      What the expert read in your intake
+    </div>
+  );
+
+  if (expert.status === "running") {
+    return (
+      <div style={{ marginBottom: 16 }} data-testid="expert-reading">
+        {head}
+        <p style={{ fontSize: 12.5, color: "#7a9460", lineHeight: 1.5 }} data-testid="expert-running">
+          Still reading. Your note is finished and this arrives beside it.
+        </p>
+      </div>
+    );
+  }
+
+  if (expert.status === "failed") {
+    return (
+      <div style={{ marginBottom: 16 }} data-testid="expert-reading">
+        {head}
+        <p style={{ fontSize: 12.5, color: "#8a6d1a", lineHeight: 1.5 }} data-testid="expert-failed">
+          The expert pass did not come back, so nothing here was reviewed a second time. Your note is unaffected.
+        </p>
+      </div>
+    );
+  }
+
+  const whole = window.NoteToolsUtil ? window.NoteToolsUtil.HINT_WHOLE_NOTE : "note";
+  const wholeHints = (expert.hints || []).filter((f) => f.section === whole);
+  const register = expert.register || [];
+  const terms = expert.terms || [];
+
+  return (
+    <div style={{ marginBottom: 16 }} data-testid="expert-reading">
+      {head}
+      {terms.length > 0 && (
+        <div style={{ marginBottom: 8 }} data-testid="expert-terms">
+          {terms.map((t, i) => <TermFinding key={i} finding={t} />)}
+        </div>
+      )}
+      {register.length > 0 ? (
+        <div style={{ marginBottom: 8 }} data-testid="expert-register">
+          {register.map((r, i) => <RegisterFinding key={i} finding={r} />)}
+        </div>
+      ) : (
+        /* Finding nothing is a result, and the panel has to agree or a clean
+           note reads as a broken call. */
+        <p style={{ fontSize: 12.5, color: "#7a9460", marginBottom: 8 }} data-testid="expert-register-empty">
+          Nothing in your intake claims something you did not observe.
+        </p>
+      )}
+      <ExpertList findings={wholeHints} testid="expert-note" />
+      {expert.hintsDropped ? (
+        <p style={{ fontSize: 11.5, color: "#7a9460", marginTop: 6 }} data-testid="expert-dropped">
+          {expert.hintsDropped} lower-ranked finding{expert.hintsDropped === 1 ? " was" : "s were"} past the ceiling and are not shown.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 /* ── App ──────────────────────────────────────────────────────────────── */
 
 function freshSession(tool) {
@@ -602,6 +862,12 @@ function freshSession(tool) {
     lastCallAt: 0,
     proposal: null,        // pending revision, rendered as an inline diff
     expanded: [],
+    /* The expert's second reading of the same intake, or null when it was never
+       asked. {status:"running"} while the call is out, {status:"failed"} when
+       it did not come back, and the findings themselves once it did. Held per
+       session beside `output` and cleared with it, because a reading of the
+       previous intake sitting next to a new note is worse than no reading. */
+    expert: null,
 
     // ── Assistant panel ──────────────────────────────────────────────────
     // What the clinician sees, which is not what the model sees: `conversation`
@@ -1035,11 +1301,19 @@ function App() {
      whole time. */
   const MAX_TRIAGE_ROUNDS = 3;
 
-  const runTriage = async (scrubbed, priorAnswers) => {
-    let body = tool.inputs
+  /* The clinician's own words, labelled by the field they typed them into, and
+     nothing else. Extracted from runTriage rather than written twice: the
+     expert pass reads this too, and the two must be reading the SAME intake or
+     a disagreement between them is a disagreement about the input rather than
+     about the note. */
+  const intakeBody = (scrubbed) =>
+    tool.inputs
       .filter((f) => f.type === "textarea")
       .map((f) => `[${f.label}]${f.required ? " (required)" : ""}\n${(scrubbed[f.id] || "").trim() || "(empty)"}`)
       .join("\n\n");
+
+  const runTriage = async (scrubbed, priorAnswers) => {
+    let body = intakeBody(scrubbed);
     if (priorAnswers && priorAnswers.trim()) {
       body += "\n\n[ALREADY ANSWERED BY THE CLINICIAN]\n" + priorAnswers.trim() +
         "\n\nTreat everything above as part of their notes. Ask ONLY about what is still genuinely missing. " +
@@ -1169,7 +1443,7 @@ function App() {
 
   const draftNote = async (scrubbedValues, extra) => {
     setLoading(true);
-    patchS({ output: null, proposal: null, conversation: [], questions: null, readiness: null, pendingValues: null });
+    patchS({ output: null, proposal: null, conversation: [], questions: null, readiness: null, pendingValues: null, expert: null });
     try {
       let userMsg = tool.buildUserPrompt(scrubbedValues);
       if (extra && extra.trim()) {
@@ -1215,6 +1489,58 @@ function App() {
             (extra && extra.trim() ? "\n" + extra.trim() : ""),
           )
         : "";
+
+      /* THE EXPERT READS THE SAME INTAKE AT THE SAME MOMENT.
+       *
+       * Fired here rather than awaited anywhere: the draft's control flow never
+       * touches it, so the note arrives exactly when it always did and a slow
+       * or broken expert costs nobody a note. It is a Haiku call against a
+       * system prefix that is identical on every note and therefore cached, so
+       * in practice it finishes inside the drafting turn and the reading is
+       * already on screen when the draft lands.
+       *
+       * It is sent the intake ALREADY SCRUBBED, by the gate the drafting call
+       * passed through - NotesScrub.review() replaced every name with the role
+       * token before either call was made. Nothing is restored on the way back,
+       * which is the one way this caller differs from the admin bench: the
+       * token is what the clinician wants left in, so the expert quotes "Client
+       * hit the table" and the note beside it says "Client hit the table".
+       *
+       * runId guards a late arrival. A clinician who regenerates, or switches
+       * tool and comes back, must not have the previous intake's reading
+       * quietly attach itself to the note in front of them.
+       */
+      const expertSections = expertEnabled() ? expertSectionIds(tool) : null;
+      if (expertSections && window.NotesGate && NotesGate.expertPass) {
+        const runId = String(Date.now()) + ":" + Math.random().toString(36).slice(2, 8);
+        patchS({ expert: { status: "running", runId } });
+        const expertIntake = intakeBody(scrubbedValues) +
+          (extra && extra.trim() ? "\n\n[ANSWERED FOLLOW-UP QUESTIONS]\n" + extra.trim() : "");
+        NotesGate.expertPass({ tool: tool.id, intake: expertIntake, sections: expertSections })
+          .then((found) => {
+            patchS((s) => {
+              if (!s.expert || s.expert.runId !== runId) return {};
+              return { expert: found ? { status: "done", runId, ...found } : { status: "failed", runId } };
+            });
+            // Counts and enums only, never a word of a finding. What this
+            // answers is the question the phase exists for: how much the expert
+            // says on a real note, beside what the catalog said on the same one.
+            if (found) {
+              audit("expert_pass", {
+                hints: (found.hints || []).length,
+                register: (found.register || []).length,
+                terms: (found.terms || []).length,
+                dropped: found.hintsDropped || 0,
+                inTokens: (found.usage && found.usage.input_tokens) || 0,
+                cachedTokens: (found.usage && found.usage.cache_read_input_tokens) || 0,
+                outTokens: (found.usage && found.usage.output_tokens) || 0,
+              });
+            }
+          })
+          // expertPass resolves rather than rejects on every failure it knows
+          // about; this covers the ones it does not.
+          .catch(() => patchS((s) => (s.expert && s.expert.runId === runId ? { expert: { status: "failed", runId } } : {})));
+      }
 
       const conversation = [{ role: "user", content: userMsg }];
       patchS({ convStyleBlock: styleBlock + voiceBlock + shapeBlock });
@@ -2534,6 +2860,7 @@ function App() {
             </p>
 
             <NoteHints hints={S.output.hints} catalog={tool.hintCatalog} />
+            <ExpertReading expert={S.expert} />
 
             <div className="output-grid">
               {tool.formSections.map((sec, i) => {
@@ -2588,6 +2915,7 @@ function App() {
 
                     {renderSectionContent(sec)}
                     <HintNotes hints={S.output.hints} section={sec} catalog={tool.hintCatalog} />
+                    <ExpertNotes expert={S.expert} section={sec} />
                   </div>
                 );
               })}

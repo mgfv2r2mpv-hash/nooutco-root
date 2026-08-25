@@ -600,8 +600,23 @@ async function handleLlmCall(request, env) {
  *
  * This comment described a control that did not exist until 2026-08-24. The
  * route was written expecting a scrubbed intake and its only caller sent the
- * raw textarea. If you are adding a second caller, it scrubs too, or this
- * comment goes back to being a lie.
+ * raw textarea. If you are adding a caller, it scrubs too, or this comment goes
+ * back to being a lie.
+ *
+ * THE SECOND CALLER, from 2026-08-25, is the note pages themselves: the engine
+ * runs this beside the drafting turn on the same intake, so the expert's
+ * reading and the hint catalog's can be read against each other on one note.
+ * It scrubs, but it scrubs EARLIER and by a different route, and the difference
+ * is worth knowing before anyone reconciles the two.
+ *
+ * The bench scrubs at the moment it calls, with scrubForAgent(), and restores
+ * the clinician's real words into the findings before drawing them. The note
+ * page has already scrubbed: NotesScrub.review() ran before the drafting call
+ * and put a role token in place of every name, and that token is what the
+ * clinician wants LEFT IN - it is what they paste into their EHR. So the note
+ * page restores nothing, and the expert's quotes match the note's own wording
+ * rather than the clinician's typing. Both send a de-identified intake, which
+ * is the only thing this route is entitled to assume.
  */
 
 /* The intake is bounded by MAX_MESSAGE_CHARS rather than by a number of its
