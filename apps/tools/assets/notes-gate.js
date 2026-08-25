@@ -54,6 +54,12 @@
   // billed. Raised from 45s alongside sup's larger cap so the budget is real.
   // It only fires on a stall; a normal generation returns as soon as it's done.
   var GEN_TIMEOUT_MS = 90000;
+  /* The expert pass runs BESIDE a draft rather than in front of it, so its
+     budget is what a clinician will wait for after the note has already
+     arrived, not what the note itself is worth. Well under GEN_TIMEOUT_MS on
+     purpose: a stalled second opinion must give up before the draft it is
+     meant to sit next to goes stale. */
+  var EXPERT_TIMEOUT_MS = 45000;
   function fetchWithTimeout(url, opts, ms, timeoutMsg) {
     var ctrl = new AbortController();
     var timer = setTimeout(function () { ctrl.abort(); }, ms);
@@ -570,6 +576,69 @@
         };
       });
     });
+  }
+
+
+  /* ── The expert pass, called from a note page ──────────────────────────
+   *
+   * The admin bench was the only caller until now. This is the second one, and
+   * it is a DIFFERENT caller in one way that matters, so it gets its own
+   * function rather than a shared one with a flag.
+   *
+   * WHAT THE BENCH DOES: it takes raw pasted text, scrubs it here with
+   * scrubForAgent(), and restores the clinician's real words into the findings
+   * before drawing them, because the bench shows the intake back as it was
+   * typed.
+   *
+   * WHAT A NOTE PAGE DOES: it has already scrubbed. NotesScrub.review() ran
+   * before the drafting call and replaced every name with a role token, and
+   * that token is what the clinician WANTS left in - it goes into the note they
+   * paste into their EHR. So this caller sends the same scrubbed text the
+   * drafting model got, and restores nothing. The expert quotes "Client hit the
+   * table" because the note says "Client hit the table", and the two agree.
+   *
+   * Either way the intake is de-identified before it leaves the device, which
+   * is the promise the route's own comment makes.
+   *
+   * It never throws a note away. Every failure resolves to null: the expert is
+   * a second opinion beside the draft, and a second opinion that fails is worth
+   * exactly one missing panel, never a lost note. The caller decides what to
+   * say about a null.
+   */
+  function expertPass(opts) {
+    var o = opts || {};
+    var tok = getToken();
+    if (!tok) return Promise.resolve(null);
+    return fetchWithTimeout(apiUrl("/api/expert-pass"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + tok,
+      },
+      body: JSON.stringify({
+        tool: o.tool,
+        intake: o.intake,
+        sections: Array.isArray(o.sections) ? o.sections : [],
+      }),
+    }, EXPERT_TIMEOUT_MS, "The expert pass timed out.")
+      .then(function (res) {
+        if (!res.ok) return null;
+        return res.json().then(function (d) {
+          // Shape-checked rather than trusted. A 200 carrying something else is
+          // indistinguishable from a pass that found nothing, and the panel
+          // must not draw an empty verdict over a broken call.
+          if (!d || !Array.isArray(d.hints)) return null;
+          return {
+            terms: Array.isArray(d.terms) ? d.terms : [],
+            register: Array.isArray(d.register) ? d.register : [],
+            hints: d.hints,
+            hintsDropped: d.hintsDropped || 0,
+            usage: d.usage || null,
+            model: d.model || "",
+          };
+        }).catch(function () { return null; });
+      })
+      .catch(function () { return null; });
   }
 
   // Constrains the model's answer to the tool's JSON Schema, so the note is
@@ -1476,6 +1545,9 @@
     generateNote: generateNote,
     generateConversation: generateConversation,
     generateProse: generateProse,
+    // The expert pass, for a caller that has already scrubbed. Resolves null on
+    // every failure rather than throwing - see expertPass above for why.
+    expertPass: expertPass,
     // Error rendering - callers pass the caught error, never e.message, so the
     // user-facing/internal split is applied in one place.
     displayError: displayError,
