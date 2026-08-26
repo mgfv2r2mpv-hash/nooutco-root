@@ -817,16 +817,35 @@
         }).catch(function () {});
       }
 
+      /* The run says what it did, in a sentence.
+
+         This button reported "Run complete - check your email for the digest."
+         whatever came back, which is the same lie the endpoint itself used to
+         tell: it answered ok on every run from June to August while writing
+         nothing at all. The endpoint returns its own report now, so the button
+         reads it out instead of guessing. */
+      function scrubRunSummary(report) {
+        if (!report || typeof report.considered !== "number") return "Run complete.";
+        if (report.stopped === "nothing-to-consider") {
+          return "Nothing to consider - every certified term has already been through a run.";
+        }
+        var s = "Considered " + report.considered + ", proposed " + report.proposed + ".";
+        if (report.backlogRemaining) s += " " + report.backlogRemaining + " still waiting.";
+        return s + " Digest sent by email.";
+      }
+
       document.getElementById("labRunNow").addEventListener("click", function () {
         var ok = document.getElementById("labRunOk");
         var err = document.getElementById("labRunErr");
         ok.style.display = "none"; err.style.display = "none";
         document.getElementById("labRunNow").textContent = "Running…";
         adminFetch("/api/admin/scrub-run", "POST")
-          .then(function () {
+          .then(function (report) {
+            ok.textContent = scrubRunSummary(report);
             ok.style.display = "inline";
             document.getElementById("labRunNow").textContent = "Trigger run now";
             loadAlgStatus();
+            loadSuggestions();
           })
           .catch(function (ex) {
             err.textContent = ex.message; err.style.display = "inline";

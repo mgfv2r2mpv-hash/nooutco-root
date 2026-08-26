@@ -14,7 +14,26 @@ jobs:
   trigger:
     runs-on: ubuntu-latest
     steps:
+      # The step used to be `curl -fsS` and nothing else, so the run's answer went
+      # straight to /dev/null. That mattered more than it looks: the endpoint returned
+      # a bare {"ok":true} on every run from June to August while writing nothing, and
+      # this job went green every one of those nights. The endpoint reports counts now,
+      # so the counts go in the log and in the job summary where they can be read
+      # without opening an inbox.
       - name: Trigger scrub-learning run
         run: |
-          curl -fsS -X POST https://tools.nooutco.me/api/admin/scrub-run \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+          code=$(curl -sS -o report.json -w '%{http_code}' \
+            -X POST https://tools.nooutco.me/api/admin/scrub-run \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          echo "HTTP $code"
+          cat report.json; echo
+          {
+            echo '### Scrub learning run'
+            echo
+            echo '```json'
+            cat report.json
+            echo
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          # A run that stopped early fails the job rather than reporting success.
+          test "$code" = "200"
