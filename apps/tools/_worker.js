@@ -2031,8 +2031,11 @@ async function handleScrubRun(request, env) {
   const payload = adminSecret ? await readToken(token, adminSecret) : null;
   const isAdmin = payload && payload.role === "admin";
   if (!isCron && !isAdmin) return jsonRes(401, { error: "Admin or cron authorization required." });
-  await runScrubLearning(env);
-  return jsonRes(200, { ok: true });
+  // The report goes back verbatim. A bare ok is what let this job answer "fine" on every
+  // run for two months while writing nothing; now the caller sees what it considered,
+  // what it queued, and how much backlog is left.
+  const report = await runScrubLearning(env);
+  return jsonRes(report.ok ? 200 : 502, report);
 }
 
 // Constant-time string comparison to avoid leaking the secret via timing.
@@ -2674,34 +2677,243 @@ async function sendTermDigest(env) {
   }).catch(() => {});
 }
 
+/* The nightly scrub-learning run.
+ *
+ * PROPOSE-ONLY by design. This is a PHI de-identification control with no BAA, so the
+ * only safe error direction is over-detection. The run can therefore only ever suggest
+ * SUPPRESSING a human-certified false positive (adding a stopword) - never removing a
+ * name, never weakening detection. Every suggestion is queued for human approval in the
+ * admin Algorithm Lab; nothing here mutates the live detection config.
+ *
+ * WHY IT WAS REWRITTEN ON 2026-08-26. It had answered {"ok":true} on every run since
+ * June while writing nothing, and the cause was small and exact: the call was made with
+ * max_tokens 512. Thirteen certified terms need more JSON than that, so the response was
+ * cut off inside the suggestions array, the greedy brace match handed JSON.parse a
+ * truncated array, and the parse threw. stop_reason came back "max_tokens" on every one
+ * of those runs and this function never looked at it.
+ *
+ * Three things changed, and they are separable on purpose.
+ *
+ *   1. IT REPORTS. Every exit returns a report and handleScrubRun sends it back instead
+ *      of a bare ok. A green tick can no longer mean nothing happened, which is the
+ *      property that let this hide for two months.
+ *
+ *   2. IT CANNOT DIE THE SAME WAY. scrubBudget sizes the ceiling to the batch, the
+ *      answer is constrained by a schema rather than fished out with a regex, and a
+ *      truncated response is reported AS truncated rather than left to fail as a syntax
+ *      error three lines later.
+ *
+ *   3. IT DRAINS A BACKLOG. It used to read only the terms certified since midnight
+ *      today, so 213 terms certified while the crons were blocked could never be
+ *      reached however many times it ran. It now works the whole store oldest first, in
+ *      capped batches.
+ *
+ * WHAT scrub-seen:v1 IS FOR. A term the model DECLINES to suggest leaves no trace: it is
+ * not queued, not approved, not rejected. Without a record of what has been looked at,
+ * the same oldest batch would be re-read every night forever and the backlog would never
+ * move. So a term is marked seen once a run has considered it, whatever the model said.
+ * It is marked ONLY on the success path - a failed run that burned forty terms would be
+ * a worse failure than the one this replaces, because it would be silent AND lossy.
+ */
+
+// Terms handed to the model in one run. The cap exists so the budget below has something
+// to be sized against, and so a two-hundred-term backlog arrives as six ordinary nights
+// rather than one call nobody can debug.
+const SCRUB_BATCH_MAX = 40;
+// Output budget, in tokens. One suggestion serialises to roughly 40 tokens; 90 is better
+// than double that, and the whole defect being fixed here was a ceiling that fit the
+// common case and not the real one.
+const SCRUB_TOKENS_PER_TERM = 90;
+const SCRUB_TOKENS_BASE = 400;
+// Asked for in the prompt AND enforced on the way in. The old code asked for no bound
+// and sliced at 300, so the model was free to write an essay per term, and it was the
+// total length that killed the run.
+const SCRUB_REASON_CHARS = 120;
+const SCRUB_SEEN_KEY = "scrub-seen:v1";
+
+export function scrubLimits() {
+  return {
+    batchMax: SCRUB_BATCH_MAX,
+    reasonChars: SCRUB_REASON_CHARS,
+    seenKey: SCRUB_SEEN_KEY,
+  };
+}
+
+/* Sized to what the model was actually asked about, so raising SCRUB_BATCH_MAX
+   cannot silently reintroduce the truncation this replaced.
+   Certified terms AND problem strings, because both produce suggestions: a run
+   with no certified terms and six problem strings is still a run that can
+   overflow, and sizing on the batch alone would have left that one case with
+   exactly the defect being fixed here. */
+export function scrubBudget(itemCount) {
+  return SCRUB_TOKENS_BASE + Math.max(Number(itemCount) || 0, 1) * SCRUB_TOKENS_PER_TERM;
+}
+
+/* Constrained rather than requested. The old prompt ended with "Return ONLY valid JSON
+   (no markdown)" and the code fished the object out with a greedy brace match, which is
+   the pairing that turned a truncation into a syntax error. */
+const SCRUB_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["suggestions", "digest"],
+  properties: {
+    suggestions: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["term", "reason", "confidence"],
+        properties: {
+          term: { type: "string" },
+          reason: { type: "string" },
+          confidence: { type: "string", enum: ["high", "medium", "low"] },
+        },
+      },
+    },
+    digest: { type: "string" },
+  },
+};
+
+/* Which terms this run looks at, and how many are still waiting behind them.
+ *
+ * Oldest first, because the backlog is the point: a term certified on a night the cron
+ * could not run had no second chance under the old midnight filter, since every later
+ * run asked only about that later day. Already approved or already queued counts as
+ * already considered, so a store that predates scrub-seen:v1 does not re-propose
+ * everything sitting in the queue on the first run after this ships.
+ */
+function certifiedMs(entry) {
+  const t = new Date((entry && entry.certifiedAt) || 0).getTime();
+  return Number.isFinite(t) ? t : 0;
+}
+
+export function scrubBatch(input) {
+  const o = input || {};
+  const limit = Number.isFinite(o.limit) ? o.limit : SCRUB_BATCH_MAX;
+  const norm = (t) => String(t || "").toLowerCase().trim();
+  const settled = new Set([
+    ...(o.seen || []).map(norm),
+    ...(o.approved || []).map(norm),
+    ...(o.queued || []).map(norm),
+  ]);
+  const pending = (o.nonPii || [])
+    .filter((e) => e && typeof e.term === "string" && e.term.trim())
+    .filter((e) => !settled.has(norm(e.term)))
+    // An unparseable certifiedAt sorts to the front rather than to NaN, because a
+    // NaN comparator leaves the order to the engine and the oldest-first claim is
+    // the whole point of the window.
+    .sort((a, b) => certifiedMs(a) - certifiedMs(b));
+  const batch = pending.slice(0, Math.max(limit, 0));
+  return {
+    batch: batch.map((e) => e.term),
+    backlogRemaining: Math.max(0, pending.length - batch.length),
+  };
+}
+
+/* What came back, as an outcome rather than as a throw.
+ *
+ * The stop_reason check is the line that would have named this defect in June. The API
+ * had been returning "max_tokens" on every failed run for two months and nothing read
+ * it, so the run died on a syntax error three lines below instead of on the thing that
+ * was actually wrong. */
+export function scrubOutcome(apiResp) {
+  if (apiResp && apiResp.stop_reason === "max_tokens") {
+    return { ok: false, stopped: "model-response-truncated", stopReason: "max_tokens",
+      error: "the model ran out of output budget; nothing was written" };
+  }
+  const content = apiResp?.content?.[0]?.text ?? "";
+  if (!content.trim()) {
+    return { ok: false, stopped: "model-response-empty", error: "the model returned no text" };
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(content);
+  } catch (e) {
+    return { ok: false, stopped: "model-response-unreadable", error: e.message || String(e) };
+  }
+  if (!parsed || !Array.isArray(parsed.suggestions)) {
+    return { ok: false, stopped: "model-response-unreadable", error: "no suggestions array" };
+  }
+  return { ok: true, result: parsed };
+}
+
+// One place builds the report, so every caller reads the same keys and a new exit cannot
+// quietly return a different shape.
+function scrubReport(fields) {
+  return {
+    ok: false, stopped: null, considered: 0, proposed: 0,
+    queueDepth: 0, backlogRemaining: 0, stopReason: null, error: null,
+    ...fields,
+  };
+}
+
+async function notifyScrubFailure(env, message) {
+  if (!env.RESEND_API_KEY || !env.SUGGEST_TO_EMAIL) return;
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + env.RESEND_API_KEY },
+    body: JSON.stringify({
+      from: "tools@nooutco.me", to: env.SUGGEST_TO_EMAIL,
+      subject: "PHI scrub run failed - " + new Date().toISOString().slice(0, 10),
+      text: "Nightly scrub learning run failed: " + message,
+    }),
+  }).catch(() => {});
+}
+
 // Core learning logic: called by scheduled() and handleScrubRun().
-// PROPOSE-ONLY by design. This is a PHI de-identification control with no BAA, so the
-// only safe error direction is over-detection. The run can therefore only ever suggest
-// SUPPRESSING a human-certified false positive (adding a stopword) - never removing a
-// name, never weakening detection. Every suggestion is queued for human approval in the
-// admin Algorithm Lab; nothing here mutates the live detection config.
-async function runScrubLearning(env) {
-  if (!env.API_PASSWORDS || !env.ANTHROPIC_API_KEY) return;
+export async function runScrubLearning(env) {
+  if (!env.API_PASSWORDS || !env.ANTHROPIC_API_KEY) {
+    // Named, because a report whose only failure detail is null tells the admin button
+    // nothing and it falls back to printing a status code.
+    return scrubReport({ stopped: "no-bindings", error: "the KV binding or the Anthropic key is missing on this deployment" });
+  }
   const kv = env.API_PASSWORDS;
 
-  // Today's certified non-PII terms (false positives a clinician explicitly cleared)
-  const today = new Date();
-  const todayMidnightMs = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
-  const nonPiiRaw = await kv.get("nonpii:v1");
-  const nonPiiAll = nonPiiRaw ? JSON.parse(nonPiiRaw) : [];
-  const todayTerms = nonPiiAll
-    .filter((e) => e.certifiedAt && new Date(e.certifiedAt).getTime() >= todayMidnightMs)
-    .map((e) => e.term);
+  /* A key that will not parse is REPORTED, not read as empty. Returning the
+     fallback here would put back the exact shape of the bug this replaces: the
+     run would find "nothing to consider" in a store holding 213 terms and would
+     answer ok. An absent key is a different thing and is genuinely empty. */
+  const unreadable = [];
+  const readJson = async (key, fallback) => {
+    const raw = await kv.get(key);
+    if (!raw) return fallback;
+    try {
+      return JSON.parse(raw);
+    } catch (e) {
+      unreadable.push(key);
+      return fallback;
+    }
+  };
+
+  const nonPiiAll = await readJson("nonpii:v1", []);
+  const seen = await readJson(SCRUB_SEEN_KEY, []);
+  const queue = await readJson("scrub-suggestions:v1", []);
+  const ov = await readJson("scrub-overrides:v1", { stopwords: [], firstNames: [] });
+  const approvedStopwords = new Set((ov.stopwords || []).map((w) => String(w).toLowerCase()));
+  const queuedTerms = new Set(queue.map((s) => String(s.term).toLowerCase()));
+
+  const { batch, backlogRemaining } = scrubBatch({
+    nonPii: nonPiiAll, seen, approved: [...approvedStopwords], queued: [...queuedTerms],
+  });
 
   // Admin-submitted problem strings
-  const learnRaw = await kv.get("scrub-learn:v1");
-  const problemStrings = learnRaw ? JSON.parse(learnRaw) : [];
+  const problemStrings = await readJson("scrub-learn:v1", []);
 
-  if (todayTerms.length === 0 && problemStrings.length === 0) return;
+  if (unreadable.length) {
+    const msg = "these KV keys did not parse and the run stopped rather than treating them as empty: " + unreadable.join(", ");
+    await notifyScrubFailure(env, msg);
+    return scrubReport({ stopped: "store-unreadable", error: msg });
+  }
+
+  if (batch.length === 0 && problemStrings.length === 0) {
+    // A real answer, and it now says so out loud. Before this, an empty night and a
+    // broken night returned exactly the same thing.
+    return scrubReport({ ok: true, stopped: "nothing-to-consider", queueDepth: queue.length });
+  }
 
   // Vocabulary the AI is allowed to draw from (defense in depth: it cannot invent words).
   const inputVocab = new Set();
-  todayTerms.forEach((t) => inputVocab.add(String(t).toLowerCase().trim()));
+  batch.forEach((t) => inputVocab.add(String(t).toLowerCase().trim()));
   problemStrings.forEach((p) => String(p.text || "").split(/\s+/).forEach((w) => {
     const clean = w.replace(/[^A-Za-z'\-]/g, "").toLowerCase().trim();
     if (clean) inputVocab.add(clean);
@@ -2713,53 +2925,41 @@ async function runScrubLearning(env) {
     "Suggest a term ONLY if it is unmistakably common English or ABA clinical vocabulary that could never be a person's name.",
     "If a term could plausibly be anyone's first or last name - including uncommon, nickname, or international names like Raphael or Raphy - DO NOT suggest it; leave it flagged.",
     "You may never remove names or weaken detection; a human reviews every suggestion before it takes effect. When in doubt, suggest nothing.",
+    "Keep every reason under " + SCRUB_REASON_CHARS + " characters and the digest to one or two sentences.",
   ].join(" ");
 
   const userPrompt = [
     "Certified-not-PHI terms (a clinician flagged these as NOT person names):",
-    todayTerms.length ? todayTerms.map((t) => "  - " + t).join("\n") : "  (none today)",
+    batch.length ? batch.map((t) => "  - " + t).join("\n") : "  (none)",
     "",
     "Admin problem strings (examples where detection went wrong):",
-    problemStrings.length ? problemStrings.map((p) => "  - " + p.text).join("\n") : "  (none today)",
-    "",
-    'Return ONLY valid JSON (no markdown): {"suggestions":[{"term":"word","reason":"why it is safe to suppress","confidence":"high|medium|low"}],"digest":"1-2 sentence summary"}',
+    problemStrings.length ? problemStrings.map((p) => "  - " + p.text).join("\n") : "  (none)",
   ].join("\n");
 
-  let result;
+  let outcome;
   try {
-    const apiResp = await callAnthropicApi(env.ANTHROPIC_API_KEY, systemPrompt, userPrompt, "claude-haiku-4-5-20251001", 512);
-    const content = apiResp?.content?.[0]?.text ?? "";
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    result = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+    const apiResp = await callAnthropicApi(
+      env.ANTHROPIC_API_KEY, systemPrompt, userPrompt, "claude-haiku-4-5-20251001",
+      scrubBudget(batch.length + problemStrings.length), { format: { type: "json_schema", schema: SCRUB_SCHEMA } },
+    );
+    outcome = scrubOutcome(apiResp);
   } catch (e) {
-    if (env.RESEND_API_KEY && env.SUGGEST_TO_EMAIL) {
-      await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: "Bearer " + env.RESEND_API_KEY },
-        body: JSON.stringify({
-          from: "tools@nooutco.me", to: env.SUGGEST_TO_EMAIL,
-          subject: "PHI scrub run failed - " + new Date().toISOString().slice(0, 10),
-          text: "Nightly scrub learning run failed: " + (e.message || String(e)),
-        }),
-      }).catch(() => {});
-    }
-    return;
+    outcome = { ok: false, stopped: "model-call-failed", error: e && e.message ? e.message : String(e) };
   }
 
-  if (!result) return;
+  if (!outcome.ok) {
+    await notifyScrubFailure(env, outcome.error + " (" + batch.length + " terms considered, nothing written)");
+    return scrubReport({
+      stopped: outcome.stopped, stopReason: outcome.stopReason || null, error: outcome.error,
+      considered: batch.length, queueDepth: queue.length, backlogRemaining,
+    });
+  }
+  const result = outcome.result;
 
-  // Load existing queue + already-approved stopwords to dedupe against.
-  const sugRaw = await kv.get("scrub-suggestions:v1");
-  const queue = sugRaw ? JSON.parse(sugRaw) : [];
-  const ovRaw = await kv.get("scrub-overrides:v1");
-  const ov = ovRaw ? JSON.parse(ovRaw) : { stopwords: [], firstNames: [] };
-  const approvedStopwords = new Set((ov.stopwords || []).map((w) => String(w).toLowerCase()));
-  const queuedTerms = new Set(queue.map((s) => String(s.term).toLowerCase()));
-
-  // Accept only terms that (a) the AI returned, (b) appeared in today's input vocab,
+  // Accept only terms that (a) the AI returned, (b) appeared in this run's input vocab,
   // (c) aren't already approved or queued. This is the hard guardrail.
   const fresh = [];
-  (result.suggestions || []).forEach((s) => {
+  result.suggestions.forEach((s) => {
     const term = String(s.term || "").toLowerCase().trim();
     if (!term || !inputVocab.has(term)) return;
     if (approvedStopwords.has(term) || queuedTerms.has(term)) return;
@@ -2767,7 +2967,7 @@ async function runScrubLearning(env) {
     fresh.push({
       id: crypto.randomUUID(),
       term,
-      reason: String(s.reason || "").slice(0, 300),
+      reason: String(s.reason || "").slice(0, SCRUB_REASON_CHARS),
       confidence: ["high", "medium", "low"].includes(s.confidence) ? s.confidence : "low",
       proposedAt: new Date().toISOString(),
     });
@@ -2775,6 +2975,16 @@ async function runScrubLearning(env) {
 
   const runDate = new Date().toISOString().slice(0, 10);
   await kv.put("scrub-suggestions:v1", JSON.stringify([...queue, ...fresh]));
+
+  /* Marked seen after the write and only here, on the success path. Every term in the
+     batch, not only the suggested ones, because a term the model declined is a term this
+     run has answered, and re-asking about it every night is how a backlog stops
+     draining. */
+  await kv.put(SCRUB_SEEN_KEY, JSON.stringify(
+    Array.from(new Set([...seen.map((t) => String(t).toLowerCase().trim()),
+                        ...batch.map((t) => String(t).toLowerCase().trim())])),
+  ));
+
   // Record the run on the overrides object (last run + digest) without touching live config.
   await kv.put("scrub-overrides:v1", JSON.stringify({
     stopwords: ov.stopwords || [],
@@ -2808,9 +3018,21 @@ async function runScrubLearning(env) {
           "Proposed stopwords (" + fresh.length + "):",
           ...lines,
           "",
-          "Input: " + todayTerms.length + " certified terms, " + problemStrings.length + " problem strings",
+          "Input: " + batch.length + " certified terms, " + problemStrings.length + " problem strings",
+          // The line that answers "is the backlog moving", which the digest could not
+          // answer before there was a backlog window to move through.
+          "Backlog: " + backlogRemaining + " certified term" + (backlogRemaining === 1 ? "" : "s") +
+            " still waiting" + (backlogRemaining ? ", about " + Math.ceil(backlogRemaining / SCRUB_BATCH_MAX) + " more night(s)" : ""),
         ].join("\n"),
       }),
     }).catch(() => {});
   }
+
+  return scrubReport({
+    ok: true,
+    considered: batch.length,
+    proposed: fresh.length,
+    queueDepth: queue.length + fresh.length,
+    backlogRemaining,
+  });
 }
