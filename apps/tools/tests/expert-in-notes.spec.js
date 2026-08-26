@@ -80,8 +80,10 @@ const EXPERT = {
 };
 
 /* Drive one whole draft. `expert` is either a findings object, the string
-   "fail", or a function given the route so a test can hold the reply open. */
-async function draft(page, { role = 'admin', expert = EXPERT, query = '', note = NOTE } = {}) {
+   "fail", or a function given the route so a test can hold the reply open.
+   `tools` is the login's own tool list, which is the boundary that decides
+   whether the expert runs at all now that the admin gate is gone. */
+async function draft(page, { role = 'admin', expert = EXPERT, query = '', note = NOTE, tools = ['bt'] } = {}) {
   const llm = [];
   const sent = [];
 
@@ -99,7 +101,7 @@ async function draft(page, { role = 'admin', expert = EXPERT, query = '', note =
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(expert) });
   });
 
-  await page.addInitScript(([k, t]) => localStorage.setItem(k, t), ['notes_auth_token', tokenFor(role, ['bt'])]);
+  await page.addInitScript(([k, t]) => localStorage.setItem(k, t), ['notes_auth_token', tokenFor(role, tools)]);
   await page.goto(PAGE + query);
 
   await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array, 8 of 10 gestural');
@@ -223,17 +225,56 @@ test.describe('a second opinion never costs anyone a note', () => {
   });
 });
 
+/* WIDENED ON 2026-08-26, so the first assertion here is inverted from what it
+   said an hour earlier. It read "a technician never meets it", which was my
+   scope call rather than his; he read the callout offering to widen it and
+   answered in one word. What remains below is the boundary he did not lift. */
 test.describe('who it runs for', () => {
-  test('a technician never meets it', async ({ page }) => {
+  test('a technician gets it, on a tool their own login carries', async ({ page }) => {
     const { sent } = await draft(page, { role: 'user', expert: EXPERT });
-    // Given a whole draft to run in, still not one call.
+    expect(sent).toHaveLength(1);
+    await expect(page.getByTestId('expert-reading')).toBeVisible();
+  });
+
+  /* The boundary that survives the widening, and the reason the browser asks
+     canUseTool rather than merely whether somebody is logged in: the route
+     answers 403 to a login whose list does not carry this tool, so a looser
+     gate would show the clinician a failed reading for a reason that was
+     knowable before the call went out.
+
+     ASSERTED AT THE GATE, not through a draft, and the first attempt at this
+     test is why. Driving `draft()` with a non-covering login times out waiting
+     for Generate Note, because such a login cannot reach the form at all - the
+     page turns it away first. So a whole-draft test here would pass on the
+     strength of a door that closed several steps earlier and would keep passing
+     if the gate itself were removed. */
+  test('the gate refuses a login whose tools do not carry this one', async ({ page }) => {
+    await page.addInitScript(([k, t]) => localStorage.setItem(k, t), ['notes_auth_token', tokenFor('user', ['sap'])]);
+    await page.goto(PAGE);
+    await page.waitForFunction(() => typeof window.expertEnabled === 'function');
+    expect(await page.evaluate(() => window.expertEnabled('bt'))).toBe(false);
+  });
+
+  test('the gate admits a login whose tools do carry it, which is the half that changed', async ({ page }) => {
+    await page.addInitScript(([k, t]) => localStorage.setItem(k, t), ['notes_auth_token', tokenFor('user', ['bt'])]);
+    await page.goto(PAGE);
+    await page.waitForFunction(() => typeof window.expertEnabled === 'function');
+    expect(await page.evaluate(() => window.expertEnabled('bt'))).toBe(true);
+  });
+
+  test('an admin still gets it, because widening added people rather than moving the gate', async ({ page }) => {
+    const { sent } = await draft(page, { role: 'admin' });
+    expect(sent).toHaveLength(1);
+  });
+
+  test('?expert=off gives the catalog alone, for a clean comparison', async ({ page }) => {
+    const { sent } = await draft(page, { query: '?expert=off' });
     expect(sent).toHaveLength(0);
     await expect(page.getByTestId('expert-reading')).toHaveCount(0);
   });
 
-  test('?expert=off gives an admin the catalog alone, for a clean comparison', async ({ page }) => {
-    const { sent } = await draft(page, { query: '?expert=off' });
+  test('?expert=off holds for a technician too, not only for the person who set it up', async ({ page }) => {
+    const { sent } = await draft(page, { role: 'user', query: '?expert=off' });
     expect(sent).toHaveLength(0);
-    await expect(page.getByTestId('expert-reading')).toHaveCount(0);
   });
 });
