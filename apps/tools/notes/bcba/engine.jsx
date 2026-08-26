@@ -61,18 +61,28 @@ window.schemaDisabled = schemaDisabled;
  * replaced: the catalog hints render exactly as they did, and the expert's
  * findings sit beside them, labelled.
  *
- * ADMIN ONLY, for now, and that is a scope decision rather than a security one.
- * isAdmin() decodes the session token in the browser without verifying its
- * signature, exactly as schemaDisabled() above does, so this is a UI control -
- * the Worker still checks the token and the tool scope on every call. What the
- * gate buys is that a technician does not meet an unproven second channel on a
- * note they are about to sign, while the person calibrating it does.
+ * EVERYONE WHOSE LOGIN CARRIES THE TOOL, widened on 2026-08-26 at his
+ * instruction. This ran for an admin alone until then, which was a scope
+ * decision I made rather than one he asked for: the reasoning was that a
+ * technician should not meet an unproven second channel on a note they are
+ * about to sign, while the person calibrating it should. He read that and
+ * overruled it in one word, and the call was always his.
+ *
+ * canUseTool(), not isLoggedIn(), because it mirrors the check the route
+ * already makes. handleExpertPass takes any live login and then refuses a tool
+ * the login's own list does not carry. A looser gate here would fire a call the
+ * Worker is going to answer 403, and the clinician would watch the reading fail
+ * for a reason that was knowable before it was sent.
+ *
+ * Like schemaDisabled() above, this decodes the session token in the browser
+ * without verifying its signature, so it is a UI control and nothing more - the
+ * Worker still checks the token and the tool scope on every call.
  *
  * ?expert=off turns it off for a clean side-by-side against the catalog alone,
  * the same escape hatch and the same reasoning as ?schema=off.
  */
-function expertEnabled() {
-  if (!window.NotesGate || !NotesGate.isAdmin || !NotesGate.isAdmin()) return false;
+function expertEnabled(toolId) {
+  if (!window.NotesGate || !NotesGate.canUseTool || !NotesGate.canUseTool(toolId)) return false;
   return new URLSearchParams(location.search).get("expert") !== "off";
 }
 window.expertEnabled = expertEnabled;
@@ -1510,7 +1520,7 @@ function App() {
        * tool and comes back, must not have the previous intake's reading
        * quietly attach itself to the note in front of them.
        */
-      const expertSections = expertEnabled() ? expertSectionIds(tool) : null;
+      const expertSections = expertEnabled(tool.id) ? expertSectionIds(tool) : null;
       if (expertSections && window.NotesGate && NotesGate.expertPass) {
         const runId = String(Date.now()) + ":" + Math.random().toString(36).slice(2, 8);
         patchS({ expert: { status: "running", runId } });
