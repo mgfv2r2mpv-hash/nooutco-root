@@ -143,8 +143,12 @@
     peer: "peer", classmate: "peer",
   };
 
-  function guessRole(name, text) {
-    if (!text) return "client";
+  // The cue lookup on its own, returning null when nothing is attached. Split out
+  // of guessRole because the caller now needs to know the DIFFERENCE between a
+  // role that was read off the text and a role that was assumed, and guessRole
+  // answers "client" to both.
+  function cueRole(name, text) {
+    if (!text) return null;
     var esc = String(name).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     var before, after;
     try {
@@ -152,17 +156,38 @@
       before = new RegExp("\\b(" + CUE_WORDS + ")\\.?\\s+" + esc + "\\b", "i");
       // "Sarah, his mother", "Marcus (RBT)", "Jacob - the learner"
       after = new RegExp("\\b" + esc + "\\b\\s*[,(-]\\s*(?:his|her|their|the|a|an)?\\s*(" + CUE_WORDS + ")\\b", "i");
-    } catch (e) { return "client"; }
+    } catch (e) { return null; }
 
     var m = before.exec(text) || after.exec(text);
     if (m) {
       var role = CUE_ROLE[m[1].toLowerCase()];
       if (role) return role;
     }
-    // No cue attached to this name. In a session note the unlabelled person is
-    // overwhelmingly the client, and unlike the expert path the resulting token
-    // lands in prose a human reads and edits before signing it.
-    return "client";
+    return null;
+  }
+
+  function guessRole(name, text) {
+    return cueRole(name, text) || "client";
+  }
+
+  /* Is there POSITIVE evidence that this word is a person?
+   *
+   * Two signals, and they are the only two the scrubber actually has: a role cue
+   * attached to the word ("Mom Sarah", "Sarah, his mother"), or the word sitting
+   * in the first-name dictionary. Everything else that detectNames returns is a
+   * capitalised word it could not rule out, which is a very different claim.
+   *
+   * This distinction did not exist before, and its absence is what put "Client 25"
+   * in a signed note. detectNames is deliberately over-inclusive because it was
+   * written for a path that ADJUDICATES every hit. On the drafting path nothing
+   * adjudicates and nothing restores, so every colour, toy and piece of ABA
+   * terminology it caught became a numbered client, permanently.
+   */
+  function personEvidence(name, text) {
+    if (cueRole(name, text)) return true;
+    var s = scrub();
+    if (!s || !s.isFirstName) return false;
+    return String(name).split(/\s+/).some(function (w) { return s.isFirstName(w); });
   }
 
   // Shown in the notice banner after any scrub so clinicians build better habits.
@@ -172,31 +197,82 @@
     "(BT, BCBA, SLP, OT, etc.). Remember that client health information responsibility " +
     "sits with ALL providers at all times.";
 
-  // Pre-fill replacement defaults, numbering duplicates within a role
-  // (Client, Client 2). The clinician can edit any of them.
+  /* Two kinds of replacement, decided by evidence rather than by hope.
+   *
+   * A word with person-evidence gets a ROLE token (Client, Caregiver 2) and that
+   * token is what stays in the signed note. Unchanged, and deliberately so: the
+   * de-identification of actual people is the whole point of this pass.
+   *
+   * A word without it gets an OPAQUE token instead, and the page puts the
+   * original word back when the draft returns. The model never learns what the
+   * word was, and a wrong guess costs the note nothing.
+   *
+   * That second class is the maintainer's instruction on 2026-08-26, and it
+   * makes true a claim the code above the stopword list has been making since it
+   * was written: "over-scrubbing is safe, it round-trips back identically". That
+   * was true on the expert path, which restores. On this path nothing restored,
+   * so over-scrubbing was not safe at all, and the comment was quietly wrong for
+   * as long as it has been there.
+   *
+   * Shape is [[T1]] rather than a word: double brackets survive a JSON round trip,
+   * carry no meaning for the model to act on, and cannot collide by prefix the way
+   * "Client" collides with "Client 2".
+   */
   function defaultTokens(names, freeText) {
     var counts = {};
+    var opaque = 0;
     return names.map(function (name) {
+      if (!personEvidence(name, freeText)) {
+        opaque += 1;
+        return { roleKey: null, token: "[[T" + opaque + "]]", restore: true };
+      }
       var role = roleByKey(guessRole(name, freeText));
       counts[role.key] = (counts[role.key] || 0) + 1;
       var n = counts[role.key];
-      return { roleKey: role.key, token: n === 1 ? role.token : role.token + " " + n };
+      return {
+        roleKey: role.key,
+        token: n === 1 ? role.token : role.token + " " + n,
+        restore: false,
+      };
     });
   }
 
-  // selections: [{ name, replacement, cert }] -> { map, certified }. Longest names
-  // first so "John Smith" is replaced before "John".
-  function buildMap(selections) {
+  /* selections: [{ name, replacement, cert, restore }] -> { map, certified }.
+   * Longest names first so "John Smith" is replaced before "John".
+   *
+   * FRAGMENTS ARE DROPPED when `text` is supplied. detectNames returns "Paw
+   * Patrol" and also "Paw" and also "Patrol", because each is a capitalised word
+   * it could not rule out. Once the phrase is replaced the two fragments match
+   * nothing, but they still consumed a token apiece, which is most of how a note
+   * with six people in it reached "Client 25". Worse, a fragment that DOES occur
+   * on its own later gets a second, different token for the same word.
+   *
+   * So each name is tested against a copy of the text with every longer
+   * replacement already applied. A name that has nothing left to match is not a
+   * name, it is the inside of one.
+   */
+  function buildMap(selections, text) {
     var map = [];
     var certified = [];
     selections.forEach(function (s) {
       if (s.cert) { certified.push(s.name); return; }
       var rep = (s.replacement || "").trim();
       if (!rep) return;
-      map.push({ name: s.name, token: rep });
+      map.push({ name: s.name, token: rep, restore: !!s.restore });
     });
     map.sort(function (a, b) { return b.name.length - a.name.length; });
-    return { map: map, certified: certified };
+
+    if (typeof text !== "string" || !text) return { map: map, certified: certified };
+
+    var remaining = text;
+    var kept = [];
+    map.forEach(function (e) {
+      var after = applyMap(remaining, [e]);
+      if (after === remaining) return; // nothing of this name survives - it was a fragment
+      remaining = after;
+      kept.push(e);
+    });
+    return { map: kept, certified: certified };
   }
 
   function applyMap(text, map) {
@@ -205,9 +281,32 @@
     return s.applyScrub(text, map);
   }
 
+  /* Put the round-trippable words back.
+   *
+   * Only entries flagged `restore` are reversed, so a role token stays exactly
+   * where it is and no person's name re-enters a note. Walks objects and arrays
+   * because the model answers with the note's whole JSON shape.
+   *
+   * Call it on the PARSED answer and never on the raw text: the revision flow
+   * replays rawText verbatim to keep Anthropic's prefix cache warm, and a
+   * restored word there would change the prefix and cost full price every turn.
+   */
+  function restoreOutput(value, map) {
+    var s = scrub();
+    if (!s || !s.restoreDeep || !map || !map.length) return value;
+    var back = map.filter(function (e) { return e.restore; });
+    return back.length ? s.restoreDeep(value, back) : value;
+  }
+
+  // Only the substitutions that STAY in the note are worth telling a clinician
+  // about. A round-tripped word was never taken, so listing it would report a
+  // change that does not survive to the draft.
   function noticeText(map) {
     if (!map || !map.length) return "";
-    return map.map(function (e) { return e.name + " → " + e.token; }).join(", ");
+    return map
+      .filter(function (e) { return !e.restore; })
+      .map(function (e) { return e.name + " → " + e.token; })
+      .join(", ");
   }
 
   // Inert hook. If re-insertion is ever added, encrypt the map at rest here
@@ -367,8 +466,13 @@
 
       var defaults = defaultTokens(names, freeText);
       var built = buildMap(names.map(function (name, i) {
-        return { name: name, replacement: defaults[i].token, cert: false };
-      }));
+        return {
+          name: name,
+          replacement: defaults[i].token,
+          cert: false,
+          restore: defaults[i].restore,
+        };
+      }), freeText);
       var map = idMap.concat(built.map);
 
       // Report the bare scrubbed words (names only, no context) to the admin PII
@@ -567,6 +671,7 @@
     notPii: notPii,
     verifyOutput: verifyOutput,
     applyMap: applyMap,
+    restoreOutput: restoreOutput,
     noticeText: noticeText,
     persistMap: persistMap,
     installPHIHighlight: installPHIHighlight,
@@ -574,5 +679,7 @@
     _detect: detect,
     _buildMap: buildMap,
     _guessRole: guessRole,
+    _defaultTokens: defaultTokens,
+    _personEvidence: personEvidence,
   };
 })();
