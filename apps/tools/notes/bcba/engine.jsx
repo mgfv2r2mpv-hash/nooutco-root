@@ -718,7 +718,7 @@ function ExpertNotes({ expert, section }) {
    it claims that nobody watched happen, then offers the replacement. That is
    why the quote is drawn rather than summarised: "you wrote X" is checkable
    where "watch your mentalism" is advice.
-   
+
    `keep` findings are drawn too. A sentence the expert looked at and passed is
    information - it means the reading covered it - and hiding them would make a
    thorough pass look like a thin one. */
@@ -777,7 +777,7 @@ function TermFinding({ finding }) {
    it resolved, the sentences it read as claims, and its whole-note asks. It
    sits above the grid for the same reason NoteHints does - filing a whole-note
    finding under the nearest heading puts it somewhere it is not about.
-   
+
    IT ALSO DRAWS ITS OWN FAILURES, which is the difference between a second
    opinion and a decoration. A pass that was asked for and did not arrive says
    so, because an empty panel and a broken call look identical from the outside
@@ -1026,10 +1026,20 @@ function App() {
   // entries themselves: each substituted word is a button that certifies it as
   // not-PII for next time, which is where the deleted dialog's "not PII" checkbox
   // went. noticeText() is still exported for callers that only want the sentence.
+  /* The map, in a ref as well as in state.
+
+     finalize() needs it to put the round-trippable words back, and finalize()
+     runs inside the same async turn that scrubGate() started. State set by
+     patchS() is not visible to that closure until the next render, so reading
+     S.scrubMap there would restore against the PREVIOUS note's map, or against
+     an empty one on the first draft. The ref is what the model answer is
+     measured against; the state copy stays because the notice renders from it. */
+  const scrubMapRef = React.useRef([]);
   const scrubGate = async (freeText) => {
     if (!(await NotesScrub.acknowledge())) return null;
     const review = await NotesScrub.review({ freeText });
     if (review.cancelled) return null;
+    scrubMapRef.current = review.map;
     patchS({ scrubMap: review.map, certified: [] });
     return review;
   };
@@ -1104,7 +1114,7 @@ function App() {
       : { system: (tool.triageSystem || TRIAGE_SYSTEM) + TRIAGE_READINESS };
 
   /* EVERY DRAFT PASSES THROUGH HERE BEFORE ANYONE SEES IT.
-     
+
      A note records what was done, never what was not done. That has been in the
      prompt in three separate places since 2026-08-15 and a note still came back
      saying "no recent session information was provided for comparison", so the
@@ -1114,7 +1124,15 @@ function App() {
      It fails OPEN. If absence.js did not load, a note without the strip is worth
      more than no note, and the counts go out as zero rather than as a lie. */
   const finalize = (parsed) => {
-    const normalized = tool.normalizeOutput(parsed);
+    /* RESTORE FIRST, before normalising and before the absence strip reads a
+       word of it. A word with no evidence of being a person went out as an
+       opaque token, and this is where it comes back. Doing it here rather than
+       at the call site is deliberate: this function already claims every draft
+       passes through it, so nothing can reach a clinician having skipped it.
+
+       Role tokens are NOT touched. Client stays Client. */
+    const restored = NotesScrub.restoreOutput(parsed, scrubMapRef.current);
+    const normalized = tool.normalizeOutput(restored);
     return window.NoteAbsence
       ? window.NoteAbsence.scrubNote(normalized)
       : { output: normalized, cut: 0, flagged: 0 };
@@ -1338,7 +1356,10 @@ function App() {
       expectKeys: ["sufficient", "questions"],
       responseSchema: TRIAGE_SCHEMA,
     });
-    const parsed = r.parsed || {};
+    // The clinician reads these, so they get the same restore the draft gets.
+    // An opaque token in a gap question is worse than useless: it asks about a
+    // word the person cannot see.
+    const parsed = NotesScrub.restoreOutput(r.parsed || {}, scrubMapRef.current);
     const questions = Array.isArray(parsed.questions) ? parsed.questions : [];
     return {
       questions: parsed.sufficient ? [] : questions.filter((q) => q && q.question).slice(0, 3),
@@ -1527,7 +1548,12 @@ function App() {
         const expertIntake = intakeBody(scrubbedValues) +
           (extra && extra.trim() ? "\n\n[ANSWERED FOLLOW-UP QUESTIONS]\n" + extra.trim() : "");
         NotesGate.expertPass({ tool: tool.id, intake: expertIntake, sections: expertSections })
-          .then((found) => {
+          .then((raw) => {
+            /* The expert quotes the clinician's own sentences back at them, so a
+               finding reading "you wrote '[[T4]] clinic'" names a word they
+               cannot see. Same restore as the draft, and role tokens are left
+               alone here too. */
+            const found = raw ? NotesScrub.restoreOutput(raw, scrubMapRef.current) : raw;
             patchS((s) => {
               if (!s.expert || s.expert.runId !== runId) return {};
               return { expert: found ? { status: "done", runId, ...found } : { status: "failed", runId } };
@@ -1819,11 +1845,16 @@ function App() {
         maxTokens: 2000,
         wantOpinions: true,
       });
+      /* TWO VERSIONS ON PURPOSE. The conversation keeps the model's own words,
+         tokens and all, because it is replayed verbatim on the next turn and a
+         restored word would both change the cached prefix and hand the model a
+         name it was never given. The clinician reads the restored one. */
       const advice = (r.text || "").trim();
       conversation.push({ role: "assistant", content: advice });
       patchS({ conversation, lastCallAt: Date.now(), annotation: null, error: "" });
       audit("recommendation", { requested: 1, scoped: section ? 1 : 0 });
-      pushThread("assistant", "answer", advice || "I do not have enough in this note to suggest anything.");
+      const adviceForReader = NotesScrub.restoreOutput(advice, scrubMapRef.current);
+      pushThread("assistant", "answer", adviceForReader || "I do not have enough in this note to suggest anything.");
     } catch (e) {
       patchS({ error: NotesGate.displayError(e) });
       pushThread("assistant", "status", "That didn't go through. " + NotesGate.displayError(e));
@@ -2741,13 +2772,17 @@ function App() {
             {NotesScrub.ACK_NOTICE}
           </div>
 
-          {S.scrubMap.length > 0 && (
+          {S.scrubMap.some((m) => !m.restore) && (
             <div style={{ margin: "0 0 16px", borderRadius: 10, border: "2px solid #c8962a", overflow: "hidden" }}>
               <div style={{ padding: "8px 14px", background: "#fdf3dc", color: "#5a3d00", fontSize: 12, lineHeight: 1.5 }}>
                 <strong>Removed before this left your device</strong>{" "}
                 <span style={{ color: "#7a6020" }}>- substitute back in your EHR.</span>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 7 }}>
-                  {S.scrubMap.map((m) => {
+                  {/* Round-tripped words are not listed. The banner tells a
+                      clinician what to substitute back in their EHR, and a word
+                      that comes back on its own needs no substituting: listing it
+                      would send them looking for a change that is not there. */}
+                  {S.scrubMap.filter((m) => !m.restore).map((m) => {
                     const done = (S.certified || []).includes(m.name);
                     return (
                       <span key={m.name} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#fff", border: "1px solid #e0cb9a", borderRadius: 999, padding: "3px 4px 3px 10px", fontSize: 12 }}>
@@ -2846,7 +2881,7 @@ function App() {
 
         {/* Output */}
         {S.output && (
-          <div style={{ ...card, marginBottom: 20 }}>
+          <div style={{ ...card, marginBottom: 20 }} data-testid="generated-note">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <h2 style={{ fontSize: 17, fontWeight: 700, color: "#2d3a1f" }}>{tool.outputTitle || "Generated Note"}</h2>
               {/* Copy All is per-tool. Some EHR forms take one field at a time,

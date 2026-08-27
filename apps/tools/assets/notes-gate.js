@@ -824,10 +824,19 @@
 
   /* ───────────────────────── Scrub ───────────────────────── */
 
-  // Words that are Title-Case but are not person names. Over-scrubbing is safe
-  // (it round-trips back identically) but degrades the model's context, so we
-  // exclude the common offenders: roles, place-of-service, days, months, and
-  // frequent sentence-initial words.
+  /* Words that are Title-Case but are not person names.
+   *
+   * This comment used to say over-scrubbing was safe because it round-trips back
+   * identically. That held on the expert path and was false on the drafting path,
+   * which never restored, and the gap is what put "Client 25" where a clinician
+   * had written "Red". It is true again now: a word with no person-evidence
+   * leaves as an opaque token and NotesScrub.restoreOutput() puts it back. So
+   * this list is an optimisation for the model's context, not the thing standing
+   * between a colour and a signed note.
+   *
+   * Excludes the common offenders: roles, place-of-service, days, months, and
+   * frequent sentence-initial words.
+   */
   var STOPWORDS = {};
   ("Monday Tuesday Wednesday Thursday Friday Saturday Sunday " +
    "January February March April May June July August September October November December " +
@@ -1502,11 +1511,20 @@
     return result;
   }
 
-  // Recursively replace tokens back with the original names in any string value.
+  /* Recursively replace tokens back with the original names in any string value.
+   *
+   * LONGEST TOKEN FIRST, and that ordering is load-bearing. The role tokens are
+   * "Client", "Client 2" ... "Client 12", so "Client" is a prefix of every other
+   * one. Restoring in map order reaches "Client" first, rewrites the "Client"
+   * inside "Client 12", and leaves a stray "12" behind for a token that can now
+   * never match. Sorting by token length descending is the whole fix, and it is
+   * why this is not simply a loop over the map.
+   */
   function restoreDeep(value, map) {
     if (typeof value === "string") {
       var s = value;
-      map.forEach(function (e) { s = s.split(e.token).join(e.name); });
+      var ordered = map.slice().sort(function (a, b) { return b.token.length - a.token.length; });
+      ordered.forEach(function (e) { s = s.split(e.token).join(e.name); });
       return s;
     }
     if (Array.isArray(value)) return value.map(function (v) { return restoreDeep(v, map); });
