@@ -299,9 +299,13 @@ test.describe('what the bench draws', () => {
  * screenshot said it immediately. So the measurement becomes a test.
  *
  * Two numbers, and they pull against each other: the nav must wrap on a phone
- * and must NOT wrap on a desktop, where 740px of page holds six labels only
- * because the sixth one is a single word. */
-test.describe('the nav still fits after a sixth tab', () => {
+ * and must NOT wrap on a desktop, where 700px of nav holds seven labels only
+ * because three of them were shortened to buy the room. Knowledge was the tab
+ * that forced that: at the old labels the row measured 769px in Verdana inside
+ * a 700px nav, and PII, Non-PII and Profiles brought it to 629 with 71px
+ * spare. Nothing about the padding or the font size changed, which is why the
+ * row still looks the way it did. */
+test.describe('the nav still fits after a seventh tab', () => {
   for (const width of [320, 390, 430, 768, 1280]) {
     test(`no horizontal scroll at ${width}`, async ({ page }) => {
       await page.addInitScript(([key, tok]) => localStorage.setItem(key, tok), [TOKEN_KEY, adminToken()]);
@@ -359,7 +363,7 @@ test.describe('the nav still fits after a sixth tab', () => {
     const m = await measureNav(page, WIDE_STACK);
     expect(
       m.rows,
-      `six tabs wrapped to ${m.rows} rows in ${m.font}: they measure ${m.tabsWidth}px inside a ${m.navWidth}px nav, ${-m.margin}px too wide`
+      `seven tabs wrapped to ${m.rows} rows in ${m.font}: they measure ${m.tabsWidth}px inside a ${m.navWidth}px nav, ${-m.margin}px too wide`
     ).toBe(1);
     // A pass with no room left is the failure this test was rewritten to stop
     // shipping, so it has to be a pass with room in it.
@@ -373,7 +377,7 @@ test.describe('the nav still fits after a sixth tab', () => {
     await page.evaluate(() => document.fonts.ready);
 
     const m = await measureNav(page, null);
-    expect(m.rows, `six tabs wrapped to ${m.rows} rows in this platform's own ${m.font}`).toBe(1);
+    expect(m.rows, `seven tabs wrapped to ${m.rows} rows in this platform's own ${m.font}`).toBe(1);
     expect(m.margin, `only ${m.margin}px spare in ${m.font}`).toBeGreaterThan(20);
   });
 

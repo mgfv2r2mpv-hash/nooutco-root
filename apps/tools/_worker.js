@@ -24,7 +24,9 @@ const LEGACY_PREFIXES = [
 ];
 
 export default {
-  async fetch(request, env) {
+  // ctx only so the knowledge fetch log can be written after the response goes
+  // out. Nothing a clinician waits on depends on it.
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     // Bot Fight Mode (cannot be disabled on this plan) challenges every non-static
@@ -50,13 +52,20 @@ export default {
     // The expert pass: reads a scrubbed intake and returns findings. It never
     // writes a note, and its response schema is fixed in the Worker.
     if (url.pathname === "/api/expert-pass" && request.method === "POST") {
-      return handleExpertPass(request, env);
+      return handleExpertPass(request, env, ctx);
     }
 
     // The oracle: keep talking to the expert about a pass it already returned.
     // Admin only, and it never writes a note either.
     if (url.pathname === "/api/expert-chat" && request.method === "POST") {
       return handleExpertChat(request, env);
+    }
+
+    // Research: the expert reads a fixed list of sources before it answers.
+    // Admin only, a larger model than everything else here, and it writes
+    // nothing - the report is something he argues with, not a rule.
+    if (url.pathname === "/api/expert-research" && request.method === "POST") {
+      return handleExpertResearch(request, env);
     }
 
     // The knowledge store, for the console on the admin page. Admin only, and
@@ -704,13 +713,31 @@ export function expertPassRequest(body) {
    second copy here would be a second place to keep in step. Compare the hint
    schema in note-tools-util.js, where the descriptions carry the meaning
    because BT's prompt is server-side and the schema is the only channel left. */
-export function expertSchema(sections) {
+export function expertSchema(sections, withLookup) {
   const list = Array.isArray(sections) ? sections : [];
+  /* `used` exists ONLY when the lookup tool is on the call, and that is the
+     point: with no topic records in force there is no tool, no lookup and no
+     field, so the schema the five note tools have been getting is unchanged to
+     the byte. When the tool is on, the field is required, because a model that
+     may omit it turns "changed nothing" and "did not answer" into the same
+     silence - and that silence is what elevation would have to read. */
+  const used = withLookup
+    ? {
+        used: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Ids from knowledge_lookup whose text actually changed what you wrote above. " +
+            "Not everything you fetched. Empty is a real answer.",
+        },
+      }
+    : null;
   return {
     type: "object",
     additionalProperties: false,
-    required: ["terms", "register", "hints"],
+    required: used ? ["terms", "register", "hints", "used"] : ["terms", "register", "hints"],
     properties: {
+      ...(used || {}),
       terms: {
         type: "array",
         items: {
@@ -797,10 +824,14 @@ export function expertFindings(apiResponse) {
   const terms = Array.isArray(parsed.terms) ? parsed.terms : [];
   const register = Array.isArray(parsed.register) ? parsed.register : [];
   const ordered = orderExpertHints(parsed.hints);
-  return { terms, register, hints: ordered.hints, hintsDropped: ordered.dropped };
+  // `used` only exists when the lookup tool was on the call. Absent stays
+  // absent rather than becoming [], because "did not measure" and "measured,
+  // nothing moved" are different answers to the elevation question.
+  const used = Array.isArray(parsed.used) ? parsed.used.filter((u) => typeof u === "string") : undefined;
+  return { terms, register, hints: ordered.hints, hintsDropped: ordered.dropped, ...(used ? { used } : {}) };
 }
 
-async function handleExpertPass(request, env) {
+async function handleExpertPass(request, env, ctx) {
   try {
     const secret = (env.ADMIN_SECRET ?? "").trim();
     const auth = request.headers.get("Authorization") || "";
@@ -847,22 +878,63 @@ async function handleExpertPass(request, env) {
        characters of glossary and lexicon and it is identical on every call, so
        recomputing it per note would be the largest avoidable cost in the
        feature. */
-    const api = await callAnthropicConversation(
+    /* The lookup tool rides along only when this tool's composition actually
+       has topic records in force. No store, no records, no tool: the call is
+       byte-for-byte the one the five note tools make today, which is what makes
+       this safe to ship before the database exists. */
+    const hasTopics = Boolean(composed.composed && composed.composed.topic > 0);
+    const turn = await runExpertTurn({
       apiKey,
       system,
-      [{ role: "user", content: parsed.intake }],
-      EXPERT_MODEL,
-      EXPERT_MAX_TOKENS,
-      { format: { type: "json_schema", schema: expertSchema(parsed.sections) } }
-    );
+      messages: [{ role: "user", content: parsed.intake }],
+      model: EXPERT_MODEL,
+      maxTokens: EXPERT_MAX_TOKENS,
+      outputConfig: { format: { type: "json_schema", schema: expertSchema(parsed.sections, hasTopics) } },
+      lookup: hasTopics ? { env } : null,
+    });
+    const api = turn.api;
 
     const findings = expertFindings(api);
     if (!findings) {
       return jsonRes(502, { error: "The expert returned something this pass could not read. Nothing was applied." });
     }
+
+    /* The evidence for a promotion he will rule on later, written server-side
+       because the browser deliberately cannot reach this log at all. The
+       subject is keyed rather than digested, and the intake itself never
+       leaves this Worker. */
+    if (turn.calls.length) {
+      logKnowledgeFetches(
+        env,
+        ctx,
+        fetchLogEntries({
+          calls: turn.calls,
+          records: turn.records,
+          used: findings.used,
+          tool: parsed.tool,
+          subjectHash: await subjectHashFor(secret, parsed.intake),
+        })
+      );
+    }
+
     // usage rides along because "does the expert beat the catalog" is partly a
-    // question about what it costs. It carries no clinical text.
-    return jsonRes(200, { ...findings, usage: api.usage || null, model: EXPERT_MODEL });
+    // question about what it costs. It carries no clinical text. `knowledge`
+    // names the exact composition and the exact records that wrote this answer,
+    // which is the rollback story for committing straight to production.
+    // `used` is elevation bookkeeping, not a finding, so it rides under
+    // `knowledge` rather than beside the three lists the note tools render.
+    const { used: usedIds, ...forTheNote } = findings;
+    return jsonRes(200, {
+      ...forTheNote,
+      usage: api.usage || null,
+      model: EXPERT_MODEL,
+      knowledge: {
+        sha256: composed.sha256,
+        composed: composed.composed,
+        fetched: turn.records.map((r) => ({ id: r.id, version: r.version, title: r.title })),
+        used: Array.isArray(usedIds) ? usedIds : null,
+      },
+    });
   } catch (error) {
     // PRIVACY: the intake never reaches a log line here, exactly as on
     // /api/llm-call. Only the error message.
@@ -1081,13 +1153,22 @@ async function handleExpertChat(request, env) {
     /* No output_config, which is the difference from the pass. The pass has one
        shape and no caller gets another; this one has no shape at all, because
        the answer is an argument. */
-    const api = await callAnthropicConversation(
+    /* The oracle gets the lookup too, and here it matters more than on the
+       pass: this is where he argues with the expert about a topic, so "go and
+       read the record you were given" is half the conversation. No `used` list
+       and no log, because there is no structured answer to read one out of and
+       a bench conversation is not evidence about what a real note needed. */
+    const hasTopicsChat = Boolean(composedChat.composed && composedChat.composed.topic > 0);
+    const turn = await runExpertTurn({
       apiKey,
-      oracleSystem(stored, parsed.knowledge),
-      oracleTurns(parsed),
-      EXPERT_MODEL,
-      ORACLE_MAX_TOKENS
-    );
+      system: oracleSystem(stored, parsed.knowledge),
+      messages: oracleTurns(parsed),
+      model: EXPERT_MODEL,
+      maxTokens: ORACLE_MAX_TOKENS,
+      outputConfig: null,
+      lookup: hasTopicsChat ? { env } : null,
+    });
+    const api = turn.api;
 
     const reply = ((api && api.content) || [])
       .filter((b) => b && b.type === "text" && typeof b.text === "string")
@@ -1105,6 +1186,11 @@ async function handleExpertChat(request, env) {
       knowledgeInForce: parsed.knowledge || "",
       usage: (api && api.usage) || null,
       model: EXPERT_MODEL,
+      knowledge: {
+        sha256: composedChat.sha256,
+        composed: composedChat.composed,
+        fetched: turn.records.map((r) => ({ id: r.id, version: r.version, title: r.title })),
+      },
     });
   } catch (error) {
     // PRIVACY: no message text reaches a log line, exactly as on the pass.
@@ -1368,12 +1454,32 @@ function sanitizeOutputConfig(cfg) {
 // block and the last message's content block. Anthropic's servers keep the
 // computed prefix for 5 minutes (refreshed on each use) and bill cache reads at
 // ~0.1x input price, so replayed conversation history is not recomputed.
-async function callAnthropicConversation(apiKey, system, messages, model, maxTokens, outputConfig) {
-  const msgs = messages.map((m, i) =>
-    i === messages.length - 1
-      ? { role: m.role, content: [{ type: "text", text: m.content, cache_control: { type: "ephemeral" } }] }
-      : { role: m.role, content: m.content }
-  );
+async function callAnthropicConversation(apiKey, system, messages, model, maxTokens, outputConfig, tools) {
+  /* The cache breakpoint goes on the LAST message, wherever the turn has got
+     to. A lookup round appends two more messages, so the breakpoint moves and
+     the round before it becomes part of the cached prefix - which is the whole
+     reason a fetch costs one round trip rather than a re-read of the intake.
+
+     Content that is already an array (tool_use, tool_result) is passed through
+     rather than rebuilt. The five note tools only ever send strings, so their
+     path through here is unchanged. */
+  const msgs = messages.map((m, i) => {
+    /* The breakpoint goes on the last USER message only. A trailing assistant
+       message means one thing here: a paused server-tool turn being handed back
+       for the API to continue, and that has to go back exactly as it arrived -
+       its search results carry encrypted content the API decrypts, and a block
+       we decorated is a block we changed. Earlier turns are sent exactly as
+       they were before this parameter existed, string content and all, so the
+       five note tools' cached prefix is byte-identical to the one they have
+       been hitting. */
+    const last = i === messages.length - 1 && m.role === "user";
+    if (!last) return { role: m.role, content: m.content };
+    const blocks = Array.isArray(m.content) ? m.content.slice() : [{ type: "text", text: m.content }];
+    if (blocks.length) {
+      blocks[blocks.length - 1] = { ...blocks[blocks.length - 1], cache_control: { type: "ephemeral" } };
+    }
+    return { role: m.role, content: blocks };
+  });
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -1387,6 +1493,7 @@ async function callAnthropicConversation(apiKey, system, messages, model, maxTok
       system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
       messages: msgs,
       ...(outputConfig ? { output_config: outputConfig } : {}),
+      ...(tools && tools.length ? { tools } : {}),
     }),
   });
 
@@ -1812,6 +1919,508 @@ async function promptForExpert(env, forTool) {
     console.error("prompt-api unreachable", "expert", forTool, err && err.name);
     return null;
   }
+}
+
+/* ── Research: the expert goes and reads before it says anything ────────────
+ *
+ * THE GAP THIS CLOSES. The oracle argues from what the expert already knows,
+ * which is the right shape for calibrating a reading and the wrong shape for a
+ * question about what a payer's policy actually says today. Two of the five
+ * bodies this expert is meant to carry are exactly that sort of question.
+ *
+ * A DIFFERENT MODEL, ON PURPOSE. Everything else here is pinned to Haiku 4.5,
+ * because the question that phase asks is whether the KNOWLEDGE beats the hint
+ * catalog and a larger model would answer a flattering different one. This
+ * route is not that experiment. It reads sources and writes a report the
+ * maintainer will argue with, nothing it returns reaches a note, and Haiku 4.5
+ * cannot run the search tool at all. His ruling of 2026-08-30: Opus 5.
+ *
+ * IT SEARCHES A LIST HE APPROVED AND NOTHING ELSE. allowed_domains is the whole
+ * control. A research tool that can read anything is a research tool that
+ * launders a forum post into a rule that reaches every note, and the store has
+ * no way to tell one source from another once the rule is written.
+ *
+ * IT TAKES NO CLINICAL TEXT, and that is a harder line here than anywhere else
+ * on this Worker, because this is the one route whose input leaves the account:
+ * a search query is sent to a search engine. The question is authored by the
+ * maintainer about the field, never about a client.
+ */
+const RESEARCH_MODEL = "claude-opus-5";
+const RESEARCH_MAX_TOKENS = 8000;
+const MAX_RESEARCH_SEARCHES = 8;
+const MAX_RESEARCH_CHARS = 4000;
+const MAX_RESEARCH_TURNS = 8;
+/* A paused turn is the API saying the search is still running, not an error.
+   Continuing costs a round trip and nothing else, but an unbounded loop on it
+   would spend the account's money with nobody watching. */
+const MAX_RESEARCH_PAUSES = 4;
+
+/* HIS LIST, of 2026-08-30, and the grouping is his too.
+ *
+ * The AMA was offered and left unticked. JABA and Behavior Analysis in Practice
+ * are here already, through their publishers: JABA on Wiley, BAP on Springer.
+ * Bare domains with no scheme, which is what the tool takes. */
+export const RESEARCH_DOMAINS = Object.freeze([
+  // Payer medical policy
+  "aetna.com",
+  "uhcprovider.com",
+  "anthem.com",
+  "cigna.com",
+  "bcbs.com",
+  // Federal and state payer rules
+  "cms.gov",
+  "medicaid.gov",
+  "ecfr.gov",
+  // Professional bodies
+  "bacb.com",
+  "abainternational.org",
+  "apbahome.net",
+  // Peer-reviewed literature
+  "pubmed.ncbi.nlm.nih.gov",
+  "ncbi.nlm.nih.gov",
+  "pmc.ncbi.nlm.nih.gov",
+  "onlinelibrary.wiley.com",
+  "link.springer.com",
+]);
+
+const RESEARCH_SYSTEM = [
+  "You are researching for a board-certified behavior analyst who maintains the knowledge an expert reviewer runs on.",
+  "",
+  "What you write here does not reach a note. It reaches one person, who will argue with it and then decide whether any of it becomes a rule. So your job is to be checkable, not to be persuasive.",
+  "",
+  "YOU CAN ONLY READ A FIXED LIST OF SOURCES. Payer medical policy, federal and state payer rules, the professional bodies, and the peer-reviewed literature. You cannot reach anything else and you should not try. If the answer is not in those sources, say so plainly and say where it would live.",
+  "",
+  "SEARCH BEFORE YOU ANSWER. This is asked of you because the answer changes, or because it is written down somewhere specific. An answer from memory is the one thing this route exists to avoid.",
+  "",
+  "REPORT WHAT THE SOURCE SAYS, NOT WHAT YOU CONCLUDE FROM IT. Quote or paraphrase closely, name which payer or which body said it, and say when. Where two sources disagree, say that they disagree rather than picking one.",
+  "",
+  "SAY WHAT YOU COULD NOT ESTABLISH. A gap named is worth more here than a gap filled in, because the person reading this is deciding what to put in front of every note.",
+  "",
+  "DO NOT WRITE THE RULE. He writes the rule. Ending with your own recommendation buries the evidence under an opinion he did not ask for, and the whole point of this is that he can see what is underneath.",
+  "",
+  "Do not explain the field to him. He works in it. Tell him what the source says.",
+].join("\n");
+
+/* Pure. Validate the question. It leaves the account in a search query, so it
+   is checked here rather than trusted, and the check is exported so the shape
+   rules are read directly rather than inferred from a 400. */
+export function expertResearchRequest(body) {
+  const b = body || {};
+  const question = typeof b.question === "string" ? b.question.trim() : "";
+  if (!question) return { error: "Ask it something." };
+  if (question.length > MAX_RESEARCH_CHARS) return { error: "That question is longer than this route accepts." };
+
+  const raw = b.messages;
+  if (raw !== undefined && !Array.isArray(raw)) return { error: "messages must be an array." };
+  const list = Array.isArray(raw) ? raw : [];
+  if (list.length > MAX_RESEARCH_TURNS) return { error: "This conversation is longer than this route carries." };
+  const messages = [];
+  for (const m of list) {
+    if (!m || typeof m !== "object" || Array.isArray(m)) return { error: "Each turn must be an object." };
+    if (m.role !== "user" && m.role !== "assistant") return { error: "Each turn must be from the user or the assistant." };
+    /* PLAIN TEXT, DELIBERATELY, and it is worth saying why rather than leaving
+       it to look like a shortcut. Carrying a previous turn's search results
+       would mean round-tripping their encrypted_content through the browser
+       untouched, which is both a bigger payload and a thing a page could
+       corrupt into a 400. Sending the report instead means the model argues
+       from what it wrote down - which is all the maintainer has too, and is
+       the right constraint: if the report did not capture it, it is not
+       established. */
+    const content = typeof m.content === "string" ? m.content : "";
+    if (!content.trim()) return { error: "A turn with nothing in it cannot be sent." };
+    if (content.length > MAX_MESSAGE_CHARS) return { error: "A turn in this conversation is too long to send." };
+    messages.push({ role: m.role, content: content });
+  }
+  return { question, messages };
+}
+
+/* Pure. Every source the answer actually cited, deduped, in the order they were
+   first leaned on. NOT every page the search returned: a result the model read
+   and did not use is not a source, and listing it would make the report look
+   better evidenced than it is. */
+/* Pure. The answer, across the whole turn.
+ *
+ * A continuation carries on the SAME assistant turn rather than restarting it,
+ * so reading only the last response gives back a report with its opening
+ * missing - and on a long search, the opening is where it says what it went
+ * looking for. Joined with nothing between, because the model was mid-sentence
+ * when it paused. */
+export function researchReport(responses) {
+  const all = Array.isArray(responses) ? responses : [responses];
+  return all
+    .flatMap((r) => (r && Array.isArray(r.content) ? r.content : []))
+    .filter((b) => b && b.type === "text" && typeof b.text === "string")
+    .map((b) => b.text)
+    .join("")
+    .trim();
+}
+
+export function researchSources(responses) {
+  /* Takes one response or the whole turn. A long search comes back as
+     pause_turn and is continued, so the citations for a single question are
+     spread across several responses and only the last one is what the caller
+     ends up holding. Reading only that one drops everything the model found
+     before it paused, which on a long search is most of what it found. */
+  const all = Array.isArray(responses) ? responses : [responses];
+  const seen = new Map();
+  for (const block of all.flatMap((r) => (r && Array.isArray(r.content) ? r.content : []))) {
+    if (!block || block.type !== "text" || !Array.isArray(block.citations)) continue;
+    for (const c of block.citations) {
+      if (!c || c.type !== "web_search_result_location" || typeof c.url !== "string") continue;
+      if (seen.has(c.url)) continue;
+      seen.set(c.url, { url: c.url, title: typeof c.title === "string" ? c.title : c.url });
+    }
+  }
+  return Array.from(seen.values());
+}
+
+async function handleExpertResearch(request, env) {
+  try {
+    const secret = (env.ADMIN_SECRET ?? "").trim();
+    const auth = request.headers.get("Authorization") || "";
+    const token = auth.replace(/^Bearer\s+/i, "");
+    const payload = secret ? await readToken(token, secret) : null;
+    if (!payload) return jsonRes(401, { error: "Not logged in." });
+    // Before the body is read. This route spends real money per search and
+    // sends its question to a search engine, so it is the maintainer's alone.
+    if (payload.role !== "admin") return jsonRes(403, { error: "Research is admin only." });
+
+    const body = await request.json();
+    const parsed = expertResearchRequest(body);
+    if (parsed.error) return jsonRes(400, { error: parsed.error });
+
+    const apiKey = (env.ANTHROPIC_API_KEY ?? "").trim();
+    if (!apiKey) return jsonRes(503, { error: "Server API key is not configured." });
+
+    const tools = [
+      {
+        type: "web_search_20260209",
+        name: "web_search",
+        max_uses: MAX_RESEARCH_SEARCHES,
+        allowed_domains: RESEARCH_DOMAINS.slice(),
+      },
+    ];
+
+    /* The server-side loop. A long search turn comes back as pause_turn rather
+       than as an answer, and the way to continue it is to hand the paused
+       assistant message straight back untouched. Bounded, because this spends
+       money on every iteration and nobody is watching it do so.
+
+       WHAT IT CAN COST. max_uses is documented as a per-REQUEST cap, and a
+       continuation is a new request, so I do not know that the counter carries
+       across a pause. Read the ceiling as MAX_RESEARCH_SEARCHES per request
+       across at most MAX_RESEARCH_PAUSES + 1 requests rather than as eight
+       searches full stop. The number actually spent is summed below and
+       returned as `searches`, so the console reports the real figure rather
+       than the one this comment guesses at.
+
+       The system prompt keeps its cache breakpoint on every request. The
+       message-level one does not survive a pause, because the last message on a
+       continuation is the paused assistant turn and that has to go back exactly
+       as it arrived. Re-reading the conversation is the price of not touching
+       it. */
+    const convo = parsed.messages.concat([{ role: "user", content: parsed.question }]);
+    // Every response in this turn, because the searches and the citations are
+    // spread across all of them and only the last one carries the answer.
+    const responses = [];
+    let api = null;
+    let searches = 0;
+    for (let pause = 0; ; pause++) {
+      api = await callAnthropicConversation(
+        apiKey,
+        RESEARCH_SYSTEM,
+        convo,
+        RESEARCH_MODEL,
+        RESEARCH_MAX_TOKENS,
+        null,
+        tools
+      );
+      responses.push(api);
+      searches += ((api.usage || {}).server_tool_use || {}).web_search_requests || 0;
+      if (api.stop_reason !== "pause_turn" || pause >= MAX_RESEARCH_PAUSES) break;
+      // Unchanged, exactly as received. The API decrypts what it sent us.
+      convo.push({ role: "assistant", content: api.content });
+    }
+
+    const report = researchReport(responses);
+    if (!report) return jsonRes(502, { error: "The research turn came back with nothing this console could read." });
+
+    return jsonRes(200, {
+      report,
+      sources: researchSources(responses),
+      searches,
+      truncated: api.stop_reason === "max_tokens" || api.stop_reason === "pause_turn",
+      usage: (api && api.usage) || null,
+      model: RESEARCH_MODEL,
+      domains: RESEARCH_DOMAINS.length,
+    });
+  } catch (error) {
+    const m = error && error.message ? error.message : "unknown";
+    console.error("Expert research error:", m);
+    await notifyError(env, "expert-research", m);
+    return jsonRes(500, { error: error.message || "Internal server error" });
+  }
+}
+
+/* ── The lookup: how a topic record gets off the index and into the answer ──
+ *
+ * WHAT THE TIERING IS FOR. Core rules are always in the prompt. Topic records
+ * are not: the prompt carries one INDEX LINE each, and the body is fetched only
+ * when the expert decides this intake needs it. That is what keeps the prompt
+ * lean as the store grows, and it is why a commit no longer re-caches every
+ * record behind it.
+ *
+ * WITHOUT THIS, THE INDEX IS A LIST OF THINGS THE EXPERT CANNOT READ. So the
+ * fetch is a tool the model calls mid-turn, with ids it read from its own
+ * prompt.
+ *
+ * IT STILL HOLDS NO CLINICAL TEXT. The expert asks BY ID, never by subject, so
+ * the matching happens inside the model - which has already read the intake -
+ * and the store never learns what the note was about. The tool schema has no
+ * free-text field for exactly that reason: an id is the only thing it accepts.
+ *
+ * IT IS OFFERED ONLY WHEN THERE IS SOMETHING TO FETCH. No store, or a store
+ * with no topic records in force for this tool, means no tool on the call and
+ * no tokens spent describing one. Today that is every call, which is what makes
+ * this safe to ship before the database exists: the first topic record he
+ * commits is what turns it on.
+ */
+const KNOWLEDGE_TOOL_NAME = "knowledge_lookup";
+/* Two, and the reason is not arithmetic. One round covers "read the index,
+   fetch what this intake needs". A second covers "that record pointed at
+   another". A third is the expert browsing rather than answering, and every
+   round re-sends the whole turn. */
+const MAX_LOOKUP_ROUNDS = 2;
+const MAX_LOOKUP_IDS = 8;
+
+function knowledgeTool() {
+  return {
+    name: KNOWLEDGE_TOOL_NAME,
+    description:
+      "Read the full text of topic records listed in the KNOWLEDGE INDEX in your system prompt. " +
+      "Call this when the intake in front of you falls under one of those topics and the index line " +
+      "alone is not enough to act on. Ask only for ids you can see in the index, and only for the ones " +
+      "this intake actually needs - a record you fetch and do not use costs the clinician time and " +
+      "teaches this store the wrong lesson about what is worth promoting. " +
+      "Pass ids only. Never put anything the clinician wrote into this call.",
+    /* NOT `strict: true`, and that is deliberate rather than an omission.
+       Strict tool use rejects array constraints, so turning it on would mean
+       dropping maxItems - and the cap that actually matters is the one
+       expertLookupCalls applies to the ids before they reach the store, which
+       is enforced whatever the model sends. maxItems stays as the budget the
+       model is told about. */
+    input_schema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["ids"],
+      properties: {
+        ids: {
+          type: "array",
+          maxItems: MAX_LOOKUP_IDS,
+          items: { type: "string" },
+          description: "Record ids, copied from the KNOWLEDGE INDEX. Ids only, never a subject or a quote.",
+        },
+      },
+    },
+  };
+}
+
+/* Pure. What the model actually asked for, or an empty list. Exported so the
+   parsing is tested directly rather than inferred from a live call, which is
+   the same reason knowledgeOp is exported. */
+export function expertLookupCalls(api) {
+  const blocks = (api && Array.isArray(api.content) ? api.content : []).filter(
+    (b) => b && b.type === "tool_use" && b.name === KNOWLEDGE_TOOL_NAME
+  );
+  return blocks.map((b) => {
+    const raw = b.input && Array.isArray(b.input.ids) ? b.input.ids : [];
+    const ids = [];
+    for (const id of raw) {
+      // Same shape the store validates. Checked here too, because these reach a
+      // query string on a Worker that has no public URL and no auth of its own.
+      if (typeof id !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(id)) continue;
+      if (ids.indexOf(id) === -1) ids.push(id);
+      if (ids.length >= MAX_LOOKUP_IDS) break;
+    }
+    return { toolUseId: b.id, ids };
+  });
+}
+
+/* Pure, and the reason it is a function rather than three lines inside the loop
+   is that it is the loop's TERMINATION. Every continue here costs a full
+   re-send of the conversation to a paid API with nobody watching, so what makes
+   it stop has to be something a test can walk rather than something a reader
+   has to trace.
+
+   Three ways to stop and one way to go on:
+     done    the turn ended, or asked for nothing, or asked again after being
+             told the well was dry
+     refuse  the rounds are spent: answer the call, say so, and stop after
+     fetch   read the records and carry on */
+export function lookupRound({ round, told, stopReason, asked }) {
+  if (stopReason !== "tool_use") return "done";
+  if (told) return "done";
+  if (!Array.isArray(asked) || !asked.length) return "done";
+  return round >= MAX_LOOKUP_ROUNDS ? "refuse" : "fetch";
+}
+
+/* Pure. The tool_result blocks that answer one round.
+ *
+ * A record that is not in force comes back as a NAMED absence rather than as
+ * nothing, because an expert that asked for a retired rule has to be able to
+ * tell that from a store that is simply empty. Silence there would read as "no
+ * such rule exists", and the expert would answer from its own prior. */
+export function lookupResultBlocks(calls, records, exhausted) {
+  const byId = new Map((records || []).map((r) => [r.id, r]));
+  return calls.map((call) => {
+    if (exhausted) {
+      return {
+        type: "tool_result",
+        tool_use_id: call.toolUseId,
+        content: "No further lookups are available on this turn. Answer with what you already have.",
+      };
+    }
+    const parts = call.ids.map((id) => {
+      const r = byId.get(id);
+      if (!r) return `[${id}] is not in force. Do not treat that as a rule against it; it is simply not here.`;
+      const lines = [`[${r.id}] ${r.title}`, r.applies ? `Applies: ${r.applies}` : "", r.rule];
+      if (r.rationale) lines.push(`Why: ${r.rationale}`);
+      return lines.filter(Boolean).join("\n");
+    });
+    return {
+      type: "tool_result",
+      tool_use_id: call.toolUseId,
+      content: parts.length ? parts.join("\n\n") : "No well-formed ids were asked for.",
+    };
+  });
+}
+
+/* Pure. One row per record actually read, once, whatever the expert asked.
+ *
+ * DEDUPED, because a record asked for twice in one turn is one fetch. Counting
+ * it twice would let a single confused turn nominate a record for promotion
+ * into every note tool's prompt.
+ *
+ * A MISSING RECORD GETS NO ROW. There is nothing to elevate.
+ *
+ * answerMoved comes from the `used` list in the expert's own final answer: it
+ * fetched these, and it says which of them changed what it wrote. That is his
+ * ruling of 2026-08-30 - retrieved often AND the answer moved - and it costs
+ * one array rather than a second model call. Absent stays null rather than
+ * false, so "not measured" never counts as "did not move". */
+export function fetchLogEntries({ calls, records, used, tool, subjectHash }) {
+  const inForce = new Map((records || []).map((r) => [r.id, r]));
+  const moved = new Set(Array.isArray(used) ? used.filter((u) => typeof u === "string") : []);
+  const measured = Array.isArray(used);
+  const seen = new Set();
+  const entries = [];
+  for (const call of calls || []) {
+    for (const id of call.ids) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const rec = inForce.get(id);
+      if (!rec) continue;
+      entries.push({
+        recordId: id,
+        version: rec.version,
+        tool: tool || null,
+        subjectHash: subjectHash || null,
+        answerMoved: measured ? moved.has(id) : null,
+      });
+    }
+  }
+  return entries;
+}
+
+/* WHY THE SUBJECT IS AN HMAC AND NOT A DIGEST.
+ *
+ * The log needs a stable per-note identity so a future read can tell eight
+ * different notes from one note run eight times. A plain sha256 of the intake
+ * would do that, and would also let anyone holding both the log and a candidate
+ * intake confirm the match. Keying it removes that: same note, same value,
+ * and nobody without the key can test a guess.
+ *
+ * The cost is that rotating ADMIN_SECRET stops old and new rows matching each
+ * other. Nothing queries this column yet, and the degradation is graceful, so
+ * that is the cheaper side of the trade. */
+async function subjectHashFor(secret, intake) {
+  if (!secret || typeof intake !== "string" || !intake) return null;
+  const sig = await hmac(intake, secret);
+  return Array.from(sig, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function knowledgeRecordsFor(env, ids) {
+  if (!env.PROMPTS || !ids.length) return [];
+  try {
+    const res = await env.PROMPTS.fetch(
+      "https://prompts.internal/knowledge/records?ids=" + encodeURIComponent(ids.join(",")),
+      { signal: AbortSignal.timeout(PROMPT_TIMEOUT_MS) }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data.records) ? data.records : [];
+  } catch (err) {
+    // Ids only. Nothing a clinician typed reaches this call or this log line.
+    console.error("knowledge lookup unreachable", ids.length, err && err.name);
+    return [];
+  }
+}
+
+/* Fire and forget by design. The log is evidence for a promotion he will decide
+   on later, so it must never be the reason a clinician's pass fails or waits. */
+function logKnowledgeFetches(env, ctx, entries) {
+  if (!env.PROMPTS || !entries.length) return;
+  const work = env.PROMPTS.fetch("https://prompts.internal/knowledge/fetch-log", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ entries }),
+    signal: AbortSignal.timeout(PROMPT_TIMEOUT_MS),
+  }).catch((err) => console.error("knowledge fetch-log failed", err && err.name));
+  if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(work);
+}
+
+/* The expert's turn, lookups and all.
+ *
+ * Returns the final API response plus what was fetched, so the caller can log
+ * the evidence and, on the pass, hand the console the exact records that wrote
+ * the answer. With `lookup` null this is one call and nothing else, which is
+ * the path every note tool takes today. */
+async function runExpertTurn({ apiKey, system, messages, model, maxTokens, outputConfig, lookup }) {
+  const tools = lookup ? [knowledgeTool()] : null;
+  const convo = messages.slice();
+  const calls = [];
+  const records = [];
+  let api = null;
+  // Set once the model has been told the well is dry. If it asks again after
+  // that, the loop stops rather than answering "no further lookups" forever -
+  // every turn of that costs a full re-send of the conversation, and nothing is
+  // watching this spend.
+  let told = false;
+
+  for (let round = 0; ; round++) {
+    api = await callAnthropicConversation(apiKey, system, convo, model, maxTokens, outputConfig, tools);
+    if (!tools) break;
+
+    const asked = expertLookupCalls(api);
+    const next = lookupRound({ round, told, stopReason: api.stop_reason, asked });
+    if (next === "done") break;
+
+    // A refusal still ANSWERS. A tool_use left without a tool_result is a turn
+    // the model cannot finish, so the well being dry is something it is told
+    // rather than something it runs into.
+    const exhausted = next === "refuse";
+    if (exhausted) told = true;
+    const wanted = exhausted ? [] : asked.flatMap((c) => c.ids).filter((id, i, all) => all.indexOf(id) === i);
+    const found = await knowledgeRecordsFor(lookup.env, wanted);
+
+    calls.push(...asked);
+    for (const r of found) if (!records.some((x) => x.id === r.id)) records.push(r);
+
+    convo.push({ role: "assistant", content: api.content });
+    convo.push({ role: "user", content: lookupResultBlocks(asked, found, exhausted) });
+  }
+
+  return { api, calls, records };
 }
 
 /* THE BROWSER NEVER NAMES THE UPSTREAM PATH.

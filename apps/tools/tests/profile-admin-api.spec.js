@@ -120,9 +120,12 @@ test.describe('when the profile store is unreachable', () => {
 });
 
 test.describe('the admin page carries the tab', () => {
-  test('Style Profiles is present and its panel exists', async ({ page }) => {
+  test('the profiles tab is present and its panel exists', async ({ page }) => {
     await page.goto('/admin/');
-    await expect(page.locator('.tab-btn[data-tab="profiles"]')).toHaveText(/Style Profiles/);
+    // Shortened from "Style Profiles" when Knowledge became a seventh tab: the
+    // nav has to hold every tab on one row at desktop width, and three shorter
+    // labels bought that without touching the padding every tab shares.
+    await expect(page.locator('.tab-btn[data-tab="profiles"]')).toHaveText(/Profiles/);
     await expect(page.locator('#tab-profiles')).toHaveCount(1);
     await expect(page.locator('#profRoster')).toHaveCount(1);
   });

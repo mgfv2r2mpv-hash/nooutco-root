@@ -53,6 +53,9 @@
     .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
     .pill.on { background: #e3f0d3; color: #3f6121; }
     .pill.off { background: #f0e3e1; color: #9a4034; }
+    .pill.tier { background: #eef1e9; color: #4a5540; }
+    .kn-record { border: 1px solid var(--sage-light); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
+    .kn-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
     .err { color: var(--red); font-size: 13px; margin-top: 10px; display: none; }
     .ok  { color: #3f6121; font-size: 13px; margin-top: 10px; display: none; }
     .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
@@ -170,15 +173,16 @@
     <div id="adminUI" class="hidden">
       <nav class="tab-nav">
         <button class="tab-btn active" data-tab="passwords">Passwords</button>
-        <button class="tab-btn" data-tab="pii">PII Terms</button>
-        <button class="tab-btn" data-tab="nonpii">Non-PII Terms</button>
+        <button class="tab-btn" data-tab="pii">PII</button>
+        <button class="tab-btn" data-tab="nonpii">Non-PII</button>
         <button class="tab-btn" data-tab="alglab">Algorithm Lab</button>
         <!-- "Expert", not "Expert Pass". The longer word added ~35px to a nav
              that had no room for it. The tab sizing above is what actually buys
              the headroom now; this label stays short because six tabs is already
              the most this 700px nav should carry. -->
         <button class="tab-btn" data-tab="expert">Expert</button>
-        <button class="tab-btn" data-tab="profiles">Style Profiles</button>
+        <button class="tab-btn" data-tab="knowledge">Knowledge</button>
+        <button class="tab-btn" data-tab="profiles">Profiles</button>
       </nav>
 
       <!-- ── Passwords tab ── -->
@@ -420,6 +424,109 @@
           <div id="exCatalog"></div>
         </div>
       </div>
+
+      <div id="tab-knowledge" class="tab-panel">
+        <div class="card" id="knUnbound" style="display: none;">
+          <h2>The store is not bound on this deploy</h2>
+          <p class="muted" style="margin: 0;">The prompt Worker answers, but it has no knowledge database behind it, so there is nothing to read and nothing to write. The expert runs on its authored prompt exactly as it did before. Creating the database and binding it is a one-time change to the prompt Worker's own config.</p>
+        </div>
+
+        <div class="card">
+          <h2>Waiting on you</h2>
+          <p class="muted" style="margin: 0 0 12px;">Nothing here is in force. A rule reaches the expert when you approve it and not before, which is the whole reason a proposal is a separate thing from a record. Approving writes a version and takes effect on the next call, so read the rule as the expert will read it.</p>
+          <div id="knProposals"><span class="muted" style="font-size: 13px;">Loading...</span></div>
+        </div>
+
+        <div class="card">
+          <h2>Nominated for the core</h2>
+          <p class="muted" style="margin: 0 0 12px;">Topic records the expert reached for often <strong>and</strong> that changed what it wrote. Frequency alone nominates popular records that change nothing, so both halves have to be true. Promoting one moves its text into every call's prompt rather than leaving it behind an index line, which costs tokens on every note and is why this is a decision rather than a threshold.</p>
+          <div id="knCandidates"><span class="muted" style="font-size: 13px;">Loading...</span></div>
+        </div>
+
+        <div class="card">
+          <h2>In force</h2>
+          <p class="muted" style="margin: 0 0 12px;"><strong>Core</strong> rules are in the prompt on every call. <strong>Topic</strong> records are one index line each, and the expert fetches the body when the intake calls for it. Retiring writes a new version rather than deleting anything, so the argument stays readable after the conversation that produced it has gone.</p>
+          <div id="knRecords"><span class="muted" style="font-size: 13px;">Loading...</span></div>
+        </div>
+
+        <div class="card">
+          <h2>Send it to read</h2>
+          <p class="muted" style="margin: 0 0 12px;">It searches a fixed list you approved - payer medical policy, the federal and state rules, the professional bodies, and the peer-reviewed literature - and reports what those sources say, with the sources beside it. It runs on a larger model than the expert does, because the expert's model cannot search at all, and nothing it returns reaches a note.</p>
+          <p class="muted" style="margin: 0 0 12px;"><strong>It will not write the rule.</strong> Ending on its own recommendation buries the evidence under an opinion, and the point of this is that you can see what is underneath. <strong>Never ask it about a client.</strong> The question goes to a search engine.</p>
+          <div id="knResearchLog" style="margin-bottom: 14px;"></div>
+          <label for="knQuestion">Your question</label>
+          <textarea id="knQuestion" style="min-height: 80px;" placeholder="What does Aetna's medical policy require a note to establish for continued ABA authorisation?"></textarea>
+          <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center;">
+            <button id="knResearch" class="btn-primary">Go and read</button>
+            <button id="knResearchReset" class="btn-secondary" type="button">Start over</button>
+            <span id="knResearchBusy" class="muted hidden" style="font-size: 13px;">Reading...</span>
+            <span id="knResearchErr" class="err" style="margin: 0;"></span>
+          </div>
+          <p class="muted" id="knResearchUsage" style="margin: 12px 0 0; font-size: 12px;"></p>
+        </div>
+
+        <div class="card">
+          <h2>Write a rule</h2>
+          <p class="muted" style="margin: 0 0 12px;">This is the end of the loop that starts on the Expert tab: argue a case through until the missing rule can be said out loud, then write it here. Nothing you write reaches the expert until you approve it below.</p>
+          <p class="muted" style="margin: 0 0 12px;"><strong>Never paste anything a clinician wrote.</strong> No intake, no quote from a session, no caregiver report. A record carries authored knowledge and the store is built on that being true.</p>
+
+          <div class="add-grid" style="margin-bottom: 12px;">
+            <div>
+              <label for="knTier">Tier</label>
+              <select id="knTier" style="width: 100%; padding: 10px 12px; border: 1.5px solid var(--sage-light); border-radius: 8px; font-size: 14px; font-family: inherit;">
+                <option value="topic">Topic - fetched when it applies</option>
+                <option value="core">Core - in every prompt</option>
+              </select>
+            </div>
+            <div>
+              <label for="knScope">Applies to</label>
+              <select id="knScope" style="width: 100%; padding: 10px 12px; border: 1.5px solid var(--sage-light); border-radius: 8px; font-size: 14px; font-family: inherit;"></select>
+            </div>
+            <div>
+              <label for="knBody">Body of knowledge</label>
+              <input id="knBody" type="text" list="knBodies" placeholder="necessity" />
+              <datalist id="knBodies">
+                <option value="necessity"></option>
+                <option value="glossary"></option>
+                <option value="mentalism"></option>
+              </datalist>
+            </div>
+          </div>
+
+          <div class="add-grid" id="knTopicRow" style="margin-bottom: 12px;">
+            <div>
+              <label for="knTopic">Topic</label>
+              <input id="knTopic" type="text" placeholder="supervision" />
+            </div>
+            <div>
+              <label for="knApplies">When to fetch it</label>
+              <input id="knApplies" type="text" placeholder="when a supervisor attended the session" />
+            </div>
+          </div>
+          <p class="muted" id="knAppliesNote" style="margin: -4px 0 12px; font-size: 12px;">This line is the only thing the expert sees until it fetches the record, so it has to be enough to decide on. A record nothing can reach is worse than no record.</p>
+
+          <label for="knTitle">Title</label>
+          <input id="knTitle" type="text" placeholder="Name the supervision ratio" />
+
+          <label for="knRule" style="margin-top: 10px; display: block;">The rule</label>
+          <textarea id="knRule" style="min-height: 110px;" placeholder="Written as an instruction to the expert, in the words it will read."></textarea>
+
+          <label for="knRationale" style="margin-top: 10px; display: block;">Why (optional)</label>
+          <textarea id="knRationale" style="min-height: 80px;" placeholder="What goes wrong without it. This is what makes the rule arguable later."></textarea>
+
+          <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center;">
+            <button id="knPropose" class="btn-primary">Stage it for review</button>
+            <span id="knProposeErr" class="err" style="margin: 0;"></span>
+            <span id="knProposeOk" class="muted hidden" style="font-size: 13px;">Staged. It is waiting on you above.</span>
+          </div>
+        </div>
+
+        <div class="card hidden" id="knHistoryCard">
+          <h2 id="knHistoryTitle">History</h2>
+          <p class="muted" style="margin: 0 0 12px;">Every version, newest first, retirements included.</p>
+          <div id="knHistory"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Shared add-term modal (PII / Non-PII) -->
@@ -504,6 +611,9 @@
           // Style Profiles reads a separate Worker over a service binding, so
           // it loads when opened rather than on every admin page load.
           if (btn.dataset.tab === "profiles") loadRoster();
+          // Same reasoning: the knowledge store is a second Worker over a
+          // service binding, so it is read when the tab is opened.
+          if (btn.dataset.tab === "knowledge") loadKnowledge();
         });
       });
 
@@ -1403,8 +1513,345 @@
       var exToolSel = document.getElementById("exTool");
       if (exToolSel) exToolSel.addEventListener("change", renderExpertCatalog);
 
+      /* ── Knowledge tab ────────────────────────────────────────────────────
+       *
+       * The console is where a rule stops being a conversation and becomes
+       * something the expert reads on every note. It is also, on his ruling of
+       * 2026-08-30, where review happens: a commit goes straight to production
+       * and retiring is the rollback, so nothing here should be a press he can
+       * make without having read what he is approving.
+       *
+       * THE BROWSER NAMES AN OPERATION, NEVER A PATH. The store Worker has no
+       * public URL and no auth of its own, so the Worker in front owns the map
+       * from operation to path. Adding a call here means adding an operation
+       * there, on purpose.
+       */
+      function kn(op, method, body, query) {
+        var url = "/api/expert-knowledge?op=" + encodeURIComponent(op);
+        if (query) for (var k in query) if (query[k]) url += "&" + k + "=" + encodeURIComponent(query[k]);
+        return fetch(url, { method: method, headers: authHeader(), body: body ? JSON.stringify(body) : undefined })
+          .then(function (r) {
+            if (r.status === 401) { localStorage.removeItem(TOKEN_KEY); show(); throw new Error("Session expired."); }
+            return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ("Error " + r.status)); return d; });
+          });
+      }
+
+      var knCandidateRows = [];
+
+      function knScopeLabel(scope) { return scope === "shared" ? "every tool" : toolLabel(scope); }
+
+      /* The record as the expert meets it. Tier first, because tier is the
+         difference between a rule that costs tokens on every call and one that
+         costs nothing until it is needed. */
+      function knRecordHtml(r, actions) {
+        var head =
+          '<span class="pill tier">' + escapeHtml(r.tier) + "</span> " +
+          '<span class="pill tier">' + escapeHtml(knScopeLabel(r.scope)) + "</span> " +
+          (r.topic ? '<span class="pill tier">' + escapeHtml(r.topic) + "</span> " : "") +
+          '<span class="muted" style="font-size: 12px;">v' + (r.version || 1) + " &middot; " + escapeHtml(r.body || "") + "</span>";
+        return (
+          '<div class="kn-record">' +
+          '<div style="margin-bottom: 6px;">' + head + "</div>" +
+          "<strong>" + escapeHtml(r.title || "") + "</strong>" +
+          (r.applies ? '<p class="muted" style="margin: 4px 0 0; font-size: 12px;">Fetched ' + escapeHtml(r.applies) + "</p>" : "") +
+          '<p style="margin: 8px 0 0; white-space: pre-wrap;">' + escapeHtml(r.rule || "") + "</p>" +
+          (r.rationale ? '<p class="muted" style="margin: 8px 0 0; white-space: pre-wrap;">Why: ' + escapeHtml(r.rationale) + "</p>" : "") +
+          (actions || "") +
+          "</div>"
+        );
+      }
+
+      function loadKnowledge() {
+        var unbound = document.getElementById("knUnbound");
+        var proposals = document.getElementById("knProposals");
+        var candidates = document.getElementById("knCandidates");
+        var records = document.getElementById("knRecords");
+
+        function oops(el) { return function (ex) { el.innerHTML = '<span class="err" style="display:block;">' + escapeHtml(ex.message) + "</span>"; }; }
+
+        kn("list", "GET").then(function (d) {
+          // An unbound store and an empty one look identical in a list, and
+          // they are entirely different problems. Say which one this is.
+          unbound.style.display = d.knowledge === false ? "" : "none";
+          var rows = d.records || [];
+          if (!rows.length) {
+            records.innerHTML = '<span class="muted" style="font-size: 13px;">' +
+              (d.knowledge === false ? "No store on this deploy." : "Nothing in force. The expert is running on its authored prompt alone.") + "</span>";
+            return;
+          }
+          var core = rows.filter(function (r) { return r.tier === "core"; });
+          var topic = rows.filter(function (r) { return r.tier !== "core"; });
+          var section = function (label, list, note) {
+            if (!list.length) return "";
+            return "<h3>" + label + " <span class=\"muted\" style=\"font-weight: 400; font-size: 12px;\">" + note + "</span></h3>" +
+              list.map(function (r) {
+                return knRecordHtml(r,
+                  '<div class="kn-actions">' +
+                  '<button class="btn-secondary kn-history" data-id="' + escapeHtml(r.id) + '" type="button">History</button>' +
+                  '<button class="btn-danger kn-retire" data-id="' + escapeHtml(r.id) + '" data-title="' + escapeHtml(r.title || "") + '" type="button">Retire</button>' +
+                  "</div>");
+              }).join("");
+          };
+          records.innerHTML =
+            section("Core", core, "in the prompt on every call") +
+            section("Topic", topic, "one index line each, body fetched on demand");
+        }).catch(oops(records));
+
+        kn("proposals", "GET", null, { state: "staged" }).then(function (d) {
+          var rows = d.proposals || [];
+          if (!rows.length) {
+            proposals.innerHTML = '<span class="muted" style="font-size: 13px;">Nothing staged.</span>';
+            return;
+          }
+          proposals.innerHTML = rows.map(function (r) {
+            return knRecordHtml(r,
+              '<div class="kn-actions">' +
+              '<button class="btn-primary kn-commit" data-id="' + escapeHtml(r.proposalId) + '" type="button">Put it in force</button>' +
+              '<button class="btn-secondary kn-reject" data-id="' + escapeHtml(r.proposalId) + '" type="button">Reject</button>' +
+              (r.targetId ? '<span class="muted" style="font-size: 12px; align-self: center;">replaces ' + escapeHtml(r.targetId) + "</span>" : "") +
+              "</div>");
+          }).join("");
+        }).catch(oops(proposals));
+
+        kn("candidates", "GET").then(function (d) {
+          var rows = d.candidates || [];
+          knCandidateRows = rows;
+          if (!rows.length) {
+            candidates.innerHTML = '<span class="muted" style="font-size: 13px;">Nothing nominated. A topic record needs to be fetched often and to have changed the answer before it earns a place in every prompt.</span>';
+            return;
+          }
+          candidates.innerHTML = rows.map(function (r) {
+            return knRecordHtml(r,
+              '<p class="muted" style="margin: 8px 0 0; font-size: 12px;">Fetched ' + (r.fetches || 0) + " times, changed the answer " + (r.moved || 0) + " of them.</p>" +
+              '<div class="kn-actions">' +
+              '<button class="btn-secondary kn-elevate" data-id="' + escapeHtml(r.id) + '" type="button">Draft it as core</button>' +
+              "</div>");
+          }).join("");
+        }).catch(oops(candidates));
+      }
+
+      /* One handler for the whole tab rather than a listener per row, because
+         every list here is rebuilt from scratch after each press. */
+      var knPanel = document.getElementById("tab-knowledge");
+      if (knPanel) knPanel.addEventListener("click", function (e) {
+        var btn = e.target.closest ? e.target.closest("button") : null;
+        if (!btn) return;
+        var id = btn.dataset.id;
+
+        if (btn.classList.contains("kn-commit")) {
+          btn.disabled = true;
+          kn("commit", "POST", { proposalId: id }).then(loadKnowledge).catch(function (ex) { btn.disabled = false; alert(ex.message); });
+        } else if (btn.classList.contains("kn-reject")) {
+          btn.disabled = true;
+          kn("reject", "POST", { proposalId: id }).then(loadKnowledge).catch(function (ex) { btn.disabled = false; alert(ex.message); });
+        } else if (btn.classList.contains("kn-retire")) {
+          // The one press here that changes what every note reads, so it asks.
+          if (!confirm('Retire "' + (btn.dataset.title || id) + '"? The expert stops seeing it on the next call. Nothing is deleted.')) return;
+          btn.disabled = true;
+          kn("retire", "POST", { id: id }).then(loadKnowledge).catch(function (ex) { btn.disabled = false; alert(ex.message); });
+        } else if (btn.classList.contains("kn-history")) {
+          knShowHistory(id);
+        } else if (btn.classList.contains("kn-elevate")) {
+          knDraftAsCore(id);
+        }
+      });
+
+      function knShowHistory(id) {
+        var card = document.getElementById("knHistoryCard");
+        var out = document.getElementById("knHistory");
+        card.classList.remove("hidden");
+        document.getElementById("knHistoryTitle").textContent = "History of " + id;
+        out.innerHTML = '<span class="muted" style="font-size: 13px;">Loading...</span>';
+        card.scrollIntoView({ behavior: "smooth", block: "start" });
+        kn("history", "GET", null, { id: id }).then(function (d) {
+          var rows = d.versions || [];
+          out.innerHTML = rows.length
+            ? rows.map(function (r) {
+                return knRecordHtml(r,
+                  '<p class="muted" style="margin: 8px 0 0; font-size: 12px;">' +
+                  escapeHtml(r.status) + " &middot; " + fmtDateTime(r.createdAt) + (r.author ? " &middot; " + escapeHtml(r.author) : "") + "</p>");
+              }).join("")
+            : '<span class="muted" style="font-size: 13px;">No versions.</span>';
+        }).catch(function (ex) { out.innerHTML = '<span class="err" style="display:block;">' + escapeHtml(ex.message) + "</span>"; });
+      }
+
+      /* Promoting is a NEW PROPOSAL, not a press. The topic record keeps its
+         own line of versions, and the core rule that replaces it is a different
+         record with a different argument behind it - so it goes through the
+         same review as anything else he writes. */
+      function knDraftAsCore(id) {
+        // Drafted from the row already on the screen. Reading it back would
+        // mean a lookup operation the console can name, and the fewer paths
+        // into a Worker with no auth of its own, the better.
+        var r = null;
+        for (var i = 0; i < knCandidateRows.length; i++) if (knCandidateRows[i].id === id) r = knCandidateRows[i];
+        if (!r) return;
+        document.getElementById("knTier").value = "core";
+        document.getElementById("knScope").value = r.scope || "shared";
+        document.getElementById("knBody").value = r.body || "";
+        document.getElementById("knTitle").value = r.title || "";
+        document.getElementById("knRule").value = r.rule || "";
+        document.getElementById("knRationale").value =
+          "Promoted from topic record " + r.id + ", fetched " + (r.fetches || 0) + " times and changed the answer " +
+          (r.moved || 0) + " of them. Say here why it belongs in every prompt rather than behind an index line, " +
+          "because that is what costs tokens on notes that will never need it.";
+        knSyncTier();
+        document.getElementById("knTitle").scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+
+      // A core record must not carry a topic, so the fields it must not carry
+      // are not on the screen to be filled in.
+      function knSyncTier() {
+        var isTopic = document.getElementById("knTier").value === "topic";
+        document.getElementById("knTopicRow").style.display = isTopic ? "" : "none";
+        document.getElementById("knAppliesNote").style.display = isTopic ? "" : "none";
+      }
+
+      function knPropose() {
+        var err = document.getElementById("knProposeErr");
+        var okMsg = document.getElementById("knProposeOk");
+        var btn = document.getElementById("knPropose");
+        err.style.display = "none";
+        okMsg.classList.add("hidden");
+        var tier = document.getElementById("knTier").value;
+        var body = {
+          tier: tier,
+          scope: document.getElementById("knScope").value,
+          body: document.getElementById("knBody").value.trim(),
+          title: document.getElementById("knTitle").value.trim(),
+          rule: document.getElementById("knRule").value.trim(),
+          rationale: document.getElementById("knRationale").value.trim(),
+        };
+        if (tier === "topic") {
+          body.topic = document.getElementById("knTopic").value.trim();
+          body.applies = document.getElementById("knApplies").value.trim();
+        }
+        /* What this rule was written from, carried onto the record. A rule
+           whose sources are gone is a rule nobody can re-argue when a payer
+           changes its policy, which is the case this store exists for. */
+        if (knResearchSources.length) {
+          body.provenance = { sources: knResearchSources, researchedAt: Date.now() };
+        }
+        btn.disabled = true;
+        kn("propose", "POST", body).then(function () {
+          ["knTitle", "knRule", "knRationale", "knApplies"].forEach(function (f) { document.getElementById(f).value = ""; });
+          okMsg.classList.remove("hidden");
+          btn.disabled = false;
+          loadKnowledge();
+        }).catch(function (ex) {
+          btn.disabled = false;
+          // The store names the boundary that fired rather than handing back a
+          // 400 to guess at, so show it rather than a house message.
+          err.textContent = ex.message;
+          err.style.display = "block";
+        });
+      }
+
+      /* Research. The transcript is kept as plain text, deliberately: sending a
+         previous turn's search results back would mean round-tripping their
+         encrypted content through this page untouched, and the model arguing
+         from its own written report is the same constraint he is under. */
+      var knResearchTurns = [];
+      var knResearchSources = [];
+
+      function knRenderResearch() {
+        var log = document.getElementById("knResearchLog");
+        if (!knResearchTurns.length) { log.innerHTML = ""; return; }
+        log.innerHTML = knResearchTurns.map(function (t) {
+          if (t.role === "user") {
+            return '<div class="kn-record" style="background: var(--sage-pale, #f4f6f0);"><strong style="font-size: 13px;">You asked</strong>' +
+              '<p style="margin: 6px 0 0; white-space: pre-wrap;">' + escapeHtml(t.content) + "</p></div>";
+          }
+          var sources = (t.sources || []).map(function (sc) {
+            // Displayed to a human who is deciding what to trust, so the link is
+            // the source itself rather than a footnote number.
+            return '<li><a href="' + escapeHtml(sc.url) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(sc.title) + "</a></li>";
+          }).join("");
+          return '<div class="kn-record">' +
+            '<strong style="font-size: 13px;">It read ' + (t.searches || 0) + (t.searches === 1 ? " source" : " sources") + "</strong>" +
+            (t.truncated ? ' <span class="pill off">cut off</span>' : "") +
+            '<p style="margin: 8px 0 0; white-space: pre-wrap;">' + escapeHtml(t.content) + "</p>" +
+            (sources ? '<p class="muted" style="margin: 10px 0 4px; font-size: 12px;">What it cited</p><ul style="margin: 0; padding-left: 18px; font-size: 13px;">' + sources + "</ul>" : '<p class="muted" style="margin: 10px 0 0; font-size: 12px;">It cited nothing, so nothing here is sourced.</p>') +
+            "</div>";
+        }).join("");
+      }
+
+      function knDoResearch() {
+        var box = document.getElementById("knQuestion");
+        var err = document.getElementById("knResearchErr");
+        var busy = document.getElementById("knResearchBusy");
+        var usage = document.getElementById("knResearchUsage");
+        var btn = document.getElementById("knResearch");
+        var question = box.value.trim();
+        if (!question) return;
+        err.style.display = "none";
+        busy.classList.remove("hidden");
+        btn.disabled = true;
+
+        fetch("/api/expert-research", {
+          method: "POST",
+          headers: authHeader(),
+          body: JSON.stringify({
+            question: question,
+            messages: knResearchTurns.map(function (t) { return { role: t.role, content: t.content }; }),
+          }),
+        }).then(function (r) {
+          if (r.status === 401) { localStorage.removeItem(TOKEN_KEY); show(); throw new Error("Session expired."); }
+          return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ("Error " + r.status)); return d; });
+        }).then(function (d) {
+          knResearchTurns.push({ role: "user", content: question });
+          knResearchTurns.push({ role: "assistant", content: d.report, sources: d.sources || [], searches: d.searches || 0, truncated: !!d.truncated });
+          // Every turn that fed this, not only the last one. He asks two or
+          // three questions before a rule is worth writing, and then writes ONE
+          // rule off the whole exchange. Provenance that kept only the final
+          // turn's citations would credit that rule to the last thing it read.
+          (d.sources || []).forEach(function (sc) {
+            if (!knResearchSources.some(function (x) { return x.url === sc.url; })) knResearchSources.push(sc);
+          });
+          box.value = "";
+          knRenderResearch();
+          var u = d.usage || {};
+          usage.textContent = d.model + " - " + (d.searches || 0) + " searches across " + (d.domains || 0) +
+            " approved domains, " + (u.input_tokens || 0) + " in, " + (u.output_tokens || 0) + " out.";
+        }).catch(function (ex) {
+          err.textContent = ex.message;
+          err.style.display = "block";
+        }).then(function () {
+          busy.classList.add("hidden");
+          btn.disabled = false;
+        });
+      }
+
+      function knResetResearch() {
+        knResearchTurns = [];
+        knResearchSources = [];
+        document.getElementById("knQuestion").value = "";
+        document.getElementById("knResearchUsage").textContent = "";
+        document.getElementById("knResearchErr").style.display = "none";
+        knRenderResearch();
+      }
+
+      var knResearchBtn = document.getElementById("knResearch");
+      if (knResearchBtn) knResearchBtn.addEventListener("click", knDoResearch);
+      var knResearchResetBtn = document.getElementById("knResearchReset");
+      if (knResearchResetBtn) knResearchResetBtn.addEventListener("click", knResetResearch);
+
+      function renderKnScopeSelect() {
+        var sel = document.getElementById("knScope");
+        if (!sel) return;
+        sel.innerHTML = '<option value="shared">Every tool</option>' +
+          TOOLS.map(function (t) { return '<option value="' + t.id + '">' + escapeHtml(t.label) + " only</option>"; }).join("");
+      }
+
+      var knTierSel = document.getElementById("knTier");
+      if (knTierSel) knTierSel.addEventListener("change", knSyncTier);
+      var knProposeBtn = document.getElementById("knPropose");
+      if (knProposeBtn) knProposeBtn.addEventListener("click", knPropose);
+
       renderToolChecks();
       renderExpertToolSelect();
+      renderKnScopeSelect();
+      knSyncTier();
       show();
     })();
   </script>
