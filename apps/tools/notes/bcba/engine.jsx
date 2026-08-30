@@ -87,16 +87,24 @@ function expertEnabled(toolId) {
 }
 window.expertEnabled = expertEnabled;
 
-/* THE SECTION LIST COMES OUT OF THE RESPONSE SCHEMA, and the bench learned that
-   the hard way. The obvious source is formSections, and it is right for exactly
-   one tool: bt derives SECTION_IDS from it, and the others hardcode a list that
-   formSections does not match. A caller reading formSections would send the
-   wrong ids, every finding would come back filed under "note", and the expert
-   would look unable to tell one section from another.
+/* THE SECTION LIST COMES OUT OF THE RESPONSE SCHEMA. The obvious source is
+   formSections, and the reason not to read it is worth stating accurately,
+   because this comment stated it wrongly until 2026-08-30. It is NOT that the
+   two lists disagree: measured across all five tools at 6f38ff0d, four matched
+   exactly and sup matched as a set in a different order. It is that nothing
+   MAKES them agree. formSections is a render order the layout owns - his
+   2026-08-04 change moved Goals Analyzed to lead and SECTION_IDS was not moved
+   with it - while the schema enum is the contract the response is serialized
+   against. Agreement between them is maintained by hand, and a caller reading
+   the render order would send ids off the wrong structure the first time
+   somebody reordered a card.
 
    hintSchema builds the enum as SECTION_IDS.concat(["note"]) for every tool, so
    the schema is the one place they all agree. Returns null for a tool with no
    responseSchema, which is how a tool opts out: giving it a schema opts it in.
+   All five carry one since 2026-08-30, so the opt-out is currently unused - and
+   it is kept rather than removed because it is what makes adding a sixth tool a
+   one-file change.
 
    Kept byte-identical in intent to expertSections() in admin/index.html. The
    two are separate files with no module system between them, so the pin is

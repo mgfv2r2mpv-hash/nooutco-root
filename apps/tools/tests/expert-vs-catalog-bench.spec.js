@@ -25,6 +25,9 @@ const APP = join(__dirname, '..');
  *   2. The expert's section ids come out of responseSchema, never formSections.
  *      engine.jsx says so in a comment and the bench copies it. If a tool's
  *      schema changes shape, the bench sends ids the schema enum will reject.
+ *      The two sources agree today for all five tools, and that agreement is
+ *      maintained by hand rather than by anything structural, which is why it
+ *      is asserted below rather than assumed.
  *
  * The network is not exercised here on purpose. "Does production answer" is not
  * a claim a unit test can make honestly, and the bench itself is the thing that
@@ -70,15 +73,20 @@ test('the bench can load every tool config it offers', () => {
 });
 
 /* The tools the bench will actually run, stated as a fact rather than a hope.
-   A tool gaining a responseSchema is a real change in what the expert covers,
-   and it should break this line so somebody updates the bench's own list. */
-test('the expert runs for bt and sap, and for no other note tool', () => {
+   A tool gaining OR losing a responseSchema is a real change in what the expert
+   covers, and either direction should break this line.
+
+   It read ['bt', 'sap'] until 2026-08-30, when his instruction extended the
+   expert to sup, parent and assess. The assertion is written against the same
+   list the loop walks, so a tool dropping out breaks it just as loudly. */
+test('the expert runs for every note tool, not a subset of them', () => {
+  const all = ['bt', 'sap', 'sup', 'parent', 'assess'];
   const runs = [];
-  for (const id of ['bt', 'sap', 'sup', 'parent', 'assess']) {
+  for (const id of all) {
     const { tool, win } = loadTool(id);
     if (expertSectionIds(tool, win)) runs.push(id);
   }
-  expect(runs.sort()).toEqual(['bt', 'sap']);
+  expect(runs.sort()).toEqual([...all].sort());
 });
 
 test('section ids come from the schema enum and never include the whole-note id', () => {
@@ -92,13 +100,27 @@ test('section ids come from the schema enum and never include the whole-note id'
   expect(sections).toEqual(enumList.filter((s) => s !== 'note'));
 });
 
-test('formSections is NOT the section list, which is why the bench reads the schema', () => {
-  const { tool, win } = loadTool('sap');
-  const fromSchema = expertSectionIds(tool, win);
-  const fromForm = (tool.formSections || []).map((s) => (typeof s === 'string' ? s : s.id));
-  // If these ever coincide the comment in engine.jsx has stopped being true and
-  // this test should be re-read rather than deleted.
-  expect(fromSchema).not.toEqual(fromForm);
+/* THIS TEST USED TO ASSERT THE OPPOSITE, and it passed for a bad reason. It
+   read `s.id` off each formSection, and a formSection carries `key` or `group`
+   and never `id` - so it compared four real ids against four undefineds and
+   would have passed for any tool in the file, including one whose two lists
+   were identical. The claim it was defending is also false: measured across all
+   five tools at 6f38ff0d, four matched exactly and sup matched as a set in a
+   different order.
+
+   What is true, and worth a test, is the opposite. A tool states its sections
+   twice - once as a render order, once as the schema enum the response is
+   serialized against - and nothing but hand makes those agree. Where they
+   diverge, the expert files findings under ids the page cannot draw. The
+   every(Boolean) line is the guard that would have caught the original bug. */
+test('a tool states its sections twice, and the two statements must agree', () => {
+  for (const id of ['bt', 'sap', 'sup', 'parent', 'assess']) {
+    const { tool, win } = loadTool(id);
+    const fromForm = (tool.formSections || []).map((s) => s.key || s.group);
+    expect(fromForm.every(Boolean), `${id}: a formSection has neither key nor group`).toBe(true);
+    expect(expertSectionIds(tool, win), `${id} disagrees with itself about its own sections`)
+      .toEqual(fromForm);
+  }
 });
 
 /* The regression that actually happened. */

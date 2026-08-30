@@ -111,4 +111,47 @@ window.NoteToolsUtil = {
       },
     };
   },
+
+  /* The three keys engine.jsx's REVISION_RULES ask EVERY tool for, so a tool
+     with a strict schema has to declare them or the model cannot obey rules it
+     is still being sent. All three are optional: a first draft has nothing to
+     answer and nothing to route.
+
+     WHY THIS MATTERS MORE THAN IT LOOKS. `answer` is the key that stops a
+     question from being treated as an edit. Sending REVISION_RULES to a tool
+     whose schema omits it, under additionalProperties:false, does not make the
+     rule stop arriving - it makes "should this go in the summary?" come back as
+     a rewritten note, which is the exact fault the rule was written to prevent.
+
+     Shared rather than copied for the same reason hintSchema is: this shape
+     belongs to the engine's contract, not to any one tool, and three more
+     copies of it could not be kept in step by convention. */
+  revisionKeys: function (sectionIds) {
+    return {
+      // Something the clinician was unsure about clinically, phrased as a
+      // question for the supervising BCBA. Offered in the panel, never applied.
+      bcbaQuestion: { type: "string" },
+      // Non-empty means the message was a question. The engine shows this and
+      // leaves every section exactly as it stands.
+      answer: { type: "string" },
+      // Only meaningful on a revision turn whose instruction reached past the
+      // section that was clicked. `confident` is the whole decision: true
+      // applies the off-target change with an undo, false stops and asks.
+      crossSection: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["section", "confident", "why"],
+          properties: {
+            section: { type: "string", enum: sectionIds },
+            confident: { type: "boolean" },
+            // One short clause, shown to the clinician as the reason. Not a
+            // rationale for the note itself, so it never reaches the EHR.
+            why: { type: "string" },
+          },
+        },
+      },
+    };
+  },
 };
