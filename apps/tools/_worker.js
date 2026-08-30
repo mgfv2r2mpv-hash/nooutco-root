@@ -59,6 +59,12 @@ export default {
       return handleExpertChat(request, env);
     }
 
+    // The knowledge store, for the console on the admin page. Admin only, and
+    // the browser names an operation rather than an upstream path.
+    if (url.pathname === "/api/expert-knowledge") {
+      return handleExpertKnowledge(request, env);
+    }
+
     // Admin-only CRUD for managed access passwords (GET/POST/PATCH/DELETE)
     if (url.pathname === "/api/admin/passwords") {
       return handleAdminPasswords(request, env);
@@ -824,13 +830,14 @@ async function handleExpertPass(request, env) {
        are 503s and either one stops the call, but "the expert is unavailable"
        names the cause and "the key is not configured" would name a symptom the
        clinician can do nothing with. */
-    const system = await promptForTool(env, "expert");
-    if (!system) {
+    const composed = await promptForExpert(env, parsed.tool);
+    if (!composed) {
       await notifyError(env, "prompt-api", "no prompt available for key expert");
       return jsonRes(503, {
         error: "The expert is unavailable, so nothing was reviewed. Nothing was sent to the model.",
       });
     }
+    const system = composed.system;
 
     const apiKey = (env.ANTHROPIC_API_KEY ?? "").trim();
     if (!apiKey) return jsonRes(503, { error: "Server API key is not configured." });
@@ -1061,11 +1068,12 @@ async function handleExpertChat(request, env) {
     /* Fetched, never accepted, exactly as on the pass. The rule under test is
        appended to this and cannot replace it: a conversation run against an
        unknown expert would calibrate nothing, and would look like calibration. */
-    const stored = await promptForTool(env, "expert");
-    if (!stored) {
+    const composedChat = await promptForExpert(env, parsed.tool);
+    if (!composedChat) {
       await notifyError(env, "prompt-api", "no prompt available for key expert");
       return jsonRes(503, { error: "The expert is unavailable. Nothing was sent to the model." });
     }
+    const stored = composedChat.system;
 
     const apiKey = (env.ANTHROPIC_API_KEY ?? "").trim();
     if (!apiKey) return jsonRes(503, { error: "Server API key is not configured." });
@@ -1772,6 +1780,126 @@ async function promptForTool(env, key) {
     // The key is safe to log. Nothing a clinician typed reaches this call.
     console.error("prompt-api unreachable", key, err && err.name);
     return null;
+  }
+}
+
+/* The composed expert prompt.
+ *
+ * The expert is the only key whose prompt is built at request time, because it
+ * is the only one with a store behind it. `for` narrows the composition to the
+ * shared records plus this tool's, so a rule the maintainer wrote for
+ * supervision notes cannot reach a technician note.
+ *
+ * FAILS CLOSED like promptForTool, and for the same reason: a pass run against
+ * an unknown prompt returns findings that look exactly like real ones. It
+ * returns the composition detail as well as the text, so a draft can be traced
+ * back to the exact set of records that wrote it - which is the rollback story
+ * for committing straight to production.
+ */
+async function promptForExpert(env, forTool) {
+  if (!env.PROMPTS) return null;
+  try {
+    const res = await env.PROMPTS.fetch(
+      "https://prompts.internal/system?tool=expert&for=" + encodeURIComponent(forTool || ""),
+      { signal: AbortSignal.timeout(PROMPT_TIMEOUT_MS) }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (typeof data.system !== "string" || !data.system) return null;
+    return { system: data.system, sha256: data.sha256 || null, composed: data.composed || null };
+  } catch (err) {
+    // The tool id is safe to log. Nothing a clinician typed reaches this call.
+    console.error("prompt-api unreachable", "expert", forTool, err && err.name);
+    return null;
+  }
+}
+
+/* THE BROWSER NEVER NAMES THE UPSTREAM PATH.
+ *
+ * The console is a page, and a page that could choose which internal path this
+ * Worker fetches would be a hole straight into a Worker that has no public URL
+ * and does no auth of its own. So the console names an OPERATION, this map turns
+ * it into a path, and anything not in the map is a 400 rather than a fetch.
+ *
+ * /knowledge/fetch-log is deliberately absent. Elevation evidence decides which
+ * rules get promoted into every note tool's prompt, so a page that could post
+ * its own fetch records could manufacture a promotion. Only this Worker writes
+ * that log, server-side, during a real expert call.
+ */
+const KNOWLEDGE_OPS = {
+  list: { method: "GET", path: "/knowledge", params: [] },
+  proposals: { method: "GET", path: "/knowledge/proposals", params: ["state"] },
+  candidates: { method: "GET", path: "/knowledge/candidates", params: ["minFetches", "minMoved", "since"] },
+  history: { method: "GET", path: "/knowledge/history", params: ["id"] },
+  propose: { method: "POST", path: "/knowledge/propose" },
+  commit: { method: "POST", path: "/knowledge/commit" },
+  reject: { method: "POST", path: "/knowledge/reject" },
+  retire: { method: "POST", path: "/knowledge/retire" },
+};
+
+/* Pure, so the allowlist can be tested without a Worker. Returns the upstream
+   path to fetch, or an error naming what was wrong. */
+export function knowledgeOp(op, method, params) {
+  if (typeof op !== "string" || !Object.prototype.hasOwnProperty.call(KNOWLEDGE_OPS, op)) {
+    return { error: "Unknown knowledge operation." };
+  }
+  const spec = KNOWLEDGE_OPS[op];
+  if (spec.method !== method) return { error: `Operation ${op} is a ${spec.method}.` };
+  if (spec.method === "POST") return { path: spec.path };
+
+  const search = new URLSearchParams();
+  for (const key of spec.params) {
+    const v = params && typeof params.get === "function" ? params.get(key) : null;
+    // Bounded rather than trusted. These reach a query string on an internal
+    // Worker, and none of them is ever anything a clinician typed.
+    if (typeof v === "string" && v !== "" && v.length <= 64 && /^[A-Za-z0-9_-]+$/.test(v)) {
+      search.set(key, v);
+    }
+  }
+  const qs = search.toString();
+  return { path: spec.path + (qs ? "?" + qs : "") };
+}
+
+/* The console's only way to the store. Admin only, checked before the body is
+   read, exactly as the oracle does it. */
+async function handleExpertKnowledge(request, env) {
+  const secret = (env.ADMIN_SECRET ?? "").trim();
+  const auth = request.headers.get("Authorization") || "";
+  const token = auth.replace(/^Bearer\s+/i, "");
+  const payload = secret ? await readToken(token, secret) : null;
+  if (!payload || payload.role !== "admin") {
+    return jsonRes(403, { error: "The knowledge store is admin only." });
+  }
+  if (!env.PROMPTS) return jsonRes(503, { error: "The prompt store is not bound, so there is no knowledge to reach." });
+
+  const url = new URL(request.url);
+  const resolved = knowledgeOp(url.searchParams.get("op"), request.method, url.searchParams);
+  if (resolved.error) return jsonRes(400, { error: resolved.error });
+
+  const init = { method: request.method, signal: AbortSignal.timeout(PROMPT_TIMEOUT_MS) };
+  if (request.method === "POST") {
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return jsonRes(400, { error: "A JSON body is required." });
+    }
+    // Stamped here rather than taken from the page, so the record says who
+    // actually approved it rather than who the page claimed.
+    init.body = JSON.stringify({ ...body, author: payload.kid || "admin" });
+    init.headers = { "content-type": "application/json" };
+  }
+
+  try {
+    const res = await env.PROMPTS.fetch("https://prompts.internal" + resolved.path, init);
+    const text = await res.text();
+    return new Response(text, {
+      status: res.status,
+      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+    });
+  } catch (err) {
+    console.error("knowledge store unreachable", resolved.path, err && err.name);
+    return jsonRes(503, { error: "The knowledge store did not answer. Nothing was changed." });
   }
 }
 
