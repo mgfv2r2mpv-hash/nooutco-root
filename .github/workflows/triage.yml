@@ -41,19 +41,19 @@ jobs:
                   repo: context.repo.repo,
                   body: `## Issue Triage Required
 
-This issue needs categorization. Please provide:
-- **What is the impact?** (data loss risk, blocks usage, affects clinical accuracy, or other)
-- **Who is affected?** (clinical practitioners, app users, developers)
-- **Can you reproduce it?** (steps to reproduce if applicable)
+            This issue needs categorization. Please provide:
+            - **What is the impact?** (data loss risk, blocks usage, affects clinical accuracy, or other)
+            - **Who is affected?** (clinical practitioners, app users, developers)
+            - **Can you reproduce it?** (steps to reproduce if applicable)
 
-Once details are added, a GitHub Agent will categorize this issue with the appropriate priority label.
+            Once details are added, a GitHub Agent will categorize this issue with the appropriate priority label.
 
-Labels:
-- \`data-safety-critical\` - User data at risk
-- \`user-blocking\` - Feature is broken
-- \`aba-clinical-alignment\` - Affects clinical accuracy
-- \`bug\` - Unexpected behavior
-- \`enhancement\` - Feature request`
+            Labels:
+            - \`data-safety-critical\` - User data at risk
+            - \`user-blocking\` - Feature is broken
+            - \`aba-clinical-alignment\` - Affects clinical accuracy
+            - \`bug\` - Unexpected behavior
+            - \`enhancement\` - Feature request`
                 });
               }
             }
