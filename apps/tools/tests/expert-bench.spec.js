@@ -71,12 +71,13 @@ async function openBench(page, findings) {
 
 test.describe('the bench reads the live tool registry', () => {
   test('a tool is offered only when its section list can be read, never guessed', async ({ page }) => {
-    /* Not every note tool is here, and that is the correct answer rather than a
-       gap. Only bt and sap declare a responseSchema; sup, parent and assess are
-       still on the older unconstrained path and keep SECTION_IDS in a private
-       var. Offering one of those would mean inferring its sections, every hint
-       would come back filed under "note", and the expert would look unable to
-       tell sections apart. */
+    /* A tool is offered when its section list can be READ, never when it can be
+       guessed at. All five declare a responseSchema since 2026-08-30, so the
+       offered list is currently the whole registry - but the test compares the
+       page against the registry rather than against a count, so a tool losing
+       its schema drops out of both sides together instead of being inferred.
+       Offering a tool blind would mean every hint came back filed under "note",
+       and the expert would look unable to tell sections apart. */
     await openBench(page);
     const ids = await page.locator('#exTool option').evaluateAll((opts) => opts.map((o) => o.value));
     const readable = await page.evaluate(() =>
@@ -151,16 +152,20 @@ test.describe('the bench reads the live tool registry', () => {
     }
   });
 
-  test('formSections is the obvious wrong source, and taking it would have offered three tools blind', async ({ page }) => {
+  test('formSections is the obvious wrong source, and the page reads the schema instead', async ({ page }) => {
     /* The wrong turn, kept as a test so nobody takes it again. Every one of the
        five tools has formSections, so a bench reading it would have offered all
-       five and looked complete. But only bt derives SECTION_IDS from
-       formSections; sup, parent and assess each hardcode a different list, and
-       nothing on the page can check that. Those three would have been sent a
-       section list off the wrong structure, every hint would have come back
-       filed under "note", and the expert would have looked unable to tell one
-       section from another. Reading the schema means a tool is offered only
-       when its sections can be verified, so three are left out instead. */
+       five and looked complete. But formSections is a render order and
+       SECTION_IDS is the contract: only bt derives one from the other, and the
+       rest each keep a separate list nothing on the page could check. A tool
+       offered off the wrong structure gets sent the wrong ids, every hint comes
+       back filed under "note", and the expert looks unable to tell one section
+       from another.
+
+       All five carry a schema now, so no tool is currently left out - which
+       makes the two assertions below the whole point rather than a formality.
+       They say the offered list IS the readable list, in both directions, so a
+       tool losing its schema leaves the menu rather than being guessed at. */
     await openBench(page);
     const shape = await page.evaluate(() =>
       window.NOTE_TOOLS.map((t) => ({
@@ -170,12 +175,14 @@ test.describe('the bench reads the live tool registry', () => {
       }))
     );
     const blind = shape.filter((t) => t.hasForm && !t.hasSchema).map((t) => t.id);
-    expect(blind.length, 'every tool now carries a schema; if that is real, the bench can offer them all').toBeGreaterThan(0);
-
     const offered = await page.locator('#exTool option').evaluateAll((o) => o.map((x) => x.value));
     for (const id of blind) {
       expect(offered, `${id} has no verifiable section list and must not be offered`).not.toContain(id);
     }
+    expect(
+      [...offered].sort(),
+      'a tool whose section list can be read is not being offered',
+    ).toEqual(shape.filter((t) => t.hasSchema).map((t) => t.id).sort());
 
     /* And where both sources do exist they agree, which is what makes the
        schema safe to read rather than merely available. */

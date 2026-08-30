@@ -4,6 +4,8 @@
 (function () {
   var menu = window.NoteToolsUtil.menu;
   var normalizeHints = window.NoteToolsUtil.normalizeHints;
+  var hintSchema = window.NoteToolsUtil.hintSchema;
+  var revisionKeys = window.NoteToolsUtil.revisionKeys;
 
   // Canonical option lists - these labels are both the menu the AI may choose
   // from and the strings the output checklist renders. They match the EHR form.
@@ -51,6 +53,58 @@
     thin_section: "This section is thin relative to the form's expectations, add specifics if you have them",
     ambiguous_item: "Clarify",
     other: "",
+  };
+
+  /* ── Response schema ───────────────────────────────────────────────────
+     What the model is CONSTRAINED to, not merely asked for. JSON_FORMAT_BLOCK
+     below still describes the same shape and still reaches the logged-out
+     copy-prompt path, but for a served draft this is the enforcement.
+
+     IT IS ALSO WHAT TURNS THE EXPERT ON. expertSectionIds() in engine.jsx reads
+     its section enum and returns null for a tool that has no schema, so until
+     this existed the second reading never ran on this tool. His instruction,
+     2026-08-30: extend the expert to sup, parent and assess.
+
+     The enum comes from SECTION_IDS rather than formSections, which is the one
+     distinction the comparison bench had to learn the hard way. */
+
+  var str = { type: "string" };
+  var enumArray = function (values) {
+    return { type: "array", items: { type: "string", enum: values } };
+  };
+  // Single-selects allow "" for "the notes do not support a choice", so the
+  // model has an honest option other than picking one at random.
+  var enumOrBlank = function (values) {
+    return { type: "string", enum: values.concat([""]) };
+  };
+  var revision = revisionKeys(SECTION_IDS);
+
+  var RESPONSE_SCHEMA = {
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "individualsPresent", "supportActivities", "caregiverResponse",
+      "progressStatus", "summary", "followup", "hints",
+    ],
+    properties: {
+      individualsPresent: enumArray(INDIVIDUALS),
+      supportActivities: enumArray(SUPPORT_ACTIVITIES),
+      caregiverResponse: enumOrBlank(CAREGIVER_RESPONSES),
+      progressStatus: enumOrBlank(PROGRESS_OPTIONS),
+      summary: str,
+      followup: str,
+      // An empty array is the "note stands on its own" case, so hints is
+      // required as a key even though it is routinely empty. The shape is
+      // shared, so rank, kind and the whole-note section arrive here without
+      // this file restating any of them.
+      hints: hintSchema(HINT_CATALOG, SECTION_IDS),
+      // Optional, and shared: the engine sends REVISION_RULES on every turn of
+      // every tool, so a schema that omitted these would leave the model
+      // unable to obey rules it is still being told to follow.
+      bcbaQuestion: revision.bcbaQuestion,
+      answer: revision.answer,
+      crossSection: revision.crossSection,
+    },
   };
 
   // Shared prompt core: clinical role + voice + terminology + conservative checkbox inference.
@@ -121,6 +175,7 @@ TERMINOLOGY (non-negotiable)\n\
     groupOptions: GROUP_OPTIONS,
     formSections: FORM_SECTIONS,
     hintCatalog: HINT_CATALOG,
+    responseSchema: RESPONSE_SCHEMA,
     validate: function (values) {
       if (!(values.sessionNotes || "").trim()) return "Please enter your session notes.";
       return null;
