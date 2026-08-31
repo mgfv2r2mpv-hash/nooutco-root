@@ -715,12 +715,16 @@ export function expertPassRequest(body) {
    because BT's prompt is server-side and the schema is the only channel left. */
 export function expertSchema(sections, withLookup) {
   const list = Array.isArray(sections) ? sections : [];
-  /* `used` exists ONLY when the lookup tool is on the call, and that is the
-     point: with no topic records in force there is no tool, no lookup and no
-     field, so the schema the five note tools have been getting is unchanged to
-     the byte. When the tool is on, the field is required, because a model that
-     may omit it turns "changed nothing" and "did not answer" into the same
-     silence - and that silence is what elevation would have to read. */
+  /* `used` exists ONLY when the lookup tool is on the call. When the tool is
+     on, the field is REQUIRED, because a model that may omit it turns "changed
+     nothing" and "did not answer" into the same silence, and that silence is
+     what elevation would have to read.
+
+     The parameter survives although every caller now passes true. It was the
+     switch that kept the pass byte-identical to the five note tools before the
+     store existed; since the glossary split there is always something to look
+     up, so the tool is always on. Keeping the parameter keeps the two shapes
+     testable side by side, which is the only place the older one still runs. */
   const used = withLookup
     ? {
         used: {
@@ -874,23 +878,23 @@ async function handleExpertPass(request, env, ctx) {
     if (!apiKey) return jsonRes(503, { error: "Server API key is not configured." });
 
     /* The conversation path rather than the single-shot one, for the cache
-       breakpoint on the system block. This prompt is about seventeen thousand
-       characters of glossary and lexicon and it is identical on every call, so
-       recomputing it per note would be the largest avoidable cost in the
-       feature. */
-    /* The lookup tool rides along only when this tool's composition actually
-       has topic records in force. No store, no records, no tool: the call is
-       byte-for-byte the one the five note tools make today, which is what makes
-       this safe to ship before the database exists. */
-    const hasTopics = Boolean(composed.composed && composed.composed.topic > 0);
+       breakpoint on the system block. This prompt is thirteen or fourteen
+       thousand characters of glossary and lexicon, it is identical on every
+       call, and recomputing it per note would be the largest avoidable cost in
+       the feature. It was about seventeen thousand until the glossary split on
+       2026-08-30; the number is approximate here on purpose, because the store
+       composes rules into it and the exact figure moves with what he writes. */
+    /* Always true today, and passed the composition anyway so that what it
+       ignores is visible here. Why it ignores it is at expertLookupEnabled. */
+    const withLookup = expertLookupEnabled(composed.composed);
     const turn = await runExpertTurn({
       apiKey,
       system,
       messages: [{ role: "user", content: parsed.intake }],
       model: EXPERT_MODEL,
       maxTokens: EXPERT_MAX_TOKENS,
-      outputConfig: { format: { type: "json_schema", schema: expertSchema(parsed.sections, hasTopics) } },
-      lookup: hasTopics ? { env } : null,
+      outputConfig: { format: { type: "json_schema", schema: expertSchema(parsed.sections, withLookup) } },
+      lookup: withLookup ? { env } : null,
     });
     const api = turn.api;
 
@@ -1158,7 +1162,7 @@ async function handleExpertChat(request, env) {
        read the record you were given" is half the conversation. No `used` list
        and no log, because there is no structured answer to read one out of and
        a bench conversation is not evidence about what a real note needed. */
-    const hasTopicsChat = Boolean(composedChat.composed && composedChat.composed.topic > 0);
+    const withLookupChat = expertLookupEnabled(composedChat.composed);
     const turn = await runExpertTurn({
       apiKey,
       system: oracleSystem(stored, parsed.knowledge),
@@ -1166,7 +1170,7 @@ async function handleExpertChat(request, env) {
       model: EXPERT_MODEL,
       maxTokens: ORACLE_MAX_TOKENS,
       outputConfig: null,
-      lookup: hasTopicsChat ? { env } : null,
+      lookup: withLookupChat ? { env } : null,
     });
     const api = turn.api;
 
@@ -2193,15 +2197,43 @@ const KNOWLEDGE_TOOL_NAME = "knowledge_lookup";
 const MAX_LOOKUP_ROUNDS = 2;
 const MAX_LOOKUP_IDS = 8;
 
+/* Pure. Whether this call carries the lookup tool, and it takes the composition
+   so that the thing it deliberately IGNORES is visible at the call site.
+
+   IT IGNORES THE RECORD COUNT, AND THAT IS THE WHOLE POINT. Until 2026-08-30
+   this was `composed.topic > 0`: no topic records in force meant no tool, which
+   kept the call byte-identical to the one the five note tools were already
+   making and made the feature safe to ship before the database existed. The
+   glossary split ended that. 46 abbreviations came out of the expert prompt and
+   became records fetched by id, so there is something to look up on every call
+   whether or not he has ever written a rule - and a prompt that says "fetch
+   rather than infer" with no tool attached is worse than the prompt that came
+   before it, because those definitions used to simply be present.
+
+   Restoring the count check would not fail a build or an assertion anywhere
+   near itself. It would produce an expert that quietly guesses abbreviations
+   again, on an empty store, which is the state this store spends its first day
+   in. That is why this is a named function with a test rather than a `true`. */
+export function expertLookupEnabled(composed) {
+  return true;
+}
+
 function knowledgeTool() {
   return {
     name: KNOWLEDGE_TOOL_NAME,
     description:
-      "Read the full text of topic records listed in the KNOWLEDGE INDEX in your system prompt. " +
-      "Call this when the intake in front of you falls under one of those topics and the index line " +
-      "alone is not enough to act on. Ask only for ids you can see in the index, and only for the ones " +
-      "this intake actually needs - a record you fetch and do not use costs the clinician time and " +
-      "teaches this store the wrong lesson about what is worth promoting. " +
+      "Read the full text of records your system prompt lists but does not spell out. Two kinds are " +
+      "listed there. Topic records appear in the KNOWLEDGE INDEX: fetch one when the intake falls " +
+      "under that topic and the index line alone is not enough to act on. Glossary terms appear under " +
+      "MORE TERMS, ON REQUEST: fetch one whenever that abbreviation is in the intake and you are not " +
+      "certain of it, using the id gl_ followed by the abbreviation in lower case with any punctuation " +
+      "removed. Every abbreviation listed there really does resolve. " +
+      "Fetch rather than infer - an expansion guessed from surrounding words is the failure the " +
+      "glossary exists to prevent, and it is worse than an unresolved one because everything " +
+      "downstream believes it. " +
+      "Otherwise ask only for ids you can see, and only for the ones this intake actually needs: a " +
+      "topic record you fetch and do not use costs the clinician time and teaches this store the wrong " +
+      "lesson about what is worth promoting. " +
       "Pass ids only. Never put anything the clinician wrote into this call.",
     /* NOT `strict: true`, and that is deliberate rather than an omission.
        Strict tool use rejects array constraints, so turning it on would mean
@@ -2218,7 +2250,9 @@ function knowledgeTool() {
           type: "array",
           maxItems: MAX_LOOKUP_IDS,
           items: { type: "string" },
-          description: "Record ids, copied from the KNOWLEDGE INDEX. Ids only, never a subject or a quote.",
+          description:
+            "Ids, copied from the KNOWLEDGE INDEX or built from an abbreviation under MORE TERMS. " +
+            "Ids only, never a subject or a quote.",
         },
       },
     },
