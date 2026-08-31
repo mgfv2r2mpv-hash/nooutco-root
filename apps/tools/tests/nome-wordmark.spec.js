@@ -29,8 +29,16 @@ test('the collapsed pill reads Ask and then the mark, and the mark decoded', asy
   const mark = fab.locator('img.nome-mark');
   await expect(mark).toHaveAttribute('alt', 'NoMe');
 
-  const loaded = await mark.evaluate((el) => el.complete && el.naturalWidth > 0);
-  expect(loaded, 'the wordmark did not decode - check the path').toBe(true);
+  /* POLL, DO NOT READ ONCE. naturalWidth is 0 until the SVG has actually
+     decoded, and toHaveAttribute above only proves the element is in the DOM.
+     A single evaluate() reads whatever the value happens to be at that
+     instant and does not retry, so under a loaded machine this asserted
+     against an image that was still in flight. It failed twice in full runs
+     and passed every time in isolation, which is the signature. */
+  await expect
+    .poll(() => mark.evaluate((el) => el.complete && el.naturalWidth > 0),
+      { message: 'the wordmark did not decode - check the path' })
+    .toBe(true);
 });
 
 test('the open panel header carries the mark, where it is what gets read aloud', async ({ page }) => {
@@ -41,13 +49,26 @@ test('the open panel header carries the mark, where it is what gets read aloud',
   await expect(head).toContainText('Ask');
   const mark = head.locator('img.nome-mark');
   await expect(mark).toHaveAttribute('alt', 'NoMe');
-  expect(await mark.evaluate((el) => el.naturalWidth > 0)).toBe(true);
+  await expect.poll(() => mark.evaluate((el) => el.naturalWidth)).toBeGreaterThan(0);
 });
 
 test('the mark scales with its label rather than sitting at a fixed size', async ({ page }) => {
   await signedIn(page);
+
+  /* Wait for the image to decode before measuring it. An <img> that has not
+   * decoded yet lays out at zero width, and boundingBox() will hand that back
+   * without complaint, so the ratio below comes out 0 and the failure reads as
+   * "the mark lost its proportions" rather than "the mark was not there yet".
+   * Seen on webkit, which decodes later than the other two engines. The sibling
+   * test above already polls naturalWidth for exactly this reason; this one was
+   * measuring on trust. */
+  const decoded = (sel) =>
+    expect.poll(() => page.locator(sel).evaluate((el) => el.naturalWidth)).toBeGreaterThan(0);
+
+  await decoded('.revision-fab img.nome-mark');
   const pill = await page.locator('.revision-fab img.nome-mark').boundingBox();
   await page.locator('.revision-fab').click();
+  await decoded('.revision-panel-head img.nome-mark');
   const header = await page.locator('.revision-panel-head img.nome-mark').boundingBox();
 
   // The pill sets 14px, the header bar 13px. Different sizes prove the em
@@ -70,7 +91,7 @@ test('signed out the pill still reads Ask NoMe', async ({ page }) => {
   await expect(fab).toContainText('Ask');
   const mark = fab.locator('img.nome-mark');
   await expect(mark).toHaveCount(1);
-  expect(await mark.evaluate((el) => el.naturalWidth > 0)).toBe(true);
+  await expect.poll(() => mark.evaluate((el) => el.naturalWidth)).toBeGreaterThan(0);
   // The accessible name still says what is actually available here.
   await expect(fab).toHaveAttribute('aria-label', /Sign in|report a problem/i);
 });
@@ -79,5 +100,5 @@ test('the BCBA page gets the same mark from the same file', async ({ page }) => 
   await signedIn(page, '/notes/bcba/');
   const mark = page.locator('.revision-fab img.nome-mark');
   await expect(mark).toHaveCount(1);
-  expect(await mark.evaluate((el) => el.naturalWidth > 0)).toBe(true);
+  await expect.poll(() => mark.evaluate((el) => el.naturalWidth)).toBeGreaterThan(0);
 });

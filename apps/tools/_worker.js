@@ -24,7 +24,9 @@ const LEGACY_PREFIXES = [
 ];
 
 export default {
-  async fetch(request, env) {
+  // ctx only so the knowledge fetch log can be written after the response goes
+  // out. Nothing a clinician waits on depends on it.
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     // Bot Fight Mode (cannot be disabled on this plan) challenges every non-static
@@ -45,6 +47,31 @@ export default {
     // API proxy endpoint for LLM calls (server-side key, requires a session token)
     if (url.pathname === "/api/llm-call" && request.method === "POST") {
       return handleLlmCall(request, env);
+    }
+
+    // The expert pass: reads a scrubbed intake and returns findings. It never
+    // writes a note, and its response schema is fixed in the Worker.
+    if (url.pathname === "/api/expert-pass" && request.method === "POST") {
+      return handleExpertPass(request, env, ctx);
+    }
+
+    // The oracle: keep talking to the expert about a pass it already returned.
+    // Admin only, and it never writes a note either.
+    if (url.pathname === "/api/expert-chat" && request.method === "POST") {
+      return handleExpertChat(request, env);
+    }
+
+    // Research: the expert reads a fixed list of sources before it answers.
+    // Admin only, a larger model than everything else here, and it writes
+    // nothing - the report is something he argues with, not a rule.
+    if (url.pathname === "/api/expert-research" && request.method === "POST") {
+      return handleExpertResearch(request, env);
+    }
+
+    // The knowledge store, for the console on the admin page. Admin only, and
+    // the browser names an operation rather than an upstream path.
+    if (url.pathname === "/api/expert-knowledge") {
+      return handleExpertKnowledge(request, env);
     }
 
     // Admin-only CRUD for managed access passwords (GET/POST/PATCH/DELETE)
@@ -468,14 +495,34 @@ async function handleLlmCall(request, env) {
     if (body.output_config && !outputConfig) {
       return jsonRes(400, { error: "Invalid output_config." });
     }
+
+    // For a migrated tool the system prompt is fetched, never accepted. See
+    // SERVER_PROMPT_TOOLS above for why a stale caller is refused rather than
+    // corrected.
+    let convSystem = system;
+    const wantsServerPrompt = serverPromptRequest(body, tool);
+    if (wantsServerPrompt.serverSide) {
+      if (wantsServerPrompt.error) return jsonRes(400, { error: wantsServerPrompt.error });
+      const promptKey = promptKeyFor(tool, wantsServerPrompt.kind);
+      const base = await promptForTool(env, promptKey);
+      if (!base) {
+        // Deliberately not a fallback. A note is worth more than a note written
+        // to an unknown prompt, and the clinician is told nothing was sent.
+        await notifyError(env, "prompt-api", "no prompt available for key " + promptKey);
+        return jsonRes(503, {
+          error: "The prompt service is unavailable, so this note was not drafted. Nothing was sent to the model.",
+        });
+      }
+      convSystem = composeServerSystem(base, wantsServerPrompt.suffix);
+    }
     // Two accepted shapes: legacy single-shot {systemPrompt, userPrompt}, or a
     // conversation {system, messages} for the multi-turn revision flow.
-    const isConversation = typeof system === "string" && Array.isArray(messages);
+    const isConversation = typeof convSystem === "string" && Array.isArray(messages);
     if (!isConversation && (!systemPrompt || !userPrompt)) {
       return jsonRes(400, { error: "Missing required fields: systemPrompt+userPrompt or system+messages" });
     }
     if (isConversation) {
-      const err = validateConversation(system, messages);
+      const err = validateConversation(convSystem, messages);
       if (err) return jsonRes(400, { error: err });
     }
     // Images ride the single-shot path only. Rejecting rather than ignoring
@@ -505,7 +552,7 @@ async function handleLlmCall(request, env) {
     // exactly as it arrived.
     const voice = await getVoiceBlock(env);
     const advisory = { wantsRecommendation: body.want_opinions === true };
-    let sys = composeVoice(isConversation ? system : systemPrompt, voice, tool, advisory);
+    let sys = composeVoice(isConversation ? convSystem : systemPrompt, voice, tool, advisory);
     // His clinical judgement, only where the caller explicitly asked for a
     // recommendation. Ruling 2: an opinion never fills a silence in the input.
     sys = composeOpinions(sys, voice, tool, advisory);
@@ -526,6 +573,630 @@ async function handleLlmCall(request, env) {
     const m = error && error.message ? error.message : "unknown";
     console.error("LLM call error:", m);
     await notifyError(env, "llm-call", m);
+    return jsonRes(500, { error: error.message || "Internal server error" });
+  }
+}
+
+/* ── The expert pass ──────────────────────────────────────────────────────
+ *
+ * WHAT IT IS. One call that reads a scrubbed intake with the ABA glossary and
+ * the mentalism lexicon in front of it, and returns three lists: what the
+ * abbreviations mean, which constructions are mentalistic and what to do with
+ * each, and what the note most needs, ranked.
+ *
+ * WHY IT IS A ROUTE OF ITS OWN RATHER THAN A TOOL ON /api/llm-call. Three
+ * things about it are the Worker's to decide rather than the browser's. The
+ * response schema is fixed here, so the pass cannot be asked for a different
+ * shape by whoever is calling. The house voice and his stored opinions are NOT
+ * composed in, because this call returns findings rather than prose and a voice
+ * card would only teach it to write them prettily. And it is a read: it never
+ * drafts, never revises, and nothing it returns is applied to a note by this
+ * Worker.
+ *
+ * IT RUNS BESIDE THE EXISTING LOOP, NOT INSIDE IT. The browser still drives.
+ * The point of this phase is to find out whether the expert beats the hint
+ * catalog - eight fixed codes per tool, which between them cannot say "you
+ * wrote 'he wanted attention', and that is a function claim" - before any of
+ * the loop is rewritten around it.
+ *
+ * PRIVACY. The intake arrives de-identified: NotesGate.scrubForAgent() replaces
+ * identifiers and names with role tokens in the browser before send, and the
+ * caller restores the real words into the findings on the way back, so they
+ * never make the trip. Nothing here logs the intake, and the prompt store this
+ * fetches from never sees it at all.
+ *
+ * Where that differs from the drafting call, and why. Drafting shows the
+ * clinician every detected name and asks them to map each one, because a
+ * mis-mapped role there is written into a note somebody signs. This route
+ * writes nothing, so it scrubs automatically and reports what it took
+ * afterwards rather than asking first. The role behind an unlabelled name is
+ * "Person" and never "Client": a wrong Client would tell the expert that the
+ * wrong human is the one the programme is about.
+ *
+ * This comment described a control that did not exist until 2026-08-24. The
+ * route was written expecting a scrubbed intake and its only caller sent the
+ * raw textarea. If you are adding a caller, it scrubs too, or this comment goes
+ * back to being a lie.
+ *
+ * THE SECOND CALLER, from 2026-08-25, is the note pages themselves: the engine
+ * runs this beside the drafting turn on the same intake, so the expert's
+ * reading and the hint catalog's can be read against each other on one note.
+ * It scrubs, but it scrubs EARLIER and by a different route, and the difference
+ * is worth knowing before anyone reconciles the two.
+ *
+ * The bench scrubs at the moment it calls, with scrubForAgent(), and restores
+ * the clinician's real words into the findings before drawing them. The note
+ * page has already scrubbed: NotesScrub.review() ran before the drafting call
+ * and put a role token in place of every name, and that token is what the
+ * clinician wants LEFT IN - it is what they paste into their EHR. So the note
+ * page restores nothing, and the expert's quotes match the note's own wording
+ * rather than the clinician's typing. Both send a de-identified intake, which
+ * is the only thing this route is entitled to assume.
+ */
+
+/* The intake is bounded by MAX_MESSAGE_CHARS rather than by a number of its
+   own, because it is the same clinician typing the same session that a
+   conversation message carries. It is read inside the functions below rather
+   than aliased to a const up here: this block sits above that declaration in
+   the file, and a top-level alias would be a ReferenceError at module load,
+   which in a Worker means the whole thing refuses to boot. */
+// Section ids for the enum. A generous ceiling on a list that is really five to
+// twenty, so a malformed caller fails here rather than at the upstream API.
+const MAX_EXPERT_SECTIONS = 40;
+const MAX_SECTION_ID_CHARS = 60;
+// Sits above what a real note produces, and exists only so a runaway response
+// cannot hand the browser a thousand hints. The same reasoning as HINT_CEILING
+// in note-tools-util.js, and deliberately the same number.
+const EXPERT_HINT_CEILING = 24;
+/* THE SAME MODEL THE CATALOG RUNS ON, and that is the whole reason it is
+   pinned here rather than taken from the request. The question this phase asks
+   is whether the KNOWLEDGE beats the catalog. Letting the expert run on a
+   larger model would answer a different question and answer it flatteringly. */
+const EXPERT_MODEL = "claude-haiku-4-5-20251001";
+const EXPERT_MAX_TOKENS = 4000;
+
+export function expertLimits() {
+  return {
+    intakeChars: MAX_MESSAGE_CHARS,
+    sections: MAX_EXPERT_SECTIONS,
+    sectionIdChars: MAX_SECTION_ID_CHARS,
+    hintCeiling: EXPERT_HINT_CEILING,
+    model: EXPERT_MODEL,
+  };
+}
+
+/* A finding about the note as a whole rather than any one section. Same string
+   the browser's hint channel uses, because a technician reading two channels
+   should not meet two names for the same idea. */
+const EXPERT_WHOLE_NOTE = "note";
+
+/* Validate and normalize the request. Pure, and exported, so the shape rules
+   are tested directly rather than inferred from a 400. */
+export function expertPassRequest(body) {
+  const b = body || {};
+  const tool = typeof b.tool === "string" ? b.tool : "";
+  if (!tool) return { error: "Missing tool." };
+
+  const intake = typeof b.intake === "string" ? b.intake : "";
+  if (!intake.trim()) return { error: "Missing intake." };
+  if (intake.length > MAX_MESSAGE_CHARS) {
+    return { error: "The intake is longer than this pass accepts." };
+  }
+
+  // Absent means the tool has no sections and every finding is about the note.
+  const raw = b.sections;
+  if (raw !== undefined && !Array.isArray(raw)) return { error: "sections must be an array." };
+  const list = Array.isArray(raw) ? raw : [];
+  if (list.length > MAX_EXPERT_SECTIONS) return { error: "Too many sections." };
+  const sections = [];
+  for (const s of list) {
+    if (typeof s !== "string" || !s || s.length > MAX_SECTION_ID_CHARS) {
+      return { error: "Each section must be a short string id." };
+    }
+    // Ids, not prose. This value goes into a schema enum that reaches the
+    // upstream API, so it is checked rather than trusted.
+    if (!/^[A-Za-z0-9_-]+$/.test(s)) return { error: "A section id has characters that are not allowed." };
+    // "note" is added by the schema builder. Passing it too would put the same
+    // value in the enum twice.
+    if (s === EXPERT_WHOLE_NOTE) continue;
+    if (sections.indexOf(s) === -1) sections.push(s);
+  }
+  return { tool, intake, sections };
+}
+
+/* The response schema. Built here rather than accepted from the browser, which
+   is the difference between this route and /api/llm-call: the pass has one
+   shape and no caller gets to ask for another.
+
+   The descriptions are thin ON PURPOSE. What each field means is in the expert
+   prompt, which is composed in the store and reaches this call whole, so a
+   second copy here would be a second place to keep in step. Compare the hint
+   schema in note-tools-util.js, where the descriptions carry the meaning
+   because BT's prompt is server-side and the schema is the only channel left. */
+export function expertSchema(sections, withLookup) {
+  const list = Array.isArray(sections) ? sections : [];
+  /* `used` exists ONLY when the lookup tool is on the call, and that is the
+     point: with no topic records in force there is no tool, no lookup and no
+     field, so the schema the five note tools have been getting is unchanged to
+     the byte. When the tool is on, the field is required, because a model that
+     may omit it turns "changed nothing" and "did not answer" into the same
+     silence - and that silence is what elevation would have to read. */
+  const used = withLookup
+    ? {
+        used: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Ids from knowledge_lookup whose text actually changed what you wrote above. " +
+            "Not everything you fetched. Empty is a real answer.",
+        },
+      }
+    : null;
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: used ? ["terms", "register", "hints", "used"] : ["terms", "register", "hints"],
+    properties: {
+      ...(used || {}),
+      terms: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["token", "reading", "status", "why"],
+          properties: {
+            token: { type: "string", description: "The abbreviation as it appears in the intake." },
+            reading: { type: "string", description: "The expansion you are using. Empty when the status is unknown." },
+            status: { type: "string", enum: ["resolved", "ambiguous", "unknown"] },
+            why: { type: "string" },
+          },
+        },
+      },
+      register: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["quote", "action", "why", "move"],
+          properties: {
+            quote: { type: "string", description: "The clinician's own words, verbatim from the intake." },
+            action: { type: "string", enum: ["reframe", "ask", "remove", "keep"] },
+            why: { type: "string" },
+            move: { type: "string", description: "The replacement sentence, or the exact question to ask." },
+          },
+        },
+      },
+      hints: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["section", "rank", "kind", "ask", "why"],
+          properties: {
+            section: { type: "string", enum: list.concat([EXPERT_WHOLE_NOTE]) },
+            rank: { type: "integer" },
+            kind: { type: "string", enum: ["blocks-claim", "thin", "register"] },
+            ask: { type: "string" },
+            why: { type: "string" },
+          },
+        },
+      },
+    },
+  };
+}
+
+/* Order the hints, then cap. The order is the model's own and the cap is a
+   backstop, which is the lesson from the catalog channel: a bare slice on an
+   unordered list throws away whatever happened to arrive last, and calls it a
+   priority. Ties break on emission order so the result is stable whatever the
+   engine's sort does with equal keys. */
+export function orderExpertHints(raw) {
+  if (!Array.isArray(raw)) return { hints: [], dropped: 0 };
+  const ranked = raw
+    .map((h, i) => ({ h, i, rank: typeof h.rank === "number" && isFinite(h.rank) ? h.rank : Number.MAX_SAFE_INTEGER }))
+    .sort((a, b) => a.rank - b.rank || a.i - b.i)
+    .map((x) => x.h);
+  return {
+    hints: ranked.slice(0, EXPERT_HINT_CEILING),
+    // Reported rather than swallowed. A silent truncation reads as "that is
+    // everything it found", which is the one thing it is not.
+    dropped: Math.max(0, ranked.length - EXPERT_HINT_CEILING),
+  };
+}
+
+/* Pull the object out of the API response. Structured output still arrives as
+   a text block, so this is a parse rather than a field read.
+
+   FAILS CLOSED. A truncated or unparseable answer returns null and the caller
+   sends an error, because half an expert pass is indistinguishable from a
+   complete one that found less. */
+export function expertFindings(apiResponse) {
+  const blocks = apiResponse && Array.isArray(apiResponse.content) ? apiResponse.content : [];
+  const text = blocks.map((b) => (b && typeof b.text === "string" ? b.text : "")).join("");
+  if (!text.trim()) return null;
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+  const terms = Array.isArray(parsed.terms) ? parsed.terms : [];
+  const register = Array.isArray(parsed.register) ? parsed.register : [];
+  const ordered = orderExpertHints(parsed.hints);
+  // `used` only exists when the lookup tool was on the call. Absent stays
+  // absent rather than becoming [], because "did not measure" and "measured,
+  // nothing moved" are different answers to the elevation question.
+  const used = Array.isArray(parsed.used) ? parsed.used.filter((u) => typeof u === "string") : undefined;
+  return { terms, register, hints: ordered.hints, hintsDropped: ordered.dropped, ...(used ? { used } : {}) };
+}
+
+async function handleExpertPass(request, env, ctx) {
+  try {
+    const secret = (env.ADMIN_SECRET ?? "").trim();
+    const auth = request.headers.get("Authorization") || "";
+    const token = auth.replace(/^Bearer\s+/i, "");
+    const payload = secret ? await readToken(token, secret) : null;
+    if (!payload) return jsonRes(401, { error: "Not logged in. Please log in to use the expert pass." });
+
+    const body = await request.json();
+    const parsed = expertPassRequest(body);
+    if (parsed.error) return jsonRes(400, { error: parsed.error });
+
+    // Same scope check the drafting call makes, on the same reasoning: a login
+    // scoped to one tool does not get to spend the account's key on another.
+    if (payload.role !== "admin") {
+      const rec = env.API_PASSWORDS ? await getPasswordRecord(env.API_PASSWORDS, payload.kid) : null;
+      if (!rec || !rec.active) return jsonRes(401, { error: "Access revoked. Please log in again." });
+      if (!rec.tools.includes(parsed.tool)) {
+        return jsonRes(403, { error: "Your access doesn't include this tool." });
+      }
+    }
+
+    /* Fetched, never accepted. Fails closed for the same reason the drafting
+       prompt does: a pass run against an unknown prompt returns findings that
+       look exactly like real ones.
+
+       BEFORE the API key check, and in the same order handleLlmCall uses. Both
+       are 503s and either one stops the call, but "the expert is unavailable"
+       names the cause and "the key is not configured" would name a symptom the
+       clinician can do nothing with. */
+    const composed = await promptForExpert(env, parsed.tool);
+    if (!composed) {
+      await notifyError(env, "prompt-api", "no prompt available for key expert");
+      return jsonRes(503, {
+        error: "The expert is unavailable, so nothing was reviewed. Nothing was sent to the model.",
+      });
+    }
+    const system = composed.system;
+
+    const apiKey = (env.ANTHROPIC_API_KEY ?? "").trim();
+    if (!apiKey) return jsonRes(503, { error: "Server API key is not configured." });
+
+    /* The conversation path rather than the single-shot one, for the cache
+       breakpoint on the system block. This prompt is about seventeen thousand
+       characters of glossary and lexicon and it is identical on every call, so
+       recomputing it per note would be the largest avoidable cost in the
+       feature. */
+    /* The lookup tool rides along only when this tool's composition actually
+       has topic records in force. No store, no records, no tool: the call is
+       byte-for-byte the one the five note tools make today, which is what makes
+       this safe to ship before the database exists. */
+    const hasTopics = Boolean(composed.composed && composed.composed.topic > 0);
+    const turn = await runExpertTurn({
+      apiKey,
+      system,
+      messages: [{ role: "user", content: parsed.intake }],
+      model: EXPERT_MODEL,
+      maxTokens: EXPERT_MAX_TOKENS,
+      outputConfig: { format: { type: "json_schema", schema: expertSchema(parsed.sections, hasTopics) } },
+      lookup: hasTopics ? { env } : null,
+    });
+    const api = turn.api;
+
+    const findings = expertFindings(api);
+    if (!findings) {
+      return jsonRes(502, { error: "The expert returned something this pass could not read. Nothing was applied." });
+    }
+
+    /* The evidence for a promotion he will rule on later, written server-side
+       because the browser deliberately cannot reach this log at all. The
+       subject is keyed rather than digested, and the intake itself never
+       leaves this Worker. */
+    if (turn.calls.length) {
+      logKnowledgeFetches(
+        env,
+        ctx,
+        fetchLogEntries({
+          calls: turn.calls,
+          records: turn.records,
+          used: findings.used,
+          tool: parsed.tool,
+          subjectHash: await subjectHashFor(secret, parsed.intake),
+        })
+      );
+    }
+
+    // usage rides along because "does the expert beat the catalog" is partly a
+    // question about what it costs. It carries no clinical text. `knowledge`
+    // names the exact composition and the exact records that wrote this answer,
+    // which is the rollback story for committing straight to production.
+    // `used` is elevation bookkeeping, not a finding, so it rides under
+    // `knowledge` rather than beside the three lists the note tools render.
+    const { used: usedIds, ...forTheNote } = findings;
+    return jsonRes(200, {
+      ...forTheNote,
+      usage: api.usage || null,
+      model: EXPERT_MODEL,
+      knowledge: {
+        sha256: composed.sha256,
+        composed: composed.composed,
+        fetched: turn.records.map((r) => ({ id: r.id, version: r.version, title: r.title })),
+        used: Array.isArray(usedIds) ? usedIds : null,
+      },
+    });
+  } catch (error) {
+    // PRIVACY: the intake never reaches a log line here, exactly as on
+    // /api/llm-call. Only the error message.
+    const m = error && error.message ? error.message : "unknown";
+    console.error("Expert pass error:", m);
+    await notifyError(env, "expert-pass", m);
+    return jsonRes(500, { error: error.message || "Internal server error" });
+  }
+}
+
+/* ── The oracle: a conversation with the expert about a pass it just ran ──
+ *
+ * WHAT IT IS FOR. The pass answers once and stops, which is the right shape for
+ * a note tool and the wrong shape for the person who owns the expert. He asked
+ * for an exchange: why did you rank that first, that hint was wrong and here is
+ * why, what would you have said if the father had given a time. None of that is
+ * a second pass. It is the same reading, questioned.
+ *
+ * WHY THAT IS WORTH A ROUTE. Two of the five bodies of clinical knowledge this
+ * expert is supposed to carry - what a funder rejects a claim over, and what
+ * 85% of complete looks like - were deliberately left unwritten, because they
+ * are his judgment and inventing them would produce confident wrong advice.
+ * They are not written from a blank page either. They are written by arguing
+ * with the expert over real cases until the rule that was missing can be said
+ * out loud. This route is that argument.
+ *
+ * IT IS NOT A SECOND EXPERT. Same stored prompt, same knowledge blocks, same
+ * model. The addendum below tells it that the findings it is being asked about
+ * are its own and that it is now talking to the clinician who wrote the intake.
+ * It returns prose, because the three lists already exist and re-emitting them
+ * would be answering a question nobody asked.
+ *
+ * THE MODEL IS PINNED TO THE PASS'S MODEL, and that is the whole point rather
+ * than an economy. Tuning the expert on a larger model would tune something
+ * that does not run: he would settle a rule that reads beautifully on a model
+ * the note tools never call, and the tools would go on behaving as before.
+ *
+ * ADMIN ONLY, which is stricter than the pass. Two reasons, and the second is
+ * the real one. This route carries free prose rather than a fixed schema, and
+ * it accepts a RULE UNDER TEST from the caller, which is the one place in this
+ * Worker where a browser contributes to a system prompt. See below.
+ *
+ * PRIVACY is unchanged and is the caller's job exactly as on the pass: the
+ * intake arrives de-identified, the bench scrubs every message it sends, and
+ * nothing here logs any of it.
+ */
+
+/* THE RULE UNDER TEST, and why this Worker bends its own rule for it.
+ *
+ * Everywhere else, a prompt is FETCHED and never accepted, because a browser
+ * with a login could otherwise spend the account's key on a prompt nobody
+ * reviewed, and a note drafted against an unknown prompt reads exactly like a
+ * real one. That threat is a role "user" login: a managed access password
+ * scoped to one tool.
+ *
+ * An admin is not that. An admin holds the password that mints admin tokens,
+ * can already read every stored prompt through the store, and owns the account
+ * the key belongs to. Refusing them a draft rule does not close a hole; it just
+ * means the only way to try a rule is to open a pull request in another repo
+ * and wait for it to deploy, which is not a tuning loop, it is a mailing list.
+ *
+ * So the hole is opened exactly this wide and no wider:
+ *   - admin role only, checked before anything else,
+ *   - bounded, and refused rather than truncated,
+ *   - appended AFTER the stored prompt, so it can add and never overwrite,
+ *   - never persisted anywhere, by this route or any other,
+ *   - echoed back in the response, so a rule can never be quietly in force,
+ *   - and it reaches this route only. No drafting call takes one.
+ * A rule that proves out is promoted by writing it into the knowledge blocks in
+ * the prompt store, where it gets a hash and a pull request like everything
+ * else. This is a bench, not a back door.
+ */
+const MAX_ORACLE_TURNS = 40;
+const MAX_ORACLE_KNOWLEDGE_CHARS = 20000;
+const ORACLE_MAX_TOKENS = 2000;
+
+const ORACLE_ADDENDUM = [
+  "You have just read the intake above and returned the findings above. They are yours.",
+  "",
+  "You are now talking to the board-certified behavior analyst who wrote that intake, and who maintains you. Answer them in prose. Do not return JSON, and do not repeat the three lists unless they ask for them.",
+  "",
+  "WHEN THEY TELL YOU A FINDING WAS WRONG, DO NOT SIMPLY AGREE. Agreement teaches nobody anything. Say what in the intake led you to it, in their words, and then say what rule would have stopped you. Write that rule the way an instruction is written - something you could be told to follow - and not as a description of the problem. \"When the intake reports what a caregiver said, read the vagueness as data\" is a rule. \"I should have been more careful about caregiver reports\" is not.",
+  "",
+  "WHEN THEY ARE WRONG, SAY SO. They are calibrating you, and an expert that folds to whoever is talking is worth nothing to them. Say what you read and why, and let them overrule you.",
+  "",
+  "Every rule in your instructions still holds here, including the ones about not explaining their own field back to them and not writing about what a record does not contain.",
+].join("\n");
+
+const ORACLE_DRAFT_HEADER = [
+  "",
+  "",
+  "A RULE UNDER TEST.",
+  "The maintainer is trying the following on you. It is NOT part of your stored instructions and nothing else you do carries it. Follow it for this conversation as though it were, and say plainly wherever it contradicts anything above rather than quietly picking one.",
+  "",
+].join("\n");
+
+/* Validate and normalize an oracle request. Pure and exported, like the pass's
+   validator, so the shape rules are tested directly rather than inferred from a
+   400. MAX_MESSAGE_CHARS is read inside rather than aliased above, for the same
+   reason the pass reads it inside: this block sits above that declaration. */
+export function expertChatRequest(body) {
+  const b = body || {};
+  // The pass's own rules govern the tool, the intake and the sections, so they
+  // are not restated here. A drift between the two would be a bench that can be
+  // talked to about an intake the pass would have refused.
+  const base = expertPassRequest(b);
+  if (base.error) return base;
+
+  const raw = b.messages;
+  if (!Array.isArray(raw) || raw.length === 0) return { error: "Missing messages." };
+  if (raw.length > MAX_ORACLE_TURNS) return { error: "This conversation is too long to continue." };
+  const messages = [];
+  for (const m of raw) {
+    if (!m || typeof m !== "object") return { error: "Each message must be an object." };
+    if (m.role !== "user" && m.role !== "assistant") return { error: "Each message must be from user or assistant." };
+    if (typeof m.content !== "string" || !m.content.trim()) return { error: "Each message must carry text." };
+    if (m.content.length > MAX_MESSAGE_CHARS) return { error: "A message is longer than this route accepts." };
+    messages.push({ role: m.role, content: m.content });
+  }
+  // The exchange is what the human started, so it starts with them. A leading
+  // assistant turn would mean the browser had written the expert's first word.
+  if (messages[0].role !== "user") return { error: "The conversation has to start with a question." };
+  if (messages[messages.length - 1].role !== "user") return { error: "The last message has to be a question." };
+
+  // Refused rather than truncated: half a rule is a different rule.
+  const knowledge = typeof b.knowledge === "string" ? b.knowledge.trim() : "";
+  if (knowledge.length > MAX_ORACLE_KNOWLEDGE_CHARS) return { error: "The rule under test is longer than this route accepts." };
+
+  // The findings are replayed to the model as its own turn, so they are carried
+  // as the text the pass produced rather than re-validated field by field. A
+  // malformed one costs a confused answer in a bench, and validating it here
+  // would be a second copy of the pass's schema to keep in step.
+  const findings = typeof b.findings === "string" ? b.findings : JSON.stringify(b.findings || {});
+  if (findings.length > MAX_MESSAGE_CHARS) return { error: "Those findings are too large to continue from." };
+
+  return { tool: base.tool, intake: base.intake, sections: base.sections, messages, knowledge, findings };
+}
+
+export function oracleLimits() {
+  return {
+    turns: MAX_ORACLE_TURNS,
+    knowledgeChars: MAX_ORACLE_KNOWLEDGE_CHARS,
+    maxTokens: ORACLE_MAX_TOKENS,
+    model: EXPERT_MODEL,
+  };
+}
+
+/* Compose the system prompt for one oracle turn. Exported so the composition
+   order is pinned by a test: the stored prompt first, the addendum second, and
+   the rule under test last, which is what makes a draft rule additive. */
+export function oracleSystem(storedPrompt, knowledge) {
+  const base = String(storedPrompt || "") + "\n\n" + ORACLE_ADDENDUM;
+  const rule = String(knowledge || "").trim();
+  return rule ? base + ORACLE_DRAFT_HEADER + rule : base;
+}
+
+/* The turns the model sees. The intake and the findings are rebuilt HERE from
+   the request's own fields rather than taken as messages, so the browser cannot
+   hand the model a first exchange that never happened. Everything after those
+   two is the real conversation.
+
+   CONSECUTIVE TURNS FROM THE SAME SPEAKER ARE MERGED, and the reason is a real
+   sequence rather than a defensive habit. When a turn fails upstream, the bench
+   deliberately KEEPS his question in the transcript rather than making him
+   retype it, and no answer ever arrives for it. His next question therefore
+   follows his last one directly. Merging them here is what guarantees this
+   route hands the API strictly alternating turns whatever the caller sends,
+   and it loses nothing: the two questions arrive as one message, in order,
+   which is what they were.
+
+   It lives in the Worker rather than in the bench because this is the shape of
+   what reaches the model, and that is the Worker's to guarantee. */
+export function oracleTurns(parsed) {
+  const turns = [
+    { role: "user", content: parsed.intake },
+    { role: "assistant", content: parsed.findings },
+    ...parsed.messages,
+  ];
+  const out = [];
+  for (const t of turns) {
+    const last = out[out.length - 1];
+    if (last && last.role === t.role) out[out.length - 1] = { role: t.role, content: last.content + "\n\n" + t.content };
+    else out.push({ role: t.role, content: t.content });
+  }
+  return out;
+}
+
+async function handleExpertChat(request, env) {
+  try {
+    const secret = (env.ADMIN_SECRET ?? "").trim();
+    const auth = request.headers.get("Authorization") || "";
+    const token = auth.replace(/^Bearer\s+/i, "");
+    const payload = secret ? await readToken(token, secret) : null;
+    if (!payload) return jsonRes(401, { error: "Not logged in." });
+    // Before the body is even read. A non-admin has no business posting a rule
+    // under test, so they do not get as far as sending one.
+    if (payload.role !== "admin") return jsonRes(403, { error: "The oracle is admin only." });
+
+    const body = await request.json();
+    const parsed = expertChatRequest(body);
+    if (parsed.error) return jsonRes(400, { error: parsed.error });
+
+    /* Fetched, never accepted, exactly as on the pass. The rule under test is
+       appended to this and cannot replace it: a conversation run against an
+       unknown expert would calibrate nothing, and would look like calibration. */
+    const composedChat = await promptForExpert(env, parsed.tool);
+    if (!composedChat) {
+      await notifyError(env, "prompt-api", "no prompt available for key expert");
+      return jsonRes(503, { error: "The expert is unavailable. Nothing was sent to the model." });
+    }
+    const stored = composedChat.system;
+
+    const apiKey = (env.ANTHROPIC_API_KEY ?? "").trim();
+    if (!apiKey) return jsonRes(503, { error: "Server API key is not configured." });
+
+    /* No output_config, which is the difference from the pass. The pass has one
+       shape and no caller gets another; this one has no shape at all, because
+       the answer is an argument. */
+    /* The oracle gets the lookup too, and here it matters more than on the
+       pass: this is where he argues with the expert about a topic, so "go and
+       read the record you were given" is half the conversation. No `used` list
+       and no log, because there is no structured answer to read one out of and
+       a bench conversation is not evidence about what a real note needed. */
+    const hasTopicsChat = Boolean(composedChat.composed && composedChat.composed.topic > 0);
+    const turn = await runExpertTurn({
+      apiKey,
+      system: oracleSystem(stored, parsed.knowledge),
+      messages: oracleTurns(parsed),
+      model: EXPERT_MODEL,
+      maxTokens: ORACLE_MAX_TOKENS,
+      outputConfig: null,
+      lookup: hasTopicsChat ? { env } : null,
+    });
+    const api = turn.api;
+
+    const reply = ((api && api.content) || [])
+      .filter((b) => b && b.type === "text" && typeof b.text === "string")
+      .map((b) => b.text)
+      .join("")
+      .trim();
+    if (!reply) return jsonRes(502, { error: "The expert returned nothing this bench could read." });
+
+    /* knowledgeInForce is echoed rather than assumed. A rule that is silently
+       in force is the failure mode of the whole draft-rule idea: he would read
+       an answer as the expert's own judgment when it was his own rule handed
+       back to him. The bench shows this beside every reply. */
+    return jsonRes(200, {
+      reply,
+      knowledgeInForce: parsed.knowledge || "",
+      usage: (api && api.usage) || null,
+      model: EXPERT_MODEL,
+      knowledge: {
+        sha256: composedChat.sha256,
+        composed: composedChat.composed,
+        fetched: turn.records.map((r) => ({ id: r.id, version: r.version, title: r.title })),
+      },
+    });
+  } catch (error) {
+    // PRIVACY: no message text reaches a log line, exactly as on the pass.
+    const m = error && error.message ? error.message : "unknown";
+    console.error("Expert chat error:", m);
+    await notifyError(env, "expert-chat", m);
     return jsonRes(500, { error: error.message || "Internal server error" });
   }
 }
@@ -783,12 +1454,32 @@ function sanitizeOutputConfig(cfg) {
 // block and the last message's content block. Anthropic's servers keep the
 // computed prefix for 5 minutes (refreshed on each use) and bill cache reads at
 // ~0.1x input price, so replayed conversation history is not recomputed.
-async function callAnthropicConversation(apiKey, system, messages, model, maxTokens, outputConfig) {
-  const msgs = messages.map((m, i) =>
-    i === messages.length - 1
-      ? { role: m.role, content: [{ type: "text", text: m.content, cache_control: { type: "ephemeral" } }] }
-      : { role: m.role, content: m.content }
-  );
+async function callAnthropicConversation(apiKey, system, messages, model, maxTokens, outputConfig, tools) {
+  /* The cache breakpoint goes on the LAST message, wherever the turn has got
+     to. A lookup round appends two more messages, so the breakpoint moves and
+     the round before it becomes part of the cached prefix - which is the whole
+     reason a fetch costs one round trip rather than a re-read of the intake.
+
+     Content that is already an array (tool_use, tool_result) is passed through
+     rather than rebuilt. The five note tools only ever send strings, so their
+     path through here is unchanged. */
+  const msgs = messages.map((m, i) => {
+    /* The breakpoint goes on the last USER message only. A trailing assistant
+       message means one thing here: a paused server-tool turn being handed back
+       for the API to continue, and that has to go back exactly as it arrived -
+       its search results carry encrypted content the API decrypts, and a block
+       we decorated is a block we changed. Earlier turns are sent exactly as
+       they were before this parameter existed, string content and all, so the
+       five note tools' cached prefix is byte-identical to the one they have
+       been hitting. */
+    const last = i === messages.length - 1 && m.role === "user";
+    if (!last) return { role: m.role, content: m.content };
+    const blocks = Array.isArray(m.content) ? m.content.slice() : [{ type: "text", text: m.content }];
+    if (blocks.length) {
+      blocks[blocks.length - 1] = { ...blocks[blocks.length - 1], cache_control: { type: "ephemeral" } };
+    }
+    return { role: m.role, content: blocks };
+  });
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -802,6 +1493,7 @@ async function callAnthropicConversation(apiKey, system, messages, model, maxTok
       system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
       messages: msgs,
       ...(outputConfig ? { output_config: outputConfig } : {}),
+      ...(tools && tools.length ? { tools } : {}),
     }),
   });
 
@@ -1050,6 +1742,775 @@ const OBLIGATION_HEADER = [
 ].join("\n");
 
 export { VOICE_COVERAGE };
+
+/* ── Prompts that live server-side ────────────────────────────────────────────
+
+   Until 2026-08-16 the browser built the whole system prompt and posted it, so
+   every prompt had to be downloadable for the tool to work, and this endpoint
+   took `systemPrompt` straight from the request body. The scope check limited
+   which TOOL a login could claim; nothing checked the prompt, so anyone holding
+   a password could run any prompt they liked on the account's Anthropic key.
+
+   For a tool in this set the system prompt is no longer the browser's to send.
+   It comes from the prompt Worker, which has no public URL at all.
+
+   A request that still carries one is REFUSED rather than quietly ignored.
+   Ignoring it would leave a caller believing their prompt was used, and would
+   leave this hole looking shut while it stayed open for anyone who kept sending
+   the old shape.
+
+   The browser still owns the per-note SUFFIX: the technician's learned style
+   card and the sentence shape measured from what they typed today. Those are
+   measured in the page and differ for every note, so they cannot live here. The
+   suffix is appended exactly where the browser used to append it, which keeps
+   the composed string byte-identical and keeps Anthropic's prefix cache hitting
+   across a revision.
+
+   ROLLOUT IS ONE TOOL AT A TIME, and the browser carries a matching flag. If the
+   two ever disagree the caller gets a loud 400 rather than a silent fallback to
+   a client prompt, which is the correct direction for the disagreement to fail
+   in. */
+/* EXPORTED AS FUNCTIONS, and not because anyone preferred it that way.
+
+   workerd treats every named export of the entry module as a candidate
+   entrypoint and refuses to start on one that is not a function or an
+   ExportedHandler: "Incorrect type for map entry 'MAX_SYSTEM_SUFFIX'". The
+   Worker then fails at BOOT, so every route 500s, not just the new one. Nothing
+   catches it early either - the file parses, lints and type-checks fine, and it
+   was the integration run under `wrangler pages dev` that caught it. So the
+   constants stay module-private and the tests reach them through accessors. */
+/* All five note tools, as of 2026-08-20. Nothing that posts to /api/llm-call is
+   left off this list except graphva, which sends a short prompt inline from
+   graphVA/app.js and has not migrated. */
+const SERVER_PROMPT_TOOLS = new Set(["assess", "bt", "parent", "sap", "sup"]);
+
+/* Prompts the store holds that are not a tool's own note prompt.
+
+   Triage runs before the draft - "is anything here too thin to write from" -
+   and it is a call to the model like any other, so a migrated tool must not
+   send its text either. The browser names the kind and the Worker fetches it.
+   Bounded rather than free-form: this value selects a key in a private store,
+   so an unrecognised one is refused rather than passed through.
+
+   "sap_triage" is the second kind and the reason kinds are a set rather than a
+   boolean. sap triages with a prompt of its own - prompt hierarchies, mastery
+   criteria, maintenance probes - and the generic one asks none of that. A
+   migrated sap that fell back to "triage" would have been served a prompt that
+   works, answers, and asks a clinician the wrong questions. */
+const PROMPT_KINDS = new Set(["sap_triage", "triage"]);
+
+// The style card, the shape line and the intake-voice sentence together run to a
+// few hundred words. This is a sanity bound on a field that reaches the model,
+// not a business rule.
+const MAX_SYSTEM_SUFFIX = 8000;
+
+export function isServerPromptTool(tool) {
+  return typeof tool === "string" && SERVER_PROMPT_TOOLS.has(tool);
+}
+// Sorted so a test can compare it without caring about insertion order.
+export function serverPromptTools() {
+  return [...SERVER_PROMPT_TOOLS].sort();
+}
+// Same reasoning, and an accessor for the same reason: a named export that is
+// not a function takes the whole Worker down at boot. See the note above.
+export function promptKinds() {
+  return [...PROMPT_KINDS].sort();
+}
+export function maxSystemSuffix() {
+  return MAX_SYSTEM_SUFFIX;
+}
+
+export function serverPromptRequest(body, tool) {
+  if (!isServerPromptTool(tool)) return { serverSide: false };
+  const b = body || {};
+  if (typeof b.system === "string" || typeof b.systemPrompt === "string") {
+    return {
+      serverSide: true,
+      error:
+        "This tool composes its system prompt on the server. Send system_suffix " +
+        "rather than system or systemPrompt.",
+    };
+  }
+  const kind = typeof b.prompt_kind === "string" ? b.prompt_kind : "";
+  if (kind) {
+    if (!PROMPT_KINDS.has(kind)) {
+      return { serverSide: true, error: "Unknown prompt_kind." };
+    }
+    // Refused rather than ignored, on the same reasoning as the system field
+    // above: a caller that believes it sent a style card must not be told
+    // nothing while the model never sees one. Triage takes no suffix because
+    // nothing measured in the page belongs in a call that writes no prose.
+    if (typeof b.system_suffix === "string" && b.system_suffix) {
+      return { serverSide: true, error: "This prompt takes no system_suffix." };
+    }
+    return { serverSide: true, kind, suffix: "" };
+  }
+  const suffix = typeof b.system_suffix === "string" ? b.system_suffix : "";
+  if (suffix.length > MAX_SYSTEM_SUFFIX) {
+    return { serverSide: true, error: "system_suffix is longer than this tool accepts." };
+  }
+  return { serverSide: true, suffix };
+}
+
+// Which key the store is asked for. A kind names a shared prompt; its absence
+// means the tool's own. Exported so a test can state the mapping rather than
+// infer it from a 503.
+export function promptKeyFor(tool, kind) {
+  return kind ? kind : tool;
+}
+
+/* Reproduces exactly what the browser used to build: the tool's prompt, then a
+   blank line, then the per-note block. An empty or whitespace-only suffix adds
+   nothing at all, because a trailing blank line would change the cached prefix
+   for every note that has no style card yet. */
+export function composeServerSystem(base, suffix) {
+  if (typeof base !== "string" || !base) return null;
+  return suffix && suffix.trim() ? base + "\n\n" + suffix : base;
+}
+
+/* FAILS CLOSED, and that is the whole difference between this and profileFetch.
+   A missing style card costs a note some polish, so that one fails open. A
+   missing prompt would mean falling back to whatever the client sent, which is
+   the hole this exists to close, so this one refuses. */
+const PROMPT_TIMEOUT_MS = 1500;
+async function promptForTool(env, key) {
+  if (!env.PROMPTS) return null;
+  try {
+    const res = await env.PROMPTS.fetch(
+      "https://prompts.internal/system?tool=" + encodeURIComponent(key),
+      { signal: AbortSignal.timeout(PROMPT_TIMEOUT_MS) }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return typeof data.system === "string" && data.system ? data.system : null;
+  } catch (err) {
+    // The key is safe to log. Nothing a clinician typed reaches this call.
+    console.error("prompt-api unreachable", key, err && err.name);
+    return null;
+  }
+}
+
+/* The composed expert prompt.
+ *
+ * The expert is the only key whose prompt is built at request time, because it
+ * is the only one with a store behind it. `for` narrows the composition to the
+ * shared records plus this tool's, so a rule the maintainer wrote for
+ * supervision notes cannot reach a technician note.
+ *
+ * FAILS CLOSED like promptForTool, and for the same reason: a pass run against
+ * an unknown prompt returns findings that look exactly like real ones. It
+ * returns the composition detail as well as the text, so a draft can be traced
+ * back to the exact set of records that wrote it - which is the rollback story
+ * for committing straight to production.
+ */
+async function promptForExpert(env, forTool) {
+  if (!env.PROMPTS) return null;
+  try {
+    const res = await env.PROMPTS.fetch(
+      "https://prompts.internal/system?tool=expert&for=" + encodeURIComponent(forTool || ""),
+      { signal: AbortSignal.timeout(PROMPT_TIMEOUT_MS) }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (typeof data.system !== "string" || !data.system) return null;
+    return { system: data.system, sha256: data.sha256 || null, composed: data.composed || null };
+  } catch (err) {
+    // The tool id is safe to log. Nothing a clinician typed reaches this call.
+    console.error("prompt-api unreachable", "expert", forTool, err && err.name);
+    return null;
+  }
+}
+
+/* ── Research: the expert goes and reads before it says anything ────────────
+ *
+ * THE GAP THIS CLOSES. The oracle argues from what the expert already knows,
+ * which is the right shape for calibrating a reading and the wrong shape for a
+ * question about what a payer's policy actually says today. Two of the five
+ * bodies this expert is meant to carry are exactly that sort of question.
+ *
+ * A DIFFERENT MODEL, ON PURPOSE. Everything else here is pinned to Haiku 4.5,
+ * because the question that phase asks is whether the KNOWLEDGE beats the hint
+ * catalog and a larger model would answer a flattering different one. This
+ * route is not that experiment. It reads sources and writes a report the
+ * maintainer will argue with, nothing it returns reaches a note, and Haiku 4.5
+ * cannot run the search tool at all. His ruling of 2026-08-30: Opus 5.
+ *
+ * IT SEARCHES A LIST HE APPROVED AND NOTHING ELSE. allowed_domains is the whole
+ * control. A research tool that can read anything is a research tool that
+ * launders a forum post into a rule that reaches every note, and the store has
+ * no way to tell one source from another once the rule is written.
+ *
+ * IT TAKES NO CLINICAL TEXT, and that is a harder line here than anywhere else
+ * on this Worker, because this is the one route whose input leaves the account:
+ * a search query is sent to a search engine. The question is authored by the
+ * maintainer about the field, never about a client.
+ */
+const RESEARCH_MODEL = "claude-opus-5";
+const RESEARCH_MAX_TOKENS = 8000;
+const MAX_RESEARCH_SEARCHES = 8;
+const MAX_RESEARCH_CHARS = 4000;
+const MAX_RESEARCH_TURNS = 8;
+/* A paused turn is the API saying the search is still running, not an error.
+   Continuing costs a round trip and nothing else, but an unbounded loop on it
+   would spend the account's money with nobody watching. */
+const MAX_RESEARCH_PAUSES = 4;
+
+/* HIS LIST, of 2026-08-30, and the grouping is his too.
+ *
+ * The AMA was offered and left unticked. JABA and Behavior Analysis in Practice
+ * are here already, through their publishers: JABA on Wiley, BAP on Springer.
+ * Bare domains with no scheme, which is what the tool takes. */
+export const RESEARCH_DOMAINS = Object.freeze([
+  // Payer medical policy
+  "aetna.com",
+  "uhcprovider.com",
+  "anthem.com",
+  "cigna.com",
+  "bcbs.com",
+  // Federal and state payer rules
+  "cms.gov",
+  "medicaid.gov",
+  "ecfr.gov",
+  // Professional bodies
+  "bacb.com",
+  "abainternational.org",
+  "apbahome.net",
+  // Peer-reviewed literature
+  "pubmed.ncbi.nlm.nih.gov",
+  "ncbi.nlm.nih.gov",
+  "pmc.ncbi.nlm.nih.gov",
+  "onlinelibrary.wiley.com",
+  "link.springer.com",
+]);
+
+const RESEARCH_SYSTEM = [
+  "You are researching for a board-certified behavior analyst who maintains the knowledge an expert reviewer runs on.",
+  "",
+  "What you write here does not reach a note. It reaches one person, who will argue with it and then decide whether any of it becomes a rule. So your job is to be checkable, not to be persuasive.",
+  "",
+  "YOU CAN ONLY READ A FIXED LIST OF SOURCES. Payer medical policy, federal and state payer rules, the professional bodies, and the peer-reviewed literature. You cannot reach anything else and you should not try. If the answer is not in those sources, say so plainly and say where it would live.",
+  "",
+  "SEARCH BEFORE YOU ANSWER. This is asked of you because the answer changes, or because it is written down somewhere specific. An answer from memory is the one thing this route exists to avoid.",
+  "",
+  "REPORT WHAT THE SOURCE SAYS, NOT WHAT YOU CONCLUDE FROM IT. Quote or paraphrase closely, name which payer or which body said it, and say when. Where two sources disagree, say that they disagree rather than picking one.",
+  "",
+  "SAY WHAT YOU COULD NOT ESTABLISH. A gap named is worth more here than a gap filled in, because the person reading this is deciding what to put in front of every note.",
+  "",
+  "DO NOT WRITE THE RULE. He writes the rule. Ending with your own recommendation buries the evidence under an opinion he did not ask for, and the whole point of this is that he can see what is underneath.",
+  "",
+  "Do not explain the field to him. He works in it. Tell him what the source says.",
+].join("\n");
+
+/* Pure. Validate the question. It leaves the account in a search query, so it
+   is checked here rather than trusted, and the check is exported so the shape
+   rules are read directly rather than inferred from a 400. */
+export function expertResearchRequest(body) {
+  const b = body || {};
+  const question = typeof b.question === "string" ? b.question.trim() : "";
+  if (!question) return { error: "Ask it something." };
+  if (question.length > MAX_RESEARCH_CHARS) return { error: "That question is longer than this route accepts." };
+
+  const raw = b.messages;
+  if (raw !== undefined && !Array.isArray(raw)) return { error: "messages must be an array." };
+  const list = Array.isArray(raw) ? raw : [];
+  if (list.length > MAX_RESEARCH_TURNS) return { error: "This conversation is longer than this route carries." };
+  const messages = [];
+  for (const m of list) {
+    if (!m || typeof m !== "object" || Array.isArray(m)) return { error: "Each turn must be an object." };
+    if (m.role !== "user" && m.role !== "assistant") return { error: "Each turn must be from the user or the assistant." };
+    /* PLAIN TEXT, DELIBERATELY, and it is worth saying why rather than leaving
+       it to look like a shortcut. Carrying a previous turn's search results
+       would mean round-tripping their encrypted_content through the browser
+       untouched, which is both a bigger payload and a thing a page could
+       corrupt into a 400. Sending the report instead means the model argues
+       from what it wrote down - which is all the maintainer has too, and is
+       the right constraint: if the report did not capture it, it is not
+       established. */
+    const content = typeof m.content === "string" ? m.content : "";
+    if (!content.trim()) return { error: "A turn with nothing in it cannot be sent." };
+    if (content.length > MAX_MESSAGE_CHARS) return { error: "A turn in this conversation is too long to send." };
+    messages.push({ role: m.role, content: content });
+  }
+  return { question, messages };
+}
+
+/* Pure. Every source the answer actually cited, deduped, in the order they were
+   first leaned on. NOT every page the search returned: a result the model read
+   and did not use is not a source, and listing it would make the report look
+   better evidenced than it is. */
+/* Pure. The answer, across the whole turn.
+ *
+ * A continuation carries on the SAME assistant turn rather than restarting it,
+ * so reading only the last response gives back a report with its opening
+ * missing - and on a long search, the opening is where it says what it went
+ * looking for. Joined with nothing between, because the model was mid-sentence
+ * when it paused. */
+export function researchReport(responses) {
+  const all = Array.isArray(responses) ? responses : [responses];
+  return all
+    .flatMap((r) => (r && Array.isArray(r.content) ? r.content : []))
+    .filter((b) => b && b.type === "text" && typeof b.text === "string")
+    .map((b) => b.text)
+    .join("")
+    .trim();
+}
+
+export function researchSources(responses) {
+  /* Takes one response or the whole turn. A long search comes back as
+     pause_turn and is continued, so the citations for a single question are
+     spread across several responses and only the last one is what the caller
+     ends up holding. Reading only that one drops everything the model found
+     before it paused, which on a long search is most of what it found. */
+  const all = Array.isArray(responses) ? responses : [responses];
+  const seen = new Map();
+  for (const block of all.flatMap((r) => (r && Array.isArray(r.content) ? r.content : []))) {
+    if (!block || block.type !== "text" || !Array.isArray(block.citations)) continue;
+    for (const c of block.citations) {
+      if (!c || c.type !== "web_search_result_location" || typeof c.url !== "string") continue;
+      if (seen.has(c.url)) continue;
+      seen.set(c.url, { url: c.url, title: typeof c.title === "string" ? c.title : c.url });
+    }
+  }
+  return Array.from(seen.values());
+}
+
+async function handleExpertResearch(request, env) {
+  try {
+    const secret = (env.ADMIN_SECRET ?? "").trim();
+    const auth = request.headers.get("Authorization") || "";
+    const token = auth.replace(/^Bearer\s+/i, "");
+    const payload = secret ? await readToken(token, secret) : null;
+    if (!payload) return jsonRes(401, { error: "Not logged in." });
+    // Before the body is read. This route spends real money per search and
+    // sends its question to a search engine, so it is the maintainer's alone.
+    if (payload.role !== "admin") return jsonRes(403, { error: "Research is admin only." });
+
+    const body = await request.json();
+    const parsed = expertResearchRequest(body);
+    if (parsed.error) return jsonRes(400, { error: parsed.error });
+
+    const apiKey = (env.ANTHROPIC_API_KEY ?? "").trim();
+    if (!apiKey) return jsonRes(503, { error: "Server API key is not configured." });
+
+    const tools = [
+      {
+        type: "web_search_20260209",
+        name: "web_search",
+        max_uses: MAX_RESEARCH_SEARCHES,
+        allowed_domains: RESEARCH_DOMAINS.slice(),
+      },
+    ];
+
+    /* The server-side loop. A long search turn comes back as pause_turn rather
+       than as an answer, and the way to continue it is to hand the paused
+       assistant message straight back untouched. Bounded, because this spends
+       money on every iteration and nobody is watching it do so.
+
+       WHAT IT CAN COST. max_uses is documented as a per-REQUEST cap, and a
+       continuation is a new request, so I do not know that the counter carries
+       across a pause. Read the ceiling as MAX_RESEARCH_SEARCHES per request
+       across at most MAX_RESEARCH_PAUSES + 1 requests rather than as eight
+       searches full stop. The number actually spent is summed below and
+       returned as `searches`, so the console reports the real figure rather
+       than the one this comment guesses at.
+
+       The system prompt keeps its cache breakpoint on every request. The
+       message-level one does not survive a pause, because the last message on a
+       continuation is the paused assistant turn and that has to go back exactly
+       as it arrived. Re-reading the conversation is the price of not touching
+       it. */
+    const convo = parsed.messages.concat([{ role: "user", content: parsed.question }]);
+    // Every response in this turn, because the searches and the citations are
+    // spread across all of them and only the last one carries the answer.
+    const responses = [];
+    let api = null;
+    let searches = 0;
+    for (let pause = 0; ; pause++) {
+      api = await callAnthropicConversation(
+        apiKey,
+        RESEARCH_SYSTEM,
+        convo,
+        RESEARCH_MODEL,
+        RESEARCH_MAX_TOKENS,
+        null,
+        tools
+      );
+      responses.push(api);
+      searches += ((api.usage || {}).server_tool_use || {}).web_search_requests || 0;
+      if (api.stop_reason !== "pause_turn" || pause >= MAX_RESEARCH_PAUSES) break;
+      // Unchanged, exactly as received. The API decrypts what it sent us.
+      convo.push({ role: "assistant", content: api.content });
+    }
+
+    const report = researchReport(responses);
+    if (!report) return jsonRes(502, { error: "The research turn came back with nothing this console could read." });
+
+    return jsonRes(200, {
+      report,
+      sources: researchSources(responses),
+      searches,
+      truncated: api.stop_reason === "max_tokens" || api.stop_reason === "pause_turn",
+      usage: (api && api.usage) || null,
+      model: RESEARCH_MODEL,
+      domains: RESEARCH_DOMAINS.length,
+    });
+  } catch (error) {
+    const m = error && error.message ? error.message : "unknown";
+    console.error("Expert research error:", m);
+    await notifyError(env, "expert-research", m);
+    return jsonRes(500, { error: error.message || "Internal server error" });
+  }
+}
+
+/* ── The lookup: how a topic record gets off the index and into the answer ──
+ *
+ * WHAT THE TIERING IS FOR. Core rules are always in the prompt. Topic records
+ * are not: the prompt carries one INDEX LINE each, and the body is fetched only
+ * when the expert decides this intake needs it. That is what keeps the prompt
+ * lean as the store grows, and it is why a commit no longer re-caches every
+ * record behind it.
+ *
+ * WITHOUT THIS, THE INDEX IS A LIST OF THINGS THE EXPERT CANNOT READ. So the
+ * fetch is a tool the model calls mid-turn, with ids it read from its own
+ * prompt.
+ *
+ * IT STILL HOLDS NO CLINICAL TEXT. The expert asks BY ID, never by subject, so
+ * the matching happens inside the model - which has already read the intake -
+ * and the store never learns what the note was about. The tool schema has no
+ * free-text field for exactly that reason: an id is the only thing it accepts.
+ *
+ * IT IS OFFERED ONLY WHEN THERE IS SOMETHING TO FETCH. No store, or a store
+ * with no topic records in force for this tool, means no tool on the call and
+ * no tokens spent describing one. Today that is every call, which is what makes
+ * this safe to ship before the database exists: the first topic record he
+ * commits is what turns it on.
+ */
+const KNOWLEDGE_TOOL_NAME = "knowledge_lookup";
+/* Two, and the reason is not arithmetic. One round covers "read the index,
+   fetch what this intake needs". A second covers "that record pointed at
+   another". A third is the expert browsing rather than answering, and every
+   round re-sends the whole turn. */
+const MAX_LOOKUP_ROUNDS = 2;
+const MAX_LOOKUP_IDS = 8;
+
+function knowledgeTool() {
+  return {
+    name: KNOWLEDGE_TOOL_NAME,
+    description:
+      "Read the full text of topic records listed in the KNOWLEDGE INDEX in your system prompt. " +
+      "Call this when the intake in front of you falls under one of those topics and the index line " +
+      "alone is not enough to act on. Ask only for ids you can see in the index, and only for the ones " +
+      "this intake actually needs - a record you fetch and do not use costs the clinician time and " +
+      "teaches this store the wrong lesson about what is worth promoting. " +
+      "Pass ids only. Never put anything the clinician wrote into this call.",
+    /* NOT `strict: true`, and that is deliberate rather than an omission.
+       Strict tool use rejects array constraints, so turning it on would mean
+       dropping maxItems - and the cap that actually matters is the one
+       expertLookupCalls applies to the ids before they reach the store, which
+       is enforced whatever the model sends. maxItems stays as the budget the
+       model is told about. */
+    input_schema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["ids"],
+      properties: {
+        ids: {
+          type: "array",
+          maxItems: MAX_LOOKUP_IDS,
+          items: { type: "string" },
+          description: "Record ids, copied from the KNOWLEDGE INDEX. Ids only, never a subject or a quote.",
+        },
+      },
+    },
+  };
+}
+
+/* Pure. What the model actually asked for, or an empty list. Exported so the
+   parsing is tested directly rather than inferred from a live call, which is
+   the same reason knowledgeOp is exported. */
+export function expertLookupCalls(api) {
+  const blocks = (api && Array.isArray(api.content) ? api.content : []).filter(
+    (b) => b && b.type === "tool_use" && b.name === KNOWLEDGE_TOOL_NAME
+  );
+  return blocks.map((b) => {
+    const raw = b.input && Array.isArray(b.input.ids) ? b.input.ids : [];
+    const ids = [];
+    for (const id of raw) {
+      // Same shape the store validates. Checked here too, because these reach a
+      // query string on a Worker that has no public URL and no auth of its own.
+      if (typeof id !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(id)) continue;
+      if (ids.indexOf(id) === -1) ids.push(id);
+      if (ids.length >= MAX_LOOKUP_IDS) break;
+    }
+    return { toolUseId: b.id, ids };
+  });
+}
+
+/* Pure, and the reason it is a function rather than three lines inside the loop
+   is that it is the loop's TERMINATION. Every continue here costs a full
+   re-send of the conversation to a paid API with nobody watching, so what makes
+   it stop has to be something a test can walk rather than something a reader
+   has to trace.
+
+   Three ways to stop and one way to go on:
+     done    the turn ended, or asked for nothing, or asked again after being
+             told the well was dry
+     refuse  the rounds are spent: answer the call, say so, and stop after
+     fetch   read the records and carry on */
+export function lookupRound({ round, told, stopReason, asked }) {
+  if (stopReason !== "tool_use") return "done";
+  if (told) return "done";
+  if (!Array.isArray(asked) || !asked.length) return "done";
+  return round >= MAX_LOOKUP_ROUNDS ? "refuse" : "fetch";
+}
+
+/* Pure. The tool_result blocks that answer one round.
+ *
+ * A record that is not in force comes back as a NAMED absence rather than as
+ * nothing, because an expert that asked for a retired rule has to be able to
+ * tell that from a store that is simply empty. Silence there would read as "no
+ * such rule exists", and the expert would answer from its own prior. */
+export function lookupResultBlocks(calls, records, exhausted) {
+  const byId = new Map((records || []).map((r) => [r.id, r]));
+  return calls.map((call) => {
+    if (exhausted) {
+      return {
+        type: "tool_result",
+        tool_use_id: call.toolUseId,
+        content: "No further lookups are available on this turn. Answer with what you already have.",
+      };
+    }
+    const parts = call.ids.map((id) => {
+      const r = byId.get(id);
+      if (!r) return `[${id}] is not in force. Do not treat that as a rule against it; it is simply not here.`;
+      const lines = [`[${r.id}] ${r.title}`, r.applies ? `Applies: ${r.applies}` : "", r.rule];
+      if (r.rationale) lines.push(`Why: ${r.rationale}`);
+      return lines.filter(Boolean).join("\n");
+    });
+    return {
+      type: "tool_result",
+      tool_use_id: call.toolUseId,
+      content: parts.length ? parts.join("\n\n") : "No well-formed ids were asked for.",
+    };
+  });
+}
+
+/* Pure. One row per record actually read, once, whatever the expert asked.
+ *
+ * DEDUPED, because a record asked for twice in one turn is one fetch. Counting
+ * it twice would let a single confused turn nominate a record for promotion
+ * into every note tool's prompt.
+ *
+ * A MISSING RECORD GETS NO ROW. There is nothing to elevate.
+ *
+ * answerMoved comes from the `used` list in the expert's own final answer: it
+ * fetched these, and it says which of them changed what it wrote. That is his
+ * ruling of 2026-08-30 - retrieved often AND the answer moved - and it costs
+ * one array rather than a second model call. Absent stays null rather than
+ * false, so "not measured" never counts as "did not move". */
+export function fetchLogEntries({ calls, records, used, tool, subjectHash }) {
+  const inForce = new Map((records || []).map((r) => [r.id, r]));
+  const moved = new Set(Array.isArray(used) ? used.filter((u) => typeof u === "string") : []);
+  const measured = Array.isArray(used);
+  const seen = new Set();
+  const entries = [];
+  for (const call of calls || []) {
+    for (const id of call.ids) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const rec = inForce.get(id);
+      if (!rec) continue;
+      entries.push({
+        recordId: id,
+        version: rec.version,
+        tool: tool || null,
+        subjectHash: subjectHash || null,
+        answerMoved: measured ? moved.has(id) : null,
+      });
+    }
+  }
+  return entries;
+}
+
+/* WHY THE SUBJECT IS AN HMAC AND NOT A DIGEST.
+ *
+ * The log needs a stable per-note identity so a future read can tell eight
+ * different notes from one note run eight times. A plain sha256 of the intake
+ * would do that, and would also let anyone holding both the log and a candidate
+ * intake confirm the match. Keying it removes that: same note, same value,
+ * and nobody without the key can test a guess.
+ *
+ * The cost is that rotating ADMIN_SECRET stops old and new rows matching each
+ * other. Nothing queries this column yet, and the degradation is graceful, so
+ * that is the cheaper side of the trade. */
+async function subjectHashFor(secret, intake) {
+  if (!secret || typeof intake !== "string" || !intake) return null;
+  const sig = await hmac(intake, secret);
+  return Array.from(sig, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function knowledgeRecordsFor(env, ids) {
+  if (!env.PROMPTS || !ids.length) return [];
+  try {
+    const res = await env.PROMPTS.fetch(
+      "https://prompts.internal/knowledge/records?ids=" + encodeURIComponent(ids.join(",")),
+      { signal: AbortSignal.timeout(PROMPT_TIMEOUT_MS) }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data.records) ? data.records : [];
+  } catch (err) {
+    // Ids only. Nothing a clinician typed reaches this call or this log line.
+    console.error("knowledge lookup unreachable", ids.length, err && err.name);
+    return [];
+  }
+}
+
+/* Fire and forget by design. The log is evidence for a promotion he will decide
+   on later, so it must never be the reason a clinician's pass fails or waits. */
+function logKnowledgeFetches(env, ctx, entries) {
+  if (!env.PROMPTS || !entries.length) return;
+  const work = env.PROMPTS.fetch("https://prompts.internal/knowledge/fetch-log", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ entries }),
+    signal: AbortSignal.timeout(PROMPT_TIMEOUT_MS),
+  }).catch((err) => console.error("knowledge fetch-log failed", err && err.name));
+  if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(work);
+}
+
+/* The expert's turn, lookups and all.
+ *
+ * Returns the final API response plus what was fetched, so the caller can log
+ * the evidence and, on the pass, hand the console the exact records that wrote
+ * the answer. With `lookup` null this is one call and nothing else, which is
+ * the path every note tool takes today. */
+async function runExpertTurn({ apiKey, system, messages, model, maxTokens, outputConfig, lookup }) {
+  const tools = lookup ? [knowledgeTool()] : null;
+  const convo = messages.slice();
+  const calls = [];
+  const records = [];
+  let api = null;
+  // Set once the model has been told the well is dry. If it asks again after
+  // that, the loop stops rather than answering "no further lookups" forever -
+  // every turn of that costs a full re-send of the conversation, and nothing is
+  // watching this spend.
+  let told = false;
+
+  for (let round = 0; ; round++) {
+    api = await callAnthropicConversation(apiKey, system, convo, model, maxTokens, outputConfig, tools);
+    if (!tools) break;
+
+    const asked = expertLookupCalls(api);
+    const next = lookupRound({ round, told, stopReason: api.stop_reason, asked });
+    if (next === "done") break;
+
+    // A refusal still ANSWERS. A tool_use left without a tool_result is a turn
+    // the model cannot finish, so the well being dry is something it is told
+    // rather than something it runs into.
+    const exhausted = next === "refuse";
+    if (exhausted) told = true;
+    const wanted = exhausted ? [] : asked.flatMap((c) => c.ids).filter((id, i, all) => all.indexOf(id) === i);
+    const found = await knowledgeRecordsFor(lookup.env, wanted);
+
+    calls.push(...asked);
+    for (const r of found) if (!records.some((x) => x.id === r.id)) records.push(r);
+
+    convo.push({ role: "assistant", content: api.content });
+    convo.push({ role: "user", content: lookupResultBlocks(asked, found, exhausted) });
+  }
+
+  return { api, calls, records };
+}
+
+/* THE BROWSER NEVER NAMES THE UPSTREAM PATH.
+ *
+ * The console is a page, and a page that could choose which internal path this
+ * Worker fetches would be a hole straight into a Worker that has no public URL
+ * and does no auth of its own. So the console names an OPERATION, this map turns
+ * it into a path, and anything not in the map is a 400 rather than a fetch.
+ *
+ * /knowledge/fetch-log is deliberately absent. Elevation evidence decides which
+ * rules get promoted into every note tool's prompt, so a page that could post
+ * its own fetch records could manufacture a promotion. Only this Worker writes
+ * that log, server-side, during a real expert call.
+ */
+const KNOWLEDGE_OPS = {
+  list: { method: "GET", path: "/knowledge", params: [] },
+  proposals: { method: "GET", path: "/knowledge/proposals", params: ["state"] },
+  candidates: { method: "GET", path: "/knowledge/candidates", params: ["minFetches", "minMoved", "since"] },
+  history: { method: "GET", path: "/knowledge/history", params: ["id"] },
+  propose: { method: "POST", path: "/knowledge/propose" },
+  commit: { method: "POST", path: "/knowledge/commit" },
+  reject: { method: "POST", path: "/knowledge/reject" },
+  retire: { method: "POST", path: "/knowledge/retire" },
+};
+
+/* Pure, so the allowlist can be tested without a Worker. Returns the upstream
+   path to fetch, or an error naming what was wrong. */
+export function knowledgeOp(op, method, params) {
+  if (typeof op !== "string" || !Object.prototype.hasOwnProperty.call(KNOWLEDGE_OPS, op)) {
+    return { error: "Unknown knowledge operation." };
+  }
+  const spec = KNOWLEDGE_OPS[op];
+  if (spec.method !== method) return { error: `Operation ${op} is a ${spec.method}.` };
+  if (spec.method === "POST") return { path: spec.path };
+
+  const search = new URLSearchParams();
+  for (const key of spec.params) {
+    const v = params && typeof params.get === "function" ? params.get(key) : null;
+    // Bounded rather than trusted. These reach a query string on an internal
+    // Worker, and none of them is ever anything a clinician typed.
+    if (typeof v === "string" && v !== "" && v.length <= 64 && /^[A-Za-z0-9_-]+$/.test(v)) {
+      search.set(key, v);
+    }
+  }
+  const qs = search.toString();
+  return { path: spec.path + (qs ? "?" + qs : "") };
+}
+
+/* The console's only way to the store. Admin only, checked before the body is
+   read, exactly as the oracle does it. */
+async function handleExpertKnowledge(request, env) {
+  const secret = (env.ADMIN_SECRET ?? "").trim();
+  const auth = request.headers.get("Authorization") || "";
+  const token = auth.replace(/^Bearer\s+/i, "");
+  const payload = secret ? await readToken(token, secret) : null;
+  if (!payload || payload.role !== "admin") {
+    return jsonRes(403, { error: "The knowledge store is admin only." });
+  }
+  if (!env.PROMPTS) return jsonRes(503, { error: "The prompt store is not bound, so there is no knowledge to reach." });
+
+  const url = new URL(request.url);
+  const resolved = knowledgeOp(url.searchParams.get("op"), request.method, url.searchParams);
+  if (resolved.error) return jsonRes(400, { error: resolved.error });
+
+  const init = { method: request.method, signal: AbortSignal.timeout(PROMPT_TIMEOUT_MS) };
+  if (request.method === "POST") {
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return jsonRes(400, { error: "A JSON body is required." });
+    }
+    // Stamped here rather than taken from the page, so the record says who
+    // actually approved it rather than who the page claimed.
+    init.body = JSON.stringify({ ...body, author: payload.kid || "admin" });
+    init.headers = { "content-type": "application/json" };
+  }
+
+  try {
+    const res = await env.PROMPTS.fetch("https://prompts.internal" + resolved.path, init);
+    const text = await res.text();
+    return new Response(text, {
+      status: res.status,
+      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+    });
+  } catch (err) {
+    console.error("knowledge store unreachable", resolved.path, err && err.name);
+    return jsonRes(503, { error: "The knowledge store did not answer. Nothing was changed." });
+  }
+}
 
 /* Which layers a tool's DOCUMENTS take. Absent means all of them, which keeps
    every existing tool behaving exactly as before. An advisory call ignores this
@@ -1322,8 +2783,11 @@ async function handleScrubRun(request, env) {
   const payload = adminSecret ? await readToken(token, adminSecret) : null;
   const isAdmin = payload && payload.role === "admin";
   if (!isCron && !isAdmin) return jsonRes(401, { error: "Admin or cron authorization required." });
-  await runScrubLearning(env);
-  return jsonRes(200, { ok: true });
+  // The report goes back verbatim. A bare ok is what let this job answer "fine" on every
+  // run for two months while writing nothing; now the caller sees what it considered,
+  // what it queued, and how much backlog is left.
+  const report = await runScrubLearning(env);
+  return jsonRes(report.ok ? 200 : 502, report);
 }
 
 // Constant-time string comparison to avoid leaking the secret via timing.
@@ -1414,11 +2878,27 @@ async function removeTerm(kv, list, term) {
    identity) so a supervisor can see engagement over time. 400-day TTL: long
    enough to be a record, bounded so it cannot accumulate forever. */
 
+/* THE ALLOWLIST WAS SILENTLY DROPPING THREE EVENT TYPES THE BROWSER EMITS.
+   Found 2026-08-16 while chasing why a note ran to two and a half times its
+   intake. `note_register` is the register measurement, 16 numbers taken on
+   every draft, and the whole downstream is built for it: weekly.js filters for
+   the type, index.js folds three of its fields into the shape profile, and
+   validate.js raised its own key cap to 24 twice, "as note_register grew", with
+   a test pinning the gap. None of it ever ran, because the event died here.
+   `bt-profiles.shape_profile` held 0 rows on the day this was found, against
+   110 correction events, which is the observable end of that chain.
+   `recommendation` and `capture` were dropped the same way. Unlike
+   VOICE_COVERAGE, which records every exclusion and why, nothing here recorded a
+   decision to exclude any of them, so this was an oversight rather than a
+   ruling. */
 const AUDIT_TYPES = new Set([
   "note_generated",
+  "note_register",
   "gap_questions",
   "revision",
   "note_copied",
+  "recommendation",
+  "capture",
 ]);
 
 function sanitizeAuditEvent(raw) {
@@ -1428,10 +2908,21 @@ function sanitizeAuditEvent(raw) {
   const ts = Number.isFinite(raw.ts) ? Math.round(raw.ts) : Date.now();
   const data = {};
   const src = raw.data && typeof raw.data === "object" ? raw.data : {};
-  for (const k of Object.keys(src).slice(0, 12)) {
+  /* 24, matching MAX_METRIC_KEYS in the profile app rather than sitting under
+     it. note_register sends 16 and the overflow here is dropped silently, so a
+     lower cap in front would throw away whichever keys happened to sort last
+     and say nothing. */
+  for (const k of Object.keys(src).slice(0, 24)) {
     if (!/^[a-z][a-z0-9_]{0,23}$/i.test(k)) continue;
     const v = src[k];
-    if (typeof v === "number" && Number.isFinite(v)) data[k] = Math.round(v);
+    /* NOT Math.round. Rounding to an integer destroyed every fractional metric
+       in this payload, and it did so where it mattered most: index.js folds a
+       note into the shape profile only when sectionCv and sectionStep are both
+       finite AND greater than zero, and both are coefficients well under 1. A
+       0.34 arrived as 0 and the fold was skipped every time. Three decimals is
+       still just a number, so nothing about the safety argument above changes:
+       a sentence cannot survive this any more than it could before. */
+    if (typeof v === "number" && Number.isFinite(v)) data[k] = Math.round(v * 1000) / 1000;
     else if (typeof v === "boolean") data[k] = v;
     else if (typeof v === "string" && /^[a-z0-9_-]{1,24}$/i.test(v)) data[k] = v;
     // Anything else - objects, arrays, prose - is dropped, not stringified.
@@ -1938,34 +3429,243 @@ async function sendTermDigest(env) {
   }).catch(() => {});
 }
 
+/* The nightly scrub-learning run.
+ *
+ * PROPOSE-ONLY by design. This is a PHI de-identification control with no BAA, so the
+ * only safe error direction is over-detection. The run can therefore only ever suggest
+ * SUPPRESSING a human-certified false positive (adding a stopword) - never removing a
+ * name, never weakening detection. Every suggestion is queued for human approval in the
+ * admin Algorithm Lab; nothing here mutates the live detection config.
+ *
+ * WHY IT WAS REWRITTEN ON 2026-08-26. It had answered {"ok":true} on every run since
+ * June while writing nothing, and the cause was small and exact: the call was made with
+ * max_tokens 512. Thirteen certified terms need more JSON than that, so the response was
+ * cut off inside the suggestions array, the greedy brace match handed JSON.parse a
+ * truncated array, and the parse threw. stop_reason came back "max_tokens" on every one
+ * of those runs and this function never looked at it.
+ *
+ * Three things changed, and they are separable on purpose.
+ *
+ *   1. IT REPORTS. Every exit returns a report and handleScrubRun sends it back instead
+ *      of a bare ok. A green tick can no longer mean nothing happened, which is the
+ *      property that let this hide for two months.
+ *
+ *   2. IT CANNOT DIE THE SAME WAY. scrubBudget sizes the ceiling to the batch, the
+ *      answer is constrained by a schema rather than fished out with a regex, and a
+ *      truncated response is reported AS truncated rather than left to fail as a syntax
+ *      error three lines later.
+ *
+ *   3. IT DRAINS A BACKLOG. It used to read only the terms certified since midnight
+ *      today, so 213 terms certified while the crons were blocked could never be
+ *      reached however many times it ran. It now works the whole store oldest first, in
+ *      capped batches.
+ *
+ * WHAT scrub-seen:v1 IS FOR. A term the model DECLINES to suggest leaves no trace: it is
+ * not queued, not approved, not rejected. Without a record of what has been looked at,
+ * the same oldest batch would be re-read every night forever and the backlog would never
+ * move. So a term is marked seen once a run has considered it, whatever the model said.
+ * It is marked ONLY on the success path - a failed run that burned forty terms would be
+ * a worse failure than the one this replaces, because it would be silent AND lossy.
+ */
+
+// Terms handed to the model in one run. The cap exists so the budget below has something
+// to be sized against, and so a two-hundred-term backlog arrives as six ordinary nights
+// rather than one call nobody can debug.
+const SCRUB_BATCH_MAX = 40;
+// Output budget, in tokens. One suggestion serialises to roughly 40 tokens; 90 is better
+// than double that, and the whole defect being fixed here was a ceiling that fit the
+// common case and not the real one.
+const SCRUB_TOKENS_PER_TERM = 90;
+const SCRUB_TOKENS_BASE = 400;
+// Asked for in the prompt AND enforced on the way in. The old code asked for no bound
+// and sliced at 300, so the model was free to write an essay per term, and it was the
+// total length that killed the run.
+const SCRUB_REASON_CHARS = 120;
+const SCRUB_SEEN_KEY = "scrub-seen:v1";
+
+export function scrubLimits() {
+  return {
+    batchMax: SCRUB_BATCH_MAX,
+    reasonChars: SCRUB_REASON_CHARS,
+    seenKey: SCRUB_SEEN_KEY,
+  };
+}
+
+/* Sized to what the model was actually asked about, so raising SCRUB_BATCH_MAX
+   cannot silently reintroduce the truncation this replaced.
+   Certified terms AND problem strings, because both produce suggestions: a run
+   with no certified terms and six problem strings is still a run that can
+   overflow, and sizing on the batch alone would have left that one case with
+   exactly the defect being fixed here. */
+export function scrubBudget(itemCount) {
+  return SCRUB_TOKENS_BASE + Math.max(Number(itemCount) || 0, 1) * SCRUB_TOKENS_PER_TERM;
+}
+
+/* Constrained rather than requested. The old prompt ended with "Return ONLY valid JSON
+   (no markdown)" and the code fished the object out with a greedy brace match, which is
+   the pairing that turned a truncation into a syntax error. */
+const SCRUB_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["suggestions", "digest"],
+  properties: {
+    suggestions: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["term", "reason", "confidence"],
+        properties: {
+          term: { type: "string" },
+          reason: { type: "string" },
+          confidence: { type: "string", enum: ["high", "medium", "low"] },
+        },
+      },
+    },
+    digest: { type: "string" },
+  },
+};
+
+/* Which terms this run looks at, and how many are still waiting behind them.
+ *
+ * Oldest first, because the backlog is the point: a term certified on a night the cron
+ * could not run had no second chance under the old midnight filter, since every later
+ * run asked only about that later day. Already approved or already queued counts as
+ * already considered, so a store that predates scrub-seen:v1 does not re-propose
+ * everything sitting in the queue on the first run after this ships.
+ */
+function certifiedMs(entry) {
+  const t = new Date((entry && entry.certifiedAt) || 0).getTime();
+  return Number.isFinite(t) ? t : 0;
+}
+
+export function scrubBatch(input) {
+  const o = input || {};
+  const limit = Number.isFinite(o.limit) ? o.limit : SCRUB_BATCH_MAX;
+  const norm = (t) => String(t || "").toLowerCase().trim();
+  const settled = new Set([
+    ...(o.seen || []).map(norm),
+    ...(o.approved || []).map(norm),
+    ...(o.queued || []).map(norm),
+  ]);
+  const pending = (o.nonPii || [])
+    .filter((e) => e && typeof e.term === "string" && e.term.trim())
+    .filter((e) => !settled.has(norm(e.term)))
+    // An unparseable certifiedAt sorts to the front rather than to NaN, because a
+    // NaN comparator leaves the order to the engine and the oldest-first claim is
+    // the whole point of the window.
+    .sort((a, b) => certifiedMs(a) - certifiedMs(b));
+  const batch = pending.slice(0, Math.max(limit, 0));
+  return {
+    batch: batch.map((e) => e.term),
+    backlogRemaining: Math.max(0, pending.length - batch.length),
+  };
+}
+
+/* What came back, as an outcome rather than as a throw.
+ *
+ * The stop_reason check is the line that would have named this defect in June. The API
+ * had been returning "max_tokens" on every failed run for two months and nothing read
+ * it, so the run died on a syntax error three lines below instead of on the thing that
+ * was actually wrong. */
+export function scrubOutcome(apiResp) {
+  if (apiResp && apiResp.stop_reason === "max_tokens") {
+    return { ok: false, stopped: "model-response-truncated", stopReason: "max_tokens",
+      error: "the model ran out of output budget; nothing was written" };
+  }
+  const content = apiResp?.content?.[0]?.text ?? "";
+  if (!content.trim()) {
+    return { ok: false, stopped: "model-response-empty", error: "the model returned no text" };
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(content);
+  } catch (e) {
+    return { ok: false, stopped: "model-response-unreadable", error: e.message || String(e) };
+  }
+  if (!parsed || !Array.isArray(parsed.suggestions)) {
+    return { ok: false, stopped: "model-response-unreadable", error: "no suggestions array" };
+  }
+  return { ok: true, result: parsed };
+}
+
+// One place builds the report, so every caller reads the same keys and a new exit cannot
+// quietly return a different shape.
+function scrubReport(fields) {
+  return {
+    ok: false, stopped: null, considered: 0, proposed: 0,
+    queueDepth: 0, backlogRemaining: 0, stopReason: null, error: null,
+    ...fields,
+  };
+}
+
+async function notifyScrubFailure(env, message) {
+  if (!env.RESEND_API_KEY || !env.SUGGEST_TO_EMAIL) return;
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + env.RESEND_API_KEY },
+    body: JSON.stringify({
+      from: "tools@nooutco.me", to: env.SUGGEST_TO_EMAIL,
+      subject: "PHI scrub run failed - " + new Date().toISOString().slice(0, 10),
+      text: "Nightly scrub learning run failed: " + message,
+    }),
+  }).catch(() => {});
+}
+
 // Core learning logic: called by scheduled() and handleScrubRun().
-// PROPOSE-ONLY by design. This is a PHI de-identification control with no BAA, so the
-// only safe error direction is over-detection. The run can therefore only ever suggest
-// SUPPRESSING a human-certified false positive (adding a stopword) - never removing a
-// name, never weakening detection. Every suggestion is queued for human approval in the
-// admin Algorithm Lab; nothing here mutates the live detection config.
-async function runScrubLearning(env) {
-  if (!env.API_PASSWORDS || !env.ANTHROPIC_API_KEY) return;
+export async function runScrubLearning(env) {
+  if (!env.API_PASSWORDS || !env.ANTHROPIC_API_KEY) {
+    // Named, because a report whose only failure detail is null tells the admin button
+    // nothing and it falls back to printing a status code.
+    return scrubReport({ stopped: "no-bindings", error: "the KV binding or the Anthropic key is missing on this deployment" });
+  }
   const kv = env.API_PASSWORDS;
 
-  // Today's certified non-PII terms (false positives a clinician explicitly cleared)
-  const today = new Date();
-  const todayMidnightMs = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
-  const nonPiiRaw = await kv.get("nonpii:v1");
-  const nonPiiAll = nonPiiRaw ? JSON.parse(nonPiiRaw) : [];
-  const todayTerms = nonPiiAll
-    .filter((e) => e.certifiedAt && new Date(e.certifiedAt).getTime() >= todayMidnightMs)
-    .map((e) => e.term);
+  /* A key that will not parse is REPORTED, not read as empty. Returning the
+     fallback here would put back the exact shape of the bug this replaces: the
+     run would find "nothing to consider" in a store holding 213 terms and would
+     answer ok. An absent key is a different thing and is genuinely empty. */
+  const unreadable = [];
+  const readJson = async (key, fallback) => {
+    const raw = await kv.get(key);
+    if (!raw) return fallback;
+    try {
+      return JSON.parse(raw);
+    } catch (e) {
+      unreadable.push(key);
+      return fallback;
+    }
+  };
+
+  const nonPiiAll = await readJson("nonpii:v1", []);
+  const seen = await readJson(SCRUB_SEEN_KEY, []);
+  const queue = await readJson("scrub-suggestions:v1", []);
+  const ov = await readJson("scrub-overrides:v1", { stopwords: [], firstNames: [] });
+  const approvedStopwords = new Set((ov.stopwords || []).map((w) => String(w).toLowerCase()));
+  const queuedTerms = new Set(queue.map((s) => String(s.term).toLowerCase()));
+
+  const { batch, backlogRemaining } = scrubBatch({
+    nonPii: nonPiiAll, seen, approved: [...approvedStopwords], queued: [...queuedTerms],
+  });
 
   // Admin-submitted problem strings
-  const learnRaw = await kv.get("scrub-learn:v1");
-  const problemStrings = learnRaw ? JSON.parse(learnRaw) : [];
+  const problemStrings = await readJson("scrub-learn:v1", []);
 
-  if (todayTerms.length === 0 && problemStrings.length === 0) return;
+  if (unreadable.length) {
+    const msg = "these KV keys did not parse and the run stopped rather than treating them as empty: " + unreadable.join(", ");
+    await notifyScrubFailure(env, msg);
+    return scrubReport({ stopped: "store-unreadable", error: msg });
+  }
+
+  if (batch.length === 0 && problemStrings.length === 0) {
+    // A real answer, and it now says so out loud. Before this, an empty night and a
+    // broken night returned exactly the same thing.
+    return scrubReport({ ok: true, stopped: "nothing-to-consider", queueDepth: queue.length });
+  }
 
   // Vocabulary the AI is allowed to draw from (defense in depth: it cannot invent words).
   const inputVocab = new Set();
-  todayTerms.forEach((t) => inputVocab.add(String(t).toLowerCase().trim()));
+  batch.forEach((t) => inputVocab.add(String(t).toLowerCase().trim()));
   problemStrings.forEach((p) => String(p.text || "").split(/\s+/).forEach((w) => {
     const clean = w.replace(/[^A-Za-z'\-]/g, "").toLowerCase().trim();
     if (clean) inputVocab.add(clean);
@@ -1977,53 +3677,41 @@ async function runScrubLearning(env) {
     "Suggest a term ONLY if it is unmistakably common English or ABA clinical vocabulary that could never be a person's name.",
     "If a term could plausibly be anyone's first or last name - including uncommon, nickname, or international names like Raphael or Raphy - DO NOT suggest it; leave it flagged.",
     "You may never remove names or weaken detection; a human reviews every suggestion before it takes effect. When in doubt, suggest nothing.",
+    "Keep every reason under " + SCRUB_REASON_CHARS + " characters and the digest to one or two sentences.",
   ].join(" ");
 
   const userPrompt = [
     "Certified-not-PHI terms (a clinician flagged these as NOT person names):",
-    todayTerms.length ? todayTerms.map((t) => "  - " + t).join("\n") : "  (none today)",
+    batch.length ? batch.map((t) => "  - " + t).join("\n") : "  (none)",
     "",
     "Admin problem strings (examples where detection went wrong):",
-    problemStrings.length ? problemStrings.map((p) => "  - " + p.text).join("\n") : "  (none today)",
-    "",
-    'Return ONLY valid JSON (no markdown): {"suggestions":[{"term":"word","reason":"why it is safe to suppress","confidence":"high|medium|low"}],"digest":"1-2 sentence summary"}',
+    problemStrings.length ? problemStrings.map((p) => "  - " + p.text).join("\n") : "  (none)",
   ].join("\n");
 
-  let result;
+  let outcome;
   try {
-    const apiResp = await callAnthropicApi(env.ANTHROPIC_API_KEY, systemPrompt, userPrompt, "claude-haiku-4-5-20251001", 512);
-    const content = apiResp?.content?.[0]?.text ?? "";
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    result = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+    const apiResp = await callAnthropicApi(
+      env.ANTHROPIC_API_KEY, systemPrompt, userPrompt, "claude-haiku-4-5-20251001",
+      scrubBudget(batch.length + problemStrings.length), { format: { type: "json_schema", schema: SCRUB_SCHEMA } },
+    );
+    outcome = scrubOutcome(apiResp);
   } catch (e) {
-    if (env.RESEND_API_KEY && env.SUGGEST_TO_EMAIL) {
-      await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: "Bearer " + env.RESEND_API_KEY },
-        body: JSON.stringify({
-          from: "tools@nooutco.me", to: env.SUGGEST_TO_EMAIL,
-          subject: "PHI scrub run failed - " + new Date().toISOString().slice(0, 10),
-          text: "Nightly scrub learning run failed: " + (e.message || String(e)),
-        }),
-      }).catch(() => {});
-    }
-    return;
+    outcome = { ok: false, stopped: "model-call-failed", error: e && e.message ? e.message : String(e) };
   }
 
-  if (!result) return;
+  if (!outcome.ok) {
+    await notifyScrubFailure(env, outcome.error + " (" + batch.length + " terms considered, nothing written)");
+    return scrubReport({
+      stopped: outcome.stopped, stopReason: outcome.stopReason || null, error: outcome.error,
+      considered: batch.length, queueDepth: queue.length, backlogRemaining,
+    });
+  }
+  const result = outcome.result;
 
-  // Load existing queue + already-approved stopwords to dedupe against.
-  const sugRaw = await kv.get("scrub-suggestions:v1");
-  const queue = sugRaw ? JSON.parse(sugRaw) : [];
-  const ovRaw = await kv.get("scrub-overrides:v1");
-  const ov = ovRaw ? JSON.parse(ovRaw) : { stopwords: [], firstNames: [] };
-  const approvedStopwords = new Set((ov.stopwords || []).map((w) => String(w).toLowerCase()));
-  const queuedTerms = new Set(queue.map((s) => String(s.term).toLowerCase()));
-
-  // Accept only terms that (a) the AI returned, (b) appeared in today's input vocab,
+  // Accept only terms that (a) the AI returned, (b) appeared in this run's input vocab,
   // (c) aren't already approved or queued. This is the hard guardrail.
   const fresh = [];
-  (result.suggestions || []).forEach((s) => {
+  result.suggestions.forEach((s) => {
     const term = String(s.term || "").toLowerCase().trim();
     if (!term || !inputVocab.has(term)) return;
     if (approvedStopwords.has(term) || queuedTerms.has(term)) return;
@@ -2031,7 +3719,7 @@ async function runScrubLearning(env) {
     fresh.push({
       id: crypto.randomUUID(),
       term,
-      reason: String(s.reason || "").slice(0, 300),
+      reason: String(s.reason || "").slice(0, SCRUB_REASON_CHARS),
       confidence: ["high", "medium", "low"].includes(s.confidence) ? s.confidence : "low",
       proposedAt: new Date().toISOString(),
     });
@@ -2039,6 +3727,16 @@ async function runScrubLearning(env) {
 
   const runDate = new Date().toISOString().slice(0, 10);
   await kv.put("scrub-suggestions:v1", JSON.stringify([...queue, ...fresh]));
+
+  /* Marked seen after the write and only here, on the success path. Every term in the
+     batch, not only the suggested ones, because a term the model declined is a term this
+     run has answered, and re-asking about it every night is how a backlog stops
+     draining. */
+  await kv.put(SCRUB_SEEN_KEY, JSON.stringify(
+    Array.from(new Set([...seen.map((t) => String(t).toLowerCase().trim()),
+                        ...batch.map((t) => String(t).toLowerCase().trim())])),
+  ));
+
   // Record the run on the overrides object (last run + digest) without touching live config.
   await kv.put("scrub-overrides:v1", JSON.stringify({
     stopwords: ov.stopwords || [],
@@ -2072,9 +3770,21 @@ async function runScrubLearning(env) {
           "Proposed stopwords (" + fresh.length + "):",
           ...lines,
           "",
-          "Input: " + todayTerms.length + " certified terms, " + problemStrings.length + " problem strings",
+          "Input: " + batch.length + " certified terms, " + problemStrings.length + " problem strings",
+          // The line that answers "is the backlog moving", which the digest could not
+          // answer before there was a backlog window to move through.
+          "Backlog: " + backlogRemaining + " certified term" + (backlogRemaining === 1 ? "" : "s") +
+            " still waiting" + (backlogRemaining ? ", about " + Math.ceil(backlogRemaining / SCRUB_BATCH_MAX) + " more night(s)" : ""),
         ].join("\n"),
       }),
     }).catch(() => {});
   }
+
+  return scrubReport({
+    ok: true,
+    considered: batch.length,
+    proposed: fresh.length,
+    queueDepth: queue.length + fresh.length,
+    backlogRemaining,
+  });
 }

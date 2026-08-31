@@ -1,17 +1,39 @@
 /*
- * notes-scrub.js - confirm-first PHI/PII review shared by the notes tools.
+ * notes-scrub.js - automatic PHI/PII removal shared by the notes tools.
  *
  * Compliance model (no BAA / no ZDR): PHI must never reach the API. De-identifying
  * the input *before* anything is sent is the HIPAA control here - the API only ever
- * receives role tokens (Client, Caregiver, …). Two gates run before any prompt is
- * built or sent:
+ * receives role tokens (Client, Caregiver, …). Both gates run with no dialog:
  *
- *   1. acknowledge() - a once-per-page-load legal notice the clinician must accept
- *      (submitting PHI to a third-party AI service without a BAA can violate HIPAA
- *      and other laws). Returns false if declined.
- *   2. review()      - every detected name is shown for confirmation. The clinician
- *      edits the replacement, picks a role, or certifies the term is not PII (which
- *      leaves it untouched). Confirmed names are replaced everywhere.
+ *   1. acknowledge() - resolves true. The legal notice is now a permanent banner on
+ *      the page rather than a modal you dismiss once and never read again.
+ *   2. review()      - maps every detected name and identifier to a role token, and
+ *      reports what it took afterwards.
+ *
+ * WHY BOTH DIALOGS WENT (2026-08-24, maintainer's ruling). Gate 2 used to open a
+ * confirm-first dialog listing every detection with an editable token, a role
+ * dropdown and a "not PII" checkbox. The maintainer named it the chief source of
+ * token error, and the mechanism is alarm fatigue rather than impatience: a note
+ * mentioning a school, a programme and a target behaviour can raise thirty flags of
+ * which none are names, and a person asked to adjudicate thirty rows will not
+ * adjudicate the thirty-first carefully. The dialog was therefore most wrong exactly
+ * where it mattered most. The identifier pass had already made this argument for
+ * itself - see identifierMap below, "removing the click removes the chance of
+ * clicking through" - and this is that argument applied to names.
+ *
+ * Gate 1 went with it for a related reason. A modal accepted once per page load and
+ * never read again is a click, not an understanding. The same words now sit on the
+ * page next to the box being typed into, where they can actually be read, and the
+ * scrub notice repeats the substance every time something is taken.
+ *
+ * WHAT WOULD HAVE BEEN LOST, AND WHERE IT WENT. The review dialog was the only
+ * caller of NotesGate.nonPii.saveTerm, so it was the only way to stop a false
+ * positive recurring. Delete it naively and a programme name that reads like a
+ * person is scrubbed forever with no way to say otherwise. That escape now lives in
+ * the after-the-fact notice: every substituted word is offered back as "not a name",
+ * which certifies it for next time. The clinician still decides, about the words
+ * that were actually taken rather than the thirty that were not, and after reading a
+ * draft rather than before writing one.
  *
  * Tokens stay in the output (de-identified AND retrievable - the clinician
  * substitutes real names in their own EHR). The name->token map is EPHEMERAL: it
@@ -19,8 +41,14 @@
  * persistMap() is an inert hook for future encrypted-at-rest storage if re-insertion
  * is ever added.
  *
+ * NOT the same job as NotesGate.scrubForAgent(), which the expert bench uses. That
+ * one restores the real words into what comes back, because the expert quotes the
+ * clinician verbatim and nothing it returns is written down. This one never
+ * restores: the token is what the clinician wants left in the note.
+ *
  * Depends on window.NotesGate._scrub (detectNames / applyScrub). Vanilla; the React
- * pages `await NotesScrub.acknowledge()` then `await NotesScrub.review(...)`.
+ * pages `await NotesScrub.acknowledge()` then `await NotesScrub.review(...)`. Both
+ * still return promises so no caller had to change when the dialogs went.
  */
 (function () {
   "use strict";
@@ -61,53 +89,105 @@
     return ROLES[0];
   }
 
-  // Best-guess default role from words near the name. Drives only the dropdown
-  // default - the clinician confirms or overrides every choice.
-  var CUES = [
-    { rx: /\b(mom|mother|dad|father|parent|grandma|grandpa|grandmother|grandfather|guardian|caregiver|aunt|uncle|foster)\b/, role: "caregiver" },
-    { rx: /\b(bt|rbt|tech|technician|aide|para)\b/, role: "technician" },
-    { rx: /\b(bcba|bcaba|analyst|supervisor)\b/, role: "bcba" },
-    { rx: /\b(teacher|sped)\b/, role: "teacher" },
-    { rx: /\b(slp|ot|pt|speech|occupational|physical|therapist|specialist)\b/, role: "specialist" },
-  ];
-  function guessRole(name, text) {
-    if (!text) return "client";
-    var lower = text.toLowerCase();
-    var needle = name.toLowerCase();
-    var idx = lower.indexOf(needle);
-    while (idx !== -1) {
-      var ctx = lower.slice(Math.max(0, idx - 40), Math.min(lower.length, idx + needle.length + 40));
-      for (var i = 0; i < CUES.length; i++) if (CUES[i].rx.test(ctx)) return CUES[i].role;
-      idx = lower.indexOf(needle, idx + needle.length);
+  // Role from the words near the name. This used to be a best guess seeding a
+  // dropdown the clinician then confirmed; with the dropdown gone it decides the
+  // token outright, so its failure mode changed and is worth naming: a name with
+  // no cue near it falls through to "client". That is the right default for a
+  // session note, where the unlabelled person overwhelmingly IS the client, and
+  // it is the reason this differs from NotesGate.scrubForAgent(), which answers
+  // "Person" instead. The difference is what happens to a wrong guess. Here the
+  // token lands in a note a human reads and edits before signing. There it lands
+  // in a prompt telling an expert model which human the programme is about, and
+  // nobody sees it before the model does.
+  /* ADJACENCY, not proximity. This is the part that had to change when the
+   * dropdown went, and it is worth saying why in full because the old rule looks
+   * harmless until nobody is checking it.
+   *
+   * The old rule scanned a 40-character window either side of the name and took
+   * the first cue it found anywhere in it. On "Jacob eloped twice. Mom Sarah
+   * called", the window around "Jacob" reaches "Mom" three words later, so Jacob
+   * came back as a caregiver. That was survivable while a clinician was looking at
+   * a dropdown reading "Jacob → Caregiver" and could fix it in one click. With the
+   * dialog gone nobody sees it, and the note goes out calling the client a parent.
+   *
+   * So a cue now has to be ATTACHED to the name to claim it: immediately before
+   * ("Mom Sarah", "BT Marcus", "client Jacob"), or immediately after as an
+   * appositive ("Sarah, his mother", "Marcus (RBT)"). A cue merely in the same
+   * sentence claims nothing. This is the same rule NotesGate.inferRoles() uses on
+   * the expert path, which is not a coincidence - two role inferences that disagree
+   * about the same sentence is a bug waiting for a Tuesday.
+   *
+   * The appositive form allows one optional possessive or article between the name
+   * and the cue, which is what "Sarah, his mother" needs and what stops "Sarah, who
+   * had driven the mother of another client" from matching.
+   */
+  var CUE_WORDS =
+    "mom|mother|dad|father|parent|grandma|grandpa|grandmother|grandfather|guardian|" +
+    "caregiver|aunt|uncle|foster|bt|rbt|tech|technician|aide|para|bcba|bcaba|analyst|" +
+    "supervisor|teacher|sped|slp|ot|pt|speech|occupational|physical|therapist|specialist|" +
+    "client|kiddo|learner|student|sibling|brother|sister|peer|classmate";
+  var CUE_ROLE = {
+    mom: "caregiver", mother: "caregiver", dad: "caregiver", father: "caregiver",
+    parent: "caregiver", grandma: "caregiver", grandpa: "caregiver",
+    grandmother: "caregiver", grandfather: "caregiver", guardian: "caregiver",
+    caregiver: "caregiver", aunt: "caregiver", uncle: "caregiver", foster: "caregiver",
+    bt: "technician", rbt: "technician", tech: "technician", technician: "technician",
+    aide: "technician", para: "technician",
+    bcba: "bcba", bcaba: "bcba", analyst: "bcba", supervisor: "bcba",
+    teacher: "teacher", sped: "teacher",
+    slp: "specialist", ot: "specialist", pt: "specialist", speech: "specialist",
+    occupational: "specialist", physical: "specialist", therapist: "specialist",
+    specialist: "specialist",
+    client: "client", kiddo: "client", learner: "client", student: "client",
+    sibling: "sibling", brother: "sibling", sister: "sibling",
+    peer: "peer", classmate: "peer",
+  };
+
+  // The cue lookup on its own, returning null when nothing is attached. Split out
+  // of guessRole because the caller now needs to know the DIFFERENCE between a
+  // role that was read off the text and a role that was assumed, and guessRole
+  // answers "client" to both.
+  function cueRole(name, text) {
+    if (!text) return null;
+    var esc = String(name).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    var before, after;
+    try {
+      // "Mom Sarah", "BT Marcus", "client Jacob"
+      before = new RegExp("\\b(" + CUE_WORDS + ")\\.?\\s+" + esc + "\\b", "i");
+      // "Sarah, his mother", "Marcus (RBT)", "Jacob - the learner"
+      after = new RegExp("\\b" + esc + "\\b\\s*[,(-]\\s*(?:his|her|their|the|a|an)?\\s*(" + CUE_WORDS + ")\\b", "i");
+    } catch (e) { return null; }
+
+    var m = before.exec(text) || after.exec(text);
+    if (m) {
+      var role = CUE_ROLE[m[1].toLowerCase()];
+      if (role) return role;
     }
-    return "client";
+    return null;
   }
 
-  // Find the sentence containing the first occurrence of name (case-insensitive)
-  // and return a short clip, so the clinician sees context for each detection.
-  // Uses word-boundary regex (not indexOf) to avoid substring false-hits like
-  // "one" matching inside "done".
-  function snippetFor(name, text) {
-    if (!text) return "";
-    var re;
-    try {
-      re = new RegExp("\\b" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "i");
-    } catch (e) { return ""; }
-    var match = re.exec(text);
-    if (!match) return "";
-    var idx = match.index;
-    var start = idx;
-    while (start > 0 && !/[\n.!?]/.test(text[start - 1])) start--;
-    var end = idx + name.length;
-    while (end < text.length && !/[\n.!?]/.test(text[end])) end++;
-    if (end < text.length) end++;
-    var s = text.slice(start, end).trim();
-    if (s.length > 80) {
-      var rel = idx - start;
-      var from = Math.max(0, rel - 30);
-      s = (from > 0 ? "…" : "") + s.slice(from, Math.min(s.length, from + 70)).trim() + "…";
-    }
-    return s;
+  function guessRole(name, text) {
+    return cueRole(name, text) || "client";
+  }
+
+  /* Is there POSITIVE evidence that this word is a person?
+   *
+   * Two signals, and they are the only two the scrubber actually has: a role cue
+   * attached to the word ("Mom Sarah", "Sarah, his mother"), or the word sitting
+   * in the first-name dictionary. Everything else that detectNames returns is a
+   * capitalised word it could not rule out, which is a very different claim.
+   *
+   * This distinction did not exist before, and its absence is what put "Client 25"
+   * in a signed note. detectNames is deliberately over-inclusive because it was
+   * written for a path that ADJUDICATES every hit. On the drafting path nothing
+   * adjudicates and nothing restores, so every colour, toy and piece of ABA
+   * terminology it caught became a numbered client, permanently.
+   */
+  function personEvidence(name, text) {
+    if (cueRole(name, text)) return true;
+    var s = scrub();
+    if (!s || !s.isFirstName) return false;
+    return String(name).split(/\s+/).some(function (w) { return s.isFirstName(w); });
   }
 
   // Shown in the notice banner after any scrub so clinicians build better habits.
@@ -117,31 +197,82 @@
     "(BT, BCBA, SLP, OT, etc.). Remember that client health information responsibility " +
     "sits with ALL providers at all times.";
 
-  // Pre-fill replacement defaults, numbering duplicates within a role
-  // (Client, Client 2). The clinician can edit any of them.
+  /* Two kinds of replacement, decided by evidence rather than by hope.
+   *
+   * A word with person-evidence gets a ROLE token (Client, Caregiver 2) and that
+   * token is what stays in the signed note. Unchanged, and deliberately so: the
+   * de-identification of actual people is the whole point of this pass.
+   *
+   * A word without it gets an OPAQUE token instead, and the page puts the
+   * original word back when the draft returns. The model never learns what the
+   * word was, and a wrong guess costs the note nothing.
+   *
+   * That second class is the maintainer's instruction on 2026-08-26, and it
+   * makes true a claim the code above the stopword list has been making since it
+   * was written: "over-scrubbing is safe, it round-trips back identically". That
+   * was true on the expert path, which restores. On this path nothing restored,
+   * so over-scrubbing was not safe at all, and the comment was quietly wrong for
+   * as long as it has been there.
+   *
+   * Shape is [[T1]] rather than a word: double brackets survive a JSON round trip,
+   * carry no meaning for the model to act on, and cannot collide by prefix the way
+   * "Client" collides with "Client 2".
+   */
   function defaultTokens(names, freeText) {
     var counts = {};
+    var opaque = 0;
     return names.map(function (name) {
+      if (!personEvidence(name, freeText)) {
+        opaque += 1;
+        return { roleKey: null, token: "[[T" + opaque + "]]", restore: true };
+      }
       var role = roleByKey(guessRole(name, freeText));
       counts[role.key] = (counts[role.key] || 0) + 1;
       var n = counts[role.key];
-      return { roleKey: role.key, token: n === 1 ? role.token : role.token + " " + n };
+      return {
+        roleKey: role.key,
+        token: n === 1 ? role.token : role.token + " " + n,
+        restore: false,
+      };
     });
   }
 
-  // selections: [{ name, replacement, cert }] -> { map, certified }. Longest names
-  // first so "John Smith" is replaced before "John".
-  function buildMap(selections) {
+  /* selections: [{ name, replacement, cert, restore }] -> { map, certified }.
+   * Longest names first so "John Smith" is replaced before "John".
+   *
+   * FRAGMENTS ARE DROPPED when `text` is supplied. detectNames returns "Paw
+   * Patrol" and also "Paw" and also "Patrol", because each is a capitalised word
+   * it could not rule out. Once the phrase is replaced the two fragments match
+   * nothing, but they still consumed a token apiece, which is most of how a note
+   * with six people in it reached "Client 25". Worse, a fragment that DOES occur
+   * on its own later gets a second, different token for the same word.
+   *
+   * So each name is tested against a copy of the text with every longer
+   * replacement already applied. A name that has nothing left to match is not a
+   * name, it is the inside of one.
+   */
+  function buildMap(selections, text) {
     var map = [];
     var certified = [];
     selections.forEach(function (s) {
       if (s.cert) { certified.push(s.name); return; }
       var rep = (s.replacement || "").trim();
       if (!rep) return;
-      map.push({ name: s.name, token: rep });
+      map.push({ name: s.name, token: rep, restore: !!s.restore });
     });
     map.sort(function (a, b) { return b.name.length - a.name.length; });
-    return { map: map, certified: certified };
+
+    if (typeof text !== "string" || !text) return { map: map, certified: certified };
+
+    var remaining = text;
+    var kept = [];
+    map.forEach(function (e) {
+      var after = applyMap(remaining, [e]);
+      if (after === remaining) return; // nothing of this name survives - it was a fragment
+      remaining = after;
+      kept.push(e);
+    });
+    return { map: kept, certified: certified };
   }
 
   function applyMap(text, map) {
@@ -150,9 +281,32 @@
     return s.applyScrub(text, map);
   }
 
+  /* Put the round-trippable words back.
+   *
+   * Only entries flagged `restore` are reversed, so a role token stays exactly
+   * where it is and no person's name re-enters a note. Walks objects and arrays
+   * because the model answers with the note's whole JSON shape.
+   *
+   * Call it on the PARSED answer and never on the raw text: the revision flow
+   * replays rawText verbatim to keep Anthropic's prefix cache warm, and a
+   * restored word there would change the prefix and cost full price every turn.
+   */
+  function restoreOutput(value, map) {
+    var s = scrub();
+    if (!s || !s.restoreDeep || !map || !map.length) return value;
+    var back = map.filter(function (e) { return e.restore; });
+    return back.length ? s.restoreDeep(value, back) : value;
+  }
+
+  // Only the substitutions that STAY in the note are worth telling a clinician
+  // about. A round-tripped word was never taken, so listing it would report a
+  // change that does not survive to the draft.
   function noticeText(map) {
     if (!map || !map.length) return "";
-    return map.map(function (e) { return e.name + " → " + e.token; }).join(", ");
+    return map
+      .filter(function (e) { return !e.restore; })
+      .map(function (e) { return e.name + " → " + e.token; })
+      .join(", ");
   }
 
   // Inert hook. If re-insertion is ever added, encrypt the map at rest here
@@ -160,87 +314,31 @@
   // store the map in plaintext, never transmit it. Currently a no-op by design.
   function persistMap(/* map */) { return false; }
 
-  function esc(s) {
-    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  }
+  /* ───────────────── Acknowledgment ───────────────── */
 
-  /* ───────────────── Acknowledgment (once per page load) ───────────────── */
+  /* The legal notice is a BANNER now, not a dialog.
+   *
+   * It used to be a modal you accepted once per page load. A modal accepted once
+   * and never read again is a click, not an understanding, and it bought nothing
+   * that the permanent notice beside the textarea does not buy better. The words
+   * themselves did not change and are not weakened: they live in ACK_NOTICE below
+   * and the note pages render them where the typing happens.
+   *
+   * This still returns a promise resolving true, because every caller awaits it and
+   * the seam is worth keeping. If a future compliance posture needs a hard gate
+   * again, it goes back here and no call site changes.
+   */
+  var ACK_NOTICE =
+    "Do not enter Protected Health Information (PHI) or personally identifiable " +
+    "information (PII) - client names, dates, addresses, or any other identifier - " +
+    "into this tool. Submitting PHI to a third-party AI service without a signed " +
+    "Business Associate Agreement can violate HIPAA, the HITECH Act, and other " +
+    "applicable laws. You are solely responsible for ensuring no identifying " +
+    "information is submitted. This tool detects and removes names and identifiers " +
+    "before anything is transmitted as a safeguard, but it does not replace your " +
+    "professional and legal duty to de-identify your input.";
 
-  var acked = false;
-
-  function acknowledge() {
-    return new Promise(function (resolve) {
-      if (acked) { resolve(true); return; }
-      if (document.getElementById("notes-ack-backdrop")) { resolve(false); return; }
-
-      var wrap = document.createElement("div");
-      wrap.id = "notes-ack-backdrop";
-      wrap.setAttribute("style",
-        "position:fixed;inset:0;background:rgba(20,28,14,.6);display:flex;align-items:center;" +
-        "justify-content:center;z-index:10000;padding:20px;");
-      wrap.innerHTML =
-        '<div role="dialog" aria-modal="true" aria-labelledby="notes-ack-title" ' +
-        'style="position:relative;background:#fff;border-radius:14px;max-width:520px;width:100%;' +
-        'padding:26px 26px 22px;box-shadow:0 24px 60px rgba(20,28,14,.34);font-family:inherit;max-height:88vh;overflow:auto;">' +
-        '<h2 id="notes-ack-title" style="font-size:19px;font-weight:700;color:#7a2018;margin:0 0 10px;">' +
-        "Do not submit Protected Health Information</h2>" +
-        '<p style="font-size:13.5px;color:#3a4326;margin:0 0 12px;line-height:1.6;">' +
-        "Do not enter Protected Health Information (PHI) or personally identifiable information " +
-        "(PII) - client names, dates, addresses, or any other identifier - into this tool.</p>" +
-        '<p style="font-size:13.5px;color:#3a4326;margin:0 0 12px;line-height:1.6;">' +
-        "Submitting PHI to a third-party AI service without a signed Business Associate Agreement " +
-        "can violate the Health Insurance Portability and Accountability Act (HIPAA), the HITECH " +
-        "Act, and other applicable federal, state, and local laws, statutes, and regulations. " +
-        "<strong>You are solely responsible</strong> for ensuring no identifying information is " +
-        "submitted.</p>" +
-        '<p style="font-size:13.5px;color:#3a4326;margin:0 0 16px;line-height:1.6;">' +
-        "This tool detects and removes names before anything is transmitted as a safeguard, but " +
-        "it does not replace your professional and legal duty to de-identify your input. Review " +
-        "everything you enter.</p>" +
-        '<label style="display:flex;gap:9px;align-items:flex-start;font-size:13.5px;color:#2d3a1f;' +
-        'cursor:pointer;margin-bottom:16px;line-height:1.5;">' +
-        '<input id="notes-ack-cb" type="checkbox" style="margin-top:2px;width:17px;height:17px;flex:0 0 auto;" />' +
-        "<span>I understand and accept responsibility for not submitting PHI/PII.</span></label>" +
-        '<div style="display:flex;gap:10px;justify-content:flex-end;">' +
-        '<button id="notes-ack-cancel" type="button" style="padding:10px 16px;border:1.5px solid #c0d4a8;border-radius:8px;' +
-        'background:#fff;color:#5a6b4a;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>' +
-        '<button id="notes-ack-go" type="button" disabled style="padding:10px 18px;border:none;border-radius:8px;' +
-        'background:#a8b896;color:#fff;font-size:14px;font-weight:600;cursor:not-allowed;">I understand - continue</button>' +
-        "</div></div>";
-      document.body.appendChild(wrap);
-
-      var cb = document.getElementById("notes-ack-cb");
-      var go = document.getElementById("notes-ack-go");
-      var cancel = document.getElementById("notes-ack-cancel");
-      var done = false;
-      function finish(ok) {
-        if (done) return;
-        done = true;
-        document.removeEventListener("keydown", escHandler);
-        wrap.remove();
-        resolve(ok);
-      }
-      function escHandler(e) { if (e.key === "Escape") finish(false); }
-      cb.addEventListener("change", function () {
-        go.disabled = !cb.checked;
-        go.style.background = cb.checked ? "#374528" : "#a8b896";
-        go.style.cursor = cb.checked ? "pointer" : "not-allowed";
-      });
-      go.addEventListener("click", function () { if (!cb.checked) return; acked = true; finish(true); });
-      cancel.addEventListener("click", function () { finish(false); });
-      wrap.addEventListener("click", function (e) { if (e.target === wrap) finish(false); });
-      document.addEventListener("keydown", escHandler);
-      cb.focus();
-    });
-  }
-
-  /* ─────────────────────── Review modal ─────────────────────── */
-
-  function optionsHtml(defaultKey) {
-    return ROLES.map(function (r) {
-      return '<option value="' + r.key + '"' + (r.key === defaultKey ? " selected" : "") + ">" + r.label + "</option>";
-    }).join("");
-  }
+  function acknowledge() { return Promise.resolve(true); }
 
   // Non-name identifiers - DOB, phone, address, ZIP, email, SSN, MRN. Unlike a
   // name there is no clinical reason for one of these to be in a session note,
@@ -345,153 +443,72 @@
     };
   }
 
-  // Resolves { cancelled, map, certified }. With no detected names it resolves
-  // immediately (no modal) - but any identifiers found are still mapped.
-  // Otherwise it opens a confirm-first dialog for the names.
+  /* ─────────────────── The scrub itself ─────────────────── */
+
+  /* Resolves { cancelled, map, certified }. No dialog, and `cancelled` is never
+   * true, because there is nothing left for anyone to cancel.
+   *
+   * The ordering is load-bearing. Identifiers go FIRST so a longer literal like
+   * "123 Jacob Street" is replaced whole before the name pass can see "Jacob"
+   * nested inside it and break the address in half. buildMap then sorts names
+   * longest-first for the same reason, so "John Smith" goes before "John".
+   *
+   * `certified` stays in the returned shape and stays empty. Certifying happens
+   * after the fact now, through notPii(), rather than before the fact in a dialog.
+   * Every caller destructures this object and there was no reason to churn them.
+   */
   function review(opts) {
     return new Promise(function (resolve) {
       var freeText = (opts && opts.freeText) || "";
       var idMap = identifierMap(freeText);
       var names = detect(freeText);
       if (!names.length) { resolve({ cancelled: false, map: idMap, certified: [] }); return; }
-      if (document.getElementById("notes-scrub-backdrop")) { resolve({ cancelled: true, map: [], certified: [] }); return; }
 
       var defaults = defaultTokens(names, freeText);
-      var rows = names.map(function (name, i) {
-        var d = defaults[i];
-        var snip = snippetFor(name, freeText);
-        return (
-          '<div style="padding:10px 0;border-top:1px solid #eef2e6;">' +
-          '<div style="font-size:14px;font-weight:700;color:#2d3a1f;word-break:break-word;margin-bottom:' + (snip ? "2px" : "6px") + ';">' + esc(name) + "</div>" +
-          (snip ? '<div style="font-size:11.5px;color:#7a8a68;font-style:italic;margin-bottom:6px;word-break:break-word;">' + esc(snip) + "</div>" : "") +
-          '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">' +
-          '<label style="font-size:11px;color:#7a8a68;font-weight:600;">Replace with' +
-          '<input type="text" data-rep value="' + esc(d.token) + '" ' +
-          'style="display:block;margin-top:3px;padding:7px 9px;border:1.5px solid #c0d4a8;border-radius:7px;font-size:13px;color:#2d3a1f;width:130px;" /></label>' +
-          '<label style="font-size:11px;color:#7a8a68;font-weight:600;">Role' +
-          '<select data-role style="display:block;margin-top:3px;padding:7px 9px;border:1.5px solid #c0d4a8;border-radius:7px;font-size:13px;background:#fff;color:#2d3a1f;">' +
-          optionsHtml(d.roleKey) + "</select></label>" +
-          "</div>" +
-          '<label style="display:inline-flex;gap:7px;align-items:center;font-size:12.5px;color:#5a6b4a;cursor:pointer;margin-top:8px;">' +
-          '<input type="checkbox" data-cert style="width:15px;height:15px;" /> I certify this is not PII ' +
-          '<span data-pii-toggle role="button" tabindex="0" aria-label="What is PII?" ' +
-          'style="display:inline-flex;width:16px;height:16px;border-radius:50%;border:1px solid #c0d4a8;background:#eef4e6;' +
-          'color:#5a7040;font-size:11px;font-weight:700;align-items:center;justify-content:center;cursor:pointer;">?</span></label>' +
-          "</div>"
+      var built = buildMap(names.map(function (name, i) {
+        return {
+          name: name,
+          replacement: defaults[i].token,
+          cert: false,
+          restore: defaults[i].restore,
+        };
+      }), freeText);
+      var map = idMap.concat(built.map);
+
+      // Report the bare scrubbed words (names only, no context) to the admin PII
+      // review queue. NotesGate.pii drops dictionary names and anything it cannot
+      // transmit safely. Identifiers are excluded on purpose: the point of that
+      // queue is to learn name vocabulary, and a phone number is neither a word
+      // nor safe to transmit.
+      if (map.length && window.NotesGate && window.NotesGate.pii) {
+        window.NotesGate.pii.reportScrubbed(
+          map.filter(function (m) { return !m.identifier; }).map(function (m) { return m.name; })
         );
-      }).join("");
-
-      var wrap = document.createElement("div");
-      wrap.id = "notes-scrub-backdrop";
-      wrap.setAttribute("style",
-        "position:fixed;inset:0;background:rgba(20,28,14,.55);display:flex;align-items:center;" +
-        "justify-content:center;z-index:9999;padding:20px;");
-      wrap.innerHTML =
-        '<div role="dialog" aria-modal="true" aria-labelledby="notes-scrub-title" ' +
-        'style="position:relative;background:#fff;border-radius:14px;max-width:480px;width:100%;' +
-        'padding:24px 24px 20px;box-shadow:0 24px 60px rgba(20,28,14,.32);font-family:inherit;max-height:88vh;overflow:auto;">' +
-        '<h2 id="notes-scrub-title" style="font-size:18px;font-weight:700;color:#2d3a1f;margin:0 0 6px;">Remove names before continuing</h2>' +
-        '<p style="font-size:13px;color:#5a6b4a;margin:0 0 4px;line-height:1.5;">' +
-        "We found " + names.length + (names.length === 1 ? " name" : " names") +
-        ". Confirm the replacement for each - it is applied before anything leaves your device. " +
-        "All matching spellings (including different capitalization) are replaced.</p>" +
-        '<div id="notes-scrub-pii" style="display:none;margin:8px 0;padding:10px 12px;border-radius:8px;' +
-        'background:#fdf6e8;border:1.5px solid #d4b483;color:#5a4420;font-size:12px;line-height:1.55;">' + esc(PII_HELP) + "</div>" +
-        '<div style="display:flex;justify-content:flex-end;margin:8px 0 4px;">' +
-        '<button id="notes-scrub-all" type="button" style="padding:5px 13px;border:1.5px solid #c0d4a8;' +
-        'border-radius:6px;background:#f0f4ec;color:#374528;font-size:12px;font-weight:600;cursor:pointer;">' +
-        "Accept all suggestions</button></div>" +
-        '<div style="margin:0 0 16px;">' + rows + "</div>" +
-        '<div style="display:flex;gap:10px;justify-content:flex-end;">' +
-        '<button id="notes-scrub-cancel" type="button" style="padding:10px 16px;border:1.5px solid #c0d4a8;border-radius:8px;' +
-        'background:#fff;color:#5a6b4a;font-size:14px;font-weight:600;cursor:pointer;">Edit notes</button>' +
-        '<button id="notes-scrub-go" type="button" style="padding:10px 18px;border:none;border-radius:8px;' +
-        'background:#374528;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">Scrub &amp; continue</button>' +
-        "</div></div>";
-      document.body.appendChild(wrap);
-
-      // Role change updates that row's replacement to the role's base token.
-      var rowEls = wrap.querySelectorAll("[data-role]");
-      for (var r = 0; r < rowEls.length; r++) {
-        (function (sel) {
-          var container = sel.closest("div").parentNode;
-          var rep = container.querySelector("[data-rep]");
-          var cert = container.querySelector("[data-cert]");
-          sel.addEventListener("change", function () { rep.value = roleByKey(sel.value).token; });
-          cert.addEventListener("change", function () {
-            var off = cert.checked;
-            rep.disabled = off; sel.disabled = off;
-            rep.style.opacity = off ? "0.45" : "1";
-            sel.style.opacity = off ? "0.45" : "1";
-          });
-        })(rowEls[r]);
-      }
-      // Mobile-friendly PII tooltip: any (?) toggles the shared info panel.
-      var pii = document.getElementById("notes-scrub-pii");
-      var toggles = wrap.querySelectorAll("[data-pii-toggle]");
-      for (var t = 0; t < toggles.length; t++) {
-        toggles[t].addEventListener("click", function (e) {
-          e.preventDefault();
-          pii.style.display = pii.style.display === "none" ? "block" : "none";
-        });
-        toggles[t].addEventListener("keydown", function (e) {
-          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pii.style.display = pii.style.display === "none" ? "block" : "none"; }
-        });
       }
 
-      var done = false;
-      function finish(result) {
-        if (done) return;
-        done = true;
-        document.removeEventListener("keydown", escHandler);
-        wrap.remove();
-        // Identifiers ride along with whatever the clinician decided about the
-        // names. They go FIRST in the map so a longer literal ("123 Jacob
-        // Street") is replaced before a name nested inside it could break it.
-        if (result && !result.cancelled) {
-          result = { cancelled: false, map: idMap.concat(result.map || []), certified: result.certified || [] };
-        }
-        // Report the bare scrubbed words (names only, no context) to the admin PII review
-        // queue. NotesGate.pii drops dictionary names and any words it can't transmit safely.
-        // Identifiers are excluded: the point of that queue is to learn name
-        // vocabulary, and a phone number is neither a word nor safe to transmit.
-        if (result && !result.cancelled && result.map && result.map.length &&
-            window.NotesGate && window.NotesGate.pii) {
-          window.NotesGate.pii.reportScrubbed(
-            result.map.filter(function (m) { return !m.identifier; }).map(function (m) { return m.name; })
-          );
-        }
-        resolve(result);
-      }
-      function escHandler(e) { if (e.key === "Escape") finish({ cancelled: true, map: [], certified: [] }); }
-      wrap.addEventListener("click", function (e) { if (e.target === wrap) finish({ cancelled: true, map: [], certified: [] }); });
-      document.addEventListener("keydown", escHandler);
-      document.getElementById("notes-scrub-cancel").addEventListener("click", function () {
-        finish({ cancelled: true, map: [], certified: [] });
-      });
-      document.getElementById("notes-scrub-all").addEventListener("click", function () {
-        var built = buildMap(names.map(function (name, i) {
-          return { name: name, replacement: defaults[i].token, cert: false };
-        }));
-        finish({ cancelled: false, map: built.map, certified: built.certified });
-      });
-      document.getElementById("notes-scrub-go").addEventListener("click", function () {
-        var reps = wrap.querySelectorAll("[data-rep]");
-        var certs = wrap.querySelectorAll("[data-cert]");
-        var selections = [];
-        for (var i = 0; i < names.length; i++) {
-          selections.push({ name: names[i], replacement: reps[i].value, cert: certs[i].checked });
-        }
-        var built = buildMap(selections);
-        // Persist certified-non-PII terms so they are never flagged in future sessions.
-        if (window.NotesGate && window.NotesGate.nonPii) {
-          built.certified.forEach(function (name) { window.NotesGate.nonPii.saveTerm(name); });
-        }
-        finish({ cancelled: false, map: built.map, certified: built.certified });
-      });
-      var go = document.getElementById("notes-scrub-go");
-      if (go) go.focus();
+      resolve({ cancelled: false, map: map, certified: [] });
     });
+  }
+
+  /* The escape that used to be a checkbox in the dialog.
+   *
+   * Certifying a term as not-PII is the only way to stop a false positive coming
+   * back - a programme called Grace, a school called Bishop, a curriculum called
+   * Milestones. The dialog owned that, and the dialog is gone, so the notice owns
+   * it instead: the clinician clicks the word in "removed before this left your
+   * device" and it is never taken again.
+   *
+   * Deliberately one-way. It stops the NEXT scrub and does not put the word back
+   * into the draft just written, because that draft came out of a prompt the model
+   * read with a token in it. Re-inserting a name into prose built around "Client"
+   * produces a sentence nobody wrote.
+   */
+  function notPii(name) {
+    var term = String(name || "").trim();
+    if (!term) return false;
+    if (!(window.NotesGate && window.NotesGate.nonPii)) return false;
+    window.NotesGate.nonPii.saveTerm(term);
+    return true;
   }
 
   /* ─────────────────── Live PHI highlighting ─────────────────── */
@@ -647,11 +664,14 @@
   window.NotesScrub = {
     ROLES: ROLES,
     PII_HELP: PII_HELP,
+    ACK_NOTICE: ACK_NOTICE,
     SCRUB_GUIDANCE: SCRUB_GUIDANCE,
     acknowledge: acknowledge,
     review: review,
+    notPii: notPii,
     verifyOutput: verifyOutput,
     applyMap: applyMap,
+    restoreOutput: restoreOutput,
     noticeText: noticeText,
     persistMap: persistMap,
     installPHIHighlight: installPHIHighlight,
@@ -659,5 +679,7 @@
     _detect: detect,
     _buildMap: buildMap,
     _guessRole: guessRole,
+    _defaultTokens: defaultTokens,
+    _personEvidence: personEvidence,
   };
 })();

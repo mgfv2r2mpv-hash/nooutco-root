@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { isTriageCall } from './helpers/llm-call.js';
 
 // The BT tool used to be its own 800-line page with no revision loop. It is now
 // a NOTE_TOOLS entry on the shared engine, which is what buys it the 5-minute
@@ -204,9 +205,20 @@ test.describe('triage questions before drafting', () => {
     expect(noteCall.messages).toHaveLength(1);
     expect(noteCall.messages[0].role).toBe('user');
     expect(noteCall.messages[0].content).toContain('twice');
-    // Triage is a separate call with its own system prompt - splicing it into
-    // the note conversation would poison the very cache it exists alongside.
-    expect(posted[0].system).not.toBe(noteCall.system);
+    /* Triage is a separate call with a separate prompt - splicing it into the
+       note conversation would poison the very cache it exists alongside.
+
+       This used to compare the two `system` fields. Since bt migrated neither
+       call carries one, so undefined equalled undefined and the assertion
+       started passing nothing. What separates them now is the field itself:
+       triage names a prompt in the store and sends no text, the note sends the
+       block it measured today and names no kind. */
+    expect(posted[0].prompt_kind, 'the first call is triage').toBe('triage');
+    expect(posted[0].system_suffix, 'triage carries nothing measured in the page').toBeUndefined();
+    expect(noteCall.prompt_kind, 'the note asks for the tool\'s own prompt').toBeUndefined();
+    expect(typeof noteCall.system_suffix, 'the note carries its measured block').toBe('string');
+    expect(posted[0].system, 'no migrated call sends prompt text').toBeUndefined();
+    expect(noteCall.system, 'no migrated call sends prompt text').toBeUndefined();
   });
 
   test('skipping generates anyway', async ({ page }) => {
@@ -593,8 +605,7 @@ test.describe('annotate + panel revision', () => {
   test('the collapsed pill carries the note quality, not just a label', async ({ page }) => {
     await page.route('**/api/llm-call**', async (route) => {
       const body = JSON.parse(route.request().postData() || '{}');
-      const isTriage = !!body.systemPrompt || /sufficient/i.test(body.system || '');
-      return route.fulfill(reply(isTriage ? { sufficient: true, questions: [] } : note()));
+      return route.fulfill(reply(isTriageCall(body) ? { sufficient: true, questions: [] } : note()));
     });
 
     await page.goto('/notes/bt/');

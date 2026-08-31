@@ -54,6 +54,12 @@
   // billed. Raised from 45s alongside sup's larger cap so the budget is real.
   // It only fires on a stall; a normal generation returns as soon as it's done.
   var GEN_TIMEOUT_MS = 90000;
+  /* The expert pass runs BESIDE a draft rather than in front of it, so its
+     budget is what a clinician will wait for after the note has already
+     arrived, not what the note itself is worth. Well under GEN_TIMEOUT_MS on
+     purpose: a stalled second opinion must give up before the draft it is
+     meant to sit next to goes stale. */
+  var EXPERT_TIMEOUT_MS = 45000;
   function fetchWithTimeout(url, opts, ms, timeoutMsg) {
     var ctrl = new AbortController();
     var timer = setTimeout(function () { ctrl.abort(); }, ms);
@@ -505,9 +511,25 @@
   // history is served from Anthropic's 5-minute prefix cache instead of being
   // recomputed. Resolves {parsed, rawText, usage} - rawText must be appended to
   // the conversation verbatim so the next turn's cache prefix matches.
+  /* A migrated tool sends systemSuffix instead of system: its prompt is fetched
+     server-side and is not the browser's to supply. The two are mutually
+     exclusive on purpose, and the Worker refuses a request carrying both, so a
+     caller that half-migrates finds out immediately rather than silently getting
+     the old path. */
+  function systemFields(opts) {
+    // Three shapes, mutually exclusive, and the Worker refuses any request that
+    // mixes them. promptKind names a prompt the store holds that is not the
+    // tool's own - triage is the only one - and it carries no text and no
+    // suffix, because nothing measured in this page belongs in that call.
+    if (typeof opts.promptKind === "string") return { prompt_kind: opts.promptKind };
+    return typeof opts.systemSuffix === "string"
+      ? { system_suffix: opts.systemSuffix }
+      : { system: opts.system };
+  }
+
   function generateConversation(opts) {
     return llmCall({
-      system: opts.system,
+      ...systemFields(opts),
       messages: opts.messages,
       model: opts.model || "claude-haiku-4-5-20251001",
       maxTokens: opts.maxTokens || 3000,
@@ -532,7 +554,7 @@
    * so it needs a path that never tries. */
   function generateProse(opts) {
     return llmPost({
-      system: opts.system,
+      ...systemFields(opts),
       messages: opts.messages,
       model: opts.model || "claude-haiku-4-5-20251001",
       maxTokens: opts.maxTokens || 1200,
@@ -554,6 +576,69 @@
         };
       });
     });
+  }
+
+
+  /* ── The expert pass, called from a note page ──────────────────────────
+   *
+   * The admin bench was the only caller until now. This is the second one, and
+   * it is a DIFFERENT caller in one way that matters, so it gets its own
+   * function rather than a shared one with a flag.
+   *
+   * WHAT THE BENCH DOES: it takes raw pasted text, scrubs it here with
+   * scrubForAgent(), and restores the clinician's real words into the findings
+   * before drawing them, because the bench shows the intake back as it was
+   * typed.
+   *
+   * WHAT A NOTE PAGE DOES: it has already scrubbed. NotesScrub.review() ran
+   * before the drafting call and replaced every name with a role token, and
+   * that token is what the clinician WANTS left in - it goes into the note they
+   * paste into their EHR. So this caller sends the same scrubbed text the
+   * drafting model got, and restores nothing. The expert quotes "Client hit the
+   * table" because the note says "Client hit the table", and the two agree.
+   *
+   * Either way the intake is de-identified before it leaves the device, which
+   * is the promise the route's own comment makes.
+   *
+   * It never throws a note away. Every failure resolves to null: the expert is
+   * a second opinion beside the draft, and a second opinion that fails is worth
+   * exactly one missing panel, never a lost note. The caller decides what to
+   * say about a null.
+   */
+  function expertPass(opts) {
+    var o = opts || {};
+    var tok = getToken();
+    if (!tok) return Promise.resolve(null);
+    return fetchWithTimeout(apiUrl("/api/expert-pass"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + tok,
+      },
+      body: JSON.stringify({
+        tool: o.tool,
+        intake: o.intake,
+        sections: Array.isArray(o.sections) ? o.sections : [],
+      }),
+    }, EXPERT_TIMEOUT_MS, "The expert pass timed out.")
+      .then(function (res) {
+        if (!res.ok) return null;
+        return res.json().then(function (d) {
+          // Shape-checked rather than trusted. A 200 carrying something else is
+          // indistinguishable from a pass that found nothing, and the panel
+          // must not draw an empty verdict over a broken call.
+          if (!d || !Array.isArray(d.hints)) return null;
+          return {
+            terms: Array.isArray(d.terms) ? d.terms : [],
+            register: Array.isArray(d.register) ? d.register : [],
+            hints: d.hints,
+            hintsDropped: d.hintsDropped || 0,
+            usage: d.usage || null,
+            model: d.model || "",
+          };
+        }).catch(function () { return null; });
+      })
+      .catch(function () { return null; });
   }
 
   // Constrains the model's answer to the tool's JSON Schema, so the note is
@@ -739,10 +824,19 @@
 
   /* ───────────────────────── Scrub ───────────────────────── */
 
-  // Words that are Title-Case but are not person names. Over-scrubbing is safe
-  // (it round-trips back identically) but degrades the model's context, so we
-  // exclude the common offenders: roles, place-of-service, days, months, and
-  // frequent sentence-initial words.
+  /* Words that are Title-Case but are not person names.
+   *
+   * This comment used to say over-scrubbing was safe because it round-trips back
+   * identically. That held on the expert path and was false on the drafting path,
+   * which never restored, and the gap is what put "Client 25" where a clinician
+   * had written "Red". It is true again now: a word with no person-evidence
+   * leaves as an opaque token and NotesScrub.restoreOutput() puts it back. So
+   * this list is an optimisation for the model's context, not the thing standing
+   * between a colour and a signed note.
+   *
+   * Excludes the common offenders: roles, place-of-service, days, months, and
+   * frequent sentence-initial words.
+   */
   var STOPWORDS = {};
   ("Monday Tuesday Wednesday Thursday Friday Saturday Sunday " +
    "January February March April May June July August September October November December " +
@@ -1303,6 +1397,103 @@
     });
   }
 
+  /* ─────────── Role tokens, inferred rather than asked for ───────────
+   *
+   * The drafting call gets its role tokens from a human: the review modal shows
+   * every detected name and the clinician maps each one to a role. That is the
+   * right control when the answer becomes a note somebody signs.
+   *
+   * The expert pass has no human in the loop by design, so the role has to be
+   * inferred. It is inferred from the same signal that finds the name in the
+   * first place: a role label sitting immediately before it. "client Jacob"
+   * makes Jacob the Client, "mom Sarah" makes Sarah a Caregiver.
+   *
+   * A name with no label in front of it anywhere becomes "Person", NOT "Client".
+   * Guessing Client would be the one wrong guess with teeth, because it would
+   * tell the expert that a peer or a sibling is the person the programme is
+   * about, and the expert would then rank its questions around the wrong human.
+   * "Person" is less useful and cannot mislead, which is the correct trade on a
+   * path where nothing is written down.
+   */
+  var ROLE_LABELS = {
+    client: "Client", kiddo: "Client", learner: "Client", student: "Client",
+    caregiver: "Caregiver", mom: "Caregiver", dad: "Caregiver", mother: "Caregiver",
+    father: "Caregiver", guardian: "Caregiver", parent: "Caregiver",
+    bt: "Technician", rbt: "Technician", technician: "Technician", tech: "Technician",
+    teacher: "Teacher", sibling: "Sibling", peer: "Peer",
+  };
+
+  // { lowercased name -> canonical role } for every name that has a role label
+  // directly in front of it somewhere in the text. First label wins, so a name
+  // labelled once and bare later still keeps its role.
+  function inferRoles(text) {
+    var found = {};
+    if (!text) return found;
+    var labels = Object.keys(ROLE_LABELS).join("|");
+    var re = new RegExp("\\b(" + labels + ")\\s+([A-Z][a-z]{1,15}(?:[\\-\u2019][A-Za-z]{1,})?)\\b", "gi");
+    var m;
+    while ((m = re.exec(text)) !== null) {
+      var who = m[2].toLowerCase();
+      if (!found[who]) found[who] = ROLE_LABELS[m[1].toLowerCase()];
+    }
+    return found;
+  }
+
+  // Same {name, token} shape as the other two maps so applyScrub and restoreDeep
+  // need to know nothing about where a token came from.
+  function buildRoleMap(text) {
+    var roles = inferRoles(text);
+    var counts = {};
+    return detectNames(text).map(function (name) {
+      var role = roles[name.toLowerCase()] || "Person";
+      counts[role] = (counts[role] || 0) + 1;
+      // First of a role is bare, the rest are numbered from 2: the option the
+      // maintainer picked reads "Client, Caregiver 2, Technician".
+      var token = counts[role] === 1 ? role : role + " " + counts[role];
+      return { name: name, token: token, role: true };
+    });
+  }
+
+  /* The whole scrub, for a caller with nobody to ask.
+   *
+   * Identifiers go first and names second. A phone number or an address can
+   * contain a capitalised word that detectNames would otherwise take for a
+   * person ("1420 Maple Street"), so replacing the longer literal first means
+   * the name pass never sees it.
+   *
+   * Returns the scrubbed text, the map needed to put the real words back, and a
+   * plain summary of what went. The summary is counts and types only: it is
+   * meant for telling a clinician what happened, and it must stay safe to log,
+   * which the map itself is not.
+   */
+  function scrubForAgent(text) {
+    var idMap = buildIdentifierMap(text);
+    var afterIds = applyScrub(text, idMap);
+    var roleMap = buildRoleMap(afterIds);
+    var map = idMap.concat(roleMap);
+    var removed = {};
+    map.forEach(function (e) {
+      var kind = e.role ? "name" : (e.token.match(/^\[([A-Z]+)_/) || [, "other"])[1].toLowerCase();
+      removed[kind] = (removed[kind] || 0) + 1;
+    });
+    return { text: collapseRoleLabels(applyScrub(afterIds, roleMap)), map: map, removed: removed, count: map.length };
+  }
+
+  /* "client Jacob" scrubs to "client Client", which is both ugly and ambiguous:
+   * a reader cannot tell whether the note named one person or two. The label
+   * that told us the role has done its job by the time the token carries it, so
+   * it is absorbed. Only a label sitting directly in front of the token it
+   * produced is removed, so "Client played near Person" keeps every word it
+   * earned. */
+  function collapseRoleLabels(text) {
+    var out = text;
+    Object.keys(ROLE_LABELS).forEach(function (label) {
+      var role = ROLE_LABELS[label];
+      out = out.replace(new RegExp("\\b" + label + "\\s+(" + role + "(?:\\s\\d+)?)\\b", "gi"), "$1");
+    });
+    return out;
+  }
+
   function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 
   function applyScrub(text, map) {
@@ -1320,11 +1511,20 @@
     return result;
   }
 
-  // Recursively replace tokens back with the original names in any string value.
+  /* Recursively replace tokens back with the original names in any string value.
+   *
+   * LONGEST TOKEN FIRST, and that ordering is load-bearing. The role tokens are
+   * "Client", "Client 2" ... "Client 12", so "Client" is a prefix of every other
+   * one. Restoring in map order reaches "Client" first, rewrites the "Client"
+   * inside "Client 12", and leaves a stray "12" behind for a token that can now
+   * never match. Sorting by token length descending is the whole fix, and it is
+   * why this is not simply a loop over the map.
+   */
   function restoreDeep(value, map) {
     if (typeof value === "string") {
       var s = value;
-      map.forEach(function (e) { s = s.split(e.token).join(e.name); });
+      var ordered = map.slice().sort(function (a, b) { return b.token.length - a.token.length; });
+      ordered.forEach(function (e) { s = s.split(e.token).join(e.name); });
       return s;
     }
     if (Array.isArray(value)) return value.map(function (v) { return restoreDeep(v, map); });
@@ -1363,6 +1563,9 @@
     generateNote: generateNote,
     generateConversation: generateConversation,
     generateProse: generateProse,
+    // The expert pass, for a caller that has already scrubbed. Resolves null on
+    // every failure rather than throwing - see expertPass above for why.
+    expertPass: expertPass,
     // Error rendering - callers pass the caught error, never e.message, so the
     // user-facing/internal split is applied in one place.
     displayError: displayError,
@@ -1418,7 +1621,12 @@
         return !!FIRST_NAMES[String(w || "").toLowerCase().replace(/[^a-z'\-]/g, "")];
       },
       applyScrub: applyScrub, restoreDeep: restoreDeep,
+      inferRoles: inferRoles, buildRoleMap: buildRoleMap,
     },
+    /* The de-identification the expert pass runs, PUBLIC rather than under
+     * _scrub, because it is a supported way to call the model and not a test
+     * hook. scrubForAgent(text) out, restoreDeep(findings, map) back. */
+    scrubForAgent: scrubForAgent,
     _json: { repair: repairModelJson },
   };
 })();

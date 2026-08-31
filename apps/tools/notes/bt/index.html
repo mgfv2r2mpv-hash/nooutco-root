@@ -37,13 +37,26 @@
   <div id="root"></div>
   <!-- Gear ↔ NotesGate bridge. Visual unification only; the gate's auth logic is
        untouched. Gear opens login when logged out, logs out when logged in; the
-       bar reflects login state. -->
+       bar reflects login state.
+
+       It also reports whether this login is an ADMIN, which is what puts the
+       bar's admin-area link on this page. Before that, the only route into the
+       admin area was the tools landing page's own modal, so getting there from
+       a note meant leaving the note first. -->
   <script>
     (function () {
-      function authed() { return !!(window.NotesGate && window.NotesGate.isLoggedIn()); }
-      window.__noabaAuthProbe = authed;
+      function state() {
+        return {
+          authed: !!(window.NotesGate && window.NotesGate.isLoggedIn()),
+          // isAdmin() reads the role out of the same session token the tools landing
+          // page reads. Guarded because an older gate build did not export it, and a
+          // missing admin link is a smaller failure than a page that throws on load.
+          admin: !!(window.NotesGate && window.NotesGate.isAdmin && window.NotesGate.isAdmin())
+        };
+      }
+      window.__noabaAuthProbe = state;
       function emit() {
-        document.dispatchEvent(new CustomEvent("noaba:auth-state", { detail: { authed: authed() } }));
+        document.dispatchEvent(new CustomEvent("noaba:auth-state", { detail: state() }));
       }
       document.addEventListener("noaba:admin-invoke", function () {
         if (!window.NotesGate) return;
@@ -56,31 +69,15 @@
   </script>
 
   <!-- Shared helpers used by the tool configs (plain JS, loaded before them) -->
-  <script>
-    window.NOTE_TOOLS = [];
-    window.NoteToolsUtil = {
-      // "a" | "b" | "c" menu string for ALLOWED-value lists in prompts.
-      menu: function (arr) { return arr.map(function (x) { return '"' + x + '"'; }).join(" | "); },
-      // Validate the model's hint codes against the tool's catalog and the note's
-      // known section keys; anything unrecognized is dropped (fabrication-proof).
-      normalizeHints: function (raw, catalog, validSections) {
-        if (!Array.isArray(raw)) return [];
-        return raw.filter(function (h) {
-          return h && typeof h.section === "string" && typeof h.code === "string" &&
-            validSections.indexOf(h.section) !== -1 &&
-            Object.prototype.hasOwnProperty.call(catalog, h.code);
-        }).map(function (h) {
-          return { section: h.section, code: h.code, detail: typeof h.detail === "string" ? h.detail.slice(0, 120) : "" };
-        }).slice(0, 8);
-      },
-    };
-  </script>
+  <script src="../bcba/note-tools-util.js"></script>
 
   <!-- One tool on this page. The engine hides its ribbon when only one is
        registered, so /notes/bt/ stays a single-purpose page while sharing every
        behaviour - conversation, prompt cache, scrub gate, hints, drafts - with
        the BCBA tools. -->
   <script src="../bcba/register-rules.js"></script>
+  <script src="../bcba/triage-prompt.js"></script>
+  <script src="../bcba/absence.js"></script>
   <script src="../bcba/tools/bt.js"></script>
 
   <!-- Word-level diff for the inline revision view (plain JS). -->

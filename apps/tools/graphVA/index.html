@@ -304,12 +304,22 @@
 </div>
 
 <script>
-  // Gear bridge: the shared nav bar owns the control, this page owns the auth.
+  // Gear bridge: the shared nav bar owns the controls, this page owns the auth.
+  // `admin` is what reveals the bar's admin-area link, so an admin reaches it
+  // from here rather than having to go back to the tools landing page.
   (function () {
-    function authed() { return !!(window.NotesGate && window.NotesGate.isLoggedIn()); }
-    window.__noabaAuthProbe = authed;
+    function state() {
+      return {
+        authed: !!(window.NotesGate && window.NotesGate.isLoggedIn()),
+        // isAdmin() reads the role out of the same session token the tools landing
+        // page reads. Guarded because an older gate build did not export it, and a
+        // missing admin link is a smaller failure than a page that throws on load.
+        admin: !!(window.NotesGate && window.NotesGate.isAdmin && window.NotesGate.isAdmin())
+      };
+    }
+    window.__noabaAuthProbe = state;
     function emit() {
-      document.dispatchEvent(new CustomEvent("noaba:auth-state", { detail: { authed: authed() } }));
+      document.dispatchEvent(new CustomEvent("noaba:auth-state", { detail: state() }));
     }
     document.addEventListener("noaba:admin-invoke", function () {
       if (!window.NotesGate) return;

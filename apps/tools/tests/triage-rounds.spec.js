@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { isTriageCall } from './helpers/llm-call.js';
 
 // Triage asks more than once.
 //
@@ -35,7 +36,7 @@ const note = () => ({
   hints: [],
 });
 
-const isTriage = (b) => !!b.systemPrompt || /sufficient/i.test(b.system || '');
+const isTriage = isTriageCall;
 
 // `script` is the sequence of triage replies. Anything not triage gets a note.
 async function run(page, script) {

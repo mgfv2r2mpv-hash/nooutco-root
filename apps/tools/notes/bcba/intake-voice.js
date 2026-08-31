@@ -142,8 +142,27 @@
     if (t.echoFragments) {
       lines.push("- They write in fragments when the fact is small (\"no SIB today\"). Echoing that once or twice is theirs, not sloppiness.");
     }
+    /* THE SIZE OF THE INTAKE SHIPS ALWAYS, and it did not used to.
+       Measured 2026-08-16: a 264-word intake produced a 638-word sup note, two
+       and a half times its own source, and the maintainer read it and said it
+       said more than the session did. The anti-padding line was the only one in
+       the entire prompt stack, and it sat behind `thin`, which is
+       `words < 60`. A 264-word intake is more than four times that, so the one
+       instruction against padding was absent from the prompt that padded.
+
+       Adding a stronger warning would have been the same mistake: sup.js already
+       says "Sparse input, brief honest sentences" and the model expanded anyway.
+       It cannot judge sparse without a reference, and nothing anywhere gave it
+       one. So this gives it the number instead of another adjective. */
+    lines.push(
+      "- The notes you were given run to " + m.words + " words across " + m.sentences +
+      " sentences. Prose made from shorthand runs longer than its source and carries the " +
+      "same facts. Every sentence you write comes from something in those notes. Where you " +
+      "reach the end of what they say before you reach the end of a section, the section is " +
+      "finished: a sentence range is a ceiling and never a target."
+    );
     if (t.thin) {
-      lines.push("- Their notes are SHORT today. Do not pad to reach a length. Write what is supported, stop, and raise a hint asking for the missing detail. Filler is worse than a brief note.");
+      lines.push("- Their notes are SHORT today. Do not pad to reach a length. Write what is supported, stop, and raise a hint asking for the missing detail. A brief honest note is the correct output here, not a failure.");
     }
     return lines.join("\n") + "\n";
   }

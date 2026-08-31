@@ -203,6 +203,12 @@ TERMINOLOGY (non-negotiable)\n\
       }
       return saved;
     },
+    /* This tool's system prompt is composed inside the Worker, from the prompt
+       store, and is not sent from here. buildSystem stays for now because the
+       copy-prompt path below still uses SYSTEM_CORE, and because
+       scripts/verify-parity.mjs in the prompt repo composes it to prove the two
+       copies have not drifted. Both go when the last tool migrates. */
+    serverPrompt: true,
     buildSystem: function () { return SYSTEM_CORE + (window.NoteRegisterRules ? window.NoteRegisterRules.sessionNote : "") + JSON_FORMAT_BLOCK; },
     buildUserPrompt: buildUserPrompt,
     buildLabeledPrompt: function (values) {

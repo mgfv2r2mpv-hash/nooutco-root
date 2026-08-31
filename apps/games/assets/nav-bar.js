@@ -18,10 +18,25 @@
    events or an optional `window.__noabaAuthProbe()` - it never imports either
    auth system. See packages/shared/README.md.
 
+   TWO CONTROLS, NOT ONE, and the reason is that they answer different questions.
+   The gear is "who am I", and every page decides for itself what pressing it
+   does - the tools landing page opens a sign-in modal, the notes pages log the
+   clinician in or out. The 🛠️ is "where is the admin area", and that has one
+   answer everywhere, so the bar owns it and navigates rather than dispatching.
+   It renders only when the page reports an ADMIN, and it is hidden the rest of
+   the time; the server re-checks the role on every admin route regardless, so
+   the signal below governs what is shown and never what is allowed.
+
+   The auth signal carries both: `{ authed, admin }`. A page that emits only
+   `{ authed }` still works and simply never shows the 🛠️, which is what apex
+   and games do today. `window.__noabaAuthProbe()` may return either the object
+   or a bare boolean, for the same reason.
+
      <noaba-bar product="tools|games|apex"
                 crumbs="Notes/BT session note"
                 crumb-hrefs="/notes/"          (optional, comma-separated, parents only)
                 logo="/logo-mark.svg"          (optional override)
+                admin-href="/admin/"           (optional override)
                 games-href="..." tools-href="..."  (optional env overrides)>
 */
 (function () {
@@ -125,6 +140,14 @@
     return n;
   }
 
+  // A page may report auth as `{ authed, admin }` or as a bare boolean. Both
+  // shapes are load-bearing: the object is what the tools pages send, and the
+  // boolean is what the older probes on apex and games return.
+  function authShape(v) {
+    if (v && typeof v === "object") return { authed: !!v.authed, admin: !!v.admin };
+    return { authed: !!v, admin: false };
+  }
+
   var SEGMENTS = [
     { key: "games", glyph: "👾", label: "Games" },
     { key: "tools", glyph: "🗃️", label: "Tools" }
@@ -140,7 +163,7 @@
       // Initial authed state, if the page exposes a probe.
       try {
         if (typeof window.__noabaAuthProbe === "function") {
-          this._setAuthed(!!window.__noabaAuthProbe());
+          this._setAuth(authShape(window.__noabaAuthProbe()));
         }
       } catch (e) { /* probe is best-effort */ }
     }
@@ -151,11 +174,14 @@
     }
 
     _onAuth(e) {
-      this._setAuthed(!!(e && e.detail && e.detail.authed));
+      this._setAuth(authShape(e && e.detail));
     }
 
-    _setAuthed(on) {
-      if (this._gear) this._gear.setAttribute("data-authed", on ? "true" : "false");
+    _setAuth(state) {
+      if (this._gear) this._gear.setAttribute("data-authed", state.authed ? "true" : "false");
+      // `hidden` rather than removal, so a page that signs the admin in without
+      // a reload gets the control without re-rendering the whole bar.
+      if (this._adminLink) this._adminLink.hidden = !state.admin;
     }
 
     render() {
@@ -246,6 +272,19 @@
         this.replaceChildren(row);
         return;
       }
+      // Admin area - a real link, so it opens in a tab like any other. Hidden
+      // until the page reports an admin.
+      var adminLink = el("a", "noaba-admin");
+      adminLink.href = this.getAttribute("admin-href") || "/admin/";
+      adminLink.setAttribute("aria-label", "Admin area");
+      adminLink.title = "Admin area";
+      adminLink.hidden = true;
+      var wrench = el("span", "noaba-gear-ring", "🛠️");
+      wrench.setAttribute("aria-hidden", "true");
+      adminLink.appendChild(wrench);
+      this._adminLink = adminLink;
+      row.appendChild(adminLink);
+
       var gear = el("button", "noaba-gear");
       gear.type = "button";
       gear.setAttribute("aria-label", "Admin");

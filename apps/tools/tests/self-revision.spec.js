@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { browserSystem } from './helpers/llm-call.js';
 
 // The tool revises its own first draft before anyone sees it.
 //
@@ -178,14 +179,14 @@ test.describe('the tool revises its own draft first', () => {
 test.describe('the technician voice reaches the prompt', () => {
   test('the draft call carries a measured target, not a house rule', async ({ page }) => {
     const { sent } = await generate(page, VARIED);
-    const system = sent[1].system;
+    const system = browserSystem(sent[1]);
     expect(system).toMatch(/VOICE OF THIS TECHNICIAN, TODAY/);
     expect(system).toMatch(/MEDIAN sentence of about \d+ words/);
   });
 
   test('it is derived from the intake, so a different writer gets a different target', async ({ page }) => {
     const terse = await generate(page, VARIED);
-    const a = (terse.sent[1].system.match(/MEDIAN sentence of about (\d+)/) || [])[1];
+    const a = (browserSystem(terse.sent[1]).match(/MEDIAN sentence of about (\d+)/) || [])[1];
 
     await page.goto('/notes/bt/');
     const longer = await page.evaluate(() => {

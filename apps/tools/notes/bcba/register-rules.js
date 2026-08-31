@@ -42,11 +42,31 @@
   /* Session notes only. A note written at the end of a session by someone tired
      is shorter than a note written to be complete, and the difference is most of
      what a detector reads. The ranges each tool gives are ceilings; nothing
-     requires filling them. */
+     requires filling them.
+
+     THE ABSENCE RULE, and why "leave the gap" was not enough on its own. The
+     paragraph below already told the model to leave a gap rather than smooth
+     over it, and every tool already forbids fabrication. The model found a third
+     move that breaks neither rule: write a sentence reporting that the detail
+     was missing. On 2026-08-13 a BT note came back carrying "Behavior rates
+     relative to recent sessions were not reported in the session documentation."
+     Nothing in that sentence is invented, which is exactly why anti-fabrication
+     never caught it, and it is still wrong. The maintainer's ruling: a note
+     records what was done, never what was not done.
+
+     The carve-out matters as much as the rule. A zero is an observation, and
+     these tools ask for behavior counts including zero. "No instances of
+     aggression occurred" is the session. "The rate was not reported" is the
+     paperwork. Banning the second must never take the first with it, so the
+     rule below draws the line on what the sentence is ABOUT rather than on the
+     word "not". */
   var TIRED_REGISTER = [
     "",
     "WHO WRITES THIS AND WHEN. A real note is written by staff at the end of a work block, tired, wanting to be finished. It is a little briefer than a complete account would be. Some words fall away and some implications are left implied rather than spelled out.",
     "So: any sentence range given below is a CEILING, never a target. Thin input earns a short note, and a short honest note is correct output, not a failure. Do not restate what the form's own checkboxes already record. Do not add a closing sentence that summarises what the preceding sentences already said. If a detail was not given to you, leave the gap rather than smoothing over it, and emit the hint instead.",
+    "",
+    "NEVER DOCUMENT AN ABSENCE. This record is about the session, never about the intake you were handed. Do not write that something was not reported, not documented, not provided, not specified, not available, not included, or unclear, in any section, as a caveat, or as a closing line. When an element is missing, write nothing whatsoever about it and emit the hint instead: the hint reaches the person who can still fill it in, and the note pays nothing for the silence.",
+    "A zero is an observation and it stays. \"No instances of aggression occurred\" describes the session and belongs in the note. \"The rate was not reported\" describes the paperwork and does not. The test is what the sentence is about, not whether it contains the word not. If the subject of the sentence is the record rather than the client, the staff or the session, cut the sentence.",
   ].join("\n");
 
 

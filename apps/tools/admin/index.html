@@ -13,6 +13,16 @@
   <link rel="stylesheet" href="/tokens.css">
   <link rel="stylesheet" href="/assets/nav-bar.css">
   <script src="/assets/nav-bar.js" defer></script>
+  <!-- The Expert Pass tab reads the REAL tool configs rather than a copy of
+       them, so the section list it sends and the hint catalog it shows beside
+       the expert's findings are the ones the live note pages use. A copy here
+       would drift, and the drift would look like the expert winning. -->
+  <script src="/notes/bcba/note-tools-util.js"></script>
+  <script src="/notes/bcba/tools/bt.js"></script>
+  <script src="/notes/bcba/tools/sup.js"></script>
+  <script src="/notes/bcba/tools/parent.js"></script>
+  <script src="/notes/bcba/tools/assess.js"></script>
+  <script src="/notes/bcba/tools/sap.js"></script>
   <style>
     :root {
       --sage: #374528; --sage-light: #c0d4a8; --bg: #f4f7ee; --surface: #fff;
@@ -43,11 +53,30 @@
     .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
     .pill.on { background: #e3f0d3; color: #3f6121; }
     .pill.off { background: #f0e3e1; color: #9a4034; }
+    .pill.tier { background: #eef1e9; color: #4a5540; }
+    .kn-record { border: 1px solid var(--sage-light); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
+    .kn-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
     .err { color: var(--red); font-size: 13px; margin-top: 10px; display: none; }
     .ok  { color: #3f6121; font-size: 13px; margin-top: 10px; display: none; }
     .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
     .muted { color: var(--muted); font-size: 13px; }
     .hidden { display: none; }
+
+    /* The oracle transcript. Asymmetric on purpose: his turns sit indented and
+       tinted so a long exchange can be skimmed for where he pushed back, which
+       is the part worth rereading. */
+    .ora-turn { border-radius: 10px; padding: 11px 13px; margin-bottom: 10px; font-size: 14px; line-height: 1.55; white-space: pre-wrap; }
+    .ora-turn.you { background: var(--sage-pale, #eef2e6); margin-left: 12%; border: 1px solid var(--sage-light, #cddcb8); }
+    .ora-turn.expert { background: #fff; border: 1px solid var(--sage-light, #cddcb8); margin-right: 12%; }
+    .ora-who { display: block; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; font-weight: 600; }
+    /* A rule that was in force has to be visible on the reply it shaped. An
+       answer read as the expert's own judgment when it was his own rule handed
+       back is the one way this bench can mislead him. */
+    .ora-rule { margin-top: 9px; padding-top: 8px; border-top: 1px dashed var(--sage-light, #cddcb8); font-size: 12px; color: var(--muted); white-space: pre-wrap; }
+    @media (max-width: 700px) {
+      .ora-turn.you { margin-left: 0; }
+      .ora-turn.expert { margin-right: 0; }
+    }
     .add-grid { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
     .add-grid > div { flex: 1; min-width: 150px; }
     h2 { margin: 0 0 14px; font-size: 16px; }
@@ -58,8 +87,22 @@
     .tool-pills { display: flex; flex-wrap: wrap; gap: 4px; }
     .tool-pill { background: #eaf1de; color: #4a5e2e; border-radius: 6px; padding: 1px 7px; font-size: 11px; font-weight: 600; white-space: nowrap; }
     /* Tabs */
-    .tab-nav { display: flex; gap: 0; margin-bottom: 22px; border-bottom: 2px solid var(--line); }
-    .tab-btn { background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; padding: 9px 18px; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; border-radius: 0; }
+    /* WRAPS, because the sixth tab is what broke it. Five labels fit a 390px
+       phone on one line and six do not: the nav ran to 555px and took the whole
+       page's horizontal scroll with it, which no test could see and every
+       screenshot could. A wrapped row loses the single underline across the
+       bottom, so the border moves onto the buttons themselves. */
+    .tab-nav { display: flex; flex-wrap: wrap; gap: 0 2px; margin-bottom: 22px; border-bottom: 2px solid var(--line); }
+    /* 9px 12px / 13px at EVERY width, which is what the phone rule used to say on
+       its own. The desktop 18px/14px fit San Francisco with 13px to spare inside
+       a 700px nav, and 13px is not a margin, it is a coincidence. The Linux CI
+       runners have no -apple-system and fall through the stack to DejaVu Sans;
+       measured against Verdana, a comparable wide fallback, the same six labels
+       run to 773.7px and wrap to two rows. Firefox and webkit failed on main for
+       exactly that reason while chromium passed, because chromium measures this
+       nav about 38px narrower than the other two engines do.
+       At 12px/13px the widest font measured leaves 37.4px of margin. */
+    .tab-btn { background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; padding: 9px 12px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; border-radius: 0; white-space: nowrap; }
     .tab-btn.active { color: var(--sage); border-bottom-color: var(--sage); }
     .tab-btn:hover:not(.active) { color: var(--text); }
     .tab-panel { display: none; }
@@ -67,6 +110,26 @@
     /* Algorithm Lab */
     .badge-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; min-height: 28px; }
     .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #fff5c2; color: #6b5000; border: 1px solid #e5cc60; }
+    /* Expert Pass findings. The action or status is drawn as a tag rather than
+       as a colour alone, because "keep" and "remove" are opposite instructions
+       and nobody should have to learn a palette to tell them apart. */
+    .finding { border: 1px solid #eef2e6; border-radius: 10px; padding: 11px 13px; margin-bottom: 8px; }
+    .finding:last-child { margin-bottom: 0; }
+    .finding .tag { display: inline-block; padding: 1px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-right: 8px; }
+    .tag-resolved, .tag-keep { background: #e3f0d3; color: #3f6121; }
+    .tag-ambiguous, .tag-ask { background: #fff5c2; color: #6b5000; }
+    .tag-unknown, .tag-remove { background: #f0e3e1; color: #9a4034; }
+    .tag-reframe { background: #e2ecf5; color: #2f5170; }
+    .tag-blocks-claim { background: #f0e3e1; color: #9a4034; }
+    .tag-thin { background: #fff5c2; color: #6b5000; }
+    .tag-register { background: #e2ecf5; color: #2f5170; }
+    .finding .quote { font-style: italic; color: var(--text); }
+    .finding .why { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    .finding .move { font-size: 13px; margin-top: 6px; }
+    .rank { display: inline-block; min-width: 20px; font-weight: 700; color: var(--muted); font-size: 12px; }
+    .cat-row { font-size: 13px; padding: 5px 0; border-bottom: 1px solid #f2f5ec; }
+    .cat-row:last-child { border-bottom: none; }
+    .cat-row code { font-size: 12px; color: var(--sage); font-weight: 600; }
     .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
     .stat-box { background: #f4f7ee; border-radius: 10px; padding: 12px 14px; }
     .stat-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
@@ -110,10 +173,16 @@
     <div id="adminUI" class="hidden">
       <nav class="tab-nav">
         <button class="tab-btn active" data-tab="passwords">Passwords</button>
-        <button class="tab-btn" data-tab="pii">PII Terms</button>
-        <button class="tab-btn" data-tab="nonpii">Non-PII Terms</button>
+        <button class="tab-btn" data-tab="pii">PII</button>
+        <button class="tab-btn" data-tab="nonpii">Non-PII</button>
         <button class="tab-btn" data-tab="alglab">Algorithm Lab</button>
-        <button class="tab-btn" data-tab="profiles">Style Profiles</button>
+        <!-- "Expert", not "Expert Pass". The longer word added ~35px to a nav
+             that had no room for it. The tab sizing above is what actually buys
+             the headroom now; this label stays short because six tabs is already
+             the most this 700px nav should carry. -->
+        <button class="tab-btn" data-tab="expert">Expert</button>
+        <button class="tab-btn" data-tab="knowledge">Knowledge</button>
+        <button class="tab-btn" data-tab="profiles">Profiles</button>
       </nav>
 
       <!-- ── Passwords tab ── -->
@@ -289,6 +358,175 @@
           </div>
         </div>
       </div>
+
+      <div id="tab-expert" class="tab-panel">
+        <div class="card">
+          <h2>Run the expert over an intake</h2>
+          <p class="muted" style="margin: 0 0 12px;">The expert reads a de-identified intake with the ABA glossary and the mentalism lexicon in front of it, and hands back what it found. It does <strong>not</strong> write a note and nothing it says is applied anywhere. This runs beside the drafting loop so the two can be compared on the same text.</p>
+          <div class="add-grid" style="margin-bottom: 12px;">
+            <div>
+              <label for="exTool">Tool</label>
+              <select id="exTool" style="width: 100%; padding: 10px 12px; border: 1.5px solid var(--sage-light); border-radius: 8px; font-size: 14px; font-family: inherit;"></select>
+              <p class="muted" id="exToolNote" style="margin: 6px 0 0; font-size: 12px;"></p>
+            </div>
+          </div>
+          <label for="exIntake">Intake</label>
+          <textarea id="exIntake" style="min-height: 150px;" placeholder="Paste session notes. Names and identifiers are removed automatically before this leaves your device."></textarea>
+          <p class="muted hidden" id="exScrubbed" style="margin: 8px 0 0; font-size: 12px;"></p>
+          <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center;">
+            <button id="exRun" class="btn-primary">Run the expert</button>
+            <span id="exBusy" class="muted hidden" style="font-size: 13px;">Reading...</span>
+            <span id="exErr" class="err" style="margin: 0;"></span>
+          </div>
+          <p class="muted" id="exUsage" style="margin: 12px 0 0; font-size: 12px;"></p>
+        </div>
+
+        <div class="card">
+          <h2>Terms</h2>
+          <p class="muted" style="margin: 0 0 12px;">Every abbreviation it found, and what it read each one as. An <strong>unknown</strong> is the honest answer, not a failure: a wrong expansion reads exactly like a right one to everything downstream.</p>
+          <div id="exTerms"><span class="muted" style="font-size: 13px;">Nothing run yet.</span></div>
+        </div>
+
+        <div class="card">
+          <h2>Register</h2>
+          <p class="muted" style="margin: 0 0 12px;">Mentalistic and judgmental constructions, each with the move. <strong>Reframe</strong> carries the replacement sentence, <strong>ask</strong> carries the question, <strong>keep</strong> is a construction that would be wrongly cut. Nothing here is applied.</p>
+          <div id="exRegister"><span class="muted" style="font-size: 13px;">Nothing run yet.</span></div>
+        </div>
+
+        <div class="card hidden" id="exOracleCard">
+          <h2>Ask it about this reading</h2>
+          <p class="muted" style="margin: 0 0 12px;">The same expert, on the same intake, with the findings above already in front of it. Ask why it ranked something first, tell it a finding was wrong, or ask what it would have said if a detail had been there. It answers in prose and still writes nothing.</p>
+          <p class="muted" style="margin: 0 0 12px;">When you tell it something was wrong it will say what led it there and then write the rule that would have stopped it. <strong>That rule is the point.</strong> Two of the five bodies of knowledge this expert is meant to carry are not written yet, because they are clinical judgment rather than reference, and this is where they get written: argue a case through until the missing rule can be said out loud, then try it below.</p>
+          <div id="exChatLog" style="margin-bottom: 14px;"></div>
+
+          <details id="exRuleWrap" style="margin-bottom: 12px;">
+            <summary style="cursor: pointer; font-weight: 600; font-size: 14px;">A rule under test</summary>
+            <p class="muted" style="margin: 8px 0;">Anything here is added to the expert's instructions <strong>for this conversation only</strong>. It is never saved, no note tool ever sees it, and every reply below says whether it was in force. A rule that proves out gets promoted by writing it into the knowledge blocks in the prompt store, where it gets a hash and a pull request like everything else.</p>
+            <textarea id="exRule" style="min-height: 90px;" placeholder="When the intake reports what a caregiver said, read the vagueness as data rather than as a gap in the writing."></textarea>
+          </details>
+
+          <label for="exAsk">Your question</label>
+          <textarea id="exAsk" style="min-height: 80px;" placeholder="Why did you rank that one first?"></textarea>
+          <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center;">
+            <button id="exSend" class="btn-primary">Ask</button>
+            <button id="exReset" class="btn-secondary" type="button">Start over</button>
+            <span id="exChatBusy" class="muted hidden" style="font-size: 13px;">Thinking...</span>
+            <span id="exChatErr" class="err" style="margin: 0;"></span>
+          </div>
+          <p class="muted" id="exChatUsage" style="margin: 12px 0 0; font-size: 12px;"></p>
+        </div>
+
+        <div class="card">
+          <h2>Hints, and what the catalog could have said</h2>
+          <p class="muted" style="margin: 0 0 12px;">The expert's questions in its own ranking, beside the whole fixed catalog the live hint channel draws from for this tool. The catalog is the ceiling on the current loop: if a finding is not in that list, today's tool has no way to say it.</p>
+          <div id="exHints"><span class="muted" style="font-size: 13px;">Nothing run yet.</span></div>
+          <h3 style="margin-top: 20px;">The tool's whole catalog</h3>
+          <div id="exCatalog"></div>
+        </div>
+      </div>
+
+      <div id="tab-knowledge" class="tab-panel">
+        <div class="card" id="knUnbound" style="display: none;">
+          <h2>The store is not bound on this deploy</h2>
+          <p class="muted" style="margin: 0;">The prompt Worker answers, but it has no knowledge database behind it, so there is nothing to read and nothing to write. The expert runs on its authored prompt exactly as it did before. Creating the database and binding it is a one-time change to the prompt Worker's own config.</p>
+        </div>
+
+        <div class="card">
+          <h2>Waiting on you</h2>
+          <p class="muted" style="margin: 0 0 12px;">Nothing here is in force. A rule reaches the expert when you approve it and not before, which is the whole reason a proposal is a separate thing from a record. Approving writes a version and takes effect on the next call, so read the rule as the expert will read it.</p>
+          <div id="knProposals"><span class="muted" style="font-size: 13px;">Loading...</span></div>
+        </div>
+
+        <div class="card">
+          <h2>Nominated for the core</h2>
+          <p class="muted" style="margin: 0 0 12px;">Topic records the expert reached for often <strong>and</strong> that changed what it wrote. Frequency alone nominates popular records that change nothing, so both halves have to be true. Promoting one moves its text into every call's prompt rather than leaving it behind an index line, which costs tokens on every note and is why this is a decision rather than a threshold.</p>
+          <div id="knCandidates"><span class="muted" style="font-size: 13px;">Loading...</span></div>
+        </div>
+
+        <div class="card">
+          <h2>In force</h2>
+          <p class="muted" style="margin: 0 0 12px;"><strong>Core</strong> rules are in the prompt on every call. <strong>Topic</strong> records are one index line each, and the expert fetches the body when the intake calls for it. Retiring writes a new version rather than deleting anything, so the argument stays readable after the conversation that produced it has gone.</p>
+          <div id="knRecords"><span class="muted" style="font-size: 13px;">Loading...</span></div>
+        </div>
+
+        <div class="card">
+          <h2>Send it to read</h2>
+          <p class="muted" style="margin: 0 0 12px;">It searches a fixed list you approved - payer medical policy, the federal and state rules, the professional bodies, and the peer-reviewed literature - and reports what those sources say, with the sources beside it. It runs on a larger model than the expert does, because the expert's model cannot search at all, and nothing it returns reaches a note.</p>
+          <p class="muted" style="margin: 0 0 12px;"><strong>It will not write the rule.</strong> Ending on its own recommendation buries the evidence under an opinion, and the point of this is that you can see what is underneath. <strong>Never ask it about a client.</strong> The question goes to a search engine.</p>
+          <div id="knResearchLog" style="margin-bottom: 14px;"></div>
+          <label for="knQuestion">Your question</label>
+          <textarea id="knQuestion" style="min-height: 80px;" placeholder="What does Aetna's medical policy require a note to establish for continued ABA authorisation?"></textarea>
+          <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center;">
+            <button id="knResearch" class="btn-primary">Go and read</button>
+            <button id="knResearchReset" class="btn-secondary" type="button">Start over</button>
+            <span id="knResearchBusy" class="muted hidden" style="font-size: 13px;">Reading...</span>
+            <span id="knResearchErr" class="err" style="margin: 0;"></span>
+          </div>
+          <p class="muted" id="knResearchUsage" style="margin: 12px 0 0; font-size: 12px;"></p>
+        </div>
+
+        <div class="card">
+          <h2>Write a rule</h2>
+          <p class="muted" style="margin: 0 0 12px;">This is the end of the loop that starts on the Expert tab: argue a case through until the missing rule can be said out loud, then write it here. Nothing you write reaches the expert until you approve it below.</p>
+          <p class="muted" style="margin: 0 0 12px;"><strong>Never paste anything a clinician wrote.</strong> No intake, no quote from a session, no caregiver report. A record carries authored knowledge and the store is built on that being true.</p>
+
+          <div class="add-grid" style="margin-bottom: 12px;">
+            <div>
+              <label for="knTier">Tier</label>
+              <select id="knTier" style="width: 100%; padding: 10px 12px; border: 1.5px solid var(--sage-light); border-radius: 8px; font-size: 14px; font-family: inherit;">
+                <option value="topic">Topic - fetched when it applies</option>
+                <option value="core">Core - in every prompt</option>
+              </select>
+            </div>
+            <div>
+              <label for="knScope">Applies to</label>
+              <select id="knScope" style="width: 100%; padding: 10px 12px; border: 1.5px solid var(--sage-light); border-radius: 8px; font-size: 14px; font-family: inherit;"></select>
+            </div>
+            <div>
+              <label for="knBody">Body of knowledge</label>
+              <input id="knBody" type="text" list="knBodies" placeholder="necessity" />
+              <datalist id="knBodies">
+                <option value="necessity"></option>
+                <option value="glossary"></option>
+                <option value="mentalism"></option>
+              </datalist>
+            </div>
+          </div>
+
+          <div class="add-grid" id="knTopicRow" style="margin-bottom: 12px;">
+            <div>
+              <label for="knTopic">Topic</label>
+              <input id="knTopic" type="text" placeholder="supervision" />
+            </div>
+            <div>
+              <label for="knApplies">When to fetch it</label>
+              <input id="knApplies" type="text" placeholder="when a supervisor attended the session" />
+            </div>
+          </div>
+          <p class="muted" id="knAppliesNote" style="margin: -4px 0 12px; font-size: 12px;">This line is the only thing the expert sees until it fetches the record, so it has to be enough to decide on. A record nothing can reach is worse than no record.</p>
+
+          <label for="knTitle">Title</label>
+          <input id="knTitle" type="text" placeholder="Name the supervision ratio" />
+
+          <label for="knRule" style="margin-top: 10px; display: block;">The rule</label>
+          <textarea id="knRule" style="min-height: 110px;" placeholder="Written as an instruction to the expert, in the words it will read."></textarea>
+
+          <label for="knRationale" style="margin-top: 10px; display: block;">Why (optional)</label>
+          <textarea id="knRationale" style="min-height: 80px;" placeholder="What goes wrong without it. This is what makes the rule arguable later."></textarea>
+
+          <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center;">
+            <button id="knPropose" class="btn-primary">Stage it for review</button>
+            <span id="knProposeErr" class="err" style="margin: 0;"></span>
+            <span id="knProposeOk" class="muted hidden" style="font-size: 13px;">Staged. It is waiting on you above.</span>
+          </div>
+        </div>
+
+        <div class="card hidden" id="knHistoryCard">
+          <h2 id="knHistoryTitle">History</h2>
+          <p class="muted" style="margin: 0 0 12px;">Every version, newest first, retirements included.</p>
+          <div id="knHistory"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Shared add-term modal (PII / Non-PII) -->
@@ -373,6 +611,9 @@
           // Style Profiles reads a separate Worker over a service binding, so
           // it loads when opened rather than on every admin page load.
           if (btn.dataset.tab === "profiles") loadRoster();
+          // Same reasoning: the knowledge store is a second Worker over a
+          // service binding, so it is read when the tab is opened.
+          if (btn.dataset.tab === "knowledge") loadKnowledge();
         });
       });
 
@@ -686,16 +927,35 @@
         }).catch(function () {});
       }
 
+      /* The run says what it did, in a sentence.
+
+         This button reported "Run complete - check your email for the digest."
+         whatever came back, which is the same lie the endpoint itself used to
+         tell: it answered ok on every run from June to August while writing
+         nothing at all. The endpoint returns its own report now, so the button
+         reads it out instead of guessing. */
+      function scrubRunSummary(report) {
+        if (!report || typeof report.considered !== "number") return "Run complete.";
+        if (report.stopped === "nothing-to-consider") {
+          return "Nothing to consider - every certified term has already been through a run.";
+        }
+        var s = "Considered " + report.considered + ", proposed " + report.proposed + ".";
+        if (report.backlogRemaining) s += " " + report.backlogRemaining + " still waiting.";
+        return s + " Digest sent by email.";
+      }
+
       document.getElementById("labRunNow").addEventListener("click", function () {
         var ok = document.getElementById("labRunOk");
         var err = document.getElementById("labRunErr");
         ok.style.display = "none"; err.style.display = "none";
         document.getElementById("labRunNow").textContent = "Running…";
         adminFetch("/api/admin/scrub-run", "POST")
-          .then(function () {
+          .then(function (report) {
+            ok.textContent = scrubRunSummary(report);
             ok.style.display = "inline";
             document.getElementById("labRunNow").textContent = "Trigger run now";
             loadAlgStatus();
+            loadSuggestions();
           })
           .catch(function (ex) {
             err.textContent = ex.message; err.style.display = "inline";
@@ -882,7 +1142,716 @@
         profState.kid = null;
       });
 
+      /* ── Expert Pass tab ──────────────────────────────────────────────────
+         A bench, not a feature. It runs /api/expert-pass over a pasted intake
+         and draws what came back, so the expert can be read against the hint
+         catalog on the same text before any of the note loop is rewritten
+         around it. Nothing here writes, saves or applies anything.
+
+         It reads window.NOTE_TOOLS, which is the same registry the note pages
+         build from, so the sections it sends and the catalog it shows are the
+         live ones rather than a second copy that would drift. */
+      /* NOT EVERY TOOL IS HERE, and the reason is worth stating rather than
+         hiding behind an empty list. Only bt and sap declare a responseSchema;
+         sup, parent and assess are still on the older unconstrained path and
+         keep their section ids in a private var no page can read. A tool whose
+         sections cannot be read would be offered with an inferred list behind
+         it, every hint would come back filed under "note", and the expert would
+         look unable to tell one section from another. So it is left out, and
+         the page says so. Giving a tool a responseSchema brings it in here. */
+      function expertTools() {
+        return (window.NOTE_TOOLS || []).filter(function (t) {
+          return t && t.id && t.hintCatalog && expertSections(t);
+        });
+      }
+      /* THE SECTION LIST COMES OUT OF THE RESPONSE SCHEMA, and it took a wrong
+         turn to get here. The obvious source is formSections, and it is right
+         for exactly one tool: bt derives SECTION_IDS from it, and the other four
+         hardcode a list that formSections does not match. A bench reading
+         formSections would have sent sup and sap a section list from a different
+         structure, every hint would have come back filed under "note", and the
+         expert would have looked unable to tell sections apart.
+
+         hintSchema builds the enum as SECTION_IDS.concat(["note"]) for every
+         tool, so the schema is the one place all five agree. */
+      function expertSections(tool) {
+        var enumList = null;
+        try {
+          enumList = tool.responseSchema.properties.hints.items.properties.section.enum;
+        } catch (e) { return null; }
+        if (!Array.isArray(enumList)) return null;
+        return enumList.filter(function (id) { return id !== "note"; });
+      }
+      function renderExpertToolSelect() {
+        var sel = document.getElementById("exTool");
+        if (!sel) return;
+        var tools = expertTools();
+        if (!tools.length) {
+          sel.innerHTML = '<option value="">No tool configs loaded</option>';
+          return;
+        }
+        sel.innerHTML = tools.map(function (t) {
+          return '<option value="' + escapeHtml(t.id) + '">' + escapeHtml(t.label || t.id) + "</option>";
+        }).join("");
+        var all = (window.NOTE_TOOLS || []).length;
+        var note = document.getElementById("exToolNote");
+        if (note) {
+          note.textContent = tools.length < all
+            ? tools.length + " of " + all + " tools. The rest keep their section ids in a private variable" +
+              " no page can read, so the bench would have to guess at them. Giving a tool a responseSchema brings it in."
+            : "";
+        }
+        renderExpertCatalog();
+      }
+      function currentExpertTool() {
+        var id = (document.getElementById("exTool") || {}).value;
+        return expertTools().filter(function (t) { return t.id === id; })[0] || null;
+      }
+      function renderExpertCatalog() {
+        var box = document.getElementById("exCatalog");
+        var tool = currentExpertTool();
+        if (!box) return;
+        if (!tool) { box.innerHTML = ""; return; }
+        var cat = tool.hintCatalog || {};
+        var codes = Object.keys(cat);
+        box.innerHTML = codes.map(function (code) {
+          // "other" carries no wording on purpose; saying so beats a blank row.
+          var text = cat[code] || "(no wording; the model supplies the detail)";
+          return '<div class="cat-row"><code>' + escapeHtml(code) + "</code> - " + escapeHtml(text) + "</div>";
+        }).join("") +
+          '<p class="muted" style="margin-top:10px; font-size:12px;">' + codes.length +
+          " codes. Everything the live hint channel can say about a " +
+          escapeHtml(tool.label || tool.id) + " note.</p>";
+      }
+
+      function expertRow(tagClass, tagText, head, why, move) {
+        return '<div class="finding">' +
+          '<span class="tag tag-' + tagClass + '">' + escapeHtml(tagText) + "</span>" +
+          '<span class="quote">' + escapeHtml(head) + "</span>" +
+          (why ? '<div class="why">' + escapeHtml(why) + "</div>" : "") +
+          (move ? '<div class="move">' + escapeHtml(move) + "</div>" : "") +
+          "</div>";
+      }
+      function emptyRow(text) {
+        return '<span class="muted" style="font-size: 13px;">' + escapeHtml(text) + "</span>";
+      }
+
+      function renderExpert(data) {
+        var terms = data.terms || [];
+        document.getElementById("exTerms").innerHTML = terms.length
+          ? terms.map(function (t) {
+              var head = t.token + (t.reading ? " = " + t.reading : "");
+              return expertRow(t.status || "unknown", t.status || "unknown", head, t.why, "");
+            }).join("")
+          // An empty terms list is a real answer: a note can carry no
+          // abbreviations at all.
+          : emptyRow("No abbreviations in this intake.");
+
+        var reg = data.register || [];
+        document.getElementById("exRegister").innerHTML = reg.length
+          ? reg.map(function (r) {
+              return expertRow(r.action || "ask", r.action || "ask", '"' + r.quote + '"', r.why, r.move);
+            }).join("")
+          // Not a failure and not a silence. The prompt tells it that finding
+          // nothing is a result, and the page has to agree or a clean note
+          // reads as a broken call.
+          : emptyRow("Nothing mentalistic in this intake.");
+
+        var hints = data.hints || [];
+        document.getElementById("exHints").innerHTML = (hints.length
+          ? hints.map(function (h) {
+              var head = '<span class="rank">' + escapeHtml(String(h.rank)) + ".</span> " + escapeHtml(h.ask);
+              return '<div class="finding">' +
+                '<span class="tag tag-' + escapeHtml(h.kind || "thin") + '">' + escapeHtml(h.kind || "thin") + "</span>" +
+                '<span class="quote">' + escapeHtml(h.section || "note") + "</span>" +
+                '<div class="move">' + head + "</div>" +
+                (h.why ? '<div class="why">' + escapeHtml(h.why) + "</div>" : "") +
+                "</div>";
+            }).join("")
+          : emptyRow("Nothing it would ask about.")) +
+          // Reported rather than swallowed. A silent cut reads as "that is
+          // everything it found", which is the one thing it is not.
+          (data.hintsDropped ? '<p class="muted" style="margin-top:10px;font-size:12px;">' +
+            data.hintsDropped + " lower-ranked hint(s) were past the ceiling and are not shown.</p>" : "");
+
+        var u = data.usage || {};
+        document.getElementById("exUsage").textContent = data.model
+          ? data.model + " · in " + (u.input_tokens || 0) +
+            " (+" + (u.cache_read_input_tokens || 0) + " cached, " +
+            (u.cache_creation_input_tokens || 0) + " written) · out " + (u.output_tokens || 0)
+          : "";
+      }
+
+      function runExpert() {
+        var err = document.getElementById("exErr");
+        var busy = document.getElementById("exBusy");
+        var tool = currentExpertTool();
+        var intake = (document.getElementById("exIntake").value || "").trim();
+        err.style.display = "none";
+        if (!tool) { err.textContent = "No tool selected."; err.style.display = "block"; return; }
+        if (!intake) { err.textContent = "Paste an intake first."; err.style.display = "block"; return; }
+        busy.classList.remove("hidden");
+
+        /* DE-IDENTIFY HERE, BECAUSE THERE IS NOWHERE ELSE.
+         *
+         * The Worker's own comment on this route says the intake arrives
+         * de-identified. Until now this caller sent the raw textarea, so the
+         * route documented a control that nothing performed. This is that
+         * control.
+         *
+         * No confirm-first modal on this path, deliberately: the drafting call
+         * keeps its modal because a mis-mapped role there ends up in a note
+         * somebody signs, and the expert writes nothing at all. What it costs
+         * instead is a slightly odd question, which is worth not making anyone
+         * click through a list to ask for one.
+         *
+         * The map never leaves this function. It goes out scrubbed and comes
+         * back scrubbed, and restoreDeep puts the real words back into what is
+         * shown, so the clinician reads their own note and the model never saw
+         * it. */
+        var scrubbed = window.NotesGate.scrubForAgent(intake);
+        renderScrubNotice(scrubbed);
+
+        fetch("/api/expert-pass", {
+          method: "POST",
+          headers: authHeader(),
+          body: JSON.stringify({ tool: tool.id, intake: scrubbed.text, sections: expertSections(tool) }),
+        }).then(function (r) {
+          if (r.status === 401) { localStorage.removeItem(TOKEN_KEY); show(); throw new Error("Session expired."); }
+          return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ("Error " + r.status)); return d; });
+        }).then(function (data) {
+          /* The oracle replays these findings to the model as its own turn, so
+             it keeps the SCRUBBED copy. The model has never seen the real words
+             and handing them back now would undo the whole control. What is
+             drawn on screen is the restored copy, below. */
+          startOracle(tool, scrubbed, data);
+          return renderExpert(window.NotesGate._scrub.restoreDeep(data, scrubbed.map));
+        }).catch(function (ex) {
+          err.textContent = ex.message;
+          err.style.display = "block";
+        }).finally(function () { busy.classList.add("hidden"); });
+      }
+
+      /* Says what was taken, in counts. It reports AFTER the scrub rather than
+       * asking permission before it, so the clinician always knows what the
+       * model saw without anyone having to approve a list to find out. Counts
+       * and types only, never the words themselves - this line is on screen and
+       * the words are the thing being protected. */
+      function renderScrubNotice(scrubbed) {
+        var el = document.getElementById("exScrubbed");
+        if (!el) return;
+        if (!scrubbed.count) {
+          el.textContent = "Nothing to remove: no names or identifiers were detected in this intake.";
+          el.classList.remove("hidden");
+          return;
+        }
+        var parts = Object.keys(scrubbed.removed).sort().map(function (k) {
+          var n = scrubbed.removed[k];
+          return n + " " + k + (n === 1 ? "" : "s");
+        });
+        el.textContent = "Removed before this left your device: " + parts.join(", ") +
+          ". The findings below have your own words put back.";
+        el.classList.remove("hidden");
+      }
+
+      /* ── The oracle ───────────────────────────────────────────────────
+       *
+       * Keep talking to the expert about a pass it just ran. The route is
+       * /api/expert-chat and it is admin only; everything about privacy here
+       * is the same control the run above performs, extended across turns.
+       *
+       * ONE MAP FOR THE WHOLE CONVERSATION, which is the part that is easy to
+       * get wrong. If each question were scrubbed on its own, a name he types
+       * in turn three could be handed a different token from the one the
+       * intake gave it, and the expert would be answering about two people.
+       * So the run's map is applied first, and only what it does not cover is
+       * scrubbed fresh and folded back in, so later turns keep agreeing.
+       *
+       * The transcript is state and nothing else. It is not saved, it is not
+       * sent anywhere but this route, and reloading the page ends it. */
+      var oracle = null;
+
+      function startOracle(tool, scrubbed, findings) {
+        oracle = {
+          tool: tool.id,
+          sections: expertSections(tool),
+          intake: scrubbed.text,
+          // Stringified once, because this is replayed as a model turn rather
+          // than read as data by anything here.
+          findings: JSON.stringify(findings),
+          map: (scrubbed.map || []).slice(),
+          turns: [],
+        };
+        var card = document.getElementById("exOracleCard");
+        if (card) card.classList.remove("hidden");
+        renderOracle();
+        var usage = document.getElementById("exChatUsage");
+        if (usage) usage.textContent = "";
+      }
+
+      /* Scrub one outgoing message against the conversation's own map first,
+         then against a fresh pass for anything new, and grow the map by what
+         the fresh pass took. Returns the text that leaves the device. */
+      function scrubIntoOracle(text) {
+        var applied = window.NotesGate._scrub.applyScrub(text, oracle.map);
+        var fresh = window.NotesGate.scrubForAgent(applied);
+        if (fresh.map && fresh.map.length) oracle.map = oracle.map.concat(fresh.map);
+        return fresh.text;
+      }
+
+      function renderOracle() {
+        var log = document.getElementById("exChatLog");
+        if (!log) return;
+        if (!oracle || !oracle.turns.length) {
+          log.innerHTML = '<span class="muted" style="font-size: 13px;">Nothing asked yet.</span>';
+          return;
+        }
+        log.innerHTML = oracle.turns.map(function (t) {
+          var rule = t.rule
+            ? '<div class="ora-rule"><strong>Rule under test:</strong> ' + escapeHtml(t.rule) + "</div>"
+            : "";
+          return '<div class="ora-turn ' + (t.role === "user" ? "you" : "expert") + '">' +
+            '<span class="ora-who">' + (t.role === "user" ? "You" : "The expert") + "</span>" +
+            escapeHtml(t.text) + rule + "</div>";
+        }).join("");
+        /* The log is not a scrolling box, and that is deliberate: he is reading
+           clinical argument here, and a letterbox with its own scrollbar is the
+           wrong shape for that. So the page scrolls and the newest turn is
+           brought to him, rather than landing below the fold every time. */
+        var last = log.lastElementChild;
+        if (last && last.scrollIntoView) last.scrollIntoView({ block: "nearest" });
+      }
+
+      function askOracle() {
+        var err = document.getElementById("exChatErr");
+        var busy = document.getElementById("exChatBusy");
+        var box = document.getElementById("exAsk");
+        err.style.display = "none";
+        if (!oracle) { err.textContent = "Run the expert first."; err.style.display = "block"; return; }
+        var question = (box.value || "").trim();
+        if (!question) { err.textContent = "Type a question first."; err.style.display = "block"; return; }
+        var rule = (document.getElementById("exRule").value || "").trim();
+
+        // Drawn from his own words, so he reads what he typed. Only the scrubbed
+        // copy is sent, and only the scrubbed copy is kept for the next turn.
+        oracle.turns.push({ role: "user", text: question, rule: "" });
+        var sent = scrubIntoOracle(question);
+        oracle.turns[oracle.turns.length - 1].sent = sent;
+        box.value = "";
+        renderOracle();
+        busy.classList.remove("hidden");
+
+        var messages = oracle.turns.map(function (t) {
+          return { role: t.role, content: t.sent };
+        });
+
+        fetch("/api/expert-chat", {
+          method: "POST",
+          headers: authHeader(),
+          body: JSON.stringify({
+            tool: oracle.tool,
+            intake: oracle.intake,
+            sections: oracle.sections,
+            findings: oracle.findings,
+            messages: messages,
+            knowledge: rule,
+          }),
+        }).then(function (r) {
+          if (r.status === 401) { localStorage.removeItem(TOKEN_KEY); show(); throw new Error("Session expired."); }
+          return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ("Error " + r.status)); return d; });
+        }).then(function (data) {
+          oracle.turns.push({
+            role: "assistant",
+            // Scrubbed on the wire, his own words on the screen.
+            text: restoreOracleText(data.reply),
+            sent: data.reply,
+            rule: data.knowledgeInForce || "",
+          });
+          renderOracle();
+          var usage = document.getElementById("exChatUsage");
+          if (usage && data.usage) {
+            usage.textContent = "This turn: " + (data.usage.input_tokens || 0) + " in, " +
+              (data.usage.output_tokens || 0) + " out, on " + (data.model || "the pass model") + ".";
+          }
+        }).catch(function (ex) {
+          // The question stays in the transcript on a failure, because deleting
+          // it would leave him retyping something he already said.
+          err.textContent = ex.message;
+          err.style.display = "block";
+        }).finally(function () { busy.classList.add("hidden"); });
+      }
+
+      /* restoreDeep walks objects; a reply is one string, so it is wrapped
+         rather than reimplemented. One place decides how a token maps back. */
+      function restoreOracleText(text) {
+        return window.NotesGate._scrub.restoreDeep({ t: String(text || "") }, oracle.map).t;
+      }
+
+      function resetOracle() {
+        if (!oracle) return;
+        oracle.turns = [];
+        renderOracle();
+        var usage = document.getElementById("exChatUsage");
+        if (usage) usage.textContent = "";
+        document.getElementById("exChatErr").style.display = "none";
+      }
+
+      var exSendBtn = document.getElementById("exSend");
+      if (exSendBtn) exSendBtn.addEventListener("click", askOracle);
+      var exResetBtn = document.getElementById("exReset");
+      if (exResetBtn) exResetBtn.addEventListener("click", resetOracle);
+      var exAskBox = document.getElementById("exAsk");
+      // Enter sends, shift+Enter breaks the line. He is typing questions rather
+      // than paragraphs here, and reaching for the button every time is friction
+      // in the one place this bench is supposed to be fast.
+      if (exAskBox) exAskBox.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askOracle(); }
+      });
+
+      var exRunBtn = document.getElementById("exRun");
+      if (exRunBtn) exRunBtn.addEventListener("click", runExpert);
+      var exToolSel = document.getElementById("exTool");
+      if (exToolSel) exToolSel.addEventListener("change", renderExpertCatalog);
+
+      /* ── Knowledge tab ────────────────────────────────────────────────────
+       *
+       * The console is where a rule stops being a conversation and becomes
+       * something the expert reads on every note. It is also, on his ruling of
+       * 2026-08-30, where review happens: a commit goes straight to production
+       * and retiring is the rollback, so nothing here should be a press he can
+       * make without having read what he is approving.
+       *
+       * THE BROWSER NAMES AN OPERATION, NEVER A PATH. The store Worker has no
+       * public URL and no auth of its own, so the Worker in front owns the map
+       * from operation to path. Adding a call here means adding an operation
+       * there, on purpose.
+       */
+      function kn(op, method, body, query) {
+        var url = "/api/expert-knowledge?op=" + encodeURIComponent(op);
+        if (query) for (var k in query) if (query[k]) url += "&" + k + "=" + encodeURIComponent(query[k]);
+        return fetch(url, { method: method, headers: authHeader(), body: body ? JSON.stringify(body) : undefined })
+          .then(function (r) {
+            if (r.status === 401) { localStorage.removeItem(TOKEN_KEY); show(); throw new Error("Session expired."); }
+            return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ("Error " + r.status)); return d; });
+          });
+      }
+
+      var knCandidateRows = [];
+
+      function knScopeLabel(scope) { return scope === "shared" ? "every tool" : toolLabel(scope); }
+
+      /* The record as the expert meets it. Tier first, because tier is the
+         difference between a rule that costs tokens on every call and one that
+         costs nothing until it is needed. */
+      function knRecordHtml(r, actions) {
+        var head =
+          '<span class="pill tier">' + escapeHtml(r.tier) + "</span> " +
+          '<span class="pill tier">' + escapeHtml(knScopeLabel(r.scope)) + "</span> " +
+          (r.topic ? '<span class="pill tier">' + escapeHtml(r.topic) + "</span> " : "") +
+          '<span class="muted" style="font-size: 12px;">v' + (r.version || 1) + " &middot; " + escapeHtml(r.body || "") + "</span>";
+        return (
+          '<div class="kn-record">' +
+          '<div style="margin-bottom: 6px;">' + head + "</div>" +
+          "<strong>" + escapeHtml(r.title || "") + "</strong>" +
+          (r.applies ? '<p class="muted" style="margin: 4px 0 0; font-size: 12px;">Fetched ' + escapeHtml(r.applies) + "</p>" : "") +
+          '<p style="margin: 8px 0 0; white-space: pre-wrap;">' + escapeHtml(r.rule || "") + "</p>" +
+          (r.rationale ? '<p class="muted" style="margin: 8px 0 0; white-space: pre-wrap;">Why: ' + escapeHtml(r.rationale) + "</p>" : "") +
+          (actions || "") +
+          "</div>"
+        );
+      }
+
+      function loadKnowledge() {
+        var unbound = document.getElementById("knUnbound");
+        var proposals = document.getElementById("knProposals");
+        var candidates = document.getElementById("knCandidates");
+        var records = document.getElementById("knRecords");
+
+        function oops(el) { return function (ex) { el.innerHTML = '<span class="err" style="display:block;">' + escapeHtml(ex.message) + "</span>"; }; }
+
+        kn("list", "GET").then(function (d) {
+          // An unbound store and an empty one look identical in a list, and
+          // they are entirely different problems. Say which one this is.
+          unbound.style.display = d.knowledge === false ? "" : "none";
+          var rows = d.records || [];
+          if (!rows.length) {
+            records.innerHTML = '<span class="muted" style="font-size: 13px;">' +
+              (d.knowledge === false ? "No store on this deploy." : "Nothing in force. The expert is running on its authored prompt alone.") + "</span>";
+            return;
+          }
+          var core = rows.filter(function (r) { return r.tier === "core"; });
+          var topic = rows.filter(function (r) { return r.tier !== "core"; });
+          var section = function (label, list, note) {
+            if (!list.length) return "";
+            return "<h3>" + label + " <span class=\"muted\" style=\"font-weight: 400; font-size: 12px;\">" + note + "</span></h3>" +
+              list.map(function (r) {
+                return knRecordHtml(r,
+                  '<div class="kn-actions">' +
+                  '<button class="btn-secondary kn-history" data-id="' + escapeHtml(r.id) + '" type="button">History</button>' +
+                  '<button class="btn-danger kn-retire" data-id="' + escapeHtml(r.id) + '" data-title="' + escapeHtml(r.title || "") + '" type="button">Retire</button>' +
+                  "</div>");
+              }).join("");
+          };
+          records.innerHTML =
+            section("Core", core, "in the prompt on every call") +
+            section("Topic", topic, "one index line each, body fetched on demand");
+        }).catch(oops(records));
+
+        kn("proposals", "GET", null, { state: "staged" }).then(function (d) {
+          var rows = d.proposals || [];
+          if (!rows.length) {
+            proposals.innerHTML = '<span class="muted" style="font-size: 13px;">Nothing staged.</span>';
+            return;
+          }
+          proposals.innerHTML = rows.map(function (r) {
+            return knRecordHtml(r,
+              '<div class="kn-actions">' +
+              '<button class="btn-primary kn-commit" data-id="' + escapeHtml(r.proposalId) + '" type="button">Put it in force</button>' +
+              '<button class="btn-secondary kn-reject" data-id="' + escapeHtml(r.proposalId) + '" type="button">Reject</button>' +
+              (r.targetId ? '<span class="muted" style="font-size: 12px; align-self: center;">replaces ' + escapeHtml(r.targetId) + "</span>" : "") +
+              "</div>");
+          }).join("");
+        }).catch(oops(proposals));
+
+        kn("candidates", "GET").then(function (d) {
+          var rows = d.candidates || [];
+          knCandidateRows = rows;
+          if (!rows.length) {
+            candidates.innerHTML = '<span class="muted" style="font-size: 13px;">Nothing nominated. A topic record needs to be fetched often and to have changed the answer before it earns a place in every prompt.</span>';
+            return;
+          }
+          candidates.innerHTML = rows.map(function (r) {
+            return knRecordHtml(r,
+              '<p class="muted" style="margin: 8px 0 0; font-size: 12px;">Fetched ' + (r.fetches || 0) + " times, changed the answer " + (r.moved || 0) + " of them.</p>" +
+              '<div class="kn-actions">' +
+              '<button class="btn-secondary kn-elevate" data-id="' + escapeHtml(r.id) + '" type="button">Draft it as core</button>' +
+              "</div>");
+          }).join("");
+        }).catch(oops(candidates));
+      }
+
+      /* One handler for the whole tab rather than a listener per row, because
+         every list here is rebuilt from scratch after each press. */
+      var knPanel = document.getElementById("tab-knowledge");
+      if (knPanel) knPanel.addEventListener("click", function (e) {
+        var btn = e.target.closest ? e.target.closest("button") : null;
+        if (!btn) return;
+        var id = btn.dataset.id;
+
+        if (btn.classList.contains("kn-commit")) {
+          btn.disabled = true;
+          kn("commit", "POST", { proposalId: id }).then(loadKnowledge).catch(function (ex) { btn.disabled = false; alert(ex.message); });
+        } else if (btn.classList.contains("kn-reject")) {
+          btn.disabled = true;
+          kn("reject", "POST", { proposalId: id }).then(loadKnowledge).catch(function (ex) { btn.disabled = false; alert(ex.message); });
+        } else if (btn.classList.contains("kn-retire")) {
+          // The one press here that changes what every note reads, so it asks.
+          if (!confirm('Retire "' + (btn.dataset.title || id) + '"? The expert stops seeing it on the next call. Nothing is deleted.')) return;
+          btn.disabled = true;
+          kn("retire", "POST", { id: id }).then(loadKnowledge).catch(function (ex) { btn.disabled = false; alert(ex.message); });
+        } else if (btn.classList.contains("kn-history")) {
+          knShowHistory(id);
+        } else if (btn.classList.contains("kn-elevate")) {
+          knDraftAsCore(id);
+        }
+      });
+
+      function knShowHistory(id) {
+        var card = document.getElementById("knHistoryCard");
+        var out = document.getElementById("knHistory");
+        card.classList.remove("hidden");
+        document.getElementById("knHistoryTitle").textContent = "History of " + id;
+        out.innerHTML = '<span class="muted" style="font-size: 13px;">Loading...</span>';
+        card.scrollIntoView({ behavior: "smooth", block: "start" });
+        kn("history", "GET", null, { id: id }).then(function (d) {
+          var rows = d.versions || [];
+          out.innerHTML = rows.length
+            ? rows.map(function (r) {
+                return knRecordHtml(r,
+                  '<p class="muted" style="margin: 8px 0 0; font-size: 12px;">' +
+                  escapeHtml(r.status) + " &middot; " + fmtDateTime(r.createdAt) + (r.author ? " &middot; " + escapeHtml(r.author) : "") + "</p>");
+              }).join("")
+            : '<span class="muted" style="font-size: 13px;">No versions.</span>';
+        }).catch(function (ex) { out.innerHTML = '<span class="err" style="display:block;">' + escapeHtml(ex.message) + "</span>"; });
+      }
+
+      /* Promoting is a NEW PROPOSAL, not a press. The topic record keeps its
+         own line of versions, and the core rule that replaces it is a different
+         record with a different argument behind it - so it goes through the
+         same review as anything else he writes. */
+      function knDraftAsCore(id) {
+        // Drafted from the row already on the screen. Reading it back would
+        // mean a lookup operation the console can name, and the fewer paths
+        // into a Worker with no auth of its own, the better.
+        var r = null;
+        for (var i = 0; i < knCandidateRows.length; i++) if (knCandidateRows[i].id === id) r = knCandidateRows[i];
+        if (!r) return;
+        document.getElementById("knTier").value = "core";
+        document.getElementById("knScope").value = r.scope || "shared";
+        document.getElementById("knBody").value = r.body || "";
+        document.getElementById("knTitle").value = r.title || "";
+        document.getElementById("knRule").value = r.rule || "";
+        document.getElementById("knRationale").value =
+          "Promoted from topic record " + r.id + ", fetched " + (r.fetches || 0) + " times and changed the answer " +
+          (r.moved || 0) + " of them. Say here why it belongs in every prompt rather than behind an index line, " +
+          "because that is what costs tokens on notes that will never need it.";
+        knSyncTier();
+        document.getElementById("knTitle").scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+
+      // A core record must not carry a topic, so the fields it must not carry
+      // are not on the screen to be filled in.
+      function knSyncTier() {
+        var isTopic = document.getElementById("knTier").value === "topic";
+        document.getElementById("knTopicRow").style.display = isTopic ? "" : "none";
+        document.getElementById("knAppliesNote").style.display = isTopic ? "" : "none";
+      }
+
+      function knPropose() {
+        var err = document.getElementById("knProposeErr");
+        var okMsg = document.getElementById("knProposeOk");
+        var btn = document.getElementById("knPropose");
+        err.style.display = "none";
+        okMsg.classList.add("hidden");
+        var tier = document.getElementById("knTier").value;
+        var body = {
+          tier: tier,
+          scope: document.getElementById("knScope").value,
+          body: document.getElementById("knBody").value.trim(),
+          title: document.getElementById("knTitle").value.trim(),
+          rule: document.getElementById("knRule").value.trim(),
+          rationale: document.getElementById("knRationale").value.trim(),
+        };
+        if (tier === "topic") {
+          body.topic = document.getElementById("knTopic").value.trim();
+          body.applies = document.getElementById("knApplies").value.trim();
+        }
+        /* What this rule was written from, carried onto the record. A rule
+           whose sources are gone is a rule nobody can re-argue when a payer
+           changes its policy, which is the case this store exists for. */
+        if (knResearchSources.length) {
+          body.provenance = { sources: knResearchSources, researchedAt: Date.now() };
+        }
+        btn.disabled = true;
+        kn("propose", "POST", body).then(function () {
+          ["knTitle", "knRule", "knRationale", "knApplies"].forEach(function (f) { document.getElementById(f).value = ""; });
+          okMsg.classList.remove("hidden");
+          btn.disabled = false;
+          loadKnowledge();
+        }).catch(function (ex) {
+          btn.disabled = false;
+          // The store names the boundary that fired rather than handing back a
+          // 400 to guess at, so show it rather than a house message.
+          err.textContent = ex.message;
+          err.style.display = "block";
+        });
+      }
+
+      /* Research. The transcript is kept as plain text, deliberately: sending a
+         previous turn's search results back would mean round-tripping their
+         encrypted content through this page untouched, and the model arguing
+         from its own written report is the same constraint he is under. */
+      var knResearchTurns = [];
+      var knResearchSources = [];
+
+      function knRenderResearch() {
+        var log = document.getElementById("knResearchLog");
+        if (!knResearchTurns.length) { log.innerHTML = ""; return; }
+        log.innerHTML = knResearchTurns.map(function (t) {
+          if (t.role === "user") {
+            return '<div class="kn-record" style="background: var(--sage-pale, #f4f6f0);"><strong style="font-size: 13px;">You asked</strong>' +
+              '<p style="margin: 6px 0 0; white-space: pre-wrap;">' + escapeHtml(t.content) + "</p></div>";
+          }
+          var sources = (t.sources || []).map(function (sc) {
+            // Displayed to a human who is deciding what to trust, so the link is
+            // the source itself rather than a footnote number.
+            return '<li><a href="' + escapeHtml(sc.url) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(sc.title) + "</a></li>";
+          }).join("");
+          return '<div class="kn-record">' +
+            '<strong style="font-size: 13px;">It read ' + (t.searches || 0) + (t.searches === 1 ? " source" : " sources") + "</strong>" +
+            (t.truncated ? ' <span class="pill off">cut off</span>' : "") +
+            '<p style="margin: 8px 0 0; white-space: pre-wrap;">' + escapeHtml(t.content) + "</p>" +
+            (sources ? '<p class="muted" style="margin: 10px 0 4px; font-size: 12px;">What it cited</p><ul style="margin: 0; padding-left: 18px; font-size: 13px;">' + sources + "</ul>" : '<p class="muted" style="margin: 10px 0 0; font-size: 12px;">It cited nothing, so nothing here is sourced.</p>') +
+            "</div>";
+        }).join("");
+      }
+
+      function knDoResearch() {
+        var box = document.getElementById("knQuestion");
+        var err = document.getElementById("knResearchErr");
+        var busy = document.getElementById("knResearchBusy");
+        var usage = document.getElementById("knResearchUsage");
+        var btn = document.getElementById("knResearch");
+        var question = box.value.trim();
+        if (!question) return;
+        err.style.display = "none";
+        busy.classList.remove("hidden");
+        btn.disabled = true;
+
+        fetch("/api/expert-research", {
+          method: "POST",
+          headers: authHeader(),
+          body: JSON.stringify({
+            question: question,
+            messages: knResearchTurns.map(function (t) { return { role: t.role, content: t.content }; }),
+          }),
+        }).then(function (r) {
+          if (r.status === 401) { localStorage.removeItem(TOKEN_KEY); show(); throw new Error("Session expired."); }
+          return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ("Error " + r.status)); return d; });
+        }).then(function (d) {
+          knResearchTurns.push({ role: "user", content: question });
+          knResearchTurns.push({ role: "assistant", content: d.report, sources: d.sources || [], searches: d.searches || 0, truncated: !!d.truncated });
+          // Every turn that fed this, not only the last one. He asks two or
+          // three questions before a rule is worth writing, and then writes ONE
+          // rule off the whole exchange. Provenance that kept only the final
+          // turn's citations would credit that rule to the last thing it read.
+          (d.sources || []).forEach(function (sc) {
+            if (!knResearchSources.some(function (x) { return x.url === sc.url; })) knResearchSources.push(sc);
+          });
+          box.value = "";
+          knRenderResearch();
+          var u = d.usage || {};
+          usage.textContent = d.model + " - " + (d.searches || 0) + " searches across " + (d.domains || 0) +
+            " approved domains, " + (u.input_tokens || 0) + " in, " + (u.output_tokens || 0) + " out.";
+        }).catch(function (ex) {
+          err.textContent = ex.message;
+          err.style.display = "block";
+        }).then(function () {
+          busy.classList.add("hidden");
+          btn.disabled = false;
+        });
+      }
+
+      function knResetResearch() {
+        knResearchTurns = [];
+        knResearchSources = [];
+        document.getElementById("knQuestion").value = "";
+        document.getElementById("knResearchUsage").textContent = "";
+        document.getElementById("knResearchErr").style.display = "none";
+        knRenderResearch();
+      }
+
+      var knResearchBtn = document.getElementById("knResearch");
+      if (knResearchBtn) knResearchBtn.addEventListener("click", knDoResearch);
+      var knResearchResetBtn = document.getElementById("knResearchReset");
+      if (knResearchResetBtn) knResearchResetBtn.addEventListener("click", knResetResearch);
+
+      function renderKnScopeSelect() {
+        var sel = document.getElementById("knScope");
+        if (!sel) return;
+        sel.innerHTML = '<option value="shared">Every tool</option>' +
+          TOOLS.map(function (t) { return '<option value="' + t.id + '">' + escapeHtml(t.label) + " only</option>"; }).join("");
+      }
+
+      var knTierSel = document.getElementById("knTier");
+      if (knTierSel) knTierSel.addEventListener("change", knSyncTier);
+      var knProposeBtn = document.getElementById("knPropose");
+      if (knProposeBtn) knProposeBtn.addEventListener("click", knPropose);
+
       renderToolChecks();
+      renderExpertToolSelect();
+      renderKnScopeSelect();
+      knSyncTier();
       show();
     })();
   </script>
