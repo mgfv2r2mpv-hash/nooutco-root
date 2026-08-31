@@ -4,11 +4,15 @@
  * normalizeOutput flattens each into the editable text block the EHR expects. */
 (function () {
   var normalizeHints = window.NoteToolsUtil.normalizeHints;
+  var normalizeRevision = window.NoteToolsUtil.normalizeRevision;
   var hintSchema = window.NoteToolsUtil.hintSchema;
 
   var SMART_TOOLTIP = "SMART goals are: Specific (clearly defines the target behavior and context, what, where, with whom), Measurable (includes quantifiable criteria, e.g. \"4 out of 5 opportunities\" or \"80% accuracy\"), Achievable (realistic within the authorization period given the client's current baseline), Relevant (tied to the client's diagnosis, functional independence, and medical necessity, not academics), and Time-bound (specifies a timeframe, e.g. \"within 1 authorization period\" or \"across 3 consecutive sessions\").";
 
   var SECTION_IDS = ["refinedGoal", "exercise", "generalization", "errorCorrection"];
+  // Bound after SECTION_IDS, which it reads: `var` hoists the declaration but
+  // not the value, so binding this above would seal the enum as undefined.
+  var revision = window.NoteToolsUtil.revisionKeys(SECTION_IDS);
 
   // Used only when the model omits reentryRule. Single-sourced so the JSON path
   // (formatErrorCorrection) and the copy-paste path (buildLabeledPrompt) cannot
@@ -70,6 +74,13 @@
       // rank, kind and the whole-note section arrive here without this file
       // restating them.
       hints: hintSchema(HINT_CATALOG, SECTION_IDS),
+      // The three keys a revision turn can carry. Optional, never required: a
+      // first draft has nothing to answer and nothing to route. Without them
+      // this sealed object turned "should this go in the plan?" into a rewrite
+      // of the plan, which is the fault REVISION_RULES exists to prevent.
+      bcbaQuestion: revision.bcbaQuestion,
+      answer: revision.answer,
+      crossSection: revision.crossSection,
     },
   };
 
@@ -279,13 +290,17 @@
 
   function normalizeOutput(raw) {
     var o = raw && typeof raw === "object" ? raw : {};
-    return {
+    var out = {
       refinedGoal: typeof o.refinedGoal === "string" ? o.refinedGoal : "",
       exercise: formatExercise(o.exercise || {}),
       generalization: formatGeneralization(o.generalization || {}),
       errorCorrection: formatErrorCorrection(o.errorCorrection || {}),
       hints: normalizeHints(o.hints, HINT_CATALOG, SECTION_IDS),
     };
+    // The three revision keys the engine reads back. Kept separate from the
+    // note's own fields because they never reach the EHR: an answer is shown
+    // in the panel and a routing decision is consumed before render.
+    return Object.assign({}, out, normalizeRevision(o, SECTION_IDS));
   }
 
   /* The engine's default triage is written for session notes: it asks for

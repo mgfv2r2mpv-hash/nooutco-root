@@ -90,23 +90,76 @@ test('every note tool opts into the expert, and does it through its schema', () 
    schema-versus-formSections question already lives, rather than a second time
    here. */
 
-/* Fault 1, and the one exception, named rather than left as a silence.
-   sap has sealed its object without these keys since the schema landed, so a
-   question asked of the SAP tool is answered by rewriting the note. That is a
-   real defect and it predates this change; it is pinned here so it cannot be
-   lost, and this line breaks when somebody fixes it. */
-test('a sealed schema still lets the model answer a question instead of editing', () => {
-  const cannotAnswer = [];
+/* Fault 1, AT BOTH LAYERS, because measuring it showed one layer was not enough.
+
+   The first version of this test read schemas only, and reported sap as the
+   single tool that could not answer a question. That was true and incomplete.
+   A tool answers a question only if BOTH halves hold: its schema lets the model
+   emit `answer`, and its normalizeOutput hands that key onward to the engine,
+   which reads `normalized.answer` and nothing else. sup, parent and assess
+   passed the schema half the moment they gained a schema and failed the second
+   half in exactly the way fault 2 below describes - so giving them a schema
+   alone left them where sap already was, and the schema-only test could not
+   see it.
+
+   Both halves are asserted per tool now, and the engine's own reader is the
+   authority for which keys count. */
+const REVISION_KEYS = ['answer', 'bcbaQuestion', 'crossSection'];
+
+test('every tool can answer a question, in its schema and through its normalizer', () => {
   for (const id of ALL) {
     const { tool } = loadTool(id);
     const props = tool.responseSchema.properties;
-    if (!props.answer || !props.bcbaQuestion) cannotAnswer.push(id);
-    if (props.answer) {
-      expect(tool.responseSchema.required, `${id} requires answer, so every draft must carry one`)
-        .not.toContain('answer');
+    for (const key of REVISION_KEYS) {
+      expect(props[key], `${id} seals its object without "${key}", so the model cannot send one`)
+        .toBeTruthy();
+      expect(tool.responseSchema.required, `${id} requires "${key}", so every draft must carry one`)
+        .not.toContain(key);
     }
   }
-  expect(cannotAnswer, 'sap is the known gap; any other tool here is a new one').toEqual(['sap']);
+});
+
+test('the keys that carry an answer survive the tool normalizer', () => {
+  for (const id of ALL) {
+    const { tool, win } = loadTool(id);
+    const section = sectionEnum(tool, win)[0];
+    const out = tool.normalizeOutput({
+      answer: 'Yes, that meets the operational definition.',
+      bcbaQuestion: 'Should the escape program pause while she is ill?',
+      crossSection: [{ section, confident: true, why: 'the detail moved here' }],
+    });
+    expect(out.answer, `${id} drops "answer", so a question comes back as an edit`)
+      .toBe('Yes, that meets the operational definition.');
+    expect(out.bcbaQuestion, `${id} drops "bcbaQuestion", so the offer never reaches the panel`)
+      .toBe('Should the escape program pause while she is ill?');
+    expect(out.crossSection, `${id} drops "crossSection", so every off-target change asks`)
+      .toEqual([{ section, confident: true, why: 'the detail moved here' }]);
+  }
+});
+
+/* The validation half, which is what makes dropping the keys unsafe to fix by
+   simply passing them through. A section the tool does not draw must not be
+   able to route a change, and a model that returns the wrong type must not be
+   able to put an object where the engine expects a string. */
+test('a normalizer keeps the answer keys without trusting them', () => {
+  for (const id of ALL) {
+    const { tool, win } = loadTool(id);
+    const real = sectionEnum(tool, win)[0];
+    const out = tool.normalizeOutput({
+      answer: { not: 'a string' },
+      bcbaQuestion: 42,
+      crossSection: [
+        { section: 'a-section-no-tool-draws', confident: true, why: 'fabricated' },
+        { section: real, confident: 'yes', why: 'confident is not a boolean here' },
+      ],
+    });
+    expect(out.answer, `${id} passes a non-string answer through to the engine`).toBe('');
+    expect(out.bcbaQuestion, `${id} passes a non-string question through`).toBe('');
+    expect(out.crossSection.map((c) => c.section),
+      `${id} lets a fabricated section id route a change`).toEqual([real]);
+    expect(out.crossSection[0].confident,
+      `${id} treats a non-boolean as confident, which applies a change silently`).toBe(false);
+  }
 });
 
 /* Fault 2. The schema says what the model MAY return and normalizeOutput says

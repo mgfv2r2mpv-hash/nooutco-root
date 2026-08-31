@@ -126,6 +126,51 @@ window.NoteToolsUtil = {
      Shared rather than copied for the same reason hintSchema is: this shape
      belongs to the engine's contract, not to any one tool, and three more
      copies of it could not be kept in step by convention. */
+  /* THE OTHER HALF OF revisionKeys, and the half that was missing.
+
+     A schema decides what the model MAY send. This decides what the tool KEEPS,
+     and engine.jsx reads the kept object - `normalized.answer`, never the raw
+     reply. A tool that declares these three keys and then returns a normalized
+     object without them is opted in on paper and opted out in fact: the model
+     answers the question, the answer is dropped here, and the engine falls
+     through to the edit path as though no answer had been given.
+
+     That is not hypothetical. sup, parent and assess were in exactly that state
+     between gaining a schema and gaining this call, and nothing errored.
+
+     Shared, and bt now reads from here too, because the caps below are a
+     contract with the engine rather than a per-tool preference. Five private
+     copies could not be kept in step by convention. */
+  normalizeRevision: function (raw, sectionIds) {
+    var o = raw && typeof raw === "object" ? raw : {};
+    var ids = Array.isArray(sectionIds) ? sectionIds : [];
+    return {
+      // Capped rather than rejected: an over-long answer is still an answer,
+      // and truncating it beats turning the turn back into a note rewrite.
+      answer: typeof o.answer === "string" ? o.answer.slice(0, 1200) : "",
+      bcbaQuestion: typeof o.bcbaQuestion === "string" ? o.bcbaQuestion.slice(0, 300) : "",
+      // Validated against the tool's own section list, so a fabricated section
+      // name cannot route a change into a section the tool does not draw.
+      crossSection: Array.isArray(o.crossSection)
+        ? o.crossSection
+            .filter(function (c) {
+              return c && typeof c === "object" && ids.indexOf(c.section) !== -1;
+            })
+            .map(function (c) {
+              return {
+                section: c.section,
+                // Strict equality, never truthiness: `confident` is what decides
+                // between applying an off-target change and stopping to ask, so
+                // anything that is not exactly true has to mean ask.
+                confident: c.confident === true,
+                why: typeof c.why === "string" ? c.why.slice(0, 140) : "",
+              };
+            })
+            .slice(0, 8)
+        : [],
+    };
+  },
+
   revisionKeys: function (sectionIds) {
     return {
       // Something the clinician was unsure about clinically, phrased as a

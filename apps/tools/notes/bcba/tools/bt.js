@@ -11,6 +11,7 @@
 (function () {
   var menu = window.NoteToolsUtil.menu;
   var normalizeHints = window.NoteToolsUtil.normalizeHints;
+  var normalizeRevision = window.NoteToolsUtil.normalizeRevision;
   var hintSchema = window.NoteToolsUtil.hintSchema;
 
   /* ── Canonical option lists ──────────────────────────────────────────────
@@ -371,24 +372,10 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
     out.hints = normalizeHints(o.hints, HINT_CATALOG, SECTION_IDS);
     // Only present on a revision that reached past the section the clinician
     // pointed at. Validated against the same closed section list as hints, so a
-    // fabricated section name cannot route a change anywhere.
-    out.answer = typeof o.answer === "string" ? o.answer.slice(0, 1200) : "";
-    out.bcbaQuestion = typeof o.bcbaQuestion === "string" ? o.bcbaQuestion.slice(0, 300) : "";
-    out.crossSection = Array.isArray(o.crossSection)
-      ? o.crossSection
-          .filter(function (c) {
-            return c && typeof c === "object" && SECTION_IDS.indexOf(c.section) !== -1;
-          })
-          .map(function (c) {
-            return {
-              section: c.section,
-              confident: c.confident === true,
-              why: typeof c.why === "string" ? c.why.slice(0, 140) : "",
-            };
-          })
-          .slice(0, 8)
-      : [];
-    return out;
+    // fabricated section name cannot route a change anywhere. bt carried its own
+    // copy of this until 2026-08-30; it reads the shared one now, so the caps
+    // cannot drift between the tool that had it and the four that gained it.
+    return Object.assign({}, out, normalizeRevision(o, SECTION_IDS));
   }
 
   window.NOTE_TOOLS.push({
