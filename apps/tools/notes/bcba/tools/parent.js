@@ -4,6 +4,7 @@
 (function () {
   var menu = window.NoteToolsUtil.menu;
   var normalizeHints = window.NoteToolsUtil.normalizeHints;
+  var normalizeRevision = window.NoteToolsUtil.normalizeRevision;
   var hintSchema = window.NoteToolsUtil.hintSchema;
   var revisionKeys = window.NoteToolsUtil.revisionKeys;
 
@@ -155,7 +156,10 @@ TERMINOLOGY (non-negotiable)\n\
     });
     ["summary", "followup"].forEach(function (key) { out[key] = typeof o[key] === "string" ? o[key] : ""; });
     out.hints = normalizeHints(o.hints, HINT_CATALOG, SECTION_IDS);
-    return out;
+    // The three revision keys the engine reads back. Kept separate from the
+    // note's own fields because they never reach the EHR: an answer is shown
+    // in the panel and a routing decision is consumed before render.
+    return Object.assign({}, out, normalizeRevision(o, SECTION_IDS));
   }
 
   window.NOTE_TOOLS.push({

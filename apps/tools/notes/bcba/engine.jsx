@@ -1973,9 +1973,12 @@ function App() {
        * as the targeted one - it renders as an inline diff and Discard is the
        * undo - and an unconfident one becomes a question in the panel.
        *
-       * A tool whose schema has no crossSection (the four BCBA tools) reports
-       * nothing, so every off-target change asks. That is the safe direction:
-       * silence must never read as confidence.
+       * Every tool reports crossSection as of 2026-08-30; the four BCBA tools
+       * gained it with their schemas, and each one's normalizeOutput hands it
+       * on. A tool that reported nothing here still degraded safely, because an
+       * unrouted change asks rather than applies - silence must never read as
+       * confidence - but it degraded silently, which is why the tools now say
+       * so explicitly rather than relying on the fallback.
        */
       const routing = new Map(
         (normalized.crossSection || []).map((c) => [c.section, c]),

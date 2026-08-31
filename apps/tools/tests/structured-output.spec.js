@@ -84,7 +84,7 @@ test.describe('SAP response schema', () => {
     await page.goto('/notes/bcba/index.html?tool=sap');
     await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
 
-    const report = await page.evaluate((unsupported) => {
+    const report = await page.evaluate(({ unsupported, REVISION_KEYS }) => {
       const sap = window.NOTE_TOOLS.find((t) => t.id === 'sap');
       const schema = sap && sap.responseSchema;
       if (!schema) return { missing: true };
@@ -102,10 +102,19 @@ test.describe('SAP response schema', () => {
           if (node.additionalProperties !== false) objectsMissingSeal.push(path);
           const props = Object.keys(node.properties || {});
           const req = node.required || [];
-          // Every declared property must be required: an optional property is
-          // a key the model may omit, which is exactly the blank-section hole
-          // the shape gate exists to catch.
-          const optional = props.filter((p) => !req.includes(p));
+          // Every declared NOTE property must be required: an optional one is a
+          // key the model may omit, which is exactly the blank-section hole this
+          // gate exists to catch.
+          //
+          // The three revision keys are the deliberate exception, and they are
+          // the opposite case. They carry the conversation rather than the note:
+          // "answer" means the turn was a question and no section changed, and a
+          // first draft has nothing to answer and nothing to route. Requiring
+          // them would force every draft to invent one. bt has declared them
+          // optional since the schema landed; sap gained them on 2026-08-30, and
+          // expert-covers-five-tools.spec.js asserts from the other side that no
+          // tool may put them in `required`.
+          const optional = props.filter((p) => !req.includes(p) && !REVISION_KEYS.includes(p));
           if (optional.length) objectsWithUnrequiredProps.push(path + ' → ' + optional.join(','));
           for (const p of props) walk(node.properties[p], path + '.' + p);
         }
@@ -120,7 +129,7 @@ test.describe('SAP response schema', () => {
         topLevelRequired: (schema.required || []).slice().sort(),
         sectionKeys: sap.formSections.map((s) => s.key || s.group).slice().sort(),
       };
-    }, UNSUPPORTED);
+    }, { unsupported: UNSUPPORTED, REVISION_KEYS: ['answer', 'bcbaQuestion', 'crossSection'] });
 
     expect(report.missing, 'sap tool declares no responseSchema').toBe(false);
     expect(report.objectsMissingSeal, 'every object needs additionalProperties:false').toEqual([]);
