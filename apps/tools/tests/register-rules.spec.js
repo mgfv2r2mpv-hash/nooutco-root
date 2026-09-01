@@ -272,3 +272,171 @@ test.describe('session record focus', () => {
       .not.toMatch(/Staff opinion/);
   });
 });
+
+/* A RULE THE TOOL CANNOT OBEY IS NOT A RULE.
+ *
+ * The two FLAG rules above route into the hint mechanism by name: an opinion
+ * with no observation behind it, and a feeling with nothing attached, both
+ * become an `ambiguous_item` hint rather than a deletion. Every test above this
+ * line checks that the INSTRUCTION is in the prompt. None of them checked that
+ * the tool would accept the answer.
+ *
+ * It would not, on two of the four. `code` is an enum built from each tool's own
+ * HINT_CATALOG, and normalizeHints drops any code the catalog does not hold, so
+ * on bt and sup both rules were unobeyable while their wording sat in the
+ * prompt: the model is told to emit ambiguous_item, the schema forbids the
+ * value, and the finding is lost with nothing anywhere saying so. assess, parent
+ * and sap have carried the code since they were written.
+ *
+ * So this reads the codes out of the shared rules themselves rather than
+ * listing them here. A future rule that names a new code is covered the day it
+ * is written, which is the only version of this test worth having.
+ */
+test.describe('every hint code the shared rules name is one the tool will accept', () => {
+  /* bt included. It is the highest-volume tool and it was missing from the two
+     lists above, which is part of why this went unnoticed - and it was easy to
+     miss because bt is not registered on the same page. Six tool ids live on two
+     pages, and window.NOTE_TOOLS holds only the ones its own page loaded, so a
+     list gathered from one page silently excludes the other. */
+  const PAGES = {
+    '/notes/bcba/index.html?tool=sup': ['sup', 'assess', 'parent'],
+    '/notes/bt/': ['bt'],
+  };
+  const ALL_SESSION_TOOLS = ['bt', 'sup', 'assess', 'parent'];
+
+  // Walk both pages and merge, so "did not load" means the tool is genuinely
+  // missing rather than that this test looked in one place.
+  async function acrossPages(page, collect) {
+    const out = {};
+    for (const [url, ids] of Object.entries(PAGES)) {
+      await page.goto(url);
+      await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length && window.NoteRegisterRules));
+      Object.assign(out, await page.evaluate(collect, ids));
+    }
+    return out;
+  }
+
+  test('the rules name at least one code, so this test cannot pass vacuously', async ({ page }) => {
+    await page.goto('/notes/bcba/index.html?tool=sup');
+    await page.waitForFunction(() => !!window.NoteRegisterRules);
+    const codes = await page.evaluate(() =>
+      [...new Set((window.NoteRegisterRules.sessionNote.match(/\b([a-z]+_[a-z_]+) hint\b/g) || [])
+        .map((m) => m.replace(/ hint$/, '')))]);
+    expect(codes, 'the shared rules stopped naming any hint code').toContain('ambiguous_item');
+  });
+
+  /* The extraction above reads a code out of prose by requiring an underscore,
+     because "the hint reaches the person who can still fill it in" is a sentence
+     and "an ambiguous_item hint" is a code. That works only while every code
+     that a rule could name actually has an underscore in it, so the assumption
+     is pinned here rather than left in a comment: a future single-word code
+     would slip past the reader above and this is what says so. */
+  test('every hint code is shaped so the rules can name it unambiguously', async ({ page }) => {
+    const codes = await acrossPages(page, (ids) => {
+      const out = {};
+      for (const id of ids) {
+        const t = window.NOTE_TOOLS.find((x) => x.id === id);
+        out[id] = t ? Object.keys(t.hintCatalog || {}) : null;
+      }
+      return out;
+    });
+    for (const id of ALL_SESSION_TOOLS) {
+      expect(codes[id], `${id} did not load`).toBeTruthy();
+      for (const code of codes[id]) {
+        // "other" is the escape hatch and no rule names it by code.
+        if (code === 'other') continue;
+        expect(code, `${id}'s "${code}" has no underscore, so a rule naming it would not be found`)
+          .toMatch(/_/);
+      }
+    }
+  });
+
+  test('and every tool that gets those rules accepts every code they name', async ({ page }) => {
+    const rows = await acrossPages(page, (ids) => {
+      const named = [...new Set((window.NoteRegisterRules.sessionNote.match(/\b([a-z]+_[a-z_]+) hint\b/g) || [])
+        .map((m) => m.replace(/ hint$/, '')))];
+      const out = {};
+      for (const id of ids) {
+        const t = window.NOTE_TOOLS.find((x) => x.id === id);
+        out[id] = t ? { named, codes: Object.keys(t.hintCatalog || {}) } : null;
+      }
+      return out;
+    });
+
+    for (const id of ALL_SESSION_TOOLS) {
+      expect(rows[id], `${id} did not load`).toBeTruthy();
+      expect(rows[id].named.length, 'the shared rules named no codes').toBeGreaterThan(0);
+      for (const code of rows[id].named) {
+        expect(rows[id].codes, `${id} is told to emit "${code}" and its catalog rejects it`)
+          .toContain(code);
+      }
+    }
+  });
+
+  /* A THIRD GATE, and the one that was nearly missed. Four tools enumerate their
+     own codes inside the prompt, bt and sup under the words "code MUST be from
+     this list". A catalog that accepts a code the prompt forbids is the same
+     defect pointing the other way, and it is worse, because the model reads the
+     MUST and obeys it while every schema-level test passes.
+
+     The rule is stated as a conditional rather than as "every prompt lists every
+     code": a tool that names none of its codes in prose is not doing anything
+     wrong. It is a tool that names SOME of them and omits one the shared rules
+     require. */
+  test('a tool that lists its codes in the prompt lists the ones the rules require', async ({ page }) => {
+    const rows = await acrossPages(page, (ids) => {
+      const named = [...new Set((window.NoteRegisterRules.sessionNote.match(/\b([a-z]+_[a-z_]+) hint\b/g) || [])
+        .map((m) => m.replace(/ hint$/, '')))];
+      const out = {};
+      for (const id of ids) {
+        const t = window.NOTE_TOOLS.find((x) => x.id === id);
+        if (!t) { out[id] = null; continue; }
+        const system = t.buildSystem();
+        // Its own codes, as the prompt would write them in a list.
+        const own = Object.keys(t.hintCatalog || {}).filter((c) => c !== 'other');
+        out[id] = {
+          named,
+          listsAnyOwnCode: own.some((c) => system.includes('- ' + c) || system.includes(c + ' (')),
+          present: named.filter((c) => system.includes('- ' + c) || system.includes(c + ' (')),
+        };
+      }
+      return out;
+    });
+
+    for (const id of ALL_SESSION_TOOLS) {
+      expect(rows[id], `${id} did not load`).toBeTruthy();
+      if (!rows[id].listsAnyOwnCode) continue;
+      for (const code of rows[id].named) {
+        expect(rows[id].present, `${id} enumerates its hint codes and omits "${code}", which its rules require`)
+          .toContain(code);
+      }
+    }
+  });
+
+  /* The schema and the normalizer are two separate gates on the same value and
+     both read the catalog, so a code has to survive both. Asserting on the
+     catalog alone would pass on a build where the normalizer was changed to
+     filter against something else. */
+  test('an ambiguous_item hint survives normalization rather than being dropped', async ({ page }) => {
+    const kept = await acrossPages(page, (ids) => {
+      const rows = {};
+      for (const id of ids) {
+        const t = window.NOTE_TOOLS.find((x) => x.id === id);
+        if (!t) { rows[id] = null; continue; }
+        const section = t.formSections
+          .map((s) => (typeof s === 'string' ? s : s.id || s.key))
+          .filter(Boolean)[0];
+        const out = t.normalizeOutput({
+          hints: [{ section, code: 'ambiguous_item', detail: "'frustrated' has no observation", rank: 1, kind: 'register' }],
+        });
+        rows[id] = (out.hints || []).map((h) => h.code);
+      }
+      return rows;
+    });
+
+    for (const id of ALL_SESSION_TOOLS) {
+      expect(kept[id], `${id} did not load`).toBeTruthy();
+      expect(kept[id], `${id} dropped the hint its own rules asked for`).toContain('ambiguous_item');
+    }
+  });
+});

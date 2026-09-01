@@ -151,6 +151,14 @@
     no_antecedent_impact: "Antecedent strategy named without its effect, say whether it helped",
     thin_clinical_status: "Little detail on how the client presented at the start of session",
     no_response_described: "Behavior noted without your response, add what you did and whether it worked",
+    /* The code the SHARED register rules already ask every session tool to
+       emit, for an opinion with no observation behind it and for a feeling with
+       nothing attached. It was missing here, and a missing code is not a quiet
+       gap: `code` is an enum built from this object and normalizeHints drops
+       anything not in it, so both of those rules were unobeyable on this tool
+       while their instruction sat in the prompt. assess, parent and sap have
+       carried it since they were written; bt and sup did not. */
+    ambiguous_item: "Clarify",
     other: "",
   };
 
@@ -281,6 +289,7 @@ PLAIN LANGUAGE (applies alongside the terminology rules, never against them)\n\
 - no_antecedent_impact (antecedentNarrative): an antecedent strategy is named with no stated effect\n\
 - thin_clinical_status (clinicalStatusNarrative): almost nothing about how the client presented on arrival\n\
 - no_response_described (behaviorPlanNarrative): a behavior is named with no BT response\n\
+- ambiguous_item (any section): something in the note needs clarifying before it is signed - put what, in detail\n\
 - other (any section): something else genuinely unclear - put the question in detail\n\
 Hints are advisory nudges, not demands - do not hint when the BT plainly had nothing to report for that element.";
 

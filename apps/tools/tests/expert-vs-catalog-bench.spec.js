@@ -162,10 +162,20 @@ test('a truncated draft is distinguishable from a draft with no hints', () => {
   expect(b.value.hints).toEqual([]);
 });
 
-/* bt is the tool his comparison is about, and "eight catalog codes" is the
+/* bt is the tool his comparison is about, and the size of its catalog is the
    claim the whole bench was built to test. Pinned so the number in the
-   conversation and the number in the code stay the same number. */
-test('bt carries eight catalog codes', () => {
+   conversation and the number in the code stay the same number.
+
+   IT WAS EIGHT UNTIL 2026-08-31, when ambiguous_item was added. That was not a
+   new idea about what bt should flag: the shared register rules had been telling
+   every session tool to emit that code since they were written, and bt's catalog
+   did not hold it, so the schema enum and normalizeHints both dropped it. The
+   count moved because a code that was already being asked for started being
+   accepted. A future change that moves it again should say which of those two
+   things happened. */
+test('bt carries nine catalog codes', () => {
   const { tool } = loadTool('bt');
-  expect(Object.keys(tool.hintCatalog)).toHaveLength(8);
+  const codes = Object.keys(tool.hintCatalog);
+  expect(codes).toHaveLength(9);
+  expect(codes, 'the code the shared register rules name').toContain('ambiguous_item');
 });
