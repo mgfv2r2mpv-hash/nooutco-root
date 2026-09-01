@@ -218,9 +218,63 @@
    * carry no meaning for the model to act on, and cannot collide by prefix the way
    * "Client" collides with "Client 2".
    */
-  function defaultTokens(names, freeText) {
+  /* Seeds for a SECOND scrub on the same note.
+   *
+   * defaultTokens numbered from zero on every call, which was harmless while
+   * each call also replaced the map it was numbering against. Once the map
+   * accumulates across a note - and it has to, see restoreOutput - restarting
+   * the count mints a second [[T1]] for a different word, and restoreDeep then
+   * puts whichever one it finds first into the note. A wrong word in a signed
+   * note is worse than the token was.
+   *
+   * The map is the only thing that persists, so the seeds are read back out of
+   * it rather than tracked separately. Two things to recover: the highest
+   * opaque number issued, and how many of each role token are already in use.
+   */
+  function seedsFromMap(seen) {
+    var seeds = { opaque: 0, counts: {} };
+    if (!seen || !seen.length) return seeds;
+    seen.forEach(function (e) {
+      var token = String((e && e.token) || "");
+      var op = /^\[\[T(\d+)\]\]$/.exec(token);
+      if (op) {
+        var n = parseInt(op[1], 10);
+        if (n > seeds.opaque) seeds.opaque = n;
+        return;
+      }
+      var rm = /^(.+?)(?: (\d+))?$/.exec(token);
+      if (!rm) return;
+      var role = ROLES.filter(function (r) { return r.token === rm[1]; })[0];
+      if (!role) return;
+      var idx = rm[2] ? parseInt(rm[2], 10) : 1;
+      if (idx > (seeds.counts[role.key] || 0)) seeds.counts[role.key] = idx;
+    });
+    return seeds;
+  }
+
+  /* The identifier half of the same recovery. Tokens look like [phone_2], and
+     they are never restored, so a restarted counter does not put a wrong word in
+     the note the way a restarted [[Tn]] does - it puts one token in the note
+     standing for two different numbers, which is worse to read and impossible to
+     substitute back. */
+  function identifierSeeds(seen) {
     var counts = {};
-    var opaque = 0;
+    (seen || []).forEach(function (e) {
+      if (!e || !e.identifier) return;
+      // [PHONE_1], not [phone_1] - the type keeps the case detectIdentifiers
+      // gave it, and a lowercased key seeds nothing.
+      var m = /^\[([A-Za-z_]+)_(\d+)\]$/.exec(String(e.token || ""));
+      if (!m) return;
+      var n = parseInt(m[2], 10);
+      if (n > (counts[m[1]] || 0)) counts[m[1]] = n;
+    });
+    return counts;
+  }
+
+  function defaultTokens(names, freeText, seen) {
+    var seeds = seedsFromMap(seen);
+    var counts = seeds.counts;
+    var opaque = seeds.opaque;
     return names.map(function (name) {
       if (!personEvidence(name, freeText)) {
         opaque += 1;
@@ -291,6 +345,31 @@
    * replays rawText verbatim to keep Anthropic's prefix cache warm, and a
    * restored word there would change the prefix and cost full price every turn.
    */
+  /* Carry the round-trippable words forward for the life of one note.
+   *
+   * THE FAULT THIS FIXES. The page kept one map and replaced it on every scrub.
+   * A revision scrubs only the typed instruction, so that replacement threw away
+   * the draft's opaque tokens - and the model still had them, because the
+   * revision replays the earlier turns verbatim to keep the prefix cache warm.
+   * It copied [[T3]] and [[T9]] out of its own history into the new draft, and
+   * nothing was left that knew [[T3]] had been "Play-Doh". Reported from a live
+   * sup note on 2026-08-31.
+   *
+   * Deduped on token AND name together: the same word scrubbed twice is one
+   * entry, and a token that somehow arrives twice for different words keeps both
+   * so the collision is visible in the map rather than silent in the note.
+   * seedsFromMap is what stops that collision being minted in the first place.
+   */
+  function mergeMaps(prev, next) {
+    var out = (prev || []).slice();
+    (next || []).forEach(function (e) {
+      var dup = out.some(function (p) { return p.token === e.token && p.name === e.name; });
+      if (!dup) out.push(e);
+    });
+    out.sort(function (a, b) { return String(b.name).length - String(a.name).length; });
+    return out;
+  }
+
   function restoreOutput(value, map) {
     var s = scrub();
     if (!s || !s.restoreDeep || !map || !map.length) return value;
@@ -345,9 +424,10 @@
   // so they are tokenised outright rather than offered for review: removing the
   // click removes the chance of clicking through. They still appear in the
   // "removed before this left your device" notice.
-  function identifierMap(freeText) {
+  function identifierMap(freeText, seen) {
     var s = scrub();
-    return s && s.buildIdentifierMap ? s.buildIdentifierMap(freeText) : [];
+    if (!s || !s.buildIdentifierMap) return [];
+    return s.buildIdentifierMap(freeText, identifierSeeds(seen));
   }
 
   /* Verifying MODEL OUTPUT, which is a different job from reviewing input.
@@ -460,11 +540,15 @@
   function review(opts) {
     return new Promise(function (resolve) {
       var freeText = (opts && opts.freeText) || "";
-      var idMap = identifierMap(freeText);
+      /* Tokens already issued for THIS note, so a second scrub continues the
+         numbering instead of colliding with it. Absent on a first draft, which
+         is the same as an empty map. */
+      var seen = (opts && opts.seen) || [];
+      var idMap = identifierMap(freeText, seen);
       var names = detect(freeText);
       if (!names.length) { resolve({ cancelled: false, map: idMap, certified: [] }); return; }
 
-      var defaults = defaultTokens(names, freeText);
+      var defaults = defaultTokens(names, freeText, seen);
       var built = buildMap(names.map(function (name, i) {
         return {
           name: name,
@@ -672,6 +756,7 @@
     verifyOutput: verifyOutput,
     applyMap: applyMap,
     restoreOutput: restoreOutput,
+    mergeMaps: mergeMaps,
     noticeText: noticeText,
     persistMap: persistMap,
     installPHIHighlight: installPHIHighlight,
@@ -680,6 +765,8 @@
     _buildMap: buildMap,
     _guessRole: guessRole,
     _defaultTokens: defaultTokens,
+    _seedsFromMap: seedsFromMap,
+    _identifierSeeds: identifierSeeds,
     _personEvidence: personEvidence,
   };
 })();

@@ -1043,12 +1043,35 @@ function App() {
      an empty one on the first draft. The ref is what the model answer is
      measured against; the state copy stays because the notice renders from it. */
   const scrubMapRef = React.useRef([]);
-  const scrubGate = async (freeText) => {
+  /* carryOver decides whether this scrub JOINS the note's map or replaces it,
+     and getting it wrong is what put [[T3]] in a signed sup note on 2026-08-31.
+
+     A revision scrubs only the newly typed instruction, because the section body
+     is model output already in the conversation. That is right. What was wrong
+     is that the map it produced then REPLACED the draft's map, taking the
+     draft's opaque tokens with it. The model still had them: the revision
+     replays the earlier turns verbatim for the prefix cache, so it copies
+     [[T3]] out of its own history, and by then nothing knows [[T3]] was
+     "Play-Doh".
+
+     So: a fresh draft replaces, because it starts a new conversation and must
+     not inherit the last note's words. Every later turn on the same note carries
+     over. NotesScrub.review is given what is already issued so its numbering
+     continues rather than minting a second [[T1]] for a different word. */
+  const scrubGate = async (freeText, opts) => {
+    const carryOver = !!(opts && opts.carryOver);
     if (!(await NotesScrub.acknowledge())) return null;
-    const review = await NotesScrub.review({ freeText });
+    const prior = carryOver ? scrubMapRef.current : [];
+    const review = await NotesScrub.review({ freeText, seen: prior });
     if (review.cancelled) return null;
-    scrubMapRef.current = review.map;
-    patchS({ scrubMap: review.map, certified: [] });
+    const carried = carryOver ? NotesScrub.mergeMaps(prior, review.map) : review.map;
+    scrubMapRef.current = carried;
+    /* The BANNER gets the carried map too, not just this scrub's share of it.
+       It tells the clinician what to substitute back in their EHR, and a note is
+       one document however many turns built it: replacing the list on a revision
+       took "Jacob → Client" off the screen while Client was still in the note
+       they were about to copy. */
+    patchS({ scrubMap: carried, certified: [] });
     return review;
   };
 
@@ -1873,7 +1896,7 @@ function App() {
   };
 
   const sendRevision = async (instruction) => {
-    const review = await scrubGate(instruction);
+    const review = await scrubGate(instruction, { carryOver: true });
     if (!review) return;
     const scrubbedInstruction = NotesScrub.applyMap(instruction, review.map);
     const ann = S.annotation;
@@ -2092,7 +2115,9 @@ function App() {
       return;
     }
     if (S.questions && S.questions.length) {
-      const review = await scrubGate(text);
+      // Same note, later turn. The answers are appended to the intake the draft
+      // is built from, so their tokens have to survive to the draft and past it.
+      const review = await scrubGate(text, { carryOver: true });
       if (!review) return;
       audit("gap_questions", { answered: S.questions.length, round: S.triageRound || 1 });
 
@@ -2331,7 +2356,10 @@ function App() {
     const err = tool.validate(S.values);
     if (err) { patchS({ error: err }); return; }
     patchS({ error: "" });
-    const review = await scrubGate(collectFreeText());
+    // Carries over so pressing this mid-note cannot clobber the live map and
+    // strand the tokens already sitting in the open draft. On a fresh page there
+    // is nothing to carry and it behaves exactly as it did.
+    const review = await scrubGate(collectFreeText(), { carryOver: true });
     if (!review) return;
     patchS({ promptText: tool.buildLabeledPrompt(scrubValues(review.map)) });
     setCopiedPrompt(false);
