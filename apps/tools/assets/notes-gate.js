@@ -1389,8 +1389,15 @@
   // Map entries in the same {name, token} shape the name map uses, so they flow
   // through applyScrub and the "removed before this left your device" notice
   // without either needing to know there are two kinds.
-  function buildIdentifierMap(text) {
+  /* `seedCounts` is {type: highest number already issued} and carries the
+     numbering across a second scrub of the same note. Without it a phone number
+     given in a revision is tokenised [phone_1] a second time, and the note then
+     shows one token standing for two different numbers - which is exactly the
+     collision the opaque tokens had, in the one class of entry that is never
+     restored and so stays in the record. */
+  function buildIdentifierMap(text, seedCounts) {
     var counts = {};
+    if (seedCounts) Object.keys(seedCounts).forEach(function (k) { counts[k] = seedCounts[k]; });
     return detectIdentifiers(text).map(function (h) {
       counts[h.type] = (counts[h.type] || 0) + 1;
       return { name: h.text, token: "[" + h.type + "_" + counts[h.type] + "]", identifier: true };

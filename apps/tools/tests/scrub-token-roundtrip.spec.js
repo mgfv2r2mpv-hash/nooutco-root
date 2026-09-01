@@ -212,3 +212,191 @@ test.describe('restoring is not prefix-blind', () => {
     expect(out).toBe('Jacob and Ethan played.');
   });
 });
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * AND IT HAS TO SURVIVE THE SECOND TURN.
+ *
+ * Everything above this line drafts a note and stops. That is why every one of
+ * those tests passed on 2026-08-31 while a signed sup note went out reading
+ * "T9" and "T4" where two of the clinician's own words belonged.
+ *
+ * The page kept ONE map and replaced it on every scrub. A revision scrubs only
+ * the newly typed instruction - correctly, because the section body is model
+ * output already in the conversation - and that replacement threw the draft's
+ * opaque tokens away. The model still had them: a revision replays the earlier
+ * turns verbatim to keep Anthropic's prefix cache warm, so it copied [[T3]] out
+ * of its own history into the new draft, and by then nothing on the page knew
+ * [[T3]] had been a word.
+ *
+ * The mock below reproduces that exactly rather than approximating it. It reads
+ * the opaque tokens off the wire and echoes them back, which is the only honest
+ * way to write this: a build that has lost the map renders the token, and a
+ * build that carried it renders the word.
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+const NOTE = {
+  individualsPresent: ['Client'],
+  clinicalStatus: ['Presented Tired'],
+  clinicalStatusNarrative: 'The client presented as tired on arrival.',
+  purpose: ['Worked on goals as stated in the treatment plan'],
+  servicePaused: 'No',
+  abaTechniques: ['Discrete Trial Training'],
+  lessonProgressNarrative: 'The behavior technician ran a three-item array.',
+  antecedentStrategies: ['Offered choices'],
+  antecedentNarrative: 'Choices were offered before each demand.',
+  consequenceStrategies: ['Redirection'],
+  consequenceEffectiveness: 'Moderately effective at addressing behaviors within session',
+  behaviorPlanNarrative: 'Elopement occurred on two occasions.',
+  clientProgress: 'Steady progress towards goals and behaviors',
+  actionItems: ['None'],
+  followUpNarrative: 'Direct staff do not report new questions or concerns for the BCBA.',
+  hints: [],
+};
+
+const json = (obj) => ({
+  status: 200,
+  contentType: 'application/json',
+  body: JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(obj) }] }),
+});
+
+/* Draft, then revise. The revision reply carries whatever opaque tokens the page
+   put on the wire in the turns before it, which is what the live model did. */
+async function reviseAfterDraft(page, instruction) {
+  let turn = 0;
+  const sent = [];
+  await page.route('**/api/llm-call**', async (route) => {
+    const body = JSON.parse(route.request().postData() || '{}');
+    if (isTriageCall(body)) return route.fulfill(json({ sufficient: true, questions: [] }));
+    turn++;
+    sent.push(body);
+    const content = (body.messages || []).map((m) => m.content || '').join('\n');
+    if (turn === 1) {
+      // The draft echoes the clinician's line back in whatever form it arrived,
+      // so the assistant turn in the conversation carries the tokens too.
+      const line = content.split('\n').find((l) => /labeled/.test(l)) || '';
+      return route.fulfill(json({ ...NOTE, lessonProgressNarrative: line.trim().slice(0, 400) }));
+    }
+    const tokens = [...new Set(content.match(/\[\[T\d+\]\]/g) || [])];
+    return route.fulfill(json({
+      ...NOTE,
+      lessonProgressNarrative: tokens.length
+        ? `The client labeled ${tokens.join(', ')} cards on nine of ten trials.`
+        : 'NO OPAQUE TOKEN REACHED THE MODEL, so this test proved nothing.',
+    }));
+  });
+
+  await loggedIn(page);
+  await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill(INTAKE);
+  await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('first-then board before demands');
+  await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement, blocked and redirected');
+  await page.getByRole('button', { name: 'Generate Note' }).click();
+  await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 30000 });
+
+  await page.locator('.revision-input').fill(instruction);
+  await page.locator('.revision-send').click();
+  await expect(page.locator('.diff-view').first()).toBeVisible({ timeout: 30000 });
+  return { sent };
+}
+
+// Everything a clinician can read: the note card's text plus the values of the
+// editable narratives, which innerText does not see at all.
+const readNote = (page) =>
+  page.getByTestId('generated-note').evaluate((el) =>
+    [el.innerText, ...[...el.querySelectorAll('textarea')].map((t) => t.value)].join('\n')
+  );
+
+test.describe('a revision does not lose the words the draft round-tripped', () => {
+  test('the model copies its own tokens forward and the page still puts the words back', async ({ page }) => {
+    await reviseAfterDraft(page, 'tighten the lesson narrative');
+    await page.locator('.diff-accept').click();
+
+    const noteText = await readNote(page);
+    // The reported fault, in the form it was reported: "T9" and "T4" in a note.
+    expect(noteText, 'an opaque token survived into the note').not.toMatch(/\[\[T\d+\]\]/);
+    expect(noteText, 'a bare token number survived into the note').not.toMatch(/\bT\d+\b/);
+    for (const word of ['Blue', 'Red', 'Yellow']) {
+      expect(noteText, `"${word}" did not come back after the revision`).toContain(word);
+    }
+  });
+
+  test('and the token is already gone in the diff, before anything is accepted', async ({ page }) => {
+    await reviseAfterDraft(page, 'tighten the lesson narrative');
+    // A clinician reads the proposal before accepting it. A token visible here
+    // is the same defect one click earlier.
+    const diff = await page.locator('.diff-view').first().innerText();
+    expect(diff).not.toMatch(/\[\[T\d+\]\]/);
+    expect(diff).toContain('Blue');
+  });
+
+  test('the client name is still withheld from the model on the revision turn', async ({ page }) => {
+    const { sent } = await reviseAfterDraft(page, 'tighten the lesson narrative');
+    const wire = JSON.stringify(sent);
+    // Carrying the map forward must not turn into restoring on the way OUT.
+    expect(wire, 'a client name crossed the wire on a later turn').not.toContain('Jacob');
+    expect(wire).not.toContain('Sarah');
+  });
+
+  test('the substitution banner still says what to put back after a revision', async ({ page }) => {
+    await reviseAfterDraft(page, 'tighten the lesson narrative');
+    // The banner is the clinician's instruction sheet for their EHR. Replacing
+    // it with the revision's own map took "Jacob -> Client" off the screen while
+    // Client was still in the note they were about to copy.
+    await expect(page.getByText('Removed before this left your device')).toBeVisible();
+    expect(await page.locator('body').innerText()).toContain('Jacob');
+  });
+});
+
+test.describe('numbering continues across scrubs of the same note', () => {
+  test('a second scrub does not mint a second [[T1]] for a different word', async ({ page }) => {
+    await loggedIn(page);
+    const out = await page.evaluate(async () => {
+      const first = await window.NotesScrub.review({ freeText: 'Worked on Blue, Red and Yellow cards.' });
+      const second = await window.NotesScrub.review({
+        freeText: 'Also ran Purple and Orange.',
+        seen: first.map,
+      });
+      return {
+        first: first.map.map((e) => ({ name: e.name, token: e.token })),
+        second: second.map.map((e) => ({ name: e.name, token: e.token })),
+        merged: window.NotesScrub.mergeMaps(first.map, second.map).map((e) => e.token),
+      };
+    });
+    const firstTokens = out.first.map((e) => e.token);
+    const secondTokens = out.second.map((e) => e.token);
+    expect(firstTokens.length).toBeGreaterThan(0);
+    expect(secondTokens.length).toBeGreaterThan(0);
+    // The collision itself: without seeding, both scrubs start at [[T1]] and
+    // restoreDeep then puts whichever word it finds first into the note.
+    for (const t of secondTokens) {
+      expect(firstTokens, `${t} was issued twice for two different words`).not.toContain(t);
+    }
+    // And the merged map holds one entry per token.
+    expect(new Set(out.merged).size).toBe(out.merged.length);
+  });
+
+  test('an identifier token is not reissued for a different number', async ({ page }) => {
+    await loggedIn(page);
+    const tokens = await page.evaluate(async () => {
+      const first = await window.NotesScrub.review({ freeText: 'Mom can be reached at 555-867-5309.' });
+      const second = await window.NotesScrub.review({
+        freeText: 'Dad prefers 555-201-9988 instead.',
+        seen: first.map,
+      });
+      return [...first.map, ...second.map].filter((e) => e.identifier).map((e) => e.token);
+    });
+    // An identifier is never restored, so a reissued [phone_1] does not put a
+    // wrong word in the note - it puts one token in the note standing for two
+    // different numbers, which cannot be substituted back at all.
+    expect(tokens.length).toBeGreaterThanOrEqual(2);
+    expect(new Set(tokens).size).toBe(tokens.length);
+  });
+
+  test('merging the same scrub twice does not duplicate it', async ({ page }) => {
+    await loggedIn(page);
+    const n = await page.evaluate(() => {
+      const map = [{ name: 'Jacob', token: 'Client', restore: false }];
+      return window.NotesScrub.mergeMaps(map, map).length;
+    });
+    expect(n).toBe(1);
+  });
+});
