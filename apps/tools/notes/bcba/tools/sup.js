@@ -300,7 +300,7 @@ TERMINOLOGY (non-negotiable)\n\
        scripts/verify-parity.mjs in the prompt repo composes it to prove the two
        copies have not drifted. Both go when the last tool migrates. */
     serverPrompt: true,
-    buildSystem: function () { return SYSTEM_CORE + (window.NoteRegisterRules ? window.NoteRegisterRules.sessionNote : "") + JSON_FORMAT_BLOCK; },
+    buildSystem: function () { return SYSTEM_CORE + (window.NoteRegisterRules ? window.NoteRegisterRules.sessionNoteBcba : "") + JSON_FORMAT_BLOCK; },
     buildUserPrompt: buildUserPrompt,
     buildLabeledPrompt: function (values) {
       return SYSTEM_CORE + LABELED_FORMAT_BLOCK + "\n\n---\n\n" + buildUserPrompt(values);

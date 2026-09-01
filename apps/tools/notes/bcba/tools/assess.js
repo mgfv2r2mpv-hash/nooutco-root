@@ -122,7 +122,7 @@ RESULTS OF ASSESSMENT CARRIES THE NUMBERS. It is the one narrative here that rep
 - Hedge the inference to the evidence behind it. \"suggesting\", \"indicating\", \"consistent with\". A handful of trials does not license a flat assertion of function.\n\
 - A behavior that was looked for and did not occur is a finding, and it belongs here. \"No aggression, flopping or tears accompanied the crying\" narrows the record. That sentence is about the client rather than about the documentation, which is the line the absence rule already draws, so it is not an exception to it. Report an absence only where the intake states it.\n\n\
 THE BEHAVIOR ANALYST IS ENTITLED TO THE ANALYSIS. Assigning a function, naming an establishing operation and identifying an intervention target is what an assessment is for, and it is this author's own work. Do not recast it into a bare observation. The restraint that keeps analysis out of a note governs a technician writing a session note, not a Behavior Analyst writing an assessment.\n\
-- THIS OVERRIDES THE SHARED RULE BELOW, and the shared rule is the one to bend. Further down, under \"REMOVE, ALWAYS\", you will read that claims about why a behavior happened and clinical hypotheses must be cut because \"function, motivation and diagnosis belong to the BCBA's analysis\". On this tool the author IS the BCBA, so that clause hands the analysis TO this writer rather than taking it away. Cut neither on this note. Everything else in that shared block still binds.\n\n\
+- So do not cut a causal claim or a clinical hypothesis out of this note. Naming why a behavior occurs is the assessment's finding, not an overreach, provided it is hedged to the evidence that supports it.\n\n\
 RULES\n\
 - Stick strictly to what is reported. Do not embellish or invent instruments, scores, or outcomes.\n\
 - Plain, precise clinical language. Sparse notes → brief honest sentences.\n\
@@ -204,7 +204,7 @@ TERMINOLOGY (non-negotiable)\n\
        on a difference. An edit here without a matching extraction there is a
        drift CI catches, but only on the next push to that repo. */
     serverPrompt: true,
-    buildSystem: function () { return SYSTEM_CORE + (window.NoteRegisterRules ? window.NoteRegisterRules.sessionNote : "") + HINTS_BLOCK + JSON_FORMAT_BLOCK; },
+    buildSystem: function () { return SYSTEM_CORE + (window.NoteRegisterRules ? window.NoteRegisterRules.sessionNoteBcba : "") + HINTS_BLOCK + JSON_FORMAT_BLOCK; },
     buildUserPrompt: buildUserPrompt,
     buildLabeledPrompt: function (values) {
       return SYSTEM_CORE + LABELED_FORMAT_BLOCK + "\n\n---\n\n" + buildUserPrompt(values);
