@@ -135,6 +135,31 @@ test.describe('the prompt tells the model which field is which', () => {
     expect(system).toMatch(/Do not recast it into a bare observation/);
     expect(system).toMatch(/not a Behavior Analyst writing an assessment/);
   });
+
+  /* The shared block that gets appended after this tool's own prompt says, under
+     "REMOVE, ALWAYS", that claims about why a behavior happened and clinical
+     hypotheses are cut because "function, motivation and diagnosis belong to the
+     BCBA's analysis". That clause is written for a technician's note. On THIS
+     tool the author is the BCBA, so read literally it hands the analysis to this
+     writer, and read carelessly it deletes the finding the assessment exists to
+     produce. It is emphatic and it lands later in the prompt, so the precedence
+     has to be stated rather than left to reading order. */
+  test('and the shared REMOVE ALWAYS rule is named and overridden rather than left to contradict it', async () => {
+    // Both halves of the collision are present, which is what makes the
+    // precedence line load-bearing rather than decorative.
+    expect(system).toMatch(/REMOVE, ALWAYS/);
+    expect(system).toMatch(/Clinical hypotheses\. Function, motivation and diagnosis belong to the BCBA's analysis/);
+    expect(system).toMatch(/THIS OVERRIDES THE SHARED RULE BELOW/);
+    expect(system).toMatch(/On this tool the author IS the BCBA/);
+    expect(system).toMatch(/Cut neither on this note/);
+    // Scoped, not a blanket exemption from the shared register rules.
+    expect(system).toMatch(/Everything else in that shared block still binds/);
+  });
+
+  test('the override is stated before the rule it overrides, so reading order does not decide it', async () => {
+    expect(system.indexOf('THIS OVERRIDES THE SHARED RULE BELOW'))
+      .toBeLessThan(system.indexOf('REMOVE, ALWAYS'));
+  });
 });
 
 test.describe('reporting an absence that did not happen, without breaking the absence ban', () => {
