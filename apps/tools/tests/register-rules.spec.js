@@ -161,8 +161,12 @@ test.describe('session record focus', () => {
       expect(prompts[id], `${id} did not load`).toBeTruthy();
       expect(prompts[id], `${id} does not separate removal from flagging`).toMatch(/REMOVE, ALWAYS/);
       expect(prompts[id], `${id} should flag opinion rather than delete it`).toMatch(/FLAG, DO NOT REMOVE/);
-      expect(prompts[id], `${id} should forbid causal claims`).toMatch(/Claims about WHY a behavior happened/);
-      expect(prompts[id], `${id} should keep hypotheses with the BCBA`).toMatch(/Clinical hypotheses/);
+      /* The removal list must still HAVE something under it on these three. It
+         lost the two analysis lines when the analysis went back to the BCBA who
+         is writing, and a heading with nothing beneath it is the failure that
+         change could have caused. Who keeps which line is pinned at the bottom
+         of this file. */
+      expect(prompts[id], `${id} has an empty removal list`).toMatch(/\* Anything a checkbox on the form already records\./);
     }
   });
 
@@ -249,17 +253,26 @@ test.describe('session record focus', () => {
      * sometimes fine and they may have a reason for it, so it is flagged with a
      * short why and left to them. A technician who reads the flag and keeps the
      * sentence has overridden it, which is the intended outcome. */
+    /* The causal half of this now lives on bt alone, because the author of the
+       other three IS the BCBA the rule was reserving the analysis for. The
+       severity distinction it draws is unchanged; only its reach moved. */
+    await page.goto('/notes/bt/');
+    await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+    const btSystem = await page.evaluate(() =>
+      window.NOTE_TOOLS.find((t) => t.id === 'bt').buildSystem());
+
+    // Causation: no appeal, and the reason is stated rather than asserted.
+    expect(btSystem).toMatch(/can land as inappropriate/);
+    expect(btSystem).toMatch(/not the technician's to make/);
+
     await page.goto('/notes/bcba/index.html?tool=sup');
     await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
 
     const system = await page.evaluate(() =>
       window.NOTE_TOOLS.find((t) => t.id === 'sup').buildSystem());
 
-    // Causation: no appeal, and the reason is stated rather than asserted.
-    expect(system).toMatch(/can land as inappropriate/);
-    expect(system).toMatch(/not the technician's to make/);
-
-    // Opinion: kept, flagged, overridable.
+    // Opinion: kept, flagged, overridable. This half is not about who is
+    // holding the pen, so it reaches every session-note tool.
     expect(system).toMatch(/Staff opinion .* is sometimes fine/);
     expect(system).toMatch(/has overridden it, which is the correct outcome/);
 
@@ -438,5 +451,100 @@ test.describe('every hint code the shared rules name is one the tool will accept
       expect(kept[id], `${id} did not load`).toBeTruthy();
       expect(kept[id], `${id} dropped the hint its own rules asked for`).toContain('ambiguous_item');
     }
+  });
+});
+
+/* WHO OWNS THE ANALYSIS, AND THEREFORE WHO IS ALLOWED TO WRITE IT DOWN.
+ *
+ * Two lines in the shared block take the analysis away from the author and
+ * reserve it for a BCBA:
+ *
+ *   * Claims about WHY a behavior happened ... not the technician's to make.
+ *   * Clinical hypotheses. Function, motivation and diagnosis belong to the
+ *     BCBA's analysis.
+ *
+ * On the BT note that is right and it is his own ruling. It reached sup, assess
+ * and parent too, and all three are written BY a BCBA, so the rule took the
+ * analysis away from the person it was reserving it for. On the assessment tool
+ * it deleted the finding the assessment exists to produce.
+ *
+ * His instruction, 2026-08-31: "The fix for BCBA analysis should be widened to
+ * all non BT tools. remove from all but the BT note tool."
+ *
+ * These tests are the whole guard. The split is invisible at every call site -
+ * `sessionNote` and `sessionNoteBcba` differ by one character in a tool file -
+ * so nothing else would catch a tool wired to the wrong build.
+ */
+const ANALYSIS_LINES = [
+  'Claims about WHY a behavior happened',
+  "Clinical hypotheses. Function, motivation and diagnosis belong to the BCBA's analysis",
+];
+
+test.describe('the analysis rules reach the technician tool and no other', () => {
+  test('bt keeps both of them, because bt is the one note a technician writes', async ({ page }) => {
+    await page.goto('/notes/bt/');
+    await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+    const system = await page.evaluate(() => window.NOTE_TOOLS.find((t) => t.id === 'bt').buildSystem());
+    for (const line of ANALYSIS_LINES) expect(system, `bt lost "${line}"`).toContain(line);
+    expect(system).toContain('the technician does not get a say');
+  });
+
+  for (const id of ['sup', 'assess', 'parent']) {
+    test(`${id} carries neither, because a BCBA writes it`, async ({ page }) => {
+      await page.goto('/notes/bcba/index.html');
+      await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+      const system = await page.evaluate((t) => window.NOTE_TOOLS.find((x) => x.id === t).buildSystem(), id);
+      for (const line of ANALYSIS_LINES) {
+        expect(system, `${id} still reserves the analysis for someone else`).not.toContain(line);
+      }
+      // The header spoke to a technician about a list that no longer has any
+      // technician-specific item left on it.
+      expect(system).not.toContain('the technician does not get a say');
+    });
+  }
+
+  /* The over-correction this could have been. Removing two bullets must not
+     take the rest of the block with them, and the removal must not read as a
+     general licence to editorialise. */
+  for (const id of ['sup', 'assess', 'parent']) {
+    test(`${id} keeps everything else the shared block says`, async ({ page }) => {
+      await page.goto('/notes/bcba/index.html');
+      await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+      const system = await page.evaluate((t) => window.NOTE_TOOLS.find((x) => x.id === t).buildSystem(), id);
+      expect(system).toContain('REMOVE, ALWAYS');
+      expect(system).toContain('* Anything a checkbox on the form already records.');
+      expect(system).toContain('FLAG, DO NOT REMOVE');
+      expect(system).toContain('NEVER DOCUMENT AN ABSENCE');
+      expect(system).toContain('WHAT THIS RECORD IS FOR');
+      expect(system).toContain('A FEELING IS NOT A BEHAVIOR');
+    });
+  }
+
+  /* sap takes only the constructions block and never took these rules, so it is
+     unaffected either way. Asserted so a future reader does not "fix" it. */
+  test('sap is untouched, because it never took the session-record block at all', async ({ page }) => {
+    await page.goto('/notes/bcba/index.html');
+    await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+    const system = await page.evaluate(() => window.NOTE_TOOLS.find((t) => t.id === 'sap').buildSystem());
+    expect(system).not.toContain('REMOVE, ALWAYS');
+    for (const line of ANALYSIS_LINES) expect(system).not.toContain(line);
+  });
+
+  /* bt's served prompt is composed from register-rules.js in voice-module, so a
+     stray character in the technician build is a re-extract nobody asked for.
+     The two builds must differ ONLY by the two lines and the header. */
+  test('the split changed the BCBA build and left the technician build alone', async ({ page }) => {
+    await page.goto('/notes/bcba/index.html');
+    await page.waitForFunction(() => !!window.NoteRegisterRules);
+    const { tech, bcba } = await page.evaluate(() => ({
+      tech: window.NoteRegisterRules.sessionNote,
+      bcba: window.NoteRegisterRules.sessionNoteBcba,
+    }));
+    const techOnly = tech.split('\n').filter((l) => !bcba.includes(l));
+    expect(techOnly).toHaveLength(3);
+    expect(techOnly.filter((l) => l.startsWith('* '))).toHaveLength(2);
+    // Everything the BCBA build adds is the one reworded header line.
+    const bcbaOnly = bcba.split('\n').filter((l) => !tech.includes(l));
+    expect(bcbaOnly).toEqual(['REMOVE, ALWAYS. This is not a preference, because it is wrong in a record rather than merely unwanted:']);
   });
 });

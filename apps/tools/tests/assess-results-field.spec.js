@@ -136,29 +136,33 @@ test.describe('the prompt tells the model which field is which', () => {
     expect(system).toMatch(/not a Behavior Analyst writing an assessment/);
   });
 
-  /* The shared block that gets appended after this tool's own prompt says, under
-     "REMOVE, ALWAYS", that claims about why a behavior happened and clinical
-     hypotheses are cut because "function, motivation and diagnosis belong to the
-     BCBA's analysis". That clause is written for a technician's note. On THIS
-     tool the author is the BCBA, so read literally it hands the analysis to this
-     writer, and read carelessly it deletes the finding the assessment exists to
-     produce. It is emphatic and it lands later in the prompt, so the precedence
-     has to be stated rather than left to reading order. */
-  test('and the shared REMOVE ALWAYS rule is named and overridden rather than left to contradict it', async () => {
-    // Both halves of the collision are present, which is what makes the
-    // precedence line load-bearing rather than decorative.
+  /* The shared block used to say, under "REMOVE, ALWAYS", that claims about why
+     a behavior happened and clinical hypotheses are cut because "function,
+     motivation and diagnosis belong to the BCBA's analysis". That clause is
+     written for a technician's note. On this tool the author IS the BCBA, so it
+     took the analysis away from the person it was reserving it for, and it
+     deleted the finding the assessment was run to produce.
+
+     His ruling, 2026-08-31: remove it from every tool but bt. So this tool now
+     takes the BCBA build of the shared rules, and the assertion is that the
+     clause is ABSENT rather than that it is overridden. */
+  test('the shared rule that reserved the analysis for a BCBA is gone from this BCBA tool', async () => {
+    expect(system).not.toMatch(/Claims about WHY a behavior happened/);
+    expect(system).not.toMatch(/Clinical hypotheses\. Function, motivation and diagnosis belong to the BCBA's analysis/);
+    // Removed, not exempted: the rest of the REMOVE block still binds, and the
+    // header no longer speaks to a technician who "does not get a say".
     expect(system).toMatch(/REMOVE, ALWAYS/);
-    expect(system).toMatch(/Clinical hypotheses\. Function, motivation and diagnosis belong to the BCBA's analysis/);
-    expect(system).toMatch(/THIS OVERRIDES THE SHARED RULE BELOW/);
-    expect(system).toMatch(/On this tool the author IS the BCBA/);
-    expect(system).toMatch(/Cut neither on this note/);
-    // Scoped, not a blanket exemption from the shared register rules.
-    expect(system).toMatch(/Everything else in that shared block still binds/);
+    expect(system).toMatch(/\* Anything a checkbox on the form already records\./);
+    expect(system).not.toMatch(/the technician does not get a say/);
   });
 
-  test('the override is stated before the rule it overrides, so reading order does not decide it', async () => {
-    expect(system.indexOf('THIS OVERRIDES THE SHARED RULE BELOW'))
-      .toBeLessThan(system.indexOf('REMOVE, ALWAYS'));
+  test('and the tool says plainly that the finding is not an overreach', async () => {
+    expect(system).toMatch(/do not cut a causal claim or a clinical hypothesis out of this note/);
+    expect(system).toMatch(/hedged to the evidence that supports it/);
+    // No dangling cross-reference. The paragraph that named the shared rule went
+    // with the rule, because a pointer at something absent is read as evidence
+    // the thing was supplied.
+    expect(system).not.toMatch(/THIS OVERRIDES THE SHARED RULE BELOW/);
   });
 });
 

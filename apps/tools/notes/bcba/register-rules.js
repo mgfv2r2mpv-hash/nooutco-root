@@ -90,13 +90,41 @@
      flagged with a short why and left to them. A technician who reads the flag
      and keeps the sentence has overridden it, and that is the intended
      outcome. */
-  var SESSION_RECORD = [
+  /* THE TWO REMOVALS THAT TURN ON WHO IS HOLDING THE PEN.
+     His instruction, 2026-08-31: "The fix for BCBA analysis should be widened to
+     all non BT tools. remove from all but the BT note tool."
+
+     Both lines take the analysis away from the author and reserve it for the
+     BCBA. On the BT note that is right, and it is his own earlier ruling: a
+     causal claim is not the technician's to make, so it goes without appeal.
+
+     On sup, assess and parent the author IS the BCBA, so the same two lines take
+     the analysis away from the very person they were reserving it for. On the
+     assessment tool that is not a register wrinkle, it deletes the finding the
+     assessment was run to produce: assigning a function and naming an
+     establishing operation is what an assessment is FOR.
+
+     Only bt has a technician author. Everything else in this block is about what
+     a record is for rather than about who owns the analysis, so all four tools
+     share the rest of it unchanged. */
+  var ANALYSIS_IS_NOT_THE_AUTHORS = [
+    "* Claims about WHY a behavior happened. A causal claim in a session note can land as inappropriate to whoever reads it next, and it is not the technician's to make.",
+    "* Clinical hypotheses. Function, motivation and diagnosis belong to the BCBA's analysis.",
+  ];
+
+  /* Built once per author rather than written twice, so the shared four fifths
+     cannot drift apart. The technician build must stay byte-identical to what
+     shipped before this split: bt's served prompt is composed from this file in
+     voice-module, and a stray character here is a re-extract nobody asked for. */
+  function sessionRecord(authorIsBcba) {
+    return [
     "",
     "WHAT THIS RECORD IS FOR. A session note documents observable events. That is a field requirement, not a style preference, and neutral observation is what the record is for.",
     "",
-    "REMOVE, ALWAYS. These are not preferences and the technician does not get a say, because they are wrong in a record rather than merely unwanted:",
-    "* Claims about WHY a behavior happened. A causal claim in a session note can land as inappropriate to whoever reads it next, and it is not the technician's to make.",
-    "* Clinical hypotheses. Function, motivation and diagnosis belong to the BCBA's analysis.",
+    authorIsBcba
+      ? "REMOVE, ALWAYS. This is not a preference, because it is wrong in a record rather than merely unwanted:"
+      : "REMOVE, ALWAYS. These are not preferences and the technician does not get a say, because they are wrong in a record rather than merely unwanted:",
+  ].concat(authorIsBcba ? [] : ANALYSIS_IS_NOT_THE_AUTHORS).concat([
     "* Anything a checkbox on the form already records.",
     "",
     "FLAG, DO NOT REMOVE. Staff opinion about the client, the family or the program is sometimes fine and the technician may have a reason for it. Keep what they wrote, and emit an ambiguous_item hint on that section giving the reason in a few words, for example 'opinion, not observation. Neutral wording is safer here.' Then leave it to them. A technician who reads that and keeps the sentence has overridden it, which is the correct outcome, not a failure.",
@@ -105,13 +133,24 @@
     "KEEP A FEELING THAT HAS ITS OBSERVATION BESIDE IT. 'He approached staff and was happy' is how these notes are really written, and what makes it acceptable is the approach, not the mildness of the word. Do not manufacture an operational definition, and do not strip it either. 'Demonstrated positive affect as evidenced by' is worse on both counts: no more observable than 'happy', and no technician writes that way.",
     "FLAG A FEELING THAT HAS NOTHING ATTACHED. If the notes name a feeling and never say what was seen, that is a missing observation rather than a softer one. Keep the word and emit an ambiguous_item hint naming it and offering the two ways out, for example: \"'frustrated' has no observation. Add a description or remove it.\" Never answer it yourself and never quietly drop the word.",
     "State the problem and the options. Do not phrase these as a question to the technician; they are reading at the end of a shift and a flat statement is faster to act on.",
-  ].join("\n");
+    ]).join("\n");
+  }
+
+  var SESSION_RECORD = sessionRecord(false);
+  var SESSION_RECORD_BCBA = sessionRecord(true);
 
   window.NoteRegisterRules = {
     constructions: CONSTRUCTIONS,
     tired: TIRED_REGISTER,
     // Everything a session note tool wants, in the order it should be read.
     sessionRecord: SESSION_RECORD,
+    sessionRecordBcba: SESSION_RECORD_BCBA,
+    /* sessionNote is the TECHNICIAN build and bt is its only caller. The name is
+       left alone rather than renamed to match, because renaming it would edit
+       bt's served prompt for no clinical reason and cost a re-extract. */
     sessionNote: CONSTRUCTIONS + "\n" + TIRED_REGISTER + "\n" + SESSION_RECORD,
+    // sup, assess and parent. Same rules, minus the two that hand the analysis
+    // to a BCBA who is already the one writing.
+    sessionNoteBcba: CONSTRUCTIONS + "\n" + TIRED_REGISTER + "\n" + SESSION_RECORD_BCBA,
   };
 })();
