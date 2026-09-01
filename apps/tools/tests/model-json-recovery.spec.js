@@ -9,7 +9,13 @@ import { test, expect } from '@playwright/test';
 // into 8 separate string values (sup and parent have 1 each, assess none), and a
 // tacting goal's SD field is *required* to quote demands verbatim ("What is
 // it?"), so interior double quotes are inherent to its output rather than
-// incidental. One missed escape anywhere in that ~1000-token object threw away
+// incidental.
+//
+// Assessment gained a second narrative on 2026-08-31, "Results of Assessment",
+// and with it the same interior-quote exposure at a smaller scale: a results
+// field reports the vocal models that were offered, and his own sample writes
+// them as "bubbles," "more," or "again". SAP is still by far the most exposed,
+// and assess is no longer at zero. One missed escape anywhere in that ~1000-token object threw away
 // the clinician's entire draft, with no repair and no retry.
 //
 // Two recoveries, matched to which slips are safely fixable:
