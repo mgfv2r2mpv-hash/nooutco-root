@@ -69,6 +69,14 @@
     disposition_unclear: "Clarify whether this change was made in session or is still pending",
     no_goal_data: "No performance data for this goal, add counts, percentages, or trial results if collected",
     thin_behavior: "Behavior noted without topography, intensity, or frequency, add specifics for the support description",
+    /* Same gap bt had. The shared register rules tell every session tool to
+       emit this code for an opinion with no observation and for a feeling with
+       nothing attached, and `code` is an enum built from this object, so the
+       instruction was unobeyable here. This tool's own prompt also enumerates
+       the codes under "code MUST be from this list", so the line there moves
+       with this entry: a catalog that accepts a code the prompt forbids is the
+       same defect pointing the other way. */
+    ambiguous_item: "Clarify",
     other: "",
   };
 
@@ -167,6 +175,7 @@ HINTS - return an array of {section, code, detail} objects flagging ONLY missing
 - disposition_unclear (programming): a flagged skill's change isn't stated as done vs. pending - detail = the goal name\n\
 - no_goal_data (goalsAnalyzed): a goal is discussed with no counts/percentages/trial data - detail = the goal name\n\
 - thin_behavior (behavior): behavior of concern mentioned without topography/intensity/frequency\n\
+- ambiguous_item (any section): something in the note needs clarifying before it is signed - put what, in detail\n\
 - other (any section): something else genuinely unclear - put the question in detail\n\
 Codes marked \"technician present\" fire only when a BT/RBT attended. Hints are advisory nudges, not demands - do not hint when the BCBA plainly had nothing to report for that element.\n\n\
 TERMINOLOGY (non-negotiable)\n\
