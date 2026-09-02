@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { isTriageCall } from './helpers/llm-call.js';
+import { refusedKeywords } from './helpers/schema.js';
 
 // The BT tool used to be its own 800-line page with no revision loop. It is now
 // a NOTE_TOOLS entry on the shared engine, which is what buys it the 5-minute
@@ -600,6 +601,78 @@ test.describe('annotate + panel revision', () => {
 
     await page.locator('.revision-fab').click();
     await expect(page.locator('.revision-input')).toHaveValue('shorten the behaviour section');
+  });
+
+  /* The triage schema is shared by all five tools, so one bad keyword in it
+     took gap questions and the readiness reading off every one of them between
+     2026-08-19 and 2026-09-01. Nothing looked broken: the draft still arrived,
+     because the engine treats a failed triage as "no questions to ask".
+
+     Asserted on the posted payload rather than on the constant, because what
+     the API refuses is what the API is sent. */
+  test('the triage call posts a schema the API will accept', async ({ page }) => {
+    const posted = [];
+    await page.route('**/api/llm-call**', async (route) => {
+      const body = JSON.parse(route.request().postData() || '{}');
+      posted.push(body);
+      return route.fulfill(
+        reply(isTriageCall(body) ? { sufficient: true, readiness: 90, questions: [] } : note()),
+      );
+    });
+
+    await page.goto('/notes/bt/');
+    await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
+    await page.goto('/notes/bt/');
+
+    await fillRequiredAndGenerate(page);
+    await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
+
+    const triage = posted.find(isTriageCall);
+    expect(triage, 'no triage call was posted').toBeTruthy();
+    /* The whole body, not just the schema key. It rides inside
+       output_config.format.schema, which is the path the API named in the
+       error, and walking the body means this keeps working wherever the
+       payload puts it next. */
+    const schema = triage.output_config?.format?.schema;
+    expect(schema, 'the triage call carried no output_config schema').toBeTruthy();
+    expect(refusedKeywords(triage, 'triage body')).toEqual([]);
+    /* Dropping the keyword must not drop the bound with it: the model is still
+       told the range, and clampReadiness holds it on the way back in. */
+    expect(JSON.stringify(schema)).toContain('0 to 100');
+  });
+
+  test('a readiness the model puts out of range is clamped, not passed on', async ({ page }) => {
+    await page.route('**/api/llm-call**', async (route) => {
+      const body = JSON.parse(route.request().postData() || '{}');
+      return route.fulfill(
+        reply(
+          isTriageCall(body)
+            ? { sufficient: false, readiness: 480, questions: [{ field: 'behavior', question: 'How many times?' }] }
+            : note(),
+        ),
+      );
+    });
+
+    await page.goto('/notes/bt/');
+    await page.evaluate((t) => {
+      localStorage.setItem('notes_auth_token', t);
+      localStorage.removeItem('noaba.audit.buffer.v1');
+    }, tokenFor());
+    await page.goto('/notes/bt/');
+
+    await fillRequiredAndGenerate(page);
+    await expect(page.getByText('How many times?')).toBeVisible({ timeout: 20000 });
+
+    /* 480 buys a skip cooldown no note has earned, and it reaches the audit
+       trail as itself. skipSecondsFor clamped its own copy and nothing else,
+       which is why the clamp moved to the boundary. */
+    const audited = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('noaba.audit.buffer.v1') || '[]')
+        .filter((e) => e.type === 'gap_questions' && 'readiness' in e.data)
+        .map((e) => e.data.readiness),
+    );
+    expect(audited.length, 'no gap_questions audit event was recorded').toBeGreaterThan(0);
+    for (const r of audited) expect(r).toBeLessThanOrEqual(100);
   });
 
   test('the collapsed pill carries the note quality, not just a label', async ({ page }) => {

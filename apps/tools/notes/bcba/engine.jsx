@@ -1325,7 +1325,11 @@ function App() {
     required: ["sufficient", "readiness", "questions"],
     properties: {
       sufficient: { type: "boolean" },
-      readiness: { type: "integer", minimum: 0, maximum: 100 },
+      /* The bound lives in the prompt and in clampReadiness, never in the
+         schema. The API refuses an integer carrying minimum or maximum, and it
+         refuses the whole call, which is how all five tools lost their triage
+         for a fortnight without any of them looking broken. */
+      readiness: { type: "integer", description: "0 to 100." },
       questions: {
         type: "array",
         items: {
@@ -1337,6 +1341,8 @@ function App() {
       },
     },
   };
+
+  const clampReadiness = (n) => Math.min(100, Math.max(0, Math.round(n)));
 
   /* Both of these now live in triage-prompt.js, so the prompt store can extract
      them from a deployed file. Read here rather than defined here, the same way
@@ -1392,7 +1398,12 @@ function App() {
       // Absent or unparseable stays null rather than becoming a number, so the
       // wait falls back to the full thirty seconds. A missing reading must not
       // hand out the shortcut a ready note earns.
-      readiness: Number.isFinite(parsed.readiness) ? parsed.readiness : null,
+      //
+      // Clamped here rather than trusted, because the schema cannot carry the
+      // bound. One clamp at the boundary means every consumer reads the same
+      // number - the audit trail included, which the clamp inside
+      // skipSecondsFor never covered.
+      readiness: Number.isFinite(parsed.readiness) ? clampReadiness(parsed.readiness) : null,
     };
   };
 
