@@ -3212,6 +3212,10 @@ async function removeTerm(kv, list, term) {
 const AUDIT_TYPES = new Set([
   "note_generated",
   "note_register",
+  // The post-pass counts. Added in the same commit as the browser call that
+  // emits it, because the three events above show what happens when those two
+  // are added in different ones.
+  "note_postpass",
   "gap_questions",
   "revision",
   "note_copied",
