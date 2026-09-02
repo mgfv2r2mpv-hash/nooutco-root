@@ -928,6 +928,10 @@ function freshSession(tool) {
     ticketFiling: false,
     triageAnswers: "",     // everything they have answered so far, scrubbed
     triageRound: 0,        // rounds asked; capped so this cannot become an interrogation
+    // Candidate answers offered alongside this round's questions. Absent from
+    // the map means accepted, which is the resting state: a technician who
+    // reads them and generates keeps all of them.
+    suggestState: {},      // {"<question>:<suggestion>": {reverted, text}}
     // Changes a revision made OUTSIDE the section that was clicked, which the
     // model was not confident belonged there. Held here rather than applied, so
     // nothing is lost and nothing lands where it was not asked for.
@@ -1166,7 +1170,7 @@ function App() {
   const triageSystemFor = () =>
     tool.serverPrompt
       ? { promptKind: tool.triageKind || "triage" }
-      : { system: (tool.triageSystem || TRIAGE_SYSTEM) + TRIAGE_READINESS };
+      : { system: (tool.triageSystem || TRIAGE_SYSTEM) + TRIAGE_SUGGESTIONS + TRIAGE_READINESS };
 
   /* EVERY DRAFT PASSES THROUGH HERE BEFORE ANYONE SEES IT.
 
@@ -1367,8 +1371,16 @@ function App() {
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["field", "question"],
-          properties: { field: { type: "string" }, question: { type: "string" } },
+          required: ["field", "question", "suggestions"],
+          properties: {
+            field: { type: "string" },
+            question: { type: "string" },
+            /* Required, holding [] when there are none, rather than optional.
+               The schema is shared by every tool and the model is constrained
+               to it whether or not that tool's prompt mentions suggestions, so
+               a key it must always emit is one it can never half-emit. */
+            suggestions: { type: "array", items: { type: "string" } },
+          },
         },
       },
     },
@@ -1380,6 +1392,11 @@ function App() {
      them from a deployed file. Read here rather than defined here, the same way
      the register rules are. */
   const TRIAGE_SYSTEM = (window.NoteTriagePrompt || {}).system || "";
+  /* Between the tool's own prompt and the readiness block, so a tool that
+     overrides the first still gets the candidate-answer mechanism. What a tool
+     suggests ABOUT is its own prompt's business; how a suggestion is shaped and
+     what makes one safe to accept by default is the same for all of them. */
+  const TRIAGE_SUGGESTIONS = (window.NoteTriagePrompt || {}).suggestions || "";
   const TRIAGE_READINESS = (window.NoteTriagePrompt || {}).readiness || "";
 
   // The default above is written for session notes. A tool whose input is not a
@@ -1404,6 +1421,22 @@ function App() {
       .map((f) => `[${f.label}]${f.required ? " (required)" : ""}\n${(scrubbed[f.id] || "").trim() || "(empty)"}`)
       .join("\n\n");
 
+  /* At most two, non-blank, and never longer than a sentence the technician
+     would have typed themselves.
+
+     The cap is a hard bound rather than a prompt request. Two is the number he
+     asked for, and a question wearing five pre-accepted answers is no longer a
+     question - it is a paragraph the tool wrote and dared them to read. */
+  const MAX_SUGGESTIONS = 2;
+  const MAX_SUGGESTION_CHARS = 220;
+  const normalizeSuggestions = (q) => ({
+    ...q,
+    suggestions: (Array.isArray(q.suggestions) ? q.suggestions : [])
+      .filter((t) => typeof t === "string" && t.trim())
+      .map((t) => t.trim().slice(0, MAX_SUGGESTION_CHARS))
+      .slice(0, MAX_SUGGESTIONS),
+  });
+
   const runTriage = async (scrubbed, priorAnswers) => {
     let body = intakeBody(scrubbed);
     if (priorAnswers && priorAnswers.trim()) {
@@ -1426,7 +1459,9 @@ function App() {
     const parsed = NotesScrub.restoreOutput(r.parsed || {}, scrubMapRef.current);
     const questions = Array.isArray(parsed.questions) ? parsed.questions : [];
     return {
-      questions: parsed.sufficient ? [] : questions.filter((q) => q && q.question).slice(0, 3),
+      questions: parsed.sufficient
+        ? []
+        : questions.filter((q) => q && q.question).slice(0, 3).map(normalizeSuggestions),
       // Absent or unparseable stays null rather than becoming a number, so the
       // wait falls back to the full thirty seconds. A missing reading must not
       // hand out the shortcut a ready note earns.
@@ -1837,7 +1872,7 @@ function App() {
     if (questions.length) {
       setLoading(false);
       audit("gap_questions", { asked: questions.length, round: 1, readiness });
-      patchS({ questions, readiness, pendingValues: scrubbed, triageAnswers: "", triageRound: 1 });
+      patchS({ questions, readiness, pendingValues: scrubbed, triageAnswers: "", triageRound: 1, suggestState: {} });
       return;
     }
     audit("gap_questions", { asked: 0 });
@@ -1877,20 +1912,74 @@ function App() {
     return Math.round(SKIP_COOLDOWN_MAX_SECONDS * (1 - pct / SKIP_FREE_AT_READINESS));
   };
 
-  const skipQuestions = () => {
+  /* ── The candidate answers under each question ────────────────────────────
+     Accepted by default and undone with a click, the same contract the
+     corrections marks carry. Doing nothing keeps all of them.
+
+     That is only safe because of what the prompt forbids: a suggestion
+     rephrases something the technician already wrote and never supplies a fact
+     they did not report. So leaving one alone re-surfaces their own observation
+     rather than admitting the model's guess about their session. */
+  const suggestKey = (qi, si) => qi + ":" + si;
+
+  const suggestionText = (qi, si, raw) => {
+    const st = (S.suggestState || {})[suggestKey(qi, si)];
+    if (st && st.reverted) return "";
+    return st && typeof st.text === "string" ? st.text : raw;
+  };
+
+  // In the order they were offered, so the answer reads down the questions.
+  const acceptedSuggestions = () =>
+    (S.questions || [])
+      .flatMap((q, qi) => (q.suggestions || []).map((raw, si) => suggestionText(qi, si, raw)))
+      .filter((t) => t && t.trim());
+
+  const toggleSuggestion = (key) => {
+    const prev = (S.suggestState || {})[key] || {};
+    patchS({ suggestState: { ...(S.suggestState || {}), [key]: { ...prev, reverted: !prev.reverted } } });
+  };
+
+  // Editing does not accept: a technician can reword one they have undone and
+  // leave it undone. The two flags are independent because the two decisions
+  // are - what it should say, and whether it should be there at all.
+  const editSuggestion = (key, text) => {
+    const prev = (S.suggestState || {})[key] || {};
+    patchS({ suggestState: { ...(S.suggestState || {}), [key]: { ...prev, text: text } } });
+  };
+
+  /* Skip is also the ACCEPT path for the suggestions, and that is deliberate.
+
+     Sending requires typed text, so a technician whose only answer is "yes,
+     those two are right" has nowhere else to go. Dropping their suggestions
+     here would mean the one interaction cheap enough to actually get used is
+     the one that throws itself away. The button says so when there is something
+     to carry: "Nothing to add" becomes "Use these and generate".
+
+     The gate runs over them rather than around them, because a technician who
+     reworded one may have typed a name into it. An untouched suggestion came
+     from already-scrubbed input, so it passes through unchanged. */
+  const skipQuestions = async () => {
+    const taken = acceptedSuggestions();
     audit("gap_questions", {
       skipped: (S.questions || []).length,
+      suggestionsTaken: taken.length,
       round: S.triageRound || 1,
       // Audited on the skip as well as on the ask, because the only way to find
       // out whether this number tracks anything real is to see which readings
       // people walk away from.
       readiness: S.readiness,
     });
-    pushThread("user", "answer", "(skipped)");
+    let carried = "";
+    if (taken.length) {
+      const review = await scrubGate(taken.join("\n"), { carryOver: true });
+      if (!review) return;
+      carried = NotesScrub.applyMap(taken.join("\n"), review.map);
+    }
+    pushThread("user", "answer", taken.length ? taken.join("\n") : "(skipped)");
     // Anything they answered in an earlier round still counts. Dropping it
     // because they skipped the last question would throw away work they did.
-    const answered = S.triageAnswers || "";
-    patchS({ triageAnswers: "", triageRound: 0 });
+    const answered = [S.triageAnswers, carried].filter((x) => x && x.trim()).join("\n");
+    patchS({ triageAnswers: "", triageRound: 0, suggestState: {} });
     draftNote(S.pendingValues || scrubValues([]), answered);
   };
 
@@ -2216,11 +2305,21 @@ function App() {
     if (S.questions && S.questions.length) {
       // Same note, later turn. The answers are appended to the intake the draft
       // is built from, so their tokens have to survive to the draft and past it.
-      const review = await scrubGate(text, { carryOver: true });
+      //
+      // The suggestions they left standing go through the SAME gate as the text
+      // they typed, in one string, so an edited one cannot skip the check and a
+      // name typed into either is caught once.
+      const taken = acceptedSuggestions();
+      const said = [...taken, text].filter((x) => x && x.trim()).join("\n");
+      const review = await scrubGate(said, { carryOver: true });
       if (!review) return;
-      audit("gap_questions", { answered: S.questions.length, round: S.triageRound || 1 });
+      audit("gap_questions", {
+        answered: S.questions.length,
+        suggestionsTaken: taken.length,
+        round: S.triageRound || 1,
+      });
 
-      const answered = [S.triageAnswers, NotesScrub.applyMap(text, review.map)]
+      const answered = [S.triageAnswers, NotesScrub.applyMap(said, review.map)]
         .filter((x) => x && x.trim()).join("\n");
       const round = (S.triageRound || 1) + 1;
 
@@ -2245,11 +2344,11 @@ function App() {
           // Re-read each round rather than carried forward: answering two of
           // three questions is exactly the case where the note got closer, and
           // the wait should shorten to match.
-          patchS({ questions: more, readiness, triageAnswers: answered, triageRound: round });
+          patchS({ questions: more, readiness, triageAnswers: answered, triageRound: round, suggestState: {} });
           return;
         }
       }
-      patchS({ triageAnswers: "", triageRound: 0 });
+      patchS({ triageAnswers: "", triageRound: 0, suggestState: {} });
       await draftNote(S.pendingValues, answered);
       return;
     }
@@ -2928,6 +3027,10 @@ function App() {
         }}
         loading={loading}
         questions={S.questions}
+        suggestState={S.suggestState}
+        onToggleSuggestion={toggleSuggestion}
+        onEditSuggestion={editSuggestion}
+        acceptedSuggestions={acceptedSuggestions().length}
         onSkipQuestions={skipQuestions}
         skipCooldown={skipSecondsFor(S.readiness)}
         unread={S.questions ? S.questions.length : 0}

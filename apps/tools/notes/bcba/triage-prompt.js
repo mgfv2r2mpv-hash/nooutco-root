@@ -24,6 +24,27 @@
     "- If the notes are adequate, return sufficient=true and an empty array. Fewer questions is better than more; three is a ceiling, not a target.\n" +
     "- Return ONLY a JSON object: {\"sufficient\": boolean, \"questions\": [{\"field\": \"\", \"question\": \"\"}]}";
 
+  /* Candidate answers, offered alongside a question rather than instead of it.
+
+     A question costs the technician a sentence they have to compose. A
+     suggestion costs them a glance, and they are already holding the session in
+     their head, so the cheaper interaction is the one that gets answered. Every
+     suggestion is accepted by default and undone with one click.
+
+     The traceability rule is what makes default-accepted safe. A suggestion
+     rephrases something the clinician already wrote. It never supplies a fact
+     they did not report, so leaving one alone puts their own observation into
+     the note rather than the model's guess about their session.
+
+     Shared, because a candidate answer is a mechanism rather than a clinical
+     rule. What each tool suggests ABOUT belongs in that tool's own prompt. */
+  var TRIAGE_SUGGESTIONS =
+    "\n\nSUGGESTIONS\n" +
+    "Each question carries `suggestions`: at most two short candidate answers. The clinician accepts one by leaving it alone and drops it with a click, so an unhelpful suggestion costs them more than no suggestion does.\n" +
+    "Every suggestion must be traceable to something the clinician already wrote. Rephrase their words. NEVER supply a fact they did not report - not a count, not a prompt level, not an outcome you think is likely. If nothing they wrote supports a candidate, return an empty array and let the question stand on its own.\n" +
+    "Write each one in the clinician's own voice, as a statement they could have written, under twenty words. \"Moving to the floor settled him faster than the break did.\" NOT \"Consider documenting environmental modifications.\"\n" +
+    "An empty array is the right answer most of the time.";
+
   /* Appended to WHICHEVER triage prompt runs, the default above or a tool's own.
      It lives apart from both so there is exactly one place to change what counts
      as ready, which is the reason he chose a model-judged number over counting
@@ -42,13 +63,14 @@
     "  30-59   Several gaps, or a single one the note rests on. Writing from this means inventing or omitting.\n" +
     "  0-29    Too thin to write from at all.\n" +
     "Judge what is on the page, not how well it is written. Terse but complete scores high; fluent but hollow scores low.\n" +
-    "So the object you return is {\"sufficient\": boolean, \"readiness\": integer, \"questions\": [{\"field\": \"\", \"question\": \"\"}]}.";
+    "So the object you return is {\"sufficient\": boolean, \"readiness\": integer, \"questions\": [{\"field\": \"\", \"question\": \"\", \"suggestions\": []}]}.";
 
   window.NoteTriagePrompt = {
     system: TRIAGE_SYSTEM,
+    suggestions: TRIAGE_SUGGESTIONS,
     readiness: TRIAGE_READINESS,
     // What actually runs for a tool with no triage prompt of its own, and what
     // the store publishes under the key "triage".
-    full: TRIAGE_SYSTEM + TRIAGE_READINESS,
+    full: TRIAGE_SYSTEM + TRIAGE_SUGGESTIONS + TRIAGE_READINESS,
   };
 })();

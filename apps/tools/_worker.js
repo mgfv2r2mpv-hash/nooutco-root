@@ -2079,8 +2079,13 @@ const SERVER_PROMPT_TOOLS = new Set(["assess", "bt", "parent", "sap", "sup"]);
    boolean. sap triages with a prompt of its own - prompt hierarchies, mastery
    criteria, maintenance probes - and the generic one asks none of that. A
    migrated sap that fell back to "triage" would have been served a prompt that
-   works, answers, and asks a clinician the wrong questions. */
-const PROMPT_KINDS = new Set(["sap_triage", "triage"]);
+   works, answers, and asks a clinician the wrong questions.
+
+   "bt_triage" is the third, for the same reason and a sharper one. The generic
+   prompt asks for counts and rates; the BT session note has those already, off
+   the data collection, and asking again spends the technician's attention on
+   what the EHR filled in for them. */
+const PROMPT_KINDS = new Set(["bt_triage", "sap_triage", "triage"]);
 
 // The style card, the shape line and the intake-voice sentence together run to a
 // few hundred words. This is a sanity bound on a field that reaches the model,

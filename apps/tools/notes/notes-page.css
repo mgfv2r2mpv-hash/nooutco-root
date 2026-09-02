@@ -711,6 +711,36 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
   .cx-flash { animation: none; outline: 2px solid #2f68c4; outline-offset: 2px; }
 }
 
+/* ── Candidate answers under a gap question ───────────────────────────────
+   Indented under the bubble they answer, and quieter than it: the question is
+   the thing being asked, and these are only offers. They borrow the correction
+   marks' controls (.cx-ck, .cx-ctl, .cx-edit) rather than growing a second set,
+   because a technician who has learned one of these has learned both. */
+
+.tg-suggestions {
+  margin: -2px 0 10px 14px;
+  display: flex; flex-direction: column; gap: 4px;
+  border-left: 2px solid #cfe0f2; padding-left: 10px;
+}
+.tg-suggestion {
+  display: flex; align-items: flex-start; gap: 4px;
+  font-size: 13px; line-height: 1.55; color: #2d3a1f;
+}
+.tg-suggestion-text {
+  background: rgba(56, 142, 60, .12);
+  box-shadow: inset 0 -1px 0 rgba(56, 142, 60, .4);
+  border-radius: 3px; padding: 1px 4px;
+  overflow-wrap: anywhere;
+}
+/* Dropped, not deleted. It stays legible so putting it back is a decision they
+   can still see, rather than a click into an empty space. */
+.tg-suggestion.is-dropped .tg-suggestion-text {
+  background: none; box-shadow: none;
+  color: #7d8a6c; text-decoration: line-through;
+  text-decoration-color: rgba(125, 138, 108, .6);
+}
+.tg-suggestion.is-editing { align-items: center; flex-wrap: wrap; }
+
 /* A section the panel is currently targeting. */
 .section-targeted { outline: 2px solid #7c6cd6; outline-offset: 2px; }
 .section-clickable { cursor: pointer; }

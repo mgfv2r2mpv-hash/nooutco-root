@@ -341,6 +341,41 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
   var LABELED_FORMAT_BLOCK =
     "\n\nOUTPUT FORMAT\nReturn labeled sections in the exact order below. For each \"[tick]\" line, list ONLY the options that apply, comma-separated and verbatim from that section's allowed list; if none apply write \"None selected.\" For \"[choose one]\" pick exactly one allowed option (or \"None\"). For \"[narrative]\" write the prose. Do NOT output hints. No JSON, no preamble, no commentary.\n\nINDIVIDUALS PRESENT [tick]\nCLINICAL STATUS UPON ARRIVAL [tick]\nFURTHER DETAIL ON CLINICAL STATUS [narrative]\nPURPOSE OF SESSION [tick]\nSERVICE PAUSED DURING SESSION [choose one: Yes / No]\nABA TEACHING TECHNIQUES USED [tick]\nNARRATIVE OF LESSON PROGRESS [narrative]\nANTECEDENT STRATEGIES UTILIZED [tick]\nDESCRIBE ANTECEDENT MODIFICATIONS AND IMPACT [narrative]\nCONSEQUENCE STRATEGIES UTILIZED [tick]\nEFFECTIVENESS OF CONSEQUENCE STRATEGIES [choose one]\nNARRATIVE OF BEHAVIOR SUPPORT PLAN GOALS PROGRESS [narrative]\nCLIENT PROGRESS [choose one]\nACTION ITEMS FOR BCBA [tick]\nSUMMARY OF CONCERNS/QUESTIONS/INVOLVEMENT [narrative]\n\nIf the BT notes for a cluster are empty or nonsense, leave its ticks \"None selected\" and leave that narrative blank. A blank section tells the technician what is missing; a sentence saying the detail was not reported would follow the note into the record, where it describes the paperwork rather than the session.";
 
+  /* ── Triage, in this note's own terms ─────────────────────────────────────
+     The generic triage prompt asks about counts and rates. For a BT session
+     note those are already on the RT form, and asking for them again spends the
+     one moment the technician still has the session in their head on data the
+     EHR collected automatically.
+
+     What a supervisor actually reads for is the three checks below. They are
+     the same three the quality rubric measures after the draft, deliberately:
+     asking before the note is written is cheaper for the technician than
+     flagging a gap after it, and a fault the tool will point at later is a
+     fault it should have asked about first.
+
+     window.NoteTriagePrompt.suggestions carries the candidate-answer mechanism
+     and is appended by the engine, so it is not repeated here. */
+  var TRIAGE_SYSTEM =
+    "You are reviewing a behavior technician's raw session notes BEFORE they are turned into a formal note.\n\n" +
+    "Your ONLY job: decide whether anything is too thin to write from, and if so ask at most 3 short, specific questions that would materially improve the finished note.\n\n" +
+    "WHAT IS ALREADY CAPTURED, AND MUST NOT BE ASKED FOR\n" +
+    "Trial counts, accuracy percentages, and behavior frequencies are collected automatically and land on the form beside this note. Never ask for a number the data collection already holds. A technician who spends their time re-reporting those has less time for the part only they can supply.\n\n" +
+    "THE THREE GAPS WORTH ASKING ABOUT\n" +
+    "1. A PROGRAM WITH NO ACCOUNT OF HOW IT WENT. They named what they taught and stopped. Ask what needed more support, or what did not work - the prompt level they actually ran, the step that broke down, the part they had to change mid-session.\n" +
+    "2. A BEHAVIOR WITH NO COMPARISON, OR A COMPARISON WITH NO RESPONSE. \"How did this compare to recent sessions?\" is the first half. The second half matters more: when a behavior has moved, and especially when it has moved the wrong way against goal, ask what they did about it.\n" +
+    "3. SOMETHING THAT HELPED AND IS NOT IN THE PROTOCOL. The adjustment they made because it worked, which no plan told them to make. This is the detail nobody else in the record can supply, and it is the one most often left out. When they have reported nothing of the kind, read where the session struggled and offer candidates rather than an open question.\n\n" +
+    "RULES\n" +
+    "- Be specific and quote back what they wrote. \"You mentioned elopement - what did you do when it happened?\" NOT \"Can you add more detail?\"\n" +
+    "- NEVER ask for a name, a date, an address, or any other identifying detail. The notes are deliberately de-identified.\n" +
+    "- Do not ask about something they plainly had nothing to report. A session with no behaviors of concern is a normal session, not a gap.\n" +
+    "- Never ask them to justify a clinical decision. They ran the plan they were given.\n" +
+    "- Write dashes as a plain hyphen (-). Never use an em dash.\n" +
+    "- If the notes are adequate, return sufficient=true and an empty array. Fewer questions is better than more; three is a ceiling, not a target.\n" +
+    // The object's shape is stated once, at the end of the composed prompt, by
+    // the shared READINESS block. Restating a partial version of it here would
+    // name two different objects in one prompt.
+    "- Return ONLY a JSON object. No markdown, no preamble, no commentary.";
+
   function buildUserPrompt(values) {
     return [
       "FACTUAL SESSION DATA (provided, do not infer, do not include in the JSON):",
@@ -541,6 +576,15 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
     hintCatalog: HINT_CATALOG,
     qualityRubric: QUALITY_RUBRIC,
     responseSchema: RESPONSE_SCHEMA,
+
+    /* Two halves of one fact. TRIAGE_SYSTEM is the source verify-parity.mjs
+       composes the stored bt_triage prompt from, and what runs if this tool is
+       ever un-migrated; triageKind names the stored copy the Worker fetches.
+       server-prompt.spec.js fails a migrated tool carrying one without the
+       other, because deleting either one alone asks a technician the generic
+       questions and errors nowhere. */
+    triageSystem: TRIAGE_SYSTEM,
+    triageKind: "bt_triage",
 
     validate: function (values) {
       if (!(values.fLesson || "").trim()) return "Please add notes for Skill Acquisition / Lesson Progress.";
