@@ -78,13 +78,15 @@ test.describe('which tools compose server-side', () => {
     }
   });
 
-  test('sap is the tool that has one, and it points at sap_triage', () => {
+  test('the two tools that have one point at their own stored copy', () => {
     // Stated positively as well as structurally. The loop above would still pass
-    // if sap's override and its key were both deleted.
-    const src = readFileSync(path.join(process.cwd(), 'notes/bcba/tools/sap.js'), 'utf8');
-    expect(/triageSystem\s*:/.test(src)).toBe(true);
-    expect(src).toContain('triageKind: "sap_triage"');
-    expect(promptKinds()).toContain('sap_triage');
+    // if a tool's override and its key were both deleted.
+    for (const [tool, kind] of [['sap', 'sap_triage'], ['bt', 'bt_triage']]) {
+      const src = readFileSync(path.join(process.cwd(), `notes/bcba/tools/${tool}.js`), 'utf8');
+      expect(/triageSystem\s*:/.test(src), `${tool}.js lost its triage override`).toBe(true);
+      expect(src).toContain(`triageKind: "${kind}"`);
+      expect(promptKinds()).toContain(kind);
+    }
   });
 
   test('the browser flag and the Worker set agree', () => {

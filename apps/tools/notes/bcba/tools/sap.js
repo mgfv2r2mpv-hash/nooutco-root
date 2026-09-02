@@ -4,11 +4,15 @@
  * normalizeOutput flattens each into the editable text block the EHR expects. */
 (function () {
   var normalizeHints = window.NoteToolsUtil.normalizeHints;
+  var normalizeRevision = window.NoteToolsUtil.normalizeRevision;
   var hintSchema = window.NoteToolsUtil.hintSchema;
 
   var SMART_TOOLTIP = "SMART goals are: Specific (clearly defines the target behavior and context, what, where, with whom), Measurable (includes quantifiable criteria, e.g. \"4 out of 5 opportunities\" or \"80% accuracy\"), Achievable (realistic within the authorization period given the client's current baseline), Relevant (tied to the client's diagnosis, functional independence, and medical necessity, not academics), and Time-bound (specifies a timeframe, e.g. \"within 1 authorization period\" or \"across 3 consecutive sessions\").";
 
   var SECTION_IDS = ["refinedGoal", "exercise", "generalization", "errorCorrection"];
+  // Bound after SECTION_IDS, which it reads: `var` hoists the declaration but
+  // not the value, so binding this above would seal the enum as undefined.
+  var revision = window.NoteToolsUtil.revisionKeys(SECTION_IDS);
 
   // Used only when the model omits reentryRule. Single-sourced so the JSON path
   // (formatErrorCorrection) and the copy-paste path (buildLabeledPrompt) cannot
@@ -70,6 +74,13 @@
       // rank, kind and the whole-note section arrive here without this file
       // restating them.
       hints: hintSchema(HINT_CATALOG, SECTION_IDS),
+      // The three keys a revision turn can carry. Optional, never required: a
+      // first draft has nothing to answer and nothing to route. Without them
+      // this sealed object turned "should this go in the plan?" into a rewrite
+      // of the plan, which is the fault REVISION_RULES exists to prevent.
+      bcbaQuestion: revision.bcbaQuestion,
+      answer: revision.answer,
+      crossSection: revision.crossSection,
     },
   };
 
@@ -279,13 +290,17 @@
 
   function normalizeOutput(raw) {
     var o = raw && typeof raw === "object" ? raw : {};
-    return {
+    var out = {
       refinedGoal: typeof o.refinedGoal === "string" ? o.refinedGoal : "",
       exercise: formatExercise(o.exercise || {}),
       generalization: formatGeneralization(o.generalization || {}),
       errorCorrection: formatErrorCorrection(o.errorCorrection || {}),
       hints: normalizeHints(o.hints, HINT_CATALOG, SECTION_IDS),
     };
+    // The three revision keys the engine reads back. Kept separate from the
+    // note's own fields because they never reach the EHR: an answer is shown
+    // in the panel and a routing decision is consumed before render.
+    return Object.assign({}, out, normalizeRevision(o, SECTION_IDS));
   }
 
   /* The engine's default triage is written for session notes: it asks for
@@ -301,7 +316,7 @@
      are on the page, and the tool used to manufacture four of them. */
   var TRIAGE_SYSTEM =
     "You are reviewing a clinician's treatment goal and program specifications BEFORE they are turned into a formal Service Authorization Plan (SAP).\n\n" +
-    "Your ONLY job: decide whether anything is too thin to write from, and if so ask at most 3 short, specific questions that would materially change the finished plan.\n\n" +
+    "Your ONLY job: decide whether anything is too thin to write from, and if so ask the short, specific questions that would materially change the finished plan.\n\n" +
     "ASK ABOUT, in this order of value:\n" +
     "* The prompt hierarchy. If the specifications do not name the levels, ask which prompts this clinician uses for this program and in what order. Real hierarchies run 3 to 7 levels and the labels are the clinician's own. A technician runs whatever levels the plan lists, so inventing them is the costliest gap here. Ask this first.\n" +
     "* Mastery criteria, when no accuracy figure and no number of sessions is stated.\n" +
@@ -313,8 +328,10 @@
     "* Ask only for specification the clinician already has and did not write down. Never ask them to justify a clinical choice, and never offer a clinical opinion.\n" +
     "* Do not ask about anything the goal itself already answers.\n" +
     "* Write dashes as a plain hyphen (-). Never use an em dash.\n" +
-    "* If the specifications are adequate, return sufficient=true and an empty array. Fewer questions is better than more; three is a ceiling, not a target.\n" +
-    "* Return ONLY a JSON object: {\"sufficient\": boolean, \"questions\": [{\"field\": \"\", \"question\": \"\"}]}";
+    "* If the specifications are adequate, return sufficient=true and an empty array. Fewer questions is better than more, and HOW MANY TO ASK below is the only ceiling.\n" +
+    // Stated once, at the end of the composed prompt, by the shared READINESS
+    // block. A partial version here names a second object.
+    "* Return ONLY a JSON object. No markdown, no preamble, no commentary.";
 
   window.NOTE_TOOLS.push({
     id: "sap",
@@ -378,7 +395,7 @@
        on a difference. An edit here without a matching extraction there is a
        drift CI catches, but only on the next push to that repo. */
     serverPrompt: true,
-    buildSystem: function () { return SYSTEM_PROMPT + (window.NoteRegisterRules ? window.NoteRegisterRules.constructions : "") + HINTS_BLOCK; },
+    buildSystem: function () { return SYSTEM_PROMPT + (window.NoteRegisterRules ? window.NoteRegisterRules.universal : "") + HINTS_BLOCK; },
     buildUserPrompt: buildUserPrompt,
     buildLabeledPrompt: buildLabeledPrompt,
     normalizeOutput: normalizeOutput,

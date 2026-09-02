@@ -5,6 +5,9 @@
 (function () {
   var menu = window.NoteToolsUtil.menu;
   var normalizeHints = window.NoteToolsUtil.normalizeHints;
+  var normalizeRevision = window.NoteToolsUtil.normalizeRevision;
+  var hintSchema = window.NoteToolsUtil.hintSchema;
+  var revisionKeys = window.NoteToolsUtil.revisionKeys;
 
   // Canonical session-check options the AI may infer from the notes.
   var SESSION_CHECKS = ["Performance Feedback (PF)", "IOA check", "Reviewed last week's notes", "Follow-up items"];
@@ -45,7 +48,14 @@
     { kind: "narrative", heading: "Follow-Up Items", key: "followup", minHeight: 80 },
   ];
 
-  var SECTION_IDS = ["sessionChecks", "goalsAnalyzed", "overallProgress", "progress", "programming", "behavior", "feedback", "reviewedNotes", "followup"];
+  /* FORM_SECTIONS order, exactly. These two held the same nine ids in a
+     different order (his 2026-08-04 layout moved Goals Analyzed to lead, and
+     this list was not moved with it), which cost nothing while the list stayed
+     private. The schema publishes it as an enum now, and "a tool agrees with
+     itself about its own sections" is a claim the bench suite makes for every
+     tool carrying both. Order has no other effect: normalizeHints matches by
+     indexOf and the enum is a set. */
+  var SECTION_IDS = ["goalsAnalyzed", "sessionChecks", "overallProgress", "progress", "programming", "behavior", "feedback", "reviewedNotes", "followup"];
 
   // Canonical hint wording lives HERE, client-side; the model returns only the
   // code (+ optional short detail). Consistent phrasing, nothing fabricated.
@@ -59,7 +69,83 @@
     disposition_unclear: "Clarify whether this change was made in session or is still pending",
     no_goal_data: "No performance data for this goal, add counts, percentages, or trial results if collected",
     thin_behavior: "Behavior noted without topography, intensity, or frequency, add specifics for the support description",
+    /* Same gap bt had. The shared register rules tell every session tool to
+       emit this code for an opinion with no observation and for a feeling with
+       nothing attached, and `code` is an enum built from this object, so the
+       instruction was unobeyable here. This tool's own prompt also enumerates
+       the codes under "code MUST be from this list", so the line there moves
+       with this entry: a catalog that accepts a code the prompt forbids is the
+       same defect pointing the other way. */
+    ambiguous_item: "Clarify",
     other: "",
+  };
+
+  /* ── Response schema ───────────────────────────────────────────────────
+     What the model is CONSTRAINED to, not merely asked for. JSON_FORMAT_BLOCK
+     below still describes the same shape and still reaches the logged-out
+     copy-prompt path, but for a served draft this is the enforcement.
+
+     IT IS ALSO WHAT TURNS THE EXPERT ON. expertSectionIds() in engine.jsx reads
+     its section enum and returns null for a tool that has no schema, so until
+     this existed the second reading never ran on this tool. His instruction,
+     2026-08-30: extend the expert to sup, parent and assess.
+
+     The enum comes from SECTION_IDS rather than formSections, which is the one
+     distinction the comparison bench had to learn the hard way. */
+
+  var str = { type: "string" };
+  var enumArray = function (values) {
+    return { type: "array", items: { type: "string", enum: values } };
+  };
+  // Single-selects allow "" for "the notes do not support a choice", so the
+  // model has an honest option other than picking one at random.
+  var enumOrBlank = function (values) {
+    return { type: "string", enum: values.concat([""]) };
+  };
+  var revision = revisionKeys(SECTION_IDS);
+
+  var RESPONSE_SCHEMA = {
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "sessionChecks", "goalsAnalyzed", "overallProgress", "progress",
+      "programming", "behavior", "feedback", "reviewedNotes", "followup", "hints",
+    ],
+    properties: {
+      sessionChecks: enumArray(SESSION_CHECKS),
+      // One row per goal actually named in the notes. The cap of six lives in
+      // the prompt and in normalizeOutput; a schema maxItems would turn a
+      // seventh goal into a refusal rather than into a trimmed table.
+      goalsAnalyzed: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["goal", "progress", "nextSteps"],
+          properties: { goal: str, progress: str, nextSteps: str },
+        },
+      },
+      overallProgress: enumOrBlank(PROGRESS_LEVELS),
+      progress: str,
+      programming: str,
+      // "" when the notes carry no behaviours of concern, which the renderer
+      // draws as its empty note rather than as a missing section.
+      behavior: str,
+      feedback: str,
+      reviewedNotes: enumOrBlank(YES_NO),
+      followup: str,
+      // An empty array is the "note stands on its own" case, so hints is
+      // required as a key even though it is routinely empty. The shape is
+      // shared, so rank, kind and the whole-note section arrive here without
+      // this file restating any of them.
+      hints: hintSchema(HINT_CATALOG, SECTION_IDS),
+      // Optional, and shared: the engine sends REVISION_RULES on every turn of
+      // every tool, so a schema that omitted these would leave the model
+      // unable to obey rules it is still being told to follow.
+      bcbaQuestion: revision.bcbaQuestion,
+      answer: revision.answer,
+      crossSection: revision.crossSection,
+    },
   };
 
   var SYSTEM_CORE = "You are documenting a Behavior Analyst's supervision session. The BCBA is the author documenting their own session. Write in third-person clinical prose: \"The Behavior Analyst reviewed…\", \"The behavior technician demonstrated….\"\n\n\
@@ -89,6 +175,7 @@ HINTS - return an array of {section, code, detail} objects flagging ONLY missing
 - disposition_unclear (programming): a flagged skill's change isn't stated as done vs. pending - detail = the goal name\n\
 - no_goal_data (goalsAnalyzed): a goal is discussed with no counts/percentages/trial data - detail = the goal name\n\
 - thin_behavior (behavior): behavior of concern mentioned without topography/intensity/frequency\n\
+- ambiguous_item (any section): something in the note needs clarifying before it is signed - put what, in detail\n\
 - other (any section): something else genuinely unclear - put the question in detail\n\
 Codes marked \"technician present\" fire only when a BT/RBT attended. Hints are advisory nudges, not demands - do not hint when the BCBA plainly had nothing to report for that element.\n\n\
 TERMINOLOGY (non-negotiable)\n\
@@ -149,7 +236,10 @@ TERMINOLOGY (non-negotiable)\n\
       out[k] = typeof o[k] === "string" ? o[k] : "";
     });
     out.hints = normalizeHints(o.hints, HINT_CATALOG, SECTION_IDS);
-    return out;
+    // The three revision keys the engine reads back. Kept separate from the
+    // note's own fields because they never reach the EHR: an answer is shown
+    // in the panel and a routing decision is consumed before render.
+    return Object.assign({}, out, normalizeRevision(o, SECTION_IDS));
   }
 
   window.NOTE_TOOLS.push({
@@ -191,6 +281,7 @@ TERMINOLOGY (non-negotiable)\n\
     groupOptions: GROUP_OPTIONS,
     formSections: FORM_SECTIONS,
     hintCatalog: HINT_CATALOG,
+    responseSchema: RESPONSE_SCHEMA,
     validate: function (values) {
       if (!(values.clinicalNotes || "").trim()) return "Please enter Session Notes / Clinical Observations.";
       if (values.btPresent === null || values.btPresent === undefined) return "Please indicate whether a BT/RBT was present.";
@@ -209,7 +300,7 @@ TERMINOLOGY (non-negotiable)\n\
        scripts/verify-parity.mjs in the prompt repo composes it to prove the two
        copies have not drifted. Both go when the last tool migrates. */
     serverPrompt: true,
-    buildSystem: function () { return SYSTEM_CORE + (window.NoteRegisterRules ? window.NoteRegisterRules.sessionNote : "") + JSON_FORMAT_BLOCK; },
+    buildSystem: function () { return SYSTEM_CORE + (window.NoteRegisterRules ? window.NoteRegisterRules.sessionNoteBcba : "") + JSON_FORMAT_BLOCK; },
     buildUserPrompt: buildUserPrompt,
     buildLabeledPrompt: function (values) {
       return SYSTEM_CORE + LABELED_FORMAT_BLOCK + "\n\n---\n\n" + buildUserPrompt(values);

@@ -104,6 +104,7 @@
   <script src="./register-rules.js"></script>
   <script src="./triage-prompt.js"></script>
   <script src="./absence.js"></script>
+  <script src="./hollow.js"></script>
   <!-- Tool configs (plain JS - prompts, sections, normalizers) -->
   <script src="./tools/sup.js"></script>
   <script src="./tools/sap.js"></script>
@@ -112,6 +113,8 @@
 
   <!-- Word-level diff for the inline revision view (plain JS). -->
   <script src="./diff.js"></script>
+  <script src="./note-rubric.js"></script>
+  <script src="./corrections.js"></script>
   <script src="./style-features.js"></script>
   <script src="./intake-voice.js"></script>
   <script src="./note-metrics.js"></script>
@@ -119,6 +122,7 @@
   <!-- Assistant panel, then the engine that mounts it. Order matters: Babel
        standalone runs these in document order and the engine renders the panel. -->
   <script type="text/babel" src="./revision-panel.jsx"></script>
+  <script type="text/babel" src="./corrections-view.jsx"></script>
   <script type="text/babel" src="./engine.jsx"></script>
 </body>
 </html>

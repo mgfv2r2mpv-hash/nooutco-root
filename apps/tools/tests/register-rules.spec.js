@@ -161,8 +161,12 @@ test.describe('session record focus', () => {
       expect(prompts[id], `${id} did not load`).toBeTruthy();
       expect(prompts[id], `${id} does not separate removal from flagging`).toMatch(/REMOVE, ALWAYS/);
       expect(prompts[id], `${id} should flag opinion rather than delete it`).toMatch(/FLAG, DO NOT REMOVE/);
-      expect(prompts[id], `${id} should forbid causal claims`).toMatch(/Claims about WHY a behavior happened/);
-      expect(prompts[id], `${id} should keep hypotheses with the BCBA`).toMatch(/Clinical hypotheses/);
+      /* The removal list must still HAVE something under it on these three. It
+         lost the two analysis lines when the analysis went back to the BCBA who
+         is writing, and a heading with nothing beneath it is the failure that
+         change could have caused. Who keeps which line is pinned at the bottom
+         of this file. */
+      expect(prompts[id], `${id} has an empty removal list`).toMatch(/\* Anything a checkbox on the form already records\./);
     }
   });
 
@@ -249,17 +253,26 @@ test.describe('session record focus', () => {
      * sometimes fine and they may have a reason for it, so it is flagged with a
      * short why and left to them. A technician who reads the flag and keeps the
      * sentence has overridden it, which is the intended outcome. */
+    /* The causal half of this now lives on bt alone, because the author of the
+       other three IS the BCBA the rule was reserving the analysis for. The
+       severity distinction it draws is unchanged; only its reach moved. */
+    await page.goto('/notes/bt/');
+    await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+    const btSystem = await page.evaluate(() =>
+      window.NOTE_TOOLS.find((t) => t.id === 'bt').buildSystem());
+
+    // Causation: no appeal, and the reason is stated rather than asserted.
+    expect(btSystem).toMatch(/can land as inappropriate/);
+    expect(btSystem).toMatch(/not the technician's to make/);
+
     await page.goto('/notes/bcba/index.html?tool=sup');
     await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
 
     const system = await page.evaluate(() =>
       window.NOTE_TOOLS.find((t) => t.id === 'sup').buildSystem());
 
-    // Causation: no appeal, and the reason is stated rather than asserted.
-    expect(system).toMatch(/can land as inappropriate/);
-    expect(system).toMatch(/not the technician's to make/);
-
-    // Opinion: kept, flagged, overridable.
+    // Opinion: kept, flagged, overridable. This half is not about who is
+    // holding the pen, so it reaches every session-note tool.
     expect(system).toMatch(/Staff opinion .* is sometimes fine/);
     expect(system).toMatch(/has overridden it, which is the correct outcome/);
 
@@ -270,5 +283,389 @@ test.describe('session record focus', () => {
     expect(flagIdx).toBeGreaterThan(removeIdx);
     expect(system.slice(removeIdx, flagIdx), 'opinion must not sit under REMOVE')
       .not.toMatch(/Staff opinion/);
+  });
+});
+
+/* A RULE THE TOOL CANNOT OBEY IS NOT A RULE.
+ *
+ * The two FLAG rules above route into the hint mechanism by name: an opinion
+ * with no observation behind it, and a feeling with nothing attached, both
+ * become an `ambiguous_item` hint rather than a deletion. Every test above this
+ * line checks that the INSTRUCTION is in the prompt. None of them checked that
+ * the tool would accept the answer.
+ *
+ * It would not, on two of the four. `code` is an enum built from each tool's own
+ * HINT_CATALOG, and normalizeHints drops any code the catalog does not hold, so
+ * on bt and sup both rules were unobeyable while their wording sat in the
+ * prompt: the model is told to emit ambiguous_item, the schema forbids the
+ * value, and the finding is lost with nothing anywhere saying so. assess, parent
+ * and sap have carried the code since they were written.
+ *
+ * So this reads the codes out of the shared rules themselves rather than
+ * listing them here. A future rule that names a new code is covered the day it
+ * is written, which is the only version of this test worth having.
+ */
+test.describe('every hint code the shared rules name is one the tool will accept', () => {
+  /* bt included. It is the highest-volume tool and it was missing from the two
+     lists above, which is part of why this went unnoticed - and it was easy to
+     miss because bt is not registered on the same page. Six tool ids live on two
+     pages, and window.NOTE_TOOLS holds only the ones its own page loaded, so a
+     list gathered from one page silently excludes the other. */
+  const PAGES = {
+    '/notes/bcba/index.html?tool=sup': ['sup', 'assess', 'parent'],
+    '/notes/bt/': ['bt'],
+  };
+  const ALL_SESSION_TOOLS = ['bt', 'sup', 'assess', 'parent'];
+
+  // Walk both pages and merge, so "did not load" means the tool is genuinely
+  // missing rather than that this test looked in one place.
+  async function acrossPages(page, collect) {
+    const out = {};
+    for (const [url, ids] of Object.entries(PAGES)) {
+      await page.goto(url);
+      await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length && window.NoteRegisterRules));
+      Object.assign(out, await page.evaluate(collect, ids));
+    }
+    return out;
+  }
+
+  test('the rules name at least one code, so this test cannot pass vacuously', async ({ page }) => {
+    await page.goto('/notes/bcba/index.html?tool=sup');
+    await page.waitForFunction(() => !!window.NoteRegisterRules);
+    const codes = await page.evaluate(() =>
+      [...new Set((window.NoteRegisterRules.sessionNote.match(/\b([a-z]+_[a-z_]+) hint\b/g) || [])
+        .map((m) => m.replace(/ hint$/, '')))]);
+    expect(codes, 'the shared rules stopped naming any hint code').toContain('ambiguous_item');
+  });
+
+  /* The extraction above reads a code out of prose by requiring an underscore,
+     because "the hint reaches the person who can still fill it in" is a sentence
+     and "an ambiguous_item hint" is a code. That works only while every code
+     that a rule could name actually has an underscore in it, so the assumption
+     is pinned here rather than left in a comment: a future single-word code
+     would slip past the reader above and this is what says so. */
+  test('every hint code is shaped so the rules can name it unambiguously', async ({ page }) => {
+    const codes = await acrossPages(page, (ids) => {
+      const out = {};
+      for (const id of ids) {
+        const t = window.NOTE_TOOLS.find((x) => x.id === id);
+        out[id] = t ? Object.keys(t.hintCatalog || {}) : null;
+      }
+      return out;
+    });
+    for (const id of ALL_SESSION_TOOLS) {
+      expect(codes[id], `${id} did not load`).toBeTruthy();
+      for (const code of codes[id]) {
+        // "other" is the escape hatch and no rule names it by code.
+        if (code === 'other') continue;
+        expect(code, `${id}'s "${code}" has no underscore, so a rule naming it would not be found`)
+          .toMatch(/_/);
+      }
+    }
+  });
+
+  test('and every tool that gets those rules accepts every code they name', async ({ page }) => {
+    const rows = await acrossPages(page, (ids) => {
+      const named = [...new Set((window.NoteRegisterRules.sessionNote.match(/\b([a-z]+_[a-z_]+) hint\b/g) || [])
+        .map((m) => m.replace(/ hint$/, '')))];
+      const out = {};
+      for (const id of ids) {
+        const t = window.NOTE_TOOLS.find((x) => x.id === id);
+        out[id] = t ? { named, codes: Object.keys(t.hintCatalog || {}) } : null;
+      }
+      return out;
+    });
+
+    for (const id of ALL_SESSION_TOOLS) {
+      expect(rows[id], `${id} did not load`).toBeTruthy();
+      expect(rows[id].named.length, 'the shared rules named no codes').toBeGreaterThan(0);
+      for (const code of rows[id].named) {
+        expect(rows[id].codes, `${id} is told to emit "${code}" and its catalog rejects it`)
+          .toContain(code);
+      }
+    }
+  });
+
+  /* A THIRD GATE, and the one that was nearly missed. Four tools enumerate their
+     own codes inside the prompt, bt and sup under the words "code MUST be from
+     this list". A catalog that accepts a code the prompt forbids is the same
+     defect pointing the other way, and it is worse, because the model reads the
+     MUST and obeys it while every schema-level test passes.
+
+     The rule is stated as a conditional rather than as "every prompt lists every
+     code": a tool that names none of its codes in prose is not doing anything
+     wrong. It is a tool that names SOME of them and omits one the shared rules
+     require. */
+  test('a tool that lists its codes in the prompt lists the ones the rules require', async ({ page }) => {
+    const rows = await acrossPages(page, (ids) => {
+      const named = [...new Set((window.NoteRegisterRules.sessionNote.match(/\b([a-z]+_[a-z_]+) hint\b/g) || [])
+        .map((m) => m.replace(/ hint$/, '')))];
+      const out = {};
+      for (const id of ids) {
+        const t = window.NOTE_TOOLS.find((x) => x.id === id);
+        if (!t) { out[id] = null; continue; }
+        const system = t.buildSystem();
+        // Its own codes, as the prompt would write them in a list.
+        const own = Object.keys(t.hintCatalog || {}).filter((c) => c !== 'other');
+        out[id] = {
+          named,
+          listsAnyOwnCode: own.some((c) => system.includes('- ' + c) || system.includes(c + ' (')),
+          present: named.filter((c) => system.includes('- ' + c) || system.includes(c + ' (')),
+        };
+      }
+      return out;
+    });
+
+    for (const id of ALL_SESSION_TOOLS) {
+      expect(rows[id], `${id} did not load`).toBeTruthy();
+      if (!rows[id].listsAnyOwnCode) continue;
+      for (const code of rows[id].named) {
+        expect(rows[id].present, `${id} enumerates its hint codes and omits "${code}", which its rules require`)
+          .toContain(code);
+      }
+    }
+  });
+
+  /* The schema and the normalizer are two separate gates on the same value and
+     both read the catalog, so a code has to survive both. Asserting on the
+     catalog alone would pass on a build where the normalizer was changed to
+     filter against something else. */
+  test('an ambiguous_item hint survives normalization rather than being dropped', async ({ page }) => {
+    const kept = await acrossPages(page, (ids) => {
+      const rows = {};
+      for (const id of ids) {
+        const t = window.NOTE_TOOLS.find((x) => x.id === id);
+        if (!t) { rows[id] = null; continue; }
+        const section = t.formSections
+          .map((s) => (typeof s === 'string' ? s : s.id || s.key))
+          .filter(Boolean)[0];
+        const out = t.normalizeOutput({
+          hints: [{ section, code: 'ambiguous_item', detail: "'frustrated' has no observation", rank: 1, kind: 'register' }],
+        });
+        rows[id] = (out.hints || []).map((h) => h.code);
+      }
+      return rows;
+    });
+
+    for (const id of ALL_SESSION_TOOLS) {
+      expect(kept[id], `${id} did not load`).toBeTruthy();
+      expect(kept[id], `${id} dropped the hint its own rules asked for`).toContain('ambiguous_item');
+    }
+  });
+});
+
+/* WHO OWNS THE ANALYSIS, AND THEREFORE WHO IS ALLOWED TO WRITE IT DOWN.
+ *
+ * Two lines in the shared block take the analysis away from the author and
+ * reserve it for a BCBA:
+ *
+ *   * Claims about WHY a behavior happened ... not the technician's to make.
+ *   * Clinical hypotheses. Function, motivation and diagnosis belong to the
+ *     BCBA's analysis.
+ *
+ * On the BT note that is right and it is his own ruling. It reached sup, assess
+ * and parent too, and all three are written BY a BCBA, so the rule took the
+ * analysis away from the person it was reserving it for. On the assessment tool
+ * it deleted the finding the assessment exists to produce.
+ *
+ * His instruction, 2026-08-31: "The fix for BCBA analysis should be widened to
+ * all non BT tools. remove from all but the BT note tool."
+ *
+ * These tests are the whole guard. The split is invisible at every call site -
+ * `sessionNote` and `sessionNoteBcba` differ by one character in a tool file -
+ * so nothing else would catch a tool wired to the wrong build.
+ */
+const ANALYSIS_LINES = [
+  'Claims about WHY a behavior happened',
+  "Clinical hypotheses. Function, motivation and diagnosis belong to the BCBA's analysis",
+];
+
+test.describe('the analysis rules reach the technician tool and no other', () => {
+  test('bt keeps both of them, because bt is the one note a technician writes', async ({ page }) => {
+    await page.goto('/notes/bt/');
+    await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+    const system = await page.evaluate(() => window.NOTE_TOOLS.find((t) => t.id === 'bt').buildSystem());
+    for (const line of ANALYSIS_LINES) expect(system, `bt lost "${line}"`).toContain(line);
+    expect(system).toContain('the technician does not get a say');
+  });
+
+  for (const id of ['sup', 'assess', 'parent']) {
+    test(`${id} carries neither, because a BCBA writes it`, async ({ page }) => {
+      await page.goto('/notes/bcba/index.html');
+      await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+      const system = await page.evaluate((t) => window.NOTE_TOOLS.find((x) => x.id === t).buildSystem(), id);
+      for (const line of ANALYSIS_LINES) {
+        expect(system, `${id} still reserves the analysis for someone else`).not.toContain(line);
+      }
+      // The header spoke to a technician about a list that no longer has any
+      // technician-specific item left on it.
+      expect(system).not.toContain('the technician does not get a say');
+    });
+  }
+
+  /* The over-correction this could have been. Removing two bullets must not
+     take the rest of the block with them, and the removal must not read as a
+     general licence to editorialise. */
+  for (const id of ['sup', 'assess', 'parent']) {
+    test(`${id} keeps everything else the shared block says`, async ({ page }) => {
+      await page.goto('/notes/bcba/index.html');
+      await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+      const system = await page.evaluate((t) => window.NOTE_TOOLS.find((x) => x.id === t).buildSystem(), id);
+      expect(system).toContain('REMOVE, ALWAYS');
+      expect(system).toContain('* Anything a checkbox on the form already records.');
+      expect(system).toContain('FLAG, DO NOT REMOVE');
+      expect(system).toContain('NEVER DOCUMENT AN ABSENCE');
+      expect(system).toContain('WHAT THIS RECORD IS FOR');
+      expect(system).toContain('A FEELING IS NOT A BEHAVIOR');
+    });
+  }
+
+  /* sap takes only the constructions block and never took these rules, so it is
+     unaffected either way. Asserted so a future reader does not "fix" it. */
+  test('sap is untouched, because it never took the session-record block at all', async ({ page }) => {
+    await page.goto('/notes/bcba/index.html');
+    await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+    const system = await page.evaluate(() => window.NOTE_TOOLS.find((t) => t.id === 'sap').buildSystem());
+    expect(system).not.toContain('REMOVE, ALWAYS');
+    for (const line of ANALYSIS_LINES) expect(system).not.toContain(line);
+  });
+
+  /* bt's served prompt is composed from register-rules.js in voice-module, so a
+     stray character in the technician build is a re-extract nobody asked for.
+     The two builds must differ ONLY by the two lines and the header. */
+  test('the split changed the BCBA build and left the technician build alone', async ({ page }) => {
+    await page.goto('/notes/bcba/index.html');
+    await page.waitForFunction(() => !!window.NoteRegisterRules);
+    const { tech, bcba } = await page.evaluate(() => ({
+      tech: window.NoteRegisterRules.sessionNote,
+      bcba: window.NoteRegisterRules.sessionNoteBcba,
+    }));
+    const techOnly = tech.split('\n').filter((l) => !bcba.includes(l));
+    expect(techOnly).toHaveLength(3);
+    expect(techOnly.filter((l) => l.startsWith('* '))).toHaveLength(2);
+    // Everything the BCBA build adds is the one reworded header line.
+    const bcbaOnly = bcba.split('\n').filter((l) => !tech.includes(l));
+    expect(bcbaOnly).toEqual(['REMOVE, ALWAYS. This is not a preference, because it is wrong in a record rather than merely unwanted:']);
+  });
+});
+
+/* ── Four items of his bar, written as rules a draft can follow ──────────────
+   Build order item 7, on his ruling of 2026-08-31: "All five, via
+   register-rules.js. Not bt alone."
+
+   The scope IS the test. B1, B2, B6 and B3 are about writing about a client and
+   are as true of a plan as of a note, so they go to all five. The zero rule is
+   about reporting a session and goes only where a session is reported. A block
+   that carried the second one into the plan tool would be the necessity.js
+   defect over again, so both halves are pinned here rather than only the
+   widening. */
+test.describe('the bar rules a draft can follow', () => {
+  const ALL_FIVE = ['bt', 'sup', 'assess', 'parent', 'sap'];
+  const SESSION_FOUR = ['bt', 'sup', 'assess', 'parent'];
+
+  /* bt registers on its own page and the other four on the bcba one, so a
+     helper that reads all five has to visit both. Reading four and silently
+     getting null for the fifth is how a scope test passes on nothing. */
+  const build = (list) => {
+    const out = {};
+    for (const id of list) {
+      const t = window.NOTE_TOOLS.find((x) => x.id === id);
+      out[id] = t ? t.buildSystem() : null;
+    }
+    return out;
+  };
+
+  const systems = async (page, ids) => {
+    const out = {};
+    const onBcbaPage = ids.filter((id) => id !== 'bt');
+    if (onBcbaPage.length) {
+      await page.goto('/notes/bcba/index.html?tool=sap');
+      await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+      Object.assign(out, await page.evaluate(build, onBcbaPage));
+    }
+    if (ids.includes('bt')) {
+      await page.goto('/notes/bt/');
+      await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+      Object.assign(out, await page.evaluate(build, ['bt']));
+    }
+    return out;
+  };
+
+  test('every tool is told what a sentence about a client has to carry', async ({ page }) => {
+    const p = await systems(page, ALL_FIVE);
+    for (const id of ALL_FIVE) {
+      expect(p[id], `${id} did not load`).toBeTruthy();
+      // B1, and the exemption without which it flags every framing sentence.
+      expect(p[id], `${id} is missing the observable rule`).toMatch(/An observable\./);
+      expect(p[id], `${id} lost B1's exemption`).toMatch(/doing structural work and is exempt/);
+      // B2, and the line that makes it safe to demand a topography.
+      expect(p[id], `${id} is missing form before function`).toMatch(/Form before function\./);
+      expect(p[id], `${id} lost the rule that makes B2 safe`).toMatch(/NEVER invent a topography/);
+      // B6, and the exemption that stops it nagging about a word the program
+      // already defines. His own line: "sometimes it can be fairly safely
+      // divined".
+      expect(p[id], `${id} is missing the qualitative-word rule`)
+        .toMatch(/A qualitative word carries what it consisted of\./);
+      expect(p[id], `${id} lost B6's exemption`).toMatch(/what their own program already defines/);
+      // B3, and the order itself, which is the entire rule.
+      expect(p[id], `${id} is missing the procedure order`).toMatch(/PROCEDURES GO IN THE ORDER THEY RUN/);
+      expect(p[id], `${id} lost the order it names`)
+        .toMatch(/Arrangement, then the opportunity or SD, then the prompt/);
+    }
+  });
+
+  /* Two claims his own production note made and his intake never did, both
+     read off screenshots on 2026-09-02. They go to all five for the same reason
+     B1 does: neither is a rule about session notes, both are rules about
+     writing down what somebody watched. */
+  test('no tool may impute a verdict with a connective or invent a pattern from a count', async ({ page }) => {
+    const p = await systems(page, ALL_FIVE);
+    for (const id of ALL_FIVE) {
+      expect(p[id], `${id} did not load`).toBeTruthy();
+      // "Even after observing" said the staff response failed. His reading:
+      // it "implies ineffectiveness not stated".
+      expect(p[id], `${id} is missing the connective rule`)
+        .toMatch(/No verdict smuggled in by a connective/);
+      expect(p[id], `${id} does not name the connectives`).toMatch(/"Even after", "despite", "although" and "still"/);
+      // And the remedy, without which the model deletes the sentence instead of
+      // rewriting it. Same failure mode B2 has an escape hatch for.
+      expect(p[id], `${id} lost the replacement the rule offers`)
+        .toMatch(/let the reader draw it/);
+      // The behaviour occurred "a few times" and the note said "in bursts".
+      expect(p[id], `${id} is missing the pattern rule`).toMatch(/No pattern the intake did not give/);
+      expect(p[id], `${id} does not draw the count-versus-pattern line`).toMatch(/A count is not a pattern/);
+    }
+  });
+
+  test('the plan tool takes them too, and still takes neither session block', async ({ page }) => {
+    /* The pairing is the point rather than the first half alone. Widening a
+       shared block is exactly the move that carried bt's section names into the
+       assessment prompt, so what widened and what must not widen with it are
+       asserted in one test.
+
+       The two negatives passed before this change as well. They are here as
+       over-correction guards, not as proof of it. */
+    const p = await systems(page, ['sap']);
+    expect(p.sap).toMatch(/PROCEDURES GO IN THE ORDER THEY RUN/);
+    expect(p.sap, 'the tired staff brevity register must still not reach the plan tool')
+      .not.toMatch(/end of a work block/);
+    expect(p.sap, 'and neither must the session-record block').not.toMatch(/WHAT THIS RECORD IS FOR/);
+  });
+
+  test('a zero is stated rather than attached, and only where a session is reported', async ({ page }) => {
+    const p = await systems(page, ALL_FIVE);
+    for (const id of SESSION_FOUR) {
+      expect(p[id], `${id} is missing the zero rule`).toMatch(/STATE A ZERO, NEVER ATTACH IT/);
+      // Named because it is the construction his own shipped note carried:
+      // "'without exhibiting' dodges a clean zero into a participial."
+      expect(p[id], `${id} does not name the construction that produced this rule`)
+        .toMatch(/without exhibiting behaviors of concern/);
+      /* The carve-out this sharpens rather than replaces. A zero still belongs
+         in the note, and losing that line would turn a rule about WHERE the
+         zero goes into one that deletes it. */
+      expect(p[id], `${id} lost the rule that keeps the zero in the note at all`)
+        .toMatch(/A zero is an observation and it stays/);
+    }
+    expect(p.sap, 'a plan has no zeros to report').not.toMatch(/STATE A ZERO/);
   });
 });

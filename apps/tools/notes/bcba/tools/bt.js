@@ -11,6 +11,7 @@
 (function () {
   var menu = window.NoteToolsUtil.menu;
   var normalizeHints = window.NoteToolsUtil.normalizeHints;
+  var normalizeRevision = window.NoteToolsUtil.normalizeRevision;
   var hintSchema = window.NoteToolsUtil.hintSchema;
 
   /* ── Canonical option lists ──────────────────────────────────────────────
@@ -143,15 +144,152 @@
      BCBA most often has to send a note back for. */
 
   var HINT_CATALOG = {
-    no_behavior_count: "Behavior of concern noted without a count or rate, add how many times it occurred, even if zero",
+    /* No code here asks for a count, rate or percentage. The EHR attaches
+       this session's data already: necessity do-not-repeat-the-data and
+       completeness B7 both say the note carries the observation the numbers
+       cannot. What a reader needs from a number is the comparison, and
+       no_rate_comparison carries that. */
+    no_strategy_outcome: "Strategy described without its outcome, say what happened as a result of trying it",
+    helped_not_in_plan: "Something that helped is not in the plan, name it so the BCBA can consider adding it",
     no_rate_comparison: "No comparison to recent sessions, say whether this was higher, lower, or about the same",
     no_prompt_level: "Teaching described without a prompt level, name the prompt type used and whether it was faded",
     single_program_only: "Only one program is described, a second (ideally communication/social plus adaptive) makes the note stronger",
-    no_antecedent_impact: "Antecedent strategy named without its effect, say whether it helped",
+    antecedent_effect_unstated: "Antecedent strategy named without its effect, say whether it helped",
     thin_clinical_status: "Little detail on how the client presented at the start of session",
     no_response_described: "Behavior noted without your response, add what you did and whether it worked",
+    /* The code the SHARED register rules already ask every session tool to
+       emit, for an opinion with no observation behind it and for a feeling with
+       nothing attached. It was missing here, and a missing code is not a quiet
+       gap: `code` is an enum built from this object and normalizeHints drops
+       anything not in it, so both of those rules were unobeyable on this tool
+       while their instruction sat in the prompt. assess, parent and sap have
+       carried it since they were written; bt and sup did not. */
+    ambiguous_item: "Clarify",
+    /* Not a gap the model reports. The post-pass checks this one against the
+       two strategy lists below and injects it, because completeness B9 is the
+       only item on his bar that is checkable exactly rather than judged. It
+       still lives in this catalog: normalizeHints drops any code the tool does
+       not declare, so a hint nobody declared is a hint nobody sees. */
+    strategy_in_wrong_section: "Strategy narrated in the wrong section",
     other: "",
   };
+
+  /* ── Which section owns which strategy ────────────────────────────────────
+     A procedure narrated under the wrong heading is a misclassification, and
+     the record carries it whether or not the session ran that way.
+
+     THE CASE THAT STARTED THIS ALSO REVERSED IT, so read the DRO entry below
+     rather than trusting a summary of it. He first ruled that a DRO "isn't an
+     antecedent intervention properly", this list was built on that, and on
+     2026-09-02 he corrected it to the two-level reading quoted at the entry:
+     a DRO OPERATES as a consequence and IS an antecedent intervention, and a
+     note files by the intervention. Anything here that reads like a settled
+     clinical fact is one of his rulings and can move the same way.
+
+     A TERM, NOT A LABEL. These are checkbox labels; no narrative contains
+     "Allowed break" because a note says "gave him a break". Each strategy
+     therefore carries the phrase a note actually uses, and three carry none:
+     "Offered choices", "Allowed break" and the "provided warning" half of
+     "Priming/provided warning" have no phrase that is safe to match, because
+     choice, break and warning are ordinary words in clinical prose and a false
+     positive here puts a red hint on a correct note. Matching nothing is the
+     right way to be wrong. "Other" is a label for whatever the technician
+     typed, so it cannot be matched either. */
+  var STRATEGY_OWNERSHIP = {
+    code: "strategy_in_wrong_section",
+    sections: {
+      antecedentNarrative: {
+        label: "antecedent",
+        strategies: [
+          { label: "Environmental arrangement", term: /\benvironmental arrangement\b/i },
+          { label: "Visual schedule", term: /\bvisual schedule\b/i },
+          { label: "Utilized Premack principle (first-then)", term: /\b(?:premack|first[-\s]?then)\b/i },
+          { label: "Priming/provided warning", term: /\bprim(?:e|ed|ing)\b/i },
+          { label: "Motivation alteration / manipulation", term: /\bmotivat\w*\s+(?:alteration|manipulation)\b|\bmotivating operation/i },
+          /* HIS RULING OF 2026-09-02, and it reverses what this file said before.
+             A DRO is filed by what the INTERVENTION is, not by how it operates:
+             "Alteration of MOs (which DRO specifically is) is an antecedent
+             strategy because MOs apply to behaviors probability and reinforcing
+             potential. It *operates* as a consequence on the behavior preceding
+             the reinforcement period because of the nature of operant behavior
+             reinforcement, but as an *intervention* it is an antecedent strategy
+             that fires on an interval contingent on an absence (and therefore
+             *before* the behavior occurs in the interval)."
+
+             It sits beside motivation alteration because he says it IS one.
+             There is no DRO checkbox on the form; this term names the procedure
+             the way a narrative writes it, which is what every term here does. */
+          { label: "Differential reinforcement of other behavior (DRO)", term: /\bDRO\b|\bdifferential reinforcement of other behaviou?r\b/i },
+        ],
+      },
+      behaviorPlanNarrative: {
+        label: "consequence",
+        strategies: [
+          { label: "Redirection", term: /\bredirect(?:ed|ion|ing)\b/i },
+          { label: "Lessened response requirement", term: /\bresponse requirement\b/i },
+          { label: "Prompted functional communication", term: /\bfunctional communication\b|\bFCT\b/i },
+          /* NARROWED, and the old regex was wrong in both directions. It read
+             /differential reinforcement|DR[OAIL]/ and so filed DRO, DRA, DRI and
+             DRL as one thing. His closing instruction was that the tool "needs a
+             philosophical understanding of what a DRO, DRA, DRI, DRH, DRL DRD
+             are if it is going to account for them", so it now accounts only for
+             the two it can defend.
+
+             DRA and DRI stay here because that is already what this checkbox
+             means on his own form: its help text reads "reinforced the
+             replacement behavior, withheld for the target". Reinforcing a
+             replacement is a consequence procedure and is a different thing from
+             reinforcing the absence of one.
+
+             The BARE PHRASE now matches nothing. On its own "differential
+             reinforcement" is ambiguous between a DRO in the antecedent section
+             and a DRA in the consequence one, and a term that cannot resolve
+             which puts a red hint on a correct note. Same rule that leaves
+             choices, break and warning unmatched.
+
+             DRH, DRL and DRD carry nothing at all. He named them and I do not
+             have his reading on them, and a guess here is a guess about clinical
+             classification. */
+          { label: "Differential reinforcement of an alternative or incompatible behavior (DRA/DRI)", term: /\bDR[AI]\b|\bdifferential reinforcement of (?:an? )?(?:alternative|incompatible)\b/i },
+        ],
+      },
+    },
+  };
+
+  /* ── Quality rubric ───────────────────────────────────────────────────────
+     What the note is graded on, which is the regional handout's list and not
+     this tool's. Each dimension names the hint codes that report a gap in it,
+     so the assistant can say what to fix rather than how many things are
+     wrong: a count tells a technician that work remains and nothing about what
+     the work is, which leaves opening the panel as the only way to act on it.
+
+     beyond_data is the one measured on the prose instead of read off the
+     model's hints, because "do not repeat the data" is a rule about what ended
+     up on the page. note-rubric.js counts the sentences that carry a number
+     and almost nothing else. */
+
+  var QUALITY_RUBRIC = [
+    {
+      id: "result",
+      label: "What happened as a result",
+      codes: ["no_strategy_outcome", "no_response_described", "antecedent_effect_unstated"],
+    },
+    {
+      id: "comparison",
+      label: "How it compares to recent sessions",
+      codes: ["no_rate_comparison"],
+    },
+    {
+      id: "specifics",
+      label: "The detail a data table cannot carry",
+      codes: ["no_prompt_level", "thin_clinical_status", "single_program_only", "helped_not_in_plan"],
+    },
+    {
+      id: "beyond_data",
+      label: "Says more than the numbers",
+      measure: "restates_data",
+    },
+  ];
 
   /* ── Response schema ──────────────────────────────────────────────────────
      What the model is CONSTRAINED to, not merely asked for. The prompt still
@@ -273,13 +411,15 @@ PLAIN LANGUAGE (applies alongside the terminology rules, never against them)\n\
 - Use hyphens, never em dashes or en dashes. House convention, and their overuse is itself a machine tell.";
 
   var HINTS_BLOCK = "\n\nHINTS - return an array of {section, code, detail} objects flagging ONLY missing or ambiguous standard elements (max 4; empty array when the note stands on its own). \"section\" MUST be one of the JSON keys below; \"code\" MUST be from this list; \"detail\" is an optional specifier of 10 words or fewer:\n\
-- no_behavior_count (behaviorPlanNarrative): a behavior of concern is described with no count, rate, or duration\n\
+- no_strategy_outcome (lessonProgressNarrative, behaviorPlanNarrative): a strategy or teaching procedure is named with no statement of what happened as a result\n\
+- helped_not_in_plan (any section): the notes credit something that helped which is not part of the written plan\n\
 - no_rate_comparison (behaviorPlanNarrative): no comparison to recent sessions\n\
 - no_prompt_level (lessonProgressNarrative): teaching described with no prompt type or fading decision\n\
 - single_program_only (lessonProgressNarrative): only one program is identifiable in the notes\n\
-- no_antecedent_impact (antecedentNarrative): an antecedent strategy is named with no stated effect\n\
+- antecedent_effect_unstated (antecedentNarrative): an antecedent strategy is named with no stated effect\n\
 - thin_clinical_status (clinicalStatusNarrative): almost nothing about how the client presented on arrival\n\
 - no_response_described (behaviorPlanNarrative): a behavior is named with no BT response\n\
+- ambiguous_item (any section): something in the note needs clarifying before it is signed - put what, in detail\n\
 - other (any section): something else genuinely unclear - put the question in detail\n\
 Hints are advisory nudges, not demands - do not hint when the BT plainly had nothing to report for that element.";
 
@@ -288,6 +428,41 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
 
   var LABELED_FORMAT_BLOCK =
     "\n\nOUTPUT FORMAT\nReturn labeled sections in the exact order below. For each \"[tick]\" line, list ONLY the options that apply, comma-separated and verbatim from that section's allowed list; if none apply write \"None selected.\" For \"[choose one]\" pick exactly one allowed option (or \"None\"). For \"[narrative]\" write the prose. Do NOT output hints. No JSON, no preamble, no commentary.\n\nINDIVIDUALS PRESENT [tick]\nCLINICAL STATUS UPON ARRIVAL [tick]\nFURTHER DETAIL ON CLINICAL STATUS [narrative]\nPURPOSE OF SESSION [tick]\nSERVICE PAUSED DURING SESSION [choose one: Yes / No]\nABA TEACHING TECHNIQUES USED [tick]\nNARRATIVE OF LESSON PROGRESS [narrative]\nANTECEDENT STRATEGIES UTILIZED [tick]\nDESCRIBE ANTECEDENT MODIFICATIONS AND IMPACT [narrative]\nCONSEQUENCE STRATEGIES UTILIZED [tick]\nEFFECTIVENESS OF CONSEQUENCE STRATEGIES [choose one]\nNARRATIVE OF BEHAVIOR SUPPORT PLAN GOALS PROGRESS [narrative]\nCLIENT PROGRESS [choose one]\nACTION ITEMS FOR BCBA [tick]\nSUMMARY OF CONCERNS/QUESTIONS/INVOLVEMENT [narrative]\n\nIf the BT notes for a cluster are empty or nonsense, leave its ticks \"None selected\" and leave that narrative blank. A blank section tells the technician what is missing; a sentence saying the detail was not reported would follow the note into the record, where it describes the paperwork rather than the session.";
+
+  /* ── Triage, in this note's own terms ─────────────────────────────────────
+     The generic triage prompt asks about counts and rates. For a BT session
+     note those are already on the RT form, and asking for them again spends the
+     one moment the technician still has the session in their head on data the
+     EHR collected automatically.
+
+     What a supervisor actually reads for is the three checks below. They are
+     the same three the quality rubric measures after the draft, deliberately:
+     asking before the note is written is cheaper for the technician than
+     flagging a gap after it, and a fault the tool will point at later is a
+     fault it should have asked about first.
+
+     window.NoteTriagePrompt.suggestions carries the candidate-answer mechanism
+     and is appended by the engine, so it is not repeated here. */
+  var TRIAGE_SYSTEM =
+    "You are reviewing a behavior technician's raw session notes BEFORE they are turned into a formal note.\n\n" +
+    "Your ONLY job: decide whether anything is too thin to write from, and if so ask the short, specific questions that would materially improve the finished note.\n\n" +
+    "WHAT IS ALREADY CAPTURED, AND MUST NOT BE ASKED FOR\n" +
+    "Trial counts, accuracy percentages, and behavior frequencies are collected automatically and land on the form beside this note. Never ask for a number the data collection already holds. A technician who spends their time re-reporting those has less time for the part only they can supply.\n\n" +
+    "THE THREE GAPS WORTH ASKING ABOUT\n" +
+    "1. A PROGRAM WITH NO ACCOUNT OF HOW IT WENT. They named what they taught and stopped. Ask what needed more support, or what did not work - the prompt level they actually ran, the step that broke down, the part they had to change mid-session.\n" +
+    "2. A BEHAVIOR WITH NO COMPARISON, OR A COMPARISON WITH NO RESPONSE. \"How did this compare to recent sessions?\" is the first half. The second half matters more: when a behavior has moved, and especially when it has moved the wrong way against goal, ask what they did about it.\n" +
+    "3. SOMETHING THAT HELPED AND IS NOT IN THE PROTOCOL. The adjustment they made because it worked, which no plan told them to make. This is the detail nobody else in the record can supply, and it is the one most often left out. When they have reported nothing of the kind, read where the session struggled and offer candidates rather than an open question.\n\n" +
+    "RULES\n" +
+    "- Be specific and quote back what they wrote. \"You mentioned elopement - what did you do when it happened?\" NOT \"Can you add more detail?\"\n" +
+    "- NEVER ask for a name, a date, an address, or any other identifying detail. The notes are deliberately de-identified.\n" +
+    "- Do not ask about something they plainly had nothing to report. A session with no behaviors of concern is a normal session, not a gap.\n" +
+    "- Never ask them to justify a clinical decision. They ran the plan they were given.\n" +
+    "- Write dashes as a plain hyphen (-). Never use an em dash.\n" +
+    "- If the notes are adequate, return sufficient=true and an empty array. Fewer questions is better than more, and HOW MANY TO ASK below is the only ceiling.\n" +
+    // The object's shape is stated once, at the end of the composed prompt, by
+    // the shared READINESS block. Restating a partial version of it here would
+    // name two different objects in one prompt.
+    "- Return ONLY a JSON object. No markdown, no preamble, no commentary.";
 
   function buildUserPrompt(values) {
     return [
@@ -330,7 +505,14 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       "- clientProgress: " + menu(CLIENT_PROGRESS),
       "",
       "NARRATIVE GUIDANCE:",
-      "- lessonProgressNarrative: up to 8 sentences, ideally across two programs (one social/communication, one adaptive/repetitive-behavior-replacement). Qualitative, specific.",
+      "- lessonProgressNarrative: up to 8 sentences, ideally across two programs (one social/communication, one adaptive/repetitive-behavior-replacement). Qualitative, specific. Carry all three of what was observed, what was attempted, and what happened as a result of the attempt. A sentence that names a strategy and stops before its outcome is the most common gap in these notes, and completeness B4 asks for the third part by name.",
+      /* The order is not a style preference and he said so: "It is just
+         backward to good session design. That is why I was upset about it." A
+         note that prompts before it arranges describes a session run
+         backwards, and the record carries that reading whether or not the
+         session actually ran that way. The universal register block states the
+         rule; this states it where it bites, which is the program narrative. */
+      "  Within a program, write it in the order it ran: how the opportunity was arranged, then what was presented, then the prompt if one was needed, then what the client did, then what followed. Never write the prompt before the arrangement.",
       // The comparison is CONDITIONAL, and it was not before. "State whether
       // behavior increased, decreased, or held steady relative to recent
       // sessions" is a standing order, so a technician who never wrote a
@@ -338,8 +520,17 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       // without fabricating by reporting that the comparison was missing. The
       // gap already has a channel in no_rate_comparison, which reaches the
       // technician who can answer it. The note gets silence.
-      "- behaviorPlanNarrative: up to 4 sentences, quantitative where reported. Say whether behavior increased, decreased or held steady relative to recent sessions ONLY IF the notes give you that comparison. If they do not, write nothing at all about it, emit the no_rate_comparison hint, and never state that the comparison is missing.",
-      "- antecedentNarrative: describe the antecedent strategies as applied and their impact.",
+      "- behaviorPlanNarrative: up to 4 sentences. The EHR already attaches this session's counts, rates and percentages, so do not restate them; write the observation the numbers cannot carry. Say whether behavior increased, decreased or held steady relative to recent sessions ONLY IF the notes give you that comparison. If they do not, write nothing at all about it, emit the no_rate_comparison hint, and never state that the comparison is missing.",
+      /* B4 again, applied to a behavior rather than to a teaching procedure.
+         no_response_described has existed since this catalog was written and
+         the guidance never told the model what would earn it. */
+      "  For each behavior: what happened, what the technician did in response, and what followed. A behavior named with no response is a gap rather than a short sentence, so emit the no_response_described hint instead of inventing one.",
+      /* "As applied and their impact" is two parts of three, and the missing
+         one is the client. His shipped antecedent narrative read "Choices were
+         offered when appropriate to increase opportunities for the client to
+         participate", which satisfies both halves of the old line and says
+         nothing about what the client did. */
+      "- antecedentNarrative: three parts for each strategy. How it was actually applied, what the client did in response, and whether it worked. \"Choices were offered\" is the first part alone. Where the notes give you a strategy and not the response or the effect, write the part you have, emit the antecedent_effect_unstated hint, and supply neither of the others yourself.",
       "- clinicalStatusNarrative: up to 2 sentences on mood/behavior at session start.",
       "- followUpNarrative: brief; use the default sentence above if nothing reported. Write it as the person filing the note, not about them. The technician IS the direct staff, so never write \"Direct staff report...\" or \"The behavior technician has no concerns\" here, that is the author describing themselves in the third person, which reads as though someone else wrote the note. \"No new questions or concerns for the BCBA at this time\" is the register.",
     ].join("\n");
@@ -371,24 +562,10 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
     out.hints = normalizeHints(o.hints, HINT_CATALOG, SECTION_IDS);
     // Only present on a revision that reached past the section the clinician
     // pointed at. Validated against the same closed section list as hints, so a
-    // fabricated section name cannot route a change anywhere.
-    out.answer = typeof o.answer === "string" ? o.answer.slice(0, 1200) : "";
-    out.bcbaQuestion = typeof o.bcbaQuestion === "string" ? o.bcbaQuestion.slice(0, 300) : "";
-    out.crossSection = Array.isArray(o.crossSection)
-      ? o.crossSection
-          .filter(function (c) {
-            return c && typeof c === "object" && SECTION_IDS.indexOf(c.section) !== -1;
-          })
-          .map(function (c) {
-            return {
-              section: c.section,
-              confident: c.confident === true,
-              why: typeof c.why === "string" ? c.why.slice(0, 140) : "",
-            };
-          })
-          .slice(0, 8)
-      : [];
-    return out;
+    // fabricated section name cannot route a change anywhere. bt carried its own
+    // copy of this until 2026-08-30; it reads the shared one now, so the caps
+    // cannot drift between the tool that had it and the four that gained it.
+    return Object.assign({}, out, normalizeRevision(o, SECTION_IDS));
   }
 
   window.NOTE_TOOLS.push({
@@ -501,7 +678,18 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
     groupOptions: GROUP_OPTIONS,
     formSections: FORM_SECTIONS,
     hintCatalog: HINT_CATALOG,
+    strategyOwnership: STRATEGY_OWNERSHIP,
+    qualityRubric: QUALITY_RUBRIC,
     responseSchema: RESPONSE_SCHEMA,
+
+    /* Two halves of one fact. TRIAGE_SYSTEM is the source verify-parity.mjs
+       composes the stored bt_triage prompt from, and what runs if this tool is
+       ever un-migrated; triageKind names the stored copy the Worker fetches.
+       server-prompt.spec.js fails a migrated tool carrying one without the
+       other, because deleting either one alone asks a technician the generic
+       questions and errors nowhere. */
+    triageSystem: TRIAGE_SYSTEM,
+    triageKind: "bt_triage",
 
     validate: function (values) {
       if (!(values.fLesson || "").trim()) return "Please add notes for Skill Acquisition / Lesson Progress.";

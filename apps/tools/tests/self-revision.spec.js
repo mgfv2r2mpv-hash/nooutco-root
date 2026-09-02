@@ -201,3 +201,111 @@ test.describe('the technician voice reaches the prompt', () => {
     expect(Number(longer)).toBeGreaterThan(Number(a));
   });
 });
+
+/* THE SECOND PASS NOW HAS A SECOND REASON TO RUN.
+ *
+ * Everything above measures how the draft is SHAPED. These measure what it
+ * SAYS. Both numbers already existed at this point in the draft: note-metrics
+ * counted the banned constructions and hollow.js counted the sentences with a
+ * category for a subject and nothing observable in them, and until now both
+ * were counted, audited, and acted on by nobody. A fault the tool can see and
+ * does not fix is a fault the technician fixes by hand, which is the cost this
+ * whole line of work exists to take off them.
+ *
+ * Every fixture below is deliberately VARIED in sentence length, so the old
+ * trigger cannot be what fired. That is the whole point of the pair.
+ */
+
+// Varied lengths, plus four constructions off the ban lists.
+const WORDY = [
+  'The client arrived settled.',
+  'The behavior technician ran the money program with a three-item array of one, five and ten dollar bills, starting at full physical prompting and fading to a gesture once the client began orienting to the correct bill on his own.',
+  'Eight of twelve trials were correct.',
+  'He eloped twice, both times during the money program, and on each occasion the technician blocked it and brought him back with a gestural prompt before returning to the array.',
+  'No self-injury today.',
+  'The technician gave a two-minute warning before the move to table work and set a visual timer where he could see it, which is the change from last week.',
+  'Refusals were well down.',
+  'The caregiver came in at the end and asked how the device should be used at home, so the technician walked her through the two mands he uses most.',
+  'The technician proactively supported the transition by providing a warning.',
+  'His behavioral response was noted.',
+].join(' ');
+
+// Varied lengths, two constructions (under the floor), one hollow sentence.
+const HOLLOW = [
+  'The client arrived settled.',
+  'The behavior technician ran the money program with a three-item array of one, five and ten dollar bills, starting at full physical prompting and fading to a gesture once the client began orienting to the correct bill on his own.',
+  'Eight of twelve trials were correct.',
+  'He eloped twice, both times during the money program, and on each occasion the technician blocked it and brought him back with a gestural prompt before returning to the array.',
+  'No self-injury today.',
+  'The technician gave a two-minute warning before the move to table work and set a visual timer where he could see it, which is the change from last week.',
+  'Refusals were well down.',
+  'The caregiver came in at the end and asked how the device should be used at home, so the technician walked her through the two mands he uses most.',
+  'These strategies supported the client throughout the session.',
+].join(' ');
+
+test.describe('and it revises what the draft says, not only how it is shaped', () => {
+  test('a varied draft carrying banned constructions still gets a second pass', async ({ page }) => {
+    const { calls } = await generate(page, WORDY);
+    expect(calls()).toBe(3);
+  });
+
+  test('the ask names the words rather than counting them', async ({ page }) => {
+    // "Your note has 4 flagged constructions" is a number the model cannot act
+    // on. These strings come off four fixed lists rather than out of the note,
+    // so naming them quotes nothing clinical back.
+    const { sent } = await generate(page, WORDY);
+    const ask = sent[2].messages[sent[2].messages.length - 1].content;
+    expect(ask).toMatch(/"proactively"/);
+    expect(ask).toMatch(/"by providing"/);
+    expect(ask).toMatch(/"supported"/);
+    expect(ask).toMatch(/standing where an observation should be/i);
+  });
+
+  test('it says to cut the phrase rather than reword it when the notes do not support one', async ({ page }) => {
+    // Rewording a vague verb into a different vague verb is the failure mode
+    // here, and it reads as compliance.
+    const { sent } = await generate(page, WORDY);
+    const ask = sent[2].messages[sent[2].messages.length - 1].content;
+    expect(ask).toMatch(/cut the phrase rather than rewording it/i);
+  });
+
+  test('a varied draft with a hollow sentence gets one too', async ({ page }) => {
+    const { calls } = await generate(page, HOLLOW);
+    expect(calls()).toBe(3);
+  });
+
+  test('the hollow ask counts the sentences and quotes the shape, not the note', async ({ page }) => {
+    const { sent } = await generate(page, HOLLOW);
+    const ask = sent[2].messages[sent[2].messages.length - 1].content;
+    // The fixture puts the sentence in two narrative sections.
+    expect(ask).toMatch(/2 sentences in this draft name a category/);
+    expect(ask).toMatch(/heading\s+for an observation that never arrived/);
+    // It must not be the flatness ask: this draft is not flat.
+    expect(ask).not.toMatch(/SAMENESS/);
+  });
+
+  test('a clean varied draft still costs nothing, which is what makes the trigger a measurement', async ({ page }) => {
+    const { calls } = await generate(page, VARIED);
+    expect(calls()).toBe(2);
+  });
+
+  test('a draft that is both flat and wordy is one call, not two rounds of latency', async ({ page }) => {
+    const flatAndWordy = UNIFORM + ' The technician proactively supported the transition by providing a warning. His behavioral response was noted.';
+    const { sent, calls } = await generate(page, flatAndWordy);
+    expect(calls()).toBe(3);
+    const ask = sent[2].messages[sent[2].messages.length - 1].content;
+    expect(ask).toMatch(/SAMENESS/);
+    expect(ask).toMatch(/"proactively"/);
+  });
+
+  test('the content prohibitions survive whichever fault fired', async ({ page }) => {
+    // A rewrite pass that can invent or drop a finding is a patient-safety
+    // problem. The guard used to sit inside one branch; there are three now.
+    const { sent } = await generate(page, HOLLOW);
+    const ask = sent[2].messages[sent[2].messages.length - 1].content;
+    expect(ask).toMatch(/no new facts/i);
+    expect(ask).toMatch(/no removed facts/i);
+    expect(ask).toMatch(/keep every checkbox/i);
+    expect(ask).toMatch(/Return the COMPLETE JSON object/);
+  });
+});

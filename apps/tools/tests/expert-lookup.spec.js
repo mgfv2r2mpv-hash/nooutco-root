@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { expertLookupCalls, lookupResultBlocks, fetchLogEntries, expertSchema, lookupRound } from '../_worker.js';
+import {
+  expertLookupCalls,
+  lookupResultBlocks,
+  fetchLogEntries,
+  expertSchema,
+  lookupRound,
+  expertLookupEnabled,
+} from '../_worker.js';
 
 /* The lookup: how a topic record gets off the index and into the answer.
  *
@@ -124,10 +131,12 @@ test.describe('the evidence elevation reads', () => {
   });
 });
 
-test.describe('the schema is unchanged until there is something to fetch', () => {
-  test('with no topic records in force it is byte-identical to the one the note tools get today', () => {
-    // This is what makes the whole feature safe to ship before the database
-    // exists. No store, no records, no tool, no field.
+test.describe('the two schema shapes', () => {
+  test('without the tool it is byte-identical to the one the note tools get', () => {
+    // The shape the pass shipped with, kept because the parameter still decides
+    // whether `used` is required. No caller passes false any more: since the
+    // glossary split there is always something to fetch. See the always-on
+    // block below, which is the live behaviour.
     const before = JSON.stringify(expertSchema(['alpha', 'beta']));
     expect(JSON.stringify(expertSchema(['alpha', 'beta'], false))).toBe(before);
     expect(JSON.stringify(expertSchema(['alpha', 'beta'], undefined))).toBe(before);
@@ -188,5 +197,24 @@ test.describe('the loop stops', () => {
     // and stops. A fifth would be the model ignoring the refusal, and it does
     // not get one.
     expect(rounds).toBe(4);
+  });
+});
+
+test.describe('the lookup tool rides on every call, not only when the store has rules', () => {
+  test('an empty store still gets the tool, because the glossary is always fetchable', () => {
+    /* THE REGRESSION THIS EXISTS FOR. Until 2026-08-30 the gate was
+       `composed.topic > 0`, and reinstating it would break nothing near itself:
+       the build passes, the pass answers, and the only symptom is an expert
+       quietly guessing abbreviations because its prompt told it to fetch and
+       nothing gave it a tool. An empty store is the state this store spends its
+       first day in, so the empty case is the one that has to be walked. */
+    expect(expertLookupEnabled({ core: 0, topic: 0 })).toBe(true);
+    expect(expertLookupEnabled(null)).toBe(true);
+    expect(expertLookupEnabled(undefined)).toBe(true);
+    expect(expertLookupEnabled({ core: 3, topic: 0 })).toBe(true);
+  });
+
+  test('a store with rules gets it too, which is the case that always worked', () => {
+    expect(expertLookupEnabled({ core: 1, topic: 4 })).toBe(true);
   });
 });

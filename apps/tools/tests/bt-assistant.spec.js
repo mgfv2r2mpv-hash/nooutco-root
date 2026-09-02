@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { isTriageCall } from './helpers/llm-call.js';
+import { refusedKeywords } from './helpers/schema.js';
 
 // The BT tool used to be its own 800-line page with no revision loop. It is now
 // a NOTE_TOOLS entry on the shared engine, which is what buys it the 5-minute
@@ -213,7 +214,7 @@ test.describe('triage questions before drafting', () => {
        started passing nothing. What separates them now is the field itself:
        triage names a prompt in the store and sends no text, the note sends the
        block it measured today and names no kind. */
-    expect(posted[0].prompt_kind, 'the first call is triage').toBe('triage');
+    expect(posted[0].prompt_kind, 'the first call is triage').toBe('bt_triage');
     expect(posted[0].system_suffix, 'triage carries nothing measured in the page').toBeUndefined();
     expect(noteCall.prompt_kind, 'the note asks for the tool\'s own prompt').toBeUndefined();
     expect(typeof noteCall.system_suffix, 'the note carries its measured block').toBe('string');
@@ -296,7 +297,13 @@ test.describe('triage questions before drafting', () => {
 
      These pin the mapping in both directions and, more importantly, pin the
      fallback: a triage reply with no readiness must get the LONGER wait, not
-     the shorter one. */
+     the shorter one.
+
+     THE GATE HOLDS ROUND ONE BELOW THE BAR, so a wait on a button that is not
+     drawn yet is not a reading of anything. The middling readings are taken in
+     round two, which is where their button first exists. The readings that
+     never gate - 85 and over, and a reply carrying no readiness at all - are
+     still taken in round one, which is where they arrive. */
   test.describe('the wait scales with how ready the note already is', () => {
     const triageWith = (extra) => ({
       sufficient: false,
@@ -345,8 +352,36 @@ test.describe('triage questions before drafting', () => {
       await expect(skip).toBeEnabled();
     });
 
+    const nextRound = (extra) => ({
+      ...triageWith(extra),
+      questions: [{ field: 'fBehavior', question: 'For how long?' }],
+    });
+
+    /* Answer round one, then hand back the skip button round two draws. The
+       assertions on the way through are the gate's, and they are here rather
+       than in a test of their own so that a gate that stopped holding could
+       not quietly turn these into round one readings again. */
+    async function secondRound(page, first, second) {
+      let calls = 0;
+      await page.route('**/api/llm-call**', (route) => {
+        calls++;
+        return route.fulfill(reply(calls === 1 ? first : second));
+      });
+      await page.clock.install();
+      await page.goto('/notes/bt/');
+      await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
+      await page.goto('/notes/bt/');
+      await fillRequiredAndGenerate(page);
+      await expect(page.locator('[data-skip-held]')).toBeVisible();
+      await expect(page.locator('.revision-skip')).toHaveCount(0);
+      await page.locator('.revision-input').fill('twice');
+      await page.locator('.revision-send').click();
+      await expect(page.getByText(/for how long/i)).toBeVisible();
+      return page.getByRole('button', { name: /Nothing to add/i });
+    }
+
     test('a middling note still waits', async ({ page }) => {
-      const skip = await openQuestions(page, triageWith({ readiness: 40 }));
+      const skip = await secondRound(page, triageWith({ readiness: 40 }), nextRound({ readiness: 40 }));
       await startsAt(skip, 16);
       // The moment that separates the two: the ready note above was through
       // immediately and this one is not.
@@ -375,27 +410,14 @@ test.describe('triage questions before drafting', () => {
       // Readiness is re-read every round rather than carried forward. Answering
       // two of three questions is exactly the case where the note improved, and
       // the wait has to move with it or the number is decorative.
-      const posted = [];
-      await page.route('**/api/llm-call**', (route) => {
-        posted.push(JSON.parse(route.request().postData() || '{}'));
-        return route.fulfill(reply(posted.length === 1
-          ? triageWith({ readiness: 40 })
-          : { ...triageWith({ readiness: 90 }), questions: [{ field: 'fBehavior', question: 'For how long?' }] }));
-      });
-      await page.clock.install();
-      await page.goto('/notes/bt/');
-      await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
-      await page.goto('/notes/bt/');
-      await fillRequiredAndGenerate(page);
-
-      const skip = page.getByRole('button', { name: /Nothing to add/i });
-      await startsAt(skip, 16);
-
-      await page.locator('.revision-input').fill('twice');
-      await page.locator('.revision-send').click();
-      await expect(page.getByText(/for how long/i)).toBeVisible();
+      //
+      // The same two rounds as the test above, and the second reading is the
+      // only difference between them: 90 rather than 40, and the sixteen
+      // seconds are gone.
+      const skip = await secondRound(page, triageWith({ readiness: 40 }), nextRound({ readiness: 90 }));
       // Answering carried it over his threshold, so the second round is free.
       await expect(skip).toBeEnabled();
+      await expect(page.locator('.skip-cooldown-bar')).toHaveCount(0);
     });
   });
 
@@ -602,6 +624,78 @@ test.describe('annotate + panel revision', () => {
     await expect(page.locator('.revision-input')).toHaveValue('shorten the behaviour section');
   });
 
+  /* The triage schema is shared by all five tools, so one bad keyword in it
+     took gap questions and the readiness reading off every one of them between
+     2026-08-19 and 2026-09-01. Nothing looked broken: the draft still arrived,
+     because the engine treats a failed triage as "no questions to ask".
+
+     Asserted on the posted payload rather than on the constant, because what
+     the API refuses is what the API is sent. */
+  test('the triage call posts a schema the API will accept', async ({ page }) => {
+    const posted = [];
+    await page.route('**/api/llm-call**', async (route) => {
+      const body = JSON.parse(route.request().postData() || '{}');
+      posted.push(body);
+      return route.fulfill(
+        reply(isTriageCall(body) ? { sufficient: true, readiness: 90, questions: [] } : note()),
+      );
+    });
+
+    await page.goto('/notes/bt/');
+    await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
+    await page.goto('/notes/bt/');
+
+    await fillRequiredAndGenerate(page);
+    await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
+
+    const triage = posted.find(isTriageCall);
+    expect(triage, 'no triage call was posted').toBeTruthy();
+    /* The whole body, not just the schema key. It rides inside
+       output_config.format.schema, which is the path the API named in the
+       error, and walking the body means this keeps working wherever the
+       payload puts it next. */
+    const schema = triage.output_config?.format?.schema;
+    expect(schema, 'the triage call carried no output_config schema').toBeTruthy();
+    expect(refusedKeywords(triage, 'triage body')).toEqual([]);
+    /* Dropping the keyword must not drop the bound with it: the model is still
+       told the range, and clampReadiness holds it on the way back in. */
+    expect(JSON.stringify(schema)).toContain('0 to 100');
+  });
+
+  test('a readiness the model puts out of range is clamped, not passed on', async ({ page }) => {
+    await page.route('**/api/llm-call**', async (route) => {
+      const body = JSON.parse(route.request().postData() || '{}');
+      return route.fulfill(
+        reply(
+          isTriageCall(body)
+            ? { sufficient: false, readiness: 480, questions: [{ field: 'behavior', question: 'How many times?' }] }
+            : note(),
+        ),
+      );
+    });
+
+    await page.goto('/notes/bt/');
+    await page.evaluate((t) => {
+      localStorage.setItem('notes_auth_token', t);
+      localStorage.removeItem('noaba.audit.buffer.v1');
+    }, tokenFor());
+    await page.goto('/notes/bt/');
+
+    await fillRequiredAndGenerate(page);
+    await expect(page.getByText('How many times?')).toBeVisible({ timeout: 20000 });
+
+    /* 480 buys a skip cooldown no note has earned, and it reaches the audit
+       trail as itself. skipSecondsFor clamped its own copy and nothing else,
+       which is why the clamp moved to the boundary. */
+    const audited = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('noaba.audit.buffer.v1') || '[]')
+        .filter((e) => e.type === 'gap_questions' && 'readiness' in e.data)
+        .map((e) => e.data.readiness),
+    );
+    expect(audited.length, 'no gap_questions audit event was recorded').toBeGreaterThan(0);
+    for (const r of audited) expect(r).toBeLessThanOrEqual(100);
+  });
+
   test('the collapsed pill carries the note quality, not just a label', async ({ page }) => {
     await page.route('**/api/llm-call**', async (route) => {
       const body = JSON.parse(route.request().postData() || '{}');
@@ -621,5 +715,40 @@ test.describe('annotate + panel revision', () => {
     // note() carries no hints and no empty narrative, so this reads as complete.
     await page.locator('.revision-panel-close').click();
     await expect(page.locator('.revision-fab')).toHaveClass(/quality-good/);
+  });
+
+  test('the pill says what to fix, not how many things are wrong', async ({ page }) => {
+    await page.route('**/api/llm-call**', async (route) => {
+      const body = JSON.parse(route.request().postData() || '{}');
+      return route.fulfill(
+        reply(
+          isTriageCall(body)
+            ? { sufficient: true, questions: [] }
+            : note({
+                hints: [
+                  { section: 'behaviorPlanNarrative', code: 'no_strategy_outcome', detail: '', rank: 1, kind: 'thin' },
+                ],
+              }),
+        ),
+      );
+    });
+
+    await page.goto('/notes/bt/');
+    await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
+    await page.goto('/notes/bt/');
+
+    await fillRequiredAndGenerate(page);
+    await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
+    await page.locator('.revision-panel-close').click();
+
+    const fab = page.locator('.revision-fab');
+    await expect(fab).toHaveClass(/quality-thin/);
+    /* One hint used to make this tooltip read "1 spot could use more detail",
+       which is the count and no instruction: the only way to act on it was to
+       open the panel and read the hint anyway. */
+    await expect(fab).toHaveAttribute(
+      'title',
+      'Strategy described without its outcome, say what happened as a result of trying it',
+    );
   });
 });

@@ -105,9 +105,11 @@ function loadTool(toolId) {
 }
 
 /* Byte-identical in intent to expertSectionIds() in engine.jsx, and the comment
-   there is the reason this does not read formSections: for every tool but bt the
-   two lists disagree, and a caller using formSections gets every finding filed
-   under "note" while the expert looks unable to tell one section from another. */
+   there is the reason this does not read formSections: not that the two lists
+   disagree - measured, they very nearly always match - but that formSections is
+   a render order nothing binds to the contract the response is serialized
+   against. A caller reading the render order gets findings filed under ids the
+   page cannot draw the first time somebody reorders a card. */
 function expertSectionIds(tool, win) {
   let enumList = null;
   try {
@@ -118,6 +120,21 @@ function expertSectionIds(tool, win) {
   if (!Array.isArray(enumList)) return null;
   const whole = win.NoteToolsUtil && win.NoteToolsUtil.HINT_WHOLE_NOTE ? win.NoteToolsUtil.HINT_WHOLE_NOTE : 'note';
   return enumList.filter((id) => id !== whole);
+}
+
+/* Which tools the expert covers, measured rather than listed. The line that
+   reported this used to read "bt, sap" in a string literal, and it would have
+   started lying the moment a tool gained a schema - which is exactly what
+   happened on 2026-08-30. */
+function runnableTools() {
+  return Object.keys(TOOL_FILES).filter((id) => {
+    try {
+      const { tool, win } = loadTool(id);
+      return !!expertSectionIds(tool, win);
+    } catch (err) {
+      return false;
+    }
+  });
 }
 
 /* The two channels are handed different bodies in production and this bench
@@ -331,7 +348,8 @@ async function main() {
     throw new BenchError(
       `The expert does not run for ${tool.id}.\n` +
         `It has no responseSchema, so expertSectionIds() returns null in engine.jsx and the\n` +
-        `pass is never fired. There is nothing to compare. Tools that do run: bt, sap.`
+        `pass is never fired. There is nothing to compare.\n` +
+        `Tools that do run: ${runnableTools().join(', ') || '(none)'}.`
     );
   }
 

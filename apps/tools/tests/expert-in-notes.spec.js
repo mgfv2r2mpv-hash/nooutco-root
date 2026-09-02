@@ -165,7 +165,7 @@ test.describe('the expert reads the same intake the draft was written from', () 
 
 test.describe('both channels speak on the same note', () => {
   test('the expert findings land in the section they name, beside the catalog', async ({ page }) => {
-    await draft(page, { note: { ...NOTE, hints: [{ section: 'behaviorPlanNarrative', code: 'no_behavior_count', detail: '', rank: 1, kind: 'thin' }] } });
+    await draft(page, { note: { ...NOTE, hints: [{ section: 'behaviorPlanNarrative', code: 'no_rate_comparison', detail: '', rank: 1, kind: 'thin' }] } });
     // The expert's section finding.
     await expect(page.getByTestId('expert-behaviorPlanNarrative')).toBeVisible();
     await expect(page.getByTestId('expert-behaviorPlanNarrative')).toContainText('How long did each elopement last?');
@@ -182,6 +182,9 @@ test.describe('both channels speak on the same note', () => {
     await draft(page);
     const reg = page.getByTestId('expert-register');
     await expect(reg).toBeVisible();
+    // COLLAPSED SINCE 2026-09-02, so the quote is one click in rather than on
+    // the page. The finding itself is unchanged and this test still pins it.
+    await reg.getByTestId('expert-register-toggle').click();
     await expect(reg).toContainText('he wanted attention');
     await expect(reg).toContainText('Say what happened and who responded.');
   });
@@ -194,6 +197,171 @@ test.describe('both channels speak on the same note', () => {
   test('the abbreviations it resolved are shown with the reading it used', async ({ page }) => {
     await draft(page);
     await expect(page.getByTestId('expert-terms')).toContainText('Discrete Trial Training');
+  });
+});
+
+/* WHAT HE READ ON 2026-09-02, in his words: "This is almost a full page of
+   corrections before they see any note", the blocks are "aggressive and large",
+   and "'Fine as written' is not helpful."
+
+   Everything below measures the panel rather than describing it, because the
+   fault he named was a size and the fix has to be checkable as one. Each test
+   is two-sided where it can be: the finding is still reachable, it is simply
+   not in the way. A redesign that hid a finding outright would pass a
+   "the panel is smaller" test and fail the clinician. */
+test.describe('the reading is compact, and its argument is behind a word', () => {
+  const withRegister = (rows) => ({ ...EXPERT, register: rows });
+
+  const THREE = [
+    { quote: 'he wanted attention', action: 'reframe', why: 'A function claim, not an observation.', move: 'Say what happened and who responded.' },
+    { quote: 'in bursts', action: 'reframe', why: 'A pattern the intake did not give.', move: 'Say how many times.' },
+    { quote: 'The client completed programming.', action: 'keep', why: 'Observable and attributed.', move: '' },
+  ];
+
+  test('the register stack is one line until it is opened', async ({ page }) => {
+    await draft(page, { expert: withRegister(THREE) });
+    const reg = page.getByTestId('expert-register');
+    await expect(reg).toHaveAttribute('data-register-open', '0');
+    // Nothing but the count line, so what the expert costs above the note is
+    // one row whatever it found.
+    await expect(page.getByTestId('expert-register-row')).toHaveCount(0);
+    await expect(page.getByTestId('expert-register-toggle')).toContainText('2 phrases it would reword');
+    await expect(page.getByTestId('expert-register-toggle')).toContainText('show');
+
+    // And it is reachable, which is the other half.
+    await page.getByTestId('expert-register-toggle').click();
+    await expect(reg).toHaveAttribute('data-register-open', '1');
+    await expect(page.getByTestId('expert-register-row')).toHaveCount(2);
+  });
+
+  test('a keep never renders, and it is not counted in the line above the note', async ({ page }) => {
+    await draft(page, { expert: withRegister(THREE) });
+    await page.getByTestId('expert-register-toggle').click();
+    const reg = page.getByTestId('expert-register');
+    await expect(reg).toContainText('he wanted attention');
+    await expect(reg).toContainText('in bursts');
+    // The sentence the expert passed is gone from the panel entirely. It was a
+    // third of the stack and it asked the technician for nothing.
+    await expect(reg).not.toContainText('The client completed programming.');
+    await expect(page.locator('[data-register-action="keep"]')).toHaveCount(0);
+  });
+
+  test('a stack of nothing but keeps reads as a clean note, not as a list', async ({ page }) => {
+    await draft(page, { expert: withRegister([THREE[2]]) });
+    // Same message an empty register draws, because after the filter it is one.
+    await expect(page.getByTestId('expert-register-empty')).toBeVisible();
+    await expect(page.getByTestId('expert-register-toggle')).toHaveCount(0);
+  });
+
+  test('a register row is the quote and the move, with the reason behind a word', async ({ page }) => {
+    await draft(page);
+    await page.getByTestId('expert-register-toggle').click();
+    const row = page.getByTestId('expert-register-row').first();
+    await expect(row).toContainText('he wanted attention');
+    await expect(row).toContainText('Say what happened and who responded.');
+    // The justification is the part that made these blocks large. It is still
+    // written and still reachable, and it is not on the page unasked.
+    await expect(row).not.toContainText('A function claim, not an observation.');
+    await row.getByTestId('expert-register-why').click();
+    await expect(row).toContainText('A function claim, not an observation.');
+  });
+
+  test('an expert ask carries its justification behind a word rather than under it', async ({ page }) => {
+    await draft(page);
+    const ask = page.getByTestId('expert-note').locator('[data-expert-kind]').first();
+    await expect(ask).toContainText('What was the prompt level');
+    await expect(page.getByTestId('expert-why')).toHaveCount(0);
+    await ask.getByTestId('expert-why-toggle').click();
+    await expect(ask.getByTestId('expert-why')).toContainText('A payer reads a trial count');
+  });
+
+  /* WHAT HE READ ON 2026-09-02, in his words: "that expert block has 'Client at
+     session start' because the expert got 'happy' as 'client' and it didn't
+     pass back the exact token found so that the rehydration could map it back
+     to 'happy'".
+
+     The mechanism he described is right and the remedy he reached for is not
+     available. Undoing the swap means mapping every "Client" in the quote back
+     to a name, and the expert writes "Client" on its own account because the
+     prompt tells it to, so undoing it would put a real client's name into a
+     sentence the model wrote about the role. The row reports the swap instead.
+
+     draft() types "client Jacob", which the cue rule takes as a person and
+     replaces permanently, so this is the same shape he hit rather than a
+     contrived one. */
+  test('a role token in a quote is captioned with the word the clinician actually typed', async ({ page }) => {
+    await draft(page, {
+      expert: withRegister([
+        { quote: 'Client wanted attention', action: 'reframe', why: 'A function claim.', move: 'Say what happened and who responded.' },
+      ]),
+    });
+    await page.getByTestId('expert-register-toggle').click();
+    const swap = page.getByTestId('expert-register-swap');
+    await expect(swap).toHaveCount(1);
+    await expect(swap).toContainText('Jacob');
+    await expect(swap).toContainText('Client');
+
+    // The quote is NOT rewritten, which is the half that keeps a name out of a
+    // sentence the model wrote.
+    await expect(page.getByTestId('expert-register-row').first()).toContainText('Client wanted attention');
+  });
+
+  test('a quote the scrub never touched carries no caption', async ({ page }) => {
+    await draft(page);
+    await page.getByTestId('expert-register-toggle').click();
+    // "he wanted attention" holds no token, so there is nothing to report and
+    // the row says nothing. A caption on every row would be noise.
+    await expect(page.getByTestId('expert-register-swap')).toHaveCount(0);
+  });
+
+  /* WHAT HE READ ON 2026-09-02: the intake said vocal requests were "higher
+     today", he supplied the comparison in the assistant panel, the note was
+     rewritten with it, "but this expert note remains on the page."
+
+     Nothing can know he closed that gap - the expert read the intake once and
+     is never asked again. What the page knows is that he worked on the section
+     afterwards, so it says that and gets out of the way.
+
+     TWO-SIDED, and the second half is the one that matters. A keystroke must
+     not be able to silently retire a real finding, or the technician never
+     learns it existed. */
+  test('a finding for a section the clinician has since edited folds, and is still readable', async ({ page }) => {
+    await draft(page);
+    // Before the edit it is an ordinary finding on the section.
+    await expect(page.getByTestId('expert-behaviorPlanNarrative')).toContainText('How long did each elopement last?');
+    await expect(page.getByTestId('expert-behaviorPlanNarrative-stale')).toHaveCount(0);
+
+    await page.locator('textarea[data-section-id="behaviorPlanNarrative"]')
+      .fill('Elopement occurred on two occasions, each lasting under ten seconds, and the technician blocked the door.');
+
+    const stale = page.getByTestId('expert-behaviorPlanNarrative-stale');
+    await expect(stale).toBeVisible();
+    await expect(stale).toContainText('You have edited this section since the expert read it');
+    await expect(stale).toContainText('1 finding');
+    // Folded, not deleted.
+    await expect(stale).not.toContainText('How long did each elopement last?');
+    await page.getByTestId('expert-behaviorPlanNarrative-stale-toggle').click();
+    await expect(stale).toContainText('How long did each elopement last?');
+  });
+
+  test('editing one section leaves the findings on every other section alone', async ({ page }) => {
+    await draft(page);
+    await page.locator('textarea[data-section-id="behaviorPlanNarrative"]').fill('Rewritten.');
+    // The whole-note finding is about the note rather than that section, and it
+    // is untouched. A blanket "you edited something" would have taken it.
+    await expect(page.getByTestId('expert-note')).toContainText('What was the prompt level');
+    await expect(page.getByTestId('expert-note-stale')).toHaveCount(0);
+  });
+
+  /* His instruction, in full: references to "the handout" should be removed,
+     and the tool should "simply state the deficit and propose the remedy".
+     Neither fixture in this file contains the word, so anything the assertion
+     finds came out of the tool's own strings. */
+  test('nothing the tool says to a clinician cites a handout', async ({ page }) => {
+    await draft(page);
+    await page.getByTestId('expert-register-toggle').click();
+    const seen = await page.evaluate(() => document.body.innerText);
+    expect(seen).not.toMatch(/handout/i);
   });
 });
 

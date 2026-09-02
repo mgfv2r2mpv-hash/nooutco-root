@@ -87,16 +87,39 @@ function expertEnabled(toolId) {
 }
 window.expertEnabled = expertEnabled;
 
-/* THE SECTION LIST COMES OUT OF THE RESPONSE SCHEMA, and the bench learned that
-   the hard way. The obvious source is formSections, and it is right for exactly
-   one tool: bt derives SECTION_IDS from it, and the others hardcode a list that
-   formSections does not match. A caller reading formSections would send the
-   wrong ids, every finding would come back filed under "note", and the expert
-   would look unable to tell one section from another.
+/* The corrections pass runs for the same people the expert pass runs for, and
+   the gate is the same check for the same reason: the route takes any live
+   login and then refuses a tool the login's own list does not carry, so a
+   looser gate here would spend a call the Worker is going to answer 403.
+
+   ?corrections=off turns it off, and it is worth more here than the expert's
+   escape hatch is. This pass edits the note, so "show me the draft the model
+   actually wrote" has to stay one query parameter away. */
+function correctionsEnabled(toolId) {
+  if (!window.NoteCorrections || !window.CorrectionsView) return false;
+  if (!window.NotesGate || !NotesGate.canUseTool || !NotesGate.canUseTool(toolId)) return false;
+  return new URLSearchParams(location.search).get("corrections") !== "off";
+}
+window.correctionsEnabled = correctionsEnabled;
+
+/* THE SECTION LIST COMES OUT OF THE RESPONSE SCHEMA. The obvious source is
+   formSections, and the reason not to read it is worth stating accurately,
+   because this comment stated it wrongly until 2026-08-30. It is NOT that the
+   two lists disagree: measured across all five tools at 6f38ff0d, four matched
+   exactly and sup matched as a set in a different order. It is that nothing
+   MAKES them agree. formSections is a render order the layout owns - his
+   2026-08-04 change moved Goals Analyzed to lead and SECTION_IDS was not moved
+   with it - while the schema enum is the contract the response is serialized
+   against. Agreement between them is maintained by hand, and a caller reading
+   the render order would send ids off the wrong structure the first time
+   somebody reordered a card.
 
    hintSchema builds the enum as SECTION_IDS.concat(["note"]) for every tool, so
    the schema is the one place they all agree. Returns null for a tool with no
    responseSchema, which is how a tool opts out: giving it a schema opts it in.
+   All five carry one since 2026-08-30, so the opt-out is currently unused - and
+   it is kept rather than removed because it is what makes adding a sixth tool a
+   one-file change.
 
    Kept byte-identical in intent to expertSections() in admin/index.html. The
    two are separate files with no module system between them, so the pin is
@@ -660,8 +683,17 @@ function NoteHints({ hints, catalog }) {
 const EXPERT_LABEL = "expert";
 
 function ExpertRow({ finding, testid }) {
+  /* THE ASK IS THE ROW. THE JUSTIFICATION IS BEHIND A WORD.
+     His verdict on 2026-09-02, looking at his own tool: the expert blocks are
+     "aggressive and large". Measured on the screenshots he sent, the ask ran
+     two lines and the why ran five, so four fifths of every block was the model
+     arguing for a finding the technician had already read. The why is still
+     here, because a finding nobody can check is a finding nobody can refuse.
+     It is one click away rather than in the way. */
+  const [showWhy, setShowWhy] = React.useState(false);
   const tone = HINT_TONE[finding.kind] || HINT_TONE.thin;
   const ask = String(finding.ask || "").trim();
+  const why = String(finding.why || "").trim();
   if (!ask) return null;
   return (
     <div
@@ -674,7 +706,17 @@ function ExpertRow({ finding, testid }) {
         {EXPERT_LABEL}
       </span>
       {tone.mark} {ask}
-      {finding.why ? <div style={{ opacity: 0.82, marginTop: 3 }}>{finding.why}</div> : null}
+      {why ? (
+        <button
+          type="button"
+          data-testid="expert-why-toggle"
+          onClick={(e) => { e.stopPropagation(); setShowWhy(!showWhy); }}
+          style={{ marginLeft: 6, fontSize: 11.5, color: "inherit", opacity: 0.6, background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline" }}
+        >
+          {showWhy ? "less" : "why"}
+        </button>
+      ) : null}
+      {showWhy && why ? <div data-testid="expert-why" style={{ opacity: 0.82, marginTop: 3 }}>{why}</div> : null}
     </div>
   );
 }
@@ -707,10 +749,33 @@ function ExpertList({ findings, testid }) {
   );
 }
 
+/* One line where a reading has been overtaken, and the findings behind it. See
+   markSectionRevised for why this folds rather than retires. */
+function ExpertStale({ findings, testid }) {
+  const [open, setOpen] = React.useState(false);
+  const n = findings.length;
+  return (
+    <div style={{ marginTop: 8 }} data-testid={`${testid}-stale`} data-stale-open={open ? "1" : "0"}>
+      <button
+        type="button"
+        data-testid={`${testid}-stale-toggle`}
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        style={{ fontSize: 11.5, color: "#7a9460", background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline", textAlign: "left" }}
+      >
+        You have edited this section since the expert read it. {n} finding{n === 1 ? "" : "s"} from that reading{open ? " - hide" : " - show"}
+      </button>
+      {open && <ExpertList findings={findings} testid={testid} />}
+    </div>
+  );
+}
+
 function ExpertNotes({ expert, section }) {
   if (!expert || expert.status !== "done") return null;
   const id = sectionId(section);
-  return <ExpertList findings={(expert.hints || []).filter((f) => f.section === id)} testid={`expert-${id}`} />;
+  const mine = (expert.hints || []).filter((f) => f.section === id);
+  if (!mine.length) return null;
+  if ((expert.revised || []).includes(id)) return <ExpertStale findings={mine} testid={`expert-${id}`} />;
+  return <ExpertList findings={mine} testid={`expert-${id}`} />;
 }
 
 /* THE REGISTER FINDINGS ARE THE POINT, and they are the thing the catalog has
@@ -719,33 +784,98 @@ function ExpertNotes({ expert, section }) {
    why the quote is drawn rather than summarised: "you wrote X" is checkable
    where "watch your mentalism" is advice.
 
-   `keep` findings are drawn too. A sentence the expert looked at and passed is
-   information - it means the reading covered it - and hiding them would make a
-   thorough pass look like a thin one. */
+   THREE THINGS HE RULED ON 2026-09-02, reading five of these stacked above his
+   own note. Take them together or the row grows back.
+
+   NO KEEPS. They were drawn on the reasoning that a sentence the expert passed
+   is information about the reading. His verdict: "'Fine as written' is not
+   helpful." A list that mixes what to change with what not to change is read
+   twice to find the first thing to do, and the prompt no longer asks for them
+   either, so this filter is the second of two doors.
+
+   ONE LINE, NOT A BOX. Each finding was a bordered card carrying the quote, the
+   reason and the replacement on three separate rows. It is now the quote and
+   the replacement on one flowing line with a left rule, and the reason behind a
+   word. His rule for it: "reduce the friction from deficit to remedy."
+
+   COLLAPSED BY DEFAULT, which is the only thing that actually bounds the cost.
+   "This is almost a full page of corrections before they see any note ... does
+   not minimize the vertical space the expert injects into the tool. Opposite."
+   Five compact rows are still five rows, so what sits above the note now is one
+   line carrying the count, and the stack opens on a click. */
 const REGISTER_ACTION_LABEL = {
-  reframe: "rewrite this",
-  ask: "ask about this",
-  remove: "cut this",
-  keep: "fine as written",
+  reframe: "rewrite",
+  ask: "ask",
+  remove: "cut",
 };
 
+// A keep is dropped here and not asked for upstream. An empty quote never had a
+// finding in it: the row is built entirely out of the clinician's own words.
+function registerShown(register) {
+  return (register || []).filter(
+    (r) => r && String(r.quote || "").trim() && (r.action || "ask") !== "keep",
+  );
+}
+
 function RegisterFinding({ finding }) {
+  const [showWhy, setShowWhy] = React.useState(false);
   const quote = String(finding.quote || "").trim();
   if (!quote) return null;
   const action = finding.action || "ask";
-  const muted = action === "keep";
+  const move = String(finding.move || "").trim();
+  const why = String(finding.why || "").trim();
+  const swaps = finding.swaps || [];
   return (
     <div
       data-testid="expert-register-row"
       data-register-action={action}
-      style={{ fontSize: 12.5, border: "1px solid #e5e7eb", borderRadius: 7, padding: "7px 10px", marginBottom: 5, lineHeight: 1.5, background: muted ? "#f9fafb" : "#f3f4f6", color: "#374151", opacity: muted ? 0.78 : 1 }}
+      style={{ fontSize: 12.5, borderLeft: "2px solid #d9ded1", paddingLeft: 9, marginBottom: 6, lineHeight: 1.5, color: "#374151" }}
     >
-      <span style={{ fontSize: 10, letterSpacing: ".08em", textTransform: "uppercase", fontWeight: 700, opacity: 0.7, marginRight: 6 }}>
+      <span style={{ fontSize: 10, letterSpacing: ".08em", textTransform: "uppercase", fontWeight: 700, opacity: 0.6, marginRight: 6 }}>
         {REGISTER_ACTION_LABEL[action] || action}
       </span>
-      <span style={{ fontStyle: "italic" }}>“{quote}”</span>
-      {finding.why ? <div style={{ marginTop: 3, opacity: 0.85 }}>{finding.why}</div> : null}
-      {finding.move ? <div style={{ marginTop: 3, color: "#374528", fontWeight: 600 }}>{finding.move}</div> : null}
+      <span style={{ fontStyle: "italic", opacity: 0.78 }}>“{quote}”</span>
+      {move ? <span style={{ color: "#374528", fontWeight: 600 }}> → {move}</span> : null}
+      {/* The quote is the intake and the move is the note, so where the scrub
+          took a word the two say different things. Saying which word, in the
+          row itself, is what turns "the expert misquoted me" into "the scrub
+          read Happy as a name". The word is certified through the notice above
+          the note, which is where that escape already lives. */}
+      {swaps.map((sw, i) => (
+        <span key={i} data-testid="expert-register-swap" style={{ color: "#8a6d1a", opacity: 0.9 }}>
+          {" "}(you wrote “{sw.name}”; the scrub reads it as {sw.token})
+        </span>
+      ))}
+      {why ? (
+        <button
+          type="button"
+          data-testid="expert-register-why"
+          onClick={(e) => { e.stopPropagation(); setShowWhy(!showWhy); }}
+          style={{ marginLeft: 6, fontSize: 11.5, color: "#6b7280", background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline" }}
+        >
+          {showWhy ? "less" : "why"}
+        </button>
+      ) : null}
+      {showWhy ? <div style={{ marginTop: 2, opacity: 0.85 }}>{why}</div> : null}
+    </div>
+  );
+}
+
+/* One line above the note whatever the expert found, and the stack behind it. */
+function RegisterStack({ findings }) {
+  const [open, setOpen] = React.useState(false);
+  const n = findings.length;
+  return (
+    <div style={{ marginBottom: 8 }} data-testid="expert-register" data-register-open={open ? "1" : "0"}>
+      <button
+        type="button"
+        data-testid="expert-register-toggle"
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        style={{ fontSize: 12, color: "#5d6a4d", background: "none", border: "none", padding: "0 0 4px", cursor: "pointer", textDecoration: "underline" }}
+      >
+        {n} phrase{n === 1 ? "" : "s"} it would reword{open ? " - hide" : " - show"}
+      </button>
+      {open && findings.map((r, i) => <RegisterFinding key={i} finding={r} />)}
     </div>
   );
 }
@@ -771,6 +901,34 @@ function TermFinding({ finding }) {
       {finding.reading ? ` ${TERM_STATUS_LABEL[status] || status} ${finding.reading}` : ` - ${TERM_STATUS_LABEL[status] || status}`}
     </span>
   );
+}
+
+/* SAYING WHICH OF THEIR WORDS IS BEHIND A ROLE TOKEN IN THEIR OWN QUOTE.
+ *
+ * A register finding's `quote` is the clinician's own sentence by contract, and
+ * the expert read a de-identified intake, so the sentence comes back with
+ * whatever the scrub put in it. He read one on 2026-09-02: he typed "Happy at
+ * session start", the name dictionary took Happy for a first name, and the
+ * finding quoted back "Client at session start", about a swap nothing on the
+ * page mentioned.
+ *
+ * Opaque tokens need nothing here - restoreOutput already round-trips them, and
+ * that runs before this does. A role token is deliberately permanent and stays
+ * permanent: the note is the thing it protects, and notes-scrub.js sets out why
+ * mapping "Client" back to a name across a whole quote is a worse fault than
+ * this one. So the swap is reported rather than undone, and the row draws it.
+ *
+ * `move` IS LEFT ALONE. It is a replacement sentence for the note, so it has to
+ * agree with the note rather than with the intake. */
+function expertForReader(found, map) {
+  if (!found || !window.NotesScrub || !NotesScrub.permanentSwaps) return found;
+  return {
+    ...found,
+    register: (found.register || []).map((r) => ({
+      ...r,
+      swaps: NotesScrub.permanentSwaps(String(r.quote || ""), map),
+    })),
+  };
 }
 
 /* Everything the expert found that is not about one section: the abbreviations
@@ -815,7 +973,7 @@ function ExpertReading({ expert }) {
 
   const whole = window.NoteToolsUtil ? window.NoteToolsUtil.HINT_WHOLE_NOTE : "note";
   const wholeHints = (expert.hints || []).filter((f) => f.section === whole);
-  const register = expert.register || [];
+  const register = registerShown(expert.register);
   const terms = expert.terms || [];
 
   return (
@@ -827,9 +985,7 @@ function ExpertReading({ expert }) {
         </div>
       )}
       {register.length > 0 ? (
-        <div style={{ marginBottom: 8 }} data-testid="expert-register">
-          {register.map((r, i) => <RegisterFinding key={i} finding={r} />)}
-        </div>
+        <RegisterStack findings={register} />
       ) : (
         /* Finding nothing is a result, and the panel has to agree or a clean
            note reads as a broken call. */
@@ -879,6 +1035,15 @@ function freshSession(tool) {
        previous intake sitting next to a new note is worse than no reading. */
     expert: null,
 
+    /* The corrections pass, and what the technician has done about it.
+       `corrections` is what the pass changed, aligned against the draft it
+       changed - null before it has run and after the marks are dismissed.
+       `markState` is per-mark, keyed section:index, and holds only the
+       decisions: everything not in it is accepted, which is the default and
+       the reason a fresh note ships corrected without a click. */
+    corrections: null,
+    markState: {},
+
     // ── Assistant panel ──────────────────────────────────────────────────
     // What the clinician sees, which is not what the model sees: `conversation`
     // carries raw JSON both ways, `thread` carries the readable exchange.
@@ -896,6 +1061,10 @@ function freshSession(tool) {
     ticketFiling: false,
     triageAnswers: "",     // everything they have answered so far, scrubbed
     triageRound: 0,        // rounds asked; capped so this cannot become an interrogation
+    // Candidate answers offered alongside this round's questions. Absent from
+    // the map means accepted, which is the resting state: a technician who
+    // reads them and generates keeps all of them.
+    suggestState: {},      // {"<question>:<suggestion>": {reverted, text}}
     // Changes a revision made OUTSIDE the section that was clicked, which the
     // model was not confident belonged there. Held here rather than applied, so
     // nothing is lost and nothing lands where it was not asked for.
@@ -1035,12 +1204,35 @@ function App() {
      an empty one on the first draft. The ref is what the model answer is
      measured against; the state copy stays because the notice renders from it. */
   const scrubMapRef = React.useRef([]);
-  const scrubGate = async (freeText) => {
+  /* carryOver decides whether this scrub JOINS the note's map or replaces it,
+     and getting it wrong is what put [[T3]] in a signed sup note on 2026-08-31.
+
+     A revision scrubs only the newly typed instruction, because the section body
+     is model output already in the conversation. That is right. What was wrong
+     is that the map it produced then REPLACED the draft's map, taking the
+     draft's opaque tokens with it. The model still had them: the revision
+     replays the earlier turns verbatim for the prefix cache, so it copies
+     [[T3]] out of its own history, and by then nothing knows [[T3]] was
+     "Play-Doh".
+
+     So: a fresh draft replaces, because it starts a new conversation and must
+     not inherit the last note's words. Every later turn on the same note carries
+     over. NotesScrub.review is given what is already issued so its numbering
+     continues rather than minting a second [[T1]] for a different word. */
+  const scrubGate = async (freeText, opts) => {
+    const carryOver = !!(opts && opts.carryOver);
     if (!(await NotesScrub.acknowledge())) return null;
-    const review = await NotesScrub.review({ freeText });
+    const prior = carryOver ? scrubMapRef.current : [];
+    const review = await NotesScrub.review({ freeText, seen: prior });
     if (review.cancelled) return null;
-    scrubMapRef.current = review.map;
-    patchS({ scrubMap: review.map, certified: [] });
+    const carried = carryOver ? NotesScrub.mergeMaps(prior, review.map) : review.map;
+    scrubMapRef.current = carried;
+    /* The BANNER gets the carried map too, not just this scrub's share of it.
+       It tells the clinician what to substitute back in their EHR, and a note is
+       one document however many turns built it: replacing the list on a revision
+       took "Jacob → Client" off the screen while Client was still in the note
+       they were about to copy. */
+    patchS({ scrubMap: carried, certified: [] });
     return review;
   };
 
@@ -1111,7 +1303,7 @@ function App() {
   const triageSystemFor = () =>
     tool.serverPrompt
       ? { promptKind: tool.triageKind || "triage" }
-      : { system: (tool.triageSystem || TRIAGE_SYSTEM) + TRIAGE_READINESS };
+      : { system: (tool.triageSystem || TRIAGE_SYSTEM) + TRIAGE_SUGGESTIONS + TRIAGE_READINESS };
 
   /* EVERY DRAFT PASSES THROUGH HERE BEFORE ANYONE SEES IT.
 
@@ -1132,10 +1324,42 @@ function App() {
 
        Role tokens are NOT touched. Client stays Client. */
     const restored = NotesScrub.restoreOutput(parsed, scrubMapRef.current);
-    const normalized = tool.normalizeOutput(restored);
-    return window.NoteAbsence
+
+    /* THE MEMBERSHIP CHECK RUNS BEFORE normalizeOutput, ON PURPOSE. Its result
+       is a list of hints in the model's own shape, concatenated onto the ones
+       the model sent, so the tool's normalizeHints validates all of them
+       together. A hint injected after normalization would be the one hint on
+       the note that skipped the check for a code the tool declares and a
+       section the note has, which is exactly the check worth not skipping. */
+    const misplaced = window.NoteHollow && tool.strategyOwnership
+      ? window.NoteHollow.misplaced(restored, tool.strategyOwnership)
+      : [];
+    const withHints = misplaced.length
+      ? { ...restored, hints: (Array.isArray(restored.hints) ? restored.hints : []).concat(misplaced) }
+      : restored;
+
+    const normalized = tool.normalizeOutput(withHints);
+    const stripped = window.NoteAbsence
       ? window.NoteAbsence.scrubNote(normalized)
       : { output: normalized, cut: 0, flagged: 0 };
+
+    /* AFTER THE STRIP, never before. absence.js was written and tuned against
+       what the model returns, and the recast writes new sentences into the
+       note ("No behaviors of concern occurred."). Running the recast first
+       would hand the strip prose no model wrote, and the one thing absence.js
+       must never do is cut a zero. */
+    const filled = window.NoteHollow
+      ? window.NoteHollow.passNote(stripped.output, narrativeIds())
+      : { output: stripped.output, recast: 0, hollow: 0 };
+
+    return {
+      output: filled.output,
+      cut: stripped.cut,
+      flagged: stripped.flagged,
+      recast: filled.recast,
+      hollow: filled.hollow,
+      misplaced: misplaced.length,
+    };
   };
   const finalOutput = (parsed) => finalize(parsed).output;
 
@@ -1201,31 +1425,34 @@ function App() {
   const narrativeIds = () =>
     tool.formSections.filter((s) => s.kind === "narrative").map(sectionId);
 
+  // Section id to heading, so a move's dot can name where the sentence came
+  // from rather than saying "somewhere else".
+  const correctionHeadings = React.useMemo(() => {
+    const map = {};
+    tool.formSections.forEach((sec) => { map[sectionId(sec)] = sec.heading || ""; });
+    return map;
+  }, [tool.id]);
+
   /* How the note is doing, for the collapsed assistant pill.
    *
    * Built from the hints the model already returns rather than from a second
    * call: it has just read the note and said what is thin about it, so asking
    * again would cost a round trip to learn something we were already told.
    *
-   * "missing" means a hint names a section that has no prose at all - a payer
-   * reading that note finds a blank where a narrative should be. "thin" means
-   * there are hints but every section has something in it. Deliberately
-   * conservative: a green tick that turns out to be wrong is worse than an amber
-   * one the technician glances at and dismisses. */
-  const noteQuality = () => {
-    if (!S.output) return { level: "idle" };
-
-    const empties = narrativeIds().filter((id) => !String(S.output[id] || "").trim());
-    if (empties.length) {
-      return { level: "missing", reason: `${empties.length} narrative section${empties.length > 1 ? "s are" : " is"} empty` };
-    }
-
-    const hints = Array.isArray(S.output.hints) ? S.output.hints : [];
-    if (hints.length) {
-      return { level: "thin", reason: `${hints.length} spot${hints.length > 1 ? "s" : ""} could use more detail` };
-    }
-    return { level: "good", reason: "Nothing flagged. Review it before you file it." };
-  };
+   * It reports a rubric rather than a tally. "2 spots could use more detail"
+   * says work remains and nothing about what the work is, so the only way to
+   * act on it is to open the panel and read both. The dimensions and the
+   * grading live in note-rubric.js, and a tool brings its own because the hint
+   * codes are per tool. Deliberately conservative either way: a green tick that
+   * turns out to be wrong is worse than an amber one the technician glances at
+   * and dismisses. */
+  const noteQuality = () =>
+    NoteRubric.grade({
+      output: S.output,
+      narrativeIds: narrativeIds(),
+      rubric: tool.qualityRubric || null,
+      hintCatalog: tool.hintCatalog || {},
+    });
 
   // How much of the generated prose the clinician rewrote by hand.
   const manualEditChars = () => {
@@ -1299,23 +1526,47 @@ function App() {
     required: ["sufficient", "readiness", "questions"],
     properties: {
       sufficient: { type: "boolean" },
-      readiness: { type: "integer", minimum: 0, maximum: 100 },
+      /* The bound lives in the prompt and in clampReadiness, never in the
+         schema. The API refuses an integer carrying minimum or maximum, and it
+         refuses the whole call, which is how all five tools lost their triage
+         for a fortnight without any of them looking broken. */
+      readiness: { type: "integer", description: "0 to 100." },
       questions: {
         type: "array",
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["field", "question"],
-          properties: { field: { type: "string" }, question: { type: "string" } },
+          required: ["field", "question", "suggestions", "bar"],
+          properties: {
+            field: { type: "string" },
+            question: { type: "string" },
+            /* Required, holding [] when there are none, rather than optional.
+               The schema is shared by every tool and the model is constrained
+               to it whether or not that tool's prompt mentions suggestions, so
+               a key it must always emit is one it can never half-emit. */
+            suggestions: { type: "array", items: { type: "string" } },
+            /* Required and empty for the same reason, and the id alone rather
+               than the rule it names. A tool whose prompt supplies no bar
+               returns "", and the string that comes back is checked against a
+               shape before anything reads it. */
+            bar: { type: "string" },
+          },
         },
       },
     },
   };
 
+  const clampReadiness = (n) => Math.min(100, Math.max(0, Math.round(n)));
+
   /* Both of these now live in triage-prompt.js, so the prompt store can extract
      them from a deployed file. Read here rather than defined here, the same way
      the register rules are. */
   const TRIAGE_SYSTEM = (window.NoteTriagePrompt || {}).system || "";
+  /* Between the tool's own prompt and the readiness block, so a tool that
+     overrides the first still gets the candidate-answer mechanism. What a tool
+     suggests ABOUT is its own prompt's business; how a suggestion is shaped and
+     what makes one safe to accept by default is the same for all of them. */
+  const TRIAGE_SUGGESTIONS = (window.NoteTriagePrompt || {}).suggestions || "";
   const TRIAGE_READINESS = (window.NoteTriagePrompt || {}).readiness || "";
 
   // The default above is written for session notes. A tool whose input is not a
@@ -1340,6 +1591,79 @@ function App() {
       .map((f) => `[${f.label}]${f.required ? " (required)" : ""}\n${(scrubbed[f.id] || "").trim() || "(empty)"}`)
       .join("\n\n");
 
+  /* At most two, non-blank, and never longer than a sentence the technician
+     would have typed themselves.
+
+     The cap is a hard bound rather than a prompt request. Two is the number he
+     asked for, and a question wearing five pre-accepted answers is no longer a
+     question - it is a paragraph the tool wrote and dared them to read. */
+  const MAX_SUGGESTIONS = 2;
+  const MAX_SUGGESTION_CHARS = 220;
+
+  /* The id of the standard a question came from, where the prompt gave the
+     model one. It is not shown; it is what the audit trail carries, and it is
+     the only way to find out which parts of the bar a technician's notes
+     actually fail.
+
+     Held to a shape rather than trusted, because this is a model-written string
+     on its way into the one durable per-technician record the system keeps.
+     "B4" is content-free. A sentence about a session is not, and the difference
+     between them here is one regex. */
+  const BAR_ID = /^[A-Z][0-9]{1,2}$/;
+  const barId = (raw) => {
+    const t = typeof raw === "string" ? raw.trim().toUpperCase() : "";
+    return BAR_ID.test(t) ? t : "";
+  };
+
+  const normalizeQuestion = (q) => ({
+    ...q,
+    suggestions: (Array.isArray(q.suggestions) ? q.suggestions : [])
+      .filter((t) => typeof t === "string" && t.trim())
+      .map((t) => t.trim().slice(0, MAX_SUGGESTION_CHARS))
+      .slice(0, MAX_SUGGESTIONS),
+    bar: barId(q.bar),
+  });
+
+  /* How many questions the reading buys, his ruling of 2026-08-31: "Minimize
+     them but a truly bad note may need more than 3 clarifications."
+
+     The prompt states the same bands and this is the bound, because a prompt
+     asked for two can still return five and the technician is the one who pays
+     for the extra three. A missing reading keeps the three the tool asked for
+     before there was a reading at all. */
+  const QUESTION_CEILINGS = [
+    { from: 85, ask: 1 },
+    { from: 60, ask: 2 },
+    { from: 30, ask: 3 },
+    { from: 0, ask: 5 },
+  ];
+  const DEFAULT_QUESTION_CEILING = 3;
+  const questionCeilingFor = (readiness) => {
+    if (!Number.isFinite(readiness)) return DEFAULT_QUESTION_CEILING;
+    const band = QUESTION_CEILINGS.find((b) => readiness >= b.from);
+    return band ? band.ask : DEFAULT_QUESTION_CEILING;
+  };
+
+  /* One hyphen-joined token rather than an array, because the audit sanitiser
+     keeps a short token and drops everything else, an array included. Deduped
+     and cut to what the sanitiser accepts, and the key is left off entirely
+     when there is nothing to say, so a key that arrives is a key that was
+     meant rather than one dropped quietly on the way. */
+  const AUDIT_TOKEN_MAX = 24;
+  const barsFor = (questions) => {
+    const seen = [];
+    (questions || []).forEach((q) => {
+      const id = q && q.bar;
+      if (id && seen.indexOf(id) === -1) seen.push(id);
+    });
+    let token = "";
+    seen.forEach((id) => {
+      const next = token ? token + "-" + id : id;
+      if (next.length <= AUDIT_TOKEN_MAX) token = next;
+    });
+    return token ? { bars: token } : {};
+  };
+
   const runTriage = async (scrubbed, priorAnswers) => {
     let body = intakeBody(scrubbed);
     if (priorAnswers && priorAnswers.trim()) {
@@ -1361,12 +1685,22 @@ function App() {
     // word the person cannot see.
     const parsed = NotesScrub.restoreOutput(r.parsed || {}, scrubMapRef.current);
     const questions = Array.isArray(parsed.questions) ? parsed.questions : [];
+    // Absent or unparseable stays null rather than becoming a number, so the
+    // wait falls back to the full thirty seconds and the ceiling to three. A
+    // missing reading must not hand out the shortcut a ready note earns.
+    //
+    // Clamped here rather than trusted, because the schema cannot carry the
+    // bound. One clamp at the boundary means every consumer reads the same
+    // number - the audit trail included, which the clamp inside
+    // skipSecondsFor never covered.
+    const readiness = Number.isFinite(parsed.readiness) ? clampReadiness(parsed.readiness) : null;
     return {
-      questions: parsed.sufficient ? [] : questions.filter((q) => q && q.question).slice(0, 3),
-      // Absent or unparseable stays null rather than becoming a number, so the
-      // wait falls back to the full thirty seconds. A missing reading must not
-      // hand out the shortcut a ready note earns.
-      readiness: Number.isFinite(parsed.readiness) ? parsed.readiness : null,
+      questions: parsed.sufficient
+        ? []
+        : questions.filter((q) => q && q.question)
+            .slice(0, questionCeilingFor(readiness))
+            .map(normalizeQuestion),
+      readiness,
     };
   };
 
@@ -1408,6 +1742,28 @@ function App() {
   const REVISE_MIN_SENTENCES = 8;
   const REVISE_MIN_WORDS = 120;
 
+  /* THE SECOND PASS NOW HAS A SECOND REASON TO RUN, and it is the one the
+     technician would otherwise have to fix by hand.
+
+     Everything above measures how the draft is SHAPED. These two measure what
+     it SAYS, and both numbers already exist by the time the draft is finalized:
+     note-metrics counts the banned constructions, and hollow.js counts the
+     sentences that name a category and a vague verb with nothing observable in
+     them. Until now both were counted, audited, and acted on by nobody.
+
+     WHY A FLOOR OF TWO RATHER THAN ONE. A single "supported" in a 300 word note
+     is a word choice; three of them is the register. Firing on one would spend a
+     call on almost every draft, and the cost of the call is latency the
+     technician waits through. One hollow sentence is enough on its own, because
+     a sentence with nothing in it is a whole sentence of nothing rather than a
+     word inside a good one.
+
+     These are cost controls and not measured thresholds, and they are written
+     here as plain numbers so nobody has to go looking for the study that is not
+     behind them. */
+  const REVISE_CONSTRUCTION_FLOOR = 3;
+  const REVISE_HOLLOW_FLOOR = 1;
+
   /* The two rules that hold whether or not a section was pointed at.
    *
    * Both come from faults he hit on the live tool. He asked whether something
@@ -1423,14 +1779,22 @@ function App() {
   const selfRevise = async (conversation, block, first) => {
     if (!window.NoteMetrics) return null;
 
+    /* NARRATIVE SECTIONS ONLY, and that carries more weight now than it did.
+       The register measurement in the audit reads every keyed section, which
+       means it reads the tool's own option labels; "Not effective at addressing
+       behaviors within session, additional support needed" contributes a
+       vagueVerb hit on every note that selects it. An ask built off that number
+       would name a word the model cannot change and did not write. Here the
+       count comes off the prose the model is being asked to fix. */
+    const draft = finalize(first.parsed);
     const prose = tool.formSections
       .filter((sec) => sec.kind === "narrative" && sec.key)
-      .map((sec) => String(finalOutput(first.parsed)[sec.key] || ""))
+      .map((sec) => String(draft.output[sec.key] || ""))
       .filter(Boolean)
       .join("\n\n");
 
     const m = window.NoteMetrics.measure(prose);
-    // Nothing to measure, too little to judge, or it already mixes: leave it.
+    // Nothing to measure, or too little to judge: leave it.
     if (!m) return null;
     if (m.sentences < REVISE_MIN_SENTENCES || m.words < REVISE_MIN_WORDS) return null;
 
@@ -1440,41 +1804,87 @@ function App() {
     // this call was made on.
     const scoped = m.sectionCv !== null && m.sectionCv !== undefined && m.sections >= 1;
     const spread = scoped ? m.sectionCv : m.burstiness;
-    if (spread >= (scoped ? REVISE_WITHIN_FLOOR : REVISE_SPREAD_FLOOR)) return null;
+    const flat = spread < (scoped ? REVISE_WITHIN_FLOOR : REVISE_SPREAD_FLOOR);
 
+    const banned = window.NoteMetrics.flagged(prose);
+    const constructions = m.emptyAdverbs + m.participialCausals + m.abstractStates + m.vagueVerbs;
+    const wordy = constructions >= REVISE_CONSTRUCTION_FLOOR && banned.length > 0;
+    const hollow = draft.hollow >= REVISE_HOLLOW_FLOOR;
+
+    // Nothing measured is wrong with it. This is the common case and it costs
+    // the technician nothing.
+    if (!flat && !wordy && !hollow) return null;
+
+    /* ONE CALL, however many faults it carries. A draft that is flat AND wordy
+       gets both named in the same ask rather than two rounds of latency, and
+       the order runs from the one that changes the most text to the one that
+       changes the least. */
     const where = scoped ? "within each section" : "across the note";
-    const ask = [
-      "Before I read this, look at your own draft again.",
-      "",
-      "Its narrative sentences average " + Math.round(m.meanLen) + " words, and " + where +
-        " they vary by only " + Math.round(spread * 100) +
-        "% around that. That is the problem: not the length, the SAMENESS.",
-      "Uniform sentence length is the single strongest signal that prose was machine-written,",
-      "and it is equally true whether every sentence is short or every sentence is long.",
-      "",
-      // These lines are joined with a newline, so a phrase split across two of
-      // them is not the phrase any more. tests/self-revision.spec.js matches
-      // "keep every checkbox" and caught exactly that. Keep each prohibition
-      // whole on its own line.
-      "Fix it INSIDE each section rather than between them. A note where every section reads at",
-      "one flat pace, with all the variety sitting between sections, has the same problem in a",
-      "different place. Put a short sentence next to a long one. Let a small fact be a short",
-      "sentence. Join two related observations into one longer sentence where they belong together.",
+    const ask = ["Before I read this, look at your own draft again.", ""];
+
+    if (flat) {
+      ask.push(
+        "Its narrative sentences average " + Math.round(m.meanLen) + " words, and " + where +
+          " they vary by only " + Math.round(spread * 100) +
+          "% around that. That is the problem: not the length, the SAMENESS.",
+        "Uniform sentence length is the single strongest signal that prose was machine-written,",
+        "and it is equally true whether every sentence is short or every sentence is long.",
+        "",
+        // These lines are joined with a newline, so a phrase split across two of
+        // them is not the phrase any more. tests/self-revision.spec.js matches
+        // "keep every checkbox" and caught exactly that. Keep each prohibition
+        // whole on its own line.
+        "Fix it INSIDE each section rather than between them. A note where every section reads at",
+        "one flat pace, with all the variety sitting between sections, has the same problem in a",
+        "different place. Put a short sentence next to a long one. Let a small fact be a short",
+        "sentence. Join two related observations into one longer sentence where they belong together.",
+        ""
+      );
+    }
+
+    if (hollow) {
+      ask.push(
+        draft.hollow === 1
+          ? "One sentence in this draft names a category, uses a vague verb, and reports nothing."
+          : draft.hollow + " sentences in this draft name a category, use a vague verb, and report nothing.",
+        'A sentence like "These strategies supported the client throughout the session" is a heading',
+        "for an observation that never arrived. Replace each one with what was actually done and what",
+        "the client actually did. If the notes do not tell you, cut the sentence rather than keeping",
+        "the shape of it, and emit the hint that says the detail is missing.",
+        ""
+      );
+    }
+
+    if (wordy) {
+      /* NAMING THE WORDS, not the count. "Your note has 4 flagged
+         constructions" is a number the model cannot act on, and these strings
+         come off the four fixed lists rather than out of the note, so nothing
+         clinical is being quoted back. */
+      ask.push(
+        "It also uses " + banned.map(function (w) { return '"' + w + '"'; }).join(", ") + ".",
+        "Each of those is a word standing where an observation should be. Say what happened instead:",
+        'what the client did, what the technician did, how many times, how long. Where the notes do',
+        "not give you that, cut the phrase rather than rewording it.",
+        ""
+      );
+    }
+
+    ask.push(
       "Change nothing about the clinical content: no new facts, no removed facts, no softened",
       "findings, and keep every checkbox exactly as it is.",
       "",
-      "Return the COMPLETE JSON object with ALL keys, as before.",
-    ].join("\n");
+      "Return the COMPLETE JSON object with ALL keys, as before."
+    );
 
-    const next = [...conversation, { role: "user", content: ask }];
+    const next = [...conversation, { role: "user", content: ask.join("\n") }];
     const result = await runTurn(next, block);
     if (!result || !result.parsed) return null;
-    return { ask, result };
+    return { ask: ask.join("\n"), result };
   };
 
   const draftNote = async (scrubbedValues, extra) => {
     setLoading(true);
-    patchS({ output: null, proposal: null, conversation: [], questions: null, readiness: null, pendingValues: null, expert: null });
+    patchS({ output: null, proposal: null, conversation: [], questions: null, readiness: null, pendingValues: null, expert: null, corrections: null, markState: {} });
     try {
       let userMsg = tool.buildUserPrompt(scrubbedValues);
       if (extra && extra.trim()) {
@@ -1552,8 +1962,10 @@ function App() {
             /* The expert quotes the clinician's own sentences back at them, so a
                finding reading "you wrote '[[T4]] clinic'" names a word they
                cannot see. Same restore as the draft, and role tokens are left
-               alone here too. */
-            const found = raw ? NotesScrub.restoreOutput(raw, scrubMapRef.current) : raw;
+               alone here too - expertForReader then reports each one that
+               survived, because a permanent swap is the other way a quote names
+               a word they did not write. */
+            const found = raw ? expertForReader(NotesScrub.restoreOutput(raw, scrubMapRef.current), scrubMapRef.current) : raw;
             patchS((s) => {
               if (!s.expert || s.expert.runId !== runId) return {};
               return { expert: found ? { status: "done", runId, ...found } : { status: "failed", runId } };
@@ -1601,8 +2013,69 @@ function App() {
       } catch (e) { /* keep the first draft */ }
 
       const finalDraft = finalize(r.parsed);
-      patchS({ output: finalDraft.output, conversation, lastCallAt: Date.now() });
-      pushThread("assistant", "status", "Drafted. Click any section - or select a phrase inside one - to revise it.");
+
+      /* THE CORRECTIONS PASS, before the technician ever reads the draft.
+       *
+       * Awaited rather than fired alongside, which is the opposite of the
+       * expert pass above and for a reason: the expert writes a panel beside
+       * the note, and this one writes the note. A technician who copied during
+       * the gap would take away the uncorrected draft and never know a
+       * correction existed, and "doing nothing ships all of it" would be false
+       * for exactly the people least likely to wait.
+       *
+       * Best effort, like every other pass here. A null leaves the draft
+       * standing with no marks, which is what shipped before this existed. */
+      let corrected = finalDraft.output;
+      let marks = null;
+      if (correctionsEnabled(tool.id) && window.NotesGate && NotesGate.correctionsPass) {
+        try {
+          const draftSections = tool.formSections
+            .filter((sec) => sec.kind === "narrative" && sec.key)
+            .map((sec) => ({ id: sec.key, heading: sec.heading, text: String(finalDraft.output[sec.key] || "") }))
+            .filter((d) => d.text.trim());
+          const pass = draftSections.length
+            ? await NotesGate.correctionsPass({
+                tool: tool.id,
+                intake: intakeBody(scrubbedValues) +
+                  (extra && extra.trim() ? "\n\n[ANSWERED FOLLOW-UP QUESTIONS]\n" + extra.trim() : ""),
+                draft: draftSections,
+              })
+            : null;
+          const before = {};
+          draftSections.forEach((d) => { before[d.id] = d.text; });
+          const built = pass && window.NoteCorrections
+            ? NoteCorrections.build({ before, corrections: pass.corrections })
+            : null;
+          if (built && built.count) {
+            marks = built;
+            corrected = { ...finalDraft.output, ...NoteCorrections.outputFor(built.sections, {}) };
+          }
+          // Counts and enums only. Never a word of a correction, and never a
+          // word of the note it corrected.
+          if (pass) {
+            audit("corrections_pass", {
+              sections: (pass.corrections || []).length,
+              marks: built ? built.count : 0,
+              dropped: pass.dropped || 0,
+              inTokens: (pass.usage && pass.usage.input_tokens) || 0,
+              cachedTokens: (pass.usage && pass.usage.cache_read_input_tokens) || 0,
+              outTokens: (pass.usage && pass.usage.output_tokens) || 0,
+            });
+          }
+        } catch (e) { /* keep the draft as it was written */ }
+      }
+
+      patchS({
+        output: corrected,
+        conversation,
+        lastCallAt: Date.now(),
+        corrections: marks,
+        markState: {},
+      });
+      pushThread("assistant", "status", marks
+        ? "Drafted, and I made " + marks.count + (marks.count === 1 ? " change" : " changes") +
+          " the note needed. They are already in it and marked where they are. Click a tick to undo or reword one."
+        : "Drafted. Click any section - or select a phrase inside one - to revise it.");
       // Register signals for the weekly audit. Numbers only, measured on the
       // draft the clinician is about to read, so a drift toward machine-uniform
       // prose shows up in the Friday email rather than in a detector months
@@ -1624,6 +2097,25 @@ function App() {
         answered: extra && extra.trim() ? 1 : 0,
         absenceCut: finalDraft.cut,
         absenceFlagged: finalDraft.flagged,
+      });
+      /* The same question, asked of the three rules the post-pass enforces
+         rather than requests. zeroRecast counts the participials it moved,
+         hollowSaid the contentless sentences it left alone, misplacedStrategy
+         the strategies narrated under the wrong heading. All three are how we
+         find out whether the prompt wording is landing, and all three are
+         counts: a clinical sentence never travels to the audit endpoint
+         because a rule fired on it.
+
+         ITS OWN EVENT, for the reason note_register is its own event. The
+         sanitiser keeps the first 12 keys and drops the rest in silence, and
+         inputSizes is spread in first, so a tool that grows a sixth intake box
+         would take these three off the end of note_generated and nothing
+         anywhere would say so. bt has five today and the payload would have
+         stood at eleven, which is a margin of one. */
+      audit("note_postpass", {
+        zeroRecast: finalDraft.recast,
+        hollowSaid: finalDraft.hollow,
+        misplacedStrategy: finalDraft.misplaced,
       });
       // Its own event, not merged into note_generated: the metric sanitiser
       // caps a payload at 12 numeric keys and silently drops the overflow, so
@@ -1706,8 +2198,8 @@ function App() {
     }
     if (questions.length) {
       setLoading(false);
-      audit("gap_questions", { asked: questions.length, round: 1, readiness });
-      patchS({ questions, readiness, pendingValues: scrubbed, triageAnswers: "", triageRound: 1 });
+      audit("gap_questions", { asked: questions.length, round: 1, readiness, ...barsFor(questions) });
+      patchS({ questions, readiness, pendingValues: scrubbed, triageAnswers: "", triageRound: 1, suggestState: {} });
       return;
     }
     audit("gap_questions", { asked: 0 });
@@ -1736,6 +2228,34 @@ function App() {
   const SKIP_COOLDOWN_MAX_SECONDS = 30;
   const SKIP_FREE_AT_READINESS = 85;
 
+  /* Below the bar the tool refuses to draft until one round is answered. His
+     ruling of 2026-08-31: "It should refuse a draft without an initial revision
+     if the bar isn't met", and on what those questions should be like, "Make
+     them try again. Try to give them minimal prompts to get the information
+     needed across objections."
+
+     THREE THINGS DO NOT GATE, and each is deliberate.
+
+     A missing reading never gates. Triage that failed is an assist that failed,
+     and refusing to draft over it would turn a lost question into a lost note.
+
+     The second round never gates. One mandatory round is what he asked for, and
+     a gate that could hold someone twice is a gate that could hold them
+     forever.
+
+     A kept suggestion opens it, because a kept suggestion IS the answer. It
+     carries the technician's own words into the note, so a draft built on one
+     is not the empty draft this refuses.
+
+     EVERY TOOL, INCLUDING HIS OWN, on the same ruling that put the skip wait on
+     all five: "should lock my drafters as well." A thin note is thin whoever
+     wrote it. */
+  const BAR_READINESS = SKIP_FREE_AT_READINESS;
+  const gateHolds = () => (S.triageRound || 1) === 1 &&
+    Number.isFinite(S.readiness) &&
+    S.readiness < BAR_READINESS &&
+    acceptedSuggestions().length === 0;
+
   const skipSecondsFor = (readiness) => {
     if (!Number.isFinite(readiness)) return SKIP_COOLDOWN_MAX_SECONDS;
     const pct = Math.min(100, Math.max(0, readiness));
@@ -1747,20 +2267,76 @@ function App() {
     return Math.round(SKIP_COOLDOWN_MAX_SECONDS * (1 - pct / SKIP_FREE_AT_READINESS));
   };
 
-  const skipQuestions = () => {
+  /* ── The candidate answers under each question ────────────────────────────
+     Accepted by default and undone with a click, the same contract the
+     corrections marks carry. Doing nothing keeps all of them.
+
+     That is only safe because of what the prompt forbids: a suggestion
+     rephrases something the technician already wrote and never supplies a fact
+     they did not report. So leaving one alone re-surfaces their own observation
+     rather than admitting the model's guess about their session. */
+  const suggestKey = (qi, si) => qi + ":" + si;
+
+  const suggestionText = (qi, si, raw) => {
+    const st = (S.suggestState || {})[suggestKey(qi, si)];
+    if (st && st.reverted) return "";
+    return st && typeof st.text === "string" ? st.text : raw;
+  };
+
+  // In the order they were offered, so the answer reads down the questions.
+  const acceptedSuggestions = () =>
+    (S.questions || [])
+      .flatMap((q, qi) => (q.suggestions || []).map((raw, si) => suggestionText(qi, si, raw)))
+      .filter((t) => t && t.trim());
+
+  const toggleSuggestion = (key) => {
+    const prev = (S.suggestState || {})[key] || {};
+    patchS({ suggestState: { ...(S.suggestState || {}), [key]: { ...prev, reverted: !prev.reverted } } });
+  };
+
+  // Editing does not accept: a technician can reword one they have undone and
+  // leave it undone. The two flags are independent because the two decisions
+  // are - what it should say, and whether it should be there at all.
+  const editSuggestion = (key, text) => {
+    const prev = (S.suggestState || {})[key] || {};
+    patchS({ suggestState: { ...(S.suggestState || {}), [key]: { ...prev, text: text } } });
+  };
+
+  /* Skip is also the ACCEPT path for the suggestions, and that is deliberate.
+
+     Sending requires typed text, so a technician whose only answer is "yes,
+     those two are right" has nowhere else to go. Dropping their suggestions
+     here would mean the one interaction cheap enough to actually get used is
+     the one that throws itself away. The button says so when there is something
+     to carry: "Nothing to add" becomes "Use these and generate".
+
+     The gate runs over them rather than around them, because a technician who
+     reworded one may have typed a name into it. An untouched suggestion came
+     from already-scrubbed input, so it passes through unchanged. */
+  const skipQuestions = async () => {
+    // Checked here as well as drawn, so a stale render cannot walk past it.
+    if (gateHolds()) return;
+    const taken = acceptedSuggestions();
     audit("gap_questions", {
       skipped: (S.questions || []).length,
+      suggestionsTaken: taken.length,
       round: S.triageRound || 1,
       // Audited on the skip as well as on the ask, because the only way to find
       // out whether this number tracks anything real is to see which readings
       // people walk away from.
       readiness: S.readiness,
     });
-    pushThread("user", "answer", "(skipped)");
+    let carried = "";
+    if (taken.length) {
+      const review = await scrubGate(taken.join("\n"), { carryOver: true });
+      if (!review) return;
+      carried = NotesScrub.applyMap(taken.join("\n"), review.map);
+    }
+    pushThread("user", "answer", taken.length ? taken.join("\n") : "(skipped)");
     // Anything they answered in an earlier round still counts. Dropping it
     // because they skipped the last question would throw away work they did.
-    const answered = S.triageAnswers || "";
-    patchS({ triageAnswers: "", triageRound: 0 });
+    const answered = [S.triageAnswers, carried].filter((x) => x && x.trim()).join("\n");
+    patchS({ triageAnswers: "", triageRound: 0, suggestState: {} });
     draftNote(S.pendingValues || scrubValues([]), answered);
   };
 
@@ -1865,7 +2441,7 @@ function App() {
   };
 
   const sendRevision = async (instruction) => {
-    const review = await scrubGate(instruction);
+    const review = await scrubGate(instruction, { carryOver: true });
     if (!review) return;
     const scrubbedInstruction = NotesScrub.applyMap(instruction, review.map);
     const ann = S.annotation;
@@ -1965,9 +2541,12 @@ function App() {
        * as the targeted one - it renders as an inline diff and Discard is the
        * undo - and an unconfident one becomes a question in the panel.
        *
-       * A tool whose schema has no crossSection (the four BCBA tools) reports
-       * nothing, so every off-target change asks. That is the safe direction:
-       * silence must never read as confidence.
+       * Every tool reports crossSection as of 2026-08-30; the four BCBA tools
+       * gained it with their schemas, and each one's normalizeOutput hands it
+       * on. A tool that reported nothing here still degraded safely, because an
+       * unrouted change asks rather than applies - silence must never read as
+       * confidence - but it degraded silently, which is why the tools now say
+       * so explicitly rather than relying on the fallback.
        */
       const routing = new Map(
         (normalized.crossSection || []).map((c) => [c.section, c]),
@@ -2081,11 +2660,23 @@ function App() {
       return;
     }
     if (S.questions && S.questions.length) {
-      const review = await scrubGate(text);
+      // Same note, later turn. The answers are appended to the intake the draft
+      // is built from, so their tokens have to survive to the draft and past it.
+      //
+      // The suggestions they left standing go through the SAME gate as the text
+      // they typed, in one string, so an edited one cannot skip the check and a
+      // name typed into either is caught once.
+      const taken = acceptedSuggestions();
+      const said = [...taken, text].filter((x) => x && x.trim()).join("\n");
+      const review = await scrubGate(said, { carryOver: true });
       if (!review) return;
-      audit("gap_questions", { answered: S.questions.length, round: S.triageRound || 1 });
+      audit("gap_questions", {
+        answered: S.questions.length,
+        suggestionsTaken: taken.length,
+        round: S.triageRound || 1,
+      });
 
-      const answered = [S.triageAnswers, NotesScrub.applyMap(text, review.map)]
+      const answered = [S.triageAnswers, NotesScrub.applyMap(said, review.map)]
         .filter((x) => x && x.trim()).join("\n");
       const round = (S.triageRound || 1) + 1;
 
@@ -2106,15 +2697,15 @@ function App() {
         }
         setLoading(false);
         if (more.length) {
-          audit("gap_questions", { asked: more.length, round, readiness });
+          audit("gap_questions", { asked: more.length, round, readiness, ...barsFor(more) });
           // Re-read each round rather than carried forward: answering two of
           // three questions is exactly the case where the note got closer, and
           // the wait should shorten to match.
-          patchS({ questions: more, readiness, triageAnswers: answered, triageRound: round });
+          patchS({ questions: more, readiness, triageAnswers: answered, triageRound: round, suggestState: {} });
           return;
         }
       }
-      patchS({ triageAnswers: "", triageRound: 0 });
+      patchS({ triageAnswers: "", triageRound: 0, suggestState: {} });
       await draftNote(S.pendingValues, answered);
       return;
     }
@@ -2142,6 +2733,110 @@ function App() {
     setPanelOpen(true);
   };
 
+  /* ── Acting on a correction ───────────────────────────────────────────
+     Every handler here rewrites the affected section from the marks, rather
+     than editing the note text directly. The marks are the record of what the
+     pass proposed; the note is derived from them and from the decisions. Doing
+     it the other way round would make an undo unreachable the moment anything
+     else touched the section. */
+  const applyMarkState = (nextState) => {
+    patchS((st) => {
+      if (!st.corrections) return { markState: nextState };
+      return {
+        markState: nextState,
+        output: { ...st.output, ...NoteCorrections.outputFor(st.corrections.sections, nextState) },
+      };
+    });
+  };
+
+  const toggleCorrection = (key) => {
+    if (!S.corrections) return;
+    const next = NoteCorrections.toggle(S.corrections.sections, S.markState, key);
+    audit("corrections_mark", { undone: next[key] && next[key].reverted ? 1 : 0, restored: next[key] && next[key].reverted ? 0 : 1 });
+    applyMarkState(next);
+  };
+
+  const editCorrection = (key, text) => {
+    if (!S.corrections) return;
+    audit("corrections_mark", { edited: 1 });
+    applyMarkState(NoteCorrections.edit(S.markState, key, text));
+  };
+
+  /* Clearing a section's marks does NOT revert anything. The note already reads
+     the way the marks say it does, and this is the only way back to a plain
+     editable textarea, which is what a technician wants the moment they would
+     rather type than click.
+
+     One section at a time, because the button sits in that section and a
+     control that quietly clears the marks in three other sections would be
+     lying about what it does. */
+  const dismissCorrections = (id) => {
+    patchS((st) => {
+      if (!st.corrections || !st.corrections.sections[id]) return {};
+      const marks = st.corrections.marks.filter((m) => m.id !== id);
+      const mine = st.corrections.marks.filter((m) => m.id === id);
+      const kept = mine.filter((m) => !(st.markState[m.key] && st.markState[m.key].reverted)).length;
+      audit("corrections_done", { kept, undone: mine.length - kept });
+      if (!marks.length) return { corrections: null, markState: {} };
+      const sections = {};
+      Object.keys(st.corrections.sections).forEach((k) => {
+        if (k !== id) sections[k] = st.corrections.sections[k];
+      });
+      const markState = {};
+      Object.keys(st.markState).forEach((k) => {
+        if (!k.startsWith(id + ":")) markState[k] = st.markState[k];
+      });
+      return {
+        corrections: { ...st.corrections, sections, marks, changed: Object.keys(sections), count: marks.length },
+        markState,
+      };
+    });
+  };
+
+  /* The blue dot on a moved sentence leads back to where it came from. Scroll
+     plus a flash rather than scroll alone: a section that was already on screen
+     would otherwise answer the click with nothing at all. */
+  const goToOrigin = (originId) => {
+    const el = document.querySelector('[data-section-key="' + originId + '"]');
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.remove("cx-flash");
+    void el.offsetWidth;
+    el.classList.add("cx-flash");
+  };
+
+  /* A SECTION THE TECHNICIAN HAS WORKED ON SINCE THE EXPERT READ IT.
+   *
+   * What he read on 2026-09-02: the intake said vocal requests were "higher
+   * today", he answered the clarification in the assistant panel, the note was
+   * rewritten with the comparison he supplied, and the expert's finding about
+   * the missing comparison was still sitting over the section.
+   *
+   * Nothing can know he closed that gap - the expert read the intake once and
+   * is not asked again. What the page does know is that he has touched the
+   * section since, and that is worth saying, because a finding read against an
+   * earlier draft is a different claim from a finding about what is on screen
+   * now.
+   *
+   * SO IT IS FOLDED, NOT DELETED. Marking it read and dropping it would let one
+   * keystroke silently retire a real gap, which is a worse fault than the one
+   * being fixed: the technician would never learn the finding existed. It
+   * collapses to a line that says what happened and opens on a click. */
+  const markSectionRevised = (ids) => {
+    // Called from a textarea's onChange, so it runs on every keystroke. The
+    // updater below is idempotent, but patchS always mints a new state object,
+    // and there is no reason to do that on a page with no reading on it.
+    if (!S.expert || S.expert.status !== "done") return;
+    const touched = (Array.isArray(ids) ? ids : [ids]).filter(Boolean);
+    if (!touched.length || touched.every((id) => (S.expert.revised || []).includes(id))) return;
+    patchS((st) => {
+      if (!st.expert || st.expert.status !== "done") return {};
+      const had = st.expert.revised || [];
+      const next = touched.filter((id) => !had.includes(id));
+      return next.length ? { expert: { ...st.expert, revised: had.concat(next) } } : {};
+    });
+  };
+
   const acceptProposal = () => {
     if (!S.proposal) return;
     audit("revision", { accepted: 1, sections: S.proposal.changes.length, kind: S.proposal.kind || "section" });
@@ -2164,6 +2859,7 @@ function App() {
       next.hints = s.proposal.hints;
       return { output: next, proposal: null };
     });
+    markSectionRevised(S.proposal.changes.map((c) => c.id));
   };
 
   /* A change the revision made outside the section that was clicked, which the
@@ -2320,7 +3016,10 @@ function App() {
     const err = tool.validate(S.values);
     if (err) { patchS({ error: err }); return; }
     patchS({ error: "" });
-    const review = await scrubGate(collectFreeText());
+    // Carries over so pressing this mid-note cannot clobber the live map and
+    // strand the tokens already sitting in the open draft. On a fresh page there
+    // is nothing to carry and it behaves exactly as it did.
+    const review = await scrubGate(collectFreeText(), { carryOver: true });
     if (!review) return;
     patchS({ promptText: tool.buildLabeledPrompt(scrubValues(review.map)) });
     setCopiedPrompt(false);
@@ -2463,6 +3162,36 @@ function App() {
     const pending = pendingChangeFor(id);
     if (pending) return renderPendingChange(pending);
     if (sec.kind === "narrative") {
+      /* A section the corrections pass changed is drawn as marks rather than as
+         a textarea, because a textarea cannot carry a strikethrough. The marks
+         are already in the note, so this is a view of what it says and not a
+         thing waiting to be accepted. "Edit by hand" is how the box comes back. */
+      const marked = S.corrections && S.corrections.sections[id];
+      if (marked) {
+        return (
+          <React.Fragment>
+            <CorrectionsView
+              id={id}
+              ops={marked}
+              marks={{ why: (S.corrections.marks.find((m) => m.id === id) || {}).why || "" }}
+              state={S.markState}
+              headings={correctionHeadings}
+              onToggle={toggleCorrection}
+              onEdit={editCorrection}
+              onGoToOrigin={goToOrigin}
+            />
+            <button
+              type="button"
+              className="cx-done"
+              data-corrections-done={id}
+              onClick={() => dismissCorrections(id)}
+              title="Put the marks away and edit this section as text. Nothing is undone."
+            >
+              Edit by hand
+            </button>
+          </React.Fragment>
+        );
+      }
       const empty = !(v || "").trim();
       return (
         <textarea
@@ -2472,7 +3201,7 @@ function App() {
           // is in without threading refs through every row.
           data-section-id={id}
           data-section-heading={sec.heading}
-          onChange={(e) => patchS((s) => ({ output: { ...s.output, [id]: e.target.value } }))}
+          onChange={(e) => { patchS((s) => ({ output: { ...s.output, [id]: e.target.value } })); markSectionRevised(id); }}
           placeholder={sec.emptyNote || ""}
           // Sized to the prose rather than to a fixed box: at full width these
           // no longer need an internal scrollbar to show four sentences, which
@@ -2688,8 +3417,13 @@ function App() {
         }}
         loading={loading}
         questions={S.questions}
+        suggestState={S.suggestState}
+        onToggleSuggestion={toggleSuggestion}
+        onEditSuggestion={editSuggestion}
+        acceptedSuggestions={acceptedSuggestions().length}
         onSkipQuestions={skipQuestions}
         skipCooldown={skipSecondsFor(S.readiness)}
+        skipHeld={gateHolds()}
         unread={S.questions ? S.questions.length : 0}
         quality={noteQuality()}
         loggedIn={loggedIn}
