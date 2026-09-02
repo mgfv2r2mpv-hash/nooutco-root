@@ -641,6 +641,55 @@
       .catch(function () { return null; });
   }
 
+  /* ── The corrections pass, called from a note page ─────────────────────
+   *
+   * Sends the DRAFT rather than the intake, and it is the one call from this
+   * file whose answer changes what the note says. It still resolves null on
+   * every failure, for the same reason the expert pass does: a technician with
+   * eight notes left must never lose one because a second opinion timed out.
+   * What a null costs here is a note that reads exactly as the drafting model
+   * wrote it, which is what shipped before this existed.
+   *
+   * The draft is sent as it stands, already scrubbed - NotesScrub.review() ran
+   * before the drafting call, so the role tokens in the draft are the ones the
+   * clinician wants in their EHR, and nothing is restored on the way back.
+   */
+  function correctionsPass(opts) {
+    var o = opts || {};
+    var tok = getToken();
+    if (!tok) return Promise.resolve(null);
+    return fetchWithTimeout(apiUrl("/api/corrections-pass"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + tok,
+      },
+      body: JSON.stringify({
+        tool: o.tool,
+        intake: o.intake,
+        draft: Array.isArray(o.draft) ? o.draft : [],
+      }),
+    }, EXPERT_TIMEOUT_MS, "The corrections pass timed out.")
+      .then(function (res) {
+        if (!res.ok) return null;
+        return res.json().then(function (d) {
+          // Shape-checked rather than trusted, exactly as on the pass. A 200
+          // carrying something else must not read as "it changed nothing",
+          // because "it changed nothing" is a normal and common answer here.
+          if (!d || !Array.isArray(d.corrections)) return null;
+          return {
+            corrections: d.corrections.filter(function (c) {
+              return c && typeof c.section === "string" && typeof c.text === "string" && c.text;
+            }),
+            dropped: d.dropped || 0,
+            usage: d.usage || null,
+            model: d.model || "",
+          };
+        }).catch(function () { return null; });
+      })
+      .catch(function () { return null; });
+  }
+
   // Constrains the model's answer to the tool's JSON Schema, so the note is
   // serialized by the API instead of being hand-typed as prose - which is what
   // makes the two escaping slips below impossible rather than recoverable.
@@ -1573,6 +1622,9 @@
     // The expert pass, for a caller that has already scrubbed. Resolves null on
     // every failure rather than throwing - see expertPass above for why.
     expertPass: expertPass,
+    // The corrections pass. Resolves null on every failure too, and a null here
+    // means the note stands as the drafting model wrote it.
+    correctionsPass: correctionsPass,
     // Error rendering - callers pass the caught error, never e.message, so the
     // user-facing/internal split is applied in one place.
     displayError: displayError,

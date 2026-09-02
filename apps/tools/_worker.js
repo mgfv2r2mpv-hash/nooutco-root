@@ -61,6 +61,14 @@ export default {
       return handleExpertChat(request, env);
     }
 
+    // The corrections pass: reads the DRAFT and returns it as the handout says
+    // it should read. It is the one route here that writes into a note, so
+    // every difference it returns is marked in the browser rather than applied
+    // out of sight.
+    if (url.pathname === "/api/corrections-pass" && request.method === "POST") {
+      return handleCorrections(request, env);
+    }
+
     // Research: the expert reads a fixed list of sources before it answers.
     // Admin only, a larger model than everything else here, and it writes
     // nothing - the report is something he argues with, not a rule.
@@ -1201,6 +1209,277 @@ async function handleExpertChat(request, env) {
     const m = error && error.message ? error.message : "unknown";
     console.error("Expert chat error:", m);
     await notifyError(env, "expert-chat", m);
+    return jsonRes(500, { error: error.message || "Internal server error" });
+  }
+}
+
+/* ── The corrections pass ─────────────────────────────────────────────────
+ *
+ * WHAT IT IS FOR. The expert pass reads the intake and says what is missing;
+ * everything it finds arrives as a hint the technician has to act on. That puts
+ * the work back on the person the tool exists to spare, and the audit trail
+ * already showed what happens: two technicians, 22 sessions, ten rounds of
+ * questions, zero revisions ever made. They generate and copy.
+ *
+ * So this pass acts. It reads the DRAFT rather than the intake and returns the
+ * note as the handout says it should read, and the browser shows every
+ * difference as a mark the technician can undo or edit. Nothing is silent, and
+ * nothing needs a click to happen.
+ *
+ * WHY IT RETURNS WHOLE SECTIONS. A patch format would be a second aligner to
+ * keep in step with NoteDiff, and the model cannot count characters. It returns
+ * the corrected section, the browser diffs it against the draft, and the diff
+ * module decides what is an insertion, a deletion or a move.
+ *
+ * WHY IT RIDES ON THE EXPERT'S PROMPT. The rules it applies are the ones
+ * already written down: necessity, completeness, and the misfiling rule that
+ * says a response strategy narrated under antecedent is in the wrong section
+ * rather than merely out of order. Those live in the store, composed into the
+ * expert prompt. A second copy here would be a second thing to keep true, and
+ * the store is where they get a hash and a pull request. Same composition order
+ * the oracle uses: stored prompt first, addendum second.
+ */
+const CORRECTIONS_MAX_TOKENS = 4000;
+
+const CORRECTIONS_ADDENDUM = [
+  "You are no longer reviewing an intake. You are correcting a draft that was written from one.",
+  "",
+  "The technician's own notes are the first message. The draft that was written from them follows, section by section. Return each section as it should read, and return nothing else.",
+  "",
+  "YOU MAY ONLY DO THREE THINGS, AND YOU MUST BE ABLE TO POINT AT THE NOTES FOR EACH ONE.",
+  "",
+  "1. MOVE a sentence that is in the wrong section to the section it belongs in. Delete it where it is and write it where it goes, in the same reply, word for word. A sentence that arrives nowhere has been thrown away, and the technician wrote it.",
+  "2. ADD a clause the technician's notes support and the draft left out. Draw every word of it from what they wrote. If the notes do not say what happened, do not say what happened.",
+  "3. REMOVE a sentence that recites data the record already carries, or that says nothing the trial table does not.",
+  "",
+  "INVENT NOTHING. Not a count, not an outcome, not a prompt level, not a clinical judgement. If a section is thin because the technician did not write enough, leave it thin. A note that reads well and reports something nobody observed is worse than a note that reads poorly.",
+  "",
+  "CHANGE NOTHING ELSE. Not the tense, not the vocabulary, not the sentence rhythm, not a word you would have written differently. Every difference you return is shown to the technician as a mark against their own draft, so a change you cannot justify is one they have to read and undo.",
+  "",
+  "RETURN A SECTION ONLY IF YOU ARE CHANGING IT. A section you return unchanged is noise in that list. Returning nothing at all is a real answer and often the right one.",
+].join("\n");
+
+/* Exported so the composition order is pinned by a test rather than inferred.
+   The stored prompt carries the rules; this only says what to do with them. */
+export function correctionsSystem(storedPrompt) {
+  return String(storedPrompt || "") + "\n\n" + CORRECTIONS_ADDENDUM;
+}
+
+/* Validate and normalize. Pure and exported, like the pass's validator and the
+   oracle's, so the shape rules are tested directly rather than inferred from a
+   400. The tool and the intake are checked by the PASS's validator rather than
+   again here: a drift between the two would be a corrections call accepted on
+   an intake the pass would have refused. */
+export function correctionsRequest(body) {
+  const b = body || {};
+  const base = expertPassRequest({ tool: b.tool, intake: b.intake });
+  if (base.error) return base;
+
+  const raw = b.draft;
+  if (!Array.isArray(raw) || raw.length === 0) return { error: "Missing draft." };
+  if (raw.length > MAX_EXPERT_SECTIONS) return { error: "Too many sections." };
+
+  let total = 0;
+  const draft = [];
+  for (const sec of raw) {
+    if (!sec || typeof sec !== "object") return { error: "Each draft section must be an object." };
+    const id = typeof sec.id === "string" ? sec.id : "";
+    if (!id || id.length > MAX_SECTION_ID_CHARS) return { error: "Each draft section needs a short string id." };
+    // This value goes into a schema enum that reaches the upstream API, so it
+    // is checked rather than trusted. Same rule as the pass.
+    if (!/^[A-Za-z0-9_-]+$/.test(id)) return { error: "A section id has characters that are not allowed." };
+    if (draft.some((d) => d.id === id)) return { error: "A section id appears twice." };
+    const text = typeof sec.text === "string" ? sec.text : "";
+    const heading = typeof sec.heading === "string" ? sec.heading : "";
+    if (heading.length > MAX_SECTION_ID_CHARS * 4) return { error: "A section heading is longer than this route accepts." };
+    total += text.length;
+    draft.push({ id, heading, text });
+  }
+  // The draft is bounded on the SUM rather than per section, because one long
+  // narrative and forty short ones cost the same to send.
+  if (total > MAX_MESSAGE_CHARS) return { error: "The draft is longer than this pass accepts." };
+  // Nothing written yet is not an error, it is a pass with no work to do, and
+  // the caller should not have to know that. It is refused here so the account
+  // is not billed for a turn that can only answer with an empty list.
+  if (!draft.some((d) => d.text.trim())) return { error: "The draft has no narrative to correct." };
+
+  return { tool: base.tool, intake: base.intake, draft };
+}
+
+export function correctionsLimits() {
+  return {
+    intakeChars: MAX_MESSAGE_CHARS,
+    draftChars: MAX_MESSAGE_CHARS,
+    sections: MAX_EXPERT_SECTIONS,
+    sectionIdChars: MAX_SECTION_ID_CHARS,
+    maxTokens: CORRECTIONS_MAX_TOKENS,
+    model: EXPERT_MODEL,
+  };
+}
+
+/* The turns the model sees. Built HERE from the request's own fields, for the
+   same reason the oracle builds its own: the browser does not get to hand the
+   model a first exchange that never happened. */
+export function correctionsTurns(parsed) {
+  const draft = parsed.draft
+    .map((d) => "[" + d.id + "] " + (d.heading || d.id) + "\n" + (d.text || "").trim())
+    .join("\n\n");
+  return [
+    { role: "user", content: parsed.intake },
+    { role: "user", content: "THE DRAFT WRITTEN FROM THOSE NOTES:\n\n" + draft },
+  ];
+}
+
+/* The response schema, built here rather than accepted from the browser. Same
+   rule as the pass: this route has one shape and no caller gets another.
+
+   The descriptions carry weight here, unlike on the pass. The pass's meaning
+   lives in the stored prompt; this route's task is in the addendum above, and
+   the two fields the model most often gets wrong are the two it can only read
+   about in a description. */
+export function correctionsSchema(sectionIds) {
+  const ids = Array.isArray(sectionIds) ? sectionIds : [];
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["corrections"],
+    properties: {
+      corrections: {
+        type: "array",
+        description: "Only the sections you changed. Empty is a real answer.",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["section", "text", "why"],
+          properties: {
+            section: { type: "string", enum: ids },
+            text: {
+              type: "string",
+              description:
+                "The COMPLETE section as it should now read, not a fragment and not a description of the change. " +
+                "Every sentence you are keeping must appear here, word for word.",
+            },
+            why: {
+              type: "string",
+              description:
+                "One short line the technician will read, naming what you changed and which of their own notes it came from. " +
+                "Not a rule number and not a lecture on their field.",
+            },
+          },
+        },
+      },
+    },
+  };
+}
+
+/* Read the answer. Anything naming a section that was not sent is dropped
+   rather than trusted: the enum makes that unlikely and does not make it
+   impossible, and a correction addressed to a section the browser has no text
+   for would render as the whole section being replaced. */
+export function correctionsFound(api, draft) {
+  const text = ((api && api.content) || [])
+    .filter((b) => b && b.type === "text" && typeof b.text === "string")
+    .map((b) => b.text)
+    .join("");
+  if (!text.trim()) return null;
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+  const known = new Map((draft || []).map((d) => [d.id, d.text || ""]));
+  const list = Array.isArray(parsed.corrections) ? parsed.corrections : [];
+  const corrections = [];
+  let dropped = 0;
+  for (const c of list) {
+    if (!c || typeof c !== "object") { dropped++; continue; }
+    const section = typeof c.section === "string" ? c.section : "";
+    const next = typeof c.text === "string" ? c.text : "";
+    if (!known.has(section) || !next.trim()) { dropped++; continue; }
+    if (corrections.some((x) => x.section === section)) { dropped++; continue; }
+    // A section returned unchanged is not a correction. Dropping it here rather
+    // than in the browser keeps "how many did it change" one number rather than
+    // two that disagree.
+    if (next.trim() === String(known.get(section)).trim()) { dropped++; continue; }
+    corrections.push({ section, text: next, why: typeof c.why === "string" ? c.why : "" });
+  }
+  return { corrections, dropped };
+}
+
+async function handleCorrections(request, env) {
+  try {
+    const secret = (env.ADMIN_SECRET ?? "").trim();
+    const auth = request.headers.get("Authorization") || "";
+    const token = auth.replace(/^Bearer\s+/i, "");
+    const payload = secret ? await readToken(token, secret) : null;
+    if (!payload) return jsonRes(401, { error: "Not logged in. Please log in to use the corrections pass." });
+
+    const body = await request.json();
+    const parsed = correctionsRequest(body);
+    if (parsed.error) return jsonRes(400, { error: parsed.error });
+
+    // Same scope check the drafting call and the expert pass make, on the same
+    // reasoning: a login scoped to one tool does not spend the account's key on
+    // another.
+    if (payload.role !== "admin") {
+      const rec = env.API_PASSWORDS ? await getPasswordRecord(env.API_PASSWORDS, payload.kid) : null;
+      if (!rec || !rec.active) return jsonRes(401, { error: "Access revoked. Please log in again." });
+      if (!rec.tools.includes(parsed.tool)) {
+        return jsonRes(403, { error: "Your access doesn't include this tool." });
+      }
+    }
+
+    /* Fetched, never accepted, and it fails closed. A pass run against an
+       unknown prompt would return corrections that look exactly like real ones,
+       and this one WRITES INTO THE NOTE, so guessing here is worse than
+       guessing anywhere else in this file. */
+    const composed = await promptForExpert(env, parsed.tool);
+    if (!composed) {
+      await notifyError(env, "prompt-api", "no prompt available for key expert");
+      return jsonRes(503, {
+        error: "The corrections pass is unavailable, so nothing was changed. Nothing was sent to the model.",
+      });
+    }
+
+    const apiKey = (env.ANTHROPIC_API_KEY ?? "").trim();
+    if (!apiKey) return jsonRes(503, { error: "Server API key is not configured." });
+
+    /* No knowledge lookup on this call, and that is a decision rather than an
+       omission. The lookup exists so the expert can read a term before it
+       judges one; this pass is not judging, it is applying rules it already
+       carries, and a tool round trip here would double the latency of the one
+       call that stands between a finished draft and the technician reading it. */
+    const turn = await runExpertTurn({
+      apiKey,
+      system: correctionsSystem(composed.system),
+      messages: correctionsTurns(parsed),
+      model: EXPERT_MODEL,
+      maxTokens: CORRECTIONS_MAX_TOKENS,
+      outputConfig: { format: { type: "json_schema", schema: correctionsSchema(parsed.draft.map((d) => d.id)) } },
+      lookup: null,
+    });
+    const api = turn.api;
+
+    const found = correctionsFound(api, parsed.draft);
+    if (!found) {
+      return jsonRes(502, { error: "The corrections pass returned something this route could not read. Nothing was changed." });
+    }
+
+    return jsonRes(200, {
+      corrections: found.corrections,
+      dropped: found.dropped,
+      usage: api.usage || null,
+      model: EXPERT_MODEL,
+      knowledge: { sha256: composed.sha256, composed: composed.composed },
+    });
+  } catch (error) {
+    // PRIVACY: neither the intake nor the draft reaches a log line. Only the
+    // error message, exactly as on the pass.
+    const m = error && error.message ? error.message : "unknown";
+    console.error("Corrections pass error:", m);
+    await notifyError(env, "corrections-pass", m);
     return jsonRes(500, { error: error.message || "Internal server error" });
   }
 }
