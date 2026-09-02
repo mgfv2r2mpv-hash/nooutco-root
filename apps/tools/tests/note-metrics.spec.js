@@ -214,3 +214,85 @@ test.describe('note metrics in the browser', () => {
     }
   });
 });
+
+/* THE BAN LISTS CAUGHT A BASE FORM AND MISSED ITS NEIGHBOURS.
+ *
+ * A draft that wrote "supporting" instead of "supported", or "proactive"
+ * instead of "proactively", scored clean on a rule it broke. Since the second
+ * pass now fires on these counts, the miss was not only a wrong number in the
+ * Friday report - it was a note the tool declined to revise.
+ *
+ * The four exclusions below have mechanisms behind them and each one is pinned,
+ * because the widening is exactly the change that invites somebody to complete
+ * the pattern later.
+ */
+test.describe('the constructions the lists used to walk past', () => {
+  const M = async (page, text) => {
+    await page.goto('/notes/bcba/index.html?tool=sap');
+    await page.waitForFunction(() => !!window.NoteMetrics);
+    return page.evaluate((t) => ({
+      c: window.NoteMetrics.constructions(t),
+      flagged: window.NoteMetrics.flagged(t),
+    }), text);
+  };
+
+  test('the -ing forms of the vague verbs count, where only the -ed form used to', async ({ page }) => {
+    const { c } = await M(page, 'The technician was supporting the transition while facilitating a choice and promoting engagement.');
+    expect(c.vagueVerbs).toBe(3);
+  });
+
+  test('the adjective is as empty as the adverb it came from', async ({ page }) => {
+    const { c } = await M(page, 'A proactive plan and careful setup made for a successful, thorough session.');
+    expect(c.emptyAdverbs).toBe(4);
+  });
+
+  test('the causal participial covers the gerunds that explain rather than name', async ({ page }) => {
+    const { c } = await M(page, 'She helped by encouraging him, by facilitating the trade, and by establishing the routine.');
+    expect(c.participialCausals).toBe(3);
+  });
+
+  test('the abstract compound is a pattern now, not a list of eight', async ({ page }) => {
+    const { c } = await M(page, 'His sensory profile, social pattern and communication level were all noted.');
+    expect(c.abstractStates).toBe(3);
+  });
+
+  test('the eight it already caught are still caught', async ({ page }) => {
+    // A widening that drops a case it used to hold is a regression wearing an
+    // improvement's clothes.
+    const { c } = await M(page, 'His motivational state, behavioral response, behavioral presentation, emotional state, engagement level, response pattern, behavioral pattern and activity level were noted.');
+    expect(c.abstractStates).toBe(8);
+  });
+
+  test('"effective" and "addressing" stay off, because they are the tool\'s own label', async ({ page }) => {
+    // consequenceEffectiveness reads "Highly effective at addressing behaviors",
+    // and the register measurement runs over every keyed section. Banning either
+    // would count the tool's own words on every note ever drafted.
+    const { flagged } = await M(page, 'Highly effective at addressing behaviors and mitigating future incidents.');
+    expect(flagged).toEqual([]);
+  });
+
+  test('"appropriate" and "systematic" stay off, because both name real procedures', async ({ page }) => {
+    // A rule that flags a technician for writing "appropriate replacement
+    // behavior" is teaching them to write around their own vocabulary.
+    const { flagged } = await M(page, 'Systematic desensitization ran alongside teaching of an appropriate replacement behavior.');
+    expect(flagged).toEqual([]);
+  });
+
+  test('"by prompting" and "by reinforcing" stay off, because a prompt is what happened', async ({ page }) => {
+    const { c } = await M(page, 'The technician answered by prompting the mand and followed by reinforcing the response.');
+    expect(c.participialCausals).toBe(0);
+  });
+
+  test('flagged names the phrases and never the sentence they sat in', async ({ page }) => {
+    const { flagged } = await M(page, 'The technician proactively supported the money program by providing a warning before each trial.');
+    expect(flagged).toEqual(['proactively', 'by providing', 'supported']);
+    for (const f of flagged) {
+      expect(f).not.toMatch(/money program|trial|technician/);
+    }
+  });
+
+  test('a clean clinical sentence still flags nothing at all', async ({ page }) => {
+    const { flagged } = await M(page, 'The client said "break" on four occasions and the technician gave one each time.');
+    expect(flagged).toEqual([]);
+  });
+});

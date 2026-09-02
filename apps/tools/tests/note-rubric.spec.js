@@ -217,17 +217,24 @@ test.describe('bt declares the handout as its rubric', () => {
     expect(bad).toEqual([]);
   });
 
-  test('the codes bt leaves uncovered are the two that name no dimension', async ({ page }) => {
+  test('the codes bt leaves uncovered are the three that name no dimension', async ({ page }) => {
     await ready(page);
     const uncovered = await page.evaluate(() => {
       const bt = window.NOTE_TOOLS.find((t) => t.id === 'bt');
       const claimed = (bt.qualityRubric || []).flatMap((d) => d.codes || []);
       return Object.keys(bt.hintCatalog).filter((c) => claimed.indexOf(c) === -1);
     });
-    // ambiguous_item and other are the catch-alls the register rules ask every
-    // tool for. They belong to no handout dimension, which is why the residual
-    // dimension has to exist rather than the rubric growing a bucket for them.
-    expect(uncovered).toEqual(['ambiguous_item', 'other']);
+    /* ambiguous_item and other are the catch-alls the register rules ask every
+       tool for. strategy_in_wrong_section joined them on 2026-09-02, and it
+       belongs here for a different reason worth keeping straight: the rubric is
+       the REGIONAL HANDOUT's four dimensions, and B9 is his own bar rather than
+       the handout's. A code that reports against a standard the rubric does not
+       measure has no dimension to sit under, and inventing one would put his
+       bar inside a scorecard that claims to be the handout.
+
+       All three belong to no handout dimension, which is why the residual
+       dimension has to exist rather than the rubric growing a bucket for them. */
+    expect(uncovered).toEqual(['ambiguous_item', 'strategy_in_wrong_section', 'other']);
   });
 
   test('the rubric covers the handout, not a sample of it', async ({ page }) => {

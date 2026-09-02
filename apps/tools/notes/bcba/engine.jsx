@@ -1609,6 +1609,28 @@ function App() {
   const REVISE_MIN_SENTENCES = 8;
   const REVISE_MIN_WORDS = 120;
 
+  /* THE SECOND PASS NOW HAS A SECOND REASON TO RUN, and it is the one the
+     technician would otherwise have to fix by hand.
+
+     Everything above measures how the draft is SHAPED. These two measure what
+     it SAYS, and both numbers already exist by the time the draft is finalized:
+     note-metrics counts the banned constructions, and hollow.js counts the
+     sentences that name a category and a vague verb with nothing observable in
+     them. Until now both were counted, audited, and acted on by nobody.
+
+     WHY A FLOOR OF TWO RATHER THAN ONE. A single "supported" in a 300 word note
+     is a word choice; three of them is the register. Firing on one would spend a
+     call on almost every draft, and the cost of the call is latency the
+     technician waits through. One hollow sentence is enough on its own, because
+     a sentence with nothing in it is a whole sentence of nothing rather than a
+     word inside a good one.
+
+     These are cost controls and not measured thresholds, and they are written
+     here as plain numbers so nobody has to go looking for the study that is not
+     behind them. */
+  const REVISE_CONSTRUCTION_FLOOR = 3;
+  const REVISE_HOLLOW_FLOOR = 1;
+
   /* The two rules that hold whether or not a section was pointed at.
    *
    * Both come from faults he hit on the live tool. He asked whether something
@@ -1624,14 +1646,22 @@ function App() {
   const selfRevise = async (conversation, block, first) => {
     if (!window.NoteMetrics) return null;
 
+    /* NARRATIVE SECTIONS ONLY, and that carries more weight now than it did.
+       The register measurement in the audit reads every keyed section, which
+       means it reads the tool's own option labels; "Not effective at addressing
+       behaviors within session, additional support needed" contributes a
+       vagueVerb hit on every note that selects it. An ask built off that number
+       would name a word the model cannot change and did not write. Here the
+       count comes off the prose the model is being asked to fix. */
+    const draft = finalize(first.parsed);
     const prose = tool.formSections
       .filter((sec) => sec.kind === "narrative" && sec.key)
-      .map((sec) => String(finalOutput(first.parsed)[sec.key] || ""))
+      .map((sec) => String(draft.output[sec.key] || ""))
       .filter(Boolean)
       .join("\n\n");
 
     const m = window.NoteMetrics.measure(prose);
-    // Nothing to measure, too little to judge, or it already mixes: leave it.
+    // Nothing to measure, or too little to judge: leave it.
     if (!m) return null;
     if (m.sentences < REVISE_MIN_SENTENCES || m.words < REVISE_MIN_WORDS) return null;
 
@@ -1641,36 +1671,82 @@ function App() {
     // this call was made on.
     const scoped = m.sectionCv !== null && m.sectionCv !== undefined && m.sections >= 1;
     const spread = scoped ? m.sectionCv : m.burstiness;
-    if (spread >= (scoped ? REVISE_WITHIN_FLOOR : REVISE_SPREAD_FLOOR)) return null;
+    const flat = spread < (scoped ? REVISE_WITHIN_FLOOR : REVISE_SPREAD_FLOOR);
 
+    const banned = window.NoteMetrics.flagged(prose);
+    const constructions = m.emptyAdverbs + m.participialCausals + m.abstractStates + m.vagueVerbs;
+    const wordy = constructions >= REVISE_CONSTRUCTION_FLOOR && banned.length > 0;
+    const hollow = draft.hollow >= REVISE_HOLLOW_FLOOR;
+
+    // Nothing measured is wrong with it. This is the common case and it costs
+    // the technician nothing.
+    if (!flat && !wordy && !hollow) return null;
+
+    /* ONE CALL, however many faults it carries. A draft that is flat AND wordy
+       gets both named in the same ask rather than two rounds of latency, and
+       the order runs from the one that changes the most text to the one that
+       changes the least. */
     const where = scoped ? "within each section" : "across the note";
-    const ask = [
-      "Before I read this, look at your own draft again.",
-      "",
-      "Its narrative sentences average " + Math.round(m.meanLen) + " words, and " + where +
-        " they vary by only " + Math.round(spread * 100) +
-        "% around that. That is the problem: not the length, the SAMENESS.",
-      "Uniform sentence length is the single strongest signal that prose was machine-written,",
-      "and it is equally true whether every sentence is short or every sentence is long.",
-      "",
-      // These lines are joined with a newline, so a phrase split across two of
-      // them is not the phrase any more. tests/self-revision.spec.js matches
-      // "keep every checkbox" and caught exactly that. Keep each prohibition
-      // whole on its own line.
-      "Fix it INSIDE each section rather than between them. A note where every section reads at",
-      "one flat pace, with all the variety sitting between sections, has the same problem in a",
-      "different place. Put a short sentence next to a long one. Let a small fact be a short",
-      "sentence. Join two related observations into one longer sentence where they belong together.",
+    const ask = ["Before I read this, look at your own draft again.", ""];
+
+    if (flat) {
+      ask.push(
+        "Its narrative sentences average " + Math.round(m.meanLen) + " words, and " + where +
+          " they vary by only " + Math.round(spread * 100) +
+          "% around that. That is the problem: not the length, the SAMENESS.",
+        "Uniform sentence length is the single strongest signal that prose was machine-written,",
+        "and it is equally true whether every sentence is short or every sentence is long.",
+        "",
+        // These lines are joined with a newline, so a phrase split across two of
+        // them is not the phrase any more. tests/self-revision.spec.js matches
+        // "keep every checkbox" and caught exactly that. Keep each prohibition
+        // whole on its own line.
+        "Fix it INSIDE each section rather than between them. A note where every section reads at",
+        "one flat pace, with all the variety sitting between sections, has the same problem in a",
+        "different place. Put a short sentence next to a long one. Let a small fact be a short",
+        "sentence. Join two related observations into one longer sentence where they belong together.",
+        ""
+      );
+    }
+
+    if (hollow) {
+      ask.push(
+        draft.hollow === 1
+          ? "One sentence in this draft names a category, uses a vague verb, and reports nothing."
+          : draft.hollow + " sentences in this draft name a category, use a vague verb, and report nothing.",
+        'A sentence like "These strategies supported the client throughout the session" is a heading',
+        "for an observation that never arrived. Replace each one with what was actually done and what",
+        "the client actually did. If the notes do not tell you, cut the sentence rather than keeping",
+        "the shape of it, and emit the hint that says the detail is missing.",
+        ""
+      );
+    }
+
+    if (wordy) {
+      /* NAMING THE WORDS, not the count. "Your note has 4 flagged
+         constructions" is a number the model cannot act on, and these strings
+         come off the four fixed lists rather than out of the note, so nothing
+         clinical is being quoted back. */
+      ask.push(
+        "It also uses " + banned.map(function (w) { return '"' + w + '"'; }).join(", ") + ".",
+        "Each of those is a word standing where an observation should be. Say what happened instead:",
+        'what the client did, what the technician did, how many times, how long. Where the notes do',
+        "not give you that, cut the phrase rather than rewording it.",
+        ""
+      );
+    }
+
+    ask.push(
       "Change nothing about the clinical content: no new facts, no removed facts, no softened",
       "findings, and keep every checkbox exactly as it is.",
       "",
-      "Return the COMPLETE JSON object with ALL keys, as before.",
-    ].join("\n");
+      "Return the COMPLETE JSON object with ALL keys, as before."
+    );
 
-    const next = [...conversation, { role: "user", content: ask }];
+    const next = [...conversation, { role: "user", content: ask.join("\n") }];
     const result = await runTurn(next, block);
     if (!result || !result.parsed) return null;
-    return { ask, result };
+    return { ask: ask.join("\n"), result };
   };
 
   const draftNote = async (scrubbedValues, extra) => {
