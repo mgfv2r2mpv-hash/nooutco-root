@@ -152,10 +152,42 @@
      Derived from a real minimal pair: the same narrative scored 53% and then 0%
      after the clinician edited it, with sentence count, length, burstiness and
      opener variety all unchanged. Six things moved and four of them are these. */
-  var EMPTY_ADVERB = /\b(proactively|actively|effectively|appropriately|successfully|systematically|thoroughly|carefully)\b/gi;
-  var PARTICIPIAL_CAUSAL = /\bby (ensuring|providing|allowing|offering|delivering|maintaining|utilizing|promoting)\b/gi;
-  var ABSTRACT_STATE = /\b(motivational state|behavioral response|behavioral presentation|emotional state|engagement level|response pattern|behavioral pattern|activity level)\b/gi;
-  var VAGUE_VERB = /\b(support|supported|supports|facilitate[sd]?|promote[sd]?|enhance[sd]?|address(?:ed|es)?)\b/gi;
+  /* WIDENED to the forms the same construction takes when the model inflects
+     it. Every one of these four caught a base form and missed its neighbours,
+     so a draft that said "supporting" instead of "supported" scored clean on a
+     rule it broke. Nothing here cuts anything: these are counted, and the count
+     is what the second pass and the Friday report read.
+
+     WHAT IS DELIBERATELY NOT ON THESE LISTS, because each has a mechanism
+     behind it rather than a preference:
+
+       "effective", and "addressing" as the one -ing form left off VAGUE_VERB -
+       the tool's own consequenceEffectiveness labels read "Highly effective at
+       addressing behaviors", and the register measurement runs over every keyed
+       section, so either one would count the tool's own words on every note
+       ever drafted. "support" already collides with the third of those labels
+       and has since the list was written; that is a reason not to add a second
+       collision, not a licence to.
+
+       "appropriate" and "systematic" - both name real procedures. An
+       appropriate replacement behavior and systematic desensitization are the
+       field's terms, and a rule that flags a technician for using them is
+       teaching them to write around their own vocabulary.
+
+       "by prompting", "by reinforcing" - a prompt and a reinforcer are what
+       happened, so the participial there is carrying a clinical fact rather
+       than dodging one. Only the gerunds that explain a strategy instead of
+       naming an action are listed.
+
+     note-metrics.spec.js pins all four exclusions. */
+  var EMPTY_ADVERB = /\b(proactively|actively|effectively|appropriately|successfully|systematically|thoroughly|carefully|proactive|successful|thorough|careful)\b/gi;
+  var PARTICIPIAL_CAUSAL = /\bby (ensuring|providing|allowing|offering|delivering|maintaining|utilizing|promoting|encouraging|facilitating|supporting|establishing|creating|implementing|incorporating|leveraging|fostering|minimizing|maximizing)\b/gi;
+  /* A pattern rather than the eight phrases it used to list, because the fault
+     is the compound and not the particular pair. "regulation" and
+     "functioning" are left out on purpose: emotional regulation is a construct
+     a BCBA names on purpose, not an abstraction they slid into. */
+  var ABSTRACT_STATE = /\b(?:motivational|behavioral|emotional|sensory|communication|social|engagement|activity|response)\s+(?:state|states|response|responses|presentation|level|levels|pattern|patterns|profile|status)\b/gi;
+  var VAGUE_VERB = /\b(support(?:s|ed|ing)?|facilitat(?:e|es|ed|ing)|promot(?:e|es|ed|ing)|enhanc(?:e|es|ed|ing)|address(?:es|ed)?)\b/gi;
 
   function constructions(text) {
     var s = String(text || "");
@@ -166,6 +198,29 @@
       abstractStates: n(ABSTRACT_STATE),
       vagueVerbs: n(VAGUE_VERB),
     };
+  }
+
+  /* The distinct phrases that fired, deduplicated and lowercased, so a second
+     pass can name them instead of quoting a number at the model.
+
+     THIS IS NOT AN AUDIT VALUE and must never become one. Every one of these
+     strings comes off the four lists above rather than out of the note, so it
+     carries no clinical content, but the invariant that keeps a fragment of a
+     note out of an audit payload is that the payload holds numbers only. Keep
+     the two apart. The cap is a backstop against a pathological draft. */
+  function flagged(text, cap) {
+    var s = String(text || "");
+    var seen = {};
+    var out = [];
+    [EMPTY_ADVERB, PARTICIPIAL_CAUSAL, ABSTRACT_STATE, VAGUE_VERB].forEach(function (re) {
+      (s.match(re) || []).forEach(function (hit) {
+        var k = hit.toLowerCase();
+        if (seen[k]) return;
+        seen[k] = 1;
+        out.push(k);
+      });
+    });
+    return out.slice(0, cap || 12);
   }
 
   function measure(text) {
@@ -304,5 +359,5 @@
     return Math.round(parts);
   }
 
-  window.NoteMetrics = { measure: measure, score: score, constructions: constructions };
+  window.NoteMetrics = { measure: measure, score: score, constructions: constructions, flagged: flagged };
 })();

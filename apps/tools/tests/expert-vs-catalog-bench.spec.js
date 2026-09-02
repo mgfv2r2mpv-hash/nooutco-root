@@ -173,11 +173,22 @@ test('a truncated draft is distinguishable from a draft with no hints', () => {
    count moved because a code that was already being asked for started being
    accepted. A future change that moves it again should say which of those two
    things happened. */
-test('bt carries ten catalog codes', () => {
+test('bt carries eleven catalog codes', () => {
   const { tool } = loadTool('bt');
   const codes = Object.keys(tool.hintCatalog);
-  expect(codes).toHaveLength(10);
+  expect(codes).toHaveLength(11);
   expect(codes, 'the code the shared register rules name').toContain('ambiguous_item');
+
+  /* 2026-09-02, and this is a FOURTH kind of move, which is why the count
+     changed rather than a code being swapped: strategy_in_wrong_section is not
+     a gap the model reports. The post-pass checks completeness B9 against the
+     tool's own two strategy lists and injects the hint itself. It still has to
+     live in this catalog, because normalizeHints drops any code the tool does
+     not declare and a hint nobody declared is a hint nobody sees. So the
+     catalog now holds codes from two sources, and a future reader counting
+     "what the model can emit" will be off by this one. */
+  expect(codes, 'the code the post-pass injects rather than the model emitting')
+    .toContain('strategy_in_wrong_section');
 
   // 2026-09-01, and this is the third kind of move: the catalog and the
   // knowledge base disagreed, and the catalog was wrong.
