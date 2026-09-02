@@ -220,7 +220,7 @@ async function draftWithHints(page, hints) {
 test.describe('the renderer caps at three and destroys nothing', () => {
   const SIX = [1, 2, 3, 4, 5, 6].map((n) => ({
     section: 'behaviorPlanNarrative',
-    code: n % 2 ? 'no_behavior_count' : 'no_response_described',
+    code: n % 2 ? 'no_rate_comparison' : 'no_response_described',
     detail: `finding ${n}`, rank: n, kind: 'thin',
   }));
 
@@ -261,7 +261,7 @@ test.describe('the renderer caps at three and destroys nothing', () => {
 test.describe('severity and the whole-note block', () => {
   test('a claim-blocker is drawn differently from a thin note', async ({ page }) => {
     await draftWithHints(page, [
-      { section: 'behaviorPlanNarrative', code: 'no_behavior_count', detail: 'blocker', rank: 1, kind: 'blocks-claim' },
+      { section: 'behaviorPlanNarrative', code: 'no_rate_comparison', detail: 'blocker', rank: 1, kind: 'blocks-claim' },
       { section: 'behaviorPlanNarrative', code: 'no_response_described', detail: 'thin one', rank: 2, kind: 'thin' },
     ]);
     const rows = page.getByTestId('hints-behaviorPlanNarrative').locator('p');

@@ -165,7 +165,7 @@ test.describe('the expert reads the same intake the draft was written from', () 
 
 test.describe('both channels speak on the same note', () => {
   test('the expert findings land in the section they name, beside the catalog', async ({ page }) => {
-    await draft(page, { note: { ...NOTE, hints: [{ section: 'behaviorPlanNarrative', code: 'no_behavior_count', detail: '', rank: 1, kind: 'thin' }] } });
+    await draft(page, { note: { ...NOTE, hints: [{ section: 'behaviorPlanNarrative', code: 'no_rate_comparison', detail: '', rank: 1, kind: 'thin' }] } });
     // The expert's section finding.
     await expect(page.getByTestId('expert-behaviorPlanNarrative')).toBeVisible();
     await expect(page.getByTestId('expert-behaviorPlanNarrative')).toContainText('How long did each elopement last?');
