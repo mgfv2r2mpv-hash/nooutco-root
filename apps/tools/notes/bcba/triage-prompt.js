@@ -15,14 +15,16 @@
 (function () {
   var TRIAGE_SYSTEM =
     "You are reviewing a clinician's raw session notes BEFORE they are turned into a formal note.\n\n" +
-    "Your ONLY job: decide whether anything is too thin to write from, and if so ask at most 3 short, specific questions that would materially improve the finished note.\n\n" +
+    "Your ONLY job: decide whether anything is too thin to write from, and if so ask the short, specific questions that would materially improve the finished note.\n\n" +
     "RULES\n" +
     "- Ask only about what a payer or supervisor would notice missing: counts or rates for a behavior, the prompt level used, whether a strategy worked, how this session compared to recent ones.\n" +
     "- Be specific and quote back what they wrote. \"You mentioned elopement - how many times, and what did you do?\" NOT \"Can you add more detail?\"\n" +
     "- NEVER ask for a name, a date, an address, or any other identifying detail. The notes are deliberately de-identified.\n" +
     "- Do not ask about something they plainly had nothing to report. A session with no behaviors of concern is a normal session, not a gap.\n" +
-    "- If the notes are adequate, return sufficient=true and an empty array. Fewer questions is better than more; three is a ceiling, not a target.\n" +
-    "- Return ONLY a JSON object: {\"sufficient\": boolean, \"questions\": [{\"field\": \"\", \"question\": \"\"}]}";
+    "- If the notes are adequate, return sufficient=true and an empty array. Fewer questions is better than more, and HOW MANY TO ASK below is the only ceiling.\n" +
+    // The object's shape is stated once, at the end of the composed prompt, by
+    // the READINESS block below. A partial version here names a second object.
+    "- Return ONLY a JSON object. No markdown, no preamble, no commentary.";
 
   /* Candidate answers, offered alongside a question rather than instead of it.
 
@@ -52,9 +54,15 @@
      needed." Counting questions would have put that judgement in arithmetic,
      where tuning it means editing code and re-reading tests.
 
-     The number drives how long the skip button stays locked. It never gates
-     anything and it is never shown, so a badly calibrated reading costs a few
-     seconds either way and nothing else. */
+     The number drives how long the skip button stays locked and how many
+     questions the model is allowed. It is never shown, so a badly calibrated
+     reading costs a few seconds and a question either way.
+
+     The ceiling lives here rather than in each tool's own prompt because a
+     tool that overrode it would be setting the ceiling against a band it did
+     not define. `bar` is here for the same reason: what a standard is belongs
+     to whichever prompt supplies one, and the field that carries its id is the
+     same field for every tool. */
   var TRIAGE_READINESS =
     "\n\nREADINESS\n" +
     "Alongside those fields, return `readiness`: an integer from 0 to 100 for how close this input already is to something a clinician could sign, judged BEFORE any of your questions are answered.\n" +
@@ -63,7 +71,15 @@
     "  30-59   Several gaps, or a single one the note rests on. Writing from this means inventing or omitting.\n" +
     "  0-29    Too thin to write from at all.\n" +
     "Judge what is on the page, not how well it is written. Terse but complete scores high; fluent but hollow scores low.\n" +
-    "So the object you return is {\"sufficient\": boolean, \"readiness\": integer, \"questions\": [{\"field\": \"\", \"question\": \"\", \"suggestions\": []}]}.";
+    "\nHOW MANY TO ASK\n" +
+    "The ceiling moves with that reading, because a note that is nearly ready cannot be improved by five questions and a note that is barely a note cannot be rescued by one.\n" +
+    "  85-100  At most 1, and only where the answer would change the note rather than polish it.\n" +
+    "  60-84   At most 2.\n" +
+    "  30-59   At most 3.\n" +
+    "  0-29    At most 5, and only where every one of them is carrying its own weight.\n" +
+    "Ask the fewest that would carry the note over 85. A band's ceiling is a limit and never a target.\n" +
+    "\nEach question also carries `bar`: the id of the standard it came from, where this prompt has given you one, and \"\" where it has not. Never invent an id.\n" +
+    "So the object you return is {\"sufficient\": boolean, \"readiness\": integer, \"questions\": [{\"field\": \"\", \"question\": \"\", \"suggestions\": [], \"bar\": \"\"}]}.";
 
   window.NoteTriagePrompt = {
     system: TRIAGE_SYSTEM,
