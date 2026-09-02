@@ -1191,10 +1191,42 @@ function App() {
 
        Role tokens are NOT touched. Client stays Client. */
     const restored = NotesScrub.restoreOutput(parsed, scrubMapRef.current);
-    const normalized = tool.normalizeOutput(restored);
-    return window.NoteAbsence
+
+    /* THE MEMBERSHIP CHECK RUNS BEFORE normalizeOutput, ON PURPOSE. Its result
+       is a list of hints in the model's own shape, concatenated onto the ones
+       the model sent, so the tool's normalizeHints validates all of them
+       together. A hint injected after normalization would be the one hint on
+       the note that skipped the check for a code the tool declares and a
+       section the note has, which is exactly the check worth not skipping. */
+    const misplaced = window.NoteHollow && tool.strategyOwnership
+      ? window.NoteHollow.misplaced(restored, tool.strategyOwnership)
+      : [];
+    const withHints = misplaced.length
+      ? { ...restored, hints: (Array.isArray(restored.hints) ? restored.hints : []).concat(misplaced) }
+      : restored;
+
+    const normalized = tool.normalizeOutput(withHints);
+    const stripped = window.NoteAbsence
       ? window.NoteAbsence.scrubNote(normalized)
       : { output: normalized, cut: 0, flagged: 0 };
+
+    /* AFTER THE STRIP, never before. absence.js was written and tuned against
+       what the model returns, and the recast writes new sentences into the
+       note ("No behaviors of concern occurred."). Running the recast first
+       would hand the strip prose no model wrote, and the one thing absence.js
+       must never do is cut a zero. */
+    const filled = window.NoteHollow
+      ? window.NoteHollow.passNote(stripped.output, narrativeIds())
+      : { output: stripped.output, recast: 0, hollow: 0 };
+
+    return {
+      output: filled.output,
+      cut: stripped.cut,
+      flagged: stripped.flagged,
+      recast: filled.recast,
+      hollow: filled.hollow,
+      misplaced: misplaced.length,
+    };
   };
   const finalOutput = (parsed) => finalize(parsed).output;
 
@@ -1854,6 +1886,25 @@ function App() {
         answered: extra && extra.trim() ? 1 : 0,
         absenceCut: finalDraft.cut,
         absenceFlagged: finalDraft.flagged,
+      });
+      /* The same question, asked of the three rules the post-pass enforces
+         rather than requests. zeroRecast counts the participials it moved,
+         hollowSaid the contentless sentences it left alone, misplacedStrategy
+         the strategies narrated under the wrong heading. All three are how we
+         find out whether the prompt wording is landing, and all three are
+         counts: a clinical sentence never travels to the audit endpoint
+         because a rule fired on it.
+
+         ITS OWN EVENT, for the reason note_register is its own event. The
+         sanitiser keeps the first 12 keys and drops the rest in silence, and
+         inputSizes is spread in first, so a tool that grows a sixth intake box
+         would take these three off the end of note_generated and nothing
+         anywhere would say so. bt has five today and the payload would have
+         stood at eleven, which is a margin of one. */
+      audit("note_postpass", {
+        zeroRecast: finalDraft.recast,
+        hollowSaid: finalDraft.hollow,
+        misplacedStrategy: finalDraft.misplaced,
       });
       // Its own event, not merged into note_generated: the metric sanitiser
       // caps a payload at 12 numeric keys and silently drops the overflow, so

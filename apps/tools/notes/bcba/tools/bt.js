@@ -165,7 +165,53 @@
        while their instruction sat in the prompt. assess, parent and sap have
        carried it since they were written; bt and sup did not. */
     ambiguous_item: "Clarify",
+    /* Not a gap the model reports. The post-pass checks this one against the
+       two strategy lists below and injects it, because completeness B9 is the
+       only item on his bar that is checkable exactly rather than judged. It
+       still lives in this catalog: normalizeHints drops any code the tool does
+       not declare, so a hint nobody declared is a hint nobody sees. */
+    strategy_in_wrong_section: "Strategy narrated in the wrong section",
     other: "",
+  };
+
+  /* ── Which section owns which strategy ────────────────────────────────────
+     His ruling on the case that started this, about DRO: "though it uses
+     motivation operations it isn't an antecedent intervention properly". A
+     consequence procedure narrated in the antecedent section is a
+     misclassification, and the record carries it.
+
+     A TERM, NOT A LABEL. These are checkbox labels; no narrative contains
+     "Allowed break" because a note says "gave him a break". Each strategy
+     therefore carries the phrase a note actually uses, and three carry none:
+     "Offered choices", "Allowed break" and the "provided warning" half of
+     "Priming/provided warning" have no phrase that is safe to match, because
+     choice, break and warning are ordinary words in clinical prose and a false
+     positive here puts a red hint on a correct note. Matching nothing is the
+     right way to be wrong. "Other" is a label for whatever the technician
+     typed, so it cannot be matched either. */
+  var STRATEGY_OWNERSHIP = {
+    code: "strategy_in_wrong_section",
+    sections: {
+      antecedentNarrative: {
+        label: "antecedent",
+        strategies: [
+          { label: "Environmental arrangement", term: /\benvironmental arrangement\b/i },
+          { label: "Visual schedule", term: /\bvisual schedule\b/i },
+          { label: "Utilized Premack principle (first-then)", term: /\b(?:premack|first[-\s]?then)\b/i },
+          { label: "Priming/provided warning", term: /\bprim(?:e|ed|ing)\b/i },
+          { label: "Motivation alteration / manipulation", term: /\bmotivat\w*\s+(?:alteration|manipulation)\b|\bmotivating operation/i },
+        ],
+      },
+      behaviorPlanNarrative: {
+        label: "consequence",
+        strategies: [
+          { label: "Redirection", term: /\bredirect(?:ed|ion|ing)\b/i },
+          { label: "Lessened response requirement", term: /\bresponse requirement\b/i },
+          { label: "Prompted functional communication", term: /\bfunctional communication\b|\bFCT\b/i },
+          { label: "Differential reinforcement", term: /\bdifferential reinforcement\b|\bDR[OAIL]\b/i },
+        ],
+      },
+    },
   };
 
   /* ── Quality rubric ───────────────────────────────────────────────────────
@@ -590,6 +636,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
     groupOptions: GROUP_OPTIONS,
     formSections: FORM_SECTIONS,
     hintCatalog: HINT_CATALOG,
+    strategyOwnership: STRATEGY_OWNERSHIP,
     qualityRubric: QUALITY_RUBRIC,
     responseSchema: RESPONSE_SCHEMA,
 
