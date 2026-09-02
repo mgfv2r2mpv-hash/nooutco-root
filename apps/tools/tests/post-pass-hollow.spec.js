@@ -216,6 +216,32 @@ test.describe('a strategy narrated under the wrong heading', () => {
     await expect(box).toContainText(/antecedent/i);
   });
 
+  /* HIS CALL OF 2026-09-02, reading a red block on his own note: "if the expert
+     moved something it can put an amber/yellow bubble, red is aggressive. The
+     information is present and can be moved so it isn't a catastrophe."
+
+     Two-sided on purpose. Red is not gone from the page - it still means what
+     the legend says it means, a claim a funder could refuse - so this asserts
+     the finding went amber AND that it kept its place at the top of the list.
+     Downgrading the colour and losing the ordering would be a different change
+     from the one he asked for. */
+  test('a moved strategy is amber and still ranks first, because it is a move rather than a refusal', async ({ page }) => {
+    await draft(page, noteWith({
+      behaviorPlanNarrative: 'A DRO ran on a two minute interval and the reinforcer followed each one.',
+    }));
+
+    const raw = await page.evaluate(() => window.NoteHollow
+      .misplaced({ antecedentNarrative: '', behaviorPlanNarrative: 'A DRO ran on a two minute interval.' },
+        window.NOTE_TOOLS.find((t) => t.id === 'bt').strategyOwnership)
+      .map((h) => ({ kind: h.kind, rank: h.rank })));
+    expect(raw).toEqual([{ kind: 'thin', rank: 0 }]);
+
+    // And it reaches the page as amber, which is the half a technician sees.
+    const row = page.getByTestId('hints-behaviorPlanNarrative').locator('[data-hint-kind]').first();
+    await expect(row).toHaveAttribute('data-hint-kind', 'thin');
+    await expect(row).not.toHaveAttribute('data-hint-kind', 'blocks-claim');
+  });
+
   test('a DRO written under antecedents is not a finding', async ({ page }) => {
     await draft(page, noteWith({
       antecedentNarrative: 'A DRO ran on a two minute interval and the client earned the reinforcer at each one.',

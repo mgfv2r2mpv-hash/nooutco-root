@@ -614,6 +614,29 @@ test.describe('the bar rules a draft can follow', () => {
     }
   });
 
+  /* Two claims his own production note made and his intake never did, both
+     read off screenshots on 2026-09-02. They go to all five for the same reason
+     B1 does: neither is a rule about session notes, both are rules about
+     writing down what somebody watched. */
+  test('no tool may impute a verdict with a connective or invent a pattern from a count', async ({ page }) => {
+    const p = await systems(page, ALL_FIVE);
+    for (const id of ALL_FIVE) {
+      expect(p[id], `${id} did not load`).toBeTruthy();
+      // "Even after observing" said the staff response failed. His reading:
+      // it "implies ineffectiveness not stated".
+      expect(p[id], `${id} is missing the connective rule`)
+        .toMatch(/No verdict smuggled in by a connective/);
+      expect(p[id], `${id} does not name the connectives`).toMatch(/"Even after", "despite", "although" and "still"/);
+      // And the remedy, without which the model deletes the sentence instead of
+      // rewriting it. Same failure mode B2 has an escape hatch for.
+      expect(p[id], `${id} lost the replacement the rule offers`)
+        .toMatch(/let the reader draw it/);
+      // The behaviour occurred "a few times" and the note said "in bursts".
+      expect(p[id], `${id} is missing the pattern rule`).toMatch(/No pattern the intake did not give/);
+      expect(p[id], `${id} does not draw the count-versus-pattern line`).toMatch(/A count is not a pattern/);
+    }
+  });
+
   test('the plan tool takes them too, and still takes neither session block', async ({ page }) => {
     /* The pairing is the point rather than the first half alone. Widening a
        shared block is exactly the move that carried bt's section names into the
