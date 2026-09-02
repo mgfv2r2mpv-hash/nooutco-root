@@ -1238,25 +1238,20 @@ function App() {
    * call: it has just read the note and said what is thin about it, so asking
    * again would cost a round trip to learn something we were already told.
    *
-   * "missing" means a hint names a section that has no prose at all - a payer
-   * reading that note finds a blank where a narrative should be. "thin" means
-   * there are hints but every section has something in it. Deliberately
-   * conservative: a green tick that turns out to be wrong is worse than an amber
-   * one the technician glances at and dismisses. */
-  const noteQuality = () => {
-    if (!S.output) return { level: "idle" };
-
-    const empties = narrativeIds().filter((id) => !String(S.output[id] || "").trim());
-    if (empties.length) {
-      return { level: "missing", reason: `${empties.length} narrative section${empties.length > 1 ? "s are" : " is"} empty` };
-    }
-
-    const hints = Array.isArray(S.output.hints) ? S.output.hints : [];
-    if (hints.length) {
-      return { level: "thin", reason: `${hints.length} spot${hints.length > 1 ? "s" : ""} could use more detail` };
-    }
-    return { level: "good", reason: "Nothing flagged. Review it before you file it." };
-  };
+   * It reports a rubric rather than a tally. "2 spots could use more detail"
+   * says work remains and nothing about what the work is, so the only way to
+   * act on it is to open the panel and read both. The dimensions and the
+   * grading live in note-rubric.js, and a tool brings its own because the hint
+   * codes are per tool. Deliberately conservative either way: a green tick that
+   * turns out to be wrong is worse than an amber one the technician glances at
+   * and dismisses. */
+  const noteQuality = () =>
+    NoteRubric.grade({
+      output: S.output,
+      narrativeIds: narrativeIds(),
+      rubric: tool.qualityRubric || null,
+      hintCatalog: tool.hintCatalog || {},
+    });
 
   // How much of the generated prose the clinician rewrote by hand.
   const manualEditChars = () => {
