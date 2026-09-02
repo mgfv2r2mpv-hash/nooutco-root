@@ -154,7 +154,7 @@
     no_rate_comparison: "No comparison to recent sessions, say whether this was higher, lower, or about the same",
     no_prompt_level: "Teaching described without a prompt level, name the prompt type used and whether it was faded",
     single_program_only: "Only one program is described, a second (ideally communication/social plus adaptive) makes the note stronger",
-    no_antecedent_impact: "Antecedent strategy named without its effect, say whether it helped",
+    antecedent_effect_unstated: "Antecedent strategy named without its effect, say whether it helped",
     thin_clinical_status: "Little detail on how the client presented at the start of session",
     no_response_described: "Behavior noted without your response, add what you did and whether it worked",
     /* The code the SHARED register rules already ask every session tool to
@@ -175,10 +175,16 @@
   };
 
   /* ── Which section owns which strategy ────────────────────────────────────
-     His ruling on the case that started this, about DRO: "though it uses
-     motivation operations it isn't an antecedent intervention properly". A
-     consequence procedure narrated in the antecedent section is a
-     misclassification, and the record carries it.
+     A procedure narrated under the wrong heading is a misclassification, and
+     the record carries it whether or not the session ran that way.
+
+     THE CASE THAT STARTED THIS ALSO REVERSED IT, so read the DRO entry below
+     rather than trusting a summary of it. He first ruled that a DRO "isn't an
+     antecedent intervention properly", this list was built on that, and on
+     2026-09-02 he corrected it to the two-level reading quoted at the entry:
+     a DRO OPERATES as a consequence and IS an antecedent intervention, and a
+     note files by the intervention. Anything here that reads like a settled
+     clinical fact is one of his rulings and can move the same way.
 
      A TERM, NOT A LABEL. These are checkbox labels; no narrative contains
      "Allowed break" because a note says "gave him a break". Each strategy
@@ -200,6 +206,20 @@
           { label: "Utilized Premack principle (first-then)", term: /\b(?:premack|first[-\s]?then)\b/i },
           { label: "Priming/provided warning", term: /\bprim(?:e|ed|ing)\b/i },
           { label: "Motivation alteration / manipulation", term: /\bmotivat\w*\s+(?:alteration|manipulation)\b|\bmotivating operation/i },
+          /* HIS RULING OF 2026-09-02, and it reverses what this file said before.
+             A DRO is filed by what the INTERVENTION is, not by how it operates:
+             "Alteration of MOs (which DRO specifically is) is an antecedent
+             strategy because MOs apply to behaviors probability and reinforcing
+             potential. It *operates* as a consequence on the behavior preceding
+             the reinforcement period because of the nature of operant behavior
+             reinforcement, but as an *intervention* it is an antecedent strategy
+             that fires on an interval contingent on an absence (and therefore
+             *before* the behavior occurs in the interval)."
+
+             It sits beside motivation alteration because he says it IS one.
+             There is no DRO checkbox on the form; this term names the procedure
+             the way a narrative writes it, which is what every term here does. */
+          { label: "Differential reinforcement of other behavior (DRO)", term: /\bDRO\b|\bdifferential reinforcement of other behaviou?r\b/i },
         ],
       },
       behaviorPlanNarrative: {
@@ -208,7 +228,29 @@
           { label: "Redirection", term: /\bredirect(?:ed|ion|ing)\b/i },
           { label: "Lessened response requirement", term: /\bresponse requirement\b/i },
           { label: "Prompted functional communication", term: /\bfunctional communication\b|\bFCT\b/i },
-          { label: "Differential reinforcement", term: /\bdifferential reinforcement\b|\bDR[OAIL]\b/i },
+          /* NARROWED, and the old regex was wrong in both directions. It read
+             /differential reinforcement|DR[OAIL]/ and so filed DRO, DRA, DRI and
+             DRL as one thing. His closing instruction was that the tool "needs a
+             philosophical understanding of what a DRO, DRA, DRI, DRH, DRL DRD
+             are if it is going to account for them", so it now accounts only for
+             the two it can defend.
+
+             DRA and DRI stay here because that is already what this checkbox
+             means on his own form: its help text reads "reinforced the
+             replacement behavior, withheld for the target". Reinforcing a
+             replacement is a consequence procedure and is a different thing from
+             reinforcing the absence of one.
+
+             The BARE PHRASE now matches nothing. On its own "differential
+             reinforcement" is ambiguous between a DRO in the antecedent section
+             and a DRA in the consequence one, and a term that cannot resolve
+             which puts a red hint on a correct note. Same rule that leaves
+             choices, break and warning unmatched.
+
+             DRH, DRL and DRD carry nothing at all. He named them and I do not
+             have his reading on them, and a guess here is a guess about clinical
+             classification. */
+          { label: "Differential reinforcement of an alternative or incompatible behavior (DRA/DRI)", term: /\bDR[AI]\b|\bdifferential reinforcement of (?:an? )?(?:alternative|incompatible)\b/i },
         ],
       },
     },
@@ -230,7 +272,7 @@
     {
       id: "result",
       label: "What happened as a result",
-      codes: ["no_strategy_outcome", "no_response_described", "no_antecedent_impact"],
+      codes: ["no_strategy_outcome", "no_response_described", "antecedent_effect_unstated"],
     },
     {
       id: "comparison",
@@ -374,7 +416,7 @@ PLAIN LANGUAGE (applies alongside the terminology rules, never against them)\n\
 - no_rate_comparison (behaviorPlanNarrative): no comparison to recent sessions\n\
 - no_prompt_level (lessonProgressNarrative): teaching described with no prompt type or fading decision\n\
 - single_program_only (lessonProgressNarrative): only one program is identifiable in the notes\n\
-- no_antecedent_impact (antecedentNarrative): an antecedent strategy is named with no stated effect\n\
+- antecedent_effect_unstated (antecedentNarrative): an antecedent strategy is named with no stated effect\n\
 - thin_clinical_status (clinicalStatusNarrative): almost nothing about how the client presented on arrival\n\
 - no_response_described (behaviorPlanNarrative): a behavior is named with no BT response\n\
 - ambiguous_item (any section): something in the note needs clarifying before it is signed - put what, in detail\n\
@@ -488,7 +530,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
          offered when appropriate to increase opportunities for the client to
          participate", which satisfies both halves of the old line and says
          nothing about what the client did. */
-      "- antecedentNarrative: three parts for each strategy. How it was actually applied, what the client did in response, and whether it worked. \"Choices were offered\" is the first part alone. Where the notes give you a strategy and not the response or the effect, write the part you have, emit the no_antecedent_impact hint, and supply neither of the others yourself.",
+      "- antecedentNarrative: three parts for each strategy. How it was actually applied, what the client did in response, and whether it worked. \"Choices were offered\" is the first part alone. Where the notes give you a strategy and not the response or the effect, write the part you have, emit the antecedent_effect_unstated hint, and supply neither of the others yourself.",
       "- clinicalStatusNarrative: up to 2 sentences on mood/behavior at session start.",
       "- followUpNarrative: brief; use the default sentence above if nothing reported. Write it as the person filing the note, not about them. The technician IS the direct staff, so never write \"Direct staff report...\" or \"The behavior technician has no concerns\" here, that is the author describing themselves in the third person, which reads as though someone else wrote the note. \"No new questions or concerns for the BCBA at this time\" is the register.",
     ].join("\n");

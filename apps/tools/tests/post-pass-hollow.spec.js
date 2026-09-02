@@ -19,10 +19,17 @@ import { isTriageCall } from './helpers/llm-call.js';
  *
  * THE MISPLACED STRATEGY BECOMES A HINT, because completeness B9 is the one
  * item on his bar that is checkable exactly rather than judged: the tool
- * publishes both strategy lists, so a consequence procedure narrated in the
- * antecedent section is a fact about the note and not an opinion about it. His
- * case, on DRO: "though it uses motivation operations it isn't an antecedent
- * intervention properly."
+ * publishes both strategy lists, so a procedure narrated under the heading that
+ * does not own it is a fact about the note and not an opinion about it.
+ *
+ * WHICH SECTION OWNS A DRO IS HIS CALL AND HE CHANGED IT. He first ruled that a
+ * DRO "isn't an antecedent intervention properly" and these tests were written
+ * against that; on 2026-09-02 he ruled the other way, on the ground that a DRO
+ * "*operates* as a consequence" and "as an *intervention* is an antecedent
+ * strategy that fires on an interval contingent on an absence". A note files by
+ * the intervention, so the DRO tests below run the opposite way from how they
+ * ran before, and the phrase that cannot resolve which procedure it names now
+ * matches nothing at all.
  */
 
 const SECRET = 'playwright-local-test-secret';
@@ -161,24 +168,71 @@ test.describe('a sentence with nothing in it is counted, never cut', () => {
 });
 
 test.describe('a strategy narrated under the wrong heading', () => {
-  test('his DRO case is reported against the section it was written in', async ({ page }) => {
+  /* Reads the check directly, because four procedures share one phrase and the
+     interesting part is which of them a term picks up rather than how a hint
+     renders. The rendering is covered end to end by the two tests below it. */
+  const found = (page, output) => page.evaluate((o) => window.NoteHollow
+    .misplaced(o, window.NOTE_TOOLS.find((t) => t.id === 'bt').strategyOwnership)
+    .map((h) => h.section + ': ' + h.detail), output);
+
+  test('the procedures that share the phrase are told apart, and the phrase alone is not', async ({ page }) => {
+    await draft(page, noteWith({}));
+
+    // A DRO under antecedents is where he filed it on 2026-09-02, and the same
+    // sentence under consequences is the finding. Both of these ran the other
+    // way before that ruling.
+    expect(await found(page, { antecedentNarrative: 'A DRO ran on a two minute interval.', behaviorPlanNarrative: '' }))
+      .toEqual([]);
+    expect(await found(page, { antecedentNarrative: '', behaviorPlanNarrative: 'A DRO ran on a two minute interval.' }))
+      .toEqual(['behaviorPlanNarrative: Differential reinforcement of other behavior (DRO) belongs with the antecedent strategies.']);
+
+    // A DRA is a different procedure, it is not caught by the DRO term, and it
+    // is the one his consequence checkbox already describes: its help text
+    // reads "reinforced the replacement behavior, withheld for the target".
+    expect(await found(page, { antecedentNarrative: 'DRA ran alongside the token board.', behaviorPlanNarrative: '' }))
+      .toEqual(['antecedentNarrative: Differential reinforcement of an alternative or incompatible behavior (DRA/DRI) belongs with the consequence strategies.']);
+
+    // The bare phrase resolves to neither of them, so it carries no term. Same
+    // rule that leaves choices, break and warning unmatched: a term that cannot
+    // say which procedure it found puts a red hint on a correct note.
+    for (const key of ['antecedentNarrative', 'behaviorPlanNarrative']) {
+      expect(await found(page, { [key]: 'Differential reinforcement was used throughout the session.' })).toEqual([]);
+    }
+
+    // DRH, DRL and DRD carry nothing at all. He named all three and asked for a
+    // reading of each before the tool accounts for them, and it has none yet.
+    for (const code of ['DRH', 'DRL', 'DRD']) {
+      expect(await found(page, { antecedentNarrative: code + ' ran through the session.', behaviorPlanNarrative: '' })).toEqual([]);
+      expect(await found(page, { antecedentNarrative: '', behaviorPlanNarrative: code + ' ran through the session.' })).toEqual([]);
+    }
+  });
+
+  test('a DRO written under consequences is reported, and named as an antecedent', async ({ page }) => {
     await draft(page, noteWith({
-      antecedentNarrative: 'Differential reinforcement was used throughout the session to keep the client engaged.',
-      behaviorPlanNarrative: 'Elopement occurred twice and the technician blocked the door.',
+      behaviorPlanNarrative: 'A DRO ran on a two minute interval and the reinforcer followed each one.',
     }));
-    const box = page.getByTestId('hints-antecedentNarrative');
+    const box = page.getByTestId('hints-behaviorPlanNarrative');
     await expect(box).toContainText(/wrong section/i);
-    await expect(box).toContainText(/Differential reinforcement/);
+    await expect(box).toContainText(/antecedent/i);
+  });
+
+  test('a DRO written under antecedents is not a finding', async ({ page }) => {
+    await draft(page, noteWith({
+      antecedentNarrative: 'A DRO ran on a two minute interval and the client earned the reinforcer at each one.',
+    }));
+    await expect(page.getByTestId('hints-antecedentNarrative')).toHaveCount(0);
   });
 
   test('a strategy that genuinely ran in both roles is reported in neither', async ({ page }) => {
     // His exception, verbatim: "A strategy that genuinely ran in both roles in
-    // one session is narrated in both, and that is not an error."
+    // one session is narrated in both, and that is not an error." A DRA
+    // arranged ahead of the session and delivered on each request is the case.
     await draft(page, noteWith({
-      antecedentNarrative: 'Differential reinforcement of other behavior ran during each transition.',
-      behaviorPlanNarrative: 'Differential reinforcement followed each interval without elopement.',
+      antecedentNarrative: 'DRA was set up before each transition and the client asked for help instead.',
+      behaviorPlanNarrative: 'DRA followed every request the client made in place of elopement.',
     }));
     await expect(page.getByTestId('hints-antecedentNarrative')).toHaveCount(0);
+    await expect(page.getByTestId('hints-behaviorPlanNarrative')).toHaveCount(0);
   });
 
   test('a strategy in its own section is not a finding', async ({ page }) => {
@@ -201,7 +255,11 @@ test.describe('a strategy narrated under the wrong heading', () => {
     expect(labels).not.toContain('Offered choices');
     expect(labels).not.toContain('Allowed break');
     expect(labels).not.toContain('Other');
-    expect(labels).toContain('Differential reinforcement');
+    // The single label that covered every DR procedure is gone, and the two the
+    // tool can defend a section for are what replaced it.
+    expect(labels).not.toContain('Differential reinforcement');
+    expect(labels).toContain('Differential reinforcement of other behavior (DRO)');
+    expect(labels).toContain('Differential reinforcement of an alternative or incompatible behavior (DRA/DRI)');
   });
 
   test('the injected hint goes through the same validation as the model\'s own', async ({ page }) => {

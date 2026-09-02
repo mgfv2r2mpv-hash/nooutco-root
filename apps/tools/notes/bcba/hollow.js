@@ -170,9 +170,13 @@
 
   /* ── B9: a strategy narrated in the section that does not own it ──────────
      The one item on his bar that is checkable rather than judged, because the
-     tool publishes both lists. His case is the only one he named: "though it
-     uses motivation operations it isn't an antecedent intervention properly",
-     about DRO.
+     tool publishes both lists.
+
+     WHICH LIST A PROCEDURE BELONGS ON IS NOT DECIDED HERE, and the DRO case is
+     why that matters: he ruled it a consequence procedure, this check shipped on
+     that reading, and on 2026-09-02 he reversed it to an antecedent one. Nothing
+     in this file changed. Read tools/<tool>.js for the current filing rather
+     than trusting a clinical claim written down in the mechanism.
 
      ONLY IN THE WRONG SECTION, which is his exception verbatim: "A strategy
      that genuinely ran in both roles in one session is narrated in both, and
