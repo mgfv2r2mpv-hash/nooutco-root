@@ -297,7 +297,13 @@ test.describe('triage questions before drafting', () => {
 
      These pin the mapping in both directions and, more importantly, pin the
      fallback: a triage reply with no readiness must get the LONGER wait, not
-     the shorter one. */
+     the shorter one.
+
+     THE GATE HOLDS ROUND ONE BELOW THE BAR, so a wait on a button that is not
+     drawn yet is not a reading of anything. The middling readings are taken in
+     round two, which is where their button first exists. The readings that
+     never gate - 85 and over, and a reply carrying no readiness at all - are
+     still taken in round one, which is where they arrive. */
   test.describe('the wait scales with how ready the note already is', () => {
     const triageWith = (extra) => ({
       sufficient: false,
@@ -346,8 +352,36 @@ test.describe('triage questions before drafting', () => {
       await expect(skip).toBeEnabled();
     });
 
+    const nextRound = (extra) => ({
+      ...triageWith(extra),
+      questions: [{ field: 'fBehavior', question: 'For how long?' }],
+    });
+
+    /* Answer round one, then hand back the skip button round two draws. The
+       assertions on the way through are the gate's, and they are here rather
+       than in a test of their own so that a gate that stopped holding could
+       not quietly turn these into round one readings again. */
+    async function secondRound(page, first, second) {
+      let calls = 0;
+      await page.route('**/api/llm-call**', (route) => {
+        calls++;
+        return route.fulfill(reply(calls === 1 ? first : second));
+      });
+      await page.clock.install();
+      await page.goto('/notes/bt/');
+      await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
+      await page.goto('/notes/bt/');
+      await fillRequiredAndGenerate(page);
+      await expect(page.locator('[data-skip-held]')).toBeVisible();
+      await expect(page.locator('.revision-skip')).toHaveCount(0);
+      await page.locator('.revision-input').fill('twice');
+      await page.locator('.revision-send').click();
+      await expect(page.getByText(/for how long/i)).toBeVisible();
+      return page.getByRole('button', { name: /Nothing to add/i });
+    }
+
     test('a middling note still waits', async ({ page }) => {
-      const skip = await openQuestions(page, triageWith({ readiness: 40 }));
+      const skip = await secondRound(page, triageWith({ readiness: 40 }), nextRound({ readiness: 40 }));
       await startsAt(skip, 16);
       // The moment that separates the two: the ready note above was through
       // immediately and this one is not.
@@ -376,27 +410,14 @@ test.describe('triage questions before drafting', () => {
       // Readiness is re-read every round rather than carried forward. Answering
       // two of three questions is exactly the case where the note improved, and
       // the wait has to move with it or the number is decorative.
-      const posted = [];
-      await page.route('**/api/llm-call**', (route) => {
-        posted.push(JSON.parse(route.request().postData() || '{}'));
-        return route.fulfill(reply(posted.length === 1
-          ? triageWith({ readiness: 40 })
-          : { ...triageWith({ readiness: 90 }), questions: [{ field: 'fBehavior', question: 'For how long?' }] }));
-      });
-      await page.clock.install();
-      await page.goto('/notes/bt/');
-      await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
-      await page.goto('/notes/bt/');
-      await fillRequiredAndGenerate(page);
-
-      const skip = page.getByRole('button', { name: /Nothing to add/i });
-      await startsAt(skip, 16);
-
-      await page.locator('.revision-input').fill('twice');
-      await page.locator('.revision-send').click();
-      await expect(page.getByText(/for how long/i)).toBeVisible();
+      //
+      // The same two rounds as the test above, and the second reading is the
+      // only difference between them: 90 rather than 40, and the sixteen
+      // seconds are gone.
+      const skip = await secondRound(page, triageWith({ readiness: 40 }), nextRound({ readiness: 90 }));
       // Answering carried it over his threshold, so the second round is free.
       await expect(skip).toBeEnabled();
+      await expect(page.locator('.skip-cooldown-bar')).toHaveCount(0);
     });
   });
 

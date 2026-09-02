@@ -56,7 +56,9 @@ const note = () => ({
 /* Drive bt to the gap questions and keep what the page sent while doing it. The
    audit route matters as much as the schema: `bar` is never drawn, so the audit
    row is the only place its value is observable at all. */
+/* `triage` is one reply, or one per round with the last repeating. */
 async function ask(page, triage) {
+  const queue = Array.isArray(triage) ? triage.slice() : [triage];
   const seen = { triageSchema: null, audits: [] };
   await page.route('**/api/audit**', async (route) => {
     const b = JSON.parse(route.request().postData() || '{}');
@@ -69,8 +71,7 @@ async function ask(page, triage) {
     if (/look at your own draft again/i.test(last)) return route.fulfill(reply(note()));
     if (isTriageCall(b)) {
       seen.triageSchema = b.output_config && b.output_config.format && b.output_config.format.schema;
-      if (/ALREADY ANSWERED/.test(last)) return route.fulfill(reply({ sufficient: true, readiness: 90, questions: [] }));
-      return route.fulfill(reply(triage));
+      return route.fulfill(reply(queue.length > 1 ? queue.shift() : queue[0]));
     }
     return route.fulfill(reply(note()));
   });
@@ -242,5 +243,82 @@ test.describe('the item each question came from', () => {
     const rows = seen.audits.filter((e) => e.type === 'gap_questions');
     rows.forEach((r) => expect(r.data).not.toHaveProperty('bars'));
     expect(JSON.stringify(rows)).not.toContain('eloped');
+  });
+});
+
+/* ── The gate ───────────────────────────────────────────────────────────────
+   His ruling of 2026-08-31: "It should refuse a draft without an initial
+   revision if the bar isn't met", and on the questions themselves, "Make them
+   try again. Try to give them minimal prompts to get the information needed
+   across objections." One mandatory round, and the ways out of it are all
+   answers.
+   ────────────────────────────────────────────────────────────────────────── */
+
+const answer = async (page, text) => {
+  await page.locator('.revision-input').fill(text);
+  await page.locator('.revision-send').click();
+};
+
+const oneQuestion = (readiness, suggestions = []) => ({
+  sufficient: false,
+  readiness,
+  questions: [{
+    field: 'fAntecedent',
+    question: 'Question number 1 about the session.',
+    suggestions,
+    bar: 'B4',
+  }],
+});
+
+test.describe('below the bar the tool will not draft yet', () => {
+  test('there is no skip button at all, and a line saying what unlocks it', async ({ page }) => {
+    await ask(page, oneQuestion(55));
+    await expect(page.getByText(/Question number 1 /)).toBeVisible({ timeout: 20000 });
+    // Not a disabled button. A dead control invites hunting for the state that
+    // enables it, and there is exactly one.
+    await expect(page.locator('.revision-skip')).toHaveCount(0);
+    await expect(page.locator('[data-skip-held]')).toContainText('Answer one of these');
+  });
+
+  test('a kept suggestion is an answer, so it opens the gate', async ({ page }) => {
+    await ask(page, oneQuestion(55, ['Moving to the floor settled him faster than the break did.']));
+    await expect(page.getByText(/Question number 1 /)).toBeVisible({ timeout: 20000 });
+    // Suggestions arrive accepted, so the way out is already taken and the
+    // button is the one that carries them.
+    await expect(page.locator('.revision-skip')).toHaveText(/Use these and generate/);
+
+    // Drop it and the gate closes again, because now nothing would reach the note.
+    await page.locator('[data-suggestion-tick="0:0"]').click();
+    await page.locator('[data-suggestion-toggle="0:0"]').click();
+    await expect(page.locator('.revision-skip')).toHaveCount(0);
+    await expect(page.locator('[data-skip-held]')).toContainText('Keep one of the suggestions');
+  });
+
+  test('at the bar the button is there, with no wait on it', async ({ page }) => {
+    await ask(page, oneQuestion(85));
+    await expect(page.getByText(/Question number 1 /)).toBeVisible({ timeout: 20000 });
+    // 85 is the line, and his ruling is that a ready note waits not at all.
+    await expect(page.locator('.revision-skip')).toBeEnabled();
+  });
+
+  test('a reading the model left out never holds anyone', async ({ page }) => {
+    const noReading = oneQuestion(55);
+    delete noReading.readiness;
+    await ask(page, noReading);
+    await expect(page.getByText(/Question number 1 /)).toBeVisible({ timeout: 20000 });
+    // Triage that failed is an assist that failed. Refusing to draft over it
+    // turns a lost question into a lost note.
+    await expect(page.locator('.revision-skip')).toHaveCount(1);
+  });
+
+  test('the second round never holds, however thin it still reads', async ({ page }) => {
+    await ask(page, [oneQuestion(40), oneQuestion(30)]);
+    await expect(page.getByText(/Question number 1 /)).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('.revision-skip')).toHaveCount(0);
+    await answer(page, 'He needed full physical through most of the money program.');
+
+    // Round two, still below the bar, and now skippable. One mandatory round is
+    // what he asked for; a gate that can hold twice can hold forever.
+    await expect(page.locator('.revision-skip')).toHaveCount(1, { timeout: 20000 });
   });
 });
