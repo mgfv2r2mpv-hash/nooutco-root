@@ -418,6 +418,13 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       "",
       "NARRATIVE GUIDANCE:",
       "- lessonProgressNarrative: up to 8 sentences, ideally across two programs (one social/communication, one adaptive/repetitive-behavior-replacement). Qualitative, specific. Carry all three of what was observed, what was attempted, and what happened as a result of the attempt. A sentence that names a strategy and stops before its outcome is the most common gap in these notes, and completeness B4 asks for the third part by name.",
+      /* The order is not a style preference and he said so: "It is just
+         backward to good session design. That is why I was upset about it." A
+         note that prompts before it arranges describes a session run
+         backwards, and the record carries that reading whether or not the
+         session actually ran that way. The universal register block states the
+         rule; this states it where it bites, which is the program narrative. */
+      "  Within a program, write it in the order it ran: how the opportunity was arranged, then what was presented, then the prompt if one was needed, then what the client did, then what followed. Never write the prompt before the arrangement.",
       // The comparison is CONDITIONAL, and it was not before. "State whether
       // behavior increased, decreased, or held steady relative to recent
       // sessions" is a standing order, so a technician who never wrote a
@@ -426,7 +433,16 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       // gap already has a channel in no_rate_comparison, which reaches the
       // technician who can answer it. The note gets silence.
       "- behaviorPlanNarrative: up to 4 sentences. The EHR already attaches this session's counts, rates and percentages, so do not restate them; write the observation the numbers cannot carry. Say whether behavior increased, decreased or held steady relative to recent sessions ONLY IF the notes give you that comparison. If they do not, write nothing at all about it, emit the no_rate_comparison hint, and never state that the comparison is missing.",
-      "- antecedentNarrative: describe the antecedent strategies as applied and their impact.",
+      /* B4 again, applied to a behavior rather than to a teaching procedure.
+         no_response_described has existed since this catalog was written and
+         the guidance never told the model what would earn it. */
+      "  For each behavior: what happened, what the technician did in response, and what followed. A behavior named with no response is a gap rather than a short sentence, so emit the no_response_described hint instead of inventing one.",
+      /* "As applied and their impact" is two parts of three, and the missing
+         one is the client. His shipped antecedent narrative read "Choices were
+         offered when appropriate to increase opportunities for the client to
+         participate", which satisfies both halves of the old line and says
+         nothing about what the client did. */
+      "- antecedentNarrative: three parts for each strategy. How it was actually applied, what the client did in response, and whether it worked. \"Choices were offered\" is the first part alone. Where the notes give you a strategy and not the response or the effect, write the part you have, emit the no_antecedent_impact hint, and supply neither of the others yourself.",
       "- clinicalStatusNarrative: up to 2 sentences on mood/behavior at session start.",
       "- followUpNarrative: brief; use the default sentence above if nothing reported. Write it as the person filing the note, not about them. The technician IS the direct staff, so never write \"Direct staff report...\" or \"The behavior technician has no concerns\" here, that is the author describing themselves in the third person, which reads as though someone else wrote the note. \"No new questions or concerns for the BCBA at this time\" is the register.",
     ].join("\n");
