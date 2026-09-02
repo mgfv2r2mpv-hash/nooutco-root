@@ -264,6 +264,17 @@ body {
   .skip-cooldown-bar > span { transition: none; }
 }
 
+/* Where the skip button is while the bar holds it. A line rather than a
+   disabled control, and quiet rather than a warning: nothing is wrong, the
+   note is simply not written yet. */
+.skip-held {
+  padding: 8px 12px; border-radius: 8px;
+  border: 1px dashed #e3c26a;
+  background: #fdf9ec;
+  color: #8a6b2f;
+  font-size: 12px; line-height: 1.45;
+}
+
 /* A revision that reached past the section that was clicked, held rather than
    applied. Amber for the same reason the skip button is amber: this is a call
    the clinician has to make, not a failure and not a warning. */

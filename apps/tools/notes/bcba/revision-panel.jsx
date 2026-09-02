@@ -247,7 +247,7 @@ function SkipAfterCooldown({ seconds, onSkip, loading, carrying }) {
 
 function RevisionPanel({
   open, onToggle, thread, annotation, onClearAnnotation,
-  draft, onDraft, onSend, onAskAdvice, canAsk, onExportPairs, pairCount, loading, questions, onSkipQuestions, skipCooldown, unread, quality,
+  draft, onDraft, onSend, onAskAdvice, canAsk, onExportPairs, pairCount, loading, questions, onSkipQuestions, skipCooldown, skipHeld, unread, quality,
   suggestState, onToggleSuggestion, onEditSuggestion, acceptedSuggestions,
   loggedIn,
   intro,
@@ -297,6 +297,9 @@ function RevisionPanel({
   }, [open, onToggle]);
 
   const awaitingQuestions = !!(questions && questions.length);
+  // Whether the held line can point at a suggestion, which is the cheapest way
+  // out of the gate when there is one to keep.
+  const hasSuggestions = awaitingQuestions && questions.some((q) => (q.suggestions || []).length > 0);
 
   /* The error report used to be a second floating circle sitting on the same
      corner as this pill. It lives in here now, which fixes the collision and
@@ -505,12 +508,23 @@ function RevisionPanel({
                 )}
               </React.Fragment>
             ))}
-            <SkipAfterCooldown
-              seconds={skipCooldown}
-              onSkip={onSkipQuestions}
-              loading={loading}
-              carrying={acceptedSuggestions || 0}
-            />
+            {skipHeld ? (
+              /* No button rather than a dead one. A disabled control invites
+                 hunting for the state that enables it, and there is only one:
+                 answer something. */
+              <div className="skip-held" data-skip-held="1">
+                {hasSuggestions && !acceptedSuggestions
+                  ? "Keep one of the suggestions, or answer a question, and the note generates."
+                  : "Answer one of these and the note generates."}
+              </div>
+            ) : (
+              <SkipAfterCooldown
+                seconds={skipCooldown}
+                onSkip={onSkipQuestions}
+                loading={loading}
+                carrying={acceptedSuggestions || 0}
+              />
+            )}
           </div>
         )}
         {loading && <Bubble role="assistant" muted>Working…</Bubble>}

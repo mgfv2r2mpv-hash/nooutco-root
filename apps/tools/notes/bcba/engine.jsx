@@ -1966,6 +1966,34 @@ function App() {
   const SKIP_COOLDOWN_MAX_SECONDS = 30;
   const SKIP_FREE_AT_READINESS = 85;
 
+  /* Below the bar the tool refuses to draft until one round is answered. His
+     ruling of 2026-08-31: "It should refuse a draft without an initial revision
+     if the bar isn't met", and on what those questions should be like, "Make
+     them try again. Try to give them minimal prompts to get the information
+     needed across objections."
+
+     THREE THINGS DO NOT GATE, and each is deliberate.
+
+     A missing reading never gates. Triage that failed is an assist that failed,
+     and refusing to draft over it would turn a lost question into a lost note.
+
+     The second round never gates. One mandatory round is what he asked for, and
+     a gate that could hold someone twice is a gate that could hold them
+     forever.
+
+     A kept suggestion opens it, because a kept suggestion IS the answer. It
+     carries the technician's own words into the note, so a draft built on one
+     is not the empty draft this refuses.
+
+     EVERY TOOL, INCLUDING HIS OWN, on the same ruling that put the skip wait on
+     all five: "should lock my drafters as well." A thin note is thin whoever
+     wrote it. */
+  const BAR_READINESS = SKIP_FREE_AT_READINESS;
+  const gateHolds = () => (S.triageRound || 1) === 1 &&
+    Number.isFinite(S.readiness) &&
+    S.readiness < BAR_READINESS &&
+    acceptedSuggestions().length === 0;
+
   const skipSecondsFor = (readiness) => {
     if (!Number.isFinite(readiness)) return SKIP_COOLDOWN_MAX_SECONDS;
     const pct = Math.min(100, Math.max(0, readiness));
@@ -2024,6 +2052,8 @@ function App() {
      reworded one may have typed a name into it. An untouched suggestion came
      from already-scrubbed input, so it passes through unchanged. */
   const skipQuestions = async () => {
+    // Checked here as well as drawn, so a stale render cannot walk past it.
+    if (gateHolds()) return;
     const taken = acceptedSuggestions();
     audit("gap_questions", {
       skipped: (S.questions || []).length,
@@ -3098,6 +3128,7 @@ function App() {
         acceptedSuggestions={acceptedSuggestions().length}
         onSkipQuestions={skipQuestions}
         skipCooldown={skipSecondsFor(S.readiness)}
+        skipHeld={gateHolds()}
         unread={S.questions ? S.questions.length : 0}
         quality={noteQuality()}
         loggedIn={loggedIn}

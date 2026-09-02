@@ -224,15 +224,32 @@ test.describe('what the technician does with them', () => {
       .not.toContain('The first-then board worked better once we were down there.');
   });
 
-  test('dropping every one puts the button back to nothing to add', async ({ page }) => {
-    await ask(page, TWO);
-    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+  const dropBoth = async (page) => {
     for (const id of ['0:0', '0:1']) {
       await page.locator(`[data-suggestion-tick="${id}"]`).click();
       await page.locator(`[data-suggestion-toggle="${id}"]`).click();
     }
-    // The label describes what the button carries. With nothing left to carry
-    // it is a plain skip again.
+  };
+
+  test('dropping every one puts the note back behind the gate', async ({ page }) => {
+    await ask(page, TWO);
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    await dropBoth(page);
+    /* The button was the accept path, so dropping every suggestion leaves it
+       nothing to carry. This note reads 70, and a technician carrying nothing
+       and answering nothing is exactly who the gate holds, so below the bar
+       there is no button here at all. The line names both ways out rather than
+       leaving them to work out which one the tool wanted. */
+    await expect(page.locator('.revision-skip')).toHaveCount(0);
+    await expect(page.locator('[data-skip-held]')).toHaveText(/Keep one of the suggestions/);
+  });
+
+  test('dropping every one on a note already at the bar puts the button back to nothing to add', async ({ page }) => {
+    // The same drop where the gate never closes. The label describes what the
+    // button carries, and with nothing left to carry it is a plain skip again.
+    await ask(page, { ...TWO, readiness: 90 });
+    await expect(page.getByText(/Was that in the plan/i)).toBeVisible({ timeout: 20000 });
+    await dropBoth(page);
     await expect(page.locator('.revision-skip')).toHaveText(/Nothing to add/);
   });
 
