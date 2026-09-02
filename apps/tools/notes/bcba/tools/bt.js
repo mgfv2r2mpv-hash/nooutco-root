@@ -144,7 +144,13 @@
      BCBA most often has to send a note back for. */
 
   var HINT_CATALOG = {
-    no_behavior_count: "Behavior of concern noted without a count or rate, add how many times it occurred, even if zero",
+    /* No code here asks for a count, rate or percentage. The EHR attaches
+       this session's data already: necessity do-not-repeat-the-data and
+       completeness B7 both say the note carries the observation the numbers
+       cannot. What a reader needs from a number is the comparison, and
+       no_rate_comparison carries that. */
+    no_strategy_outcome: "Strategy described without its outcome, say what happened as a result of trying it",
+    helped_not_in_plan: "Something that helped is not in the plan, name it so the BCBA can consider adding it",
     no_rate_comparison: "No comparison to recent sessions, say whether this was higher, lower, or about the same",
     no_prompt_level: "Teaching described without a prompt level, name the prompt type used and whether it was faded",
     single_program_only: "Only one program is described, a second (ideally communication/social plus adaptive) makes the note stronger",
@@ -282,7 +288,8 @@ PLAIN LANGUAGE (applies alongside the terminology rules, never against them)\n\
 - Use hyphens, never em dashes or en dashes. House convention, and their overuse is itself a machine tell.";
 
   var HINTS_BLOCK = "\n\nHINTS - return an array of {section, code, detail} objects flagging ONLY missing or ambiguous standard elements (max 4; empty array when the note stands on its own). \"section\" MUST be one of the JSON keys below; \"code\" MUST be from this list; \"detail\" is an optional specifier of 10 words or fewer:\n\
-- no_behavior_count (behaviorPlanNarrative): a behavior of concern is described with no count, rate, or duration\n\
+- no_strategy_outcome (lessonProgressNarrative, behaviorPlanNarrative): a strategy or teaching procedure is named with no statement of what happened as a result\n\
+- helped_not_in_plan (any section): the notes credit something that helped which is not part of the written plan\n\
 - no_rate_comparison (behaviorPlanNarrative): no comparison to recent sessions\n\
 - no_prompt_level (lessonProgressNarrative): teaching described with no prompt type or fading decision\n\
 - single_program_only (lessonProgressNarrative): only one program is identifiable in the notes\n\
@@ -340,7 +347,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       "- clientProgress: " + menu(CLIENT_PROGRESS),
       "",
       "NARRATIVE GUIDANCE:",
-      "- lessonProgressNarrative: up to 8 sentences, ideally across two programs (one social/communication, one adaptive/repetitive-behavior-replacement). Qualitative, specific.",
+      "- lessonProgressNarrative: up to 8 sentences, ideally across two programs (one social/communication, one adaptive/repetitive-behavior-replacement). Qualitative, specific. Carry all three of what was observed, what was attempted, and what happened as a result of the attempt. A sentence that names a strategy and stops before its outcome is the most common gap in these notes, and completeness B4 asks for the third part by name.",
       // The comparison is CONDITIONAL, and it was not before. "State whether
       // behavior increased, decreased, or held steady relative to recent
       // sessions" is a standing order, so a technician who never wrote a
@@ -348,7 +355,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
       // without fabricating by reporting that the comparison was missing. The
       // gap already has a channel in no_rate_comparison, which reaches the
       // technician who can answer it. The note gets silence.
-      "- behaviorPlanNarrative: up to 4 sentences, quantitative where reported. Say whether behavior increased, decreased or held steady relative to recent sessions ONLY IF the notes give you that comparison. If they do not, write nothing at all about it, emit the no_rate_comparison hint, and never state that the comparison is missing.",
+      "- behaviorPlanNarrative: up to 4 sentences. The EHR already attaches this session's counts, rates and percentages, so do not restate them; write the observation the numbers cannot carry. Say whether behavior increased, decreased or held steady relative to recent sessions ONLY IF the notes give you that comparison. If they do not, write nothing at all about it, emit the no_rate_comparison hint, and never state that the comparison is missing.",
       "- antecedentNarrative: describe the antecedent strategies as applied and their impact.",
       "- clinicalStatusNarrative: up to 2 sentences on mood/behavior at session start.",
       "- followUpNarrative: brief; use the default sentence above if nothing reported. Write it as the person filing the note, not about them. The technician IS the direct staff, so never write \"Direct staff report...\" or \"The behavior technician has no concerns\" here, that is the author describing themselves in the third person, which reads as though someone else wrote the note. \"No new questions or concerns for the BCBA at this time\" is the register.",
