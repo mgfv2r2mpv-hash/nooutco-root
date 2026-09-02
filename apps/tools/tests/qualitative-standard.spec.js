@@ -152,7 +152,7 @@ test.describe('the sections that carry a procedure say what a procedure needs', 
   test('and every one of them routes the gap to a hint rather than to a guess', async () => {
     // The whole reason a per-section rule is safe to state at all. Asking for
     // three parts without this turns a thin intake into an invented one.
-    expect(user).toMatch(/emit the no_antecedent_impact hint, and supply neither of the others yourself/i);
+    expect(user).toMatch(/emit the antecedent_effect_unstated hint, and supply neither of the others yourself/i);
     expect(user).toMatch(/emit the no_response_described hint instead of inventing one/i);
   });
 });
