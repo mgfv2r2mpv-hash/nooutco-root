@@ -109,6 +109,78 @@ function Bubble({ role, children, muted }) {
 }
 
 
+/* ── A candidate answer, offered under the question it answers ─────────────
+   Same three states as a correction mark, because it is the same contract and a
+   technician should not have to learn it twice: a ghost tick while it is
+   accepted, an undo arrow and a pencil once they click it, and a check and a
+   cross while they are rewording it.
+
+   Accepted is the resting state, so the tick is nearly invisible. What the eye
+   should land on is the sentence, which is the thing they are deciding about. */
+function SuggestionRow({ id, text, accepted, onToggle, onEdit }) {
+  const [open, setOpen] = React.useState(false);
+  const [editing, setEditing] = React.useState(false);
+  const [buffer, setBuffer] = React.useState(text);
+
+  React.useEffect(() => { setBuffer(text); }, [text]);
+
+  if (editing) {
+    return (
+      <div className="tg-suggestion is-editing">
+        <input
+          className="cx-edit"
+          value={buffer}
+          autoFocus
+          aria-label="Reword this suggestion"
+          data-suggestion-edit={id}
+          onChange={(e) => setBuffer(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); onEdit(buffer); setEditing(false); }
+            if (e.key === "Escape") { setBuffer(text); setEditing(false); }
+          }}
+        />
+        <span className="cx-ctl">
+          <button type="button" className="cx-ck" title="Save" data-suggestion-save={id}
+            onClick={() => { onEdit(buffer); setEditing(false); }}>✓</button>
+          <button type="button" className="cx-ck" title="Cancel" data-suggestion-cancel={id}
+            onClick={() => { setBuffer(text); setEditing(false); }}>✕</button>
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className={"tg-suggestion" + (accepted ? "" : " is-dropped")}>
+      <span
+        className="tg-suggestion-text"
+        data-suggestion={id}
+        data-suggestion-accepted={accepted ? "1" : "0"}
+      >
+        {text}
+      </span>
+      {open ? (
+        <span className="cx-ctl">
+          <button type="button" className="cx-ck" data-suggestion-toggle={id}
+            title={accepted ? "Drop this one" : "Put it back"}
+            onClick={() => { onToggle(); setOpen(false); }}>{accepted ? "↶" : "↷"}</button>
+          <button type="button" className="cx-ck" title="Reword it" data-suggestion-pencil={id}
+            onClick={() => { setEditing(true); setOpen(false); }}>✎</button>
+        </span>
+      ) : (
+        <button
+          type="button"
+          className={"cx-ck" + (accepted ? " is-ghost" : "")}
+          title={accepted ? "Included. Click to change it." : "Dropped. Click to change it."}
+          data-suggestion-tick={id}
+          onClick={() => setOpen(true)}
+        >
+          {accepted ? "✓" : "✗"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 /* ── Skipping the gap questions costs a moment ─────────────────────────────
    His idea, 2026-08-05, after the audit trail showed something worth acting on:
    two technicians, 22 sessions, ten gap-question rounds, and ZERO revisions ever
@@ -124,7 +196,7 @@ function Bubble({ role, children, muted }) {
    The duration is passed in rather than fixed here, because his next step is to
    scale it - the closer the note is to ready, the shorter the drain - and that
    judgement belongs to whatever can see the note, not to a button. */
-function SkipAfterCooldown({ seconds, onSkip, loading }) {
+function SkipAfterCooldown({ seconds, onSkip, loading, carrying }) {
   const total = Math.max(0, Number(seconds) || 0);
   const [left, setLeft] = React.useState(total);
 
@@ -153,10 +225,16 @@ function SkipAfterCooldown({ seconds, onSkip, loading }) {
         disabled={loading || !ready}
         className="revision-skip"
         title={ready
-          ? "Generate without answering these"
+          ? (carrying ? "Generate with the suggestions you left standing" : "Generate without answering these")
           : "Have a look at the questions first. This unlocks in a moment."}
       >
-        {ready ? "Nothing to add - generate anyway" : `Nothing to add (${left}s)`}
+        {/* This button is the ACCEPT path when suggestions are on screen, since
+            sending needs typed text and agreeing with a suggestion needs none.
+            Calling that "nothing to add" while it carries two sentences into
+            the note would describe the wrong thing entirely. */}
+        {carrying
+          ? (ready ? "Use these and generate" : `Use these and generate (${left}s)`)
+          : (ready ? "Nothing to add - generate anyway" : `Nothing to add (${left}s)`)}
       </button>
       {!ready && (
         <div className="skip-cooldown-bar" aria-hidden="true">
@@ -170,6 +248,7 @@ function SkipAfterCooldown({ seconds, onSkip, loading }) {
 function RevisionPanel({
   open, onToggle, thread, annotation, onClearAnnotation,
   draft, onDraft, onSend, onAskAdvice, canAsk, onExportPairs, pairCount, loading, questions, onSkipQuestions, skipCooldown, unread, quality,
+  suggestState, onToggleSuggestion, onEditSuggestion, acceptedSuggestions,
   loggedIn,
   intro,
   routingAsks, onTakeRouted, onLeaveRouted,
@@ -404,12 +483,33 @@ function RevisionPanel({
         {awaitingQuestions && (
           <div style={{ margin: "4px 0 10px" }}>
             {questions.map((q, i) => (
-              <Bubble key={i} role="assistant">{q.question}</Bubble>
+              <React.Fragment key={i}>
+                <Bubble role="assistant">{q.question}</Bubble>
+                {(q.suggestions || []).length > 0 && (
+                  <div className="tg-suggestions">
+                    {q.suggestions.map((raw, j) => {
+                      const key = i + ":" + j;
+                      const st = (suggestState || {})[key] || {};
+                      return (
+                        <SuggestionRow
+                          key={key}
+                          id={key}
+                          text={typeof st.text === "string" ? st.text : raw}
+                          accepted={!st.reverted}
+                          onToggle={() => onToggleSuggestion(key)}
+                          onEdit={(text) => onEditSuggestion(key, text)}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </React.Fragment>
             ))}
             <SkipAfterCooldown
               seconds={skipCooldown}
               onSkip={onSkipQuestions}
               loading={loading}
+              carrying={acceptedSuggestions || 0}
             />
           </div>
         )}
