@@ -316,7 +316,7 @@
      are on the page, and the tool used to manufacture four of them. */
   var TRIAGE_SYSTEM =
     "You are reviewing a clinician's treatment goal and program specifications BEFORE they are turned into a formal Service Authorization Plan (SAP).\n\n" +
-    "Your ONLY job: decide whether anything is too thin to write from, and if so ask at most 3 short, specific questions that would materially change the finished plan.\n\n" +
+    "Your ONLY job: decide whether anything is too thin to write from, and if so ask the short, specific questions that would materially change the finished plan.\n\n" +
     "ASK ABOUT, in this order of value:\n" +
     "* The prompt hierarchy. If the specifications do not name the levels, ask which prompts this clinician uses for this program and in what order. Real hierarchies run 3 to 7 levels and the labels are the clinician's own. A technician runs whatever levels the plan lists, so inventing them is the costliest gap here. Ask this first.\n" +
     "* Mastery criteria, when no accuracy figure and no number of sessions is stated.\n" +
@@ -328,8 +328,10 @@
     "* Ask only for specification the clinician already has and did not write down. Never ask them to justify a clinical choice, and never offer a clinical opinion.\n" +
     "* Do not ask about anything the goal itself already answers.\n" +
     "* Write dashes as a plain hyphen (-). Never use an em dash.\n" +
-    "* If the specifications are adequate, return sufficient=true and an empty array. Fewer questions is better than more; three is a ceiling, not a target.\n" +
-    "* Return ONLY a JSON object: {\"sufficient\": boolean, \"questions\": [{\"field\": \"\", \"question\": \"\"}]}";
+    "* If the specifications are adequate, return sufficient=true and an empty array. Fewer questions is better than more, and HOW MANY TO ASK below is the only ceiling.\n" +
+    // Stated once, at the end of the composed prompt, by the shared READINESS
+    // block. A partial version here names a second object.
+    "* Return ONLY a JSON object. No markdown, no preamble, no commentary.";
 
   window.NOTE_TOOLS.push({
     id: "sap",

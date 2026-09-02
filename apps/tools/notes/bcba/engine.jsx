@@ -1371,7 +1371,7 @@ function App() {
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["field", "question", "suggestions"],
+          required: ["field", "question", "suggestions", "bar"],
           properties: {
             field: { type: "string" },
             question: { type: "string" },
@@ -1380,6 +1380,11 @@ function App() {
                to it whether or not that tool's prompt mentions suggestions, so
                a key it must always emit is one it can never half-emit. */
             suggestions: { type: "array", items: { type: "string" } },
+            /* Required and empty for the same reason, and the id alone rather
+               than the rule it names. A tool whose prompt supplies no bar
+               returns "", and the string that comes back is checked against a
+               shape before anything reads it. */
+            bar: { type: "string" },
           },
         },
       },
@@ -1429,13 +1434,70 @@ function App() {
      question - it is a paragraph the tool wrote and dared them to read. */
   const MAX_SUGGESTIONS = 2;
   const MAX_SUGGESTION_CHARS = 220;
-  const normalizeSuggestions = (q) => ({
+
+  /* The id of the standard a question came from, where the prompt gave the
+     model one. It is not shown; it is what the audit trail carries, and it is
+     the only way to find out which parts of the bar a technician's notes
+     actually fail.
+
+     Held to a shape rather than trusted, because this is a model-written string
+     on its way into the one durable per-technician record the system keeps.
+     "B4" is content-free. A sentence about a session is not, and the difference
+     between them here is one regex. */
+  const BAR_ID = /^[A-Z][0-9]{1,2}$/;
+  const barId = (raw) => {
+    const t = typeof raw === "string" ? raw.trim().toUpperCase() : "";
+    return BAR_ID.test(t) ? t : "";
+  };
+
+  const normalizeQuestion = (q) => ({
     ...q,
     suggestions: (Array.isArray(q.suggestions) ? q.suggestions : [])
       .filter((t) => typeof t === "string" && t.trim())
       .map((t) => t.trim().slice(0, MAX_SUGGESTION_CHARS))
       .slice(0, MAX_SUGGESTIONS),
+    bar: barId(q.bar),
   });
+
+  /* How many questions the reading buys, his ruling of 2026-08-31: "Minimize
+     them but a truly bad note may need more than 3 clarifications."
+
+     The prompt states the same bands and this is the bound, because a prompt
+     asked for two can still return five and the technician is the one who pays
+     for the extra three. A missing reading keeps the three the tool asked for
+     before there was a reading at all. */
+  const QUESTION_CEILINGS = [
+    { from: 85, ask: 1 },
+    { from: 60, ask: 2 },
+    { from: 30, ask: 3 },
+    { from: 0, ask: 5 },
+  ];
+  const DEFAULT_QUESTION_CEILING = 3;
+  const questionCeilingFor = (readiness) => {
+    if (!Number.isFinite(readiness)) return DEFAULT_QUESTION_CEILING;
+    const band = QUESTION_CEILINGS.find((b) => readiness >= b.from);
+    return band ? band.ask : DEFAULT_QUESTION_CEILING;
+  };
+
+  /* One hyphen-joined token rather than an array, because the audit sanitiser
+     keeps a short token and drops everything else, an array included. Deduped
+     and cut to what the sanitiser accepts, and the key is left off entirely
+     when there is nothing to say, so a key that arrives is a key that was
+     meant rather than one dropped quietly on the way. */
+  const AUDIT_TOKEN_MAX = 24;
+  const barsFor = (questions) => {
+    const seen = [];
+    (questions || []).forEach((q) => {
+      const id = q && q.bar;
+      if (id && seen.indexOf(id) === -1) seen.push(id);
+    });
+    let token = "";
+    seen.forEach((id) => {
+      const next = token ? token + "-" + id : id;
+      if (next.length <= AUDIT_TOKEN_MAX) token = next;
+    });
+    return token ? { bars: token } : {};
+  };
 
   const runTriage = async (scrubbed, priorAnswers) => {
     let body = intakeBody(scrubbed);
@@ -1458,19 +1520,22 @@ function App() {
     // word the person cannot see.
     const parsed = NotesScrub.restoreOutput(r.parsed || {}, scrubMapRef.current);
     const questions = Array.isArray(parsed.questions) ? parsed.questions : [];
+    // Absent or unparseable stays null rather than becoming a number, so the
+    // wait falls back to the full thirty seconds and the ceiling to three. A
+    // missing reading must not hand out the shortcut a ready note earns.
+    //
+    // Clamped here rather than trusted, because the schema cannot carry the
+    // bound. One clamp at the boundary means every consumer reads the same
+    // number - the audit trail included, which the clamp inside
+    // skipSecondsFor never covered.
+    const readiness = Number.isFinite(parsed.readiness) ? clampReadiness(parsed.readiness) : null;
     return {
       questions: parsed.sufficient
         ? []
-        : questions.filter((q) => q && q.question).slice(0, 3).map(normalizeSuggestions),
-      // Absent or unparseable stays null rather than becoming a number, so the
-      // wait falls back to the full thirty seconds. A missing reading must not
-      // hand out the shortcut a ready note earns.
-      //
-      // Clamped here rather than trusted, because the schema cannot carry the
-      // bound. One clamp at the boundary means every consumer reads the same
-      // number - the audit trail included, which the clamp inside
-      // skipSecondsFor never covered.
-      readiness: Number.isFinite(parsed.readiness) ? clampReadiness(parsed.readiness) : null,
+        : questions.filter((q) => q && q.question)
+            .slice(0, questionCeilingFor(readiness))
+            .map(normalizeQuestion),
+      readiness,
     };
   };
 
@@ -1871,7 +1936,7 @@ function App() {
     }
     if (questions.length) {
       setLoading(false);
-      audit("gap_questions", { asked: questions.length, round: 1, readiness });
+      audit("gap_questions", { asked: questions.length, round: 1, readiness, ...barsFor(questions) });
       patchS({ questions, readiness, pendingValues: scrubbed, triageAnswers: "", triageRound: 1, suggestState: {} });
       return;
     }
@@ -2340,7 +2405,7 @@ function App() {
         }
         setLoading(false);
         if (more.length) {
-          audit("gap_questions", { asked: more.length, round, readiness });
+          audit("gap_questions", { asked: more.length, round, readiness, ...barsFor(more) });
           // Re-read each round rather than carried forward: answering two of
           // three questions is exactly the case where the note got closer, and
           // the wait should shorten to match.

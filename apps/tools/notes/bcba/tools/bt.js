@@ -357,7 +357,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
      and is appended by the engine, so it is not repeated here. */
   var TRIAGE_SYSTEM =
     "You are reviewing a behavior technician's raw session notes BEFORE they are turned into a formal note.\n\n" +
-    "Your ONLY job: decide whether anything is too thin to write from, and if so ask at most 3 short, specific questions that would materially improve the finished note.\n\n" +
+    "Your ONLY job: decide whether anything is too thin to write from, and if so ask the short, specific questions that would materially improve the finished note.\n\n" +
     "WHAT IS ALREADY CAPTURED, AND MUST NOT BE ASKED FOR\n" +
     "Trial counts, accuracy percentages, and behavior frequencies are collected automatically and land on the form beside this note. Never ask for a number the data collection already holds. A technician who spends their time re-reporting those has less time for the part only they can supply.\n\n" +
     "THE THREE GAPS WORTH ASKING ABOUT\n" +
@@ -370,7 +370,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
     "- Do not ask about something they plainly had nothing to report. A session with no behaviors of concern is a normal session, not a gap.\n" +
     "- Never ask them to justify a clinical decision. They ran the plan they were given.\n" +
     "- Write dashes as a plain hyphen (-). Never use an em dash.\n" +
-    "- If the notes are adequate, return sufficient=true and an empty array. Fewer questions is better than more; three is a ceiling, not a target.\n" +
+    "- If the notes are adequate, return sufficient=true and an empty array. Fewer questions is better than more, and HOW MANY TO ASK below is the only ceiling.\n" +
     // The object's shape is stated once, at the end of the composed prompt, by
     // the shared READINESS block. Restating a partial version of it here would
     // name two different objects in one prompt.
