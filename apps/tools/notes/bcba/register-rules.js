@@ -39,6 +39,37 @@
     "* Vague support verbs where a specific one exists: support, facilitate, promote, enhance, address. Say what actually happened instead.",
   ].join("\n");
 
+  /* FOUR ITEMS OF HIS BAR, WRITTEN AS RULES A DRAFT CAN FOLLOW.
+     The bar is ten graded items and it is his clinical judgement. It lives in
+     voice-module, out of reach of anything the browser downloads, and triage
+     reads a finished intake against it. These four are the ones that are
+     actionable while WRITING rather than only while grading, so they belong
+     here as well: a draft that follows them is a draft nobody has to send back.
+
+     His ruling on scope, 2026-08-31: "All five, via register-rules.js. Not bt
+     alone." So they compose into the universal block, and each is worded for a
+     plan as well as for a note rather than for the session note it was first
+     written about. That wording is not politeness. A block carrying one form's
+     assumptions into another form's prompt is how the expert layer stopped
+     knowing which document it was reading, and necessity.js managed it with a
+     heading.
+
+     The fifth rule of this item, the zero, is the one that does not generalise:
+     a plan has no zeros to report. It sits with the session-note rules below.
+
+     B5 is not here and cannot be. A prompt level and a fade criterion are facts
+     about the session, so a rule telling the model to supply them is a rule
+     telling it to invent them. Triage asks the technician instead. */
+  var OBSERVATION = [
+    "",
+    "WHAT A SENTENCE ABOUT A CLIENT HAS TO CARRY.",
+    "* An observable. A sentence that names a category, lists programs or passes judgment with no describable or measurable event in it is cut rather than softened. A sentence that frames the session, or names the program or procedure the sentences after it describe, is doing structural work and is exempt from this.",
+    "* Form before function. Say what the client did, vocally or physically, before any label for what it accomplished. \"Said 'more'\" earns \"requested\". \"Requested help\" standing alone does not. Where only the function is available and the form is genuinely not recoverable, write the function alone and emit the hint. NEVER invent a topography, because an invented one reads exactly like an observed one.",
+    "* A qualitative word carries what it consisted of. \"Interacted appropriately\", \"participated well\" and \"tolerated\" are headings for an observation that has to sit underneath them. A goal or program that defines the word supplies that observation and the shorthand is then legitimate: against a goal of \"tolerate brief turn taking\", \"responded appropriately\" means the client tolerated turns as described, at the prescribed prompt level or less, with no behavior targeted for reduction. Do not ask anyone to spell out what their own program already defines.",
+    "",
+    "PROCEDURES GO IN THE ORDER THEY RUN, BECAUSE THAT ORDER IS THE DESIGN. Arrangement, then the opportunity or SD, then the prompt if one was needed, then what the client did, then what followed. Prompting written before the arrangement describes a session designed backwards. This one has no exception. It is a clinical fault rather than a narrative preference, and the record carries it either way.",
+  ].join("\n");
+
   /* Session notes only. A note written at the end of a session by someone tired
      is shorter than a note written to be complete, and the difference is most of
      what a detector reads. The ranges each tool gives are ceilings; nothing
@@ -67,6 +98,7 @@
     "",
     "NEVER DOCUMENT AN ABSENCE. This record is about the session, never about the intake you were handed. Do not write that something was not reported, not documented, not provided, not specified, not available, not included, or unclear, in any section, as a caveat, or as a closing line. When an element is missing, write nothing whatsoever about it and emit the hint instead: the hint reaches the person who can still fill it in, and the note pays nothing for the silence.",
     "A zero is an observation and it stays. \"No instances of aggression occurred\" describes the session and belongs in the note. \"The rate was not reported\" describes the paperwork and does not. The test is what the sentence is about, not whether it contains the word not. If the subject of the sentence is the record rather than the client, the staff or the session, cut the sentence.",
+    "STATE A ZERO, NEVER ATTACH IT. A zero gets a sentence of its own, in the plain past tense: \"No behaviors of concern occurred.\" Do not fold it into a trailing participial on the end of some other sentence. \"The client completed programming without exhibiting behaviors of concern\" buries the finding in a modifier, and a zero that has to be dug out of a subordinate clause has not been reported.",
   ].join("\n");
 
 
@@ -139,8 +171,13 @@
   var SESSION_RECORD = sessionRecord(false);
   var SESSION_RECORD_BCBA = sessionRecord(true);
 
+  /* What every tool takes, plan and note alike. Named for its scope rather
+     than for its first half, because the half that gets forgotten is the half
+     a name does not mention. */
+  var UNIVERSAL = CONSTRUCTIONS + "\n" + OBSERVATION;
+
   window.NoteRegisterRules = {
-    constructions: CONSTRUCTIONS,
+    universal: UNIVERSAL,
     tired: TIRED_REGISTER,
     // Everything a session note tool wants, in the order it should be read.
     sessionRecord: SESSION_RECORD,
@@ -148,9 +185,9 @@
     /* sessionNote is the TECHNICIAN build and bt is its only caller. The name is
        left alone rather than renamed to match, because renaming it would edit
        bt's served prompt for no clinical reason and cost a re-extract. */
-    sessionNote: CONSTRUCTIONS + "\n" + TIRED_REGISTER + "\n" + SESSION_RECORD,
+    sessionNote: UNIVERSAL + "\n" + TIRED_REGISTER + "\n" + SESSION_RECORD,
     // sup, assess and parent. Same rules, minus the two that hand the analysis
     // to a BCBA who is already the one writing.
-    sessionNoteBcba: CONSTRUCTIONS + "\n" + TIRED_REGISTER + "\n" + SESSION_RECORD_BCBA,
+    sessionNoteBcba: UNIVERSAL + "\n" + TIRED_REGISTER + "\n" + SESSION_RECORD_BCBA,
   };
 })();

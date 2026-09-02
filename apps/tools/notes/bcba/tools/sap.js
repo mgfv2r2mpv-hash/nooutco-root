@@ -395,7 +395,7 @@
        on a difference. An edit here without a matching extraction there is a
        drift CI catches, but only on the next push to that repo. */
     serverPrompt: true,
-    buildSystem: function () { return SYSTEM_PROMPT + (window.NoteRegisterRules ? window.NoteRegisterRules.constructions : "") + HINTS_BLOCK; },
+    buildSystem: function () { return SYSTEM_PROMPT + (window.NoteRegisterRules ? window.NoteRegisterRules.universal : "") + HINTS_BLOCK; },
     buildUserPrompt: buildUserPrompt,
     buildLabeledPrompt: buildLabeledPrompt,
     normalizeOutput: normalizeOutput,
