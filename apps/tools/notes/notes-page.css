@@ -625,6 +625,92 @@ body.is-pointing, body.is-pointing * { cursor: crosshair !important; }
 }
 .diff-note { font-size: 11.5px; color: #8a7430; margin: 0; }
 
+/* ── Corrections marks ───────────────────────────────────────────────────────
+   The corrections pass writes into the note, so every difference it made is
+   drawn over the draft. Three colours, three meanings, and no two of them share
+   one:
+
+     green   something was added, drawn from what the technician wrote
+     red     something was removed
+     blue    something MOVED, and it is drawn at both ends
+
+   His ruling on the origin of a move, 1 September 2026: blue at both ends, with
+   a light strikethrough where the sentence left. Red is reserved for content
+   that is going away, and painting a move's origin red would say the sentence
+   was thrown out when the whole point of teaching the diff about moves was that
+   it was not. The strike says it is not sitting in two places; the blue says it
+   went somewhere. */
+
+.cx-view {
+  padding: 10px; border-radius: 7px;
+  border: 1.5px solid #c9d8ba; background: #fbfdf8;
+  font-size: 14px; line-height: 1.8; color: #2d3a1f;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.cx { border-radius: 3px; padding: 1px 2px; }
+.cx-ins { background: rgba(56, 142, 60, .16); color: #1f6b2a; box-shadow: inset 0 -1px 0 rgba(56, 142, 60, .5); }
+.cx-del { background: rgba(198, 40, 40, .13); color: #a02020; text-decoration: line-through; }
+.cx-move-in { background: rgba(33, 90, 180, .14); color: #1c4f9c; box-shadow: inset 0 -1px 0 rgba(33, 90, 180, .45); }
+.cx-move-out {
+  background: rgba(33, 90, 180, .09); color: #4a72ab;
+  text-decoration: line-through;
+  /* Light on purpose. It has to say "not here any more" without reading as the
+     deletion two lines up, which is a different mark meaning a different thing. */
+  text-decoration-color: rgba(74, 114, 171, .55);
+  text-decoration-thickness: 1px;
+}
+/* An undone mark stops being a mark. It reads as ordinary note text, faintly,
+   because the technician has already decided about it. */
+.cx-reverted {
+  background: none; color: inherit; box-shadow: none;
+  text-decoration: none; opacity: .72;
+}
+
+.cx-ctl {
+  display: inline-flex; align-items: center; gap: 3px;
+  vertical-align: baseline; margin-left: 3px; white-space: nowrap;
+}
+.cx-ck {
+  cursor: pointer; font-size: 12px; line-height: 1; border: none;
+  background: none; padding: 2px 4px; border-radius: 4px;
+  color: inherit; font-family: inherit;
+}
+.cx-ck:hover, .cx-ck:focus-visible { background: rgba(55, 69, 40, .14); }
+/* Accepted is the resting state, so its tick is nearly invisible: the note is
+   what matters, and a page of solid checkmarks is a page nobody reads. */
+.cx-ck.is-ghost { opacity: .34; }
+.cx-ck.is-ghost:hover, .cx-ck.is-ghost:focus-visible { opacity: .9; background: rgba(55, 69, 40, .14); }
+
+.cx-dot {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: #2f68c4; vertical-align: super; margin-left: 3px;
+  cursor: pointer; border: none; padding: 0;
+}
+.cx-dot:hover, .cx-dot:focus-visible { box-shadow: 0 0 0 3px rgba(47, 104, 196, .28); }
+
+.cx-edit {
+  font: inherit; font-size: 14px; padding: 2px 6px; border-radius: 5px;
+  border: 1.5px solid #7a8fb8; background: white; color: #2d3a1f;
+  min-width: 220px; max-width: 100%;
+}
+
+.cx-why { font-size: 11.5px; color: #6a7a58; margin: 6px 0 0; }
+.cx-done {
+  margin-top: 8px; padding: 6px 14px; border-radius: 7px;
+  border: 1.5px solid #b7cba2; background: white; color: #3c5029;
+  font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.cx-done:hover { background: #f0f6ea; }
+
+.cx-flash { animation: cxFlash 1.1s ease; }
+@keyframes cxFlash {
+  0%   { background: rgba(47, 104, 196, .22); }
+  100% { background: transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cx-flash { animation: none; outline: 2px solid #2f68c4; outline-offset: 2px; }
+}
+
 /* A section the panel is currently targeting. */
 .section-targeted { outline: 2px solid #7c6cd6; outline-offset: 2px; }
 .section-clickable { cursor: pointer; }

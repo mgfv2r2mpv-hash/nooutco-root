@@ -87,6 +87,21 @@ function expertEnabled(toolId) {
 }
 window.expertEnabled = expertEnabled;
 
+/* The corrections pass runs for the same people the expert pass runs for, and
+   the gate is the same check for the same reason: the route takes any live
+   login and then refuses a tool the login's own list does not carry, so a
+   looser gate here would spend a call the Worker is going to answer 403.
+
+   ?corrections=off turns it off, and it is worth more here than the expert's
+   escape hatch is. This pass edits the note, so "show me the draft the model
+   actually wrote" has to stay one query parameter away. */
+function correctionsEnabled(toolId) {
+  if (!window.NoteCorrections || !window.CorrectionsView) return false;
+  if (!window.NotesGate || !NotesGate.canUseTool || !NotesGate.canUseTool(toolId)) return false;
+  return new URLSearchParams(location.search).get("corrections") !== "off";
+}
+window.correctionsEnabled = correctionsEnabled;
+
 /* THE SECTION LIST COMES OUT OF THE RESPONSE SCHEMA. The obvious source is
    formSections, and the reason not to read it is worth stating accurately,
    because this comment stated it wrongly until 2026-08-30. It is NOT that the
@@ -887,6 +902,15 @@ function freshSession(tool) {
        previous intake sitting next to a new note is worse than no reading. */
     expert: null,
 
+    /* The corrections pass, and what the technician has done about it.
+       `corrections` is what the pass changed, aligned against the draft it
+       changed - null before it has run and after the marks are dismissed.
+       `markState` is per-mark, keyed section:index, and holds only the
+       decisions: everything not in it is accepted, which is the default and
+       the reason a fresh note ships corrected without a click. */
+    corrections: null,
+    markState: {},
+
     // ── Assistant panel ──────────────────────────────────────────────────
     // What the clinician sees, which is not what the model sees: `conversation`
     // carries raw JSON both ways, `thread` carries the readable exchange.
@@ -1232,6 +1256,14 @@ function App() {
   const narrativeIds = () =>
     tool.formSections.filter((s) => s.kind === "narrative").map(sectionId);
 
+  // Section id to heading, so a move's dot can name where the sentence came
+  // from rather than saying "somewhere else".
+  const correctionHeadings = React.useMemo(() => {
+    const map = {};
+    tool.formSections.forEach((sec) => { map[sectionId(sec)] = sec.heading || ""; });
+    return map;
+  }, [tool.id]);
+
   /* How the note is doing, for the collapsed assistant pill.
    *
    * Built from the hints the model already returns rather than from a second
@@ -1511,7 +1543,7 @@ function App() {
 
   const draftNote = async (scrubbedValues, extra) => {
     setLoading(true);
-    patchS({ output: null, proposal: null, conversation: [], questions: null, readiness: null, pendingValues: null, expert: null });
+    patchS({ output: null, proposal: null, conversation: [], questions: null, readiness: null, pendingValues: null, expert: null, corrections: null, markState: {} });
     try {
       let userMsg = tool.buildUserPrompt(scrubbedValues);
       if (extra && extra.trim()) {
@@ -1638,8 +1670,69 @@ function App() {
       } catch (e) { /* keep the first draft */ }
 
       const finalDraft = finalize(r.parsed);
-      patchS({ output: finalDraft.output, conversation, lastCallAt: Date.now() });
-      pushThread("assistant", "status", "Drafted. Click any section - or select a phrase inside one - to revise it.");
+
+      /* THE CORRECTIONS PASS, before the technician ever reads the draft.
+       *
+       * Awaited rather than fired alongside, which is the opposite of the
+       * expert pass above and for a reason: the expert writes a panel beside
+       * the note, and this one writes the note. A technician who copied during
+       * the gap would take away the uncorrected draft and never know a
+       * correction existed, and "doing nothing ships all of it" would be false
+       * for exactly the people least likely to wait.
+       *
+       * Best effort, like every other pass here. A null leaves the draft
+       * standing with no marks, which is what shipped before this existed. */
+      let corrected = finalDraft.output;
+      let marks = null;
+      if (correctionsEnabled(tool.id) && window.NotesGate && NotesGate.correctionsPass) {
+        try {
+          const draftSections = tool.formSections
+            .filter((sec) => sec.kind === "narrative" && sec.key)
+            .map((sec) => ({ id: sec.key, heading: sec.heading, text: String(finalDraft.output[sec.key] || "") }))
+            .filter((d) => d.text.trim());
+          const pass = draftSections.length
+            ? await NotesGate.correctionsPass({
+                tool: tool.id,
+                intake: intakeBody(scrubbedValues) +
+                  (extra && extra.trim() ? "\n\n[ANSWERED FOLLOW-UP QUESTIONS]\n" + extra.trim() : ""),
+                draft: draftSections,
+              })
+            : null;
+          const before = {};
+          draftSections.forEach((d) => { before[d.id] = d.text; });
+          const built = pass && window.NoteCorrections
+            ? NoteCorrections.build({ before, corrections: pass.corrections })
+            : null;
+          if (built && built.count) {
+            marks = built;
+            corrected = { ...finalDraft.output, ...NoteCorrections.outputFor(built.sections, {}) };
+          }
+          // Counts and enums only. Never a word of a correction, and never a
+          // word of the note it corrected.
+          if (pass) {
+            audit("corrections_pass", {
+              sections: (pass.corrections || []).length,
+              marks: built ? built.count : 0,
+              dropped: pass.dropped || 0,
+              inTokens: (pass.usage && pass.usage.input_tokens) || 0,
+              cachedTokens: (pass.usage && pass.usage.cache_read_input_tokens) || 0,
+              outTokens: (pass.usage && pass.usage.output_tokens) || 0,
+            });
+          }
+        } catch (e) { /* keep the draft as it was written */ }
+      }
+
+      patchS({
+        output: corrected,
+        conversation,
+        lastCallAt: Date.now(),
+        corrections: marks,
+        markState: {},
+      });
+      pushThread("assistant", "status", marks
+        ? "Drafted, and I made " + marks.count + (marks.count === 1 ? " change" : " changes") +
+          " the handout asks for. They are already in the note and marked where they are. Click a tick to undo or reword one."
+        : "Drafted. Click any section - or select a phrase inside one - to revise it.");
       // Register signals for the weekly audit. Numbers only, measured on the
       // draft the clinician is about to read, so a drift toward machine-uniform
       // prose shows up in the Friday email rather than in a detector months
@@ -2184,6 +2277,78 @@ function App() {
     setPanelOpen(true);
   };
 
+  /* ── Acting on a correction ───────────────────────────────────────────
+     Every handler here rewrites the affected section from the marks, rather
+     than editing the note text directly. The marks are the record of what the
+     pass proposed; the note is derived from them and from the decisions. Doing
+     it the other way round would make an undo unreachable the moment anything
+     else touched the section. */
+  const applyMarkState = (nextState) => {
+    patchS((st) => {
+      if (!st.corrections) return { markState: nextState };
+      return {
+        markState: nextState,
+        output: { ...st.output, ...NoteCorrections.outputFor(st.corrections.sections, nextState) },
+      };
+    });
+  };
+
+  const toggleCorrection = (key) => {
+    if (!S.corrections) return;
+    const next = NoteCorrections.toggle(S.corrections.sections, S.markState, key);
+    audit("corrections_mark", { undone: next[key] && next[key].reverted ? 1 : 0, restored: next[key] && next[key].reverted ? 0 : 1 });
+    applyMarkState(next);
+  };
+
+  const editCorrection = (key, text) => {
+    if (!S.corrections) return;
+    audit("corrections_mark", { edited: 1 });
+    applyMarkState(NoteCorrections.edit(S.markState, key, text));
+  };
+
+  /* Clearing a section's marks does NOT revert anything. The note already reads
+     the way the marks say it does, and this is the only way back to a plain
+     editable textarea, which is what a technician wants the moment they would
+     rather type than click.
+
+     One section at a time, because the button sits in that section and a
+     control that quietly clears the marks in three other sections would be
+     lying about what it does. */
+  const dismissCorrections = (id) => {
+    patchS((st) => {
+      if (!st.corrections || !st.corrections.sections[id]) return {};
+      const marks = st.corrections.marks.filter((m) => m.id !== id);
+      const mine = st.corrections.marks.filter((m) => m.id === id);
+      const kept = mine.filter((m) => !(st.markState[m.key] && st.markState[m.key].reverted)).length;
+      audit("corrections_done", { kept, undone: mine.length - kept });
+      if (!marks.length) return { corrections: null, markState: {} };
+      const sections = {};
+      Object.keys(st.corrections.sections).forEach((k) => {
+        if (k !== id) sections[k] = st.corrections.sections[k];
+      });
+      const markState = {};
+      Object.keys(st.markState).forEach((k) => {
+        if (!k.startsWith(id + ":")) markState[k] = st.markState[k];
+      });
+      return {
+        corrections: { ...st.corrections, sections, marks, changed: Object.keys(sections), count: marks.length },
+        markState,
+      };
+    });
+  };
+
+  /* The blue dot on a moved sentence leads back to where it came from. Scroll
+     plus a flash rather than scroll alone: a section that was already on screen
+     would otherwise answer the click with nothing at all. */
+  const goToOrigin = (originId) => {
+    const el = document.querySelector('[data-section-key="' + originId + '"]');
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.remove("cx-flash");
+    void el.offsetWidth;
+    el.classList.add("cx-flash");
+  };
+
   const acceptProposal = () => {
     if (!S.proposal) return;
     audit("revision", { accepted: 1, sections: S.proposal.changes.length, kind: S.proposal.kind || "section" });
@@ -2508,6 +2673,36 @@ function App() {
     const pending = pendingChangeFor(id);
     if (pending) return renderPendingChange(pending);
     if (sec.kind === "narrative") {
+      /* A section the corrections pass changed is drawn as marks rather than as
+         a textarea, because a textarea cannot carry a strikethrough. The marks
+         are already in the note, so this is a view of what it says and not a
+         thing waiting to be accepted. "Edit by hand" is how the box comes back. */
+      const marked = S.corrections && S.corrections.sections[id];
+      if (marked) {
+        return (
+          <React.Fragment>
+            <CorrectionsView
+              id={id}
+              ops={marked}
+              marks={{ why: (S.corrections.marks.find((m) => m.id === id) || {}).why || "" }}
+              state={S.markState}
+              headings={correctionHeadings}
+              onToggle={toggleCorrection}
+              onEdit={editCorrection}
+              onGoToOrigin={goToOrigin}
+            />
+            <button
+              type="button"
+              className="cx-done"
+              data-corrections-done={id}
+              onClick={() => dismissCorrections(id)}
+              title="Put the marks away and edit this section as text. Nothing is undone."
+            >
+              Edit by hand
+            </button>
+          </React.Fragment>
+        );
+      }
       const empty = !(v || "").trim();
       return (
         <textarea
