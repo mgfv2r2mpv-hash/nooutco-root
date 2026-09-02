@@ -214,7 +214,7 @@ test.describe('triage questions before drafting', () => {
        started passing nothing. What separates them now is the field itself:
        triage names a prompt in the store and sends no text, the note sends the
        block it measured today and names no kind. */
-    expect(posted[0].prompt_kind, 'the first call is triage').toBe('triage');
+    expect(posted[0].prompt_kind, 'the first call is triage').toBe('bt_triage');
     expect(posted[0].system_suffix, 'triage carries nothing measured in the page').toBeUndefined();
     expect(noteCall.prompt_kind, 'the note asks for the tool\'s own prompt').toBeUndefined();
     expect(typeof noteCall.system_suffix, 'the note carries its measured block').toBe('string');
