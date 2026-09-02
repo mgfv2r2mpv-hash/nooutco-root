@@ -106,3 +106,53 @@ test.describe('the two gaps the handout wants and could not reach', () => {
     expect(user).toMatch(/what was observed, what was attempted, and what happened as a result of the attempt/i);
   });
 });
+
+/* Build order item 8: the per-section half of two rules the universal register
+ * block states in general terms.
+ *
+ * B3 is stated for every tool, and this states it where it bites, which is the
+ * program narrative. B4's three parts were already asked for on the teaching
+ * narrative and nowhere else, so the two sections that carry a strategy and a
+ * behavior asked for two parts of three and got what they asked for. */
+test.describe('the sections that carry a procedure say what a procedure needs', () => {
+  let user;
+
+  test.beforeEach(async ({ page }) => {
+    await ready(page);
+    user = await bt(page, () => window.NOTE_TOOLS.find((t) => t.id === 'bt').buildUserPrompt({
+      placeOfService: 'Home', fSession: '', fLesson: 'Ran tacting.', fAntecedent: 'Warned before transitions.',
+      fBehavior: 'Aggression, blocked.', fFollowUp: '',
+    }));
+  });
+
+  test('the program narrative carries the order the procedure ran in', async () => {
+    // His line, and the reason this is a clinical rule rather than a style
+    // one: "It is just backward to good session design. That is why I was
+    // upset about it."
+    expect(user).toMatch(/write it in the order it ran/i);
+    expect(user).toMatch(/how the opportunity was arranged, then what was presented, then the prompt/i);
+    expect(user).toMatch(/Never write the prompt before the arrangement/i);
+  });
+
+  test('the antecedent narrative asks for the client, which it never used to', async () => {
+    /* It read "describe the antecedent strategies as applied and their
+       impact". His shipped note answered both halves with "Choices were
+       offered when appropriate to increase opportunities for the client to
+       participate", which says nothing about what the client did. */
+    expect(user).toMatch(/antecedentNarrative: three parts for each strategy/i);
+    expect(user).toMatch(/what the client did in response, and whether it worked/i);
+    expect(user, 'the old two-part line must be gone, not merely added to')
+      .not.toMatch(/describe the antecedent strategies as applied and their impact/i);
+  });
+
+  test('the behavior narrative asks what the technician did about it', async () => {
+    expect(user).toMatch(/what happened, what the technician did in response, and what followed/i);
+  });
+
+  test('and every one of them routes the gap to a hint rather than to a guess', async () => {
+    // The whole reason a per-section rule is safe to state at all. Asking for
+    // three parts without this turns a thin intake into an invented one.
+    expect(user).toMatch(/emit the no_antecedent_impact hint, and supply neither of the others yourself/i);
+    expect(user).toMatch(/emit the no_response_described hint instead of inventing one/i);
+  });
+});
