@@ -377,6 +377,38 @@
     return back.length ? s.restoreDeep(value, back) : value;
   }
 
+  /* WHICH PERMANENT SUBSTITUTIONS A GIVEN STRING IS SITTING ON TOP OF.
+   *
+   * WHAT HE READ ON 2026-09-02. He typed "Happy at session start", the name
+   * dictionary took Happy for a first name, and the expert - which reads the
+   * de-identified intake - quoted back "Client at session start". A sentence he
+   * never wrote, about a swap nothing on the page mentioned. His reading of the
+   * mechanism was right: "the expert essentially got a code word".
+   *
+   * WHY THIS REPORTS THE SWAP RATHER THAN UNDOING IT. Undoing it means putting
+   * the name back wherever the token appears, and restoreDeep matches a plain
+   * substring. Opaque tokens are safe that way because [[T4]] occurs nowhere
+   * else; a ROLE token is an ordinary English word the expert writes on its own
+   * account, and it is told to. Mapping every "Client" back would put a client's
+   * real name into a sentence the model wrote about the role, which is a worse
+   * fault than the one being fixed and is invisible when it happens.
+   *
+   * So the caller renders the quote as the expert wrote it and says what the
+   * scrub took. The technician then knows which word of theirs is behind it and
+   * can certify it through the notice, which is where that escape already lives.
+   *
+   * Returns [{name, token}] for the permanent entries whose token occurs in the
+   * text. Round-tripped entries are excluded because they were never taken.
+   */
+  function permanentSwaps(text, map) {
+    var t = String(text || "");
+    if (!t || !map || !map.length) return [];
+    return map.filter(function (e) {
+      if (e.restore || !e.name || !e.token) return false;
+      return t.indexOf(e.token) !== -1;
+    }).map(function (e) { return { name: e.name, token: e.token }; });
+  }
+
   // Only the substitutions that STAY in the note are worth telling a clinician
   // about. A round-tripped word was never taken, so listing it would report a
   // change that does not survive to the draft.
@@ -758,6 +790,7 @@
     restoreOutput: restoreOutput,
     mergeMaps: mergeMaps,
     noticeText: noticeText,
+    permanentSwaps: permanentSwaps,
     persistMap: persistMap,
     installPHIHighlight: installPHIHighlight,
     // exposed for testing / the stress-test page

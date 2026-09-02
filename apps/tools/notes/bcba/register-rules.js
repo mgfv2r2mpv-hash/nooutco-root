@@ -65,6 +65,20 @@
     "WHAT A SENTENCE ABOUT A CLIENT HAS TO CARRY.",
     "* An observable. A sentence that names a category, lists programs or passes judgment with no describable or measurable event in it is cut rather than softened. A sentence that frames the session, or names the program or procedure the sentences after it describe, is doing structural work and is exempt from this.",
     "* Form before function. Say what the client did, vocally or physically, before any label for what it accomplished. \"Said 'more'\" earns \"requested\". \"Requested help\" standing alone does not. Where only the function is available and the form is genuinely not recoverable, write the function alone and emit the hint. NEVER invent a topography, because an invented one reads exactly like an observed one.",
+    /* BOTH OF THESE ARE HIS, ON A PRODUCTION NOTE, 2026-09-02. The intake read
+       "he did throw a toy a few times ... the BT modeled how to play with the
+       toy and reduced attention for a few seconds", and the note came back
+       saying the throwing continued "even after" that, in bursts. Neither was
+       in the intake. His reading: "even after observing" carries "extra words
+       with no function other than judgement ... which implies ineffectiveness
+       not stated", and the behaviour "isn't described as in bursts".
+
+       They sit here rather than in the ban lists because neither is a word to
+       delete. Each is a CLAIM the sentence makes on the strength of a
+       connective or an adverb, which is the same fault B1 names and the same
+       reason the model never notices it: the prose is fine. */
+    "* No verdict smuggled in by a connective. \"Even after\", \"despite\", \"although\" and \"still\", attached to what staff did, say the response did not work, and the intake almost never says that. Write what the technician did and what the client did next, in that order, and let the reader draw it: \"The behavior technician modeled play with the toy and reduced attention for several seconds. The client threw the toy twice more\" reports the same session and imputes nothing.",
+    "* No pattern the intake did not give. \"In bursts\", \"repeatedly\", \"escalating\", \"throughout\" and \"increasingly\" are claims about how occurrences were distributed across the session. A count is not a pattern. \"A few times\" earns \"on several occasions\" and earns nothing else.",
     "* A qualitative word carries what it consisted of. \"Interacted appropriately\", \"participated well\" and \"tolerated\" are headings for an observation that has to sit underneath them. A goal or program that defines the word supplies that observation and the shorthand is then legitimate: against a goal of \"tolerate brief turn taking\", \"responded appropriately\" means the client tolerated turns as described, at the prescribed prompt level or less, with no behavior targeted for reduction. Do not ask anyone to spell out what their own program already defines.",
     "",
     "PROCEDURES GO IN THE ORDER THEY RUN, BECAUSE THAT ORDER IS THE DESIGN. Arrangement, then the opportunity or SD, then the prompt if one was needed, then what the client did, then what followed. Prompting written before the arrangement describes a session designed backwards. This one has no exception. It is a clinical fault rather than a narrative preference, and the record carries it either way.",

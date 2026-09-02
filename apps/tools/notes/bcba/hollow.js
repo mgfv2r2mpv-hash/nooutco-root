@@ -207,7 +207,17 @@
           out.push({
             section: away,
             code: ownership.code,
-            kind: "blocks-claim",
+            /* AMBER, NOT RED, and that is his call of 2026-09-02 on a live note:
+               "if the expert moved something it can put an amber/yellow bubble,
+               red is aggressive. The information is present and can be moved so
+               it isn't a catastrophe."
+
+               Red is reserved for what a funder could refuse the claim over,
+               which is what the legend above the note promises it means. A
+               strategy sitting under the wrong heading is a whole sentence of
+               real clinical content in the wrong place, and moving it costs the
+               technician one drag. It still ranks first; see below. */
+            kind: "thin",
             /* FIRST, not last. rank carries the model's own ordering and an
                unranked hint sinks below every ranked one, which is right for a
                model declining to order and wrong for this: every other hint on

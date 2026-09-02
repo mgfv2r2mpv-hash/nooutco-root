@@ -36,7 +36,18 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     name: Tools E2E (${{ matrix.project }})
-    timeout-minutes: 30
+    # 45 RATHER THAN 30, AND THE 30 WAS NOT A FLAKE. On 2026-09-02 the firefox
+    # shard of run 33624526400 was cancelled by this cap at exactly 30:00, with
+    # no test failure in the log. Its two siblings on the same commit finished
+    # at 17:04 (chromium) and 24:57 (webkit), so the cap had roughly five
+    # minutes of headroom for the second-slowest engine and none at all for the
+    # slowest. The suite is 924 tests and grows most weeks.
+    #
+    # Raised rather than parallelised on purpose. `workers: 2` in
+    # playwright.config.js is a deliberate cap - every page compiles JSX in the
+    # browser and that CPU is shared with the Pages dev server - so buying time
+    # by widening it would buy flakes instead.
+    timeout-minutes: 45
     strategy:
       # One browser failing must not cancel the other two - knowing whether a
       # failure is browser-specific is most of the diagnosis.

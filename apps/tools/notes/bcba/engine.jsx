@@ -683,8 +683,17 @@ function NoteHints({ hints, catalog }) {
 const EXPERT_LABEL = "expert";
 
 function ExpertRow({ finding, testid }) {
+  /* THE ASK IS THE ROW. THE JUSTIFICATION IS BEHIND A WORD.
+     His verdict on 2026-09-02, looking at his own tool: the expert blocks are
+     "aggressive and large". Measured on the screenshots he sent, the ask ran
+     two lines and the why ran five, so four fifths of every block was the model
+     arguing for a finding the technician had already read. The why is still
+     here, because a finding nobody can check is a finding nobody can refuse.
+     It is one click away rather than in the way. */
+  const [showWhy, setShowWhy] = React.useState(false);
   const tone = HINT_TONE[finding.kind] || HINT_TONE.thin;
   const ask = String(finding.ask || "").trim();
+  const why = String(finding.why || "").trim();
   if (!ask) return null;
   return (
     <div
@@ -697,7 +706,17 @@ function ExpertRow({ finding, testid }) {
         {EXPERT_LABEL}
       </span>
       {tone.mark} {ask}
-      {finding.why ? <div style={{ opacity: 0.82, marginTop: 3 }}>{finding.why}</div> : null}
+      {why ? (
+        <button
+          type="button"
+          data-testid="expert-why-toggle"
+          onClick={(e) => { e.stopPropagation(); setShowWhy(!showWhy); }}
+          style={{ marginLeft: 6, fontSize: 11.5, color: "inherit", opacity: 0.6, background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline" }}
+        >
+          {showWhy ? "less" : "why"}
+        </button>
+      ) : null}
+      {showWhy && why ? <div data-testid="expert-why" style={{ opacity: 0.82, marginTop: 3 }}>{why}</div> : null}
     </div>
   );
 }
@@ -730,10 +749,33 @@ function ExpertList({ findings, testid }) {
   );
 }
 
+/* One line where a reading has been overtaken, and the findings behind it. See
+   markSectionRevised for why this folds rather than retires. */
+function ExpertStale({ findings, testid }) {
+  const [open, setOpen] = React.useState(false);
+  const n = findings.length;
+  return (
+    <div style={{ marginTop: 8 }} data-testid={`${testid}-stale`} data-stale-open={open ? "1" : "0"}>
+      <button
+        type="button"
+        data-testid={`${testid}-stale-toggle`}
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        style={{ fontSize: 11.5, color: "#7a9460", background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline", textAlign: "left" }}
+      >
+        You have edited this section since the expert read it. {n} finding{n === 1 ? "" : "s"} from that reading{open ? " - hide" : " - show"}
+      </button>
+      {open && <ExpertList findings={findings} testid={testid} />}
+    </div>
+  );
+}
+
 function ExpertNotes({ expert, section }) {
   if (!expert || expert.status !== "done") return null;
   const id = sectionId(section);
-  return <ExpertList findings={(expert.hints || []).filter((f) => f.section === id)} testid={`expert-${id}`} />;
+  const mine = (expert.hints || []).filter((f) => f.section === id);
+  if (!mine.length) return null;
+  if ((expert.revised || []).includes(id)) return <ExpertStale findings={mine} testid={`expert-${id}`} />;
+  return <ExpertList findings={mine} testid={`expert-${id}`} />;
 }
 
 /* THE REGISTER FINDINGS ARE THE POINT, and they are the thing the catalog has
@@ -742,33 +784,98 @@ function ExpertNotes({ expert, section }) {
    why the quote is drawn rather than summarised: "you wrote X" is checkable
    where "watch your mentalism" is advice.
 
-   `keep` findings are drawn too. A sentence the expert looked at and passed is
-   information - it means the reading covered it - and hiding them would make a
-   thorough pass look like a thin one. */
+   THREE THINGS HE RULED ON 2026-09-02, reading five of these stacked above his
+   own note. Take them together or the row grows back.
+
+   NO KEEPS. They were drawn on the reasoning that a sentence the expert passed
+   is information about the reading. His verdict: "'Fine as written' is not
+   helpful." A list that mixes what to change with what not to change is read
+   twice to find the first thing to do, and the prompt no longer asks for them
+   either, so this filter is the second of two doors.
+
+   ONE LINE, NOT A BOX. Each finding was a bordered card carrying the quote, the
+   reason and the replacement on three separate rows. It is now the quote and
+   the replacement on one flowing line with a left rule, and the reason behind a
+   word. His rule for it: "reduce the friction from deficit to remedy."
+
+   COLLAPSED BY DEFAULT, which is the only thing that actually bounds the cost.
+   "This is almost a full page of corrections before they see any note ... does
+   not minimize the vertical space the expert injects into the tool. Opposite."
+   Five compact rows are still five rows, so what sits above the note now is one
+   line carrying the count, and the stack opens on a click. */
 const REGISTER_ACTION_LABEL = {
-  reframe: "rewrite this",
-  ask: "ask about this",
-  remove: "cut this",
-  keep: "fine as written",
+  reframe: "rewrite",
+  ask: "ask",
+  remove: "cut",
 };
 
+// A keep is dropped here and not asked for upstream. An empty quote never had a
+// finding in it: the row is built entirely out of the clinician's own words.
+function registerShown(register) {
+  return (register || []).filter(
+    (r) => r && String(r.quote || "").trim() && (r.action || "ask") !== "keep",
+  );
+}
+
 function RegisterFinding({ finding }) {
+  const [showWhy, setShowWhy] = React.useState(false);
   const quote = String(finding.quote || "").trim();
   if (!quote) return null;
   const action = finding.action || "ask";
-  const muted = action === "keep";
+  const move = String(finding.move || "").trim();
+  const why = String(finding.why || "").trim();
+  const swaps = finding.swaps || [];
   return (
     <div
       data-testid="expert-register-row"
       data-register-action={action}
-      style={{ fontSize: 12.5, border: "1px solid #e5e7eb", borderRadius: 7, padding: "7px 10px", marginBottom: 5, lineHeight: 1.5, background: muted ? "#f9fafb" : "#f3f4f6", color: "#374151", opacity: muted ? 0.78 : 1 }}
+      style={{ fontSize: 12.5, borderLeft: "2px solid #d9ded1", paddingLeft: 9, marginBottom: 6, lineHeight: 1.5, color: "#374151" }}
     >
-      <span style={{ fontSize: 10, letterSpacing: ".08em", textTransform: "uppercase", fontWeight: 700, opacity: 0.7, marginRight: 6 }}>
+      <span style={{ fontSize: 10, letterSpacing: ".08em", textTransform: "uppercase", fontWeight: 700, opacity: 0.6, marginRight: 6 }}>
         {REGISTER_ACTION_LABEL[action] || action}
       </span>
-      <span style={{ fontStyle: "italic" }}>“{quote}”</span>
-      {finding.why ? <div style={{ marginTop: 3, opacity: 0.85 }}>{finding.why}</div> : null}
-      {finding.move ? <div style={{ marginTop: 3, color: "#374528", fontWeight: 600 }}>{finding.move}</div> : null}
+      <span style={{ fontStyle: "italic", opacity: 0.78 }}>“{quote}”</span>
+      {move ? <span style={{ color: "#374528", fontWeight: 600 }}> → {move}</span> : null}
+      {/* The quote is the intake and the move is the note, so where the scrub
+          took a word the two say different things. Saying which word, in the
+          row itself, is what turns "the expert misquoted me" into "the scrub
+          read Happy as a name". The word is certified through the notice above
+          the note, which is where that escape already lives. */}
+      {swaps.map((sw, i) => (
+        <span key={i} data-testid="expert-register-swap" style={{ color: "#8a6d1a", opacity: 0.9 }}>
+          {" "}(you wrote “{sw.name}”; the scrub reads it as {sw.token})
+        </span>
+      ))}
+      {why ? (
+        <button
+          type="button"
+          data-testid="expert-register-why"
+          onClick={(e) => { e.stopPropagation(); setShowWhy(!showWhy); }}
+          style={{ marginLeft: 6, fontSize: 11.5, color: "#6b7280", background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline" }}
+        >
+          {showWhy ? "less" : "why"}
+        </button>
+      ) : null}
+      {showWhy ? <div style={{ marginTop: 2, opacity: 0.85 }}>{why}</div> : null}
+    </div>
+  );
+}
+
+/* One line above the note whatever the expert found, and the stack behind it. */
+function RegisterStack({ findings }) {
+  const [open, setOpen] = React.useState(false);
+  const n = findings.length;
+  return (
+    <div style={{ marginBottom: 8 }} data-testid="expert-register" data-register-open={open ? "1" : "0"}>
+      <button
+        type="button"
+        data-testid="expert-register-toggle"
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        style={{ fontSize: 12, color: "#5d6a4d", background: "none", border: "none", padding: "0 0 4px", cursor: "pointer", textDecoration: "underline" }}
+      >
+        {n} phrase{n === 1 ? "" : "s"} it would reword{open ? " - hide" : " - show"}
+      </button>
+      {open && findings.map((r, i) => <RegisterFinding key={i} finding={r} />)}
     </div>
   );
 }
@@ -794,6 +901,34 @@ function TermFinding({ finding }) {
       {finding.reading ? ` ${TERM_STATUS_LABEL[status] || status} ${finding.reading}` : ` - ${TERM_STATUS_LABEL[status] || status}`}
     </span>
   );
+}
+
+/* SAYING WHICH OF THEIR WORDS IS BEHIND A ROLE TOKEN IN THEIR OWN QUOTE.
+ *
+ * A register finding's `quote` is the clinician's own sentence by contract, and
+ * the expert read a de-identified intake, so the sentence comes back with
+ * whatever the scrub put in it. He read one on 2026-09-02: he typed "Happy at
+ * session start", the name dictionary took Happy for a first name, and the
+ * finding quoted back "Client at session start", about a swap nothing on the
+ * page mentioned.
+ *
+ * Opaque tokens need nothing here - restoreOutput already round-trips them, and
+ * that runs before this does. A role token is deliberately permanent and stays
+ * permanent: the note is the thing it protects, and notes-scrub.js sets out why
+ * mapping "Client" back to a name across a whole quote is a worse fault than
+ * this one. So the swap is reported rather than undone, and the row draws it.
+ *
+ * `move` IS LEFT ALONE. It is a replacement sentence for the note, so it has to
+ * agree with the note rather than with the intake. */
+function expertForReader(found, map) {
+  if (!found || !window.NotesScrub || !NotesScrub.permanentSwaps) return found;
+  return {
+    ...found,
+    register: (found.register || []).map((r) => ({
+      ...r,
+      swaps: NotesScrub.permanentSwaps(String(r.quote || ""), map),
+    })),
+  };
 }
 
 /* Everything the expert found that is not about one section: the abbreviations
@@ -838,7 +973,7 @@ function ExpertReading({ expert }) {
 
   const whole = window.NoteToolsUtil ? window.NoteToolsUtil.HINT_WHOLE_NOTE : "note";
   const wholeHints = (expert.hints || []).filter((f) => f.section === whole);
-  const register = expert.register || [];
+  const register = registerShown(expert.register);
   const terms = expert.terms || [];
 
   return (
@@ -850,9 +985,7 @@ function ExpertReading({ expert }) {
         </div>
       )}
       {register.length > 0 ? (
-        <div style={{ marginBottom: 8 }} data-testid="expert-register">
-          {register.map((r, i) => <RegisterFinding key={i} finding={r} />)}
-        </div>
+        <RegisterStack findings={register} />
       ) : (
         /* Finding nothing is a result, and the panel has to agree or a clean
            note reads as a broken call. */
@@ -1829,8 +1962,10 @@ function App() {
             /* The expert quotes the clinician's own sentences back at them, so a
                finding reading "you wrote '[[T4]] clinic'" names a word they
                cannot see. Same restore as the draft, and role tokens are left
-               alone here too. */
-            const found = raw ? NotesScrub.restoreOutput(raw, scrubMapRef.current) : raw;
+               alone here too - expertForReader then reports each one that
+               survived, because a permanent swap is the other way a quote names
+               a word they did not write. */
+            const found = raw ? expertForReader(NotesScrub.restoreOutput(raw, scrubMapRef.current), scrubMapRef.current) : raw;
             patchS((s) => {
               if (!s.expert || s.expert.runId !== runId) return {};
               return { expert: found ? { status: "done", runId, ...found } : { status: "failed", runId } };
@@ -1939,7 +2074,7 @@ function App() {
       });
       pushThread("assistant", "status", marks
         ? "Drafted, and I made " + marks.count + (marks.count === 1 ? " change" : " changes") +
-          " the handout asks for. They are already in the note and marked where they are. Click a tick to undo or reword one."
+          " the note needed. They are already in it and marked where they are. Click a tick to undo or reword one."
         : "Drafted. Click any section - or select a phrase inside one - to revise it.");
       // Register signals for the weekly audit. Numbers only, measured on the
       // draft the clinician is about to read, so a drift toward machine-uniform
@@ -2670,6 +2805,38 @@ function App() {
     el.classList.add("cx-flash");
   };
 
+  /* A SECTION THE TECHNICIAN HAS WORKED ON SINCE THE EXPERT READ IT.
+   *
+   * What he read on 2026-09-02: the intake said vocal requests were "higher
+   * today", he answered the clarification in the assistant panel, the note was
+   * rewritten with the comparison he supplied, and the expert's finding about
+   * the missing comparison was still sitting over the section.
+   *
+   * Nothing can know he closed that gap - the expert read the intake once and
+   * is not asked again. What the page does know is that he has touched the
+   * section since, and that is worth saying, because a finding read against an
+   * earlier draft is a different claim from a finding about what is on screen
+   * now.
+   *
+   * SO IT IS FOLDED, NOT DELETED. Marking it read and dropping it would let one
+   * keystroke silently retire a real gap, which is a worse fault than the one
+   * being fixed: the technician would never learn the finding existed. It
+   * collapses to a line that says what happened and opens on a click. */
+  const markSectionRevised = (ids) => {
+    // Called from a textarea's onChange, so it runs on every keystroke. The
+    // updater below is idempotent, but patchS always mints a new state object,
+    // and there is no reason to do that on a page with no reading on it.
+    if (!S.expert || S.expert.status !== "done") return;
+    const touched = (Array.isArray(ids) ? ids : [ids]).filter(Boolean);
+    if (!touched.length || touched.every((id) => (S.expert.revised || []).includes(id))) return;
+    patchS((st) => {
+      if (!st.expert || st.expert.status !== "done") return {};
+      const had = st.expert.revised || [];
+      const next = touched.filter((id) => !had.includes(id));
+      return next.length ? { expert: { ...st.expert, revised: had.concat(next) } } : {};
+    });
+  };
+
   const acceptProposal = () => {
     if (!S.proposal) return;
     audit("revision", { accepted: 1, sections: S.proposal.changes.length, kind: S.proposal.kind || "section" });
@@ -2692,6 +2859,7 @@ function App() {
       next.hints = s.proposal.hints;
       return { output: next, proposal: null };
     });
+    markSectionRevised(S.proposal.changes.map((c) => c.id));
   };
 
   /* A change the revision made outside the section that was clicked, which the
@@ -3033,7 +3201,7 @@ function App() {
           // is in without threading refs through every row.
           data-section-id={id}
           data-section-heading={sec.heading}
-          onChange={(e) => patchS((s) => ({ output: { ...s.output, [id]: e.target.value } }))}
+          onChange={(e) => { patchS((s) => ({ output: { ...s.output, [id]: e.target.value } })); markSectionRevised(id); }}
           placeholder={sec.emptyNote || ""}
           // Sized to the prose rather than to a fixed box: at full width these
           // no longer need an internal scrollbar to show four sentences, which
