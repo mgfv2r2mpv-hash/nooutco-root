@@ -548,3 +548,101 @@ test.describe('the analysis rules reach the technician tool and no other', () =>
     expect(bcbaOnly).toEqual(['REMOVE, ALWAYS. This is not a preference, because it is wrong in a record rather than merely unwanted:']);
   });
 });
+
+/* ── Four items of his bar, written as rules a draft can follow ──────────────
+   Build order item 7, on his ruling of 2026-08-31: "All five, via
+   register-rules.js. Not bt alone."
+
+   The scope IS the test. B1, B2, B6 and B3 are about writing about a client and
+   are as true of a plan as of a note, so they go to all five. The zero rule is
+   about reporting a session and goes only where a session is reported. A block
+   that carried the second one into the plan tool would be the necessity.js
+   defect over again, so both halves are pinned here rather than only the
+   widening. */
+test.describe('the bar rules a draft can follow', () => {
+  const ALL_FIVE = ['bt', 'sup', 'assess', 'parent', 'sap'];
+  const SESSION_FOUR = ['bt', 'sup', 'assess', 'parent'];
+
+  /* bt registers on its own page and the other four on the bcba one, so a
+     helper that reads all five has to visit both. Reading four and silently
+     getting null for the fifth is how a scope test passes on nothing. */
+  const build = (list) => {
+    const out = {};
+    for (const id of list) {
+      const t = window.NOTE_TOOLS.find((x) => x.id === id);
+      out[id] = t ? t.buildSystem() : null;
+    }
+    return out;
+  };
+
+  const systems = async (page, ids) => {
+    const out = {};
+    const onBcbaPage = ids.filter((id) => id !== 'bt');
+    if (onBcbaPage.length) {
+      await page.goto('/notes/bcba/index.html?tool=sap');
+      await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+      Object.assign(out, await page.evaluate(build, onBcbaPage));
+    }
+    if (ids.includes('bt')) {
+      await page.goto('/notes/bt/');
+      await page.waitForFunction(() => !!(window.NOTE_TOOLS && window.NOTE_TOOLS.length));
+      Object.assign(out, await page.evaluate(build, ['bt']));
+    }
+    return out;
+  };
+
+  test('every tool is told what a sentence about a client has to carry', async ({ page }) => {
+    const p = await systems(page, ALL_FIVE);
+    for (const id of ALL_FIVE) {
+      expect(p[id], `${id} did not load`).toBeTruthy();
+      // B1, and the exemption without which it flags every framing sentence.
+      expect(p[id], `${id} is missing the observable rule`).toMatch(/An observable\./);
+      expect(p[id], `${id} lost B1's exemption`).toMatch(/doing structural work and is exempt/);
+      // B2, and the line that makes it safe to demand a topography.
+      expect(p[id], `${id} is missing form before function`).toMatch(/Form before function\./);
+      expect(p[id], `${id} lost the rule that makes B2 safe`).toMatch(/NEVER invent a topography/);
+      // B6, and the exemption that stops it nagging about a word the program
+      // already defines. His own line: "sometimes it can be fairly safely
+      // divined".
+      expect(p[id], `${id} is missing the qualitative-word rule`)
+        .toMatch(/A qualitative word carries what it consisted of\./);
+      expect(p[id], `${id} lost B6's exemption`).toMatch(/what their own program already defines/);
+      // B3, and the order itself, which is the entire rule.
+      expect(p[id], `${id} is missing the procedure order`).toMatch(/PROCEDURES GO IN THE ORDER THEY RUN/);
+      expect(p[id], `${id} lost the order it names`)
+        .toMatch(/Arrangement, then the opportunity or SD, then the prompt/);
+    }
+  });
+
+  test('the plan tool takes them too, and still takes neither session block', async ({ page }) => {
+    /* The pairing is the point rather than the first half alone. Widening a
+       shared block is exactly the move that carried bt's section names into the
+       assessment prompt, so what widened and what must not widen with it are
+       asserted in one test.
+
+       The two negatives passed before this change as well. They are here as
+       over-correction guards, not as proof of it. */
+    const p = await systems(page, ['sap']);
+    expect(p.sap).toMatch(/PROCEDURES GO IN THE ORDER THEY RUN/);
+    expect(p.sap, 'the tired staff brevity register must still not reach the plan tool')
+      .not.toMatch(/end of a work block/);
+    expect(p.sap, 'and neither must the session-record block').not.toMatch(/WHAT THIS RECORD IS FOR/);
+  });
+
+  test('a zero is stated rather than attached, and only where a session is reported', async ({ page }) => {
+    const p = await systems(page, ALL_FIVE);
+    for (const id of SESSION_FOUR) {
+      expect(p[id], `${id} is missing the zero rule`).toMatch(/STATE A ZERO, NEVER ATTACH IT/);
+      // Named because it is the construction his own shipped note carried:
+      // "'without exhibiting' dodges a clean zero into a participial."
+      expect(p[id], `${id} does not name the construction that produced this rule`)
+        .toMatch(/without exhibiting behaviors of concern/);
+      /* The carve-out this sharpens rather than replaces. A zero still belongs
+         in the note, and losing that line would turn a rule about WHERE the
+         zero goes into one that deletes it. */
+      expect(p[id], `${id} lost the rule that keeps the zero in the note at all`)
+        .toMatch(/A zero is an observation and it stays/);
+    }
+    expect(p.sap, 'a plan has no zeros to report').not.toMatch(/STATE A ZERO/);
+  });
+});
