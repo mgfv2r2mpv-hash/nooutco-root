@@ -173,9 +173,30 @@ test('a truncated draft is distinguishable from a draft with no hints', () => {
    count moved because a code that was already being asked for started being
    accepted. A future change that moves it again should say which of those two
    things happened. */
-test('bt carries nine catalog codes', () => {
+test('bt carries ten catalog codes', () => {
   const { tool } = loadTool('bt');
   const codes = Object.keys(tool.hintCatalog);
-  expect(codes).toHaveLength(9);
+  expect(codes).toHaveLength(10);
   expect(codes, 'the code the shared register rules name').toContain('ambiguous_item');
+
+  // 2026-09-01, and this is the third kind of move: the catalog and the
+  // knowledge base disagreed, and the catalog was wrong.
+  //
+  // OUT. no_behavior_count told the technician to "add how many times it
+  // occurred, even if zero". necessity's do-not-repeat-the-data says the EHR
+  // already attaches this session's counts and that a note reciting them has
+  // spent its space on what the record already has, and completeness B7 says
+  // the same. The catalog was asking for the one thing the handout forbids.
+  // What survives is the comparison, which no_rate_comparison already carried.
+  expect(codes, 'the catalog asked for what do-not-repeat-the-data forbids').not.toContain('no_behavior_count');
+  expect(codes, 'the comparison is what a number is read for').toContain('no_rate_comparison');
+
+  // IN. Two rules the knowledge base states and no code could reach.
+  // completeness B4 wants a strategy's outcome; necessity's lesson-what-worked
+  // wants which strategies did not work. Neither had a channel.
+  expect(codes).toContain('no_strategy_outcome');
+  // Nothing carried a help that worked and is not in the written plan, which is
+  // a candidate plan revision and the most supervision-relevant thing a
+  // technician can notice.
+  expect(codes).toContain('helped_not_in_plan');
 });
