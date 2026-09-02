@@ -168,6 +168,41 @@
     other: "",
   };
 
+  /* ── Quality rubric ───────────────────────────────────────────────────────
+     What the note is graded on, which is the regional handout's list and not
+     this tool's. Each dimension names the hint codes that report a gap in it,
+     so the assistant can say what to fix rather than how many things are
+     wrong: a count tells a technician that work remains and nothing about what
+     the work is, which leaves opening the panel as the only way to act on it.
+
+     beyond_data is the one measured on the prose instead of read off the
+     model's hints, because "do not repeat the data" is a rule about what ended
+     up on the page. note-rubric.js counts the sentences that carry a number
+     and almost nothing else. */
+
+  var QUALITY_RUBRIC = [
+    {
+      id: "result",
+      label: "What happened as a result",
+      codes: ["no_strategy_outcome", "no_response_described", "no_antecedent_impact"],
+    },
+    {
+      id: "comparison",
+      label: "How it compares to recent sessions",
+      codes: ["no_rate_comparison"],
+    },
+    {
+      id: "specifics",
+      label: "The detail a data table cannot carry",
+      codes: ["no_prompt_level", "thin_clinical_status", "single_program_only", "helped_not_in_plan"],
+    },
+    {
+      id: "beyond_data",
+      label: "Says more than the numbers",
+      measure: "restates_data",
+    },
+  ];
+
   /* ── Response schema ──────────────────────────────────────────────────────
      What the model is CONSTRAINED to, not merely asked for. The prompt still
      describes the shape, but the prompt is guidance and this is enforcement. */
@@ -504,6 +539,7 @@ Hints are advisory nudges, not demands - do not hint when the BT plainly had not
     groupOptions: GROUP_OPTIONS,
     formSections: FORM_SECTIONS,
     hintCatalog: HINT_CATALOG,
+    qualityRubric: QUALITY_RUBRIC,
     responseSchema: RESPONSE_SCHEMA,
 
     validate: function (values) {

@@ -622,4 +622,39 @@ test.describe('annotate + panel revision', () => {
     await page.locator('.revision-panel-close').click();
     await expect(page.locator('.revision-fab')).toHaveClass(/quality-good/);
   });
+
+  test('the pill says what to fix, not how many things are wrong', async ({ page }) => {
+    await page.route('**/api/llm-call**', async (route) => {
+      const body = JSON.parse(route.request().postData() || '{}');
+      return route.fulfill(
+        reply(
+          isTriageCall(body)
+            ? { sufficient: true, questions: [] }
+            : note({
+                hints: [
+                  { section: 'behaviorPlanNarrative', code: 'no_strategy_outcome', detail: '', rank: 1, kind: 'thin' },
+                ],
+              }),
+        ),
+      );
+    });
+
+    await page.goto('/notes/bt/');
+    await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
+    await page.goto('/notes/bt/');
+
+    await fillRequiredAndGenerate(page);
+    await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
+    await page.locator('.revision-panel-close').click();
+
+    const fab = page.locator('.revision-fab');
+    await expect(fab).toHaveClass(/quality-thin/);
+    /* One hint used to make this tooltip read "1 spot could use more detail",
+       which is the count and no instruction: the only way to act on it was to
+       open the panel and read the hint anyway. */
+    await expect(fab).toHaveAttribute(
+      'title',
+      'Strategy described without its outcome, say what happened as a result of trying it',
+    );
+  });
 });
