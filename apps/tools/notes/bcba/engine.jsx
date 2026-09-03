@@ -2385,6 +2385,38 @@ function App() {
     }
   };
 
+  /* At most this many misfiled strategies are raised before a draft. */
+  const MAX_MISFILED_ASKS = 2;
+
+  /* A finding, written as something a technician can answer.
+
+     IT NAMES THE BOXES BY THEIR FORM LABELS, which is why this lives here and
+     not in hollow.js: hollow.js knows the sections of a note and has never
+     known what the intake looks like. A technician is looking at a screen of
+     boxes, and "belongs with the consequence strategies" does not say which one
+     of them to drag it to.
+
+     IT ENDS IN AN ALTERNATIVE, because his exception is real: "A strategy that
+     genuinely ran in both roles in one session is narrated in both, and that is
+     not an error." So the second half of the sentence is not politeness. It is
+     the case where the tool is wrong and the technician is right, and answering
+     it puts their own reason into the note.
+
+     No suggestions. The answer here is a sentence only the technician can
+     write, and a pre-accepted one would put the tool's guess in their note. */
+  const misfiledQuestion = (f) => ({
+    field: f.input,
+    question: `${f.label} is under “${inputLabel(f.input)}”, and it reads as a ${f.homeLabel} strategy. `
+      + `Move it to “${inputLabel(f.homeInput)}”, or say how it ran here.`,
+    suggestions: [],
+    bar: "B9",
+  });
+
+  const inputLabel = (id) => {
+    const f = tool.inputs.find((x) => x.id === id);
+    return f ? f.label : id;
+  };
+
   const handleGenerate = async () => {
     const err = tool.validate(S.values);
     if (err) { patchS({ error: err }); return; }
@@ -2407,9 +2439,32 @@ function App() {
       // draft for a technician with eight notes left to file.
       reportError(tool.id, e);
     }
+    /* THE WRONG-SECTION CHECK, RUN ON THE INTAKE. It costs no call, so it runs
+       whether or not triage answered, and it goes FIRST because it is the one
+       finding on the list that is a match against the tool's own published
+       table rather than a judgement about a note.
+
+       IT INFORMS AND IT NEVER BLOCKS. It is a row in a panel that was already
+       going to open, beside questions that already carry a skip button; nothing
+       here touches Generate. His standing rule is that the paperwork barrier
+       comes down and the reporting barrier never does, and a technician who
+       genuinely ran a strategy in both roles answers in one line and moves on.
+
+       CAPPED, and the cap is the same argument as the question ceiling. Two
+       findings is a technician who has something to fix; five is a wall, and a
+       wall gets skipped whole. */
+    const misfiled = window.NoteHollow && window.NoteHollow.misplacedInput && tool.strategyOwnership
+      ? window.NoteHollow.misplacedInput(scrubbed, tool.strategyOwnership).slice(0, MAX_MISFILED_ASKS)
+      : [];
+    if (misfiled.length) questions = misfiled.map(misfiledQuestion).concat(questions);
+
     if (questions.length) {
       setLoading(false);
-      audit("gap_questions", { asked: questions.length, round: 1, readiness, ...barsFor(questions) });
+      /* `misfiled` beside `asked` rather than folded into it. The two count
+         different things - one is what the model could not tell from the note,
+         the other is what the tool knew for certain before it read one - and a
+         single total would answer neither question later. */
+      audit("gap_questions", { asked: questions.length, misfiled: misfiled.length, round: 1, readiness, ...barsFor(questions) });
       patchS({ questions, readiness, pendingValues: scrubbed, triageAnswers: "", triageRound: 1, suggestState: {} });
       return;
     }
