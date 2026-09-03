@@ -1286,11 +1286,23 @@ function App() {
   const recordNoteLeft = () => {
     if (!S.output || !S.lastCallAt || taughtRef.current) return;
     taughtRef.current = true;
+    const retyped = manualEditBySection();
     audit("note_copied", {
       seconds: Math.round((Date.now() - S.lastCallAt) / 1000),
-      edited: manualEditChars(),
+      edited: Object.values(retyped).reduce((a, b) => a + b, 0),
       revisions: S.conversation.filter((m) => m.role === "user").length - 1,
     });
+    /* The same figure, split by the section it was spent in, and its own event
+       rather than three more keys on the one above. The client sanitiser keeps
+       the first twelve keys of a payload and drops the rest without saying so;
+       note_copied already spends three, bt and sup have five narrative sections
+       each, and a shared budget would work today and start losing whichever
+       section sorted last the first time a tool grew one. note_postpass,
+       note_hints and note_register are separate for the same reason.
+
+       Nothing is sent for a note that was copied as written. The absence is the
+       reading: note_copied's `edited` is 0 on the same note and says so. */
+    if (Object.keys(retyped).length) audit("note_retyped", retyped);
 
     // Typing over the draft is the strongest signal there is - it is the
     // technician's own prose rather than something they approved. Measured at
@@ -1619,19 +1631,38 @@ function App() {
       hintCatalog: tool.hintCatalog || {},
     });
 
-  // How much of the generated prose the clinician rewrote by hand.
-  const manualEditChars = () => {
-    if (!S.output) return 0;
+  /* How much of the generated prose the clinician rewrote by hand, SECTION BY
+     SECTION.
+
+     This used to return the note's one total, which is the number that says
+     effort was spent and not where. A section the model gets wrong on every
+     note reads identically to five it gets slightly wrong, and those are the
+     only two readings anyone could act on differently.
+
+     ONE ARITHMETIC, so the parts cannot disagree with the whole:
+     manualEditChars is now this summed rather than a second walk over the same
+     text. Two measurements of one thing, computed twice, drift, and the store
+     would carry both with nothing to say which had gone wrong.
+
+     Sections the technician left alone are absent rather than zero. A zero
+     would be true and would also spend one of the twelve keys the client
+     sanitiser keeps, on the reading that teaches least. */
+  const manualEditBySection = () => {
+    const out = {};
+    if (!S.output) return out;
     const modelOut = lastModelOutput();
-    if (!modelOut) return 0;
-    let delta = 0;
+    if (!modelOut) return out;
     narrativeIds().forEach((id) => {
       const before = String(modelOut[id] || "");
       const after = String(S.output[id] || "");
-      if (before !== after) delta += Math.abs(after.length - before.length) || after.length;
+      if (before === after) return;
+      out[id] = Math.abs(after.length - before.length) || after.length;
     });
-    return delta;
+    return out;
   };
+
+  const manualEditChars = () =>
+    Object.values(manualEditBySection()).reduce((a, b) => a + b, 0);
 
   /* Turn a rewrite into a measurement of how this technician writes, and send
      only the measurement. The words never leave the page - style-features.js
