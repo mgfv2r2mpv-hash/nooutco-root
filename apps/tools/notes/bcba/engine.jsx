@@ -1256,32 +1256,60 @@ function App() {
   const collectFreeText = () =>
     tool.inputs.filter((f) => f.type === "textarea").map((f) => S.values[f.id] || "").join("\n");
 
+  /* ONE NOTE TEACHES ONCE, however many Copy buttons get pressed.
+     His ruling on 2026-09-03: "one note should teach the style store once, not
+     once per Copy."
+
+     The note is copied into the EHR a section at a time, so a finished note
+     costs six or seven presses of a Copy button, and every one of them used to
+     run the whole measurement again: the same note_copied reading, and the same
+     full-note style comparison sent to the corrections store as fresh evidence.
+     A style card counts evidence and derives confidence from how many events
+     agree, so one note that happened to be copied section by section outvoted
+     six notes copied whole. The rule it taught was not more true, only pressed
+     more often.
+
+     It resets in draftNote, which is where a new note begins - not on a
+     revision, because revising is the same note being finished. A technician
+     who copies, edits more, then copies again therefore teaches from the first
+     copy and not the second. That undercounts the last few edits of a session,
+     which is a far smaller error than counting one note six times, and it is
+     the only moment available: nothing in the tool marks a note as done. */
+  const taughtRef = React.useRef(false);
+
+  /* Copying is the moment the note leaves for the EHR - the right place to
+     record how long it was looked at and how much of it was rewritten. Both
+     copy paths call this, and it runs at most once, on whichever press comes
+     first. Copy All used to record nothing at all, so the same finished note
+     taught six times or none depending only on which button the technician
+     reached for. */
+  const recordNoteLeft = () => {
+    if (!S.output || !S.lastCallAt || taughtRef.current) return;
+    taughtRef.current = true;
+    audit("note_copied", {
+      seconds: Math.round((Date.now() - S.lastCallAt) / 1000),
+      edited: manualEditChars(),
+      revisions: S.conversation.filter((m) => m.role === "user").length - 1,
+    });
+
+    // Typing over the draft is the strongest signal there is - it is the
+    // technician's own prose rather than something they approved. Measured at
+    // copy time because that is when they are finished with it.
+    const modelOut = lastModelOutput();
+    if (!modelOut) return;
+    const ids = narrativeIds();
+    emitStyle(
+      ids.map((id) => String(modelOut[id] || "")).join("\n\n"),
+      ids.map((id) => String(S.output[id] || "")).join("\n\n"),
+      "manual",
+    );
+  };
+
   const handleCopy = (id, text) => {
     navigator.clipboard.writeText(text);
     setCopied(id);
     setTimeout(() => setCopied(null), 1800);
-    // Copying is the moment the note leaves for the EHR - the right place to
-    // record how long it was looked at and how much of it was rewritten.
-    if (S.output && S.lastCallAt) {
-      audit("note_copied", {
-        seconds: Math.round((Date.now() - S.lastCallAt) / 1000),
-        edited: manualEditChars(),
-        revisions: S.conversation.filter((m) => m.role === "user").length - 1,
-      });
-
-      // Typing over the draft is the strongest signal there is - it is the
-      // technician's own prose rather than something they approved. Measured at
-      // copy time because that is when they are finished with it.
-      const modelOut = lastModelOutput();
-      if (modelOut) {
-        const ids = narrativeIds();
-        emitStyle(
-          ids.map((id) => String(modelOut[id] || "")).join("\n\n"),
-          ids.map((id) => String(S.output[id] || "")).join("\n\n"),
-          "manual",
-        );
-      }
-    }
+    recordNoteLeft();
   };
 
   /* ── LLM turns ─────────────────────────────────────────────────────── */
@@ -2039,6 +2067,7 @@ function App() {
   const draftNote = async (scrubbedValues, extra) => {
     setLoading(true);
     patchS({ output: null, proposal: null, conversation: [], questions: null, readiness: null, pendingValues: null, expert: null, corrections: null, markState: {} });
+    taughtRef.current = false; // a new note may teach again; a revision may not
     try {
       let userMsg = tool.buildUserPrompt(scrubbedValues);
       if (extra && extra.trim()) {
@@ -3296,6 +3325,7 @@ function App() {
     navigator.clipboard.writeText(tool.formSections.map((sec) => sectionBlock(sec, S.output, S.values)).join("\n\n"));
     setCopied("all");
     setTimeout(() => setCopied(null), 1800);
+    recordNoteLeft();
   };
 
   /* ── Clear / reset ─────────────────────────────────────────────────── */
