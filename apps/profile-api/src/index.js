@@ -50,7 +50,15 @@ export default {
 
     try {
       if (url.pathname === "/health") {
-        return json(200, { ok: true });
+        /* IT NAMES ITSELF, and that is not decoration. The live tests in
+           test/ wait for this route on a fixed port and treat any 200 as "our
+           dev server is up". On 2026-09-03 port 8799 was held by an orphaned
+           workerd from an unrelated session, three days old, answering 200 to
+           everything - so all six suppression tests set live = true, ran their
+           assertions against a stranger's server, and failed in a way that read
+           exactly like a broken suppression feature. A health check that does
+           not say who it is can be answered by anyone. */
+        return json(200, { ok: true, service: "bt-profile-api" });
       }
       if (url.pathname === "/events" && request.method === "POST") {
         return await handleEvents(request, env);
@@ -63,6 +71,9 @@ export default {
       }
       if (url.pathname === "/insights" && request.method === "GET") {
         return await handleInsights(env);
+      }
+      if (url.pathname === "/metrics-summary" && request.method === "GET") {
+        return await handleMetricsSummary(url, env);
       }
       // Supervisor views. Reachable only over the service binding, and the
       // Pages worker puts an admin-token check in front of every one of them.
@@ -315,6 +326,135 @@ async function handleInsights(env) {
     })),
   });
 }
+
+/* What the tool has actually been doing, as numbers.
+ *
+ * WHY IT EXISTS. The expert bench is meant to answer "how are my BTs doing"
+ * with figures rather than impressions, and nothing here could produce one. The
+ * store had the rows all along -- usage_metric has carried an event per draft
+ * since it was built -- but no route aggregated them, so the only readings
+ * anyone had were anecdotes off individual notes.
+ *
+ * CONTENT-FREE, like everything else in this file. Every number below is a
+ * count, a mean or a rate over columns that were already numeric. There is no
+ * prose in usage_metric to leak, because the Pages worker sanitises every value
+ * to a number or a boolean before it is written.
+ *
+ * BOUNDED. The type counts are done in SQL. The two aggregations that need the
+ * JSON body read a capped window of recent rows rather than the table, so this
+ * costs the same whether the store holds a thousand rows or a million.
+ */
+const METRICS_WINDOW_DAYS = 30;
+const METRICS_ROW_CAP = 5000;
+
+const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+const median = (xs) => {
+  if (!xs.length) return null;
+  const s = [...xs].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
+const round = (v, dp = 1) => (v == null ? null : Math.round(v * 10 ** dp) / 10 ** dp);
+
+async function handleMetricsSummary(url, env) {
+  const days = Math.min(365, Math.max(1, Number(url.searchParams.get("days")) || METRICS_WINDOW_DAYS));
+  const since = Date.now() - days * 24 * 60 * 60 * 1000;
+
+  const { results: counts } = await env.DB.prepare(
+    `SELECT tool, type, COUNT(*) AS n
+       FROM usage_metric
+      WHERE ts >= ?
+      GROUP BY tool, type
+      ORDER BY n DESC`,
+  ).bind(since).all();
+
+  // Only the two types whose bodies carry numbers worth averaging. Reading
+  // every row's JSON to find out would be the unbounded version of this.
+  const { results: rows } = await env.DB.prepare(
+    `SELECT tool, type, data
+       FROM usage_metric
+      WHERE ts >= ? AND type IN ('note_copied', 'note_hints')
+      ORDER BY ts DESC
+      LIMIT ?`,
+  ).bind(since, METRICS_ROW_CAP).all();
+
+  const copied = { seconds: [], edited: [], revisions: [] };
+  const hintNotes = {};   // code -> notes that raised it
+  const hintTotal = {};   // code -> times raised
+  let hintDrafts = 0;
+
+  for (const r of results_or_empty(rows)) {
+    let data;
+    try { data = JSON.parse(r.data); } catch { continue; }
+    if (!data || typeof data !== "object") continue;
+
+    if (r.type === "note_copied") {
+      if (Number.isFinite(data.seconds)) copied.seconds.push(data.seconds);
+      if (Number.isFinite(data.edited)) copied.edited.push(data.edited);
+      if (Number.isFinite(data.revisions)) copied.revisions.push(data.revisions);
+      continue;
+    }
+
+    // note_hints: one key per advisory code, the value being how many times
+    // that code fired on the draft. `tool` rides along in the same object and
+    // is not a code, so it is skipped by name.
+    hintDrafts += 1;
+    for (const [code, n] of Object.entries(data)) {
+      if (code === "tool" || !Number.isFinite(n)) continue;
+      hintNotes[code] = (hintNotes[code] || 0) + 1;
+      hintTotal[code] = (hintTotal[code] || 0) + n;
+    }
+  }
+
+  const totals = await env.DB.prepare(
+    `SELECT COUNT(*) AS technicians, SUM(note_count) AS notes FROM technician`,
+  ).first();
+
+  const byType = {};
+  for (const c of results_or_empty(counts)) {
+    byType[c.type] = (byType[c.type] || 0) + c.n;
+  }
+
+  return json(200, {
+    windowDays: days,
+    rowCap: METRICS_ROW_CAP,
+    // Said out loud, because a capped window that silently truncated would make
+    // a busy month look like a quiet one and nobody would be able to tell.
+    capped: results_or_empty(rows).length >= METRICS_ROW_CAP,
+    cohort: {
+      technicians: (totals && totals.technicians) || 0,
+      notesAllTime: (totals && totals.notes) || 0,
+    },
+    events: byType,
+    byTool: results_or_empty(counts).map((c) => ({ tool: c.tool, type: c.type, count: c.n })),
+    drafting: {
+      // How long a draft was looked at before it went to the EHR, how much of
+      // it was retyped, and how many times it was sent back for a revision.
+      notesCopied: copied.seconds.length,
+      medianSecondsToCopy: round(median(copied.seconds), 0),
+      meanSecondsToCopy: round(mean(copied.seconds), 0),
+      meanCharsRetyped: round(mean(copied.edited), 0),
+      meanRevisions: round(mean(copied.revisions), 2),
+    },
+    hints: {
+      // The rate a given advisory code fires, which is the reading that did not
+      // exist when a dropped hint had to be argued from a single note.
+      draftsMeasured: hintDrafts,
+      codes: Object.keys(hintTotal)
+        .map((code) => ({
+          code,
+          notes: hintNotes[code],
+          times: hintTotal[code],
+          rate: hintDrafts ? round(hintNotes[code] / hintDrafts, 3) : null,
+        }))
+        .sort((a, b) => b.notes - a.notes),
+    },
+  });
+}
+
+// D1 returns undefined rather than [] on some paths; every caller here wants
+// an array it can iterate without a guard at each site.
+function results_or_empty(r) { return Array.isArray(r) ? r : []; }
 
 /* ───────────────────── supervisor views ─────────────────────
  *

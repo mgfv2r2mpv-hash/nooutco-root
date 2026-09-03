@@ -38,6 +38,9 @@ const READ_ROUTES = [
   '/api/admin/profile/roster.js',
   '/api/admin/profile/card.js?kid=pw:tech-1',
   '/api/admin/profile/history.js?kid=pw:tech-1',
+  // What the tool has been doing, as numbers. Added so the expert bench can
+  // answer "how are my BTs doing" with a figure instead of an impression.
+  '/api/admin/profile/metrics.js?days=30',
 ];
 
 test.describe('who can reach a technician profile', () => {
@@ -136,5 +139,27 @@ test.describe('the admin page carries the tab', () => {
     await page.goto('/admin/');
     await page.waitForLoadState('domcontentloaded');
     expect(errors, `script errors on /admin/: ${errors.join(' | ')}`).toEqual([]);
+  });
+});
+
+test.describe('the metrics summary is reachable and admin only', () => {
+  test('an admin reaches the route rather than a 404', async ({ request }) => {
+    // bt-profile-api is not running during these tests, so the honest outcome
+    // is the unavailable path. What this asserts is that the route EXISTS: a
+    // 404 would mean it never made the allowlist and the bench would have been
+    // wired to nothing.
+    const res = await request.get('/api/admin/profile/metrics.js?days=30', { headers: auth(ADMIN()) });
+    expect(res.status(), 'the metrics route is not on the allowlist').not.toBe(404);
+    expect([200, 503]).toContain(res.status());
+  });
+
+  test('it cannot be called as a write', async ({ request }) => {
+    const res = await request.post('/api/admin/profile/metrics.js', { headers: auth(ADMIN()), data: {} });
+    expect(res.status()).toBe(404);
+  });
+
+  test('a technician cannot read the cohort numbers', async ({ request }) => {
+    const res = await request.get('/api/admin/profile/metrics.js', { headers: auth(TECH()) });
+    expect(res.status()).toBe(401);
   });
 });
