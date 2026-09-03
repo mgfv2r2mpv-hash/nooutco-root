@@ -1777,13 +1777,21 @@ function App() {
    * every round would throw that cache away each time, which is the one cost
    * this feature must not carry.
    *
-   * The cap is named rather than implied. "Round 3" alone does not tell the
-   * model it is the last one, and the whole point of the third rung is that it
-   * knows the note is written straight after it either way. */
+   * THE LINE EXPLAINS ITSELF, because runTriage is shared by every tool and only
+   * bt's triage prompt has rungs. A bare "[ROUND 2 OF 3]" reaching sup, assess,
+   * parent or sap would be a marker they were never taught to read, which is the
+   * same shape of fault as a prompt promising a capability the runtime lacks. A
+   * sentence saying what the round means is true for all five and needs no
+   * prompt to have been changed first.
+   *
+   * The cap is stated rather than implied for the same reason "Round 3" alone
+   * does not tell the model it is the last one, and the whole point of the third
+   * rung is that it knows the note is written straight after it either way. */
   const runTriage = async (scrubbed, priorAnswers, round) => {
     let body = intakeBody(scrubbed);
     const n = Number.isFinite(round) && round > 0 ? Math.min(round, MAX_TRIAGE_ROUNDS) : 1;
-    body += `\n\n[ROUND ${n} OF ${MAX_TRIAGE_ROUNDS}]`;
+    body += `\n\n[ROUND ${n} OF ${MAX_TRIAGE_ROUNDS}] This is question round ${n}, and there are at most ` +
+      `${MAX_TRIAGE_ROUNDS}. After the last one the note is written from whatever has been answered by then.`;
     if (priorAnswers && priorAnswers.trim()) {
       body += "\n\n[ALREADY ANSWERED BY THE CLINICIAN]\n" + priorAnswers.trim() +
         "\n\nTreat everything above as part of their notes. Ask ONLY about what is still genuinely missing. " +
