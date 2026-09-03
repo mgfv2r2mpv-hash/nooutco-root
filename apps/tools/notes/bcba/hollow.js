@@ -225,6 +225,13 @@
                tool's own two lists. It is the hint most likely to be true. */
             rank: 0,
             detail: s.label + " belongs with the " + own[home].label + " strategies.",
+            /* CARRIED FOR THE PRE-DRAFT CALLER, and dropped on the post-draft
+               one. normalizeHints rebuilds every hint from five named keys, so
+               these two ride along to misplacedInput below and never reach the
+               panel as a hint. A second copy of the search, written to return a
+               richer shape, is a second copy that drifts. */
+            home: home,
+            label: s.label,
           });
         });
       });
@@ -339,12 +346,66 @@
     return out;
   }
 
+  /* ── The same check, one model call earlier ───────────────────────────────
+     His upgrade 01, and it adds no clinical judgement of its own: it reads the
+     table above through the intake boxes instead of through the drafted note.
+
+     THE MISPLACEMENT STARTS IN THE INPUT. A technician types a consequence
+     procedure into the Antecedent Strategies box, the model carries it
+     faithfully into the antecedent narrative, and misplaced() finds it there
+     after a full draft has been paid for. The text that gave it away was
+     already on screen before the first call went out.
+
+     NO SECOND SEARCH. This builds the section-keyed object misplaced() already
+     takes and hands it over. Which section owns a DRO has moved once already;
+     it must never be answerable two ways in one file.
+
+     WHICH BOX FEEDS WHICH SECTION IS THE TOOL'S TO DECLARE, like the filing and
+     like effectCode, so a section with no `input` is simply not searched. That
+     is the quiet failure to watch for: an unmapped section finds nothing and
+     reads exactly like a clean note. tests/wrong-section-pre-draft.spec.js
+     pins the mapping for that reason.
+
+     THE INPUT IS ROUGHER THAN THE OUTPUT. The post-draft check reads model
+     prose; this reads bullet scraps and shorthand. The terms are unchanged, so
+     the three labels with no safe phrase still match nothing, which is the same
+     way this is allowed to be wrong. */
+  function misplacedInput(values, ownership) {
+    var v = values && typeof values === "object" ? values : {};
+    var own = ownership && ownership.sections;
+    if (!own) return [];
+    var bySection = {};
+    var mapped = 0;
+    Object.keys(own).forEach(function (section) {
+      var input = own[section].input;
+      if (!input) return;
+      mapped += 1;
+      bySection[section] = String(v[input] || "");
+    });
+    if (!mapped) return [];
+    return misplaced(bySection, ownership).map(function (h) {
+      return {
+        section: h.section,
+        home: h.home,
+        code: h.code,
+        label: h.label,
+        input: own[h.section].input,
+        homeInput: own[h.home].input,
+        homeLabel: own[h.home].label,
+      };
+    }).filter(function (h) {
+      // A home section the tool declared no box for cannot be pointed at.
+      return !!h.homeInput;
+    });
+  }
+
   window.NoteHollow = {
     recastZero: recastZero,
     isHollow: isHollow,
     pass: pass,
     passNote: passNote,
     misplaced: misplaced,
+    misplacedInput: misplacedInput,
     effectUnstated: effectUnstated,
   };
 })();
