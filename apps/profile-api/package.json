@@ -5,7 +5,7 @@
   "version": "0.0.0",
   "description": "Technician style profile store (D1). No public route - reached only by service binding from the tools Pages worker.",
   "scripts": {
-    "test": "node --test \"test/*.test.js\"",
+    "test": "node --test --test-concurrency=1 \"test/*.test.js\"",
     "dev": "wrangler dev --local",
     "db:local": "wrangler d1 execute bt-profiles --local --file schema.sql",
     "db:remote": "wrangler d1 execute bt-profiles --remote --file schema.sql",

@@ -1035,6 +1035,50 @@ const ORACLE_ADDENDUM = [
   "Every rule in your instructions still holds here, including the ones about not explaining their own field back to them and not writing about what a record does not contain.",
 ].join("\n");
 
+/* THE SAME EXPERT, WITH NO INTAKE IN FRONT OF IT.
+   His ask: the bench should engage on a standing question - "Let's fine-tune BT
+   session note completion criteria" - answer questions, report current metrics,
+   and write example notes for him to grade. None of that starts from a pasted
+   session note, and the addendum above opens by telling the model it has just
+   read one. Handing it that sentence with no intake would be the first thing it
+   read being false.
+
+   IT STILL WRITES NOTHING ANYWHERE. Topic mode changes what the conversation is
+   about, not what the route is allowed to do: no note tool sees any of it, and
+   a rule reaches the expert only through the knowledge store, with a version
+   and a pull request, exactly as before. */
+const ORACLE_TOPIC_ADDENDUM = [
+  "You are talking to the board-certified behavior analyst who maintains you. There is no intake in this conversation - they have come to you with a standing question about how the notes should be judged, not with a session to read.",
+  "",
+  "Answer them in prose. Do not return JSON.",
+  "",
+  "WHEN THEY ASK HOW THEIR TECHNICIANS ARE DOING, use the figures given to you below and say which number you are reading. If a figure they ask for is not there, say it is not measured rather than estimating it. An invented rate is worse than an absent one, because they will act on it.",
+  "",
+  "WHEN THEY ASK FOR AN EXAMPLE NOTE, write one and label plainly what you were aiming at - which bar it is meant to clear, and where you deliberately left it short. They are going to grade it, and a example whose intent is hidden teaches nothing when they disagree with the grade.",
+  "",
+  "WHEN THEY ARE WRONG, SAY SO. They are calibrating you, and an expert that folds to whoever is talking is worth nothing to them. Say what you read and why, and let them overrule you.",
+  "",
+  "Every rule in your instructions still holds here, including the ones about not explaining their own field back to them and not writing about what a record does not contain.",
+].join("\n");
+
+const ORACLE_METRICS_HEADER = [
+  "",
+  "",
+  "WHAT THE TOOL HAS ACTUALLY BEEN DOING.",
+  "These are real figures from the store, as JSON, covering the window named inside. They are counts and rates over content-free columns - there is no note text here and never has been. Quote them as measurements, not as impressions, and name the window when you use one.",
+  "",
+].join("\n");
+
+const ORACLE_METRICS_UNAVAILABLE = [
+  "",
+  "",
+  "WHAT THE TOOL HAS ACTUALLY BEEN DOING.",
+  "The metrics store could not be reached for this turn, so you have NO figures. Say that plainly if they ask for one. Do not estimate, do not reason from what is usual, and do not carry a number forward from earlier in this conversation as though it were fresh.",
+  "",
+].join("\n");
+
+const MAX_ORACLE_TOPIC_CHARS = 2000;
+
 const ORACLE_DRAFT_HEADER = [
   "",
   "",
@@ -1049,10 +1093,22 @@ const ORACLE_DRAFT_HEADER = [
    reason the pass reads it inside: this block sits above that declaration. */
 export function expertChatRequest(body) {
   const b = body || {};
+
+  /* TOPIC MODE. A conversation with no intake, which the pass's validator would
+     refuse at "Missing intake." - correctly, for the pass. The tool is still
+     required, because the stored prompt is fetched per tool and a conversation
+     about how bt notes should be judged has to run against bt's expert. */
+  const topic = typeof b.topic === "string" ? b.topic.trim() : "";
+  if (topic && topic.length > MAX_ORACLE_TOPIC_CHARS) {
+    return { error: "That topic is longer than this route accepts." };
+  }
+
   // The pass's own rules govern the tool, the intake and the sections, so they
   // are not restated here. A drift between the two would be a bench that can be
   // talked to about an intake the pass would have refused.
-  const base = expertPassRequest(b);
+  const base = topic
+    ? (typeof b.tool === "string" && b.tool ? { tool: b.tool, intake: "", sections: [] } : { error: "Missing tool." })
+    : expertPassRequest(b);
   if (base.error) return base;
 
   const raw = b.messages;
@@ -1082,7 +1138,7 @@ export function expertChatRequest(body) {
   const findings = typeof b.findings === "string" ? b.findings : JSON.stringify(b.findings || {});
   if (findings.length > MAX_MESSAGE_CHARS) return { error: "Those findings are too large to continue from." };
 
-  return { tool: base.tool, intake: base.intake, sections: base.sections, messages, knowledge, findings };
+  return { tool: base.tool, intake: base.intake, sections: base.sections, messages, knowledge, findings, topic };
 }
 
 export function oracleLimits() {
@@ -1097,8 +1153,24 @@ export function oracleLimits() {
 /* Compose the system prompt for one oracle turn. Exported so the composition
    order is pinned by a test: the stored prompt first, the addendum second, and
    the rule under test last, which is what makes a draft rule additive. */
-export function oracleSystem(storedPrompt, knowledge) {
-  const base = String(storedPrompt || "") + "\n\n" + ORACLE_ADDENDUM;
+export function oracleSystem(storedPrompt, knowledge, opts) {
+  /* `opts` is optional so every existing caller and test keeps its exact
+     composition. In topic mode the intake addendum is replaced rather than
+     added to: its first sentence is "You have just read the intake above", and
+     there is no intake. */
+  const o = opts || {};
+  const addendum = o.topic ? ORACLE_TOPIC_ADDENDUM : ORACLE_ADDENDUM;
+  let base = String(storedPrompt || "") + "\n\n" + addendum;
+
+  if (o.topic) {
+    base += "\n\nTHE STANDING QUESTION THEY HAVE COME WITH.\n" + String(o.topic).trim();
+    /* Distinguished on purpose: metrics absent is not the same as metrics
+       empty. A store that could not be reached must make the model say so,
+       because the alternative is a confident rate it made up. */
+    if (o.metrics) base += ORACLE_METRICS_HEADER + JSON.stringify(o.metrics);
+    else base += ORACLE_METRICS_UNAVAILABLE;
+  }
+
   const rule = String(knowledge || "").trim();
   return rule ? base + ORACLE_DRAFT_HEADER + rule : base;
 }
@@ -1120,11 +1192,17 @@ export function oracleSystem(storedPrompt, knowledge) {
    It lives in the Worker rather than in the bench because this is the shape of
    what reaches the model, and that is the Worker's to guarantee. */
 export function oracleTurns(parsed) {
-  const turns = [
-    { role: "user", content: parsed.intake },
-    { role: "assistant", content: parsed.findings },
-    ...parsed.messages,
-  ];
+  /* In topic mode there is no intake and no findings, so there is no first
+     exchange to rebuild - the conversation is simply what they said. Prepending
+     an empty user turn would hand the API a blank message and a claim, in the
+     addendum, that the model had read something. */
+  const turns = parsed.topic
+    ? [...parsed.messages]
+    : [
+        { role: "user", content: parsed.intake },
+        { role: "assistant", content: parsed.findings },
+        ...parsed.messages,
+      ];
   const out = [];
   for (const t of turns) {
     const last = out[out.length - 1];
@@ -1170,10 +1248,23 @@ async function handleExpertChat(request, env) {
        read the record you were given" is half the conversation. No `used` list
        and no log, because there is no structured answer to read one out of and
        a bench conversation is not evidence about what a real note needed. */
+    /* THE FIGURES ARE FETCHED HERE, NOT ACCEPTED FROM THE BROWSER, and that is
+       the whole reason this is a server-side read. A bench that took its own
+       numbers as input would let a page hand the model any rate it liked, and
+       the answer would come back in the expert's voice carrying it. The store
+       being down is reported to the model as "you have no figures" rather than
+       as an empty object, because an empty object reads as "measured, and it
+       was zero". */
+    let metrics = null;
+    if (parsed.topic) {
+      const diag = { reason: "unknown" };
+      metrics = await profileFetch(env, "/metrics-summary?days=30", null, "GET", diag);
+    }
+
     const withLookupChat = expertLookupEnabled(composedChat.composed);
     const turn = await runExpertTurn({
       apiKey,
-      system: oracleSystem(stored, parsed.knowledge),
+      system: oracleSystem(stored, parsed.knowledge, { topic: parsed.topic, metrics }),
       messages: oracleTurns(parsed),
       model: EXPERT_MODEL,
       maxTokens: ORACLE_MAX_TOKENS,
@@ -1193,9 +1284,15 @@ async function handleExpertChat(request, env) {
        in force is the failure mode of the whole draft-rule idea: he would read
        an answer as the expert's own judgment when it was his own rule handed
        back to him. The bench shows this beside every reply. */
+    /* Echoed for the same reason knowledgeInForce is: the bench shows beside
+       every reply whether the expert was answering with figures or without
+       them. An answer that quotes a rate is a different kind of answer from one
+       that reasons in the abstract, and he must not have to guess which he got. */
     return jsonRes(200, {
       reply,
       knowledgeInForce: parsed.knowledge || "",
+      topicInForce: parsed.topic || "",
+      metricsInForce: !!metrics,
       usage: (api && api.usage) || null,
       model: EXPERT_MODEL,
       knowledge: {
@@ -3517,6 +3614,7 @@ async function handleStyleInsights(request, env) {
  *   GET  /api/admin/profile/card?kid=     one card, including muted and removed
  *   GET  /api/admin/profile/history?kid=  how that card moved, replayed
  *   POST /api/admin/profile/suppress      remove a rule, or put it back
+ *   GET  /api/admin/profile/metrics?days= what the tool has been doing, as numbers
  *
  * Still content-free end to end. These read the same numeric columns as
  * everything else; there is no note text in the store to expose.
@@ -3526,6 +3624,7 @@ const PROFILE_ADMIN_ROUTES = {
   card:     { path: "/card-detail",  method: "GET" },
   history:  { path: "/card-history", method: "GET" },
   suppress: { path: "/suppress",     method: "POST" },
+  metrics:  { path: "/metrics-summary", method: "GET" },
 };
 
 async function handleProfileAdmin(request, env, url) {
@@ -3552,9 +3651,11 @@ async function handleProfileAdmin(request, env, url) {
     // ever learns to read.
     const kid = url.searchParams.get("kid");
     const points = url.searchParams.get("points");
+    const days = url.searchParams.get("days");
     const qs = new URLSearchParams();
     if (kid) qs.set("kid", kid);
     if (points) qs.set("points", points);
+    if (days) qs.set("days", days);
     if ([...qs].length) path += "?" + qs.toString();
   } else {
     try { body = await request.json(); } catch { return jsonRes(400, { error: "Invalid JSON." }); }
