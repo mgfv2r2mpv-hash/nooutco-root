@@ -280,38 +280,36 @@ test.describe('the reading is compact, and its argument is behind a word', () =>
      pass back the exact token found so that the rehydration could map it back
      to 'happy'".
 
-     The mechanism he described is right and the remedy he reached for is not
-     available. Undoing the swap means mapping every "Client" in the quote back
-     to a name, and the expert writes "Client" on its own account because the
-     prompt tells it to, so undoing it would put a real client's name into a
-     sentence the model wrote about the role. The row reports the swap instead.
+     The mechanism he described was right and the remedy he reached for was not
+     available at the time, because a role token was the bare word "Client" and
+     the expert writes that on its own account. It is available now: the token is
+     "Client--1", which no model types, so mapping it back cannot reach a word the
+     model chose. The row shows his word rather than a caption about the swap.
 
      draft() types "client Jacob", which the cue rule takes as a person and
      replaces permanently, so this is the same shape he hit rather than a
      contrived one. */
-  test('a role token in a quote is captioned with the word the clinician actually typed', async ({ page }) => {
+  test('a role token in a quote comes back as the word the clinician actually typed', async ({ page }) => {
     await draft(page, {
       expert: withRegister([
-        { quote: 'Client wanted attention', action: 'reframe', why: 'A function claim.', move: 'Say what happened and who responded.' },
+        { quote: 'Client--1 wanted attention', action: 'reframe', why: 'A function claim.', move: 'Say what happened and who responded.' },
       ]),
     });
     await page.getByTestId('expert-register-toggle').click();
-    const swap = page.getByTestId('expert-register-swap');
-    await expect(swap).toHaveCount(1);
-    await expect(swap).toContainText('Jacob');
-    await expect(swap).toContainText('Client');
+    const row = page.getByTestId('expert-register-row').first();
+    await expect(row).toContainText('Jacob wanted attention');
+    await expect(row).not.toContainText('Client--1 wanted attention');
 
-    // The quote is NOT rewritten, which is the half that keeps a name out of a
-    // sentence the model wrote.
-    await expect(page.getByTestId('expert-register-row').first()).toContainText('Client wanted attention');
+    // The MOVE is a replacement sentence for the note, so it is left alone. The
+    // row shows the intake as they typed it and the note as it will read.
+    await expect(row).toContainText('Say what happened and who responded.');
   });
 
-  test('a quote the scrub never touched carries no caption', async ({ page }) => {
+  test('a quote the scrub never touched is passed through unchanged', async ({ page }) => {
     await draft(page);
     await page.getByTestId('expert-register-toggle').click();
-    // "he wanted attention" holds no token, so there is nothing to report and
-    // the row says nothing. A caption on every row would be noise.
-    await expect(page.getByTestId('expert-register-swap')).toHaveCount(0);
+    // "he wanted attention" holds no token, so there is nothing to put back.
+    await expect(page.getByTestId('expert-register-row').first()).toContainText('he wanted attention');
   });
 
   /* WHAT HE READ ON 2026-09-02: the intake said vocal requests were "higher
