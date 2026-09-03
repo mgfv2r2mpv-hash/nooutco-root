@@ -1138,8 +1138,25 @@
   }
 
   var auditFlushing = false;
+  /* AN EMIT THAT LANDS MID-FLIGHT USED TO WAIT FOR THE NEXT ONE. The guard
+     below is right - two overlapping POSTs would each slice the buffer from the
+     front and the second would drop what the first had already sent - but
+     returning at it left the new event with nothing scheduled to carry it. It
+     went out only when some later emit happened to start a fresh flush, and the
+     last events before a technician closes the tab have no later emit. They
+     survive in localStorage and arrive on the next page load, so this delayed
+     rather than lost, but "arrives tomorrow" is not what a usage signal is for.
+     Measured 2026-09-03: engine.jsx emits note_postpass and note_hints on
+     consecutive statements, and the second one never reached the server in a
+     full drafting run.
+
+     This flag remembers that someone asked while the line was busy, and the
+     completion handler makes exactly one more attempt. Bounded on purpose: a
+     failing request leaves the buffer undrained, and re-arming only on a NEW
+     emit is what stops a 5xx from turning into a retry loop. */
+  var auditFlushPending = false;
   function auditFlush() {
-    if (auditFlushing) return;
+    if (auditFlushing) { auditFlushPending = true; return; }
     var tok = getToken();
     if (!tok) return; // events for a logged-out page have no technician to attribute
     var list = auditBuffer();
@@ -1174,7 +1191,10 @@
         });
       })
       .catch(function () {})
-      .then(function () { auditFlushing = false; });
+      .then(function () {
+        auditFlushing = false;
+        if (auditFlushPending) { auditFlushPending = false; auditFlush(); }
+      });
   }
 
   /* ─────────────── Learned style card ───────────────
