@@ -3463,7 +3463,7 @@ async function removeTerm(kv, list, term) {
    VOICE_COVERAGE, which records every exclusion and why, nothing here recorded a
    decision to exclude any of them, so this was an oversight rather than a
    ruling. */
-const AUDIT_TYPES = new Set([
+export const AUDIT_TYPES = new Set([
   "note_generated",
   "note_register",
   // The post-pass counts. Added in the same commit as the browser call that
@@ -3480,9 +3480,38 @@ const AUDIT_TYPES = new Set([
   "note_copied",
   "recommendation",
   "capture",
+  /* THE SAME OVERSIGHT, FIVE MORE TIMES, found 2026-09-03 by scanning the emit
+     calls instead of reading this list. engine.jsx has emitted all five for as
+     long as each feature has existed, and none of them has ever been stored:
+     sanitizeAuditEvent returns null on an unnamed type, handleAudit answers 200
+     with stored:0 because zero-accepted and nothing-to-do share a response
+     shape, and the browser reads that 200 as success and drops the batch. This
+     destroys rather than delays, which is what separates it from the in-flight
+     bug in notes-gate.js.
+
+     What each one answers, and none of it is a word of a note:
+       expert_pass             how much the expert says on a real note, beside
+                               what the catalog said on the same one
+       corrections_pass        how many corrections the pass proposed and how
+                               many became marks
+       corrections_mark        whether a technician kept a correction or undid it
+       corrections_done        the same question totalled over a whole note
+       function_claim_answered which function claim was raised and which option
+                               was chosen, both closed vocabularies
+
+     The two string values are short slugs by construction - kind is one of
+     attention, escape or tangible and option is one of after, before, both or
+     other - so the value rule below admits them unchanged and admits nothing
+     else. Adding a name here has never been the hard part; noticing was. A
+     source scan in audit-events.spec.js now fails on the next one. */
+  "expert_pass",
+  "corrections_pass",
+  "corrections_mark",
+  "corrections_done",
+  "function_claim_answered",
 ]);
 
-function sanitizeAuditEvent(raw) {
+export function sanitizeAuditEvent(raw) {
   if (!raw || typeof raw !== "object") return null;
   if (typeof raw.type !== "string" || !AUDIT_TYPES.has(raw.type)) return null;
   const tool = typeof raw.tool === "string" && /^[a-z0-9_-]{1,16}$/.test(raw.tool) ? raw.tool : null;
