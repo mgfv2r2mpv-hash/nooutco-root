@@ -144,9 +144,15 @@ test.describe('a strategy typed into the box that does not own it', () => {
 
 test.describe('the finding reaches the technician before the draft', () => {
   const setup = async (page, triage) => {
-    await page.route('**/api/anthropic**', async (route) => {
+    await page.route('**/api/audit**', (route) => route.fulfill({
+      status: 200, contentType: 'application/json', body: '{"stored":1}',
+    }));
+    await page.route('**/api/llm-call**', async (route) => {
       const b = JSON.parse(route.request().postData() || '{}');
-      if (isTriageCall(b)) return route.fulfill(reply(triage));
+      if (isTriageCall(b)) {
+        if (triage === 'fail') return route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"nope"}' });
+        return route.fulfill(reply(triage));
+      }
       return route.fulfill(reply({ hints: [] }));
     });
     await page.goto('/notes/bt/');
@@ -181,5 +187,79 @@ test.describe('the finding reaches the technician before the draft', () => {
     // Generate anyway is reachable. The finding is a row, not a gate.
     await expect(page.getByRole('button', { name: /generate|skip|anyway/i }).first())
       .toBeEnabled({ timeout: 10000 });
+  });
+});
+
+/* THE BARRIER THIS UPGRADE MUST NOT RAISE, and the one I raised writing it.
+
+   Below a readiness of 85 the tool refuses to draft until one round is
+   answered, which is his ruling of 2026-08-31 and is about the CONTENT of the
+   note. Putting a finding into the same list handed that gate a question the
+   technician cannot answer by improving their note, so a thin note plus a
+   misfiled strategy could arrive with no skip button on screen at all: the
+   reporting barrier, raised by a paperwork check. Same for the wait, which is
+   longest exactly when triage told us nothing.
+
+   A misfiled strategy says nothing about whether the note is thin. So the gate
+   and the wait read the model's questions and ignore this one, and the two
+   tests below are the pins. The third is the other side: a real question beside
+   a finding still holds, because weakening his gate is not the fix. */
+test.describe('a finding on its own never holds the draft back', () => {
+  const setup = async (page, triage) => {
+    await page.route('**/api/audit**', (route) => route.fulfill({
+      status: 200, contentType: 'application/json', body: '{"stored":1}',
+    }));
+    await page.route('**/api/llm-call**', async (route) => {
+      const b = JSON.parse(route.request().postData() || '{}');
+      if (isTriageCall(b)) {
+        if (triage === 'fail') return route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"nope"}' });
+        return route.fulfill(reply(triage));
+      }
+      return route.fulfill(reply({ hints: [] }));
+    });
+    await page.goto('/notes/bt/');
+    await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
+    await page.goto('/notes/bt/');
+    await page.getByRole('textbox', { name: /Skill Acquisition/i }).fill('DTT money 3 item array, 8 of 10 gestural');
+    await page.getByRole('textbox', { name: /Antecedent Strategies/i }).fill('DRA alongside the token board');
+    await page.getByRole('textbox', { name: /Behavior & Staff Response/i }).fill('elopement x2, blocked');
+    await page.getByRole('button', { name: 'Generate Note' }).click();
+    const ack = page.locator('#notes-ack-go');
+    if (await ack.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await page.locator('#notes-ack-cb').check();
+      await ack.click();
+    }
+    await expect(page.getByText(/Differential reinforcement of an alternative/i).first())
+      .toBeVisible({ timeout: 15000 });
+  };
+
+  test('a thin note plus a finding still gets its skip button, with no wait on it', async ({ page }) => {
+    // Readiness 40 is well under the bar, and triage itself asked nothing.
+    await setup(page, { sufficient: true, readiness: 40, questions: [] });
+
+    await expect(page.locator('[data-skip-held]')).toHaveCount(0);
+    const skip = page.getByRole('button', { name: /generate anyway/i });
+    await expect(skip).toBeVisible({ timeout: 5000 });
+    await expect(skip).toBeEnabled();
+  });
+
+  test('and a triage that failed outright imposes no wait either', async ({ page }) => {
+    /* The worst version: no reading at all, so skipSecondsFor would hand back
+       the longest wait there is for a panel holding nothing but a regex match. */
+    await setup(page, 'fail');
+
+    await expect(page.locator('[data-skip-held]')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /generate anyway/i })).toBeEnabled({ timeout: 5000 });
+  });
+
+  test('but a real question beside it still holds the gate, which is his ruling', async ({ page }) => {
+    await setup(page, {
+      sufficient: false,
+      readiness: 40,
+      questions: [{ field: 'fBehavior', question: 'How many times did the elopement happen?', suggestions: [], bar: 'B4' }],
+    });
+
+    await expect(page.locator('[data-skip-held]')).toHaveCount(1);
+    await expect(page.getByRole('button', { name: /generate anyway/i })).toHaveCount(0);
   });
 });

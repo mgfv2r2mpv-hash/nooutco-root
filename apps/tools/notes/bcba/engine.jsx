@@ -2435,18 +2435,24 @@ function App() {
 
      No suggestions. The answer here is a sentence only the technician can
      write, and a pre-accepted one would put the tool's guess in their note. */
+  const inputLabel = (id) => {
+    const f = tool.inputs.find((x) => x.id === id);
+    return f ? f.label : id;
+  };
+
   const misfiledQuestion = (f) => ({
     field: f.input,
+    /* THE FLAG THE GATE READS. Below the readiness bar the tool refuses to
+       draft until one round is answered, and that refusal is a statement about
+       how thin the NOTE is. A misfiled strategy says nothing about that, so a
+       row the tool put there itself must never be the thing holding someone at
+       the panel. See gateHolds and the skip wait below. */
+    injected: true,
     question: `${f.label} is under “${inputLabel(f.input)}”, and it reads as a ${f.homeLabel} strategy. `
       + `Move it to “${inputLabel(f.homeInput)}”, or say how it ran here.`,
     suggestions: [],
     bar: "B9",
   });
-
-  const inputLabel = (id) => {
-    const f = tool.inputs.find((x) => x.id === id);
-    return f ? f.label : id;
-  };
 
   const handleGenerate = async () => {
     const err = tool.validate(S.values);
@@ -2548,7 +2554,26 @@ function App() {
      all five: "should lock my drafters as well." A thin note is thin whoever
      wrote it. */
   const BAR_READINESS = SKIP_FREE_AT_READINESS;
-  const gateHolds = () => (S.triageRound || 1) === 1 &&
+
+  /* A FOURTH THING THAT DOES NOT GATE, and I raised this barrier myself
+     building the pre-draft wrong-section check.
+
+     That check puts a row in this same list, and the row is not a question
+     about the note: it is a regex match against the tool's own strategy table.
+     A thin note that also has a strategy in the wrong box could therefore
+     arrive with no skip button on screen at all, held there by a finding the
+     technician cannot answer by writing a better note. That is the reporting
+     barrier being raised by a paperwork check, which is the one trade this tool
+     never makes.
+
+     Readiness is a reading of the note and a misfiled strategy does not change
+     it, so the gate and the wait both read the questions the MODEL asked and
+     ignore the ones the tool injected. A real question beside a finding still
+     holds, unchanged. */
+  const modelAsked = () => (S.questions || []).some((q) => !q.injected);
+
+  const gateHolds = () => modelAsked() &&
+    (S.triageRound || 1) === 1 &&
     Number.isFinite(S.readiness) &&
     S.readiness < BAR_READINESS &&
     acceptedSuggestions().length === 0;
@@ -3812,7 +3837,7 @@ function App() {
         onEditSuggestion={editSuggestion}
         acceptedSuggestions={acceptedSuggestions().length}
         onSkipQuestions={skipQuestions}
-        skipCooldown={skipSecondsFor(S.readiness)}
+        skipCooldown={modelAsked() ? skipSecondsFor(S.readiness) : 0}
         skipHeld={gateHolds()}
         unread={S.questions ? S.questions.length : 0}
         quality={noteQuality()}
