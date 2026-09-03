@@ -232,11 +232,119 @@
     return out;
   }
 
+  /* ── An antecedent strategy named with nothing said about what it did ─────
+     His "critical, first priority", and the second hint this file injects
+     rather than asks the model for. The prompt already tells the model to raise
+     antecedent_effect_unstated when a strategy is named without its effect. On
+     a live note it did not, so the tool stops depending on that judgement for
+     something its own published table can check.
+
+     THE SUPPRESSOR IS DELIBERATELY GENEROUS, and that asymmetry is the whole
+     design. A hint on a note that DID state its effect is worse than missing
+     one that did not, because it teaches a technician to distrust the panel;
+     misplaced() carries the same reasoning for its unmatched strategies. So any
+     effect language anywhere in the section silences this, and a stated failure
+     silences it exactly as a stated success does. Telling someone who honestly
+     documented "it did not help" that they documented nothing would be the
+     worst version of this check.
+
+     A TERM, NOT A LABEL, inherited from the same table misplaced reads. The
+     three strategies whose only phrase is ordinary English carry no term and so
+     are never counted here either: a check that fired on the word "break"
+     would fire on most notes.
+
+     ONE HINT PER SECTION rather than one per strategy, because the hint ceiling
+     is shared with everything the model found and three strategies in one
+     section is a common note, not an unusual one. `detail` names a canonical
+     label and never a word the technician wrote. */
+  var EFFECT_STATED = new RegExp(
+    "\\b(?:" +
+    // Said in so many words.
+    "work(?:s|ed|ing)?|help(?:s|ed|ful|ing)?|effective(?:ly)?|ineffective|" +
+    "success(?:ful|fully)?|unsuccessful|" +
+    // Said as a direction of change.
+    "reduc\\w*|decreas\\w*|increas\\w*|prevent\\w*|avoid\\w*|eliminat\\w*|" +
+    "minimi[sz]\\w*|improv\\w*|" +
+    // Said as what the client then did. A refusal is an effect.
+    "de-?escalat\\w*|escalat\\w*|calm\\w*|settl\\w*|compli\\w*|refus\\w*|" +
+    "accept\\w*|declin\\w*|engag\\w*|disengag\\w*|transition\\w*|resist\\w*|" +
+    "tolerat\\w*|protest\\w*|continu\\w*|stopped|stopping|ceas\\w*|persist\\w*|" +
+    "remain\\w*" +
+    ")\\b|" +
+    // Said as a link between the strategy and what followed.
+    "\\b(?:in response|as a result|resulting in|which led to|after which|" +
+    "no effect|little effect|without incident)\\b",
+    "i",
+  );
+
+  /* THE SECOND SUPPRESSOR, AND THE ONE THAT MAKES THIS SAFE. An effect
+     vocabulary alone was not enough, and the repo's own tests are what proved
+     it: "A DRO ran on a two minute interval and the client earned the
+     reinforcer at each one" and "A visual schedule was posted at the table and
+     the client checked it between tasks" both state an effect plainly, and
+     neither uses a word any reasonable list would hold. Chasing that list is
+     unwinnable, because the effect of an antecedent strategy is whatever the
+     client then did, and that is the open set of everything a person can do.
+
+     So the rule is structural instead of lexical. An antecedent narrative that
+     never mentions the client at all has not said what the strategy did to
+     them; the moment it does, this goes quiet and leaves the judgement to the
+     model, which is the half of the job a model is actually better at. That
+     makes the check narrow on purpose: it fires on the shape of the live note
+     that started this, a strategy and nothing else, and stays silent on
+     anything with a person in it. Missing a real gap is the acceptable way for
+     this to be wrong. */
+  var SUBJECT_PRESENT = new RegExp(
+    "\\b(?:client|patient|student|learner|child|kid|he|him|his|she|her|hers|they|them|their)\\b",
+    "i",
+  );
+
+  function effectUnstated(output, ownership) {
+    var o = output && typeof output === "object" ? output : {};
+    var own = ownership && ownership.sections;
+    if (!own) return [];
+    var already = Array.isArray(o.hints) ? o.hints : [];
+    var out = [];
+    Object.keys(own).forEach(function (section) {
+      var code = own[section].effectCode;
+      if (!code) return;
+      var text = String(o[section] || "");
+      if (!text.trim() || EFFECT_STATED.test(text) || SUBJECT_PRESENT.test(text)) return;
+      var named = (own[section].strategies || []).filter(function (s) {
+        return s && s.term && s.term.test(text);
+      });
+      if (!named.length) return;
+      // The model raising it first is the good case, not a collision.
+      var raised = already.some(function (h) {
+        return h && h.section === section && h.code === code;
+      });
+      if (raised) return;
+      out.push({
+        section: section,
+        code: code,
+        /* Amber, for the reason misplaced is amber: his call of 2026-09-02 that
+           red is what a funder could refuse the claim over. A missing effect is
+           a sentence the technician can still add. */
+        kind: "thin",
+        /* One below misplaced rather than level with it. misplaced is a
+           positive match on a published term; this is an ABSENCE of language,
+           which is the weaker of the two claims, so it sorts second when a note
+           carries both. */
+        rank: 1,
+        detail: named.length === 1
+          ? named[0].label + " is named with no stated effect. Say whether it helped."
+          : "The " + own[section].label + " strategies are named with no stated effect. Say whether they helped.",
+      });
+    });
+    return out;
+  }
+
   window.NoteHollow = {
     recastZero: recastZero,
     isHollow: isHollow,
     pass: pass,
     passNote: passNote,
     misplaced: misplaced,
+    effectUnstated: effectUnstated,
   };
 })();
