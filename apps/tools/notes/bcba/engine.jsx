@@ -907,7 +907,6 @@ function RegisterFinding({ finding, answer, onAnswer, busy }) {
   const action = finding.action || "ask";
   const move = String(finding.move || "").trim();
   const why = String(finding.why || "").trim();
-  const swaps = finding.swaps || [];
   return (
     <div
       data-testid="expert-register-row"
@@ -919,16 +918,6 @@ function RegisterFinding({ finding, answer, onAnswer, busy }) {
       </span>
       <span style={{ fontStyle: "italic", opacity: 0.78 }}>“{quote}”</span>
       {move ? <span style={{ color: "#374528", fontWeight: 600 }}> → {move}</span> : null}
-      {/* The quote is the intake and the move is the note, so where the scrub
-          took a word the two say different things. Saying which word, in the
-          row itself, is what turns "the expert misquoted me" into "the scrub
-          read Happy as a name". The word is certified through the notice above
-          the note, which is where that escape already lives. */}
-      {swaps.map((sw, i) => (
-        <span key={i} data-testid="expert-register-swap" style={{ color: "#8a6d1a", opacity: 0.9 }}>
-          {" "}(you wrote “{sw.name}”; the scrub reads it as {sw.token})
-        </span>
-      ))}
       {why ? (
         <button
           type="button"
@@ -940,7 +929,10 @@ function RegisterFinding({ finding, answer, onAnswer, busy }) {
         </button>
       ) : null}
       {showWhy ? <div style={{ marginTop: 2, opacity: 0.85 }}>{why}</div> : null}
-      {onAnswer ? <ClaimQuestion quote={quote} answer={answer} onAnswer={onAnswer} busy={busy} /> : null}
+      {/* THE WIRE QUOTE, not the one above it. The row displays the clinician's
+          own word and the model is answered with the token, which is the whole
+          reason expertForReader carries both. */}
+      {onAnswer ? <ClaimQuestion quote={finding.quoteForModel || quote} answer={answer} onAnswer={onAnswer} busy={busy} /> : null}
     </div>
   );
 }
@@ -963,7 +955,7 @@ function RegisterStack({ findings, answers, onAnswer, busy }) {
         <RegisterFinding
           key={i}
           finding={r}
-          answer={(answers || {})[String(r.quote || "").trim()]}
+          answer={(answers || {})[String(r.quoteForModel || r.quote || "").trim()]}
           onAnswer={onAnswer}
           busy={busy}
         />
@@ -995,7 +987,7 @@ function TermFinding({ finding }) {
   );
 }
 
-/* SAYING WHICH OF THEIR WORDS IS BEHIND A ROLE TOKEN IN THEIR OWN QUOTE.
+/* GIVING THE CLINICIAN THEIR OWN WORD BACK IN THEIR OWN QUOTE.
  *
  * A register finding's `quote` is the clinician's own sentence by contract, and
  * the expert read a de-identified intake, so the sentence comes back with
@@ -1004,22 +996,34 @@ function TermFinding({ finding }) {
  * finding quoted back "Client at session start", about a swap nothing on the
  * page mentioned.
  *
+ * The quote carries their word again. This row used to print a caption naming
+ * the swap instead, which was the best that could be done while a role token was
+ * the bare word "Client"; NotesScrub.rehydrate sets out at length why the
+ * substitution is safe now and was not then, and the short version is that the
+ * token is "Client--1" and no model writes that on its own account.
+ *
  * Opaque tokens need nothing here - restoreOutput already round-trips them, and
- * that runs before this does. A role token is deliberately permanent and stays
- * permanent: the note is the thing it protects, and notes-scrub.js sets out why
- * mapping "Client" back to a name across a whole quote is a worse fault than
- * this one. So the swap is reported rather than undone, and the row draws it.
+ * that runs before this does.
  *
  * `move` IS LEFT ALONE. It is a replacement sentence for the note, so it has to
- * agree with the note rather than with the intake. */
+ * agree with the note rather than with the intake.
+ *
+ * AND THE DE-IDENTIFIED QUOTE IS KEPT, under `quoteForModel`, because the
+ * rehydrated one must never leave the browser. Answering a function-claim
+ * question sends the quote back to the model in the prompt, deliberately
+ * unscrubbed, on the standing premise that a quote of the intake has already
+ * been through the scrub. Rehydrating in place would have quietly falsified that
+ * premise and put a real client's name on the wire on the first click. So the
+ * row displays one string and sends the other, and every caller that reaches the
+ * model takes `quoteForModel`. */
 function expertForReader(found, map) {
-  if (!found || !window.NotesScrub || !NotesScrub.permanentSwaps) return found;
+  if (!found || !window.NotesScrub || !NotesScrub.rehydrate) return found;
   return {
     ...found,
-    register: (found.register || []).map((r) => ({
-      ...r,
-      swaps: NotesScrub.permanentSwaps(String(r.quote || ""), map),
-    })),
+    register: (found.register || []).map((r) => {
+      const wire = String(r.quote || "");
+      return { ...r, quote: NotesScrub.rehydrate(wire, map), quoteForModel: wire };
+    }),
   };
 }
 
