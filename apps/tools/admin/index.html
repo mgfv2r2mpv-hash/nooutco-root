@@ -388,6 +388,28 @@
             <span id="btErr" class="err" style="margin: 0;"></span>
           </div>
           <p class="muted" id="btUsage" style="margin: 12px 0 0; font-size: 12px;"></p>
+
+          <div id="btGradeBox" class="hidden" style="margin-top: 16px; padding-top: 14px; border-top: 1.5px solid var(--sage-light);">
+            <label for="btScore">Grade the example it just wrote</label>
+            <p class="muted" style="margin: 0 0 10px; font-size: 12px;">The bands are settled. What a note has to do to earn a number on them is not, and this is where that gets decided - so say what you saw, not only what you scored it.</p>
+            <div class="add-grid" style="margin-bottom: 10px;">
+              <div>
+                <label for="btScore">Score out of 100</label>
+                <input id="btScore" type="number" min="0" max="100" step="1" placeholder="78" />
+              </div>
+              <div>
+                <label>Band</label>
+                <p id="btBand" class="muted" style="margin: 10px 0 0; font-size: 14px;">Type a score.</p>
+              </div>
+            </div>
+            <label for="btGradeNote">What you saw in it</label>
+            <textarea id="btGradeNote" style="min-height: 70px;" placeholder="What it got right, what it missed, and what would have made it the band above."></textarea>
+            <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center;">
+              <button id="btGrade" class="btn-primary" type="button">Send the grade</button>
+              <button id="btPromote" class="btn-secondary" type="button">Write its last answer down as a rule</button>
+              <span id="btGradeErr" class="err" style="margin: 0;"></span>
+            </div>
+          </div>
         </div>
 
         <div class="card">
@@ -1563,43 +1585,98 @@
         return bench;
       }
 
-      function renderBench() { renderOracle(benchSession(), "btLog"); }
+      function renderBench() { renderOracle(benchSession(), "btLog"); syncGradeBox(); }
 
-      function askBench() {
+      /* THE BAND TABLE, SECOND COPY. The first is QUALITY_BANDS in _worker.js,
+         which is what the model is actually told and what the grade turn is
+         framed against. This one exists so the label under the score box moves
+         while he types rather than after a round trip. A test parses both files
+         and fails if they disagree, because showing him one band while grading
+         against another is the exact failure this duplication invites. */
+      var BENCH_BANDS = [
+        { from: 94, to: 100, label: "Top-Tier Documentation" },
+        { from: 85, to: 94, label: "Great Work!" },
+        { from: 76, to: 85, label: "Close to Great!" },
+        { from: 70, to: 76, label: "Closing the Gap!" },
+        { from: 0, to: 70, label: "Keep going, your work is so important." },
+      ];
+
+      function benchBand(score) {
+        var n = Number(score);
+        if (!isFinite(n)) return null;
+        for (var i = 0; i < BENCH_BANDS.length; i++) {
+          var b = BENCH_BANDS[i];
+          if (n >= b.from && (n < b.to || b.to === 100)) return b.label;
+        }
+        return BENCH_BANDS[BENCH_BANDS.length - 1].label;
+      }
+
+      /* The grade box only makes sense against something it just wrote, so it is
+         absent until there is one. Grading an empty transcript would send the
+         model a number about nothing. */
+      function syncGradeBox() {
+        var box = document.getElementById("btGradeBox");
+        if (!box) return;
+        var turns = benchSession().turns;
+        var last = turns[turns.length - 1];
+        box.classList.toggle("hidden", !(last && last.role === "assistant"));
+        var bandEl = document.getElementById("btBand");
+        var scoreEl = document.getElementById("btScore");
+        if (!bandEl || !scoreEl) return;
+        var raw = (scoreEl.value || "").trim();
+        var label = raw === "" ? null : benchBand(raw);
+        bandEl.textContent = label || "Type a score.";
+      }
+
+      /* ONE SENDER FOR A QUESTION AND FOR A GRADE. They differ in what goes into
+         the transcript before the request and in what the request carries;
+         everything after that - the scrub, the error handling, the usage line -
+         is the same, and two copies of it would drift. */
+      function benchSend(extra, beforeSend, onSent) {
         var err = document.getElementById("btErr");
         var busy = document.getElementById("btBusy");
-        var box = document.getElementById("btAsk");
-        if (!err || !box) return;
+        if (!err) return;
         err.style.display = "none";
+        var gradeErr = document.getElementById("btGradeErr");
+        if (gradeErr) gradeErr.style.display = "none";
 
-        var question = (box.value || "").trim();
-        if (!question) { err.textContent = "Type a message first."; err.style.display = "block"; return; }
         var topic = (document.getElementById("btTopic").value || "").trim();
         if (!topic) { err.textContent = "Give it a standing question, or use the intake bench instead."; err.style.display = "block"; return; }
         var toolId = (document.getElementById("btTool") || {}).value;
         if (!toolId) { err.textContent = "Pick a tool. The expert prompt is fetched per tool."; err.style.display = "block"; return; }
 
         var sess = benchSession();
-        sess.turns.push({ role: "user", text: question, rule: "" });
-        // Scrubbed on the wire even here. He is unlikely to type a client name
-        // into a conversation about the bar, but "unlikely" is not a gate.
-        sess.turns[sess.turns.length - 1].sent = scrubIntoOracle(question, sess);
-        box.value = "";
+        if (beforeSend) beforeSend(sess);
         renderBench();
         busy.classList.remove("hidden");
+
+        var body = {
+          tool: toolId,
+          topic: topic,
+          messages: sess.turns.map(function (t) { return { role: t.role, content: t.sent }; }),
+        };
+        Object.keys(extra || {}).forEach(function (k) { body[k] = extra[k]; });
 
         fetch("/api/expert-chat", {
           method: "POST",
           headers: authHeader(),
-          body: JSON.stringify({
-            tool: toolId,
-            topic: topic,
-            messages: sess.turns.map(function (t) { return { role: t.role, content: t.sent }; }),
-          }),
+          body: JSON.stringify(body),
         }).then(function (r) {
           if (r.status === 401) { localStorage.removeItem(TOKEN_KEY); show(); throw new Error("Session expired."); }
           return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ("Error " + r.status)); return d; });
         }).then(function (data) {
+          /* The grade's frame is written by the Worker, so the transcript shows
+             what the model was actually asked rather than a second version of it
+             composed here. His own words come back out of the token map, the
+             same way an answer's do. */
+          if (data.gradeTurn) {
+            sess.turns.push({
+              role: "user",
+              text: restoreOracleText(data.gradeTurn, sess),
+              sent: data.gradeTurn,
+              rule: "",
+            });
+          }
           sess.turns.push({
             role: "assistant",
             text: restoreOracleText(data.reply, sess),
@@ -1614,17 +1691,102 @@
             // must not have to guess which one he just read.
             var parts = [];
             parts.push(data.metricsInForce ? "Answered with the store's figures in front of it." : "Answered with NO figures - the metrics store was unreachable.");
+            if (data.band) parts.push("Graded " + data.band + ".");
             if (data.usage) {
               parts.push("This turn: " + (data.usage.input_tokens || 0) + " in, " +
                 (data.usage.output_tokens || 0) + " out, on " + (data.model || "the pass model") + ".");
             }
             usage.textContent = parts.join(" ");
           }
+          if (onSent) onSent();
         }).catch(function (ex) {
           // The question stays in the transcript, same as the intake bench.
           err.textContent = ex.message;
           err.style.display = "block";
         }).finally(function () { busy.classList.add("hidden"); });
+      }
+
+      function askBench() {
+        var err = document.getElementById("btErr");
+        var box = document.getElementById("btAsk");
+        if (!err || !box) return;
+        var question = (box.value || "").trim();
+        if (!question) { err.textContent = "Type a message first."; err.style.display = "block"; return; }
+        benchSend(null, function (sess) {
+          sess.turns.push({ role: "user", text: question, rule: "" });
+          // Scrubbed on the wire even here. He is unlikely to type a client name
+          // into a conversation about the bar, but "unlikely" is not a gate.
+          sess.turns[sess.turns.length - 1].sent = scrubIntoOracle(question, sess);
+          box.value = "";
+        });
+      }
+
+      function gradeBench() {
+        var err = document.getElementById("btGradeErr");
+        var scoreEl = document.getElementById("btScore");
+        var noteEl = document.getElementById("btGradeNote");
+        if (!err || !scoreEl || !noteEl) return;
+        err.style.display = "none";
+        var raw = (scoreEl.value || "").trim();
+        var score = Number(raw);
+        if (raw === "" || !isFinite(score) || Math.round(score) !== score || score < 0 || score > 100) {
+          err.textContent = "A grade is a whole number from 0 to 100.";
+          err.style.display = "block";
+          return;
+        }
+        var sess = benchSession();
+        var last = sess.turns[sess.turns.length - 1];
+        if (!last || last.role !== "assistant") {
+          err.textContent = "There is nothing of its own to grade yet.";
+          err.style.display = "block";
+          return;
+        }
+        // Scrubbed like every other thing this page sends, and restored out of
+        // the same map when the composed turn comes back.
+        var comment = scrubIntoOracle((noteEl.value || "").trim(), sess);
+        /* Cleared on the way back, not on the way out. A grade that failed
+           upstream leaves his number and his words where he typed them, the
+           same as the question box does - he should not have to write the
+           reasoning twice because the store was down. */
+        benchSend({ grade: { score: score, comment: comment } }, null, function () {
+          scoreEl.value = "";
+          noteEl.value = "";
+          syncGradeBox();
+        });
+      }
+
+      /* THE END OF THE LOOP. A rule the expert has just said out loud is worth
+         nothing while it lives in a transcript: it reaches the expert only by
+         going into the knowledge store with a version and a review. This carries
+         its last answer over to that form rather than making him retype it, and
+         it stops at staging - he still writes the title and approves it. */
+      function promoteBench() {
+        var err = document.getElementById("btGradeErr");
+        var sess = benchSession();
+        var last = null;
+        for (var i = sess.turns.length - 1; i >= 0; i--) {
+          if (sess.turns[i].role === "assistant") { last = sess.turns[i]; break; }
+        }
+        if (!last) {
+          if (err) { err.textContent = "It has not said anything to write down yet."; err.style.display = "block"; }
+          return;
+        }
+        var scope = document.getElementById("knScope");
+        var toolId = (document.getElementById("btTool") || {}).value;
+        if (scope && toolId) {
+          for (var j = 0; j < scope.options.length; j++) {
+            if (scope.options[j].value === toolId) { scope.value = toolId; break; }
+          }
+        }
+        document.getElementById("knTier").value = "core";
+        knSyncTier();
+        document.getElementById("knRule").value = last.text;
+        document.getElementById("knRationale").value =
+          "Said by the expert on the bench while grading its own example notes. Cut it down to the instruction before you approve it - what is here is an argument, and what belongs in the store is the rule the argument arrived at.";
+        document.querySelectorAll(".tab-btn").forEach(function (b) {
+          if (b.dataset.tab === "knowledge") b.click();
+        });
+        document.getElementById("knRule").scrollIntoView({ behavior: "smooth", block: "center" });
       }
 
       var btSendBtn = document.getElementById("btSend");
@@ -1635,11 +1797,20 @@
         renderBench();
         var u = document.getElementById("btUsage"); if (u) u.textContent = "";
         var e = document.getElementById("btErr"); if (e) e.style.display = "none";
+        var ge = document.getElementById("btGradeErr"); if (ge) ge.style.display = "none";
+        var sc = document.getElementById("btScore"); if (sc) sc.value = "";
+        var gn = document.getElementById("btGradeNote"); if (gn) gn.value = "";
       });
       var btAskBox = document.getElementById("btAsk");
       if (btAskBox) btAskBox.addEventListener("keydown", function (e) {
         if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askBench(); }
       });
+      var btGradeBtn = document.getElementById("btGrade");
+      if (btGradeBtn) btGradeBtn.addEventListener("click", gradeBench);
+      var btPromoteBtn = document.getElementById("btPromote");
+      if (btPromoteBtn) btPromoteBtn.addEventListener("click", promoteBench);
+      var btScoreEl = document.getElementById("btScore");
+      if (btScoreEl) btScoreEl.addEventListener("input", syncGradeBox);
       renderBench();
 
       var exSendBtn = document.getElementById("exSend");

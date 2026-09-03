@@ -1,11 +1,15 @@
 import { test, expect } from '@playwright/test';
 import { createHmac } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import {
   expertChatRequest,
   oracleSystem,
   oracleTurns,
   oracleLimits,
   expertLimits,
+  bandFor,
+  gradeTurn,
 } from '../_worker.js';
 
 /* The oracle: a conversation with the expert about a pass it just ran.
@@ -477,5 +481,179 @@ test.describe('what the expert is told about the figures', () => {
   test('the standing question reaches the model verbatim', async () => {
     const sys = oracleSystem('STORED', '', { topic: "Let's fine-tune BT session note completion criteria", metrics: null });
     expect(sys).toContain("Let's fine-tune BT session note completion criteria");
+  });
+});
+
+
+/* GRADING THE EXAMPLES IT WRITES.
+ *
+ * His ask, in full: the bench should "generate sandbox examples for him to grade
+ * and correct." The generating half is prose and needs no pinning. The grading
+ * half does, because a grade is the only thing in this route that turns his
+ * judgment into something the expert can be told, and there are two ways for it
+ * to go quietly wrong.
+ *
+ * THE FRAME. A number with no frame teaches nothing, and a frame written in the
+ * page can drift from the band table it claims to be scoring against. So the
+ * frame is composed in the Worker and pinned here.
+ *
+ * THE SCALE. The five bands and their edges are his and are settled. What a note
+ * has to do to earn a number on them is the open question, and his ruling put
+ * the answer here: "it stays undefined until the admin expert tool learns the
+ * bar from your grading." So the model gets the labels and is told plainly that
+ * the scoring is not fixed - and a test has to hold that line, because inventing
+ * cut points for the score would answer the question the bench exists to ask.
+ */
+test.describe('the bands, and what a grade says to the model', () => {
+  test('every edge lands in the band he named for it', async () => {
+    // The edges are shared between two bands on paper (85-94, 94-100), so the
+    // reading has to be settled rather than left to whoever writes the next
+    // caller: `from` inclusive, `to` exclusive, top band apart.
+    expect(bandFor(100)).toBe('Top-Tier Documentation');
+    expect(bandFor(94)).toBe('Top-Tier Documentation');
+    expect(bandFor(93)).toBe('Great Work!');
+    expect(bandFor(85)).toBe('Great Work!');
+    expect(bandFor(84)).toBe('Close to Great!');
+    expect(bandFor(76)).toBe('Close to Great!');
+    expect(bandFor(75)).toBe('Closing the Gap!');
+    expect(bandFor(70)).toBe('Closing the Gap!');
+    expect(bandFor(69)).toBe('Keep going, your work is so important.');
+    expect(bandFor(0)).toBe('Keep going, your work is so important.');
+  });
+
+  test('the bench and the Worker score against the same table', async () => {
+    /* Two copies exist on purpose - the bench needs the label to move while he
+       types, without a round trip. This is the test that makes the duplication
+       safe. Showing him "Great Work!" while grading the model against "Close to
+       Great!" is the exact failure a second table invites, and it would be
+       invisible: both halves would look right on their own. */
+    const worker = readFileSync(path.join(process.cwd(), '_worker.js'), 'utf8');
+    const page = readFileSync(path.join(process.cwd(), 'admin/index.html'), 'utf8');
+    const rows = (src, name) => {
+      const start = src.indexOf(name);
+      expect(start, `no ${name} found`).toBeGreaterThan(-1);
+      const table = src.slice(start, src.indexOf('];', start));
+      return [...table.matchAll(/\{\s*from:\s*(\d+),\s*to:\s*(\d+),\s*label:\s*"([^"]+)"/g)]
+        .map((m) => `${m[1]}-${m[2]}:${m[3]}`);
+    };
+    const fromWorker = rows(worker, 'const QUALITY_BANDS = [');
+    expect(fromWorker.length).toBe(5);
+    expect(rows(page, 'var BENCH_BANDS = [')).toEqual(fromWorker);
+  });
+
+  test('the model is told the scale, and told the scoring is the open question', async () => {
+    const sys = oracleSystem('STORED', '', { topic: 'calibration', metrics: null });
+    expect(sys).toContain('Top-Tier Documentation');
+    expect(sys).toContain('Keep going, your work is so important.');
+    // The half that is easy to lose. Without it the model presents a scoring
+    // rule as settled, and the bench is calibrating against its invention.
+    expect(sys).toContain('is not settled');
+  });
+
+  test('the scale is in front of it before any grade arrives', async () => {
+    // He asks for an example first and grades it second. An example written
+    // with no scale in view is an example aimed at nothing.
+    const p = chat({ topic: 'calibration' });
+    expect(p.grade).toBeNull();
+    expect(oracleSystem('STORED', '', { topic: p.topic, metrics: null })).toContain('THE SCALE THEY GRADE ON');
+  });
+
+  test('the intake path is not given the bands at all', async () => {
+    // It is a different conversation: findings on a real session, not a score.
+    expect(oracleSystem('STORED', '')).not.toContain('THE SCALE THEY GRADE ON');
+  });
+
+  test('the grade turn carries the number, the band and his words', async () => {
+    const turn = gradeTurn({ score: 78, comment: 'the antecedent is named but not its effect' });
+    expect(turn).toContain('78 out of 100');
+    expect(turn).toContain('Close to Great!');
+    expect(turn).toContain('the antecedent is named but not its effect');
+    // The ask that makes a grade teach something rather than just land.
+    expect(turn).toContain('the rule that follows from it');
+  });
+
+  test('a grade with nothing written on it still asks for the rule', async () => {
+    const turn = gradeTurn({ score: 91, comment: '' });
+    expect(turn).toContain('Great Work!');
+    expect(turn).not.toContain('WHAT I SAW IN IT');
+    expect(turn).toContain('the rule that follows from it');
+  });
+
+  test('a grade closes the conversation on the example it grades', async () => {
+    /* The one case where the last message is allowed not to be a question. The
+       grade IS the question, and the Worker writes it, so there is nothing of
+       his to put after the example. */
+    const p = chat({
+      topic: 'calibration',
+      messages: [
+        { role: 'user', content: 'write me one' },
+        { role: 'assistant', content: 'here is a note' },
+      ],
+      grade: { score: 78, comment: 'thin on the antecedent' },
+    });
+    expect(p.error, `a graded turn was refused: ${p.error}`).toBeUndefined();
+    const turns = oracleTurns(p);
+    expect(turns[turns.length - 1].role).toBe('user');
+    expect(turns[turns.length - 1].content).toContain('78 out of 100');
+  });
+
+  test('an ungraded conversation still has to end with a question', async () => {
+    const p = chat({
+      topic: 'calibration',
+      messages: [
+        { role: 'user', content: 'write me one' },
+        { role: 'assistant', content: 'here is a note' },
+      ],
+    });
+    expect(p.error).toBe('The last message has to be a question.');
+  });
+
+  test('a grade has to follow something the expert wrote', async () => {
+    // Grading his own last message would send the model a number about nothing.
+    const p = chat({ topic: 'calibration', grade: { score: 80, comment: '' } });
+    expect(p.error).toBe('A grade has to follow the example it grades.');
+  });
+
+  test('a score off the scale is refused rather than clamped', async () => {
+    const graded = (score) => chat({
+      topic: 'calibration',
+      messages: [
+        { role: 'user', content: 'write me one' },
+        { role: 'assistant', content: 'here is a note' },
+      ],
+      grade: { score, comment: '' },
+    });
+    expect(graded(101).error).toBe('A grade is a whole number from 0 to 100.');
+    expect(graded(-1).error).toBe('A grade is a whole number from 0 to 100.');
+    // Clamping would hand the model a band he did not choose and never see it.
+    expect(graded(78.5).error).toBe('A grade is a whole number from 0 to 100.');
+    expect(graded('78').error, 'a numeric string is his own number, typed').toBeUndefined();
+  });
+
+  test('a grade cannot be attached to a pass conversation', async () => {
+    /* The pass is answering about a real session, not writing an example. A
+       score there would be a number about a clinician's note, and the frame
+       above would tell the model it had written the thing being graded. */
+    const p = chat({
+      intake: 'the session went well',
+      messages: [
+        { role: 'user', content: 'why that one first' },
+        { role: 'assistant', content: 'because...' },
+      ],
+      grade: { score: 80, comment: '' },
+    });
+    expect(p.error).toBe('A grade belongs to a conversation about the bar.');
+  });
+
+  test('a grade note longer than the route accepts is refused, not truncated', async () => {
+    const p = chat({
+      topic: 'calibration',
+      messages: [
+        { role: 'user', content: 'write me one' },
+        { role: 'assistant', content: 'here is a note' },
+      ],
+      grade: { score: 80, comment: 'x'.repeat(4001) },
+    });
+    expect(p.error).toBe('That grade note is longer than this route accepts.');
   });
 });
