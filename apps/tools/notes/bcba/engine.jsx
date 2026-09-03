@@ -2042,10 +2042,12 @@ function App() {
        *
        * It is sent the intake ALREADY SCRUBBED, by the gate the drafting call
        * passed through - NotesScrub.review() replaced every name with the role
-       * token before either call was made. Nothing is restored on the way back,
-       * which is the one way this caller differs from the admin bench: the
-       * token is what the clinician wants left in, so the expert quotes "Client
-       * hit the table" and the note beside it says "Client hit the table".
+       * token before either call was made. The role token is what the clinician
+       * wants left in the NOTE, so nothing puts a name back there and the note
+       * says "Client--1 hit the table". The expert's quote of their own sentence
+       * is the one place that is wrong, because a quote is theirs rather than the
+       * model's, and expertForReader substitutes their word back for display
+       * only. The string that goes anywhere near the model is still the token.
        *
        * runId guards a late arrival. A clinician who regenerates, or switches
        * tool and comes back, must not have the previous intake's reading
@@ -2065,10 +2067,9 @@ function App() {
           .then((raw) => {
             /* The expert quotes the clinician's own sentences back at them, so a
                finding reading "you wrote '[[T4]] clinic'" names a word they
-               cannot see. Same restore as the draft, and role tokens are left
-               alone here too - expertForReader then reports each one that
-               survived, because a permanent swap is the other way a quote names
-               a word they did not write. */
+               cannot see. Same restore as the draft. Role tokens are left alone
+               by restoreOutput here as everywhere - expertForReader is what puts
+               them back, in the register quote alone and for display alone. */
             const found = raw ? expertForReader(NotesScrub.restoreOutput(raw, scrubMapRef.current), scrubMapRef.current) : raw;
             patchS((s) => {
               if (!s.expert || s.expert.runId !== runId) return {};
