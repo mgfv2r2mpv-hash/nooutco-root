@@ -817,7 +817,90 @@ function registerShown(register) {
   );
 }
 
-function RegisterFinding({ finding }) {
+/* ONE CLICK WHERE A REWRITE USED TO BE.
+ *
+ * His idea on 2026-09-02, reading a finding that told him "he wanted attention"
+ * is a function claim: the tool could ask whether he wrote it because attention
+ * came after the behavior, or because attention was missing before it, or both,
+ * or something else he types. Four answers, and each one settles which section
+ * the resulting sentence belongs in.
+ *
+ * function-claim.js decides whether a finding gets this and what the chips say.
+ * A finding it does not recognise renders exactly as it did before, which is
+ * the whole reason the detection sits behind a mentalistic frame rather than
+ * firing on every finding.
+ *
+ * The row grows by ONE line and only while it is unanswered. He read five
+ * stacked findings and called them "almost a full page of corrections before
+ * they see any note", so a control that adds a paragraph here would cost more
+ * than the retyping it saves. */
+function ClaimQuestion({ quote, answer, onAnswer, busy }) {
+  const [pencil, setPencil] = React.useState(false);
+  const [detail, setDetail] = React.useState("");
+  const claim = window.FunctionClaim ? FunctionClaim.read(quote) : null;
+  if (!claim) return null;
+
+  if (answer) {
+    return (
+      <div data-testid="claim-answered" data-claim-answer={answer} style={{ marginTop: 3, fontSize: 12, color: "#5d6a4d" }}>
+        Answered: {FunctionClaim.saidFor(claim, answer, "") || "in your own words."}
+      </div>
+    );
+  }
+
+  const chip = {
+    fontSize: 11.5, borderRadius: 999, padding: "2px 9px", marginRight: 5,
+    border: "1px solid #ddecd0", background: "white", color: "#374528",
+    cursor: busy ? "default" : "pointer", opacity: busy ? 0.5 : 1,
+  };
+
+  return (
+    <div data-testid="claim-question" data-claim-kind={claim.kind} style={{ marginTop: 4, fontSize: 12 }}>
+      <span style={{ color: "#7a9460", marginRight: 6 }}>What did you see?</span>
+      {FunctionClaim.optionsFor(claim).map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          disabled={busy}
+          data-testid={`claim-option-${o.id}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (o.pencil) { setPencil(true); return; }
+            onAnswer(quote, o.id, "");
+          }}
+          style={chip}
+        >
+          {o.label}
+        </button>
+      ))}
+      {pencil && (
+        <div style={{ marginTop: 5, display: "flex", gap: 6 }}>
+          <input
+            data-testid="claim-detail"
+            value={detail}
+            autoFocus
+            placeholder="What did you see?"
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => setDetail(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && detail.trim()) { e.preventDefault(); onAnswer(quote, "other", detail.trim()); } }}
+            style={{ flex: 1, fontSize: 12, padding: "4px 8px", borderRadius: 6, border: "1px solid #ddecd0" }}
+          />
+          <button
+            type="button"
+            disabled={busy || !detail.trim()}
+            data-testid="claim-detail-send"
+            onClick={(e) => { e.stopPropagation(); onAnswer(quote, "other", detail.trim()); }}
+            style={{ ...chip, marginRight: 0, opacity: busy || !detail.trim() ? 0.5 : 1 }}
+          >
+            Send
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RegisterFinding({ finding, answer, onAnswer, busy }) {
   const [showWhy, setShowWhy] = React.useState(false);
   const quote = String(finding.quote || "").trim();
   if (!quote) return null;
@@ -857,12 +940,13 @@ function RegisterFinding({ finding }) {
         </button>
       ) : null}
       {showWhy ? <div style={{ marginTop: 2, opacity: 0.85 }}>{why}</div> : null}
+      {onAnswer ? <ClaimQuestion quote={quote} answer={answer} onAnswer={onAnswer} busy={busy} /> : null}
     </div>
   );
 }
 
 /* One line above the note whatever the expert found, and the stack behind it. */
-function RegisterStack({ findings }) {
+function RegisterStack({ findings, answers, onAnswer, busy }) {
   const [open, setOpen] = React.useState(false);
   const n = findings.length;
   return (
@@ -875,7 +959,15 @@ function RegisterStack({ findings }) {
       >
         {n} phrase{n === 1 ? "" : "s"} it would reword{open ? " - hide" : " - show"}
       </button>
-      {open && findings.map((r, i) => <RegisterFinding key={i} finding={r} />)}
+      {open && findings.map((r, i) => (
+        <RegisterFinding
+          key={i}
+          finding={r}
+          answer={(answers || {})[String(r.quote || "").trim()]}
+          onAnswer={onAnswer}
+          busy={busy}
+        />
+      ))}
     </div>
   );
 }
@@ -940,7 +1032,7 @@ function expertForReader(found, map) {
    opinion and a decoration. A pass that was asked for and did not arrive says
    so, because an empty panel and a broken call look identical from the outside
    and only one of them means "nothing to report". */
-function ExpertReading({ expert }) {
+function ExpertReading({ expert, claimAnswers, onClaimAnswer, busy }) {
   if (!expert) return null;
 
   const head = (
@@ -985,7 +1077,7 @@ function ExpertReading({ expert }) {
         </div>
       )}
       {register.length > 0 ? (
-        <RegisterStack findings={register} />
+        <RegisterStack findings={register} answers={claimAnswers} onAnswer={onClaimAnswer} busy={busy} />
       ) : (
         /* Finding nothing is a result, and the panel has to agree or a clean
            note reads as a broken call. */
@@ -1049,6 +1141,10 @@ function freshSession(tool) {
     // carries raw JSON both ways, `thread` carries the readable exchange.
     thread: [],            // [{role, kind, text}]
     annotation: null,      // {kind:"section"|"span", id, heading, text?}
+    // What the technician answered on a function-claim finding, keyed by the
+    // expert's own quote. Held so the control can show the answer back instead
+    // of asking twice, and cleared with the rest of the session.
+    claimAnswers: {},      // {"<quote>": "after"|"before"|"both"|"other"}
     panelDraft: "",
     questions: null,       // triage questions awaiting an answer, or null
     readiness: null,       // 0-100 from triage; sets how long the skip stays locked
@@ -1954,7 +2050,11 @@ function App() {
       const expertSections = expertEnabled(tool.id) ? expertSectionIds(tool) : null;
       if (expertSections && window.NotesGate && NotesGate.expertPass) {
         const runId = String(Date.now()) + ":" + Math.random().toString(36).slice(2, 8);
-        patchS({ expert: { status: "running", runId } });
+        /* A new reading clears the answers with it. They are keyed by the
+           expert's quote, so carrying them across would show a question as
+           already answered on a reading that has just asked it again, which is
+           the one case where a technician has something new to say. */
+        patchS({ expert: { status: "running", runId }, claimAnswers: {} });
         const expertIntake = intakeBody(scrubbedValues) +
           (extra && extra.trim() ? "\n\n[ANSWERED FOLLOW-UP QUESTIONS]\n" + extra.trim() : "");
         NotesGate.expertPass({ tool: tool.id, intake: expertIntake, sections: expertSections })
@@ -2440,11 +2540,16 @@ function App() {
     }
   };
 
-  const sendRevision = async (instruction) => {
+  /* `annOverride` exists because a caller that sets the annotation and sends in
+     the same tick reads its own stale state: patchS is a setState and S is
+     derived from it, so the annotation would not be there yet. A click on a
+     finding is exactly that case, so it hands the annotation in instead of
+     storing it. Everything else passes nothing and keeps reading S.annotation. */
+  const sendRevision = async (instruction, annOverride) => {
     const review = await scrubGate(instruction, { carryOver: true });
     if (!review) return;
     const scrubbedInstruction = NotesScrub.applyMap(instruction, review.map);
-    const ann = S.annotation;
+    const ann = annOverride === undefined ? S.annotation : annOverride;
     const section = ann ? tool.formSections.find((s) => sectionId(s) === ann.id) : null;
 
     // Only the typed instruction is NEW free text - scan/scrub that. The section
@@ -2452,7 +2557,40 @@ function App() {
     // the clinician's own edit of it), so re-scanning it would flag words in the
     // generated prose ("Analyst", role tokens) on every single revision.
     let userMsg;
-    if (section && ann.kind === "span") {
+    if (ann && ann.kind === "claim") {
+      /* A FINDING ANSWERED WHERE IT SITS.
+       *
+       * The quote is the clinician's own intake sentence, already de-identified
+       * by the scrub that ran before the expert read it. It rides in the prompt
+       * rather than in the instruction on purpose: the instruction goes through
+       * scrubGate above, and putting a sentence full of role tokens through a
+       * name detector is how "Client" gets flagged as a person.
+       *
+       * The instruction itself names the target section, so nothing here has to
+       * infer routing. */
+      userMsg = [
+        `REVISION REQUEST`,
+        `The clinician answered a question about this phrase from their own intake:`,
+        `"${ann.text}"`,
+        ``,
+        ...(section
+          ? [
+              `Section the answer points at: "${section.heading}" (JSON key: ${ann.id})`,
+              `Current content of that section as shown to them (may include manual edits):`,
+              sectionBody(section, S.output, S.values),
+              ``,
+            ]
+          : []),
+        `Instruction: ${scrubbedInstruction}`,
+        ``,
+        REVISION_RULES,
+        `The phrase above is a pointer into their intake. It is not content to copy into the note and it is not a section name.`,
+        section
+          ? `If the answer also requires changing a DIFFERENT section, make that change too and list every such section in "crossSection".`
+          : `The answer names the sections it belongs in. Change each one it names and list them in "crossSection".`,
+        `Return the COMPLETE updated JSON object with ALL keys, copying every unaffected section verbatim. Re-evaluate "hints". Never fabricate - write only what the clinician's answer and this conversation already contain.`,
+      ].join("\n");
+    } else if (section && ann.kind === "span") {
       userMsg = [
         `REVISION REQUEST`,
         `Target section: "${section.heading}" (JSON key: ${ann.id})`,
@@ -2525,7 +2663,13 @@ function App() {
       const r = await runTurn(conversation, S.convStyleBlock || "");
       conversation.push({ role: "assistant", content: r.rawText });
       const normalized = finalOutput(r.parsed);
-      const targetId = ann ? ann.id : null;
+      /* A claim answer is routed by the clinician rather than by a click on one
+         card: they said what they saw, and the instruction told the model which
+         section that belongs in. So every change it made is applied, the way an
+         untargeted revision's is, and Discard is still the undo. Holding the
+         second section back as a question would put the round trip straight
+         back into a flow whose whole point is one click. */
+      const targetId = ann && ann.kind !== "claim" ? ann.id : null;
 
       /* Cross-section routing.
        *
@@ -2632,6 +2776,54 @@ function App() {
       setLoading(false);
     }
   };
+
+  /* THE FINDING ASKED, AND THIS IS THE ANSWER GOING BACK.
+   *
+   * Everything the technician would have retyped is already known: the phrase
+   * is the finding's own quote, the observation is one of four fixed readings,
+   * and the section falls out of which one they picked. So the click composes
+   * the revision instruction and sends it, with no panel round trip.
+   *
+   * The answer is recorded BEFORE the send rather than after it. A revision can
+   * fail, and a question that re-arms itself on a failed send would ask a
+   * technician the same thing twice while their note sat unchanged. The record
+   * says what they answered; whether the note took it is the note's own report,
+   * in the thread and in the diff.
+   *
+   * It never runs while a proposal is open. Two overlapping revisions of one
+   * note is the one case where Discard stops meaning anything. */
+  const answerFunctionClaim = async (quote, optionId, detail) => {
+    if (loading || S.proposal || !window.FunctionClaim) return;
+    const claim = FunctionClaim.read(quote);
+    if (!claim) return;
+    const instruction = FunctionClaim.instructionFor(claim, optionId, detail);
+    if (!instruction) return;
+
+    const key = String(quote || "").trim();
+    patchS({ claimAnswers: { ...(S.claimAnswers || {}), [key]: optionId } });
+    audit("function_claim_answered", { kind: claim.kind, option: optionId });
+
+    const said = FunctionClaim.saidFor(claim, optionId, detail);
+    if (said) pushThread("user", "answer", said);
+
+    const id = FunctionClaim.sectionFor(optionId);
+    const sec = id ? tool.formSections.find((x) => sectionId(x) === id) : null;
+    await sendRevision(instruction, {
+      kind: "claim",
+      id: id,
+      heading: sec ? sec.heading : "",
+      text: key,
+    });
+  };
+
+  /* The chips name two sections by key, so a tool without them would be handed
+     an instruction about a section it does not have. bt is the only one today.
+     Anything that grows both narratives gets the control with no further code. */
+  const claimAnswerable =
+    !!window.FunctionClaim &&
+    [FunctionClaim.AFTER_SECTION, FunctionClaim.BEFORE_SECTION].every((id) =>
+      tool.formSections.some((x) => sectionId(x) === id),
+    );
 
   // One entry point for the panel's Send button: it either answers the pending
   // triage questions or asks for a revision, depending on where we are.
@@ -3639,7 +3831,12 @@ function App() {
             </p>
 
             <NoteHints hints={S.output.hints} catalog={tool.hintCatalog} />
-            <ExpertReading expert={S.expert} />
+            <ExpertReading
+              expert={S.expert}
+              claimAnswers={S.claimAnswers}
+              onClaimAnswer={claimAnswerable ? answerFunctionClaim : null}
+              busy={loading || !!S.proposal}
+            />
 
             <div className="output-grid">
               {tool.formSections.map((sec, i) => {
