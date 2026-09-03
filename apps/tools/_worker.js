@@ -3509,6 +3509,13 @@ export const AUDIT_TYPES = new Set([
   "corrections_mark",
   "corrections_done",
   "function_claim_answered",
+  /* WHERE THE RETYPING HAPPENED, added 2026-09-03. note_copied has carried
+     `edited` for a note since the beginning; this carries the same characters
+     split by the narrative section they were spent in, one integer per section
+     id, and only for the sections that changed. The value rule below admits the
+     counts and refuses everything else, which is what keeps a section id from
+     ever arriving with a sentence attached to it. */
+  "note_retyped",
 ]);
 
 export function sanitizeAuditEvent(raw) {
