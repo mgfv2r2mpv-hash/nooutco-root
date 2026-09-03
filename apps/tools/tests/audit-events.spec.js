@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import path from 'node:path';
+import { AUDIT_TYPES, sanitizeAuditEvent } from '../_worker.js';
 
 // The audit trail is the only durable per-technician record this system keeps,
 // and the whole reason it is acceptable to keep one is that it cannot carry
@@ -205,5 +208,108 @@ test.describe('audit events reach the server in the session that made them', () 
     const buffered = await page.evaluate(() =>
       JSON.parse(localStorage.getItem('noaba.audit.buffer.v1') || '[]'));
     expect(buffered, 'a failed flush must keep both events for the next attempt').toHaveLength(2);
+  });
+});
+
+
+/* THE ALLOWLIST IS THE THIRD PLACE THIS HAS GONE WRONG, so it gets a scan
+   rather than another hand-checked list.
+
+   sanitizeAuditEvent returns null for any type AUDIT_TYPES does not name, and
+   handleAudit then answers 200 with stored:0 because zero accepted and nothing
+   to do share a response shape. The browser reads that 200, drains the batch it
+   just sent, and the event is gone - not delayed the way the in-flight bug
+   above delayed things, but destroyed, in silence, on every note.
+
+   note_register, recommendation and capture were each emitted for months into
+   an allowlist that did not name them. The file's own comment calls that an
+   oversight rather than a ruling, and the fix each time was to add the name.
+   Measured 2026-09-03, five more were doing it: corrections_pass, expert_pass,
+   corrections_mark, corrections_done and function_claim_answered.
+
+   Adding names one at a time is what let this happen twice, so the test below
+   reads the emit calls out of the source instead. A sixth is caught the day it
+   is written rather than the day someone goes looking for a rate. */
+
+// Every file the browser runs, which is anywhere an emit can be written. tests/
+// is excluded because these specs emit deliberately invalid types to prove the
+// client refuses them, and _worker.js is the allowlist itself, not a caller.
+function clientSources(dir, out) {
+  out = out || [];
+  for (const name of readdirSync(dir || (dir = process.cwd()))) {
+    if (['node_modules', 'tests', '.wrangler', 'test-results', 'playwright-report'].includes(name)) continue;
+    const full = path.join(dir, name);
+    if (statSync(full).isDirectory()) clientSources(full, out);
+    else if (/\.(js|jsx|html)$/.test(name) && name !== '_worker.js') out.push(full);
+  }
+  return out;
+}
+
+// Matches the local `audit("type", …)` helper in engine.jsx and a direct
+// `NotesGate.audit.emit("type", …)`. A type passed as a variable cannot be read
+// statically and is not claimed to be.
+function emittedTypes() {
+  const found = new Map();
+  for (const file of clientSources()) {
+    readFileSync(file, 'utf8').split('\n').forEach((line, i) => {
+      for (const m of line.matchAll(/\baudit(?:\.emit)?\(\s*["']([a-z_]{1,32})["']/g)) {
+        if (!found.has(m[1])) found.set(m[1], path.relative(process.cwd(), file) + ':' + (i + 1));
+      }
+    });
+  }
+  return found;
+}
+
+test.describe('every event the client emits is one the server names', () => {
+  test('no audit type is emitted into an allowlist that does not name it', () => {
+    const emitted = emittedTypes();
+
+    // A scan that found nothing would pass this test for the wrong reason, so
+    // it has to prove it is still reading real call sites first.
+    expect([...emitted.keys()]).toContain('note_hints');
+    expect(emitted.size).toBeGreaterThan(5);
+
+    const orphans = [...emitted]
+      .filter(([type]) => !AUDIT_TYPES.has(type))
+      .map(([type, where]) => type + ' (' + where + ')');
+    expect(orphans).toEqual([]);
+  });
+
+  test('the five that were being dropped whole now survive the sanitiser', () => {
+    // The payloads these five actually send, read off their call sites.
+    const cases = {
+      corrections_pass: { sections: 2, marks: 2, dropped: 0, inTokens: 900, cachedTokens: 0, outTokens: 120 },
+      expert_pass: { hints: 4, register: 2, terms: 1, dropped: 0, inTokens: 1200, cachedTokens: 800, outTokens: 300 },
+      corrections_mark: { undone: 1, restored: 0 },
+      corrections_done: { kept: 3, undone: 1 },
+      function_claim_answered: { kind: 'attention', option: 'before' },
+    };
+    for (const [type, data] of Object.entries(cases)) {
+      const out = sanitizeAuditEvent({ type, tool: 'bt', ts: 1, data });
+      expect(out, type + ' was dropped whole').not.toBeNull();
+      expect(out.type).toBe(type);
+      expect(out.data).toEqual(data);
+    }
+  });
+
+  test('admitting them opens no text channel', () => {
+    // The safety property is about values, and it does not move because a type
+    // was named. claim.kind and optionId are closed vocabularies of short
+    // slugs; everything else in this payload is the shape a leak would take.
+    const out = sanitizeAuditEvent({
+      type: 'function_claim_answered',
+      tool: 'bt',
+      ts: 1,
+      data: {
+        kind: 'attention',
+        option: 'before',
+        narrative: 'The client eloped twice and Jacob was redirected.',
+        nested: { note: 'Jacob eloped' },
+        list: ['Jacob', 'eloped'],
+      },
+    });
+    expect(out.data).toEqual({ kind: 'attention', option: 'before' });
+    expect(JSON.stringify(out)).not.toContain('Jacob');
+    expect(JSON.stringify(out)).not.toContain('eloped');
   });
 });
