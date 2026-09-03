@@ -120,9 +120,17 @@ test.describe('a word with no evidence of being a person comes back', () => {
 
   test('and the note never says Client with a number on it', async ({ page }) => {
     const { noteText } = await draft(page);
-    // The literal shape of the reported fault. A build that numbers colours as
-    // clients fails here even if every other assertion somehow passed.
-    expect(noteText).not.toMatch(/\bClient \d+\b/);
+    /* THIS ASSERTION WAS REWRITTEN ON 2026-09-02 BECAUSE THE MINT CHANGED UNDER
+       IT. It used to read /\bClient \d+\b/, and that worked as a discriminator
+       only while the FIRST person of a role got the bare word "Client" and a
+       number meant a false positive. Role tokens are minted "Client--1" now, so
+       no space form can exist at all, the old pattern could never match, and the
+       test would have gone on passing while proving nothing.
+
+       INTAKE names exactly one person with client evidence, so the note is
+       entitled to Client--1 and to nothing above it. A build that numbers
+       colours as clients still fails here, which is what this test is for. */
+    expect(noteText).not.toMatch(/\bClient--(?:[2-9]|\d{2,})\b/);
   });
 
   test('none of those words reached the model in the clear', async ({ page }) => {

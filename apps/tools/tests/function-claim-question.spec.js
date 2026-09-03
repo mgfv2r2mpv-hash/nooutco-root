@@ -260,3 +260,39 @@ test.describe('answering it once is answering it', () => {
     await expect(page.getByText('spoke with the client afterwards')).toBeVisible({ timeout: 20000 });
   });
 });
+
+/* THE ROW SHOWS THEIR WORD AND THE WIRE CARRIES THE TOKEN.
+ *
+ * These two came within one commit of being a leak. The register quote is
+ * rehydrated for display now, so the row shows the word the clinician typed
+ * rather than the token that replaced it. The claim answer sends that same quote
+ * back to the model in the prompt, on purpose and deliberately unscrubbed,
+ * because the standing premise is that a quote of the intake has already been
+ * through the scrub. Rehydrating in place would have falsified that premise
+ * silently, and the first click on a claim question would have put a real
+ * client's name on the wire.
+ *
+ * So expertForReader carries both strings and these tests pin both directions.
+ * A build that displays the token fails the first. A build that sends the name
+ * fails the second, and the second is the one that matters.
+ */
+test.describe('the displayed quote and the sent quote are not the same string', () => {
+  const TOKEN_CLAIM = { quote: 'Client--1 wanted attention', action: 'reframe', why: 'A function claim.', move: 'Say what happened and who responded.' };
+  const tokenExpert = { ...EXPERT, register: [TOKEN_CLAIM] };
+
+  test('the row shows the word the clinician actually typed', async ({ page }) => {
+    await draft(page, { expert: tokenExpert });
+    const row = page.getByTestId('expert-register-row').first();
+    await expect(row).toContainText('Jacob wanted attention');
+    await expect(row).not.toContainText('Client--1');
+  });
+
+  test('and answering it sends the token, never the name', async ({ page }) => {
+    const { llm } = await draft(page, { expert: tokenExpert });
+    await page.getByTestId('claim-option-after').click();
+    await expect.poll(() => llm.filter((b) => !isTriageCall(b)).length).toBe(2);
+    const sent = JSON.stringify(llm.filter((b) => !isTriageCall(b)).slice(-1)[0]);
+    expect(sent, 'a client name reached the model').not.toContain('Jacob');
+    expect(sent).toContain('Client--1');
+  });
+});

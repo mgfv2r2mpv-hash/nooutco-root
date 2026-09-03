@@ -242,11 +242,11 @@
         if (n > seeds.opaque) seeds.opaque = n;
         return;
       }
-      var rm = /^(.+?)(?: (\d+))?$/.exec(token);
+      var rm = /^(.+?)--(\d+)$/.exec(token);
       if (!rm) return;
       var role = ROLES.filter(function (r) { return r.token === rm[1]; })[0];
       if (!role) return;
-      var idx = rm[2] ? parseInt(rm[2], 10) : 1;
+      var idx = parseInt(rm[2], 10);
       if (idx > (seeds.counts[role.key] || 0)) seeds.counts[role.key] = idx;
     });
     return seeds;
@@ -283,9 +283,27 @@
       var role = roleByKey(guessRole(name, freeText));
       counts[role.key] = (counts[role.key] || 0) + 1;
       var n = counts[role.key];
+      /* EVERY ROLE TOKEN IS NUMBERED, AND THE SEPARATOR IS TWO HYPHENS.
+       *
+       * It used to be the bare word for the first person of a role and "Client 2"
+       * after that, which reads well and is the reason two other things could not
+       * be done. A bare "Client" is ordinary English the model writes on its own
+       * account, so the page could never tell a token apart from a word the model
+       * chose, and rehydrate() below could not exist. And "Client" is a prefix of
+       * "Client 2", so every substitution pass has to sort by length or leave a
+       * stray digit behind.
+       *
+       * "Client--1" is not English. No model writing prose types it, so a match is
+       * a token and never a coincidence, and the maintainer's stated reason on
+       * 2026-09-02 was exactly that: make it clear enough that the agent respects
+       * it for its oddness.
+       *
+       * IT IS UGLY IN THE SIGNED NOTE, and that is the deliberate trade. The
+       * technician has always had to substitute their own words back before
+       * signing; "Client" let them forget, and "Client--1" does not. */
       return {
         roleKey: role.key,
-        token: n === 1 ? role.token : role.token + " " + n,
+        token: role.token + "--" + n,
         restore: false,
       };
     });
@@ -377,7 +395,7 @@
     return back.length ? s.restoreDeep(value, back) : value;
   }
 
-  /* WHICH PERMANENT SUBSTITUTIONS A GIVEN STRING IS SITTING ON TOP OF.
+  /* PUTTING THE CLINICIAN'S OWN WORD BACK INTO THE CLINICIAN'S OWN SENTENCE.
    *
    * WHAT HE READ ON 2026-09-02. He typed "Happy at session start", the name
    * dictionary took Happy for a first name, and the expert - which reads the
@@ -385,28 +403,37 @@
    * never wrote, about a swap nothing on the page mentioned. His reading of the
    * mechanism was right: "the expert essentially got a code word".
    *
-   * WHY THIS REPORTS THE SWAP RATHER THAN UNDOING IT. Undoing it means putting
-   * the name back wherever the token appears, and restoreDeep matches a plain
-   * substring. Opaque tokens are safe that way because [[T4]] occurs nowhere
-   * else; a ROLE token is an ordinary English word the expert writes on its own
-   * account, and it is told to. Mapping every "Client" back would put a client's
-   * real name into a sentence the model wrote about the role, which is a worse
+   * THIS USED TO BE A REFUSAL, and the refusal was correct at the time. The code
+   * here reported the swap in a caption rather than undoing it, because a role
+   * token was the bare word "Client" - ordinary English the expert writes on its
+   * own account, and is told to. Substituting every "Client" back would have put
+   * a real name into a sentence the model wrote about the role, which is a worse
    * fault than the one being fixed and is invisible when it happens.
    *
-   * So the caller renders the quote as the expert wrote it and says what the
-   * scrub took. The technician then knows which word of theirs is behind it and
-   * can certify it through the notice, which is where that escape already lives.
+   * WHAT CHANGED IS THE TOKEN, NOT THE RULE. defaultTokens mints "Client--1" now,
+   * and no model writing prose types that. A token in the text is therefore a
+   * token and never a coincidence, so the substitution the old comment could not
+   * make safely is now the ordinary one. That is what the odd shape buys, and if
+   * the shape ever goes back to a bare word this has to go back to a caption.
    *
-   * Returns [{name, token}] for the permanent entries whose token occurs in the
-   * text. Round-tripped entries are excluded because they were never taken.
+   * SCOPE IS THE CLINICIAN'S OWN WORDS AND NOTHING ELSE. Call it on a register
+   * finding's `quote`, which is theirs by contract. Never on `move`, which is a
+   * replacement sentence for the note and has to agree with the note. Never on
+   * the note itself: the token is what protects it, and it stays. Opaque tokens
+   * are not this function's business either - restoreOutput round-trips those.
+   *
+   * Longest token first, because "Client--1" is a prefix of "Client--12".
    */
-  function permanentSwaps(text, map) {
+  function rehydrate(text, map) {
     var t = String(text || "");
-    if (!t || !map || !map.length) return [];
-    return map.filter(function (e) {
-      if (e.restore || !e.name || !e.token) return false;
-      return t.indexOf(e.token) !== -1;
-    }).map(function (e) { return { name: e.name, token: e.token }; });
+    if (!t || !map || !map.length) return t;
+    var back = map.filter(function (e) { return !e.restore && e.name && e.token; });
+    if (!back.length) return t;
+    back
+      .slice()
+      .sort(function (a, b) { return b.token.length - a.token.length; })
+      .forEach(function (e) { t = t.split(e.token).join(e.name); });
+    return t;
   }
 
   // Only the substitutions that STAY in the note are worth telling a clinician
@@ -790,7 +817,7 @@
     restoreOutput: restoreOutput,
     mergeMaps: mergeMaps,
     noticeText: noticeText,
-    permanentSwaps: permanentSwaps,
+    rehydrate: rehydrate,
     persistMap: persistMap,
     installPHIHighlight: installPHIHighlight,
     // exposed for testing / the stress-test page
