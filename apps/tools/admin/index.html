@@ -198,6 +198,10 @@
               <label for="newPw">Password</label>
               <input id="newPw" type="text" placeholder="Access password" />
             </div>
+            <div>
+              <label for="newSup">Supervisor email (optional)</label>
+              <input id="newSup" type="text" placeholder="who reviews this person's notes" />
+            </div>
             <button id="addBtn" class="btn-primary">Add</button>
           </div>
           <label style="margin-top: 14px;">Tools this password can use</label>
@@ -207,7 +211,7 @@
 
         <div class="card">
           <table>
-            <thead><tr><th>Label</th><th>Tools</th><th>Status</th><th>Created</th><th></th></tr></thead>
+            <thead><tr><th>Label</th><th>Tools</th><th>Supervisor</th><th>Status</th><th>Created</th><th></th></tr></thead>
             <tbody id="rows"></tbody>
           </table>
           <p id="empty" class="muted hidden" style="margin: 14px 4px 0;">No access passwords yet - add one above.</p>
@@ -655,6 +659,7 @@
           tr.innerHTML =
             "<td>" + (p.label ? escapeHtml(p.label) : '<span class="muted">(no label)</span>') + "</td>" +
             '<td data-cell="tools">' + pills + "</td>" +
+            '<td data-cell="sup">' + (p.supervisorEmail ? escapeHtml(p.supervisorEmail) : '<span class="muted">not set</span>') + "</td>" +
             '<td><span class="pill ' + (p.active ? "on" : "off") + '">' + (p.active ? "Active" : "Disabled") + "</span></td>" +
             '<td class="muted">' + fmt(p.createdAt) + "</td>" +
             '<td data-cell="actions"><div class="row-actions">' +
@@ -669,10 +674,16 @@
             var cell = tr.querySelector('[data-cell=tools]');
             var actions = tr.querySelector('[data-cell=actions]');
             var owned = p.tools || [];
+            var supCell = tr.querySelector('[data-cell=sup]');
             cell.innerHTML = '<div class="tool-checks">' + TOOLS.map(function (t) {
               return '<label><input type="checkbox" value="' + escapeHtml(t.id) + '"' +
                 (owned.indexOf(t.id) !== -1 ? " checked" : "") + "> " + escapeHtml(t.label) + "</label>";
             }).join("") + "</div>";
+            // Editable in the same pass as the tools, because both answer "who
+            // is this login for" and making them two trips means the address
+            // gets set once and never corrected.
+            supCell.innerHTML = '<input data-cell="supinput" type="text" placeholder="none" value="' +
+              escapeHtml(p.supervisorEmail || "") + '" />';
             actions.innerHTML = '<div class="row-actions">' +
               '<button class="btn-ghost" data-act="save">Save</button>' +
               '<button class="btn-ghost" data-act="cancel">Cancel</button>' +
@@ -687,7 +698,7 @@
                 err.style.display = "block";
                 return;
               }
-              api("PATCH", { id: p.id, tools: picked }).then(function () {
+              api("PATCH", { id: p.id, tools: picked, supervisorEmail: supCell.querySelector('[data-cell=supinput]').value }).then(function () {
                 // `tools` is frozen into the token at login, so the server will
                 // allow the new tool immediately while the holder's UI keeps the
                 // button disabled until they sign in again.
@@ -716,8 +727,9 @@
         var err = document.getElementById("addErr"); err.style.display = "none";
         if (!pw) { err.textContent = "Enter a password."; err.style.display = "block"; return; }
         if (tools.length === 0) { err.textContent = "Select at least one tool this password can use."; err.style.display = "block"; return; }
-        api("POST", { label: label, password: pw, tools: tools }).then(function () {
+        api("POST", { label: label, password: pw, tools: tools, supervisorEmail: document.getElementById("newSup").value }).then(function () {
           document.getElementById("newLabel").value = ""; document.getElementById("newPw").value = "";
+          document.getElementById("newSup").value = "";
           renderToolChecks(); load();
         }).catch(function (ex) { err.textContent = ex.message; err.style.display = "block"; });
       });
