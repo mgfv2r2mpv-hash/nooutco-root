@@ -1510,6 +1510,34 @@ function App() {
     return out;
   };
 
+  /* WHICH ADVISORY CODES ACTUALLY FIRED ON A DRAFT, as one key per code.
+     The prompt names a code and asks the model to raise it when the note has
+     that gap. Nothing has ever recorded whether it does, so "the model drops
+     that hint" has been an anecdote off a single note rather than a rate, and
+     an anecdote is not enough to justify enforcing a judgement in a regular
+     expression. This makes the answer a byproduct of ordinary use.
+
+     ONE KEY PER CODE, AND NEVER THE CODE AS A VALUE. sanitizeAuditData accepts
+     a string value only up to 24 characters, so a payload shaped
+     { code: "antecedent_effect_unstated" } would be dropped in silence - that
+     code is 26 characters and strategy_in_wrong_section is 25, which is to say
+     the two that would go missing include the one this exists to watch. Keys
+     carry no length rule, so the code goes in the key and the count in the
+     value.
+
+     Sparse on purpose. Only codes actually raised appear, the prompt caps the
+     model at four, and the post-pass adds at most one, so this sits well under
+     the twelve keys the sanitiser keeps. A code name and a count leave the
+     page; no sentence ever does. */
+  const hintCodeCounts = (hints) => {
+    const out = {};
+    (Array.isArray(hints) ? hints : []).forEach((h) => {
+      if (!h || typeof h.code !== "string") return;
+      out[h.code] = (out[h.code] || 0) + 1;
+    });
+    return out;
+  };
+
   // The last thing the model actually returned, parsed. Both the manual-edit
   // measures below compare against this, so an accepted revision is treated as
   // the model's work and not as the clinician's own typing.
@@ -2248,6 +2276,14 @@ function App() {
         hollowSaid: finalDraft.hollow,
         misplacedStrategy: finalDraft.misplaced,
       });
+      /* ITS OWN EVENT, for the same reason note_postpass is. This payload is
+         as wide as the number of codes a draft raised, so folding it into
+         another event would put both over the sanitiser's twelve-key cap on
+         exactly the notes that raised the most gaps, which are the notes worth
+         measuring. An empty object is a real reading and is sent as one: it
+         says the model found nothing to raise, which is different from the
+         tool never having asked. */
+      audit("note_hints", hintCodeCounts(finalDraft.output && finalDraft.output.hints));
       // Its own event, not merged into note_generated: the metric sanitiser
       // caps a payload at 12 numeric keys and silently drops the overflow, so
       // sharing a budget would quietly lose whichever signals sorted last.

@@ -133,3 +133,77 @@ test.describe('audit events are content-free', () => {
     expect(buffered).toHaveLength(1);
   });
 });
+
+/* Delivery, which is a different question from content. The two tests above ask
+   what a flush is allowed to carry; these ask whether it carries it at all.
+
+   WHAT WENT WRONG. auditFlush guards against two overlapping POSTs, correctly,
+   because each one slices the buffer from the front and a second in flight
+   would drop what the first had already sent. But it returned at that guard
+   with nothing scheduled, so an event emitted while a request was in the air
+   waited for some later emit to start a fresh flush. Measured 2026-09-03 on a
+   full bt drafting run: of five events the run emits, only gap_questions and
+   note_generated reached the server. note_postpass, note_hints and
+   note_register were all stranded, because each was emitted while the previous
+   flush was still in flight. They survive in localStorage and go out on the
+   next page load, so this delayed rather than lost them - but a usage signal
+   that arrives whenever the technician next opens the tool is not answering the
+   question it was built to answer. */
+test.describe('audit events reach the server in the session that made them', () => {
+  test('an event emitted while a flush is in flight is still sent', async ({ page }) => {
+    const sent = [];
+    let first = true;
+    await page.route('**/api/audit**', async (route) => {
+      JSON.parse(route.request().postData() || '{}').events.forEach((e) => sent.push(e.type));
+      // Hold the first response open, so the second emit lands mid-flight -
+      // which is exactly the ordering engine.jsx produces and nothing in the
+      // page was arranging on purpose.
+      if (first) { first = false; await new Promise((r) => setTimeout(r, 400)); }
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '{"stored":1}' });
+    });
+
+    await page.goto('/notes/scrub-test.html');
+    await page.waitForFunction(() => !!(window.NotesGate && window.NotesGate.audit));
+    await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
+    await page.evaluate(() => {
+      localStorage.removeItem('noaba.audit.buffer.v1');
+      window.NotesGate.audit.emit('note_generated', { tool: 'bt', len_fLesson: 10 });
+      window.NotesGate.audit.emit('note_postpass', { tool: 'bt', zeroRecast: 1 });
+    });
+
+    await expect
+      .poll(() => sent, { timeout: 5000, message: 'the second event never left the page' })
+      .toContain('note_postpass');
+    await expect
+      .poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('noaba.audit.buffer.v1') || '[]').length))
+      .toBe(0);
+  });
+
+  test('a failing flush re-arms once and does not become a retry loop', async ({ page }) => {
+    // The re-arm above must not undo the fail-open behaviour the test before it
+    // pins. Re-arming only on a NEW emit is what bounds this: two emits may
+    // cost a second attempt, and a persistently failing server must not be
+    // polled forever by a page nobody is touching.
+    let posts = 0;
+    await page.route('**/api/audit**', async (route) => {
+      posts += 1;
+      await new Promise((r) => setTimeout(r, 200));
+      await route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"boom"}' });
+    });
+
+    await page.goto('/notes/scrub-test.html');
+    await page.waitForFunction(() => !!(window.NotesGate && window.NotesGate.audit));
+    await page.evaluate((t) => localStorage.setItem('notes_auth_token', t), tokenFor());
+    await page.evaluate(() => {
+      localStorage.removeItem('noaba.audit.buffer.v1');
+      window.NotesGate.audit.emit('note_generated', { tool: 'bt', len_fLesson: 10 });
+      window.NotesGate.audit.emit('note_postpass', { tool: 'bt', zeroRecast: 1 });
+    });
+
+    await page.waitForTimeout(2000);
+    expect(posts, `a failing server was polled ${posts} times from two emits`).toBeLessThanOrEqual(2);
+    const buffered = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('noaba.audit.buffer.v1') || '[]'));
+    expect(buffered, 'a failed flush must keep both events for the next attempt').toHaveLength(2);
+  });
+});

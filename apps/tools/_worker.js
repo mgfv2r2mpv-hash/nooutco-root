@@ -3216,6 +3216,11 @@ const AUDIT_TYPES = new Set([
   // emits it, because the three events above show what happens when those two
   // are added in different ones.
   "note_postpass",
+  /* Which advisory hint codes a draft actually raised, one key per code. Added
+     in the same commit as the browser call that emits it, for the reason the
+     block above gives: note_register, recommendation and capture were each
+     emitted for months into an allowlist that did not name them. */
+  "note_hints",
   "gap_questions",
   "revision",
   "note_copied",
@@ -3235,7 +3240,19 @@ function sanitizeAuditEvent(raw) {
      lower cap in front would throw away whichever keys happened to sort last
      and say nothing. */
   for (const k of Object.keys(src).slice(0, 24)) {
-    if (!/^[a-z][a-z0-9_]{0,23}$/i.test(k)) continue;
+    /* 32, NOT 24, AND THE TWO NUMBERS ABOVE ARE UNRELATED. The slice caps how
+       MANY keys survive; this caps how LONG a key name may be, and it shared a
+       number with the other by coincidence. 24 was narrower than the store this
+       feeds: profile-api/src/validate.js takes /^[a-z][a-z0-9_]{0,31}$/i, and
+       so do the two feature validators in this codebase. So a key between 25
+       and 32 characters was dropped here and would have been accepted
+       downstream, silently, by the shorter of two limits nobody had compared.
+       note_hints puts a tool's own hint codes in the keys and two of bt's are
+       over 24: antecedent_effect_unstated is 26 and strategy_in_wrong_section
+       is 25. Widening a key NAME limit costs nothing that matters, because the
+       safety property is about values, and this pattern still admits nothing
+       but an identifier. */
+    if (!/^[a-z][a-z0-9_]{0,31}$/i.test(k)) continue;
     const v = src[k];
     /* NOT Math.round. Rounding to an integer destroyed every fractional metric
        in this payload, and it did so where it mattered most: index.js folds a
