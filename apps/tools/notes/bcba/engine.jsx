@@ -1764,8 +1764,26 @@ function App() {
     return token ? { bars: token } : {};
   };
 
-  const runTriage = async (scrubbed, priorAnswers) => {
+  /* THE ROUND RIDES IN THE MESSAGE, AND NOT IN THE PROMPT.
+   *
+   * The page has counted rounds since triage was built and caps them at
+   * MAX_TRIAGE_ROUNDS. It audited the number and then dropped it, so every round
+   * read identically to the model and a technician on their third pass met the
+   * same opening stance as on their first. bt_triage takes a stance per round
+   * now, and this is the line that tells it which one it is on.
+   *
+   * IN THE USER MESSAGE ON PURPOSE. The system prompt is the cached prefix and
+   * is replayed verbatim on every turn to keep it warm. A number that changes
+   * every round would throw that cache away each time, which is the one cost
+   * this feature must not carry.
+   *
+   * The cap is named rather than implied. "Round 3" alone does not tell the
+   * model it is the last one, and the whole point of the third rung is that it
+   * knows the note is written straight after it either way. */
+  const runTriage = async (scrubbed, priorAnswers, round) => {
     let body = intakeBody(scrubbed);
+    const n = Number.isFinite(round) && round > 0 ? Math.min(round, MAX_TRIAGE_ROUNDS) : 1;
+    body += `\n\n[ROUND ${n} OF ${MAX_TRIAGE_ROUNDS}]`;
     if (priorAnswers && priorAnswers.trim()) {
       body += "\n\n[ALREADY ANSWERED BY THE CLINICIAN]\n" + priorAnswers.trim() +
         "\n\nTreat everything above as part of their notes. Ask ONLY about what is still genuinely missing. " +
@@ -2292,7 +2310,7 @@ function App() {
     let questions = [];
     let readiness = null;
     try {
-      const triage = await runTriage(scrubbed);
+      const triage = await runTriage(scrubbed, "", 1);
       questions = triage.questions;
       readiness = triage.readiness;
     } catch (e) {
@@ -2884,7 +2902,7 @@ function App() {
         let more = [];
         let readiness = null;
         try {
-          const triage = await runTriage(S.pendingValues, answered);
+          const triage = await runTriage(S.pendingValues, answered, round);
           more = triage.questions;
           readiness = triage.readiness;
         } catch (e) {
