@@ -1056,9 +1056,55 @@ const ORACLE_TOPIC_ADDENDUM = [
   "",
   "WHEN THEY ASK FOR AN EXAMPLE NOTE, write one and label plainly what you were aiming at - which bar it is meant to clear, and where you deliberately left it short. They are going to grade it, and a example whose intent is hidden teaches nothing when they disagree with the grade.",
   "",
+  "WHEN THEY GRADE AN EXAMPLE YOU WROTE, do not simply take the number. Say what you were aiming at, then say what the distance between your aim and their grade tells you about where the line actually falls. Put that as a rule, written the way an instruction is written - something you could be told to follow - and not as a description of the problem. \"Name what the antecedent did to the behaviour, not only what came before it\" is a rule. \"The antecedent section needed more detail\" is not. Then say what this same note would have to change to reach the band above it.",
+  "",
   "WHEN THEY ARE WRONG, SAY SO. They are calibrating you, and an expert that folds to whoever is talking is worth nothing to them. Say what you read and why, and let them overrule you.",
   "",
   "Every rule in your instructions still holds here, including the ones about not explaining their own field back to them and not writing about what a record does not contain.",
+].join("\n");
+
+/* THE SCALE A NOTE ENDS UP ON. Five bands, settled by him, and the technician
+   sees the label rather than the number.
+
+   WHAT IS SETTLED HERE AND WHAT IS NOT. The bands and their edges are his and
+   are not the question. How a note earns a number ON that scale is the
+   question, and his ruling on where it gets answered is explicit: "it stays
+   undefined until the admin expert tool learns the bar from your grading."
+   So the model is handed the labels it will one day have to speak in, and told
+   plainly that the scoring is what this conversation is for. Handing it invented
+   cut points for the score itself would answer the question it is being asked.
+
+   `from` is inclusive and `to` is exclusive, top band apart, so a 94 is
+   Top-Tier and an 85 is Great Work. */
+const QUALITY_BANDS = [
+  { from: 94, to: 100, label: "Top-Tier Documentation" },
+  { from: 85, to: 94, label: "Great Work!" },
+  { from: 76, to: 85, label: "Close to Great!" },
+  { from: 70, to: 76, label: "Closing the Gap!" },
+  { from: 0, to: 70, label: "Keep going, your work is so important." },
+];
+
+/* Exported so the bench's copy of the table can be pinned against this one.
+   Two tables that disagree would show him one band and grade against another. */
+export function bandFor(score) {
+  const n = Number(score);
+  if (!Number.isFinite(n)) return null;
+  for (const b of QUALITY_BANDS) {
+    if (n >= b.from && (n < b.to || b.to === 100)) return b.label;
+  }
+  return QUALITY_BANDS[QUALITY_BANDS.length - 1].label;
+}
+
+const ORACLE_BANDS_HEADER = [
+  "",
+  "",
+  "THE SCALE THEY GRADE ON.",
+  "Every note lands in one of these five bands, and the technician is shown the label rather than the number:",
+  "",
+  ...QUALITY_BANDS.map((b) => "  " + b.from + " to " + b.to + " - " + b.label),
+  "",
+  "The bands and their edges are settled. What a note has to DO to earn a given number is not settled, and that is the open question - their grading of your examples is how it gets closed. Do not present a scoring rule as though it were already fixed.",
+  "",
 ].join("\n");
 
 const ORACLE_METRICS_HEADER = [
@@ -1078,6 +1124,39 @@ const ORACLE_METRICS_UNAVAILABLE = [
 ].join("\n");
 
 const MAX_ORACLE_TOPIC_CHARS = 2000;
+
+const MAX_GRADE_COMMENT_CHARS = 4000;
+
+/* THE GRADE IS A TURN THIS ROUTE WRITES, NOT ONE THE BENCH SENDS.
+   The bench sends a number and what he saw; the frame around them is composed
+   here, for the same reason the pass's first exchange is rebuilt here rather
+   than accepted. A frame written in the page is a frame that can drift from the
+   band table above it, and a grade whose meaning drifts is worse than no grade:
+   he would read the model's answer as calibration when it was answering a
+   different question.
+
+   Pure and exported, so the wording is pinned by a test rather than read out of
+   a network trace. */
+export function gradeTurn(grade) {
+  if (!grade) return null;
+  const lines = [
+    /* "what you just wrote" rather than "the example you just wrote", because
+       after one grade the newest thing the expert wrote is its answer about the
+       rule rather than a note, and he may well want to grade the rewrite it
+       offers. A frame that calls that an example would be the same fault as an
+       addendum opening "you have just read the intake above" when there is no
+       intake: the first line the model reads, and false. */
+    "I am grading what you just wrote.",
+    "",
+    "SCORE: " + grade.score + " out of 100, which puts it in \"" + bandFor(grade.score) + "\".",
+  ];
+  if (grade.comment) lines.push("", "WHAT I SAW IN IT:", grade.comment);
+  lines.push(
+    "",
+    "Say what you were aiming at, what my number tells you about where the line actually falls, and the rule that follows from it. Then say what this same note would have to change to reach the band above."
+  );
+  return lines.join("\n");
+}
 
 const ORACLE_DRAFT_HEADER = [
   "",
@@ -1125,7 +1204,27 @@ export function expertChatRequest(body) {
   // The exchange is what the human started, so it starts with them. A leading
   // assistant turn would mean the browser had written the expert's first word.
   if (messages[0].role !== "user") return { error: "The conversation has to start with a question." };
-  if (messages[messages.length - 1].role !== "user") return { error: "The last message has to be a question." };
+
+  /* A GRADE ENDS THE CONVERSATION ON AN ASSISTANT TURN, on purpose. He is
+     grading the example the expert has just written, so there is no question of
+     his after it - the grade IS the question, and this route composes it. That
+     is the one case where the last message is allowed not to be a user turn. */
+  let grade = null;
+  if (b.grade !== undefined && b.grade !== null) {
+    if (typeof b.grade !== "object") return { error: "A grade has to be an object." };
+    if (!topic) return { error: "A grade belongs to a conversation about the bar." };
+    const score = Number(b.grade.score);
+    if (!Number.isInteger(score) || score < 0 || score > 100) {
+      return { error: "A grade is a whole number from 0 to 100." };
+    }
+    const comment = typeof b.grade.comment === "string" ? b.grade.comment.trim() : "";
+    if (comment.length > MAX_GRADE_COMMENT_CHARS) return { error: "That grade note is longer than this route accepts." };
+    if (messages[messages.length - 1].role !== "assistant") {
+      return { error: "A grade has to follow the example it grades." };
+    }
+    grade = { score, comment };
+  }
+  if (!grade && messages[messages.length - 1].role !== "user") return { error: "The last message has to be a question." };
 
   // Refused rather than truncated: half a rule is a different rule.
   const knowledge = typeof b.knowledge === "string" ? b.knowledge.trim() : "";
@@ -1138,7 +1237,7 @@ export function expertChatRequest(body) {
   const findings = typeof b.findings === "string" ? b.findings : JSON.stringify(b.findings || {});
   if (findings.length > MAX_MESSAGE_CHARS) return { error: "Those findings are too large to continue from." };
 
-  return { tool: base.tool, intake: base.intake, sections: base.sections, messages, knowledge, findings, topic };
+  return { tool: base.tool, intake: base.intake, sections: base.sections, messages, knowledge, findings, topic, grade };
 }
 
 export function oracleLimits() {
@@ -1169,6 +1268,10 @@ export function oracleSystem(storedPrompt, knowledge, opts) {
        because the alternative is a confident rate it made up. */
     if (o.metrics) base += ORACLE_METRICS_HEADER + JSON.stringify(o.metrics);
     else base += ORACLE_METRICS_UNAVAILABLE;
+    /* Unconditional in topic mode, and not only when a grade is attached. He
+       asks it for an example before he grades one, and an example written
+       without the scale in view is an example aimed at nothing. */
+    base += ORACLE_BANDS_HEADER;
   }
 
   const rule = String(knowledge || "").trim();
@@ -1203,6 +1306,9 @@ export function oracleTurns(parsed) {
         { role: "assistant", content: parsed.findings },
         ...parsed.messages,
       ];
+  // Composed here rather than in the bench, so the frame around his number is
+  // this file's to guarantee. See gradeTurn.
+  if (parsed.grade) turns.push({ role: "user", content: gradeTurn(parsed.grade) });
   const out = [];
   for (const t of turns) {
     const last = out[out.length - 1];
@@ -1288,11 +1394,17 @@ async function handleExpertChat(request, env) {
        every reply whether the expert was answering with figures or without
        them. An answer that quotes a rate is a different kind of answer from one
        that reasons in the abstract, and he must not have to guess which he got. */
+    /* The composed grade turn is handed back verbatim, not summarised. The
+       bench shows him what the model was actually asked, which is the only way
+       he can tell a disagreement about the note from a disagreement about the
+       question. It also saves the page reconstructing a frame it does not own. */
     return jsonRes(200, {
       reply,
       knowledgeInForce: parsed.knowledge || "",
       topicInForce: parsed.topic || "",
       metricsInForce: !!metrics,
+      gradeTurn: parsed.grade ? gradeTurn(parsed.grade) : "",
+      band: parsed.grade ? bandFor(parsed.grade.score) : "",
       usage: (api && api.usage) || null,
       model: EXPERT_MODEL,
       knowledge: {
