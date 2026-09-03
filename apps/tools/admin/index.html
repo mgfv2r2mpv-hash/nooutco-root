@@ -365,6 +365,32 @@
 
       <div id="tab-expert" class="tab-panel">
         <div class="card">
+          <h2>Talk to it about the bar</h2>
+          <p class="muted" style="margin: 0 0 12px;">The same expert, with no intake in front of it. Ask it how your BTs are actually doing and it answers from the store's own figures rather than an impression. Ask it for an example note and it writes one, says what bar it was aiming at, and marks where it left the note short on purpose - so you can grade it and say why you disagree.</p>
+          <p class="muted" style="margin: 0 0 12px;">It still writes nothing anywhere. No note tool sees any of this, and a rule reaches the expert only by going into the knowledge store with a version and a pull request, exactly as before.</p>
+          <div class="add-grid" style="margin-bottom: 12px;">
+            <div>
+              <label for="btTool">Tool</label>
+              <select id="btTool" style="width: 100%; padding: 10px 12px; border: 1.5px solid var(--sage-light); border-radius: 8px; font-size: 14px; font-family: inherit;"></select>
+            </div>
+            <div>
+              <label for="btTopic">The standing question</label>
+              <input id="btTopic" type="text" value="Let's fine-tune BT session note completion criteria" />
+            </div>
+          </div>
+          <div id="btLog" style="margin-bottom: 14px;"></div>
+          <label for="btAsk">Your message</label>
+          <textarea id="btAsk" style="min-height: 80px;" placeholder="How are my BTs doing on antecedent strategies?"></textarea>
+          <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center;">
+            <button id="btSend" class="btn-primary">Send</button>
+            <button id="btReset" class="btn-secondary" type="button">Start over</button>
+            <span id="btBusy" class="muted hidden" style="font-size: 13px;">Thinking...</span>
+            <span id="btErr" class="err" style="margin: 0;"></span>
+          </div>
+          <p class="muted" id="btUsage" style="margin: 12px 0 0; font-size: 12px;"></p>
+        </div>
+
+        <div class="card">
           <h2>Run the expert over an intake</h2>
           <p class="muted" style="margin: 0 0 12px;">The expert reads a de-identified intake with the ABA glossary and the mentalism lexicon in front of it, and hands back what it found. It does <strong>not</strong> write a note and nothing it says is applied anywhere. This runs beside the drafting loop so the two can be compared on the same text.</p>
           <div class="add-grid" style="margin-bottom: 12px;">
@@ -1214,6 +1240,15 @@
             : "";
         }
         renderExpertCatalog();
+
+        // The topic card runs against the same expert prompts, so it picks from
+        // the same list rather than keeping a second copy that can drift.
+        var bench = document.getElementById("btTool");
+        if (bench) {
+          bench.innerHTML = tools.map(function (t) {
+            return '<option value="' + escapeHtml(t.id) + '">' + escapeHtml(t.label || t.id) + "</option>";
+          }).join("");
+        }
       }
       function currentExpertTool() {
         var id = (document.getElementById("exTool") || {}).value;
@@ -1404,15 +1439,17 @@
       /* Scrub one outgoing message against the conversation's own map first,
          then against a fresh pass for anything new, and grow the map by what
          the fresh pass took. Returns the text that leaves the device. */
-      function scrubIntoOracle(text) {
-        var applied = window.NotesGate._scrub.applyScrub(text, oracle.map);
+      function scrubIntoOracle(text, sess) {
+        var s = sess || oracle;
+        var applied = window.NotesGate._scrub.applyScrub(text, s.map);
         var fresh = window.NotesGate.scrubForAgent(applied);
-        if (fresh.map && fresh.map.length) oracle.map = oracle.map.concat(fresh.map);
+        if (fresh.map && fresh.map.length) s.map = s.map.concat(fresh.map);
         return fresh.text;
       }
 
-      function renderOracle() {
-        var log = document.getElementById("exChatLog");
+      function renderOracle(sess, logId) {
+        var oracle = sess || window.__oracleSession();
+        var log = document.getElementById(logId || "exChatLog");
         if (!log) return;
         if (!oracle || !oracle.turns.length) {
           log.innerHTML = '<span class="muted" style="font-size: 13px;">Nothing asked yet.</span>';
@@ -1495,9 +1532,14 @@
 
       /* restoreDeep walks objects; a reply is one string, so it is wrapped
          rather than reimplemented. One place decides how a token maps back. */
-      function restoreOracleText(text) {
-        return window.NotesGate._scrub.restoreDeep({ t: String(text || "") }, oracle.map).t;
+      function restoreOracleText(text, sess) {
+        return window.NotesGate._scrub.restoreDeep({ t: String(text || "") }, (sess || oracle).map).t;
       }
+
+      // renderOracle is called with no argument by the intake path, which reads
+      // the module-level session. Named rather than closed over so the topic
+      // card can call the same renderer with its own session and its own log.
+      window.__oracleSession = function () { return oracle; };
 
       function resetOracle() {
         if (!oracle) return;
@@ -1507,6 +1549,98 @@
         if (usage) usage.textContent = "";
         document.getElementById("exChatErr").style.display = "none";
       }
+
+      /* THE STANDING-QUESTION CONVERSATION.
+         Its own session, because it is its own transcript with its own scrub
+         map: a token that stood for a name in the intake bench must not follow
+         him into a conversation about the bar, and vice versa. Everything else
+         is the oracle's machinery called with a session argument, so there is
+         one renderer and one scrub policy rather than two that drift. */
+      var bench = null;
+
+      function benchSession() {
+        if (!bench) bench = { map: [], turns: [] };
+        return bench;
+      }
+
+      function renderBench() { renderOracle(benchSession(), "btLog"); }
+
+      function askBench() {
+        var err = document.getElementById("btErr");
+        var busy = document.getElementById("btBusy");
+        var box = document.getElementById("btAsk");
+        if (!err || !box) return;
+        err.style.display = "none";
+
+        var question = (box.value || "").trim();
+        if (!question) { err.textContent = "Type a message first."; err.style.display = "block"; return; }
+        var topic = (document.getElementById("btTopic").value || "").trim();
+        if (!topic) { err.textContent = "Give it a standing question, or use the intake bench instead."; err.style.display = "block"; return; }
+        var toolId = (document.getElementById("btTool") || {}).value;
+        if (!toolId) { err.textContent = "Pick a tool. The expert prompt is fetched per tool."; err.style.display = "block"; return; }
+
+        var sess = benchSession();
+        sess.turns.push({ role: "user", text: question, rule: "" });
+        // Scrubbed on the wire even here. He is unlikely to type a client name
+        // into a conversation about the bar, but "unlikely" is not a gate.
+        sess.turns[sess.turns.length - 1].sent = scrubIntoOracle(question, sess);
+        box.value = "";
+        renderBench();
+        busy.classList.remove("hidden");
+
+        fetch("/api/expert-chat", {
+          method: "POST",
+          headers: authHeader(),
+          body: JSON.stringify({
+            tool: toolId,
+            topic: topic,
+            messages: sess.turns.map(function (t) { return { role: t.role, content: t.sent }; }),
+          }),
+        }).then(function (r) {
+          if (r.status === 401) { localStorage.removeItem(TOKEN_KEY); show(); throw new Error("Session expired."); }
+          return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ("Error " + r.status)); return d; });
+        }).then(function (data) {
+          sess.turns.push({
+            role: "assistant",
+            text: restoreOracleText(data.reply, sess),
+            sent: data.reply,
+            rule: "",
+          });
+          renderBench();
+          var usage = document.getElementById("btUsage");
+          if (usage) {
+            // Whether it answered with figures or without them is not a detail:
+            // an answer quoting a rate is a different kind of answer, and he
+            // must not have to guess which one he just read.
+            var parts = [];
+            parts.push(data.metricsInForce ? "Answered with the store's figures in front of it." : "Answered with NO figures - the metrics store was unreachable.");
+            if (data.usage) {
+              parts.push("This turn: " + (data.usage.input_tokens || 0) + " in, " +
+                (data.usage.output_tokens || 0) + " out, on " + (data.model || "the pass model") + ".");
+            }
+            usage.textContent = parts.join(" ");
+          }
+        }).catch(function (ex) {
+          // The question stays in the transcript, same as the intake bench.
+          err.textContent = ex.message;
+          err.style.display = "block";
+        }).finally(function () { busy.classList.add("hidden"); });
+      }
+
+      var btSendBtn = document.getElementById("btSend");
+      if (btSendBtn) btSendBtn.addEventListener("click", askBench);
+      var btResetBtn = document.getElementById("btReset");
+      if (btResetBtn) btResetBtn.addEventListener("click", function () {
+        bench = null;
+        renderBench();
+        var u = document.getElementById("btUsage"); if (u) u.textContent = "";
+        var e = document.getElementById("btErr"); if (e) e.style.display = "none";
+      });
+      var btAskBox = document.getElementById("btAsk");
+      if (btAskBox) btAskBox.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askBench(); }
+      });
+      renderBench();
 
       var exSendBtn = document.getElementById("exSend");
       if (exSendBtn) exSendBtn.addEventListener("click", askOracle);

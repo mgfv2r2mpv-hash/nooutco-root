@@ -23,8 +23,27 @@ import { dirname, join } from "node:path";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..");
-const PORT = 8799;
-const BASE = `http://127.0.0.1:${PORT}`;
+/* A PORT NOBODY ELSE HOLDS, chosen at run time.
+   Both live files used to hardcode one, and a hardcoded port is a port some
+   other process can be sitting on. On 2026-09-03 an orphaned workerd from an
+   unrelated session had held 8799 for three days; the health check saw a 200,
+   believed the dev server was up, and six tests asserted against a stranger.
+   Naming the service in /health stopped the false pass, but the tests then only
+   skipped. Asking the OS for a free port is what makes them run. */
+async function freePort() {
+  const { createServer } = await import("node:net");
+  return new Promise((resolve, reject) => {
+    const srv = createServer();
+    srv.on("error", reject);
+    srv.listen(0, "127.0.0.1", () => {
+      const { port } = srv.address();
+      srv.close(() => resolve(port));
+    });
+  });
+}
+
+let PORT = 0;
+let BASE = "";
 
 // The local D1 is a file on disk and survives between runs, so a fixed kid
 // would carry the previous run's evidence into this one and the first
@@ -39,12 +58,26 @@ let live = false;
 
 async function up(timeoutMs) {
   const deadline = Date.now() + timeoutMs;
+  let sawStranger = false;
   while (Date.now() < deadline) {
     try {
       const r = await fetch(`${BASE}/health`);
-      if (r.ok) return true;
+      if (r.ok) {
+        /* WHOSE SERVER IS THIS. Any 200 used to count, and on 2026-09-03 port
+           8799 was held by an orphaned workerd from an unrelated session that
+           answered 200 to everything. Every test below then ran against a
+           stranger and failed like a broken feature. Now the health route names
+           itself and nothing else is accepted. */
+        const body = await r.json().catch(() => ({}));
+        if (body && body.service === "bt-profile-api") return true;
+        sawStranger = true;
+      }
     } catch { /* not listening yet */ }
     await new Promise((r) => setTimeout(r, 400));
+  }
+  if (sawStranger) {
+    console.error(`\n  Port ${PORT} is held by something that is not bt-profile-api.` +
+      `\n  Find it with: lsof -nP -iTCP:${PORT} -sTCP:LISTEN\n`);
   }
   return false;
 }
@@ -91,6 +124,8 @@ before(async () => {
     try { d1(join("migrations", f)); } catch { /* already applied */ }
   }
 
+  PORT = await freePort();
+  BASE = `http://127.0.0.1:${PORT}`;
   child = spawn("npx", ["wrangler", "dev", "--local", "--port", String(PORT)],
     { cwd: ROOT, stdio: "ignore" });
   live = await up(60_000);

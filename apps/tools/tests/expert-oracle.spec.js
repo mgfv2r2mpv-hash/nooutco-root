@@ -374,3 +374,108 @@ test.describe('the bench conversation', () => {
     await expect(page.locator('#exOracleCard')).toBeHidden();
   });
 });
+
+/* TOPIC MODE: the same expert with no intake in front of it.
+ *
+ * His ask: the bench should engage on a standing question - "Let's fine-tune BT
+ * session note completion criteria" - answer questions, report current metrics,
+ * and write example notes for him to grade. None of that starts from a pasted
+ * session note, and until now the route refused every request without one.
+ *
+ * The two things this block is really for: the intake path must be untouched,
+ * and the model must never be handed a number the browser made up.
+ */
+const chat = (over) => expertChatRequest({ tool: 'bt', messages: [{ role: 'user', content: 'hello' }], ...over });
+
+test.describe('a conversation that starts from a question rather than an intake', () => {
+  test('a topic is accepted with no intake at all', async () => {
+    const p = chat({ topic: "Let's fine-tune BT session note completion criteria" });
+    expect(p.error, `topic mode was refused: ${p.error}`).toBeUndefined();
+    expect(p.topic).toBe("Let's fine-tune BT session note completion criteria");
+    expect(p.intake).toBe('');
+  });
+
+  test('without a topic an intake is still required, so the pass path is unchanged', async () => {
+    expect(chat({}).error).toBe('Missing intake.');
+  });
+
+  test('a topic still needs a tool, because the prompt is fetched per tool', async () => {
+    // A conversation about how bt notes should be judged has to run against
+    // bt's expert. Dropping the tool would silently pick whatever the fetch
+    // defaults to and calibrate the wrong prompt.
+    expect(expertChatRequest({ topic: 'anything', messages: [{ role: 'user', content: 'hi' }] }).error).toBe('Missing tool.');
+  });
+
+  test('an oversized topic is refused rather than truncated', async () => {
+    expect(chat({ topic: 'x'.repeat(2001) }).error).toMatch(/longer than this route accepts/);
+  });
+
+  test('a blank topic falls back to needing an intake, not to a blank conversation', async () => {
+    expect(chat({ topic: '   ' }).error).toBe('Missing intake.');
+  });
+
+  test('the turns are the conversation, with no invented first exchange', async () => {
+    const p = chat({ topic: 'calibration', messages: [{ role: 'user', content: 'how are my BTs doing' }] });
+    const turns = oracleTurns(p);
+    expect(turns).toHaveLength(1);
+    expect(turns[0]).toEqual({ role: 'user', content: 'how are my BTs doing' });
+    // The empty-intake failure this guards: a blank user turn plus a system
+    // prompt claiming the model had just read something.
+    expect(turns.some((t) => !t.content.trim())).toBe(false);
+  });
+
+  test('the intake path still rebuilds its first exchange', async () => {
+    const p = chat({ intake: 'the session went well', findings: '{"hints":[]}' });
+    const turns = oracleTurns(p);
+    expect(turns[0]).toEqual({ role: 'user', content: 'the session went well' });
+    expect(turns[1]).toEqual({ role: 'assistant', content: '{"hints":[]}' });
+  });
+});
+
+test.describe('what the expert is told about the figures', () => {
+  test('topic mode drops the "you have just read the intake" addendum', async () => {
+    // Not added to - replaced. Its first sentence is false when there is no
+    // intake, and the first thing the model reads being false is not a small
+    // problem in a bench built to calibrate it.
+    const sys = oracleSystem('STORED', '', { topic: 'calibration', metrics: { cohort: {} } });
+    expect(sys).not.toContain('You have just read the intake above');
+    expect(sys).toContain('There is no intake in this conversation');
+  });
+
+  test('the intake path composes exactly as it did before', async () => {
+    // Called with no opts at all, which is how every pre-existing caller calls
+    // it. A change in this string is a change to a live prompt.
+    expect(oracleSystem('STORED', '')).toBe(oracleSystem('STORED', '', {}));
+    expect(oracleSystem('STORED', '')).toContain('You have just read the intake above');
+  });
+
+  test('real figures are carried in, and named as measurements', async () => {
+    const sys = oracleSystem('STORED', '', {
+      topic: 'calibration',
+      metrics: { windowDays: 30, hints: { draftsMeasured: 12 } },
+    });
+    expect(sys).toContain('WHAT THE TOOL HAS ACTUALLY BEEN DOING');
+    expect(sys).toContain('"draftsMeasured":12');
+  });
+
+  test('an unreachable store tells the model it has none, rather than showing it zero', async () => {
+    /* The distinction the whole block turns on. An empty object reads as
+       "measured, and it was zero", which is a different and much worse answer
+       than "not measured" - he would act on it. */
+    const sys = oracleSystem('STORED', '', { topic: 'calibration', metrics: null });
+    expect(sys).toContain('could not be reached');
+    expect(sys).toContain('Do not estimate');
+    expect(sys).not.toContain('These are real figures');
+  });
+
+  test('a rule under test still lands last, so it stays additive', async () => {
+    const sys = oracleSystem('STORED', 'MY RULE', { topic: 'calibration', metrics: { a: 1 } });
+    expect(sys.indexOf('MY RULE')).toBeGreaterThan(sys.indexOf('WHAT THE TOOL HAS ACTUALLY BEEN DOING'));
+    expect(sys.indexOf('A RULE UNDER TEST')).toBeGreaterThan(sys.indexOf('THE STANDING QUESTION'));
+  });
+
+  test('the standing question reaches the model verbatim', async () => {
+    const sys = oracleSystem('STORED', '', { topic: "Let's fine-tune BT session note completion criteria", metrics: null });
+    expect(sys).toContain("Let's fine-tune BT session note completion criteria");
+  });
+});
