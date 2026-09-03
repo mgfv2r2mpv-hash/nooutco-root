@@ -41,6 +41,9 @@ const isTriage = isTriageCall;
 // `script` is the sequence of triage replies. Anything not triage gets a note.
 async function run(page, script) {
   const triageBodies = [];
+  // The whole request beside the message, because one test below has to prove a
+  // string is in the message and NOT in the cached system prefix.
+  const triageCalls = [];
   let t = 0;
   await page.route('**/api/llm-call**', async (route) => {
     const b = JSON.parse(route.request().postData() || '{}');
@@ -48,6 +51,7 @@ async function run(page, script) {
     if (/look at your own draft again/i.test(last)) return route.fulfill(reply(note()));
     if (isTriage(b)) {
       triageBodies.push(last);
+      triageCalls.push(b);
       const next = script[Math.min(t, script.length - 1)];
       t++;
       return route.fulfill(reply(next));
@@ -69,7 +73,7 @@ async function run(page, script) {
   }
   const rev = page.locator('#notes-scrub-go');
   if (await rev.isVisible({ timeout: 1500 }).catch(() => false)) await rev.click();
-  return { triageBodies, triageCount: () => t };
+  return { triageBodies, triageCalls, triageCount: () => t };
 }
 
 const answer = async (page, text) => {
@@ -189,6 +193,58 @@ test.describe('it asks again when something is still missing', () => {
 // thin whoever wrote it. This test is the guard on his ruling rather than mine,
 // because bt is the tool with the failing signal and the drafters are the ones
 // that would quietly get skipped in a future change.
+/* THE MODEL IS TOLD WHICH ROUND IT IS ON.
+ *
+ * The page has counted rounds since triage was built. It audited the number and
+ * then dropped it, so every round read identically to the model: a technician on
+ * their third pass met the same opening stance as on their first. bt_triage
+ * takes a stance per round now - round 1 asks what would make it ready, round 2
+ * carries candidate answers, round 3 asks only where a reviewer could refuse the
+ * claim and then lets the note be written - and none of that can fire on a
+ * prompt that is not told the round.
+ *
+ * These read the WIRE rather than the state. `S.triageRound` was already right
+ * before this change and the model still never saw it, so a test on the state
+ * would have passed against the build that shipped the fault.
+ */
+test.describe('the round reaches the model, not just the audit trail', () => {
+  test('the first round says it is the first, and names the cap', async ({ page }) => {
+    const { triageBodies } = await run(page, [{ sufficient: true, questions: [] }]);
+    await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
+    // The cap is named rather than implied. "Round 3" alone does not tell the
+    // model it is the last one, and the third rung turns on knowing that.
+    expect(triageBodies[0]).toContain('[ROUND 1 OF 3]');
+  });
+
+  test('and it climbs with the rounds', async ({ page }) => {
+    const { triageBodies } = await run(page, [
+      { sufficient: false, questions: [{ field: 'fBehavior', question: 'Round one question?' }] },
+    ]);
+    await expect(page.getByText(/Round one question/i)).toBeVisible({ timeout: 20000 });
+    await answer(page, 'a');
+    await expect(page.getByText(/Round one question/i)).toBeVisible({ timeout: 20000 });
+    await answer(page, 'b');
+    await expect(page.getByText(/Round one question/i)).toBeVisible({ timeout: 20000 });
+    await answer(page, 'c');
+    await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
+
+    expect(triageBodies.map((b) => (b.match(/\[ROUND (\d) OF 3\]/) || [])[1])).toEqual(['1', '2', '3']);
+  });
+
+  test('the round rides in the message and never in the cached prefix', async ({ page }) => {
+    /* The system prompt is replayed verbatim every turn to keep Anthropic's
+       prefix cache warm. A number that changes each round sitting in it would
+       throw that cache away on every round, which is the one cost this feature
+       must not carry. */
+    const { triageCalls } = await run(page, [{ sufficient: true, questions: [] }]);
+    await expect(page.getByText('Generated Note')).toBeVisible({ timeout: 20000 });
+    const b = triageCalls[0];
+    const prefix = JSON.stringify({ system: b.system || '', system_suffix: b.system_suffix || '' });
+    expect(prefix, 'the round must not be in the cached prefix').not.toContain('ROUND 1 OF 3');
+    expect(String(b.messages[b.messages.length - 1].content)).toContain('[ROUND 1 OF 3]');
+  });
+});
+
 test.describe('the skip cooldown covers the BCBA drafters too', () => {
   const supToken = () => {
     const p = { role: 'user', kid: 'test-kid', exp: Math.floor(Date.now() / 1000) + 3600, tools: ['sup'] };
