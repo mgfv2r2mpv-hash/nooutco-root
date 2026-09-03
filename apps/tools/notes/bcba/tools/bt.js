@@ -200,6 +200,12 @@
     sections: {
       antecedentNarrative: {
         label: "antecedent",
+        /* WHICH INTAKE BOX FEEDS THIS SECTION, declared here for the same
+           reason effectCode is: it is a fact about this tool's form, and
+           hollow.js must never have to guess it. It lets the wrong-section
+           check run on what the technician typed, before the draft call, and a
+           section that names no box is simply not searched there. */
+        input: "fAntecedent",
         /* WHICH SECTION OWES AN EFFECT, declared here rather than in hollow.js,
            for the same reason the filing of a DRO is declared here: it is a
            claim about this tool's form, not about the mechanism. This heading
@@ -232,6 +238,7 @@
       },
       behaviorPlanNarrative: {
         label: "consequence",
+        input: "fBehavior",
         strategies: [
           { label: "Redirection", term: /\bredirect(?:ed|ion|ing)\b/i },
           { label: "Lessened response requirement", term: /\bresponse requirement\b/i },
