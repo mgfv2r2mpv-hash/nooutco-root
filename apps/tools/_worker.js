@@ -1539,6 +1539,40 @@ async function verifyToken(token, secret) {
    hash = sha256(password). list() returns metadata, so login and the
    admin list are both a single list() call - no per-key reads. ── */
 
+/* WHO COACHES THE PERSON BEHIND THIS LOGIN CODE.
+   His ask on 2026-09-03: "The passwords/profiles will need a supervisor email
+   so that if in the future a BT for another client uses this I can have their
+   reviews wired to the correct supervisor."
+
+   IT LIVES HERE AND NOT IN bt-profiles D1, which is where the status line said
+   it would go and where it must not. That schema opens by forbidding
+   identifiers, and says of its own primary key that a kid "is not a name and
+   does not resolve to one without the separate API_PASSWORDS KV record". An
+   email is exactly the identifier that separation exists to keep out. This IS
+   the record it names, so putting the address here keeps the analytics store
+   content-free and still answers the question he asked.
+
+   THREE-VALUED ON PURPOSE. undefined means the caller did not mention the
+   field, so a PATCH that only flips `active` must not erase an address. An
+   empty string is a deliberate clear. A string is a set. null is a rejection,
+   and the caller turns that into a 400 rather than storing something a digest
+   would later fail to send to.
+
+   Bounded because a KV metadata object caps at 1024 bytes and this shares it
+   with the label, the hash, the tool list and the timestamp. */
+const MAX_SUPERVISOR_EMAIL = 160;
+
+function cleanSupervisorEmail(v) {
+  if (typeof v !== "string") return undefined;
+  const e = v.trim().toLowerCase();
+  if (!e) return "";
+  if (e.length > MAX_SUPERVISOR_EMAIL) return null;
+  // Deliberately loose. This decides whether an address is worth storing, not
+  // whether it can receive mail, and a regex that argues with RFC 5322 rejects
+  // real addresses to catch typos it cannot catch anyway.
+  return /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(e) ? e : null;
+}
+
 async function findPassword(kv, password) {
   const h = await sha256Hex(password);
   // Point lookup via the hash→id index: a get() reflects a just-written key in
@@ -1548,7 +1582,7 @@ async function findPassword(kv, password) {
   if (indexedId) {
     const { metadata } = await kv.getWithMetadata("pw:" + indexedId);
     if (metadata && metadata.hash === h) {
-      return { id: indexedId, label: metadata.label || "", active: !!metadata.active, tools: Array.isArray(metadata.tools) ? metadata.tools : [], createdAt: metadata.createdAt || null };
+      return { id: indexedId, label: metadata.label || "", active: !!metadata.active, tools: Array.isArray(metadata.tools) ? metadata.tools : [], createdAt: metadata.createdAt || null, supervisorEmail: metadata.supervisorEmail || "" };
     }
   }
   // Fallback for legacy records created before the index existed.
@@ -1556,7 +1590,7 @@ async function findPassword(kv, password) {
   for (const k of list.keys) {
     const md = k.metadata || {};
     if (md.hash === h) {
-      return { id: k.name.slice(3), label: md.label || "", active: !!md.active, tools: Array.isArray(md.tools) ? md.tools : [], createdAt: md.createdAt || null };
+      return { id: k.name.slice(3), label: md.label || "", active: !!md.active, tools: Array.isArray(md.tools) ? md.tools : [], createdAt: md.createdAt || null, supervisorEmail: md.supervisorEmail || "" };
     }
   }
   return null;
@@ -1566,7 +1600,11 @@ async function getPasswordRecord(kv, id) {
   if (!id) return null;
   const { metadata } = await kv.getWithMetadata("pw:" + id);
   if (!metadata) return null;
-  return { active: !!metadata.active, tools: Array.isArray(metadata.tools) ? metadata.tools : [] };
+  // supervisorEmail rides along because this is the only place a kid resolves
+  // to the person's record, and routing a review is what the address is for.
+  // It never reaches a browser: all three callers read `active` and `tools` for
+  // an access check and return their own response.
+  return { active: !!metadata.active, tools: Array.isArray(metadata.tools) ? metadata.tools : [], supervisorEmail: metadata.supervisorEmail || "" };
 }
 
 // Certified-non-PII store - any authenticated user can read/add; admin can delete.
@@ -1644,6 +1682,7 @@ async function handleAdminPasswords(request, env) {
         active: !!(k.metadata && k.metadata.active),
         tools: (k.metadata && Array.isArray(k.metadata.tools)) ? k.metadata.tools : [],
         createdAt: (k.metadata && k.metadata.createdAt) || null,
+        supervisorEmail: (k.metadata && k.metadata.supervisorEmail) || "",
       }))
       .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
     return jsonRes(200, { passwords, allTools: NOTES_TOOLS });
@@ -1661,11 +1700,13 @@ async function handleAdminPasswords(request, env) {
     if (tools.length === 0) return jsonRes(400, { error: "Select at least one tool this password can use." });
     if (password === secret) return jsonRes(409, { error: "That is the admin password - pick a different one." });
     if (await findPassword(kv, password)) return jsonRes(409, { error: "That password already exists." });
+    const supervisorEmail = cleanSupervisorEmail(body.supervisorEmail);
+    if (supervisorEmail === null) return jsonRes(400, { error: "That supervisor email doesn't look like an email address." });
     const id = crypto.randomUUID();
-    const metadata = { label, hash: await sha256Hex(password), active: true, tools, createdAt: new Date().toISOString() };
+    const metadata = { label, hash: await sha256Hex(password), active: true, tools, createdAt: new Date().toISOString(), supervisorEmail: supervisorEmail || "" };
     await kv.put("pw:" + id, "1", { metadata });
     await kv.put("h:" + metadata.hash, id); // hash→id index for instant login
-    return jsonRes(200, { id, label, active: true, tools, createdAt: metadata.createdAt });
+    return jsonRes(200, { id, label, active: true, tools, createdAt: metadata.createdAt, supervisorEmail: metadata.supervisorEmail });
   }
 
   if (request.method === "PATCH") {
@@ -1679,8 +1720,12 @@ async function handleAdminPasswords(request, env) {
       if (t.length === 0) return jsonRes(400, { error: "A password must allow at least one tool." });
       updated.tools = t;
     }
+    const supervisorEmail = cleanSupervisorEmail(body.supervisorEmail);
+    if (supervisorEmail === null) return jsonRes(400, { error: "That supervisor email doesn't look like an email address." });
+    // undefined leaves it alone, so toggling `active` cannot silently drop it.
+    if (supervisorEmail !== undefined) updated.supervisorEmail = supervisorEmail;
     await kv.put("pw:" + id, "1", { metadata: updated });
-    return jsonRes(200, { id, active: !!updated.active, tools: updated.tools || [] });
+    return jsonRes(200, { id, active: !!updated.active, tools: updated.tools || [], supervisorEmail: updated.supervisorEmail || "" });
   }
 
   if (request.method === "DELETE") {
