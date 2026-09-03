@@ -1462,8 +1462,16 @@ function App() {
     const misplaced = window.NoteHollow && tool.strategyOwnership
       ? window.NoteHollow.misplaced(restored, tool.strategyOwnership)
       : [];
-    const withHints = misplaced.length
-      ? { ...restored, hints: (Array.isArray(restored.hints) ? restored.hints : []).concat(misplaced) }
+    /* THE SECOND INJECTED HINT, and it reads `restored` for the same reason the
+       first does: its dedupe looks at the model's own hints, so it has to see
+       them before normalizeHints has touched them. It goes in the same
+       concatenation so both take the tool's validation together. */
+    const effectGaps = window.NoteHollow && window.NoteHollow.effectUnstated && tool.strategyOwnership
+      ? window.NoteHollow.effectUnstated(restored, tool.strategyOwnership)
+      : [];
+    const injected = misplaced.concat(effectGaps);
+    const withHints = injected.length
+      ? { ...restored, hints: (Array.isArray(restored.hints) ? restored.hints : []).concat(injected) }
       : restored;
 
     const normalized = tool.normalizeOutput(withHints);
@@ -1487,6 +1495,7 @@ function App() {
       recast: filled.recast,
       hollow: filled.hollow,
       misplaced: misplaced.length,
+      effectUnstated: effectGaps.length,
     };
   };
   const finalOutput = (parsed) => finalize(parsed).output;
@@ -2304,6 +2313,12 @@ function App() {
         zeroRecast: finalDraft.recast,
         hollowSaid: finalDraft.hollow,
         misplacedStrategy: finalDraft.misplaced,
+        /* How often the tool has to say this because the model did not. Read
+           beside the antecedent_effect_unstated count on note_hints, which is
+           how often the model said it itself: the two together answer whether
+           the model drops the hint, which was the open question one live note
+           could not settle. */
+        effectUnstated: finalDraft.effectUnstated,
       });
       /* ITS OWN EVENT, for the same reason note_postpass is. This payload is
          as wide as the number of codes a draft raised, so folding it into

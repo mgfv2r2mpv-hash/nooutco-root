@@ -288,6 +288,19 @@ test.describe('a strategy narrated under the wrong heading', () => {
     expect(labels).toContain('Differential reinforcement of an alternative or incompatible behavior (DRA/DRI)');
   });
 
+  test('the antecedent effect gap reaches the panel, amber, on a real draft', async ({ page }) => {
+    /* The pure function has its own suite in antecedent-effect.spec.js. This is
+       the wiring: that finalize concatenates it before normalizeOutput, so the
+       tool's own catalog and section checks run on it, and that it arrives on
+       the page a technician is looking at. */
+    await draft(page, noteWith({
+      antecedentNarrative: 'A visual schedule was posted and Premack was used before each demand.',
+    }));
+    const row = page.getByTestId('hints-antecedentNarrative').locator('[data-hint-kind]').first();
+    await expect(row).toHaveAttribute('data-hint-kind', 'thin');
+    await expect(page.getByTestId('hints-antecedentNarrative')).toContainText(/no stated effect/i);
+  });
+
   test('the injected hint goes through the same validation as the model\'s own', async ({ page }) => {
     // It is concatenated before normalizeOutput runs, so its code has to be in
     // the catalog and its section has to be a real one. A hint that skipped

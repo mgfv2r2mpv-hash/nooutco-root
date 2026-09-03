@@ -200,6 +200,14 @@
     sections: {
       antecedentNarrative: {
         label: "antecedent",
+        /* WHICH SECTION OWES AN EFFECT, declared here rather than in hollow.js,
+           for the same reason the filing of a DRO is declared here: it is a
+           claim about this tool's form, not about the mechanism. This heading
+           asks the technician for "Modifications Implemented in Session and
+           Impact", so a strategy named under it with no impact is an unfinished
+           answer to the question the form asked. The consequence section asks
+           something else and declares nothing. */
+        effectCode: "antecedent_effect_unstated",
         strategies: [
           { label: "Environmental arrangement", term: /\benvironmental arrangement\b/i },
           { label: "Visual schedule", term: /\bvisual schedule\b/i },
