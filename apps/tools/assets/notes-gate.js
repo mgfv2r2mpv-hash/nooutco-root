@@ -1315,6 +1315,28 @@
       var cm;
       while ((cm = cr.exec(text)) !== null) {
         var cname = cm[1];
+        /* SIMPLE_CAP ASKS FOR A CAPITAL AND THE "i" FLAG THROWS THE ASK AWAY.
+         *
+         * Two of these three patterns carry "gi" so the cue half matches
+         * "Client" and "client" alike. That same flag makes SIMPLE_CAP's [A-Z]
+         * match a lowercase letter, so the pattern written to read "client
+         * Jacob" read "client labeled" just as happily, and the word after ANY
+         * cue became a name candidate whatever part of speech it was.
+         *
+         * The two faults then compound. A candidate sitting next to a role cue
+         * is exactly what personEvidence reads as proof of a person, so the verb
+         * got a ROLE token, and a role token is the one kind that never restores.
+         * Measured before this guard: "Client labeled Blue, Red and Yellow
+         * cards." reached the model as "Client Client--1 [[T2]], [[T3]] and
+         * [[T1]] cards." The colours came back because they were opaque, the
+         * verb did not, and Client--1 stayed in the signed note. labeled,
+         * chased, tolerated, honored, reports, mands and breaks all did it.
+         *
+         * The guard sits here rather than in the patterns because the cue half
+         * still has to match either case. Nothing real is lost: a name typed in
+         * lowercase is caught by the first-names dictionary pass below.
+         */
+        if (!/^[A-Z]/.test(cname)) continue;
         var cl = cname.toLowerCase();
         if (!excluded[cl] && !STOPWORDS[cl]) contextNames[cl] = cname;
       }
@@ -1509,6 +1531,12 @@
     var re = new RegExp("\\b(" + labels + ")\\s+([A-Z][a-z]{1,15}(?:[\\-\u2019][A-Za-z]{1,})?)\\b", "gi");
     var m;
     while ((m = re.exec(text)) !== null) {
+      /* The same "gi" trap detectNames carried, in the same file, for the same
+         reason: the flag that lets the label match either case also lets [A-Z]
+         match a lowercase letter, so "mom reports" filed the verb "reports" as
+         a caregiver. buildRoleMap reads this, so the wrong entry renames an
+         ordinary word everywhere it appears in what the expert is sent. */
+      if (!/^[A-Z]/.test(m[2])) continue;
       var who = m[2].toLowerCase();
       if (!found[who]) found[who] = ROLE_LABELS[m[1].toLowerCase()];
     }
