@@ -28,6 +28,9 @@
   // tools.nooutco.me. Leave "" to disable Turnstile (login proceeds without it) - the
   // worker likewise skips verification unless TURNSTILE_SECRET is set, so both sides
   // must be configured for the check to be enforced.
+  //
+  // KEEP IN SYNC with SITEKEY in /assets/turnstile-gate.js, which gates the two
+  // admin logins - both name the same Turnstile widget.
   var TURNSTILE_SITEKEY = "0x4AAAAAADqSIXik1l5V3Nrd";
 
   // Cloudflare Super Bot Fight Mode (can't be fully disabled on this plan) challenges

@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Admin · No Outcome ABA</title>
   <link rel="icon" href="/logo-mark.svg" />
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <script src="/assets/turnstile-gate.js"></script>
   <!-- notes-gate.js needed for FIRST_NAMES/STOPWORDS in Algorithm Lab -->
   <script src="/assets/notes-gate.js"></script>
   <script src="/assets/notes-scrub.js"></script>
@@ -166,6 +168,7 @@
       <label for="pw">Admin password</label>
       <input id="pw" type="password" autocomplete="current-password" placeholder="Admin password" />
       <div id="loginErr" class="err"></div>
+      <div id="loginTurnstile" style="margin-top:12px;"></div>
       <button id="loginBtn" class="btn-primary" style="margin-top: 14px; width: 100%;">Log in</button>
     </div>
 
@@ -637,19 +640,51 @@
         }
       }
 
+      var loginBtn = document.getElementById("loginBtn");
+      function showLoginErr(msg) {
+        var err = document.getElementById("loginErr");
+        err.textContent = msg; err.style.display = "block";
+      }
+
+      // The worker rejects /api/login without a Turnstile token whenever
+      // TURNSTILE_SECRET is set, so the challenge has to render here or the
+      // right password still comes back as "Verification failed".
+      // A missing helper must not throw here - that would leave Log in wired to
+      // nothing, which is the dead-button failure with no reason on screen.
+      var loginGate = { required: true, token: function () { return ""; }, reset: function () {} };
+      if (window.TurnstileGate) {
+        loginGate = window.TurnstileGate.mount("#loginTurnstile", {
+          onChange: function (hasToken) { loginBtn.disabled = !hasToken; },
+          onUnavailable: showLoginErr,
+        });
+      } else {
+        loginBtn.disabled = true;
+        showLoginErr("The verification check could not load. Reload the page and try again.");
+      }
+
       function doLogin() {
         var pw = document.getElementById("pw");
         var err = document.getElementById("loginErr");
         err.style.display = "none";
-        fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: pw.value }) })
+        if (loginGate.required && !loginGate.token()) {
+          showLoginErr("Please complete the verification check.");
+          return;
+        }
+        loginBtn.disabled = true;
+        fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: pw.value, turnstileToken: loginGate.token() }) })
           .then(function (r) { return r.json().then(function (d) { if (!r.ok || !d.token) throw new Error(d.error || "Login failed."); return d; }); })
           .then(function (d) {
             if (d.role !== "admin") throw new Error("That password doesn't have admin access.");
             localStorage.setItem(TOKEN_KEY, d.token); pw.value = ""; show();
           })
-          .catch(function (ex) { err.textContent = ex.message; err.style.display = "block"; });
+          .catch(function (ex) {
+            showLoginErr(ex.message);
+            // The token was spent on that attempt; mint a fresh one for the retry.
+            loginGate.reset();
+            if (!loginGate.required) loginBtn.disabled = false;
+          });
       }
-      document.getElementById("loginBtn").addEventListener("click", doLogin);
+      loginBtn.addEventListener("click", doLogin);
       document.getElementById("pw").addEventListener("keydown", function (e) { if (e.key === "Enter") doLogin(); });
       logoutBtn.addEventListener("click", function () { localStorage.removeItem(TOKEN_KEY); show(); });
 

@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="tokens.css">
   <link rel="stylesheet" href="/assets/nav-bar.css">
   <script src="/assets/nav-bar.js" defer></script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <script src="/assets/turnstile-gate.js"></script>
   <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -382,8 +384,9 @@
                <form id="adminForm">
                  <input type="password" id="adminPw" placeholder="••••••••" autocomplete="current-password" autofocus />
                  <div class="error" id="adminError" style="display:none"></div>
+                 <div id="adminTurnstile" style="margin-top:12px;"></div>
                  <div class="actions">
-                   <button type="submit" class="btn-primary">Unlock</button>
+                   <button type="submit" class="btn-primary" id="adminUnlock">Unlock</button>
                  </div>
                </form>`
           }
@@ -405,14 +408,41 @@
     } else {
       const form = document.getElementById("adminForm");
       const errorEl = document.getElementById("adminError");
+      const unlockBtn = document.getElementById("adminUnlock");
+      const showError = msg => { errorEl.textContent = msg; errorEl.style.display = "block"; };
+
+      // The worker rejects /api/login without a Turnstile token whenever
+      // TURNSTILE_SECRET is set, so the challenge has to render here or the
+      // right password still comes back as "Verification failed".
+      // A missing helper must not throw here - that would leave Unlock wired to
+      // nothing, which is the dead-button failure with no reason on screen.
+      let gate = { required: true, token: () => "", reset: () => {} };
+      if (window.TurnstileGate) {
+        gate = window.TurnstileGate.mount("#adminTurnstile", {
+          onChange: hasToken => { unlockBtn.disabled = !hasToken; },
+          onUnavailable: showError,
+        });
+      } else {
+        unlockBtn.disabled = true;
+        showError("The verification check could not load. Reload the page and try again.");
+      }
+
       form.addEventListener("submit", async e => {
         e.preventDefault();
         errorEl.style.display = "none";
+        if (gate.required && !gate.token()) {
+          showError("Please complete the verification check.");
+          return;
+        }
+        unlockBtn.disabled = true;
         try {
           const res = await fetch("/api/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ password: document.getElementById("adminPw").value }),
+            body: JSON.stringify({
+              password: document.getElementById("adminPw").value,
+              turnstileToken: gate.token(),
+            }),
           });
           const data = await res.json();
           if (!res.ok || !data.token) throw new Error(data.error || "Incorrect password.");
@@ -420,8 +450,10 @@
           updateGearState();
           renderModal();
         } catch (ex) {
-          errorEl.textContent = ex.message || "Incorrect password.";
-          errorEl.style.display = "block";
+          showError(ex.message || "Incorrect password.");
+          // The token was spent on that attempt; mint a fresh one for the retry.
+          gate.reset();
+          if (!gate.required) unlockBtn.disabled = false;
         }
       });
     }
