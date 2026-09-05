@@ -144,6 +144,24 @@ test.describe('admin passwords page (/admin/)', () => {
     expect(captured.body.turnstileToken).toBe(STUB_TOKEN);
   });
 
+  test('renders no challenge at all for an admin who is already signed in', async ({ page }) => {
+    // Turnstile draws a cross-origin https iframe. Mounting it behind a hidden
+    // login card made every authenticated admin page load depend on
+    // challenges.cloudflare.com, and webkit threw a SecurityError over http in
+    // the suite - two specs in expert-topic-bench.spec.js failed on CI for it.
+    await stubTurnstile(page);
+    await page.route('**/api/**', route => route.fulfill({
+      status: 200, contentType: 'application/json', body: '{}',
+    }));
+    await page.addInitScript(token => {
+      localStorage.setItem('notes_auth_token', token);
+    }, fakeSessionToken('admin'));
+
+    await page.goto('/admin/');
+    await expect(page.locator('#loginCard')).toBeHidden();
+    expect(await page.evaluate(() => window.__tsRenderCount)).toBe(0);
+  });
+
   test('holds Log in until the challenge passes', async ({ page }) => {
     await stubTurnstile(page);
     await page.goto('/admin/');

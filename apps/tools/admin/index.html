@@ -636,6 +636,7 @@
           load(); loadPii(); loadNonPii(); loadTermQueues(); loadAlgStatus();
         } else {
           loginCard.classList.remove("hidden"); adminUI.classList.add("hidden"); logoutBtn.classList.add("hidden");
+          ensureLoginGate();
           document.getElementById("pw").focus();
         }
       }
@@ -649,29 +650,40 @@
       // The worker rejects /api/login without a Turnstile token whenever
       // TURNSTILE_SECRET is set, so the challenge has to render here or the
       // right password still comes back as "Verification failed".
-      // A missing helper must not throw here - that would leave Log in wired to
-      // nothing, which is the dead-button failure with no reason on screen.
-      var loginGate = { required: true, token: function () { return ""; }, reset: function () {} };
-      if (window.TurnstileGate) {
-        loginGate = window.TurnstileGate.mount("#loginTurnstile", {
-          onChange: function (hasToken) { loginBtn.disabled = !hasToken; },
-          onUnavailable: showLoginErr,
-        });
-      } else {
-        loginBtn.disabled = true;
-        showLoginErr("The verification check could not load. Reload the page and try again.");
+      //
+      // Mount it only once the login card is actually on screen. A signed-in
+      // admin never sees that card, and Turnstile renders a cross-origin
+      // iframe - loading one behind a hidden card buys nothing and makes every
+      // authenticated page load depend on challenges.cloudflare.com.
+      var loginGate = null;
+      function ensureLoginGate() {
+        if (loginGate) return loginGate;
+        // A missing helper must not throw here - that would leave Log in wired
+        // to nothing, which is the dead-button failure with no reason on screen.
+        loginGate = { required: true, token: function () { return ""; }, reset: function () {} };
+        if (window.TurnstileGate) {
+          loginGate = window.TurnstileGate.mount("#loginTurnstile", {
+            onChange: function (hasToken) { loginBtn.disabled = !hasToken; },
+            onUnavailable: showLoginErr,
+          });
+        } else {
+          loginBtn.disabled = true;
+          showLoginErr("The verification check could not load. Reload the page and try again.");
+        }
+        return loginGate;
       }
 
       function doLogin() {
         var pw = document.getElementById("pw");
         var err = document.getElementById("loginErr");
         err.style.display = "none";
-        if (loginGate.required && !loginGate.token()) {
+        var gate = ensureLoginGate();
+        if (gate.required && !gate.token()) {
           showLoginErr("Please complete the verification check.");
           return;
         }
         loginBtn.disabled = true;
-        fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: pw.value, turnstileToken: loginGate.token() }) })
+        fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: pw.value, turnstileToken: gate.token() }) })
           .then(function (r) { return r.json().then(function (d) { if (!r.ok || !d.token) throw new Error(d.error || "Login failed."); return d; }); })
           .then(function (d) {
             if (d.role !== "admin") throw new Error("That password doesn't have admin access.");
@@ -680,8 +692,8 @@
           .catch(function (ex) {
             showLoginErr(ex.message);
             // The token was spent on that attempt; mint a fresh one for the retry.
-            loginGate.reset();
-            if (!loginGate.required) loginBtn.disabled = false;
+            gate.reset();
+            if (!gate.required) loginBtn.disabled = false;
           });
       }
       loginBtn.addEventListener("click", doLogin);
